@@ -16,7 +16,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public class PingPongSocketConnectionTest {
-	private static final Logger logger = LoggerFactory.getLogger(PingPongSocketConnectionTest.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final InetSocketAddress ADDRESS = new InetSocketAddress("localhost", 9022);
 	private final int ITERATIONS = 3;

@@ -50,9 +50,7 @@ import static com.google.common.collect.Iterables.*;
 import static com.google.common.collect.Iterables.filter;
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Sets.*;
-import static io.datakernel.aggregation_db.AggregationStructure.createKeyComparator;
-import static io.datakernel.aggregation_db.AggregationStructure.createKeyFunction;
-import static io.datakernel.aggregation_db.AggregationStructure.createMapper;
+import static io.datakernel.aggregation_db.AggregationStructure.*;
 import static io.datakernel.codegen.Expressions.*;
 import static java.util.Collections.singletonList;
 
@@ -62,7 +60,7 @@ import static java.util.Collections.singletonList;
  */
 @SuppressWarnings("unchecked")
 public class Aggregation implements AggregationOperationTracker {
-	private static final Logger logger = LoggerFactory.getLogger(Aggregation.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	private static final Joiner JOINER = Joiner.on(", ");
 
 	public static final int DEFAULT_AGGREGATION_CHUNK_SIZE = 1_000_000;

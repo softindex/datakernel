@@ -41,7 +41,7 @@ import java.util.concurrent.ExecutorService;
 import static com.google.common.collect.Maps.newHashMap;
 
 public abstract class CachingSqlAttributeResolver implements AttributeResolver, EventloopService {
-	private static final Logger logger = LoggerFactory.getLogger(CachingSqlAttributeResolver.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	protected final Eventloop eventloop;
 	protected final ExecutorService executor;

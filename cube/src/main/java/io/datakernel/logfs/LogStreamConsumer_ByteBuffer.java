@@ -30,7 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<ByteBuf> {
-	private static final Logger logger = LoggerFactory.getLogger(LogStreamConsumer_ByteBuffer.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	private final StreamWriteLog streamWriteLog;
 
 	public LogStreamConsumer_ByteBuffer(Eventloop eventloop, DateTimeFormatter datetimeFormat, long fileSwitchPeriod,

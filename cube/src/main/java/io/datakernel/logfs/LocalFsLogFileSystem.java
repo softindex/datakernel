@@ -46,7 +46,7 @@ import static java.nio.file.StandardOpenOption.READ;
  * Represents a file system for persisting logs. Stores files in a local file system.
  */
 public final class LocalFsLogFileSystem extends AbstractLogFileSystem {
-	private static final Logger logger = LoggerFactory.getLogger(LocalFsLogFileSystem.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final Eventloop eventloop;
 	private final ExecutorService executorService;

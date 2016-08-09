@@ -41,7 +41,7 @@ import static java.lang.Math.min;
  * which streams data from file.
  */
 public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
-	private static final Logger logger = LoggerFactory.getLogger(StreamFileReader.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final AsyncFile asyncFile;
 

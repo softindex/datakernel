@@ -252,7 +252,7 @@ public class StreamFileReaderWriterTest {
 
 	// override send(ByteBuf item) with error
 	public final static class StreamFileReaderWithError extends AbstractStreamProducer<ByteBuf> {
-		private static final Logger logger = LoggerFactory.getLogger(StreamFileReader.class);
+		private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 		private final ExecutorService executor;
 		protected AsyncFile asyncFile;

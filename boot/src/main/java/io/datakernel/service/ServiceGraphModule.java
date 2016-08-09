@@ -48,7 +48,7 @@ import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static org.slf4j.LoggerFactory.getLogger;
 
 public final class ServiceGraphModule extends AbstractModule {
-	private static final Logger logger = getLogger(ServiceGraphModule.class);
+	private final Logger logger = getLogger(this.getClass());
 
 	private final Map<Class<?>, ServiceAdapter<?>> factoryMap = new LinkedHashMap<>();
 	private final Set<Key<?>> excludedKeys = new LinkedHashSet<>();

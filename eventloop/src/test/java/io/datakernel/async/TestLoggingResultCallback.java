@@ -20,7 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 class TestLoggingResultCallback<T> implements ResultCallback<T> {
-	private static final Logger logger = LoggerFactory.getLogger(TestLoggingResultCallback.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	int results = 0;
 	int exceptions = 0;

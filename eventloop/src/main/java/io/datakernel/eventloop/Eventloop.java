@@ -51,7 +51,7 @@ import static io.datakernel.async.AsyncCallbacks.notCancellable;
  * not selected keys and its queues with tasks are empty.
  */
 public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler, EventloopExecutor, EventloopJmxMBean {
-	private static final Logger logger = LoggerFactory.getLogger(Eventloop.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	public static final TimeoutException CONNECT_TIMEOUT = new TimeoutException("Connection timed out");
 	private static final long DEFAULT_EVENT_TIMEOUT = 20L;

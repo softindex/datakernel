@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.Properties;
 
 public final class PropertiesConfigModule extends AbstractModule {
-	private static final Logger logger = LoggerFactory.getLogger(PropertiesConfigModule.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final List<Properties> properties = new ArrayList<>();
 	private File saveFile;

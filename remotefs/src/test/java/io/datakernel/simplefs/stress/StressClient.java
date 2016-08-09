@@ -17,7 +17,6 @@
 package io.datakernel.simplefs.stress;
 
 import com.google.common.base.Charsets;
-import io.datakernel.StreamForwarderWithCounter;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
@@ -52,7 +51,7 @@ import java.util.concurrent.Executors;
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 
 class StressClient {
-	private static final Logger logger = LoggerFactory.getLogger(StressClient.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	private InetSocketAddress address = new InetSocketAddress(5560);
 	private Eventloop eventloop = new Eventloop();
 	private ExecutorService executor = Executors.newCachedThreadPool();

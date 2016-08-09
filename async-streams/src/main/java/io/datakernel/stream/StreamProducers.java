@@ -214,7 +214,7 @@ public class StreamProducers {
 	 * @param <T>
 	 */
 	public static class ClosingWithError<T> extends AbstractStreamProducer<T> {
-		private static final Logger logger = LoggerFactory.getLogger(ClosingWithError.class);
+		private final Logger logger = LoggerFactory.getLogger(this.getClass());
 		private final Exception exception;
 
 		public ClosingWithError(Eventloop eventloop, Exception exception) {

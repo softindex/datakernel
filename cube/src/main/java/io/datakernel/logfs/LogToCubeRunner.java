@@ -50,14 +50,15 @@ public final class LogToCubeRunner<T> {
 	private final String log;
 	private final List<String> partitions;
 
-	private static final Logger logger = LoggerFactory.getLogger(LogToCubeRunner.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	/**
 	 * Constructs a {@code LogToCubeRunner}, which runs in the given event loop, saves new chunks to specified cube,
 	 * uses given log manager for reading logs, processes logs using an {@code AggregatorSplitter},
 	 * that is instantiated through the specified factory, works with the given log and partitions,
 	 * and uses the specified {@code LogToCubeMetadataStorage} for persistence of log and cube metadata.
-	 *  @param eventloop                 event loop to run in
+	 *
+	 * @param eventloop                 event loop to run in
 	 * @param cube                      cube to save new chunks
 	 * @param logManager                log manager for reading logs
 	 * @param aggregatorSplitterFactory factory that instantiates an {@code AggregatorSplitter} subclass

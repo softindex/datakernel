@@ -35,7 +35,7 @@ import java.util.List;
 import static io.datakernel.util.Preconditions.checkArgument;
 
 public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
-	private static final Logger logger = LoggerFactory.getLogger(AggregationChunker.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final List<String> keys;
 	private final List<String> fields;

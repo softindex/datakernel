@@ -37,7 +37,7 @@ import static com.google.common.base.Preconditions.checkState;
  * which organized by binary protocol. It is created with socketChannel and sides exchange ByteBufs.
  */
 public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.EventHandler, Messaging<I, O> {
-	private static final Logger logger = LoggerFactory.getLogger(MessagingWithBinaryStreaming.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final Eventloop eventloop;
 	private final AsyncTcpSocket asyncTcpSocket;

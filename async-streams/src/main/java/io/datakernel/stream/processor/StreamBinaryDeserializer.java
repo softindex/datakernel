@@ -41,7 +41,7 @@ import static java.lang.Math.min;
  * @param <T> original type of data
  */
 public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer_1_1<ByteBuf, T> implements EventloopJmxMBean {
-	private static final Logger logger = LoggerFactory.getLogger(StreamBinaryDeserializer.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final InputConsumer inputConsumer;
 	private final OutputProducer outputProducer;

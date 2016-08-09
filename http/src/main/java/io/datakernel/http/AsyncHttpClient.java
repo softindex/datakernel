@@ -45,7 +45,7 @@ import static io.datakernel.util.Preconditions.checkState;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
 public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
-	private static final Logger logger = LoggerFactory.getLogger(AsyncHttpClient.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	private static final long CHECK_PERIOD = 1000L;
 	private static final long DEFAULT_KEEP_CONNECTION_IN_POOL_TIME = 30 * 1000L;
 

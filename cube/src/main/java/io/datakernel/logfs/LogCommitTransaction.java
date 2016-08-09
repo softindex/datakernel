@@ -47,7 +47,7 @@ public final class LogCommitTransaction<T> {
 
 	private final LogCommitCallback callback;
 
-	private static final Logger logger = LoggerFactory.getLogger(LogCommitTransaction.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	public LogCommitTransaction(Eventloop eventloop, LogManager<T> logManager, String log, Map<String, LogPosition> oldPositions,
 	                            LogCommitCallback callback) {

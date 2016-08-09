@@ -36,7 +36,7 @@ import static io.datakernel.http.HttpResponse.badRequest400;
 import static io.datakernel.util.ByteBufStrings.wrapUtf8;
 
 public final class HttpRequestHandler implements RequestHandler {
-	private static final Logger logger = LoggerFactory.getLogger(HttpRequestHandler.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final HttpRequestProcessor httpRequestProcessor;
 	private final RequestExecutor requestExecutor;

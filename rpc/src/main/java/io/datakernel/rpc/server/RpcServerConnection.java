@@ -30,7 +30,7 @@ import java.net.InetSocketAddress;
 import java.util.Map;
 
 public final class RpcServerConnection implements RpcConnection, JmxRefreshable {
-	private static final Logger logger = LoggerFactory.getLogger(RpcServerConnection.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final Eventloop eventloop;
 	private final RpcServer rpcServer;

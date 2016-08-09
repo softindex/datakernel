@@ -40,7 +40,7 @@ import static io.datakernel.aggregation_db.Aggregation.getChunkIds;
  * Represents aggregation metadata. Stores chunks in an index (represented by an array of {@link RangeTree}) for efficient search.
  * Provides methods for managing index, querying for chunks by key, searching for chunks that are available for consolidation.
  */
-public class AggregationMetadata {
+public final class AggregationMetadata {
 	private static final Logger logger = LoggerFactory.getLogger(AggregationMetadata.class);
 
 	private final ImmutableList<String> keys;

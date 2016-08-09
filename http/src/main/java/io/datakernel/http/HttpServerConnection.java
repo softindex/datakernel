@@ -38,7 +38,7 @@ import static io.datakernel.util.ByteBufStrings.encodeAscii;
  * It represents server connection. It can receive requests from clients and respond to them with async servlet.
  */
 final class HttpServerConnection extends AbstractHttpConnection {
-	private static final Logger logger = LoggerFactory.getLogger(HttpServerConnection.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	private static final byte[] INTERNAL_ERROR_MESSAGE = encodeAscii("Failed to process request");
 	private static final HttpHeaders.Value CONNECTION_KEEP_ALIVE = HttpHeaders.asBytes(CONNECTION, "keep-alive");
 

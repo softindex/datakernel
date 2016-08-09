@@ -35,7 +35,7 @@ import java.util.Set;
 import java.util.concurrent.TimeoutException;
 
 public final class DnsClientHandler implements AsyncUdpSocket {
-	private static final Logger logger = LoggerFactory.getLogger(DnsClientHandler.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private Map<String, ListenableResultCallback<DnsQueryResult>> resultHandlers = new HashMap<>();
 	private final Eventloop eventloop;

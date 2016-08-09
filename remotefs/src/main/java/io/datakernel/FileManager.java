@@ -43,7 +43,7 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.nio.file.StandardOpenOption.*;
 
 public final class FileManager {
-	private static final Logger logger = LoggerFactory.getLogger(FileManager.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private static final OpenOption[] CREATE_OPTIONS = new OpenOption[]{WRITE, CREATE_NEW};
 

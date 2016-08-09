@@ -19,7 +19,9 @@ package io.datakernel.cube;
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
-import com.google.common.collect.*;
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Multimap;
 import io.datakernel.aggregation_db.*;
 import io.datakernel.aggregation_db.AggregationMetadataStorage.LoadedChunks;
 import io.datakernel.aggregation_db.sql.tables.records.AggregationDbChunkRecord;
@@ -45,7 +47,7 @@ import static io.datakernel.aggregation_db.util.JooqUtils.onDuplicateKeyUpdateVa
 import static org.jooq.impl.DSL.currentTimestamp;
 
 public class CubeMetadataStorageSql implements CubeMetadataStorage {
-	private static final Logger logger = LoggerFactory.getLogger(CubeMetadataStorageSql.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private static final String LOCK_NAME = "cube_lock";
 	private static final int DEFAULT_LOCK_TIMEOUT_SECONDS = 180;

@@ -47,7 +47,7 @@ import static io.datakernel.stream.net.MessagingSerializers.ofGson;
  * Server for processing JSON commands.
  */
 public final class DatagraphServer extends AbstractServer<DatagraphServer> {
-	private static final Logger logger = LoggerFactory.getLogger(DatagraphServer.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final DatagraphEnvironment environment;
 	private final Map<StreamId, StreamForwarder<ByteBuf>> pendingStreams = new HashMap<>();

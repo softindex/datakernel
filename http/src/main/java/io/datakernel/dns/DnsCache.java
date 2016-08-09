@@ -32,7 +32,7 @@ import static io.datakernel.dns.DnsMessage.A_RECORD_TYPE;
  * Represents a cache for storing resolved domains during its time to live.
  */
 public final class DnsCache {
-	private static final Logger logger = LoggerFactory.getLogger(DnsCache.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final Map<String, CachedDnsLookupResult> cache = new ConcurrentHashMap<>();
 	private final Map<Long, Set<String>> expirations = new HashMap<>();

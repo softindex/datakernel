@@ -25,7 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public final class CubeAutoReloadingChunks implements EventloopService {
-	private static final Logger logger = LoggerFactory.getLogger(CubeAutoReloadingChunks.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final Cube cube;
 	private final Eventloop eventloop;

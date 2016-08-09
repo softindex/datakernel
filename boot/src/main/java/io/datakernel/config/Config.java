@@ -29,7 +29,7 @@ import static java.util.Arrays.asList;
 
 @SuppressWarnings("unchecked")
 public final class Config {
-	private static final Logger logger = LoggerFactory.getLogger(Config.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	public static final String ROOT = "";
 	public static final char SEPARATOR = '.';

@@ -44,7 +44,7 @@ import static io.datakernel.cube.sql.tables.AggregationDbLog.AGGREGATION_DB_LOG;
  * Stores cube and logs metadata in relational database.
  */
 public final class LogToCubeMetadataStorageSql implements LogToCubeMetadataStorage {
-	private static final Logger logger = LoggerFactory.getLogger(LogToCubeMetadataStorageSql.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final Eventloop eventloop;
 	private final ExecutorService executor;

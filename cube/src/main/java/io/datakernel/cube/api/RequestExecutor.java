@@ -37,7 +37,10 @@ import io.datakernel.stream.StreamProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static com.google.common.base.Predicates.in;
 import static com.google.common.collect.Iterables.*;
@@ -51,7 +54,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 
 public final class RequestExecutor {
-	private static final Logger logger = LoggerFactory.getLogger(RequestExecutor.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final Cube cube;
 	private final AggregationStructure structure;

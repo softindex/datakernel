@@ -45,8 +45,8 @@ import static org.objectweb.asm.commons.Method.getMethod;
  */
 @SuppressWarnings("unchecked")
 public class AsmBuilder<T> {
-	private static final Logger logger = LoggerFactory.getLogger(AsmBuilder.class);
-	
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+
 	public static final String DEFAULT_CLASS_NAME = AsmBuilder.class.getPackage().getName() + ".Class";
 	private static final AtomicInteger COUNTER = new AtomicInteger();
 

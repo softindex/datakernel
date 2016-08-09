@@ -31,7 +31,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  * {@link EventloopServer} and {@link EventloopService}.
  */
 public final class AsyncCallbacks {
-	private static final Logger logger = getLogger(AsyncCallbacks.class);
+	private final Logger logger = getLogger(this.getClass());
 
 	private AsyncCallbacks() {
 

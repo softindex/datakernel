@@ -33,7 +33,7 @@ import static io.datakernel.stream.StreamStatus.*;
  * @param <T> type of received item
  */
 public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
-	private static final Logger logger = LoggerFactory.getLogger(AbstractStreamProducer.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	protected final Eventloop eventloop;
 
@@ -267,7 +267,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		return tag != null ? tag.toString() : super.toString();
 	}
 
-	private static class DataReceiverBeforeStart<T> implements StreamDataReceiver<T> {
+	private final class DataReceiverBeforeStart<T> implements StreamDataReceiver<T> {
 		private final AbstractStreamProducer self;
 		private final List<T> list;
 
@@ -284,7 +284,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		}
 	}
 
-	private static class DataReceiverAfterClose<T> implements StreamDataReceiver<T> {
+	private final class DataReceiverAfterClose<T> implements StreamDataReceiver<T> {
 		@Override
 		public void onData(T item) {
 			logger.error("Unexpected item {} after end-of-stream of {}", item, this);

@@ -52,7 +52,7 @@ import static io.datakernel.stream.net.MessagingSerializers.ofGson;
  * Sends JSON commands for performing certain actions on server.
  */
 public final class DatagraphClient {
-	private static final Logger logger = LoggerFactory.getLogger(DatagraphClient.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final Eventloop eventloop;
 	private final DatagraphSerialization serialization;

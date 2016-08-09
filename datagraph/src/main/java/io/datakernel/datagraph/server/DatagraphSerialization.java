@@ -46,7 +46,7 @@ import java.util.*;
  * Maintains the cache of BufferSerializer's.
  */
 public final class DatagraphSerialization {
-	private static final Logger logger = LoggerFactory.getLogger(DatagraphSerialization.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	public final Gson gson;
 

@@ -39,7 +39,7 @@ import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 
 @SuppressWarnings("unchecked")
 final class RpcStreamProtocol implements RpcProtocol {
-	private static final Logger logger = LoggerFactory.getLogger(RpcStreamProtocol.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final RpcConnection rpcConnection;
 	private final AsyncTcpSocket asyncTcpSocket;

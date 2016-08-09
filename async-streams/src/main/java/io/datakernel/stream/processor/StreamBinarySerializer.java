@@ -40,7 +40,7 @@ import static java.lang.Math.max;
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
 public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1_1<T, ByteBuf> implements EventloopJmxMBean {
-	private static final Logger logger = LoggerFactory.getLogger(StreamBinarySerializer.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	private static final ArrayIndexOutOfBoundsException OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException();
 
 	public static final int MAX_SIZE_1_BYTE = 127; // (1 << (1 * 7)) - 1

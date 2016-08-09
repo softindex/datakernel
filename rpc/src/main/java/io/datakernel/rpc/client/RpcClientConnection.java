@@ -74,7 +74,7 @@ public final class RpcClientConnection implements RpcConnection, RpcSender, JmxR
 		}
 	}
 
-	private static final Logger logger = getLogger(RpcClientConnection.class);
+	private final Logger logger = getLogger(this.getClass());
 	@SuppressWarnings("ThrowableInstanceNeverThrown")
 	private static final RpcOverloadException OVERLOAD_EXCEPTION =
 			new RpcOverloadException("Write connection is overloaded");

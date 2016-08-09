@@ -39,7 +39,7 @@ import static java.nio.file.StandardOpenOption.WRITE;
 import static org.junit.Assert.assertArrayEquals;
 
 public class AsyncFileTest {
-	private static final Logger logger = LoggerFactory.getLogger(AsyncFileTest.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 

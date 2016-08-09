@@ -41,7 +41,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  * Static utility methods pertaining to ConcurrentService. Creates ConcurrentService from some other type of instances.
  */
 public final class ServiceAdapters {
-	private static final Logger logger = getLogger(ServiceAdapters.class);
+	private final Logger logger = getLogger(this.getClass());
 
 	private ServiceAdapters() {
 	}

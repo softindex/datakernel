@@ -30,7 +30,7 @@ import static io.datakernel.stream.StreamStatus.*;
  * @param <T> type of received item
  */
 public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
-	private static final Logger logger = LoggerFactory.getLogger(AbstractStreamConsumer.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	protected final Eventloop eventloop;
 

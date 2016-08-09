@@ -33,7 +33,7 @@ import static java.lang.String.format;
 import static java.util.Arrays.asList;
 
 public final class JmxRegistry implements ConcurrentJmxMBean {
-	private static final Logger logger = LoggerFactory.getLogger(JmxRegistry.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private static final String GENERIC_PARAM_NAME_FORMAT = "T%d=%s";
 

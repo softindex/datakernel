@@ -41,7 +41,7 @@ import static java.nio.file.StandardOpenOption.*;
  * data and writes it to file.
  */
 public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> implements StreamDataReceiver<ByteBuf> {
-	private static final Logger logger = LoggerFactory.getLogger(StreamFileWriter.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	public static final OpenOption[] CREATE_OPTIONS = new OpenOption[]{WRITE, CREATE, TRUNCATE_EXISTING};
 
 	private final ArrayDeque<ByteBuf> queue = new ArrayDeque<>();

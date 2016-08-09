@@ -21,7 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ErrorIgnoringTransformer<T> extends AbstractStreamTransformer_1_1<T, T> {
-	private static final Logger logger = LoggerFactory.getLogger(ErrorIgnoringTransformer.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private InputConsumer inputConsumer;
 	private OutputProducer outputProducer;

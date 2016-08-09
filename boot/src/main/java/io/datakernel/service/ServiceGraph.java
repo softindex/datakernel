@@ -47,7 +47,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 public class ServiceGraph {
 
-	private static final Logger logger = LoggerFactory.getLogger(ServiceGraph.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	/**
 	 * This set used to represent edges between vertices. If N1 and N2 - nodes and between them

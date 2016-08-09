@@ -32,7 +32,7 @@ import org.slf4j.LoggerFactory;
  * which organized by binary protocol. It is created with socketChannel and sides exchange ByteBufs.
  */
 public final class SocketStreamingConnection implements AsyncTcpSocket.EventHandler, SocketStreaming {
-	private static final Logger logger = LoggerFactory.getLogger(SocketStreamingConnection.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final Eventloop eventloop;
 	private final AsyncTcpSocket asyncTcpSocket;

@@ -48,7 +48,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  * Stores aggregation chunks in local file system.
  */
 public class LocalFsChunkStorage implements AggregationChunkStorage {
-	private static final Logger logger = getLogger(LocalFsChunkStorage.class);
+	private final Logger logger = getLogger(this.getClass());
 
 	private final Eventloop eventloop;
 	private final ExecutorService executorService;

@@ -37,7 +37,7 @@ import static javax.net.ssl.SSLEngineResult.Status.CLOSED;
 
 @SuppressWarnings("AssertWithSideEffects")
 public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.EventHandler {
-	private static final Logger logger = LoggerFactory.getLogger(AsyncSslSocket.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final Eventloop eventloop;
 	private final SSLEngine engine;

@@ -35,7 +35,7 @@ import java.util.*;
 import static com.google.common.collect.Iterables.transform;
 
 public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
-	private static final Logger logger = LoggerFactory.getLogger(AggregationGroupReducer.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private static final int MAX_OUTPUT_STREAMS = 1;
 

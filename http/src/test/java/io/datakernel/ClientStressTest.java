@@ -25,7 +25,7 @@ import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSett
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
 public class ClientStressTest {
-	private static final Logger logger = LoggerFactory.getLogger(ClientStressTest.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private static final String PATH_TO_URLS = "./src/test/resources/urls.txt";
 

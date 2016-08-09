@@ -28,7 +28,7 @@ import java.nio.channels.SelectionKey;
  * Common abstract class, which represents any kind of connection.
  */
 public abstract class SocketConnection implements NioChannelEventHandler {
-	private static final Logger logger = LoggerFactory.getLogger(SocketConnection.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	private static final int DEFAULT_RECEIVE_BUFFER_SIZE = 8 * 1024;
 
 	protected final Eventloop eventloop;

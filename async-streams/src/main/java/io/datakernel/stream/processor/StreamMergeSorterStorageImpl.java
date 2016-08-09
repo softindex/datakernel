@@ -53,7 +53,7 @@ import static java.nio.file.StandardOpenOption.READ;
 public final class StreamMergeSorterStorageImpl<T> implements StreamMergeSorterStorage<T> {
 	private static final AtomicInteger PARTITION = new AtomicInteger();
 
-	private static final Logger logger = LoggerFactory.getLogger(StreamMergeSorterStorageImpl.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final Eventloop eventloop;
 	private final ExecutorService executorService;

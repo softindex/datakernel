@@ -26,7 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public final class CubeConsolidatorService implements EventloopService {
-	private static final Logger logger = LoggerFactory.getLogger(CubeConsolidatorService.class);
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final Eventloop eventloop;
 	private final Cube cube;
