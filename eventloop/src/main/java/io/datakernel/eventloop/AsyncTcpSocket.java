@@ -22,7 +22,7 @@ import java.net.InetSocketAddress;
 
 /**
  * Common interface for connection-oriented transport protocols.
- *
+ * <p/>
  * <p>
  * Contains operations for reading and writing {@link ByteBuf}.
  * All read and write operations must be performed asynchronously
@@ -45,9 +45,15 @@ public interface AsyncTcpSocket {
 
 		/**
 		 * Is called when new input data was received by socket.
-		 * EventHandler must be ready to handle any read data event if it has not been requested.
+		 * <p>
+		 * This callback is called only after one or more {@link AsyncTcpSocket#read()} invocation,
+		 * </p>
+		 * <p>
+		 * If this callback has been called, but event handler is still interested in reading data from socket,
+		 * {@link AsyncTcpSocket#read()} method must be called
+		 * </p>
 		 *
-		 * @param buf
+		 * @param buf input data
 		 */
 		void onRead(ByteBuf buf);
 
@@ -58,10 +64,16 @@ public interface AsyncTcpSocket {
 
 		/**
 		 * Is called when all buffered data is flushed to network.
-		 * This callback is called once per {@link AsyncTcpSocket#write(ByteBuf)} invocation, unless the socket is closed.
+		 * This callback is called only after one or more {@link AsyncTcpSocket#write(ByteBuf)} invocation,
+		 * unless the socket is closed.
 		 */
 		void onWrite();
 
+		/**
+		 * Is called when socket is closed with error.
+		 * No subsequent operations on the socket must be called afterwards.
+		 * No more event handler methods will be invoked afterwards
+		 */
 		void onClosedWithError(Exception e);
 	}
 
@@ -69,9 +81,17 @@ public interface AsyncTcpSocket {
 
 	/**
 	 * Must be called to inform the async socket that additional read data is needed.
-	 * Unless called, the socket does not guarantee (but still can) to return any read data in its onRead callback.
-	 * Each read invocation may result in one (or more) onRead callbacks.
-	 * This operation is idempotent and may be called several times prior actual onRead callbacks.
+	 * <p>
+	 * Unless called, the socket won't read any data from network
+	 * and therefore won't invoke {@link io.datakernel.eventloop.AsyncTcpSocket.EventHandler#onRead(ByteBuf)} callback.
+	 * </p>
+	 * <p>
+	 * Each read invocation may result in at most one
+	 * {@link io.datakernel.eventloop.AsyncTcpSocket.EventHandler#onRead(ByteBuf)} callbacks.
+	 * </p>
+	 * <p>
+	 * This operation is idempotent and may be called several times prior to actual onRead callbacks.
+	 * </p>
 	 */
 	void read();
 

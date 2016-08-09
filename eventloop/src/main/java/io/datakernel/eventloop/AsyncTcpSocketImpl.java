@@ -30,7 +30,7 @@ import java.util.ArrayDeque;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
 
-@SuppressWarnings("WeakerAccess")
+@SuppressWarnings({"WeakerAccess", "AssertWithSideEffects"})
 public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEventHandler {
 	public static final int DEFAULT_RECEIVE_BUFFER_SIZE = 16 * 1024;
 	public static final int OP_POSTPONED = 1 << 7;  // SelectionKey constant
@@ -55,6 +55,8 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	private ScheduledRunnable checkReadTimeout;
 	private ScheduledRunnable checkWriteTimeout;
+
+	private AsyncTcpSocketContract contractChecker;
 
 	protected int receiveBufferSize = DEFAULT_RECEIVE_BUFFER_SIZE;
 
@@ -91,6 +93,8 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	public AsyncTcpSocketImpl(Eventloop eventloop, SocketChannel socketChannel) {
 		this.eventloop = checkNotNull(eventloop);
 		this.channel = checkNotNull(socketChannel);
+
+		assert (this.contractChecker = new AsyncTcpSocketContract()) != null;
 	}
 
 	@Override
@@ -117,6 +121,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 				@Override
 				public void run() {
 					closeChannel();
+					assert contractChecker.onClosedWithError();
 					socketEventHandler.onClosedWithError(e);
 				}
 			});
@@ -178,6 +183,8 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	// read cycle
 	@Override
 	public void read() {
+		assert contractChecker.read();
+
 		if (readTimeout != NO_TIMEOUT) {
 			scheduleReadTimeOut();
 		}
@@ -220,18 +227,20 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 		if (numRead == -1) {
 			buf.recycle();
+			assert contractChecker.onReadEndOfStream();
 			socketEventHandler.onReadEndOfStream();
 			return;
 		}
 
+		assert contractChecker.onRead();
 		socketEventHandler.onRead(buf);
 	}
 
 	// write cycle
 	@Override
 	public void write(ByteBuf buf) {
+		assert contractChecker.write();
 		assert eventloop.inEventloopThread();
-		assert !writeEndOfStream;
 		if (writeTimeout != NO_TIMEOUT) {
 			scheduleWriteTimeOut();
 		}
@@ -241,6 +250,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	@Override
 	public void writeEndOfStream() {
+		assert contractChecker.writeEndOfStream();
 		assert eventloop.inEventloopThread();
 		if (writeEndOfStream) return;
 		writeEndOfStream = true;
@@ -301,6 +311,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 				channel.shutdownOutput();
 			}
 			writeInterest(false);
+			assert contractChecker.onWrite();
 			socketEventHandler.onWrite();
 		} else {
 			writeInterest(true);
@@ -310,6 +321,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	// close methods
 	@Override
 	public void close() {
+		assert contractChecker.close();
 		assert eventloop.inEventloopThread();
 		if (key == null) return;
 		closeChannel();
@@ -344,11 +356,14 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 				eventloop.post(new Runnable() {
 					@Override
 					public void run() {
+						assert contractChecker.onClosedWithError();
 						socketEventHandler.onClosedWithError(e);
 					}
 				});
-			else
+			else {
+				assert contractChecker.onClosedWithError();
 				socketEventHandler.onClosedWithError(e);
+			}
 		}
 	}
 

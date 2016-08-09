@@ -40,8 +40,8 @@ import java.util.Random;
 import java.util.concurrent.Executor;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.hamcrest.Matchers.greaterThan;
+import static org.junit.Assert.*;
 
 public class AsyncSslSocketTest {
 	// <editor-fold desc="fields">
@@ -112,6 +112,10 @@ public class AsyncSslSocketTest {
 			public void run() {
 				serverSslSocket.onRegistered();
 				clientSslSocket.onRegistered();
+
+				serverSslSocket.read();
+				clientSslSocket.read();
+
 				clientSslSocket.write(createByteBufFromString("Hello"));
 				serverSslSocket.write(createByteBufFromString("World"));
 			}
@@ -127,7 +131,7 @@ public class AsyncSslSocketTest {
 	@Test
 	public void sendsLargeAmountOfDataFromClientToServer() {
 		final StringBuilder sentData = new StringBuilder();
-		EventHandlerDataAccumulator serverDataAccumulator = new EventHandlerDataAccumulator();
+		EventHandlerDataAccumulator serverDataAccumulator = new EventHandlerDataAccumulator(serverSslSocket);
 		serverSslSocket.setEventHandler(serverDataAccumulator);
 
 		context.checking(new Expectations() {{
@@ -140,23 +144,25 @@ public class AsyncSslSocketTest {
 				serverSslSocket.onRegistered();
 				clientSslSocket.onRegistered();
 
+				serverSslSocket.read();
+
 				// send large message
 				String largeMessage = generateLargeString(100_000);
 				sentData.append(largeMessage);
 				clientSslSocket.write(createByteBufFromString(largeMessage));
 
 				// send lots of small messages
-				String smallMsg = "data_12345";
+				String smallMsg = "data_012345";
 				for (int i = 0; i < 25_000; i++) {
 					sentData.append(smallMsg);
-					clientSslSocket.write(createByteBufFromString("data_12345"));
+					clientSslSocket.write(createByteBufFromString(smallMsg));
 				}
 			}
 		});
 
 		eventloop.run();
 
-		assertTrue(serverDataAccumulator.getAccumulatedData().length() > 0);
+		assertThat("received bytes amount", serverDataAccumulator.getAccumulatedData().length(), greaterThan(0));
 		assertEquals(sentData.toString(), serverDataAccumulator.getAccumulatedData());
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
@@ -165,7 +171,7 @@ public class AsyncSslSocketTest {
 	@Test
 	public void sendsLargeAmountOfDataFromServerToClient() {
 		final StringBuilder sentData = new StringBuilder();
-		EventHandlerDataAccumulator clientDataAccumulator = new EventHandlerDataAccumulator();
+		EventHandlerDataAccumulator clientDataAccumulator = new EventHandlerDataAccumulator(clientSslSocket);
 		clientSslSocket.setEventHandler(clientDataAccumulator);
 
 		context.checking(new Expectations() {{
@@ -178,16 +184,18 @@ public class AsyncSslSocketTest {
 				serverSslSocket.onRegistered();
 				clientSslSocket.onRegistered();
 
+				clientSslSocket.read();
+
 				// send large message
 				String largeMessage = generateLargeString(100_000);
 				sentData.append(largeMessage);
 				serverSslSocket.write(createByteBufFromString(largeMessage));
 
 				// send lots of small messages
-				String smallMsg = "data_12345";
+				String smallMsg = "data_012345";
 				for (int i = 0; i < 25_000; i++) {
 					sentData.append(smallMsg);
-					serverSslSocket.write(createByteBufFromString("data_12345"));
+					serverSslSocket.write(createByteBufFromString(smallMsg));
 				}
 			}
 		});
@@ -222,6 +230,9 @@ public class AsyncSslSocketTest {
 			public void run() {
 				serverSslSocket.onRegistered();
 				clientSslSocket.onRegistered();
+
+				serverSslSocket.read();
+				clientSslSocket.read();
 
 				clientSslSocket.write(createByteBufFromString("Hello"));
 				serverSslSocket.write(createByteBufFromString("World"));
@@ -261,6 +272,9 @@ public class AsyncSslSocketTest {
 			public void run() {
 				serverSslSocket.onRegistered();
 				clientSslSocket.onRegistered();
+
+				serverSslSocket.read();
+				clientSslSocket.read();
 
 				clientSslSocket.write(createByteBufFromString("Hello"));
 				serverSslSocket.write(createByteBufFromString("World"));
@@ -380,6 +394,11 @@ public class AsyncSslSocketTest {
 
 	public static final class EventHandlerDataAccumulator implements EventHandler {
 		StringBuilder data = new StringBuilder();
+		AsyncTcpSocket upstream;
+
+		public EventHandlerDataAccumulator(AsyncTcpSocket upstream) {
+			this.upstream = upstream;
+		}
 
 		@Override
 		public void onRegistered() {
@@ -389,6 +408,7 @@ public class AsyncSslSocketTest {
 		@Override
 		public void onRead(ByteBuf buf) {
 			data.append(extractMessageFromByteBuf(buf));
+			upstream.read();
 		}
 
 		@Override

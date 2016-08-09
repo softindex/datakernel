@@ -35,6 +35,7 @@ import static javax.net.ssl.SSLEngineResult.HandshakeStatus.*;
 import static javax.net.ssl.SSLEngineResult.Status.BUFFER_UNDERFLOW;
 import static javax.net.ssl.SSLEngineResult.Status.CLOSED;
 
+@SuppressWarnings("AssertWithSideEffects")
 public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.EventHandler {
 	private static final Logger logger = LoggerFactory.getLogger(AsyncSslSocket.class);
 
@@ -46,9 +47,13 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 	private AsyncTcpSocket.EventHandler downstreamEventHandler;
 
 	private ByteBuf net2engine = ByteBuf.empty();
+	private ByteBuf engine2app = ByteBuf.empty();
 	private ByteBuf app2engine = ByteBuf.empty();
 
 	private boolean syncPosted = false;
+	private boolean read = false;
+
+	private AsyncTcpSocketContract contractChecker;
 
 	private static AsyncSslSocket wrapSocket(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, SSLContext sslContext, Executor executor, boolean clientMode) {
 		SSLEngine sslEngine = sslContext.createSSLEngine();
@@ -71,6 +76,8 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		this.engine = engine;
 		this.executor = executor;
 		this.upstream = asyncTcpSocket;
+
+		assert (this.contractChecker = new AsyncTcpSocketContract()) != null;
 	}
 
 	@Override
@@ -96,6 +103,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		try {
 			engine.closeInbound();
 		} catch (SSLException e) {
+			assert contractChecker.onClosedWithError();
 			downstreamEventHandler.onClosedWithError(e);
 			upstream.close();
 		}
@@ -108,12 +116,14 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 			return;
 		}
 		if (!app2engine.canRead() && engine.getHandshakeStatus() == NOT_HANDSHAKING) {
+			assert contractChecker.onWrite();
 			downstreamEventHandler.onWrite();
 		}
 	}
 
 	@Override
 	public void onClosedWithError(Exception e) {
+		assert contractChecker.onClosedWithError();
 		downstreamEventHandler.onClosedWithError(e);
 	}
 
@@ -124,7 +134,12 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 
 	@Override
 	public void read() {
-		upstream.read();
+		assert contractChecker.read();
+
+		read = true;
+		if (!net2engine.canRead() && !engine2app.canRead()) {
+			upstream.read();
+		}
 		postSync();
 	}
 
@@ -142,6 +157,8 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 
 	@Override
 	public void write(ByteBuf buf) {
+		assert contractChecker.write();
+
 		app2engine = ByteBufPool.append(app2engine, buf);
 		postSync();
 	}
@@ -153,6 +170,8 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 
 	@Override
 	public void close() {
+		assert contractChecker.close();
+
 		engine.closeOutbound();
 		postSync();
 	}
@@ -168,10 +187,12 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 			eventloop.post(new Runnable() {
 				@Override
 				public void run() {
+					assert contractChecker.onClosedWithError();
 					downstreamEventHandler.onClosedWithError(e);
 				}
 			});
 		} else {
+			assert contractChecker.onClosedWithError();
 			downstreamEventHandler.onClosedWithError(e);
 		}
 	}
@@ -195,7 +216,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 
 		dstBuf.ofTailByteBuffer(dstBuffer);
 		if (dstBuf.canRead()) {
-			downstreamEventHandler.onRead(dstBuf);
+			engine2app = ByteBufPool.append(engine2app, dstBuf);
 		} else {
 			dstBuf.recycle();
 		}
@@ -287,6 +308,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 						upstream.read();
 					}
 					if (result.getStatus() == CLOSED) {
+						assert contractChecker.onReadEndOfStream();
 						downstreamEventHandler.onReadEndOfStream();
 					}
 				}
@@ -300,6 +322,15 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 				break;
 			} else
 				break;
+		}
+
+		if (read && engine2app.canRead()) {
+			read = false;
+			ByteBuf readBuf = engine2app;
+			engine2app = ByteBuf.empty();
+
+			assert contractChecker.onRead();
+			downstreamEventHandler.onRead(readBuf);
 		}
 	}
 
