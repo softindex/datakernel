@@ -49,18 +49,18 @@ public class JmxReducersTest {
 	@Test
 	public void sumReducerWorksCorrectlyWithIntegerNumbers() {
 		JmxReducerSum sumReducer = new JmxReducerSum();
-		List<Number> numbers = new ArrayList<>();
+		List<Integer> numbers = new ArrayList<>();
 		numbers.add(10);
 		numbers.add(15);
 
-		long result = (long) sumReducer.reduce(numbers);
-		assertEquals(25L, result);
+		int result = (int) sumReducer.reduce(numbers);
+		assertEquals(25, result);
 	}
 
 	@Test
 	public void sumReducerWorksCorrectlyWithFloatingPointNumbers() {
 		JmxReducerSum sumReducer = new JmxReducerSum();
-		List<Number> numbers = new ArrayList<>();
+		List<Double> numbers = new ArrayList<>();
 		numbers.add(5.0);
 		numbers.add(2.5);
 
@@ -72,13 +72,13 @@ public class JmxReducersTest {
 	@Test
 	public void sumReducerIgnoresNullValues() {
 		JmxReducerSum sumReducer = new JmxReducerSum();
-		List<Number> numbers = new ArrayList<>();
+		List<Integer> numbers = new ArrayList<>();
 		numbers.add(10);
 		numbers.add(null);
 		numbers.add(15);
 
-		long result = (long) sumReducer.reduce(numbers);
-		assertEquals(25L, result);
+		int result = (int) sumReducer.reduce(numbers);
+		assertEquals(25, result);
 	}
 
 	@Test
@@ -105,12 +105,12 @@ public class JmxReducersTest {
 	@Test
 	public void minReducerWorksCorrectlyWithIntegerNumbers() {
 		JmxReducerMin minReducer = new JmxReducerMin();
-		List<Number> numbers = new ArrayList<>();
+		List<Integer> numbers = new ArrayList<>();
 		numbers.add(5);
 		numbers.add(2);
 		numbers.add(10);
 
-		long result = (long) minReducer.reduce(numbers);
+		int result = (int) minReducer.reduce(numbers);
 		assertEquals(2, result);
 	}
 
@@ -125,7 +125,7 @@ public class JmxReducersTest {
 	@Test
 	public void maxReducerWorksCorrectlyWithFloatingPointNumbers() {
 		JmxReducerMax maxReducer = new JmxReducerMax();
-		List<Number> numbers = new ArrayList<>();
+		List<Double> numbers = new ArrayList<>();
 		numbers.add(5.0);
 		numbers.add(2.5);
 		numbers.add(10.0);
@@ -138,13 +138,13 @@ public class JmxReducersTest {
 	@Test
 	public void maxReducerWorksCorrectlyWithIntegerNumbers() {
 		JmxReducerMax maxReducer = new JmxReducerMax();
-		List<Number> numbers = new ArrayList<>();
-		numbers.add(5);
-		numbers.add(2);
-		numbers.add(10);
+		List<Long> numbers = new ArrayList<>();
+		numbers.add(5L);
+		numbers.add(2L);
+		numbers.add(10L);
 
 		long result = (long) maxReducer.reduce(numbers);
-		assertEquals(10, result);
+		assertEquals(10L, result);
 	}
 
 	@Test

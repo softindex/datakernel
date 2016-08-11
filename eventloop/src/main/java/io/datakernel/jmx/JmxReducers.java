@@ -53,24 +53,27 @@ public final class JmxReducers {
 			}
 
 			Number first = inputListWithoutNulls.get(0);
-			if (isFloatingPointNumber(first)) {
+			Class<?> numberClass = first.getClass();
+			if (isFloatingPointNumber(numberClass)) {
 				double floatingPointSum = first.doubleValue();
 				for (int i = 1; i < inputListWithoutNulls.size(); i++) {
 					floatingPointSum += inputListWithoutNulls.get(i).doubleValue();
 
 				}
-				return floatingPointSum;
-			} else if (isIntegerNumber(first)) {
+				return convert(floatingPointSum, numberClass);
+			} else if (isIntegerNumber(numberClass)) {
 				long integerSum = first.longValue();
 				for (int i = 1; i < inputListWithoutNulls.size(); i++) {
 					integerSum += inputListWithoutNulls.get(i).longValue();
 				}
-				return integerSum;
+				return convert(integerSum, numberClass);
 			} else {
 				throw new IllegalArgumentException(
 						"Cannot calculate sum of objects of type: " + first.getClass().getName());
 			}
 		}
+
+
 	}
 
 	public static final class JmxReducerMin implements JmxReducer<Number> {
@@ -84,7 +87,8 @@ public final class JmxReducers {
 			}
 
 			Number first = inputListWithoutNulls.get(0);
-			if (isFloatingPointNumber(first)) {
+			Class<?> numberClass = first.getClass();
+			if (isFloatingPointNumber(numberClass)) {
 				double floatingPointMin = first.doubleValue();
 				for (int i = 1; i < inputListWithoutNulls.size(); i++) {
 					double currentValue = inputListWithoutNulls.get(i).doubleValue();
@@ -92,8 +96,8 @@ public final class JmxReducers {
 						floatingPointMin = currentValue;
 					}
 				}
-				return floatingPointMin;
-			} else if (isIntegerNumber(first)) {
+				return convert(floatingPointMin, numberClass);
+			} else if (isIntegerNumber(numberClass)) {
 				long integerMin = first.longValue();
 				for (int i = 1; i < inputListWithoutNulls.size(); i++) {
 					long currentValue = inputListWithoutNulls.get(i).longValue();
@@ -101,7 +105,7 @@ public final class JmxReducers {
 						integerMin = currentValue;
 					}
 				}
-				return integerMin;
+				return convert(integerMin, numberClass);
 			} else {
 				throw new IllegalArgumentException(
 						"Cannot calculate min of objects of type: " + first.getClass().getName());
@@ -120,7 +124,8 @@ public final class JmxReducers {
 			}
 
 			Number first = inputListWithoutNulls.get(0);
-			if (isFloatingPointNumber(first)) {
+			Class<?> numberClass = first.getClass();
+			if (isFloatingPointNumber(numberClass)) {
 				double floatingPointMax = first.doubleValue();
 				for (int i = 1; i < inputListWithoutNulls.size(); i++) {
 					double currentValue = inputListWithoutNulls.get(i).doubleValue();
@@ -128,8 +133,8 @@ public final class JmxReducers {
 						floatingPointMax = currentValue;
 					}
 				}
-				return floatingPointMax;
-			} else if (isIntegerNumber(first)) {
+				return convert(floatingPointMax, numberClass);
+			} else if (isIntegerNumber(numberClass)) {
 				long integerMax = first.longValue();
 				for (int i = 1; i < inputListWithoutNulls.size(); i++) {
 					long currentValue = inputListWithoutNulls.get(i).longValue();
@@ -137,7 +142,7 @@ public final class JmxReducers {
 						integerMax = currentValue;
 					}
 				}
-				return integerMax;
+				return convert(integerMax, numberClass);
 			} else {
 				throw new IllegalArgumentException(
 						"Cannot calculate max of objects of type: " + first.getClass().getName());
@@ -145,14 +150,30 @@ public final class JmxReducers {
 		}
 	}
 
-	private static boolean isFloatingPointNumber(Number number) {
-		Class<?> numberClass = number.getClass();
+	private static boolean isFloatingPointNumber(Class<?> numberClass) {
 		return Float.class.isAssignableFrom(numberClass) || Double.class.isAssignableFrom(numberClass);
 	}
 
-	private static boolean isIntegerNumber(Number number) {
-		Class<?> numberClass = number.getClass();
+	private static boolean isIntegerNumber(Class<?> numberClass) {
 		return Byte.class.isAssignableFrom(numberClass) || Short.class.isAssignableFrom(numberClass)
 				|| Integer.class.isAssignableFrom(numberClass) || Long.class.isAssignableFrom(numberClass);
+	}
+
+	private static Number convert(Number number, Class<?> targetClass) {
+		if (Byte.class.isAssignableFrom(targetClass)) {
+			return number.byteValue();
+		} else if (Short.class.isAssignableFrom(targetClass)) {
+			return number.shortValue();
+		} else if (Integer.class.isAssignableFrom(targetClass)) {
+			return number.intValue();
+		} else if (Long.class.isAssignableFrom(targetClass)) {
+			return number.longValue();
+		} else if (Float.class.isAssignableFrom(targetClass)) {
+			return number.floatValue();
+		} else if (Double.class.isAssignableFrom(targetClass)) {
+			return number.doubleValue();
+		} else {
+			throw new IllegalArgumentException("target class is not a number class");
+		}
 	}
 }
