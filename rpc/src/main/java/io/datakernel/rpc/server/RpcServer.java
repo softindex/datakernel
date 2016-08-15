@@ -50,6 +50,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 
 	// jmx
 	private CountStats connectionsCount = new CountStats();
+	private EventStats totalConnects = new EventStats();
 	private EventStats successfulRequests = new EventStats();
 	private EventStats failedRequests = new EventStats();
 	private ValueStats requestHandlingTime = new ValueStats();
@@ -134,6 +135,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		connections.add(connection);
 
 		// jmx
+		totalConnects.recordEvent();
 		connectionsCount.setCount(connections.size());
 	}
 
@@ -176,6 +178,11 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	@JmxAttribute(description = "current number of connections")
 	public CountStats getConnectionsCount() {
 		return connectionsCount;
+	}
+
+	@JmxAttribute
+	public EventStats getTotalConnects() {
+		return totalConnects;
 	}
 
 	@JmxAttribute(description = "detailed information about connections")
