@@ -275,6 +275,16 @@ public final class RpcClientConnection implements RpcConnection, RpcSender, JmxR
 	}
 
 	@Override
+	public void onClosedWithError(Throwable exception) {
+		onClosed();
+
+		// jmx
+		String causedAddress = "Server address: " + address.getAddress().toString();
+		logger.error("Protocol error. " + causedAddress, exception);
+		rpcClient.getLastProtocolError().recordException(exception, causedAddress);
+	}
+
+	@Override
 	public AsyncTcpSocket.EventHandler getSocketConnection() {
 		return protocol.getSocketConnection();
 	}

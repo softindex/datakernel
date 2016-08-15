@@ -20,10 +20,7 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.eventloop.*;
-import io.datakernel.jmx.CountStats;
-import io.datakernel.jmx.EventloopJmxMBean;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxOperation;
+import io.datakernel.jmx.*;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.rpc.client.jmx.RpcConnectStats;
 import io.datakernel.rpc.client.jmx.RpcRequestStats;
@@ -94,6 +91,7 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 	private final RpcConnectStats generalConnectsStats = new RpcConnectStats();
 	private final Map<Class<?>, RpcRequestStats> requestStatsPerClass = new HashMap<>();
 	private final Map<InetSocketAddress, RpcConnectStats> connectsStatsPerAddress = new HashMap<>();
+	private final ExceptionStats lastProtocolError = new ExceptionStats();
 
 	private RpcClient(Eventloop eventloop, SocketSettings socketSettings) {
 		this.eventloop = eventloop;
@@ -435,6 +433,12 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 		CountStats countStats = new CountStats();
 		countStats.setCount(connections.size());
 		return countStats;
+	}
+
+	@JmxAttribute(description = "exception that occurred because of protocol error " +
+			"(serialization, deserialization, compression, decompression, etc)")
+	public ExceptionStats getLastProtocolError() {
+		return lastProtocolError;
 	}
 
 	RpcRequestStats ensureRequestStatsPerClass(Class<?> requestClass) {

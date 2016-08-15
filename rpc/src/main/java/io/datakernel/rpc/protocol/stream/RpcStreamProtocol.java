@@ -74,7 +74,7 @@ final class RpcStreamProtocol implements RpcProtocol {
 
 			@Override
 			public void onClosedWithError(Exception e) {
-				RpcStreamProtocol.this.rpcConnection.onClosed();
+				RpcStreamProtocol.this.rpcConnection.onClosedWithError(e);
 			}
 		}, rpcConnection);
 

@@ -22,5 +22,7 @@ import io.datakernel.stream.StreamDataReceiver;
 public interface RpcConnection extends StreamDataReceiver<RpcMessage> {
 	void onClosed();
 
+	void onClosedWithError(Throwable exception);
+
 	AsyncTcpSocket.EventHandler getSocketConnection();
 }

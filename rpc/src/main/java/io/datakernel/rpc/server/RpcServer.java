@@ -55,6 +55,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	private EventStats failedRequests = new EventStats();
 	private ValueStats requestHandlingTime = new ValueStats();
 	private ExceptionStats lastRequestHandlingException = new ExceptionStats();
+	private ExceptionStats lastProtocolError = new ExceptionStats();
 	private boolean monitoring;
 
 	private RpcServer(Eventloop eventloop) {
@@ -205,9 +206,16 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		return requestHandlingTime;
 	}
 
-	@JmxAttribute(description = "exception for last request which was processed with error")
+	@JmxAttribute(description = "exception that occurred because of business logic error " +
+			"(in RpcRequestHandler implementation)")
 	public ExceptionStats getLastRequestHandlingException() {
 		return lastRequestHandlingException;
+	}
+
+	@JmxAttribute(description = "exception that occurred because of protocol error " +
+			"(serialization, deserialization, compression, decompression, etc)")
+	public ExceptionStats getLastProtocolError() {
+		return lastProtocolError;
 	}
 }
 

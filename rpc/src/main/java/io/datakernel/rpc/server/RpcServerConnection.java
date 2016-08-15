@@ -37,6 +37,8 @@ public final class RpcServerConnection implements RpcConnection, JmxRefreshable 
 	private final RpcProtocol protocol;
 	private final Map<Class<?>, RpcRequestHandler<?, ?>> handlers;
 
+	private boolean open;
+
 	// jmx
 	private final InetSocketAddress remoteAddress;
 	private final ExceptionStats lastRequestHandlingException = new ExceptionStats();
@@ -53,6 +55,7 @@ public final class RpcServerConnection implements RpcConnection, JmxRefreshable 
 		this.rpcServer = rpcServer;
 		this.protocol = protocolFactory.create(eventloop, asyncTcpSocket, this, messageSerializer);
 		this.handlers = handlers;
+		this.open = true;
 
 		// jmx
 		this.remoteAddress = asyncTcpSocket.getRemoteSocketAddress();
@@ -82,7 +85,12 @@ public final class RpcServerConnection implements RpcConnection, JmxRefreshable 
 				successfulRequests.recordEvent();
 				rpcServer.getSuccessfulRequests().recordEvent();
 
-				protocol.sendMessage(new RpcMessage(cookie, result));
+				if (open) {
+					protocol.sendMessage(new RpcMessage(cookie, result));
+				} else {
+					String address = "Remote address: " + remoteAddress.getAddress().toString();
+					logger.error("Cannot send response for handled request because connection is closed. " + address);
+				}
 			}
 
 			@Override
@@ -114,7 +122,18 @@ public final class RpcServerConnection implements RpcConnection, JmxRefreshable 
 
 	@Override
 	public void onClosed() {
+		open = false;
 		rpcServer.remove(this);
+	}
+
+	@Override
+	public void onClosedWithError(Throwable exception) {
+		onClosed();
+
+		// jmx
+		String causedAddress = "Remote address: " + remoteAddress.getAddress().toString();
+		logger.error("Protocol error. " + causedAddress, exception);
+		rpcServer.getLastProtocolError().recordException(exception, causedAddress);
 	}
 
 	@Override
@@ -123,6 +142,7 @@ public final class RpcServerConnection implements RpcConnection, JmxRefreshable 
 	}
 
 	public void close() {
+		open = false;
 		protocol.close();
 	}
 
