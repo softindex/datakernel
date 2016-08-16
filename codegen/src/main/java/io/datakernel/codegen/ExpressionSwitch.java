@@ -23,9 +23,8 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.codegen.Utils.exceptionInGeneratedClass;
+import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.Utils.newLocal;
-import static java.lang.String.format;
 import static org.objectweb.asm.Type.INT_TYPE;
 import static org.objectweb.asm.Type.getType;
 
@@ -80,10 +79,12 @@ public class ExpressionSwitch implements Expression {
 		if (defaultExp != null) {
 			defaultExp.load(ctx);
 		} else {
-			g.throwException(getType(IllegalArgumentException.class),
-					format("Key is out of list range. %s",
-							exceptionInGeneratedClass(ctx)
-					));
+			final Variable sb = let(constructor(StringBuilder.class));
+			call(sb, "append", value("Key '")).load(ctx);
+			call(sb, "append", cast(varReadedSubClass, getType(int.class))).load(ctx);
+			call(sb, "append", value(String.format("' not in range [0-%d)", list.size()))).load(ctx);
+			constructor(IllegalArgumentException.class, call(sb, "toString")).load(ctx);
+			g.throwException();
 		}
 		g.mark(labelExit);
 

@@ -21,12 +21,11 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
-import static io.datakernel.codegen.Expressions.call;
-import static io.datakernel.codegen.Utils.exceptionInGeneratedClass;
+import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.Utils.newLocal;
-import static java.lang.String.format;
 import static org.objectweb.asm.Type.getType;
 
 public class ExpressionSwitchForKey implements Expression {
@@ -67,9 +66,10 @@ public class ExpressionSwitchForKey implements Expression {
 		Label labelExit = new Label();
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 
+		final boolean keyPrimitiveType = Utils.isPrimitiveType(key.type(ctx));
 		for (int i = 0; i < listKey.size(); i++) {
 			Label labelNext = new Label();
-			if (Utils.isPrimitiveType(key.type(ctx))) {
+			if (keyPrimitiveType) {
 				listKey.get(i).load(ctx);
 				varKey.load(ctx);
 				g.ifCmp(key.type(ctx), GeneratorAdapter.NE, labelNext);
@@ -88,9 +88,23 @@ public class ExpressionSwitchForKey implements Expression {
 		if (defaultExp != null) {
 			defaultExp.load(ctx);
 		} else {
-			g.throwException(getType(IllegalArgumentException.class),
-					format("Key is out of listKey range. %s",
-							exceptionInGeneratedClass(ctx)));
+			final Variable sb = let(constructor(StringBuilder.class));
+			call(sb, "append", value("Key '")).load(ctx);
+			call(sb, "append", keyPrimitiveType ? varKey : call(key, "toString")).load(ctx);
+			call(sb, "append", value("' not in keyList: [")).load(ctx);
+			final Iterator<Expression> iterator = listKey.iterator();
+			while (iterator.hasNext()) {
+				final Expression expression = iterator.next();
+				final boolean primitiveType = Utils.isPrimitiveType(expression.type(ctx));
+				call(sb, "append", primitiveType ? expression : call(expression, "toString")).load(ctx);
+				if (iterator.hasNext()) {
+					call(sb, "append", value(", ")).load(ctx);
+				}
+			}
+			call(sb, "append", value("]")).load(ctx);
+
+			constructor(IllegalArgumentException.class, call(sb, "toString")).load(ctx);
+			g.throwException();
 		}
 		g.mark(labelExit);
 
