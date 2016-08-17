@@ -23,7 +23,7 @@ public interface RpcProtocol {
 
 	boolean isOverloaded();
 
-	void close();
+	void sendEndOfStream();
 
 	AsyncTcpSocket.EventHandler getSocketConnection();
 }

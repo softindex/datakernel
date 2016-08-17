@@ -76,6 +76,7 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 	private RpcSender requestSender;
 
 	private CompletionCallback startCallback;
+	private CompletionCallback stopCallback;
 	private boolean running;
 
 	private final RpcClientConnectionPool pool = new RpcClientConnectionPool() {
@@ -198,22 +199,31 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 		}
 	}
 
-	public void stop() {
+	@Override
+	public void stop(final CompletionCallback callback) {
+		checkNotNull(callback);
 		checkState(eventloop.inEventloopThread());
 		checkState(running);
+
 		running = false;
 		if (startCallback != null) {
 			postException(eventloop, startCallback, new InterruptedException("Start aborted"));
 			startCallback = null;
 		}
-		closeConnections();
-	}
 
-	@Override
-	public void stop(final CompletionCallback callback) {
-		checkNotNull(callback);
-		stop();
-		callback.onComplete();
+		if (connections.size() == 0) {
+			eventloop.post(new Runnable() {
+				@Override
+				public void run() {
+					callback.onComplete();
+				}
+			});
+		} else {
+			stopCallback = callback;
+			for (RpcClientConnection connection : new ArrayList<>(connections.values())) {
+				connection.close();
+			}
+		}
 	}
 
 	private BufferSerializer<RpcMessage> getSerializer() {
@@ -296,6 +306,17 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 		logger.info("Connection to {} closed", address);
 
 		connections.remove(address);
+
+		if (stopCallback != null && connections.size() == 0) {
+			eventloop.post(new Runnable() {
+				@Override
+				public void run() {
+					stopCallback.onComplete();
+					stopCallback = null;
+				}
+			});
+		}
+
 		RpcSender sender = strategy.createSender(pool);
 		requestSender = sender != null ? sender : new Sender();
 
@@ -311,12 +332,6 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 				}
 			}
 		});
-	}
-
-	private void closeConnections() {
-		for (RpcClientConnection connection : new ArrayList<>(connections.values())) {
-			connection.close();
-		}
 	}
 
 	public <T> void sendRequest(Object request, int timeout, ResultCallback<T> callback) {

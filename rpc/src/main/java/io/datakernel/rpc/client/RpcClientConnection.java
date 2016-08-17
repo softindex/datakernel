@@ -264,8 +264,7 @@ public final class RpcClientConnection implements RpcConnection, RpcSender, JmxR
 		return (ResultCallback<T>) requests.remove(message.getCookie());
 	}
 
-	@Override
-	public void onClosed() {
+	private void finishClosing() {
 		if (scheduleExpiredResponsesTask != null)
 			scheduleExpiredResponsesTask.cancel();
 		if (!requests.isEmpty()) {
@@ -276,12 +275,21 @@ public final class RpcClientConnection implements RpcConnection, RpcSender, JmxR
 
 	@Override
 	public void onClosedWithError(Throwable exception) {
-		onClosed();
+		finishClosing();
 
 		// jmx
 		String causedAddress = "Server address: " + address.getAddress().toString();
 		logger.error("Protocol error. " + causedAddress, exception);
 		rpcClient.getLastProtocolError().recordException(exception, causedAddress);
+	}
+
+	@Override
+	public void onReadEndOfStream() {
+		if (!closing) {
+			// TODO(vmykhalko): handle closing initiated by server
+		}
+
+		finishClosing();
 	}
 
 	@Override
@@ -297,7 +305,7 @@ public final class RpcClientConnection implements RpcConnection, RpcSender, JmxR
 
 	public void close() {
 		closing = true;
-		protocol.close();
+		protocol.sendEndOfStream();
 	}
 
 	// JMX

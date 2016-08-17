@@ -85,17 +85,36 @@ public class RpcBinaryProtocolTest {
 		final ResultCallback<String> resultsObserver = new ResultCallback<String>() {
 			@Override
 			public void onException(Exception exception) {
-				client.stop();
-				server.close();
-				exception.printStackTrace();
+				client.stop(new CompletionCallback() {
+					@Override
+					public void onComplete() {
+						System.out.println("Client stopped");
+						server.close();
+					}
+
+					@Override
+					public void onException(Exception exception) {
+						throw new RuntimeException(exception);
+					}
+				});
 			}
 
 			@Override
 			public void onResult(String result) {
 				results.add(result);
 				if (results.size() == countRequests) {
-					client.stop();
-					server.close();
+					client.stop(new CompletionCallback() {
+						@Override
+						public void onComplete() {
+							System.out.println("Client stopped");
+							server.close();
+						}
+
+						@Override
+						public void onException(Exception exception) {
+							throw new RuntimeException(exception);
+						}
+					});
 				}
 			}
 

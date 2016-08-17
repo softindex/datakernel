@@ -33,8 +33,6 @@ import io.datakernel.stream.processor.StreamLZ4Decompressor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.channels.ClosedChannelException;
-
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 
 @SuppressWarnings("unchecked")
@@ -70,6 +68,7 @@ final class RpcStreamProtocol implements RpcProtocol {
 		receiver = new SimpleStreamConsumer<>(eventloop, new SimpleStreamConsumer.StatusListener() {
 			@Override
 			public void onEndOfStream() {
+				RpcStreamProtocol.this.rpcConnection.onReadEndOfStream();
 			}
 
 			@Override
@@ -116,8 +115,7 @@ final class RpcStreamProtocol implements RpcProtocol {
 	}
 
 	@Override
-	public void close() {
-		asyncTcpSocket.close();
-		connection.onClosedWithError(new ClosedChannelException());
+	public void sendEndOfStream() {
+		sender.sendEndOfStream();
 	}
 }

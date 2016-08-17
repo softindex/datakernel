@@ -37,6 +37,8 @@ public final class RpcServerConnection implements RpcConnection, JmxRefreshable 
 	private final RpcProtocol protocol;
 	private final Map<Class<?>, RpcRequestHandler<?, ?>> handlers;
 
+	private int activeRequests;
+	private boolean readEndOfStream;
 	private boolean open;
 
 	// jmx
@@ -56,6 +58,7 @@ public final class RpcServerConnection implements RpcConnection, JmxRefreshable 
 		this.protocol = protocolFactory.create(eventloop, asyncTcpSocket, this, messageSerializer);
 		this.handlers = handlers;
 		this.open = true;
+		this.readEndOfStream = false;
 
 		// jmx
 		this.remoteAddress = asyncTcpSocket.getRemoteSocketAddress();
@@ -73,6 +76,8 @@ public final class RpcServerConnection implements RpcConnection, JmxRefreshable 
 
 	@Override
 	public void onData(final RpcMessage message) {
+		incrementActiveRequests();
+
 		final int cookie = message.getCookie();
 		final long startTime = monitoring ? System.currentTimeMillis() : 0;
 
@@ -87,6 +92,7 @@ public final class RpcServerConnection implements RpcConnection, JmxRefreshable 
 
 				if (open) {
 					protocol.sendMessage(new RpcMessage(cookie, result));
+					decrementActiveRequest();
 				} else {
 					String address = "Remote address: " + remoteAddress.getAddress().toString();
 					logger.error("Cannot send response for handled request because connection is closed. " + address);
@@ -102,7 +108,9 @@ public final class RpcServerConnection implements RpcConnection, JmxRefreshable 
 				failedRequests.recordEvent();
 				rpcServer.getFailedRequests().recordEvent();
 
-				sendError(cookie, exception);
+				protocol.sendMessage(new RpcMessage(cookie, new RpcRemoteException(exception)));
+				decrementActiveRequest();
+				logger.warn("Exception while process request ID {}", cookie, exception);
 			}
 
 			private void updateProcessTime() {
@@ -115,12 +123,18 @@ public final class RpcServerConnection implements RpcConnection, JmxRefreshable 
 		});
 	}
 
-	private void sendError(int cookie, Exception error) {
-		protocol.sendMessage(new RpcMessage(cookie, new RpcRemoteException(error)));
-		logger.warn("Exception while process request ID {}", cookie, error);
+	private void incrementActiveRequests() {
+		activeRequests++;
 	}
 
-	@Override
+	private void decrementActiveRequest() {
+		activeRequests--;
+		if (readEndOfStream && activeRequests == 0) {
+			protocol.sendEndOfStream();
+			onClosed();
+		}
+	}
+
 	public void onClosed() {
 		open = false;
 		rpcServer.remove(this);
@@ -137,13 +151,22 @@ public final class RpcServerConnection implements RpcConnection, JmxRefreshable 
 	}
 
 	@Override
+	public void onReadEndOfStream() {
+		readEndOfStream = true;
+		if (activeRequests == 0) {
+			protocol.sendEndOfStream();
+			onClosed();
+		}
+	}
+
+	@Override
 	public AsyncTcpSocket.EventHandler getSocketConnection() {
 		return protocol.getSocketConnection();
 	}
 
 	public void close() {
 		open = false;
-		protocol.close();
+		// TODO(vmykhalko): maybe force close protocol in some way?
 	}
 
 	// jmx

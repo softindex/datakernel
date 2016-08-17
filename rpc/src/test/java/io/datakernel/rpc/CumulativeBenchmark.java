@@ -33,6 +33,7 @@ import org.slf4j.LoggerFactory;
 import java.net.InetSocketAddress;
 import java.util.concurrent.Executors;
 
+import static io.datakernel.async.AsyncCallbacks.stopFuture;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
 import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamProtocol;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -123,12 +124,20 @@ public final class CumulativeBenchmark {
 				@Override
 				public void onException(Exception exception) {
 					System.err.println("Exception while benchmark: " + exception);
-					client.stop();
+					try {
+						stopFuture(client).await();
+					} catch (Exception e) {
+						throw new RuntimeException(e);
+					}
 				}
 
 				@Override
 				public void onComplete() {
-					client.stop();
+					try {
+						stopFuture(client).await();
+					} catch (Exception e) {
+						throw new RuntimeException(e);
+					}
 				}
 			};
 
