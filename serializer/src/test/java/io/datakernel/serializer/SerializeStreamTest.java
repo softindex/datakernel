@@ -17,15 +17,20 @@
 package io.datakernel.serializer;
 
 import io.datakernel.codegen.utils.DefiningClassLoader;
+import io.datakernel.serializer.annotations.Deserialize;
+import io.datakernel.serializer.annotations.Serialize;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
 
 import static io.datakernel.serializer.DataOutputStream.MAX_SIZE_127;
+import static io.datakernel.serializer.asm.BufferSerializers.bytesSerializer;
 import static io.datakernel.serializer.asm.BufferSerializers.intSerializer;
 import static io.datakernel.serializer.asm.BufferSerializers.utf8Serializer;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -163,5 +168,67 @@ public class SerializeStreamTest {
 		}
 
 		assertTrue(dataInputStream.isEndOfStream());
+	}
+
+	@Test
+	public void testRestorePositionAfterSizeException() throws Exception {
+		ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
+		DataOutputStream dataOutputStream = new DataOutputStream(byteOutputStream);
+		byte[] array1 = createTestByteArray(100, (byte) 10);
+		byte[] array2 = createTestByteArray(100, (byte) 20);
+		byte[] tooBigArray = createTestByteArray(150, (byte) 30);
+		dataOutputStream.serialize(bytesSerializer(), array1, MAX_SIZE_127);
+		try {
+			dataOutputStream.serialize(bytesSerializer(), tooBigArray, MAX_SIZE_127);
+		} catch (SerializeException ignored) { }
+		dataOutputStream.serialize(bytesSerializer(), array2, MAX_SIZE_127);
+		dataOutputStream.close();
+
+		ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(byteOutputStream.toByteArray());
+		DataInputStream dataInputStream = new DataInputStream(byteArrayInputStream);
+		byte[] readArray1 = dataInputStream.deserialize(bytesSerializer());
+		byte[] readArray2 = dataInputStream.deserialize(bytesSerializer());
+		assertTrue(dataInputStream.isEndOfStream());
+		assertArrayEquals(array1, readArray1);
+		assertArrayEquals(array2, readArray2);
+	}
+
+	private static byte[] createTestByteArray(int length, byte fillValue) {
+		byte[] array = new byte[length];
+		Arrays.fill(array, fillValue);
+		return array;
+	}
+
+	public static class TestClass {
+		@Serialize(order = 0)
+		public final String str;
+
+		public TestClass(@Deserialize("str") String str) {
+			this.str = str;
+		}
+	}
+
+	@Test
+	public void testRestorePositionAfterException() throws Exception {
+		ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
+		DataOutputStream dataOutputStream = new DataOutputStream(byteOutputStream);
+		TestClass validObj1 = new TestClass("abc");
+		TestClass validObj2 = new TestClass("=xyz=");
+		TestClass invalidObj = new TestClass(null);
+		BufferSerializer<TestClass> serializer = SerializerBuilder.newDefaultInstance(new DefiningClassLoader()).create(TestClass.class);
+		dataOutputStream.serialize(serializer, validObj1, MAX_SIZE_127);
+		try {
+			dataOutputStream.serialize(serializer, invalidObj, MAX_SIZE_127);
+		} catch (SerializeException ignored) { }
+		dataOutputStream.serialize(serializer, validObj2, MAX_SIZE_127);
+		dataOutputStream.close();
+
+		ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(byteOutputStream.toByteArray());
+		DataInputStream dataInputStream = new DataInputStream(byteArrayInputStream);
+		TestClass readObj1 = dataInputStream.deserialize(serializer);
+		TestClass readObj2 = dataInputStream.deserialize(serializer);
+		assertTrue(dataInputStream.isEndOfStream());
+		assertEquals(validObj1.str, readObj1.str);
+		assertEquals(validObj2.str, readObj2.str);
 	}
 }

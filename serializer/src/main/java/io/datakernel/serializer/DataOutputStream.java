@@ -134,6 +134,7 @@ public final class DataOutputStream implements Closeable {
 				estimatedMessageSize = messageSize + 1 + (messageSize >>> 1);
 				continue;
 			} catch (Exception e) {
+				outputBuffer.position(positionBegin);
 				throw new SerializeException(e);
 			}
 			break;
@@ -141,6 +142,7 @@ public final class DataOutputStream implements Closeable {
 		int positionEnd = outputBuffer.position();
 		int messageSize = positionEnd - positionItem;
 		if (messageSize >= 1 << headerSize * 7) {
+			outputBuffer.position(positionBegin);
 			throw SIZE_EXCEPTION;
 		}
 		writeSize(buf, positionBegin, messageSize, headerSize);
