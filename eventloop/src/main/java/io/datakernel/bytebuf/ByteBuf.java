@@ -291,6 +291,12 @@ public class ByteBuf {
 		return -1;
 	}
 
+	public byte[] getRemainingArray() {
+		final byte[] bytes = new byte[headRemaining()];
+		System.arraycopy(array, head, bytes, 0, bytes.length);
+		return bytes;
+	}
+
 	@Override
 	public boolean equals(Object o) {
 		assert !isRecycled();

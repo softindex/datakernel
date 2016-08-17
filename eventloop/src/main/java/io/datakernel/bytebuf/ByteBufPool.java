@@ -71,13 +71,12 @@ public class ByteBufPool {
 		return slabs;
 	}
 
-	public static ByteBuf ensureTailRemaining(ByteBuf buf, int newSize) {
+	public static ByteBuf ensureTailRemaining(ByteBuf buf, int newTailRemaining) {
 		assert !(buf instanceof ByteBuf.ByteBufSlice);
-		int limit = buf.limit();
-		if (buf.tailRemaining() >= newSize && (limit <= minSize || numberOfLeadingZeros(limit - 1) == numberOfLeadingZeros(newSize - 1))) {
+		if (buf.tailRemaining() >= newTailRemaining) {
 			return buf;
 		} else {
-			ByteBuf newBuf = allocate(newSize + buf.headRemaining());
+			ByteBuf newBuf = allocate(newTailRemaining + buf.headRemaining());
 			newBuf.put(buf);
 			buf.recycle();
 			return newBuf;
@@ -86,10 +85,11 @@ public class ByteBufPool {
 
 	public static ByteBuf append(ByteBuf to, ByteBuf from) {
 		assert !to.isRecycled() && !from.isRecycled();
-		if (to.headRemaining() == 0) {
-			to.recycle();
-			return from;
-		}
+		// TODO: create appendQuick()
+//		if (to.headRemaining() == 0) {
+//			to.recycle();
+//			return from;
+//		}
 		to = ensureTailRemaining(to, from.headRemaining());
 		to.put(from);
 		from.recycle();

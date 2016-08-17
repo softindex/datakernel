@@ -117,8 +117,8 @@ public class ByteArraySlabPoolTest {
 		checkReallocate(32, 32, true);
 		checkReallocate(32, 33, false);
 
-		checkReallocate(33, 31, false);
-		checkReallocate(33, 32, false);
+		checkReallocate(33, 31, true);
+		checkReallocate(33, 32, true);
 		checkReallocate(33, 33, true);
 		checkReallocate(33, 34, true);
 
@@ -132,12 +132,12 @@ public class ByteArraySlabPoolTest {
 		checkReallocate(64, 65, false);
 		checkReallocate(64, 66, false);
 
-		checkReallocate(65, 63, false);
-		checkReallocate(65, 64, false);
+		checkReallocate(65, 63, true);
+		checkReallocate(65, 64, true);
 		checkReallocate(65, 65, true);
 		checkReallocate(65, 66, false);
 
-		checkReallocate(100, 50, false);
+		checkReallocate(100, 50, true);
 		checkReallocate(100, 99, true);
 		checkReallocate(100, 100, true);
 		checkReallocate(100, 101, false);

@@ -81,13 +81,14 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 		private int jmxBufs;
 		private long jmxBytes;
 
-		private OutputProducer(ArrayDeque<ByteBuf> byteBufs, int maxMessageSize, BufferSerializer<T> valueSerializer, int buffersPoolSize, ByteBuf buf, byte[] buffer) {
+		private OutputProducer(ArrayDeque<ByteBuf> byteBufs, int maxMessageSize, BufferSerializer<T> valueSerializer,
+		                       int buffersPoolSize) {
 			this.byteBufs = byteBufs;
 			this.maxMessageSize = maxMessageSize;
 			this.valueSerializer = valueSerializer;
 			this.buffersPoolSize = buffersPoolSize;
-			this.buf = buf;
-			this.buffer = buffer;
+			this.buf = ByteBufPool.allocate(OutputProducer.INITIAL_BUFFER_SIZE);
+			this.buffer = this.buf.array();
 		}
 
 		@Override
@@ -227,14 +228,15 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 			recycleBufs();
 		}
 
-		private void growBuf(int newSize) {
+		private void growBuf(int bufferPos, int newSize) {
+			buf.tail(bufferPos);
 			buf = ByteBufPool.ensureTailRemaining(buf, newSize);
 			buffer = buf.array();
 		}
 
 		private void copyIntoBuffer(byte[] b, int off, int len) {
 			if (buffer.length < bufferPos + len) {
-				growBuf(bufferPos + len);
+				growBuf(bufferPos, bufferPos + len);
 			}
 			System.arraycopy(b, off, buffer, bufferPos, len);
 			bufferPos += len;
@@ -303,15 +305,9 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 		checkArgument(maxMessageSize < (1 << (OutputProducer.MAX_HEADER_BYTES * 7)), "maxMessageSize must be less than 2 MB");
 		checkArgument(buffersPoolSize > 0, "buffersPoolSize must be positive value, got %s", buffersPoolSize);
 
-		ByteBuf buf = ByteBufPool.allocate(OutputProducer.INITIAL_BUFFER_SIZE);
-
 		this.inputConsumer = new InputConsumer();
-		this.outputProducer = new OutputProducer(new ArrayDeque<ByteBuf>(buffersPoolSize),
-				maxMessageSize,
-				valueSerializer,
-				buffersPoolSize,
-				buf,
-				buf.array());
+		this.outputProducer = new OutputProducer(new ArrayDeque<ByteBuf>(buffersPoolSize), maxMessageSize,
+				valueSerializer, buffersPoolSize);
 	}
 
 	// jmx
