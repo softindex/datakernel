@@ -25,6 +25,7 @@ public final class AsyncTcpSocketContract {
 	private boolean writeEndOfStream = false;
 	private boolean readEndOfStream = false;
 	private boolean closed = false;
+	private boolean closeAndNotifyEventHandler = false;
 
 	// region methods
 	public boolean read() {
@@ -50,6 +51,12 @@ public final class AsyncTcpSocketContract {
 
 	public boolean close() {
 		closed = true;
+		return true;
+	}
+
+	public boolean closeAndNotifyEventHandler() {
+		closed = true;
+		closeAndNotifyEventHandler = true;
 		return true;
 	}
 	// endregion
@@ -79,8 +86,10 @@ public final class AsyncTcpSocketContract {
 	}
 
 	public boolean onClosedWithError() {
-		assert !closed : "onClosedWithError callback cannot be invoked when socket is already closed";
+		assert !closed || closeAndNotifyEventHandler :
+				"onClosedWithError callback cannot be invoked when socket is already closed";
 		closed = true;
+		closeAndNotifyEventHandler = false;
 		return true;
 	}
 	// endregion
