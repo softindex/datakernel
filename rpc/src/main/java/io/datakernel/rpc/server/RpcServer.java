@@ -28,6 +28,7 @@ import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import org.slf4j.Logger;
 
+import java.net.InetAddress;
 import java.util.*;
 
 import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamProtocol;
@@ -51,6 +52,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	// jmx
 	private CountStats connectionsCount = new CountStats();
 	private EventStats totalConnects = new EventStats();
+	private Map<InetAddress, EventStats> connectsPerAddress = new HashMap<>();
 	private EventStats successfulRequests = new EventStats();
 	private EventStats failedRequests = new EventStats();
 	private ValueStats requestHandlingTime = new ValueStats();
@@ -115,6 +117,12 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		RpcServerConnection connection = new RpcServerConnection(eventloop, this, asyncTcpSocket,
 				messageSerializer, handlers, protocolFactory);
 		add(connection);
+
+		// jmx
+		ensureConnectStats(asyncTcpSocket.getRemoteSocketAddress().getAddress()).recordEvent();
+		totalConnects.recordEvent();
+		connectionsCount.setCount(connections.size());
+
 		return connection.getSocketConnection();
 	}
 
@@ -134,10 +142,6 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		}
 
 		connections.add(connection);
-
-		// jmx
-		totalConnects.recordEvent();
-		connectionsCount.setCount(connections.size());
 	}
 
 	void remove(RpcServerConnection connection) {
@@ -184,6 +188,20 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	@JmxAttribute
 	public EventStats getTotalConnects() {
 		return totalConnects;
+	}
+
+	@JmxAttribute(description = "number of connects/reconnects per client address")
+	public Map<InetAddress, EventStats> getConnectsPerAddress() {
+		return connectsPerAddress;
+	}
+
+	private EventStats ensureConnectStats(InetAddress address) {
+		EventStats stats = connectsPerAddress.get(address);
+		if (stats == null) {
+			stats = new EventStats();
+			connectsPerAddress.put(address, stats);
+		}
+		return stats;
 	}
 
 	@JmxAttribute(description = "detailed information about connections")
