@@ -292,8 +292,14 @@ public class Utils {
 		}
 
 		if (type.equals(ctx.getThisType())) {
-			if (getJavaType(ctx.getClassLoader(), targetType).isAssignableFrom(ctx.getThisSuperclass())) {
+			final Class<?> javaType = getJavaType(ctx.getClassLoader(), targetType);
+			if (javaType.isAssignableFrom(ctx.getMainClass())) {
 				return;
+			}
+			for (Class<?> aClass : ctx.getOtherClasses()) {
+				if (javaType.isAssignableFrom(aClass)) {
+					return;
+				}
 			}
 			throw new RuntimeException(format("Can't cast self %s to %s, %s",
 					type.getClassName(),

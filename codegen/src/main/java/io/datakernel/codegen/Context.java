@@ -21,6 +21,7 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -31,18 +32,20 @@ public final class Context {
 	private final GeneratorAdapter g;
 	private final Type thisType;
 	private final Method method;
-	private final Class<?> thisSuperclass;
+	private final Class<?> mainClass;
+	private final List<Class<?>> otherClasses;
 	private final Map<String, Class<?>> thisFields;
 	private final Type[] argumentTypes;
 	private final Map<Method, Expression> methodToExpression;
 	private final Map<Method, Expression> staticMethodToExpression;
 
-	public Context(DefiningClassLoader classLoader, GeneratorAdapter g, Type thisType, Class<?> thisSuperclass, Map<String, Class<?>> thisFields,
+	public Context(DefiningClassLoader classLoader, GeneratorAdapter g, Type thisType, Class<?> mainClass, List<Class<?>> otherClasses, Map<String, Class<?>> thisFields,
 	               Type[] argumentTypes, Method method, Map<Method, Expression> methodToExpression, Map<Method, Expression> staticMethodToExpression) {
 		this.classLoader = classLoader;
 		this.g = g;
 		this.method = method;
-		this.thisSuperclass = thisSuperclass;
+		this.mainClass = mainClass;
+		this.otherClasses = otherClasses;
 		this.argumentTypes = argumentTypes;
 		this.thisType = thisType;
 		this.thisFields = thisFields;
@@ -58,12 +61,16 @@ public final class Context {
 		return g;
 	}
 
-	public Type getThisType() {
-		return thisType;
+	public Class<?> getMainClass() {
+		return mainClass;
 	}
 
-	public Class<?> getThisSuperclass() {
-		return thisSuperclass;
+	public List<Class<?>> getOtherClasses() {
+		return otherClasses;
+	}
+
+	public Type getThisType() {
+		return thisType;
 	}
 
 	public Map<String, Class<?>> getThisFields() {

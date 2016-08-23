@@ -52,7 +52,8 @@ public class AsmBuilder<T> {
 
 	private final DefiningClassLoader classLoader;
 
-	private final Class<T> type;
+	private final Class<T> mainClass;
+	private final List<Class<?>> otherClasses;
 	private Path bytecodeSaveDir;
 
 	private final Map<String, Class<?>> fields = new LinkedHashMap<>();
@@ -74,27 +75,34 @@ public class AsmBuilder<T> {
 	}
 
 	public static class AsmClassKey<T> {
-		private final Class<T> type;
+		private final Class<T> mainClass;
+		private final List<Class<?>> otherClasses;
 		private final Map<String, Class<?>> fields;
 		private final Map<Method, Expression> expressionMap;
 		private final Map<Method, Expression> expressionStaticMap;
 
-		public AsmClassKey(Class<T> type, Map<String, Class<?>> fields, Map<Method, Expression> expressionMap,
-		                   Map<Method, Expression> expressionStaticMap) {
-			this.type = type;
+		public AsmClassKey(Class<T> mainClass, List<Class<?>> otherClasses, Map<String, Class<?>> fields,
+		                   Map<Method, Expression> expressionMap, Map<Method, Expression> expressionStaticMap) {
+			this.mainClass = mainClass;
+			this.otherClasses = otherClasses;
 			this.fields = fields;
 			this.expressionMap = expressionMap;
 			this.expressionStaticMap = expressionStaticMap;
 		}
 
-		public Class<T> getType() {
-			return type;
+		public Class<T> getMainClass() {
+			return mainClass;
+		}
+
+		public List<Class<?>> getOtherClasses() {
+			return otherClasses;
 		}
 
 		@Override
 		public String toString() {
 			return "AsmClassKey{" +
-					"type=" + type +
+					"mainType=" + mainClass +
+					", otherTypes" + otherClasses +
 					", fields=" + fields +
 					", expressionMap=" + expressionMap +
 					", expressionStaticMap=" + expressionStaticMap +
@@ -106,7 +114,8 @@ public class AsmBuilder<T> {
 			if (this == o) return true;
 			if (o == null || getClass() != o.getClass()) return false;
 			AsmClassKey that = (AsmClassKey) o;
-			return Objects.equals(type, that.type) &&
+			return Objects.equals(mainClass, that.mainClass) &&
+					Objects.equals(otherClasses, that.otherClasses) &&
 					Objects.equals(fields, that.fields) &&
 					Objects.equals(expressionMap, that.expressionMap) &&
 					Objects.equals(expressionStaticMap, that.expressionStaticMap);
@@ -114,7 +123,7 @@ public class AsmBuilder<T> {
 
 		@Override
 		public int hashCode() {
-			return Objects.hash(type, fields, expressionMap, expressionStaticMap);
+			return Objects.hash(mainClass, otherClasses, fields, expressionMap, expressionStaticMap);
 		}
 	}
 
@@ -125,8 +134,13 @@ public class AsmBuilder<T> {
 	 * @param type        type of dynamic class
 	 */
 	public AsmBuilder(DefiningClassLoader classLoader, Class<T> type) {
+		this(classLoader, type, Collections.EMPTY_LIST);
+	}
+
+	public AsmBuilder(DefiningClassLoader classLoader, Class<T> mainType, List<Class<?>> types) {
 		this.classLoader = classLoader;
-		this.type = type;
+		this.mainClass = mainType;
+		this.otherClasses = types;
 	}
 
 	/**
@@ -198,7 +212,14 @@ public class AsmBuilder<T> {
 
 		Method foundMethod = null;
 		LinkedHashSet<java.lang.reflect.Method> methods = new LinkedHashSet<>();
-		List<List<java.lang.reflect.Method>> listOfMethods = asList(asList(type.getMethods()), asList(type.getDeclaredMethods()), asList(Object.class.getMethods()));
+		List<List<java.lang.reflect.Method>> listOfMethods = new ArrayList<>();
+		listOfMethods.add(asList(Object.class.getMethods()));
+		listOfMethods.add(asList(mainClass.getMethods()));
+		listOfMethods.add(asList(mainClass.getDeclaredMethods()));
+		for (Class<?> type : otherClasses) {
+			listOfMethods.add(asList(type.getMethods()));
+			listOfMethods.add(asList(type.getDeclaredMethods()));
+		}
 		for (List<java.lang.reflect.Method> list : listOfMethods) {
 			for (java.lang.reflect.Method m : list) {
 				if (m.getName().equals(methodName)) {
@@ -224,7 +245,7 @@ public class AsmBuilder<T> {
 
 	public Class<T> defineClass(String className) {
 		synchronized (classLoader) {
-			AsmClassKey key = new AsmClassKey(type, fields, expressionMap, expressionStaticMap);
+			AsmClassKey key = new AsmClassKey(mainClass, otherClasses, fields, expressionMap, expressionStaticMap);
 			Class<?> cachedClass = classLoader.getClassByKey(key);
 
 			if (cachedClass != null) {
@@ -254,18 +275,23 @@ public class AsmBuilder<T> {
 
 		Type classType = getType('L' + className.replace('.', '/') + ';');
 
-		if (type.isInterface()) {
+		final String[] internalNames = new String[1 + otherClasses.size()];
+		internalNames[0] = getInternalName(mainClass);
+		for (int i = 0; i < otherClasses.size(); i++) {
+			internalNames[1 + i] = getInternalName(otherClasses.get(i));
+		}
+		if (mainClass.isInterface()) {
 			cw.visit(V1_6, ACC_PUBLIC + ACC_FINAL + ACC_SUPER,
 					classType.getInternalName(),
 					null,
 					"java/lang/Object",
-					new String[]{getInternalName(type)});
+					internalNames);
 		} else {
 			cw.visit(V1_6, ACC_PUBLIC + ACC_FINAL + ACC_SUPER,
 					classType.getInternalName(),
 					null,
-					getInternalName(type),
-					new String[]{});
+					internalNames[0],
+					Arrays.copyOfRange(internalNames, 1, internalNames.length));
 		}
 
 		{
@@ -273,10 +299,10 @@ public class AsmBuilder<T> {
 			GeneratorAdapter g = new GeneratorAdapter(ACC_PUBLIC, m, null, null, cw);
 			g.loadThis();
 
-			if (type.isInterface()) {
+			if (mainClass.isInterface()) {
 				g.invokeConstructor(getType(Object.class), m);
 			} else {
-				g.invokeConstructor(getType(type), m);
+				g.invokeConstructor(getType(mainClass), m);
 			}
 
 			g.returnValue();
@@ -292,7 +318,7 @@ public class AsmBuilder<T> {
 			try {
 				GeneratorAdapter g = new GeneratorAdapter(ACC_PUBLIC + ACC_STATIC + ACC_FINAL, m, null, null, cw);
 
-				Context ctx = new Context(classLoader, g, classType, type, staticFields, m.getArgumentTypes(), m, expressionMap, expressionStaticMap);
+				Context ctx = new Context(classLoader, g, classType, mainClass, otherClasses, staticFields, m.getArgumentTypes(), m, expressionMap, expressionStaticMap);
 
 				Expression expression = expressionStaticMap.get(m);
 				loadAndCast(ctx, expression, m.getReturnType());
@@ -308,7 +334,7 @@ public class AsmBuilder<T> {
 			try {
 				GeneratorAdapter g = new GeneratorAdapter(ACC_PUBLIC, m, null, null, cw);
 
-				Context ctx = new Context(classLoader, g, classType, type, fields, m.getArgumentTypes(), m, expressionMap, expressionStaticMap);
+				Context ctx = new Context(classLoader, g, classType, mainClass, otherClasses, fields, m.getArgumentTypes(), m, expressionMap, expressionStaticMap);
 
 				Expression expression = expressionMap.get(m);
 				loadAndCast(ctx, expression, m.getReturnType());

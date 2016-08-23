@@ -21,6 +21,8 @@ import io.datakernel.codegen.AsmBuilder.AsmClassKey;
 import java.util.HashMap;
 import java.util.Map;
 
+import static java.util.Arrays.asList;
+
 /**
  * Represents a loader for defining dynamically generated classes.
  * Also contains cache, that speeds up loading of classes, which have the same structure as the ones already loaded.
@@ -67,7 +69,7 @@ public class DefiningClassLoader extends ClassLoader implements DefiningClassLoa
 		Map<String, Integer> map = new HashMap<>();
 
 		for (Map.Entry<AsmClassKey<?>, Class<?>> entry : definedClasses.entrySet()) {
-			String type = entry.getKey().getType().toString();
+			String type = asList(entry.getKey().getMainClass(), entry.getKey().getOtherClasses()).toString();
 			Integer count = map.get(type);
 			map.put(type, count == null ? 1 : count + 1);
 		}

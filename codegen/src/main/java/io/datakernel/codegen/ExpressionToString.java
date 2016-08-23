@@ -16,6 +16,7 @@
 
 package io.datakernel.codegen;
 
+import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
@@ -80,7 +81,7 @@ public final class ExpressionToString implements Expression {
 
 	@Override
 	public Type load(Context ctx) {
-		GeneratorAdapter g = ctx.getGeneratorAdapter();
+		final GeneratorAdapter g = ctx.getGeneratorAdapter();
 
 		g.newInstance(getType(StringBuilder.class));
 		g.dup();
@@ -102,12 +103,21 @@ public final class ExpressionToString implements Expression {
 			}
 
 			g.dup();
-			Expression expression = arguments.get(key);
-			Type type = expression.load(ctx);
+			final Expression expression = arguments.get(key);
+			final Type type = expression.load(ctx);
 			if (isPrimitiveType(type)) {
 				g.invokeStatic(wrap(type), new Method("toString", getType(String.class), new Type[]{type}));
 			} else {
+				final Label nullLabel = new Label();
+				final Label afterToString = new Label();
+				g.dup();
+				g.ifNull(nullLabel);
 				g.invokeVirtual(type, getMethod("String toString()"));
+				g.goTo(afterToString);
+				g.mark(nullLabel);
+				g.pop();
+				g.push(("null"));
+				g.mark(afterToString);
 			}
 			g.invokeVirtual(getType(StringBuilder.class), getMethod("StringBuilder append(String)"));
 			g.pop();

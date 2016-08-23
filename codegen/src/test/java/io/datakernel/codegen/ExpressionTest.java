@@ -17,7 +17,11 @@
 package io.datakernel.codegen;
 
 import io.datakernel.codegen.utils.DefiningClassLoader;
+import org.junit.Rule;
+import org.junit.rules.TemporaryFolder;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.*;
 
 import static io.datakernel.codegen.Expressions.*;
@@ -25,6 +29,9 @@ import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
 public class ExpressionTest {
+	@Rule
+	public TemporaryFolder tempFolder = new TemporaryFolder();
+
 	public static class TestPojo {
 		public int field1;
 		public int field2;
@@ -841,5 +848,141 @@ public class ExpressionTest {
 				.newInstance();
 		assertEquals(42, testObj.returnInt());
 		assertEquals(-1.0, testObj.returnDouble(), 1E-5);
+	}
+
+	public static abstract class A {
+		public int t() {
+			return 40;
+		}
+
+		public abstract int a();
+	}
+
+	public interface B {
+		Integer b();
+	}
+
+	public interface C {
+		String c();
+	}
+
+	@org.junit.Test
+	public void testMultipleInterfacesWithAbstract() {
+		final DefiningClassLoader definingClassLoader = new DefiningClassLoader();
+		final A instance = new AsmBuilder<>(definingClassLoader, A.class, asList(B.class, C.class))
+				.method("a", value(42))
+				.method("b", value(43))
+				.method("c", value("44"))
+				.newInstance();
+
+		assertEquals(instance.t(), 40);
+		assertEquals(instance.a(), 42);
+		assertEquals(((B) instance).b(), Integer.valueOf(43));
+		assertEquals(((C) instance).c(), "44");
+	}
+
+	@org.junit.Test
+	public void testMultipleInterfaces() {
+		final DefiningClassLoader definingClassLoader = new DefiningClassLoader();
+		final B instance = new AsmBuilder<>(definingClassLoader, B.class, Collections.<Class<?>>singletonList(C.class))
+				.method("b", value(43))
+				.method("c", value("44"))
+				.newInstance();
+
+		assertEquals(instance.b(), Integer.valueOf(43));
+		assertEquals(((C) instance).c(), "44");
+
+	}
+
+	@org.junit.Test
+	public void testNullableToString() {
+		final DefiningClassLoader definingClassLoader = new DefiningClassLoader();
+		final B instance = new AsmBuilder<>(definingClassLoader, B.class)
+				.method("b", nullRef(Integer.class))
+				.method("toString",
+						asString()
+								.quotes("{", "}", ", ")
+								.add(call(self(), "b")))
+				.newInstance();
+
+		assertEquals(instance.b(), null);
+		assertEquals(instance.toString(), "{null}");
+	}
+
+	@org.junit.Test
+	public void testSetSaveBytecode() throws IOException {
+		final File folder = tempFolder.newFolder();
+		final DefiningClassLoader definingClassLoader = new DefiningClassLoader();
+		final B instance = new AsmBuilder<>(definingClassLoader, B.class)
+				.setBytecodeSaveDir(folder.toPath())
+				.method("b", nullRef(Integer.class))
+				.method("toString",
+						asString()
+								.quotes("{", "}", ", ")
+								.add(call(self(), "b")))
+				.newInstance();
+		assertEquals(folder.list().length, 1);
+		assertEquals(instance.b(), null);
+		assertEquals(instance.toString(), "{null}");
+	}
+
+	public interface TestArraySet {
+		Integer[] ints(Integer[] ints);
+	}
+
+	@org.junit.Test
+	public void testArraySet() {
+		final DefiningClassLoader definingClassLoader = new DefiningClassLoader();
+		final TestArraySet instance = new AsmBuilder<>(definingClassLoader, TestArraySet.class)
+				.method("ints", sequence(setArrayItem(arg(0), value(0), cast(value(42), Integer.class)), arg(0)))
+				.newInstance();
+		Integer[] ints = new Integer[]{1, 2, 3, 4};
+
+		assertArrayEquals(instance.ints(ints), new Integer[]{42, 2, 3, 4});
+	}
+
+	public interface TestCallStatic {
+		int method(int a, int b);
+	}
+
+	@org.junit.Test
+	public void testCallStatic() {
+		final DefiningClassLoader definingClassLoader = new DefiningClassLoader();
+		final TestCallStatic instance = new AsmBuilder<>(definingClassLoader, TestCallStatic.class)
+				.method("method", callStatic(Math.class, "min", arg(0), arg(1)))
+				.newInstance();
+		assertEquals(instance.method(5, 0), 0);
+		assertEquals(instance.method(5, 10), 5);
+	}
+
+	public interface TestIsNull {
+		boolean method(String a);
+	}
+
+	@org.junit.Test
+	public void testIsNull() {
+		final DefiningClassLoader definingClassLoader = new DefiningClassLoader();
+		final TestIsNull instance = new AsmBuilder<>(definingClassLoader, TestIsNull.class)
+				.method("method", isNull(arg(0)))
+				.newInstance();
+		assertEquals(instance.method("42"), false);
+		assertEquals(instance.method(null), true);
+	}
+
+	public interface TestNewArray {
+		int[] ints(int size);
+
+		String[] integers(int size);
+	}
+
+	@org.junit.Test
+	public void testNewArray() {
+		final DefiningClassLoader definingClassLoader = new DefiningClassLoader();
+		final TestNewArray instance = new AsmBuilder<>(definingClassLoader, TestNewArray.class)
+				.method("ints", newArray(int[].class, arg(0)))
+				.method("integers", newArray(String[].class, arg(0)))
+				.newInstance();
+		assertEquals(instance.ints(1).length, 1);
+		assertEquals(instance.integers(2).length, 2);
 	}
 }
