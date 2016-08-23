@@ -29,9 +29,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeoutException;
@@ -39,6 +37,7 @@ import java.util.concurrent.TimeoutException;
 import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
 import static io.datakernel.eventloop.AsyncTcpSocketImpl.wrapChannel;
 import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
+import static io.datakernel.jmx.MBeanFormat.formatDuration;
 import static io.datakernel.net.SocketSettings.defaultSocketSettings;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
@@ -77,6 +76,9 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 	private final EventStats expiredConnections = new EventStats();
 	private final ExceptionStats httpProtocolErrors = new ExceptionStats();
 	private final EventStats timeoutErrors = new EventStats();
+
+	private final Map<HttpClientConnection, UrlWithTimestamp> currentRequestToSendTime = new HashMap<>();
+	private boolean monitorCurrentRequestsDuration = false;
 
 	private int inetAddressIdx = 0;
 
@@ -264,7 +266,18 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 
 	private void sendRequest(final HttpClientConnection connection, HttpRequest request, long timeoutTime, final ResultCallback<HttpResponse> callback) {
 		logger.trace("sendRequest Calling {}", request);
-		connection.send(request, timeoutTime, callback);
+
+		// jmx
+		ResultCallback<HttpResponse> responseCallback = callback;
+		if (monitorCurrentRequestsDuration) {
+			currentRequestToSendTime.put(
+					connection,
+					new UrlWithTimestamp(request.getFullUrl(), eventloop.currentTimeMillis())
+			);
+			responseCallback = new MonitorRequestDurationCallback(callback, connection);
+		}
+
+		connection.send(request, timeoutTime, responseCallback);
 	}
 
 	private static boolean isValidHost(String host, InetAddress inetAddress) {
@@ -405,5 +418,104 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 			"(failed requests)")
 	public EventStats getTimeoutErrors() {
 		return timeoutErrors;
+	}
+
+	@JmxAttribute
+	public boolean isMonitorCurrentRequestsDuration() {
+		return monitorCurrentRequestsDuration;
+	}
+
+	@JmxAttribute
+	public void setMonitorCurrentRequestsDuration(boolean monitor) {
+		if (!monitor) {
+			currentRequestToSendTime.clear();
+		}
+		this.monitorCurrentRequestsDuration = monitor;
+	}
+
+	@JmxAttribute(description = "shows duration of current requests " +
+			"in case when monitorCurrentRequestsDuration == true")
+	public List<String> getCurrentRequestsDuration() {
+		SortedSet<UrlWithDuration> durations = new TreeSet<>();
+		for (HttpClientConnection conn : currentRequestToSendTime.keySet()) {
+			UrlWithTimestamp urlWithTimestamp = currentRequestToSendTime.get(conn);
+			int duration = (int) (eventloop.currentTimeMillis() - urlWithTimestamp.getTimestamp());
+			String url = urlWithTimestamp.getUrl();
+			durations.add(new UrlWithDuration(url, duration));
+		}
+
+		List<String> formattedDurations = new ArrayList<>(durations.size());
+		formattedDurations.add("Duration       Url");
+		for (UrlWithDuration urlWithDuration : durations) {
+			String url = urlWithDuration.getUrl();
+			String duration = formatDuration(urlWithDuration.getDuration());
+			String line = String.format("%s   %s", duration, url);
+			formattedDurations.add(line);
+		}
+		return formattedDurations;
+	}
+
+	private static final class UrlWithTimestamp {
+		private final String url;
+		private final long timestamp;
+
+		public UrlWithTimestamp(String url, long timestamp) {
+			this.url = url;
+			this.timestamp = timestamp;
+		}
+
+		public String getUrl() {
+			return url;
+		}
+
+		public long getTimestamp() {
+			return timestamp;
+		}
+	}
+
+	private static final class UrlWithDuration implements Comparable<UrlWithDuration> {
+		private final String url;
+		private final int duration;
+
+		public UrlWithDuration(String url, int duration) {
+			this.url = url;
+			this.duration = duration;
+		}
+
+		public String getUrl() {
+			return url;
+		}
+
+		public int getDuration() {
+			return duration;
+		}
+
+		@Override
+		public int compareTo(UrlWithDuration other) {
+			return -Integer.compare(duration, other.duration);
+		}
+	}
+
+	private final class MonitorRequestDurationCallback implements ResultCallback<HttpResponse> {
+		private final ResultCallback<HttpResponse> actualCallback;
+		private final HttpClientConnection connection;
+
+		public MonitorRequestDurationCallback(ResultCallback<HttpResponse> actualCallback,
+		                                      HttpClientConnection connection) {
+			this.actualCallback = actualCallback;
+			this.connection = connection;
+		}
+
+		@Override
+		public void onResult(HttpResponse result) {
+			currentRequestToSendTime.remove(connection);
+			actualCallback.onResult(result);
+		}
+
+		@Override
+		public void onException(Exception exception) {
+			currentRequestToSendTime.remove(connection);
+			actualCallback.onException(exception);
+		}
 	}
 }
