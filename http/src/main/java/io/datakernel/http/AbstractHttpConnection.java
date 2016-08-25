@@ -127,9 +127,9 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 		assert isInPool();
 	}
 
-	protected final void closeWithError(final Exception e) {
+	protected final void closeWithError(final Exception e, Object context) {
 		if (isClosed()) return;
-		eventloop.recordIoError(e, this);
+		eventloop.recordIoError(e, context);
 		asyncTcpSocket.close();
 		readQueue.clear();
 		onClosedWithError(e);
@@ -378,7 +378,7 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 			}
 		} catch (ParseException e) {
 			onHttpProtocolError(e);
-			closeWithError(e);
+			closeWithError(e, this);
 		}
 	}
 

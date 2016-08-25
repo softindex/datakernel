@@ -152,7 +152,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 			if (reading == BODY && contentLength == UNKNOWN_LENGTH) {
 				onHttpMessage(bodyQueue.takeRemaining());
 			} else {
-				closeWithError(CLOSED_CONNECTION);
+				closeWithError(CLOSED_CONNECTION, lastRequestUrl);
 
 				// jmx
 				httpClient.recordHttpProtocolError(CLOSED_CONNECTION, lastRequestUrl);
@@ -207,7 +207,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 			@Override
 			public void run() {
 				if (!isClosed()) {
-					closeWithError(TIMEOUT_EXCEPTION);
+					closeWithError(TIMEOUT_EXCEPTION, lastRequestUrl);
 
 					// jmx
 					httpClient.recordTimeoutError();
