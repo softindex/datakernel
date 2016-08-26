@@ -78,14 +78,16 @@ public class AsmBuilder<T> {
 		private final Class<T> mainClass;
 		private final List<Class<?>> otherClasses;
 		private final Map<String, Class<?>> fields;
+		private final Map<String, Class<?>> staticFields;
 		private final Map<Method, Expression> expressionMap;
 		private final Map<Method, Expression> expressionStaticMap;
 
-		public AsmClassKey(Class<T> mainClass, List<Class<?>> otherClasses, Map<String, Class<?>> fields,
+		public AsmClassKey(Class<T> mainClass, List<Class<?>> otherClasses, Map<String, Class<?>> fields, Map<String, Class<?>> staticFields,
 		                   Map<Method, Expression> expressionMap, Map<Method, Expression> expressionStaticMap) {
 			this.mainClass = mainClass;
 			this.otherClasses = otherClasses;
 			this.fields = fields;
+			this.staticFields = staticFields;
 			this.expressionMap = expressionMap;
 			this.expressionStaticMap = expressionStaticMap;
 		}
@@ -104,6 +106,7 @@ public class AsmBuilder<T> {
 					"mainType=" + mainClass +
 					", otherTypes" + otherClasses +
 					", fields=" + fields +
+					", staticFields=" + staticFields +					
 					", expressionMap=" + expressionMap +
 					", expressionStaticMap=" + expressionStaticMap +
 					'}';
@@ -117,6 +120,7 @@ public class AsmBuilder<T> {
 			return Objects.equals(mainClass, that.mainClass) &&
 					Objects.equals(otherClasses, that.otherClasses) &&
 					Objects.equals(fields, that.fields) &&
+					Objects.equals(staticFields, that.staticFields) &&					
 					Objects.equals(expressionMap, that.expressionMap) &&
 					Objects.equals(expressionStaticMap, that.expressionStaticMap);
 		}
@@ -154,6 +158,18 @@ public class AsmBuilder<T> {
 		fields.put(field, fieldClass);
 		return this;
 	}
+	
+	/**
+	 * Creates a new static field for a dynamic class
+	 *  
+	 * @param field
+	 * @param fieldClass
+	 * @return
+	 */
+	public AsmBuilder<T> staticField(String field, Class<?> fieldClass) {
+		staticFields.put(field, fieldClass);
+		return this;
+	}
 
 	/**
 	 * Creates a new method for a dynamic class
@@ -189,6 +205,15 @@ public class AsmBuilder<T> {
 		return method(new Method(methodName, getType(returnClass), types), expression);
 	}
 
+	/**
+	 * Create a new static method for a dynamic class
+	 * 
+	 * @param methodName    name of method
+	 * @param returnClass   type which returns this method
+	 * @param argumentTypes list of types of arguments
+	 * @param expression    function which will be processed
+	 * @return changed AsmFunctionFactory
+	 */
 	public AsmBuilder<T> staticMethod(String methodName, Class<?> returnClass, List<? extends Class<?>> argumentTypes, Expression expression) {
 		Type[] types = new Type[argumentTypes.size()];
 		for (int i = 0; i < argumentTypes.size(); i++) {
@@ -196,9 +221,21 @@ public class AsmBuilder<T> {
 		}
 		return staticMethod(new Method(methodName, getType(returnClass), types), expression);
 	}
+	
+	/**
+	 * Create a new static initialization block for a dynamic class. Overwrites the existing one.
+	 * 
+	 * @param expression function which will be processed
+	 * @return changed AsmFunctionFactory
+	 */
+	public AsmBuilder<T> staticInitializationBlock(Expression expression) {
+		return staticMethod("<clinit>", void.class, Arrays.asList(), expression);
+	}
+		
+		
 
 	/**
-	 * CCreates a new method for a dynamic class
+	 * Creates a new method for a dynamic class. The method must be part of the provided interfaces or abstract class.
 	 *
 	 * @param methodName name of method
 	 * @param expression function which will be processed
@@ -245,7 +282,7 @@ public class AsmBuilder<T> {
 
 	public Class<T> defineClass(String className) {
 		synchronized (classLoader) {
-			AsmClassKey key = new AsmClassKey(mainClass, otherClasses, fields, expressionMap, expressionStaticMap);
+			AsmClassKey key = new AsmClassKey(mainClass, otherClasses, fields, staticFields, expressionMap, expressionStaticMap);
 			Class<?> cachedClass = classLoader.getClassByKey(key);
 
 			if (cachedClass != null) {
@@ -313,12 +350,17 @@ public class AsmBuilder<T> {
 			Class<?> fieldClass = fields.get(field);
 			cw.visitField(ACC_PUBLIC, field, getType(fieldClass).getDescriptor(), null, null);
 		}
+		
+		for (String field : staticFields.keySet()) {
+			Class<?> fieldClass = staticFields.get(field);
+			cw.visitField(ACC_PUBLIC + ACC_STATIC, field, getType(fieldClass).getDescriptor(), null, null);
+		}
 
 		for (Method m : expressionStaticMap.keySet()) {
 			try {
 				GeneratorAdapter g = new GeneratorAdapter(ACC_PUBLIC + ACC_STATIC + ACC_FINAL, m, null, null, cw);
 
-				Context ctx = new Context(classLoader, g, classType, mainClass, otherClasses, staticFields, m.getArgumentTypes(), m, expressionMap, expressionStaticMap);
+				Context ctx = new Context(classLoader, g, classType, mainClass, otherClasses, Collections.emptyMap(), staticFields, m.getArgumentTypes(), m, expressionMap, expressionStaticMap);
 
 				Expression expression = expressionStaticMap.get(m);
 				loadAndCast(ctx, expression, m.getReturnType());
@@ -334,7 +376,7 @@ public class AsmBuilder<T> {
 			try {
 				GeneratorAdapter g = new GeneratorAdapter(ACC_PUBLIC, m, null, null, cw);
 
-				Context ctx = new Context(classLoader, g, classType, mainClass, otherClasses, fields, m.getArgumentTypes(), m, expressionMap, expressionStaticMap);
+				Context ctx = new Context(classLoader, g, classType, mainClass, otherClasses, fields, staticFields, m.getArgumentTypes(), m, expressionMap, expressionStaticMap);
 
 				Expression expression = expressionMap.get(m);
 				loadAndCast(ctx, expression, m.getReturnType());

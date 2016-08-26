@@ -110,14 +110,57 @@ public final class Expressions {
 	public static Expression setter(Expression owner, String field, Expression value) {
 		return set(getter(owner, field), value);
 	}
+	
+	/**
+	 * Returns the static field from owner
+	 *
+	 * @param owner owner of the field
+	 * @param field name of the field which will be returned
+	 * @return new instance of the VarField
+	 */
+	public static VarStatic getterStatic(Expression owner, String field) {
+		return new VarStatic(owner, field);
+	}
 
 	/**
-	 * Returns current instance
+	 * Sets value to the static field in owner
+	 *
+	 * @param owner owner of the field
+	 * @param field name of field which will be changed
+	 * @param value new value for the field
+	 * @return new instance of the ExpressionSet
+	 */
+	public static Expression setterStatic(Expression owner, String field, Expression value) {
+		return set(getterStatic(owner, field), value);
+	}
+
+	/**
+	 * Returns current instance as "this."
 	 *
 	 * @return current instance of the Expression
 	 */
 	public static Expression self() {
 		return new VarThis();
+	}
+	
+	/**
+	 * Returns the type of the class
+	 * 
+	 * @param clazz 
+	 * @return current instance of the Expression
+	 */
+	public static Expression type(Class<?> clazz) {
+		return type(Type.getType(clazz));
+	}
+	
+	/**
+	 * Returns a type instance.
+	 * 
+	 * @param type 
+	 * @return current instance of the Expression
+	 */
+	public static Expression type(Type type) {
+		return new VarType(type);
 	}
 
 	/**

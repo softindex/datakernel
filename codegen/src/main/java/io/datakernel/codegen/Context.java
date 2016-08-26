@@ -34,12 +34,13 @@ public final class Context {
 	private final Method method;
 	private final Class<?> mainClass;
 	private final List<Class<?>> otherClasses;
+	private final Map<String, Class<?>> staticFields;
 	private final Map<String, Class<?>> thisFields;
 	private final Type[] argumentTypes;
 	private final Map<Method, Expression> methodToExpression;
 	private final Map<Method, Expression> staticMethodToExpression;
 
-	public Context(DefiningClassLoader classLoader, GeneratorAdapter g, Type thisType, Class<?> mainClass, List<Class<?>> otherClasses, Map<String, Class<?>> thisFields,
+	public Context(DefiningClassLoader classLoader, GeneratorAdapter g, Type thisType, Class<?> mainClass, List<Class<?>> otherClasses, Map<String, Class<?>> thisFields, Map<String, Class<?>> staticFields,
 	               Type[] argumentTypes, Method method, Map<Method, Expression> methodToExpression, Map<Method, Expression> staticMethodToExpression) {
 		this.classLoader = classLoader;
 		this.g = g;
@@ -48,6 +49,7 @@ public final class Context {
 		this.otherClasses = otherClasses;
 		this.argumentTypes = argumentTypes;
 		this.thisType = thisType;
+		this.staticFields = staticFields;
 		this.thisFields = thisFields;
 		this.methodToExpression = methodToExpression;
 		this.staticMethodToExpression = staticMethodToExpression;
@@ -72,7 +74,11 @@ public final class Context {
 	public Type getThisType() {
 		return thisType;
 	}
-
+	
+	public Map<String, Class<?>> getStaticFields() {
+		return staticFields;
+	}
+	
 	public Map<String, Class<?>> getThisFields() {
 		return thisFields;
 	}

@@ -954,6 +954,37 @@ public class ExpressionTest {
 		assertEquals(instance.method(5, 0), 0);
 		assertEquals(instance.method(5, 10), 5);
 	}
+	
+	public static abstract class TestStaticField {
+		public static int number = 99;
+		
+		public abstract int getStaticNumber();
+		public abstract void setStaticNumber(int num);		
+		
+		public abstract int getStaticValue();
+		public abstract void setStaticValue(int num);	
+	}
+	
+	@org.junit.Test
+	public void testStaticField() {
+		final DefiningClassLoader definingClassLoader = new DefiningClassLoader();
+		final TestStaticField instance = new AsmBuilder<>(definingClassLoader, TestStaticField.class)
+				.staticField("value", int.class)
+				.staticInitializationBlock(setterStatic(self(), "value",  value(9)))
+				.method("getStaticValue", getterStatic(self(), "value"))
+				.method("setStaticValue", setterStatic(self(), "value", arg(0)))
+				.method("getStaticNumber", getterStatic(type(TestStaticField.class), "number"))
+				.method("setStaticNumber", setterStatic(type(TestStaticField.class), "number", arg(0)))
+				.newInstance();
+		
+		assertEquals(9, instance.getStaticValue());		
+		instance.setStaticValue(5);
+		assertEquals(5, instance.getStaticValue());		
+
+		assertEquals(99, instance.getStaticNumber());		
+		instance.setStaticNumber(3);
+		assertEquals(3, instance.getStaticNumber());		
+	}
 
 	public interface TestIsNull {
 		boolean method(String a);
