@@ -252,17 +252,9 @@ public class Utils {
 			g.invokeVirtual(getType(owner), method);
 	}
 
-	public static Expression thisVar() {
-		return new VarThis();
-	}
-
 	public static VarLocal newLocal(Context ctx, Type type) {
 		int local = ctx.getGeneratorAdapter().newLocal(type);
 		return new VarLocal(local);
-	}
-
-	public static Expression argumentVar(int argument) {
-		return new VarArg(argument);
 	}
 
 	public static void loadAndCast(Context ctx, Expression expression, Type targetType) {
@@ -293,9 +285,6 @@ public class Utils {
 
 		if (type.equals(ctx.getThisType())) {
 			final Class<?> javaType = getJavaType(ctx.getClassLoader(), targetType);
-			if (javaType.isAssignableFrom(ctx.getMainClass())) {
-				return;
-			}
 			for (Class<?> aClass : ctx.getOtherClasses()) {
 				if (javaType.isAssignableFrom(aClass)) {
 					return;
@@ -347,7 +336,7 @@ public class Utils {
 	public static String exceptionInGeneratedClass(Context ctx) {
 		return format("Throwed in generated class %s in method %s",
 				ctx.getThisType().getClassName(),
-				ctx.getMethod()
+				ctx.getNewMethod()
 		);
 	}
 

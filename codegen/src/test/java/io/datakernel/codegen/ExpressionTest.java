@@ -955,11 +955,18 @@ public class ExpressionTest {
 		assertEquals(instance.method(5, 10), 5);
 	}
 	
-	public static abstract class TestStaticField {
+	public static abstract class TestPublicStaticField {
 		public static int number = 99;
+	}
+	
+	public static abstract class TestStaticField {
+		protected static int number = 55;
 		
 		public abstract int getStaticNumber();
 		public abstract void setStaticNumber(int num);		
+		
+		public abstract int getStaticProtectedNumber();
+		public abstract void setStaticProtectedNumber(int num);		
 		
 		public abstract int getStaticValue();
 		public abstract void setStaticValue(int num);	
@@ -973,8 +980,10 @@ public class ExpressionTest {
 				.staticInitializationBlock(setterStatic(self(), "value",  value(9)))
 				.method("getStaticValue", getterStatic(self(), "value"))
 				.method("setStaticValue", setterStatic(self(), "value", arg(0)))
-				.method("getStaticNumber", getterStatic(type(TestStaticField.class), "number"))
-				.method("setStaticNumber", setterStatic(type(TestStaticField.class), "number", arg(0)))
+				.method("getStaticNumber", getterStatic(type(TestPublicStaticField.class), "number"))
+				.method("setStaticNumber", setterStatic(type(TestPublicStaticField.class), "number", arg(0)))
+				.method("getStaticProtectedNumber", getterStatic(self(), "number"))
+				.method("setStaticProtectedNumber", setterStatic(self(), "number", arg(0)))
 				.newInstance();
 		
 		assertEquals(9, instance.getStaticValue());		
@@ -984,6 +993,50 @@ public class ExpressionTest {
 		assertEquals(99, instance.getStaticNumber());		
 		instance.setStaticNumber(3);
 		assertEquals(3, instance.getStaticNumber());		
+		
+		assertEquals(55, instance.getStaticProtectedNumber());		
+		instance.setStaticProtectedNumber(11);
+		assertEquals(11, instance.getStaticProtectedNumber());		
+	}
+	
+	public static interface TestParent {
+		public default int reduction() {
+			return 11;
+		}
+	}
+	
+	public static abstract class TestParentClass implements TestParent{
+		protected int number = 77;
+		
+		protected int reducedNumber() {
+			return number - reduction();
+		}
+	}
+	
+	public static interface TestParentClassAdapter {
+		public int getReducedNumber();
+		public int getReduceValue();
+		
+		public int getNumber();
+		public void setNumber(int num);
+	}
+	
+	@org.junit.Test
+	public void testParentClass() {
+		final DefiningClassLoader definingClassLoader = new DefiningClassLoader();
+		final TestParentClassAdapter instance = (TestParentClassAdapter)new AsmBuilder<>(definingClassLoader, TestParentClass.class, asList(TestParentClassAdapter.class))
+				.method("getReducedNumber", call(self(), "reducedNumber"))
+				.method("getReduceValue", call(self(), "reduction"))
+				.method("getNumber", getter(self(), "number"))
+				.method("setNumber", setter(self(), "number", arg(0)))
+				.newInstance();
+		
+		assertEquals(66, instance.getReducedNumber());	
+		assertEquals(11, instance.getReduceValue());	
+		
+		assertEquals(77, instance.getNumber());		
+		instance.setNumber(3);
+		assertEquals(3, instance.getNumber());		
 	}
 
 	public interface TestIsNull {

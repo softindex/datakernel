@@ -51,23 +51,14 @@ public class AsmBuilder<T> {
 	private static final AtomicInteger COUNTER = new AtomicInteger();
 
 	private final DefiningClassLoader classLoader;
-
-	private final Class<T> mainClass;
-	private final List<Class<?>> otherClasses;
 	private Path bytecodeSaveDir;
 
+	private final ClassScope<T> scope;
+	
 	private final Map<String, Class<?>> fields = new LinkedHashMap<>();
 	private final Map<String, Class<?>> staticFields = new LinkedHashMap<>();
 	private final Map<Method, Expression> expressionMap = new LinkedHashMap<>();
 	private final Map<Method, Expression> expressionStaticMap = new LinkedHashMap<>();
-
-	public Map<Method, Expression> getExpressionStaticMap() {
-		return expressionStaticMap;
-	}
-
-	public Map<Method, Expression> getExpressionMap() {
-		return expressionMap;
-	}
 
 	public AsmBuilder<T> setBytecodeSaveDir(Path bytecodeSaveDir) {
 		this.bytecodeSaveDir = bytecodeSaveDir;
@@ -75,36 +66,29 @@ public class AsmBuilder<T> {
 	}
 
 	public static class AsmClassKey<T> {
-		private final Class<T> mainClass;
-		private final List<Class<?>> otherClasses;
+		private final Set<Class<?>> parentClasses;
 		private final Map<String, Class<?>> fields;
 		private final Map<String, Class<?>> staticFields;
 		private final Map<Method, Expression> expressionMap;
 		private final Map<Method, Expression> expressionStaticMap;
 
-		public AsmClassKey(Class<T> mainClass, List<Class<?>> otherClasses, Map<String, Class<?>> fields, Map<String, Class<?>> staticFields,
+		public AsmClassKey(Set<Class<?>> parentClasses, Map<String, Class<?>> fields, Map<String, Class<?>> staticFields,
 		                   Map<Method, Expression> expressionMap, Map<Method, Expression> expressionStaticMap) {
-			this.mainClass = mainClass;
-			this.otherClasses = otherClasses;
+			this.parentClasses = parentClasses;
 			this.fields = fields;
 			this.staticFields = staticFields;
 			this.expressionMap = expressionMap;
 			this.expressionStaticMap = expressionStaticMap;
 		}
 
-		public Class<T> getMainClass() {
-			return mainClass;
-		}
-
-		public List<Class<?>> getOtherClasses() {
-			return otherClasses;
+		public Set<Class<?>> getParentClasses() {
+			return parentClasses;
 		}
 
 		@Override
 		public String toString() {
 			return "AsmClassKey{" +
-					"mainType=" + mainClass +
-					", otherTypes" + otherClasses +
+					"parentClasses=" + parentClasses +
 					", fields=" + fields +
 					", staticFields=" + staticFields +					
 					", expressionMap=" + expressionMap +
@@ -116,9 +100,8 @@ public class AsmBuilder<T> {
 		public boolean equals(Object o) {
 			if (this == o) return true;
 			if (o == null || getClass() != o.getClass()) return false;
-			AsmClassKey that = (AsmClassKey) o;
-			return Objects.equals(mainClass, that.mainClass) &&
-					Objects.equals(otherClasses, that.otherClasses) &&
+			AsmClassKey<?> that = (AsmClassKey<?>) o;
+			return  Objects.equals(parentClasses, that.parentClasses) &&
 					Objects.equals(fields, that.fields) &&
 					Objects.equals(staticFields, that.staticFields) &&					
 					Objects.equals(expressionMap, that.expressionMap) &&
@@ -127,7 +110,7 @@ public class AsmBuilder<T> {
 
 		@Override
 		public int hashCode() {
-			return Objects.hash(mainClass, otherClasses, fields, expressionMap, expressionStaticMap);
+			return Objects.hash(parentClasses, fields, expressionMap, expressionStaticMap);
 		}
 	}
 
@@ -143,8 +126,7 @@ public class AsmBuilder<T> {
 
 	public AsmBuilder(DefiningClassLoader classLoader, Class<T> mainType, List<Class<?>> types) {
 		this.classLoader = classLoader;
-		this.mainClass = mainType;
-		this.otherClasses = types;
+		this.scope = new ClassScope<>(mainType, types);
 	}
 
 	/**
@@ -156,6 +138,7 @@ public class AsmBuilder<T> {
 	 */
 	public AsmBuilder<T> field(String field, Class<?> fieldClass) {
 		fields.put(field, fieldClass);
+		scope.addField(field, fieldClass);
 		return this;
 	}
 	
@@ -168,6 +151,7 @@ public class AsmBuilder<T> {
 	 */
 	public AsmBuilder<T> staticField(String field, Class<?> fieldClass) {
 		staticFields.put(field, fieldClass);
+		scope.addStaticField(field, fieldClass);
 		return this;
 	}
 
@@ -180,11 +164,13 @@ public class AsmBuilder<T> {
 	 */
 	public AsmBuilder<T> method(Method method, Expression expression) {
 		expressionMap.put(method, expression);
+		scope.addMethod(method);
 		return this;
 	}
 
 	public AsmBuilder<T> staticMethod(Method method, Expression expression) {
 		expressionStaticMap.put(method, expression);
+		scope.addStaticMethod(method);
 		return this;
 	}
 
@@ -248,12 +234,9 @@ public class AsmBuilder<T> {
 		}
 
 		Method foundMethod = null;
-		LinkedHashSet<java.lang.reflect.Method> methods = new LinkedHashSet<>();
 		List<List<java.lang.reflect.Method>> listOfMethods = new ArrayList<>();
 		listOfMethods.add(asList(Object.class.getMethods()));
-		listOfMethods.add(asList(mainClass.getMethods()));
-		listOfMethods.add(asList(mainClass.getDeclaredMethods()));
-		for (Class<?> type : otherClasses) {
+		for (Class<?> type : scope.getParentClasses()) {
 			listOfMethods.add(asList(type.getMethods()));
 			listOfMethods.add(asList(type.getDeclaredMethods()));
 		}
@@ -282,7 +265,7 @@ public class AsmBuilder<T> {
 
 	public Class<T> defineClass(String className) {
 		synchronized (classLoader) {
-			AsmClassKey key = new AsmClassKey(mainClass, otherClasses, fields, staticFields, expressionMap, expressionStaticMap);
+			AsmClassKey<T> key = new AsmClassKey<>(scope.getParentClasses(), fields, staticFields, expressionMap, expressionStaticMap);
 			Class<?> cachedClass = classLoader.getClassByKey(key);
 
 			if (cachedClass != null) {
@@ -300,7 +283,7 @@ public class AsmBuilder<T> {
 	 * @param key key
 	 * @return completed class
 	 */
-	private Class<T> defineNewClass(AsmClassKey key, String newClassName) {
+	private Class<T> defineNewClass(AsmClassKey<T> key, String newClassName) {
 		DefiningClassWriter cw = new DefiningClassWriter(classLoader);
 
 		String className;
@@ -312,12 +295,9 @@ public class AsmBuilder<T> {
 
 		Type classType = getType('L' + className.replace('.', '/') + ';');
 
-		final String[] internalNames = new String[1 + otherClasses.size()];
-		internalNames[0] = getInternalName(mainClass);
-		for (int i = 0; i < otherClasses.size(); i++) {
-			internalNames[1 + i] = getInternalName(otherClasses.get(i));
-		}
-		if (mainClass.isInterface()) {
+		// contains all classes (abstract and interfaces)
+		final String[] internalNames = scope.getParentClasses().stream().map(clazz -> getInternalName(clazz)).toArray(String[]::new);
+		if (scope.getMainType().isInterface()) {
 			cw.visit(V1_6, ACC_PUBLIC + ACC_FINAL + ACC_SUPER,
 					classType.getInternalName(),
 					null,
@@ -336,10 +316,10 @@ public class AsmBuilder<T> {
 			GeneratorAdapter g = new GeneratorAdapter(ACC_PUBLIC, m, null, null, cw);
 			g.loadThis();
 
-			if (mainClass.isInterface()) {
+			if (scope.getMainType().isInterface()) {
 				g.invokeConstructor(getType(Object.class), m);
 			} else {
-				g.invokeConstructor(getType(mainClass), m);
+				g.invokeConstructor(getType(scope.getMainType()), m);
 			}
 
 			g.returnValue();
@@ -360,7 +340,7 @@ public class AsmBuilder<T> {
 			try {
 				GeneratorAdapter g = new GeneratorAdapter(ACC_PUBLIC + ACC_STATIC + ACC_FINAL, m, null, null, cw);
 
-				Context ctx = new Context(classLoader, g, classType, mainClass, otherClasses, Collections.emptyMap(), staticFields, m.getArgumentTypes(), m, expressionMap, expressionStaticMap);
+				Context ctx = new Context(classLoader, g, classType, scope.getParentClasses(), Collections.emptyMap(), scope.getStaticFields(), m.getArgumentTypes(), m, scope.getMethods(), scope.getStaticMethods());
 
 				Expression expression = expressionStaticMap.get(m);
 				loadAndCast(ctx, expression, m.getReturnType());
@@ -376,7 +356,7 @@ public class AsmBuilder<T> {
 			try {
 				GeneratorAdapter g = new GeneratorAdapter(ACC_PUBLIC, m, null, null, cw);
 
-				Context ctx = new Context(classLoader, g, classType, mainClass, otherClasses, fields, staticFields, m.getArgumentTypes(), m, expressionMap, expressionStaticMap);
+				Context ctx = new Context(classLoader, g, classType, scope.getParentClasses(), scope.getFields(), scope.getStaticFields(), m.getArgumentTypes(), m, scope.getMethods(), scope.getStaticMethods());
 
 				Expression expression = expressionMap.get(m);
 				loadAndCast(ctx, expression, m.getReturnType());

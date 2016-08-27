@@ -57,7 +57,7 @@ public final class ExpressionCall implements Expression {
 		Type returnType;
 		try {
 			if (ctx.getThisType().equals(owner.type(ctx))) {
-				for (org.objectweb.asm.commons.Method method : ctx.getMethodToExpression().keySet()) {
+				for (org.objectweb.asm.commons.Method method : ctx.getMethods()) {
 					if (method.getName().equals(methodName)) {
 						if (method.getArgumentTypes().length == arguments.size()) {
 							Type[] methodTypes = method.getArgumentTypes();
@@ -110,7 +110,7 @@ public final class ExpressionCall implements Expression {
 		try {
 			if (ctx.getThisType().equals(owner.type(ctx))) {
 				org.objectweb.asm.commons.Method method = null;
-				for (org.objectweb.asm.commons.Method m : ctx.getMethodToExpression().keySet()) {
+				for (org.objectweb.asm.commons.Method m : ctx.getMethods()) {
 					if (m.getName().equals(methodName)) {
 						if (m.getArgumentTypes().length == arguments.size()) {
 							Type[] methodTypes = m.getArgumentTypes();

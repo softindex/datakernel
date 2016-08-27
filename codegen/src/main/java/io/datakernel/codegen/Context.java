@@ -16,13 +16,14 @@
 
 package io.datakernel.codegen;
 
-import io.datakernel.codegen.utils.DefiningClassLoader;
+import java.util.Map;
+import java.util.Set;
+
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
 
-import java.util.List;
-import java.util.Map;
+import io.datakernel.codegen.utils.DefiningClassLoader;
 
 /**
  * Contains information about a dynamic class
@@ -31,28 +32,26 @@ public final class Context {
 	private final DefiningClassLoader classLoader;
 	private final GeneratorAdapter g;
 	private final Type thisType;
-	private final Method method;
-	private final Class<?> mainClass;
-	private final List<Class<?>> otherClasses;
+	private final Method newMethod;
+	private final Set<Class<?>> parentClasses;
 	private final Map<String, Class<?>> staticFields;
 	private final Map<String, Class<?>> thisFields;
 	private final Type[] argumentTypes;
-	private final Map<Method, Expression> methodToExpression;
-	private final Map<Method, Expression> staticMethodToExpression;
+	private final Set<Method> methods;
+	private final Set<Method> staticMethods;
 
-	public Context(DefiningClassLoader classLoader, GeneratorAdapter g, Type thisType, Class<?> mainClass, List<Class<?>> otherClasses, Map<String, Class<?>> thisFields, Map<String, Class<?>> staticFields,
-	               Type[] argumentTypes, Method method, Map<Method, Expression> methodToExpression, Map<Method, Expression> staticMethodToExpression) {
+	public Context(DefiningClassLoader classLoader, GeneratorAdapter g, Type thisType, Set<Class<?>> parantClasses, Map<String, Class<?>> thisFields, 
+					Map<String, Class<?>> staticFields, Type[] argumentTypes, Method method, Set<Method> methods, Set<Method> staticMethods) {
 		this.classLoader = classLoader;
 		this.g = g;
-		this.method = method;
-		this.mainClass = mainClass;
-		this.otherClasses = otherClasses;
+		this.newMethod = method;
+		this.parentClasses = parantClasses;
 		this.argumentTypes = argumentTypes;
 		this.thisType = thisType;
 		this.staticFields = staticFields;
 		this.thisFields = thisFields;
-		this.methodToExpression = methodToExpression;
-		this.staticMethodToExpression = staticMethodToExpression;
+		this.methods = methods;
+		this.staticMethods = staticMethods;
 	}
 
 	public DefiningClassLoader getClassLoader() {
@@ -63,12 +62,8 @@ public final class Context {
 		return g;
 	}
 
-	public Class<?> getMainClass() {
-		return mainClass;
-	}
-
-	public List<Class<?>> getOtherClasses() {
-		return otherClasses;
+	public Set<Class<?>> getOtherClasses() {
+		return parentClasses;
 	}
 
 	public Type getThisType() {
@@ -91,15 +86,15 @@ public final class Context {
 		return argumentTypes[argument];
 	}
 
-	public Map<Method, Expression> getStaticMethodToExpression() {
-		return staticMethodToExpression;
+	public Set<Method> getStaticMethods() {
+		return staticMethods;
 	}
 
-	public Map<Method, Expression> getMethodToExpression() {
-		return methodToExpression;
+	public Set<Method> getMethods() {
+		return methods;
 	}
 
-	public Method getMethod() {
-		return method;
+	public Method getNewMethod() {
+		return newMethod;
 	}
 }

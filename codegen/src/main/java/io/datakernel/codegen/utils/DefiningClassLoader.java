@@ -69,7 +69,7 @@ public class DefiningClassLoader extends ClassLoader implements DefiningClassLoa
 		Map<String, Integer> map = new HashMap<>();
 
 		for (Map.Entry<AsmClassKey<?>, Class<?>> entry : definedClasses.entrySet()) {
-			String type = asList(entry.getKey().getMainClass(), entry.getKey().getOtherClasses()).toString();
+			String type = asList(entry.getKey().getParentClasses()).toString();
 			Integer count = map.get(type);
 			map.put(type, count == null ? 1 : count + 1);
 		}
