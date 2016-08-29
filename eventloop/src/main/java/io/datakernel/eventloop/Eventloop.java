@@ -1083,7 +1083,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		}
 	}
 
-	public void handleFatalError(Throwable e, Object context) {
+	private void handleFatalError(Throwable e, Object context) {
 		recordFatalError(e, context);
 		fatalErrorHandler.handle(e, context);
 	}

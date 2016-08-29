@@ -24,7 +24,10 @@ import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxReducers;
 
+import java.util.*;
+
 import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
+import static io.datakernel.jmx.MBeanFormat.formatDuration;
 
 public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private static final long CHECK_PERIOD = 1000L;
@@ -48,6 +51,8 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private final EventStats expiredConnections = new EventStats();
 	private final EventStats httpProtocolErrors = new EventStats();
 	private final EventStats applicationErrors = new EventStats();
+	private final Map<HttpServerConnection, UrlWithTimestamp> currentRequestHandlingStart = new HashMap<>();
+	private boolean monitorCurrentRequestsHandlingDuration = false;
 
 	public AsyncHttpServer(Eventloop eventloop, AsyncHttpServlet servlet) {
 		super(eventloop);
@@ -213,5 +218,97 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 			"(responses with 4xx and 5xx HTTP status codes)")
 	public EventStats getApplicationErrors() {
 		return applicationErrors;
+	}
+
+	@JmxAttribute
+	public boolean isMonitorCurrentRequestsHandlingDuration() {
+		return monitorCurrentRequestsHandlingDuration;
+	}
+
+	@JmxAttribute
+	public void setMonitorCurrentRequestsHandlingDuration(boolean monitor) {
+		if (!monitor) {
+			currentRequestHandlingStart.clear();
+		}
+		this.monitorCurrentRequestsHandlingDuration = monitor;
+	}
+
+	@JmxAttribute(
+			description = "shows duration of current requests handling" +
+			"in case when monitorCurrentRequestsHandlingDuration == true"
+	)
+	public List<String> getCurrentRequestsDuration() {
+		SortedSet<UrlWithDuration> durations = new TreeSet<>();
+		for (HttpServerConnection conn : currentRequestHandlingStart.keySet()) {
+			UrlWithTimestamp urlWithTimestamp = currentRequestHandlingStart.get(conn);
+			int duration = (int) (eventloop.currentTimeMillis() - urlWithTimestamp.getTimestamp());
+			String url = urlWithTimestamp.getUrl();
+			durations.add(new UrlWithDuration(url, duration));
+		}
+
+		List<String> formattedDurations = new ArrayList<>(durations.size());
+		formattedDurations.add("Duration       Url");
+		for (UrlWithDuration urlWithDuration : durations) {
+			String url = urlWithDuration.getUrl();
+			String duration = formatDuration(urlWithDuration.getDuration());
+			String line = String.format("%s   %s", duration, url);
+			formattedDurations.add(line);
+		}
+		return formattedDurations;
+	}
+
+	void requestHandlingStarted(HttpServerConnection conn, HttpRequest request) {
+		if (isMonitorCurrentRequestsHandlingDuration()) {
+			String url = request.getFullUrl();
+			long timestamp = eventloop.currentTimeMillis();
+			currentRequestHandlingStart.put(conn, new UrlWithTimestamp(url, timestamp));
+		}
+	}
+
+	void requestHandlingFinished(HttpServerConnection conn) {
+		if (isMonitorCurrentRequestsHandlingDuration()) {
+			currentRequestHandlingStart.remove(conn);
+		}
+	}
+
+	private static final class UrlWithTimestamp {
+		private final String url;
+		private final long timestamp;
+
+		public UrlWithTimestamp(String url, long timestamp) {
+			this.url = url;
+			this.timestamp = timestamp;
+		}
+
+		public String getUrl() {
+			return url;
+		}
+
+		public long getTimestamp() {
+			return timestamp;
+		}
+	}
+
+	private static final class UrlWithDuration implements Comparable<UrlWithDuration> {
+		private final String url;
+		private final int duration;
+
+		public UrlWithDuration(String url, int duration) {
+			this.url = url;
+			this.duration = duration;
+		}
+
+		public String getUrl() {
+			return url;
+		}
+
+		public int getDuration() {
+			return duration;
+		}
+
+		@Override
+		public int compareTo(UrlWithDuration other) {
+			return -Integer.compare(duration, other.duration);
+		}
 	}
 }

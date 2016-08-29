@@ -198,6 +198,10 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		reading = NOTHING;
 		request.body(bodyBuf);
 		request.remoteAddress(remoteAddress);
+
+		// jmx
+		server.requestHandlingStarted(this, request);
+
 		try {
 			servlet.serveAsync(request, new AsyncHttpServlet.Callback() {
 				@Override
@@ -219,6 +223,9 @@ final class HttpServerConnection extends AbstractHttpConnection {
 						recycleBufs();
 						httpResponse.recycleBufs();
 					}
+
+					// jmx
+					server.requestHandlingFinished(HttpServerConnection.this);
 				}
 
 				@Override
@@ -231,6 +238,9 @@ final class HttpServerConnection extends AbstractHttpConnection {
 						// connection is closed, but bufs are not recycled, let's recycle them now
 						recycleBufs();
 					}
+
+					// jmx
+					server.requestHandlingFinished(HttpServerConnection.this);
 				}
 			});
 		} catch (ParseException e) {

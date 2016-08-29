@@ -48,8 +48,6 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 	private static final long CHECK_PERIOD = 1000L;
 	private static final long DEFAULT_KEEP_CONNECTION_IN_POOL_TIME = 30 * 1000L;
 
-	private static final TimeoutException TIMEOUT_EXCEPTION = new TimeoutException();
-
 	private final Eventloop eventloop;
 	private final DnsClient dnsClient;
 	private final SocketSettings socketSettings;
@@ -76,7 +74,6 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 	private final EventStats expiredConnections = new EventStats();
 	private final ExceptionStats httpProtocolErrors = new ExceptionStats();
 	private final EventStats timeoutErrors = new EventStats();
-
 	private final Map<HttpClientConnection, UrlWithTimestamp> currentRequestToSendTime = new HashMap<>();
 	private boolean monitorCurrentRequestsDuration = false;
 

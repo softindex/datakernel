@@ -33,7 +33,7 @@ import static io.datakernel.util.ByteBufStrings.decodeDecimal;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
 final class HttpClientConnection extends AbstractHttpConnection {
-	private static final TimeoutException TIMEOUT_EXCEPTION = new TimeoutException();
+	private static final TimeoutException TIMEOUT_EXCEPTION = new TimeoutException("HTTP Client Timeout Exception");
 	private static final ParseException CLOSED_CONNECTION = new ParseException("Connection unexpectedly closed");
 
 	private static final HttpHeaders.Value CONNECTION_KEEP_ALIVE = HttpHeaders.asBytes(CONNECTION, "keep-alive");
