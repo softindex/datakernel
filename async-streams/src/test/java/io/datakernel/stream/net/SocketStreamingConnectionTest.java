@@ -21,7 +21,6 @@ import com.google.common.net.InetAddresses;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.*;
-import io.datakernel.net.SocketSettings;
 import io.datakernel.serializer.asm.BufferSerializers;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamForwarder;
@@ -30,6 +29,7 @@ import io.datakernel.stream.TestStreamConsumers;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;
@@ -39,9 +39,11 @@ import java.util.List;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.*;
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.serializer.asm.BufferSerializers.intSerializer;
 import static junit.framework.TestCase.fail;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 
 @SuppressWarnings("unchecked")
 public final class SocketStreamingConnectionTest {
@@ -103,6 +105,7 @@ public final class SocketStreamingConnectionTest {
 		assertEquals(source, consumerToList.getList());
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -157,8 +160,10 @@ public final class SocketStreamingConnectionTest {
 		assertEquals(source, consumerToList.getList());
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
+	@Ignore // TODO(vmykhalko): check this test
 	@Test
 	public void testLoopbackWithError() throws Exception {
 		final List<Integer> source = Lists.newArrayList();

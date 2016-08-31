@@ -26,9 +26,11 @@ import java.util.Iterator;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.stream.StreamStatus.*;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 
 public class StreamRewiringWithStatus {
 	private Eventloop eventloop;
@@ -52,11 +54,14 @@ public class StreamRewiringWithStatus {
 		assertEquals(asList(1, 2, 3, 4, 5), list);
 		assertEquals(END_OF_STREAM, startStatusReadyProducer.getProducerStatus());
 		assertEquals(END_OF_STREAM, startStatusReadyConsumer.getConsumerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testStartProducerReadyConsumerSuspend() {
-		StreamConsumer<Integer> startStatusSuspendConsumer = new TestConsumerOneByOne(eventloop) {{suspend();}};
+		StreamConsumer<Integer> startStatusSuspendConsumer = new TestConsumerOneByOne(eventloop) {{
+			suspend();
+		}};
 		StreamProducer<Integer> startStatusReadyProducer = new TestProducerOfIterator(eventloop, it);
 		startStatusReadyProducer.streamTo(startStatusSuspendConsumer);
 		eventloop.run();
@@ -64,6 +69,7 @@ public class StreamRewiringWithStatus {
 		assertEquals(Collections.emptyList(), list);
 		assertEquals(SUSPENDED, startStatusReadyProducer.getProducerStatus());
 		assertEquals(SUSPENDED, startStatusSuspendConsumer.getConsumerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -78,6 +84,7 @@ public class StreamRewiringWithStatus {
 		assertEquals(Collections.emptyList(), list);
 		assertEquals(CLOSED_WITH_ERROR, startStatusReadyProducer.getProducerStatus());
 		assertEquals(END_OF_STREAM, startStatusEndConsumer.getConsumerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -92,6 +99,7 @@ public class StreamRewiringWithStatus {
 		assertEquals(Collections.emptyList(), list);
 		assertEquals(CLOSED_WITH_ERROR, startStatusReadyProducer.getProducerStatus());
 		assertEquals(CLOSED_WITH_ERROR, startStatusClosedWithErrorConsumer.getConsumerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	//------------------------------------------------------------------------------------------------------------------
@@ -108,11 +116,14 @@ public class StreamRewiringWithStatus {
 		assertEquals(asList(1, 2, 3, 4, 5), list);
 		assertEquals(END_OF_STREAM, startStatusSuspendProducer.getProducerStatus());
 		assertEquals(END_OF_STREAM, startStatusReadyConsumer.getConsumerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testStartProducerSuspendConsumerSuspend() {
-		StreamConsumer<Integer> startStatusSuspendConsumer = new TestConsumerOneByOne(eventloop) {{suspend();}};
+		StreamConsumer<Integer> startStatusSuspendConsumer = new TestConsumerOneByOne(eventloop) {{
+			suspend();
+		}};
 		StreamProducer<Integer> startStatusSuspendProducer = new TestProducerOfIterator(eventloop, it) {{
 			onConsumerSuspended();
 		}};
@@ -122,6 +133,7 @@ public class StreamRewiringWithStatus {
 		assertEquals(Collections.emptyList(), list);
 		assertEquals(SUSPENDED, startStatusSuspendProducer.getProducerStatus());
 		assertEquals(SUSPENDED, startStatusSuspendConsumer.getConsumerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -138,6 +150,7 @@ public class StreamRewiringWithStatus {
 		assertEquals(Collections.emptyList(), list);
 		assertEquals(CLOSED_WITH_ERROR, startStatusSuspendProducer.getProducerStatus());
 		assertEquals(END_OF_STREAM, startStatusEndConsumer.getConsumerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -154,6 +167,7 @@ public class StreamRewiringWithStatus {
 		assertEquals(Collections.emptyList(), list);
 		assertEquals(CLOSED_WITH_ERROR, startStatusSuspendProducer.getProducerStatus());
 		assertEquals(CLOSED_WITH_ERROR, startStatusClosedWithErrorConsumer.getConsumerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	//------------------------------------------------------------------------------------------------------------------
@@ -170,11 +184,14 @@ public class StreamRewiringWithStatus {
 		assertEquals(Collections.emptyList(), list);
 		assertEquals(END_OF_STREAM, startStatusEndProducer.getProducerStatus());
 		assertEquals(END_OF_STREAM, startStatusReadyConsumer.getConsumerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testStartProducerEndOfStreamConsumerSuspend() {
-		StreamConsumer<Integer> startStatusSuspendConsumer = new TestConsumerOneByOne(eventloop) {{suspend();}};
+		StreamConsumer<Integer> startStatusSuspendConsumer = new TestConsumerOneByOne(eventloop) {{
+			suspend();
+		}};
 		StreamProducer<Integer> startStatusEndProducer = new TestProducerOfIterator(eventloop, it) {{
 			sendEndOfStream();
 		}};
@@ -184,6 +201,7 @@ public class StreamRewiringWithStatus {
 		assertEquals(Collections.emptyList(), list);
 		assertEquals(END_OF_STREAM, startStatusEndProducer.getProducerStatus());
 		assertEquals(END_OF_STREAM, startStatusSuspendConsumer.getConsumerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -200,6 +218,7 @@ public class StreamRewiringWithStatus {
 		assertEquals(Collections.emptyList(), list);
 		assertEquals(END_OF_STREAM, startStatusEndProducer.getProducerStatus());
 		assertEquals(END_OF_STREAM, startStatusEndConsumer.getConsumerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -216,6 +235,7 @@ public class StreamRewiringWithStatus {
 		assertEquals(Collections.emptyList(), list);
 		assertEquals(END_OF_STREAM, startStatusEndProducer.getProducerStatus());
 		assertEquals(CLOSED_WITH_ERROR, startStatusClosedWithErrorConsumer.getConsumerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	//------------------------------------------------------------------------------------------------------------------
@@ -232,11 +252,14 @@ public class StreamRewiringWithStatus {
 		assertEquals(Collections.emptyList(), list);
 		assertEquals(CLOSED_WITH_ERROR, startStatusClosedWithErrorProducer.getProducerStatus());
 		assertEquals(CLOSED_WITH_ERROR, startStatusReadyConsumer.getConsumerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testStartCloseWithErrorConsumerSuspend() {
-		StreamConsumer<Integer> startStatusSuspendConsumer = new TestConsumerOneByOne(eventloop) {{suspend();}};
+		StreamConsumer<Integer> startStatusSuspendConsumer = new TestConsumerOneByOne(eventloop) {{
+			suspend();
+		}};
 		StreamProducer<Integer> startStatusClosedWithErrorProducer = new TestProducerOfIterator(eventloop, it) {{
 			closeWithError(new Exception());
 		}};
@@ -246,6 +269,7 @@ public class StreamRewiringWithStatus {
 		assertEquals(Collections.emptyList(), list);
 		assertEquals(CLOSED_WITH_ERROR, startStatusClosedWithErrorProducer.getProducerStatus());
 		assertEquals(CLOSED_WITH_ERROR, startStatusSuspendConsumer.getConsumerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -262,6 +286,7 @@ public class StreamRewiringWithStatus {
 		assertEquals(Collections.emptyList(), list);
 		assertEquals(CLOSED_WITH_ERROR, startStatusClosedWithErrorProducer.getProducerStatus());
 		assertEquals(END_OF_STREAM, startStatusEndConsumer.getConsumerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -278,6 +303,7 @@ public class StreamRewiringWithStatus {
 		assertEquals(Collections.emptyList(), list);
 		assertEquals(CLOSED_WITH_ERROR, startStatusClosedWithErrorProducer.getProducerStatus());
 		assertEquals(CLOSED_WITH_ERROR, startStatusClosedWithErrorConsumer.getConsumerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	//------------------------------------------------------------------------------------------------------------------

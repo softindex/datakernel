@@ -12,8 +12,10 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.util.ByteBufStrings.decodeAscii;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 
 public class AbstractHttpConnectionTest {
 	private static final int PORT = 5050;
@@ -55,6 +57,7 @@ public class AbstractHttpConnectionTest {
 		eventloop.run();
 		assertEquals("text/           html", data.get("header"));
 		assertEquals("  <html>\n<body>\n<h1>Hello, World!</h1>\n</body>\n</html>", data.get("body"));
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	private HttpResponse createMultiLineHeaderWithInitialBodySpacesResponse() {

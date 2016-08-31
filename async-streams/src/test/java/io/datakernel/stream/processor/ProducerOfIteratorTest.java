@@ -26,8 +26,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 
 public class ProducerOfIteratorTest {
 
@@ -46,6 +48,7 @@ public class ProducerOfIteratorTest {
 		assertEquals(list, consumer.getList());
 		assertEquals(END_OF_STREAM, producer.getProducerStatus());
 		assertEquals(END_OF_STREAM, consumer.getConsumerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 }

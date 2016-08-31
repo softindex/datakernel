@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Random;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static org.junit.Assert.*;
 
 public class StreamByteChunkerTest {
@@ -105,6 +106,7 @@ public class StreamByteChunkerTest {
 
 		assertEquals(totalLen, actualLen);
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	private static class StreamFixedSizeConsumer implements StreamConsumer<ByteBuf>, StreamDataReceiver<ByteBuf> {

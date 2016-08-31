@@ -48,8 +48,10 @@ import static io.datakernel.aggregation_db.fieldtype.FieldTypes.longSum;
 import static io.datakernel.aggregation_db.keytype.KeyTypes.dateKey;
 import static io.datakernel.aggregation_db.keytype.KeyTypes.intKey;
 import static io.datakernel.cube.CubeTestUtils.*;
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 
 @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
 public class CubePartitioningTest {
@@ -194,6 +196,7 @@ public class CubePartitioningTest {
 		for (AggregationChunk chunk : chunks.values()) {
 			assertEquals(chunk.getMinPrimaryKey().get(0), chunk.getMaxPrimaryKey().get(0));
 		}
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	private void aggregateToMap(Map<Integer, Long> map, List<LogItem> logItems) {

@@ -24,12 +24,12 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.processor.Utils.assertProducerStatuses;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class StreamSharderTest {
 
@@ -63,6 +63,7 @@ public class StreamSharderTest {
 		assertProducerStatuses(END_OF_STREAM, streamSharder.getOutputs());
 		assertEquals(END_OF_STREAM, consumer1.getConsumerStatus());
 		assertEquals(END_OF_STREAM, consumer2.getConsumerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -89,6 +90,7 @@ public class StreamSharderTest {
 		assertProducerStatuses(END_OF_STREAM, streamSharder.getOutputs());
 		assertEquals(END_OF_STREAM, consumer1.getConsumerStatus());
 		assertEquals(END_OF_STREAM, consumer2.getConsumerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -135,6 +137,7 @@ public class StreamSharderTest {
 		assertProducerStatuses(CLOSED_WITH_ERROR, streamSharder.getOutputs());
 		assertEquals(CLOSED_WITH_ERROR, consumer1.getConsumerStatus());
 		assertEquals(CLOSED_WITH_ERROR, consumer2.getConsumerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -168,5 +171,6 @@ public class StreamSharderTest {
 		assertProducerStatuses(CLOSED_WITH_ERROR, streamSharder.getOutputs());
 		assertEquals(CLOSED_WITH_ERROR, consumer1.getConsumerStatus());
 		assertEquals(CLOSED_WITH_ERROR, consumer2.getConsumerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 }

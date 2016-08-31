@@ -23,7 +23,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 
 public class ParallelAsyncExecutorTest {
 	private static class ExecutionInfo {
@@ -56,6 +58,7 @@ public class ParallelAsyncExecutorTest {
 			ExecutionInfo current = executionInfoMap.get(i);
 			assertEquals(previous.endTimestamp, current.startTimestamp);
 		}
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -82,6 +85,7 @@ public class ParallelAsyncExecutorTest {
 				assertEquals(previous.startTimestamp, current.startTimestamp);
 			}
 		}
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	private static void submitTestTask(AsyncExecutor executor, Eventloop eventloop, Map<Integer, ExecutionInfo> executionInfoMap, int n) {

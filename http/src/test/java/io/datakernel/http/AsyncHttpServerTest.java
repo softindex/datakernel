@@ -30,13 +30,13 @@ import java.net.Socket;
 import java.util.Random;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.http.TestUtils.readFully;
 import static io.datakernel.http.TestUtils.toByteArray;
 import static io.datakernel.util.ByteBufStrings.decodeAscii;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 import static java.lang.Math.min;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class AsyncHttpServerTest {
 
@@ -142,6 +142,7 @@ public class AsyncHttpServerTest {
 		doTestKeepAlive(eventloop, delayedHttpServer(eventloop));
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -165,6 +166,7 @@ public class AsyncHttpServerTest {
 		thread.join();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -190,6 +192,7 @@ public class AsyncHttpServerTest {
 		thread.join();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -201,6 +204,7 @@ public class AsyncHttpServerTest {
 		doTestPipelining(eventloop, delayedHttpServer(eventloop));
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	private void doTestPipelining(Eventloop eventloop, AsyncHttpServer server) throws Exception {
@@ -265,6 +269,7 @@ public class AsyncHttpServerTest {
 				eventloop.getStats().getErrorStats().getIoErrors().getLastException().getMessage());
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	public static void main(String[] args) throws Exception {

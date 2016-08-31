@@ -52,6 +52,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 
 	private boolean syncPosted = false;
 	private boolean read = false;
+	private boolean write = false;
 
 	private AsyncTcpSocketContract contractChecker;
 
@@ -115,7 +116,8 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 			upstream.close();
 			return;
 		}
-		if (!app2engine.canRead() && engine.getHandshakeStatus() == NOT_HANDSHAKING) {
+		if (!app2engine.canRead() && engine.getHandshakeStatus() == NOT_HANDSHAKING && write) {
+			write = false;
 			assert contractChecker.onWrite();
 			downstreamEventHandler.onWrite();
 		}
@@ -158,7 +160,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 	@Override
 	public void write(ByteBuf buf) {
 		assert contractChecker.write();
-
+		write = true;
 		app2engine = ByteBufPool.append(app2engine, buf);
 		postSync();
 	}

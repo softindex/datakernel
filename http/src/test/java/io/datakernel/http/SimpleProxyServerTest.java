@@ -32,12 +32,12 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.http.TestUtils.readFully;
 import static io.datakernel.http.TestUtils.toByteArray;
 import static io.datakernel.util.ByteBufStrings.decodeAscii;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class SimpleProxyServerTest {
 	final static int ECHO_SERVER_PORT = 9707;
@@ -128,6 +128,8 @@ public class SimpleProxyServerTest {
 		proxyServerThread.join();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertThat(eventloop1, doesntHaveFatals());
+		assertThat(eventloop2, doesntHaveFatals());
 	}
 
 }

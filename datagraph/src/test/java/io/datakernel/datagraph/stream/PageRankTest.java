@@ -49,8 +49,10 @@ import java.util.Arrays;
 
 import static io.datakernel.async.AsyncCallbacks.waitAll;
 import static io.datakernel.datagraph.dataset.Datasets.*;
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 
 public class PageRankTest {
 
@@ -286,6 +288,7 @@ public class PageRankTest {
 
 		assertEquals(asList(new Rank(2, 0.6069)), result1.getList());
 		assertEquals(asList(new Rank(1, 1.7861), new Rank(3, 0.6069)), result2.getList());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 }

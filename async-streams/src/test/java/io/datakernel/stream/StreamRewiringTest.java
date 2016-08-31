@@ -25,11 +25,11 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.*;
 
 @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
 public class StreamRewiringTest {
@@ -57,6 +57,7 @@ public class StreamRewiringTest {
 
 		assertEquals(asList("1", "2", "3"), consumer1.getList());
 		assertEquals(END_OF_STREAM, producer.getProducerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -89,6 +90,7 @@ public class StreamRewiringTest {
 		assertEquals(CLOSED_WITH_ERROR, consumer1.getUpstream().getProducerStatus());
 		assertEquals(END_OF_STREAM, consumer2.getUpstream().getProducerStatus());
 		assertEquals(END_OF_STREAM, producer.getProducerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -120,6 +122,7 @@ public class StreamRewiringTest {
 		eventloop.run();
 		assertEquals(asList(), consumer2.getList());
 		assertEquals(END_OF_STREAM, consumer2.getConsumerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -158,6 +161,7 @@ public class StreamRewiringTest {
 		assertEquals(asList("1", "2", "3", "4", "5", "6"), consumer.getList());
 
 		assertEquals(END_OF_STREAM, producer2.getProducerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -175,5 +179,6 @@ public class StreamRewiringTest {
 		eventloop.run();
 
 		assertEquals(asList(1), consumer.getList());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 }

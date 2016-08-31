@@ -27,9 +27,9 @@ import java.nio.channels.DatagramChannel;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.Eventloop.createDatagramChannel;
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 public class UdpSocketHandlerTest {
 	private static final int SERVER_PORT = 45555;
@@ -132,5 +132,6 @@ public class UdpSocketHandlerTest {
 		eventloop.run();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 }

@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.http.GzipProcessor.fromGzip;
 import static io.datakernel.http.GzipProcessor.toGzip;
 import static io.datakernel.http.HttpHeaders.ACCEPT_ENCODING;
@@ -38,6 +39,7 @@ import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSett
 import static io.datakernel.util.ByteBufStrings.decodeAscii;
 import static io.datakernel.util.ByteBufStrings.wrapAscii;
 import static junit.framework.TestCase.assertEquals;
+import static org.junit.Assert.assertThat;
 
 public class TestGzipProcessor {
 	private static final int PORT = 5595;
@@ -97,5 +99,6 @@ public class TestGzipProcessor {
 		eventloop.run();
 		assertEquals(TEST_PHRASE, callback.get());
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 }

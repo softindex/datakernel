@@ -49,6 +49,7 @@ import static io.datakernel.aggregation_db.fieldtype.FieldTypes.longSum;
 import static io.datakernel.aggregation_db.keytype.KeyTypes.dateKey;
 import static io.datakernel.aggregation_db.keytype.KeyTypes.intKey;
 import static io.datakernel.cube.CubeTestUtils.*;
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
@@ -236,6 +237,7 @@ public class CubeMeasureRemovalTest {
 			assertEquals(queryResultBeforeConsolidation.get(i).date, queryResultAfterConsolidation.get(i).date);
 			assertEquals(queryResultBeforeConsolidation.get(i).clicks, queryResultAfterConsolidation.get(i).clicks);
 		}
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	private void aggregateToMap(Map<Integer, Long> map, List<LogItem> logItems) {

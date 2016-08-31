@@ -22,6 +22,8 @@ import org.junit.Test;
 
 import java.util.concurrent.TimeoutException;
 
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 public class ResultCallbackWithTimeoutTest {
@@ -44,6 +46,7 @@ public class ResultCallbackWithTimeoutTest {
 		assertTrue(callback.results == 0);
 		assertTrue(callback.exceptions == 1);
 		assertTrue(callback.lastException instanceof TimeoutException);
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -66,6 +69,7 @@ public class ResultCallbackWithTimeoutTest {
 		assertTrue(callback.results == 1);
 		assertTrue(callback.exceptions == 0);
 		assertTrue(callback.lastResult == 42);
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -89,5 +93,6 @@ public class ResultCallbackWithTimeoutTest {
 		assertTrue(callback.results == 0);
 		assertTrue(callback.exceptions == 1);
 		assertTrue(callback.lastException.equals(exception1));
+		assertThat(eventloop, doesntHaveFatals());
 	}
 }

@@ -26,12 +26,12 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.processor.Utils.assertProducerStatuses;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class StreamSplitterTest {
 	@Test
@@ -52,6 +52,7 @@ public class StreamSplitterTest {
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
 		assertEquals(END_OF_STREAM, streamConcat.getInput().getConsumerStatus());
 		assertProducerStatuses(END_OF_STREAM, streamConcat.getOutputs());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -100,6 +101,7 @@ public class StreamSplitterTest {
 		assertEquals(CLOSED_WITH_ERROR, source.getProducerStatus());
 		assertEquals(CLOSED_WITH_ERROR, streamConcat.getInput().getConsumerStatus());
 		assertProducerStatuses(CLOSED_WITH_ERROR, streamConcat.getOutputs());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -135,5 +137,6 @@ public class StreamSplitterTest {
 
 		assertEquals(CLOSED_WITH_ERROR, streamConcat.getInput().getConsumerStatus());
 		assertProducerStatuses(CLOSED_WITH_ERROR, streamConcat.getOutputs());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 }

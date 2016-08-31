@@ -25,11 +25,11 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class StreamMapTest {
 
@@ -56,6 +56,7 @@ public class StreamMapTest {
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
 		assertEquals(END_OF_STREAM, projection.getInput().getConsumerStatus());
 		assertEquals(END_OF_STREAM, projection.getOutput().getProducerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -93,6 +94,7 @@ public class StreamMapTest {
 		assertEquals(CLOSED_WITH_ERROR, consumer.getConsumerStatus());
 		assertEquals(CLOSED_WITH_ERROR, projection.getInput().getConsumerStatus());
 		assertEquals(CLOSED_WITH_ERROR, projection.getOutput().getProducerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -115,6 +117,7 @@ public class StreamMapTest {
 		eventloop.run();
 		assertTrue(list.size() == 2);
 		assertEquals(CLOSED_WITH_ERROR, consumer.getUpstream().getProducerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -135,5 +138,6 @@ public class StreamMapTest {
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
 		assertEquals(END_OF_STREAM, projection.getInput().getConsumerStatus());
 		assertEquals(END_OF_STREAM, projection.getOutput().getProducerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 }

@@ -46,8 +46,10 @@ import static io.datakernel.aggregation_db.fieldtype.FieldTypes.longSum;
 import static io.datakernel.aggregation_db.keytype.KeyTypes.intKey;
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.cube.TestUtils.deleteRecursivelyQuietly;
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 
 public class LogToCubeTest {
 	@Rule
@@ -127,6 +129,7 @@ public class LogToCubeTest {
 		System.out.println(consumerToList.getList());
 
 		assertEquals(expectedResults, actualResults);
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	public static final class TestPubResult {

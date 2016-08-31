@@ -43,8 +43,10 @@ import org.junit.Test;
 import java.net.InetSocketAddress;
 
 import static io.datakernel.datagraph.dataset.Datasets.*;
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 
 public class DatagraphServerTest {
 
@@ -145,6 +147,7 @@ public class DatagraphServerTest {
 
 		assertEquals(asList(new TestItem(1), new TestItem(3), new TestItem(5)), result1.getList());
 		assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6)), result2.getList());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -209,6 +212,7 @@ public class DatagraphServerTest {
 
 		assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6), new TestItem(6)), result1.getList());
 		assertEquals(asList(new TestItem(1), new TestItem(1), new TestItem(3), new TestItem(5)), result2.getList());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -285,5 +289,6 @@ public class DatagraphServerTest {
 
 		assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6)), result1.getList());
 		assertEquals(asList(new TestItem(2), new TestItem(8)), result2.getList());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 }

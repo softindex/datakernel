@@ -12,7 +12,9 @@ import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 
 public class TestClientMultilineHeaders {
 
@@ -55,5 +57,6 @@ public class TestClientMultilineHeaders {
 		eventloop.run();
 		assertEquals("GET,   HEAD", resultObserver.get());
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 }

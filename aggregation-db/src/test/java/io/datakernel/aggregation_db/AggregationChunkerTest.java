@@ -38,9 +38,9 @@ import static io.datakernel.aggregation_db.AggregationGroupReducerTest.NO_OP_TRA
 import static io.datakernel.aggregation_db.fieldtype.FieldTypes.intSum;
 import static io.datakernel.aggregation_db.fieldtype.FieldTypes.longSum;
 import static io.datakernel.aggregation_db.keytype.KeyTypes.intKey;
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class AggregationChunkerTest {
 
@@ -139,6 +139,7 @@ public class AggregationChunkerTest {
 		for (StreamConsumer consumer : listConsumers) {
 			assertEquals(consumer.getConsumerStatus(), StreamStatus.END_OF_STREAM);
 		}
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -236,6 +237,7 @@ public class AggregationChunkerTest {
 			assertEquals(listConsumers.get(i).getConsumerStatus(), StreamStatus.END_OF_STREAM);
 		}
 		assertEquals(getLast(listConsumers).getConsumerStatus(), StreamStatus.CLOSED_WITH_ERROR);
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	static <T> T getLast(List<T> list) {
@@ -335,5 +337,6 @@ public class AggregationChunkerTest {
 			assertEquals(listConsumers.get(i).getConsumerStatus(), StreamStatus.END_OF_STREAM);
 		}
 		assertEquals(getLast(listConsumers).getConsumerStatus(), StreamStatus.CLOSED_WITH_ERROR);
+		assertThat(eventloop, doesntHaveFatals());
 	}
 }

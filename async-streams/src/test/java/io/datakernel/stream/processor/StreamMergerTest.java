@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.processor.Utils.assertConsumerStatuses;
@@ -65,6 +66,7 @@ public class StreamMergerTest {
 		assertEquals(END_OF_STREAM, consumer.getConsumerStatus());
 		assertEquals(END_OF_STREAM, merger.getOutput().getProducerStatus());
 		assertConsumerStatuses(END_OF_STREAM, merger.getInputs());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -93,6 +95,7 @@ public class StreamMergerTest {
 		assertEquals(END_OF_STREAM, consumer.getConsumerStatus());
 		assertEquals(END_OF_STREAM, merger.getOutput().getProducerStatus());
 		assertConsumerStatuses(END_OF_STREAM, merger.getInputs());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -142,6 +145,7 @@ public class StreamMergerTest {
 		assertEquals(END_OF_STREAM, consumer.getConsumerStatus());
 		assertEquals(END_OF_STREAM, merger.getOutput().getProducerStatus());
 		assertConsumerStatuses(END_OF_STREAM, merger.getInputs());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -185,6 +189,7 @@ public class StreamMergerTest {
 		assertEquals(CLOSED_WITH_ERROR, merger.getOutput().getProducerStatus());
 		assertArrayEquals(new StreamStatus[]{END_OF_STREAM, END_OF_STREAM},
 				consumerStatuses(merger.getInputs()));
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@SuppressWarnings("unchecked")
@@ -223,6 +228,7 @@ public class StreamMergerTest {
 		assertEquals(CLOSED_WITH_ERROR, merger.getOutput().getProducerStatus());
 		assertArrayEquals(new StreamStatus[]{CLOSED_WITH_ERROR, END_OF_STREAM},
 				consumerStatuses(merger.getInputs()));
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -252,5 +258,6 @@ public class StreamMergerTest {
 		assertEquals(END_OF_STREAM, consumer.getConsumerStatus());
 		assertEquals(END_OF_STREAM, merger.getOutput().getProducerStatus());
 		assertConsumerStatuses(END_OF_STREAM, merger.getInputs());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 }

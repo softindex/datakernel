@@ -19,7 +19,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.simplefs.SimpleFsIntegrationTest.createBigByteArray;
+import static org.junit.Assert.assertThat;
 
 public class TestTimeoutsSimpleFs {
 	@Rule
@@ -58,6 +60,7 @@ public class TestTimeoutsSimpleFs {
 
 //		thrown.expect(ExecutionException.class);
 		callback.get();
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 }

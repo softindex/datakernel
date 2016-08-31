@@ -21,10 +21,12 @@ import io.datakernel.eventloop.Eventloop;
 import org.junit.Test;
 
 import static io.datakernel.async.AsyncCallbacks.createAsyncGetterWithSetter;
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.StreamStatus.READY;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 
 public class AsyncStreamsTest {
 	@Test
@@ -48,6 +50,7 @@ public class AsyncStreamsTest {
 		assertEquals(asList(1, 2, 3), consumer.getList());
 		assertEquals(END_OF_STREAM, consumer.getUpstream().getProducerStatus());
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 }

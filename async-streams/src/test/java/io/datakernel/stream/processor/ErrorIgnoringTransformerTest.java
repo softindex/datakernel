@@ -23,8 +23,10 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 
 public class ErrorIgnoringTransformerTest {
 
@@ -47,6 +49,7 @@ public class ErrorIgnoringTransformerTest {
 		assertEquals(producer.getProducerStatus(), StreamStatus.END_OF_STREAM);
 		assertEquals(errorIgnoringTransformer.getInput().getConsumerStatus(), StreamStatus.END_OF_STREAM);
 		assertEquals(errorIgnoringTransformer.getOutput().getProducerStatus(), StreamStatus.END_OF_STREAM);
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -71,6 +74,7 @@ public class ErrorIgnoringTransformerTest {
 		assertEquals(producer.getProducerStatus(), StreamStatus.CLOSED_WITH_ERROR);
 		assertEquals(errorIgnoringTransformer.getInput().getConsumerStatus(), StreamStatus.CLOSED_WITH_ERROR);
 		assertEquals(errorIgnoringTransformer.getOutput().getProducerStatus(), StreamStatus.END_OF_STREAM);
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -101,5 +105,6 @@ public class ErrorIgnoringTransformerTest {
 		assertEquals(producer.getProducerStatus(), StreamStatus.CLOSED_WITH_ERROR);
 		assertEquals(errorIgnoringTransformer.getInput().getConsumerStatus(), StreamStatus.CLOSED_WITH_ERROR);
 		assertEquals(errorIgnoringTransformer.getOutput().getProducerStatus(), StreamStatus.CLOSED_WITH_ERROR);
+		assertThat(eventloop, doesntHaveFatals());
 	}
 }

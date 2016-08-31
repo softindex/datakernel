@@ -47,6 +47,7 @@ import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.*;
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.util.ByteBufStrings.equalsLowerCaseAscii;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.readAllBytes;
@@ -120,6 +121,7 @@ public class SimpleFsIntegrationTest {
 			assertArrayEquals(CONTENT, readAllBytes(storage.resolve("file" + i)));
 		}
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -219,6 +221,7 @@ public class SimpleFsIntegrationTest {
 
 		assertTrue(Files.exists(storage.resolve(resultFile)));
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -300,6 +303,7 @@ public class SimpleFsIntegrationTest {
 		//noinspection ThrowableResultOfMethodCallIgnored
 		assertEquals(expected.get(0).getMessage(), "File not found");
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -352,6 +356,7 @@ public class SimpleFsIntegrationTest {
 			assertArrayEquals(CONTENT, readAllBytes(storage.resolve("file" + i)));
 		}
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -371,6 +376,7 @@ public class SimpleFsIntegrationTest {
 
 		assertFalse(Files.exists(storage.resolve(file)));
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -416,6 +422,7 @@ public class SimpleFsIntegrationTest {
 		callback.get();
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -456,6 +463,7 @@ public class SimpleFsIntegrationTest {
 		Collections.sort(expected);
 		assertEquals(expected, actual);
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	private void upload(String resultFile, byte[] bytes, ExceptionCallback callback) throws IOException {

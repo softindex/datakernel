@@ -27,10 +27,12 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 
 public class StreamProducerDecoratorTest {
 	@SuppressWarnings("unchecked")
@@ -67,6 +69,7 @@ public class StreamProducerDecoratorTest {
 		assertEquals(list, asList(1, 2));
 		assertEquals(CLOSED_WITH_ERROR, consumer.getUpstream().getProducerStatus());
 		assertEquals(CLOSED_WITH_ERROR, producer.getProducerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@SuppressWarnings("unchecked")
@@ -86,6 +89,7 @@ public class StreamProducerDecoratorTest {
 		assertEquals(consumer.getList(), asList(1, 2, 3, 4, 5));
 		assertEquals(END_OF_STREAM, consumer.getUpstream().getProducerStatus());
 		assertEquals(END_OF_STREAM, producer.getProducerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -107,5 +111,6 @@ public class StreamProducerDecoratorTest {
 		assertEquals(consumer.getList(), asList(1, 2, 3, 4, 5));
 		assertEquals(END_OF_STREAM, consumer.getUpstream().getProducerStatus());
 		assertEquals(END_OF_STREAM, producer.getProducerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 }

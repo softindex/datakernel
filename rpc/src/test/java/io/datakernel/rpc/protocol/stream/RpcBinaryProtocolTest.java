@@ -42,8 +42,10 @@ import java.net.InetSocketAddress;
 import java.util.List;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 
 public class RpcBinaryProtocolTest {
 	private static final int LISTEN_PORT = 12345;
@@ -142,6 +144,7 @@ public class RpcBinaryProtocolTest {
 		}
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -201,5 +204,6 @@ public class RpcBinaryProtocolTest {
 		}
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 }

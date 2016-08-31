@@ -29,8 +29,10 @@ import java.nio.channels.DatagramChannel;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.Eventloop.createDatagramChannel;
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 
 public class NativeDnsResolverConnectionTest {
 	private DnsClientHandler dnsClientConnection;
@@ -124,5 +126,6 @@ public class NativeDnsResolverConnectionTest {
 		eventloop.run();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 }

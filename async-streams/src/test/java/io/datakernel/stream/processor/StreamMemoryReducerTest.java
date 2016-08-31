@@ -27,6 +27,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.processor.Utils.consumerStatuses;
@@ -98,6 +99,7 @@ public class StreamMemoryReducerTest {
 
 		assertArrayEquals(new DataItemResult[]{new DataItemResult(1, 1, 30, 60, 0), new DataItemResult(1, 2, 60, 90, 0)},
 				result.toArray(new DataItemResult[0]));
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@SuppressWarnings("ToArrayCallWithZeroLengthArrayArgument")
@@ -167,6 +169,7 @@ public class StreamMemoryReducerTest {
 		assertTrue(list.size() == 2);
 		assertEquals(END_OF_STREAM, source1.getProducerStatus());
 		assertEquals(END_OF_STREAM, source2.getProducerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@SuppressWarnings("ToArrayCallWithZeroLengthArrayArgument")
@@ -224,6 +227,7 @@ public class StreamMemoryReducerTest {
 		assertArrayEquals(new StreamStatus[]{CLOSED_WITH_ERROR, END_OF_STREAM},
 				consumerStatuses(sorter.getInputs()));
 		assertEquals(CLOSED_WITH_ERROR, sorter.getOutput().getProducerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -289,6 +293,7 @@ public class StreamMemoryReducerTest {
 
 		assertArrayEquals(new DataItemResult[]{new DataItemResult(1, 1, 30, 60, 0), new DataItemResult(1, 2, 60, 90, 0)},
 				result.toArray(new DataItemResult[0]));
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -325,6 +330,7 @@ public class StreamMemoryReducerTest {
 		eventloop.run();
 
 		assertTrue(checkCallCallback.isCall());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	class CheckCallCallback implements CompletionCallback {

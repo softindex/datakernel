@@ -25,9 +25,11 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 
 public class ConsumerToListTest {
 
@@ -48,6 +50,7 @@ public class ConsumerToListTest {
 
 		assertEquals(testList2, consumer.getList());
 		assertEquals(END_OF_STREAM, producer.getProducerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -70,6 +73,7 @@ public class ConsumerToListTest {
 
 		assertEquals(asList(1, 2, 3, 4, 5, 6), consumer.getList());
 		assertEquals(END_OF_STREAM, producer.getProducerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 }

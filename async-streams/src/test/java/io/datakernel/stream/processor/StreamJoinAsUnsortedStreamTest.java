@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static com.google.common.base.Objects.equal;
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
@@ -169,6 +170,7 @@ public class StreamJoinAsUnsortedStreamTest {
 				result.toArray(new DataItemMasterDetail[result.size()]));
 		assertEquals(END_OF_STREAM, source1.getProducerStatus());
 		assertEquals(END_OF_STREAM, source2.getProducerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -241,6 +243,7 @@ public class StreamJoinAsUnsortedStreamTest {
 		assertTrue(list.size() == 1);
 		assertTrue((source1).getProducerStatus() == StreamStatus.CLOSED_WITH_ERROR);
 		assertTrue((source2).getProducerStatus() == StreamStatus.END_OF_STREAM);
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -300,5 +303,6 @@ public class StreamJoinAsUnsortedStreamTest {
 		assertTrue(list.size() == 0);
 		assertTrue((source1).getProducerStatus() == StreamStatus.CLOSED_WITH_ERROR);
 		assertTrue((source2).getProducerStatus() == StreamStatus.CLOSED_WITH_ERROR);
+		assertThat(eventloop, doesntHaveFatals());
 	}
 }

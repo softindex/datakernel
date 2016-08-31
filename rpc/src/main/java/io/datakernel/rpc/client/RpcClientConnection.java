@@ -203,7 +203,7 @@ public final class RpcClientConnection implements RpcConnection, RpcSender, JmxR
 		rpcClient.getGeneralRequestsStats().getExpiredRequests().recordEvent();
 
 		returnTimeout(callback, new RpcTimeoutException("Timeout (" + timeoutCookie.getElapsedTime() + "/" + timeoutCookie.getTimeoutMillis()
-				+ " ms) for server response for request ID " + timeoutCookie.getCookie()));
+				+ " ms) for server (" + address + ") response for request ID " + timeoutCookie.getCookie()));
 	}
 
 	private void removeTimeoutCookie(TimeoutCookie timeoutCookie) {

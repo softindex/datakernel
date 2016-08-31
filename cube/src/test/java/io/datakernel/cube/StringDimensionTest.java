@@ -36,8 +36,10 @@ import java.util.concurrent.Executors;
 import static io.datakernel.aggregation_db.fieldtype.FieldTypes.longSum;
 import static io.datakernel.aggregation_db.keytype.KeyTypes.intKey;
 import static io.datakernel.aggregation_db.keytype.KeyTypes.stringKey;
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 
 public class StringDimensionTest {
 	public static Cube newCube(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
@@ -94,5 +96,6 @@ public class StringDimensionTest {
 		System.out.println(consumerToList.getList());
 
 		assertEquals(expected, actual);
+		assertThat(eventloop, doesntHaveFatals());
 	}
 }

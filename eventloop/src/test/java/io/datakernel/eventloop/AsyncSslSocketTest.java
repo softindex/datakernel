@@ -40,6 +40,7 @@ import java.util.Random;
 import java.util.concurrent.Executor;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.junit.Assert.*;
 
@@ -126,6 +127,7 @@ public class AsyncSslSocketTest {
 		System.out.println("created: " + getCreatedItems());
 		System.out.println("in pool: " + getPoolItems());
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -166,6 +168,7 @@ public class AsyncSslSocketTest {
 		assertEquals(sentData.toString(), serverDataAccumulator.getAccumulatedData());
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -206,6 +209,7 @@ public class AsyncSslSocketTest {
 		assertEquals(sentData.toString(), clientDataAccumulator.getAccumulatedData());
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -250,6 +254,7 @@ public class AsyncSslSocketTest {
 		eventloop.run();
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -279,7 +284,6 @@ public class AsyncSslSocketTest {
 				clientSslSocket.write(createByteBufFromString("Hello"));
 				serverSslSocket.write(createByteBufFromString("World"));
 				eventloop.schedule(eventloop.currentTimeMillis() + 100, new Runnable() {
-					//				eventloop.postLater(new Runnable() {
 					@Override
 					public void run() {
 						clientSslSocket.close();
@@ -290,6 +294,7 @@ public class AsyncSslSocketTest {
 
 		eventloop.run();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 	// </editor-fold>
 

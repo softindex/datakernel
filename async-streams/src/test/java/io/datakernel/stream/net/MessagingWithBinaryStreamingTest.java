@@ -37,10 +37,10 @@ import java.util.List;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.*;
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.serializer.asm.BufferSerializers.longSerializer;
 import static junit.framework.TestCase.fail;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 @SuppressWarnings("unchecked")
 public class MessagingWithBinaryStreamingTest {
@@ -135,6 +135,7 @@ public class MessagingWithBinaryStreamingTest {
 		eventloop.run();
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -208,6 +209,7 @@ public class MessagingWithBinaryStreamingTest {
 		assertEquals(source, consumerToList.getList());
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -283,6 +285,7 @@ public class MessagingWithBinaryStreamingTest {
 		assertEquals(source, consumerToList.getList());
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -388,6 +391,7 @@ public class MessagingWithBinaryStreamingTest {
 		assertTrue(ack[0]);
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -465,6 +469,7 @@ public class MessagingWithBinaryStreamingTest {
 		assertEquals(source, consumerToList.getList());
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 }

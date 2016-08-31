@@ -69,10 +69,12 @@ import static io.datakernel.codegen.Expressions.cast;
 import static io.datakernel.cube.CubeTestUtils.*;
 import static io.datakernel.cube.api.ReportingDSL.*;
 import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
 import static java.util.Collections.singletonList;
 import static junit.framework.TestCase.assertEquals;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 @Ignore("Requires DB access to run")
@@ -378,6 +380,7 @@ public class ReportingTest {
 		assertEquals(35, ((Number) totals.get("impressions")).intValue());
 		assertEquals(5, ((Number) totals.get("clicks")).intValue());
 		assertEquals(5.0 / 35.0 * 100.0, ((Number) totals.get("ctr")).doubleValue(), 1E-3);
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -418,6 +421,7 @@ public class ReportingTest {
 		drillDowns.add(new DrillDown(asList("advertiser", "campaign"), singleton("impressions")));
 		drillDowns.add(new DrillDown(asList("advertiser", "campaign", "banner"), singleton("impressions")));
 		assertEquals(drillDowns, queryResult[0].getDrillDowns());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -450,6 +454,7 @@ public class ReportingTest {
 		Map<String, Object> filterAttributes = queryResult[0].getFilterAttributes();
 		assertEquals(1, filterAttributes.size());
 		assertEquals("first", filterAttributes.get("advertiserName"));
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -486,6 +491,7 @@ public class ReportingTest {
 		assertEquals(2, ((Number) records.get(1).get("advertiser")).intValue());
 		assertEquals("second", records.get(1).get("advertiserName"));
 		assertEquals(singletonList("clicks"), queryResult[0].getMeasures());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -548,6 +554,7 @@ public class ReportingTest {
 		assertEquals(6, ((Number) totals.get("eventCount")).intValue());
 		assertEquals(4, ((Number) totals.get("uniqueUserIdsCount")).intValue());
 		assertEquals(4.0 / 6.0 * 100.0, ((Number) totals.get("uniqueUserPercent")).doubleValue(), 1E-3);
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@After

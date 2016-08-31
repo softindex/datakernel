@@ -27,11 +27,13 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.stream.StreamProducers.concat;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 
 public class StreamFunctionTest {
 
@@ -59,6 +61,7 @@ public class StreamFunctionTest {
 		assertEquals(END_OF_STREAM, streamFunction.getInput().getConsumerStatus());
 		assertEquals(END_OF_STREAM, streamFunction.getOutput().getProducerStatus());
 		assertEquals(END_OF_STREAM, consumer.getConsumerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -102,6 +105,7 @@ public class StreamFunctionTest {
 		assertEquals(CLOSED_WITH_ERROR, consumer.getConsumerStatus());
 		assertEquals(CLOSED_WITH_ERROR, streamFunction.getInput().getConsumerStatus());
 		assertEquals(CLOSED_WITH_ERROR, streamFunction.getOutput().getProducerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -132,6 +136,7 @@ public class StreamFunctionTest {
 		assertEquals(CLOSED_WITH_ERROR, consumer.getUpstream().getProducerStatus());
 		assertEquals(CLOSED_WITH_ERROR, streamFunction.getInput().getConsumerStatus());
 		assertEquals(CLOSED_WITH_ERROR, streamFunction.getOutput().getProducerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -160,5 +165,6 @@ public class StreamFunctionTest {
 		assertEquals(END_OF_STREAM, streamFunction.getInput().getConsumerStatus());
 		assertEquals(END_OF_STREAM, streamFunction.getOutput().getProducerStatus());
 		assertEquals(END_OF_STREAM, consumer.getConsumerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 }

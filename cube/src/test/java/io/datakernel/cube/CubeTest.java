@@ -53,9 +53,11 @@ import static io.datakernel.aggregation_db.AggregationChunk.createChunk;
 import static io.datakernel.aggregation_db.fieldtype.FieldTypes.longSum;
 import static io.datakernel.aggregation_db.keytype.KeyTypes.intKey;
 import static io.datakernel.async.AsyncCallbacks.waitAll;
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 
 @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
 public class CubeTest {
@@ -152,6 +154,7 @@ public class CubeTest {
 		System.out.println(consumerToList.getList());
 
 		assertEquals(expected, actual);
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	private static final int LISTEN_PORT = 45578;
@@ -237,6 +240,7 @@ public class CubeTest {
 		System.out.println(consumerToList.getList());
 
 		assertEquals(expected, actual);
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -272,6 +276,7 @@ public class CubeTest {
 		System.out.println(consumerToList.getList());
 
 		assertEquals(expected, actual);
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -313,6 +318,7 @@ public class CubeTest {
 		System.out.println(consumerToList.getList());
 
 		assertEquals(expected, actual);
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -363,6 +369,7 @@ public class CubeTest {
 		System.out.println(consumerToList.getList());
 
 		assertEquals(expected, actual);
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -413,6 +420,7 @@ public class CubeTest {
 		System.out.println(consumerToList.getList());
 
 		assertEquals(expected, actual);
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -447,6 +455,7 @@ public class CubeTest {
 		System.out.println(consumerToList.getList());
 
 		assertEquals(expected, actual);
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -484,6 +493,7 @@ public class CubeTest {
 		System.out.println(consumerToList.getList());
 
 		assertEquals(expected, actual);
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -532,6 +542,7 @@ public class CubeTest {
 		List<DataItemResult> expected = asList(new DataItemResult(1, 4, 0, 30, 60));
 
 		assertEquals(expected, actual);
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	public static class MyCommitCallback implements ResultCallback<Multimap<AggregationMetadata, AggregationChunk.NewChunk>> {

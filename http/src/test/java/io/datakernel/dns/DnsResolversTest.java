@@ -38,6 +38,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static org.junit.Assert.*;
 
 public class DnsResolversTest {
@@ -160,6 +161,7 @@ public class DnsResolversTest {
 		eventloop.run();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@SafeVarargs
@@ -187,6 +189,7 @@ public class DnsResolversTest {
 		Set<InetAddress> nativeResultList = newHashSet(nativeResult);
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Ignore
@@ -202,6 +205,7 @@ public class DnsResolversTest {
 		assertNull(nativeDnsResolverCallback.result);
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Ignore
@@ -226,6 +230,7 @@ public class DnsResolversTest {
 		primaryEventloop.run();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	private void resolveInAnotherThreadWithDelay(final NativeDnsResolver nativeDnsResolver, final String domainName,
@@ -273,6 +278,7 @@ public class DnsResolversTest {
 		assertNull(callback.exception);
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -287,6 +293,7 @@ public class DnsResolversTest {
 		assertNull(callback.result);
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -323,6 +330,7 @@ public class DnsResolversTest {
 		eventloopWithTimeProvider.run();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -334,5 +342,6 @@ public class DnsResolversTest {
 		eventloop.run();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 }

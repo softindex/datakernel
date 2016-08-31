@@ -28,6 +28,7 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.processor.StreamReducers.mergeDeduplicateReducer;
@@ -59,6 +60,7 @@ public class StreamReducerTest {
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
 		assertEquals(END_OF_STREAM, streamReducer.getOutput().getProducerStatus());
 		assertConsumerStatuses(END_OF_STREAM, streamReducer.getInputs());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -103,6 +105,7 @@ public class StreamReducerTest {
 
 		assertEquals(END_OF_STREAM, streamReducer.getOutput().getProducerStatus());
 		assertConsumerStatuses(END_OF_STREAM, streamReducer.getInputs());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -156,8 +159,8 @@ public class StreamReducerTest {
 		assertEquals(CLOSED_WITH_ERROR, streamReducer.getOutput().getProducerStatus());
 		assertArrayEquals(new StreamStatus[]{CLOSED_WITH_ERROR, END_OF_STREAM, END_OF_STREAM},
 				consumerStatuses(streamReducer.getInputs()));
+		assertThat(eventloop, doesntHaveFatals());
 	}
-
 
 	@Test
 	public void testProducerDisconnectWithError() {
@@ -191,6 +194,7 @@ public class StreamReducerTest {
 		assertTrue(list.size() == 0);
 		assertEquals(CLOSED_WITH_ERROR, source1.getProducerStatus());
 		assertEquals(END_OF_STREAM, source3.getProducerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	private static final class KeyValue1 {
@@ -404,13 +408,14 @@ public class StreamReducerTest {
 
 		eventloop.run();
 		assertEquals(asList(
-				new KeyValueResult(1, 10.0, 10.0, 0.0),
-				new KeyValueResult(2, 0.0, 10.0, 20.0),
-				new KeyValueResult(3, 30.0, 40.0, 20.0)),
+						new KeyValueResult(1, 10.0, 10.0, 0.0),
+						new KeyValueResult(2, 0.0, 10.0, 20.0),
+						new KeyValueResult(3, 30.0, 40.0, 20.0)),
 				consumer.getList());
 		assertEquals(END_OF_STREAM, source1.getProducerStatus());
 		assertEquals(END_OF_STREAM, source2.getProducerStatus());
 		assertEquals(END_OF_STREAM, source3.getProducerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -438,13 +443,14 @@ public class StreamReducerTest {
 
 		eventloop.run();
 		assertEquals(asList(
-				new KeyValueResult(1, 10.0, 10.0, 0.0),
-				new KeyValueResult(2, 0.0, 10.0, 20.0),
-				new KeyValueResult(3, 30.0, 40.0, 20.0)),
+						new KeyValueResult(1, 10.0, 10.0, 0.0),
+						new KeyValueResult(2, 0.0, 10.0, 20.0),
+						new KeyValueResult(3, 30.0, 40.0, 20.0)),
 				consumer.getList());
 		assertEquals(END_OF_STREAM, source1.getProducerStatus());
 		assertEquals(END_OF_STREAM, source2.getProducerStatus());
 		assertEquals(END_OF_STREAM, source3.getProducerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -491,6 +497,7 @@ public class StreamReducerTest {
 
 		assertEquals(END_OF_STREAM, streamReducer.getOutput().getProducerStatus());
 		assertConsumerStatuses(END_OF_STREAM, streamReducer.getInputs());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -506,6 +513,7 @@ public class StreamReducerTest {
 		eventloop.run();
 
 		assertTrue(checkCallCallback.isCall());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	class CheckCallCallback implements CompletionCallback {

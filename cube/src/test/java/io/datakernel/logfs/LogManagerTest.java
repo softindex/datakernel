@@ -44,9 +44,9 @@ import java.util.Map.Entry;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class LogManagerTest {
 	private static final long ONE_SECOND = 1000L;
@@ -152,6 +152,7 @@ public class LogManagerTest {
 		assertTrue(list02.isEmpty());
 		assertEquals(asList("1", "2", "3", "4", "5"), list00);
 		assertEquals(asList("3", "4", "5"), list01);
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	public static class TestItem {
@@ -187,6 +188,7 @@ public class LogManagerTest {
 		assertEquals("a", resultList.get(0).s);
 		assertEquals("b", resultList.get(1).s);
 		assertEquals("c", resultList.get(2).s);
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	private static void clearTestDir(Path testDir) {

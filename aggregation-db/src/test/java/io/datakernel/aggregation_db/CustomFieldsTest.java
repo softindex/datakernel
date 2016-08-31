@@ -40,9 +40,11 @@ import java.util.concurrent.Executors;
 import static com.google.common.collect.Sets.newHashSet;
 import static io.datakernel.aggregation_db.fieldtype.FieldTypes.*;
 import static io.datakernel.aggregation_db.keytype.KeyTypes.intKey;
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static junit.framework.TestCase.assertEquals;
+import static org.junit.Assert.assertThat;
 
 public class CustomFieldsTest {
 	@Rule
@@ -190,5 +192,6 @@ public class CustomFieldsTest {
 		assertEquals(asList(20L, 20L, 21L), s3.userIds);
 		assertEquals(newHashSet(20L, 21L), s3.uniqueUserIds);
 		assertEquals(2, s3.estimatedUniqueUserIdCount.estimate());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 }

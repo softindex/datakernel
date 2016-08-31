@@ -36,12 +36,14 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpUtils.inetAddress;
 import static io.datakernel.http.MediaTypes.*;
 import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 import static junit.framework.TestCase.assertEquals;
+import static org.junit.Assert.assertThat;
 
 public class TestHttpsClient {
 	static {
@@ -82,6 +84,7 @@ public class TestHttpsClient {
 
 		assertEquals(200, (int) callback.get());
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	private HttpRequest get(String url) {

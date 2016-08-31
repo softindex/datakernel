@@ -40,6 +40,7 @@ import static io.datakernel.async.AsyncCallbacks.startFuture;
 import static io.datakernel.async.AsyncCallbacks.stopFuture;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.EventloopThreadFactory.defaultEventloopThreadFactory;
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.junit.Assert.*;
@@ -154,6 +155,7 @@ public class RpcHelloWorldTest {
 
 		}
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -190,6 +192,7 @@ public class RpcHelloWorldTest {
 		}
 		assertTrue(success.get() > 0);
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -202,6 +205,7 @@ public class RpcHelloWorldTest {
 			server.closeFuture().await();
 		}
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -215,6 +219,7 @@ public class RpcHelloWorldTest {
 			server.closeFuture().await();
 		}
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -271,6 +276,7 @@ public class RpcHelloWorldTest {
 			server.closeFuture().await();
 		}
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	//@Test
@@ -311,6 +317,7 @@ public class RpcHelloWorldTest {
 		} finally {
 			server.closeFuture().await();
 		}
+		assertThat(eventloop, doesntHaveFatals());
 	}
 }
 

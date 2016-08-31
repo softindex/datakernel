@@ -33,6 +33,7 @@ import java.security.SecureRandom;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.http.HttpRequest.post;
 import static io.datakernel.http.HttpResponse.create;
 import static io.datakernel.http.HttpUtils.inetAddress;
@@ -42,6 +43,7 @@ import static io.datakernel.util.ByteBufStrings.decodeAscii;
 import static io.datakernel.util.ByteBufStrings.wrapAscii;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 import static junit.framework.TestCase.assertEquals;
+import static org.junit.Assert.assertThat;
 
 public class TestHttpsClientServer {
 	private static final int PORT = 5590;
@@ -101,6 +103,7 @@ public class TestHttpsClientServer {
 
 		assertEquals("Hello, I am Bob!", callback.get());
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -161,5 +164,6 @@ public class TestHttpsClientServer {
 
 		assertEquals(callbackHttp.get(), callbackHttps.get());
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 }

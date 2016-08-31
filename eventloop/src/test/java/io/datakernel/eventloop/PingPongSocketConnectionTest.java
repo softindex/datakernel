@@ -10,10 +10,10 @@ import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.util.ByteBufStrings.decodeAscii;
 import static io.datakernel.util.ByteBufStrings.wrapAscii;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 public class PingPongSocketConnectionTest {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
@@ -52,6 +52,7 @@ public class PingPongSocketConnectionTest {
 
 		eventloop.run();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	private class ServerConnection implements AsyncTcpSocket.EventHandler {

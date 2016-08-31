@@ -30,11 +30,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.serializer.asm.BufferSerializers.intSerializer;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 
 public class StreamSerializerTest {
 
@@ -71,6 +73,7 @@ public class StreamSerializerTest {
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 		assertEquals(END_OF_STREAM, serializerStream.getInput().getConsumerStatus());
 		assertEquals(END_OF_STREAM, serializerStream.getOutput().getProducerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -98,6 +101,7 @@ public class StreamSerializerTest {
 
 		assertEquals(END_OF_STREAM, deserializerStream.getInput().getConsumerStatus());
 		assertEquals(END_OF_STREAM, deserializerStream.getOutput().getProducerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -129,6 +133,7 @@ public class StreamSerializerTest {
 
 		assertEquals(END_OF_STREAM, deserializerStream.getInput().getConsumerStatus());
 		assertEquals(END_OF_STREAM, deserializerStream.getOutput().getProducerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -156,6 +161,7 @@ public class StreamSerializerTest {
 
 		assertEquals(CLOSED_WITH_ERROR, deserializerStream.getInput().getConsumerStatus());
 		assertEquals(CLOSED_WITH_ERROR, deserializerStream.getOutput().getProducerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 }

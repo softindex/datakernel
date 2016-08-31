@@ -96,6 +96,9 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 					if (!readBuf.canRead()) {
 						readBuf.recycle();
 						readBuf = null;
+						if (!readEndOfStream) {
+							asyncTcpSocket.read();
+						}
 					}
 					takeReadCallback().onReceive(message);
 				}
@@ -218,9 +221,6 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 			}
 			readBuf = ByteBufPool.append(readBuf, buf);
 			tryReadMessage();
-			if (readBuf == null) {
-				asyncTcpSocket.read();
-			}
 		} else {
 			if (readBuf != null) {
 				readUnconsumedBuf();

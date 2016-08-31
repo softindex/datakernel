@@ -45,6 +45,7 @@ import static com.google.common.base.Charsets.UTF_8;
 import static com.google.common.collect.Lists.newArrayList;
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.*;
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.stream.StreamProducers.ofValue;
 import static io.datakernel.stream.file.StreamFileWriter.create;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
@@ -119,6 +120,7 @@ public class IntegrationSingleNodeTest {
 
 		assertArrayEquals(CONTENT, readAllBytes(serverStorage.resolve("this/is/a.txt")));
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -155,6 +157,7 @@ public class IntegrationSingleNodeTest {
 		assertTrue(exists(path));
 		assertEquals(0, size(path));
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -190,6 +193,7 @@ public class IntegrationSingleNodeTest {
 		assertArrayEquals(dFileContent, readAllBytes(clientStorage.resolve("d_downloaded.txt")));
 		assertArrayEquals(readAllBytes(serverStorage.resolve("this/g.txt")), readAllBytes(clientStorage.resolve("g_downloaded.txt")));
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -230,6 +234,7 @@ public class IntegrationSingleNodeTest {
 
 		assertFalse(exists(clientStorage.resolve("file_should_not exist.txt")));
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -252,6 +257,7 @@ public class IntegrationSingleNodeTest {
 
 		assertFalse(exists(serverStorage.resolve("this/a.txt")));
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -283,6 +289,7 @@ public class IntegrationSingleNodeTest {
 		callback.get();
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -319,6 +326,7 @@ public class IntegrationSingleNodeTest {
 
 		assertEquals(expected, actual);
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	private ResultCallback<StreamProducer<ByteBuf>> streamTo(final Eventloop eventloop, final StreamConsumer<ByteBuf> consumer) {

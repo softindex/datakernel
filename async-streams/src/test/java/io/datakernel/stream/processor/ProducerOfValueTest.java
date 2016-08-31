@@ -23,9 +23,9 @@ import org.junit.Test;
 
 import java.util.LinkedList;
 
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class ProducerOfValueTest {
 	Eventloop eventloop = new Eventloop();
@@ -61,6 +61,7 @@ public class ProducerOfValueTest {
 
 		assertEquals(TEST_OBJECT, consumer3.getList().get(0));
 		assertEquals(END_OF_STREAM, producer3.getProducerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -72,6 +73,7 @@ public class ProducerOfValueTest {
 
 		assertTrue(consumer3.getList().get(0) == null);
 		assertEquals(END_OF_STREAM, producer3.getProducerStatus());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 }

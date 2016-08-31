@@ -35,8 +35,8 @@ import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static org.junit.Assert.*;
 
 @SuppressWarnings("ConstantConditions")
 public class HttpApiTest {
@@ -128,6 +128,7 @@ public class HttpApiTest {
 		});
 		eventloop.run();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	private HttpResponse createResponse() {

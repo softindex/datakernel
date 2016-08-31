@@ -34,9 +34,11 @@ import java.util.concurrent.TimeoutException;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
+import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.util.ByteBufStrings.decodeUtf8;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 
 public class AsyncHttpClientTest {
 	private static final int PORT = 45788;
@@ -86,6 +88,7 @@ public class AsyncHttpClientTest {
 		assertEquals(decodeUtf8(HelloWorldServer.HELLO_WORLD), resultObserver.get());
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test(expected = TimeoutException.class)
@@ -140,6 +143,7 @@ public class AsyncHttpClientTest {
 		} catch (ExecutionException e) {
 			throw e.getCause();
 		}
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test(expected = TimeoutException.class)
@@ -177,6 +181,7 @@ public class AsyncHttpClientTest {
 		} catch (ExecutionException e) {
 			throw e.getCause();
 		}
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test(expected = ParseException.class)
@@ -220,6 +225,7 @@ public class AsyncHttpClientTest {
 		} catch (ExecutionException e) {
 			throw e.getCause();
 		}
+		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test(expected = ParseException.class)
@@ -292,5 +298,6 @@ public class AsyncHttpClientTest {
 		} catch (ExecutionException e) {
 			throw e.getCause();
 		}
+		assertThat(eventloop, doesntHaveFatals());
 	}
 }
