@@ -184,18 +184,12 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 	}
 
 	private boolean isMultilineHeader(ByteBuf buf, int p) {
-		// ensure CRLF
-		if (p + 1 < buf.tail() && (buf.at(p + 1) == SP || buf.at(p + 1) == HT)) {
-			if (p > 0 && buf.at(p - 1) == CR) {
-				if (p > 1 && buf.at(p - 2) == LF) {
-					return false;
-				}
-			} else if (buf.at(p - 1) == LF) {
-				return false;
-			}
-			return true;
-		}
-		return false;
+		return p + 1 < buf.tail() && (buf.at(p + 1) == SP || buf.at(p + 1) == HT) &&
+				isDataBetweenStartAndLF(buf, p);
+	}
+
+	private boolean isDataBetweenStartAndLF(ByteBuf buf, int p) {
+		return !(p == buf.head() || (p - buf.head() == 1 && buf.at(p - 1) == CR));
 	}
 
 	private void preprocessMultiLine(ByteBuf buf, int pos) {

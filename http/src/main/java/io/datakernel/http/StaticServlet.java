@@ -23,9 +23,12 @@ import io.datakernel.bytebuf.ByteBuf;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
+@SuppressWarnings("ThrowableInstanceNeverThrown, WeakerAccess")
 public abstract class StaticServlet implements AsyncHttpServlet {
 	public static final Charset DEFAULT_TXT_ENCODING = StandardCharsets.UTF_8;
 	public static final String DEFAULT_INDEX_FILE_NAME = "index.html"; // response for get request asking for root
+	public static final HttpServletError BAD_PATH_ERROR = new HttpServletError(400, "Bad path and query section");
+	public static final HttpServletError METHOD_NOT_ALLOWED = new HttpServletError(405, "Only GET is being allowed");
 
 	protected StaticServlet() {
 	}
@@ -59,10 +62,20 @@ public abstract class StaticServlet implements AsyncHttpServlet {
 	@Override
 	public final void serveAsync(final HttpRequest request, final Callback callback) {
 		String path = request.getRelativePath();
-		if (request.getMethod() == HttpMethod.GET && path.equals("/")) {
+
+		if (request.getMethod() != HttpMethod.GET) {
+			callback.onHttpError(METHOD_NOT_ALLOWED);
+			return;
+		}
+
+		if (path.isEmpty() || path.charAt(0) != '/') {
+			callback.onHttpError(BAD_PATH_ERROR);
+			return;
+		}
+
+		if (path.equals("/")) {
 			path = DEFAULT_INDEX_FILE_NAME;
 		} else {
-			assert path.charAt(0) == '/';
 			path = path.substring(1); // removing initial '/'
 		}
 		final String finalPath = path;
