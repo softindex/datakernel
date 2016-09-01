@@ -215,7 +215,7 @@ public class AsmBuilder<T> {
 	 * @return changed AsmFunctionFactory
 	 */
 	public AsmBuilder<T> staticInitializationBlock(Expression expression) {
-		return staticMethod("<clinit>", void.class, Arrays.asList(), expression);
+		return staticMethod("<clinit>", void.class, Collections.EMPTY_LIST, expression);
 	}
 		
 		
@@ -296,7 +296,12 @@ public class AsmBuilder<T> {
 		Type classType = getType('L' + className.replace('.', '/') + ';');
 
 		// contains all classes (abstract and interfaces)
-		final String[] internalNames = scope.getParentClasses().stream().map(clazz -> getInternalName(clazz)).toArray(String[]::new);
+		final Set<Class<?>> parentClasses = scope.getParentClasses();
+		final String[] internalNames = new String[parentClasses.size()];
+		int pos = 0;
+		for (Class<?> clazz : parentClasses)
+			internalNames[pos++] = getInternalName(clazz);		
+	
 		if (scope.getMainType().isInterface()) {
 			cw.visit(V1_6, ACC_PUBLIC + ACC_FINAL + ACC_SUPER,
 					classType.getInternalName(),
@@ -340,7 +345,7 @@ public class AsmBuilder<T> {
 			try {
 				GeneratorAdapter g = new GeneratorAdapter(ACC_PUBLIC + ACC_STATIC + ACC_FINAL, m, null, null, cw);
 
-				Context ctx = new Context(classLoader, g, classType, scope.getParentClasses(), Collections.emptyMap(), scope.getStaticFields(), m.getArgumentTypes(), m, scope.getMethods(), scope.getStaticMethods());
+				Context ctx = new Context(classLoader, g, classType, scope.getParentClasses(), Collections.EMPTY_MAP, scope.getStaticFields(), m.getArgumentTypes(), m, scope.getMethods(), scope.getStaticMethods());
 
 				Expression expression = expressionStaticMap.get(m);
 				loadAndCast(ctx, expression, m.getReturnType());

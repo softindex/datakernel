@@ -999,17 +999,17 @@ public class ExpressionTest {
 		assertEquals(11, instance.getStaticProtectedNumber());		
 	}
 	
-	public static interface TestParent {
-		public default int reduction() {
-			return 11;
-		}
-	}
+
 	
-	public static abstract class TestParentClass implements TestParent{
+	public static abstract class TestParentClass {
 		protected int number = 77;
 		
 		protected int reducedNumber() {
 			return number - reduction();
+		}
+		
+		protected int reduction() {
+			return 11;
 		}
 	}
 	
@@ -1023,8 +1023,8 @@ public class ExpressionTest {
 	
 	@org.junit.Test
 	public void testParentClass() {
-		final DefiningClassLoader definingClassLoader = new DefiningClassLoader();
-		final TestParentClassAdapter instance = (TestParentClassAdapter)new AsmBuilder<>(definingClassLoader, TestParentClass.class, asList(TestParentClassAdapter.class))
+		final DefiningClassLoader definingClassLoader = new DefiningClassLoader();			
+		final TestParentClassAdapter instance = (TestParentClassAdapter) new AsmBuilder<>(definingClassLoader, TestParentClass.class, Collections.<Class<?>>singletonList(TestParentClassAdapter.class))
 				.method("getReducedNumber", call(self(), "reducedNumber"))
 				.method("getReduceValue", call(self(), "reduction"))
 				.method("getNumber", getter(self(), "number"))
