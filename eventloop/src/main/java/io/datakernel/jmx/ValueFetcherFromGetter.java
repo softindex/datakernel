@@ -32,8 +32,10 @@ final class ValueFetcherFromGetter implements ValueFetcher {
 	public Object fetchFrom(Object source) {
 		try {
 			return getter.invoke(source);
-		} catch (IllegalAccessException | InvocationTargetException e) {
+		} catch (IllegalAccessException e) {
 			throw new RuntimeException(e);
+		} catch (InvocationTargetException e) {
+			throw new RuntimeException("ITE caused by: " + e.getCause(), e);
 		}
 	}
 }
