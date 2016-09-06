@@ -60,11 +60,13 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	@Override
 	public void onClosedWithError(Exception e) {
 		assert eventloop.inEventloopThread();
-		onClosed();
 		if (this.callback != null) {
 			ResultCallback<HttpResponse> callback = this.callback;
 			this.callback = null;
+			onClosed();
 			callback.onException(e);
+		} else {
+			onClosed();
 		}
 	}
 
@@ -122,8 +124,8 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		ResultCallback<HttpResponse> callback = this.callback;
 		this.response = null;
 		this.callback = null;
-		if (isClosed())
-			return;
+		// important: process callback before returnToPool!
+		callback.onResult(response);
 
 		// jmx
 		boolean isHttpsConnection = asyncTcpSocket.getClass() == AsyncSslSocket.class;
@@ -141,7 +143,6 @@ final class HttpClientConnection extends AbstractHttpConnection {
 			httpClient.recordRequestEvent(isHttpsConnection, false);
 		}
 
-		callback.onResult(response);
 		response.recycleBufs();
 	}
 
@@ -151,8 +152,10 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		if (callback != null) {
 			if (reading == BODY && contentLength == UNKNOWN_LENGTH) {
 				onHttpMessage(bodyQueue.takeRemaining());
+				assert callback == null;
 			} else {
 				closeWithError(CLOSED_CONNECTION, lastRequestUrl);
+				assert callback == null;
 
 				// jmx
 				httpClient.recordHttpProtocolError(CLOSED_CONNECTION, lastRequestUrl);
@@ -242,6 +245,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 */
 	@Override
 	protected void onClosed() {
+		assert callback == null;
 		super.onClosed();
 		bodyQueue.clear();
 		if (response != null) {
@@ -253,5 +257,28 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	@Override
 	protected void onHttpProtocolError(ParseException e) {
 		httpClient.recordHttpProtocolError(e, lastRequestUrl);
+	}
+
+	@Override
+	public String toString() {
+		return "HttpClientConnection{" +
+				"callback=" + callback +
+				", cancellable=" + cancellable +
+				", response=" + response +
+				", httpClient=" + httpClient +
+				", addressPool=" + addressPool +
+				", addressNode=" + addressNode +
+				", lastRequestUrl='" + lastRequestUrl + '\'' +
+				", remoteAddress=" + remoteAddress +
+				", readQueue=" + readQueue +
+				", closed=" + isClosed() +
+				", keepAlive=" + keepAlive +
+				", bodyQueue=" + bodyQueue +
+				", reading=" + reading +
+				", shouldGzip=" + shouldGzip +
+				", contentLength=" + contentLength +
+				", poolTimestamp=" + poolTimestamp +
+				", poolNode=" + poolNode +
+				'}';
 	}
 }

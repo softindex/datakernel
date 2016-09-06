@@ -32,7 +32,6 @@ import java.nio.channels.SocketChannel;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeoutException;
 
 import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
 import static io.datakernel.eventloop.AsyncTcpSocketImpl.wrapChannel;
@@ -300,6 +299,7 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 			node = node.getNext();
 
 			assert eventloop.inEventloopThread();
+			// TODO: close() -> closeWithError() ?
 			connection.close();
 		}
 	}

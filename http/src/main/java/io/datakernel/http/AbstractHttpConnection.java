@@ -364,6 +364,10 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 			return;
 		}
 		try {
+			if (reading == END_OF_STREAM && readQueue.hasRemaining()) {
+				closeWithError(UNEXPECTED_READ, this);
+				return;
+			}
 			if (readQueue.hasRemaining()) {
 				doRead();
 			}
