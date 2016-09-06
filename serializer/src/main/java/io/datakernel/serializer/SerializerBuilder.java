@@ -17,6 +17,7 @@
 package io.datakernel.serializer;
 
 import io.datakernel.asm.Annotations;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codegen.AsmBuilder;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
@@ -892,8 +893,7 @@ public final class SerializerBuilder {
 
 		Expression version = voidExp();
 		if (currentVersion != null) {
-			version = call(arg(0), "position",
-					callStatic(SerializerUtils.class, "writeVarInt", call(arg(0), "array"), call(arg(0), "position"), value(currentVersion)));
+			version = call(arg(0), "writeVarInt", value(currentVersion));
 		}
 
 		StaticMethods staticMethods = new StaticMethods();
@@ -907,12 +907,12 @@ public final class SerializerBuilder {
 					asList(byte[].class, int.class, key.serializerGen.getRawType()),
 					value.expression);
 		}
-		Variable position = let(call(arg(0), "position"));
+		Variable position = let(call(arg(0), "tail"));
 		asmFactory.method("serialize", sequence(version,
-						call(arg(0), "position", serializerGen.serialize(
+						call(arg(0), "tail", serializerGen.serialize(
 								call(arg(0), "array"), position,
 								cast(arg(1), dataType), currentVersion, staticMethods, compatibilityLevel)),
-						call(arg(0), "position")
+						call(arg(0), "tail")
 				)
 		);
 
@@ -921,7 +921,7 @@ public final class SerializerBuilder {
 			StaticMethods.Value value = staticMethods.mapDeserialize.get(key);
 			asmFactory.staticMethod(value.method,
 					key.serializerGen.getRawType(),
-					asList(SerializationInputBuffer.class),
+					asList(ByteBuf.class),
 					value.expression);
 		}
 
@@ -941,7 +941,7 @@ public final class SerializerBuilder {
 	private void defineDeserializeVersion(SerializerGen serializerGen, AsmBuilder asmFactory, int version, StaticMethods staticMethods) {
 		asmFactory.method("deserializeVersion" + String.valueOf(version),
 				serializerGen.getRawType(),
-				asList(SerializationInputBuffer.class),
+				asList(ByteBuf.class),
 				sequence(serializerGen.deserialize(serializerGen.getRawType(), version, staticMethods, compatibilityLevel)));
 	}
 
@@ -954,7 +954,7 @@ public final class SerializerBuilder {
 			serializerGen.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
 			listValue.add(call(self(), "deserializeVersion" + String.valueOf(version), arg(0)));
 		}
-		asmFactory.method("deserializeEarlierVersions", serializerGen.getRawType(), asList(SerializationInputBuffer.class, int.class),
+		asmFactory.method("deserializeEarlierVersions", serializerGen.getRawType(), asList(ByteBuf.class, int.class),
 				switchForKey(arg(1), listKey, listValue));
 	}
 

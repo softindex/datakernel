@@ -29,6 +29,11 @@
             <artifactId>codegen</artifactId>
             <version>${version}</version>
         </dependency>
+        <dependency>
+            <groupId>io.datakernel</groupId>
+            <artifactId>bytebuf</artifactId>
+            <version>${version}</version>
+        </dependency>
     </dependencies>
 
     <profiles>

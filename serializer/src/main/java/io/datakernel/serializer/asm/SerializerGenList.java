@@ -16,11 +16,11 @@
 
 package io.datakernel.serializer.asm;
 
+import io.datakernel.bytebuf.SerializationUtils;
 import io.datakernel.codegen.*;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.serializer.SerializerUtils;
 
 import java.util.Arrays;
 import java.util.List;
@@ -66,7 +66,7 @@ public final class SerializerGenList implements SerializerGen, NullableOptimizat
 	@Override
 	public Expression serialize(final Expression byteArray, final Variable off, final Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods, final CompatibilityLevel compatibilityLevel) {
 		Expression length = length(value);
-		Expression writeLength = set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, (!nullable ? length : inc(length))));
+		Expression writeLength = set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, (!nullable ? length : inc(length))));
 		Expression forEach = forEach(value, valueSerializer.getRawType(), new ForVar() {
 			@Override
 			public Expression forVar(Expression it) {
@@ -77,7 +77,7 @@ public final class SerializerGenList implements SerializerGen, NullableOptimizat
 			return sequence(writeLength, forEach, off);
 		} else {
 			return choice(isNull(value),
-					sequence(set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, value(0))), off),
+					sequence(set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, value(0))), off),
 					sequence(writeLength, forEach, off));
 		}
 	}

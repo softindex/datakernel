@@ -16,6 +16,7 @@
 
 package io.datakernel.serializer.asm;
 
+import io.datakernel.bytebuf.SerializationUtils;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Expressions;
 import io.datakernel.codegen.ForVar;
@@ -23,7 +24,6 @@ import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.serializer.SerializerUtils;
 
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
@@ -86,9 +86,9 @@ public final class SerializerGenArray implements SerializerGen, NullableOptimiza
 				? value(fixedSize)
 				: length(castedValue));
 
-		Expression writeBytes = callStatic(SerializerUtils.class, "write", byteArray, off, castedValue);
-		Expression writeZero = set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, value(0)));
-		Expression writeLength = set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, (!nullable ? length : inc(length))));
+		Expression writeBytes = callStatic(SerializationUtils.class, "write", byteArray, off, castedValue);
+		Expression writeZero = set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, value(0)));
+		Expression writeLength = set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, (!nullable ? length : inc(length))));
 		Expression expressionFor = expressionFor(length, new ForVar() {
 			@Override
 			public Expression forVar(Expression it) {

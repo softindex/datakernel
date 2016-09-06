@@ -34,6 +34,7 @@
         <module>boot</module>
         <module>uikernel</module>
         <module>remotefs</module>
+        <module>bytebuf</module>
     </modules>
 
     <licenses>

@@ -22,7 +22,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.serializer.SerializationOutputBuffer;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
 import org.slf4j.Logger;
@@ -74,8 +73,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 		private final int headerSize;
 
 		// TODO (dvolvach): queue of serialized buffers
-		private ByteBuf byteBuf;
-		private final SerializationOutputBuffer outputBuffer = new SerializationOutputBuffer();
+		private ByteBuf outputBuf;
 		private int estimatedMessageSize;
 
 		private final int flushDelayMillis;
@@ -122,28 +120,24 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 		}
 
 		private void allocateBuffer() {
-			byteBuf = ByteBufPool.allocate(max(defaultBufferSize, headerSize + estimatedMessageSize));
-			outputBuffer.set(byteBuf.array(), 0);
+			outputBuf = ByteBufPool.allocate(max(defaultBufferSize, headerSize + estimatedMessageSize));
 		}
 
 		private void flushBuffer(StreamDataReceiver<ByteBuf> receiver) {
-			byteBuf.head(0);
-			int size = outputBuffer.position();
-			if (size != 0) {
-				byteBuf.tail(size);
-				jmxBytes += size;
+			if (outputBuf.canRead()) {
+				jmxBytes += outputBuf.headRemaining();
 				jmxBufs++;
 				if (outputProducer.getProducerStatus().isOpen()) {
-					receiver.onData(byteBuf);
+					receiver.onData(outputBuf);
 				}
 			} else {
-				byteBuf.recycle();
+				outputBuf.recycle();
 			}
 			allocateBuffer();
 		}
 
 		private void ensureSize(int size) {
-			if (outputBuffer.remaining() < size) {
+			if (outputBuf.tailRemaining() < size) {
 				flushBuffer(outputProducer.getDownstreamDataReceiver());
 			}
 		}
@@ -182,31 +176,31 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 			int positionItem;
 			for (; ; ) {
 				ensureSize(headerSize + estimatedMessageSize);
-				positionBegin = outputBuffer.position();
+				positionBegin = outputBuf.tail();
 				positionItem = positionBegin + headerSize;
-				outputBuffer.position(positionItem);
+				outputBuf.tail(positionItem);
 				try {
-					serializer.serialize(outputBuffer, value);
+					serializer.serialize(outputBuf, value);
 				} catch (ArrayIndexOutOfBoundsException e) {
-					outputBuffer.position(positionBegin);
-					int messageSize = outputBuffer.array().length - positionItem;
+					outputBuf.tail(positionBegin);
+					int messageSize = outputBuf.limit() - positionItem;
 					estimatedMessageSize = messageSize + 1 + (messageSize >>> 1);
 					continue;
 				} catch (Exception e) {
-					outputBuffer.position(positionBegin);
+					outputBuf.tail(positionBegin);
 					handleSerializationError(e);
 					return;
 				}
 				break;
 			}
-			int positionEnd = outputBuffer.position();
+			int positionEnd = outputBuf.tail();
 			int messageSize = positionEnd - positionItem;
 			if (messageSize > maxMessageSize) {
-				outputBuffer.position(positionBegin);
+				outputBuf.tail(positionBegin);
 				handleSerializationError(OUT_OF_BOUNDS_EXCEPTION);
 				return;
 			}
-			writeSize(outputBuffer.array(), positionBegin, messageSize);
+			writeSize(outputBuf.array(), positionBegin, messageSize);
 			messageSize += messageSize >>> 2;
 			if (messageSize > estimatedMessageSize)
 				estimatedMessageSize = messageSize;
@@ -229,9 +223,8 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 
 		private void flushAndClose() {
 			flushBuffer(outputProducer.getDownstreamDataReceiver());
-			byteBuf.recycle();
-			byteBuf = null;
-			outputBuffer.set(null, 0);
+			outputBuf.recycle();
+			outputBuf = null;
 			logger.trace("endOfStream {}, upstream: {}", this, inputConsumer.getUpstream());
 			outputProducer.sendEndOfStream();
 		}
@@ -269,9 +262,9 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 
 		@Override
 		protected void doCleanup() {
-			if (byteBuf != null) {
-				byteBuf.recycle();
-				byteBuf = null;
+			if (outputBuf != null) {
+				outputBuf.recycle();
+				outputBuf = null;
 			}
 		}
 	}

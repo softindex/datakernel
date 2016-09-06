@@ -10,20 +10,14 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>eventloop</artifactId>
+    <artifactId>bytebuf</artifactId>
 
-    <name>DataKernel: Event Loop</name>
+    <name>DataKernel: ByteBuf</name>
     <description>
-        Efficient non-blocking network and file I/O, for building Node.js-like client/server applications
-        with high performance requirements.
+        Memory-efficient, recyclable byte buffers
     </description>
 
     <dependencies>
-        <dependency>
-            <groupId>io.datakernel</groupId>
-            <artifactId>bytebuf</artifactId>
-            <version>${version}</version>
-        </dependency>
     </dependencies>
 
 </project>

@@ -23,7 +23,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.serializer.SerializationInputBuffer;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
 import org.slf4j.Logger;
@@ -71,7 +70,6 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 
 		private final int buffersPoolSize;
 
-		private final SerializationInputBuffer arrayInputBuffer = new SerializationInputBuffer();
 		private ByteBuf buf;
 		private byte[] buffer;
 
@@ -160,13 +158,13 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 						// read message body:
 						T item;
 						if (bufferPos == 0 && len >= dataSize) {
-							arrayInputBuffer.set(b, off);
+							nextBuf.head(off);
 							try {
-								item = valueSerializer.deserialize(arrayInputBuffer);
+								item = valueSerializer.deserialize(nextBuf);
 							} catch (Exception e) {
 								throw new ParseException("Cannot deserialize stream ", e);
 							}
-							if ((arrayInputBuffer.position() - off) != dataSize)
+							if ((nextBuf.head() - off) != dataSize)
 								throw new ParseException("Deserialized size != parsed data size");
 							len -= dataSize;
 							off += dataSize;
@@ -179,13 +177,13 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 							off += readSize;
 							if (bufferPos != dataSize)
 								break;
-							arrayInputBuffer.set(buffer, 0);
+							ByteBuf inputBuf = ByteBuf.wrap(buffer, 0, buffer.length);
 							try {
-								item = valueSerializer.deserialize(arrayInputBuffer);
+								item = valueSerializer.deserialize(inputBuf);
 							} catch (Exception e) {
 								throw new ParseException("Cannot finish deserialization", e);
 							}
-							if (arrayInputBuffer.position() != dataSize)
+							if (inputBuf.head() != dataSize)
 								throw new ParseException("Deserialized size != parsed data size");
 							bufferPos = 0;
 							dataSize = 0;

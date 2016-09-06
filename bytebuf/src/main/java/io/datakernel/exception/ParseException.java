@@ -14,14 +14,21 @@
  * limitations under the License.
  */
 
-package io.datakernel.serializer;
+package io.datakernel.exception;
 
-import io.datakernel.bytebuf.ByteBuf;
+public class ParseException extends SimpleException {
+	public ParseException() {
+	}
 
-public interface BufferSerializer<T> {
+	public ParseException(String message) {
+		super(message);
+	}
 
-	void serialize(ByteBuf output, T item);
+	public ParseException(String message, Throwable cause) {
+		super(message, cause);
+	}
 
-	T deserialize(ByteBuf input);
-
+	public ParseException(Throwable cause) {
+		super(cause);
+	}
 }

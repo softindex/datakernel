@@ -16,6 +16,7 @@
 
 package io.datakernel.serializer.asm;
 
+import io.datakernel.bytebuf.SerializationUtils;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.ForVar;
 import io.datakernel.codegen.Variable;
@@ -23,7 +24,6 @@ import io.datakernel.codegen.utils.Preconditions;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.serializer.SerializerUtils;
 
 import java.util.*;
 
@@ -74,12 +74,12 @@ public class SerializerGenSet implements SerializerGen, NullableOptimization {
 
 		if (!nullable) {
 			return sequence(
-					set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, call(value, "size"))),
+					set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, call(value, "size"))),
 					serializeEach, off);
 		} else {
 			return choice(isNull(value),
-					sequence(set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, value(0))), off),
-					sequence(set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, inc(call(value, "size")))),
+					sequence(set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, value(0))), off),
+					sequence(set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, inc(call(value, "size")))),
 							serializeEach, off));
 		}
 	}
@@ -125,7 +125,6 @@ public class SerializerGenSet implements SerializerGen, NullableOptimization {
 		}
 	}
 
-
 	private Expression deserializeSimpleSet(final int version,
 	                                        final SerializerBuilder.StaticMethods staticMethods,
 	                                        final CompatibilityLevel compatibilityLevel) {
@@ -150,7 +149,6 @@ public class SerializerGenSet implements SerializerGen, NullableOptimization {
 			);
 		}
 	}
-
 
 	@Override
 	public SerializerGen setNullable() {

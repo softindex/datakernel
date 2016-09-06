@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package io.datakernel.serializer;
+package io.datakernel.bytebuf;
 
 import java.io.UnsupportedEncodingException;
 
-public final class SerializerUtils {
-	private SerializerUtils() {
+public final class SerializationUtils {
+	private SerializationUtils() {
 	}
 
 	public static int write(byte[] buf, int off, byte[] bytes) {

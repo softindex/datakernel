@@ -1,13 +1,24 @@
+/*
+ * Copyright (C) 2015 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.datakernel.bytebuf;
 
-import io.datakernel.jmx.MBeanFormat;
-import io.datakernel.util.ConcurrentStack;
-
-import javax.management.ObjectName;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.util.Preconditions.check;
 import static java.lang.Integer.numberOfLeadingZeros;
 
 public class ByteBufPool {
@@ -107,9 +118,6 @@ public class ByteBufPool {
 		return append(to, from, 0, from.length);
 	}
 
-	//region  +jmx
-	public static final ObjectName JMX_NAME = MBeanFormat.name(ByteBufPool.class.getPackage().getName(), ByteBufPool.class.getSimpleName());
-
 	private static final ByteBufPoolStats stats = new ByteBufPoolStats();
 
 	public static ByteBufPoolStats getStats() {
@@ -125,12 +133,12 @@ public class ByteBufPool {
 	}
 
 	public static int getCreatedItems(int slab) {
-		check(slab >= 0 && slab < slabs.length);
+		assert slab >= 0 && slab < slabs.length;
 		return created[slab];
 	}
 
 	public static int getPoolItems(int slab) {
-		check(slab >= 0 && slab < slabs.length);
+		assert slab >= 0 && slab < slabs.length;
 		return slabs[slab].size();
 	}
 
@@ -184,7 +192,7 @@ public class ByteBufPool {
 		List<String> getPoolSlabs();
 	}
 
-	public static final class ByteBufPoolStats implements ByteBufPool.ByteBufPoolStatsMXBean {
+	public static final class ByteBufPoolStats implements ByteBufPoolStatsMXBean {
 
 		@Override
 		public int getCreatedItems() {

@@ -16,12 +16,12 @@
 
 package io.datakernel.serializer.asm;
 
+import io.datakernel.bytebuf.SerializationUtils;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.codegen.utils.Preconditions;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.serializer.SerializerUtils;
 import io.datakernel.serializer.StringFormat;
 
 import java.util.ArrayList;
@@ -96,24 +96,24 @@ public class SerializerGenString implements SerializerGen {
 
 		if (format == StringFormat.UTF16) {
 			if (nullable)
-				list.add(callStatic(SerializerUtils.class, "writeUTF16Nullable", byteArray, off, expression));
+				list.add(callStatic(SerializationUtils.class, "writeUTF16Nullable", byteArray, off, expression));
 			else
-				list.add(callStatic(SerializerUtils.class, "writeUTF16", byteArray, off, expression));
+				list.add(callStatic(SerializationUtils.class, "writeUTF16", byteArray, off, expression));
 		} else if (format == StringFormat.ISO_8859_1 && compatibilityLevel != CompatibilityLevel.LEVEL_1) {
 			if (nullable)
-				list.add(callStatic(SerializerUtils.class, "writeIso88591Nullable", byteArray, off, expression));
+				list.add(callStatic(SerializationUtils.class, "writeIso88591Nullable", byteArray, off, expression));
 			else
-				list.add(callStatic(SerializerUtils.class, "writeIso88591", byteArray, off, expression));
+				list.add(callStatic(SerializationUtils.class, "writeIso88591", byteArray, off, expression));
 		} else if (format == StringFormat.UTF8 && compatibilityLevel != CompatibilityLevel.LEVEL_1) {
 			if (nullable)
-				list.add(callStatic(SerializerUtils.class, "writeJavaUTF8Nullable", byteArray, off, expression));
+				list.add(callStatic(SerializationUtils.class, "writeJavaUTF8Nullable", byteArray, off, expression));
 			else
-				list.add(callStatic(SerializerUtils.class, "writeJavaUTF8", byteArray, off, expression));
+				list.add(callStatic(SerializationUtils.class, "writeJavaUTF8", byteArray, off, expression));
 		} else {
 			if (nullable)
-				list.add(callStatic(SerializerUtils.class, "writeCustomUTF8Nullable", byteArray, off, expression));
+				list.add(callStatic(SerializationUtils.class, "writeCustomUTF8Nullable", byteArray, off, expression));
 			else
-				list.add(callStatic(SerializerUtils.class, "writeCustomUTF8", byteArray, off, expression));
+				list.add(callStatic(SerializationUtils.class, "writeCustomUTF8", byteArray, off, expression));
 		}
 
 		return sequence(list);

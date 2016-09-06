@@ -16,12 +16,12 @@
 
 package io.datakernel.serializer.asm;
 
+import io.datakernel.bytebuf.SerializationUtils;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.serializer.SerializerUtils;
 import org.objectweb.asm.Type;
 
 import static io.datakernel.codegen.Expressions.*;
@@ -64,11 +64,11 @@ public class SerializerGenEnum implements SerializerGen, NullableOptimization {
 	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		Expression ordinal = cast(call(cast(value, Enum.class), "ordinal"), Type.BYTE_TYPE);
 		if (!nullable) {
-			return callStatic(SerializerUtils.class, "writeByte", byteArray, off, ordinal);
+			return callStatic(SerializationUtils.class, "writeByte", byteArray, off, ordinal);
 		} else {
 			return choice(isNull(value),
-					callStatic(SerializerUtils.class, "writeByte", byteArray, off, value((byte) 0)),
-					callStatic(SerializerUtils.class, "writeByte", byteArray, off, cast(add(ordinal, value((byte) 1)), Type.BYTE_TYPE))
+					callStatic(SerializationUtils.class, "writeByte", byteArray, off, value((byte) 0)),
+					callStatic(SerializationUtils.class, "writeByte", byteArray, off, cast(add(ordinal, value((byte) 1)), Type.BYTE_TYPE))
 			);
 		}
 	}

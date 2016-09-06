@@ -16,9 +16,8 @@
 
 package io.datakernel.serializer.asm;
 
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.serializer.SerializationInputBuffer;
-import io.datakernel.serializer.SerializationOutputBuffer;
 
 public final class BufferSerializers {
 	private BufferSerializers() {
@@ -26,25 +25,25 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<Byte> BYTE_SERIALIZER = new BufferSerializer<Byte>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Byte item) {
+		public void serialize(ByteBuf output, Byte item) {
 			output.writeByte(item);
 		}
 
 		@Override
-		public Byte deserialize(SerializationInputBuffer input) {
+		public Byte deserialize(ByteBuf input) {
 			return input.readByte();
 		}
 	};
 
 	private static final BufferSerializer<byte[]> BYTES_SERIALIZER = new BufferSerializer<byte[]>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, byte[] item) {
+		public void serialize(ByteBuf output, byte[] item) {
 			output.writeVarInt(item.length);
 			output.write(item);
 		}
 
 		@Override
-		public byte[] deserialize(SerializationInputBuffer input) {
+		public byte[] deserialize(ByteBuf input) {
 			int size = input.readVarInt();
 			byte[] result = new byte[size];
 			input.read(result);
@@ -54,48 +53,48 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<Short> SHORT_SERIALIZER = new BufferSerializer<Short>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Short item) {
+		public void serialize(ByteBuf output, Short item) {
 			output.writeShort(item);
 		}
 
 		@Override
-		public Short deserialize(SerializationInputBuffer input) {
+		public Short deserialize(ByteBuf input) {
 			return input.readShort();
 		}
 	};
 
 	private static final BufferSerializer<Integer> INT_SERIALIZER = new BufferSerializer<Integer>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Integer item) {
+		public void serialize(ByteBuf output, Integer item) {
 			output.writeInt(item);
 		}
 
 		@Override
-		public Integer deserialize(SerializationInputBuffer input) {
+		public Integer deserialize(ByteBuf input) {
 			return input.readInt();
 		}
 	};
 
 	private static final BufferSerializer<Integer> VARINT_SERIALIZER = new BufferSerializer<Integer>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Integer item) {
+		public void serialize(ByteBuf output, Integer item) {
 			output.writeVarInt(item);
 		}
 
 		@Override
-		public Integer deserialize(SerializationInputBuffer input) {
+		public Integer deserialize(ByteBuf input) {
 			return input.readVarInt();
 		}
 	};
 
 	private static final BufferSerializer<Integer> VARINT_ZIGZAG_SERIALIZER = new BufferSerializer<Integer>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Integer item) {
+		public void serialize(ByteBuf output, Integer item) {
 			output.writeVarInt((item << 1) ^ (item >> 31));
 		}
 
 		@Override
-		public Integer deserialize(SerializationInputBuffer input) {
+		public Integer deserialize(ByteBuf input) {
 			int n = input.readVarInt();
 			return (n >>> 1) ^ -(n & 1);
 		}
@@ -103,36 +102,36 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<Long> LONG_SERIALIZER = new BufferSerializer<Long>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Long item) {
+		public void serialize(ByteBuf output, Long item) {
 			output.writeLong(item);
 		}
 
 		@Override
-		public Long deserialize(SerializationInputBuffer input) {
+		public Long deserialize(ByteBuf input) {
 			return input.readLong();
 		}
 	};
 
 	private static final BufferSerializer<Long> VARLONG_SERIALIZER = new BufferSerializer<Long>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Long item) {
+		public void serialize(ByteBuf output, Long item) {
 			output.writeVarLong(item);
 		}
 
 		@Override
-		public Long deserialize(SerializationInputBuffer input) {
+		public Long deserialize(ByteBuf input) {
 			return input.readVarLong();
 		}
 	};
 
 	private static final BufferSerializer<Long> VARLONG_ZIGZAG_SERIALIZER = new BufferSerializer<Long>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Long item) {
+		public void serialize(ByteBuf output, Long item) {
 			output.writeVarLong((item << 1) ^ (item >> 63));
 		}
 
 		@Override
-		public Long deserialize(SerializationInputBuffer input) {
+		public Long deserialize(ByteBuf input) {
 			long n = input.readVarLong();
 			return (n >>> 1) ^ -(n & 1);
 		}
@@ -140,84 +139,84 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<Float> FLOAT_SERIALIZER = new BufferSerializer<Float>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Float item) {
+		public void serialize(ByteBuf output, Float item) {
 			output.writeFloat(item);
 		}
 
 		@Override
-		public Float deserialize(SerializationInputBuffer input) {
+		public Float deserialize(ByteBuf input) {
 			return input.readFloat();
 		}
 	};
 
 	private static final BufferSerializer<Double> DOUBLE_SERIALIZER = new BufferSerializer<Double>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Double item) {
+		public void serialize(ByteBuf output, Double item) {
 			output.writeDouble(item);
 		}
 
 		@Override
-		public Double deserialize(SerializationInputBuffer input) {
+		public Double deserialize(ByteBuf input) {
 			return input.readDouble();
 		}
 	};
 
 	private static final BufferSerializer<Character> CHAR_SERIALIZER = new BufferSerializer<Character>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Character item) {
+		public void serialize(ByteBuf output, Character item) {
 			output.writeChar(item);
 		}
 
 		@Override
-		public Character deserialize(SerializationInputBuffer input) {
+		public Character deserialize(ByteBuf input) {
 			return input.readChar();
 		}
 	};
 
 	private static final BufferSerializer<String> JAVA_UTF8_SERIALIZER = new BufferSerializer<String>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, String item) {
+		public void serialize(ByteBuf output, String item) {
 			output.writeJavaUTF8(item);
 		}
 
 		@Override
-		public String deserialize(SerializationInputBuffer input) {
+		public String deserialize(ByteBuf input) {
 			return input.readJavaUTF8();
 		}
 	};
 
 	private static final BufferSerializer<String> UTF16_SERIALIZER = new BufferSerializer<String>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, String item) {
+		public void serialize(ByteBuf output, String item) {
 			output.writeUTF16(item);
 		}
 
 		@Override
-		public String deserialize(SerializationInputBuffer input) {
+		public String deserialize(ByteBuf input) {
 			return input.readUTF16();
 		}
 	};
 
 	private static final BufferSerializer<Boolean> BOOLEAN_SERIALIZER = new BufferSerializer<Boolean>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Boolean item) {
+		public void serialize(ByteBuf output, Boolean item) {
 			output.writeBoolean(item);
 		}
 
 		@Override
-		public Boolean deserialize(SerializationInputBuffer input) {
+		public Boolean deserialize(ByteBuf input) {
 			return input.readBoolean();
 		}
 	};
 
 	private static final BufferSerializer<String> ISO_8859_1_SERIALIZER = new BufferSerializer<String>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, String item) {
+		public void serialize(ByteBuf output, String item) {
 			output.writeIso88591(item);
 		}
 
 		@Override
-		public String deserialize(SerializationInputBuffer input) {
+		public String deserialize(ByteBuf input) {
 			return input.readIso88591();
 		}
 	};

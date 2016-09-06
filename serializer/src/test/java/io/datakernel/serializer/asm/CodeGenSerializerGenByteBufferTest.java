@@ -16,9 +16,8 @@
 
 package io.datakernel.serializer.asm;
 
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.serializer.SerializationInputBuffer;
-import io.datakernel.serializer.SerializationOutputBuffer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
@@ -33,10 +32,9 @@ public class CodeGenSerializerGenByteBufferTest {
 
 	private static <T> T doTest(T testData1, BufferSerializer<T> serializer, BufferSerializer<T> deserializer) {
 		byte[] array = new byte[1000];
-		SerializationOutputBuffer output = new SerializationOutputBuffer(array);
-		serializer.serialize(output, testData1);
-		SerializationInputBuffer input = new SerializationInputBuffer(array, 0);
-		return deserializer.deserialize(input);
+		ByteBuf buf = ByteBuf.wrapForWriting(array);
+		serializer.serialize(buf, testData1);
+		return deserializer.deserialize(buf);
 	}
 
 	@Test
@@ -92,13 +90,12 @@ public class CodeGenSerializerGenByteBufferTest {
 				.create(ByteBuffer.class);
 
 		byte[] buffer = new byte[1000];
-		SerializationOutputBuffer output = new SerializationOutputBuffer(buffer);
-		serializer.serialize(output, testBuffer1);
-		serializer.serialize(output, testBuffer2);
+		ByteBuf buf = ByteBuf.wrapForWriting(buffer);
+		serializer.serialize(buf, testBuffer1);
+		serializer.serialize(buf, testBuffer2);
 
-		SerializationInputBuffer input = new SerializationInputBuffer(buffer, 0);
-		ByteBuffer testBuffer3 = serializer.deserialize(input);
-		ByteBuffer testBuffer4 = serializer.deserialize(input);
+		ByteBuffer testBuffer3 = serializer.deserialize(buf);
+		ByteBuffer testBuffer4 = serializer.deserialize(buf);
 
 		assertNotNull(testBuffer3);
 		assertNotNull(testBuffer4);
@@ -127,13 +124,12 @@ public class CodeGenSerializerGenByteBufferTest {
 				.create(ByteBuffer.class);
 
 		byte[] buffer = new byte[1000];
-		SerializationOutputBuffer output = new SerializationOutputBuffer(buffer);
-		serializer.serialize(output, testBuffer1);
-		serializer.serialize(output, testBuffer2);
+		ByteBuf buf = ByteBuf.wrapForWriting(buffer);
+		serializer.serialize(buf, testBuffer1);
+		serializer.serialize(buf, testBuffer2);
 
-		SerializationInputBuffer input = new SerializationInputBuffer(buffer, 0);
-		ByteBuffer testBuffer3 = serializer.deserialize(input);
-		ByteBuffer testBuffer4 = serializer.deserialize(input);
+		ByteBuffer testBuffer3 = serializer.deserialize(buf);
+		ByteBuffer testBuffer4 = serializer.deserialize(buf);
 
 		assertNotNull(testBuffer3);
 		assertNotNull(testBuffer4);
@@ -181,15 +177,14 @@ public class CodeGenSerializerGenByteBufferTest {
 				.create(TestByteBufferData.class);
 
 		byte[] buffer = new byte[1000];
-		SerializationOutputBuffer output = new SerializationOutputBuffer(buffer);
-		serializer.serialize(output, testBuffer1);
-		serializer.serialize(output, testBuffer0);
-		serializer.serialize(output, testBuffer2);
+		ByteBuf buf = ByteBuf.wrapForWriting(buffer);
+		serializer.serialize(buf, testBuffer1);
+		serializer.serialize(buf, testBuffer0);
+		serializer.serialize(buf, testBuffer2);
 
-		SerializationInputBuffer input = new SerializationInputBuffer(buffer, 0);
-		TestByteBufferData testBuffer3 = serializer.deserialize(input);
-		TestByteBufferData testBuffer00 = serializer.deserialize(input);
-		TestByteBufferData testBuffer4 = serializer.deserialize(input);
+		TestByteBufferData testBuffer3 = serializer.deserialize(buf);
+		TestByteBufferData testBuffer00 = serializer.deserialize(buf);
+		TestByteBufferData testBuffer4 = serializer.deserialize(buf);
 
 		assertNotNull(testBuffer3);
 		assertNotNull(testBuffer00);
@@ -218,15 +213,14 @@ public class CodeGenSerializerGenByteBufferTest {
 				.create(TestByteBufferData.class);
 
 		byte[] buffer = new byte[1000];
-		SerializationOutputBuffer output = new SerializationOutputBuffer(buffer);
-		serializer.serialize(output, testBuffer1);
-		serializer.serialize(output, testBuffer0);
-		serializer.serialize(output, testBuffer2);
+		ByteBuf buf = ByteBuf.wrapForWriting(buffer);
+		serializer.serialize(buf, testBuffer1);
+		serializer.serialize(buf, testBuffer0);
+		serializer.serialize(buf, testBuffer2);
 
-		SerializationInputBuffer input = new SerializationInputBuffer(buffer, 0);
-		TestByteBufferData testBuffer3 = serializer.deserialize(input);
-		TestByteBufferData testBuffer00 = serializer.deserialize(input);
-		TestByteBufferData testBuffer4 = serializer.deserialize(input);
+		TestByteBufferData testBuffer3 = serializer.deserialize(buf);
+		TestByteBufferData testBuffer00 = serializer.deserialize(buf);
+		TestByteBufferData testBuffer4 = serializer.deserialize(buf);
 
 		assertNotNull(testBuffer3);
 		assertNotNull(testBuffer00);

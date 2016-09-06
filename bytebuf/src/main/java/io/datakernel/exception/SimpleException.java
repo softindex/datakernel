@@ -14,14 +14,29 @@
  * limitations under the License.
  */
 
-package io.datakernel.serializer;
+package io.datakernel.exception;
 
-import io.datakernel.bytebuf.ByteBuf;
+@SuppressWarnings("ThrowableInstanceNeverThrown")
+public class SimpleException extends Exception {
 
-public interface BufferSerializer<T> {
+	public SimpleException() {
+		super();
+	}
 
-	void serialize(ByteBuf output, T item);
+	public SimpleException(String message, Throwable cause) {
+		super(message, cause);
+	}
 
-	T deserialize(ByteBuf input);
+	public SimpleException(String s) {
+		super(s);
+	}
 
+	public SimpleException(Throwable cause) {
+		super(cause);
+	}
+
+	@Override
+	public final Throwable fillInStackTrace() {
+		return this;
+	}
 }

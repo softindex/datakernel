@@ -16,13 +16,13 @@
 
 package io.datakernel.serializer.asm;
 
+import io.datakernel.bytebuf.SerializationUtils;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.codegen.utils.Preconditions;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.serializer.SerializerUtils;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -111,7 +111,7 @@ public class SerializerGenSubclass implements SerializerGen, NullableOptimizatio
 
 			listKey.add(cast(value(getType(subclass)), Object.class));
 			listValue.add(sequence(
-					set(arg(1), callStatic(SerializerUtils.class, "writeByte", arg(0), arg(1), value(subClassN++))),
+					set(arg(1), callStatic(SerializationUtils.class, "writeByte", arg(0), arg(1), value(subClassN++))),
 					subclassSerializer.serialize(arg(0), arg(1), cast(arg(2), subclassSerializer.getRawType()), version, staticMethods, compatibilityLevel)
 			));
 		}
@@ -119,7 +119,7 @@ public class SerializerGenSubclass implements SerializerGen, NullableOptimizatio
 			staticMethods.registerStaticSerializeMethod(this, version,
 					choice(isNotNull(arg(2)),
 							switchForKey(cast(call(cast(arg(2), Object.class), "getClass"), Object.class), listKey, listValue),
-							callStatic(SerializerUtils.class, "writeByte", arg(0), arg(1), value((byte) 0)))
+							callStatic(SerializationUtils.class, "writeByte", arg(0), arg(1), value((byte) 0)))
 			);
 		} else {
 			staticMethods.registerStaticSerializeMethod(this, version,

@@ -16,13 +16,13 @@
 
 package io.datakernel.serializer.asm;
 
+import io.datakernel.bytebuf.SerializationUtils;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.ExpressionSequence;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.serializer.SerializerUtils;
 
 import java.nio.ByteBuffer;
 
@@ -71,14 +71,14 @@ public class SerializerGenByteBuffer implements SerializerGen, NullableOptimizat
 		Expression array = call(value, "array");
 		Expression position = call(value, "position");
 		Expression remaining = let(call(value, "remaining"));
-		Expression writeLength = set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, (!nullable ? remaining : inc(remaining))));
-		ExpressionSequence write = sequence(writeLength, callStatic(SerializerUtils.class, "write", byteArray, off, array, position, remaining));
+		Expression writeLength = set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, (!nullable ? remaining : inc(remaining))));
+		ExpressionSequence write = sequence(writeLength, callStatic(SerializationUtils.class, "write", byteArray, off, array, position, remaining));
 
 		if (!nullable) {
 			return write;
 		} else {
 			return choice(isNull(value),
-					callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, value(0)),
+					callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, value(0)),
 					write);
 		}
 	}
@@ -104,8 +104,8 @@ public class SerializerGenByteBuffer implements SerializerGen, NullableOptimizat
 			}
 		} else {
 			Expression inputBuffer = call(arg(0), "array");
-			Expression position = let(call(arg(0), "position"));
-			Expression setPosition = call(arg(0), "position", add(position, (!nullable ? length : dec(length))));
+			Expression position = let(call(arg(0), "head"));
+			Expression setPosition = call(arg(0), "head", add(position, (!nullable ? length : dec(length))));
 
 			if (!nullable) {
 				return sequence(length, setPosition, callStatic(ByteBuffer.class, "wrap", inputBuffer, position, length));

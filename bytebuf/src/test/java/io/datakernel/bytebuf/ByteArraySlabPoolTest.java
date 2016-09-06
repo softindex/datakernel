@@ -16,7 +16,6 @@
 
 package io.datakernel.bytebuf;
 
-import io.datakernel.util.ConcurrentStack;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;

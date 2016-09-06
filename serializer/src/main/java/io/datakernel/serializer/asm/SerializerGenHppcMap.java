@@ -16,13 +16,13 @@
 
 package io.datakernel.serializer.asm;
 
+import io.datakernel.bytebuf.SerializationUtils;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.ForVar;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.serializer.SerializerUtils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -134,7 +134,7 @@ public final class SerializerGenHppcMap implements SerializerGen, NullableOptimi
 	@Override
 	public Expression serialize(final Expression byteArray, final Variable off, Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods, final CompatibilityLevel compatibilityLevel) {
 		Expression size = call(value, "size");
-		Expression length = set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, (!nullable ? size : inc(size))));
+		Expression length = set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, (!nullable ? size : inc(size))));
 		Expression hppcMapForEach = hppcMapForEach(iteratorType, value,
 				new ForVar() {
 					@Override
@@ -151,7 +151,7 @@ public final class SerializerGenHppcMap implements SerializerGen, NullableOptimi
 			return sequence(length, hppcMapForEach, off);
 		} else {
 			return choice(isNull(value),
-					sequence(set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, value(0))), off),
+					sequence(set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, value(0))), off),
 					sequence(length, hppcMapForEach, off));
 		}
 

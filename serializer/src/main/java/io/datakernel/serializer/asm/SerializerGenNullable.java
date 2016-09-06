@@ -16,11 +16,11 @@
 
 package io.datakernel.serializer.asm;
 
+import io.datakernel.bytebuf.SerializationUtils;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.serializer.SerializerUtils;
 
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
@@ -56,9 +56,9 @@ public class SerializerGenNullable implements SerializerGen {
 	@Override
 	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		return choice(isNotNull(value),
-				sequence(set(off, callStatic(SerializerUtils.class, "writeByte", byteArray, off, value((byte) 1))),
+				sequence(set(off, callStatic(SerializationUtils.class, "writeByte", byteArray, off, value((byte) 1))),
 						serializer.serialize(byteArray, off, value, version, staticMethods, compatibilityLevel)),
-				callStatic(SerializerUtils.class, "writeByte", byteArray, off, value((byte) 0))
+				callStatic(SerializationUtils.class, "writeByte", byteArray, off, value((byte) 0))
 		);
 	}
 
