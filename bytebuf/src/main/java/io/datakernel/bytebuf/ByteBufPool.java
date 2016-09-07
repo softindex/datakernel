@@ -96,11 +96,10 @@ public class ByteBufPool {
 
 	public static ByteBuf append(ByteBuf to, ByteBuf from) {
 		assert !to.isRecycled() && !from.isRecycled();
-		// TODO: create appendQuick()
-//		if (to.headRemaining() == 0) {
-//			to.recycle();
-//			return from;
-//		}
+		if (to.headRemaining() == 0) {
+			to.recycle();
+			return from;
+		}
 		to = ensureTailRemaining(to, from.headRemaining());
 		to.put(from);
 		from.recycle();

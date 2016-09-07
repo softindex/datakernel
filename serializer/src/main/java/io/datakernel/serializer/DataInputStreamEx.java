@@ -24,7 +24,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 
-public final class DataInputStream implements Closeable {
+public final class DataInputStreamEx implements Closeable {
 	public static final int DEFAULT_BUFFER_SIZE = 65536;
 
 	private InputStream inputStream;
@@ -32,11 +32,11 @@ public final class DataInputStream implements Closeable {
 
 	private char[] charArray = new char[128];
 
-	public DataInputStream(InputStream inputStream) {
+	public DataInputStreamEx(InputStream inputStream) {
 		this(inputStream, DEFAULT_BUFFER_SIZE);
 	}
 
-	public DataInputStream(InputStream inputStream, int bufferSize) {
+	public DataInputStreamEx(InputStream inputStream, int bufferSize) {
 		this.inputStream = inputStream;
 		this.buf = ByteBufPool.allocate(bufferSize);
 	}

@@ -24,7 +24,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.OutputStream;
 
-public final class DataOutputStream implements Closeable {
+public final class DataOutputStreamEx implements Closeable {
 	private static final SerializeException SIZE_EXCEPTION = new SerializeException("Message size of out range");
 	public static final int DEFAULT_BUFFER_SIZE = 65536;
 
@@ -37,11 +37,11 @@ public final class DataOutputStream implements Closeable {
 
 	private int estimatedMessageSize = 1;
 
-	public DataOutputStream(OutputStream output) {
+	public DataOutputStreamEx(OutputStream output) {
 		this(output, DEFAULT_BUFFER_SIZE);
 	}
 
-	public DataOutputStream(OutputStream outputStream, int bufferSize) {
+	public DataOutputStreamEx(OutputStream outputStream, int bufferSize) {
 		this.outputStream = outputStream;
 		this.buf = ByteBufPool.allocate(bufferSize);
 	}
