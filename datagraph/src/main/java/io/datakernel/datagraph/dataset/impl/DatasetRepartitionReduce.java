@@ -47,6 +47,7 @@ public final class DatasetRepartitionReduce<K, I, O> extends Dataset<O> {
 
 	@Override
 	public List<StreamId> channels(DataGraph graph) {
-		return repartitionAndReduce(graph, input, reducer, partitions == null || partitions.isEmpty() ? graph.getAvailablePartitions() : partitions);
+		return repartitionAndReduce(graph, input, reducer,
+				partitions == null || partitions.isEmpty() ? graph.getAvailablePartitions() : partitions);
 	}
 }

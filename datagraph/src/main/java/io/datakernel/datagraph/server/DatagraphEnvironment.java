@@ -96,5 +96,4 @@ public final class DatagraphEnvironment {
 		}
 		return result;
 	}
-
 }

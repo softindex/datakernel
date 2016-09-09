@@ -22,9 +22,10 @@ import io.datakernel.datagraph.graph.TaskContext;
 import io.datakernel.stream.processor.StreamMergeSorterStorage;
 import io.datakernel.stream.processor.StreamSorter;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
+
+import static java.util.Collections.singletonList;
 
 /**
  * Represents a node, which performs sorting of a data stream, based on key function and key comparator.
@@ -41,7 +42,8 @@ public final class NodeSort<K, T> implements Node {
 	private final StreamId input;
 	private final StreamId output = new StreamId();
 
-	public NodeSort(Function<T, K> keyFunction, Comparator<K> keyComparator, boolean deduplicate, int itemsInMemorySize, StreamId input) {
+	public NodeSort(Function<T, K> keyFunction, Comparator<K> keyComparator, boolean deduplicate, int itemsInMemorySize,
+	                StreamId input) {
 		this.keyFunction = keyFunction;
 		this.keyComparator = keyComparator;
 		this.deduplicate = deduplicate;
@@ -51,16 +53,17 @@ public final class NodeSort<K, T> implements Node {
 
 	@Override
 	public Collection<StreamId> getOutputs() {
-		return Arrays.asList(output);
+		return singletonList(output);
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public void createAndBind(TaskContext taskContext) {
-		StreamSorter<K, T> streamMap = new StreamSorter<>(taskContext.getEventloop(), taskContext.environment().getInstance(StreamMergeSorterStorage.class),
+		StreamSorter<K, T> streamSorter = new StreamSorter<>(taskContext.getEventloop(),
+				taskContext.environment().getInstance(StreamMergeSorterStorage.class),
 				keyFunction, keyComparator, deduplicate, itemsInMemorySize);
-		taskContext.bindChannel(input, streamMap.getInput());
-		taskContext.export(output, streamMap.getOutput());
+		taskContext.bindChannel(input, streamSorter.getInput());
+		taskContext.export(output, streamSorter.getOutput());
 	}
 
 	public StreamId getOutput() {

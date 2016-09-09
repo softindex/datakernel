@@ -42,6 +42,7 @@ public final class DatasetRepartitionAndSort<K, T> extends SortedDataset<K, T> {
 
 	@Override
 	public List<StreamId> channels(DataGraph graph) {
-		return repartitionAndSort(graph, input, partitions == null || partitions.isEmpty() ? graph.getAvailablePartitions() : partitions);
+		return repartitionAndSort(graph, input,
+				partitions == null || partitions.isEmpty() ? graph.getAvailablePartitions() : partitions);
 	}
 }

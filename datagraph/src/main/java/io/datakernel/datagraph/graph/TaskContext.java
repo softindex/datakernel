@@ -57,9 +57,9 @@ public final class TaskContext {
 		consumers.put(streamId, consumer);
 	}
 
-	public <T> void export(StreamId streamId, StreamProducer<T> output) {
+	public <T> void export(StreamId streamId, StreamProducer<T> producer) {
 		checkState(!producers.containsKey(streamId));
-		producers.put(streamId, output);
+		producers.put(streamId, producer);
 	}
 
 	@SuppressWarnings("unchecked")

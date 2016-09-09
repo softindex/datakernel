@@ -67,7 +67,6 @@ public final class NodeConsumerToList<T> implements Node {
 		} else {
 			throw new IllegalArgumentException();
 		}
-//		consumer.setName(input.toString());
 		taskContext.bindChannel(input, consumer);
 	}
 }

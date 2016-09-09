@@ -17,17 +17,39 @@
 package io.datakernel.datagraph.graph;
 
 import io.datakernel.datagraph.node.Node;
+import io.datakernel.datagraph.server.DatagraphClient;
 
+import java.net.InetSocketAddress;
 import java.util.Collection;
 
 /**
- * Represents a datagraph partition.
+ * Defines a remote partition, which is represented by a datagraph client and a server address.
  */
-public interface Partition {
+public final class Partition {
+	private final DatagraphClient client;
+	private final InetSocketAddress address;
+
 	/**
-	 * Executes a defined set of operations on the given collection of nodes.
+	 * Constructs a new remote partition with the given client and server address.
 	 *
-	 * @param nodes nodes to execute operations on
+	 * @param client  datagraph client
+	 * @param address server address
 	 */
-	void execute(Collection<Node> nodes);
+	public Partition(DatagraphClient client, InetSocketAddress address) {
+		this.client = client;
+		this.address = address;
+	}
+
+	public void execute(Collection<Node> nodes) {
+		client.execute(address, nodes);
+	}
+
+	public InetSocketAddress getAddress() {
+		return address;
+	}
+
+	@Override
+	public String toString() {
+		return "RemotePartition{address=" + address + '}';
+	}
 }

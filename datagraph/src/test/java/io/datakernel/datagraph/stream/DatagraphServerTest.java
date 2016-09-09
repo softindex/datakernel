@@ -27,16 +27,13 @@ import io.datakernel.datagraph.dataset.SortedDataset;
 import io.datakernel.datagraph.dataset.impl.DatasetListConsumer;
 import io.datakernel.datagraph.graph.DataGraph;
 import io.datakernel.datagraph.graph.Partition;
-import io.datakernel.datagraph.graph.RemotePartition;
 import io.datakernel.datagraph.helper.StreamMergeSorterStorageStub;
-import io.datakernel.datagraph.server.DatagraphClient;
-import io.datakernel.datagraph.server.DatagraphEnvironment;
-import io.datakernel.datagraph.server.DatagraphSerialization;
-import io.datakernel.datagraph.server.DatagraphServer;
+import io.datakernel.datagraph.server.*;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.stream.StreamConsumers;
+import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.StreamMergeSorterStorage;
 import org.junit.Test;
 
@@ -112,8 +109,8 @@ public class DatagraphServerTest {
 				.setListenAddress(address2);
 
 		DatagraphClient client = new DatagraphClient(eventloop, serialization);
-		Partition partition1 = new RemotePartition(client, address1);
-		Partition partition2 = new RemotePartition(client, address2);
+		Partition partition1 = new Partition(client, address1);
+		Partition partition2 = new Partition(client, address2);
 		final DataGraph graph = new DataGraph(serialization,
 				asList(partition1, partition2));
 
@@ -176,8 +173,8 @@ public class DatagraphServerTest {
 		final DatagraphServer server2 = new DatagraphServer(eventloop, environment2)
 				.setListenAddress(address2);
 
-		Partition partition1 = new RemotePartition(client, address1);
-		Partition partition2 = new RemotePartition(client, address2);
+		Partition partition1 = new Partition(client, address1);
+		Partition partition2 = new Partition(client, address2);
 		final DataGraph graph = new DataGraph(serialization,
 				asList(partition1, partition2));
 
@@ -244,8 +241,8 @@ public class DatagraphServerTest {
 		final DatagraphServer server2 = new DatagraphServer(eventloop, environment2)
 				.setListenAddress(address2);
 
-		Partition partition1 = new RemotePartition(client, address1);
-		Partition partition2 = new RemotePartition(client, address2);
+		Partition partition1 = new Partition(client, address1);
+		Partition partition2 = new Partition(client, address2);
 		final DataGraph graph = new DataGraph(serialization, asList(partition1, partition2));
 
 		Dataset<TestItem> filterDataset = filter(datasetOfList("items", TestItem.class),
@@ -290,5 +287,72 @@ public class DatagraphServerTest {
 		assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6)), result1.getList());
 		assertEquals(asList(new TestItem(2), new TestItem(8)), result2.getList());
 		assertThat(eventloop, doesntHaveFatals());
+	}
+
+	@Test
+	public void testCollector() throws Exception {
+		DatagraphSerialization serialization = new DatagraphSerialization();
+		InetSocketAddress address1 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1511);
+		InetSocketAddress address2 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1512);
+
+		final Eventloop eventloop = new Eventloop();
+		DatagraphClient client = new DatagraphClient(eventloop, serialization);
+		final StreamConsumers.ToList<TestItem> resultConsumer = new StreamConsumers.ToList<>(eventloop);
+
+		DatagraphEnvironment environment = DatagraphEnvironment.create()
+				.setInstance(DatagraphSerialization.class, serialization)
+				.setInstance(DatagraphClient.class, client)
+				.setInstance(StreamMergeSorterStorage.class, new StreamMergeSorterStorageStub(eventloop));
+		DatagraphEnvironment environment1 = environment.extend()
+				.set("items", asList(new TestItem(1), new TestItem(2), new TestItem(3),
+						new TestItem(4), new TestItem(5)));
+		DatagraphEnvironment environment2 = environment.extend()
+				.set("items", asList(new TestItem(6), new TestItem(7), new TestItem(8),
+						new TestItem(9), new TestItem(10)));
+
+		final DatagraphServer server1 = new DatagraphServer(eventloop, environment1)
+				.setListenAddress(address1);
+		final DatagraphServer server2 = new DatagraphServer(eventloop, environment2)
+				.setListenAddress(address2);
+
+		Partition partition1 = new Partition(client, address1);
+		Partition partition2 = new Partition(client, address2);
+		final DataGraph graph = new DataGraph(serialization, asList(partition1, partition2));
+
+		Dataset<TestItem> filterDataset = filter(datasetOfList("items", TestItem.class),
+				new Predicate<TestItem>() {
+					@Override
+					public boolean apply(TestItem input) {
+						return input.value % 2 == 0;
+					}
+				});
+
+		LocallySortedDataset<Long, TestItem> sortedDataset =
+				localSort(filterDataset, long.class, new TestItem.KeyFunction(), Ordering.<Long>natural());
+
+		System.out.println("Graph: ");
+		System.out.println(graph);
+
+		server1.listen();
+		server2.listen();
+
+		Collector<TestItem> collector = new Collector<>(sortedDataset, TestItem.class, client, eventloop);
+		StreamProducer<TestItem> resultProducer = collector.compile(graph);
+		resultProducer.streamTo(resultConsumer);
+
+		resultConsumer.setCompletionCallback(new SimpleCompletionCallback() {
+			@Override
+			protected void onCompleteOrException() {
+				server1.close();
+				server2.close();
+			}
+		});
+
+		graph.execute();
+
+		eventloop.run();
+
+		assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6), new TestItem(8), new TestItem(10)),
+				resultConsumer.getList());
 	}
 }

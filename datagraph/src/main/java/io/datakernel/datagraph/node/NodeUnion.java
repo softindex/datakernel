@@ -17,28 +17,21 @@
 package io.datakernel.datagraph.node;
 
 import com.google.common.base.MoreObjects;
-import com.google.common.base.Predicate;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.graph.TaskContext;
-import io.datakernel.stream.processor.StreamFilter;
+import io.datakernel.stream.processor.StreamUnion;
 
 import java.util.Collection;
+import java.util.List;
 
 import static java.util.Collections.singletonList;
 
-/**
- * Represents a node, which filters a data stream and passes to output data items which satisfy a predicate.
- *
- * @param <T> data items type
- */
-public final class NodeFilter<T> implements Node {
-	private final Predicate<T> predicate;
-	private final StreamId input;
+public final class NodeUnion<T> implements Node {
+	private final List<StreamId> inputs;
 	private final StreamId output = new StreamId();
 
-	public NodeFilter(Predicate<T> predicate, StreamId input) {
-		this.predicate = predicate;
-		this.input = input;
+	public NodeUnion(List<StreamId> inputs) {
+		this.inputs = inputs;
 	}
 
 	@Override
@@ -46,22 +39,23 @@ public final class NodeFilter<T> implements Node {
 		return singletonList(output);
 	}
 
-	@Override
-	public void createAndBind(TaskContext taskContext) {
-		StreamFilter<T> streamFilter = new StreamFilter<>(taskContext.getEventloop(), predicate);
-		taskContext.bindChannel(input, streamFilter.getInput());
-		taskContext.export(output, streamFilter.getOutput());
-	}
-
 	public StreamId getOutput() {
 		return output;
 	}
 
 	@Override
+	public void createAndBind(TaskContext taskContext) {
+		StreamUnion<T> streamUnion = new StreamUnion<>(taskContext.getEventloop());
+		for (StreamId input : inputs) {
+			taskContext.bindChannel(input, streamUnion.newInput());
+		}
+		taskContext.export(output, streamUnion.getOutput());
+	}
+
+	@Override
 	public String toString() {
 		return MoreObjects.toStringHelper(this)
-				.add("predicate", predicate)
-				.add("input", input)
+				.add("inputs", inputs)
 				.add("output", output)
 				.toString();
 	}

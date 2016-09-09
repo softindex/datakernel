@@ -21,9 +21,10 @@ import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.graph.TaskContext;
 import io.datakernel.stream.processor.StreamJoin;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
+
+import static java.util.Collections.singletonList;
 
 /**
  * Represents a node, which joins two internalConsumers streams (left and right) into one, based on logic, defined by key functions and joiner.
@@ -59,15 +60,15 @@ public final class NodeJoin<K, L, R, V> implements Node {
 
 	@Override
 	public Collection<StreamId> getOutputs() {
-		return Arrays.asList(result);
+		return singletonList(result);
 	}
 
 	@Override
 	public void createAndBind(TaskContext taskContext) {
-		StreamJoin<K, L, R, V> join = new StreamJoin<>(taskContext.getEventloop(), keyComparator, leftKeyFunction, rightKeyFunction, joiner);
+		StreamJoin<K, L, R, V> join =
+				new StreamJoin<>(taskContext.getEventloop(), keyComparator, leftKeyFunction, rightKeyFunction, joiner);
 		taskContext.export(result, join.getOutput());
 		taskContext.bindChannel(left, join.getLeft());
 		taskContext.bindChannel(right, join.getRight());
 	}
-
 }
