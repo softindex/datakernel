@@ -977,13 +977,13 @@ public class ExpressionTest {
 		final DefiningClassLoader definingClassLoader = new DefiningClassLoader();
 		final TestStaticField instance = new AsmBuilder<>(definingClassLoader, TestStaticField.class)
 				.staticField("value", int.class)
-				.staticInitializationBlock(setter(self(), "value", value(9), true))
-				.method("getStaticValue", getter(self(), "value", true))
-				.method("setStaticValue", setter(self(), "value", arg(0), true))
-				.method("getStaticNumber", getter(type(TestPublicStaticField.class), "number", true))
-				.method("setStaticNumber", setter(type(TestPublicStaticField.class), "number", arg(0), true))
-				.method("getStaticProtectedNumber", getter(self(), "number", true))
-				.method("setStaticProtectedNumber", setter(self(), "number", arg(0), true))
+				.staticInitializationBlock(setter(self(), "value", value(9)))
+				.method("getStaticValue", getter(self(), "value"))
+				.method("setStaticValue", setter(self(), "value", arg(0)))
+				.method("getStaticNumber", getter(type(TestPublicStaticField.class), "number"))
+				.method("setStaticNumber", setter(type(TestPublicStaticField.class), "number", arg(0)))
+				.method("getStaticProtectedNumber", getter(self(), "number"))
+				.method("setStaticProtectedNumber", setter(self(), "number", arg(0)))
 				.newInstance();
 		
 		assertEquals(9, instance.getStaticValue());		

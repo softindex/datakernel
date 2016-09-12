@@ -88,52 +88,28 @@ public final class Expressions {
 		return cast(expression, getType(type));
 	}
 
-	/**
-	 * Returns the field from owner
-	 *
-	 * @param owner owner of the field
-	 * @param field name of the field which will be returned
-	 * @return new instance of the VarField
-	 */
-	public static VarField getter(Expression owner, String field) {
-		return getter(owner, field, false);
-	}
 	
 	/**
 	 * Returns the field from owner
 	 * 
 	 * @param owner owner of the field
 	 * @param field name of the field which will be returned
-	 * @param isStatic true for static fields
 	 * @return new instance of the VarField
 	 */
-	public static VarField getter(Expression owner, String field, boolean isStatic) {
-		return new VarField(owner, field, isStatic);
+	public static VarField getter(Expression owner, String field) {
+		return new VarField(owner, field);
 	}
-
+	
 	/**
 	 * Sets value to the field in owner
-	 *
+	 * 
 	 * @param owner owner of the field
 	 * @param field name of field which will be changed
 	 * @param value new value for the field
 	 * @return new instance of the ExpressionSet
 	 */
 	public static Expression setter(Expression owner, String field, Expression value) {
-		return setter(owner, field, value, false);
-	}
-	
-	/**
-	 * Sets value to the field in owner
-	 * 
-	 * @param owner owner of the field
-	 * @param field name of field which will be changed
-	 * @param value new value for the field
-	 * @param isStatic true for static fields
-	 * @return new instance of the ExpressionSet
-	 */
-	public static Expression setter(Expression owner, String field, Expression value, boolean isStatic) {
-		return set(getter(owner, field, isStatic), value);
+		return set(getter(owner, field), value);
 	}
 	
 	/**

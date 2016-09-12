@@ -37,35 +37,51 @@ import static org.objectweb.asm.commons.Method.getMethod;
 public final class VarField implements Variable {
 	private final Expression owner;
 	private final String field;
-	private final boolean isStatic;
 
-	VarField(Expression owner, String field, boolean isStatic) {
+	VarField(Expression owner, String field) {
 		this.owner = owner;
 		this.field = field;
-		this.isStatic = isStatic;
 	}
 
 	@Override
 	public Type type(Context ctx) {
-		return typeOfFieldOrGetter(ctx, owner.type(ctx), field, isStatic);
+		final Type ownerType = owner.type(ctx);
+		return typeOfFieldOrGetter(ctx, owner.type(ctx), field, isStatic(ctx, ownerType));
 	}
 
 	@Override
 	public Type load(Context ctx) {
+		boolean isStatic = isStatic(ctx, owner.type(ctx));
 		Type ownerType = isStatic ? owner.type(ctx) : owner.load(ctx);
 		return loadFieldOrGetter(ctx, ownerType, field, isStatic);
 	}
 
 	@Override
 	public Object beginStore(Context ctx) {
-		return isStatic ? owner.type(ctx) : owner.load(ctx);
+	    final Type ownerType = owner.type(ctx);
+	    return isStatic(ctx, ownerType) ? ownerType : owner.load(ctx);
 	}
 
 	@Override
 	public void store(Context ctx, Object storeContext, Type type) {
-		setField(ctx, (Type) storeContext, field, type, isStatic);
+	    final Type ownerType = owner.type(ctx);
+	    setField(ctx, (Type) storeContext, field, type, isStatic(ctx, ownerType));
 	}
 
+	private boolean isStatic(Context ctx, Type ownerType) {
+	    if (ctx.getThisType().equals(ownerType)) {
+	        return ctx.getStaticFields().containsKey(field);
+	    } else {
+	        try {
+	            final int modifiers = getJavaType(ctx.getClassLoader(), ownerType).getField(field).getModifiers();
+	            return Modifier.isPublic(modifiers) && Modifier.isStatic(modifiers);
+	        } catch (NoSuchFieldException e) {
+	            // class without public static field but with getter/setter
+	            return false;
+	        }
+	    }
+	}
+	
 	public static void setField(Context ctx, Type ownerType, String field, Type valueType, boolean isStatic) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 
