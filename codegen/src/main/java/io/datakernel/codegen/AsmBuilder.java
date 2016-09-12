@@ -353,14 +353,13 @@ public class AsmBuilder<T> {
 
 				g.endMethod();
 			} catch (Exception e) {
-				throw new RuntimeException(e);
+				throw new RuntimeException("Unable to implement "+m.getName()+m.getDescriptor(),e);
 			}
 		}
 
 		for (Method m : expressionMap.keySet()) {
 			try {
-				GeneratorAdapter g = new GeneratorAdapter(ACC_PUBLIC, m, null, null, cw);
-
+				GeneratorAdapter g = new GeneratorAdapter(ACC_PUBLIC + ACC_FINAL, m, null, null, cw);
 				Context ctx = new Context(classLoader, g, classType, scope.getParentClasses(), scope.getFields(), scope.getStaticFields(), m.getArgumentTypes(), m, scope.getMethods(), scope.getStaticMethods());
 
 				Expression expression = expressionMap.get(m);
@@ -369,7 +368,7 @@ public class AsmBuilder<T> {
 
 				g.endMethod();
 			} catch (Exception e) {
-				throw new RuntimeException(e);
+				throw new RuntimeException("Unable to implement "+m.getName()+m.getDescriptor(),e);
 			}
 		}
 		if (bytecodeSaveDir != null) {
