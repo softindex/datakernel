@@ -51,7 +51,7 @@ public class HttpCharsetTest {
 	}
 
 	@Test
-	public void testConverters() {
+	public void testConverters() throws ParseException {
 		HttpCharset expected = HttpCharset.US_ASCII;
 		Charset charset = expected.toJavaCharset();
 		HttpCharset actual = HttpCharset.of(charset);

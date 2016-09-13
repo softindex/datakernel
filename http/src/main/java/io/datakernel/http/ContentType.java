@@ -107,7 +107,7 @@ public final class ContentType {
 		return pos;
 	}
 
-	public Charset getCharset() {
+	public Charset getCharset() throws ParseException {
 		return charset == null ? null : charset.toJavaCharset();
 	}
 

@@ -16,6 +16,8 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.ParseException;
+
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -79,11 +81,19 @@ final class HttpCharset extends CaseInsensitiveTokenMap.Token {
 		return this;
 	}
 
-	Charset toJavaCharset() {
+	Charset toJavaCharset() throws ParseException {
 		if (javaCharset != null) {
 			return javaCharset;
 		} else {
-			javaCharset = forName(decodeAscii(bytes, offset, length));
+			String charsetName = decodeAscii(bytes, offset, length);
+			try {
+				if (charsetName.startsWith("\"") || charsetName.startsWith("\'")) {
+					charsetName = charsetName.substring(1, charsetName.length() - 1);
+				}
+				javaCharset = forName(charsetName);
+			} catch (Exception e) {
+				throw new ParseException("Can't fetch charset for " + charsetName, e);
+			}
 			return javaCharset;
 		}
 	}

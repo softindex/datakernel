@@ -61,7 +61,7 @@ public final class AcceptCharset {
 		return new AcceptCharset(charset, q);
 	}
 
-	public Charset getCharset() {
+	public Charset getCharset() throws ParseException {
 		return charset.toJavaCharset();
 	}
 
