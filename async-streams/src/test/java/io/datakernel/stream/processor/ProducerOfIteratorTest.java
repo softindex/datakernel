@@ -35,7 +35,7 @@ public class ProducerOfIteratorTest {
 
 	@Test
 	public void test1() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		List<Integer> list = Arrays.asList(1, 2, 3);
 

@@ -17,19 +17,19 @@
 package io.datakernel.http;
 
 import io.datakernel.async.AsyncCancellable;
-import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncSslSocket;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.ParseException;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.TimeoutException;
 
+import static io.datakernel.bytebuf.ByteBufStrings.SP;
+import static io.datakernel.bytebuf.ByteBufStrings.decodeDecimal;
 import static io.datakernel.http.HttpHeaders.CONNECTION;
-import static io.datakernel.util.ByteBufStrings.SP;
-import static io.datakernel.util.ByteBufStrings.decodeDecimal;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
 final class HttpClientConnection extends AbstractHttpConnection {
@@ -51,10 +51,19 @@ final class HttpClientConnection extends AbstractHttpConnection {
 
 	final InetSocketAddress remoteAddress;
 
-	HttpClientConnection(Eventloop eventloop, InetSocketAddress remoteAddress, AsyncTcpSocket asyncTcpSocket, AsyncHttpClient httpClient, char[] headerChars, int maxHttpMessageSize) {
+	private HttpClientConnection(Eventloop eventloop, InetSocketAddress remoteAddress,
+	                             AsyncTcpSocket asyncTcpSocket, AsyncHttpClient httpClient, char[] headerChars,
+	                             int maxHttpMessageSize) {
 		super(eventloop, asyncTcpSocket, headerChars, maxHttpMessageSize);
 		this.remoteAddress = remoteAddress;
 		this.httpClient = httpClient;
+	}
+
+	static HttpClientConnection create(Eventloop eventloop, InetSocketAddress remoteAddress,
+	                                   AsyncTcpSocket asyncTcpSocket, AsyncHttpClient httpClient,
+	                                   char[] headerChars, int maxHttpMessageSize) {
+		return new HttpClientConnection(eventloop, remoteAddress, asyncTcpSocket,
+				httpClient, headerChars, maxHttpMessageSize);
 	}
 
 	@Override
@@ -93,7 +102,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		int statusCode = decodeDecimal(line.array(), sp1, sp2 - sp1);
 		if (!(statusCode >= 100 && statusCode < 600))
 			throw new ParseException("Invalid HTTP Status Code " + statusCode);
-		response = HttpResponse.create(statusCode);
+		response = HttpResponse.ofCode(statusCode);
 		if (isNoBodyMessage(response)) {
 			// Reset Content-Length for the case keep-alive connection
 			contentLength = 0;
@@ -119,7 +128,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	@Override
 	protected void onHttpMessage(ByteBuf bodyBuf) {
 		assert !isClosed();
-		response.body(bodyBuf);
+		response.setBody(bodyBuf);
 		HttpResponse response = this.response;
 		ResultCallback<HttpResponse> callback = this.callback;
 		this.response = null;

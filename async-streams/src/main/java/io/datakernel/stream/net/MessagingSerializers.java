@@ -2,16 +2,16 @@ package io.datakernel.stream.net;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
-import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.util.ByteBufStrings;
+import io.datakernel.bytebuf.ByteBufStrings;
+import io.datakernel.exception.ParseException;
 
-import static io.datakernel.util.ByteBufStrings.putUtf8;
+import static io.datakernel.bytebuf.ByteBufStrings.putUtf8;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown, WeakerAccess")
-public class MessagingSerializers {
-	public static final ParseException DESERIALIZE_ERR = new ParseException("Cant deserialize message");
+public final class MessagingSerializers {
+	public static final ParseException DESERIALIZE_ERR = new ParseException("Can't deserialize message");
 
 	private MessagingSerializers() {
 	}

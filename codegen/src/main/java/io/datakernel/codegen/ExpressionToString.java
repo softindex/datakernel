@@ -33,7 +33,7 @@ import static org.objectweb.asm.commons.Method.getMethod;
  * Defines methods which allow to create a string
  */
 @SuppressWarnings("PointlessArithmeticExpression")
-public final class ExpressionToString implements Expression {
+final class ExpressionToString implements Expression {
 	private String begin = "{";
 	private String end = "}";
 	private String separator = " ";

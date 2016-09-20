@@ -21,7 +21,7 @@ import java.util.List;
 
 import static java.lang.Integer.numberOfLeadingZeros;
 
-public class ByteBufPool {
+public final class ByteBufPool {
 	private static final int NUMBER_SLABS = 33;
 
 	private static int minSize = 32;
@@ -29,6 +29,8 @@ public class ByteBufPool {
 
 	private static final ConcurrentStack<ByteBuf>[] slabs = createSlabs(NUMBER_SLABS);
 	private static final int[] created = new int[NUMBER_SLABS];
+
+	private ByteBufPool() {}
 
 	public static ByteBuf allocate(int size) {
 		if (size < minSize || size >= maxSize) {

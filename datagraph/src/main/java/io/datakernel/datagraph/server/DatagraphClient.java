@@ -90,7 +90,7 @@ public final class DatagraphClient {
 		@Override
 		public void onConnect(SocketChannel socketChannel) {
 			AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel, socketSettings);
-			final MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = new MessagingWithBinaryStreaming<>(eventloop, asyncTcpSocket, serializer);
+			final MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = MessagingWithBinaryStreaming.create(eventloop, asyncTcpSocket, serializer);
 			DatagraphCommandDownload commandDownload = new DatagraphCommandDownload(streamId);
 
 			messaging.send(commandDownload, new CompletionCallback() {
@@ -139,7 +139,7 @@ public final class DatagraphClient {
 		@Override
 		public void onConnect(SocketChannel socketChannel) {
 			AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel, socketSettings);
-			final MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = new MessagingWithBinaryStreaming<>(eventloop, asyncTcpSocket, serializer);
+			final MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = MessagingWithBinaryStreaming.create(eventloop, asyncTcpSocket, serializer);
 			DatagraphCommandExecute commandExecute = new DatagraphCommandExecute(nodes);
 			messaging.send(commandExecute, new CompletionCallback() {
 				@Override
@@ -165,7 +165,7 @@ public final class DatagraphClient {
 
 	public <T> StreamProducer<T> download(InetSocketAddress address, final StreamId streamId, Class<T> type) {
 		BufferSerializer<T> serializer = serialization.getSerializer(type);
-		StreamBinaryDeserializer<T> deserializer = new StreamBinaryDeserializer<>(eventloop, serializer, StreamBinarySerializer.MAX_SIZE);
+		StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(eventloop, serializer, StreamBinarySerializer.MAX_SIZE);
 		connectAndExecute(address, new DownloadConnectCallback(streamId, deserializer.getInput(), new CompletionCallback() {
 			@Override
 			public void onComplete() {

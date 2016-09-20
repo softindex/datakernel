@@ -31,7 +31,7 @@ public final class SerializeSubclassesHandler implements AnnotationHandler<Seria
 				Preconditions.check(superclass.getTypeParameters().length == 0);
 				Preconditions.check(superclassGenerics.length == 0);
 
-				return serializerBuilder.createSubclassesSerializer(superclass, annotation);
+				return serializerBuilder.buildSubclassesSerializer(superclass, annotation);
 			}
 		};
 	}

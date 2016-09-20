@@ -16,16 +16,16 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.util.ByteBufStrings;
+import io.datakernel.bytebuf.ByteBufStrings;
+import io.datakernel.exception.ParseException;
 
 import java.util.*;
 
+import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
+import static io.datakernel.bytebuf.ByteBufStrings.putDecimal;
 import static io.datakernel.http.HttpHeaders.*;
-import static io.datakernel.util.ByteBufStrings.encodeAscii;
-import static io.datakernel.util.ByteBufStrings.putDecimal;
 
 /**
  * It represents the HTTP result with which server response in client {@link HttpRequest}. It must ave only
@@ -33,114 +33,158 @@ import static io.datakernel.util.ByteBufStrings.putDecimal;
  * not use it later.
  */
 public final class HttpResponse extends HttpMessage {
-	private final int code;
-
-	private HttpResponse(int code) {
-		this.code = code;
-	}
-
-	public static HttpResponse create(int code) {
-		assert code >= 100 && code < 600;
-		return new HttpResponse(code);
-	}
-
-	public static HttpResponse create() {
-		return new HttpResponse(200);
-	}
-
-	public static HttpResponse redirect302(String url) {
-		return create(302)
-				.header(HttpHeaders.LOCATION, url);
-	}
-
-	public static HttpResponse badRequest400() {
-		return create(400);
-	}
-
-	public static HttpResponse notFound404() {
-		return create(404);
-	}
-
-	public static HttpResponse internalServerError500() {
-		return create(500);
-	}
-
-	// common builder methods
-	public HttpResponse header(HttpHeader header, ByteBuf value) {
-		setHeader(header, value);
-		return this;
-	}
-
-	public HttpResponse header(HttpHeader header, byte[] value) {
-		setHeader(header, value);
-		return this;
-	}
-
-	public HttpResponse header(HttpHeader header, String value) {
-		setHeader(header, value);
-		return this;
-	}
-
-	public HttpResponse body(ByteBuf body) {
-		setBody(body);
-		return this;
-	}
-
-	public HttpResponse body(byte[] array) {
-		return body(ByteBuf.wrapForReading(array));
-	}
-
-	// specific builder methods
 	private static final Value CACHE_CONTROL__NO_STORE = HttpHeaders.asBytes(CACHE_CONTROL, "no-store");
 	private static final Value PRAGMA__NO_CACHE = HttpHeaders.asBytes(PRAGMA, "no-cache");
 	private static final Value AGE__0 = HttpHeaders.asBytes(AGE, "0");
 
-	public HttpResponse noCache() {
+	private final int code;
+
+	// region builders
+	private HttpResponse(int code) {
+		this.code = code;
+	}
+
+	public static HttpResponse ofCode(int code) {
+		assert code >= 100 && code < 600;
+		return new HttpResponse(code);
+	}
+
+	public static HttpResponse ok200() {
+		return new HttpResponse(200);
+	}
+
+	public static HttpResponse redirect302(String url) {
+		HttpResponse response = HttpResponse.ofCode(302);
+		response.addHeader(HttpHeaders.LOCATION, url);
+		return response;
+	}
+
+	public static HttpResponse badRequest400() {
+		return ofCode(400);
+	}
+
+	public static HttpResponse notFound404() {
+		return ofCode(404);
+	}
+
+	public static HttpResponse internalServerError500() {
+		return ofCode(500);
+	}
+
+	// common builder methods
+	public HttpResponse withHeader(HttpHeader header, ByteBuf value) {
+		addHeader(header, value);
+		return this;
+	}
+
+	public HttpResponse withHeader(HttpHeader header, byte[] value) {
+		addHeader(header, value);
+		return this;
+	}
+
+	public HttpResponse withHeader(HttpHeader header, String value) {
+		addHeader(header, value);
+		return this;
+	}
+
+	public HttpResponse withBody(ByteBuf body) {
+		setBody(body);
+		return this;
+	}
+
+	public HttpResponse withBody(byte[] array) {
+		setBody(ByteBuf.wrapForReading(array));
+		return this;
+	}
+
+	// specific builder methods
+	public HttpResponse withNoCache() {
+		setNoCache();
+		return this;
+	}
+
+	public HttpResponse withAge(int value) {
+		setAge(value);
+		return this;
+	}
+
+	public HttpResponse withContentType(ContentType contentType) {
+		setContentType(contentType);
+		return this;
+	}
+
+	public HttpResponse withDate(Date date) {
+		setDate(date);
+		return this;
+	}
+
+	public HttpResponse withExpires(Date date) {
+		setExpires(date);
+		return this;
+	}
+
+	public HttpResponse withLastModified(Date date) {
+		setLastModified(date);
+		return this;
+	}
+
+	public HttpResponse withCookies(List<HttpCookie> cookies) {
+		setCookies(cookies);
+		return this;
+	}
+
+	public HttpResponse withCookies(HttpCookie... cookies) {
+		setCookies(cookies);
+		return this;
+	}
+
+	public HttpResponse withCookie(HttpCookie cookie) {
+		setCookie(cookie);
+		return this;
+	}
+	// endregion
+
+	// region setters
+	public void setNoCache() {
 		setHeader(CACHE_CONTROL__NO_STORE);
 		setHeader(PRAGMA__NO_CACHE);
 		setHeader(AGE__0);
-		return this;
 	}
 
-	public HttpResponse age(int value) {
+	public void setAge(int value) {
 		setHeader(ofDecimal(AGE, value));
-		return this;
 	}
 
-	public HttpResponse contentType(ContentType contentType) {
+	public void setContentType(ContentType contentType) {
 		setHeader(ofContentType(HttpHeaders.CONTENT_TYPE, contentType));
-		return this;
 	}
 
-	public HttpResponse date(Date date) {
+	public void setDate(Date date) {
 		setHeader(ofDate(HttpHeaders.DATE, date));
-		return this;
 	}
 
-	public HttpResponse expires(Date date) {
+	public void setExpires(Date date) {
 		setHeader(ofDate(HttpHeaders.EXPIRES, date));
-		return this;
 	}
 
-	public HttpResponse lastModified(Date date) {
+	public void setLastModified(Date date) {
 		setHeader(ofDate(HttpHeaders.LAST_MODIFIED, date));
-		return this;
 	}
 
-	public HttpResponse setCookies(List<HttpCookie> cookies) {
+	public void setCookies(List<HttpCookie> cookies) {
 		addHeader(ofSetCookies(HttpHeaders.SET_COOKIE, cookies));
-		return this;
 	}
 
-	public HttpResponse setCookies(HttpCookie... cookies) {
-		return setCookies(Arrays.asList(cookies));
+	public void setCookies(HttpCookie... cookies) {
+		setCookies(Arrays.asList(cookies));
 	}
 
-	public HttpResponse setCookie(HttpCookie cookie) {
-		return setCookies(Collections.singletonList(cookie));
+	public void setCookie(HttpCookie cookie) {
+		setCookies(Collections.singletonList(cookie));
 	}
+	// endregion
 
-	// getters
+	// region getters
 	public int getCode() {
 		assert !recycled;
 		return code;
@@ -181,8 +225,9 @@ public final class HttpResponse extends HttpMessage {
 		}
 		return cookies;
 	}
+	// endregion
 
-	// internal
+	// region internal
 	private static final byte[] HTTP11_BYTES = encodeAscii("HTTP/1.1 ");
 	private static final byte[] CODE_ERROR_BYTES = encodeAscii(" Error");
 	private static final byte[] CODE_OK_BYTES = encodeAscii(" OK");
@@ -275,4 +320,5 @@ public final class HttpResponse extends HttpMessage {
 	public String toString() {
 		return HttpResponse.class.getSimpleName() + ": " + code;
 	}
+	// endregion
 }

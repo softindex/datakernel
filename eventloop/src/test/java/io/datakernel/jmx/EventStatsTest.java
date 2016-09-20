@@ -29,7 +29,7 @@ public class EventStatsTest {
 	@Test
 	public void ifRateIsConstantEventStatsShouldApproximateThatRateAfterEnoughTimePassed() {
 		double smoothingWindow = 1.0;
-		EventStats eventStats = new EventStats(smoothingWindow);
+		EventStats eventStats = EventStats.create().withSmoothingWindow(smoothingWindow);
 		long currentTimestamp = 0;
 		int events = 1000;
 		double rate = 20.0;
@@ -49,7 +49,7 @@ public class EventStatsTest {
 	@Test
 	public void counterShouldResetRateAfterResetMethodCall() {
 		double smoothingWindow = 1.0;
-		EventStats eventStats = new EventStats(smoothingWindow);
+		EventStats eventStats = EventStats.create().withSmoothingWindow(smoothingWindow);
 		long currentTimestamp = 0;
 		int events = 1000;
 		double rate = 20.0;
@@ -79,9 +79,9 @@ public class EventStatsTest {
 
 		double smoothingWindow = 10.0;
 
-		EventStats stats_1 = new EventStats(smoothingWindow);
-		EventStats stats_2 = new EventStats(smoothingWindow);
-		EventStats stats_3 = new EventStats(smoothingWindow);
+		EventStats stats_1 = EventStats.create().withSmoothingWindow(smoothingWindow);
+		EventStats stats_2 = EventStats.create().withSmoothingWindow(smoothingWindow);
+		EventStats stats_3 = EventStats.create().withSmoothingWindow(smoothingWindow);
 
 		for (int i = 0; i < iterations; i++) {
 			stats_1.recordEvents(1);
@@ -94,7 +94,7 @@ public class EventStatsTest {
 			stats_3.refresh(currentTimestamp);
 		}
 
-		EventStats accumulator = new EventStats();
+		EventStats accumulator = EventStats.create();
 		accumulator.add(stats_1);
 		accumulator.add(stats_2);
 		accumulator.add(stats_3);
@@ -106,7 +106,7 @@ public class EventStatsTest {
 	@Test
 	public void itShouldConvergeProperlyWhenNoEventsOccurredBetweenRefreshes() {
 		double smoothingWindow = 10.0;
-		EventStats stats = new EventStats(smoothingWindow);
+		EventStats stats = EventStats.create().withSmoothingWindow(smoothingWindow);
 		int iterations = 1000;
 		long currentTimestamp = 0;
 		final int period = 200;
@@ -126,7 +126,7 @@ public class EventStatsTest {
 	@Test
 	public void itShouldConvergeProperlyWhenPeriodIsNotStableButPeriodExpectationIsStable() {
 		double smoothingWindow = 10.0;
-		EventStats stats = new EventStats(smoothingWindow);
+		EventStats stats = EventStats.create().withSmoothingWindow(smoothingWindow);
 		int iterations = 1000;
 		long currentTimestamp = 0;
 		final int period = 200;
@@ -145,7 +145,7 @@ public class EventStatsTest {
 	@Test
 	public void itShouldConvergeProperlyWhenAmountOfEventsPerPeriodIsNotStableButExpectationOfAmountOfEventIsStable() {
 		double smoothingWindow = 50.0;
-		EventStats stats = new EventStats(smoothingWindow);
+		EventStats stats = EventStats.create().withSmoothingWindow(smoothingWindow);
 		int iterations = 10000;
 		long currentTimestamp = 0;
 		final int period = 200;

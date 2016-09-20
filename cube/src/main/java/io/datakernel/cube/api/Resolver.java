@@ -33,8 +33,12 @@ import static io.datakernel.cube.api.CommonUtils.generateSetter;
 public final class Resolver {
 	private final Map<String, AttributeResolver> attributeResolvers;
 
-	public Resolver(Map<String, AttributeResolver> attributeResolvers) {
+	private Resolver(Map<String, AttributeResolver> attributeResolvers) {
 		this.attributeResolvers = attributeResolvers;
+	}
+
+	public static Resolver create(Map<String, AttributeResolver> attributeResolvers) {
+		return new Resolver(attributeResolvers);
 	}
 
 	public List<Object> resolve(List<Object> records, Class<?> recordClass,

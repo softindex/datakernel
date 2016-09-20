@@ -16,18 +16,18 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.util.ByteBufStrings;
+import io.datakernel.bytebuf.ByteBufStrings;
+import io.datakernel.exception.ParseException;
 
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 
+import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
+import static io.datakernel.bytebuf.ByteBufStrings.equalsLowerCaseAscii;
 import static io.datakernel.http.HttpUtils.parseQ;
 import static io.datakernel.http.HttpUtils.skipSpaces;
-import static io.datakernel.util.ByteBufStrings.encodeAscii;
-import static io.datakernel.util.ByteBufStrings.equalsLowerCaseAscii;
 
 public final class AcceptCharset {
 	public static final int DEFAULT_Q = 100;

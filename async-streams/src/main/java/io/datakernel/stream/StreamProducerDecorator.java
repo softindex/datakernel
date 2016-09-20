@@ -26,10 +26,11 @@ import static com.google.common.base.Preconditions.checkState;
  *
  * @param <T> item type
  */
-public class StreamProducerDecorator<T> implements StreamProducer<T> {
+public abstract class StreamProducerDecorator<T> implements StreamProducer<T> {
 
 	private StreamProducer<T> actualProducer;
 
+	// region creators
 	public StreamProducerDecorator() {
 
 	}
@@ -37,6 +38,7 @@ public class StreamProducerDecorator<T> implements StreamProducer<T> {
 	public StreamProducerDecorator(StreamProducer<T> actualProducer) {
 		setActualProducer(actualProducer);
 	}
+	// endregion
 
 	public void setActualProducer(StreamProducer<T> actualProducer) {
 		checkState(this.actualProducer == null, "Decorator is already wired");

@@ -27,6 +27,10 @@ public final class AsyncTcpSocketContract {
 	private boolean closed = false;
 	private boolean closeAndNotifyEventHandler = false;
 
+	private AsyncTcpSocketContract() {}
+
+	public static AsyncTcpSocketContract create() {return new AsyncTcpSocketContract();}
+
 	// region methods
 	public boolean read() {
 		assert !closed : "read operation cannot be invoked when socket is closed";

@@ -23,9 +23,7 @@ import java.lang.reflect.Constructor;
 import java.util.Arrays;
 import java.util.List;
 
-import static io.datakernel.codegen.Utils.argsToString;
-import static io.datakernel.codegen.Utils.exceptionInGeneratedClass;
-import static io.datakernel.codegen.Utils.getJavaType;
+import static io.datakernel.codegen.Utils.*;
 import static java.lang.String.format;
 import static org.objectweb.asm.Type.getType;
 import static org.objectweb.asm.commons.Method.getMethod;
@@ -33,7 +31,7 @@ import static org.objectweb.asm.commons.Method.getMethod;
 /**
  * Defines methods for using constructors from other classes
  */
-public final class ExpressionConstructor implements Expression {
+final class ExpressionConstructor implements Expression {
 	private final Class<?> type;
 	private final List<Expression> fields;
 
@@ -75,7 +73,7 @@ public final class ExpressionConstructor implements Expression {
 		} catch (NoSuchMethodException e) {
 			throw new RuntimeException(format("No constructor %s.<init>(%s). %s",
 					type.getName(),
-					(fieldTypes.length != 0 ? argsToString(fieldTypes): ""),
+					(fieldTypes.length != 0 ? argsToString(fieldTypes) : ""),
 					exceptionInGeneratedClass(ctx)));
 		}
 	}

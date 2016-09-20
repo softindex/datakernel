@@ -35,7 +35,7 @@ import static org.junit.Assert.*;
 public class StreamFilterTest {
 	@Test
 	public void test1() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
 
@@ -45,7 +45,7 @@ public class StreamFilterTest {
 				return input % 2 == 1;
 			}
 		};
-		StreamFilter<Integer> filter = new StreamFilter<>(eventloop, predicate);
+		StreamFilter<Integer> filter = StreamFilter.create(eventloop, predicate);
 
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
@@ -62,7 +62,7 @@ public class StreamFilterTest {
 
 	@Test
 	public void testWithError() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		List<Integer> list = new ArrayList<>();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
@@ -73,7 +73,7 @@ public class StreamFilterTest {
 				return input % 2 != 2;
 			}
 		};
-		StreamFilter<Integer> streamFilter = new StreamFilter<>(eventloop, predicate);
+		StreamFilter<Integer> streamFilter = StreamFilter.create(eventloop, predicate);
 
 		TestStreamConsumers.TestConsumerToList<Integer> consumer1 = new TestStreamConsumers.TestConsumerToList<Integer>(eventloop, list) {
 			@Override
@@ -110,7 +110,7 @@ public class StreamFilterTest {
 	@SuppressWarnings("unchecked")
 	@Test
 	public void testProducerDisconnectWithError() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<Integer> source = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, Arrays.asList(1, 2, 3)),
@@ -122,7 +122,7 @@ public class StreamFilterTest {
 				return input % 2 != 2;
 			}
 		};
-		StreamFilter<Integer> streamFilter = new StreamFilter<>(eventloop, predicate);
+		StreamFilter<Integer> streamFilter = StreamFilter.create(eventloop, predicate);
 
 		List<Integer> list = new ArrayList<>();
 		TestStreamConsumers.TestConsumerToList consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
@@ -142,7 +142,7 @@ public class StreamFilterTest {
 
 	@Test
 	public void testWithoutConsumer() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
 
@@ -152,7 +152,7 @@ public class StreamFilterTest {
 				return input % 2 == 1;
 			}
 		};
-		StreamFilter<Integer> filter = new StreamFilter<>(eventloop, predicate);
+		StreamFilter<Integer> filter = StreamFilter.create(eventloop, predicate);
 
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 

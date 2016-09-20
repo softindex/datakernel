@@ -41,7 +41,8 @@ import static io.datakernel.eventloop.AsyncTcpSocketImpl.wrapChannel;
 import static io.datakernel.net.ServerSocketSettings.DEFAULT_BACKLOG;
 import static io.datakernel.net.SocketSettings.defaultSocketSettings;
 import static io.datakernel.util.Preconditions.check;
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
@@ -55,39 +56,84 @@ import static org.slf4j.LoggerFactory.getLogger;
 public abstract class AbstractServer<S extends AbstractServer<S>> implements EventloopServer, EventloopJmxMBean {
 	private final Logger logger = getLogger(this.getClass());
 
-	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS = new ServerSocketSettings(DEFAULT_BACKLOG);
+	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS
+			= ServerSocketSettings.create().withBacklog(DEFAULT_BACKLOG);
 
-	private ServerSocketSettings serverSocketSettings = DEFAULT_SERVER_SOCKET_SETTINGS;
-	private SocketSettings socketSettings = defaultSocketSettings();
+	private final ServerSocketSettings serverSocketSettings;
+	private final SocketSettings socketSettings;
 
 	protected final Eventloop eventloop;
+	protected final boolean acceptOnce;
 
-	private boolean running = false;
-	protected boolean acceptOnce;
-
-	private List<InetSocketAddress> listenAddresses;
-	private List<ServerSocketChannel> serverSocketChannels;
-
-	protected InetAddressRange range;
-	private Set<InetAddress> bannedAddresses;
+	private final List<InetSocketAddress> listenAddresses;
+	protected final InetAddressRange range;
+	private final Set<InetAddress> bannedAddresses;
 
 	// ssl
-	private SSLContext sslContext;
-	private ExecutorService sslExecutor;
-	private List<InetSocketAddress> sslListenAddresses;
+	private final SSLContext sslContext;
+	private final ExecutorService sslExecutor;
+	private final List<InetSocketAddress> sslListenAddresses;
+
+	private boolean running = false;
+	private List<ServerSocketChannel> serverSocketChannels;
 
 	// JMX
 	private static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
 
 	private double smoothingWindow = DEFAULT_SMOOTHING_WINDOW;
-	private final EventStats accepts = new EventStats(DEFAULT_SMOOTHING_WINDOW);
-	private final EventStats rangeBlocked = new EventStats(DEFAULT_SMOOTHING_WINDOW);
-	private final EventStats bannedBlocked = new EventStats(DEFAULT_SMOOTHING_WINDOW);
-	private final EventStats notAllowed = new EventStats(DEFAULT_SMOOTHING_WINDOW);
+	private final EventStats accepts = EventStats.create().withSmoothingWindow(DEFAULT_SMOOTHING_WINDOW);
+	private final EventStats rangeBlocked = EventStats.create().withSmoothingWindow(DEFAULT_SMOOTHING_WINDOW);
+	private final EventStats bannedBlocked = EventStats.create().withSmoothingWindow(DEFAULT_SMOOTHING_WINDOW);
+	private final EventStats notAllowed = EventStats.create().withSmoothingWindow(DEFAULT_SMOOTHING_WINDOW);
 
-	// creators & builder methods
+	// region creators & builder methods
+	@SuppressWarnings("ConstantConditions")
 	public AbstractServer(Eventloop eventloop) {
-		this.eventloop = checkNotNull(eventloop);
+		// default values
+		this(
+				eventloop,
+				DEFAULT_SERVER_SOCKET_SETTINGS,
+				defaultSocketSettings(),
+				false,
+				Collections.<InetSocketAddress>emptyList(),
+				null,
+				Collections.<InetAddress>emptyList(),
+				null,
+				null,
+				Collections.<InetSocketAddress>emptyList()
+		);
+
+	}
+
+	public AbstractServer(Eventloop eventloop,
+	                      ServerSocketSettings serverSocketSettings, SocketSettings socketSettings,
+	                      boolean acceptOnce, Collection<InetSocketAddress> listenAddresses,
+	                      InetAddressRange range, Collection<InetAddress> bannedAddresses,
+	                      SSLContext sslContext, ExecutorService sslExecutor,
+	                      Collection<InetSocketAddress> sslListenAddresses) {
+		this.eventloop = eventloop;
+		this.serverSocketSettings = serverSocketSettings;
+		this.socketSettings = socketSettings;
+		this.acceptOnce = acceptOnce;
+		this.listenAddresses = new ArrayList<>(listenAddresses);
+		this.range = range;
+		this.bannedAddresses = new HashSet<>(bannedAddresses);
+		this.sslContext = sslContext;
+		this.sslExecutor = sslExecutor;
+		this.sslListenAddresses = new ArrayList<>(sslListenAddresses);
+	}
+
+	protected AbstractServer(AbstractServer<?> other) {
+		this.eventloop = other.eventloop;
+		this.serverSocketSettings = other.serverSocketSettings;
+		this.socketSettings = other.socketSettings;
+		this.acceptOnce = other.acceptOnce;
+		this.listenAddresses = other.listenAddresses;
+		this.range = other.range;
+		this.bannedAddresses = other.bannedAddresses;
+		this.sslContext = other.sslContext;
+		this.sslExecutor = other.sslExecutor;
+		this.sslListenAddresses = other.sslListenAddresses;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -95,87 +141,84 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		return (S) this;
 	}
 
-	public final S acceptedIpAddresses(InetAddressRange range) {
-		this.range = range;
-		return self();
+	public final S withAcceptedIpAddresses(InetAddressRange range) {
+		return recreate(eventloop, serverSocketSettings, socketSettings, acceptOnce, listenAddresses,
+				range, bannedAddresses, sslContext, sslExecutor, sslListenAddresses);
 	}
 
-	public final S serverSocketSettings(ServerSocketSettings serverSocketSettings) {
-		this.serverSocketSettings = checkNotNull(serverSocketSettings);
-		return self();
+	public final S withServerSocketSettings(ServerSocketSettings serverSocketSettings) {
+		return recreate(eventloop, serverSocketSettings, socketSettings, acceptOnce, listenAddresses,
+				range, bannedAddresses, sslContext, sslExecutor, sslListenAddresses);
 	}
 
-	public final S socketSettings(SocketSettings socketSettings) {
-		this.socketSettings = checkNotNull(socketSettings);
-		return self();
+	public final S withSocketSettings(SocketSettings socketSettings) {
+		return recreate(eventloop, serverSocketSettings, socketSettings, acceptOnce, listenAddresses,
+				range, bannedAddresses, sslContext, sslExecutor, sslListenAddresses);
 	}
 
-	public final S setListenAddresses(List<InetSocketAddress> addresses) {
+	public final S withListenAddresses(List<InetSocketAddress> addresses) {
 		ensureNotIntersect(sslListenAddresses, addresses);
-		this.listenAddresses = checkNotNull(addresses);
-		return self();
+		return recreate(eventloop, serverSocketSettings, socketSettings, acceptOnce, addresses,
+				range, bannedAddresses, sslContext, sslExecutor, sslListenAddresses);
 	}
 
-	public final S setListenAddresses(InetSocketAddress... addresses) {
-		return setListenAddresses(Arrays.asList(addresses));
+	public final S withListenAddresses(InetSocketAddress... addresses) {
+		return withListenAddresses(asList(addresses));
 	}
 
-	public final S setListenAddress(InetSocketAddress address) {
-		return setListenAddresses(address);
+	public final S withListenAddress(InetSocketAddress address) {
+		return withListenAddresses(singletonList(address));
 	}
 
-	public final S setListenPort(int port) {
-		return setListenAddress(new InetSocketAddress(port));
+	public final S withListenPort(int port) {
+		return withListenAddress(new InetSocketAddress(port));
 	}
 
-	public final S setSslListenAddresses(SSLContext sslContext, ExecutorService executor, List<InetSocketAddress> addresses) {
-		ensureNotIntersect(listenAddresses, addresses);
-		this.sslContext = checkNotNull(sslContext);
-		this.sslExecutor = checkNotNull(executor);
-		this.sslListenAddresses = checkNotNull(addresses);
-		return self();
+	public final S withSslListenAddresses(SSLContext sslContext, ExecutorService executor, List<InetSocketAddress> addresses) {
+		return recreate(eventloop, serverSocketSettings, socketSettings, acceptOnce, listenAddresses,
+				range, bannedAddresses, sslContext, executor, addresses);
 	}
 
-	public final S setSslListenAddresses(SSLContext sslContext, ExecutorService executor, InetSocketAddress... addresses) {
-		return setSslListenAddresses(sslContext, executor, Arrays.asList(addresses));
+	public final S withSslListenAddresses(SSLContext sslContext, ExecutorService executor, InetSocketAddress... addresses) {
+		return withSslListenAddresses(sslContext, executor, asList(addresses));
 	}
 
-	public final S setSslListenAddress(SSLContext sslContext, ExecutorService executor, InetSocketAddress address) {
-		return this.setSslListenAddresses(sslContext, executor, Collections.singletonList(address));
+	public final S withSslListenAddress(SSLContext sslContext, ExecutorService executor, InetSocketAddress address) {
+		return withSslListenAddresses(sslContext, executor, singletonList(address));
 	}
 
-	public final S setSslListenPort(SSLContext sslContext, ExecutorService executor, int port) {
-		return setSslListenAddress(sslContext, executor, new InetSocketAddress(port));
+	public final S withSslListenPort(SSLContext sslContext, ExecutorService executor, int port) {
+		return withSslListenAddress(sslContext, executor, new InetSocketAddress(port));
 	}
 
-	public final S banAddresses(Collection<InetAddress> addresses) {
-		bannedAddresses = new HashSet<>(checkNotNull(addresses));
-		return self();
+	public final S withBanned(Collection<InetAddress> bannedAddresses) {
+		return recreate(eventloop, serverSocketSettings, socketSettings, acceptOnce, listenAddresses,
+				range, bannedAddresses, sslContext, sslExecutor, sslListenAddresses);
 	}
 
-	public final S banAddresses(InetAddress... addresses) {
-		return banAddresses(Arrays.asList(addresses));
+	public final S withBanned(InetAddress... addresses) {
+		return withBanned(asList(addresses));
 	}
 
-	public final S banAddress(InetAddress address) {
-		return banAddresses(Collections.singleton(address));
+	public final S withBanned(InetAddress address) {
+		return withBanned(Collections.singleton(address));
 	}
 
-	/**
-	 * Sets the flag as true, which means that this server can handle only one accepting.
-	 */
-	public final S acceptOnce() {
-		return acceptOnce(true);
+	public final S withAcceptOnce() {
+		return withAcceptOnce(true);
 	}
 
-	/**
-	 * Sets the flag which means possible accepting to this server. If it is true, this server can
-	 * accept only one socketChannel, else - as much as you need.
-	 */
-	public final S acceptOnce(boolean acceptOnce) {
-		this.acceptOnce = acceptOnce;
-		return self();
+	public final S withAcceptOnce(boolean acceptOnce) {
+		return recreate(eventloop, serverSocketSettings, socketSettings, acceptOnce, listenAddresses,
+				range, bannedAddresses, sslContext, sslExecutor, sslListenAddresses);
 	}
+
+	protected abstract S recreate(Eventloop eventloop, ServerSocketSettings serverSocketSettings, SocketSettings socketSettings,
+	                              boolean acceptOnce, Collection<InetSocketAddress> listenAddresses,
+	                              InetAddressRange range, Collection<InetAddress> bannedAddresses,
+	                              SSLContext sslContext, ExecutorService sslExecutor,
+	                              Collection<InetSocketAddress> sslListenAddresses);
+	// endregion
 
 	// eventloop server api
 	@Override
@@ -386,3 +429,8 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		return rangeBlocked.getTotalCount() + bannedBlocked.getTotalCount() + notAllowed.getTotalCount();
 	}
 }
+
+
+
+
+

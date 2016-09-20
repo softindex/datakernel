@@ -27,7 +27,7 @@ import java.util.Map;
 /**
  * Contains information about a dynamic class
  */
-public final class Context {
+final class Context {
 	private final DefiningClassLoader classLoader;
 	private final GeneratorAdapter g;
 	private final Type thisType;
@@ -39,8 +39,10 @@ public final class Context {
 	private final Map<Method, Expression> methodToExpression;
 	private final Map<Method, Expression> staticMethodToExpression;
 
-	public Context(DefiningClassLoader classLoader, GeneratorAdapter g, Type thisType, Class<?> mainClass, List<Class<?>> otherClasses, Map<String, Class<?>> thisFields,
-	               Type[] argumentTypes, Method method, Map<Method, Expression> methodToExpression, Map<Method, Expression> staticMethodToExpression) {
+	public Context(DefiningClassLoader classLoader, GeneratorAdapter g, Type thisType, Class<?> mainClass,
+	               List<Class<?>> otherClasses, Map<String, Class<?>> thisFields,
+	               Type[] argumentTypes, Method method, Map<Method, Expression> methodToExpression,
+	               Map<Method, Expression> staticMethodToExpression) {
 		this.classLoader = classLoader;
 		this.g = g;
 		this.method = method;

@@ -16,15 +16,15 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.util.ByteBufStrings;
+import io.datakernel.bytebuf.ByteBufStrings;
+import io.datakernel.exception.ParseException;
 
 import java.nio.charset.Charset;
 
+import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.http.ContentTypes.lookup;
 import static io.datakernel.http.HttpUtils.skipSpaces;
-import static io.datakernel.util.ByteBufStrings.encodeAscii;
 
 public final class ContentType {
 	private static final byte[] CHARSET_KEY = encodeAscii("charset");

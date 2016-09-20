@@ -25,20 +25,24 @@ import io.datakernel.http.MiddlewareServlet;
 public final class CubeHttpServer {
 	public static final String QUERY_REQUEST_PATH = "/";
 
+	private CubeHttpServer() {}
+
 	private static MiddlewareServlet createServlet(Cube cube, ReportingServiceServlet reportingServiceServlet) {
-		MiddlewareServlet servlet = new MiddlewareServlet();
+		MiddlewareServlet servlet = MiddlewareServlet.create();
 		servlet.get(QUERY_REQUEST_PATH, reportingServiceServlet);
-		servlet.get("/consolidation-debug", new ConsolidationDebugServlet(cube));
+		servlet.get("/consolidation-debug", ConsolidationDebugServlet.create(cube));
 		return servlet;
 	}
 
 	public static AsyncHttpServer createServer(Cube cube, Eventloop eventloop,
-	                                           ReportingServiceServlet reportingServiceServlet) {
-		return new AsyncHttpServer(eventloop, createServlet(cube, reportingServiceServlet));
+	                                           ReportingServiceServlet reportingServiceServlet, int port) {
+		return AsyncHttpServer.create(eventloop, createServlet(cube, reportingServiceServlet)).withListenPort(port);
 	}
 
 	public static AsyncHttpServer createServer(Cube cube, Eventloop eventloop, int classLoaderCacheSize, int port) {
-		return createServer(cube, eventloop, new ReportingServiceServlet(eventloop, cube,
-				new LRUCache<ClassLoaderCacheKey, DefiningClassLoader>(classLoaderCacheSize))).setListenPort(port);
+		return createServer(cube, eventloop, ReportingServiceServlet.create(eventloop, cube,
+				LRUCache.<ClassLoaderCacheKey, DefiningClassLoader>create(classLoaderCacheSize)), port);
 	}
+
+	public static CubeHttpServer create() {return new CubeHttpServer();}
 }

@@ -65,21 +65,21 @@ public class RpcBinaryProtocolTest {
 	public void test() throws Exception {
 		final String testMessage = "Test";
 
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 
 		final RpcClient client = RpcClient.create(eventloop)
-				.messageTypes(String.class)
-				.strategy(server(address));
+				.withMessageTypes(String.class)
+				.withStrategy(server(address));
 
 		final RpcServer server = RpcServer.create(eventloop)
-				.messageTypes(String.class)
-				.on(String.class, new RpcRequestHandler<String, String>() {
+				.withMessageTypes(String.class)
+				.withHandlerFor(String.class, new RpcRequestHandler<String, String>() {
 					@Override
 					public void run(String request, ResultCallback<String> callback) {
 						callback.onResult("Hello, " + request + "!");
 					}
 				})
-				.setListenAddress(address);
+				.withListenAddress(address);
 		server.listen();
 
 		final int countRequests = 10;
@@ -149,12 +149,12 @@ public class RpcBinaryProtocolTest {
 
 	@Test
 	public void testCompression() {
-		SerializerBuilder serializerBuilder = SerializerBuilder.newDefaultInstance(ClassLoader.getSystemClassLoader());
-		serializerBuilder.setExtraSubclasses("extraRpcMessageData", String.class);
-		BufferSerializer<RpcMessage> serializer = serializerBuilder.create(RpcMessage.class);
+		SerializerBuilder serializerBuilder = SerializerBuilder.create(ClassLoader.getSystemClassLoader())
+				.withExtraSubclasses("extraRpcMessageData", String.class);
+		BufferSerializer<RpcMessage> serializer = serializerBuilder.build(RpcMessage.class);
 
 		int countRequests = 10;
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		int defaultPacketSize = 1 << 10;
 		int maxPacketSize = 1 << 16;
 
@@ -162,22 +162,22 @@ public class RpcBinaryProtocolTest {
 		String testMessage = "Test";
 		List<RpcMessage> sourceList = Lists.newArrayList();
 		for (int i = 0; i < countRequests; i++) {
-			sourceList.add(new RpcMessage(i, testMessage));
+			sourceList.add(RpcMessage.of(i, testMessage));
 		}
 		StreamProducer<RpcMessage> client = StreamProducers.ofIterable(eventloop, sourceList);
 
 		StreamLZ4Compressor compressorClient = StreamLZ4Compressor.fastCompressor(eventloop);
-		StreamLZ4Decompressor decompressorClient = new StreamLZ4Decompressor(eventloop);
-		StreamBinarySerializer<RpcMessage> serializerClient = new StreamBinarySerializer<>(eventloop, serializer,
+		StreamLZ4Decompressor decompressorClient = StreamLZ4Decompressor.create(eventloop);
+		StreamBinarySerializer<RpcMessage> serializerClient = StreamBinarySerializer.create(eventloop, serializer,
 				defaultPacketSize, maxPacketSize, 0, false);
-		StreamBinaryDeserializer<RpcMessage> deserializerClient = new StreamBinaryDeserializer<>(eventloop, serializer, maxPacketSize);
+		StreamBinaryDeserializer<RpcMessage> deserializerClient = StreamBinaryDeserializer.create(eventloop, serializer, maxPacketSize);
 
 		// server side
 		StreamLZ4Compressor compressorServer = StreamLZ4Compressor.fastCompressor(eventloop);
-		StreamLZ4Decompressor decompressorServer = new StreamLZ4Decompressor(eventloop);
-		StreamBinarySerializer<RpcMessage> serializerServer = new StreamBinarySerializer<>(eventloop, serializer,
+		StreamLZ4Decompressor decompressorServer = StreamLZ4Decompressor.create(eventloop);
+		StreamBinarySerializer<RpcMessage> serializerServer = StreamBinarySerializer.create(eventloop, serializer,
 				defaultPacketSize, maxPacketSize, 0, false);
-		StreamBinaryDeserializer<RpcMessage> deserializerServer = new StreamBinaryDeserializer<>(eventloop, serializer, maxPacketSize);
+		StreamBinaryDeserializer<RpcMessage> deserializerServer = StreamBinaryDeserializer.create(eventloop, serializer, maxPacketSize);
 
 		StreamConsumers.ToList<RpcMessage> results = new StreamConsumers.ToList<>(eventloop);
 

@@ -67,7 +67,7 @@ public class CubeIntegrationTest {
 	private static final String LOG_NAME = "testlog";
 
 	private static AggregationStructure getStructure() {
-		return new AggregationStructure(
+		return AggregationStructure.create(
 				ImmutableMap.<String, KeyType>builder()
 						.put("date", dateKey())
 						.put("advertiser", intKey())
@@ -86,13 +86,13 @@ public class CubeIntegrationTest {
 	                            CubeMetadataStorage cubeMetadataStorage,
 	                            AggregationChunkStorage aggregationChunkStorage,
 	                            AggregationStructure cubeStructure) {
-		Cube cube = new Cube(eventloop, executorService, classLoader, cubeMetadataStorage, aggregationChunkStorage,
+		Cube cube = Cube.create(eventloop, executorService, classLoader, cubeMetadataStorage, aggregationChunkStorage,
 				cubeStructure, Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE, Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY,
 				Aggregation.DEFAULT_SORTER_BLOCK_SIZE, Cube.DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD,
 				Aggregation.DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS);
-		cube.addAggregation("detailed", new AggregationMetadata(LogItem.DIMENSIONS, LogItem.MEASURES));
-		cube.addAggregation("date", new AggregationMetadata(asList("date"), LogItem.MEASURES));
-		cube.addAggregation("advertiser", new AggregationMetadata(asList("advertiser"), LogItem.MEASURES));
+		cube.addAggregation("detailed", AggregationMetadata.create(LogItem.DIMENSIONS, LogItem.MEASURES));
+		cube.addAggregation("date", AggregationMetadata.create(asList("date"), LogItem.MEASURES));
+		cube.addAggregation("advertiser", AggregationMetadata.create(asList("advertiser"), LogItem.MEASURES));
 		cube.setChildParentRelationships(ImmutableMap.<String, String>builder()
 				.put("campaign", "advertiser")
 				.put("banner", "campaign")
@@ -106,8 +106,8 @@ public class CubeIntegrationTest {
 	public void test() throws Exception {
 		ExecutorService executor = Executors.newCachedThreadPool();
 
-		DefiningClassLoader classLoader = new DefiningClassLoader();
-		Eventloop eventloop = new Eventloop();
+		DefiningClassLoader classLoader = DefiningClassLoader.create();
+		Eventloop eventloop = Eventloop.create();
 		Path aggregationsDir = temporaryFolder.newFolder().toPath();
 		Path logsDir = temporaryFolder.newFolder().toPath();
 		AggregationStructure structure = getStructure();
@@ -116,12 +116,12 @@ public class CubeIntegrationTest {
 		AggregationChunkStorage aggregationChunkStorage =
 				getAggregationChunkStorage(eventloop, executor, structure, aggregationsDir);
 		CubeMetadataStorageSql cubeMetadataStorageSql =
-				new CubeMetadataStorageSql(eventloop, executor, jooqConfiguration, "processId");
+				CubeMetadataStorageSql.create(eventloop, executor, jooqConfiguration, "processId");
 		LogToCubeMetadataStorage logToCubeMetadataStorage =
 				getLogToCubeMetadataStorage(eventloop, executor, jooqConfiguration, cubeMetadataStorageSql);
 		Cube cube = getCube(eventloop, executor, classLoader, cubeMetadataStorageSql, aggregationChunkStorage, structure);
 		LogManager<LogItem> logManager = getLogManager(LogItem.class, eventloop, executor, classLoader, logsDir);
-		LogToCubeRunner<LogItem> logToCubeRunner = new LogToCubeRunner<>(eventloop, cube, logManager,
+		LogToCubeRunner<LogItem> logToCubeRunner = LogToCubeRunner.create(eventloop, cube, logManager,
 				LogItemSplitter.factory(), LOG_NAME, LOG_PARTITIONS, logToCubeMetadataStorage);
 
 		// Save and aggregate logs
@@ -153,7 +153,7 @@ public class CubeIntegrationTest {
 		cube.loadChunks(AsyncCallbacks.ignoreCompletionCallback());
 		eventloop.run();
 
-		CubeQuery query = new CubeQuery().dimensions("date").measures("clicks");
+		CubeQuery query = CubeQuery.create().withDimensions("date").withMeasures("clicks");
 		StreamConsumers.ToList<LogItem> queryResultConsumer = new StreamConsumers.ToList<>(eventloop);
 		cube.query(LogItem.class, query).streamTo(queryResultConsumer);
 		eventloop.run();
@@ -170,7 +170,7 @@ public class CubeIntegrationTest {
 		}
 
 		// Consolidate
-		ResultCallbackFuture<Boolean> callback = new ResultCallbackFuture<>();
+		ResultCallbackFuture<Boolean> callback = ResultCallbackFuture.create();
 		cube.consolidate(100, callback);
 		eventloop.run();
 		boolean consolidated = callback.isDone() ? callback.get() : false;

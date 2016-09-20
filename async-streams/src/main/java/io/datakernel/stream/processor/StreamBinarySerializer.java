@@ -52,6 +52,28 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 	private final InputConsumer inputConsumer;
 	private final OutputProducer outputProducer;
 
+	// region creators
+	private StreamBinarySerializer(Eventloop eventloop, BufferSerializer<T> serializer, int defaultBufferSize, int maxMessageSize, int flushDelayMillis, boolean skipSerializationErrors) {
+		super(eventloop);
+		this.inputConsumer = new InputConsumer();
+		this.outputProducer = new OutputProducer(serializer, defaultBufferSize, maxMessageSize, flushDelayMillis, skipSerializationErrors);
+	}
+
+	/**
+	 * Creates a new instance of this class
+	 *
+	 * @param eventloop      event loop in which serializer will run
+	 * @param serializer     specified BufferSerializer for this type
+	 * @param maxMessageSize maximal size of message which this serializer can receive
+	 */
+	public static <T> StreamBinarySerializer<T> create(Eventloop eventloop, BufferSerializer<T> serializer,
+	                                                   int defaultBufferSize, int maxMessageSize,
+	                                                   int flushDelayMillis, boolean skipSerializationErrors) {
+		return new StreamBinarySerializer<>(eventloop, serializer, defaultBufferSize,
+				maxMessageSize, flushDelayMillis, skipSerializationErrors);
+	}
+	// endregion
+
 	private final class InputConsumer extends AbstractInputConsumer {
 
 		@Override
@@ -267,19 +289,6 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 				outputBuf = null;
 			}
 		}
-	}
-
-	/**
-	 * Creates a new instance of this class
-	 *
-	 * @param eventloop      event loop in which serializer will run
-	 * @param serializer     specified BufferSerializer for this type
-	 * @param maxMessageSize maximal size of message which this serializer can receive
-	 */
-	public StreamBinarySerializer(Eventloop eventloop, BufferSerializer<T> serializer, int defaultBufferSize, int maxMessageSize, int flushDelayMillis, boolean skipSerializationErrors) {
-		super(eventloop);
-		this.inputConsumer = new InputConsumer();
-		this.outputProducer = new OutputProducer(serializer, defaultBufferSize, maxMessageSize, flushDelayMillis, skipSerializationErrors);
 	}
 
 	public void flush() {

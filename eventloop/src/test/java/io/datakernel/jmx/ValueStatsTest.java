@@ -32,7 +32,7 @@ public class ValueStatsTest {
 	public void smoothedAverageAtLimitShouldBeSameAsInputInCaseOfConstantData() {
 		double smoothingWindow = 10.0;
 		long currentTimestamp = 0;
-		ValueStats valueStats = new ValueStats(smoothingWindow);
+		ValueStats valueStats = ValueStats.create().withSmoothingWindow(smoothingWindow);
 		int inputValue = 5;
 		int iterations = 1000;
 		int refreshPeriod = ONE_SECOND_IN_MILLIS;
@@ -51,7 +51,7 @@ public class ValueStatsTest {
 	public void itShouldReturnProperStandardDeviationAtLimit() {
 		double smoothingWindow = 100.0;
 		long currentTimestamp = 0;
-		ValueStats valueStats = new ValueStats(smoothingWindow);
+		ValueStats valueStats = ValueStats.create().withSmoothingWindow(smoothingWindow);
 		int iterations = 10000;
 		int minValue = 0;
 		int maxValue = 10;
@@ -74,7 +74,7 @@ public class ValueStatsTest {
 	public void itShouldResetStatsAfterResetMethodCall() {
 		double smoothingWindow = 10.0;
 		long currentTimestamp = 0;
-		ValueStats valueStats = new ValueStats(smoothingWindow);
+		ValueStats valueStats = ValueStats.create().withSmoothingWindow(smoothingWindow);
 		int inputValue = 5;
 		int iterations = 1000;
 		int refreshPeriod = ONE_SECOND_IN_MILLIS;
@@ -98,8 +98,8 @@ public class ValueStatsTest {
 	public void itShouldAccumulateProperly() {
 		double smoothingWindow = 10.0;
 		long currentTimestamp = 0;
-		ValueStats valueStats_1 = new ValueStats(smoothingWindow);
-		ValueStats valueStats_2 = new ValueStats(smoothingWindow);
+		ValueStats valueStats_1 = ValueStats.create().withSmoothingWindow(smoothingWindow);
+		ValueStats valueStats_2 = ValueStats.create().withSmoothingWindow(smoothingWindow);
 		int inputValue_1 = 5;
 		int inputValue_2 = 10;
 		int iterations = 1000;
@@ -113,7 +113,7 @@ public class ValueStatsTest {
 			valueStats_2.refresh(currentTimestamp);
 		}
 
-		ValueStats accumulator = new ValueStats();
+		ValueStats accumulator = ValueStats.create();
 		accumulator.add(valueStats_1);
 		accumulator.add(valueStats_2);
 

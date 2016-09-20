@@ -26,29 +26,22 @@ public final class BufferAppendable implements Appendable {
 	private byte[] buf;
 	private int pos;
 
+	// region creators
+
 	/**
 	 * Creates a new instance of this class
 	 *
 	 * @param buf      array of bytes
 	 * @param position the index of the next element to be read or written
 	 */
-	public BufferAppendable(byte[] buf, int position) {
+	private BufferAppendable(byte[] buf, int position) {
 		assert position >= 0 && position <= buf.length;
 		this.buf = buf;
 		this.pos = position;
 	}
 
-	public BufferAppendable() {
-	}
-
-	/**
-	 * Creates a new instance of this class
-	 *
-	 * @param buf array of bytes
-	 */
-	public BufferAppendable(byte[] buf) {
-		this.buf = buf;
-	}
+	public static BufferAppendable create(byte[] buf, int position) {return new BufferAppendable(buf, position);}
+	// endregion
 
 	protected void ensureSize(int size) {
 	}

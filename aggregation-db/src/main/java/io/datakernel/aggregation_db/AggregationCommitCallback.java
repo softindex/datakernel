@@ -29,8 +29,12 @@ public class AggregationCommitCallback implements ResultCallback<List<Aggregatio
 
 	private final Aggregation aggregation;
 
-	public AggregationCommitCallback(Aggregation aggregation) {
+	private AggregationCommitCallback(Aggregation aggregation) {
 		this.aggregation = aggregation;
+	}
+
+	public static AggregationCommitCallback create(Aggregation aggregation) {
+		return new AggregationCommitCallback(aggregation);
 	}
 
 	@Override

@@ -22,6 +22,10 @@ import static com.google.common.collect.Lists.newArrayList;
 import static io.datakernel.aggregation_db.AggregationQueryPlan.chunksToString;
 
 public final class ConsolidationPlan {
+	private ConsolidationPlan() {}
+
+	public static ConsolidationPlan create() {return new ConsolidationPlan();}
+
 	private static class FieldsWithChunks {
 		private final List<String> fields;
 		private final List<AggregationChunk> chunks;

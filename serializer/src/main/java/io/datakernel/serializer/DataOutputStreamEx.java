@@ -37,13 +37,17 @@ public final class DataOutputStreamEx implements Closeable {
 
 	private int estimatedMessageSize = 1;
 
-	public DataOutputStreamEx(OutputStream output) {
-		this(output, DEFAULT_BUFFER_SIZE);
-	}
-
-	public DataOutputStreamEx(OutputStream outputStream, int bufferSize) {
+	private DataOutputStreamEx(OutputStream outputStream, int bufferSize) {
 		this.outputStream = outputStream;
 		this.buf = ByteBufPool.allocate(bufferSize);
+	}
+
+	public static DataOutputStreamEx create(OutputStream output) {
+		return new DataOutputStreamEx(output, DEFAULT_BUFFER_SIZE);
+	}
+
+	public static DataOutputStreamEx create(OutputStream outputStream, int bufferSize) {
+		return new DataOutputStreamEx(outputStream, bufferSize);
 	}
 
 	public void changeOutputStream(OutputStream outputStream) throws IOException {

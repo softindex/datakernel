@@ -21,7 +21,7 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 
 import static org.objectweb.asm.Type.getType;
 
-public class ExpressionNull implements Expression {
+final class ExpressionNull implements Expression {
 	private final Type type;
 
 	ExpressionNull(Class<?> type) {

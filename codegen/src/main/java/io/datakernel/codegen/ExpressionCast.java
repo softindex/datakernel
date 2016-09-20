@@ -24,7 +24,7 @@ import static org.objectweb.asm.Type.getType;
 /**
  * Defines method in order to cast a function to a type
  */
-public final class ExpressionCast implements Expression {
+final class ExpressionCast implements Expression {
 	public static final Type THIS_TYPE = getType(Object.class);
 
 	private final Expression expression;

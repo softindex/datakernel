@@ -47,7 +47,7 @@ public class RpcStrategyRandomSamplingTest {
 
 		// init RandomSamplingStrategy
 		RpcStrategyRandomSampling randomSamplingStrategy =
-				new RpcStrategyRandomSampling()
+				RpcStrategyRandomSampling.create()
 						.add(strategy_1_weight, strategy_1)
 						.add(strategy_2_weight, strategy_2)
 						.add(strategy_3_weight, strategy_3);
@@ -93,7 +93,7 @@ public class RpcStrategyRandomSamplingTest {
 
 		// init RandomSamplingStrategy
 		RpcStrategyRandomSampling randomSamplingStrategy =
-				new RpcStrategyRandomSampling()
+				RpcStrategyRandomSampling.create()
 						.add(strategy_1_weight, strategy_1)
 						.add(zero_weight, strategy_2)
 						.add(strategy_3_weight, strategy_3);

@@ -16,15 +16,17 @@
 
 package io.datakernel.time;
 
-public class SettableCurrentTimeProvider implements CurrentTimeProvider {
+public final class SettableCurrentTimeProvider implements CurrentTimeProvider {
 	private long time;
 
-	public SettableCurrentTimeProvider() {
-		this(0);
+	private SettableCurrentTimeProvider(long time) {
+		this.time = time;
 	}
 
-	public SettableCurrentTimeProvider(long time) {
-		this.time = time;
+	public static SettableCurrentTimeProvider create() {return new SettableCurrentTimeProvider(0);}
+
+	public SettableCurrentTimeProvider withTime(long time) {
+		return new SettableCurrentTimeProvider(time);
 	}
 
 	@Override

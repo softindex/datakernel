@@ -151,18 +151,10 @@ public final class StreamJoin<K, L, R, V> extends AbstractStreamTransformer_N_1<
 
 	private final Joiner<K, L, R, V> joiner;
 
-	/**
-	 * Creates a new instance of StreamJoin
-	 *
-	 * @param eventloop        eventloop in which runs reducer
-	 * @param keyComparator    comparator for compare keys
-	 * @param leftKeyFunction  function for counting keys of left stream
-	 * @param rightKeyFunction function for counting keys of right stream
-	 * @param joiner           joiner which will join streams
-	 */
-	public StreamJoin(Eventloop eventloop, Comparator<K> keyComparator,
-	                  Function<L, K> leftKeyFunction, Function<R, K> rightKeyFunction,
-	                  Joiner<K, L, R, V> joiner) {
+	// region creators
+	private StreamJoin(Eventloop eventloop, Comparator<K> keyComparator,
+	                   Function<L, K> leftKeyFunction, Function<R, K> rightKeyFunction,
+	                   Joiner<K, L, R, V> joiner) {
 		super(eventloop);
 		this.keyComparator = checkNotNull(keyComparator);
 		this.joiner = checkNotNull(joiner);
@@ -172,6 +164,22 @@ public final class StreamJoin<K, L, R, V> extends AbstractStreamTransformer_N_1<
 		this.rightKeyFunction = checkNotNull(rightKeyFunction);
 		this.outputProducer = new OutputProducer();
 	}
+
+	/**
+	 * Creates a new instance of StreamJoin
+	 *
+	 * @param eventloop        eventloop in which runs reducer
+	 * @param keyComparator    comparator for compare keys
+	 * @param leftKeyFunction  function for counting keys of left stream
+	 * @param rightKeyFunction function for counting keys of right stream
+	 * @param joiner           joiner which will join streams
+	 */
+	public static <K, L, R, V> StreamJoin<K, L, R, V> create(Eventloop eventloop, Comparator<K> keyComparator,
+	                                                         Function<L, K> leftKeyFunction, Function<R, K> rightKeyFunction,
+	                                                         Joiner<K, L, R, V> joiner) {
+		return new StreamJoin<>(eventloop, keyComparator, leftKeyFunction, rightKeyFunction, joiner);
+	}
+	// endregion
 
 	protected final class InputConsumer<I> extends AbstractInputConsumer<I> implements StreamDataReceiver<I> {
 		private final ArrayDeque<I> deque;

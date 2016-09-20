@@ -18,25 +18,29 @@ package io.datakernel.aggregation_db.processor;
 
 import io.datakernel.aggregation_db.fieldtype.HyperLogLog;
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.ExpressionSequence;
 import io.datakernel.codegen.VarField;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import static io.datakernel.codegen.Expressions.*;
 
 public final class HyperLogLogFieldProcessor implements FieldProcessor {
 	private final int registers;
 
-	public HyperLogLogFieldProcessor(int registers) {
+	private HyperLogLogFieldProcessor(int registers) {
 		this.registers = registers;
 	}
+
+	public static HyperLogLogFieldProcessor create(int registers) {return new HyperLogLogFieldProcessor(registers);}
 
 	@Override
 	public Expression getOnFirstItemExpression(VarField accumulator, Class<?> accumulatorClass,
 	                                           VarField firstValue, Class<?> valueClass) {
-		ExpressionSequence seq = sequence();
-		seq.add(set(accumulator, constructor(HyperLogLog.class, value(registers))));
-		seq.add(call(accumulator, "union", firstValue));
-		return seq;
+		List<Expression> expressions = new ArrayList<>();
+		expressions.add(set(accumulator, constructor(HyperLogLog.class, value(registers))));
+		expressions.add(call(accumulator, "union", firstValue));
+		return sequence(expressions);
 	}
 
 	@Override
@@ -48,10 +52,10 @@ public final class HyperLogLogFieldProcessor implements FieldProcessor {
 	@Override
 	public Expression getCreateAccumulatorExpression(VarField accumulator, Class<?> accumulatorClass,
 	                                                 VarField firstValue, Class<?> valueClass) {
-		ExpressionSequence seq = sequence();
-		seq.add(set(accumulator, constructor(HyperLogLog.class, value(registers))));
-		seq.add(getAddExpression(accumulator, firstValue, valueClass));
-		return seq;
+		List<Expression> expressions = new ArrayList<>();
+		expressions.add(set(accumulator, constructor(HyperLogLog.class, value(registers))));
+		expressions.add(getAddExpression(accumulator, firstValue, valueClass));
+		return sequence(expressions);
 	}
 
 	@Override

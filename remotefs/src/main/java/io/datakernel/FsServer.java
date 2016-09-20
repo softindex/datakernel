@@ -25,6 +25,9 @@ import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocket.EventHandler;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.InetAddressRange;
+import io.datakernel.net.ServerSocketSettings;
+import io.datakernel.net.SocketSettings;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.net.Messaging.ReceiveMessageCallback;
@@ -33,9 +36,14 @@ import io.datakernel.stream.net.MessagingWithBinaryStreaming;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.SSLContext;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.stream.net.MessagingSerializers.ofGson;
@@ -47,12 +55,26 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 
 	protected final Map<Class, MessagingHandler> handlers;
 
-	// creators & builder methods
+	// region creators & builder methods
 	protected FsServer(Eventloop eventloop, FileManager fileManager) {
 		super(eventloop);
 		this.fileManager = fileManager;
 		this.handlers = createHandlers();
 	}
+
+	protected FsServer(Eventloop eventloop,
+	                   ServerSocketSettings serverSocketSettings, SocketSettings socketSettings,
+	                   boolean acceptOnce, Collection<InetSocketAddress> listenAddresses,
+	                   InetAddressRange range, Collection<InetAddress> bannedAddresses,
+	                   SSLContext sslContext, ExecutorService sslExecutor,
+	                   Collection<InetSocketAddress> sslListenAddresses,
+	                   S previousInstance) {
+		super(eventloop, serverSocketSettings, socketSettings, acceptOnce, listenAddresses,
+				range, bannedAddresses, sslContext, sslExecutor, sslListenAddresses);
+		this.fileManager = previousInstance.fileManager;
+		this.handlers = previousInstance.handlers;
+	}
+	// endregion
 
 	// abstract core methods
 	protected abstract void upload(String filePath, ResultCallback<StreamConsumer<ByteBuf>> callback);
@@ -66,7 +88,7 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 	// set up connection
 	@Override
 	protected final EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
-		final MessagingWithBinaryStreaming<FsCommand, FsResponse> messaging = new MessagingWithBinaryStreaming<>(eventloop, asyncTcpSocket, serializer);
+		final MessagingWithBinaryStreaming<FsCommand, FsResponse> messaging = MessagingWithBinaryStreaming.create(eventloop, asyncTcpSocket, serializer);
 		messaging.receive(new ReceiveMessageCallback<FsCommand>() {
 			@Override
 			public void onReceive(FsCommand msg) {

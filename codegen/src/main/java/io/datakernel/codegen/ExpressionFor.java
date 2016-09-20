@@ -24,7 +24,7 @@ import static io.datakernel.codegen.Expressions.add;
 import static io.datakernel.codegen.Expressions.value;
 import static io.datakernel.codegen.Utils.newLocal;
 
-public class ExpressionFor implements Expression {
+final class ExpressionFor implements Expression {
 	private final Expression length;
 	private final Expression start;
 	private final ForVar forVar;

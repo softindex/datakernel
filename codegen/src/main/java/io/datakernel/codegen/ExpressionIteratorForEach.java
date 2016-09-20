@@ -27,7 +27,7 @@ import static io.datakernel.codegen.Utils.newLocal;
 import static io.datakernel.codegen.Utils.tryGetJavaType;
 import static org.objectweb.asm.Type.getType;
 
-public class ExpressionIteratorForEach implements Expression {
+final class ExpressionIteratorForEach implements Expression {
 	private final Expression collection;
 	private final ForVar forCollection;
 	private final Class<?> type;

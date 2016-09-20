@@ -18,6 +18,7 @@ package io.datakernel.eventloop;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.*;
+import io.datakernel.exception.SimpleException;
 import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
@@ -101,14 +102,9 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	/**
 	 * The desired name of the thread
 	 */
-	private String threadName;
+	private final String threadName;
 
-	private FatalErrorHandler fatalErrorHandler = new FatalErrorHandler() {
-		@Override
-		public void handle(Throwable error, Object context) {
-			// default policy: ignore fatal error and continue execution
-		}
-	};
+	private final FatalErrorHandler fatalErrorHandler;
 
 	private volatile boolean keepAlive;
 	private volatile boolean breakEventloop;
@@ -132,27 +128,36 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 
 	private static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
 	private double smoothingWindow = DEFAULT_SMOOTHING_WINDOW;
-	private final EventloopStats stats = new EventloopStats(DEFAULT_SMOOTHING_WINDOW);
-	private final ConcurrentCallsStats concurrentCallsStats = new ConcurrentCallsStats(DEFAULT_SMOOTHING_WINDOW);
+	private final EventloopStats stats = EventloopStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final ConcurrentCallsStats concurrentCallsStats = ConcurrentCallsStats.create(DEFAULT_SMOOTHING_WINDOW);
 
 	private boolean monitoring = false;
 
-	/**
-	 * Creates a new instance of Eventloop with default instance of ByteBufPool
-	 */
-	public Eventloop() {
-		this(CurrentTimeProviderSystem.instance());
+	// region builders
+	private Eventloop(CurrentTimeProvider timeProvider, String threadName, FatalErrorHandler fatalErrorHandler) {
+		this.timeProvider = timeProvider;
+		this.threadName = threadName;
+		this.fatalErrorHandler = fatalErrorHandler;
+		refreshTimestampAndGet();
+
 	}
 
-	/**
-	 * Creates a new instance of Eventloop with given ByteBufPool and timeProvider
-	 *
-	 * @param timeProvider provider for retrieving time on each cycle of event loop. Useful for unit testing.
-	 */
-	public Eventloop(CurrentTimeProvider timeProvider) {
-		this.timeProvider = timeProvider;
-		refreshTimestampAndGet();
+	public static Eventloop create() {
+		return new Eventloop(CurrentTimeProviderSystem.instance(), null, FatalErrorHandlers.ignoreAllErrors());
 	}
+
+	public Eventloop withCurrentTimeProvider(CurrentTimeProvider timeProvider) {
+		return new Eventloop(timeProvider, threadName, fatalErrorHandler);
+	}
+
+	public Eventloop withThreadName(String threadName) {
+		return new Eventloop(timeProvider, threadName, fatalErrorHandler);
+	}
+
+	public Eventloop withFatalErrorHandler(FatalErrorHandler fatalErrorHandler) {
+		return new Eventloop(timeProvider, threadName, fatalErrorHandler);
+	}
+	// endregion
 
 	private void openSelector() {
 		if (selector == null) {
@@ -210,19 +215,6 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		return !localTasks.isEmpty() || !scheduledTasks.isEmpty() || !concurrentTasks.isEmpty()
 				|| concurrentOperationsCount.get() > 0
 				|| keepAlive || !selector.keys().isEmpty();
-	}
-
-	/**
-	 * Sets the desired name of the thread
-	 */
-	public void setThreadName(String threadName) {
-		this.threadName = threadName;
-		if (eventloopThread != null)
-			eventloopThread.setName(threadName);
-	}
-
-	public void setFatalErrorHandler(FatalErrorHandler fatalErrorHandler) {
-		this.fatalErrorHandler = fatalErrorHandler;
 	}
 
 	/**
@@ -800,7 +792,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	}
 
 	private ScheduledRunnable addScheduledTask(long timestamp, Runnable runnable, boolean background) {
-		ScheduledRunnable scheduledRunnable = new ScheduledRunnable(timestamp, runnable);
+		ScheduledRunnable scheduledRunnable = ScheduledRunnable.create(timestamp, runnable);
 		PriorityQueue<ScheduledRunnable> taskQueue = background ? backgroundTasks : scheduledTasks;
 		taskQueue.offer(scheduledRunnable);
 		return scheduledRunnable;
@@ -874,7 +866,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 
 	@Override
 	public <T> Future<T> submit(final Runnable runnable, final T result) {
-		final ResultCallbackFuture<T> future = new ResultCallbackFuture<>();
+		final ResultCallbackFuture<T> future = ResultCallbackFuture.create();
 		execute(new Runnable() {
 			@Override
 			public void run() {
@@ -896,7 +888,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 
 	@Override
 	public <T> Future<T> submit(final AsyncTask asyncTask, final T result) {
-		final ResultCallbackFuture<T> future = new ResultCallbackFuture<>();
+		final ResultCallbackFuture<T> future = ResultCallbackFuture.create();
 		execute(new Runnable() {
 			@Override
 			public void run() {
@@ -908,7 +900,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 
 	@Override
 	public <T> Future<T> submit(final Callable<T> callable) {
-		final ResultCallbackFuture<T> future = new ResultCallbackFuture<>();
+		final ResultCallbackFuture<T> future = ResultCallbackFuture.create();
 		execute(new Runnable() {
 			@Override
 			public void run() {
@@ -931,7 +923,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 
 	@Override
 	public <T> Future<T> submit(final AsyncCallable<T> asyncCallable) {
-		final ResultCallbackFuture<T> future = new ResultCallbackFuture<>();
+		final ResultCallbackFuture<T> future = ResultCallbackFuture.create();
 		execute(new Runnable() {
 			@Override
 			public void run() {
@@ -978,6 +970,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 							}
 						});
 					} catch (final Exception e) {
+						// TODO(vmykhalko): catch throwable and handle as fatal error (and pass to callback later)
 						// jmx
 						final long executingFinish = System.currentTimeMillis();
 
@@ -1050,6 +1043,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 							}
 						});
 					} catch (final Exception e) {
+						// TODO(vmykhalko): catch throwable and handle as fatal error (and pass to callback later)
 						// jmx
 						final long executingFinish = System.currentTimeMillis();
 

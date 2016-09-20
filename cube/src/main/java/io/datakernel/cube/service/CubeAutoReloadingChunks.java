@@ -35,10 +35,14 @@ public final class CubeAutoReloadingChunks implements EventloopService {
 
 	private ScheduledRunnable scheduledRefreshChunksTask;
 
-	public CubeAutoReloadingChunks(Cube cube, Eventloop eventloop, long refreshPeriodMillis) {
+	private CubeAutoReloadingChunks(Cube cube, Eventloop eventloop, long refreshPeriodMillis) {
 		this.cube = cube;
 		this.eventloop = eventloop;
 		this.refreshPeriodMillis = refreshPeriodMillis;
+	}
+
+	public static CubeAutoReloadingChunks create(Cube cube, Eventloop eventloop, long refreshPeriodMillis) {
+		return new CubeAutoReloadingChunks(cube, eventloop, refreshPeriodMillis);
 	}
 
 	@Override

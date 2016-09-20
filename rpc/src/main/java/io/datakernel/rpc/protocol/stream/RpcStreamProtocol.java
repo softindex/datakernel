@@ -45,27 +45,29 @@ final class RpcStreamProtocol implements RpcProtocol {
 	private final SimpleStreamConsumer<RpcMessage> receiver;
 	private final SocketStreamingConnection connection;
 
-	protected RpcStreamProtocol(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
-	                            RpcConnection rpcConnection,
-	                            BufferSerializer<RpcMessage> messageSerializer,
-	                            int defaultPacketSize, int maxPacketSize, boolean compression) {
+	private RpcStreamProtocol(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
+	                          RpcConnection rpcConnection,
+	                          BufferSerializer<RpcMessage> messageSerializer,
+	                          int defaultPacketSize, int maxPacketSize, boolean compression) {
 		this.rpcConnection = rpcConnection;
 		this.asyncTcpSocket = asyncTcpSocket;
-		sender = new SimpleStreamProducer<>(eventloop, new SimpleStreamProducer.StatusListener() {
-			@Override
-			public void onResumed() {
-			}
+		sender = SimpleStreamProducer
+				.create(eventloop)
+				.withStatusListener(new SimpleStreamProducer.StatusListener() {
+					@Override
+					public void onResumed() {
+					}
 
-			@Override
-			public void onSuspended() {
-			}
+					@Override
+					public void onSuspended() {
+					}
 
-			@Override
-			public void onClosedWithError(Exception e) {
-			}
-		});
+					@Override
+					public void onClosedWithError(Exception e) {
+					}
+				});
 
-		receiver = new SimpleStreamConsumer<>(eventloop, new SimpleStreamConsumer.StatusListener() {
+		receiver = SimpleStreamConsumer.create(eventloop, new SimpleStreamConsumer.StatusListener() {
 			@Override
 			public void onEndOfStream() {
 				RpcStreamProtocol.this.rpcConnection.onReadEndOfStream();
@@ -77,14 +79,14 @@ final class RpcStreamProtocol implements RpcProtocol {
 			}
 		}, rpcConnection);
 
-		StreamBinarySerializer<RpcMessage> serializer = new StreamBinarySerializer<>(eventloop, messageSerializer, defaultPacketSize,
+		StreamBinarySerializer<RpcMessage> serializer = StreamBinarySerializer.create(eventloop, messageSerializer, defaultPacketSize,
 				maxPacketSize, 0, true);
-		StreamBinaryDeserializer<RpcMessage> deserializer = new StreamBinaryDeserializer<>(eventloop, messageSerializer, maxPacketSize);
-		this.connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
+		StreamBinaryDeserializer<RpcMessage> deserializer = StreamBinaryDeserializer.create(eventloop, messageSerializer, maxPacketSize);
+		this.connection = SocketStreamingConnection.createSocketStreamingConnection(eventloop, asyncTcpSocket);
 
 		if (compression) {
 			StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
-			StreamLZ4Decompressor decompressor = new StreamLZ4Decompressor(eventloop);
+			StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create(eventloop);
 			connection.receiveStreamTo(decompressor.getInput(), ignoreCompletionCallback());
 			decompressor.getOutput().streamTo(deserializer.getInput());
 
@@ -97,6 +99,14 @@ final class RpcStreamProtocol implements RpcProtocol {
 
 		deserializer.getOutput().streamTo(receiver);
 		sender.streamTo(serializer.getInput());
+	}
+
+	protected static RpcStreamProtocol create(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
+	                                          RpcConnection rpcConnection,
+	                                          BufferSerializer<RpcMessage> messageSerializer,
+	                                          int defaultPacketSize, int maxPacketSize, boolean compression) {
+		return new RpcStreamProtocol(eventloop, asyncTcpSocket, rpcConnection, messageSerializer,
+				defaultPacketSize, maxPacketSize, compression);
 	}
 
 	@Override

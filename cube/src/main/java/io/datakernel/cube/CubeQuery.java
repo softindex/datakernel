@@ -18,13 +18,23 @@ package io.datakernel.cube;
 
 import io.datakernel.aggregation_db.AggregationQuery;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 
 import static java.util.Collections.unmodifiableList;
 
 public final class CubeQuery {
-	private AggregationQuery aggregationQuery = new AggregationQuery();
+	private AggregationQuery aggregationQuery = AggregationQuery.create();
 	private List<Ordering> orderings = new ArrayList<>();
+
+	public static CubeQuery create() {return new CubeQuery();}
+
+	public static CubeQuery create(List<String> dimensions, List<String> measures, AggregationQuery.Predicates predicates,
+	                               List<Ordering> orderings) {return new CubeQuery(dimensions, measures, predicates, orderings);}
+
+	public static CubeQuery create(List<String> dimensions, List<String> measures) {return new CubeQuery(dimensions, measures);}
 
 	/**
 	 * Represents a query result ordering. Contains a propertyName name and ordering (ascending or descending).
@@ -84,97 +94,97 @@ public final class CubeQuery {
 		}
 	}
 
-	public CubeQuery() {
+	private CubeQuery() {
 	}
 
-	public CubeQuery(List<String> dimensions, List<String> measures, AggregationQuery.Predicates predicates,
-	                 List<Ordering> orderings) {
-		this.aggregationQuery = new AggregationQuery(dimensions, measures, predicates);
+	private CubeQuery(List<String> dimensions, List<String> measures, AggregationQuery.Predicates predicates,
+	                  List<Ordering> orderings) {
+		this.aggregationQuery = AggregationQuery.create(dimensions, measures, predicates);
 		this.orderings = orderings;
 	}
 
-	public CubeQuery(List<String> dimensions, List<String> measures) {
-		this.aggregationQuery = new AggregationQuery(dimensions, measures);
+	private CubeQuery(List<String> dimensions, List<String> measures) {
+		this.aggregationQuery = AggregationQuery.create(dimensions, measures);
 	}
 
 	public AggregationQuery.Predicates getPredicates() {
 		return aggregationQuery.getPredicates();
 	}
 
-	public CubeQuery dimension(String dimension) {
-		aggregationQuery.key(dimension);
+	public CubeQuery withDimension(String dimension) {
+		aggregationQuery.withKey(dimension);
 		return this;
 	}
 
-	public CubeQuery dimensions(List<String> dimensions) {
-		aggregationQuery.keys(dimensions);
+	public CubeQuery withDimensions(List<String> dimensions) {
+		aggregationQuery.withKeys(dimensions);
 		return this;
 	}
 
-	public CubeQuery dimensions(String... dimensions) {
-		aggregationQuery.keys(dimensions);
+	public CubeQuery withDimensions(String... dimensions) {
+		aggregationQuery.withKeys(dimensions);
 		return this;
 	}
 
-	public CubeQuery measures(List<String> fields) {
-		aggregationQuery.fields(fields);
+	public CubeQuery withMeasures(List<String> fields) {
+		aggregationQuery.withFields(fields);
 		return this;
 	}
 
-	public CubeQuery measures(String... fields) {
-		aggregationQuery.fields(fields);
+	public CubeQuery withMeasures(String... fields) {
+		aggregationQuery.withFields(fields);
 		return this;
 	}
 
-	public CubeQuery field(String field) {
-		aggregationQuery.field(field);
+	public CubeQuery withField(String field) {
+		aggregationQuery.withField(field);
 		return this;
 	}
 
-	public CubeQuery ordering(Ordering ordering) {
+	public CubeQuery withOrdering(Ordering ordering) {
 		this.orderings.add(ordering);
 		return this;
 	}
 
-	public CubeQuery orderAsc(String propertyName) {
+	public CubeQuery withOrderAsc(String propertyName) {
 		this.orderings.add(Ordering.asc(propertyName));
 		return this;
 	}
 
-	public CubeQuery orderDesc(String propertyName) {
+	public CubeQuery withOrderDesc(String propertyName) {
 		this.orderings.add(Ordering.desc(propertyName));
 		return this;
 	}
 
-	public CubeQuery predicates(AggregationQuery.Predicates predicates) {
-		aggregationQuery.predicates(predicates);
+	public CubeQuery withPredicates(AggregationQuery.Predicates predicates) {
+		aggregationQuery.withPredicates(predicates);
 		return this;
 	}
 
-	public CubeQuery predicates(List<AggregationQuery.Predicate> predicates) {
-		aggregationQuery.predicates(predicates);
+	public CubeQuery withPredicates(List<AggregationQuery.Predicate> predicates) {
+		aggregationQuery.withPredicates(predicates);
 		return this;
 	}
 
-	public CubeQuery eq(String dimension, Object value) {
-		aggregationQuery.eq(dimension, value);
+	public CubeQuery withEq(String dimension, Object value) {
+		aggregationQuery.withEq(dimension, value);
 		return this;
 	}
 
-	public CubeQuery ne(String dimension, Object value) {
-		aggregationQuery.ne(dimension, value);
+	public CubeQuery withNe(String dimension, Object value) {
+		aggregationQuery.withNe(dimension, value);
 		return this;
 	}
 
-	public CubeQuery between(String dimension, Object from, Object to) {
-		aggregationQuery.between(dimension, from, to);
+	public CubeQuery withBetween(String dimension, Object from, Object to) {
+		aggregationQuery.withBetween(dimension, from, to);
 		return this;
 	}
 
-	public CubeQuery addPredicates(List<AggregationQuery.Predicate> predicates) {
-		aggregationQuery.addPredicates(predicates);
-		return this;
-	}
+//	public CubeQuery addPredicates(List<AggregationQuery.Predicate> predicates) {
+//		aggregationQuery.addPredicates(predicates);
+//		return this;
+//	}
 
 	public List<String> getResultDimensions() {
 		return aggregationQuery.getResultKeys();

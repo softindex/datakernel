@@ -20,6 +20,7 @@ import io.datakernel.FsClient;
 import io.datakernel.async.*;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.SimpleException;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
@@ -45,10 +46,10 @@ import static com.google.common.base.Charsets.UTF_8;
 import static com.google.common.collect.Lists.newArrayList;
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.*;
+import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.stream.StreamProducers.ofValue;
 import static io.datakernel.stream.file.StreamFileWriter.create;
-import static io.datakernel.util.ByteBufStrings.encodeAscii;
 import static java.nio.file.Files.*;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 import static org.junit.Assert.*;
@@ -56,7 +57,7 @@ import static org.junit.Assert.*;
 public class IntegrationSingleNodeTest {
 	private static final byte[] CONTENT = encodeAscii("content");
 
-	private Replica local = new Replica("a", new InetSocketAddress("127.0.0.1", 5569), 1.0);
+	private Replica local = Replica.create("a", new InetSocketAddress("127.0.0.1", 5569), 1.0);
 
 	@Rule
 	public ExpectedException thrown = ExpectedException.none();
@@ -98,7 +99,7 @@ public class IntegrationSingleNodeTest {
 
 	@Test
 	public void testUpload() throws IOException {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		ExecutorService executor = newCachedThreadPool();
 		final HashFsServer server = createServer(eventloop, executor);
 		HashFsClient client = createClient(eventloop);
@@ -125,12 +126,12 @@ public class IntegrationSingleNodeTest {
 
 	@Test
 	public void testFailedUpload() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		ExecutorService executor = newCachedThreadPool();
 		final HashFsServer server = createServer(eventloop, executor);
 		final HashFsClient client = createClient(eventloop);
 		final StreamProducer<ByteBuf> producer = new ClosingWithError<>(eventloop, new SimpleException("Test Exception"));
-		final CompletionCallbackFuture callback = new CompletionCallbackFuture();
+		final CompletionCallbackFuture callback = CompletionCallbackFuture.create();
 
 		server.listen();
 		client.upload("non_existing_file.txt", producer, new CompletionCallback() {
@@ -164,7 +165,7 @@ public class IntegrationSingleNodeTest {
 	public void testDownload() throws IOException, ExecutionException, InterruptedException {
 		final int startPosition = 2;
 		byte[] dFileContent = encodeAscii("Local d.txt".substring(startPosition));
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		ExecutorService executor = newCachedThreadPool();
 		final HashFsServer server = createServer(eventloop, executor);
 		HashFsClient client = createClient(eventloop);
@@ -198,7 +199,7 @@ public class IntegrationSingleNodeTest {
 
 	@Test
 	public void testFailedDownload() throws IOException {
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 		final ExecutorService executor = newCachedThreadPool();
 
 		final HashFsServer server = createServer(eventloop, executor);
@@ -239,7 +240,7 @@ public class IntegrationSingleNodeTest {
 
 	@Test
 	public void testDelete() throws IOException {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		ExecutorService executor = newCachedThreadPool();
 
 		final HashFsServer server = createServer(eventloop, executor);
@@ -262,14 +263,14 @@ public class IntegrationSingleNodeTest {
 
 	@Test
 	public void testFailedDelete() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		ExecutorService executor = newCachedThreadPool();
 
 		final HashFsServer server = createServer(eventloop, executor);
 		final FsClient client = createClient(eventloop);
 		server.listen();
 
-		final CompletionCallbackFuture callback = new CompletionCallbackFuture();
+		final CompletionCallbackFuture callback = CompletionCallbackFuture.create();
 		client.delete("not_exist.txt", new CompletionCallback() {
 			@Override
 			public void onComplete() {
@@ -294,7 +295,7 @@ public class IntegrationSingleNodeTest {
 
 	@Test
 	public void testList() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		ExecutorService executor = newCachedThreadPool();
 
 		final HashFsServer server = createServer(eventloop, executor);
@@ -344,15 +345,15 @@ public class IntegrationSingleNodeTest {
 	}
 
 	private HashFsClient createClient(Eventloop eventloop) {
-		return new HashFsClient(eventloop, newArrayList(local))
-				.setBaseRetryTimeout(1)
-				.setMaxRetryAttempts(1);
+		return HashFsClient.create(eventloop, newArrayList(local))
+				.withBaseRetryTimeout(1)
+				.withMaxRetryAttempts(1);
 	}
 
 	private HashFsServer createServer(Eventloop eventloop, ExecutorService executor) {
-		LocalReplica localReplica = new LocalReplica(eventloop, executor, serverStorage, newArrayList(local), local);
+		LocalReplica localReplica = LocalReplica.create(eventloop, executor, serverStorage, newArrayList(local), local);
 		localReplica.start(ignoreCompletionCallback());
-		return new HashFsServer(eventloop, localReplica)
-				.setListenAddress(local.getAddress());
+		return HashFsServer.create(eventloop, localReplica)
+				.withListenAddress(local.getAddress());
 	}
 }

@@ -16,10 +16,10 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.ParseException;
 import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.serializer.BufferSerializer;
@@ -44,6 +44,44 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 
 	private final InputConsumer inputConsumer;
 	private final OutputProducer outputProducer;
+
+	// region creators
+	private StreamBinaryDeserializer(Eventloop eventloop, BufferSerializer<T> valueSerializer,
+	                                 int maxMessageSize, int buffersPoolSize) {
+		super(eventloop);
+		checkArgument(maxMessageSize < (1 << (OutputProducer.MAX_HEADER_BYTES * 7)), "maxMessageSize must be less than 2 MB");
+		checkArgument(buffersPoolSize > 0, "buffersPoolSize must be positive value, got %s", buffersPoolSize);
+
+		this.inputConsumer = new InputConsumer();
+		this.outputProducer = new OutputProducer(new ArrayDeque<ByteBuf>(buffersPoolSize), maxMessageSize,
+				valueSerializer, buffersPoolSize);
+	}
+
+	/**
+	 * Creates a new instance of this class with default size of byte buffer pool - 16
+	 *
+	 * @param eventloop       event loop in which serializer will run
+	 * @param valueSerializer specified BufferSerializer for this type
+	 * @param maxMessageSize  maximal size of message which this deserializer can receive
+	 */
+	public static <T> StreamBinaryDeserializer<T> create(Eventloop eventloop, BufferSerializer<T> valueSerializer,
+	                                                     int maxMessageSize) {
+		return new StreamBinaryDeserializer<>(eventloop, valueSerializer, maxMessageSize, 16);
+	}
+
+	/**
+	 * Creates a new instance of this class
+	 *
+	 * @param eventloop       event loop in which serializer will run
+	 * @param valueSerializer specified BufferSerializer for this type
+	 * @param buffersPoolSize size of byte buffer pool, while its have not free space, consumer suspends.
+	 * @param maxMessageSize  maximal size of message which this deserializer can receive
+	 */
+	public static <T> StreamBinaryDeserializer<T> create(Eventloop eventloop, BufferSerializer<T> valueSerializer,
+	                                                     int maxMessageSize, int buffersPoolSize) {
+		return new StreamBinaryDeserializer<>(eventloop, valueSerializer, maxMessageSize, buffersPoolSize);
+	}
+	// endregion
 
 	private final class InputConsumer extends AbstractInputConsumer {
 		@Override
@@ -243,35 +281,6 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 			byteBufs.clear();
 		}
 
-	}
-
-	/**
-	 * Creates a new instance of this class with default size of byte buffer pool - 16
-	 *
-	 * @param eventloop       event loop in which serializer will run
-	 * @param valueSerializer specified BufferSerializer for this type
-	 * @param maxMessageSize  maximal size of message which this deserializer can receive
-	 */
-	public StreamBinaryDeserializer(Eventloop eventloop, BufferSerializer<T> valueSerializer, int maxMessageSize) {
-		this(eventloop, valueSerializer, maxMessageSize, 16);
-	}
-
-	/**
-	 * Creates a new instance of this class
-	 *
-	 * @param eventloop       event loop in which serializer will run
-	 * @param valueSerializer specified BufferSerializer for this type
-	 * @param buffersPoolSize size of byte buffer pool, while its have not free space, consumer suspends.
-	 * @param maxMessageSize  maximal size of message which this deserializer can receive
-	 */
-	public StreamBinaryDeserializer(Eventloop eventloop, BufferSerializer<T> valueSerializer, int maxMessageSize, int buffersPoolSize) {
-		super(eventloop);
-		checkArgument(maxMessageSize < (1 << (OutputProducer.MAX_HEADER_BYTES * 7)), "maxMessageSize must be less than 2 MB");
-		checkArgument(buffersPoolSize > 0, "buffersPoolSize must be positive value, got %s", buffersPoolSize);
-
-		this.inputConsumer = new InputConsumer();
-		this.outputProducer = new OutputProducer(new ArrayDeque<ByteBuf>(buffersPoolSize), maxMessageSize,
-				valueSerializer, buffersPoolSize);
 	}
 
 	// jmx

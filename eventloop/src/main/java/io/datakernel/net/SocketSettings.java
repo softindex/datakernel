@@ -27,8 +27,8 @@ import static java.net.StandardSocketOptions.*;
 /**
  * This class used to change settings for socket. It will be applying with creating new socket
  */
-public class SocketSettings {
-	private static final SocketSettings DEFAULT_SOCKET_SETTINGS = new SocketSettings();
+public final class SocketSettings {
+	private static final SocketSettings DEFAULT_SOCKET_SETTINGS = create();
 
 	public static SocketSettings defaultSocketSettings() {
 		return DEFAULT_SOCKET_SETTINGS;
@@ -47,7 +47,8 @@ public class SocketSettings {
 	private final long readTimeout;
 	private final long writeTimeout;
 
-	protected SocketSettings(int sendBufferSize, int receiveBufferSize, byte keepAlive, byte reuseAddress, byte tcpNoDelay, long readTimeout, long writeTimeout) {
+	// region builders
+	private SocketSettings(int sendBufferSize, int receiveBufferSize, byte keepAlive, byte reuseAddress, byte tcpNoDelay, long readTimeout, long writeTimeout) {
 		this.sendBufferSize = sendBufferSize;
 		this.receiveBufferSize = receiveBufferSize;
 		this.keepAlive = keepAlive;
@@ -57,37 +58,38 @@ public class SocketSettings {
 		this.writeTimeout = writeTimeout;
 	}
 
-	public SocketSettings() {
-		this(DEF_INT, DEF_INT, DEF_BOOL, DEF_BOOL, DEF_BOOL, DEF_INT, DEF_INT);
+	public static SocketSettings create() {
+		return new SocketSettings(DEF_INT, DEF_INT, DEF_BOOL, DEF_BOOL, DEF_BOOL, DEF_INT, DEF_INT);
 	}
 
-	public SocketSettings sendBufferSize(int sendBufferSize) {
+	public SocketSettings withSendBufferSize(int sendBufferSize) {
 		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay, readTimeout, writeTimeout);
 	}
 
-	public SocketSettings receiveBufferSize(int receiveBufferSize) {
+	public SocketSettings withReceiveBufferSize(int receiveBufferSize) {
 		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay, readTimeout, writeTimeout);
 	}
 
-	public SocketSettings keepAlive(boolean keepAlive) {
+	public SocketSettings withKeepAlive(boolean keepAlive) {
 		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive ? TRUE : FALSE, reuseAddress, tcpNoDelay, readTimeout, writeTimeout);
 	}
 
-	public SocketSettings reuseAddress(boolean reuseAddress) {
+	public SocketSettings withReuseAddress(boolean reuseAddress) {
 		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress ? TRUE : FALSE, tcpNoDelay, readTimeout, writeTimeout);
 	}
 
-	public SocketSettings tcpNoDelay(boolean tcpNoDelay) {
+	public SocketSettings withTcpNoDelay(boolean tcpNoDelay) {
 		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay ? TRUE : FALSE, readTimeout, writeTimeout);
 	}
 
-	public SocketSettings readTimeout(long readTimeout) {
+	public SocketSettings withReadTimeout(long readTimeout) {
 		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay, readTimeout, writeTimeout);
 	}
 
-	public SocketSettings writeTimeout(long writeTimeout) {
+	public SocketSettings withWriteTimeout(long writeTimeout) {
 		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay, readTimeout, writeTimeout);
 	}
+	// endregion
 
 	public void applySettings(SocketChannel channel) throws IOException {
 		if (sendBufferSize != DEF_INT) {

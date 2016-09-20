@@ -18,7 +18,7 @@ package io.datakernel.eventloop;
 
 import io.datakernel.async.AsyncCancellable;
 
-public class ScheduledRunnable implements Comparable<ScheduledRunnable>, AsyncCancellable {
+public final class ScheduledRunnable implements Comparable<ScheduledRunnable>, AsyncCancellable {
 	/**
 	 * The time after which this runnable will be executed
 	 */
@@ -27,16 +27,23 @@ public class ScheduledRunnable implements Comparable<ScheduledRunnable>, AsyncCa
 	private boolean cancelled;
 	private boolean complete;
 
+	// region builders
+
 	/**
 	 * Initializes a new instance of ScheduledRunnable
 	 *
-	 * @param timestamp time after which this runnable will be executed
+	 * @param timestamp timestamp after which this runnable will be executed
 	 * @param runnable  runnable for executing
 	 */
-	public ScheduledRunnable(long timestamp, Runnable runnable) {
+	private ScheduledRunnable(long timestamp, Runnable runnable) {
 		this.timestamp = timestamp;
 		this.runnable = runnable;
 	}
+
+	public static ScheduledRunnable create(long timestamp, Runnable runnable) {
+		return new ScheduledRunnable(timestamp, runnable);
+	}
+	// endregion
 
 	@Override
 	public boolean equals(Object o) {

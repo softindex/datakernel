@@ -16,7 +16,6 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.net.SocketSettings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,16 +37,9 @@ public final class SocketReconnector {
 	private final int reconnectAttempts;
 	private final long reconnectTimeout;
 
-	/**
-	 * Creates a new instance of SocketReconnector
-	 *
-	 * @param eventloop         eventloop to which its instance will be related
-	 * @param address           address to which socketChannels will be connected.
-	 * @param reconnectAttempts number for attempts to connect
-	 * @param reconnectTimeout  time after which it will begin connect
-	 */
-	public SocketReconnector(Eventloop eventloop, InetSocketAddress address,
-	                         int reconnectAttempts, long reconnectTimeout) {
+	// region builders
+	private SocketReconnector(Eventloop eventloop, InetSocketAddress address,
+	                          int reconnectAttempts, long reconnectTimeout) {
 		this.eventloop = checkNotNull(eventloop);
 		this.address = checkNotNull(address);
 		this.reconnectAttempts = reconnectAttempts;
@@ -57,13 +49,16 @@ public final class SocketReconnector {
 	/**
 	 * Creates a new instance of SocketReconnector
 	 *
-	 * @param eventloop      eventloop to which its instance will be related
-	 * @param address        address to which socketChannels will be connected.
-	 * @param socketSettings sockets settings for creating new sockets
+	 * @param eventloop         eventloop to which its instance will be related
+	 * @param address           address to which socketChannels will be connected.
+	 * @param reconnectAttempts number for attempts to connect
+	 * @param reconnectTimeout  time after which it will begin connect
 	 */
-	public SocketReconnector(Eventloop eventloop, InetSocketAddress address, SocketSettings socketSettings) {
-		this(eventloop, address, 0, 0);
+	public static SocketReconnector create(Eventloop eventloop, InetSocketAddress address,
+	                                       int reconnectAttempts, long reconnectTimeout) {
+		return new SocketReconnector(eventloop, address, reconnectAttempts, reconnectTimeout);
 	}
+	// endregion
 
 	/**
 	 * Creates a new connection with settings from this reconnector.

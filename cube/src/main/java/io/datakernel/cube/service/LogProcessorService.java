@@ -35,11 +35,16 @@ public final class LogProcessorService implements EventloopService {
 
 	private ScheduledRunnable processingTask;
 
-	public LogProcessorService(Eventloop eventloop, Cube cube, LogProcessor logProcessor, int logProcessingPeriodMillis) {
+	private LogProcessorService(Eventloop eventloop, Cube cube, LogProcessor logProcessor, int logProcessingPeriodMillis) {
 		this.eventloop = eventloop;
 		this.cube = cube;
 		this.logProcessor = logProcessor;
 		this.logProcessingPeriodMillis = logProcessingPeriodMillis;
+	}
+
+	public static LogProcessorService create(Eventloop eventloop, Cube cube, LogProcessor logProcessor,
+	                                         int logProcessingPeriodMillis) {
+		return new LogProcessorService(eventloop, cube, logProcessor, logProcessingPeriodMillis);
 	}
 
 	private void processLogs() {

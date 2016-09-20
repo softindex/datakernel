@@ -32,108 +32,108 @@ public final class ReportingDSL {
 	public static ReportingDSLExpression add(String measure1, String measure2) {
 		Expression expression = Expressions.add(cast(getter(self(), measure1), double.class), getter(self(), measure2));
 		Set<String> measureDependencies = newHashSet(measure1, measure2);
-		return new ReportingDSLExpression(expression, measureDependencies);
+		return ReportingDSLExpression.create(expression, measureDependencies);
 	}
 
 	public static ReportingDSLExpression add(ReportingDSLExpression reportingExpression, String measure) {
 		Expression expression = Expressions.add(reportingExpression.getExpression(), cast(getter(self(), measure), double.class));
-		return new ReportingDSLExpression(expression, mergeMeasureDependencies(reportingExpression, measure));
+		return ReportingDSLExpression.create(expression, mergeMeasureDependencies(reportingExpression, measure));
 	}
 
 	public static ReportingDSLExpression add(ReportingDSLExpression reportingExpression, double value) {
 		Expression expression = Expressions.add(reportingExpression.getExpression(), value(value));
-		return new ReportingDSLExpression(expression, reportingExpression.getMeasureDependencies());
+		return ReportingDSLExpression.create(expression, reportingExpression.getMeasureDependencies());
 	}
 
 	public static ReportingDSLExpression add(ReportingDSLExpression reportingExpression1, ReportingDSLExpression reportingExpression2) {
 		Expression expression = Expressions.add(reportingExpression1.getExpression(), reportingExpression2.getExpression());
-		return new ReportingDSLExpression(expression, mergeMeasureDependencies(reportingExpression1, reportingExpression2));
+		return ReportingDSLExpression.create(expression, mergeMeasureDependencies(reportingExpression1, reportingExpression2));
 	}
 
 	/* Subtraction */
 	public static ReportingDSLExpression subtract(ReportingDSLExpression reportingExpression1, ReportingDSLExpression reportingExpression2) {
 		Expression expression = sub(reportingExpression1.getExpression(), reportingExpression2.getExpression());
-		return new ReportingDSLExpression(expression, mergeMeasureDependencies(reportingExpression1, reportingExpression2));
+		return ReportingDSLExpression.create(expression, mergeMeasureDependencies(reportingExpression1, reportingExpression2));
 	}
 
 	public static ReportingDSLExpression subtract(String measure1, String measure2) {
 		Expression expression = sub(cast(getter(self(), measure1), double.class), getter(self(), measure2));
 		Set<String> measureDependencies = newHashSet(measure1, measure2);
-		return new ReportingDSLExpression(expression, measureDependencies);
+		return ReportingDSLExpression.create(expression, measureDependencies);
 	}
 
 	public static ReportingDSLExpression subtract(ReportingDSLExpression reportingExpression, String measure) {
 		Expression expression = sub(reportingExpression.getExpression(), cast(getter(self(), measure), double.class));
-		return new ReportingDSLExpression(expression, mergeMeasureDependencies(reportingExpression, measure));
+		return ReportingDSLExpression.create(expression, mergeMeasureDependencies(reportingExpression, measure));
 	}
 
 	public static ReportingDSLExpression subtract(String measure, ReportingDSLExpression reportingExpression) {
 		Expression expression = sub(cast(getter(self(), measure), double.class), reportingExpression.getExpression());
-		return new ReportingDSLExpression(expression, mergeMeasureDependencies(reportingExpression, measure));
+		return ReportingDSLExpression.create(expression, mergeMeasureDependencies(reportingExpression, measure));
 	}
 
 	public static ReportingDSLExpression subtract(ReportingDSLExpression reportingExpression, double value) {
 		Expression expression = sub(reportingExpression.getExpression(), value(value));
-		return new ReportingDSLExpression(expression, reportingExpression.getMeasureDependencies());
+		return ReportingDSLExpression.create(expression, reportingExpression.getMeasureDependencies());
 	}
 
 	public static ReportingDSLExpression subtract(double value, ReportingDSLExpression reportingExpression) {
 		Expression expression = sub(value(value), reportingExpression.getExpression());
-		return new ReportingDSLExpression(expression, reportingExpression.getMeasureDependencies());
+		return ReportingDSLExpression.create(expression, reportingExpression.getMeasureDependencies());
 	}
 
 	/* Division */
 	public static ReportingDSLExpression divide(String measure1, String measure2) {
 		Expression expression = getDivisionExpression(cast(getter(self(), measure1), double.class), cast(getter(self(), measure2), double.class));
 		Set<String> measureDependencies = newHashSet(measure1, measure2);
-		return new ReportingDSLExpression(expression, measureDependencies);
+		return ReportingDSLExpression.create(expression, measureDependencies);
 	}
 
 	public static ReportingDSLExpression divide(ReportingDSLExpression reportingExpression, String measure) {
 		Expression expression = getDivisionExpression(reportingExpression.getExpression(), cast(getter(self(), measure), double.class));
-		return new ReportingDSLExpression(expression, mergeMeasureDependencies(reportingExpression, measure));
+		return ReportingDSLExpression.create(expression, mergeMeasureDependencies(reportingExpression, measure));
 	}
 
 	public static ReportingDSLExpression divide(String measure, ReportingDSLExpression reportingExpression) {
 		Expression expression = getDivisionExpression(cast(getter(self(), measure), double.class), reportingExpression.getExpression());
-		return new ReportingDSLExpression(expression, mergeMeasureDependencies(reportingExpression, measure));
+		return ReportingDSLExpression.create(expression, mergeMeasureDependencies(reportingExpression, measure));
 	}
 
 	public static ReportingDSLExpression divide(ReportingDSLExpression reportingExpression, double value) {
 		Expression expression = getDivisionExpression(reportingExpression.getExpression(), value(value));
-		return new ReportingDSLExpression(expression, reportingExpression.getMeasureDependencies());
+		return ReportingDSLExpression.create(expression, reportingExpression.getMeasureDependencies());
 	}
 
 	public static ReportingDSLExpression divide(double value, ReportingDSLExpression reportingExpression) {
 		Expression expression = getDivisionExpression(value(value), reportingExpression.getExpression());
-		return new ReportingDSLExpression(expression, reportingExpression.getMeasureDependencies());
+		return ReportingDSLExpression.create(expression, reportingExpression.getMeasureDependencies());
 	}
 
 	public static ReportingDSLExpression divide(ReportingDSLExpression reportingExpression1, ReportingDSLExpression reportingExpression2) {
 		Expression expression = getDivisionExpression(reportingExpression1.getExpression(), reportingExpression2.getExpression());
-		return new ReportingDSLExpression(expression, mergeMeasureDependencies(reportingExpression1, reportingExpression2));
+		return ReportingDSLExpression.create(expression, mergeMeasureDependencies(reportingExpression1, reportingExpression2));
 	}
 
 	/* Multiplication */
 	public static ReportingDSLExpression multiply(String measure1, String measure2) {
 		Expression expression = mul(cast(getter(self(), measure1), double.class), getter(self(), measure2));
 		Set<String> measureDependencies = newHashSet(measure1, measure2);
-		return new ReportingDSLExpression(expression, measureDependencies);
+		return ReportingDSLExpression.create(expression, measureDependencies);
 	}
 
 	public static ReportingDSLExpression multiply(ReportingDSLExpression reportingExpression, String measure) {
 		Expression expression = mul(reportingExpression.getExpression(), cast(getter(self(), measure), double.class));
-		return new ReportingDSLExpression(expression, mergeMeasureDependencies(reportingExpression, measure));
+		return ReportingDSLExpression.create(expression, mergeMeasureDependencies(reportingExpression, measure));
 	}
 
 	public static ReportingDSLExpression multiply(ReportingDSLExpression reportingExpression, double value) {
 		Expression expression = mul(reportingExpression.getExpression(), value(value));
-		return new ReportingDSLExpression(expression, reportingExpression.getMeasureDependencies());
+		return ReportingDSLExpression.create(expression, reportingExpression.getMeasureDependencies());
 	}
 
 	public static ReportingDSLExpression multiply(ReportingDSLExpression reportingExpression1, ReportingDSLExpression reportingExpression2) {
 		Expression expression = mul(reportingExpression1.getExpression(), reportingExpression2.getExpression());
-		return new ReportingDSLExpression(expression, mergeMeasureDependencies(reportingExpression1, reportingExpression2));
+		return ReportingDSLExpression.create(expression, mergeMeasureDependencies(reportingExpression1, reportingExpression2));
 	}
 
 	/* Other functions */
@@ -148,12 +148,12 @@ public final class ReportingDSL {
 		Expression expression = choice(cmpLt(callStatic(Double.class, "compare", argument, value(0.0d)), value(0)),
 				value(0.0d),
 				callStatic(Math.class, "sqrt", argument));
-		return new ReportingDSLExpression(expression, reportingExpression.getMeasureDependencies());
+		return ReportingDSLExpression.create(expression, reportingExpression.getMeasureDependencies());
 	}
 
 	public static ReportingDSLExpression squared(ReportingDSLExpression reportingExpression) {
 		Expression expression = mul(reportingExpression.getExpression(), reportingExpression.getExpression());
-		return new ReportingDSLExpression(expression, reportingExpression.getMeasureDependencies());
+		return ReportingDSLExpression.create(expression, reportingExpression.getMeasureDependencies());
 	}
 
 	public static ReportingDSLExpression deviation(String value, String squaredValue, String totalValue) {
@@ -165,7 +165,7 @@ public final class ReportingDSL {
 	}
 
 	public static ReportingDSLExpression preprocess(String measure, Function<Expression, Expression> function) {
-		return new ReportingDSLExpression(function.apply(getter(self(), measure)), newHashSet(measure));
+		return ReportingDSLExpression.create(function.apply(getter(self(), measure)), newHashSet(measure));
 	}
 
 	/* Utility methods */

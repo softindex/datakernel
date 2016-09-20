@@ -25,8 +25,8 @@ import static java.net.StandardSocketOptions.*;
 /**
  * This class used to change settings for socket. It will be applying with creating new socket
  */
-public class DatagramSocketSettings {
-	private static final DatagramSocketSettings defaultSocketSettings = new DatagramSocketSettings();
+public final class DatagramSocketSettings {
+	private static final DatagramSocketSettings defaultSocketSettings = create();
 
 	public static DatagramSocketSettings defaultDatagramSocketSettings() {
 		return defaultSocketSettings;
@@ -42,33 +42,35 @@ public class DatagramSocketSettings {
 	private final int sendBufferSize;
 	private final byte broadcast;
 
-	protected DatagramSocketSettings(int receiveBufferSize, int sendBufferSize, byte reuseAddress,
-	                                 byte broadcast) {
+	// region builders
+	private DatagramSocketSettings(int receiveBufferSize, int sendBufferSize, byte reuseAddress,
+	                               byte broadcast) {
 		this.receiveBufferSize = receiveBufferSize;
 		this.reuseAddress = reuseAddress;
 		this.sendBufferSize = sendBufferSize;
 		this.broadcast = broadcast;
 	}
 
-	public DatagramSocketSettings() {
-		this(DEF_INT, DEF_INT, DEF_BOOL, DEF_BOOL);
+	public static DatagramSocketSettings create() {
+		return new DatagramSocketSettings(DEF_INT, DEF_INT, DEF_BOOL, DEF_BOOL);
 	}
 
-	public DatagramSocketSettings receiveBufferSize(int receiveBufferSize) {
+	public DatagramSocketSettings withReceiveBufferSize(int receiveBufferSize) {
 		return new DatagramSocketSettings(receiveBufferSize, sendBufferSize, reuseAddress, broadcast);
 	}
 
-	public DatagramSocketSettings sendBufferSize(int sendBufferSize) {
+	public DatagramSocketSettings withSendBufferSize(int sendBufferSize) {
 		return new DatagramSocketSettings(receiveBufferSize, sendBufferSize, reuseAddress, broadcast);
 	}
 
-	public DatagramSocketSettings reuseAddress(boolean reuseAddress) {
+	public DatagramSocketSettings withReuseAddress(boolean reuseAddress) {
 		return new DatagramSocketSettings(receiveBufferSize, sendBufferSize, reuseAddress ? TRUE : FALSE, broadcast);
 	}
 
-	public DatagramSocketSettings broadcast(boolean broadcast) {
+	public DatagramSocketSettings withBroadcast(boolean broadcast) {
 		return new DatagramSocketSettings(receiveBufferSize, sendBufferSize, reuseAddress, broadcast ? TRUE : FALSE);
 	}
+	// endregion
 
 	public void applySettings(DatagramChannel channel) throws IOException {
 		if (receiveBufferSize != DEF_INT) {

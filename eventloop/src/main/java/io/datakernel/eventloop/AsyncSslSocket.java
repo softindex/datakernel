@@ -56,10 +56,11 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 
 	private AsyncTcpSocketContract contractChecker;
 
+	// region builders
 	private static AsyncSslSocket wrapSocket(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, SSLContext sslContext, Executor executor, boolean clientMode) {
 		SSLEngine sslEngine = sslContext.createSSLEngine();
 		sslEngine.setUseClientMode(clientMode);
-		AsyncSslSocket asyncSslSocket = new AsyncSslSocket(eventloop, asyncTcpSocket, sslEngine, executor);
+		AsyncSslSocket asyncSslSocket = AsyncSslSocket.create(eventloop, asyncTcpSocket, sslEngine, executor);
 		asyncTcpSocket.setEventHandler(asyncSslSocket);
 		return asyncSslSocket;
 	}
@@ -72,14 +73,20 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		return wrapSocket(eventloop, asyncTcpSocket, sslContext, executor, false);
 	}
 
-	public AsyncSslSocket(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, SSLEngine engine, Executor executor) {
+	private AsyncSslSocket(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, SSLEngine engine, Executor executor) {
 		this.eventloop = eventloop;
 		this.engine = engine;
 		this.executor = executor;
 		this.upstream = asyncTcpSocket;
 
-		assert (this.contractChecker = new AsyncTcpSocketContract()) != null;
+		assert (this.contractChecker = AsyncTcpSocketContract.create()) != null;
 	}
+
+	public static AsyncSslSocket create(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
+	                                    SSLEngine engine, Executor executor) {
+		return new AsyncSslSocket(eventloop, asyncTcpSocket, engine, executor);
+	}
+	// endregion
 
 	@Override
 	public void onRegistered() {

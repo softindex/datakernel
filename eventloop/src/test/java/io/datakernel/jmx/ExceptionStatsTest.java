@@ -51,7 +51,7 @@ public class ExceptionStatsTest {
 
 	@Test
 	public void itShouldProperlyCollectAttributes() throws OpenDataException {
-		ExceptionStats stats = new ExceptionStats();
+		ExceptionStats stats = ExceptionStats.create();
 		Exception exception = new RuntimeException("msg");
 		Object causedObject = "cause";
 		stats.recordException(exception, causedObject);
@@ -63,23 +63,23 @@ public class ExceptionStatsTest {
 	@Test
 	public void itShouldProperlyAggregateAttributes() throws OpenDataException {
 		// init and record
-		ExceptionStats stats_1 = new ExceptionStats();
+		ExceptionStats stats_1 = ExceptionStats.create();
 		Exception exception_1 = new RuntimeException("msg-1");
 		Object causedObject_1 = "cause-1";
 		stats_1.recordException(exception_1, causedObject_1);
 
-		ExceptionStats stats_2 = new ExceptionStats();
+		ExceptionStats stats_2 = ExceptionStats.create();
 		Exception exception_2 = new RuntimeException("msg-2");
 		Object causedObject_2 = "cause-2";
 		stats_2.recordException(exception_2, causedObject_2);
 
-		ExceptionStats stats_3 = new ExceptionStats();
+		ExceptionStats stats_3 = ExceptionStats.create();
 		Exception exception_3 = new RuntimeException("msg-3");
 		Object causedObject_3 = "cause-3";
 		stats_3.recordException(exception_3, causedObject_3);
 
 		// aggregate
-		ExceptionStats accumulator = new ExceptionStats();
+		ExceptionStats accumulator = ExceptionStats.create();
 		accumulator.add(stats_1);
 		accumulator.add(stats_2);
 		accumulator.add(stats_3);

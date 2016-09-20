@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.SimpleException;
+import io.datakernel.exception.SimpleException;
 
 public class HttpServletError extends SimpleException {
 	private final int code;

@@ -19,6 +19,7 @@ package io.datakernel.stream;
 import io.datakernel.eventloop.Eventloop;
 
 public final class SimpleStreamConsumer<T> extends AbstractStreamConsumer<T> {
+
 	public interface StatusListener {
 		void onEndOfStream();
 
@@ -31,23 +32,19 @@ public final class SimpleStreamConsumer<T> extends AbstractStreamConsumer<T> {
 	private final StatusListener statusListener;
 	private final StreamDataReceiver<T> streamDataReceiver;
 
-	public SimpleStreamConsumer(Eventloop eventloop, StatusListener statusListener, StreamDataReceiver<T> streamDataReceiver) {
+	// region creators
+	private SimpleStreamConsumer(Eventloop eventloop, StatusListener statusListener,
+	                             StreamDataReceiver<T> streamDataReceiver) {
 		super(eventloop);
 		this.statusListener = statusListener;
 		this.streamDataReceiver = streamDataReceiver;
 	}
 
-	public SimpleStreamConsumer(Eventloop eventloop, StreamDataReceiver<T> streamDataReceiver) {
-		super(eventloop);
-		this.statusListener = null;
-		this.streamDataReceiver = streamDataReceiver;
+	public static <T> SimpleStreamConsumer<T> create(Eventloop eventloop, StatusListener statusListener,
+	                                                 StreamDataReceiver<T> streamDataReceiver) {
+		return new SimpleStreamConsumer<T>(eventloop, statusListener, streamDataReceiver);
 	}
-
-	public SimpleStreamConsumer(Eventloop eventloop, StatusListenerWithDataReceiver<T> listenerWithDataReceiver) {
-		super(eventloop);
-		this.statusListener = listenerWithDataReceiver;
-		this.streamDataReceiver = listenerWithDataReceiver;
-	}
+	// endregion
 
 	@Override
 	protected void onEndOfStream() {

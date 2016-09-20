@@ -17,11 +17,12 @@
 package io.datakernel.hashfs;
 
 import com.google.gson.Gson;
-import io.datakernel.*;
+import io.datakernel.FsClient;
 import io.datakernel.FsCommands.FsCommand;
 import io.datakernel.FsResponses.Err;
 import io.datakernel.FsResponses.FsResponse;
 import io.datakernel.FsResponses.ListOfFiles;
+import io.datakernel.RemoteFsException;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingCompletionCallback;
 import io.datakernel.async.ForwardingResultCallback;
@@ -30,44 +31,60 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.hashfs.HashFsCommands.Alive;
 import io.datakernel.hashfs.HashFsCommands.Announce;
-import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.net.Messaging.ReceiveMessageCallback;
 import io.datakernel.stream.net.MessagingWithBinaryStreaming;
 
+import javax.net.ssl.SSLContext;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.util.Preconditions.check;
 
 public final class HashFsClient extends FsClient<HashFsClient> {
+	public static final long BASE_RETRY_TIMEOUT_DEFAULT = 100L;
+	public static final int MAX_RETRY_ATTEMPTS_DEFAULT = 3;
+
 	private final List<Replica> bootstrap;
 
-	private HashingStrategy hashing = new RendezvousHashing();
-	private long baseRetryTimeout = 100L;
-	private int maxRetryAttempts = 3;
+	private final HashingStrategy hashing = new RendezvousHashing();
+	private final long baseRetryTimeout;
+	private final int maxRetryAttempts;
 
-	// creators & builder methods
-	public HashFsClient(Eventloop eventloop, List<Replica> bootstrap) {
-		super(eventloop);
+	// region creators & builder methods
+	private HashFsClient(Eventloop eventloop, List<Replica> bootstrap,
+	                     long baseRetryTimeout, int maxRetryAttempts,
+	                     SSLContext sslContext, ExecutorService sslExecutor) {
+		super(eventloop, sslContext, sslExecutor);
 		check(bootstrap != null && !bootstrap.isEmpty(), "Bootstrap list can't be empty or null");
 		this.bootstrap = bootstrap;
-	}
-
-	public HashFsClient setBaseRetryTimeout(long baseRetryTimeout) {
-		check(baseRetryTimeout > 0, "Base retry timeout should be positive");
 		this.baseRetryTimeout = baseRetryTimeout;
-		return this;
+		this.maxRetryAttempts = maxRetryAttempts;
 	}
 
-	public HashFsClient setMaxRetryAttempts(int maxRetryAttempts) {
-		check(maxRetryAttempts > 0, "Max retry attempts quantity should be positive");
-		this.maxRetryAttempts = maxRetryAttempts;
-		return this;
+	public static HashFsClient create(Eventloop eventloop, List<Replica> bootstrap) {
+		return new HashFsClient(
+				eventloop, bootstrap, BASE_RETRY_TIMEOUT_DEFAULT, MAX_RETRY_ATTEMPTS_DEFAULT, null, null);
 	}
+
+	public HashFsClient withBaseRetryTimeout(long baseRetryTimeout) {
+		check(baseRetryTimeout > 0, "Base retry timeout should be positive");
+		return new HashFsClient(eventloop, bootstrap, baseRetryTimeout, maxRetryAttempts, sslContext, sslExecutor);
+	}
+
+	public HashFsClient withMaxRetryAttempts(int maxRetryAttempts) {
+		check(maxRetryAttempts > 0, "Max retry attempts quantity should be positive");
+		return new HashFsClient(eventloop, bootstrap, baseRetryTimeout, maxRetryAttempts, sslContext, sslExecutor);
+	}
+
+	public HashFsClient withSslEnabled(SSLContext sslContext, ExecutorService sslExecutor) {
+		return new HashFsClient(eventloop, bootstrap, baseRetryTimeout, maxRetryAttempts, sslContext, sslExecutor);
+	}
+	// endregion
 
 	// establishing connection
 	@Override

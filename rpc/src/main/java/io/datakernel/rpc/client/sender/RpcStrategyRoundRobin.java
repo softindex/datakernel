@@ -27,15 +27,19 @@ import static io.datakernel.util.Preconditions.checkArgument;
 
 public final class RpcStrategyRoundRobin implements RpcStrategy {
 	private final RpcStrategyList list;
-	private int minActiveSubStrategies;
+	private final int minActiveSubStrategies;
 
-	public RpcStrategyRoundRobin(RpcStrategyList list) {
+	private RpcStrategyRoundRobin(RpcStrategyList list, int minActiveSubStrategies) {
 		this.list = list;
+		this.minActiveSubStrategies = minActiveSubStrategies;
+	}
+
+	public static RpcStrategyRoundRobin create(RpcStrategyList list) {
+		return new RpcStrategyRoundRobin(list, 0);
 	}
 
 	public RpcStrategyRoundRobin withMinActiveSubStrategies(int minActiveSubStrategies) {
-		this.minActiveSubStrategies = minActiveSubStrategies;
-		return this;
+		return new RpcStrategyRoundRobin(list, minActiveSubStrategies);
 	}
 
 	@Override

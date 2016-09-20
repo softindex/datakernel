@@ -39,9 +39,9 @@ import static org.junit.Assert.*;
 public class StreamUnionTest {
 	@Test
 	public void test1() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
-		StreamUnion<Integer> streamUnion = new StreamUnion<>(eventloop);
+		StreamUnion<Integer> streamUnion = StreamUnion.create(eventloop);
 
 		StreamProducer<Integer> source0 = StreamProducers.closing(eventloop);
 		StreamProducer<Integer> source1 = StreamProducers.ofValue(eventloop, 1);
@@ -82,9 +82,9 @@ public class StreamUnionTest {
 
 	@Test
 	public void testWithError() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
-		StreamUnion<Integer> streamUnion = new StreamUnion<>(eventloop);
+		StreamUnion<Integer> streamUnion = StreamUnion.create(eventloop);
 
 		StreamProducer<Integer> source0 = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(4, 5));
@@ -129,9 +129,9 @@ public class StreamUnionTest {
 
 	@Test
 	public void testProducerWithError() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
-		StreamUnion<Integer> streamUnion = new StreamUnion<>(eventloop);
+		StreamUnion<Integer> streamUnion = StreamUnion.create(eventloop);
 
 		StreamProducer<Integer> source0 = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, Arrays.asList(1, 2)),
@@ -159,9 +159,9 @@ public class StreamUnionTest {
 
 	@Test
 	public void testWithoutConsumer() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
-		StreamUnion<Integer> streamUnion = new StreamUnion<>(eventloop);
+		StreamUnion<Integer> streamUnion = StreamUnion.create(eventloop);
 
 		StreamProducer<Integer> source0 = StreamProducers.closing(eventloop);
 		StreamProducer<Integer> source1 = StreamProducers.ofValue(eventloop, 1);
@@ -204,9 +204,9 @@ public class StreamUnionTest {
 
 	@Test
 	public void testWithoutProducer() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
-		StreamUnion<Integer> streamUnion = new StreamUnion<>(eventloop);
+		StreamUnion<Integer> streamUnion = StreamUnion.create(eventloop);
 		CheckCallCallback checkCallCallback = new CheckCallCallback();
 		StreamConsumers.ToList<Integer> toList = StreamConsumers.toList(eventloop);
 		toList.setCompletionCallback(checkCallCallback);

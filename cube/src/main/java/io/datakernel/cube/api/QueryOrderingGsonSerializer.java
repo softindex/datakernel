@@ -31,6 +31,10 @@ public final class QueryOrderingGsonSerializer implements JsonSerializer<CubeQue
 	private static final String ASC = "asc";
 	private static final String DESC = "desc";
 
+	private QueryOrderingGsonSerializer() {}
+
+	public static QueryOrderingGsonSerializer create() {return new QueryOrderingGsonSerializer();}
+
 	@Override
 	public CubeQuery.Ordering deserialize(JsonElement json, Type type, JsonDeserializationContext ctx)
 			throws JsonParseException {

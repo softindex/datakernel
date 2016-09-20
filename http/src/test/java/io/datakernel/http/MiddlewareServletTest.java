@@ -16,9 +16,9 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.util.ByteBufStrings;
+import io.datakernel.bytebuf.ByteBufStrings;
+import io.datakernel.exception.ParseException;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -65,20 +65,20 @@ public class MiddlewareServletTest {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
 				ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
-				callback.onResult(HttpResponse.create(200).body(msg));
+				callback.onResult(HttpResponse.ofCode(200).withBody(msg));
 			}
 		};
 
-		MiddlewareServlet a = new MiddlewareServlet();
+		MiddlewareServlet a = MiddlewareServlet.create();
 		a.get("/c", action);
 		a.get("/d", action);
 		a.get("/", action);
 
-		MiddlewareServlet b = new MiddlewareServlet();
+		MiddlewareServlet b = MiddlewareServlet.create();
 		b.get("/f", action);
 		b.get("/g", action);
 
-		MiddlewareServlet main = new MiddlewareServlet();
+		MiddlewareServlet main = MiddlewareServlet.create();
 		main.get("/", action);
 		main.get("/a", a);
 		main.get("/b", b);
@@ -111,11 +111,11 @@ public class MiddlewareServletTest {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
 				ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
-				callback.onResult(HttpResponse.create(200).body(msg));
+				callback.onResult(HttpResponse.ofCode(200).withBody(msg));
 			}
 		};
 
-		MiddlewareServlet main = new MiddlewareServlet();
+		MiddlewareServlet main = MiddlewareServlet.create();
 
 		main.get("/", action);
 		main.get("/a", action);
@@ -143,7 +143,7 @@ public class MiddlewareServletTest {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
 				ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
-				callback.onResult(HttpResponse.create(200).body(msg));
+				callback.onResult(HttpResponse.ofCode(200).withBody(msg));
 			}
 		};
 
@@ -151,11 +151,11 @@ public class MiddlewareServletTest {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
 				ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
-				callback.onResult(HttpResponse.create(200).body(msg));
+				callback.onResult(HttpResponse.ofCode(200).withBody(msg));
 			}
 		};
 
-		MiddlewareServlet s1 = new MiddlewareServlet();
+		MiddlewareServlet s1 = MiddlewareServlet.create();
 		s1.get("/", action);
 		s1.get("/", action);
 
@@ -179,17 +179,17 @@ public class MiddlewareServletTest {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
 				ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
-				callback.onResult(HttpResponse.create(200).body(msg));
+				callback.onResult(HttpResponse.ofCode(200).withBody(msg));
 			}
 		};
 
-		MiddlewareServlet main = new MiddlewareServlet();
+		MiddlewareServlet main = MiddlewareServlet.create();
 		main.get("/a", action);
 		main.get("/a/c", action);
 		main.get("/a/d", action);
 		main.get("/b", action);
 
-		MiddlewareServlet supp = new MiddlewareServlet();
+		MiddlewareServlet supp = MiddlewareServlet.create();
 		supp.get("/", action);
 		supp.get("/a/e", action);
 		supp.get("/a/c/f", action);
@@ -216,7 +216,7 @@ public class MiddlewareServletTest {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
 				ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
-				callback.onResult(HttpResponse.create(200).body(msg));
+				callback.onResult(HttpResponse.ofCode(200).withBody(msg));
 			}
 		};
 
@@ -224,16 +224,16 @@ public class MiddlewareServletTest {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
 				ByteBuf msg = ByteBufStrings.wrapUtf8("Shall not be executed: " + request.getPath());
-				callback.onResult(HttpResponse.create(200).body(msg));
+				callback.onResult(HttpResponse.ofCode(200).withBody(msg));
 			}
 		};
 
-		MiddlewareServlet main = new MiddlewareServlet();
+		MiddlewareServlet main = MiddlewareServlet.create();
 		main.get("/", action);
 		main.get("/a/e", action);
 		main.get("/a/c/f", action);
 
-		MiddlewareServlet exc = new MiddlewareServlet();
+		MiddlewareServlet exc = MiddlewareServlet.create();
 		exc.get("/a/c/f", anotherAction);
 
 		// /a/c/f already mapped
@@ -250,16 +250,16 @@ public class MiddlewareServletTest {
 		AsyncHttpServlet printParameters = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				HttpResponse response = HttpResponse.create(200);
-				response.body(ByteBufStrings.wrapUtf8(request.getUrlParameter("id")
+				String body = request.getUrlParameter("id")
 						+ " " + request.getUrlParameter("uid")
-						+ " " + request.getUrlParameter("eid")));
-				callback.onResult(response);
+						+ " " + request.getUrlParameter("eid");
+				ByteBuf bodyByteBuf = ByteBufStrings.wrapUtf8(body);
+				callback.onResult(HttpResponse.ofCode(200).withBody(bodyByteBuf));
 				request.recycleBufs();
 			}
 		};
 
-		MiddlewareServlet main = new MiddlewareServlet();
+		MiddlewareServlet main = MiddlewareServlet.create();
 		main.get("/:id/a/:uid/b/:eid", printParameters);
 		main.get("/:id/a/:uid", printParameters);
 
@@ -276,22 +276,20 @@ public class MiddlewareServletTest {
 		AsyncHttpServlet serveCar = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				HttpResponse response = HttpResponse.create(200);
-				response.body(ByteBufStrings.wrapUtf8("served car: " + request.getUrlParameter("cid")));
-				callback.onResult(response);
+				ByteBuf body = ByteBufStrings.wrapUtf8("served car: " + request.getUrlParameter("cid"));
+				callback.onResult(HttpResponse.ofCode(200).withBody(body));
 			}
 		};
 
 		AsyncHttpServlet serveMan = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				HttpResponse response = HttpResponse.create(200);
-				response.body(ByteBufStrings.wrapUtf8("served man: " + request.getUrlParameter("mid")));
-				callback.onResult(response);
+				ByteBuf body = ByteBufStrings.wrapUtf8("served man: " + request.getUrlParameter("mid"));
+				callback.onResult(HttpResponse.ofCode(200).withBody(body));
 			}
 		};
 
-		MiddlewareServlet ms = new MiddlewareServlet();
+		MiddlewareServlet ms = MiddlewareServlet.create();
 		ms.get("/serve/:cid/wash", serveCar);
 		ms.get("/serve/:mid/feed", serveMan);
 
@@ -306,36 +304,30 @@ public class MiddlewareServletTest {
 	public void testDifferentMethods() throws ParseException {
 		HttpRequest request1 = HttpRequest.get(TEMPLATE + "/a/b/c/action");
 		HttpRequest request2 = HttpRequest.post(TEMPLATE + "/a/b/c/action");
-		HttpRequest request3 = HttpRequest.create(HttpMethod.CONNECT).url(TEMPLATE + "/a/b/c/action");
+		HttpRequest request3 = HttpRequest.ofMethod(HttpMethod.CONNECT).withUrl(TEMPLATE + "/a/b/c/action");
 
 		AsyncHttpServlet post = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				HttpResponse response = HttpResponse.create(200);
-				response.body(ByteBufStrings.wrapUtf8("POST"));
-				callback.onResult(response);
+				callback.onResult(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("POST")));
 			}
 		};
 
 		AsyncHttpServlet get = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				HttpResponse response = HttpResponse.create(200);
-				response.body(ByteBufStrings.wrapUtf8("GET"));
-				callback.onResult(response);
+				callback.onResult(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("GET")));
 			}
 		};
 
 		AsyncHttpServlet wildcard = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				HttpResponse response = HttpResponse.create(200);
-				response.body(ByteBufStrings.wrapUtf8("WILDCARD"));
-				callback.onResult(response);
+				callback.onResult(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("WILDCARD")));
 			}
 		};
 
-		MiddlewareServlet servlet = new MiddlewareServlet();
+		MiddlewareServlet servlet = MiddlewareServlet.create();
 		servlet.use("/a/b/c/action", wildcard);
 		servlet.post("/a/b/c/action", post);
 		servlet.get("/a/b/c/action", get);
@@ -353,21 +345,21 @@ public class MiddlewareServletTest {
 		AsyncHttpServlet def = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				callback.onResult(HttpResponse.create(200).body(ByteBufStrings.wrapUtf8("Stopped at admin: " + request.getRelativePath())));
+				callback.onResult(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Stopped at admin: " + request.getRelativePath())));
 			}
 		};
 
 		AsyncHttpServlet action = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				callback.onResult(HttpResponse.create(200).body(ByteBufStrings.wrapUtf8("Action executed")));
+				callback.onResult(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Action executed")));
 			}
 		};
 
 		HttpRequest request1 = HttpRequest.get(TEMPLATE + "/html/admin/action");
 		HttpRequest request2 = HttpRequest.get(TEMPLATE + "/html/admin/action/ban");
 
-		MiddlewareServlet main = new MiddlewareServlet();
+		MiddlewareServlet main = MiddlewareServlet.create();
 		main.get("/html/admin/action", action);
 		main.setDefault("/html/admin", def);
 
@@ -383,10 +375,10 @@ public class MiddlewareServletTest {
 		AsyncHttpServlet handler = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				callback.onResult(HttpResponse.create(200).body(ByteBufStrings.wrapUtf8("All OK")));
+				callback.onResult(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("All OK")));
 			}
 		};
-		MiddlewareServlet main = new MiddlewareServlet();
+		MiddlewareServlet main = MiddlewareServlet.create();
 		main.use("/a/:id/b/c", null);
 		main.use("/a/:id/b/d", handler);
 

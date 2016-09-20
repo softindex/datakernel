@@ -23,6 +23,10 @@ import static io.datakernel.codegen.Expressions.callStatic;
 import static io.datakernel.codegen.Expressions.set;
 
 public final class MinFieldProcessor implements FieldProcessor {
+	private MinFieldProcessor() {}
+
+	public static MinFieldProcessor create() {return new MinFieldProcessor();}
+
 	@Override
 	public Expression getOnFirstItemExpression(VarField accumulator, Class<?> accumulatorClass,
 	                                           VarField firstValue, Class<?> valueClass) {

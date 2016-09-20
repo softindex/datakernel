@@ -33,7 +33,7 @@ import static org.objectweb.asm.commons.GeneratorAdapter.NE;
 /**
  * Defines methods to compare some fields
  */
-public final class ExpressionComparator implements Expression {
+final class ExpressionComparator implements Expression {
 	private final List<Expression> left = new ArrayList<>();
 	private final List<Expression> right = new ArrayList<>();
 

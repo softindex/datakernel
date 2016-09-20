@@ -19,6 +19,7 @@ package io.datakernel.rpc.server;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.InetAddressRange;
 import io.datakernel.jmx.*;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
@@ -27,86 +28,138 @@ import io.datakernel.rpc.protocol.RpcProtocolFactory;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.SSLContext;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamProtocol;
-import static io.datakernel.util.Preconditions.checkNotNull;
-import static org.slf4j.LoggerFactory.getLogger;
+import static java.util.Arrays.asList;
 
 public final class RpcServer extends AbstractServer<RpcServer> {
-	private Logger logger = getLogger(RpcServer.class);
-	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS = new ServerSocketSettings(16384);
-	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = new SocketSettings().tcpNoDelay(true);
+	private final Logger logger;
+	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS
+			= ServerSocketSettings.create().withBacklog(16384);
+	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create().withTcpNoDelay(true);
 
-	private final Map<Class<?>, RpcRequestHandler<?, ?>> handlers = new HashMap<>();
-	private RpcProtocolFactory protocolFactory = streamProtocol();
-	private SerializerBuilder serializerBuilder;
-	private final Set<Class<?>> messageTypes = new LinkedHashSet<>();
+	private final Map<Class<?>, RpcRequestHandler<?, ?>> handlers;
+	private final RpcProtocolFactory protocolFactory;
+	private final SerializerBuilder serializerBuilder;
+	private final Set<Class<?>> messageTypes;
 
 	private final List<RpcServerConnection> connections = new ArrayList<>();
 
 	private BufferSerializer<RpcMessage> serializer;
 
 	// jmx
-	private CountStats connectionsCount = new CountStats();
-	private EventStats totalConnects = new EventStats();
+	private CountStats connectionsCount = CountStats.create();
+	private EventStats totalConnects = EventStats.create();
 	private Map<InetAddress, EventStats> connectsPerAddress = new HashMap<>();
-	private EventStats successfulRequests = new EventStats();
-	private EventStats failedRequests = new EventStats();
-	private ValueStats requestHandlingTime = new ValueStats();
-	private ExceptionStats lastRequestHandlingException = new ExceptionStats();
-	private ExceptionStats lastProtocolError = new ExceptionStats();
+	private EventStats successfulRequests = EventStats.create();
+	private EventStats failedRequests = EventStats.create();
+	private ValueStats requestHandlingTime = ValueStats.create();
+	private ExceptionStats lastRequestHandlingException = ExceptionStats.create();
+	private ExceptionStats lastProtocolError = ExceptionStats.create();
 	private boolean monitoring;
 
-	private RpcServer(Eventloop eventloop) {
+	// region builders
+	private RpcServer(Eventloop eventloop, Map<Class<?>, RpcRequestHandler<?, ?>> handlers,
+	                  RpcProtocolFactory protocolFactory, SerializerBuilder serializerBuilder,
+	                  Set<Class<?>> messageTypes, Logger logger) {
 		super(eventloop);
-		serverSocketSettings(DEFAULT_SERVER_SOCKET_SETTINGS);
-		socketSettings(DEFAULT_SOCKET_SETTINGS);
+		this.handlers = handlers;
+		this.protocolFactory = protocolFactory;
+		this.serializerBuilder = serializerBuilder;
+		this.messageTypes = messageTypes;
+		this.logger = logger;
+	}
+
+	private RpcServer(Eventloop eventloop,
+	                  ServerSocketSettings serverSocketSettings, SocketSettings socketSettings,
+	                  boolean acceptOnce, Collection<InetSocketAddress> listenAddresses,
+	                  InetAddressRange range, Collection<InetAddress> bannedAddresses,
+	                  SSLContext sslContext, ExecutorService sslExecutor,
+	                  Collection<InetSocketAddress> sslListenAddresses,
+	                  RpcServer previousInstance) {
+		super(eventloop, serverSocketSettings, socketSettings, acceptOnce, listenAddresses,
+				range, bannedAddresses, sslContext, sslExecutor, sslListenAddresses);
+		this.handlers = previousInstance.handlers;
+		this.protocolFactory = previousInstance.protocolFactory;
+		this.serializerBuilder = previousInstance.serializerBuilder;
+		this.messageTypes = previousInstance.messageTypes;
+		this.logger = previousInstance.logger;
+	}
+
+	private RpcServer(RpcServer previousInstance,
+	                  Map<Class<?>, RpcRequestHandler<?, ?>> handlers,
+	                  RpcProtocolFactory protocolFactory, SerializerBuilder serializerBuilder,
+	                  Set<Class<?>> messageTypes, Logger logger) {
+		super(previousInstance);
+		this.handlers = handlers;
+		this.protocolFactory = protocolFactory;
+		this.serializerBuilder = serializerBuilder;
+		this.messageTypes = messageTypes;
+		this.logger = logger;
 	}
 
 	public static RpcServer create(Eventloop eventloop) {
-		return new RpcServer(eventloop);
+		HashMap<Class<?>, RpcRequestHandler<?, ?>> requestHandlers = new HashMap<>();
+		RpcProtocolFactory protocolFactory = streamProtocol();
+		SerializerBuilder serializerBuilder = SerializerBuilder.create(ClassLoader.getSystemClassLoader());
+		Set<Class<?>> messageTypes = new LinkedHashSet<>();
+		Logger logger = LoggerFactory.getLogger(RpcServer.class);
+
+		return new RpcServer(eventloop, requestHandlers, protocolFactory, serializerBuilder, messageTypes, logger)
+				.withServerSocketSettings(DEFAULT_SERVER_SOCKET_SETTINGS)
+				.withSocketSettings(DEFAULT_SOCKET_SETTINGS);
 	}
 
-	public RpcServer messageTypes(Class<?>... messageTypes) {
-		return messageTypes(Arrays.asList(messageTypes));
+	public RpcServer withMessageTypes(Class<?>... messageTypes) {
+		return withMessageTypes(asList(messageTypes));
 	}
 
-	public RpcServer messageTypes(List<Class<?>> messageTypes) {
+	public RpcServer withMessageTypes(List<Class<?>> messageTypes) {
 		this.messageTypes.addAll(messageTypes);
 		return this;
 	}
 
-	public RpcServer serializerBuilder(SerializerBuilder serializerBuilder) {
-		this.serializerBuilder = serializerBuilder;
-		return this;
+	public RpcServer withSerializerBuilder(SerializerBuilder serializerBuilder) {
+		return new RpcServer(this, handlers, protocolFactory, serializerBuilder, messageTypes, logger);
 	}
 
-	public RpcServer logger(Logger logger) {
-		this.logger = checkNotNull(logger);
-		return this;
+	public RpcServer withLogger(Logger logger) {
+		return new RpcServer(this, handlers, protocolFactory, serializerBuilder, messageTypes, logger);
 	}
 
-	public RpcServer protocol(RpcProtocolFactory protocolFactory) {
-		this.protocolFactory = protocolFactory;
-		return this;
+	public RpcServer withProtocol(RpcProtocolFactory protocolFactory) {
+		return new RpcServer(this, handlers, protocolFactory, serializerBuilder, messageTypes, logger);
 	}
 
 	@SuppressWarnings("unchecked")
-	public <I> RpcServer on(Class<I> requestClass, RpcRequestHandler<I, ?> handler) {
+	public <I> RpcServer withHandlerFor(Class<I> requestClass, RpcRequestHandler<I, ?> handler) {
 		handlers.put(requestClass, handler);
 		return this;
 	}
 
+	@Override
+	protected RpcServer recreate(Eventloop eventloop, ServerSocketSettings serverSocketSettings, SocketSettings socketSettings,
+	                             boolean acceptOnce,
+	                             Collection<InetSocketAddress> listenAddresses,
+	                             InetAddressRange range, Collection<InetAddress> bannedAddresses,
+	                             SSLContext sslContext, ExecutorService sslExecutor,
+	                             Collection<InetSocketAddress> sslListenAddresses) {
+		return new RpcServer(eventloop, serverSocketSettings, socketSettings, acceptOnce, listenAddresses,
+				range, bannedAddresses, sslContext, sslExecutor, sslListenAddresses, this);
+	}
+	// endregion
+
 	private BufferSerializer<RpcMessage> getSerializer() {
 		if (serializer == null) {
-			SerializerBuilder serializerBuilder = this.serializerBuilder != null ?
-					this.serializerBuilder :
-					SerializerBuilder.newDefaultInstance(ClassLoader.getSystemClassLoader());
-			serializerBuilder.setExtraSubclasses("extraRpcMessageData", messageTypes);
-			serializer = serializerBuilder.create(RpcMessage.class);
+			serializerBuilder.addExtraSubclasses("extraRpcMessageData", messageTypes);
+			serializer = serializerBuilder.build(RpcMessage.class);
 		}
 		return serializer;
 	}
@@ -114,7 +167,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	@Override
 	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 		BufferSerializer<RpcMessage> messageSerializer = getSerializer();
-		RpcServerConnection connection = new RpcServerConnection(eventloop, this, asyncTcpSocket,
+		RpcServerConnection connection = RpcServerConnection.create(eventloop, this, asyncTcpSocket,
 				messageSerializer, handlers, protocolFactory);
 		add(connection);
 
@@ -153,7 +206,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		connectionsCount.setCount(connections.size());
 	}
 
-	// JMX
+	// region JMX
 	@JmxOperation(description = "enable monitoring " +
 			"[ when monitoring is enabled more stats are collected, but it causes more overhead " +
 			"(for example, requestHandlingTime stats are collected only when monitoring is enabled) ]")
@@ -198,7 +251,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	private EventStats ensureConnectStats(InetAddress address) {
 		EventStats stats = connectsPerAddress.get(address);
 		if (stats == null) {
-			stats = new EventStats();
+			stats = EventStats.create();
 			connectsPerAddress.put(address, stats);
 		}
 		return stats;
@@ -235,5 +288,6 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	public ExceptionStats getLastProtocolError() {
 		return lastProtocolError;
 	}
+	// endregion
 }
 

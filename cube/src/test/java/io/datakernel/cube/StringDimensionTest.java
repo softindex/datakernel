@@ -45,17 +45,17 @@ public class StringDimensionTest {
 	public static Cube newCube(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
 	                           AggregationChunkStorage storage, AggregationStructure structure) {
 		CubeMetadataStorageStub cubeMetadataStorage = new CubeMetadataStorageStub();
-		Cube cube = new Cube(eventloop, executorService, classLoader, cubeMetadataStorage, storage, structure,
+		Cube cube = Cube.create(eventloop, executorService, classLoader, cubeMetadataStorage, storage, structure,
 				Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE, Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY,
 				Aggregation.DEFAULT_SORTER_BLOCK_SIZE, Cube.DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD,
 				Aggregation.DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS);
 		cube.addAggregation("detailedAggregation",
-				new AggregationMetadata(asList("key1", "key2"), asList("metric1", "metric2", "metric3")));
+				AggregationMetadata.create(asList("key1", "key2"), asList("metric1", "metric2", "metric3")));
 		return cube;
 	}
 
 	public static AggregationStructure cubeStructureWithStringDimension() {
-		return new AggregationStructure(
+		return AggregationStructure.create(
 				ImmutableMap.<String, KeyType>builder()
 						.put("key1", stringKey())
 						.put("key2", intKey())
@@ -69,8 +69,8 @@ public class StringDimensionTest {
 
 	@Test
 	public void testQuery() throws Exception {
-		DefiningClassLoader classLoader = new DefiningClassLoader();
-		Eventloop eventloop = new Eventloop();
+		DefiningClassLoader classLoader = DefiningClassLoader.create();
+		Eventloop eventloop = Eventloop.create();
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
 		AggregationStructure structure = cubeStructureWithStringDimension();
 		Cube cube = newCube(eventloop, Executors.newCachedThreadPool(), classLoader, storage, structure);
@@ -82,11 +82,11 @@ public class StringDimensionTest {
 
 		StreamConsumers.ToList<DataItemResultString> consumerToList = StreamConsumers.toList(eventloop);
 		cube.query(DataItemResultString.class,
-				new CubeQuery()
-						.dimensions("key1", "key2")
-						.measures("metric1", "metric2", "metric3")
-						.eq("key1", "str2")
-						.eq("key2", 3))
+				CubeQuery.create()
+						.withDimensions("key1", "key2")
+						.withMeasures("metric1", "metric2", "metric3")
+						.withEq("key1", "str2")
+						.withEq("key2", 3))
 				.streamTo(consumerToList);
 		eventloop.run();
 

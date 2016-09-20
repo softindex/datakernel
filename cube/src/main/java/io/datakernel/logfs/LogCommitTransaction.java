@@ -49,13 +49,19 @@ public final class LogCommitTransaction<T> {
 
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-	public LogCommitTransaction(Eventloop eventloop, LogManager<T> logManager, String log, Map<String, LogPosition> oldPositions,
-	                            LogCommitCallback callback) {
+	private LogCommitTransaction(Eventloop eventloop, LogManager<T> logManager, String log, Map<String, LogPosition> oldPositions,
+	                             LogCommitCallback callback) {
 		this.eventloop = eventloop;
 		this.logManager = logManager;
 		this.log = log;
 		this.oldPositions = new LinkedHashMap<>(oldPositions);
 		this.callback = callback;
+	}
+
+	public static <T> LogCommitTransaction<T> create(Eventloop eventloop, LogManager<T> logManager, String log,
+	                                                 Map<String, LogPosition> oldPositions,
+	                                                 LogCommitCallback callback) {
+		return new LogCommitTransaction<T>(eventloop, logManager, log, oldPositions, callback);
 	}
 
 	public ResultCallback<Multimap<AggregationMetadata, AggregationChunk.NewChunk>> addCommitCallback() {

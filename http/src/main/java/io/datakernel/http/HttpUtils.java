@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ParseException;
+import io.datakernel.exception.ParseException;
 
 import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
@@ -26,8 +26,8 @@ import java.net.UnknownHostException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import static io.datakernel.util.ByteBufStrings.decodeDecimal;
-import static io.datakernel.util.ByteBufStrings.encodeAscii;
+import static io.datakernel.bytebuf.ByteBufStrings.decodeDecimal;
+import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.util.StringUtils.splitToList;
 
 /**

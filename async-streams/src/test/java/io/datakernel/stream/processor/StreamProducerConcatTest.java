@@ -33,7 +33,7 @@ public class StreamProducerConcatTest {
 
 	@Test
 	public void testSequence() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
 		StreamProducer<Integer> source2 = StreamProducers.ofIterable(eventloop, asList(4, 5, 6));
@@ -63,7 +63,7 @@ public class StreamProducerConcatTest {
 
 	@Test
 	public void testSequenceException() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		List<Integer> list = new ArrayList<>();
 
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
@@ -96,7 +96,7 @@ public class StreamProducerConcatTest {
 
 	@Test
 	public void testConcat() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<Integer> producer = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, asList(1, 2, 3)),
@@ -114,7 +114,7 @@ public class StreamProducerConcatTest {
 
 	@Test
 	public void testConcatException() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		List<Integer> list = new ArrayList<>();
 
 		StreamProducer<Integer> producer = StreamProducers.concat(eventloop,
@@ -134,7 +134,7 @@ public class StreamProducerConcatTest {
 
 	@Test
 	public void testWithoutConsumer() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<Integer> producer = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, asList(1, 2, 3)),
@@ -142,7 +142,7 @@ public class StreamProducerConcatTest {
 				StreamProducers.<Integer>closing(eventloop));
 
 		StreamConsumers.ToList<Integer> consumer = StreamConsumers.toList(eventloop);
-		StreamFunction<Integer, Integer> function = new StreamFunction<>(eventloop, Functions.<Integer>identity());
+		StreamFunction<Integer, Integer> function = StreamFunction.create(eventloop, Functions.<Integer>identity());
 
 		producer.streamTo(function.getInput());
 		eventloop.run();

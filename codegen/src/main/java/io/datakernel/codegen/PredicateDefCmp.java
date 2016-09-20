@@ -61,11 +61,17 @@ public final class PredicateDefCmp implements PredicateDef {
 		}
 	}
 
-	PredicateDefCmp(Operation operation, Expression left, Expression right) {
+	// region builders
+	private PredicateDefCmp(Operation operation, Expression left, Expression right) {
 		this.left = left;
 		this.right = right;
 		this.operation = operation;
 	}
+
+	static PredicateDefCmp create(Operation operation, Expression left, Expression right) {
+		return new PredicateDefCmp(operation, left, right);
+	}
+	// endregion
 
 	@Override
 	public final Type type(Context ctx) {

@@ -18,7 +18,7 @@ package io.datakernel.http;
 
 import java.lang.reflect.Array;
 
-import static io.datakernel.util.ByteBufStrings.*;
+import static io.datakernel.bytebuf.ByteBufStrings.*;
 
 abstract class CaseInsensitiveTokenMap<T extends CaseInsensitiveTokenMap.Token> {
 	static abstract class Token {

@@ -47,7 +47,12 @@ import static java.util.Arrays.asList;
 public final class NativeDnsResolver implements DnsClient, EventloopJmxMBean {
 	private final Logger logger = LoggerFactory.getLogger(NativeDnsResolver.class);
 
+	private static final int DNS_SERVER_PORT = 53;
+	private static final long ONE_MINUTE_MILLIS = 60 * 1000L;
 	public static final DatagramSocketSettings DEFAULT_DATAGRAM_SOCKET_SETTINGS = defaultDatagramSocketSettings();
+	public static final InetSocketAddress DEFAULT_DNS_SERVER_ADDRESS =
+			new InetSocketAddress(HttpUtils.inetAddress("8.8.8.8"), DNS_SERVER_PORT);
+	public static final long DEFAULT_TIMEOUT = 3_000L;
 
 	private final Eventloop eventloop;
 
@@ -60,40 +65,61 @@ public final class NativeDnsResolver implements DnsClient, EventloopJmxMBean {
 
 	private final long timeout;
 
-	private static final int DNS_SERVER_PORT = 53;
-	private static final long ONE_MINUTE_MILLIS = 60 * 1000L;
+	// region builders
+	public static NativeDnsResolver create(Eventloop eventloop) {
+		DnsCache cache = DnsCache.create(eventloop, ONE_MINUTE_MILLIS, ONE_MINUTE_MILLIS);
+		return new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
+				DEFAULT_TIMEOUT, DEFAULT_DNS_SERVER_ADDRESS, cache);
+	}
 
-	/**
-	 * Creates a new NativeDnsResolver
-	 *
-	 * @param eventloop        eventloop in which it will be run
-	 * @param timeout          time which this resolver will wait result
-	 * @param dnsServerAddress address of DNS server which will resolve domain names
-	 */
-	public NativeDnsResolver(Eventloop eventloop, DatagramSocketSettings datagramSocketSettings, long timeout, InetSocketAddress dnsServerAddress) {
-		this(eventloop, datagramSocketSettings, timeout, dnsServerAddress,
-				ONE_MINUTE_MILLIS, ONE_MINUTE_MILLIS);
+	public NativeDnsResolver withDatagramSocketSetting(DatagramSocketSettings setting) {
+		return new NativeDnsResolver(eventloop, setting, timeout, dnsServerAddress, cache);
 	}
 
 	/**
-	 * Creates a new NativeDnsResolver
-	 *
-	 * @param eventloop        eventloop in which it will be ran
-	 * @param timeout          time which this resolver will wait result
-	 * @param dnsServerAddress address of DNS server which will resolve domain names
+	 * @param timeout time which this resolver will wait result
 	 */
-	public NativeDnsResolver(Eventloop eventloop, DatagramSocketSettings datagramSocketSettings, long timeout, InetAddress dnsServerAddress) {
-		this(eventloop, datagramSocketSettings, timeout, new InetSocketAddress(dnsServerAddress, DNS_SERVER_PORT),
-				ONE_MINUTE_MILLIS, ONE_MINUTE_MILLIS);
+	public NativeDnsResolver withTimeout(long timeout) {
+		return new NativeDnsResolver(eventloop, datagramSocketSettings, timeout, dnsServerAddress, cache);
 	}
 
-	public NativeDnsResolver(Eventloop eventloop, DatagramSocketSettings datagramSocketSettings, long timeout, InetSocketAddress dnsServerAddress,
-	                         long errorCacheExpirationMillis, long hardExpirationDeltaMillis) {
+	/**
+	 * @param address address of DNS server which will resolve domain names
+	 */
+	public NativeDnsResolver withDnsServerAddress(InetSocketAddress address) {
+		return new NativeDnsResolver(eventloop, datagramSocketSettings, timeout, address, cache);
+	}
+
+	/**
+	 * @param address address of DNS server which will resolve domain names
+	 */
+	public NativeDnsResolver withDnsServerAddress(InetAddress address) {
+		return new NativeDnsResolver(eventloop, datagramSocketSettings, timeout,
+				new InetSocketAddress(address, DNS_SERVER_PORT), cache);
+	}
+
+	public NativeDnsResolver withExpiration(long errorCacheExpirationMillis, long hardExpirationDeltaMillis) {
+		DnsCache cache = DnsCache.create(eventloop, errorCacheExpirationMillis, hardExpirationDeltaMillis);
+		return new NativeDnsResolver(eventloop, datagramSocketSettings, timeout, dnsServerAddress, cache);
+	}
+	// endregion
+
+	private NativeDnsResolver(Eventloop eventloop, DatagramSocketSettings datagramSocketSettings, long timeout, InetSocketAddress dnsServerAddress,
+	                          long errorCacheExpirationMillis, long hardExpirationDeltaMillis) {
 		this.eventloop = eventloop;
 		this.datagramSocketSettings = datagramSocketSettings;
 		this.timeout = timeout;
 		this.dnsServerAddress = dnsServerAddress;
-		this.cache = new DnsCache(eventloop, errorCacheExpirationMillis, hardExpirationDeltaMillis);
+		this.cache = DnsCache.create(eventloop, errorCacheExpirationMillis, hardExpirationDeltaMillis);
+	}
+
+	private NativeDnsResolver(Eventloop eventloop, DatagramSocketSettings datagramSocketSettings, long timeout, InetSocketAddress dnsServerAddress,
+	                          DnsCache cache) {
+		this.eventloop = eventloop;
+		this.datagramSocketSettings = datagramSocketSettings;
+		this.timeout = timeout;
+		this.dnsServerAddress = dnsServerAddress;
+		this.cache = cache;
 	}
 
 	/**
@@ -247,7 +273,7 @@ public final class NativeDnsResolver implements DnsClient, EventloopJmxMBean {
 	public void registerConnection() {
 		try {
 			DatagramChannel datagramChannel = createDatagramChannel(datagramSocketSettings, null, dnsServerAddress);
-			connection = new DnsClientHandler(eventloop, datagramChannel);
+			connection = DnsClientHandler.create(eventloop, datagramChannel);
 			connection.register();
 		} catch (IOException e) {
 			if (logger.isErrorEnabled())

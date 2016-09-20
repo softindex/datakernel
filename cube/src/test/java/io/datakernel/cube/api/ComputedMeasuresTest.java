@@ -16,14 +16,13 @@
 
 package io.datakernel.cube.api;
 
-import io.datakernel.codegen.AsmBuilder;
+import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import org.junit.Test;
 
-import java.nio.file.Paths;
-
 import static com.google.common.collect.Sets.newHashSet;
 import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.cube.api.ReportingDSL.add;
 import static io.datakernel.cube.api.ReportingDSL.*;
 import static org.junit.Assert.assertEquals;
 
@@ -38,20 +37,20 @@ public class ComputedMeasuresTest {
 
 	@Test
 	public void test() throws Exception {
-		DefiningClassLoader classLoader = new DefiningClassLoader();
+		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		ReportingDSLExpression d = divide(multiply(divide("a", "b"), 100), "c");
-		TestQueryResultPlaceholder resultPlaceholder = new AsmBuilder<>(classLoader, TestQueryResultPlaceholder.class)
-				.field("a", long.class)
-				.field("b", long.class)
-				.field("c", double.class)
-				.field("d", double.class)
-				.method("computeMeasures", set(getter(self(), "d"), d.getExpression()))
-				.method("init", sequence(
+		TestQueryResultPlaceholder resultPlaceholder = ClassBuilder.create(classLoader, TestQueryResultPlaceholder.class)
+				.withField("a", long.class)
+				.withField("b", long.class)
+				.withField("c", double.class)
+				.withField("d", double.class)
+				.withMethod("computeMeasures", set(getter(self(), "d"), d.getExpression()))
+				.withMethod("init", sequence(
 						set(getter(self(), "a"), value(1)),
 						set(getter(self(), "b"), value(100)),
 						set(getter(self(), "c"), value(5))))
-				.method("getResult", getter(self(), "d"))
-				.newInstance();
+				.withMethod("getResult", getter(self(), "d"))
+				.buildClassAndCreateNewInstance();
 		resultPlaceholder.init();
 		resultPlaceholder.computeMeasures();
 
@@ -61,20 +60,20 @@ public class ComputedMeasuresTest {
 
 	@Test
 	public void testNullDivision() throws Exception {
-		DefiningClassLoader classLoader = new DefiningClassLoader();
+		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		ReportingDSLExpression d = divide(multiply(divide("a", "b"), 100), "c");
-		TestQueryResultPlaceholder resultPlaceholder = new AsmBuilder<>(classLoader, TestQueryResultPlaceholder.class)
-				.field("a", long.class)
-				.field("b", long.class)
-				.field("c", double.class)
-				.field("d", double.class)
-				.method("computeMeasures", set(getter(self(), "d"), d.getExpression()))
-				.method("init", sequence(
+		TestQueryResultPlaceholder resultPlaceholder = ClassBuilder.create(classLoader, TestQueryResultPlaceholder.class)
+				.withField("a", long.class)
+				.withField("b", long.class)
+				.withField("c", double.class)
+				.withField("d", double.class)
+				.withMethod("computeMeasures", set(getter(self(), "d"), d.getExpression()))
+				.withMethod("init", sequence(
 						set(getter(self(), "a"), value(1)),
 						set(getter(self(), "b"), value(0)),
 						set(getter(self(), "c"), value(0))))
-				.method("getResult", getter(self(), "d"))
-				.newInstance();
+				.withMethod("getResult", getter(self(), "d"))
+				.buildClassAndCreateNewInstance();
 		resultPlaceholder.init();
 		resultPlaceholder.computeMeasures();
 
@@ -83,18 +82,18 @@ public class ComputedMeasuresTest {
 
 	@Test
 	public void testSqrt() throws Exception {
-		DefiningClassLoader classLoader = new DefiningClassLoader();
+		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		ReportingDSLExpression c = sqrt(add("a", "b"));
-		TestQueryResultPlaceholder resultPlaceholder = new AsmBuilder<>(classLoader, TestQueryResultPlaceholder.class)
-				.field("a", double.class)
-				.field("b", double.class)
-				.field("c", double.class)
-				.method("computeMeasures", set(getter(self(), "c"), c.getExpression()))
-				.method("init", sequence(
+		TestQueryResultPlaceholder resultPlaceholder = ClassBuilder.create(classLoader, TestQueryResultPlaceholder.class)
+				.withField("a", double.class)
+				.withField("b", double.class)
+				.withField("c", double.class)
+				.withMethod("computeMeasures", set(getter(self(), "c"), c.getExpression()))
+				.withMethod("init", sequence(
 						set(getter(self(), "a"), value(2.0)),
 						set(getter(self(), "b"), value(7.0))))
-				.method("getResult", getter(self(), "c"))
-				.newInstance();
+				.withMethod("getResult", getter(self(), "c"))
+				.buildClassAndCreateNewInstance();
 		resultPlaceholder.init();
 		resultPlaceholder.computeMeasures();
 
@@ -103,18 +102,18 @@ public class ComputedMeasuresTest {
 
 	@Test
 	public void testSqrtOfNegativeArgument() throws Exception {
-		DefiningClassLoader classLoader = new DefiningClassLoader();
+		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		ReportingDSLExpression c = sqrt(subtract("a", "b"));
-		TestQueryResultPlaceholder resultPlaceholder = new AsmBuilder<>(classLoader, TestQueryResultPlaceholder.class)
-				.field("a", double.class)
-				.field("b", double.class)
-				.field("c", double.class)
-				.method("computeMeasures", set(getter(self(), "c"), c.getExpression()))
-				.method("init", sequence(
+		TestQueryResultPlaceholder resultPlaceholder = ClassBuilder.create(classLoader, TestQueryResultPlaceholder.class)
+				.withField("a", double.class)
+				.withField("b", double.class)
+				.withField("c", double.class)
+				.withMethod("computeMeasures", set(getter(self(), "c"), c.getExpression()))
+				.withMethod("init", sequence(
 						set(getter(self(), "a"), value(0.0)),
 						set(getter(self(), "b"), value(1E-10))))
-				.method("getResult", getter(self(), "c"))
-				.newInstance();
+				.withMethod("getResult", getter(self(), "c"))
+				.buildClassAndCreateNewInstance();
 		resultPlaceholder.init();
 		resultPlaceholder.computeMeasures();
 

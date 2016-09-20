@@ -17,8 +17,8 @@
 package io.datakernel.stream.net;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.exception.ParseException;
 
 public interface MessagingSerializer<I, O> {
 	@Nullable

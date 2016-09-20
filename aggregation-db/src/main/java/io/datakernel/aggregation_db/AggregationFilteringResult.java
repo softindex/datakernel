@@ -23,14 +23,20 @@ public class AggregationFilteringResult {
 	private boolean matches;
 	private List<String> appliedPredicateKeys;
 
-	public AggregationFilteringResult(boolean matches) {
+	private AggregationFilteringResult(boolean matches) {
 		this(matches, new ArrayList<String>());
 	}
 
-	public AggregationFilteringResult(boolean matches, List<String> appliedPredicateKeys) {
+	private AggregationFilteringResult(boolean matches, List<String> appliedPredicateKeys) {
 		this.matches = matches;
 		this.appliedPredicateKeys = appliedPredicateKeys;
 	}
+
+	public static AggregationFilteringResult create(boolean matches, List<String> appliedPredicateKeys) {
+		return new AggregationFilteringResult(matches, appliedPredicateKeys);
+	}
+
+	public static AggregationFilteringResult create(boolean matches) {return new AggregationFilteringResult(matches);}
 
 	public boolean isMatches() {
 		return matches;

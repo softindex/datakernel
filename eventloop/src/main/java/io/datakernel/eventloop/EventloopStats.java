@@ -37,7 +37,7 @@ public final class EventloopStats {
 
 	private final BusinessLogicTimeHistogram businessLogicTimeHistogram;
 
-	public EventloopStats(double smoothingWindow) {
+	private EventloopStats(double smoothingWindow) {
 		selectorEvents = new SelectorEvents(smoothingWindow);
 		taskEvents = new TaskEvents(smoothingWindow);
 		errorStats = new ErrorStats();
@@ -49,6 +49,8 @@ public final class EventloopStats {
 
 		businessLogicTimeHistogram = new BusinessLogicTimeHistogram();
 	}
+
+	public static EventloopStats create(double smoothingWindow) {return new EventloopStats(smoothingWindow);}
 
 	public void setSmoothingWindow(double smoothingWindow) {
 		selectorEvents.setSmoothingWindow(smoothingWindow);
@@ -136,7 +138,7 @@ public final class EventloopStats {
 
 		ExceptionStats stats = errorStats.allFatalErrors.get(stackTrace);
 		if (stats == null) {
-			stats = new ExceptionStats();
+			stats = ExceptionStats.create();
 			errorStats.allFatalErrors.put(stackTrace, stats);
 		}
 		stats.recordException(throwable, causedObject);
@@ -253,12 +255,12 @@ public final class EventloopStats {
 		private final EventStats writeKeys;
 
 		public SelectorEvents(double smoothingWindow) {
-			allSelectedKeys = new EventStats(smoothingWindow);
-			invalidKeys = new EventStats(smoothingWindow);
-			acceptKeys = new EventStats(smoothingWindow);
-			connectKeys = new EventStats(smoothingWindow);
-			readKeys = new EventStats(smoothingWindow);
-			writeKeys = new EventStats(smoothingWindow);
+			allSelectedKeys = EventStats.create().withSmoothingWindow(smoothingWindow);
+			invalidKeys = EventStats.create().withSmoothingWindow(smoothingWindow);
+			acceptKeys = EventStats.create().withSmoothingWindow(smoothingWindow);
+			connectKeys = EventStats.create().withSmoothingWindow(smoothingWindow);
+			readKeys = EventStats.create().withSmoothingWindow(smoothingWindow);
+			writeKeys = EventStats.create().withSmoothingWindow(smoothingWindow);
 		}
 
 		public void setSmoothingWindow(double smoothingWindow) {
@@ -316,9 +318,9 @@ public final class EventloopStats {
 		private final EventStats scheduledTasks;
 
 		public TaskEvents(double smoothingWindow) {
-			localTasks = new EventStats(smoothingWindow);
-			concurrentTasks = new EventStats(smoothingWindow);
-			scheduledTasks = new EventStats(smoothingWindow);
+			localTasks = EventStats.create().withSmoothingWindow(smoothingWindow);
+			concurrentTasks = EventStats.create().withSmoothingWindow(smoothingWindow);
+			scheduledTasks = EventStats.create().withSmoothingWindow(smoothingWindow);
 		}
 
 		public void setSmoothingWindow(double smoothingWindow) {
@@ -350,9 +352,9 @@ public final class EventloopStats {
 	}
 
 	public static final class ErrorStats {
-		private final ExceptionStats fatalErrors = new ExceptionStats();
+		private final ExceptionStats fatalErrors = ExceptionStats.create();
 		private final Map<StackTrace, ExceptionStats> allFatalErrors = new HashMap<>();
-		private final ExceptionStats ioErrors = new ExceptionStats();
+		private final ExceptionStats ioErrors = ExceptionStats.create();
 
 		public void reset() {
 			fatalErrors.resetStats();
@@ -390,17 +392,17 @@ public final class EventloopStats {
 		private final ValueStats scheduledTaskDuration;
 
 		public DurationStats(double smoothingWindow) {
-			selectorSelectTime = new ValueStats(smoothingWindow);
-			businessLogicTime = new ValueStats(smoothingWindow);
+			selectorSelectTime = ValueStats.create().withSmoothingWindow(smoothingWindow);
+			businessLogicTime = ValueStats.create().withSmoothingWindow(smoothingWindow);
 
-			selectedKeysTime = new ValueStats(smoothingWindow);
-			localTasksTime = new ValueStats(smoothingWindow);
-			concurrentTasksTime = new ValueStats(smoothingWindow);
-			scheduledTasksTime = new ValueStats(smoothingWindow);
+			selectedKeysTime = ValueStats.create().withSmoothingWindow(smoothingWindow);
+			localTasksTime = ValueStats.create().withSmoothingWindow(smoothingWindow);
+			concurrentTasksTime = ValueStats.create().withSmoothingWindow(smoothingWindow);
+			scheduledTasksTime = ValueStats.create().withSmoothingWindow(smoothingWindow);
 
-			localTaskDuration = new ValueStats(smoothingWindow);
-			concurrentTaskDuration = new ValueStats(smoothingWindow);
-			scheduledTaskDuration = new ValueStats(smoothingWindow);
+			localTaskDuration = ValueStats.create().withSmoothingWindow(smoothingWindow);
+			concurrentTaskDuration = ValueStats.create().withSmoothingWindow(smoothingWindow);
+			scheduledTaskDuration = ValueStats.create().withSmoothingWindow(smoothingWindow);
 		}
 
 		public void setSmoothingWindow(double smoothingWindow) {

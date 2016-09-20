@@ -19,11 +19,11 @@ package io.datakernel.cube.api;
 import com.google.gson.Gson;
 import com.google.gson.JsonParseException;
 import io.datakernel.aggregation_db.api.QueryException;
-import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.Cube;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.ParseException;
 import io.datakernel.http.AsyncHttpServlet;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
@@ -32,8 +32,8 @@ import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.http.HttpResponse.badRequest400;
-import static io.datakernel.util.ByteBufStrings.wrapUtf8;
 
 public final class HttpRequestHandler implements RequestHandler {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
@@ -42,12 +42,17 @@ public final class HttpRequestHandler implements RequestHandler {
 	private final RequestExecutor requestExecutor;
 	private final HttpResultProcessor httpResultProcessor;
 
-	public HttpRequestHandler(Gson gson, Cube cube, Eventloop eventloop,
-	                          LRUCache<ClassLoaderCacheKey, DefiningClassLoader> classLoaderCache) {
-		this.httpRequestProcessor = new HttpRequestProcessor(gson);
-		this.requestExecutor = new RequestExecutor(cube, cube.getStructure(), cube.getReportingConfiguration(),
-				eventloop, new Resolver(cube.getResolvers()), classLoaderCache);
-		this.httpResultProcessor = new HttpResultProcessor(cube.getStructure(), cube.getReportingConfiguration());
+	private HttpRequestHandler(Gson gson, Cube cube, Eventloop eventloop,
+	                           LRUCache<ClassLoaderCacheKey, DefiningClassLoader> classLoaderCache) {
+		this.httpRequestProcessor = HttpRequestProcessor.create(gson);
+		this.requestExecutor = RequestExecutor.create(cube, cube.getStructure(), cube.getReportingConfiguration(),
+				eventloop, Resolver.create(cube.getResolvers()), classLoaderCache);
+		this.httpResultProcessor = HttpResultProcessor.create(cube.getStructure(), cube.getReportingConfiguration());
+	}
+
+	public static HttpRequestHandler create(Gson gson, Cube cube, Eventloop eventloop,
+	                                        LRUCache<ClassLoaderCacheKey, DefiningClassLoader> classLoaderCache) {
+		return new HttpRequestHandler(gson, cube, eventloop, classLoaderCache);
 	}
 
 	@Override
@@ -74,10 +79,10 @@ public final class HttpRequestHandler implements RequestHandler {
 			});
 		} catch (QueryException e) {
 			logger.info("Request {} could not be processed because of error", httpRequest, e);
-			resultCallback.onResult(badRequest400().body(wrapUtf8(e.getMessage())));
+			resultCallback.onResult(badRequest400().withBody(wrapUtf8(e.getMessage())));
 		} catch (JsonParseException e) {
 			logger.info("Failed to parse JSON in request {}", httpRequest, e);
-			resultCallback.onResult(badRequest400().body(wrapUtf8("Failed to parse JSON")));
+			resultCallback.onResult(badRequest400().withBody(wrapUtf8("Failed to parse JSON")));
 		}
 	}
 }

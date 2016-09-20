@@ -16,8 +16,8 @@
 
 package io.datakernel.serializer;
 
-import com.google.common.collect.ImmutableBiMap;
-import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
 import com.google.gson.*;
 
 import java.lang.reflect.Constructor;
@@ -28,55 +28,51 @@ import java.util.HashMap;
 import java.util.Map;
 
 public final class GsonSubclassesAdapter<T> implements JsonSerializer<T>, JsonDeserializer<T> {
-	private final ImmutableBiMap<String, Class<? extends T>> classTags;
-	private final ImmutableMap<String, InstanceCreator<T>> classCreators;
-	private final ImmutableBiMap<String, Class<? extends T>> subclassNames;
+	private final BiMap<String, Class<? extends T>> classTags;
+	private final Map<String, InstanceCreator<T>> classCreators;
+	private final BiMap<String, Class<? extends T>> subclassNames;
 	private final String subclassField;
 
-	public GsonSubclassesAdapter(Map<String, Class<? extends T>> classTags,
-	                             Map<String, InstanceCreator<T>> classCreators,
-	                             String subclassField, Map<String, Class<? extends T>> subclassNames) {
-		this.classTags = ImmutableBiMap.copyOf(classTags);
-		this.classCreators = ImmutableMap.copyOf(classCreators);
+	// region builders
+	private GsonSubclassesAdapter(BiMap<String, Class<? extends T>> classTags,
+	                              Map<String, InstanceCreator<T>> classCreators,
+	                              String subclassField, BiMap<String, Class<? extends T>> subclassNames) {
+		this.classTags = classTags;
+		this.classCreators = classCreators;
 		this.subclassField = subclassField;
-		this.subclassNames = ImmutableBiMap.copyOf(subclassNames);
+		this.subclassNames = subclassNames;
 	}
 
-	public static class Builder<T> {
-		private final Map<String, Class<? extends T>> classTags = new HashMap<>();
-		private final Map<String, InstanceCreator<T>> classCreators = new HashMap<>();
-		private final Map<String, Class<? extends T>> subclassNames = new HashMap<>();
-		private String subclassField = "_type";
-
-		public Builder<T> classTag(String classTag, Class<? extends T> type, InstanceCreator<T> instanceCreator) {
-			this.classTags.put(classTag, type);
-			this.classCreators.put(classTag, instanceCreator);
-			return this;
-		}
-
-		public Builder<T> classTag(String classTag, Class<? extends T> type) {
-			this.classTags.put(classTag, type);
-			return this;
-		}
-
-		public Builder<T> subclassField(String subclassField) {
-			this.subclassField = subclassField;
-			return this;
-		}
-
-		public Builder<T> subclass(String subclassName, Class<? extends T> subclass) {
-			this.subclassNames.put(subclassName, subclass);
-			return this;
-		}
-
-		public GsonSubclassesAdapter<T> build() {
-			return new GsonSubclassesAdapter<>(classTags, classCreators, subclassField, subclassNames);
-		}
+	public static <T> GsonSubclassesAdapter<T> create() {
+		return new GsonSubclassesAdapter<>(
+				HashBiMap.<String, Class<? extends T>>create(),
+				new HashMap<String, InstanceCreator<T>>(),
+				"_type",
+				HashBiMap.<String, Class<? extends T>>create()
+		);
 	}
 
-	public static <T> Builder<T> builder() {
-		return new Builder<>();
+	public GsonSubclassesAdapter<T> withClassTag(String classTag, Class<? extends T> type,
+	                                             InstanceCreator<T> instanceCreator) {
+		this.classTags.put(classTag, type);
+		this.classCreators.put(classTag, instanceCreator);
+		return this;
 	}
+
+	public GsonSubclassesAdapter<T> withClassTag(String classTag, Class<? extends T> type) {
+		this.classTags.put(classTag, type);
+		return this;
+	}
+
+	public GsonSubclassesAdapter<T> withSubclassField(String subclassField) {
+		return new GsonSubclassesAdapter<>(classTags, classCreators, subclassField, subclassNames);
+	}
+
+	public GsonSubclassesAdapter<T> withSubclass(String subclassName, Class<? extends T> subclass) {
+		this.subclassNames.put(subclassName, subclass);
+		return this;
+	}
+	// endregion
 
 	private static Object newInstance(Class<?> type) throws InstantiationException, IllegalAccessException, NoSuchMethodException, InvocationTargetException {
 		boolean isStatic = (type.getModifiers() & Modifier.STATIC) != 0;

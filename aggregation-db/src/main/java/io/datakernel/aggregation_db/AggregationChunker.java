@@ -47,12 +47,12 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 	private final AsyncResultsTrackerList<AggregationChunk.NewChunk> resultsTracker;
 	private final DefiningClassLoader classLoader;
 
-	public AggregationChunker(Eventloop eventloop, final AggregationOperationTracker operationTracker,
-	                          List<String> keys, List<String> fields,
-	                          Class<T> recordClass, BiPredicate<T, T> partitionPredicate,
-	                          AggregationChunkStorage storage, AggregationMetadataStorage metadataStorage,
-	                          int chunkSize, DefiningClassLoader classLoader,
-	                          final ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
+	private AggregationChunker(Eventloop eventloop, final AggregationOperationTracker operationTracker,
+	                           List<String> keys, List<String> fields,
+	                           Class<T> recordClass, BiPredicate<T, T> partitionPredicate,
+	                           AggregationChunkStorage storage, AggregationMetadataStorage metadataStorage,
+	                           int chunkSize, DefiningClassLoader classLoader,
+	                           final ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
 		this.keys = keys;
 		this.fields = fields;
 		this.recordClass = recordClass;
@@ -77,6 +77,13 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 		setActualConsumer(chunker.getInput());
 		operationTracker.reportStart(this);
 	}
+
+	public static <T> AggregationChunker<T> create(Eventloop eventloop, final AggregationOperationTracker operationTracker,
+	                                               List<String> keys, List<String> fields,
+	                                               Class<T> recordClass, BiPredicate<T, T> partitionPredicate,
+	                                               AggregationChunkStorage storage, AggregationMetadataStorage metadataStorage,
+	                                               int chunkSize, DefiningClassLoader classLoader,
+	                                               final ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {return new AggregationChunker<T>(eventloop, operationTracker, keys, fields, recordClass, partitionPredicate, storage, metadataStorage, chunkSize, classLoader, chunksCallback);}
 
 	public void setChunkSize(int chunkSize) {
 		this.chunker.inputConsumer.chunkSize = chunkSize;
@@ -161,7 +168,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 				final Metadata metadata = new Metadata();
 				currentChunkMetadata = metadata;
 
-				final StreamForwarder<T> forwarder = new StreamForwarder<>(eventloop);
+				final StreamForwarder<T> forwarder = StreamForwarder.create(eventloop);
 				outputProducer.streamTo(forwarder.getInput());
 
 				logger.info("Retrieving new chunk id for aggregation {}", keys);

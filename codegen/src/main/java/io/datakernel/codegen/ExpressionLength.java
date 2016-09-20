@@ -21,7 +21,7 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 
 import static io.datakernel.codegen.Expressions.call;
 
-public class ExpressionLength implements Expression {
+final class ExpressionLength implements Expression {
 	private final Expression field;
 
 	ExpressionLength(Expression field) {

@@ -23,9 +23,11 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ExceptionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.*;
+import io.datakernel.eventloop.AsyncTcpSocket;
+import io.datakernel.eventloop.AsyncTcpSocketImpl;
+import io.datakernel.eventloop.ConnectCallback;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.SocketSettings;
-import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.net.Messaging.ReceiveMessageCallback;
 import io.datakernel.stream.net.MessagingSerializer;
@@ -45,38 +47,24 @@ import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
 import static io.datakernel.eventloop.AsyncTcpSocketImpl.wrapChannel;
 import static io.datakernel.stream.net.MessagingSerializers.ofGson;
-import static io.datakernel.util.Preconditions.checkNotNull;
 
 public abstract class FsClient<S extends FsClient<S>> {
 	protected final Logger logger = LoggerFactory.getLogger(getClass());
 
 	protected final Eventloop eventloop;
-	protected final SocketSettings socketSettings;
+	protected final SocketSettings socketSettings = SocketSettings.defaultSocketSettings();
 
 	// SSL
-	private SSLContext sslContext;
-	private ExecutorService sslExecutor;
+	protected final SSLContext sslContext;
+	protected final ExecutorService sslExecutor;
 
 	private MessagingSerializer<FsResponse, FsCommand> serializer = ofGson(getResponseGson(), FsResponse.class, getCommandGSON(), FsCommand.class);
 
 	// creators & builders
-	public FsClient(Eventloop eventloop) {
-		this(eventloop, SocketSettings.defaultSocketSettings());
-	}
-
-	public FsClient(Eventloop eventloop, SocketSettings socketSettings) {
+	public FsClient(Eventloop eventloop, SSLContext sslContext, ExecutorService sslExecutor) {
 		this.eventloop = eventloop;
-		this.socketSettings = socketSettings;
-	}
-
-	protected S self() {
-		return (S) this;
-	}
-
-	public S enableSsl(SSLContext sslContext, ExecutorService executor) {
-		this.sslContext = checkNotNull(sslContext);
-		this.sslExecutor = checkNotNull(executor);
-		return self();
+		this.sslContext = sslContext;
+		this.sslExecutor = sslExecutor;
 	}
 
 	// api
@@ -160,7 +148,7 @@ public abstract class FsClient<S extends FsClient<S>> {
 								logger.trace("received {}", msg);
 								if (msg instanceof Ready) {
 									long size = ((Ready) msg).size;
-									StreamForwarderWithCounter forwarder = new StreamForwarderWithCounter(eventloop, size - startPosition);
+									StreamForwarderWithCounter forwarder = StreamForwarderWithCounter.create(eventloop, size - startPosition);
 									messaging.receiveBinaryStreamTo(forwarder.getInput(), new CompletionCallback() {
 										@Override
 										public void onComplete() {
@@ -234,7 +222,7 @@ public abstract class FsClient<S extends FsClient<S>> {
 			public void onConnect(SocketChannel socketChannel) {
 				AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings);
 				AsyncTcpSocket asyncTcpSocket = sslContext != null ? wrapClientSocket(eventloop, asyncTcpSocketImpl, sslContext, sslExecutor) : asyncTcpSocketImpl;
-				MessagingWithBinaryStreaming<FsResponse, FsCommand> messaging = new MessagingWithBinaryStreaming<>(eventloop, asyncTcpSocket, serializer);
+				MessagingWithBinaryStreaming<FsResponse, FsCommand> messaging = MessagingWithBinaryStreaming.create(eventloop, asyncTcpSocket, serializer);
 				asyncTcpSocket.setEventHandler(messaging);
 				asyncTcpSocketImpl.register();
 				callback.onConnect(messaging);

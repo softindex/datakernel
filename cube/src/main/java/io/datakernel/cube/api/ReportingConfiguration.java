@@ -35,6 +35,10 @@ public final class ReportingConfiguration {
 
 	private Map<String, String> attributeDimensions = newHashMap();
 
+	private ReportingConfiguration() {}
+
+	public static ReportingConfiguration create() {return new ReportingConfiguration();}
+
 	public ReportingConfiguration addComputedMeasure(String name, ReportingDSLExpression expression) {
 		this.computedMeasures.put(name, expression);
 		return this;

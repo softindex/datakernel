@@ -46,7 +46,7 @@ public class NativeDnsResolverConnectionTest {
 		ByteBufPool.clear();
 		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 
-		eventloop = new Eventloop();
+		eventloop = Eventloop.create();
 	}
 
 	private class DnsResolveCallback implements ResultCallback<DnsQueryResult> {
@@ -94,7 +94,7 @@ public class NativeDnsResolverConnectionTest {
 			public void run() {
 				try {
 					DatagramChannel datagramChannel = createDatagramChannel(defaultDatagramSocketSettings(), null, null);
-					dnsClientConnection = new DnsClientHandler(eventloop, datagramChannel);
+					dnsClientConnection = DnsClientHandler.create(eventloop, datagramChannel);
 					dnsClientConnection.register();
 				} catch (IOException e) {
 					e.printStackTrace();

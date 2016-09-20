@@ -97,9 +97,9 @@ public class RpcStrategyShardingTest {
 		pool.put(ADDRESS_3, connection3);
 		RpcSender sender = shardingStrategy.createSender(pool);
 
-		ResultCallbackFuture<Object> callback1 = new ResultCallbackFuture<>();
-		ResultCallbackFuture<Object> callback2 = new ResultCallbackFuture<>();
-		ResultCallbackFuture<Object> callback3 = new ResultCallbackFuture<>();
+		ResultCallbackFuture<Object> callback1 = ResultCallbackFuture.create();
+		ResultCallbackFuture<Object> callback2 = ResultCallbackFuture.create();
+		ResultCallbackFuture<Object> callback3 = ResultCallbackFuture.create();
 
 		sender.sendRequest(0, 50, callback1);
 		sender.sendRequest(1, 50, callback2);

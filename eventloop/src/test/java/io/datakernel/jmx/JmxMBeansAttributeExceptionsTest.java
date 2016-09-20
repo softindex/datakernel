@@ -100,7 +100,7 @@ public class JmxMBeansAttributeExceptionsTest {
 
 		@Override
 		public Eventloop getEventloop() {
-			return new Eventloop();
+			return Eventloop.create();
 		}
 	}
 
@@ -116,7 +116,7 @@ public class JmxMBeansAttributeExceptionsTest {
 
 		@Override
 		public Eventloop getEventloop() {
-			return new Eventloop();
+			return Eventloop.create();
 		}
 	}
 
@@ -133,7 +133,7 @@ public class JmxMBeansAttributeExceptionsTest {
 
 		@Override
 		public Eventloop getEventloop() {
-			return new Eventloop();
+			return Eventloop.create();
 		}
 	}
 

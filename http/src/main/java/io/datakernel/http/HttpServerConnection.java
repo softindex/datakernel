@@ -16,23 +16,23 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncSslSocket;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.util.Arrays;
 
+import static io.datakernel.bytebuf.ByteBufStrings.SP;
+import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.http.GzipProcessor.toGzip;
 import static io.datakernel.http.HttpHeaders.CONNECTION;
 import static io.datakernel.http.HttpHeaders.CONTENT_ENCODING;
 import static io.datakernel.http.HttpMethod.*;
-import static io.datakernel.util.ByteBufStrings.SP;
-import static io.datakernel.util.ByteBufStrings.encodeAscii;
 
 /**
  * It represents server connection. It can receive requests from clients and respond to them with async servlet.
@@ -76,11 +76,23 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	 * @param servlet   servlet for handling requests
 	 * @param pool      pool in which will be stored this connection
 	 */
-	HttpServerConnection(Eventloop eventloop, InetAddress remoteAddress, AsyncTcpSocket asyncTcpSocket, AsyncHttpServer server, AsyncHttpServlet servlet, ExposedLinkedList<AbstractHttpConnection> pool, char[] headerChars, int maxHttpMessageSize) {
+	private HttpServerConnection(Eventloop eventloop, InetAddress remoteAddress, AsyncTcpSocket asyncTcpSocket,
+	                             AsyncHttpServer server, AsyncHttpServlet servlet,
+	                             ExposedLinkedList<AbstractHttpConnection> pool, char[] headerChars,
+	                             int maxHttpMessageSize) {
 		super(eventloop, asyncTcpSocket, headerChars, maxHttpMessageSize);
 		this.server = server;
 		this.servlet = servlet;
 		this.remoteAddress = remoteAddress;
+	}
+
+	static HttpServerConnection create(Eventloop eventloop, InetAddress remoteAddress,
+	                                   AsyncTcpSocket asyncTcpSocket, AsyncHttpServer server,
+	                                   AsyncHttpServlet servlet,
+	                                   ExposedLinkedList<AbstractHttpConnection> pool, char[] headerChars,
+	                                   int maxHttpMessageSize) {
+		return new HttpServerConnection(eventloop, remoteAddress, asyncTcpSocket, server, servlet,
+				pool, headerChars, maxHttpMessageSize);
 	}
 
 	@Override
@@ -147,7 +159,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		if (method == null)
 			throw new ParseException("Unknown HTTP method");
 
-		request = HttpRequest.create(method);
+		request = HttpRequest.ofMethod(method);
 
 		int i;
 		for (i = 0; i != line.headRemaining(); i++) {
@@ -157,7 +169,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			this.headerChars[i] = (char) b;
 		}
 
-		request.url(HttpUri.parseUrl(new String(headerChars, 0, i))); // TODO ?
+		request.setUrl(HttpUri.parseUrl(new String(headerChars, 0, i))); // TODO ?
 
 		if (method == GET || method == DELETE) {
 			contentLength = 0;
@@ -196,8 +208,8 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	@Override
 	protected void onHttpMessage(ByteBuf bodyBuf) {
 		reading = NOTHING;
-		request.body(bodyBuf);
-		request.remoteAddress(remoteAddress);
+		request.setBody(bodyBuf);
+		request.setRemoteAddress(remoteAddress);
 
 		// jmx
 		server.requestHandlingStarted(this, request);
@@ -210,7 +222,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 					if (!isClosed()) {
 						try {
 							if (shouldGzip && httpResponse.getBody() != null) {
-								httpResponse.setHeader(CONTENT_ENCODING, CONTENT_ENCODING_GZIP);
+								httpResponse.setHeader(HttpHeaders.asBytes(CONTENT_ENCODING, CONTENT_ENCODING_GZIP));
 								httpResponse.setBody(toGzip(httpResponse.detachBody()));
 							}
 							writeHttpResult(httpResponse);
@@ -293,7 +305,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	private HttpResponse formatException(HttpServletError e) {
 		logger.error("Error processing http request", e);
 		ByteBuf message = ByteBuf.wrapForReading(INTERNAL_ERROR_MESSAGE);
-		return HttpResponse.create(e.getCode()).noCache().body(message);
+		return HttpResponse.ofCode(e.getCode()).withNoCache().withBody(message);
 	}
 
 	private void recycleBufs() {

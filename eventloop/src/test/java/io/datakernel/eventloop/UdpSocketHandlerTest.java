@@ -34,12 +34,12 @@ import static org.junit.Assert.*;
 public class UdpSocketHandlerTest {
 	private static final int SERVER_PORT = 45555;
 	private static final InetSocketAddress SERVER_ADDRESS = new InetSocketAddress("127.0.0.1", SERVER_PORT);
-	private Eventloop eventloop = new Eventloop();
+	private Eventloop eventloop = Eventloop.create();
 
 	private final byte[] bytesToSend = new byte[]{-127, 100, 0, 5, 11, 13, 17, 99};
 
 	private AsyncUdpSocketImpl getEchoServerUdpSocket(DatagramChannel serverChannel) {
-		final AsyncUdpSocketImpl socket = new AsyncUdpSocketImpl(eventloop, serverChannel);
+		final AsyncUdpSocketImpl socket = AsyncUdpSocketImpl.create(eventloop, serverChannel);
 		socket.setEventHandler(new AsyncUdpSocket.EventHandler() {
 			@Override
 			public void onRegistered() {
@@ -65,7 +65,7 @@ public class UdpSocketHandlerTest {
 	}
 
 	private AsyncUdpSocketImpl getClientUdpSocket(DatagramChannel clientChannel) {
-		final AsyncUdpSocketImpl socket = new AsyncUdpSocketImpl(eventloop, clientChannel);
+		final AsyncUdpSocketImpl socket = AsyncUdpSocketImpl.create(eventloop, clientChannel);
 		socket.setEventHandler(new AsyncUdpSocket.EventHandler() {
 			@Override
 			public void onRegistered() {
@@ -95,7 +95,7 @@ public class UdpSocketHandlerTest {
 			}
 
 			void sendTestData(byte[] data, InetSocketAddress address) {
-				socket.send(new UdpPacket(ByteBuf.wrapForReading(data), address));
+				socket.send(UdpPacket.of(ByteBuf.wrapForReading(data), address));
 			}
 		});
 		return socket;

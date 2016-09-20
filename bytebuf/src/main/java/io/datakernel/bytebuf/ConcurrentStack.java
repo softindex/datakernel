@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * @param <E>
  */
-public final class ConcurrentStack<E> implements Iterable<E> {
+final class ConcurrentStack<E> implements Iterable<E> {
 
 	private static class Node<E> {
 		private final E item;

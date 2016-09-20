@@ -29,11 +29,11 @@ public class RendezvousHashingTest {
 	public void testSortReplicas() {
 		RendezvousHashing hashing = new RendezvousHashing();
 
-		Replica a = new Replica("A", new InetSocketAddress(1234), 1.0);
-		Replica b = new Replica("B", new InetSocketAddress(1234), 1.0);
-		Replica c = new Replica("C", new InetSocketAddress(1234), 1.0);
-		Replica d = new Replica("D", new InetSocketAddress(1234), 1.0);
-		Replica e = new Replica("E", new InetSocketAddress(1234), 1.0);
+		Replica a = Replica.create("A", new InetSocketAddress(1234), 1.0);
+		Replica b = Replica.create("B", new InetSocketAddress(1234), 1.0);
+		Replica c = Replica.create("C", new InetSocketAddress(1234), 1.0);
+		Replica d = Replica.create("D", new InetSocketAddress(1234), 1.0);
+		Replica e = Replica.create("E", new InetSocketAddress(1234), 1.0);
 
 		List<Replica> actual = Arrays.asList(a, b, c, d, e);
 		List<Replica> expected = Arrays.asList(a, e, c, d, b);

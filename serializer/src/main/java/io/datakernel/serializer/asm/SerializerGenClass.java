@@ -16,9 +16,8 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.codegen.AsmBuilder;
+import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.VarField;
 import io.datakernel.codegen.Variable;
 import io.datakernel.codegen.utils.Preconditions;
 import io.datakernel.serializer.CompatibilityLevel;
@@ -382,7 +381,7 @@ public class SerializerGenClass implements SerializerGen {
 				continue;
 			if (fieldGen.field == null || isFinal(fieldGen.field.getModifiers()))
 				continue;
-			VarField field = getter(local, fieldName);
+			Variable field = getter(local, fieldName);
 			list.add(set(field, map.get(fieldName)));
 		}
 
@@ -436,17 +435,18 @@ public class SerializerGenClass implements SerializerGen {
 	                                        final int version,
 	                                        SerializerBuilder.StaticMethods staticMethods,
 	                                        CompatibilityLevel compatibilityLevel) {
-		final AsmBuilder<Object> asmFactory = new AsmBuilder(staticMethods.getDefiningClassLoader(), targetType);
+		ClassBuilder<?> asmFactory = ClassBuilder.create(staticMethods.getDefiningClassLoader(), targetType);
 		for (String fieldName : fields.keySet()) {
 			FieldGen fieldGen = fields.get(fieldName);
 
 			Method method = checkNotNull(fieldGen.method);
 
-			asmFactory.field(fieldName, method.getReturnType());
-			asmFactory.method(method.getName(), getter(self(), fieldName));
+			asmFactory = asmFactory
+					.withField(fieldName, method.getReturnType())
+					.withMethod(method.getName(), getter(self(), fieldName));
 		}
 
-		Class<?> newClass = asmFactory.defineClass();
+		Class<?> newClass = asmFactory.build();
 
 		Expression local = let(constructor(newClass));
 		List<Expression> list = new ArrayList<>();
@@ -456,7 +456,7 @@ public class SerializerGenClass implements SerializerGen {
 			FieldGen fieldGen = fields.get(fieldName);
 			if (!fieldGen.hasVersion(version))
 				continue;
-			VarField field = getter(local, fieldName);
+			Variable field = getter(local, fieldName);
 
 			fieldGen.serializer.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
 			Expression expression =
@@ -480,7 +480,7 @@ public class SerializerGenClass implements SerializerGen {
 
 			if (!fieldGen.hasVersion(version)) continue;
 
-			VarField field = getter(local, fieldName);
+			Variable field = getter(local, fieldName);
 			fieldGen.serializer.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
 			list.add(set(field, fieldGen.serializer.deserialize(fieldGen.getRawType(), version, staticMethods, compatibilityLevel)));
 		}

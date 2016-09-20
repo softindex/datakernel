@@ -1,9 +1,9 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.AsyncTcpSocket.EventHandler;
 import io.datakernel.net.SocketSettings;
-import io.datakernel.util.ByteBufStrings;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -18,14 +18,14 @@ import static org.junit.Assert.assertThat;
 public class AbstractServerTest {
 	@Test
 	public void testTimeouts() throws IOException {
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 
 		InetSocketAddress address = new InetSocketAddress(5588);
-		final SocketSettings settings = SocketSettings.defaultSocketSettings().readTimeout(100000L).writeTimeout(100000L);
+		final SocketSettings settings = SocketSettings.defaultSocketSettings().withReadTimeout(100000L).withWriteTimeout(100000L);
 
-		final AbstractServer server = new AbstractServer(eventloop) {
+		SimpleServer.SocketHandlerProvider socketHandlerProvider = new SimpleServer.SocketHandlerProvider() {
 			@Override
-			protected EventHandler createSocketHandler(final AsyncTcpSocket asyncTcpSocket) {
+			public EventHandler createSocketHandler(final AsyncTcpSocket asyncTcpSocket) {
 				return new EventHandler() {
 					@Override
 					public void onRegistered() {
@@ -59,8 +59,10 @@ public class AbstractServerTest {
 				};
 			}
 		};
-		server.socketSettings(settings);
-		server.setListenAddress(address);
+
+		final SimpleServer server = SimpleServer.create(eventloop, socketHandlerProvider)
+				.withSocketSettings(settings)
+				.withListenAddress(address);
 
 		server.listen();
 

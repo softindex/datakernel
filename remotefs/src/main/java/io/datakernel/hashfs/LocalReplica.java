@@ -53,44 +53,48 @@ public final class LocalReplica implements EventloopService {
 
 	private CompletionCallback onStopCallback;
 
-	// creators & builder setters
-	public LocalReplica(Eventloop eventloop, ExecutorService executor, Path storagePath, List<Replica> bootstrap, Replica myId) {
+	// region creators & builder setters
+	private LocalReplica(Eventloop eventloop, ExecutorService executor, Path storagePath,
+	                     List<Replica> bootstrap, Replica myId) {
 		this.eventloop = eventloop;
-		this.fileManager = new FileManager(eventloop, executor, storagePath);
-		this.client = new HashFsClient(eventloop, bootstrap);
+		this.fileManager = FileManager.create(eventloop, executor, storagePath);
+		this.client = HashFsClient.create(eventloop, bootstrap);
 		replicas.addAll(bootstrap);
 		this.myId = myId;
 	}
 
-	public LocalReplica setServerDeathTimeout(long serverDeathTimeout) {
+	public static LocalReplica create(Eventloop eventloop, ExecutorService executor, Path storagePath, List<Replica> bootstrap, Replica myId) {return new LocalReplica(eventloop, executor, storagePath, bootstrap, myId);}
+
+	public LocalReplica withServerDeathTimeout(long serverDeathTimeout) {
 		this.serverDeathTimeout = serverDeathTimeout;
 		return this;
 	}
 
-	public LocalReplica setMaxReplicaQuantity(int maxReplicaQuantity) {
+	public LocalReplica withMaxReplicaQuantity(int maxReplicaQuantity) {
 		this.maxReplicaQuantity = maxReplicaQuantity;
 		return this;
 	}
 
-	public LocalReplica setMinSafeReplicaQuantity(int minSafeReplicaQuantity) {
+	public LocalReplica withMinSafeReplicaQuantity(int minSafeReplicaQuantity) {
 		this.minSafeReplicaQuantity = minSafeReplicaQuantity;
 		return this;
 	}
 
-	public LocalReplica setSystemUpdateTimeout(long systemUpdateTimeout) {
+	public LocalReplica withSystemUpdateTimeout(long systemUpdateTimeout) {
 		this.systemUpdateTimeout = systemUpdateTimeout;
 		return this;
 	}
 
-	public LocalReplica setMapUpdateTimeout(long mapUpdateTimeout) {
+	public LocalReplica withMapUpdateTimeout(long mapUpdateTimeout) {
 		this.mapUpdateTimeout = mapUpdateTimeout;
 		return this;
 	}
 
-	public LocalReplica setHashing(HashingStrategy hashing) {
+	public LocalReplica withHashing(HashingStrategy hashing) {
 		this.hashing = hashing;
 		return this;
 	}
+	// endregion
 
 	public Replica getMyId() {
 		return myId;

@@ -37,12 +37,12 @@ import static org.junit.Assert.*;
 public class StreamSorterTest {
 	@Test
 	public void test() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(3, 1, 3, 2, 5, 1, 4, 3, 2));
 
 		StreamMergeSorterStorage<Integer> storage = new StreamMergeSorterStorageStub<>(eventloop);
-		StreamSorter<Integer, Integer> sorter = new StreamSorter<>(eventloop,
+		StreamSorter<Integer, Integer> sorter = StreamSorter.create(eventloop,
 				storage, Functions.<Integer>identity(), Ordering.<Integer>natural(), true, 2);
 
 		TestStreamConsumers.TestConsumerToList<Integer> consumerToList = TestStreamConsumers.toListRandomlySuspending(eventloop);
@@ -61,12 +61,12 @@ public class StreamSorterTest {
 
 	@Test
 	public void testWithoutConsumer() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(3, 1, 3, 2, 5, 1, 4, 3, 2));
 
 		StreamMergeSorterStorage<Integer> storage = new StreamMergeSorterStorageStub<>(eventloop);
-		StreamSorter<Integer, Integer> sorter = new StreamSorter<>(eventloop,
+		StreamSorter<Integer, Integer> sorter = StreamSorter.create(eventloop,
 				storage, Functions.<Integer>identity(), Ordering.<Integer>natural(), true, 2);
 
 		TestStreamConsumers.TestConsumerToList<Integer> consumerToList = TestStreamConsumers.toListRandomlySuspending(eventloop);
@@ -86,7 +86,7 @@ public class StreamSorterTest {
 
 	@Test
 	public void testCollision() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		StreamMergeSorterStorage<Integer> storage = new StreamMergeSorterStorageStub<>(eventloop);
 
 		final StreamProducer<Integer> scheduledSource = new ScheduledProducer(eventloop) {
@@ -119,9 +119,9 @@ public class StreamSorterTest {
 		};
 		StreamProducer<Integer> iterableSource = StreamProducers.ofIterable(eventloop, asList(30, 10, 30, 20, 50, 10, 40, 30, 20));
 
-		StreamSorter<Integer, Integer> sorter1 = new StreamSorter<>(eventloop,
+		StreamSorter<Integer, Integer> sorter1 = StreamSorter.create(eventloop,
 				storage, Functions.<Integer>identity(), Ordering.<Integer>natural(), true, 2);
-		StreamSorter<Integer, Integer> sorter2 = new StreamSorter<>(eventloop,
+		StreamSorter<Integer, Integer> sorter2 = StreamSorter.create(eventloop,
 				storage, Functions.<Integer>identity(), Ordering.<Integer>natural(), true, 2);
 
 		List<Integer> list1 = new ArrayList<>();
@@ -152,7 +152,7 @@ public class StreamSorterTest {
 
 	@Test
 	public void testBadStorage() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(3, 1, 3, 2, 5, 1, 4, 3, 2));
 
@@ -177,7 +177,7 @@ public class StreamSorterTest {
 				return newPartition;
 			}
 		};
-		StreamSorter<Integer, Integer> sorter = new StreamSorter<>(eventloop,
+		StreamSorter<Integer, Integer> sorter = StreamSorter.create(eventloop,
 				storage, Functions.<Integer>identity(), Ordering.<Integer>natural(), true, 2);
 
 		List<Integer> list = new ArrayList<>();
@@ -198,12 +198,12 @@ public class StreamSorterTest {
 
 	@Test
 	public void testErrorOnConsumer() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(3, 1, 3, 2, 5, 1, 4, 3, 2));
 
 		StreamMergeSorterStorage<Integer> storage = new StreamMergeSorterStorageStub<>(eventloop);
-		StreamSorter<Integer, Integer> sorter = new StreamSorter<>(eventloop,
+		StreamSorter<Integer, Integer> sorter = StreamSorter.create(eventloop,
 				storage, Functions.<Integer>identity(), Ordering.<Integer>natural(), true, 2);
 
 		final List<Integer> list = new ArrayList<>();
@@ -232,7 +232,7 @@ public class StreamSorterTest {
 
 	@Test
 	public void testErrorOnProducer() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<Integer> source = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, asList(3, 1, 3, 2)),
@@ -240,7 +240,7 @@ public class StreamSorterTest {
 		);
 
 		StreamMergeSorterStorage<Integer> storage = new StreamMergeSorterStorageStub<>(eventloop);
-		StreamSorter<Integer, Integer> sorter = new StreamSorter<>(eventloop,
+		StreamSorter<Integer, Integer> sorter = StreamSorter.create(eventloop,
 				storage, Functions.<Integer>identity(), Ordering.<Integer>natural(), true, 2);
 
 		final List<Integer> list = new ArrayList<>();

@@ -60,17 +60,27 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 	private final int lockTimeoutSeconds;
 	private final String processId;
 
-	public CubeMetadataStorageSql(Eventloop eventloop, ExecutorService executor, Configuration jooqConfiguration, String processId) {
+	private CubeMetadataStorageSql(Eventloop eventloop, ExecutorService executor, Configuration jooqConfiguration, String processId) {
 		this(eventloop, executor, jooqConfiguration, DEFAULT_LOCK_TIMEOUT_SECONDS, processId);
 	}
 
-	public CubeMetadataStorageSql(Eventloop eventloop, ExecutorService executor, Configuration jooqConfiguration,
-	                              int lockTimeoutSeconds, String processId) {
+	private CubeMetadataStorageSql(Eventloop eventloop, ExecutorService executor, Configuration jooqConfiguration,
+	                               int lockTimeoutSeconds, String processId) {
 		this.eventloop = eventloop;
 		this.executor = executor;
 		this.jooqConfiguration = jooqConfiguration;
 		this.lockTimeoutSeconds = lockTimeoutSeconds;
 		this.processId = processId;
+	}
+
+	public static CubeMetadataStorageSql create(Eventloop eventloop, ExecutorService executor,
+	                                            Configuration jooqConfiguration, String processId) {
+		return new CubeMetadataStorageSql(eventloop, executor, jooqConfiguration, processId);
+	}
+
+	public static CubeMetadataStorageSql create(Eventloop eventloop, ExecutorService executor, Configuration jooqConfiguration,
+	                                            int lockTimeoutSeconds, String processId) {
+		return new CubeMetadataStorageSql(eventloop, executor, jooqConfiguration, lockTimeoutSeconds, processId);
 	}
 
 	@Override
@@ -283,7 +293,7 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 
 		for (Record record : chunkRecords) {
 			ChunkKey chunkKey = getChunkKey(record, aggregationMetadata, aggregationStructure);
-			AggregationChunk chunk = new AggregationChunk(record.getValue(AGGREGATION_DB_CHUNK.REVISION_ID),
+			AggregationChunk chunk = AggregationChunk.create(record.getValue(AGGREGATION_DB_CHUNK.REVISION_ID),
 					record.getValue(AGGREGATION_DB_CHUNK.ID).intValue(),
 					newArrayList(SPLITTER.split(record.getValue(AGGREGATION_DB_CHUNK.FIELDS))),
 					PrimaryKey.ofArray(chunkKey.minKeyArray),
@@ -308,7 +318,7 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 				continue;
 
 			ChunkKey chunkKey = getChunkKey(record, aggregationMetadata, aggregationStructure);
-			AggregationChunk chunk = new AggregationChunk(record.getValue(AGGREGATION_DB_CHUNK.REVISION_ID),
+			AggregationChunk chunk = AggregationChunk.create(record.getValue(AGGREGATION_DB_CHUNK.REVISION_ID),
 					record.getValue(AGGREGATION_DB_CHUNK.ID).intValue(),
 					newArrayList(SPLITTER.split(record.getValue(AGGREGATION_DB_CHUNK.FIELDS))),
 					PrimaryKey.ofArray(chunkKey.minKeyArray),

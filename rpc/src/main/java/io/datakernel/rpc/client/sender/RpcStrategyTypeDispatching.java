@@ -32,6 +32,10 @@ public final class RpcStrategyTypeDispatching implements RpcStrategy {
 	private Map<Class<?>, RpcStrategy> dataTypeToStrategy = new HashMap<>();
 	private RpcStrategy defaultStrategy;
 
+	private RpcStrategyTypeDispatching() {}
+
+	public static RpcStrategyTypeDispatching create() {return new RpcStrategyTypeDispatching();}
+
 	public RpcStrategyTypeDispatching on(Class<?> dataType,
 	                                     RpcStrategy strategy) {
 		checkNotNull(dataType);

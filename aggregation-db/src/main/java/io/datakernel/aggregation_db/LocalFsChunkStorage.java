@@ -64,12 +64,18 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 	 * @param executorService executor, where blocking IO operations are to be run
 	 * @param dir             directory where data is saved
 	 */
-	public LocalFsChunkStorage(Eventloop eventloop, ExecutorService executorService, AggregationStructure structure,
-	                           Path dir) {
+	private LocalFsChunkStorage(Eventloop eventloop, ExecutorService executorService, AggregationStructure structure,
+	                            Path dir) {
 		this.eventloop = eventloop;
 		this.executorService = executorService;
 		this.structure = structure;
 		this.dir = dir;
+	}
+
+	public static LocalFsChunkStorage create(Eventloop eventloop, ExecutorService executorService,
+	                                         AggregationStructure structure,
+	                                         Path dir) {
+		return new LocalFsChunkStorage(eventloop, executorService, structure, dir);
 	}
 
 	private Path path(long id) {
@@ -96,9 +102,9 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 	@Override
 	public <T> StreamProducer<T> chunkReader(List<String> keys, List<String> fields,
 	                                         Class<T> recordClass, long id, DefiningClassLoader classLoader) {
-		final StreamLZ4Decompressor decompressor = new StreamLZ4Decompressor(eventloop);
+		final StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create(eventloop);
 		BufferSerializer<T> bufferSerializer = structure.createBufferSerializer(recordClass, keys, fields, classLoader);
-		StreamBinaryDeserializer<T> deserializer = new StreamBinaryDeserializer<>(eventloop, bufferSerializer,
+		StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(eventloop, bufferSerializer,
 				StreamBinarySerializer.MAX_SIZE);
 		decompressor.getOutput().streamTo(deserializer.getInput());
 
@@ -124,7 +130,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 	                            final CompletionCallback callback) {
 		final StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
 		BufferSerializer<T> bufferSerializer = structure.createBufferSerializer(recordClass, keys, fields, classLoader);
-		StreamBinarySerializer<T> serializer = new StreamBinarySerializer<>(eventloop, bufferSerializer,
+		StreamBinarySerializer<T> serializer = StreamBinarySerializer.create(eventloop, bufferSerializer,
 				StreamBinarySerializer.MAX_SIZE_2_BYTE, StreamBinarySerializer.MAX_SIZE, 1000, false);
 
 		producer.streamTo(serializer.getInput());

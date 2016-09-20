@@ -44,10 +44,10 @@ import static org.objectweb.asm.commons.Method.getMethod;
  * @param <T> type of item
  */
 @SuppressWarnings("unchecked")
-public class AsmBuilder<T> {
+public final class ClassBuilder<T> {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-	public static final String DEFAULT_CLASS_NAME = AsmBuilder.class.getPackage().getName() + ".Class";
+	public static final String DEFAULT_CLASS_NAME = ClassBuilder.class.getPackage().getName() + ".Class";
 	private static final AtomicInteger COUNTER = new AtomicInteger();
 
 	private final DefiningClassLoader classLoader;
@@ -56,23 +56,12 @@ public class AsmBuilder<T> {
 	private final List<Class<?>> otherClasses;
 	private Path bytecodeSaveDir;
 
+	private String className;
+
 	private final Map<String, Class<?>> fields = new LinkedHashMap<>();
 	private final Map<String, Class<?>> staticFields = new LinkedHashMap<>();
 	private final Map<Method, Expression> expressionMap = new LinkedHashMap<>();
 	private final Map<Method, Expression> expressionStaticMap = new LinkedHashMap<>();
-
-	public Map<Method, Expression> getExpressionStaticMap() {
-		return expressionStaticMap;
-	}
-
-	public Map<Method, Expression> getExpressionMap() {
-		return expressionMap;
-	}
-
-	public AsmBuilder<T> setBytecodeSaveDir(Path bytecodeSaveDir) {
-		this.bytecodeSaveDir = bytecodeSaveDir;
-		return this;
-	}
 
 	public static class AsmClassKey<T> {
 		private final Class<T> mainClass;
@@ -127,20 +116,35 @@ public class AsmBuilder<T> {
 		}
 	}
 
+	// region builders
+
 	/**
 	 * Creates a new instance of AsmFunctionFactory
 	 *
 	 * @param classLoader class loader
 	 * @param type        type of dynamic class
 	 */
-	public AsmBuilder(DefiningClassLoader classLoader, Class<T> type) {
+	private ClassBuilder(DefiningClassLoader classLoader, Class<T> type) {
 		this(classLoader, type, Collections.EMPTY_LIST);
 	}
 
-	public AsmBuilder(DefiningClassLoader classLoader, Class<T> mainType, List<Class<?>> types) {
+	private ClassBuilder(DefiningClassLoader classLoader, Class<T> mainType, List<Class<?>> types) {
 		this.classLoader = classLoader;
 		this.mainClass = mainType;
 		this.otherClasses = types;
+	}
+
+	public static <T> ClassBuilder<T> create(DefiningClassLoader classLoader, Class<T> type) {
+		return new ClassBuilder<T>(classLoader, type);
+	}
+
+	public static <T> ClassBuilder<T> create(DefiningClassLoader classLoader, Class<T> mainType, List<Class<?>> types) {
+		return new ClassBuilder<T>(classLoader, mainType, types);
+	}
+
+	public ClassBuilder<T> withBytecodeSaveDir(Path bytecodeSaveDir) {
+		this.bytecodeSaveDir = bytecodeSaveDir;
+		return this;
 	}
 
 	/**
@@ -150,7 +154,7 @@ public class AsmBuilder<T> {
 	 * @param fieldClass type of field
 	 * @return changed AsmFunctionFactory
 	 */
-	public AsmBuilder<T> field(String field, Class<?> fieldClass) {
+	public ClassBuilder<T> withField(String field, Class<?> fieldClass) {
 		fields.put(field, fieldClass);
 		return this;
 	}
@@ -162,12 +166,12 @@ public class AsmBuilder<T> {
 	 * @param expression function which will be processed
 	 * @return changed AsmFunctionFactory
 	 */
-	public AsmBuilder<T> method(Method method, Expression expression) {
+	public ClassBuilder<T> withMethod(Method method, Expression expression) {
 		expressionMap.put(method, expression);
 		return this;
 	}
 
-	public AsmBuilder<T> staticMethod(Method method, Expression expression) {
+	public ClassBuilder<T> withStaticMethod(Method method, Expression expression) {
 		expressionStaticMap.put(method, expression);
 		return this;
 	}
@@ -181,20 +185,20 @@ public class AsmBuilder<T> {
 	 * @param expression    function which will be processed
 	 * @return changed AsmFunctionFactory
 	 */
-	public AsmBuilder<T> method(String methodName, Class<?> returnClass, List<? extends Class<?>> argumentTypes, Expression expression) {
+	public ClassBuilder<T> withMethod(String methodName, Class<?> returnClass, List<? extends Class<?>> argumentTypes, Expression expression) {
 		Type[] types = new Type[argumentTypes.size()];
 		for (int i = 0; i < argumentTypes.size(); i++) {
 			types[i] = getType(argumentTypes.get(i));
 		}
-		return method(new Method(methodName, getType(returnClass), types), expression);
+		return withMethod(new Method(methodName, getType(returnClass), types), expression);
 	}
 
-	public AsmBuilder<T> staticMethod(String methodName, Class<?> returnClass, List<? extends Class<?>> argumentTypes, Expression expression) {
+	public ClassBuilder<T> withStaticMethod(String methodName, Class<?> returnClass, List<? extends Class<?>> argumentTypes, Expression expression) {
 		Type[] types = new Type[argumentTypes.size()];
 		for (int i = 0; i < argumentTypes.size(); i++) {
 			types[i] = getType(argumentTypes.get(i));
 		}
-		return staticMethod(new Method(methodName, getType(returnClass), types), expression);
+		return withStaticMethod(new Method(methodName, getType(returnClass), types), expression);
 	}
 
 	/**
@@ -204,10 +208,10 @@ public class AsmBuilder<T> {
 	 * @param expression function which will be processed
 	 * @return changed AsmFunctionFactory
 	 */
-	public AsmBuilder<T> method(String methodName, Expression expression) {
+	public ClassBuilder<T> withMethod(String methodName, Expression expression) {
 		if (methodName.contains("(")) {
 			Method method = Method.getMethod(methodName);
-			return method(method, expression);
+			return withMethod(method, expression);
 		}
 
 		Method foundMethod = null;
@@ -231,19 +235,16 @@ public class AsmBuilder<T> {
 			}
 		}
 		Preconditions.check(foundMethod != null, "Could not find method '" + methodName + "'");
-		return method(foundMethod, expression);
+		return withMethod(foundMethod, expression);
 	}
 
-	/**
-	 * Returns a new class which is created in a dynamic way
-	 *
-	 * @return completed class
-	 */
-	public Class<T> defineClass() {
-		return defineClass(null);
+	public ClassBuilder<T> withClassName(String name) {
+		this.className = name;
+		return this;
 	}
 
-	public Class<T> defineClass(String className) {
+	// endregion
+	public Class<T> build() {
 		synchronized (classLoader) {
 			AsmClassKey key = new AsmClassKey(mainClass, otherClasses, fields, expressionMap, expressionStaticMap);
 			Class<?> cachedClass = classLoader.getClassByKey(key);
@@ -253,27 +254,21 @@ public class AsmBuilder<T> {
 				return (Class<T>) cachedClass;
 			}
 
-			return defineNewClass(key, className);
+			return defineNewClass(key);
 		}
 	}
 
-	/**
-	 * Returns a new class which is created in a dynamic way
-	 *
-	 * @param key key
-	 * @return completed class
-	 */
-	private Class<T> defineNewClass(AsmClassKey key, String newClassName) {
-		DefiningClassWriter cw = new DefiningClassWriter(classLoader);
+	private Class<T> defineNewClass(AsmClassKey key) {
+		DefiningClassWriter cw = DefiningClassWriter.create(classLoader);
 
-		String className;
-		if (newClassName == null) {
-			className = DEFAULT_CLASS_NAME + COUNTER.incrementAndGet();
+		String actualClassName;
+		if (className == null) {
+			actualClassName = DEFAULT_CLASS_NAME + COUNTER.incrementAndGet();
 		} else {
-			className = newClassName;
+			actualClassName = className;
 		}
 
-		Type classType = getType('L' + className.replace('.', '/') + ';');
+		Type classType = getType('L' + actualClassName.replace('.', '/') + ';');
 
 		final String[] internalNames = new String[1 + otherClasses.size()];
 		internalNames[0] = getInternalName(mainClass);
@@ -346,7 +341,7 @@ public class AsmBuilder<T> {
 			}
 		}
 		if (bytecodeSaveDir != null) {
-			try (FileOutputStream fos = new FileOutputStream(bytecodeSaveDir.resolve(className + ".class").toFile())) {
+			try (FileOutputStream fos = new FileOutputStream(bytecodeSaveDir.resolve(actualClassName + ".class").toFile())) {
 				fos.write(cw.toByteArray());
 			} catch (IOException e) {
 				throw new RuntimeException(e);
@@ -355,19 +350,14 @@ public class AsmBuilder<T> {
 
 		cw.visitEnd();
 
-		Class<?> definedClass = classLoader.defineClass(className, key, cw.toByteArray());
+		Class<?> definedClass = classLoader.defineClass(actualClassName, key, cw.toByteArray());
 		logger.trace("Defined new {} for key {}", definedClass, key);
 		return (Class<T>) definedClass;
 	}
 
-	/**
-	 * Returns a new instance of a dynamic class
-	 *
-	 * @return new instance of the class which was created before in a dynamic way
-	 */
-	public T newInstance() {
+	public T buildClassAndCreateNewInstance() {
 		try {
-			return defineClass().newInstance();
+			return build().newInstance();
 		} catch (InstantiationException | IllegalAccessException e) {
 			throw new RuntimeException(e);
 		}

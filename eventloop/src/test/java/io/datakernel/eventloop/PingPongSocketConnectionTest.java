@@ -1,6 +1,7 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.eventloop.SimpleServer.SocketHandlerProvider;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,9 +11,9 @@ import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
+import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
+import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
-import static io.datakernel.util.ByteBufStrings.decodeAscii;
-import static io.datakernel.util.ByteBufStrings.wrapAscii;
 import static org.junit.Assert.*;
 
 public class PingPongSocketConnectionTest {
@@ -25,15 +26,17 @@ public class PingPongSocketConnectionTest {
 
 	@Test
 	public void test() throws IOException {
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 
-		final AbstractServer ppServer = new AbstractServer(eventloop) {
+		SocketHandlerProvider socketHandlerProvider = new SocketHandlerProvider() {
 			@Override
-			protected AsyncTcpSocket.EventHandler createSocketHandler(final AsyncTcpSocket asyncTcpSocket) {
+			public AsyncTcpSocket.EventHandler createSocketHandler(final AsyncTcpSocket asyncTcpSocket) {
 				return new ServerConnection(asyncTcpSocket);
 			}
 		};
-		ppServer.setListenAddress(ADDRESS);
+
+		final SimpleServer ppServer = SimpleServer.create(eventloop, socketHandlerProvider).withListenAddress(ADDRESS);
+
 		ppServer.listen();
 
 		eventloop.connect(ADDRESS, new ConnectCallback() {

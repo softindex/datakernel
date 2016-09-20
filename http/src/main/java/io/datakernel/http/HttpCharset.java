@@ -21,8 +21,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
-import static io.datakernel.util.ByteBufStrings.decodeAscii;
-import static io.datakernel.util.ByteBufStrings.encodeAscii;
+import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
+import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static java.nio.charset.Charset.forName;
 
 // maximum of 40 characters, us-ascii, see rfc2978,

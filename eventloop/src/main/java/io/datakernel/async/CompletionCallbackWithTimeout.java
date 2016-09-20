@@ -37,7 +37,7 @@ public final class CompletionCallbackWithTimeout implements CompletionCallback, 
 	 * @param callback      the callback which will be called
 	 * @param timeoutMillis time to live this CompletionCallbackWithTimeout
 	 */
-	public CompletionCallbackWithTimeout(Eventloop eventloop, final CompletionCallback callback, long timeoutMillis) {
+	private CompletionCallbackWithTimeout(Eventloop eventloop, final CompletionCallback callback, long timeoutMillis) {
 		this.callback = callback;
 		timeouter = eventloop.schedule(eventloop.currentTimeMillis() + timeoutMillis, new Runnable() {
 			@Override
@@ -46,6 +46,8 @@ public final class CompletionCallbackWithTimeout implements CompletionCallback, 
 			}
 		});
 	}
+
+	public static CompletionCallbackWithTimeout create(Eventloop eventloop, final CompletionCallback callback, long timeoutMillis) {return new CompletionCallbackWithTimeout(eventloop, callback, timeoutMillis);}
 
 	@Override
 	public void onComplete() {

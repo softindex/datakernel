@@ -16,15 +16,16 @@
 
 package io.datakernel;
 
-import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -34,13 +35,13 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
-import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static org.junit.Assert.*;
 
 @SuppressWarnings("ConstantConditions")
 public class HttpApiTest {
 	public static final int PORT = 5568;
+	private static final InetAddress GOOGLE_PUBLIC_DNS = HttpUtils.inetAddress("8.8.8.8");
 
 	private Eventloop eventloop;
 	private AsyncHttpServer server;
@@ -68,18 +69,21 @@ public class HttpApiTest {
 
 	@Before
 	public void setUp() {
-		eventloop = new Eventloop();
-		server = new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
+		eventloop = Eventloop.create();
+		AsyncHttpServlet servlet = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
 				testRequest(request);
 				HttpResponse response = createResponse();
 				callback.onResult(response);
 			}
-		}).setListenPort(PORT);
+		};
 
-		client = new AsyncHttpClient(eventloop, new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
-				3_000L, HttpUtils.inetAddress("8.8.8.8")));
+		server = AsyncHttpServer.create(eventloop, servlet).withListenPort(PORT);
+		client = AsyncHttpClient.create(
+				eventloop,
+				NativeDnsResolver.create(eventloop).withDnsServerAddress(GOOGLE_PUBLIC_DNS)
+		);
 
 		// setup request and response data
 		requestAcceptContentTypes.add(AcceptMediaType.of(MediaTypes.ANY_AUDIO, 90));
@@ -92,12 +96,12 @@ public class HttpApiTest {
 		requestAcceptCharsets.add(AcceptCharset.of(Charset.forName("ISO-8859-2"), 10));
 		requestAcceptCharsets.add(AcceptCharset.of(Charset.forName("ISO-8859-3"), 10));
 
-		HttpCookie cookie2 = new HttpCookie("name1", "value1");
+		HttpCookie cookie2 = HttpCookie.of("name1", "value1");
 		requestCookies.add(cookie2);
-		HttpCookie cookie3 = new HttpCookie("name3");
+		HttpCookie cookie3 = HttpCookie.of("name3");
 		requestCookies.add(cookie3);
 
-		HttpCookie cookie1 = new HttpCookie("name2", "value2");
+		HttpCookie cookie1 = HttpCookie.of("name2", "value2");
 		cookie1.setMaxAge(123);
 		cookie1.setExpirationDate(new Date());
 		responseCookies.add(cookie1);
@@ -132,26 +136,25 @@ public class HttpApiTest {
 	}
 
 	private HttpResponse createResponse() {
-		HttpResponse response = HttpResponse.create();
-		response.date(responseDate);
-		response.expires(expiresDate);
-		response.contentType(responseContentType);
-		response.setCookies(responseCookies);
-		response.lastModified(lastModified);
-		response.age(age);
+		HttpResponse response = HttpResponse.ok200();
+		response.withDate(responseDate);
+		response.withExpires(expiresDate);
+		response.withContentType(responseContentType);
+		response.withCookies(responseCookies);
+		response.withLastModified(lastModified);
+		response.withAge(age);
 		return response;
 	}
 
 	private HttpRequest createRequest() {
-		HttpRequest request = HttpRequest.get("http://127.0.0.1:" + PORT);
-		request.accept(requestAcceptContentTypes);
-		request.acceptCharsets(requestAcceptCharsets);
-		request.date(requestDate);
-		request.contentType(requestContentType);
-		request.ifModifiedSince(dateIMS);
-		request.ifUnModifiedSince(dateIUMS);
-		request.cookies(requestCookies);
-		return request;
+		return HttpRequest.get("http://127.0.0.1:" + PORT)
+				.withAccept(requestAcceptContentTypes)
+				.withAcceptCharsets(requestAcceptCharsets)
+				.withDate(requestDate)
+				.withContentType(requestContentType)
+				.withIfModifiedSince(dateIMS)
+				.withIfUnModifiedSince(dateIUMS)
+				.withCookies(requestCookies);
 	}
 
 	private void testResponse(HttpResponse response) throws ParseException {

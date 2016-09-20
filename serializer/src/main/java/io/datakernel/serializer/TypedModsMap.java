@@ -14,11 +14,14 @@
  * limitations under the License.
  */
 
-package io.datakernel.serializer.asm;
+package io.datakernel.serializer;
+
+import io.datakernel.serializer.asm.SerializerGen;
+import io.datakernel.serializer.asm.SerializerGenBuilder;
 
 import java.util.*;
 
-public final class TypedModsMap {
+final class TypedModsMap {
 	private static final TypedModsMap EMPTY = new TypedModsMap();
 
 	private final List<SerializerGenBuilder> mods;

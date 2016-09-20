@@ -26,7 +26,7 @@ import io.datakernel.aggregation_db.processor.ProcessorFactory;
 import io.datakernel.aggregation_db.util.BiPredicate;
 import io.datakernel.aggregation_db.util.Predicates;
 import io.datakernel.async.*;
-import io.datakernel.codegen.AsmBuilder;
+import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.PredicateDefAnd;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
@@ -95,25 +95,11 @@ public class Aggregation implements AggregationOperationTracker {
 	private final List<AggregationGroupReducer> activeGroupReducers = new ArrayList<>();
 	private final List<AggregationChunker> activeChunkers = new ArrayList<>();
 
-	/**
-	 * Instantiates an aggregation with the specified structure, that runs in a given event loop,
-	 * uses the specified class loader for creating dynamic classes, saves data and metadata to given storages,
-	 * and uses the specified parameters.
-	 *
-	 * @param eventloop               event loop, in which the aggregation is to run
-	 * @param classLoader             class loader for defining dynamic classes
-	 * @param metadataStorage         storage for aggregations metadata
-	 * @param aggregationChunkStorage storage for data chunks
-	 * @param aggregationMetadata     metadata of the aggregation
-	 * @param structure               structure of an aggregation
-	 * @param aggregationChunkSize    maximum size of aggregation chunk
-	 * @param sorterItemsInMemory     maximum number of records that can stay in memory while sorting
-	 */
-	public Aggregation(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
-	                   AggregationMetadataStorage metadataStorage, AggregationChunkStorage aggregationChunkStorage,
-	                   AggregationMetadata aggregationMetadata, AggregationStructure structure,
-	                   int aggregationChunkSize, int sorterItemsInMemory, int sorterBlockSize, int maxIncrementalReloadPeriodMillis,
-	                   List<String> partitioningKey) {
+	private Aggregation(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
+	                    AggregationMetadataStorage metadataStorage, AggregationChunkStorage aggregationChunkStorage,
+	                    AggregationMetadata aggregationMetadata, AggregationStructure structure,
+	                    int aggregationChunkSize, int sorterItemsInMemory, int sorterBlockSize, int maxIncrementalReloadPeriodMillis,
+	                    List<String> partitioningKey) {
 		checkArgument(partitioningKey == null || (aggregationMetadata.getKeys().containsAll(partitioningKey) &&
 				isPrefix(partitioningKey, aggregationMetadata.getKeys())));
 		this.eventloop = eventloop;
@@ -128,8 +114,36 @@ public class Aggregation implements AggregationOperationTracker {
 		this.sorterBlockSize = sorterBlockSize;
 		this.maxIncrementalReloadPeriodMillis = maxIncrementalReloadPeriodMillis;
 		this.structure = structure;
-		this.processorFactory = new ProcessorFactory(structure);
+		this.processorFactory = ProcessorFactory.create(structure);
 	}
+
+	private Aggregation(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
+	                    AggregationMetadataStorage metadataStorage, AggregationChunkStorage aggregationChunkStorage,
+	                    AggregationMetadata aggregationMetadata, AggregationStructure structure) {
+		this(eventloop, executorService, classLoader, metadataStorage, aggregationChunkStorage, aggregationMetadata,
+				structure, DEFAULT_AGGREGATION_CHUNK_SIZE, DEFAULT_SORTER_ITEMS_IN_MEMORY, DEFAULT_SORTER_BLOCK_SIZE,
+				DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS, null);
+	}
+
+	/**
+	 * Instantiates an aggregation with the specified structure, that runs in a given event loop,
+	 * uses the specified class loader for creating dynamic classes, saves data and metadata to given storages,
+	 * and uses the specified parameters.
+	 *
+	 * @param eventloop               event loop, in which the aggregation is to run
+	 * @param classLoader             class loader for defining dynamic classes
+	 * @param metadataStorage         storage for aggregations metadata
+	 * @param aggregationChunkStorage storage for data chunks
+	 * @param aggregationMetadata     metadata of the aggregation
+	 * @param structure               structure of an aggregation
+	 * @param aggregationChunkSize    maximum size of aggregation chunk
+	 * @param sorterItemsInMemory     maximum number of records that can stay in memory while sorting
+	 */
+	public static Aggregation create(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
+	                                 AggregationMetadataStorage metadataStorage, AggregationChunkStorage aggregationChunkStorage,
+	                                 AggregationMetadata aggregationMetadata, AggregationStructure structure,
+	                                 int aggregationChunkSize, int sorterItemsInMemory, int sorterBlockSize, int maxIncrementalReloadPeriodMillis,
+	                                 List<String> partitioningKey) {return new Aggregation(eventloop, executorService, classLoader, metadataStorage, aggregationChunkStorage, aggregationMetadata, structure, aggregationChunkSize, sorterItemsInMemory, sorterBlockSize, maxIncrementalReloadPeriodMillis, partitioningKey);}
 
 	/**
 	 * Instantiates an aggregation with the specified structure, that runs in a given event loop,
@@ -146,13 +160,9 @@ public class Aggregation implements AggregationOperationTracker {
 	 * @param aggregationMetadata     metadata of the aggregation
 	 * @param structure               structure of an aggregation
 	 */
-	public Aggregation(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
-	                   AggregationMetadataStorage metadataStorage, AggregationChunkStorage aggregationChunkStorage,
-	                   AggregationMetadata aggregationMetadata, AggregationStructure structure) {
-		this(eventloop, executorService, classLoader, metadataStorage, aggregationChunkStorage, aggregationMetadata,
-				structure, DEFAULT_AGGREGATION_CHUNK_SIZE, DEFAULT_SORTER_ITEMS_IN_MEMORY, DEFAULT_SORTER_BLOCK_SIZE,
-				DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS, null);
-	}
+	public static Aggregation create(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
+	                                 AggregationMetadataStorage metadataStorage, AggregationChunkStorage aggregationChunkStorage,
+	                                 AggregationMetadata aggregationMetadata, AggregationStructure structure) {return new Aggregation(eventloop, executorService, classLoader, metadataStorage, aggregationChunkStorage, aggregationMetadata, structure);}
 
 	public List<String> getAggregationFieldsForConsumer(List<String> fields) {
 		return newArrayList(filter(getFields(), in(fields)));
@@ -250,15 +260,26 @@ public class Aggregation implements AggregationOperationTracker {
 		if (partitioningKey == null)
 			return Predicates.alwaysTrue();
 
-		AsmBuilder<BiPredicate> builder = new AsmBuilder<>(classLoader, BiPredicate.class);
 		PredicateDefAnd predicate = and();
 		for (String keyComponent : partitioningKey) {
 			predicate.add(cmpEq(
 					getter(cast(arg(0), recordClass), keyComponent),
 					getter(cast(arg(1), recordClass), keyComponent)));
 		}
-		builder.method("test", predicate);
-		return builder.newInstance();
+//		Class<? extends BiPredicate> biPredicateClass =
+//				ClassBuilder.create(classLoader, BiPredicate.class)
+//						.withMethod("test", predicate)
+//						.build();
+
+//		try {
+//			return biPredicateClass.newInstance();
+//		} catch (InstantiationException | IllegalAccessException e) {
+//			throw new RuntimeException(e);
+//		}
+
+		return ClassBuilder.create(classLoader, BiPredicate.class)
+				.withMethod("test", predicate)
+				.buildClassAndCreateNewInstance();
 	}
 
 	/**
@@ -269,12 +290,12 @@ public class Aggregation implements AggregationOperationTracker {
 	 * @return consumer for streaming data to aggregation
 	 */
 	public <T> StreamConsumer<T> consumer(Class<T> inputClass) {
-		return consumer(inputClass, (List) null, null, new AggregationCommitCallback(this));
+		return consumer(inputClass, (List) null, null, AggregationCommitCallback.create(this));
 	}
 
 	public <T> StreamConsumer<T> consumer(Class<T> inputClass, List<String> fields,
 	                                      Map<String, String> outputToInputFields) {
-		return consumer(inputClass, fields, outputToInputFields, new AggregationCommitCallback(this));
+		return consumer(inputClass, fields, outputToInputFields, AggregationCommitCallback.create(this));
 	}
 
 	/**
@@ -303,7 +324,7 @@ public class Aggregation implements AggregationOperationTracker {
 		Aggregate aggregate = processorFactory.createPreaggregator(inputClass, aggregationClass, getKeys(), fields,
 				outputToInputFields, classLoader);
 
-		return new AggregationGroupReducer<>(eventloop, aggregationChunkStorage, this, metadataStorage, getKeys(),
+		return AggregationGroupReducer.create(eventloop, aggregationChunkStorage, this, metadataStorage, getKeys(),
 				outputFields, aggregationClass, createPartitionPredicate(aggregationClass), keyFunction, aggregate,
 				aggregationChunkSize, classLoader, chunksCallback);
 	}
@@ -325,7 +346,7 @@ public class Aggregation implements AggregationOperationTracker {
 
 		List<AggregationChunk> allChunks = aggregationMetadata.findChunks(structure, query.getPredicates(), aggregationFields);
 
-		AggregationQueryPlan queryPlan = new AggregationQueryPlan();
+		AggregationQueryPlan queryPlan = AggregationQueryPlan.create();
 
 		StreamProducer streamProducer = consolidatedProducer(query.getResultKeys(), query.getRequestedKeys(),
 				aggregationFields, outputClass, query.getPredicates(), allChunks, queryPlan, null, classLoader);
@@ -341,7 +362,7 @@ public class Aggregation implements AggregationOperationTracker {
 		}
 
 		if (!notEqualsPredicates.isEmpty()) {
-			StreamFilter streamFilter = new StreamFilter<>(eventloop,
+			StreamFilter streamFilter = StreamFilter.create(eventloop,
 					createNotEqualsPredicate(outputClass, notEqualsPredicates, classLoader));
 			streamProducer.streamTo(streamFilter.getInput());
 			queryResultProducer = streamFilter.getOutput();
@@ -362,9 +383,9 @@ public class Aggregation implements AggregationOperationTracker {
 		Comparator keyComparator = createKeyComparator(resultClass, keys, classLoader);
 		Path path = Paths.get("sorterStorage", "%d.part");
 		BufferSerializer bufferSerializer = structure.createBufferSerializer(resultClass, getKeys(), fields, classLoader);
-		StreamMergeSorterStorage sorterStorage = new StreamMergeSorterStorageImpl(eventloop, executorService,
+		StreamMergeSorterStorage sorterStorage = StreamMergeSorterStorageImpl.create(eventloop, executorService,
 				bufferSerializer, path, sorterBlockSize);
-		StreamSorter sorter = new StreamSorter(eventloop, sorterStorage, Functions.identity(), keyComparator, false,
+		StreamSorter sorter = StreamSorter.create(eventloop, sorterStorage, Functions.identity(), keyComparator, false,
 				sorterItemsInMemory);
 		rawStream.streamTo(sorter.getInput());
 		return sorter.getOutput();
@@ -411,9 +432,9 @@ public class Aggregation implements AggregationOperationTracker {
 
 		Class resultClass = structure.createRecordClass(getKeys(), fields, classLoader);
 
-		ConsolidationPlan consolidationPlan = new ConsolidationPlan();
+		ConsolidationPlan consolidationPlan = ConsolidationPlan.create();
 		consolidatedProducer(getKeys(), getKeys(), fields, resultClass, null, chunksToConsolidate, null, consolidationPlan, classLoader)
-				.streamTo(new AggregationChunker(eventloop, this, getKeys(), fields, resultClass,
+				.streamTo(AggregationChunker.create(eventloop, this, getKeys(), fields, resultClass,
 						createPartitionPredicate(resultClass), aggregationChunkStorage, metadataStorage,
 						aggregationChunkSize, classLoader, callback));
 		logger.info("Consolidation plan: {}", consolidationPlan);
@@ -500,14 +521,14 @@ public class Aggregation implements AggregationOperationTracker {
 			 */
 			StreamMap.MapperProjection mapper = createMapper(producerClasses.get(0), resultClass, queryKeys,
 					newArrayList(filter(fields, in(producersFields.get(0)))), classLoader);
-			StreamMap<Object, T> streamMap = new StreamMap<>(eventloop, mapper);
+			StreamMap<Object, T> streamMap = StreamMap.create(eventloop, mapper);
 			producers.get(0).streamTo(streamMap.getInput());
 			if (queryPlan != null)
 				queryPlan.setOptimizedAwayReducer(true);
 			return streamMap.getOutput();
 		}
 
-		StreamReducer<Comparable, T, Object> streamReducer = new StreamReducer<>(eventloop, Ordering.natural());
+		StreamReducer<Comparable, T, Object> streamReducer = StreamReducer.create(eventloop, Ordering.natural());
 
 		Class<?> keyClass = structure.createKeyClass(queryKeys, this.classLoader);
 
@@ -545,13 +566,13 @@ public class Aggregation implements AggregationOperationTracker {
 				chunk.getFields(), chunkRecordClass, chunk.getChunkId(), this.classLoader);
 		StreamProducer chunkProducer = chunkReader;
 		if (ignoreChunkReadingExceptions) {
-			ErrorIgnoringTransformer errorIgnoringTransformer = new ErrorIgnoringTransformer<>(eventloop);
+			ErrorIgnoringTransformer errorIgnoringTransformer = ErrorIgnoringTransformer.create(eventloop);
 			chunkReader.streamTo(errorIgnoringTransformer.getInput());
 			chunkProducer = errorIgnoringTransformer.getOutput();
 		}
 		if (predicates == null)
 			return chunkProducer;
-		StreamFilter streamFilter = new StreamFilter<>(eventloop,
+		StreamFilter streamFilter = StreamFilter.create(eventloop,
 				createPredicate(chunk, chunkRecordClass, predicates, classLoader));
 		chunkProducer.streamTo(streamFilter.getInput());
 		return streamFilter.getOutput();
@@ -560,7 +581,6 @@ public class Aggregation implements AggregationOperationTracker {
 	private static Predicate createNotEqualsPredicate(Class<?> recordClass,
 	                                                  List<AggregationQuery.PredicateNotEquals> notEqualsPredicates,
 	                                                  DefiningClassLoader classLoader) {
-		AsmBuilder<Predicate> builder = new AsmBuilder<>(classLoader, Predicate.class);
 		PredicateDefAnd predicateDefAnd = and();
 		for (AggregationQuery.PredicateNotEquals notEqualsPredicate : notEqualsPredicates) {
 			predicateDefAnd.add(cmpNe(
@@ -568,8 +588,9 @@ public class Aggregation implements AggregationOperationTracker {
 					value(notEqualsPredicate.value)
 			));
 		}
-		builder.method("apply", boolean.class, singletonList(Object.class), predicateDefAnd);
-		return builder.newInstance();
+		ClassBuilder<Predicate> builder = ClassBuilder.create(classLoader, Predicate.class)
+				.withMethod("apply", boolean.class, singletonList(Object.class), predicateDefAnd);
+		return builder.buildClassAndCreateNewInstance();
 	}
 
 	private Predicate createPredicate(AggregationChunk chunk, Class<?> chunkRecordClass,
@@ -587,7 +608,6 @@ public class Aggregation implements AggregationOperationTracker {
 			objectsInChunk.add(min);
 		}
 
-		AsmBuilder<Predicate> builder = new AsmBuilder<>(classLoader, Predicate.class);
 		PredicateDefAnd predicateDefAnd = and();
 
 		for (AggregationQuery.Predicate predicate : predicates.asCollection()) {
@@ -613,8 +633,9 @@ public class Aggregation implements AggregationOperationTracker {
 						value(to)));
 			}
 		}
-		builder.method("apply", boolean.class, singletonList(Object.class), predicateDefAnd);
-		return builder.newInstance();
+		ClassBuilder<Predicate> builder = ClassBuilder.create(classLoader, Predicate.class)
+				.withMethod("apply", boolean.class, singletonList(Object.class), predicateDefAnd);
+		return builder.buildClassAndCreateNewInstance();
 	}
 
 	public int getNumberOfOverlappingChunks() {
@@ -716,7 +737,7 @@ public class Aggregation implements AggregationOperationTracker {
 			return;
 		}
 
-		loadChunksCallback = new ListenableCompletionCallback();
+		loadChunksCallback = ListenableCompletionCallback.create();
 		loadChunksCallback.addListener(callback);
 
 		final boolean incremental = eventloop.currentTimeMillis() - lastReloadTimestamp <= maxIncrementalReloadPeriodMillis;

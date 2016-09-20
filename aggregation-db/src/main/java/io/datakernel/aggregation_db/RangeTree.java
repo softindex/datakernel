@@ -18,9 +18,7 @@ package io.datakernel.aggregation_db;
 
 import java.util.*;
 
-import static java.util.Collections.emptySet;
-import static java.util.Collections.unmodifiableSet;
-import static java.util.Collections.unmodifiableSortedMap;
+import static java.util.Collections.*;
 
 public final class RangeTree<K, V> {
 
@@ -59,12 +57,14 @@ public final class RangeTree<K, V> {
 		this.segments = segments;
 	}
 
-	public RangeTree() {
+	private RangeTree() {
 		this(new TreeMap<K, Segment<V>>());
 	}
 
+	public static <K, V> RangeTree<K, V> create() {return new RangeTree<K, V>();}
+
 	public static <K, V> RangeTree<K, V> cloneOf(RangeTree<K, V> source) {
-		RangeTree<K, V> result = new RangeTree<>();
+		RangeTree<K, V> result = create();
 		result.segments.putAll(source.segments);
 		for (Map.Entry<K, Segment<V>> entry : result.segments.entrySet()) {
 			entry.setValue(Segment.cloneOf(entry.getValue()));

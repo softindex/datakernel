@@ -22,6 +22,10 @@ import java.util.List;
 import static com.google.common.collect.Lists.newArrayList;
 
 final class AggregationQueryPlan {
+	private AggregationQueryPlan() {}
+
+	static AggregationQueryPlan create() {return new AggregationQueryPlan();}
+
 	private static class FieldsWithChunks {
 		private final List<String> fields;
 		private final List<AggregationChunk> chunks;
@@ -66,7 +70,7 @@ final class AggregationQueryPlan {
 
 		StringBuilder sb = new StringBuilder();
 		sb.append('[');
-		for (;;) {
+		for (; ; ) {
 			AggregationChunk chunk = it.next();
 			sb.append("{" + "revision=").append(chunk.getRevisionId())
 					.append(", id=").append(chunk.getChunkId())

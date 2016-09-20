@@ -26,9 +26,13 @@ public final class RpcMessage {
 	private final int cookie;
 	private final Object data;
 
-	public RpcMessage(@Deserialize("cookie") int cookie, @Deserialize("data") Object data) {
+	private RpcMessage(int cookie, Object data) {
 		this.cookie = cookie;
 		this.data = data;
+	}
+
+	public static RpcMessage of(@Deserialize("cookie") int cookie, @Deserialize("data") Object data) {
+		return new RpcMessage(cookie, data);
 	}
 
 	@Serialize(order = 1)

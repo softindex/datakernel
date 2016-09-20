@@ -48,7 +48,7 @@ public class AsyncFileTest {
 	@Test
 	public void testReadFully() throws Exception {
 		final File tempFile = temporaryFolder.newFile("hello-2.html");
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 		final Path srcPath = Paths.get("test_data/hello.html");
 		AsyncFile.open(eventloop, Executors.newCachedThreadPool(), srcPath, new OpenOption[]{READ}, new ResultCallback<AsyncFile>() {
 			@Override

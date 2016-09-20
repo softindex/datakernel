@@ -35,7 +35,7 @@ public class ConsumerToListTest {
 
 	@Test
 	public void emptyListTest() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		StreamConsumers.ToList<String> consumer = new StreamConsumers.ToList<>(eventloop, new ArrayList<String>());
 
 		List<String> testList2 = new ArrayList<>();
@@ -55,7 +55,7 @@ public class ConsumerToListTest {
 
 	@Test
 	public void fullListTest() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		List<Integer> testList1 = new ArrayList<>();
 		testList1.add(1);
 		testList1.add(2);

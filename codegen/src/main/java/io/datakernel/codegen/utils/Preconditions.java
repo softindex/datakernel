@@ -16,7 +16,7 @@
 
 package io.datakernel.codegen.utils;
 
-public class Preconditions {
+public final class Preconditions {
 	private Preconditions() {}
 
 	public static void check(boolean expression) {

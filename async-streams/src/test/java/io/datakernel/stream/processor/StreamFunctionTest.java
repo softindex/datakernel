@@ -39,9 +39,9 @@ public class StreamFunctionTest {
 
 	@Test
 	public void testFunction() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
-		StreamFunction<Integer, Integer> streamFunction = new StreamFunction<>(eventloop, new Function<Integer, Integer>() {
+		StreamFunction<Integer, Integer> streamFunction = StreamFunction.create(eventloop, new Function<Integer, Integer>() {
 			@Override
 			public Integer apply(Integer input) {
 				return input * input;
@@ -66,9 +66,9 @@ public class StreamFunctionTest {
 
 	@Test
 	public void testFunctionConsumerError() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
-		StreamFunction<Integer, Integer> streamFunction = new StreamFunction<>(eventloop, new Function<Integer, Integer>() {
+		StreamFunction<Integer, Integer> streamFunction = StreamFunction.create(eventloop, new Function<Integer, Integer>() {
 			@Override
 			public Integer apply(Integer input) {
 				return input * input;
@@ -110,9 +110,9 @@ public class StreamFunctionTest {
 
 	@Test
 	public void testFunctionProducerError() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
-		StreamFunction<Integer, Integer> streamFunction = new StreamFunction<>(eventloop, new Function<Integer, Integer>() {
+		StreamFunction<Integer, Integer> streamFunction = StreamFunction.create(eventloop, new Function<Integer, Integer>() {
 			@Override
 			public Integer apply(Integer input) {
 				return input * input;
@@ -141,9 +141,9 @@ public class StreamFunctionTest {
 
 	@Test
 	public void testWithoutConsumer() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
-		StreamFunction<Integer, Integer> streamFunction = new StreamFunction<>(eventloop, new Function<Integer, Integer>() {
+		StreamFunction<Integer, Integer> streamFunction = StreamFunction.create(eventloop, new Function<Integer, Integer>() {
 			@Override
 			public Integer apply(Integer input) {
 				return input * input;

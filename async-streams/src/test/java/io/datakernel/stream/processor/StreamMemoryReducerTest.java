@@ -39,7 +39,7 @@ public class StreamMemoryReducerTest {
 	@SuppressWarnings("ToArrayCallWithZeroLengthArrayArgument")
 	@Test
 	public void test1() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<DataItem1> source1 = StreamProducers.ofIterable(eventloop, asList(
 				new DataItem1(1, 1, 10, 20),
@@ -65,7 +65,7 @@ public class StreamMemoryReducerTest {
 				return accumulator;
 			}
 		};
-		StreamMemoryReducer<DataItemKey, DataItem1, DataItemResult, DataItemResult> sorter = new StreamMemoryReducer<>(eventloop,
+		StreamMemoryReducer<DataItemKey, DataItem1, DataItemResult, DataItemResult> sorter = StreamMemoryReducer.create(eventloop,
 				reducer,
 				new Function<DataItem1, DataItemKey>() {
 					@Override
@@ -105,7 +105,7 @@ public class StreamMemoryReducerTest {
 	@SuppressWarnings("ToArrayCallWithZeroLengthArrayArgument")
 	@Test
 	public void testWithError() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		List<DataItemResult> list = new ArrayList<>();
 
 		StreamProducer<DataItem1> source1 = StreamProducers.ofIterable(eventloop, asList(
@@ -132,7 +132,7 @@ public class StreamMemoryReducerTest {
 				return accumulator;
 			}
 		};
-		StreamMemoryReducer<DataItemKey, DataItem1, DataItemResult, DataItemResult> sorter = new StreamMemoryReducer<>(eventloop,
+		StreamMemoryReducer<DataItemKey, DataItem1, DataItemResult, DataItemResult> sorter = StreamMemoryReducer.create(eventloop,
 				reducer,
 				new Function<DataItem1, DataItemKey>() {
 					@Override
@@ -175,7 +175,7 @@ public class StreamMemoryReducerTest {
 	@SuppressWarnings("ToArrayCallWithZeroLengthArrayArgument")
 	@Test
 	public void testProducerWithError() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<DataItem1> source1 = StreamProducers.concat(eventloop,
 				StreamProducers.ofValue(eventloop, new DataItem1(1, 1, 10, 20)),
@@ -204,7 +204,7 @@ public class StreamMemoryReducerTest {
 				return accumulator;
 			}
 		};
-		StreamMemoryReducer<DataItemKey, DataItem1, DataItemResult, DataItemResult> sorter = new StreamMemoryReducer<>(eventloop,
+		StreamMemoryReducer<DataItemKey, DataItem1, DataItemResult, DataItemResult> sorter = StreamMemoryReducer.create(eventloop,
 				reducer,
 				new Function<DataItem1, DataItemKey>() {
 					@Override
@@ -232,7 +232,7 @@ public class StreamMemoryReducerTest {
 
 	@Test
 	public void testWithoutConsumer() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<DataItem1> source1 = StreamProducers.ofIterable(eventloop, asList(
 				new DataItem1(1, 1, 10, 20),
@@ -258,7 +258,7 @@ public class StreamMemoryReducerTest {
 				return accumulator;
 			}
 		};
-		StreamMemoryReducer<DataItemKey, DataItem1, DataItemResult, DataItemResult> sorter = new StreamMemoryReducer<>(eventloop,
+		StreamMemoryReducer<DataItemKey, DataItem1, DataItemResult, DataItemResult> sorter = StreamMemoryReducer.create(eventloop,
 				reducer,
 				new Function<DataItem1, DataItemKey>() {
 					@Override
@@ -298,7 +298,7 @@ public class StreamMemoryReducerTest {
 
 	@Test
 	public void testWithoutProducer() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamReducers.ReducerToAccumulator<DataItemKey, DataItem1, DataItemResult> reducer = new StreamReducers.ReducerToAccumulator<DataItemKey, DataItem1, DataItemResult>() {
 			@Override
@@ -313,7 +313,7 @@ public class StreamMemoryReducerTest {
 				return accumulator;
 			}
 		};
-		StreamMemoryReducer<DataItemKey, DataItem1, DataItemResult, DataItemResult> sorter = new StreamMemoryReducer<>(eventloop,
+		StreamMemoryReducer<DataItemKey, DataItem1, DataItemResult, DataItemResult> sorter = StreamMemoryReducer.create(eventloop,
 				reducer,
 				new Function<DataItem1, DataItemKey>() {
 					@Override

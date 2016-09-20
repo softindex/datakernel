@@ -20,7 +20,7 @@ import org.objectweb.asm.Type;
 
 import static org.objectweb.asm.Type.VOID_TYPE;
 
-public class ExpressionVoid implements Expression {
+final class ExpressionVoid implements Expression {
 	public static final ExpressionVoid instance = new ExpressionVoid();
 
 	private ExpressionVoid() {

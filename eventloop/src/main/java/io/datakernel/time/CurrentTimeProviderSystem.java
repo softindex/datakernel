@@ -19,7 +19,7 @@ package io.datakernel.time;
 /**
  * Singleton which gives access to system current time in milliseconds
  */
-public class CurrentTimeProviderSystem implements CurrentTimeProvider {
+public final class CurrentTimeProviderSystem implements CurrentTimeProvider {
 	/**
 	 * Instance of provider
 	 */

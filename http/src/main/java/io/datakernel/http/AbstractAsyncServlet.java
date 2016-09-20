@@ -16,9 +16,9 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.ParseException;
 import io.datakernel.jmx.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,10 +37,10 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet, Eventloo
 	protected final Eventloop eventloop;
 
 	// jmx
-	private final EventStats requests = new EventStats();
-	private final ExceptionStats errors = new ExceptionStats();
-	private final ValueStats requestsTimings = new ValueStats();
-	private final ValueStats errorsTimings = new ValueStats();
+	private final EventStats requests = EventStats.create();
+	private final ExceptionStats errors = ExceptionStats.create();
+	private final ValueStats requestsTimings = ValueStats.create();
+	private final ValueStats errorsTimings = ValueStats.create();
 	private final Map<Integer, ExceptionStats> errorCodeToStats = new HashMap<>();
 
 	protected AbstractAsyncServlet(Eventloop eventloop) {
@@ -115,7 +115,7 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet, Eventloo
 	private ExceptionStats ensureStats(int code) {
 		ExceptionStats stats = errorCodeToStats.get(code);
 		if (stats == null) {
-			stats = new ExceptionStats();
+			stats = ExceptionStats.create();
 			errorCodeToStats.put(code, stats);
 		}
 		return stats;

@@ -35,12 +35,17 @@ public final class CubeConsolidatorService implements EventloopService {
 
 	private ScheduledRunnable consolidationTask;
 
-	public CubeConsolidatorService(Eventloop eventloop, Cube cube, long nothingToConsolidateSleepTimeMillis,
-	                               int maxChunksToConsolidate) {
+	private CubeConsolidatorService(Eventloop eventloop, Cube cube, long nothingToConsolidateSleepTimeMillis,
+	                                int maxChunksToConsolidate) {
 		this.eventloop = eventloop;
 		this.cube = cube;
 		this.nothingToConsolidateSleepTimeMillis = nothingToConsolidateSleepTimeMillis;
 		this.maxChunksToConsolidate = maxChunksToConsolidate;
+	}
+
+	public static CubeConsolidatorService create(Eventloop eventloop, Cube cube, long nothingToConsolidateSleepTimeMillis,
+	                                             int maxChunksToConsolidate) {
+		return new CubeConsolidatorService(eventloop, cube, nothingToConsolidateSleepTimeMillis, maxChunksToConsolidate);
 	}
 
 	@Override

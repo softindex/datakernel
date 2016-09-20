@@ -168,7 +168,7 @@ public final class DnsMessage {
 
 			InetAddress[] ipsArray = ips.toArray(new InetAddress[ips.size()]);
 
-			return new DnsResourceRecord(ipsArray, minTtl, type);
+			return DnsResourceRecord.of(ipsArray, minTtl, type);
 		} catch (RuntimeException e) {
 			throw new DnsResponseParseException();
 		}

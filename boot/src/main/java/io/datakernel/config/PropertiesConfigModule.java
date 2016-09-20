@@ -38,17 +38,23 @@ public final class PropertiesConfigModule extends AbstractModule {
 	public PropertiesConfigModule() {
 	}
 
-	public PropertiesConfigModule(File file) {
+	private PropertiesConfigModule(File file) {
 		addFile(file);
 	}
 
-	public PropertiesConfigModule(String file) {
+	private PropertiesConfigModule(String file) {
 		addFile(file);
 	}
 
-	public PropertiesConfigModule(Properties properties) {
+	private PropertiesConfigModule(Properties properties) {
 		addProperties(properties);
 	}
+
+	public static PropertiesConfigModule from(File file) {return new PropertiesConfigModule(file);}
+
+	public static PropertiesConfigModule from(String file) {return new PropertiesConfigModule(file);}
+
+	public static PropertiesConfigModule from(Properties properties) {return new PropertiesConfigModule(properties);}
 
 	public PropertiesConfigModule addFile(String file) {
 		addFile(new File(file));

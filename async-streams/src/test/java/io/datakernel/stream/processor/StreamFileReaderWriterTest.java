@@ -93,7 +93,7 @@ public class StreamFileReaderWriterTest {
 
 	@Test
 	public void testStreamFileReader() throws IOException {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		byte[] fileBytes = Files.readAllBytes(Paths.get("test_data/in.dat"));
@@ -106,7 +106,7 @@ public class StreamFileReaderWriterTest {
 		reader.streamTo(consumer);
 		eventloop.run();
 
-		ByteBufQueue byteQueue = new ByteBufQueue();
+		ByteBufQueue byteQueue = ByteBufQueue.create();
 		for (ByteBuf buf : list) {
 			byteQueue.add(buf);
 		}
@@ -121,7 +121,7 @@ public class StreamFileReaderWriterTest {
 
 	@Test
 	public void testStreamFileReaderWithSuspends() throws IOException {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		byte[] fileBytes = Files.readAllBytes(Paths.get("test_data/in.dat"));
@@ -174,7 +174,7 @@ public class StreamFileReaderWriterTest {
 		reader.streamTo(consumer);
 		eventloop.run();
 
-		ByteBufQueue byteQueue = new ByteBufQueue();
+		ByteBufQueue byteQueue = ByteBufQueue.create();
 		for (ByteBuf buf : list) {
 			byteQueue.add(buf);
 		}
@@ -189,7 +189,7 @@ public class StreamFileReaderWriterTest {
 
 	@Test
 	public void testStreamFileWriter() throws IOException {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		ExecutorService executor = Executors.newCachedThreadPool();
 		File tempFile = tempFolder.newFile("out.dat");
 		byte[] bytes = new byte[]{'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
@@ -209,7 +209,7 @@ public class StreamFileReaderWriterTest {
 
 	@Test
 	public void testStreamFileWriterRecycle() throws IOException {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		ExecutorService executor = Executors.newCachedThreadPool();
 		File tempFile = tempFolder.newFile("out.dat");
 		byte[] bytes = new byte[]{'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
@@ -251,7 +251,7 @@ public class StreamFileReaderWriterTest {
 		ByteBufPool.clear();
 		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 
-		eventloop = new Eventloop();
+		eventloop = Eventloop.create();
 		executor = Executors.newCachedThreadPool();
 		reader = new StreamFileReaderWithError(eventloop, executor, 1, Paths.get("test_data/in.dat"), 0, Long.MAX_VALUE);
 

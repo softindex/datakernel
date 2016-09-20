@@ -18,7 +18,7 @@ package io.datakernel.http;
 
 import java.util.Arrays;
 
-import static io.datakernel.util.ByteBufStrings.*;
+import static io.datakernel.bytebuf.ByteBufStrings.*;
 
 // All media type values, subtype values, and parameter names as defined are case-insensitive RFC2045 section 2
 public final class MediaType extends CaseInsensitiveTokenMap.Token {

@@ -28,7 +28,7 @@ import static org.objectweb.asm.Type.getType;
 /**
  * Defines methods to create a constant value
  */
-public final class ExpressionConstant implements Expression {
+final class ExpressionConstant implements Expression {
 
 	private final Object value;
 

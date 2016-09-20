@@ -27,11 +27,15 @@ public final class StreamForwarderWithCounter extends AbstractStreamTransformer_
 	private final long expectedSize;
 	private long streamedSize = 0;
 
-	public StreamForwarderWithCounter(Eventloop eventloop, long requiredSize) {
+	private StreamForwarderWithCounter(Eventloop eventloop, long requiredSize) {
 		super(eventloop);
 		inputConsumer = new InputConsumer();
 		outputProducer = new OutputProducer();
 		expectedSize = requiredSize;
+	}
+
+	public static StreamForwarderWithCounter create(Eventloop eventloop, long requiredSize) {
+		return new StreamForwarderWithCounter(eventloop, requiredSize);
 	}
 
 	private class InputConsumer extends AbstractInputConsumer implements StreamDataReceiver<ByteBuf> {

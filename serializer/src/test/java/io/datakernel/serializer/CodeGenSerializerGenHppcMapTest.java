@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-package io.datakernel.serializer.asm;
+package io.datakernel.serializer;
 
 import com.carrotsearch.hppc.*;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Serialize;
+import io.datakernel.serializer.asm.SerializerGenHppcMap;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -35,16 +34,16 @@ public class CodeGenSerializerGenHppcMapTest {
 		return serializer.deserialize(buf);
 	}
 
-	private static <T, K, V> BufferSerializer<T> getBufferSerializer(Class<T> collectionType, Class<K> keyClass, Class<V> valueClass) {
+	private static <T> BufferSerializer<T> getBufferSerializer(Class<T> collectionType) {
 		return SerializerBuilder
-				.newDefaultInstance(ClassLoader.getSystemClassLoader())
-				.register(collectionType, SerializerGenHppcMap.serializerGenBuilder(collectionType, keyClass, valueClass))
-				.create(collectionType);
+				.create(ClassLoader.getSystemClassLoader())
+				.withHppcSupport()
+				.build(collectionType);
 	}
 
 	@Test
 	public void testIntByteMap() throws Exception {
-		BufferSerializer<IntByteMap> serializer = getBufferSerializer(IntByteMap.class, int.class, byte.class);
+		BufferSerializer<IntByteMap> serializer = getBufferSerializer(IntByteMap.class);
 
 		IntByteMap testMap1 = new IntByteOpenHashMap();
 
@@ -61,7 +60,7 @@ public class CodeGenSerializerGenHppcMapTest {
 
 	@Test
 	public void testIntCharMap() throws Exception {
-		BufferSerializer<IntCharMap> serializer = getBufferSerializer(IntCharMap.class, int.class, char.class);
+		BufferSerializer<IntCharMap> serializer = getBufferSerializer(IntCharMap.class);
 
 		IntCharMap testMap1 = new IntCharOpenHashMap();
 		IntCharMap testMap2 = doTest(testMap1, serializer);
@@ -77,7 +76,7 @@ public class CodeGenSerializerGenHppcMapTest {
 
 	@Test
 	public void testByteIntMap() throws Exception {
-		BufferSerializer<ByteIntMap> serializer = getBufferSerializer(ByteIntMap.class, byte.class, int.class);
+		BufferSerializer<ByteIntMap> serializer = getBufferSerializer(ByteIntMap.class);
 		ByteIntMap testMap1 = new ByteIntOpenHashMap();
 		ByteIntMap testMap2 = doTest(testMap1, serializer);
 		assertNotNull(testMap2);
@@ -92,7 +91,7 @@ public class CodeGenSerializerGenHppcMapTest {
 
 	@Test
 	public void testShortByteMap() throws Exception {
-		BufferSerializer<ShortByteMap> serializer = getBufferSerializer(ShortByteMap.class, short.class, byte.class);
+		BufferSerializer<ShortByteMap> serializer = getBufferSerializer(ShortByteMap.class);
 		ShortByteMap testMap1 = new ShortByteOpenHashMap();
 		ShortByteMap testMap2 = doTest(testMap1, serializer);
 		assertNotNull(testMap2);
@@ -107,7 +106,7 @@ public class CodeGenSerializerGenHppcMapTest {
 
 	@Test
 	public void testByteLongMap() throws Exception {
-		BufferSerializer<ByteLongMap> serializer = getBufferSerializer(ByteLongMap.class, byte.class, long.class);
+		BufferSerializer<ByteLongMap> serializer = getBufferSerializer(ByteLongMap.class);
 
 		ByteLongMap testMap1 = new ByteLongOpenHashMap();
 		ByteLongMap testMap2 = doTest(testMap1, serializer);
@@ -123,7 +122,7 @@ public class CodeGenSerializerGenHppcMapTest {
 
 	@Test
 	public void testLongByteMap() throws Exception {
-		BufferSerializer<LongByteMap> serializer = getBufferSerializer(LongByteMap.class, long.class, byte.class);
+		BufferSerializer<LongByteMap> serializer = getBufferSerializer(LongByteMap.class);
 		LongByteMap testMap1 = new LongByteOpenHashMap();
 		LongByteMap testMap2 = doTest(testMap1, serializer);
 		assertNotNull(testMap2);
@@ -138,7 +137,7 @@ public class CodeGenSerializerGenHppcMapTest {
 
 	@Test
 	public void testLongLongMap() throws Exception {
-		BufferSerializer<LongLongMap> serializer = getBufferSerializer(LongLongMap.class, long.class, long.class);
+		BufferSerializer<LongLongMap> serializer = getBufferSerializer(LongLongMap.class);
 		LongLongMap testMap1 = new LongLongOpenHashMap();
 		LongLongMap testMap2 = doTest(testMap1, serializer);
 		assertNotNull(testMap2);
@@ -153,7 +152,7 @@ public class CodeGenSerializerGenHppcMapTest {
 
 	@Test
 	public void testLongFloatMap() throws Exception {
-		BufferSerializer<LongFloatMap> serializer = getBufferSerializer(LongFloatMap.class, long.class, float.class);
+		BufferSerializer<LongFloatMap> serializer = getBufferSerializer(LongFloatMap.class);
 		LongFloatMap testMap1 = new LongFloatOpenHashMap();
 		LongFloatMap testMap2 = doTest(testMap1, serializer);
 		assertNotNull(testMap2);
@@ -168,7 +167,7 @@ public class CodeGenSerializerGenHppcMapTest {
 
 	@Test
 	public void testDoubleDoubleMap() throws Exception {
-		BufferSerializer<DoubleDoubleMap> serializer = getBufferSerializer(DoubleDoubleMap.class, double.class, double.class);
+		BufferSerializer<DoubleDoubleMap> serializer = getBufferSerializer(DoubleDoubleMap.class);
 		DoubleDoubleMap testMap1 = new DoubleDoubleOpenHashMap();
 		DoubleDoubleMap testMap2 = doTest(testMap1, serializer);
 		assertNotNull(testMap2);
@@ -189,9 +188,9 @@ public class CodeGenSerializerGenHppcMapTest {
 	@Test
 	public void testIntObjectMap() {
 		BufferSerializer<MapIntObjectHolder> bufferSerializer = SerializerBuilder
-				.newDefaultInstance(ClassLoader.getSystemClassLoader())
-				.register(IntObjectMap.class, SerializerGenHppcMap.serializerGenBuilder(IntObjectMap.class, int.class, Object.class))
-				.create(MapIntObjectHolder.class);
+				.create(ClassLoader.getSystemClassLoader())
+				.withSerializerFor(IntObjectMap.class, SerializerGenHppcMap.serializerGenBuilder(IntObjectMap.class, int.class, Object.class))
+				.build(MapIntObjectHolder.class);
 
 		MapIntObjectHolder testMap1 = new MapIntObjectHolder();
 		testMap1.map = new IntObjectOpenHashMap<>();
@@ -214,9 +213,9 @@ public class CodeGenSerializerGenHppcMapTest {
 	@Test
 	public void testObjectShortMap() throws Exception {
 		BufferSerializer<MapObjectShortHolder> bufferSerializer = SerializerBuilder
-				.newDefaultInstance(ClassLoader.getSystemClassLoader())
-				.register(ObjectShortMap.class, SerializerGenHppcMap.serializerGenBuilder(ObjectShortMap.class, Object.class, short.class))
-				.create(MapObjectShortHolder.class);
+				.create(ClassLoader.getSystemClassLoader())
+				.withSerializerFor(ObjectShortMap.class, SerializerGenHppcMap.serializerGenBuilder(ObjectShortMap.class, Object.class, short.class))
+				.build(MapObjectShortHolder.class);
 
 		MapObjectShortHolder testMap1 = new MapObjectShortHolder();
 		testMap1.map = new ObjectShortOpenHashMap<>();
@@ -239,9 +238,9 @@ public class CodeGenSerializerGenHppcMapTest {
 	@Test
 	public void testObjectObjectMap() throws Exception {
 		BufferSerializer<MapObjectObjectHolder> bufferSerializer = SerializerBuilder
-				.newDefaultInstance(ClassLoader.getSystemClassLoader())
-				.register(ObjectObjectMap.class, SerializerGenHppcMap.serializerGenBuilder(ObjectObjectMap.class, Object.class, Object.class))
-				.create(MapObjectObjectHolder.class);
+				.create(ClassLoader.getSystemClassLoader())
+				.withSerializerFor(ObjectObjectMap.class, SerializerGenHppcMap.serializerGenBuilder(ObjectObjectMap.class, Object.class, Object.class))
+				.build(MapObjectObjectHolder.class);
 
 		MapObjectObjectHolder testMap1 = new MapObjectObjectHolder();
 		testMap1.map = new ObjectObjectOpenHashMap<>();
@@ -295,9 +294,9 @@ public class CodeGenSerializerGenHppcMapTest {
 	@Test
 	public void testMult() {
 		BufferSerializer<ManyMapHolder> bufferSerializer = SerializerBuilder
-				.newDefaultInstance(ClassLoader.getSystemClassLoader())
-				.register(IntObjectMap.class, SerializerGenHppcMap.serializerGenBuilder(IntObjectMap.class, int.class, Object.class))
-				.create(ManyMapHolder.class);
+				.create(ClassLoader.getSystemClassLoader())
+				.withSerializerFor(IntObjectMap.class, SerializerGenHppcMap.serializerGenBuilder(IntObjectMap.class, int.class, Object.class))
+				.build(ManyMapHolder.class);
 
 		ManyMapHolder testMap1 = new ManyMapHolder();
 		testMap1.map = new IntObjectOpenHashMap<>();

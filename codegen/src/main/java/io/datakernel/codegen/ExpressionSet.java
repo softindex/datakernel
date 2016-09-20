@@ -21,7 +21,7 @@ import org.objectweb.asm.Type;
 /**
  * Defines methods which allow to set fields
  */
-public final class ExpressionSet implements Expression {
+final class ExpressionSet implements Expression {
 	private final StoreDef to;
 	private final Expression from;
 

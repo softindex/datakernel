@@ -83,8 +83,8 @@ public class LogStreamConsumer_ByteBufferTest {
 
 	@Test
 	public void testProducerWithError() throws InterruptedException {
-		final SettableCurrentTimeProvider timeProvider = new SettableCurrentTimeProvider();
-		final Eventloop eventloop = new Eventloop(timeProvider);
+		final SettableCurrentTimeProvider timeProvider = SettableCurrentTimeProvider.create();
+		final Eventloop eventloop = Eventloop.create().withCurrentTimeProvider(timeProvider);
 		timeProvider.setTime(new LocalDateTime("1970-01-01T00:59:59").toDateTime(DateTimeZone.UTC).getMillis());
 		final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormat.forPattern("yyyy-MM-dd_HH").withZone(DateTimeZone.UTC);
 
@@ -125,7 +125,7 @@ public class LogStreamConsumer_ByteBufferTest {
 			}
 		};
 		LogStreamConsumer_ByteBuffer logStreamConsumerByteBuffer =
-				new LogStreamConsumer_ByteBuffer(eventloop, DATE_TIME_FORMATTER, DEFAULT_FILE_SWITCH_PERIOD,
+				LogStreamConsumer_ByteBuffer.create(eventloop, DATE_TIME_FORMATTER, DEFAULT_FILE_SWITCH_PERIOD,
 						fileSystem, streamId);
 		logStreamConsumerByteBuffer.setCompletionCallback(completionCallback);
 
@@ -146,7 +146,7 @@ public class LogStreamConsumer_ByteBufferTest {
 
 	@Test
 	public void testFileSystemWithError() throws InterruptedException {
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 		final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormat.forPattern("yyyy-MM-dd_HH").withZone(DateTimeZone.UTC);
 
 		final LogFileSystem fileSystem = new SimpleLogFileSystem(eventloop, executor, testDir, listWriter) {
@@ -197,7 +197,7 @@ public class LogStreamConsumer_ByteBufferTest {
 			}
 		};
 		LogStreamConsumer_ByteBuffer logStreamConsumerByteBuffer =
-				new LogStreamConsumer_ByteBuffer(eventloop, DATE_TIME_FORMATTER, DEFAULT_FILE_SWITCH_PERIOD,
+				LogStreamConsumer_ByteBuffer.create(eventloop, DATE_TIME_FORMATTER, DEFAULT_FILE_SWITCH_PERIOD,
 						fileSystem, streamId);
 		logStreamConsumerByteBuffer.setCompletionCallback(completionCallback);
 

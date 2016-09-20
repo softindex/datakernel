@@ -31,14 +31,8 @@ public final class ResultCallbackWithTimeout<T> implements ResultCallback<T>, As
 	private final ResultCallback<T> callback;
 	private final ScheduledRunnable timeouter;
 
-	/**
-	 * Creates a new instance of ResultCallbackWithTimeout
-	 *
-	 * @param eventloop     eventloop in which it will handle time
-	 * @param callback      callback which will be called
-	 * @param timeoutMillis time to live for this callback
-	 */
-	public ResultCallbackWithTimeout(Eventloop eventloop, final ResultCallback<T> callback, long timeoutMillis) {
+	// region builders
+	private ResultCallbackWithTimeout(Eventloop eventloop, final ResultCallback<T> callback, long timeoutMillis) {
 		this.callback = callback;
 
 		timeouter = eventloop.schedule(eventloop.currentTimeMillis() + timeoutMillis, new Runnable() {
@@ -48,6 +42,20 @@ public final class ResultCallbackWithTimeout<T> implements ResultCallback<T>, As
 			}
 		});
 	}
+
+	/**
+	 * Creates a new instance of ResultCallbackWithTimeout
+	 *
+	 * @param eventloop     eventloop in which it will handle time
+	 * @param callback      callback which will be called
+	 * @param timeoutMillis time to live for this callback
+	 */
+	public static <T> ResultCallbackWithTimeout<T> create(Eventloop eventloop,
+	                                                      final ResultCallback<T> callback,
+	                                                      long timeoutMillis) {
+		return new ResultCallbackWithTimeout<>(eventloop, callback, timeoutMillis);
+	}
+	// endregion
 
 	@Override
 	public void onResult(T result) {

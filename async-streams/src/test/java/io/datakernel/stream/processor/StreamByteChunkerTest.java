@@ -65,7 +65,7 @@ public class StreamByteChunkerTest {
 
 	@Test
 	public void testResizer() throws Exception {
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 
 		List<ByteBuf> buffers = new ArrayList<>();
 		Random random = new Random(123456);
@@ -81,7 +81,7 @@ public class StreamByteChunkerTest {
 		int bufSize = 128;
 
 		StreamProducer<ByteBuf> source = StreamProducers.ofIterable(eventloop, buffers);
-		StreamByteChunker resizer = new StreamByteChunker(eventloop, bufSize / 2, bufSize);
+		StreamByteChunker resizer = StreamByteChunker.create(eventloop, bufSize / 2, bufSize);
 		StreamFixedSizeConsumer streamFixedSizeConsumer = new StreamFixedSizeConsumer();
 
 		source.streamTo(resizer.getInput());

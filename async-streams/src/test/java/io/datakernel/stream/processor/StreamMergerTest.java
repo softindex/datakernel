@@ -42,12 +42,12 @@ public class StreamMergerTest {
 
 	@Test
 	public void testDeduplicate() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		StreamProducer<Integer> source0 = StreamProducers.ofIterable(eventloop, Collections.<Integer>emptyList());
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(3, 7));
 		StreamProducer<Integer> source2 = StreamProducers.ofIterable(eventloop, asList(3, 4, 6));
 
-		StreamMerger<Integer, Integer> merger = new StreamMerger<>(eventloop, Functions.<Integer>identity(), Ordering.<Integer>natural(), true);
+		StreamMerger<Integer, Integer> merger = StreamMerger.create(eventloop, Functions.<Integer>identity(), Ordering.<Integer>natural(), true);
 
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
@@ -71,12 +71,12 @@ public class StreamMergerTest {
 
 	@Test
 	public void testDuplicate() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		StreamProducer<Integer> source0 = StreamProducers.ofIterable(eventloop, Collections.<Integer>emptyList());
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(3, 7));
 		StreamProducer<Integer> source2 = StreamProducers.ofIterable(eventloop, asList(3, 4, 6));
 
-		StreamMerger<Integer, Integer> merger = new StreamMerger<>(eventloop, Functions.<Integer>identity(), Ordering.<Integer>natural(), false);
+		StreamMerger<Integer, Integer> merger = StreamMerger.create(eventloop, Functions.<Integer>identity(), Ordering.<Integer>natural(), false);
 
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
@@ -100,7 +100,7 @@ public class StreamMergerTest {
 
 	@Test
 	public void test() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		DataItem1 d0 = new DataItem1(0, 1, 1, 1);
 		DataItem1 d1 = new DataItem1(0, 2, 1, 2);
 		DataItem1 d2 = new DataItem1(0, 6, 1, 3);
@@ -117,7 +117,7 @@ public class StreamMergerTest {
 						d4 //DataItem1(1,5,1,5)
 				));
 
-		StreamMerger<Integer, DataItem1> merger = new StreamMerger<>(eventloop, new Function<DataItem1, Integer>() {
+		StreamMerger<Integer, DataItem1> merger = StreamMerger.create(eventloop, new Function<DataItem1, Integer>() {
 			@Override
 			public Integer apply(DataItem1 input) {
 				return input.key2;
@@ -150,11 +150,11 @@ public class StreamMergerTest {
 
 	@Test
 	public void testDeduplicateWithError() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(7, 8, 3));
 		StreamProducer<Integer> source2 = StreamProducers.ofIterable(eventloop, asList(3, 4, 6));
 
-		StreamMerger<Integer, Integer> merger = new StreamMerger<>(eventloop, Functions.<Integer>identity(), Ordering.<Integer>natural(), true);
+		StreamMerger<Integer, Integer> merger = StreamMerger.create(eventloop, Functions.<Integer>identity(), Ordering.<Integer>natural(), true);
 
 		List<Integer> list = new ArrayList<>();
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = new TestStreamConsumers.TestConsumerToList<Integer>(eventloop, list) {
@@ -195,7 +195,7 @@ public class StreamMergerTest {
 	@SuppressWarnings("unchecked")
 	@Test
 	public void testProducerDeduplicateWithError() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		StreamProducer<Integer> source1 = StreamProducers.concat(eventloop,
 				StreamProducers.ofValue(eventloop, 7),
 				StreamProducers.ofValue(eventloop, 8),
@@ -210,7 +210,7 @@ public class StreamMergerTest {
 				StreamProducers.ofValue(eventloop, 9)
 		);
 
-		StreamMerger<Integer, Integer> merger = new StreamMerger<>(eventloop, Functions.<Integer>identity(), Ordering.<Integer>natural(), true);
+		StreamMerger<Integer, Integer> merger = StreamMerger.create(eventloop, Functions.<Integer>identity(), Ordering.<Integer>natural(), true);
 
 		List<Integer> list = new ArrayList<>();
 		TestStreamConsumers.TestConsumerToList consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
@@ -233,12 +233,12 @@ public class StreamMergerTest {
 
 	@Test
 	public void testWithoutConsumer() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		StreamProducer<Integer> source0 = StreamProducers.ofIterable(eventloop, Collections.<Integer>emptyList());
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(3, 7));
 		StreamProducer<Integer> source2 = StreamProducers.ofIterable(eventloop, asList(3, 4, 6));
 
-		StreamMerger<Integer, Integer> merger = new StreamMerger<>(eventloop, Functions.<Integer>identity(), Ordering.<Integer>natural(), true);
+		StreamMerger<Integer, Integer> merger = StreamMerger.create(eventloop, Functions.<Integer>identity(), Ordering.<Integer>natural(), true);
 
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 

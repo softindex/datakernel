@@ -16,7 +16,7 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.async.ParseException;
+import io.datakernel.exception.ParseException;
 import org.junit.Test;
 
 import java.net.Inet4Address;

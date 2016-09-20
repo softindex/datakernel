@@ -38,6 +38,13 @@ public final class StreamReducerSimple<K, I, O, A> extends AbstractStreamReducer
 	private final Function<I, K> keyFunction;
 	private final StreamReducers.Reducer<K, I, O, A> reducer;
 
+	// region creators
+	private StreamReducerSimple(Eventloop eventloop, Function<I, K> keyFunction, Comparator<K> keyComparator, StreamReducers.Reducer<K, I, O, A> reducer) {
+		super(eventloop, keyComparator);
+		this.reducer = checkNotNull(reducer);
+		this.keyFunction = checkNotNull(keyFunction);
+	}
+
 	/**
 	 * Creates a new instance of  StreamReducerSimple
 	 *
@@ -45,11 +52,12 @@ public final class StreamReducerSimple<K, I, O, A> extends AbstractStreamReducer
 	 * @param keyComparator comparator for compare keys
 	 * @param keyFunction   function for counting key
 	 */
-	public StreamReducerSimple(Eventloop eventloop, Function<I, K> keyFunction, Comparator<K> keyComparator, StreamReducers.Reducer<K, I, O, A> reducer) {
-		super(eventloop, keyComparator);
-		this.reducer = checkNotNull(reducer);
-		this.keyFunction = checkNotNull(keyFunction);
+	public static <K, I, O, A> StreamReducerSimple<K, I, O, A> create(Eventloop eventloop, Function<I, K> keyFunction,
+	                                                                  Comparator<K> keyComparator,
+	                                                                  StreamReducers.Reducer<K, I, O, A> reducer) {
+		return new StreamReducerSimple<K, I, O, A>(eventloop, keyFunction, keyComparator, reducer);
 	}
+	// endregion
 
 	/**
 	 * Returns  new input for this stream

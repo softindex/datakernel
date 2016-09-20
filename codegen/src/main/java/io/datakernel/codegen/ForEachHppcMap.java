@@ -27,7 +27,7 @@ import static io.datakernel.codegen.Utils.newLocal;
 import static org.objectweb.asm.Type.BOOLEAN_TYPE;
 import static org.objectweb.asm.Type.getType;
 
-public class ForEachHppcMap implements Expression {
+final class ForEachHppcMap implements Expression {
 	private final Class<?> iteratorType;
 	private final Expression value;
 	private final ForVar forKey;

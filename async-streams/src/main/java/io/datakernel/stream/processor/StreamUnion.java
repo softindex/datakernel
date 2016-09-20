@@ -29,10 +29,14 @@ import io.datakernel.stream.StreamDataReceiver;
  * @param <T> type of output data
  */
 public final class StreamUnion<T> extends AbstractStreamTransformer_N_1<T> {
-	public StreamUnion(Eventloop eventloop) {
+	// region creators
+	private StreamUnion(Eventloop eventloop) {
 		super(eventloop);
 		this.outputProducer = new OutputProducer();
 	}
+
+	public static <T> StreamUnion<T> create(Eventloop eventloop) {return new StreamUnion<T>(eventloop);}
+	// endregion
 
 	protected final class InputConsumer extends AbstractInputConsumer<T> implements StreamDataReceiver<T> {
 		private final OutputProducer outputProducer = (OutputProducer) StreamUnion.this.outputProducer;

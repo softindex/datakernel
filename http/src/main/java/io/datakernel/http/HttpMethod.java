@@ -18,7 +18,7 @@ package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
 
-import static io.datakernel.util.ByteBufStrings.encodeAscii;
+import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 
 /**
  * HttpMethod enum represents a request to be sent via a {@link HttpClientConnection} and a corresponding response.

@@ -59,13 +59,13 @@ public class RpcStrategyFirstValidResultTest {
 		pool.put(ADDRESS_3, connection3);
 		senderToAll = firstValidResult.createSender(pool);
 		for (int i = 0; i < callsAmountIterationOne; i++) {
-			senderToAll.sendRequest(new Object(), 50, new ResultCallbackFuture<>());
+			senderToAll.sendRequest(new Object(), 50, ResultCallbackFuture.create());
 		}
 		pool.remove(ADDRESS_1);
 		// we should recreate sender after changing in pool
 		senderToAll = firstValidResult.createSender(pool);
 		for (int i = 0; i < callsAmountIterationTwo; i++) {
-			senderToAll.sendRequest(new Object(), 50, new ResultCallbackFuture<>());
+			senderToAll.sendRequest(new Object(), 50, ResultCallbackFuture.create());
 		}
 
 		assertEquals(callsAmountIterationOne, connection1.getRequests());
@@ -80,7 +80,7 @@ public class RpcStrategyFirstValidResultTest {
 		RpcStrategy strategy3 = new RequestSenderOnResultWithNullStrategy();
 		RpcStrategyFirstValidResult firstValidResult = firstValidResult(strategy1, strategy2, strategy3);
 		RpcSender sender = firstValidResult.createSender(new RpcClientConnectionPoolStub());
-		ResultCallbackFuture<Object> callback = new ResultCallbackFuture<>();
+		ResultCallbackFuture<Object> callback = ResultCallbackFuture.create();
 
 		sender.sendRequest(new Object(), 50, callback);
 
@@ -98,7 +98,7 @@ public class RpcStrategyFirstValidResultTest {
 				.withNoValidResultException(new Exception());
 		RpcSender sender = firstValidResult.createSender(new RpcClientConnectionPoolStub());
 
-		ResultCallbackFuture<Object> callback = new ResultCallbackFuture<>();
+		ResultCallbackFuture<Object> callback = ResultCallbackFuture.create();
 		sender.sendRequest(new Object(), 50, callback);
 
 		callback.get();
@@ -120,7 +120,7 @@ public class RpcStrategyFirstValidResultTest {
 				})
 				.withNoValidResultException(new Exception());
 		RpcSender sender = firstValidResult.createSender(new RpcClientConnectionPoolStub());
-		ResultCallbackFuture<Object> callback = new ResultCallbackFuture<>();
+		ResultCallbackFuture<Object> callback = ResultCallbackFuture.create();
 
 		sender.sendRequest(new Object(), 50, callback);
 
@@ -143,7 +143,7 @@ public class RpcStrategyFirstValidResultTest {
 				})
 				.withNoValidResultException(new Exception());
 		RpcSender sender = firstValidResult.createSender(new RpcClientConnectionPoolStub());
-		ResultCallbackFuture<Object> callback = new ResultCallbackFuture<>();
+		ResultCallbackFuture<Object> callback = ResultCallbackFuture.create();
 		sender.sendRequest(new Object(), 50, callback);
 		callback.get();
 	}

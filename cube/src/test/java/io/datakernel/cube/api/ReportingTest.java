@@ -68,7 +68,6 @@ import static io.datakernel.codegen.Expressions.call;
 import static io.datakernel.codegen.Expressions.cast;
 import static io.datakernel.cube.CubeTestUtils.*;
 import static io.datakernel.cube.api.ReportingDSL.*;
-import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
@@ -143,27 +142,27 @@ public class ReportingTest {
 	}
 
 	private static AggregationStructure getStructure() {
-		return new AggregationStructure(DIMENSIONS, MEASURES);
+		return AggregationStructure.create(DIMENSIONS, MEASURES);
 	}
 
 	private static Cube getCube(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
 	                            CubeMetadataStorage cubeMetadataStorage,
 	                            AggregationChunkStorage aggregationChunkStorage,
 	                            AggregationStructure cubeStructure) {
-		Cube cube = new Cube(eventloop, executorService, classLoader, cubeMetadataStorage, aggregationChunkStorage,
+		Cube cube = Cube.create(eventloop, executorService, classLoader, cubeMetadataStorage, aggregationChunkStorage,
 				cubeStructure, Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE, Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY,
 				Aggregation.DEFAULT_SORTER_BLOCK_SIZE, Cube.DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD,
 				Aggregation.DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS);
 		Set<String> measures = newHashSet(MEASURES.keySet());
 		measures.remove("revenue");
-		cube.addAggregation("detailed", new AggregationMetadata(newArrayList(DIMENSIONS.keySet()),
+		cube.addAggregation("detailed", AggregationMetadata.create(newArrayList(DIMENSIONS.keySet()),
 				newArrayList(measures)));
 		cube.setChildParentRelationships(CHILD_PARENT_RELATIONSHIPS);
 		return cube;
 	}
 
 	private static ReportingConfiguration getReportingConfiguration() {
-		return new ReportingConfiguration()
+		return ReportingConfiguration.create()
 				.addResolvedAttributeForKey("advertiserName", singletonList("advertiser"), String.class, new AdvertiserResolver())
 				.setComputedMeasures(COMPUTED_MEASURES);
 	}
@@ -274,8 +273,8 @@ public class ReportingTest {
 	public void setUp() throws Exception {
 		ExecutorService executor = Executors.newCachedThreadPool();
 
-		DefiningClassLoader classLoader = new DefiningClassLoader();
-		eventloop = new Eventloop();
+		DefiningClassLoader classLoader = DefiningClassLoader.create();
+		eventloop = Eventloop.create();
 		Path aggregationsDir = temporaryFolder.newFolder().toPath();
 		Path logsDir = temporaryFolder.newFolder().toPath();
 		AggregationStructure structure = getStructure();
@@ -285,12 +284,12 @@ public class ReportingTest {
 		AggregationChunkStorage aggregationChunkStorage =
 				getAggregationChunkStorage(eventloop, executor, structure, aggregationsDir);
 		CubeMetadataStorageSql cubeMetadataStorageSql =
-				new CubeMetadataStorageSql(eventloop, executor, jooqConfiguration, "processId");
+				CubeMetadataStorageSql.create(eventloop, executor, jooqConfiguration, "processId");
 		LogToCubeMetadataStorage logToCubeMetadataStorage =
 				getLogToCubeMetadataStorage(eventloop, executor, jooqConfiguration, cubeMetadataStorageSql);
 		Cube cube = getCube(eventloop, executor, classLoader, cubeMetadataStorageSql, aggregationChunkStorage, structure);
 		LogManager<LogItem> logManager = getLogManager(LogItem.class, eventloop, executor, classLoader, logsDir);
-		LogToCubeRunner<LogItem> logToCubeRunner = new LogToCubeRunner<>(eventloop, cube, logManager,
+		LogToCubeRunner<LogItem> logToCubeRunner = LogToCubeRunner.create(eventloop, cube, logManager,
 				LogItemSplitter.factory(), LOG_NAME, LOG_PARTITIONS, logToCubeMetadataStorage);
 		cube.setReportingConfiguration(reportingConfiguration);
 
@@ -310,7 +309,7 @@ public class ReportingTest {
 		eventloop.run();
 
 		server = CubeHttpServer.createServer(cube, eventloop, 100, SERVER_PORT);
-		final CompletionCallbackFuture serverStartFuture = new CompletionCallbackFuture();
+		final CompletionCallbackFuture serverStartFuture = CompletionCallbackFuture.create();
 		eventloop.execute(new RunnableWithException() {
 			@Override
 			public void runWithException() throws Exception {
@@ -321,24 +320,26 @@ public class ReportingTest {
 		new Thread(eventloop).start();
 		serverStartFuture.await();
 
-		clientEventloop = new Eventloop();
-		NativeDnsResolver dnsClient = new NativeDnsResolver(clientEventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, TIMEOUT,
-				HttpUtils.inetAddress("8.8.8.8"));
-		httpClient = new AsyncHttpClient(clientEventloop, dnsClient);
-		cubeHttpClient = new CubeHttpClient("http://127.0.0.1:" + SERVER_PORT, httpClient, TIMEOUT, structure, reportingConfiguration);
+		clientEventloop = Eventloop.create();
+		NativeDnsResolver dnsClient
+				= NativeDnsResolver.create(clientEventloop)
+				.withTimeout(TIMEOUT)
+				.withDnsServerAddress(HttpUtils.inetAddress("8.8.8.8"));
+		httpClient = AsyncHttpClient.create(clientEventloop, dnsClient);
+		cubeHttpClient = CubeHttpClient.create("http://127.0.0.1:" + SERVER_PORT, httpClient, TIMEOUT, structure, reportingConfiguration);
 	}
 
 	@Test
 	public void testQuery() throws Exception {
-		ReportingQuery query = new ReportingQuery()
-				.dimensions("date", "campaign")
-				.measures("impressions", "clicks", "ctr", "revenue")
-				.filters(new AggregationQuery.Predicates()
+		ReportingQuery query = ReportingQuery.create()
+				.withDimensions("date", "campaign")
+				.withMeasures("impressions", "clicks", "ctr", "revenue")
+				.withFilters(new AggregationQuery.Predicates()
 						.eq("banner", 1)
 						.between("date", 1, 2))
-				.sort(CubeQuery.Ordering.asc("campaign"), CubeQuery.Ordering.asc("ctr"),
+				.withSort(CubeQuery.Ordering.asc("campaign"), CubeQuery.Ordering.asc("ctr"),
 						CubeQuery.Ordering.desc("banner"))
-				.metadataFields("dimensions", "measures", "attributes", "drillDowns", "sortedBy");
+				.withMetadataFields("dimensions", "measures", "attributes", "drillDowns", "sortedBy");
 
 		final ReportingQueryResult[] queryResult = new ReportingQueryResult[1];
 		startBlocking(httpClient);
@@ -385,12 +386,12 @@ public class ReportingTest {
 
 	@Test
 	public void testPaginationAndDrillDowns() throws Exception {
-		ReportingQuery query = new ReportingQuery()
-				.dimensions("date")
-				.measures("impressions", "revenue")
-				.limit(1)
-				.offset(2)
-				.metadataFields("drillDowns");
+		ReportingQuery query = ReportingQuery.create()
+				.withDimensions("date")
+				.withMeasures("impressions", "revenue")
+				.withLimit(1)
+				.withOffset(2)
+				.withMetadataFields("drillDowns");
 
 		final ReportingQueryResult[] queryResult = new ReportingQueryResult[1];
 		startBlocking(httpClient);
@@ -417,22 +418,22 @@ public class ReportingTest {
 		assertEquals(4, queryResult[0].getCount());
 
 		Set<DrillDown> drillDowns = newHashSet();
-		drillDowns.add(new DrillDown(singletonList("advertiser"), singleton("impressions")));
-		drillDowns.add(new DrillDown(asList("advertiser", "campaign"), singleton("impressions")));
-		drillDowns.add(new DrillDown(asList("advertiser", "campaign", "banner"), singleton("impressions")));
+		drillDowns.add(DrillDown.create(singletonList("advertiser"), singleton("impressions")));
+		drillDowns.add(DrillDown.create(asList("advertiser", "campaign"), singleton("impressions")));
+		drillDowns.add(DrillDown.create(asList("advertiser", "campaign", "banner"), singleton("impressions")));
 		assertEquals(drillDowns, queryResult[0].getDrillDowns());
 		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testFilterAttributes() throws Exception {
-		ReportingQuery query = new ReportingQuery()
-				.dimensions("date")
-				.attributes("advertiserName")
-				.measures("impressions")
-				.limit(0)
-				.filters(new AggregationQuery.Predicates().eq("advertiser", 1))
-				.metadataFields("filterAttributes");
+		ReportingQuery query = ReportingQuery.create()
+				.withDimensions("date")
+				.withAttributes("advertiserName")
+				.withMeasures("impressions")
+				.withLimit(0)
+				.withFilters(new AggregationQuery.Predicates().eq("advertiser", 1))
+				.withMetadataFields("filterAttributes");
 
 		final ReportingQueryResult[] queryResult = new ReportingQueryResult[1];
 		startBlocking(httpClient);
@@ -459,12 +460,12 @@ public class ReportingTest {
 
 	@Test
 	public void testSearchAndFieldsParameter() throws Exception {
-		ReportingQuery query = new ReportingQuery()
-				.attributes("advertiserName")
-				.measures("clicks")
-				.fields("advertiser", "advertiserName")
-				.search("s")
-				.metadataFields("measures");
+		ReportingQuery query = ReportingQuery.create()
+				.withAttributes("advertiserName")
+				.withMeasures("clicks")
+				.withFields("advertiser", "advertiserName")
+				.withSearch("s")
+				.withMetadataFields("measures");
 
 		final ReportingQueryResult[] queryResult = new ReportingQueryResult[1];
 		startBlocking(httpClient);
@@ -496,10 +497,10 @@ public class ReportingTest {
 
 	@Test
 	public void testCustomMeasures() throws Exception {
-		ReportingQuery query = new ReportingQuery()
-				.dimensions("advertiser")
-				.measures("eventCount", "minRevenue", "maxRevenue", "uniqueUserIdsCount", "uniqueUserPercent")
-				.sort(CubeQuery.Ordering.asc("uniqueUserIdsCount"), CubeQuery.Ordering.asc("advertiser"));
+		ReportingQuery query = ReportingQuery.create()
+				.withDimensions("advertiser")
+				.withMeasures("eventCount", "minRevenue", "maxRevenue", "uniqueUserIdsCount", "uniqueUserPercent")
+				.withSort(CubeQuery.Ordering.asc("uniqueUserIdsCount"), CubeQuery.Ordering.asc("advertiser"));
 
 		final ReportingQueryResult[] queryResult = new ReportingQueryResult[1];
 		startBlocking(httpClient);
@@ -559,7 +560,7 @@ public class ReportingTest {
 
 	@After
 	public void tearDown() throws Exception {
-		final CompletionCallbackFuture serverStopFuture = new CompletionCallbackFuture();
+		final CompletionCallbackFuture serverStopFuture = CompletionCallbackFuture.create();
 		eventloop.execute(new RunnableWithException() {
 			@Override
 			public void runWithException() throws Exception {
@@ -571,7 +572,7 @@ public class ReportingTest {
 	}
 
 	private static void startBlocking(EventloopService service) throws ExecutionException, InterruptedException {
-		CompletionCallbackFuture future = new CompletionCallbackFuture();
+		CompletionCallbackFuture future = CompletionCallbackFuture.create();
 		service.start(future);
 
 		try {
@@ -582,7 +583,7 @@ public class ReportingTest {
 	}
 
 	private static void stopBlocking(EventloopService service) {
-		CompletionCallbackFuture future = new CompletionCallbackFuture();
+		CompletionCallbackFuture future = CompletionCallbackFuture.create();
 		service.stop(future);
 
 		try {

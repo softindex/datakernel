@@ -33,13 +33,18 @@ public final class AsyncGetterWithSetter<T> implements AsyncGetter<T>, ResultCal
 	private Exception exception;
 	private ResultCallback<T> callback;
 
-	/**
-	 * Initialize new instance of this class with event loop in which thread will be called
-	 * ResultCallback
-	 */
-	public AsyncGetterWithSetter(Eventloop eventloop) {
+	// region builders
+	private AsyncGetterWithSetter(Eventloop eventloop) {
 		this.eventloop = eventloop;
 	}
+
+	/**
+	 * Initialize new instance of this class with event loop in which ResultCallback will be called
+	 */
+	public static <T> AsyncGetterWithSetter<T> create(Eventloop eventloop) {
+		return new AsyncGetterWithSetter<>(eventloop);
+	}
+	// endregion
 
 	private void fireResult() {
 		eventloop.post(new Runnable() {

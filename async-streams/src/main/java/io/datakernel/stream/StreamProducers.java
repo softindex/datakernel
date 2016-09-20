@@ -28,7 +28,7 @@ import java.util.List;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static io.datakernel.async.AsyncIterators.asyncIteratorOfIterator;
 
-public class StreamProducers {
+public final class StreamProducers {
 	private StreamProducers() {
 	}
 
@@ -108,7 +108,7 @@ public class StreamProducers {
 	 * @param <T>            type of output data
 	 */
 	public static <T> StreamProducer<T> asynchronouslyResolving(final Eventloop eventloop, final AsyncGetter<StreamProducer<T>> producerGetter) {
-		final StreamForwarder<T> forwarder = new StreamForwarder<>(eventloop);
+		final StreamForwarder<T> forwarder = StreamForwarder.create(eventloop);
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {

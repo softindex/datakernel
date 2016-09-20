@@ -54,9 +54,9 @@ public abstract class StaticServlet implements AsyncHttpServlet {
 	protected abstract void doServeAsync(String name, ResultCallback<ByteBuf> callback);
 
 	protected HttpResponse createHttpResponse(ByteBuf buf, String path) {
-		return HttpResponse.create(200)
-				.body(buf)
-				.contentType(getContentType(path));
+		return HttpResponse.ofCode(200)
+				.withBody(buf)
+				.withContentType(getContentType(path));
 	}
 
 	@Override

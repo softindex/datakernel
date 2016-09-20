@@ -23,16 +23,18 @@ import io.datakernel.http.*;
 
 import java.lang.reflect.Type;
 
-import static io.datakernel.util.ByteBufStrings.wrapUtf8;
+import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 
 public final class ConsolidationDebugServlet implements AsyncHttpServlet {
 	private final Gson gson;
 	private final Cube cube;
 
-	public ConsolidationDebugServlet(Cube cube) {
+	private ConsolidationDebugServlet(Cube cube) {
 		this.cube = cube;
 		this.gson = new GsonBuilder().registerTypeAdapter(PrimaryKey.class, new PrimaryKeySerializer()).create();
 	}
+
+	public static ConsolidationDebugServlet create(Cube cube) {return new ConsolidationDebugServlet(cube);}
 
 	public static class PrimaryKeySerializer implements JsonSerializer<PrimaryKey> {
 		@Override
@@ -49,9 +51,11 @@ public final class ConsolidationDebugServlet implements AsyncHttpServlet {
 
 	@Override
 	public void serveAsync(HttpRequest request, Callback callback) {
-		callback.onResult(HttpResponse
-				.create()
-				.contentType(ContentType.of(MediaTypes.JSON))
-				.body(wrapUtf8(gson.toJson(cube.getConsolidationDebugInfo()))));
+		callback.onResult(
+				HttpResponse.ok200()
+						.withContentType(ContentType.of(MediaTypes.JSON))
+						.withBody(wrapUtf8(gson.toJson(cube.getConsolidationDebugInfo())))
+		);
+
 	}
 }

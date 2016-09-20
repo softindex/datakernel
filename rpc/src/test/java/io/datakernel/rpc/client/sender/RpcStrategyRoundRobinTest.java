@@ -104,7 +104,7 @@ public class RpcStrategyRoundRobinTest {
 		RpcSenderStub connection = new RpcSenderStub();
 		// one connection is added
 		pool.put(ADDRESS_2, connection);
-		RpcStrategy roundRobin = new RpcStrategyRoundRobin(servers(ADDRESS_1, ADDRESS_2));
+		RpcStrategy roundRobin = RpcStrategyRoundRobin.create(servers(ADDRESS_1, ADDRESS_2));
 
 		assertTrue(roundRobin.createSender(pool) != null);
 	}

@@ -42,10 +42,10 @@ public class StreamMapTest {
 
 	@Test
 	public void test1() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
-		StreamMap<Integer, Integer> projection = new StreamMap<>(eventloop, FUNCTION);
+		StreamMap<Integer, Integer> projection = StreamMap.create(eventloop, FUNCTION);
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
 		source.streamTo(projection.getInput());
@@ -61,11 +61,11 @@ public class StreamMapTest {
 
 	@Test
 	public void testWithError() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		List<Integer> list = new ArrayList<>();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
-		StreamMap<Integer, Integer> projection = new StreamMap<>(eventloop, FUNCTION);
+		StreamMap<Integer, Integer> projection = StreamMap.create(eventloop, FUNCTION);
 
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = new TestStreamConsumers.TestConsumerToList<Integer>(eventloop, list) {
 			@Override
@@ -99,14 +99,14 @@ public class StreamMapTest {
 
 	@Test
 	public void testProducerWithError() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<Integer> source = StreamProducers.concat(eventloop,
 				StreamProducers.ofValue(eventloop, 1),
 				StreamProducers.ofValue(eventloop, 2),
 				StreamProducers.<Integer>closingWithError(eventloop, new Exception("Test Exception")));
 
-		StreamMap<Integer, Integer> projection = new StreamMap<>(eventloop, FUNCTION);
+		StreamMap<Integer, Integer> projection = StreamMap.create(eventloop, FUNCTION);
 
 		List<Integer> list = new ArrayList<>();
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
@@ -122,10 +122,10 @@ public class StreamMapTest {
 
 	@Test
 	public void testWithoutConsumer() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
-		StreamMap<Integer, Integer> projection = new StreamMap<>(eventloop, FUNCTION);
+		StreamMap<Integer, Integer> projection = StreamMap.create(eventloop, FUNCTION);
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
 		source.streamTo(projection.getInput());

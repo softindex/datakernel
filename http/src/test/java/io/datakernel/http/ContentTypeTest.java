@@ -16,17 +16,17 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.exception.ParseException;
 import org.junit.Test;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
+import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.HttpUtils.parseQ;
 import static io.datakernel.http.MediaTypes.*;
-import static io.datakernel.util.ByteBufStrings.*;
 import static java.nio.charset.Charset.forName;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;

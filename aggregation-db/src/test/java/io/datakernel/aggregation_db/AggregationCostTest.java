@@ -24,45 +24,45 @@ import static org.junit.Assert.assertEquals;
 public class AggregationCostTest {
 	@Test
 	public void testAggregationCost1() throws Exception {
-		AggregationMetadata aggregationMetadata = new AggregationMetadata(asList("date", "publisher", "advertiser"), asList("clicks"));
-		AggregationQuery query = new AggregationQuery()
-				.key("date")
-				.field("clicks");
+		AggregationMetadata aggregationMetadata = AggregationMetadata.create(asList("date", "publisher", "advertiser"), asList("clicks"));
+		AggregationQuery query = AggregationQuery.create()
+				.withKey("date")
+				.withField("clicks");
 
 		assertEquals(100 * 100 * 100, aggregationMetadata.getCost(query), 1e-5);
 	}
 
 	@Test
 	public void testAggregationCost2() throws Exception {
-		AggregationMetadata aggregationMetadata = new AggregationMetadata(asList("date", "publisher", "advertiser"), asList("clicks"));
-		AggregationQuery query = new AggregationQuery()
-				.key("date")
-				.field("clicks")
-				.eq("date", 1);
+		AggregationMetadata aggregationMetadata = AggregationMetadata.create(asList("date", "publisher", "advertiser"), asList("clicks"));
+		AggregationQuery query = AggregationQuery.create()
+				.withKey("date")
+				.withField("clicks")
+				.withEq("date", 1);
 
 		assertEquals(100 * 100, aggregationMetadata.getCost(query), 1e-5);
 	}
 
 	@Test
 	public void testAggregationCost3() throws Exception {
-		AggregationMetadata aggregationMetadata = new AggregationMetadata(asList("date", "publisher", "advertiser"), asList("clicks"));
-		AggregationQuery query = new AggregationQuery()
-				.keys(asList("date", "advertiser"))
-				.field("clicks")
-				.eq("date", 1)
-				.eq("advertiser", 1);
+		AggregationMetadata aggregationMetadata = AggregationMetadata.create(asList("date", "publisher", "advertiser"), asList("clicks"));
+		AggregationQuery query = AggregationQuery.create()
+				.withKeys(asList("date", "advertiser"))
+				.withField("clicks")
+				.withEq("date", 1)
+				.withEq("advertiser", 1);
 
 		assertEquals(100 * 100, aggregationMetadata.getCost(query), 1e-5);
 	}
 
 	@Test
 	public void testAggregationCost4() throws Exception {
-		AggregationMetadata aggregationMetadata = new AggregationMetadata(asList("date", "publisher", "advertiser"), asList("clicks"));
-		AggregationQuery query = new AggregationQuery()
-				.keys(asList("date", "publisher"))
-				.field("clicks")
-				.eq("date", 1)
-				.eq("publisher", 1);
+		AggregationMetadata aggregationMetadata = AggregationMetadata.create(asList("date", "publisher", "advertiser"), asList("clicks"));
+		AggregationQuery query = AggregationQuery.create()
+				.withKeys(asList("date", "publisher"))
+				.withField("clicks")
+				.withEq("date", 1)
+				.withEq("publisher", 1);
 
 		assertEquals(100, aggregationMetadata.getCost(query), 1e-5);
 	}

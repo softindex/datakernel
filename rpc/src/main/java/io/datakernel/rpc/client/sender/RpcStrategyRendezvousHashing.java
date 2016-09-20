@@ -32,47 +32,54 @@ public final class RpcStrategyRendezvousHashing implements RpcStrategy {
 	private static final int DEFAULT_BUCKET_CAPACITY = 2048;
 	private static final HashBucketFunction DEFAULT_BUCKET_HASH_FUNCTION = new DefaultHashBucketFunction();
 
-	private final Map<Object, RpcStrategy> shards = new HashMap<>();
+	private final Map<Object, RpcStrategy> shards;
 	private final HashFunction<?> hashFunction;
-	private int minShards = MIN_SUB_STRATEGIES_FOR_CREATION_DEFAULT;
-	private HashBucketFunction hashBucketFunction = DEFAULT_BUCKET_HASH_FUNCTION;
-	private int buckets = DEFAULT_BUCKET_CAPACITY;
+	private final int minShards;
+	private final HashBucketFunction hashBucketFunction;
+	private final int buckets;
 
-	public RpcStrategyRendezvousHashing(HashFunction<?> hashFunction) {
+	private RpcStrategyRendezvousHashing(HashFunction<?> hashFunction, int minShards,
+	                                     HashBucketFunction hashBucketFunction, int buckets,
+	                                     Map<Object, RpcStrategy> shards) {
 		this.hashFunction = checkNotNull(hashFunction);
+		this.minShards = minShards;
+		this.hashBucketFunction = hashBucketFunction;
+		this.buckets = buckets;
+		this.shards = shards;
+	}
+
+	public static RpcStrategyRendezvousHashing create(HashFunction<?> hashFunction) {
+		return new RpcStrategyRendezvousHashing(hashFunction, MIN_SUB_STRATEGIES_FOR_CREATION_DEFAULT,
+				DEFAULT_BUCKET_HASH_FUNCTION, DEFAULT_BUCKET_CAPACITY, new HashMap<Object, RpcStrategy>());
 	}
 
 	public RpcStrategyRendezvousHashing withMinActiveShards(int minShards) {
 		checkArgument(minShards > 0, "minSubStrategiesForCreation must be greater than 0");
-		this.minShards = minShards;
-		return this;
+		return new RpcStrategyRendezvousHashing(hashFunction, minShards, hashBucketFunction, buckets, shards);
 	}
 
 	public RpcStrategyRendezvousHashing withHashBucketFunction(HashBucketFunction hashBucketFunction) {
-		this.hashBucketFunction = checkNotNull(hashBucketFunction);
-		return this;
+		return new RpcStrategyRendezvousHashing(hashFunction, minShards, hashBucketFunction, buckets, shards);
 	}
 
 	public RpcStrategyRendezvousHashing withHashBuckets(int buckets) {
 		checkArgument((buckets & (buckets - 1)) == 0, "Buckets number must be a power-of-two, got %d", buckets);
-		this.buckets = buckets;
-		return this;
+		return new RpcStrategyRendezvousHashing(hashFunction, minShards, hashBucketFunction, buckets, shards);
 	}
 
-	public RpcStrategyRendezvousHashing put(Object shardId, RpcStrategy strategy) {
+	public RpcStrategyRendezvousHashing withShard(Object shardId, RpcStrategy strategy) {
 		checkNotNull(strategy);
 		shards.put(shardId, strategy);
 		return this;
 	}
 
-	public RpcStrategyRendezvousHashing putAddresses(InetSocketAddress... addresses) {
-		putAddresses(Arrays.asList(addresses));
-		return this;
+	public RpcStrategyRendezvousHashing withShards(InetSocketAddress... addresses) {
+		return withShards(Arrays.asList(addresses));
 	}
 
-	public RpcStrategyRendezvousHashing putAddresses(List<InetSocketAddress> addresses) {
+	public RpcStrategyRendezvousHashing withShards(List<InetSocketAddress> addresses) {
 		for (InetSocketAddress address : addresses) {
-			shards.put(address, new RpcStrategySingleServer(address));
+			shards.put(address, RpcStrategySingleServer.create(address));
 		}
 		return this;
 	}

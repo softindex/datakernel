@@ -26,14 +26,21 @@ import io.datakernel.stream.AbstractStreamProducer;
 final class SocketStreamProducer extends AbstractStreamProducer<ByteBuf> {
 	private final CompletionCallback completionCallback;
 	private final AsyncTcpSocket asyncTcpSocket;
-	protected final ByteBufQueue readQueue = new ByteBufQueue();
+	protected final ByteBufQueue readQueue = ByteBufQueue.create();
 	private boolean readEndOfStream;
 
-	public SocketStreamProducer(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, CompletionCallback completionCallback) {
+	// region creators
+	private SocketStreamProducer(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, CompletionCallback completionCallback) {
 		super(eventloop);
 		this.asyncTcpSocket = asyncTcpSocket;
 		this.completionCallback = completionCallback;
 	}
+
+	public static SocketStreamProducer create(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
+	                                          CompletionCallback completionCallback) {
+		return new SocketStreamProducer(eventloop, asyncTcpSocket, completionCallback);
+	}
+	// endregion
 
 	@Override
 	protected void onStarted() {

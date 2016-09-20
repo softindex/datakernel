@@ -23,19 +23,54 @@ import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.InetAddressRange;
+import io.datakernel.net.ServerSocketSettings;
+import io.datakernel.net.SocketSettings;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 
+import javax.net.ssl.SSLContext;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.nio.file.Path;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
 public final class SimpleFsServer extends FsServer<SimpleFsServer> {
-	public SimpleFsServer(Eventloop eventloop, ExecutorService executor, Path storagePath) {
-		super(eventloop, new FileManager(eventloop, executor, storagePath));
+	// region builders
+	private SimpleFsServer(Eventloop eventloop, ExecutorService executor, Path storagePath) {
+		super(eventloop, FileManager.create(eventloop, executor, storagePath));
 	}
+
+	private SimpleFsServer(Eventloop eventloop,
+	                       ServerSocketSettings serverSocketSettings, SocketSettings socketSettings,
+	                       boolean acceptOnce, Collection<InetSocketAddress> listenAddresses,
+	                       InetAddressRange range, Collection<InetAddress> bannedAddresses,
+	                       SSLContext sslContext, ExecutorService sslExecutor,
+	                       Collection<InetSocketAddress> sslListenAddresses,
+	                       SimpleFsServer previousInstance) {
+		super(eventloop, serverSocketSettings, socketSettings, acceptOnce, listenAddresses,
+				range, bannedAddresses, sslContext, sslExecutor, sslListenAddresses, previousInstance);
+	}
+
+	public static SimpleFsServer create(Eventloop eventloop, ExecutorService executor, Path storagePath) {
+		return new SimpleFsServer(eventloop, executor, storagePath);
+	}
+
+	@Override
+	protected SimpleFsServer recreate(Eventloop eventloop, ServerSocketSettings serverSocketSettings, SocketSettings socketSettings,
+	                                  boolean acceptOnce,
+	                                  Collection<InetSocketAddress> listenAddresses,
+	                                  InetAddressRange range, Collection<InetAddress> bannedAddresses,
+	                                  SSLContext sslContext, ExecutorService sslExecutor,
+	                                  Collection<InetSocketAddress> sslListenAddresses) {
+		return new SimpleFsServer(eventloop, serverSocketSettings, socketSettings, acceptOnce, listenAddresses,
+				range, bannedAddresses, sslContext, sslExecutor, sslListenAddresses, this);
+	}
+	// endregion
 
 	@Override
 	public void upload(String fileName, final ResultCallback<StreamConsumer<ByteBuf>> callback) {

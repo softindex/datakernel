@@ -26,10 +26,12 @@ public final class DrillDown {
 	private final List<String> chain;
 	private final Set<String> measures;
 
-	public DrillDown(List<String> chain, Set<String> measures) {
+	private DrillDown(List<String> chain, Set<String> measures) {
 		this.chain = chain;
 		this.measures = measures;
 	}
+
+	public static DrillDown create(List<String> chain, Set<String> measures) {return new DrillDown(chain, measures);}
 
 	public List<String> getChain() {
 		return chain;

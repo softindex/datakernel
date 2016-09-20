@@ -20,11 +20,18 @@ import io.datakernel.async.AsyncCancellable;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.InetAddressRange;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxReducers;
+import io.datakernel.net.ServerSocketSettings;
+import io.datakernel.net.SocketSettings;
 
+import javax.net.ssl.SSLContext;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
 import static io.datakernel.jmx.MBeanFormat.formatDuration;
@@ -33,48 +40,93 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private static final long CHECK_PERIOD = 1000L;
 	private static final long DEFAULT_MAX_IDLE_CONNECTION_TIME = 30 * 1000L;
 
-	private final ExposedLinkedList<AbstractHttpConnection> pool;
-
 	private final AsyncHttpServlet servlet;
+	private final int maxHttpMessageSize;
+	private final long maxIdleConnectionTime;
+	private final ExposedLinkedList<AbstractHttpConnection> pool;
+	private final char[] headerChars;
 
 	private AsyncCancellable expiredConnectionsCheck;
-	private final char[] headerChars;
-	private int maxHttpMessageSize = Integer.MAX_VALUE;
-	private long maxIdleConnectionTime = DEFAULT_MAX_IDLE_CONNECTION_TIME;
 
 	// jmx
-	private final EventStats totalRequests = new EventStats();
-	private final EventStats httpsRequests = new EventStats();
-	private final EventStats httpRequests = new EventStats();
-	private final EventStats keepAliveRequests = new EventStats();
-	private final EventStats nonKeepAliveRequests = new EventStats();
-	private final EventStats expiredConnections = new EventStats();
-	private final EventStats httpProtocolErrors = new EventStats();
-	private final EventStats applicationErrors = new EventStats();
+	private final EventStats totalRequests = EventStats.create();
+	private final EventStats httpsRequests = EventStats.create();
+	private final EventStats httpRequests = EventStats.create();
+	private final EventStats keepAliveRequests = EventStats.create();
+	private final EventStats nonKeepAliveRequests = EventStats.create();
+	private final EventStats expiredConnections = EventStats.create();
+	private final EventStats httpProtocolErrors = EventStats.create();
+	private final EventStats applicationErrors = EventStats.create();
 	private final Map<HttpServerConnection, UrlWithTimestamp> currentRequestHandlingStart = new HashMap<>();
 	private boolean monitorCurrentRequestsHandlingDuration = false;
 
-	public AsyncHttpServer(Eventloop eventloop, AsyncHttpServlet servlet) {
-		super(eventloop);
-		this.pool = new ExposedLinkedList<>();
+	// region builders
+	private AsyncHttpServer(Eventloop eventloop,
+	                        ServerSocketSettings serverSocketSettings, SocketSettings socketSettings,
+	                        boolean acceptOnce, Collection<InetSocketAddress> listenAddresses,
+	                        InetAddressRange range, Collection<InetAddress> bannedAddresses,
+	                        SSLContext sslContext, ExecutorService sslExecutor,
+	                        Collection<InetSocketAddress> sslListenAddresses,
+	                        AsyncHttpServer prevInstance) {
+
+		super(eventloop, serverSocketSettings, socketSettings, acceptOnce, listenAddresses,
+				range, bannedAddresses, sslContext, sslExecutor, sslListenAddresses);
+		this.servlet = prevInstance.servlet;
+		this.maxIdleConnectionTime = prevInstance.maxIdleConnectionTime;
+		this.maxHttpMessageSize = prevInstance.maxHttpMessageSize;
+		this.pool = prevInstance.pool;
+		this.headerChars = prevInstance.headerChars;
+	}
+
+	private AsyncHttpServer(AsyncHttpServer previousInstance, AsyncHttpServlet servlet,
+	                        long maxIdleConnectionTime, int maxHttpMessageSize,
+	                        ExposedLinkedList<AbstractHttpConnection> pool, char[] headerChars) {
+		super(previousInstance);
 		this.servlet = servlet;
-		char[] chars = eventloop.get(char[].class);
-		if (chars == null || chars.length < MAX_HEADER_LINE_SIZE) {
-			chars = new char[MAX_HEADER_LINE_SIZE];
-			eventloop.set(char[].class, chars);
-		}
-		this.headerChars = chars;
-	}
-
-	public AsyncHttpServer setMaxIdleConnectionTime(long maxIdleConnectionTime) {
+		this.pool = pool;
 		this.maxIdleConnectionTime = maxIdleConnectionTime;
-		return this;
+		this.maxHttpMessageSize = maxHttpMessageSize;
+		this.headerChars = headerChars;
 	}
 
-	public AsyncHttpServer setMaxHttpMessageSize(int size) {
-		this.maxHttpMessageSize = size;
-		return this;
+	private AsyncHttpServer(Eventloop eventloop, AsyncHttpServlet servlet,
+	                        long maxIdleConnectionTime, int maxHttpMessageSize,
+	                        ExposedLinkedList<AbstractHttpConnection> pool, char[] headerChars) {
+		super(eventloop);
+		this.servlet = servlet;
+		this.pool = pool;
+		this.maxIdleConnectionTime = maxIdleConnectionTime;
+		this.maxHttpMessageSize = maxHttpMessageSize;
+		this.headerChars = headerChars;
 	}
+
+	public static AsyncHttpServer create(Eventloop eventloop, AsyncHttpServlet servlet) {
+		ExposedLinkedList<AbstractHttpConnection> pool = ExposedLinkedList.create();
+		char[] chars = new char[MAX_HEADER_LINE_SIZE];
+		int maxHttpMessageSize = Integer.MAX_VALUE;
+		long maxIdleConnectionTime = DEFAULT_MAX_IDLE_CONNECTION_TIME;
+		return new AsyncHttpServer(eventloop, servlet, maxIdleConnectionTime, maxHttpMessageSize, pool, chars);
+	}
+
+	public AsyncHttpServer withMaxIdleConnectionTime(long maxIdleConnectionTime) {
+		return new AsyncHttpServer(this, servlet, maxIdleConnectionTime, maxHttpMessageSize, pool, headerChars);
+	}
+
+	public AsyncHttpServer withMaxHttpMessageSize(int size) {
+		return new AsyncHttpServer(this, servlet, maxIdleConnectionTime, size, pool, headerChars);
+	}
+
+	@Override
+	protected AsyncHttpServer recreate(Eventloop eventloop, ServerSocketSettings serverSocketSettings, SocketSettings socketSettings,
+	                                   boolean acceptOnce,
+	                                   Collection<InetSocketAddress> listenAddresses,
+	                                   InetAddressRange range, Collection<InetAddress> bannedAddresses,
+	                                   SSLContext sslContext, ExecutorService sslExecutor,
+	                                   Collection<InetSocketAddress> sslListenAddresses) {
+		return new AsyncHttpServer(eventloop, serverSocketSettings, socketSettings, acceptOnce, listenAddresses,
+				range, bannedAddresses, sslContext, sslExecutor, sslListenAddresses, this);
+	}
+	// endregion
 
 	private void scheduleExpiredConnectionsCheck() {
 		assert expiredConnectionsCheck == null;
@@ -113,7 +165,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	@Override
 	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 		assert eventloop.inEventloopThread();
-		return new HttpServerConnection(
+		return HttpServerConnection.create(
 				eventloop, asyncTcpSocket.getRemoteSocketAddress().getAddress(), asyncTcpSocket,
 				this, servlet, pool, headerChars, maxHttpMessageSize);
 	}
@@ -235,7 +287,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 	@JmxAttribute(
 			description = "shows duration of current requests handling" +
-			"in case when monitorCurrentRequestsHandlingDuration == true"
+					"in case when monitorCurrentRequestsHandlingDuration == true"
 	)
 	public List<String> getCurrentRequestsDuration() {
 		SortedSet<UrlWithDuration> durations = new TreeSet<>();

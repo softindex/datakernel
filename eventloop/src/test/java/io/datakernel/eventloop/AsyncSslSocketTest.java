@@ -53,7 +53,7 @@ public class AsyncSslSocketTest {
 	private static final String TRUSTSTORE_PATH = "./src/test/resources/truststore.jks";
 	private static final String TRUSTSTORE_PASS = "testtest";
 
-	private Eventloop eventloop = new Eventloop();
+	private Eventloop eventloop = Eventloop.create();
 	private AsyncSslSocket serverSslSocket;
 	private AsyncSslSocket clientSslSocket;
 
@@ -76,14 +76,14 @@ public class AsyncSslSocketTest {
 		SSLEngine serverSSLEngine = sslContext.createSSLEngine();
 		serverSSLEngine.setUseClientMode(false);
 		serverSocketStub = new AsyncTcpSocketStub("server", eventloop);
-		serverSslSocket = new AsyncSslSocket(eventloop, serverSocketStub, serverSSLEngine, executor);
+		serverSslSocket = AsyncSslSocket.create(eventloop, serverSocketStub, serverSSLEngine, executor);
 		serverSocketStub.setEventHandler(serverSslSocket);
 		serverSslSocket.setEventHandler(serverEventHandler);
 
 		SSLEngine clientSSLEngine = sslContext.createSSLEngine();
 		clientSSLEngine.setUseClientMode(true);
 		clientSocketStub = new AsyncTcpSocketStub("client", eventloop);
-		clientSslSocket = new AsyncSslSocket(eventloop, clientSocketStub, clientSSLEngine, executor);
+		clientSslSocket = AsyncSslSocket.create(eventloop, clientSocketStub, clientSSLEngine, executor);
 		clientSocketStub.setEventHandler(clientSslSocket);
 		clientSslSocket.setEventHandler(clientEventHandler);
 

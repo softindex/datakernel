@@ -33,7 +33,7 @@ import static java.util.Arrays.asList;
 import static org.objectweb.asm.Type.CHAR_TYPE;
 import static org.objectweb.asm.Type.getType;
 
-public class Utils {
+final class Utils {
 
 	private static final Map<String, Type> wrapperToPrimitive = new HashMap<>();
 

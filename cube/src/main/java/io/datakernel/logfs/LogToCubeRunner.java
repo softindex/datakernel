@@ -66,9 +66,9 @@ public final class LogToCubeRunner<T> {
 	 * @param partitions                list of partition names
 	 * @param metadataStorage           metadata storage for persistence of log and cube metadata
 	 */
-	public LogToCubeRunner(Eventloop eventloop, Cube cube, LogManager<T> logManager,
-	                       AggregatorSplitter.Factory<T> aggregatorSplitterFactory, String log, List<String> partitions,
-	                       LogToCubeMetadataStorage metadataStorage) {
+	private LogToCubeRunner(Eventloop eventloop, Cube cube, LogManager<T> logManager,
+	                        AggregatorSplitter.Factory<T> aggregatorSplitterFactory, String log, List<String> partitions,
+	                        LogToCubeMetadataStorage metadataStorage) {
 		this.eventloop = eventloop;
 		this.metadataStorage = metadataStorage;
 		this.cube = cube;
@@ -76,6 +76,14 @@ public final class LogToCubeRunner<T> {
 		this.aggregatorSplitterFactory = aggregatorSplitterFactory;
 		this.log = log;
 		this.partitions = ImmutableList.copyOf(partitions);
+	}
+
+	public static <T> LogToCubeRunner<T> create(Eventloop eventloop, Cube cube, LogManager<T> logManager,
+	                                            AggregatorSplitter.Factory<T> aggregatorSplitterFactory,
+	                                            String log, List<String> partitions,
+	                                            LogToCubeMetadataStorage metadataStorage) {
+		return new LogToCubeRunner<T>(eventloop, cube, logManager, aggregatorSplitterFactory,
+				log, partitions, metadataStorage);
 	}
 
 	public void processLog(final CompletionCallback callback) {
@@ -91,7 +99,7 @@ public final class LogToCubeRunner<T> {
 		logger.trace("processLog_gotPositions called. Positions: {}", positions);
 		final Stopwatch sw = Stopwatch.createStarted();
 		final AggregatorSplitter<T> aggregator = aggregatorSplitterFactory.create(eventloop);
-		LogCommitTransaction<T> logCommitTransaction = new LogCommitTransaction<>(eventloop, logManager, log, positions, new ForwardingLogCommitCallback(callback) {
+		LogCommitTransaction<T> logCommitTransaction = LogCommitTransaction.create(eventloop, logManager, log, positions, new ForwardingLogCommitCallback(callback) {
 			@Override
 			public void onCommit(String log, Map<String, LogPosition> oldPositions,
 			                     Map<String, LogPosition> newPositions,
@@ -105,12 +113,12 @@ public final class LogToCubeRunner<T> {
 			}
 		});
 
-		final StreamUnion<T> streamUnion = new StreamUnion<>(eventloop);
+		final StreamUnion<T> streamUnion = StreamUnion.create(eventloop);
 
 		for (String logPartition : positions.keySet()) {
 			LogPosition logPosition = positions.get(logPartition);
 			if (logPosition == null) {
-				logPosition = new LogPosition();
+				logPosition = LogPosition.create();
 			}
 			logCommitTransaction.logProducer(logPartition, logPosition)
 					.streamTo(streamUnion.newInput());

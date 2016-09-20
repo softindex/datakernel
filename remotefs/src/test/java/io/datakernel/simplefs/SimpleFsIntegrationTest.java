@@ -19,12 +19,13 @@ package io.datakernel.simplefs;
 import com.google.common.collect.Lists;
 import io.datakernel.async.*;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.SimpleException;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.file.StreamFileWriter;
-import io.datakernel.util.ByteBufStrings;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.junit.Before;
@@ -47,8 +48,8 @@ import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.*;
+import static io.datakernel.bytebuf.ByteBufStrings.equalsLowerCaseAscii;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
-import static io.datakernel.util.ByteBufStrings.equalsLowerCaseAscii;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.readAllBytes;
 import static java.util.Arrays.asList;
@@ -92,7 +93,7 @@ public class SimpleFsIntegrationTest {
 	@Test
 	public void testUploadMultiple() throws IOException {
 		int files = 10;
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		ExecutorService executor = newCachedThreadPool();
 		final SimpleFsServer server = createServer(eventloop, executor);
 		SimpleFsClient client = createClient(eventloop);
@@ -171,7 +172,7 @@ public class SimpleFsIntegrationTest {
 	public void testOnClientExceptionWhileUploading() throws IOException, ExecutionException, InterruptedException {
 		String resultFile = "upload_with_exceptions.txt";
 
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		ExecutorService executor = newCachedThreadPool();
 		final SimpleFsServer server = createServer(eventloop, executor);
 		SimpleFsClient client = createClient(eventloop);
@@ -187,7 +188,7 @@ public class SimpleFsIntegrationTest {
 						StreamProducers.<ByteBuf>closingWithError(eventloop, new SimpleException("Test exception")),
 						StreamProducers.ofValue(eventloop, ByteBufStrings.wrapUtf8("Test4")));
 
-		final CompletionCallbackFuture callback = new CompletionCallbackFuture();
+		final CompletionCallbackFuture callback = CompletionCallbackFuture.create();
 		client.upload(resultFile, producer, new CompletionCallback() {
 			@Override
 			public void onComplete() {
@@ -277,7 +278,7 @@ public class SimpleFsIntegrationTest {
 	@Test
 	public void testDownloadNotExist() throws Exception {
 		String file = "file_not_exist_downloaded.txt";
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		ExecutorService executor = newCachedThreadPool();
 		SimpleFsClient client = createClient(eventloop);
 		final SimpleFsServer server = createServer(eventloop, executor);
@@ -310,7 +311,7 @@ public class SimpleFsIntegrationTest {
 	public void testManySimultaneousDownloads() throws IOException {
 		final String file = "some_file.txt";
 		Files.write(storage.resolve(file), CONTENT);
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 		final ExecutorService executor = newCachedThreadPool();
 		SimpleFsClient client = createClient(eventloop);
 		final SimpleFsServer server = createServer(eventloop, executor);
@@ -363,7 +364,7 @@ public class SimpleFsIntegrationTest {
 	public void testDeleteFile() throws Exception {
 		String file = "file.txt";
 		Files.write(storage.resolve(file), CONTENT);
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		ExecutorService executor = newCachedThreadPool();
 		SimpleFsClient client = createClient(eventloop);
 		SimpleFsServer server = createServer(eventloop, executor);
@@ -382,13 +383,13 @@ public class SimpleFsIntegrationTest {
 	@Test
 	public void testDeleteMissingFile() throws Exception {
 		final String file = "no_file.txt";
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		ExecutorService executor = newCachedThreadPool();
 		SimpleFsClient client = createClient(eventloop);
 		final SimpleFsServer server = createServer(eventloop, executor);
 		server.listen();
 
-		final CompletionCallbackFuture callback = new CompletionCallbackFuture();
+		final CompletionCallbackFuture callback = CompletionCallbackFuture.create();
 		client.delete(file, new CompletionCallback() {
 			@Override
 			public void onComplete() {
@@ -428,7 +429,7 @@ public class SimpleFsIntegrationTest {
 	@Test
 	public void testFileList() throws Exception {
 		ExecutorService executor = newCachedThreadPool();
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		final List<String> actual = new ArrayList<>();
 		final List<String> expected = Lists.newArrayList("this/is/not/empty/directory/file1.txt", "file1.txt", "first file.txt");
@@ -467,7 +468,7 @@ public class SimpleFsIntegrationTest {
 	}
 
 	private void upload(String resultFile, byte[] bytes, ExceptionCallback callback) throws IOException {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		ExecutorService executor = newCachedThreadPool();
 		final SimpleFsServer server = createServer(eventloop, executor);
 		SimpleFsClient client = createClient(eventloop);
@@ -480,7 +481,7 @@ public class SimpleFsIntegrationTest {
 	}
 
 	private List<ByteBuf> download(String file, long startPosition) throws IOException {
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 		ExecutorService executor = newCachedThreadPool();
 		SimpleFsClient client = createClient(eventloop);
 		final SimpleFsServer server = createServer(eventloop, executor);
@@ -504,11 +505,11 @@ public class SimpleFsIntegrationTest {
 		return expected;
 	}
 
-	private SimpleFsClient createClient(Eventloop eventloop) {return new SimpleFsClient(eventloop, address);}
+	private SimpleFsClient createClient(Eventloop eventloop) {return SimpleFsClient.create(eventloop, address);}
 
 	private SimpleFsServer createServer(Eventloop eventloop, ExecutorService executor) {
-		return new SimpleFsServer(eventloop, executor, storage)
-				.setListenAddress(address);
+		return SimpleFsServer.create(eventloop, executor, storage)
+				.withListenAddress(address);
 	}
 
 	static byte[] createBigByteArray() {

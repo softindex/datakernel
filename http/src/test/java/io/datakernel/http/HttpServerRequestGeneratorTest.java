@@ -51,7 +51,7 @@ public class HttpServerRequestGeneratorTest {
 		generatorOptions.setUrl(SERVER_URL);
 		HttpRequestsGenerator.info(generatorOptions);
 
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 
 		final HttpThrottlingServer server = new HttpThrottlingServer(eventloop, serverOptions);
 		server.start();

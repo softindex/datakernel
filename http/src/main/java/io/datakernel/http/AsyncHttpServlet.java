@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ParseException;
+import io.datakernel.exception.ParseException;
 
 /**
  * Servlet receives and responds to {@link HttpRequest} from clients across HTTP.

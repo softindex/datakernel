@@ -42,9 +42,9 @@ public class StreamSharderTest {
 
 	@Test
 	public void test1() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
-		StreamSharder<Integer, Integer> streamSharder = new StreamSharder<>(eventloop, SHARDER, Functions.<Integer>identity());
+		StreamSharder<Integer, Integer> streamSharder = StreamSharder.create(eventloop, SHARDER, Functions.<Integer>identity());
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4));
 		TestStreamConsumers.TestConsumerToList<Integer> consumer1 = TestStreamConsumers.toListRandomlySuspending(eventloop);
@@ -68,9 +68,9 @@ public class StreamSharderTest {
 
 	@Test
 	public void test2() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
-		StreamSharder<Integer, Integer> streamSharder = new StreamSharder<>(eventloop, SHARDER, Functions.<Integer>identity());
+		StreamSharder<Integer, Integer> streamSharder = StreamSharder.create(eventloop, SHARDER, Functions.<Integer>identity());
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4));
 		TestStreamConsumers.TestConsumerToList<Integer> consumer1 = TestStreamConsumers.toListRandomlySuspending(eventloop);
@@ -95,9 +95,9 @@ public class StreamSharderTest {
 
 	@Test
 	public void testWithError() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
-		StreamSharder<Integer, Integer> streamSharder = new StreamSharder<>(eventloop, SHARDER, Functions.<Integer>identity());
+		StreamSharder<Integer, Integer> streamSharder = StreamSharder.create(eventloop, SHARDER, Functions.<Integer>identity());
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4));
 
@@ -142,9 +142,9 @@ public class StreamSharderTest {
 
 	@Test
 	public void testProducerWithError() throws Exception {
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 
-		StreamSharder<Integer, Integer> streamSharder = new StreamSharder<>(eventloop, SHARDER, Functions.<Integer>identity());
+		StreamSharder<Integer, Integer> streamSharder = StreamSharder.create(eventloop, SHARDER, Functions.<Integer>identity());
 
 		StreamProducer<Integer> source = StreamProducers.concat(eventloop,
 				StreamProducers.ofValue(eventloop, 1),

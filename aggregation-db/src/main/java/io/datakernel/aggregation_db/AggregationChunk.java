@@ -24,6 +24,11 @@ import java.util.Objects;
 import static java.util.Collections.unmodifiableList;
 
 public class AggregationChunk {
+	public static AggregationChunk create(int revisionId, long chunkId,
+	                                      List<String> fields,
+	                                      PrimaryKey minPrimaryKey, PrimaryKey maxPrimaryKey,
+	                                      int count) {return new AggregationChunk(revisionId, chunkId, fields, minPrimaryKey, maxPrimaryKey, count);}
+
 	public static class NewChunk {
 		public final long chunkId;
 		public final List<String> fields;
@@ -52,7 +57,7 @@ public class AggregationChunk {
 	}
 
 	public static AggregationChunk createChunk(int revisionId, NewChunk newChunk) {
-		return new AggregationChunk(revisionId, newChunk.chunkId,
+		return create(revisionId, newChunk.chunkId,
 				newChunk.fields, newChunk.minPrimaryKey, newChunk.maxPrimaryKey, newChunk.count);
 	}
 
@@ -63,10 +68,10 @@ public class AggregationChunk {
 	private final PrimaryKey maxPrimaryKey;
 	private final int count;
 
-	public AggregationChunk(int revisionId, long chunkId,
-	                        List<String> fields,
-	                        PrimaryKey minPrimaryKey, PrimaryKey maxPrimaryKey,
-	                        int count) {
+	private AggregationChunk(int revisionId, long chunkId,
+	                         List<String> fields,
+	                         PrimaryKey minPrimaryKey, PrimaryKey maxPrimaryKey,
+	                         int count) {
 		this.revisionId = revisionId;
 		this.chunkId = chunkId;
 		this.fields = fields;

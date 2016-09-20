@@ -23,6 +23,10 @@ import static io.datakernel.codegen.Expressions.callStatic;
 import static io.datakernel.codegen.Expressions.set;
 
 public final class MaxFieldProcessor implements FieldProcessor {
+	private MaxFieldProcessor() {}
+
+	public static MaxFieldProcessor create() {return new MaxFieldProcessor();}
+
 	@Override
 	public Expression getOnFirstItemExpression(VarField accumulator, Class<?> accumulatorClass,
 	                                           VarField firstValue, Class<?> valueClass) {

@@ -16,7 +16,7 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.async.SimpleException;
+import io.datakernel.exception.SimpleException;
 
 /**
  * Represents an exception which stores name of domain with which error was created ,

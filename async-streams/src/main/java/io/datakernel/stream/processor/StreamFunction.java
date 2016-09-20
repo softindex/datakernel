@@ -35,6 +35,18 @@ public final class StreamFunction<I, O> extends AbstractStreamTransformer_1_1<I,
 	private final InputConsumer inputConsumer;
 	private final OutputProducer outputProducer;
 
+	// region creators
+	private StreamFunction(Eventloop eventloop, Function<I, O> function) {
+		super(eventloop);
+		this.inputConsumer = new InputConsumer();
+		this.outputProducer = new OutputProducer(function);
+	}
+
+	public static <I, O> StreamFunction<I, O> create(Eventloop eventloop, Function<I, O> function) {
+		return new StreamFunction<I, O>(eventloop, function);
+	}
+	// endregion
+
 	protected final class InputConsumer extends AbstractInputConsumer {
 
 		@Override
@@ -71,11 +83,4 @@ public final class StreamFunction<I, O> extends AbstractStreamTransformer_1_1<I,
 			send(function.apply(item));
 		}
 	}
-
-	public StreamFunction(Eventloop eventloop, Function<I, O> function) {
-		super(eventloop);
-		this.inputConsumer = new InputConsumer();
-		this.outputProducer = new OutputProducer(function);
-	}
-
 }

@@ -62,6 +62,18 @@ public final class StreamMergeSorterStorageImpl<T> implements StreamMergeSorterS
 	private final String filePattern;
 	private final int blockSize;
 
+	// region creators
+	private StreamMergeSorterStorageImpl(Eventloop eventloop, ExecutorService executorService, BufferSerializer<T> serializer,
+	                                     Path path, int blockSize) {
+		this.eventloop = checkNotNull(eventloop);
+		this.executorService = checkNotNull(executorService);
+		this.serializer = checkNotNull(serializer);
+		this.path = path.getParent();
+		this.filePattern = path.getFileName().toString();
+		checkArgument(blockSize >= 0, "blockSize must be positive value,got %s", blockSize);
+		this.blockSize = blockSize;
+	}
+
 	/**
 	 * Creates a new storage
 	 *
@@ -71,16 +83,11 @@ public final class StreamMergeSorterStorageImpl<T> implements StreamMergeSorterS
 	 * @param path            path in which will store received data
 	 * @param blockSize       default buffer size for serializer
 	 */
-	public StreamMergeSorterStorageImpl(Eventloop eventloop, ExecutorService executorService, BufferSerializer<T> serializer,
-	                                    Path path, int blockSize) {
-		this.eventloop = checkNotNull(eventloop);
-		this.executorService = checkNotNull(executorService);
-		this.serializer = checkNotNull(serializer);
-		this.path = path.getParent();
-		this.filePattern = path.getFileName().toString();
-		checkArgument(blockSize >= 0, "blockSize must be positive value,got %s", blockSize);
-		this.blockSize = blockSize;
+	public static <T> StreamMergeSorterStorageImpl<T> create(Eventloop eventloop, ExecutorService executorService,
+	                                                         BufferSerializer<T> serializer, Path path, int blockSize) {
+		return new StreamMergeSorterStorageImpl<T>(eventloop, executorService, serializer, path, blockSize);
 	}
+	// endregion
 
 	private Path partitionPath(int i) {
 		try {
@@ -93,11 +100,11 @@ public final class StreamMergeSorterStorageImpl<T> implements StreamMergeSorterS
 
 	@Override
 	public int write(final StreamProducer<T> producer, final CompletionCallback completionCallback) {
-		StreamBinarySerializer<T> streamSerializer = new StreamBinarySerializer<>(eventloop, serializer,
+		StreamBinarySerializer<T> streamSerializer = StreamBinarySerializer.create(eventloop, serializer,
 				StreamBinarySerializer.MAX_SIZE_2_BYTE, StreamBinarySerializer.MAX_SIZE, 1000, false);
-		StreamByteChunker streamByteChunkerBefore = new StreamByteChunker(eventloop, blockSize / 2, blockSize);
+		StreamByteChunker streamByteChunkerBefore = StreamByteChunker.create(eventloop, blockSize / 2, blockSize);
 		StreamLZ4Compressor streamCompressor = StreamLZ4Compressor.fastCompressor(eventloop);
-		final StreamByteChunker streamByteChunkerAfter = new StreamByteChunker(eventloop, blockSize / 2, blockSize);
+		final StreamByteChunker streamByteChunkerAfter = StreamByteChunker.create(eventloop, blockSize / 2, blockSize);
 
 		producer.streamTo(streamSerializer.getInput());
 		streamSerializer.getOutput().streamTo(streamByteChunkerBefore.getInput());
@@ -127,8 +134,8 @@ public final class StreamMergeSorterStorageImpl<T> implements StreamMergeSorterS
 	public StreamProducer<T> read(int partition, final CompletionCallback callback) {
 		assert partition >= 0;
 
-		final StreamLZ4Decompressor streamDecompressor = new StreamLZ4Decompressor(eventloop);
-		StreamBinaryDeserializer<T> streamDeserializer = new StreamBinaryDeserializer<>(eventloop, serializer,
+		final StreamLZ4Decompressor streamDecompressor = StreamLZ4Decompressor.create(eventloop);
+		StreamBinaryDeserializer<T> streamDeserializer = StreamBinaryDeserializer.create(eventloop, serializer,
 				StreamBinarySerializer.MAX_SIZE);
 		streamDecompressor.getOutput().streamTo(streamDeserializer.getInput());
 

@@ -25,9 +25,11 @@ import java.util.Set;
 public final class RpcStrategyFirstAvailable implements RpcStrategy {
 	private final RpcStrategyList list;
 
-	public RpcStrategyFirstAvailable(RpcStrategyList list) {
+	private RpcStrategyFirstAvailable(RpcStrategyList list) {
 		this.list = list;
 	}
+
+	public static RpcStrategyFirstAvailable create(RpcStrategyList list) {return new RpcStrategyFirstAvailable(list);}
 
 	@Override
 	public Set<InetSocketAddress> getAddresses() {

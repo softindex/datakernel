@@ -19,9 +19,8 @@ package io.datakernel.aggregation_db;
 import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.codegen.AsmBuilder;
+import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.ExpressionSequence;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
@@ -52,24 +51,26 @@ public class AggregationChunkStorageStub implements AggregationChunkStorage {
 	public <T> StreamProducer<T> chunkReader(List<String> keys, List<String> fields,
 	                                         Class<T> recordClass, long id, DefiningClassLoader classLoader) {
 		Class<?> sourceClass = chunkTypes.get(id);
-		AsmBuilder<Function> factory = new AsmBuilder(classLoader, Function.class);
 
 		Expression result = let(constructor(recordClass));
-		ExpressionSequence applyDef = sequence(result);
+		List<Expression> expressionSequence = new ArrayList<>();
+		expressionSequence.add(result);
 		for (String key : keys) {
-			applyDef.add(set(
+			expressionSequence.add(set(
 					getter(result, key),
 					getter(cast(arg(0), sourceClass), key)));
 		}
 		for (String metric : fields) {
-			applyDef.add(set(
+			expressionSequence.add(set(
 					getter(result, metric),
 					getter(cast(arg(0), sourceClass), metric)));
 		}
 
-		applyDef.add(result);
-		factory.method("apply", applyDef);
-		Function function = factory.newInstance();
+		expressionSequence.add(result);
+		Expression applyDef = sequence(expressionSequence);
+		ClassBuilder<Function> factory = ClassBuilder.create(classLoader, Function.class)
+				.withMethod("apply", applyDef);
+		Function function = factory.buildClassAndCreateNewInstance();
 		StreamProducers.OfIterator<T> chunkReader = (StreamProducers.OfIterator<T>) StreamProducers.ofIterable(eventloop,
 				Iterables.transform(lists.get(id), function));
 		chunkReader.setTag(id);

@@ -44,18 +44,21 @@ public final class JmxRegistry implements ConcurrentJmxMBean {
 	private int registeredSingletons;
 	private int registeredPools;
 	private int totallyRegisteredMBeans;
-	private final double refreshPeriod;
+	private double refreshPeriod;
 
-	public JmxRegistry(MBeanServer mbs, DynamicMBeanFactory mbeanFactory) {
+	private JmxRegistry(MBeanServer mbs, DynamicMBeanFactory mbeanFactory) {
 		this.mbs = checkNotNull(mbs);
 		this.mbeanFactory = checkNotNull(mbeanFactory);
 		this.refreshPeriod = 0.0;
 	}
 
-	public JmxRegistry(MBeanServer mbs, DynamicMBeanFactory mbeanFactory, double refreshPeriod) {
-		this.mbs = checkNotNull(mbs);
-		this.mbeanFactory = checkNotNull(mbeanFactory);
+	public static JmxRegistry create(MBeanServer mbs, DynamicMBeanFactory mbeanFactory) {
+		return new JmxRegistry(mbs, mbeanFactory);
+	}
+
+	public JmxRegistry withRefreshPeriod(double refreshPeriod) {
 		this.refreshPeriod = refreshPeriod;
+		return this;
 	}
 
 	public void registerSingleton(Key<?> key, Object singletonInstance) {

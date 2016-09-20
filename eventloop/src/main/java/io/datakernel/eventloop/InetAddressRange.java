@@ -16,7 +16,7 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.async.ParseException;
+import io.datakernel.exception.ParseException;
 import io.datakernel.util.Preconditions;
 
 import java.net.Inet4Address;
@@ -47,7 +47,7 @@ public final class InetAddressRange implements Comparable<InetAddressRange>, Ite
 
 	private boolean acceptAll;
 
-	// creators & accessors
+	// region builders
 	private InetAddressRange(int[] network, int[] mask, int[] end) {
 		this.network = network;
 		this.mask = mask;
@@ -180,6 +180,7 @@ public final class InetAddressRange implements Comparable<InetAddressRange>, Ite
 	private static InetAddressRange fromAddress(int[] address) {
 		return new InetAddressRange(address, address);
 	}
+	// endregion
 
 	public InetAddress getStartAddress() {
 		try {

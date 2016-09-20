@@ -30,14 +30,18 @@ public final class JmxRegistrator {
 	private final Set<Key<?>> workerKeys;
 	private final JmxRegistry jmxRegistry;
 
-	public JmxRegistrator(Injector injector,
-	                      Set<Key<?>> singletonKeys, Set<Key<?>> workerKeys,
-	                      JmxRegistry jmxRegistry) {
+	private JmxRegistrator(Injector injector,
+	                       Set<Key<?>> singletonKeys, Set<Key<?>> workerKeys,
+	                       JmxRegistry jmxRegistry) {
 		this.injector = injector;
 		this.singletonKeys = singletonKeys;
 		this.workerKeys = workerKeys;
 		this.jmxRegistry = jmxRegistry;
 	}
+
+	public static JmxRegistrator create(Injector injector,
+	                                    Set<Key<?>> singletonKeys, Set<Key<?>> workerKeys,
+	                                    JmxRegistry jmxRegistry) {return new JmxRegistrator(injector, singletonKeys, workerKeys, jmxRegistry);}
 
 	public void registerJmxMBeans() {
 		// register ByteBufPool

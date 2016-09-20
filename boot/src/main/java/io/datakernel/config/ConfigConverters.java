@@ -17,8 +17,8 @@
 package io.datakernel.config;
 
 import com.google.common.base.Preconditions;
-import io.datakernel.async.ParseException;
 import io.datakernel.eventloop.InetAddressRange;
+import io.datakernel.exception.ParseException;
 import io.datakernel.net.DatagramSocketSettings;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
@@ -239,7 +239,7 @@ public final class ConfigConverters {
 	private static final class ConfigConverterServerSocketSettings implements ConfigConverter<ServerSocketSettings> {
 		static ConfigConverterServerSocketSettings INSTANCE = new ConfigConverterServerSocketSettings();
 
-		private final ServerSocketSettings defaultValue = new ServerSocketSettings();
+		private final ServerSocketSettings defaultValue = ServerSocketSettings.create();
 
 		@Override
 		public ServerSocketSettings get(Config config) {
@@ -249,11 +249,11 @@ public final class ConfigConverters {
 		@Override
 		public ServerSocketSettings get(Config config, ServerSocketSettings defaultValue) {
 			ServerSocketSettings result = Preconditions.checkNotNull(defaultValue);
-			result = result.backlog(config.get(ofInteger(), "backlog", result.getBacklog()));
+			result = result.withBacklog(config.get(ofInteger(), "backlog", result.getBacklog()));
 			if (config.hasValue("receiveBufferSize"))
-				result = result.receiveBufferSize(config.get(ofInteger(), "receiveBufferSize"));
+				result = result.withReceiveBufferSize(config.get(ofInteger(), "receiveBufferSize"));
 			if (config.hasValue("reuseAddress"))
-				result = result.reuseAddress(config.get(ofBoolean(), "reuseAddress"));
+				result = result.withReuseAddress(config.get(ofBoolean(), "reuseAddress"));
 			return result;
 		}
 	}
@@ -261,7 +261,7 @@ public final class ConfigConverters {
 	private static final class ConfigConverterSocketSettings implements ConfigConverter<SocketSettings> {
 		static ConfigConverterSocketSettings INSTANCE = new ConfigConverterSocketSettings();
 
-		private final SocketSettings defaultValue = new SocketSettings();
+		private final SocketSettings defaultValue = SocketSettings.create();
 
 		@Override
 		public SocketSettings get(Config config) {
@@ -272,19 +272,19 @@ public final class ConfigConverters {
 		public SocketSettings get(Config config, SocketSettings defaultValue) {
 			SocketSettings result = Preconditions.checkNotNull(defaultValue);
 			if (config.hasValue("receiveBufferSize"))
-				result = result.receiveBufferSize((int) config.get(ofMemSize(), "receiveBufferSize").getBytes());
+				result = result.withReceiveBufferSize((int) config.get(ofMemSize(), "receiveBufferSize").getBytes());
 			if (config.hasValue("sendBufferSize"))
-				result = result.sendBufferSize((int) config.get(ofMemSize(), "sendBufferSize").getBytes());
+				result = result.withSendBufferSize((int) config.get(ofMemSize(), "sendBufferSize").getBytes());
 			if (config.hasValue("reuseAddress"))
-				result = result.reuseAddress(config.get(ofBoolean(), "reuseAddress"));
+				result = result.withReuseAddress(config.get(ofBoolean(), "reuseAddress"));
 			if (config.hasValue("keepAlive"))
-				result = result.keepAlive(config.get(ofBoolean(), "keepAlive"));
+				result = result.withKeepAlive(config.get(ofBoolean(), "keepAlive"));
 			if (config.hasValue("tcpNoDelay"))
-				result = result.tcpNoDelay(config.get(ofBoolean(), "tcpNoDelay"));
+				result = result.withTcpNoDelay(config.get(ofBoolean(), "tcpNoDelay"));
 			if (config.hasValue("readTimeout"))
-				result = result.readTimeout(config.get(ofLong(), "readTimeout"));
+				result = result.withReadTimeout(config.get(ofLong(), "readTimeout"));
 			if (config.hasValue("writeTimeout"))
-				result = result.writeTimeout(config.get(ofLong(), "writeTimeout"));
+				result = result.withWriteTimeout(config.get(ofLong(), "writeTimeout"));
 			return result;
 		}
 	}
@@ -301,13 +301,13 @@ public final class ConfigConverters {
 		public DatagramSocketSettings get(Config config, DatagramSocketSettings defaultValue) {
 			DatagramSocketSettings result = Preconditions.checkNotNull(defaultDatagramSocketSettings());
 			if (config.hasValue("receiveBufferSize"))
-				result = result.receiveBufferSize((int) config.get(ofMemSize(), "receiveBufferSize").getBytes());
+				result = result.withReceiveBufferSize((int) config.get(ofMemSize(), "receiveBufferSize").getBytes());
 			if (config.hasValue("sendBufferSize"))
-				result = result.sendBufferSize((int) config.get(ofMemSize(), "sendBufferSize").getBytes());
+				result = result.withSendBufferSize((int) config.get(ofMemSize(), "sendBufferSize").getBytes());
 			if (config.hasValue("reuseAddress"))
-				result = result.reuseAddress(config.get(ofBoolean(), "reuseAddress"));
+				result = result.withReuseAddress(config.get(ofBoolean(), "reuseAddress"));
 			if (config.hasValue("broadcast"))
-				result = result.broadcast(config.get(ofBoolean(), "broadcast"));
+				result = result.withBroadcast(config.get(ofBoolean(), "broadcast"));
 			return result;
 		}
 	}

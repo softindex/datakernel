@@ -58,8 +58,8 @@ public class StreamSerializerBenchmark implements Runnable {
 
 		}
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, list);
-		StreamBinarySerializer<Integer> serializerStream = new StreamBinarySerializer<>(eventloop, intSerializer(), 1, StreamBinarySerializer.MAX_SIZE, 0, false);
-		StreamBinaryDeserializer<Integer> deserializerStream = new StreamBinaryDeserializer<>(eventloop, intSerializer(), 12);
+		StreamBinarySerializer<Integer> serializerStream = StreamBinarySerializer.create(eventloop, intSerializer(), 1, StreamBinarySerializer.MAX_SIZE, 0, false);
+		StreamBinaryDeserializer<Integer> deserializerStream = StreamBinaryDeserializer.create(eventloop, intSerializer(), 12);
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListOneByOne(eventloop);
 
 		source.streamTo(serializerStream.getInput());
@@ -74,7 +74,7 @@ public class StreamSerializerBenchmark implements Runnable {
 		this.bestTime = -1;
 		this.worstTime = -1;
 
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		for (int i = 0; i < this.benchmarkRounds; i++) {
 			setUp(eventloop);

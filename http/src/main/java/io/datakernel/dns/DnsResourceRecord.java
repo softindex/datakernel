@@ -33,10 +33,14 @@ public final class DnsResourceRecord {
 	 * @param minTtl time to live for this record
 	 * @param type   type of address
 	 */
-	public DnsResourceRecord(InetAddress[] ips, int minTtl, short type) {
+	private DnsResourceRecord(InetAddress[] ips, int minTtl, short type) {
 		this.ips = ips;
 		this.minTtl = minTtl;
 		this.type = type;
+	}
+
+	public static DnsResourceRecord of(InetAddress[] ips, int minTtl, short type) {
+		return new DnsResourceRecord(ips, minTtl, type);
 	}
 
 	public boolean hasData() {

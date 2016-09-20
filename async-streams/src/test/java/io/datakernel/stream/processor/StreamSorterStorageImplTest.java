@@ -53,14 +53,14 @@ public class StreamSorterStorageImplTest {
 
 	@Test
 	public void testStreamStorage() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5, 6, 7));
 		StreamProducer<Integer> source2 = StreamProducers.ofIterable(eventloop, asList(111));
 
 		File workPath = tempFolder.newFolder("tmp");
-		StreamMergeSorterStorageImpl<Integer> storage = new StreamMergeSorterStorageImpl<>(eventloop, executor, intSerializer(), Paths.get(workPath.getAbsolutePath(), "%d.part"), 64);
+		StreamMergeSorterStorageImpl<Integer> storage = StreamMergeSorterStorageImpl.create(eventloop, executor, intSerializer(), Paths.get(workPath.getAbsolutePath(), "%d.part"), 64);
 
 		int firstStorage = storage.write(source1, ignoreCompletionCallback());
 		int secondStorage = storage.write(source2, ignoreCompletionCallback());

@@ -59,7 +59,7 @@ public class TestFileManager {
 	@Rule
 	public final ExpectedException thrown = ExpectedException.none();
 
-	private Eventloop eventloop = new Eventloop();
+	private Eventloop eventloop = Eventloop.create();
 	private ExecutorService executor = newCachedThreadPool();
 	private Path storage;
 	private Path client;
@@ -106,7 +106,7 @@ public class TestFileManager {
 
 	@Test
 	public void testDoUpload() throws IOException {
-		FileManager fs = new FileManager(eventloop, executor, storage);
+		FileManager fs = FileManager.create(eventloop, executor, storage);
 		final Path inputFile = client.resolve("c.txt");
 
 		fs.save("1/c.txt", new ForwardingResultCallback<StreamFileWriter>(ignoreCompletionCallback()) {
@@ -131,7 +131,7 @@ public class TestFileManager {
 
 	@Test
 	public void testDoDownload() throws IOException {
-		FileManager fs = new FileManager(eventloop, executor, storage);
+		FileManager fs = FileManager.create(eventloop, executor, storage);
 		final Path outputFile = client.resolve("d.txt");
 
 		fs.get("2/b/d.txt", 0, new ForwardingResultCallback<StreamFileReader>(ignoreResultCallback()) {
@@ -156,8 +156,8 @@ public class TestFileManager {
 
 	@Test
 	public void testDoDownloadFailed() throws Exception {
-		FileManager fs = new FileManager(eventloop, executor, storage);
-		ResultCallbackFuture<StreamFileReader> callbackFuture = new ResultCallbackFuture<>();
+		FileManager fs = FileManager.create(eventloop, executor, storage);
+		ResultCallbackFuture<StreamFileReader> callbackFuture = ResultCallbackFuture.create();
 
 		fs.get("no_file.txt", 0, callbackFuture);
 		eventloop.run();
@@ -182,7 +182,7 @@ public class TestFileManager {
 
 	@Test
 	public void testDeleteFile() {
-		FileManager fs = new FileManager(eventloop, executor, storage);
+		FileManager fs = FileManager.create(eventloop, executor, storage);
 		assertTrue(exists(storage.resolve("2/3/a.txt")));
 
 		fs.delete("2/3/a.txt", ignoreCompletionCallback());
@@ -196,8 +196,8 @@ public class TestFileManager {
 
 	@Test
 	public void testDeleteFailed() throws Exception {
-		FileManager fs = new FileManager(eventloop, executor, storage);
-		CompletionCallbackFuture callbackFuture = new CompletionCallbackFuture();
+		FileManager fs = FileManager.create(eventloop, executor, storage);
+		CompletionCallbackFuture callbackFuture = CompletionCallbackFuture.create();
 
 		fs.delete("no_file.txt", callbackFuture);
 		eventloop.run();
@@ -223,11 +223,11 @@ public class TestFileManager {
 
 	@Test
 	public void testListFiles() throws Exception {
-		FileManager fs = new FileManager(eventloop, executor, storage);
+		FileManager fs = FileManager.create(eventloop, executor, storage);
 		List<String> expected = asList("1/a.txt", "1/b.txt", "2/3/a.txt", "2/b/d.txt", "2/b/e.txt");
 		List<String> actual;
 
-		ResultCallbackFuture<List<String>> callbackFuture = new ResultCallbackFuture<>();
+		ResultCallbackFuture<List<String>> callbackFuture = ResultCallbackFuture.create();
 
 		fs.scan(callbackFuture);
 		eventloop.run();

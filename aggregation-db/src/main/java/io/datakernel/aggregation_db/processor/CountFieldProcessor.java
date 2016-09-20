@@ -22,6 +22,10 @@ import io.datakernel.codegen.VarField;
 import static io.datakernel.codegen.Expressions.*;
 
 public final class CountFieldProcessor implements FieldProcessor {
+	private CountFieldProcessor() {}
+
+	public static CountFieldProcessor create() {return new CountFieldProcessor();}
+
 	@Override
 	public Expression getOnFirstItemExpression(VarField accumulator, Class<?> accumulatorClass,
 	                                           VarField firstValue, Class<?> valueClass) {

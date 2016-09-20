@@ -16,7 +16,7 @@
 
 package io.datakernel.cube.api;
 
-import io.datakernel.async.ParseException;
+import io.datakernel.exception.ParseException;
 import io.datakernel.http.AsyncHttpServlet;
 import io.datakernel.http.HttpRequest;
 

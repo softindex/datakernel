@@ -21,10 +21,12 @@ import java.util.concurrent.TimeUnit;
 import static io.datakernel.util.Preconditions.check;
 import static java.util.concurrent.TimeUnit.*;
 
-public class Stopwatch {
+public final class Stopwatch {
 	private boolean isRunning;
 	private long start;
 	private long nanos;
+
+	private Stopwatch() {}
 
 	public static Stopwatch createUnstarted() { return new Stopwatch(); }
 

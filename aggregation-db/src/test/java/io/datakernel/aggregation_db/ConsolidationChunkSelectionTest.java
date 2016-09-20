@@ -32,7 +32,7 @@ import static org.junit.Assert.assertNull;
 public class ConsolidationChunkSelectionTest {
 	@Test
 	public void testRangeExpansion() throws Exception {
-		AggregationMetadata am = new AggregationMetadata(singletonList(""), new ArrayList<String>());
+		AggregationMetadata am = AggregationMetadata.create(singletonList(""), new ArrayList<String>());
 		Set<AggregationChunk> chunks = newHashSet();
 		chunks.add(createTestChunk(1, 1, 2));
 		chunks.add(createTestChunk(2, 1, 2));
@@ -63,7 +63,7 @@ public class ConsolidationChunkSelectionTest {
 
 	@Test
 	public void testMinKeyStrategy() throws Exception {
-		AggregationMetadata am = new AggregationMetadata(singletonList(""), new ArrayList<String>());
+		AggregationMetadata am = AggregationMetadata.create(singletonList(""), new ArrayList<String>());
 
 		Set<AggregationChunk> chunks1 = newHashSet();
 		chunks1.add(createTestChunk(1, 1, 2));
@@ -86,7 +86,7 @@ public class ConsolidationChunkSelectionTest {
 
 	@Test
 	public void testSizeFixStrategy() throws Exception {
-		AggregationMetadata am = new AggregationMetadata(singletonList(""), new ArrayList<String>());
+		AggregationMetadata am = AggregationMetadata.create(singletonList(""), new ArrayList<String>());
 		int optimalChunkSize = 5;
 		int maxChunks = 5;
 
@@ -113,7 +113,7 @@ public class ConsolidationChunkSelectionTest {
 
 	@Test
 	public void testGroupingByPartition() throws Exception {
-		AggregationMetadata am = new AggregationMetadata(singletonList(""), new ArrayList<String>());
+		AggregationMetadata am = AggregationMetadata.create(singletonList(""), new ArrayList<String>());
 
 		Set<AggregationChunk> chunks1 = newHashSet();
 		chunks1.add(createTestChunk(2, 1, 1, 1, 1, 1, 5));
@@ -152,11 +152,11 @@ public class ConsolidationChunkSelectionTest {
 
 	private static AggregationChunk createTestChunk(int id, int d1Min, int d1Max, int d2Min, int d2Max, int d3Min,
 	                                                int d3Max) {
-		return new AggregationChunk(0, id, new ArrayList<String>(), PrimaryKey.ofArray(d1Min, d2Min, d3Min),
+		return AggregationChunk.create(0, id, new ArrayList<String>(), PrimaryKey.ofArray(d1Min, d2Min, d3Min),
 				PrimaryKey.ofArray(d1Max, d2Max, d3Max), 10);
 	}
 
 	private static AggregationChunk createTestChunk(int id, int min, int max, int count) {
-		return new AggregationChunk(0, id, new ArrayList<String>(), PrimaryKey.ofArray(min), PrimaryKey.ofArray(max), count);
+		return AggregationChunk.create(0, id, new ArrayList<String>(), PrimaryKey.ofArray(min), PrimaryKey.ofArray(max), count);
 	}
 }

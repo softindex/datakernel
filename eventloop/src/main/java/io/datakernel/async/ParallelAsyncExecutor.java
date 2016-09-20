@@ -27,14 +27,20 @@ public final class ParallelAsyncExecutor implements AsyncExecutor {
 
 	private int executing;
 
-	public ParallelAsyncExecutor(int maxParallelism) {
-		this(maxParallelism, Integer.MAX_VALUE);
-	}
-
-	public ParallelAsyncExecutor(int maxParallelism, int queueSaturationThreshold) {
+	// region builders
+	private ParallelAsyncExecutor(int maxParallelism, int queueSaturationThreshold) {
 		this.maxParallelism = maxParallelism;
 		this.queueSaturationThreshold = queueSaturationThreshold;
 	}
+
+	public static ParallelAsyncExecutor create(int maxParallelism) {
+		return new ParallelAsyncExecutor(maxParallelism, Integer.MAX_VALUE);
+	}
+
+	public ParallelAsyncExecutor withQueueSaturationThreshhold(int queueSaturationThreshhold) {
+		return new ParallelAsyncExecutor(maxParallelism, queueSaturationThreshhold);
+	}
+	// endregion
 
 	@Override
 	public void submit(AsyncTask asyncTask, CompletionCallback callback) {

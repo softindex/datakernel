@@ -38,7 +38,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.stream.file.StreamFileReader.readFileFrom;
-import static io.datakernel.stream.file.StreamFileWriter.create;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.nio.file.StandardOpenOption.*;
 
@@ -53,7 +52,7 @@ public final class FileManager {
 
 	private int readerBufferSize = 256 * (1 << 10);     // 256kb
 
-	public FileManager(Eventloop eventloop, ExecutorService executor, Path storagePath) {
+	private FileManager(Eventloop eventloop, ExecutorService executor, Path storagePath) {
 		this.eventloop = checkNotNull(eventloop);
 		this.executor = checkNotNull(executor);
 		this.storagePath = checkNotNull(storagePath);
@@ -65,6 +64,10 @@ public final class FileManager {
 				throw new AssertionError("Can't create storage directory");
 			}
 		}
+	}
+
+	public static FileManager create(Eventloop eventloop, ExecutorService executor, Path storagePath) {
+		return new FileManager(eventloop, executor, storagePath);
 	}
 
 	public void get(String fileName, final long startPosition, final ResultCallback<StreamFileReader> callback) {
@@ -89,7 +92,7 @@ public final class FileManager {
 					@Override
 					public void onResult(AsyncFile result) {
 						logger.trace("{} opened", result);
-						callback.onResult(create(eventloop, result, true));
+						callback.onResult(StreamFileWriter.create(eventloop, result, true));
 					}
 				});
 			}

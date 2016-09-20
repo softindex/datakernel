@@ -19,9 +19,14 @@ package io.datakernel.aggregation_db.processor;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.VarField;
 
-import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.codegen.Expressions.add;
+import static io.datakernel.codegen.Expressions.set;
 
 public final class SumFieldProcessor implements FieldProcessor {
+	private SumFieldProcessor() {}
+
+	public static SumFieldProcessor create() {return new SumFieldProcessor();}
+
 	@Override
 	public Expression getOnFirstItemExpression(VarField accumulator, Class<?> accumulatorClass,
 	                                           VarField firstValue, Class<?> valueClass) {

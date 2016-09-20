@@ -38,13 +38,13 @@ public final class ReportingQuery {
 	private Set<String> fields;
 	private Set<String> metadataFields;
 
-	public ReportingQuery() {
+	private ReportingQuery() {
 	}
 
-	public ReportingQuery(List<String> dimensions, List<String> measures, List<String> attributes,
-	                      AggregationQuery.Predicates filters, List<CubeQuery.Ordering> sort,
-	                      Integer limit, Integer offset, String searchString, Set<String> fields,
-	                      Set<String> metadataFields) {
+	private ReportingQuery(List<String> dimensions, List<String> measures, List<String> attributes,
+	                       AggregationQuery.Predicates filters, List<CubeQuery.Ordering> sort,
+	                       Integer limit, Integer offset, String searchString, Set<String> fields,
+	                       Set<String> metadataFields) {
 		this.dimensions = dimensions;
 		this.measures = measures;
 		this.attributes = attributes;
@@ -57,46 +57,56 @@ public final class ReportingQuery {
 		this.metadataFields = metadataFields;
 	}
 
-	public ReportingQuery dimensions(List<String> dimensions) {
+	public static ReportingQuery create(List<String> dimensions, List<String> measures, List<String> attributes,
+	                                    AggregationQuery.Predicates filters, List<CubeQuery.Ordering> sort,
+	                                    Integer limit, Integer offset, String searchString, Set<String> fields,
+	                                    Set<String> metadataFields) {
+		return new ReportingQuery(dimensions, measures, attributes, filters, sort, limit, offset,
+				searchString, fields, metadataFields);
+	}
+
+	public static ReportingQuery create() {return new ReportingQuery();}
+
+	public ReportingQuery withDimensions(List<String> dimensions) {
 		this.dimensions = dimensions;
 		return this;
 	}
 
-	public ReportingQuery dimensions(String... dimensions) {
-		return dimensions(asList(dimensions));
+	public ReportingQuery withDimensions(String... dimensions) {
+		return withDimensions(asList(dimensions));
 	}
 
 	public List<String> getDimensions() {
 		return dimensions;
 	}
 
-	public ReportingQuery measures(List<String> measures) {
+	public ReportingQuery withMeasures(List<String> measures) {
 		this.measures = measures;
 		return this;
 	}
 
-	public ReportingQuery measures(String... measures) {
-		return measures(asList(measures));
+	public ReportingQuery withMeasures(String... measures) {
+		return withMeasures(asList(measures));
 	}
 
 	public List<String> getMeasures() {
 		return measures;
 	}
 
-	public ReportingQuery attributes(List<String> attributes) {
+	public ReportingQuery withAttributes(List<String> attributes) {
 		this.attributes = attributes;
 		return this;
 	}
 
-	public ReportingQuery attributes(String... attributes) {
-		return attributes(asList(attributes));
+	public ReportingQuery withAttributes(String... attributes) {
+		return withAttributes(asList(attributes));
 	}
 
 	public List<String> getAttributes() {
 		return attributes;
 	}
 
-	public ReportingQuery filters(AggregationQuery.Predicates filters) {
+	public ReportingQuery withFilters(AggregationQuery.Predicates filters) {
 		this.filters = filters;
 		return this;
 	}
@@ -105,20 +115,20 @@ public final class ReportingQuery {
 		return filters;
 	}
 
-	public ReportingQuery sort(List<CubeQuery.Ordering> sort) {
+	public ReportingQuery withSort(List<CubeQuery.Ordering> sort) {
 		this.sort = sort;
 		return this;
 	}
 
-	public ReportingQuery sort(CubeQuery.Ordering... sort) {
-		return sort(asList(sort));
+	public ReportingQuery withSort(CubeQuery.Ordering... sort) {
+		return withSort(asList(sort));
 	}
 
 	public List<CubeQuery.Ordering> getSort() {
 		return sort;
 	}
 
-	public ReportingQuery limit(Integer limit) {
+	public ReportingQuery withLimit(Integer limit) {
 		this.limit = limit;
 		return this;
 	}
@@ -127,7 +137,7 @@ public final class ReportingQuery {
 		return limit;
 	}
 
-	public ReportingQuery offset(Integer offset) {
+	public ReportingQuery withOffset(Integer offset) {
 		this.offset = offset;
 		return this;
 	}
@@ -136,7 +146,7 @@ public final class ReportingQuery {
 		return offset;
 	}
 
-	public ReportingQuery search(String searchString) {
+	public ReportingQuery withSearch(String searchString) {
 		this.searchString = searchString;
 		return this;
 	}
@@ -145,26 +155,26 @@ public final class ReportingQuery {
 		return searchString;
 	}
 
-	public ReportingQuery fields(Set<String> fields) {
+	public ReportingQuery withFields(Set<String> fields) {
 		this.fields = fields;
 		return this;
 	}
 
-	public ReportingQuery fields(String... fields) {
-		return fields(newHashSet(fields));
+	public ReportingQuery withFields(String... fields) {
+		return withFields(newHashSet(fields));
 	}
 
 	public Set<String> getFields() {
 		return fields;
 	}
 
-	public ReportingQuery metadataFields(Set<String> metadataFields) {
+	public ReportingQuery withMetadataFields(Set<String> metadataFields) {
 		this.metadataFields = metadataFields;
 		return this;
 	}
 
-	public ReportingQuery metadataFields(String... metadataFields) {
-		return metadataFields(newHashSet(metadataFields));
+	public ReportingQuery withMetadataFields(String... metadataFields) {
+		return withMetadataFields(newHashSet(metadataFields));
 	}
 
 	public Set<String> getMetadataFields() {

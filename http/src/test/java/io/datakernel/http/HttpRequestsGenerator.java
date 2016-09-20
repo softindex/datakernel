@@ -17,16 +17,15 @@
 package io.datakernel.http;
 
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.util.ByteBufStrings;
+import io.datakernel.exception.ParseException;
 import io.datakernel.util.Stopwatch;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
-import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
 import static io.datakernel.util.Preconditions.*;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -156,9 +155,8 @@ public final class HttpRequestsGenerator {
 
 		this.eventloop = checkNotNull(eventloop);
 		this.options = checkNotNull(options);
-		this.client = new AsyncHttpClient(eventloop,
-				new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
-						3_000L, HttpUtils.inetAddress("8.8.8.8")));
+		this.client = AsyncHttpClient.create(eventloop,
+				NativeDnsResolver.create(eventloop).withDnsServerAddress(HttpUtils.inetAddress("8.8.8.8")));
 		this.completionCallback = checkNotNull(completionCallback);
 	}
 
@@ -247,7 +245,7 @@ public final class HttpRequestsGenerator {
 			return;
 		info(options);
 
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		HttpRequestsGenerator generator = new HttpRequestsGenerator(eventloop, options, ignoreCompletionCallback());
 		generator.start();

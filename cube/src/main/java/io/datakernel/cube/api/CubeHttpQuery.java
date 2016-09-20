@@ -32,46 +32,50 @@ public final class CubeHttpQuery {
 	private Integer limit;
 	private Integer offset;
 
-	public CubeHttpQuery dimensions(List<String> dimensions) {
+	private CubeHttpQuery() {}
+
+	public static CubeHttpQuery createCubeHttpQuery() {return new CubeHttpQuery();}
+
+	public CubeHttpQuery withDimensions(List<String> dimensions) {
 		this.dimensions = dimensions;
 		return this;
 	}
 
-	public CubeHttpQuery dimensions(String... dimensions) {
-		return dimensions(asList(dimensions));
+	public CubeHttpQuery withDimensions(String... dimensions) {
+		return withDimensions(asList(dimensions));
 	}
 
 	public List<String> getDimensions() {
 		return dimensions;
 	}
 
-	public CubeHttpQuery measures(List<String> measures) {
+	public CubeHttpQuery withMeasures(List<String> measures) {
 		this.measures = measures;
 		return this;
 	}
 
-	public CubeHttpQuery measures(String... measures) {
-		return measures(asList(measures));
+	public CubeHttpQuery withMeasures(String... measures) {
+		return withMeasures(asList(measures));
 	}
 
 	public List<String> getMeasures() {
 		return measures;
 	}
 
-	public CubeHttpQuery attributes(List<String> attributes) {
+	public CubeHttpQuery withAttributes(List<String> attributes) {
 		this.attributes = attributes;
 		return this;
 	}
 
-	public CubeHttpQuery attributes(String... attributes) {
-		return measures(asList(attributes));
+	public CubeHttpQuery withAttributes(String... attributes) {
+		return withMeasures(asList(attributes));
 	}
 
 	public List<String> getAttributes() {
 		return attributes;
 	}
 
-	public CubeHttpQuery filters(AggregationQuery.Predicates filters) {
+	public CubeHttpQuery withFilters(AggregationQuery.Predicates filters) {
 		this.filters = filters;
 		return this;
 	}
@@ -80,7 +84,7 @@ public final class CubeHttpQuery {
 		return filters;
 	}
 
-	public CubeHttpQuery sort(CubeQuery.Ordering sort) {
+	public CubeHttpQuery withSort(CubeQuery.Ordering sort) {
 		this.sort = sort;
 		return this;
 	}
@@ -89,7 +93,7 @@ public final class CubeHttpQuery {
 		return sort;
 	}
 
-	public CubeHttpQuery limit(Integer limit) {
+	public CubeHttpQuery withLimit(Integer limit) {
 		this.limit = limit;
 		return this;
 	}
@@ -98,7 +102,7 @@ public final class CubeHttpQuery {
 		return limit;
 	}
 
-	public CubeHttpQuery offset(Integer offset) {
+	public CubeHttpQuery withOffset(Integer offset) {
 		this.offset = offset;
 		return this;
 	}

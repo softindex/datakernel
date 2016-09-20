@@ -28,6 +28,9 @@ import io.datakernel.datagraph.server.command.DatagraphResponse;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.InetAddressRange;
+import io.datakernel.net.ServerSocketSettings;
+import io.datakernel.net.SocketSettings;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamForwarder;
@@ -38,8 +41,13 @@ import io.datakernel.stream.processor.StreamBinarySerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.SSLContext;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.stream.net.MessagingSerializers.ofGson;
 
@@ -63,6 +71,8 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 		void onCommand(MessagingWithBinaryStreaming<I, O> messaging, I command);
 	}
 
+	// region builders
+
 	/**
 	 * Constructs a datagraph server with the given environment that runs in the specified event loop.
 	 *
@@ -77,6 +87,32 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 		this.serializer = ofGson(serialization.gson, DatagraphCommand.class, serialization.gson, DatagraphResponse.class);
 	}
 
+	private DatagraphServer(Eventloop eventloop, ServerSocketSettings serverSocketSettings, SocketSettings socketSettings,
+	                        boolean acceptOnce,
+	                        Collection<InetSocketAddress> listenAddresses,
+	                        InetAddressRange range, Collection<InetAddress> bannedAddresses,
+	                        SSLContext sslContext, ExecutorService sslExecutor,
+	                        Collection<InetSocketAddress> sslListenAddresses,
+	                        DatagraphServer previousInstance) {
+		super(eventloop, serverSocketSettings, socketSettings, acceptOnce, listenAddresses,
+				range, bannedAddresses, sslContext, sslExecutor, sslListenAddresses);
+		this.environment = previousInstance.environment;
+		this.environment.set(DatagraphServer.class, this);
+		this.serializer = previousInstance.serializer;
+	}
+
+	@Override
+	protected DatagraphServer recreate(Eventloop eventloop, ServerSocketSettings serverSocketSettings, SocketSettings socketSettings,
+	                                   boolean acceptOnce,
+	                                   Collection<InetSocketAddress> listenAddresses,
+	                                   InetAddressRange range, Collection<InetAddress> bannedAddresses,
+	                                   SSLContext sslContext, ExecutorService sslExecutor,
+	                                   Collection<InetSocketAddress> sslListenAddresses) {
+		return new DatagraphServer(eventloop, serverSocketSettings, socketSettings, acceptOnce, listenAddresses,
+				range, bannedAddresses, sslContext, sslExecutor, sslListenAddresses, this);
+	}
+	// endregion
+
 	private class DownloadCommandHandler implements CommandHandler<DatagraphCommandDownload, DatagraphResponse> {
 		@Override
 		public void onCommand(final MessagingWithBinaryStreaming<DatagraphCommandDownload, DatagraphResponse> messaging, DatagraphCommandDownload command) {
@@ -86,7 +122,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 				logger.info("onDownload: transferring {}, pending downloads: {}", streamId, pendingStreams.size());
 			} else {
 				logger.info("onDownload: waiting {}, pending downloads: {}", streamId, pendingStreams.size());
-				forwarder = new StreamForwarder<>(eventloop);
+				forwarder = StreamForwarder.create(eventloop);
 				pendingStreams.put(streamId, forwarder);
 			}
 			messaging.sendBinaryStreamFrom(forwarder.getOutput(), new CompletionCallback() {
@@ -119,7 +155,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 	public <T> StreamConsumer<T> upload(final StreamId streamId, Class<T> type) {
 		BufferSerializer<T> serializer = environment.getInstance(DatagraphSerialization.class).getSerializer(type);
 
-		StreamBinarySerializer<T> streamSerializer = new StreamBinarySerializer<>(eventloop, serializer, 256 * 1024, StreamBinarySerializer.MAX_SIZE, 1000, false);
+		StreamBinarySerializer<T> streamSerializer = StreamBinarySerializer.create(eventloop, serializer, 256 * 1024, StreamBinarySerializer.MAX_SIZE, 1000, false);
 		streamSerializer.setTag(streamId);
 
 		StreamForwarder<ByteBuf> forwarder = pendingStreams.remove(streamId);
@@ -127,7 +163,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 			logger.info("onUpload: transferring {}, pending downloads: {}", streamId, pendingStreams.size());
 		} else {
 			logger.info("onUpload: waiting {}, pending downloads: {}", streamId, pendingStreams.size());
-			forwarder = new StreamForwarder<>(eventloop);
+			forwarder = StreamForwarder.create(eventloop);
 			pendingStreams.put(streamId, forwarder);
 		}
 		streamSerializer.getOutput().streamTo(forwarder.getInput());
@@ -136,7 +172,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 
 	@Override
 	protected final AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
-		final MessagingWithBinaryStreaming<DatagraphCommand, DatagraphResponse> messaging = new MessagingWithBinaryStreaming<>(eventloop, asyncTcpSocket, serializer);
+		final MessagingWithBinaryStreaming<DatagraphCommand, DatagraphResponse> messaging = MessagingWithBinaryStreaming.create(eventloop, asyncTcpSocket, serializer);
 		messaging.receive(new Messaging.ReceiveMessageCallback<DatagraphCommand>() {
 			@Override
 			public void onReceive(DatagraphCommand msg) {

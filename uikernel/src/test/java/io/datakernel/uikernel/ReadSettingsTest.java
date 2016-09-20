@@ -17,7 +17,7 @@
 package io.datakernel.uikernel;
 
 import com.google.gson.Gson;
-import io.datakernel.async.ParseException;
+import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpRequest;
 import org.junit.Test;
 

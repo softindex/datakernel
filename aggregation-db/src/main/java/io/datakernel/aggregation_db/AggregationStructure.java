@@ -20,7 +20,8 @@ import com.google.common.base.Function;
 import com.google.common.base.MoreObjects;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.keytype.KeyType;
-import io.datakernel.codegen.*;
+import io.datakernel.codegen.ClassBuilder;
+import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
@@ -53,12 +54,16 @@ public class AggregationStructure {
 	/**
 	 * Constructs a new aggregation structure with the given class loader, keys and fields.
 	 *
-	 * @param keys        map of aggregation keys (key is key name)
-	 * @param fields      map of aggregation fields (key is field name)
+	 * @param keys   map of aggregation keys (key is key name)
+	 * @param fields map of aggregation fields (key is field name)
 	 */
-	public AggregationStructure(Map<String, KeyType> keys, Map<String, FieldType> fields) {
+	private AggregationStructure(Map<String, KeyType> keys, Map<String, FieldType> fields) {
 		this.keys = new LinkedHashMap<>(keys);
 		this.fields = new LinkedHashMap<>(fields);
+	}
+
+	public static AggregationStructure create(Map<String, KeyType> keys, Map<String, FieldType> fields) {
+		return new AggregationStructure(keys, fields);
 	}
 
 	public Map<String, KeyType> getKeys() {
@@ -87,81 +92,82 @@ public class AggregationStructure {
 
 	public Class<?> createKeyClass(List<String> keys, DefiningClassLoader classLoader) {
 		logger.trace("Creating key class for keys {}", keys);
-		AsmBuilder builder = new AsmBuilder(classLoader, Comparable.class);
+		ClassBuilder builder = ClassBuilder.create(classLoader, Comparable.class);
 		for (String key : keys) {
 			KeyType d = this.keys.get(key);
-			builder.field(key, d.getDataType());
+			builder = builder.withField(key, d.getDataType());
 		}
-		builder.method("compareTo", compareTo(keys));
-		builder.method("equals", asEquals(keys));
-		builder.method("hashCode", hashCodeOfThis(keys));
-		builder.method("toString", asString(keys));
+		builder = builder
+				.withMethod("compareTo", compareTo(keys))
+				.withMethod("equals", asEquals(keys))
+				.withMethod("hashCode", hashCodeOfThis(keys))
+				.withMethod("toString", asString(keys));
 
-		return builder.defineClass();
+		return builder.build();
 	}
 
 	public static Comparator createKeyComparator(Class<?> recordClass, List<String> keys, DefiningClassLoader classLoader) {
-		AsmBuilder<Comparator> builder = new AsmBuilder<>(classLoader, Comparator.class);
-		ExpressionComparator comparator = comparator();
-
-		for (String key : keys) {
-			comparator.add(getter(cast(arg(0), recordClass), key), getter(cast(arg(1), recordClass), key));
-		}
-
-		builder.method("compare", comparator);
-
-		return builder.newInstance();
+		Expression comparator = compare(recordClass, keys);
+		ClassBuilder<Comparator> builder = ClassBuilder.create(classLoader, Comparator.class)
+				.withMethod("compare", comparator);
+		return builder.buildClassAndCreateNewInstance();
 	}
 
 	public static StreamMap.MapperProjection createMapper(Class<?> recordClass, Class<?> resultClass, List<String> keys,
 	                                                      List<String> fields, DefiningClassLoader classLoader) {
-		AsmBuilder<StreamMap.MapperProjection> builder = new AsmBuilder<>(classLoader, StreamMap.MapperProjection.class);
 		Expression result = let(constructor(resultClass));
-		ExpressionSequence applyDef = sequence(result);
+		List<Expression> expressions = new ArrayList<>();
+		expressions.add(result);
 		for (String fieldName : concat(keys, fields)) {
-			applyDef.add(set(
+			expressions.add(set(
 					getter(result, fieldName),
 					getter(cast(arg(0), recordClass), fieldName)));
 		}
-		applyDef.add(result);
-		builder.method("apply", applyDef);
-		return builder.newInstance();
+		expressions.add(result);
+		Expression applyDef = sequence(expressions);
+		ClassBuilder<StreamMap.MapperProjection> builder =
+				ClassBuilder.create(classLoader, StreamMap.MapperProjection.class)
+						.withMethod("apply", applyDef);
+		return builder.buildClassAndCreateNewInstance();
 	}
 
 	public static Function createKeyFunction(Class<?> recordClass, Class<?> keyClass, List<String> keys,
 	                                         DefiningClassLoader classLoader) {
 		logger.trace("Creating key function for keys {}", keys);
-		AsmBuilder factory = new AsmBuilder<>(classLoader, Function.class);
 		Expression key = let(constructor(keyClass));
-		ExpressionSequence applyDef = sequence(key);
+		List<Expression> expressions = new ArrayList<>();
+		expressions.add(key);
 		for (String keyString : keys) {
-			applyDef.add(set(
+			expressions.add(set(
 					getter(key, keyString),
 					getter(cast(arg(0), recordClass), keyString)));
 		}
-		applyDef.add(key);
-		factory.method("apply", applyDef);
-		return (Function) factory.newInstance();
+		expressions.add(key);
+		Expression applyDef = sequence(expressions);
+		ClassBuilder factory = ClassBuilder.create(classLoader, Function.class)
+				.withMethod("apply", applyDef);
+		return (Function) factory.buildClassAndCreateNewInstance();
 	}
 
 	public Class<?> createRecordClass(List<String> keys, List<String> fields, DefiningClassLoader classLoader) {
 		logger.trace("Creating record class for keys {}, fields {}", keys, fields);
-		AsmBuilder<Object> builder = new AsmBuilder<>(classLoader, Object.class);
+		ClassBuilder<Object> builder = ClassBuilder.create(classLoader, Object.class);
 		for (String key : keys) {
 			KeyType d = this.keys.get(key);
-			builder.field(key, d.getDataType());
+			builder = builder.withField(key, d.getDataType());
 		}
 		for (String field : fields) {
 			FieldType m = this.fields.get(field);
-			builder.field(field, m.getDataType());
+			builder = builder.withField(field, m.getDataType());
 		}
-		builder.method("toString", asString(newArrayList(concat(keys, fields))));
-		return builder.defineClass();
+		return builder
+				.withMethod("toString", asString(newArrayList(concat(keys, fields))))
+				.build();
 	}
 
 	public Class<?> createResultClass(AggregationQuery query, DefiningClassLoader classLoader) {
 		logger.trace("Creating result class for query {}", query.toString());
-		AsmBuilder<Object> builder = new AsmBuilder<>(classLoader, Object.class);
+		ClassBuilder<Object> builder = ClassBuilder.create(classLoader, Object.class);
 		List<String> resultKeys = query.getResultKeys();
 		List<String> resultFields = query.getResultFields();
 		for (String key : resultKeys) {
@@ -169,17 +175,18 @@ public class AggregationStructure {
 			if (keyType == null) {
 				throw new AggregationException("Key with the name '" + key + "' not found.");
 			}
-			builder.field(key, keyType.getDataType());
+			builder = builder.withField(key, keyType.getDataType());
 		}
 		for (String field : resultFields) {
 			FieldType fieldType = this.fields.get(field);
 			if (fieldType == null) {
 				throw new AggregationException("Field with the name '" + field + "' not found.");
 			}
-			builder.field(field, fieldType.getDataType());
+			builder = builder.withField(field, fieldType.getDataType());
 		}
-		builder.method("toString", asString(newArrayList(concat(resultKeys, resultFields))));
-		return builder.defineClass();
+		return builder
+				.withMethod("toString", asString(newArrayList(concat(resultKeys, resultFields))))
+				.build();
 	}
 
 	public <T> BufferSerializer<T> createBufferSerializer(Class<T> recordClass, List<String> keys, List<String> fields,
@@ -203,7 +210,7 @@ public class AggregationStructure {
 				throw propagate(e);
 			}
 		}
-		return SerializerBuilder.newDefaultInstance(classLoader).create(serializerGenClass);
+		return SerializerBuilder.create(classLoader).build(serializerGenClass);
 	}
 
 	@Override

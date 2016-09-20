@@ -39,7 +39,7 @@ public final class RpcStrategyList {
 		checkArgument(addresses.size() > 0, "at least one address must be present");
 		List<RpcStrategy> subSenders = new ArrayList<>();
 		for (InetSocketAddress address : addresses) {
-			subSenders.add(new RpcStrategySingleServer(address));
+			subSenders.add(RpcStrategySingleServer.create(address));
 		}
 		return new RpcStrategyList(subSenders);
 	}

@@ -28,7 +28,7 @@ import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static org.junit.Assert.*;
 
 public class ProducerOfValueTest {
-	Eventloop eventloop = new Eventloop();
+	Eventloop eventloop = Eventloop.create();
 
 	String TEST_STRING = "Hello consumer";
 	Integer TEST_INT = 777;

@@ -30,11 +30,19 @@ final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> impleme
 
 	private long writeTick;
 
-	public SocketStreamConsumer(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, CompletionCallback completionCallback) {
+	// region creators
+	private SocketStreamConsumer(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
+	                             CompletionCallback completionCallback) {
 		super(eventloop);
 		this.asyncTcpSocket = asyncTcpSocket;
 		this.completionCallback = completionCallback;
 	}
+
+	public static SocketStreamConsumer create(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
+	                                          CompletionCallback completionCallback) {
+		return new SocketStreamConsumer(eventloop, asyncTcpSocket, completionCallback);
+	}
+	// endregion
 
 	@Override
 	public StreamDataReceiver<ByteBuf> getDataReceiver() {

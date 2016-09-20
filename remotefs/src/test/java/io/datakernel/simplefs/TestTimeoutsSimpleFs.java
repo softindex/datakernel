@@ -41,18 +41,18 @@ public class TestTimeoutsSimpleFs {
 	@Test
 	public void testUploadTimeout() throws ExecutionException, InterruptedException, IOException {
 		InetSocketAddress address = new InetSocketAddress(7010);
-		Eventloop eventloop = new Eventloop();
-		SimpleFsClient client = new SimpleFsClient(eventloop, address);
+		Eventloop eventloop = Eventloop.create();
+		SimpleFsClient client = SimpleFsClient.create(eventloop, address);
 
 		final ExecutorService serverExecutor = Executors.newFixedThreadPool(2);
-		final SimpleFsServer server = new SimpleFsServer(eventloop, serverExecutor, storagePath)
-				.socketSettings(SocketSettings.defaultSocketSettings().readTimeout(1L))
-				.acceptOnce()
-				.setListenPort(7010);
+		final SimpleFsServer server = SimpleFsServer.create(eventloop, serverExecutor, storagePath)
+				.withSocketSettings(SocketSettings.defaultSocketSettings().withReadTimeout(1L))
+				.withAcceptOnce()
+				.withListenPort(7010);
 
 		server.listen();
 
-		CompletionCallbackFuture callback = new CompletionCallbackFuture();
+		CompletionCallbackFuture callback = CompletionCallbackFuture.create();
 
 		client.upload("fileName.txt", StreamProducers.ofValue(eventloop, ByteBuf.wrapForReading(BIG_FILE)), callback);
 

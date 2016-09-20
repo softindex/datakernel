@@ -46,6 +46,50 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T>, Eventl
 
 	private InputConsumer inputConsumer;
 
+	// region creators
+	private StreamSorter(Eventloop eventloop, StreamMergeSorterStorage<T> storage,
+	                     final Function<T, K> keyFunction, final Comparator<K> keyComparator, boolean deduplicate,
+	                     int itemsInMemorySize) {
+		checkArgument(itemsInMemorySize > 0, "itemsInMemorySize must be positive value, got %s", itemsInMemorySize);
+		checkNotNull(keyComparator);
+		checkNotNull(keyFunction);
+		checkNotNull(storage);
+
+		this.eventloop = eventloop;
+
+		Comparator<T> itemComparator = new Comparator<T>() {
+			private final Function<T, K> _keyFunction = keyFunction;
+			private final Comparator<K> _keyComparator = keyComparator;
+
+			@Override
+			public int compare(T item1, T item2) {
+				K key1 = _keyFunction.apply(item1);
+				K key2 = _keyFunction.apply(item2);
+				return _keyComparator.compare(key1, key2);
+			}
+		};
+
+		this.inputConsumer = new InputConsumer(eventloop, itemsInMemorySize, itemComparator, storage,
+				StreamMerger.create(eventloop, keyFunction, keyComparator, deduplicate), deduplicate);
+	}
+
+	/**
+	 * Creates a new instance of StreamSorter
+	 *
+	 * @param eventloop         event loop in which StreamSorter will run
+	 * @param storage           storage for storing elements which was no placed to RAM
+	 * @param keyFunction       function for searching key
+	 * @param keyComparator     comparator for comparing key
+	 * @param deduplicate       if it is true it means that in result will be not objects with same key
+	 * @param itemsInMemorySize size of elements which can be saved in RAM before sorting
+	 */
+	public static <K, T> StreamSorter<K, T> create(Eventloop eventloop, StreamMergeSorterStorage<T> storage,
+	                                               final Function<T, K> keyFunction, final Comparator<K> keyComparator, boolean deduplicate,
+	                                               int itemsInMemorySize) {
+		return new StreamSorter<>(eventloop, storage, keyFunction, keyComparator, deduplicate, itemsInMemorySize);
+	}
+	// endregion
+
 	private final class InputConsumer extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
 		private final StreamMergeSorterStorage<T> storage;
 		private final Comparator<T> itemComparator;
@@ -68,7 +112,7 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T>, Eventl
 			this.merger = merger;
 			this.list = new ArrayList<>();
 			this.listOfPartitions = new ArrayList<>();
-			this.forwarder = new StreamForwarder<>(eventloop);
+			this.forwarder = StreamForwarder.create(eventloop);
 			this.deduplicate = deduplicate;
 		}
 
@@ -183,42 +227,6 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T>, Eventl
 		public void closeWithError(Exception e) {
 			super.closeWithError(e);
 		}
-	}
-
-	/**
-	 * Creates a new instance of StreamSorter
-	 *
-	 * @param eventloop         event loop in which StreamSorter will run
-	 * @param storage           storage for storing elements which was no placed to RAM
-	 * @param keyFunction       function for searching key
-	 * @param keyComparator     comparator for comparing key
-	 * @param deduplicate       if it is true it means that in result will be not objects with same key
-	 * @param itemsInMemorySize size of elements which can be saved in RAM before sorting
-	 */
-	public StreamSorter(Eventloop eventloop, StreamMergeSorterStorage<T> storage,
-	                    final Function<T, K> keyFunction, final Comparator<K> keyComparator, boolean deduplicate,
-	                    int itemsInMemorySize) {
-		checkArgument(itemsInMemorySize > 0, "itemsInMemorySize must be positive value, got %s", itemsInMemorySize);
-		checkNotNull(keyComparator);
-		checkNotNull(keyFunction);
-		checkNotNull(storage);
-
-		this.eventloop = eventloop;
-
-		Comparator<T> itemComparator = new Comparator<T>() {
-			private final Function<T, K> _keyFunction = keyFunction;
-			private final Comparator<K> _keyComparator = keyComparator;
-
-			@Override
-			public int compare(T item1, T item2) {
-				K key1 = _keyFunction.apply(item1);
-				K key2 = _keyFunction.apply(item2);
-				return _keyComparator.compare(key1, key2);
-			}
-		};
-
-		this.inputConsumer = new InputConsumer(eventloop, itemsInMemorySize, itemComparator, storage,
-				StreamMerger.streamMerger(eventloop, keyFunction, keyComparator, deduplicate), deduplicate);
 	}
 
 	@Override

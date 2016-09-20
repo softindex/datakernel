@@ -19,6 +19,10 @@ package io.datakernel.http;
 import io.datakernel.annotation.Nullable;
 
 public final class ExposedLinkedList<T> {
+	private ExposedLinkedList() {}
+
+	public static <T> ExposedLinkedList<T> create() {return new ExposedLinkedList<T>();}
+
 	public static final class Node<T> {
 		final T value;
 		Node<T> prev;

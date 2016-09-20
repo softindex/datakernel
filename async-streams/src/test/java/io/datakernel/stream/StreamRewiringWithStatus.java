@@ -40,7 +40,7 @@ public class StreamRewiringWithStatus {
 	@Before
 	public void before() {
 		it = asList(1, 2, 3, 4, 5).iterator();
-		eventloop = new Eventloop();
+		eventloop = Eventloop.create();
 		list = new ArrayList<>();
 	}
 

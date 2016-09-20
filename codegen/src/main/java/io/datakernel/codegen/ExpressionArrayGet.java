@@ -19,7 +19,7 @@ package io.datakernel.codegen;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-public class ExpressionArrayGet implements Expression {
+final class ExpressionArrayGet implements Expression {
 	private final Expression array;
 	private final Expression nom;
 

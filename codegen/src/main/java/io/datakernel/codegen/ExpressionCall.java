@@ -31,7 +31,7 @@ import static org.objectweb.asm.Type.getType;
 /**
  * Defines methods for using static methods from other classes
  */
-public final class ExpressionCall implements Expression {
+final class ExpressionCall implements Expression {
 	private final Expression owner;
 	private final String methodName;
 	private final List<Expression> arguments = new ArrayList<>();

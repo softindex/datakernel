@@ -37,6 +37,14 @@ public final class StreamMerger<K, T> extends AbstractStreamReducer<K, T, Void> 
 	private final Function<T, K> keyFunction;
 	private final StreamReducers.Reducer<K, T, T, Void> reducer;
 
+	// region creators
+	private StreamMerger(Eventloop eventloop, Function<T, K> keyFunction, Comparator<K> keyComparator,
+	                     boolean deduplicate) {
+		super(eventloop, keyComparator);
+		this.keyFunction = checkNotNull(keyFunction);
+		this.reducer = deduplicate ? StreamReducers.<K, T>mergeDeduplicateReducer() : StreamReducers.<K, T>mergeSortReducer();
+	}
+
 	/**
 	 * Returns new instance of StreamMerger
 	 *
@@ -47,25 +55,12 @@ public final class StreamMerger<K, T> extends AbstractStreamReducer<K, T, Void> 
 	 * @param <K>           type of key for mapping
 	 * @param <T>           type of output data
 	 */
-	public static <K, T> StreamMerger<K, T> streamMerger(Eventloop eventloop, Function<T, K> keyFunction, Comparator<K> keyComparator,
-	                                                     boolean deduplicate) {
-		return new StreamMerger<>(eventloop, keyFunction, keyComparator, deduplicate);
+	public static <K, T> StreamMerger<K, T> create(Eventloop eventloop, Function<T, K> keyFunction,
+	                                               Comparator<K> keyComparator,
+	                                               boolean deduplicate) {
+		return new StreamMerger<K, T>(eventloop, keyFunction, keyComparator, deduplicate);
 	}
-
-	/**
-	 * Creates a new instance of StreamMerger
-	 *
-	 * @param eventloop     eventloop in which runs reducer
-	 * @param keyComparator comparator for compare keys
-	 * @param keyFunction   function for counting key
-	 * @param deduplicate   if it is true it means that in result will be not objects with same key
-	 */
-	public StreamMerger(Eventloop eventloop, Function<T, K> keyFunction, Comparator<K> keyComparator,
-	                    boolean deduplicate) {
-		super(eventloop, keyComparator);
-		this.keyFunction = checkNotNull(keyFunction);
-		this.reducer = deduplicate ? StreamReducers.<K, T>mergeDeduplicateReducer() : StreamReducers.<K, T>mergeSortReducer();
-	}
+	// endregion
 
 	/**
 	 * Adds new consumer to  StreamMerger

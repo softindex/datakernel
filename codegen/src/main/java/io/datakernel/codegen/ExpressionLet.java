@@ -20,7 +20,7 @@ import org.objectweb.asm.Type;
 
 import static io.datakernel.codegen.Utils.newLocal;
 
-public class ExpressionLet implements Variable {
+final class ExpressionLet implements Variable {
 	private final Expression field;
 	private VarLocal var;
 

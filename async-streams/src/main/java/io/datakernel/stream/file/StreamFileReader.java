@@ -51,7 +51,7 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 	private boolean pendingAsyncOperation;
 	private ResultCallback<Long> positionCallback;
 
-	// creators
+	// region creators
 	private StreamFileReader(Eventloop eventloop, AsyncFile asyncFile,
 	                         int bufferSize, long position, long length) {
 		super(eventloop);
@@ -87,8 +87,9 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 	public static StreamFileReader readFileFully(Eventloop eventloop, AsyncFile asyncFile, int bufferSize) {
 		return new StreamFileReader(eventloop, asyncFile, bufferSize, 0, Long.MAX_VALUE);
 	}
+	// endregion
 
-	// api
+	// region api
 	public void setPositionCallback(ResultCallback<Long> positionCallback) {
 		if (getProducerStatus().isOpen()) {
 			this.positionCallback = positionCallback;
@@ -104,8 +105,9 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 	public long getPosition() {
 		return position;
 	}
+	// endregion
 
-	// functional
+	// region functional
 	protected void doFlush() {
 		if (getProducerStatus().isClosed()) {
 			return;
@@ -233,5 +235,6 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 				(pendingAsyncOperation ? ", pendingAsyncOperation" : "") +
 				'}';
 	}
+	// endregion
 }
 

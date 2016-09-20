@@ -51,7 +51,7 @@ public class JmxMBeansAttributeReducersTest {
 
 		@Override
 		public Eventloop getEventloop() {
-			return new Eventloop();
+			return Eventloop.create();
 		}
 	}
 

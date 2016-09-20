@@ -93,7 +93,7 @@ public class DatagraphServerTest {
 		InetSocketAddress address1 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1511);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1512);
 
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 		StreamConsumers.ToList<TestItem> result1 = new StreamConsumers.ToList<>(eventloop);
 		StreamConsumers.ToList<TestItem> result2 = new StreamConsumers.ToList<>(eventloop);
 
@@ -107,9 +107,9 @@ public class DatagraphServerTest {
 				.set("result", result2);
 
 		final DatagraphServer server1 = new DatagraphServer(eventloop, environment1)
-				.setListenAddress(address1);
+				.withListenAddress(address1);
 		final DatagraphServer server2 = new DatagraphServer(eventloop, environment2)
-				.setListenAddress(address2);
+				.withListenAddress(address2);
 
 		DatagraphClient client = new DatagraphClient(eventloop, serialization);
 		Partition partition1 = new RemotePartition(client, address1);
@@ -156,7 +156,7 @@ public class DatagraphServerTest {
 		InetSocketAddress address1 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1511);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1512);
 
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 		StreamConsumers.ToList<TestItem> result1 = new StreamConsumers.ToList<>(eventloop);
 		StreamConsumers.ToList<TestItem> result2 = new StreamConsumers.ToList<>(eventloop);
 
@@ -172,9 +172,9 @@ public class DatagraphServerTest {
 				.set("items", asList(new TestItem(1), new TestItem(6)))
 				.set("result", result2);
 		final DatagraphServer server1 = new DatagraphServer(eventloop, environment1)
-				.setListenAddress(address1);
+				.withListenAddress(address1);
 		final DatagraphServer server2 = new DatagraphServer(eventloop, environment2)
-				.setListenAddress(address2);
+				.withListenAddress(address2);
 
 		Partition partition1 = new RemotePartition(client, address1);
 		Partition partition2 = new RemotePartition(client, address2);
@@ -221,7 +221,7 @@ public class DatagraphServerTest {
 		InetSocketAddress address1 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1511);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1512);
 
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 		DatagraphClient client = new DatagraphClient(eventloop, serialization);
 		StreamConsumers.ToList<TestItem> result1 = new StreamConsumers.ToList<>(eventloop);
 		StreamConsumers.ToList<TestItem> result2 = new StreamConsumers.ToList<>(eventloop);
@@ -240,9 +240,9 @@ public class DatagraphServerTest {
 				.set("result", result2);
 
 		final DatagraphServer server1 = new DatagraphServer(eventloop, environment1)
-				.setListenAddress(address1);
+				.withListenAddress(address1);
 		final DatagraphServer server2 = new DatagraphServer(eventloop, environment2)
-				.setListenAddress(address2);
+				.withListenAddress(address2);
 
 		Partition partition1 = new RemotePartition(client, address1);
 		Partition partition2 = new RemotePartition(client, address2);

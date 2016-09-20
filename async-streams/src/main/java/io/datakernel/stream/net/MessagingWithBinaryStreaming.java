@@ -17,11 +17,11 @@
 package io.datakernel.stream.net;
 
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.ParseException;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import org.slf4j.Logger;
@@ -56,11 +56,19 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 	private boolean readDone;
 	private boolean writeDone;
 
-	public MessagingWithBinaryStreaming(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, MessagingSerializer<I, O> serializer) {
+	// region creators
+	private MessagingWithBinaryStreaming(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, MessagingSerializer<I, O> serializer) {
 		this.eventloop = eventloop;
 		this.asyncTcpSocket = asyncTcpSocket;
 		this.serializer = serializer;
 	}
+
+	public static <I, O> MessagingWithBinaryStreaming<I, O> create(Eventloop eventloop,
+	                                                               AsyncTcpSocket asyncTcpSocket,
+	                                                               MessagingSerializer<I, O> serializer) {
+		return new MessagingWithBinaryStreaming<>(eventloop, asyncTcpSocket, serializer);
+	}
+	// endregion
 
 	@Override
 	public void receive(ReceiveMessageCallback<I> callback) {
@@ -156,7 +164,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 			return;
 		}
 
-		socketWriter = new SocketStreamConsumer(eventloop, asyncTcpSocket, callback);
+		socketWriter = SocketStreamConsumer.create(eventloop, asyncTcpSocket, callback);
 		producer.streamTo(socketWriter);
 	}
 
@@ -168,7 +176,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 			return;
 		}
 
-		socketReader = new SocketStreamProducer(eventloop, asyncTcpSocket, callback);
+		socketReader = SocketStreamProducer.create(eventloop, asyncTcpSocket, callback);
 		socketReader.streamTo(consumer);
 		if (readBuf != null || readEndOfStream) {
 			eventloop.post(new Runnable() {

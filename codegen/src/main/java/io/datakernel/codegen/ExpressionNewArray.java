@@ -21,7 +21,7 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 
 import static org.objectweb.asm.Type.getType;
 
-public class ExpressionNewArray implements Expression {
+final class ExpressionNewArray implements Expression {
 	private final Class<?> type;
 	private final Expression length;
 

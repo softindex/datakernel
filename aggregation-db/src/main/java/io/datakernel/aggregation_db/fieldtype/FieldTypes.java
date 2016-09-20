@@ -79,7 +79,7 @@ public final class FieldTypes {
 
 		@Override
 		public FieldProcessor fieldProcessor() {
-			return new CollectionFieldProcessor();
+			return CollectionFieldProcessor.create();
 		}
 	}
 
@@ -115,7 +115,7 @@ public final class FieldTypes {
 
 		@Override
 		public FieldProcessor fieldProcessor() {
-			return new HyperLogLogFieldProcessor(registers);
+			return HyperLogLogFieldProcessor.create(registers);
 		}
 
 		@Override
@@ -142,7 +142,7 @@ public final class FieldTypes {
 		return new FieldTypeDouble() {
 			@Override
 			public FieldProcessor fieldProcessor() {
-				return new SumFieldProcessor();
+				return SumFieldProcessor.create();
 			}
 		};
 	}
@@ -151,7 +151,7 @@ public final class FieldTypes {
 		return new FieldTypeFloat() {
 			@Override
 			public FieldProcessor fieldProcessor() {
-				return new SumFieldProcessor();
+				return SumFieldProcessor.create();
 			}
 		};
 	}
@@ -160,7 +160,7 @@ public final class FieldTypes {
 		return new FieldTypeInt() {
 			@Override
 			public FieldProcessor fieldProcessor() {
-				return new SumFieldProcessor();
+				return SumFieldProcessor.create();
 			}
 		};
 	}
@@ -169,7 +169,7 @@ public final class FieldTypes {
 		return new FieldTypeLong() {
 			@Override
 			public FieldProcessor fieldProcessor() {
-				return new SumFieldProcessor();
+				return SumFieldProcessor.create();
 			}
 		};
 	}
@@ -214,7 +214,7 @@ public final class FieldTypes {
 		return new FieldTypeInt() {
 			@Override
 			public FieldProcessor fieldProcessor() {
-				return new CountFieldProcessor();
+				return CountFieldProcessor.create();
 			}
 		};
 	}
@@ -223,7 +223,7 @@ public final class FieldTypes {
 		return new FieldTypeLong() {
 			@Override
 			public FieldProcessor fieldProcessor() {
-				return new CountFieldProcessor();
+				return CountFieldProcessor.create();
 			}
 		};
 	}
@@ -232,7 +232,7 @@ public final class FieldTypes {
 		return new FieldTypeDouble() {
 			@Override
 			public FieldProcessor fieldProcessor() {
-				return new MaxFieldProcessor();
+				return MaxFieldProcessor.create();
 			}
 		};
 	}
@@ -241,7 +241,7 @@ public final class FieldTypes {
 		return new FieldTypeFloat() {
 			@Override
 			public FieldProcessor fieldProcessor() {
-				return new MaxFieldProcessor();
+				return MaxFieldProcessor.create();
 			}
 		};
 	}
@@ -250,7 +250,7 @@ public final class FieldTypes {
 		return new FieldTypeInt() {
 			@Override
 			public FieldProcessor fieldProcessor() {
-				return new MaxFieldProcessor();
+				return MaxFieldProcessor.create();
 			}
 		};
 	}
@@ -259,7 +259,7 @@ public final class FieldTypes {
 		return new FieldTypeLong() {
 			@Override
 			public FieldProcessor fieldProcessor() {
-				return new MaxFieldProcessor();
+				return MaxFieldProcessor.create();
 			}
 		};
 	}
@@ -268,7 +268,7 @@ public final class FieldTypes {
 		return new FieldTypeDouble() {
 			@Override
 			public FieldProcessor fieldProcessor() {
-				return new MinFieldProcessor();
+				return MinFieldProcessor.create();
 			}
 		};
 	}
@@ -277,7 +277,7 @@ public final class FieldTypes {
 		return new FieldTypeFloat() {
 			@Override
 			public FieldProcessor fieldProcessor() {
-				return new MinFieldProcessor();
+				return MinFieldProcessor.create();
 			}
 		};
 	}
@@ -286,7 +286,7 @@ public final class FieldTypes {
 		return new FieldTypeInt() {
 			@Override
 			public FieldProcessor fieldProcessor() {
-				return new MinFieldProcessor();
+				return MinFieldProcessor.create();
 			}
 		};
 	}
@@ -295,7 +295,7 @@ public final class FieldTypes {
 		return new FieldTypeLong() {
 			@Override
 			public FieldProcessor fieldProcessor() {
-				return new MinFieldProcessor();
+				return MinFieldProcessor.create();
 			}
 		};
 	}

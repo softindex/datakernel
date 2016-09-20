@@ -28,7 +28,7 @@ import static io.datakernel.codegen.Utils.newLocal;
 import static org.objectweb.asm.Type.INT_TYPE;
 import static org.objectweb.asm.Type.getType;
 
-public class ExpressionSwitch implements Expression {
+final class ExpressionSwitch implements Expression {
 	private final Expression nom;
 	private final Expression defaultExp;
 	private final List<Expression> list = new ArrayList<>();

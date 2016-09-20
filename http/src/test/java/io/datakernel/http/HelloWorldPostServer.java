@@ -18,27 +18,28 @@ package io.datakernel.http;
 
 import io.datakernel.eventloop.Eventloop;
 
-import static io.datakernel.util.ByteBufStrings.decodeAscii;
-import static io.datakernel.util.ByteBufStrings.encodeAscii;
+import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
+import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 
 public final class HelloWorldPostServer {
 	public static final int PORT = 5588;
 	public static final String HELLO_WORLD = "Hello, World!";
 
 	public static AsyncHttpServer helloWorldServer(Eventloop primaryEventloop, int port) {
-		AsyncHttpServer httpServer = new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
+		AsyncHttpServlet servlet = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
 				String s = HELLO_WORLD + decodeAscii(request.getBody());
-				HttpResponse content = HttpResponse.create().body(encodeAscii(s));
+				HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(s));
 				callback.onResult(content);
 			}
-		});
-		return httpServer.setListenPort(port);
+		};
+
+		return AsyncHttpServer.create(primaryEventloop, servlet).withListenPort(port);
 	}
 
 	public static void main(String[] args) throws Exception {
-		final Eventloop primaryEventloop = new Eventloop();
+		final Eventloop primaryEventloop = Eventloop.create();
 
 		final AsyncHttpServer httpServerListener = helloWorldServer(primaryEventloop, PORT);
 

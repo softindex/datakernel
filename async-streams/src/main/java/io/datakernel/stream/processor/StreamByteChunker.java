@@ -26,6 +26,18 @@ public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteB
 	private final InputConsumer inputConsumer;
 	private final OutputProducer outputProducer;
 
+	// region creators
+	private StreamByteChunker(Eventloop eventloop, int minChunkSize, int maxChunkSize) {
+		super(eventloop);
+		this.inputConsumer = new InputConsumer();
+		this.outputProducer = new OutputProducer(minChunkSize, maxChunkSize);
+	}
+
+	public static StreamByteChunker create(Eventloop eventloop, int minChunkSize, int maxChunkSize) {
+		return new StreamByteChunker(eventloop, minChunkSize, maxChunkSize);
+	}
+	// endregion
+
 	protected final class InputConsumer extends AbstractInputConsumer {
 
 		@Override
@@ -98,11 +110,5 @@ public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteB
 				internalBuf = null;
 			}
 		}
-	}
-
-	public StreamByteChunker(Eventloop eventloop, int minChunkSize, int maxChunkSize) {
-		super(eventloop);
-		this.inputConsumer = new InputConsumer();
-		this.outputProducer = new OutputProducer(minChunkSize, maxChunkSize);
 	}
 }

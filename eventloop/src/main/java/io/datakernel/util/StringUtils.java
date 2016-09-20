@@ -25,9 +25,7 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class StringUtils {
 
-	private StringUtils() {
-
-	}
+	private StringUtils() {}
 
 	public static String join(String separator, Iterable<?> inputs) {
 		checkNotNull(separator);

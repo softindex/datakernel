@@ -16,7 +16,7 @@
 
 package io.datakernel.codegen.utils;
 
-import io.datakernel.codegen.AsmBuilder.AsmClassKey;
+import io.datakernel.codegen.ClassBuilder.AsmClassKey;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -27,15 +27,21 @@ import static java.util.Arrays.asList;
  * Represents a loader for defining dynamically generated classes.
  * Also contains cache, that speeds up loading of classes, which have the same structure as the ones already loaded.
  */
-public class DefiningClassLoader extends ClassLoader implements DefiningClassLoaderMBean {
+public final class DefiningClassLoader extends ClassLoader implements DefiningClassLoaderMBean {
 	private final Map<AsmClassKey<?>, Class<?>> definedClasses = new HashMap<>();
 
-	public DefiningClassLoader() {
+	// region builders
+	private DefiningClassLoader() {
 	}
 
-	public DefiningClassLoader(ClassLoader parent) {
+	private DefiningClassLoader(ClassLoader parent) {
 		super(parent);
 	}
+
+	public static DefiningClassLoader create() {return new DefiningClassLoader();}
+
+	public static DefiningClassLoader create(ClassLoader parent) {return new DefiningClassLoader(parent);}
+	// endregion
 
 	public Class<?> defineClass(String name, AsmClassKey<?> key, byte[] b) {
 		Class<?> definedClass = defineClass(name, b, 0, b.length);

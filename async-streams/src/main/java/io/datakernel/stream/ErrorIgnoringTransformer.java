@@ -20,11 +20,23 @@ import io.datakernel.eventloop.Eventloop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ErrorIgnoringTransformer<T> extends AbstractStreamTransformer_1_1<T, T> {
+public final class ErrorIgnoringTransformer<T> extends AbstractStreamTransformer_1_1<T, T> {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private InputConsumer inputConsumer;
 	private OutputProducer outputProducer;
+
+	// region creators
+	private ErrorIgnoringTransformer(Eventloop eventloop) {
+		super(eventloop);
+		inputConsumer = new InputConsumer();
+		outputProducer = new OutputProducer();
+	}
+
+	public static <T> ErrorIgnoringTransformer<T> create(Eventloop eventloop) {
+		return new ErrorIgnoringTransformer<>(eventloop);
+	}
+	// endregion
 
 	private class InputConsumer extends AbstractInputConsumer {
 
@@ -57,11 +69,4 @@ public class ErrorIgnoringTransformer<T> extends AbstractStreamTransformer_1_1<T
 			inputConsumer.resume();
 		}
 	}
-
-	public ErrorIgnoringTransformer(Eventloop eventloop) {
-		super(eventloop);
-		inputConsumer = new InputConsumer();
-		outputProducer = new OutputProducer();
-	}
-
 }

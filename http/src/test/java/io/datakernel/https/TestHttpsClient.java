@@ -40,7 +40,6 @@ import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpUtils.inetAddress;
 import static io.datakernel.http.MediaTypes.*;
-import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.assertThat;
@@ -55,14 +54,14 @@ public class TestHttpsClient {
 	@Ignore("requires internet connection")
 	@Test
 	public void testClient() throws NoSuchAlgorithmException, ExecutionException, InterruptedException {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		ExecutorService executor = newCachedThreadPool();
 
-		final AsyncHttpClient client = new AsyncHttpClient(eventloop,
-				new NativeDnsResolver(eventloop, defaultDatagramSocketSettings(), 500, inetAddress("8.8.8.8")))
-				.enableSsl(SSLContext.getDefault(), executor);
+		final AsyncHttpClient client = AsyncHttpClient.create(eventloop,
+				NativeDnsResolver.create(eventloop).withTimeout(500).withDnsServerAddress(inetAddress("8.8.8.8")))
+				.withSslEnabled(SSLContext.getDefault(), executor);
 
-		final ResultCallbackFuture<Integer> callback = new ResultCallbackFuture<>();
+		final ResultCallbackFuture<Integer> callback = ResultCallbackFuture.create();
 
 		String url = "https://en.wikipedia.org/wiki/Wikipedia";
 		client.send(get(url), 5000, new ResultCallback<HttpResponse>() {
@@ -89,12 +88,12 @@ public class TestHttpsClient {
 
 	private HttpRequest get(String url) {
 		return HttpRequest.get(url)
-				.header(CONNECTION, "keep-alive")
-				.header(CACHE_CONTROL, "max-age=0")
-				.header(ACCEPT_ENCODING, "gzip, deflate, sdch")
-				.header(ACCEPT_LANGUAGE, "en-US,en;q=0.8")
-				.header(USER_AGENT, "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/49.0.2623.87 Safari/537.36")
-				.accept(AcceptMediaType.of(HTML),
+				.withHeader(CONNECTION, "keep-alive")
+				.withHeader(CACHE_CONTROL, "max-age=0")
+				.withHeader(ACCEPT_ENCODING, "gzip, deflate, sdch")
+				.withHeader(ACCEPT_LANGUAGE, "en-US,en;q=0.8")
+				.withHeader(USER_AGENT, "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/49.0.2623.87 Safari/537.36")
+				.withAccept(AcceptMediaType.of(HTML),
 						AcceptMediaType.of(XHTML_APP),
 						AcceptMediaType.of(XML_APP, 90),
 						AcceptMediaType.of(WEBP),

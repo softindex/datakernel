@@ -28,7 +28,7 @@ public class AggregationKeyRelationships {
 	private final Map<String, String> childParentRelationships;
 	private final Multimap<String, String> parentChildRelationships;
 
-	public AggregationKeyRelationships(Map<String, String> childParentRelationships) {
+	private AggregationKeyRelationships(Map<String, String> childParentRelationships) {
 		this.childParentRelationships = childParentRelationships;
 		this.parentChildRelationships = HashMultimap.create();
 		for (Map.Entry<String, String> parentChildEntry : childParentRelationships.entrySet()) {
@@ -36,6 +36,10 @@ public class AggregationKeyRelationships {
 			String child = parentChildEntry.getValue();
 			parentChildRelationships.put(child, parent);
 		}
+	}
+
+	public static AggregationKeyRelationships create(Map<String, String> childParentRelationships) {
+		return new AggregationKeyRelationships(childParentRelationships);
 	}
 
 	public List<String> buildDrillDownChain(Set<String> usedDimensions, String dimension) {
@@ -63,7 +67,8 @@ public class AggregationKeyRelationships {
 		List<List<String>> chainsList = newArrayList(allChains);
 		Set<List<String>> longestChains = newHashSet();
 
-		outer: for (int i = 0; i < chainsList.size(); ++i) {
+		outer:
+		for (int i = 0; i < chainsList.size(); ++i) {
 			List<String> chain1 = chainsList.get(i);
 
 			for (int j = 0; j < chainsList.size(); ++j) {

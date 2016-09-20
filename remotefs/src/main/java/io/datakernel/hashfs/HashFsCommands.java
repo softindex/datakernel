@@ -27,15 +27,14 @@ import static java.util.Collections.unmodifiableList;
 
 final class HashFsCommands extends FsCommands {
 	public static Gson commandGSON = new GsonBuilder()
-			.registerTypeAdapter(FsCommand.class, GsonSubclassesAdapter.builder()
-					.subclassField("commandType")
-					.subclass("Upload", Upload.class)
-					.subclass("Download", Download.class)
-					.subclass("Delete", Delete.class)
-					.subclass("List", ListFiles.class)
-					.subclass("Alive", Alive.class)
-					.subclass("Announce", Announce.class)
-					.build())
+			.registerTypeAdapter(FsCommand.class, GsonSubclassesAdapter.create()
+					.withSubclassField("commandType")
+					.withSubclass("Upload", Upload.class)
+					.withSubclass("Download", Download.class)
+					.withSubclass("Delete", Delete.class)
+					.withSubclass("List", ListFiles.class)
+					.withSubclass("Alive", Alive.class)
+					.withSubclass("Announce", Announce.class))
 			.setPrettyPrinting()
 			.enableComplexMapKeySerialization()
 			.create();

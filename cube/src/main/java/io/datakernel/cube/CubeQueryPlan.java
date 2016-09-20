@@ -26,6 +26,10 @@ final class CubeQueryPlan {
 	private Map<Aggregation, List<String>> aggregationToMeasures = new LinkedHashMap<>();
 	private boolean optimizedAwayReducer;
 
+	private CubeQueryPlan() {}
+
+	static CubeQueryPlan create() {return new CubeQueryPlan();}
+
 	public void addAggregationMeasures(Aggregation aggregation, List<String> measures) {
 		aggregationToMeasures.put(aggregation, measures);
 	}

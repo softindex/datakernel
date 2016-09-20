@@ -21,14 +21,14 @@ import com.google.gson.GsonBuilder;
 import io.datakernel.aggregation_db.AggregationQuery;
 import io.datakernel.aggregation_db.AggregationStructure;
 import io.datakernel.aggregation_db.gson.QueryPredicatesGsonSerializer;
-import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.cube.CubeQuery;
+import io.datakernel.exception.ParseException;
 import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.HttpUtils;
-import io.datakernel.util.ByteBufStrings;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -42,16 +42,22 @@ public final class CubeHttpClient {
 	private final int timeout;
 	private final Gson gson;
 
-	public CubeHttpClient(String domain, AsyncHttpClient httpClient, int timeout, AggregationStructure structure,
-	                      ReportingConfiguration reportingConfiguration) {
+	private CubeHttpClient(String domain, AsyncHttpClient httpClient, int timeout, AggregationStructure structure,
+	                       ReportingConfiguration reportingConfiguration) {
 		this.domain = domain.replaceAll("/$", "");
 		this.httpClient = httpClient;
 		this.timeout = timeout;
 		this.gson = new GsonBuilder()
-				.registerTypeAdapter(AggregationQuery.Predicates.class, new QueryPredicatesGsonSerializer(structure))
-				.registerTypeAdapter(ReportingQueryResult.class, new ReportingQueryResponseDeserializer(structure, reportingConfiguration))
-				.registerTypeAdapter(CubeQuery.Ordering.class, new QueryOrderingGsonSerializer())
+				.registerTypeAdapter(AggregationQuery.Predicates.class, QueryPredicatesGsonSerializer.create(structure))
+				.registerTypeAdapter(ReportingQueryResult.class, ReportingQueryResponseDeserializer.create(structure, reportingConfiguration))
+				.registerTypeAdapter(CubeQuery.Ordering.class, QueryOrderingGsonSerializer.create())
 				.create();
+	}
+
+	public static CubeHttpClient create(String domain, AsyncHttpClient httpClient, int timeout,
+	                                    AggregationStructure structure,
+	                                    ReportingConfiguration reportingConfiguration) {
+		return new CubeHttpClient(domain, httpClient, timeout, structure, reportingConfiguration);
 	}
 
 	public void query(ReportingQuery query, final ResultCallback<ReportingQueryResult> callback) {

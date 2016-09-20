@@ -28,7 +28,7 @@ import static org.objectweb.asm.Type.VOID_TYPE;
  * Defines methods which allow to use several methods one after the other
  */
 @SuppressWarnings("PointlessArithmeticExpression")
-public final class ExpressionSequence implements Expression {
+final class ExpressionSequence implements Expression {
 	private final List<Expression> expressions = new ArrayList<>();
 
 	public ExpressionSequence(List<Expression> expressions) {

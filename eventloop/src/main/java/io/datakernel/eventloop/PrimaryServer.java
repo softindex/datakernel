@@ -16,8 +16,15 @@
 
 package io.datakernel.eventloop;
 
-import java.nio.channels.SocketChannel;
+import io.datakernel.net.ServerSocketSettings;
+import io.datakernel.net.SocketSettings;
+
+import javax.net.ssl.SSLContext;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.util.Collection;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
 
 /**
  * It is the {@link AbstractServer} which only handles accepting to it. It contains collection of
@@ -25,47 +32,44 @@ import java.util.Collection;
  * from collection with round-robin algorithm.
  */
 public final class PrimaryServer extends AbstractServer<PrimaryServer> {
-	private EventloopServer[] workerServers;
+	private final EventloopServer[] workerServers;
 
 	private int currentAcceptor = 0;
 
-	private PrimaryServer(Eventloop primaryEventloop) {
+	// region builders
+	private PrimaryServer(Eventloop primaryEventloop, EventloopServer[] workerServers) {
 		super(primaryEventloop);
-	}
-
-	/**
-	 * Creates a new PrimaryNioServer with specify Eventloop
-	 *
-	 * @param primaryEventloop the Eventloop which will execute IO tasks of this server
-	 * @return new PrimaryNioServer
-	 */
-	public static PrimaryServer create(Eventloop primaryEventloop) {
-		return new PrimaryServer(primaryEventloop);
-	}
-
-	/**
-	 * Adds the list of NioServers which will handle accepting to this server
-	 *
-	 * @param workerServers list of workers NioServers
-	 * @return this PrimaryNioServer
-	 */
-	@SuppressWarnings("unchecked")
-	public PrimaryServer workerServers(Collection<? extends EventloopServer> workerServers) {
-		this.workerServers = workerServers.toArray(new EventloopServer[workerServers.size()]);
-		return this;
-	}
-
-	/**
-	 * Adds the NioServers from argument which will handle accepting to this server
-	 *
-	 * @param workerServers list of workers NioServers
-	 * @return this PrimaryNioServer
-	 */
-	@SuppressWarnings("unchecked")
-	public PrimaryServer workerServers(EventloopServer... workerServers) {
 		this.workerServers = workerServers;
-		return this;
 	}
+
+	private PrimaryServer(Eventloop eventloop, ServerSocketSettings serverSocketSettings, SocketSettings socketSettings,
+	                      boolean acceptOnce,
+	                      Collection<InetSocketAddress> listenAddresses,
+	                      InetAddressRange range, Collection<InetAddress> bannedAddresses,
+	                      SSLContext sslContext, ExecutorService sslExecutor,
+	                      Collection<InetSocketAddress> sslListenAddresses,
+	                      PrimaryServer previousInstance) {
+		super(eventloop, serverSocketSettings, socketSettings, acceptOnce, listenAddresses,
+				range, bannedAddresses, sslContext, sslExecutor, sslListenAddresses);
+		this.workerServers = previousInstance.workerServers;
+	}
+
+	public static PrimaryServer create(Eventloop primaryEventloop, List<? extends EventloopServer> workerServers) {
+		EventloopServer[] workerServersArr = workerServers.toArray(new EventloopServer[workerServers.size()]);
+		return new PrimaryServer(primaryEventloop, workerServersArr);
+	}
+
+	@Override
+	protected PrimaryServer recreate(Eventloop eventloop, ServerSocketSettings serverSocketSettings, SocketSettings socketSettings,
+	                                 boolean acceptOnce,
+	                                 Collection<InetSocketAddress> listenAddresses,
+	                                 InetAddressRange range, Collection<InetAddress> bannedAddresses,
+	                                 SSLContext sslContext, ExecutorService sslExecutor,
+	                                 Collection<InetSocketAddress> sslListenAddresses) {
+		return new PrimaryServer(eventloop, serverSocketSettings, socketSettings, acceptOnce, listenAddresses,
+				range, bannedAddresses, sslContext, sslExecutor, sslListenAddresses, this);
+	}
+	// endregion
 
 	@Override
 	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {

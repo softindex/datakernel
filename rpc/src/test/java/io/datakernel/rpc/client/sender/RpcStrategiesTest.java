@@ -63,7 +63,7 @@ public class RpcStrategiesTest {
 
 		RpcSender sender = strategy.createSender(pool);
 		for (int i = 0; i < iterations; i++) {
-			sender.sendRequest(new Object(), 50, new ResultCallbackFuture<>());
+			sender.sendRequest(new Object(), 50, ResultCallbackFuture.create());
 		}
 
 		List<RpcSenderStub> connections =
@@ -155,9 +155,9 @@ public class RpcStrategiesTest {
 			}
 		};
 		RpcStrategy strategy = rendezvousHashing(hashFunction)
-				.put(1, firstAvailable(servers(ADDRESS_1, ADDRESS_2)))
-				.put(2, firstAvailable(servers(ADDRESS_3, ADDRESS_4)))
-				.put(3, server(ADDRESS_5));
+				.withShard(1, firstAvailable(servers(ADDRESS_1, ADDRESS_2)))
+				.withShard(2, firstAvailable(servers(ADDRESS_3, ADDRESS_4)))
+				.withShard(3, server(ADDRESS_5));
 		int iterationsPerLoop = 1000;
 		RpcSender sender;
 
@@ -168,13 +168,13 @@ public class RpcStrategiesTest {
 		pool.put(ADDRESS_5, connection5);
 		sender = strategy.createSender(pool);
 		for (int i = 0; i < iterationsPerLoop; i++) {
-			sender.sendRequest(i, 50, new ResultCallbackFuture<>());
+			sender.sendRequest(i, 50, ResultCallbackFuture.create());
 		}
 		pool.remove(ADDRESS_3);
 		pool.remove(ADDRESS_4);
 		sender = strategy.createSender(pool);
 		for (int i = 0; i < iterationsPerLoop; i++) {
-			sender.sendRequest(i, 50, new ResultCallbackFuture<>());
+			sender.sendRequest(i, 50, ResultCallbackFuture.create());
 		}
 
 		double acceptableError = iterationsPerLoop / 10.0;

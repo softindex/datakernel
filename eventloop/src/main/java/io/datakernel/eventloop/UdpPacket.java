@@ -35,6 +35,12 @@ public final class UdpPacket {
 	 */
 	private final InetSocketAddress inetSocketAddress;
 
+	// region builders
+	private UdpPacket(ByteBuf buf, InetSocketAddress inetSocketAddress) {
+		this.buf = buf;
+		this.inetSocketAddress = inetSocketAddress;
+	}
+
 	/**
 	 * Creates a new instance of UDP packet
 	 *
@@ -42,10 +48,10 @@ public final class UdpPacket {
 	 * @param inetSocketAddress the address to which the packet should be send or from which it
 	 *                          was received
 	 */
-	public UdpPacket(ByteBuf buf, InetSocketAddress inetSocketAddress) {
-		this.buf = buf;
-		this.inetSocketAddress = inetSocketAddress;
+	public static UdpPacket of(ByteBuf buf, InetSocketAddress inetSocketAddress) {
+		return new UdpPacket(buf, inetSocketAddress);
 	}
+	// endregion
 
 	/**
 	 * Returns the data buffer to send or which was received

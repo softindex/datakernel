@@ -44,7 +44,7 @@ public class StreamFileWriterStressTest {
 
 	public static void main(String[] args) throws IOException {
 		final ExecutorService executor = Executors.newFixedThreadPool(2);
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 		final Path storage = Paths.get("./test_data/stress_test/");
 		final Path files = storage.resolve("./files/");
 

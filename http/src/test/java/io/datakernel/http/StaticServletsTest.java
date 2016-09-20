@@ -34,9 +34,9 @@ import java.util.concurrent.Executors;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreResultCallback;
 import static io.datakernel.bytebuf.ByteBufPool.*;
+import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
+import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
-import static io.datakernel.util.ByteBufStrings.decodeAscii;
-import static io.datakernel.util.ByteBufStrings.encodeAscii;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
@@ -64,7 +64,7 @@ public class StaticServletsTest {
 
 	@Test
 	public void testStaticServletForFiles() throws InterruptedException {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		final List<String> res = new ArrayList<>();
@@ -87,7 +87,7 @@ public class StaticServletsTest {
 
 	@Test
 	public void testStaticServletForFilesAccessToRestrictedFile() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		final List<Exception> res = new ArrayList<>();
@@ -113,7 +113,7 @@ public class StaticServletsTest {
 
 	@Test
 	public void testStaticServletForResourcesAccessToRestrictedFile() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		final List<Exception> res = new ArrayList<>();
@@ -139,7 +139,7 @@ public class StaticServletsTest {
 
 	@Test
 	public void testStaticServletForFilesFileNotFound() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		final List<Exception> res = new ArrayList<>();
@@ -167,7 +167,7 @@ public class StaticServletsTest {
 
 	@Test
 	public void testStaticServletForResourcesFileNotFound() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		final List<Exception> res = new ArrayList<>();

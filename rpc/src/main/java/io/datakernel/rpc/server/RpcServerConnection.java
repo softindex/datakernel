@@ -16,10 +16,10 @@
 
 package io.datakernel.rpc.server;
 
-import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.ParseException;
 import io.datakernel.jmx.*;
 import io.datakernel.rpc.protocol.*;
 import io.datakernel.serializer.BufferSerializer;
@@ -43,16 +43,16 @@ public final class RpcServerConnection implements RpcConnection, JmxRefreshable 
 
 	// jmx
 	private final InetSocketAddress remoteAddress;
-	private final ExceptionStats lastRequestHandlingException = new ExceptionStats();
-	private final ValueStats requestHandlingTime = new ValueStats();
-	private EventStats successfulRequests = new EventStats();
-	private EventStats failedRequests = new EventStats();
+	private final ExceptionStats lastRequestHandlingException = ExceptionStats.create();
+	private final ValueStats requestHandlingTime = ValueStats.create();
+	private EventStats successfulRequests = EventStats.create();
+	private EventStats failedRequests = EventStats.create();
 	private boolean monitoring = false;
 
-	public RpcServerConnection(Eventloop eventloop, RpcServer rpcServer, AsyncTcpSocket asyncTcpSocket,
-	                           BufferSerializer<RpcMessage> messageSerializer,
-	                           Map<Class<?>, RpcRequestHandler<?, ?>> handlers,
-	                           RpcProtocolFactory protocolFactory) {
+	private RpcServerConnection(Eventloop eventloop, RpcServer rpcServer, AsyncTcpSocket asyncTcpSocket,
+	                            BufferSerializer<RpcMessage> messageSerializer,
+	                            Map<Class<?>, RpcRequestHandler<?, ?>> handlers,
+	                            RpcProtocolFactory protocolFactory) {
 		this.eventloop = eventloop;
 		this.rpcServer = rpcServer;
 		this.protocol = protocolFactory.create(eventloop, asyncTcpSocket, this, messageSerializer);
@@ -62,6 +62,14 @@ public final class RpcServerConnection implements RpcConnection, JmxRefreshable 
 
 		// jmx
 		this.remoteAddress = asyncTcpSocket.getRemoteSocketAddress();
+	}
+
+	public static RpcServerConnection create(Eventloop eventloop, RpcServer rpcServer, AsyncTcpSocket asyncTcpSocket,
+	                                         BufferSerializer<RpcMessage> messageSerializer,
+	                                         Map<Class<?>, RpcRequestHandler<?, ?>> handlers,
+	                                         RpcProtocolFactory protocolFactory) {
+		return new RpcServerConnection(eventloop, rpcServer, asyncTcpSocket,
+				messageSerializer, handlers, protocolFactory);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -91,7 +99,7 @@ public final class RpcServerConnection implements RpcConnection, JmxRefreshable 
 				rpcServer.getSuccessfulRequests().recordEvent();
 
 				if (open) {
-					protocol.sendMessage(new RpcMessage(cookie, result));
+					protocol.sendMessage(RpcMessage.of(cookie, result));
 					decrementActiveRequest();
 				} else {
 					String address = "Remote address: " + remoteAddress.getAddress().toString();
@@ -108,7 +116,7 @@ public final class RpcServerConnection implements RpcConnection, JmxRefreshable 
 				failedRequests.recordEvent();
 				rpcServer.getFailedRequests().recordEvent();
 
-				protocol.sendMessage(new RpcMessage(cookie, new RpcRemoteException(exception)));
+				protocol.sendMessage(RpcMessage.of(cookie, new RpcRemoteException(exception)));
 				decrementActiveRequest();
 				logger.warn("Exception while process request ID {}", cookie, exception);
 			}

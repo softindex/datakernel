@@ -24,6 +24,7 @@ import com.google.common.collect.Ordering;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.InstanceCreator;
+import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.node.*;
 import io.datakernel.datagraph.server.command.DatagraphCommand;
@@ -69,78 +70,70 @@ public final class DatagraphSerialization {
 			throw Throwables.propagate(e);
 		}
 
-		GsonSubclassesAdapter.Builder<Object> gsonSubclassesAdapterBuilder = GsonSubclassesAdapter.builder()
-				.subclassField("nodeType")
-				.subclass("Download", NodeDownload.class)
-				.subclass("Upload", NodeUpload.class)
-				.subclass("Map", NodeMap.class)
-				.subclass("Filter", NodeFilter.class)
-				.subclass("Sort", NodeSort.class)
-				.subclass("Shard", NodeShard.class)
-				.subclass("Merge", NodeMerge.class)
-				.subclass("Reduce", NodeReduce.class)
-				.subclass("ReduceSimple", NodeReduceSimple.class)
-				.subclass("Join", NodeJoin.class)
-				.subclass("ProducerOfIterable", NodeProducerOfIterable.class)
-				.subclass("ConsumerToList", NodeConsumerToList.class);
+		GsonSubclassesAdapter<Object> gsonSubclassesAdapter = GsonSubclassesAdapter.create()
+				.withSubclassField("nodeType")
+				.withSubclass("Download", NodeDownload.class)
+				.withSubclass("Upload", NodeUpload.class)
+				.withSubclass("Map", NodeMap.class)
+				.withSubclass("Filter", NodeFilter.class)
+				.withSubclass("Sort", NodeSort.class)
+				.withSubclass("Shard", NodeShard.class)
+				.withSubclass("Merge", NodeMerge.class)
+				.withSubclass("Reduce", NodeReduce.class)
+				.withSubclass("ReduceSimple", NodeReduceSimple.class)
+				.withSubclass("Join", NodeJoin.class)
+				.withSubclass("ProducerOfIterable", NodeProducerOfIterable.class)
+				.withSubclass("ConsumerToList", NodeConsumerToList.class);
 
 		for (NodeSubclass nodeSubclass : nodeSubclasses) {
-			gsonSubclassesAdapterBuilder.subclass(nodeSubclass.getSubclassName(), nodeSubclass.getSubclass());
+			gsonSubclassesAdapter =
+					gsonSubclassesAdapter.withSubclass(nodeSubclass.getSubclassName(), nodeSubclass.getSubclass());
 		}
 
 		this.gson = new GsonBuilder()
 				.registerTypeAdapter(Class.class, new GsonClassTypeAdapter())
 				.registerTypeAdapter(StreamId.class, new GsonStreamIdAdapter())
 				.registerTypeAdapter(InetSocketAddress.class, new GsonInetSocketAddressAdapter())
-				.registerTypeAdapter(DatagraphCommand.class, GsonSubclassesAdapter.builder()
-						.subclassField("commandType")
-						.subclass("Download", DatagraphCommandDownload.class)
-						.subclass("Execute", DatagraphCommandExecute.class)
-						.build())
-				.registerTypeAdapter(Node.class, gsonSubclassesAdapterBuilder.build())
-				.registerTypeAdapter(Predicate.class, GsonSubclassesAdapter.builder()
-						.subclassField("predicateType")
-						.build())
-				.registerTypeAdapter(Function.class, GsonSubclassesAdapter.builder()
-						.subclassField("functionType")
-						.classTag(identityFunctionClass.getName(), identityFunctionClass, new InstanceCreator<Object>() {
+				.registerTypeAdapter(DatagraphCommand.class, GsonSubclassesAdapter.create()
+						.withSubclassField("commandType")
+						.withSubclass("Download", DatagraphCommandDownload.class)
+						.withSubclass("Execute", DatagraphCommandExecute.class))
+				.registerTypeAdapter(Node.class, gsonSubclassesAdapter)
+				.registerTypeAdapter(Predicate.class, GsonSubclassesAdapter.create()
+						.withSubclassField("predicateType"))
+				.registerTypeAdapter(Function.class, GsonSubclassesAdapter.create()
+						.withSubclassField("functionType")
+						.withClassTag(identityFunctionClass.getName(), identityFunctionClass, new InstanceCreator<Object>() {
 							@Override
 							public Object createInstance(Type type) {
 								return Functions.identity();
 							}
-						})
-						.build())
-				.registerTypeAdapter(Comparator.class, GsonSubclassesAdapter.builder()
-						.subclassField("comparatorType")
-						.classTag(naturalOrderingClass.getName(), naturalOrderingClass, new InstanceCreator<Object>() {
+						}))
+				.registerTypeAdapter(Comparator.class, GsonSubclassesAdapter.create()
+						.withSubclassField("comparatorType")
+						.withClassTag(naturalOrderingClass.getName(), naturalOrderingClass, new InstanceCreator<Object>() {
 							@Override
 							public Object createInstance(Type type) {
 								return Ordering.natural();
 							}
-						})
-						.build())
-				.registerTypeAdapter(StreamMap.Mapper.class, GsonSubclassesAdapter.builder()
-						.subclassField("mapperType")
-						.build())
-				.registerTypeAdapter(StreamReducers.Reducer.class, GsonSubclassesAdapter.builder()
-						.subclassField("reducerType")
-						.classTag("MergeDeduplicateReducer", StreamReducers.MergeDeduplicateReducer.class)
-						.classTag("MergeSortReducer", StreamReducers.MergeSortReducer.class)
-						.subclass("InputToAccumulator", StreamReducers.ReducerToResult.InputToAccumulator.class)
-						.subclass("InputToOutput", StreamReducers.ReducerToResult.InputToOutput.class)
-						.subclass("AccumulatorToAccumulator", StreamReducers.ReducerToResult.AccumulatorToAccumulator.class)
-						.subclass("AccumulatorToOutput", StreamReducers.ReducerToResult.AccumulatorToOutput.class)
-						.build())
-				.registerTypeAdapter(StreamReducers.ReducerToResult.class, GsonSubclassesAdapter.builder()
-						.subclassField("reducerToResultType")
-						.build())
-				.registerTypeAdapter(Sharder.class, GsonSubclassesAdapter.builder()
-						.subclassField("sharderType")
-						.subclass("HashSharder", Sharders.HashSharder.class)
-						.build())
-				.registerTypeAdapter(StreamJoin.Joiner.class, GsonSubclassesAdapter.builder()
-						.subclassField("joinerType")
-						.build())
+						}))
+				.registerTypeAdapter(StreamMap.Mapper.class, GsonSubclassesAdapter.create()
+						.withSubclassField("mapperType"))
+				.registerTypeAdapter(StreamReducers.Reducer.class, GsonSubclassesAdapter.create()
+						.withSubclassField("reducerType")
+						.withClassTag("MergeDeduplicateReducer", StreamReducers.MergeDeduplicateReducer.class)
+						.withClassTag("MergeSortReducer", StreamReducers.MergeSortReducer.class)
+						.withSubclass("InputToAccumulator", StreamReducers.ReducerToResult.InputToAccumulator.class)
+						.withSubclass("InputToOutput", StreamReducers.ReducerToResult.InputToOutput.class)
+						.withSubclass("AccumulatorToAccumulator", StreamReducers.ReducerToResult.AccumulatorToAccumulator.class)
+						.withSubclass("AccumulatorToOutput", StreamReducers.ReducerToResult.AccumulatorToOutput.class))
+				.registerTypeAdapter(StreamReducers.ReducerToResult.class, GsonSubclassesAdapter.create()
+						.withSubclassField("reducerToResultType"))
+				.registerTypeAdapter(Sharder.class, GsonSubclassesAdapter.create()
+						.withSubclassField("sharderType")
+						.withSubclass("HashSharder", Sharders.HashSharder.class))
+				.registerTypeAdapter(StreamJoin.Joiner.class, GsonSubclassesAdapter.create()
+						.withSubclassField("joinerType"))
 				.setPrettyPrinting()
 				.enableComplexMapKeySerialization()
 				.create();
@@ -150,7 +143,8 @@ public final class DatagraphSerialization {
 		BufferSerializer<T> serializer = (BufferSerializer<T>) serializers.get(type);
 		if (serializer == null) {
 			logger.info("Creating serializer for {}", type);
-			serializer = SerializerBuilder.newDefaultSerializer(type, ClassLoader.getSystemClassLoader());
+			serializer = SerializerBuilder.create(
+					DefiningClassLoader.create(ClassLoader.getSystemClassLoader())).build(type);
 			serializers.put(type, serializer);
 		}
 		return serializer;

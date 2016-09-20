@@ -28,9 +28,13 @@ public final class RpcStrategySingleServer implements RpcStrategy {
 
 	private final InetSocketAddress address;
 
-	public RpcStrategySingleServer(InetSocketAddress address) {
+	private RpcStrategySingleServer(InetSocketAddress address) {
 		checkNotNull(address);
 		this.address = address;
+	}
+
+	public static RpcStrategySingleServer create(InetSocketAddress address) {
+		return new RpcStrategySingleServer(address);
 	}
 
 	@Override

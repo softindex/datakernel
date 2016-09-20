@@ -41,7 +41,7 @@ public class ParallelAsyncExecutorTest {
 	@Test
 	public void testSequential() throws Exception {
 		AsyncExecutor executor = AsyncExecutors.sequentialExecutor();
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		Map<Integer, ExecutionInfo> executionInfoMap = new HashMap<>();
 		int tasks = 5;
 
@@ -65,7 +65,7 @@ public class ParallelAsyncExecutorTest {
 	public void testParallel() throws Exception {
 		int maxParallelism = 3;
 		AsyncExecutor executor = AsyncExecutors.parallelExecutor(maxParallelism, 5);
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		Map<Integer, ExecutionInfo> executionInfoMap = new HashMap<>();
 		int tasks = 9;
 

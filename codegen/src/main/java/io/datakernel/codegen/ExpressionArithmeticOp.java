@@ -26,7 +26,7 @@ import static org.objectweb.asm.Type.getType;
 /**
  * Defines arithmetic operations for the functions
  */
-public final class ExpressionArithmeticOp implements Expression {
+final class ExpressionArithmeticOp implements Expression {
 	ExpressionArithmeticOp(Operation op, Expression left, Expression right) {
 		this.op = op;
 		this.left = left;

@@ -21,7 +21,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-public class Primitives {
+public final class Primitives {
 	private static final Map<Class<?>, Class<?>> PRIMITIVE;
 	private static final Map<Class<?>, Class<?>> WRAPPER;
 

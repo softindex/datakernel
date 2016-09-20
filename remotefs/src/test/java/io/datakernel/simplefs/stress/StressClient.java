@@ -53,10 +53,10 @@ import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 class StressClient {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	private InetSocketAddress address = new InetSocketAddress(5560);
-	private Eventloop eventloop = new Eventloop();
+	private Eventloop eventloop = Eventloop.create();
 	private ExecutorService executor = Executors.newCachedThreadPool();
 
-	private SimpleFsClient client = new SimpleFsClient(eventloop, address);
+	private SimpleFsClient client = SimpleFsClient.create(eventloop, address);
 
 	private static Random rand = new Random();
 
@@ -227,10 +227,10 @@ class StressClient {
 	}
 
 	void uploadSerializedObject(int i) throws UnknownHostException {
-		DefiningClassLoader classLoader = new DefiningClassLoader();
+		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		BufferSerializer<TestObject> bufferSerializer = SerializerBuilder
-				.newDefaultInstance(classLoader)
-				.create(TestObject.class);
+				.create(classLoader)
+				.build(TestObject.class);
 
 		TestObject obj = new TestObject();
 		obj.name = "someName";
@@ -238,7 +238,7 @@ class StressClient {
 
 		StreamProducer<TestObject> producer = StreamProducers.ofIterable(eventloop, Collections.singletonList(obj));
 		StreamBinarySerializer<TestObject> serializer =
-				new StreamBinarySerializer<>(eventloop, bufferSerializer, StreamBinarySerializer.MAX_SIZE, StreamBinarySerializer.MAX_SIZE, 1000, false);
+				StreamBinarySerializer.create(eventloop, bufferSerializer, StreamBinarySerializer.MAX_SIZE, StreamBinarySerializer.MAX_SIZE, 1000, false);
 
 		producer.streamTo(serializer.getInput());
 		client.upload("someName" + i, serializer.getOutput(), ignoreCompletionCallback());

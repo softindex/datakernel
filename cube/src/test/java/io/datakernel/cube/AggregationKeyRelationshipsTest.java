@@ -34,7 +34,7 @@ public class AggregationKeyRelationshipsTest {
 
 	@Before
 	public void setUp() throws Exception {
-		aggregationKeyRelationships = new AggregationKeyRelationships(
+		aggregationKeyRelationships = AggregationKeyRelationships.create(
 				ImmutableMap.<String, String>builder()
 						.put("campaign", "advertiser")
 						.put("offer", "campaign")

@@ -72,11 +72,16 @@ public final class DnsCache {
 	 * @param hardExpirationDeltaMillis  delta between time at which entry is considered resolved, but needs
 	 *                                   refreshing and time at which entry is considered not resolved
 	 */
-	public DnsCache(CurrentTimeProvider timeProvider, long errorCacheExpirationMillis, long hardExpirationDeltaMillis) {
+	private DnsCache(CurrentTimeProvider timeProvider, long errorCacheExpirationMillis, long hardExpirationDeltaMillis) {
 		this.errorCacheExpirationSeconds = errorCacheExpirationMillis / 1000;
 		this.hardExpirationDeltaSeconds = hardExpirationDeltaMillis / 1000;
 		this.timeProvider = timeProvider;
 		this.lastCleanupSecond = getCurrentSecond();
+	}
+
+	public static DnsCache create(CurrentTimeProvider timeProvider, long errorCacheExpirationMillis,
+	                              long hardExpirationDeltaMillis) {
+		return new DnsCache(timeProvider, errorCacheExpirationMillis, hardExpirationDeltaMillis);
 	}
 
 	private boolean isRequestedType(CachedDnsLookupResult cachedResult, boolean requestedIpv6) {

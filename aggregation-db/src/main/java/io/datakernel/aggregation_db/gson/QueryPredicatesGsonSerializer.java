@@ -21,7 +21,7 @@ import io.datakernel.aggregation_db.AggregationQuery;
 import io.datakernel.aggregation_db.AggregationStructure;
 import io.datakernel.aggregation_db.api.QueryException;
 import io.datakernel.aggregation_db.keytype.KeyType;
-import io.datakernel.async.ParseException;
+import io.datakernel.exception.ParseException;
 
 import java.lang.reflect.Type;
 import java.util.Map;
@@ -32,9 +32,11 @@ public final class QueryPredicatesGsonSerializer implements JsonSerializer<Aggre
 		JsonDeserializer<AggregationQuery.Predicates> {
 	private final AggregationStructure structure;
 
-	public QueryPredicatesGsonSerializer(AggregationStructure structure) {
+	private QueryPredicatesGsonSerializer(AggregationStructure structure) {
 		this.structure = structure;
 	}
+
+	public static QueryPredicatesGsonSerializer create(AggregationStructure structure) {return new QueryPredicatesGsonSerializer(structure);}
 
 	private JsonPrimitive encodeKey(String key, Object value) {
 		KeyType keyType = structure.getKeyType(key);

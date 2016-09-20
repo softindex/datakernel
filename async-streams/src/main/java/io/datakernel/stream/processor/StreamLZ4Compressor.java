@@ -97,7 +97,7 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 		}
 	}
 
-	// creators
+	// region creators
 	private StreamLZ4Compressor(Eventloop eventloop, LZ4Compressor compressor) {
 		super(eventloop);
 		this.inputConsumer = new InputConsumer();
@@ -120,6 +120,7 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 	public static StreamLZ4Compressor highCompressor(Eventloop eventloop, int compressionLevel) {
 		return new StreamLZ4Compressor(eventloop, LZ4Factory.fastestInstance().highCompressor(compressionLevel));
 	}
+	// endregion
 
 	private static int compressionLevel(int blockSize) {
 		int compressionLevel = 32 - Integer.numberOfLeadingZeros(blockSize - 1); // ceil of log2

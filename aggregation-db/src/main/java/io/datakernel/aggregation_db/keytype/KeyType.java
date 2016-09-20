@@ -16,7 +16,7 @@
 
 package io.datakernel.aggregation_db.keytype;
 
-import io.datakernel.async.ParseException;
+import io.datakernel.exception.ParseException;
 import io.datakernel.serializer.asm.SerializerGen;
 
 import java.util.Comparator;

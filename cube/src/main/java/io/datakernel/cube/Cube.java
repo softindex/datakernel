@@ -29,8 +29,7 @@ import io.datakernel.aggregation_db.api.QueryException;
 import io.datakernel.aggregation_db.util.AsyncResultsTracker.AsyncResultsTrackerMultimap;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.codegen.AsmBuilder;
-import io.datakernel.codegen.ExpressionComparator;
+import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.CubeMetadataStorage.CubeLoadedChunks;
 import io.datakernel.cube.api.AttributeResolver;
@@ -61,7 +60,8 @@ import static com.google.common.collect.Sets.newHashSet;
 import static io.datakernel.aggregation_db.AggregationStructure.createKeyFunction;
 import static io.datakernel.aggregation_db.AggregationStructure.createMapper;
 import static io.datakernel.aggregation_db.util.AsyncResultsTracker.ofMultimap;
-import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.codegen.Expressions.FieldWithOrdering;
+import static io.datakernel.codegen.Expressions.compareWithOrdering;
 import static java.util.Collections.sort;
 
 /**
@@ -80,7 +80,7 @@ public final class Cube implements EventloopJmxMBean {
 	private final CubeMetadataStorage cubeMetadataStorage;
 	private final AggregationChunkStorage aggregationChunkStorage;
 	private final AggregationStructure structure;
-	private ReportingConfiguration reportingConfiguration = new ReportingConfiguration();
+	private ReportingConfiguration reportingConfiguration = ReportingConfiguration.create();
 
 	// settings
 	private int aggregationChunkSize;
@@ -97,23 +97,10 @@ public final class Cube implements EventloopJmxMBean {
 	private int lastRevisionId;
 	private long lastReloadTimestamp;
 
-	/**
-	 * Instantiates a cube with the specified structure, that runs in a given event loop,
-	 * uses the specified class loader for creating dynamic classes, saves data and metadata to given storages,
-	 * and uses the specified parameters.
-	 *
-	 * @param eventloop               event loop, in which the cube is to run
-	 * @param classLoader             class loader for defining dynamic classes
-	 * @param cubeMetadataStorage     storage for aggregations metadata
-	 * @param aggregationChunkStorage storage for data chunks
-	 * @param structure               structure of a cube
-	 * @param aggregationChunkSize    maximum size of aggregation chunk
-	 * @param sorterItemsInMemory     maximum number of records that can stay in memory while sorting
-	 */
-	public Cube(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
-	            CubeMetadataStorage cubeMetadataStorage, AggregationChunkStorage aggregationChunkStorage,
-	            AggregationStructure structure, int aggregationChunkSize, int sorterItemsInMemory, int sorterBlockSize,
-	            int overlappingChunksThreshold, int maxIncrementalReloadPeriodMillis) {
+	private Cube(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
+	             CubeMetadataStorage cubeMetadataStorage, AggregationChunkStorage aggregationChunkStorage,
+	             AggregationStructure structure, int aggregationChunkSize, int sorterItemsInMemory, int sorterBlockSize,
+	             int overlappingChunksThreshold, int maxIncrementalReloadPeriodMillis) {
 		this.eventloop = eventloop;
 		this.executorService = executorService;
 		this.classLoader = classLoader;
@@ -127,8 +114,31 @@ public final class Cube implements EventloopJmxMBean {
 		this.maxIncrementalReloadPeriodMillis = maxIncrementalReloadPeriodMillis;
 	}
 
+	/**
+	 * Instantiates a cube with the specified structure, that runs in a given event loop,
+	 * uses the specified class loader for creating dynamic classes, saves data and metadata to given storages,
+	 * and uses the specified parameters.
+	 *
+	 * @param eventloop               event loop, in which the cube is to run
+	 * @param classLoader             class loader for defining dynamic classes
+	 * @param cubeMetadataStorage     storage for aggregations metadata
+	 * @param aggregationChunkStorage storage for data chunks
+	 * @param structure               structure of a cube
+	 * @param aggregationChunkSize    maximum size of aggregation chunk
+	 * @param sorterItemsInMemory     maximum number of records that can stay in memory while sorting
+	 */
+	public static Cube create(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
+	                          CubeMetadataStorage cubeMetadataStorage, AggregationChunkStorage aggregationChunkStorage,
+	                          AggregationStructure structure, int aggregationChunkSize, int sorterItemsInMemory,
+	                          int sorterBlockSize, int overlappingChunksThreshold,
+	                          int maxIncrementalReloadPeriodMillis) {
+		return new Cube(eventloop, executorService, classLoader, cubeMetadataStorage, aggregationChunkStorage,
+				structure, aggregationChunkSize, sorterItemsInMemory, sorterBlockSize, overlappingChunksThreshold,
+				maxIncrementalReloadPeriodMillis);
+	}
+
 	public void setChildParentRelationships(Map<String, String> childParentRelationships) {
-		this.childParentRelationships = new AggregationKeyRelationships(childParentRelationships);
+		this.childParentRelationships = AggregationKeyRelationships.create(childParentRelationships);
 	}
 
 	public Map<String, Aggregation> getAggregations() {
@@ -168,7 +178,7 @@ public final class Cube implements EventloopJmxMBean {
 	                           List<String> partitioningKey, int chunkSize) {
 		AggregationMetadataStorage aggregationMetadataStorage =
 				cubeMetadataStorage.aggregationMetadataStorage(aggregationId, aggregationMetadata, structure);
-		Aggregation aggregation = new Aggregation(eventloop, executorService, classLoader, aggregationMetadataStorage,
+		Aggregation aggregation = Aggregation.create(eventloop, executorService, classLoader, aggregationMetadataStorage,
 				aggregationChunkStorage, aggregationMetadata, structure, chunkSize, sorterItemsInMemory,
 				sorterBlockSize, maxIncrementalReloadPeriodMillis, partitioningKey);
 		checkArgument(!aggregations.containsKey(aggregationId), "Aggregation '%s' is already defined", aggregationId);
@@ -235,7 +245,7 @@ public final class Cube implements EventloopJmxMBean {
 	                                      final ResultCallback<Multimap<AggregationMetadata, AggregationChunk.NewChunk>> callback) {
 		logger.info("Started consuming data. Dimensions: {}. Measures: {}", dimensions, measures);
 
-		final StreamSplitter<T> streamSplitter = new StreamSplitter<>(eventloop);
+		final StreamSplitter<T> streamSplitter = StreamSplitter.create(eventloop);
 		final AsyncResultsTrackerMultimap<AggregationMetadata, AggregationChunk.NewChunk> tracker = ofMultimap(callback);
 
 		Collection<Aggregation> preparedAggregations = findAggregationsForWriting(predicates);
@@ -328,7 +338,7 @@ public final class Cube implements EventloopJmxMBean {
 				filteredQueryPredicates.put(queryPredicateEntry.getKey(), queryPredicateEntry.getValue());
 		}
 
-		return new CubeQuery(query.getResultDimensions(), query.getResultMeasures(),
+		return CubeQuery.create(query.getResultDimensions(), query.getResultMeasures(),
 				AggregationQuery.Predicates.fromMap(filteredQueryPredicates), query.getOrderings());
 	}
 
@@ -345,7 +355,7 @@ public final class Cube implements EventloopJmxMBean {
 	 * @return producer that streams query results
 	 */
 	public <T> StreamProducer<T> query(Class<T> resultClass, CubeQuery query, DefiningClassLoader classLoader) {
-		StreamReducer<Comparable, T, Object> streamReducer = new StreamReducer<>(eventloop, Ordering.natural());
+		StreamReducer<Comparable, T, Object> streamReducer = StreamReducer.create(eventloop, Ordering.natural());
 
 		Map<Aggregation, List<String>> aggregationsToAppliedPredicateKeys = findAggregationsForQuery(query.getAggregationQuery());
 
@@ -353,7 +363,7 @@ public final class Cube implements EventloopJmxMBean {
 		List<String> resultDimensions = query.getResultDimensions();
 		Class resultKeyClass = structure.createKeyClass(resultDimensions, this.classLoader);
 
-		CubeQueryPlan queryPlan = new CubeQueryPlan();
+		CubeQueryPlan queryPlan = CubeQueryPlan.create();
 
 		StreamProducer<T> queryResultProducer = streamReducer.getOutput();
 
@@ -384,7 +394,7 @@ public final class Cube implements EventloopJmxMBean {
 				 */
 				StreamMap.MapperProjection mapper = createMapper(aggregationClass, resultClass, resultDimensions,
 						aggregationMeasures, classLoader);
-				StreamMap streamMap = new StreamMap<>(eventloop, mapper);
+				StreamMap streamMap = StreamMap.create(eventloop, mapper);
 				aggregationProducer.streamTo(streamMap.getInput());
 				queryResultProducer = streamMap.getOutput();
 				queryPlan.setOptimizedAwayReducer(true);
@@ -521,7 +531,7 @@ public final class Cube implements EventloopJmxMBean {
 		Set<DrillDown> drillDowns = newHashSet();
 		Set<List<String>> chains = newHashSet();
 
-		AggregationQuery query = new AggregationQuery(newArrayList(dimensions), newArrayList(measures), predicates);
+		AggregationQuery query = AggregationQuery.create(newArrayList(dimensions), newArrayList(measures), predicates);
 
 		List<String> queryDimensions = getQueryDimensions(dimensions, predicates.asCollection());
 
@@ -541,7 +551,7 @@ public final class Cube implements EventloopJmxMBean {
 			Set<List<String>> allChains = childParentRelationships.buildDrillDownChains(Sets.<String>newHashSet(), aggregation.getKeys());
 
 			for (List<String> drillDownChain : filteredChains) {
-				drillDowns.add(new DrillDown(drillDownChain, availableMeasures));
+				drillDowns.add(DrillDown.create(drillDownChain, availableMeasures));
 			}
 
 			chains.addAll(allChains);
@@ -577,7 +587,7 @@ public final class Cube implements EventloopJmxMBean {
 	                                        Set<String> measures) {
 		Set<String> availableMeasures = newHashSet();
 
-		AggregationQuery query = new AggregationQuery(newArrayList(dimensions), newArrayList(measures), predicates);
+		AggregationQuery query = AggregationQuery.create(newArrayList(dimensions), newArrayList(measures), predicates);
 
 		List<String> queryDimensions = getQueryDimensions(dimensions, predicates.asCollection());
 
@@ -603,9 +613,9 @@ public final class Cube implements EventloopJmxMBean {
 			Comparator fieldComparator = createFieldComparator(query, resultClass, classLoader);
 			Path path = Paths.get("sorterStorage", "%d.part");
 			BufferSerializer bufferSerializer = structure.createBufferSerializer(resultClass, dimensions, measures, classLoader);
-			StreamMergeSorterStorage sorterStorage = new StreamMergeSorterStorageImpl(eventloop, executorService,
+			StreamMergeSorterStorage sorterStorage = StreamMergeSorterStorageImpl.create(eventloop, executorService,
 					bufferSerializer, path, sorterBlockSize);
-			StreamSorter sorter = new StreamSorter(eventloop, sorterStorage, Functions.identity(),
+			StreamSorter sorter = StreamSorter.create(eventloop, sorterStorage, Functions.identity(),
 					fieldComparator, false, sorterItemsInMemory);
 			rawResultStream.streamTo(sorter.getInput());
 			return sorter.getOutput();
@@ -616,26 +626,16 @@ public final class Cube implements EventloopJmxMBean {
 
 	public static Comparator createFieldComparator(CubeQuery query, Class<?> fieldClass, DefiningClassLoader classLoader) {
 		logger.trace("Creating field comparator for query {}", query.toString());
-		AsmBuilder<Comparator> builder = new AsmBuilder<>(classLoader, Comparator.class);
-		ExpressionComparator comparator = comparator();
 		List<CubeQuery.Ordering> orderings = query.getOrderings();
 
+		List<FieldWithOrdering> fields = new ArrayList<>(orderings.size());
 		for (CubeQuery.Ordering ordering : orderings) {
-			boolean isAsc = ordering.isAsc();
-			String field = ordering.getPropertyName();
-			if (isAsc)
-				comparator.add(
-						getter(cast(arg(0), fieldClass), field),
-						getter(cast(arg(1), fieldClass), field));
-			else
-				comparator.add(
-						getter(cast(arg(1), fieldClass), field),
-						getter(cast(arg(0), fieldClass), field));
+			fields.add(new FieldWithOrdering(ordering.getPropertyName(), ordering.isAsc()));
 		}
 
-		builder.method("compare", comparator);
-
-		return builder.newInstance();
+		return ClassBuilder.create(classLoader, Comparator.class)
+				.withMethod("compare", compareWithOrdering(fieldClass, fields))
+				.buildClassAndCreateNewInstance();
 	}
 
 	private boolean queryRequiresSorting(CubeQuery query) {

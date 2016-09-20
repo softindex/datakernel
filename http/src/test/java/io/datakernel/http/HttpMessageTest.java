@@ -18,7 +18,7 @@ package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.util.ByteBufStrings;
+import io.datakernel.bytebuf.ByteBufStrings;
 import org.junit.Test;
 
 import java.nio.charset.StandardCharsets;
@@ -45,21 +45,21 @@ public class HttpMessageTest {
 
 	@Test
 	public void testHttpResponse() {
-		assertHttpResponseEquals("HTTP/1.1 100 OK\r\nContent-Length: 0\r\n\r\n", HttpResponse.create(100));
-		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n", HttpResponse.create(200));
+		assertHttpResponseEquals("HTTP/1.1 100 OK\r\nContent-Length: 0\r\n\r\n", HttpResponse.ofCode(100));
+		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n", HttpResponse.ofCode(200));
 		assertHttpResponseEquals("HTTP/1.1 400 Bad Request\r\nContent-Length: 77\r\n\r\n" +
-				"Your browser (or proxy) sent a request that this server could not understand.", HttpResponse.create(400));
-		assertHttpResponseEquals("HTTP/1.1 405 Error\r\nContent-Length: 0\r\n\r\n", HttpResponse.create(405));
+				"Your browser (or proxy) sent a request that this server could not understand.", HttpResponse.ofCode(400));
+		assertHttpResponseEquals("HTTP/1.1 405 Error\r\nContent-Length: 0\r\n\r\n", HttpResponse.ofCode(405));
 		assertHttpResponseEquals("HTTP/1.1 500 Internal Server Error\r\nContent-Length: 81\r\n\r\n" +
-				"The server encountered an internal error and was unable to complete your request.", HttpResponse.create(500));
+				"The server encountered an internal error and was unable to complete your request.", HttpResponse.ofCode(500));
 		assertHttpResponseEquals("HTTP/1.1 502 Error\r\nContent-Length: 9\r\n\r\n" +
-				"Error 502", HttpResponse.create(502).body("Error 502".getBytes(StandardCharsets.UTF_8)));
+				"Error 502", HttpResponse.ofCode(502).withBody("Error 502".getBytes(StandardCharsets.UTF_8)));
 		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie1=\"value1\"\r\nContent-Length: 0\r\n\r\n",
-				HttpResponse.create(200).setCookies(Collections.singletonList(new HttpCookie("cookie1", "value1"))));
+				HttpResponse.ofCode(200).withCookies(Collections.singletonList(HttpCookie.of("cookie1", "value1"))));
 		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie1=\"value1\", cookie2=\"value2\"\r\nContent-Length: 0\r\n\r\n",
-				HttpResponse.create(200).setCookies(Arrays.asList(new HttpCookie("cookie1", "value1"), new HttpCookie("cookie2", "value2"))));
+				HttpResponse.ofCode(200).withCookies(Arrays.asList(HttpCookie.of("cookie1", "value1"), HttpCookie.of("cookie2", "value2"))));
 		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie1=\"value1\", cookie2=\"value2\"\r\nContent-Length: 0\r\n\r\n",
-				HttpResponse.create(200).setCookies(asList(new HttpCookie("cookie1", "value1"), new HttpCookie("cookie2", "value2"))));
+				HttpResponse.ofCode(200).withCookies(asList(HttpCookie.of("cookie1", "value1"), HttpCookie.of("cookie2", "value2"))));
 	}
 
 	@Test
@@ -69,11 +69,11 @@ public class HttpMessageTest {
 		assertHttpRequestEquals("POST /index.html HTTP/1.1\r\nHost: test.com\r\nContent-Length: 0\r\n\r\n",
 				HttpRequest.post("http://test.com/index.html"));
 		assertHttpRequestEquals("CONNECT /index.html HTTP/1.1\r\nHost: test.com\r\nContent-Length: 0\r\n\r\n",
-				HttpRequest.create(HttpMethod.CONNECT).url("http://test.com/index.html"));
+				HttpRequest.ofMethod(HttpMethod.CONNECT).withUrl("http://test.com/index.html"));
 		assertHttpRequestEquals("GET /index.html HTTP/1.1\r\nHost: test.com\r\nCookie: cookie1=\"value1\"\r\n\r\n",
-				HttpRequest.get("http://test.com/index.html").cookie(new HttpCookie("cookie1", "value1")));
+				HttpRequest.get("http://test.com/index.html").withCookie(HttpCookie.of("cookie1", "value1")));
 		assertHttpRequestEquals("GET /index.html HTTP/1.1\r\nHost: test.com\r\nCookie: cookie1=\"value1\"; cookie2=\"value2\"\r\n\r\n",
-				HttpRequest.get("http://test.com/index.html").cookies(asList(new HttpCookie("cookie1", "value1"), new HttpCookie("cookie2", "value2"))));
+				HttpRequest.get("http://test.com/index.html").withCookies(asList(HttpCookie.of("cookie1", "value1"), HttpCookie.of("cookie2", "value2"))));
 
 		HttpRequest request = HttpRequest.post("http://test.com/index.html");
 		ByteBuf buf = ByteBufPool.allocate(100);
@@ -89,29 +89,29 @@ public class HttpMessageTest {
 
 	@Test
 	public void testMultiHeaders() {
-		HttpResponse h = HttpResponse.create(200);
+		HttpResponse response = HttpResponse.ofCode(200);
 		HttpHeader h1 = of("h1");
 		HttpHeader h2 = of("h2");
 
-		assertTrue(h.getHeaders().isEmpty());
-		assertNull(getHeaderValue(h, h1));
-		assertNull(getHeaderValue(h, h2));
+		assertTrue(response.getHeaders().isEmpty());
+		assertNull(getHeaderValue(response, h1));
+		assertNull(getHeaderValue(response, h2));
 
-		h.header(h1, "v1");
-		h.header(h2, "v2");
-		h.addHeader(h1, "v3");
+		response.addHeader(h1, "v1");
+		response.addHeader(h2, "v2");
+		response.addHeader(h1, "v3");
 
-		assertEquals(3, h.getHeaders().size());
-		assertEquals(asList("v1", "v3"), h.getHeaderStrings(h1));
-		assertEquals(singletonList("v2"), h.getHeaderStrings(h2));
-		assertEquals("v2", h.getHeader(h2));
-		assertEquals("v1", h.getHeader(h1));
+		assertEquals(3, response.getHeaders().size());
+		assertEquals(asList("v1", "v3"), response.getHeaderStrings(h1));
+		assertEquals(singletonList("v2"), response.getHeaderStrings(h2));
+		assertEquals("v2", response.getHeader(h2));
+		assertEquals("v1", response.getHeader(h1));
 
-		h.addHeader(h2, "v4");
-		assertEquals(asList("v1", "v3"), h.getHeaderStrings(h1));
-		assertEquals(asList("v2", "v4"), h.getHeaderStrings(h2));
-		assertEquals("v2", getHeaderValue(h, h2));
-		assertEquals("v1", getHeaderValue(h, h1));
+		response.addHeader(h2, "v4");
+		assertEquals(asList("v1", "v3"), response.getHeaderStrings(h1));
+		assertEquals(asList("v2", "v4"), response.getHeaderStrings(h2));
+		assertEquals("v2", getHeaderValue(response, h2));
+		assertEquals("v1", getHeaderValue(response, h1));
 
 	}
 }

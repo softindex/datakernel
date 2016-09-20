@@ -40,10 +40,10 @@ public class StressServer {
 	private static final int PORT = 5560;
 
 	private static final ExecutorService executor = newCachedThreadPool();
-	private static final Eventloop eventloop = new Eventloop();
+	private static final Eventloop eventloop = Eventloop.create();
 
-	public static SimpleFsServer server = new SimpleFsServer(eventloop, executor, STORAGE_PATH)
-			.setListenPort(PORT);
+	public static SimpleFsServer server = SimpleFsServer.create(eventloop, executor, STORAGE_PATH)
+			.withListenPort(PORT);
 
 	public static void main(String[] args) throws IOException {
 		Files.createDirectories(STORAGE_PATH);

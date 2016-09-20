@@ -31,12 +31,13 @@ import static org.objectweb.asm.Type.BOOLEAN_TYPE;
 public final class PredicateDefOr implements PredicateDef {
 	private final List<PredicateDef> predicates = new ArrayList<>();
 
-	PredicateDefOr(List<PredicateDef> predicates) {
+	// region builders
+	private PredicateDefOr(List<PredicateDef> predicates) {
 		this.predicates.addAll(predicates);
 	}
 
-	PredicateDefOr() {
-	}
+	static PredicateDefOr create(List<PredicateDef> predicates) {return new PredicateDefOr(predicates);}
+	// endregion
 
 	public PredicateDefOr add(PredicateDef predicateDef) {
 		this.predicates.add(predicateDef);

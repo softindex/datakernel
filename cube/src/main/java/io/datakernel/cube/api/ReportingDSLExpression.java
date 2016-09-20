@@ -19,15 +19,21 @@ package io.datakernel.cube.api;
 import com.google.common.base.MoreObjects;
 import io.datakernel.codegen.Expression;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
 
 public final class ReportingDSLExpression {
 	private final Expression expression;
 	private final Set<String> measureDependencies;
 
-	public ReportingDSLExpression(Expression expression, Set<String> measureDependencies) {
+	private ReportingDSLExpression(Expression expression, Set<String> measureDependencies) {
 		this.expression = expression;
 		this.measureDependencies = measureDependencies;
+	}
+
+	public static ReportingDSLExpression create(Expression expression, Set<String> measureDependencies) {
+		return new ReportingDSLExpression(expression, measureDependencies);
 	}
 
 	public Expression getExpression() {

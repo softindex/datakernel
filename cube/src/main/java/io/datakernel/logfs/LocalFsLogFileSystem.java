@@ -60,17 +60,26 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem {
 	 * @param executorService executor for blocking IO operations
 	 * @param dir             directory for storing log files
 	 */
-	public LocalFsLogFileSystem(Eventloop eventloop, ExecutorService executorService,
-	                            Path dir) {
+	private LocalFsLogFileSystem(Eventloop eventloop, ExecutorService executorService,
+	                             Path dir) {
 		this.eventloop = eventloop;
 		this.executorService = executorService;
 		this.dir = dir;
 	}
 
-	public LocalFsLogFileSystem(Eventloop eventloop, ExecutorService executorService, Path dir, String logName) {
+	private LocalFsLogFileSystem(Eventloop eventloop, ExecutorService executorService, Path dir, String logName) {
 		this.eventloop = eventloop;
 		this.executorService = executorService;
 		this.dir = dir.resolve(logName);
+	}
+
+	public static LocalFsLogFileSystem create(Eventloop eventloop, ExecutorService executorService, Path dir) {
+		return new LocalFsLogFileSystem(eventloop, executorService, dir);
+	}
+
+	public static LocalFsLogFileSystem create(Eventloop eventloop, ExecutorService executorService,
+	                                          Path dir, String logName) {
+		return new LocalFsLogFileSystem(eventloop, executorService, dir, logName);
 	}
 
 	private Path path(String logPartition, LogFile logFile) {

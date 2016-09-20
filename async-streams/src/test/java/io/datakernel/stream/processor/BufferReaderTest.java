@@ -27,9 +27,9 @@ public class BufferReaderTest {
 
 	private void doTest(String str) throws IOException {
 		byte[] buf = new byte[100];
-		BufferAppendable appendable = new BufferAppendable(buf, 10);
+		BufferAppendable appendable = BufferAppendable.create(buf, 10);
 		appendable.append(str);
-		BufferReader reader = new BufferReader(buf, 10, appendable.position() - 10);
+		BufferReader reader = BufferReader.create(buf, 10, appendable.position() - 10);
 		char[] chars = new char[100];
 		int charPos = CHAR_START;
 		int numRead = reader.read(chars, charPos, 1);

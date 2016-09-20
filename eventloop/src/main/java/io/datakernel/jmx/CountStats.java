@@ -19,9 +19,11 @@ package io.datakernel.jmx;
 public final class CountStats implements JmxStats<CountStats> {
 	private long count;
 
-	public CountStats() {
+	private CountStats() {
 		this.count = 0;
 	}
+
+	public static CountStats create() {return new CountStats();}
 
 	public void setCount(int count) {
 		this.count = count;

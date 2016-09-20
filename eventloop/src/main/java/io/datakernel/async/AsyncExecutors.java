@@ -17,20 +17,22 @@
 package io.datakernel.async;
 
 public final class AsyncExecutors {
+	private AsyncExecutors() {}
+
 	public static AsyncExecutor sequentialExecutor() {
-		return new ParallelAsyncExecutor(1);
+		return ParallelAsyncExecutor.create(1);
 	}
 
 	public static AsyncExecutor sequentialExecutor(int queueSaturationThreshold) {
-		return new ParallelAsyncExecutor(1, queueSaturationThreshold);
+		return ParallelAsyncExecutor.create(1).withQueueSaturationThreshhold(queueSaturationThreshold);
 	}
 
 	public static AsyncExecutor parallelExecutor(int maxParallelism) {
-		return new ParallelAsyncExecutor(maxParallelism);
+		return ParallelAsyncExecutor.create(maxParallelism);
 	}
 
 	public static AsyncExecutor parallelExecutor(int maxParallelism, int queueSaturationThreshold) {
-		return new ParallelAsyncExecutor(maxParallelism, queueSaturationThreshold);
+		return ParallelAsyncExecutor.create(maxParallelism).withQueueSaturationThreshhold(queueSaturationThreshold);
 	}
 
 	public static AsyncExecutor immediateExecutor() {

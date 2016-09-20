@@ -47,7 +47,7 @@ public final class NodeFilter<T> implements Node {
 
 	@Override
 	public void createAndBind(TaskContext taskContext) {
-		StreamFilter<T> streamFilter = new StreamFilter<>(taskContext.getEventloop(), predicate);
+		StreamFilter<T> streamFilter = StreamFilter.create(taskContext.getEventloop(), predicate);
 		taskContext.bindChannel(input, streamFilter.getInput());
 		taskContext.export(output, streamFilter.getOutput());
 	}

@@ -19,15 +19,19 @@ package io.datakernel.time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class SteppingCurrentTimeProvider implements CurrentTimeProvider {
+public final class SteppingCurrentTimeProvider implements CurrentTimeProvider {
 	private final static Logger logger = LoggerFactory.getLogger(SteppingCurrentTimeProvider.class);
 
 	private long timeMillis;
 	private long step;
 
-	public SteppingCurrentTimeProvider(long timeMillis, long step) {
+	private SteppingCurrentTimeProvider(long timeMillis, long step) {
 		this.timeMillis = timeMillis;
 		this.step = step;
+	}
+
+	public static SteppingCurrentTimeProvider create(long timeMillis, long step) {
+		return new SteppingCurrentTimeProvider(timeMillis, step);
 	}
 
 	@Override

@@ -61,7 +61,7 @@ public final class NodeReduceSimple<K, I, O, A> implements Node {
 
 	@Override
 	public void createAndBind(TaskContext taskContext) {
-		StreamReducerSimple<K, I, O, A> streamReducerSimple = new StreamReducerSimple<>(taskContext.getEventloop(), keyFunction, keyComparator, reducer);
+		StreamReducerSimple<K, I, O, A> streamReducerSimple = StreamReducerSimple.create(taskContext.getEventloop(), keyFunction, keyComparator, reducer);
 		for (StreamId input : inputs) {
 			taskContext.bindChannel(input, streamReducerSimple.newInput());
 		}

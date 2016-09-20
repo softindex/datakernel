@@ -20,7 +20,7 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-public class ExpressionIf implements Expression {
+final class ExpressionIf implements Expression {
 	private final PredicateDef condition;
 	private final Expression left;
 	private final Expression right;

@@ -21,7 +21,7 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 
 import static org.objectweb.asm.Type.getType;
 
-public class ExpressionArraySet implements Expression {
+final class ExpressionArraySet implements Expression {
 	private final Expression array;
 	private final Expression position;
 	private final Expression newElement;

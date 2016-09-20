@@ -27,7 +27,7 @@ import static io.datakernel.codegen.Expressions.call;
 import static io.datakernel.codegen.Expressions.cast;
 import static io.datakernel.codegen.Utils.newLocal;
 
-public class ExpressionMapForEach implements Expression {
+final class ExpressionMapForEach implements Expression {
 	private final Expression field;
 	private final ForVar forKey;
 	private final ForVar forValue;

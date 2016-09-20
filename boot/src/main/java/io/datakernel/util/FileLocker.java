@@ -44,11 +44,11 @@ public final class FileLocker {
 
 	private FileLock fileLock;
 
-	public FileLocker(String lockFile) {
+	private FileLocker(String lockFile) {
 		this(new File(lockFile));
 	}
 
-	public FileLocker(File lockFile) {
+	private FileLocker(File lockFile) {
 		checkNotNull(lockFile);
 		this.lockFile = lockFile.getAbsoluteFile();
 	}

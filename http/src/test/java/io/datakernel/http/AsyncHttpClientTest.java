@@ -16,27 +16,28 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.dns.NativeDnsResolver;
-import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.util.ByteBufStrings;
+import io.datakernel.eventloop.SimpleServer;
+import io.datakernel.eventloop.SimpleServer.SocketHandlerProvider;
+import io.datakernel.exception.ParseException;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.net.InetAddress;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
-import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
+import static io.datakernel.bytebuf.ByteBufStrings.decodeUtf8;
+import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
-import static io.datakernel.util.ByteBufStrings.decodeUtf8;
-import static io.datakernel.util.ByteBufStrings.encodeAscii;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
@@ -46,6 +47,8 @@ public class AsyncHttpClientTest {
 
 	public static final int TIMEOUT = 1000;
 
+	private static final InetAddress GOOGLE_PUBLIC_DNS = HttpUtils.inetAddress("8.8.8.8");
+
 	@Before
 	public void before() {
 		ByteBufPool.clear();
@@ -54,12 +57,12 @@ public class AsyncHttpClientTest {
 
 	@Test
 	public void testAsyncClient() throws Exception {
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 
 		final AsyncHttpServer httpServer = HelloWorldServer.helloWorldServer(eventloop, PORT);
-		final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop,
-				new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, HttpUtils.inetAddress("8.8.8.8")));
-		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
+		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop,
+				NativeDnsResolver.create(eventloop).withDnsServerAddress(GOOGLE_PUBLIC_DNS));
+		final ResultCallbackFuture<String> resultObserver = ResultCallbackFuture.create();
 
 		httpServer.listen();
 
@@ -94,24 +97,23 @@ public class AsyncHttpClientTest {
 	@Test(expected = TimeoutException.class)
 	public void testTimeout() throws Throwable {
 		final int TIMEOUT = 100;
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 
-		final AsyncHttpServer httpServer = new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
+		final AsyncHttpServer httpServer = AsyncHttpServer.create(eventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, final Callback callback) {
 				eventloop.schedule(eventloop.currentTimeMillis() + (3 * TIMEOUT), new Runnable() {
 					@Override
 					public void run() {
-						callback.onResult(HttpResponse.create().body(TIMEOUT_EXCEPTION_BYTES));
+						callback.onResult(HttpResponse.ok200().withBody(TIMEOUT_EXCEPTION_BYTES));
 					}
 				});
 			}
-		});
-		httpServer.setListenPort(PORT);
+		}).withListenPort(PORT);
 
-		final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop,
-				new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, HttpUtils.inetAddress("8.8.8.8")));
-		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
+		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop,
+				NativeDnsResolver.create(eventloop).withDnsServerAddress(GOOGLE_PUBLIC_DNS));
+		final ResultCallbackFuture<String> resultObserver = ResultCallbackFuture.create();
 
 		httpServer.listen();
 
@@ -149,11 +151,11 @@ public class AsyncHttpClientTest {
 	@Test(expected = TimeoutException.class)
 	public void testClientTimeoutConnect() throws Throwable {
 		final int TIMEOUT = 1;
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 
-		final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop,
-				new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, HttpUtils.inetAddress("8.8.8.8")));
-		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
+		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop,
+				NativeDnsResolver.create(eventloop).withDnsServerAddress(GOOGLE_PUBLIC_DNS));
+		final ResultCallbackFuture<String> resultObserver = ResultCallbackFuture.create();
 
 		httpClient.send(HttpRequest.get("http://google.com"), TIMEOUT, new ResultCallback<HttpResponse>() {
 			@Override
@@ -187,16 +189,16 @@ public class AsyncHttpClientTest {
 	@Test(expected = ParseException.class)
 	public void testBigHttpMessage() throws Throwable {
 		final int TIMEOUT = 1000;
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 
 		final AsyncHttpServer httpServer = HelloWorldServer.helloWorldServer(eventloop, PORT);
-		final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop,
-				new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, HttpUtils.inetAddress("8.8.8.8")));
-		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
+		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop,
+				NativeDnsResolver.create(eventloop).withDnsServerAddress(GOOGLE_PUBLIC_DNS));
+		final ResultCallbackFuture<String> resultObserver = ResultCallbackFuture.create();
 
 		httpServer.listen();
 
-		httpClient.maxHttpMessageSize(12);
+		httpClient.withMaxHttpMessageSize(12);
 		httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT), TIMEOUT, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
@@ -230,11 +232,11 @@ public class AsyncHttpClientTest {
 
 	@Test(expected = ParseException.class)
 	public void testEmptyLineResponse() throws Throwable {
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 
-		final AbstractServer server = new AbstractServer(eventloop) {
+		final SocketHandlerProvider socketHandlerProvider = new SocketHandlerProvider() {
 			@Override
-			protected AsyncTcpSocket.EventHandler createSocketHandler(final AsyncTcpSocket asyncTcpSocket) {
+			public AsyncTcpSocket.EventHandler createSocketHandler(final AsyncTcpSocket asyncTcpSocket) {
 				return new AsyncTcpSocket.EventHandler() {
 					@Override
 					public void onRegistered() {
@@ -263,11 +265,12 @@ public class AsyncHttpClientTest {
 					}
 				};
 			}
-		}
-				.setListenPort(PORT);
-		final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop,
-				new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, HttpUtils.inetAddress("8.8.8.8")));
-		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
+		};
+
+		final SimpleServer server = SimpleServer.create(eventloop, socketHandlerProvider).withListenPort(PORT);
+		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop,
+				NativeDnsResolver.create(eventloop).withDnsServerAddress(GOOGLE_PUBLIC_DNS));
+		final ResultCallbackFuture<String> resultObserver = ResultCallbackFuture.create();
 
 		server.listen();
 

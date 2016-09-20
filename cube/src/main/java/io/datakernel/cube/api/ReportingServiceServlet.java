@@ -20,11 +20,11 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import io.datakernel.aggregation_db.AggregationQuery;
 import io.datakernel.aggregation_db.gson.QueryPredicatesGsonSerializer;
-import io.datakernel.async.ParseException;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.Cube;
 import io.datakernel.cube.CubeQuery;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.ParseException;
 import io.datakernel.http.AbstractAsyncServlet;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.jmx.JmxAttribute;
@@ -36,15 +36,20 @@ public final class ReportingServiceServlet extends AbstractAsyncServlet {
 	private final HttpRequestHandler handler;
 	private final LRUCache<ClassLoaderCacheKey, DefiningClassLoader> classLoaderCache;
 
-	public ReportingServiceServlet(Eventloop eventloop, Cube cube,
-	                               LRUCache<ClassLoaderCacheKey, DefiningClassLoader> classLoaderCache) {
+	private ReportingServiceServlet(Eventloop eventloop, Cube cube,
+	                                LRUCache<ClassLoaderCacheKey, DefiningClassLoader> classLoaderCache) {
 		super(eventloop);
 		Gson gson = new GsonBuilder()
-				.registerTypeAdapter(AggregationQuery.Predicates.class, new QueryPredicatesGsonSerializer(cube.getStructure()))
-				.registerTypeAdapter(CubeQuery.Ordering.class, new QueryOrderingGsonSerializer())
+				.registerTypeAdapter(AggregationQuery.Predicates.class, QueryPredicatesGsonSerializer.create(cube.getStructure()))
+				.registerTypeAdapter(CubeQuery.Ordering.class, QueryOrderingGsonSerializer.create())
 				.create();
 		this.classLoaderCache = classLoaderCache;
-		this.handler = new HttpRequestHandler(gson, cube, eventloop, classLoaderCache);
+		this.handler = HttpRequestHandler.create(gson, cube, eventloop, classLoaderCache);
+	}
+
+	public static ReportingServiceServlet create(Eventloop eventloop, Cube cube,
+	                                             LRUCache<ClassLoaderCacheKey, DefiningClassLoader> classLoaderCache) {
+		return new ReportingServiceServlet(eventloop, cube, classLoaderCache);
 	}
 
 	@Override

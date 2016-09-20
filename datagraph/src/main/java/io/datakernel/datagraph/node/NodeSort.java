@@ -57,7 +57,7 @@ public final class NodeSort<K, T> implements Node {
 	@SuppressWarnings("unchecked")
 	@Override
 	public void createAndBind(TaskContext taskContext) {
-		StreamSorter<K, T> streamMap = new StreamSorter<>(taskContext.getEventloop(), taskContext.environment().getInstance(StreamMergeSorterStorage.class),
+		StreamSorter<K, T> streamMap = StreamSorter.create(taskContext.getEventloop(), taskContext.environment().getInstance(StreamMergeSorterStorage.class),
 				keyFunction, keyComparator, deduplicate, itemsInMemorySize);
 		taskContext.bindChannel(input, streamMap.getInput());
 		taskContext.export(output, streamMap.getOutput());

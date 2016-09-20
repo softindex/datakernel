@@ -1,6 +1,6 @@
 package io.datakernel;
 
-import io.datakernel.async.SimpleException;
+import io.datakernel.exception.SimpleException;
 
 public class RemoteFsException extends SimpleException {
 	public RemoteFsException() {

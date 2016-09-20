@@ -27,13 +27,19 @@ public final class ClassLoaderCacheKey {
 	final List<String> computedMeasures;
 	final List<String> attributes;
 
-	public ClassLoaderCacheKey(List<String> storedDimensions, List<AggregationQuery.Predicate> predicates,
-	                           List<String> storedMeasures, List<String> computedMeasures, List<String> attributes) {
+	private ClassLoaderCacheKey(List<String> storedDimensions, List<AggregationQuery.Predicate> predicates,
+	                            List<String> storedMeasures, List<String> computedMeasures, List<String> attributes) {
 		this.storedDimensions = storedDimensions;
 		this.predicates = predicates;
 		this.storedMeasures = storedMeasures;
 		this.computedMeasures = computedMeasures;
 		this.attributes = attributes;
+	}
+
+	public static ClassLoaderCacheKey create(List<String> storedDimensions, List<AggregationQuery.Predicate> predicates,
+	                                         List<String> storedMeasures, List<String> computedMeasures,
+	                                         List<String> attributes) {
+		return new ClassLoaderCacheKey(storedDimensions, predicates, storedMeasures, computedMeasures, attributes);
 	}
 
 	@Override

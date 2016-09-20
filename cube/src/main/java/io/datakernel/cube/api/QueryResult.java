@@ -42,10 +42,10 @@ public final class QueryResult {
 	private final Set<String> fields;
 	private final Set<String> metadataFields;
 
-	public QueryResult(List records, Class recordClass, TotalsPlaceholder totals, int count, Set<DrillDown> drillDowns,
-	                   Set<List<String>> chains, List<String> dimensions, List<String> attributes,
-	                   List<String> measures, List<String> sortedBy, Object filterAttributesPlaceholder,
-	                   List<String> filterAttributes, Set<String> fields, Set<String> metadataFields) {
+	private QueryResult(List records, Class recordClass, TotalsPlaceholder totals, int count, Set<DrillDown> drillDowns,
+	                    Set<List<String>> chains, List<String> dimensions, List<String> attributes,
+	                    List<String> measures, List<String> sortedBy, Object filterAttributesPlaceholder,
+	                    List<String> filterAttributes, Set<String> fields, Set<String> metadataFields) {
 		this.records = records;
 		this.recordClass = recordClass;
 		this.totals = totals;
@@ -60,6 +60,15 @@ public final class QueryResult {
 		this.filterAttributes = filterAttributes;
 		this.fields = fields;
 		this.metadataFields = metadataFields;
+	}
+
+	public static QueryResult create(List records, Class recordClass, TotalsPlaceholder totals, int count, Set<DrillDown> drillDowns,
+	                                 Set<List<String>> chains, List<String> dimensions, List<String> attributes,
+	                                 List<String> measures, List<String> sortedBy, Object filterAttributesPlaceholder,
+	                                 List<String> filterAttributes, Set<String> fields, Set<String> metadataFields) {
+		return new QueryResult(records, recordClass, totals, count, drillDowns, chains,
+				dimensions, attributes, measures, sortedBy, filterAttributesPlaceholder,
+				filterAttributes, fields, metadataFields);
 	}
 
 	public List getRecords() {

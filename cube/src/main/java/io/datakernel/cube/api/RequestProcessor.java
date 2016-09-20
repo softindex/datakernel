@@ -16,7 +16,7 @@
 
 package io.datakernel.cube.api;
 
-import io.datakernel.async.ParseException;
+import io.datakernel.exception.ParseException;
 
 public interface RequestProcessor<I> {
 	ReportingQuery apply(I input) throws ParseException;

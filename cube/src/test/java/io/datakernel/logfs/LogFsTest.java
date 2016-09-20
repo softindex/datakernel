@@ -69,18 +69,18 @@ public class LogFsTest {
 	@Before
 	public void setUp() throws Exception {
 		path = temporaryFolder.newFolder("storage").toPath();
-		timeProvider = new SettableCurrentTimeProvider();
+		timeProvider = SettableCurrentTimeProvider.create();
 		executor = Executors.newCachedThreadPool();
-		eventloop = new Eventloop(timeProvider);
-		serverEventloop = new Eventloop();
+		eventloop = Eventloop.create().withCurrentTimeProvider(timeProvider);
+		serverEventloop = Eventloop.create();
 		serverEventloop.keepAlive(true);
 	}
 
 	@Test
 	public void testLocalFs() throws Exception {
 		String logPartition = "p1";
-		LocalFsLogFileSystem fileSystem = new LocalFsLogFileSystem(eventloop, executor, path);
-		LogManagerImpl<String> logManager = new LogManagerImpl<>(eventloop, fileSystem,
+		LocalFsLogFileSystem fileSystem = LocalFsLogFileSystem.create(eventloop, executor, path);
+		LogManagerImpl<String> logManager = LogManagerImpl.create(eventloop, fileSystem,
 				BufferSerializers.utf16Serializer());
 		DateTimeFormatter dateTimeFormatter = logManager.getDateTimeFormatter();
 
@@ -116,7 +116,7 @@ public class LogFsTest {
 		eventloop.run();
 		assertEquals(asList("7", "8", "9"), consumer1.getList());
 
-		ResultCallbackFuture<LogPosition> positionFuture = new ResultCallbackFuture<>();
+		ResultCallbackFuture<LogPosition> positionFuture = ResultCallbackFuture.create();
 		LogStreamProducer<String> producer2 = logManager.producer(logPartition,
 				new LogFile(dateTimeFormatter.print(0), 1), 0,
 				new LogFile(dateTimeFormatter.print(2 * ONE_HOUR_MILLIS), 0), positionFuture);
@@ -138,8 +138,8 @@ public class LogFsTest {
 		final SimpleFsServer server = createServer(address, path);
 		SimpleFsClient client = createClient(address);
 
-		LogFileSystem fileSystem = new RemoteLogFileSystem(eventloop, logName, client);
-		final LogManagerImpl<String> logManager = new LogManagerImpl<>(eventloop, fileSystem,
+		LogFileSystem fileSystem = RemoteLogFileSystem.create(eventloop, logName, client);
+		final LogManagerImpl<String> logManager = LogManagerImpl.create(eventloop, fileSystem,
 				BufferSerializers.utf16Serializer());
 		DateTimeFormatter dateTimeFormatter = logManager.getDateTimeFormatter();
 
@@ -196,13 +196,13 @@ public class LogFsTest {
 	@Test
 	public void testHashFs() throws Exception {
 		String logName = "log";
-		Replica replica = new Replica("", new InetSocketAddress(33333), 1.0);
+		Replica replica = Replica.create("", new InetSocketAddress(33333), 1.0);
 		List<Replica> servers = singletonList(replica);
 		final HashFsServer server = createServer(replica, servers, path);
 		HashFsClient client = createClient(servers);
 
-		LogFileSystem fileSystem = new RemoteLogFileSystem(eventloop, logName, client);
-		final LogManagerImpl<String> logManager = new LogManagerImpl<>(eventloop, fileSystem,
+		LogFileSystem fileSystem = RemoteLogFileSystem.create(eventloop, logName, client);
+		final LogManagerImpl<String> logManager = LogManagerImpl.create(eventloop, fileSystem,
 				BufferSerializers.utf16Serializer(), DETAILED_DATE_TIME_FORMATTER, 10 * 60 * 1000);
 
 		CompletionCallback stopCallback = new SimpleCompletionCallback() {
@@ -266,23 +266,23 @@ public class LogFsTest {
 	}
 
 	private SimpleFsServer createServer(InetSocketAddress address, Path serverStorage) {
-		return new SimpleFsServer(eventloop, executor, serverStorage)
-				.setListenAddress(address);
+		return SimpleFsServer.create(eventloop, executor, serverStorage)
+				.withListenAddress(address);
 	}
 
 	private HashFsServer createServer(Replica replica, List<Replica> servers, Path serverStorage) {
-		LocalReplica localReplica = new LocalReplica(eventloop, executor, serverStorage, new ArrayList<>(servers), replica);
+		LocalReplica localReplica = LocalReplica.create(eventloop, executor, serverStorage, new ArrayList<>(servers), replica);
 		localReplica.start(ignoreCompletionCallback());
-		return new HashFsServer(eventloop, localReplica)
-				.setListenAddress(replica.getAddress());
+		return HashFsServer.create(eventloop, localReplica)
+				.withListenAddress(replica.getAddress());
 	}
 
 	private HashFsClient createClient(List<Replica> servers) {
-		return new HashFsClient(eventloop, servers)
-				.setMaxRetryAttempts(1);
+		return HashFsClient.create(eventloop, servers)
+				.withMaxRetryAttempts(1);
 	}
 
 	private SimpleFsClient createClient(InetSocketAddress address) {
-		return new SimpleFsClient(eventloop, address);
+		return SimpleFsClient.create(eventloop, address);
 	}
 }

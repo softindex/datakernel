@@ -18,7 +18,7 @@ package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
 
-import static io.datakernel.util.ByteBufStrings.decodeAscii;
+import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 
 public class HttpHeader extends CaseInsensitiveTokenMap.Token {
 	protected final byte[] bytes;

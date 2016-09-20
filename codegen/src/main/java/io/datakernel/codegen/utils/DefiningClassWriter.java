@@ -18,12 +18,16 @@ package io.datakernel.codegen.utils;
 
 import org.objectweb.asm.ClassWriter;
 
-public class DefiningClassWriter extends ClassWriter {
+public final class DefiningClassWriter extends ClassWriter {
 	private final DefiningClassLoader classLoader;
 
-	public DefiningClassWriter(DefiningClassLoader classLoader) {
+	private DefiningClassWriter(DefiningClassLoader classLoader) {
 		super(ClassWriter.COMPUTE_FRAMES);
 		this.classLoader = classLoader;
+	}
+
+	public static DefiningClassWriter create(DefiningClassLoader classLoader) {
+		return new DefiningClassWriter(classLoader);
 	}
 
 	@Override

@@ -24,13 +24,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static io.datakernel.codegen.Utils.argsToString;
-import static io.datakernel.codegen.Utils.exceptionInGeneratedClass;
-import static io.datakernel.codegen.Utils.getJavaType;
+import static io.datakernel.codegen.Utils.*;
 import static java.lang.String.format;
 import static org.objectweb.asm.Type.getType;
 
-public class ExpressionCallStatic implements Expression {
+final class ExpressionCallStatic implements Expression {
 	private final Class<?> owner;
 	private final String name;
 	private final List<Expression> arguments = new ArrayList<>();

@@ -18,8 +18,8 @@ package io.datakernel.uikernel;
 
 import com.google.gson.Gson;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.http.*;
-import io.datakernel.util.ByteBufStrings;
 
 import java.nio.charset.Charset;
 import java.util.List;
@@ -39,7 +39,7 @@ public class UiKernelServlets {
 	private static final String ID_PARAMETER_NAME = "id";
 
 	public static <K, R extends AbstractRecord<K>> MiddlewareServlet apiServlet(GridModel<K, R> model, Gson gson) {
-		MiddlewareServlet main = new MiddlewareServlet();
+		MiddlewareServlet main = MiddlewareServlet.create();
 		main.post(create(model, gson));
 		main.get(read(model, gson));
 		main.use(PUT, update(model, gson));
@@ -162,11 +162,11 @@ public class UiKernelServlets {
 					model.delete(id, new ResultCallback<DeleteResponse>() {
 						@Override
 						public void onResult(DeleteResponse response) {
-							HttpResponse res = HttpResponse.create();
+							HttpResponse res = HttpResponse.ok200();
 							if (response.hasErrors()) {
 								String json = gson.toJson(response.getErrors());
-								res.contentType(JSON_UTF8)
-										.body(ByteBufStrings.wrapUtf8(json));
+								res.setContentType(JSON_UTF8);
+								res.setBody(ByteBufStrings.wrapUtf8(json));
 							}
 							callback.onResult(res);
 						}
@@ -184,8 +184,8 @@ public class UiKernelServlets {
 	}
 
 	private static HttpResponse createResponse(String body) {
-		return HttpResponse.create()
-				.contentType(JSON_UTF8)
-				.body(ByteBufStrings.wrapUtf8(body));
+		return HttpResponse.ok200()
+				.withContentType(JSON_UTF8)
+				.withBody(ByteBufStrings.wrapUtf8(body));
 	}
 }

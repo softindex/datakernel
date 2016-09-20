@@ -1,6 +1,5 @@
 package io.datakernel.simplefs.stress;
 
-import io.datakernel.StreamForwarderWithCounter;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
@@ -36,12 +35,12 @@ public class StressDownload {
 
 		Files.createDirectories(CLIENT_STORAGE);
 
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 		final ExecutorService executor = Executors.newCachedThreadPool();
 
 		final int[] failures = new int[1];
 
-		SimpleFsClient client = new SimpleFsClient(eventloop, new InetSocketAddress(5560));
+		SimpleFsClient client = SimpleFsClient.create(eventloop, new InetSocketAddress(5560));
 
 		for (int i = 0; i < OPERATIONS_QUANTITY; i++) {
 			FILES.add(createFile());

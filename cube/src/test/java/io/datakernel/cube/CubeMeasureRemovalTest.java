@@ -77,7 +77,7 @@ public class CubeMeasureRemovalTest {
 			.build();
 
 	private static AggregationStructure getStructure() {
-		return new AggregationStructure(
+		return AggregationStructure.create(
 				KEYS,
 				ImmutableMap.<String, FieldType>builder()
 						.put("impressions", longSum())
@@ -91,13 +91,13 @@ public class CubeMeasureRemovalTest {
 	                            CubeMetadataStorage cubeMetadataStorage,
 	                            AggregationChunkStorage aggregationChunkStorage,
 	                            AggregationStructure cubeStructure) {
-		Cube cube = new Cube(eventloop, executorService, classLoader, cubeMetadataStorage, aggregationChunkStorage,
+		Cube cube = Cube.create(eventloop, executorService, classLoader, cubeMetadataStorage, aggregationChunkStorage,
 				cubeStructure, Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE, Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY,
 				Aggregation.DEFAULT_SORTER_BLOCK_SIZE, Cube.DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD,
 				Aggregation.DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS);
-		cube.addAggregation("detailed", new AggregationMetadata(LogItem.DIMENSIONS, LogItem.MEASURES));
-		cube.addAggregation("date", new AggregationMetadata(asList("date"), LogItem.MEASURES));
-		cube.addAggregation("advertiser", new AggregationMetadata(asList("advertiser"), LogItem.MEASURES));
+		cube.addAggregation("detailed", AggregationMetadata.create(LogItem.DIMENSIONS, LogItem.MEASURES));
+		cube.addAggregation("date", AggregationMetadata.create(asList("date"), LogItem.MEASURES));
+		cube.addAggregation("advertiser", AggregationMetadata.create(asList("advertiser"), LogItem.MEASURES));
 		cube.setChildParentRelationships(CHILD_PARENT_RELATIONSHIPS);
 		return cube;
 	}
@@ -106,15 +106,15 @@ public class CubeMeasureRemovalTest {
 	                               CubeMetadataStorage cubeMetadataStorage,
 	                               AggregationChunkStorage aggregationChunkStorage,
 	                               AggregationStructure cubeStructure) {
-		Cube cube = new Cube(eventloop, executorService, classLoader, cubeMetadataStorage, aggregationChunkStorage,
+		Cube cube = Cube.create(eventloop, executorService, classLoader, cubeMetadataStorage, aggregationChunkStorage,
 				cubeStructure, Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE, Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY,
 				Aggregation.DEFAULT_SORTER_BLOCK_SIZE, Cube.DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD,
 				Aggregation.DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS);
-		cube.addAggregation("detailed", new AggregationMetadata(LogItem.DIMENSIONS,
+		cube.addAggregation("detailed", AggregationMetadata.create(LogItem.DIMENSIONS,
 				asList("impressions", "clicks", "conversions"))); // "revenue" measure is removed
-		cube.addAggregation("date", new AggregationMetadata(asList("date"),
+		cube.addAggregation("date", AggregationMetadata.create(asList("date"),
 				asList("impressions", "clicks", "conversions"))); // "revenue" measure is removed
-		cube.addAggregation("advertiser", new AggregationMetadata(asList("advertiser"),
+		cube.addAggregation("advertiser", AggregationMetadata.create(asList("advertiser"),
 				asList("impressions", "clicks", "conversions", "revenue")));
 		cube.setChildParentRelationships(CHILD_PARENT_RELATIONSHIPS);
 		return cube;
@@ -126,8 +126,8 @@ public class CubeMeasureRemovalTest {
 	public void test() throws Exception {
 		ExecutorService executor = Executors.newCachedThreadPool();
 
-		DefiningClassLoader classLoader = new DefiningClassLoader();
-		Eventloop eventloop = new Eventloop();
+		DefiningClassLoader classLoader = DefiningClassLoader.create();
+		Eventloop eventloop = Eventloop.create();
 		Path aggregationsDir = temporaryFolder.newFolder().toPath();
 		Path logsDir = temporaryFolder.newFolder().toPath();
 		AggregationStructure structure = getStructure();
@@ -136,13 +136,13 @@ public class CubeMeasureRemovalTest {
 		AggregationChunkStorage aggregationChunkStorage =
 				getAggregationChunkStorage(eventloop, executor, structure, aggregationsDir);
 		CubeMetadataStorageSql cubeMetadataStorageSql =
-				new CubeMetadataStorageSql(eventloop, executor, jooqConfiguration, "processId");
+				CubeMetadataStorageSql.create(eventloop, executor, jooqConfiguration, "processId");
 		LogToCubeMetadataStorage logToCubeMetadataStorage =
 				getLogToCubeMetadataStorage(eventloop, executor, jooqConfiguration, cubeMetadataStorageSql);
 		Cube cube = getCube(eventloop, executor, classLoader, cubeMetadataStorageSql,
 				aggregationChunkStorage, structure);
 		LogManager<LogItem> logManager = getLogManager(LogItem.class, eventloop, executor, classLoader, logsDir);
-		LogToCubeRunner<LogItem> logToCubeRunner = new LogToCubeRunner<>(eventloop, cube, logManager,
+		LogToCubeRunner<LogItem> logToCubeRunner = LogToCubeRunner.create(eventloop, cube, logManager,
 				LogItemSplitter.factory(), LOG_NAME, LOG_PARTITIONS, logToCubeMetadataStorage);
 
 		// Save and aggregate logs
@@ -165,7 +165,7 @@ public class CubeMeasureRemovalTest {
 		structure = getStructure();
 		aggregationChunkStorage = getAggregationChunkStorage(eventloop, executor, structure, aggregationsDir);
 		cube = getNewCube(eventloop, executor, classLoader, cubeMetadataStorageSql, aggregationChunkStorage, structure);
-		logToCubeRunner = new LogToCubeRunner<>(eventloop, cube, logManager,
+		logToCubeRunner = LogToCubeRunner.create(eventloop, cube, logManager,
 				LogItemSplitter.factory(), LOG_NAME, LOG_PARTITIONS, logToCubeMetadataStorage);
 
 		// Save and aggregate logs
@@ -195,7 +195,7 @@ public class CubeMeasureRemovalTest {
 		aggregateToMap(map, listOfRandomLogItems);
 		aggregateToMap(map, listOfRandomLogItems2);
 
-		CubeQuery query = new CubeQuery().dimensions("date").measures("clicks");
+		CubeQuery query = CubeQuery.create().withDimensions("date").withMeasures("clicks");
 		StreamConsumers.ToList<LogItem> queryResultConsumer = new StreamConsumers.ToList<>(eventloop);
 		cube.query(LogItem.class, query).streamTo(queryResultConsumer);
 		eventloop.run();
@@ -207,7 +207,7 @@ public class CubeMeasureRemovalTest {
 		}
 
 		// Consolidate
-		ResultCallbackFuture<Boolean> callback = new ResultCallbackFuture<>();
+		ResultCallbackFuture<Boolean> callback = ResultCallbackFuture.create();
 		cube.consolidate(100, callback);
 		eventloop.run();
 		boolean consolidated = callback.isDone() ? callback.get() : false;
@@ -225,7 +225,7 @@ public class CubeMeasureRemovalTest {
 		assertTrue(chunks.get(0).getFields().contains("revenue"));
 
 		// Query
-		query = new CubeQuery().dimensions("date").measures("clicks");
+		query = CubeQuery.create().withDimensions("date").withMeasures("clicks");
 		queryResultConsumer = new StreamConsumers.ToList<>(eventloop);
 		cube.query(LogItem.class, query).streamTo(queryResultConsumer);
 		eventloop.run();

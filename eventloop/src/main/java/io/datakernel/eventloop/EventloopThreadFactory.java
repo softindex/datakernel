@@ -26,7 +26,7 @@ public final class EventloopThreadFactory implements ThreadFactory {
 	private final boolean daemon;
 	private final AtomicLong count = new AtomicLong(1);
 
-	public EventloopThreadFactory(int priority, boolean daemon) {
+	private EventloopThreadFactory(int priority, boolean daemon) {
 		this.priority = priority;
 		this.daemon = daemon;
 	}

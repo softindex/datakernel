@@ -51,9 +51,9 @@ public class RpcStrategyRendezvousHashingTest {
 		RpcStrategySingleServer server2 = server(ADDRESS_2);
 		RpcStrategySingleServer server3 = server(ADDRESS_3);
 		RpcStrategy rendezvousHashing = rendezvousHashing(hashFunction)
-				.put(shardId1, server1)
-				.put(shardId2, server2)
-				.put(shardId3, server3);
+				.withShard(shardId1, server1)
+				.withShard(shardId2, server2)
+				.withShard(shardId3, server3);
 		RpcSender sender;
 		int callsPerLoop = 10000;
 		int timeout = 50;
@@ -98,9 +98,9 @@ public class RpcStrategyRendezvousHashingTest {
 		RpcStrategySingleServer server2 = server(ADDRESS_2);
 		RpcStrategySingleServer server3 = server(ADDRESS_3);
 		RpcStrategy rendezvousHashing = rendezvousHashing(hashFunction)
-				.put(shardId1, server1)
-				.put(shardId2, server2)
-				.put(shardId3, server3);
+				.withShard(shardId1, server1)
+				.withShard(shardId2, server2)
+				.withShard(shardId3, server3);
 
 		// server3 is active
 		pool.put(ADDRESS_3, connection3);
@@ -119,9 +119,9 @@ public class RpcStrategyRendezvousHashingTest {
 		RpcStrategySingleServer server2 = server(ADDRESS_2);
 		RpcStrategySingleServer server3 = server(ADDRESS_3);
 		RpcStrategy rendezvousHashing = rendezvousHashing(hashFunction)
-				.put(shardId1, server1)
-				.put(shardId2, server2)
-				.put(shardId3, server3);
+				.withShard(shardId1, server1)
+				.withShard(shardId2, server2)
+				.withShard(shardId3, server3);
 
 		// no connections were added to pool, so there are no active servers
 
@@ -152,9 +152,9 @@ public class RpcStrategyRendezvousHashingTest {
 		RpcStrategySingleServer server3 = server(ADDRESS_3);
 		RpcStrategy rendezvousHashing = rendezvousHashing(hashFunction)
 				.withMinActiveShards(4)
-				.put(shardId1, server1)
-				.put(shardId2, server2)
-				.put(shardId3, server3);
+				.withShard(shardId1, server1)
+				.withShard(shardId2, server2)
+				.withShard(shardId3, server3);
 
 		pool.put(ADDRESS_1, connection1);
 		pool.put(ADDRESS_2, connection2);
@@ -180,9 +180,9 @@ public class RpcStrategyRendezvousHashingTest {
 		RpcStrategySingleServer server3 = server(ADDRESS_3);
 		RpcStrategy rendezvousHashing = rendezvousHashing(hashFunction)
 				.withMinActiveShards(4)
-				.put(shardId1, server1)
-				.put(shardId2, server2)
-				.put(shardId3, server3);
+				.withShard(shardId1, server1)
+				.withShard(shardId2, server2)
+				.withShard(shardId3, server3);
 
 		pool.put(ADDRESS_1, connection1);
 		pool.put(ADDRESS_2, connection2);

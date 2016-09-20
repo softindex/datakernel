@@ -335,7 +335,7 @@ public class JmxMBeansAttributesTest {
 
 		@Override
 		public Eventloop getEventloop() {
-			return new Eventloop();
+			return Eventloop.create();
 		}
 	}
 
@@ -353,7 +353,7 @@ public class JmxMBeansAttributesTest {
 
 		@Override
 		public Eventloop getEventloop() {
-			return new Eventloop();
+			return Eventloop.create();
 		}
 	}
 
@@ -371,7 +371,7 @@ public class JmxMBeansAttributesTest {
 
 		@Override
 		public Eventloop getEventloop() {
-			return new Eventloop();
+			return Eventloop.create();
 		}
 	}
 
@@ -389,7 +389,7 @@ public class JmxMBeansAttributesTest {
 
 		@Override
 		public Eventloop getEventloop() {
-			return new Eventloop();
+			return Eventloop.create();
 		}
 	}
 

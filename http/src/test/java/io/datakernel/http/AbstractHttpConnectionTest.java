@@ -1,42 +1,45 @@
 package io.datakernel.http;
 
-import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.bytebuf.ByteBufStrings;
+import io.datakernel.dns.DnsClient;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.net.DatagramSocketSettings;
-import io.datakernel.util.ByteBufStrings;
+import io.datakernel.exception.ParseException;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.Map;
 
+import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
-import static io.datakernel.util.ByteBufStrings.decodeAscii;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
 public class AbstractHttpConnectionTest {
 	private static final int PORT = 5050;
+	private InetAddress GOOGLE_PUBLIC_DNS = HttpUtils.inetAddress("8.8.8.8");
+
+	private Eventloop eventloop = Eventloop.create();
+	private DnsClient dnsClient =
+			NativeDnsResolver.create(eventloop).withTimeout(300).withDnsServerAddress(GOOGLE_PUBLIC_DNS);
+
+	private AsyncHttpServlet servlet = new AsyncHttpServlet() {
+		@Override
+		public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
+			callback.onResult(createMultiLineHeaderWithInitialBodySpacesResponse());
+		}
+	};
+
+	private AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet).withListenPort(PORT);
+	private AsyncHttpClient client = AsyncHttpClient.create(eventloop, dnsClient);
 
 	@Test
 	public void testMultiLineHeader() throws IOException {
-		final Map<String, String> data = new HashMap<>();
-
-		Eventloop eventloop = new Eventloop();
-		final AsyncHttpServer server = new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
-			@Override
-			public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
-				callback.onResult(createMultiLineHeaderWithInitialBodySpacesResponse());
-			}
-		});
-		server.setListenPort(PORT);
 		server.listen();
-
-		final AsyncHttpClient client = new AsyncHttpClient(eventloop,
-				new NativeDnsResolver(eventloop, new DatagramSocketSettings(), 300, HttpUtils.inetAddress("8.8.8.8")));
-
+		final Map<String, String> data = new HashMap<>();
 		client.send(HttpRequest.get("http://127.0.0.1:" + PORT), 50000, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
@@ -61,9 +64,10 @@ public class AbstractHttpConnectionTest {
 	}
 
 	private HttpResponse createMultiLineHeaderWithInitialBodySpacesResponse() {
-		return HttpResponse.create()
-				.header(HttpHeaders.DATE, "Mon, 27 Jul 2009 12:28:53 GMT")
-				.header(HttpHeaders.CONTENT_TYPE, "text/\n          html")
-				.body(ByteBufStrings.wrapAscii("  <html>\n<body>\n<h1>Hello, World!</h1>\n</body>\n</html>"));
+		HttpResponse response = HttpResponse.ok200();
+		response.addHeader(HttpHeaders.DATE, "Mon, 27 Jul 2009 12:28:53 GMT");
+		response.addHeader(HttpHeaders.CONTENT_TYPE, "text/\n          html");
+		response.setBody(ByteBufStrings.wrapAscii("  <html>\n<body>\n<h1>Hello, World!</h1>\n</body>\n</html>"));
+		return response;
 	}
 }

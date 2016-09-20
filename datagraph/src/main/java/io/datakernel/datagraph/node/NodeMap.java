@@ -46,7 +46,7 @@ public final class NodeMap<I, O> implements Node {
 
 	@Override
 	public void createAndBind(TaskContext taskContext) {
-		StreamMap<I, O> streamMap = new StreamMap<>(taskContext.getEventloop(), mapper);
+		StreamMap<I, O> streamMap = StreamMap.create(taskContext.getEventloop(), mapper);
 		taskContext.bindChannel(input, streamMap.getInput());
 		taskContext.export(output, streamMap.getOutput());
 	}

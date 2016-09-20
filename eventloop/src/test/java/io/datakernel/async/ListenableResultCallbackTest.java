@@ -26,7 +26,7 @@ public class ListenableResultCallbackTest {
 		TestLoggingResultCallback<Integer> callback1 = new TestLoggingResultCallback<>();
 		TestLoggingResultCallback<Integer> callback2 = new TestLoggingResultCallback<>();
 		TestLoggingResultCallback<Integer> callback3 = new TestLoggingResultCallback<>();
-		ListenableResultCallback<Integer> listenableCallback = new ListenableResultCallback<>();
+		ListenableResultCallback<Integer> listenableCallback = ListenableResultCallback.create();
 
 		listenableCallback.addListener(callback1);
 		listenableCallback.addListener(callback2);
@@ -51,7 +51,7 @@ public class ListenableResultCallbackTest {
 		TestLoggingResultCallback<Integer> callback1 = new TestLoggingResultCallback<>();
 		TestLoggingResultCallback<Integer> callback2 = new TestLoggingResultCallback<>();
 		TestLoggingResultCallback<Integer> callback3 = new TestLoggingResultCallback<>();
-		ListenableResultCallback<Integer> listenableCallback = new ListenableResultCallback<>();
+		ListenableResultCallback<Integer> listenableCallback = ListenableResultCallback.create();
 
 		listenableCallback.addListener(callback1);
 		listenableCallback.addListener(callback2);
@@ -77,8 +77,8 @@ public class ListenableResultCallbackTest {
 	public void testImmediatelyAvailableResult() throws Exception {
 		TestLoggingResultCallback<Integer> simpleCallback1 = new TestLoggingResultCallback<>();
 		TestLoggingResultCallback<Integer> simpleCallback2 = new TestLoggingResultCallback<>();
-		ListenableResultCallback<Integer> listenableCallback1 = new ListenableResultCallback<>();
-		ListenableResultCallback<Integer> listenableCallback2 = new ListenableResultCallback<>();
+		ListenableResultCallback<Integer> listenableCallback1 = ListenableResultCallback.create();
+		ListenableResultCallback<Integer> listenableCallback2 = ListenableResultCallback.create();
 
 		listenableCallback1.onResult(42);
 		Exception exception1 = new Exception("Exception1");

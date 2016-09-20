@@ -16,14 +16,14 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.util.ByteBufStrings;
+import io.datakernel.bytebuf.ByteBufStrings;
+import io.datakernel.exception.ParseException;
 
 import java.util.*;
 
+import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.HttpHeaders.*;
-import static io.datakernel.util.ByteBufStrings.*;
 
 /**
  * Represents any HTTP message. Its internal byte buffers will be automatically recycled in HTTP client or HTTP server.
@@ -66,18 +66,7 @@ public abstract class HttpMessage {
 		headers.add(value);
 	}
 
-	protected void setHeader(HttpHeader header, ByteBuf value) {
-		assert !recycled;
-		setHeader(HttpHeaders.asBytes(header, value.array(), value.head(), value.headRemaining()));
-		if (value.isRecycleNeeded()) {
-			if (headerBufs == null) {
-				headerBufs = new ArrayList<>(4);
-			}
-			headerBufs.add(value);
-		}
-	}
-
-	protected void addHeader(HttpHeader header, ByteBuf value) {
+	public void addHeader(HttpHeader header, ByteBuf value) {
 		assert !recycled;
 		addHeader(HttpHeaders.asBytes(header, value.array(), value.head(), value.headRemaining()));
 		if (value.isRecycleNeeded()) {
@@ -88,27 +77,17 @@ public abstract class HttpMessage {
 		}
 	}
 
-	protected void setHeader(HttpHeader header, byte[] value) {
-		assert !recycled;
-		setHeader(HttpHeaders.asBytes(header, value, 0, value.length));
-	}
-
-	protected void addHeader(HttpHeader header, byte[] value) {
+	public void addHeader(HttpHeader header, byte[] value) {
 		assert !recycled;
 		addHeader(HttpHeaders.asBytes(header, value, 0, value.length));
 	}
 
-	protected void setHeader(HttpHeader header, String string) {
-		assert !recycled;
-		setHeader(HttpHeaders.ofString(header, string));
-	}
-
-	protected void addHeader(HttpHeader header, String string) {
+	public void addHeader(HttpHeader header, String string) {
 		assert !recycled;
 		addHeader(HttpHeaders.ofString(header, string));
 	}
 
-	protected void setBody(ByteBuf body) {
+	public void setBody(ByteBuf body) {
 		assert !recycled;
 		if (this.body != null)
 			this.body.recycle();

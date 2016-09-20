@@ -16,19 +16,19 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.exception.ParseException;
 
 import java.net.InetAddress;
 import java.util.*;
 
+import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.GzipProcessor.toGzip;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.http.HttpUtils.nullToEmpty;
-import static io.datakernel.util.ByteBufStrings.*;
 
 /**
  * Represent the HTTP request which {@link AsyncHttpClient} send to {@link AsyncHttpServer}. It must have only one owner in
@@ -42,129 +42,198 @@ public final class HttpRequest extends HttpMessage {
 	private Map<String, String> urlParameters;
 	private Map<String, String> bodyParameters;
 	private int pos;
+	private boolean gzip = false;
 
+	// region builders
 	private HttpRequest(HttpMethod method) {
 		this.method = method;
 	}
 
-	public static HttpRequest create(HttpMethod method) {
+	public static HttpRequest ofMethod(HttpMethod method) {
 		assert method != null;
 		return new HttpRequest(method);
 	}
 
 	public static HttpRequest get(String url) {
-		return create(GET).url(url);
+		return ofMethod(GET).withUrl(url);
 	}
 
 	public static HttpRequest post(String url) {
-		return create(POST).url(url);
+		return ofMethod(POST).withUrl(url);
 	}
 
 	// common builder methods
-	public HttpRequest header(HttpHeader header, ByteBuf value) {
-		setHeader(header, value);
+	public HttpRequest withHeader(HttpHeader header, ByteBuf value) {
+		addHeader(header, value);
 		return this;
 	}
 
-	public HttpRequest header(HttpHeader header, byte[] value) {
-		setHeader(header, value);
+	public HttpRequest withHeader(HttpHeader header, byte[] value) {
+		addHeader(header, value);
 		return this;
 	}
 
-	public HttpRequest header(HttpHeader header, String value) {
-		setHeader(header, value);
+	public HttpRequest withHeader(HttpHeader header, String value) {
+		addHeader(header, value);
 		return this;
 	}
 
-	public HttpRequest body(byte[] array) {
-		return body(ByteBuf.wrapForReading(array));
+	public HttpRequest withBody(byte[] array) {
+		setBody(ByteBuf.wrapForReading(array));
+		return this;
 	}
 
-	public HttpRequest body(ByteBuf body) {
+	public HttpRequest withBody(ByteBuf body) {
 		setBody(body);
 		return this;
 	}
 
 	// specific builder methods
-	public HttpRequest accept(List<AcceptMediaType> value) {
+	public HttpRequest withAccept(List<AcceptMediaType> value) {
+		setAccept(value);
+		return this;
+	}
+
+	public HttpRequest withAccept(AcceptMediaType... value) {
+		setAccept(value);
+		return this;
+	}
+
+	public HttpRequest withAcceptCharsets(List<AcceptCharset> values) {
+		setAcceptCharsets(values);
+		return this;
+	}
+
+	public HttpRequest withAcceptCharsets(AcceptCharset... values) {
+		setAcceptCharsets(values);
+		return this;
+	}
+
+	public HttpRequest withCookies(List<HttpCookie> cookies) {
+		setCookies(cookies);
+		return this;
+	}
+
+	public HttpRequest withCookies(HttpCookie... cookie) {
+		setCookies(cookie);
+		return this;
+	}
+
+	public HttpRequest withCookie(HttpCookie cookie) {
+		setCookie(cookie);
+		return this;
+	}
+
+	public HttpRequest withContentType(ContentType contentType) {
+		setContentType(contentType);
+		return this;
+	}
+
+	public HttpRequest withDate(Date date) {
+		setDate(date);
+		return this;
+	}
+
+	public HttpRequest withIfModifiedSince(Date date) {
+		setIfModifiedSince(date);
+		return this;
+	}
+
+	public HttpRequest withIfUnModifiedSince(Date date) {
+		setIfUnModifiedSince(date);
+		return this;
+	}
+
+	public HttpRequest withUrl(HttpUri url) {
+		setUrl(url);
+		return this;
+	}
+
+	public HttpRequest withUrl(String url) {
+		setUrl(url);
+		return this;
+	}
+
+	public HttpRequest withRemoteAddress(InetAddress inetAddress) {
+		setRemoteAddress(inetAddress);
+		return this;
+	}
+
+	public HttpRequest withGzipCompression() {
+		setGzipCompression();
+		return this;
+	}
+	// endregion
+
+	// region setters
+	public void setAccept(List<AcceptMediaType> value) {
 		addHeader(ofAcceptContentTypes(HttpHeaders.ACCEPT, value));
-		return this;
 	}
 
-	public HttpRequest accept(AcceptMediaType... value) {
-		return accept(Arrays.asList(value));
+	public void setAccept(AcceptMediaType... value) {
+		setAccept(Arrays.asList(value));
 	}
 
-	public HttpRequest acceptCharsets(List<AcceptCharset> values) {
+	public void setAcceptCharsets(List<AcceptCharset> values) {
 		addHeader(ofCharsets(HttpHeaders.ACCEPT_CHARSET, values));
-		return this;
 	}
 
-	public HttpRequest acceptCharsets(AcceptCharset... values) {
-		return acceptCharsets(Arrays.asList(values));
+	public void setAcceptCharsets(AcceptCharset... values) {
+		setAcceptCharsets(Arrays.asList(values));
 	}
 
-	public HttpRequest cookies(List<HttpCookie> cookies) {
+	public void setCookies(List<HttpCookie> cookies) {
 		addHeader(ofCookies(COOKIE, cookies));
-		return this;
 	}
 
-	public HttpRequest cookies(HttpCookie... cookie) {
-		return cookies(Arrays.asList(cookie));
+	public void setCookies(HttpCookie... cookie) {
+		setCookies(Arrays.asList(cookie));
 	}
 
-	public HttpRequest cookie(HttpCookie cookie) {
-		return cookies(Collections.singletonList(cookie));
+	public void setCookie(HttpCookie cookie) {
+		setCookies(Collections.singletonList(cookie));
 	}
 
-	public HttpRequest contentType(ContentType contentType) {
+	public void setContentType(ContentType contentType) {
 		setHeader(ofContentType(HttpHeaders.CONTENT_TYPE, contentType));
-		return this;
 	}
 
-	public HttpRequest date(Date date) {
+	public void setDate(Date date) {
 		setHeader(ofDate(HttpHeaders.DATE, date));
-		return this;
 	}
 
-	public HttpRequest ifModifiedSince(Date date) {
+	public void setIfModifiedSince(Date date) {
 		setHeader(ofDate(IF_MODIFIED_SINCE, date));
-		return this;
 	}
 
-	public HttpRequest ifUnModifiedSince(Date date) {
+	public void setIfUnModifiedSince(Date date) {
 		setHeader(ofDate(IF_UNMODIFIED_SINCE, date));
-		return this;
 	}
 
-	public HttpRequest url(HttpUri url) {
+	public void setUrl(HttpUri url) {
 		assert !recycled;
 		this.url = url;
 		if (!url.isPartial()) {
-			setHeader(HttpHeaders.HOST, url.getHostAndPort());
+			setHeader(HttpHeaders.ofString(HttpHeaders.HOST, url.getHostAndPort()));
 		}
-		return this;
 	}
 
-	public HttpRequest url(String url) {
-		return url(HttpUri.ofUrl(url));
+	public void setUrl(String url) {
+		setUrl(HttpUri.ofUrl(url));
 	}
 
-	public HttpRequest remoteAddress(InetAddress inetAddress) {
+	public void setRemoteAddress(InetAddress inetAddress) {
 		assert !recycled;
 		this.remoteAddress = inetAddress;
-		return this;
 	}
 
-	private boolean gzip = false;
-
-	public HttpRequest compressWithGzip() {
-		setHeader(CONTENT_ENCODING, "gzip");
+	public void setGzipCompression() {
+		setHeader(HttpHeaders.ofString(CONTENT_ENCODING, "gzip"));
 		gzip = true;
-		return this;
 	}
+	// endregion
 
-	// getters
+	// region getters
 	public List<AcceptMediaType> parseAccept() throws ParseException {
 		assert !recycled;
 		List<AcceptMediaType> list = new ArrayList<>();
@@ -214,8 +283,9 @@ public final class HttpRequest extends HttpMessage {
 			return new Date(HttpDate.parse(header.array, header.offset));
 		return null;
 	}
+	// endregion
 
-	// internal
+	// region internal
 	public Map<String, String> getParameters() throws ParseException {
 		assert !recycled;
 		return url.getParameters();
@@ -366,4 +436,5 @@ public final class HttpRequest extends HttpMessage {
 			return host;
 		return host + url.getPathAndQuery();
 	}
+	// endregion
 }

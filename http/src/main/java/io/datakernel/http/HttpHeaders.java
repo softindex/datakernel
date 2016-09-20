@@ -21,7 +21,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import java.util.Date;
 import java.util.List;
 
-import static io.datakernel.util.ByteBufStrings.*;
+import static io.datakernel.bytebuf.ByteBufStrings.*;
 
 @SuppressWarnings("unused")
 public final class HttpHeaders {

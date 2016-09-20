@@ -16,9 +16,9 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.util.ByteBufStrings;
+import io.datakernel.bytebuf.ByteBufStrings;
+import io.datakernel.exception.ParseException;
 import org.junit.Test;
 
 import java.util.*;
@@ -54,14 +54,14 @@ public class HttpCookieTest {
 	@Test
 	public void testRender() {
 		Date date = new Date(987654321098l); // "Thu, 19 Apr 2001 04:25:21 GMT";
-		HttpCookie cookie = new HttpCookie("name", "value");
-		cookie.setExpirationDate(date);
-		cookie.setMaxAge(10);
-		cookie.setPath("/test");
-		cookie.setDomain("www.google.com");
-		cookie.setSecure(true);
-		cookie.setHttpOnly(true);
-		cookie.setExtension("Alhambra site");
+		HttpCookie cookie = HttpCookie.of("name", "value")
+				.withExpirationDate(date)
+				.withMaxAge(10)
+				.withPath("/test")
+				.withDomain("www.google.com")
+				.withSecure(true)
+				.withHttpOnly(true)
+				.withExtension("Alhambra site");
 
 		String expected = "name=\"value\"; Expires=Thu, 19 Apr 2001 04:25:21 GMT; Max-Age=10; Domain=www.google.com; " +
 				"Path=/test; Secure; HttpOnly; \"Alhambra site\"";
@@ -73,16 +73,17 @@ public class HttpCookieTest {
 	@Test
 	public void testRenderMany() {
 		Date date = new Date(987654321098l); // "Thu, 19 Apr 2001 04:25:21 GMT";
-		HttpCookie cookie1 = new HttpCookie("name1", "value1");
-		cookie1.setExpirationDate(date);
-		cookie1.setMaxAge(10);
-		cookie1.setPath("/test");
-		cookie1.setDomain("www.google.com");
-		cookie1.setSecure(true);
-		HttpCookie cookie2 = new HttpCookie("name2", "value2");
-		cookie2.setHttpOnly(true);
-		cookie2.setExtension("Alhambra site");
-		HttpCookie cookie3 = new HttpCookie("name3");
+		HttpCookie cookie1 = HttpCookie.of("name1", "value1")
+				.withExpirationDate(date)
+				.withMaxAge(10)
+				.withPath("/test")
+				.withDomain("www.google.com")
+				.withSecure(true);
+
+		HttpCookie cookie2 = HttpCookie.of("name2", "value2")
+				.withHttpOnly(true)
+				.withExtension("Alhambra site");
+		HttpCookie cookie3 = HttpCookie.of("name3");
 
 		String expected = "name1=\"value1\"; name2=\"value2\"; name3";
 

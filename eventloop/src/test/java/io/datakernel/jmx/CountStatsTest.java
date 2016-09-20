@@ -24,7 +24,7 @@ public class CountStatsTest {
 
 	@Test
 	public void itShouldIncrementProperly() {
-		CountStats counter = new CountStats();
+		CountStats counter = CountStats.create();
 		counter.increment();
 		counter.increment(4);
 
@@ -33,7 +33,7 @@ public class CountStatsTest {
 
 	@Test
 	public void itShouldDecrementProperly() {
-		CountStats counter = new CountStats();
+		CountStats counter = CountStats.create();
 		counter.increment();
 		counter.increment(4);
 

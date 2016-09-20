@@ -26,7 +26,8 @@ import io.datakernel.stream.StreamProducer;
 public final class StreamSplitter<T> extends AbstractStreamSplitter<T> implements EventloopJmxMBean {
 	private int jmxItems;
 
-	public StreamSplitter(Eventloop eventloop) {
+	// region creators
+	private StreamSplitter(Eventloop eventloop) {
 		super(eventloop);
 		this.inputConsumer = new InputConsumer() {
 			@Override
@@ -38,6 +39,9 @@ public final class StreamSplitter<T> extends AbstractStreamSplitter<T> implement
 			}
 		};
 	}
+
+	public static <T> StreamSplitter<T> create(Eventloop eventloop) {return new StreamSplitter<T>(eventloop);}
+	// endregion
 
 	public StreamProducer<T> newOutput() {
 		return addOutput(new OutputProducer<T>());

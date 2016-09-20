@@ -29,7 +29,7 @@ import java.util.List;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 
-public class StreamConsumers {
+public final class StreamConsumers {
 	private StreamConsumers() {
 	}
 
@@ -63,7 +63,7 @@ public class StreamConsumers {
 	}
 
 	public static <T> StreamConsumer<T> asynchronouslyResolving(final Eventloop eventloop, final AsyncGetter<StreamConsumer<T>> consumerGetter) {
-		final StreamForwarder<T> forwarder = new StreamForwarder<>(eventloop);
+		final StreamForwarder<T> forwarder = StreamForwarder.create(eventloop);
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {

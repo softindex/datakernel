@@ -21,6 +21,7 @@ import com.google.common.net.InetAddresses;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.*;
+import io.datakernel.eventloop.SimpleServer.SocketHandlerProvider;
 import io.datakernel.serializer.asm.BufferSerializers;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamForwarder;
@@ -63,31 +64,34 @@ public final class SocketStreamingConnectionTest {
 			source.add(i);
 		}
 
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 
 		final StreamConsumers.ToList<Integer> consumerToList = StreamConsumers.toList(eventloop);
 
-		AbstractServer server = new AbstractServer(eventloop) {
+		SocketHandlerProvider socketHandlerProvider = new SocketHandlerProvider() {
 			@Override
-			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
-				SocketStreamingConnection connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
+			public AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
+				SocketStreamingConnection connection = SocketStreamingConnection.createSocketStreamingConnection(eventloop, asyncTcpSocket);
 
-				StreamBinaryDeserializer<Integer> streamDeserializer = new StreamBinaryDeserializer<>(eventloop, intSerializer(), 10);
+				StreamBinaryDeserializer<Integer> streamDeserializer = StreamBinaryDeserializer.create(eventloop, intSerializer(), 10);
 				streamDeserializer.getOutput().streamTo(consumerToList);
 				connection.receiveStreamTo(streamDeserializer.getInput(), ignoreCompletionCallback());
 
 				return connection;
 			}
 		};
-		server.setListenAddress(address).acceptOnce();
+
+		SimpleServer server = SimpleServer.create(eventloop, socketHandlerProvider)
+				.withListenAddress(address)
+				.withAcceptOnce();
 		server.listen();
 
-		final StreamBinarySerializer<Integer> streamSerializer = new StreamBinarySerializer<>(eventloop, intSerializer(), 1, 10, 0, false);
+		final StreamBinarySerializer<Integer> streamSerializer = StreamBinarySerializer.create(eventloop, intSerializer(), 1, 10, 0, false);
 		eventloop.connect(address, new ConnectCallback() {
 			@Override
 			public void onConnect(SocketChannel socketChannel) {
 				AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
-				SocketStreamingConnection connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
+				SocketStreamingConnection connection = SocketStreamingConnection.createSocketStreamingConnection(eventloop, asyncTcpSocket);
 				connection.sendStreamFrom(streamSerializer.getOutput(), ignoreCompletionCallback());
 				StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
 				asyncTcpSocket.setEventHandler(connection);
@@ -115,32 +119,35 @@ public final class SocketStreamingConnectionTest {
 			source.add(i);
 		}
 
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 
 		final StreamConsumers.ToList<Integer> consumerToList = StreamConsumers.toList(eventloop);
 
-		AbstractServer server = new AbstractServer(eventloop) {
+		SocketHandlerProvider socketHandlerProvider = new SocketHandlerProvider() {
 			@Override
-			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
-				SocketStreamingConnection connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
+			public AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
+				SocketStreamingConnection connection = SocketStreamingConnection.createSocketStreamingConnection(eventloop, asyncTcpSocket);
 
-				StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
+				StreamForwarder<ByteBuf> forwarder = StreamForwarder.create(eventloop);
 				connection.receiveStreamTo(forwarder.getInput(), ignoreCompletionCallback());
 				connection.sendStreamFrom(forwarder.getOutput(), ignoreCompletionCallback());
 
 				return connection;
 			}
 		};
-		server.setListenAddress(address).acceptOnce();
+		SimpleServer server = SimpleServer.create(eventloop, socketHandlerProvider)
+				.withListenAddress(address)
+				.withAcceptOnce();
+
 		server.listen();
 
-		final StreamBinarySerializer<Integer> streamSerializer = new StreamBinarySerializer<>(eventloop, intSerializer(), 1, 10, 0, false);
-		final StreamBinaryDeserializer<Integer> streamDeserializer = new StreamBinaryDeserializer<>(eventloop, intSerializer(), 10);
+		final StreamBinarySerializer<Integer> streamSerializer = StreamBinarySerializer.create(eventloop, intSerializer(), 1, 10, 0, false);
+		final StreamBinaryDeserializer<Integer> streamDeserializer = StreamBinaryDeserializer.create(eventloop, intSerializer(), 10);
 		eventloop.connect(address, new ConnectCallback() {
 			@Override
 			public void onConnect(SocketChannel socketChannel) {
 				AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
-				SocketStreamingConnection connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
+				SocketStreamingConnection connection = SocketStreamingConnection.createSocketStreamingConnection(eventloop, asyncTcpSocket);
 				connection.sendStreamFrom(streamSerializer.getOutput(), ignoreCompletionCallback());
 				connection.receiveStreamTo(streamDeserializer.getInput(), ignoreCompletionCallback());
 				StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
@@ -171,7 +178,7 @@ public final class SocketStreamingConnectionTest {
 			source.add(i);
 		}
 
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 
 		List<Integer> list = new ArrayList<>();
 		final TestStreamConsumers.TestConsumerToList<Integer> consumerToListWithError = new TestStreamConsumers.TestConsumerToList<Integer>(eventloop, list) {
@@ -185,28 +192,32 @@ public final class SocketStreamingConnectionTest {
 			}
 		};
 
-		AbstractServer server = new AbstractServer(eventloop) {
+		SocketHandlerProvider socketHandlerProvider = new SocketHandlerProvider() {
 			@Override
-			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
-				SocketStreamingConnection connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
+			public AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
+				SocketStreamingConnection connection = SocketStreamingConnection.createSocketStreamingConnection(eventloop, asyncTcpSocket);
 
-				StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
+				StreamForwarder<ByteBuf> forwarder = StreamForwarder.create(eventloop);
 				connection.receiveStreamTo(forwarder.getInput(), ignoreCompletionCallback());
 				connection.sendStreamFrom(forwarder.getOutput(), ignoreCompletionCallback());
 
 				return connection;
 			}
 		};
-		server.setListenAddress(address).acceptOnce();
+
+		SimpleServer server = SimpleServer.create(eventloop, socketHandlerProvider)
+				.withListenAddress(address)
+				.withAcceptOnce();
+
 		server.listen();
 
-		final StreamBinarySerializer<Integer> streamSerializer = new StreamBinarySerializer<>(eventloop, BufferSerializers.intSerializer(), 1, 50, 0, false);
-		final StreamBinaryDeserializer<Integer> streamDeserializer = new StreamBinaryDeserializer<>(eventloop, BufferSerializers.intSerializer(), 10);
+		final StreamBinarySerializer<Integer> streamSerializer = StreamBinarySerializer.create(eventloop, BufferSerializers.intSerializer(), 1, 50, 0, false);
+		final StreamBinaryDeserializer<Integer> streamDeserializer = StreamBinaryDeserializer.create(eventloop, BufferSerializers.intSerializer(), 10);
 		eventloop.connect(address, new ConnectCallback() {
 			@Override
 			public void onConnect(SocketChannel socketChannel) {
 				AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
-				SocketStreamingConnection connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
+				SocketStreamingConnection connection = SocketStreamingConnection.createSocketStreamingConnection(eventloop, asyncTcpSocket);
 				connection.sendStreamFrom(streamSerializer.getOutput(), ignoreCompletionCallback());
 				connection.receiveStreamTo(streamDeserializer.getInput(), ignoreCompletionCallback());
 				StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());

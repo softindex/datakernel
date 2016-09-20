@@ -28,6 +28,12 @@ public final class AggregationQuery {
 	private List<String> fields = new ArrayList<>();
 	private Predicates predicates = new Predicates();
 
+	public static AggregationQuery create() {return new AggregationQuery();}
+
+	public static AggregationQuery create(List<String> keys, List<String> fields) {return new AggregationQuery(keys, fields);}
+
+	public static AggregationQuery create(List<String> keys, List<String> fields, Predicates predicates) {return new AggregationQuery(keys, fields, predicates);}
+
 	/**
 	 * Represents a mapping between key name and {@code QueryPredicate} instance.
 	 */
@@ -235,15 +241,15 @@ public final class AggregationQuery {
 		}
 	}
 
-	public AggregationQuery() {
+	private AggregationQuery() {
 	}
 
-	public AggregationQuery(List<String> keys, List<String> fields) {
+	private AggregationQuery(List<String> keys, List<String> fields) {
 		this.keys.addAll(keys);
 		this.fields.addAll(fields);
 	}
 
-	public AggregationQuery(List<String> keys, List<String> fields, Predicates predicates) {
+	private AggregationQuery(List<String> keys, List<String> fields, Predicates predicates) {
 		this.keys.addAll(keys);
 		this.fields.addAll(fields);
 		this.predicates = predicates;
@@ -278,42 +284,42 @@ public final class AggregationQuery {
 		return predicates;
 	}
 
-	public AggregationQuery key(String key) {
+	public AggregationQuery withKey(String key) {
 		this.keys.add(key);
 		return this;
 	}
 
-	public AggregationQuery keys(List<String> keys) {
+	public AggregationQuery withKeys(List<String> keys) {
 		this.keys.addAll(keys);
 		return this;
 	}
 
-	public AggregationQuery keys(String... keys) {
+	public AggregationQuery withKeys(String... keys) {
 		this.keys.addAll(Arrays.asList(keys));
 		return this;
 	}
 
-	public AggregationQuery fields(List<String> fields) {
+	public AggregationQuery withFields(List<String> fields) {
 		this.fields.addAll(fields);
 		return this;
 	}
 
-	public AggregationQuery fields(String... fields) {
+	public AggregationQuery withFields(String... fields) {
 		this.fields.addAll(Arrays.asList(fields));
 		return this;
 	}
 
-	public AggregationQuery field(String field) {
+	public AggregationQuery withField(String field) {
 		this.fields.add(field);
 		return this;
 	}
 
-	public AggregationQuery predicates(Predicates predicates) {
+	public AggregationQuery withPredicates(Predicates predicates) {
 		this.predicates = predicates;
 		return this;
 	}
 
-	public AggregationQuery predicates(List<Predicate> predicates) {
+	public AggregationQuery withPredicates(List<Predicate> predicates) {
 		this.predicates = new Predicates();
 		for (Predicate predicate : predicates) {
 			this.predicates.add(predicate);
@@ -321,24 +327,24 @@ public final class AggregationQuery {
 		return this;
 	}
 
-	public AggregationQuery addPredicates(List<Predicate> predicates) {
-		for (Predicate predicate : predicates) {
-			this.predicates.add(predicate);
-		}
-		return this;
-	}
+//	public AggregationQuery addPredicates(List<Predicate> predicates) {
+//		for (Predicate predicate : predicates) {
+//			this.predicates.add(predicate);
+//		}
+//		return this;
+//	}
 
-	public AggregationQuery eq(String key, Object value) {
+	public AggregationQuery withEq(String key, Object value) {
 		this.predicates.add(new PredicateEq(key, value));
 		return this;
 	}
 
-	public AggregationQuery ne(String key, Object value) {
+	public AggregationQuery withNe(String key, Object value) {
 		this.predicates.add(new PredicateNotEquals(key, value));
 		return this;
 	}
 
-	public AggregationQuery between(String key, Object from, Object to) {
+	public AggregationQuery withBetween(String key, Object from, Object to) {
 		this.predicates.add(new PredicateBetween(key, from, to));
 		return this;
 	}

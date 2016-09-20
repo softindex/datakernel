@@ -54,7 +54,7 @@ public final class LogToCubeMetadataStorageStub implements LogToCubeMetadataStor
 	public void loadLogPositions(String log, List<String> partitions, ResultCallback<Map<String, LogPosition>> callback) {
 		Map<String, LogPosition> logPositionMap = new LinkedHashMap<>();
 		for (String partition : partitions) {
-			logPositionMap.put(partition, new LogPosition());
+			logPositionMap.put(partition, LogPosition.create());
 		}
 		logPositionMap.putAll(ensureLogPositions(log));
 		callback.onResult(filterKeys(logPositionMap, in(partitions)));

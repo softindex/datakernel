@@ -16,16 +16,16 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.exception.ParseException;
 import org.junit.Test;
 
 import java.util.Map;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
+import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
+import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
-import static io.datakernel.util.ByteBufStrings.encodeAscii;
-import static io.datakernel.util.ByteBufStrings.wrapAscii;
 import static org.junit.Assert.assertEquals;
 
 public class TestPostParseParams {
@@ -34,8 +34,8 @@ public class TestPostParseParams {
 		ByteBuf body = wrapAscii("hello=world&value=1234");
 
 		HttpRequest request = HttpRequest.post("http://127.0.0.1")
-				.header(CONTENT_TYPE, encodeAscii("application/x-www-form-urlencoded"))
-				.body(body);
+				.withHeader(CONTENT_TYPE, encodeAscii("application/x-www-form-urlencoded"))
+				.withBody(body);
 
 		Map<String, String> params = request.getPostParameters();
 

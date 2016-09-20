@@ -35,17 +35,17 @@ import static org.junit.Assert.*;
 public class StreamRewiringTest {
 	@Test
 	public void noRewire() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducers.OfIterator<Integer> producer = new StreamProducers.OfIterator<>(eventloop, asList(1, 2, 3).iterator());
-		StreamFunction<Integer, Integer> function1 = new StreamFunction<>(eventloop, Functions.<Integer>identity());
-		StreamFunction<Integer, String> function2 = new StreamFunction<>(eventloop, new Function<Integer, String>() {
+		StreamFunction<Integer, Integer> function1 = StreamFunction.create(eventloop, Functions.<Integer>identity());
+		StreamFunction<Integer, String> function2 = StreamFunction.create(eventloop, new Function<Integer, String>() {
 			@Override
 			public String apply(Integer input) {
 				return input.toString();
 			}
 		});
-		StreamFunction<String, String> function3 = new StreamFunction<>(eventloop, Functions.<String>identity());
+		StreamFunction<String, String> function3 = StreamFunction.create(eventloop, Functions.<String>identity());
 		StreamConsumers.ToList<String> consumer1 = new StreamConsumers.ToList<>(eventloop);
 
 		producer.streamTo(function1.getInput());
@@ -62,17 +62,17 @@ public class StreamRewiringTest {
 
 	@Test
 	public void rewireConsumer1() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducers.OfIterator<Integer> producer = new StreamProducers.OfIterator<>(eventloop, asList(1, 2, 3).iterator());
-		StreamFunction<Integer, Integer> function1 = new StreamFunction<>(eventloop, Functions.<Integer>identity());
-		StreamFunction<Integer, String> function2 = new StreamFunction<>(eventloop, new Function<Integer, String>() {
+		StreamFunction<Integer, Integer> function1 = StreamFunction.create(eventloop, Functions.<Integer>identity());
+		StreamFunction<Integer, String> function2 = StreamFunction.create(eventloop, new Function<Integer, String>() {
 			@Override
 			public String apply(Integer input) {
 				return input.toString();
 			}
 		});
-		StreamFunction<String, String> function3 = new StreamFunction<>(eventloop, Functions.<String>identity());
+		StreamFunction<String, String> function3 = StreamFunction.create(eventloop, Functions.<String>identity());
 		StreamConsumers.ToList<String> consumer1 = new StreamConsumers.ToList<>(eventloop);
 		StreamConsumers.ToList<String> consumer2 = new StreamConsumers.ToList<>(eventloop);
 
@@ -95,17 +95,17 @@ public class StreamRewiringTest {
 
 	@Test
 	public void rewireConsumer2() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducers.OfIterator<Integer> producer = new StreamProducers.OfIterator<>(eventloop, asList(1, 2, 3).iterator());
-		StreamFunction<Integer, Integer> function1 = new StreamFunction<>(eventloop, Functions.<Integer>identity());
-		StreamFunction<Integer, String> function2 = new StreamFunction<>(eventloop, new Function<Integer, String>() {
+		StreamFunction<Integer, Integer> function1 = StreamFunction.create(eventloop, Functions.<Integer>identity());
+		StreamFunction<Integer, String> function2 = StreamFunction.create(eventloop, new Function<Integer, String>() {
 			@Override
 			public String apply(Integer input) {
 				return input.toString();
 			}
 		});
-		StreamFunction<String, String> function3 = new StreamFunction<>(eventloop, Functions.<String>identity());
+		StreamFunction<String, String> function3 = StreamFunction.create(eventloop, Functions.<String>identity());
 		StreamConsumers.ToList<String> consumer1 = new StreamConsumers.ToList<>(eventloop);
 		StreamConsumers.ToList<String> consumer2 = new StreamConsumers.ToList<>(eventloop);
 
@@ -127,20 +127,20 @@ public class StreamRewiringTest {
 
 	@Test
 	public void rewireProducer1() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducers.OfIterator<Integer> producer0 = new StreamProducers.OfIterator<>(eventloop, asList(0).iterator(), false);
 		StreamProducers.OfIterator<Integer> producer1 = new StreamProducers.OfIterator<>(eventloop, asList(1, 2, 3).iterator(), false);
 		StreamProducers.OfIterator<Integer> producer2 = new StreamProducers.OfIterator<>(eventloop, asList(4, 5, 6).iterator());
 		StreamProducers.OfIterator<Integer> producer3 = new StreamProducers.OfIterator<>(eventloop, asList(10).iterator());
-		StreamFunction<Integer, Integer> function1 = new StreamFunction<>(eventloop, Functions.<Integer>identity());
-		StreamFunction<Integer, String> function2 = new StreamFunction<>(eventloop, new Function<Integer, String>() {
+		StreamFunction<Integer, Integer> function1 = StreamFunction.create(eventloop, Functions.<Integer>identity());
+		StreamFunction<Integer, String> function2 = StreamFunction.create(eventloop, new Function<Integer, String>() {
 			@Override
 			public String apply(Integer input) {
 				return input.toString();
 			}
 		});
-		StreamFunction<String, String> function3 = new StreamFunction<>(eventloop, Functions.<String>identity());
+		StreamFunction<String, String> function3 = StreamFunction.create(eventloop, Functions.<String>identity());
 		List<String> resultList = new ArrayList<>();
 		StreamConsumers.ToList<String> consumer = new StreamConsumers.ToList<>(eventloop, resultList);
 
@@ -166,9 +166,9 @@ public class StreamRewiringTest {
 
 	@Test
 	public void testProducerWithoutConsumer() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1));
-		StreamFunction<Integer, Integer> function = new StreamFunction<>(eventloop, Functions.<Integer>identity());
+		StreamFunction<Integer, Integer> function = StreamFunction.create(eventloop, Functions.<Integer>identity());
 		producer.streamTo(function.getInput());
 
 		eventloop.run();

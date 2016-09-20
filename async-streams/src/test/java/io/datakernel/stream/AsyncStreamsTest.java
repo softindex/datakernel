@@ -31,7 +31,7 @@ import static org.junit.Assert.assertThat;
 public class AsyncStreamsTest {
 	@Test
 	public void testDelayedProducer() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
 

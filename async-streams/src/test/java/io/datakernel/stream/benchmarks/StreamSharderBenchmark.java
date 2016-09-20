@@ -57,7 +57,7 @@ public class StreamSharderBenchmark implements Runnable {
 			}
 		};
 
-		StreamSharder<Integer, Integer> streamSharder = new StreamSharder<>(eventloop, SHARDER, Functions.<Integer>identity());
+		StreamSharder<Integer, Integer> streamSharder = StreamSharder.create(eventloop, SHARDER, Functions.<Integer>identity());
 		ArrayList testList = new ArrayList();
 		for (int i = 0; i < 10000000; i++) {
 			testList.add(i);
@@ -85,7 +85,7 @@ public class StreamSharderBenchmark implements Runnable {
 		this.bestTime = -1;
 		this.worstTime = -1;
 
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		for (int i = 0; i < this.benchmarkRounds; i++) {
 			setUp(eventloop);

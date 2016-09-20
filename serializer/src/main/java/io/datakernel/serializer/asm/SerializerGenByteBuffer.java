@@ -18,7 +18,6 @@ package io.datakernel.serializer.asm;
 
 import io.datakernel.bytebuf.SerializationUtils;
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.ExpressionSequence;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
@@ -41,7 +40,7 @@ public class SerializerGenByteBuffer implements SerializerGen, NullableOptimizat
 		this.nullable = false;
 	}
 
-	public SerializerGenByteBuffer(boolean wrapped, boolean nullable) {
+	private SerializerGenByteBuffer(boolean wrapped, boolean nullable) {
 		this.wrapped = wrapped;
 		this.nullable = nullable;
 	}
@@ -72,7 +71,7 @@ public class SerializerGenByteBuffer implements SerializerGen, NullableOptimizat
 		Expression position = call(value, "position");
 		Expression remaining = let(call(value, "remaining"));
 		Expression writeLength = set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, (!nullable ? remaining : inc(remaining))));
-		ExpressionSequence write = sequence(writeLength, callStatic(SerializationUtils.class, "write", byteArray, off, array, position, remaining));
+		Expression write = sequence(writeLength, callStatic(SerializationUtils.class, "write", byteArray, off, array, position, remaining));
 
 		if (!nullable) {
 			return write;

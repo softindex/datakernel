@@ -94,10 +94,10 @@ public final class RpcClientConnection implements RpcConnection, RpcSender, JmxR
 	private boolean monitoring;
 	private RpcRequestStats requestsStats;
 
-	public RpcClientConnection(Eventloop eventloop, RpcClient rpcClient,
-	                           AsyncTcpSocket asyncTcpSocket, InetSocketAddress address,
-	                           BufferSerializer<RpcMessage> messageSerializer,
-	                           RpcProtocolFactory protocolFactory) {
+	private RpcClientConnection(Eventloop eventloop, RpcClient rpcClient,
+	                            AsyncTcpSocket asyncTcpSocket, InetSocketAddress address,
+	                            BufferSerializer<RpcMessage> messageSerializer,
+	                            RpcProtocolFactory protocolFactory) {
 		this.eventloop = eventloop;
 		this.rpcClient = rpcClient;
 		this.protocol = protocolFactory.create(eventloop, asyncTcpSocket, this, messageSerializer);
@@ -105,7 +105,15 @@ public final class RpcClientConnection implements RpcConnection, RpcSender, JmxR
 
 		// JMX
 		this.monitoring = false;
-		this.requestsStats = new RpcRequestStats();
+		this.requestsStats = RpcRequestStats.create();
+	}
+
+	public static RpcClientConnection create(Eventloop eventloop, RpcClient rpcClient,
+	                                         AsyncTcpSocket asyncTcpSocket, InetSocketAddress address,
+	                                         BufferSerializer<RpcMessage> messageSerializer,
+	                                         RpcProtocolFactory protocolFactory) {
+		return new RpcClientConnection(eventloop, rpcClient, asyncTcpSocket, address,
+				messageSerializer, protocolFactory);
 	}
 
 	@Override
@@ -151,7 +159,7 @@ public final class RpcClientConnection implements RpcConnection, RpcSender, JmxR
 		addTimeoutCookie(timeoutCookie);
 		requests.put(cookieCounter, requestCallback);
 
-		protocol.sendMessage(new RpcMessage(cookieCounter, request));
+		protocol.sendMessage(RpcMessage.of(cookieCounter, request));
 	}
 
 	private void addTimeoutCookie(TimeoutCookie timeoutCookie) {

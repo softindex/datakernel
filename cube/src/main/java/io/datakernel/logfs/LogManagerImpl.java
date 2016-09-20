@@ -43,17 +43,28 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 	private int bufferSize = DEFAULT_BUFFER_SIZE;
 	private int flushDelayMillis = DEFAULT_FLUSH_DELAY;
 
-	public LogManagerImpl(Eventloop eventloop, LogFileSystem fileSystem, BufferSerializer<T> serializer) {
+	private LogManagerImpl(Eventloop eventloop, LogFileSystem fileSystem, BufferSerializer<T> serializer) {
 		this(eventloop, fileSystem, serializer, DEFAULT_DATE_TIME_FORMATTER, DEFAULT_FILE_SWITCH_PERIOD);
 	}
 
-	public LogManagerImpl(Eventloop eventloop, LogFileSystem fileSystem, BufferSerializer<T> serializer,
-	                      DateTimeFormatter dateTimeFormatter, long fileSwitchPeriod) {
+	private LogManagerImpl(Eventloop eventloop, LogFileSystem fileSystem, BufferSerializer<T> serializer,
+	                       DateTimeFormatter dateTimeFormatter, long fileSwitchPeriod) {
 		this.eventloop = eventloop;
 		this.fileSystem = fileSystem;
 		this.serializer = serializer;
 		this.dateTimeFormatter = dateTimeFormatter;
 		this.fileSwitchPeriod = fileSwitchPeriod;
+	}
+
+	public static <T> LogManagerImpl<T> create(Eventloop eventloop, LogFileSystem fileSystem,
+	                                           BufferSerializer<T> serializer) {
+		return new LogManagerImpl<T>(eventloop, fileSystem, serializer);
+	}
+
+	public static <T> LogManagerImpl<T> create(Eventloop eventloop, LogFileSystem fileSystem,
+	                                           BufferSerializer<T> serializer, DateTimeFormatter dateTimeFormatter,
+	                                           long fileSwitchPeriod) {
+		return new LogManagerImpl<T>(eventloop, fileSystem, serializer, dateTimeFormatter, fileSwitchPeriod);
 	}
 
 	public LogManagerImpl<T> fileSystemBufferSize(int bufferSize) {
@@ -75,7 +86,7 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 	@Override
 	public LogStreamConsumer<T> consumer(String logPartition, CompletionCallback callback) {
 		validateLogPartition(logPartition);
-		LogStreamConsumer<T> logStreamConsumer = new LogStreamConsumer<>(eventloop, fileSystem, serializer,
+		LogStreamConsumer<T> logStreamConsumer = LogStreamConsumer.create(eventloop, fileSystem, serializer,
 				logPartition, dateTimeFormatter, fileSwitchPeriod, bufferSize, flushDelayMillis);
 		logStreamConsumer.setCompletionCallback(callback);
 		return logStreamConsumer;
@@ -85,16 +96,16 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 	public LogStreamProducer<T> producer(String logPartition, LogFile startLogFile, long startPosition,
 	                                     ResultCallback<LogPosition> positionCallback) {
 		validateLogPartition(logPartition);
-		return new LogStreamProducer<>(eventloop, fileSystem, serializer, logPartition,
-				new LogPosition(startLogFile, startPosition), null, positionCallback);
+		return LogStreamProducer.create(eventloop, fileSystem, serializer, logPartition,
+				LogPosition.create(startLogFile, startPosition), null, positionCallback);
 	}
 
 	@Override
 	public LogStreamProducer<T> producer(String logPartition, LogFile startLogFile, long startPosition,
 	                                     LogFile endLogFile, ResultCallback<LogPosition> positionCallback) {
 		validateLogPartition(logPartition);
-		return new LogStreamProducer<>(eventloop, fileSystem, serializer, logPartition,
-				new LogPosition(startLogFile, startPosition), endLogFile,
+		return LogStreamProducer.create(eventloop, fileSystem, serializer, logPartition,
+				LogPosition.create(startLogFile, startPosition), endLogFile,
 				positionCallback);
 	}
 

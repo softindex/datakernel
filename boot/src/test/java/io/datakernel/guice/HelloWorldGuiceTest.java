@@ -20,6 +20,7 @@ import com.google.common.io.Closeables;
 import com.google.inject.*;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.PrimaryServer;
 import io.datakernel.http.*;
@@ -27,7 +28,6 @@ import io.datakernel.jmx.JmxModule;
 import io.datakernel.jmx.JmxRegistrator;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
-import io.datakernel.util.ByteBufStrings;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerId;
 import io.datakernel.worker.WorkerPool;
@@ -44,8 +44,8 @@ import java.util.List;
 
 import static com.google.common.io.ByteStreams.readFully;
 import static io.datakernel.bytebuf.ByteBufPool.*;
-import static io.datakernel.util.ByteBufStrings.decodeAscii;
-import static io.datakernel.util.ByteBufStrings.encodeAscii;
+import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
+import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static org.junit.Assert.assertEquals;
 
 public class HelloWorldGuiceTest {
@@ -73,29 +73,26 @@ public class HelloWorldGuiceTest {
 		@Provides
 		@Singleton
 		Eventloop primaryEventloop() {
-			return new Eventloop();
+			return Eventloop.create();
 		}
 
 		@Provides
 		@Singleton
 		PrimaryServer primaryServer(Eventloop primaryEventloop, WorkerPool workerPool) {
 			List<AsyncHttpServer> workerHttpServers = workerPool.getInstances(AsyncHttpServer.class);
-			PrimaryServer primaryNioServer = PrimaryServer.create(primaryEventloop);
-			primaryNioServer.workerServers(workerHttpServers);
-			primaryNioServer.setListenPort(PORT);
-			return primaryNioServer;
+			return PrimaryServer.create(primaryEventloop, workerHttpServers).withListenPort(PORT);
 		}
 
 		@Provides
 		@Worker
 		Eventloop workerEventloop() {
-			return new Eventloop();
+			return Eventloop.create();
 		}
 
 		@Provides
 		@Worker
 		AsyncHttpServer workerHttpServer(@Worker Eventloop eventloop, @Worker AsyncHttpServlet servlet) {
-			return new AsyncHttpServer(eventloop, servlet);
+			return AsyncHttpServer.create(eventloop, servlet);
 		}
 
 		@Provides
@@ -104,9 +101,11 @@ public class HelloWorldGuiceTest {
 			return new AbstractAsyncServlet(eventloop) {
 				@Override
 				protected void doServeAsync(HttpRequest request, Callback callback) {
-					HttpResponse httpResponse = HttpResponse.create(200);
-					httpResponse.body(ByteBuf.wrapForReading(ByteBufStrings.encodeAscii("Hello world: worker server #" + workerId)));
-					callback.onResult(httpResponse);
+					byte[] body = ByteBufStrings.encodeAscii("Hello world: worker server #" + workerId);
+					callback.onResult(
+							HttpResponse.ofCode(200)
+									.withBody(ByteBuf.wrapForReading(body))
+					);
 				}
 			};
 		}

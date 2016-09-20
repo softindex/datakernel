@@ -20,13 +20,13 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
-import io.datakernel.async.ParseException;
+import io.datakernel.exception.ParseException;
 
 import java.lang.reflect.Type;
 import java.util.*;
 
-import static io.datakernel.util.ByteBufStrings.decodeDecimal;
-import static io.datakernel.util.ByteBufStrings.encodeAscii;
+import static io.datakernel.bytebuf.ByteBufStrings.decodeDecimal;
+import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 
 @SuppressWarnings("unused")
 public final class ReadSettings<K> {

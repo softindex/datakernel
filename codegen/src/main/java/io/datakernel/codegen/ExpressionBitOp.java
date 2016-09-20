@@ -22,7 +22,7 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 import static io.datakernel.codegen.Utils.newLocal;
 import static org.objectweb.asm.Opcodes.*;
 
-public class ExpressionBitOp implements Expression {
+final class ExpressionBitOp implements Expression {
 	private final Operation op;
 	private final Expression left;
 	private final Expression right;

@@ -26,7 +26,7 @@ import static java.net.StandardSocketOptions.SO_REUSEADDR;
 /**
  * This class used to change settings for server socket. It will be applying with creating new server socket
  */
-public class ServerSocketSettings {
+public final class ServerSocketSettings {
 	public static final int DEFAULT_BACKLOG = 16384;
 
 	protected static final int DEF_INT = -1;
@@ -38,31 +38,27 @@ public class ServerSocketSettings {
 	private final int receiveBufferSize;
 	private final byte reuseAddress;
 
-	protected ServerSocketSettings(int backlog, int receiveBufferSize, byte reuseAddress) {
+	// region builders
+	private ServerSocketSettings(int backlog, int receiveBufferSize, byte reuseAddress) {
 		this.backlog = backlog;
 		this.receiveBufferSize = receiveBufferSize;
 		this.reuseAddress = reuseAddress;
 	}
 
-	public ServerSocketSettings() {
-		this(DEFAULT_BACKLOG, DEF_INT, DEF_BOOL);
-	}
+	public static ServerSocketSettings create() {return new ServerSocketSettings(DEFAULT_BACKLOG, DEF_INT, DEF_BOOL);}
 
-	public ServerSocketSettings(int backlog) {
-		this(backlog, DEF_INT, DEF_BOOL);
-	}
-
-	public ServerSocketSettings backlog(int backlog) {
+	public ServerSocketSettings withBacklog(int backlog) {
 		return new ServerSocketSettings(backlog, receiveBufferSize, reuseAddress);
 	}
 
-	public ServerSocketSettings receiveBufferSize(int receiveBufferSize) {
+	public ServerSocketSettings withReceiveBufferSize(int receiveBufferSize) {
 		return new ServerSocketSettings(backlog, receiveBufferSize, reuseAddress);
 	}
 
-	public ServerSocketSettings reuseAddress(boolean reuseAddress) {
+	public ServerSocketSettings withReuseAddress(boolean reuseAddress) {
 		return new ServerSocketSettings(backlog, receiveBufferSize, reuseAddress ? TRUE : FALSE);
 	}
+	// endregion
 
 	public void applySettings(ServerSocketChannel channel) throws IOException {
 		if (receiveBufferSize != DEF_INT) {

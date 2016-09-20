@@ -28,6 +28,10 @@ public final class RpcStreamProtocolSettings {
 	private int maxPacketSize = MAX_PACKET_SIZE;
 	private boolean compression;
 
+	private RpcStreamProtocolSettings() {}
+
+	public static RpcStreamProtocolSettings create() {return new RpcStreamProtocolSettings();}
+
 	public RpcStreamProtocolSettings packetSize(int defaultPacketSize, int maxPacketSize) {
 		checkArgument(defaultPacketSize > 0);
 		checkArgument(maxPacketSize >= defaultPacketSize);

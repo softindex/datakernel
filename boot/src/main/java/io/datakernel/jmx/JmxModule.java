@@ -113,16 +113,15 @@ public final class JmxModule extends AbstractModule {
 
 	@Provides
 	JmxRegistrator jmxRegistrator(Injector injector, JmxRegistry jmxRegistry) {
-		return new JmxRegistrator(injector, singletonKeys, workerKeys, jmxRegistry);
+		return JmxRegistrator.create(injector, singletonKeys, workerKeys, jmxRegistry);
 	}
 
 	@Provides
 	@Singleton
 	JmxRegistry jmxRegistry() {
-		return new JmxRegistry(
+		return JmxRegistry.create(
 				ManagementFactory.getPlatformMBeanServer(),
-				JmxMBeans.factory(refreshPeriod, maxJmxRefreshesPerOneCycle),
-				refreshPeriod
-		);
+				JmxMBeans.factory(refreshPeriod, maxJmxRefreshesPerOneCycle)
+		).withRefreshPeriod(refreshPeriod);
 	}
 }

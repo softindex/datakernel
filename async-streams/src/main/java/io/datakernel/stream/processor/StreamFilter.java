@@ -37,6 +37,25 @@ public final class StreamFilter<T> extends AbstractStreamTransformer_1_1<T, T> i
 	private final InputConsumer inputConsumer;
 	private final OutputProducer outputProducer;
 
+	// region creators
+	private StreamFilter(Eventloop eventloop, Predicate<T> predicate) {
+		super(eventloop);
+		checkNotNull(predicate);
+		this.inputConsumer = new InputConsumer();
+		this.outputProducer = new OutputProducer(predicate);
+	}
+
+	/**
+	 * Creates a new instance of this class
+	 *
+	 * @param eventloop eventloop in which filter will be running
+	 * @param predicate predicate for filtering data
+	 */
+	public static <T> StreamFilter<T> create(Eventloop eventloop, Predicate<T> predicate) {
+		return new StreamFilter<>(eventloop, predicate);
+	}
+	// endregion
+
 	protected final class InputConsumer extends AbstractInputConsumer {
 
 		@Override
@@ -82,21 +101,7 @@ public final class StreamFilter<T> extends AbstractStreamTransformer_1_1<T, T> i
 		}
 	}
 
-	/**
-	 * Creates a new instance of this class
-	 *
-	 * @param eventloop eventloop in which filter will be running
-	 * @param predicate predicate for filtering data
-	 */
-	public StreamFilter(Eventloop eventloop, Predicate<T> predicate) {
-		super(eventloop);
-		checkNotNull(predicate);
-		this.inputConsumer = new InputConsumer();
-		this.outputProducer = new OutputProducer(predicate);
-	}
-
 	// jmx
-
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;

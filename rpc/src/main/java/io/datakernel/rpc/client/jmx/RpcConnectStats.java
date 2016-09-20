@@ -21,9 +21,13 @@ import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxRefreshable;
 
 public final class RpcConnectStats implements JmxRefreshable {
-	private final EventStats successfulConnects = new EventStats();
-	private final EventStats failedConnects = new EventStats();
-	private final EventStats closedConnects = new EventStats();
+	private final EventStats successfulConnects = EventStats.create();
+	private final EventStats failedConnects = EventStats.create();
+	private final EventStats closedConnects = EventStats.create();
+
+	private RpcConnectStats() {}
+
+	public static RpcConnectStats create() {return new RpcConnectStats();}
 
 	public void reset() {
 		successfulConnects.resetStats();

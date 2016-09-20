@@ -43,6 +43,15 @@ public final class StreamMemoryReducer<K, I, O, A> extends AbstractStreamMemoryT
 	private final Function<I, K> keyFunction;
 	private Iterator<A> iterator;
 
+	// region creators
+	private StreamMemoryReducer(Eventloop eventloop,
+	                            StreamReducers.ReducerToResult<K, I, O, A> reducer, Function<I, K> keyFunction) {
+		super(eventloop);
+		this.keyFunction = checkNotNull(keyFunction);
+		this.reducer = checkNotNull(reducer);
+
+	}
+
 	/**
 	 * Creates a new instance of StreamMemoryReducer
 	 *
@@ -50,13 +59,12 @@ public final class StreamMemoryReducer<K, I, O, A> extends AbstractStreamMemoryT
 	 * @param reducer     reducer for processing items
 	 * @param keyFunction function for searching keys
 	 */
-	public StreamMemoryReducer(Eventloop eventloop,
-	                           StreamReducers.ReducerToResult<K, I, O, A> reducer, Function<I, K> keyFunction) {
-		super(eventloop);
-		this.keyFunction = checkNotNull(keyFunction);
-		this.reducer = checkNotNull(reducer);
-
+	public static <K, I, O, A> StreamMemoryReducer<K, I, O, A> create(Eventloop eventloop,
+	                                                                  StreamReducers.ReducerToResult<K, I, O, A> reducer,
+	                                                                  Function<I, K> keyFunction) {
+		return new StreamMemoryReducer<K, I, O, A>(eventloop, reducer, keyFunction);
 	}
+	// endregion
 
 	@Override
 	protected void downstreamProducerDoProduce() {

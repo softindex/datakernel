@@ -33,11 +33,10 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
-import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
+import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.http.TestUtils.readFully;
 import static io.datakernel.http.TestUtils.toByteArray;
-import static io.datakernel.util.ByteBufStrings.*;
 import static org.junit.Assert.*;
 
 public class HttpTolerantApplicationTest {
@@ -48,19 +47,21 @@ public class HttpTolerantApplicationTest {
 		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 	}
 
-	public static AsyncHttpServer asyncHttpServer(final Eventloop primaryEventloop) {
-		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
+	public static AsyncHttpServer asyncHttpServer(final Eventloop primaryEventloop, int port) {
+		AsyncHttpServlet servlet = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(final HttpRequest request, final Callback callback) {
 				primaryEventloop.post(new Runnable() {
 					@Override
 					public void run() {
-						HttpResponse content = HttpResponse.create().body(encodeAscii(request.getUrl().getPathAndQuery()));
+						HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
 						callback.onResult(content);
 					}
 				});
 			}
-		});
+		};
+
+		return AsyncHttpServer.create(primaryEventloop, servlet).withListenPort(port);
 	}
 
 	private static void write(Socket socket, String string) throws IOException {
@@ -76,11 +77,10 @@ public class HttpTolerantApplicationTest {
 
 	@Test
 	public void testTolerantServer() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
-		AsyncHttpServer server = asyncHttpServer(eventloop);
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
-		server.setListenPort(port);
+		AsyncHttpServer server = asyncHttpServer(eventloop, port);
 		server.listen();
 		Thread thread = new Thread(eventloop);
 		thread.start();
@@ -139,11 +139,11 @@ public class HttpTolerantApplicationTest {
 	@Test
 	public void testTolerantClient() throws Exception {
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
-		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
-		Eventloop eventloop = new Eventloop();
+		final ResultCallbackFuture<String> resultObserver = ResultCallbackFuture.create();
+		Eventloop eventloop = Eventloop.create();
 		try (ServerSocket ignored = socketServer(port, "HTTP/1.1 200 OK\nContent-Type:  \t  text/html; charset=UTF-8\nContent-Length:  4\n\n/abc")) {
-			final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop, new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L,
-					HttpUtils.inetAddress("8.8.8.8")));
+			final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop,
+					NativeDnsResolver.create(eventloop).withDnsServerAddress(HttpUtils.inetAddress("8.8.8.8")));
 
 			httpClient.send(HttpRequest.get("http://127.0.0.1:" + port), 1_000, new ResultCallback<HttpResponse>() {
 				@Override

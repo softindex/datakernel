@@ -19,13 +19,17 @@ package io.datakernel.rpc.client.jmx;
 import io.datakernel.jmx.*;
 
 public final class RpcRequestStats implements JmxRefreshable {
-	private final EventStats totalRequests = new EventStats();
-	private final EventStats successfulRequests = new EventStats();
-	private final EventStats failedRequests = new EventStats();
-	private final EventStats rejectedRequests = new EventStats();
-	private final EventStats expiredRequests = new EventStats();
-	private final ValueStats responseTimeStats = new ValueStats();
-	private final ExceptionStats serverExceptions = new ExceptionStats();
+	private final EventStats totalRequests = EventStats.create();
+	private final EventStats successfulRequests = EventStats.create();
+	private final EventStats failedRequests = EventStats.create();
+	private final EventStats rejectedRequests = EventStats.create();
+	private final EventStats expiredRequests = EventStats.create();
+	private final ValueStats responseTimeStats = ValueStats.create();
+	private final ExceptionStats serverExceptions = ExceptionStats.create();
+
+	private RpcRequestStats() {}
+
+	public static RpcRequestStats create() {return new RpcRequestStats();}
 
 	public void resetStats() {
 		totalRequests.resetStats();

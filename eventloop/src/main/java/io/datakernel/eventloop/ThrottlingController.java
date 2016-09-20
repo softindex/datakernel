@@ -82,6 +82,7 @@ public final class ThrottlingController implements EventloopJmxMBean {
 
 	private float throttling;
 
+	// region builders
 	public static ThrottlingController createDefaultThrottlingController(Eventloop eventloop) {
 		ThrottlingController throttlingController = new ThrottlingController(eventloop);
 		throttlingController.setTargetTimeMillis(TARGET_TIME_MILLIS);
@@ -92,11 +93,12 @@ public final class ThrottlingController implements EventloopJmxMBean {
 		return throttlingController;
 	}
 
-	public ThrottlingController(Eventloop eventloop) {
+	private ThrottlingController(Eventloop eventloop) {
 		this.eventloop = eventloop;
 		checkArgument(this.eventloop.throttlingController == null, "Throttling controller already set");
 		this.eventloop.throttlingController = this;
 	}
+	// endregion
 
 	public void init(double initialKeysPerSecond, double initialThrottling) {
 		this.smoothedTimePerKeyMillis = 1000.0 / initialKeysPerSecond;

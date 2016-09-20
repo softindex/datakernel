@@ -34,11 +34,11 @@ public class SerializeStreamTest {
 
 	@Test
 	public void test() throws IOException, SerializeException, DeserializeException {
-		BufferSerializer<String> bufferSerializer = SerializerBuilder.newDefaultInstance(new DefiningClassLoader())
-				.create(String.class);
+		BufferSerializer<String> bufferSerializer = SerializerBuilder.create(DefiningClassLoader.create())
+				.build(String.class);
 
 		ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
-		DataOutputStreamEx dataOutputStream = new DataOutputStreamEx(byteOutputStream, 30);
+		DataOutputStreamEx dataOutputStream = DataOutputStreamEx.create(byteOutputStream, 30);
 
 		String[] strings = new String[]{"test1-string", "test2-int", "test3-t", "test4-str"};
 		for (String string : strings) {
@@ -47,7 +47,7 @@ public class SerializeStreamTest {
 		dataOutputStream.close();
 
 		ByteArrayInputStream byteInputStream = new ByteArrayInputStream(byteOutputStream.toByteArray());
-		DataInputStreamEx dataInputStream = new DataInputStreamEx(byteInputStream, 50);
+		DataInputStreamEx dataInputStream = DataInputStreamEx.create(byteInputStream, 50);
 
 		for (String string : strings) {
 			assertEquals(string, dataInputStream.deserialize(bufferSerializer));
@@ -58,7 +58,7 @@ public class SerializeStreamTest {
 	@Test
 	public void testLittleBuffer() throws IOException, SerializeException, DeserializeException {
 		ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
-		DataOutputStreamEx dataOutputStream = new DataOutputStreamEx(byteOutputStream, 30);
+		DataOutputStreamEx dataOutputStream = DataOutputStreamEx.create(byteOutputStream, 30);
 
 		String[] strings = new String[]{"test1-string", "test2-int", "test3-t", "test4-str"};
 		for (String string : strings) {
@@ -67,7 +67,7 @@ public class SerializeStreamTest {
 		dataOutputStream.close();
 
 		ByteArrayInputStream byteInputStream = new ByteArrayInputStream(byteOutputStream.toByteArray());
-		DataInputStreamEx dataInputStream = new DataInputStreamEx(byteInputStream, 3);
+		DataInputStreamEx dataInputStream = DataInputStreamEx.create(byteInputStream, 3);
 
 		for (String string : strings) {
 			assertEquals(string, dataInputStream.deserialize(utf8Serializer()));
@@ -78,7 +78,7 @@ public class SerializeStreamTest {
 	@Test
 	public void testInteger() throws IOException, SerializeException, DeserializeException {
 		ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
-		DataOutputStreamEx dataOutputStream = new DataOutputStreamEx(byteOutputStream, 30);
+		DataOutputStreamEx dataOutputStream = DataOutputStreamEx.create(byteOutputStream, 30);
 
 		final Integer[] integers = new Integer[]{10, 20, 30, 42};
 		for (Integer integer : integers) {
@@ -87,7 +87,7 @@ public class SerializeStreamTest {
 		dataOutputStream.close();
 
 		ByteArrayInputStream byteInputStream = new ByteArrayInputStream(byteOutputStream.toByteArray());
-		DataInputStreamEx dataInputStream = new DataInputStreamEx(byteInputStream, 10);
+		DataInputStreamEx dataInputStream = DataInputStreamEx.create(byteInputStream, 10);
 
 		for (Integer integer : integers) {
 			assertEquals(integer, dataInputStream.deserialize(intSerializer()));
@@ -99,7 +99,7 @@ public class SerializeStreamTest {
 	public void testChangeOutputStream() throws IOException, SerializeException, DeserializeException {
 		ByteArrayOutputStream byteOutputStream1 = new ByteArrayOutputStream();
 		ByteArrayOutputStream byteOutputStream2 = new ByteArrayOutputStream();
-		DataOutputStreamEx dataOutputStream = new DataOutputStreamEx(byteOutputStream1, 30);
+		DataOutputStreamEx dataOutputStream = DataOutputStreamEx.create(byteOutputStream1, 30);
 
 		final Integer[] integers1 = new Integer[]{10, 20, 30, 42};
 		final Integer[] integers2 = new Integer[]{100, 200, 300, 420};
@@ -114,10 +114,10 @@ public class SerializeStreamTest {
 		dataOutputStream.close();
 
 		ByteArrayInputStream byteInputStream1 = new ByteArrayInputStream(byteOutputStream1.toByteArray());
-		DataInputStreamEx dataInputStream1 = new DataInputStreamEx(byteInputStream1, 10);
+		DataInputStreamEx dataInputStream1 = DataInputStreamEx.create(byteInputStream1, 10);
 
 		ByteArrayInputStream byteInputStream2 = new ByteArrayInputStream(byteOutputStream2.toByteArray());
-		DataInputStreamEx dataInputStream2 = new DataInputStreamEx(byteInputStream2, 10);
+		DataInputStreamEx dataInputStream2 = DataInputStreamEx.create(byteInputStream2, 10);
 
 		for (Integer integer : integers1) {
 			assertEquals(integer, dataInputStream1.deserialize(intSerializer()));
@@ -133,7 +133,7 @@ public class SerializeStreamTest {
 	@Test
 	public void testChangeInputStream() throws IOException, SerializeException, DeserializeException {
 		ByteArrayOutputStream byteOutputStream1 = new ByteArrayOutputStream();
-		DataOutputStreamEx dataOutputStream1 = new DataOutputStreamEx(byteOutputStream1, 30);
+		DataOutputStreamEx dataOutputStream1 = DataOutputStreamEx.create(byteOutputStream1, 30);
 
 		final Integer[] integers1 = new Integer[]{10, 20, 30, 42};
 		final Integer[] integers2 = new Integer[]{10, 20, 30, 42};
@@ -144,7 +144,7 @@ public class SerializeStreamTest {
 		dataOutputStream1.close();
 
 		ByteArrayOutputStream byteOutputStream2 = new ByteArrayOutputStream();
-		DataOutputStreamEx dataOutputStream2 = new DataOutputStreamEx(byteOutputStream2, 30);
+		DataOutputStreamEx dataOutputStream2 = DataOutputStreamEx.create(byteOutputStream2, 30);
 		for (Integer integer : integers2) {
 			dataOutputStream2.serialize(intSerializer(), integer, MAX_SIZE_127);
 		}
@@ -152,7 +152,7 @@ public class SerializeStreamTest {
 
 		ByteArrayInputStream byteInputStream1 = new ByteArrayInputStream(byteOutputStream1.toByteArray());
 		ByteArrayInputStream byteInputStream2 = new ByteArrayInputStream(byteOutputStream2.toByteArray());
-		DataInputStreamEx dataInputStream = new DataInputStreamEx(byteInputStream1, 10);
+		DataInputStreamEx dataInputStream = DataInputStreamEx.create(byteInputStream1, 10);
 
 		for (Integer integer : integers1) {
 			assertEquals(integer, dataInputStream.deserialize(intSerializer()));
@@ -169,7 +169,7 @@ public class SerializeStreamTest {
 	@Test
 	public void testRestorePositionAfterSizeException() throws Exception {
 		ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
-		DataOutputStreamEx dataOutputStream = new DataOutputStreamEx(byteOutputStream);
+		DataOutputStreamEx dataOutputStream = DataOutputStreamEx.create(byteOutputStream);
 		byte[] array1 = createTestByteArray(100, (byte) 10);
 		byte[] array2 = createTestByteArray(100, (byte) 20);
 		byte[] tooBigArray = createTestByteArray(150, (byte) 30);
@@ -182,7 +182,7 @@ public class SerializeStreamTest {
 		dataOutputStream.close();
 
 		ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(byteOutputStream.toByteArray());
-		DataInputStreamEx dataInputStream = new DataInputStreamEx(byteArrayInputStream);
+		DataInputStreamEx dataInputStream = DataInputStreamEx.create(byteArrayInputStream);
 		byte[] readArray1 = dataInputStream.deserialize(bytesSerializer());
 		byte[] readArray2 = dataInputStream.deserialize(bytesSerializer());
 		assertTrue(dataInputStream.isEndOfStream());
@@ -208,11 +208,11 @@ public class SerializeStreamTest {
 	@Test
 	public void testRestorePositionAfterException() throws Exception {
 		ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
-		DataOutputStreamEx dataOutputStream = new DataOutputStreamEx(byteOutputStream);
+		DataOutputStreamEx dataOutputStream = DataOutputStreamEx.create(byteOutputStream);
 		TestClass validObj1 = new TestClass("abc");
 		TestClass validObj2 = new TestClass("=xyz=");
 		TestClass invalidObj = new TestClass(null);
-		BufferSerializer<TestClass> serializer = SerializerBuilder.newDefaultInstance(new DefiningClassLoader()).create(TestClass.class);
+		BufferSerializer<TestClass> serializer = SerializerBuilder.create(DefiningClassLoader.create()).build(TestClass.class);
 		dataOutputStream.serialize(serializer, validObj1, MAX_SIZE_127);
 		try {
 			dataOutputStream.serialize(serializer, invalidObj, MAX_SIZE_127);
@@ -222,7 +222,7 @@ public class SerializeStreamTest {
 		dataOutputStream.close();
 
 		ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(byteOutputStream.toByteArray());
-		DataInputStreamEx dataInputStream = new DataInputStreamEx(byteArrayInputStream);
+		DataInputStreamEx dataInputStream = DataInputStreamEx.create(byteArrayInputStream);
 		TestClass readObj1 = dataInputStream.deserialize(serializer);
 		TestClass readObj2 = dataInputStream.deserialize(serializer);
 		assertTrue(dataInputStream.isEndOfStream());

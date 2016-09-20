@@ -37,10 +37,12 @@ public final class HttpResultProcessor implements ResultProcessor<HttpResponse> 
 	private final AggregationStructure structure;
 	private final ReportingConfiguration reportingConfiguration;
 
-	public HttpResultProcessor(AggregationStructure structure, ReportingConfiguration reportingConfiguration) {
+	private HttpResultProcessor(AggregationStructure structure, ReportingConfiguration reportingConfiguration) {
 		this.structure = structure;
 		this.reportingConfiguration = reportingConfiguration;
 	}
+
+	public static HttpResultProcessor create(AggregationStructure structure, ReportingConfiguration reportingConfiguration) {return new HttpResultProcessor(structure, reportingConfiguration);}
 
 	@Override
 	public HttpResponse apply(QueryResult result) {

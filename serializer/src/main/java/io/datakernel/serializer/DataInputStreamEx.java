@@ -32,14 +32,14 @@ public final class DataInputStreamEx implements Closeable {
 
 	private char[] charArray = new char[128];
 
-	public DataInputStreamEx(InputStream inputStream) {
-		this(inputStream, DEFAULT_BUFFER_SIZE);
-	}
-
-	public DataInputStreamEx(InputStream inputStream, int bufferSize) {
+	private DataInputStreamEx(InputStream inputStream, int bufferSize) {
 		this.inputStream = inputStream;
 		this.buf = ByteBufPool.allocate(bufferSize);
 	}
+
+	public static DataInputStreamEx create(InputStream inputStream) {return new DataInputStreamEx(inputStream, DEFAULT_BUFFER_SIZE);}
+
+	public static DataInputStreamEx create(InputStream inputStream, int bufferSize) {return new DataInputStreamEx(inputStream, bufferSize);}
 
 	public void changeInputStream(InputStream inputStream) throws IOException {
 		if (this.inputStream != null) {

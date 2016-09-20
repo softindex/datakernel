@@ -27,7 +27,7 @@ public class ExposedLinkedListTest {
 
 	@Before
 	public void before() {
-		list = new ExposedLinkedList<>();
+		list = ExposedLinkedList.create();
 	}
 
 	@Test

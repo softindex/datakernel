@@ -20,7 +20,7 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-public class ExpressionCmpNotNull implements PredicateDef {
+final class ExpressionCmpNotNull implements PredicateDef {
 	private final Expression field;
 
 	ExpressionCmpNotNull(Expression field) {

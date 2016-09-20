@@ -22,14 +22,22 @@ import io.datakernel.FsServer;
 import io.datakernel.async.*;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.InetAddressRange;
+import io.datakernel.net.ServerSocketSettings;
+import io.datakernel.net.SocketSettings;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import io.datakernel.stream.net.MessagingWithBinaryStreaming;
 
+import javax.net.ssl.SSLContext;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.FsResponses.Err;
 import static io.datakernel.FsResponses.FsResponse;
@@ -40,13 +48,41 @@ import static io.datakernel.hashfs.HashFsResponses.ListOfServers;
 public final class HashFsServer extends FsServer<HashFsServer> {
 	private final LocalReplica localReplica;
 
-	// creators & builder methods
-	public HashFsServer(Eventloop eventloop, LocalReplica localReplica) {
+	// region creators & builder methods
+	private HashFsServer(Eventloop eventloop, LocalReplica localReplica) {
 		super(eventloop, localReplica.getFileManager());
 		this.localReplica = localReplica;
 		this.handlers.put(Alive.class, new AliveMessagingHandler());
 		this.handlers.put(Announce.class, new AnnounceMessagingHandler());
 	}
+
+	private HashFsServer(Eventloop eventloop,
+	                     ServerSocketSettings serverSocketSettings, SocketSettings socketSettings,
+	                     boolean acceptOnce, Collection<InetSocketAddress> listenAddresses,
+	                     InetAddressRange range, Collection<InetAddress> bannedAddresses,
+	                     SSLContext sslContext, ExecutorService sslExecutor,
+	                     Collection<InetSocketAddress> sslListenAddresses,
+	                     HashFsServer previousInstance) {
+		super(eventloop, serverSocketSettings, socketSettings, acceptOnce, listenAddresses,
+				range, bannedAddresses, sslContext, sslExecutor, sslListenAddresses, previousInstance);
+		this.localReplica = previousInstance.localReplica;
+	}
+
+	public static HashFsServer create(Eventloop eventloop, LocalReplica localReplica) {
+		return new HashFsServer(eventloop, localReplica);
+	}
+
+	@Override
+	protected HashFsServer recreate(Eventloop eventloop, ServerSocketSettings serverSocketSettings, SocketSettings socketSettings,
+	                                boolean acceptOnce,
+	                                Collection<InetSocketAddress> listenAddresses,
+	                                InetAddressRange range, Collection<InetAddress> bannedAddresses,
+	                                SSLContext sslContext, ExecutorService sslExecutor,
+	                                Collection<InetSocketAddress> sslListenAddresses) {
+		return new HashFsServer(eventloop, serverSocketSettings, socketSettings, acceptOnce, listenAddresses,
+				range, bannedAddresses, sslContext, sslExecutor, sslListenAddresses, this);
+	}
+	// endregion
 
 	// core
 	@Override

@@ -38,7 +38,7 @@ public final class RpcStreamProtocolFactory implements RpcProtocolFactory {
 	private RpcStreamProtocolFactory() {
 	}
 
-	public RpcStreamProtocolFactory(int defaultPacketSize, int maxPacketSize, boolean compression) {
+	private RpcStreamProtocolFactory(int defaultPacketSize, int maxPacketSize, boolean compression) {
 		checkArgument(defaultPacketSize > 0);
 		checkArgument(maxPacketSize >= defaultPacketSize);
 		this.defaultPacketSize = defaultPacketSize;
@@ -57,7 +57,7 @@ public final class RpcStreamProtocolFactory implements RpcProtocolFactory {
 	@Override
 	public RpcProtocol create(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
 	                          RpcConnection connection, BufferSerializer<RpcMessage> messageSerializer) {
-		return new RpcStreamProtocol(eventloop, asyncTcpSocket,
+		return RpcStreamProtocol.create(eventloop, asyncTcpSocket,
 				connection, messageSerializer,
 				defaultPacketSize, maxPacketSize, compression);
 	}

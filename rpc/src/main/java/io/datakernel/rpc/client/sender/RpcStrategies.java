@@ -32,7 +32,7 @@ public final class RpcStrategies {
 
 	public static RpcStrategySingleServer server(InetSocketAddress address) {
 		checkNotNull(address);
-		return new RpcStrategySingleServer(address);
+		return RpcStrategySingleServer.create(address);
 	}
 
 	public static RpcStrategyList servers(InetSocketAddress... addresses) {
@@ -48,11 +48,11 @@ public final class RpcStrategies {
 	}
 
 	public static RpcStrategyFirstAvailable firstAvailable(List<RpcStrategy> strategies) {
-		return new RpcStrategyFirstAvailable(RpcStrategyList.ofStrategies(strategies));
+		return RpcStrategyFirstAvailable.create(RpcStrategyList.ofStrategies(strategies));
 	}
 
 	public static RpcStrategyFirstAvailable firstAvailable(RpcStrategyList list) {
-		return new RpcStrategyFirstAvailable(list);
+		return RpcStrategyFirstAvailable.create(list);
 	}
 
 	public static RpcStrategyFirstValidResult firstValidResult(RpcStrategy... senders) {
@@ -60,11 +60,11 @@ public final class RpcStrategies {
 	}
 
 	public static RpcStrategyFirstValidResult firstValidResult(List<RpcStrategy> senders) {
-		return new RpcStrategyFirstValidResult(RpcStrategyList.ofStrategies(senders));
+		return RpcStrategyFirstValidResult.create(RpcStrategyList.ofStrategies(senders));
 	}
 
 	public static RpcStrategyFirstValidResult firstValidResult(RpcStrategyList list) {
-		return new RpcStrategyFirstValidResult(list);
+		return RpcStrategyFirstValidResult.create(list);
 	}
 
 	public static RpcStrategyRoundRobin roundRobin(RpcStrategy... senders) {
@@ -72,11 +72,11 @@ public final class RpcStrategies {
 	}
 
 	public static RpcStrategyRoundRobin roundRobin(List<RpcStrategy> senders) {
-		return new RpcStrategyRoundRobin(RpcStrategyList.ofStrategies(senders));
+		return RpcStrategyRoundRobin.create(RpcStrategyList.ofStrategies(senders));
 	}
 
 	public static RpcStrategyRoundRobin roundRobin(RpcStrategyList list) {
-		return new RpcStrategyRoundRobin(list);
+		return RpcStrategyRoundRobin.create(list);
 	}
 
 	public static RpcStrategySharding sharding(final ShardingFunction<?> hashFunction,
@@ -89,27 +89,27 @@ public final class RpcStrategies {
 		checkNotNull(senders);
 		checkArgument(senders.size() > 0, "at least one sender must be present");
 		checkNotNull(hashFunction);
-		return new RpcStrategySharding(hashFunction, RpcStrategyList.ofStrategies(senders));
+		return RpcStrategySharding.create(hashFunction, RpcStrategyList.ofStrategies(senders));
 	}
 
 	public static RpcStrategySharding sharding(final ShardingFunction<?> hashFunction,
 	                                           RpcStrategyList list) {
 		checkNotNull(list);
 		checkNotNull(hashFunction);
-		return new RpcStrategySharding(hashFunction, list);
+		return RpcStrategySharding.create(hashFunction, list);
 	}
 
 	public static RpcStrategyRendezvousHashing rendezvousHashing(final HashFunction<?> hashFunction) {
 		checkNotNull(hashFunction);
-		return new RpcStrategyRendezvousHashing(hashFunction);
+		return RpcStrategyRendezvousHashing.create(hashFunction);
 	}
 
 	public static RpcStrategyTypeDispatching typeDispatching() {
-		return new RpcStrategyTypeDispatching();
+		return RpcStrategyTypeDispatching.create();
 	}
 
 	public static RpcStrategyRandomSampling randomSampling() {
-		return new RpcStrategyRandomSampling();
+		return RpcStrategyRandomSampling.create();
 	}
 }
 

@@ -19,7 +19,6 @@ package io.datakernel.serializer.asm;
 import io.datakernel.bytebuf.SerializationUtils;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
-import io.datakernel.codegen.utils.Preconditions;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
 import io.datakernel.serializer.SerializerBuilder;
@@ -37,30 +36,6 @@ public class SerializerGenSubclass implements SerializerGen, NullableOptimizatio
 	@Override
 	public SerializerGen setNullable() {
 		return new SerializerGenSubclass(dataType, subclassSerializers, true);
-	}
-
-	public static final class Builder {
-		private final Class<?> dataType;
-		private boolean nullable;
-		private final LinkedHashMap<Class<?>, SerializerGen> subclassSerializers = new LinkedHashMap<>();
-
-		public Builder(Class<?> dataType) {
-			this.dataType = dataType;
-		}
-
-		public Builder add(Class<?> subclass, SerializerGen serializer) {
-			Preconditions.check(subclassSerializers.put(subclass, serializer) == null);
-			return this;
-		}
-
-		public Builder nullable(boolean nullable) {
-			this.nullable = nullable;
-			return this;
-		}
-
-		public SerializerGenSubclass build() {
-			return new SerializerGenSubclass(dataType, subclassSerializers, nullable);
-		}
 	}
 
 	private final Class<?> dataType;

@@ -55,7 +55,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 	private CompletionCallback flushCallback;
 
-	// creators
+	// region creators
 	private StreamFileWriter(Eventloop eventloop, AsyncFile asyncFile, boolean forceOnClose) {
 		super(eventloop);
 		this.asyncFile = asyncFile;
@@ -78,8 +78,9 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	public static StreamFileWriter create(Eventloop eventloop, AsyncFile asyncFile, boolean forceOnClose) {
 		return new StreamFileWriter(eventloop, asyncFile, forceOnClose);
 	}
+	// endregion
 
-	// api
+	// region api
 	public void setFlushCallback(CompletionCallback flushCallback) {
 		if (queue.isEmpty() && !pendingAsyncOperation) {
 			if (getConsumerStatus() == END_OF_STREAM) {
@@ -100,8 +101,9 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	public StreamDataReceiver<ByteBuf> getDataReceiver() {
 		return this;
 	}
+	// endregion
 
-	// functional
+	// region functional
 	private void doFlush() {
 		if (getConsumerStatus() == CLOSED_WITH_ERROR)
 			return;
@@ -222,4 +224,5 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 				", position=" + position +
 				'}';
 	}
+	// endregion
 }

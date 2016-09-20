@@ -35,10 +35,10 @@ public final class ReportingQueryResult {
 	private final Map<String, Object> filterAttributes;
 	private final List<String> sortedBy;
 
-	public ReportingQueryResult(List<Map<String, Object>> records, Map<String, Object> totals, int count,
-	                            Set<DrillDown> drillDowns, List<String> dimensions, List<String> attributes,
-	                            List<String> measures, Map<String, Object> filterAttributes,
-	                            List<String> sortedBy) {
+	private ReportingQueryResult(List<Map<String, Object>> records, Map<String, Object> totals, int count,
+	                             Set<DrillDown> drillDowns, List<String> dimensions, List<String> attributes,
+	                             List<String> measures, Map<String, Object> filterAttributes,
+	                             List<String> sortedBy) {
 		this.records = records;
 		this.totals = totals;
 		this.count = count;
@@ -48,6 +48,14 @@ public final class ReportingQueryResult {
 		this.measures = measures;
 		this.filterAttributes = filterAttributes;
 		this.sortedBy = sortedBy;
+	}
+
+	public static ReportingQueryResult create(List<Map<String, Object>> records, Map<String, Object> totals, int count,
+	                                          Set<DrillDown> drillDowns, List<String> dimensions, List<String> attributes,
+	                                          List<String> measures, Map<String, Object> filterAttributes,
+	                                          List<String> sortedBy) {
+		return new ReportingQueryResult(records, totals, count, drillDowns, dimensions,
+				attributes, measures, filterAttributes, sortedBy);
 	}
 
 	public List<Map<String, Object>> getRecords() {

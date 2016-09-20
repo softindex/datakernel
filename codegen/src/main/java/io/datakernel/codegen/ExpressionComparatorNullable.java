@@ -29,7 +29,7 @@ import static io.datakernel.codegen.Utils.*;
 import static org.objectweb.asm.Type.INT_TYPE;
 import static org.objectweb.asm.commons.GeneratorAdapter.NE;
 
-public final class ExpressionComparatorNullable implements Expression {
+final class ExpressionComparatorNullable implements Expression {
 	private final List<Expression> left = new ArrayList<>();
 	private final List<Expression> right = new ArrayList<>();
 

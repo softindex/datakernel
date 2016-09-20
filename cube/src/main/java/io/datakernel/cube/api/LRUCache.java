@@ -22,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 public final class LRUCache<K, V> implements LRUCacheMBean {
+
 	private static class LRUMap<K, V> extends LinkedHashMap<K, V> {
 		private int cacheSize;
 
@@ -42,9 +43,11 @@ public final class LRUCache<K, V> implements LRUCacheMBean {
 	private int missesCount;
 	private int putCount;
 
-	public LRUCache(int cacheSize) {
+	private LRUCache(int cacheSize) {
 		cache = new LRUMap<>(cacheSize);
 	}
+
+	public static <K, V> LRUCache<K, V> create(int cacheSize) {return new LRUCache<K, V>(cacheSize);}
 
 	public synchronized V get(K key) {
 		++requestsCount;

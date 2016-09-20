@@ -27,8 +27,7 @@ import java.util.Iterator;
  */
 @SuppressWarnings("ToArrayCallWithZeroLengthArrayArgument")
 public final class AsyncIterators {
-	private AsyncIterators() {
-	}
+	private AsyncIterators() {}
 
 	/**
 	 * Returns the AsyncIterator which in first calling returns value, and after that after calling
@@ -381,8 +380,7 @@ public final class AsyncIterators {
 							callback.onException(exception);
 						}
 					});
-				}
-				else
+				} else
 					callback.onEnd();
 			}
 		};

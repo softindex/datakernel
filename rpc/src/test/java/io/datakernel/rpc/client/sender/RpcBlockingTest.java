@@ -62,24 +62,24 @@ public class RpcBlockingTest {
 		ByteBufPool.clear();
 		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 
-		eventloop = new Eventloop();
+		eventloop = Eventloop.create();
 
 		serverOne = RpcServer.create(eventloop)
-				.messageTypes(HelloRequest.class, HelloResponse.class)
-				.on(HelloRequest.class, helloServiceRequestHandler(new HelloServiceImplOne()))
-				.setListenPort(PORT_1);
+				.withMessageTypes(HelloRequest.class, HelloResponse.class)
+				.withHandlerFor(HelloRequest.class, helloServiceRequestHandler(new HelloServiceImplOne()))
+				.withListenPort(PORT_1);
 		serverOne.listen();
 
 		serverTwo = RpcServer.create(eventloop)
-				.messageTypes(HelloRequest.class, HelloResponse.class)
-				.on(HelloRequest.class, helloServiceRequestHandler(new HelloServiceImplTwo()))
-				.setListenPort(PORT_2);
+				.withMessageTypes(HelloRequest.class, HelloResponse.class)
+				.withHandlerFor(HelloRequest.class, helloServiceRequestHandler(new HelloServiceImplTwo()))
+				.withListenPort(PORT_2);
 		serverTwo.listen();
 
 		serverThree = RpcServer.create(eventloop)
-				.messageTypes(HelloRequest.class, HelloResponse.class)
-				.on(HelloRequest.class, helloServiceRequestHandler(new HelloServiceImplThree()))
-				.setListenPort(PORT_3);
+				.withMessageTypes(HelloRequest.class, HelloResponse.class)
+				.withHandlerFor(HelloRequest.class, helloServiceRequestHandler(new HelloServiceImplThree()))
+				.withListenPort(PORT_3);
 		serverThree.listen();
 
 		thread = defaultEventloopThreadFactory().newThread(eventloop);
@@ -109,8 +109,8 @@ public class RpcBlockingTest {
 		};
 
 		RpcClient client = RpcClient.create(eventloop)
-				.messageTypes(HelloRequest.class, HelloResponse.class)
-				.strategy(
+				.withMessageTypes(HelloRequest.class, HelloResponse.class)
+				.withStrategy(
 						roundRobin(
 								server(address1),
 								sharding(shardingFunction, server(address2), server(address3)).withMinActiveSubStrategies(2)));

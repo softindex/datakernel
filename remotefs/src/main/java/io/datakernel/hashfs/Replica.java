@@ -25,10 +25,14 @@ public final class Replica {
 	private final InetSocketAddress address;
 	private long lastHeartBeatReceived;
 
-	public Replica(String id, InetSocketAddress address, double weight) {
+	private Replica(String id, InetSocketAddress address, double weight) {
 		this.id = id;
 		this.address = address;
 		this.weight = weight;
+	}
+
+	public static Replica create(String id, InetSocketAddress address, double weight) {
+		return new Replica(id, address, weight);
 	}
 
 	public InetSocketAddress getAddress() {

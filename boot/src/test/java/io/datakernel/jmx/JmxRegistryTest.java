@@ -39,7 +39,7 @@ public class JmxRegistryTest {
 	private MBeanServer mBeanServer = context.mock(MBeanServer.class);
 	private DynamicMBeanFactory mbeanFactory = context.mock(DynamicMBeanFactory.class);
 	private DynamicMBean dynamicMBean = context.mock(DynamicMBean.class);
-	private JmxRegistry jmxRegistry = new JmxRegistry(mBeanServer, mbeanFactory);
+	private JmxRegistry jmxRegistry = JmxRegistry.create(mBeanServer, mbeanFactory);
 	private final String domain = ServiceStub.class.getPackage().getName();
 
 	@Test

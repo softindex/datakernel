@@ -65,28 +65,32 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 	private ExecutorService sslExecutor;
 
 	// jmx
-	private final EventStats totalRequests = new EventStats();
-	private final EventStats httpsRequests = new EventStats();
-	private final EventStats httpRequests = new EventStats();
-	private final EventStats keepAliveRequests = new EventStats();
-	private final EventStats nonKeepAliveRequests = new EventStats();
-	private final EventStats expiredConnections = new EventStats();
-	private final ExceptionStats httpProtocolErrors = new ExceptionStats();
-	private final EventStats timeoutErrors = new EventStats();
+	private final EventStats totalRequests = EventStats.create();
+	private final EventStats httpsRequests = EventStats.create();
+	private final EventStats httpRequests = EventStats.create();
+	private final EventStats keepAliveRequests = EventStats.create();
+	private final EventStats nonKeepAliveRequests = EventStats.create();
+	private final EventStats expiredConnections = EventStats.create();
+	private final ExceptionStats httpProtocolErrors = ExceptionStats.create();
+	private final EventStats timeoutErrors = EventStats.create();
 	private final Map<HttpClientConnection, UrlWithTimestamp> currentRequestToSendTime = new HashMap<>();
 	private boolean monitorCurrentRequestsDuration = false;
 
 	private int inetAddressIdx = 0;
 
-	public AsyncHttpClient(Eventloop eventloop, DnsClient dnsClient) {
+	private AsyncHttpClient(Eventloop eventloop, DnsClient dnsClient) {
 		this(eventloop, dnsClient, defaultSocketSettings());
 	}
 
-	public AsyncHttpClient(Eventloop eventloop, DnsClient dnsClient, SocketSettings socketSettings) {
+	public static AsyncHttpClient create(Eventloop eventloop, DnsClient dnsClient) {
+		return new AsyncHttpClient(eventloop, dnsClient);
+	}
+
+	private AsyncHttpClient(Eventloop eventloop, DnsClient dnsClient, SocketSettings socketSettings) {
 		this.eventloop = eventloop;
 		this.dnsClient = dnsClient;
 		this.socketSettings = checkNotNull(socketSettings);
-		this.pool = new ExposedLinkedList<>();
+		this.pool = ExposedLinkedList.create();
 		char[] chars = eventloop.get(char[].class);
 		if (chars == null || chars.length < MAX_HEADER_LINE_SIZE) {
 			chars = new char[MAX_HEADER_LINE_SIZE];
@@ -95,18 +99,18 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 		this.headerChars = chars;
 	}
 
-	public AsyncHttpClient enableSsl(SSLContext sslContext, ExecutorService executor) {
+	public AsyncHttpClient withSslEnabled(SSLContext sslContext, ExecutorService executor) {
 		this.sslContext = sslContext;
 		this.sslExecutor = executor;
 		return this;
 	}
 
-	public AsyncHttpClient keepConnectionAlive(long time) {
+	public AsyncHttpClient withKeepConnectionAliveTime(long time) {
 		this.keepConnectionInPoolTime = time;
 		return this;
 	}
 
-	public AsyncHttpClient maxHttpMessageSize(int size) {
+	public AsyncHttpClient withMaxHttpMessageSize(int size) {
 		this.maxHttpMessageSize = size;
 		return this;
 	}
@@ -163,7 +167,7 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 		if (addressPool == null) {
 			addressPool = addressPools.get(connection.remoteAddress);
 			if (addressPool == null) {
-				addressPool = new ExposedLinkedList<>();
+				addressPool = ExposedLinkedList.create();
 				addressPools.put(connection.remoteAddress, addressPool);
 			}
 			connection.addressPool = addressPool;
@@ -238,7 +242,7 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 				AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings);
 				AsyncTcpSocket asyncTcpSocket = request.isHttps() ? wrapClientSocket(eventloop, asyncTcpSocketImpl, sslContext, sslExecutor) : asyncTcpSocketImpl;
 
-				HttpClientConnection connection = new HttpClientConnection(eventloop, address,
+				HttpClientConnection connection = HttpClientConnection.create(eventloop, address,
 						asyncTcpSocket,
 						AsyncHttpClient.this, headerChars, maxHttpMessageSize);
 

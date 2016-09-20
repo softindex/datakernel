@@ -37,6 +37,20 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public final class StreamSharder<K, T> extends AbstractStreamTransformer_1_N<T> implements EventloopJmxMBean {
 	private long jmxItems;
 
+	// region creators
+	private StreamSharder(Eventloop eventloop, Sharder<K> sharder, Function<T, K> keyFunction) {
+		super(eventloop);
+		checkNotNull(sharder);
+		checkNotNull(keyFunction);
+		setInputConsumer(new InputConsumer(sharder, keyFunction));
+	}
+
+	public static <K, T> StreamSharder<K, T> create(Eventloop eventloop, Sharder<K> sharder,
+	                                                Function<T, K> keyFunction) {
+		return new StreamSharder<K, T>(eventloop, sharder, keyFunction);
+	}
+	// endregion
+
 	protected final class InputConsumer extends AbstractInputConsumer implements StreamDataReceiver<T> {
 		private final Sharder<K> sharder;
 		private final Function<T, K> keyFunction;
@@ -81,13 +95,6 @@ public final class StreamSharder<K, T> extends AbstractStreamTransformer_1_N<T> 
 				inputConsumer.resume();
 			}
 		}
-	}
-
-	public StreamSharder(Eventloop eventloop, Sharder<K> sharder, Function<T, K> keyFunction) {
-		super(eventloop);
-		checkNotNull(sharder);
-		checkNotNull(keyFunction);
-		setInputConsumer(new InputConsumer(sharder, keyFunction));
 	}
 
 	public StreamProducer<T> newOutput() {

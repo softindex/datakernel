@@ -1,9 +1,9 @@
 package io.datakernel;
 
-import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
 import io.datakernel.util.StringUtils;
 import org.slf4j.Logger;
@@ -21,7 +21,6 @@ import java.util.concurrent.ExecutorService;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpUtils.inetAddress;
 import static io.datakernel.http.MediaTypes.*;
-import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
 public class ClientStressTest {
@@ -29,7 +28,7 @@ public class ClientStressTest {
 
 	private static final String PATH_TO_URLS = "./src/test/resources/urls.txt";
 
-	private Eventloop eventloop = new Eventloop();
+	private Eventloop eventloop = Eventloop.create();
 	private ExecutorService executor = newCachedThreadPool();
 	private Random random = new Random();
 	private Iterator<String> urls = getUrls().iterator();
@@ -38,17 +37,16 @@ public class ClientStressTest {
 		@Override
 		public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
 			test();
-			callback.onResult(HttpResponse.create());
+			callback.onResult(HttpResponse.ok200());
 		}
 	};
-	private AsyncHttpServer server = new AsyncHttpServer(eventloop, servlet)
-			.setListenPort(1234);
+	private AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet).withListenPort(1234);
 
 	private final SSLContext context = SSLContext.getDefault();
 
-	private AsyncHttpClient client = new AsyncHttpClient(eventloop,
-			new NativeDnsResolver(eventloop, defaultDatagramSocketSettings(), 3000, inetAddress("8.8.8.8")))
-			.enableSsl(context, executor);
+	private AsyncHttpClient client = AsyncHttpClient.create(eventloop,
+			NativeDnsResolver.create(eventloop).withDnsServerAddress(inetAddress("8.8.8.8")))
+			.withSslEnabled(context, executor);
 
 	private ClientStressTest() throws Exception {}
 
@@ -89,18 +87,18 @@ public class ClientStressTest {
 	}
 
 	private HttpRequest formRequest(String url, boolean keepAlive) {
-		HttpRequest request = HttpRequest.get(url)
-				.header(CACHE_CONTROL, "max-age=0")
-				.header(ACCEPT_ENCODING, "gzip, deflate, sdch")
-				.header(ACCEPT_LANGUAGE, "en-US,en;q=0.8")
-				.header(USER_AGENT, "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/49.0.2623.87 Safari/537.36")
-				.accept(AcceptMediaType.of(HTML),
-						AcceptMediaType.of(XHTML_APP),
-						AcceptMediaType.of(XML_APP, 90),
-						AcceptMediaType.of(WEBP),
-						AcceptMediaType.of(ANY, 80));
+		HttpRequest request = HttpRequest.get(url);
+		request.addHeader(CACHE_CONTROL, "max-age=0");
+		request.addHeader(ACCEPT_ENCODING, "gzip, deflate, sdch");
+		request.addHeader(ACCEPT_LANGUAGE, "en-US,en;q=0.8");
+		request.addHeader(USER_AGENT, "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/49.0.2623.87 Safari/537.36");
+		request.setAccept(AcceptMediaType.of(HTML),
+				AcceptMediaType.of(XHTML_APP),
+				AcceptMediaType.of(XML_APP, 90),
+				AcceptMediaType.of(WEBP),
+				AcceptMediaType.of(ANY, 80));
 		if (keepAlive) {
-			request.header(CONNECTION, "keep-alive");
+			request.addHeader(CONNECTION, "keep-alive");
 		}
 		return request;
 	}

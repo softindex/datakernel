@@ -20,15 +20,19 @@ public final class LogPosition {
 	private final LogFile logFile;
 	private final long position;
 
-	public LogPosition(LogFile logFile, long position) {
+	private LogPosition(LogFile logFile, long position) {
 		this.logFile = logFile;
 		this.position = position;
 	}
 
-	public LogPosition() {
+	private LogPosition() {
 		this.logFile = null;
 		this.position = 0L;
 	}
+
+	public static LogPosition create() {return new LogPosition();}
+
+	public static LogPosition create(LogFile logFile, long position) {return new LogPosition(logFile, position);}
 
 	public boolean isBeginning() {
 		return position == 0L;

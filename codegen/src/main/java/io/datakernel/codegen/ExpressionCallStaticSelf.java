@@ -26,12 +26,10 @@ import java.util.List;
 import java.util.Set;
 
 import static io.datakernel.codegen.Expressions.self;
-import static io.datakernel.codegen.Utils.argsToString;
-import static io.datakernel.codegen.Utils.exceptionInGeneratedClass;
-import static io.datakernel.codegen.Utils.getJavaType;
+import static io.datakernel.codegen.Utils.*;
 import static java.lang.String.format;
 
-public class ExpressionCallStaticSelf implements Expression {
+final class ExpressionCallStaticSelf implements Expression {
 	private final Expression owner;
 	private final String methodName;
 	private final List<Expression> arguments = new ArrayList<>();

@@ -43,7 +43,7 @@ public final class CubeTestUtils {
 	                                                                   ExecutorService executor,
 	                                                                   Configuration jooqConfiguration,
 	                                                                   CubeMetadataStorageSql cubeMetadataStorageSql) {
-		LogToCubeMetadataStorageSql metadataStorage = new LogToCubeMetadataStorageSql(eventloop, executor,
+		LogToCubeMetadataStorageSql metadataStorage = LogToCubeMetadataStorageSql.create(eventloop, executor,
 				jooqConfiguration, cubeMetadataStorageSql);
 		metadataStorage.truncateTables();
 		return metadataStorage;
@@ -52,17 +52,17 @@ public final class CubeTestUtils {
 	public static AggregationChunkStorage getAggregationChunkStorage(Eventloop eventloop, ExecutorService executor,
 	                                                                 AggregationStructure structure,
 	                                                                 Path aggregationsDir) {
-		return new LocalFsChunkStorage(eventloop, executor, structure, aggregationsDir);
+		return LocalFsChunkStorage.create(eventloop, executor, structure, aggregationsDir);
 	}
 
 	public static <T> LogManager<T> getLogManager(Class<T> logClass, Eventloop eventloop, ExecutorService executor,
 	                                              DefiningClassLoader classLoader, Path logsDir) {
-		LocalFsLogFileSystem fileSystem = new LocalFsLogFileSystem(eventloop, executor, logsDir);
+		LocalFsLogFileSystem fileSystem = LocalFsLogFileSystem.create(eventloop, executor, logsDir);
 		BufferSerializer<T> bufferSerializer = SerializerBuilder
-				.newDefaultInstance(classLoader)
-				.create(logClass);
+				.create(classLoader)
+				.build(logClass);
 
-		return new LogManagerImpl<>(eventloop, fileSystem, bufferSerializer);
+		return LogManagerImpl.create(eventloop, fileSystem, bufferSerializer);
 	}
 
 	public static Configuration getJooqConfiguration(String databasePropertiesPath, SQLDialect databaseDialect)

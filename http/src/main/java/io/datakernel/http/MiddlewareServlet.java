@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ParseException;
+import io.datakernel.exception.ParseException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -32,6 +32,10 @@ public class MiddlewareServlet implements AsyncHttpServlet {
 	protected AsyncHttpServlet fallbackHandler;
 
 	protected final Map<String, MiddlewareServlet> parameters = new HashMap<>();
+
+	private MiddlewareServlet() {}
+
+	public static MiddlewareServlet create() {return new MiddlewareServlet();}
 
 	public void get(AsyncHttpServlet handler) {
 		get(ROOT, handler);
@@ -234,7 +238,7 @@ public class MiddlewareServlet implements AsyncHttpServlet {
 			urlPart = urlPart.substring(1);
 			MiddlewareServlet parameter = parameters.get(urlPart);
 			if (parameter == null) {
-				servlet = new MiddlewareServlet();
+				servlet = create();
 				parameters.put(urlPart, servlet);
 			} else {
 				return parameter;
@@ -242,7 +246,7 @@ public class MiddlewareServlet implements AsyncHttpServlet {
 		} else {
 			MiddlewareServlet container = routes.get(urlPart);
 			if (container == null) {
-				servlet = new MiddlewareServlet();
+				servlet = create();
 				routes.put(urlPart, servlet);
 			} else {
 				servlet = container;

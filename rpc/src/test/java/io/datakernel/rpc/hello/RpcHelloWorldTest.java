@@ -87,8 +87,8 @@ public class RpcHelloWorldTest {
 
 	private static RpcServer createServer(Eventloop eventloop) {
 		return RpcServer.create(eventloop)
-				.messageTypes(HelloRequest.class, HelloResponse.class)
-				.on(HelloRequest.class, helloServiceRequestHandler(new HelloService() {
+				.withMessageTypes(HelloRequest.class, HelloResponse.class)
+				.withHandlerFor(HelloRequest.class, helloServiceRequestHandler(new HelloService() {
 					@Override
 					public String hello(String name) throws Exception {
 						if (name.equals("--")) {
@@ -97,7 +97,7 @@ public class RpcHelloWorldTest {
 						return "Hello, " + name + "!";
 					}
 				}))
-				.setListenPort(PORT);
+				.withListenPort(PORT);
 	}
 
 	private static class BlockingHelloClient implements HelloService, AutoCloseable {
@@ -107,8 +107,8 @@ public class RpcHelloWorldTest {
 		public BlockingHelloClient(Eventloop eventloop) throws Exception {
 			this.eventloop = eventloop;
 			this.client = RpcClient.create(eventloop)
-					.messageTypes(HelloRequest.class, HelloResponse.class)
-					.strategy(server(new InetSocketAddress(InetAddresses.forString("127.0.0.1"), PORT)));
+					.withMessageTypes(HelloRequest.class, HelloResponse.class)
+					.withStrategy(server(new InetSocketAddress(InetAddresses.forString("127.0.0.1"), PORT)));
 
 			startFuture(client).await();
 		}
@@ -138,7 +138,7 @@ public class RpcHelloWorldTest {
 		ByteBufPool.clear();
 		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 
-		eventloop = new Eventloop();
+		eventloop = Eventloop.create();
 		server = createServer(eventloop);
 		server.listen();
 		defaultEventloopThreadFactory().newThread(eventloop).start();

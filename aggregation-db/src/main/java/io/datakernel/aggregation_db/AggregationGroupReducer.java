@@ -54,13 +54,13 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 
 	private final HashMap<Comparable<?>, Object> map = new HashMap<>();
 
-	public AggregationGroupReducer(Eventloop eventloop, AggregationChunkStorage storage,
-	                               final AggregationOperationTracker operationTracker,
-	                               AggregationMetadataStorage metadataStorage, List<String> keys, List<String> fields,
-	                               Class<?> recordClass, BiPredicate<T, T> partitionPredicate,
-	                               Function<T, Comparable<?>> keyFunction, Aggregate aggregate,
-	                               int chunkSize, DefiningClassLoader classLoader,
-	                               final ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
+	private AggregationGroupReducer(Eventloop eventloop, AggregationChunkStorage storage,
+	                                final AggregationOperationTracker operationTracker,
+	                                AggregationMetadataStorage metadataStorage, List<String> keys, List<String> fields,
+	                                Class<?> recordClass, BiPredicate<T, T> partitionPredicate,
+	                                Function<T, Comparable<?>> keyFunction, Aggregate aggregate,
+	                                int chunkSize, DefiningClassLoader classLoader,
+	                                final ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
 		super(eventloop);
 		this.storage = storage;
 		this.metadataStorage = metadataStorage;
@@ -87,6 +87,17 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 		});
 		this.classLoader = classLoader;
 		operationTracker.reportStart(this);
+	}
+
+	public static <T> AggregationGroupReducer<T> create(Eventloop eventloop, AggregationChunkStorage storage,
+	                                                    final AggregationOperationTracker operationTracker,
+	                                                    AggregationMetadataStorage metadataStorage, List<String> keys, List<String> fields,
+	                                                    Class<?> recordClass, BiPredicate<T, T> partitionPredicate,
+	                                                    Function<T, Comparable<?>> keyFunction, Aggregate aggregate,
+	                                                    int chunkSize, DefiningClassLoader classLoader,
+	                                                    final ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
+		return new AggregationGroupReducer<>(eventloop, storage, operationTracker, metadataStorage, keys, fields,
+				recordClass, partitionPredicate, keyFunction, aggregate, chunkSize, classLoader, chunksCallback);
 	}
 
 	@Override
@@ -141,8 +152,8 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 
 		final StreamProducer producer = StreamProducers.ofIterable(eventloop, list);
 
-		producer.streamTo(new AggregationChunker(eventloop, operationTracker, keys, fields, recordClass,
-				partitionPredicate, storage, metadataStorage, chunkSize, classLoader,
+		producer.streamTo(AggregationChunker.create(eventloop, operationTracker, keys, fields, recordClass,
+				(BiPredicate) partitionPredicate, storage, metadataStorage, chunkSize, classLoader,
 				new ResultCallback<List<AggregationChunk.NewChunk>>() {
 					@Override
 					public void onResult(List<AggregationChunk.NewChunk> newChunks) {

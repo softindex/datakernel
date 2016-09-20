@@ -40,15 +40,11 @@ public final class SocketStreamingConnection implements AsyncTcpSocket.EventHand
 	private final SocketStreamProducer socketReader;
 	private final SocketStreamConsumer socketWriter;
 
-	/**
-	 * Returns new instance of TcpStreamSocketConnection
-	 *
-	 * @param eventloop eventloop in with this connection will be handled
-	 */
-	public SocketStreamingConnection(Eventloop eventloop, final AsyncTcpSocket asyncTcpSocket) {
+	// region creators
+	private SocketStreamingConnection(Eventloop eventloop, final AsyncTcpSocket asyncTcpSocket) {
 		this.eventloop = eventloop;
 		this.asyncTcpSocket = asyncTcpSocket;
-		this.socketWriter = new SocketStreamConsumer(eventloop, asyncTcpSocket, new CompletionCallback() {
+		this.socketWriter = SocketStreamConsumer.create(eventloop, asyncTcpSocket, new CompletionCallback() {
 			@Override
 			public void onException(Exception e) {
 				socketReader.closeWithError(e);
@@ -59,7 +55,7 @@ public final class SocketStreamingConnection implements AsyncTcpSocket.EventHand
 			public void onComplete() {
 			}
 		});
-		this.socketReader = new SocketStreamProducer(eventloop, asyncTcpSocket, new CompletionCallback() {
+		this.socketReader = SocketStreamProducer.create(eventloop, asyncTcpSocket, new CompletionCallback() {
 			@Override
 			public void onException(Exception e) {
 				socketWriter.closeWithError(e);
@@ -73,6 +69,12 @@ public final class SocketStreamingConnection implements AsyncTcpSocket.EventHand
 		socketReader.streamTo(StreamConsumers.<ByteBuf>idle(eventloop));
 		new StreamProducers.EndOfStream<ByteBuf>(eventloop).streamTo(socketWriter);
 	}
+
+	public static SocketStreamingConnection createSocketStreamingConnection(Eventloop eventloop,
+	                                                                        final AsyncTcpSocket asyncTcpSocket) {
+		return new SocketStreamingConnection(eventloop, asyncTcpSocket);
+	}
+	// endregion
 
 	@Override
 	public void sendStreamFrom(StreamProducer<ByteBuf> producer, CompletionCallback callback) {

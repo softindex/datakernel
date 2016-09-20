@@ -30,12 +30,12 @@ public class LogStreamConsumer<T> extends StreamConsumerDecorator<T> {
 
 	private final LogStreamConsumer_ByteBuffer logStreamConsumer_byteBuffer;
 
-	public LogStreamConsumer(Eventloop eventloop, LogFileSystem fileSystem, BufferSerializer<T> serializer,
-	                         String logPartition, DateTimeFormatter dateTimeFormatter, long fileSwitchPeriod,
-	                         int bufferSize, int flushDelayMillis) {
-		StreamBinarySerializer<T> streamBinarySerializer = new StreamBinarySerializer<>(eventloop, serializer, bufferSize, StreamBinarySerializer.MAX_SIZE, flushDelayMillis, true);
+	private LogStreamConsumer(Eventloop eventloop, LogFileSystem fileSystem, BufferSerializer<T> serializer,
+	                          String logPartition, DateTimeFormatter dateTimeFormatter, long fileSwitchPeriod,
+	                          int bufferSize, int flushDelayMillis) {
+		StreamBinarySerializer<T> streamBinarySerializer = StreamBinarySerializer.create(eventloop, serializer, bufferSize, StreamBinarySerializer.MAX_SIZE, flushDelayMillis, true);
 		StreamLZ4Compressor streamCompressor = StreamLZ4Compressor.fastCompressor(eventloop);
-		logStreamConsumer_byteBuffer = new LogStreamConsumer_ByteBuffer(eventloop, dateTimeFormatter, fileSwitchPeriod,
+		logStreamConsumer_byteBuffer = LogStreamConsumer_ByteBuffer.create(eventloop, dateTimeFormatter, fileSwitchPeriod,
 				fileSystem, logPartition);
 
 		logStreamConsumer_byteBuffer.setTag(logPartition);
@@ -45,6 +45,14 @@ public class LogStreamConsumer<T> extends StreamConsumerDecorator<T> {
 		setActualConsumer(streamBinarySerializer.getInput());
 		streamBinarySerializer.getOutput().streamTo(streamCompressor.getInput());
 		streamCompressor.getOutput().streamTo(logStreamConsumer_byteBuffer);
+	}
+
+	public static <T> LogStreamConsumer<T> create(Eventloop eventloop, LogFileSystem fileSystem,
+	                                              BufferSerializer<T> serializer,
+	                                              String logPartition, DateTimeFormatter dateTimeFormatter,
+	                                              long fileSwitchPeriod, int bufferSize, int flushDelayMillis) {
+		return new LogStreamConsumer<T>(eventloop, fileSystem, serializer, logPartition,
+				dateTimeFormatter, fileSwitchPeriod, bufferSize, flushDelayMillis);
 	}
 
 	public void setCompletionCallback(CompletionCallback callback) {

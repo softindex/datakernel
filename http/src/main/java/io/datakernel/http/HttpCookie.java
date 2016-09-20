@@ -16,14 +16,14 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.exception.ParseException;
 
 import java.util.Date;
 import java.util.List;
 
+import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.HttpUtils.skipSpaces;
-import static io.datakernel.util.ByteBufStrings.*;
 
 // RFC 6265
 public final class HttpCookie {
@@ -54,16 +54,132 @@ public final class HttpCookie {
 	private boolean httpOnly;
 	private String extension;
 
-	// constructors & creators
-	public HttpCookie(String name, String value) {
+	// region builders
+	private HttpCookie(String name, String value) {
 		this.name = name;
 		this.value = value;
 	}
 
-	public HttpCookie(String name) {
-		this.name = name;
+	public static HttpCookie of(String name, String value) {
+		return new HttpCookie(name, value);
 	}
 
+	public static HttpCookie of(String name) {
+		return new HttpCookie(name, null);
+	}
+
+	public HttpCookie withValue(String value) {
+		setValue(value);
+		return this;
+	}
+
+	public HttpCookie withExpirationDate(Date expirationDate) {
+		setExpirationDate(expirationDate);
+		return this;
+	}
+
+	public HttpCookie withMaxAge(int maxAge) {
+		setMaxAge(maxAge);
+		return this;
+	}
+
+	public HttpCookie withDomain(String domain) {
+		setDomain(domain);
+		return this;
+	}
+
+	public HttpCookie withPath(String path) {
+		setPath(path);
+		return this;
+	}
+
+	public HttpCookie withSecure(boolean secure) {
+		setSecure(secure);
+		return this;
+	}
+
+	public HttpCookie withHttpOnly(boolean httpOnly) {
+		setHttpOnly(httpOnly);
+		return this;
+	}
+
+	public HttpCookie withExtension(String extension) {
+		setExtension(extension);
+		return this;
+	}
+	// endregion
+
+	// region accessors
+	public String getName() {
+		return name;
+	}
+
+	public String getValue() {
+		return value;
+	}
+
+	public void setValue(String value) {
+		this.value = value;
+	}
+
+	public Date getExpirationDate() {
+		return expirationDate;
+	}
+
+	public void setExpirationDate(Date expirationDate) {
+		this.expirationDate = expirationDate;
+	}
+
+	public int getMaxAge() {
+		return maxAge;
+	}
+
+	public void setMaxAge(int maxAge) {
+		this.maxAge = maxAge;
+	}
+
+	public String getDomain() {
+		return domain;
+	}
+
+	public void setDomain(String domain) {
+		this.domain = domain;
+	}
+
+	public String getPath() {
+		return path;
+	}
+
+	public void setPath(String path) {
+		this.path = path;
+	}
+
+	public boolean isSecure() {
+		return secure;
+	}
+
+	public void setSecure(boolean secure) {
+		this.secure = secure;
+	}
+
+	public boolean isHttpOnly() {
+		return httpOnly;
+	}
+
+	public void setHttpOnly(boolean httpOnly) {
+		this.httpOnly = httpOnly;
+	}
+
+	public String getExtension() {
+		return extension;
+	}
+
+	public void setExtension(String extension) {
+		this.extension = extension;
+	}
+	// endregion
+
+	// region etc
 	static void parse(String cookieString, List<HttpCookie> cookies) throws ParseException {
 		byte[] bytes = encodeAscii(cookieString);
 		parse(bytes, 0, bytes.length, cookies);
@@ -166,7 +282,7 @@ public final class HttpCookie {
 
 				if (equalSign == -1) {
 					String key = decodeAscii(bytes, keyStart, valueEnd - keyStart);
-					cookies.add(new HttpCookie(key));
+					cookies.add(HttpCookie.of(key));
 				} else {
 					String key = decodeAscii(bytes, keyStart, equalSign - keyStart);
 					String value;
@@ -303,73 +419,5 @@ public final class HttpCookie {
 				"name='" + name + '\'' +
 				", value='" + value + '\'' + '}';
 	}
-
-	// accessors
-	public String getName() {
-		return name;
-	}
-
-	public String getValue() {
-		return value;
-	}
-
-	public void setValue(String value) {
-		this.value = value;
-	}
-
-	public Date getExpirationDate() {
-		return expirationDate;
-	}
-
-	public void setExpirationDate(Date expirationDate) {
-		this.expirationDate = expirationDate;
-	}
-
-	public int getMaxAge() {
-		return maxAge;
-	}
-
-	public void setMaxAge(int maxAge) {
-		this.maxAge = maxAge;
-	}
-
-	public String getDomain() {
-		return domain;
-	}
-
-	public void setDomain(String domain) {
-		this.domain = domain;
-	}
-
-	public String getPath() {
-		return path;
-	}
-
-	public void setPath(String path) {
-		this.path = path;
-	}
-
-	public boolean isSecure() {
-		return secure;
-	}
-
-	public void setSecure(boolean secure) {
-		this.secure = secure;
-	}
-
-	public boolean isHttpOnly() {
-		return httpOnly;
-	}
-
-	public void setHttpOnly(boolean httpOnly) {
-		this.httpOnly = httpOnly;
-	}
-
-	public String getExtension() {
-		return extension;
-	}
-
-	public void setExtension(String extension) {
-		this.extension = extension;
-	}
+	// endregion
 }

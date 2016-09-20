@@ -2,9 +2,9 @@ package io.datakernel.stream.net;
 
 import com.google.common.base.Objects;
 import com.google.gson.Gson;
-import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.util.ByteBufStrings;
+import io.datakernel.bytebuf.ByteBufStrings;
+import io.datakernel.exception.ParseException;
 import org.junit.Test;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;

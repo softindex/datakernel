@@ -36,10 +36,14 @@ public final class RemoteLogFileSystem extends AbstractLogFileSystem {
 	private final String logName;
 	private final FsClient client;
 
-	public RemoteLogFileSystem(Eventloop eventloop, String logName, FsClient client) {
+	private RemoteLogFileSystem(Eventloop eventloop, String logName, FsClient client) {
 		this.eventloop = eventloop;
 		this.logName = logName;
 		this.client = client;
+	}
+
+	public static RemoteLogFileSystem create(Eventloop eventloop, String logName, FsClient client) {
+		return new RemoteLogFileSystem(eventloop, logName, client);
 	}
 
 	@Override

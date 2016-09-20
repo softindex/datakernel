@@ -61,13 +61,19 @@ public final class LogToCubeMetadataStorageSql implements LogToCubeMetadataStora
 	 * @param jooqConfiguration   database connection configuration
 	 * @param cubeMetadataStorage aggregation metadata storage
 	 */
-	public LogToCubeMetadataStorageSql(Eventloop eventloop, ExecutorService executor,
-	                                   Configuration jooqConfiguration,
-	                                   CubeMetadataStorageSql cubeMetadataStorage) {
+	private LogToCubeMetadataStorageSql(Eventloop eventloop, ExecutorService executor,
+	                                    Configuration jooqConfiguration,
+	                                    CubeMetadataStorageSql cubeMetadataStorage) {
 		this.eventloop = eventloop;
 		this.executor = executor;
 		this.jooqConfiguration = jooqConfiguration;
 		this.cubeMetadataStorage = cubeMetadataStorage;
+	}
+
+	public static LogToCubeMetadataStorageSql create(Eventloop eventloop, ExecutorService executor,
+	                                                 Configuration jooqConfiguration,
+	                                                 CubeMetadataStorageSql cubeMetadataStorage) {
+		return new LogToCubeMetadataStorageSql(eventloop, executor, jooqConfiguration, cubeMetadataStorage);
 	}
 
 	void truncateTables(DSLContext jooq) {
@@ -92,12 +98,12 @@ public final class LogToCubeMetadataStorageSql implements LogToCubeMetadataStora
 		Map<String, LogPosition> logPositionMap = new LinkedHashMap<>();
 
 		for (String partition : partitions) {
-			logPositionMap.put(partition, new LogPosition());
+			logPositionMap.put(partition, LogPosition.create());
 		}
 
 		for (AggregationDbLogRecord logRecord : logRecords) {
 			logPositionMap.put(logRecord.getPartition(),
-					new LogPosition(
+					LogPosition.create(
 							new LogFile(logRecord.getFile(), logRecord.getFileIndex()),
 							logRecord.getPosition()));
 		}

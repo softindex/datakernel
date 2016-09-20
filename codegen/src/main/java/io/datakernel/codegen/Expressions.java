@@ -31,7 +31,7 @@ public final class Expressions {
 	private Expressions() {
 	}
 
-	public static ExpressionSequence sequence(List<Expression> parts) {
+	public static Expression sequence(List<Expression> parts) {
 		return new ExpressionSequence(parts);
 	}
 
@@ -41,7 +41,7 @@ public final class Expressions {
 	 * @param parts list of operations
 	 * @return new instance of the ExpressionSequence
 	 */
-	public static ExpressionSequence sequence(Expression... parts) {
+	public static Expression sequence(Expression... parts) {
 		return new ExpressionSequence(asList(parts));
 	}
 
@@ -139,7 +139,7 @@ public final class Expressions {
 	 * @return new instance of the PredicateDefCmp
 	 */
 	public static PredicateDefCmp cmp(PredicateDefCmp.Operation eq, Expression left, Expression right) {
-		return new PredicateDefCmp(eq, left, right);
+		return PredicateDefCmp.create(eq, left, right);
 	}
 
 	/**
@@ -176,7 +176,7 @@ public final class Expressions {
 	 * @return new instance of the PredicateDefAnd
 	 */
 	public static PredicateDefAnd and(List<PredicateDef> predicateDefs) {
-		return new PredicateDefAnd(predicateDefs);
+		return PredicateDefAnd.create(predicateDefs);
 	}
 
 	/**
@@ -196,7 +196,7 @@ public final class Expressions {
 	 * @return new instance of the PredicateDefOr
 	 */
 	public static PredicateDefOr or(List<PredicateDef> predicateDefs) {
-		return new PredicateDefOr(predicateDefs);
+		return PredicateDefOr.create(predicateDefs);
 	}
 
 	/**
@@ -272,6 +272,33 @@ public final class Expressions {
 		return new ExpressionComparatorNullable();
 	}
 
+	public static ExpressionComparatorNullable comparatorNullable(Class<?> type, List<String> fields) {
+		ExpressionComparatorNullable comparator = new ExpressionComparatorNullable();
+		for (String field : fields) {
+			comparator.add(
+					getter(cast(arg(0), type), field),
+					getter(cast(arg(1), type), field));
+		}
+		return comparator;
+	}
+
+	public static ExpressionComparatorNullable comparatorNullableWithOrdering(Class<?> type,
+	                                                                          List<FieldWithOrdering> fields) {
+		ExpressionComparatorNullable comparator = new ExpressionComparatorNullable();
+		for (FieldWithOrdering field : fields) {
+			if (field.ascending) {
+				comparator.add(
+						getter(cast(arg(0), type), field.name),
+						getter(cast(arg(1), type), field.name));
+			} else {
+				comparator.add(
+						getter(cast(arg(1), type), field.name),
+						getter(cast(arg(0), type), field.name));
+			}
+		}
+		return comparator;
+	}
+
 	/**
 	 * Compares the fields
 	 *
@@ -287,6 +314,39 @@ public final class Expressions {
 					getter(cast(arg(1), type), field));
 		}
 		return comparator;
+	}
+
+	/**
+	 * Compares the fields according to ordering
+	 *
+	 * @param type   type of the fields
+	 * @param fields fields which will be compared
+	 * @return new instance of the ExpressionComparator
+	 */
+	public static ExpressionComparator compareWithOrdering(Class<?> type, List<FieldWithOrdering> fields) {
+		ExpressionComparator comparator = comparator();
+		for (FieldWithOrdering field : fields) {
+			if (field.ascending) {
+				comparator.add(
+						getter(cast(arg(0), type), field.name),
+						getter(cast(arg(1), type), field.name));
+			} else {
+				comparator.add(
+						getter(cast(arg(1), type), field.name),
+						getter(cast(arg(0), type), field.name));
+			}
+		}
+		return comparator;
+	}
+
+	public static final class FieldWithOrdering {
+		private final String name;
+		private final boolean ascending;
+
+		public FieldWithOrdering(String name, boolean isAscending) {
+			this.name = name;
+			this.ascending = isAscending;
+		}
 	}
 
 	/**

@@ -25,7 +25,7 @@ import static io.datakernel.codegen.Utils.getJavaType;
 import static java.lang.String.format;
 import static org.objectweb.asm.Type.*;
 
-public class ExpressionNeg implements Expression {
+final class ExpressionNeg implements Expression {
 	private final Expression arg;
 
 	ExpressionNeg(Expression arg) {this.arg = arg;}

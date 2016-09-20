@@ -28,22 +28,9 @@ public final class BufferReader extends Reader {
 	private int pos;
 	private int limit;
 
-	public BufferReader() {
-	}
-
-	@Override
-	public void close() throws IOException {
-	}
-
-	/**
-	 * Creates a new instance of this object
-	 *
-	 * @param array    array for buffering read characters
-	 * @param position the index of the next element to be written
-	 */
-	public BufferReader(byte[] array, int position) {
-		assert position >= 0;
-		set(array, position, array.length - position);
+	// region creators
+	private BufferReader(byte[] array, int position, int length) {
+		set(array, position, length);
 	}
 
 	/**
@@ -53,8 +40,11 @@ public final class BufferReader extends Reader {
 	 * @param position the index of the next element to be written
 	 * @param length   number of bytes which can be written to this array
 	 */
-	public BufferReader(byte[] array, int position, int length) {
-		set(array, position, length);
+	public static BufferReader create(byte[] array, int position, int length) {return new BufferReader(array, position, length);}
+	// endregion
+
+	@Override
+	public void close() throws IOException {
 	}
 
 	public void set(byte[] array, int position, int len) {
