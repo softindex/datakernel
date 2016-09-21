@@ -22,8 +22,7 @@ import org.jmock.integration.junit4.JUnitRuleMockery;
 import org.junit.Rule;
 import org.junit.Test;
 
-import javax.management.DynamicMBean;
-import javax.management.MBeanServer;
+import javax.management.*;
 
 import static io.datakernel.jmx.helper.CustomMatchers.objectname;
 
@@ -33,7 +32,6 @@ public class MXBeansRegistrationTest {
 	public JUnitRuleMockery context = new JUnitRuleMockery();
 	private MBeanServer mBeanServer = context.mock(MBeanServer.class);
 	private DynamicMBeanFactory mbeanFactory = context.mock(DynamicMBeanFactory.class);
-	private DynamicMBean dynamicMBean = context.mock(DynamicMBean.class);
 	private JmxRegistry jmxRegistry = JmxRegistry.create(mBeanServer, mbeanFactory);
 	private final String domain = ServiceStub.class.getPackage().getName();
 
@@ -60,4 +58,95 @@ public class MXBeansRegistrationTest {
 			return 0;
 		}
 	}
+
+	// region transitive implementations of MXBean interface through another interface
+	@Test
+	public void itShouldRegisterClassWhichImplementsMXBeanInterfaceTransivelyThroughAnotherInterface()
+			throws NotCompliantMBeanException, InstanceAlreadyExistsException, MBeanRegistrationException {
+		final ServiceTransitiveInterface service = new ServiceTransitiveInterface();
+
+		context.checking(new Expectations() {{
+			oneOf(mBeanServer).registerMBean(
+					with(service), with(objectname(domain + ":type=ServiceTransitiveInterface"))
+			);
+		}});
+
+		Key<?> key = Key.get(ServiceTransitiveInterface.class);
+		jmxRegistry.registerSingleton(key, service);
+	}
+
+	public interface InterfaceMXBean {
+		int getCount();
+	}
+
+	public interface TransitiveInterface extends InterfaceMXBean {
+
+	}
+
+	public class ServiceTransitiveInterface implements TransitiveInterface {
+
+		@Override
+		public int getCount() {
+			return 0;
+		}
+	}
+	// endregion
+
+	// region transitive implementation of MXBean interface through abstract class
+	@Test
+	public void itShouldRegisterClassWhichImplementsMXBeanInterfaceTransivelyThroughAbstractClass()
+			throws NotCompliantMBeanException, InstanceAlreadyExistsException, MBeanRegistrationException {
+		final ServiceTransitiveClass service = new ServiceTransitiveClass();
+
+		context.checking(new Expectations() {{
+			oneOf(mBeanServer).registerMBean(
+					with(service), with(objectname(domain + ":type=ServiceTransitiveClass"))
+			);
+		}});
+
+		Key<?> key = Key.get(ServiceTransitiveClass.class);
+		jmxRegistry.registerSingleton(key, service);
+	}
+
+	public abstract class TransitiveClass implements InterfaceMXBean {
+
+	}
+
+	public class ServiceTransitiveClass extends TransitiveClass {
+
+		@Override
+		public int getCount() {
+			return 0;
+		}
+	}
+	// endregion
+
+	// region registration of class that implements interface with @MXBean annotation
+	@Test
+	public void itShouldRegisterClassWhichImplementsInterfaceAnnotatedWithMXBean()
+			throws NotCompliantMBeanException, InstanceAlreadyExistsException, MBeanRegistrationException {
+		final ServiceWithMXBeanInterfaceAnnotation service = new ServiceWithMXBeanInterfaceAnnotation();
+
+		context.checking(new Expectations() {{
+			oneOf(mBeanServer).registerMBean(
+					with(service), with(objectname(domain + ":type=ServiceWithMXBeanInterfaceAnnotation"))
+			);
+		}});
+
+		Key<?> key = Key.get(ServiceWithMXBeanInterfaceAnnotation.class);
+		jmxRegistry.registerSingleton(key, service);
+	}
+
+	@MXBean
+	public interface JMXInterfaceWithAnnotation {
+		int getCount();
+	}
+
+	public class ServiceWithMXBeanInterfaceAnnotation implements JMXInterfaceWithAnnotation {
+		@Override
+		public int getCount() {
+			return 0;
+		}
+	}
+	// endregion
 }

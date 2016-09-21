@@ -389,7 +389,7 @@ public final class JmxRegistry implements ConcurrentJmxMBean {
 	}
 
 	private static boolean isMXBean(Class<?> clazz) {
-		return classImplementsInterfaceWithNameEndingWith(clazz, "MXBean");
+		return classFollowsMXBeanConvention(clazz);
 	}
 
 	private static boolean classImplementsInterfaceWithNameEndingWith(Class<?> clazz, String ending) {
@@ -401,6 +401,37 @@ public final class JmxRegistry implements ConcurrentJmxMBean {
 				return true;
 			}
 		}
+		return false;
+	}
+
+	private static boolean classFollowsMXBeanConvention(Class<?> clazz) {
+		Class<?>[] interfazes = clazz.getInterfaces();
+		for (Class<?> interfaze : interfazes) {
+			if (interfaceFollowsMXBeanConvention(interfaze)) {
+				return true;
+			}
+		}
+
+		Class<?> superClazz = clazz.getSuperclass();
+		if (superClazz != null) {
+			return classFollowsMXBeanConvention(superClazz);
+		}
+
+		return false;
+	}
+
+	private static boolean interfaceFollowsMXBeanConvention(Class<?> interfaze) {
+		if (interfaze.getSimpleName().endsWith("MXBean") || interfaze.isAnnotationPresent(MXBean.class)) {
+			return true;
+		}
+
+		Class<?>[] subInterfazes = interfaze.getInterfaces();
+		for (Class<?> subInterfaze : subInterfazes) {
+			if (interfaceFollowsMXBeanConvention(subInterfaze)) {
+				return true;
+			}
+		}
+
 		return false;
 	}
 
