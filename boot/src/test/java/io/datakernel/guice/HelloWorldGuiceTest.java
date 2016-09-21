@@ -102,7 +102,7 @@ public class HelloWorldGuiceTest {
 				@Override
 				protected void doServeAsync(HttpRequest request, Callback callback) {
 					byte[] body = ByteBufStrings.encodeAscii("Hello world: worker server #" + workerId);
-					callback.onResult(
+					callback.sendResult(
 							HttpResponse.ofCode(200)
 									.withBody(ByteBuf.wrapForReading(body))
 					);

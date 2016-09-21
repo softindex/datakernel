@@ -314,7 +314,7 @@ public class ReportingTest {
 			@Override
 			public void runWithException() throws Exception {
 				server.listen();
-				serverStartFuture.onComplete();
+				serverStartFuture.complete();
 			}
 		});
 		new Thread(eventloop).start();
@@ -345,13 +345,13 @@ public class ReportingTest {
 		startBlocking(httpClient);
 		cubeHttpClient.query(query, new ResultCallback<ReportingQueryResult>() {
 			@Override
-			public void onResult(ReportingQueryResult result) {
+			protected void onResult(ReportingQueryResult result) {
 				queryResult[0] = result;
 				stopBlocking(httpClient);
 			}
 
 			@Override
-			public void onException(Exception exception) {
+			protected void onException(Exception exception) {
 				logger.error("Query failed", exception);
 			}
 		});
@@ -397,13 +397,13 @@ public class ReportingTest {
 		startBlocking(httpClient);
 		cubeHttpClient.query(query, new ResultCallback<ReportingQueryResult>() {
 			@Override
-			public void onResult(ReportingQueryResult result) {
+			protected void onResult(ReportingQueryResult result) {
 				queryResult[0] = result;
 				stopBlocking(httpClient);
 			}
 
 			@Override
-			public void onException(Exception exception) {
+			protected void onException(Exception exception) {
 				logger.error("Query failed", exception);
 			}
 		});
@@ -439,13 +439,13 @@ public class ReportingTest {
 		startBlocking(httpClient);
 		cubeHttpClient.query(query, new ResultCallback<ReportingQueryResult>() {
 			@Override
-			public void onResult(ReportingQueryResult result) {
+			protected void onResult(ReportingQueryResult result) {
 				queryResult[0] = result;
 				stopBlocking(httpClient);
 			}
 
 			@Override
-			public void onException(Exception exception) {
+			protected void onException(Exception exception) {
 				logger.error("Query failed", exception);
 			}
 		});
@@ -471,13 +471,13 @@ public class ReportingTest {
 		startBlocking(httpClient);
 		cubeHttpClient.query(query, new ResultCallback<ReportingQueryResult>() {
 			@Override
-			public void onResult(ReportingQueryResult result) {
+			protected void onResult(ReportingQueryResult result) {
 				queryResult[0] = result;
 				stopBlocking(httpClient);
 			}
 
 			@Override
-			public void onException(Exception exception) {
+			protected void onException(Exception exception) {
 				logger.error("Query failed", exception);
 			}
 		});
@@ -506,13 +506,13 @@ public class ReportingTest {
 		startBlocking(httpClient);
 		cubeHttpClient.query(query, new ResultCallback<ReportingQueryResult>() {
 			@Override
-			public void onResult(ReportingQueryResult result) {
+			protected void onResult(ReportingQueryResult result) {
 				queryResult[0] = result;
 				stopBlocking(httpClient);
 			}
 
 			@Override
-			public void onException(Exception exception) {
+			protected void onException(Exception exception) {
 				logger.error("Query failed", exception);
 			}
 		});
@@ -565,7 +565,7 @@ public class ReportingTest {
 			@Override
 			public void runWithException() throws Exception {
 				server.close();
-				serverStopFuture.onComplete();
+				serverStopFuture.complete();
 			}
 		});
 		serverStopFuture.await();

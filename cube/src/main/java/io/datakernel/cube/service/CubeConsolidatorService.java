@@ -56,7 +56,7 @@ public final class CubeConsolidatorService implements EventloopService {
 	private void consolidate() {
 		cube.consolidate(maxChunksToConsolidate, new ResultCallback<Boolean>() {
 			@Override
-			public void onResult(Boolean consolidated) {
+			protected void onResult(Boolean consolidated) {
 				if (consolidated) {
 					// if previous consolidation merged some chunks, proceed consolidating other chunks
 					logger.info("Consolidation finished. Launching consolidation task again.");
@@ -74,7 +74,7 @@ public final class CubeConsolidatorService implements EventloopService {
 			}
 
 			@Override
-			public void onException(Exception e) {
+			protected void onException(Exception e) {
 				logger.error("Consolidation failed", e);
 				scheduleNext(CubeConsolidatorService.this.nothingToConsolidateSleepTimeMillis);
 			}
@@ -95,7 +95,7 @@ public final class CubeConsolidatorService implements EventloopService {
 
 	@Override
 	public void start(final CompletionCallback callback) {
-		callback.onComplete();
+		callback.complete();
 		consolidate();
 	}
 
@@ -105,6 +105,6 @@ public final class CubeConsolidatorService implements EventloopService {
 			consolidationTask.cancel();
 		}
 
-		callback.onComplete();
+		callback.complete();
 	}
 }

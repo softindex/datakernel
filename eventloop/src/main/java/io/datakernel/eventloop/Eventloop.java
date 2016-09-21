@@ -538,14 +538,14 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		} catch (IOException e) {
 			recordIoError(e, channel);
 			closeQuietly(channel);
-			connectCallback.onException(e);
+			connectCallback.fireException(e);
 			return;
 		}
 
 		if (connected) {
 			connectCallback.onConnect(channel);
 		} else {
-			connectCallback.onException(new SimpleException("Not connected"));
+			connectCallback.fireException(new SimpleException("Not connected"));
 		}
 	}
 
@@ -669,7 +669,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 			recordIoError(e, address);
 			closeQuietly(socketChannel);
 			try {
-				connectCallback.onException(e);
+				connectCallback.fireException(e);
 			} catch (Throwable e1) {
 				handleFatalError(e1, connectCallback);
 			}
@@ -692,7 +692,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 				public void run() {
 					recordIoError(CONNECT_TIMEOUT, socketChannel);
 					closeQuietly(socketChannel);
-					connectCallback.onException(CONNECT_TIMEOUT);
+					connectCallback.fireException(CONNECT_TIMEOUT);
 				}
 			});
 
@@ -707,7 +707,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 			public void onException(Exception exception) {
 				assert !scheduledTimeout.isComplete();
 				scheduledTimeout.cancel();
-				connectCallback.onException(exception);
+				connectCallback.fireException(exception);
 			}
 		};
 	}
@@ -877,9 +877,9 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 					exception = e;
 				}
 				if (exception == null) {
-					future.onResult(result);
+					future.sendResult(result);
 				} else {
-					future.onException(exception);
+					future.fireException(exception);
 				}
 			}
 		});
@@ -892,7 +892,17 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		execute(new Runnable() {
 			@Override
 			public void run() {
-				asyncTask.execute(future.withCompletionResult(result));
+				asyncTask.execute(new CompletionCallback() {
+					@Override
+					protected void onComplete() {
+						future.sendResult(result);
+					}
+
+					@Override
+					protected void onException(Exception e) {
+						future.fireException(e);
+					}
+				});
 			}
 		});
 		return future;
@@ -912,9 +922,9 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 					exception = e;
 				}
 				if (exception == null) {
-					future.onResult(result);
+					future.sendResult(result);
 				} else {
-					future.onException(exception);
+					future.fireException(exception);
 				}
 			}
 		});
@@ -966,7 +976,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 										taskName, submissionStart, executingStart, executingFinish);
 
 								tracker.complete();
-								callback.onComplete();
+								callback.complete();
 							}
 						});
 					} catch (final Exception e) {
@@ -985,7 +995,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 										taskName, submissionStart, executingStart, executingFinish);
 
 								tracker.complete();
-								callback.onException(actualException);
+								callback.fireException(actualException);
 							}
 						});
 					}
@@ -1002,7 +1012,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 			concurrentCallsStats.recordRejectedCall(taskName);
 
 			tracker.complete();
-			callback.onException(e);
+			callback.fireException(e);
 			return notCancellable();
 		}
 	}
@@ -1039,7 +1049,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 										taskName, submissionStart, executingStart, executingFinish);
 
 								tracker.complete();
-								callback.onResult(result);
+								callback.sendResult(result);
 							}
 						});
 					} catch (final Exception e) {
@@ -1055,7 +1065,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 										taskName, submissionStart, executingStart, executingFinish);
 
 								tracker.complete();
-								callback.onException(e);
+								callback.fireException(e);
 							}
 						});
 					}
@@ -1072,7 +1082,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 			concurrentCallsStats.recordRejectedCall(taskName);
 
 			tracker.complete();
-			callback.onException(e);
+			callback.fireException(e);
 			return notCancellable();
 		}
 	}

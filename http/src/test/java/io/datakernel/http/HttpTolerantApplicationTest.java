@@ -55,7 +55,7 @@ public class HttpTolerantApplicationTest {
 					@Override
 					public void run() {
 						HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
-						callback.onResult(content);
+						callback.sendResult(content);
 					}
 				});
 			}
@@ -147,14 +147,14 @@ public class HttpTolerantApplicationTest {
 
 			httpClient.send(HttpRequest.get("http://127.0.0.1:" + port), 1_000, new ResultCallback<HttpResponse>() {
 				@Override
-				public void onResult(HttpResponse response) {
-					resultObserver.onResult(response.getHeader(HttpHeaders.CONTENT_TYPE));
+				protected void onResult(HttpResponse response) {
+					resultObserver.sendResult(response.getHeader(HttpHeaders.CONTENT_TYPE));
 					httpClient.close();
 				}
 
 				@Override
-				public void onException(Exception exception) {
-					resultObserver.onException(exception);
+				protected void onException(Exception exception) {
+					resultObserver.fireException(exception);
 					httpClient.close();
 				}
 			});

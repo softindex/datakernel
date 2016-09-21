@@ -77,7 +77,7 @@ public final class SimpleFsServer extends FsServer<SimpleFsServer> {
 		fileManager.save(fileName, new ForwardingResultCallback<StreamFileWriter>(callback) {
 			@Override
 			public void onResult(StreamFileWriter result) {
-				callback.onResult(result);
+				callback.sendResult(result);
 			}
 		});
 	}
@@ -87,7 +87,7 @@ public final class SimpleFsServer extends FsServer<SimpleFsServer> {
 		fileManager.get(fileName, startPosition, new ForwardingResultCallback<StreamFileReader>(callback) {
 			@Override
 			public void onResult(StreamFileReader result) {
-				callback.onResult(result);
+				callback.sendResult(result);
 			}
 		});
 	}

@@ -75,7 +75,7 @@ public class HttpApiTest {
 			public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
 				testRequest(request);
 				HttpResponse response = createResponse();
-				callback.onResult(response);
+				callback.sendResult(response);
 			}
 		};
 
@@ -113,7 +113,7 @@ public class HttpApiTest {
 		HttpRequest request = createRequest();
 		client.send(request, 1000, new ResultCallback<HttpResponse>() {
 			@Override
-			public void onResult(HttpResponse result) {
+			protected void onResult(HttpResponse result) {
 				try {
 					testResponse(result);
 				} catch (ParseException e) {
@@ -124,7 +124,7 @@ public class HttpApiTest {
 			}
 
 			@Override
-			public void onException(Exception e) {
+			protected void onException(Exception e) {
 				fail("Should not end here");
 				server.close();
 				client.close();

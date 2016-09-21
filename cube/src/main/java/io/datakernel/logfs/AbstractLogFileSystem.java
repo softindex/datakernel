@@ -69,14 +69,14 @@ public abstract class AbstractLogFileSystem implements LogFileSystem {
 	public void makeUniqueLogFile(String logPartition, final String logName, final ResultCallback<LogFile> callback) {
 		list(logPartition, new ForwardingResultCallback<List<LogFile>>(callback) {
 			@Override
-			public void onResult(List<LogFile> logFiles) {
+			protected void onResult(List<LogFile> logFiles) {
 				int chunkN = 0;
 				for (LogFile logFile : logFiles) {
 					if (logFile.getName().equals(logName)) {
 						chunkN = Math.max(chunkN, logFile.getN() + 1);
 					}
 				}
-				callback.onResult(new LogFile(logName, chunkN));
+				callback.sendResult(new LogFile(logName, chunkN));
 			}
 		});
 	}

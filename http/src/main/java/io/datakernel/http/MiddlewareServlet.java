@@ -115,7 +115,7 @@ public class MiddlewareServlet implements AsyncHttpServlet {
 	public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
 		boolean processed = tryServeAsync(request, callback);
 		if (!processed) {
-			callback.onResult(HttpResponse.notFound404());
+			callback.sendResult(HttpResponse.notFound404());
 		}
 	}
 

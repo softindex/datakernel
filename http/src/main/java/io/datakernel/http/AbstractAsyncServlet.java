@@ -78,7 +78,7 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet, Eventloo
 					int duration = (int) (eventloop.currentTimeMillis() - timestamp);
 					requestsTimings.recordValue(duration);
 
-					callback.onResult(result);
+					callback.sendResult(result);
 				}
 
 				@Override

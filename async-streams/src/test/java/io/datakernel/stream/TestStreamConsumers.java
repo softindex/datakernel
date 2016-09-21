@@ -53,20 +53,20 @@ public class TestStreamConsumers {
 		@Override
 		protected void onEndOfStream() {
 			if (completionCallback != null) {
-				completionCallback.onComplete();
+				completionCallback.complete();
 			}
 			if (resultCallback != null) {
-				resultCallback.onResult(list);
+				resultCallback.sendResult(list);
 			}
 		}
 
 		@Override
 		protected void onError(Exception e) {
 			if (completionCallback != null) {
-				completionCallback.onException(e);
+				completionCallback.fireException(e);
 			}
 			if (resultCallback != null) {
-				resultCallback.onException(e);
+				resultCallback.fireException(e);
 			}
 		}
 

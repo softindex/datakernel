@@ -82,13 +82,13 @@ public abstract class CachingSqlAttributeResolver implements AttributeResolver, 
 			public void run() {
 				updateCache(new CompletionCallback() {
 					@Override
-					public void onComplete() {
+					protected void onComplete() {
 						previousUpdateTimestamp = eventloop.currentTimeMillis();
 						scheduleUpdate();
 					}
 
 					@Override
-					public void onException(Exception e) {
+					protected void onException(Exception e) {
 						logger.warn("Updating cache failed", e);
 						scheduleUpdate();
 					}
@@ -117,15 +117,15 @@ public abstract class CachingSqlAttributeResolver implements AttributeResolver, 
 	public void start(final CompletionCallback callback) {
 		fillCache(new CompletionCallback() {
 			@Override
-			public void onComplete() {
+			protected void onComplete() {
 				previousUpdateTimestamp = eventloop.currentTimeMillis();
 				scheduleUpdate();
-				callback.onComplete();
+				callback.complete();
 			}
 
 			@Override
-			public void onException(Exception e) {
-				callback.onException(e);
+			protected void onException(Exception e) {
+				callback.fireException(e);
 			}
 		});
 	}
@@ -135,7 +135,7 @@ public abstract class CachingSqlAttributeResolver implements AttributeResolver, 
 		if (scheduledUpdateTask != null)
 			scheduledUpdateTask.cancel();
 
-		callback.onComplete();
+		callback.complete();
 	}
 
 	@Override

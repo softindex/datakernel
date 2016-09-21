@@ -71,7 +71,7 @@ public final class CumulativeBenchmark {
 					} else {
 						currentSum.value = 0;
 					}
-					callback.onResult(currentSum);
+					callback.sendResult(currentSum);
 				}
 			})
 			.withListenPort(SERVICE_PORT);
@@ -149,7 +149,7 @@ public final class CumulativeBenchmark {
 
 				@Override
 				public void onException(Exception exception) {
-					finishCallback.onException(exception);
+					finishCallback.fireException(exception);
 				}
 			};
 
@@ -177,7 +177,7 @@ public final class CumulativeBenchmark {
 
 	private void startBenchmarkRound(final int roundNumber, final CompletionCallback finishCallback) {
 		if (roundNumber == totalRounds) {
-			finishCallback.onComplete();
+			finishCallback.complete();
 			return;
 		}
 
@@ -205,7 +205,7 @@ public final class CumulativeBenchmark {
 
 			@Override
 			public void onException(Exception exception) {
-				finishCallback.onException(exception);
+				finishCallback.fireException(exception);
 			}
 		};
 
@@ -238,7 +238,7 @@ public final class CumulativeBenchmark {
 				private void tryCompete() {
 					int totalCompletion = success + errors;
 					if (totalCompletion == roundRequests)
-						completionCallback.onComplete();
+						completionCallback.complete();
 				}
 
 				@Override

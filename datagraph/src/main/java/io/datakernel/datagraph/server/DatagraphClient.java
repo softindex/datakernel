@@ -76,7 +76,7 @@ public final class DatagraphClient {
 		eventloop.connect(address, callback);
 	}
 
-	private class DownloadConnectCallback implements ConnectCallback {
+	private class DownloadConnectCallback extends ConnectCallback {
 		private final StreamId streamId;
 		private final StreamConsumer<ByteBuf> consumer;
 		private final CompletionCallback callback;
@@ -100,13 +100,13 @@ public final class DatagraphClient {
 						@Override
 						public void onComplete() {
 							messaging.close();
-							callback.onComplete();
+							callback.complete();
 						}
 
 						@Override
 						public void onException(Exception e) {
 							messaging.close();
-							callback.onException(e);
+							callback.fireException(e);
 						}
 					});
 				}
@@ -114,7 +114,7 @@ public final class DatagraphClient {
 				@Override
 				public void onException(Exception e) {
 					messaging.close();
-					callback.onException(e);
+					callback.fireException(e);
 				}
 			});
 			asyncTcpSocket.setEventHandler(messaging);
@@ -123,11 +123,11 @@ public final class DatagraphClient {
 
 		@Override
 		public void onException(Exception e) {
-			callback.onException(e);
+			callback.fireException(e);
 		}
 	}
 
-	private class ExecuteConnectCallback implements ConnectCallback {
+	private class ExecuteConnectCallback extends ConnectCallback {
 		private final List<Node> nodes;
 		private final CompletionCallback callback;
 
@@ -150,7 +150,7 @@ public final class DatagraphClient {
 				@Override
 				public void onException(Exception e) {
 					messaging.close();
-					callback.onException(e);
+					callback.fireException(e);
 				}
 			});
 			asyncTcpSocket.setEventHandler(messaging);
@@ -159,7 +159,7 @@ public final class DatagraphClient {
 
 		@Override
 		public void onException(Exception e) {
-			callback.onException(e);
+			callback.fireException(e);
 		}
 	}
 

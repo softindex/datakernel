@@ -20,6 +20,8 @@ import com.google.common.collect.Multimap;
 import io.datakernel.aggregation_db.AggregationChunk;
 import io.datakernel.aggregation_db.AggregationMetadata;
 import io.datakernel.aggregation_db.CubeMetadataStorageStub;
+import io.datakernel.async.AsyncCallbacks;
+import io.datakernel.async.AsyncCallbacks.WaitAllHandler;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.logfs.LogPosition;
@@ -57,7 +59,7 @@ public final class LogToCubeMetadataStorageStub implements LogToCubeMetadataStor
 			logPositionMap.put(partition, LogPosition.create());
 		}
 		logPositionMap.putAll(ensureLogPositions(log));
-		callback.onResult(filterKeys(logPositionMap, in(partitions)));
+		callback.sendResult(filterKeys(logPositionMap, in(partitions)));
 	}
 
 	@Override
@@ -65,14 +67,26 @@ public final class LogToCubeMetadataStorageStub implements LogToCubeMetadataStor
 	                       Map<String, LogPosition> oldPositions,
 	                       Map<String, LogPosition> newPositions,
 	                       Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks,
-	                       CompletionCallback callback) {
+	                       final CompletionCallback callback) {
 		Map<String, LogPosition> logPositionMap = ensureLogPositions(log);
 		logPositionMap.putAll(newPositions);
-		callback.onComplete();
+
+		final WaitAllHandler waitAllHandler = AsyncCallbacks.waitAll(newChunks.size(), callback);
+
 		for (Map.Entry<AggregationMetadata, AggregationChunk.NewChunk> entry : newChunks.entries()) {
 			AggregationChunk.NewChunk newChunk = entry.getValue();
 			String aggregationId = idMap.get(entry.getKey());
-			cubeMetadataStorage.doSaveChunk(aggregationId, singletonList(newChunk), callback);
+			cubeMetadataStorage.doSaveChunk(aggregationId, singletonList(newChunk), new CompletionCallback() {
+				@Override
+				protected void onComplete() {
+					waitAllHandler.getCallback().complete();
+				}
+
+				@Override
+				protected void onException(Exception e) {
+					waitAllHandler.getCallback().fireException(e);
+				}
+			});
 		}
 	}
 

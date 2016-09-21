@@ -52,7 +52,7 @@ public class TestHttpsServer {
 		AsyncHttpServlet bobServlet = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
-				callback.onResult(HttpResponse.ok200().withBody(wrapAscii("Hello, I am Bob!")));
+				callback.sendResult(HttpResponse.ok200().withBody(wrapAscii("Hello, I am Bob!")));
 			}
 		};
 

@@ -51,12 +51,12 @@ public final class RemoteLogFileSystem extends AbstractLogFileSystem {
 		client.list(new ResultCallback<List<String>>() {
 			@Override
 			public void onResult(List<String> files) {
-				callback.onResult(getLogFiles(files, logPartition));
+				callback.sendResult(getLogFiles(files, logPartition));
 			}
 
 			@Override
 			public void onException(Exception exception) {
-				callback.onException(exception);
+				callback.fireException(exception);
 			}
 		});
 	}
@@ -82,13 +82,13 @@ public final class RemoteLogFileSystem extends AbstractLogFileSystem {
 		client.upload(fileName, producer, new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				callback.onComplete();
+				callback.complete();
 			}
 
 			@Override
 			public void onException(Exception e) {
 				client.delete(fileName, AsyncCallbacks.ignoreCompletionCallback());
-				callback.onException(e);
+				callback.fireException(e);
 			}
 		});
 	}

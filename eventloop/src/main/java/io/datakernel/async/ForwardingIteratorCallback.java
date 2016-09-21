@@ -21,11 +21,23 @@ package io.datakernel.async;
  *
  * @param <T> type of elements in iterator
  */
-public abstract class ForwardingIteratorCallback<T> extends ForwardingCallback implements IteratorCallback<T> {
+public abstract class ForwardingIteratorCallback<T> extends IteratorCallback<T> {
+	private final ExceptionCallback callback;
+
 	/**
 	 * Redirects all callings callbacks to callback from argument
 	 */
 	public ForwardingIteratorCallback(ExceptionCallback callback) {
-		super(callback);
+		this.callback = callback;
+	}
+
+	/**
+	 * Redirects the processing exception to other callback
+	 *
+	 * @param exception exception that was throwing
+	 */
+	@Override
+	protected void onException(Exception exception) {
+		callback.fireException(exception);
 	}
 }

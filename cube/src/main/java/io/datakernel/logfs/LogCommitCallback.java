@@ -19,13 +19,21 @@ package io.datakernel.logfs;
 import com.google.common.collect.Multimap;
 import io.datakernel.aggregation_db.AggregationChunk;
 import io.datakernel.aggregation_db.AggregationMetadata;
+import io.datakernel.async.CallbackRegistry;
 import io.datakernel.async.ExceptionCallback;
 
 import java.util.Map;
 
-public interface LogCommitCallback extends ExceptionCallback {
-	void onCommit(String log,
-	              Map<String, LogPosition> oldPositions,
-	              Map<String, LogPosition> newPositions,
-	              Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks);
+public abstract class LogCommitCallback extends ExceptionCallback {
+	public final void onCommit(String log,
+	                           Map<String, LogPosition> oldPositions,
+	                           Map<String, LogPosition> newPositions,
+	                           Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks) {
+		CallbackRegistry.complete(this);
+		handleCommit(log, oldPositions, newPositions, newChunks);
+	}
+
+	protected abstract void handleCommit(String log, Map<String, LogPosition> oldPositions,
+	                                     Map<String, LogPosition> newPositions,
+	                                     Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks);
 }

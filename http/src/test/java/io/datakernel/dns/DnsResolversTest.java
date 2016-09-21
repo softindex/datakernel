@@ -51,7 +51,7 @@ public class DnsResolversTest {
 
 	private final Logger logger = LoggerFactory.getLogger(DnsResolversTest.class);
 
-	private class ConcurrentDnsResolveCallback implements ResultCallback<InetAddress[]> {
+	private class ConcurrentDnsResolveCallback extends ResultCallback<InetAddress[]> {
 		private final DnsResolveCallback callback;
 		private final ConcurrentOperationTracker localEventloopConcurrentOperationTracker;
 		private final ConcurrentOperationsCounter counter;
@@ -65,26 +65,26 @@ public class DnsResolversTest {
 		}
 
 		@Override
-		public void onResult(InetAddress[] result) {
-			callback.onResult(result);
+		protected void onResult(InetAddress[] result) {
+			callback.sendResult(result);
 			localEventloopConcurrentOperationTracker.complete();
 			counter.completeOperation();
 		}
 
 		@Override
-		public void onException(Exception e) {
-			callback.onException(e);
+		protected void onException(Exception e) {
+			callback.fireException(e);
 			localEventloopConcurrentOperationTracker.complete();
 			counter.completeOperation();
 		}
 	}
 
-	private class DnsResolveCallback implements ResultCallback<InetAddress[]> {
+	private class DnsResolveCallback extends ResultCallback<InetAddress[]> {
 		private InetAddress[] result = null;
 		private Exception exception = null;
 
 		@Override
-		public void onResult(@Nullable InetAddress[] ips) {
+		protected void onResult(@Nullable InetAddress[] ips) {
 			this.result = ips;
 
 			if (ips == null) {
@@ -102,7 +102,7 @@ public class DnsResolversTest {
 		}
 
 		@Override
-		public void onException(Exception e) {
+		protected void onException(Exception e) {
 			this.exception = e;
 			System.out.println("Resolving IP addresses for host failed. Stack trace: ");
 			e.printStackTrace();

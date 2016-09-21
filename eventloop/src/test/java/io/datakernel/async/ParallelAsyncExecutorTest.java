@@ -102,7 +102,7 @@ public class ParallelAsyncExecutorTest {
 					public void run() {
 						long endTimestamp = eventloop.currentTimeMillis();
 						executionInfoMap.put(n, new ExecutionInfo(startTimestamp, endTimestamp));
-						callback.onComplete();
+						callback.complete();
 					}
 				});
 			}

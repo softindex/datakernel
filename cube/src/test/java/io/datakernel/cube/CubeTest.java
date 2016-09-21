@@ -23,6 +23,7 @@ import com.google.common.collect.Multimap;
 import io.datakernel.aggregation_db.*;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.keytype.KeyType;
+import io.datakernel.async.AsyncCallbacks.WaitAllHandler;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
@@ -186,7 +187,7 @@ public class CubeTest {
 		Cube cube = newCube(eventloop, Executors.newCachedThreadPool(), classLoader, storage, aggregationStructure);
 
 		final int consumers = 2;
-		final CompletionCallback allConsumersDoneCallback = waitAll(consumers, new CompletionCallback() {
+		final WaitAllHandler allConsumersDoneHandler = waitAll(consumers, new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				logger.info("Streaming to SimpleFS succeeded.");
@@ -200,11 +201,13 @@ public class CubeTest {
 			}
 		});
 
-		final StreamConsumer<DataItem1> cubeConsumer1 = cube.consumer(DataItem1.class, DataItem1.DIMENSIONS, DataItem1.METRICS, new MyCommitCallback(cube, allConsumersDoneCallback));
+		final StreamConsumer<DataItem1> cubeConsumer1 = cube.consumer(DataItem1.class, DataItem1.DIMENSIONS,
+				DataItem1.METRICS, new MyCommitCallback(cube, allConsumersDoneHandler.getCallback()));
 		StreamProducers.ofIterable(eventloop, asList(new DataItem1(1, 2, 10, 20), new DataItem1(1, 3, 10, 20)))
 				.streamTo(cubeConsumer1);
 
-		final StreamConsumer<DataItem2> cubeConsumer2 = cube.consumer(DataItem2.class, DataItem2.DIMENSIONS, DataItem2.METRICS, new MyCommitCallback(cube, allConsumersDoneCallback));
+		final StreamConsumer<DataItem2> cubeConsumer2 = cube.consumer(DataItem2.class, DataItem2.DIMENSIONS,
+				DataItem2.METRICS, new MyCommitCallback(cube, allConsumersDoneHandler.getCallback()));
 		StreamProducers.ofIterable(eventloop, asList(new DataItem2(1, 3, 10, 20), new DataItem2(1, 4, 10, 20)))
 				.streamTo(cubeConsumer2);
 
@@ -545,7 +548,7 @@ public class CubeTest {
 		assertThat(eventloop, doesntHaveFatals());
 	}
 
-	public static class MyCommitCallback implements ResultCallback<Multimap<AggregationMetadata, AggregationChunk.NewChunk>> {
+	public static class MyCommitCallback extends ResultCallback<Multimap<AggregationMetadata, AggregationChunk.NewChunk>> {
 		private final Cube cube;
 		private final CompletionCallback callback;
 
@@ -568,7 +571,7 @@ public class CubeTest {
 			}
 
 			if (callback != null)
-				callback.onComplete();
+				callback.complete();
 		}
 
 		@Override
@@ -576,7 +579,7 @@ public class CubeTest {
 			logger.error("Exception thrown while trying to commit to cube {}.", cube);
 
 			if (callback != null)
-				callback.onException(exception);
+				callback.fireException(exception);
 		}
 	}
 }

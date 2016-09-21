@@ -18,14 +18,14 @@ package io.datakernel.rpc.client.sender.helper;
 
 import io.datakernel.async.ResultCallback;
 
-public final class ResultCallbackStub implements ResultCallback<RpcMessageDataStub> {
+public final class ResultCallbackStub extends ResultCallback<RpcMessageDataStub> {
 	@Override
-	public void onResult(RpcMessageDataStub result) {
+	protected void onResult(RpcMessageDataStub result) {
 		throw new UnsupportedOperationException();
 	}
 
 	@Override
-	public void onException(Exception exception) {
+	protected void onException(Exception exception) {
 		throw new UnsupportedOperationException();
 	}
 }

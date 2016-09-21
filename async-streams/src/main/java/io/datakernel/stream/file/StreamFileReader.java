@@ -95,9 +95,9 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 			this.positionCallback = positionCallback;
 		} else {
 			if (getProducerStatus() == StreamStatus.END_OF_STREAM) {
-				positionCallback.onResult(position);
+				positionCallback.sendResult(position);
 			} else {
-				positionCallback.onException(getProducerException());
+				positionCallback.fireException(getProducerException());
 			}
 		}
 	}
@@ -123,7 +123,7 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 
 		asyncFile.read(buf, position, new ResultCallback<Integer>() {
 			@Override
-			public void onResult(Integer result) {
+			protected void onResult(Integer result) {
 				if (getProducerStatus().isClosed()) {
 					buf.recycle();
 					doCleanup(ignoreCompletionCallback());
@@ -136,7 +136,7 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 					sendEndOfStream();
 
 					if (positionCallback != null) {
-						positionCallback.onResult(position);
+						positionCallback.sendResult(position);
 					}
 
 					return;
@@ -153,13 +153,13 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 			}
 
 			@Override
-			public void onException(Exception e) {
+			protected void onException(Exception e) {
 				buf.recycle();
 				doCleanup(ignoreCompletionCallback());
 				closeWithError(e);
 
 				if (positionCallback != null) {
-					positionCallback.onException(e);
+					positionCallback.fireException(e);
 				}
 			}
 		});
@@ -210,15 +210,15 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 		logger.info("{}: finished reading", this);
 		asyncFile.close(new CompletionCallback() {
 			@Override
-			public void onComplete() {
+			protected void onComplete() {
 				logger.trace("{}: closed file", this);
-				callback.onComplete();
+				callback.complete();
 			}
 
 			@Override
-			public void onException(Exception exception) {
+			protected void onException(Exception exception) {
 				logger.error("{}: failed to close file", this, exception);
-				callback.onException(exception);
+				callback.fireException(exception);
 			}
 		});
 	}

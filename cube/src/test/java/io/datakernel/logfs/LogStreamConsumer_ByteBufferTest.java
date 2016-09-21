@@ -115,12 +115,12 @@ public class LogStreamConsumer_ByteBufferTest {
 		final CallbackСallCount callbackСallCount = new CallbackСallCount();
 		CompletionCallback completionCallback = new CompletionCallback() {
 			@Override
-			public void onException(Exception exception) {
+			protected void onException(Exception exception) {
 				callbackСallCount.incrementOnError();
 			}
 
 			@Override
-			public void onComplete() {
+			protected void onComplete() {
 				callbackСallCount.incrementOnComplite();
 			}
 		};
@@ -159,7 +159,7 @@ public class LogStreamConsumer_ByteBufferTest {
 					producer.streamTo(writer);
 					writer.setFlushCallback(callback);
 				} catch (IOException e) {
-					callback.onException(e);
+					callback.fireException(e);
 				}
 			}
 		};
@@ -187,12 +187,12 @@ public class LogStreamConsumer_ByteBufferTest {
 		final CallbackСallCount callbackСallCount = new CallbackСallCount();
 		CompletionCallback completionCallback = new CompletionCallback() {
 			@Override
-			public void onException(Exception exception) {
+			protected void onException(Exception exception) {
 				callbackСallCount.incrementOnError();
 			}
 
 			@Override
-			public void onComplete() {
+			protected void onComplete() {
 				callbackСallCount.incrementOnComplite();
 			}
 		};
@@ -317,14 +317,14 @@ public class LogStreamConsumer_ByteBufferTest {
 		public void makeUniqueLogFile(String logPartition, final String logName, final ResultCallback<LogFile> callback) {
 			list(logPartition, new ForwardingResultCallback<List<LogFile>>(callback) {
 				@Override
-				public void onResult(List<LogFile> logFiles) {
+				protected void onResult(List<LogFile> logFiles) {
 					int chunkN = 0;
 					for (LogFile logFile : logFiles) {
 						if (logFile.getName().equals(logName)) {
 							chunkN = Math.max(chunkN, logFile.getN() + 1);
 						}
 					}
-					callback.onResult(new LogFile(logName, chunkN));
+					callback.sendResult(new LogFile(logName, chunkN));
 				}
 			});
 		}
@@ -401,7 +401,7 @@ public class LogStreamConsumer_ByteBufferTest {
 				writer.setFlushCallback(callback);
 				listWriter.add(writer);
 			} catch (IOException e) {
-				callback.onException(e);
+				callback.fireException(e);
 			}
 		}
 	}

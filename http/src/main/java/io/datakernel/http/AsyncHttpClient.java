@@ -223,7 +223,7 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 		String host = request.getUrl().getHost();
 		final InetAddress inetAddress = getNextInetAddress(inetAddresses);
 		if (!isValidHost(host, inetAddress)) {
-			callback.onException(new IOException("Invalid IP address " + inetAddress + " for host " + host));
+			callback.fireException(new IOException("Invalid IP address " + inetAddress + " for host " + host));
 			return;
 		}
 
@@ -259,7 +259,7 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 				if (logger.isWarnEnabled()) {
 					logger.warn("Connect error to {} : {}", address, exception.getMessage());
 				}
-				callback.onException(exception);
+				callback.fireException(exception);
 			}
 		});
 	}
@@ -316,14 +316,14 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 	@Override
 	public void start(final CompletionCallback callback) {
 		checkState(eventloop.inEventloopThread());
-		callback.onComplete();
+		callback.complete();
 	}
 
 	@Override
 	public void stop(final CompletionCallback callback) {
 		checkState(eventloop.inEventloopThread());
 		close();
-		callback.onComplete();
+		callback.complete();
 	}
 
 	public CompletionCallbackFuture closeFuture() {
@@ -497,7 +497,7 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 		}
 	}
 
-	private final class MonitorRequestDurationCallback implements ResultCallback<HttpResponse> {
+	private final class MonitorRequestDurationCallback extends ResultCallback<HttpResponse> {
 		private final ResultCallback<HttpResponse> actualCallback;
 		private final HttpClientConnection connection;
 
@@ -510,13 +510,13 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 		@Override
 		public void onResult(HttpResponse result) {
 			currentRequestToSendTime.remove(connection);
-			actualCallback.onResult(result);
+			actualCallback.sendResult(result);
 		}
 
 		@Override
 		public void onException(Exception exception) {
 			currentRequestToSendTime.remove(connection);
-			actualCallback.onException(exception);
+			actualCallback.fireException(exception);
 		}
 	}
 }

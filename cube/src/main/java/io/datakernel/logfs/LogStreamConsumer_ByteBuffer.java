@@ -126,7 +126,7 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 				createFile = true;
 				fileSystem.makeUniqueLogFile(logPartition, newChunkName, new ResultCallback<LogFile>() {
 					@Override
-					public void onResult(LogFile result) {
+					protected void onResult(LogFile result) {
 						createFile = false;
 						++activeWriters;
 
@@ -152,7 +152,7 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 					}
 
 					@Override
-					public void onException(Exception exception) {
+					protected void onException(Exception exception) {
 						createFile = false;
 						logger.error("{}: creating new unique log file with name {} and stream id {} failed.",
 								LogStreamConsumer_ByteBuffer.this, newChunkName, logPartition);
@@ -180,12 +180,12 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 			private void zeroActiveWriters() {
 				if (getConsumerStatus() == StreamStatus.END_OF_STREAM) {
 					if (callback != null) {
-						callback.onComplete();
+						callback.complete();
 						callback = null;
 					}
 				} else if (error != null) {
 					if (callback != null) {
-						callback.onException(getConsumerException());
+						callback.fireException(getConsumerException());
 						callback = null;
 					}
 				} else {

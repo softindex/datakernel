@@ -31,7 +31,7 @@ public final class AsyncIterators {
 
 	/**
 	 * Returns the AsyncIterator which in first calling returns value, and after that after calling
-	 * next() calls onEnd() from callback
+	 * next() calls end() from callback
 	 *
 	 * @param value single value for returning
 	 * @param <T>   type of value
@@ -44,9 +44,9 @@ public final class AsyncIterators {
 			public void next(IteratorCallback<T> callback) {
 				if (hasNext) {
 					hasNext = false;
-					callback.onNext(value);
+					callback.sendNext(value);
 				} else {
-					callback.onEnd();
+					callback.end();
 				}
 			}
 		};
@@ -83,17 +83,17 @@ public final class AsyncIterators {
 					hasNext = false;
 					getter.get(new ResultCallback<T>() {
 						@Override
-						public void onResult(T result) {
-							callback.onNext(result);
+						protected void onResult(T result) {
+							callback.sendNext(result);
 						}
 
 						@Override
-						public void onException(Exception exception) {
-							callback.onException(exception);
+						protected void onException(Exception exception) {
+							callback.fireException(exception);
 						}
 					});
 				} else {
-					callback.onEnd();
+					callback.end();
 				}
 			}
 		};
@@ -125,9 +125,9 @@ public final class AsyncIterators {
 			@Override
 			public void next(IteratorCallback<T> callback) {
 				if (iterator.hasNext())
-					callback.onNext(iterator.next());
+					callback.sendNext(iterator.next());
 				else
-					callback.onEnd();
+					callback.end();
 			}
 		};
 	}
@@ -191,17 +191,17 @@ public final class AsyncIterators {
 					AsyncGetter<T> asyncGetter = asyncGetters.next();
 					asyncGetter.get(new ResultCallback<T>() {
 						@Override
-						public void onResult(T result) {
-							callback.onNext(result);
+						protected void onResult(T result) {
+							callback.sendNext(result);
 						}
 
 						@Override
-						public void onException(Exception exception) {
-							callback.onException(exception);
+						protected void onException(Exception exception) {
+							callback.fireException(exception);
 						}
 					});
 				} else {
-					callback.onEnd();
+					callback.end();
 				}
 			}
 		};
@@ -236,23 +236,23 @@ public final class AsyncIterators {
 					final AsyncIterator<T> asyncIterator = asyncIterators.next();
 					asyncIterator.next(new IteratorCallback<T>() {
 						@Override
-						public void onNext(T result) {
-							callback.onNext(result);
+						protected void onNext(T result) {
+							callback.sendNext(result);
 							asyncIterator.next(this);
 						}
 
 						@Override
-						public void onEnd() {
+						protected void onEnd() {
 							next(callback);
 						}
 
 						@Override
-						public void onException(Exception e) {
-							callback.onException(e);
+						protected void onException(Exception e) {
+							callback.fireException(e);
 						}
 					});
 				} else {
-					callback.onEnd();
+					callback.end();
 				}
 			}
 		};
@@ -283,19 +283,19 @@ public final class AsyncIterators {
 			public void next(final IteratorCallback<T> callback) {
 				asyncIterator.next(new IteratorCallback<F>() {
 					@Override
-					public void onNext(F from) {
+					protected void onNext(F from) {
 						T to = function.apply(from);
-						callback.onNext(to);
+						callback.sendNext(to);
 					}
 
 					@Override
-					public void onEnd() {
-						callback.onEnd();
+					protected void onEnd() {
+						callback.end();
 					}
 
 					@Override
-					public void onException(Exception e) {
-						callback.onException(e);
+					protected void onException(Exception e) {
+						callback.fireException(e);
 					}
 				});
 			}
@@ -335,28 +335,28 @@ public final class AsyncIterators {
 			public void next(final IteratorCallback<T> callback) {
 				asyncIterator.next(new IteratorCallback<F>() {
 					@Override
-					public void onNext(F from) {
+					protected void onNext(F from) {
 						asyncFunction.apply(from, new ResultCallback<T>() {
 							@Override
-							public void onResult(T to) {
-								callback.onNext(to);
+							protected void onResult(T to) {
+								callback.sendNext(to);
 							}
 
 							@Override
-							public void onException(Exception exception) {
-								callback.onException(exception);
+							protected void onException(Exception exception) {
+								callback.fireException(exception);
 							}
 						});
 					}
 
 					@Override
-					public void onEnd() {
-						callback.onEnd();
+					protected void onEnd() {
+						callback.end();
 					}
 
 					@Override
-					public void onException(Exception e) {
-						callback.onException(e);
+					protected void onException(Exception e) {
+						callback.fireException(e);
 					}
 				});
 			}
@@ -371,17 +371,17 @@ public final class AsyncIterators {
 					F from = iterator.next();
 					asyncFunction.apply(from, new ResultCallback<T>() {
 						@Override
-						public void onResult(T to) {
-							callback.onNext(to);
+						protected void onResult(T to) {
+							callback.sendNext(to);
 						}
 
 						@Override
-						public void onException(Exception exception) {
-							callback.onException(exception);
+						protected void onException(Exception exception) {
+							callback.fireException(exception);
 						}
 					});
 				} else
-					callback.onEnd();
+					callback.end();
 			}
 		};
 	}

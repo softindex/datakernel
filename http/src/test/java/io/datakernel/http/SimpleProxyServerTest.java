@@ -58,11 +58,11 @@ public class SimpleProxyServerTest {
 					public void onResult(final HttpResponse result) {
 						int code = result.getCode();
 						byte[] body = encodeAscii("FORWARDED: " + decodeAscii(result.getBody()));
-						callback.onResult(HttpResponse.ofCode(code).withBody(body));
+						callback.sendResult(HttpResponse.ofCode(code).withBody(body));
 					}
 
 					@Override
-					public void onException(Exception exception) {
+					protected void onException(Exception exception) {
 						callback.onHttpError(new HttpServletError(500, exception));
 					}
 				});
@@ -77,7 +77,7 @@ public class SimpleProxyServerTest {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
 				HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
-				callback.onResult(content);
+				callback.sendResult(content);
 			}
 
 		};

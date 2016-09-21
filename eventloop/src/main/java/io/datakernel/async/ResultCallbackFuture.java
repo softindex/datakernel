@@ -18,7 +18,7 @@ package io.datakernel.async;
 
 import java.util.concurrent.*;
 
-public final class ResultCallbackFuture<T> implements ResultCallback<T>, CompletionCallback, Future<T> {
+public final class ResultCallbackFuture<T> extends ResultCallback<T> implements Future<T> {
 	private final CountDownLatch latch = new CountDownLatch(1);
 	private T result;
 	private Exception exception;
@@ -27,14 +27,14 @@ public final class ResultCallbackFuture<T> implements ResultCallback<T>, Complet
 	private ResultCallbackFuture() {}
 
 	public static <T> ResultCallbackFuture<T> immediateFuture(T result) {
-		ResultCallbackFuture<T> future = create();
-		future.onResult(result);
+		ResultCallbackFuture<T> future = new ResultCallbackFuture<>();
+		future.sendResult(result);
 		return future;
 	}
 
 	public static <T> ResultCallbackFuture<T> immediateFailingFuture(Exception exception) {
-		ResultCallbackFuture<T> future = create();
-		future.onException(exception);
+		ResultCallbackFuture<T> future = new ResultCallbackFuture<>();
+		future.fireException(exception);
 		return future;
 	}
 
@@ -49,20 +49,20 @@ public final class ResultCallbackFuture<T> implements ResultCallback<T>, Complet
 	// endregion
 
 	@Override
-	public void onResult(T result) {
+	protected void onResult(T result) {
 		this.result = result;
-		onComplete();
-	}
-
-	@Override
-	public void onComplete() {
 		latch.countDown();
+		onResultOrException();
 	}
 
 	@Override
-	public void onException(Exception exception) {
+	protected void onException(Exception exception) {
 		this.exception = exception;
 		latch.countDown();
+		onResultOrException();
+	}
+
+	protected void onResultOrException() {
 	}
 
 	@Override

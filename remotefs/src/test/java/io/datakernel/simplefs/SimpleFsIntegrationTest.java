@@ -17,7 +17,11 @@
 package io.datakernel.simplefs;
 
 import com.google.common.collect.Lists;
-import io.datakernel.async.*;
+import io.datakernel.async.AsyncCallbacks.WaitAllHandler;
+import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.CompletionCallbackFuture;
+import io.datakernel.async.ExceptionCallback;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
@@ -47,6 +51,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
+import static io.datakernel.async.AsyncCallbacks.waitAll;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.equalsLowerCaseAscii;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
@@ -97,7 +102,7 @@ public class SimpleFsIntegrationTest {
 		ExecutorService executor = newCachedThreadPool();
 		final SimpleFsServer server = createServer(eventloop, executor);
 		SimpleFsClient client = createClient(eventloop);
-		CompletionCallback callback = AsyncCallbacks.waitAll(files, new CompletionCallback() {
+		WaitAllHandler waitAllHandler = waitAll(files, new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				server.close();
@@ -112,7 +117,7 @@ public class SimpleFsIntegrationTest {
 		server.listen();
 		for (int i = 0; i < files; i++) {
 			StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrapForReading(CONTENT));
-			client.upload("file" + i, producer, callback);
+			client.upload("file" + i, producer, waitAllHandler.getCallback());
 		}
 
 		eventloop.run();
@@ -193,13 +198,13 @@ public class SimpleFsIntegrationTest {
 			@Override
 			public void onComplete() {
 				server.close();
-				callback.onComplete();
+				callback.complete();
 			}
 
 			@Override
 			public void onException(Exception e) {
 				server.close();
-				callback.onException(e);
+				callback.fireException(e);
 			}
 		});
 
@@ -319,7 +324,7 @@ public class SimpleFsIntegrationTest {
 
 		server.listen();
 
-		final CompletionCallback callback = AsyncCallbacks.waitAll(files, new CompletionCallback() {
+		final WaitAllHandler waitAllHandler = waitAll(files, new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				server.close();
@@ -339,14 +344,14 @@ public class SimpleFsIntegrationTest {
 					try {
 						producer.streamTo(StreamFileWriter.create(eventloop, executor, storage.resolve("file" + finalI)));
 					} catch (IOException e) {
-						this.onException(e);
+						this.fireException(e);
 					}
-					callback.onComplete();
+					waitAllHandler.getCallback().complete();
 				}
 
 				@Override
 				public void onException(Exception e) {
-					callback.onException(e);
+					waitAllHandler.getCallback().fireException(e);
 				}
 			});
 		}
@@ -393,13 +398,13 @@ public class SimpleFsIntegrationTest {
 		client.delete(file, new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				callback.onComplete();
+				callback.complete();
 				server.close();
 			}
 
 			@Override
 			public void onException(Exception e) {
-				callback.onException(e);
+				callback.fireException(e);
 				server.close();
 			}
 		});
@@ -522,7 +527,7 @@ public class SimpleFsIntegrationTest {
 
 	}
 
-	private static class CloseCompletionCallback implements CompletionCallback {
+	private static class CloseCompletionCallback extends CompletionCallback {
 		private final SimpleFsServer server;
 		private final ExceptionCallback callback;
 
@@ -539,7 +544,7 @@ public class SimpleFsIntegrationTest {
 		@Override
 		public void onException(Exception e) {
 			server.close();
-			callback.onException(e);
+			callback.fireException(e);
 		}
 	}
 }

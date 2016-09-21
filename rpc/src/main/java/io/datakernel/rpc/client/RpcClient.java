@@ -274,7 +274,7 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 			eventloop.post(new Runnable() {
 				@Override
 				public void run() {
-					callback.onComplete();
+					callback.complete();
 				}
 			});
 		} else {
@@ -364,7 +364,7 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 			eventloop.post(new Runnable() {
 				@Override
 				public void run() {
-					stopCallback.onComplete();
+					stopCallback.complete();
 					stopCallback = null;
 				}
 			});
@@ -416,7 +416,7 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 
 		@Override
 		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
-			callback.onException(NO_SENDER_AVAILABLE_EXCEPTION);
+			callback.fireException(NO_SENDER_AVAILABLE_EXCEPTION);
 		}
 	}
 

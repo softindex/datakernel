@@ -34,7 +34,7 @@ public class TestClientMultilineHeaders {
 			public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
 				HttpResponse response = HttpResponse.ok200();
 				response.addHeader(HttpHeaders.ALLOW, "GET,\r\n HEAD");
-				callback.onResult(response);
+				callback.sendResult(response);
 			}
 		};
 
@@ -44,14 +44,14 @@ public class TestClientMultilineHeaders {
 		httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT), 1000, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
-				resultObserver.onResult(result.getHeader(HttpHeaders.ALLOW));
+				resultObserver.sendResult(result.getHeader(HttpHeaders.ALLOW));
 				httpClient.close();
 				server.close();
 			}
 
 			@Override
 			public void onException(Exception exception) {
-				resultObserver.onException(exception);
+				resultObserver.fireException(exception);
 				httpClient.close();
 				server.close();
 			}

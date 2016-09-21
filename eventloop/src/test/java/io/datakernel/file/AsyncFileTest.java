@@ -52,20 +52,20 @@ public class AsyncFileTest {
 		final Path srcPath = Paths.get("test_data/hello.html");
 		AsyncFile.open(eventloop, Executors.newCachedThreadPool(), srcPath, new OpenOption[]{READ}, new ResultCallback<AsyncFile>() {
 			@Override
-			public void onResult(AsyncFile result) {
+			protected void onResult(AsyncFile result) {
 				logger.info("Opened file.");
 				result.readFully(new ResultCallback<ByteBuf>() {
 					@Override
-					public void onResult(final ByteBuf result) {
+					protected void onResult(final ByteBuf result) {
 						final Path destPath = Paths.get(tempFile.getAbsolutePath());
 						AsyncFile.open(eventloop, Executors.newCachedThreadPool(), destPath, new OpenOption[]{WRITE}, new ResultCallback<AsyncFile>() {
 							@Override
-							public void onResult(AsyncFile file) {
+							protected void onResult(AsyncFile file) {
 								logger.info("Finished reading file.");
 
 								file.writeFully(result, 0, new CompletionCallback() {
 									@Override
-									public void onComplete() {
+									protected void onComplete() {
 										logger.info("Finished writing file");
 										try {
 											assertArrayEquals(Files.readAllBytes(srcPath), Files.readAllBytes(destPath));
@@ -76,14 +76,14 @@ public class AsyncFileTest {
 									}
 
 									@Override
-									public void onException(Exception exception) {
+									protected void onException(Exception exception) {
 										logger.info("Exception thrown while trying to read file.", exception);
 									}
 								});
 							}
 
 							@Override
-							public void onException(Exception exception) {
+							protected void onException(Exception exception) {
 								logger.info("Exception thrown while trying to open file for writing.", exception);
 							}
 						});
@@ -91,14 +91,14 @@ public class AsyncFileTest {
 					}
 
 					@Override
-					public void onException(Exception exception) {
+					protected void onException(Exception exception) {
 						logger.info("Exception thrown while trying to read file.", exception);
 					}
 				});
 			}
 
 			@Override
-			public void onException(Exception exception) {
+			protected void onException(Exception exception) {
 				logger.info("Exception thrown while trying to open file for reading.", exception);
 			}
 		});

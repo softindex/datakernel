@@ -49,9 +49,9 @@ public class NativeDnsResolverConnectionTest {
 		eventloop = Eventloop.create();
 	}
 
-	private class DnsResolveCallback implements ResultCallback<DnsQueryResult> {
+	private class DnsResolveCallback extends ResultCallback<DnsQueryResult> {
 		@Override
-		public void onResult(DnsQueryResult result) {
+		protected void onResult(DnsQueryResult result) {
 			if (result.isSuccessful()) {
 				InetAddress[] ips = result.getIps();
 
@@ -73,7 +73,7 @@ public class NativeDnsResolverConnectionTest {
 		}
 
 		@Override
-		public void onException(Exception exception) {
+		protected void onException(Exception exception) {
 			System.err.println("Exception thrown while resolving domain name. Stack trace:");
 			exception.printStackTrace();
 			++answersReceived;

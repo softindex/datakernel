@@ -35,41 +35,37 @@ public final class AsyncCallbacks {
 
 	private AsyncCallbacks() {}
 
-	private static final CompletionCallback IGNORE_COMPLETION_CALLBACK = new CompletionCallback() {
-		@Override
-		public void onComplete() {
-
-		}
-
-		@Override
-		public void onException(Exception exception) {
-
-		}
-	};
-
 	/**
 	 * Returns CompletionCallback, which no reaction on its callings.
 	 */
 	public static CompletionCallback ignoreCompletionCallback() {
-		return IGNORE_COMPLETION_CALLBACK;
+		return new CompletionCallback() {
+			@Override
+			public void onComplete() {
+
+			}
+
+			@Override
+			public void onException(Exception exception) {
+
+			}
+		};
 	}
-
-	private static final ResultCallback<Object> IGNORE_RESULT_CALLBACK = new ResultCallback<Object>() {
-		@Override
-		public void onResult(Object result) {
-		}
-
-		@Override
-		public void onException(Exception exception) {
-		}
-	};
 
 	/**
 	 * Returns ResultCallback, which no reaction on its callings.
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> ResultCallback<T> ignoreResultCallback() {
-		return (ResultCallback<T>) IGNORE_RESULT_CALLBACK;
+		return new ResultCallback<T>() {
+			@Override
+			public void onResult(Object result) {
+			}
+
+			@Override
+			public void onException(Exception exception) {
+			}
+		};
 	}
 
 	private static final AsyncCancellable NOT_CANCELLABLE = new AsyncCancellable() {
@@ -95,7 +91,7 @@ public final class AsyncCallbacks {
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
-				callback.onResult(result);
+				callback.sendResult(result);
 			}
 		});
 	}
@@ -111,7 +107,7 @@ public final class AsyncCallbacks {
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
-				callback.onException(e);
+				callback.fireException(e);
 			}
 		});
 	}
@@ -126,7 +122,7 @@ public final class AsyncCallbacks {
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
-				callback.onComplete();
+				callback.complete();
 			}
 		});
 	}
@@ -176,7 +172,7 @@ public final class AsyncCallbacks {
 		eventloop.execute(new Runnable() {
 			@Override
 			public void run() {
-				callback.onResult(result);
+				callback.sendResult(result);
 			}
 		});
 	}
@@ -192,7 +188,7 @@ public final class AsyncCallbacks {
 		eventloop.execute(new Runnable() {
 			@Override
 			public void run() {
-				callback.onException(e);
+				callback.fireException(e);
 			}
 		});
 	}
@@ -207,7 +203,7 @@ public final class AsyncCallbacks {
 		eventloop.execute(new Runnable() {
 			@Override
 			public void run() {
-				callback.onComplete();
+				callback.complete();
 			}
 		});
 	}
@@ -256,7 +252,7 @@ public final class AsyncCallbacks {
 			@Override
 			public void execute(final CompletionCallback callback) {
 				if (tasks.length == 0) {
-					callback.onComplete();
+					callback.complete();
 				} else {
 					CompletionCallback internalCallback = new ForwardingCompletionCallback(callback) {
 						int n = 1;
@@ -264,7 +260,7 @@ public final class AsyncCallbacks {
 						@Override
 						public void onComplete() {
 							if (n == tasks.length) {
-								callback.onComplete();
+								callback.complete();
 							} else {
 								AsyncTask task = tasks[n++];
 								task.execute(this);
@@ -295,7 +291,7 @@ public final class AsyncCallbacks {
 			@Override
 			public void execute(final CompletionCallback callback) {
 				if (tasks.length == 0) {
-					callback.onComplete();
+					callback.complete();
 				} else {
 					CompletionCallback internalCallback = new ForwardingCompletionCallback(callback) {
 						int n = tasks.length;
@@ -303,7 +299,7 @@ public final class AsyncCallbacks {
 						@Override
 						public void onComplete() {
 							if (--n == 0) {
-								callback.onComplete();
+								callback.complete();
 							}
 						}
 
@@ -311,7 +307,7 @@ public final class AsyncCallbacks {
 						public void onException(Exception exception) {
 							if (n > 0) {
 								n = 0;
-								callback.onException(exception);
+								callback.fireException(exception);
 							}
 						}
 					};
@@ -342,7 +338,7 @@ public final class AsyncCallbacks {
 			public void get(final ResultCallback<Object[]> callback) {
 				final Object[] results = new Object[getters.length];
 				if (getters.length == 0) {
-					callback.onResult(results);
+					callback.sendResult(results);
 				} else {
 					final Holder holder = new Holder();
 					holder.n = getters.length;
@@ -354,9 +350,9 @@ public final class AsyncCallbacks {
 							private void checkCompleteResult() {
 								if (--holder.n == 0) {
 									if (holder.exceptions == null)
-										callback.onResult(results);
+										callback.sendResult(results);
 									else
-										callback.onException(new ParallelExecutionException(results, holder.exceptions));
+										callback.fireException(new ParallelExecutionException(results, holder.exceptions));
 								}
 							}
 
@@ -403,7 +399,7 @@ public final class AsyncCallbacks {
 			@Override
 			public void apply(I input, final ResultCallback<O> callback) {
 				if (functions.length == 0) {
-					callback.onResult((O) input);
+					callback.sendResult((O) input);
 				} else {
 					ForwardingResultCallback<Object> internalCallback = new ForwardingResultCallback<Object>(callback) {
 						int n = 1;
@@ -411,7 +407,7 @@ public final class AsyncCallbacks {
 						@Override
 						public void onResult(Object result) {
 							if (n == functions.length) {
-								callback.onResult((O) result);
+								callback.sendResult((O) result);
 							} else {
 								AsyncFunction<Object, Object> function = (AsyncFunction<Object, Object>) functions[n++];
 								function.apply(result, this);
@@ -444,7 +440,7 @@ public final class AsyncCallbacks {
 						function2.apply(result, new ForwardingResultCallback<O>(callback) {
 							@Override
 							public void onResult(O result) {
-								callback.onResult(result);
+								callback.sendResult(result);
 							}
 						});
 					}
@@ -492,7 +488,7 @@ public final class AsyncCallbacks {
 		return new AsyncGetter<T>() {
 			@Override
 			public void get(ResultCallback<T> callback) {
-				callback.onResult(value);
+				callback.sendResult(value);
 			}
 		};
 	}
@@ -532,14 +528,14 @@ public final class AsyncCallbacks {
 				getter.get(new ForwardingResultCallback<T>(callback) {
 					@Override
 					public void onResult(T result) {
-						resultCallback.onResult(result);
-						callback.onComplete();
+						resultCallback.sendResult(result);
+						callback.complete();
 					}
 
 					@Override
 					public void onException(Exception exception) {
-						resultCallback.onException(exception);
-						callback.onException(exception);
+						resultCallback.fireException(exception);
+						callback.fireException(exception);
 					}
 				});
 			}
@@ -614,7 +610,7 @@ public final class AsyncCallbacks {
 				getter.get(new ForwardingResultCallback<F>(callback) {
 					@Override
 					public void onResult(F result) {
-						callback.onResult(function.apply(result));
+						callback.sendResult(function.apply(result));
 					}
 				});
 			}
@@ -649,7 +645,7 @@ public final class AsyncCallbacks {
 		return AsyncGetterWithSetter.create(eventloop);
 	}
 
-	private static final class AsyncCompletionCallback implements CompletionCallback {
+	public static final class WaitAllHandler {
 		private final int minCompleted;
 		private final int totalCount;
 		private final CompletionCallback callback;
@@ -658,31 +654,35 @@ public final class AsyncCallbacks {
 		private int exceptions = 0;
 		private Exception lastException;
 
-		private AsyncCompletionCallback(int minCompleted, int totalCount, CompletionCallback callback) {
+		private WaitAllHandler(int minCompleted, int totalCount, CompletionCallback callback) {
 			this.minCompleted = minCompleted;
 			this.totalCount = totalCount;
 			this.callback = callback;
 		}
 
-		@Override
-		public void onComplete() {
-			++completed;
-			completeResult();
-		}
+		public CompletionCallback getCallback() {
+			return new CompletionCallback() {
+				@Override
+				protected void onComplete() {
+					++completed;
+					completeResult();
+				}
 
-		@Override
-		public void onException(Exception exception) {
-			++exceptions;
-			lastException = exception;
-			completeResult();
+				@Override
+				protected void onException(Exception exception) {
+					++exceptions;
+					lastException = exception;
+					completeResult();
+				}
+			};
 		}
 
 		private void completeResult() {
 			if ((exceptions + completed) == totalCount) {
 				if (completed >= minCompleted) {
-					callback.onComplete();
+					callback.complete();
 				} else {
-					callback.onException(lastException);
+					callback.fireException(lastException);
 				}
 			}
 		}
@@ -695,22 +695,18 @@ public final class AsyncCallbacks {
 	 * @param callback CompletionCallback for calling
 	 * @return new AsyncCompletionCallback which will be save count of callings
 	 */
-	public static CompletionCallback waitAll(int count,
-	                                         CompletionCallback callback) {
-		if (count == 0) {
-			callback.onComplete();
-			return ignoreCompletionCallback();
-		}
-		return new AsyncCompletionCallback(count, count, callback);
+	public static WaitAllHandler waitAll(int count, CompletionCallback callback) {
+		if (count == 0)
+			callback.complete();
+
+		return new WaitAllHandler(count, count, callback);
 	}
 
-	public static CompletionCallback waitAny(int count, int totalCount,
-	                                         CompletionCallback callback) {
-		if (count == 0) {
-			callback.onComplete();
-			return ignoreCompletionCallback();
-		}
-		return new AsyncCompletionCallback(count, totalCount, callback);
+	public static WaitAllHandler waitAll(int minCompleted, int totalCount, CompletionCallback callback) {
+		if (totalCount == 0)
+			callback.complete();
+
+		return new WaitAllHandler(minCompleted, totalCount, callback);
 	}
 
 	/**
@@ -726,9 +722,9 @@ public final class AsyncCallbacks {
 			public void run() {
 				try {
 					server.listen();
-					future.onComplete();
+					future.complete();
 				} catch (IOException e) {
-					future.onException(e);
+					future.fireException(e);
 				}
 			}
 		});
@@ -746,7 +742,7 @@ public final class AsyncCallbacks {
 			@Override
 			public void run() {
 				server.close();
-				future.onComplete();
+				future.complete();
 			}
 		});
 		return future;
@@ -816,7 +812,7 @@ public final class AsyncCallbacks {
 				eventloop.execute(new Runnable() {
 					@Override
 					public void run() {
-						callback.onResult(result);
+						callback.sendResult(result);
 					}
 				});
 			}
@@ -826,7 +822,7 @@ public final class AsyncCallbacks {
 				eventloop.execute(new Runnable() {
 					@Override
 					public void run() {
-						callback.onException(exception);
+						callback.fireException(exception);
 					}
 				});
 			}
@@ -850,7 +846,7 @@ public final class AsyncCallbacks {
 				eventloop.execute(new Runnable() {
 					@Override
 					public void run() {
-						callback.onComplete();
+						callback.complete();
 					}
 				});
 			}
@@ -860,7 +856,7 @@ public final class AsyncCallbacks {
 				eventloop.execute(new Runnable() {
 					@Override
 					public void run() {
-						callback.onException(exception);
+						callback.fireException(exception);
 					}
 				});
 			}

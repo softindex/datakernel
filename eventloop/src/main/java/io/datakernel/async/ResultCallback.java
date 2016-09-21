@@ -17,16 +17,21 @@
 package io.datakernel.async;
 
 /**
- * This callback's interface contains two methods onResult and onException.
- * The async operation must call either onResult or onException when it is complete.
+ * This callback's interface contains two methods sendResult and fireException.
+ * The async operation must call either sendResult or fireException when it is complete.
  *
  * @param <T> type of result
  */
-public interface ResultCallback<T> extends ExceptionCallback {
+public abstract class ResultCallback<T> extends ExceptionCallback {
 	/**
 	 * Handles result of async operation
 	 *
 	 * @param result result of async operation
 	 */
-	void onResult(T result);
+	public final void sendResult(T result) {
+		CallbackRegistry.complete(this);
+		onResult(result);
+	}
+
+	protected abstract void onResult(T result);
 }

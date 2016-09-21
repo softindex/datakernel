@@ -218,7 +218,7 @@ public class StreamUnionTest {
 		assertThat(eventloop, doesntHaveFatals());
 	}
 
-	class CheckCallCallback implements CompletionCallback {
+	class CheckCallCallback extends CompletionCallback {
 		private int onComplete;
 		private int onException;
 

@@ -57,18 +57,18 @@ public class UiKernelServlets {
 					ReadSettings<K> settings = ReadSettings.from(gson, parameters);
 					model.read(settings, new ResultCallback<ReadResponse<K, R>>() {
 						@Override
-						public void onResult(ReadResponse<K, R> response) {
+						protected void onResult(ReadResponse<K, R> response) {
 							String json = response.toJson(gson, model.getRecordType(), model.getIdType());
-							callback.onResult(createResponse(json));
+							callback.sendResult(createResponse(json));
 						}
 
 						@Override
-						public void onException(Exception ignored) {
-							callback.onResult(HttpResponse.notFound404());
+						protected void onException(Exception ignored) {
+							callback.sendResult(HttpResponse.notFound404());
 						}
 					});
 				} catch (Exception ignored) {
-					callback.onHttpError(new HttpServletError(BAD_REQUEST));
+					callback.sendHttpError(new HttpServletError(BAD_REQUEST));
 				}
 			}
 		};
@@ -84,18 +84,18 @@ public class UiKernelServlets {
 					K id = gson.fromJson(request.getUrlParameter(ID_PARAMETER_NAME), model.getIdType());
 					model.read(id, settings, new ResultCallback<R>() {
 						@Override
-						public void onResult(R obj) {
+						protected void onResult(R obj) {
 							String json = gson.toJson(obj, model.getRecordType());
-							callback.onResult(createResponse(json));
+							callback.sendResult(createResponse(json));
 						}
 
 						@Override
-						public void onException(Exception ignored) {
-							callback.onResult(HttpResponse.notFound404());
+						protected void onException(Exception ignored) {
+							callback.sendResult(HttpResponse.notFound404());
 						}
 					});
 				} catch (Exception e) {
-					callback.onHttpError(new HttpServletError(BAD_REQUEST));
+					callback.sendHttpError(new HttpServletError(BAD_REQUEST));
 				}
 			}
 		};
@@ -110,18 +110,18 @@ public class UiKernelServlets {
 					R obj = gson.fromJson(json, model.getRecordType());
 					model.create(obj, new ResultCallback<CreateResponse<K>>() {
 						@Override
-						public void onResult(CreateResponse<K> response) {
+						protected void onResult(CreateResponse<K> response) {
 							String json = response.toJson(gson, model.getIdType());
-							callback.onResult(createResponse(json));
+							callback.sendResult(createResponse(json));
 						}
 
 						@Override
-						public void onException(Exception ignored) {
-							callback.onResult(HttpResponse.notFound404());
+						protected void onException(Exception ignored) {
+							callback.sendResult(HttpResponse.notFound404());
 						}
 					});
 				} catch (Exception ignored) {
-					callback.onHttpError(new HttpServletError(BAD_REQUEST));
+					callback.sendHttpError(new HttpServletError(BAD_REQUEST));
 				}
 			}
 		};
@@ -136,18 +136,18 @@ public class UiKernelServlets {
 					List<R> list = deserializeUpdateRequest(gson, json, model.getRecordType(), model.getIdType());
 					model.update(list, new ResultCallback<UpdateResponse<K, R>>() {
 						@Override
-						public void onResult(UpdateResponse<K, R> result) {
+						protected void onResult(UpdateResponse<K, R> result) {
 							String json = result.toJson(gson, model.getRecordType(), model.getIdType());
-							callback.onResult(createResponse(json));
+							callback.sendResult(createResponse(json));
 						}
 
 						@Override
-						public void onException(Exception ignored) {
-							callback.onResult(HttpResponse.notFound404());
+						protected void onException(Exception ignored) {
+							callback.sendResult(HttpResponse.notFound404());
 						}
 					});
 				} catch (Exception ignored) {
-					callback.onHttpError(new HttpServletError(BAD_REQUEST));
+					callback.sendHttpError(new HttpServletError(BAD_REQUEST));
 				}
 			}
 		};
@@ -161,23 +161,23 @@ public class UiKernelServlets {
 					K id = gson.fromJson(request.getUrlParameter("id"), model.getIdType());
 					model.delete(id, new ResultCallback<DeleteResponse>() {
 						@Override
-						public void onResult(DeleteResponse response) {
+						protected void onResult(DeleteResponse response) {
 							HttpResponse res = HttpResponse.ok200();
 							if (response.hasErrors()) {
 								String json = gson.toJson(response.getErrors());
 								res.setContentType(JSON_UTF8);
 								res.setBody(ByteBufStrings.wrapUtf8(json));
 							}
-							callback.onResult(res);
+							callback.sendResult(res);
 						}
 
 						@Override
-						public void onException(Exception ignored) {
-							callback.onResult(HttpResponse.notFound404());
+						protected void onException(Exception ignored) {
+							callback.sendResult(HttpResponse.notFound404());
 						}
 					});
 				} catch (Exception ignored) {
-					callback.onHttpError(new HttpServletError(BAD_REQUEST));
+					callback.sendHttpError(new HttpServletError(BAD_REQUEST));
 				}
 			}
 		};

@@ -19,11 +19,11 @@ package io.datakernel.async;
 import java.util.ArrayList;
 
 /**
- * This callback contains collection of listeners-CompletionCallback, on calling onComplete/onException this callback
+ * This callback contains collection of listeners-CompletionCallback, on calling complete/fireException this callback
  * it will be call listeners methods too. Each listener can react only on one action, than it will be removed from
  * this ListenableCompletionCallback.
  */
-public final class ListenableCompletionCallback implements CompletionCallback {
+public class ListenableCompletionCallback extends CompletionCallback {
 	private ArrayList<CompletionCallback> listeners = new ArrayList<>();
 	private boolean completed = false;
 	private Exception exception;
@@ -38,12 +38,12 @@ public final class ListenableCompletionCallback implements CompletionCallback {
 
 	public void addListener(CompletionCallback callback) {
 		if (completed) {
-			callback.onComplete();
+			callback.complete();
 			return;
 		}
 
 		if (exception != null) {
-			callback.onException(exception);
+			callback.fireException(exception);
 			return;
 		}
 
@@ -51,27 +51,27 @@ public final class ListenableCompletionCallback implements CompletionCallback {
 	}
 
 	@Override
-	public void onComplete() {
+	protected void onComplete() {
 		assert exception == null;
 
 		this.completed = true;
 
 		for (CompletionCallback listener : listeners) {
-			listener.onComplete();
+			listener.complete();
 		}
 
 		listeners.clear();
 	}
 
 	@Override
-	public void onException(Exception exception) {
+	protected void onException(Exception exception) {
 		assert !completed;
 		assert exception != null;
 
 		this.exception = exception;
 
 		for (CompletionCallback listener : listeners) {
-			listener.onException(exception);
+			listener.fireException(exception);
 		}
 
 		listeners.clear();

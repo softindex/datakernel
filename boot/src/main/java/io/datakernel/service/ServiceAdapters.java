@@ -49,12 +49,12 @@ public final class ServiceAdapters {
 	private static CompletionCallback toCompletionCallback(final SettableFuture<?> future) {
 		return new CompletionCallback() {
 			@Override
-			public void onComplete() {
+			protected void onComplete() {
 				future.set(null);
 			}
 
 			@Override
-			public void onException(Exception exception) {
+			protected void onException(Exception exception) {
 				future.setException(exception);
 			}
 		};

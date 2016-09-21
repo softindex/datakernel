@@ -226,10 +226,10 @@ public class RpcBlockingTest {
 				try {
 					result = helloService.hello(request.name);
 				} catch (Exception e) {
-					callback.onException(e);
+					callback.fireException(e);
 					return;
 				}
-				callback.onResult(new HelloResponse(result));
+				callback.sendResult(new HelloResponse(result));
 			}
 		};
 	}

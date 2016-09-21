@@ -19,11 +19,20 @@ package io.datakernel.async;
 /**
  * This callback handles exceptions.
  */
-public interface ExceptionCallback {
+public abstract class ExceptionCallback {
+	public ExceptionCallback() {
+		CallbackRegistry.register(this);
+	}
+
 	/**
 	 * Handles exception
 	 *
-	 * @param exception exception that was throwing
+	 * @param e exception that was throwing
 	 */
-	void onException(Exception exception);
+	public final void fireException(Exception e) {
+		CallbackRegistry.complete(this);
+		onException(e);
+	}
+
+	protected abstract void onException(Exception e);
 }

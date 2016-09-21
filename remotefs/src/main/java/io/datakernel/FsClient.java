@@ -19,6 +19,7 @@ package io.datakernel;
 import com.google.gson.Gson;
 import io.datakernel.FsCommands.*;
 import io.datakernel.FsResponses.*;
+import io.datakernel.async.CallbackRegistry;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ExceptionCallback;
 import io.datakernel.async.ResultCallback;
@@ -93,13 +94,13 @@ public abstract class FsClient<S extends FsClient<S>> {
 								logger.trace("received {}", msg);
 								if (msg instanceof Acknowledge) {
 									messaging.close();
-									callback.onComplete();
+									callback.complete();
 								} else if (msg instanceof Err) {
 									messaging.close();
-									callback.onException(new RemoteFsException(((Err) msg).msg));
+									callback.fireException(new RemoteFsException(((Err) msg).msg));
 								} else {
 									messaging.close();
-									callback.onException(new RemoteFsException("Invalid message received: " + msg));
+									callback.fireException(new RemoteFsException("Invalid message received: " + msg));
 								}
 							}
 
@@ -107,13 +108,13 @@ public abstract class FsClient<S extends FsClient<S>> {
 							public void onReceiveEndOfStream() {
 								logger.warn("received unexpected end of stream");
 								messaging.close();
-								callback.onException(new RemoteFsException("Unexpected end of stream for: " + fileName));
+								callback.fireException(new RemoteFsException("Unexpected end of stream for: " + fileName));
 							}
 
 							@Override
 							public void onException(Exception e) {
 								messaging.close();
-								callback.onException(e);
+								callback.fireException(e);
 							}
 						});
 					}
@@ -121,14 +122,14 @@ public abstract class FsClient<S extends FsClient<S>> {
 					@Override
 					public void onException(Exception e) {
 						messaging.close();
-						callback.onException(e);
+						callback.fireException(e);
 					}
 				});
 			}
 
 			@Override
 			public void onException(Exception exception) {
-				callback.onException(exception);
+				callback.fireException(exception);
 			}
 		});
 	}
@@ -160,15 +161,15 @@ public abstract class FsClient<S extends FsClient<S>> {
 											messaging.close();
 										}
 									});
-									callback.onResult(forwarder.getOutput());
+									callback.sendResult(forwarder.getOutput());
 								} else if (msg instanceof Err) {
 									messaging.close();
 									RemoteFsException exception = new RemoteFsException(((Err) msg).msg);
-									callback.onException(exception);
+									callback.fireException(exception);
 								} else {
 									messaging.close();
 									RemoteFsException exception = new RemoteFsException("Invalid message received: " + msg);
-									callback.onException(exception);
+									callback.fireException(exception);
 								}
 							}
 
@@ -177,13 +178,13 @@ public abstract class FsClient<S extends FsClient<S>> {
 								logger.warn("received unexpected end of stream");
 								messaging.close();
 								RemoteFsException exception = new RemoteFsException("Unexpected end of stream for: " + fileName);
-								callback.onException(exception);
+								callback.fireException(exception);
 							}
 
 							@Override
 							public void onException(Exception e) {
 								messaging.close();
-								callback.onException(new RemoteFsException(e));
+								callback.fireException(new RemoteFsException(e));
 							}
 
 						});
@@ -192,14 +193,14 @@ public abstract class FsClient<S extends FsClient<S>> {
 					@Override
 					public void onException(Exception e) {
 						messaging.close();
-						callback.onException(new RemoteFsException(e));
+						callback.fireException(new RemoteFsException(e));
 					}
 				});
 			}
 
 			@Override
 			public void onException(Exception e) {
-				callback.onException(e);
+				callback.fireException(e);
 			}
 		});
 	}
@@ -212,8 +213,13 @@ public abstract class FsClient<S extends FsClient<S>> {
 		connect(address, new ListConnectCallback(callback));
 	}
 
-	protected interface MessagingConnectCallback extends ExceptionCallback {
-		void onConnect(MessagingWithBinaryStreaming<FsResponse, FsCommand> messaging);
+	protected abstract class MessagingConnectCallback extends ExceptionCallback {
+		public final void reportConnect(MessagingWithBinaryStreaming<FsResponse, FsCommand> messaging) {
+			CallbackRegistry.complete(this);
+			onConnect(messaging);
+		}
+
+		protected abstract void onConnect(MessagingWithBinaryStreaming<FsResponse, FsCommand> messaging);
 	}
 
 	protected void connect(InetSocketAddress address, final MessagingConnectCallback callback) {
@@ -230,7 +236,7 @@ public abstract class FsClient<S extends FsClient<S>> {
 
 			@Override
 			public void onException(Exception exception) {
-				callback.onException(exception);
+				callback.fireException(exception);
 			}
 		});
 	}
@@ -243,7 +249,7 @@ public abstract class FsClient<S extends FsClient<S>> {
 		return responseGson;
 	}
 
-	private class DeleteConnectCallback implements MessagingConnectCallback {
+	private class DeleteConnectCallback extends MessagingConnectCallback {
 		private final String fileName;
 		private final CompletionCallback callback;
 
@@ -264,13 +270,13 @@ public abstract class FsClient<S extends FsClient<S>> {
 							logger.trace("received {}", msg);
 							if (msg instanceof Ok) {
 								messaging.close();
-								callback.onComplete();
+								callback.complete();
 							} else if (msg instanceof Err) {
 								messaging.close();
-								callback.onException(new RemoteFsException(((Err) msg).msg));
+								callback.fireException(new RemoteFsException(((Err) msg).msg));
 							} else {
 								messaging.close();
-								callback.onException(new RemoteFsException("Invalid message received: " + msg));
+								callback.fireException(new RemoteFsException("Invalid message received: " + msg));
 							}
 						}
 
@@ -278,13 +284,13 @@ public abstract class FsClient<S extends FsClient<S>> {
 						public void onReceiveEndOfStream() {
 							logger.warn("received unexpected end of stream");
 							messaging.close();
-							callback.onException(new RemoteFsException("Unexpected end of stream for: " + fileName));
+							callback.fireException(new RemoteFsException("Unexpected end of stream for: " + fileName));
 						}
 
 						@Override
 						public void onException(Exception e) {
 							messaging.close();
-							callback.onException(e);
+							callback.fireException(e);
 						}
 					});
 				}
@@ -292,18 +298,18 @@ public abstract class FsClient<S extends FsClient<S>> {
 				@Override
 				public void onException(Exception e) {
 					messaging.close();
-					callback.onException(e);
+					callback.fireException(e);
 				}
 			});
 		}
 
 		@Override
 		public void onException(Exception e) {
-			callback.onException(e);
+			callback.fireException(e);
 		}
 	}
 
-	private class ListConnectCallback implements MessagingConnectCallback {
+	private class ListConnectCallback extends MessagingConnectCallback {
 		private final ResultCallback<List<String>> callback;
 
 		ListConnectCallback(ResultCallback<List<String>> callback) {
@@ -322,13 +328,13 @@ public abstract class FsClient<S extends FsClient<S>> {
 							logger.trace("received {}", msg);
 							if (msg instanceof ListOfFiles) {
 								messaging.close();
-								callback.onResult(((ListOfFiles) msg).files);
+								callback.sendResult(((ListOfFiles) msg).files);
 							} else if (msg instanceof Err) {
 								messaging.close();
-								callback.onException(new RemoteFsException(((Err) msg).msg));
+								callback.fireException(new RemoteFsException(((Err) msg).msg));
 							} else {
 								messaging.close();
-								callback.onException(new RemoteFsException("Invalid message received: " + msg));
+								callback.fireException(new RemoteFsException("Invalid message received: " + msg));
 							}
 						}
 
@@ -336,13 +342,13 @@ public abstract class FsClient<S extends FsClient<S>> {
 						public void onReceiveEndOfStream() {
 							logger.warn("received unexpected end of stream");
 							messaging.close();
-							callback.onException(new RemoteFsException("Unexpected end of stream while trying to list files"));
+							callback.fireException(new RemoteFsException("Unexpected end of stream while trying to list files"));
 						}
 
 						@Override
 						public void onException(Exception e) {
 							messaging.close();
-							callback.onException(e);
+							callback.fireException(e);
 						}
 					});
 				}
@@ -350,14 +356,14 @@ public abstract class FsClient<S extends FsClient<S>> {
 				@Override
 				public void onException(Exception e) {
 					messaging.close();
-					callback.onException(e);
+					callback.fireException(e);
 				}
 			});
 		}
 
 		@Override
 		public void onException(Exception e) {
-			callback.onException(e);
+			callback.fireException(e);
 		}
 	}
 

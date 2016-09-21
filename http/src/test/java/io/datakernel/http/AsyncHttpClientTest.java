@@ -70,7 +70,7 @@ public class AsyncHttpClientTest {
 			@Override
 			public void onResult(final HttpResponse result) {
 				try {
-					resultObserver.onResult(decodeUtf8(result.getBody()));
+					resultObserver.sendResult(decodeUtf8(result.getBody()));
 				} catch (ParseException e) {
 					onException(e);
 				}
@@ -80,7 +80,7 @@ public class AsyncHttpClientTest {
 
 			@Override
 			public void onException(Exception exception) {
-				resultObserver.onException(exception);
+				resultObserver.fireException(exception);
 				httpClient.close();
 				httpServer.close();
 			}
@@ -105,7 +105,7 @@ public class AsyncHttpClientTest {
 				eventloop.schedule(eventloop.currentTimeMillis() + (3 * TIMEOUT), new Runnable() {
 					@Override
 					public void run() {
-						callback.onResult(HttpResponse.ok200().withBody(TIMEOUT_EXCEPTION_BYTES));
+						callback.sendResult(HttpResponse.ok200().withBody(TIMEOUT_EXCEPTION_BYTES));
 					}
 				});
 			}
@@ -121,7 +121,7 @@ public class AsyncHttpClientTest {
 			@Override
 			public void onResult(HttpResponse result) {
 				try {
-					resultObserver.onResult(decodeUtf8(result.getBody()));
+					resultObserver.sendResult(decodeUtf8(result.getBody()));
 				} catch (ParseException e) {
 					onException(e);
 				}
@@ -131,7 +131,7 @@ public class AsyncHttpClientTest {
 
 			@Override
 			public void onException(Exception exception) {
-				resultObserver.onException(exception);
+				resultObserver.fireException(exception);
 				httpClient.close();
 				httpServer.close();
 			}
@@ -161,7 +161,7 @@ public class AsyncHttpClientTest {
 			@Override
 			public void onResult(HttpResponse result) {
 				try {
-					resultObserver.onResult(decodeUtf8(result.getBody()));
+					resultObserver.sendResult(decodeUtf8(result.getBody()));
 				} catch (ParseException e) {
 					onException(e);
 				}
@@ -170,7 +170,7 @@ public class AsyncHttpClientTest {
 
 			@Override
 			public void onException(Exception exception) {
-				resultObserver.onException(exception);
+				resultObserver.fireException(exception);
 				httpClient.close();
 			}
 		});
@@ -203,7 +203,7 @@ public class AsyncHttpClientTest {
 			@Override
 			public void onResult(HttpResponse result) {
 				try {
-					resultObserver.onResult(decodeUtf8(result.getBody()));
+					resultObserver.sendResult(decodeUtf8(result.getBody()));
 				} catch (ParseException e) {
 					onException(e);
 				}
@@ -213,7 +213,7 @@ public class AsyncHttpClientTest {
 
 			@Override
 			public void onException(Exception exception) {
-				resultObserver.onException(exception);
+				resultObserver.fireException(exception);
 				httpClient.close();
 				httpServer.close();
 			}
@@ -278,7 +278,7 @@ public class AsyncHttpClientTest {
 			@Override
 			public void onResult(HttpResponse result) {
 				try {
-					resultObserver.onResult(decodeUtf8(result.getBody()));
+					resultObserver.sendResult(decodeUtf8(result.getBody()));
 				} catch (ParseException e) {
 					onException(e);
 				}
@@ -287,7 +287,7 @@ public class AsyncHttpClientTest {
 
 			@Override
 			public void onException(Exception e) {
-				resultObserver.onException(e);
+				resultObserver.fireException(e);
 				httpClient.close();
 				server.close();
 			}

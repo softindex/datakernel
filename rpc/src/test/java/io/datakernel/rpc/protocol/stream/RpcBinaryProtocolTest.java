@@ -76,7 +76,7 @@ public class RpcBinaryProtocolTest {
 				.withHandlerFor(String.class, new RpcRequestHandler<String, String>() {
 					@Override
 					public void run(String request, ResultCallback<String> callback) {
-						callback.onResult("Hello, " + request + "!");
+						callback.sendResult("Hello, " + request + "!");
 					}
 				})
 				.withListenAddress(address);
@@ -84,7 +84,7 @@ public class RpcBinaryProtocolTest {
 
 		final int countRequests = 10;
 		final List<String> results = Lists.newArrayList();
-		final ResultCallback<String> resultsObserver = new ResultCallback<String>() {
+		class ResultObserver extends ResultCallback<String> {
 			@Override
 			public void onException(Exception exception) {
 				client.stop(new CompletionCallback() {
@@ -120,19 +120,20 @@ public class RpcBinaryProtocolTest {
 				}
 			}
 
-		};
+		}
+		;
 
 		client.start(new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				for (int i = 0; i < countRequests; i++) {
-					client.sendRequest(testMessage, 1000, resultsObserver);
+					client.sendRequest(testMessage, 1000, new ResultObserver());
 				}
 			}
 
 			@Override
 			public void onException(Exception e) {
-				resultsObserver.onException(e);
+				new ResultObserver().fireException(e);
 			}
 		});
 

@@ -37,7 +37,7 @@ public class ClientStressTest {
 		@Override
 		public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
 			test();
-			callback.onResult(HttpResponse.ok200());
+			callback.sendResult(HttpResponse.ok200());
 		}
 	};
 	private AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet).withListenPort(1234);

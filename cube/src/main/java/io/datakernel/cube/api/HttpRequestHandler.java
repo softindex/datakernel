@@ -63,26 +63,26 @@ public final class HttpRequestHandler implements RequestHandler {
 			final ReportingQuery reportingQuery = httpRequestProcessor.apply(httpRequest);
 			requestExecutor.execute(reportingQuery, new ResultCallback<QueryResult>() {
 				@Override
-				public void onResult(QueryResult result) {
+				protected void onResult(QueryResult result) {
 					Stopwatch resultProcessingStopwatch = Stopwatch.createStarted();
 					HttpResponse httpResponse = httpResultProcessor.apply(result);
 					logger.info("Processed request {} ({}) [totalTime={}, jsonConstruction={}]", httpRequest,
 							reportingQuery, totalTimeStopwatch, resultProcessingStopwatch);
-					resultCallback.onResult(httpResponse);
+					resultCallback.sendResult(httpResponse);
 				}
 
 				@Override
-				public void onException(Exception e) {
+				protected void onException(Exception e) {
 					logger.error("Executing query {} failed.", reportingQuery, e);
-					resultCallback.onHttpError(new HttpServletError(500, e));
+					resultCallback.sendHttpError(new HttpServletError(500, e));
 				}
 			});
 		} catch (QueryException e) {
 			logger.info("Request {} could not be processed because of error", httpRequest, e);
-			resultCallback.onResult(badRequest400().withBody(wrapUtf8(e.getMessage())));
+			resultCallback.sendResult(badRequest400().withBody(wrapUtf8(e.getMessage())));
 		} catch (JsonParseException e) {
 			logger.info("Failed to parse JSON in request {}", httpRequest, e);
-			resultCallback.onResult(badRequest400().withBody(wrapUtf8("Failed to parse JSON")));
+			resultCallback.sendResult(badRequest400().withBody(wrapUtf8("Failed to parse JSON")));
 		}
 	}
 }

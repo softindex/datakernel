@@ -63,13 +63,13 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 			@Override
 			public void onResult(List<AggregationChunk.NewChunk> result) {
 				operationTracker.reportCompletion(AggregationChunker.this);
-				chunksCallback.onResult(result);
+				chunksCallback.sendResult(result);
 			}
 
 			@Override
 			public void onException(Exception e) {
 				operationTracker.reportCompletion(AggregationChunker.this);
-				chunksCallback.onException(e);
+				chunksCallback.fireException(e);
 			}
 		});
 		this.classLoader = classLoader;
@@ -174,12 +174,12 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 				logger.info("Retrieving new chunk id for aggregation {}", keys);
 				metadataStorage.createChunkId(new ResultCallback<Long>() {
 					@Override
-					public void onResult(final Long chunkId) {
+					protected void onResult(final Long chunkId) {
 						logger.info("Retrieved new chunk id '{}' for aggregation {}", chunkId, keys);
 						storage.chunkWriter(keys, fields, recordClass, chunkId, forwarder.getOutput(), classLoader,
 								new CompletionCallback() {
 									@Override
-									public void onComplete() {
+									protected void onComplete() {
 										AggregationChunk.NewChunk newChunk = createNewChunk(chunkId, metadata.first,
 												metadata.last, metadata.count);
 
@@ -190,7 +190,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 									}
 
 									@Override
-									public void onException(Exception e) {
+									protected void onException(Exception e) {
 										logger.error("Saving new chunk with id {} to storage {} failed",
 												chunkId, storage, e);
 										closeWithError(e);
@@ -200,7 +200,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 					}
 
 					@Override
-					public void onException(Exception e) {
+					protected void onException(Exception e) {
 						logger.error("Failed to retrieve new chunk id from metadata storage {}",
 								metadataStorage, e);
 						closeWithError(e);

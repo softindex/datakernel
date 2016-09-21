@@ -45,7 +45,7 @@ public class AsyncStreamsTest {
 		eventloop.run();
 		assertEquals(READY, consumer.getUpstream().getProducerStatus());
 
-		producerSetter.onResult(source);
+		producerSetter.sendResult(source);
 		eventloop.run();
 		assertEquals(asList(1, 2, 3), consumer.getList());
 		assertEquals(END_OF_STREAM, consumer.getUpstream().getProducerStatus());

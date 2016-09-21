@@ -91,13 +91,13 @@ public class SimpleFsChunkStorage implements AggregationChunkStorage {
 		client.upload(path(id), compressor.getOutput(), new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				callback.onComplete();
+				callback.complete();
 			}
 
 			@Override
 			public void onException(Exception e) {
 				client.delete(path(id), AsyncCallbacks.ignoreCompletionCallback());
-				callback.onException(e);
+				callback.fireException(e);
 			}
 		});
 	}
