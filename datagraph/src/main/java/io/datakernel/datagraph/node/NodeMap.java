@@ -20,8 +20,9 @@ import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.graph.TaskContext;
 import io.datakernel.stream.processor.StreamMap;
 
-import java.util.Arrays;
 import java.util.Collection;
+
+import static java.util.Collections.singletonList;
 
 /**
  * Represents a node, which maps input values to output values based on a logic, defined by mapper.
@@ -41,7 +42,7 @@ public final class NodeMap<I, O> implements Node {
 
 	@Override
 	public Collection<StreamId> getOutputs() {
-		return Arrays.asList(output);
+		return singletonList(output);
 	}
 
 	@Override

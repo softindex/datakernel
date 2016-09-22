@@ -22,8 +22,9 @@ import io.datakernel.datagraph.server.DatagraphClient;
 import io.datakernel.stream.StreamProducer;
 
 import java.net.InetSocketAddress;
-import java.util.Arrays;
 import java.util.Collection;
+
+import static java.util.Collections.singletonList;
 
 /**
  * Represents a node, which downloads data from a given address and stream.
@@ -44,9 +45,10 @@ public final class NodeDownload<T> implements Node {
 
 	@Override
 	public Collection<StreamId> getOutputs() {
-		return Arrays.asList(streamId);
+		return singletonList(streamId);
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public void createAndBind(TaskContext taskContext) {
 		DatagraphClient client = taskContext.environment().getInstance(DatagraphClient.class);

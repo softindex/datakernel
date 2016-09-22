@@ -30,7 +30,8 @@ public final class DatasetLocalSortReduce<K, I, O> extends LocallySortedDataset<
 	private final LocallySortedDataset<K, I> input;
 	private final StreamReducers.Reducer<K, I, O, ?> reducer;
 
-	public DatasetLocalSortReduce(LocallySortedDataset<K, I> input, StreamReducers.Reducer<K, I, O, ?> reducer, Class<O> resultType, Function<O, K> resultKeyFunction) {
+	public DatasetLocalSortReduce(LocallySortedDataset<K, I> input, StreamReducers.Reducer<K, I, O, ?> reducer,
+	                              Class<O> resultType, Function<O, K> resultKeyFunction) {
 		super(resultType, input.keyComparator(), input.keyType(), resultKeyFunction);
 		this.input = input;
 		this.reducer = reducer;

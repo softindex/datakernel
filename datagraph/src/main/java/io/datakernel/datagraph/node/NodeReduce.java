@@ -25,6 +25,8 @@ import io.datakernel.stream.processor.StreamReducers;
 
 import java.util.*;
 
+import static java.util.Collections.singletonList;
+
 /**
  * Represents a node, which performs 'reduce' operations on a list of input streams, based on a logic, defined by key comparator, key function and reducer for each input.
  *
@@ -62,7 +64,7 @@ public final class NodeReduce<K, O, A> implements Node {
 
 	@Override
 	public Collection<StreamId> getOutputs() {
-		return Arrays.asList(output);
+		return singletonList(output);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -79,3 +81,4 @@ public final class NodeReduce<K, O, A> implements Node {
 		taskContext.export(output, streamReducer.getOutput());
 	}
 }
+

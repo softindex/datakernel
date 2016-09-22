@@ -24,6 +24,8 @@ import io.datakernel.stream.processor.StreamReducers;
 
 import java.util.*;
 
+import static java.util.Collections.singletonList;
+
 /**
  * Represents a simple reducer node, with a single key function and reducer for all internalConsumers.
  *
@@ -40,7 +42,8 @@ public final class NodeReduceSimple<K, I, O, A> implements Node {
 	private final List<StreamId> inputs = new ArrayList<>();
 	private final StreamId output = new StreamId();
 
-	public NodeReduceSimple(Function<I, K> keyFunction, Comparator<K> keyComparator, StreamReducers.Reducer<K, I, O, A> reducer) {
+	public NodeReduceSimple(Function<I, K> keyFunction, Comparator<K> keyComparator,
+	                        StreamReducers.Reducer<K, I, O, A> reducer) {
 		this.keyFunction = keyFunction;
 		this.keyComparator = keyComparator;
 		this.reducer = reducer;
@@ -56,15 +59,17 @@ public final class NodeReduceSimple<K, I, O, A> implements Node {
 
 	@Override
 	public Collection<StreamId> getOutputs() {
-		return Arrays.asList(output);
+		return singletonList(output);
 	}
 
 	@Override
 	public void createAndBind(TaskContext taskContext) {
-		StreamReducerSimple<K, I, O, A> streamReducerSimple = StreamReducerSimple.create(taskContext.getEventloop(), keyFunction, keyComparator, reducer);
+		StreamReducerSimple<K, I, O, A> streamReducerSimple =
+				StreamReducerSimple.create(taskContext.getEventloop(), keyFunction, keyComparator, reducer);
 		for (StreamId input : inputs) {
 			taskContext.bindChannel(input, streamReducerSimple.newInput());
 		}
 		taskContext.export(output, streamReducerSimple.getOutput());
 	}
 }
+

@@ -20,9 +20,10 @@ import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.graph.TaskContext;
 import io.datakernel.stream.StreamProducers;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
+
+import static java.util.Collections.singletonList;
 
 /**
  * Represents a node, which produces items as an iterable stream.
@@ -39,9 +40,10 @@ public final class NodeProducerOfIterable<T> implements Node {
 
 	@Override
 	public Collection<StreamId> getOutputs() {
-		return Arrays.asList(output);
+		return singletonList(output);
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public void createAndBind(TaskContext taskContext) {
 		StreamProducers.OfIterator<T> producer;

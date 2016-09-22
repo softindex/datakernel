@@ -28,7 +28,6 @@ import io.datakernel.datagraph.dataset.SortedDataset;
 import io.datakernel.datagraph.dataset.impl.DatasetListConsumer;
 import io.datakernel.datagraph.graph.DataGraph;
 import io.datakernel.datagraph.graph.Partition;
-import io.datakernel.datagraph.graph.RemotePartition;
 import io.datakernel.datagraph.helper.StreamMergeSorterStorageStub;
 import io.datakernel.datagraph.server.DatagraphClient;
 import io.datakernel.datagraph.server.DatagraphEnvironment;
@@ -118,6 +117,7 @@ public class PageRankTest {
 					.toString();
 		}
 
+		@SuppressWarnings({"SimplifiableIfStatement", "EqualsWhichDoesntCheckParameterClass"})
 		@Override
 		public boolean equals(Object o) {
 			Rank rank = (Rank) o;
@@ -215,6 +215,7 @@ public class PageRankTest {
 		return ranks;
 	}
 
+	@SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
 	@Ignore // TODO(vmykhalko)
 	@Test
 	public void test2() throws Exception {
@@ -241,8 +242,8 @@ public class PageRankTest {
 		final DatagraphServer server1 = new DatagraphServer(eventloop, environment1).withListenAddress(address1);
 		final DatagraphServer server2 = new DatagraphServer(eventloop, environment2).withListenAddress(address2);
 
-		Partition partition1 = new RemotePartition(client, address1);
-		Partition partition2 = new RemotePartition(client, address2);
+		Partition partition1 = new Partition(client, address1);
+		Partition partition2 = new Partition(client, address2);
 
 		final DataGraph graph = new DataGraph(serialization,
 				Arrays.asList(partition1, partition2));

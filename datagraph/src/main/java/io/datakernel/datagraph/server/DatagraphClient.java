@@ -165,7 +165,8 @@ public final class DatagraphClient {
 
 	public <T> StreamProducer<T> download(InetSocketAddress address, final StreamId streamId, Class<T> type) {
 		BufferSerializer<T> serializer = serialization.getSerializer(type);
-		StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(eventloop, serializer, StreamBinarySerializer.MAX_SIZE);
+		StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(eventloop, serializer,
+				StreamBinarySerializer.MAX_SIZE);
 		connectAndExecute(address, new DownloadConnectCallback(streamId, deserializer.getInput(), new CompletionCallback() {
 			@Override
 			public void onComplete() {

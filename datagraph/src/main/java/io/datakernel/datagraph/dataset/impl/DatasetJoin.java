@@ -51,7 +51,8 @@ public final class DatasetJoin<K, L, R, V> extends SortedDataset<K, V> {
 		for (int i = 0; i < leftStreamIds.size(); i++) {
 			StreamId leftStreamId = leftStreamIds.get(i);
 			StreamId rightStreamId = rightStreamIds.get(i);
-			NodeJoin<K, L, R, V> node = new NodeJoin<>(leftStreamId, rightStreamId, left.keyComparator(), left.keyFunction(), right.keyFunction(), joiner);
+			NodeJoin<K, L, R, V> node = new NodeJoin<>(leftStreamId, rightStreamId, left.keyComparator(),
+					left.keyFunction(), right.keyFunction(), joiner);
 			graph.addNode(graph.getPartition(leftStreamId), node);
 			outputStreamIds.add(node.getOutput());
 		}

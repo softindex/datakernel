@@ -82,6 +82,7 @@ public final class DatagraphSerialization {
 				.withSubclass("Reduce", NodeReduce.class)
 				.withSubclass("ReduceSimple", NodeReduceSimple.class)
 				.withSubclass("Join", NodeJoin.class)
+				.withSubclass("Union", NodeUnion.class)
 				.withSubclass("ProducerOfIterable", NodeProducerOfIterable.class)
 				.withSubclass("ConsumerToList", NodeConsumerToList.class);
 
@@ -139,6 +140,7 @@ public final class DatagraphSerialization {
 				.create();
 	}
 
+	@SuppressWarnings("unchecked")
 	public synchronized <T> BufferSerializer<T> getSerializer(Class<T> type) {
 		BufferSerializer<T> serializer = (BufferSerializer<T>) serializers.get(type);
 		if (serializer == null) {

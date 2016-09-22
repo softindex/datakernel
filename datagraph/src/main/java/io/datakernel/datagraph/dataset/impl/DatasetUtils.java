@@ -20,7 +20,6 @@ import com.google.common.base.Function;
 import io.datakernel.datagraph.dataset.LocallySortedDataset;
 import io.datakernel.datagraph.graph.DataGraph;
 import io.datakernel.datagraph.graph.Partition;
-import io.datakernel.datagraph.graph.RemotePartition;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.node.NodeDownload;
 import io.datakernel.datagraph.node.NodeReduce;
@@ -36,7 +35,8 @@ public class DatasetUtils {
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <K, I, O> List<StreamId> repartitionAndReduce(DataGraph graph, LocallySortedDataset<K, I> input, StreamReducers.Reducer<K, I, O, ?> reducer,
+	public static <K, I, O> List<StreamId> repartitionAndReduce(DataGraph graph, LocallySortedDataset<K, I> input,
+	                                                            StreamReducers.Reducer<K, I, O, ?> reducer,
 	                                                            List<Partition> partitions) {
 		Function<I, K> keyFunction = input.keyFunction();
 		List<StreamId> outputStreamIds = new ArrayList<>();
@@ -66,27 +66,24 @@ public class DatasetUtils {
 		return outputStreamIds;
 	}
 
-	public static <K, T> List<StreamId> repartitionAndSort(DataGraph graph, LocallySortedDataset<K, T> input, List<Partition> partitions) {
+	public static <K, T> List<StreamId> repartitionAndSort(DataGraph graph, LocallySortedDataset<K, T> input,
+	                                                       List<Partition> partitions) {
 		return repartitionAndReduce(graph, input, StreamReducers.<K, T>mergeSortReducer(), partitions);
 	}
 
 	public static <T> StreamId forwardChannel(DataGraph graph, Class<T> type,
 	                                          StreamId sourceStreamId, Partition targetPartition) {
 		Partition sourcePartition = graph.getPartition(sourceStreamId);
-//		if (sourcePartition == targetPartition)
-//			return sourceStreamId;
 		return forwardChannel(graph, type, sourcePartition, targetPartition, sourceStreamId);
 	}
 
 	private static <T> StreamId forwardChannel(DataGraph graph, Class<T> type,
-	                                           Partition sourcePartition, Partition targetPartition, StreamId sourceStreamId) {
-		if (sourcePartition instanceof RemotePartition && targetPartition instanceof RemotePartition) {
-			NodeUpload<T> nodeUpload = new NodeUpload<>(type, sourceStreamId);
-			NodeDownload<T> nodeDownload = new NodeDownload<>(type, ((RemotePartition) sourcePartition).getAddress(), sourceStreamId);
-			graph.addNode(sourcePartition, nodeUpload);
-			graph.addNode(targetPartition, nodeDownload);
-			return nodeDownload.getOutput();
-		}
-		throw new UnsupportedOperationException();
+	                                           Partition sourcePartition, Partition targetPartition,
+	                                           StreamId sourceStreamId) {
+		NodeUpload<T> nodeUpload = new NodeUpload<>(type, sourceStreamId);
+		NodeDownload<T> nodeDownload = new NodeDownload<>(type, sourcePartition.getAddress(), sourceStreamId);
+		graph.addNode(sourcePartition, nodeUpload);
+		graph.addNode(targetPartition, nodeDownload);
+		return nodeDownload.getOutput();
 	}
 }

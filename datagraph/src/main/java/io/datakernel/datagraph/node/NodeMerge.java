@@ -23,6 +23,8 @@ import io.datakernel.stream.processor.StreamMerger;
 
 import java.util.*;
 
+import static java.util.Collections.singletonList;
+
 /**
  * Represents a node, which merges many data streams into one, based on a logic, defined by key function and key comparator.
  *
@@ -53,7 +55,7 @@ public final class NodeMerge<K, T> implements Node {
 
 	@Override
 	public Collection<StreamId> getOutputs() {
-		return Arrays.asList(output);
+		return singletonList(output);
 	}
 
 	@Override
