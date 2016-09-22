@@ -260,7 +260,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 				executeBackgroundTasks();
 				executeLocalTasks();
 			} catch (Throwable e) {
-				handleFatalError(e, this);
+				handleFatalError(e, this, true);
 			}
 		}
 		logger.info("Eventloop {} finished", this);
@@ -361,7 +361,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 				}
 			} catch (Throwable e) {
 				closeQuietly(key.channel());
-				handleFatalError(e, key.attachment());
+				handleFatalError(e, key.attachment(), true);
 			}
 		}
 		stats.updateSelectedKeysTimeStats(sw);
@@ -395,7 +395,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 			} catch (Throwable e) {
 				if (sw != null)
 					stats.updateLocalTaskDuration(runnable, sw);
-				handleFatalError(e, runnable);
+				handleFatalError(e, runnable, true);
 			}
 			newRunnables++;
 		}
@@ -429,7 +429,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 			} catch (Throwable e) {
 				if (sw != null)
 					stats.updateConcurrentTaskDuration(runnable, sw);
-				handleFatalError(e, runnable);
+				handleFatalError(e, runnable, true);
 			}
 			newRunnables++;
 		}
@@ -480,7 +480,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 			} catch (Throwable e) {
 				if (sw != null)
 					stats.updateScheduledTaskDuration(runnable, sw);
-				handleFatalError(e, runnable);
+				handleFatalError(e, runnable, true);
 			}
 
 			newRunnables++;
@@ -520,7 +520,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 			try {
 				acceptCallback.onAccept(socketChannel);
 			} catch (Throwable e) {
-				handleFatalError(e, acceptCallback);
+				handleFatalError(e, acceptCallback, true);
 				closeQuietly(socketChannel);
 			}
 		}
@@ -674,7 +674,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 			try {
 				connectCallback.fireException(e);
 			} catch (Throwable e1) {
-				handleFatalError(e1, connectCallback);
+				handleFatalError(e1, connectCallback, true);
 			}
 		}
 	}
@@ -983,7 +983,6 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 							}
 						});
 					} catch (final Exception e) {
-						// TODO(vmykhalko): catch throwable and handle as fatal error (and pass to callback later)
 						// jmx
 						final long executingFinish = System.currentTimeMillis();
 
@@ -1000,6 +999,14 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 								tracker.complete();
 								callback.fireException(actualException);
 							}
+						});
+					} catch (final Throwable throwable) {
+						logger.error("Fatal Error in runConcurrently(): {}", runnable, throwable);
+						Eventloop.this.execute(new Runnable() {
+							@Override
+							public void run() {
+								handleFatalError(throwable, runnable, false);
+							};
 						});
 					}
 				}
@@ -1056,7 +1063,6 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 							}
 						});
 					} catch (final Exception e) {
-						// TODO(vmykhalko): catch throwable and handle as fatal error (and pass to callback later)
 						// jmx
 						final long executingFinish = System.currentTimeMillis();
 
@@ -1070,6 +1076,14 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 								tracker.complete();
 								callback.fireException(e);
 							}
+						});
+					} catch (final Throwable throwable) {
+						logger.error("Fatal Error in callConcurrently(): {}", callable, throwable);
+						Eventloop.this.execute(new Runnable() {
+							@Override
+							public void run() {
+								handleFatalError(throwable, callable, false);
+							};
 						});
 					}
 				}
@@ -1090,8 +1104,8 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		}
 	}
 
-	private void handleFatalError(Throwable e, Object context) {
-		recordFatalError(e, context);
+	private void handleFatalError(Throwable e, Object context, boolean logging) {
+		recordFatalError(e, context, logging);
 		if (fatalErrorHandler != null) {
 			fatalErrorHandler.handle(e, context);
 		} else {
@@ -1130,8 +1144,10 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		stats.resetStats();
 	}
 
-	public void recordFatalError(Throwable e, Object context) {
-		logger.error("Fatal Error in {}", context, e);
+	public void recordFatalError(Throwable e, Object context, boolean logging) {
+		if (logging) {
+			logger.error("Fatal Error in {}", context, e);
+		}
 		stats.recordFatalError(e, context);
 	}
 
