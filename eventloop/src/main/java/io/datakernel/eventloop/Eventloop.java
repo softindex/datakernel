@@ -42,6 +42,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.datakernel.async.AsyncCallbacks.notCancellable;
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 /**
  * It is internal class for asynchronous programming. Eventloop represents infinite loop with only one
@@ -56,6 +57,8 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 
 	public static final TimeoutException CONNECT_TIMEOUT = new TimeoutException("Connection timed out");
 	private static final long DEFAULT_EVENT_TIMEOUT = 20L;
+
+	private static volatile FatalErrorHandler globalFatalErrorHandler = FatalErrorHandlers.ignoreAllErrors();
 
 	/**
 	 * Collection of local tasks which was added from this thread.
@@ -143,7 +146,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	}
 
 	public static Eventloop create() {
-		return new Eventloop(CurrentTimeProviderSystem.instance(), null, FatalErrorHandlers.ignoreAllErrors());
+		return new Eventloop(CurrentTimeProviderSystem.instance(), null, null);
 	}
 
 	public Eventloop withCurrentTimeProvider(CurrentTimeProvider timeProvider) {
@@ -1089,7 +1092,15 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 
 	private void handleFatalError(Throwable e, Object context) {
 		recordFatalError(e, context);
-		fatalErrorHandler.handle(e, context);
+		if (fatalErrorHandler != null) {
+			fatalErrorHandler.handle(e, context);
+		} else {
+			globalFatalErrorHandler.handle(e, context);
+		}
+	}
+
+	public static void setGlobalFatalErrorHandler(FatalErrorHandler handler) {
+		globalFatalErrorHandler = checkNotNull(handler);
 	}
 
 	// JMX
