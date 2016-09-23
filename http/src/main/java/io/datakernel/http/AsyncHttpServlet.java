@@ -29,12 +29,12 @@ public interface AsyncHttpServlet {
 			CallbackRegistry.register(this);
 		}
 
-		public final void sendResult(HttpResponse httpResponse) {
+		public final void setResponse(HttpResponse httpResponse) {
 			CallbackRegistry.complete(this);
 			onResult(httpResponse);
 		}
 
-		public final void sendHttpError(HttpServletError httpServletError) {
+		public final void setHttpError(HttpServletError httpServletError) {
 			CallbackRegistry.complete(this);
 			onHttpError(httpServletError);
 		}

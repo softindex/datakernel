@@ -79,7 +79,7 @@ public final class HttpRequest extends HttpMessage {
 	}
 
 	public HttpRequest withBody(byte[] array) {
-		setBody(ByteBuf.wrapForReading(array));
+		setBody(array);
 		return this;
 	}
 

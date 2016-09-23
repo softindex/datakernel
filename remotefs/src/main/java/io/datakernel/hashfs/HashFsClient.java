@@ -155,14 +155,14 @@ public final class HashFsClient extends FsClient<HashFsClient> {
 								if (msg instanceof ListOfFiles) {
 									ListOfFiles listOfFiles = (ListOfFiles) msg;
 									messaging.close();
-									callback.sendResult(listOfFiles.files);
+									callback.setResult(listOfFiles.files);
 								} else if (msg instanceof Err) {
 									RemoteFsException e = new RemoteFsException(((Err) msg).msg);
 									messaging.close();
-									callback.fireException(e);
+									callback.setException(e);
 								} else {
 									messaging.close();
-									callback.fireException(new RemoteFsException("Invalid message received: " + msg));
+									callback.setException(new RemoteFsException("Invalid message received: " + msg));
 								}
 							}
 
@@ -170,13 +170,13 @@ public final class HashFsClient extends FsClient<HashFsClient> {
 							public void onReceiveEndOfStream() {
 								logger.warn("received unexpected end of stream");
 								messaging.close();
-								callback.fireException(new RemoteFsException("Unexpected end of stream while trying to announce files"));
+								callback.setException(new RemoteFsException("Unexpected end of stream while trying to announce files"));
 							}
 
 							@Override
 							public void onException(Exception e) {
 								messaging.close();
-								callback.fireException(new RemoteFsException(e));
+								callback.setException(new RemoteFsException(e));
 							}
 						});
 					}
@@ -185,7 +185,7 @@ public final class HashFsClient extends FsClient<HashFsClient> {
 
 			@Override
 			public void onException(Exception e) {
-				callback.fireException(e);
+				callback.setException(e);
 			}
 		});
 	}
@@ -201,7 +201,7 @@ public final class HashFsClient extends FsClient<HashFsClient> {
 		doUpload(server.getAddress(), fileName, producer, new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				callback.complete();
+				callback.setComplete();
 			}
 
 			@Override
@@ -215,7 +215,7 @@ public final class HashFsClient extends FsClient<HashFsClient> {
 						}
 					});
 				} else {
-					callback.fireException(e);
+					callback.setException(e);
 				}
 			}
 		});
@@ -228,7 +228,7 @@ public final class HashFsClient extends FsClient<HashFsClient> {
 		doDownload(server.getAddress(), fileName, startPosition, new ResultCallback<StreamProducer<ByteBuf>>() {
 			@Override
 			public void onResult(StreamProducer<ByteBuf> result) {
-				callback.sendResult(result);
+				callback.setResult(result);
 			}
 
 			@Override
@@ -242,7 +242,7 @@ public final class HashFsClient extends FsClient<HashFsClient> {
 						}
 					});
 				} else {
-					callback.fireException(e);
+					callback.setException(e);
 				}
 			}
 		});
@@ -253,7 +253,7 @@ public final class HashFsClient extends FsClient<HashFsClient> {
 		doDelete(server.getAddress(), fileName, new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				callback.complete();
+				callback.setComplete();
 			}
 
 			@Override
@@ -267,7 +267,7 @@ public final class HashFsClient extends FsClient<HashFsClient> {
 						}
 					});
 				} else {
-					callback.fireException(e);
+					callback.setException(e);
 				}
 			}
 		});
@@ -281,7 +281,7 @@ public final class HashFsClient extends FsClient<HashFsClient> {
 				for (List<String> fileSet : results) {
 					files.addAll(fileSet);
 				}
-				callback.sendResult(new ArrayList<>(files));
+				callback.setResult(new ArrayList<>(files));
 			}
 		});
 		for (Replica server : servers) {
@@ -301,27 +301,27 @@ public final class HashFsClient extends FsClient<HashFsClient> {
 							public void onReceive(FsResponse msg) {
 								logger.trace("received {}", msg);
 								if (msg instanceof HashFsResponses.ListOfServers) {
-									callback.sendResult(((HashFsResponses.ListOfServers) msg).servers);
+									callback.setResult(((HashFsResponses.ListOfServers) msg).servers);
 									messaging.close();
 								} else if (msg instanceof Err) {
 									messaging.close();
-									callback.fireException(new RemoteFsException(((Err) msg).msg));
+									callback.setException(new RemoteFsException(((Err) msg).msg));
 								} else {
 									messaging.close();
-									callback.fireException(new RemoteFsException("Invalid message received: " + msg));
+									callback.setException(new RemoteFsException("Invalid message received: " + msg));
 								}
 							}
 
 							@Override
 							public void onReceiveEndOfStream() {
 								messaging.close();
-								callback.fireException(new RemoteFsException("Unexpected end of stream"));
+								callback.setException(new RemoteFsException("Unexpected end of stream"));
 							}
 
 							@Override
 							public void onException(Exception e) {
 								messaging.close();
-								callback.fireException(e);
+								callback.setException(e);
 							}
 						});
 					}
@@ -329,14 +329,14 @@ public final class HashFsClient extends FsClient<HashFsClient> {
 					@Override
 					public void onException(Exception e) {
 						messaging.close();
-						callback.fireException(e);
+						callback.setException(e);
 					}
 				});
 			}
 
 			@Override
 			public void onException(Exception e) {
-				callback.fireException(e);
+				callback.setException(e);
 			}
 		});
 	}
@@ -361,9 +361,9 @@ public final class HashFsClient extends FsClient<HashFsClient> {
 						}
 					});
 				} else if (servers.size() == 0 && currentAttempt >= maxRetryAttempts) {
-					callback.fireException(new Exception("Can't find working servers."));
+					callback.setException(new Exception("Can't find working servers."));
 				} else {
-					callback.sendResult(new ArrayList<>(servers));
+					callback.setResult(new ArrayList<>(servers));
 				}
 			}
 		});

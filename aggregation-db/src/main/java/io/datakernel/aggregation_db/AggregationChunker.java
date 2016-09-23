@@ -21,7 +21,7 @@ import io.datakernel.aggregation_db.util.AsyncResultsTracker.AsyncResultsTracker
 import io.datakernel.aggregation_db.util.BiPredicate;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.codegen.utils.DefiningClassLoader;
+import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamConsumerDecorator;
@@ -63,13 +63,13 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 			@Override
 			public void onResult(List<AggregationChunk.NewChunk> result) {
 				operationTracker.reportCompletion(AggregationChunker.this);
-				chunksCallback.sendResult(result);
+				chunksCallback.setResult(result);
 			}
 
 			@Override
 			public void onException(Exception e) {
 				operationTracker.reportCompletion(AggregationChunker.this);
-				chunksCallback.fireException(e);
+				chunksCallback.setException(e);
 			}
 		});
 		this.classLoader = classLoader;

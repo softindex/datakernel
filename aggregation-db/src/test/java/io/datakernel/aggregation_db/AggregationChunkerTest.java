@@ -23,7 +23,7 @@ import io.datakernel.aggregation_db.util.BiPredicate;
 import io.datakernel.aggregation_db.util.Predicates;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.codegen.utils.DefiningClassLoader;
+import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 import org.junit.Rule;

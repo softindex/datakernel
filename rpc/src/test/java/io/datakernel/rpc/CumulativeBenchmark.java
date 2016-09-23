@@ -35,7 +35,7 @@ import java.util.concurrent.Executors;
 
 import static io.datakernel.async.AsyncCallbacks.stopFuture;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
-import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamProtocol;
+import static io.datakernel.util.MemSize.kilobytes;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 public final class CumulativeBenchmark {
@@ -59,9 +59,8 @@ public final class CumulativeBenchmark {
 	private final Eventloop clientEventloop = Eventloop.create();
 
 	private final RpcServer server = RpcServer.create(serverEventloop)
-			.withMessageTypes(ValueMessage.class)
-			.withProtocol(streamProtocol(64 << 10, 64 << 10, true))
-			.withHandlerFor(ValueMessage.class, new RpcRequestHandler<ValueMessage, ValueMessage>() {
+			.withStreamProtocol(kilobytes(64), kilobytes(64), true)
+			.withHandler(ValueMessage.class, ValueMessage.class, new RpcRequestHandler<ValueMessage, ValueMessage>() {
 				private final ValueMessage currentSum = new ValueMessage(0);
 
 				@Override
@@ -71,14 +70,14 @@ public final class CumulativeBenchmark {
 					} else {
 						currentSum.value = 0;
 					}
-					callback.sendResult(currentSum);
+					callback.setResult(currentSum);
 				}
 			})
 			.withListenPort(SERVICE_PORT);
 
 	private final RpcClient client = RpcClient.create(clientEventloop)
 			.withMessageTypes(ValueMessage.class)
-			.withProtocol(streamProtocol(64 << 10, 64 << 10, true))
+			.withStreamProtocol(kilobytes(64), kilobytes(64), true)
 			.withStrategy(server(new InetSocketAddress(SERVICE_PORT)));
 
 	private final ValueMessage incrementMessage;
@@ -149,7 +148,7 @@ public final class CumulativeBenchmark {
 
 				@Override
 				public void onException(Exception exception) {
-					finishCallback.fireException(exception);
+					finishCallback.setException(exception);
 				}
 			};
 
@@ -177,7 +176,7 @@ public final class CumulativeBenchmark {
 
 	private void startBenchmarkRound(final int roundNumber, final CompletionCallback finishCallback) {
 		if (roundNumber == totalRounds) {
-			finishCallback.complete();
+			finishCallback.setComplete();
 			return;
 		}
 
@@ -205,7 +204,7 @@ public final class CumulativeBenchmark {
 
 			@Override
 			public void onException(Exception exception) {
-				finishCallback.fireException(exception);
+				finishCallback.setException(exception);
 			}
 		};
 
@@ -238,7 +237,7 @@ public final class CumulativeBenchmark {
 				private void tryCompete() {
 					int totalCompletion = success + errors;
 					if (totalCompletion == roundRequests)
-						completionCallback.complete();
+						completionCallback.setComplete();
 				}
 
 				@Override

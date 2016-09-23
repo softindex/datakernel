@@ -16,11 +16,11 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.AsyncGetterWithSetter;
+import io.datakernel.async.AsyncCallableWithSetter;
 import io.datakernel.eventloop.Eventloop;
 import org.junit.Test;
 
-import static io.datakernel.async.AsyncCallbacks.createAsyncGetterWithSetter;
+import static io.datakernel.async.AsyncCallbacks.createAsyncCallableWithSetter;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.StreamStatus.READY;
@@ -35,7 +35,7 @@ public class AsyncStreamsTest {
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
 
-		AsyncGetterWithSetter<StreamProducer<Integer>> producerSetter = createAsyncGetterWithSetter(eventloop);
+		AsyncCallableWithSetter<StreamProducer<Integer>> producerSetter = createAsyncCallableWithSetter(eventloop);
 
 		StreamProducer<Integer> producer = StreamProducers.asynchronouslyResolving(eventloop, producerSetter);
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
@@ -45,7 +45,7 @@ public class AsyncStreamsTest {
 		eventloop.run();
 		assertEquals(READY, consumer.getUpstream().getProducerStatus());
 
-		producerSetter.sendResult(source);
+		producerSetter.setResult(source);
 		eventloop.run();
 		assertEquals(asList(1, 2, 3), consumer.getList());
 		assertEquals(END_OF_STREAM, consumer.getUpstream().getProducerStatus());

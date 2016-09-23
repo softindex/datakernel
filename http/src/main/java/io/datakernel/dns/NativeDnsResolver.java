@@ -37,7 +37,7 @@ import java.util.List;
 
 import static io.datakernel.dns.DnsCache.DnsCacheQueryResult.*;
 import static io.datakernel.eventloop.Eventloop.createDatagramChannel;
-import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
+import static io.datakernel.http.HttpUtils.inetAddress;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
 
@@ -49,9 +49,9 @@ public final class NativeDnsResolver implements DnsClient, EventloopJmxMBean {
 
 	private static final int DNS_SERVER_PORT = 53;
 	private static final long ONE_MINUTE_MILLIS = 60 * 1000L;
-	public static final DatagramSocketSettings DEFAULT_DATAGRAM_SOCKET_SETTINGS = defaultDatagramSocketSettings();
-	public static final InetSocketAddress DEFAULT_DNS_SERVER_ADDRESS =
-			new InetSocketAddress(HttpUtils.inetAddress("8.8.8.8"), DNS_SERVER_PORT);
+	public static final DatagramSocketSettings DEFAULT_DATAGRAM_SOCKET_SETTINGS = DatagramSocketSettings.create();
+	public static final InetSocketAddress GOOGLE_PUBLIC_DNS = new InetSocketAddress(inetAddress("8.8.8.8"), DNS_SERVER_PORT);
+	public static final InetSocketAddress LOCAL_DNS = new InetSocketAddress(inetAddress("192.168.0.1"), DNS_SERVER_PORT);
 	public static final long DEFAULT_TIMEOUT = 3_000L;
 
 	private final Eventloop eventloop;
@@ -69,7 +69,7 @@ public final class NativeDnsResolver implements DnsClient, EventloopJmxMBean {
 	public static NativeDnsResolver create(Eventloop eventloop) {
 		DnsCache cache = DnsCache.create(eventloop, ONE_MINUTE_MILLIS, ONE_MINUTE_MILLIS);
 		return new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
-				DEFAULT_TIMEOUT, DEFAULT_DNS_SERVER_ADDRESS, cache);
+				DEFAULT_TIMEOUT, GOOGLE_PUBLIC_DNS, cache);
 	}
 
 	public NativeDnsResolver withDatagramSocketSetting(DatagramSocketSettings setting) {
@@ -147,7 +147,7 @@ public final class NativeDnsResolver implements DnsClient, EventloopJmxMBean {
 				checkArgument(domainName != null && !domainName.isEmpty(), "Domain name cannot be null or empty");
 
 				if (HttpUtils.isInetAddress(domainName)) {
-					callback.sendResult(new InetAddress[]{HttpUtils.inetAddress(domainName)});
+					callback.setResult(new InetAddress[]{inetAddress(domainName)});
 					return;
 				}
 
@@ -204,7 +204,7 @@ public final class NativeDnsResolver implements DnsClient, EventloopJmxMBean {
 		checkArgument(domainName != null && !domainName.isEmpty(), "Domain name cannot be null or empty");
 
 		if (HttpUtils.isInetAddress(domainName)) {
-			callback.sendResult(new InetAddress[]{HttpUtils.inetAddress(domainName)});
+			callback.setResult(new InetAddress[]{HttpUtils.inetAddress(domainName)});
 			return;
 		}
 
@@ -223,7 +223,7 @@ public final class NativeDnsResolver implements DnsClient, EventloopJmxMBean {
 			@Override
 			protected void onResult(DnsQueryResult result) {
 				if (callback != null && !resolvedFromCache) {
-					callback.sendResult(result.getIps());
+					callback.setResult(result.getIps());
 				}
 				cache.add(result);
 				closeConnectionIfDone();
@@ -236,7 +236,7 @@ public final class NativeDnsResolver implements DnsClient, EventloopJmxMBean {
 					cache.add(dnsException);
 				}
 				if (callback != null && !resolvedFromCache) {
-					callback.fireException(exception);
+					callback.setException(exception);
 				}
 				closeConnectionIfDone();
 			}

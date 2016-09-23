@@ -78,7 +78,7 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 	private int maxChunkHeaderChars;
 	protected final char[] headerChars;
 
-	long poolTimestamp;
+	long keepAliveTimestamp;
 	final ExposedLinkedList.Node<AbstractHttpConnection> poolNode = new ExposedLinkedList.Node<>(this);
 
 	/**
@@ -116,7 +116,7 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 	}
 
 	boolean isInPool() {
-		return poolTimestamp != 0;
+		return keepAliveTimestamp != 0;
 	}
 
 	protected void returnToPool() {

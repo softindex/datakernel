@@ -39,6 +39,6 @@ public abstract class ForwardingCompletionCallback extends CompletionCallback {
 	 */
 	@Override
 	protected void onException(Exception exception) {
-		callback.fireException(exception);
+		callback.setException(exception);
 	}
 }

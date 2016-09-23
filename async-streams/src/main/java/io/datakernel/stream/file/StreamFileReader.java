@@ -95,9 +95,9 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 			this.positionCallback = positionCallback;
 		} else {
 			if (getProducerStatus() == StreamStatus.END_OF_STREAM) {
-				positionCallback.sendResult(position);
+				positionCallback.setResult(position);
 			} else {
-				positionCallback.fireException(getProducerException());
+				positionCallback.setException(getProducerException());
 			}
 		}
 	}
@@ -136,7 +136,7 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 					sendEndOfStream();
 
 					if (positionCallback != null) {
-						positionCallback.sendResult(position);
+						positionCallback.setResult(position);
 					}
 
 					return;
@@ -159,7 +159,7 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 				closeWithError(e);
 
 				if (positionCallback != null) {
-					positionCallback.fireException(e);
+					positionCallback.setException(e);
 				}
 			}
 		});
@@ -212,13 +212,13 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 			@Override
 			protected void onComplete() {
 				logger.trace("{}: closed file", this);
-				callback.complete();
+				callback.setComplete();
 			}
 
 			@Override
 			protected void onException(Exception exception) {
 				logger.error("{}: failed to close file", this, exception);
-				callback.fireException(exception);
+				callback.setException(exception);
 			}
 		});
 	}

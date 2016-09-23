@@ -140,7 +140,7 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem {
 			});
 		} catch (RejectedExecutionException e) {
 			concurrentOperationTracker.complete();
-			callback.fireException(e);
+			callback.setException(e);
 		}
 	}
 

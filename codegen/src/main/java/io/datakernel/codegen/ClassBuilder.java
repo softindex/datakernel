@@ -16,7 +16,6 @@
 
 package io.datakernel.codegen;
 
-import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.codegen.utils.DefiningClassWriter;
 import io.datakernel.codegen.utils.Preconditions;
 import org.objectweb.asm.Type;

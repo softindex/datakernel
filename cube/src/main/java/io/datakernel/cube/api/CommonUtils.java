@@ -19,7 +19,7 @@ package io.datakernel.cube.api;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import io.datakernel.codegen.ClassBuilder;
-import io.datakernel.codegen.utils.DefiningClassLoader;
+import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.Cube;
 import io.datakernel.cube.CubeQuery;
 import io.datakernel.eventloop.Eventloop;

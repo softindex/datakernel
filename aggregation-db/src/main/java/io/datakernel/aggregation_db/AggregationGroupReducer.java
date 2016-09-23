@@ -21,7 +21,7 @@ import io.datakernel.aggregation_db.util.AsyncResultsTracker;
 import io.datakernel.aggregation_db.util.AsyncResultsTracker.AsyncResultsTrackerList;
 import io.datakernel.aggregation_db.util.BiPredicate;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.codegen.utils.DefiningClassLoader;
+import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamConsumer;
 import io.datakernel.stream.StreamDataReceiver;
@@ -76,13 +76,13 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 			@Override
 			public void onResult(List<AggregationChunk.NewChunk> result) {
 				operationTracker.reportCompletion(AggregationGroupReducer.this);
-				chunksCallback.sendResult(result);
+				chunksCallback.setResult(result);
 			}
 
 			@Override
 			public void onException(Exception e) {
 				operationTracker.reportCompletion(AggregationGroupReducer.this);
-				chunksCallback.fireException(e);
+				chunksCallback.setException(e);
 			}
 		});
 		this.classLoader = classLoader;

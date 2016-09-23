@@ -95,7 +95,7 @@ public final class CubeConsolidatorService implements EventloopService {
 
 	@Override
 	public void start(final CompletionCallback callback) {
-		callback.complete();
+		callback.setComplete();
 		consolidate();
 	}
 
@@ -105,6 +105,6 @@ public final class CubeConsolidatorService implements EventloopService {
 			consolidationTask.cancel();
 		}
 
-		callback.complete();
+		callback.setComplete();
 	}
 }

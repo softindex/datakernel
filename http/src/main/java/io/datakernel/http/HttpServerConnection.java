@@ -21,8 +21,6 @@ import io.datakernel.eventloop.AsyncSslSocket;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.util.Arrays;
@@ -38,7 +36,6 @@ import static io.datakernel.http.HttpMethod.*;
  * It represents server connection. It can receive requests from clients and respond to them with async servlet.
  */
 final class HttpServerConnection extends AbstractHttpConnection {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	private static final byte[] INTERNAL_ERROR_MESSAGE = encodeAscii("Failed to process request");
 	private static final HttpHeaders.Value CONNECTION_KEEP_ALIVE = HttpHeaders.asBytes(CONNECTION, "keep-alive");
 
@@ -303,7 +300,6 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	}
 
 	private HttpResponse formatException(HttpServletError e) {
-		logger.error("Error processing http request", e);
 		ByteBuf message = ByteBuf.wrapForReading(INTERNAL_ERROR_MESSAGE);
 		return HttpResponse.ofCode(e.getCode()).withNoCache().withBody(message);
 	}
@@ -319,7 +315,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	@Override
 	protected void returnToPool() {
 		super.returnToPool();
-		server.addToPool(this);
+		server.returnToPool(this);
 	}
 
 	@Override

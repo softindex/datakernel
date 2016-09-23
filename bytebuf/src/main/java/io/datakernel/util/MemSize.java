@@ -19,8 +19,6 @@ package io.datakernel.util;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static io.datakernel.util.Preconditions.checkArgument;
-
 public final class MemSize {
 	public static final long KB = 1024;
 	public static final long MB = 1024 * KB;
@@ -32,16 +30,34 @@ public final class MemSize {
 	private final long bytes;
 
 	private MemSize(long bytes) {
-		checkArgument(bytes >= 0, "Bytes must be positive or zero");
 		this.bytes = bytes;
 	}
 
 	public static MemSize of(long bytes) {
-		checkArgument(bytes >= 0, "Bytes must be positive or zero");
 		return new MemSize(bytes);
 	}
 
-	public long getBytes() {
+	public static MemSize bytes(long bytes) {
+		return MemSize.of(bytes);
+	}
+
+	public static MemSize kilobytes(long kilobytes) {
+		return of(kilobytes * KB);
+	}
+
+	public static MemSize megabytes(long megabytes) {
+		return of(megabytes * MB);
+	}
+
+	public static MemSize gigabytes(long gigabytes) {
+		return of(gigabytes * GB);
+	}
+
+	public static MemSize terabytes(long terabytes) {
+		return of(terabytes * TB);
+	}
+
+	public long get() {
 		return bytes;
 	}
 
@@ -81,7 +97,7 @@ public final class MemSize {
 	}
 
 	public String format() {
-		long bytes = getBytes();
+		long bytes = get();
 		if (bytes == 0) {
 			return "0b";
 		}

@@ -17,7 +17,7 @@
 package io.datakernel.aggregation_db;
 
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.codegen.utils.DefiningClassLoader;
+import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.stream.StreamProducer;
 
 import java.util.List;

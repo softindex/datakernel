@@ -42,7 +42,7 @@ public final class CompletionCallbackWithTimeout extends CompletionCallback impl
 		timeouter = eventloop.schedule(eventloop.currentTimeMillis() + timeoutMillis, new Runnable() {
 			@Override
 			public void run() {
-				callback.fireException(TIMEOUT_EXCEPTION);
+				callback.setException(TIMEOUT_EXCEPTION);
 			}
 		});
 	}
@@ -52,7 +52,7 @@ public final class CompletionCallbackWithTimeout extends CompletionCallback impl
 	@Override
 	protected void onComplete() {
 		if (!timeouter.isCancelled() && !timeouter.isComplete()) {
-			callback.complete();
+			callback.setComplete();
 			timeouter.cancel();
 		}
 	}
@@ -60,7 +60,7 @@ public final class CompletionCallbackWithTimeout extends CompletionCallback impl
 	@Override
 	protected void onException(Exception exception) {
 		if (!timeouter.isCancelled() && !timeouter.isComplete()) {
-			callback.fireException(exception);
+			callback.setException(exception);
 			timeouter.cancel();
 		}
 	}

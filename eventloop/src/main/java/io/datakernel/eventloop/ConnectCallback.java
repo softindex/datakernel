@@ -32,7 +32,7 @@ public abstract class ConnectCallback extends ExceptionCallback {
 	 *
 	 * @param socketChannel socketChannel for creating new connection.
 	 */
-	public final void reportConnect(SocketChannel socketChannel) {
+	public final void setConnect(SocketChannel socketChannel) {
 		CallbackRegistry.complete(this);
 		onConnect(socketChannel);
 	}

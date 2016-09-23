@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.bytebuf;
+package io.datakernel.util;
 
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicReference;
@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * @param <E>
  */
-final class ConcurrentStack<E> implements Iterable<E> {
+public final class ConcurrentStack<E> implements Iterable<E> {
 
 	private static class Node<E> {
 		private final E item;

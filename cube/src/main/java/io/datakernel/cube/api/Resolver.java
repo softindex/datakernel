@@ -19,7 +19,7 @@ package io.datakernel.cube.api;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ListMultimap;
 import io.datakernel.aggregation_db.PrimaryKey;
-import io.datakernel.codegen.utils.DefiningClassLoader;
+import io.datakernel.codegen.DefiningClassLoader;
 
 import java.util.ArrayList;
 import java.util.List;

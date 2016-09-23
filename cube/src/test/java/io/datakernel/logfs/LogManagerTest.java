@@ -17,7 +17,7 @@
 package io.datakernel.logfs;
 
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.codegen.utils.DefiningClassLoader;
+import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;

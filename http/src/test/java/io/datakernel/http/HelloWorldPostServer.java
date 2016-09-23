@@ -31,7 +31,7 @@ public final class HelloWorldPostServer {
 			public void serveAsync(HttpRequest request, Callback callback) {
 				String s = HELLO_WORLD + decodeAscii(request.getBody());
 				HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(s));
-				callback.sendResult(content);
+				callback.setResponse(content);
 			}
 		};
 

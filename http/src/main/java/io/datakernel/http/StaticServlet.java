@@ -85,7 +85,7 @@ public abstract class StaticServlet implements AsyncHttpServlet {
 				if (buf == null)
 					callback.onHttpError(new HttpServletError(404, finalPath));
 				else
-					callback.sendResult(createHttpResponse(buf, finalPath));
+					callback.setResponse(createHttpResponse(buf, finalPath));
 			}
 
 			@Override

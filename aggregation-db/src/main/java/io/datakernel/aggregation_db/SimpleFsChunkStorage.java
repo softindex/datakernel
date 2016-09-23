@@ -20,7 +20,7 @@ import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.codegen.utils.DefiningClassLoader;
+import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.simplefs.SimpleFsClient;
@@ -91,13 +91,13 @@ public class SimpleFsChunkStorage implements AggregationChunkStorage {
 		client.upload(path(id), compressor.getOutput(), new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				callback.complete();
+				callback.setComplete();
 			}
 
 			@Override
 			public void onException(Exception e) {
 				client.delete(path(id), AsyncCallbacks.ignoreCompletionCallback());
-				callback.fireException(e);
+				callback.setException(e);
 			}
 		});
 	}

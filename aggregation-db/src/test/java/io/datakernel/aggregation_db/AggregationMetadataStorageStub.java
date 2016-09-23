@@ -32,7 +32,7 @@ public class AggregationMetadataStorageStub implements AggregationMetadataStorag
 
 	@Override
 	public void createChunkId(ResultCallback<Long> callback) {
-		callback.sendResult(++chunkId);
+		callback.setResult(++chunkId);
 	}
 
 	public long newChunkId() {
@@ -42,17 +42,17 @@ public class AggregationMetadataStorageStub implements AggregationMetadataStorag
 	@Override
 	public void saveChunks(List<AggregationChunk.NewChunk> newChunks, CompletionCallback callback) {
 		this.tmpChunks = newChunks;
-		callback.complete();
+		callback.setComplete();
 	}
 
 	@Override
 	public void startConsolidation(List<AggregationChunk> chunksToConsolidate, CompletionCallback callback) {
-		callback.complete();
+		callback.setComplete();
 	}
 
 	@Override
 	public void loadChunks(final int lastRevisionId, ResultCallback<LoadedChunks> callback) {
-		callback.sendResult(new LoadedChunks(lastRevisionId + 1, Collections.<Long>emptyList(),
+		callback.setResult(new LoadedChunks(lastRevisionId + 1, Collections.<Long>emptyList(),
 				Collections2.transform(tmpChunks, new Function<AggregationChunk.NewChunk, AggregationChunk>() {
 					@Override
 					public AggregationChunk apply(AggregationChunk.NewChunk input) {
@@ -63,7 +63,7 @@ public class AggregationMetadataStorageStub implements AggregationMetadataStorag
 
 	@Override
 	public void saveConsolidatedChunks(List<AggregationChunk> originalChunks, List<AggregationChunk.NewChunk> consolidatedChunks, CompletionCallback callback) {
-		callback.complete();
+		callback.setComplete();
 	}
 
 }

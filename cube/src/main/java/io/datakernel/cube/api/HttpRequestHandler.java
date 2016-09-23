@@ -20,7 +20,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonParseException;
 import io.datakernel.aggregation_db.api.QueryException;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.codegen.utils.DefiningClassLoader;
+import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.Cube;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
@@ -68,21 +68,21 @@ public final class HttpRequestHandler implements RequestHandler {
 					HttpResponse httpResponse = httpResultProcessor.apply(result);
 					logger.info("Processed request {} ({}) [totalTime={}, jsonConstruction={}]", httpRequest,
 							reportingQuery, totalTimeStopwatch, resultProcessingStopwatch);
-					resultCallback.sendResult(httpResponse);
+					resultCallback.setResponse(httpResponse);
 				}
 
 				@Override
 				protected void onException(Exception e) {
 					logger.error("Executing query {} failed.", reportingQuery, e);
-					resultCallback.sendHttpError(new HttpServletError(500, e));
+					resultCallback.setHttpError(new HttpServletError(500, e));
 				}
 			});
 		} catch (QueryException e) {
 			logger.info("Request {} could not be processed because of error", httpRequest, e);
-			resultCallback.sendResult(badRequest400().withBody(wrapUtf8(e.getMessage())));
+			resultCallback.setResponse(badRequest400().withBody(wrapUtf8(e.getMessage())));
 		} catch (JsonParseException e) {
 			logger.info("Failed to parse JSON in request {}", httpRequest, e);
-			resultCallback.sendResult(badRequest400().withBody(wrapUtf8("Failed to parse JSON")));
+			resultCallback.setResponse(badRequest400().withBody(wrapUtf8("Failed to parse JSON")));
 		}
 	}
 }

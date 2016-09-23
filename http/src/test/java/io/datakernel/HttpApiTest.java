@@ -75,7 +75,7 @@ public class HttpApiTest {
 			public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
 				testRequest(request);
 				HttpResponse response = createResponse();
-				callback.sendResult(response);
+				callback.setResponse(response);
 			}
 		};
 

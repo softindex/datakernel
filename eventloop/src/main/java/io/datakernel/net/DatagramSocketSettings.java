@@ -16,6 +16,8 @@
 
 package io.datakernel.net;
 
+import io.datakernel.util.MemSize;
+
 import java.io.IOException;
 import java.nio.channels.DatagramChannel;
 
@@ -26,12 +28,6 @@ import static java.net.StandardSocketOptions.*;
  * This class used to change settings for socket. It will be applying with creating new socket
  */
 public final class DatagramSocketSettings {
-	private static final DatagramSocketSettings defaultSocketSettings = create();
-
-	public static DatagramSocketSettings defaultDatagramSocketSettings() {
-		return defaultSocketSettings;
-	}
-
 	protected static final int DEF_INT = -1;
 	protected static final byte DEF_BOOL = -1;
 	protected static final byte TRUE = 1;
@@ -59,8 +55,16 @@ public final class DatagramSocketSettings {
 		return new DatagramSocketSettings(receiveBufferSize, sendBufferSize, reuseAddress, broadcast);
 	}
 
+	public DatagramSocketSettings withReceiveBufferSize(MemSize receiveBufferSize) {
+		return withReceiveBufferSize((int) receiveBufferSize.get());
+	}
+
 	public DatagramSocketSettings withSendBufferSize(int sendBufferSize) {
 		return new DatagramSocketSettings(receiveBufferSize, sendBufferSize, reuseAddress, broadcast);
+	}
+
+	public DatagramSocketSettings withSendBufferSize(MemSize sendBufferSize) {
+		return withSendBufferSize((int) sendBufferSize.get());
 	}
 
 	public DatagramSocketSettings withReuseAddress(boolean reuseAddress) {

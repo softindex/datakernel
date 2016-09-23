@@ -82,6 +82,10 @@ public final class PropertiesConfigModule extends AbstractModule {
 		return this;
 	}
 
+	public PropertiesConfigModule saveResultingConfigTo(String file) {
+		return saveResultingConfigTo(new File(file));
+	}
+
 	private class ConfigSaveService implements BlockingService {
 		@Override
 		public void start() throws Exception {

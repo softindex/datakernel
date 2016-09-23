@@ -180,12 +180,12 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 			private void zeroActiveWriters() {
 				if (getConsumerStatus() == StreamStatus.END_OF_STREAM) {
 					if (callback != null) {
-						callback.complete();
+						callback.setComplete();
 						callback = null;
 					}
 				} else if (error != null) {
 					if (callback != null) {
-						callback.fireException(getConsumerException());
+						callback.setException(getConsumerException());
 						callback = null;
 					}
 				} else {

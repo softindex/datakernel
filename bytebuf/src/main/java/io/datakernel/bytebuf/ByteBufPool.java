@@ -16,6 +16,8 @@
 
 package io.datakernel.bytebuf;
 
+import io.datakernel.util.ConcurrentStack;
+
 import java.util.ArrayList;
 import java.util.List;
 

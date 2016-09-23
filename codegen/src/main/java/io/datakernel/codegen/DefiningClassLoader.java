@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.codegen.utils;
+package io.datakernel.codegen;
 
 import io.datakernel.codegen.ClassBuilder.AsmClassKey;
 

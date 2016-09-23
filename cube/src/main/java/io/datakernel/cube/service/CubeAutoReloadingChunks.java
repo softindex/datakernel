@@ -83,13 +83,13 @@ public final class CubeAutoReloadingChunks implements EventloopService {
 		cube.loadChunks(new CompletionCallback() {
 			@Override
 			protected void onComplete() {
-				callback.complete();
+				callback.setComplete();
 				scheduleChunksRefresh();
 			}
 
 			@Override
 			protected void onException(Exception e) {
-				callback.fireException(e);
+				callback.setException(e);
 			}
 		});
 	}
@@ -99,6 +99,6 @@ public final class CubeAutoReloadingChunks implements EventloopService {
 		if (scheduledRefreshChunksTask != null)
 			scheduledRefreshChunksTask.cancel();
 
-		callback.complete();
+		callback.setComplete();
 	}
 }

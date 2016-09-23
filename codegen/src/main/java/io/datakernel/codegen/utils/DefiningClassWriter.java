@@ -16,6 +16,7 @@
 
 package io.datakernel.codegen.utils;
 
+import io.datakernel.codegen.DefiningClassLoader;
 import org.objectweb.asm.ClassWriter;
 
 public final class DefiningClassWriter extends ClassWriter {

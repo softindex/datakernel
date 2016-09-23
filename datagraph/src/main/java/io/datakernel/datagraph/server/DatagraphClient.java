@@ -44,7 +44,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import static io.datakernel.net.SocketSettings.defaultSocketSettings;
 import static io.datakernel.stream.net.MessagingSerializers.ofGson;
 
 /**
@@ -58,7 +57,7 @@ public final class DatagraphClient {
 	private final DatagraphSerialization serialization;
 	private final MessagingSerializer<DatagraphResponse, DatagraphCommand> serializer;
 
-	private SocketSettings socketSettings = defaultSocketSettings();
+	private SocketSettings socketSettings = SocketSettings.create();
 
 	/**
 	 * Constructs a datagraph client that runs in a given event loop and uses the specified DatagraphSerialization object for various serialization purposes.
@@ -100,13 +99,13 @@ public final class DatagraphClient {
 						@Override
 						public void onComplete() {
 							messaging.close();
-							callback.complete();
+							callback.setComplete();
 						}
 
 						@Override
 						public void onException(Exception e) {
 							messaging.close();
-							callback.fireException(e);
+							callback.setException(e);
 						}
 					});
 				}
@@ -114,7 +113,7 @@ public final class DatagraphClient {
 				@Override
 				public void onException(Exception e) {
 					messaging.close();
-					callback.fireException(e);
+					callback.setException(e);
 				}
 			});
 			asyncTcpSocket.setEventHandler(messaging);
@@ -123,7 +122,7 @@ public final class DatagraphClient {
 
 		@Override
 		public void onException(Exception e) {
-			callback.fireException(e);
+			callback.setException(e);
 		}
 	}
 
@@ -150,7 +149,7 @@ public final class DatagraphClient {
 				@Override
 				public void onException(Exception e) {
 					messaging.close();
-					callback.fireException(e);
+					callback.setException(e);
 				}
 			});
 			asyncTcpSocket.setEventHandler(messaging);
@@ -159,7 +158,7 @@ public final class DatagraphClient {
 
 		@Override
 		public void onException(Exception e) {
-			callback.fireException(e);
+			callback.setException(e);
 		}
 	}
 

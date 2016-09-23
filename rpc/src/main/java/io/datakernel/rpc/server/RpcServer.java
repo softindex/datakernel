@@ -27,6 +27,7 @@ import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.protocol.RpcProtocolFactory;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,12 +38,13 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamProtocol;
+import static java.lang.ClassLoader.getSystemClassLoader;
 import static java.util.Arrays.asList;
 
 public final class RpcServer extends AbstractServer<RpcServer> {
 	private final Logger logger;
 	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS
-			= ServerSocketSettings.create().withBacklog(16384);
+			= ServerSocketSettings.create(16384);
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create().withTcpNoDelay(true);
 
 	private final Map<Class<?>, RpcRequestHandler<?, ?>> handlers;
@@ -108,7 +110,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	public static RpcServer create(Eventloop eventloop) {
 		HashMap<Class<?>, RpcRequestHandler<?, ?>> requestHandlers = new HashMap<>();
 		RpcProtocolFactory protocolFactory = streamProtocol();
-		SerializerBuilder serializerBuilder = SerializerBuilder.create(ClassLoader.getSystemClassLoader());
+		SerializerBuilder serializerBuilder = SerializerBuilder.create(getSystemClassLoader());
 		Set<Class<?>> messageTypes = new LinkedHashSet<>();
 		Logger logger = LoggerFactory.getLogger(RpcServer.class);
 
@@ -138,8 +140,20 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		return new RpcServer(this, handlers, protocolFactory, serializerBuilder, messageTypes, logger);
 	}
 
+	public RpcServer withStreamProtocol(int defaultPacketSize, int maxPacketSize, boolean compression) {
+		return withProtocol(streamProtocol(defaultPacketSize, maxPacketSize, compression));
+	}
+
+	public RpcServer withStreamProtocol(MemSize defaultPacketSize, MemSize maxPacketSize, boolean compression) {
+		return withProtocol(streamProtocol(defaultPacketSize, maxPacketSize, compression));
+	}
+
 	@SuppressWarnings("unchecked")
-	public <I> RpcServer withHandlerFor(Class<I> requestClass, RpcRequestHandler<I, ?> handler) {
+	public <I, O> RpcServer withHandler(Class<I> requestClass, Class<O> responseClass, RpcRequestHandler<I, O> handler) {
+		if (!messageTypes.contains(requestClass))
+			messageTypes.add(requestClass);
+		if (!messageTypes.contains(responseClass))
+			messageTypes.add(responseClass);
 		handlers.put(requestClass, handler);
 		return this;
 	}
@@ -158,8 +172,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 
 	private BufferSerializer<RpcMessage> getSerializer() {
 		if (serializer == null) {
-			serializerBuilder.addExtraSubclasses("extraRpcMessageData", messageTypes);
-			serializer = serializerBuilder.build(RpcMessage.class);
+			serializer = serializerBuilder.withExtraSubclasses(RpcMessage.MESSAGE_TYPES, messageTypes).build(RpcMessage.class);
 		}
 		return serializer;
 	}

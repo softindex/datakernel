@@ -204,13 +204,13 @@ public final class AsyncFile {
 					@Override
 					public void onResult(ByteBuf buf) {
 						file.close(ignoreCompletionCallback());
-						callback.sendResult(buf);
+						callback.setResult(buf);
 					}
 
 					@Override
 					public void onException(Exception e) {
 						file.close(ignoreCompletionCallback());
-						callback.fireException(e);
+						callback.setException(e);
 					}
 				});
 			}
@@ -235,13 +235,13 @@ public final class AsyncFile {
 					@Override
 					public void onComplete() {
 						buf.recycle();
-						callback.complete();
+						callback.setComplete();
 					}
 
 					@Override
 					public void onException(Exception exception) {
 						buf.recycle();
-						callback.fireException(exception);
+						callback.setException(exception);
 					}
 				});
 			}
@@ -267,7 +267,7 @@ public final class AsyncFile {
 					@Override
 					public void run() {
 						tracker.complete();
-						callback.sendResult(result);
+						callback.setResult(result);
 					}
 				});
 			}
@@ -278,7 +278,7 @@ public final class AsyncFile {
 					@Override
 					public void run() {
 						tracker.complete();
-						callback.fireException(exc instanceof Exception ? (Exception) exc : new Exception(exc));
+						callback.setException(exc instanceof Exception ? (Exception) exc : new Exception(exc));
 					}
 				});
 			}
@@ -303,7 +303,7 @@ public final class AsyncFile {
 					@Override
 					public void run() {
 						tracker.complete();
-						callback.sendResult(result);
+						callback.setResult(result);
 					}
 				});
 			}
@@ -314,7 +314,7 @@ public final class AsyncFile {
 					@Override
 					public void run() {
 						tracker.complete();
-						callback.fireException(exc instanceof Exception ? (Exception) exc : new Exception(exc));
+						callback.setException(exc instanceof Exception ? (Exception) exc : new Exception(exc));
 					}
 				});
 			}
@@ -333,7 +333,7 @@ public final class AsyncFile {
 						@Override
 						public void run() {
 							tracker.complete();
-							callback.complete();
+							callback.setComplete();
 						}
 					});
 				} else {
@@ -351,7 +351,7 @@ public final class AsyncFile {
 					@Override
 					public void run() {
 						tracker.complete();
-						callback.fireException(exc instanceof Exception ? (Exception) exc : new Exception(exc));
+						callback.setException(exc instanceof Exception ? (Exception) exc : new Exception(exc));
 					}
 				});
 			}
@@ -391,7 +391,7 @@ public final class AsyncFile {
 						@Override
 						public void run() {
 							tracker.complete();
-							callback.complete();
+							callback.setComplete();
 						}
 					});
 				} else {
@@ -409,7 +409,7 @@ public final class AsyncFile {
 					@Override
 					public void run() {
 						tracker.complete();
-						callback.fireException(exc instanceof Exception ? (Exception) exc : new Exception(exc));
+						callback.setException(exc instanceof Exception ? (Exception) exc : new Exception(exc));
 					}
 				});
 			}
@@ -430,7 +430,7 @@ public final class AsyncFile {
 		try {
 			size = channel.size();
 		} catch (IOException e) {
-			callback.fireException(e);
+			callback.setException(e);
 			return AsyncCallbacks.notCancellable();
 		}
 
@@ -456,7 +456,7 @@ public final class AsyncFile {
 		try {
 			size = channel.size();
 		} catch (IOException e) {
-			callback.fireException(e);
+			callback.setException(e);
 			return;
 		}
 
@@ -464,13 +464,13 @@ public final class AsyncFile {
 		readFully(buf, 0, new ForwardingCompletionCallback(callback) {
 			@Override
 			public void onComplete() {
-				callback.sendResult(buf);
+				callback.setResult(buf);
 			}
 
 			@Override
 			public void onException(Exception e) {
 				buf.recycle();
-				callback.fireException(e);
+				callback.setException(e);
 			}
 		});
 	}

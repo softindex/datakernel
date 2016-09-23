@@ -84,12 +84,12 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	public void setFlushCallback(CompletionCallback flushCallback) {
 		if (queue.isEmpty() && !pendingAsyncOperation) {
 			if (getConsumerStatus() == END_OF_STREAM) {
-				flushCallback.complete();
+				flushCallback.setComplete();
 				return;
 			}
 
 			if (getConsumerStatus() == CLOSED_WITH_ERROR) {
-				flushCallback.fireException(getConsumerException());
+				flushCallback.setException(getConsumerException());
 				return;
 			}
 		}
@@ -157,7 +157,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 					pendingAsyncOperation = false;
 					logger.info("{}: finished writing", StreamFileWriter.this);
 					if (flushCallback != null) {
-						flushCallback.complete();
+						flushCallback.setComplete();
 					}
 				}
 
@@ -212,7 +212,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 			protected void onCompleteOrException() {
 				pendingAsyncOperation = false;
 				if (flushCallback != null)
-					flushCallback.fireException(e);
+					flushCallback.setException(e);
 			}
 		});
 	}

@@ -27,8 +27,8 @@ import io.datakernel.aggregation_db.util.BiPredicate;
 import io.datakernel.aggregation_db.util.Predicates;
 import io.datakernel.async.*;
 import io.datakernel.codegen.ClassBuilder;
+import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.PredicateDefAnd;
-import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.ErrorIgnoringTransformer;
@@ -554,7 +554,7 @@ public class Aggregation implements AggregationOperationTracker {
 				new AsyncFunction<AggregationChunk, StreamProducer<Object>>() {
 					@Override
 					public void apply(AggregationChunk chunk, ResultCallback<StreamProducer<Object>> producerCallback) {
-						producerCallback.sendResult(chunkReaderWithFilter(predicates, chunk, sequenceClass, classLoader));
+						producerCallback.setResult(chunkReaderWithFilter(predicates, chunk, sequenceClass, classLoader));
 					}
 				});
 		return StreamProducers.concat(eventloop, producerAsyncIterator);
@@ -655,7 +655,7 @@ public class Aggregation implements AggregationOperationTracker {
 			public void onException(Exception e) {
 				logger.error("Loading chunks for aggregation '{}' before starting min key consolidation failed",
 						Aggregation.this, e);
-				callback.fireException(e);
+				callback.setException(e);
 			}
 		});
 	}
@@ -672,7 +672,7 @@ public class Aggregation implements AggregationOperationTracker {
 			public void onException(Exception e) {
 				logger.error("Loading chunks for aggregation '{}' before starting consolidation of hot segment failed",
 						Aggregation.this, e);
-				callback.fireException(e);
+				callback.setException(e);
 			}
 		});
 	}
@@ -680,7 +680,7 @@ public class Aggregation implements AggregationOperationTracker {
 	private void consolidate(final List<AggregationChunk> chunks, final ResultCallback<Boolean> callback) {
 		if (chunks.isEmpty()) {
 			logger.info("Nothing to consolidate in aggregation '{}", this);
-			callback.sendResult(false);
+			callback.setResult(false);
 			return;
 		}
 
@@ -700,12 +700,12 @@ public class Aggregation implements AggregationOperationTracker {
 												"in aggregation '{}': [{}]. Created chunks ({}): [{}]",
 										chunks.size(), aggregationMetadata, getChunkIds(chunks),
 										consolidatedChunks.size(), getNewChunkIds(consolidatedChunks));
-								callback.sendResult(true);
+								callback.setResult(true);
 							}
 
 							@Override
 							public void onException(Exception e) {
-								callback.fireException(e);
+								callback.setException(e);
 							}
 						});
 					}
@@ -750,7 +750,7 @@ public class Aggregation implements AggregationOperationTracker {
 				loadChunks(loadedChunks, incremental);
 				CompletionCallback currentCallback = loadChunksCallback;
 				loadChunksCallback = null;
-				currentCallback.complete();
+				currentCallback.setComplete();
 			}
 
 			@Override
@@ -758,7 +758,7 @@ public class Aggregation implements AggregationOperationTracker {
 				logger.error("Loading chunks for aggregation {} failed", this, exception);
 				CompletionCallback currentCallback = loadChunksCallback;
 				loadChunksCallback = null;
-				currentCallback.fireException(exception);
+				currentCallback.setException(exception);
 			}
 		});
 	}

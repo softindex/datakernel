@@ -16,7 +16,6 @@
 
 package io.datakernel.codegen;
 
-import io.datakernel.codegen.utils.DefiningClassLoader;
 import org.junit.Rule;
 import org.junit.rules.TemporaryFolder;
 

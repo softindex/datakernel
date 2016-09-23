@@ -43,8 +43,8 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	private HttpResponse response;
 	private final AsyncHttpClient httpClient;
 
-	ExposedLinkedList<HttpClientConnection> addressPool;
-	final ExposedLinkedList.Node<HttpClientConnection> addressNode = new ExposedLinkedList.Node<>(this);
+	ExposedLinkedList<HttpClientConnection> keepAlivePoolByAddress;
+	final ExposedLinkedList.Node<HttpClientConnection> keepAlivePoolByAddressNode = new ExposedLinkedList.Node<>(this);
 
 	// jmx
 	private String lastRequestUrl;
@@ -73,7 +73,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 			ResultCallback<HttpResponse> callback = this.callback;
 			this.callback = null;
 			onClosed();
-			callback.fireException(e);
+			callback.setException(e);
 		} else {
 			onClosed();
 		}
@@ -134,7 +134,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		this.response = null;
 		this.callback = null;
 		// important: process callback before returnToPool!
-		callback.sendResult(response);
+		callback.setResult(response);
 
 		// jmx
 		boolean isHttpsConnection = asyncTcpSocket.getClass() == AsyncSslSocket.class;
@@ -239,7 +239,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	@Override
 	protected final void returnToPool() {
 		super.returnToPool();
-		httpClient.addToPool(this);
+		httpClient.returnToPool(this);
 	}
 
 	@Override
@@ -275,8 +275,8 @@ final class HttpClientConnection extends AbstractHttpConnection {
 				", cancellable=" + cancellable +
 				", response=" + response +
 				", httpClient=" + httpClient +
-				", addressPool=" + addressPool +
-				", addressNode=" + addressNode +
+				", keepAlivePoolByAddress=" + keepAlivePoolByAddress +
+				", keepAlivePoolByAddressNode=" + keepAlivePoolByAddressNode +
 				", lastRequestUrl='" + lastRequestUrl + '\'' +
 				", remoteAddress=" + remoteAddress +
 				", readQueue=" + readQueue +
@@ -286,7 +286,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 				", reading=" + reading +
 				", shouldGzip=" + shouldGzip +
 				", contentLength=" + contentLength +
-				", poolTimestamp=" + poolTimestamp +
+				", poolTimestamp=" + keepAliveTimestamp +
 				", poolNode=" + poolNode +
 				'}';
 	}

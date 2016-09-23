@@ -26,6 +26,7 @@ import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxReducers;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
+import io.datakernel.util.MemSize;
 
 import javax.net.ssl.SSLContext;
 import java.net.InetAddress;
@@ -38,12 +39,12 @@ import static io.datakernel.jmx.MBeanFormat.formatDuration;
 
 public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private static final long CHECK_PERIOD = 1000L;
-	private static final long DEFAULT_MAX_IDLE_CONNECTION_TIME = 30 * 1000L;
+	private static final long DEFAULT_KEEP_ALIVE_MILLIS = 30 * 1000L;
 
 	private final AsyncHttpServlet servlet;
 	private final int maxHttpMessageSize;
-	private final long maxIdleConnectionTime;
-	private final ExposedLinkedList<AbstractHttpConnection> pool;
+	private final long keepAliveTimeMillis;
+	private final ExposedLinkedList<AbstractHttpConnection> keepAlivePool;
 	private final char[] headerChars;
 
 	private AsyncCancellable expiredConnectionsCheck;
@@ -72,30 +73,30 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		super(eventloop, serverSocketSettings, socketSettings, acceptOnce, listenAddresses,
 				range, bannedAddresses, sslContext, sslExecutor, sslListenAddresses);
 		this.servlet = prevInstance.servlet;
-		this.maxIdleConnectionTime = prevInstance.maxIdleConnectionTime;
+		this.keepAliveTimeMillis = prevInstance.keepAliveTimeMillis;
 		this.maxHttpMessageSize = prevInstance.maxHttpMessageSize;
-		this.pool = prevInstance.pool;
+		this.keepAlivePool = prevInstance.keepAlivePool;
 		this.headerChars = prevInstance.headerChars;
 	}
 
 	private AsyncHttpServer(AsyncHttpServer previousInstance, AsyncHttpServlet servlet,
-	                        long maxIdleConnectionTime, int maxHttpMessageSize,
-	                        ExposedLinkedList<AbstractHttpConnection> pool, char[] headerChars) {
+	                        long keepAliveTimeMillis, int maxHttpMessageSize,
+	                        ExposedLinkedList<AbstractHttpConnection> keepAlivePool, char[] headerChars) {
 		super(previousInstance);
 		this.servlet = servlet;
-		this.pool = pool;
-		this.maxIdleConnectionTime = maxIdleConnectionTime;
+		this.keepAlivePool = keepAlivePool;
+		this.keepAliveTimeMillis = keepAliveTimeMillis;
 		this.maxHttpMessageSize = maxHttpMessageSize;
 		this.headerChars = headerChars;
 	}
 
 	private AsyncHttpServer(Eventloop eventloop, AsyncHttpServlet servlet,
-	                        long maxIdleConnectionTime, int maxHttpMessageSize,
-	                        ExposedLinkedList<AbstractHttpConnection> pool, char[] headerChars) {
+	                        long keepAliveTimeMillis, int maxHttpMessageSize,
+	                        ExposedLinkedList<AbstractHttpConnection> keepAlivePool, char[] headerChars) {
 		super(eventloop);
 		this.servlet = servlet;
-		this.pool = pool;
-		this.maxIdleConnectionTime = maxIdleConnectionTime;
+		this.keepAlivePool = keepAlivePool;
+		this.keepAliveTimeMillis = keepAliveTimeMillis;
 		this.maxHttpMessageSize = maxHttpMessageSize;
 		this.headerChars = headerChars;
 	}
@@ -104,16 +105,24 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		ExposedLinkedList<AbstractHttpConnection> pool = ExposedLinkedList.create();
 		char[] chars = new char[MAX_HEADER_LINE_SIZE];
 		int maxHttpMessageSize = Integer.MAX_VALUE;
-		long maxIdleConnectionTime = DEFAULT_MAX_IDLE_CONNECTION_TIME;
+		long maxIdleConnectionTime = DEFAULT_KEEP_ALIVE_MILLIS;
 		return new AsyncHttpServer(eventloop, servlet, maxIdleConnectionTime, maxHttpMessageSize, pool, chars);
 	}
 
-	public AsyncHttpServer withMaxIdleConnectionTime(long maxIdleConnectionTime) {
-		return new AsyncHttpServer(this, servlet, maxIdleConnectionTime, maxHttpMessageSize, pool, headerChars);
+	public AsyncHttpServer withKeepAliveTimeMillis(long maxIdleConnectionTime) {
+		return new AsyncHttpServer(this, servlet, maxIdleConnectionTime, maxHttpMessageSize, keepAlivePool, headerChars);
+	}
+
+	public AsyncHttpServer withNoKeepAlive() {
+		return withKeepAliveTimeMillis(0);
 	}
 
 	public AsyncHttpServer withMaxHttpMessageSize(int size) {
-		return new AsyncHttpServer(this, servlet, maxIdleConnectionTime, size, pool, headerChars);
+		return new AsyncHttpServer(this, servlet, keepAliveTimeMillis, size, keepAlivePool, headerChars);
+	}
+
+	public AsyncHttpServer withMaxHttpMessageSize(MemSize size) {
+		return withMaxHttpMessageSize((int) size.get());
 	}
 
 	@Override
@@ -135,7 +144,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 			public void run() {
 				expiredConnectionsCheck = null;
 				checkExpiredConnections();
-				if (!pool.isEmpty()) {
+				if (!keepAlivePool.isEmpty()) {
 					scheduleExpiredConnectionsCheck();
 				}
 			}
@@ -146,14 +155,14 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		int count = 0;
 		final long now = eventloop.currentTimeMillis();
 
-		ExposedLinkedList.Node<AbstractHttpConnection> node = pool.getFirstNode();
+		ExposedLinkedList.Node<AbstractHttpConnection> node = keepAlivePool.getFirstNode();
 		while (node != null) {
 			AbstractHttpConnection connection = node.getValue();
 			node = node.getNext();
 
 			assert eventloop.inEventloopThread();
-			long idleTime = now - connection.poolTimestamp;
-			if (idleTime > maxIdleConnectionTime) {
+			long idleTime = now - connection.keepAliveTimestamp;
+			if (idleTime > keepAliveTimeMillis) {
 				connection.close(); // self removing from this pool
 				count++;
 			}
@@ -167,12 +176,12 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		assert eventloop.inEventloopThread();
 		return HttpServerConnection.create(
 				eventloop, asyncTcpSocket.getRemoteSocketAddress().getAddress(), asyncTcpSocket,
-				this, servlet, pool, headerChars, maxHttpMessageSize);
+				this, servlet, keepAlivePool, headerChars, maxHttpMessageSize);
 	}
 
 	@Override
 	protected void onClose() {
-		ExposedLinkedList.Node<AbstractHttpConnection> node = pool.getFirstNode();
+		ExposedLinkedList.Node<AbstractHttpConnection> node = keepAlivePool.getFirstNode();
 		while (node != null) {
 			AbstractHttpConnection connection = node.getValue();
 			node = node.getNext();
@@ -182,9 +191,19 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		}
 	}
 
-	void addToPool(HttpServerConnection connection) {
-		pool.addLastNode(connection.poolNode);
-		connection.poolTimestamp = eventloop.currentTimeMillis();
+	void returnToPool(final HttpServerConnection connection) {
+		if (!isRunning() || keepAliveTimeMillis == 0) {
+			eventloop.execute(new Runnable() {
+				@Override
+				public void run() {
+					connection.close();
+				}
+			});
+			return;
+		}
+
+		keepAlivePool.addLastNode(connection.poolNode);
+		connection.keepAliveTimestamp = eventloop.currentTimeMillis();
 
 		if (expiredConnectionsCheck == null) {
 			scheduleExpiredConnectionsCheck();
@@ -192,8 +211,8 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	}
 
 	void removeFromPool(HttpServerConnection connection) {
-		pool.removeNode(connection.poolNode);
-		connection.poolTimestamp = 0L;
+		keepAlivePool.removeNode(connection.poolNode);
+		connection.keepAliveTimestamp = 0L;
 	}
 
 	// jmx
@@ -226,7 +245,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 			reducer = JmxReducers.JmxReducerSum.class
 	)
 	public int getConnectionsCount() {
-		return pool.size();
+		return keepAlivePool.size();
 	}
 
 	@JmxAttribute()

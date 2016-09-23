@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.utils;
+package io.datakernel.util;
 
 import org.junit.Test;
 

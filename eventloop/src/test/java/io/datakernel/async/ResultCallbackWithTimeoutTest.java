@@ -37,7 +37,7 @@ public class ResultCallbackWithTimeoutTest {
 		eventloop.schedule(15, new Runnable() {
 			@Override
 			public void run() {
-				callbackWithTimeout.sendResult(42);
+				callbackWithTimeout.setResult(42);
 			}
 		});
 
@@ -60,7 +60,7 @@ public class ResultCallbackWithTimeoutTest {
 		eventloop.schedule(5, new Runnable() {
 			@Override
 			public void run() {
-				callbackWithTimeout.sendResult(42);
+				callbackWithTimeout.setResult(42);
 			}
 		});
 
@@ -84,7 +84,7 @@ public class ResultCallbackWithTimeoutTest {
 		eventloop.schedule(5, new Runnable() {
 			@Override
 			public void run() {
-				callbackWithTimeout.fireException(exception1);
+				callbackWithTimeout.setException(exception1);
 			}
 		});
 

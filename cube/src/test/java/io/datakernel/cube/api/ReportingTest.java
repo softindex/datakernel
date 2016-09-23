@@ -24,8 +24,8 @@ import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallbackFuture;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.*;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.Eventloop;
@@ -308,13 +308,14 @@ public class ReportingTest {
 		cube.loadChunks(AsyncCallbacks.ignoreCompletionCallback());
 		eventloop.run();
 
-		server = CubeHttpServer.createServer(cube, eventloop, 100, SERVER_PORT);
+		server = AsyncHttpServer.create(eventloop, ReportingServiceServlet.createRootServlet(eventloop, cube, 100))
+				.withListenPort(SERVER_PORT);
 		final CompletionCallbackFuture serverStartFuture = CompletionCallbackFuture.create();
 		eventloop.execute(new RunnableWithException() {
 			@Override
 			public void runWithException() throws Exception {
 				server.listen();
-				serverStartFuture.complete();
+				serverStartFuture.setComplete();
 			}
 		});
 		new Thread(eventloop).start();
@@ -565,7 +566,7 @@ public class ReportingTest {
 			@Override
 			public void runWithException() throws Exception {
 				server.close();
-				serverStopFuture.complete();
+				serverStopFuture.setComplete();
 			}
 		});
 		serverStopFuture.await();

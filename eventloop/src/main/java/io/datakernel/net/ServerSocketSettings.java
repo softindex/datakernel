@@ -16,6 +16,8 @@
 
 package io.datakernel.net;
 
+import io.datakernel.util.MemSize;
+
 import java.io.IOException;
 import java.nio.channels.ServerSocketChannel;
 
@@ -45,7 +47,7 @@ public final class ServerSocketSettings {
 		this.reuseAddress = reuseAddress;
 	}
 
-	public static ServerSocketSettings create() {return new ServerSocketSettings(DEFAULT_BACKLOG, DEF_INT, DEF_BOOL);}
+	public static ServerSocketSettings create(int backlog) {return new ServerSocketSettings(backlog, DEF_INT, DEF_BOOL);}
 
 	public ServerSocketSettings withBacklog(int backlog) {
 		return new ServerSocketSettings(backlog, receiveBufferSize, reuseAddress);
@@ -53,6 +55,10 @@ public final class ServerSocketSettings {
 
 	public ServerSocketSettings withReceiveBufferSize(int receiveBufferSize) {
 		return new ServerSocketSettings(backlog, receiveBufferSize, reuseAddress);
+	}
+
+	public ServerSocketSettings withReceiveBufferSize(MemSize receiveBufferSize) {
+		return new ServerSocketSettings(backlog, (int) receiveBufferSize.get(), reuseAddress);
 	}
 
 	public ServerSocketSettings withReuseAddress(boolean reuseAddress) {

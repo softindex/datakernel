@@ -107,7 +107,7 @@ public final class SocketReconnector {
 					if (logger.isErrorEnabled()) {
 						logger.error("Could not reconnect to {}: {}", address, exception.toString());
 					}
-					callback.fireException(exception);
+					callback.setException(exception);
 				}
 			}
 		});

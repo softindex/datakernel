@@ -28,7 +28,7 @@ public abstract class ResultCallback<T> extends ExceptionCallback {
 	 *
 	 * @param result result of async operation
 	 */
-	public final void sendResult(T result) {
+	public final void setResult(T result) {
 		CallbackRegistry.complete(this);
 		onResult(result);
 	}

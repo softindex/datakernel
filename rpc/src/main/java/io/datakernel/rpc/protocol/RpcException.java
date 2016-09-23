@@ -16,14 +16,11 @@
 
 package io.datakernel.rpc.protocol;
 
-public class RpcException extends Exception {
+import io.datakernel.exception.SimpleException;
+
+public class RpcException extends SimpleException {
 
 	public RpcException(String message) {
 		super(message);
-	}
-
-	@Override
-	public Throwable fillInStackTrace() {
-		return this;
 	}
 }

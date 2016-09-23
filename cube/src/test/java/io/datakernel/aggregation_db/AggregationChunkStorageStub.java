@@ -20,8 +20,8 @@ import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.codegen.ClassBuilder;
+import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumers;
@@ -92,6 +92,6 @@ public class AggregationChunkStorageStub implements AggregationChunkStorage {
 	public void removeChunk(long id, CompletionCallback callback) {
 		chunkTypes.remove(id);
 		lists.remove(id);
-		callback.complete();
+		callback.setComplete();
 	}
 }

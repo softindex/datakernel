@@ -17,7 +17,7 @@
 package io.datakernel.cube.api;
 
 import io.datakernel.aggregation_db.PrimaryKey;
-import io.datakernel.codegen.utils.DefiningClassLoader;
+import io.datakernel.codegen.DefiningClassLoader;
 import org.junit.Test;
 
 import java.util.Arrays;

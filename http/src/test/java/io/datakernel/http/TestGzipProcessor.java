@@ -61,7 +61,7 @@ public class TestGzipProcessor {
 			public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
 				String receivedData = ByteBufStrings.decodeAscii(request.getBody());
 				assertEquals(TEST_PHRASE, receivedData);
-				callback.sendResult(ok200().withBody(ByteBufStrings.wrapAscii(receivedData)));
+				callback.setResponse(ok200().withBody(ByteBufStrings.wrapAscii(receivedData)));
 			}
 		};
 
@@ -81,14 +81,14 @@ public class TestGzipProcessor {
 		client.send(request, TIMEOUT, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
-				callback.sendResult(decodeAscii(result.getBody()));
+				callback.setResult(decodeAscii(result.getBody()));
 				server.close();
 				client.close();
 			}
 
 			@Override
 			public void onException(Exception e) {
-				callback.fireException(e);
+				callback.setException(e);
 				server.close();
 				client.close();
 			}

@@ -23,7 +23,7 @@ public abstract class CompletionCallback extends ExceptionCallback {
 	/**
 	 * Called after completing some action. This method can handle some completed action.
 	 */
-	public final void complete() {
+	public final void setComplete() {
 		CallbackRegistry.complete(this);
 		onComplete();
 	}

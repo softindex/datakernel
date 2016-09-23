@@ -66,7 +66,7 @@ public class HttpHelloWorldLauncher extends Launcher {
 						return new AbstractAsyncServlet(eventloop) {
 							@Override
 							protected void doServeAsync(HttpRequest request, Callback callback) throws ParseException {
-								callback.sendResult(HttpResponse.ok200().withBody(HELLO_WORLD));
+								callback.setResponse(HttpResponse.ok200().withBody(HELLO_WORLD));
 								throw new OutOfMemoryError();
 							}
 						};

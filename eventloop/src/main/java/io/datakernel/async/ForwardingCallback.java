@@ -38,6 +38,6 @@ public abstract class ForwardingCallback extends ExceptionCallback {
 	 */
 	@Override
 	protected void onException(Exception exception) {
-		callback.fireException(exception);
+		callback.setException(exception);
 	}
 }

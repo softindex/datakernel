@@ -51,7 +51,7 @@ public class StreamMergeSorterStorageStub<T> implements StreamMergeSorterStorage
 	@Override
 	public StreamProducer<T> read(int partition, CompletionCallback callback) {
 		List<T> iterable = storage.get(partition);
-		callback.complete();
+		callback.setComplete();
 		return StreamProducers.ofIterable(eventloop, iterable);
 	}
 

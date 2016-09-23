@@ -62,12 +62,12 @@ final class SocketStreamProducer extends AbstractStreamProducer<ByteBuf> {
 
 	@Override
 	protected void onError(Exception e) {
-		completionCallback.fireException(e);
+		completionCallback.setException(e);
 	}
 
 	@Override
 	protected void onEndOfStream() {
-		completionCallback.complete();
+		completionCallback.setComplete();
 	}
 
 	@Override

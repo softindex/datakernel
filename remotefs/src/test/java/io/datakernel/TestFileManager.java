@@ -117,7 +117,7 @@ public class TestFileManager {
 							open(eventloop, executor, inputFile, READ_OPTIONS), bufferSize)
 							.streamTo(writer);
 				} catch (IOException e) {
-					this.fireException(e);
+					this.setException(e);
 				}
 			}
 		});
@@ -142,7 +142,7 @@ public class TestFileManager {
 							StreamFileWriter.create(eventloop, open(
 									eventloop, executor, outputFile, CREATE_OPTIONS)));
 				} catch (IOException e) {
-					this.fireException(e);
+					this.setException(e);
 				}
 			}
 		});

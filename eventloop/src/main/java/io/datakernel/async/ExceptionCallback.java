@@ -29,7 +29,7 @@ public abstract class ExceptionCallback {
 	 *
 	 * @param e exception that was throwing
 	 */
-	public final void fireException(Exception e) {
+	public final void setException(Exception e) {
 		CallbackRegistry.complete(this);
 		onException(e);
 	}

@@ -24,7 +24,7 @@ import com.google.common.collect.Ordering;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.InstanceCreator;
-import io.datakernel.codegen.utils.DefiningClassLoader;
+import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.node.*;
 import io.datakernel.datagraph.server.command.DatagraphCommand;

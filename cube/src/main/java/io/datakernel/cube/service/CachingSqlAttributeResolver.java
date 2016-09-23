@@ -120,12 +120,12 @@ public abstract class CachingSqlAttributeResolver implements AttributeResolver, 
 			protected void onComplete() {
 				previousUpdateTimestamp = eventloop.currentTimeMillis();
 				scheduleUpdate();
-				callback.complete();
+				callback.setComplete();
 			}
 
 			@Override
 			protected void onException(Exception e) {
-				callback.fireException(e);
+				callback.setException(e);
 			}
 		});
 	}
@@ -135,7 +135,7 @@ public abstract class CachingSqlAttributeResolver implements AttributeResolver, 
 		if (scheduledUpdateTask != null)
 			scheduledUpdateTask.cancel();
 
-		callback.complete();
+		callback.setComplete();
 	}
 
 	@Override

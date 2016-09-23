@@ -20,7 +20,7 @@ import com.google.common.collect.ImmutableMap;
 import io.datakernel.aggregation_db.*;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.keytype.KeyType;
-import io.datakernel.codegen.utils.DefiningClassLoader;
+import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.bean.DataItemResultString;
 import io.datakernel.cube.bean.DataItemString1;
 import io.datakernel.cube.bean.DataItemString2;

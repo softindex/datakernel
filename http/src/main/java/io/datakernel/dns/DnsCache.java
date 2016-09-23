@@ -145,12 +145,12 @@ public final class DnsCache {
 	private void returnResultThroughCallback(String domainName, CachedDnsLookupResult result, ResultCallback<InetAddress[]> callback) {
 		if (result.isSuccessful()) {
 			InetAddress[] ipsFromCache = result.getIps();
-			callback.sendResult(ipsFromCache);
+			callback.setResult(ipsFromCache);
 			if (logger.isDebugEnabled())
 				logger.debug("Cache hit for host: {}", domainName);
 		} else {
 			DnsException exception = result.getException();
-			callback.fireException(exception);
+			callback.setException(exception);
 			if (logger.isDebugEnabled())
 				logger.debug("Error cache hit for host: {}", domainName);
 		}

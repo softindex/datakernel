@@ -21,7 +21,7 @@ import io.datakernel.aggregation_db.*;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.async.AsyncCallbacks;
-import io.datakernel.codegen.utils.DefiningClassLoader;
+import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.bean.TestPubRequest;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.logfs.LocalFsLogFileSystem;

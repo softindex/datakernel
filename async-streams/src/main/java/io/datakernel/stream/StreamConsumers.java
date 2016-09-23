@@ -16,7 +16,7 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.AsyncGetter;
+import io.datakernel.async.AsyncCallable;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
@@ -62,12 +62,12 @@ public final class StreamConsumers {
 		return toList(eventloop, new ArrayList<T>());
 	}
 
-	public static <T> StreamConsumer<T> asynchronouslyResolving(final Eventloop eventloop, final AsyncGetter<StreamConsumer<T>> consumerGetter) {
+	public static <T> StreamConsumer<T> asynchronouslyResolving(final Eventloop eventloop, final AsyncCallable<StreamConsumer<T>> consumerGetter) {
 		final StreamForwarder<T> forwarder = StreamForwarder.create(eventloop);
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
-				consumerGetter.get(new ResultCallback<StreamConsumer<T>>() {
+				consumerGetter.call(new ResultCallback<StreamConsumer<T>>() {
 					@Override
 					protected void onResult(StreamConsumer<T> result) {
 						forwarder.getOutput().streamTo(result);
@@ -93,9 +93,9 @@ public final class StreamConsumers {
 				this.callback = callback;
 			} else {
 				if (getConsumerStatus() == StreamStatus.END_OF_STREAM) {
-					callback.complete();
+					callback.setComplete();
 				} else {
-					callback.fireException(getConsumerException());
+					callback.setException(getConsumerException());
 				}
 			}
 		}
@@ -108,7 +108,7 @@ public final class StreamConsumers {
 		@Override
 		protected void onError(Exception e) {
 			if (callback != null) {
-				callback.fireException(e);
+				callback.setException(e);
 			}
 		}
 
@@ -183,9 +183,9 @@ public final class StreamConsumers {
 				this.completionCallback = completionCallback;
 			} else {
 				if (getConsumerStatus() == StreamStatus.END_OF_STREAM) {
-					completionCallback.complete();
+					completionCallback.setComplete();
 				} else {
-					completionCallback.fireException(getConsumerException());
+					completionCallback.setException(getConsumerException());
 				}
 			}
 		}
@@ -206,20 +206,20 @@ public final class StreamConsumers {
 		@Override
 		protected void onEndOfStream() {
 			if (completionCallback != null) {
-				completionCallback.complete();
+				completionCallback.setComplete();
 			}
 			if (resultCallback != null) {
-				resultCallback.sendResult(list);
+				resultCallback.setResult(list);
 			}
 		}
 
 		@Override
 		protected void onError(Exception e) {
 			if (completionCallback != null) {
-				completionCallback.fireException(e);
+				completionCallback.setException(e);
 			}
 			if (resultCallback != null) {
-				resultCallback.fireException(e);
+				resultCallback.setException(e);
 			}
 		}
 

@@ -36,12 +36,12 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 	private final CompletionCallback completionCallback = new CompletionCallback() {
 		@Override
 		protected void onComplete() {
-			complete();
+			setComplete();
 		}
 
 		@Override
 		protected void onException(Exception exception) {
-			complete();
+			setComplete();
 		}
 	};
 
@@ -77,7 +77,7 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 		try {
 			post(runnable);
 		} catch (InterruptedException e) {
-			future.fireException(e);
+			future.setException(e);
 		}
 	}
 
@@ -144,9 +144,9 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 				}
 				complete();
 				if (exception == null) {
-					future.sendResult(result);
+					future.setResult(result);
 				} else {
-					future.fireException(exception);
+					future.setException(exception);
 				}
 			}
 		}, future);
@@ -162,14 +162,14 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 				asyncTask.execute(new CompletionCallback() {
 					@Override
 					protected void onComplete() {
-						complete();
-						future.sendResult(result);
+						setComplete();
+						future.setResult(result);
 					}
 
 					@Override
 					protected void onException(Exception exception) {
-						complete();
-						future.fireException(exception);
+						setComplete();
+						future.setException(exception);
 					}
 				});
 			}
@@ -192,9 +192,9 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 				}
 				complete();
 				if (exception == null) {
-					future.sendResult(result);
+					future.setResult(result);
 				} else {
-					future.fireException(exception);
+					future.setException(exception);
 				}
 			}
 		}, future);
@@ -211,13 +211,13 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 					@Override
 					protected void onResult(T result) {
 						complete();
-						future.sendResult(result);
+						future.setResult(result);
 					}
 
 					@Override
 					protected void onException(Exception exception) {
 						complete();
-						future.fireException(exception);
+						future.setException(exception);
 					}
 				});
 			}

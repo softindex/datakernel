@@ -169,7 +169,7 @@ public class RpcStrategyFirstValidResultTest {
 	private static final class SenderOnResultWithNullCaller implements RpcSender {
 		@Override
 		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
-			callback.sendResult(null);
+			callback.setResult(null);
 		}
 	}
 
@@ -183,7 +183,7 @@ public class RpcStrategyFirstValidResultTest {
 		@SuppressWarnings("unchecked")
 		@Override
 		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
-			callback.sendResult((O) data);
+			callback.setResult((O) data);
 		}
 	}
 

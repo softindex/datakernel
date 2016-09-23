@@ -27,9 +27,9 @@ import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.ClassBuilder;
+import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.PredicateDefOr;
-import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.Cube;
 import io.datakernel.cube.CubeQuery;
 import io.datakernel.cube.DrillDown;
@@ -180,7 +180,7 @@ public final class RequestExecutor {
 				@Override
 				protected void onException(Exception e) {
 					logger.error("Executing query {} failed.", query, e);
-					resultCallback.fireException(e);
+					resultCallback.setException(e);
 				}
 			});
 		}
@@ -395,7 +395,7 @@ public final class RequestExecutor {
 						}
 					}));
 
-			callback.sendResult(buildResult(applyLimitAndOffset(results), totalsPlaceholder, results.size(),
+			callback.setResult(buildResult(applyLimitAndOffset(results), totalsPlaceholder, results.size(),
 					resultMeasures, filterAttributesPlaceholder));
 		}
 

@@ -198,13 +198,13 @@ public class SimpleFsIntegrationTest {
 			@Override
 			public void onComplete() {
 				server.close();
-				callback.complete();
+				callback.setComplete();
 			}
 
 			@Override
 			public void onException(Exception e) {
 				server.close();
-				callback.fireException(e);
+				callback.setException(e);
 			}
 		});
 
@@ -344,14 +344,14 @@ public class SimpleFsIntegrationTest {
 					try {
 						producer.streamTo(StreamFileWriter.create(eventloop, executor, storage.resolve("file" + finalI)));
 					} catch (IOException e) {
-						this.fireException(e);
+						this.setException(e);
 					}
-					waitAllHandler.getCallback().complete();
+					waitAllHandler.getCallback().setComplete();
 				}
 
 				@Override
 				public void onException(Exception e) {
-					waitAllHandler.getCallback().fireException(e);
+					waitAllHandler.getCallback().setException(e);
 				}
 			});
 		}
@@ -398,13 +398,13 @@ public class SimpleFsIntegrationTest {
 		client.delete(file, new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				callback.complete();
+				callback.setComplete();
 				server.close();
 			}
 
 			@Override
 			public void onException(Exception e) {
-				callback.fireException(e);
+				callback.setException(e);
 				server.close();
 			}
 		});
@@ -544,7 +544,7 @@ public class SimpleFsIntegrationTest {
 		@Override
 		public void onException(Exception e) {
 			server.close();
-			callback.fireException(e);
+			callback.setException(e);
 		}
 	}
 }

@@ -146,13 +146,13 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 			}
 			complete = true;
 			if (hasResult) {
-				resultCallback.sendResult(result);
+				resultCallback.setResult(result);
 			} else {
 				resolveException();
 				if (exception == null) {
-					resultCallback.sendResult(null);
+					resultCallback.setResult(null);
 				} else {
-					resultCallback.fireException(exception);
+					resultCallback.setException(exception);
 				}
 			}
 		}

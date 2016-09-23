@@ -29,6 +29,7 @@ import org.junit.Test;
 import java.net.UnknownHostException;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static java.lang.ClassLoader.getSystemClassLoader;
 import static org.junit.Assert.assertEquals;
 
 public class RpcMessageSerializeTest {
@@ -62,9 +63,8 @@ public class RpcMessageSerializeTest {
 	}
 
 	private static <T> T doTest(Class<T> type, T testData1) {
-		BufferSerializer<T> serializer = SerializerBuilder
-				.create(ClassLoader.getSystemClassLoader())
-				.withExtraSubclasses("extraRpcMessageData", TestRpcMessageData.class, TestRpcMessageData2.class)
+		BufferSerializer<T> serializer = SerializerBuilder.create(getSystemClassLoader())
+				.withExtraSubclasses(RpcMessage.MESSAGE_TYPES, TestRpcMessageData.class, TestRpcMessageData2.class)
 				.build(type);
 		return doTest(testData1, serializer, serializer);
 	}

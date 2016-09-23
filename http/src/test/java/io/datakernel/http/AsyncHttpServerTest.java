@@ -51,7 +51,7 @@ public class AsyncHttpServerTest {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
 				HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
-				callback.sendResult(content);
+				callback.setResponse(content);
 			}
 		};
 
@@ -66,7 +66,7 @@ public class AsyncHttpServerTest {
 				primaryEventloop.post(new Runnable() {
 					@Override
 					public void run() {
-						callback.sendResult(content);
+						callback.setResponse(content);
 					}
 				});
 			}
@@ -84,7 +84,7 @@ public class AsyncHttpServerTest {
 				primaryEventloop.schedule(primaryEventloop.currentTimeMillis() + random.nextInt(3), new Runnable() {
 					@Override
 					public void run() {
-						callback.sendResult(content);
+						callback.setResponse(content);
 					}
 				});
 			}
@@ -251,7 +251,7 @@ public class AsyncHttpServerTest {
 				eventloop.post(new Runnable() {
 					@Override
 					public void run() {
-						callback.sendResult(content);
+						callback.setResponse(content);
 					}
 				});
 			}

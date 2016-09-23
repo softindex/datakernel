@@ -108,7 +108,7 @@ public final class RpcStrategyTypeDispatching implements RpcStrategy {
 			if (sender != null) {
 				sender.sendRequest(request, timeout, callback);
 			} else {
-				callback.fireException(NO_SENDER_AVAILABLE_EXCEPTION);
+				callback.setException(NO_SENDER_AVAILABLE_EXCEPTION);
 			}
 		}
 	}

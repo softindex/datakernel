@@ -17,7 +17,7 @@
 package io.datakernel.cube.api;
 
 import io.datakernel.codegen.ClassBuilder;
-import io.datakernel.codegen.utils.DefiningClassLoader;
+import io.datakernel.codegen.DefiningClassLoader;
 import org.junit.Test;
 
 import static com.google.common.collect.Sets.newHashSet;

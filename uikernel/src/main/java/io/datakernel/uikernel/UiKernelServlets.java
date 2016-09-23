@@ -59,16 +59,16 @@ public class UiKernelServlets {
 						@Override
 						protected void onResult(ReadResponse<K, R> response) {
 							String json = response.toJson(gson, model.getRecordType(), model.getIdType());
-							callback.sendResult(createResponse(json));
+							callback.setResponse(createResponse(json));
 						}
 
 						@Override
 						protected void onException(Exception ignored) {
-							callback.sendResult(HttpResponse.notFound404());
+							callback.setResponse(HttpResponse.notFound404());
 						}
 					});
 				} catch (Exception ignored) {
-					callback.sendHttpError(new HttpServletError(BAD_REQUEST));
+					callback.setHttpError(new HttpServletError(BAD_REQUEST));
 				}
 			}
 		};
@@ -86,16 +86,16 @@ public class UiKernelServlets {
 						@Override
 						protected void onResult(R obj) {
 							String json = gson.toJson(obj, model.getRecordType());
-							callback.sendResult(createResponse(json));
+							callback.setResponse(createResponse(json));
 						}
 
 						@Override
 						protected void onException(Exception ignored) {
-							callback.sendResult(HttpResponse.notFound404());
+							callback.setResponse(HttpResponse.notFound404());
 						}
 					});
 				} catch (Exception e) {
-					callback.sendHttpError(new HttpServletError(BAD_REQUEST));
+					callback.setHttpError(new HttpServletError(BAD_REQUEST));
 				}
 			}
 		};
@@ -112,16 +112,16 @@ public class UiKernelServlets {
 						@Override
 						protected void onResult(CreateResponse<K> response) {
 							String json = response.toJson(gson, model.getIdType());
-							callback.sendResult(createResponse(json));
+							callback.setResponse(createResponse(json));
 						}
 
 						@Override
 						protected void onException(Exception ignored) {
-							callback.sendResult(HttpResponse.notFound404());
+							callback.setResponse(HttpResponse.notFound404());
 						}
 					});
 				} catch (Exception ignored) {
-					callback.sendHttpError(new HttpServletError(BAD_REQUEST));
+					callback.setHttpError(new HttpServletError(BAD_REQUEST));
 				}
 			}
 		};
@@ -138,16 +138,16 @@ public class UiKernelServlets {
 						@Override
 						protected void onResult(UpdateResponse<K, R> result) {
 							String json = result.toJson(gson, model.getRecordType(), model.getIdType());
-							callback.sendResult(createResponse(json));
+							callback.setResponse(createResponse(json));
 						}
 
 						@Override
 						protected void onException(Exception ignored) {
-							callback.sendResult(HttpResponse.notFound404());
+							callback.setResponse(HttpResponse.notFound404());
 						}
 					});
 				} catch (Exception ignored) {
-					callback.sendHttpError(new HttpServletError(BAD_REQUEST));
+					callback.setHttpError(new HttpServletError(BAD_REQUEST));
 				}
 			}
 		};
@@ -168,16 +168,16 @@ public class UiKernelServlets {
 								res.setContentType(JSON_UTF8);
 								res.setBody(ByteBufStrings.wrapUtf8(json));
 							}
-							callback.sendResult(res);
+							callback.setResponse(res);
 						}
 
 						@Override
 						protected void onException(Exception ignored) {
-							callback.sendResult(HttpResponse.notFound404());
+							callback.setResponse(HttpResponse.notFound404());
 						}
 					});
 				} catch (Exception ignored) {
-					callback.sendHttpError(new HttpServletError(BAD_REQUEST));
+					callback.setHttpError(new HttpServletError(BAD_REQUEST));
 				}
 			}
 		};

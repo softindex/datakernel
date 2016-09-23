@@ -38,12 +38,12 @@ public class ListenableCompletionCallback extends CompletionCallback {
 
 	public void addListener(CompletionCallback callback) {
 		if (completed) {
-			callback.complete();
+			callback.setComplete();
 			return;
 		}
 
 		if (exception != null) {
-			callback.fireException(exception);
+			callback.setException(exception);
 			return;
 		}
 
@@ -57,7 +57,7 @@ public class ListenableCompletionCallback extends CompletionCallback {
 		this.completed = true;
 
 		for (CompletionCallback listener : listeners) {
-			listener.complete();
+			listener.setComplete();
 		}
 
 		listeners.clear();
@@ -71,7 +71,7 @@ public class ListenableCompletionCallback extends CompletionCallback {
 		this.exception = exception;
 
 		for (CompletionCallback listener : listeners) {
-			listener.fireException(exception);
+			listener.setException(exception);
 		}
 
 		listeners.clear();

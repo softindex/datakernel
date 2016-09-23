@@ -46,12 +46,12 @@ public final class ListenableResultCallback<T> extends ResultCallback<T> {
 	 */
 	public void addListener(ResultCallback<T> listener) {
 		if (result != null) {
-			listener.sendResult(result);
+			listener.setResult(result);
 			return;
 		}
 
 		if (exception != null) {
-			listener.fireException(exception);
+			listener.setException(exception);
 			return;
 		}
 
@@ -68,7 +68,7 @@ public final class ListenableResultCallback<T> extends ResultCallback<T> {
 		this.result = result;
 
 		for (ResultCallback<T> listener : listeners) {
-			listener.sendResult(result);
+			listener.setResult(result);
 		}
 
 		listeners.clear();
@@ -84,7 +84,7 @@ public final class ListenableResultCallback<T> extends ResultCallback<T> {
 		this.exception = exception;
 
 		for (ResultCallback<T> listener : listeners) {
-			listener.fireException(exception);
+			listener.setException(exception);
 		}
 
 		listeners.clear();

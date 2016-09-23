@@ -20,7 +20,7 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.codegen.utils.DefiningClassLoader;
+import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.serializer.BufferSerializer;
@@ -92,10 +92,10 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 		Path path = path(id);
 		try {
 			Files.delete(path);
-			callback.complete();
+			callback.setComplete();
 		} catch (IOException e) {
 			logger.error("delete error", e);
-			callback.fireException(e);
+			callback.setException(e);
 		}
 	}
 

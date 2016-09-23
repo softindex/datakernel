@@ -27,7 +27,7 @@ import io.datakernel.async.AsyncCallbacks.WaitAllHandler;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
-import io.datakernel.codegen.utils.DefiningClassLoader;
+import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.bean.*;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.simplefs.SimpleFsServer;
@@ -571,7 +571,7 @@ public class CubeTest {
 			}
 
 			if (callback != null)
-				callback.complete();
+				callback.setComplete();
 		}
 
 		@Override
@@ -579,7 +579,7 @@ public class CubeTest {
 			logger.error("Exception thrown while trying to commit to cube {}.", cube);
 
 			if (callback != null)
-				callback.fireException(exception);
+				callback.setException(exception);
 		}
 	}
 }

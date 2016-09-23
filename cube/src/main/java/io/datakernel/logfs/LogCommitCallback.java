@@ -25,15 +25,15 @@ import io.datakernel.async.ExceptionCallback;
 import java.util.Map;
 
 public abstract class LogCommitCallback extends ExceptionCallback {
-	public final void onCommit(String log,
-	                           Map<String, LogPosition> oldPositions,
-	                           Map<String, LogPosition> newPositions,
-	                           Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks) {
+	public final void setCommit(String log,
+	                            Map<String, LogPosition> oldPositions,
+	                            Map<String, LogPosition> newPositions,
+	                            Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks) {
 		CallbackRegistry.complete(this);
-		handleCommit(log, oldPositions, newPositions, newChunks);
+		onCommit(log, oldPositions, newPositions, newChunks);
 	}
 
-	protected abstract void handleCommit(String log, Map<String, LogPosition> oldPositions,
-	                                     Map<String, LogPosition> newPositions,
-	                                     Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks);
+	protected abstract void onCommit(String log, Map<String, LogPosition> oldPositions,
+	                                 Map<String, LogPosition> newPositions,
+	                                 Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks);
 }

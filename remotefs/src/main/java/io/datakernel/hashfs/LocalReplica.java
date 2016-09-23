@@ -121,9 +121,9 @@ public final class LocalReplica implements EventloopService {
 			}
 			scheduleUpdateServersMap();
 			scheduleUpdate();
-			callback.complete();
+			callback.setComplete();
 		} catch (IOException e) {
-			callback.fireException(e);
+			callback.setException(e);
 		}
 	}
 
@@ -244,7 +244,7 @@ public final class LocalReplica implements EventloopService {
 				list.add(entry.getKey());
 			}
 		}
-		callback.sendResult(list);
+		callback.setResult(list);
 	}
 
 	// utils
@@ -256,7 +256,7 @@ public final class LocalReplica implements EventloopService {
 			}
 		}
 		aliveServers.add(myId);
-		callback.sendResult(aliveServers);
+		callback.setResult(aliveServers);
 	}
 
 	private void onShowAliveResponse(long timestamp, Set<Replica> alive) {
@@ -293,7 +293,7 @@ public final class LocalReplica implements EventloopService {
 				required.add(file);
 			}
 		}
-		callback.sendResult(required);
+		callback.setResult(required);
 	}
 
 	private void scheduleUpdate() {
@@ -407,7 +407,7 @@ public final class LocalReplica implements EventloopService {
 			}
 			files.clear();
 			replicas.clear();
-			onStopCallback.complete();
+			onStopCallback.setComplete();
 		}
 	}
 

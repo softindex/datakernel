@@ -44,6 +44,7 @@ import java.util.List;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
+import static java.lang.ClassLoader.getSystemClassLoader;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
@@ -72,11 +73,10 @@ public class RpcBinaryProtocolTest {
 				.withStrategy(server(address));
 
 		final RpcServer server = RpcServer.create(eventloop)
-				.withMessageTypes(String.class)
-				.withHandlerFor(String.class, new RpcRequestHandler<String, String>() {
+				.withHandler(String.class, String.class, new RpcRequestHandler<String, String>() {
 					@Override
 					public void run(String request, ResultCallback<String> callback) {
-						callback.sendResult("Hello, " + request + "!");
+						callback.setResult("Hello, " + request + "!");
 					}
 				})
 				.withListenAddress(address);
@@ -133,7 +133,7 @@ public class RpcBinaryProtocolTest {
 
 			@Override
 			public void onException(Exception e) {
-				new ResultObserver().fireException(e);
+				new ResultObserver().setException(e);
 			}
 		});
 
@@ -150,9 +150,9 @@ public class RpcBinaryProtocolTest {
 
 	@Test
 	public void testCompression() {
-		SerializerBuilder serializerBuilder = SerializerBuilder.create(ClassLoader.getSystemClassLoader())
-				.withExtraSubclasses("extraRpcMessageData", String.class);
-		BufferSerializer<RpcMessage> serializer = serializerBuilder.build(RpcMessage.class);
+		BufferSerializer<RpcMessage> serializer = SerializerBuilder.create(getSystemClassLoader())
+				.withExtraSubclasses(RpcMessage.MESSAGE_TYPES, String.class)
+				.build(RpcMessage.class);
 
 		int countRequests = 10;
 		Eventloop eventloop = Eventloop.create();

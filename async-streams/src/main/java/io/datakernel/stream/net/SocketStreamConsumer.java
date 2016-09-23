@@ -56,7 +56,7 @@ final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> impleme
 
 	@Override
 	protected void onError(Exception e) {
-		completionCallback.fireException(e);
+		completionCallback.setException(e);
 	}
 
 	/**
@@ -84,7 +84,7 @@ final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> impleme
 		if (getConsumerStatus() == StreamStatus.SUSPENDED) {
 			resume();
 		} else if (getConsumerStatus() == StreamStatus.END_OF_STREAM) {
-			completionCallback.complete();
+			completionCallback.setComplete();
 		}
 	}
 

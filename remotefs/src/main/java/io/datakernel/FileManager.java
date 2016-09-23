@@ -77,7 +77,7 @@ public final class FileManager {
 					@Override
 					public void onResult(AsyncFile result) {
 						logger.trace("{} opened", result);
-						callback.sendResult(readFileFrom(eventloop, result, readerBufferSize, startPosition));
+						callback.setResult(readFileFrom(eventloop, result, readerBufferSize, startPosition));
 					}
 				});
 	}
@@ -92,7 +92,7 @@ public final class FileManager {
 					@Override
 					public void onResult(AsyncFile result) {
 						logger.trace("{} opened", result);
-						callback.sendResult(StreamFileWriter.create(eventloop, result, true));
+						callback.setResult(StreamFileWriter.create(eventloop, result, true));
 					}
 				});
 			}

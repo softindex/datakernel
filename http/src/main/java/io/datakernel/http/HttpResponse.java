@@ -93,7 +93,7 @@ public final class HttpResponse extends HttpMessage {
 	}
 
 	public HttpResponse withBody(byte[] array) {
-		setBody(ByteBuf.wrapForReading(array));
+		setBody(array);
 		return this;
 	}
 

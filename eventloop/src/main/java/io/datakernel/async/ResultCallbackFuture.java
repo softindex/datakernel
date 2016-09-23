@@ -26,43 +26,22 @@ public final class ResultCallbackFuture<T> extends ResultCallback<T> implements 
 	// region builders
 	private ResultCallbackFuture() {}
 
-	public static <T> ResultCallbackFuture<T> immediateFuture(T result) {
-		ResultCallbackFuture<T> future = new ResultCallbackFuture<>();
-		future.sendResult(result);
-		return future;
-	}
-
-	public static <T> ResultCallbackFuture<T> immediateFailingFuture(Exception exception) {
-		ResultCallbackFuture<T> future = new ResultCallbackFuture<>();
-		future.fireException(exception);
-		return future;
-	}
-
 	public static <T> ResultCallbackFuture<T> create() {
 		return new ResultCallbackFuture<>();
 	}
 
-	public ResultCallbackFuture<T> withCompletionResult(T result) {
-		this.result = result;
-		return this;
-	}
 	// endregion
 
 	@Override
 	protected void onResult(T result) {
 		this.result = result;
 		latch.countDown();
-		onResultOrException();
 	}
 
 	@Override
 	protected void onException(Exception exception) {
 		this.exception = exception;
 		latch.countDown();
-		onResultOrException();
-	}
-
-	protected void onResultOrException() {
 	}
 
 	@Override

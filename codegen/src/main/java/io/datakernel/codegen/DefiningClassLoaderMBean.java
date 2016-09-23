@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-package io.datakernel.async;
+package io.datakernel.codegen;
 
-/**
- * Instance that provides gets some result from it and handle it with ResultCallback
- *
- * @param <T> type of result
- */
-public interface AsyncGetter<T> {
-	void get(ResultCallback<T> callback);
+import java.util.Map;
+
+public interface DefiningClassLoaderMBean {
+	int getDefinedClassesCount();
+
+	Map<String, String> getDefinedClasses();
+
+	Map<String, Integer> getDefinedClassesByType();
 }

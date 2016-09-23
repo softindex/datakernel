@@ -103,16 +103,16 @@ public final class StreamProducers {
 	/**
 	 * Represents asynchronously resolving producer.
 	 *
-	 * @param eventloop      event loop in which will run it
-	 * @param producerGetter getter with producer
-	 * @param <T>            type of output data
+	 * @param eventloop        event loop in which will run it
+	 * @param producerCallable callable with producer
+	 * @param <T>              type of output data
 	 */
-	public static <T> StreamProducer<T> asynchronouslyResolving(final Eventloop eventloop, final AsyncGetter<StreamProducer<T>> producerGetter) {
+	public static <T> StreamProducer<T> asynchronouslyResolving(final Eventloop eventloop, final AsyncCallable<StreamProducer<T>> producerCallable) {
 		final StreamForwarder<T> forwarder = StreamForwarder.create(eventloop);
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
-				producerGetter.get(new ResultCallback<StreamProducer<T>>() {
+				producerCallable.call(new ResultCallback<StreamProducer<T>>() {
 					@Override
 					protected void onResult(StreamProducer<T> actualProducer) {
 						actualProducer.streamTo(forwarder.getInput());

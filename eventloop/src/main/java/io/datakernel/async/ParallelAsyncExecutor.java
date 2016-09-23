@@ -63,14 +63,14 @@ public final class ParallelAsyncExecutor implements AsyncExecutor {
 			@Override
 			protected void onComplete() {
 				--executing;
-				realCallback.complete();
+				realCallback.setComplete();
 				executeNextTask();
 			}
 
 			@Override
 			protected void onException(Exception exception) {
 				--executing;
-				realCallback.fireException(exception);
+				realCallback.setException(exception);
 				executeNextTask();
 			}
 		};

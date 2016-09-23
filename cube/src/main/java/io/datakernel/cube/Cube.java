@@ -30,7 +30,7 @@ import io.datakernel.aggregation_db.util.AsyncResultsTracker.AsyncResultsTracker
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.ClassBuilder;
-import io.datakernel.codegen.utils.DefiningClassLoader;
+import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.CubeMetadataStorage.CubeLoadedChunks;
 import io.datakernel.cube.api.AttributeResolver;
 import io.datakernel.cube.api.ReportingConfiguration;
@@ -446,13 +446,13 @@ public final class Cube implements EventloopJmxMBean {
 			public void onResult(CubeLoadedChunks result) {
 				loadChunksIntoAggregations(result, incremental);
 				logger.info("Loading chunks for cube completed");
-				callback.complete();
+				callback.setComplete();
 			}
 
 			@Override
 			public void onException(Exception e) {
 				logger.error("Loading chunks for cube failed", e);
-				callback.fireException(e);
+				callback.setException(e);
 			}
 		});
 	}
@@ -510,7 +510,7 @@ public final class Cube implements EventloopJmxMBean {
 						}
 					});
 				} else {
-					callback.sendResult(found);
+					callback.setResult(found);
 				}
 			}
 		});

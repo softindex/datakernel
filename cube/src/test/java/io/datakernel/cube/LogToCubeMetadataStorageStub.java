@@ -59,7 +59,7 @@ public final class LogToCubeMetadataStorageStub implements LogToCubeMetadataStor
 			logPositionMap.put(partition, LogPosition.create());
 		}
 		logPositionMap.putAll(ensureLogPositions(log));
-		callback.sendResult(filterKeys(logPositionMap, in(partitions)));
+		callback.setResult(filterKeys(logPositionMap, in(partitions)));
 	}
 
 	@Override
@@ -79,12 +79,12 @@ public final class LogToCubeMetadataStorageStub implements LogToCubeMetadataStor
 			cubeMetadataStorage.doSaveChunk(aggregationId, singletonList(newChunk), new CompletionCallback() {
 				@Override
 				protected void onComplete() {
-					waitAllHandler.getCallback().complete();
+					waitAllHandler.getCallback().setComplete();
 				}
 
 				@Override
 				protected void onException(Exception e) {
-					waitAllHandler.getCallback().fireException(e);
+					waitAllHandler.getCallback().setException(e);
 				}
 			});
 		}

@@ -21,7 +21,7 @@ public class AbstractServerTest {
 		final Eventloop eventloop = Eventloop.create();
 
 		InetSocketAddress address = new InetSocketAddress(5588);
-		final SocketSettings settings = SocketSettings.defaultSocketSettings().withReadTimeout(100000L).withWriteTimeout(100000L);
+		final SocketSettings settings = SocketSettings.create().withReadTimeout(100000L).withWriteTimeout(100000L);
 
 		SimpleServer.SocketHandlerProvider socketHandlerProvider = new SimpleServer.SocketHandlerProvider() {
 			@Override

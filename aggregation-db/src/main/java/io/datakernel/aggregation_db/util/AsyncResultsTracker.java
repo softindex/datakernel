@@ -115,10 +115,10 @@ public abstract class AsyncResultsTracker<A> {
 			return;
 
 		if (exception != null) {
-			callback.fireException(exception);
+			callback.setException(exception);
 			return;
 		}
 
-		callback.sendResult(results);
+		callback.setResult(results);
 	}
 }

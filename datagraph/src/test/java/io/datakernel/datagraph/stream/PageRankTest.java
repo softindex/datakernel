@@ -268,21 +268,21 @@ public class PageRankTest {
 
 			@Override
 			protected void onException(Exception exception) {
-				complete();
+				setComplete();
 			}
 		});
 
 		result1.setCompletionCallback(new SimpleCompletionCallback() {
 			@Override
 			protected void onCompleteOrException() {
-				waitAllHandler.getCallback().complete();
+				waitAllHandler.getCallback().setComplete();
 			}
 		});
 
 		result2.setCompletionCallback(new SimpleCompletionCallback() {
 			@Override
 			protected void onCompleteOrException() {
-				waitAllHandler.getCallback().complete();
+				waitAllHandler.getCallback().setComplete();
 			}
 		});
 

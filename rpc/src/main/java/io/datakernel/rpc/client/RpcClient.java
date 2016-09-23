@@ -32,6 +32,7 @@ import io.datakernel.rpc.protocol.RpcProtocolFactory;
 import io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,13 +49,14 @@ import static io.datakernel.eventloop.AsyncTcpSocketImpl.wrapChannel;
 import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamProtocol;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
+import static java.lang.ClassLoader.getSystemClassLoader;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 
 public final class RpcClient implements EventloopService, EventloopJmxMBean {
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create().withTcpNoDelay(true);
-	public static final int DEFAULT_CONNECT_TIMEOUT = 10 * 1000;
-	public static final int DEFAULT_RECONNECT_INTERVAL = 1 * 1000;
+	public static final long DEFAULT_CONNECT_TIMEOUT = 10 * 1000L;
+	public static final long DEFAULT_RECONNECT_INTERVAL = 1 * 1000L;
 
 	private final Logger logger;
 
@@ -70,8 +72,8 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 	private final Map<InetSocketAddress, RpcClientConnection> connections = new HashMap<>();
 	private final RpcProtocolFactory protocolFactory;
 	private final Set<Class<?>> messageTypes;
-	private final int connectTimeoutMillis;
-	private final int reconnectIntervalMillis;
+	private final long connectTimeoutMillis;
+	private final long reconnectIntervalMillis;
 
 	private final SerializerBuilder serializerBuilder;
 	private BufferSerializer<RpcMessage> serializer;
@@ -100,7 +102,7 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 	// region builders
 	private RpcClient(Eventloop eventloop, SocketSettings socketSettings, Collection<Class<?>> messageTypes,
 	                  SerializerBuilder serializerBuilder, RpcStrategy strategy, RpcProtocolFactory protocol,
-	                  Logger logger, int connectTimeoutMillis, int reconnectIntervalMillis,
+	                  Logger logger, long connectTimeoutMillis, long reconnectIntervalMillis,
 	                  SSLContext sslContext, ExecutorService executor) {
 		this.eventloop = eventloop;
 		this.socketSettings = socketSettings;
@@ -128,7 +130,7 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 		checkNotNull(eventloop);
 
 		List<Class<?>> defaultMessageTypes = emptyList();
-		SerializerBuilder serializerBuilder = SerializerBuilder.create(ClassLoader.getSystemClassLoader());
+		SerializerBuilder serializerBuilder = SerializerBuilder.create(getSystemClassLoader());
 		RpcStrategy defaultStrategy = new NoServersStrategy();
 		RpcStreamProtocolFactory defaultProtocol = streamProtocol();
 		Logger defaultLogger = LoggerFactory.getLogger(RpcClient.class);
@@ -190,22 +192,15 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 				sslContext, sslExecutor);
 	}
 
-	public RpcClient withLogger(Logger logger) {
-		checkNotNull(logger);
-		return new RpcClient(
-				eventloop, socketSettings, messageTypes, serializerBuilder,
-				strategy, protocolFactory, logger, connectTimeoutMillis, reconnectIntervalMillis,
-				sslContext, sslExecutor);
+	public RpcClient withStreamProtocol(int defaultPacketSize, int maxPacketSize, boolean compression) {
+		return withProtocol(streamProtocol(defaultPacketSize, maxPacketSize, compression));
 	}
 
-	public RpcClient withConnectTimeoutMillis(int connectTimeoutMillis) {
-		return new RpcClient(
-				eventloop, socketSettings, messageTypes, serializerBuilder,
-				strategy, protocolFactory, logger, connectTimeoutMillis, reconnectIntervalMillis,
-				sslContext, sslExecutor);
+	public RpcClient withStreamProtocol(MemSize defaultPacketSize, MemSize maxPacketSize, boolean compression) {
+		return withProtocol(streamProtocol(defaultPacketSize, maxPacketSize, compression));
 	}
 
-	public RpcClient withReconnectIntervalMillis(int reconnectIntervalMillis) {
+	public RpcClient withConnectTimeouts(long connectTimeoutMillis, long reconnectIntervalMillis) {
 		return new RpcClient(
 				eventloop, socketSettings, messageTypes, serializerBuilder,
 				strategy, protocolFactory, logger, connectTimeoutMillis, reconnectIntervalMillis,
@@ -219,6 +214,14 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 				eventloop, socketSettings, messageTypes, serializerBuilder,
 				strategy, protocolFactory, logger, connectTimeoutMillis, reconnectIntervalMillis,
 				sslContext, executor);
+	}
+
+	public RpcClient withLogger(Logger logger) {
+		checkNotNull(logger);
+		return new RpcClient(
+				eventloop, socketSettings, messageTypes, serializerBuilder,
+				strategy, protocolFactory, logger, connectTimeoutMillis, reconnectIntervalMillis,
+				sslContext, sslExecutor);
 	}
 	// endregion
 
@@ -274,7 +277,7 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 			eventloop.post(new Runnable() {
 				@Override
 				public void run() {
-					callback.complete();
+					callback.setComplete();
 				}
 			});
 		} else {
@@ -286,7 +289,7 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 	}
 
 	private BufferSerializer<RpcMessage> createSerializer() {
-		serializerBuilder.addExtraSubclasses("extraRpcMessageData", messageTypes);
+		serializerBuilder.setExtraSubclasses(RpcMessage.MESSAGE_TYPES, messageTypes);
 		return serializerBuilder.build(RpcMessage.class);
 	}
 
@@ -364,7 +367,7 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 			eventloop.post(new Runnable() {
 				@Override
 				public void run() {
-					stopCallback.complete();
+					stopCallback.setComplete();
 					stopCallback = null;
 				}
 			});
@@ -416,7 +419,7 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 
 		@Override
 		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
-			callback.fireException(NO_SENDER_AVAILABLE_EXCEPTION);
+			callback.setException(NO_SENDER_AVAILABLE_EXCEPTION);
 		}
 	}
 

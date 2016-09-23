@@ -24,6 +24,7 @@ import io.datakernel.rpc.protocol.RpcProtocol;
 import io.datakernel.rpc.protocol.RpcProtocolFactory;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
+import io.datakernel.util.MemSize;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 
@@ -33,7 +34,7 @@ public final class RpcStreamProtocolFactory implements RpcProtocolFactory {
 
 	private int defaultPacketSize = DEFAULT_PACKET_SIZE;
 	private int maxPacketSize = MAX_PACKET_SIZE;
-	private boolean compression = true;
+	private boolean compression = false;
 
 	private RpcStreamProtocolFactory() {
 	}
@@ -52,6 +53,10 @@ public final class RpcStreamProtocolFactory implements RpcProtocolFactory {
 
 	public static RpcStreamProtocolFactory streamProtocol(int defaultPacketSize, int maxPacketSize, boolean compression) {
 		return new RpcStreamProtocolFactory(defaultPacketSize, maxPacketSize, compression);
+	}
+
+	public static RpcStreamProtocolFactory streamProtocol(MemSize defaultPacketSize, MemSize maxPacketSize, boolean compression) {
+		return new RpcStreamProtocolFactory((int) defaultPacketSize.get(), (int) maxPacketSize.get(), compression);
 	}
 
 	@Override

@@ -38,6 +38,6 @@ public abstract class ForwardingIteratorCallback<T> extends IteratorCallback<T> 
 	 */
 	@Override
 	protected void onException(Exception exception) {
-		callback.fireException(exception);
+		callback.setException(exception);
 	}
 }

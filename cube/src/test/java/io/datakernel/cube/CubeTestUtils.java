@@ -21,7 +21,7 @@ import com.zaxxer.hikari.HikariDataSource;
 import io.datakernel.aggregation_db.AggregationChunkStorage;
 import io.datakernel.aggregation_db.AggregationStructure;
 import io.datakernel.aggregation_db.LocalFsChunkStorage;
-import io.datakernel.codegen.utils.DefiningClassLoader;
+import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.logfs.*;
 import io.datakernel.serializer.BufferSerializer;

@@ -20,7 +20,7 @@ import com.google.common.base.Charsets;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.codegen.utils.DefiningClassLoader;
+import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
@@ -254,7 +254,7 @@ class StressClient {
 					StreamFileWriter writer = StreamFileWriter.create(eventloop, executor, downloads.resolve(name));
 					producer.streamTo(writer);
 				} catch (IOException e) {
-					this.fireException(e);
+					this.setException(e);
 				}
 			}
 

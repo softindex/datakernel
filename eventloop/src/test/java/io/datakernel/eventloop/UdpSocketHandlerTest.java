@@ -18,6 +18,7 @@ package io.datakernel.eventloop;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.net.DatagramSocketSettings;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -28,7 +29,6 @@ import java.nio.channels.DatagramChannel;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.Eventloop.createDatagramChannel;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
-import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
 import static org.junit.Assert.*;
 
 public class UdpSocketHandlerTest {
@@ -114,12 +114,12 @@ public class UdpSocketHandlerTest {
 			public void run() {
 				try {
 					//  server
-					DatagramChannel serverChannel = createDatagramChannel(defaultDatagramSocketSettings(), SERVER_ADDRESS, null);
+					DatagramChannel serverChannel = createDatagramChannel(DatagramSocketSettings.create(), SERVER_ADDRESS, null);
 					AsyncUdpSocketImpl serverConnection = getEchoServerUdpSocket(serverChannel);
 					serverConnection.register();
 
 					// client
-					DatagramChannel clientChannel = createDatagramChannel(defaultDatagramSocketSettings(), null, null);
+					DatagramChannel clientChannel = createDatagramChannel(DatagramSocketSettings.create(), null, null);
 					AsyncUdpSocketImpl clientConnection = getClientUdpSocket(clientChannel);
 					clientConnection.register();
 

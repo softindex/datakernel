@@ -93,7 +93,7 @@ public final class LogProcessorService implements EventloopService {
 
 	@Override
 	public void start(CompletionCallback callback) {
-		callback.complete();
+		callback.setComplete();
 		processLogs();
 	}
 
@@ -103,7 +103,7 @@ public final class LogProcessorService implements EventloopService {
 			processingTask.cancel();
 		}
 
-		callback.complete();
+		callback.setComplete();
 	}
 
 	@Override

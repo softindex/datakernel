@@ -22,7 +22,7 @@ package io.datakernel.async;
  * @param <T>
  */
 public abstract class IteratorCallback<T> extends ExceptionCallback {
-	public final void sendNext(T item) {
+	public final void setNext(T item) {
 		onNext(item);
 	}
 
@@ -36,7 +36,7 @@ public abstract class IteratorCallback<T> extends ExceptionCallback {
 	/**
 	 * Calls after ending elements in iterator
 	 */
-	public final void end() {
+	public final void setEnd() {
 		CallbackRegistry.complete(this);
 		onEnd();
 	}

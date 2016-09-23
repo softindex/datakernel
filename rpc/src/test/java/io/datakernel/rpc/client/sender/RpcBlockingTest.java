@@ -65,20 +65,20 @@ public class RpcBlockingTest {
 		eventloop = Eventloop.create();
 
 		serverOne = RpcServer.create(eventloop)
-				.withMessageTypes(HelloRequest.class, HelloResponse.class)
-				.withHandlerFor(HelloRequest.class, helloServiceRequestHandler(new HelloServiceImplOne()))
+				.withHandler(HelloRequest.class, HelloResponse.class,
+						helloServiceRequestHandler(new HelloServiceImplOne()))
 				.withListenPort(PORT_1);
 		serverOne.listen();
 
 		serverTwo = RpcServer.create(eventloop)
-				.withMessageTypes(HelloRequest.class, HelloResponse.class)
-				.withHandlerFor(HelloRequest.class, helloServiceRequestHandler(new HelloServiceImplTwo()))
+				.withHandler(HelloRequest.class, HelloResponse.class,
+						helloServiceRequestHandler(new HelloServiceImplTwo()))
 				.withListenPort(PORT_2);
 		serverTwo.listen();
 
 		serverThree = RpcServer.create(eventloop)
-				.withMessageTypes(HelloRequest.class, HelloResponse.class)
-				.withHandlerFor(HelloRequest.class, helloServiceRequestHandler(new HelloServiceImplThree()))
+				.withHandler(HelloRequest.class, HelloResponse.class,
+						helloServiceRequestHandler(new HelloServiceImplThree()))
 				.withListenPort(PORT_3);
 		serverThree.listen();
 
@@ -226,10 +226,10 @@ public class RpcBlockingTest {
 				try {
 					result = helloService.hello(request.name);
 				} catch (Exception e) {
-					callback.fireException(e);
+					callback.setException(e);
 					return;
 				}
-				callback.sendResult(new HelloResponse(result));
+				callback.setResult(new HelloResponse(result));
 			}
 		};
 	}

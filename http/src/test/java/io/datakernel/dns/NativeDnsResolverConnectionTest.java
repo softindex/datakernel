@@ -19,6 +19,7 @@ package io.datakernel.dns;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.net.DatagramSocketSettings;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -30,7 +31,6 @@ import java.nio.channels.DatagramChannel;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.Eventloop.createDatagramChannel;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
-import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
@@ -93,7 +93,7 @@ public class NativeDnsResolverConnectionTest {
 			@Override
 			public void run() {
 				try {
-					DatagramChannel datagramChannel = createDatagramChannel(defaultDatagramSocketSettings(), null, null);
+					DatagramChannel datagramChannel = createDatagramChannel(DatagramSocketSettings.create(), null, null);
 					dnsClientConnection = DnsClientHandler.create(eventloop, datagramChannel);
 					dnsClientConnection.register();
 				} catch (IOException e) {

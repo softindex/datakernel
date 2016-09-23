@@ -142,13 +142,13 @@ public class IntegrationSingleNodeTest {
 		client.upload("non_existing_file.txt", producer, new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				callback.complete();
+				callback.setComplete();
 				server.close();
 			}
 
 			@Override
 			public void onException(Exception e) {
-				callback.fireException(e);
+				callback.setException(e);
 				server.close();
 			}
 		});
@@ -280,13 +280,13 @@ public class IntegrationSingleNodeTest {
 			@Override
 			public void onComplete() {
 				server.close();
-				callback.complete();
+				callback.setComplete();
 			}
 
 			@Override
 			public void onException(Exception e) {
 				server.close();
-				callback.fireException(e);
+				callback.setException(e);
 			}
 		});
 		eventloop.run();

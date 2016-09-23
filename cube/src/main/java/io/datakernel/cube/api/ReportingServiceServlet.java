@@ -20,13 +20,14 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import io.datakernel.aggregation_db.AggregationQuery;
 import io.datakernel.aggregation_db.gson.QueryPredicatesGsonSerializer;
-import io.datakernel.codegen.utils.DefiningClassLoader;
+import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.Cube;
 import io.datakernel.cube.CubeQuery;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.AbstractAsyncServlet;
 import io.datakernel.http.HttpRequest;
+import io.datakernel.http.MiddlewareServlet;
 import io.datakernel.jmx.JmxAttribute;
 
 import java.util.LinkedHashMap;
@@ -50,6 +51,15 @@ public final class ReportingServiceServlet extends AbstractAsyncServlet {
 	public static ReportingServiceServlet create(Eventloop eventloop, Cube cube,
 	                                             LRUCache<ClassLoaderCacheKey, DefiningClassLoader> classLoaderCache) {
 		return new ReportingServiceServlet(eventloop, cube, classLoaderCache);
+	}
+
+	public static MiddlewareServlet createRootServlet(Eventloop eventloop, Cube cube, int classLoaderCacheSize) {
+		LRUCache<ClassLoaderCacheKey, DefiningClassLoader> classLoaderCache = LRUCache.create(classLoaderCacheSize);
+		ReportingServiceServlet reportingServiceServlet = create(eventloop, cube, classLoaderCache);
+		MiddlewareServlet servlet = MiddlewareServlet.create();
+		servlet.get("/", reportingServiceServlet);
+		servlet.get("/consolidation-debug", ConsolidationDebugServlet.create(cube));
+		return servlet;
 	}
 
 	@Override

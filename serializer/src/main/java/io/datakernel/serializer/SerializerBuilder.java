@@ -19,9 +19,9 @@ package io.datakernel.serializer;
 import io.datakernel.asm.Annotations;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codegen.ClassBuilder;
+import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
-import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.codegen.utils.Preconditions;
 import io.datakernel.serializer.annotations.*;
 import io.datakernel.serializer.asm.*;
@@ -225,21 +225,21 @@ public final class SerializerBuilder {
 		return this;
 	}
 
+	public SerializerBuilder withSerializerFor(Class<?> type, SerializerGen serializer) {
+		return withSerializerFor(type, new SerializerGenBuilderConst(serializer));
+	}
+
 	public SerializerBuilder withExtraSubclasses(String extraSubclassesId, Collection<Class<?>> subclasses) {
 		extraSubclassesMap.put(extraSubclassesId, subclasses);
 		return this;
 	}
 
-	public void addExtraSubclasses(String extraSubclassesId, Collection<Class<?>> subclasses) {
+	public void setExtraSubclasses(String extraSubclassesId, Collection<Class<?>> subclasses) {
 		extraSubclassesMap.put(extraSubclassesId, subclasses);
 	}
 
 	public SerializerBuilder withExtraSubclasses(String extraSubclassesId, Class<?>... subclasses) {
 		return withExtraSubclasses(extraSubclassesId, Arrays.asList(subclasses));
-	}
-
-	public SerializerBuilder withByteBuffersSupport(boolean wrapped) {
-		return withSerializerFor(ByteBuffer.class, new SerializerGenBuilderConst(new SerializerGenByteBuffer(wrapped)));
 	}
 
 	public SerializerBuilder withHppcSupport() {

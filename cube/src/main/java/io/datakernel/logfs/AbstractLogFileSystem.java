@@ -76,7 +76,7 @@ public abstract class AbstractLogFileSystem implements LogFileSystem {
 						chunkN = Math.max(chunkN, logFile.getN() + 1);
 					}
 				}
-				callback.sendResult(new LogFile(logName, chunkN));
+				callback.setResult(new LogFile(logName, chunkN));
 			}
 		});
 	}

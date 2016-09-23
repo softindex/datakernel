@@ -32,6 +32,6 @@ public abstract class ForwardingLogCommitCallback extends LogCommitCallback {
 	 */
 	@Override
 	protected void onException(Exception exception) {
-		callback.fireException(exception);
+		callback.setException(exception);
 	}
 }

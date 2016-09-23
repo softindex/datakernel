@@ -98,9 +98,9 @@ public class LogStreamProducer<T> extends StreamProducerDecorator<T> {
 			@Override
 			public void next(final IteratorCallback<StreamProducer<T>> callback) {
 				if (!it.hasNext()) {
-					callback.end();
+					callback.setEnd();
 					if (positionCallback != null) {
-						positionCallback.sendResult(getLogPosition());
+						positionCallback.setResult(getLogPosition());
 					}
 					return;
 				}
@@ -120,7 +120,7 @@ public class LogStreamProducer<T> extends StreamProducerDecorator<T> {
 				currentDecompressor.getOutput().streamTo(currentDeserializer.getInput());
 				currentDeserializer.getOutput().streamTo(errorIgnoringTransformer.getInput());
 
-				callback.sendNext(errorIgnoringTransformer.getOutput());
+				callback.setNext(errorIgnoringTransformer.getOutput());
 			}
 		});
 	}

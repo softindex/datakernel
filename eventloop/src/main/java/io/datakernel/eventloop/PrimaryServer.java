@@ -22,6 +22,7 @@ import io.datakernel.net.SocketSettings;
 import javax.net.ssl.SSLContext;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -57,6 +58,10 @@ public final class PrimaryServer extends AbstractServer<PrimaryServer> {
 	public static PrimaryServer create(Eventloop primaryEventloop, List<? extends EventloopServer> workerServers) {
 		EventloopServer[] workerServersArr = workerServers.toArray(new EventloopServer[workerServers.size()]);
 		return new PrimaryServer(primaryEventloop, workerServersArr);
+	}
+
+	public static PrimaryServer create(Eventloop primaryEventloop, EventloopServer... workerServer) {
+		return create(primaryEventloop, Arrays.asList(workerServer));
 	}
 
 	@Override

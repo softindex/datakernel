@@ -38,7 +38,7 @@ public final class ResultCallbackWithTimeout<T> extends ResultCallback<T> implem
 		timeouter = eventloop.schedule(eventloop.currentTimeMillis() + timeoutMillis, new Runnable() {
 			@Override
 			public void run() {
-				callback.fireException(TIMEOUT_EXCEPTION);
+				callback.setException(TIMEOUT_EXCEPTION);
 			}
 		});
 	}
@@ -61,7 +61,7 @@ public final class ResultCallbackWithTimeout<T> extends ResultCallback<T> implem
 	protected void onResult(T result) {
 		if (!timeouter.isCancelled() && !timeouter.isComplete()) {
 			timeouter.cancel();
-			callback.sendResult(result);
+			callback.setResult(result);
 		}
 	}
 
@@ -69,7 +69,7 @@ public final class ResultCallbackWithTimeout<T> extends ResultCallback<T> implem
 	protected void onException(Exception exception) {
 		if (!timeouter.isCancelled() && !timeouter.isComplete()) {
 			timeouter.cancel();
-			callback.fireException(exception);
+			callback.setException(exception);
 		}
 	}
 

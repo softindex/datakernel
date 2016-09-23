@@ -116,12 +116,13 @@ public final class HttpHeaders {
 	public static final HttpHeader X_XSS_PROTECTION = headers.register("X-XSS-Protection");
 
 	public static final HttpHeader X_REAL_IP = headers.register("X-Real-IP");
+	public static final HttpHeader X_AUTH_TOKEN = headers.register("X-Auth-Token");
 
 	static HttpHeader of(byte[] array, int offset, int length, int lowerCaseHashCode) {
 		return headers.getOrCreate(array, offset, length, lowerCaseHashCode);
 	}
 
-	static HttpHeader of(String string) {
+	public static HttpHeader of(String string) {
 		byte[] array = encodeAscii(string);
 		return headers.getOrCreate(array, 0, array.length);
 	}

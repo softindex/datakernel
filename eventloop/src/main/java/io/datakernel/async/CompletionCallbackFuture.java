@@ -18,7 +18,7 @@ package io.datakernel.async;
 
 import java.util.concurrent.*;
 
-public class CompletionCallbackFuture extends CompletionCallback implements Future<Void> {
+public final class CompletionCallbackFuture extends CompletionCallback implements Future<Void> {
 	private static final Void NOTHING = null;
 
 	private final CountDownLatch latch = new CountDownLatch(1);
@@ -33,17 +33,12 @@ public class CompletionCallbackFuture extends CompletionCallback implements Futu
 	@Override
 	protected void onComplete() {
 		latch.countDown();
-		onCompleteOrException();
 	}
 
 	@Override
 	protected void onException(Exception exception) {
 		this.exception = exception;
 		latch.countDown();
-		onCompleteOrException();
-	}
-
-	protected void onCompleteOrException() {
 	}
 
 	@Override

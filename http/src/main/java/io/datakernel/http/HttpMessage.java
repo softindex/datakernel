@@ -94,6 +94,11 @@ public abstract class HttpMessage {
 		this.body = body;
 	}
 
+	public void setBody(byte[] body) {
+		assert !recycled;
+		this.body = ByteBuf.wrapForReading(body);
+	}
+
 	// getters
 	public int getContentLength() throws ParseException {
 		assert !recycled;

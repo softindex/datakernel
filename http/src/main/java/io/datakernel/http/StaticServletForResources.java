@@ -72,9 +72,9 @@ public final class StaticServletForResources extends StaticServlet {
 		byte[] bytes = cache.get(name);
 		if (bytes != null) {
 			if (bytes != ERROR_BYTES) {
-				callback.sendResult(ByteBuf.wrapForReading(bytes));
+				callback.setResult(ByteBuf.wrapForReading(bytes));
 			} else {
-				callback.sendResult(null);
+				callback.setResult(null);
 			}
 		} else {
 			eventloop.callConcurrently(executor, new Callable<ByteBuf>() {

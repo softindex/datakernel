@@ -22,6 +22,7 @@ import io.datakernel.serializer.annotations.SerializeNullable;
 import io.datakernel.serializer.annotations.SerializeSubclasses;
 
 public final class RpcMessage {
+	public static final String MESSAGE_TYPES = "messageTypes";
 
 	private final int cookie;
 	private final Object data;
@@ -41,7 +42,7 @@ public final class RpcMessage {
 	}
 
 	@Serialize(order = 2)
-	@SerializeSubclasses(extraSubclassesId = "extraRpcMessageData", value = {RpcRemoteException.class})
+	@SerializeSubclasses(value = {RpcRemoteException.class}, extraSubclassesId = MESSAGE_TYPES)
 	@SerializeNullable
 	public Object getData() {
 		return data;

@@ -21,7 +21,7 @@ import com.google.common.collect.ImmutableMap;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.fieldtype.HyperLogLog;
 import io.datakernel.aggregation_db.keytype.KeyType;
-import io.datakernel.codegen.utils.DefiningClassLoader;
+import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducers;

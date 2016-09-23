@@ -39,7 +39,6 @@ import static io.datakernel.eventloop.AsyncSslSocket.wrapServerSocket;
 import static io.datakernel.eventloop.AsyncTcpSocket.EventHandler;
 import static io.datakernel.eventloop.AsyncTcpSocketImpl.wrapChannel;
 import static io.datakernel.net.ServerSocketSettings.DEFAULT_BACKLOG;
-import static io.datakernel.net.SocketSettings.defaultSocketSettings;
 import static io.datakernel.util.Preconditions.check;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -57,7 +56,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	private final Logger logger = getLogger(this.getClass());
 
 	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS
-			= ServerSocketSettings.create().withBacklog(DEFAULT_BACKLOG);
+			= ServerSocketSettings.create(DEFAULT_BACKLOG);
 
 	private final ServerSocketSettings serverSocketSettings;
 	private final SocketSettings socketSettings;
@@ -93,7 +92,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		this(
 				eventloop,
 				DEFAULT_SERVER_SOCKET_SETTINGS,
-				defaultSocketSettings(),
+				SocketSettings.create(),
 				false,
 				Collections.<InetSocketAddress>emptyList(),
 				null,

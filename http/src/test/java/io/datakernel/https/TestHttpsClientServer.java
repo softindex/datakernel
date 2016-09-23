@@ -65,7 +65,7 @@ public class TestHttpsClientServer {
 	private AsyncHttpServlet bobServlet = new AsyncHttpServlet() {
 		@Override
 		public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
-			callback.sendResult(ok200().withBody(wrapAscii("Hello, I am Bob!")));
+			callback.setResponse(ok200().withBody(wrapAscii("Hello, I am Bob!")));
 		}
 	};
 	private Eventloop eventloop = Eventloop.create();
@@ -93,14 +93,14 @@ public class TestHttpsClientServer {
 		client.send(request, 500, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
-				callback.sendResult(decodeAscii(result.getBody()));
+				callback.setResult(decodeAscii(result.getBody()));
 				server.close();
 				client.close();
 			}
 
 			@Override
 			public void onException(Exception e) {
-				callback.fireException(e);
+				callback.setException(e);
 				server.close();
 				client.close();
 			}
@@ -142,27 +142,27 @@ public class TestHttpsClientServer {
 		client.send(httpsRequest, 500, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
-				callbackHttps.sendResult(decodeAscii(result.getBody()));
-				waitAllHandler.getCallback().complete();
+				callbackHttps.setResult(decodeAscii(result.getBody()));
+				waitAllHandler.getCallback().setComplete();
 			}
 
 			@Override
 			public void onException(Exception e) {
-				callbackHttps.fireException(e);
-				waitAllHandler.getCallback().fireException(e);
+				callbackHttps.setException(e);
+				waitAllHandler.getCallback().setException(e);
 			}
 		});
 		client.send(httpRequest, 500, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
-				callbackHttp.sendResult(decodeAscii(result.getBody()));
-				waitAllHandler.getCallback().complete();
+				callbackHttp.setResult(decodeAscii(result.getBody()));
+				waitAllHandler.getCallback().setComplete();
 			}
 
 			@Override
 			public void onException(Exception e) {
-				callbackHttp.fireException(e);
-				waitAllHandler.getCallback().fireException(e);
+				callbackHttp.setException(e);
+				waitAllHandler.getCallback().setException(e);
 			}
 		});
 

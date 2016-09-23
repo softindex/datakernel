@@ -23,10 +23,16 @@ public final class SettableCurrentTimeProvider implements CurrentTimeProvider {
 		this.time = time;
 	}
 
-	public static SettableCurrentTimeProvider create() {return new SettableCurrentTimeProvider(0);}
+	public static SettableCurrentTimeProvider create() {
+		return new SettableCurrentTimeProvider(0);
+	}
 
 	public SettableCurrentTimeProvider withTime(long time) {
 		return new SettableCurrentTimeProvider(time);
+	}
+
+	public SettableCurrentTimeProvider withCurrentTime() {
+		return new SettableCurrentTimeProvider(System.currentTimeMillis());
 	}
 
 	@Override

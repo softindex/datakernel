@@ -33,7 +33,6 @@ import io.datakernel.http.HttpUtils;
 import java.util.HashMap;
 import java.util.Map;
 
-import static io.datakernel.cube.api.CubeHttpServer.QUERY_REQUEST_PATH;
 import static io.datakernel.cube.api.HttpJsonConstants.*;
 
 public final class CubeHttpClient {
@@ -68,27 +67,27 @@ public final class CubeHttpClient {
 				try {
 					response = ByteBufStrings.decodeUtf8(httpResponse.getBody());
 				} catch (ParseException e) {
-					callback.fireException(new ParseException("Cube HTTP query failed. Invalid data received", e));
+					callback.setException(new ParseException("Cube HTTP query failed. Invalid data received", e));
 					return;
 				}
 
 				if (httpResponse.getCode() != 200) {
-					callback.fireException(new ParseException("Cube HTTP query failed. Response code: "
+					callback.setException(new ParseException("Cube HTTP query failed. Response code: "
 							+ httpResponse.getCode() + " Body: " + response));
 					return;
 				}
 
 				try {
 					ReportingQueryResult result = gson.fromJson(response, ReportingQueryResult.class);
-					callback.sendResult(result);
+					callback.setResult(result);
 				} catch (RuntimeException e) {
-					callback.fireException(new ParseException("Could not parse cube HTTP query response", e));
+					callback.setException(new ParseException("Could not parse cube HTTP query response", e));
 				}
 			}
 
 			@Override
 			public void onException(Exception e) {
-				callback.fireException(new ParseException("Cube HTTP request failed", e));
+				callback.setException(new ParseException("Cube HTTP request failed", e));
 			}
 		});
 	}
@@ -126,7 +125,7 @@ public final class CubeHttpClient {
 		if (query.getMetadataFields() != null)
 			urlParams.put(METADATA_FIELDS_PARAM, gson.toJson(query.getMetadataFields()));
 
-		String url = domain + QUERY_REQUEST_PATH + "?" + HttpUtils.urlQueryString(urlParams);
+		String url = domain + "/" + "?" + HttpUtils.urlQueryString(urlParams);
 
 		return HttpRequest.get(url);
 	}

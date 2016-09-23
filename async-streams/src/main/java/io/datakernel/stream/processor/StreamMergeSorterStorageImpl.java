@@ -147,12 +147,12 @@ public final class StreamMergeSorterStorageImpl<T> implements StreamMergeSorterS
 				fileReader.setPositionCallback(new ResultCallback<Long>() {
 					@Override
 					public void onResult(Long position) {
-						callback.complete();
+						callback.setComplete();
 					}
 
 					@Override
 					public void onException(Exception e) {
-						callback.fireException(e);
+						callback.setException(e);
 					}
 				});
 			}

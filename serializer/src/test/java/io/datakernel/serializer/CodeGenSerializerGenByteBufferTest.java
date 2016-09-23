@@ -65,7 +65,7 @@ public class CodeGenSerializerGenByteBufferTest {
 		boolean wrapped = true;
 		BufferSerializer<ByteBuffer> serializerByteBuffer = SerializerBuilder
 				.create(ClassLoader.getSystemClassLoader())
-				.withByteBuffersSupport(wrapped)
+				.withSerializerFor(ByteBuffer.class, new SerializerGenBuilderConst(new SerializerGenByteBuffer(wrapped)))
 				.build(ByteBuffer.class);
 
 		ByteBuffer testBuffer2 = doTest(testBuffer1, serializerByteBuffer, serializerByteBuffer);

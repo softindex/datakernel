@@ -20,8 +20,8 @@ import io.datakernel.aggregation_db.Aggregate;
 import io.datakernel.aggregation_db.AggregationStructure;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.codegen.ClassBuilder;
+import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.stream.processor.StreamReducers;
 
 import java.util.ArrayList;

@@ -101,9 +101,9 @@ public final class LogToCubeRunner<T> {
 		final AggregatorSplitter<T> aggregator = aggregatorSplitterFactory.create(eventloop);
 		LogCommitTransaction<T> logCommitTransaction = LogCommitTransaction.create(eventloop, logManager, log, positions, new ForwardingLogCommitCallback(callback) {
 			@Override
-			protected void handleCommit(String log, Map<String, LogPosition> oldPositions,
-			                            Map<String, LogPosition> newPositions,
-			                            Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks) {
+			protected void onCommit(String log, Map<String, LogPosition> oldPositions,
+			                        Map<String, LogPosition> newPositions,
+			                        Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks) {
 				processLog_doCommit(log, oldPositions, newPositions, newChunks, callback);
 
 				sw.stop();
@@ -157,6 +157,6 @@ public final class LogToCubeRunner<T> {
 
 	private void processLog_afterCommit(Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks, CompletionCallback callback) {
 		logger.trace("processLog_afterCommit called. New chunks: {}", newChunks);
-		callback.complete();
+		callback.setComplete();
 	}
 }

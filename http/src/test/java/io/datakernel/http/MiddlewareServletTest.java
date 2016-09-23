@@ -65,7 +65,7 @@ public class MiddlewareServletTest {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
 				ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
-				callback.sendResult(HttpResponse.ofCode(200).withBody(msg));
+				callback.setResponse(HttpResponse.ofCode(200).withBody(msg));
 			}
 		};
 
@@ -111,7 +111,7 @@ public class MiddlewareServletTest {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
 				ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
-				callback.sendResult(HttpResponse.ofCode(200).withBody(msg));
+				callback.setResponse(HttpResponse.ofCode(200).withBody(msg));
 			}
 		};
 
@@ -143,7 +143,7 @@ public class MiddlewareServletTest {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
 				ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
-				callback.sendResult(HttpResponse.ofCode(200).withBody(msg));
+				callback.setResponse(HttpResponse.ofCode(200).withBody(msg));
 			}
 		};
 
@@ -151,7 +151,7 @@ public class MiddlewareServletTest {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
 				ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
-				callback.sendResult(HttpResponse.ofCode(200).withBody(msg));
+				callback.setResponse(HttpResponse.ofCode(200).withBody(msg));
 			}
 		};
 
@@ -179,7 +179,7 @@ public class MiddlewareServletTest {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
 				ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
-				callback.sendResult(HttpResponse.ofCode(200).withBody(msg));
+				callback.setResponse(HttpResponse.ofCode(200).withBody(msg));
 			}
 		};
 
@@ -216,7 +216,7 @@ public class MiddlewareServletTest {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
 				ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
-				callback.sendResult(HttpResponse.ofCode(200).withBody(msg));
+				callback.setResponse(HttpResponse.ofCode(200).withBody(msg));
 			}
 		};
 
@@ -224,7 +224,7 @@ public class MiddlewareServletTest {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
 				ByteBuf msg = ByteBufStrings.wrapUtf8("Shall not be executed: " + request.getPath());
-				callback.sendResult(HttpResponse.ofCode(200).withBody(msg));
+				callback.setResponse(HttpResponse.ofCode(200).withBody(msg));
 			}
 		};
 
@@ -254,7 +254,7 @@ public class MiddlewareServletTest {
 						+ " " + request.getUrlParameter("uid")
 						+ " " + request.getUrlParameter("eid");
 				ByteBuf bodyByteBuf = ByteBufStrings.wrapUtf8(body);
-				callback.sendResult(HttpResponse.ofCode(200).withBody(bodyByteBuf));
+				callback.setResponse(HttpResponse.ofCode(200).withBody(bodyByteBuf));
 				request.recycleBufs();
 			}
 		};
@@ -277,7 +277,7 @@ public class MiddlewareServletTest {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
 				ByteBuf body = ByteBufStrings.wrapUtf8("served car: " + request.getUrlParameter("cid"));
-				callback.sendResult(HttpResponse.ofCode(200).withBody(body));
+				callback.setResponse(HttpResponse.ofCode(200).withBody(body));
 			}
 		};
 
@@ -285,7 +285,7 @@ public class MiddlewareServletTest {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
 				ByteBuf body = ByteBufStrings.wrapUtf8("served man: " + request.getUrlParameter("mid"));
-				callback.sendResult(HttpResponse.ofCode(200).withBody(body));
+				callback.setResponse(HttpResponse.ofCode(200).withBody(body));
 			}
 		};
 
@@ -309,21 +309,21 @@ public class MiddlewareServletTest {
 		AsyncHttpServlet post = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				callback.sendResult(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("POST")));
+				callback.setResponse(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("POST")));
 			}
 		};
 
 		AsyncHttpServlet get = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				callback.sendResult(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("GET")));
+				callback.setResponse(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("GET")));
 			}
 		};
 
 		AsyncHttpServlet wildcard = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				callback.sendResult(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("WILDCARD")));
+				callback.setResponse(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("WILDCARD")));
 			}
 		};
 
@@ -345,14 +345,14 @@ public class MiddlewareServletTest {
 		AsyncHttpServlet def = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				callback.sendResult(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Stopped at admin: " + request.getRelativePath())));
+				callback.setResponse(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Stopped at admin: " + request.getRelativePath())));
 			}
 		};
 
 		AsyncHttpServlet action = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				callback.sendResult(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Action executed")));
+				callback.setResponse(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Action executed")));
 			}
 		};
 
@@ -375,7 +375,7 @@ public class MiddlewareServletTest {
 		AsyncHttpServlet handler = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				callback.sendResult(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("All OK")));
+				callback.setResponse(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("All OK")));
 			}
 		};
 		MiddlewareServlet main = MiddlewareServlet.create();

@@ -77,18 +77,17 @@ public class RpcHelloWorldTest {
 				try {
 					result = helloService.hello(request.name);
 				} catch (Exception e) {
-					callback.fireException(e);
+					callback.setException(e);
 					return;
 				}
-				callback.sendResult(new HelloResponse(result));
+				callback.setResult(new HelloResponse(result));
 			}
 		};
 	}
 
 	private static RpcServer createServer(Eventloop eventloop) {
 		return RpcServer.create(eventloop)
-				.withMessageTypes(HelloRequest.class, HelloResponse.class)
-				.withHandlerFor(HelloRequest.class, helloServiceRequestHandler(new HelloService() {
+				.withHandler(HelloRequest.class, HelloResponse.class, helloServiceRequestHandler(new HelloService() {
 					@Override
 					public String hello(String name) throws Exception {
 						if (name.equals("--")) {

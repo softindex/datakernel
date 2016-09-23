@@ -17,6 +17,7 @@
 package io.datakernel.net;
 
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
+import io.datakernel.util.MemSize;
 
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
@@ -28,12 +29,6 @@ import static java.net.StandardSocketOptions.*;
  * This class used to change settings for socket. It will be applying with creating new socket
  */
 public final class SocketSettings {
-	private static final SocketSettings DEFAULT_SOCKET_SETTINGS = create();
-
-	public static SocketSettings defaultSocketSettings() {
-		return DEFAULT_SOCKET_SETTINGS;
-	}
-
 	protected static final int DEF_INT = -1;
 	protected static final byte DEF_BOOL = -1;
 	protected static final byte TRUE = 1;
@@ -66,8 +61,16 @@ public final class SocketSettings {
 		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay, readTimeout, writeTimeout);
 	}
 
+	public SocketSettings withSendBufferSize(MemSize sendBufferSize) {
+		return withSendBufferSize((int) sendBufferSize.get());
+	}
+
 	public SocketSettings withReceiveBufferSize(int receiveBufferSize) {
 		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay, readTimeout, writeTimeout);
+	}
+
+	public SocketSettings withReceiveBufferSize(MemSize receiveBufferSize) {
+		return withReceiveBufferSize((int) receiveBufferSize.get());
 	}
 
 	public SocketSettings withKeepAlive(boolean keepAlive) {

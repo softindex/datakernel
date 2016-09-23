@@ -159,7 +159,7 @@ public class LogStreamConsumer_ByteBufferTest {
 					producer.streamTo(writer);
 					writer.setFlushCallback(callback);
 				} catch (IOException e) {
-					callback.fireException(e);
+					callback.setException(e);
 				}
 			}
 		};
@@ -324,7 +324,7 @@ public class LogStreamConsumer_ByteBufferTest {
 							chunkN = Math.max(chunkN, logFile.getN() + 1);
 						}
 					}
-					callback.sendResult(new LogFile(logName, chunkN));
+					callback.setResult(new LogFile(logName, chunkN));
 				}
 			});
 		}
@@ -401,7 +401,7 @@ public class LogStreamConsumer_ByteBufferTest {
 				writer.setFlushCallback(callback);
 				listWriter.add(writer);
 			} catch (IOException e) {
-				callback.fireException(e);
+				callback.setException(e);
 			}
 		}
 	}

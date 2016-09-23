@@ -66,14 +66,14 @@ public class DnsResolversTest {
 
 		@Override
 		protected void onResult(InetAddress[] result) {
-			callback.sendResult(result);
+			callback.setResult(result);
 			localEventloopConcurrentOperationTracker.complete();
 			counter.completeOperation();
 		}
 
 		@Override
 		protected void onException(Exception e) {
-			callback.fireException(e);
+			callback.setException(e);
 			localEventloopConcurrentOperationTracker.complete();
 			counter.completeOperation();
 		}

@@ -65,7 +65,7 @@ public class AsyncIteratorWithSetter<T> implements AsyncIterator<T> {
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
-				callback.sendNext(next);
+				callback.setNext(next);
 			}
 		});
 	}
@@ -74,7 +74,7 @@ public class AsyncIteratorWithSetter<T> implements AsyncIterator<T> {
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
-				callback.end();
+				callback.setEnd();
 			}
 		});
 	}
@@ -83,7 +83,7 @@ public class AsyncIteratorWithSetter<T> implements AsyncIterator<T> {
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
-				callback.fireException(exception);
+				callback.setException(exception);
 			}
 		});
 	}

@@ -91,7 +91,7 @@ public final class AsyncCallbacks {
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
-				callback.sendResult(result);
+				callback.setResult(result);
 			}
 		});
 	}
@@ -107,7 +107,7 @@ public final class AsyncCallbacks {
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
-				callback.fireException(e);
+				callback.setException(e);
 			}
 		});
 	}
@@ -122,7 +122,7 @@ public final class AsyncCallbacks {
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
-				callback.complete();
+				callback.setComplete();
 			}
 		});
 	}
@@ -172,7 +172,7 @@ public final class AsyncCallbacks {
 		eventloop.execute(new Runnable() {
 			@Override
 			public void run() {
-				callback.sendResult(result);
+				callback.setResult(result);
 			}
 		});
 	}
@@ -188,7 +188,7 @@ public final class AsyncCallbacks {
 		eventloop.execute(new Runnable() {
 			@Override
 			public void run() {
-				callback.fireException(e);
+				callback.setException(e);
 			}
 		});
 	}
@@ -203,7 +203,7 @@ public final class AsyncCallbacks {
 		eventloop.execute(new Runnable() {
 			@Override
 			public void run() {
-				callback.complete();
+				callback.setComplete();
 			}
 		});
 	}
@@ -252,7 +252,7 @@ public final class AsyncCallbacks {
 			@Override
 			public void execute(final CompletionCallback callback) {
 				if (tasks.length == 0) {
-					callback.complete();
+					callback.setComplete();
 				} else {
 					CompletionCallback internalCallback = new ForwardingCompletionCallback(callback) {
 						int n = 1;
@@ -260,7 +260,7 @@ public final class AsyncCallbacks {
 						@Override
 						public void onComplete() {
 							if (n == tasks.length) {
-								callback.complete();
+								callback.setComplete();
 							} else {
 								AsyncTask task = tasks[n++];
 								task.execute(this);
@@ -276,14 +276,6 @@ public final class AsyncCallbacks {
 	}
 
 	/**
-	 * Returns new  AsyncTask which contains two tasks from argument and executes them successively
-	 * through callback after calling execute()
-	 */
-	public static AsyncTask sequence(AsyncTask task1, AsyncTask task2) {
-		return sequence(new AsyncTask[]{task1, task2});
-	}
-
-	/**
 	 * Returns new  AsyncTask which contains tasks from argument and executes them parallel
 	 */
 	public static AsyncTask parallel(final AsyncTask... tasks) {
@@ -291,29 +283,27 @@ public final class AsyncCallbacks {
 			@Override
 			public void execute(final CompletionCallback callback) {
 				if (tasks.length == 0) {
-					callback.complete();
+					callback.setComplete();
 				} else {
-					CompletionCallback internalCallback = new ForwardingCompletionCallback(callback) {
-						int n = tasks.length;
-
-						@Override
-						public void onComplete() {
-							if (--n == 0) {
-								callback.complete();
-							}
-						}
-
-						@Override
-						public void onException(Exception exception) {
-							if (n > 0) {
-								n = 0;
-								callback.fireException(exception);
-							}
-						}
-					};
-
 					for (AsyncTask task : tasks) {
-						task.execute(internalCallback);
+						task.execute(new CompletionCallback() {
+							int n = tasks.length;
+
+							@Override
+							public void onComplete() {
+								if (--n == 0) {
+									callback.setComplete();
+								}
+							}
+
+							@Override
+							public void onException(Exception exception) {
+								if (n > 0) {
+									n = 0;
+									callback.setException(exception);
+								}
+							}
+						});
 					}
 				}
 			}
@@ -321,13 +311,13 @@ public final class AsyncCallbacks {
 	}
 
 	/**
-	 * Returns  AsyncGetter which parallel processed results from getters from argument
+	 * Returns  AsyncCallable which parallel processed results from callables from argument
 	 *
-	 * @param returnOnFirstException flag that means that on first throwing exception in getters
-	 *                               method should returns AsyncGetter
+	 * @param returnOnFirstException flag that means that on first throwing exception in callables
+	 *                               method should returns AsyncCallable
 	 */
-	public static AsyncGetter<Object[]> parallel(final boolean returnOnFirstException, final AsyncGetter<?>... getters) {
-		return new AsyncGetter<Object[]>() {
+	public static AsyncCallable<Object[]> parallel(final boolean returnOnFirstException, final AsyncCallable<?>... callables) {
+		return new AsyncCallable<Object[]>() {
 			class Holder {
 				int n = 0;
 				Exception[] exceptions;
@@ -335,24 +325,24 @@ public final class AsyncCallbacks {
 
 			@SuppressWarnings("unchecked")
 			@Override
-			public void get(final ResultCallback<Object[]> callback) {
-				final Object[] results = new Object[getters.length];
-				if (getters.length == 0) {
-					callback.sendResult(results);
+			public void call(final ResultCallback<Object[]> callback) {
+				final Object[] results = new Object[callables.length];
+				if (callables.length == 0) {
+					callback.setResult(results);
 				} else {
 					final Holder holder = new Holder();
-					holder.n = getters.length;
-					for (int i = 0; i < getters.length; i++) {
-						AsyncGetter<Object> getter = (AsyncGetter<Object>) getters[i];
+					holder.n = callables.length;
+					for (int i = 0; i < callables.length; i++) {
+						AsyncCallable<Object> callable = (AsyncCallable<Object>) callables[i];
 
 						final int finalI = i;
-						getter.get(new ForwardingResultCallback<Object>(callback) {
+						callable.call(new ResultCallback<Object>() {
 							private void checkCompleteResult() {
 								if (--holder.n == 0) {
 									if (holder.exceptions == null)
-										callback.sendResult(results);
+										callback.setResult(results);
 									else
-										callback.fireException(new ParallelExecutionException(results, holder.exceptions));
+										callback.setException(new ParallelExecutionException(results, holder.exceptions));
 								}
 							}
 
@@ -365,7 +355,7 @@ public final class AsyncCallbacks {
 							@Override
 							public void onException(Exception exception) {
 								if (holder.exceptions == null) {
-									holder.exceptions = new Exception[getters.length];
+									holder.exceptions = new Exception[callables.length];
 								}
 								holder.exceptions[finalI] = exception;
 								if (returnOnFirstException && holder.n > 0)
@@ -381,13 +371,6 @@ public final class AsyncCallbacks {
 	}
 
 	/**
-	 * Returns new  AsyncTask which contains two tasks from argument and executes them parallel
-	 */
-	public static AsyncTask parallel(AsyncTask task1, AsyncTask task2) {
-		return parallel(new AsyncTask[]{task1, task2});
-	}
-
-	/**
 	 * Returns new  AsyncFunction which contains functions from argument and applies them successively
 	 *
 	 * @param <I> type of value for input to function
@@ -399,7 +382,7 @@ public final class AsyncCallbacks {
 			@Override
 			public void apply(I input, final ResultCallback<O> callback) {
 				if (functions.length == 0) {
-					callback.sendResult((O) input);
+					callback.setResult((O) input);
 				} else {
 					ForwardingResultCallback<Object> internalCallback = new ForwardingResultCallback<Object>(callback) {
 						int n = 1;
@@ -407,7 +390,7 @@ public final class AsyncCallbacks {
 						@Override
 						public void onResult(Object result) {
 							if (n == functions.length) {
-								callback.sendResult((O) result);
+								callback.setResult((O) result);
 							} else {
 								AsyncFunction<Object, Object> function = (AsyncFunction<Object, Object>) functions[n++];
 								function.apply(result, this);
@@ -440,7 +423,7 @@ public final class AsyncCallbacks {
 						function2.apply(result, new ForwardingResultCallback<O>(callback) {
 							@Override
 							public void onResult(O result) {
-								callback.sendResult(result);
+								callback.setResult(result);
 							}
 						});
 					}
@@ -450,106 +433,59 @@ public final class AsyncCallbacks {
 	}
 
 	/**
-	 * Returns new AsyncTask which set value for AsyncSetter
-	 *
-	 * @param <T> type of value
-	 */
-	public static <T> AsyncTask combine(final T value, final AsyncSetter<T> setter) {
-		return new AsyncTask() {
-			@Override
-			public void execute(CompletionCallback callback) {
-				setter.set(value, callback);
-			}
-		};
-	}
-
-	/**
-	 * Returns new AsyncGetter which with method get() applies from to function
+	 * Returns new AsyncCallable which with method get() applies from to function
 	 *
 	 * @param <F> type of value for appplying
 	 * @param <T> type of output function
 	 */
-	public static <F, T> AsyncGetter<T> combine(final F from, final AsyncFunction<F, T> function) {
-		return new AsyncGetter<T>() {
+	public static <F, T> AsyncCallable<T> combine(final F from, final AsyncFunction<F, T> function) {
+		return new AsyncCallable<T>() {
 			@Override
-			public void get(ResultCallback<T> callback) {
+			public void call(ResultCallback<T> callback) {
 				function.apply(from, callback);
 			}
 		};
 	}
 
 	/**
-	 * Returns getter which with method get() calls onResult() with value with argument
+	 * Returns callable which with method get() calls onResult() with value with argument
 	 *
 	 * @param value value for argument onResult()
 	 * @param <T>   type of result
 	 */
-	public static <T> AsyncGetter<T> constGetter(final T value) {
-		return new AsyncGetter<T>() {
+	public static <T> AsyncCallable<T> constCallable(final T value) {
+		return new AsyncCallable<T>() {
 			@Override
-			public void get(ResultCallback<T> callback) {
-				callback.sendResult(value);
+			public void call(ResultCallback<T> callback) {
+				callback.setResult(value);
 			}
 		};
 	}
 
-	public static <T> AsyncGetter<T> combine(AsyncTask asyncTask, T value) {
-		return sequence(asyncTask, constGetter(value));
+	public static <T> AsyncCallable<T> combine(AsyncTask asyncTask, T value) {
+		return sequence(asyncTask, constCallable(value));
 	}
 
 	/**
-	 * Returns AsyncTask which during executing calls method get() from getter and after that sets result to setter
+	 * Returns AsyncTask which during executing calls method call() from callable and after that calls onResult() from resultCallback
 	 *
 	 * @param <T> type of result
 	 */
-	public static <T> AsyncTask sequence(final AsyncGetter<T> getter, final AsyncSetter<T> setter) {
+	public static <T> AsyncTask combine(final AsyncCallable<T> callable, final ResultCallback<T> resultCallback) {
 		return new AsyncTask() {
 			@Override
 			public void execute(final CompletionCallback callback) {
-				getter.get(new ForwardingResultCallback<T>(callback) {
+				callable.call(new ForwardingResultCallback<T>(callback) {
 					@Override
 					public void onResult(T result) {
-						setter.set(result, callback);
-					}
-				});
-			}
-		};
-	}
-
-	/**
-	 * Returns AsyncTask which during executing calls method get() from getter and after that calls onResult() from resultCallback
-	 *
-	 * @param <T> type of result
-	 */
-	public static <T> AsyncTask combine(final AsyncGetter<T> getter, final ResultCallback<T> resultCallback) {
-		return new AsyncTask() {
-			@Override
-			public void execute(final CompletionCallback callback) {
-				getter.get(new ForwardingResultCallback<T>(callback) {
-					@Override
-					public void onResult(T result) {
-						resultCallback.sendResult(result);
-						callback.complete();
+						resultCallback.setResult(result);
+						callback.setComplete();
 					}
 
 					@Override
 					public void onException(Exception exception) {
-						resultCallback.fireException(exception);
-						callback.fireException(exception);
-					}
-				});
-			}
-		};
-	}
-
-	public static <F, T> AsyncFunction<F, T> sequence(final AsyncSetter<F> setter, final AsyncGetter<T> getter) {
-		return new AsyncFunction<F, T>() {
-			@Override
-			public void apply(F input, final ResultCallback<T> callback) {
-				setter.set(input, new ForwardingCompletionCallback(callback) {
-					@Override
-					public void onComplete() {
-						getter.get(callback);
+						resultCallback.setException(exception);
+						callback.setException(exception);
 					}
 				});
 			}
@@ -557,43 +493,29 @@ public final class AsyncCallbacks {
 	}
 
 	/**
-	 * Returns AsyncGetter which executes AsyncTask from arguments and gets getter
+	 * Returns AsyncCallable which executes AsyncTask from arguments and gets callable
 	 *
 	 * @param <T> type of result
 	 */
-	public static <T> AsyncGetter<T> sequence(final AsyncTask task, final AsyncGetter<T> getter) {
-		return new AsyncGetter<T>() {
+	public static <T> AsyncCallable<T> sequence(final AsyncTask task, final AsyncCallable<T> callable) {
+		return new AsyncCallable<T>() {
 			@Override
-			public void get(final ResultCallback<T> callback) {
+			public void call(final ResultCallback<T> callback) {
 				task.execute(new ForwardingCompletionCallback(callback) {
 					@Override
 					public void onComplete() {
-						getter.get(callback);
+						callable.call(callback);
 					}
 				});
 			}
 		};
 	}
 
-	public static <T> AsyncSetter<T> sequence(final AsyncSetter<T> setter, final AsyncTask task) {
-		return new AsyncSetter<T>() {
+	public static <F, T> AsyncCallable<T> sequence(final AsyncCallable<F> callable, final AsyncFunction<F, T> function) {
+		return new AsyncCallable<T>() {
 			@Override
-			public void set(T value, final CompletionCallback callback) {
-				setter.set(value, new ForwardingCompletionCallback(callback) {
-					@Override
-					public void onComplete() {
-						task.execute(callback);
-					}
-				});
-			}
-		};
-	}
-
-	public static <F, T> AsyncGetter<T> sequence(final AsyncGetter<F> getter, final AsyncFunction<F, T> function) {
-		return new AsyncGetter<T>() {
-			@Override
-			public void get(final ResultCallback<T> callback) {
-				getter.get(new ForwardingResultCallback<F>(callback) {
+			public void call(final ResultCallback<T> callback) {
+				callable.call(new ForwardingResultCallback<F>(callback) {
 					@Override
 					public void onResult(F result) {
 						function.apply(result, callback);
@@ -603,46 +525,22 @@ public final class AsyncCallbacks {
 		};
 	}
 
-	public static <F, T> AsyncGetter<T> combine(final AsyncGetter<F> getter, final Function<F, T> function) {
-		return new AsyncGetter<T>() {
+	public static <F, T> AsyncCallable<T> combine(final AsyncCallable<F> callable, final Function<F, T> function) {
+		return new AsyncCallable<T>() {
 			@Override
-			public void get(final ResultCallback<T> callback) {
-				getter.get(new ForwardingResultCallback<F>(callback) {
+			public void call(final ResultCallback<T> callback) {
+				callable.call(new ForwardingResultCallback<F>(callback) {
 					@Override
 					public void onResult(F result) {
-						callback.sendResult(function.apply(result));
+						callback.setResult(function.apply(result));
 					}
 				});
 			}
 		};
 	}
 
-	public static <F, T> AsyncSetter<F> sequence(final AsyncFunction<F, T> function, final AsyncSetter<T> setter) {
-		return new AsyncSetter<F>() {
-			@Override
-			public void set(F value, final CompletionCallback callback) {
-				function.apply(value, new ForwardingResultCallback<T>(callback) {
-					@Override
-					public void onResult(T result) {
-						setter.set(result, callback);
-					}
-				});
-			}
-		};
-	}
-
-	public static <F, T> AsyncSetter<F> combine(final Function<F, T> function, final AsyncSetter<T> setter) {
-		return new AsyncSetter<F>() {
-			@Override
-			public void set(F value, CompletionCallback callback) {
-				T to = function.apply(value);
-				setter.set(to, callback);
-			}
-		};
-	}
-
-	public static <T> AsyncGetterWithSetter<T> createAsyncGetterWithSetter(Eventloop eventloop) {
-		return AsyncGetterWithSetter.create(eventloop);
+	public static <T> AsyncCallableWithSetter<T> createAsyncCallableWithSetter(Eventloop eventloop) {
+		return AsyncCallableWithSetter.create(eventloop);
 	}
 
 	public static final class WaitAllHandler {
@@ -680,9 +578,9 @@ public final class AsyncCallbacks {
 		private void completeResult() {
 			if ((exceptions + completed) == totalCount) {
 				if (completed >= minCompleted) {
-					callback.complete();
+					callback.setComplete();
 				} else {
-					callback.fireException(lastException);
+					callback.setException(lastException);
 				}
 			}
 		}
@@ -697,14 +595,14 @@ public final class AsyncCallbacks {
 	 */
 	public static WaitAllHandler waitAll(int count, CompletionCallback callback) {
 		if (count == 0)
-			callback.complete();
+			callback.setComplete();
 
 		return new WaitAllHandler(count, count, callback);
 	}
 
 	public static WaitAllHandler waitAll(int minCompleted, int totalCount, CompletionCallback callback) {
 		if (totalCount == 0)
-			callback.complete();
+			callback.setComplete();
 
 		return new WaitAllHandler(minCompleted, totalCount, callback);
 	}
@@ -722,9 +620,9 @@ public final class AsyncCallbacks {
 			public void run() {
 				try {
 					server.listen();
-					future.complete();
+					future.setComplete();
 				} catch (IOException e) {
-					future.fireException(e);
+					future.setException(e);
 				}
 			}
 		});
@@ -742,7 +640,7 @@ public final class AsyncCallbacks {
 			@Override
 			public void run() {
 				server.close();
-				future.complete();
+				future.setComplete();
 			}
 		});
 		return future;
@@ -812,7 +710,7 @@ public final class AsyncCallbacks {
 				eventloop.execute(new Runnable() {
 					@Override
 					public void run() {
-						callback.sendResult(result);
+						callback.setResult(result);
 					}
 				});
 			}
@@ -822,7 +720,7 @@ public final class AsyncCallbacks {
 				eventloop.execute(new Runnable() {
 					@Override
 					public void run() {
-						callback.fireException(exception);
+						callback.setException(exception);
 					}
 				});
 			}
@@ -846,7 +744,7 @@ public final class AsyncCallbacks {
 				eventloop.execute(new Runnable() {
 					@Override
 					public void run() {
-						callback.complete();
+						callback.setComplete();
 					}
 				});
 			}
@@ -856,7 +754,7 @@ public final class AsyncCallbacks {
 				eventloop.execute(new Runnable() {
 					@Override
 					public void run() {
-						callback.fireException(exception);
+						callback.setException(exception);
 					}
 				});
 			}

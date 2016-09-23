@@ -22,11 +22,11 @@ import static io.datakernel.util.Preconditions.check;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 /**
- * Instance of this class combines possibility of  getter and ResultCallback
+ * Instance of this class combines possibility of  callable and ResultCallback
  *
  * @param <T> type of result
  */
-public final class AsyncGetterWithSetter<T> extends ResultCallback<T> implements AsyncGetter<T> {
+public final class AsyncCallableWithSetter<T> extends ResultCallback<T> implements AsyncCallable<T> {
 
 	private final Eventloop eventloop;
 	private T result;
@@ -34,15 +34,15 @@ public final class AsyncGetterWithSetter<T> extends ResultCallback<T> implements
 	private ResultCallback<T> callback;
 
 	// region builders
-	private AsyncGetterWithSetter(Eventloop eventloop) {
+	private AsyncCallableWithSetter(Eventloop eventloop) {
 		this.eventloop = eventloop;
 	}
 
 	/**
 	 * Initialize new instance of this class with event loop in which ResultCallback will be called
 	 */
-	public static <T> AsyncGetterWithSetter<T> create(Eventloop eventloop) {
-		return new AsyncGetterWithSetter<>(eventloop);
+	public static <T> AsyncCallableWithSetter<T> create(Eventloop eventloop) {
+		return new AsyncCallableWithSetter<>(eventloop);
 	}
 	// endregion
 
@@ -50,7 +50,7 @@ public final class AsyncGetterWithSetter<T> extends ResultCallback<T> implements
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
-				callback.sendResult(AsyncGetterWithSetter.this.result);
+				callback.setResult(AsyncCallableWithSetter.this.result);
 			}
 		});
 	}
@@ -59,7 +59,7 @@ public final class AsyncGetterWithSetter<T> extends ResultCallback<T> implements
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
-				callback.fireException(AsyncGetterWithSetter.this.exception);
+				callback.setException(AsyncCallableWithSetter.this.exception);
 			}
 		});
 	}
@@ -99,7 +99,7 @@ public final class AsyncGetterWithSetter<T> extends ResultCallback<T> implements
 	 * it, else saves callback from argument for further processing
 	 */
 	@Override
-	public void get(ResultCallback<T> callback) {
+	public void call(ResultCallback<T> callback) {
 		if (result != null) {
 			sendResult();
 		} else if (exception != null) {

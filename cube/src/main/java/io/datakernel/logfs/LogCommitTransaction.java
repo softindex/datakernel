@@ -124,9 +124,9 @@ public final class LogCommitTransaction<T> {
 			@Override
 			public void run() {
 				if (exception != null)
-					callback.fireException(exception);
+					callback.setException(exception);
 				else
-					callback.onCommit(log, oldPositions, newPositions, newChunks);
+					callback.setCommit(log, oldPositions, newPositions, newChunks);
 			}
 		});
 	}
@@ -140,12 +140,12 @@ public final class LogCommitTransaction<T> {
 					protected void onResult(LogPosition result) {
 						Map<String, LogPosition> map = new HashMap<>();
 						map.put(logPartition, result);
-						logCallback.sendResult(map);
+						logCallback.setResult(map);
 					}
 
 					@Override
 					protected void onException(Exception exception) {
-						logCallback.fireException(exception);
+						logCallback.setException(exception);
 						logger.error("Log producer exception. Log partition: {}. Log position: {}", logPartition, logPosition);
 					}
 				});

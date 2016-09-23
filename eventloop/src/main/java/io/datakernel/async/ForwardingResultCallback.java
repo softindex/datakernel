@@ -37,6 +37,6 @@ public abstract class ForwardingResultCallback<T> extends ResultCallback<T> {
 	 */
 	@Override
 	protected void onException(Exception exception) {
-		callback.fireException(exception);
+		callback.setException(exception);
 	}
 }
