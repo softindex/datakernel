@@ -64,7 +64,7 @@ public class RpcMessageSerializeTest {
 
 	private static <T> T doTest(Class<T> type, T testData1) {
 		BufferSerializer<T> serializer = SerializerBuilder.create(getSystemClassLoader())
-				.withExtraSubclasses(RpcMessage.MESSAGE_TYPES, TestRpcMessageData.class, TestRpcMessageData2.class)
+				.withSubclasses(RpcMessage.MESSAGE_TYPES, TestRpcMessageData.class, TestRpcMessageData2.class)
 				.build(type);
 		return doTest(testData1, serializer, serializer);
 	}

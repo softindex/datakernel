@@ -467,32 +467,6 @@ public final class AsyncCallbacks {
 	}
 
 	/**
-	 * Returns AsyncTask which during executing calls method call() from callable and after that calls onResult() from resultCallback
-	 *
-	 * @param <T> type of result
-	 */
-	public static <T> AsyncTask combine(final AsyncCallable<T> callable, final ResultCallback<T> resultCallback) {
-		return new AsyncTask() {
-			@Override
-			public void execute(final CompletionCallback callback) {
-				callable.call(new ForwardingResultCallback<T>(callback) {
-					@Override
-					public void onResult(T result) {
-						resultCallback.setResult(result);
-						callback.setComplete();
-					}
-
-					@Override
-					public void onException(Exception exception) {
-						resultCallback.setException(exception);
-						callback.setException(exception);
-					}
-				});
-			}
-		};
-	}
-
-	/**
 	 * Returns AsyncCallable which executes AsyncTask from arguments and gets callable
 	 *
 	 * @param <T> type of result

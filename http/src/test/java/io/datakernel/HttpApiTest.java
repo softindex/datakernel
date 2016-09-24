@@ -17,7 +17,7 @@
 package io.datakernel;
 
 import io.datakernel.async.ResultCallback;
-import io.datakernel.dns.NativeDnsResolver;
+import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
@@ -82,7 +82,7 @@ public class HttpApiTest {
 		server = AsyncHttpServer.create(eventloop, servlet).withListenPort(PORT);
 		client = AsyncHttpClient.create(
 				eventloop,
-				NativeDnsResolver.create(eventloop).withDnsServerAddress(GOOGLE_PUBLIC_DNS)
+				AsyncDnsClient.create(eventloop).withDnsServerAddress(GOOGLE_PUBLIC_DNS)
 		);
 
 		// setup request and response data

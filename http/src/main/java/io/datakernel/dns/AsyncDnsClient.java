@@ -44,8 +44,8 @@ import static java.util.Arrays.asList;
 /**
  * NativeDnsResolver represents asynchronous DNS resolver, which run in Eventloop.
  */
-public final class NativeDnsResolver implements DnsClient, EventloopJmxMBean {
-	private final Logger logger = LoggerFactory.getLogger(NativeDnsResolver.class);
+public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean {
+	private final Logger logger = LoggerFactory.getLogger(AsyncDnsClient.class);
 
 	private static final int DNS_SERVER_PORT = 53;
 	private static final long ONE_MINUTE_MILLIS = 60 * 1000L;
@@ -66,46 +66,46 @@ public final class NativeDnsResolver implements DnsClient, EventloopJmxMBean {
 	private final long timeout;
 
 	// region builders
-	public static NativeDnsResolver create(Eventloop eventloop) {
+	public static AsyncDnsClient create(Eventloop eventloop) {
 		DnsCache cache = DnsCache.create(eventloop, ONE_MINUTE_MILLIS, ONE_MINUTE_MILLIS);
-		return new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
+		return new AsyncDnsClient(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
 				DEFAULT_TIMEOUT, GOOGLE_PUBLIC_DNS, cache);
 	}
 
-	public NativeDnsResolver withDatagramSocketSetting(DatagramSocketSettings setting) {
-		return new NativeDnsResolver(eventloop, setting, timeout, dnsServerAddress, cache);
+	public AsyncDnsClient withDatagramSocketSetting(DatagramSocketSettings setting) {
+		return new AsyncDnsClient(eventloop, setting, timeout, dnsServerAddress, cache);
 	}
 
 	/**
 	 * @param timeout time which this resolver will wait result
 	 */
-	public NativeDnsResolver withTimeout(long timeout) {
-		return new NativeDnsResolver(eventloop, datagramSocketSettings, timeout, dnsServerAddress, cache);
+	public AsyncDnsClient withTimeout(long timeout) {
+		return new AsyncDnsClient(eventloop, datagramSocketSettings, timeout, dnsServerAddress, cache);
 	}
 
 	/**
 	 * @param address address of DNS server which will resolve domain names
 	 */
-	public NativeDnsResolver withDnsServerAddress(InetSocketAddress address) {
-		return new NativeDnsResolver(eventloop, datagramSocketSettings, timeout, address, cache);
+	public AsyncDnsClient withDnsServerAddress(InetSocketAddress address) {
+		return new AsyncDnsClient(eventloop, datagramSocketSettings, timeout, address, cache);
 	}
 
 	/**
 	 * @param address address of DNS server which will resolve domain names
 	 */
-	public NativeDnsResolver withDnsServerAddress(InetAddress address) {
-		return new NativeDnsResolver(eventloop, datagramSocketSettings, timeout,
+	public AsyncDnsClient withDnsServerAddress(InetAddress address) {
+		return new AsyncDnsClient(eventloop, datagramSocketSettings, timeout,
 				new InetSocketAddress(address, DNS_SERVER_PORT), cache);
 	}
 
-	public NativeDnsResolver withExpiration(long errorCacheExpirationMillis, long hardExpirationDeltaMillis) {
+	public AsyncDnsClient withExpiration(long errorCacheExpirationMillis, long hardExpirationDeltaMillis) {
 		DnsCache cache = DnsCache.create(eventloop, errorCacheExpirationMillis, hardExpirationDeltaMillis);
-		return new NativeDnsResolver(eventloop, datagramSocketSettings, timeout, dnsServerAddress, cache);
+		return new AsyncDnsClient(eventloop, datagramSocketSettings, timeout, dnsServerAddress, cache);
 	}
 	// endregion
 
-	private NativeDnsResolver(Eventloop eventloop, DatagramSocketSettings datagramSocketSettings, long timeout, InetSocketAddress dnsServerAddress,
-	                          long errorCacheExpirationMillis, long hardExpirationDeltaMillis) {
+	private AsyncDnsClient(Eventloop eventloop, DatagramSocketSettings datagramSocketSettings, long timeout, InetSocketAddress dnsServerAddress,
+	                       long errorCacheExpirationMillis, long hardExpirationDeltaMillis) {
 		this.eventloop = eventloop;
 		this.datagramSocketSettings = datagramSocketSettings;
 		this.timeout = timeout;
@@ -113,8 +113,8 @@ public final class NativeDnsResolver implements DnsClient, EventloopJmxMBean {
 		this.cache = DnsCache.create(eventloop, errorCacheExpirationMillis, hardExpirationDeltaMillis);
 	}
 
-	private NativeDnsResolver(Eventloop eventloop, DatagramSocketSettings datagramSocketSettings, long timeout, InetSocketAddress dnsServerAddress,
-	                          DnsCache cache) {
+	private AsyncDnsClient(Eventloop eventloop, DatagramSocketSettings datagramSocketSettings, long timeout, InetSocketAddress dnsServerAddress,
+	                       DnsCache cache) {
 		this.eventloop = eventloop;
 		this.datagramSocketSettings = datagramSocketSettings;
 		this.timeout = timeout;
@@ -123,16 +123,16 @@ public final class NativeDnsResolver implements DnsClient, EventloopJmxMBean {
 	}
 
 	/**
-	 * Returns the DNS client which will run in other eventloop
+	 * Returns the DNS adapted client which will run in other eventloop using the same DNS cache
 	 *
 	 * @param eventloop eventloop in which DnsClient will be ran
 	 * @return DNS client which will run in other eventloop
 	 */
-	public DnsClient getDnsClientForAnotherEventloop(final Eventloop eventloop) {
+	public IAsyncDnsClient adaptToAnotherEventloop(final Eventloop eventloop) {
 		if (eventloop == this.eventloop)
 			return this;
 
-		return new DnsClient() {
+		return new IAsyncDnsClient() {
 			@Override
 			public void resolve4(final String domainName, final ResultCallback<InetAddress[]> callback) {
 				resolve(domainName, false, callback);
@@ -157,20 +157,20 @@ public final class NativeDnsResolver implements DnsClient, EventloopJmxMBean {
 					return;
 
 				if (cacheQueryResult == RESOLVED_NEEDS_REFRESHING) {
-					NativeDnsResolver.this.eventloop.execute(new Runnable() {
+					AsyncDnsClient.this.eventloop.execute(new Runnable() {
 						@Override
 						public void run() {
-							NativeDnsResolver.this.resolve(domainName, ipv6, AsyncCallbacks.<InetAddress[]>ignoreResultCallback());
+							AsyncDnsClient.this.resolve(domainName, ipv6, AsyncCallbacks.<InetAddress[]>ignoreResultCallback());
 						}
 					});
 					return;
 				}
 
 				if (cacheQueryResult == NOT_RESOLVED) {
-					NativeDnsResolver.this.eventloop.execute(new Runnable() {
+					AsyncDnsClient.this.eventloop.execute(new Runnable() {
 						@Override
 						public void run() {
-							NativeDnsResolver.this.resolve(domainName, ipv6, AsyncCallbacks.concurrentResultCallback(eventloop, callback));
+							AsyncDnsClient.this.resolve(domainName, ipv6, AsyncCallbacks.concurrentResultCallback(eventloop, callback));
 						}
 					});
 				}

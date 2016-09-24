@@ -20,7 +20,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
-import io.datakernel.dns.NativeDnsResolver;
+import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AcceptMediaType;
 import io.datakernel.http.AsyncHttpClient;
@@ -58,7 +58,7 @@ public class TestHttpsClient {
 		ExecutorService executor = newCachedThreadPool();
 
 		final AsyncHttpClient client = AsyncHttpClient.create(eventloop,
-				NativeDnsResolver.create(eventloop).withTimeout(500).withDnsServerAddress(inetAddress("8.8.8.8")))
+				AsyncDnsClient.create(eventloop).withTimeout(500).withDnsServerAddress(inetAddress("8.8.8.8")))
 				.withSslEnabled(SSLContext.getDefault(), executor);
 
 		final ResultCallbackFuture<Integer> callback = ResultCallbackFuture.create();

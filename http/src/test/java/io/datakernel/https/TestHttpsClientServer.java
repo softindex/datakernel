@@ -22,7 +22,7 @@ import io.datakernel.async.AsyncCallbacks.WaitAllHandler;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.async.SimpleCompletionCallback;
-import io.datakernel.dns.NativeDnsResolver;
+import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
@@ -82,7 +82,7 @@ public class TestHttpsClientServer {
 				.withSslListenPort(createSslContext("TLSv1.2", keyManagers, trustManagers, new SecureRandom()), executor, SSL_PORT);
 
 		final AsyncHttpClient client = AsyncHttpClient.create(eventloop,
-				NativeDnsResolver.create(eventloop).withTimeout(500).withDnsServerAddress(GOOGLE_PUBLIC_DNS))
+				AsyncDnsClient.create(eventloop).withTimeout(500).withDnsServerAddress(GOOGLE_PUBLIC_DNS))
 				.withSslEnabled(createSslContext("TLSv1.2", keyManagers, trustManagers, new SecureRandom()), executor);
 
 		HttpRequest request = post("https://127.0.0.1:" + SSL_PORT).withBody(wrapAscii("Hello, I am Alice!"));
@@ -120,7 +120,7 @@ public class TestHttpsClientServer {
 				.withListenPort(PORT);
 
 		final AsyncHttpClient client = AsyncHttpClient.create(eventloop,
-				NativeDnsResolver.create(eventloop).withTimeout(500).withDnsServerAddress(GOOGLE_PUBLIC_DNS))
+				AsyncDnsClient.create(eventloop).withTimeout(500).withDnsServerAddress(GOOGLE_PUBLIC_DNS))
 				.withSslEnabled(context, executor);
 
 		HttpRequest httpsRequest = post("https://127.0.0.1:" + SSL_PORT).withBody(wrapAscii("Hello, I am Alice!"));

@@ -2,8 +2,8 @@ package io.datakernel.http;
 
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBufStrings;
-import io.datakernel.dns.DnsClient;
-import io.datakernel.dns.NativeDnsResolver;
+import io.datakernel.dns.AsyncDnsClient;
+import io.datakernel.dns.IAsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import org.junit.Test;
@@ -23,8 +23,7 @@ public class AbstractHttpConnectionTest {
 	private InetAddress GOOGLE_PUBLIC_DNS = HttpUtils.inetAddress("8.8.8.8");
 
 	private Eventloop eventloop = Eventloop.create();
-	private DnsClient dnsClient =
-			NativeDnsResolver.create(eventloop).withTimeout(300).withDnsServerAddress(GOOGLE_PUBLIC_DNS);
+	private IAsyncDnsClient dnsClient = AsyncDnsClient.create(eventloop).withTimeout(300).withDnsServerAddress(GOOGLE_PUBLIC_DNS);
 
 	private AsyncHttpServlet servlet = new AsyncHttpServlet() {
 		@Override

@@ -101,21 +101,27 @@ public class RpcHelloWorldTest {
 
 	private static class BlockingHelloClient implements HelloService, AutoCloseable {
 		private final Eventloop eventloop;
-		private final RpcClient client;
+		private final RpcClient rpcClient;
 
 		public BlockingHelloClient(Eventloop eventloop) throws Exception {
 			this.eventloop = eventloop;
-			this.client = RpcClient.create(eventloop)
+			this.rpcClient = RpcClient.create(eventloop)
 					.withMessageTypes(HelloRequest.class, HelloResponse.class)
 					.withStrategy(server(new InetSocketAddress(InetAddresses.forString("127.0.0.1"), PORT)));
 
-			startFuture(client).await();
+			startFuture(rpcClient).await();
 		}
 
 		@Override
 		public String hello(final String name) throws Exception {
 			try {
-				ResultCallbackFuture<HelloResponse> future = client.sendRequestFuture(new HelloRequest(name), TIMEOUT);
+				final ResultCallbackFuture<HelloResponse> future = ResultCallbackFuture.create();
+				rpcClient.getEventloop().execute(new Runnable() {
+					@Override
+					public void run() {
+						rpcClient.sendRequest(new HelloRequest(name), TIMEOUT, future);
+					}
+				});
 				return future.get().message;
 			} catch (ExecutionException e) {
 				throw (Exception) e.getCause();
@@ -124,7 +130,7 @@ public class RpcHelloWorldTest {
 
 		@Override
 		public void close() throws Exception {
-			stopFuture(client).await();
+			stopFuture(rpcClient).await();
 		}
 	}
 
@@ -168,7 +174,7 @@ public class RpcHelloWorldTest {
 				client.eventloop.execute(new Runnable() {
 					@Override
 					public void run() {
-						client.client.sendRequest(new HelloRequest(name), TIMEOUT, new ResultCallback<HelloResponse>() {
+						client.rpcClient.sendRequest(new HelloRequest(name), TIMEOUT, new ResultCallback<HelloResponse>() {
 							@Override
 							protected void onResult(final HelloResponse response) {
 								success.incrementAndGet();
@@ -235,7 +241,7 @@ public class RpcHelloWorldTest {
 				client1.eventloop.execute(new Runnable() {
 					@Override
 					public void run() {
-						client1.client.sendRequest(new HelloRequest(name), TIMEOUT, new ResultCallback<HelloResponse>() {
+						client1.rpcClient.sendRequest(new HelloRequest(name), TIMEOUT, new ResultCallback<HelloResponse>() {
 							@Override
 							protected void onResult(final HelloResponse response) {
 								latch1.countDown();
@@ -253,7 +259,7 @@ public class RpcHelloWorldTest {
 				client2.eventloop.execute(new Runnable() {
 					@Override
 					public void run() {
-						client2.client.sendRequest(new HelloRequest(name), TIMEOUT, new ResultCallback<HelloResponse>() {
+						client2.rpcClient.sendRequest(new HelloRequest(name), TIMEOUT, new ResultCallback<HelloResponse>() {
 							@Override
 							protected void onResult(final HelloResponse response) {
 								latch2.countDown();
@@ -293,7 +299,7 @@ public class RpcHelloWorldTest {
 					client.eventloop.execute(new Runnable() {
 						@Override
 						public void run() {
-							client.client.sendRequest(new HelloRequest("benchmark"), TIMEOUT, new ResultCallback<HelloResponse>() {
+							client.rpcClient.sendRequest(new HelloRequest("benchmark"), TIMEOUT, new ResultCallback<HelloResponse>() {
 								@Override
 								protected void onResult(HelloResponse result) {
 									latch.countDown();

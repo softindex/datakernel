@@ -157,9 +157,15 @@ public class RpcBlockingTest {
 		assertThat(eventloop, doesntHaveFatals());
 	}
 
-	private static String blockingRequest(RpcClient rpcClient, final String name) throws Exception {
+	private static String blockingRequest(final RpcClient rpcClient, final String name) throws Exception {
 		try {
-			ResultCallbackFuture<HelloResponse> future = rpcClient.sendRequestFuture(new HelloRequest(name), TIMEOUT);
+			final ResultCallbackFuture<HelloResponse> future = ResultCallbackFuture.create();
+			rpcClient.getEventloop().execute(new Runnable() {
+				@Override
+				public void run() {
+					rpcClient.sendRequest(new HelloRequest(name), TIMEOUT, future);
+				}
+			});
 			return future.get().message;
 		} catch (ExecutionException e) {
 			throw (Exception) e.getCause();

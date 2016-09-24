@@ -41,7 +41,7 @@ import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static org.junit.Assert.*;
 
 public class DnsResolversTest {
-	private DnsClient nativeDnsResolver;
+	private IAsyncDnsClient nativeDnsResolver;
 	private Eventloop eventloop;
 	private static final int DNS_SERVER_PORT = 53;
 
@@ -141,7 +141,7 @@ public class DnsResolversTest {
 
 		eventloop = Eventloop.create();
 
-		nativeDnsResolver = NativeDnsResolver.create(eventloop).withTimeout(3_000L).withDnsServerAddress(LOCAL_DNS);
+		nativeDnsResolver = AsyncDnsClient.create(eventloop).withTimeout(3_000L).withDnsServerAddress(LOCAL_DNS);
 	}
 
 	@Ignore
@@ -210,20 +210,20 @@ public class DnsResolversTest {
 	@Test
 	public void testConcurrentNativeResolver() throws InterruptedException {
 		Eventloop primaryEventloop = this.eventloop;
-		final NativeDnsResolver nativeDnsResolver = (NativeDnsResolver) this.nativeDnsResolver;
+		final AsyncDnsClient asyncDnsClient = (AsyncDnsClient) this.nativeDnsResolver;
 
 		ConcurrentOperationsCounter counter = new ConcurrentOperationsCounter(10, primaryEventloop.startConcurrentOperation());
 
-		resolveInAnotherThreadWithDelay(nativeDnsResolver, "www.google.com", 0, counter);
-		resolveInAnotherThreadWithDelay(nativeDnsResolver, "www.google.com", 0, counter);
-		resolveInAnotherThreadWithDelay(nativeDnsResolver, "www.google.com", 0, counter);
-		resolveInAnotherThreadWithDelay(nativeDnsResolver, "www.google.com", 500, counter);
-		resolveInAnotherThreadWithDelay(nativeDnsResolver, "www.google.com", 1000, counter);
-		resolveInAnotherThreadWithDelay(nativeDnsResolver, "www.google.com", 1000, counter);
-		resolveInAnotherThreadWithDelay(nativeDnsResolver, "www.google.com", 1500, counter);
-		resolveInAnotherThreadWithDelay(nativeDnsResolver, "www.stackoverflow.com", 1500, counter);
-		resolveInAnotherThreadWithDelay(nativeDnsResolver, "www.yahoo.com", 1500, counter);
-		resolveInAnotherThreadWithDelay(nativeDnsResolver, "www.google.com", 1500, counter);
+		resolveInAnotherThreadWithDelay(asyncDnsClient, "www.google.com", 0, counter);
+		resolveInAnotherThreadWithDelay(asyncDnsClient, "www.google.com", 0, counter);
+		resolveInAnotherThreadWithDelay(asyncDnsClient, "www.google.com", 0, counter);
+		resolveInAnotherThreadWithDelay(asyncDnsClient, "www.google.com", 500, counter);
+		resolveInAnotherThreadWithDelay(asyncDnsClient, "www.google.com", 1000, counter);
+		resolveInAnotherThreadWithDelay(asyncDnsClient, "www.google.com", 1000, counter);
+		resolveInAnotherThreadWithDelay(asyncDnsClient, "www.google.com", 1500, counter);
+		resolveInAnotherThreadWithDelay(asyncDnsClient, "www.stackoverflow.com", 1500, counter);
+		resolveInAnotherThreadWithDelay(asyncDnsClient, "www.yahoo.com", 1500, counter);
+		resolveInAnotherThreadWithDelay(asyncDnsClient, "www.google.com", 1500, counter);
 
 		primaryEventloop.run();
 
@@ -231,7 +231,7 @@ public class DnsResolversTest {
 		assertThat(eventloop, doesntHaveFatals());
 	}
 
-	private void resolveInAnotherThreadWithDelay(final NativeDnsResolver nativeDnsResolver, final String domainName,
+	private void resolveInAnotherThreadWithDelay(final AsyncDnsClient asyncDnsClient, final String domainName,
 	                                             final int delayMillis, final ConcurrentOperationsCounter counter) {
 		new Thread(new Runnable() {
 			@Override
@@ -246,7 +246,7 @@ public class DnsResolversTest {
 				ConcurrentDnsResolveCallback callback = new ConcurrentDnsResolveCallback(new DnsResolveCallback(),
 						concurrentOperationTracker, counter);
 				logger.info("Attempting to resolve host {} from thread {}.", domainName, Thread.currentThread().getName());
-				DnsClient dnsClient = nativeDnsResolver.getDnsClientForAnotherEventloop(callerEventloop);
+				IAsyncDnsClient dnsClient = asyncDnsClient.adaptToAnotherEventloop(callerEventloop);
 				dnsClient.resolve4(domainName, callback);
 				callerEventloop.run();
 				logger.info("Thread {} execution finished.", Thread.currentThread().getName());
@@ -254,20 +254,20 @@ public class DnsResolversTest {
 		}).start();
 	}
 
-	public void testCacheInitialize(NativeDnsResolver nativeDnsResolver) throws UnknownHostException {
+	public void testCacheInitialize(AsyncDnsClient asyncDnsClient) throws UnknownHostException {
 		DnsQueryResult testResult = DnsQueryResult.successfulQuery("www.google.com",
 				new InetAddress[]{InetAddress.getByName("173.194.113.210"), InetAddress.getByName("173.194.113.209")}, 10, (short) 1);
-		nativeDnsResolver.getCache().add(testResult);
+		asyncDnsClient.getCache().add(testResult);
 	}
 
-	public void testErrorCacheInitialize(NativeDnsResolver nativeDnsResolver) {
-		nativeDnsResolver.getCache().add(new DnsException("www.google.com", DnsMessage.ResponseErrorCode.SERVER_FAILURE));
+	public void testErrorCacheInitialize(AsyncDnsClient asyncDnsClient) {
+		asyncDnsClient.getCache().add(new DnsException("www.google.com", DnsMessage.ResponseErrorCode.SERVER_FAILURE));
 	}
 
 	@Test
 	public void testNativeDnsResolverCache() throws Exception {
 		DnsResolveCallback callback = new DnsResolveCallback();
-		testCacheInitialize((NativeDnsResolver) nativeDnsResolver);
+		testCacheInitialize((AsyncDnsClient) nativeDnsResolver);
 		nativeDnsResolver.resolve4("www.google.com", callback);
 
 		eventloop.run();
@@ -282,7 +282,7 @@ public class DnsResolversTest {
 	@Test
 	public void testNativeDnsResolverErrorCache() throws Exception {
 		DnsResolveCallback callback = new DnsResolveCallback();
-		testErrorCacheInitialize((NativeDnsResolver) nativeDnsResolver);
+		testErrorCacheInitialize((AsyncDnsClient) nativeDnsResolver);
 		nativeDnsResolver.resolve4("www.google.com", callback);
 
 		eventloop.run();
@@ -303,8 +303,8 @@ public class DnsResolversTest {
 
 		SettableCurrentTimeProvider timeProvider = SettableCurrentTimeProvider.create().withTime(0);
 		Eventloop eventloop = Eventloop.create().withCurrentTimeProvider(timeProvider);
-		NativeDnsResolver nativeResolver
-				= NativeDnsResolver.create(eventloop).withTimeout(3_000L).withDnsServerAddress(GOOGLE_PUBLIC_DNS);
+		AsyncDnsClient nativeResolver
+				= AsyncDnsClient.create(eventloop).withTimeout(3_000L).withDnsServerAddress(GOOGLE_PUBLIC_DNS);
 		DnsCache cache = nativeResolver.getCache();
 
 		timeProvider.setTime(0);
@@ -334,9 +334,9 @@ public class DnsResolversTest {
 	@Test
 	public void testTimeout() throws Exception {
 		String domainName = "www.google.com";
-		NativeDnsResolver nativeDnsResolver
-				= NativeDnsResolver.create(eventloop).withTimeout(3_000L).withDnsServerAddress(UNREACHABLE_DNS);
-		nativeDnsResolver.resolve4(domainName, new DnsResolveCallback());
+		AsyncDnsClient asyncDnsClient
+				= AsyncDnsClient.create(eventloop).withTimeout(3_000L).withDnsServerAddress(UNREACHABLE_DNS);
+		asyncDnsClient.resolve4(domainName, new DnsResolveCallback());
 		eventloop.run();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());

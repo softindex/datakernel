@@ -36,7 +36,7 @@ public abstract class ForwardingResultCallback<T> extends ResultCallback<T> {
 	 * @param exception exception that was throwing
 	 */
 	@Override
-	protected void onException(Exception exception) {
+	protected final void onException(Exception exception) {
 		callback.setException(exception);
 	}
 }

@@ -34,7 +34,7 @@ import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
-public class NativeDnsResolverConnectionTest {
+public class AsyncDnsClientConnectionTest {
 	private DnsClientHandler dnsClientConnection;
 	private Eventloop eventloop;
 	private static InetSocketAddress DNS_SERVER_ADDRESS = new InetSocketAddress("8.8.8.8", 53);

@@ -17,7 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.*;
-import io.datakernel.dns.DnsClient;
+import io.datakernel.dns.IAsyncDnsClient;
 import io.datakernel.eventloop.*;
 import io.datakernel.jmx.*;
 import io.datakernel.net.SocketSettings;
@@ -39,14 +39,14 @@ import static io.datakernel.jmx.MBeanFormat.formatDuration;
 import static io.datakernel.util.Preconditions.checkState;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
-public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
+public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService, EventloopJmxMBean {
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create();
 	public static final long DEFAULT_KEEP_ALIVE_MILLIS = 30 * 1000L;
 
 	private static final long CHECK_PERIOD = 1000L;
 
 	private final Eventloop eventloop;
-	private final DnsClient dnsClient;
+	private final IAsyncDnsClient asyncDnsClient;
 	private final SocketSettings socketSettings;
 	private final ExposedLinkedList<AbstractHttpConnection> keepAlivePool;
 	private final HashMap<InetSocketAddress, ExposedLinkedList<HttpClientConnection>> keepAlivePoolsByAddresses = new HashMap<>();
@@ -77,14 +77,14 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 
 	private int inetAddressIdx = 0;
 
-	public static AsyncHttpClient create(Eventloop eventloop, DnsClient dnsClient) {
-		return new AsyncHttpClient(eventloop, dnsClient, DEFAULT_SOCKET_SETTINGS,
+	public static AsyncHttpClient create(Eventloop eventloop, IAsyncDnsClient asyncDnsClient) {
+		return new AsyncHttpClient(eventloop, asyncDnsClient, DEFAULT_SOCKET_SETTINGS,
 				Integer.MAX_VALUE, DEFAULT_KEEP_ALIVE_MILLIS, null, null);
 	}
 
-	private AsyncHttpClient(Eventloop eventloop, DnsClient dnsClient, SocketSettings socketSettings, int maxHttpMessageSize, long keepAliveTimeMillis, SSLContext sslContext, ExecutorService sslExecutor) {
+	private AsyncHttpClient(Eventloop eventloop, IAsyncDnsClient asyncDnsClient, SocketSettings socketSettings, int maxHttpMessageSize, long keepAliveTimeMillis, SSLContext sslContext, ExecutorService sslExecutor) {
 		this.eventloop = eventloop;
-		this.dnsClient = dnsClient;
+		this.asyncDnsClient = asyncDnsClient;
 		this.socketSettings = socketSettings;
 		this.maxHttpMessageSize = maxHttpMessageSize;
 		this.keepAliveTimeMillis = keepAliveTimeMillis;
@@ -100,15 +100,15 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 	}
 
 	public AsyncHttpClient withSocketSettings(SocketSettings socketSettings) {
-		return new AsyncHttpClient(eventloop, dnsClient, socketSettings, maxHttpMessageSize, keepAliveTimeMillis, sslContext, sslExecutor);
+		return new AsyncHttpClient(eventloop, asyncDnsClient, socketSettings, maxHttpMessageSize, keepAliveTimeMillis, sslContext, sslExecutor);
 	}
 
 	public AsyncHttpClient withSslEnabled(SSLContext sslContext, ExecutorService sslExecutor) {
-		return new AsyncHttpClient(eventloop, dnsClient, socketSettings, maxHttpMessageSize, keepAliveTimeMillis, sslContext, sslExecutor);
+		return new AsyncHttpClient(eventloop, asyncDnsClient, socketSettings, maxHttpMessageSize, keepAliveTimeMillis, sslContext, sslExecutor);
 	}
 
 	public AsyncHttpClient withKeepAliveTimeMillis(long keepAliveTimeMillis) {
-		return new AsyncHttpClient(eventloop, dnsClient, socketSettings, maxHttpMessageSize, keepAliveTimeMillis, sslContext, sslExecutor);
+		return new AsyncHttpClient(eventloop, asyncDnsClient, socketSettings, maxHttpMessageSize, keepAliveTimeMillis, sslContext, sslExecutor);
 	}
 
 	public AsyncHttpClient withNoKeepAlive() {
@@ -116,11 +116,11 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 	}
 
 	public AsyncHttpClient withMaxHttpMessageSize(int maxHttpMessageSize) {
-		return new AsyncHttpClient(eventloop, dnsClient, socketSettings, maxHttpMessageSize, keepAliveTimeMillis, sslContext, sslExecutor);
+		return new AsyncHttpClient(eventloop, asyncDnsClient, socketSettings, maxHttpMessageSize, keepAliveTimeMillis, sslContext, sslExecutor);
 	}
 
 	public AsyncHttpClient withLogger(Logger logger) {
-		return new AsyncHttpClient(eventloop, dnsClient, socketSettings, maxHttpMessageSize, keepAliveTimeMillis, sslContext, sslExecutor);
+		return new AsyncHttpClient(eventloop, asyncDnsClient, socketSettings, maxHttpMessageSize, keepAliveTimeMillis, sslContext, sslExecutor);
 	}
 
 	private void scheduleExpiredConnectionsCheck() {
@@ -216,6 +216,7 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 	 * @param timeout  time which client will wait result
 	 * @param callback callback for handling result
 	 */
+	@Override
 	public void send(final HttpRequest request, final int timeout, final ResultCallback<HttpResponse> callback) {
 		assert eventloop.inEventloopThread();
 
@@ -224,7 +225,7 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 	}
 
 	private void getUrlAsync(final HttpRequest request, final int timeout, final ResultCallback<HttpResponse> callback) {
-		dnsClient.resolve4(request.getUrl().getHost(), new ForwardingResultCallback<InetAddress[]>(callback) {
+		asyncDnsClient.resolve4(request.getUrl().getHost(), new ForwardingResultCallback<InetAddress[]>(callback) {
 			@Override
 			public void onResult(InetAddress[] inetAddresses) {
 				getUrlForHostAsync(request, timeout, inetAddresses, callback);

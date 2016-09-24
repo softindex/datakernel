@@ -20,7 +20,7 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.dns.NativeDnsResolver;
+import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import org.junit.Before;
 import org.junit.Test;
@@ -143,7 +143,7 @@ public class HttpTolerantApplicationTest {
 		Eventloop eventloop = Eventloop.create();
 		try (ServerSocket ignored = socketServer(port, "HTTP/1.1 200 OK\nContent-Type:  \t  text/html; charset=UTF-8\nContent-Length:  4\n\n/abc")) {
 			final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop,
-					NativeDnsResolver.create(eventloop).withDnsServerAddress(HttpUtils.inetAddress("8.8.8.8")));
+					AsyncDnsClient.create(eventloop).withDnsServerAddress(HttpUtils.inetAddress("8.8.8.8")));
 
 			httpClient.send(HttpRequest.get("http://127.0.0.1:" + port), 1_000, new ResultCallback<HttpResponse>() {
 				@Override

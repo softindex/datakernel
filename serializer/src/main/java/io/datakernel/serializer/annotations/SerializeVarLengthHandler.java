@@ -26,7 +26,7 @@ import io.datakernel.serializer.asm.SerializerGenLong;
 
 public final class SerializeVarLengthHandler implements AnnotationHandler<SerializeVarLength, SerializeVarLengthEx> {
 	@Override
-	public SerializerGenBuilder createBuilder(SerializerBuilder serializerBuilder, SerializeVarLength annotation, CompatibilityLevel compatibilityLevel) {
+	public SerializerGenBuilder createBuilder(SerializerBuilder.Helper serializerBuilder, SerializeVarLength annotation, CompatibilityLevel compatibilityLevel) {
 		return new SerializerGenBuilder() {
 			@Override
 			public SerializerGen serializer(Class<?> type, SerializerForType[] generics, SerializerGen fallback) {

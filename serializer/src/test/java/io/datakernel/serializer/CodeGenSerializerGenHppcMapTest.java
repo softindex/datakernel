@@ -189,7 +189,7 @@ public class CodeGenSerializerGenHppcMapTest {
 	public void testIntObjectMap() {
 		BufferSerializer<MapIntObjectHolder> bufferSerializer = SerializerBuilder
 				.create(ClassLoader.getSystemClassLoader())
-				.withSerializerFor(IntObjectMap.class, SerializerGenHppcMap.serializerGenBuilder(IntObjectMap.class, int.class, Object.class))
+				.withSerializer(IntObjectMap.class, SerializerGenHppcMap.serializerGenBuilder(IntObjectMap.class, int.class, Object.class))
 				.build(MapIntObjectHolder.class);
 
 		MapIntObjectHolder testMap1 = new MapIntObjectHolder();
@@ -214,7 +214,7 @@ public class CodeGenSerializerGenHppcMapTest {
 	public void testObjectShortMap() throws Exception {
 		BufferSerializer<MapObjectShortHolder> bufferSerializer = SerializerBuilder
 				.create(ClassLoader.getSystemClassLoader())
-				.withSerializerFor(ObjectShortMap.class, SerializerGenHppcMap.serializerGenBuilder(ObjectShortMap.class, Object.class, short.class))
+				.withSerializer(ObjectShortMap.class, SerializerGenHppcMap.serializerGenBuilder(ObjectShortMap.class, Object.class, short.class))
 				.build(MapObjectShortHolder.class);
 
 		MapObjectShortHolder testMap1 = new MapObjectShortHolder();
@@ -239,7 +239,7 @@ public class CodeGenSerializerGenHppcMapTest {
 	public void testObjectObjectMap() throws Exception {
 		BufferSerializer<MapObjectObjectHolder> bufferSerializer = SerializerBuilder
 				.create(ClassLoader.getSystemClassLoader())
-				.withSerializerFor(ObjectObjectMap.class, SerializerGenHppcMap.serializerGenBuilder(ObjectObjectMap.class, Object.class, Object.class))
+				.withSerializer(ObjectObjectMap.class, SerializerGenHppcMap.serializerGenBuilder(ObjectObjectMap.class, Object.class, Object.class))
 				.build(MapObjectObjectHolder.class);
 
 		MapObjectObjectHolder testMap1 = new MapObjectObjectHolder();
@@ -295,7 +295,7 @@ public class CodeGenSerializerGenHppcMapTest {
 	public void testMult() {
 		BufferSerializer<ManyMapHolder> bufferSerializer = SerializerBuilder
 				.create(ClassLoader.getSystemClassLoader())
-				.withSerializerFor(IntObjectMap.class, SerializerGenHppcMap.serializerGenBuilder(IntObjectMap.class, int.class, Object.class))
+				.withSerializer(IntObjectMap.class, SerializerGenHppcMap.serializerGenBuilder(IntObjectMap.class, int.class, Object.class))
 				.build(ManyMapHolder.class);
 
 		ManyMapHolder testMap1 = new ManyMapHolder();

@@ -172,7 +172,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 
 	private BufferSerializer<RpcMessage> getSerializer() {
 		if (serializer == null) {
-			serializer = serializerBuilder.withExtraSubclasses(RpcMessage.MESSAGE_TYPES, messageTypes).build(RpcMessage.class);
+			serializer = serializerBuilder.withSubclasses(RpcMessage.MESSAGE_TYPES, messageTypes).build(RpcMessage.class);
 		}
 		return serializer;
 	}

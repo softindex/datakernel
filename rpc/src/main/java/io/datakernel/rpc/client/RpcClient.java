@@ -18,7 +18,6 @@ package io.datakernel.rpc.client;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.eventloop.*;
 import io.datakernel.jmx.*;
 import io.datakernel.net.SocketSettings;
@@ -53,7 +52,7 @@ import static java.lang.ClassLoader.getSystemClassLoader;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 
-public final class RpcClient implements EventloopService, EventloopJmxMBean {
+public final class RpcClient implements IRpcClient, EventloopService, EventloopJmxMBean {
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create().withTcpNoDelay(true);
 	public static final long DEFAULT_CONNECT_TIMEOUT = 10 * 1000L;
 	public static final long DEFAULT_RECONNECT_INTERVAL = 1 * 1000L;
@@ -289,7 +288,7 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 	}
 
 	private BufferSerializer<RpcMessage> createSerializer() {
-		serializerBuilder.setExtraSubclasses(RpcMessage.MESSAGE_TYPES, messageTypes);
+		serializerBuilder.setSubclasses(RpcMessage.MESSAGE_TYPES, messageTypes);
 		return serializerBuilder.build(RpcMessage.class);
 	}
 
@@ -390,21 +389,9 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 		});
 	}
 
-	public <T> void sendRequest(Object request, int timeout, ResultCallback<T> callback) {
-		ResultCallback<T> requestCallback = callback;
-		requestSender.sendRequest(request, timeout, requestCallback);
-
-	}
-
-	public <T> ResultCallbackFuture<T> sendRequestFuture(final Object request, final int timeout) {
-		final ResultCallbackFuture<T> future = ResultCallbackFuture.create();
-		eventloop.execute(new Runnable() {
-			@Override
-			public void run() {
-				sendRequest(request, timeout, future);
-			}
-		});
-		return future;
+	@Override
+	public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
+		requestSender.sendRequest(request, timeout, callback);
 	}
 
 	// visible for testing

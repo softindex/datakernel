@@ -27,7 +27,7 @@ import io.datakernel.serializer.asm.SerializerGenString;
 
 public final class SerializeNullableHandler implements AnnotationHandler<SerializeNullable, SerializeNullableEx> {
 	@Override
-	public SerializerGenBuilder createBuilder(SerializerBuilder serializerBuilder, SerializeNullable annotation, final CompatibilityLevel compatibilityLevel) {
+	public SerializerGenBuilder createBuilder(SerializerBuilder.Helper serializerBuilder, SerializeNullable annotation, final CompatibilityLevel compatibilityLevel) {
 		return new SerializerGenBuilder() {
 			@Override
 			public SerializerGen serializer(Class<?> type, SerializerForType[] generics, SerializerGen fallback) {

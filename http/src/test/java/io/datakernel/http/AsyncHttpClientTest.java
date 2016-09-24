@@ -21,7 +21,7 @@ import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufStrings;
-import io.datakernel.dns.NativeDnsResolver;
+import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SimpleServer;
@@ -61,7 +61,7 @@ public class AsyncHttpClientTest {
 
 		final AsyncHttpServer httpServer = HelloWorldServer.helloWorldServer(eventloop, PORT);
 		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop,
-				NativeDnsResolver.create(eventloop).withDnsServerAddress(GOOGLE_PUBLIC_DNS));
+				AsyncDnsClient.create(eventloop).withDnsServerAddress(GOOGLE_PUBLIC_DNS));
 		final ResultCallbackFuture<String> resultObserver = ResultCallbackFuture.create();
 
 		httpServer.listen();
@@ -112,7 +112,7 @@ public class AsyncHttpClientTest {
 		}).withListenPort(PORT);
 
 		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop,
-				NativeDnsResolver.create(eventloop).withDnsServerAddress(GOOGLE_PUBLIC_DNS));
+				AsyncDnsClient.create(eventloop).withDnsServerAddress(GOOGLE_PUBLIC_DNS));
 		final ResultCallbackFuture<String> resultObserver = ResultCallbackFuture.create();
 
 		httpServer.listen();
@@ -154,7 +154,7 @@ public class AsyncHttpClientTest {
 		final Eventloop eventloop = Eventloop.create();
 
 		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop,
-				NativeDnsResolver.create(eventloop).withDnsServerAddress(GOOGLE_PUBLIC_DNS));
+				AsyncDnsClient.create(eventloop).withDnsServerAddress(GOOGLE_PUBLIC_DNS));
 		final ResultCallbackFuture<String> resultObserver = ResultCallbackFuture.create();
 
 		httpClient.send(HttpRequest.get("http://google.com"), TIMEOUT, new ResultCallback<HttpResponse>() {
@@ -192,7 +192,7 @@ public class AsyncHttpClientTest {
 		final Eventloop eventloop = Eventloop.create();
 
 		final AsyncHttpServer httpServer = HelloWorldServer.helloWorldServer(eventloop, PORT);
-		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop, NativeDnsResolver.create(eventloop))
+		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop, AsyncDnsClient.create(eventloop))
 				.withMaxHttpMessageSize(12);
 		final ResultCallbackFuture<String> resultObserver = ResultCallbackFuture.create();
 
@@ -268,7 +268,7 @@ public class AsyncHttpClientTest {
 
 		final SimpleServer server = SimpleServer.create(eventloop, socketHandlerProvider).withListenPort(PORT);
 		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop,
-				NativeDnsResolver.create(eventloop).withDnsServerAddress(GOOGLE_PUBLIC_DNS));
+				AsyncDnsClient.create(eventloop).withDnsServerAddress(GOOGLE_PUBLIC_DNS));
 		final ResultCallbackFuture<String> resultObserver = ResultCallbackFuture.create();
 
 		server.listen();

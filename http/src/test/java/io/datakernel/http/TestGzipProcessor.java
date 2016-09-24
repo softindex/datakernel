@@ -20,7 +20,7 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
-import io.datakernel.dns.NativeDnsResolver;
+import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import org.junit.Test;
@@ -68,7 +68,7 @@ public class TestGzipProcessor {
 		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet).withListenPort(PORT);
 
 		final AsyncHttpClient client = AsyncHttpClient.create(eventloop,
-				NativeDnsResolver.create(eventloop).withDnsServerAddress(inetAddress("8.8.8.8")));
+				AsyncDnsClient.create(eventloop).withDnsServerAddress(inetAddress("8.8.8.8")));
 
 		final ResultCallbackFuture<String> callback = ResultCallbackFuture.create();
 

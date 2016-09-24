@@ -1,7 +1,7 @@
 package io.datakernel;
 
 import io.datakernel.async.ResultCallback;
-import io.datakernel.dns.NativeDnsResolver;
+import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
@@ -45,7 +45,7 @@ public class ClientStressTest {
 	private final SSLContext context = SSLContext.getDefault();
 
 	private AsyncHttpClient client = AsyncHttpClient.create(eventloop,
-			NativeDnsResolver.create(eventloop).withDnsServerAddress(inetAddress("8.8.8.8")))
+			AsyncDnsClient.create(eventloop).withDnsServerAddress(inetAddress("8.8.8.8")))
 			.withSslEnabled(context, executor);
 
 	private ClientStressTest() throws Exception {}

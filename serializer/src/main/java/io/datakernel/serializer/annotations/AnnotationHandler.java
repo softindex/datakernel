@@ -23,7 +23,7 @@ import io.datakernel.serializer.asm.SerializerGenBuilder;
 import java.lang.annotation.Annotation;
 
 public interface AnnotationHandler<A extends Annotation, P extends Annotation> {
-	SerializerGenBuilder createBuilder(SerializerBuilder serializerBuilder, A annotation, CompatibilityLevel compatibilityLevel);
+	SerializerGenBuilder createBuilder(SerializerBuilder.Helper serializerBuilder, A annotation, CompatibilityLevel compatibilityLevel);
 
 	int[] extractPath(A annotation);
 

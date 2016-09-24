@@ -18,7 +18,7 @@ package io.datakernel.http;
 
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.dns.NativeDnsResolver;
+import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.DatagramSocketSettings;
 import org.junit.Assert;
@@ -101,7 +101,7 @@ public class SimpleProxyServerTest {
 
 		Eventloop eventloop2 = Eventloop.create();
 		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop2,
-				NativeDnsResolver.create(eventloop2)
+				AsyncDnsClient.create(eventloop2)
 						.withDatagramSocketSetting(DatagramSocketSettings.create())
 						.withDnsServerAddress(HttpUtils.inetAddress("8.8.8.8")));
 

@@ -200,7 +200,7 @@ public final class AsyncFile {
 		open(eventloop, executor, path, new OpenOption[]{READ}, new ForwardingResultCallback<AsyncFile>(callback) {
 			@Override
 			public void onResult(final AsyncFile file) {
-				file.readFully(new ForwardingResultCallback<ByteBuf>(callback) {
+				file.readFully(new ResultCallback<ByteBuf>() {
 					@Override
 					public void onResult(ByteBuf buf) {
 						file.close(ignoreCompletionCallback());
@@ -461,7 +461,7 @@ public final class AsyncFile {
 		}
 
 		final ByteBuf buf = ByteBufPool.allocate((int) size);
-		readFully(buf, 0, new ForwardingCompletionCallback(callback) {
+		readFully(buf, 0, new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				callback.setResult(buf);

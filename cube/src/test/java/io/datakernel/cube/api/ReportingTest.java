@@ -27,7 +27,7 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.cube.*;
-import io.datakernel.dns.NativeDnsResolver;
+import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.eventloop.RunnableWithException;
@@ -322,8 +322,7 @@ public class ReportingTest {
 		serverStartFuture.await();
 
 		clientEventloop = Eventloop.create();
-		NativeDnsResolver dnsClient
-				= NativeDnsResolver.create(clientEventloop)
+		AsyncDnsClient dnsClient = AsyncDnsClient.create(clientEventloop)
 				.withTimeout(TIMEOUT)
 				.withDnsServerAddress(HttpUtils.inetAddress("8.8.8.8"));
 		httpClient = AsyncHttpClient.create(clientEventloop, dnsClient);

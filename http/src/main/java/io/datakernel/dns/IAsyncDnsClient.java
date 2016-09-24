@@ -24,7 +24,7 @@ import java.net.InetAddress;
  * Resolves the IP address for the specified host name, or null if the given host is not recognized or
  * the associated IP address cannot be used to build an InetAddress instance.
  */
-public interface DnsClient {
+public interface IAsyncDnsClient {
 	/**
 	 * Resolves a IP for the IPv4 addresses and handles it with callback
 	 *
