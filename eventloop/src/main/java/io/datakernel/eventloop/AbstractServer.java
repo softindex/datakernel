@@ -55,8 +55,8 @@ import static org.slf4j.LoggerFactory.getLogger;
 public abstract class AbstractServer<S extends AbstractServer<S>> implements EventloopServer, EventloopJmxMBean {
 	private final Logger logger = getLogger(this.getClass());
 
-	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS
-			= ServerSocketSettings.create(DEFAULT_BACKLOG);
+	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS = ServerSocketSettings.create(DEFAULT_BACKLOG);
+	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create();
 
 	private final ServerSocketSettings serverSocketSettings;
 	private final SocketSettings socketSettings;
@@ -92,7 +92,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		this(
 				eventloop,
 				DEFAULT_SERVER_SOCKET_SETTINGS,
-				SocketSettings.create(),
+				DEFAULT_SOCKET_SETTINGS,
 				false,
 				Collections.<InetSocketAddress>emptyList(),
 				null,

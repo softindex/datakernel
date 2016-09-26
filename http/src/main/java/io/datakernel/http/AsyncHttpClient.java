@@ -21,6 +21,7 @@ import io.datakernel.dns.IAsyncDnsClient;
 import io.datakernel.eventloop.*;
 import io.datakernel.jmx.*;
 import io.datakernel.net.SocketSettings;
+import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 
 import javax.net.ssl.SSLContext;
@@ -117,6 +118,10 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 	public AsyncHttpClient withMaxHttpMessageSize(int maxHttpMessageSize) {
 		return new AsyncHttpClient(eventloop, asyncDnsClient, socketSettings, maxHttpMessageSize, keepAliveTimeMillis, sslContext, sslExecutor);
+	}
+
+	public AsyncHttpClient withMaxHttpMessageSize(MemSize maxHttpMessageSize) {
+		return withMaxHttpMessageSize((int) maxHttpMessageSize.get());
 	}
 
 	public AsyncHttpClient withLogger(Logger logger) {

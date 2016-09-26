@@ -110,17 +110,17 @@ public final class HttpRequest extends HttpMessage {
 	}
 
 	public HttpRequest withCookies(List<HttpCookie> cookies) {
-		setCookies(cookies);
+		addCookies(cookies);
 		return this;
 	}
 
 	public HttpRequest withCookies(HttpCookie... cookie) {
-		setCookies(cookie);
+		addCookies(cookie);
 		return this;
 	}
 
 	public HttpRequest withCookie(HttpCookie cookie) {
-		setCookie(cookie);
+		addCookie(cookie);
 		return this;
 	}
 
@@ -182,16 +182,16 @@ public final class HttpRequest extends HttpMessage {
 		setAcceptCharsets(Arrays.asList(values));
 	}
 
-	public void setCookies(List<HttpCookie> cookies) {
+	public void addCookies(List<HttpCookie> cookies) {
 		addHeader(ofCookies(COOKIE, cookies));
 	}
 
-	public void setCookies(HttpCookie... cookie) {
-		setCookies(Arrays.asList(cookie));
+	public void addCookies(HttpCookie... cookie) {
+		addCookies(Arrays.asList(cookie));
 	}
 
-	public void setCookie(HttpCookie cookie) {
-		setCookies(Collections.singletonList(cookie));
+	public void addCookie(HttpCookie cookie) {
+		addCookies(Collections.singletonList(cookie));
 	}
 
 	public void setContentType(ContentType contentType) {

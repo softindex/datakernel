@@ -129,12 +129,12 @@ public final class HttpResponse extends HttpMessage {
 	}
 
 	public HttpResponse withCookies(List<HttpCookie> cookies) {
-		setCookies(cookies);
+		addCookies(cookies);
 		return this;
 	}
 
 	public HttpResponse withCookies(HttpCookie... cookies) {
-		setCookies(cookies);
+		addCookies(cookies);
 		return this;
 	}
 
@@ -171,16 +171,16 @@ public final class HttpResponse extends HttpMessage {
 		setHeader(ofDate(HttpHeaders.LAST_MODIFIED, date));
 	}
 
-	public void setCookies(List<HttpCookie> cookies) {
+	public void addCookies(List<HttpCookie> cookies) {
 		addHeader(ofSetCookies(HttpHeaders.SET_COOKIE, cookies));
 	}
 
-	public void setCookies(HttpCookie... cookies) {
-		setCookies(Arrays.asList(cookies));
+	public void addCookies(HttpCookie... cookies) {
+		addCookies(Arrays.asList(cookies));
 	}
 
 	public void setCookie(HttpCookie cookie) {
-		setCookies(Collections.singletonList(cookie));
+		addCookies(Collections.singletonList(cookie));
 	}
 	// endregion
 
