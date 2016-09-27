@@ -318,23 +318,15 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			throw new IllegalArgumentException(createErrorMessageForInvalidJmxStatsAttribute(getter));
 		}
 
-		if (!classHasPublicNoArgConstructor(returnClass)) {
+		if (!(classHasPublicNoArgConstructor(returnClass) || classHasStaticFactoryCreateMethod(returnClass))) {
 			throw new IllegalArgumentException(createErrorMessageForInvalidJmxStatsAttribute(getter));
 		}
 	}
 
-	private static boolean classHasPublicNoArgConstructor(Class<?> clazz) {
-		for (Constructor<?> constructor : clazz.getConstructors()) {
-			if (constructor.getParameterTypes().length == 0) {
-				return true;
-			}
-		}
-		return false;
-	}
-
 	private static String createErrorMessageForInvalidJmxStatsAttribute(Method getter) {
 		String msg = "Return type of JmxRefreshableStats attribute must be concrete class that implements" +
-				" JmxRefreshableStats interface and contains public no-arg constructor";
+				" JmxRefreshableStats interface and contains public no-arg constructor " +
+				"or static factory \"create\" method";
 		if (getter != null) {
 			msg += format(". Error at %s.%s()", getter.getDeclaringClass().getName(), getter.getName());
 		}

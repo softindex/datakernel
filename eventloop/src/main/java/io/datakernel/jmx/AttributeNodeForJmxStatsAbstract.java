@@ -41,8 +41,8 @@ abstract class AttributeNodeForJmxStatsAbstract extends AttributeNodeForPojoAbst
 	public final Map<String, Object> aggregateAllAttributes(List<?> sources) {
 		JmxStats accumulator;
 		try {
-			accumulator = jmxStatsClass.newInstance();
-		} catch (InstantiationException | IllegalAccessException e) {
+			accumulator = createNewInstance(jmxStatsClass);
+		} catch (ReflectiveOperationException e) {
 			throw new RuntimeException(e);
 		}
 		for (Object pojo : sources) {
@@ -60,6 +60,16 @@ abstract class AttributeNodeForJmxStatsAbstract extends AttributeNodeForPojoAbst
 		}
 		return attrs;
 
+	}
+
+	private static JmxStats createNewInstance(Class<?> jmxStatsClass) throws ReflectiveOperationException {
+		if (ReflectionUtils.classHasPublicNoArgConstructor(jmxStatsClass)) {
+			return (JmxStats) jmxStatsClass.newInstance();
+		} else if (ReflectionUtils.classHasStaticFactoryCreateMethod(jmxStatsClass)) {
+			return (JmxStats) jmxStatsClass.getDeclaredMethod("create").invoke(null);
+		} else {
+			throw new RuntimeException("Cannot create instance of class: " + jmxStatsClass.getName());
+		}
 	}
 
 	@Override

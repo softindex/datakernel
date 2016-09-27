@@ -16,7 +16,9 @@
 
 package io.datakernel.jmx;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 
@@ -103,5 +105,27 @@ final class ReflectionUtils {
 		String firstLetter = setterName.substring(3, 4);
 		String restOfName = setterName.substring(4);
 		return firstLetter.toLowerCase() + restOfName;
+	}
+
+	public static boolean classHasPublicNoArgConstructor(Class<?> clazz) {
+		for (Constructor<?> constructor : clazz.getConstructors()) {
+			if (constructor.getParameterTypes().length == 0) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public static boolean classHasStaticFactoryCreateMethod(Class<?> clazz) {
+		Method createMethod;
+		try {
+			createMethod = clazz.getDeclaredMethod("create");
+		} catch (NoSuchMethodException e) {
+			return false;
+		}
+
+		return Modifier.isStatic(createMethod.getModifiers()) &&
+				Modifier.isPublic(createMethod.getModifiers()) &&
+				createMethod.getReturnType().equals(clazz);
 	}
 }
