@@ -16,11 +16,8 @@
 
 package io.datakernel.guice;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Provides;
-import com.google.inject.Stage;
+import com.google.inject.*;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.FatalErrorHandlers;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.AbstractAsyncServlet;
 import io.datakernel.http.AsyncHttpServer;
@@ -35,17 +32,14 @@ import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 
 public class HttpHelloWorldLauncher extends Launcher {
 	public static final int PORT = 11111;
-	public static final byte[] HELLO_WORLD = encodeAscii("Hello, World!");
 
 	@Override
-	protected void configure() {
-		injector(Stage.PRODUCTION,
-				FatalErrorHandlers.exitOnJvmError(),
+	public Injector getInjector() {
+		return Guice.createInjector(Stage.PRODUCTION,
 				ServiceGraphModule.defaultInstance(),
 				new AbstractModule() {
 					@Override
 					protected void configure() {
-
 					}
 
 					@Provides
@@ -57,7 +51,8 @@ public class HttpHelloWorldLauncher extends Launcher {
 					@Provides
 					@Singleton
 					AsyncHttpServer httpServer(Eventloop eventloop, AbstractAsyncServlet servlet) {
-						return AsyncHttpServer.create(eventloop, servlet).withListenPort(PORT);
+						return AsyncHttpServer.create(eventloop, servlet)
+								.withListenPort(PORT);
 					}
 
 					@Provides
@@ -66,8 +61,7 @@ public class HttpHelloWorldLauncher extends Launcher {
 						return new AbstractAsyncServlet(eventloop) {
 							@Override
 							protected void doServeAsync(HttpRequest request, Callback callback) throws ParseException {
-								callback.setResponse(HttpResponse.ok200().withBody(HELLO_WORLD));
-								throw new OutOfMemoryError();
+								callback.setResponse(HttpResponse.ok200().withBody(encodeAscii("Hello, World!")));
 							}
 						};
 					}
@@ -75,7 +69,7 @@ public class HttpHelloWorldLauncher extends Launcher {
 	}
 
 	@Override
-	protected void doRun() throws Exception {
+	protected void run() throws Exception {
 		awaitShutdown();
 	}
 

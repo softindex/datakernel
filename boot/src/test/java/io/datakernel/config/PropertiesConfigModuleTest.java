@@ -52,7 +52,7 @@ public class PropertiesConfigModuleTest {
 				return testClass;
 			}
 		};
-		Config config = new PropertiesConfigModule()
+		Config config = PropertiesConfigModule.create()
 				.addProperties(properties1)
 				.addProperties(properties2)
 				.provideConfig();

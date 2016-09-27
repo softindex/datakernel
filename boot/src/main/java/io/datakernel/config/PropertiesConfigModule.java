@@ -35,7 +35,7 @@ public final class PropertiesConfigModule extends AbstractModule {
 	private File saveFile;
 	private Config root;
 
-	public PropertiesConfigModule() {
+	private PropertiesConfigModule() {
 	}
 
 	private PropertiesConfigModule(File file) {
@@ -50,11 +50,15 @@ public final class PropertiesConfigModule extends AbstractModule {
 		addProperties(properties);
 	}
 
-	public static PropertiesConfigModule from(File file) {return new PropertiesConfigModule(file);}
+	public static PropertiesConfigModule create() {
+		return new PropertiesConfigModule();
+	}
 
-	public static PropertiesConfigModule from(String file) {return new PropertiesConfigModule(file);}
+	public static PropertiesConfigModule ofFile(File file) {return new PropertiesConfigModule(file);}
 
-	public static PropertiesConfigModule from(Properties properties) {return new PropertiesConfigModule(properties);}
+	public static PropertiesConfigModule ofFile(String file) {return new PropertiesConfigModule(file);}
+
+	public static PropertiesConfigModule ofFile(Properties properties) {return new PropertiesConfigModule(properties);}
 
 	public PropertiesConfigModule addFile(String file) {
 		addFile(new File(file));

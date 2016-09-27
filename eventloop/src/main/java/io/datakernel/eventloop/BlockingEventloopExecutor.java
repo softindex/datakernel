@@ -33,18 +33,6 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 
 	private final int limit;
 
-	private final CompletionCallback completionCallback = new CompletionCallback() {
-		@Override
-		protected void onComplete() {
-			setComplete();
-		}
-
-		@Override
-		protected void onException(Exception exception) {
-			setComplete();
-		}
-	};
-
 	// region builders
 	private BlockingEventloopExecutor(Eventloop eventloop, int limit) {
 		this.eventloop = eventloop;
@@ -113,7 +101,17 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 			post(new Runnable() {
 				@Override
 				public void run() {
-					asyncTask.execute(completionCallback);
+					asyncTask.execute(new CompletionCallback() {
+						@Override
+						protected void onComplete() {
+							complete();
+						}
+
+						@Override
+						protected void onException(Exception exception) {
+							complete();
+						}
+					});
 				}
 			});
 		} catch (InterruptedException ignored) {

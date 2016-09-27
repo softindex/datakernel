@@ -17,17 +17,9 @@
 package io.datakernel.launcher;
 
 import com.google.inject.*;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.FatalErrorHandler;
-import io.datakernel.eventloop.FatalErrorHandlers;
 import io.datakernel.jmx.JmxRegistrator;
 import io.datakernel.service.ServiceGraph;
-import io.datakernel.util.FileLocker;
 import org.slf4j.Logger;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 import static org.slf4j.LoggerFactory.getLogger;
 
@@ -36,20 +28,7 @@ public abstract class Launcher {
 
 	protected String[] args;
 
-	private Stage stage;
-
-//	private FatalErrorHandler fatalErrorHandler;
-
-	private Module[] modules;
-
-	private FileLocker fileLocker;
-
-	private boolean useLockFile;
-
 	private JmxRegistrator jmxRegistrator;
-
-	@Inject
-	protected Injector injector;
 
 	@Inject
 	protected Provider<ServiceGraph> serviceGraphProvider;
@@ -59,102 +38,68 @@ public abstract class Launcher {
 
 	private final Thread mainThread = Thread.currentThread();
 
-	protected void useLockFile() {
-		this.useLockFile = true;
-	}
-
-	protected void injector(Stage stage, Module... modules) {
-		injector(stage, FatalErrorHandlers.ignoreAllErrors(), modules);
-	}
-
-	protected void injector(Stage stage, FatalErrorHandler fatalErrorHandler, Module... modules) {
-		this.stage = stage;
-		this.modules = modules;
-		Eventloop.setGlobalFatalErrorHandler(fatalErrorHandler);
-	}
-
-	protected abstract void configure();
 
 	public static <T extends Launcher> void run(Class<T> mainClass, String[] args) throws Exception {
 		T app = mainClass.newInstance();
-		app.args = args;
-		app.configure();
-		app.run();
+		app.doRun(args);
 	}
 
-	protected final void run() throws Exception {
+	public abstract Injector getInjector();
+
+	void doRun(String[] args) throws Exception {
 		try {
-			obtainLockFile();
-			logger.info("=== WIRING APPLICATION");
-			doWire();
+			this.args = args;
+			Injector injector = getInjector();
+			beforeInject();
+			logger.info("=== INJECTING DEPENDENCIES");
+			doInject(injector);
 			try {
+				beforeStart();
 				logger.info("=== STARTING APPLICATION");
 				doStart();
 				logger.info("=== RUNNING APPLICATION");
-				doRun();
+				run();
 			} catch (Exception e) {
 				logger.error("Application failed", e);
 			} finally {
 				logger.info("=== STOPPING APPLICATION");
 				doStop();
-				releaseLockFile();
+				afterStop();
 			}
 		} catch (Throwable e) {
-			logger.error("Failed to wire/stop application", e);
+			logger.error("Failed to inject/stop application", e);
 		}
 	}
 
-	private void obtainLockFile() {
-		if (!useLockFile) return;
-		fileLocker = FileLocker.obtainLockOrDie(getLockFileName());
-	}
-
-	private String getLockFileName() {
-		return "." + this.getClass().getSimpleName().toLowerCase() + ".lock";
-	}
-
-	private void releaseLockFile() {
-		if (fileLocker == null) return;
-		fileLocker.releaseLock();
-	}
-
-	protected void doWire() throws Exception {
-		List<Module> modules = new ArrayList<>(Arrays.asList(this.modules));
-
-		// adding Launcher's internal module
-		modules.add(new AbstractModule() {
-			@Override
-			protected void configure() {
-				bind(String[].class).annotatedWith(Args.class).toInstance(args);
-			}
-		});
-
-		Injector injector = Guice.createInjector(stage, modules);
+	private void doInject(Injector injector) throws Exception {
 		injector.injectMembers(this);
-		jmxRegistrator = fetchJmxRegistratorIfExists(injector);
-	}
-
-	private JmxRegistrator fetchJmxRegistratorIfExists(Injector injector) {
 		Binding<JmxRegistrator> binding = injector.getExistingBinding(Key.get(JmxRegistrator.class));
-		return binding != null ? binding.getProvider().get() : null;
+		if (binding != null) {
+			jmxRegistrator = binding.getProvider().get();
+		}
 	}
 
-	protected void doStart() throws Exception {
-		registerJmxMBeans();
-		serviceGraphProvider.get().startFuture().get();
-	}
-
-	private void registerJmxMBeans() {
+	private void doStart() throws Exception {
 		if (jmxRegistrator != null) {
 			jmxRegistrator.registerJmxMBeans();
 		} else {
 			logger.info("Jmx is disabled. Add JmxModule to enable.");
 		}
+		serviceGraphProvider.get().startFuture().get();
 	}
 
-	abstract protected void doRun() throws Exception;
+	protected void beforeInject() throws Exception {
+	}
 
-	protected void doStop() throws Exception {
+	protected void beforeStart() throws Exception {
+	}
+
+	protected abstract void run() throws Exception;
+
+	protected void afterStop() throws Exception {
+	}
+
+	private void doStop() throws Exception {
 		serviceGraphProvider.get().stopFuture().get();
 	}
 
@@ -163,7 +108,7 @@ public abstract class Launcher {
 		shutdownNotification.await();
 	}
 
-	protected final void addShutdownHook() {
+	private void addShutdownHook() {
 		Runtime.getRuntime().addShutdownHook(new Thread("shutdownNotification") {
 			@Override
 			public void run() {
