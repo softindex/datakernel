@@ -357,7 +357,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		requestSender = sender != null ? sender : new Sender();
 	}
 
-	public void removeConnection(final InetSocketAddress address) {
+	void removeConnection(final InetSocketAddress address) {
 		logger.info("Connection to {} closed", address);
 
 		connections.remove(address);

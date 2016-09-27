@@ -182,7 +182,7 @@ public final class SerializerBuilder {
 		LinkedHashMap<Class<?>, SerializerGen> addressMap = new LinkedHashMap<>();
 		addressMap.put(Inet4Address.class, SerializerGenInet4Address.instance());
 		addressMap.put(Inet6Address.class, SerializerGenInet6Address.instance());
-		builder.setSerializer(InetAddress.class, new SerializerGenSubclass(InetAddress.class, addressMap));
+		builder.setSerializer(InetAddress.class, new SerializerGenSubclass(InetAddress.class, addressMap, 0));
 
 		builder.setSerializer(ByteBuffer.class, new SerializerGenByteBuffer());
 
@@ -264,7 +264,7 @@ public final class SerializerBuilder {
 		LinkedHashSet<Class<?>> subclassesSet = new LinkedHashSet<>();
 		subclassesSet.addAll(subclasses);
 		check(subclassesSet.size() == subclasses.size());
-		SerializerGen subclassesSerializer = createSubclassesSerializer(type, subclassesSet);
+		SerializerGen subclassesSerializer = createSubclassesSerializer(type, subclassesSet, 0);
 		setSerializer(type, subclassesSerializer);
 	}
 
@@ -401,10 +401,11 @@ public final class SerializerBuilder {
 			if (registeredSubclasses != null)
 				subclassesSet.addAll(registeredSubclasses);
 		}
-		return createSubclassesSerializer(type, subclassesSet);
+		return createSubclassesSerializer(type, subclassesSet, serializeSubclasses.startIndex());
 	}
 
-	private SerializerGen createSubclassesSerializer(Class<?> type, LinkedHashSet<Class<?>> subclassesSet) {
+	private SerializerGen createSubclassesSerializer(Class<?> type, LinkedHashSet<Class<?>> subclassesSet,
+	                                                 int startIndex) {
 		checkNotNull(subclassesSet);
 		check(!subclassesSet.isEmpty());
 		LinkedHashMap<Class<?>, SerializerGen> subclasses = new LinkedHashMap<>();
@@ -419,7 +420,7 @@ public final class SerializerBuilder {
 			);
 			subclasses.put(subclass, serializer);
 		}
-		return new SerializerGenSubclass(type, subclasses);
+		return new SerializerGenSubclass(type, subclasses, startIndex);
 	}
 
 	private static Class<?> findKey(Class<?> classType, Set<Class<?>> classes) {

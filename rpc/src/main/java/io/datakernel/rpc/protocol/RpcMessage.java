@@ -42,7 +42,10 @@ public final class RpcMessage {
 	}
 
 	@Serialize(order = 2)
-	@SerializeSubclasses(value = {RpcRemoteException.class}, extraSubclassesId = MESSAGE_TYPES)
+	@SerializeSubclasses(
+			startIndex = -1, value = {RpcControlMessage.class, RpcRemoteException.class},
+			extraSubclassesId = MESSAGE_TYPES
+	)
 	@SerializeNullable
 	public Object getData() {
 		return data;

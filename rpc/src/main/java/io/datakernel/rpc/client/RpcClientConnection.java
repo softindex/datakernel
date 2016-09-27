@@ -88,7 +88,8 @@ public final class RpcClientConnection implements RpcConnection, RpcSender, JmxR
 
 	private AsyncCancellable scheduleExpiredResponsesTask;
 	private int cookieCounter = 0;
-	private boolean closing;
+	private boolean connectionClosing;
+	private boolean serverClosing;
 
 	// JMX
 	private boolean monitoring;
@@ -169,7 +170,7 @@ public final class RpcClientConnection implements RpcConnection, RpcSender, JmxR
 	}
 
 	private void scheduleExpiredResponsesTask() {
-		if (closing)
+		if (connectionClosing)
 			return;
 		scheduleExpiredResponsesTask = eventloop.schedule(eventloop.currentTimeMillis() + DEFAULT_TIMEOUT_PRECISION, expiredResponsesTask);
 	}
@@ -244,6 +245,8 @@ public final class RpcClientConnection implements RpcConnection, RpcSender, JmxR
 			rpcClient.getGeneralRequestsStats().getServerExceptions().recordException(remoteException, null);
 
 			processError(message, remoteException);
+		} else if (message.getData().getClass() == RpcControlMessage.class) {
+			handleControlMessage((RpcControlMessage) message.getData());
 		} else {
 			// jmx
 			requestsStats.getSuccessfulRequests().recordEvent();
@@ -253,22 +256,45 @@ public final class RpcClientConnection implements RpcConnection, RpcSender, JmxR
 		}
 	}
 
+	private void handleControlMessage(RpcControlMessage controlMessage) {
+		if (controlMessage == RpcControlMessage.CLOSE) {
+			handleServerCloseMessage();
+		} else {
+			throw new RuntimeException("Received unknown RpcControlMessage");
+		}
+	}
+
+	private void handleServerCloseMessage() {
+		rpcClient.removeConnection(address);
+		serverClosing = true;
+		if (requests.size() == 0) {
+			close();
+		}
+	}
+
 	private void processError(RpcMessage message, RpcRemoteException exception) {
-		ResultCallback<?> callback = getResultCallback(message);
+		ResultCallback<?> callback = removeResultCallback(message);
 		if (callback == null)
 			return;
 		returnError(callback, exception);
 	}
 
 	private void processResponse(RpcMessage message) {
-		ResultCallback<Object> callback = getResultCallback(message);
+		ResultCallback<Object> callback = removeResultCallback(message);
+
+		if (serverClosing) {
+			if (requests.size() == 0) {
+				close();
+			}
+		}
+
 		if (callback == null)
 			return;
 		callback.setResult(message.getData());
 	}
 
 	@SuppressWarnings("unchecked")
-	private <T> ResultCallback<T> getResultCallback(RpcMessage message) {
+	private <T> ResultCallback<T> removeResultCallback(RpcMessage message) {
 		return (ResultCallback<T>) requests.remove(message.getCookie());
 	}
 
@@ -293,10 +319,6 @@ public final class RpcClientConnection implements RpcConnection, RpcSender, JmxR
 
 	@Override
 	public void onReadEndOfStream() {
-		if (!closing) {
-			// TODO(vmykhalko): handle closing initiated by server
-		}
-
 		finishClosing();
 	}
 
@@ -312,7 +334,7 @@ public final class RpcClientConnection implements RpcConnection, RpcSender, JmxR
 	}
 
 	public void close() {
-		closing = true;
+		connectionClosing = true;
 		protocol.sendEndOfStream();
 	}
 

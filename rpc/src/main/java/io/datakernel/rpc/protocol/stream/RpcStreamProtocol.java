@@ -19,6 +19,7 @@ package io.datakernel.rpc.protocol.stream;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.rpc.protocol.RpcConnection;
+import io.datakernel.rpc.protocol.RpcControlMessage;
 import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.protocol.RpcProtocol;
 import io.datakernel.serializer.BufferSerializer;
@@ -40,7 +41,6 @@ final class RpcStreamProtocol implements RpcProtocol {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final RpcConnection rpcConnection;
-	private final AsyncTcpSocket asyncTcpSocket;
 	private final SimpleStreamProducer<RpcMessage> sender;
 	private final SimpleStreamConsumer<RpcMessage> receiver;
 	private final SocketStreamingConnection connection;
@@ -50,7 +50,6 @@ final class RpcStreamProtocol implements RpcProtocol {
 	                          BufferSerializer<RpcMessage> messageSerializer,
 	                          int defaultPacketSize, int maxPacketSize, boolean compression) {
 		this.rpcConnection = rpcConnection;
-		this.asyncTcpSocket = asyncTcpSocket;
 		sender = SimpleStreamProducer
 				.create(eventloop)
 				.withStatusListener(new SimpleStreamProducer.StatusListener() {
@@ -112,6 +111,11 @@ final class RpcStreamProtocol implements RpcProtocol {
 	@Override
 	public void sendMessage(RpcMessage message) {
 		sender.send(message);
+	}
+
+	@Override
+	public void sendCloseMessage() {
+		sender.send(RpcMessage.of(-1, RpcControlMessage.CLOSE));
 	}
 
 	@Override

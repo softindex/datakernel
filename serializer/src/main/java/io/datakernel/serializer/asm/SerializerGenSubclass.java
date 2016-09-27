@@ -35,20 +35,23 @@ import static org.objectweb.asm.Type.getType;
 public class SerializerGenSubclass implements SerializerGen, NullableOptimization {
 	@Override
 	public SerializerGen setNullable() {
-		return new SerializerGenSubclass(dataType, subclassSerializers, true);
+		return new SerializerGenSubclass(dataType, subclassSerializers, true, startIndex);
 	}
 
 	private final Class<?> dataType;
 	private final LinkedHashMap<Class<?>, SerializerGen> subclassSerializers;
 	private final boolean nullable;
+	private final int startIndex;
 
-	public SerializerGenSubclass(Class<?> dataType, LinkedHashMap<Class<?>, SerializerGen> subclassSerializers) {
+	public SerializerGenSubclass(Class<?> dataType, LinkedHashMap<Class<?>, SerializerGen> subclassSerializers, int startIndex) {
+		this.startIndex = startIndex;
 		this.dataType = checkNotNull(dataType);
 		this.subclassSerializers = new LinkedHashMap<>(subclassSerializers);
 		this.nullable = false;
 	}
 
-	public SerializerGenSubclass(Class<?> dataType, LinkedHashMap<Class<?>, SerializerGen> subclassSerializers, boolean nullable) {
+	public SerializerGenSubclass(Class<?> dataType, LinkedHashMap<Class<?>, SerializerGen> subclassSerializers, boolean nullable, int startIndex) {
+		this.startIndex = startIndex;
 		this.dataType = checkNotNull(dataType);
 		this.subclassSerializers = new LinkedHashMap<>(subclassSerializers);
 		this.nullable = nullable;
@@ -77,18 +80,23 @@ public class SerializerGenSubclass implements SerializerGen, NullableOptimizatio
 			return;
 		}
 
-		byte subClassN = (byte) (!nullable ? 0 : 1);
+		byte subClassIndex = (byte) (nullable && startIndex == 0 ? 1 : startIndex);
+
 		List<Expression> listKey = new ArrayList<>();
 		List<Expression> listValue = new ArrayList<>();
 		for (Class<?> subclass : subclassSerializers.keySet()) {
 			SerializerGen subclassSerializer = subclassSerializers.get(subclass);
 			subclassSerializer.prepareSerializeStaticMethods(version, staticMethods, compatibilityLevel);
-
 			listKey.add(cast(value(getType(subclass)), Object.class));
 			listValue.add(sequence(
-					set(arg(1), callStatic(SerializationUtils.class, "writeByte", arg(0), arg(1), value(subClassN++))),
+					set(arg(1), callStatic(SerializationUtils.class, "writeByte", arg(0), arg(1), value(subClassIndex))),
 					subclassSerializer.serialize(arg(0), arg(1), cast(arg(2), subclassSerializer.getRawType()), version, staticMethods, compatibilityLevel)
 			));
+
+			subClassIndex++;
+			if (nullable && subClassIndex == 0) {
+				subClassIndex++;
+			}
 		}
 		if (nullable) {
 			staticMethods.registerStaticSerializeMethod(this, version,
@@ -114,16 +122,16 @@ public class SerializerGenSubclass implements SerializerGen, NullableOptimizatio
 			return;
 		}
 		List<Expression> list = new ArrayList<>();
-		if (nullable) list.add(nullRef(getRawType()));
 		for (Class<?> subclass : subclassSerializers.keySet()) {
 			SerializerGen subclassSerializer = subclassSerializers.get(subclass);
 			subclassSerializer.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
 			list.add(cast(subclassSerializer.deserialize(subclassSerializer.getRawType(), version, staticMethods, compatibilityLevel), this.getRawType()));
 		}
+		if (nullable) list.add(-startIndex, nullRef(getRawType()));
 
-		Variable subClassN = let(call(arg(0), "readByte"));
+		Variable subClassIndex = let(sub(call(arg(0), "readByte"), value(startIndex)));
 
-		staticMethods.registerStaticDeserializeMethod(this, version, cast(switchForPosition(subClassN, list), this.getRawType()));
+		staticMethods.registerStaticDeserializeMethod(this, version, cast(switchForPosition(subClassIndex, list), this.getRawType()));
 	}
 
 	@Override

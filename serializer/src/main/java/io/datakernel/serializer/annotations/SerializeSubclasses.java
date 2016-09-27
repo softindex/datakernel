@@ -32,4 +32,6 @@ public @interface SerializeSubclasses {
 	Class<?>[] value();
 
 	String extraSubclassesId() default "";
+
+	int startIndex() default 0;
 }

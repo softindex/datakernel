@@ -16,16 +16,6 @@
 
 package io.datakernel.rpc.protocol;
 
-import io.datakernel.eventloop.AsyncTcpSocket;
-
-public interface RpcProtocol {
-	void sendMessage(RpcMessage rpcMessage);
-
-	void sendCloseMessage();
-
-	boolean isOverloaded();
-
-	void sendEndOfStream();
-
-	AsyncTcpSocket.EventHandler getSocketConnection();
+public enum RpcControlMessage {
+	CLOSE
 }

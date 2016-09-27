@@ -39,7 +39,6 @@ public final class RpcServerConnection implements RpcConnection, JmxRefreshable 
 
 	private int activeRequests;
 	private boolean readEndOfStream;
-	private boolean open;
 
 	// jmx
 	private final InetSocketAddress remoteAddress;
@@ -57,7 +56,6 @@ public final class RpcServerConnection implements RpcConnection, JmxRefreshable 
 		this.rpcServer = rpcServer;
 		this.protocol = protocolFactory.create(eventloop, asyncTcpSocket, this, messageSerializer);
 		this.handlers = handlers;
-		this.open = true;
 		this.readEndOfStream = false;
 
 		// jmx
@@ -98,13 +96,8 @@ public final class RpcServerConnection implements RpcConnection, JmxRefreshable 
 				successfulRequests.recordEvent();
 				rpcServer.getSuccessfulRequests().recordEvent();
 
-				if (open) {
-					protocol.sendMessage(RpcMessage.of(cookie, result));
-					decrementActiveRequest();
-				} else {
-					String address = "Remote address: " + remoteAddress.getAddress().toString();
-					logger.error("Cannot send response for handled request because connection is closed. " + address);
-				}
+				protocol.sendMessage(RpcMessage.of(cookie, result));
+				decrementActiveRequest();
 			}
 
 			@Override
@@ -144,7 +137,6 @@ public final class RpcServerConnection implements RpcConnection, JmxRefreshable 
 	}
 
 	public void onClosed() {
-		open = false;
 		rpcServer.remove(this);
 	}
 
@@ -173,8 +165,7 @@ public final class RpcServerConnection implements RpcConnection, JmxRefreshable 
 	}
 
 	public void close() {
-		open = false;
-		// TODO(vmykhalko): maybe force close protocol in some way?
+		protocol.sendCloseMessage();
 	}
 
 	// jmx
