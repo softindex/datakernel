@@ -31,8 +31,7 @@ import java.nio.channels.DatagramChannel;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.Eventloop.createDatagramChannel;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
+import static org.junit.Assert.*;
 
 public class AsyncDnsClientConnectionTest {
 	private DnsClientHandler dnsClientConnection;
@@ -69,22 +68,17 @@ public class AsyncDnsClientConnectionTest {
 				System.out.println("Resolving IPs for " + result.getDomainName() + " failed with error code: " + result.getErrorCode());
 			}
 			++answersReceived;
-			closeConnectionIfDone();
-		}
-
-		@Override
-		protected void onException(Exception exception) {
-			System.err.println("Exception thrown while resolving domain name. Stack trace:");
-			exception.printStackTrace();
-			++answersReceived;
-			closeConnectionIfDone();
-		}
-
-		private void closeConnectionIfDone() {
 			if (answersReceived == 3) {
 				dnsClientConnection.close();
 			}
 		}
+
+		@Override
+		protected void onException(Exception e) {
+			e.printStackTrace();
+			fail();
+		}
+
 	}
 
 	@Test
@@ -98,6 +92,7 @@ public class AsyncDnsClientConnectionTest {
 					dnsClientConnection.register();
 				} catch (IOException e) {
 					e.printStackTrace();
+					fail();
 				}
 			}
 		});

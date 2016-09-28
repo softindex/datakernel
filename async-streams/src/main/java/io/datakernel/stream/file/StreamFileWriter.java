@@ -115,7 +115,6 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 			protected void onComplete() {
 				logger.trace("{}: completed flush", StreamFileWriter.this);
 				position += length;
-				buf.recycle();
 				pendingAsyncOperation = false;
 				if (queue.size() <= 1) {
 					resume();
@@ -126,7 +125,6 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 			@Override
 			protected void onException(final Exception e) {
 				logger.error("{}: failed to flush", StreamFileWriter.this, e);
-				buf.recycle();
 				doCleanup(false, new SimpleCompletionCallback() {
 					@Override
 					protected void onCompleteOrException() {

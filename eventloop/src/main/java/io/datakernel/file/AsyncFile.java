@@ -332,6 +332,7 @@ public final class AsyncFile {
 					eventloop.execute(new Runnable() {
 						@Override
 						public void run() {
+							buf.recycle();
 							tracker.complete();
 							callback.setComplete();
 						}
@@ -350,6 +351,7 @@ public final class AsyncFile {
 				eventloop.execute(new Runnable() {
 					@Override
 					public void run() {
+						buf.recycle();
 						tracker.complete();
 						callback.setException(exc instanceof Exception ? (Exception) exc : new Exception(exc));
 					}

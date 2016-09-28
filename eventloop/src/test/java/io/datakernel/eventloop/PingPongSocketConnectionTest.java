@@ -94,6 +94,7 @@ public class PingPongSocketConnectionTest {
 		@Override
 		public void onClosedWithError(Exception e) {
 			e.printStackTrace();
+			fail();
 		}
 	}
 
@@ -137,6 +138,7 @@ public class PingPongSocketConnectionTest {
 		@Override
 		public void onClosedWithError(Exception e) {
 			e.printStackTrace();
+			fail();
 		}
 	}
 }

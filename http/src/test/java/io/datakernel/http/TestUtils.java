@@ -18,6 +18,8 @@ package io.datakernel.http;
 
 import java.io.*;
 
+import static org.junit.Assert.fail;
+
 public class TestUtils {
 
 	public static byte[] toByteArray(InputStream is) {
@@ -40,6 +42,7 @@ public class TestUtils {
 			bytes = bos.toByteArray();
 		} catch (IOException e) {
 			e.printStackTrace();
+			fail();
 		}
 		return bytes;
 	}

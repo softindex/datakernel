@@ -16,8 +16,8 @@
 
 package io.datakernel.file;
 
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.AssertingCompletionCallback;
+import io.datakernel.async.AssertingResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import org.junit.Rule;
@@ -34,11 +34,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.Executors;
 
+import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static java.nio.file.StandardOpenOption.READ;
 import static java.nio.file.StandardOpenOption.WRITE;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertThat;
+import static org.junit.Assert.*;
 
 public class AsyncFileTest {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
@@ -50,20 +50,20 @@ public class AsyncFileTest {
 		final File tempFile = temporaryFolder.newFile("hello-2.html");
 		final Eventloop eventloop = Eventloop.create();
 		final Path srcPath = Paths.get("test_data/hello.html");
-		AsyncFile.open(eventloop, Executors.newCachedThreadPool(), srcPath, new OpenOption[]{READ}, new ResultCallback<AsyncFile>() {
+		AsyncFile.open(eventloop, Executors.newCachedThreadPool(), srcPath, new OpenOption[]{READ}, new AssertingResultCallback<AsyncFile>() {
 			@Override
 			protected void onResult(AsyncFile result) {
 				logger.info("Opened file.");
-				result.readFully(new ResultCallback<ByteBuf>() {
+				result.readFully(new AssertingResultCallback<ByteBuf>() {
 					@Override
 					protected void onResult(final ByteBuf result) {
 						final Path destPath = Paths.get(tempFile.getAbsolutePath());
-						AsyncFile.open(eventloop, Executors.newCachedThreadPool(), destPath, new OpenOption[]{WRITE}, new ResultCallback<AsyncFile>() {
+						AsyncFile.open(eventloop, Executors.newCachedThreadPool(), destPath, new OpenOption[]{WRITE}, new AssertingResultCallback<AsyncFile>() {
 							@Override
 							protected void onResult(AsyncFile file) {
 								logger.info("Finished reading file.");
 
-								file.writeFully(result, 0, new CompletionCallback() {
+								file.writeFully(result, 0, new AssertingCompletionCallback() {
 									@Override
 									protected void onComplete() {
 										logger.info("Finished writing file");
@@ -74,36 +74,16 @@ public class AsyncFileTest {
 											throw new RuntimeException(e);
 										}
 									}
-
-									@Override
-									protected void onException(Exception exception) {
-										logger.info("Exception thrown while trying to read file.", exception);
-									}
 								});
 							}
-
-							@Override
-							protected void onException(Exception exception) {
-								logger.info("Exception thrown while trying to open file for writing.", exception);
-							}
 						});
-
-					}
-
-					@Override
-					protected void onException(Exception exception) {
-						logger.info("Exception thrown while trying to read file.", exception);
 					}
 				});
-			}
-
-			@Override
-			protected void onException(Exception exception) {
-				logger.info("Exception thrown while trying to open file for reading.", exception);
 			}
 		});
 
 		eventloop.run();
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 		assertThat(eventloop, doesntHaveFatals());
 	}
 }

@@ -15,8 +15,7 @@ import java.util.Map;
 
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
+import static org.junit.Assert.*;
 
 public class AbstractHttpConnectionTest {
 	private static final int PORT = 5050;
@@ -51,8 +50,7 @@ public class AbstractHttpConnectionTest {
 			@Override
 			public void onException(Exception e) {
 				e.printStackTrace();
-				client.close();
-				server.close();
+				fail();
 			}
 		});
 

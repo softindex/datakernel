@@ -125,6 +125,7 @@ public class UdpSocketHandlerTest {
 
 				} catch (IOException e) {
 					e.printStackTrace();
+					fail();
 				}
 			}
 		});
