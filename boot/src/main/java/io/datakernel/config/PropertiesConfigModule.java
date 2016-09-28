@@ -17,8 +17,10 @@
 package io.datakernel.config;
 
 import com.google.inject.AbstractModule;
+import com.google.inject.Provider;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
+import com.google.inject.util.Providers;
 import io.datakernel.service.BlockingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,53 +33,74 @@ import java.util.Properties;
 public final class PropertiesConfigModule extends AbstractModule {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-	private final List<Properties> properties = new ArrayList<>();
+	private final List<Provider<Properties>> properties = new ArrayList<>();
 	private File saveFile;
 	private Config root;
 
 	private PropertiesConfigModule() {
 	}
 
-	private PropertiesConfigModule(File file) {
-		addFile(file);
-	}
-
-	private PropertiesConfigModule(String file) {
-		addFile(file);
-	}
-
-	private PropertiesConfigModule(Properties properties) {
-		addProperties(properties);
-	}
-
 	public static PropertiesConfigModule create() {
 		return new PropertiesConfigModule();
 	}
 
-	public static PropertiesConfigModule ofFile(File file) {return new PropertiesConfigModule(file);}
+	public static PropertiesConfigModule ofFile(File file) {
+		return PropertiesConfigModule.create().addFile(file);
+	}
 
-	public static PropertiesConfigModule ofFile(String file) {return new PropertiesConfigModule(file);}
+	public static PropertiesConfigModule ofFile(String file) {
+		return PropertiesConfigModule.create().addFile(file);
+	}
 
-	public static PropertiesConfigModule ofFile(Properties properties) {return new PropertiesConfigModule(properties);}
+	public static PropertiesConfigModule ofProperties(Properties properties) {
+		return PropertiesConfigModule.create().addProperties(properties);
+	}
 
 	public PropertiesConfigModule addFile(String file) {
-		addFile(new File(file));
+		addFile(new File(file), false);
 		return this;
 	}
 
 	public PropertiesConfigModule addFile(File file) {
-		try (InputStream fis = new BufferedInputStream(new FileInputStream(file))) {
-			Properties property = new Properties();
-			property.load(fis);
-			properties.add(property);
-		} catch (IOException e) {
-			logger.warn("Can't load properties file: {}", file);
-		}
+		addFile(file, false);
+		return this;
+	}
+
+	public PropertiesConfigModule addOptionalFile(String file) {
+		addFile(new File(file), true);
+		return this;
+	}
+
+	public PropertiesConfigModule addOptionalFile(File file) {
+		addFile(file, true);
+		return this;
+	}
+
+	private PropertiesConfigModule addFile(final File file, final boolean optional) {
+		properties.add(new Provider<Properties>() {
+			@Override
+			public Properties get() {
+				try (InputStream fis = new BufferedInputStream(new FileInputStream(file))) {
+					Properties property = new Properties();
+					property.load(fis);
+					return property;
+				} catch (IOException e) {
+					if (optional) {
+						logger.warn("Can't load properties file: {}", file);
+						return null;
+					} else {
+						throw new IllegalArgumentException(e);
+					}
+				}
+			}
+
+			;
+		});
 		return this;
 	}
 
 	public PropertiesConfigModule addProperties(Properties properties) {
-		this.properties.add(properties);
+		this.properties.add(Providers.of(properties));
 		return this;
 	}
 
@@ -113,9 +136,12 @@ public final class PropertiesConfigModule extends AbstractModule {
 	@Singleton
 	Config provideConfig() {
 		List<Config> configs = new ArrayList<>();
-		for (Properties property : properties) {
-			Config config = Config.ofProperties(property);
-			configs.add(config);
+		for (Provider<Properties> propertiesProvider : properties) {
+			Properties properties = propertiesProvider.get();
+			if (properties != null) {
+				Config config = Config.ofProperties(properties);
+				configs.add(config);
+			}
 		}
 		root = Config.union(configs);
 		return root;

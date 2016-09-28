@@ -21,6 +21,11 @@ import io.datakernel.jmx.JmxRegistrator;
 import io.datakernel.service.ServiceGraph;
 import org.slf4j.Logger;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+
 import static org.slf4j.LoggerFactory.getLogger;
 
 public abstract class Launcher {
@@ -30,6 +35,9 @@ public abstract class Launcher {
 
 	private JmxRegistrator jmxRegistrator;
 
+	private Stage stage;
+	private Module[] modules;
+
 	@Inject
 	protected Provider<ServiceGraph> serviceGraphProvider;
 
@@ -38,19 +46,36 @@ public abstract class Launcher {
 
 	private final Thread mainThread = Thread.currentThread();
 
-
-	public static <T extends Launcher> void run(Class<T> mainClass, String[] args) throws Exception {
-		T app = mainClass.newInstance();
-		app.doRun(args);
+	public static <T extends Launcher> void main(Class<T> launcherClass, String[] args) throws Exception {
+		T launcher = launcherClass.newInstance();
+		launcher.launch(args);
 	}
 
-	public abstract Injector getInjector();
+	public Launcher(Stage stage, Module... modules) {
+		this.stage = stage;
+		this.modules = modules;
+	}
 
-	void doRun(String[] args) throws Exception {
+	private Collection<Module> getModules() {
+		List<Module> moduleList = new ArrayList<>(Arrays.asList(this.modules));
+		moduleList.add(new AbstractModule() {
+			@Override
+			protected void configure() {
+				bind(String[].class).annotatedWith(Args.class).toInstance(args != null ? args : new String[]{});
+			}
+		});
+		return moduleList;
+	}
+
+	public final Injector testInjector() {
+		return Guice.createInjector(Stage.TOOL, getModules());
+	}
+
+	public void launch(String[] args) throws Exception {
 		try {
 			this.args = args;
-			Injector injector = getInjector();
 			beforeInject();
+			Injector injector = Guice.createInjector(stage, getModules());
 			logger.info("=== INJECTING DEPENDENCIES");
 			doInject(injector);
 			try {

@@ -16,13 +16,17 @@
 
 package io.datakernel.guice;
 
-import com.google.inject.*;
+import com.google.inject.AbstractModule;
+import com.google.inject.Inject;
+import com.google.inject.Provides;
+import com.google.inject.Stage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.AbstractAsyncServlet;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
+import io.datakernel.launcher.Args;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
 
@@ -33,9 +37,11 @@ import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 public class HttpHelloWorldLauncher extends Launcher {
 	public static final int PORT = 11111;
 
-	@Override
-	public Injector getInjector() {
-		return Guice.createInjector(Stage.PRODUCTION,
+	@Inject
+	AsyncHttpServer httpServer;
+
+	public HttpHelloWorldLauncher() {
+		super(Stage.DEVELOPMENT,
 				ServiceGraphModule.defaultInstance(),
 				new AbstractModule() {
 					@Override
@@ -44,7 +50,7 @@ public class HttpHelloWorldLauncher extends Launcher {
 
 					@Provides
 					@Singleton
-					Eventloop eventloop() {
+					Eventloop eventloop(@Args String[] args) {
 						return Eventloop.create();
 					}
 
@@ -74,6 +80,6 @@ public class HttpHelloWorldLauncher extends Launcher {
 	}
 
 	public static void main(String[] args) throws Exception {
-		run(HttpHelloWorldLauncher.class, args);
+		main(HttpHelloWorldLauncher.class, args);
 	}
 }
