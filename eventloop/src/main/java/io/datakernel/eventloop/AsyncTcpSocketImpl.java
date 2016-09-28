@@ -210,12 +210,12 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	private void doRead() {
 		ByteBuf buf = ByteBufPool.allocate(receiveBufferSize);
-		ByteBuffer buffer = buf.toTailByteBuffer();
+		ByteBuffer buffer = buf.toWriteByteBuffer();
 
 		int numRead;
 		try {
 			numRead = channel.read(buffer);
-			buf.ofTailByteBuffer(buffer);
+			buf.ofWriteByteBuffer(buffer);
 		} catch (IOException e) {
 			buf.recycle();
 			closeWithError(e, false);
@@ -280,9 +280,9 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 				if (nextBuf == null)
 					break;
 
-				int bytesToCopy = nextBuf.headRemaining(); // bytes to append to bufToSend
-				if (bufToSend.head() + bufToSend.headRemaining() + bytesToCopy > bufToSend.array().length)
-					bytesToCopy += bufToSend.headRemaining(); // append will resize bufToSend
+				int bytesToCopy = nextBuf.readRemaining(); // bytes to append to bufToSend
+				if (bufToSend.readPosition() + bufToSend.readRemaining() + bytesToCopy > bufToSend.array().length)
+					bytesToCopy += bufToSend.readRemaining(); // append will resize bufToSend
 				if (bytesToCopy < MAX_MERGE_SIZE) {
 					bufToSend = ByteBufPool.append(bufToSend, nextBuf);
 					writeQueue.poll();
@@ -292,10 +292,10 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			}
 
 			@SuppressWarnings("ConstantConditions")
-			ByteBuffer bufferToSend = bufToSend.toHeadByteBuffer();
+			ByteBuffer bufferToSend = bufToSend.toReadByteBuffer();
 
 			channel.write(bufferToSend);
-			bufToSend.ofHeadByteBuffer(bufferToSend);
+			bufToSend.ofReadByteBuffer(bufferToSend);
 
 			if (bufToSend.canRead()) {
 				writeQueue.addFirst(bufToSend); // put the buf back to the queue, to send it the next time

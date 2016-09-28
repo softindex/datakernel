@@ -107,8 +107,8 @@ public final class AcceptMediaType {
 	}
 
 	static void render(List<AcceptMediaType> types, ByteBuf buf) {
-		int pos = render(types, buf.array(), buf.tail());
-		buf.tail(pos);
+		int pos = render(types, buf.array(), buf.writePosition());
+		buf.writePosition(pos);
 	}
 
 	static int render(List<AcceptMediaType> types, byte[] container, int pos) {

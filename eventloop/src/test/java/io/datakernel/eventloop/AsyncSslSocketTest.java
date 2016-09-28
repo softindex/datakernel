@@ -471,7 +471,7 @@ public class AsyncSslSocketTest {
 	}
 
 	public static String extractMessageFromByteBuf(ByteBuf buf) {
-		String result = new String(buf.array(), buf.head(), buf.headRemaining());
+		String result = new String(buf.array(), buf.readPosition(), buf.readRemaining());
 		buf.recycle();
 		return result;
 	}

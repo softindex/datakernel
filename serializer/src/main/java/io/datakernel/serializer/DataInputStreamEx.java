@@ -49,16 +49,16 @@ public final class DataInputStreamEx implements Closeable {
 	}
 
 	private void ensureReadSize(int size) {
-		if (buf.headRemaining() + buf.tailRemaining() >= size) {
+		if (buf.readRemaining() + buf.writeRemaining() >= size) {
 			return;
 		}
 
-		int headPos = buf.head();
-		int remainingToRead = buf.headRemaining();
+		int headPos = buf.readPosition();
+		int remainingToRead = buf.readRemaining();
 		ByteBuf newBuf = buf.limit() >= size ? buf : ByteBufPool.allocate(size + size / 2);
 		System.arraycopy(buf.array(), headPos, newBuf.array(), 0, remainingToRead);
-		newBuf.head(0);
-		newBuf.tail(remainingToRead);
+		newBuf.readPosition(0);
+		newBuf.writePosition(remainingToRead);
 
 		if (buf != newBuf) {
 			buf.recycle();
@@ -67,17 +67,17 @@ public final class DataInputStreamEx implements Closeable {
 	}
 
 	private void doEnsureRead(int size) throws IOException {
-		while (buf.headRemaining() < size) {
+		while (buf.readRemaining() < size) {
 			ensureReadSize(size);
-			int bytesRead = inputStream.read(buf.array(), buf.tail(), buf.tailRemaining());
+			int bytesRead = inputStream.read(buf.array(), buf.writePosition(), buf.writeRemaining());
 			if (bytesRead == -1)
 				throw new IOException("Could not read message");
-			buf.moveTail(bytesRead);
+			buf.moveWritePosition(bytesRead);
 		}
 	}
 
 	private void ensureRead(int size) throws IOException {
-		if (buf.headRemaining() < size) {
+		if (buf.readRemaining() < size) {
 			doEnsureRead(size);
 		}
 	}
@@ -117,8 +117,8 @@ public final class DataInputStreamEx implements Closeable {
 			if (bytesRead == -1)
 				return true;
 			assert buf.limit() != 0 && bytesRead != 0;
-			buf.head(0);
-			buf.tail(bytesRead);
+			buf.readPosition(0);
+			buf.writePosition(bytesRead);
 			return false;
 		}
 	}
@@ -128,14 +128,14 @@ public final class DataInputStreamEx implements Closeable {
 
 		ensureRead(messageSize);
 
-		int oldHead = buf.head();
+		int oldHead = buf.readPosition();
 		T item;
 		try {
 			item = serializer.deserialize(buf);
 		} catch (Exception e) {
 			throw new DeserializeException(e);
 		}
-		if (buf.head() - oldHead != messageSize) {
+		if (buf.readPosition() - oldHead != messageSize) {
 			throw new DeserializeException("Deserialized size != parsed data size");
 		}
 		return item;
@@ -170,7 +170,7 @@ public final class DataInputStreamEx implements Closeable {
 	public short readShort() throws IOException {
 		ensureRead(2);
 		short result = (short) (((buf.peek(0) & 0xFF) << 8) | (buf.peek(1) & 0xFF));
-		buf.moveHead(2);
+		buf.moveReadPosition(2);
 		return result;
 	}
 
@@ -180,7 +180,7 @@ public final class DataInputStreamEx implements Closeable {
 				| ((buf.peek(1) & 0xFF) << 16)
 				| ((buf.peek(2) & 0xFF) << 8)
 				| (buf.peek(3) & 0xFF);
-		buf.moveHead(4);
+		buf.moveReadPosition(4);
 		return result;
 	}
 
@@ -195,7 +195,7 @@ public final class DataInputStreamEx implements Closeable {
 				| ((buf.peek(6) & 0xFF) << 8)
 				| ((buf.peek(7) & 0xFF));
 
-		buf.moveHead(8);
+		buf.moveReadPosition(8);
 		return result;
 	}
 
@@ -251,7 +251,7 @@ public final class DataInputStreamEx implements Closeable {
 	public char readChar() throws IOException {
 		ensureRead(2);
 		char c = (char) (((buf.peek(0) & 0xFF) << 8) | ((buf.peek(1) & 0xFF)));
-		buf.moveHead(4);
+		buf.moveReadPosition(4);
 		return c;
 	}
 
@@ -260,10 +260,10 @@ public final class DataInputStreamEx implements Closeable {
 		if (length == 0)
 			return "";
 		ensureRead(length);
-		buf.moveHead(length);
+		buf.moveReadPosition(length);
 
 		try {
-			return new String(buf.array(), buf.head() - length, length, "UTF-8");
+			return new String(buf.array(), buf.readPosition() - length, length, "UTF-8");
 		} catch (UnsupportedEncodingException e) {
 			throw new RuntimeException();
 		}

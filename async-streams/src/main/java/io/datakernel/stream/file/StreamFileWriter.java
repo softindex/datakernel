@@ -109,7 +109,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 			return;
 
 		final ByteBuf buf = queue.poll();
-		final int length = buf.headRemaining();
+		final int length = buf.readRemaining();
 		asyncFile.writeFully(buf, position, new CompletionCallback() {
 			@Override
 			protected void onComplete() {

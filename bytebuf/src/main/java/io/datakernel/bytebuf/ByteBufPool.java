@@ -88,10 +88,10 @@ public final class ByteBufPool {
 
 	public static ByteBuf ensureTailRemaining(ByteBuf buf, int newTailRemaining) {
 		assert !(buf instanceof ByteBuf.ByteBufSlice);
-		if (buf.tailRemaining() >= newTailRemaining) {
+		if (buf.writeRemaining() >= newTailRemaining) {
 			return buf;
 		} else {
-			ByteBuf newBuf = allocate(newTailRemaining + buf.headRemaining());
+			ByteBuf newBuf = allocate(newTailRemaining + buf.readRemaining());
 			newBuf.put(buf);
 			buf.recycle();
 			return newBuf;
@@ -100,11 +100,11 @@ public final class ByteBufPool {
 
 	public static ByteBuf append(ByteBuf to, ByteBuf from) {
 		assert !to.isRecycled() && !from.isRecycled();
-		if (to.headRemaining() == 0) {
+		if (to.readRemaining() == 0) {
 			to.recycle();
 			return from;
 		}
-		to = ensureTailRemaining(to, from.headRemaining());
+		to = ensureTailRemaining(to, from.readRemaining());
 		to.put(from);
 		from.recycle();
 		return to;

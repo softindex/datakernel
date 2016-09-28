@@ -56,7 +56,7 @@ public final class StreamForwarderWithCounter extends AbstractStreamTransformer_
 
 		@Override
 		public void onData(ByteBuf item) {
-			streamedSize += item.headRemaining();
+			streamedSize += item.readRemaining();
 			outputProducer.send(item);
 		}
 	}

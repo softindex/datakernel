@@ -127,7 +127,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 		@Override
 		public void onData(ByteBuf buf) {
 			jmxBufs++;
-			jmxBytes += buf.headRemaining();
+			jmxBytes += buf.readRemaining();
 			this.byteBufs.offer(buf);
 			outputProducer.produce();
 			if (this.byteBufs.size() == this.buffersPoolSize) {
@@ -154,26 +154,26 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 					if (nextBuf == null)
 						break;
 
-					while (isStatusReady() && nextBuf.headRemaining() > 0) {
+					while (isStatusReady() && nextBuf.readRemaining() > 0) {
 						if (dataSize == 0) {
 							// read message header:
-							if (!buf.canRead() && nextBuf.headRemaining() >= MAX_HEADER_BYTES) {
-								int sizeLen = tryReadSize(nextBuf.array(), nextBuf.head());
-								nextBuf.moveHead(sizeLen);
+							if (!buf.canRead() && nextBuf.readRemaining() >= MAX_HEADER_BYTES) {
+								int sizeLen = tryReadSize(nextBuf.array(), nextBuf.readPosition());
+								nextBuf.moveReadPosition(sizeLen);
 								if (sizeLen > MAX_HEADER_BYTES)
 									throw new ParseException("Parsed size length > MAX_HEADER_BYTES");
 								buf.rewind();
 							} else {
-								int readSize = min(nextBuf.headRemaining(), MAX_HEADER_BYTES - buf.headRemaining());
-								buf = ByteBufPool.append(buf, nextBuf.array(), nextBuf.head(), readSize);
-								int sizeLen = tryReadSize(buf.array(), buf.head());
-								if (sizeLen > buf.headRemaining()) {
+								int readSize = min(nextBuf.readRemaining(), MAX_HEADER_BYTES - buf.readRemaining());
+								buf = ByteBufPool.append(buf, nextBuf.array(), nextBuf.readPosition(), readSize);
+								int sizeLen = tryReadSize(buf.array(), buf.readPosition());
+								if (sizeLen > buf.readRemaining()) {
 									// Read past last position - incomplete varint in buffer, waiting for more bytes
 									dataSize = 0;
 									break;
 								}
-								int unreadSize = buf.headRemaining() - sizeLen;
-								nextBuf.moveHead(-unreadSize);
+								int unreadSize = buf.readRemaining() - sizeLen;
+								nextBuf.moveReadPosition(-unreadSize);
 								buf.rewind();
 							}
 							if (dataSize > maxMessageSize)
@@ -182,22 +182,22 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 
 						// read message body:
 						T item;
-						if (!buf.canRead() && nextBuf.headRemaining() >= dataSize) {
-							int initialHead = nextBuf.head();
+						if (!buf.canRead() && nextBuf.readRemaining() >= dataSize) {
+							int initialHead = nextBuf.readPosition();
 							try {
 								item = valueSerializer.deserialize(nextBuf);
 							} catch (Exception e) {
 								throw new ParseException("Cannot deserialize stream ", e);
 							}
-							if ((nextBuf.head() - initialHead) != dataSize)
+							if ((nextBuf.readPosition() - initialHead) != dataSize)
 								throw new ParseException("Deserialized size != parsed data size");
 							dataSize = 0;
 						} else {
-							int readSize = min(nextBuf.headRemaining(), dataSize - buf.headRemaining());
-							buf = ByteBufPool.append(buf, nextBuf.array(), nextBuf.head(), readSize);
-							nextBuf.moveHead(readSize);
+							int readSize = min(nextBuf.readRemaining(), dataSize - buf.readRemaining());
+							buf = ByteBufPool.append(buf, nextBuf.array(), nextBuf.readPosition(), readSize);
+							nextBuf.moveReadPosition(readSize);
 
-							if (buf.headRemaining() != dataSize)
+							if (buf.readRemaining() != dataSize)
 								break;
 
 							try {

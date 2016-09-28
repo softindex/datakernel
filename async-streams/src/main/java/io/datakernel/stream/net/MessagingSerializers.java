@@ -21,11 +21,11 @@ public final class MessagingSerializers {
 		return new MessagingSerializer<I, O>() {
 			@Override
 			public I tryDeserialize(ByteBuf buf) throws ParseException {
-				for (int len = 0; len < buf.headRemaining(); len++) {
+				for (int len = 0; len < buf.readRemaining(); len++) {
 					if (buf.peek(len) == '\0') {
 						try {
-							I item = in.fromJson(ByteBufStrings.decodeUtf8(buf.array(), buf.head(), len), inputClass);
-							buf.moveHead(len + 1); // skipping msg + delimiter
+							I item = in.fromJson(ByteBufStrings.decodeUtf8(buf.array(), buf.readPosition(), len), inputClass);
+							buf.moveReadPosition(len + 1); // skipping msg + delimiter
 							return item;
 						} catch (JsonSyntaxException e) {
 							throw DESERIALIZE_ERR;

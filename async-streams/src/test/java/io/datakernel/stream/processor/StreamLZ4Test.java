@@ -43,8 +43,8 @@ public class StreamLZ4Test {
 		int len = random.nextInt(100);
 		ByteBuf result = ByteBuf.wrapForWriting(new byte[offset + len + tail]);
 		int lenUnique = 1 + random.nextInt(len + 1);
-		result.tail(offset);
-		result.head(offset);
+		result.writePosition(offset);
+		result.readPosition(offset);
 		for (int i = 0; i < len; i++) {
 			result.put((byte) (i % lenUnique));
 		}

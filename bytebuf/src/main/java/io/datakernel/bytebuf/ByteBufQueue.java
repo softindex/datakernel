@@ -93,12 +93,12 @@ public final class ByteBufQueue {
 	public ByteBuf takeMaxSize(int maxSize) {
 		assert hasRemaining();
 		ByteBuf buf = bufs[first];
-		if (maxSize >= buf.headRemaining()) {
+		if (maxSize >= buf.readRemaining()) {
 			first = next(first);
 			return buf;
 		}
 		ByteBuf result = buf.slice(maxSize);
-		buf.moveHead(maxSize);
+		buf.moveReadPosition(maxSize);
 		return result;
 	}
 
@@ -113,12 +113,12 @@ public final class ByteBufQueue {
 		if (!hasRemaining())
 			return ByteBuf.empty();
 		ByteBuf buf = bufs[first];
-		if (buf.headRemaining() == exactSize) {
+		if (buf.readRemaining() == exactSize) {
 			first = next(first);
 			return buf;
-		} else if (exactSize < buf.headRemaining()) {
+		} else if (exactSize < buf.readRemaining()) {
 			ByteBuf result = buf.slice(exactSize);
-			buf.moveHead(exactSize);
+			buf.moveReadPosition(exactSize);
 			return result;
 		}
 		ByteBuf result = ByteBufPool.allocate(exactSize);
@@ -168,7 +168,7 @@ public final class ByteBufQueue {
 	public int remainingBytes() {
 		int result = 0;
 		for (int i = first; i != last; i = next(i)) {
-			result += bufs[i].headRemaining();
+			result += bufs[i].readRemaining();
 		}
 		return result;
 	}
@@ -194,7 +194,7 @@ public final class ByteBufQueue {
 	 */
 	public boolean hasRemainingBytes(int remaining) {
 		for (int i = first; i != last; i = next(i)) {
-			int bufRemaining = bufs[i].headRemaining();
+			int bufRemaining = bufs[i].readRemaining();
 			if (bufRemaining >= remaining)
 				return true;
 			remaining -= bufRemaining;
@@ -234,9 +234,9 @@ public final class ByteBufQueue {
 		assert hasRemainingBytes(index + 1);
 		for (int i = first; ; i = next(i)) {
 			ByteBuf buf = bufs[i];
-			if (index < buf.headRemaining())
+			if (index < buf.readRemaining())
 				return buf.peek(index);
-			index -= buf.headRemaining();
+			index -= buf.readRemaining();
 		}
 	}
 
@@ -250,12 +250,12 @@ public final class ByteBufQueue {
 		int s = maxSize;
 		while (hasRemaining()) {
 			ByteBuf buf = bufs[first];
-			int remaining = buf.headRemaining();
+			int remaining = buf.readRemaining();
 			if (s < remaining) {
-				buf.moveHead(s);
+				buf.moveReadPosition(s);
 				return maxSize;
 			} else {
-				buf.head(buf.tail());
+				buf.readPosition(buf.writePosition());
 				doPoll();
 				s -= remaining;
 			}
@@ -276,14 +276,14 @@ public final class ByteBufQueue {
 		int s = maxSize;
 		while (hasRemaining()) {
 			ByteBuf buf = bufs[first];
-			int remaining = buf.headRemaining();
+			int remaining = buf.readRemaining();
 			if (s < remaining) {
-				arraycopy(buf.array(), buf.head(), dest, destOffset, s);
-				buf.moveHead(s);
+				arraycopy(buf.array(), buf.readPosition(), dest, destOffset, s);
+				buf.moveReadPosition(s);
 				return maxSize;
 			} else {
-				arraycopy(buf.array(), buf.head(), dest, destOffset, remaining);
-				buf.head(buf.tail());
+				arraycopy(buf.array(), buf.readPosition(), dest, destOffset, remaining);
+				buf.readPosition(buf.writePosition());
 				doPoll();
 				s -= remaining;
 				destOffset += remaining;
@@ -301,8 +301,8 @@ public final class ByteBufQueue {
 	 * @return number of drained bytes.
 	 */
 	public int drainTo(ByteBuf dest, int maxSize) {
-		int actualSize = drainTo(dest.array(), dest.tail(), maxSize);
-		dest.moveTail(actualSize);
+		int actualSize = drainTo(dest.array(), dest.writePosition(), maxSize);
+		dest.moveWritePosition(actualSize);
 		return actualSize;
 	}
 
@@ -314,7 +314,7 @@ public final class ByteBufQueue {
 	 * @return number of drained bytes
 	 */
 	public int drainTo(ByteBuf dest) {
-		return drainTo(dest, dest.tailRemaining());
+		return drainTo(dest, dest.writeRemaining());
 	}
 
 	/**
@@ -328,7 +328,7 @@ public final class ByteBufQueue {
 		while (hasRemaining()) {
 			ByteBuf buf = take();
 			dest.add(buf);
-			size += buf.headRemaining();
+			size += buf.readRemaining();
 		}
 		return size;
 	}
@@ -346,7 +346,7 @@ public final class ByteBufQueue {
 		while (s != 0 && hasRemaining()) {
 			ByteBuf buf = takeMaxSize(s);
 			dest.add(buf);
-			s -= buf.headRemaining();
+			s -= buf.readRemaining();
 		}
 		return maxSize - s;
 	}

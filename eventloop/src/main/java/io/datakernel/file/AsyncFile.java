@@ -258,11 +258,11 @@ public final class AsyncFile {
 	 */
 	public void write(final ByteBuf buf, long position, final ResultCallback<Integer> callback) {
 		final Eventloop.ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();
-		final ByteBuffer byteBuffer = buf.toHeadByteBuffer();
+		final ByteBuffer byteBuffer = buf.toReadByteBuffer();
 		channel.write(byteBuffer, position, null, new CompletionHandler<Integer, Object>() {
 			@Override
 			public void completed(final Integer result, Object attachment) {
-				buf.ofHeadByteBuffer(byteBuffer);
+				buf.ofReadByteBuffer(byteBuffer);
 				eventloop.execute(new Runnable() {
 					@Override
 					public void run() {
@@ -294,11 +294,11 @@ public final class AsyncFile {
 	 */
 	public void read(final ByteBuf buf, long position, final ResultCallback<Integer> callback) {
 		final Eventloop.ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();
-		final ByteBuffer byteBuffer = buf.toTailByteBuffer();
+		final ByteBuffer byteBuffer = buf.toWriteByteBuffer();
 		channel.read(byteBuffer, position, null, new CompletionHandler<Integer, Object>() {
 			@Override
 			public void completed(final Integer result, Object attachment) {
-				buf.ofTailByteBuffer(byteBuffer);
+				buf.ofWriteByteBuffer(byteBuffer);
 				eventloop.execute(new Runnable() {
 					@Override
 					public void run() {
@@ -323,12 +323,12 @@ public final class AsyncFile {
 
 	private void writeFully(final ByteBuf buf, final long position, final Eventloop.ConcurrentOperationTracker tracker,
 	                        final AtomicBoolean cancelled, final CompletionCallback callback) {
-		final ByteBuffer byteBuffer = buf.toHeadByteBuffer();
+		final ByteBuffer byteBuffer = buf.toReadByteBuffer();
 		channel.write(byteBuffer, position, null, new CompletionHandler<Integer, Object>() {
 			@Override
 			public void completed(Integer result, Object attachment) {
-				buf.ofHeadByteBuffer(byteBuffer);
-				if (buf.headRemaining() == 0) {
+				buf.ofReadByteBuffer(byteBuffer);
+				if (buf.readRemaining() == 0) {
 					eventloop.execute(new Runnable() {
 						@Override
 						public void run() {
@@ -381,12 +381,12 @@ public final class AsyncFile {
 	private void readFully(final ByteBuf buf, final long position, final long size,
 	                       final Eventloop.ConcurrentOperationTracker tracker,
 	                       final AtomicBoolean cancelled, final CompletionCallback callback) {
-		final ByteBuffer byteBuffer = buf.toTailByteBuffer();
+		final ByteBuffer byteBuffer = buf.toWriteByteBuffer();
 		channel.read(byteBuffer, position, null, new CompletionHandler<Integer, Object>() {
 			@Override
 			public void completed(Integer result, Object attachment) {
-				buf.ofTailByteBuffer(byteBuffer);
-				if (buf.headRemaining() == size || result == -1) {
+				buf.ofWriteByteBuffer(byteBuffer);
+				if (buf.readRemaining() == size || result == -1) {
 					eventloop.execute(new Runnable() {
 						@Override
 						public void run() {

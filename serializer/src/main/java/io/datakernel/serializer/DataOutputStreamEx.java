@@ -60,23 +60,23 @@ public final class DataOutputStreamEx implements Closeable {
 
 	private void doEnsureSize(int size) throws IOException {
 		doFlush();
-		if (buf.tailRemaining() < size) {
+		if (buf.writeRemaining() < size) {
 			buf.recycle();
 			buf = ByteBufPool.allocate(size);
 		}
 	}
 
 	private void ensureSize(int size) throws IOException {
-		if (buf.tailRemaining() < size) {
+		if (buf.writeRemaining() < size) {
 			doEnsureSize(size);
 		}
 	}
 
 	private void doFlush() throws IOException {
 		if (buf.canRead()) {
-			outputStream.write(buf.array(), buf.head(), buf.headRemaining());
-			buf.head(0);
-			buf.tail(0);
+			outputStream.write(buf.array(), buf.readPosition(), buf.readRemaining());
+			buf.readPosition(0);
+			buf.writePosition(0);
 		}
 	}
 
@@ -123,9 +123,9 @@ public final class DataOutputStreamEx implements Closeable {
 		int positionItem;
 		for (; ; ) {
 			ensureSize(headerSize + estimatedMessageSize);
-			positionBegin = buf.tail();
+			positionBegin = buf.writePosition();
 			positionItem = positionBegin + headerSize;
-			buf.tail(positionItem);
+			buf.writePosition(positionItem);
 			try {
 				serializer.serialize(buf, value);
 			} catch (ArrayIndexOutOfBoundsException e) {
@@ -133,15 +133,15 @@ public final class DataOutputStreamEx implements Closeable {
 				estimatedMessageSize = messageSize + 1 + (messageSize >>> 1);
 				continue;
 			} catch (Exception e) {
-				buf.tail(positionBegin);
+				buf.writePosition(positionBegin);
 				throw new SerializeException(e);
 			}
 			break;
 		}
-		int positionEnd = buf.tail();
+		int positionEnd = buf.writePosition();
 		int messageSize = positionEnd - positionItem;
 		if (messageSize >= 1 << headerSize * 7) {
-			buf.tail(positionBegin);
+			buf.writePosition(positionBegin);
 			throw SIZE_EXCEPTION;
 		}
 		writeSize(buf.array(), positionBegin, messageSize, headerSize);
@@ -154,92 +154,92 @@ public final class DataOutputStreamEx implements Closeable {
 
 	public void write(byte[] b) throws IOException {
 		ensureSize(b.length);
-		int newTail = SerializationUtils.write(buf.array(), buf.tail(), b);
-		buf.tail(newTail);
+		int newTail = SerializationUtils.write(buf.array(), buf.writePosition(), b);
+		buf.writePosition(newTail);
 	}
 
 	public void write(byte[] b, int off, int len) throws IOException {
 		ensureSize(len);
-		int newTail = SerializationUtils.write(buf.array(), buf.tail(), b, off, len);
-		buf.tail(newTail);
+		int newTail = SerializationUtils.write(buf.array(), buf.writePosition(), b, off, len);
+		buf.writePosition(newTail);
 	}
 
 	public void writeBoolean(boolean v) throws IOException {
 		ensureSize(1);
-		int newTail = SerializationUtils.writeBoolean(buf.array(), buf.tail(), v);
-		buf.tail(newTail);
+		int newTail = SerializationUtils.writeBoolean(buf.array(), buf.writePosition(), v);
+		buf.writePosition(newTail);
 	}
 
 	public void writeByte(byte v) throws IOException {
 		ensureSize(1);
-		int newTail = SerializationUtils.writeByte(buf.array(), buf.tail(), v);
-		buf.tail(newTail);
+		int newTail = SerializationUtils.writeByte(buf.array(), buf.writePosition(), v);
+		buf.writePosition(newTail);
 	}
 
 	public void writeShort(short v) throws IOException {
 		ensureSize(2);
-		int newTail = SerializationUtils.writeShort(buf.array(), buf.tail(), v);
-		buf.tail(newTail);
+		int newTail = SerializationUtils.writeShort(buf.array(), buf.writePosition(), v);
+		buf.writePosition(newTail);
 	}
 
 	public void writeInt(int v) throws IOException {
 		ensureSize(4);
-		int newTail = SerializationUtils.writeInt(buf.array(), buf.tail(), v);
-		buf.tail(newTail);
+		int newTail = SerializationUtils.writeInt(buf.array(), buf.writePosition(), v);
+		buf.writePosition(newTail);
 	}
 
 	public void writeLong(long v) throws IOException {
 		ensureSize(8);
-		int newTail = SerializationUtils.writeLong(buf.array(), buf.tail(), v);
-		buf.tail(newTail);
+		int newTail = SerializationUtils.writeLong(buf.array(), buf.writePosition(), v);
+		buf.writePosition(newTail);
 	}
 
 	public void writeVarInt(int v) throws IOException {
 		ensureSize(5);
-		int newTail = SerializationUtils.writeVarInt(buf.array(), buf.tail(), v);
-		buf.tail(newTail);
+		int newTail = SerializationUtils.writeVarInt(buf.array(), buf.writePosition(), v);
+		buf.writePosition(newTail);
 	}
 
 	public void writeVarLong(long v) throws IOException {
 		ensureSize(9);
-		int newTail = SerializationUtils.writeVarLong(buf.array(), buf.tail(), v);
-		buf.tail(newTail);
+		int newTail = SerializationUtils.writeVarLong(buf.array(), buf.writePosition(), v);
+		buf.writePosition(newTail);
 	}
 
 	public void writeFloat(float v) throws IOException {
 		ensureSize(4);
-		int newTail = SerializationUtils.writeFloat(buf.array(), buf.tail(), v);
-		buf.tail(newTail);
+		int newTail = SerializationUtils.writeFloat(buf.array(), buf.writePosition(), v);
+		buf.writePosition(newTail);
 	}
 
 	public void writeDouble(double v) throws IOException {
 		ensureSize(8);
-		int newTail = SerializationUtils.writeDouble(buf.array(), buf.tail(), v);
-		buf.tail(newTail);
+		int newTail = SerializationUtils.writeDouble(buf.array(), buf.writePosition(), v);
+		buf.writePosition(newTail);
 	}
 
 	public void writeChar(char v) throws IOException {
 		ensureSize(2);
-		int newTail = SerializationUtils.writeChar(buf.array(), buf.tail(), v);
-		buf.tail(newTail);
+		int newTail = SerializationUtils.writeChar(buf.array(), buf.writePosition(), v);
+		buf.writePosition(newTail);
 	}
 
 	public void writeUTF8(String s) throws IOException {
 		ensureSize(5 + s.length() * 3);
-		int newTail = SerializationUtils.writeJavaUTF8(buf.array(), buf.tail(), s);
-		buf.tail(newTail);
+		int newTail = SerializationUtils.writeJavaUTF8(buf.array(), buf.writePosition(), s);
+		buf.writePosition(newTail);
 	}
 
 	public void writeIso88591(String s) throws IOException {
 		ensureSize(5 + s.length() * 3);
-		int newTail = SerializationUtils.writeIso88591(buf.array(), buf.tail(), s);
-		buf.tail(newTail);
+		int newTail = SerializationUtils.writeIso88591(buf.array(), buf.writePosition(), s);
+		buf.writePosition(newTail);
 	}
 
 	public final void writeUTF16(String s) throws IOException {
 		ensureSize(5 + s.length() * 2);
-		int newTail = SerializationUtils.writeUTF16(buf.array(), buf.tail(), s);
-		buf.tail(newTail);
+		int newTail = SerializationUtils.writeUTF16(buf.array(), buf.writePosition(), s);
+		buf.writePosition(newTail);
 	}
 
 }

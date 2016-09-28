@@ -86,14 +86,14 @@ final class HttpClientConnection extends AbstractHttpConnection {
 
 		int sp1;
 		if (line.peek(6) == SP) {
-			sp1 = line.head() + 7;
+			sp1 = line.readPosition() + 7;
 		} else if (line.peek(6) == '.' && (line.peek(7) == '1' || line.peek(7) == '0') && line.peek(8) == SP) {
-			sp1 = line.head() + 9;
+			sp1 = line.readPosition() + 9;
 		} else
-			throw new ParseException("Invalid response: " + new String(line.array(), line.head(), line.headRemaining()));
+			throw new ParseException("Invalid response: " + new String(line.array(), line.readPosition(), line.readRemaining()));
 
 		int sp2;
-		for (sp2 = sp1; sp2 < line.tail(); sp2++) {
+		for (sp2 = sp1; sp2 < line.writePosition(); sp2++) {
 			if (line.at(sp2) == SP) {
 				break;
 			}

@@ -116,8 +116,8 @@ public final class MediaTypes {
 	}
 
 	static void render(MediaType mime, ByteBuf buf) {
-		int len = render(mime, buf.array(), buf.tail());
-		buf.moveTail(len);
+		int len = render(mime, buf.array(), buf.writePosition());
+		buf.moveWritePosition(len);
 	}
 
 	static int render(MediaType mime, byte[] container, int pos) {

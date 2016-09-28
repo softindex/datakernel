@@ -33,11 +33,11 @@ final class GzipProcessor {
 
 	static ByteBuf fromGzip(ByteBuf raw) throws ParseException {
 		try {
-			GZIPInputStream gzip = new GZIPInputStream(new ByteArrayInputStream(raw.array(), raw.head(), raw.headRemaining()));
+			GZIPInputStream gzip = new GZIPInputStream(new ByteArrayInputStream(raw.array(), raw.readPosition(), raw.readRemaining()));
 			int nRead;
 			ByteBuf data = ByteBufPool.allocate(256);
-			while ((nRead = gzip.read(data.array(), data.tail(), data.tailRemaining())) != -1) {
-				data.moveTail(nRead);
+			while ((nRead = gzip.read(data.array(), data.writePosition(), data.writeRemaining())) != -1) {
+				data.moveWritePosition(nRead);
 				if (!data.canWrite()) {
 					data = ByteBufPool.ensureTailRemaining(data, data.limit() * 2);
 				}
@@ -54,7 +54,7 @@ final class GzipProcessor {
 		try {
 			ByteBufOutputStream out = new ByteBufOutputStream();
 			GZIPOutputStream gzip = new GZIPOutputStream(out);
-			gzip.write(raw.array(), raw.head(), raw.headRemaining());
+			gzip.write(raw.array(), raw.readPosition(), raw.readRemaining());
 			gzip.close();
 			raw.recycle();
 			return out.getBuf();
@@ -87,7 +87,7 @@ final class GzipProcessor {
 			if (container == null) {
 				container = ByteBufPool.allocate(256);
 			}
-			while (container.tailRemaining() < len) {
+			while (container.writeRemaining() < len) {
 				container = ByteBufPool.ensureTailRemaining(container, container.limit() * 2);
 			}
 			container.put(bytes, off, len);

@@ -35,17 +35,17 @@ public class ByteBuf {
 
 	protected final byte[] array;
 
-	private int head;
-	private int tail;
+	private int readPosition;
+	private int writePosition;
 
 	int refs;
 
 	// creators
-	private ByteBuf(byte[] array, int head, int tail) {
-		assert head >= 0 && head <= tail && tail <= array.length;
+	private ByteBuf(byte[] array, int readPosition, int writePosition) {
+		assert readPosition >= 0 && readPosition <= writePosition && writePosition <= array.length;
 		this.array = array;
-		this.head = head;
-		this.tail = tail;
+		this.readPosition = readPosition;
+		this.writePosition = writePosition;
 	}
 
 	public static ByteBuf empty() {
@@ -66,11 +66,11 @@ public class ByteBuf {
 
 	// slicing
 	public ByteBuf slice() {
-		return slice(head, headRemaining());
+		return slice(readPosition, readRemaining());
 	}
 
 	public ByteBuf slice(int length) {
-		return slice(head, length);
+		return slice(readPosition, length);
 	}
 
 	public ByteBuf slice(int offset, int length) {
@@ -103,8 +103,8 @@ public class ByteBuf {
 
 	public void rewind() {
 		assert !isRecycled();
-		tail = 0;
-		head = 0;
+		writePosition = 0;
+		readPosition = 0;
 	}
 
 	public boolean isRecycleNeeded() {
@@ -112,28 +112,28 @@ public class ByteBuf {
 	}
 
 	// byte buffers
-	public ByteBuffer toHeadByteBuffer() {
+	public ByteBuffer toReadByteBuffer() {
 		assert !isRecycled();
-		return ByteBuffer.wrap(array, head, tail - head);
+		return ByteBuffer.wrap(array, readPosition, readRemaining());
 	}
 
-	public ByteBuffer toTailByteBuffer() {
+	public ByteBuffer toWriteByteBuffer() {
 		assert !isRecycled();
-		return ByteBuffer.wrap(array, tail, array.length - tail);
+		return ByteBuffer.wrap(array, writePosition, writeRemaining());
 	}
 
-	public void ofHeadByteBuffer(ByteBuffer byteBuffer) {
+	public void ofReadByteBuffer(ByteBuffer byteBuffer) {
 		assert !isRecycled();
 		assert array == byteBuffer.array();
-		assert byteBuffer.limit() == tail;
-		this.head = byteBuffer.position();
+		assert byteBuffer.limit() == writePosition;
+		this.readPosition = byteBuffer.position();
 	}
 
-	public void ofTailByteBuffer(ByteBuffer byteBuffer) {
+	public void ofWriteByteBuffer(ByteBuffer byteBuffer) {
 		assert !isRecycled();
 		assert array == byteBuffer.array();
 		assert byteBuffer.limit() == array.length;
-		this.tail = byteBuffer.position();
+		this.writePosition = byteBuffer.position();
 	}
 
 	// getters & setters
@@ -142,70 +142,70 @@ public class ByteBuf {
 		return array;
 	}
 
-	public int head() {
+	public int readPosition() {
 		assert !isRecycled();
-		return head;
+		return readPosition;
 	}
 
-	public int tail() {
+	public int writePosition() {
 		assert !isRecycled();
-		return tail;
+		return writePosition;
 	}
 
 	public int limit() {
 		return array.length;
 	}
 
-	public void head(int pos) {
+	public void readPosition(int pos) {
 		assert !isRecycled();
-		assert pos <= tail;
-		this.head = pos;
+		assert pos <= writePosition;
+		this.readPosition = pos;
 	}
 
-	public void tail(int pos) {
+	public void writePosition(int pos) {
 		assert !isRecycled();
-		assert pos >= head && pos <= array.length;
-		this.tail = pos;
+		assert pos >= readPosition && pos <= array.length;
+		this.writePosition = pos;
 	}
 
-	public void moveHead(int delta) {
+	public void moveReadPosition(int delta) {
 		assert !isRecycled();
-		assert head + delta >= 0;
-		assert head + delta <= tail;
-		head += delta;
+		assert readPosition + delta >= 0;
+		assert readPosition + delta <= writePosition;
+		readPosition += delta;
 	}
 
-	public void moveTail(int delta) {
+	public void moveWritePosition(int delta) {
 		assert !isRecycled();
-		assert tail + delta >= head;
-		assert tail + delta <= array.length;
-		tail += delta;
+		assert writePosition + delta >= readPosition;
+		assert writePosition + delta <= array.length;
+		writePosition += delta;
 	}
 
-	public int tailRemaining() {
+	public int writeRemaining() {
 		assert !isRecycled();
-		return array.length - tail;
+		return array.length - writePosition;
 	}
 
-	public int headRemaining() {
+	public int readRemaining() {
 		assert !isRecycled();
-		return tail - head;
+		return writePosition - readPosition;
 	}
 
 	public boolean canWrite() {
 		assert !isRecycled();
-		return tail != array.length;
+		return writePosition != array.length;
 	}
 
 	public boolean canRead() {
 		assert !isRecycled();
-		return head != tail;
+		return readPosition != writePosition;
 	}
 
 	public byte get() {
 		assert !isRecycled();
-		assert head < tail;
-		return array[head++];
+		assert readPosition < writePosition;
+		return array[readPosition++];
 	}
 
 	public byte at(int index) {
@@ -215,29 +215,29 @@ public class ByteBuf {
 
 	public byte peek() {
 		assert !isRecycled();
-		return array[head];
+		return array[readPosition];
 	}
 
 	public byte peek(int offset) {
 		assert !isRecycled();
-		assert (head + offset) < tail;
-		return array[head + offset];
+		assert (readPosition + offset) < writePosition;
+		return array[readPosition + offset];
 	}
 
 	public int drainTo(byte[] array, int offset, int length) {
 		assert !isRecycled();
 		assert length >= 0 && (offset + length) <= array.length;
-		assert this.head + length <= this.tail;
-		System.arraycopy(this.array, this.head, array, offset, length);
-		this.head += length;
+		assert this.readPosition + length <= this.writePosition;
+		System.arraycopy(this.array, this.readPosition, array, offset, length);
+		this.readPosition += length;
 		return length;
 	}
 
 	public int drainTo(ByteBuf buf, int length) {
 		assert !buf.isRecycled();
-		assert buf.tail + length <= buf.array.length;
-		drainTo(buf.array, buf.tail, length);
-		buf.tail += length;
+		assert buf.writePosition + length <= buf.array.length;
+		drainTo(buf.array, buf.writePosition, length);
+		buf.writePosition += length;
 		return length;
 	}
 
@@ -247,13 +247,13 @@ public class ByteBuf {
 	}
 
 	public void put(byte b) {
-		set(tail, b);
-		tail++;
+		set(writePosition, b);
+		writePosition++;
 	}
 
 	public void put(ByteBuf buf) {
-		put(buf.array, buf.head, buf.tail - buf.head);
-		buf.head = buf.tail;
+		put(buf.array, buf.readPosition, buf.writePosition - buf.readPosition);
+		buf.readPosition = buf.writePosition;
 	}
 
 	public void put(byte[] bytes) {
@@ -262,15 +262,15 @@ public class ByteBuf {
 
 	public void put(byte[] bytes, int offset, int length) {
 		assert !isRecycled();
-		assert tail + length <= array.length;
+		assert writePosition + length <= array.length;
 		assert offset + length <= bytes.length;
-		System.arraycopy(bytes, offset, array, tail, length);
-		tail += length;
+		System.arraycopy(bytes, offset, array, writePosition, length);
+		writePosition += length;
 	}
 
 	public int find(byte b) {
 		assert !isRecycled();
-		for (int i = head; i < tail; i++) {
+		for (int i = readPosition; i < writePosition; i++) {
 			if (array[i] == b) return i;
 		}
 		return -1;
@@ -283,7 +283,7 @@ public class ByteBuf {
 	public int find(byte[] bytes, int off, int len) {
 		assert !isRecycled();
 		L:
-		for (int pos = head; pos < tail - len; pos++) {
+		for (int pos = readPosition; pos < writePosition - len; pos++) {
 			for (int i = 0; i < len; i++) {
 				if (array[pos + i] != bytes[off + i]) {
 					continue L;
@@ -295,8 +295,8 @@ public class ByteBuf {
 	}
 
 	public byte[] getRemainingArray() {
-		final byte[] bytes = new byte[headRemaining()];
-		System.arraycopy(array, head, bytes, 0, bytes.length);
+		final byte[] bytes = new byte[readRemaining()];
+		System.arraycopy(array, readPosition, bytes, 0, bytes.length);
 		return bytes;
 	}
 
@@ -308,8 +308,8 @@ public class ByteBuf {
 
 		ByteBuf buf = (ByteBuf) o;
 
-		return headRemaining() == buf.headRemaining() &&
-				arraysEquals(this.array, this.head, this.tail, buf.array, buf.head);
+		return readRemaining() == buf.readRemaining() &&
+				arraysEquals(this.array, this.readPosition, this.writePosition, buf.array, buf.readPosition);
 	}
 
 	private boolean arraysEquals(byte[] array, int offset, int limit, byte[] arr, int off) {
@@ -325,7 +325,7 @@ public class ByteBuf {
 	public int hashCode() {
 		assert !isRecycled();
 		int result = 1;
-		for (int i = head; i < tail; i++) {
+		for (int i = readPosition; i < writePosition; i++) {
 			result = 31 * result + array[i];
 		}
 		return result;
@@ -333,9 +333,9 @@ public class ByteBuf {
 
 	@Override
 	public String toString() {
-		char[] chars = new char[headRemaining() < 256 ? headRemaining() : 256];
+		char[] chars = new char[readRemaining() < 256 ? readRemaining() : 256];
 		for (int i = 0; i < chars.length; i++) {
-			byte b = array[head + i];
+			byte b = array[readPosition + i];
 			chars[i] = (b >= ' ') ? (char) b : (char) 65533;
 		}
 		return new String(chars);
@@ -356,9 +356,9 @@ public class ByteBuf {
 
 	public byte readByte() {
 		assert !isRecycled();
-		assert headRemaining() >= 1;
+		assert readRemaining() >= 1;
 
-		return array[head++];
+		return array[readPosition++];
 	}
 
 	public boolean readBoolean() {
@@ -367,10 +367,10 @@ public class ByteBuf {
 
 	public char readChar() {
 		assert !isRecycled();
-		assert headRemaining() >= 2;
+		assert readRemaining() >= 2;
 
-		char c = (char) (((array[head] & 0xFF) << 8) | ((array[head + 1] & 0xFF)));
-		head += 2;
+		char c = (char) (((array[readPosition] & 0xFF) << 8) | ((array[readPosition + 1] & 0xFF)));
+		readPosition += 2;
 		return c;
 	}
 
@@ -388,13 +388,13 @@ public class ByteBuf {
 
 	public int readInt() {
 		assert !isRecycled();
-		assert headRemaining() >= 4;
+		assert readRemaining() >= 4;
 
-		int result = ((array[head] & 0xFF) << 24)
-				| ((array[head + 1] & 0xFF) << 16)
-				| ((array[head + 2] & 0xFF) << 8)
-				| (array[head + 3] & 0xFF);
-		head += 4;
+		int result = ((array[readPosition] & 0xFF) << 24)
+				| ((array[readPosition + 1] & 0xFF) << 16)
+				| ((array[readPosition + 2] & 0xFF) << 8)
+				| (array[readPosition + 3] & 0xFF);
+		readPosition += 4;
 		return result;
 	}
 
@@ -402,35 +402,35 @@ public class ByteBuf {
 		assert !isRecycled();
 
 		int result;
-		assert headRemaining() >= 1;
-		byte b = array[head];
+		assert readRemaining() >= 1;
+		byte b = array[readPosition];
 		if (b >= 0) {
 			result = b;
-			head += 1;
+			readPosition += 1;
 		} else {
-			assert headRemaining() >= 2;
+			assert readRemaining() >= 2;
 			result = b & 0x7f;
-			if ((b = array[head + 1]) >= 0) {
+			if ((b = array[readPosition + 1]) >= 0) {
 				result |= b << 7;
-				head += 2;
+				readPosition += 2;
 			} else {
-				assert headRemaining() >= 3;
+				assert readRemaining() >= 3;
 				result |= (b & 0x7f) << 7;
-				if ((b = array[head + 2]) >= 0) {
+				if ((b = array[readPosition + 2]) >= 0) {
 					result |= b << 14;
-					head += 3;
+					readPosition += 3;
 				} else {
-					assert headRemaining() >= 4;
+					assert readRemaining() >= 4;
 					result |= (b & 0x7f) << 14;
-					if ((b = array[head + 3]) >= 0) {
+					if ((b = array[readPosition + 3]) >= 0) {
 						result |= b << 21;
-						head += 4;
+						readPosition += 4;
 					} else {
-						assert headRemaining() >= 5;
+						assert readRemaining() >= 5;
 						result |= (b & 0x7f) << 21;
-						if ((b = array[head + 4]) >= 0) {
+						if ((b = array[readPosition + 4]) >= 0) {
 							result |= b << 28;
-							head += 5;
+							readPosition += 5;
 						} else
 							throw new IllegalArgumentException();
 					}
@@ -442,28 +442,28 @@ public class ByteBuf {
 
 	public long readLong() {
 		assert !isRecycled();
-		assert headRemaining() >= 8;
+		assert readRemaining() >= 8;
 
-		long result = ((long) array[head] << 56)
-				| ((long) (array[head + 1] & 0xFF) << 48)
-				| ((long) (array[head + 2] & 0xFF) << 40)
-				| ((long) (array[head + 3] & 0xFF) << 32)
-				| ((long) (array[head + 4] & 0xFF) << 24)
-				| ((array[head + 5] & 0xFF) << 16)
-				| ((array[head + 6] & 0xFF) << 8)
-				| ((array[head + 7] & 0xFF));
+		long result = ((long) array[readPosition] << 56)
+				| ((long) (array[readPosition + 1] & 0xFF) << 48)
+				| ((long) (array[readPosition + 2] & 0xFF) << 40)
+				| ((long) (array[readPosition + 3] & 0xFF) << 32)
+				| ((long) (array[readPosition + 4] & 0xFF) << 24)
+				| ((array[readPosition + 5] & 0xFF) << 16)
+				| ((array[readPosition + 6] & 0xFF) << 8)
+				| ((array[readPosition + 7] & 0xFF));
 
-		head += 8;
+		readPosition += 8;
 		return result;
 	}
 
 	public short readShort() {
 		assert !isRecycled();
-		assert headRemaining() >= 2;
+		assert readRemaining() >= 2;
 
-		short result = (short) (((array[head] & 0xFF) << 8)
-				| ((array[head + 1] & 0xFF)));
-		head += 2;
+		short result = (short) (((array[readPosition] & 0xFF) << 8)
+				| ((array[readPosition + 1] & 0xFF)));
+		readPosition += 2;
 		return result;
 	}
 
@@ -486,7 +486,7 @@ public class ByteBuf {
 	private String doReadIso88591(int length) {
 		if (length == 0)
 			return "";
-		if (length > headRemaining())
+		if (length > readRemaining())
 			throw new IllegalArgumentException();
 
 		char[] chars = new char[length];
@@ -519,7 +519,7 @@ public class ByteBuf {
 	private String doReadCustomUTF8(int length) {
 		if (length == 0)
 			return "";
-		if (length > headRemaining())
+		if (length > readRemaining())
 			throw new IllegalArgumentException();
 		char[] chars = new char[length];
 		for (int i = 0; i < length; i++) {
@@ -555,7 +555,7 @@ public class ByteBuf {
 	private String doReadUTF16(int length) {
 		if (length == 0)
 			return "";
-		if (length * 2 > headRemaining())
+		if (length * 2 > readRemaining())
 			throw new IllegalArgumentException();
 
 		char[] chars = new char[length];
@@ -598,12 +598,12 @@ public class ByteBuf {
 	private String doReadJavaUTF8(int length) {
 		if (length == 0)
 			return "";
-		if (length > headRemaining())
+		if (length > readRemaining())
 			throw new IllegalArgumentException();
-		head += length;
+		readPosition += length;
 
 		try {
-			return new String(array, head - length, length, "UTF-8");
+			return new String(array, readPosition - length, length, "UTF-8");
 		} catch (UnsupportedEncodingException e) {
 			throw new RuntimeException();
 		}
@@ -612,85 +612,85 @@ public class ByteBuf {
 
 	// region serialization output
 	public void write(byte[] b) {
-		tail = SerializationUtils.write(array, tail, b);
+		writePosition = SerializationUtils.write(array, writePosition, b);
 	}
 
 	public void write(byte[] b, int off, int len) {
-		tail = SerializationUtils.write(array, tail, b, off, len);
+		writePosition = SerializationUtils.write(array, writePosition, b, off, len);
 	}
 
 	public void writeBoolean(boolean v) {
-		tail = SerializationUtils.writeBoolean(array, tail, v);
+		writePosition = SerializationUtils.writeBoolean(array, writePosition, v);
 	}
 
 	public void writeByte(byte v) {
-		tail = SerializationUtils.writeByte(array, tail, v);
+		writePosition = SerializationUtils.writeByte(array, writePosition, v);
 	}
 
 	public void writeChar(char v) {
-		tail = SerializationUtils.writeChar(array, tail, v);
+		writePosition = SerializationUtils.writeChar(array, writePosition, v);
 	}
 
 	public void writeDouble(double v) {
-		tail = SerializationUtils.writeDouble(array, tail, v);
+		writePosition = SerializationUtils.writeDouble(array, writePosition, v);
 	}
 
 	public void writeFloat(float v) {
-		tail = SerializationUtils.writeFloat(array, tail, v);
+		writePosition = SerializationUtils.writeFloat(array, writePosition, v);
 	}
 
 	public void writeInt(int v) {
-		tail = SerializationUtils.writeInt(array, tail, v);
+		writePosition = SerializationUtils.writeInt(array, writePosition, v);
 	}
 
 	public void writeLong(long v) {
-		tail = SerializationUtils.writeLong(array, tail, v);
+		writePosition = SerializationUtils.writeLong(array, writePosition, v);
 	}
 
 	public void writeShort(short v) {
-		tail = SerializationUtils.writeShort(array, tail, v);
+		writePosition = SerializationUtils.writeShort(array, writePosition, v);
 	}
 
 	public void writeVarInt(int v) {
-		tail = SerializationUtils.writeVarInt(array, tail, v);
+		writePosition = SerializationUtils.writeVarInt(array, writePosition, v);
 	}
 
 	public void writeVarLong(long v) {
-		tail = SerializationUtils.writeVarLong(array, tail, v);
+		writePosition = SerializationUtils.writeVarLong(array, writePosition, v);
 	}
 
 	public void writeIso88591(String s) {
-		tail = SerializationUtils.writeIso88591(array, tail, s);
+		writePosition = SerializationUtils.writeIso88591(array, writePosition, s);
 	}
 
 	public void writeIso88591Nullable(String s) {
-		tail = SerializationUtils.writeIso88591Nullable(array, tail, s);
+		writePosition = SerializationUtils.writeIso88591Nullable(array, writePosition, s);
 	}
 
 	public void writeJavaUTF8(String s) {
-		tail = SerializationUtils.writeJavaUTF8(array, tail, s);
+		writePosition = SerializationUtils.writeJavaUTF8(array, writePosition, s);
 	}
 
 	public void writeJavaUTF8Nullable(String s) {
-		tail = SerializationUtils.writeJavaUTF8Nullable(array, tail, s);
+		writePosition = SerializationUtils.writeJavaUTF8Nullable(array, writePosition, s);
 	}
 
 	@Deprecated
 	public void writeCustomUTF8(String s) {
-		tail = SerializationUtils.writeCustomUTF8(array, tail, s);
+		writePosition = SerializationUtils.writeCustomUTF8(array, writePosition, s);
 	}
 
 	@Deprecated
 	public void writeCustomUTF8Nullable(String s) {
-		tail = SerializationUtils.writeCustomUTF8Nullable(array, tail, s);
+		writePosition = SerializationUtils.writeCustomUTF8Nullable(array, writePosition, s);
 	}
 
 	public final void writeUTF16(String s) {
-		tail = SerializationUtils.writeUTF16(array, tail, s);
+		writePosition = SerializationUtils.writeUTF16(array, writePosition, s);
 	}
 
 	public final void writeUTF16Nullable(String s) {
-		tail = SerializationUtils.writeUTF16Nullable(array, tail, s);
+		writePosition = SerializationUtils.writeUTF16Nullable(array, writePosition, s);
 	}
 	// endregion
 }

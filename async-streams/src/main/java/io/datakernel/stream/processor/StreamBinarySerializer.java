@@ -147,7 +147,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 
 		private void flushBuffer(StreamDataReceiver<ByteBuf> receiver) {
 			if (outputBuf.canRead()) {
-				jmxBytes += outputBuf.headRemaining();
+				jmxBytes += outputBuf.readRemaining();
 				jmxBufs++;
 				if (outputProducer.getProducerStatus().isOpen()) {
 					receiver.onData(outputBuf);
@@ -159,7 +159,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 		}
 
 		private void ensureSize(int size) {
-			if (outputBuf.tailRemaining() < size) {
+			if (outputBuf.writeRemaining() < size) {
 				flushBuffer(outputProducer.getDownstreamDataReceiver());
 			}
 		}
@@ -198,27 +198,27 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 			int positionItem;
 			for (; ; ) {
 				ensureSize(headerSize + estimatedMessageSize);
-				positionBegin = outputBuf.tail();
+				positionBegin = outputBuf.writePosition();
 				positionItem = positionBegin + headerSize;
-				outputBuf.tail(positionItem);
+				outputBuf.writePosition(positionItem);
 				try {
 					serializer.serialize(outputBuf, value);
 				} catch (ArrayIndexOutOfBoundsException e) {
-					outputBuf.tail(positionBegin);
+					outputBuf.writePosition(positionBegin);
 					int messageSize = outputBuf.limit() - positionItem;
 					estimatedMessageSize = messageSize + 1 + (messageSize >>> 1);
 					continue;
 				} catch (Exception e) {
-					outputBuf.tail(positionBegin);
+					outputBuf.writePosition(positionBegin);
 					handleSerializationError(e);
 					return;
 				}
 				break;
 			}
-			int positionEnd = outputBuf.tail();
+			int positionEnd = outputBuf.writePosition();
 			int messageSize = positionEnd - positionItem;
 			if (messageSize > maxMessageSize) {
-				outputBuf.tail(positionBegin);
+				outputBuf.writePosition(positionBegin);
 				handleSerializationError(OUT_OF_BOUNDS_EXCEPTION);
 				return;
 			}

@@ -103,8 +103,8 @@ public class SerializerGenByteBuffer implements SerializerGen, NullableOptimizat
 			}
 		} else {
 			Expression inputBuffer = call(arg(0), "array");
-			Expression position = let(call(arg(0), "head"));
-			Expression setPosition = call(arg(0), "head", add(position, (!nullable ? length : dec(length))));
+			Expression position = let(call(arg(0), "readPosition"));
+			Expression setPosition = call(arg(0), "readPosition", add(position, (!nullable ? length : dec(length))));
 
 			if (!nullable) {
 				return sequence(length, setPosition, callStatic(ByteBuffer.class, "wrap", inputBuffer, position, length));

@@ -119,8 +119,8 @@ final class HttpDate {
 	}
 
 	static void render(long timestamp, ByteBuf buf) {
-		int pos = render(timestamp, buf.array(), buf.tail());
-		buf.tail(pos);
+		int pos = render(timestamp, buf.array(), buf.writePosition());
+		buf.writePosition(pos);
 	}
 
 	static int render(long timestamp, byte[] bytes, int pos) {

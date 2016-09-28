@@ -954,12 +954,12 @@ public final class SerializerBuilder {
 					asList(byte[].class, int.class, key.serializerGen.getRawType()),
 					value.expression);
 		}
-		Variable position = let(call(arg(0), "tail"));
+		Variable position = let(call(arg(0), "writePosition"));
 		asmFactory = asmFactory.withMethod("serialize", sequence(version,
-						call(arg(0), "tail", serializerGen.serialize(
+						call(arg(0), "writePosition", serializerGen.serialize(
 								call(arg(0), "array"), position,
 								cast(arg(1), dataType), currentVersion, staticMethods, compatibilityLevel)),
-						call(arg(0), "tail")
+						call(arg(0), "writePosition")
 				)
 		);
 

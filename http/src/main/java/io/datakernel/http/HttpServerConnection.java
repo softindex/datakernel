@@ -105,7 +105,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	private static HttpMethod getHttpMethodFromMap(ByteBuf line) {
 		int hashCode = 1;
-		for (int i = line.head(); i != line.tail(); i++) {
+		for (int i = line.readPosition(); i != line.writePosition(); i++) {
 			byte b = line.at(i);
 			if (b == SP) {
 				for (int p = 0; p < MAX_PROBINGS; p++) {
@@ -113,8 +113,8 @@ final class HttpServerConnection extends AbstractHttpConnection {
 					HttpMethod method = METHODS[slot];
 					if (method == null)
 						break;
-					if (method.compareTo(line.array(), line.head(), i - line.head())) {
-						line.moveHead(method.bytes.length + 1);
+					if (method.compareTo(line.array(), line.readPosition(), i - line.readPosition())) {
+						line.moveReadPosition(method.bytes.length + 1);
 						return method;
 					}
 				}
@@ -126,13 +126,13 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	}
 
 	private static HttpMethod getHttpMethod(ByteBuf line) {
-		if (line.head() == 0) {
-			if (line.headRemaining() >= 4 && line.at(0) == 'G' && line.at(1) == 'E' && line.at(2) == 'T' && line.at(3) == SP) {
-				line.moveHead(4);
+		if (line.readPosition() == 0) {
+			if (line.readRemaining() >= 4 && line.at(0) == 'G' && line.at(1) == 'E' && line.at(2) == 'T' && line.at(3) == SP) {
+				line.moveReadPosition(4);
 				return GET;
 			}
-			if (line.headRemaining() >= 5 && line.at(0) == 'P' && line.at(1) == 'O' && line.at(2) == 'S' && line.at(3) == 'T' && line.at(4) == SP) {
-				line.moveHead(5);
+			if (line.readRemaining() >= 5 && line.at(0) == 'P' && line.at(1) == 'O' && line.at(2) == 'S' && line.at(3) == 'T' && line.at(4) == SP) {
+				line.moveReadPosition(5);
 				return POST;
 			}
 		}
@@ -159,7 +159,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		request = HttpRequest.ofMethod(method);
 
 		int i;
-		for (i = 0; i != line.headRemaining(); i++) {
+		for (i = 0; i != line.readRemaining(); i++) {
 			byte b = line.peek(i);
 			if (b == SP)
 				break;

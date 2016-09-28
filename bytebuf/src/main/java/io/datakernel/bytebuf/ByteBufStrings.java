@@ -47,8 +47,8 @@ public final class ByteBufStrings {
 	}
 
 	public static void putAscii(ByteBuf buf, String string) {
-		encodeAscii(buf.array(), buf.tail(), string);
-		buf.moveTail(string.length());
+		encodeAscii(buf.array(), buf.writePosition(), string);
+		buf.moveWritePosition(string.length());
 	}
 
 	public static ByteBuf wrapAscii(String string) {
@@ -57,7 +57,7 @@ public final class ByteBufStrings {
 		for (int i = 0; i < string.length(); i++) {
 			array[i] = (byte) string.charAt(i);
 		}
-		buf.moveTail(string.length());
+		buf.moveWritePosition(string.length());
 		return buf;
 	}
 
@@ -75,11 +75,11 @@ public final class ByteBufStrings {
 	}
 
 	public static String decodeAscii(ByteBuf buf, char[] tmpBuffer) {
-		return decodeAscii(buf.array(), buf.head(), buf.headRemaining(), tmpBuffer);
+		return decodeAscii(buf.array(), buf.readPosition(), buf.readRemaining(), tmpBuffer);
 	}
 
 	public static String decodeAscii(ByteBuf buf) {
-		return decodeAscii(buf.array(), buf.head(), buf.headRemaining(), new char[buf.headRemaining()]);
+		return decodeAscii(buf.array(), buf.readPosition(), buf.readRemaining(), new char[buf.readRemaining()]);
 	}
 
 	public static String decodeAscii(byte[] array) {
@@ -100,7 +100,7 @@ public final class ByteBufStrings {
 	}
 
 	public static void toLowerCaseAscii(ByteBuf buf) {
-		toLowerCaseAscii(buf.array(), buf.head(), buf.headRemaining());
+		toLowerCaseAscii(buf.array(), buf.readPosition(), buf.readRemaining());
 	}
 
 	public static void toUpperCaseAscii(byte[] bytes, int pos, int len) {
@@ -117,7 +117,7 @@ public final class ByteBufStrings {
 	}
 
 	public static void toUpperCaseAscii(ByteBuf buf) {
-		toUpperCaseAscii(buf.array(), buf.head(), buf.headRemaining());
+		toUpperCaseAscii(buf.array(), buf.readPosition(), buf.readRemaining());
 	}
 
 	public static boolean equalsLowerCaseAscii(byte[] lowerCasePattern, byte[] array, int offset, int size) {
@@ -164,7 +164,7 @@ public final class ByteBufStrings {
 	}
 
 	public static int hashCode(ByteBuf buf) {
-		return hashCode(buf.array(), buf.head(), buf.headRemaining());
+		return hashCode(buf.array(), buf.readPosition(), buf.readRemaining());
 	}
 
 	public static int hashCodeLowerCaseAscii(byte[] array, int offset, int size) {
@@ -183,7 +183,7 @@ public final class ByteBufStrings {
 	}
 
 	public static int hashCodeLowerCaseAscii(ByteBuf buf) {
-		return hashCodeLowerCaseAscii(buf.array(), buf.head(), buf.headRemaining());
+		return hashCodeLowerCaseAscii(buf.array(), buf.readPosition(), buf.readRemaining());
 	}
 
 	public static int hashCodeUpperCaseAscii(byte[] array, int offset, int size) {
@@ -202,7 +202,7 @@ public final class ByteBufStrings {
 	}
 
 	public static int hashCodeUpperCaseAscii(ByteBuf buf) {
-		return hashCodeUpperCaseAscii(buf.array(), buf.head(), buf.headRemaining());
+		return hashCodeUpperCaseAscii(buf.array(), buf.readPosition(), buf.readRemaining());
 	}
 
 	// UTF-8
@@ -230,19 +230,19 @@ public final class ByteBufStrings {
 	}
 
 	public static void putUtf8(ByteBuf buf, String string) {
-		int size = encodeUtf8(buf.array(), buf.tail(), string);
-		buf.moveTail(size);
+		int size = encodeUtf8(buf.array(), buf.writePosition(), string);
+		buf.moveWritePosition(size);
 	}
 
 	public static void putUtf8(ByteBuf buf, char c) {
-		int size = encodeUtf8(buf.array(), buf.tail(), c);
-		buf.moveTail(size);
+		int size = encodeUtf8(buf.array(), buf.writePosition(), c);
+		buf.moveWritePosition(size);
 	}
 
 	public static ByteBuf wrapUtf8(String string) {
 		ByteBuf byteBuffer = ByteBufPool.allocate(string.length() * 3);
 		int size = encodeUtf8(byteBuffer.array(), 0, string);
-		byteBuffer.moveTail(size);
+		byteBuffer.moveWritePosition(size);
 		return byteBuffer;
 	}
 
@@ -283,11 +283,11 @@ public final class ByteBufStrings {
 	}
 
 	public static String decodeUtf8(ByteBuf buf, char[] tmpBuffer) throws ParseException {
-		return decodeUtf8(buf.array(), buf.head(), buf.headRemaining(), tmpBuffer);
+		return decodeUtf8(buf.array(), buf.readPosition(), buf.readRemaining(), tmpBuffer);
 	}
 
 	public static String decodeUtf8(ByteBuf buf) throws ParseException {
-		return decodeUtf8(buf.array(), buf.head(), buf.headRemaining(), new char[buf.headRemaining()]);
+		return decodeUtf8(buf.array(), buf.readPosition(), buf.readRemaining(), new char[buf.readRemaining()]);
 	}
 
 	public static String decodeUtf8(byte[] array) throws ParseException {
@@ -306,8 +306,8 @@ public final class ByteBufStrings {
 	}
 
 	public static void putDecimal(ByteBuf buf, int value) {
-		int digits = encodeDecimal(buf.array(), buf.tail(), value);
-		buf.moveTail(digits);
+		int digits = encodeDecimal(buf.array(), buf.writePosition(), value);
+		buf.moveWritePosition(digits);
 	}
 
 	public static ByteBuf wrapDecimal(int value) {

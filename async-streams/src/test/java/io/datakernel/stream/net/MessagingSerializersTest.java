@@ -119,8 +119,8 @@ public class MessagingSerializersTest {
 		assertEquals(req3, new Req("Good morning", 3, 9.36));
 		assertNull(req4);
 
-		assertEquals(116, readBuf.head());
-		assertEquals(135, readBuf.tail());
+		assertEquals(116, readBuf.readPosition());
+		assertEquals(135, readBuf.writePosition());
 
 		readBuf.recycle();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
