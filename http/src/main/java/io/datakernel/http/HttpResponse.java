@@ -21,6 +21,7 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.exception.ParseException;
 
+import java.nio.charset.Charset;
 import java.util.*;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
@@ -113,6 +114,16 @@ public final class HttpResponse extends HttpMessage {
 		return this;
 	}
 
+	public HttpResponse withContentType(MediaType mime, Charset charset) {
+		setContentType(mime, charset);
+		return this;
+	}
+
+	public HttpResponse withContentType(MediaType mime) {
+		setContentType(mime);
+		return this;
+	}
+
 	public HttpResponse withDate(Date date) {
 		setDate(date);
 		return this;
@@ -157,6 +168,14 @@ public final class HttpResponse extends HttpMessage {
 
 	public void setContentType(ContentType contentType) {
 		setHeader(ofContentType(HttpHeaders.CONTENT_TYPE, contentType));
+	}
+
+	public void setContentType(MediaType mime, Charset charset) {
+		setContentType(ContentType.of(mime, charset));
+	}
+
+	public void setContentType(MediaType mime) {
+		setContentType(ContentType.of(mime));
 	}
 
 	public void setDate(Date date) {

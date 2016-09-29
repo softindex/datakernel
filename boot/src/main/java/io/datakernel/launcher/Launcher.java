@@ -23,7 +23,6 @@ import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 
 import static org.slf4j.LoggerFactory.getLogger;
@@ -56,7 +55,7 @@ public abstract class Launcher {
 		this.modules = modules;
 	}
 
-	private Collection<Module> getModules() {
+	private List<Module> getModules() {
 		List<Module> moduleList = new ArrayList<>(Arrays.asList(this.modules));
 		moduleList.add(new AbstractModule() {
 			@Override
@@ -68,7 +67,14 @@ public abstract class Launcher {
 	}
 
 	public final Injector testInjector() {
-		return Guice.createInjector(Stage.TOOL, getModules());
+		List<Module> modules = getModules();
+		modules.add(new AbstractModule() {
+			@Override
+			protected void configure() {
+				bind((Class<?>)Launcher.this.getClass());
+			}
+		});
+		return Guice.createInjector(Stage.TOOL, modules);
 	}
 
 	public void launch(String[] args) throws Exception {
