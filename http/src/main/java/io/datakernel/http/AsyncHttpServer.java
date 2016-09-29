@@ -17,6 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.AsyncCancellable;
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
@@ -180,7 +181,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	}
 
 	@Override
-	protected void onClose() {
+	protected void onClose(final CompletionCallback completionCallback) {
 		ExposedLinkedList.Node<AbstractHttpConnection> node = keepAlivePool.getFirstNode();
 		while (node != null) {
 			AbstractHttpConnection connection = node.getValue();
@@ -189,6 +190,14 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 			assert eventloop.inEventloopThread();
 			connection.close();
 		}
+
+		// TODO(vmykhalko): consider proper usage of completion callback
+		eventloop.post(new Runnable() {
+			@Override
+			public void run() {
+				completionCallback.setComplete();
+			}
+		});
 	}
 
 	void returnToPool(final HttpServerConnection connection) {

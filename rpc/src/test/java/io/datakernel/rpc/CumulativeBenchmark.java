@@ -33,6 +33,7 @@ import org.slf4j.LoggerFactory;
 import java.net.InetSocketAddress;
 import java.util.concurrent.Executors;
 
+import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.async.AsyncCallbacks.stopFuture;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
 import static io.datakernel.util.MemSize.kilobytes;
@@ -161,7 +162,7 @@ public final class CumulativeBenchmark {
 				@Override
 				public void run() {
 
-					server.close();
+					server.close(ignoreCompletionCallback());
 				}
 			});
 			serverEventloop.keepAlive(false);

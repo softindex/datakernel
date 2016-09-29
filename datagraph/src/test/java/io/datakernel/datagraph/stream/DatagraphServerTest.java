@@ -39,6 +39,7 @@ import org.junit.Test;
 
 import java.net.InetSocketAddress;
 
+import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.datagraph.dataset.Datasets.*;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static java.util.Arrays.asList;
@@ -127,14 +128,14 @@ public class DatagraphServerTest {
 		result1.setCompletionCallback(new SimpleCompletionCallback() {
 			@Override
 			protected void onCompleteOrException() {
-				server1.close();
+				server1.close(ignoreCompletionCallback());
 			}
 		});
 
 		result2.setCompletionCallback(new SimpleCompletionCallback() {
 			@Override
 			protected void onCompleteOrException() {
-				server2.close();
+				server2.close(ignoreCompletionCallback());
 			}
 		});
 
@@ -192,14 +193,14 @@ public class DatagraphServerTest {
 		result1.setCompletionCallback(new SimpleCompletionCallback() {
 			@Override
 			protected void onCompleteOrException() {
-				server1.close();
+				server1.close(ignoreCompletionCallback());
 			}
 		});
 
 		result2.setCompletionCallback(new SimpleCompletionCallback() {
 			@Override
 			protected void onCompleteOrException() {
-				server2.close();
+				server2.close(ignoreCompletionCallback());
 			}
 		});
 
@@ -269,14 +270,14 @@ public class DatagraphServerTest {
 		result1.setCompletionCallback(new SimpleCompletionCallback() {
 			@Override
 			protected void onCompleteOrException() {
-				server1.close();
+				server1.close(ignoreCompletionCallback());
 			}
 		});
 
 		result2.setCompletionCallback(new SimpleCompletionCallback() {
 			@Override
 			protected void onCompleteOrException() {
-				server2.close();
+				server2.close(ignoreCompletionCallback());
 			}
 		});
 
@@ -343,8 +344,8 @@ public class DatagraphServerTest {
 		resultConsumer.setCompletionCallback(new SimpleCompletionCallback() {
 			@Override
 			protected void onCompleteOrException() {
-				server1.close();
-				server2.close();
+				server1.close(ignoreCompletionCallback());
+				server2.close(ignoreCompletionCallback());
 			}
 		});
 

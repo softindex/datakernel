@@ -53,6 +53,7 @@ import java.util.concurrent.Executors;
 import static io.datakernel.aggregation_db.AggregationChunk.createChunk;
 import static io.datakernel.aggregation_db.fieldtype.FieldTypes.longSum;
 import static io.datakernel.aggregation_db.keytype.KeyTypes.intKey;
+import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.async.AsyncCallbacks.waitAll;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static java.util.Arrays.asList;
@@ -169,7 +170,7 @@ public class CubeTest {
 	}
 
 	private void stop(SimpleFsServer server) {
-		server.close();
+		server.close(ignoreCompletionCallback());
 	}
 
 	@Test

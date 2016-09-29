@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 
+import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpUtils.inetAddress;
 import static io.datakernel.http.MediaTypes.*;
@@ -78,7 +79,7 @@ public class ClientStressTest {
 				}
 			});
 		} else {
-			server.close();
+			server.close(ignoreCompletionCallback());
 		}
 	}
 

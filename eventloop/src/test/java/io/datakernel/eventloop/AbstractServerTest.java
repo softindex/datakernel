@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 
+import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static org.junit.Assert.*;
@@ -79,7 +80,7 @@ public class AbstractServerTest {
 					public void onRead(ByteBuf buf) {
 						buf.recycle();
 						asyncTcpSocket.close();
-						server.close();
+						server.close(ignoreCompletionCallback());
 					}
 
 					@Override
@@ -95,7 +96,7 @@ public class AbstractServerTest {
 					@Override
 					public void onClosedWithError(Exception e) {
 						asyncTcpSocket.close();
-						server.close();
+						server.close(ignoreCompletionCallback());
 					}
 				});
 				asyncTcpSocket.register();

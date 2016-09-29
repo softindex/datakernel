@@ -613,8 +613,17 @@ public final class AsyncCallbacks {
 		server.getEventloop().execute(new Runnable() {
 			@Override
 			public void run() {
-				server.close();
-				future.setComplete();
+				server.close(new CompletionCallback() {
+					@Override
+					protected void onComplete() {
+						future.setComplete();
+					}
+
+					@Override
+					protected void onException(Exception e) {
+						future.setException(e);
+					}
+				});
 			}
 		});
 		return future;

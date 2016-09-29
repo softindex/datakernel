@@ -64,6 +64,7 @@ import static com.google.common.collect.Sets.newHashSet;
 import static io.datakernel.aggregation_db.fieldtype.FieldTypes.*;
 import static io.datakernel.aggregation_db.keytype.KeyTypes.dateKey;
 import static io.datakernel.aggregation_db.keytype.KeyTypes.intKey;
+import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.codegen.Expressions.call;
 import static io.datakernel.codegen.Expressions.cast;
 import static io.datakernel.cube.CubeTestUtils.*;
@@ -564,7 +565,7 @@ public class ReportingTest {
 		eventloop.execute(new RunnableWithException() {
 			@Override
 			public void runWithException() throws Exception {
-				server.close();
+				server.close(ignoreCompletionCallback());
 				serverStopFuture.setComplete();
 			}
 		});

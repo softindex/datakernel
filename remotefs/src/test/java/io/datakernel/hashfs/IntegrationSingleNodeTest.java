@@ -117,7 +117,7 @@ public class IntegrationSingleNodeTest {
 				new SimpleCompletionCallback() {
 					@Override
 					protected void onCompleteOrException() {
-						server.close();
+						server.close(ignoreCompletionCallback());
 					}
 				});
 
@@ -143,13 +143,13 @@ public class IntegrationSingleNodeTest {
 			@Override
 			public void onComplete() {
 				callback.setComplete();
-				server.close();
+				server.close(ignoreCompletionCallback());
 			}
 
 			@Override
 			public void onException(Exception e) {
 				callback.setException(e);
-				server.close();
+				server.close(ignoreCompletionCallback());
 			}
 		});
 
@@ -179,12 +179,12 @@ public class IntegrationSingleNodeTest {
 		WaitAllHandler waitAllHandler = waitAll(2, new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				server.close();
+				server.close(ignoreCompletionCallback());
 			}
 
 			@Override
 			public void onException(Exception e) {
-				server.close();
+				server.close(ignoreCompletionCallback());
 			}
 		});
 		consumerD.setFlushCallback(waitAllHandler.getCallback());
@@ -220,7 +220,7 @@ public class IntegrationSingleNodeTest {
 					consumerA.setFlushCallback(new SimpleCompletionCallback() {
 						@Override
 						protected void onCompleteOrException() {
-							server.close();
+							server.close(ignoreCompletionCallback());
 						}
 					});
 					producer.streamTo(consumerA);
@@ -231,7 +231,7 @@ public class IntegrationSingleNodeTest {
 
 			@Override
 			public void onException(Exception e) {
-				server.close();
+				server.close(ignoreCompletionCallback());
 			}
 		});
 
@@ -255,7 +255,7 @@ public class IntegrationSingleNodeTest {
 		client.delete("this/a.txt", new SimpleCompletionCallback() {
 			@Override
 			protected void onCompleteOrException() {
-				server.close();
+				server.close(ignoreCompletionCallback());
 			}
 		});
 		eventloop.run();
@@ -279,13 +279,13 @@ public class IntegrationSingleNodeTest {
 		client.delete("not_exist.txt", new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				server.close();
+				server.close(ignoreCompletionCallback());
 				callback.setComplete();
 			}
 
 			@Override
 			public void onException(Exception e) {
-				server.close();
+				server.close(ignoreCompletionCallback());
 				callback.setException(e);
 			}
 		});
@@ -315,12 +315,12 @@ public class IntegrationSingleNodeTest {
 			@Override
 			public void onResult(List<String> result) {
 				actual.addAll(result);
-				server.close();
+				server.close(ignoreCompletionCallback());
 			}
 
 			@Override
 			public void onException(Exception e) {
-				server.close();
+				server.close(ignoreCompletionCallback());
 			}
 		});
 

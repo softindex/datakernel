@@ -48,6 +48,7 @@ import org.junit.Test;
 import java.net.InetSocketAddress;
 import java.util.Arrays;
 
+import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.async.AsyncCallbacks.waitAll;
 import static io.datakernel.datagraph.dataset.Datasets.*;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
@@ -262,8 +263,8 @@ public class PageRankTest {
 		final WaitAllHandler waitAllHandler = waitAll(2, new CompletionCallback() {
 			@Override
 			protected void onComplete() {
-				server1.close();
-				server2.close();
+				server1.close(ignoreCompletionCallback());
+				server2.close(ignoreCompletionCallback());
 			}
 
 			@Override

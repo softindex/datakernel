@@ -16,6 +16,7 @@
 
 package io.datakernel.rpc.server;
 
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
@@ -55,6 +56,8 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	private final List<RpcServerConnection> connections = new ArrayList<>();
 
 	private BufferSerializer<RpcMessage> serializer;
+
+	private CompletionCallback closeCallback;
 
 	// jmx
 	private CountStats connectionsCount = CountStats.create();
@@ -193,9 +196,19 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	}
 
 	@Override
-	protected void onClose() {
-		for (final RpcServerConnection connection : new ArrayList<>(connections)) {
-			connection.close();
+	protected void onClose(final CompletionCallback completionCallback) {
+		if (connections.size() == 0) {
+			eventloop.post(new Runnable() {
+				@Override
+				public void run() {
+					completionCallback.setComplete();
+				}
+			});
+		} else {
+			for (final RpcServerConnection connection : new ArrayList<>(connections)) {
+				connection.close();
+			}
+			closeCallback = completionCallback;
 		}
 	}
 
@@ -214,6 +227,10 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		if (logger.isInfoEnabled())
 			logger.info("Client disconnected on {}", connection);
 		connections.remove(connection);
+
+		if (closeCallback != null && connections.size() == 0) {
+			closeCallback.setComplete();
+		}
 
 		// jmx
 		connectionsCount.setCount(connections.size());

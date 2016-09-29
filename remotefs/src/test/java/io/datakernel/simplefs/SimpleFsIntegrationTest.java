@@ -105,12 +105,12 @@ public class SimpleFsIntegrationTest {
 		WaitAllHandler waitAllHandler = waitAll(files, new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				server.close();
+				server.close(ignoreCompletionCallback());
 			}
 
 			@Override
 			public void onException(Exception e) {
-				server.close();
+				server.close(ignoreCompletionCallback());
 			}
 		});
 
@@ -197,13 +197,13 @@ public class SimpleFsIntegrationTest {
 		client.upload(resultFile, producer, new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				server.close();
+				server.close(ignoreCompletionCallback());
 				callback.setComplete();
 			}
 
 			@Override
 			public void onException(Exception e) {
-				server.close();
+				server.close(ignoreCompletionCallback());
 				callback.setException(e);
 			}
 		});
@@ -293,13 +293,13 @@ public class SimpleFsIntegrationTest {
 		client.download(file, 0, new ResultCallback<StreamProducer<ByteBuf>>() {
 			@Override
 			public void onResult(StreamProducer<ByteBuf> producer) {
-				server.close();
+				server.close(ignoreCompletionCallback());
 			}
 
 			@Override
 			public void onException(Exception e) {
 				expected.add(e);
-				server.close();
+				server.close(ignoreCompletionCallback());
 			}
 		});
 		eventloop.run();
@@ -327,12 +327,12 @@ public class SimpleFsIntegrationTest {
 		final WaitAllHandler waitAllHandler = waitAll(files, new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				server.close();
+				server.close(ignoreCompletionCallback());
 			}
 
 			@Override
 			public void onException(Exception e) {
-				server.close();
+				server.close(ignoreCompletionCallback());
 			}
 		});
 
@@ -399,13 +399,13 @@ public class SimpleFsIntegrationTest {
 			@Override
 			public void onComplete() {
 				callback.setComplete();
-				server.close();
+				server.close(ignoreCompletionCallback());
 			}
 
 			@Override
 			public void onException(Exception e) {
 				callback.setException(e);
-				server.close();
+				server.close(ignoreCompletionCallback());
 			}
 		});
 
@@ -453,12 +453,12 @@ public class SimpleFsIntegrationTest {
 			@Override
 			public void onResult(List<String> result) {
 				actual.addAll(result);
-				server.close();
+				server.close(ignoreCompletionCallback());
 			}
 
 			@Override
 			public void onException(Exception ignored) {
-				server.close();
+				server.close(ignoreCompletionCallback());
 			}
 		});
 
@@ -497,12 +497,12 @@ public class SimpleFsIntegrationTest {
 			@Override
 			public void onResult(StreamProducer<ByteBuf> producer) {
 				producer.streamTo(StreamConsumers.toList(eventloop, expected));
-				server.close();
+				server.close(ignoreCompletionCallback());
 			}
 
 			@Override
 			public void onException(Exception e) {
-				server.close();
+				server.close(ignoreCompletionCallback());
 			}
 		});
 		eventloop.run();
@@ -538,12 +538,12 @@ public class SimpleFsIntegrationTest {
 
 		@Override
 		public void onComplete() {
-			server.close();
+			server.close(ignoreCompletionCallback());
 		}
 
 		@Override
 		public void onException(Exception e) {
-			server.close();
+			server.close(ignoreCompletionCallback());
 			callback.setException(e);
 		}
 	}

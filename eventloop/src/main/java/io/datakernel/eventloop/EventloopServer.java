@@ -16,6 +16,8 @@
 
 package io.datakernel.eventloop;
 
+import io.datakernel.async.CompletionCallback;
+
 import java.io.IOException;
 
 /**
@@ -34,8 +36,10 @@ public interface EventloopServer {
 
 	/**
 	 * Closes the server. Any open channels will be closed.
+	 *
+	 * @param callback
 	 */
-	void close();
+	void close(CompletionCallback callback);
 
 	void onAccept(AsyncTcpSocket asyncTcpSocket);
 }

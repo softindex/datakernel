@@ -37,6 +37,7 @@ import java.net.InetAddress;
 import java.security.SecureRandom;
 import java.util.concurrent.ExecutorService;
 
+import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.async.AsyncCallbacks.waitAll;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
@@ -94,14 +95,14 @@ public class TestHttpsClientServer {
 			@Override
 			public void onResult(HttpResponse result) {
 				callback.setResult(decodeAscii(result.getBody()));
-				server.close();
+				server.close(ignoreCompletionCallback());
 				client.close();
 			}
 
 			@Override
 			public void onException(Exception e) {
 				callback.setException(e);
-				server.close();
+				server.close(ignoreCompletionCallback());
 				client.close();
 			}
 		});
@@ -134,7 +135,7 @@ public class TestHttpsClientServer {
 		final WaitAllHandler waitAllHandler = waitAll(2, new SimpleCompletionCallback() {
 			@Override
 			protected void onCompleteOrException() {
-				server.close();
+				server.close(ignoreCompletionCallback());
 				client.close();
 			}
 		});

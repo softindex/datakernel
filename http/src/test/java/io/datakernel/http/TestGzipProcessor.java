@@ -28,6 +28,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 
+import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
@@ -82,14 +83,14 @@ public class TestGzipProcessor {
 			@Override
 			public void onResult(HttpResponse result) {
 				callback.setResult(decodeAscii(result.getBody()));
-				server.close();
+				server.close(ignoreCompletionCallback());
 				client.close();
 			}
 
 			@Override
 			public void onException(Exception e) {
 				callback.setException(e);
-				server.close();
+				server.close(ignoreCompletionCallback());
 				client.close();
 			}
 		});

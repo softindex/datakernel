@@ -130,8 +130,17 @@ public final class ServiceAdapters {
 						instance.getEventloop().execute(new Runnable() {
 							@Override
 							public void run() {
-								instance.close();
-								future.set(null);
+								instance.close(new CompletionCallback() {
+									@Override
+									protected void onComplete() {
+										future.set(null);
+									}
+
+									@Override
+									protected void onException(Exception e) {
+										future.setException(e);
+									}
+								});
 							}
 						});
 						return future;

@@ -28,6 +28,7 @@ import javax.management.ObjectName;
 import java.lang.management.ManagementFactory;
 import java.util.Random;
 
+import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
 
@@ -114,7 +115,7 @@ public class HttpThrottlingServer {
 	}
 
 	public void stop() {
-		server.close();
+		server.close(ignoreCompletionCallback());
 	}
 
 	public static void info(ServerOptions options) {

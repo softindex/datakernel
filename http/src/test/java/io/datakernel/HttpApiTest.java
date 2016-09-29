@@ -34,6 +34,7 @@ import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
+import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static org.junit.Assert.*;
@@ -119,14 +120,14 @@ public class HttpApiTest {
 				} catch (ParseException e) {
 					fail("Invalid response");
 				}
-				server.close();
+				server.close(ignoreCompletionCallback());
 				client.close();
 			}
 
 			@Override
 			protected void onException(Exception e) {
 				fail("Should not end here");
-				server.close();
+				server.close(ignoreCompletionCallback());
 				client.close();
 			}
 		});

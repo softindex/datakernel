@@ -190,7 +190,7 @@ public class LogFsTest {
 		return new SimpleCompletionCallback() {
 			@Override
 			protected void onCompleteOrException() {
-				server.close();
+				server.close(ignoreCompletionCallback());
 			}
 		};
 	}
@@ -266,7 +266,7 @@ public class LogFsTest {
 	}
 
 	private static void stopServer(final HashFsServer server) throws Exception {
-		server.close();
+		server.close(ignoreCompletionCallback());
 	}
 
 	private SimpleFsServer createServer(InetSocketAddress address, Path serverStorage) {

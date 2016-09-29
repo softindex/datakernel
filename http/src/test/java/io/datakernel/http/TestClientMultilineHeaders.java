@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.util.concurrent.ExecutionException;
 
+import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static org.junit.Assert.assertEquals;
@@ -46,14 +47,14 @@ public class TestClientMultilineHeaders {
 			public void onResult(HttpResponse result) {
 				resultObserver.setResult(result.getHeader(HttpHeaders.ALLOW));
 				httpClient.close();
-				server.close();
+				server.close(ignoreCompletionCallback());
 			}
 
 			@Override
 			public void onException(Exception exception) {
 				resultObserver.setException(exception);
 				httpClient.close();
-				server.close();
+				server.close(ignoreCompletionCallback());
 			}
 		});
 

@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 
+import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
@@ -119,7 +120,7 @@ public class PingPongSocketConnectionTest {
 			assertEquals(RESPONSE_MSG, decodeAscii(buf));
 			if (++counter == ITERATIONS) {
 				clientTcpSocket.close();
-				server.close();
+				server.close(ignoreCompletionCallback());
 			} else {
 				clientTcpSocket.write(wrapAscii(REQUEST_MSG));
 			}

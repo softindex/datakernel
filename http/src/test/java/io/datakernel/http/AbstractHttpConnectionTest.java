@@ -13,6 +13,7 @@ import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.Map;
 
+import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static org.junit.Assert.*;
@@ -44,7 +45,7 @@ public class AbstractHttpConnectionTest {
 				data.put("body", decodeAscii(result.getBody()));
 				data.put("header", result.getHeader(HttpHeaders.CONTENT_TYPE));
 				client.close();
-				server.close();
+				server.close(ignoreCompletionCallback());
 			}
 
 			@Override

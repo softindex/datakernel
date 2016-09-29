@@ -41,6 +41,7 @@ import org.junit.Test;
 import java.net.InetSocketAddress;
 import java.util.List;
 
+import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
@@ -91,7 +92,7 @@ public class RpcBinaryProtocolTest {
 					@Override
 					public void onComplete() {
 						System.out.println("Client stopped");
-						server.close();
+						server.close(ignoreCompletionCallback());
 					}
 
 					@Override
@@ -109,7 +110,7 @@ public class RpcBinaryProtocolTest {
 						@Override
 						public void onComplete() {
 							System.out.println("Client stopped");
-							server.close();
+							server.close(ignoreCompletionCallback());
 						}
 
 						@Override

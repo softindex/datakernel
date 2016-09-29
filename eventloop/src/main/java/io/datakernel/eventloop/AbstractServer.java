@@ -18,6 +18,7 @@ package io.datakernel.eventloop;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncCallbacks;
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.CompletionCallbackFuture;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.EventloopJmxMBean;
@@ -35,6 +36,7 @@ import java.nio.channels.SocketChannel;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 
+import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.eventloop.AsyncSslSocket.wrapServerSocket;
 import static io.datakernel.eventloop.AsyncTcpSocket.EventHandler;
 import static io.datakernel.eventloop.AsyncTcpSocketImpl.wrapChannel;
@@ -254,26 +256,32 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 				}));
 			} catch (IOException e) {
 				logger.error("Can't listen on {}", this, address);
-				close();
+				close(ignoreCompletionCallback());
 				throw e;
 			}
 		}
 	}
 
 	@Override
-	public final void close() {
+	public final void close(CompletionCallback callback) {
 		check(eventloop.inEventloopThread());
 		if (!running)
 			return;
 		running = false;
 		closeServerSocketChannels();
-		onClose();
+		onClose(callback);
 	}
 
 	protected void onListen() {
 	}
 
-	protected void onClose() {
+	protected void onClose(final CompletionCallback completionCallback) {
+		eventloop.post(new Runnable() {
+			@Override
+			public void run() {
+				completionCallback.setComplete();
+			}
+		});
 	}
 
 	public final CompletionCallbackFuture listenFuture() {
@@ -375,7 +383,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 			}
 
 			if (acceptOnce) {
-				close();
+				close(ignoreCompletionCallback());
 			}
 		} else {
 			closeQuietly(socketChannel);
