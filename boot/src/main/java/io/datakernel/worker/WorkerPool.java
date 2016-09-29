@@ -16,15 +16,15 @@
 
 package io.datakernel.worker;
 
-import com.google.common.reflect.TypeToken;
 import com.google.inject.Injector;
 import com.google.inject.Key;
+import com.google.inject.TypeLiteral;
 
-import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.google.common.base.Preconditions.*;
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkState;
 
 public final class WorkerPool {
 	final int workers;
@@ -38,7 +38,7 @@ public final class WorkerPool {
 	}
 
 	public <T> List<T> getInstances(Class<T> type) {
-		return getInstances(Key.get(type, new WorkerAnnotation("")));
+		return getInstances(Key.get(type));
 	}
 
 	public int getWorkersCount() {
@@ -46,17 +46,8 @@ public final class WorkerPool {
 	}
 
 	@SuppressWarnings("unchecked")
-	public <T> List<T> getInstances(TypeToken<T> type) {
-		return getInstances((Key<T>) Key.get(type.getType(), new WorkerAnnotation("")));
-	}
-
-	public <T> List<T> getInstances(Class<T> type, String namedWorker) {
-		return getInstances(Key.get(type, new WorkerAnnotation(namedWorker)));
-	}
-
-	@SuppressWarnings("unchecked")
-	public <T> List<T> getInstances(TypeToken<T> type, String namedWorker) {
-		return getInstances((Key<T>) Key.get(type.getType(), new WorkerAnnotation(namedWorker)));
+	public <T> List<T> getInstances(TypeLiteral<T> type) {
+		return getInstances(Key.get(type));
 	}
 
 	public <T> List<T> getInstances(Key<T> key) {
@@ -73,42 +64,6 @@ public final class WorkerPool {
 		poolScope.currentWorkerId = originalWorkerId;
 		poolScope.currentWorkerPool = originalWorkerPool;
 		return result;
-	}
-
-	@SuppressWarnings("ClassExplicitlyAnnotation")
-	private static final class WorkerAnnotation implements Worker {
-		final String value;
-
-		WorkerAnnotation(String value) {
-			this.value = checkNotNull(value);
-		}
-
-		@Override
-		public String value() {
-			return value;
-		}
-
-		@Override
-		public Class<? extends Annotation> annotationType() {
-			return Worker.class;
-		}
-
-		@Override
-		public boolean equals(Object o) {
-			if (!(o instanceof Worker)) return false;
-
-			Worker that = (Worker) o;
-			return value.equals(that.value());
-		}
-
-		@Override
-		public int hashCode() {
-			return ((127 * "value".hashCode()) ^ value.hashCode());
-		}
-
-		public String toString() {
-			return "@" + Worker.class.getName() + "(value=" + value + ")";
-		}
 	}
 
 }

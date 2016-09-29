@@ -16,9 +16,13 @@
 
 package io.datakernel.guice;
 
-import com.google.common.reflect.TypeToken;
 import com.google.inject.*;
-import io.datakernel.service.*;
+import com.google.inject.name.Named;
+import com.google.inject.name.Names;
+import io.datakernel.service.Service;
+import io.datakernel.service.ServiceAdapter;
+import io.datakernel.service.ServiceGraph;
+import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerPool;
 import org.junit.Test;
@@ -34,7 +38,9 @@ public class TestGenericGraph {
 	public static class Pojo<T> {
 		private final T object;
 
-		public Pojo(T object) {this.object = object;}
+		public Pojo(T object) {
+			this.object = object;
+		}
 
 		public T getObject() {
 			return object;
@@ -63,20 +69,21 @@ public class TestGenericGraph {
 		@Provides
 		@Singleton
 		Pojo<Integer> integerPojo(WorkerPool workerPool) {
-			List<Pojo<String>> list = workerPool.getInstances(new TypeToken<Pojo<String>>() {});
-			List<Pojo<String>> listOther = workerPool.getInstances(new TypeToken<Pojo<String>>() {}, "other");
+			List<Pojo<String>> list = workerPool.getInstances(new TypeLiteral<Pojo<String>>() {});
+			List<Pojo<String>> listOther = workerPool.getInstances(Key.get(new TypeLiteral<Pojo<String>>() {}, Names.named("other")));
 			return new Pojo<>(Integer.valueOf(listOther.get(0).getObject())
 					+ Integer.valueOf(list.get(0).getObject()));
 		}
 
 		@Provides
 		@Worker
-		Pojo<String> stringPojo(@Worker("other") Pojo<String> stringPojo) {
+		Pojo<String> stringPojo(@Named("other") Pojo<String> stringPojo) {
 			return new Pojo<>("123");
 		}
 
 		@Provides
-		@Worker("other")
+		@Worker
+		@Named("other")
 		Pojo<String> stringPojoOther() {
 			return new Pojo<>("456");
 		}

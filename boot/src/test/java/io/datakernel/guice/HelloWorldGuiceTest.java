@@ -18,6 +18,7 @@ package io.datakernel.guice;
 
 import com.google.common.io.Closeables;
 import com.google.inject.*;
+import com.google.inject.name.Named;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufStrings;
@@ -72,13 +73,14 @@ public class HelloWorldGuiceTest {
 
 		@Provides
 		@Singleton
+		@Named("PrimaryEventloop")
 		Eventloop primaryEventloop() {
 			return Eventloop.create();
 		}
 
 		@Provides
 		@Singleton
-		PrimaryServer primaryServer(Eventloop primaryEventloop, WorkerPool workerPool) {
+		PrimaryServer primaryServer(@Named("PrimaryEventloop") Eventloop primaryEventloop, WorkerPool workerPool) {
 			List<AsyncHttpServer> workerHttpServers = workerPool.getInstances(AsyncHttpServer.class);
 			return PrimaryServer.create(primaryEventloop, workerHttpServers).withListenPort(PORT);
 		}
@@ -91,13 +93,13 @@ public class HelloWorldGuiceTest {
 
 		@Provides
 		@Worker
-		AsyncHttpServer workerHttpServer(@Worker Eventloop eventloop, @Worker AsyncHttpServlet servlet) {
+		AsyncHttpServer workerHttpServer(Eventloop eventloop, AsyncHttpServlet servlet) {
 			return AsyncHttpServer.create(eventloop, servlet);
 		}
 
 		@Provides
 		@Worker
-		AsyncHttpServlet servlet(@Worker Eventloop eventloop, @WorkerId final int workerId) {
+		AsyncHttpServlet servlet(Eventloop eventloop, @WorkerId final int workerId) {
 			return new AbstractAsyncServlet(eventloop) {
 				@Override
 				protected void doServeAsync(HttpRequest request, Callback callback) {

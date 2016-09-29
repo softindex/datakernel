@@ -17,6 +17,7 @@
 package io.datakernel.guice;
 
 import com.google.inject.*;
+import com.google.inject.name.Named;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.service.Service;
 import io.datakernel.service.ServiceAdapter;
@@ -31,6 +32,7 @@ import org.junit.Test;
 import java.util.List;
 import java.util.concurrent.Executor;
 
+import static com.google.inject.name.Names.named;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static org.junit.Assert.assertEquals;
 
@@ -90,25 +92,28 @@ public class WorkerNameTest {
 
 		@Provides
 		@Singleton
+		@Named("Primary")
 		Element1 primaryEventloop() {
 			return new Element1();
 		}
 
 		@Provides
 		@Singleton
-		Element2 primaryServer(Element1 primaryEventloop, WorkerPool workerPool) {
-			List<Element4> unusedList = workerPool.getInstances(Element4.class, "First");
+		Element2 primaryServer(@Named("Primary") Element1 primaryEventloop, WorkerPool workerPool) {
+			List<Element4> unusedList = workerPool.getInstances(Key.get(Element4.class, named("First")));
 			return new Element2();
 		}
 
 		@Provides
-		@Worker("First")
+		@Worker
+		@Named("First")
 		Element4 ffWorker() {
 			return new Element4();
 		}
 
 		@Provides
-		@Worker("Second")
+		@Worker
+		@Named("Second")
 		Element4 fSWorker() {
 			return new Element4();
 		}
@@ -121,8 +126,8 @@ public class WorkerNameTest {
 
 		@Provides
 		@Worker
-		Element3 workerHttpServer(@Worker Element1 eventloop, @WorkerId final int workerId,
-		                          @Worker("Second") Element4 unusedString) {
+		Element3 workerHttpServer(Element1 eventloop, @WorkerId final int workerId,
+		                          @Named("Second") Element4 unusedString) {
 			return new Element3();
 		}
 
