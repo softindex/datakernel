@@ -198,6 +198,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	@Override
 	protected void onClose(final CompletionCallback completionCallback) {
 		if (connections.size() == 0) {
+			logger.info("RpcServer is closing. Active connections count: 0.");
 			eventloop.post(new Runnable() {
 				@Override
 				public void run() {
@@ -205,6 +206,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 				}
 			});
 		} else {
+			logger.info("RpcServer is closing. Active connections count: " + connections.size());
 			for (final RpcServerConnection connection : new ArrayList<>(connections)) {
 				connection.close();
 			}
@@ -228,8 +230,13 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 			logger.info("Client disconnected on {}", connection);
 		connections.remove(connection);
 
-		if (closeCallback != null && connections.size() == 0) {
-			closeCallback.setComplete();
+		if (closeCallback != null) {
+			logger.info("RpcServer is closing. One more connection was closed. " +
+					"Active connections count: " + connections.size());
+
+			if (connections.size() == 0) {
+				closeCallback.setComplete();
+			}
 		}
 
 		// jmx
