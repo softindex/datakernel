@@ -287,9 +287,11 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		}
 	}
 
-	private BufferSerializer<RpcMessage> createSerializer() {
-		serializerBuilder.setSubclasses(RpcMessage.MESSAGE_TYPES, messageTypes);
-		return serializerBuilder.build(RpcMessage.class);
+	private BufferSerializer<RpcMessage> getSerializer() {
+		if (serializer == null) {
+			serializer = serializerBuilder.withSubclasses(RpcMessage.MESSAGE_TYPES, messageTypes).build(RpcMessage.class);
+		}
+		return serializer;
 	}
 
 	private void connect(final InetSocketAddress address) {
@@ -306,7 +308,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 				AsyncTcpSocket asyncTcpSocket = sslContext != null ? wrapClientSocket(eventloop, asyncTcpSocketImpl, sslContext, sslExecutor) : asyncTcpSocketImpl;
 				RpcClientConnection connection = RpcClientConnection.create(eventloop, RpcClient.this,
 						asyncTcpSocket, address,
-						createSerializer(), protocolFactory);
+						getSerializer(), protocolFactory);
 				asyncTcpSocket.setEventHandler(connection.getSocketConnection());
 				asyncTcpSocketImpl.register();
 
