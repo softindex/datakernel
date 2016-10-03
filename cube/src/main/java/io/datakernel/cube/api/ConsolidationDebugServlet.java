@@ -18,6 +18,7 @@ package io.datakernel.cube.api;
 
 import com.google.gson.*;
 import io.datakernel.aggregation_db.PrimaryKey;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.cube.Cube;
 import io.datakernel.http.*;
 
@@ -25,7 +26,7 @@ import java.lang.reflect.Type;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 
-public final class ConsolidationDebugServlet implements AsyncHttpServlet {
+public final class ConsolidationDebugServlet implements AsyncServlet {
 	private final Gson gson;
 	private final Cube cube;
 
@@ -34,7 +35,9 @@ public final class ConsolidationDebugServlet implements AsyncHttpServlet {
 		this.gson = new GsonBuilder().registerTypeAdapter(PrimaryKey.class, new PrimaryKeySerializer()).create();
 	}
 
-	public static ConsolidationDebugServlet create(Cube cube) {return new ConsolidationDebugServlet(cube);}
+	public static ConsolidationDebugServlet create(Cube cube) {
+		return new ConsolidationDebugServlet(cube);
+	}
 
 	public static class PrimaryKeySerializer implements JsonSerializer<PrimaryKey> {
 		@Override
@@ -50,11 +53,10 @@ public final class ConsolidationDebugServlet implements AsyncHttpServlet {
 	}
 
 	@Override
-	public void serveAsync(HttpRequest request, Callback callback) {
-		callback.setResponse(
-				HttpResponse.ok200()
-						.withContentType(ContentType.of(MediaTypes.JSON))
-						.withBody(wrapUtf8(gson.toJson(cube.getConsolidationDebugInfo())))
+	public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
+		callback.setResult(HttpResponse.ok200()
+				.withContentType(ContentType.of(MediaTypes.JSON))
+				.withBody(wrapUtf8(gson.toJson(cube.getConsolidationDebugInfo())))
 		);
 
 	}

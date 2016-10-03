@@ -342,7 +342,7 @@ public final class Cube implements EventloopJmxMBean {
 				AggregationQuery.Predicates.fromMap(filteredQueryPredicates), query.getOrderings());
 	}
 
-	public <T> StreamProducer<T> query(Class<T> resultClass, CubeQuery query) {
+	public <T> StreamProducer<T> query(Class<T> resultClass, CubeQuery query) throws QueryException {
 		return query(resultClass, query, classLoader);
 	}
 
@@ -354,7 +354,7 @@ public final class Cube implements EventloopJmxMBean {
 	 * @param query       query
 	 * @return producer that streams query results
 	 */
-	public <T> StreamProducer<T> query(Class<T> resultClass, CubeQuery query, DefiningClassLoader classLoader) {
+	public <T> StreamProducer<T> query(Class<T> resultClass, CubeQuery query, DefiningClassLoader classLoader) throws QueryException {
 		StreamReducer<Comparable, T, Object> streamReducer = StreamReducer.create(eventloop, Ordering.natural());
 
 		Map<Aggregation, List<String>> aggregationsToAppliedPredicateKeys = findAggregationsForQuery(query.getAggregationQuery());

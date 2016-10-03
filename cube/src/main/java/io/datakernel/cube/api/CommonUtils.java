@@ -17,12 +17,15 @@
 package io.datakernel.cube.api;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
+import io.datakernel.aggregation_db.api.QueryException;
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.Cube;
 import io.datakernel.cube.CubeQuery;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.ParseException;
 import io.datakernel.http.ContentType;
 import io.datakernel.http.HttpHeaders;
 import io.datakernel.http.HttpResponse;
@@ -75,7 +78,7 @@ public class CommonUtils {
 
 	@SuppressWarnings("unchecked")
 	public static StreamConsumers.ToList queryCube(Class<?> resultClass, CubeQuery query, Cube cube,
-	                                               Eventloop eventloop) {
+	                                               Eventloop eventloop) throws QueryException {
 		StreamConsumers.ToList consumerStream = StreamConsumers.toList(eventloop);
 		cube.query(resultClass, query).streamTo(consumerStream);
 		return consumerStream;
@@ -89,14 +92,30 @@ public class CommonUtils {
 		return response;
 	}
 
-	public static Set<String> getSetOfStrings(Gson gson, String json) {
+	public static Set<String> getSetOfStrings(Gson gson, String json) throws ParseException {
 		Type type = new TypeToken<Set<String>>() {}.getType();
-		return gson.fromJson(json, type);
+		return fromGson(gson, json, type);
 	}
 
-	public static List<String> getListOfStrings(Gson gson, String json) {
+	public static List<String> getListOfStrings(Gson gson, String json) throws ParseException {
 		Type type = new TypeToken<List<String>>() {}.getType();
-		return gson.fromJson(json, type);
+		return fromGson(gson, json, type);
+	}
+
+	public static <T> T fromGson(Gson gson, String json, Type typeOfT) throws ParseException {
+		try {
+			return gson.fromJson(json, typeOfT);
+		} catch (JsonSyntaxException e) {
+			throw new ParseException(e);
+		}
+	}
+
+	public static <T> T fromGson(Gson gson, String json, Class<T> typeOfT) throws ParseException {
+		try {
+			return gson.fromJson(json, typeOfT);
+		} catch (JsonSyntaxException e) {
+			throw new ParseException(e);
+		}
 	}
 
 	public static boolean nullOrContains(Set<String> set, String s) {

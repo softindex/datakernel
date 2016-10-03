@@ -19,18 +19,21 @@ package io.datakernel.uikernel;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonSyntaxException;
+import io.datakernel.exception.ParseException;
 
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 
 class Utils {
-	static <K, R extends AbstractRecord<K>> List<R> deserializeUpdateRequest(Gson gson, String json, Class<R> type, Class<K> idType) {
+	static <K, R extends AbstractRecord<K>> List<R> deserializeUpdateRequest(Gson gson, String json, Class<R> type, Class<K> idType) throws ParseException {
 		List<R> result = new ArrayList<>();
-		JsonArray root = gson.fromJson(json, JsonArray.class);
+		JsonArray root = fromJson(gson, json, JsonArray.class);
 		for (JsonElement element : root) {
-			JsonArray arr = gson.fromJson(element, JsonArray.class);
-			K id = gson.fromJson(arr.get(0), idType);
-			R obj = gson.fromJson(arr.get(1), type);
+			JsonArray arr = fromJson(gson, element, JsonArray.class);
+			K id = fromJson(gson, arr.get(0), idType);
+			R obj = fromJson(gson, arr.get(1), type);
 			obj.setId(id);
 			result.add(obj);
 		}
@@ -42,4 +45,38 @@ class Utils {
 			throw new NullPointerException(msg);
 		return object;
 	}
+
+	static <T> T fromJson(Gson gson, String json, Type typeOfT) throws ParseException {
+		try {
+			return gson.fromJson(json, typeOfT);
+		} catch (JsonSyntaxException e) {
+			throw new ParseException(e);
+		}
+	}
+
+	static <T> T fromJson(Gson gson, String json, Class<T> typeOfT) throws ParseException {
+		try {
+			return gson.fromJson(json, typeOfT);
+		} catch (JsonSyntaxException e) {
+			throw new ParseException(e);
+		}
+	}
+
+	static <T> T fromJson(Gson gson, JsonElement json, Type typeOfT) throws ParseException {
+		try {
+			return gson.fromJson(json, typeOfT);
+		} catch (JsonSyntaxException e) {
+			throw new ParseException(e);
+		}
+	}
+
+	static <T> T fromJson(Gson gson, JsonElement json, Class<T> typeOfT) throws ParseException {
+		try {
+			return gson.fromJson(json, typeOfT);
+		} catch (JsonSyntaxException e) {
+			throw new ParseException(e);
+		}
+	}
+
+
 }

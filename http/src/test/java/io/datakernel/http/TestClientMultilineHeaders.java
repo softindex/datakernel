@@ -4,7 +4,6 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.ParseException;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -30,12 +29,12 @@ public class TestClientMultilineHeaders {
 
 		final ResultCallbackFuture<String> resultObserver = ResultCallbackFuture.create();
 
-		AsyncHttpServlet servlet = new AsyncHttpServlet() {
+		AsyncServlet servlet = new AsyncServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
+			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
 				HttpResponse response = HttpResponse.ok200();
 				response.addHeader(HttpHeaders.ALLOW, "GET,\r\n HEAD");
-				callback.setResponse(response);
+				callback.setResult(response);
 			}
 		};
 

@@ -57,12 +57,12 @@ public class TestGzipProcessor {
 	@Test
 	public void testGzippedCommunicationBetweenClientServer() throws IOException, ParseException, ExecutionException, InterruptedException {
 		Eventloop eventloop = Eventloop.create();
-		AsyncHttpServlet servlet = new AsyncHttpServlet() {
+		AsyncServlet servlet = new AsyncServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
+			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
 				String receivedData = ByteBufStrings.decodeAscii(request.getBody());
 				assertEquals(TEST_PHRASE, receivedData);
-				callback.setResponse(ok200().withBody(ByteBufStrings.wrapAscii(receivedData)));
+				callback.setResult(ok200().withBody(ByteBufStrings.wrapAscii(receivedData)));
 			}
 		};
 

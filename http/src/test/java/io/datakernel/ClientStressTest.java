@@ -3,7 +3,6 @@ package io.datakernel;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
 import io.datakernel.util.StringUtils;
 import org.slf4j.Logger;
@@ -34,11 +33,11 @@ public class ClientStressTest {
 	private Random random = new Random();
 	private Iterator<String> urls = getUrls().iterator();
 
-	private AsyncHttpServlet servlet = new AsyncHttpServlet() {
+	private AsyncServlet servlet = new AsyncServlet() {
 		@Override
-		public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
+		public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
 			test();
-			callback.setResponse(HttpResponse.ok200());
+			callback.setResult(HttpResponse.ok200());
 		}
 	};
 	private AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet).withListenPort(1234);

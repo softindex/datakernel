@@ -140,6 +140,10 @@ public final class HttpRequest extends HttpMessage {
 		return this;
 	}
 
+	public HttpRequest withContentType(MediaType mime, String charset) {
+		return withContentType(mime, Charset.forName(charset));
+	}
+
 	public HttpRequest withDate(Date date) {
 		setDate(date);
 		return this;

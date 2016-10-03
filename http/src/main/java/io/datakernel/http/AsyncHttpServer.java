@@ -22,6 +22,7 @@ import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.InetAddressRange;
+import io.datakernel.exception.ParseException;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxReducers;
@@ -39,10 +40,24 @@ import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
 import static io.datakernel.jmx.MBeanFormat.formatDuration;
 
 public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
-	private static final long CHECK_PERIOD = 1000L;
-	private static final long DEFAULT_KEEP_ALIVE_MILLIS = 30 * 1000L;
+	public static final long DEFAULT_KEEP_ALIVE_MILLIS = 30 * 1000L;
 
-	private final AsyncHttpServlet servlet;
+	private static final HttpExceptionFormatter DEFAULT_ERROR_FORMATTER = new HttpExceptionFormatter() {
+		@Override
+		public HttpResponse formatException(Exception e) {
+			if (e instanceof HttpException) {
+				HttpException httpException = (HttpException) e;
+				return HttpResponse.ofCode(httpException.getCode()).withNoCache();
+			}
+			if (e instanceof ParseException) {
+				return HttpResponse.ofCode(400).withNoCache();
+			}
+			return HttpResponse.ofCode(500).withNoCache();
+		}
+	};
+
+	private final AsyncServlet servlet;
+	private final HttpExceptionFormatter errorFormatter;
 	private final int maxHttpMessageSize;
 	private final long keepAliveTimeMillis;
 	private final ExposedLinkedList<AbstractHttpConnection> keepAlivePool;
@@ -74,56 +89,62 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		super(eventloop, serverSocketSettings, socketSettings, acceptOnce, listenAddresses,
 				range, bannedAddresses, sslContext, sslExecutor, sslListenAddresses);
 		this.servlet = prevInstance.servlet;
+		this.errorFormatter = prevInstance.errorFormatter;
 		this.keepAliveTimeMillis = prevInstance.keepAliveTimeMillis;
 		this.maxHttpMessageSize = prevInstance.maxHttpMessageSize;
 		this.keepAlivePool = prevInstance.keepAlivePool;
 		this.headerChars = prevInstance.headerChars;
 	}
 
-	private AsyncHttpServer(AsyncHttpServer previousInstance, AsyncHttpServlet servlet,
+	private AsyncHttpServer(AsyncHttpServer previousInstance, AsyncServlet servlet, HttpExceptionFormatter errorFormatter,
 	                        long keepAliveTimeMillis, int maxHttpMessageSize,
 	                        ExposedLinkedList<AbstractHttpConnection> keepAlivePool, char[] headerChars) {
 		super(previousInstance);
 		this.servlet = servlet;
+		this.errorFormatter = errorFormatter;
 		this.keepAlivePool = keepAlivePool;
 		this.keepAliveTimeMillis = keepAliveTimeMillis;
 		this.maxHttpMessageSize = maxHttpMessageSize;
 		this.headerChars = headerChars;
 	}
 
-	private AsyncHttpServer(Eventloop eventloop, AsyncHttpServlet servlet,
+	private AsyncHttpServer(Eventloop eventloop, AsyncServlet servlet, HttpExceptionFormatter errorFormatter,
 	                        long keepAliveTimeMillis, int maxHttpMessageSize,
 	                        ExposedLinkedList<AbstractHttpConnection> keepAlivePool, char[] headerChars) {
 		super(eventloop);
 		this.servlet = servlet;
+		this.errorFormatter = errorFormatter;
 		this.keepAlivePool = keepAlivePool;
 		this.keepAliveTimeMillis = keepAliveTimeMillis;
 		this.maxHttpMessageSize = maxHttpMessageSize;
 		this.headerChars = headerChars;
 	}
 
-	public static AsyncHttpServer create(Eventloop eventloop, AsyncHttpServlet servlet) {
+	public static AsyncHttpServer create(Eventloop eventloop, AsyncServlet servlet) {
 		ExposedLinkedList<AbstractHttpConnection> pool = ExposedLinkedList.create();
 		char[] chars = new char[MAX_HEADER_LINE_SIZE];
 		int maxHttpMessageSize = Integer.MAX_VALUE;
-		long maxIdleConnectionTime = DEFAULT_KEEP_ALIVE_MILLIS;
-		return new AsyncHttpServer(eventloop, servlet, maxIdleConnectionTime, maxHttpMessageSize, pool, chars);
+		return new AsyncHttpServer(eventloop, servlet, DEFAULT_ERROR_FORMATTER, DEFAULT_KEEP_ALIVE_MILLIS, maxHttpMessageSize, pool, chars);
 	}
 
 	public AsyncHttpServer withKeepAliveTimeMillis(long maxIdleConnectionTime) {
-		return new AsyncHttpServer(this, servlet, maxIdleConnectionTime, maxHttpMessageSize, keepAlivePool, headerChars);
+		return new AsyncHttpServer(this, servlet, errorFormatter, maxIdleConnectionTime, maxHttpMessageSize, keepAlivePool, headerChars);
 	}
 
 	public AsyncHttpServer withNoKeepAlive() {
 		return withKeepAliveTimeMillis(0);
 	}
 
-	public AsyncHttpServer withMaxHttpMessageSize(int size) {
-		return new AsyncHttpServer(this, servlet, keepAliveTimeMillis, size, keepAlivePool, headerChars);
+	public AsyncHttpServer withMaxHttpMessageSize(int maxHttpMessageSize) {
+		return new AsyncHttpServer(this, servlet, errorFormatter, keepAliveTimeMillis, maxHttpMessageSize, keepAlivePool, headerChars);
 	}
 
 	public AsyncHttpServer withMaxHttpMessageSize(MemSize size) {
 		return withMaxHttpMessageSize((int) size.get());
+	}
+
+	public AsyncHttpServer withHttpErrorFormatter(HttpExceptionFormatter httpExceptionFormatter) {
+		return new AsyncHttpServer(this, servlet, httpExceptionFormatter, keepAliveTimeMillis, maxHttpMessageSize, keepAlivePool, headerChars);
 	}
 
 	@Override
@@ -140,7 +161,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 	private void scheduleExpiredConnectionsCheck() {
 		assert expiredConnectionsCheck == null;
-		expiredConnectionsCheck = eventloop.scheduleBackground(eventloop.currentTimeMillis() + CHECK_PERIOD, new Runnable() {
+		expiredConnectionsCheck = eventloop.scheduleBackground(eventloop.currentTimeMillis() + 1000L, new Runnable() {
 			@Override
 			public void run() {
 				expiredConnectionsCheck = null;
@@ -349,6 +370,10 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		if (isMonitorCurrentRequestsHandlingDuration()) {
 			currentRequestHandlingStart.remove(conn);
 		}
+	}
+
+	HttpResponse formatHttpError(Exception e) {
+		return errorFormatter.formatException(e);
 	}
 
 	private static final class UrlWithTimestamp {

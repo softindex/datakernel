@@ -20,10 +20,10 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
 import com.google.inject.Stage;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.ParseException;
-import io.datakernel.http.AbstractAsyncServlet;
 import io.datakernel.http.AsyncHttpServer;
+import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.launcher.Args;
@@ -56,18 +56,18 @@ public class HttpHelloWorldLauncher extends Launcher {
 
 					@Provides
 					@Singleton
-					AsyncHttpServer httpServer(Eventloop eventloop, AbstractAsyncServlet servlet) {
+					AsyncHttpServer httpServer(Eventloop eventloop, AsyncServlet servlet) {
 						return AsyncHttpServer.create(eventloop, servlet)
 								.withListenPort(PORT);
 					}
 
 					@Provides
 					@Singleton
-					AbstractAsyncServlet httpServlet(Eventloop eventloop) {
-						return new AbstractAsyncServlet(eventloop) {
+					AsyncServlet httpServlet() {
+						return new AsyncServlet() {
 							@Override
-							protected void doServeAsync(HttpRequest request, Callback callback) throws ParseException {
-								callback.setResponse(HttpResponse.ok200().withBody(encodeAscii("Hello, World!")));
+							public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
+								callback.setResult(HttpResponse.ok200().withBody(encodeAscii("Hello, World!")));
 							}
 						};
 					}

@@ -24,7 +24,6 @@ import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.async.SimpleCompletionCallback;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
@@ -63,10 +62,10 @@ public class TestHttpsClientServer {
 
 	private KeyManager[] keyManagers = createKeyManagers(new File("./src/test/resources/keystore.jks"), "testtest", "testtest");
 	private TrustManager[] trustManagers = createTrustManagers(new File("./src/test/resources/truststore.jks"), "testtest");
-	private AsyncHttpServlet bobServlet = new AsyncHttpServlet() {
+	private AsyncServlet bobServlet = new AsyncServlet() {
 		@Override
-		public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
-			callback.setResponse(ok200().withBody(wrapAscii("Hello, I am Bob!")));
+		public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
+			callback.setResult(ok200().withBody(wrapAscii("Hello, I am Bob!")));
 		}
 	};
 	private Eventloop eventloop = Eventloop.create();

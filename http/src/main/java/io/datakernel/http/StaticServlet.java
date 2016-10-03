@@ -17,6 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 
@@ -24,11 +25,11 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown, WeakerAccess")
-public abstract class StaticServlet implements AsyncHttpServlet {
+public abstract class StaticServlet implements AsyncServlet {
 	public static final Charset DEFAULT_TXT_ENCODING = StandardCharsets.UTF_8;
 	public static final String DEFAULT_INDEX_FILE_NAME = "index.html"; // response for get request asking for root
-	public static final HttpServletError BAD_PATH_ERROR = new HttpServletError(400, "Bad path and query section");
-	public static final HttpServletError METHOD_NOT_ALLOWED = new HttpServletError(405, "Only GET is being allowed");
+	public static final HttpException BAD_PATH_ERROR = HttpException.ofCode(400, "Bad path and query section");
+	public static final HttpException METHOD_NOT_ALLOWED = HttpException.ofCode(405, "Only GET is being allowed");
 
 	protected StaticServlet() {
 	}
@@ -60,16 +61,16 @@ public abstract class StaticServlet implements AsyncHttpServlet {
 	}
 
 	@Override
-	public final void serveAsync(final HttpRequest request, final Callback callback) {
+	public final void serve(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
 		String path = request.getRelativePath();
 
 		if (request.getMethod() != HttpMethod.GET) {
-			callback.onHttpError(METHOD_NOT_ALLOWED);
+			callback.setException(METHOD_NOT_ALLOWED);
 			return;
 		}
 
 		if (path.isEmpty() || path.charAt(0) != '/') {
-			callback.onHttpError(BAD_PATH_ERROR);
+			callback.setException(BAD_PATH_ERROR);
 			return;
 		}
 
@@ -79,18 +80,13 @@ public abstract class StaticServlet implements AsyncHttpServlet {
 			path = path.substring(1); // removing initial '/'
 		}
 		final String finalPath = path;
-		doServeAsync(path, new ResultCallback<ByteBuf>() {
+		doServeAsync(path, new ForwardingResultCallback<ByteBuf>(callback) {
 			@Override
 			protected void onResult(@Nullable ByteBuf buf) {
 				if (buf == null)
-					callback.onHttpError(new HttpServletError(404, finalPath));
+					callback.setException(HttpException.notFound404());
 				else
-					callback.setResponse(createHttpResponse(buf, finalPath));
-			}
-
-			@Override
-			protected void onException(Exception exception) {
-				callback.onHttpError(new HttpServletError(500, finalPath, exception));
+					callback.setResult(createHttpResponse(buf, finalPath));
 			}
 		});
 	}

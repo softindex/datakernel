@@ -60,18 +60,6 @@ public final class HttpResponse extends HttpMessage {
 		return response;
 	}
 
-	public static HttpResponse badRequest400() {
-		return ofCode(400);
-	}
-
-	public static HttpResponse notFound404() {
-		return ofCode(404);
-	}
-
-	public static HttpResponse internalServerError500() {
-		return ofCode(500);
-	}
-
 	// common builder methods
 	public HttpResponse withHeader(HttpHeader header, ByteBuf value) {
 		addHeader(header, value);
@@ -117,6 +105,10 @@ public final class HttpResponse extends HttpMessage {
 	public HttpResponse withContentType(MediaType mime, Charset charset) {
 		setContentType(mime, charset);
 		return this;
+	}
+
+	public HttpResponse withContentType(MediaType mime, String charset) {
+		return withContentType(mime, Charset.forName(charset));
 	}
 
 	public HttpResponse withContentType(MediaType mime) {
@@ -301,17 +293,6 @@ public final class HttpResponse extends HttpMessage {
 		buf.put(result);
 	}
 
-	private static final Map<Integer, byte[]> DEFAULT_CODE_BODIES;
-
-	static {
-		DEFAULT_CODE_BODIES = new HashMap<>();
-		DEFAULT_CODE_BODIES.put(400, encodeAscii("Your browser (or proxy) sent a request that this server could not understand."));
-		DEFAULT_CODE_BODIES.put(403, encodeAscii("You don't have permission to access the requested directory."));
-		DEFAULT_CODE_BODIES.put(404, encodeAscii("The requested URL was not found on this server."));
-		DEFAULT_CODE_BODIES.put(500, encodeAscii("The server encountered an internal error and was unable to complete your request."));
-		DEFAULT_CODE_BODIES.put(503, encodeAscii("The server is temporarily unable to service your request due to maintenance downtime or capacity problems."));
-	}
-
 	/**
 	 * Writes this HttpResult to pool-allocated ByteBuf with large enough size
 	 *
@@ -319,10 +300,6 @@ public final class HttpResponse extends HttpMessage {
 	 */
 	ByteBuf write() {
 		assert !recycled;
-		if (code >= 400 && getBody() == null) {
-			byte[] bytes = DEFAULT_CODE_BODIES.get(code);
-			setBody(bytes != null ? ByteBuf.wrapForReading(bytes) : null);
-		}
 		setHeader(HttpHeaders.ofDecimal(CONTENT_LENGTH, body == null ? 0 : body.readRemaining()));
 		int estimateSize = estimateSize(LONGEST_FIRST_LINE_SIZE);
 		ByteBuf buf = ByteBufPool.allocate(estimateSize);

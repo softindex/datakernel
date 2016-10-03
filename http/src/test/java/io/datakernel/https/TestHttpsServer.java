@@ -18,10 +18,10 @@ package io.datakernel.https;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.ParseException;
 import io.datakernel.http.AsyncHttpServer;
-import io.datakernel.http.AsyncHttpServlet;
+import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import org.slf4j.LoggerFactory;
@@ -49,10 +49,10 @@ public class TestHttpsServer {
 		Eventloop eventloop = Eventloop.create();
 		ExecutorService executor = newCachedThreadPool();
 
-		AsyncHttpServlet bobServlet = new AsyncHttpServlet() {
+		AsyncServlet bobServlet = new AsyncServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
-				callback.setResponse(HttpResponse.ok200().withBody(wrapAscii("Hello, I am Bob!")));
+			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
+				callback.setResult(HttpResponse.ok200().withBody(wrapAscii("Hello, I am Bob!")));
 			}
 		};
 

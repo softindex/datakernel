@@ -19,12 +19,16 @@ package io.datakernel.guice;
 import com.google.common.io.Closeables;
 import com.google.inject.*;
 import com.google.inject.name.Named;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.PrimaryServer;
-import io.datakernel.http.*;
+import io.datakernel.http.AsyncHttpServer;
+import io.datakernel.http.AsyncServlet;
+import io.datakernel.http.HttpRequest;
+import io.datakernel.http.HttpResponse;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.jmx.JmxRegistrator;
 import io.datakernel.service.ServiceGraph;
@@ -47,6 +51,7 @@ import static com.google.common.io.ByteStreams.readFully;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
+import static io.datakernel.http.HttpResponse.ok200;
 import static org.junit.Assert.assertEquals;
 
 public class HelloWorldGuiceTest {
@@ -93,21 +98,18 @@ public class HelloWorldGuiceTest {
 
 		@Provides
 		@Worker
-		AsyncHttpServer workerHttpServer(Eventloop eventloop, AsyncHttpServlet servlet) {
+		AsyncHttpServer workerHttpServer(Eventloop eventloop, AsyncServlet servlet) {
 			return AsyncHttpServer.create(eventloop, servlet);
 		}
 
 		@Provides
 		@Worker
-		AsyncHttpServlet servlet(Eventloop eventloop, @WorkerId final int workerId) {
-			return new AbstractAsyncServlet(eventloop) {
+		AsyncServlet servlet(@WorkerId final int workerId) {
+			return new AsyncServlet() {
 				@Override
-				protected void doServeAsync(HttpRequest request, Callback callback) {
+				public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
 					byte[] body = ByteBufStrings.encodeAscii("Hello world: worker server #" + workerId);
-					callback.setResponse(
-							HttpResponse.ofCode(200)
-									.withBody(ByteBuf.wrapForReading(body))
-					);
+					callback.setResult(ok200().withBody(ByteBuf.wrapForReading(body)));
 				}
 			};
 		}

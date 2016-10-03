@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.dns.AsyncDnsClient;
@@ -50,20 +51,15 @@ public class SimpleProxyServerTest {
 	}
 
 	public static AsyncHttpServer proxyHttpServer(final Eventloop primaryEventloop, final AsyncHttpClient httpClient) {
-		AsyncHttpServlet servlet = new AsyncHttpServlet() {
+		AsyncServlet servlet = new AsyncServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, final Callback callback) {
-				httpClient.send(HttpRequest.get("http://127.0.0.1:" + ECHO_SERVER_PORT + request.getUrl().getPath()), 1000, new ResultCallback<HttpResponse>() {
+			public void serve(HttpRequest request, final ResultCallback<HttpResponse> callback) {
+				httpClient.send(HttpRequest.get("http://127.0.0.1:" + ECHO_SERVER_PORT + request.getUrl().getPath()), 1000, new ForwardingResultCallback<HttpResponse>(callback) {
 					@Override
 					public void onResult(final HttpResponse result) {
 						int code = result.getCode();
 						byte[] body = encodeAscii("FORWARDED: " + decodeAscii(result.getBody()));
-						callback.setResponse(HttpResponse.ofCode(code).withBody(body));
-					}
-
-					@Override
-					protected void onException(Exception exception) {
-						callback.onHttpError(new HttpServletError(500, exception));
+						callback.setResult(HttpResponse.ofCode(code).withBody(body));
 					}
 				});
 			}
@@ -73,11 +69,11 @@ public class SimpleProxyServerTest {
 	}
 
 	public static AsyncHttpServer echoServer(Eventloop primaryEventloop) {
-		AsyncHttpServlet servlet = new AsyncHttpServlet() {
+		AsyncServlet servlet = new AsyncServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, Callback callback) {
+			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
 				HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
-				callback.setResponse(content);
+				callback.setResult(content);
 			}
 
 		};

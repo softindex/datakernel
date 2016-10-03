@@ -17,7 +17,6 @@
 package io.datakernel.cube.api;
 
 import com.google.gson.*;
-import io.datakernel.aggregation_db.api.QueryException;
 import io.datakernel.cube.CubeQuery;
 
 import java.lang.reflect.Type;
@@ -39,7 +38,7 @@ public final class QueryOrderingGsonSerializer implements JsonSerializer<CubeQue
 	public CubeQuery.Ordering deserialize(JsonElement json, Type type, JsonDeserializationContext ctx)
 			throws JsonParseException {
 		if (!(json instanceof JsonObject))
-			throw new QueryException("Incorrect sort format. Should be represented as a JSON object");
+			throw new JsonParseException("Incorrect sort format. Should be represented as a JSON object");
 
 		JsonObject orderingJson = (JsonObject) json;
 
@@ -52,13 +51,13 @@ public final class QueryOrderingGsonSerializer implements JsonSerializer<CubeQue
 		if (direction.equals(DESC))
 			return CubeQuery.Ordering.desc(orderingField);
 
-		throw new QueryException(format("Unknown '%s' property value in sort object. Should be either '%s' or '%s'", DIRECTION, ASC, DESC));
+		throw new JsonParseException(format("Unknown '%s' property value in sort object. Should be either '%s' or '%s'", DIRECTION, ASC, DESC));
 	}
 
-	private static String getOrThrow(String property, JsonObject json) throws QueryException {
+	private static String getOrThrow(String property, JsonObject json) throws JsonParseException {
 		JsonElement fieldJson = json.get(property);
 		if (fieldJson == null)
-			throw new QueryException(format("Incorrect sort format. Does not contain property '%s'", property));
+			throw new JsonParseException(format("Incorrect sort format. Does not contain property '%s'", property));
 		return fieldJson.getAsString();
 	}
 

@@ -47,11 +47,9 @@ public class HttpMessageTest {
 	public void testHttpResponse() {
 		assertHttpResponseEquals("HTTP/1.1 100 OK\r\nContent-Length: 0\r\n\r\n", HttpResponse.ofCode(100));
 		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n", HttpResponse.ofCode(200));
-		assertHttpResponseEquals("HTTP/1.1 400 Bad Request\r\nContent-Length: 77\r\n\r\n" +
-				"Your browser (or proxy) sent a request that this server could not understand.", HttpResponse.ofCode(400));
+		assertHttpResponseEquals("HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n", HttpResponse.ofCode(400));
 		assertHttpResponseEquals("HTTP/1.1 405 Error\r\nContent-Length: 0\r\n\r\n", HttpResponse.ofCode(405));
-		assertHttpResponseEquals("HTTP/1.1 500 Internal Server Error\r\nContent-Length: 81\r\n\r\n" +
-				"The server encountered an internal error and was unable to complete your request.", HttpResponse.ofCode(500));
+		assertHttpResponseEquals("HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\n\r\n", HttpResponse.ofCode(500));
 		assertHttpResponseEquals("HTTP/1.1 502 Error\r\nContent-Length: 9\r\n\r\n" +
 				"Error 502", HttpResponse.ofCode(502).withBody("Error 502".getBytes(StandardCharsets.UTF_8)));
 		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie1=\"value1\"\r\nContent-Length: 0\r\n\r\n",

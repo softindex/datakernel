@@ -33,6 +33,7 @@ import io.datakernel.http.HttpUtils;
 import java.util.HashMap;
 import java.util.Map;
 
+import static io.datakernel.cube.api.CommonUtils.fromGson;
 import static io.datakernel.cube.api.HttpJsonConstants.*;
 
 public final class CubeHttpClient {
@@ -78,10 +79,10 @@ public final class CubeHttpClient {
 				}
 
 				try {
-					ReportingQueryResult result = gson.fromJson(response, ReportingQueryResult.class);
+					ReportingQueryResult result = fromGson(gson, response, ReportingQueryResult.class);
 					callback.setResult(result);
-				} catch (RuntimeException e) {
-					callback.setException(new ParseException("Could not parse cube HTTP query response", e));
+				} catch (ParseException e) {
+					callback.setException(e);
 				}
 			}
 

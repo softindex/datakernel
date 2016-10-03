@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
@@ -47,11 +48,11 @@ public class AsyncHttpServerTest {
 	}
 
 	public static AsyncHttpServer blockingHttpServer(Eventloop primaryEventloop, int port) {
-		AsyncHttpServlet servlet = new AsyncHttpServlet() {
+		AsyncServlet servlet = new AsyncServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, Callback callback) {
+			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
 				HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
-				callback.setResponse(content);
+				callback.setResult(content);
 			}
 		};
 
@@ -59,14 +60,14 @@ public class AsyncHttpServerTest {
 	}
 
 	public static AsyncHttpServer asyncHttpServer(final Eventloop primaryEventloop, int port) {
-		AsyncHttpServlet servlet = new AsyncHttpServlet() {
+		AsyncServlet servlet = new AsyncServlet() {
 			@Override
-			public void serveAsync(final HttpRequest request, final Callback callback) {
+			public void serve(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
 				final HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
 				primaryEventloop.post(new Runnable() {
 					@Override
 					public void run() {
-						callback.setResponse(content);
+						callback.setResult(content);
 					}
 				});
 			}
@@ -77,14 +78,14 @@ public class AsyncHttpServerTest {
 
 	public static AsyncHttpServer delayedHttpServer(final Eventloop primaryEventloop, int port) {
 		final Random random = new Random();
-		AsyncHttpServlet servlet = new AsyncHttpServlet() {
+		AsyncServlet servlet = new AsyncServlet() {
 			@Override
-			public void serveAsync(final HttpRequest request, final Callback callback) {
+			public void serve(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
 				final HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
 				primaryEventloop.schedule(primaryEventloop.currentTimeMillis() + random.nextInt(3), new Runnable() {
 					@Override
 					public void run() {
-						callback.setResponse(content);
+						callback.setResult(content);
 					}
 				});
 			}
@@ -244,14 +245,14 @@ public class AsyncHttpServerTest {
 						.withBody(ByteBuf.wrapForReading(encodeAscii("Test big HTTP message body")))
 						.write();
 
-		AsyncHttpServlet servlet = new AsyncHttpServlet() {
+		AsyncServlet servlet = new AsyncServlet() {
 			@Override
-			public void serveAsync(final HttpRequest request, final Callback callback) {
+			public void serve(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
 				final HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
 				eventloop.post(new Runnable() {
 					@Override
 					public void run() {
-						callback.setResponse(content);
+						callback.setResult(content);
 					}
 				});
 			}

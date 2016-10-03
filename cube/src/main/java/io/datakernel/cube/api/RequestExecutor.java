@@ -80,7 +80,7 @@ public final class RequestExecutor {
 		return new RequestExecutor(cube, structure, reportingConfiguration, eventloop, resolver, classLoaderCache);
 	}
 
-	public void execute(ReportingQuery query, ResultCallback<QueryResult> resultCallback) {
+	public void execute(ReportingQuery query, ResultCallback<QueryResult> resultCallback) throws QueryException {
 		new Context().execute(query, resultCallback);
 	}
 
@@ -135,7 +135,7 @@ public final class RequestExecutor {
 		Integer offset;
 		String searchString;
 
-		void execute(ReportingQuery reportingQuery, final ResultCallback<QueryResult> resultCallback) {
+		void execute(ReportingQuery reportingQuery, final ResultCallback<QueryResult> resultCallback) throws QueryException {
 			queryDimensions = reportingQuery.getDimensions();
 			queryMeasures = reportingQuery.getMeasures();
 			queryPredicates = reportingQuery.getFilters();
@@ -200,7 +200,7 @@ public final class RequestExecutor {
 			return predicates == null ? Maps.<String, AggregationQuery.Predicate>newHashMap() : predicates.asMap();
 		}
 
-		void processDimensions() {
+		void processDimensions() throws QueryException {
 			for (String dimension : queryDimensions) {
 				if (!structure.containsKey(dimension))
 					throw new QueryException("Cube does not contain dimension with name '" + dimension + "'");
@@ -217,7 +217,7 @@ public final class RequestExecutor {
 			}
 		}
 
-		void processAttributes() {
+		void processAttributes() throws QueryException {
 			for (String attribute : attributes) {
 				AttributeResolver resolver = reportingConfiguration.getAttributeResolver(attribute);
 				if (resolver == null)
@@ -251,7 +251,7 @@ public final class RequestExecutor {
 			}
 		}
 
-		void processMeasures() {
+		void processMeasures() throws QueryException {
 			for (String queryMeasure : queryMeasures) {
 				if (structure.containsField(queryMeasure)) {
 					queryStoredMeasures.add(queryMeasure);
@@ -351,7 +351,7 @@ public final class RequestExecutor {
 			return builder.withMethod("computeMeasures", sequence(computeSequence)).build();
 		}
 
-		StreamConsumers.ToList<QueryResultPlaceholder> queryCube() {
+		StreamConsumers.ToList<QueryResultPlaceholder> queryCube() throws QueryException {
 			StreamConsumers.ToList<QueryResultPlaceholder> consumerStream = StreamConsumers.toList(eventloop);
 			StreamProducer<QueryResultPlaceholder> queryResultProducer = cube.query(resultClass, query, localClassLoader);
 			queryResultProducer.streamTo(consumerStream);

@@ -19,7 +19,6 @@ package io.datakernel.cube.api;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import io.datakernel.aggregation_db.AggregationQuery;
-import io.datakernel.aggregation_db.api.QueryException;
 import io.datakernel.cube.CubeQuery;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpRequest;
@@ -28,8 +27,7 @@ import java.util.List;
 import java.util.Set;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static io.datakernel.cube.api.CommonUtils.getListOfStrings;
-import static io.datakernel.cube.api.CommonUtils.getSetOfStrings;
+import static io.datakernel.cube.api.CommonUtils.*;
 import static io.datakernel.cube.api.HttpJsonConstants.*;
 
 public final class HttpRequestProcessor implements RequestProcessor<HttpRequest> {
@@ -39,7 +37,9 @@ public final class HttpRequestProcessor implements RequestProcessor<HttpRequest>
 		this.gson = gson;
 	}
 
-	public static HttpRequestProcessor create(Gson gson) {return new HttpRequestProcessor(gson);}
+	public static HttpRequestProcessor create(Gson gson) {
+		return new HttpRequestProcessor(gson);
+	}
 
 	@Override
 	public ReportingQuery apply(HttpRequest request) throws ParseException {
@@ -55,39 +55,39 @@ public final class HttpRequestProcessor implements RequestProcessor<HttpRequest>
 		Set<String> metadataFields = getSetOfStrings(gson, request.getParameter(METADATA_FIELDS_PARAM));
 
 		if (dimensions.isEmpty() && attributes.isEmpty())
-			throw new QueryException("At least one dimension or attribute must be specified");
+			throw new ParseException("At least one dimension or attribute must be specified");
 
 		return ReportingQuery.create(dimensions, measures, attributes, predicates, ordering, limit, offset, searchString,
 				fields, metadataFields);
 	}
 
-	private AggregationQuery.Predicates parsePredicates(String json) {
+	private AggregationQuery.Predicates parsePredicates(String json) throws ParseException {
 		AggregationQuery.Predicates predicates = null;
 
 		if (json != null) {
-			predicates = gson.fromJson(json, AggregationQuery.Predicates.class);
+			predicates = fromGson(gson, json, AggregationQuery.Predicates.class);
 		}
 
 		return predicates == null ? new AggregationQuery.Predicates() : predicates;
 	}
 
-	private List<CubeQuery.Ordering> parseOrdering(String json) {
+	private List<CubeQuery.Ordering> parseOrdering(String json) throws ParseException {
 		if (json == null)
 			return null;
 
-		return gson.fromJson(json, new TypeToken<List<CubeQuery.Ordering>>() {}.getType());
+		return fromGson(gson, json, new TypeToken<List<CubeQuery.Ordering>>() {}.getType());
 	}
 
-	private List<String> parseMeasures(String json) {
+	private List<String> parseMeasures(String json) throws ParseException {
 		List<String> measures = parseListOfStrings(json);
 
 		if (measures.isEmpty())
-			throw new QueryException("Measures must be specified");
+			throw new ParseException("Measures must be specified");
 
 		return measures;
 	}
 
-	private List<String> parseListOfStrings(String json) {
+	private List<String> parseListOfStrings(String json) throws ParseException {
 		if (json == null)
 			return newArrayList();
 

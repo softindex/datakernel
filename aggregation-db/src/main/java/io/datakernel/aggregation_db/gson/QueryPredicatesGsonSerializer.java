@@ -19,7 +19,6 @@ package io.datakernel.aggregation_db.gson;
 import com.google.gson.*;
 import io.datakernel.aggregation_db.AggregationQuery;
 import io.datakernel.aggregation_db.AggregationStructure;
-import io.datakernel.aggregation_db.api.QueryException;
 import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.exception.ParseException;
 
@@ -36,7 +35,9 @@ public final class QueryPredicatesGsonSerializer implements JsonSerializer<Aggre
 		this.structure = structure;
 	}
 
-	public static QueryPredicatesGsonSerializer create(AggregationStructure structure) {return new QueryPredicatesGsonSerializer(structure);}
+	public static QueryPredicatesGsonSerializer create(AggregationStructure structure) {
+		return new QueryPredicatesGsonSerializer(structure);
+	}
 
 	private JsonPrimitive encodeKey(String key, Object value) {
 		KeyType keyType = structure.getKeyType(key);
@@ -47,11 +48,11 @@ public final class QueryPredicatesGsonSerializer implements JsonSerializer<Aggre
 	private Object parseKey(String key, JsonElement value) {
 		KeyType keyType = structure.getKeyType(key);
 		if (keyType == null)
-			throw new QueryException(format("Filter is specified for unknown dimension '%s'", key));
+			throw new JsonParseException(format("Filter is specified for unknown dimension '%s'", key));
 		try {
 			return keyType.fromString(value.getAsString());
 		} catch (ParseException e) {
-			throw new QueryException(e.getMessage());
+			throw new JsonParseException(e.getMessage());
 		}
 	}
 
@@ -59,7 +60,7 @@ public final class QueryPredicatesGsonSerializer implements JsonSerializer<Aggre
 	@Override
 	public AggregationQuery.Predicates deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
 		if (!(json instanceof JsonObject))
-			throw new QueryException("Incorrect filters format. Should be represented as a JSON object");
+			throw new JsonParseException("Incorrect filters format. Should be represented as a JSON object");
 
 		JsonObject predicates = (JsonObject) json;
 		AggregationQuery.Predicates queryPredicates = new AggregationQuery.Predicates();
@@ -77,7 +78,7 @@ public final class QueryPredicatesGsonSerializer implements JsonSerializer<Aggre
 					((JsonArray) value).get(0).getAsString().equals("ne") && ((JsonArray) value).get(1) instanceof JsonPrimitive) {
 				queryPredicates.ne(key, parseKey(key, ((JsonArray) value).get(1)));
 			} else {
-				throw new QueryException("Incorrect filters format");
+				throw new JsonParseException("Incorrect filters format");
 			}
 		}
 		return queryPredicates;

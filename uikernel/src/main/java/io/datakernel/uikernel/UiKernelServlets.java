@@ -17,149 +17,129 @@
 package io.datakernel.uikernel;
 
 import com.google.gson.Gson;
+import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBufStrings;
+import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
 
 import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Map;
 
-import static io.datakernel.http.HttpMethod.DELETE;
-import static io.datakernel.http.HttpMethod.PUT;
+import static io.datakernel.http.HttpMethod.*;
 import static io.datakernel.uikernel.Utils.deserializeUpdateRequest;
+import static io.datakernel.uikernel.Utils.fromJson;
 
 /**
  * Rest API for UiKernel Tables
  */
 public class UiKernelServlets {
-	public static final ContentType JSON_UTF8 = ContentType.of(MediaTypes.JSON, Charset.forName("UTF-8"));
+	private static final ContentType JSON_UTF8 = ContentType.of(MediaTypes.JSON, Charset.forName("UTF-8"));
 
-	private static final int BAD_REQUEST = 400;
 	private static final String ID_PARAMETER_NAME = "id";
 
 	public static <K, R extends AbstractRecord<K>> MiddlewareServlet apiServlet(GridModel<K, R> model, Gson gson) {
-		MiddlewareServlet main = MiddlewareServlet.create();
-		main.post(create(model, gson));
-		main.get(read(model, gson));
-		main.use(PUT, update(model, gson));
-		main.use("/:" + ID_PARAMETER_NAME, DELETE, delete(model, gson));
-		main.get("/:" + ID_PARAMETER_NAME, get(model, gson));
-		return main;
+		return MiddlewareServlet.create()
+				.with(POST, "/", create(model, gson))
+				.with(GET, "/", read(model, gson))
+				.with(PUT, "/", update(model, gson))
+				.with(DELETE, "/:" + ID_PARAMETER_NAME, delete(model, gson))
+				.with(GET, "/:" + ID_PARAMETER_NAME, get(model, gson));
 	}
 
-	public static <K, R extends AbstractRecord<K>> AsyncHttpServlet read(final GridModel<K, R> model, final Gson gson) {
-		return new AsyncHttpServlet() {
+	public static <K, R extends AbstractRecord<K>> AsyncServlet read(final GridModel<K, R> model, final Gson gson) {
+		return new AsyncServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, final Callback callback) {
+			public void serve(HttpRequest request, final ResultCallback<HttpResponse> callback) {
 				try {
 					Map<String, String> parameters = request.getParameters();
 					ReadSettings<K> settings = ReadSettings.from(gson, parameters);
-					model.read(settings, new ResultCallback<ReadResponse<K, R>>() {
+					model.read(settings, new ForwardingResultCallback<ReadResponse<K,R>>(callback) {
 						@Override
 						protected void onResult(ReadResponse<K, R> response) {
 							String json = response.toJson(gson, model.getRecordType(), model.getIdType());
-							callback.setResponse(createResponse(json));
-						}
-
-						@Override
-						protected void onException(Exception ignored) {
-							callback.setResponse(HttpResponse.notFound404());
+							callback.setResult(createResponse(json));
 						}
 					});
-				} catch (Exception ignored) {
-					callback.setHttpError(new HttpServletError(BAD_REQUEST));
+				} catch (ParseException e) {
+					callback.setException(e);
 				}
 			}
 		};
 	}
 
-	public static <K, R extends AbstractRecord<K>> AsyncHttpServlet get(final GridModel<K, R> model, final Gson gson) {
-		return new AsyncHttpServlet() {
+	public static <K, R extends AbstractRecord<K>> AsyncServlet get(final GridModel<K, R> model, final Gson gson) {
+		return new AsyncServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, final Callback callback) {
+			public void serve(HttpRequest request, final ResultCallback<HttpResponse> callback) {
 				try {
 					Map<String, String> parameters = request.getParameters();
 					ReadSettings<K> settings = ReadSettings.from(gson, parameters);
-					K id = gson.fromJson(request.getUrlParameter(ID_PARAMETER_NAME), model.getIdType());
-					model.read(id, settings, new ResultCallback<R>() {
+					K id = fromJson(gson, request.getUrlParameter(ID_PARAMETER_NAME), model.getIdType());
+					model.read(id, settings, new ForwardingResultCallback<R>(callback) {
 						@Override
 						protected void onResult(R obj) {
 							String json = gson.toJson(obj, model.getRecordType());
-							callback.setResponse(createResponse(json));
-						}
-
-						@Override
-						protected void onException(Exception ignored) {
-							callback.setResponse(HttpResponse.notFound404());
+							callback.setResult(createResponse(json));
 						}
 					});
-				} catch (Exception e) {
-					callback.setHttpError(new HttpServletError(BAD_REQUEST));
+				} catch (ParseException e) {
+					callback.setException(e);
 				}
 			}
 		};
 	}
 
-	public static <K, R extends AbstractRecord<K>> AsyncHttpServlet create(final GridModel<K, R> model, final Gson gson) {
-		return new AsyncHttpServlet() {
+	public static <K, R extends AbstractRecord<K>> AsyncServlet create(final GridModel<K, R> model, final Gson gson) {
+		return new AsyncServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, final Callback callback) {
+			public void serve(HttpRequest request, final ResultCallback<HttpResponse> callback) {
 				try {
 					String json = ByteBufStrings.decodeUtf8(request.getBody());
-					R obj = gson.fromJson(json, model.getRecordType());
-					model.create(obj, new ResultCallback<CreateResponse<K>>() {
+					R obj = fromJson(gson, json, model.getRecordType());
+					model.create(obj, new ForwardingResultCallback<CreateResponse<K>>(callback) {
 						@Override
 						protected void onResult(CreateResponse<K> response) {
 							String json = response.toJson(gson, model.getIdType());
-							callback.setResponse(createResponse(json));
-						}
-
-						@Override
-						protected void onException(Exception ignored) {
-							callback.setResponse(HttpResponse.notFound404());
+							callback.setResult(createResponse(json));
 						}
 					});
-				} catch (Exception ignored) {
-					callback.setHttpError(new HttpServletError(BAD_REQUEST));
+				} catch (ParseException e) {
+					callback.setException(e);
 				}
 			}
 		};
 	}
 
-	public static <K, R extends AbstractRecord<K>> AsyncHttpServlet update(final GridModel<K, R> model, final Gson gson) {
-		return new AsyncHttpServlet() {
+	public static <K, R extends AbstractRecord<K>> AsyncServlet update(final GridModel<K, R> model, final Gson gson) {
+		return new AsyncServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, final Callback callback) {
+			public void serve(HttpRequest request, final ResultCallback<HttpResponse> callback) {
 				try {
 					String json = ByteBufStrings.decodeUtf8(request.getBody());
 					List<R> list = deserializeUpdateRequest(gson, json, model.getRecordType(), model.getIdType());
-					model.update(list, new ResultCallback<UpdateResponse<K, R>>() {
+					model.update(list, new ForwardingResultCallback<UpdateResponse<K,R>>(callback) {
 						@Override
 						protected void onResult(UpdateResponse<K, R> result) {
 							String json = result.toJson(gson, model.getRecordType(), model.getIdType());
-							callback.setResponse(createResponse(json));
-						}
-
-						@Override
-						protected void onException(Exception ignored) {
-							callback.setResponse(HttpResponse.notFound404());
+							callback.setResult(createResponse(json));
 						}
 					});
-				} catch (Exception ignored) {
-					callback.setHttpError(new HttpServletError(BAD_REQUEST));
+				} catch (ParseException e) {
+					callback.setException(e);
 				}
 			}
 		};
 	}
 
-	public static <K, R extends AbstractRecord<K>> AsyncHttpServlet delete(final GridModel<K, R> model, final Gson gson) {
-		return new AsyncHttpServlet() {
+	public static <K, R extends AbstractRecord<K>> AsyncServlet delete(final GridModel<K, R> model, final Gson gson) {
+		return new AsyncServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, final Callback callback) {
+			public void serve(HttpRequest request, final ResultCallback<HttpResponse> callback) {
 				try {
-					K id = gson.fromJson(request.getUrlParameter("id"), model.getIdType());
-					model.delete(id, new ResultCallback<DeleteResponse>() {
+					K id = fromJson(gson, request.getUrlParameter("id"), model.getIdType());
+					model.delete(id, new ForwardingResultCallback<DeleteResponse>(callback) {
 						@Override
 						protected void onResult(DeleteResponse response) {
 							HttpResponse res = HttpResponse.ok200();
@@ -168,16 +148,11 @@ public class UiKernelServlets {
 								res.setContentType(JSON_UTF8);
 								res.setBody(ByteBufStrings.wrapUtf8(json));
 							}
-							callback.setResponse(res);
-						}
-
-						@Override
-						protected void onException(Exception ignored) {
-							callback.setResponse(HttpResponse.notFound404());
+							callback.setResult(res);
 						}
 					});
-				} catch (Exception ignored) {
-					callback.setHttpError(new HttpServletError(BAD_REQUEST));
+				} catch (ParseException e) {
+					callback.setException(e);
 				}
 			}
 		};

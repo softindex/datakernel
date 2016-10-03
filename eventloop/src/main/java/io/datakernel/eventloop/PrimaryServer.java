@@ -71,8 +71,6 @@ public final class PrimaryServer extends AbstractServer<PrimaryServer> {
 	                                 InetAddressRange range, Collection<InetAddress> bannedAddresses,
 	                                 SSLContext sslContext, ExecutorService sslExecutor,
 	                                 Collection<InetSocketAddress> sslListenAddresses) {
-		if (socketSettings != DEFAULT_SOCKET_SETTINGS)
-			throw new UnsupportedOperationException();
 		return new PrimaryServer(eventloop, serverSocketSettings, socketSettings, acceptOnce, listenAddresses,
 				range, bannedAddresses, sslContext, sslExecutor, sslListenAddresses, this);
 	}

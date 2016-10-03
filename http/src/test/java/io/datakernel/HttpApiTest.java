@@ -71,12 +71,16 @@ public class HttpApiTest {
 	@Before
 	public void setUp() {
 		eventloop = Eventloop.create();
-		AsyncHttpServlet servlet = new AsyncHttpServlet() {
+		AsyncServlet servlet = new AsyncServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
-				testRequest(request);
-				HttpResponse response = createResponse();
-				callback.setResponse(response);
+			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
+				try {
+					testRequest(request);
+					HttpResponse response = createResponse();
+					callback.setResult(response);
+				} catch (ParseException e) {
+					callback.setException(e);
+				}
 			}
 		};
 

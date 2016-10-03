@@ -100,13 +100,13 @@ public class AsyncHttpClientTest {
 		final int TIMEOUT = 100;
 		final Eventloop eventloop = Eventloop.create();
 
-		final AsyncHttpServer httpServer = AsyncHttpServer.create(eventloop, new AsyncHttpServlet() {
+		final AsyncHttpServer httpServer = AsyncHttpServer.create(eventloop, new AsyncServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, final Callback callback) {
+			public void serve(HttpRequest request, final ResultCallback<HttpResponse> callback) {
 				eventloop.schedule(eventloop.currentTimeMillis() + (3 * TIMEOUT), new Runnable() {
 					@Override
 					public void run() {
-						callback.setResponse(HttpResponse.ok200().withBody(TIMEOUT_EXCEPTION_BYTES));
+						callback.setResult(HttpResponse.ok200().withBody(TIMEOUT_EXCEPTION_BYTES));
 					}
 				});
 			}

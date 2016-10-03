@@ -48,14 +48,14 @@ public class HttpTolerantApplicationTest {
 	}
 
 	public static AsyncHttpServer asyncHttpServer(final Eventloop primaryEventloop, int port) {
-		AsyncHttpServlet servlet = new AsyncHttpServlet() {
+		AsyncServlet servlet = new AsyncServlet() {
 			@Override
-			public void serveAsync(final HttpRequest request, final Callback callback) {
+			public void serve(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
 				primaryEventloop.post(new Runnable() {
 					@Override
 					public void run() {
 						HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
-						callback.setResponse(content);
+						callback.setResult(content);
 					}
 				});
 			}

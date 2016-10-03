@@ -5,7 +5,6 @@ import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.dns.IAsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.ParseException;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -25,10 +24,10 @@ public class AbstractHttpConnectionTest {
 	private Eventloop eventloop = Eventloop.create();
 	private IAsyncDnsClient dnsClient = AsyncDnsClient.create(eventloop).withTimeout(300).withDnsServerAddress(GOOGLE_PUBLIC_DNS);
 
-	private AsyncHttpServlet servlet = new AsyncHttpServlet() {
+	private AsyncServlet servlet = new AsyncServlet() {
 		@Override
-		public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
-			callback.onResult(createMultiLineHeaderWithInitialBodySpacesResponse());
+		public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
+			callback.setResult(createMultiLineHeaderWithInitialBodySpacesResponse());
 		}
 	};
 

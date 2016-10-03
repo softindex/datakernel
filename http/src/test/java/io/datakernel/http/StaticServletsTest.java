@@ -17,6 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.ForwardingResultCallback;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import org.junit.BeforeClass;
@@ -93,20 +94,20 @@ public class StaticServletsTest {
 		final List<Exception> res = new ArrayList<>();
 
 		StaticServletForFiles servlet = StaticServletForFiles.create(eventloop, executor, resources);
-		servlet.serveAsync(HttpRequest.get("http://127.0.0.1/../cant_touch.txt"), new AsyncHttpServlet.Callback() {
+		servlet.serve(HttpRequest.get("http://127.0.0.1/../cant_touch.txt"), new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
 			}
 
 			@Override
-			public void onHttpError(HttpServletError httpServletError) {
-				res.add(httpServletError);
+			protected void onException(Exception e) {
+				res.add(e);
 			}
 		});
 		eventloop.run();
 		executor.shutdown();
 		assertEquals(1, res.size());
-		assertEquals(404, ((HttpServletError) res.get(0)).getCode());
+		assertEquals(404, ((HttpException) res.get(0)).getCode());
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 		assertThat(eventloop, doesntHaveFatals());
 	}
@@ -119,20 +120,20 @@ public class StaticServletsTest {
 		final List<Exception> res = new ArrayList<>();
 
 		StaticServletForResources servlet = StaticServletForResources.create(eventloop, executor, "./");
-		servlet.serveAsync(HttpRequest.get("http://127.0.0.1/../cant_touch.txt"), new AsyncHttpServlet.Callback() {
+		servlet.serve(HttpRequest.get("http://127.0.0.1/../cant_touch.txt"), new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
 			}
 
 			@Override
-			public void onHttpError(HttpServletError httpServletError) {
-				res.add(httpServletError);
+			protected void onException(Exception e) {
+				res.add(e);
 			}
 		});
 		eventloop.run();
 		executor.shutdown();
 		assertEquals(1, res.size());
-		assertEquals(404, ((HttpServletError) res.get(0)).getCode());
+		assertEquals(404, ((HttpException) res.get(0)).getCode());
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 		assertThat(eventloop, doesntHaveFatals());
 	}
@@ -145,22 +146,22 @@ public class StaticServletsTest {
 		final List<Exception> res = new ArrayList<>();
 
 		StaticServletForFiles servlet = StaticServletForFiles.create(eventloop, executor, resources);
-		servlet.serveAsync(HttpRequest.get("http://127.0.0.1/file/not/found.txt"), new AsyncHttpServlet.Callback() {
+		servlet.serve(HttpRequest.get("http://127.0.0.1/file/not/found.txt"), new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
 				// empty
 			}
 
 			@Override
-			public void onHttpError(HttpServletError httpServletError) {
-				res.add(httpServletError);
+			protected void onException(Exception e) {
+				res.add(e);
 			}
 		});
 		eventloop.run();
 		executor.shutdown();
 
 		assertEquals(1, res.size());
-		assertEquals(404, ((HttpServletError) res.get(0)).getCode());
+		assertEquals(404, ((HttpException) res.get(0)).getCode());
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 		assertThat(eventloop, doesntHaveFatals());
 	}
@@ -173,21 +174,21 @@ public class StaticServletsTest {
 		final List<Exception> res = new ArrayList<>();
 
 		StaticServletForResources servlet = StaticServletForResources.create(eventloop, executor, "./");
-		servlet.serveAsync(HttpRequest.get("http://127.0.0.1/file/not/found.txt"), new AsyncHttpServlet.Callback() {
+		servlet.serve(HttpRequest.get("http://127.0.0.1/file/not/found.txt"), new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
 				// empty
 			}
 
 			@Override
-			public void onHttpError(HttpServletError httpServletError) {
-				res.add(httpServletError);
+			protected void onException(Exception e) {
+				res.add(e);
 			}
 		});
 		eventloop.run();
 		executor.shutdown();
 		assertEquals(1, res.size());
-		assertEquals(404, ((HttpServletError) res.get(0)).getCode());
+		assertEquals(404, ((HttpException) res.get(0)).getCode());
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 		assertThat(eventloop, doesntHaveFatals());
 	}

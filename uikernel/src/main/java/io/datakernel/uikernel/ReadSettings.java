@@ -27,6 +27,7 @@ import java.util.*;
 
 import static io.datakernel.bytebuf.ByteBufStrings.decodeDecimal;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
+import static io.datakernel.uikernel.Utils.fromJson;
 
 @SuppressWarnings("unused")
 public final class ReadSettings<K> {
@@ -68,11 +69,10 @@ public final class ReadSettings<K> {
 	}
 
 	public static <K> ReadSettings<K> from(Gson gson, Map<String, String> parameters) throws ParseException {
-
 		String fieldsParameter = parameters.get("fields");
 		List<String> fields;
 		if (fieldsParameter != null && !fieldsParameter.isEmpty()) {
-			fields = gson.fromJson(fieldsParameter, LIST_STRING_TYPE_TOKEN);
+			fields = fromJson(gson, fieldsParameter, LIST_STRING_TYPE_TOKEN);
 		} else {
 			fields = Collections.emptyList();
 		}
@@ -92,7 +92,7 @@ public final class ReadSettings<K> {
 		String filtersParameter = parameters.get("filters");
 		Map<String, String> filters;
 		if (filtersParameter != null && !filtersParameter.isEmpty()) {
-			filters = gson.fromJson(filtersParameter, MAP_STRING_STRING_TYPE_TOKEN);
+			filters = fromJson(gson, filtersParameter, MAP_STRING_STRING_TYPE_TOKEN);
 			filters = Collections.unmodifiableMap(filters);
 		} else {
 			filters = Collections.emptyMap();
@@ -102,7 +102,7 @@ public final class ReadSettings<K> {
 		Map<String, SortOrder> sort;
 		if (sortParameter != null && !sortParameter.isEmpty()) {
 			sort = new LinkedHashMap<>();
-			JsonArray array = gson.fromJson(sortParameter, JsonArray.class);
+			JsonArray array = fromJson(gson, sortParameter, JsonArray.class);
 			String key;
 			SortOrder value;
 			for (JsonElement element : array) {
@@ -120,7 +120,7 @@ public final class ReadSettings<K> {
 		String extraParameter = parameters.get("extra");
 		Set<K> extra;
 		if (extraParameter != null && !extraParameter.isEmpty()) {
-			extra = gson.fromJson(extraParameter, new TypeToken<LinkedHashSet<K>>() {}.getType());
+			extra = fromJson(gson, extraParameter, new TypeToken<LinkedHashSet<K>>() {}.getType());
 		} else {
 			extra = Collections.emptySet();
 		}

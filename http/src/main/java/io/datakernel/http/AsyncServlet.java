@@ -14,12 +14,20 @@
  * limitations under the License.
  */
 
-package io.datakernel.stream.providers;
+package io.datakernel.http;
 
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.async.ResultCallback;
 
-public interface StreamProducerProvider<T> {
-
-	StreamProducer<T> getProducer();
-
+/**
+ * Servlet receives and responds to {@link HttpRequest} from clients across HTTP.
+ * Receives {@link HttpRequest},  creates {@link HttpResponse} and sends it.
+ */
+public interface AsyncServlet {
+	/**
+	 * Handles the received {@link HttpRequest},  creating the {@link HttpResponse} and responds to client with ResultCallback
+	 *
+	 * @param request  received request
+	 * @param callback ResultCallback for handling result
+	 */
+	void serve(HttpRequest request, ResultCallback<HttpResponse> callback);
 }

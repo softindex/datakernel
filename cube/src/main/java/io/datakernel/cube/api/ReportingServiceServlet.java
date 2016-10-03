@@ -19,33 +19,49 @@ package io.datakernel.cube.api;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import io.datakernel.aggregation_db.AggregationQuery;
+import io.datakernel.aggregation_db.api.QueryException;
 import io.datakernel.aggregation_db.gson.QueryPredicatesGsonSerializer;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.Cube;
 import io.datakernel.cube.CubeQuery;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
-import io.datakernel.http.AbstractAsyncServlet;
+import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpRequest;
+import io.datakernel.http.HttpResponse;
 import io.datakernel.http.MiddlewareServlet;
 import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.util.Stopwatch;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-public final class ReportingServiceServlet extends AbstractAsyncServlet {
-	private final HttpRequestHandler handler;
+import static io.datakernel.http.HttpMethod.GET;
+
+public final class ReportingServiceServlet implements AsyncServlet {
+	protected final Logger logger = LoggerFactory.getLogger(ReportingServiceServlet.class);
+
 	private final LRUCache<ClassLoaderCacheKey, DefiningClassLoader> classLoaderCache;
+
+	private final HttpRequestProcessor httpRequestProcessor;
+	private final RequestExecutor requestExecutor;
+	private final HttpResultProcessor httpResultProcessor;
 
 	private ReportingServiceServlet(Eventloop eventloop, Cube cube,
 	                                LRUCache<ClassLoaderCacheKey, DefiningClassLoader> classLoaderCache) {
-		super(eventloop);
+		super();
 		Gson gson = new GsonBuilder()
 				.registerTypeAdapter(AggregationQuery.Predicates.class, QueryPredicatesGsonSerializer.create(cube.getStructure()))
 				.registerTypeAdapter(CubeQuery.Ordering.class, QueryOrderingGsonSerializer.create())
 				.create();
 		this.classLoaderCache = classLoaderCache;
-		this.handler = HttpRequestHandler.create(gson, cube, eventloop, classLoaderCache);
+		this.httpRequestProcessor = HttpRequestProcessor.create(gson);
+		this.requestExecutor = RequestExecutor.create(cube, cube.getStructure(), cube.getReportingConfiguration(),
+				eventloop, Resolver.create(cube.getResolvers()), classLoaderCache);
+		this.httpResultProcessor = HttpResultProcessor.create(cube.getStructure(), cube.getReportingConfiguration());
 	}
 
 	public static ReportingServiceServlet create(Eventloop eventloop, Cube cube,
@@ -56,15 +72,40 @@ public final class ReportingServiceServlet extends AbstractAsyncServlet {
 	public static MiddlewareServlet createRootServlet(Eventloop eventloop, Cube cube, int classLoaderCacheSize) {
 		LRUCache<ClassLoaderCacheKey, DefiningClassLoader> classLoaderCache = LRUCache.create(classLoaderCacheSize);
 		ReportingServiceServlet reportingServiceServlet = create(eventloop, cube, classLoaderCache);
-		MiddlewareServlet servlet = MiddlewareServlet.create();
-		servlet.get("/", reportingServiceServlet);
-		servlet.get("/consolidation-debug", ConsolidationDebugServlet.create(cube));
-		return servlet;
+		return MiddlewareServlet.create()
+				.with(GET, "/", reportingServiceServlet)
+				.with(GET, "/consolidation-debug", ConsolidationDebugServlet.create(cube));
 	}
 
 	@Override
-	protected void doServeAsync(HttpRequest request, Callback callback) throws ParseException {
-		handler.process(request, callback);
+	public void serve(final HttpRequest httpRequest, final ResultCallback<HttpResponse> callback) {
+		logger.info("Received request: {}", httpRequest);
+		try {
+			final Stopwatch totalTimeStopwatch = Stopwatch.createStarted();
+			final ReportingQuery reportingQuery = httpRequestProcessor.apply(httpRequest);
+			requestExecutor.execute(reportingQuery, new ResultCallback<QueryResult>() {
+				@Override
+				protected void onResult(QueryResult result) {
+					Stopwatch resultProcessingStopwatch = Stopwatch.createStarted();
+					HttpResponse httpResponse = httpResultProcessor.apply(result);
+					logger.info("Processed request {} ({}) [totalTime={}, jsonConstruction={}]", httpRequest,
+							reportingQuery, totalTimeStopwatch, resultProcessingStopwatch);
+					callback.setResult(httpResponse);
+				}
+
+				@Override
+				protected void onException(Exception e) {
+					logger.error("Executing query {} failed.", reportingQuery, e);
+					callback.setException(e);
+				}
+			});
+		} catch (ParseException e) {
+			logger.error("Parse exception: " + httpRequest, e);
+			callback.setException(e);
+		} catch (QueryException e) {
+			logger.error("Query exception: " + httpRequest, e);
+			callback.setException(e);
+		}
 	}
 
 	@JmxAttribute

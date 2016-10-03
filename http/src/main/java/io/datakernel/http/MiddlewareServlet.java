@@ -16,20 +16,20 @@
 
 package io.datakernel.http;
 
-import io.datakernel.exception.ParseException;
+import io.datakernel.async.ResultCallback;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
-public class MiddlewareServlet implements AsyncHttpServlet {
+public class MiddlewareServlet implements AsyncServlet {
 	private static final String ROOT = "/";
 
 	protected final Map<String, MiddlewareServlet> routes = new HashMap<>();
-	protected AsyncHttpServlet fallbackRoute;
+	protected AsyncServlet fallbackServlet;
 
-	protected final Map<HttpMethod, AsyncHttpServlet> handlers = new HashMap<>();
-	protected AsyncHttpServlet fallbackHandler;
+	protected final Map<HttpMethod, AsyncServlet> rootServlets = new HashMap<>();
+	protected AsyncServlet rootServlet;
 
 	protected final Map<String, MiddlewareServlet> parameters = new HashMap<>();
 
@@ -37,39 +37,17 @@ public class MiddlewareServlet implements AsyncHttpServlet {
 
 	public static MiddlewareServlet create() {return new MiddlewareServlet();}
 
-	public void get(AsyncHttpServlet handler) {
-		get(ROOT, handler);
+	public MiddlewareServlet with(String path, AsyncServlet servlet) {
+		return with(null, path, servlet);
 	}
 
-	public void get(String path, AsyncHttpServlet handler) {
-		use(path, HttpMethod.GET, handler);
-	}
-
-	public void post(AsyncHttpServlet handler) {
-		post(ROOT, handler);
-	}
-
-	public void post(String path, AsyncHttpServlet handler) {
-		use(path, HttpMethod.POST, handler);
-	}
-
-	public void use(AsyncHttpServlet handler) {
-		use(ROOT, null, handler);
-	}
-
-	public void use(HttpMethod method, AsyncHttpServlet handler) {
-		use(ROOT, method, handler);
-	}
-
-	public void use(String path, AsyncHttpServlet handler) {
-		use(path, null, handler);
-	}
-
-	public void use(String path, HttpMethod method, AsyncHttpServlet handler) {
+	public MiddlewareServlet with(HttpMethod method, String path, AsyncServlet servlet) {
+		if (servlet == null)
+			throw new NullPointerException();
 		if (!path.isEmpty() && !path.startsWith(ROOT))
-			throw new RuntimeException("Bad path. Should start with \"/\"");
+			throw new IllegalArgumentException("Invalid path " + path);
 		if (path.isEmpty() || path.equals(ROOT)) {
-			apply(method, handler);
+			apply(method, servlet);
 		} else {
 			int slash = path.indexOf('/', 1);
 			String remainingPath;
@@ -82,19 +60,25 @@ public class MiddlewareServlet implements AsyncHttpServlet {
 				urlPart = path.substring(1, slash);
 			}
 			MiddlewareServlet container = ensureMServlet(urlPart);
-			container.use(remainingPath, method, handler);
+			container.with(method, remainingPath, servlet);
 		}
+		return this;
 	}
 
-	public void setDefault(AsyncHttpServlet fallback) {
-		this.fallbackRoute = fallback;
+	public MiddlewareServlet withFallback(AsyncServlet servlet) {
+		if (servlet == null)
+			throw new NullPointerException();
+		if (this.fallbackServlet != null)
+			throw new IllegalStateException("Fallback servlet is already set");
+		this.fallbackServlet = servlet;
+		return this;
 	}
 
-	public void setDefault(String path, AsyncHttpServlet fallback) {
+	public MiddlewareServlet withFallback(String path, AsyncServlet servlet) {
 		if (!path.isEmpty() && !path.startsWith(ROOT))
-			throw new RuntimeException("Bad path. Should start with \"/\".");
+			throw new IllegalArgumentException("Invalid path " + path);
 		if (path.isEmpty() || path.equals(ROOT)) {
-			setDefault(fallback);
+			withFallback(servlet);
 		} else {
 			int slash = path.indexOf('/', 1);
 			String remainingPath;
@@ -107,27 +91,28 @@ public class MiddlewareServlet implements AsyncHttpServlet {
 				urlPart = path.substring(1, slash);
 			}
 			MiddlewareServlet container = ensureMServlet(urlPart);
-			container.setDefault(remainingPath, fallback);
+			container.withFallback(remainingPath, servlet);
 		}
+		return this;
 	}
 
 	@Override
-	public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
+	public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
 		boolean processed = tryServeAsync(request, callback);
 		if (!processed) {
-			callback.setResponse(HttpResponse.notFound404());
+			callback.setException(HttpException.notFound404());
 		}
 	}
 
-	protected boolean tryServeAsync(HttpRequest request, Callback callback) throws ParseException {
+	protected boolean tryServeAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
 		int introPosition = request.getPos();
 		String urlPart = request.pollUrlPart();
 		HttpMethod method = request.getMethod();
 
 		if (urlPart.isEmpty()) {
-			AsyncHttpServlet handler = getHandlerOrWildcard(method);
-			if (handler != null) {
-				handler.serveAsync(request, callback);
+			AsyncServlet servlet = getRootServletOrWildcard(method);
+			if (servlet != null) {
+				servlet.serve(request, callback);
 				return true;
 			}
 		}
@@ -151,36 +136,35 @@ public class MiddlewareServlet implements AsyncHttpServlet {
 			}
 		}
 
-		if (!processed && fallbackRoute != null) {
+		if (!processed && fallbackServlet != null) {
 			request.setPos(introPosition);
-			fallbackRoute.serveAsync(request, callback);
+			fallbackServlet.serve(request, callback);
 			processed = true;
 		}
 		return processed;
 	}
 
-	private AsyncHttpServlet getHandlerOrWildcard(HttpMethod method) {
-		AsyncHttpServlet handler = handlers.get(method);
-		if (handler == null) {
-			return fallbackHandler;
+	private AsyncServlet getRootServletOrWildcard(HttpMethod method) {
+		AsyncServlet servlet = rootServlets.get(method);
+		if (servlet == null) {
+			return rootServlet;
 		}
-		return handler;
+		return servlet;
 	}
 
-	private void apply(HttpMethod method, AsyncHttpServlet handler) {
-		if (handler instanceof MiddlewareServlet) {
-			merge(this, (MiddlewareServlet) handler);
-		} else if (method == null && fallbackHandler == null) {
-			fallbackHandler = handler;
-		} else if (handlers.get(method) == null) {
-			handlers.put(method, handler);
-		} else if (this.handlers.get(method) != handler) {
-			throw new RuntimeException("Can't map. Handler already exists");
+	private void apply(HttpMethod method, AsyncServlet servlet) {
+		if (servlet instanceof MiddlewareServlet) {
+			merge(this, (MiddlewareServlet) servlet);
+		} else if (method == null && rootServlet == null) {
+			rootServlet = servlet;
+		} else if (rootServlets.get(method) == null) {
+			rootServlets.put(method, servlet);
+		} else if (this.rootServlets.get(method) != servlet) {
+			throw new IllegalArgumentException("Can't map. Servlet already exists");
 		}
 	}
 
 	private void merge(MiddlewareServlet mServlet1, MiddlewareServlet mServlet2) {
-
 		if (mServlet1 == mServlet2) {
 			return;
 		}
@@ -207,27 +191,27 @@ public class MiddlewareServlet implements AsyncHttpServlet {
 			}
 		}
 
-		for (Entry<HttpMethod, AsyncHttpServlet> entry : mServlet2.handlers.entrySet()) {
+		for (Entry<HttpMethod, AsyncServlet> entry : mServlet2.rootServlets.entrySet()) {
 			HttpMethod key = entry.getKey();
-			AsyncHttpServlet s1 = mServlet1.handlers.get(key);
-			AsyncHttpServlet s2 = entry.getValue();
+			AsyncServlet s1 = mServlet1.rootServlets.get(key);
+			AsyncServlet s2 = entry.getValue();
 			if (s1 == null) {
-				mServlet1.handlers.put(key, s2);
+				mServlet1.rootServlets.put(key, s2);
 			} else if (s1 != s2) {
-				throw new RuntimeException("Can't map. Handler for this method already exists");
+				throw new IllegalArgumentException("Can't map. Servlet for this method already exists");
 			}
 		}
 
-		if (mServlet1.fallbackHandler == null) {
-			mServlet1.fallbackHandler = mServlet2.fallbackHandler;
-		} else if (mServlet2.fallbackHandler != null && mServlet1.fallbackHandler != mServlet2.fallbackHandler) {
-			throw new RuntimeException("Can't map. Handler for this method already exists");
+		if (mServlet1.rootServlet == null) {
+			mServlet1.rootServlet = mServlet2.rootServlet;
+		} else if (mServlet2.rootServlet != null && mServlet1.rootServlet != mServlet2.rootServlet) {
+			throw new IllegalArgumentException("Can't map. Servlet for this method already exists");
 		}
 
-		if (mServlet1.fallbackRoute == null) {
-			mServlet1.fallbackRoute = mServlet2.fallbackRoute;
-		} else if (mServlet2.fallbackRoute != null && mServlet1.fallbackRoute != mServlet2.fallbackRoute) {
-			throw new RuntimeException("Can't map. Fallback already exists.");
+		if (mServlet1.fallbackServlet == null) {
+			mServlet1.fallbackServlet = mServlet2.fallbackServlet;
+		} else if (mServlet2.fallbackServlet != null && mServlet1.fallbackServlet != mServlet2.fallbackServlet) {
+			throw new IllegalArgumentException("Can't map. Fallback already exists.");
 		}
 
 	}

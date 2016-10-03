@@ -24,6 +24,7 @@ import com.google.common.collect.Ordering;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.InstanceCreator;
+import com.google.gson.JsonSyntaxException;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.node.*;
@@ -158,7 +159,7 @@ public final class DatagraphSerialization {
 			str = gson.toJson(item, type);
 			gson.fromJson(str, type);
 			return true;
-		} catch (RuntimeException e) {
+		} catch (JsonSyntaxException e) {
 			logger.error("Gson error:\n{}\n\n{}", e, str);
 			throw e;
 		}

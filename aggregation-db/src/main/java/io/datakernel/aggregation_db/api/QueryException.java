@@ -16,7 +16,7 @@
 
 package io.datakernel.aggregation_db.api;
 
-public class QueryException extends RuntimeException {
+public class QueryException extends Exception {
 	public QueryException(String message) {
 		super(message);
 	}

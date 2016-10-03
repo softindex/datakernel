@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
@@ -25,11 +26,11 @@ public final class HelloWorldServer {
 	public static final byte[] HELLO_WORLD = encodeAscii("Hello, World!");
 
 	public static AsyncHttpServer helloWorldServer(Eventloop primaryEventloop, int port) {
-		AsyncHttpServlet servlet = new AsyncHttpServlet() {
+		AsyncServlet servlet = new AsyncServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, Callback callback) {
+			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
 				HttpResponse content = HttpResponse.ok200().withBody(HELLO_WORLD);
-				callback.setResponse(content);
+				callback.setResult(content);
 			}
 		};
 

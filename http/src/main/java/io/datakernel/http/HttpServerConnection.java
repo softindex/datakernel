@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncSslSocket;
 import io.datakernel.eventloop.AsyncTcpSocket;
@@ -26,7 +27,6 @@ import java.net.InetAddress;
 import java.util.Arrays;
 
 import static io.datakernel.bytebuf.ByteBufStrings.SP;
-import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.http.GzipProcessor.toGzip;
 import static io.datakernel.http.HttpHeaders.CONNECTION;
 import static io.datakernel.http.HttpHeaders.CONTENT_ENCODING;
@@ -36,7 +36,6 @@ import static io.datakernel.http.HttpMethod.*;
  * It represents server connection. It can receive requests from clients and respond to them with async servlet.
  */
 final class HttpServerConnection extends AbstractHttpConnection {
-	private static final byte[] INTERNAL_ERROR_MESSAGE = encodeAscii("Failed to process request");
 	private static final HttpHeaders.Value CONNECTION_KEEP_ALIVE = HttpHeaders.asBytes(CONNECTION, "keep-alive");
 
 	private static final int HEADERS_SLOTS = 256;
@@ -63,7 +62,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	private HttpRequest request;
 	private final AsyncHttpServer server;
-	private final AsyncHttpServlet servlet;
+	private final AsyncServlet servlet;
 
 	/**
 	 * Creates a new instance of HttpServerConnection
@@ -74,7 +73,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	 * @param pool      pool in which will be stored this connection
 	 */
 	private HttpServerConnection(Eventloop eventloop, InetAddress remoteAddress, AsyncTcpSocket asyncTcpSocket,
-	                             AsyncHttpServer server, AsyncHttpServlet servlet,
+	                             AsyncHttpServer server, AsyncServlet servlet,
 	                             ExposedLinkedList<AbstractHttpConnection> pool, char[] headerChars,
 	                             int maxHttpMessageSize) {
 		super(eventloop, asyncTcpSocket, headerChars, maxHttpMessageSize);
@@ -85,7 +84,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	static HttpServerConnection create(Eventloop eventloop, InetAddress remoteAddress,
 	                                   AsyncTcpSocket asyncTcpSocket, AsyncHttpServer server,
-	                                   AsyncHttpServlet servlet,
+	                                   AsyncServlet servlet,
 	                                   ExposedLinkedList<AbstractHttpConnection> pool, char[] headerChars,
 	                                   int maxHttpMessageSize) {
 		return new HttpServerConnection(eventloop, remoteAddress, asyncTcpSocket, server, servlet,
@@ -211,51 +210,46 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		// jmx
 		server.requestHandlingStarted(this, request);
 
-		try {
-			servlet.serveAsync(request, new AsyncHttpServlet.Callback() {
-				@Override
-				public void onResult(final HttpResponse httpResponse) {
-					assert eventloop.inEventloopThread();
-					if (!isClosed()) {
-						try {
-							if (shouldGzip && httpResponse.getBody() != null) {
-								httpResponse.setHeader(HttpHeaders.asBytes(CONTENT_ENCODING, CONTENT_ENCODING_GZIP));
-								httpResponse.setBody(toGzip(httpResponse.detachBody()));
-							}
-							writeHttpResult(httpResponse);
-						} catch (ParseException e) {
-							writeException(new HttpServletError(500));
-							server.recordApplicationError();
+		servlet.serve(request, new ResultCallback<HttpResponse>() {
+			@Override
+			public void onResult(final HttpResponse httpResponse) {
+				assert eventloop.inEventloopThread();
+				if (!isClosed()) {
+					try {
+						if (shouldGzip && httpResponse.getBody() != null) {
+							httpResponse.setHeader(HttpHeaders.asBytes(CONTENT_ENCODING, CONTENT_ENCODING_GZIP));
+							httpResponse.setBody(toGzip(httpResponse.detachBody()));
 						}
-					} else {
-						// connection is closed, but bufs are not recycled, let's recycle them now
-						recycleBufs();
-						httpResponse.recycleBufs();
-					}
-
-					// jmx
-					server.requestHandlingFinished(HttpServerConnection.this);
-				}
-
-				@Override
-				public void onHttpError(HttpServletError httpServletError) {
-					assert eventloop.inEventloopThread();
-					if (!isClosed()) {
-						writeException(httpServletError);
+						writeHttpResult(httpResponse);
+					} catch (ParseException e) {
+						writeException(e);
 						server.recordApplicationError();
-					} else {
-						// connection is closed, but bufs are not recycled, let's recycle them now
-						recycleBufs();
 					}
-
-					// jmx
-					server.requestHandlingFinished(HttpServerConnection.this);
+				} else {
+					// connection is closed, but bufs are not recycled, let's recycle them now
+					recycleBufs();
+					httpResponse.recycleBufs();
 				}
-			});
-		} catch (ParseException e) {
-			writeException(new HttpServletError(400, e));
-			server.recordApplicationError();
-		}
+
+				// jmx
+				server.requestHandlingFinished(HttpServerConnection.this);
+			}
+
+			@Override
+			protected void onException(Exception e) {
+				assert eventloop.inEventloopThread();
+				if (!isClosed()) {
+					writeException(e);
+					server.recordApplicationError();
+				} else {
+					// connection is closed, but bufs are not recycled, let's recycle them now
+					recycleBufs();
+				}
+
+				// jmx
+				server.requestHandlingFinished(HttpServerConnection.this);
+			}
+		});
 	}
 
 	@Override
@@ -295,13 +289,8 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		}
 	}
 
-	private void writeException(HttpServletError e) {
-		writeHttpResult(formatException(e));
-	}
-
-	private HttpResponse formatException(HttpServletError e) {
-		ByteBuf message = ByteBuf.wrapForReading(INTERNAL_ERROR_MESSAGE);
-		return HttpResponse.ofCode(e.getCode()).withNoCache().withBody(message);
+	private void writeException(Exception e) {
+		writeHttpResult(server.formatHttpError(e));
 	}
 
 	private void recycleBufs() {
