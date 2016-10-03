@@ -74,6 +74,7 @@ public class RpcBinaryProtocolTest {
 				.withStrategy(server(address));
 
 		final RpcServer server = RpcServer.create(eventloop)
+				.withMessageTypes(String.class)
 				.withHandler(String.class, String.class, new RpcRequestHandler<String, String>() {
 					@Override
 					public void run(String request, ResultCallback<String> callback) {

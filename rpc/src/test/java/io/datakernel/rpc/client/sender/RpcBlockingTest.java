@@ -65,18 +65,21 @@ public class RpcBlockingTest {
 		eventloop = Eventloop.create();
 
 		serverOne = RpcServer.create(eventloop)
+				.withMessageTypes(HelloRequest.class, HelloResponse.class)
 				.withHandler(HelloRequest.class, HelloResponse.class,
 						helloServiceRequestHandler(new HelloServiceImplOne()))
 				.withListenPort(PORT_1);
 		serverOne.listen();
 
 		serverTwo = RpcServer.create(eventloop)
+				.withMessageTypes(HelloRequest.class, HelloResponse.class)
 				.withHandler(HelloRequest.class, HelloResponse.class,
 						helloServiceRequestHandler(new HelloServiceImplTwo()))
 				.withListenPort(PORT_2);
 		serverTwo.listen();
 
 		serverThree = RpcServer.create(eventloop)
+				.withMessageTypes(HelloRequest.class, HelloResponse.class)
 				.withHandler(HelloRequest.class, HelloResponse.class,
 						helloServiceRequestHandler(new HelloServiceImplThree()))
 				.withListenPort(PORT_3);

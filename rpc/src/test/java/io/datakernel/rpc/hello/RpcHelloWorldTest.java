@@ -87,6 +87,7 @@ public class RpcHelloWorldTest {
 
 	private static RpcServer createServer(Eventloop eventloop) {
 		return RpcServer.create(eventloop)
+				.withMessageTypes(HelloRequest.class, HelloResponse.class)
 				.withHandler(HelloRequest.class, HelloResponse.class, helloServiceRequestHandler(new HelloService() {
 					@Override
 					public String hello(String name) throws Exception {

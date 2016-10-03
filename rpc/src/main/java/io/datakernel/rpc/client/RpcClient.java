@@ -49,8 +49,6 @@ import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamP
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
 import static java.lang.ClassLoader.getSystemClassLoader;
-import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
 
 public final class RpcClient implements IRpcClient, EventloopService, EventloopJmxMBean {
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create().withTcpNoDelay(true);
@@ -99,13 +97,13 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 	private final ExceptionStats lastProtocolError = ExceptionStats.create();
 
 	// region builders
-	private RpcClient(Eventloop eventloop, SocketSettings socketSettings, Collection<Class<?>> messageTypes,
+	private RpcClient(Eventloop eventloop, SocketSettings socketSettings, Set<Class<?>> messageTypes,
 	                  SerializerBuilder serializerBuilder, RpcStrategy strategy, RpcProtocolFactory protocol,
 	                  Logger logger, long connectTimeoutMillis, long reconnectIntervalMillis,
 	                  SSLContext sslContext, ExecutorService executor) {
 		this.eventloop = eventloop;
 		this.socketSettings = socketSettings;
-		this.messageTypes = new LinkedHashSet<>(messageTypes);
+		this.messageTypes = messageTypes;
 		this.serializerBuilder = serializerBuilder;
 		this.protocolFactory = protocol;
 		this.logger = logger;
@@ -128,7 +126,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 	public static RpcClient create(final Eventloop eventloop) {
 		checkNotNull(eventloop);
 
-		List<Class<?>> defaultMessageTypes = emptyList();
+		Set<Class<?>> defaultMessageTypes = null;
 		SerializerBuilder serializerBuilder = SerializerBuilder.create(getSystemClassLoader());
 		RpcStrategy defaultStrategy = new NoServersStrategy();
 		RpcStreamProtocolFactory defaultProtocol = streamProtocol();
@@ -153,16 +151,13 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 
 	public RpcClient withMessageTypes(Class<?>... messageTypes) {
 		checkNotNull(messageTypes);
-		return new RpcClient(
-				eventloop, socketSettings, asList(messageTypes), serializerBuilder,
-				strategy, protocolFactory, logger, connectTimeoutMillis, reconnectIntervalMillis,
-				sslContext, sslExecutor);
+		return withMessageTypes(Arrays.asList(messageTypes));
 	}
 
 	public RpcClient withMessageTypes(List<Class<?>> messageTypes) {
 		checkNotNull(messageTypes);
 		return new RpcClient(
-				eventloop, socketSettings, messageTypes, serializerBuilder,
+				eventloop, socketSettings, new LinkedHashSet<>(messageTypes), serializerBuilder,
 				strategy, protocolFactory, logger, connectTimeoutMillis, reconnectIntervalMillis,
 				sslContext, sslExecutor);
 	}
@@ -288,6 +283,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 	}
 
 	private BufferSerializer<RpcMessage> getSerializer() {
+		checkState(messageTypes != null, "Message types must be specified");
 		if (serializer == null) {
 			serializer = serializerBuilder.withSubclasses(RpcMessage.MESSAGE_TYPES, messageTypes).build(RpcMessage.class);
 		}

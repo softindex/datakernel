@@ -39,6 +39,8 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamProtocol;
+import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.checkState;
 import static java.lang.ClassLoader.getSystemClassLoader;
 import static java.util.Arrays.asList;
 
@@ -114,7 +116,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		HashMap<Class<?>, RpcRequestHandler<?, ?>> requestHandlers = new HashMap<>();
 		RpcProtocolFactory protocolFactory = streamProtocol();
 		SerializerBuilder serializerBuilder = SerializerBuilder.create(getSystemClassLoader());
-		Set<Class<?>> messageTypes = new LinkedHashSet<>();
+		Set<Class<?>> messageTypes = null;
 		Logger logger = LoggerFactory.getLogger(RpcServer.class);
 
 		return new RpcServer(eventloop, requestHandlers, protocolFactory, serializerBuilder, messageTypes, logger)
@@ -123,23 +125,27 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	}
 
 	public RpcServer withMessageTypes(Class<?>... messageTypes) {
+		checkNotNull(messageTypes);
 		return withMessageTypes(asList(messageTypes));
 	}
 
 	public RpcServer withMessageTypes(List<Class<?>> messageTypes) {
-		this.messageTypes.addAll(messageTypes);
-		return this;
+		checkNotNull(messageTypes);
+		return new RpcServer(this, handlers, protocolFactory, serializerBuilder, new LinkedHashSet<>(messageTypes), logger);
 	}
 
 	public RpcServer withSerializerBuilder(SerializerBuilder serializerBuilder) {
+		checkNotNull(serializerBuilder);
 		return new RpcServer(this, handlers, protocolFactory, serializerBuilder, messageTypes, logger);
 	}
 
 	public RpcServer withLogger(Logger logger) {
+		checkNotNull(logger);
 		return new RpcServer(this, handlers, protocolFactory, serializerBuilder, messageTypes, logger);
 	}
 
 	public RpcServer withProtocol(RpcProtocolFactory protocolFactory) {
+		checkNotNull(protocolFactory);
 		return new RpcServer(this, handlers, protocolFactory, serializerBuilder, messageTypes, logger);
 	}
 
@@ -153,10 +159,6 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 
 	@SuppressWarnings("unchecked")
 	public <I, O> RpcServer withHandler(Class<I> requestClass, Class<O> responseClass, RpcRequestHandler<I, O> handler) {
-		if (!messageTypes.contains(requestClass))
-			messageTypes.add(requestClass);
-		if (!messageTypes.contains(responseClass))
-			messageTypes.add(responseClass);
 		handlers.put(requestClass, handler);
 		return this;
 	}
@@ -174,6 +176,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	// endregion
 
 	private BufferSerializer<RpcMessage> getSerializer() {
+		checkState(messageTypes != null, "Message types must be specified");
 		if (serializer == null) {
 			serializer = serializerBuilder.withSubclasses(RpcMessage.MESSAGE_TYPES, messageTypes).build(RpcMessage.class);
 		}
