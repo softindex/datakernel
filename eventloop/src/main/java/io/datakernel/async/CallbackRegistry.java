@@ -16,7 +16,13 @@
 
 package io.datakernel.async;
 
+import io.datakernel.jmx.ConcurrentJmxMBean;
+import io.datakernel.jmx.JmxAttribute;
+
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static io.datakernel.jmx.MBeanFormat.formatDuration;
 
 public final class CallbackRegistry {
 	private static final ConcurrentHashMap<Object, Long> REGISTRY = new ConcurrentHashMap<>();
@@ -27,5 +33,32 @@ public final class CallbackRegistry {
 
 	public static void complete(Object callback) {
 		assert REGISTRY.remove(callback) != null : "Callback " + callback + " has already been completed";
+	}
+
+	public static final class CallbackRegistryStats implements ConcurrentJmxMBean {
+
+		@JmxAttribute(description = "")
+		public List<String> getCurrentCallbacks() {
+			List<Map.Entry<Object, Long>> entries = new ArrayList<>(REGISTRY.entrySet());
+			Collections.sort(entries, new Comparator<Map.Entry<Object, Long>>() {
+				@Override
+				public int compare(Map.Entry<Object, Long> o1, Map.Entry<Object, Long> o2) {
+					return o1.getValue().compareTo(o2.getValue());
+				}
+			});
+
+			List<String> lines = new ArrayList<>();
+			lines.add("Duration       Callback");
+			long currentTime = System.currentTimeMillis();
+			for (Map.Entry<Object, Long> entry : entries) {
+				String duration = formatDuration(currentTime - entry.getValue());
+				Object callback = entry.getKey();
+				String className = callback.getClass().getName();
+				String callbackString = callback.toString();
+				lines.add(String.format("%s   %s: %s", duration, className, callbackString));
+			}
+
+			return lines;
+		}
 	}
 }
