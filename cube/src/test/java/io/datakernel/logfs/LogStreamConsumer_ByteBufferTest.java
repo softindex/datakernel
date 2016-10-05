@@ -51,10 +51,9 @@ import java.util.concurrent.Executors;
 import static io.datakernel.async.AsyncCallbacks.postExceptionConcurrently;
 import static io.datakernel.async.AsyncCallbacks.postResultConcurrently;
 import static io.datakernel.bytebuf.ByteBufPool.*;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.logfs.LogManagerImpl.DEFAULT_FILE_SWITCH_PERIOD;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
 
 public class LogStreamConsumer_ByteBufferTest {
 	@Rule
@@ -84,7 +83,7 @@ public class LogStreamConsumer_ByteBufferTest {
 	@Test
 	public void testProducerWithError() throws InterruptedException {
 		final SettableCurrentTimeProvider timeProvider = SettableCurrentTimeProvider.create();
-		final Eventloop eventloop = Eventloop.create().withCurrentTimeProvider(timeProvider);
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentTimeProvider(timeProvider);
 		timeProvider.setTime(new LocalDateTime("1970-01-01T00:59:59").toDateTime(DateTimeZone.UTC).getMillis());
 		final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormat.forPattern("yyyy-MM-dd_HH").withZone(DateTimeZone.UTC);
 
@@ -141,12 +140,11 @@ public class LogStreamConsumer_ByteBufferTest {
 		assertEquals(getLast(listWriter).getConsumerStatus(), StreamStatus.CLOSED_WITH_ERROR);
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testFileSystemWithError() throws InterruptedException {
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormat.forPattern("yyyy-MM-dd_HH").withZone(DateTimeZone.UTC);
 
 		final LogFileSystem fileSystem = new SimpleLogFileSystem(eventloop, executor, testDir, listWriter) {
@@ -215,7 +213,6 @@ public class LogStreamConsumer_ByteBufferTest {
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	public static <T> T getLast(List<T> list) {

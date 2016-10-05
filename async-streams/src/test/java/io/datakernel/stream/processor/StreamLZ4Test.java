@@ -32,9 +32,10 @@ import java.util.List;
 import java.util.Random;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
 public class StreamLZ4Test {
 	private static ByteBuf createRandomByteBuf(Random random) {
@@ -69,7 +70,7 @@ public class StreamLZ4Test {
 
 	@Test
 	public void test() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		List<ByteBuf> buffers = new ArrayList<>();
 		Random random = new Random(123456);
@@ -115,12 +116,11 @@ public class StreamLZ4Test {
 		assertEquals(END_OF_STREAM, decompressor.getInput().getConsumerStatus());
 		assertEquals(END_OF_STREAM, decompressor.getOutput().getProducerStatus());
 
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testWithoutConsumer() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		List<ByteBuf> buffers = new ArrayList<>();
 		Random random = new Random(123456);
@@ -173,43 +173,38 @@ public class StreamLZ4Test {
 
 		assertEquals(END_OF_STREAM, decompressor.getInput().getConsumerStatus());
 		assertEquals(END_OF_STREAM, decompressor.getOutput().getProducerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testRaw() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.rawCompressor(eventloop);
 
 		doTest(eventloop, compressor);
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testLz4Fast() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
 
 		doTest(eventloop, compressor);
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testLz4High() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.highCompressor(eventloop);
 
 		doTest(eventloop, compressor);
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testLz4High10() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.highCompressor(eventloop, 10);
 
 		doTest(eventloop, compressor);
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	private void doTest(Eventloop eventloop, StreamLZ4Compressor compressor) {

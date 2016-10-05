@@ -28,6 +28,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.ExecutorService;
 
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
 public class StressServer {
@@ -40,7 +41,7 @@ public class StressServer {
 	private static final int PORT = 5560;
 
 	private static final ExecutorService executor = newCachedThreadPool();
-	private static final Eventloop eventloop = Eventloop.create();
+	private static final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 	public static SimpleFsServer server = SimpleFsServer.create(eventloop, executor, STORAGE_PATH)
 			.withListenPort(PORT);

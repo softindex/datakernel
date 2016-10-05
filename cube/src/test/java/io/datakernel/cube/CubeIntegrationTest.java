@@ -50,10 +50,9 @@ import static io.datakernel.aggregation_db.fieldtype.FieldTypes.longSum;
 import static io.datakernel.aggregation_db.keytype.KeyTypes.dateKey;
 import static io.datakernel.aggregation_db.keytype.KeyTypes.intKey;
 import static io.datakernel.cube.CubeTestUtils.*;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
 
 @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
 public class CubeIntegrationTest {
@@ -107,7 +106,7 @@ public class CubeIntegrationTest {
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		Path aggregationsDir = temporaryFolder.newFolder().toPath();
 		Path logsDir = temporaryFolder.newFolder().toPath();
 		AggregationStructure structure = getStructure();
@@ -200,7 +199,6 @@ public class CubeIntegrationTest {
 			expectedChunkFileNames.add(i + ".log");
 		}
 		assertEquals(expectedChunkFileNames, actualChunkFileNames);
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	private void aggregateToMap(Map<Integer, Long> map, List<LogItem> logItems) {

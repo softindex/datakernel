@@ -18,6 +18,7 @@ import java.util.Random;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpUtils.inetAddress;
 import static io.datakernel.http.MediaTypes.*;
@@ -28,7 +29,7 @@ public class ClientStressTest {
 
 	private static final String PATH_TO_URLS = "./src/test/resources/urls.txt";
 
-	private Eventloop eventloop = Eventloop.create();
+	private Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 	private ExecutorService executor = newCachedThreadPool();
 	private Random random = new Random();
 	private Iterator<String> urls = getUrls().iterator();

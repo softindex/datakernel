@@ -32,6 +32,7 @@ import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.file.StreamFileReader.readFileFully;
 import static java.nio.file.Files.createDirectory;
 
@@ -44,7 +45,7 @@ public class StreamFileWriterStressTest {
 
 	public static void main(String[] args) throws IOException {
 		final ExecutorService executor = Executors.newFixedThreadPool(2);
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		final Path storage = Paths.get("./test_data/stress_test/");
 		final Path files = storage.resolve("./files/");
 

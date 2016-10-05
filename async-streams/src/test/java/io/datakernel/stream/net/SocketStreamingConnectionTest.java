@@ -40,11 +40,10 @@ import java.util.List;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.*;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.serializer.asm.BufferSerializers.intSerializer;
 import static junit.framework.TestCase.fail;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
 
 @SuppressWarnings("unchecked")
 public final class SocketStreamingConnectionTest {
@@ -64,7 +63,7 @@ public final class SocketStreamingConnectionTest {
 			source.add(i);
 		}
 
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		final StreamConsumers.ToList<Integer> consumerToList = StreamConsumers.toList(eventloop);
 
@@ -109,7 +108,6 @@ public final class SocketStreamingConnectionTest {
 		assertEquals(source, consumerToList.getList());
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -119,7 +117,7 @@ public final class SocketStreamingConnectionTest {
 			source.add(i);
 		}
 
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		final StreamConsumers.ToList<Integer> consumerToList = StreamConsumers.toList(eventloop);
 
@@ -167,7 +165,6 @@ public final class SocketStreamingConnectionTest {
 		assertEquals(source, consumerToList.getList());
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Ignore // TODO(vmykhalko): check this test
@@ -178,7 +175,7 @@ public final class SocketStreamingConnectionTest {
 			source.add(i);
 		}
 
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		List<Integer> list = new ArrayList<>();
 		final TestStreamConsumers.TestConsumerToList<Integer> consumerToListWithError = new TestStreamConsumers.TestConsumerToList<Integer>(eventloop, list) {

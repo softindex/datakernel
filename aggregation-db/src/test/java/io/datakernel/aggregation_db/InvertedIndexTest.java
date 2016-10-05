@@ -35,10 +35,9 @@ import java.util.concurrent.Executors;
 
 import static io.datakernel.aggregation_db.fieldtype.FieldTypes.intList;
 import static io.datakernel.aggregation_db.keytype.KeyTypes.stringKey;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
 
 public class InvertedIndexTest {
 	@Rule
@@ -87,7 +86,7 @@ public class InvertedIndexTest {
 	@Test
 	public void testInvertedIndex() throws Exception {
 		ExecutorService executorService = Executors.newCachedThreadPool();
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
 		AggregationMetadata aggregationMetadata = AggregationMetadata.create(InvertedIndexRecord.KEYS,
@@ -144,6 +143,5 @@ public class InvertedIndexTest {
 		List<InvertedIndexQueryResult> actualResult = consumerToList.getList();
 
 		assertEquals(expectedResult, actualResult);
-		assertThat(eventloop, doesntHaveFatals());
 	}
 }

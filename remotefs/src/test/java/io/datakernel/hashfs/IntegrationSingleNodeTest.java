@@ -52,7 +52,7 @@ import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.async.AsyncCallbacks.waitAll;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamProducers.ofValue;
 import static io.datakernel.stream.file.StreamFileWriter.create;
 import static java.nio.file.Files.*;
@@ -104,7 +104,7 @@ public class IntegrationSingleNodeTest {
 
 	@Test
 	public void testUpload() throws IOException {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = newCachedThreadPool();
 		final HashFsServer server = createServer(eventloop, executor);
 		HashFsClient client = createClient(eventloop);
@@ -126,12 +126,11 @@ public class IntegrationSingleNodeTest {
 
 		assertArrayEquals(CONTENT, readAllBytes(serverStorage.resolve("this/is/a.txt")));
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testFailedUpload() throws Exception {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = newCachedThreadPool();
 		final HashFsServer server = createServer(eventloop, executor);
 		final HashFsClient client = createClient(eventloop);
@@ -163,14 +162,13 @@ public class IntegrationSingleNodeTest {
 		assertTrue(exists(path));
 		assertEquals(0, size(path));
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testDownload() throws IOException, ExecutionException, InterruptedException {
 		final int startPosition = 2;
 		byte[] dFileContent = encodeAscii("Local d.txt".substring(startPosition));
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = newCachedThreadPool();
 		final HashFsServer server = createServer(eventloop, executor);
 		HashFsClient client = createClient(eventloop);
@@ -199,12 +197,11 @@ public class IntegrationSingleNodeTest {
 		assertArrayEquals(dFileContent, readAllBytes(clientStorage.resolve("d_downloaded.txt")));
 		assertArrayEquals(readAllBytes(serverStorage.resolve("this/g.txt")), readAllBytes(clientStorage.resolve("g_downloaded.txt")));
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testFailedDownload() throws IOException {
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		final ExecutorService executor = newCachedThreadPool();
 
 		final HashFsServer server = createServer(eventloop, executor);
@@ -240,12 +237,11 @@ public class IntegrationSingleNodeTest {
 
 		assertFalse(exists(clientStorage.resolve("file_should_not exist.txt")));
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testDelete() throws IOException {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = newCachedThreadPool();
 
 		final HashFsServer server = createServer(eventloop, executor);
@@ -263,12 +259,11 @@ public class IntegrationSingleNodeTest {
 
 		assertFalse(exists(serverStorage.resolve("this/a.txt")));
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testFailedDelete() throws Exception {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = newCachedThreadPool();
 
 		final HashFsServer server = createServer(eventloop, executor);
@@ -295,12 +290,11 @@ public class IntegrationSingleNodeTest {
 		callback.get();
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testList() throws Exception {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = newCachedThreadPool();
 
 		final HashFsServer server = createServer(eventloop, executor);
@@ -332,7 +326,6 @@ public class IntegrationSingleNodeTest {
 
 		assertEquals(expected, actual);
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	private ResultCallback<StreamProducer<ByteBuf>> streamTo(final Eventloop eventloop, final StreamConsumer<ByteBuf> consumer) {

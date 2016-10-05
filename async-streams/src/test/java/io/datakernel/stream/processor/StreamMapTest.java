@@ -25,11 +25,12 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class StreamMapTest {
 
@@ -42,7 +43,7 @@ public class StreamMapTest {
 
 	@Test
 	public void test1() throws Exception {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
 		StreamMap<Integer, Integer> projection = StreamMap.create(eventloop, FUNCTION);
@@ -56,12 +57,11 @@ public class StreamMapTest {
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
 		assertEquals(END_OF_STREAM, projection.getInput().getConsumerStatus());
 		assertEquals(END_OF_STREAM, projection.getOutput().getProducerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testWithError() throws Exception {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		List<Integer> list = new ArrayList<>();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
@@ -94,12 +94,11 @@ public class StreamMapTest {
 		assertEquals(CLOSED_WITH_ERROR, consumer.getConsumerStatus());
 		assertEquals(CLOSED_WITH_ERROR, projection.getInput().getConsumerStatus());
 		assertEquals(CLOSED_WITH_ERROR, projection.getOutput().getProducerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testProducerWithError() throws Exception {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamProducer<Integer> source = StreamProducers.concat(eventloop,
 				StreamProducers.ofValue(eventloop, 1),
@@ -117,12 +116,11 @@ public class StreamMapTest {
 		eventloop.run();
 		assertTrue(list.size() == 2);
 		assertEquals(CLOSED_WITH_ERROR, consumer.getUpstream().getProducerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testWithoutConsumer() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
 		StreamMap<Integer, Integer> projection = StreamMap.create(eventloop, FUNCTION);
@@ -138,6 +136,5 @@ public class StreamMapTest {
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
 		assertEquals(END_OF_STREAM, projection.getInput().getConsumerStatus());
 		assertEquals(END_OF_STREAM, projection.getOutput().getProducerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 }

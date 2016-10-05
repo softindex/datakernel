@@ -26,16 +26,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
 
 public class ProducerOfIteratorTest {
 
 	@Test
 	public void test1() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		List<Integer> list = Arrays.asList(1, 2, 3);
 
@@ -48,7 +47,6 @@ public class ProducerOfIteratorTest {
 		assertEquals(list, consumer.getList());
 		assertEquals(END_OF_STREAM, producer.getProducerStatus());
 		assertEquals(END_OF_STREAM, consumer.getConsumerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 }

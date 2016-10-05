@@ -23,16 +23,15 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
 
 public class ErrorIgnoringTransformerTest {
 
 	@Test
 	public void test1() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
 
 		ErrorIgnoringTransformer<Integer> errorIgnoringTransformer = ErrorIgnoringTransformer.create(eventloop);
@@ -49,12 +48,11 @@ public class ErrorIgnoringTransformerTest {
 		assertEquals(producer.getProducerStatus(), StreamStatus.END_OF_STREAM);
 		assertEquals(errorIgnoringTransformer.getInput().getConsumerStatus(), StreamStatus.END_OF_STREAM);
 		assertEquals(errorIgnoringTransformer.getOutput().getProducerStatus(), StreamStatus.END_OF_STREAM);
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testProducerWithError() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		StreamProducer<Integer> producer = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, asList(1, 2, 3)),
 				StreamProducers.<Integer>closingWithError(eventloop, new Exception("Test Exception")));
@@ -74,12 +72,11 @@ public class ErrorIgnoringTransformerTest {
 		assertEquals(producer.getProducerStatus(), StreamStatus.CLOSED_WITH_ERROR);
 		assertEquals(errorIgnoringTransformer.getInput().getConsumerStatus(), StreamStatus.CLOSED_WITH_ERROR);
 		assertEquals(errorIgnoringTransformer.getOutput().getProducerStatus(), StreamStatus.END_OF_STREAM);
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testConsumerWithError() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5, 6));
 
 		ErrorIgnoringTransformer<Integer> errorIgnoringTransformer = ErrorIgnoringTransformer.create(eventloop);
@@ -105,6 +102,5 @@ public class ErrorIgnoringTransformerTest {
 		assertEquals(producer.getProducerStatus(), StreamStatus.CLOSED_WITH_ERROR);
 		assertEquals(errorIgnoringTransformer.getInput().getConsumerStatus(), StreamStatus.CLOSED_WITH_ERROR);
 		assertEquals(errorIgnoringTransformer.getOutput().getProducerStatus(), StreamStatus.CLOSED_WITH_ERROR);
-		assertThat(eventloop, doesntHaveFatals());
 	}
 }

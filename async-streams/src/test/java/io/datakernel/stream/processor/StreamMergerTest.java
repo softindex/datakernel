@@ -30,7 +30,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.processor.Utils.assertConsumerStatuses;
@@ -42,7 +42,7 @@ public class StreamMergerTest {
 
 	@Test
 	public void testDeduplicate() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		StreamProducer<Integer> source0 = StreamProducers.ofIterable(eventloop, Collections.<Integer>emptyList());
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(3, 7));
 		StreamProducer<Integer> source2 = StreamProducers.ofIterable(eventloop, asList(3, 4, 6));
@@ -66,12 +66,11 @@ public class StreamMergerTest {
 		assertEquals(END_OF_STREAM, consumer.getConsumerStatus());
 		assertEquals(END_OF_STREAM, merger.getOutput().getProducerStatus());
 		assertConsumerStatuses(END_OF_STREAM, merger.getInputs());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testDuplicate() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		StreamProducer<Integer> source0 = StreamProducers.ofIterable(eventloop, Collections.<Integer>emptyList());
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(3, 7));
 		StreamProducer<Integer> source2 = StreamProducers.ofIterable(eventloop, asList(3, 4, 6));
@@ -95,12 +94,11 @@ public class StreamMergerTest {
 		assertEquals(END_OF_STREAM, consumer.getConsumerStatus());
 		assertEquals(END_OF_STREAM, merger.getOutput().getProducerStatus());
 		assertConsumerStatuses(END_OF_STREAM, merger.getInputs());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void test() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		DataItem1 d0 = new DataItem1(0, 1, 1, 1);
 		DataItem1 d1 = new DataItem1(0, 2, 1, 2);
 		DataItem1 d2 = new DataItem1(0, 6, 1, 3);
@@ -145,12 +143,11 @@ public class StreamMergerTest {
 		assertEquals(END_OF_STREAM, consumer.getConsumerStatus());
 		assertEquals(END_OF_STREAM, merger.getOutput().getProducerStatus());
 		assertConsumerStatuses(END_OF_STREAM, merger.getInputs());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testDeduplicateWithError() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(7, 8, 3));
 		StreamProducer<Integer> source2 = StreamProducers.ofIterable(eventloop, asList(3, 4, 6));
 
@@ -189,13 +186,12 @@ public class StreamMergerTest {
 		assertEquals(CLOSED_WITH_ERROR, merger.getOutput().getProducerStatus());
 		assertArrayEquals(new StreamStatus[]{END_OF_STREAM, END_OF_STREAM},
 				consumerStatuses(merger.getInputs()));
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@SuppressWarnings("unchecked")
 	@Test
 	public void testProducerDeduplicateWithError() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		StreamProducer<Integer> source1 = StreamProducers.concat(eventloop,
 				StreamProducers.ofValue(eventloop, 7),
 				StreamProducers.ofValue(eventloop, 8),
@@ -228,12 +224,11 @@ public class StreamMergerTest {
 		assertEquals(CLOSED_WITH_ERROR, merger.getOutput().getProducerStatus());
 		assertArrayEquals(new StreamStatus[]{CLOSED_WITH_ERROR, END_OF_STREAM},
 				consumerStatuses(merger.getInputs()));
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testWithoutConsumer() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		StreamProducer<Integer> source0 = StreamProducers.ofIterable(eventloop, Collections.<Integer>emptyList());
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(3, 7));
 		StreamProducer<Integer> source2 = StreamProducers.ofIterable(eventloop, asList(3, 4, 6));
@@ -258,6 +253,5 @@ public class StreamMergerTest {
 		assertEquals(END_OF_STREAM, consumer.getConsumerStatus());
 		assertEquals(END_OF_STREAM, merger.getOutput().getProducerStatus());
 		assertConsumerStatuses(END_OF_STREAM, merger.getInputs());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 }

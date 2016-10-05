@@ -28,7 +28,7 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.processor.StreamReducers.mergeDeduplicateReducer;
@@ -42,7 +42,7 @@ import static org.junit.Assert.*;
 public class StreamReducerTest {
 	@Test
 	public void testEmpty() throws Exception {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, EMPTY_LIST);
 
@@ -60,12 +60,11 @@ public class StreamReducerTest {
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
 		assertEquals(END_OF_STREAM, streamReducer.getOutput().getProducerStatus());
 		assertConsumerStatuses(END_OF_STREAM, streamReducer.getInputs());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testDeduplicate() throws Exception {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamProducer<Integer> source0 = StreamProducers.ofIterable(eventloop, EMPTY_LIST);
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(7));
@@ -105,12 +104,11 @@ public class StreamReducerTest {
 
 		assertEquals(END_OF_STREAM, streamReducer.getOutput().getProducerStatus());
 		assertConsumerStatuses(END_OF_STREAM, streamReducer.getInputs());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testWithError() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamProducer<KeyValue1> source1 = StreamProducers.ofIterable(eventloop, asList(new KeyValue1(1, 10.0), new KeyValue1(3, 30.0)));
 		StreamProducer<KeyValue2> source2 = StreamProducers.ofIterable(eventloop, asList(new KeyValue2(1, 10.0), new KeyValue2(3, 30.0)));
@@ -159,12 +157,11 @@ public class StreamReducerTest {
 		assertEquals(CLOSED_WITH_ERROR, streamReducer.getOutput().getProducerStatus());
 		assertArrayEquals(new StreamStatus[]{CLOSED_WITH_ERROR, END_OF_STREAM, END_OF_STREAM},
 				consumerStatuses(streamReducer.getInputs()));
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testProducerDisconnectWithError() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamProducer<KeyValue1> source1 = StreamProducers.ofIterable(eventloop,
 				asList(new KeyValue1(1, 10.0), new KeyValue1(3, 30.0)));
@@ -194,7 +191,6 @@ public class StreamReducerTest {
 		assertTrue(list.size() == 0);
 		assertEquals(CLOSED_WITH_ERROR, source1.getProducerStatus());
 		assertEquals(END_OF_STREAM, source3.getProducerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	private static final class KeyValue1 {
@@ -385,7 +381,7 @@ public class StreamReducerTest {
 
 	@Test
 	public void test2() throws Exception {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamProducer<KeyValue1> source1 = StreamProducers.ofIterable(eventloop, asList(new KeyValue1(1, 10.0), new KeyValue1(3, 30.0)));
 		StreamProducer<KeyValue2> source2 = StreamProducers.ofIterable(eventloop, asList(new KeyValue2(1, 10.0), new KeyValue2(3, 30.0)));
@@ -415,12 +411,11 @@ public class StreamReducerTest {
 		assertEquals(END_OF_STREAM, source1.getProducerStatus());
 		assertEquals(END_OF_STREAM, source2.getProducerStatus());
 		assertEquals(END_OF_STREAM, source3.getProducerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void test3() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamProducer<KeyValue1> source1 = StreamProducers.ofIterable(eventloop, asList(new KeyValue1(1, 10.0), new KeyValue1(3, 30.0)));
 		StreamProducer<KeyValue2> source2 = StreamProducers.ofIterable(eventloop, asList(new KeyValue2(1, 10.0), new KeyValue2(3, 30.0)));
@@ -450,12 +445,11 @@ public class StreamReducerTest {
 		assertEquals(END_OF_STREAM, source1.getProducerStatus());
 		assertEquals(END_OF_STREAM, source2.getProducerStatus());
 		assertEquals(END_OF_STREAM, source3.getProducerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testWithoutConsumer() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamProducer<Integer> source0 = StreamProducers.ofIterable(eventloop, EMPTY_LIST);
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(7));
@@ -497,12 +491,11 @@ public class StreamReducerTest {
 
 		assertEquals(END_OF_STREAM, streamReducer.getOutput().getProducerStatus());
 		assertConsumerStatuses(END_OF_STREAM, streamReducer.getInputs());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testWithoutProducer() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamReducer<Integer, Integer, Void> streamReducer = StreamReducer.create(eventloop, Ordering.<Integer>natural(), 1);
 		CheckCallCallback checkCallCallback = new CheckCallCallback();
@@ -513,7 +506,6 @@ public class StreamReducerTest {
 		eventloop.run();
 
 		assertTrue(checkCallCallback.isCall());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	class CheckCallCallback extends CompletionCallback {

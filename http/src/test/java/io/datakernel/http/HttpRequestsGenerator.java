@@ -26,6 +26,7 @@ import io.datakernel.exception.ParseException;
 import io.datakernel.util.Stopwatch;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.util.Preconditions.*;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -245,7 +246,7 @@ public final class HttpRequestsGenerator {
 			return;
 		info(options);
 
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		HttpRequestsGenerator generator = new HttpRequestsGenerator(eventloop, options, ignoreCompletionCallback());
 		generator.start();

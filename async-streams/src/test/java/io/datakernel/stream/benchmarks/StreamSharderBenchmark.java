@@ -26,6 +26,8 @@ import io.datakernel.stream.processor.StreamSharder;
 
 import java.util.ArrayList;
 
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+
 public class StreamSharderBenchmark implements Runnable {
 	private long bestTime;
 	private long worstTime;
@@ -85,7 +87,7 @@ public class StreamSharderBenchmark implements Runnable {
 		this.bestTime = -1;
 		this.worstTime = -1;
 
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		for (int i = 0; i < this.benchmarkRounds; i++) {
 			setUp(eventloop);

@@ -35,10 +35,11 @@ import java.nio.file.Paths;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.nio.file.StandardOpenOption.READ;
 import static java.nio.file.StandardOpenOption.WRITE;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
 public class AsyncFileTest {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
@@ -48,7 +49,7 @@ public class AsyncFileTest {
 	@Test
 	public void testReadFully() throws Exception {
 		final File tempFile = temporaryFolder.newFile("hello-2.html");
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		final Path srcPath = Paths.get("test_data/hello.html");
 		AsyncFile.open(eventloop, Executors.newCachedThreadPool(), srcPath, new OpenOption[]{READ}, new AssertingResultCallback<AsyncFile>() {
 			@Override
@@ -84,6 +85,5 @@ public class AsyncFileTest {
 
 		eventloop.run();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 }

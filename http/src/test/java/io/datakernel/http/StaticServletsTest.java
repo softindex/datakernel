@@ -37,9 +37,8 @@ import static io.datakernel.async.AsyncCallbacks.ignoreResultCallback;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
 
 @SuppressWarnings("ThrowableResultOfMethodCallIgnored")
 public class StaticServletsTest {
@@ -65,7 +64,7 @@ public class StaticServletsTest {
 
 	@Test
 	public void testStaticServletForFiles() throws InterruptedException {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		final List<String> res = new ArrayList<>();
@@ -83,12 +82,11 @@ public class StaticServletsTest {
 		assertEquals(1, res.size());
 		assertEquals(EXPECTED_CONTENT, res.get(0));
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testStaticServletForFilesAccessToRestrictedFile() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		final List<Exception> res = new ArrayList<>();
@@ -109,12 +107,11 @@ public class StaticServletsTest {
 		assertEquals(1, res.size());
 		assertEquals(404, ((HttpException) res.get(0)).getCode());
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testStaticServletForResourcesAccessToRestrictedFile() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		final List<Exception> res = new ArrayList<>();
@@ -135,12 +132,11 @@ public class StaticServletsTest {
 		assertEquals(1, res.size());
 		assertEquals(404, ((HttpException) res.get(0)).getCode());
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testStaticServletForFilesFileNotFound() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		final List<Exception> res = new ArrayList<>();
@@ -163,12 +159,11 @@ public class StaticServletsTest {
 		assertEquals(1, res.size());
 		assertEquals(404, ((HttpException) res.get(0)).getCode());
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testStaticServletForResourcesFileNotFound() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		final List<Exception> res = new ArrayList<>();
@@ -190,6 +185,5 @@ public class StaticServletsTest {
 		assertEquals(1, res.size());
 		assertEquals(404, ((HttpException) res.get(0)).getCode());
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 }

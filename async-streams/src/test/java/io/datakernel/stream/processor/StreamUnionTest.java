@@ -26,7 +26,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.processor.Utils.assertConsumerStatuses;
@@ -39,7 +39,7 @@ import static org.junit.Assert.*;
 public class StreamUnionTest {
 	@Test
 	public void test1() throws Exception {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamUnion<Integer> streamUnion = StreamUnion.create(eventloop);
 
@@ -77,12 +77,11 @@ public class StreamUnionTest {
 
 		assertEquals(END_OF_STREAM, streamUnion.getOutput().getProducerStatus());
 		assertConsumerStatuses(END_OF_STREAM, streamUnion.getInputs());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testWithError() throws Exception {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamUnion<Integer> streamUnion = StreamUnion.create(eventloop);
 
@@ -124,12 +123,11 @@ public class StreamUnionTest {
 		assertEquals(CLOSED_WITH_ERROR, streamUnion.getOutput().getProducerStatus());
 		assertArrayEquals(new StreamStatus[]{CLOSED_WITH_ERROR, END_OF_STREAM, END_OF_STREAM},
 				consumerStatuses(streamUnion.getInputs()));
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testProducerWithError() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamUnion<Integer> streamUnion = StreamUnion.create(eventloop);
 
@@ -154,12 +152,11 @@ public class StreamUnionTest {
 		assertTrue(list.size() == 3);
 		assertEquals(CLOSED_WITH_ERROR, streamUnion.getOutput().getProducerStatus());
 		assertConsumerStatuses(CLOSED_WITH_ERROR, streamUnion.getInputs());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testWithoutConsumer() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamUnion<Integer> streamUnion = StreamUnion.create(eventloop);
 
@@ -199,12 +196,11 @@ public class StreamUnionTest {
 
 		assertEquals(END_OF_STREAM, streamUnion.getOutput().getProducerStatus());
 		assertConsumerStatuses(END_OF_STREAM, streamUnion.getInputs());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testWithoutProducer() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamUnion<Integer> streamUnion = StreamUnion.create(eventloop);
 		CheckCallCallback checkCallCallback = new CheckCallCallback();
@@ -215,7 +211,6 @@ public class StreamUnionTest {
 		eventloop.run();
 
 		assertTrue(checkCallCallback.isCall());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	class CheckCallCallback extends CompletionCallback {

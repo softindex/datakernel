@@ -25,6 +25,7 @@ import io.datakernel.stream.processor.StreamBinarySerializer;
 
 import java.util.ArrayList;
 
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.serializer.asm.BufferSerializers.intSerializer;
 
 public class StreamSerializerBenchmark implements Runnable {
@@ -74,7 +75,7 @@ public class StreamSerializerBenchmark implements Runnable {
 		this.bestTime = -1;
 		this.worstTime = -1;
 
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		for (int i = 0; i < this.benchmarkRounds; i++) {
 			setUp(eventloop);

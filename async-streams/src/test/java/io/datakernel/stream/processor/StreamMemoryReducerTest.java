@@ -27,7 +27,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.processor.Utils.consumerStatuses;
@@ -39,7 +39,7 @@ public class StreamMemoryReducerTest {
 	@SuppressWarnings("ToArrayCallWithZeroLengthArrayArgument")
 	@Test
 	public void test1() throws Exception {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamProducer<DataItem1> source1 = StreamProducers.ofIterable(eventloop, asList(
 				new DataItem1(1, 1, 10, 20),
@@ -99,13 +99,12 @@ public class StreamMemoryReducerTest {
 
 		assertArrayEquals(new DataItemResult[]{new DataItemResult(1, 1, 30, 60, 0), new DataItemResult(1, 2, 60, 90, 0)},
 				result.toArray(new DataItemResult[0]));
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@SuppressWarnings("ToArrayCallWithZeroLengthArrayArgument")
 	@Test
 	public void testWithError() throws Exception {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		List<DataItemResult> list = new ArrayList<>();
 
 		StreamProducer<DataItem1> source1 = StreamProducers.ofIterable(eventloop, asList(
@@ -169,13 +168,12 @@ public class StreamMemoryReducerTest {
 		assertTrue(list.size() == 2);
 		assertEquals(END_OF_STREAM, source1.getProducerStatus());
 		assertEquals(END_OF_STREAM, source2.getProducerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@SuppressWarnings("ToArrayCallWithZeroLengthArrayArgument")
 	@Test
 	public void testProducerWithError() throws Exception {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamProducer<DataItem1> source1 = StreamProducers.concat(eventloop,
 				StreamProducers.ofValue(eventloop, new DataItem1(1, 1, 10, 20)),
@@ -227,12 +225,11 @@ public class StreamMemoryReducerTest {
 		assertArrayEquals(new StreamStatus[]{CLOSED_WITH_ERROR, END_OF_STREAM},
 				consumerStatuses(sorter.getInputs()));
 		assertEquals(CLOSED_WITH_ERROR, sorter.getOutput().getProducerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testWithoutConsumer() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamProducer<DataItem1> source1 = StreamProducers.ofIterable(eventloop, asList(
 				new DataItem1(1, 1, 10, 20),
@@ -293,12 +290,11 @@ public class StreamMemoryReducerTest {
 
 		assertArrayEquals(new DataItemResult[]{new DataItemResult(1, 1, 30, 60, 0), new DataItemResult(1, 2, 60, 90, 0)},
 				result.toArray(new DataItemResult[0]));
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testWithoutProducer() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamReducers.ReducerToAccumulator<DataItemKey, DataItem1, DataItemResult> reducer = new StreamReducers.ReducerToAccumulator<DataItemKey, DataItem1, DataItemResult>() {
 			@Override
@@ -330,7 +326,6 @@ public class StreamMemoryReducerTest {
 		eventloop.run();
 
 		assertTrue(checkCallCallback.isCall());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	class CheckCallCallback extends CompletionCallback {

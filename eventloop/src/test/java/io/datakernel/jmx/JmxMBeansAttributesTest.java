@@ -27,6 +27,7 @@ import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.TabularData;
 import java.util.*;
 
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
@@ -335,7 +336,7 @@ public class JmxMBeansAttributesTest {
 
 		@Override
 		public Eventloop getEventloop() {
-			return Eventloop.create();
+			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		}
 	}
 
@@ -353,7 +354,7 @@ public class JmxMBeansAttributesTest {
 
 		@Override
 		public Eventloop getEventloop() {
-			return Eventloop.create();
+			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		}
 	}
 
@@ -371,7 +372,7 @@ public class JmxMBeansAttributesTest {
 
 		@Override
 		public Eventloop getEventloop() {
-			return Eventloop.create();
+			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		}
 	}
 
@@ -389,7 +390,7 @@ public class JmxMBeansAttributesTest {
 
 		@Override
 		public Eventloop getEventloop() {
-			return Eventloop.create();
+			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		}
 	}
 

@@ -38,9 +38,8 @@ import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeUtf8;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
 
 public class AsyncHttpClientTest {
 	private static final int PORT = 45788;
@@ -58,7 +57,7 @@ public class AsyncHttpClientTest {
 
 	@Test
 	public void testAsyncClient() throws Exception {
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		final AsyncHttpServer httpServer = HelloWorldServer.helloWorldServer(eventloop, PORT);
 		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop,
@@ -92,13 +91,12 @@ public class AsyncHttpClientTest {
 		assertEquals(decodeUtf8(HelloWorldServer.HELLO_WORLD), resultObserver.get());
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test(expected = TimeoutException.class)
 	public void testTimeout() throws Throwable {
 		final int TIMEOUT = 100;
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		final AsyncHttpServer httpServer = AsyncHttpServer.create(eventloop, new AsyncServlet() {
 			@Override
@@ -146,13 +144,12 @@ public class AsyncHttpClientTest {
 		} catch (ExecutionException e) {
 			throw e.getCause();
 		}
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test(expected = TimeoutException.class)
 	public void testClientTimeoutConnect() throws Throwable {
 		final int TIMEOUT = 1;
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop,
 				AsyncDnsClient.create(eventloop).withDnsServerAddress(GOOGLE_PUBLIC_DNS));
@@ -184,13 +181,12 @@ public class AsyncHttpClientTest {
 		} catch (ExecutionException e) {
 			throw e.getCause();
 		}
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test(expected = ParseException.class)
 	public void testBigHttpMessage() throws Throwable {
 		final int TIMEOUT = 1000;
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		final AsyncHttpServer httpServer = HelloWorldServer.helloWorldServer(eventloop, PORT);
 		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop, AsyncDnsClient.create(eventloop))
@@ -227,12 +223,11 @@ public class AsyncHttpClientTest {
 		} catch (ExecutionException e) {
 			throw e.getCause();
 		}
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test(expected = ParseException.class)
 	public void testEmptyLineResponse() throws Throwable {
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		final SocketHandlerProvider socketHandlerProvider = new SocketHandlerProvider() {
 			@Override
@@ -301,6 +296,5 @@ public class AsyncHttpClientTest {
 		} catch (ExecutionException e) {
 			throw e.getCause();
 		}
-		assertThat(eventloop, doesntHaveFatals());
 	}
 }

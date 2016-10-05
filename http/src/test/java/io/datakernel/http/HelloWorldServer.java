@@ -20,6 +20,7 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 
 public final class HelloWorldServer {
 	public static final int PORT = 5588;
@@ -38,7 +39,7 @@ public final class HelloWorldServer {
 	}
 
 	public static void main(String[] args) throws Exception {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		AsyncHttpServer server = helloWorldServer(eventloop, PORT);
 

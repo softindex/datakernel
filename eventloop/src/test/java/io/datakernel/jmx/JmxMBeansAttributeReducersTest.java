@@ -22,6 +22,7 @@ import org.junit.Test;
 import javax.management.DynamicMBean;
 import java.util.List;
 
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
@@ -51,7 +52,7 @@ public class JmxMBeansAttributeReducersTest {
 
 		@Override
 		public Eventloop getEventloop() {
-			return Eventloop.create();
+			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		}
 	}
 

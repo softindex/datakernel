@@ -30,7 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static com.google.common.base.Objects.equal;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
@@ -111,7 +111,7 @@ public class StreamJoinAsUnsortedStreamTest {
 
 	@Test
 	public void test1() throws Exception {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamProducer<DataItemMaster> source1 = StreamProducers.ofIterable(eventloop, asList(
 				new DataItemMaster(10, 10, "masterA"),
@@ -170,12 +170,11 @@ public class StreamJoinAsUnsortedStreamTest {
 				result.toArray(new DataItemMasterDetail[result.size()]));
 		assertEquals(END_OF_STREAM, source1.getProducerStatus());
 		assertEquals(END_OF_STREAM, source2.getProducerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testWithError() throws Exception {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		List<DataItemMasterDetail> list = new ArrayList<>();
 
 		StreamProducer<DataItemMaster> source1 = StreamProducers.ofIterable(eventloop, asList(
@@ -243,12 +242,11 @@ public class StreamJoinAsUnsortedStreamTest {
 		assertTrue(list.size() == 1);
 		assertTrue((source1).getProducerStatus() == StreamStatus.CLOSED_WITH_ERROR);
 		assertTrue((source2).getProducerStatus() == StreamStatus.END_OF_STREAM);
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testProducerWithError() throws Exception {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		StreamProducer<DataItemMaster> source1 = StreamProducers.concat(eventloop,
 				StreamProducers.ofValue(eventloop, new DataItemMaster(10, 10, "masterA")),
 				StreamProducers.<DataItemMaster>closingWithError(eventloop, new Exception("Test Exception")),
@@ -303,6 +301,5 @@ public class StreamJoinAsUnsortedStreamTest {
 		assertTrue(list.size() == 0);
 		assertTrue((source1).getProducerStatus() == StreamStatus.CLOSED_WITH_ERROR);
 		assertTrue((source2).getProducerStatus() == StreamStatus.CLOSED_WITH_ERROR);
-		assertThat(eventloop, doesntHaveFatals());
 	}
 }

@@ -49,11 +49,12 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 
 class StressClient {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	private InetSocketAddress address = new InetSocketAddress(5560);
-	private Eventloop eventloop = Eventloop.create();
+	private Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 	private ExecutorService executor = Executors.newCachedThreadPool();
 
 	private SimpleFsClient client = SimpleFsClient.create(eventloop, address);

@@ -38,10 +38,11 @@ import java.util.List;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.*;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.serializer.asm.BufferSerializers.longSerializer;
 import static junit.framework.TestCase.fail;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 @SuppressWarnings("unchecked")
 public class MessagingWithBinaryStreamingTest {
@@ -56,7 +57,7 @@ public class MessagingWithBinaryStreamingTest {
 
 	@Test
 	public void testPing() throws Exception {
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		SocketHandlerProvider socketHandlerProvider = new SocketHandlerProvider() {
 			@Override
@@ -140,7 +141,6 @@ public class MessagingWithBinaryStreamingTest {
 		eventloop.run();
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -150,7 +150,7 @@ public class MessagingWithBinaryStreamingTest {
 //			source.add(i);
 //		}
 
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		List<Long> l = new ArrayList<>();
 		final StreamConsumers.ToList<Long> consumerToList = StreamConsumers.toList(eventloop, l);
@@ -218,7 +218,6 @@ public class MessagingWithBinaryStreamingTest {
 		assertEquals(source, consumerToList.getList());
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -228,7 +227,7 @@ public class MessagingWithBinaryStreamingTest {
 			source.add(i);
 		}
 
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		final StreamConsumers.ToList<Long> consumerToList = StreamConsumers.toList(eventloop);
 
@@ -298,7 +297,6 @@ public class MessagingWithBinaryStreamingTest {
 		assertEquals(source, consumerToList.getList());
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -310,7 +308,7 @@ public class MessagingWithBinaryStreamingTest {
 
 		final boolean[] ack = new boolean[]{false};
 
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		final StreamConsumers.ToList<Long> consumerToList = StreamConsumers.toList(eventloop);
 
@@ -408,7 +406,6 @@ public class MessagingWithBinaryStreamingTest {
 		assertTrue(ack[0]);
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -418,7 +415,7 @@ public class MessagingWithBinaryStreamingTest {
 			source.add(i);
 		}
 
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		final StreamConsumers.ToList<Long> consumerToList = StreamConsumers.toList(eventloop);
 
@@ -490,7 +487,6 @@ public class MessagingWithBinaryStreamingTest {
 		assertEquals(source, consumerToList.getList());
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 }

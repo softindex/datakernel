@@ -28,13 +28,13 @@ import java.nio.channels.DatagramChannel;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.Eventloop.createDatagramChannel;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static org.junit.Assert.*;
 
 public class UdpSocketHandlerTest {
 	private static final int SERVER_PORT = 45555;
 	private static final InetSocketAddress SERVER_ADDRESS = new InetSocketAddress("127.0.0.1", SERVER_PORT);
-	private Eventloop eventloop = Eventloop.create();
+	private Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 	private final byte[] bytesToSend = new byte[]{-127, 100, 0, 5, 11, 13, 17, 99};
 
@@ -133,6 +133,5 @@ public class UdpSocketHandlerTest {
 		eventloop.run();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 }

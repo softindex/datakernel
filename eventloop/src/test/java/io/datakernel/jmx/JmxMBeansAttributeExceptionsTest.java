@@ -22,6 +22,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
 
 public class JmxMBeansAttributeExceptionsTest {
@@ -100,7 +101,7 @@ public class JmxMBeansAttributeExceptionsTest {
 
 		@Override
 		public Eventloop getEventloop() {
-			return Eventloop.create();
+			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		}
 	}
 
@@ -116,7 +117,7 @@ public class JmxMBeansAttributeExceptionsTest {
 
 		@Override
 		public Eventloop getEventloop() {
-			return Eventloop.create();
+			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		}
 	}
 
@@ -133,7 +134,7 @@ public class JmxMBeansAttributeExceptionsTest {
 
 		@Override
 		public Eventloop getEventloop() {
-			return Eventloop.create();
+			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		}
 	}
 

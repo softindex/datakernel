@@ -23,9 +23,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
 
 public class ParallelAsyncExecutorTest {
 	private static class ExecutionInfo {
@@ -41,7 +40,7 @@ public class ParallelAsyncExecutorTest {
 	@Test
 	public void testSequential() throws Exception {
 		AsyncExecutor executor = AsyncExecutors.sequentialExecutor();
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		Map<Integer, ExecutionInfo> executionInfoMap = new HashMap<>();
 		int tasks = 5;
 
@@ -58,14 +57,13 @@ public class ParallelAsyncExecutorTest {
 			ExecutionInfo current = executionInfoMap.get(i);
 			assertEquals(previous.endTimestamp, current.startTimestamp);
 		}
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testParallel() throws Exception {
 		int maxParallelism = 3;
 		AsyncExecutor executor = AsyncExecutors.parallelExecutor(maxParallelism, 5);
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		Map<Integer, ExecutionInfo> executionInfoMap = new HashMap<>();
 		int tasks = 9;
 
@@ -85,7 +83,6 @@ public class ParallelAsyncExecutorTest {
 				assertEquals(previous.startTimestamp, current.startTimestamp);
 			}
 		}
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	private static void submitTestTask(AsyncExecutor executor, Eventloop eventloop, Map<Integer, ExecutionInfo> executionInfoMap, int n) {

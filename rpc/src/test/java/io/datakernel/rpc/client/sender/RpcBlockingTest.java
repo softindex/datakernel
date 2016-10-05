@@ -38,10 +38,9 @@ import static io.datakernel.async.AsyncCallbacks.startFuture;
 import static io.datakernel.async.AsyncCallbacks.stopFuture;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.EventloopThreadFactory.defaultEventloopThreadFactory;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.*;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
 
 public class RpcBlockingTest {
 
@@ -62,7 +61,7 @@ public class RpcBlockingTest {
 		ByteBufPool.clear();
 		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 
-		eventloop = Eventloop.create();
+		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		serverOne = RpcServer.create(eventloop)
 				.withMessageTypes(HelloRequest.class, HelloResponse.class)
@@ -157,7 +156,6 @@ public class RpcBlockingTest {
 		serverThree.closeFuture().await();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	private static String blockingRequest(final RpcClient rpcClient, final String name) throws Exception {

@@ -33,6 +33,7 @@ import java.security.SecureRandom;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.https.SslUtils.*;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
@@ -46,7 +47,7 @@ public class TestHttpsServer {
 	}
 
 	public static void main(String[] args) throws Exception {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = newCachedThreadPool();
 
 		AsyncServlet bobServlet = new AsyncServlet() {

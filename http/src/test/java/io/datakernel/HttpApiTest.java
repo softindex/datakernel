@@ -36,8 +36,9 @@ import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.*;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
-import static org.junit.Assert.*;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 @SuppressWarnings("ConstantConditions")
 public class HttpApiTest {
@@ -70,7 +71,7 @@ public class HttpApiTest {
 
 	@Before
 	public void setUp() {
-		eventloop = Eventloop.create();
+		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		AsyncServlet servlet = new AsyncServlet() {
 			@Override
 			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
@@ -137,7 +138,6 @@ public class HttpApiTest {
 		});
 		eventloop.run();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	private HttpResponse createResponse() {

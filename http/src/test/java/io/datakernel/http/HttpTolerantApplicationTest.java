@@ -34,10 +34,11 @@ import java.net.Socket;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.bytebuf.ByteBufStrings.*;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.TestUtils.readFully;
 import static io.datakernel.http.TestUtils.toByteArray;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class HttpTolerantApplicationTest {
 
@@ -77,7 +78,7 @@ public class HttpTolerantApplicationTest {
 
 	@Test
 	public void testTolerantServer() throws Exception {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 		AsyncHttpServer server = asyncHttpServer(eventloop, port);
@@ -97,7 +98,6 @@ public class HttpTolerantApplicationTest {
 		thread.join();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	private static ServerSocket socketServer(int port, final String testResponse) throws IOException {
@@ -140,7 +140,7 @@ public class HttpTolerantApplicationTest {
 	public void testTolerantClient() throws Exception {
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 		final ResultCallbackFuture<String> resultObserver = ResultCallbackFuture.create();
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		try (ServerSocket ignored = socketServer(port, "HTTP/1.1 200 OK\nContent-Type:  \t  text/html; charset=UTF-8\nContent-Length:  4\n\n/abc")) {
 			final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop,
 					AsyncDnsClient.create(eventloop).withDnsServerAddress(HttpUtils.inetAddress("8.8.8.8")));
@@ -164,7 +164,6 @@ public class HttpTolerantApplicationTest {
 		assertEquals("text/html; charset=UTF-8", resultObserver.get());
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 }

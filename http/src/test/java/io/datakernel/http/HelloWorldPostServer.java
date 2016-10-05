@@ -21,6 +21,7 @@ import io.datakernel.eventloop.Eventloop;
 
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 
 public final class HelloWorldPostServer {
 	public static final int PORT = 5588;
@@ -40,7 +41,7 @@ public final class HelloWorldPostServer {
 	}
 
 	public static void main(String[] args) throws Exception {
-		final Eventloop primaryEventloop = Eventloop.create();
+		final Eventloop primaryEventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		final AsyncHttpServer httpServerListener = helloWorldServer(primaryEventloop, PORT);
 

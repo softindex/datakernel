@@ -23,17 +23,16 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
 
 public class StreamConsumerDecoratorTest {
 	@Test
 	public void test2() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		List<Integer> list = new ArrayList<>();
 		final TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
@@ -49,12 +48,11 @@ public class StreamConsumerDecoratorTest {
 		assertEquals(list, asList(1, 2, 3));
 		assertEquals(CLOSED_WITH_ERROR, consumer.getConsumerStatus());
 		assertEquals(CLOSED_WITH_ERROR, consumerDecorator.getConsumerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void test1() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		List<Integer> list = new ArrayList<>();
 		final StreamConsumers.ToList<Integer> consumer = StreamConsumers.toList(eventloop, list);
@@ -68,7 +66,6 @@ public class StreamConsumerDecoratorTest {
 		assertEquals(list, asList(1, 2, 3, 4, 5));
 		assertEquals(END_OF_STREAM, consumer.getConsumerStatus());
 		assertEquals(END_OF_STREAM, decorator.getConsumerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 }

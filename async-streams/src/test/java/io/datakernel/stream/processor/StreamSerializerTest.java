@@ -30,13 +30,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.serializer.asm.BufferSerializers.intSerializer;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
 
 public class StreamSerializerTest {
 
@@ -48,7 +47,7 @@ public class StreamSerializerTest {
 
 	@Test
 	public void test1() throws Exception {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(10, 20, 30, 40));
 		StreamBinarySerializer<Integer> serializerStream = StreamBinarySerializer.create(eventloop, intSerializer(), 14, 14, 0, false);
@@ -73,12 +72,11 @@ public class StreamSerializerTest {
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 		assertEquals(END_OF_STREAM, serializerStream.getInput().getConsumerStatus());
 		assertEquals(END_OF_STREAM, serializerStream.getOutput().getProducerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void test2() throws Exception {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		List<Integer> list = new ArrayList<>();
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
@@ -101,12 +99,11 @@ public class StreamSerializerTest {
 
 		assertEquals(END_OF_STREAM, deserializerStream.getInput().getConsumerStatus());
 		assertEquals(END_OF_STREAM, deserializerStream.getOutput().getProducerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testWithoutConsumer() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		List<Integer> list = new ArrayList<>();
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
@@ -133,12 +130,11 @@ public class StreamSerializerTest {
 
 		assertEquals(END_OF_STREAM, deserializerStream.getInput().getConsumerStatus());
 		assertEquals(END_OF_STREAM, deserializerStream.getOutput().getProducerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testProducerWithError() throws Exception {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		List<Integer> list = new ArrayList<>();
 		StreamProducer<Integer> source = StreamProducers.closingWithError(eventloop, new Exception("Test Exception"));
@@ -161,7 +157,6 @@ public class StreamSerializerTest {
 
 		assertEquals(CLOSED_WITH_ERROR, deserializerStream.getInput().getConsumerStatus());
 		assertEquals(CLOSED_WITH_ERROR, deserializerStream.getOutput().getProducerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 }

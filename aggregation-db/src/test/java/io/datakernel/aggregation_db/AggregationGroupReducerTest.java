@@ -39,9 +39,10 @@ import java.util.List;
 import static io.datakernel.aggregation_db.AggregationStructure.createKeyFunction;
 import static io.datakernel.aggregation_db.fieldtype.FieldTypes.intList;
 import static io.datakernel.aggregation_db.keytype.KeyTypes.stringKey;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 @SuppressWarnings({"Duplicates", "unchecked"})
 public class AggregationGroupReducerTest {
@@ -65,7 +66,7 @@ public class AggregationGroupReducerTest {
 
 	@Test
 	public void test() throws IOException {
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
 		AggregationMetadata aggregationMetadata = AggregationMetadata.create(InvertedIndexRecord.KEYS,
@@ -154,13 +155,12 @@ public class AggregationGroupReducerTest {
 			assertEquals(consumer.getConsumerStatus(), StreamStatus.END_OF_STREAM);
 		}
 
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Ignore // TODO(vsavchuk): fix this test
 	@Test
 	public void testProducerWithError() throws IOException {
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
 		AggregationMetadata aggregationMetadata = AggregationMetadata.create(InvertedIndexRecord.KEYS,
@@ -249,6 +249,5 @@ public class AggregationGroupReducerTest {
 		for (StreamConsumer consumer : listConsumers) {
 			assertEquals(consumer.getConsumerStatus(), StreamStatus.END_OF_STREAM);
 		}
-		assertThat(eventloop, doesntHaveFatals());
 	}
 }

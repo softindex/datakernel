@@ -25,17 +25,18 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
 public class StreamRewiringTest {
 	@Test
 	public void noRewire() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamProducers.OfIterator<Integer> producer = new StreamProducers.OfIterator<>(eventloop, asList(1, 2, 3).iterator());
 		StreamFunction<Integer, Integer> function1 = StreamFunction.create(eventloop, Functions.<Integer>identity());
@@ -57,12 +58,11 @@ public class StreamRewiringTest {
 
 		assertEquals(asList("1", "2", "3"), consumer1.getList());
 		assertEquals(END_OF_STREAM, producer.getProducerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void rewireConsumer1() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamProducers.OfIterator<Integer> producer = new StreamProducers.OfIterator<>(eventloop, asList(1, 2, 3).iterator());
 		StreamFunction<Integer, Integer> function1 = StreamFunction.create(eventloop, Functions.<Integer>identity());
@@ -90,12 +90,11 @@ public class StreamRewiringTest {
 		assertEquals(CLOSED_WITH_ERROR, consumer1.getUpstream().getProducerStatus());
 		assertEquals(END_OF_STREAM, consumer2.getUpstream().getProducerStatus());
 		assertEquals(END_OF_STREAM, producer.getProducerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void rewireConsumer2() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamProducers.OfIterator<Integer> producer = new StreamProducers.OfIterator<>(eventloop, asList(1, 2, 3).iterator());
 		StreamFunction<Integer, Integer> function1 = StreamFunction.create(eventloop, Functions.<Integer>identity());
@@ -122,12 +121,11 @@ public class StreamRewiringTest {
 		eventloop.run();
 		assertEquals(asList(), consumer2.getList());
 		assertEquals(END_OF_STREAM, consumer2.getConsumerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void rewireProducer1() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamProducers.OfIterator<Integer> producer0 = new StreamProducers.OfIterator<>(eventloop, asList(0).iterator(), false);
 		StreamProducers.OfIterator<Integer> producer1 = new StreamProducers.OfIterator<>(eventloop, asList(1, 2, 3).iterator(), false);
@@ -161,12 +159,11 @@ public class StreamRewiringTest {
 		assertEquals(asList("1", "2", "3", "4", "5", "6"), consumer.getList());
 
 		assertEquals(END_OF_STREAM, producer2.getProducerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testProducerWithoutConsumer() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1));
 		StreamFunction<Integer, Integer> function = StreamFunction.create(eventloop, Functions.<Integer>identity());
 		producer.streamTo(function.getInput());
@@ -179,6 +176,5 @@ public class StreamRewiringTest {
 		eventloop.run();
 
 		assertEquals(asList(1), consumer.getList());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 }

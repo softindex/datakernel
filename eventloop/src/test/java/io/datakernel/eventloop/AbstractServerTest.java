@@ -12,13 +12,14 @@ import java.nio.channels.SocketChannel;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.*;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
-import static org.junit.Assert.*;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class AbstractServerTest {
 	@Test
 	public void testTimeouts() throws IOException {
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		InetSocketAddress address = new InetSocketAddress(5588);
 		final SocketSettings settings = SocketSettings.create().withReadTimeout(100000L).withWriteTimeout(100000L);
@@ -111,6 +112,5 @@ public class AbstractServerTest {
 
 		eventloop.run();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 }

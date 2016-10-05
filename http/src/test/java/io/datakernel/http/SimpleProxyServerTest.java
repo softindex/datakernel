@@ -35,10 +35,11 @@ import java.net.Socket;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.TestUtils.readFully;
 import static io.datakernel.http.TestUtils.toByteArray;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class SimpleProxyServerTest {
 	final static int ECHO_SERVER_PORT = 9707;
@@ -89,13 +90,13 @@ public class SimpleProxyServerTest {
 
 	@Test
 	public void testSimpleProxyServer() throws Exception {
-		Eventloop eventloop1 = Eventloop.create();
+		Eventloop eventloop1 = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		AsyncHttpServer echoServer = echoServer(eventloop1);
 		echoServer.listen();
 		Thread echoServerThread = new Thread(eventloop1);
 		echoServerThread.start();
 
-		Eventloop eventloop2 = Eventloop.create();
+		Eventloop eventloop2 = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop2,
 				AsyncDnsClient.create(eventloop2)
 						.withDatagramSocketSetting(DatagramSocketSettings.create())
@@ -128,8 +129,6 @@ public class SimpleProxyServerTest {
 		proxyServerThread.join();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
-		assertThat(eventloop1, doesntHaveFatals());
-		assertThat(eventloop2, doesntHaveFatals());
 	}
 
 }

@@ -51,10 +51,9 @@ import java.util.Arrays;
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.async.AsyncCallbacks.waitAll;
 import static io.datakernel.datagraph.dataset.Datasets.*;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
 
 public class PageRankTest {
 
@@ -224,7 +223,7 @@ public class PageRankTest {
 		InetSocketAddress address1 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1571);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1572);
 
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		final StreamConsumers.ToList<Rank> result1 = new StreamConsumers.ToList<>(eventloop);
 		StreamConsumers.ToList<Rank> result2 = new StreamConsumers.ToList<>(eventloop);
 
@@ -293,7 +292,6 @@ public class PageRankTest {
 
 		assertEquals(asList(new Rank(2, 0.6069)), result1.getList());
 		assertEquals(asList(new Rank(1, 1.7861), new Rank(3, 0.6069)), result2.getList());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 }

@@ -41,10 +41,9 @@ import java.net.InetSocketAddress;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.datagraph.dataset.Datasets.*;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
 
 public class DatagraphServerTest {
 
@@ -91,7 +90,7 @@ public class DatagraphServerTest {
 		InetSocketAddress address1 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1511);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1512);
 
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		StreamConsumers.ToList<TestItem> result1 = new StreamConsumers.ToList<>(eventloop);
 		StreamConsumers.ToList<TestItem> result2 = new StreamConsumers.ToList<>(eventloop);
 
@@ -145,7 +144,6 @@ public class DatagraphServerTest {
 
 		assertEquals(asList(new TestItem(1), new TestItem(3), new TestItem(5)), result1.getList());
 		assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6)), result2.getList());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -154,7 +152,7 @@ public class DatagraphServerTest {
 		InetSocketAddress address1 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1511);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1512);
 
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		StreamConsumers.ToList<TestItem> result1 = new StreamConsumers.ToList<>(eventloop);
 		StreamConsumers.ToList<TestItem> result2 = new StreamConsumers.ToList<>(eventloop);
 
@@ -210,7 +208,6 @@ public class DatagraphServerTest {
 
 		assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6), new TestItem(6)), result1.getList());
 		assertEquals(asList(new TestItem(1), new TestItem(1), new TestItem(3), new TestItem(5)), result2.getList());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -219,7 +216,7 @@ public class DatagraphServerTest {
 		InetSocketAddress address1 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1511);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1512);
 
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		DatagraphClient client = new DatagraphClient(eventloop, serialization);
 		StreamConsumers.ToList<TestItem> result1 = new StreamConsumers.ToList<>(eventloop);
 		StreamConsumers.ToList<TestItem> result2 = new StreamConsumers.ToList<>(eventloop);
@@ -287,7 +284,6 @@ public class DatagraphServerTest {
 
 		assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6)), result1.getList());
 		assertEquals(asList(new TestItem(2), new TestItem(8)), result2.getList());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -296,7 +292,7 @@ public class DatagraphServerTest {
 		InetSocketAddress address1 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1511);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1512);
 
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		DatagraphClient client = new DatagraphClient(eventloop, serialization);
 		final StreamConsumers.ToList<TestItem> resultConsumer = new StreamConsumers.ToList<>(eventloop);
 

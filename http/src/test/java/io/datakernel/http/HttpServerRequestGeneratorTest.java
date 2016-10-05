@@ -22,6 +22,8 @@ import io.datakernel.http.HttpRequestsGenerator.GeneratorOptions;
 import io.datakernel.http.HttpThrottlingServer.ServerOptions;
 import io.datakernel.util.Stopwatch;
 
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+
 public class HttpServerRequestGeneratorTest {
 	private static final String SERVER_URL = "http://localhost:" + HttpThrottlingServer.SERVER_PORT;
 
@@ -51,7 +53,7 @@ public class HttpServerRequestGeneratorTest {
 		generatorOptions.setUrl(SERVER_URL);
 		HttpRequestsGenerator.info(generatorOptions);
 
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		final HttpThrottlingServer server = new HttpThrottlingServer(eventloop, serverOptions);
 		server.start();

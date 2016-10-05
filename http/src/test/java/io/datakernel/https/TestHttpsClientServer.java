@@ -41,14 +41,13 @@ import static io.datakernel.async.AsyncCallbacks.waitAll;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.HttpRequest.post;
 import static io.datakernel.http.HttpResponse.ok200;
 import static io.datakernel.http.HttpUtils.inetAddress;
 import static io.datakernel.https.SslUtils.*;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 import static junit.framework.TestCase.assertEquals;
-import static org.junit.Assert.assertThat;
 
 public class TestHttpsClientServer {
 	private static final int PORT = 5590;
@@ -68,7 +67,7 @@ public class TestHttpsClientServer {
 			callback.setResult(ok200().withBody(wrapAscii("Hello, I am Bob!")));
 		}
 	};
-	private Eventloop eventloop = Eventloop.create();
+	private Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 	private ExecutorService executor = newCachedThreadPool();
 	private SSLContext context = createSslContext("TLSv1.2", keyManagers, trustManagers, new SecureRandom());
 
@@ -110,7 +109,6 @@ public class TestHttpsClientServer {
 
 		assertEquals("Hello, I am Bob!", callback.get());
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -171,6 +169,5 @@ public class TestHttpsClientServer {
 
 		assertEquals(callbackHttp.get(), callbackHttps.get());
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 }

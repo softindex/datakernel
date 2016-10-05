@@ -38,9 +38,10 @@ import static io.datakernel.aggregation_db.AggregationGroupReducerTest.NO_OP_TRA
 import static io.datakernel.aggregation_db.fieldtype.FieldTypes.intSum;
 import static io.datakernel.aggregation_db.fieldtype.FieldTypes.longSum;
 import static io.datakernel.aggregation_db.keytype.KeyTypes.intKey;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class AggregationChunkerTest {
 
@@ -49,7 +50,7 @@ public class AggregationChunkerTest {
 
 	@Test
 	public void test() throws IOException {
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withFatalErrorHandler(rethrowOnAnyError());
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
 		AggregationMetadata aggregationMetadata = AggregationMetadata.create(KeyValuePair.KEYS, KeyValuePair.FIELDS);
@@ -139,12 +140,11 @@ public class AggregationChunkerTest {
 		for (StreamConsumer consumer : listConsumers) {
 			assertEquals(consumer.getConsumerStatus(), StreamStatus.END_OF_STREAM);
 		}
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testProducerWithError() throws IOException {
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withFatalErrorHandler(rethrowOnAnyError());
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
 		AggregationMetadata aggregationMetadata = AggregationMetadata.create(KeyValuePair.KEYS, KeyValuePair.FIELDS);
@@ -237,7 +237,6 @@ public class AggregationChunkerTest {
 			assertEquals(listConsumers.get(i).getConsumerStatus(), StreamStatus.END_OF_STREAM);
 		}
 		assertEquals(getLast(listConsumers).getConsumerStatus(), StreamStatus.CLOSED_WITH_ERROR);
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	static <T> T getLast(List<T> list) {
@@ -246,7 +245,7 @@ public class AggregationChunkerTest {
 
 	@Test
 	public void testStorageConsumerWithError() throws IOException {
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withFatalErrorHandler(rethrowOnAnyError());
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
 		AggregationMetadata aggregationMetadata = AggregationMetadata.create(KeyValuePair.KEYS, KeyValuePair.FIELDS);
@@ -337,6 +336,5 @@ public class AggregationChunkerTest {
 			assertEquals(listConsumers.get(i).getConsumerStatus(), StreamStatus.END_OF_STREAM);
 		}
 		assertEquals(getLast(listConsumers).getConsumerStatus(), StreamStatus.CLOSED_WITH_ERROR);
-		assertThat(eventloop, doesntHaveFatals());
 	}
 }

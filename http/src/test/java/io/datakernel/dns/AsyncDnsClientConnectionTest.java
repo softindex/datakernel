@@ -30,8 +30,9 @@ import java.nio.channels.DatagramChannel;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.Eventloop.createDatagramChannel;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
-import static org.junit.Assert.*;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class AsyncDnsClientConnectionTest {
 	private DnsClientHandler dnsClientConnection;
@@ -45,7 +46,7 @@ public class AsyncDnsClientConnectionTest {
 		ByteBufPool.clear();
 		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 
-		eventloop = Eventloop.create();
+		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 	}
 
 	private class DnsResolveCallback extends ResultCallback<DnsQueryResult> {
@@ -121,6 +122,5 @@ public class AsyncDnsClientConnectionTest {
 		eventloop.run();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 }

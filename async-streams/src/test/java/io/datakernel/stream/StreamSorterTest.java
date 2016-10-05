@@ -28,16 +28,17 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class StreamSorterTest {
 	@Test
 	public void test() throws Exception {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(3, 1, 3, 2, 5, 1, 4, 3, 2));
 
@@ -56,12 +57,11 @@ public class StreamSorterTest {
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
 		assertEquals(END_OF_STREAM, sorter.getOutput().getProducerStatus());
 		assertEquals(END_OF_STREAM, sorter.getInput().getConsumerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testWithoutConsumer() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(3, 1, 3, 2, 5, 1, 4, 3, 2));
 
@@ -81,12 +81,11 @@ public class StreamSorterTest {
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
 		assertEquals(END_OF_STREAM, sorter.getOutput().getProducerStatus());
 		assertEquals(END_OF_STREAM, sorter.getInput().getConsumerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testCollision() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		StreamMergeSorterStorage<Integer> storage = new StreamMergeSorterStorageStub<>(eventloop);
 
 		final StreamProducer<Integer> scheduledSource = new ScheduledProducer(eventloop) {
@@ -147,12 +146,11 @@ public class StreamSorterTest {
 		assertEquals(END_OF_STREAM, sorter1.getInput().getConsumerStatus());
 		assertEquals(END_OF_STREAM, sorter2.getOutput().getProducerStatus());
 		assertEquals(END_OF_STREAM, sorter2.getInput().getConsumerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testBadStorage() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(3, 1, 3, 2, 5, 1, 4, 3, 2));
 
@@ -193,12 +191,11 @@ public class StreamSorterTest {
 		assertEquals(CLOSED_WITH_ERROR, sorter.getOutput().getProducerStatus());
 		assertEquals(CLOSED_WITH_ERROR, sorter.getInput().getConsumerStatus());
 		assertEquals(CLOSED_WITH_ERROR, consumerToList.getConsumerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testErrorOnConsumer() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(3, 1, 3, 2, 5, 1, 4, 3, 2));
 
@@ -227,12 +224,11 @@ public class StreamSorterTest {
 		assertEquals(CLOSED_WITH_ERROR, sorter.getOutput().getProducerStatus());
 		assertEquals(END_OF_STREAM, sorter.getInput().getConsumerStatus());
 		assertEquals(CLOSED_WITH_ERROR, consumerToList.getConsumerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testErrorOnProducer() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamProducer<Integer> source = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, asList(3, 1, 3, 2)),
@@ -257,6 +253,5 @@ public class StreamSorterTest {
 		assertEquals(CLOSED_WITH_ERROR, consumerToList.getConsumerStatus());
 		assertEquals(CLOSED_WITH_ERROR, sorter.getOutput().getProducerStatus());
 		assertEquals(CLOSED_WITH_ERROR, sorter.getInput().getConsumerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 }

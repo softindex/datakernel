@@ -33,6 +33,7 @@ import io.datakernel.service.ServiceGraphModule;
 import javax.inject.Singleton;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 
 public class HttpHelloWorldLauncher extends Launcher {
 	public static final int PORT = 11111;
@@ -51,7 +52,7 @@ public class HttpHelloWorldLauncher extends Launcher {
 					@Provides
 					@Singleton
 					Eventloop eventloop(@Args String[] args) {
-						return Eventloop.create();
+						return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 					}
 
 					@Provides

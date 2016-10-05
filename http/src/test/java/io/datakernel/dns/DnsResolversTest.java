@@ -37,7 +37,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static org.junit.Assert.*;
 
 public class DnsResolversTest {
@@ -139,7 +139,7 @@ public class DnsResolversTest {
 		ByteBufPool.clear();
 		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 
-		eventloop = Eventloop.create();
+		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		nativeDnsResolver = AsyncDnsClient.create(eventloop).withTimeout(3_000L).withDnsServerAddress(LOCAL_DNS);
 	}
@@ -159,7 +159,6 @@ public class DnsResolversTest {
 		eventloop.run();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@SafeVarargs
@@ -187,7 +186,6 @@ public class DnsResolversTest {
 		Set<InetAddress> nativeResultList = newHashSet(nativeResult);
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Ignore
@@ -203,7 +201,6 @@ public class DnsResolversTest {
 		assertNull(nativeDnsResolverCallback.result);
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Ignore
@@ -228,7 +225,6 @@ public class DnsResolversTest {
 		primaryEventloop.run();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	private void resolveInAnotherThreadWithDelay(final AsyncDnsClient asyncDnsClient, final String domainName,
@@ -241,7 +237,7 @@ public class DnsResolversTest {
 				} catch (InterruptedException e) {
 					logger.warn("Thread interrupted.", e);
 				}
-				Eventloop callerEventloop = Eventloop.create();
+				Eventloop callerEventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 				ConcurrentOperationTracker concurrentOperationTracker = callerEventloop.startConcurrentOperation();
 				ConcurrentDnsResolveCallback callback = new ConcurrentDnsResolveCallback(new DnsResolveCallback(),
 						concurrentOperationTracker, counter);
@@ -276,7 +272,6 @@ public class DnsResolversTest {
 		assertNull(callback.exception);
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -291,7 +286,6 @@ public class DnsResolversTest {
 		assertNull(callback.result);
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -302,7 +296,7 @@ public class DnsResolversTest {
 				3, (short) 1);
 
 		SettableCurrentTimeProvider timeProvider = SettableCurrentTimeProvider.create().withTime(0);
-		Eventloop eventloop = Eventloop.create().withCurrentTimeProvider(timeProvider);
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentTimeProvider(timeProvider);
 		AsyncDnsClient nativeResolver
 				= AsyncDnsClient.create(eventloop).withTimeout(3_000L).withDnsServerAddress(GOOGLE_PUBLIC_DNS);
 		DnsCache cache = nativeResolver.getCache();
@@ -328,7 +322,6 @@ public class DnsResolversTest {
 		eventloop.run();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
-		assertThat(this.eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -340,6 +333,5 @@ public class DnsResolversTest {
 		eventloop.run();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 }

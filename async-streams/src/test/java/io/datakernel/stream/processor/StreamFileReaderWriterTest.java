@@ -46,11 +46,12 @@ import java.util.concurrent.Executors;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.*;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static java.lang.Math.min;
 import static java.nio.file.StandardOpenOption.READ;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
 public class StreamFileReaderWriterTest {
 	Eventloop eventloop;
@@ -72,7 +73,6 @@ public class StreamFileReaderWriterTest {
 		assertEquals(CLOSED_WITH_ERROR, writer.getConsumerStatus());
 		assertEquals(Files.exists(Paths.get("test/outWriterWithError.dat")), false);
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -88,12 +88,11 @@ public class StreamFileReaderWriterTest {
 		assertEquals(CLOSED_WITH_ERROR, writer.getConsumerStatus());
 		assertArrayEquals(com.google.common.io.Files.toByteArray(tempFile), "Test".getBytes());
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testStreamFileReader() throws IOException {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		byte[] fileBytes = Files.readAllBytes(Paths.get("test_data/in.dat"));
@@ -116,12 +115,11 @@ public class StreamFileReaderWriterTest {
 
 		assertArrayEquals(fileBytes, buf.array());
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testStreamFileReaderWithSuspends() throws IOException {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		byte[] fileBytes = Files.readAllBytes(Paths.get("test_data/in.dat"));
@@ -184,12 +182,11 @@ public class StreamFileReaderWriterTest {
 
 		assertArrayEquals(fileBytes, buf.array());
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testStreamFileWriter() throws IOException {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = Executors.newCachedThreadPool();
 		File tempFile = tempFolder.newFile("out.dat");
 		byte[] bytes = new byte[]{'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
@@ -204,12 +201,11 @@ public class StreamFileReaderWriterTest {
 		byte[] fileBytes = com.google.common.io.Files.toByteArray(tempFile);
 		assertArrayEquals(bytes, fileBytes);
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testStreamFileWriterRecycle() throws IOException {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = Executors.newCachedThreadPool();
 		File tempFile = tempFolder.newFile("out.dat");
 		byte[] bytes = new byte[]{'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
@@ -224,7 +220,6 @@ public class StreamFileReaderWriterTest {
 		eventloop.run();
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -243,7 +238,6 @@ public class StreamFileReaderWriterTest {
 		assertEquals(CLOSED_WITH_ERROR, reader.getProducerStatus());
 		assertEquals(CLOSED_WITH_ERROR, writer.getConsumerStatus());
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Before
@@ -251,7 +245,7 @@ public class StreamFileReaderWriterTest {
 		ByteBufPool.clear();
 		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 
-		eventloop = Eventloop.create();
+		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		executor = Executors.newCachedThreadPool();
 		reader = new StreamFileReaderWithError(eventloop, executor, 1, Paths.get("test_data/in.dat"), 0, Long.MAX_VALUE);
 

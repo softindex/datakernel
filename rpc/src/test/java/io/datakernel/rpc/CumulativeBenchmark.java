@@ -35,6 +35,7 @@ import java.util.concurrent.Executors;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.async.AsyncCallbacks.stopFuture;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
 import static io.datakernel.util.MemSize.kilobytes;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -56,8 +57,8 @@ public final class CumulativeBenchmark {
 
 	private static final int SERVICE_PORT = 55555;
 
-	private final Eventloop serverEventloop = Eventloop.create();
-	private final Eventloop clientEventloop = Eventloop.create();
+	private final Eventloop serverEventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+	private final Eventloop clientEventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 	private final RpcServer server = RpcServer.create(serverEventloop)
 			.withStreamProtocol(kilobytes(64), kilobytes(64), true)

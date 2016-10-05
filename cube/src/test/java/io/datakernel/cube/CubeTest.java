@@ -55,11 +55,10 @@ import static io.datakernel.aggregation_db.fieldtype.FieldTypes.longSum;
 import static io.datakernel.aggregation_db.keytype.KeyTypes.intKey;
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.async.AsyncCallbacks.waitAll;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
 
 @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
 public class CubeTest {
@@ -130,7 +129,7 @@ public class CubeTest {
 	@Test
 	public void testQuery1() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
 		AggregationStructure aggregationStructure = cubeStructure();
 		Cube cube = newCube(eventloop, Executors.newCachedThreadPool(), classLoader, storage, aggregationStructure);
@@ -156,7 +155,6 @@ public class CubeTest {
 		System.out.println(consumerToList.getList());
 
 		assertEquals(expected, actual);
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	private static final int LISTEN_PORT = 45578;
@@ -176,7 +174,7 @@ public class CubeTest {
 	@Test
 	public void testSimpleFsAggregationStorage() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		AggregationStructure aggregationStructure = cubeStructure();
 
@@ -244,13 +242,12 @@ public class CubeTest {
 		System.out.println(consumerToList.getList());
 
 		assertEquals(expected, actual);
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testOrdering() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
 		AggregationStructure aggregationStructure = cubeStructure();
 		Cube cube = newCube(eventloop, Executors.newCachedThreadPool(), classLoader, storage, aggregationStructure);
@@ -280,13 +277,12 @@ public class CubeTest {
 		System.out.println(consumerToList.getList());
 
 		assertEquals(expected, actual);
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testMultipleOrdering() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
 		AggregationStructure aggregationStructure = cubeStructure();
 		Cube cube = newCube(eventloop, Executors.newCachedThreadPool(), classLoader, storage, aggregationStructure);
@@ -322,13 +318,12 @@ public class CubeTest {
 		System.out.println(consumerToList.getList());
 
 		assertEquals(expected, actual);
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testBetweenPredicate() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
 		AggregationStructure aggregationStructure = cubeStructure();
 		Cube cube = newCube(eventloop, Executors.newCachedThreadPool(), classLoader, storage, aggregationStructure);
@@ -373,13 +368,12 @@ public class CubeTest {
 		System.out.println(consumerToList.getList());
 
 		assertEquals(expected, actual);
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testBetweenTransformation() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
 		AggregationStructure aggregationStructure = sophisticatedCubeStructure();
 		Cube cube = newSophisticatedCube(eventloop, Executors.newCachedThreadPool(), classLoader, storage, aggregationStructure);
@@ -424,13 +418,12 @@ public class CubeTest {
 		System.out.println(consumerToList.getList());
 
 		assertEquals(expected, actual);
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testGrouping() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
 		AggregationStructure aggregationStructure = cubeStructure();
 		Cube cube = newCube(eventloop, Executors.newCachedThreadPool(), classLoader, storage, aggregationStructure);
@@ -459,13 +452,12 @@ public class CubeTest {
 		System.out.println(consumerToList.getList());
 
 		assertEquals(expected, actual);
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testQuery2() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executorService = newSingleThreadExecutor();
 		Path dir = temporaryFolder.newFolder().toPath();
 		AggregationStructure aggregationStructure = cubeStructure();
@@ -497,13 +489,12 @@ public class CubeTest {
 		System.out.println(consumerToList.getList());
 
 		assertEquals(expected, actual);
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testConsolidate() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
 		AggregationStructure cubeStructure = cubeStructure();
 		Cube cube = newCube(eventloop, Executors.newCachedThreadPool(), classLoader, storage, cubeStructure);
@@ -546,7 +537,6 @@ public class CubeTest {
 		List<DataItemResult> expected = asList(new DataItemResult(1, 4, 0, 30, 60));
 
 		assertEquals(expected, actual);
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	public static class MyCommitCallback extends ResultCallback<Multimap<AggregationMetadata, AggregationChunk.NewChunk>> {

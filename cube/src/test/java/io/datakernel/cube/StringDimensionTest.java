@@ -36,10 +36,9 @@ import java.util.concurrent.Executors;
 import static io.datakernel.aggregation_db.fieldtype.FieldTypes.longSum;
 import static io.datakernel.aggregation_db.keytype.KeyTypes.intKey;
 import static io.datakernel.aggregation_db.keytype.KeyTypes.stringKey;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
 
 public class StringDimensionTest {
 	public static Cube newCube(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
@@ -70,7 +69,7 @@ public class StringDimensionTest {
 	@Test
 	public void testQuery() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
 		AggregationStructure structure = cubeStructureWithStringDimension();
 		Cube cube = newCube(eventloop, Executors.newCachedThreadPool(), classLoader, storage, structure);
@@ -96,6 +95,5 @@ public class StringDimensionTest {
 		System.out.println(consumerToList.getList());
 
 		assertEquals(expected, actual);
-		assertThat(eventloop, doesntHaveFatals());
 	}
 }

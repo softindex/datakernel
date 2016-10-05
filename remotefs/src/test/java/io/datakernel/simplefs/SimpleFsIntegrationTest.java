@@ -54,7 +54,7 @@ import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.async.AsyncCallbacks.waitAll;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.equalsLowerCaseAscii;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.readAllBytes;
 import static java.util.Arrays.asList;
@@ -98,7 +98,7 @@ public class SimpleFsIntegrationTest {
 	@Test
 	public void testUploadMultiple() throws IOException {
 		int files = 10;
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = newCachedThreadPool();
 		final SimpleFsServer server = createServer(eventloop, executor);
 		SimpleFsClient client = createClient(eventloop);
@@ -127,7 +127,6 @@ public class SimpleFsIntegrationTest {
 			assertArrayEquals(CONTENT, readAllBytes(storage.resolve("file" + i)));
 		}
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -177,7 +176,7 @@ public class SimpleFsIntegrationTest {
 	public void testOnClientExceptionWhileUploading() throws IOException, ExecutionException, InterruptedException {
 		String resultFile = "upload_with_exceptions.txt";
 
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = newCachedThreadPool();
 		final SimpleFsServer server = createServer(eventloop, executor);
 		SimpleFsClient client = createClient(eventloop);
@@ -227,7 +226,6 @@ public class SimpleFsIntegrationTest {
 
 		assertTrue(Files.exists(storage.resolve(resultFile)));
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -283,7 +281,7 @@ public class SimpleFsIntegrationTest {
 	@Test
 	public void testDownloadNotExist() throws Exception {
 		String file = "file_not_exist_downloaded.txt";
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = newCachedThreadPool();
 		SimpleFsClient client = createClient(eventloop);
 		final SimpleFsServer server = createServer(eventloop, executor);
@@ -309,14 +307,13 @@ public class SimpleFsIntegrationTest {
 		//noinspection ThrowableResultOfMethodCallIgnored
 		assertEquals(expected.get(0).getMessage(), "File not found");
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testManySimultaneousDownloads() throws IOException {
 		final String file = "some_file.txt";
 		Files.write(storage.resolve(file), CONTENT);
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		final ExecutorService executor = newCachedThreadPool();
 		SimpleFsClient client = createClient(eventloop);
 		final SimpleFsServer server = createServer(eventloop, executor);
@@ -362,14 +359,13 @@ public class SimpleFsIntegrationTest {
 			assertArrayEquals(CONTENT, readAllBytes(storage.resolve("file" + i)));
 		}
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testDeleteFile() throws Exception {
 		String file = "file.txt";
 		Files.write(storage.resolve(file), CONTENT);
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = newCachedThreadPool();
 		SimpleFsClient client = createClient(eventloop);
 		SimpleFsServer server = createServer(eventloop, executor);
@@ -382,13 +378,12 @@ public class SimpleFsIntegrationTest {
 
 		assertFalse(Files.exists(storage.resolve(file)));
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testDeleteMissingFile() throws Exception {
 		final String file = "no_file.txt";
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = newCachedThreadPool();
 		SimpleFsClient client = createClient(eventloop);
 		final SimpleFsServer server = createServer(eventloop, executor);
@@ -428,13 +423,12 @@ public class SimpleFsIntegrationTest {
 		callback.get();
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testFileList() throws Exception {
 		ExecutorService executor = newCachedThreadPool();
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		final List<String> actual = new ArrayList<>();
 		final List<String> expected = Lists.newArrayList("this/is/not/empty/directory/file1.txt", "file1.txt", "first file.txt");
@@ -469,11 +463,10 @@ public class SimpleFsIntegrationTest {
 		Collections.sort(expected);
 		assertEquals(expected, actual);
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	private void upload(String resultFile, byte[] bytes, ExceptionCallback callback) throws IOException {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = newCachedThreadPool();
 		final SimpleFsServer server = createServer(eventloop, executor);
 		SimpleFsClient client = createClient(eventloop);
@@ -486,7 +479,7 @@ public class SimpleFsIntegrationTest {
 	}
 
 	private List<ByteBuf> download(String file, long startPosition) throws IOException {
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = newCachedThreadPool();
 		SimpleFsClient client = createClient(eventloop);
 		final SimpleFsServer server = createServer(eventloop, executor);

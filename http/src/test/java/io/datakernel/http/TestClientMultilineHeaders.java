@@ -12,9 +12,8 @@ import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.*;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
 
 public class TestClientMultilineHeaders {
 
@@ -23,7 +22,7 @@ public class TestClientMultilineHeaders {
 
 	@Test
 	public void testMultilineHeaders() throws ExecutionException, InterruptedException, IOException {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop,
 				AsyncDnsClient.create(eventloop).withDnsServerAddress(GOOGLE_PUBLIC_DNS));
 
@@ -60,6 +59,5 @@ public class TestClientMultilineHeaders {
 		eventloop.run();
 		assertEquals("GET,   HEAD", resultObserver.get());
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 }

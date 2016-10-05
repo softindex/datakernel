@@ -14,14 +14,15 @@ import java.util.Map;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
-import static org.junit.Assert.*;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class AbstractHttpConnectionTest {
 	private static final int PORT = 5050;
 	private InetAddress GOOGLE_PUBLIC_DNS = HttpUtils.inetAddress("8.8.8.8");
 
-	private Eventloop eventloop = Eventloop.create();
+	private Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 	private IAsyncDnsClient dnsClient = AsyncDnsClient.create(eventloop).withTimeout(300).withDnsServerAddress(GOOGLE_PUBLIC_DNS);
 
 	private AsyncServlet servlet = new AsyncServlet() {
@@ -57,7 +58,6 @@ public class AbstractHttpConnectionTest {
 		eventloop.run();
 		assertEquals("text/           html", data.get("header"));
 		assertEquals("  <html>\n<body>\n<h1>Hello, World!</h1>\n</body>\n</html>", data.get("body"));
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	private HttpResponse createMultiLineHeaderWithInitialBodySpacesResponse() {

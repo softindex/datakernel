@@ -41,8 +41,8 @@ import java.util.concurrent.ExecutorService;
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.async.AsyncCallbacks.ignoreResultCallback;
 import static io.datakernel.bytebuf.ByteBufPool.*;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.file.AsyncFile.open;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.stream.file.StreamFileReader.readFileFully;
 import static java.nio.file.Files.*;
 import static java.util.Arrays.asList;
@@ -59,7 +59,7 @@ public class TestFileManager {
 	@Rule
 	public final ExpectedException thrown = ExpectedException.none();
 
-	private Eventloop eventloop = Eventloop.create();
+	private Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 	private ExecutorService executor = newCachedThreadPool();
 	private Path storage;
 	private Path client;
@@ -126,7 +126,6 @@ public class TestFileManager {
 
 		assertArrayEquals(readAllBytes(inputFile), readAllBytes(storage.resolve("1/c.txt")));
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -151,7 +150,6 @@ public class TestFileManager {
 
 		assertArrayEquals(readAllBytes(storage.resolve("2/b/d.txt")), readAllBytes(outputFile));
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -177,7 +175,6 @@ public class TestFileManager {
 		});
 		callbackFuture.get();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -191,7 +188,6 @@ public class TestFileManager {
 
 		assertFalse(exists(storage.resolve("2/3/a.txt")));
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -218,7 +214,6 @@ public class TestFileManager {
 		callbackFuture.get();
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -238,6 +233,5 @@ public class TestFileManager {
 
 		assertEquals(expected, actual);
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 }

@@ -23,12 +23,13 @@ import org.junit.Test;
 
 import java.util.LinkedList;
 
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class ProducerOfValueTest {
-	Eventloop eventloop = Eventloop.create();
+	Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 	String TEST_STRING = "Hello consumer";
 	Integer TEST_INT = 777;
@@ -61,7 +62,6 @@ public class ProducerOfValueTest {
 
 		assertEquals(TEST_OBJECT, consumer3.getList().get(0));
 		assertEquals(END_OF_STREAM, producer3.getProducerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -73,7 +73,6 @@ public class ProducerOfValueTest {
 
 		assertTrue(consumer3.getList().get(0) == null);
 		assertEquals(END_OF_STREAM, producer3.getProducerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 }

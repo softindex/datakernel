@@ -27,15 +27,16 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.*;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class StreamFilterTest {
 	@Test
 	public void test1() throws Exception {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
 
@@ -57,12 +58,11 @@ public class StreamFilterTest {
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
 		assertEquals(END_OF_STREAM, filter.getInput().getConsumerStatus());
 		assertEquals(END_OF_STREAM, filter.getOutput().getProducerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testWithError() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		List<Integer> list = new ArrayList<>();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
@@ -104,13 +104,12 @@ public class StreamFilterTest {
 		assertEquals(CLOSED_WITH_ERROR, streamFilter.getInput().getConsumerStatus());
 		assertEquals(CLOSED_WITH_ERROR, streamFilter.getOutput().getProducerStatus());
 
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@SuppressWarnings("unchecked")
 	@Test
 	public void testProducerDisconnectWithError() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamProducer<Integer> source = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, Arrays.asList(1, 2, 3)),
@@ -137,12 +136,11 @@ public class StreamFilterTest {
 		assertEquals(CLOSED_WITH_ERROR, consumer.getConsumerStatus());
 		assertEquals(CLOSED_WITH_ERROR, streamFilter.getInput().getConsumerStatus());
 		assertEquals(CLOSED_WITH_ERROR, streamFilter.getOutput().getProducerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testWithoutConsumer() {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
 
@@ -169,6 +167,5 @@ public class StreamFilterTest {
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
 		assertEquals(END_OF_STREAM, filter.getInput().getConsumerStatus());
 		assertEquals(END_OF_STREAM, filter.getOutput().getProducerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 }

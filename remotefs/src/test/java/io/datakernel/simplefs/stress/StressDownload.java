@@ -18,6 +18,7 @@ import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.file.AsyncFile.open;
 import static io.datakernel.stream.file.StreamFileWriter.CREATE_OPTIONS;
 import static io.datakernel.stream.file.StreamFileWriter.create;
@@ -35,7 +36,7 @@ public class StressDownload {
 
 		Files.createDirectories(CLIENT_STORAGE);
 
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		final ExecutorService executor = Executors.newCachedThreadPool();
 
 		final int[] failures = new int[1];

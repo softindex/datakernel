@@ -26,11 +26,10 @@ import java.util.Iterator;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.*;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
 
 public class StreamRewiringWithStatus {
 	private Eventloop eventloop;
@@ -40,7 +39,7 @@ public class StreamRewiringWithStatus {
 	@Before
 	public void before() {
 		it = asList(1, 2, 3, 4, 5).iterator();
-		eventloop = Eventloop.create();
+		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		list = new ArrayList<>();
 	}
 
@@ -54,7 +53,6 @@ public class StreamRewiringWithStatus {
 		assertEquals(asList(1, 2, 3, 4, 5), list);
 		assertEquals(END_OF_STREAM, startStatusReadyProducer.getProducerStatus());
 		assertEquals(END_OF_STREAM, startStatusReadyConsumer.getConsumerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -69,7 +67,6 @@ public class StreamRewiringWithStatus {
 		assertEquals(Collections.emptyList(), list);
 		assertEquals(SUSPENDED, startStatusReadyProducer.getProducerStatus());
 		assertEquals(SUSPENDED, startStatusSuspendConsumer.getConsumerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -84,7 +81,6 @@ public class StreamRewiringWithStatus {
 		assertEquals(Collections.emptyList(), list);
 		assertEquals(CLOSED_WITH_ERROR, startStatusReadyProducer.getProducerStatus());
 		assertEquals(END_OF_STREAM, startStatusEndConsumer.getConsumerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -99,7 +95,6 @@ public class StreamRewiringWithStatus {
 		assertEquals(Collections.emptyList(), list);
 		assertEquals(CLOSED_WITH_ERROR, startStatusReadyProducer.getProducerStatus());
 		assertEquals(CLOSED_WITH_ERROR, startStatusClosedWithErrorConsumer.getConsumerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	//------------------------------------------------------------------------------------------------------------------
@@ -116,7 +111,6 @@ public class StreamRewiringWithStatus {
 		assertEquals(asList(1, 2, 3, 4, 5), list);
 		assertEquals(END_OF_STREAM, startStatusSuspendProducer.getProducerStatus());
 		assertEquals(END_OF_STREAM, startStatusReadyConsumer.getConsumerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -133,7 +127,6 @@ public class StreamRewiringWithStatus {
 		assertEquals(Collections.emptyList(), list);
 		assertEquals(SUSPENDED, startStatusSuspendProducer.getProducerStatus());
 		assertEquals(SUSPENDED, startStatusSuspendConsumer.getConsumerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -150,7 +143,6 @@ public class StreamRewiringWithStatus {
 		assertEquals(Collections.emptyList(), list);
 		assertEquals(CLOSED_WITH_ERROR, startStatusSuspendProducer.getProducerStatus());
 		assertEquals(END_OF_STREAM, startStatusEndConsumer.getConsumerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -167,7 +159,6 @@ public class StreamRewiringWithStatus {
 		assertEquals(Collections.emptyList(), list);
 		assertEquals(CLOSED_WITH_ERROR, startStatusSuspendProducer.getProducerStatus());
 		assertEquals(CLOSED_WITH_ERROR, startStatusClosedWithErrorConsumer.getConsumerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	//------------------------------------------------------------------------------------------------------------------
@@ -184,7 +175,6 @@ public class StreamRewiringWithStatus {
 		assertEquals(Collections.emptyList(), list);
 		assertEquals(END_OF_STREAM, startStatusEndProducer.getProducerStatus());
 		assertEquals(END_OF_STREAM, startStatusReadyConsumer.getConsumerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -201,7 +191,6 @@ public class StreamRewiringWithStatus {
 		assertEquals(Collections.emptyList(), list);
 		assertEquals(END_OF_STREAM, startStatusEndProducer.getProducerStatus());
 		assertEquals(END_OF_STREAM, startStatusSuspendConsumer.getConsumerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -218,7 +207,6 @@ public class StreamRewiringWithStatus {
 		assertEquals(Collections.emptyList(), list);
 		assertEquals(END_OF_STREAM, startStatusEndProducer.getProducerStatus());
 		assertEquals(END_OF_STREAM, startStatusEndConsumer.getConsumerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -235,7 +223,6 @@ public class StreamRewiringWithStatus {
 		assertEquals(Collections.emptyList(), list);
 		assertEquals(END_OF_STREAM, startStatusEndProducer.getProducerStatus());
 		assertEquals(CLOSED_WITH_ERROR, startStatusClosedWithErrorConsumer.getConsumerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	//------------------------------------------------------------------------------------------------------------------
@@ -252,7 +239,6 @@ public class StreamRewiringWithStatus {
 		assertEquals(Collections.emptyList(), list);
 		assertEquals(CLOSED_WITH_ERROR, startStatusClosedWithErrorProducer.getProducerStatus());
 		assertEquals(CLOSED_WITH_ERROR, startStatusReadyConsumer.getConsumerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -269,7 +255,6 @@ public class StreamRewiringWithStatus {
 		assertEquals(Collections.emptyList(), list);
 		assertEquals(CLOSED_WITH_ERROR, startStatusClosedWithErrorProducer.getProducerStatus());
 		assertEquals(CLOSED_WITH_ERROR, startStatusSuspendConsumer.getConsumerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -286,7 +271,6 @@ public class StreamRewiringWithStatus {
 		assertEquals(Collections.emptyList(), list);
 		assertEquals(CLOSED_WITH_ERROR, startStatusClosedWithErrorProducer.getProducerStatus());
 		assertEquals(END_OF_STREAM, startStatusEndConsumer.getConsumerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -303,7 +287,6 @@ public class StreamRewiringWithStatus {
 		assertEquals(Collections.emptyList(), list);
 		assertEquals(CLOSED_WITH_ERROR, startStatusClosedWithErrorProducer.getProducerStatus());
 		assertEquals(CLOSED_WITH_ERROR, startStatusClosedWithErrorConsumer.getConsumerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	//------------------------------------------------------------------------------------------------------------------

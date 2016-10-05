@@ -44,9 +44,10 @@ import java.util.Map.Entry;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class LogManagerTest {
 	private static final long ONE_SECOND = 1000L;
@@ -80,7 +81,7 @@ public class LogManagerTest {
 		final String logPartition = "testLog";
 
 		final SettableCurrentTimeProvider timeProvider = SettableCurrentTimeProvider.create();
-		final Eventloop eventloop = Eventloop.create().withCurrentTimeProvider(timeProvider);
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentTimeProvider(timeProvider);
 
 		LocalFsLogFileSystem fileSystem = LocalFsLogFileSystem.create(eventloop, executor, testDir);
 		final LogManagerImpl<String> logManager = LogManagerImpl.create(eventloop, fileSystem, BufferSerializers.utf16Serializer());
@@ -152,7 +153,6 @@ public class LogManagerTest {
 		assertTrue(list02.isEmpty());
 		assertEquals(asList("1", "2", "3", "4", "5"), list00);
 		assertEquals(asList("3", "4", "5"), list01);
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	public static class TestItem {
@@ -167,7 +167,7 @@ public class LogManagerTest {
 	@Test
 	public void testSerializationError() throws Exception {
 		SettableCurrentTimeProvider timeProvider = SettableCurrentTimeProvider.create();
-		Eventloop eventloop = Eventloop.create().withCurrentTimeProvider(timeProvider);
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentTimeProvider(timeProvider);
 		timeProvider.setTime(new LocalDateTime("1970-01-01T00:00:00").toDateTime(DateTimeZone.UTC).getMillis());
 		LogFileSystem fileSystem = LocalFsLogFileSystem.create(eventloop, executor, testDir);
 		BufferSerializer<TestItem> serializer = SerializerBuilder.create(DefiningClassLoader.create()).build(TestItem.class);
@@ -188,7 +188,6 @@ public class LogManagerTest {
 		assertEquals("a", resultList.get(0).s);
 		assertEquals("b", resultList.get(1).s);
 		assertEquals("c", resultList.get(2).s);
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	private static void clearTestDir(Path testDir) {

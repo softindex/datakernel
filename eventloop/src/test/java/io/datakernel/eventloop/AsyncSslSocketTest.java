@@ -40,7 +40,7 @@ import java.util.Random;
 import java.util.concurrent.Executor;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.junit.Assert.*;
 
@@ -53,7 +53,7 @@ public class AsyncSslSocketTest {
 	private static final String TRUSTSTORE_PATH = "./src/test/resources/truststore.jks";
 	private static final String TRUSTSTORE_PASS = "testtest";
 
-	private Eventloop eventloop = Eventloop.create();
+	private Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 	private AsyncSslSocket serverSslSocket;
 	private AsyncSslSocket clientSslSocket;
 
@@ -127,7 +127,6 @@ public class AsyncSslSocketTest {
 		System.out.println("created: " + getCreatedItems());
 		System.out.println("in pool: " + getPoolItems());
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -168,7 +167,6 @@ public class AsyncSslSocketTest {
 		assertEquals(sentData.toString(), serverDataAccumulator.getAccumulatedData());
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -209,7 +207,6 @@ public class AsyncSslSocketTest {
 		assertEquals(sentData.toString(), clientDataAccumulator.getAccumulatedData());
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -254,7 +251,6 @@ public class AsyncSslSocketTest {
 		eventloop.run();
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -294,7 +290,6 @@ public class AsyncSslSocketTest {
 
 		eventloop.run();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 	// </editor-fold>
 

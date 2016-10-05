@@ -33,11 +33,12 @@ import java.util.Random;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.TestUtils.readFully;
 import static io.datakernel.http.TestUtils.toByteArray;
 import static java.lang.Math.min;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class AsyncHttpServerTest {
 
@@ -140,7 +141,7 @@ public class AsyncHttpServerTest {
 
 	@Test
 	public void testKeepAlive() throws Exception {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 
@@ -149,12 +150,11 @@ public class AsyncHttpServerTest {
 		doTestKeepAlive(eventloop, delayedHttpServer(eventloop, port), port);
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testClosed() throws Exception {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 		AsyncHttpServer server = blockingHttpServer(eventloop, port);
@@ -172,12 +172,11 @@ public class AsyncHttpServerTest {
 		thread.join();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testNoKeepAlive() throws Exception {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 		AsyncHttpServer server = blockingHttpServer(eventloop, port);
@@ -198,19 +197,17 @@ public class AsyncHttpServerTest {
 		thread.join();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testPipelining() throws Exception {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 //		doTestPipelining(eventloop, blockingHttpServer(eventloop));
 //		doTestPipelining(eventloop, asyncHttpServer(eventloop));
 		doTestPipelining(eventloop, delayedHttpServer(eventloop, port), port);
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	private void doTestPipelining(Eventloop eventloop, AsyncHttpServer server, int port) throws Exception {
@@ -239,7 +236,7 @@ public class AsyncHttpServerTest {
 	@Test
 	public void testBigHttpMessage() throws Exception {
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		final ByteBuf buf =
 				HttpRequest.post("http://127.0.0.1:" + port)
 						.withBody(ByteBuf.wrapForReading(encodeAscii("Test big HTTP message body")))
@@ -278,11 +275,10 @@ public class AsyncHttpServerTest {
 				eventloop.getStats().getErrorStats().getIoErrors().getLastException().getMessage());
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	public static void main(String[] args) throws Exception {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		AsyncHttpServer server = blockingHttpServer(eventloop, 8888);
 		server.listen();
 		eventloop.run();

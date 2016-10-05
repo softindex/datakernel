@@ -43,11 +43,10 @@ import java.util.List;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
 import static java.lang.ClassLoader.getSystemClassLoader;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
 
 public class RpcBinaryProtocolTest {
 	private static final int LISTEN_PORT = 12345;
@@ -67,7 +66,7 @@ public class RpcBinaryProtocolTest {
 	public void test() throws Exception {
 		final String testMessage = "Test";
 
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		final RpcClient client = RpcClient.create(eventloop)
 				.withMessageTypes(String.class)
@@ -147,7 +146,6 @@ public class RpcBinaryProtocolTest {
 		}
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -157,7 +155,7 @@ public class RpcBinaryProtocolTest {
 				.build(RpcMessage.class);
 
 		int countRequests = 10;
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		int defaultPacketSize = 1 << 10;
 		int maxPacketSize = 1 << 16;
 
@@ -207,6 +205,5 @@ public class RpcBinaryProtocolTest {
 		}
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 }

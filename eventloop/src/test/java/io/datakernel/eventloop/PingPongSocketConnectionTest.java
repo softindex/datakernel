@@ -14,8 +14,9 @@ import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
-import static org.junit.Assert.*;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class PingPongSocketConnectionTest {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
@@ -27,7 +28,7 @@ public class PingPongSocketConnectionTest {
 
 	@Test
 	public void test() throws IOException {
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		SocketHandlerProvider socketHandlerProvider = new SocketHandlerProvider() {
 			@Override
@@ -56,7 +57,6 @@ public class PingPongSocketConnectionTest {
 
 		eventloop.run();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	private class ServerConnection implements AsyncTcpSocket.EventHandler {

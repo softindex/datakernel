@@ -24,12 +24,13 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.processor.Utils.assertProducerStatuses;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class StreamSharderTest {
 
@@ -42,7 +43,7 @@ public class StreamSharderTest {
 
 	@Test
 	public void test1() throws Exception {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamSharder<Integer, Integer> streamSharder = StreamSharder.create(eventloop, SHARDER, Functions.<Integer>identity());
 
@@ -63,12 +64,11 @@ public class StreamSharderTest {
 		assertProducerStatuses(END_OF_STREAM, streamSharder.getOutputs());
 		assertEquals(END_OF_STREAM, consumer1.getConsumerStatus());
 		assertEquals(END_OF_STREAM, consumer2.getConsumerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void test2() throws Exception {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamSharder<Integer, Integer> streamSharder = StreamSharder.create(eventloop, SHARDER, Functions.<Integer>identity());
 
@@ -90,12 +90,11 @@ public class StreamSharderTest {
 		assertProducerStatuses(END_OF_STREAM, streamSharder.getOutputs());
 		assertEquals(END_OF_STREAM, consumer1.getConsumerStatus());
 		assertEquals(END_OF_STREAM, consumer2.getConsumerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testWithError() throws Exception {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamSharder<Integer, Integer> streamSharder = StreamSharder.create(eventloop, SHARDER, Functions.<Integer>identity());
 
@@ -137,12 +136,11 @@ public class StreamSharderTest {
 		assertProducerStatuses(CLOSED_WITH_ERROR, streamSharder.getOutputs());
 		assertEquals(CLOSED_WITH_ERROR, consumer1.getConsumerStatus());
 		assertEquals(CLOSED_WITH_ERROR, consumer2.getConsumerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testProducerWithError() throws Exception {
-		final Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamSharder<Integer, Integer> streamSharder = StreamSharder.create(eventloop, SHARDER, Functions.<Integer>identity());
 
@@ -171,6 +169,5 @@ public class StreamSharderTest {
 		assertProducerStatuses(CLOSED_WITH_ERROR, streamSharder.getOutputs());
 		assertEquals(CLOSED_WITH_ERROR, consumer1.getConsumerStatus());
 		assertEquals(CLOSED_WITH_ERROR, consumer2.getConsumerStatus());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 }

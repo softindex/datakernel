@@ -47,12 +47,11 @@ import java.util.concurrent.Executors;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.*;
-import static io.datakernel.helper.TestUtils.doesntHaveFatals;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.logfs.LogManagerImpl.DETAILED_DATE_TIME_FORMATTER;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
 
 public class LogFsTest {
 	private static final long ONE_MINUTE_MILLIS = 60 * 1000;
@@ -71,8 +70,8 @@ public class LogFsTest {
 		path = temporaryFolder.newFolder("storage").toPath();
 		timeProvider = SettableCurrentTimeProvider.create();
 		executor = Executors.newCachedThreadPool();
-		eventloop = Eventloop.create().withCurrentTimeProvider(timeProvider);
-		serverEventloop = Eventloop.create();
+		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentTimeProvider(timeProvider);
+		serverEventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		serverEventloop.keepAlive(true);
 	}
 
@@ -128,7 +127,6 @@ public class LogFsTest {
 		assertEquals(asList("4", "5", "6", "7", "8", "9", "10", "11", "12"), consumer2.getList());
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
@@ -183,7 +181,6 @@ public class LogFsTest {
 		eventloop.run();
 
 		assertEquals(asList("7", "9", "11", "13", "15", "17"), consumer.getList());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	private static CompletionCallback createServerStopCallback(final SimpleFsServer server) {
@@ -246,7 +243,6 @@ public class LogFsTest {
 		eventloop.run();
 
 		assertEquals(asList("8", "10", "12"), consumer.getList());
-		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	private static CompletionCallback createServerStopCallback(final HashFsServer server) {
