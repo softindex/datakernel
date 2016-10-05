@@ -233,35 +233,31 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 
 		timeBeforeSelectorSelect = timeAfterSelectorSelect = 0;
 		while (true) {
-			try {
-				if (!isKeepAlive()) {
-					logger.info("Eventloop {} is complete, exiting...", this);
-					break;
-				}
-
-				tick++;
-
-				updateBusinessLogicTimeStats();
-
-				try {
-					selector.select(getSelectTimeout());
-				} catch (ClosedChannelException e) {
-					logger.error("Selector is closed, exiting...", e);
-					break;
-				} catch (IOException e) {
-					recordIoError(e, selector);
-				}
-
-				updateSelectorSelectTimeStats();
-
-				processSelectedKeys(selector.selectedKeys());
-				executeConcurrentTasks();
-				executeScheduledTasks();
-				executeBackgroundTasks();
-				executeLocalTasks();
-			} catch (Throwable e) {
-				recordFatalError(e, this);
+			if (!isKeepAlive()) {
+				logger.info("Eventloop {} is complete, exiting...", this);
+				break;
 			}
+
+			tick++;
+
+			updateBusinessLogicTimeStats();
+
+			try {
+				selector.select(getSelectTimeout());
+			} catch (ClosedChannelException e) {
+				logger.error("Selector is closed, exiting...", e);
+				break;
+			} catch (IOException e) {
+				recordIoError(e, selector);
+			}
+
+			updateSelectorSelectTimeStats();
+
+			processSelectedKeys(selector.selectedKeys());
+			executeConcurrentTasks();
+			executeScheduledTasks();
+			executeBackgroundTasks();
+			executeLocalTasks();
 		}
 		logger.info("Eventloop {} finished", this);
 		eventloopThread = null;
@@ -1123,6 +1119,9 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	}
 
 	public void recordFatalError(final Throwable e, final Object context) {
+		if (e instanceof RethrowedError) {
+			propagate(e.getCause());
+		}
 		logger.error("Fatal Error in " + context, e);
 		if (fatalErrorHandler != null) {
 			handleFatalError(fatalErrorHandler, e, context);
@@ -1141,22 +1140,36 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		}
 	}
 
-	private void handleFatalError(final FatalErrorHandler handler, Throwable e, Object context) {
+	private void handleFatalError(final FatalErrorHandler handler, final Throwable e, final Object context) {
 		if (inEventloopThread()) {
 			handler.handle(e, context);
 		} else {
 			try {
 				handler.handle(e, context);
 			} catch (final Throwable handlerError) {
-				// rethrow error in both current thread and eventloop thread
 				execute(new Runnable() {
 					@Override
 					public void run() {
-						throw handlerError;
+						throw new RethrowedError(handlerError);
 					}
 				});
-				throw handlerError;
 			}
+		}
+	}
+
+	private static void propagate(Throwable throwable) {
+		if (throwable instanceof Error) {
+			throw (Error) throwable;
+		} else if (throwable instanceof RuntimeException) {
+			throw (RuntimeException) throwable;
+		} else {
+			throw new RuntimeException(throwable);
+		}
+	}
+
+	private static class RethrowedError extends Error {
+		public RethrowedError(Throwable cause) {
+			super(cause);
 		}
 	}
 
