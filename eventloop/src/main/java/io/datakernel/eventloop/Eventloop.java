@@ -1125,9 +1125,9 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	public void recordFatalError(final Throwable e, final Object context) {
 		logger.error("Fatal Error in " + context, e);
 		if (fatalErrorHandler != null) {
-			fatalErrorHandler.handle(e, context);
+			handleFatalError(fatalErrorHandler, e, context);
 		} else {
-			globalFatalErrorHandler.handle(e, context);
+			handleFatalError(globalFatalErrorHandler, e, context);
 		}
 		if (inEventloopThread()) {
 			stats.recordFatalError(e, context);
@@ -1138,6 +1138,25 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 					stats.recordFatalError(e, context);
 				}
 			});
+		}
+	}
+
+	private void handleFatalError(final FatalErrorHandler handler, Throwable e, Object context) {
+		if (inEventloopThread()) {
+			handler.handle(e, context);
+		} else {
+			try {
+				handler.handle(e, context);
+			} catch (final Throwable handlerError) {
+				// rethrow error in both current thread and eventloop thread
+				execute(new Runnable() {
+					@Override
+					public void run() {
+						throw handlerError;
+					}
+				});
+				throw handlerError;
+			}
 		}
 	}
 

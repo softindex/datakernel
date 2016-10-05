@@ -37,7 +37,7 @@ public final class CallbackRegistry {
 
 	public static final class CallbackRegistryStats implements ConcurrentJmxMBean {
 
-		@JmxAttribute(description = "")
+		@JmxAttribute
 		public List<String> getCurrentCallbacks() {
 			List<Map.Entry<Object, Long>> entries = new ArrayList<>(REGISTRY.entrySet());
 			Collections.sort(entries, new Comparator<Map.Entry<Object, Long>>() {

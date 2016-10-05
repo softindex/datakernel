@@ -67,7 +67,46 @@ public final class FatalErrorHandlers {
 				asList((Class) AssertionError.class, StackOverflowError.class, IOError.class, ZipError.class));
 	}
 
+	public static FatalErrorHandler rethrowOnAnyError() {
+		return new FatalErrorHandler() {
+			@Override
+			public void handle(Throwable error, Object context) {
+				propagate(error);
+			}
+
+			;
+		};
+	}
+
+	public static FatalErrorHandler rethrowOnMatchedError(final List<Class> whiteList, final List<Class> blackList) {
+		return new FatalErrorHandler() {
+			@Override
+			public void handle(Throwable error, Object context) {
+				if (matchesAny(error.getClass(), whiteList) && !matchesAny(error.getClass(), blackList))
+					propagate(error);
+			}
+		};
+	}
+
+	private static void propagate(Throwable error) {
+		if (error instanceof Error) {
+			throw (Error) error;
+		} else if (error instanceof RuntimeException) {
+			throw (RuntimeException) error;
+		} else {
+			throw new RuntimeException(error);
+		}
+	}
+
 	private static void shutdownForcibly() {
 		Runtime.getRuntime().halt(1);
+	}
+
+	@SuppressWarnings("unchecked")
+	private static boolean matchesAny(Class c, List<Class> list) {
+		for (Class cl : list) {
+			if (cl.isAssignableFrom(c)) return true;
+		}
+		return false;
 	}
 }

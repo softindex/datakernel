@@ -49,7 +49,7 @@ public final class JmxRegistrator {
 		Key<?> byteBufPoolKey = Key.get(ByteBufPool.ByteBufPoolStats.class);
 		jmxRegistry.registerSingleton(byteBufPoolKey, ByteBufPool.getStats());
 
-		// registerCallbackRegistry
+		// register CallbackRegistry
 		Key<?> callbackRegistryKey = Key.get(CallbackRegistry.class);
 		jmxRegistry.registerSingleton(callbackRegistryKey, new CallbackRegistry.CallbackRegistryStats());
 
