@@ -17,13 +17,13 @@
 package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.exception.ParseException;
 
 import java.util.*;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
-import static io.datakernel.http.HttpHeaders.*;
+import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
+import static io.datakernel.http.HttpHeaders.DATE;
 
 /**
  * Represents any HTTP message. Its internal byte buffers will be automatically recycled in HTTP client or HTTP server.
@@ -100,28 +100,29 @@ public abstract class HttpMessage {
 	}
 
 	// getters
-	public int getContentLength() throws ParseException {
-		assert !recycled;
-		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(CONTENT_LENGTH);
-		if (header != null)
-			return ByteBufStrings.decodeDecimal(header.array, header.offset, header.size);
-		return 0;
-	}
-
-	public ContentType getContentType() throws ParseException {
+	public ContentType getContentType() {
 		assert !recycled;
 		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(CONTENT_TYPE);
-		if (header != null)
-			return ContentType.parse(header.array, header.offset, header.size);
+		if (header != null) {
+			try {
+				return ContentType.parse(header.array, header.offset, header.size);
+			} catch (ParseException e) {
+				return null;
+			}
+		}
 		return null;
 	}
 
-	public Date getDate() throws ParseException {
+	public Date getDate() {
 		assert !recycled;
 		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(DATE);
 		if (header != null) {
-			long date = HttpDate.parse(header.array, header.offset);
-			return new Date(date);
+			try {
+				long date = HttpDate.parse(header.array, header.offset);
+				return new Date(date);
+			} catch (ParseException e) {
+				return null;
+			}
 		}
 		return null;
 	}
@@ -238,9 +239,9 @@ public abstract class HttpMessage {
 		return result;
 	}
 
-	protected abstract List<HttpCookie> parseCookies() throws ParseException;
+	protected abstract List<HttpCookie> parseCookies();
 
-	public Map<String, HttpCookie> parseCookiesMap() throws ParseException {
+	public Map<String, HttpCookie> parseCookiesMap() {
 		assert !recycled;
 		List<HttpCookie> cookies = parseCookies();
 		LinkedHashMap<String, HttpCookie> map = new LinkedHashMap<>();
@@ -250,7 +251,7 @@ public abstract class HttpMessage {
 		return map;
 	}
 
-	public HttpCookie parseCookie(String name) throws ParseException {
+	public HttpCookie parseCookie(String name) {
 		assert !recycled;
 		List<HttpCookie> cookies = parseCookies();
 		for (HttpCookie cookie : cookies) {

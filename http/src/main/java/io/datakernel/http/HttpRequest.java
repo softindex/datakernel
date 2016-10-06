@@ -56,11 +56,11 @@ public final class HttpRequest extends HttpMessage {
 	}
 
 	public static HttpRequest get(String url) {
-		return ofMethod(GET).withUrl(url);
+		return HttpRequest.ofMethod(GET).withUrl(url);
 	}
 
 	public static HttpRequest post(String url) {
-		return ofMethod(POST).withUrl(url);
+		return HttpRequest.ofMethod(POST).withUrl(url);
 	}
 
 	// common builder methods
@@ -257,70 +257,99 @@ public final class HttpRequest extends HttpMessage {
 	// endregion
 
 	// region getters
-	public List<AcceptMediaType> parseAccept() throws ParseException {
+	public List<AcceptMediaType> parseAccept() {
 		assert !recycled;
 		List<AcceptMediaType> list = new ArrayList<>();
 		List<Value> headers = getHeaderValues(ACCEPT);
 		for (Value header : headers) {
 			ValueOfBytes value = (ValueOfBytes) header;
-			AcceptMediaType.parse(value.array, value.offset, value.size, list);
+			try {
+				AcceptMediaType.parse(value.array, value.offset, value.size, list);
+			} catch (ParseException e) {
+				return Collections.emptyList();
+			}
 		}
 		return list;
 	}
 
-	public List<AcceptCharset> parseAcceptCharsets() throws ParseException {
+	public List<AcceptCharset> parseAcceptCharsets() {
 		assert !recycled;
 		List<AcceptCharset> charsets = new ArrayList<>();
 		List<Value> headers = getHeaderValues(ACCEPT_CHARSET);
 		for (Value header : headers) {
 			ValueOfBytes value = (ValueOfBytes) header;
-			AcceptCharset.parse(value.array, value.offset, value.size, charsets);
+			try {
+				AcceptCharset.parse(value.array, value.offset, value.size, charsets);
+			} catch (ParseException e) {
+				return Collections.emptyList();
+			}
 		}
 		return charsets;
 	}
 
 	@Override
-	public List<HttpCookie> parseCookies() throws ParseException {
+	public List<HttpCookie> parseCookies() {
 		assert !recycled;
 		List<HttpCookie> cookie = new ArrayList<>();
 		List<Value> headers = getHeaderValues(COOKIE);
 		for (Value header : headers) {
 			ValueOfBytes value = (ValueOfBytes) header;
-			HttpCookie.parseSimple(value.array, value.offset, value.offset + value.size, cookie);
+			try {
+				HttpCookie.parseSimple(value.array, value.offset, value.offset + value.size, cookie);
+			} catch (ParseException e) {
+				return new ArrayList<>();
+			}
 		}
 		return cookie;
 	}
 
-	public Date parseIfModifiedSince() throws ParseException {
+	public Date parseIfModifiedSince() {
 		assert !recycled;
 		ValueOfBytes header = (ValueOfBytes) getHeaderValue(IF_MODIFIED_SINCE);
-		if (header != null)
-			return new Date(HttpDate.parse(header.array, header.offset));
+		if (header != null) {
+			try {
+				return new Date(HttpDate.parse(header.array, header.offset));
+			} catch (ParseException e) {
+				return null;
+			}
+		}
 		return null;
 	}
 
-	public Date parseIfUnModifiedSince() throws ParseException {
+	public Date parseIfUnModifiedSince() {
 		assert !recycled;
 		ValueOfBytes header = (ValueOfBytes) getHeaderValue(IF_UNMODIFIED_SINCE);
 		if (header != null)
-			return new Date(HttpDate.parse(header.array, header.offset));
+			try {
+				return new Date(HttpDate.parse(header.array, header.offset));
+			} catch (ParseException e) {
+				return null;
+			}
 		return null;
 	}
 	// endregion
 
 	// region internal
-	public Map<String, String> getParameters() throws ParseException {
+	public Map<String, String> getParameters() {
 		assert !recycled;
-		return url.getParameters();
+		try {
+			return url.getParameters();
+		} catch (ParseException e) {
+			return Collections.emptyMap();
+		}
 	}
 
-	public Map<String, String> getPostParameters() throws ParseException {
+	public Map<String, String> getPostParameters() {
 		assert !recycled;
 		if (method == POST && getContentType() != null
 				&& getContentType().getMediaType() == MediaTypes.X_WWW_FORM_URLENCODED
 				&& body.readPosition() != body.writePosition()) {
 			if (bodyParameters == null) {
-				bodyParameters = HttpUtils.extractParameters(decodeAscii(getBody()));
+				try {
+					bodyParameters = HttpUtils.extractParameters(decodeAscii(getBody()));
+				} catch (ParseException e) {
+					return Collections.emptyMap();
+				}
 			}
 			return bodyParameters;
 		} else {
@@ -328,13 +357,17 @@ public final class HttpRequest extends HttpMessage {
 		}
 	}
 
-	public String getPostParameter(String name) throws ParseException {
+	public String getPostParameter(String name) {
 		return getPostParameters().get(name);
 	}
 
-	public String getParameter(String name) throws ParseException {
+	public String getParameter(String name) {
 		assert !recycled;
-		return url.getParameter(name);
+		try {
+			return url.getParameter(name);
+		} catch (ParseException e) {
+			return null;
+		}
 	}
 
 	int getPos() {

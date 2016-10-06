@@ -201,38 +201,54 @@ public final class HttpResponse extends HttpMessage {
 		return code;
 	}
 
-	public int parseAge() throws ParseException {
+	public int parseAge() {
 		assert !recycled;
 		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(AGE);
 		if (header != null)
-			return ByteBufStrings.decodeDecimal(header.array, header.offset, header.size);
+			try {
+				return ByteBufStrings.decodeDecimal(header.array, header.offset, header.size);
+			} catch (ParseException e) {
+				return 0;
+			}
 		return 0;
 	}
 
-	public Date parseExpires() throws ParseException {
+	public Date parseExpires() {
 		assert !recycled;
 		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(EXPIRES);
 		if (header != null)
-			return new Date(HttpDate.parse(header.array, header.offset));
+			try {
+				return new Date(HttpDate.parse(header.array, header.offset));
+			} catch (ParseException e) {
+				return null;
+			}
 		return null;
 	}
 
-	public Date parseLastModified() throws ParseException {
+	public Date parseLastModified() {
 		assert !recycled;
 		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(LAST_MODIFIED);
 		if (header != null)
-			return new Date(HttpDate.parse(header.array, header.offset));
+			try {
+				return new Date(HttpDate.parse(header.array, header.offset));
+			} catch (ParseException e) {
+				return null;
+			}
 		return null;
 	}
 
 	@Override
-	public List<HttpCookie> parseCookies() throws ParseException {
+	public List<HttpCookie> parseCookies() {
 		assert !recycled;
 		List<HttpCookie> cookies = new ArrayList<>();
 		List<Value> headers = getHeaderValues(SET_COOKIE);
 		for (Value header : headers) {
 			ValueOfBytes value = (ValueOfBytes) header;
-			HttpCookie.parse(value.array, value.offset, value.offset + value.size, cookies);
+			try {
+				HttpCookie.parse(value.array, value.offset, value.offset + value.size, cookies);
+			} catch (ParseException e) {
+				return Collections.emptyList();
+			}
 		}
 		return cookies;
 	}
