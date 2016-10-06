@@ -107,7 +107,7 @@ final class AttributeNodeForSimpleType implements AttributeNode {
 	}
 
 	@Override
-	public void setAttribute(String attrName, Object value, List<?> targets) {
+	public void setAttribute(String attrName, Object value, List<?> targets) throws SetterException {
 		checkArgument(attrName.equals(name));
 		checkNotNull(targets);
 		List<?> notNullTargets = filterNulls(targets);
@@ -119,7 +119,7 @@ final class AttributeNodeForSimpleType implements AttributeNode {
 			try {
 				setter.invoke(target, value);
 			} catch (IllegalAccessException | InvocationTargetException e) {
-				throw new RuntimeException(e);
+				throw new SetterException(e);
 			}
 		}
 	}

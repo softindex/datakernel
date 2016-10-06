@@ -16,26 +16,15 @@
 
 package io.datakernel.jmx;
 
-import javax.management.openmbean.OpenType;
-import java.util.List;
-import java.util.Map;
+class SetterException extends Exception {
+	private final Exception causedException;
 
-interface AttributeNode {
-	String getName();
+	public SetterException(Exception causedException) {
+		super(causedException);
+		this.causedException = causedException;
+	}
 
-	OpenType<?> getOpenType();
-
-	Map<String, OpenType<?>> getFlattenedOpenTypes();
-
-	Map<String, Map<String, String>> getDescriptions();
-
-	Map<String, Object> aggregateAllAttributes(List<?> sources);
-
-	Object aggregateAttribute(String attrName, List<?> sources);
-
-	Iterable<JmxRefreshable> getAllRefreshables(Object source);
-
-	boolean isSettable(String attrName);
-
-	void setAttribute(String attrName, Object value, List<?> targets) throws SetterException;
+	public Exception getCausedException() {
+		return causedException;
+	}
 }

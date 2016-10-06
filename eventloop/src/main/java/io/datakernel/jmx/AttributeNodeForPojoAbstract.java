@@ -171,7 +171,7 @@ abstract class AttributeNodeForPojoAbstract implements AttributeNode {
 	}
 
 	@Override
-	public final void setAttribute(String attrName, Object value, List<?> targets) {
+	public final void setAttribute(String attrName, Object value, List<?> targets) throws SetterException {
 		checkNotNull(targets);
 		List<?> notNullTargets = filterNulls(targets);
 		if (notNullTargets.size() == 0) {

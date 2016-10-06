@@ -792,7 +792,12 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 			Exception exception = exceptionReference.get();
 			if (exception != null) {
-				throw new MBeanException(exception);
+				Exception actualException = exception;
+				if (exception instanceof SetterException) {
+					SetterException setterException = (SetterException) exception;
+					actualException = setterException.getCausedException();
+				}
+				propagateException(actualException);
 			}
 		}
 
