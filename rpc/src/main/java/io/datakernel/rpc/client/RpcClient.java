@@ -71,6 +71,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 	private final Set<Class<?>> messageTypes;
 	private final long connectTimeoutMillis;
 	private final long reconnectIntervalMillis;
+	private final boolean forceStart;
 
 	private final SerializerBuilder serializerBuilder;
 	private BufferSerializer<RpcMessage> serializer;
@@ -100,7 +101,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 	private RpcClient(Eventloop eventloop, SocketSettings socketSettings, Set<Class<?>> messageTypes,
 	                  SerializerBuilder serializerBuilder, RpcStrategy strategy, RpcProtocolFactory protocol,
 	                  Logger logger, long connectTimeoutMillis, long reconnectIntervalMillis,
-	                  SSLContext sslContext, ExecutorService executor) {
+	                  boolean forceStart, SSLContext sslContext, ExecutorService executor) {
 		this.eventloop = eventloop;
 		this.socketSettings = socketSettings;
 		this.messageTypes = messageTypes;
@@ -109,6 +110,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		this.logger = logger;
 		this.connectTimeoutMillis = connectTimeoutMillis;
 		this.reconnectIntervalMillis = reconnectIntervalMillis;
+		this.forceStart = forceStart;
 		this.sslContext = sslContext;
 		this.sslExecutor = executor;
 		this.strategy = strategy;
@@ -137,7 +139,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		return new RpcClient(
 				eventloop, DEFAULT_SOCKET_SETTINGS, defaultMessageTypes, serializerBuilder,
 				defaultStrategy, defaultProtocol, defaultLogger,
-				DEFAULT_CONNECT_TIMEOUT, DEFAULT_RECONNECT_INTERVAL,
+				DEFAULT_CONNECT_TIMEOUT, DEFAULT_RECONNECT_INTERVAL, false,
 				nullSslContext, nullSslExecutor);
 	}
 
@@ -145,7 +147,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		checkNotNull(socketSettings);
 		return new RpcClient(
 				eventloop, socketSettings, messageTypes, serializerBuilder,
-				strategy, protocolFactory, logger, connectTimeoutMillis, reconnectIntervalMillis,
+				strategy, protocolFactory, logger, connectTimeoutMillis, reconnectIntervalMillis, forceStart,
 				sslContext, sslExecutor);
 	}
 
@@ -158,7 +160,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		checkNotNull(messageTypes);
 		return new RpcClient(
 				eventloop, socketSettings, new LinkedHashSet<>(messageTypes), serializerBuilder,
-				strategy, protocolFactory, logger, connectTimeoutMillis, reconnectIntervalMillis,
+				strategy, protocolFactory, logger, connectTimeoutMillis, reconnectIntervalMillis, forceStart,
 				sslContext, sslExecutor);
 	}
 
@@ -166,7 +168,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		checkNotNull(serializerBuilder);
 		return new RpcClient(
 				eventloop, socketSettings, messageTypes, serializerBuilder,
-				strategy, protocolFactory, logger, connectTimeoutMillis, reconnectIntervalMillis,
+				strategy, protocolFactory, logger, connectTimeoutMillis, reconnectIntervalMillis, forceStart,
 				sslContext, sslExecutor);
 	}
 
@@ -174,7 +176,8 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		checkNotNull(requestSendingStrategy);
 		return new RpcClient(
 				eventloop, socketSettings, messageTypes, serializerBuilder,
-				requestSendingStrategy, protocolFactory, logger, connectTimeoutMillis, reconnectIntervalMillis,
+				requestSendingStrategy, protocolFactory, logger,
+				connectTimeoutMillis, reconnectIntervalMillis, forceStart,
 				sslContext, sslExecutor);
 	}
 
@@ -182,7 +185,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		checkNotNull(protocolFactory);
 		return new RpcClient(
 				eventloop, socketSettings, messageTypes, serializerBuilder,
-				strategy, protocolFactory, logger, connectTimeoutMillis, reconnectIntervalMillis,
+				strategy, protocolFactory, logger, connectTimeoutMillis, reconnectIntervalMillis, forceStart,
 				sslContext, sslExecutor);
 	}
 
@@ -194,10 +197,17 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		return withProtocol(streamProtocol(defaultPacketSize, maxPacketSize, compression));
 	}
 
-	public RpcClient withConnectTimeouts(long connectTimeoutMillis, long reconnectIntervalMillis) {
+	public RpcClient withConnectTimeout(long connectTimeoutMillis) {
 		return new RpcClient(
 				eventloop, socketSettings, messageTypes, serializerBuilder,
-				strategy, protocolFactory, logger, connectTimeoutMillis, reconnectIntervalMillis,
+				strategy, protocolFactory, logger, connectTimeoutMillis, reconnectIntervalMillis, forceStart,
+				sslContext, sslExecutor);
+	}
+
+	public RpcClient withReconnectInterval(long reconnectIntervalMillis) {
+		return new RpcClient(
+				eventloop, socketSettings, messageTypes, serializerBuilder,
+				strategy, protocolFactory, logger, connectTimeoutMillis, reconnectIntervalMillis, forceStart,
 				sslContext, sslExecutor);
 	}
 
@@ -206,7 +216,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		checkNotNull(executor);
 		return new RpcClient(
 				eventloop, socketSettings, messageTypes, serializerBuilder,
-				strategy, protocolFactory, logger, connectTimeoutMillis, reconnectIntervalMillis,
+				strategy, protocolFactory, logger, connectTimeoutMillis, reconnectIntervalMillis, forceStart,
 				sslContext, executor);
 	}
 
@@ -214,7 +224,19 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		checkNotNull(logger);
 		return new RpcClient(
 				eventloop, socketSettings, messageTypes, serializerBuilder,
-				strategy, protocolFactory, logger, connectTimeoutMillis, reconnectIntervalMillis,
+				strategy, protocolFactory, logger, connectTimeoutMillis, reconnectIntervalMillis, forceStart,
+				sslContext, sslExecutor);
+	}
+
+	/**
+	 * Start RpcClient in case of absence of connections
+	 *
+	 * @return
+	 */
+	public RpcClient withForceStart() {
+		return new RpcClient(
+				eventloop, socketSettings, messageTypes, serializerBuilder,
+				strategy, protocolFactory, logger, connectTimeoutMillis, reconnectIntervalMillis, true,
 				sslContext, sslExecutor);
 	}
 	// endregion
@@ -235,19 +257,27 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		checkState(!running);
 		running = true;
 		startCallback = callback;
-		if (connectTimeoutMillis != 0) {
-			eventloop.scheduleBackground(eventloop.currentTimeMillis() + connectTimeoutMillis, new Runnable() {
-				@Override
-				public void run() {
-					if (running && startCallback != null) {
-						String errorMsg = String.format("Some of the required servers did not respond within %.1f sec",
-								connectTimeoutMillis / 1000.0);
-						postException(eventloop, startCallback, new InterruptedException(errorMsg));
-						running = false;
-						startCallback = null;
+
+		if (forceStart) {
+			postCompletion(eventloop, startCallback);
+			RpcSender sender = strategy.createSender(pool);
+			requestSender = sender != null ? sender : new Sender();
+			startCallback = null;
+		} else {
+			if (connectTimeoutMillis != 0) {
+				eventloop.scheduleBackground(eventloop.currentTimeMillis() + connectTimeoutMillis, new Runnable() {
+					@Override
+					public void run() {
+						if (running && startCallback != null) {
+							String errorMsg = String.format("Some of the required servers did not respond within %.1f sec",
+									connectTimeoutMillis / 1000.0);
+							postException(eventloop, startCallback, new InterruptedException(errorMsg));
+							running = false;
+							startCallback = null;
+						}
 					}
-				}
-			});
+				});
+			}
 		}
 
 		for (InetSocketAddress address : addresses) {
@@ -397,14 +427,19 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		return requestSender;
 	}
 
-	static final class Sender implements RpcSender {
+	private final class Sender implements RpcSender {
 		@SuppressWarnings("ThrowableInstanceNeverThrown")
-		private static final RpcNoSenderException NO_SENDER_AVAILABLE_EXCEPTION
+		private final RpcNoSenderException NO_SENDER_AVAILABLE_EXCEPTION
 				= new RpcNoSenderException("No senders available");
 
 		@Override
-		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
-			callback.setException(NO_SENDER_AVAILABLE_EXCEPTION);
+		public <I, O> void sendRequest(I request, int timeout, final ResultCallback<O> callback) {
+			eventloop.post(new Runnable() {
+				@Override
+				public void run() {
+					callback.setException(NO_SENDER_AVAILABLE_EXCEPTION);
+				}
+			});
 		}
 	}
 
@@ -417,7 +452,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 
 		@Override
 		public RpcSender createSender(RpcClientConnectionPool pool) {
-			return new Sender();
+			return null;
 		}
 	}
 
