@@ -293,7 +293,7 @@ public class MiddlewareServletTest {
 	public void testDifferentMethods() throws ParseException {
 		HttpRequest request1 = HttpRequest.get(TEMPLATE + "/a/b/c/action");
 		HttpRequest request2 = HttpRequest.post(TEMPLATE + "/a/b/c/action");
-		HttpRequest request3 = HttpRequest.ofMethod(CONNECT).withUrl(TEMPLATE + "/a/b/c/action");
+		HttpRequest request3 = HttpRequest.of(CONNECT, TEMPLATE + "/a/b/c/action");
 
 		AsyncServlet post = new AsyncServlet() {
 			@Override

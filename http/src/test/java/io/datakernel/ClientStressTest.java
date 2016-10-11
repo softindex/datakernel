@@ -45,8 +45,8 @@ public class ClientStressTest {
 
 	private final SSLContext context = SSLContext.getDefault();
 
-	private AsyncHttpClient client = AsyncHttpClient.create(eventloop,
-			AsyncDnsClient.create(eventloop).withDnsServerAddress(inetAddress("8.8.8.8")))
+	private AsyncHttpClient client = AsyncHttpClient.create(eventloop)
+			.withDnsClient(AsyncDnsClient.create(eventloop).withDnsServerAddress(inetAddress("8.8.8.8")))
 			.withSslEnabled(context, executor);
 
 	private ClientStressTest() throws Exception {}

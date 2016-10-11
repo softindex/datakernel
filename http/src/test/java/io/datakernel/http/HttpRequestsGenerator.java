@@ -20,7 +20,6 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
-import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.util.Stopwatch;
@@ -156,8 +155,7 @@ public final class HttpRequestsGenerator {
 
 		this.eventloop = checkNotNull(eventloop);
 		this.options = checkNotNull(options);
-		this.client = AsyncHttpClient.create(eventloop,
-				AsyncDnsClient.create(eventloop).withDnsServerAddress(HttpUtils.inetAddress("8.8.8.8")));
+		this.client = AsyncHttpClient.create(eventloop);
 		this.completionCallback = checkNotNull(completionCallback);
 	}
 

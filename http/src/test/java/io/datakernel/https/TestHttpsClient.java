@@ -56,8 +56,12 @@ public class TestHttpsClient {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = newCachedThreadPool();
 
-		final AsyncHttpClient client = AsyncHttpClient.create(eventloop,
-				AsyncDnsClient.create(eventloop).withTimeout(500).withDnsServerAddress(inetAddress("8.8.8.8")))
+		final AsyncDnsClient dnsClient = AsyncDnsClient.create(eventloop)
+				.withTimeout(500)
+				.withDnsServerAddress(inetAddress("8.8.8.8"));
+
+		final AsyncHttpClient client = AsyncHttpClient.create(eventloop)
+				.withDnsClient(dnsClient)
 				.withSslEnabled(SSLContext.getDefault(), executor);
 
 		final ResultCallbackFuture<Integer> callback = ResultCallbackFuture.create();

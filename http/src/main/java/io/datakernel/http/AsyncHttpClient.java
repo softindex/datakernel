@@ -17,6 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.*;
+import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.dns.IAsyncDnsClient;
 import io.datakernel.eventloop.*;
 import io.datakernel.jmx.*;
@@ -78,8 +79,9 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 	private int inetAddressIdx = 0;
 
-	public static AsyncHttpClient create(Eventloop eventloop, IAsyncDnsClient asyncDnsClient) {
-		return new AsyncHttpClient(eventloop, asyncDnsClient, DEFAULT_SOCKET_SETTINGS,
+	public static AsyncHttpClient create(Eventloop eventloop) {
+		IAsyncDnsClient defaultDnsClient = AsyncDnsClient.create(eventloop);
+		return new AsyncHttpClient(eventloop, defaultDnsClient, DEFAULT_SOCKET_SETTINGS,
 				Integer.MAX_VALUE, DEFAULT_KEEP_ALIVE_MILLIS, null, null);
 	}
 
@@ -101,6 +103,10 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	}
 
 	public AsyncHttpClient withSocketSettings(SocketSettings socketSettings) {
+		return new AsyncHttpClient(eventloop, asyncDnsClient, socketSettings, maxHttpMessageSize, keepAliveTimeMillis, sslContext, sslExecutor);
+	}
+
+	public AsyncHttpClient withDnsClient(IAsyncDnsClient asyncDnsClient) {
 		return new AsyncHttpClient(eventloop, asyncDnsClient, socketSettings, maxHttpMessageSize, keepAliveTimeMillis, sslContext, sslExecutor);
 	}
 

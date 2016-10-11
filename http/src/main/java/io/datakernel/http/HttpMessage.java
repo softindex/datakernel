@@ -239,11 +239,11 @@ public abstract class HttpMessage {
 		return result;
 	}
 
-	protected abstract List<HttpCookie> parseCookies();
+	protected abstract List<HttpCookie> getCookies();
 
-	public Map<String, HttpCookie> parseCookiesMap() {
+	public Map<String, HttpCookie> getCookiesMap() {
 		assert !recycled;
-		List<HttpCookie> cookies = parseCookies();
+		List<HttpCookie> cookies = getCookies();
 		LinkedHashMap<String, HttpCookie> map = new LinkedHashMap<>();
 		for (HttpCookie cookie : cookies) {
 			map.put(cookie.getName(), cookie);
@@ -251,9 +251,9 @@ public abstract class HttpMessage {
 		return map;
 	}
 
-	public HttpCookie parseCookie(String name) {
+	public HttpCookie getCookie(String name) {
 		assert !recycled;
-		List<HttpCookie> cookies = parseCookies();
+		List<HttpCookie> cookies = getCookies();
 		for (HttpCookie cookie : cookies) {
 			if (name.equals(cookie.getName()))
 				return cookie;

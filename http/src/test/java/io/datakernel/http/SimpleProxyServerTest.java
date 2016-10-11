@@ -97,10 +97,10 @@ public class SimpleProxyServerTest {
 		echoServerThread.start();
 
 		Eventloop eventloop2 = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
-		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop2,
-				AsyncDnsClient.create(eventloop2)
-						.withDatagramSocketSetting(DatagramSocketSettings.create())
-						.withDnsServerAddress(HttpUtils.inetAddress("8.8.8.8")));
+		AsyncDnsClient dnsClient = AsyncDnsClient.create(eventloop2)
+				.withDatagramSocketSetting(DatagramSocketSettings.create())
+				.withDnsServerAddress(HttpUtils.inetAddress("8.8.8.8"));
+		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop2).withDnsClient(dnsClient);
 
 		AsyncHttpServer proxyServer = proxyHttpServer(eventloop2, httpClient);
 		proxyServer.listen();

@@ -2,7 +2,6 @@ package io.datakernel.http;
 
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
-import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import org.junit.Test;
 
@@ -23,8 +22,7 @@ public class TestClientMultilineHeaders {
 	@Test
 	public void testMultilineHeaders() throws ExecutionException, InterruptedException, IOException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
-		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop,
-				AsyncDnsClient.create(eventloop).withDnsServerAddress(GOOGLE_PUBLIC_DNS));
+		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop);
 
 		final ResultCallbackFuture<String> resultObserver = ResultCallbackFuture.create();
 

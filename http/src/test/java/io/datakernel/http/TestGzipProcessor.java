@@ -20,7 +20,6 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
-import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import org.junit.Test;
@@ -37,7 +36,6 @@ import static io.datakernel.http.GzipProcessor.fromGzip;
 import static io.datakernel.http.GzipProcessor.toGzip;
 import static io.datakernel.http.HttpHeaders.ACCEPT_ENCODING;
 import static io.datakernel.http.HttpResponse.ok200;
-import static io.datakernel.http.HttpUtils.inetAddress;
 import static junit.framework.TestCase.assertEquals;
 
 public class TestGzipProcessor {
@@ -67,8 +65,7 @@ public class TestGzipProcessor {
 
 		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet).withListenPort(PORT);
 
-		final AsyncHttpClient client = AsyncHttpClient.create(eventloop,
-				AsyncDnsClient.create(eventloop).withDnsServerAddress(inetAddress("8.8.8.8")));
+		final AsyncHttpClient client = AsyncHttpClient.create(eventloop);
 
 		final ResultCallbackFuture<String> callback = ResultCallbackFuture.create();
 

@@ -155,8 +155,6 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		if (method == null)
 			throw new ParseException("Unknown HTTP method");
 
-		request = HttpRequest.ofMethod(method);
-
 		int i;
 		for (i = 0; i != line.readRemaining(); i++) {
 			byte b = line.peek(i);
@@ -165,7 +163,8 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			this.headerChars[i] = (char) b;
 		}
 
-		request.setUrl(HttpUri.parseUrl(new String(headerChars, 0, i))); // TODO ?
+		HttpUri url = HttpUri.parseUrl(new String(headerChars, 0, i)); // TODO ?
+		request = HttpRequest.of(method, url);
 
 		if (method == GET || method == DELETE) {
 			contentLength = 0;

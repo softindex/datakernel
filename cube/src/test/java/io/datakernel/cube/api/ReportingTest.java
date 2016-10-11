@@ -325,7 +325,7 @@ public class ReportingTest {
 		AsyncDnsClient dnsClient = AsyncDnsClient.create(clientEventloop)
 				.withTimeout(TIMEOUT)
 				.withDnsServerAddress(HttpUtils.inetAddress("8.8.8.8"));
-		httpClient = AsyncHttpClient.create(clientEventloop, dnsClient);
+		httpClient = AsyncHttpClient.create(clientEventloop).withDnsClient(dnsClient);
 		cubeHttpClient = CubeHttpClient.create("http://127.0.0.1:" + SERVER_PORT, httpClient, TIMEOUT, structure, reportingConfiguration);
 	}
 

@@ -201,7 +201,7 @@ public final class HttpResponse extends HttpMessage {
 		return code;
 	}
 
-	public int parseAge() {
+	public int getAge() {
 		assert !recycled;
 		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(AGE);
 		if (header != null)
@@ -213,7 +213,7 @@ public final class HttpResponse extends HttpMessage {
 		return 0;
 	}
 
-	public Date parseExpires() {
+	public Date getExpires() {
 		assert !recycled;
 		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(EXPIRES);
 		if (header != null)
@@ -225,7 +225,7 @@ public final class HttpResponse extends HttpMessage {
 		return null;
 	}
 
-	public Date parseLastModified() {
+	public Date getLastModified() {
 		assert !recycled;
 		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(LAST_MODIFIED);
 		if (header != null)
@@ -238,7 +238,7 @@ public final class HttpResponse extends HttpMessage {
 	}
 
 	@Override
-	public List<HttpCookie> parseCookies() {
+	public List<HttpCookie> getCookies() {
 		assert !recycled;
 		List<HttpCookie> cookies = new ArrayList<>();
 		List<Value> headers = getHeaderValues(SET_COOKIE);

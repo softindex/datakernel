@@ -50,17 +50,26 @@ public final class HttpRequest extends HttpMessage {
 		this.method = method;
 	}
 
-	public static HttpRequest ofMethod(HttpMethod method) {
+	public static HttpRequest of(HttpMethod method, String url) {
 		assert method != null;
-		return new HttpRequest(method);
+		HttpRequest request = new HttpRequest(method);
+		request.setUrl(url);
+		return request;
+	}
+
+	public static HttpRequest of(HttpMethod method, HttpUri url) {
+		assert method != null;
+		HttpRequest request = new HttpRequest(method);
+		request.setUrl(url);
+		return request;
 	}
 
 	public static HttpRequest get(String url) {
-		return HttpRequest.ofMethod(GET).withUrl(url);
+		return HttpRequest.of(GET, url);
 	}
 
 	public static HttpRequest post(String url) {
-		return HttpRequest.ofMethod(POST).withUrl(url);
+		return HttpRequest.of(POST, url);
 	}
 
 	// common builder methods
@@ -159,11 +168,6 @@ public final class HttpRequest extends HttpMessage {
 		return this;
 	}
 
-	public HttpRequest withUrl(HttpUri url) {
-		setUrl(url);
-		return this;
-	}
-
 	public HttpRequest withUrl(String url) {
 		setUrl(url);
 		return this;
@@ -241,7 +245,7 @@ public final class HttpRequest extends HttpMessage {
 		}
 	}
 
-	public void setUrl(String url) {
+	public final void setUrl(String url) {
 		setUrl(HttpUri.ofUrl(url));
 	}
 
@@ -257,7 +261,7 @@ public final class HttpRequest extends HttpMessage {
 	// endregion
 
 	// region getters
-	public List<AcceptMediaType> parseAccept() {
+	public List<AcceptMediaType> getAccept() {
 		assert !recycled;
 		List<AcceptMediaType> list = new ArrayList<>();
 		List<Value> headers = getHeaderValues(ACCEPT);
@@ -272,7 +276,7 @@ public final class HttpRequest extends HttpMessage {
 		return list;
 	}
 
-	public List<AcceptCharset> parseAcceptCharsets() {
+	public List<AcceptCharset> getAcceptCharsets() {
 		assert !recycled;
 		List<AcceptCharset> charsets = new ArrayList<>();
 		List<Value> headers = getHeaderValues(ACCEPT_CHARSET);
@@ -288,7 +292,7 @@ public final class HttpRequest extends HttpMessage {
 	}
 
 	@Override
-	public List<HttpCookie> parseCookies() {
+	public List<HttpCookie> getCookies() {
 		assert !recycled;
 		List<HttpCookie> cookie = new ArrayList<>();
 		List<Value> headers = getHeaderValues(COOKIE);
@@ -303,7 +307,7 @@ public final class HttpRequest extends HttpMessage {
 		return cookie;
 	}
 
-	public Date parseIfModifiedSince() {
+	public Date getIfModifiedSince() {
 		assert !recycled;
 		ValueOfBytes header = (ValueOfBytes) getHeaderValue(IF_MODIFIED_SINCE);
 		if (header != null) {
@@ -316,7 +320,7 @@ public final class HttpRequest extends HttpMessage {
 		return null;
 	}
 
-	public Date parseIfUnModifiedSince() {
+	public Date getIfUnModifiedSince() {
 		assert !recycled;
 		ValueOfBytes header = (ValueOfBytes) getHeaderValue(IF_UNMODIFIED_SINCE);
 		if (header != null)

@@ -67,7 +67,7 @@ public class HttpMessageTest {
 		assertHttpRequestEquals("POST /index.html HTTP/1.1\r\nHost: test.com\r\nContent-Length: 0\r\n\r\n",
 				HttpRequest.post("http://test.com/index.html"));
 		assertHttpRequestEquals("CONNECT /index.html HTTP/1.1\r\nHost: test.com\r\nContent-Length: 0\r\n\r\n",
-				HttpRequest.ofMethod(HttpMethod.CONNECT).withUrl("http://test.com/index.html"));
+				HttpRequest.of(HttpMethod.CONNECT, "http://test.com/index.html"));
 		assertHttpRequestEquals("GET /index.html HTTP/1.1\r\nHost: test.com\r\nCookie: cookie1=\"value1\"\r\n\r\n",
 				HttpRequest.get("http://test.com/index.html").withCookie(HttpCookie.of("cookie1", "value1")));
 		assertHttpRequestEquals("GET /index.html HTTP/1.1\r\nHost: test.com\r\nCookie: cookie1=\"value1\"; cookie2=\"value2\"\r\n\r\n",

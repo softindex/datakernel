@@ -17,7 +17,6 @@
 package io.datakernel;
 
 import io.datakernel.async.ResultCallback;
-import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
@@ -86,10 +85,7 @@ public class HttpApiTest {
 		};
 
 		server = AsyncHttpServer.create(eventloop, servlet).withListenPort(PORT);
-		client = AsyncHttpClient.create(
-				eventloop,
-				AsyncDnsClient.create(eventloop).withDnsServerAddress(GOOGLE_PUBLIC_DNS)
-		);
+		client = AsyncHttpClient.create(eventloop);
 
 		// setup request and response data
 		requestAcceptContentTypes.add(AcceptMediaType.of(MediaTypes.ANY_AUDIO, 90));
@@ -164,21 +160,21 @@ public class HttpApiTest {
 
 	private void testResponse(HttpResponse response) throws ParseException {
 		assertEquals(responseContentType.toString(), response.getContentType().toString());
-		assertEquals(responseCookies.toString(), response.parseCookies().toString());
+		assertEquals(responseCookies.toString(), response.getCookies().toString());
 		assertEquals(responseDate.toString(), response.getDate().toString());
-		assertEquals(age, response.parseAge());
-		assertEquals(expiresDate.toString(), response.parseExpires().toString());
-		assertEquals(lastModified.toString(), response.parseLastModified().toString());
+		assertEquals(age, response.getAge());
+		assertEquals(expiresDate.toString(), response.getExpires().toString());
+		assertEquals(lastModified.toString(), response.getLastModified().toString());
 	}
 
 	private void testRequest(HttpRequest request) throws ParseException {
-		assertEquals(requestAcceptContentTypes.toString(), request.parseAccept().toString());
-		assertEquals(requestAcceptCharsets.toString(), request.parseAcceptCharsets().toString());
+		assertEquals(requestAcceptContentTypes.toString(), request.getAccept().toString());
+		assertEquals(requestAcceptCharsets.toString(), request.getAcceptCharsets().toString());
 		assertEquals(requestDate.toString(), request.getDate().toString());
-		assertEquals(dateIMS.toString(), request.parseIfModifiedSince().toString());
-		assertEquals(dateIUMS.toString(), request.parseIfUnModifiedSince().toString());
+		assertEquals(dateIMS.toString(), request.getIfModifiedSince().toString());
+		assertEquals(dateIUMS.toString(), request.getIfUnModifiedSince().toString());
 		assertEquals(requestContentType.toString(), request.getContentType().toString());
-		assertEquals(requestCookies.toString(), request.parseCookies().toString());
+		assertEquals(requestCookies.toString(), request.getCookies().toString());
 	}
 
 	private static Date createDate(int year, int month, int day) {

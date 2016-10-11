@@ -80,8 +80,11 @@ public class TestHttpsClientServer {
 		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, bobServlet)
 				.withSslListenPort(createSslContext("TLSv1.2", keyManagers, trustManagers, new SecureRandom()), executor, SSL_PORT);
 
-		final AsyncHttpClient client = AsyncHttpClient.create(eventloop,
-				AsyncDnsClient.create(eventloop).withTimeout(500).withDnsServerAddress(GOOGLE_PUBLIC_DNS))
+		final AsyncDnsClient dnsClient = AsyncDnsClient.create(eventloop)
+				.withTimeout(500)
+				.withDnsServerAddress(GOOGLE_PUBLIC_DNS);
+		final AsyncHttpClient client = AsyncHttpClient.create(eventloop)
+				.withDnsClient(dnsClient)
 				.withSslEnabled(createSslContext("TLSv1.2", keyManagers, trustManagers, new SecureRandom()), executor);
 
 		HttpRequest request = post("https://127.0.0.1:" + SSL_PORT).withBody(wrapAscii("Hello, I am Alice!"));
@@ -117,8 +120,12 @@ public class TestHttpsClientServer {
 				.withSslListenPort(context, executor, SSL_PORT)
 				.withListenPort(PORT);
 
-		final AsyncHttpClient client = AsyncHttpClient.create(eventloop,
-				AsyncDnsClient.create(eventloop).withTimeout(500).withDnsServerAddress(GOOGLE_PUBLIC_DNS))
+		final AsyncDnsClient dnsClient = AsyncDnsClient.create(eventloop)
+				.withTimeout(500)
+				.withDnsServerAddress(GOOGLE_PUBLIC_DNS);
+
+		final AsyncHttpClient client = AsyncHttpClient.create(eventloop)
+				.withDnsClient(dnsClient)
 				.withSslEnabled(context, executor);
 
 		HttpRequest httpsRequest = post("https://127.0.0.1:" + SSL_PORT).withBody(wrapAscii("Hello, I am Alice!"));

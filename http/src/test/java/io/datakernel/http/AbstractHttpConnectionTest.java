@@ -33,7 +33,7 @@ public class AbstractHttpConnectionTest {
 	};
 
 	private AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet).withListenPort(PORT);
-	private AsyncHttpClient client = AsyncHttpClient.create(eventloop, dnsClient);
+	private AsyncHttpClient client = AsyncHttpClient.create(eventloop).withDnsClient(dnsClient);
 
 	@Test
 	public void testMultiLineHeader() throws IOException {
