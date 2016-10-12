@@ -214,9 +214,9 @@ public class ExpressionTest {
 						call(arg(0), "getField1"))
 				.withMethod("toString",
 						asString()
-								.quotes("{", "}", ", ")
-								.add(getter(self(), "x"))
-								.add("labelY: ", getter(self(), "y")))
+								.withQuotes("{", "}", ", ")
+								.withArgument(getter(self(), "x"))
+								.withArgument("labelY: ", getter(self(), "y")))
 				.build();
 		Test test = testClass.newInstance();
 
@@ -652,9 +652,9 @@ public class ExpressionTest {
 						call(arg(0), "getField1"))
 				.withMethod("toString",
 						asString()
-								.quotes("{", "}", ", ")
-								.add(getter(self(), "x"))
-								.add("labelY: ", getter(self(), "y")))
+								.withQuotes("{", "}", ", ")
+								.withArgument(getter(self(), "x"))
+								.withArgument("labelY: ", getter(self(), "y")))
 				.build();
 
 		Class<Test> testClass2 = ClassBuilder.create(definingClassLoader, Test.class)
@@ -697,9 +697,9 @@ public class ExpressionTest {
 						call(arg(0), "getField1"))
 				.withMethod("toString",
 						asString()
-								.quotes("{", "}", ", ")
-								.add(getter(self(), "x"))
-								.add("labelY: ", getter(self(), "y")))
+								.withQuotes("{", "}", ", ")
+								.withArgument(getter(self(), "x"))
+								.withArgument("labelY: ", getter(self(), "y")))
 				.build();
 
 		assertEquals(testClass1, testClass2);
@@ -900,8 +900,8 @@ public class ExpressionTest {
 				.withMethod("b", nullRef(Integer.class))
 				.withMethod("toString",
 						asString()
-								.quotes("{", "}", ", ")
-								.add(call(self(), "b")))
+								.withQuotes("{", "}", ", ")
+								.withArgument(call(self(), "b")))
 				.buildClassAndCreateNewInstance();
 
 		assertEquals(instance.b(), null);
@@ -917,8 +917,8 @@ public class ExpressionTest {
 				.withMethod("b", nullRef(Integer.class))
 				.withMethod("toString",
 						asString()
-								.quotes("{", "}", ", ")
-								.add(call(self(), "b")))
+								.withQuotes("{", "}", ", ")
+								.withArgument(call(self(), "b")))
 				.buildClassAndCreateNewInstance();
 		assertEquals(folder.list().length, 1);
 		assertEquals(instance.b(), null);

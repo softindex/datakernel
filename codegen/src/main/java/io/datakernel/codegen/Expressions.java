@@ -234,7 +234,7 @@ public final class Expressions {
 	public static ExpressionToString asString(List<String> fields) {
 		ExpressionToString toString = new ExpressionToString();
 		for (String field : fields) {
-			toString.add(field + "=", getter(self(), field));
+			toString.withArgument(field + "=", getter(self(), field));
 		}
 		return toString;
 	}

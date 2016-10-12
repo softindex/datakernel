@@ -33,7 +33,7 @@ import static org.objectweb.asm.commons.Method.getMethod;
  * Defines methods which allow to create a string
  */
 @SuppressWarnings("PointlessArithmeticExpression")
-final class ExpressionToString implements Expression {
+public final class ExpressionToString implements Expression {
 	private String begin = "{";
 	private String end = "}";
 	private String separator = " ";
@@ -46,28 +46,28 @@ final class ExpressionToString implements Expression {
 	ExpressionToString() {
 	}
 
-	public ExpressionToString add(String label, Expression expression) {
+	public ExpressionToString withArgument(String label, Expression expression) {
 		this.arguments.put(label, expression);
 		return this;
 	}
 
-	public ExpressionToString add(Expression expression) {
+	public ExpressionToString withArgument(Expression expression) {
 		this.arguments.put(arguments.size() + 1, expression);
 		return this;
 	}
 
-	public ExpressionToString separator(String separator) {
+	public ExpressionToString withSeparator(String separator) {
 		this.separator = separator;
 		return this;
 	}
 
-	public ExpressionToString quotes(String begin, String end) {
+	public ExpressionToString withQuotes(String begin, String end) {
 		this.begin = begin;
 		this.end = end;
 		return this;
 	}
 
-	public ExpressionToString quotes(String begin, String end, String separator) {
+	public ExpressionToString withQuotes(String begin, String end, String separator) {
 		this.begin = begin;
 		this.end = end;
 		this.separator = separator;

@@ -14,10 +14,8 @@
  * limitations under the License.
  */
 
-package io.datakernel.eventloop;
+package io.datakernel.bytebuf;
 
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufQueue;
 import org.junit.Assert;
 import org.junit.Test;
 
