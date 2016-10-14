@@ -247,12 +247,12 @@ public final class SerializerBuilder {
 		return withSerializer(type, new SerializerGenBuilderConst(serializer));
 	}
 
-	public SerializerBuilder withSubclasses(String subclassesId, Collection<Class<?>> subclasses) {
+	public SerializerBuilder withSubclasses(String subclassesId, List<Class<?>> subclasses) {
 		extraSubclassesMap.put(subclassesId, subclasses);
 		return this;
 	}
 
-	public void setSubclasses(String subclassesId, Collection<Class<?>> subclasses) {
+	public void setSubclasses(String subclassesId, List<Class<?>> subclasses) {
 		extraSubclassesMap.put(subclassesId, subclasses);
 	}
 
@@ -260,7 +260,7 @@ public final class SerializerBuilder {
 		return withSubclasses(extraSubclassesId, Arrays.asList(subclasses));
 	}
 
-	public void setSubclasses(Class<?> type, List<Class<?>> subclasses) {
+	public <T> void setSubclasses(Class<T> type, List<Class<? extends T>> subclasses) {
 		LinkedHashSet<Class<?>> subclassesSet = new LinkedHashSet<>();
 		subclassesSet.addAll(subclasses);
 		check(subclassesSet.size() == subclasses.size());
@@ -268,16 +268,16 @@ public final class SerializerBuilder {
 		setSerializer(type, subclassesSerializer);
 	}
 
-	public void setSubclasses(Class<?> type, Class<?>... subclasses) {
+	public <T> void setSubclasses(Class<T> type, Class<? extends T>... subclasses) {
 		setSubclasses(type, Arrays.asList(subclasses));
 	}
 
-	public SerializerBuilder withSubclasses(Class<?> type, List<Class<?>> subclasses) {
+	public <T> SerializerBuilder withSubclasses(Class<T> type, List<Class<? extends T>> subclasses) {
 		setSubclasses(type, subclasses);
 		return this;
 	}
 
-	public SerializerBuilder withSubclasses(Class<?> type, Class<?>... subclasses) {
+	public <T> SerializerBuilder withSubclasses(Class<T> type, Class<? extends T>... subclasses) {
 		setSubclasses(type, subclasses);
 		return this;
 	}

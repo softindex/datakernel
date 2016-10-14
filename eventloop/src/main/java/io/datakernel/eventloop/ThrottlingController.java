@@ -25,7 +25,6 @@ import org.slf4j.LoggerFactory;
 import java.util.Random;
 
 import static io.datakernel.util.Preconditions.check;
-import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.Math.pow;
 
 public final class ThrottlingController implements EventloopJmxMBean {
@@ -55,7 +54,7 @@ public final class ThrottlingController implements EventloopJmxMBean {
 		}
 	};
 
-	private final Eventloop eventloop;
+	private Eventloop eventloop;
 
 	// settings
 	private int targetTimeMillis;
@@ -82,30 +81,53 @@ public final class ThrottlingController implements EventloopJmxMBean {
 
 	private float throttling;
 
-	// region builders
-	public static ThrottlingController createDefaultThrottlingController(Eventloop eventloop) {
-		ThrottlingController throttlingController = new ThrottlingController(eventloop);
-		throttlingController.setTargetTimeMillis(TARGET_TIME_MILLIS);
-		throttlingController.setGcTimeMillis(GC_TIME_MILLIS);
-		throttlingController.setSmoothingWindow(SMOOTHING_WINDOW);
-		throttlingController.setThrottlingDecrease(THROTTLING_DECREASE);
-		throttlingController.init(INITIAL_KEYS_PER_SECOND, INITIAL_THROTTLING);
-		return throttlingController;
+	private ThrottlingController() {
 	}
 
-	private ThrottlingController(Eventloop eventloop) {
-		this.eventloop = eventloop;
-		checkArgument(this.eventloop.throttlingController == null, "Throttling controller already set");
-		this.eventloop.throttlingController = this;
+	// region builders
+	public static ThrottlingController create() {
+		return new ThrottlingController()
+				.withTargetTimeMillis(TARGET_TIME_MILLIS)
+				.withGcTimeMillis(GC_TIME_MILLIS)
+				.withSmoothingWindow(SMOOTHING_WINDOW)
+				.withThrottlingDecrease(THROTTLING_DECREASE)
+				.withInitialKeysPerSecond(INITIAL_KEYS_PER_SECOND)
+				.withInitialThrottling(INITIAL_THROTTLING);
 	}
+
+	public ThrottlingController withTargetTimeMillis(long targetTimeMillis) {
+		setTargetTimeMillis((int) targetTimeMillis);
+		return this;
+	}
+
+	public ThrottlingController withGcTimeMillis(long gcTimeMillis) {
+		setGcTimeMillis((int) gcTimeMillis);
+		return this;
+	}
+
+	public ThrottlingController withSmoothingWindow(int smoothingWindow) {
+		setSmoothingWindow(smoothingWindow);
+		return this;
+	}
+
+	public ThrottlingController withThrottlingDecrease(double throttlingDecrease) {
+		setThrottlingDecrease(throttlingDecrease);
+		return this;
+	}
+
+	public ThrottlingController withInitialKeysPerSecond(double initialKeysPerSecond) {
+		this.smoothedTimePerKeyMillis = 1000.0 / initialKeysPerSecond;
+		return this;
+	}
+
+	public ThrottlingController withInitialThrottling(double initialThrottling) {
+		this.smoothedThrottling = initialThrottling;
+		return this;
+	}
+
 	// endregion
 
-	public void init(double initialKeysPerSecond, double initialThrottling) {
-		this.smoothedTimePerKeyMillis = 1000.0 / initialKeysPerSecond;
-		this.smoothedThrottling = initialThrottling;
-	}
-
-	public boolean isRequestThrottled() {
+	public boolean isOverloaded() {
 		bufferedRequests++;
 		if (random.nextFloat() < throttling) {
 			bufferedRequestsThrottled++;
@@ -114,7 +136,7 @@ public final class ThrottlingController implements EventloopJmxMBean {
 		return false;
 	}
 
-	public void updateStats(int lastKeys, int lastTime) {
+	void updateInternalStats(int lastKeys, int lastTime) {
 		if (lastTime < 0 || lastTime > 60000) {
 			logger.warn("Invalid processing time: {}", lastTime);
 			return;
@@ -147,7 +169,7 @@ public final class ThrottlingController implements EventloopJmxMBean {
 		infoTotalTimeMillis += lastTime;
 	}
 
-	public void calculateThrottling(int newKeys) {
+	void calculateThrottling(int newKeys) {
 		double predictedTime = newKeys * getAvgTimePerKeyMillis();
 
 		double newThrottling = getAvgThrottling() - throttlingDecrease;
@@ -297,6 +319,10 @@ public final class ThrottlingController implements EventloopJmxMBean {
 				infoRounds,
 				infoRoundsZeroThrottling,
 				infoRoundsExceededTargetTime);
+	}
+
+	void setEventloop(Eventloop eventloop) {
+		this.eventloop = eventloop;
 	}
 
 	@Override

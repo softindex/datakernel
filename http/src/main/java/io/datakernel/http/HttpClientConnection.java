@@ -191,7 +191,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		if (keepAlive) {
 			httpRequest.addHeader(CONNECTION_KEEP_ALIVE);
 		}
-		asyncTcpSocket.write(httpRequest.write());
+		asyncTcpSocket.write(httpRequest.toByteBuf());
 	}
 
 	/**

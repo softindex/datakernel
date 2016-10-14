@@ -314,7 +314,8 @@ public final class HttpResponse extends HttpMessage {
 	 *
 	 * @return HttpResponse as ByteBuf
 	 */
-	ByteBuf write() {
+	@Override
+	public ByteBuf toByteBuf() {
 		assert !recycled;
 		setHeader(HttpHeaders.ofDecimal(CONTENT_LENGTH, body == null ? 0 : body.readRemaining()));
 		int estimateSize = estimateSize(LONGEST_FIRST_LINE_SIZE);

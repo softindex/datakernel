@@ -240,7 +240,7 @@ public class AsyncHttpServerTest {
 		final ByteBuf buf =
 				HttpRequest.post("http://127.0.0.1:" + port)
 						.withBody(ByteBuf.wrapForReading(encodeAscii("Test big HTTP message body")))
-						.write();
+						.toByteBuf();
 
 		AsyncServlet servlet = new AsyncServlet() {
 			@Override

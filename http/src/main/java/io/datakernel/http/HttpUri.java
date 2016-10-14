@@ -156,17 +156,17 @@ public final class HttpUri {
 		return query;
 	}
 
-	public String getParameter(String name) throws ParseException {
+	public String getParameter(String name) {
 		parseParams();
 		return params.get(name);
 	}
 
-	public Map<String, String> getParameters() throws ParseException {
+	public Map<String, String> getParameters() {
 		parseParams();
 		return params;
 	}
 
-	private void parseParams() throws ParseException {
+	private void parseParams() {
 		if (params != null)
 			return;
 		params = HttpUtils.extractParameters(query);

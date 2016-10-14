@@ -31,16 +31,38 @@ import static io.datakernel.http.HttpHeaders.DATE;
 public abstract class HttpMessage {
 	protected boolean recycled;
 
-	private final ArrayList<HttpHeaders.Value> headers = new ArrayList<>();
+	final ArrayList<HttpHeaders.Value> headers = new ArrayList<>();
 	private ArrayList<ByteBuf> headerBufs;
 	protected ByteBuf body;
 
 	protected HttpMessage() {
 	}
 
-	protected List<HttpHeaders.Value> getHeaders() {
-		assert !recycled;
-		return headers;
+	public final Map<HttpHeader, String> getHeaders() {
+		LinkedHashMap<HttpHeader, String> map = new LinkedHashMap<>(headers.size() * 2);
+		for (HttpHeaders.Value headerValue : headers) {
+			HttpHeader header = headerValue.getKey();
+			String headerString = headerValue.toString();
+			if (!map.containsKey(header)) {
+				map.put(header, headerString);
+			}
+		}
+		return map;
+	}
+
+	public final Map<HttpHeader, List<String>> getAllHeaders() {
+		LinkedHashMap<HttpHeader, List<String>> map = new LinkedHashMap<>(headers.size() * 2);
+		for (HttpHeaders.Value headerValue : headers) {
+			HttpHeader header = headerValue.getKey();
+			String headerString = headerValue.toString();
+			List<String> strings = map.get(header);
+			if (strings == null) {
+				strings = new ArrayList<>();
+				map.put(header, strings);
+			}
+			strings.add(headerString);
+		}
+		return map;
 	}
 
 	/**
@@ -228,17 +250,6 @@ public abstract class HttpMessage {
 		return result;
 	}
 
-	public final List<String> getHeaderStrings(HttpHeader header) {
-		List<String> result = new ArrayList<>();
-
-		for (HttpHeaders.Value headerValue : headers) {
-			if (header.equals(headerValue.getKey()))
-				result.add(headerValue.toString());
-		}
-
-		return result;
-	}
-
 	protected abstract List<HttpCookie> getCookies();
 
 	public Map<String, HttpCookie> getCookiesMap() {
@@ -260,5 +271,7 @@ public abstract class HttpMessage {
 		}
 		return null;
 	}
+
+	public abstract ByteBuf toByteBuf();
 
 }

@@ -26,14 +26,12 @@ import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
-import io.datakernel.launcher.Args;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
 
 import javax.inject.Singleton;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 
 public class HttpHelloWorldLauncher extends Launcher {
 	public static final int PORT = 11111;
@@ -42,7 +40,7 @@ public class HttpHelloWorldLauncher extends Launcher {
 	AsyncHttpServer httpServer;
 
 	public HttpHelloWorldLauncher() {
-		super(Stage.DEVELOPMENT,
+		super(Stage.PRODUCTION,
 				ServiceGraphModule.defaultInstance(),
 				new AbstractModule() {
 					@Override
@@ -51,20 +49,20 @@ public class HttpHelloWorldLauncher extends Launcher {
 
 					@Provides
 					@Singleton
-					Eventloop eventloop(@Args String[] args) {
-						return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+					Eventloop eventloop() {
+						return Eventloop.create();
 					}
 
 					@Provides
 					@Singleton
-					AsyncHttpServer httpServer(Eventloop eventloop, AsyncServlet servlet) {
-						return AsyncHttpServer.create(eventloop, servlet)
+					AsyncHttpServer httpServer(Eventloop eventloop, AsyncServlet rootServlet) {
+						return AsyncHttpServer.create(eventloop, rootServlet)
 								.withListenPort(PORT);
 					}
 
 					@Provides
 					@Singleton
-					AsyncServlet httpServlet() {
+					AsyncServlet rootServlet() {
 						return new AsyncServlet() {
 							@Override
 							public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {

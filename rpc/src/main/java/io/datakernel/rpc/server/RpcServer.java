@@ -39,8 +39,7 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamProtocol;
-import static io.datakernel.util.Preconditions.checkNotNull;
-import static io.datakernel.util.Preconditions.checkState;
+import static io.datakernel.util.Preconditions.*;
 import static java.lang.ClassLoader.getSystemClassLoader;
 import static java.util.Arrays.asList;
 
@@ -53,7 +52,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	private final Map<Class<?>, RpcRequestHandler<?, ?>> handlers;
 	private final RpcProtocolFactory protocolFactory;
 	private final SerializerBuilder serializerBuilder;
-	private final Set<Class<?>> messageTypes;
+	private final List<Class<?>> messageTypes;
 
 	private final List<RpcServerConnection> connections = new ArrayList<>();
 
@@ -75,7 +74,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	// region builders
 	private RpcServer(Eventloop eventloop, Map<Class<?>, RpcRequestHandler<?, ?>> handlers,
 	                  RpcProtocolFactory protocolFactory, SerializerBuilder serializerBuilder,
-	                  Set<Class<?>> messageTypes, Logger logger) {
+	                  List<Class<?>> messageTypes, Logger logger) {
 		super(eventloop);
 		this.handlers = handlers;
 		this.protocolFactory = protocolFactory;
@@ -103,7 +102,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	private RpcServer(RpcServer previousInstance,
 	                  Map<Class<?>, RpcRequestHandler<?, ?>> handlers,
 	                  RpcProtocolFactory protocolFactory, SerializerBuilder serializerBuilder,
-	                  Set<Class<?>> messageTypes, Logger logger) {
+	                  List<Class<?>> messageTypes, Logger logger) {
 		super(previousInstance);
 		this.handlers = handlers;
 		this.protocolFactory = protocolFactory;
@@ -116,7 +115,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		HashMap<Class<?>, RpcRequestHandler<?, ?>> requestHandlers = new HashMap<>();
 		RpcProtocolFactory protocolFactory = streamProtocol();
 		SerializerBuilder serializerBuilder = SerializerBuilder.create(getSystemClassLoader());
-		Set<Class<?>> messageTypes = null;
+		List<Class<?>> messageTypes = null;
 		Logger logger = LoggerFactory.getLogger(RpcServer.class);
 
 		return new RpcServer(eventloop, requestHandlers, protocolFactory, serializerBuilder, messageTypes, logger)
@@ -131,7 +130,8 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 
 	public RpcServer withMessageTypes(List<Class<?>> messageTypes) {
 		checkNotNull(messageTypes);
-		return new RpcServer(this, handlers, protocolFactory, serializerBuilder, new LinkedHashSet<>(messageTypes), logger);
+		checkArgument(new HashSet<>(messageTypes).size() == messageTypes.size(), "Message types must be unique");
+		return new RpcServer(this, handlers, protocolFactory, serializerBuilder, messageTypes, logger);
 	}
 
 	public RpcServer withSerializerBuilder(SerializerBuilder serializerBuilder) {

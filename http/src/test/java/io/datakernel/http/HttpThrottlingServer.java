@@ -130,8 +130,8 @@ public class HttpThrottlingServer {
 			return;
 		info(options);
 
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
-		ThrottlingController throttlingController = ThrottlingController.createDefaultThrottlingController(eventloop);
+		ThrottlingController throttlingController = ThrottlingController.create();
+		final Eventloop eventloop = Eventloop.create().withThrottlingController(throttlingController).withFatalErrorHandler(rethrowOnAnyError());
 
 		final HttpThrottlingServer server = new HttpThrottlingServer(eventloop, options);
 

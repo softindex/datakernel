@@ -55,7 +55,7 @@ public abstract class Launcher {
 		this.modules = modules;
 	}
 
-	private List<Module> getModules() {
+	public List<Module> getModules() {
 		List<Module> moduleList = new ArrayList<>(Arrays.asList(this.modules));
 		moduleList.add(new AbstractModule() {
 			@Override
@@ -78,27 +78,26 @@ public abstract class Launcher {
 	}
 
 	public void launch(String[] args) throws Exception {
+		this.args = args;
+		Injector injector = Guice.createInjector(stage, getModules());
+		logger.info("=== INJECTING DEPENDENCIES");
+		doInject(injector);
 		try {
-			this.args = args;
-			beforeInject();
-			Injector injector = Guice.createInjector(stage, getModules());
-			logger.info("=== INJECTING DEPENDENCIES");
-			doInject(injector);
+			onStart();
 			try {
-				beforeStart();
 				logger.info("=== STARTING APPLICATION");
 				doStart();
 				logger.info("=== RUNNING APPLICATION");
 				run();
-			} catch (Exception e) {
-				logger.error("Application failed", e);
 			} finally {
 				logger.info("=== STOPPING APPLICATION");
 				doStop();
-				afterStop();
 			}
-		} catch (Throwable e) {
-			logger.error("Failed to inject/stop application", e);
+		} catch (Exception e) {
+			logger.error("Application failure", e);
+			throw e;
+		} finally {
+			onStop();
 		}
 	}
 
@@ -119,15 +118,12 @@ public abstract class Launcher {
 		serviceGraphProvider.get().startFuture().get();
 	}
 
-	protected void beforeInject() throws Exception {
-	}
-
-	protected void beforeStart() throws Exception {
+	protected void onStart() throws Exception {
 	}
 
 	protected abstract void run() throws Exception;
 
-	protected void afterStop() throws Exception {
+	protected void onStop() throws Exception {
 	}
 
 	private void doStop() throws Exception {

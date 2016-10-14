@@ -336,11 +336,7 @@ public final class HttpRequest extends HttpMessage {
 	// region internal
 	public Map<String, String> getParameters() {
 		assert !recycled;
-		try {
-			return url.getParameters();
-		} catch (ParseException e) {
-			return Collections.emptyMap();
-		}
+		return url.getParameters();
 	}
 
 	public Map<String, String> getPostParameters() {
@@ -349,11 +345,7 @@ public final class HttpRequest extends HttpMessage {
 				&& getContentType().getMediaType() == MediaTypes.X_WWW_FORM_URLENCODED
 				&& body.readPosition() != body.writePosition()) {
 			if (bodyParameters == null) {
-				try {
-					bodyParameters = HttpUtils.extractParameters(decodeAscii(getBody()));
-				} catch (ParseException e) {
-					return Collections.emptyMap();
-				}
+				bodyParameters = HttpUtils.extractParameters(decodeAscii(getBody()));
 			}
 			return bodyParameters;
 		} else {
@@ -367,11 +359,7 @@ public final class HttpRequest extends HttpMessage {
 
 	public String getParameter(String name) {
 		assert !recycled;
-		try {
-			return url.getParameter(name);
-		} catch (ParseException e) {
-			return null;
-		}
+		return url.getParameter(name);
 	}
 
 	int getPos() {
@@ -452,7 +440,8 @@ public final class HttpRequest extends HttpMessage {
 		urlParameters.put(key, value);
 	}
 
-	ByteBuf write() {
+	@Override
+	public ByteBuf toByteBuf() {
 		assert !recycled;
 		if (body != null || method != GET) {
 			if (gzip) {

@@ -106,6 +106,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	 * The desired name of the thread
 	 */
 	private final String threadName;
+	private final int threadPriority;
 
 	private final FatalErrorHandler fatalErrorHandler;
 
@@ -120,7 +121,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	 */
 	private long timestamp;
 
-	ThrottlingController throttlingController;
+	private ThrottlingController throttlingController;
 
 	/**
 	 * Count of selected keys for last Selector.select()
@@ -137,30 +138,48 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	private boolean monitoring = false;
 
 	// region builders
-	private Eventloop(CurrentTimeProvider timeProvider, String threadName, FatalErrorHandler fatalErrorHandler) {
+	private Eventloop(CurrentTimeProvider timeProvider, String threadName, int threadPriority, ThrottlingController throttlingController, FatalErrorHandler fatalErrorHandler) {
 		this.timeProvider = timeProvider;
 		this.threadName = threadName;
+		this.threadPriority = threadPriority;
 		this.fatalErrorHandler = fatalErrorHandler;
+		this.throttlingController = throttlingController;
+		if (throttlingController != null) {
+			throttlingController.setEventloop(this);
+		}
 		refreshTimestampAndGet();
 
 	}
 
 	public static Eventloop create() {
-		return new Eventloop(CurrentTimeProviderSystem.instance(), null, null);
+		return new Eventloop(CurrentTimeProviderSystem.instance(), null, 0, null, null);
 	}
 
 	public Eventloop withCurrentTimeProvider(CurrentTimeProvider timeProvider) {
-		return new Eventloop(timeProvider, threadName, fatalErrorHandler);
+		return new Eventloop(timeProvider, threadName, threadPriority, throttlingController, fatalErrorHandler);
 	}
 
 	public Eventloop withThreadName(String threadName) {
-		return new Eventloop(timeProvider, threadName, fatalErrorHandler);
+		return new Eventloop(timeProvider, threadName, threadPriority, throttlingController, fatalErrorHandler);
+	}
+
+	public Eventloop withThreadPriority(int threadPriority) {
+		return new Eventloop(timeProvider, threadName, threadPriority, throttlingController, fatalErrorHandler);
+	}
+
+	public Eventloop withThrottlingController(ThrottlingController throttlingController) {
+		return new Eventloop(timeProvider, threadName, threadPriority, throttlingController, fatalErrorHandler);
 	}
 
 	public Eventloop withFatalErrorHandler(FatalErrorHandler fatalErrorHandler) {
-		return new Eventloop(timeProvider, threadName, fatalErrorHandler);
+		return new Eventloop(timeProvider, threadName, threadPriority, throttlingController, fatalErrorHandler);
 	}
 	// endregion
+
+
+	public ThrottlingController getThrottlingController() {
+		return throttlingController;
+	}
 
 	private void openSelector() {
 		if (selector == null) {
@@ -228,6 +247,8 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		eventloopThread = Thread.currentThread();
 		if (threadName != null)
 			eventloopThread.setName(threadName);
+		if (threadPriority != 0)
+			eventloopThread.setPriority(threadPriority);
 		ensureSelector();
 		breakEventloop = false;
 
@@ -273,7 +294,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		if (timeAfterSelectorSelect != 0) {
 			long businessLogicTime = timeBeforeSelectorSelect - timeAfterSelectorSelect;
 			if (throttlingController != null) {
-				throttlingController.updateStats(lastSelectedKeys, (int) businessLogicTime);
+				throttlingController.updateInternalStats(lastSelectedKeys, (int) businessLogicTime);
 			}
 			stats.updateBusinessLogicTime(businessLogicTime);
 		}

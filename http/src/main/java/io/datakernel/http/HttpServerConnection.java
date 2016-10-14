@@ -187,7 +187,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		if (keepAlive) {
 			httpResponse.addHeader(CONNECTION_KEEP_ALIVE);
 		}
-		ByteBuf buf = httpResponse.write();
+		ByteBuf buf = httpResponse.toByteBuf();
 		httpResponse.recycleBufs();
 		asyncTcpSocket.write(buf);
 	}

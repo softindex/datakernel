@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.exception.ParseException;
 
 import java.io.UnsupportedEncodingException;
@@ -189,7 +190,7 @@ public final class HttpUtils {
 		return request.getRemoteAddress();
 	}
 
-	public static InetAddress getRealIpNginx(HttpRequest request) throws ParseException {
+	public static InetAddress getRealIpNginx(HttpRequest request) {
 		String s = request.getHeader(HttpHeaders.X_REAL_IP);
 		if (!isNullOrEmpty(s)) {
 			try {
@@ -205,10 +206,11 @@ public final class HttpUtils {
 	 *
 	 * @param request Http request with header host
 	 */
-	public static String getHost(HttpRequest request) throws ParseException {
+	@Nullable
+	public static String getHost(HttpRequest request) {
 		String host = request.getHeader(HttpHeaders.HOST);
 		if ((host == null) || host.isEmpty())
-			throw new ParseException("Absent header host in " + request);
+			return null;
 		return host;
 	}
 
@@ -217,12 +219,17 @@ public final class HttpUtils {
 	 *
 	 * @param request Http request with  URL
 	 */
-	public static String getFullUrl(HttpRequest request) throws ParseException {
+	@Nullable
+	public static String getFullUrl(HttpRequest request) {
 		HttpUri url = request.getUrl();
 		if (!url.isPartial()) {
 			return url.toString();
 		}
-		return "http://" + getHost(request) + url.getPathAndQuery();
+		String host = getHost(request);
+		if (host == null) {
+			return null;
+		}
+		return "http://" + host + url.getPathAndQuery();
 	}
 
 	/**
@@ -232,7 +239,7 @@ public final class HttpUtils {
 	 * @param query string with URL for parsing
 	 * @return collection with keys - name of parameter, value - value of it.
 	 */
-	public static Map<String, String> extractParameters(String query) throws ParseException {
+	public static Map<String, String> extractParameters(String query) {
 		return extractParameters(query, ENCODING);
 	}
 
@@ -244,7 +251,7 @@ public final class HttpUtils {
 	 * @param enc   encoding of this string
 	 * @return collection with keys - name of parameter, value - value of it.
 	 */
-	public static Map<String, String> extractParameters(String query, String enc) throws ParseException {
+	public static Map<String, String> extractParameters(String query, String enc) {
 		LinkedHashMap<String, String> qps = new LinkedHashMap<>();
 		for (String pair : splitToList(QUERY_SEPARATOR, query)) {
 			pair = pair.trim();
@@ -258,10 +265,14 @@ public final class HttpUtils {
 				++pos;
 				val = pos < pair.length() ? pair.substring(pos) : "";
 			}
-			name = decode(name, enc);
-			if (val != null)
-				val = decode(val, enc);
-			qps.put(name, val);
+			try {
+				name = decode(name, enc);
+				if (val != null) {
+					val = decode(val, enc);
+					qps.put(name, val);
+				}
+			} catch (ParseException ignored) {
+			}
 		}
 		return qps;
 	}
@@ -307,11 +318,11 @@ public final class HttpUtils {
 	 * @param enc new encoding
 	 * @return the translated String.
 	 */
-	public static String encode(String s, String enc) {
+	private static String encode(String s, String enc) {
 		try {
 			return URLEncoder.encode(s, enc);
 		} catch (UnsupportedEncodingException e) {
-			throw new AssertionError("Can't encode with supplied encoding: " + enc, e);
+			throw new IllegalArgumentException("Can't encode with supplied encoding: " + enc, e);
 		}
 	}
 
@@ -324,13 +335,13 @@ public final class HttpUtils {
 	 * @param enc the name of a supported character encoding
 	 * @return the newly decoded String
 	 */
-	public static String decode(String s, String enc) throws ParseException {
+	private static String decode(String s, String enc) throws ParseException {
 		try {
 			return URLDecoder.decode(s, enc);
 		} catch (RuntimeException e) {
-			throw new ParseException("Can't decode", e);
+			throw new ParseException(e);
 		} catch (UnsupportedEncodingException e) {
-			throw new AssertionError("Can't decode with supplied encoding: " + enc, e);
+			throw new IllegalArgumentException("Can't decode with supplied encoding: " + enc, e);
 		}
 	}
 
