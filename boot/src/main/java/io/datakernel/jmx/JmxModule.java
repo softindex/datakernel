@@ -39,6 +39,10 @@ public final class JmxModule extends AbstractModule {
 	private double refreshPeriod = REFRESH_PERIOD_DEFAULT;
 	private int maxJmxRefreshesPerOneCycle = MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT;
 
+	private JmxModule() {}
+
+	public static JmxModule create() {return new JmxModule();}
+
 	public JmxModule withRefreshPeriod(double refreshPeriod) {
 		checkArgument(refreshPeriod > 0.0);
 

@@ -285,6 +285,11 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 			public void onException(Exception exception) {
 				callback.setException(exception);
 			}
+
+			@Override
+			public String toString() {
+				return "ConnectCallback for address: " + address.toString();
+			}
 		});
 	}
 

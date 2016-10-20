@@ -55,6 +55,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 	private boolean write = false;
 
 	private AsyncTcpSocketContract contractChecker;
+	private boolean closed = false;
 
 	// region builders
 	private static AsyncSslSocket wrapSocket(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, SSLContext sslContext, Executor executor, boolean clientMode) {
@@ -181,6 +182,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 	public void close() {
 		assert contractChecker.close();
 
+		closed = true;
 		engine.closeOutbound();
 		postSync();
 	}
@@ -316,10 +318,6 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 					if (result.getStatus() == BUFFER_UNDERFLOW) {
 						upstream.read();
 					}
-					if (result.getStatus() == CLOSED) {
-						assert contractChecker.onReadEndOfStream();
-						downstreamEventHandler.onReadEndOfStream();
-					}
 				}
 
 				// write data to net
@@ -340,6 +338,15 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 
 			assert contractChecker.onRead();
 			downstreamEventHandler.onRead(readBuf);
+		}
+
+		if (closed) { // socket was closed by its handler
+			return;
+		}
+
+		if (result != null && result.getStatus() == CLOSED) {
+			assert contractChecker.onReadEndOfStream();
+			downstreamEventHandler.onReadEndOfStream();
 		}
 	}
 

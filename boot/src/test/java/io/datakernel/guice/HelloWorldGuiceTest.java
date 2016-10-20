@@ -156,7 +156,7 @@ public class HelloWorldGuiceTest {
 	}
 
 	public static void main(String[] args) throws Exception {
-		Injector injector = Guice.createInjector(Stage.PRODUCTION, new TestModule(), new JmxModule());
+		Injector injector = Guice.createInjector(Stage.PRODUCTION, new TestModule(), JmxModule.create());
 
 		// jmx
 		JmxRegistrator jmxRegistrator = injector.getInstance(JmxRegistrator.class);

@@ -25,11 +25,6 @@
         </dependency>
         <dependency>
             <groupId>io.datakernel</groupId>
-            <artifactId>http</artifactId>
-            <version>${version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.datakernel</groupId>
             <artifactId>codegen</artifactId>
             <version>${version}</version>
         </dependency>
