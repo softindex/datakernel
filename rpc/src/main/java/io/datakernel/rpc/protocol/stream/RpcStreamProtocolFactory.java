@@ -60,10 +60,18 @@ public final class RpcStreamProtocolFactory implements RpcProtocolFactory {
 	}
 
 	@Override
-	public RpcProtocol create(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
+	public RpcProtocol createServerProtocol(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
 	                          RpcConnection connection, BufferSerializer<RpcMessage> messageSerializer) {
-		return RpcStreamProtocol.create(eventloop, asyncTcpSocket,
+		return new RpcStreamProtocol(eventloop, asyncTcpSocket,
 				connection, messageSerializer,
-				defaultPacketSize, maxPacketSize, compression);
+				defaultPacketSize, maxPacketSize, compression, true);
+	}
+
+	@Override
+	public RpcProtocol createClientProtocol(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
+	                                        RpcConnection connection, BufferSerializer<RpcMessage> messageSerializer) {
+		return new RpcStreamProtocol(eventloop, asyncTcpSocket,
+				connection, messageSerializer,
+				defaultPacketSize, maxPacketSize, compression, false);
 	}
 }

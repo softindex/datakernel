@@ -68,7 +68,13 @@ final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> impleme
 	public void onData(ByteBuf buf) {
 		asyncTcpSocket.write(buf);
 		long tick = eventloop.getTick();
-		if (writeTick != 0 && tick != writeTick) {
+
+		if (writeTick == 0) {
+			writeTick = tick;
+			return;
+		}
+
+		if (tick != writeTick) {
 			writeTick = tick;
 			suspend();
 		}

@@ -45,26 +45,51 @@ final class RpcStreamProtocol implements RpcProtocol {
 	private final SimpleStreamConsumer<RpcMessage> receiver;
 	private final SocketStreamingConnection connection;
 
-	private RpcStreamProtocol(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
+
+
+	protected RpcStreamProtocol(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
 	                          RpcConnection rpcConnection,
 	                          BufferSerializer<RpcMessage> messageSerializer,
-	                          int defaultPacketSize, int maxPacketSize, boolean compression) {
+	                          int defaultPacketSize, int maxPacketSize, boolean compression, boolean server) {
 		this.rpcConnection = rpcConnection;
-		sender = SimpleStreamProducer
-				.create(eventloop)
-				.withStatusListener(new SimpleStreamProducer.StatusListener() {
-					@Override
-					public void onResumed() {
-					}
 
-					@Override
-					public void onSuspended() {
-					}
+		if (server) {
+			sender = SimpleStreamProducer
+					.create(eventloop)
+					.withStatusListener(new SimpleStreamProducer.StatusListener() {
+						@Override
+						public void onResumed() {
+							receiver.resume();
+						}
 
-					@Override
-					public void onClosedWithError(Exception e) {
-					}
-				});
+						@Override
+						public void onSuspended() {
+							receiver.suspend();
+						}
+
+						@Override
+						public void onClosedWithError(Exception e) {
+							RpcStreamProtocol.this.rpcConnection.onClosedWithError(e);
+						}
+					});
+		} else {
+			sender = SimpleStreamProducer
+					.create(eventloop)
+					.withStatusListener(new SimpleStreamProducer.StatusListener() {
+						@Override
+						public void onResumed() {
+						}
+
+						@Override
+						public void onSuspended() {
+						}
+
+						@Override
+						public void onClosedWithError(Exception e) {
+							RpcStreamProtocol.this.rpcConnection.onClosedWithError(e);
+						}
+					});
+		}
 
 		receiver = SimpleStreamConsumer.create(eventloop, new SimpleStreamConsumer.StatusListener() {
 			@Override
@@ -98,14 +123,6 @@ final class RpcStreamProtocol implements RpcProtocol {
 
 		deserializer.getOutput().streamTo(receiver);
 		sender.streamTo(serializer.getInput());
-	}
-
-	protected static RpcStreamProtocol create(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
-	                                          RpcConnection rpcConnection,
-	                                          BufferSerializer<RpcMessage> messageSerializer,
-	                                          int defaultPacketSize, int maxPacketSize, boolean compression) {
-		return new RpcStreamProtocol(eventloop, asyncTcpSocket, rpcConnection, messageSerializer,
-				defaultPacketSize, maxPacketSize, compression);
 	}
 
 	@Override

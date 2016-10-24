@@ -21,6 +21,9 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
 
 public interface RpcProtocolFactory {
-	RpcProtocol create(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
+	RpcProtocol createServerProtocol(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
 	                   RpcConnection connection, BufferSerializer<RpcMessage> messageSerializer);
+
+	RpcProtocol createClientProtocol(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
+	                                 RpcConnection connection, BufferSerializer<RpcMessage> messageSerializer);
 }

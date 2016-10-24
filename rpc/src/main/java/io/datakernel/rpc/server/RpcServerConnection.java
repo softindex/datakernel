@@ -54,7 +54,7 @@ public final class RpcServerConnection implements RpcConnection, JmxRefreshable 
 	                            RpcProtocolFactory protocolFactory) {
 		this.eventloop = eventloop;
 		this.rpcServer = rpcServer;
-		this.protocol = protocolFactory.create(eventloop, asyncTcpSocket, this, messageSerializer);
+		this.protocol = protocolFactory.createServerProtocol(eventloop, asyncTcpSocket, this, messageSerializer);
 		this.handlers = handlers;
 		this.readEndOfStream = false;
 

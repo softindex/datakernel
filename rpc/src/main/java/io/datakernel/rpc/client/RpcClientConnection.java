@@ -101,7 +101,7 @@ public final class RpcClientConnection implements RpcConnection, RpcSender, JmxR
 	                            RpcProtocolFactory protocolFactory) {
 		this.eventloop = eventloop;
 		this.rpcClient = rpcClient;
-		this.protocol = protocolFactory.create(eventloop, asyncTcpSocket, this, messageSerializer);
+		this.protocol = protocolFactory.createClientProtocol(eventloop, asyncTcpSocket, this, messageSerializer);
 		this.address = address;
 
 		// JMX
