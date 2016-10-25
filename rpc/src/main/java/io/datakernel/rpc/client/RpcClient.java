@@ -17,6 +17,7 @@
 package io.datakernel.rpc.client;
 
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.ConnectCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.*;
 import io.datakernel.jmx.*;

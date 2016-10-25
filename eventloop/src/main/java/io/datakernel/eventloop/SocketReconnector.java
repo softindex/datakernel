@@ -16,6 +16,7 @@
 
 package io.datakernel.eventloop;
 
+import io.datakernel.async.ConnectCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,7 +87,7 @@ public final class SocketReconnector {
 			@Override
 			public void onConnect(SocketChannel socketChannel) {
 				logger.trace("Connection succeeded {}", socketChannel);
-				callback.onConnect(socketChannel);
+				callback.setConnect(socketChannel);
 			}
 
 			@Override

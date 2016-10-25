@@ -18,6 +18,7 @@ package io.datakernel.stream.net;
 
 import com.google.common.collect.Lists;
 import com.google.common.net.InetAddresses;
+import io.datakernel.async.ConnectCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.*;

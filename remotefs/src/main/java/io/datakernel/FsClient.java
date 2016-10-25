@@ -26,7 +26,7 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
-import io.datakernel.eventloop.ConnectCallback;
+import io.datakernel.async.ConnectCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.stream.StreamProducer;
@@ -214,7 +214,7 @@ public abstract class FsClient<S extends FsClient<S>> {
 	}
 
 	protected abstract class MessagingConnectCallback extends ExceptionCallback {
-		public final void reportConnect(MessagingWithBinaryStreaming<FsResponse, FsCommand> messaging) {
+		public final void setConnect(MessagingWithBinaryStreaming<FsResponse, FsCommand> messaging) {
 			CallbackRegistry.complete(this);
 			onConnect(messaging);
 		}
@@ -231,7 +231,7 @@ public abstract class FsClient<S extends FsClient<S>> {
 				MessagingWithBinaryStreaming<FsResponse, FsCommand> messaging = MessagingWithBinaryStreaming.create(eventloop, asyncTcpSocket, serializer);
 				asyncTcpSocket.setEventHandler(messaging);
 				asyncTcpSocketImpl.register();
-				callback.onConnect(messaging);
+				callback.setConnect(messaging);
 			}
 
 			@Override

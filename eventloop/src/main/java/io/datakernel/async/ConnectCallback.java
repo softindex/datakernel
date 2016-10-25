@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-package io.datakernel.eventloop;
+package io.datakernel.async;
 
-import io.datakernel.async.CallbackRegistry;
-import io.datakernel.async.ExceptionCallback;
+import io.datakernel.eventloop.Eventloop;
 
 import java.nio.channels.SocketChannel;
 

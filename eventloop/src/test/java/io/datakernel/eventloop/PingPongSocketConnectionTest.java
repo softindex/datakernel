@@ -1,5 +1,6 @@
 package io.datakernel.eventloop;
 
+import io.datakernel.async.ConnectCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.SimpleServer.SocketHandlerProvider;
 import org.junit.Test;

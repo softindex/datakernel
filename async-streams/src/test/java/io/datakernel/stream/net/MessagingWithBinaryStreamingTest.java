@@ -20,6 +20,7 @@ import com.google.common.collect.Lists;
 import com.google.common.net.InetAddresses;
 import com.google.gson.Gson;
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.ConnectCallback;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.*;
 import io.datakernel.eventloop.SimpleServer.SocketHandlerProvider;

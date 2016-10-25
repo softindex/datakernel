@@ -557,7 +557,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		}
 
 		if (connected) {
-			connectCallback.onConnect(channel);
+			connectCallback.setConnect(channel);
 		} else {
 			connectCallback.setException(new SimpleException("Not connected"));
 		}
@@ -714,7 +714,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 			public void onConnect(SocketChannel socketChannel) {
 				assert !scheduledTimeout.isComplete();
 				scheduledTimeout.cancel();
-				connectCallback.onConnect(socketChannel);
+				connectCallback.setConnect(socketChannel);
 			}
 
 			@Override

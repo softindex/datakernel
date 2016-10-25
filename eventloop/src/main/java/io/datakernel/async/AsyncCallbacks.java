@@ -155,7 +155,7 @@ public final class AsyncCallbacks {
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
-				callback.onEnd();
+				callback.setEnd();
 			}
 		});
 	}
@@ -236,7 +236,7 @@ public final class AsyncCallbacks {
 		eventloop.execute(new Runnable() {
 			@Override
 			public void run() {
-				callback.onEnd();
+				callback.setEnd();
 			}
 		});
 	}
