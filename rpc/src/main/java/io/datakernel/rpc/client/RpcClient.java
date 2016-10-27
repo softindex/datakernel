@@ -16,10 +16,14 @@
 
 package io.datakernel.rpc.client;
 
+import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ConnectCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.eventloop.*;
+import io.datakernel.eventloop.AsyncTcpSocket;
+import io.datakernel.eventloop.AsyncTcpSocketImpl;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.EventloopService;
 import io.datakernel.jmx.*;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.rpc.client.jmx.RpcConnectStats;
@@ -421,6 +425,26 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 	@Override
 	public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
 		requestSender.sendRequest(request, timeout, callback);
+	}
+
+	public IRpcClient adaptToAnotherEventloop(final Eventloop anotherEventloop) {
+		if (anotherEventloop == this.eventloop) {
+			return this;
+		}
+
+		return new IRpcClient() {
+			@Override
+			public <I, O> void sendRequest(final I request, final int timeout, final ResultCallback<O> callback) {
+				RpcClient.this.eventloop.execute(new Runnable() {
+					@Override
+					public void run() {
+						RpcClient.this.sendRequest(
+								request, timeout, AsyncCallbacks.concurrentResultCallback(anotherEventloop, callback)
+						);
+					}
+				});
+			}
+		};
 	}
 
 	// visible for testing

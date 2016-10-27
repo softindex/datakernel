@@ -41,9 +41,6 @@ import static io.datakernel.http.HttpUtils.inetAddress;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
 
-/**
- * NativeDnsResolver represents asynchronous DNS resolver, which run in Eventloop.
- */
 public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean {
 	private final Logger logger = LoggerFactory.getLogger(AsyncDnsClient.class);
 
