@@ -38,8 +38,8 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 
-import static io.datakernel.async.AsyncCallbacks.postExceptionConcurrently;
-import static io.datakernel.async.AsyncCallbacks.postResultConcurrently;
+import static io.datakernel.async.AsyncCallbacks.setExceptionIn;
+import static io.datakernel.async.AsyncCallbacks.setResultIn;
 import static java.nio.file.StandardOpenOption.READ;
 
 /**
@@ -128,11 +128,11 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem {
 								return FileVisitResult.CONTINUE;
 							}
 						});
-						postResultConcurrently(eventloop, callback, entries);
+						setResultIn(eventloop, callback, entries);
 					} catch (IOException e) {
 						// TODO ?
 						logger.error("walkFileTree error", e);
-						postExceptionConcurrently(eventloop, callback, e);
+						setExceptionIn(eventloop, callback, e);
 					}
 
 					concurrentOperationTracker.complete();

@@ -20,7 +20,6 @@ import io.datakernel.async.AsyncCallableWithSetter;
 import io.datakernel.eventloop.Eventloop;
 import org.junit.Test;
 
-import static io.datakernel.async.AsyncCallbacks.createAsyncCallableWithSetter;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.StreamStatus.READY;
@@ -34,7 +33,7 @@ public class AsyncStreamsTest {
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
 
-		AsyncCallableWithSetter<StreamProducer<Integer>> producerSetter = createAsyncCallableWithSetter(eventloop);
+		AsyncCallableWithSetter<StreamProducer<Integer>> producerSetter = AsyncCallableWithSetter.create(eventloop);
 
 		StreamProducer<Integer> producer = StreamProducers.asynchronouslyResolving(eventloop, producerSetter);
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);

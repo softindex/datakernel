@@ -48,8 +48,8 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static io.datakernel.async.AsyncCallbacks.postExceptionConcurrently;
-import static io.datakernel.async.AsyncCallbacks.postResultConcurrently;
+import static io.datakernel.async.AsyncCallbacks.setExceptionIn;
+import static io.datakernel.async.AsyncCallbacks.setResultIn;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.logfs.LogManagerImpl.DEFAULT_FILE_SWITCH_PERIOD;
@@ -367,11 +367,11 @@ public class LogStreamConsumer_ByteBufferTest {
 								return FileVisitResult.CONTINUE;
 							}
 						});
-						postResultConcurrently(eventloop, callback, entries);
+						setResultIn(eventloop, callback, entries);
 					} catch (IOException e) {
 						// TODO ?
 //						logger.error("walkFileTree error", e);
-						postExceptionConcurrently(eventloop, callback, e);
+						setExceptionIn(eventloop, callback, e);
 					}
 
 					concurrentOperationTracker.complete();
