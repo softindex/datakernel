@@ -392,12 +392,23 @@ public final class AsyncFile {
 					eventloop.execute(new Runnable() {
 						@Override
 						public void run() {
-							tracker.complete();
-							callback.setComplete();
+							try {
+								channel.close();
+								tracker.complete();
+								callback.setComplete();
+							} catch (IOException e) {
+								tracker.complete();
+								callback.setException(e);
+							}
+
 						}
 					});
 				} else {
 					if (cancelled.get()) {
+						try {
+							channel.close();
+						} catch (IOException ignore) {
+						}
 						tracker.complete();
 						return;
 					}
@@ -410,6 +421,10 @@ public final class AsyncFile {
 				eventloop.execute(new Runnable() {
 					@Override
 					public void run() {
+						try {
+							channel.close();
+						} catch (IOException ignore) {
+						}
 						tracker.complete();
 						callback.setException(exc instanceof Exception ? (Exception) exc : new Exception(exc));
 					}
