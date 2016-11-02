@@ -80,6 +80,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		this.executor = executor;
 		this.upstream = asyncTcpSocket;
 
+		//noinspection ConstantConditions
 		assert (this.contractChecker = AsyncTcpSocketContract.create()) != null;
 	}
 
@@ -114,14 +115,22 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		} catch (SSLException e) {
 			assert contractChecker.onClosedWithError();
 			downstreamEventHandler.onClosedWithError(e);
+			recycleByteBufs();
 			upstream.close();
 		}
+	}
+
+	private void recycleByteBufs() {
+		net2engine.recycle();
+		engine2app.recycle();
+		app2engine.recycle();
 	}
 
 	@Override
 	public void onWrite() {
 		if (engine.isOutboundDone()) {
 			upstream.close();
+			recycleByteBufs();
 			return;
 		}
 		if (!app2engine.canRead() && engine.getHandshakeStatus() == NOT_HANDSHAKING && write) {
@@ -134,6 +143,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 	@Override
 	public void onClosedWithError(Exception e) {
 		assert contractChecker.onClosedWithError();
+		recycleByteBufs();
 		downstreamEventHandler.onClosedWithError(e);
 	}
 
@@ -194,6 +204,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 
 	private void handleSSLException(final SSLException e, boolean post) {
 		upstream.close();
+		recycleByteBufs();
 		if (post) {
 			eventloop.post(new Runnable() {
 				@Override
@@ -217,7 +228,6 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		try {
 			result = engine.unwrap(srcBuffer, dstBuffer);
 		} catch (SSLException e) {
-			net2engine.recycle();
 			dstBuf.recycle();
 			throw e;
 		}
