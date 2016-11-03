@@ -18,10 +18,7 @@ package io.datakernel.https;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
-import io.datakernel.async.AsyncCallbacks.WaitAllHandler;
-import io.datakernel.async.ResultCallback;
-import io.datakernel.async.ResultCallbackFuture;
-import io.datakernel.async.SimpleCompletionCallback;
+import io.datakernel.async.*;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
@@ -36,8 +33,6 @@ import java.net.InetAddress;
 import java.security.SecureRandom;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
-import static io.datakernel.async.AsyncCallbacks.waitAll;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
@@ -96,14 +91,14 @@ public class TestHttpsClientServer {
 			@Override
 			public void onResult(HttpResponse result) {
 				callback.setResult(decodeAscii(result.getBody()));
-				server.close(ignoreCompletionCallback());
+				server.close(IgnoreCompletionCallback.create());
 				client.close();
 			}
 
 			@Override
 			public void onException(Exception e) {
 				callback.setException(e);
-				server.close(ignoreCompletionCallback());
+				server.close(IgnoreCompletionCallback.create());
 				client.close();
 			}
 		});
@@ -136,10 +131,10 @@ public class TestHttpsClientServer {
 
 		server.listen();
 
-		final WaitAllHandler waitAllHandler = waitAll(2, new SimpleCompletionCallback() {
+		final WaitAllHandler waitAllHandler = WaitAllHandler.create(2, new SimpleCompletionCallback() {
 			@Override
 			protected void onCompleteOrException() {
-				server.close(ignoreCompletionCallback());
+				server.close(IgnoreCompletionCallback.create());
 				client.close();
 			}
 		});

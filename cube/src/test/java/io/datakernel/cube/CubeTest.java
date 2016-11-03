@@ -23,10 +23,7 @@ import com.google.common.collect.Multimap;
 import io.datakernel.aggregation_db.*;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.keytype.KeyType;
-import io.datakernel.async.AsyncCallbacks.WaitAllHandler;
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ResultCallback;
-import io.datakernel.async.ResultCallbackFuture;
+import io.datakernel.async.*;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.bean.*;
 import io.datakernel.eventloop.Eventloop;
@@ -53,8 +50,6 @@ import java.util.concurrent.Executors;
 import static io.datakernel.aggregation_db.AggregationChunk.createChunk;
 import static io.datakernel.aggregation_db.fieldtype.FieldTypes.longSum;
 import static io.datakernel.aggregation_db.keytype.KeyTypes.intKey;
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
-import static io.datakernel.async.AsyncCallbacks.waitAll;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
@@ -168,7 +163,7 @@ public class CubeTest {
 	}
 
 	private void stop(SimpleFsServer server) {
-		server.close(ignoreCompletionCallback());
+		server.close(IgnoreCompletionCallback.create());
 	}
 
 	@Test
@@ -186,7 +181,7 @@ public class CubeTest {
 		Cube cube = newCube(eventloop, Executors.newCachedThreadPool(), classLoader, storage, aggregationStructure);
 
 		final int consumers = 2;
-		final WaitAllHandler allConsumersDoneHandler = waitAll(consumers, new CompletionCallback() {
+		final WaitAllHandler allConsumersDoneHandler = WaitAllHandler.create(consumers, new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				logger.info("Streaming to SimpleFS succeeded.");

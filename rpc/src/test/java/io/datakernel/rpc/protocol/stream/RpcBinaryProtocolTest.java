@@ -19,6 +19,7 @@ package io.datakernel.rpc.protocol.stream;
 import com.google.common.collect.Lists;
 import com.google.common.net.InetAddresses;
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
@@ -41,7 +42,6 @@ import org.junit.Test;
 import java.net.InetSocketAddress;
 import java.util.List;
 
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
@@ -92,7 +92,7 @@ public class RpcBinaryProtocolTest {
 					@Override
 					public void onComplete() {
 						System.out.println("Client stopped");
-						server.close(ignoreCompletionCallback());
+						server.close(IgnoreCompletionCallback.create());
 					}
 
 					@Override
@@ -110,7 +110,7 @@ public class RpcBinaryProtocolTest {
 						@Override
 						public void onComplete() {
 							System.out.println("Client stopped");
-							server.close(ignoreCompletionCallback());
+							server.close(IgnoreCompletionCallback.create());
 						}
 
 						@Override

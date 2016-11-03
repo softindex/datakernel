@@ -39,7 +39,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.nio.file.StandardOpenOption.*;
 
@@ -203,13 +202,13 @@ public final class AsyncFile {
 				file.readFully(new ResultCallback<ByteBuf>() {
 					@Override
 					public void onResult(ByteBuf buf) {
-						file.close(ignoreCompletionCallback());
+						file.close(IgnoreCompletionCallback.create());
 						callback.setResult(buf);
 					}
 
 					@Override
 					public void onException(Exception e) {
-						file.close(ignoreCompletionCallback());
+						file.close(IgnoreCompletionCallback.create());
 						callback.setException(e);
 					}
 				});
@@ -448,7 +447,13 @@ public final class AsyncFile {
 			size = channel.size();
 		} catch (IOException e) {
 			callback.setException(e);
-			return AsyncCallbacks.notCancellable();
+
+			return new AsyncCancellable() {
+				@Override
+				public void cancel() {
+					// do nothing
+				}
+			};
 		}
 
 		Eventloop.ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();

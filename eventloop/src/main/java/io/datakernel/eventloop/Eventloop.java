@@ -41,7 +41,6 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static io.datakernel.async.AsyncCallbacks.notCancellable;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 /**
@@ -175,7 +174,6 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		return new Eventloop(timeProvider, threadName, threadPriority, throttlingController, fatalErrorHandler);
 	}
 	// endregion
-
 
 	public ThrottlingController getThrottlingController() {
 		return throttlingController;
@@ -1028,7 +1026,13 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 
 			tracker.complete();
 			callback.setException(e);
-			return notCancellable();
+
+			return new AsyncCancellable() {
+				@Override
+				public void cancel() {
+					// do nothing
+				}
+			};
 		}
 	}
 
@@ -1099,7 +1103,13 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 
 			tracker.complete();
 			callback.setException(e);
-			return notCancellable();
+
+			return new AsyncCancellable() {
+				@Override
+				public void cancel() {
+					// do nothing
+				}
+			};
 		}
 	}
 

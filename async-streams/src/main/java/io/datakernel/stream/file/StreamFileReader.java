@@ -17,6 +17,7 @@
 package io.datakernel.stream.file;
 
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
@@ -33,7 +34,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static java.lang.Math.min;
 
 /**
@@ -114,7 +114,7 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 		}
 
 		if (length == 0L) {
-			doCleanup(ignoreCompletionCallback());
+			doCleanup(IgnoreCompletionCallback.create());
 			sendEndOfStream();
 			return;
 		}
@@ -126,13 +126,13 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 			protected void onResult(Integer result) {
 				if (getProducerStatus().isClosed()) {
 					buf.recycle();
-					doCleanup(ignoreCompletionCallback());
+					doCleanup(IgnoreCompletionCallback.create());
 					return;
 				}
 				pendingAsyncOperation = false;
 				if (result == -1) {
 					buf.recycle();
-					doCleanup(ignoreCompletionCallback());
+					doCleanup(IgnoreCompletionCallback.create());
 					sendEndOfStream();
 
 					if (positionCallback != null) {
@@ -155,7 +155,7 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 			@Override
 			protected void onException(Exception e) {
 				buf.recycle();
-				doCleanup(ignoreCompletionCallback());
+				doCleanup(IgnoreCompletionCallback.create());
 				closeWithError(e);
 
 				if (positionCallback != null) {
@@ -203,7 +203,7 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 	@Override
 	protected void onError(Exception e) {
 		logger.error("{}: onError", this, e);
-		doCleanup(ignoreCompletionCallback());
+		doCleanup(IgnoreCompletionCallback.create());
 	}
 
 	protected void doCleanup(final CompletionCallback callback) {

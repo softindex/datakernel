@@ -1,6 +1,7 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.async.ConnectCallback;
+import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.AsyncTcpSocket.EventHandler;
@@ -11,7 +12,6 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static org.junit.Assert.assertEquals;
@@ -82,7 +82,7 @@ public class AbstractServerTest {
 					public void onRead(ByteBuf buf) {
 						buf.recycle();
 						asyncTcpSocket.close();
-						server.close(ignoreCompletionCallback());
+						server.close(IgnoreCompletionCallback.create());
 					}
 
 					@Override
@@ -98,7 +98,7 @@ public class AbstractServerTest {
 					@Override
 					public void onClosedWithError(Exception e) {
 						asyncTcpSocket.close();
-						server.close(ignoreCompletionCallback());
+						server.close(IgnoreCompletionCallback.create());
 					}
 				});
 				asyncTcpSocket.register();

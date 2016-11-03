@@ -16,6 +16,8 @@
 
 package io.datakernel.async;
 
+import io.datakernel.eventloop.Eventloop;
+
 /**
  * This callback's interface contains two methods sendResult and fireException.
  * The async operation must call either sendResult or fireException when it is complete.
@@ -31,6 +33,15 @@ public abstract class ResultCallback<T> extends ExceptionCallback {
 	public final void setResult(T result) {
 		CallbackRegistry.complete(this);
 		onResult(result);
+	}
+
+	public final void postResult(Eventloop eventloop, final T result) {
+		eventloop.post(new Runnable() {
+			@Override
+			public void run() {
+				setResult(result);
+			}
+		});
 	}
 
 	protected abstract void onResult(T result);

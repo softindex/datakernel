@@ -20,9 +20,10 @@ import com.google.common.base.Function;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.Ordering;
 import com.google.common.net.InetAddresses;
-import io.datakernel.async.AsyncCallbacks.WaitAllHandler;
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.async.SimpleCompletionCallback;
+import io.datakernel.async.WaitAllHandler;
 import io.datakernel.datagraph.dataset.Dataset;
 import io.datakernel.datagraph.dataset.SortedDataset;
 import io.datakernel.datagraph.dataset.impl.DatasetListConsumer;
@@ -48,8 +49,6 @@ import org.junit.Test;
 import java.net.InetSocketAddress;
 import java.util.Arrays;
 
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
-import static io.datakernel.async.AsyncCallbacks.waitAll;
 import static io.datakernel.datagraph.dataset.Datasets.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
@@ -259,11 +258,11 @@ public class PageRankTest {
 		server1.listen();
 		server2.listen();
 
-		final WaitAllHandler waitAllHandler = waitAll(2, new CompletionCallback() {
+		final WaitAllHandler waitAllHandler = WaitAllHandler.create(2, new CompletionCallback() {
 			@Override
 			protected void onComplete() {
-				server1.close(ignoreCompletionCallback());
-				server2.close(ignoreCompletionCallback());
+				server1.close(IgnoreCompletionCallback.create());
+				server2.close(IgnoreCompletionCallback.create());
 			}
 
 			@Override

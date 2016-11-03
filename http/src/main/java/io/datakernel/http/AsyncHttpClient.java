@@ -19,7 +19,10 @@ package io.datakernel.http;
 import io.datakernel.async.*;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.dns.IAsyncDnsClient;
-import io.datakernel.eventloop.*;
+import io.datakernel.eventloop.AsyncTcpSocket;
+import io.datakernel.eventloop.AsyncTcpSocketImpl;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.EventloopService;
 import io.datakernel.jmx.*;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.util.MemSize;
@@ -351,10 +354,6 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		checkState(eventloop.inEventloopThread());
 		close();
 		callback.setComplete();
-	}
-
-	public CompletionCallbackFuture closeFuture() {
-		return AsyncCallbacks.stopFuture(this);
 	}
 
 	// jmx

@@ -34,8 +34,6 @@ import org.junit.Test;
 import java.net.InetSocketAddress;
 import java.util.concurrent.ExecutionException;
 
-import static io.datakernel.async.AsyncCallbacks.startFuture;
-import static io.datakernel.async.AsyncCallbacks.stopFuture;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.EventloopThreadFactory.defaultEventloopThreadFactory;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -117,7 +115,7 @@ public class RpcBlockingTest {
 								server(address1),
 								sharding(shardingFunction, server(address2), server(address3)).withMinActiveSubStrategies(2)));
 
-		startFuture(client).await();
+		client.startFuture().get();
 
 		String currentName = "John";
 		String currentResponse = blockingRequest(client, currentName);
@@ -149,11 +147,11 @@ public class RpcBlockingTest {
 		System.out.println("Request with name \"" + currentName + "\": " + currentResponse);
 		assertEquals("Hello Hello Hello, " + currentName + "!", currentResponse);
 
-		stopFuture(client).await();
+		client.stopFuture().get();
 
-		serverOne.closeFuture().await();
-		serverTwo.closeFuture().await();
-		serverThree.closeFuture().await();
+		serverOne.closeFuture().get();
+		serverTwo.closeFuture().get();
+		serverThree.closeFuture().get();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}

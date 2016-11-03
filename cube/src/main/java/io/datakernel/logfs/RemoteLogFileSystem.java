@@ -17,8 +17,8 @@
 package io.datakernel.logfs;
 
 import io.datakernel.FsClient;
-import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
@@ -87,7 +87,7 @@ public final class RemoteLogFileSystem extends AbstractLogFileSystem {
 
 			@Override
 			public void onException(Exception e) {
-				client.delete(fileName, AsyncCallbacks.ignoreCompletionCallback());
+				client.delete(fileName, IgnoreCompletionCallback.create());
 				callback.setException(e);
 			}
 		});

@@ -16,8 +16,8 @@
 
 package io.datakernel.aggregation_db;
 
-import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codegen.DefiningClassLoader;
@@ -96,7 +96,7 @@ public class SimpleFsChunkStorage implements AggregationChunkStorage {
 
 			@Override
 			public void onException(Exception e) {
-				client.delete(path(id), AsyncCallbacks.ignoreCompletionCallback());
+				client.delete(path(id), IgnoreCompletionCallback.create());
 				callback.setException(e);
 			}
 		});

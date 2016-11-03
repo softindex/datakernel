@@ -20,10 +20,9 @@ import com.google.common.collect.Multimap;
 import io.datakernel.aggregation_db.AggregationChunk;
 import io.datakernel.aggregation_db.AggregationMetadata;
 import io.datakernel.aggregation_db.CubeMetadataStorageStub;
-import io.datakernel.async.AsyncCallbacks;
-import io.datakernel.async.AsyncCallbacks.WaitAllHandler;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.async.WaitAllHandler;
 import io.datakernel.logfs.LogPosition;
 import io.datakernel.logfs.LogToCubeMetadataStorage;
 
@@ -71,7 +70,7 @@ public final class LogToCubeMetadataStorageStub implements LogToCubeMetadataStor
 		Map<String, LogPosition> logPositionMap = ensureLogPositions(log);
 		logPositionMap.putAll(newPositions);
 
-		final WaitAllHandler waitAllHandler = AsyncCallbacks.waitAll(newChunks.size(), callback);
+		final WaitAllHandler waitAllHandler = WaitAllHandler.create(newChunks.size(), callback);
 
 		for (Map.Entry<AggregationMetadata, AggregationChunk.NewChunk> entry : newChunks.entries()) {
 			AggregationChunk.NewChunk newChunk = entry.getValue();

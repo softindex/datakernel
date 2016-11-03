@@ -19,6 +19,7 @@ package io.datakernel.rpc;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.rpc.client.RpcClient;
@@ -33,8 +34,6 @@ import org.slf4j.LoggerFactory;
 import java.net.InetSocketAddress;
 import java.util.concurrent.Executors;
 
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
-import static io.datakernel.async.AsyncCallbacks.stopFuture;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
 import static io.datakernel.util.MemSize.kilobytes;
@@ -127,7 +126,7 @@ public final class CumulativeBenchmark {
 				public void onException(Exception exception) {
 					System.err.println("Exception while benchmark: " + exception);
 					try {
-						stopFuture(client).await();
+						client.stopFuture().get();
 					} catch (Exception e) {
 						throw new RuntimeException(e);
 					}
@@ -136,7 +135,7 @@ public final class CumulativeBenchmark {
 				@Override
 				public void onComplete() {
 					try {
-						stopFuture(client).await();
+						client.stopFuture().get();
 					} catch (Exception e) {
 						throw new RuntimeException(e);
 					}
@@ -164,7 +163,7 @@ public final class CumulativeBenchmark {
 				@Override
 				public void run() {
 
-					server.close(ignoreCompletionCallback());
+					server.close(IgnoreCompletionCallback.create());
 				}
 			});
 			serverEventloop.keepAlive(false);

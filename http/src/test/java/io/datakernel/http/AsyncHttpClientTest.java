@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.bytebuf.ByteBuf;
@@ -33,7 +34,6 @@ import java.net.InetAddress;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeUtf8;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
@@ -73,14 +73,14 @@ public class AsyncHttpClientTest {
 					onException(e);
 				}
 				httpClient.close();
-				httpServer.close(ignoreCompletionCallback());
+				httpServer.close(IgnoreCompletionCallback.create());
 			}
 
 			@Override
 			public void onException(Exception exception) {
 				resultObserver.setException(exception);
 				httpClient.close();
-				httpServer.close(ignoreCompletionCallback());
+				httpServer.close(IgnoreCompletionCallback.create());
 			}
 		});
 
@@ -122,14 +122,14 @@ public class AsyncHttpClientTest {
 					onException(e);
 				}
 				httpClient.close();
-				httpServer.close(ignoreCompletionCallback());
+				httpServer.close(IgnoreCompletionCallback.create());
 			}
 
 			@Override
 			public void onException(Exception exception) {
 				resultObserver.setException(exception);
 				httpClient.close();
-				httpServer.close(ignoreCompletionCallback());
+				httpServer.close(IgnoreCompletionCallback.create());
 			}
 		});
 
@@ -200,14 +200,14 @@ public class AsyncHttpClientTest {
 					onException(e);
 				}
 				httpClient.close();
-				httpServer.close(ignoreCompletionCallback());
+				httpServer.close(IgnoreCompletionCallback.create());
 			}
 
 			@Override
 			public void onException(Exception exception) {
 				resultObserver.setException(exception);
 				httpClient.close();
-				httpServer.close(ignoreCompletionCallback());
+				httpServer.close(IgnoreCompletionCallback.create());
 			}
 		});
 
@@ -279,7 +279,7 @@ public class AsyncHttpClientTest {
 			public void onException(Exception e) {
 				resultObserver.setException(e);
 				httpClient.close();
-				server.close(ignoreCompletionCallback());
+				server.close(IgnoreCompletionCallback.create());
 			}
 		});
 

@@ -18,6 +18,7 @@ package io.datakernel.simplefs.stress;
 
 import com.google.common.base.Charsets;
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codegen.DefiningClassLoader;
@@ -48,7 +49,6 @@ import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 
 class StressClient {
@@ -242,7 +242,7 @@ class StressClient {
 				StreamBinarySerializer.create(eventloop, bufferSerializer, StreamBinarySerializer.MAX_SIZE, StreamBinarySerializer.MAX_SIZE, 1000, false);
 
 		producer.streamTo(serializer.getInput());
-		client.upload("someName" + i, serializer.getOutput(), ignoreCompletionCallback());
+		client.upload("someName" + i, serializer.getOutput(), IgnoreCompletionCallback.create());
 		eventloop.run();
 	}
 

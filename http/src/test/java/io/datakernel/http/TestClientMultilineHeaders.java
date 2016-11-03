@@ -1,5 +1,6 @@
 package io.datakernel.http;
 
+import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.eventloop.Eventloop;
@@ -9,7 +10,6 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.util.concurrent.ExecutionException;
 
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static org.junit.Assert.assertEquals;
@@ -43,14 +43,14 @@ public class TestClientMultilineHeaders {
 			public void onResult(HttpResponse result) {
 				resultObserver.setResult(result.getHeader(HttpHeaders.ALLOW));
 				httpClient.close();
-				server.close(ignoreCompletionCallback());
+				server.close(IgnoreCompletionCallback.create());
 			}
 
 			@Override
 			public void onException(Exception exception) {
 				resultObserver.setException(exception);
 				httpClient.close();
-				server.close(ignoreCompletionCallback());
+				server.close(IgnoreCompletionCallback.create());
 			}
 		});
 

@@ -21,8 +21,8 @@ import io.datakernel.aggregation_db.*;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.fieldtype.HyperLogLog;
 import io.datakernel.aggregation_db.keytype.KeyType;
-import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallbackFuture;
+import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
@@ -64,7 +64,6 @@ import static com.google.common.collect.Sets.newHashSet;
 import static io.datakernel.aggregation_db.fieldtype.FieldTypes.*;
 import static io.datakernel.aggregation_db.keytype.KeyTypes.dateKey;
 import static io.datakernel.aggregation_db.keytype.KeyTypes.intKey;
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.codegen.Expressions.call;
 import static io.datakernel.codegen.Expressions.cast;
 import static io.datakernel.cube.CubeTestUtils.*;
@@ -302,10 +301,10 @@ public class ReportingTest {
 		producerOfRandomLogItems.streamTo(logManager.consumer(LOG_PARTITION_NAME));
 		eventloop.run();
 
-		logToCubeRunner.processLog(AsyncCallbacks.ignoreCompletionCallback());
+		logToCubeRunner.processLog(IgnoreCompletionCallback.create());
 		eventloop.run();
 
-		cube.loadChunks(AsyncCallbacks.ignoreCompletionCallback());
+		cube.loadChunks(IgnoreCompletionCallback.create());
 		eventloop.run();
 
 		server = AsyncHttpServer.create(eventloop, ReportingServiceServlet.createRootServlet(eventloop, cube, 100))
@@ -559,7 +558,7 @@ public class ReportingTest {
 		eventloop.execute(new RunnableWithException() {
 			@Override
 			public void runWithException() throws Exception {
-				server.close(ignoreCompletionCallback());
+				server.close(IgnoreCompletionCallback.create());
 				serverStopFuture.setComplete();
 			}
 		});

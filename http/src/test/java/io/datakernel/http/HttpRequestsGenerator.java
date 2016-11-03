@@ -17,6 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
@@ -24,7 +25,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.util.Stopwatch;
 
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.util.Preconditions.*;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -246,7 +246,7 @@ public final class HttpRequestsGenerator {
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		HttpRequestsGenerator generator = new HttpRequestsGenerator(eventloop, options, ignoreCompletionCallback());
+		HttpRequestsGenerator generator = new HttpRequestsGenerator(eventloop, options, IgnoreCompletionCallback.create());
 		generator.start();
 
 		Stopwatch stopwatch = Stopwatch.createStarted();

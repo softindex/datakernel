@@ -16,6 +16,7 @@
 
 package io.datakernel;
 
+import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
@@ -33,7 +34,6 @@ import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static org.junit.Assert.assertEquals;
@@ -121,14 +121,14 @@ public class HttpApiTest {
 				} catch (ParseException e) {
 					fail("Invalid response");
 				}
-				server.close(ignoreCompletionCallback());
+				server.close(IgnoreCompletionCallback.create());
 				client.close();
 			}
 
 			@Override
 			protected void onException(Exception e) {
 				fail("Should not end here");
-				server.close(ignoreCompletionCallback());
+				server.close(IgnoreCompletionCallback.create());
 				client.close();
 			}
 		});

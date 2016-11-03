@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufStrings;
@@ -29,7 +30,6 @@ import javax.management.ObjectName;
 import java.lang.management.ManagementFactory;
 import java.util.Random;
 
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
@@ -117,7 +117,7 @@ public class HttpThrottlingServer {
 	}
 
 	public void stop() {
-		server.close(ignoreCompletionCallback());
+		server.close(IgnoreCompletionCallback.create());
 	}
 
 	public static void info(ServerOptions options) {

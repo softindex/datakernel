@@ -23,7 +23,7 @@ import io.datakernel.aggregation_db.AggregationMetadata;
 import io.datakernel.aggregation_db.AggregationStructure;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.keytype.KeyType;
-import io.datakernel.async.AsyncCallbacks;
+import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
@@ -129,7 +129,7 @@ public class CubeIntegrationTest {
 		producerOfRandomLogItems.streamTo(logManager.consumer(LOG_PARTITION_NAME));
 		eventloop.run();
 
-		logToCubeRunner.processLog(AsyncCallbacks.ignoreCompletionCallback());
+		logToCubeRunner.processLog(IgnoreCompletionCallback.create());
 		eventloop.run();
 
 		List<LogItem> listOfRandomLogItems2 = LogItem.getListOfRandomLogItems(300);
@@ -137,7 +137,7 @@ public class CubeIntegrationTest {
 		producerOfRandomLogItems.streamTo(logManager.consumer(LOG_PARTITION_NAME));
 		eventloop.run();
 
-		logToCubeRunner.processLog(AsyncCallbacks.ignoreCompletionCallback());
+		logToCubeRunner.processLog(IgnoreCompletionCallback.create());
 		eventloop.run();
 
 		List<LogItem> listOfRandomLogItems3 = LogItem.getListOfRandomLogItems(50);
@@ -145,11 +145,11 @@ public class CubeIntegrationTest {
 		producerOfRandomLogItems.streamTo(logManager.consumer(LOG_PARTITION_NAME));
 		eventloop.run();
 
-		logToCubeRunner.processLog(AsyncCallbacks.ignoreCompletionCallback());
+		logToCubeRunner.processLog(IgnoreCompletionCallback.create());
 		eventloop.run();
 
 		// Load metadata
-		cube.loadChunks(AsyncCallbacks.ignoreCompletionCallback());
+		cube.loadChunks(IgnoreCompletionCallback.create());
 		eventloop.run();
 
 		CubeQuery query = CubeQuery.create().withDimensions("date").withMeasures("clicks");
@@ -176,7 +176,7 @@ public class CubeIntegrationTest {
 		assertEquals(true, consolidated);
 
 		// Load metadata
-		cube.loadChunks(AsyncCallbacks.ignoreCompletionCallback());
+		cube.loadChunks(IgnoreCompletionCallback.create());
 		eventloop.run();
 
 		// Query

@@ -17,9 +17,7 @@
 package io.datakernel;
 
 import com.google.common.base.Charsets;
-import io.datakernel.async.CompletionCallbackFuture;
-import io.datakernel.async.ForwardingResultCallback;
-import io.datakernel.async.ResultCallbackFuture;
+import io.datakernel.async.*;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
@@ -38,8 +36,6 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
-import static io.datakernel.async.AsyncCallbacks.ignoreResultCallback;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.file.AsyncFile.open;
@@ -109,7 +105,7 @@ public class TestFileManager {
 		FileManager fs = FileManager.create(eventloop, executor, storage);
 		final Path inputFile = client.resolve("c.txt");
 
-		fs.save("1/c.txt", new ForwardingResultCallback<StreamFileWriter>(ignoreCompletionCallback()) {
+		fs.save("1/c.txt", new ForwardingResultCallback<StreamFileWriter>(IgnoreCompletionCallback.create()) {
 			@Override
 			public void onResult(StreamFileWriter writer) {
 				try {
@@ -133,7 +129,7 @@ public class TestFileManager {
 		FileManager fs = FileManager.create(eventloop, executor, storage);
 		final Path outputFile = client.resolve("d.txt");
 
-		fs.get("2/b/d.txt", 0, new ForwardingResultCallback<StreamFileReader>(ignoreResultCallback()) {
+		fs.get("2/b/d.txt", 0, new ForwardingResultCallback<StreamFileReader>(IgnoreResultCallback.create()) {
 			@Override
 			public void onResult(StreamFileReader reader) {
 				try {
@@ -182,7 +178,7 @@ public class TestFileManager {
 		FileManager fs = FileManager.create(eventloop, executor, storage);
 		assertTrue(exists(storage.resolve("2/3/a.txt")));
 
-		fs.delete("2/3/a.txt", ignoreCompletionCallback());
+		fs.delete("2/3/a.txt", IgnoreCompletionCallback.create());
 		eventloop.run();
 		executor.shutdown();
 

@@ -17,6 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.ForwardingResultCallback;
+import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.dns.AsyncDnsClient;
@@ -100,7 +101,7 @@ public class SimpleProxyServerTest {
 		AsyncDnsClient dnsClient = AsyncDnsClient.create(eventloop2)
 				.withDatagramSocketSetting(DatagramSocketSettings.create())
 				.withDnsServerAddress(HttpUtils.inetAddress("8.8.8.8"));
-		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop2).withDnsClient(dnsClient);
+		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop2).withDnsClient(dnsClient);
 
 		AsyncHttpServer proxyServer = proxyHttpServer(eventloop2, httpClient);
 		proxyServer.listen();
@@ -116,11 +117,16 @@ public class SimpleProxyServerTest {
 		stream.write(encodeAscii("GET /hello HTTP1.1\r\nHost: localhost\r\nConnection: close\n\r\n"));
 		readAndAssert(socket.getInputStream(), "HTTP/1.1 200 OK\r\nContent-Length: 17\r\n\r\nFORWARDED: /hello");
 
-		httpClient.closeFuture().await();
+		httpClient.getEventloop().execute(new Runnable() {
+			@Override
+			public void run() {
+				httpClient.stop(IgnoreCompletionCallback.create());
+			}
+		});
 
-		echoServer.closeFuture().await();
+		echoServer.closeFuture().get();
 
-		proxyServer.closeFuture().await();
+		proxyServer.closeFuture().get();
 
 		assertTrue(toByteArray(socket.getInputStream()).length == 0);
 		socket.close();

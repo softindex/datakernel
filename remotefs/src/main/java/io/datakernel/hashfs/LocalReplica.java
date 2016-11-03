@@ -29,8 +29,6 @@ import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
-import static io.datakernel.async.AsyncCallbacks.ignoreResultCallback;
 import static io.datakernel.hashfs.LocalReplica.FileState.*;
 import static java.lang.Math.min;
 
@@ -342,7 +340,7 @@ public final class LocalReplica implements EventloopService {
 			// checking if this node should care about the file
 			if (!candidates.contains(myId)) {
 				if ((info.state == READY) && fileReplicas.size() > minSafeReplicaQuantity) {
-					fileManager.delete(file, ignoreCompletionCallback());
+					fileManager.delete(file, IgnoreCompletionCallback.create());
 					continue;
 				} else if (info.state == TOMBSTONE) {
 					info.replicas.clear();
@@ -374,7 +372,7 @@ public final class LocalReplica implements EventloopService {
 		for (final Replica replica : directions) {
 			final List<String> forUpload = server2Offer.containsKey(replica) ? server2Offer.get(replica) : new ArrayList<String>();
 			List<String> forDeletion = server2Delete.containsKey(replica) ? server2Delete.get(replica) : new ArrayList<String>();
-			client.announce(replica, forUpload, forDeletion, new ForwardingResultCallback<List<String>>(ignoreResultCallback()) {
+			client.announce(replica, forUpload, forDeletion, new ForwardingResultCallback<List<String>>(IgnoreResultCallback.create()) {
 				@Override
 				public void onResult(List<String> result) {
 					// we assume that all of the suggested files that has been rejected exist at remote server

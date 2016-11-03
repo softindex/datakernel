@@ -1,5 +1,6 @@
 package io.datakernel;
 
+import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
@@ -17,7 +18,6 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpUtils.inetAddress;
@@ -79,7 +79,7 @@ public class ClientStressTest {
 				}
 			});
 		} else {
-			server.close(ignoreCompletionCallback());
+			server.close(IgnoreCompletionCallback.create());
 		}
 	}
 

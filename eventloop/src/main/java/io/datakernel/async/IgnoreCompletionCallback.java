@@ -16,34 +16,20 @@
 
 package io.datakernel.async;
 
-import io.datakernel.eventloop.Eventloop;
+public final class IgnoreCompletionCallback extends CompletionCallback {
+	private IgnoreCompletionCallback() {}
 
-/**
- * This callback handles exceptions.
- */
-public abstract class ExceptionCallback {
-	public ExceptionCallback() {
-		CallbackRegistry.register(this);
+	public static IgnoreCompletionCallback create() {
+		return new IgnoreCompletionCallback();
 	}
 
-	/**
-	 * Handles exception
-	 *
-	 * @param e exception that was throwing
-	 */
-	public final void setException(Exception e) {
-		CallbackRegistry.complete(this);
-		onException(e);
+	@Override
+	protected void onComplete() {
+
 	}
 
-	public final void postException(Eventloop eventloop, final Exception e) {
-		eventloop.post(new Runnable() {
-			@Override
-			public void run() {
-				setException(e);
-			}
-		});
-	}
+	@Override
+	protected void onException(Exception e) {
 
-	protected abstract void onException(Exception e);
+	}
 }

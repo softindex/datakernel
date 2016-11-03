@@ -1,6 +1,7 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.async.ConnectCallback;
+import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.SimpleServer.SocketHandlerProvider;
 import org.junit.Test;
@@ -11,7 +12,6 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
@@ -121,7 +121,7 @@ public class PingPongSocketConnectionTest {
 			assertEquals(RESPONSE_MSG, decodeAscii(buf));
 			if (++counter == ITERATIONS) {
 				clientTcpSocket.close();
-				server.close(ignoreCompletionCallback());
+				server.close(IgnoreCompletionCallback.create());
 			} else {
 				clientTcpSocket.write(wrapAscii(REQUEST_MSG));
 			}

@@ -17,11 +17,7 @@
 package io.datakernel.hashfs;
 
 import io.datakernel.FsClient;
-import io.datakernel.async.AsyncCallbacks.WaitAllHandler;
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.CompletionCallbackFuture;
-import io.datakernel.async.ResultCallback;
-import io.datakernel.async.SimpleCompletionCallback;
+import io.datakernel.async.*;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.SimpleException;
@@ -48,8 +44,6 @@ import java.util.concurrent.ExecutorService;
 
 import static com.google.common.base.Charsets.UTF_8;
 import static com.google.common.collect.Lists.newArrayList;
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
-import static io.datakernel.async.AsyncCallbacks.waitAll;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -117,7 +111,7 @@ public class IntegrationSingleNodeTest {
 				new SimpleCompletionCallback() {
 					@Override
 					protected void onCompleteOrException() {
-						server.close(ignoreCompletionCallback());
+						server.close(IgnoreCompletionCallback.create());
 					}
 				});
 
@@ -142,13 +136,13 @@ public class IntegrationSingleNodeTest {
 			@Override
 			public void onComplete() {
 				callback.setComplete();
-				server.close(ignoreCompletionCallback());
+				server.close(IgnoreCompletionCallback.create());
 			}
 
 			@Override
 			public void onException(Exception e) {
 				callback.setException(e);
-				server.close(ignoreCompletionCallback());
+				server.close(IgnoreCompletionCallback.create());
 			}
 		});
 
@@ -174,15 +168,15 @@ public class IntegrationSingleNodeTest {
 		HashFsClient client = createClient(eventloop);
 		StreamFileWriter consumerD = create(eventloop, executor, clientStorage.resolve("d_downloaded.txt"));
 		StreamFileWriter consumerG = create(eventloop, executor, clientStorage.resolve("g_downloaded.txt"));
-		WaitAllHandler waitAllHandler = waitAll(2, new CompletionCallback() {
+		WaitAllHandler waitAllHandler = WaitAllHandler.create(2, new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				server.close(ignoreCompletionCallback());
+				server.close(IgnoreCompletionCallback.create());
 			}
 
 			@Override
 			public void onException(Exception e) {
-				server.close(ignoreCompletionCallback());
+				server.close(IgnoreCompletionCallback.create());
 			}
 		});
 		consumerD.setFlushCallback(waitAllHandler.getCallback());
@@ -217,7 +211,7 @@ public class IntegrationSingleNodeTest {
 					consumerA.setFlushCallback(new SimpleCompletionCallback() {
 						@Override
 						protected void onCompleteOrException() {
-							server.close(ignoreCompletionCallback());
+							server.close(IgnoreCompletionCallback.create());
 						}
 					});
 					producer.streamTo(consumerA);
@@ -228,7 +222,7 @@ public class IntegrationSingleNodeTest {
 
 			@Override
 			public void onException(Exception e) {
-				server.close(ignoreCompletionCallback());
+				server.close(IgnoreCompletionCallback.create());
 			}
 		});
 
@@ -251,7 +245,7 @@ public class IntegrationSingleNodeTest {
 		client.delete("this/a.txt", new SimpleCompletionCallback() {
 			@Override
 			protected void onCompleteOrException() {
-				server.close(ignoreCompletionCallback());
+				server.close(IgnoreCompletionCallback.create());
 			}
 		});
 		eventloop.run();
@@ -274,13 +268,13 @@ public class IntegrationSingleNodeTest {
 		client.delete("not_exist.txt", new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				server.close(ignoreCompletionCallback());
+				server.close(IgnoreCompletionCallback.create());
 				callback.setComplete();
 			}
 
 			@Override
 			public void onException(Exception e) {
-				server.close(ignoreCompletionCallback());
+				server.close(IgnoreCompletionCallback.create());
 				callback.setException(e);
 			}
 		});
@@ -309,12 +303,12 @@ public class IntegrationSingleNodeTest {
 			@Override
 			public void onResult(List<String> result) {
 				actual.addAll(result);
-				server.close(ignoreCompletionCallback());
+				server.close(IgnoreCompletionCallback.create());
 			}
 
 			@Override
 			public void onException(Exception e) {
-				server.close(ignoreCompletionCallback());
+				server.close(IgnoreCompletionCallback.create());
 			}
 		});
 
@@ -350,7 +344,7 @@ public class IntegrationSingleNodeTest {
 
 	private HashFsServer createServer(Eventloop eventloop, ExecutorService executor) {
 		LocalReplica localReplica = LocalReplica.create(eventloop, executor, serverStorage, newArrayList(local), local);
-		localReplica.start(ignoreCompletionCallback());
+		localReplica.start(IgnoreCompletionCallback.create());
 		return HashFsServer.create(eventloop, localReplica)
 				.withListenAddress(local.getAddress());
 	}

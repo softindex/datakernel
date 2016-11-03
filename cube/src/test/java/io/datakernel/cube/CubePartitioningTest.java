@@ -20,7 +20,7 @@ import com.google.common.collect.ImmutableMap;
 import io.datakernel.aggregation_db.*;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.keytype.KeyType;
-import io.datakernel.async.AsyncCallbacks;
+import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
@@ -126,7 +126,7 @@ public class CubePartitioningTest {
 		producerOfRandomLogItems.streamTo(logManager.consumer(LOG_PARTITION_NAME));
 		eventloop.run();
 
-		logToCubeRunner.processLog(AsyncCallbacks.ignoreCompletionCallback());
+		logToCubeRunner.processLog(IgnoreCompletionCallback.create());
 		eventloop.run();
 
 		List<LogItem> listOfRandomLogItems2 = LogItem.getListOfRandomLogItems(300);
@@ -134,11 +134,11 @@ public class CubePartitioningTest {
 		producerOfRandomLogItems.streamTo(logManager.consumer(LOG_PARTITION_NAME));
 		eventloop.run();
 
-		logToCubeRunner.processLog(AsyncCallbacks.ignoreCompletionCallback());
+		logToCubeRunner.processLog(IgnoreCompletionCallback.create());
 		eventloop.run();
 
 		// Load metadata
-		cube.loadChunks(AsyncCallbacks.ignoreCompletionCallback());
+		cube.loadChunks(IgnoreCompletionCallback.create());
 		eventloop.run();
 
 		Map<Long, AggregationChunk> chunks = cube.getAggregations().get("date").getChunks();
@@ -161,7 +161,7 @@ public class CubePartitioningTest {
 
 		int consolidations = 0;
 		while (true) {
-			cube.loadChunks(AsyncCallbacks.ignoreCompletionCallback());
+			cube.loadChunks(IgnoreCompletionCallback.create());
 			eventloop.run();
 
 			ResultCallbackFuture<Boolean> callback = ResultCallbackFuture.create();
@@ -176,7 +176,7 @@ public class CubePartitioningTest {
 		assertEquals(6, consolidations);
 
 		// Load metadata
-		cube.loadChunks(AsyncCallbacks.ignoreCompletionCallback());
+		cube.loadChunks(IgnoreCompletionCallback.create());
 		eventloop.run();
 
 		// Query

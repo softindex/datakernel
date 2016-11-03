@@ -17,10 +17,7 @@
 package io.datakernel.logfs;
 
 import io.datakernel.FsServer;
-import io.datakernel.async.AsyncCallbacks;
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ResultCallbackFuture;
-import io.datakernel.async.SimpleCompletionCallback;
+import io.datakernel.async.*;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.hashfs.HashFsClient;
 import io.datakernel.hashfs.HashFsServer;
@@ -45,7 +42,6 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.logfs.LogManagerImpl.DETAILED_DATE_TIME_FORMATTER;
@@ -174,7 +170,7 @@ public class LogFsTest {
 		startServer(server);
 		LogStreamProducer<String> producer = logManager.producer("p1",
 				new LogFile(dateTimeFormatter.print(ONE_HOUR_MILLIS), 0), 0,
-				AsyncCallbacks.<LogPosition>ignoreResultCallback()); // from 01:00
+				IgnoreResultCallback.<LogPosition>create()); // from 01:00
 		StreamConsumers.ToList<String> consumer = new StreamConsumers.ToList<>(eventloop);
 		producer.streamTo(consumer);
 		consumer.setCompletionCallback(createServerStopCallback(server));
@@ -187,7 +183,7 @@ public class LogFsTest {
 		return new SimpleCompletionCallback() {
 			@Override
 			protected void onCompleteOrException() {
-				server.close(ignoreCompletionCallback());
+				server.close(IgnoreCompletionCallback.create());
 			}
 		};
 	}
@@ -262,7 +258,7 @@ public class LogFsTest {
 	}
 
 	private static void stopServer(final HashFsServer server) throws Exception {
-		server.close(ignoreCompletionCallback());
+		server.close(IgnoreCompletionCallback.create());
 	}
 
 	private SimpleFsServer createServer(InetSocketAddress address, Path serverStorage) {
@@ -272,7 +268,7 @@ public class LogFsTest {
 
 	private HashFsServer createServer(Replica replica, List<Replica> servers, Path serverStorage) {
 		LocalReplica localReplica = LocalReplica.create(eventloop, executor, serverStorage, new ArrayList<>(servers), replica);
-		localReplica.start(ignoreCompletionCallback());
+		localReplica.start(IgnoreCompletionCallback.create());
 		return HashFsServer.create(eventloop, localReplica)
 				.withListenAddress(replica.getAddress());
 	}

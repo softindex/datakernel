@@ -20,7 +20,7 @@ import com.google.common.collect.ImmutableMap;
 import io.datakernel.aggregation_db.*;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.keytype.KeyType;
-import io.datakernel.async.AsyncCallbacks;
+import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
@@ -151,10 +151,10 @@ public class CubeMeasureRemovalTest {
 		producerOfRandomLogItems.streamTo(logManager.consumer(LOG_PARTITION_NAME));
 		eventloop.run();
 
-		logToCubeRunner.processLog(AsyncCallbacks.ignoreCompletionCallback());
+		logToCubeRunner.processLog(IgnoreCompletionCallback.create());
 		eventloop.run();
 
-		cube.loadChunks(AsyncCallbacks.ignoreCompletionCallback());
+		cube.loadChunks(IgnoreCompletionCallback.create());
 		eventloop.run();
 
 		List<AggregationChunk> chunks = newArrayList(cube.getAggregations().get("date").getChunks().values());
@@ -174,10 +174,10 @@ public class CubeMeasureRemovalTest {
 		producerOfRandomLogItems.streamTo(logManager.consumer(LOG_PARTITION_NAME));
 		eventloop.run();
 
-		logToCubeRunner.processLog(AsyncCallbacks.ignoreCompletionCallback());
+		logToCubeRunner.processLog(IgnoreCompletionCallback.create());
 		eventloop.run();
 
-		cube.loadChunks(AsyncCallbacks.ignoreCompletionCallback());
+		cube.loadChunks(IgnoreCompletionCallback.create());
 		eventloop.run();
 
 		chunks = newArrayList(cube.getAggregations().get("date").getChunks().values());
@@ -213,7 +213,7 @@ public class CubeMeasureRemovalTest {
 		boolean consolidated = callback.isDone() ? callback.get() : false;
 		assertEquals(true, consolidated);
 
-		cube.loadChunks(AsyncCallbacks.ignoreCompletionCallback());
+		cube.loadChunks(IgnoreCompletionCallback.create());
 		eventloop.run();
 
 		chunks = newArrayList(cube.getAggregations().get("date").getChunks().values());

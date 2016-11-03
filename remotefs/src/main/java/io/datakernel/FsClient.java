@@ -19,14 +19,10 @@ package io.datakernel;
 import com.google.gson.Gson;
 import io.datakernel.FsCommands.*;
 import io.datakernel.FsResponses.*;
-import io.datakernel.async.CallbackRegistry;
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ExceptionCallback;
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.*;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
-import io.datakernel.async.ConnectCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.stream.StreamProducer;
@@ -44,7 +40,6 @@ import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.FsCommands.*;
 import static io.datakernel.FsResponses.*;
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
 import static io.datakernel.eventloop.AsyncTcpSocketImpl.wrapChannel;
 import static io.datakernel.stream.net.MessagingSerializers.ofGson;
@@ -83,7 +78,7 @@ public abstract class FsClient<S extends FsClient<S>> {
 			@Override
 			public void onConnect(final MessagingWithBinaryStreaming<FsResponse, FsCommand> messaging) {
 				final Upload upload = new Upload(fileName);
-				messaging.send(upload, ignoreCompletionCallback());
+				messaging.send(upload, IgnoreCompletionCallback.create());
 				messaging.sendBinaryStreamFrom(producer, new CompletionCallback() {
 					@Override
 					public void onComplete() {

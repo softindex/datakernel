@@ -16,10 +16,7 @@
 
 package io.datakernel.rpc.client;
 
-import io.datakernel.async.AsyncCallbacks;
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ConnectCallback;
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.*;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
@@ -45,9 +42,8 @@ import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
-import static io.datakernel.async.AsyncCallbacks.postCompletion;
-import static io.datakernel.async.AsyncCallbacks.postException;
 import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
 import static io.datakernel.eventloop.AsyncTcpSocketImpl.wrapChannel;
 import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamProtocol;
@@ -264,7 +260,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		startCallback = callback;
 
 		if (forceStart) {
-			postCompletion(eventloop, startCallback);
+			startCallback.postComplete(eventloop);
 			RpcSender sender = strategy.createSender(pool);
 			requestSender = sender != null ? sender : new Sender();
 			startCallback = null;
@@ -276,7 +272,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 						if (running && startCallback != null) {
 							String errorMsg = String.format("Some of the required servers did not respond within %.1f sec",
 									connectTimeoutMillis / 1000.0);
-							postException(eventloop, startCallback, new InterruptedException(errorMsg));
+							startCallback.postException(eventloop, new InterruptedException(errorMsg));
 							running = false;
 							startCallback = null;
 						}
@@ -290,6 +286,17 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		}
 	}
 
+	public Future<Void> startFuture() {
+		final CompletionCallbackFuture future = CompletionCallbackFuture.create();
+		eventloop.execute(new Runnable() {
+			@Override
+			public void run() {
+				start(future);
+			}
+		});
+		return future;
+	}
+
 	@Override
 	public void stop(final CompletionCallback callback) {
 		checkNotNull(callback);
@@ -298,7 +305,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 
 		running = false;
 		if (startCallback != null) {
-			postException(eventloop, startCallback, new InterruptedException("Start aborted"));
+			startCallback.postException(eventloop, new InterruptedException("Start aborted"));
 			startCallback = null;
 		}
 
@@ -315,6 +322,17 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 				connection.close();
 			}
 		}
+	}
+
+	public Future<Void> stopFuture() {
+		final CompletionCallbackFuture future = CompletionCallbackFuture.create();
+		eventloop.execute(new Runnable() {
+			@Override
+			public void run() {
+				stop(future);
+			}
+		});
+		return future;
 	}
 
 	private BufferSerializer<RpcMessage> getSerializer() {
@@ -351,7 +369,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 
 				logger.info("Connection to {} established", address);
 				if (startCallback != null) {
-					postCompletion(eventloop, startCallback);
+					startCallback.postComplete(eventloop);
 					startCallback = null;
 				}
 			}
@@ -439,7 +457,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 					@Override
 					public void run() {
 						RpcClient.this.sendRequest(
-								request, timeout, AsyncCallbacks.concurrentResultCallback(anotherEventloop, callback)
+								request, timeout, ConcurrentResultCallback.create(callback, eventloop)
 						);
 					}
 				});

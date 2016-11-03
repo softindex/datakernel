@@ -16,7 +16,8 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.async.AsyncCallbacks;
+import io.datakernel.async.ConcurrentResultCallback;
+import io.datakernel.async.IgnoreResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.dns.DnsCache.DnsCacheQueryResult;
 import io.datakernel.eventloop.Eventloop;
@@ -157,7 +158,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 					AsyncDnsClient.this.eventloop.execute(new Runnable() {
 						@Override
 						public void run() {
-							AsyncDnsClient.this.resolve(domainName, ipv6, AsyncCallbacks.<InetAddress[]>ignoreResultCallback());
+							AsyncDnsClient.this.resolve(domainName, ipv6, IgnoreResultCallback.<InetAddress[]>create());
 						}
 					});
 					return;
@@ -167,7 +168,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 					AsyncDnsClient.this.eventloop.execute(new Runnable() {
 						@Override
 						public void run() {
-							AsyncDnsClient.this.resolve(domainName, ipv6, AsyncCallbacks.concurrentResultCallback(eventloop, callback));
+							AsyncDnsClient.this.resolve(domainName, ipv6, ConcurrentResultCallback.create(callback, eventloop));
 						}
 					});
 				}

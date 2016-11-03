@@ -135,7 +135,7 @@ public class AsyncHttpServerTest {
 		assertTrue(socket.isClosed());
 		socket.close();
 
-		server.closeFuture().await();
+		server.closeFuture().get();
 		thread.join();
 	}
 
@@ -168,7 +168,7 @@ public class AsyncHttpServerTest {
 		writeByRandomParts(socket, "GET /abc HTTP1.1\r\nHost: localhost\r\n");
 		socket.close();
 
-		server.closeFuture().await();
+		server.closeFuture().get();
 		thread.join();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
@@ -193,7 +193,7 @@ public class AsyncHttpServerTest {
 		assertTrue(toByteArray(socket.getInputStream()).length == 0);
 		socket.close();
 
-		server.closeFuture().await();
+		server.closeFuture().get();
 		thread.join();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
@@ -229,7 +229,7 @@ public class AsyncHttpServerTest {
 			readAndAssert(socket.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nContent-Length: 7\r\n\r\n/123456");
 		}
 
-		server.closeFuture().await();
+		server.closeFuture().get();
 		thread.join();
 	}
 
@@ -268,7 +268,7 @@ public class AsyncHttpServerTest {
 			buf.recycle();
 			Thread.sleep(100);
 		}
-		server.closeFuture().await();
+		server.closeFuture().get();
 		thread.join();
 		assertEquals(1, eventloop.getStats().getErrorStats().getIoErrors().getTotal());
 		assertEquals("Too big HttpMessage",

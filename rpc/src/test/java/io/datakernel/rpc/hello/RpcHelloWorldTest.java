@@ -36,8 +36,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static io.datakernel.async.AsyncCallbacks.startFuture;
-import static io.datakernel.async.AsyncCallbacks.stopFuture;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.EventloopThreadFactory.defaultEventloopThreadFactory;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -110,7 +108,7 @@ public class RpcHelloWorldTest {
 					.withMessageTypes(HelloRequest.class, HelloResponse.class)
 					.withStrategy(server(new InetSocketAddress(InetAddresses.forString("127.0.0.1"), PORT)));
 
-			startFuture(rpcClient).await();
+			rpcClient.startFuture().get();
 		}
 
 		@Override
@@ -131,7 +129,7 @@ public class RpcHelloWorldTest {
 
 		@Override
 		public void close() throws Exception {
-			stopFuture(rpcClient).await();
+			rpcClient.stopFuture().get();
 		}
 	}
 
@@ -157,7 +155,7 @@ public class RpcHelloWorldTest {
 				assertEquals("Hello, World!", client.hello("World"));
 			}
 		} finally {
-			server.closeFuture().await();
+			server.closeFuture().get();
 
 		}
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
@@ -193,7 +191,7 @@ public class RpcHelloWorldTest {
 			}
 			latch.await();
 		} finally {
-			server.closeFuture().await();
+			server.closeFuture().get();
 		}
 		assertTrue(success.get() > 0);
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
@@ -206,7 +204,7 @@ public class RpcHelloWorldTest {
 			assertEquals("Hello, John!", client2.hello("John"));
 			assertEquals("Hello, World!", client1.hello("World"));
 		} finally {
-			server.closeFuture().await();
+			server.closeFuture().get();
 		}
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
@@ -219,7 +217,7 @@ public class RpcHelloWorldTest {
 		} catch (RpcRemoteException e) {
 			assertEquals("java.lang.Exception: Illegal name", e.getMessage());
 		} finally {
-			server.closeFuture().await();
+			server.closeFuture().get();
 		}
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
@@ -275,7 +273,7 @@ public class RpcHelloWorldTest {
 			latch1.await();
 			latch2.await();
 		} finally {
-			server.closeFuture().await();
+			server.closeFuture().get();
 		}
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
@@ -316,7 +314,7 @@ public class RpcHelloWorldTest {
 						+ " (" + success.get() + "/" + count + " [" + error.get() + "])");
 			}
 		} finally {
-			server.closeFuture().await();
+			server.closeFuture().get();
 		}
 	}
 }

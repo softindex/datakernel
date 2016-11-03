@@ -20,7 +20,7 @@ import com.google.common.collect.ImmutableMap;
 import io.datakernel.aggregation_db.*;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.keytype.KeyType;
-import io.datakernel.async.AsyncCallbacks;
+import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.bean.TestPubRequest;
 import io.datakernel.eventloop.Eventloop;
@@ -44,7 +44,6 @@ import java.util.concurrent.Executors;
 
 import static io.datakernel.aggregation_db.fieldtype.FieldTypes.longSum;
 import static io.datakernel.aggregation_db.keytype.KeyTypes.intKey;
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.cube.TestUtils.deleteRecursivelyQuietly;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
@@ -109,11 +108,11 @@ public class LogToCubeTest {
 
 		eventloop.run();
 
-		logToCubeRunner.processLog(AsyncCallbacks.ignoreCompletionCallback());
+		logToCubeRunner.processLog(IgnoreCompletionCallback.create());
 
 		eventloop.run();
 
-		cube.loadChunks(ignoreCompletionCallback());
+		cube.loadChunks(IgnoreCompletionCallback.create());
 
 		eventloop.run();
 

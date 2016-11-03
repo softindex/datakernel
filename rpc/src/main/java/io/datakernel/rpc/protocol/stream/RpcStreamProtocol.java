@@ -16,6 +16,7 @@
 
 package io.datakernel.rpc.protocol.stream;
 
+import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.rpc.protocol.RpcConnection;
@@ -34,8 +35,6 @@ import io.datakernel.stream.processor.StreamLZ4Decompressor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
-
 @SuppressWarnings("unchecked")
 final class RpcStreamProtocol implements RpcProtocol {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
@@ -45,12 +44,10 @@ final class RpcStreamProtocol implements RpcProtocol {
 	private final SimpleStreamConsumer<RpcMessage> receiver;
 	private final SocketStreamingConnection connection;
 
-
-
 	protected RpcStreamProtocol(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
-	                          RpcConnection rpcConnection,
-	                          BufferSerializer<RpcMessage> messageSerializer,
-	                          int defaultPacketSize, int maxPacketSize, boolean compression, boolean server) {
+	                            RpcConnection rpcConnection,
+	                            BufferSerializer<RpcMessage> messageSerializer,
+	                            int defaultPacketSize, int maxPacketSize, boolean compression, boolean server) {
 		this.rpcConnection = rpcConnection;
 
 		if (server) {
@@ -111,14 +108,14 @@ final class RpcStreamProtocol implements RpcProtocol {
 		if (compression) {
 			StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
 			StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create(eventloop);
-			connection.receiveStreamTo(decompressor.getInput(), ignoreCompletionCallback());
+			connection.receiveStreamTo(decompressor.getInput(), IgnoreCompletionCallback.create());
 			decompressor.getOutput().streamTo(deserializer.getInput());
 
 			serializer.getOutput().streamTo(compressor.getInput());
-			connection.sendStreamFrom(compressor.getOutput(), ignoreCompletionCallback());
+			connection.sendStreamFrom(compressor.getOutput(), IgnoreCompletionCallback.create());
 		} else {
-			connection.receiveStreamTo(deserializer.getInput(), ignoreCompletionCallback());
-			connection.sendStreamFrom(serializer.getOutput(), ignoreCompletionCallback());
+			connection.receiveStreamTo(deserializer.getInput(), IgnoreCompletionCallback.create());
+			connection.sendStreamFrom(serializer.getOutput(), IgnoreCompletionCallback.create());
 		}
 
 		deserializer.getOutput().streamTo(receiver);

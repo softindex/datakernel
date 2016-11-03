@@ -1,5 +1,6 @@
 package io.datakernel.http;
 
+import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.dns.AsyncDnsClient;
@@ -12,7 +13,6 @@ import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.Map;
 
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static org.junit.Assert.assertEquals;
@@ -45,7 +45,7 @@ public class AbstractHttpConnectionTest {
 				data.put("body", decodeAscii(result.getBody()));
 				data.put("header", result.getHeader(HttpHeaders.CONTENT_TYPE));
 				client.close();
-				server.close(ignoreCompletionCallback());
+				server.close(IgnoreCompletionCallback.create());
 			}
 
 			@Override

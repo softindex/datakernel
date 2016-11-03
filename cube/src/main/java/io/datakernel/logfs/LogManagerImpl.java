@@ -16,8 +16,9 @@
 
 package io.datakernel.logfs;
 
-import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.IgnoreCompletionCallback;
+import io.datakernel.async.IgnoreResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
@@ -25,8 +26,6 @@ import io.datakernel.util.Preconditions;
 import org.joda.time.DateTimeZone;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
-
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 
 public final class LogManagerImpl<T> implements LogManager<T> {
 	public static final DateTimeFormatter DEFAULT_DATE_TIME_FORMATTER = DateTimeFormat.forPattern("yyyy-MM-dd_HH").withZone(DateTimeZone.UTC);
@@ -80,7 +79,7 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 	@Override
 	public LogStreamConsumer<T> consumer(String logPartition) {
 		validateLogPartition(logPartition);
-		return consumer(logPartition, ignoreCompletionCallback());
+		return consumer(logPartition, IgnoreCompletionCallback.create());
 	}
 
 	@Override
@@ -114,14 +113,14 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 		validateLogPartition(logPartition);
 		return producer(logPartition, new LogFile(dateTimeFormatter.print(startTimestamp), 0), 0,
 				new LogFile(dateTimeFormatter.print(endTimestamp), 0),
-				AsyncCallbacks.<LogPosition>ignoreResultCallback());
+				IgnoreResultCallback.<LogPosition>create());
 	}
 
 	@Override
 	public LogStreamProducer<T> producer(String logPartition, String startLogFileName, String endLogFileName) {
 		validateLogPartition(logPartition);
 		return producer(logPartition, new LogFile(startLogFileName, 0), 0, new LogFile(endLogFileName, 0),
-				AsyncCallbacks.<LogPosition>ignoreResultCallback());
+				IgnoreResultCallback.<LogPosition>create());
 	}
 
 	private static void validateLogPartition(String logPartition) {

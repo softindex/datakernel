@@ -93,7 +93,7 @@ public class HttpTolerantApplicationTest {
 		assertTrue(toByteArray(socket.getInputStream()).length == 0);
 		socket.close();
 
-		server.closeFuture().await();
+		server.closeFuture().get();
 		thread.join();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());

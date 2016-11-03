@@ -17,6 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.ForwardingResultCallback;
+import io.datakernel.async.IgnoreResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
@@ -33,7 +34,6 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static io.datakernel.async.AsyncCallbacks.ignoreResultCallback;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
@@ -70,7 +70,7 @@ public class StaticServletsTest {
 		final List<String> res = new ArrayList<>();
 
 		StaticServletForFiles servlet = StaticServletForFiles.create(eventloop, executor, resources);
-		servlet.doServeAsync("index.html", new ForwardingResultCallback<ByteBuf>(ignoreResultCallback()) {
+		servlet.doServeAsync("index.html", new ForwardingResultCallback<ByteBuf>(IgnoreResultCallback.create()) {
 			@Override
 			protected void onResult(ByteBuf result) {
 				res.add(decodeAscii(result));

@@ -22,7 +22,6 @@ import org.junit.Test;
 import java.util.HashMap;
 import java.util.Map;
 
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static org.junit.Assert.assertEquals;
 
@@ -86,7 +85,7 @@ public class ParallelAsyncExecutorTest {
 	}
 
 	private static void submitTestTask(AsyncExecutor executor, Eventloop eventloop, Map<Integer, ExecutionInfo> executionInfoMap, int n) {
-		executor.submit(getTestTask(eventloop, n, executionInfoMap), ignoreCompletionCallback());
+		executor.submit(getTestTask(eventloop, n, executionInfoMap), IgnoreCompletionCallback.create());
 	}
 
 	private static AsyncTask getTestTask(final Eventloop eventloop, final int n, final Map<Integer, ExecutionInfo> executionInfoMap) {
