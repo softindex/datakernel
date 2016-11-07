@@ -50,4 +50,12 @@ public final class RpcMessage {
 	public Object getData() {
 		return data;
 	}
+
+	@Override
+	public String toString() {
+		return "RpcMessage{" +
+				"cookie=" + cookie +
+				", data=" + data +
+				'}';
+	}
 }

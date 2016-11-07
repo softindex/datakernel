@@ -166,6 +166,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 							} else {
 								int readSize = min(nextBuf.readRemaining(), MAX_HEADER_BYTES - buf.readRemaining());
 								buf = ByteBufPool.append(buf, nextBuf.array(), nextBuf.readPosition(), readSize);
+								nextBuf.moveReadPosition(readSize);
 								int sizeLen = tryReadSize(buf.array(), buf.readPosition());
 								if (sizeLen > buf.readRemaining()) {
 									// Read past last position - incomplete varint in buffer, waiting for more bytes
