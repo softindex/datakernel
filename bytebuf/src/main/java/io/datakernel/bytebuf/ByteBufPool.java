@@ -18,10 +18,11 @@ package io.datakernel.bytebuf;
 
 import io.datakernel.util.ConcurrentStack;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static io.datakernel.bytebuf.ByteBufRegistry.ByteBufMetaInfo;
+import static io.datakernel.bytebuf.ByteBufRegistry.ByteBufWrapper;
 import static java.lang.Integer.numberOfLeadingZeros;
 
 public final class ByteBufPool {
@@ -50,6 +51,9 @@ public final class ByteBufPool {
 			buf.refs++;
 			assert created[index].incrementAndGet() != 0;
 		}
+
+		assert ByteBufRegistry.recordAllocate(buf);
+
 		return buf;
 	}
 
@@ -58,6 +62,8 @@ public final class ByteBufPool {
 		ConcurrentStack<ByteBuf> queue = slabs[32 - numberOfLeadingZeros(buf.array.length - 1)];
 		assert !queue.contains(buf) : "duplicate recycle array";
 		queue.push(buf);
+
+		assert ByteBufRegistry.recordRecycle(buf);
 	}
 
 	public static ByteBuf recycleIfEmpty(ByteBuf buf) {
@@ -202,9 +208,69 @@ public final class ByteBufPool {
 		long getPoolSizeKB();
 
 		List<String> getPoolSlabs();
+
+		List<ByteBufJmxInfo> getOldestByteBufs_Details();
+
+		List<String> getOldestByteBufs_Summary();
+
+		boolean getOldestByteBufs_settings_StoreStackTrace();
+
+		void setOldestByteBufs_settings_StoreStackTrace(boolean flag);
+
+		int getOldestByteBufs_settings_MaxBytesInContent();
+
+		void setOldestByteBufs_settings_MaxBytesInContent(int bytes);
+
+		int getOldestByteBufs_settings_MaxByteBufsToShow();
+
+		void setOldestByteBufs_settings_MaxByteBufsToShow(int bufs);
+	}
+
+	public static final class ByteBufJmxInfo {
+		private final long duration;
+		private final List<String> stackTrace;
+		private final int size;
+		private final int readPosition;
+		private final int writePosition;
+		private final String content;
+
+		public ByteBufJmxInfo(long duration, List<String> stackTrace, int size, int readPosition, int writePosition, String content) {
+			this.duration = duration;
+			this.stackTrace = stackTrace;
+			this.size = size;
+			this.readPosition = readPosition;
+			this.writePosition = writePosition;
+			this.content = content;
+		}
+
+		public String getDuration() {
+			return formatDuration(duration);
+		}
+
+		public List<String> getStackTrace() {
+			return stackTrace;
+		}
+
+		public int getSize() {
+			return size;
+		}
+
+		public int getReadPosition() {
+			return readPosition;
+		}
+
+		public int getWritePosition() {
+			return writePosition;
+		}
+
+		public String getContent() {
+			return content;
+		}
 	}
 
 	public static final class ByteBufPoolStats implements ByteBufPoolStatsMXBean {
+		private volatile int maxBytesInContent = 25;
+		private volatile int maxBufsToShow = 100;
 
 		@Override
 		public int getCreatedItems() {
@@ -243,6 +309,121 @@ public final class ByteBufPool {
 			}
 			return result;
 		}
+
+		@Override
+		public List<ByteBufJmxInfo> getOldestByteBufs_Details() {
+			Map<ByteBufWrapper, ByteBufMetaInfo> activeBufs = ByteBufRegistry.getActiveByteBufs();
+			List<ByteBufJmxInfo> bufsInfo = new ArrayList<>();
+
+			long currentTimestamp = System.currentTimeMillis();
+			int maxBufsToShowCached = maxBufsToShow;
+			for (ByteBufWrapper wrapper : activeBufs.keySet()) {
+				if (bufsInfo.size() == maxBufsToShowCached) {
+					break;
+				}
+
+				ByteBufMetaInfo byteBufMetaInfo = activeBufs.get(wrapper);
+				if (byteBufMetaInfo == null) {
+					continue;
+				}
+
+				ByteBuf buf = wrapper.getByteBuf();
+				if (buf == null) {
+					continue;
+				}
+
+				long duration = currentTimestamp - byteBufMetaInfo.getAllocationTimestamp();
+
+				List<String> stackTraceLines = new ArrayList<>();
+				StackTraceElement[] stackTrace = byteBufMetaInfo.getStackTrace();
+				if (stackTrace != null) {
+					for (StackTraceElement stackTraceElement : stackTrace) {
+						stackTraceLines.add(stackTraceElement.toString());
+					}
+				}
+
+				String content = extractContent(buf, maxBytesInContent);
+
+				ByteBufJmxInfo byteBufJmxInfo = new ByteBufJmxInfo(duration, stackTraceLines,
+						buf.limit(), buf.readPosition(), buf.writePosition(), content);
+				bufsInfo.add(byteBufJmxInfo);
+			}
+
+			Collections.sort(bufsInfo, new Comparator<ByteBufJmxInfo>() {
+				@Override
+				public int compare(ByteBufJmxInfo o1, ByteBufJmxInfo o2) {
+					return -(Long.compare(o1.duration, o2.duration));
+				}
+			});
+
+			return bufsInfo;
+		}
+
+		@Override
+		public List<String> getOldestByteBufs_Summary() {
+			List<ByteBufJmxInfo> detailedInfo = getOldestByteBufs_Details();
+			List<String> summaryLines = new ArrayList<>();
+			summaryLines.add("Duration       Content");
+			for (ByteBufJmxInfo info : detailedInfo) {
+				summaryLines.add(String.format("%s   %s", info.getDuration(), info.getContent()));
+			}
+			return summaryLines;
+		}
+
+		@Override
+		public boolean getOldestByteBufs_settings_StoreStackTrace() {
+			return ByteBufRegistry.getStoreStackTrace();
+		}
+
+		@Override
+		public void setOldestByteBufs_settings_StoreStackTrace(boolean flag) {
+			ByteBufRegistry.setStoreStackTrace(flag);
+		}
+
+		@Override
+		public int getOldestByteBufs_settings_MaxBytesInContent() {
+			return maxBytesInContent;
+		}
+
+		@Override
+		public void setOldestByteBufs_settings_MaxBytesInContent(int bytesInContent) {
+			if (bytesInContent < 0) {
+				throw new IllegalArgumentException("argument must be non-negative");
+			}
+			this.maxBytesInContent = bytesInContent;
+		}
+
+		@Override
+		public int getOldestByteBufs_settings_MaxByteBufsToShow() {
+			return maxBufsToShow;
+		}
+
+		@Override
+		public void setOldestByteBufs_settings_MaxByteBufsToShow(int bufs) {
+			if (bufs < 0) {
+				throw new IllegalArgumentException("argument must be non-negative");
+			}
+			this.maxBufsToShow = bufs;
+		}
+	}
+
+	private static String formatHours(long period) {
+		long milliseconds = period % 1000;
+		long seconds = (period / 1000) % 60;
+		long minutes = (period / (60 * 1000)) % 60;
+		long hours = period / (60 * 60 * 1000);
+		return String.format("%02d", hours) + ":" + String.format("%02d", minutes) + ":" + String.format("%02d", seconds) + "." + String.format("%03d", milliseconds);
+	}
+
+	public static String formatDuration(long period) {
+		if (period == 0)
+			return "";
+		return formatHours(period);
+	}
+
+	private static String extractContent(ByteBuf buf, int maxSize) {
+		int to = buf.readPosition() + Math.min(maxSize, buf.readRemaining());
+		return new String(Arrays.copyOfRange(buf.array(), buf.readPosition(), to));
 	}
 	//endregion
 }
