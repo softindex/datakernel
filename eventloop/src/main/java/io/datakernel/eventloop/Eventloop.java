@@ -704,7 +704,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 				public void run() {
 					recordIoError(CONNECT_TIMEOUT, socketChannel);
 					closeQuietly(socketChannel);
-					connectCallback.setException(CONNECT_TIMEOUT);
+					setException(CONNECT_TIMEOUT);
 				}
 			});
 
