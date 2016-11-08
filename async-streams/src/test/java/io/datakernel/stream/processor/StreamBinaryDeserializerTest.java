@@ -30,6 +30,9 @@ import org.junit.Test;
 import java.util.Collections;
 import java.util.List;
 
+import static io.datakernel.bytebuf.ByteBufPool.*;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.stream.processor.StreamBinarySerializer.MAX_SIZE;
 import static java.lang.ClassLoader.getSystemClassLoader;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
@@ -41,9 +44,9 @@ public class StreamBinaryDeserializerTest {
 
 	@Before
 	public void before() {
-		eventloop = Eventloop.create();
-		deserializer = StreamBinaryDeserializer.create(eventloop, createSerializer(), 100);
-		serializer = StreamBinarySerializer.create(eventloop, createSerializer(), 1000, 100, 1000, false);
+		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		deserializer = StreamBinaryDeserializer.create(eventloop, createSerializer(), MAX_SIZE);
+		serializer = StreamBinarySerializer.create(eventloop, createSerializer(), 1000, MAX_SIZE, 1000, false);
 	}
 
 	private BufferSerializer<Data> createSerializer() {
@@ -63,6 +66,7 @@ public class StreamBinaryDeserializerTest {
 		eventloop.run();
 
 		assertEquals(Collections.singletonList(data), consumer.getList());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -77,12 +81,12 @@ public class StreamBinaryDeserializerTest {
 
 		eventloop.run();
 
-		System.out.println(consumer.getList());
 		assertEquals(inputData, consumer.getList());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
-	public void deserializesMultipleMessagesSplittedIntoDifferentBytebufs() {
+	public void deserializesMultipleMessages_SplittedIntoDifferentBytebufs() {
 		List<Data> inputData = asList(new Data("a"), new Data("b"), new Data("c"));
 		StreamProducer<Data> producer = StreamProducers.ofIterable(eventloop, inputData);
 		StreamConsumers.ToList<Data> consumer = StreamConsumers.toList(eventloop);
@@ -95,7 +99,28 @@ public class StreamBinaryDeserializerTest {
 		deserializer.getOutput().streamTo(consumer);
 
 		eventloop.run();
+
 		assertEquals(inputData, consumer.getList());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+	}
+
+	@Test
+	public void deserializesMultipleMessages_SplittedIntoSingleByte_ByteBufs_withMaxHeaderSizeInMessage() {
+		List<Data> inputData =
+				asList(new Data("1"), new Data("8282"), new Data("80982"), new Data("3634921"), new Data("7162"));
+		StreamProducer<Data> producer = StreamProducers.ofIterable(eventloop, inputData);
+		StreamConsumers.ToList<Data> consumer = StreamConsumers.toList(eventloop);
+		StreamByteChunker bufSplitter = StreamByteChunker.create(eventloop, 1, 1);
+
+		producer.streamTo(serializer.getInput());
+		serializer.getOutput().streamTo(bufSplitter.getInput());
+		bufSplitter.getOutput().streamTo(deserializer.getInput());
+		deserializer.getOutput().streamTo(consumer);
+
+		eventloop.run();
+
+		assertEquals(inputData, consumer.getList());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	public static class Data {

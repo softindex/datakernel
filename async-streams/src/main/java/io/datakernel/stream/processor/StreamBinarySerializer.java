@@ -151,6 +151,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 				jmxBufs++;
 				if (outputProducer.getProducerStatus().isOpen()) {
 					receiver.onData(outputBuf);
+					outputBuf = null;
 				}
 			} else {
 				outputBuf.recycle();

@@ -209,6 +209,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 							if (buf.canRead())
 								throw new ParseException("Deserialized size != parsed data size");
 							dataSize = 0;
+							buf.rewind();
 						}
 						++jmxItems;
 						downstreamDataReceiver.onData(item);
