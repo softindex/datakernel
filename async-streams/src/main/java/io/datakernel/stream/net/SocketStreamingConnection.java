@@ -77,12 +77,12 @@ public final class SocketStreamingConnection implements AsyncTcpSocket.EventHand
 	// endregion
 
 	@Override
-	public void sendStreamFrom(StreamProducer<ByteBuf> producer, CompletionCallback callback) {
+	public void sendStreamFrom(StreamProducer<ByteBuf> producer) {
 		producer.streamTo(socketWriter);
 	}
 
 	@Override
-	public void receiveStreamTo(StreamConsumer<ByteBuf> consumer, CompletionCallback callback) {
+	public void receiveStreamTo(StreamConsumer<ByteBuf> consumer) {
 		socketReader.streamTo(consumer);
 	}
 

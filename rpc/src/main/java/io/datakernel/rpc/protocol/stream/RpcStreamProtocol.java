@@ -16,7 +16,6 @@
 
 package io.datakernel.rpc.protocol.stream;
 
-import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.rpc.protocol.RpcConnection;
@@ -108,14 +107,14 @@ final class RpcStreamProtocol implements RpcProtocol {
 		if (compression) {
 			StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
 			StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create(eventloop);
-			connection.receiveStreamTo(decompressor.getInput(), IgnoreCompletionCallback.create());
+			connection.receiveStreamTo(decompressor.getInput());
 			decompressor.getOutput().streamTo(deserializer.getInput());
 
 			serializer.getOutput().streamTo(compressor.getInput());
-			connection.sendStreamFrom(compressor.getOutput(), IgnoreCompletionCallback.create());
+			connection.sendStreamFrom(compressor.getOutput());
 		} else {
-			connection.receiveStreamTo(deserializer.getInput(), IgnoreCompletionCallback.create());
-			connection.sendStreamFrom(serializer.getOutput(), IgnoreCompletionCallback.create());
+			connection.receiveStreamTo(deserializer.getInput());
+			connection.sendStreamFrom(serializer.getOutput());
 		}
 
 		deserializer.getOutput().streamTo(receiver);

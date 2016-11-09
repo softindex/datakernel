@@ -16,13 +16,12 @@
 
 package io.datakernel.stream.net;
 
-import io.datakernel.async.CompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 
 public interface SocketStreaming {
-	void receiveStreamTo(StreamConsumer<ByteBuf> streamConsumer, CompletionCallback callback);
+	void receiveStreamTo(StreamConsumer<ByteBuf> streamConsumer);
 
-	void sendStreamFrom(StreamProducer<ByteBuf> streamProducer, CompletionCallback callback);
+	void sendStreamFrom(StreamProducer<ByteBuf> streamProducer);
 }
