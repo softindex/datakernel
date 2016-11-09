@@ -18,7 +18,6 @@ package io.datakernel.cube;
 
 import com.google.common.collect.Multimap;
 import io.datakernel.aggregation_db.AggregationChunk;
-import io.datakernel.aggregation_db.AggregationMetadata;
 import io.datakernel.aggregation_db.CubeMetadataStorageStub;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
@@ -52,7 +51,7 @@ public final class LogToCubeMetadataStorageStub implements LogToCubeMetadataStor
 	}
 
 	@Override
-	public void loadLogPositions(String log, List<String> partitions, ResultCallback<Map<String, LogPosition>> callback) {
+	public void loadLogPositions(Cube cube, String log, List<String> partitions, ResultCallback<Map<String, LogPosition>> callback) {
 		Map<String, LogPosition> logPositionMap = new LinkedHashMap<>();
 		for (String partition : partitions) {
 			logPositionMap.put(partition, LogPosition.create());
@@ -62,19 +61,19 @@ public final class LogToCubeMetadataStorageStub implements LogToCubeMetadataStor
 	}
 
 	@Override
-	public void saveCommit(String log, Map<AggregationMetadata, String> idMap,
+	public void saveCommit(Cube cube, String log,
 	                       Map<String, LogPosition> oldPositions,
 	                       Map<String, LogPosition> newPositions,
-	                       Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks,
+	                       Multimap<String, AggregationChunk.NewChunk> newChunks,
 	                       final CompletionCallback callback) {
 		Map<String, LogPosition> logPositionMap = ensureLogPositions(log);
 		logPositionMap.putAll(newPositions);
 
 		final WaitAllHandler waitAllHandler = WaitAllHandler.create(newChunks.size(), callback);
 
-		for (Map.Entry<AggregationMetadata, AggregationChunk.NewChunk> entry : newChunks.entries()) {
+		for (Map.Entry<String, AggregationChunk.NewChunk> entry : newChunks.entries()) {
+			String aggregationId = entry.getKey();
 			AggregationChunk.NewChunk newChunk = entry.getValue();
-			String aggregationId = idMap.get(entry.getKey());
 			cubeMetadataStorage.doSaveChunk(aggregationId, singletonList(newChunk), new CompletionCallback() {
 				@Override
 				protected void onComplete() {

@@ -16,6 +16,7 @@
 
 package io.datakernel.aggregation_db;
 
+import io.datakernel.aggregation_db.fieldtype.FieldTypes;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -25,14 +26,13 @@ import java.util.Set;
 
 import static com.google.common.collect.Iterables.concat;
 import static com.google.common.collect.Sets.newHashSet;
-import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 public class ConsolidationChunkSelectionTest {
 	@Test
 	public void testRangeExpansion() throws Exception {
-		AggregationMetadata am = AggregationMetadata.create(singletonList(""), new ArrayList<String>());
+		AggregationMetadata am = new AggregationMetadata((HasAggregationStructure) Aggregation.createUninitialized().withKey("key", FieldTypes.ofInt()));
 		Set<AggregationChunk> chunks = newHashSet();
 		chunks.add(createTestChunk(1, 1, 2));
 		chunks.add(createTestChunk(2, 1, 2));
@@ -63,7 +63,7 @@ public class ConsolidationChunkSelectionTest {
 
 	@Test
 	public void testMinKeyStrategy() throws Exception {
-		AggregationMetadata am = AggregationMetadata.create(singletonList(""), new ArrayList<String>());
+		AggregationMetadata am = new AggregationMetadata((HasAggregationStructure) Aggregation.createUninitialized());
 
 		Set<AggregationChunk> chunks1 = newHashSet();
 		chunks1.add(createTestChunk(1, 1, 2));
@@ -80,13 +80,13 @@ public class ConsolidationChunkSelectionTest {
 
 		addChunks(am, concat(chunks1, chunks2));
 
-		List<AggregationChunk> selectedChunks = am.findChunksForConsolidationMinKey(100, 4000, 0);
+		List<AggregationChunk> selectedChunks = am.findChunksForConsolidationMinKey(100, 4000);
 		assertEquals(chunks1, newHashSet(selectedChunks));
 	}
 
 	@Test
 	public void testSizeFixStrategy() throws Exception {
-		AggregationMetadata am = AggregationMetadata.create(singletonList(""), new ArrayList<String>());
+		AggregationMetadata am = new AggregationMetadata((HasAggregationStructure) Aggregation.createUninitialized());
 		int optimalChunkSize = 5;
 		int maxChunks = 5;
 
@@ -107,13 +107,13 @@ public class ConsolidationChunkSelectionTest {
 
 		addChunks(am, concat(chunks1, chunks2, chunks3));
 
-		List<AggregationChunk> selectedChunks = am.findChunksForConsolidationMinKey(maxChunks, optimalChunkSize, 0);
+		List<AggregationChunk> selectedChunks = am.findChunksForConsolidationMinKey(maxChunks, optimalChunkSize);
 		assertEquals(chunks2, newHashSet(selectedChunks));
 	}
 
 	@Test
 	public void testGroupingByPartition() throws Exception {
-		AggregationMetadata am = AggregationMetadata.create(singletonList(""), new ArrayList<String>());
+		AggregationMetadata am = new AggregationMetadata((HasAggregationStructure) Aggregation.createUninitialized());
 
 		Set<AggregationChunk> chunks1 = newHashSet();
 		chunks1.add(createTestChunk(2, 1, 1, 1, 1, 1, 5));

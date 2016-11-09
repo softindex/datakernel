@@ -71,7 +71,7 @@ public final class VarField implements Variable {
 		Class<?> valueClass = getJavaType(ctx.getClassLoader(), valueType);
 
 		if (ctx.getThisType().equals(ownerType)) {
-			Class<?> fieldClass = ctx.getThisFields().get(field);
+			Class<?> fieldClass = ctx.getFields().get(field);
 			if (fieldClass == null) {
 				throw new RuntimeException(format("No field \"%s\" in generated class %s. %s",
 						field,
@@ -171,7 +171,7 @@ public final class VarField implements Variable {
 		GeneratorAdapter g = load ? ctx.getGeneratorAdapter() : null;
 
 		if (ownerType.equals(ctx.getThisType())) {
-			Class<?> thisFieldClass = ctx.getThisFields().get(field);
+			Class<?> thisFieldClass = ctx.getFields().get(field);
 			if (thisFieldClass != null) {
 				Type resultType = Type.getType(thisFieldClass);
 				if (g != null) {

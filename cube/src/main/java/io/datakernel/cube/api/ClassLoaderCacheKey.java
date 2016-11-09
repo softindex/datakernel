@@ -16,30 +16,30 @@
 
 package io.datakernel.cube.api;
 
-import io.datakernel.aggregation_db.AggregationQuery;
+import io.datakernel.aggregation_db.AggregationPredicate;
 
 import java.util.List;
 
 public final class ClassLoaderCacheKey {
 	final List<String> storedDimensions;
-	final List<AggregationQuery.Predicate> predicates;
+	final AggregationPredicate predicate;
 	final List<String> storedMeasures;
 	final List<String> computedMeasures;
 	final List<String> attributes;
 
-	private ClassLoaderCacheKey(List<String> storedDimensions, List<AggregationQuery.Predicate> predicates,
+	private ClassLoaderCacheKey(List<String> storedDimensions, AggregationPredicate predicate,
 	                            List<String> storedMeasures, List<String> computedMeasures, List<String> attributes) {
 		this.storedDimensions = storedDimensions;
-		this.predicates = predicates;
+		this.predicate = predicate;
 		this.storedMeasures = storedMeasures;
 		this.computedMeasures = computedMeasures;
 		this.attributes = attributes;
 	}
 
-	public static ClassLoaderCacheKey create(List<String> storedDimensions, List<AggregationQuery.Predicate> predicates,
+	public static ClassLoaderCacheKey create(List<String> storedDimensions, AggregationPredicate predicate,
 	                                         List<String> storedMeasures, List<String> computedMeasures,
 	                                         List<String> attributes) {
-		return new ClassLoaderCacheKey(storedDimensions, predicates, storedMeasures, computedMeasures, attributes);
+		return new ClassLoaderCacheKey(storedDimensions, predicate, storedMeasures, computedMeasures, attributes);
 	}
 
 	@Override
@@ -50,7 +50,7 @@ public final class ClassLoaderCacheKey {
 		ClassLoaderCacheKey that = (ClassLoaderCacheKey) o;
 
 		if (!storedDimensions.equals(that.storedDimensions)) return false;
-		if (!predicates.equals(that.predicates)) return false;
+		if (!predicate.equals(that.predicate)) return false;
 		if (!storedMeasures.equals(that.storedMeasures)) return false;
 		if (!computedMeasures.equals(that.computedMeasures)) return false;
 		return attributes.equals(that.attributes);
@@ -60,7 +60,7 @@ public final class ClassLoaderCacheKey {
 	@Override
 	public int hashCode() {
 		int result = storedDimensions.hashCode();
-		result = 31 * result + predicates.hashCode();
+		result = 31 * result + predicate.hashCode();
 		result = 31 * result + storedMeasures.hashCode();
 		result = 31 * result + computedMeasures.hashCode();
 		result = 31 * result + attributes.hashCode();
@@ -71,7 +71,7 @@ public final class ClassLoaderCacheKey {
 	public String toString() {
 		return "ClassLoaderCacheKey{" +
 				"storedDimensions=" + storedDimensions +
-				", predicates=" + predicates +
+				", predicate=" + predicate +
 				", storedMeasures=" + storedMeasures +
 				", computedMeasures=" + computedMeasures +
 				", attributes=" + attributes +

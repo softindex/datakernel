@@ -16,10 +16,10 @@
 
 package io.datakernel.cube;
 
-import com.google.common.collect.ImmutableMap;
-import io.datakernel.aggregation_db.*;
-import io.datakernel.aggregation_db.fieldtype.FieldType;
-import io.datakernel.aggregation_db.keytype.KeyType;
+import io.datakernel.aggregation_db.AggregationChunk;
+import io.datakernel.aggregation_db.AggregationChunkStorage;
+import io.datakernel.aggregation_db.LocalFsChunkStorage;
+import io.datakernel.aggregation_db.fieldtype.FieldTypes;
 import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.codegen.DefiningClassLoader;
@@ -44,10 +44,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static io.datakernel.aggregation_db.fieldtype.FieldTypes.doubleSum;
-import static io.datakernel.aggregation_db.fieldtype.FieldTypes.longSum;
-import static io.datakernel.aggregation_db.keytype.KeyTypes.dateKey;
-import static io.datakernel.aggregation_db.keytype.KeyTypes.intKey;
+import static io.datakernel.aggregation_db.AggregationPredicates.alwaysTrue;
+import static io.datakernel.aggregation_db.fieldtype.FieldTypes.ofDouble;
+import static io.datakernel.aggregation_db.fieldtype.FieldTypes.ofLong;
+import static io.datakernel.aggregation_db.processor.AggregateFunctions.sum;
+import static io.datakernel.cube.Cube.AggregationScheme.id;
 import static io.datakernel.cube.CubeTestUtils.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
@@ -64,62 +65,6 @@ public class CubeMeasureRemovalTest {
 	private static final List<String> LOG_PARTITIONS = asList(LOG_PARTITION_NAME);
 	private static final String LOG_NAME = "testlog";
 
-	private static final Map<String, KeyType> KEYS = ImmutableMap.<String, KeyType>builder()
-			.put("date", dateKey())
-			.put("advertiser", intKey())
-			.put("campaign", intKey())
-			.put("banner", intKey())
-			.build();
-
-	private static final Map<String, String> CHILD_PARENT_RELATIONSHIPS = ImmutableMap.<String, String>builder()
-			.put("campaign", "advertiser")
-			.put("banner", "campaign")
-			.build();
-
-	private static AggregationStructure getStructure() {
-		return AggregationStructure.create(
-				KEYS,
-				ImmutableMap.<String, FieldType>builder()
-						.put("impressions", longSum())
-						.put("clicks", longSum())
-						.put("conversions", longSum())
-						.put("revenue", doubleSum())
-						.build());
-	}
-
-	private static Cube getCube(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
-	                            CubeMetadataStorage cubeMetadataStorage,
-	                            AggregationChunkStorage aggregationChunkStorage,
-	                            AggregationStructure cubeStructure) {
-		Cube cube = Cube.create(eventloop, executorService, classLoader, cubeMetadataStorage, aggregationChunkStorage,
-				cubeStructure, Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE, Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY,
-				Aggregation.DEFAULT_SORTER_BLOCK_SIZE, Cube.DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD,
-				Aggregation.DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS);
-		cube.addAggregation("detailed", AggregationMetadata.create(LogItem.DIMENSIONS, LogItem.MEASURES));
-		cube.addAggregation("date", AggregationMetadata.create(asList("date"), LogItem.MEASURES));
-		cube.addAggregation("advertiser", AggregationMetadata.create(asList("advertiser"), LogItem.MEASURES));
-		cube.setChildParentRelationships(CHILD_PARENT_RELATIONSHIPS);
-		return cube;
-	}
-
-	private static Cube getNewCube(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
-	                               CubeMetadataStorage cubeMetadataStorage,
-	                               AggregationChunkStorage aggregationChunkStorage,
-	                               AggregationStructure cubeStructure) {
-		Cube cube = Cube.create(eventloop, executorService, classLoader, cubeMetadataStorage, aggregationChunkStorage,
-				cubeStructure, Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE, Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY,
-				Aggregation.DEFAULT_SORTER_BLOCK_SIZE, Cube.DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD,
-				Aggregation.DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS);
-		cube.addAggregation("detailed", AggregationMetadata.create(LogItem.DIMENSIONS,
-				asList("impressions", "clicks", "conversions"))); // "revenue" measure is removed
-		cube.addAggregation("date", AggregationMetadata.create(asList("date"),
-				asList("impressions", "clicks", "conversions"))); // "revenue" measure is removed
-		cube.addAggregation("advertiser", AggregationMetadata.create(asList("advertiser"),
-				asList("impressions", "clicks", "conversions", "revenue")));
-		cube.setChildParentRelationships(CHILD_PARENT_RELATIONSHIPS);
-		return cube;
-	}
-
 	@Ignore("Requires DB access to run")
 	@SuppressWarnings("ConstantConditions")
 	@Test
@@ -130,17 +75,36 @@ public class CubeMeasureRemovalTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		Path aggregationsDir = temporaryFolder.newFolder().toPath();
 		Path logsDir = temporaryFolder.newFolder().toPath();
-		AggregationStructure structure = getStructure();
 
 		Configuration jooqConfiguration = getJooqConfiguration(DATABASE_PROPERTIES_PATH, DATABASE_DIALECT);
 		AggregationChunkStorage aggregationChunkStorage =
-				getAggregationChunkStorage(eventloop, executor, structure, aggregationsDir);
+				LocalFsChunkStorage.create(eventloop, executor, aggregationsDir);
 		CubeMetadataStorageSql cubeMetadataStorageSql =
 				CubeMetadataStorageSql.create(eventloop, executor, jooqConfiguration, "processId");
 		LogToCubeMetadataStorage logToCubeMetadataStorage =
 				getLogToCubeMetadataStorage(eventloop, executor, jooqConfiguration, cubeMetadataStorageSql);
-		Cube cube = getCube(eventloop, executor, classLoader, cubeMetadataStorageSql,
-				aggregationChunkStorage, structure);
+
+		Cube cube = Cube.create(eventloop, executor, classLoader, cubeMetadataStorageSql, aggregationChunkStorage)
+				.withDimension("date", FieldTypes.ofLocalDate())
+				.withDimension("advertiser", FieldTypes.ofInt())
+				.withDimension("campaign", FieldTypes.ofInt())
+				.withDimension("banner", FieldTypes.ofInt())
+				.withMeasure("impressions", sum(ofLong()))
+				.withMeasure("clicks", sum(ofLong()))
+				.withMeasure("conversions", sum(ofLong()))
+				.withMeasure("revenue", sum(ofDouble()))
+				.withAggregation(id("detailed")
+						.withDimensions("date", "advertiser", "campaign", "banner")
+						.withMeasures("impressions", "clicks", "conversions", "revenue"))
+				.withAggregation(id("date")
+						.withDimensions("date")
+						.withMeasures("impressions", "clicks", "conversions", "revenue"))
+				.withAggregation(id("advertiser")
+						.withDimensions("advertiser")
+						.withMeasures("impressions", "clicks", "conversions", "revenue"))
+				.withRelation("campaign", "advertiser")
+				.withRelation("banner", "campaign");
+
 		LogManager<LogItem> logManager = getLogManager(LogItem.class, eventloop, executor, classLoader, logsDir);
 		LogToCubeRunner<LogItem> logToCubeRunner = LogToCubeRunner.create(eventloop, cube, logManager,
 				LogItemSplitter.factory(), LOG_NAME, LOG_PARTITIONS, logToCubeMetadataStorage);
@@ -157,14 +121,34 @@ public class CubeMeasureRemovalTest {
 		cube.loadChunks(IgnoreCompletionCallback.create());
 		eventloop.run();
 
-		List<AggregationChunk> chunks = newArrayList(cube.getAggregations().get("date").getChunks().values());
+		List<AggregationChunk> chunks = newArrayList(cube.getAggregation("date").getMetadata().getChunks().values());
 		assertEquals(1, chunks.size());
 		assertTrue(chunks.get(0).getFields().contains("revenue"));
 
 		// Initialize cube with new structure (removed measure)
-		structure = getStructure();
-		aggregationChunkStorage = getAggregationChunkStorage(eventloop, executor, structure, aggregationsDir);
-		cube = getNewCube(eventloop, executor, classLoader, cubeMetadataStorageSql, aggregationChunkStorage, structure);
+		aggregationChunkStorage = LocalFsChunkStorage.create(eventloop, executor, aggregationsDir);
+
+		cube = Cube.create(eventloop, executor, classLoader, cubeMetadataStorageSql, aggregationChunkStorage)
+				.withDimension("date", FieldTypes.ofLocalDate())
+				.withDimension("advertiser", FieldTypes.ofInt())
+				.withDimension("campaign", FieldTypes.ofInt())
+				.withDimension("banner", FieldTypes.ofInt())
+				.withMeasure("impressions", sum(ofLong()))
+				.withMeasure("clicks", sum(ofLong()))
+				.withMeasure("conversions", sum(ofLong()))
+				.withMeasure("revenue", sum(ofDouble()))
+				.withAggregation(id("detailed")
+						.withDimensions("date", "advertiser", "campaign", "banner")
+						.withMeasures("impressions", "clicks", "conversions")) // "revenue" measure is removed
+				.withAggregation(id("date")
+						.withDimensions("date")
+						.withMeasures("impressions", "clicks", "conversions")) // "revenue" measure is removed
+				.withAggregation(id("advertiser")
+						.withDimensions("advertiser")
+						.withMeasures("impressions", "clicks", "conversions", "revenue"))
+				.withRelation("campaign", "advertiser")
+				.withRelation("banner", "campaign");
+
 		logToCubeRunner = LogToCubeRunner.create(eventloop, cube, logManager,
 				LogItemSplitter.factory(), LOG_NAME, LOG_PARTITIONS, logToCubeMetadataStorage);
 
@@ -180,12 +164,12 @@ public class CubeMeasureRemovalTest {
 		cube.loadChunks(IgnoreCompletionCallback.create());
 		eventloop.run();
 
-		chunks = newArrayList(cube.getAggregations().get("date").getChunks().values());
+		chunks = newArrayList(cube.getAggregation("date").getMetadata().getChunks().values());
 		assertEquals(2, chunks.size());
 		assertTrue(chunks.get(0).getFields().contains("revenue"));
 		assertFalse(chunks.get(1).getFields().contains("revenue"));
 
-		chunks = newArrayList(cube.getAggregations().get("advertiser").getChunks().values());
+		chunks = newArrayList(cube.getAggregation("advertiser").getMetadata().getChunks().values());
 		assertEquals(2, chunks.size());
 		assertTrue(chunks.get(0).getFields().contains("revenue"));
 		assertTrue(chunks.get(1).getFields().contains("revenue"));
@@ -195,9 +179,8 @@ public class CubeMeasureRemovalTest {
 		aggregateToMap(map, listOfRandomLogItems);
 		aggregateToMap(map, listOfRandomLogItems2);
 
-		CubeQuery query = CubeQuery.create().withDimensions("date").withMeasures("clicks");
 		StreamConsumers.ToList<LogItem> queryResultConsumer = new StreamConsumers.ToList<>(eventloop);
-		cube.query(LogItem.class, query).streamTo(queryResultConsumer);
+		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(), LogItem.class, classLoader).streamTo(queryResultConsumer);
 		eventloop.run();
 		List<LogItem> queryResultBeforeConsolidation = queryResultConsumer.getList();
 
@@ -216,18 +199,17 @@ public class CubeMeasureRemovalTest {
 		cube.loadChunks(IgnoreCompletionCallback.create());
 		eventloop.run();
 
-		chunks = newArrayList(cube.getAggregations().get("date").getChunks().values());
+		chunks = newArrayList(cube.getAggregation("date").getMetadata().getChunks().values());
 		assertEquals(1, chunks.size());
 		assertFalse(chunks.get(0).getFields().contains("revenue"));
 
-		chunks = newArrayList(cube.getAggregations().get("advertiser").getChunks().values());
+		chunks = newArrayList(cube.getAggregation("advertiser").getMetadata().getChunks().values());
 		assertEquals(1, chunks.size());
 		assertTrue(chunks.get(0).getFields().contains("revenue"));
 
 		// Query
-		query = CubeQuery.create().withDimensions("date").withMeasures("clicks");
 		queryResultConsumer = new StreamConsumers.ToList<>(eventloop);
-		cube.query(LogItem.class, query).streamTo(queryResultConsumer);
+		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(), LogItem.class, classLoader).streamTo(queryResultConsumer);
 		eventloop.run();
 		List<LogItem> queryResultAfterConsolidation = queryResultConsumer.getList();
 

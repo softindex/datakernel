@@ -20,7 +20,6 @@ import com.google.common.collect.LinkedListMultimap;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Multimap;
 import io.datakernel.aggregation_db.AggregationChunk;
-import io.datakernel.aggregation_db.AggregationMetadata;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamProducer;
@@ -38,7 +37,7 @@ public final class LogCommitTransaction<T> {
 	private final String log;
 	private final Map<String, LogPosition> oldPositions;
 
-	private ListMultimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks = LinkedListMultimap.create();
+	private ListMultimap<String, AggregationChunk.NewChunk> newChunks = LinkedListMultimap.create();
 	private Map<String, LogPosition> newPositions = new LinkedHashMap<>();
 	private Exception exception;
 
@@ -64,12 +63,12 @@ public final class LogCommitTransaction<T> {
 		return new LogCommitTransaction<T>(eventloop, logManager, log, oldPositions, callback);
 	}
 
-	public ResultCallback<Multimap<AggregationMetadata, AggregationChunk.NewChunk>> addCommitCallback() {
+	public ResultCallback<Multimap<String, AggregationChunk.NewChunk>> addCommitCallback() {
 		commitCallbacks++;
 		logger.trace("Added commit callback. Commit callbacks: {}. Log callbacks: {}", commitCallbacks, logCallbacks);
-		return new ResultCallback<Multimap<AggregationMetadata, AggregationChunk.NewChunk>>() {
+		return new ResultCallback<Multimap<String, AggregationChunk.NewChunk>>() {
 			@Override
-			protected void onResult(Multimap<AggregationMetadata, AggregationChunk.NewChunk> resultChunks) {
+			protected void onResult(Multimap<String, AggregationChunk.NewChunk> resultChunks) {
 				newChunks.putAll(resultChunks);
 				commitCallbacks--;
 				logger.trace("Commit callback onResult called. Commit callbacks: {}. Log callbacks: {}",

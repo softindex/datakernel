@@ -68,7 +68,7 @@ final class ExpressionCallStaticSelf implements Expression {
 			argumentTypes.add(argument.type(ctx));
 		}
 
-		Set<Method> methods = ctx.getStaticMethodToExpression().keySet();
+		Set<Method> methods = ctx.getStaticMethods().keySet();
 		for (Method m : methods) {
 			if (m.getName().equals(methodName)) {
 				if (m.getArgumentTypes().length == argumentTypes.size()) {

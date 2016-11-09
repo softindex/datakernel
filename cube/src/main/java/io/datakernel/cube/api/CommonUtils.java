@@ -17,27 +17,21 @@
 package io.datakernel.cube.api;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonSyntaxException;
+import com.google.gson.GsonBuilder;
+import com.google.gson.TypeAdapter;
+import com.google.gson.TypeAdapterFactory;
 import com.google.gson.reflect.TypeToken;
-import io.datakernel.aggregation_db.api.QueryException;
-import io.datakernel.codegen.ClassBuilder;
-import io.datakernel.codegen.DefiningClassLoader;
-import io.datakernel.cube.Cube;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
+import io.datakernel.aggregation_db.AggregationPredicate;
+import io.datakernel.cube.AggregationPredicateGsonAdapter;
 import io.datakernel.cube.CubeQuery;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.ParseException;
-import io.datakernel.http.ContentType;
-import io.datakernel.http.HttpHeaders;
-import io.datakernel.http.HttpResponse;
-import io.datakernel.http.MediaTypes;
-import io.datakernel.stream.StreamConsumers;
+import org.joda.time.LocalDate;
 
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Type;
 import java.util.*;
-
-import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
-import static io.datakernel.codegen.Expressions.*;
 
 public class CommonUtils {
 	// Reflection
@@ -63,60 +57,14 @@ public class CommonUtils {
 	}
 
 	// Codegen
-	public static FieldGetter generateGetter(DefiningClassLoader classLoader, Class<?> objClass, String propertyName) {
-		return ClassBuilder.create(classLoader, FieldGetter.class)
-				.withMethod("get", getter(cast(arg(0), objClass), propertyName))
-				.buildClassAndCreateNewInstance();
-	}
 
-	public static FieldSetter generateSetter(DefiningClassLoader classLoader, Class<?> objClass, String propertyName,
-	                                         Class<?> propertyClass) {
-		return ClassBuilder.create(classLoader, FieldSetter.class)
-				.withMethod("set", setter(cast(arg(0), objClass), propertyName, cast(arg(1), propertyClass)))
-				.buildClassAndCreateNewInstance();
-	}
-
-	@SuppressWarnings("unchecked")
-	public static StreamConsumers.ToList queryCube(Class<?> resultClass, CubeQuery query, Cube cube,
-	                                               Eventloop eventloop) throws QueryException {
-		StreamConsumers.ToList consumerStream = StreamConsumers.toList(eventloop);
-		cube.query(resultClass, query).streamTo(consumerStream);
-		return consumerStream;
-	}
-
-	public static HttpResponse createResponse(String body) {
-		HttpResponse response = HttpResponse.ok200();
-		response.setContentType(ContentType.of(MediaTypes.JSON));
-		response.setBody(wrapUtf8(body));
-		response.addHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
-		return response;
-	}
-
-	public static Set<String> getSetOfStrings(Gson gson, String json) throws ParseException {
-		Type type = new TypeToken<Set<String>>() {}.getType();
-		return fromGson(gson, json, type);
-	}
-
-	public static List<String> getListOfStrings(Gson gson, String json) throws ParseException {
-		Type type = new TypeToken<List<String>>() {}.getType();
-		return fromGson(gson, json, type);
-	}
-
-	public static <T> T fromGson(Gson gson, String json, Type typeOfT) throws ParseException {
-		try {
-			return gson.fromJson(json, typeOfT);
-		} catch (JsonSyntaxException e) {
-			throw new ParseException(e);
-		}
-	}
-
-	public static <T> T fromGson(Gson gson, String json, Class<T> typeOfT) throws ParseException {
-		try {
-			return gson.fromJson(json, typeOfT);
-		} catch (JsonSyntaxException e) {
-			throw new ParseException(e);
-		}
-	}
+//	@SuppressWarnings("unchecked")
+//	public static StreamConsumers.ToList queryCube(Class<?> resultClass, CubeQuery query, Cube cube,
+//	                                               Eventloop eventloop) throws QueryException {
+//		StreamConsumers.ToList consumerStream = StreamConsumers.toList(eventloop);
+//		cube.query(resultClass, query).streamTo(consumerStream);
+//		return consumerStream;
+//	}
 
 	public static boolean nullOrContains(Set<String> set, String s) {
 		return set == null || set.contains(s);
@@ -128,16 +76,40 @@ public class CommonUtils {
 		return list;
 	}
 
-	public static <T extends Comparable<? super T>> List<T> asSorted(List<T> l) {
-		Collections.sort(l);
-		return l;
-	}
-
 	public static Object instantiate(Class<?> clazz) {
 		try {
 			return clazz.newInstance();
 		} catch (InstantiationException | IllegalAccessException e) {
 			throw new RuntimeException(e);
 		}
+	}
+
+	public static GsonBuilder createGsonBuilder(final Map<String, Type> attributeTypes, final Map<String, Type> measureTypes) {
+		return new GsonBuilder()
+				.registerTypeAdapterFactory(new TypeAdapterFactory() {
+					@SuppressWarnings("unchecked")
+					@Override
+					public <T> TypeAdapter<T> create(Gson gson, TypeToken<T> type) {
+						if (AggregationPredicate.class.isAssignableFrom(type.getRawType())) {
+							return (TypeAdapter<T>) AggregationPredicateGsonAdapter.create(gson, attributeTypes, measureTypes);
+						}
+						if (type.getRawType() == QueryResult.class) {
+							return (TypeAdapter<T>) QueryResultGsonAdapter.create(gson, attributeTypes, measureTypes);
+						}
+						return null;
+					}
+				})
+				.registerTypeAdapter(LocalDate.class, new TypeAdapter<LocalDate>() {
+					@Override
+					public void write(JsonWriter out, LocalDate value) throws IOException {
+						out.value(value.toString());
+					}
+
+					@Override
+					public LocalDate read(JsonReader in) throws IOException {
+						return LocalDate.parse(in.nextString());
+					}
+				})
+				.registerTypeAdapter(CubeQuery.Ordering.class, QueryOrderingGsonAdapter.create());
 	}
 }

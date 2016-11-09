@@ -126,7 +126,7 @@ public class SerializerGenHppcSet implements SerializerGen, NullableOptimization
 		if (!nullable) {
 			return sequence(writeLength, hppcSetForEach, off);
 		} else {
-			return choice(isNull(value),
+			return ifThenElse(isNull(value),
 					sequence(set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, value(0))), off),
 					sequence(writeLength, hppcSetForEach, off));
 		}
@@ -155,7 +155,7 @@ public class SerializerGenHppcSet implements SerializerGen, NullableOptimization
 		if (!nullable) {
 			return sequence(set, expressionFor, set);
 		} else {
-			return choice(cmpEq(length, value(0)),
+			return ifThenElse(cmpEq(length, value(0)),
 					nullRef(hashSetType),
 					sequence(set, expressionFor, set));
 		}

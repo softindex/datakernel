@@ -18,11 +18,12 @@ package io.datakernel.cube.bean;
 
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableMap;
-import io.datakernel.aggregation_db.fieldtype.FieldType;
+import io.datakernel.aggregation_db.processor.AggregateFunction;
 
 import java.util.Map;
 
-import static io.datakernel.aggregation_db.fieldtype.FieldTypes.longSum;
+import static io.datakernel.aggregation_db.fieldtype.FieldTypes.ofLong;
+import static io.datakernel.aggregation_db.processor.AggregateFunctions.sum;
 
 public class DataItemResultString {
 	public String key1;
@@ -48,10 +49,10 @@ public class DataItemResultString {
 			.put("key2", int.class)
 			.build();
 
-	public static final Map<String, FieldType> METRICS = ImmutableMap.<String, FieldType>builder()
-			.put("metric1", longSum())
-			.put("metric2", longSum())
-			.put("metric3", longSum())
+	public static final Map<String, AggregateFunction> METRICS = ImmutableMap.<String, AggregateFunction>builder()
+			.put("metric1", sum(ofLong()))
+			.put("metric2", sum(ofLong()))
+			.put("metric3", sum(ofLong()))
 			.build();
 
 	@Override

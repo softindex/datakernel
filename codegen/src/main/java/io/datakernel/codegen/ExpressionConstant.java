@@ -20,9 +20,7 @@ import io.datakernel.codegen.utils.Primitives;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-import static io.datakernel.codegen.Utils.exceptionInGeneratedClass;
 import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
-import static java.lang.String.format;
 import static org.objectweb.asm.Type.getType;
 
 /**
@@ -31,6 +29,7 @@ import static org.objectweb.asm.Type.getType;
 final class ExpressionConstant implements Expression {
 
 	private final Object value;
+	private String staticConstantField;
 
 	ExpressionConstant(Object value) {
 		checkNotNull(value);
@@ -79,12 +78,12 @@ final class ExpressionConstant implements Expression {
 		} else if (value instanceof Enum) {
 			g.getStatic(type, ((Enum) value).name(), type);
 		} else {
-			throw new RuntimeException(format("%s is not primitive, wrapper, String, Type or Enum. %s",
-					value.getClass(),
-					exceptionInGeneratedClass(ctx))
-			);
+			if (staticConstantField == null) {
+				staticConstantField = "$STATIC_CONSTANT_" + (ctx.getStaticConstants().size() + 1);
+				ctx.addStaticConstant(staticConstantField, value);
+			}
+			g.getStatic(ctx.getThisType(), staticConstantField, getType(value.getClass()));
 		}
-
 		return type;
 	}
 

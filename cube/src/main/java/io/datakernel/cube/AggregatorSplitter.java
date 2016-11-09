@@ -16,7 +16,8 @@
 
 package io.datakernel.cube;
 
-import io.datakernel.aggregation_db.AggregationQuery;
+import io.datakernel.aggregation_db.AggregationPredicate;
+import io.datakernel.aggregation_db.AggregationPredicates;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.logfs.LogCommitTransaction;
 import io.datakernel.stream.StreamConsumer;
@@ -58,21 +59,21 @@ public abstract class AggregatorSplitter<T> extends AbstractStreamSplitter<T> {
 
 	protected final <O> StreamDataReceiver<O> addOutput(Class<O> aggregationItemType, List<String> dimensions,
 	                                                    List<String> measures) {
-		return addOutput(aggregationItemType, dimensions, measures, null, null);
+		return addOutput(aggregationItemType, dimensions, measures, null, AggregationPredicates.alwaysTrue());
 	}
 
 	protected final <O> StreamDataReceiver<O> addOutput(Class<O> aggregationItemType, List<String> dimensions,
 	                                                    List<String> measures, Map<String, String> outputToInputFields) {
-		return addOutput(aggregationItemType, dimensions, measures, outputToInputFields, null);
+		return addOutput(aggregationItemType, dimensions, measures, outputToInputFields, AggregationPredicates.alwaysTrue());
 	}
 
 	@SuppressWarnings("unchecked")
 	protected final <O> StreamDataReceiver<O> addOutput(Class<O> aggregationItemType, List<String> dimensions,
 	                                                    List<String> measures, Map<String, String> outputToInputFields,
-	                                                    AggregationQuery.Predicates predicates) {
+	                                                    AggregationPredicate predicate) {
 		StreamProducer streamProducer = newOutput();
 		StreamConsumer streamConsumer = cube.consumer(aggregationItemType, dimensions, measures, outputToInputFields,
-				predicates, transaction.addCommitCallback());
+				predicate, transaction.addCommitCallback());
 		streamProducer.streamTo(streamConsumer);
 		return streamConsumer.getDataReceiver();
 	}

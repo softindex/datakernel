@@ -16,33 +16,77 @@
 
 package io.datakernel.aggregation_db.fieldtype;
 
-import io.datakernel.aggregation_db.processor.FieldProcessor;
+import io.datakernel.codegen.utils.Primitives;
 import io.datakernel.serializer.asm.SerializerGen;
+
+import java.lang.reflect.Type;
 
 /**
  * Represents a type of aggregation field.
  */
-public abstract class FieldType {
-	private final Class<?> dataType;
+public class FieldType<T> {
+	private final Class<?> internalDataType;
+	private final Type dataType;
+	private final SerializerGen serializer;
 
-	@Override
-	public String toString() {
-		return "{" + dataType + '}';
-	}
-
-	public FieldType(Class<?> dataType) {
+	protected FieldType(Class<?> internalDataType, Type dataType, SerializerGen serializer) {
+		this.internalDataType = internalDataType;
 		this.dataType = dataType;
+		this.serializer = serializer;
 	}
 
-	public Class<?> getDataType() {
+	protected FieldType(Class<T> dataType, SerializerGen serializer) {
+		this.internalDataType = dataType;
+		this.dataType = dataType;
+		this.serializer = serializer;
+	}
+
+	public final Class<?> getInternalDataType() {
+		return internalDataType;
+	}
+
+	public final Type getDataType() {
+		if (dataType instanceof Class<?>) {
+			return Primitives.wrap((Class<Object>) dataType);
+		}
 		return dataType;
 	}
 
-	public abstract FieldProcessor fieldProcessor();
+	public SerializerGen getSerializer() {
+		return serializer;
+	}
 
-	public abstract SerializerGen serializerGen();
+	public T toValue(Object internalValue) {
+		return (T) internalValue;
+	}
 
-	public Object getPrintable(Object value) {
+	public Object toInternalValue(T value) {
 		return value;
 	}
+
+	@Override
+	public String toString() {
+		return "{" + internalDataType + '}';
+	}
+
+	public interface FieldConverters {
+		Object toInternalValue(String field, Object value);
+
+		Object toValue(String field, Object internalValue);
+	}
+
+	public static FieldConverters identityConverter() {
+		return new FieldConverters() {
+			@Override
+			public Object toInternalValue(String field, Object value) {
+				return value;
+			}
+
+			@Override
+			public Object toValue(String field, Object internalValue) {
+				return internalValue;
+			}
+		};
+	}
+
 }

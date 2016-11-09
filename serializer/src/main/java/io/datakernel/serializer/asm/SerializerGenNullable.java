@@ -55,7 +55,7 @@ public class SerializerGenNullable implements SerializerGen {
 
 	@Override
 	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-		return choice(isNotNull(value),
+		return ifThenElse(isNotNull(value),
 				sequence(set(off, callStatic(SerializationUtils.class, "writeByte", byteArray, off, value((byte) 1))),
 						serializer.serialize(byteArray, off, value, version, staticMethods, compatibilityLevel)),
 				callStatic(SerializationUtils.class, "writeByte", byteArray, off, value((byte) 0))
@@ -70,7 +70,7 @@ public class SerializerGenNullable implements SerializerGen {
 	@Override
 	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		Expression isNotNull = let(call(arg(0), "readByte"));
-		return sequence(isNotNull, choice(cmpEq(isNotNull, value((byte) 1)),
+		return sequence(isNotNull, ifThenElse(cmpEq(isNotNull, value((byte) 1)),
 						serializer.deserialize(serializer.getRawType(), version, staticMethods, compatibilityLevel),
 						nullRef(targetType))
 		);

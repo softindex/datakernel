@@ -17,86 +17,46 @@
 package io.datakernel.cube.api;
 
 import com.google.common.base.MoreObjects;
-import io.datakernel.cube.DrillDown;
 
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public final class QueryResult {
-	private final List records;
-	private final Class recordClass;
-
-	private final TotalsPlaceholder totals;
-	private final int count;
-
-	private final Set<DrillDown> drillDowns;
-	private final Set<List<String>> chains;
-	private final List<String> dimensions;
+	private final RecordScheme recordScheme;
 	private final List<String> attributes;
 	private final List<String> measures;
 	private final List<String> sortedBy;
 
-	private final Object filterAttributesPlaceholder;
-	private final List<String> filterAttributes;
+	private final List<Record> records;
+	private final Record totals;
+	private final int totalCount;
 
-	private final Set<String> fields;
-	private final Set<String> metadataFields;
+	private final Collection<Drilldown> drilldowns;
+	private final Collection<List<String>> chains;
+	private final Map<String, Object> filterAttributes;
 
-	private QueryResult(List records, Class recordClass, TotalsPlaceholder totals, int count, Set<DrillDown> drillDowns,
-	                    Set<List<String>> chains, List<String> dimensions, List<String> attributes,
-	                    List<String> measures, List<String> sortedBy, Object filterAttributesPlaceholder,
-	                    List<String> filterAttributes, Set<String> fields, Set<String> metadataFields) {
+	private QueryResult(RecordScheme recordScheme, List<Record> records, Record totals, int totalCount,
+	                    List<String> attributes, List<String> measures, List<String> sortedBy,
+	                    Collection<Drilldown> drilldowns, Collection<List<String>> chains, Map<String, Object> filterAttributes) {
+		this.recordScheme = recordScheme;
 		this.records = records;
-		this.recordClass = recordClass;
 		this.totals = totals;
-		this.count = count;
-		this.drillDowns = drillDowns;
+		this.totalCount = totalCount;
+		this.drilldowns = drilldowns;
 		this.chains = chains;
-		this.dimensions = dimensions;
 		this.attributes = attributes;
 		this.measures = measures;
 		this.sortedBy = sortedBy;
-		this.filterAttributesPlaceholder = filterAttributesPlaceholder;
 		this.filterAttributes = filterAttributes;
-		this.fields = fields;
-		this.metadataFields = metadataFields;
 	}
 
-	public static QueryResult create(List records, Class recordClass, TotalsPlaceholder totals, int count, Set<DrillDown> drillDowns,
-	                                 Set<List<String>> chains, List<String> dimensions, List<String> attributes,
-	                                 List<String> measures, List<String> sortedBy, Object filterAttributesPlaceholder,
-	                                 List<String> filterAttributes, Set<String> fields, Set<String> metadataFields) {
-		return new QueryResult(records, recordClass, totals, count, drillDowns, chains,
-				dimensions, attributes, measures, sortedBy, filterAttributesPlaceholder,
-				filterAttributes, fields, metadataFields);
+	public static QueryResult create(RecordScheme recordScheme, List<Record> records, Record totals, int totalCount,
+	                                 List<String> attributes, List<String> measures, List<String> sortedBy,
+	                                 Collection<Drilldown> drilldowns, Collection<List<String>> chains, Map<String, Object> filterAttributes) {
+		return new QueryResult(recordScheme, records, totals, totalCount, attributes, measures, sortedBy, drilldowns, chains, filterAttributes);
 	}
 
-	public List getRecords() {
-		return records;
-	}
-
-	public Class getRecordClass() {
-		return recordClass;
-	}
-
-	public TotalsPlaceholder getTotals() {
-		return totals;
-	}
-
-	public int getCount() {
-		return count;
-	}
-
-	public Set<DrillDown> getDrillDowns() {
-		return drillDowns;
-	}
-
-	public Set<List<String>> getChains() {
-		return chains;
-	}
-
-	public List<String> getDimensions() {
-		return dimensions;
+	public RecordScheme getRecordScheme() {
+		return recordScheme;
 	}
 
 	public List<String> getAttributes() {
@@ -107,43 +67,86 @@ public final class QueryResult {
 		return measures;
 	}
 
-	public List<String> getSortedBy() {
-		return sortedBy;
+	public List<Record> getRecords() {
+		return records;
 	}
 
-	public Object getFilterAttributesPlaceholder() {
-		return filterAttributesPlaceholder;
+	public Record getTotals() {
+		return totals;
 	}
 
-	public List<String> getFilterAttributes() {
+	public int getTotalCount() {
+		return totalCount;
+	}
+
+	public Collection<Drilldown> getDrilldowns() {
+		return drilldowns;
+	}
+
+	public Collection<List<String>> getChains() {
+		return chains;
+	}
+
+	public Map<String, Object> getFilterAttributes() {
 		return filterAttributes;
 	}
 
-	public Set<String> getFields() {
-		return fields;
-	}
-
-	public Set<String> getMetadataFields() {
-		return metadataFields;
+	public List<String> getSortedBy() {
+		return sortedBy;
 	}
 
 	@Override
 	public String toString() {
 		return MoreObjects.toStringHelper(this)
 				.add("records", records)
-				.add("recordClass", recordClass)
 				.add("totals", totals)
-				.add("count", count)
-				.add("drillDowns", drillDowns)
+				.add("count", totalCount)
+				.add("drillDowns", drilldowns)
 				.add("chains", chains)
-				.add("dimensions", dimensions)
-				.add("attributes", attributes)
 				.add("measures", measures)
 				.add("sortedBy", sortedBy)
-				.add("filterAttributesPlaceholder", filterAttributesPlaceholder)
-				.add("filterAttributes", filterAttributes)
-				.add("fields", fields)
-				.add("metadataFields", metadataFields)
 				.toString();
+	}
+
+	public static final class Drilldown {
+		private final List<String> chain;
+		private final Set<String> measures;
+
+		private Drilldown(List<String> chain, Set<String> measures) {
+			this.chain = chain;
+			this.measures = measures;
+		}
+
+		public static Drilldown create(List<String> chain, Set<String> measures) {return new Drilldown(chain, measures);}
+
+		public List<String> getChain() {
+			return chain;
+		}
+
+		public Set<String> getMeasures() {
+			return measures;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) return true;
+			if (o == null || getClass() != o.getClass()) return false;
+			Drilldown drilldown1 = (Drilldown) o;
+			return Objects.equals(chain, drilldown1.chain) &&
+					Objects.equals(measures, drilldown1.measures);
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash(chain, measures);
+		}
+
+		@Override
+		public String toString() {
+			return MoreObjects.toStringHelper(this)
+					.add("chain", chain)
+					.add("measures", measures)
+					.toString();
+		}
 	}
 }

@@ -16,7 +16,6 @@
 
 package io.datakernel.codegen;
 
-import io.datakernel.codegen.utils.Preconditions;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
@@ -25,31 +24,83 @@ import org.objectweb.asm.commons.Method;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.codegen.Utils.isPrimitiveType;
-import static io.datakernel.codegen.Utils.wrap;
+import static io.datakernel.codegen.ExpressionCast.THIS_TYPE;
+import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.codegen.Expressions.cast;
+import static io.datakernel.codegen.Utils.*;
+import static io.datakernel.codegen.utils.Preconditions.check;
 import static org.objectweb.asm.Type.INT_TYPE;
 import static org.objectweb.asm.commons.GeneratorAdapter.NE;
 
 /**
  * Defines methods to compare some fields
  */
-final class ExpressionComparator implements Expression {
-	private final List<Expression> left = new ArrayList<>();
-	private final List<Expression> right = new ArrayList<>();
+public final class ExpressionComparator implements Expression {
+	private static final class ComparablePair {
+		private final Expression left;
+		private final Expression right;
+		private final boolean nullable;
 
-	ExpressionComparator() {
+		private ComparablePair(Expression left, Expression right, boolean nullable) {
+			this.left = left;
+			this.right = right;
+			this.nullable = nullable;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) return true;
+			if (o == null || getClass() != o.getClass()) return false;
+
+			ComparablePair that = (ComparablePair) o;
+
+			if (nullable != that.nullable) return false;
+			if (!left.equals(that.left)) return false;
+			return right.equals(that.right);
+
+		}
+
+		@Override
+		public int hashCode() {
+			int result = left.hashCode();
+			result = 31 * result + right.hashCode();
+			result = 31 * result + (nullable ? 1 : 0);
+			return result;
+		}
 	}
 
-	ExpressionComparator(List<Expression> left, List<Expression> right) {
-		Preconditions.check(left.size() == right.size());
-		this.left.addAll(left);
-		this.right.addAll(right);
+	private final List<ComparablePair> pairs = new ArrayList<>();
+
+	private ExpressionComparator() {
 	}
 
-	public ExpressionComparator add(Expression left, Expression right) {
-		this.left.add(left);
-		this.right.add(right);
+	public static ExpressionComparator create() {
+		return new ExpressionComparator();
+	}
+
+	public ExpressionComparator with(Expression left, Expression right) {
+		return with(left, right, false);
+	}
+
+	public ExpressionComparator with(Expression left, Expression right, boolean nullable) {
+		this.pairs.add(new ComparablePair(left, right, nullable));
 		return this;
+	}
+
+	public static Expression thisField(String field) {
+		return field(self(), field);
+	}
+
+	public static Expression thatField(String field) {
+		return field(cast(arg(0), THIS_TYPE), field);
+	}
+
+	public static Expression leftField(Class<?> type, String field) {
+		return field(cast(arg(0), type), field);
+	}
+
+	public static Expression rightField(Class<?> type, String field) {
+		return field(cast(arg(1), type), field);
 	}
 
 	@Override
@@ -61,29 +112,66 @@ final class ExpressionComparator implements Expression {
 	public Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 
-		Label labelNe = new Label();
+		Label labelReturn = new Label();
 
-		for (int i = 0; i < left.size(); i++) {
-			Type leftFieldType = left.get(i).load(ctx);
-			Type rightFieldType = right.get(i).load(ctx);
+		for (ComparablePair pair : pairs) {
+			Type leftFieldType = pair.left.load(ctx);
+			Type rightFieldType = pair.right.load(ctx);
 
-			Preconditions.check(leftFieldType.equals(rightFieldType));
+			check(leftFieldType.equals(rightFieldType));
 			if (isPrimitiveType(leftFieldType)) {
 				g.invokeStatic(wrap(leftFieldType), new Method("compare", INT_TYPE, new Type[]{leftFieldType, leftFieldType}));
 				g.dup();
-				g.ifZCmp(NE, labelNe);
+				g.ifZCmp(NE, labelReturn);
 				g.pop();
-			} else {
+			} else if (!pair.nullable) {
 				g.invokeVirtual(leftFieldType, new Method("compareTo", INT_TYPE, new Type[]{Type.getType(Object.class)}));
 				g.dup();
-				g.ifZCmp(NE, labelNe);
+				g.ifZCmp(NE, labelReturn);
 				g.pop();
+			} else {
+				VarLocal varRight = newLocal(ctx, rightFieldType);
+				varRight.store(ctx);
+
+				VarLocal varLeft = newLocal(ctx, leftFieldType);
+				varLeft.store(ctx);
+
+				Label continueLabel = new Label();
+				Label nonNulls = new Label();
+				Label leftNonNull = new Label();
+
+				varLeft.load(ctx);
+				g.ifNonNull(leftNonNull);
+
+				varRight.load(ctx);
+				g.ifNull(continueLabel);
+				g.push(-1);
+				g.returnValue();
+
+				g.mark(leftNonNull);
+
+				varRight.load(ctx);
+				g.ifNonNull(nonNulls);
+				g.push(1);
+				g.returnValue();
+
+				g.mark(nonNulls);
+
+				varLeft.load(ctx);
+				varRight.load(ctx);
+
+				g.invokeVirtual(leftFieldType, new Method("compareTo", INT_TYPE, new Type[]{Type.getType(Object.class)}));
+				g.dup();
+				g.ifZCmp(NE, labelReturn);
+				g.pop();
+
+				g.mark(continueLabel);
 			}
 		}
 
 		g.push(0);
 
-		g.mark(labelNe);
+		g.mark(labelReturn);
 
 		return INT_TYPE;
 	}
@@ -95,16 +183,13 @@ final class ExpressionComparator implements Expression {
 
 		ExpressionComparator that = (ExpressionComparator) o;
 
-		if (left != null ? !left.equals(that.left) : that.left != null) return false;
-		if (right != null ? !right.equals(that.right) : that.right != null) return false;
+		if (!pairs.equals(that.pairs)) return false;
 
 		return true;
 	}
 
 	@Override
 	public int hashCode() {
-		int result = left != null ? left.hashCode() : 0;
-		result = 31 * result + (right != null ? right.hashCode() : 0);
-		return result;
+		return pairs.hashCode();
 	}
 }

@@ -26,22 +26,23 @@ import java.util.Map;
 /**
  * Contains information about a dynamic class
  */
-final class Context {
+public final class Context {
 	private final DefiningClassLoader classLoader;
 	private final GeneratorAdapter g;
 	private final Type thisType;
 	private final Method method;
 	private final Class<?> mainClass;
 	private final List<Class<?>> otherClasses;
-	private final Map<String, Class<?>> thisFields;
+	private final Map<String, Class<?>> fields;
+	private final Map<String, Object> staticConstants;
 	private final Type[] argumentTypes;
-	private final Map<Method, Expression> methodToExpression;
-	private final Map<Method, Expression> staticMethodToExpression;
+	private final Map<Method, Expression> methods;
+	private final Map<Method, Expression> staticMethods;
 
 	public Context(DefiningClassLoader classLoader, GeneratorAdapter g, Type thisType, Class<?> mainClass,
-	               List<Class<?>> otherClasses, Map<String, Class<?>> thisFields,
-	               Type[] argumentTypes, Method method, Map<Method, Expression> methodToExpression,
-	               Map<Method, Expression> staticMethodToExpression) {
+	               List<Class<?>> otherClasses, Map<String, Class<?>> fields, Map<String, Object> staticConstants,
+	               Type[] argumentTypes, Method method, Map<Method, Expression> methods,
+	               Map<Method, Expression> staticMethods) {
 		this.classLoader = classLoader;
 		this.g = g;
 		this.method = method;
@@ -49,9 +50,10 @@ final class Context {
 		this.otherClasses = otherClasses;
 		this.argumentTypes = argumentTypes;
 		this.thisType = thisType;
-		this.thisFields = thisFields;
-		this.methodToExpression = methodToExpression;
-		this.staticMethodToExpression = staticMethodToExpression;
+		this.fields = fields;
+		this.staticConstants = staticConstants;
+		this.methods = methods;
+		this.staticMethods = staticMethods;
 	}
 
 	public DefiningClassLoader getClassLoader() {
@@ -74,8 +76,16 @@ final class Context {
 		return thisType;
 	}
 
-	public Map<String, Class<?>> getThisFields() {
-		return thisFields;
+	public Map<String, Class<?>> getFields() {
+		return fields;
+	}
+
+	public Map<String, Object> getStaticConstants() {
+		return staticConstants;
+	}
+
+	public void addStaticConstant(String field, Object value) {
+		this.staticConstants.put(field, value);
 	}
 
 	public Type[] getArgumentTypes() {
@@ -86,12 +96,12 @@ final class Context {
 		return argumentTypes[argument];
 	}
 
-	public Map<Method, Expression> getStaticMethodToExpression() {
-		return staticMethodToExpression;
+	public Map<Method, Expression> getStaticMethods() {
+		return staticMethods;
 	}
 
-	public Map<Method, Expression> getMethodToExpression() {
-		return methodToExpression;
+	public Map<Method, Expression> getMethods() {
+		return methods;
 	}
 
 	public Method getMethod() {

@@ -17,17 +17,22 @@
 package io.datakernel.cube;
 
 import io.datakernel.aggregation_db.AggregationChunk;
-import io.datakernel.aggregation_db.AggregationMetadata;
-import io.datakernel.aggregation_db.AggregationMetadataStorage;
-import io.datakernel.aggregation_db.AggregationStructure;
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public interface CubeMetadataStorage {
-	AggregationMetadataStorage aggregationMetadataStorage(String aggregationId, AggregationMetadata aggregationMetadata,
-	                                                      AggregationStructure aggregationStructure);
+	void createChunkId(Cube cube, String aggregationId, ResultCallback<Long> callback);
+
+	void startConsolidation(Cube cube, String aggregationId, List<AggregationChunk> chunksToConsolidate, CompletionCallback callback);
+
+	void saveConsolidatedChunks(Cube cube, String aggregationId,
+	                            List<AggregationChunk> originalChunks, List<AggregationChunk.NewChunk> consolidatedChunks,
+	                            CompletionCallback callback);
+
 
 	final class CubeLoadedChunks {
 		public final int lastRevisionId;
@@ -42,6 +47,6 @@ public interface CubeMetadataStorage {
 		}
 	}
 
-	void loadChunks(int lastRevisionId, Map<String, AggregationMetadata> aggregations,
-	                AggregationStructure aggregationStructure, ResultCallback<CubeLoadedChunks> callback);
+	void loadChunks(Cube cube, int lastRevisionId, Set<String> aggregations,
+	                ResultCallback<CubeLoadedChunks> callback);
 }

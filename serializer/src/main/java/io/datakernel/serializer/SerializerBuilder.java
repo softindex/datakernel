@@ -1026,7 +1026,7 @@ public final class SerializerBuilder {
 		} else {
 			serializerGen.prepareDeserializeStaticMethods(latestVersion, staticMethods, compatibilityLevel);
 			Expression version = let(call(arg(0), "readVarInt"));
-			return asmFactory.withMethod("deserialize", sequence(version, choice(cmpEq(version, value(latestVersion)),
+			return asmFactory.withMethod("deserialize", sequence(version, ifThenElse(cmpEq(version, value(latestVersion)),
 					serializerGen.deserialize(serializerGen.getRawType(), latestVersion, staticMethods, compatibilityLevel),
 					call(self(), "deserializeEarlierVersions", arg(0), version))));
 		}

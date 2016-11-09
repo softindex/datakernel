@@ -16,54 +16,64 @@
 
 package io.datakernel.aggregation_db;
 
-import com.google.common.base.Function;
-import com.google.common.collect.Collections2;
+import io.datakernel.async.AssertingResultCallback;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.eventloop.Eventloop;
 
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.TreeMap;
 
-import static io.datakernel.aggregation_db.AggregationChunk.createChunk;
+import static java.util.Collections.EMPTY_LIST;
 
 public class AggregationMetadataStorageStub implements AggregationMetadataStorage {
+	private final Eventloop eventloop;
+	private int revisionId;
 	private long chunkId;
-	private List<AggregationChunk.NewChunk> tmpChunks;
+	private TreeMap<Integer, List<AggregationChunk>> revisionToChunks = new TreeMap<>();
+
+	public AggregationMetadataStorageStub(Eventloop eventloop) {
+		this.eventloop = eventloop;
+	}
+
+	public AssertingResultCallback<List<AggregationChunk.NewChunk>> createSaveCallback() {
+		return new AssertingResultCallback<List<AggregationChunk.NewChunk>>() {
+			@Override
+			protected void onResult(List<AggregationChunk.NewChunk> newChunks) {
+				List<AggregationChunk> chunks = new ArrayList<>();
+				for (AggregationChunk.NewChunk newChunk : newChunks) {
+					AggregationChunk chunk = AggregationChunk.createChunk(revisionId, newChunk);
+					chunks.add(chunk);
+				}
+				revisionToChunks.put(++revisionId, chunks);
+			}
+		};
+	}
 
 	@Override
 	public void createChunkId(ResultCallback<Long> callback) {
-		callback.setResult(++chunkId);
-	}
-
-	public long newChunkId() {
-		return ++chunkId;
-	}
-
-	@Override
-	public void saveChunks(List<AggregationChunk.NewChunk> newChunks, CompletionCallback callback) {
-		this.tmpChunks = newChunks;
-		callback.setComplete();
+		callback.postResult(eventloop, ++chunkId);
 	}
 
 	@Override
 	public void startConsolidation(List<AggregationChunk> chunksToConsolidate, CompletionCallback callback) {
-		callback.setComplete();
+		throw new UnsupportedOperationException();
 	}
 
 	@Override
 	public void loadChunks(final int lastRevisionId, ResultCallback<LoadedChunks> callback) {
-		callback.setResult(new LoadedChunks(lastRevisionId + 1, Collections.<Long>emptyList(),
-				Collections2.transform(tmpChunks, new Function<AggregationChunk.NewChunk, AggregationChunk>() {
-					@Override
-					public AggregationChunk apply(AggregationChunk.NewChunk input) {
-						return createChunk(lastRevisionId, input);
-					}
-				})));
+		List<AggregationChunk> allChunks = new ArrayList<>();
+		for (List<AggregationChunk> chunks : revisionToChunks.tailMap(lastRevisionId, false).values()) {
+			allChunks.addAll(chunks);
+		}
+		LoadedChunks loadedChunks = new LoadedChunks(revisionToChunks.lastKey(), EMPTY_LIST, allChunks);
+		callback.postResult(eventloop, loadedChunks);
 	}
 
 	@Override
 	public void saveConsolidatedChunks(List<AggregationChunk> originalChunks, List<AggregationChunk.NewChunk> consolidatedChunks, CompletionCallback callback) {
-		callback.setComplete();
+		throw new UnsupportedOperationException();
 	}
 
 }

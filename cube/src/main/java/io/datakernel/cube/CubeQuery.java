@@ -16,35 +16,123 @@
 
 package io.datakernel.cube;
 
-import io.datakernel.aggregation_db.AggregationQuery;
+import io.datakernel.aggregation_db.AggregationPredicate;
+import io.datakernel.aggregation_db.AggregationPredicates;
 
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 
-import static java.util.Collections.unmodifiableList;
+import static java.util.Arrays.asList;
 
 public final class CubeQuery {
-	private AggregationQuery aggregationQuery = AggregationQuery.create();
+	private List<String> attributes = new ArrayList<>();
+	private List<String> measures = new ArrayList<>();
+	private AggregationPredicate predicate = AggregationPredicates.alwaysTrue();
+	private AggregationPredicate having = AggregationPredicates.alwaysTrue();
+	private Integer limit = null;
+	private Integer offset = null;
 	private List<Ordering> orderings = new ArrayList<>();
 
-	public static CubeQuery create() {return new CubeQuery();}
+	private CubeQuery() {
 
-	public static CubeQuery create(List<String> dimensions, List<String> measures, AggregationQuery.Predicates predicates,
-	                               List<Ordering> orderings) {return new CubeQuery(dimensions, measures, predicates, orderings);}
+	}
 
-	public static CubeQuery create(List<String> dimensions, List<String> measures) {return new CubeQuery(dimensions, measures);}
+	public static CubeQuery create() {
+		return new CubeQuery();
+	}
+
+	// region builders
+	public CubeQuery withMeasures(List<String> measures) {
+		this.measures = measures;
+		return this;
+	}
+
+	public CubeQuery withMeasures(String... measures) {
+		return withMeasures(asList(measures));
+	}
+
+	public CubeQuery withAttributes(List<String> attributes) {
+		this.attributes = attributes;
+		return this;
+	}
+
+	public CubeQuery withAttributes(String... attributes) {
+		return withAttributes(asList(attributes));
+	}
+
+	public CubeQuery withPredicate(AggregationPredicate predicate) {
+		this.predicate = predicate;
+		return this;
+	}
+
+	public CubeQuery withHaving(AggregationPredicate predicate) {
+		this.having = predicate;
+		return this;
+	}
+
+	public CubeQuery withOrderings(List<CubeQuery.Ordering> orderings) {
+		this.orderings = orderings;
+		return this;
+	}
+
+	public CubeQuery withOrderings(CubeQuery.Ordering... orderings) {
+		return withOrderings(asList(orderings));
+	}
+
+	public CubeQuery withLimit(Integer limit) {
+		this.limit = limit;
+		return this;
+	}
+
+	public Integer getLimit() {
+		return limit;
+	}
+
+	public CubeQuery withOffset(Integer offset) {
+		this.offset = offset;
+		return this;
+	}
+
+	// endregion
+
+	// region getters
+	public List<String> getAttributes() {
+		return attributes;
+	}
+
+	public List<String> getMeasures() {
+		return measures;
+	}
+
+	public AggregationPredicate getPredicate() {
+		return predicate;
+	}
+
+	public List<CubeQuery.Ordering> getOrderings() {
+		return orderings;
+	}
+
+	public AggregationPredicate getHaving() {
+		return having;
+	}
+
+	public Integer getOffset() {
+		return offset;
+	}
+
+	// endregion
+
+	// region helper classes
 
 	/**
 	 * Represents a query result ordering. Contains a propertyName name and ordering (ascending or descending).
 	 */
 	public static final class Ordering {
-		private final String propertyName;
+		private final String field;
 		private final boolean desc;
 
-		private Ordering(String propertyName, boolean desc) {
-			this.propertyName = propertyName;
+		private Ordering(String field, boolean desc) {
+			this.field = field;
 			this.desc = desc;
 		}
 
@@ -56,8 +144,8 @@ public final class CubeQuery {
 			return new Ordering(field, true);
 		}
 
-		public String getPropertyName() {
-			return propertyName;
+		public String getField() {
+			return field;
 		}
 
 		public boolean isAsc() {
@@ -76,151 +164,22 @@ public final class CubeQuery {
 			Ordering that = (Ordering) o;
 
 			if (desc != that.desc) return false;
-			if (!propertyName.equals(that.propertyName)) return false;
+			if (!field.equals(that.field)) return false;
 
 			return true;
 		}
 
 		@Override
 		public int hashCode() {
-			int result = propertyName.hashCode();
+			int result = field.hashCode();
 			result = 31 * result + (desc ? 1 : 0);
 			return result;
 		}
 
 		@Override
 		public String toString() {
-			return propertyName + " " + (desc ? "desc" : "asc");
+			return field + " " + (desc ? "desc" : "asc");
 		}
 	}
-
-	private CubeQuery() {
-	}
-
-	private CubeQuery(List<String> dimensions, List<String> measures, AggregationQuery.Predicates predicates,
-	                  List<Ordering> orderings) {
-		this.aggregationQuery = AggregationQuery.create(dimensions, measures, predicates);
-		this.orderings = orderings;
-	}
-
-	private CubeQuery(List<String> dimensions, List<String> measures) {
-		this.aggregationQuery = AggregationQuery.create(dimensions, measures);
-	}
-
-	public AggregationQuery.Predicates getPredicates() {
-		return aggregationQuery.getPredicates();
-	}
-
-	public CubeQuery withDimension(String dimension) {
-		aggregationQuery.withKey(dimension);
-		return this;
-	}
-
-	public CubeQuery withDimensions(List<String> dimensions) {
-		aggregationQuery.withKeys(dimensions);
-		return this;
-	}
-
-	public CubeQuery withDimensions(String... dimensions) {
-		aggregationQuery.withKeys(dimensions);
-		return this;
-	}
-
-	public CubeQuery withMeasures(List<String> fields) {
-		aggregationQuery.withFields(fields);
-		return this;
-	}
-
-	public CubeQuery withMeasures(String... fields) {
-		aggregationQuery.withFields(fields);
-		return this;
-	}
-
-	public CubeQuery withField(String field) {
-		aggregationQuery.withField(field);
-		return this;
-	}
-
-	public CubeQuery withOrdering(Ordering ordering) {
-		this.orderings.add(ordering);
-		return this;
-	}
-
-	public CubeQuery withOrderAsc(String propertyName) {
-		this.orderings.add(Ordering.asc(propertyName));
-		return this;
-	}
-
-	public CubeQuery withOrderDesc(String propertyName) {
-		this.orderings.add(Ordering.desc(propertyName));
-		return this;
-	}
-
-	public CubeQuery withPredicates(AggregationQuery.Predicates predicates) {
-		aggregationQuery.withPredicates(predicates);
-		return this;
-	}
-
-	public CubeQuery withPredicates(List<AggregationQuery.Predicate> predicates) {
-		aggregationQuery.withPredicates(predicates);
-		return this;
-	}
-
-	public CubeQuery withEq(String dimension, Object value) {
-		aggregationQuery.withEq(dimension, value);
-		return this;
-	}
-
-	public CubeQuery withNe(String dimension, Object value) {
-		aggregationQuery.withNe(dimension, value);
-		return this;
-	}
-
-	public CubeQuery withBetween(String dimension, Object from, Object to) {
-		aggregationQuery.withBetween(dimension, from, to);
-		return this;
-	}
-
-//	public CubeQuery addPredicates(List<AggregationQuery.Predicate> predicates) {
-//		aggregationQuery.addPredicates(predicates);
-//		return this;
-//	}
-
-	public List<String> getResultDimensions() {
-		return aggregationQuery.getResultKeys();
-	}
-
-	public List<String> getResultMeasures() {
-		return aggregationQuery.getResultFields();
-	}
-
-	public List<Ordering> getOrderings() {
-		return unmodifiableList(orderings);
-	}
-
-	public Set<String> getOrderingFields() {
-		LinkedHashSet<String> result = new LinkedHashSet<>();
-		for (Ordering ordering : orderings) {
-			result.add(ordering.propertyName);
-		}
-		return result;
-	}
-
-	public List<String> getAllKeys() {
-		return aggregationQuery.getAllKeys();
-	}
-
-	public AggregationQuery getAggregationQuery() {
-		return aggregationQuery;
-	}
-
-	@Override
-	public String toString() {
-		return "CubeQuery{" +
-				"keys=" + aggregationQuery.getResultKeys() +
-				", fields=" + aggregationQuery.getResultFields() +
-				", predicates=" + aggregationQuery.getPredicates() +
-				", orderings=" + orderings +
-				'}';
-	}
+	// endregion
 }

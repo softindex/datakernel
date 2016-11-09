@@ -86,7 +86,7 @@ public final class SerializerGenMap implements SerializerGen, NullableOptimizati
 		if (!nullable) {
 			return sequence(writeLength, mapSerializer, off);
 		} else {
-			return choice(isNull(value),
+			return ifThenElse(isNull(value),
 					sequence(set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, value(0))), off),
 					sequence(writeLength, mapSerializer, off));
 		}
@@ -125,7 +125,7 @@ public final class SerializerGenMap implements SerializerGen, NullableOptimizati
 		if (!nullable) {
 			return sequence(length, local, forEach, local);
 		} else {
-			return choice(cmpEq(length, value(0)),
+			return ifThenElse(cmpEq(length, value(0)),
 					nullRef(LinkedHashMap.class),
 					sequence(local, forEach, local));
 		}
@@ -149,7 +149,7 @@ public final class SerializerGenMap implements SerializerGen, NullableOptimizati
 		if (!nullable) {
 			return sequence(length, local, forEach, local);
 		} else {
-			return choice(cmpEq(length, value(0)),
+			return ifThenElse(cmpEq(length, value(0)),
 					nullRef(EnumMap.class),
 					sequence(local, forEach, local));
 		}

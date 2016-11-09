@@ -18,9 +18,11 @@ package io.datakernel.aggregation_db;
 
 import com.google.common.base.MoreObjects;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import static io.datakernel.aggregation_db.AggregationPredicates.*;
 import static java.util.Collections.unmodifiableList;
 
 public class AggregationChunk {
@@ -120,6 +122,21 @@ public class AggregationChunk {
 	@Override
 	public int hashCode() {
 		return Objects.hash(revisionId, chunkId, fields, minPrimaryKey, maxPrimaryKey, count);
+	}
+
+	public AggregationPredicate toPredicate(List<String> primaryKey) {
+		List<AggregationPredicate> predicates = new ArrayList<>();
+		for (int i = 0; i < primaryKey.size(); i++) {
+			String key = primaryKey.get(i);
+			Object from = minPrimaryKey.get(i);
+			Object to = maxPrimaryKey.get(i);
+			if (from.equals(to)) {
+				predicates.add(eq(key, from));
+			} else {
+				predicates.add(between(key, (Comparable) from, (Comparable) to));
+			}
+		}
+		return and(predicates);
 	}
 
 	@Override

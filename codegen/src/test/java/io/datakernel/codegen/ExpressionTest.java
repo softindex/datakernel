@@ -23,6 +23,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
+import static io.datakernel.codegen.ExpressionComparator.leftField;
+import static io.datakernel.codegen.ExpressionComparator.rightField;
 import static io.datakernel.codegen.Expressions.*;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
@@ -184,26 +186,26 @@ public class ExpressionTest {
 				.withMethod("equals",
 						asEquals("x"))
 				.withMethod("setXY", sequence(
-						setter(self(), "x", arg(0)),
-						setter(self(), "y", arg(1))))
+						set(self(), "x", arg(0)),
+						set(self(), "y", arg(1))))
 				.withMethod("test",
 						add(arg(0), value(1L)))
 				.withMethod("hash",
-						hashCodeOfArgs(getter(arg(0), "field1"), getter(arg(0), "field2")))
+						hashCodeOfArgs(field(arg(0), "field1"), field(arg(0), "field2")))
 				.withMethod("field1",
-						getter(arg(0), "field1"))
+						field(arg(0), "field1"))
 				.withMethod("setter", sequence(
-						setter(arg(0), "field1", value(10)),
-						setter(arg(0), "field2", value(20)),
+						set(arg(0), "field1", value(10)),
+						set(arg(0), "field2", value(20)),
 						arg(0)))
 				.withMethod("ctor", sequence(
 						local,
-						setter(local, "field2", value(2)),
+						set(local, "field2", value(2)),
 						local))
 				.withMethod("getX",
-						getter(self(), "x"))
+						field(self(), "x"))
 				.withMethod("getY",
-						getter(self(), "y"))
+						field(self(), "y"))
 				.withMethod("allEqual",
 						and(cmpEq(arg(0), arg(1)), cmpEq(arg(0), arg(2))))
 				.withMethod("anyEqual",
@@ -215,8 +217,8 @@ public class ExpressionTest {
 				.withMethod("toString",
 						asString()
 								.withQuotes("{", "}", ", ")
-								.withArgument(getter(self(), "x"))
-								.withArgument("labelY: ", getter(self(), "y")))
+								.withArgument(field(self(), "x"))
+								.withArgument("labelY: ", field(self(), "y")))
 				.build();
 		Test test = testClass.newInstance();
 
@@ -267,9 +269,9 @@ public class ExpressionTest {
 	public void test2() throws IllegalAccessException, InstantiationException {
 		Class<Test2> testClass = ClassBuilder.create(DefiningClassLoader.create(), Test2.class)
 				.withMethod("hash",
-						hashCodeOfArgs(getter(arg(0), "field1"), getter(arg(0), "field2"), getter(arg(0), "field3"),
-								getter(arg(0), "field4"), getter(arg(0), "field5"), getter(arg(0), "field6"),
-								getter(arg(0), "field7"))).build();
+						hashCodeOfArgs(field(arg(0), "field1"), field(arg(0), "field2"), field(arg(0), "field3"),
+								field(arg(0), "field4"), field(arg(0), "field5"), field(arg(0), "field6"),
+								field(arg(0), "field7"))).build();
 
 		Test2 test = testClass.newInstance();
 		TestPojo2 testPojo2 = new TestPojo2("randomString", 42, 666666, 43258.42342f, 54359878, 43252353278423.423468, "fhsduighrwqruqsd");
@@ -596,13 +598,13 @@ public class ExpressionTest {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		Initializable intHolder = ClassBuilder.create(classLoader, Initializable.class)
 				.withField("x", int.class)
-				.withMethod("init", set(getter(self(), "x"), value(42)))
+				.withMethod("init", set(field(self(), "x"), value(42)))
 				.buildClassAndCreateNewInstance();
 
 		intHolder.init();
 
 		Getter getter = ClassBuilder.create(classLoader, Getter.class)
-				.withMethod("get", getter(cast(arg(0), intHolder.getClass()), "x"))
+				.withMethod("get", field(cast(arg(0), intHolder.getClass()), "x"))
 				.buildClassAndCreateNewInstance();
 
 		assertEquals(42, getter.get(intHolder));
@@ -622,26 +624,26 @@ public class ExpressionTest {
 				.withMethod("equals",
 						asEquals("x"))
 				.withMethod("setXY", sequence(
-						set(getter(self(), "x"), arg(0)),
-						set(getter(self(), "y"), arg(1))))
+						set(field(self(), "x"), arg(0)),
+						set(field(self(), "y"), arg(1))))
 				.withMethod("test",
 						add(arg(0), value(1L)))
 				.withMethod("hash",
-						hashCodeOfArgs(getter(arg(0), "field1"), getter(arg(0), "field2")))
+						hashCodeOfArgs(field(arg(0), "field1"), field(arg(0), "field2")))
 				.withMethod("field1",
-						getter(arg(0), "field1"))
+						field(arg(0), "field1"))
 				.withMethod("setter", sequence(
-						set(getter(arg(0), "field1"), value(10)),
-						set(getter(arg(0), "field2"), value(20)),
+						set(field(arg(0), "field1"), value(10)),
+						set(field(arg(0), "field2"), value(20)),
 						arg(0)))
 				.withMethod("ctor", sequence(
 						local,
-						set(getter(local, "field2"), value(2)),
+						set(field(local, "field2"), value(2)),
 						local))
 				.withMethod("getX",
-						getter(self(), "x"))
+						field(self(), "x"))
 				.withMethod("getY",
-						getter(self(), "y"))
+						field(self(), "y"))
 				.withMethod("allEqual",
 						and(cmpEq(arg(0), arg(1)), cmpEq(arg(0), arg(2))))
 				.withMethod("anyEqual",
@@ -653,8 +655,8 @@ public class ExpressionTest {
 				.withMethod("toString",
 						asString()
 								.withQuotes("{", "}", ", ")
-								.withArgument(getter(self(), "x"))
-								.withArgument("labelY: ", getter(self(), "y")))
+								.withArgument(field(self(), "x"))
+								.withArgument("labelY: ", field(self(), "y")))
 				.build();
 
 		Class<Test> testClass2 = ClassBuilder.create(definingClassLoader, Test.class)
@@ -667,26 +669,26 @@ public class ExpressionTest {
 				.withMethod("equals",
 						asEquals("x"))
 				.withMethod("setXY", sequence(
-						set(getter(self(), "x"), arg(0)),
-						set(getter(self(), "y"), arg(1))))
+						set(field(self(), "x"), arg(0)),
+						set(field(self(), "y"), arg(1))))
 				.withMethod("test",
 						add(arg(0), value(1L)))
 				.withMethod("hash",
-						hashCodeOfArgs(getter(arg(0), "field1"), getter(arg(0), "field2")))
+						hashCodeOfArgs(field(arg(0), "field1"), field(arg(0), "field2")))
 				.withMethod("field1",
-						getter(arg(0), "field1"))
+						field(arg(0), "field1"))
 				.withMethod("setter", sequence(
-						set(getter(arg(0), "field1"), value(10)),
-						set(getter(arg(0), "field2"), value(20)),
+						set(field(arg(0), "field1"), value(10)),
+						set(field(arg(0), "field2"), value(20)),
 						arg(0)))
 				.withMethod("ctor", sequence(
 						local,
-						set(getter(local, "field2"), value(2)),
+						set(field(local, "field2"), value(2)),
 						local))
 				.withMethod("getX",
-						getter(self(), "x"))
+						field(self(), "x"))
 				.withMethod("getY",
-						getter(self(), "y"))
+						field(self(), "y"))
 				.withMethod("allEqual",
 						and(cmpEq(arg(0), arg(1)), cmpEq(arg(0), arg(2))))
 				.withMethod("anyEqual",
@@ -698,8 +700,8 @@ public class ExpressionTest {
 				.withMethod("toString",
 						asString()
 								.withQuotes("{", "}", ", ")
-								.withArgument(getter(self(), "x"))
-								.withArgument("labelY: ", getter(self(), "y")))
+								.withArgument(field(self(), "x"))
+								.withArgument("labelY: ", field(self(), "y")))
 				.build();
 
 		assertEquals(testClass1, testClass2);
@@ -810,13 +812,10 @@ public class ExpressionTest {
 	@org.junit.Test
 	public void testComparatorNullable() {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		ExpressionComparatorNullable comparator = new ExpressionComparatorNullable();
-		comparator.add(getter(cast(arg(0), StringHolder.class), "string1"),
-				getter(cast(arg(1), StringHolder.class), "string1"));
-		comparator.add(getter(cast(arg(0), StringHolder.class), "string2"),
-				getter(cast(arg(1), StringHolder.class), "string2"));
 		Comparator generatedComparator = ClassBuilder.create(classLoader, Comparator.class)
-				.withMethod("compare", comparator)
+				.withMethod("compare", ExpressionComparator.create()
+						.with(leftField(StringHolder.class, "string1"), rightField(StringHolder.class, "string1"), true)
+						.with(leftField(StringHolder.class, "string2"), rightField(StringHolder.class, "string2"), true))
 				.buildClassAndCreateNewInstance();
 
 		List<StringHolder> strings = Arrays.asList(new StringHolder(null, "b"), new StringHolder(null, "a"),
@@ -983,5 +982,15 @@ public class ExpressionTest {
 				.buildClassAndCreateNewInstance();
 		assertEquals(instance.ints(1).length, 1);
 		assertEquals(instance.integers(2).length, 2);
+	}
+
+	@org.junit.Test
+	public void testStaticConstants() {
+		final DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
+		Object testObject = new Object();
+		final Getter instance = ClassBuilder.create(definingClassLoader, Getter.class)
+				.withMethod("get", value(testObject))
+				.buildClassAndCreateNewInstance();
+		assertTrue(testObject == instance.get(null));
 	}
 }

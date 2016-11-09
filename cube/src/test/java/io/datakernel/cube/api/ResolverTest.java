@@ -16,19 +16,6 @@
 
 package io.datakernel.cube.api;
 
-import io.datakernel.aggregation_db.PrimaryKey;
-import io.datakernel.codegen.DefiningClassLoader;
-import org.junit.Test;
-
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import static com.google.common.collect.Maps.newHashMap;
-import static com.google.common.collect.Maps.newLinkedHashMap;
-import static org.junit.Assert.assertEquals;
-
 public class ResolverTest {
 	public static class Record {
 		public int id;
@@ -40,6 +27,7 @@ public class ResolverTest {
 		}
 	}
 
+/*
 	public static class TestConstantResolver implements AttributeResolver {
 		@Override
 		public Map<PrimaryKey, Object[]> resolve(Set<PrimaryKey> keys, List<String> attributes) {
@@ -52,7 +40,9 @@ public class ResolverTest {
 			return result;
 		}
 	}
+*/
 
+/*
 	@Test
 	public void testResolve() throws Exception {
 		List<Object> records = Arrays.asList((Object) new Record(1), new Record(2), new Record(3));
@@ -87,4 +77,5 @@ public class ResolverTest {
 		assertEquals(2, ((Record) resultRecords.get(1)).id);
 		assertEquals(3, ((Record) resultRecords.get(2)).id);
 	}
+*/
 }

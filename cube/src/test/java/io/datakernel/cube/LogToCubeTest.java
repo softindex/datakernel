@@ -16,10 +16,9 @@
 
 package io.datakernel.cube;
 
-import com.google.common.collect.ImmutableMap;
-import io.datakernel.aggregation_db.*;
-import io.datakernel.aggregation_db.fieldtype.FieldType;
-import io.datakernel.aggregation_db.keytype.KeyType;
+import io.datakernel.aggregation_db.AggregationChunkStorageStub;
+import io.datakernel.aggregation_db.CubeMetadataStorageStub;
+import io.datakernel.aggregation_db.fieldtype.FieldTypes;
 import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.bean.TestPubRequest;
@@ -42,37 +41,19 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static io.datakernel.aggregation_db.fieldtype.FieldTypes.longSum;
-import static io.datakernel.aggregation_db.keytype.KeyTypes.intKey;
+import static io.datakernel.aggregation_db.AggregationPredicates.alwaysTrue;
+import static io.datakernel.aggregation_db.fieldtype.FieldTypes.ofLong;
+import static io.datakernel.aggregation_db.processor.AggregateFunctions.sum;
+import static io.datakernel.cube.Cube.AggregationScheme.id;
 import static io.datakernel.cube.TestUtils.deleteRecursivelyQuietly;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
+@SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
 public class LogToCubeTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
-
-	public static Cube newCube(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
-	                           CubeMetadataStorage cubeMetadataStorage, AggregationChunkStorage aggregationChunkStorage,
-	                           AggregationStructure aggregationStructure) {
-		return Cube.create(eventloop, executorService, classLoader, cubeMetadataStorage, aggregationChunkStorage,
-				aggregationStructure, Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE, Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY,
-				Aggregation.DEFAULT_SORTER_BLOCK_SIZE, Cube.DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD,
-				Aggregation.DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS);
-	}
-
-	public static AggregationStructure getStructure() {
-		return AggregationStructure.create(
-				ImmutableMap.<String, KeyType>builder()
-						.put("pub", intKey())
-						.put("adv", intKey())
-						.build(),
-				ImmutableMap.<String, FieldType>builder()
-						.put("pubRequests", longSum())
-						.put("advRequests", longSum())
-						.build());
-	}
 
 	@Test
 	public void testStubStorage() throws Exception {
@@ -80,12 +61,16 @@ public class LogToCubeTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = Executors.newCachedThreadPool();
 		CubeMetadataStorageStub cubeMetadataStorage = new CubeMetadataStorageStub();
-		AggregationChunkStorageStub aggregationStorage = new AggregationChunkStorageStub(eventloop, classLoader);
-		AggregationStructure structure = getStructure();
+		AggregationChunkStorageStub aggregationStorage = new AggregationChunkStorageStub(eventloop);
 		LogToCubeMetadataStorageStub logToCubeMetadataStorageStub = new LogToCubeMetadataStorageStub(cubeMetadataStorage);
-		Cube cube = newCube(eventloop, executor, classLoader, cubeMetadataStorage, aggregationStorage, structure);
-		cube.addAggregation("pub", AggregationMetadata.create(asList("pub"), asList("pubRequests")));
-		cube.addAggregation("adv", AggregationMetadata.create(asList("adv"), asList("advRequests")));
+
+		Cube cube = Cube.create(eventloop, executor, classLoader, cubeMetadataStorage, aggregationStorage)
+				.withDimension("pub", FieldTypes.ofInt())
+				.withDimension("adv", FieldTypes.ofInt())
+				.withMeasure("pubRequests", sum(ofLong()))
+				.withMeasure("advRequests", sum(ofLong()))
+				.withAggregation(id("pub").withDimensions("pub").withMeasures("pubRequests"))
+				.withAggregation(id("adv").withDimensions("adv").withMeasures("advRequests"));
 
 		Path dir = temporaryFolder.newFolder().toPath();
 		deleteRecursivelyQuietly(dir);
@@ -117,8 +102,9 @@ public class LogToCubeTest {
 		eventloop.run();
 
 		StreamConsumers.ToList<TestAdvResult> consumerToList = StreamConsumers.toList(eventloop);
-		cube.query(TestAdvResult.class, CubeQuery.create(asList("adv"), asList("advRequests")))
-				.streamTo(consumerToList);
+		cube.queryRawStream(asList("adv"), asList("advRequests"), alwaysTrue(),
+				TestAdvResult.class, classLoader
+		).streamTo(consumerToList);
 		eventloop.run();
 
 		List<TestAdvResult> actualResults = consumerToList.getList();

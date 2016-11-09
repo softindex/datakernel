@@ -16,287 +16,85 @@
 
 package io.datakernel.aggregation_db.fieldtype;
 
-import io.datakernel.aggregation_db.processor.*;
+import com.google.common.reflect.TypeParameter;
+import com.google.common.reflect.TypeToken;
+import io.datakernel.serializer.StringFormat;
 import io.datakernel.serializer.asm.*;
+import org.joda.time.Days;
+import org.joda.time.LocalDate;
 
-import java.util.List;
+import java.lang.reflect.Type;
 import java.util.Set;
 
-import static java.util.Collections.singletonList;
-
 public final class FieldTypes {
-	private static abstract class FieldTypeDouble extends FieldType {
-		public FieldTypeDouble() {
-			super(double.class);
+	private FieldTypes() {
+	}
+
+	public static FieldType<Double> ofDouble() {
+		return new FieldType<>(double.class, new SerializerGenDouble());
+	}
+
+	public static FieldType<Float> ofFloat() {
+		return new FieldType<>(float.class, new SerializerGenFloat());
+	}
+
+	public static FieldType<Integer> ofInt() {
+		return new FieldType<>(int.class, new SerializerGenInt(true));
+	}
+
+	public static FieldType<Long> ofLong() {
+		return new FieldType<>(long.class, new SerializerGenLong(true));
+	}
+
+	public static <T> FieldType<T> ofSet(FieldType<T> fieldType) {
+		SerializerGenSet serializer = new SerializerGenSet(fieldType.getSerializer());
+		Type dataType = new TypeToken<Set<T>>() {}
+				.where(new TypeParameter<T>() {}, (TypeToken<T>) TypeToken.of(fieldType.getDataType()))
+				.getType();
+		return new FieldType<>(Set.class, dataType, serializer);
+	}
+
+	public static <T extends Enum<T>> FieldType<T> ofEnum(Class<T> enumClass) {
+		return new FieldType<>(enumClass, new SerializerGenEnum(enumClass));
+	}
+
+	public static FieldType<String> ofString() {
+		return new FieldType<>(String.class, new SerializerGenString());
+	}
+
+	public static FieldType<String> ofString(StringFormat format) {
+		return new FieldType<>(String.class, new SerializerGenString(format));
+	}
+
+	public static FieldType<LocalDate> ofLocalDate() {
+		return new FieldTypeDate();
+	}
+
+	public static FieldType<LocalDate> ofLocalDate(LocalDate startDate) {
+		return new FieldTypeDate(startDate);
+	}
+
+	private static final class FieldTypeDate extends FieldType<LocalDate> {
+		private final LocalDate startDate;
+
+		FieldTypeDate() {
+			this(LocalDate.parse("1970-01-01"));
+		}
+
+		FieldTypeDate(LocalDate startDate) {
+			super(int.class, LocalDate.class, new SerializerGenInt(true));
+			this.startDate = startDate;
 		}
 
 		@Override
-		public SerializerGen serializerGen() {
-			return new SerializerGenDouble();
-		}
-	}
-
-	private static abstract class FieldTypeFloat extends FieldType {
-		public FieldTypeFloat() {
-			super(float.class);
+		public LocalDate toValue(Object internalValue) {
+			return startDate.plusDays((Integer) internalValue);
 		}
 
 		@Override
-		public SerializerGen serializerGen() {
-			return new SerializerGenFloat();
-		}
-	}
-
-	private static abstract class FieldTypeInt extends FieldType {
-		public FieldTypeInt() {
-			super(int.class);
+		public Object toInternalValue(LocalDate value) {
+			return Days.daysBetween(startDate, value).getDays();
 		}
 
-		@Override
-		public SerializerGen serializerGen() {
-			return new SerializerGenInt(true);
-		}
-	}
-
-	private static abstract class FieldTypeLong extends FieldType {
-		public FieldTypeLong() {
-			super(long.class);
-		}
-
-		@Override
-		public SerializerGen serializerGen() {
-			return new SerializerGenLong(true);
-		}
-	}
-
-	private static abstract class FieldTypeCollection extends FieldType {
-		protected final SerializerGen valueSerializer;
-
-		protected FieldTypeCollection(Class<?> dataType, SerializerGen valueSerializer) {
-			super(dataType);
-			this.valueSerializer = valueSerializer;
-		}
-
-		@Override
-		public FieldProcessor fieldProcessor() {
-			return CollectionFieldProcessor.create();
-		}
-	}
-
-	private static final class FieldTypeList extends FieldTypeCollection {
-		public FieldTypeList(SerializerGen valueSerializer) {
-			super(List.class, valueSerializer);
-		}
-
-		@Override
-		public SerializerGen serializerGen() {
-			return new SerializerGenList(valueSerializer);
-		}
-	}
-
-	private static final class FieldTypeSet extends FieldTypeCollection {
-		public FieldTypeSet(SerializerGen valueSerializer) {
-			super(Set.class, valueSerializer);
-		}
-
-		@Override
-		public SerializerGen serializerGen() {
-			return new SerializerGenSet(valueSerializer);
-		}
-	}
-
-	private static final class FieldTypeHyperLogLog extends FieldType {
-		private final int registers;
-
-		public FieldTypeHyperLogLog(int registers) {
-			super(HyperLogLog.class);
-			this.registers = registers;
-		}
-
-		@Override
-		public FieldProcessor fieldProcessor() {
-			return HyperLogLogFieldProcessor.create(registers);
-		}
-
-		@Override
-		public SerializerGen serializerGen() {
-			SerializerGenClass serializerGenClass = new SerializerGenClass(HyperLogLog.class);
-			try {
-				serializerGenClass.addGetter(HyperLogLog.class.getMethod("getRegisters"),
-						new SerializerGenArray(new SerializerGenByte(), byte[].class), -1, -1);
-				serializerGenClass.setConstructor(HyperLogLog.class.getConstructor(byte[].class),
-						singletonList("registers"));
-			} catch (NoSuchMethodException e) {
-				throw new RuntimeException("Unable to construct SerializerGen for HyperLogLog");
-			}
-			return serializerGenClass;
-		}
-
-		@Override
-		public Object getPrintable(Object value) {
-			return ((HyperLogLog) value).estimate();
-		}
-	}
-
-	public static FieldType doubleSum() {
-		return new FieldTypeDouble() {
-			@Override
-			public FieldProcessor fieldProcessor() {
-				return SumFieldProcessor.create();
-			}
-		};
-	}
-
-	public static FieldType floatSum() {
-		return new FieldTypeFloat() {
-			@Override
-			public FieldProcessor fieldProcessor() {
-				return SumFieldProcessor.create();
-			}
-		};
-	}
-
-	public static FieldType intSum() {
-		return new FieldTypeInt() {
-			@Override
-			public FieldProcessor fieldProcessor() {
-				return SumFieldProcessor.create();
-			}
-		};
-	}
-
-	public static FieldType longSum() {
-		return new FieldTypeLong() {
-			@Override
-			public FieldProcessor fieldProcessor() {
-				return SumFieldProcessor.create();
-			}
-		};
-	}
-
-	public static FieldType doubleList() {
-		return new FieldTypeList(new SerializerGenDouble());
-	}
-
-	public static FieldType floatList() {
-		return new FieldTypeList(new SerializerGenFloat());
-	}
-
-	public static FieldType intList() {
-		return new FieldTypeList(new SerializerGenInt(true));
-	}
-
-	public static FieldType longList() {
-		return new FieldTypeList(new SerializerGenLong(true));
-	}
-
-	public static FieldType doubleSet() {
-		return new FieldTypeSet(new SerializerGenDouble());
-	}
-
-	public static FieldType floatSet() {
-		return new FieldTypeSet(new SerializerGenFloat());
-	}
-
-	public static FieldType intSet() {
-		return new FieldTypeSet(new SerializerGenInt(true));
-	}
-
-	public static FieldType longSet() {
-		return new FieldTypeSet(new SerializerGenLong(true));
-	}
-
-	public static FieldType hyperLogLog(int registers) {
-		return new FieldTypeHyperLogLog(registers);
-	}
-
-	public static FieldType intCount() {
-		return new FieldTypeInt() {
-			@Override
-			public FieldProcessor fieldProcessor() {
-				return CountFieldProcessor.create();
-			}
-		};
-	}
-
-	public static FieldType longCount() {
-		return new FieldTypeLong() {
-			@Override
-			public FieldProcessor fieldProcessor() {
-				return CountFieldProcessor.create();
-			}
-		};
-	}
-
-	public static FieldType doubleMax() {
-		return new FieldTypeDouble() {
-			@Override
-			public FieldProcessor fieldProcessor() {
-				return MaxFieldProcessor.create();
-			}
-		};
-	}
-
-	public static FieldType floatMax() {
-		return new FieldTypeFloat() {
-			@Override
-			public FieldProcessor fieldProcessor() {
-				return MaxFieldProcessor.create();
-			}
-		};
-	}
-
-	public static FieldType intMax() {
-		return new FieldTypeInt() {
-			@Override
-			public FieldProcessor fieldProcessor() {
-				return MaxFieldProcessor.create();
-			}
-		};
-	}
-
-	public static FieldType longMax() {
-		return new FieldTypeLong() {
-			@Override
-			public FieldProcessor fieldProcessor() {
-				return MaxFieldProcessor.create();
-			}
-		};
-	}
-
-	public static FieldType doubleMin() {
-		return new FieldTypeDouble() {
-			@Override
-			public FieldProcessor fieldProcessor() {
-				return MinFieldProcessor.create();
-			}
-		};
-	}
-
-	public static FieldType floatMin() {
-		return new FieldTypeFloat() {
-			@Override
-			public FieldProcessor fieldProcessor() {
-				return MinFieldProcessor.create();
-			}
-		};
-	}
-
-	public static FieldType intMin() {
-		return new FieldTypeInt() {
-			@Override
-			public FieldProcessor fieldProcessor() {
-				return MinFieldProcessor.create();
-			}
-		};
-	}
-
-	public static FieldType longMin() {
-		return new FieldTypeLong() {
-			@Override
-			public FieldProcessor fieldProcessor() {
-				return MinFieldProcessor.create();
-			}
-		};
 	}
 }

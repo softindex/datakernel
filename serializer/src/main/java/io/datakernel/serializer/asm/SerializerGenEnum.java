@@ -66,7 +66,7 @@ public class SerializerGenEnum implements SerializerGen, NullableOptimization {
 		if (!nullable) {
 			return callStatic(SerializationUtils.class, "writeByte", byteArray, off, ordinal);
 		} else {
-			return choice(isNull(value),
+			return ifThenElse(isNull(value),
 					callStatic(SerializationUtils.class, "writeByte", byteArray, off, value((byte) 0)),
 					callStatic(SerializationUtils.class, "writeByte", byteArray, off, cast(add(ordinal, value((byte) 1)), Type.BYTE_TYPE))
 			);
@@ -84,7 +84,7 @@ public class SerializerGenEnum implements SerializerGen, NullableOptimization {
 		if (!nullable) {
 			return getArrayItem(callStatic(nameOfEnum, "values"), value);
 		} else {
-			return choice(cmpEq(value, value((byte) 0)),
+			return ifThenElse(cmpEq(value, value((byte) 0)),
 					nullRef(nameOfEnum),
 					getArrayItem(callStatic(nameOfEnum, "values"), sub(value, value(1))));
 		}

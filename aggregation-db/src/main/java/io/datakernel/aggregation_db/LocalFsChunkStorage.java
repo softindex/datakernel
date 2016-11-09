@@ -52,7 +52,6 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 
 	private final Eventloop eventloop;
 	private final ExecutorService executorService;
-	private final AggregationStructure structure;
 
 	private final Path dir;
 
@@ -64,18 +63,14 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 	 * @param executorService executor, where blocking IO operations are to be run
 	 * @param dir             directory where data is saved
 	 */
-	private LocalFsChunkStorage(Eventloop eventloop, ExecutorService executorService, AggregationStructure structure,
-	                            Path dir) {
+	private LocalFsChunkStorage(Eventloop eventloop, ExecutorService executorService, Path dir) {
 		this.eventloop = eventloop;
 		this.executorService = executorService;
-		this.structure = structure;
 		this.dir = dir;
 	}
 
-	public static LocalFsChunkStorage create(Eventloop eventloop, ExecutorService executorService,
-	                                         AggregationStructure structure,
-	                                         Path dir) {
-		return new LocalFsChunkStorage(eventloop, executorService, structure, dir);
+	public static LocalFsChunkStorage create(Eventloop eventloop, ExecutorService executorService, Path dir) {
+		return new LocalFsChunkStorage(eventloop, executorService, dir);
 	}
 
 	private Path path(long id) {
@@ -100,10 +95,11 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 	}
 
 	@Override
-	public <T> StreamProducer<T> chunkReader(List<String> keys, List<String> fields,
+	public <T> StreamProducer<T> chunkReader(HasAggregationStructure structure, List<String> keys, List<String> fields,
 	                                         Class<T> recordClass, long id, DefiningClassLoader classLoader) {
 		final StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create(eventloop);
-		BufferSerializer<T> bufferSerializer = structure.createBufferSerializer(recordClass, keys, fields, classLoader);
+		BufferSerializer<T> bufferSerializer = AggregationUtils.createBufferSerializer(structure, recordClass,
+				keys, fields, classLoader);
 		StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(eventloop, bufferSerializer,
 				StreamBinarySerializer.MAX_SIZE);
 		decompressor.getOutput().streamTo(deserializer.getInput());
@@ -125,11 +121,13 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 	}
 
 	@Override
-	public <T> void chunkWriter(List<String> keys, List<String> fields, Class<T> recordClass, long id,
+	public <T> void chunkWriter(HasAggregationStructure structure, List<String> keys, List<String> fields,
+	                            Class<T> recordClass, long id,
 	                            StreamProducer<T> producer, DefiningClassLoader classLoader,
 	                            final CompletionCallback callback) {
 		final StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
-		BufferSerializer<T> bufferSerializer = structure.createBufferSerializer(recordClass, keys, fields, classLoader);
+		BufferSerializer<T> bufferSerializer = AggregationUtils.createBufferSerializer(structure, recordClass,
+				keys, fields, classLoader);
 		StreamBinarySerializer<T> serializer = StreamBinarySerializer.create(eventloop, bufferSerializer,
 				StreamBinarySerializer.MAX_SIZE_2_BYTE, StreamBinarySerializer.MAX_SIZE, 1000, false);
 

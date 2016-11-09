@@ -33,15 +33,6 @@ public interface AggregationMetadataStorage {
 	 */
 	void createChunkId(ResultCallback<Long> callback);
 
-	/**
-	 * Saves given chunks metadata to metadata storage asynchronously.
-	 *  @param newChunks           list of chunks to save
-	 * @param callback            callback which is called once saving is complete
-	 */
-	void saveChunks(List<AggregationChunk.NewChunk> newChunks, CompletionCallback callback);
-
-	void startConsolidation(List<AggregationChunk> chunksToConsolidate, CompletionCallback callback);
-
 	final class LoadedChunks {
 		public final int lastRevisionId;
 		public final Collection<Long> consolidatedChunkIds;
@@ -60,6 +51,8 @@ public interface AggregationMetadataStorage {
 	 * @param callback       callback which is called once loading is complete
 	 */
 	void loadChunks(int lastRevisionId, ResultCallback<LoadedChunks> callback);
+
+	void startConsolidation(List<AggregationChunk> chunksToConsolidate, CompletionCallback callback);
 
 	/**
 	 * Asynchronously saves the metadata of the given list of new chunks that are result of consolidation of the list of specified chunks.

@@ -83,7 +83,7 @@ final class ForEachHppcSet implements Expression {
 		cast(call(iterator, "next"), iteratorType).load(ctx);
 		item.store(ctx);
 
-		forVar.forVar(getter(item, "value")).load(ctx);
+		forVar.forVar(field(item, "value")).load(ctx);
 
 		g.goTo(labelLoop);
 

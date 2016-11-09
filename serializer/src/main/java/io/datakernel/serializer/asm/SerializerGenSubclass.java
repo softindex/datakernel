@@ -100,7 +100,7 @@ public class SerializerGenSubclass implements SerializerGen, NullableOptimizatio
 		}
 		if (nullable) {
 			staticMethods.registerStaticSerializeMethod(this, version,
-					choice(isNotNull(arg(2)),
+					ifThenElse(isNotNull(arg(2)),
 							switchForKey(cast(call(cast(arg(2), Object.class), "getClass"), Object.class), listKey, listValue),
 							callStatic(SerializationUtils.class, "writeByte", arg(0), arg(1), value((byte) 0)))
 			);

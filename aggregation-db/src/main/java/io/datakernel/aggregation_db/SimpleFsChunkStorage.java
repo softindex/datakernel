@@ -34,29 +34,28 @@ import io.datakernel.stream.processor.StreamLZ4Decompressor;
 import java.net.InetSocketAddress;
 import java.util.List;
 
+import static io.datakernel.aggregation_db.AggregationUtils.createBufferSerializer;
+
 public class SimpleFsChunkStorage implements AggregationChunkStorage {
 	private final Eventloop eventloop;
-	private final AggregationStructure structure;
 	private final SimpleFsClient client;
 
-	private SimpleFsChunkStorage(Eventloop eventloop, AggregationStructure structure,
-	                             InetSocketAddress serverAddress) {
+	private SimpleFsChunkStorage(Eventloop eventloop, InetSocketAddress serverAddress) {
 		this.eventloop = eventloop;
-		this.structure = structure;
 		this.client = SimpleFsClient.create(eventloop, serverAddress);
 	}
 
-	public static SimpleFsChunkStorage create(Eventloop eventloop, AggregationStructure structure,
-	                                          InetSocketAddress serverAddress) {
-		return new SimpleFsChunkStorage(eventloop, structure, serverAddress);
+	public static SimpleFsChunkStorage create(Eventloop eventloop, InetSocketAddress serverAddress) {
+		return new SimpleFsChunkStorage(eventloop, serverAddress);
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public <T> StreamProducer<T> chunkReader(List<String> keys, List<String> fields,
+	public <T> StreamProducer<T> chunkReader(HasAggregationStructure structure, List<String> keys, List<String> fields,
 	                                         Class<T> recordClass, long id, DefiningClassLoader classLoader) {
 		final StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create(eventloop);
-		BufferSerializer<T> bufferSerializer = structure.createBufferSerializer(recordClass, keys, fields, classLoader);
+		BufferSerializer<T> bufferSerializer = createBufferSerializer(structure, recordClass,
+				keys, fields, classLoader);
 		StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(eventloop, bufferSerializer,
 				StreamBinarySerializer.MAX_SIZE);
 		decompressor.getOutput().streamTo(deserializer.getInput());
@@ -78,11 +77,12 @@ public class SimpleFsChunkStorage implements AggregationChunkStorage {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public <T> void chunkWriter(List<String> keys, List<String> fields, Class<T> recordClass,
+	public <T> void chunkWriter(HasAggregationStructure structure, List<String> keys, List<String> fields, Class<T> recordClass,
 	                            final long id, StreamProducer<T> producer, DefiningClassLoader classLoader,
 	                            final CompletionCallback callback) {
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
-		BufferSerializer<T> bufferSerializer = structure.createBufferSerializer(recordClass, keys, fields, classLoader);
+		BufferSerializer<T> bufferSerializer = createBufferSerializer(structure, recordClass,
+				keys, fields, classLoader);
 		StreamBinarySerializer<T> serializer = StreamBinarySerializer.create(eventloop, bufferSerializer,
 				StreamBinarySerializer.MAX_SIZE_2_BYTE, StreamBinarySerializer.MAX_SIZE, 1000, false);
 

@@ -76,7 +76,7 @@ public final class SerializerGenList implements SerializerGen, NullableOptimizat
 		if (!nullable) {
 			return sequence(writeLength, forEach, off);
 		} else {
-			return choice(isNull(value),
+			return ifThenElse(isNull(value),
 					sequence(set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, value(0))), off),
 					sequence(writeLength, forEach, off));
 		}
@@ -102,7 +102,7 @@ public final class SerializerGenList implements SerializerGen, NullableOptimizat
 		if (!nullable) {
 			return sequence(array, forEach, asList, array);
 		} else {
-			return choice(cmpEq(len, value(0)),
+			return ifThenElse(cmpEq(len, value(0)),
 					nullRef(List.class),
 					sequence(array, forEach, asList, array));
 		}

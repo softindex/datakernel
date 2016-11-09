@@ -26,6 +26,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -59,8 +61,9 @@ public final class ClassBuilder<T> {
 
 	private final Map<String, Class<?>> fields = new LinkedHashMap<>();
 	private final Map<String, Class<?>> staticFields = new LinkedHashMap<>();
-	private final Map<Method, Expression> expressionMap = new LinkedHashMap<>();
-	private final Map<Method, Expression> expressionStaticMap = new LinkedHashMap<>();
+	private final Map<String, Object> staticConstants = new LinkedHashMap<>();
+	private final Map<Method, Expression> methods = new LinkedHashMap<>();
+	private final Map<Method, Expression> staticMethods = new LinkedHashMap<>();
 
 	public static class AsmClassKey<T> {
 		private final Class<T> mainClass;
@@ -166,12 +169,12 @@ public final class ClassBuilder<T> {
 	 * @return changed AsmFunctionFactory
 	 */
 	public ClassBuilder<T> withMethod(Method method, Expression expression) {
-		expressionMap.put(method, expression);
+		methods.put(method, expression);
 		return this;
 	}
 
 	public ClassBuilder<T> withStaticMethod(Method method, Expression expression) {
-		expressionStaticMap.put(method, expression);
+		staticMethods.put(method, expression);
 		return this;
 	}
 
@@ -198,6 +201,12 @@ public final class ClassBuilder<T> {
 			types[i] = getType(argumentTypes.get(i));
 		}
 		return withStaticMethod(new Method(methodName, getType(returnClass), types), expression);
+	}
+
+	public ClassBuilder<T> withStaticField(String fieldName, Class<?> type, Object value) {
+		this.staticFields.put(fieldName, type);
+		this.staticConstants.put(fieldName, value);
+		return this;
 	}
 
 	/**
@@ -245,7 +254,7 @@ public final class ClassBuilder<T> {
 	// endregion
 	public Class<T> build() {
 		synchronized (classLoader) {
-			AsmClassKey key = new AsmClassKey(mainClass, otherClasses, fields, expressionMap, expressionStaticMap);
+			AsmClassKey key = new AsmClassKey(mainClass, otherClasses, fields, methods, staticMethods);
 			Class<?> cachedClass = classLoader.getClassByKey(key);
 
 			if (cachedClass != null) {
@@ -253,7 +262,17 @@ public final class ClassBuilder<T> {
 				return (Class<T>) cachedClass;
 			}
 
-			return defineNewClass(key);
+			Class<T> newClass = defineNewClass(key);
+			for (String staticField : staticConstants.keySet()) {
+				Object staticValue = staticConstants.get(staticField);
+				try {
+					Field field = newClass.getField(staticField);
+					field.set(null, staticValue);
+				} catch (NoSuchFieldException | IllegalAccessException e) {
+					throw new AssertionError(e);
+				}
+			}
+			return newClass;
 		}
 	}
 
@@ -308,13 +327,13 @@ public final class ClassBuilder<T> {
 			cw.visitField(ACC_PUBLIC, field, getType(fieldClass).getDescriptor(), null, null);
 		}
 
-		for (Method m : expressionStaticMap.keySet()) {
+		for (Method m : staticMethods.keySet()) {
 			try {
 				GeneratorAdapter g = new GeneratorAdapter(ACC_PUBLIC + ACC_STATIC + ACC_FINAL, m, null, null, cw);
 
-				Context ctx = new Context(classLoader, g, classType, mainClass, otherClasses, staticFields, m.getArgumentTypes(), m, expressionMap, expressionStaticMap);
+				Context ctx = new Context(classLoader, g, classType, mainClass, otherClasses, fields, staticConstants, m.getArgumentTypes(), m, methods, staticMethods);
 
-				Expression expression = expressionStaticMap.get(m);
+				Expression expression = staticMethods.get(m);
 				loadAndCast(ctx, expression, m.getReturnType());
 				g.returnValue();
 
@@ -324,13 +343,13 @@ public final class ClassBuilder<T> {
 			}
 		}
 
-		for (Method m : expressionMap.keySet()) {
+		for (Method m : methods.keySet()) {
 			try {
 				GeneratorAdapter g = new GeneratorAdapter(ACC_PUBLIC, m, null, null, cw);
 
-				Context ctx = new Context(classLoader, g, classType, mainClass, otherClasses, fields, m.getArgumentTypes(), m, expressionMap, expressionStaticMap);
+				Context ctx = new Context(classLoader, g, classType, mainClass, otherClasses, fields, staticConstants, m.getArgumentTypes(), m, methods, staticMethods);
 
-				Expression expression = expressionMap.get(m);
+				Expression expression = methods.get(m);
 				loadAndCast(ctx, expression, m.getReturnType());
 				g.returnValue();
 
@@ -339,6 +358,15 @@ public final class ClassBuilder<T> {
 				throw new RuntimeException(e);
 			}
 		}
+
+		for (String staticField : staticFields.keySet()) {
+			cw.visitField(ACC_PUBLIC + ACC_STATIC, staticField, getType(staticFields.get(staticField)).getDescriptor(), null, null);
+		}
+
+		for (String staticField : staticConstants.keySet()) {
+			cw.visitField(ACC_PUBLIC + ACC_STATIC, staticField, getType(staticConstants.get(staticField).getClass()).getDescriptor(), null, null);
+		}
+
 		if (bytecodeSaveDir != null) {
 			try (FileOutputStream fos = new FileOutputStream(bytecodeSaveDir.resolve(actualClassName + ".class").toFile())) {
 				fos.write(cw.toByteArray());
@@ -358,6 +386,22 @@ public final class ClassBuilder<T> {
 		try {
 			return build().newInstance();
 		} catch (InstantiationException | IllegalAccessException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	public T buildClassAndCreateNewInstance(Object... constructorParameters) {
+		Class[] constructorParameterTypes = new Class[constructorParameters.length];
+		for (int i = 0; i < constructorParameters.length; i++) {
+			constructorParameterTypes[i] = constructorParameters[i].getClass();
+		}
+		return buildClassAndCreateNewInstance(constructorParameterTypes, constructorParameters);
+	}
+
+	public T buildClassAndCreateNewInstance(Class[] constructorParameterTypes, Object[] constructorParameters) {
+		try {
+			return build().getConstructor(constructorParameterTypes).newInstance(constructorParameters);
+		} catch (InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
 			throw new RuntimeException(e);
 		}
 	}

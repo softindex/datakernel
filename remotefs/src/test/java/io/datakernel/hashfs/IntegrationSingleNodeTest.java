@@ -43,13 +43,13 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
 import static com.google.common.base.Charsets.UTF_8;
-import static com.google.common.collect.Lists.newArrayList;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamProducers.ofValue;
 import static io.datakernel.stream.file.StreamFileWriter.create;
 import static java.nio.file.Files.*;
+import static java.util.Arrays.asList;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 import static org.junit.Assert.*;
 
@@ -294,7 +294,7 @@ public class IntegrationSingleNodeTest {
 		final HashFsServer server = createServer(eventloop, executor);
 		final FsClient client = createClient(eventloop);
 
-		final List<String> expected = newArrayList("d.txt", "e.txt", "this/g.txt", "f.txt", "this/a.txt");
+		final List<String> expected = asList("d.txt", "e.txt", "this/g.txt", "f.txt", "this/a.txt");
 		final List<String> actual = new ArrayList<>();
 
 		server.listen();
@@ -337,13 +337,13 @@ public class IntegrationSingleNodeTest {
 	}
 
 	private HashFsClient createClient(Eventloop eventloop) {
-		return HashFsClient.create(eventloop, newArrayList(local))
+		return HashFsClient.create(eventloop, asList(local))
 				.withBaseRetryTimeout(1)
 				.withMaxRetryAttempts(1);
 	}
 
 	private HashFsServer createServer(Eventloop eventloop, ExecutorService executor) {
-		LocalReplica localReplica = LocalReplica.create(eventloop, executor, serverStorage, newArrayList(local), local);
+		LocalReplica localReplica = LocalReplica.create(eventloop, executor, serverStorage, asList(local), local);
 		localReplica.start(IgnoreCompletionCallback.create());
 		return HashFsServer.create(eventloop, localReplica)
 				.withListenAddress(local.getAddress());

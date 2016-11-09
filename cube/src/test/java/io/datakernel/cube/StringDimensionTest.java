@@ -16,10 +16,9 @@
 
 package io.datakernel.cube;
 
-import com.google.common.collect.ImmutableMap;
-import io.datakernel.aggregation_db.*;
-import io.datakernel.aggregation_db.fieldtype.FieldType;
-import io.datakernel.aggregation_db.keytype.KeyType;
+import io.datakernel.aggregation_db.AggregationChunkStorageStub;
+import io.datakernel.aggregation_db.CubeMetadataStorageStub;
+import io.datakernel.aggregation_db.fieldtype.FieldTypes;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.bean.DataItemResultString;
 import io.datakernel.cube.bean.DataItemString1;
@@ -30,49 +29,32 @@ import io.datakernel.stream.StreamProducers;
 import org.junit.Test;
 
 import java.util.List;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static io.datakernel.aggregation_db.fieldtype.FieldTypes.longSum;
-import static io.datakernel.aggregation_db.keytype.KeyTypes.intKey;
-import static io.datakernel.aggregation_db.keytype.KeyTypes.stringKey;
+import static io.datakernel.aggregation_db.AggregationPredicates.and;
+import static io.datakernel.aggregation_db.AggregationPredicates.eq;
+import static io.datakernel.aggregation_db.fieldtype.FieldTypes.ofLong;
+import static io.datakernel.aggregation_db.processor.AggregateFunctions.sum;
+import static io.datakernel.cube.Cube.AggregationScheme.id;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
 public class StringDimensionTest {
-	public static Cube newCube(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
-	                           AggregationChunkStorage storage, AggregationStructure structure) {
-		CubeMetadataStorageStub cubeMetadataStorage = new CubeMetadataStorageStub();
-		Cube cube = Cube.create(eventloop, executorService, classLoader, cubeMetadataStorage, storage, structure,
-				Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE, Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY,
-				Aggregation.DEFAULT_SORTER_BLOCK_SIZE, Cube.DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD,
-				Aggregation.DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS);
-		cube.addAggregation("detailedAggregation",
-				AggregationMetadata.create(asList("key1", "key2"), asList("metric1", "metric2", "metric3")));
-		return cube;
-	}
-
-	public static AggregationStructure cubeStructureWithStringDimension() {
-		return AggregationStructure.create(
-				ImmutableMap.<String, KeyType>builder()
-						.put("key1", stringKey())
-						.put("key2", intKey())
-						.build(),
-				ImmutableMap.<String, FieldType>builder()
-						.put("metric1", longSum())
-						.put("metric2", longSum())
-						.put("metric3", longSum())
-						.build());
-	}
 
 	@Test
 	public void testQuery() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
-		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
-		AggregationStructure structure = cubeStructureWithStringDimension();
-		Cube cube = newCube(eventloop, Executors.newCachedThreadPool(), classLoader, storage, structure);
+		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop);
+		CubeMetadataStorageStub cubeMetadataStorage = new CubeMetadataStorageStub();
+		Cube cube = Cube.create(eventloop, Executors.newCachedThreadPool(), classLoader, cubeMetadataStorage, storage)
+				.withDimension("key1", FieldTypes.ofString())
+				.withDimension("key2", FieldTypes.ofInt())
+				.withMeasure("metric1", sum(ofLong()))
+				.withMeasure("metric2", sum(ofLong()))
+				.withMeasure("metric3", sum(ofLong()))
+				.withAggregation(id("detailedAggregation").withDimensions("key1", "key2").withMeasures("metric1", "metric2", "metric3"));
 		StreamProducers.ofIterable(eventloop, asList(new DataItemString1("str1", 2, 10, 20), new DataItemString1("str2", 3, 10, 20)))
 				.streamTo(cube.consumer(DataItemString1.class, DataItemString1.DIMENSIONS, DataItemString1.METRICS, new CubeTest.MyCommitCallback(cube)));
 		StreamProducers.ofIterable(eventloop, asList(new DataItemString2("str2", 3, 10, 20), new DataItemString2("str1", 4, 10, 20)))
@@ -80,13 +62,10 @@ public class StringDimensionTest {
 		eventloop.run();
 
 		StreamConsumers.ToList<DataItemResultString> consumerToList = StreamConsumers.toList(eventloop);
-		cube.query(DataItemResultString.class,
-				CubeQuery.create()
-						.withDimensions("key1", "key2")
-						.withMeasures("metric1", "metric2", "metric3")
-						.withEq("key1", "str2")
-						.withEq("key2", 3))
-				.streamTo(consumerToList);
+		cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"),
+				and(eq("key1", "str2"), eq("key2", 3)),
+				DataItemResultString.class, classLoader
+		).streamTo(consumerToList);
 		eventloop.run();
 
 		List<DataItemResultString> actual = consumerToList.getList();

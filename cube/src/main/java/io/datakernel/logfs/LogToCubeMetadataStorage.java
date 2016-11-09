@@ -18,9 +18,9 @@ package io.datakernel.logfs;
 
 import com.google.common.collect.Multimap;
 import io.datakernel.aggregation_db.AggregationChunk;
-import io.datakernel.aggregation_db.AggregationMetadata;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.cube.Cube;
 
 import java.util.List;
 import java.util.Map;
@@ -36,20 +36,22 @@ public interface LogToCubeMetadataStorage {
 	 * @param partitions list of names of partitions
 	 * @param callback   callback for consuming result in the form of 'log name'-'{@code LogPosition}' pairs
 	 */
-	void loadLogPositions(String log, List<String> partitions, ResultCallback<Map<String, LogPosition>> callback);
+	void loadLogPositions(Cube cube, String log, List<String> partitions,
+	                      ResultCallback<Map<String, LogPosition>> callback);
 
 	/**
 	 * Commits information about processing log to metadata storage.
 	 * Updates (in storage) old log positions with the new values, contained in the list of new log positions.
 	 * Saves metadata on new chunks, that appeared as a result of processing log, to the given cube.
-	 *  @param log          name of log file
+	 * @param log          name of log file
 	 * @param oldPositions old log positions
 	 * @param newPositions new log positions
-	 * @param newChunks    metadata on new chunks
+	 * @param newChunksByAggregation    metadata on new chunks
 	 * @param callback     callback which is called once committing is complete
 	 */
-	void saveCommit(String log, Map<AggregationMetadata, String> idMap,
+	void saveCommit(Cube cube, String log,
 	                Map<String, LogPosition> oldPositions,
 	                Map<String, LogPosition> newPositions,
-	                Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks, CompletionCallback callback);
+	                Multimap<String, AggregationChunk.NewChunk> newChunksByAggregation,
+	                CompletionCallback callback);
 }

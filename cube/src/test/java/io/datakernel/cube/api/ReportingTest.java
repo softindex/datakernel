@@ -17,34 +17,32 @@
 package io.datakernel.cube.api;
 
 import com.google.common.collect.ImmutableMap;
-import io.datakernel.aggregation_db.*;
+import io.datakernel.aggregation_db.AggregationChunkStorage;
+import io.datakernel.aggregation_db.LocalFsChunkStorage;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
-import io.datakernel.aggregation_db.fieldtype.HyperLogLog;
-import io.datakernel.aggregation_db.keytype.KeyType;
-import io.datakernel.async.CompletionCallbackFuture;
+import io.datakernel.aggregation_db.processor.AggregateFunction;
+import io.datakernel.async.AssertingResultCallback;
 import io.datakernel.async.IgnoreCompletionCallback;
-import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.DefiningClassLoader;
-import io.datakernel.codegen.Expression;
-import io.datakernel.cube.*;
-import io.datakernel.dns.AsyncDnsClient;
+import io.datakernel.cube.AggregatorSplitter;
+import io.datakernel.cube.Cube;
+import io.datakernel.cube.CubeMetadataStorageSql;
+import io.datakernel.cube.CubeQuery;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
-import io.datakernel.eventloop.RunnableWithException;
 import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.AsyncHttpServer;
-import io.datakernel.http.HttpUtils;
 import io.datakernel.logfs.LogManager;
 import io.datakernel.logfs.LogToCubeMetadataStorage;
 import io.datakernel.logfs.LogToCubeRunner;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamProducers;
-import io.datakernel.util.Function;
 import org.joda.time.LocalDate;
 import org.jooq.Configuration;
 import org.jooq.SQLDialect;
-import org.junit.*;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,20 +52,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static com.google.common.collect.Maps.newHashMap;
-import static com.google.common.collect.Sets.newHashSet;
+import static com.google.common.collect.Sets.*;
+import static io.datakernel.aggregation_db.AggregationPredicates.*;
 import static io.datakernel.aggregation_db.fieldtype.FieldTypes.*;
-import static io.datakernel.aggregation_db.keytype.KeyTypes.dateKey;
-import static io.datakernel.aggregation_db.keytype.KeyTypes.intKey;
-import static io.datakernel.codegen.Expressions.call;
-import static io.datakernel.codegen.Expressions.cast;
+import static io.datakernel.aggregation_db.processor.AggregateFunctions.*;
+import static io.datakernel.cube.ComputedMeasures.*;
+import static io.datakernel.cube.Cube.AggregationScheme.id;
+import static io.datakernel.cube.CubeQuery.Ordering.asc;
+import static io.datakernel.cube.CubeQuery.Ordering.desc;
 import static io.datakernel.cube.CubeTestUtils.*;
-import static io.datakernel.cube.api.ReportingDSL.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
@@ -75,12 +72,11 @@ import static java.util.Collections.singletonList;
 import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-@Ignore("Requires DB access to run")
 public class ReportingTest {
 	private static final Logger logger = LoggerFactory.getLogger(ReportingTest.class);
+	public static final double DELTA = 1E-3;
 
 	private Eventloop eventloop;
-	private Eventloop clientEventloop;
 	private AsyncHttpServer server;
 	private AsyncHttpClient httpClient;
 	private CubeHttpClient cubeHttpClient;
@@ -97,37 +93,22 @@ public class ReportingTest {
 	private static final int SERVER_PORT = 50001;
 	private static final int TIMEOUT = 1000;
 
-	private static final Map<String, KeyType> DIMENSIONS = ImmutableMap.<String, KeyType>builder()
-			.put("date", dateKey(LocalDate.now()))
-			.put("advertiser", intKey())
-			.put("campaign", intKey())
-			.put("banner", intKey())
+	private static final Map<String, FieldType> DIMENSIONS = ImmutableMap.<String, FieldType>builder()
+			.put("date", ofLocalDate(LocalDate.parse("2000-01-01")))
+			.put("advertiser", ofInt())
+			.put("campaign", ofInt())
+			.put("banner", ofInt())
 			.build();
 
-	private static final Map<String, FieldType> MEASURES = ImmutableMap.<String, FieldType>builder()
-			.put("impressions", longSum())
-			.put("clicks", longSum())
-			.put("conversions", longSum())
-			.put("revenue", doubleSum())
-			.put("eventCount", intCount())
-			.put("minRevenue", doubleMin())
-			.put("maxRevenue", doubleMax())
+	private static final Map<String, AggregateFunction> MEASURES = ImmutableMap.<String, AggregateFunction>builder()
+			.put("impressions", sum(ofLong()))
+			.put("clicks", sum(ofLong()))
+			.put("conversions", sum(ofLong()))
+			.put("revenue", sum(ofDouble()))
+			.put("eventCount", count(ofInt()))
+			.put("minRevenue", min(ofDouble()))
+			.put("maxRevenue", max(ofDouble()))
 			.put("uniqueUserIdsCount", hyperLogLog(1024))
-			.build();
-
-	private static final Map<String, ReportingDSLExpression> COMPUTED_MEASURES = ImmutableMap.<String, ReportingDSLExpression>builder()
-			.put("ctr", percent(divide("clicks", "impressions")))
-			.put("uniqueUserPercent", percent(divide(preprocess("uniqueUserIdsCount", new Function<Expression, Expression>() {
-				@Override
-				public Expression apply(Expression input) {
-					return call(cast(input, HyperLogLog.class), "estimate");
-				}
-			}), "eventCount")))
-			.build();
-
-	private static final Map<String, String> CHILD_PARENT_RELATIONSHIPS = ImmutableMap.<String, String>builder()
-			.put("campaign", "advertiser")
-			.put("banner", "campaign")
 			.build();
 
 	private static final Map<String, String> OUTPUT_TO_INPUT_FIELDS;
@@ -140,54 +121,29 @@ public class ReportingTest {
 		OUTPUT_TO_INPUT_FIELDS.put("uniqueUserIdsCount", "userId");
 	}
 
-	private static AggregationStructure getStructure() {
-		return AggregationStructure.create(DIMENSIONS, MEASURES);
-	}
-
-	private static Cube getCube(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
-	                            CubeMetadataStorage cubeMetadataStorage,
-	                            AggregationChunkStorage aggregationChunkStorage,
-	                            AggregationStructure cubeStructure) {
-		Cube cube = Cube.create(eventloop, executorService, classLoader, cubeMetadataStorage, aggregationChunkStorage,
-				cubeStructure, Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE, Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY,
-				Aggregation.DEFAULT_SORTER_BLOCK_SIZE, Cube.DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD,
-				Aggregation.DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS);
-		Set<String> measures = newHashSet(MEASURES.keySet());
-		measures.remove("revenue");
-		cube.addAggregation("detailed", AggregationMetadata.create(newArrayList(DIMENSIONS.keySet()),
-				newArrayList(measures)));
-		cube.setChildParentRelationships(CHILD_PARENT_RELATIONSHIPS);
-		return cube;
-	}
-
-	private static ReportingConfiguration getReportingConfiguration() {
-		return ReportingConfiguration.create()
-				.addResolvedAttributeForKey("advertiserName", singletonList("advertiser"), String.class, new AdvertiserResolver())
-				.setComputedMeasures(COMPUTED_MEASURES);
-	}
-
 	private static class AdvertiserResolver implements AttributeResolver {
 		@Override
-		public Map<PrimaryKey, Object[]> resolve(Set<PrimaryKey> keys, List<String> attributes) {
-			Map<PrimaryKey, Object[]> result = newHashMap();
+		public Class<?>[] getKeyTypes() {
+			return new Class[]{Integer.class};
+		}
 
-			for (PrimaryKey key : keys) {
-				String s = key.get(0).toString();
+		@Override
+		public Class<?>[] getAttributeTypes() {
+			return new Class[]{String.class};
+		}
 
-				switch (s) {
-					case "1":
-						result.put(key, new Object[]{"first"});
-						break;
-					case "2":
-						result.put(key, new Object[]{"second"});
-						break;
-					case "3":
-						result.put(key, new Object[]{"third"});
-						break;
-				}
+		@Override
+		public Object[] resolveAttributes(Object[] key) {
+			switch ((Integer) key[0]) {
+				case 1:
+					return new Object[]{"first"};
+				case 2:
+					return new Object[]{"second"};
+				case 3:
+					return new Object[]{"third"};
+				default:
+					return null;
 			}
-
-			return result;
 		}
 	}
 
@@ -276,25 +232,37 @@ public class ReportingTest {
 		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		Path aggregationsDir = temporaryFolder.newFolder().toPath();
 		Path logsDir = temporaryFolder.newFolder().toPath();
-		AggregationStructure structure = getStructure();
 
-		ReportingConfiguration reportingConfiguration = getReportingConfiguration();
 		Configuration jooqConfiguration = getJooqConfiguration(DATABASE_PROPERTIES_PATH, DATABASE_DIALECT);
 		AggregationChunkStorage aggregationChunkStorage =
-				getAggregationChunkStorage(eventloop, executor, structure, aggregationsDir);
+				LocalFsChunkStorage.create(eventloop, executor, aggregationsDir);
 		CubeMetadataStorageSql cubeMetadataStorageSql =
 				CubeMetadataStorageSql.create(eventloop, executor, jooqConfiguration, "processId");
+
+		Cube cube = Cube.create(eventloop, executor, classLoader, cubeMetadataStorageSql, aggregationChunkStorage)
+				.withDimensions(DIMENSIONS)
+				.withMeasures(MEASURES)
+				.withRelation("campaign", "advertiser")
+				.withRelation("banner", "campaign")
+				.withAttribute("advertiser.name", new AdvertiserResolver())
+				.withComputedMeasure("ctr", percent(measure("clicks"), measure("impressions")))
+				.withComputedMeasure("uniqueUserPercent", percent(div(measure("uniqueUserIdsCount"), measure("eventCount"))))
+				.withAggregation(id("detailed")
+						.withDimensions(DIMENSIONS.keySet())
+						.withMeasures(difference(MEASURES.keySet(), singleton("revenue"))));
+
 		LogToCubeMetadataStorage logToCubeMetadataStorage =
 				getLogToCubeMetadataStorage(eventloop, executor, jooqConfiguration, cubeMetadataStorageSql);
-		Cube cube = getCube(eventloop, executor, classLoader, cubeMetadataStorageSql, aggregationChunkStorage, structure);
 		LogManager<LogItem> logManager = getLogManager(LogItem.class, eventloop, executor, classLoader, logsDir);
 		LogToCubeRunner<LogItem> logToCubeRunner = LogToCubeRunner.create(eventloop, cube, logManager,
 				LogItemSplitter.factory(), LOG_NAME, LOG_PARTITIONS, logToCubeMetadataStorage);
-		cube.setReportingConfiguration(reportingConfiguration);
 
-		List<LogItem> logItems = asList(new LogItem(0, 1, 1, 1, 10, 1, 1, 0.14, 1),
-				new LogItem(1, 1, 1, 1, 20, 3, 1, 0.12, 2), new LogItem(2, 1, 1, 1, 15, 2, 0, 0.22, 1),
-				new LogItem(3, 1, 1, 1, 30, 5, 2, 0.30, 3), new LogItem(1, 2, 2, 2, 100, 5, 0, 0.36, 10),
+		List<LogItem> logItems = asList(
+				new LogItem(0, 1, 1, 1, 10, 1, 1, 0.14, 1),
+				new LogItem(1, 1, 1, 1, 20, 3, 1, 0.12, 2),
+				new LogItem(2, 1, 1, 1, 15, 2, 0, 0.22, 1),
+				new LogItem(3, 1, 1, 1, 30, 5, 2, 0.30, 3),
+				new LogItem(1, 2, 2, 2, 100, 5, 0, 0.36, 10),
 				new LogItem(1, 3, 3, 3, 80, 5, 0, 0.60, 1));
 		StreamProducers.OfIterator<LogItem> producerOfRandomLogItems =
 				new StreamProducers.OfIterator<>(eventloop, logItems.iterator());
@@ -307,283 +275,215 @@ public class ReportingTest {
 		cube.loadChunks(IgnoreCompletionCallback.create());
 		eventloop.run();
 
-		server = AsyncHttpServer.create(eventloop, ReportingServiceServlet.createRootServlet(eventloop, cube, 100))
-				.withListenPort(SERVER_PORT);
-		final CompletionCallbackFuture serverStartFuture = CompletionCallbackFuture.create();
-		eventloop.execute(new RunnableWithException() {
-			@Override
-			public void runWithException() throws Exception {
-				server.listen();
-				serverStartFuture.setComplete();
-			}
-		});
-		new Thread(eventloop).start();
-		serverStartFuture.await();
+		server = AsyncHttpServer.create(eventloop, ReportingServiceServlet.createRootServlet(eventloop, cube))
+				.withListenPort(SERVER_PORT)
+				.withAcceptOnce();
+		server.listen();
 
-		clientEventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
-		AsyncDnsClient dnsClient = AsyncDnsClient.create(clientEventloop)
-				.withTimeout(TIMEOUT)
-				.withDnsServerAddress(HttpUtils.inetAddress("8.8.8.8"));
-		httpClient = AsyncHttpClient.create(clientEventloop).withDnsClient(dnsClient);
-		cubeHttpClient = CubeHttpClient.create("http://127.0.0.1:" + SERVER_PORT, httpClient, TIMEOUT, structure, reportingConfiguration);
+		httpClient = AsyncHttpClient.create(eventloop)
+				.withNoKeepAlive();
+		cubeHttpClient = CubeHttpClient.create(eventloop, "http://127.0.0.1:" + SERVER_PORT, httpClient, TIMEOUT)
+				.withDimension("date", LocalDate.class)
+				.withDimension("advertiser", int.class)
+				.withDimension("campaign", int.class)
+				.withDimension("banner", int.class)
+				.withAttribute("advertiser", "name", String.class)
+				.withMeasure("impressions", long.class)
+				.withMeasure("clicks", long.class)
+				.withMeasure("conversions", long.class)
+				.withMeasure("revenue", double.class)
+				.withMeasure("eventCount", int.class)
+				.withMeasure("minRevenue", double.class)
+				.withMeasure("maxRevenue", double.class)
+				.withMeasure("ctr", double.class)
+				.withMeasure("uniqueUserIdsCount", int.class)
+				.withMeasure("uniqueUserPercent", double.class);
 	}
 
 	@Test
 	public void testQuery() throws Exception {
-		ReportingQuery query = ReportingQuery.create()
-				.withDimensions("date", "campaign")
+		CubeQuery query = CubeQuery.create()
+				.withAttributes("date", "campaign")
 				.withMeasures("impressions", "clicks", "ctr", "revenue")
-				.withFilters(new AggregationQuery.Predicates()
-						.eq("banner", 1)
-						.between("date", 1, 2))
-				.withSort(CubeQuery.Ordering.asc("campaign"), CubeQuery.Ordering.asc("ctr"),
-						CubeQuery.Ordering.desc("banner"))
-				.withMetadataFields("dimensions", "measures", "attributes", "drillDowns", "sortedBy");
+				.withPredicate(and(
+						eq("banner", 1),
+						between("date", LocalDate.parse("2000-01-02"), LocalDate.parse("2000-01-03"))))
+				.withOrderings(asc("campaign"), asc("ctr"), desc("banner"));
 
-		final ReportingQueryResult[] queryResult = new ReportingQueryResult[1];
-		startBlocking(httpClient);
-		cubeHttpClient.query(query, new ResultCallback<ReportingQueryResult>() {
+		final QueryResult[] queryResult = new QueryResult[1];
+		cubeHttpClient.query(query, new AssertingResultCallback<QueryResult>() {
 			@Override
-			protected void onResult(ReportingQueryResult result) {
+			protected void onResult(QueryResult result) {
 				queryResult[0] = result;
-				stopBlocking(httpClient);
-			}
-
-			@Override
-			protected void onException(Exception exception) {
-				logger.error("Query failed", exception);
 			}
 		});
 
-		clientEventloop.run();
+		eventloop.run();
 
-		List<Map<String, Object>> records = queryResult[0].getRecords();
+		List<Record> records = queryResult[0].getRecords();
 		assertEquals(2, records.size());
-		assertEquals(6, records.get(0).size());
-		assertEquals(2, ((Number) records.get(0).get("date")).intValue());
-		assertEquals(1, ((Number) records.get(0).get("advertiser")).intValue());
-		assertEquals(2, ((Number) records.get(0).get("clicks")).intValue());
-		assertEquals(15, ((Number) records.get(0).get("impressions")).intValue());
-		assertEquals(2.0 / 15.0 * 100.0, ((Number) records.get(0).get("ctr")).doubleValue(), 1E-3);
-		assertEquals(1, ((Number) records.get(1).get("date")).intValue());
-		assertEquals(1, ((Number) records.get(1).get("advertiser")).intValue());
-		assertEquals(3, ((Number) records.get(1).get("clicks")).intValue());
-		assertEquals(20, ((Number) records.get(1).get("impressions")).intValue());
-		assertEquals(3.0 / 20.0 * 100.0, ((Number) records.get(1).get("ctr")).doubleValue(), 1E-3);
-		assertEquals(2, queryResult[0].getCount());
+		assertEquals(newHashSet("date", "advertiser", "campaign"), newHashSet(queryResult[0].getAttributes()));
 		assertEquals(newHashSet("impressions", "clicks", "ctr"), newHashSet(queryResult[0].getMeasures()));
-		assertEquals(newHashSet("date", "advertiser", "campaign"), newHashSet(queryResult[0].getDimensions()));
+		assertEquals(LocalDate.parse("2000-01-03"), records.get(0).get("date"));
+		assertEquals(1, (int) records.get(0).get("advertiser"));
+		assertEquals(2, (long) records.get(0).get("clicks"));
+		assertEquals(15, (long) records.get(0).get("impressions"));
+		assertEquals(2.0 / 15.0 * 100.0, (double) records.get(0).get("ctr"), DELTA);
+		assertEquals(LocalDate.parse("2000-01-02"), records.get(1).get("date"));
+		assertEquals(1, (int) records.get(1).get("advertiser"));
+		assertEquals(3, (long) records.get(1).get("clicks"));
+		assertEquals(20, (long) records.get(1).get("impressions"));
+		assertEquals(3.0 / 20.0 * 100.0, (double) records.get(1).get("ctr"), DELTA);
+		assertEquals(2, queryResult[0].getTotalCount());
+		Record totals = queryResult[0].getTotals();
+		assertEquals(35, (long) totals.get("impressions"));
+		assertEquals(5, (long) totals.get("clicks"));
+		assertEquals(5.0 / 35.0 * 100.0, (double) totals.get("ctr"), DELTA);
 		assertEquals(newHashSet("campaign", "ctr"), newHashSet(queryResult[0].getSortedBy()));
-		assertTrue(queryResult[0].getDrillDowns().isEmpty());
-		assertTrue(queryResult[0].getAttributes().isEmpty());
-		Map<String, Object> totals = queryResult[0].getTotals();
-		assertEquals(35, ((Number) totals.get("impressions")).intValue());
-		assertEquals(5, ((Number) totals.get("clicks")).intValue());
-		assertEquals(5.0 / 35.0 * 100.0, ((Number) totals.get("ctr")).doubleValue(), 1E-3);
+		assertTrue(queryResult[0].getDrilldowns().isEmpty());
+//		assertTrue(queryResult[0].getAttributes().isEmpty());
 	}
 
 	@Test
 	public void testPaginationAndDrillDowns() throws Exception {
-		ReportingQuery query = ReportingQuery.create()
-				.withDimensions("date")
-				.withMeasures("impressions", "revenue")
+		CubeQuery query = CubeQuery.create()
+				.withAttributes("date")
+				.withMeasures("impressions", "revenue", "ctr")
 				.withLimit(1)
-				.withOffset(2)
-				.withMetadataFields("drillDowns");
+				.withOffset(2);
 
-		final ReportingQueryResult[] queryResult = new ReportingQueryResult[1];
-		startBlocking(httpClient);
-		cubeHttpClient.query(query, new ResultCallback<ReportingQueryResult>() {
+		final QueryResult[] queryResult = new QueryResult[1];
+		cubeHttpClient.query(query, new AssertingResultCallback<QueryResult>() {
 			@Override
-			protected void onResult(ReportingQueryResult result) {
+			protected void onResult(QueryResult result) {
 				queryResult[0] = result;
-				stopBlocking(httpClient);
-			}
-
-			@Override
-			protected void onException(Exception exception) {
-				logger.error("Query failed", exception);
 			}
 		});
 
-		clientEventloop.run();
+		eventloop.run();
 
-		List<Map<String, Object>> records = queryResult[0].getRecords();
+		Set<QueryResult.Drilldown> drilldowns = newLinkedHashSet();
+		drilldowns.add(QueryResult.Drilldown.create(asList("advertiser"), singleton("impressions")));
+		drilldowns.add(QueryResult.Drilldown.create(asList("advertiser", "campaign"), singleton("impressions")));
+		drilldowns.add(QueryResult.Drilldown.create(asList("advertiser", "campaign", "banner"), singleton("impressions")));
+		assertEquals(drilldowns, newHashSet(queryResult[0].getDrilldowns()));
+
+		List<Record> records = queryResult[0].getRecords();
 		assertEquals(1, records.size());
-		assertEquals(2, records.get(0).size());
-		assertEquals(2, ((Number) records.get(0).get("date")).intValue());
-		assertEquals(15, ((Number) records.get(0).get("impressions")).intValue());
-		assertEquals(4, queryResult[0].getCount());
+		assertEquals(3, records.get(0).getScheme().getFields().size());
+		assertEquals(LocalDate.parse("2000-01-03"), records.get(0).get("date"));
+		assertEquals(15, (long) records.get(0).get("impressions"));
+		assertEquals(2.0 / 15.0 * 100.0, (double) records.get(0).get("ctr"), DELTA);
+		assertEquals(4, queryResult[0].getTotalCount());
 
-		Set<DrillDown> drillDowns = newHashSet();
-		drillDowns.add(DrillDown.create(singletonList("advertiser"), singleton("impressions")));
-		drillDowns.add(DrillDown.create(asList("advertiser", "campaign"), singleton("impressions")));
-		drillDowns.add(DrillDown.create(asList("advertiser", "campaign", "banner"), singleton("impressions")));
-		assertEquals(drillDowns, queryResult[0].getDrillDowns());
 	}
 
 	@Test
 	public void testFilterAttributes() throws Exception {
-		ReportingQuery query = ReportingQuery.create()
-				.withDimensions("date")
-				.withAttributes("advertiserName")
+		CubeQuery query = CubeQuery.create()
+				.withAttributes("date", "advertiser.name")
 				.withMeasures("impressions")
-				.withLimit(0)
-				.withFilters(new AggregationQuery.Predicates().eq("advertiser", 1))
-				.withMetadataFields("filterAttributes");
+				.withPredicate(eq("advertiser", 1))
+				.withOrderings(asc("advertiser.name"))
+				.withHaving(or(eq("advertiser.name", "first"), eq("impressions", 10)))
+				.withLimit(3);
 
-		final ReportingQueryResult[] queryResult = new ReportingQueryResult[1];
-		startBlocking(httpClient);
-		cubeHttpClient.query(query, new ResultCallback<ReportingQueryResult>() {
+		final QueryResult[] queryResult = new QueryResult[1];
+		cubeHttpClient.query(query, new AssertingResultCallback<QueryResult>() {
 			@Override
-			protected void onResult(ReportingQueryResult result) {
+			protected void onResult(QueryResult result) {
 				queryResult[0] = result;
-				stopBlocking(httpClient);
-			}
-
-			@Override
-			protected void onException(Exception exception) {
-				logger.error("Query failed", exception);
 			}
 		});
 
-		clientEventloop.run();
+		eventloop.run();
 
 		Map<String, Object> filterAttributes = queryResult[0].getFilterAttributes();
 		assertEquals(1, filterAttributes.size());
-		assertEquals("first", filterAttributes.get("advertiserName"));
+		assertEquals("first", filterAttributes.get("advertiser.name"));
 	}
 
 	@Test
 	public void testSearchAndFieldsParameter() throws Exception {
-		ReportingQuery query = ReportingQuery.create()
-				.withAttributes("advertiserName")
+		CubeQuery query = CubeQuery.create()
+				.withAttributes("advertiser.name")
 				.withMeasures("clicks")
-				.withFields("advertiser", "advertiserName")
-				.withSearch("s")
-				.withMetadataFields("measures");
+				.withHaving(regexp("advertiser.name", ".*s.*"));
 
-		final ReportingQueryResult[] queryResult = new ReportingQueryResult[1];
-		startBlocking(httpClient);
-		cubeHttpClient.query(query, new ResultCallback<ReportingQueryResult>() {
+		final QueryResult[] queryResult = new QueryResult[1];
+		cubeHttpClient.query(query, new AssertingResultCallback<QueryResult>() {
 			@Override
-			protected void onResult(ReportingQueryResult result) {
+			protected void onResult(QueryResult result) {
 				queryResult[0] = result;
-				stopBlocking(httpClient);
-			}
-
-			@Override
-			protected void onException(Exception exception) {
-				logger.error("Query failed", exception);
 			}
 		});
 
-		clientEventloop.run();
+		eventloop.run();
 
-		List<Map<String, Object>> records = queryResult[0].getRecords();
+		List<Record> records = queryResult[0].getRecords();
 		assertEquals(2, records.size());
-		assertEquals(2, records.get(0).size());
-		assertEquals(1, ((Number) records.get(0).get("advertiser")).intValue());
-		assertEquals("first", records.get(0).get("advertiserName"));
-		assertEquals(2, ((Number) records.get(1).get("advertiser")).intValue());
-		assertEquals("second", records.get(1).get("advertiserName"));
-		assertEquals(singletonList("clicks"), queryResult[0].getMeasures());
+		assertEquals(asList("advertiser", "advertiser.name", "clicks"), records.get(0).getScheme().getFields());
+		assertEquals(asList("advertiser", "advertiser.name"), queryResult[0].getAttributes());
+		assertEquals(asList("clicks"), queryResult[0].getMeasures());
+		assertEquals(1, (int) records.get(0).get("advertiser"));
+		assertEquals("first", records.get(0).get("advertiser.name"));
+		assertEquals(2, (int) records.get(1).get("advertiser"));
+		assertEquals("second", records.get(1).get("advertiser.name"));
 	}
 
 	@Test
 	public void testCustomMeasures() throws Exception {
-		ReportingQuery query = ReportingQuery.create()
-				.withDimensions("advertiser")
+		CubeQuery query = CubeQuery.create()
+				.withAttributes("advertiser")
 				.withMeasures("eventCount", "minRevenue", "maxRevenue", "uniqueUserIdsCount", "uniqueUserPercent")
-				.withSort(CubeQuery.Ordering.asc("uniqueUserIdsCount"), CubeQuery.Ordering.asc("advertiser"));
+				.withOrderings(asc("uniqueUserIdsCount"), asc("advertiser"));
 
-		final ReportingQueryResult[] queryResult = new ReportingQueryResult[1];
-		startBlocking(httpClient);
-		cubeHttpClient.query(query, new ResultCallback<ReportingQueryResult>() {
+		final QueryResult[] queryResult = new QueryResult[1];
+		cubeHttpClient.query(query, new AssertingResultCallback<QueryResult>() {
 			@Override
-			protected void onResult(ReportingQueryResult result) {
+			protected void onResult(QueryResult result) {
 				queryResult[0] = result;
-				stopBlocking(httpClient);
-			}
-
-			@Override
-			protected void onException(Exception exception) {
-				logger.error("Query failed", exception);
 			}
 		});
 
-		clientEventloop.run();
+		eventloop.run();
 
-		List<Map<String, Object>> records = queryResult[0].getRecords();
+		List<Record> records = queryResult[0].getRecords();
 		assertEquals(newHashSet("eventCount", "minRevenue", "maxRevenue", "uniqueUserIdsCount", "uniqueUserPercent"),
 				newHashSet(queryResult[0].getMeasures()));
 		assertEquals(asList("uniqueUserIdsCount", "advertiser"), queryResult[0].getSortedBy());
 		assertEquals(3, records.size());
 
-		Map<String, Object> r1 = records.get(0);
-		assertEquals(2, ((Number) r1.get("advertiser")).intValue());
-		assertEquals(0.36, ((Number) r1.get("minRevenue")).doubleValue(), 1E-3);
-		assertEquals(0.36, ((Number) r1.get("maxRevenue")).doubleValue(), 1E-3);
-		assertEquals(1, ((Number) r1.get("eventCount")).intValue());
-		assertEquals(1, ((Number) r1.get("uniqueUserIdsCount")).intValue());
-		assertEquals(100, ((Number) r1.get("uniqueUserPercent")).intValue());
+		Record r1 = records.get(0);
+		assertEquals(2, (int) r1.get("advertiser"));
+		assertEquals(0.36, (double) r1.get("minRevenue"), DELTA);
+		assertEquals(0.36, (double) r1.get("maxRevenue"), DELTA);
+		assertEquals(1, (int) r1.get("eventCount"));
+		assertEquals(1, (int) r1.get("uniqueUserIdsCount"));
+		assertEquals(100, (double) r1.get("uniqueUserPercent"), DELTA);
 
-		Map<String, Object> r2 = records.get(1);
-		assertEquals(3, ((Number) r2.get("advertiser")).intValue());
-		assertEquals(0.60, ((Number) r2.get("minRevenue")).doubleValue(), 1E-3);
-		assertEquals(0.60, ((Number) r2.get("maxRevenue")).doubleValue(), 1E-3);
-		assertEquals(1, ((Number) r2.get("eventCount")).intValue());
-		assertEquals(1, ((Number) r2.get("uniqueUserIdsCount")).intValue());
-		assertEquals(100, ((Number) r2.get("uniqueUserPercent")).intValue());
+		Record r2 = records.get(1);
+		assertEquals(3, (int) r2.get("advertiser"));
+		assertEquals(0.60, (double) r2.get("minRevenue"), DELTA);
+		assertEquals(0.60, (double) r2.get("maxRevenue"), DELTA);
+		assertEquals(1, (int) r2.get("eventCount"));
+		assertEquals(1, (int) r2.get("uniqueUserIdsCount"));
+		assertEquals(100, (double) r2.get("uniqueUserPercent"), DELTA);
 
-		Map<String, Object> r3 = records.get(2);
-		assertEquals(1, ((Number) r3.get("advertiser")).intValue());
-		assertEquals(0.12, ((Number) r3.get("minRevenue")).doubleValue(), 1E-3);
-		assertEquals(0.30, ((Number) r3.get("maxRevenue")).doubleValue(), 1E-3);
-		assertEquals(4, ((Number) r3.get("eventCount")).intValue());
-		assertEquals(3, ((Number) r3.get("uniqueUserIdsCount")).intValue());
-		assertEquals(3.0 / 4.0 * 100.0, ((Number) r3.get("uniqueUserPercent")).doubleValue());
+		Record r3 = records.get(2);
+		assertEquals(1, (int) r3.get("advertiser"));
+		assertEquals(0.12, (double) r3.get("minRevenue"), DELTA);
+		assertEquals(0.30, (double) r3.get("maxRevenue"), DELTA);
+		assertEquals(4, (int) r3.get("eventCount"));
+		assertEquals(3, (int) r3.get("uniqueUserIdsCount"));
+		assertEquals(3.0 / 4.0 * 100.0, (double) r3.get("uniqueUserPercent"), DELTA);
 
-		Map<String, Object> totals = queryResult[0].getTotals();
-		assertEquals(0.12, ((Number) totals.get("minRevenue")).doubleValue(), 1E-3);
-		assertEquals(0.60, ((Number) totals.get("maxRevenue")).doubleValue(), 1E-3);
-		assertEquals(6, ((Number) totals.get("eventCount")).intValue());
-		assertEquals(4, ((Number) totals.get("uniqueUserIdsCount")).intValue());
-		assertEquals(4.0 / 6.0 * 100.0, ((Number) totals.get("uniqueUserPercent")).doubleValue(), 1E-3);
+		Record totals = queryResult[0].getTotals();
+		assertEquals(0.12, (double) totals.get("minRevenue"), DELTA);
+		assertEquals(0.60, (double) totals.get("maxRevenue"), DELTA);
+		assertEquals(6, (int) totals.get("eventCount"));
+		assertEquals(4, (int) totals.get("uniqueUserIdsCount"));
+		assertEquals(4.0 / 6.0 * 100.0, (double) totals.get("uniqueUserPercent"), DELTA);
 	}
 
-	@After
-	public void tearDown() throws Exception {
-		final CompletionCallbackFuture serverStopFuture = CompletionCallbackFuture.create();
-		eventloop.execute(new RunnableWithException() {
-			@Override
-			public void runWithException() throws Exception {
-				server.close(IgnoreCompletionCallback.create());
-				serverStopFuture.setComplete();
-			}
-		});
-		serverStopFuture.await();
-	}
-
-	private static void startBlocking(EventloopService service) throws ExecutionException, InterruptedException {
-		CompletionCallbackFuture future = CompletionCallbackFuture.create();
-		service.start(future);
-
-		try {
-			future.await();
-		} catch (Exception e) {
-			logger.error("Service {} start exception", e);
-		}
-	}
-
-	private static void stopBlocking(EventloopService service) {
-		CompletionCallbackFuture future = CompletionCallbackFuture.create();
-		service.stop(future);
-
-		try {
-			future.await();
-		} catch (Exception e) {
-			logger.error("Service {} stop exception", e);
-		}
-	}
 }

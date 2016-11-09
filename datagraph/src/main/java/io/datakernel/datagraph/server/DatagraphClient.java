@@ -17,6 +17,7 @@
 package io.datakernel.datagraph.server;
 
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.ConnectCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.node.Node;
@@ -25,7 +26,6 @@ import io.datakernel.datagraph.server.command.DatagraphCommandDownload;
 import io.datakernel.datagraph.server.command.DatagraphCommandExecute;
 import io.datakernel.datagraph.server.command.DatagraphResponse;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
-import io.datakernel.async.ConnectCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.serializer.BufferSerializer;

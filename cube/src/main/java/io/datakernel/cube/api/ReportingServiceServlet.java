@@ -16,65 +16,61 @@
 
 package io.datakernel.cube.api;
 
+import com.google.common.base.Charsets;
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import io.datakernel.aggregation_db.AggregationQuery;
+import com.google.gson.reflect.TypeToken;
+import io.datakernel.aggregation_db.AggregationPredicate;
 import io.datakernel.aggregation_db.api.QueryException;
-import io.datakernel.aggregation_db.gson.QueryPredicatesGsonSerializer;
+import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.Cube;
 import io.datakernel.cube.CubeQuery;
+import io.datakernel.cube.ICube;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
-import io.datakernel.http.AsyncServlet;
-import io.datakernel.http.HttpRequest;
-import io.datakernel.http.HttpResponse;
-import io.datakernel.http.MiddlewareServlet;
-import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.http.*;
 import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.lang.reflect.Type;
+import java.util.List;
 
+import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
+import static io.datakernel.cube.api.CommonUtils.createGsonBuilder;
+import static io.datakernel.cube.api.HttpJsonConstants.*;
 import static io.datakernel.http.HttpMethod.GET;
 
 public final class ReportingServiceServlet implements AsyncServlet {
 	protected final Logger logger = LoggerFactory.getLogger(ReportingServiceServlet.class);
 
-	private final LRUCache<ClassLoaderCacheKey, DefiningClassLoader> classLoaderCache;
+	private static final Type LIST_OF_STRINGS = new TypeToken<List<String>>() {}.getType();
+	private static final Type ORDERINGS = new TypeToken<List<CubeQuery.Ordering>>() {}.getType();
 
-	private final HttpRequestProcessor httpRequestProcessor;
-	private final RequestExecutor requestExecutor;
-	private final HttpResultProcessor httpResultProcessor;
+	private final Eventloop eventloop;
 
-	private ReportingServiceServlet(Eventloop eventloop, Cube cube,
-	                                LRUCache<ClassLoaderCacheKey, DefiningClassLoader> classLoaderCache) {
-		super();
-		Gson gson = new GsonBuilder()
-				.registerTypeAdapter(AggregationQuery.Predicates.class, QueryPredicatesGsonSerializer.create(cube.getStructure()))
-				.registerTypeAdapter(CubeQuery.Ordering.class, QueryOrderingGsonSerializer.create())
-				.create();
-		this.classLoaderCache = classLoaderCache;
-		this.httpRequestProcessor = HttpRequestProcessor.create(gson);
-		this.requestExecutor = RequestExecutor.create(cube, cube.getStructure(), cube.getReportingConfiguration(),
-				eventloop, Resolver.create(cube.getResolvers()), classLoaderCache);
-		this.httpResultProcessor = HttpResultProcessor.create(cube.getStructure(), cube.getReportingConfiguration());
+	private final ICube cube;
+	private final Gson gson;
+
+	private ReportingServiceServlet(Eventloop eventloop, ICube cube, Gson gson) {
+		this.eventloop = eventloop;
+		this.gson = gson;
+		this.cube = cube;
 	}
 
-	public static ReportingServiceServlet create(Eventloop eventloop, Cube cube,
-	                                             LRUCache<ClassLoaderCacheKey, DefiningClassLoader> classLoaderCache) {
-		return new ReportingServiceServlet(eventloop, cube, classLoaderCache);
+	public static ReportingServiceServlet create(Eventloop eventloop, ICube cube) {
+		Gson gson = createGsonBuilder(cube.getAttributeTypes(), cube.getMeasureTypes()).create();
+		return new ReportingServiceServlet(eventloop, cube, gson);
 	}
 
-	public static MiddlewareServlet createRootServlet(Eventloop eventloop, Cube cube, int classLoaderCacheSize) {
-		LRUCache<ClassLoaderCacheKey, DefiningClassLoader> classLoaderCache = LRUCache.create(classLoaderCacheSize);
-		ReportingServiceServlet reportingServiceServlet = create(eventloop, cube, classLoaderCache);
-		return MiddlewareServlet.create()
-				.with(GET, "/", reportingServiceServlet)
-				.with(GET, "/consolidation-debug", ConsolidationDebugServlet.create(cube));
+	public static MiddlewareServlet createRootServlet(Eventloop eventloop, ICube cube) {
+		MiddlewareServlet middlewareServlet = MiddlewareServlet.create()
+				.with(GET, "/", create(eventloop, cube));
+		if (cube instanceof Cube) {
+			middlewareServlet = middlewareServlet
+					.with(GET, "/consolidation-debug", ConsolidationDebugServlet.create((Cube) cube));
+		}
+		return middlewareServlet;
 	}
 
 	@Override
@@ -82,21 +78,16 @@ public final class ReportingServiceServlet implements AsyncServlet {
 		logger.info("Received request: {}", httpRequest);
 		try {
 			final Stopwatch totalTimeStopwatch = Stopwatch.createStarted();
-			final ReportingQuery reportingQuery = httpRequestProcessor.apply(httpRequest);
-			requestExecutor.execute(reportingQuery, new ResultCallback<QueryResult>() {
+			final CubeQuery cubeQuery = parseQuery(httpRequest);
+			cube.query(cubeQuery, new ForwardingResultCallback<QueryResult>(callback) {
 				@Override
 				protected void onResult(QueryResult result) {
 					Stopwatch resultProcessingStopwatch = Stopwatch.createStarted();
-					HttpResponse httpResponse = httpResultProcessor.apply(result);
+					String json = gson.toJson(result);
+					HttpResponse httpResponse = createResponse(json);
 					logger.info("Processed request {} ({}) [totalTime={}, jsonConstruction={}]", httpRequest,
-							reportingQuery, totalTimeStopwatch, resultProcessingStopwatch);
+							cubeQuery, totalTimeStopwatch, resultProcessingStopwatch);
 					callback.setResult(httpResponse);
-				}
-
-				@Override
-				protected void onException(Exception e) {
-					logger.error("Executing query {} failed.", reportingQuery, e);
-					callback.setException(e);
 				}
 			});
 		} catch (ParseException e) {
@@ -108,36 +99,54 @@ public final class ReportingServiceServlet implements AsyncServlet {
 		}
 	}
 
-	@JmxAttribute
-	public Map<String, Integer> getCachedClassesCountByKey() {
-		Map<String, Integer> map = new LinkedHashMap<>(classLoaderCache.getCurrentCacheSize());
-
-		for (Map.Entry<ClassLoaderCacheKey, DefiningClassLoader> entry : classLoaderCache.asMap().entrySet()) {
-			map.put(entry.getKey().toString(), entry.getValue().getDefinedClassesCount());
-		}
-
-		return map;
+	private static HttpResponse createResponse(String body) {
+		HttpResponse response = HttpResponse.ok200();
+		response.setContentType(ContentType.of(MediaTypes.JSON, Charsets.UTF_8));
+		response.setBody(wrapUtf8(body));
+		response.addHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
+		return response;
 	}
 
-	@JmxAttribute
-	public Map<String, Map<String, String>> getCachedClassesByKey() {
-		Map<String, Map<String, String>> map = new LinkedHashMap<>(classLoaderCache.getCurrentCacheSize());
+	@SuppressWarnings("unchecked")
+	public CubeQuery parseQuery(HttpRequest request) throws ParseException {
+//		List<String> dimensions = parseListOfStrings(request.getParameter(DIMENSIONS_PARAM));
+		//		String searchString = request.getParameter(SEARCH_PARAM);
 
-		for (Map.Entry<ClassLoaderCacheKey, DefiningClassLoader> entry : classLoaderCache.asMap().entrySet()) {
-			map.put(entry.getKey().toString(), entry.getValue().getDefinedClasses());
-		}
+//		if (dimensions.isEmpty() && attributes.isEmpty())
+//			throw new ParseException("At least one dimension or attribute must be specified");
 
-		return map;
+		CubeQuery query = CubeQuery.create();
+
+		String parameter;
+		parameter = request.getParameter(ATTRIBUTES_PARAM);
+		if (parameter != null)
+			query = query.withAttributes((List<String>) gson.fromJson(parameter, LIST_OF_STRINGS));
+
+		parameter = request.getParameter(MEASURES_PARAM);
+		if (parameter != null)
+			query = query.withMeasures((List<String>) gson.fromJson(parameter, LIST_OF_STRINGS));
+
+		parameter = request.getParameter(FILTERS_PARAM);
+		if (parameter != null)
+			query = query.withPredicate(gson.fromJson(parameter, AggregationPredicate.class));
+
+		parameter = request.getParameter(SORT_PARAM);
+		if (parameter != null)
+			query = query.withOrderings((List<CubeQuery.Ordering>) gson.fromJson(parameter, ORDERINGS));
+
+		parameter = request.getParameter(HAVING_PARAM);
+		if (parameter != null)
+			query = query.withHaving(gson.fromJson(parameter, AggregationPredicate.class));
+
+		parameter = request.getParameter(LIMIT_PARAM);
+		if (parameter != null)
+			query = query.withLimit(Integer.valueOf(parameter));
+
+		parameter = request.getParameter(OFFSET_PARAM);
+		if (parameter != null)
+			query = query.withOffset(Integer.valueOf(parameter));
+
+		return query;
 	}
 
-	@JmxAttribute
-	public Map<String, Map<String, Integer>> getCachedClassesTypesByKey() {
-		Map<String, Map<String, Integer>> map = new LinkedHashMap<>(classLoaderCache.getCurrentCacheSize());
-
-		for (Map.Entry<ClassLoaderCacheKey, DefiningClassLoader> entry : classLoaderCache.asMap().entrySet()) {
-			map.put(entry.getKey().toString(), entry.getValue().getDefinedClassesByType());
-		}
-
-		return map;
-	}
 }

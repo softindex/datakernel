@@ -85,8 +85,8 @@ final class ForEachHppcMap implements Expression {
 		cast(call(iterator, "next"), iteratorType).load(ctx);
 		item.store(ctx);
 
-		forKey.forVar(getter(item, "key")).load(ctx);
-		forValue.forVar(getter(item, "value")).load(ctx);
+		forKey.forVar(field(item, "key")).load(ctx);
+		forValue.forVar(field(item, "value")).load(ctx);
 
 		g.goTo(labelLoop);
 

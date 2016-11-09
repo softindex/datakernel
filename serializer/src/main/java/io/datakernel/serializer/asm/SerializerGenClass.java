@@ -293,7 +293,7 @@ public class SerializerGenClass implements SerializerGen {
 
 			if (fieldGen.field != null) {
 				fieldGen.serializer.prepareSerializeStaticMethods(version, staticMethods, compatibilityLevel);
-				list.add(set(arg(1), fieldGen.serializer.serialize(arg(0), arg(1), cast(getter(arg(2), fieldName), type), version, staticMethods, compatibilityLevel)));
+				list.add(set(arg(1), fieldGen.serializer.serialize(arg(0), arg(1), cast(field(arg(2), fieldName), type), version, staticMethods, compatibilityLevel)));
 			} else if (fieldGen.method != null) {
 				fieldGen.serializer.prepareSerializeStaticMethods(version, staticMethods, compatibilityLevel);
 				list.add(set(arg(1), fieldGen.serializer.serialize(arg(0), arg(1), cast(call(arg(2), fieldGen.method.getName()), type), version, staticMethods, compatibilityLevel)));
@@ -381,7 +381,7 @@ public class SerializerGenClass implements SerializerGen {
 				continue;
 			if (fieldGen.field == null || isFinal(fieldGen.field.getModifiers()))
 				continue;
-			Variable field = getter(local, fieldName);
+			Variable field = field(local, fieldName);
 			list.add(set(field, map.get(fieldName)));
 		}
 
@@ -443,7 +443,7 @@ public class SerializerGenClass implements SerializerGen {
 
 			asmFactory = asmFactory
 					.withField(fieldName, method.getReturnType())
-					.withMethod(method.getName(), getter(self(), fieldName));
+					.withMethod(method.getName(), field(self(), fieldName));
 		}
 
 		Class<?> newClass = asmFactory.build();
@@ -456,7 +456,7 @@ public class SerializerGenClass implements SerializerGen {
 			FieldGen fieldGen = fields.get(fieldName);
 			if (!fieldGen.hasVersion(version))
 				continue;
-			Variable field = getter(local, fieldName);
+			Variable field = field(local, fieldName);
 
 			fieldGen.serializer.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
 			Expression expression =
@@ -480,7 +480,7 @@ public class SerializerGenClass implements SerializerGen {
 
 			if (!fieldGen.hasVersion(version)) continue;
 
-			Variable field = getter(local, fieldName);
+			Variable field = field(local, fieldName);
 			fieldGen.serializer.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
 			list.add(set(field, fieldGen.serializer.deserialize(fieldGen.getRawType(), version, staticMethods, compatibilityLevel)));
 		}

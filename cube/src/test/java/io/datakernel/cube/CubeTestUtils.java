@@ -18,13 +18,9 @@ package io.datakernel.cube;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import io.datakernel.aggregation_db.AggregationChunkStorage;
-import io.datakernel.aggregation_db.AggregationStructure;
-import io.datakernel.aggregation_db.LocalFsChunkStorage;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.logfs.*;
-import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import org.jooq.Configuration;
 import org.jooq.SQLDialect;
@@ -49,20 +45,11 @@ public final class CubeTestUtils {
 		return metadataStorage;
 	}
 
-	public static AggregationChunkStorage getAggregationChunkStorage(Eventloop eventloop, ExecutorService executor,
-	                                                                 AggregationStructure structure,
-	                                                                 Path aggregationsDir) {
-		return LocalFsChunkStorage.create(eventloop, executor, structure, aggregationsDir);
-	}
-
 	public static <T> LogManager<T> getLogManager(Class<T> logClass, Eventloop eventloop, ExecutorService executor,
 	                                              DefiningClassLoader classLoader, Path logsDir) {
-		LocalFsLogFileSystem fileSystem = LocalFsLogFileSystem.create(eventloop, executor, logsDir);
-		BufferSerializer<T> bufferSerializer = SerializerBuilder
-				.create(classLoader)
-				.build(logClass);
-
-		return LogManagerImpl.create(eventloop, fileSystem, bufferSerializer);
+		return LogManagerImpl.create(eventloop,
+				LocalFsLogFileSystem.create(eventloop, executor, logsDir),
+				SerializerBuilder.create(classLoader).build(logClass));
 	}
 
 	public static Configuration getJooqConfiguration(String databasePropertiesPath, SQLDialect databaseDialect)

@@ -17,51 +17,72 @@
 package io.datakernel.cube.api;
 
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import io.datakernel.aggregation_db.AggregationQuery;
-import io.datakernel.aggregation_db.AggregationStructure;
-import io.datakernel.aggregation_db.gson.QueryPredicatesGsonSerializer;
+import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.cube.CubeQuery;
+import io.datakernel.cube.ICube;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
-import io.datakernel.http.AsyncHttpClient;
-import io.datakernel.http.HttpRequest;
-import io.datakernel.http.HttpResponse;
-import io.datakernel.http.HttpUtils;
+import io.datakernel.http.*;
 
-import java.util.HashMap;
+import java.lang.reflect.Type;
 import java.util.Map;
 
-import static io.datakernel.cube.api.CommonUtils.fromGson;
+import static com.google.common.collect.Maps.newLinkedHashMap;
+import static io.datakernel.cube.api.CommonUtils.createGsonBuilder;
 import static io.datakernel.cube.api.HttpJsonConstants.*;
 
-public final class CubeHttpClient {
-	private final String domain;
-	private final AsyncHttpClient httpClient;
+public final class CubeHttpClient implements ICube {
+	private final Eventloop eventloop;
+	private final String url;
+	private final IAsyncHttpClient httpClient;
 	private final int timeout;
-	private final Gson gson;
+	private Gson gson;
+	private final Map<String, Type> attributeTypes = newLinkedHashMap();
+	private final Map<String, Type> measureTypes = newLinkedHashMap();
 
-	private CubeHttpClient(String domain, AsyncHttpClient httpClient, int timeout, AggregationStructure structure,
-	                       ReportingConfiguration reportingConfiguration) {
-		this.domain = domain.replaceAll("/$", "");
+	private CubeHttpClient(Eventloop eventloop, IAsyncHttpClient httpClient,
+	                       String url, int timeout) {
+		this.eventloop = eventloop;
+		this.url = url.replaceAll("/$", "");
 		this.httpClient = httpClient;
 		this.timeout = timeout;
-		this.gson = new GsonBuilder()
-				.registerTypeAdapter(AggregationQuery.Predicates.class, QueryPredicatesGsonSerializer.create(structure))
-				.registerTypeAdapter(ReportingQueryResult.class, ReportingQueryResponseDeserializer.create(structure, reportingConfiguration))
-				.registerTypeAdapter(CubeQuery.Ordering.class, QueryOrderingGsonSerializer.create())
-				.create();
+		this.gson = createGsonBuilder(attributeTypes, measureTypes).create();
 	}
 
-	public static CubeHttpClient create(String domain, AsyncHttpClient httpClient, int timeout,
-	                                    AggregationStructure structure,
-	                                    ReportingConfiguration reportingConfiguration) {
-		return new CubeHttpClient(domain, httpClient, timeout, structure, reportingConfiguration);
+	public static CubeHttpClient create(Eventloop eventloop, String domain, AsyncHttpClient httpClient, int timeout) {
+		return new CubeHttpClient(eventloop, httpClient, domain, timeout);
 	}
 
-	public void query(ReportingQuery query, final ResultCallback<ReportingQueryResult> callback) {
-		httpClient.send(buildRequest(query), timeout, new ResultCallback<HttpResponse>() {
+	public CubeHttpClient withDimension(String dimension, Type type) {
+		attributeTypes.put(dimension, type);
+		return this;
+	}
+
+	public CubeHttpClient withAttribute(String dimension, String attribute, Type type) {
+		attributeTypes.put(dimension + "." + attribute, type);
+		return this;
+	}
+
+	public CubeHttpClient withMeasure(String measureId, Class<?> type) {
+		measureTypes.put(measureId, type);
+		return this;
+	}
+
+	@Override
+	public Map<String, Type> getAttributeTypes() {
+		return attributeTypes;
+	}
+
+	@Override
+	public Map<String, Type> getMeasureTypes() {
+		return measureTypes;
+	}
+
+	@Override
+	public void query(CubeQuery query, final ResultCallback<QueryResult> callback) {
+		httpClient.send(buildRequest(query), timeout, new ForwardingResultCallback<HttpResponse>(callback) {
 			@Override
 			public void onResult(HttpResponse httpResponse) {
 				String response;
@@ -78,55 +99,26 @@ public final class CubeHttpClient {
 					return;
 				}
 
-				try {
-					ReportingQueryResult result = fromGson(gson, response, ReportingQueryResult.class);
-					callback.setResult(result);
-				} catch (ParseException e) {
-					callback.setException(e);
-				}
-			}
-
-			@Override
-			public void onException(Exception e) {
-				callback.setException(new ParseException("Cube HTTP request failed", e));
+				QueryResult result = gson.fromJson(response, QueryResult.class);
+				callback.setResult(result);
 			}
 		});
 	}
 
-	private HttpRequest buildRequest(ReportingQuery query) {
-		Map<String, String> urlParams = new HashMap<>();
+	private HttpRequest buildRequest(CubeQuery query) {
+		Map<String, String> urlParams = newLinkedHashMap();
 
-		if (query.getDimensions() != null)
-			urlParams.put(DIMENSIONS_PARAM, gson.toJson(query.getDimensions()));
-
-		if (query.getMeasures() != null)
-			urlParams.put(MEASURES_PARAM, gson.toJson(query.getMeasures()));
-
-		if (query.getAttributes() != null)
-			urlParams.put(ATTRIBUTES_PARAM, gson.toJson(query.getAttributes()));
-
-		if (query.getFilters() != null)
-			urlParams.put(FILTERS_PARAM, gson.toJson(query.getFilters()));
-
-		if (query.getSort() != null)
-			urlParams.put(SORT_PARAM, gson.toJson(query.getSort()));
-
+		urlParams.put(ATTRIBUTES_PARAM, gson.toJson(query.getAttributes()));
+		urlParams.put(MEASURES_PARAM, gson.toJson(query.getMeasures()));
+		urlParams.put(FILTERS_PARAM, gson.toJson(query.getPredicate()));
+		urlParams.put(SORT_PARAM, gson.toJson(query.getOrderings()));
+		urlParams.put(HAVING_PARAM, gson.toJson(query.getHaving()));
 		if (query.getLimit() != null)
 			urlParams.put(LIMIT_PARAM, query.getLimit().toString());
-
 		if (query.getOffset() != null)
 			urlParams.put(OFFSET_PARAM, query.getOffset().toString());
 
-		if (query.getSearchString() != null)
-			urlParams.put(SEARCH_PARAM, query.getSearchString());
-
-		if (query.getFields() != null)
-			urlParams.put(FIELDS_PARAM, gson.toJson(query.getFields()));
-
-		if (query.getMetadataFields() != null)
-			urlParams.put(METADATA_FIELDS_PARAM, gson.toJson(query.getMetadataFields()));
-
-		String url = domain + "/" + "?" + HttpUtils.urlQueryString(urlParams);
+		String url = this.url + "/" + "?" + HttpUtils.urlQueryString(urlParams);
 
 		return HttpRequest.get(url);
 	}

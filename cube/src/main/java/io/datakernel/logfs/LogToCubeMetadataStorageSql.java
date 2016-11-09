@@ -18,9 +18,9 @@ package io.datakernel.logfs;
 
 import com.google.common.collect.Multimap;
 import io.datakernel.aggregation_db.AggregationChunk;
-import io.datakernel.aggregation_db.AggregationMetadata;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.cube.Cube;
 import io.datakernel.cube.CubeMetadataStorageSql;
 import io.datakernel.cube.sql.tables.records.AggregationDbLogRecord;
 import io.datakernel.eventloop.Eventloop;
@@ -111,7 +111,8 @@ public final class LogToCubeMetadataStorageSql implements LogToCubeMetadataStora
 	}
 
 	@Override
-	public void loadLogPositions(final String log, final List<String> partitions, final ResultCallback<Map<String, LogPosition>> callback) {
+	public void loadLogPositions(Cube cube, final String log, final List<String> partitions,
+	                             final ResultCallback<Map<String, LogPosition>> callback) {
 		eventloop.callConcurrently(executor, new Callable<Map<String, LogPosition>>() {
 			@Override
 			public Map<String, LogPosition> call() throws Exception {
@@ -121,23 +122,23 @@ public final class LogToCubeMetadataStorageSql implements LogToCubeMetadataStora
 	}
 
 	@Override
-	public void saveCommit(final String log, final Map<AggregationMetadata, String> idMap,
+	public void saveCommit(final Cube cube, final String log,
 	                       final Map<String, LogPosition> oldPositions,
 	                       final Map<String, LogPosition> newPositions,
-	                       final Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks,
+	                       final Multimap<String, AggregationChunk.NewChunk> newChunksByAggregation,
 	                       CompletionCallback callback) {
 		eventloop.runConcurrently(executor, new Runnable() {
 			@Override
 			public void run() {
-				saveCommit(log, idMap, oldPositions, newPositions, newChunks);
+				saveCommit(cube, log, oldPositions, newPositions, newChunksByAggregation);
 			}
 		}, callback);
 	}
 
-	private void saveCommit(final String log, final Map<AggregationMetadata, String> idMap,
+	private void saveCommit(final Cube cube, final String log,
 	                        final Map<String, LogPosition> oldPositions,
 	                        final Map<String, LogPosition> newPositions,
-	                        final Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks) {
+	                        final Multimap<String, AggregationChunk.NewChunk> newChunksByAggregation) {
 		cubeMetadataStorage.executeExclusiveTransaction(new TransactionalRunnable() {
 			@Override
 			public void run(Configuration configuration) throws Exception {
@@ -164,8 +165,8 @@ public final class LogToCubeMetadataStorageSql implements LogToCubeMetadataStora
 							.execute();
 				}
 
-				if (!newChunks.isEmpty())
-					cubeMetadataStorage.doSaveNewChunks(jooq, idMap, newChunks);
+				if (!newChunksByAggregation.isEmpty())
+					cubeMetadataStorage.doSaveNewChunks(jooq, cube, newChunksByAggregation);
 			}
 		});
 	}

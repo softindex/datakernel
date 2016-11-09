@@ -17,9 +17,8 @@
 package io.datakernel.aggregation_db;
 
 import com.google.common.base.MoreObjects;
-import com.google.common.collect.ImmutableMap;
-import io.datakernel.aggregation_db.fieldtype.FieldType;
-import io.datakernel.aggregation_db.keytype.KeyType;
+import io.datakernel.aggregation_db.fieldtype.FieldTypes;
+import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumers;
@@ -30,11 +29,13 @@ import org.junit.rules.TemporaryFolder;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static io.datakernel.aggregation_db.fieldtype.FieldTypes.intList;
-import static io.datakernel.aggregation_db.keytype.KeyTypes.stringKey;
+import static com.google.common.collect.Sets.newHashSet;
+import static io.datakernel.aggregation_db.fieldtype.FieldTypes.ofInt;
+import static io.datakernel.aggregation_db.processor.AggregateFunctions.union;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
@@ -45,12 +46,12 @@ public class InvertedIndexTest {
 
 	public static class InvertedIndexQueryResult {
 		public String word;
-		public List<Integer> documents;
+		public Set<Integer> documents;
 
 		public InvertedIndexQueryResult() {
 		}
 
-		public InvertedIndexQueryResult(String word, List<Integer> documents) {
+		public InvertedIndexQueryResult(String word, Set<Integer> documents) {
 			this.word = word;
 			this.documents = documents;
 		}
@@ -88,58 +89,53 @@ public class InvertedIndexTest {
 		ExecutorService executorService = Executors.newCachedThreadPool();
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
-		AggregationMetadata aggregationMetadata = AggregationMetadata.create(InvertedIndexRecord.KEYS,
-				InvertedIndexRecord.OUTPUT_FIELDS);
-		AggregationStructure structure = AggregationStructure.create(
-				ImmutableMap.<String, KeyType>builder()
-						.put("word", stringKey())
-						.build(),
-				ImmutableMap.<String, FieldType>builder()
-						.put("documents", intList())
-						.build());
+		AggregationMetadataStorageStub metadataStorage = new AggregationMetadataStorageStub(eventloop);
 		Path path = temporaryFolder.newFolder().toPath();
-		AggregationChunkStorage aggregationChunkStorage = LocalFsChunkStorage.create(eventloop, executorService,
-				structure, path);
+		AggregationChunkStorage aggregationChunkStorage = LocalFsChunkStorage.create(eventloop, executorService, path);
 
-		Aggregation aggregation = Aggregation.create(eventloop, executorService, classLoader, aggregationMetadataStorage,
-				aggregationChunkStorage, aggregationMetadata, structure);
+		Aggregation aggregation = Aggregation.create(eventloop, executorService, classLoader, metadataStorage, aggregationChunkStorage)
+				.withKey("word", FieldTypes.ofString())
+				.withMeasure("documents", union(ofInt()));
 
 		StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("fox", 1),
 				new InvertedIndexRecord("brown", 2), new InvertedIndexRecord("fox", 3)))
 				.streamTo(aggregation.consumer(InvertedIndexRecord.class,
-						InvertedIndexRecord.OUTPUT_FIELDS, InvertedIndexRecord.OUTPUT_TO_INPUT_FIELDS));
+						InvertedIndexRecord.OUTPUT_FIELDS, InvertedIndexRecord.OUTPUT_TO_INPUT_FIELDS,
+						metadataStorage.createSaveCallback()));
+		eventloop.run();
 
+		aggregation.loadChunks(IgnoreCompletionCallback.create());
 		eventloop.run();
 
 		StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("brown", 3),
 				new InvertedIndexRecord("lazy", 4), new InvertedIndexRecord("dog", 1)))
 				.streamTo(aggregation.consumer(InvertedIndexRecord.class,
-						InvertedIndexRecord.OUTPUT_FIELDS, InvertedIndexRecord.OUTPUT_TO_INPUT_FIELDS));
-
+						InvertedIndexRecord.OUTPUT_FIELDS, InvertedIndexRecord.OUTPUT_TO_INPUT_FIELDS,
+						metadataStorage.createSaveCallback()));
 		eventloop.run();
 
 		StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("quick", 1),
 				new InvertedIndexRecord("fox", 4), new InvertedIndexRecord("brown", 10)))
 				.streamTo(aggregation.consumer(InvertedIndexRecord.class,
-						InvertedIndexRecord.OUTPUT_FIELDS, InvertedIndexRecord.OUTPUT_TO_INPUT_FIELDS));
+						InvertedIndexRecord.OUTPUT_FIELDS, InvertedIndexRecord.OUTPUT_TO_INPUT_FIELDS,
+						metadataStorage.createSaveCallback()));
+		eventloop.run();
 
+		aggregation.loadChunks(IgnoreCompletionCallback.create());
 		eventloop.run();
 
 		AggregationQuery query = AggregationQuery.create()
 				.withKeys(InvertedIndexRecord.KEYS)
 				.withFields(InvertedIndexRecord.OUTPUT_FIELDS);
-
 		StreamConsumers.ToList<InvertedIndexQueryResult> consumerToList = StreamConsumers.toList(eventloop);
-		aggregation.query(query, InvertedIndexQueryResult.class).streamTo(consumerToList);
-
+		aggregation.query(query, InvertedIndexQueryResult.class, classLoader).streamTo(consumerToList);
 		eventloop.run();
 
 		System.out.println(consumerToList.getList());
 
-		List<InvertedIndexQueryResult> expectedResult = asList(new InvertedIndexQueryResult("brown", asList(2, 3, 10)),
-				new InvertedIndexQueryResult("dog", asList(1)), new InvertedIndexQueryResult("fox", asList(1, 3, 4)),
-				new InvertedIndexQueryResult("lazy", asList(4)), new InvertedIndexQueryResult("quick", asList(1)));
+		List<InvertedIndexQueryResult> expectedResult = asList(new InvertedIndexQueryResult("brown", newHashSet(2, 3, 10)),
+				new InvertedIndexQueryResult("dog", newHashSet(1)), new InvertedIndexQueryResult("fox", newHashSet(1, 3, 4)),
+				new InvertedIndexQueryResult("lazy", newHashSet(4)), new InvertedIndexQueryResult("quick", newHashSet(1)));
 		List<InvertedIndexQueryResult> actualResult = consumerToList.getList();
 
 		assertEquals(expectedResult, actualResult);

@@ -87,7 +87,7 @@ public class SerializerGenString implements SerializerGen {
 		Expression maxLen = value(maxLength);
 		Expression expression;
 		if (maxLength != -1) {
-			expression = choice(and(isNotNull(value), cmpGe(maxLen, value(0)), cmpGe(call(cast(value, String.class), "length"), value(maxLength + 1))),
+			expression = ifThenElse(and(isNotNull(value), cmpGe(maxLen, value(0)), cmpGe(call(cast(value, String.class), "length"), value(maxLength + 1))),
 					cast(call(cast(value, String.class), "substring", value(0), maxLen), String.class),
 					cast(value, String.class));
 		} else {

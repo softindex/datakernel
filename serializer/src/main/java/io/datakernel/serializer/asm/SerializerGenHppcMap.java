@@ -150,7 +150,7 @@ public final class SerializerGenHppcMap implements SerializerGen, NullableOptimi
 		if (!nullable) {
 			return sequence(length, hppcMapForEach, off);
 		} else {
-			return choice(isNull(value),
+			return ifThenElse(isNull(value),
 					sequence(set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, value(0))), off),
 					sequence(length, hppcMapForEach, off));
 		}
@@ -182,7 +182,7 @@ public final class SerializerGenHppcMap implements SerializerGen, NullableOptimi
 		if (!nullable) {
 			return sequence(length, map, expressionFor, map);
 		} else {
-			return choice(cmpEq(length, value(0)),
+			return ifThenElse(cmpEq(length, value(0)),
 					nullRef(hashMapType),
 					sequence(length, map, expressionFor, map));
 		}

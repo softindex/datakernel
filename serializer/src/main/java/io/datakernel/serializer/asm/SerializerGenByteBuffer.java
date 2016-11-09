@@ -76,7 +76,7 @@ public class SerializerGenByteBuffer implements SerializerGen, NullableOptimizat
 		if (!nullable) {
 			return write;
 		} else {
-			return choice(isNull(value),
+			return ifThenElse(isNull(value),
 					callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, value(0)),
 					write);
 		}
@@ -97,7 +97,7 @@ public class SerializerGenByteBuffer implements SerializerGen, NullableOptimizat
 				return sequence(length, call(arg(0), "read", array), callStatic(ByteBuffer.class, "wrap", array));
 			} else {
 				Expression array = let(newArray(byte[].class, dec(length)));
-				return choice(cmpEq(length, value(0)),
+				return ifThenElse(cmpEq(length, value(0)),
 						nullRef(ByteBuffer.class),
 						sequence(length, call(arg(0), "read", array), callStatic(ByteBuffer.class, "wrap", array)));
 			}
@@ -109,7 +109,7 @@ public class SerializerGenByteBuffer implements SerializerGen, NullableOptimizat
 			if (!nullable) {
 				return sequence(length, setPosition, callStatic(ByteBuffer.class, "wrap", inputBuffer, position, length));
 			} else {
-				return choice(cmpEq(length, value(0)),
+				return ifThenElse(cmpEq(length, value(0)),
 						nullRef(ByteBuffer.class),
 						sequence(length, setPosition, callStatic(ByteBuffer.class, "wrap", inputBuffer, position, dec(length))));
 			}

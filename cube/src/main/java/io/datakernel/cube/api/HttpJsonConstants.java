@@ -17,16 +17,17 @@
 package io.datakernel.cube.api;
 
 public final class HttpJsonConstants {
-	public static final String DIMENSIONS_PARAM = "dimensions";
+//	public static final String DIMENSIONS_PARAM = "dimensions";
 	public static final String MEASURES_PARAM = "measures";
 	public static final String ATTRIBUTES_PARAM = "attributes";
 	public static final String FILTERS_PARAM = "filters";
+	public static final String HAVING_PARAM = "having";
 	public static final String SORT_PARAM = "sort";
 	public static final String LIMIT_PARAM = "limit";
 	public static final String OFFSET_PARAM = "offset";
-	public static final String SEARCH_PARAM = "search";
-	public static final String FIELDS_PARAM = "fields";
-	public static final String METADATA_FIELDS_PARAM = "metadata";
+//	public static final String SEARCH_PARAM = "search";
+//	public static final String FIELDS_PARAM = "fields";
+//	public static final String METADATA_FIELDS_PARAM = "metadata";
 
 	public static final String DIMENSIONS_FIELD = "dimensions";
 	public static final String MEASURES_FIELD = "measures";
@@ -36,7 +37,7 @@ public final class HttpJsonConstants {
 	public static final String CHAINS_FIELD = "chains";
 	public static final String RECORDS_FIELD = "records";
 	public static final String TOTALS_FIELD = "totals";
-	public static final String METADATA_FIELD = "metadata";
+//	public static final String METADATA_FIELD = "metadata";
 	public static final String COUNT_FIELD = "count";
 	public static final String SORTED_BY_FIELD = "sortedBy";
 }

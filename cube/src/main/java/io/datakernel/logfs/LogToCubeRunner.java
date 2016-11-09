@@ -18,9 +18,7 @@ package io.datakernel.logfs;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Multimap;
-import io.datakernel.aggregation_db.Aggregation;
 import io.datakernel.aggregation_db.AggregationChunk;
-import io.datakernel.aggregation_db.AggregationMetadata;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingCompletionCallback;
 import io.datakernel.async.ForwardingResultCallback;
@@ -32,7 +30,6 @@ import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -87,7 +84,7 @@ public final class LogToCubeRunner<T> {
 	}
 
 	public void processLog(final CompletionCallback callback) {
-		metadataStorage.loadLogPositions(log, partitions, new ForwardingResultCallback<Map<String, LogPosition>>(callback) {
+		metadataStorage.loadLogPositions(cube, log, partitions, new ForwardingResultCallback<Map<String, LogPosition>>(callback) {
 			@Override
 			protected void onResult(Map<String, LogPosition> positions) {
 				processLog_gotPositions(positions, callback);
@@ -103,7 +100,7 @@ public final class LogToCubeRunner<T> {
 			@Override
 			protected void onCommit(String log, Map<String, LogPosition> oldPositions,
 			                        Map<String, LogPosition> newPositions,
-			                        Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks) {
+			                        Multimap<String, AggregationChunk.NewChunk> newChunks) {
 				processLog_doCommit(log, oldPositions, newPositions, newChunks, callback);
 
 				sw.stop();
@@ -132,15 +129,11 @@ public final class LogToCubeRunner<T> {
 
 	private void processLog_doCommit(final String log, Map<String, LogPosition> oldPositions,
 	                                 Map<String, LogPosition> newPositions,
-	                                 final Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks,
+	                                 final Multimap<String, AggregationChunk.NewChunk> newChunks,
 	                                 final CompletionCallback callback) {
 		logger.trace("processLog_doCommit called. Log: {}. Old positions: {}. New positions: {}. New chunks: {}.", log, oldPositions, newPositions, newChunks);
-		Map<AggregationMetadata, String> idMap = new HashMap<>();
-		for (Map.Entry<String, Aggregation> entry : cube.getAggregations().entrySet()) {
-			idMap.put(entry.getValue().getAggregationMetadata(), entry.getKey());
-		}
 		logger.info("Saving commit to metadata storage. Log: {}", log);
-		metadataStorage.saveCommit(log, idMap, oldPositions, newPositions, newChunks,
+		metadataStorage.saveCommit(cube, log, oldPositions, newPositions, newChunks,
 				new ForwardingCompletionCallback(callback) {
 					@Override
 					protected void onComplete() {
@@ -155,7 +148,7 @@ public final class LogToCubeRunner<T> {
 				});
 	}
 
-	private void processLog_afterCommit(Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks, CompletionCallback callback) {
+	private void processLog_afterCommit(Multimap<String, AggregationChunk.NewChunk> newChunks, CompletionCallback callback) {
 		logger.trace("processLog_afterCommit called. New chunks: {}", newChunks);
 		callback.setComplete();
 	}

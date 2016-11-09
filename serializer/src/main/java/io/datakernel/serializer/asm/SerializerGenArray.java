@@ -104,12 +104,12 @@ public final class SerializerGenArray implements SerializerGen, NullableOptimiza
 			}
 		} else {
 			if (type.getComponentType() == Byte.TYPE) {
-				return choice(isNull(value),
+				return ifThenElse(isNull(value),
 						sequence(writeZero, off),
 						sequence(writeLength, writeBytes)
 				);
 			} else {
-				return choice(isNull(value),
+				return ifThenElse(isNull(value),
 						sequence(writeZero, off),
 						sequence(writeLength, expressionFor, off));
 			}
@@ -140,11 +140,11 @@ public final class SerializerGenArray implements SerializerGen, NullableOptimiza
 			}
 		} else {
 			if (type.getComponentType() == Byte.TYPE) {
-				return choice(cmpEq(len, value(0)),
+				return ifThenElse(cmpEq(len, value(0)),
 						nullRef(type),
 						sequence(call(arg(0), "read", array), array));
 			} else {
-				return choice(cmpEq(len, value(0)),
+				return ifThenElse(cmpEq(len, value(0)),
 						nullRef(type),
 						sequence(array, expressionFor, array));
 			}

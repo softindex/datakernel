@@ -38,18 +38,15 @@ import static io.datakernel.codegen.Expressions.*;
 @SuppressWarnings("unchecked")
 public class AggregationChunkStorageStub implements AggregationChunkStorage {
 	private final Eventloop eventloop;
-	private final DefiningClassLoader classLoader;
 	private final Map<Long, List<Object>> lists = new HashMap<>();
 	private final Map<Long, Class<?>> chunkTypes = new HashMap<>();
 
-	public AggregationChunkStorageStub(Eventloop eventloop, DefiningClassLoader classLoader) {
+	public AggregationChunkStorageStub(Eventloop eventloop) {
 		this.eventloop = eventloop;
-		this.classLoader = classLoader;
 	}
 
 	@Override
-	public <T> StreamProducer<T> chunkReader(List<String> keys, List<String> fields,
-	                                         Class<T> recordClass, long id, DefiningClassLoader classLoader) {
+	public <T> StreamProducer<T> chunkReader(HasAggregationStructure structure, List<String> keys, List<String> fields, Class<T> recordClass, long id, DefiningClassLoader classLoader) {
 		Class<?> sourceClass = chunkTypes.get(id);
 
 		Expression result = let(constructor(recordClass));
@@ -57,13 +54,13 @@ public class AggregationChunkStorageStub implements AggregationChunkStorage {
 		expressionSequence.add(result);
 		for (String key : keys) {
 			expressionSequence.add(set(
-					getter(result, key),
-					getter(cast(arg(0), sourceClass), key)));
+					field(result, key),
+					field(cast(arg(0), sourceClass), key)));
 		}
 		for (String metric : fields) {
 			expressionSequence.add(set(
-					getter(result, metric),
-					getter(cast(arg(0), sourceClass), metric)));
+					field(result, metric),
+					field(cast(arg(0), sourceClass), metric)));
 		}
 
 		expressionSequence.add(result);
@@ -78,8 +75,7 @@ public class AggregationChunkStorageStub implements AggregationChunkStorage {
 	}
 
 	@Override
-	public <T> void chunkWriter(List<String> keys, List<String> fields, Class<T> recordClass, long id,
-	                            StreamProducer<T> producer, DefiningClassLoader classLoader, CompletionCallback callback) {
+	public <T> void chunkWriter(HasAggregationStructure structure, List<String> keys, List<String> fields, Class<T> recordClass, long id, StreamProducer<T> producer, DefiningClassLoader classLoader, CompletionCallback callback) {
 		chunkTypes.put(id, recordClass);
 		ArrayList<Object> list = new ArrayList<>();
 		lists.put(id, list);

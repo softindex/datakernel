@@ -16,7 +16,6 @@
 
 package io.datakernel.simplefs;
 
-import com.google.common.collect.Lists;
 import io.datakernel.async.*;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
@@ -425,7 +424,7 @@ public class SimpleFsIntegrationTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		final List<String> actual = new ArrayList<>();
-		final List<String> expected = Lists.newArrayList("this/is/not/empty/directory/file1.txt", "file1.txt", "first file.txt");
+		final List<String> expected = asList("this/is/not/empty/directory/file1.txt", "file1.txt", "first file.txt");
 
 		Files.createDirectories(storage.resolve("this/is/not/empty/directory/"));
 		Files.write(storage.resolve("this/is/not/empty/directory/file1.txt"), CONTENT);
@@ -497,7 +496,9 @@ public class SimpleFsIntegrationTest {
 		return expected;
 	}
 
-	private SimpleFsClient createClient(Eventloop eventloop) {return SimpleFsClient.create(eventloop, address);}
+	private SimpleFsClient createClient(Eventloop eventloop) {
+		return SimpleFsClient.create(eventloop, address);
+	}
 
 	private SimpleFsServer createServer(Eventloop eventloop, ExecutorService executor) {
 		return SimpleFsServer.create(eventloop, executor, storage)

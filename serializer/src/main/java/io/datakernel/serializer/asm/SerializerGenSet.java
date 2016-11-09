@@ -77,7 +77,7 @@ public class SerializerGenSet implements SerializerGen, NullableOptimization {
 					set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, call(value, "size"))),
 					serializeEach, off);
 		} else {
-			return choice(isNull(value),
+			return ifThenElse(isNull(value),
 					sequence(set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, value(0))), off),
 					sequence(set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, inc(call(value, "size")))),
 							serializeEach, off));
@@ -119,7 +119,7 @@ public class SerializerGenSet implements SerializerGen, NullableOptimization {
 		if (!nullable) {
 			return sequence(len, container, array, list, enumSet);
 		} else {
-			return choice(cmpEq(len, value(0)),
+			return ifThenElse(cmpEq(len, value(0)),
 					nullRef(EnumSet.class),
 					sequence(container, array, list, enumSet));
 		}
@@ -143,7 +143,7 @@ public class SerializerGenSet implements SerializerGen, NullableOptimization {
 		if (!nullable) {
 			return sequence(length, container, deserializeEach, container);
 		} else {
-			return choice(cmpEq(length, value(0)),
+			return ifThenElse(cmpEq(length, value(0)),
 					nullRef(LinkedHashSet.class),
 					sequence(container, deserializeEach, container)
 			);

@@ -34,9 +34,10 @@ import java.util.List;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 
-public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
+final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
+	private final HasAggregationStructure structure;
 	private final List<String> keys;
 	private final List<String> fields;
 	private final Class<T> recordClass;
@@ -47,12 +48,13 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 	private final AsyncResultsTrackerList<AggregationChunk.NewChunk> resultsTracker;
 	private final DefiningClassLoader classLoader;
 
-	private AggregationChunker(Eventloop eventloop, final AggregationOperationTracker operationTracker,
-	                           List<String> keys, List<String> fields,
-	                           Class<T> recordClass, BiPredicate<T, T> partitionPredicate,
-	                           AggregationChunkStorage storage, AggregationMetadataStorage metadataStorage,
-	                           int chunkSize, DefiningClassLoader classLoader,
-	                           final ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
+	public AggregationChunker(Eventloop eventloop, final AggregationOperationTracker operationTracker,
+	                          HasAggregationStructure structure, List<String> keys, List<String> fields,
+	                          Class<T> recordClass, BiPredicate<T, T> partitionPredicate,
+	                          AggregationChunkStorage storage, AggregationMetadataStorage metadataStorage,
+	                          int chunkSize, DefiningClassLoader classLoader,
+	                          final ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
+		this.structure = structure;
 		this.keys = keys;
 		this.fields = fields;
 		this.recordClass = recordClass;
@@ -77,13 +79,6 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 		setActualConsumer(chunker.getInput());
 		operationTracker.reportStart(this);
 	}
-
-	public static <T> AggregationChunker<T> create(Eventloop eventloop, final AggregationOperationTracker operationTracker,
-	                                               List<String> keys, List<String> fields,
-	                                               Class<T> recordClass, BiPredicate<T, T> partitionPredicate,
-	                                               AggregationChunkStorage storage, AggregationMetadataStorage metadataStorage,
-	                                               int chunkSize, DefiningClassLoader classLoader,
-	                                               final ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {return new AggregationChunker<T>(eventloop, operationTracker, keys, fields, recordClass, partitionPredicate, storage, metadataStorage, chunkSize, classLoader, chunksCallback);}
 
 	public void setChunkSize(int chunkSize) {
 		this.chunker.inputConsumer.chunkSize = chunkSize;
@@ -155,7 +150,8 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 			}
 
 			private AggregationChunk.NewChunk createNewChunk(long id, T first, T last, int count) {
-				return new AggregationChunk.NewChunk(id, fields, PrimaryKey.ofObject(first, keys),
+				return new AggregationChunk.NewChunk(id, fields,
+						PrimaryKey.ofObject(first, keys),
 						PrimaryKey.ofObject(last, keys), count);
 			}
 
@@ -176,8 +172,8 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 					@Override
 					protected void onResult(final Long chunkId) {
 						logger.info("Retrieved new chunk id '{}' for aggregation {}", chunkId, keys);
-						storage.chunkWriter(keys, fields, recordClass, chunkId, forwarder.getOutput(), classLoader,
-								new CompletionCallback() {
+						storage.chunkWriter(structure, keys, fields, recordClass,
+								chunkId, forwarder.getOutput(), classLoader, new CompletionCallback() {
 									@Override
 									protected void onComplete() {
 										AggregationChunk.NewChunk newChunk = createNewChunk(chunkId, metadata.first,
