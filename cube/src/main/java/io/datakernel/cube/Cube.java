@@ -16,23 +16,25 @@
 
 package io.datakernel.cube;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Predicate;
 import com.google.common.collect.*;
 import com.google.common.primitives.Primitives;
-import io.datakernel.aggregation_db.*;
-import io.datakernel.aggregation_db.AggregationMetadataStorage.LoadedChunks;
-import io.datakernel.aggregation_db.api.QueryException;
-import io.datakernel.aggregation_db.fieldtype.FieldType;
-import io.datakernel.aggregation_db.processor.AggregateFunction;
-import io.datakernel.aggregation_db.util.AsyncResultsTracker.AsyncResultsTrackerMultimap;
+import io.datakernel.aggregation.*;
+import io.datakernel.aggregation.AggregationMetadataStorage.LoadedChunks;
+import io.datakernel.aggregation.fieldtype.FieldType;
+import io.datakernel.aggregation.measure.Measure;
+import io.datakernel.aggregation.util.AsyncResultsTracker.AsyncResultsTrackerMultimap;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.*;
 import io.datakernel.cube.CubeMetadataStorage.CubeLoadedChunks;
-import io.datakernel.cube.api.*;
+import io.datakernel.cube.asm.MeasuresFunction;
+import io.datakernel.cube.asm.RecordFunction;
+import io.datakernel.cube.asm.TotalsFunction;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
@@ -61,12 +63,12 @@ import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Maps.newHashMap;
 import static com.google.common.collect.Maps.newLinkedHashMap;
 import static com.google.common.collect.Sets.*;
-import static io.datakernel.aggregation_db.AggregationUtils.*;
-import static io.datakernel.aggregation_db.util.AsyncResultsTracker.ofMultimap;
+import static io.datakernel.aggregation.AggregationUtils.*;
+import static io.datakernel.aggregation.util.AsyncResultsTracker.ofMultimap;
 import static io.datakernel.codegen.ExpressionComparator.leftField;
 import static io.datakernel.codegen.ExpressionComparator.rightField;
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.cube.CubeUtils.*;
+import static io.datakernel.cube.Utils.*;
 import static java.util.Arrays.asList;
 import static java.util.Collections.EMPTY_LIST;
 import static java.util.Collections.singletonList;
@@ -88,7 +90,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	private final AggregationChunkStorage aggregationChunkStorage;
 
 	private final Map<String, FieldType> dimensionTypes = new LinkedHashMap<>();
-	private final Map<String, AggregateFunction> measures = new LinkedHashMap<>();
+	private final Map<String, Measure> measures = new LinkedHashMap<>();
 	private final Map<String, ComputedMeasure> computedMeasures = newLinkedHashMap();
 
 	private final ComputedMeasure.StoredMeasures storedMeasures = new ComputedMeasure.StoredMeasures() {
@@ -103,7 +105,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 		}
 	};
 
-	private final FieldType.FieldConverters fieldConverters = new FieldType.FieldConverters() {
+	private final AggregationPredicate.FieldAccessor fieldAccessor = new AggregationPredicate.FieldAccessor() {
 		@Override
 		public Object toInternalValue(String field, Object value) {
 			FieldType fieldType = getFieldType(field);
@@ -143,6 +145,9 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	private final Map<String, Class<?>> attributeTypes = new LinkedHashMap<>();
 	private final Map<String, AttributeResolverInfo> attributes = new LinkedHashMap<>();
 
+	private final Map<String, String> childParentRelationships = new LinkedHashMap<>();
+	private final Multimap<String, String> parentChildRelationships = LinkedHashMultimap.create();
+
 	// settings
 	private int aggregationChunkSize = Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE;
 	private int sorterItemsInMemory = Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY;
@@ -165,7 +170,6 @@ public final class Cube implements ICube, EventloopJmxMBean {
 
 	// state
 	private Map<String, AggregationInfo> aggregations = new LinkedHashMap<>();
-	private AggregationKeyRelations childParentRelations = AggregationKeyRelations.create();
 	private int lastRevisionId;
 	private long lastReloadTimestamp;
 
@@ -183,6 +187,11 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	public static Cube create(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
 	                          CubeMetadataStorage cubeMetadataStorage, AggregationChunkStorage aggregationChunkStorage) {
 		return new Cube(eventloop, executorService, classLoader, cubeMetadataStorage, aggregationChunkStorage);
+	}
+
+	@VisibleForTesting
+	static Cube createUninitialized() {
+		return new Cube(null, null, null, null, null);
 	}
 
 	public Cube withAttribute(String attribute, AttributeResolver resolver) {
@@ -240,13 +249,13 @@ public final class Cube implements ICube, EventloopJmxMBean {
 		return this;
 	}
 
-	public Cube withMeasure(String measureId, AggregateFunction aggregateFunction) {
+	public Cube withMeasure(String measureId, Measure aggregateFunction) {
 		checkState(aggregations.isEmpty());
 		measures.put(measureId, aggregateFunction);
 		return this;
 	}
 
-	public Cube withMeasures(Map<String, AggregateFunction> aggregateFunctions) {
+	public Cube withMeasures(Map<String, Measure> aggregateFunctions) {
 		checkState(aggregations.isEmpty());
 		this.measures.putAll(aggregateFunctions);
 		return this;
@@ -262,13 +271,19 @@ public final class Cube implements ICube, EventloopJmxMBean {
 		return this;
 	}
 
-	public Cube withRelation(String dimensionId, String parentDimensionId) {
-		childParentRelations.withRelation(dimensionId, parentDimensionId);
+	public Cube withRelation(String child, String parent) {
+		this.childParentRelationships.put(child, parent);
+		parentChildRelationships.put(parent, child);
 		return this;
 	}
 
-	public Cube withRelations(Map<String, String> childToParentRelations) {
-		childParentRelations.withRelations(childToParentRelations);
+	public Cube withRelations(Map<String, String> childParentRelationships) {
+		this.childParentRelationships.putAll(childParentRelationships);
+		for (Map.Entry<String, String> parentChildEntry : childParentRelationships.entrySet()) {
+			String parent = parentChildEntry.getKey();
+			String child = parentChildEntry.getValue();
+			parentChildRelationships.put(child, parent);
+		}
 		return this;
 	}
 
@@ -467,10 +482,6 @@ public final class Cube implements ICube, EventloopJmxMBean {
 		return lastRevisionId;
 	}
 
-	public void setLastRevisionId(int lastRevisionId) {
-		this.lastRevisionId = lastRevisionId;
-	}
-
 	public <T> StreamConsumer<T> consumer(Class<T> inputClass, List<String> dimensions, List<String> measures,
 	                                      ResultCallback<Multimap<String, AggregationChunk.NewChunk>> callback) {
 		return consumer(inputClass, dimensions, measures, null, AggregationPredicates.alwaysTrue(), callback);
@@ -543,7 +554,6 @@ public final class Cube implements ICube, EventloopJmxMBean {
 				result.add(computedMeasure);
 			}
 		}
-
 		return result;
 	}
 
@@ -556,6 +566,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	 */
 	public <T> StreamProducer<T> queryRawStream(List<String> dimensions, List<String> storedMeasures, AggregationPredicate predicate,
 	                                            Class<T> resultClass, DefiningClassLoader classLoader) throws QueryException {
+		predicate = predicate.simplify();
 		storedMeasures = newArrayList(storedMeasures);
 		List<String> allDimensions = newArrayList(concat(dimensions, predicate.getDimensions()));
 
@@ -728,7 +739,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 		});
 	}
 
-	public static class DrillDownsAndChains {
+	private static class DrillDownsAndChains {
 		public Set<QueryResult.Drilldown> drilldowns;
 		public Set<List<String>> chains;
 
@@ -738,7 +749,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 		}
 	}
 
-	public DrillDownsAndChains getDrillDownsAndChains(Set<String> dimensions, Set<String> measures, AggregationPredicate predicate) {
+	private DrillDownsAndChains getDrillDownsAndChains(Set<String> dimensions, Set<String> measures, AggregationPredicate predicate) {
 		Set<QueryResult.Drilldown> drilldowns = newHashSet();
 		Set<List<String>> chains = newHashSet();
 
@@ -756,8 +767,8 @@ public final class Cube implements ICube, EventloopJmxMBean {
 			intersection(aggregationMeasures, measures).copyInto(availableMeasures);
 
 			Iterable<String> filteredDimensions = filter(aggregationInfo.aggregation.getKeys(), not(in(queryDimensions)));
-			Set<List<String>> filteredChains = childParentRelations.buildDrillDownChains(newHashSet(queryDimensions), filteredDimensions);
-			Set<List<String>> allChains = childParentRelations.buildDrillDownChains(Sets.<String>newHashSet(), aggregationInfo.aggregation.getKeys());
+			Set<List<String>> filteredChains = buildDrillDownChains(newHashSet(queryDimensions), filteredDimensions);
+			Set<List<String>> allChains = buildDrillDownChains(Sets.<String>newHashSet(), aggregationInfo.aggregation.getKeys());
 
 			for (List<String> drillDownChain : filteredChains) {
 				drilldowns.add(QueryResult.Drilldown.create(drillDownChain, availableMeasures));
@@ -766,16 +777,57 @@ public final class Cube implements ICube, EventloopJmxMBean {
 			chains.addAll(allChains);
 		}
 
-		Set<List<String>> longestChains = childParentRelations.buildLongestChains(chains);
+		Set<List<String>> longestChains = buildLongestChains(chains);
 
 		return new DrillDownsAndChains(drilldowns, longestChains);
 	}
 
-	public List<String> buildDrillDownChain(Set<String> usedDimensions, String dimension) {
-		return childParentRelations.buildDrillDownChain(usedDimensions, dimension);
+	private List<String> buildDrillDownChain(Set<String> usedDimensions, String dimension) {
+		LinkedList<String> drillDown = new LinkedList<>();
+		drillDown.add(dimension);
+		String child = dimension;
+		String parent;
+		while ((parent = childParentRelationships.get(child)) != null && !usedDimensions.contains(parent)) {
+			drillDown.addFirst(parent);
+			child = parent;
+		}
+		return drillDown;
 	}
 
-	public List<String> buildDrillDownChain(String dimension) {
+	@VisibleForTesting
+	Set<List<String>> buildDrillDownChains(Set<String> usedDimensions, Iterable<String> availableDimensions) {
+		Set<List<String>> drillDowns = newHashSet();
+		for (String dimension : availableDimensions) {
+			List<String> drillDown = buildDrillDownChain(usedDimensions, dimension);
+			drillDowns.add(drillDown);
+		}
+		return drillDowns;
+	}
+
+	private Set<List<String>> buildLongestChains(Set<List<String>> allChains) {
+		List<List<String>> chainsList = newArrayList(allChains);
+		Set<List<String>> longestChains = newHashSet();
+
+		outer:
+		for (int i = 0; i < chainsList.size(); ++i) {
+			List<String> chain1 = chainsList.get(i);
+
+			for (int j = 0; j < chainsList.size(); ++j) {
+				if (i == j) continue;
+
+				List<String> chain2 = chainsList.get(j);
+				if (startsWith(chain2, chain1))
+					continue outer;
+			}
+
+			if (chain1.size() > 1)
+				longestChains.add(chain1);
+		}
+
+		return longestChains;
+	}
+
+	private List<String> buildDrillDownChain(String dimension) {
 		return buildDrillDownChain(Sets.<String>newHashSet(), dimension);
 	}
 
@@ -804,22 +856,23 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	// region temp query() method
 	@Override
 	public void query(CubeQuery cubeQuery, final ResultCallback<QueryResult> resultCallback) throws QueryException {
-		new RequestContext().execute(classLoader, cubeQuery, resultCallback);
+		DefiningClassLoader localClassLoader = getLocalClassLoader(new ClassLoaderCacheKey(
+				newLinkedHashSet(cubeQuery.getAttributes()),
+				newLinkedHashSet(cubeQuery.getMeasures()),
+				cubeQuery.getPredicate().getDimensions()));
+		new RequestContext().execute(localClassLoader, cubeQuery, resultCallback);
 	}
 	// endregion
 
-	// region helper classes
-	public interface StringMatcher {
-		boolean matches(Object obj, String searchString);
-	}
-
-	DefiningClassLoader getLocalClassLoader(ClassLoaderCacheKey key) {
+	private DefiningClassLoader getLocalClassLoader(ClassLoaderCacheKey key) {
+		if (classLoaderCache == null)
+			return this.classLoader;
 		DefiningClassLoader classLoader = classLoaderCache.get(key);
 
 		if (classLoader != null)
 			return classLoader;
 
-		DefiningClassLoader newClassLoader = DefiningClassLoader.create(Cube.this.getClassLoader());
+		DefiningClassLoader newClassLoader = DefiningClassLoader.create(this.classLoader);
 		classLoaderCache.put(key, newClassLoader);
 		return newClassLoader;
 	}
@@ -972,14 +1025,21 @@ public final class Cube implements ICube, EventloopJmxMBean {
 		}
 
 		private Predicate createHavingPredicate() {
+			if (queryHaving == AggregationPredicates.alwaysTrue())
+				return com.google.common.base.Predicates.alwaysTrue();
+			if (queryHaving == AggregationPredicates.alwaysFalse())
+				return com.google.common.base.Predicates.alwaysFalse();
 			return ClassBuilder.create(classLoader, Predicate.class)
 					.withMethod("apply", boolean.class, singletonList(Object.class),
-							queryHaving.createPredicateDef(cast(arg(0), resultClass), fieldConverters))
+							queryHaving.createPredicateDef(cast(arg(0), resultClass), fieldAccessor))
 					.buildClassAndCreateNewInstance();
 		}
 
 		@SuppressWarnings("unchecked")
 		Comparator<Object> createComparator() {
+			if (query.getOrderings().isEmpty())
+				return Ordering.allEqual();
+
 			ExpressionComparator comparator = ExpressionComparator.create();
 
 			for (CubeQuery.Ordering ordering : query.getOrderings()) {
@@ -1045,13 +1105,13 @@ public final class Cube implements ICube, EventloopJmxMBean {
 			List<Record> resultRecords = new ArrayList<>(results.size());
 			for (Object result : results) {
 				Record record = Record.create(recordScheme);
-				recordFunction.copyAttributes(result, record, fieldConverters);
-				recordFunction.copyMeasures(result, record, fieldConverters);
+				recordFunction.copyAttributes(result, record, fieldAccessor);
+				recordFunction.copyMeasures(result, record, fieldAccessor);
 				resultRecords.add(record);
 			}
 
 			Record totalRecord = Record.create(recordScheme);
-			recordFunction.copyMeasures(totals, totalRecord, fieldConverters);
+			recordFunction.copyMeasures(totals, totalRecord, fieldAccessor);
 
 			Map<String, Object> filterAttributes = resolveFilterAttributes();
 
@@ -1120,7 +1180,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 			ExpressionSequence initSequence = ExpressionSequence.create();
 			ExpressionSequence accumulateSequence = ExpressionSequence.create();
 			for (String field : resultStoredMeasures) {
-				AggregateFunction measure = measures.get(field);
+				Measure measure = measures.get(field);
 				zeroSequence.add(measure.zeroAccumulator(
 						field(cast(arg(0), resultClass), field)));
 				initSequence.add(measure.initAccumulatorWithAccumulator(

@@ -21,7 +21,7 @@
     <dependencies>
         <dependency>
             <groupId>io.datakernel</groupId>
-            <artifactId>aggregation-db</artifactId>
+            <artifactId>aggregation</artifactId>
             <version>${version}</version>
         </dependency>
         <dependency>

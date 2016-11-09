@@ -26,14 +26,13 @@ import java.util.Set;
 import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class AggregationKeyRelationsTest {
-	private AggregationKeyRelations aggregationKeyRelations;
+	private Cube cube;
 
 	@Before
 	public void setUp() throws Exception {
-		aggregationKeyRelations = AggregationKeyRelations.create()
+		cube = Cube.createUninitialized()
 				.withRelation("campaign", "advertiser")
 				.withRelation("offer", "campaign")
 				.withRelation("goal", "offer")
@@ -44,24 +43,13 @@ public class AggregationKeyRelationsTest {
 	@SuppressWarnings("unchecked")
 	@Test
 	public void testDrillDownChains() throws Exception {
-		Set<List<String>> drillDownChains1 = aggregationKeyRelations.buildDrillDownChains(Sets.<String>newHashSet(), newHashSet("advertiser", "banner", "campaign", "offer"));
+		Set<List<String>> drillDownChains1 = cube.buildDrillDownChains(Sets.<String>newHashSet(), newHashSet("advertiser", "banner", "campaign", "offer"));
 		assertEquals(newHashSet(asList("advertiser"), asList("advertiser", "campaign", "offer"), asList("advertiser", "campaign", "offer", "banner"),
 				asList("advertiser", "campaign")), drillDownChains1);
 
-		Set<List<String>> drillDownChains2 = aggregationKeyRelations.buildDrillDownChains(Sets.<String>newHashSet(), newHashSet("banner", "campaign", "offer"));
+		Set<List<String>> drillDownChains2 = cube.buildDrillDownChains(Sets.<String>newHashSet(), newHashSet("banner", "campaign", "offer"));
 		assertEquals(newHashSet(asList("advertiser", "campaign", "offer", "banner"),
 				asList("advertiser", "campaign"), asList("advertiser", "campaign", "offer")), drillDownChains2);
 	}
 
-	@Test
-	public void testFindChildren() throws Exception {
-		Set<String> goalChildren = aggregationKeyRelations.findChildren("goal");
-		assertTrue(goalChildren.isEmpty());
-
-		Set<String> advertiserChildren = aggregationKeyRelations.findChildren("advertiser");
-		assertEquals(newHashSet("campaign", "offer", "goal", "banner", "keyword"), advertiserChildren);
-
-		Set<String> campaignChildren = aggregationKeyRelations.findChildren("campaign");
-		assertEquals(newHashSet("offer", "goal", "banner", "keyword"), campaignChildren);
-	}
 }

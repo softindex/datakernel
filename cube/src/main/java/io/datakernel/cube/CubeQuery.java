@@ -16,8 +16,8 @@
 
 package io.datakernel.cube;
 
-import io.datakernel.aggregation_db.AggregationPredicate;
-import io.datakernel.aggregation_db.AggregationPredicates;
+import io.datakernel.aggregation.AggregationPredicate;
+import io.datakernel.aggregation.AggregationPredicates;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -72,6 +72,16 @@ public final class CubeQuery {
 
 	public CubeQuery withOrderings(List<CubeQuery.Ordering> orderings) {
 		this.orderings = orderings;
+		return this;
+	}
+
+	public CubeQuery withOrderingAsc(String field) {
+		this.orderings.add(CubeQuery.Ordering.asc(field));
+		return this;
+	}
+
+	public CubeQuery withOrderingDesc(String field) {
+		this.orderings.add(CubeQuery.Ordering.desc(field));
 		return this;
 	}
 

@@ -16,7 +16,7 @@
 
 package io.datakernel.cube;
 
-import io.datakernel.aggregation_db.Aggregation;
+import io.datakernel.aggregation.Aggregation;
 
 import java.util.LinkedHashMap;
 import java.util.List;

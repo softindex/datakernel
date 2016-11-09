@@ -16,8 +16,8 @@
 
 package io.datakernel.cube;
 
-import io.datakernel.aggregation_db.AggregationMetadata;
-import io.datakernel.aggregation_db.PrimaryKey;
+import io.datakernel.aggregation.AggregationMetadata;
+import io.datakernel.aggregation.PrimaryKey;
 import org.junit.Test;
 
 import static org.junit.Assert.assertFalse;

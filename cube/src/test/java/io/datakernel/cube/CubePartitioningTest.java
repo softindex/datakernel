@@ -16,10 +16,10 @@
 
 package io.datakernel.cube;
 
-import io.datakernel.aggregation_db.AggregationChunk;
-import io.datakernel.aggregation_db.AggregationChunkStorage;
-import io.datakernel.aggregation_db.LocalFsChunkStorage;
-import io.datakernel.aggregation_db.fieldtype.FieldTypes;
+import io.datakernel.aggregation.AggregationChunk;
+import io.datakernel.aggregation.AggregationChunkStorage;
+import io.datakernel.aggregation.LocalFsChunkStorage;
+import io.datakernel.aggregation.fieldtype.FieldTypes;
 import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.codegen.DefiningClassLoader;
@@ -44,10 +44,10 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static io.datakernel.aggregation_db.AggregationPredicates.alwaysTrue;
-import static io.datakernel.aggregation_db.fieldtype.FieldTypes.ofDouble;
-import static io.datakernel.aggregation_db.fieldtype.FieldTypes.ofLong;
-import static io.datakernel.aggregation_db.processor.AggregateFunctions.sum;
+import static io.datakernel.aggregation.AggregationPredicates.alwaysTrue;
+import static io.datakernel.aggregation.fieldtype.FieldTypes.ofDouble;
+import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
+import static io.datakernel.aggregation.measure.Measures.sum;
 import static io.datakernel.cube.CubeTestUtils.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;

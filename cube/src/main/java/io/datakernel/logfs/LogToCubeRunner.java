@@ -18,7 +18,7 @@ package io.datakernel.logfs;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Multimap;
-import io.datakernel.aggregation_db.AggregationChunk;
+import io.datakernel.aggregation.AggregationChunk;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingCompletionCallback;
 import io.datakernel.async.ForwardingResultCallback;

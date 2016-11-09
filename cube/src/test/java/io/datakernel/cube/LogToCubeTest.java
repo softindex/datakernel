@@ -16,9 +16,9 @@
 
 package io.datakernel.cube;
 
-import io.datakernel.aggregation_db.AggregationChunkStorageStub;
-import io.datakernel.aggregation_db.CubeMetadataStorageStub;
-import io.datakernel.aggregation_db.fieldtype.FieldTypes;
+import io.datakernel.aggregation.AggregationChunkStorageStub;
+import io.datakernel.aggregation.CubeMetadataStorageStub;
+import io.datakernel.aggregation.fieldtype.FieldTypes;
 import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.bean.TestPubRequest;
@@ -41,9 +41,9 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static io.datakernel.aggregation_db.AggregationPredicates.alwaysTrue;
-import static io.datakernel.aggregation_db.fieldtype.FieldTypes.ofLong;
-import static io.datakernel.aggregation_db.processor.AggregateFunctions.sum;
+import static io.datakernel.aggregation.AggregationPredicates.alwaysTrue;
+import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
+import static io.datakernel.aggregation.measure.Measures.sum;
 import static io.datakernel.cube.Cube.AggregationScheme.id;
 import static io.datakernel.cube.TestUtils.deleteRecursivelyQuietly;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;

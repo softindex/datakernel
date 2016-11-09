@@ -17,7 +17,7 @@
 package io.datakernel.logfs;
 
 import com.google.common.collect.Multimap;
-import io.datakernel.aggregation_db.AggregationChunk;
+import io.datakernel.aggregation.AggregationChunk;
 import io.datakernel.async.CallbackRegistry;
 import io.datakernel.async.ExceptionCallback;
 

@@ -16,7 +16,7 @@
 
 package io.datakernel.cube;
 
-import io.datakernel.aggregation_db.AggregationChunk;
+import io.datakernel.aggregation.AggregationChunk;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 

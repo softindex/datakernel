@@ -22,15 +22,15 @@ import com.google.common.base.Splitter;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Multimap;
-import io.datakernel.aggregation_db.Aggregation;
-import io.datakernel.aggregation_db.AggregationChunk;
-import io.datakernel.aggregation_db.HasAggregationStructure;
-import io.datakernel.aggregation_db.PrimaryKey;
-import io.datakernel.aggregation_db.sql.tables.records.AggregationDbChunkRecord;
+import io.datakernel.aggregation.Aggregation;
+import io.datakernel.aggregation.AggregationChunk;
+import io.datakernel.aggregation.PrimaryKey;
+import io.datakernel.aggregation.sql.tables.records.AggregationDbChunkRecord;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import org.jooq.*;
+import org.jooq.Record;
 import org.jooq.exception.DataAccessException;
 import org.jooq.impl.DSL;
 import org.slf4j.Logger;
@@ -42,10 +42,10 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static io.datakernel.aggregation_db.AggregationChunk.createChunk;
-import static io.datakernel.aggregation_db.sql.tables.AggregationDbChunk.AGGREGATION_DB_CHUNK;
-import static io.datakernel.aggregation_db.sql.tables.AggregationDbRevision.AGGREGATION_DB_REVISION;
-import static io.datakernel.aggregation_db.util.JooqUtils.onDuplicateKeyUpdateValues;
+import static io.datakernel.aggregation.AggregationChunk.createChunk;
+import static io.datakernel.aggregation.sql.tables.AggregationDbChunk.AGGREGATION_DB_CHUNK;
+import static io.datakernel.aggregation.sql.tables.AggregationDbRevision.AGGREGATION_DB_REVISION;
+import static io.datakernel.aggregation.util.JooqUtils.onDuplicateKeyUpdateValues;
 import static org.jooq.impl.DSL.currentTimestamp;
 
 public class CubeMetadataStorageSql implements CubeMetadataStorage {
@@ -275,7 +275,7 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 
 		for (Record record : chunkRecords) {
 			String aggregationId = record.getValue(AGGREGATION_DB_CHUNK.AGGREGATION_ID);
-			HasAggregationStructure aggregation = cube.getAggregation(aggregationId);
+			Aggregation aggregation = cube.getAggregation(aggregationId);
 
 			if (aggregation == null) // aggregation was removed
 				continue;

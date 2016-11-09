@@ -137,7 +137,7 @@ public final class ClassBuilder<T> {
 	}
 
 	public static <T> ClassBuilder<T> create(DefiningClassLoader classLoader, Class<T> type) {
-		return new ClassBuilder<T>(classLoader, type);
+		return new ClassBuilder<>(classLoader, type);
 	}
 
 	public static <T> ClassBuilder<T> create(DefiningClassLoader classLoader, Class<T> mainType, List<Class<?>> types) {

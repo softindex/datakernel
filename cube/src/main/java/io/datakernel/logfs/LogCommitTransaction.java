@@ -19,7 +19,7 @@ package io.datakernel.logfs;
 import com.google.common.collect.LinkedListMultimap;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Multimap;
-import io.datakernel.aggregation_db.AggregationChunk;
+import io.datakernel.aggregation.AggregationChunk;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamProducer;

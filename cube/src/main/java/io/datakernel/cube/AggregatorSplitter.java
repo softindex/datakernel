@@ -16,8 +16,8 @@
 
 package io.datakernel.cube;
 
-import io.datakernel.aggregation_db.AggregationPredicate;
-import io.datakernel.aggregation_db.AggregationPredicates;
+import io.datakernel.aggregation.AggregationPredicate;
+import io.datakernel.aggregation.AggregationPredicates;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.logfs.LogCommitTransaction;
 import io.datakernel.stream.StreamConsumer;

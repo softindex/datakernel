@@ -26,7 +26,7 @@
         <module>datagraph</module>
         <module>eventloop</module>
         <module>http</module>
-        <module>aggregation-db</module>
+        <module>aggregation</module>
         <module>cube</module>
         <module>rpc</module>
         <module>serializer</module>
