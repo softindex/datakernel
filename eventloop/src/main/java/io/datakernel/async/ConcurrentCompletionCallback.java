@@ -22,13 +22,13 @@ public final class ConcurrentCompletionCallback extends CompletionCallback {
 	private final CompletionCallback callback;
 	private final Eventloop eventloop;
 
-	private ConcurrentCompletionCallback(CompletionCallback callback, Eventloop eventloop) {
+	private ConcurrentCompletionCallback(Eventloop eventloop, CompletionCallback callback) {
 		this.callback = callback;
 		this.eventloop = eventloop;
 	}
 
-	public static ConcurrentCompletionCallback create(CompletionCallback callback, Eventloop eventloop) {
-		return new ConcurrentCompletionCallback(callback, eventloop);
+	public static ConcurrentCompletionCallback create(Eventloop eventloop, CompletionCallback callback) {
+		return new ConcurrentCompletionCallback(eventloop, callback);
 	}
 
 	@Override

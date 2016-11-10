@@ -22,13 +22,13 @@ public final class ConcurrentResultCallback<T> extends ResultCallback<T> {
 	private final ResultCallback<T> callback;
 	private final Eventloop eventloop;
 
-	private ConcurrentResultCallback(ResultCallback<T> callback, Eventloop eventloop) {
+	private ConcurrentResultCallback(Eventloop eventloop, ResultCallback<T> callback) {
 		this.eventloop = eventloop;
 		this.callback = callback;
 	}
 
-	public static <T> ConcurrentResultCallback<T> create(ResultCallback<T> callback, Eventloop eventloop) {
-		return new ConcurrentResultCallback<>(callback, eventloop);
+	public static <T> ConcurrentResultCallback<T> create(Eventloop eventloop, ResultCallback<T> callback) {
+		return new ConcurrentResultCallback<>(eventloop, callback);
 	}
 
 	@Override

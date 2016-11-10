@@ -168,7 +168,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 					AsyncDnsClient.this.eventloop.execute(new Runnable() {
 						@Override
 						public void run() {
-							AsyncDnsClient.this.resolve(domainName, ipv6, ConcurrentResultCallback.create(callback, eventloop));
+							AsyncDnsClient.this.resolve(domainName, ipv6, ConcurrentResultCallback.create(eventloop, callback));
 						}
 					});
 				}
