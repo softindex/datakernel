@@ -133,9 +133,8 @@ public class CubeIntegrationTest {
 		cube.loadChunks(IgnoreCompletionCallback.create());
 		eventloop.run();
 
-		List<LogItem> queryResultList = new ArrayList<>();
 		StreamConsumers.ToList<LogItem> queryResultConsumer = new StreamConsumers.ToList<>(eventloop);
-		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(), LogItem.class, classLoader).streamTo(queryResultConsumer);
+		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(), LogItem.class).streamTo(queryResultConsumer);
 		eventloop.run();
 
 		// Aggregate manually
@@ -162,7 +161,7 @@ public class CubeIntegrationTest {
 
 		// Query
 		queryResultConsumer = new StreamConsumers.ToList<>(eventloop);
-		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(), LogItem.class, classLoader).streamTo(queryResultConsumer);
+		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(), LogItem.class).streamTo(queryResultConsumer);
 		eventloop.run();
 
 		// Check query results

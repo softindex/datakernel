@@ -126,7 +126,7 @@ public class CubePartitioningTest {
 
 		CubeQuery query = CubeQuery.create().withAttributes("date").withMeasures("clicks");
 		StreamConsumers.ToList<LogItem> queryResultConsumer = new StreamConsumers.ToList<>(eventloop);
-		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(), LogItem.class, classLoader).streamTo(queryResultConsumer);
+		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(), LogItem.class).streamTo(queryResultConsumer);
 		eventloop.run();
 
 		// Aggregate manually
@@ -161,7 +161,7 @@ public class CubePartitioningTest {
 
 		// Query
 		queryResultConsumer = new StreamConsumers.ToList<>(eventloop);
-		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(), LogItem.class, classLoader).streamTo(queryResultConsumer);
+		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(), LogItem.class).streamTo(queryResultConsumer);
 		eventloop.run();
 
 		// Check query results

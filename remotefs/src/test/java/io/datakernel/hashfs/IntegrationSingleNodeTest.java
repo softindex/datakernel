@@ -108,9 +108,9 @@ public class IntegrationSingleNodeTest {
 		client.upload(
 				"this/is/a.txt",
 				ofValue(eventloop, ByteBuf.wrapForReading(CONTENT)),
-				new SimpleCompletionCallback() {
+				new AssertingCompletionCallback() {
 					@Override
-					protected void onCompleteOrException() {
+					protected void onComplete() {
 						server.close(IgnoreCompletionCallback.create());
 					}
 				});
@@ -166,21 +166,28 @@ public class IntegrationSingleNodeTest {
 		ExecutorService executor = newCachedThreadPool();
 		final HashFsServer server = createServer(eventloop, executor);
 		HashFsClient client = createClient(eventloop);
-		StreamFileWriter consumerD = create(eventloop, executor, clientStorage.resolve("d_downloaded.txt"));
-		StreamFileWriter consumerG = create(eventloop, executor, clientStorage.resolve("g_downloaded.txt"));
-		WaitAllHandler waitAllHandler = WaitAllHandler.create(2, new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				server.close(IgnoreCompletionCallback.create());
-			}
+		final StreamFileWriter consumerD = create(eventloop, executor, clientStorage.resolve("d_downloaded.txt"));
+		final StreamFileWriter consumerG = create(eventloop, executor, clientStorage.resolve("g_downloaded.txt"));
 
+		AsyncRunnables.runParallel(eventloop,
+				new AsyncRunnable() {
+					@Override
+					public void run(CompletionCallback callback) {
+						consumerD.setFlushCallback(callback);
+					}
+				},
+				new AsyncRunnable() {
+					@Override
+					public void run(CompletionCallback callback) {
+						consumerG.setFlushCallback(callback);
+					}
+				}
+		).run(new AssertingCompletionCallback() {
 			@Override
-			public void onException(Exception e) {
+			protected void onComplete() {
 				server.close(IgnoreCompletionCallback.create());
 			}
 		});
-		consumerD.setFlushCallback(waitAllHandler.getCallback());
-		consumerG.setFlushCallback(waitAllHandler.getCallback());
 
 		server.listen();
 		client.download("this/g.txt", 0, streamTo(eventloop, consumerG));
@@ -208,9 +215,18 @@ public class IntegrationSingleNodeTest {
 			public void onResult(StreamProducer<ByteBuf> producer) {
 				try {
 					StreamFileWriter consumerA = create(eventloop, executor, clientStorage.resolve("file_should_not exist.txt"));
-					consumerA.setFlushCallback(new SimpleCompletionCallback() {
+					consumerA.setFlushCallback(new CompletionCallback() {
 						@Override
-						protected void onCompleteOrException() {
+						protected void onException(Exception e) {
+							onCompleteOrException();
+						}
+
+						@Override
+						protected void onComplete() {
+							onCompleteOrException();
+						}
+
+						void onCompleteOrException() {
 							server.close(IgnoreCompletionCallback.create());
 						}
 					});
@@ -242,9 +258,9 @@ public class IntegrationSingleNodeTest {
 		FsClient client = createClient(eventloop);
 		server.listen();
 
-		client.delete("this/a.txt", new SimpleCompletionCallback() {
+		client.delete("this/a.txt", new AssertingCompletionCallback() {
 			@Override
-			protected void onCompleteOrException() {
+			protected void onComplete() {
 				server.close(IgnoreCompletionCallback.create());
 			}
 		});

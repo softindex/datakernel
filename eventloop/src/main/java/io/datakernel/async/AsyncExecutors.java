@@ -38,8 +38,8 @@ public final class AsyncExecutors {
 	public static AsyncExecutor immediateExecutor() {
 		return new AsyncExecutor() {
 			@Override
-			public void submit(AsyncTask asyncTask, CompletionCallback callback) {
-				asyncTask.execute(callback);
+			public void submit(AsyncRunnable asyncRunnable, CompletionCallback callback) {
+				asyncRunnable.run(callback);
 			}
 
 			@Override

@@ -25,6 +25,7 @@ import io.datakernel.async.AssertingResultCallback;
 import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.*;
+import io.datakernel.cube.attributes.AbstractAttributeResolver;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.AsyncHttpServer;
@@ -118,10 +119,15 @@ public class ReportingTest {
 		OUTPUT_TO_INPUT_FIELDS.put("uniqueUserIdsCount", "userId");
 	}
 
-	private static class AdvertiserResolver implements AttributeResolver {
+	private static class AdvertiserResolver extends AbstractAttributeResolver<Integer, String> {
 		@Override
 		public Class<?>[] getKeyTypes() {
 			return new Class[]{Integer.class};
+		}
+
+		@Override
+		protected Integer toKey(Object[] keyArray) {
+			return (Integer) keyArray[0];
 		}
 
 		@Override
@@ -130,14 +136,19 @@ public class ReportingTest {
 		}
 
 		@Override
-		public Object[] resolveAttributes(Object[] key) {
-			switch ((Integer) key[0]) {
+		protected Object[] toAttributes(String attributes) {
+			return new Object[]{attributes};
+		}
+
+		@Override
+		public String resolveAttributes(Integer key) {
+			switch (key) {
 				case 1:
-					return new Object[]{"first"};
+					return "first";
 				case 2:
-					return new Object[]{"second"};
+					return "second";
 				case 3:
-					return new Object[]{"third"};
+					return "third";
 				default:
 					return null;
 			}
@@ -280,11 +291,11 @@ public class ReportingTest {
 		httpClient = AsyncHttpClient.create(eventloop)
 				.withNoKeepAlive();
 		cubeHttpClient = CubeHttpClient.create(eventloop, "http://127.0.0.1:" + SERVER_PORT, httpClient, TIMEOUT)
-				.withDimension("date", LocalDate.class)
-				.withDimension("advertiser", int.class)
-				.withDimension("campaign", int.class)
-				.withDimension("banner", int.class)
-				.withAttribute("advertiser", "name", String.class)
+				.withAttribute("date", LocalDate.class)
+				.withAttribute("advertiser", int.class)
+				.withAttribute("campaign", int.class)
+				.withAttribute("banner", int.class)
+				.withAttribute("advertiser.name", String.class)
 				.withMeasure("impressions", long.class)
 				.withMeasure("clicks", long.class)
 				.withMeasure("conversions", long.class)

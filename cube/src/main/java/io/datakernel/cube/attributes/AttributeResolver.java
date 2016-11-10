@@ -14,14 +14,25 @@
  * limitations under the License.
  */
 
-package io.datakernel.async;
+package io.datakernel.cube.attributes;
 
-/**
- * This interface represents asynchronous task
- */
-public interface AsyncTask {
-	/**
-	 * Executes this asynchronous task with callback from argument
-	 */
-	void execute(CompletionCallback callback);
+import io.datakernel.async.CompletionCallback;
+
+import java.util.List;
+
+public interface AttributeResolver {
+	Class<?>[] getKeyTypes();
+
+	Class<?>[] getAttributeTypes();
+
+	void resolveAttributes(List<Object> results, KeyFunction keyFunction, AttributesFunction attributesFunction,
+	                       CompletionCallback callback);
+
+	interface KeyFunction {
+		Object[] extractKey(Object result);
+	}
+
+	interface AttributesFunction {
+		void applyAttributes(Object result, Object[] attributes);
+	}
 }

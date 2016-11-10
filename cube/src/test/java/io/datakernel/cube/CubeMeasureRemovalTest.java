@@ -180,7 +180,7 @@ public class CubeMeasureRemovalTest {
 		aggregateToMap(map, listOfRandomLogItems2);
 
 		StreamConsumers.ToList<LogItem> queryResultConsumer = new StreamConsumers.ToList<>(eventloop);
-		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(), LogItem.class, classLoader).streamTo(queryResultConsumer);
+		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(), LogItem.class).streamTo(queryResultConsumer);
 		eventloop.run();
 		List<LogItem> queryResultBeforeConsolidation = queryResultConsumer.getList();
 
@@ -209,7 +209,7 @@ public class CubeMeasureRemovalTest {
 
 		// Query
 		queryResultConsumer = new StreamConsumers.ToList<>(eventloop);
-		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(), LogItem.class, classLoader).streamTo(queryResultConsumer);
+		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(), LogItem.class).streamTo(queryResultConsumer);
 		eventloop.run();
 		List<LogItem> queryResultAfterConsolidation = queryResultConsumer.getList();
 

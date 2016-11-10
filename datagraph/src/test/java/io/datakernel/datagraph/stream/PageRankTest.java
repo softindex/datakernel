@@ -20,10 +20,10 @@ import com.google.common.base.Function;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.Ordering;
 import com.google.common.net.InetAddresses;
+import io.datakernel.async.AssertingCompletionCallback;
+import io.datakernel.async.AsyncRunnable;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.IgnoreCompletionCallback;
-import io.datakernel.async.SimpleCompletionCallback;
-import io.datakernel.async.WaitAllHandler;
 import io.datakernel.datagraph.dataset.Dataset;
 import io.datakernel.datagraph.dataset.SortedDataset;
 import io.datakernel.datagraph.dataset.impl.DatasetListConsumer;
@@ -49,6 +49,7 @@ import org.junit.Test;
 import java.net.InetSocketAddress;
 import java.util.Arrays;
 
+import static io.datakernel.async.AsyncRunnables.runParallel;
 import static io.datakernel.datagraph.dataset.Datasets.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
@@ -224,7 +225,7 @@ public class PageRankTest {
 
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		final StreamConsumers.ToList<Rank> result1 = new StreamConsumers.ToList<>(eventloop);
-		StreamConsumers.ToList<Rank> result2 = new StreamConsumers.ToList<>(eventloop);
+		final StreamConsumers.ToList<Rank> result2 = new StreamConsumers.ToList<>(eventloop);
 
 		DatagraphClient client = new DatagraphClient(eventloop, serialization);
 		DatagraphEnvironment environment = DatagraphEnvironment.create()
@@ -258,30 +259,24 @@ public class PageRankTest {
 		server1.listen();
 		server2.listen();
 
-		final WaitAllHandler waitAllHandler = WaitAllHandler.create(2, new CompletionCallback() {
+		runParallel(eventloop,
+				new AsyncRunnable() {
+					@Override
+					public void run(CompletionCallback callback) {
+						result1.setCompletionCallback(callback);
+					}
+				},
+				new AsyncRunnable() {
+					@Override
+					public void run(CompletionCallback callback) {
+						result2.setCompletionCallback(callback);
+					}
+				}
+		).run(new AssertingCompletionCallback() {
 			@Override
 			protected void onComplete() {
 				server1.close(IgnoreCompletionCallback.create());
 				server2.close(IgnoreCompletionCallback.create());
-			}
-
-			@Override
-			protected void onException(Exception exception) {
-				setComplete();
-			}
-		});
-
-		result1.setCompletionCallback(new SimpleCompletionCallback() {
-			@Override
-			protected void onCompleteOrException() {
-				waitAllHandler.getCallback().setComplete();
-			}
-		});
-
-		result2.setCompletionCallback(new SimpleCompletionCallback() {
-			@Override
-			protected void onCompleteOrException() {
-				waitAllHandler.getCallback().setComplete();
 			}
 		});
 

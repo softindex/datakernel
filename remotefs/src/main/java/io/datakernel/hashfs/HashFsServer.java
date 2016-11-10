@@ -19,7 +19,10 @@ package io.datakernel.hashfs;
 import com.google.gson.Gson;
 import io.datakernel.FsResponses.ListOfFiles;
 import io.datakernel.FsServer;
-import io.datakernel.async.*;
+import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.ForwardingCompletionCallback;
+import io.datakernel.async.ForwardingResultCallback;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.InetAddressRange;
@@ -188,9 +191,18 @@ public final class HashFsServer extends FsServer<HashFsServer> {
 			localReplica.showAlive(eventloop.currentTimeMillis(), new ResultCallback<Set<Replica>>() {
 				@Override
 				public void onResult(Set<Replica> result) {
-					messaging.send(new ListOfServers(result), new SimpleCompletionCallback() {
+					messaging.send(new ListOfServers(result), new CompletionCallback() {
 						@Override
-						protected void onCompleteOrException() {
+						protected void onException(Exception e) {
+							onCompleteOrException();
+						}
+
+						@Override
+						protected void onComplete() {
+							onCompleteOrException();
+						}
+
+						void onCompleteOrException() {
 							messaging.close();
 						}
 					});
@@ -198,9 +210,18 @@ public final class HashFsServer extends FsServer<HashFsServer> {
 
 				@Override
 				public void onException(Exception e) {
-					messaging.send(new Err(e.getMessage()), new SimpleCompletionCallback() {
+					messaging.send(new Err(e.getMessage()), new CompletionCallback() {
 						@Override
-						protected void onCompleteOrException() {
+						protected void onException(Exception e) {
+							onCompleteOrException();
+						}
+
+						@Override
+						protected void onComplete() {
+							onCompleteOrException();
+						}
+
+						void onCompleteOrException() {
 							messaging.close();
 						}
 					});
@@ -215,9 +236,18 @@ public final class HashFsServer extends FsServer<HashFsServer> {
 			localReplica.onAnnounce(item.forUpload, item.forDeletion, new ResultCallback<List<String>>() {
 				@Override
 				public void onResult(List<String> result) {
-					messaging.send(new ListOfFiles(result), new SimpleCompletionCallback() {
+					messaging.send(new ListOfFiles(result), new CompletionCallback() {
 						@Override
-						protected void onCompleteOrException() {
+						protected void onException(Exception e) {
+							onCompleteOrException();
+						}
+
+						@Override
+						protected void onComplete() {
+							onCompleteOrException();
+						}
+
+						void onCompleteOrException() {
 							messaging.close();
 						}
 					});
@@ -225,9 +255,18 @@ public final class HashFsServer extends FsServer<HashFsServer> {
 
 				@Override
 				public void onException(Exception e) {
-					messaging.send(new Err(e.getMessage()), new SimpleCompletionCallback() {
+					messaging.send(new Err(e.getMessage()), new CompletionCallback() {
 						@Override
-						protected void onCompleteOrException() {
+						protected void onException(Exception e) {
+							onCompleteOrException();
+						}
+
+						@Override
+						protected void onComplete() {
+							onCompleteOrException();
+						}
+
+						void onCompleteOrException() {
 							messaging.close();
 						}
 					});

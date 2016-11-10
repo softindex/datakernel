@@ -17,7 +17,7 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.async.AsyncCallable;
-import io.datakernel.async.AsyncTask;
+import io.datakernel.async.AsyncRunnable;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
@@ -26,11 +26,11 @@ import java.util.concurrent.Future;
 public interface EventloopExecutor extends Executor {
 	Future<?> submit(Runnable runnable);
 
-	Future<?> submit(AsyncTask asyncTask);
+	Future<?> submit(AsyncRunnable asyncRunnable);
 
 	<T> Future<T> submit(Runnable runnable, T result);
 
-	<T> Future<T> submit(AsyncTask asyncTask, T result);
+	<T> Future<T> submit(AsyncRunnable asyncRunnable, T result);
 
 	<T> Future<T> submit(Callable<T> callable);
 

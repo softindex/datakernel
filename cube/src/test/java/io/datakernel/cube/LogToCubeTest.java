@@ -103,7 +103,7 @@ public class LogToCubeTest {
 
 		StreamConsumers.ToList<TestAdvResult> consumerToList = StreamConsumers.toList(eventloop);
 		cube.queryRawStream(asList("adv"), asList("advRequests"), alwaysTrue(),
-				TestAdvResult.class, classLoader
+				TestAdvResult.class
 		).streamTo(consumerToList);
 		eventloop.run();
 

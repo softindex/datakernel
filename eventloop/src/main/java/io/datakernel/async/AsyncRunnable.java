@@ -16,18 +16,12 @@
 
 package io.datakernel.async;
 
-import io.datakernel.annotation.Nullable;
-
-public abstract class SimpleResultCallback<T> extends ResultCallback<T> {
-	protected abstract void onResultOrException(@Nullable T result);
-
-	@Override
-	protected void onResult(T result) {
-		onResultOrException(result);
-	}
-
-	@Override
-	protected void onException(Exception exception) {
-		onResultOrException(null);
-	}
+/**
+ * This interface represents asynchronous task
+ */
+public interface AsyncRunnable {
+	/**
+	 * Executes this asynchronous task with callback from argument
+	 */
+	void run(CompletionCallback callback);
 }

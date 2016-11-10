@@ -17,7 +17,7 @@
 package io.datakernel.async;
 
 public interface AsyncExecutor {
-	void submit(AsyncTask asyncTask, CompletionCallback callback);
+	void submit(AsyncRunnable asyncRunnable, CompletionCallback callback);
 
 	boolean isSaturated();
 }

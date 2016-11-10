@@ -275,9 +275,18 @@ public final class LocalReplica implements EventloopService {
 		for (final String file : forDeletion) {
 			if (canDelete(file)) {
 				onDeletionStart(file);
-				fileManager.delete(file, new SimpleCompletionCallback() {
+				fileManager.delete(file, new CompletionCallback() {
 					@Override
-					protected void onCompleteOrException() {
+					protected void onException(Exception e) {
+						onCompleteOrException();
+					}
+
+					@Override
+					protected void onComplete() {
+						onCompleteOrException();
+					}
+
+					void onCompleteOrException() {
 						onDeleteComplete(file);
 					}
 				});

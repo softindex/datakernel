@@ -20,7 +20,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 
 public final class ParallelAsyncExecutor implements AsyncExecutor {
-	private final Deque<AsyncTask> taskQueue = new ArrayDeque<>();
+	private final Deque<AsyncRunnable> taskQueue = new ArrayDeque<>();
 	private final Deque<CompletionCallback> callbackQueue = new ArrayDeque<>();
 	private final int maxParallelism;
 	private final int queueSaturationThreshold;
@@ -43,12 +43,12 @@ public final class ParallelAsyncExecutor implements AsyncExecutor {
 	// endregion
 
 	@Override
-	public void submit(AsyncTask asyncTask, CompletionCallback callback) {
+	public void submit(AsyncRunnable asyncRunnable, CompletionCallback callback) {
 		if (taskQueue.isEmpty() && executing < maxParallelism) {
 			++executing;
-			asyncTask.execute(getInternalCallback(callback));
+			asyncRunnable.run(getInternalCallback(callback));
 		} else {
-			taskQueue.add(asyncTask);
+			taskQueue.add(asyncRunnable);
 			callbackQueue.add(callback);
 		}
 	}
@@ -78,10 +78,10 @@ public final class ParallelAsyncExecutor implements AsyncExecutor {
 
 	private void executeNextTask() {
 		if (!taskQueue.isEmpty()) {
-			AsyncTask queuedTask = taskQueue.pollFirst();
+			AsyncRunnable queuedTask = taskQueue.pollFirst();
 			CompletionCallback queuedCallback = callbackQueue.pollFirst();
 			++executing;
-			queuedTask.execute(getInternalCallback(queuedCallback));
+			queuedTask.run(getInternalCallback(queuedCallback));
 		}
 	}
 }

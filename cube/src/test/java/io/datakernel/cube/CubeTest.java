@@ -28,7 +28,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.simplefs.SimpleFsServer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumers;
-import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import org.junit.Rule;
 import org.junit.Test;
@@ -49,6 +48,7 @@ import static io.datakernel.aggregation.AggregationChunk.createChunk;
 import static io.datakernel.aggregation.AggregationPredicates.*;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.sum;
+import static io.datakernel.async.AsyncRunnables.runParallel;
 import static io.datakernel.cube.Cube.AggregationScheme.id;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
@@ -109,7 +109,7 @@ public class CubeTest {
 		StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toList(eventloop);
 		cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"),
 				and(eq("key1", 1), eq("key2", 3)),
-				DataItemResult.class, classLoader
+				DataItemResult.class
 		).streamTo(consumerToList);
 		eventloop.run();
 
@@ -145,36 +145,43 @@ public class CubeTest {
 
 		AggregationChunkStorage storage = SimpleFsChunkStorage.create(eventloop,
 				new InetSocketAddress(InetAddress.getLocalHost(), LISTEN_PORT));
-		Cube cube = newCube(eventloop, Executors.newCachedThreadPool(), classLoader, storage);
+		final Cube cube = newCube(eventloop, Executors.newCachedThreadPool(), classLoader, storage);
 
-		final int consumers = 2;
-		final WaitAllHandler allConsumersDoneHandler = WaitAllHandler.create(consumers, new AssertingCompletionCallback() {
+		runParallel(eventloop,
+				new AsyncRunnable() {
+					@Override
+					public void run(CompletionCallback callback) {
+						final StreamConsumer<DataItem1> cubeConsumer1 = cube.consumer(DataItem1.class, DataItem1.DIMENSIONS,
+								DataItem1.METRICS, new MyCommitCallback(cube, callback));
+						StreamProducers.ofIterable(eventloop, asList(new DataItem1(1, 2, 10, 20), new DataItem1(1, 3, 10, 20)))
+								.streamTo(cubeConsumer1);
+					}
+				},
+				new AsyncRunnable() {
+					@Override
+					public void run(CompletionCallback callback) {
+						final StreamConsumer<DataItem2> cubeConsumer2 = cube.consumer(DataItem2.class, DataItem2.DIMENSIONS,
+								DataItem2.METRICS, new MyCommitCallback(cube, callback));
+						StreamProducers.ofIterable(eventloop, asList(new DataItem2(1, 3, 10, 20), new DataItem2(1, 4, 10, 20)))
+								.streamTo(cubeConsumer2);
+					}
+				}
+		).run(new AssertingCompletionCallback() {
 			@Override
-			public void onComplete() {
+			protected void onComplete() {
 				logger.info("Streaming to SimpleFS succeeded.");
 				stop(simpleFsServer1);
 			}
 		});
 
-		final StreamConsumer<DataItem1> cubeConsumer1 = cube.consumer(DataItem1.class, DataItem1.DIMENSIONS,
-				DataItem1.METRICS, new MyCommitCallback(cube, allConsumersDoneHandler.getCallback()));
-		StreamProducers.ofIterable(eventloop, asList(new DataItem1(1, 2, 10, 20), new DataItem1(1, 3, 10, 20)))
-				.streamTo(cubeConsumer1);
-
-		final StreamConsumer<DataItem2> cubeConsumer2 = cube.consumer(DataItem2.class, DataItem2.DIMENSIONS,
-				DataItem2.METRICS, new MyCommitCallback(cube, allConsumersDoneHandler.getCallback()));
-		StreamProducers.ofIterable(eventloop, asList(new DataItem2(1, 3, 10, 20), new DataItem2(1, 4, 10, 20)))
-				.streamTo(cubeConsumer2);
-
 		eventloop.run();
 
 		final SimpleFsServer simpleFsServer2 = prepareServer(eventloop, serverStorage);
 		final StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toList(eventloop);
-		StreamProducer<DataItemResult> queryResultProducer = cube.queryRawStream(
-				asList("key1", "key2"), asList("metric1", "metric2", "metric3"),
+		cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"),
 				and(eq("key1", 1), eq("key2", 3)),
-				DataItemResult.class, classLoader);
-		queryResultProducer.streamTo(consumerToList);
+				DataItemResult.class
+		).streamTo(consumerToList);
 		consumerToList.setCompletionCallback(new AssertingCompletionCallback() {
 			@Override
 			public void onComplete() {
@@ -208,7 +215,8 @@ public class CubeTest {
 
 		StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toList(eventloop);
 		cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"), alwaysTrue(),
-				DataItemResult.class, classLoader).streamTo(consumerToList);
+				DataItemResult.class
+		).streamTo(consumerToList);
 		eventloop.run();
 
 		List<DataItemResult> actual = consumerToList.getList();
@@ -238,7 +246,8 @@ public class CubeTest {
 
 		StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toList(eventloop);
 		cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"), alwaysTrue(),
-				DataItemResult.class, classLoader).streamTo(consumerToList);
+				DataItemResult.class
+		).streamTo(consumerToList);
 		eventloop.run();
 
 		List<DataItemResult> actual = consumerToList.getList();
@@ -288,7 +297,7 @@ public class CubeTest {
 		StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toList(eventloop);
 		cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"),
 				and(between("key1", 5, 10), between("key2", 40, 1000)),
-				DataItemResult.class, classLoader
+				DataItemResult.class
 		).streamTo(consumerToList);
 		eventloop.run();
 
@@ -334,7 +343,7 @@ public class CubeTest {
 		StreamConsumers.ToList<DataItemResult3> consumerToList = StreamConsumers.toList(eventloop);
 		cube.queryRawStream(asList("key1", "key2", "key3", "key4", "key5"), asList("metric1", "metric2", "metric3"),
 				and(eq("key1", 5), between("key2", 75, 99), between("key3", 35, 50), eq("key4", 20), eq("key5", 56)),
-				DataItemResult3.class, classLoader
+				DataItemResult3.class
 		).streamTo(consumerToList);
 		eventloop.run();
 
@@ -364,7 +373,7 @@ public class CubeTest {
 		StreamConsumers.ToList<DataItemResult2> consumerToList = StreamConsumers.toList(eventloop);
 		cube.queryRawStream(asList("key2"), asList("metric1", "metric2", "metric3"),
 				alwaysTrue(),
-				DataItemResult2.class, classLoader
+				DataItemResult2.class
 		).streamTo(consumerToList);
 		// SELECT key1, SUM(metric1), SUM(metric2), SUM(metric3) FROM detailedAggregation WHERE key1 = 1 AND key2 = 3 GROUP BY key1
 		eventloop.run();
@@ -399,7 +408,7 @@ public class CubeTest {
 		StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toList(eventloop);
 		cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"),
 				and(eq("key1", 1), eq("key2", 3)),
-				DataItemResult.class, classLoader
+				DataItemResult.class
 		).streamTo(consumerToList);
 		eventloop.run();
 
@@ -443,7 +452,7 @@ public class CubeTest {
 		StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toList(eventloop);
 		cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"),
 				and(eq("key1", 1), eq("key2", 4)),
-				DataItemResult.class, classLoader
+				DataItemResult.class
 		).streamTo(consumerToList);
 		eventloop.run();
 

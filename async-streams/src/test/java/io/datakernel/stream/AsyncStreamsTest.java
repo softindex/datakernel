@@ -16,38 +16,34 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.AsyncCallableWithSetter;
+import io.datakernel.async.AsyncCallable;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import org.junit.Test;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
-import static io.datakernel.stream.StreamStatus.READY;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
 public class AsyncStreamsTest {
 	@Test
 	public void testDelayedProducer() throws Exception {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
-
-		AsyncCallableWithSetter<StreamProducer<Integer>> producerSetter = AsyncCallableWithSetter.create(eventloop);
-
-		StreamProducer<Integer> producer = StreamProducers.asynchronouslyResolving(eventloop, producerSetter);
+		StreamProducer<Integer> producer = StreamProducers.asynchronouslyResolving(eventloop, new AsyncCallable<StreamProducer<Integer>>() {
+			@Override
+			public void call(ResultCallback<StreamProducer<Integer>> callback) {
+				callback.postResult(StreamProducers.ofIterable(eventloop, asList(1, 2, 3)));
+			}
+		});
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
 		producer.streamTo(consumer);
 
 		eventloop.run();
-		assertEquals(READY, consumer.getUpstream().getProducerStatus());
-
-		producerSetter.setResult(source);
-		eventloop.run();
 		assertEquals(asList(1, 2, 3), consumer.getList());
 		assertEquals(END_OF_STREAM, consumer.getUpstream().getProducerStatus());
-		assertEquals(END_OF_STREAM, source.getProducerStatus());
 	}
 
 }

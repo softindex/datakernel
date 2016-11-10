@@ -3,10 +3,12 @@ package io.datakernel.cube;
 import io.datakernel.aggregation.AggregationUtils;
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.measure.Measure;
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.ExpressionSequence;
+import io.datakernel.cube.attributes.AttributeResolver;
 import io.datakernel.util.WithParameter;
 
 import java.util.Collection;
@@ -53,20 +55,13 @@ class Utils {
 		return true;
 	}
 
-	public interface KeyFunction<R> {
-		Object[] extractKey(R record);
-	}
-
-	public interface AttributesFunction<R> {
-		void applyAttributes(R record, Object[] attributes);
-	}
-
 	@SuppressWarnings("unchecked")
-	public static <R> void resolveAttributes(List<R> results, final AttributeResolver attributeResolver,
-	                                         final List<String> recordDimensions, final List<String> recordAttributes,
-	                                         final Class<R> recordClass, DefiningClassLoader classLoader) {
+	public static <R> void resolveAttributes(final List<R> results, final AttributeResolver attributeResolver,
+	                                              final List<String> recordDimensions, final List<String> recordAttributes,
+	                                              final Class<R> recordClass, DefiningClassLoader classLoader,
+	                                              CompletionCallback callback) {
 
-		KeyFunction<R> keyFunction = ClassBuilder.create(classLoader, KeyFunction.class)
+		final AttributeResolver.KeyFunction keyFunction = ClassBuilder.create(classLoader, AttributeResolver.KeyFunction.class)
 				.withMethod("extractKey", get(new WithParameter<Expression>() {
 					@Override
 					public Expression get() {
@@ -82,7 +77,7 @@ class Utils {
 				}))
 				.buildClassAndCreateNewInstance();
 
-		AttributesFunction<R> attributesFunction = ClassBuilder.create(classLoader, AttributesFunction.class)
+		final AttributeResolver.AttributesFunction attributesFunction = ClassBuilder.create(classLoader, AttributeResolver.AttributesFunction.class)
 				.withMethod("applyAttributes", get(new WithParameter<Expression>() {
 					@Override
 					public Expression get() {
@@ -98,11 +93,7 @@ class Utils {
 				}))
 				.buildClassAndCreateNewInstance();
 
-		for (R result : results) {
-			Object[] key = keyFunction.extractKey(result);
-			Object[] attributesRecord = attributeResolver.resolveAttributes(key);
-			attributesFunction.applyAttributes(result, attributesRecord);
-		}
+		attributeResolver.resolveAttributes((List) results, keyFunction, attributesFunction, callback);
 	}
 
 }

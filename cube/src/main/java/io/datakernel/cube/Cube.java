@@ -27,14 +27,13 @@ import io.datakernel.aggregation.AggregationMetadataStorage.LoadedChunks;
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.measure.Measure;
 import io.datakernel.aggregation.util.AsyncResultsTracker.AsyncResultsTrackerMultimap;
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ForwardingResultCallback;
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.*;
 import io.datakernel.codegen.*;
 import io.datakernel.cube.CubeMetadataStorage.CubeLoadedChunks;
 import io.datakernel.cube.asm.MeasuresFunction;
 import io.datakernel.cube.asm.RecordFunction;
 import io.datakernel.cube.asm.TotalsFunction;
+import io.datakernel.cube.attributes.AttributeResolver;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
@@ -65,6 +64,7 @@ import static com.google.common.collect.Maps.newLinkedHashMap;
 import static com.google.common.collect.Sets.*;
 import static io.datakernel.aggregation.AggregationUtils.*;
 import static io.datakernel.aggregation.util.AsyncResultsTracker.ofMultimap;
+import static io.datakernel.async.AsyncRunnables.runParallel;
 import static io.datakernel.codegen.ExpressionComparator.leftField;
 import static io.datakernel.codegen.ExpressionComparator.rightField;
 import static io.datakernel.codegen.Expressions.*;
@@ -565,6 +565,11 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	 * @return producer that streams query results
 	 */
 	public <T> StreamProducer<T> queryRawStream(List<String> dimensions, List<String> storedMeasures, AggregationPredicate predicate,
+	                                            Class<T> resultClass) throws QueryException {
+		return queryRawStream(dimensions, storedMeasures, predicate, resultClass, classLoader);
+	}
+
+	private <T> StreamProducer<T> queryRawStream(List<String> dimensions, List<String> storedMeasures, AggregationPredicate predicate,
 	                                            Class<T> resultClass, DefiningClassLoader classLoader) throws QueryException {
 		predicate = predicate.simplify();
 		storedMeasures = newArrayList(storedMeasures);
@@ -1064,15 +1069,14 @@ public final class Cube implements ICube, EventloopJmxMBean {
 		}
 
 		@SuppressWarnings("unchecked")
-		void processResults(List<Object> results, ResultCallback<QueryResult> callback) {
-			Object totals;
+		void processResults(final List<Object> results, final ResultCallback<QueryResult> callback) {
+			final Object totals;
 			try {
 				totals = resultClass.newInstance();
 			} catch (InstantiationException | IllegalAccessException e) {
 				throw new RuntimeException(e);
 			}
 
-			int totalCount = results.size();
 			if (results.isEmpty()) {
 				totalsFunction.zero(totals);
 			} else {
@@ -1088,17 +1092,46 @@ public final class Cube implements ICube, EventloopJmxMBean {
 			}
 			totalsFunction.computeMeasures(totals);
 
-			for (AttributeResolverInfo resolverInfo : attributeResolvers) {
+			List<AsyncRunnable> tasks = new ArrayList<>();
+			for (final AttributeResolverInfo resolverInfo : attributeResolvers) {
 				List<String> attributes = new ArrayList<>(resolverInfo.attributes);
 				attributes.retainAll(resultAttributes);
 				if (!attributes.isEmpty()) {
-					resolveAttributes(results, resolverInfo.resolver,
-							resolverInfo.dimensions, resolverInfo.attributes,
-							(Class) resultClass, queryClassLoader);
+					tasks.add(new AsyncRunnable() {
+						@Override
+						public void run(CompletionCallback callback) {
+							resolveAttributes(results, resolverInfo.resolver,
+									resolverInfo.dimensions, resolverInfo.attributes,
+									(Class) resultClass, queryClassLoader, callback);
+						}
+					});
 				}
 			}
 
+			final Map<String, Object> filterAttributes = newLinkedHashMap();
+			for (final AttributeResolverInfo resolverInfo : attributeResolvers) {
+				if (fullySpecifiedDimensions.keySet().containsAll(resolverInfo.dimensions)) {
+					tasks.add(new AsyncRunnable() {
+						@Override
+						public void run(CompletionCallback callback) {
+							resolveSpecifiedDimensions(resolverInfo, filterAttributes, callback);
+						}
+					});
+				}
+			}
+
+			runParallel(eventloop, tasks).run(new ForwardingCompletionCallback(callback) {
+				@Override
+				protected void onComplete() {
+					processResults2(results, totals, filterAttributes, callback);
+				}
+			});
+		}
+
+		void processResults2(List<Object> results, Object totals, Map<String, Object> filterAttributes, final ResultCallback<QueryResult> callback) {
 			results = newArrayList(Iterables.filter(results, (Predicate<Object>) havingPredicate));
+
+			int totalCount = results.size();
 
 			results = applyLimitAndOffset(results);
 
@@ -1113,8 +1146,6 @@ public final class Cube implements ICube, EventloopJmxMBean {
 			Record totalRecord = Record.create(recordScheme);
 			recordFunction.copyMeasures(totals, totalRecord, fieldAccessor);
 
-			Map<String, Object> filterAttributes = resolveFilterAttributes();
-
 			QueryResult result = QueryResult.create(recordScheme,
 					resultRecords, totalRecord, totalCount,
 					newArrayList(resultAttributes), newArrayList(queryMeasures), resultOrderings,
@@ -1122,23 +1153,38 @@ public final class Cube implements ICube, EventloopJmxMBean {
 			callback.setResult(result);
 		}
 
-		Map<String, Object> resolveFilterAttributes() {
-			Map<String, Object> result = newLinkedHashMap();
-			for (AttributeResolverInfo resolverInfo : attributeResolvers) {
-				if (fullySpecifiedDimensions.keySet().containsAll(resolverInfo.dimensions)) {
-					Object[] key = new Object[resolverInfo.dimensions.size()];
-					for (int i = 0; i < resolverInfo.dimensions.size(); i++) {
-						String dimension = resolverInfo.dimensions.get(i);
-						key[i] = fullySpecifiedDimensions.get(dimension);
-					}
-					Object[] attributes = resolverInfo.resolver.resolveAttributes(key);
-					for (int i = 0; i < resolverInfo.attributes.size(); i++) {
-						String attribute = resolverInfo.attributes.get(i);
-						result.put(attribute, attributes[i]);
-					}
-				}
+		private void resolveSpecifiedDimensions(final AttributeResolverInfo resolverInfo, final Map<String, Object> result,
+		                                        final CompletionCallback callback) {
+			Object[] key = new Object[resolverInfo.dimensions.size()];
+			for (int i = 0; i < resolverInfo.dimensions.size(); i++) {
+				String dimension = resolverInfo.dimensions.get(i);
+				key[i] = fullySpecifiedDimensions.get(dimension);
 			}
-			return result;
+			final Object[] attributesPlaceholder = new Object[1];
+
+			resolverInfo.resolver.resolveAttributes(singletonList((Object) key),
+					new AttributeResolver.KeyFunction() {
+						@Override
+						public Object[] extractKey(Object result) {
+							return (Object[]) result;
+						}
+					},
+					new AttributeResolver.AttributesFunction() {
+						@Override
+						public void applyAttributes(Object result, Object[] attributes) {
+							attributesPlaceholder[0] = attributes;
+						}
+					},
+					new ForwardingCompletionCallback(callback) {
+						@Override
+						protected void onComplete() {
+							for (int i = 0; i < resolverInfo.attributes.size(); i++) {
+								String attribute = resolverInfo.attributes.get(i);
+								result.put(attribute, ((Object[]) attributesPlaceholder[0])[i]);
+							}
+							callback.setComplete();
+						}
+					});
 		}
 
 		List applyLimitAndOffset(List results) {

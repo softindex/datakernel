@@ -101,6 +101,8 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	 * The thread where eventloop is running
 	 */
 	private Thread eventloopThread;
+
+	private static final ThreadLocal<Eventloop> CURRENT_EVENTLOOP = new ThreadLocal<>();
 	/**
 	 * The desired name of the thread
 	 */
@@ -147,7 +149,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 			throttlingController.setEventloop(this);
 		}
 		refreshTimestampAndGet();
-
+		CURRENT_EVENTLOOP.set(this);
 	}
 
 	public static Eventloop create() {
@@ -237,6 +239,10 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 				|| keepAlive || !selector.keys().isEmpty();
 	}
 
+	public static Eventloop getCurrentEventloop() {
+		return CURRENT_EVENTLOOP.get();
+	}
+
 	/**
 	 * Overridden method from Runnable that executes tasks while this eventloop is alive.
 	 */
@@ -247,6 +253,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 			eventloopThread.setName(threadName);
 		if (threadPriority != 0)
 			eventloopThread.setPriority(threadPriority);
+		CURRENT_EVENTLOOP.set(this);
 		ensureSelector();
 		breakEventloop = false;
 
@@ -257,7 +264,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 				break;
 			}
 
-			tick++;
+			tick = (tick + (1L << 32)) & ~0xFFFFFFFFL;
 
 			updateBusinessLogicTimeStats();
 
@@ -405,6 +412,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 
 			try {
 				runnable.run();
+				tick++;
 				if (sw != null)
 					stats.updateLocalTaskDuration(runnable, sw);
 			} catch (Throwable e) {
@@ -485,6 +493,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 
 			try {
 				runnable.run();
+				tick++;
 				polled.complete();
 				if (sw != null)
 					stats.updateScheduledTaskDuration(runnable, sw);
@@ -872,8 +881,8 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	}
 
 	@Override
-	public Future<?> submit(AsyncTask asyncTask) {
-		return submit(asyncTask, null);
+	public Future<?> submit(AsyncRunnable asyncRunnable) {
+		return submit(asyncRunnable, null);
 	}
 
 	@Override
@@ -899,12 +908,12 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	}
 
 	@Override
-	public <T> Future<T> submit(final AsyncTask asyncTask, final T result) {
+	public <T> Future<T> submit(final AsyncRunnable asyncRunnable, final T result) {
 		final ResultCallbackFuture<T> future = ResultCallbackFuture.create();
 		execute(new Runnable() {
 			@Override
 			public void run() {
-				asyncTask.execute(new CompletionCallback() {
+				asyncRunnable.run(new CompletionCallback() {
 					@Override
 					protected void onComplete() {
 						future.setResult(result);
@@ -1217,34 +1226,46 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	}
 
 	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
-	public long getTick() { return tick; }
+	public long getTick() {
+		return tick;
+	}
 
 	@JmxAttribute(
 			description = "number of concurrent tasks to be executed",
 			reducer = JmxReducers.JmxReducerSum.class
 	)
-	public int getCurrentConcurrentTasks() {return concurrentTasks.size();}
+	public int getCurrentConcurrentTasks() {
+		return concurrentTasks.size();
+	}
 
 	@JmxAttribute(
 			description = "number of scheduled tasks to be executed",
 			reducer = JmxReducers.JmxReducerSum.class
 	)
-	public int getCurrentScheduledTasks() { return scheduledTasks.size(); }
+	public int getCurrentScheduledTasks() {
+		return scheduledTasks.size();
+	}
 
 	@JmxAttribute(
 			description = "number of background tasks to be executed",
 			reducer = JmxReducers.JmxReducerSum.class
 	)
-	public int getCurrentBackgroundTasks() {return backgroundTasks.size(); }
+	public int getCurrentBackgroundTasks() {
+		return backgroundTasks.size();
+	}
 
 	@JmxAttribute(
 			description = "amount of local tasks to be executed",
 			reducer = JmxReducers.JmxReducerSum.class
 	)
-	public int getCurrentLocalTasks() { return localTasks.size(); }
+	public int getCurrentLocalTasks() {
+		return localTasks.size();
+	}
 
 	@JmxAttribute
-	public boolean getKeepAlive() { return keepAlive; }
+	public boolean getKeepAlive() {
+		return keepAlive;
+	}
 
 	@JmxAttribute(name = "")
 	public EventloopStats getStats() {

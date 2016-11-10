@@ -180,9 +180,9 @@ public class LogFsTest {
 	}
 
 	private static CompletionCallback createServerStopCallback(final SimpleFsServer server) {
-		return new SimpleCompletionCallback() {
+		return new AssertingCompletionCallback() {
 			@Override
-			protected void onCompleteOrException() {
+			protected void onComplete() {
 				server.close(IgnoreCompletionCallback.create());
 			}
 		};
@@ -242,9 +242,9 @@ public class LogFsTest {
 	}
 
 	private static CompletionCallback createServerStopCallback(final HashFsServer server) {
-		return new SimpleCompletionCallback() {
+		return new AssertingCompletionCallback() {
 			@Override
-			protected void onCompleteOrException() {
+			protected void onComplete() {
 				try {
 					stopServer(server);
 				} catch (Exception ignored) {

@@ -17,7 +17,6 @@
 package io.datakernel.stream.file;
 
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.SimpleCompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
@@ -125,9 +124,18 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 			@Override
 			protected void onException(final Exception e) {
 				logger.error("{}: failed to flush", StreamFileWriter.this, e);
-				doCleanup(false, new SimpleCompletionCallback() {
+				doCleanup(false, new CompletionCallback() {
 					@Override
-					protected void onCompleteOrException() {
+					protected void onException(Exception e) {
+						onCompleteOrException();
+					}
+
+					@Override
+					protected void onComplete() {
+						onCompleteOrException();
+					}
+
+					void onCompleteOrException() {
 						pendingAsyncOperation = false;
 						closeWithError(e);
 					}
@@ -205,9 +213,18 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	protected void onError(final Exception e) {
 		logger.error("{}: onError", this, e);
 		pendingAsyncOperation = true;
-		doCleanup(false, new SimpleCompletionCallback() {
+		doCleanup(false, new CompletionCallback() {
 			@Override
-			protected void onCompleteOrException() {
+			protected void onException(Exception e) {
+				onCompleteOrException();
+			}
+
+			@Override
+			protected void onComplete() {
+				onCompleteOrException();
+			}
+
+			void onCompleteOrException() {
 				pendingAsyncOperation = false;
 				if (flushCallback != null)
 					flushCallback.setException(e);

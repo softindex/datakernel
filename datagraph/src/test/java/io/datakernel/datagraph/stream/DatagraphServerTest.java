@@ -20,8 +20,8 @@ import com.google.common.base.Function;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Ordering;
 import com.google.common.net.InetAddresses;
+import io.datakernel.async.AssertingCompletionCallback;
 import io.datakernel.async.IgnoreCompletionCallback;
-import io.datakernel.async.SimpleCompletionCallback;
 import io.datakernel.datagraph.dataset.Dataset;
 import io.datakernel.datagraph.dataset.LocallySortedDataset;
 import io.datakernel.datagraph.dataset.SortedDataset;
@@ -124,16 +124,16 @@ public class DatagraphServerTest {
 		server1.listen();
 		server2.listen();
 
-		result1.setCompletionCallback(new SimpleCompletionCallback() {
+		result1.setCompletionCallback(new AssertingCompletionCallback() {
 			@Override
-			protected void onCompleteOrException() {
+			protected void onComplete() {
 				server1.close(IgnoreCompletionCallback.create());
 			}
 		});
 
-		result2.setCompletionCallback(new SimpleCompletionCallback() {
+		result2.setCompletionCallback(new AssertingCompletionCallback() {
 			@Override
-			protected void onCompleteOrException() {
+			protected void onComplete() {
 				server2.close(IgnoreCompletionCallback.create());
 			}
 		});
@@ -188,16 +188,16 @@ public class DatagraphServerTest {
 		server1.listen();
 		server2.listen();
 
-		result1.setCompletionCallback(new SimpleCompletionCallback() {
+		result1.setCompletionCallback(new AssertingCompletionCallback() {
 			@Override
-			protected void onCompleteOrException() {
+			protected void onComplete() {
 				server1.close(IgnoreCompletionCallback.create());
 			}
 		});
 
-		result2.setCompletionCallback(new SimpleCompletionCallback() {
+		result2.setCompletionCallback(new AssertingCompletionCallback() {
 			@Override
-			protected void onCompleteOrException() {
+			protected void onComplete() {
 				server2.close(IgnoreCompletionCallback.create());
 			}
 		});
@@ -264,16 +264,16 @@ public class DatagraphServerTest {
 		server1.listen();
 		server2.listen();
 
-		result1.setCompletionCallback(new SimpleCompletionCallback() {
+		result1.setCompletionCallback(new AssertingCompletionCallback() {
 			@Override
-			protected void onCompleteOrException() {
+			protected void onComplete() {
 				server1.close(IgnoreCompletionCallback.create());
 			}
 		});
 
-		result2.setCompletionCallback(new SimpleCompletionCallback() {
+		result2.setCompletionCallback(new AssertingCompletionCallback() {
 			@Override
-			protected void onCompleteOrException() {
+			protected void onComplete() {
 				server2.close(IgnoreCompletionCallback.create());
 			}
 		});
@@ -337,9 +337,9 @@ public class DatagraphServerTest {
 		StreamProducer<TestItem> resultProducer = collector.compile(graph);
 		resultProducer.streamTo(resultConsumer);
 
-		resultConsumer.setCompletionCallback(new SimpleCompletionCallback() {
+		resultConsumer.setCompletionCallback(new AssertingCompletionCallback() {
 			@Override
-			protected void onCompleteOrException() {
+			protected void onComplete() {
 				server1.close(IgnoreCompletionCallback.create());
 				server2.close(IgnoreCompletionCallback.create());
 			}

@@ -19,18 +19,21 @@ package io.datakernel.cube;
 import com.google.common.collect.Multimap;
 import io.datakernel.aggregation.AggregationChunk;
 import io.datakernel.aggregation.CubeMetadataStorageStub;
+import io.datakernel.async.AsyncRunnable;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.async.WaitAllHandler;
 import io.datakernel.logfs.LogPosition;
 import io.datakernel.logfs.LogToCubeMetadataStorage;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 import static com.google.common.base.Predicates.in;
 import static com.google.common.collect.Maps.filterKeys;
+import static io.datakernel.async.AsyncRunnables.runParallel;
+import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static java.util.Collections.singletonList;
 
 public final class LogToCubeMetadataStorageStub implements LogToCubeMetadataStorage {
@@ -69,23 +72,18 @@ public final class LogToCubeMetadataStorageStub implements LogToCubeMetadataStor
 		Map<String, LogPosition> logPositionMap = ensureLogPositions(log);
 		logPositionMap.putAll(newPositions);
 
-		final WaitAllHandler waitAllHandler = WaitAllHandler.create(newChunks.size(), callback);
-
+		List<AsyncRunnable> tasks = new ArrayList<>();
 		for (Map.Entry<String, AggregationChunk.NewChunk> entry : newChunks.entries()) {
-			String aggregationId = entry.getKey();
-			AggregationChunk.NewChunk newChunk = entry.getValue();
-			cubeMetadataStorage.doSaveChunk(aggregationId, singletonList(newChunk), new CompletionCallback() {
+			final String aggregationId = entry.getKey();
+			final AggregationChunk.NewChunk newChunk = entry.getValue();
+			tasks.add(new AsyncRunnable() {
 				@Override
-				protected void onComplete() {
-					waitAllHandler.getCallback().setComplete();
-				}
-
-				@Override
-				protected void onException(Exception e) {
-					waitAllHandler.getCallback().setException(e);
+				public void run(CompletionCallback callback) {
+					cubeMetadataStorage.doSaveChunk(aggregationId, singletonList(newChunk),callback);
 				}
 			});
 		}
+		runParallel(getCurrentEventloop(), tasks).run(callback);
 	}
 
 }

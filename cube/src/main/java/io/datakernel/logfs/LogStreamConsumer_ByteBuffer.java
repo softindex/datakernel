@@ -18,7 +18,6 @@ package io.datakernel.logfs;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.async.SimpleCompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
@@ -194,9 +193,18 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 			}
 
 			private CompletionCallback createCloseCompletionCallback() {
-				return new SimpleCompletionCallback() {
+				return new CompletionCallback() {
 					@Override
-					protected void onCompleteOrException() {
+					protected void onException(Exception e) {
+						onCompleteOrException();
+					}
+
+					@Override
+					protected void onComplete() {
+						onCompleteOrException();
+					}
+
+					void onCompleteOrException() {
 						--activeWriters;
 						if (activeWriters == 0) {
 							zeroActiveWriters();

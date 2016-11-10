@@ -88,10 +88,10 @@ public class ParallelAsyncExecutorTest {
 		executor.submit(getTestTask(eventloop, n, executionInfoMap), IgnoreCompletionCallback.create());
 	}
 
-	private static AsyncTask getTestTask(final Eventloop eventloop, final int n, final Map<Integer, ExecutionInfo> executionInfoMap) {
-		return new AsyncTask() {
+	private static AsyncRunnable getTestTask(final Eventloop eventloop, final int n, final Map<Integer, ExecutionInfo> executionInfoMap) {
+		return new AsyncRunnable() {
 			@Override
-			public void execute(final CompletionCallback callback) {
+			public void run(final CompletionCallback callback) {
 				final long startTimestamp = eventloop.currentTimeMillis();
 				eventloop.schedule(eventloop.currentTimeMillis() + 10, new Runnable() {
 					@Override

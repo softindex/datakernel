@@ -64,7 +64,7 @@ public class StringDimensionTest {
 		StreamConsumers.ToList<DataItemResultString> consumerToList = StreamConsumers.toList(eventloop);
 		cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"),
 				and(eq("key1", "str2"), eq("key2", 3)),
-				DataItemResultString.class, classLoader
+				DataItemResultString.class
 		).streamTo(consumerToList);
 		eventloop.run();
 

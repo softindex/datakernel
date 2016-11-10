@@ -183,9 +183,18 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 								download(item.filePath, item.startPosition, new ForwardingResultCallback<StreamProducer<ByteBuf>>(this) {
 									@Override
 									public void onResult(final StreamProducer<ByteBuf> result) {
-										messaging.sendBinaryStreamFrom(result, new SimpleCompletionCallback() {
+										messaging.sendBinaryStreamFrom(result, new CompletionCallback() {
 											@Override
-											protected void onCompleteOrException() {
+											protected void onException(Exception e) {
+												onCompleteOrException();
+											}
+
+											@Override
+											protected void onComplete() {
+												onCompleteOrException();
+											}
+
+											void onCompleteOrException() {
 												messaging.close();
 											}
 										});

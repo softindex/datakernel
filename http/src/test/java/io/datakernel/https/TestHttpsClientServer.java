@@ -33,6 +33,7 @@ import java.net.InetAddress;
 import java.security.SecureRandom;
 import java.util.concurrent.ExecutorService;
 
+import static io.datakernel.async.AsyncRunnables.runParallel;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
@@ -41,6 +42,7 @@ import static io.datakernel.http.HttpRequest.post;
 import static io.datakernel.http.HttpResponse.ok200;
 import static io.datakernel.http.HttpUtils.inetAddress;
 import static io.datakernel.https.SslUtils.*;
+import static java.util.Arrays.asList;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 import static junit.framework.TestCase.assertEquals;
 
@@ -66,7 +68,8 @@ public class TestHttpsClientServer {
 	private ExecutorService executor = newCachedThreadPool();
 	private SSLContext context = createSslContext("TLSv1.2", keyManagers, trustManagers, new SecureRandom());
 
-	public TestHttpsClientServer() throws Exception {}
+	public TestHttpsClientServer() throws Exception {
+	}
 
 	public static final InetAddress GOOGLE_PUBLIC_DNS = inetAddress("8.8.8.8");
 
@@ -123,46 +126,44 @@ public class TestHttpsClientServer {
 				.withDnsClient(dnsClient)
 				.withSslEnabled(context, executor);
 
-		HttpRequest httpsRequest = post("https://127.0.0.1:" + SSL_PORT).withBody(wrapAscii("Hello, I am Alice!"));
-		HttpRequest httpRequest = post("http://127.0.0.1:" + PORT).withBody(wrapAscii("Hello, I am Alice!"));
+		final HttpRequest httpsRequest = post("https://127.0.0.1:" + SSL_PORT).withBody(wrapAscii("Hello, I am Alice!"));
+		final HttpRequest httpRequest = post("http://127.0.0.1:" + PORT).withBody(wrapAscii("Hello, I am Alice!"));
 
 		final ResultCallbackFuture<String> callbackHttps = ResultCallbackFuture.create();
 		final ResultCallbackFuture<String> callbackHttp = ResultCallbackFuture.create();
 
 		server.listen();
 
-		final WaitAllHandler waitAllHandler = WaitAllHandler.create(2, new SimpleCompletionCallback() {
+		runParallel(eventloop, asList(
+				new AsyncRunnable() {
+					@Override
+					public void run(final CompletionCallback callback) {
+						client.send(httpsRequest, 500, new AssertingResultCallback<HttpResponse>() {
+							@Override
+							public void onResult(HttpResponse result) {
+								callbackHttps.setResult(decodeAscii(result.getBody()));
+								callback.setComplete();
+							}
+						});
+					}
+				},
+				new AsyncRunnable() {
+					@Override
+					public void run(final CompletionCallback callback) {
+						client.send(httpRequest, 500, new AssertingResultCallback<HttpResponse>() {
+							@Override
+							public void onResult(HttpResponse result) {
+								callbackHttp.setResult(decodeAscii(result.getBody()));
+								callback.setComplete();
+							}
+						});
+					}
+				}
+		)).run(new AssertingCompletionCallback() {
 			@Override
-			protected void onCompleteOrException() {
+			protected void onComplete() {
 				server.close(IgnoreCompletionCallback.create());
 				client.close();
-			}
-		});
-
-		client.send(httpsRequest, 500, new ResultCallback<HttpResponse>() {
-			@Override
-			public void onResult(HttpResponse result) {
-				callbackHttps.setResult(decodeAscii(result.getBody()));
-				waitAllHandler.getCallback().setComplete();
-			}
-
-			@Override
-			public void onException(Exception e) {
-				callbackHttps.setException(e);
-				waitAllHandler.getCallback().setException(e);
-			}
-		});
-		client.send(httpRequest, 500, new ResultCallback<HttpResponse>() {
-			@Override
-			public void onResult(HttpResponse result) {
-				callbackHttp.setResult(decodeAscii(result.getBody()));
-				waitAllHandler.getCallback().setComplete();
-			}
-
-			@Override
-			public void onException(Exception e) {
-				callbackHttp.setException(e);
-				waitAllHandler.getCallback().setException(e);
 			}
 		});
 

@@ -45,6 +45,7 @@ import java.util.Random;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
+import static io.datakernel.async.AsyncRunnables.runParallel;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.equalsLowerCaseAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -94,24 +95,26 @@ public class SimpleFsIntegrationTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = newCachedThreadPool();
 		final SimpleFsServer server = createServer(eventloop, executor);
-		SimpleFsClient client = createClient(eventloop);
-		WaitAllHandler waitAllHandler = WaitAllHandler.create(files, new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				server.close(IgnoreCompletionCallback.create());
-			}
+		final SimpleFsClient client = createClient(eventloop);
 
+		server.listen();
+		List<AsyncRunnable> tasks = new ArrayList<>();
+		for (int i = 0; i < files; i++) {
+			final StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrapForReading(CONTENT));
+			final int finalI = i;
+			tasks.add(new AsyncRunnable() {
+				@Override
+				public void run(CompletionCallback callback) {
+					client.upload("file" + finalI, producer, callback);
+				}
+			});
+		}
+		runParallel(eventloop, tasks).run(new AssertingCompletionCallback() {
 			@Override
-			public void onException(Exception e) {
+			protected void onComplete() {
 				server.close(IgnoreCompletionCallback.create());
 			}
 		});
-
-		server.listen();
-		for (int i = 0; i < files; i++) {
-			StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrapForReading(CONTENT));
-			client.upload("file" + i, producer, waitAllHandler.getCallback());
-		}
 
 		eventloop.run();
 		executor.shutdown();
@@ -308,43 +311,39 @@ public class SimpleFsIntegrationTest {
 		Files.write(storage.resolve(file), CONTENT);
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		final ExecutorService executor = newCachedThreadPool();
-		SimpleFsClient client = createClient(eventloop);
+		final SimpleFsClient client = createClient(eventloop);
 		final SimpleFsServer server = createServer(eventloop, executor);
 		int files = 10;
 
 		server.listen();
 
-		final WaitAllHandler waitAllHandler = WaitAllHandler.create(files, new CompletionCallback() {
+		List<AsyncRunnable> tasks = new ArrayList<>();
+		for (int i = 0; i < files; i++) {
+			final int finalI = i;
+			tasks.add(new AsyncRunnable() {
+				@Override
+				public void run(final CompletionCallback callback) {
+					client.download(file, 0, new AssertingResultCallback<StreamProducer<ByteBuf>>() {
+						@Override
+						public void onResult(StreamProducer<ByteBuf> producer) {
+							try {
+								producer.streamTo(StreamFileWriter.create(eventloop, executor, storage.resolve("file" + finalI)));
+							} catch (IOException e) {
+								this.setException(e);
+							}
+							callback.setComplete();
+						}
+					});
+				}
+			});
+		}
+		runParallel(eventloop, tasks).run(new AssertingCompletionCallback() {
 			@Override
-			public void onComplete() {
-				server.close(IgnoreCompletionCallback.create());
-			}
-
-			@Override
-			public void onException(Exception e) {
+			protected void onComplete() {
 				server.close(IgnoreCompletionCallback.create());
 			}
 		});
 
-		for (int i = 0; i < files; i++) {
-			final int finalI = i;
-			client.download(file, 0, new ResultCallback<StreamProducer<ByteBuf>>() {
-				@Override
-				public void onResult(StreamProducer<ByteBuf> producer) {
-					try {
-						producer.streamTo(StreamFileWriter.create(eventloop, executor, storage.resolve("file" + finalI)));
-					} catch (IOException e) {
-						this.setException(e);
-					}
-					waitAllHandler.getCallback().setComplete();
-				}
-
-				@Override
-				public void onException(Exception e) {
-					waitAllHandler.getCallback().setException(e);
-				}
-			});
-		}
 		eventloop.run();
 		executor.shutdown();
 

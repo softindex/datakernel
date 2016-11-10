@@ -96,12 +96,12 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 		}
 	}
 
-	public void execute(final AsyncTask asyncTask) {
+	public void execute(final AsyncRunnable asyncRunnable) {
 		try {
 			post(new Runnable() {
 				@Override
 				public void run() {
-					asyncTask.execute(new CompletionCallback() {
+					asyncRunnable.run(new CompletionCallback() {
 						@Override
 						protected void onComplete() {
 							complete();
@@ -124,8 +124,8 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 	}
 
 	@Override
-	public Future<?> submit(AsyncTask asyncTask) {
-		return submit(asyncTask, null);
+	public Future<?> submit(AsyncRunnable asyncRunnable) {
+		return submit(asyncRunnable, null);
 	}
 
 	@Override
@@ -152,12 +152,12 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 	}
 
 	@Override
-	public <T> Future<T> submit(final AsyncTask asyncTask, final T result) {
+	public <T> Future<T> submit(final AsyncRunnable asyncRunnable, final T result) {
 		final ResultCallbackFuture<T> future = ResultCallbackFuture.create();
 		post(new Runnable() {
 			@Override
 			public void run() {
-				asyncTask.execute(new CompletionCallback() {
+				asyncRunnable.run(new CompletionCallback() {
 					@Override
 					protected void onComplete() {
 						setComplete();

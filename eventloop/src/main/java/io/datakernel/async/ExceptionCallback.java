@@ -18,6 +18,8 @@ package io.datakernel.async;
 
 import io.datakernel.eventloop.Eventloop;
 
+import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+
 /**
  * This callback handles exceptions.
  */
@@ -34,6 +36,10 @@ public abstract class ExceptionCallback {
 	public final void setException(Exception e) {
 		CallbackRegistry.complete(this);
 		onException(e);
+	}
+
+	public final void postException(final Exception e) {
+		postException(getCurrentEventloop(), e);
 	}
 
 	public final void postException(Eventloop eventloop, final Exception e) {

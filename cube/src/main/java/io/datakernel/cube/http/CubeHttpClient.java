@@ -55,13 +55,8 @@ public final class CubeHttpClient implements ICube {
 		return new CubeHttpClient(eventloop, httpClient, domain, timeout);
 	}
 
-	public CubeHttpClient withDimension(String dimension, Type type) {
-		attributeTypes.put(dimension, type);
-		return this;
-	}
-
-	public CubeHttpClient withAttribute(String dimension, String attribute, Type type) {
-		attributeTypes.put(dimension + "." + attribute, type);
+	public CubeHttpClient withAttribute(String attribute, Type type) {
+		attributeTypes.put(attribute, type);
 		return this;
 	}
 

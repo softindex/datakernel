@@ -18,6 +18,8 @@ package io.datakernel.async;
 
 import io.datakernel.eventloop.Eventloop;
 
+import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+
 /**
  * Callback which calling after completing some action.
  */
@@ -28,6 +30,10 @@ public abstract class CompletionCallback extends ExceptionCallback {
 	public final void setComplete() {
 		CallbackRegistry.complete(this);
 		onComplete();
+	}
+
+	public final void postComplete() {
+		postComplete(getCurrentEventloop());
 	}
 
 	public final void postComplete(Eventloop eventloop) {

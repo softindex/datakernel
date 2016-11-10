@@ -18,7 +18,6 @@ package io.datakernel.stream.processor;
 
 import com.google.common.base.Function;
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.SimpleCompletionCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
@@ -163,9 +162,18 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T>, Eventl
 				queueProducer.streamTo(merger.newInput());
 
 				for (int partition : listOfPartitions) {
-					storage.read(partition, new SimpleCompletionCallback() {
+					storage.read(partition, new CompletionCallback() {
 						@Override
-						protected void onCompleteOrException() {
+						protected void onException(Exception e) {
+							onCompleteOrException();
+						}
+
+						@Override
+						protected void onComplete() {
+							onCompleteOrException();
+						}
+
+						void onCompleteOrException() {
 							++readPartitions;
 							if (readPartitions == listOfPartitions.size()) {
 								storage.cleanup(listOfPartitions);
