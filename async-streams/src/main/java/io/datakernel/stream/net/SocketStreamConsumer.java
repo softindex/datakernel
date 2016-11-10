@@ -30,6 +30,8 @@ final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> impleme
 
 	private long writeTick;
 
+	private boolean closedProperly;
+
 	// region creators
 	private SocketStreamConsumer(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
 	                             CompletionCallback completionCallback) {
@@ -59,11 +61,6 @@ final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> impleme
 		completionCallback.setException(e);
 	}
 
-	/**
-	 * Method which is called after each receiving result
-	 *
-	 * @param buf received item
-	 */
 	@Override
 	public void onData(ByteBuf buf) {
 		asyncTcpSocket.write(buf);
@@ -85,13 +82,18 @@ final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> impleme
 		super.closeWithError(e);
 	}
 
-	void onWrite() {
+	public void onWrite() {
 		writeTick = 0;
 		if (getConsumerStatus() == StreamStatus.SUSPENDED) {
 			resume();
 		} else if (getConsumerStatus() == StreamStatus.END_OF_STREAM) {
+			closedProperly = true;
 			completionCallback.setComplete();
 		}
+	}
+
+	public boolean isClosed() {
+		return closedProperly || getConsumerStatus() == StreamStatus.CLOSED_WITH_ERROR;
 	}
 
 }

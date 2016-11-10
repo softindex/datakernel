@@ -119,7 +119,7 @@ public final class SocketStreamingConnection implements AsyncTcpSocket.EventHand
 	}
 
 	private void closeIfDone() {
-		if (socketReader.getProducerStatus().isClosed() && socketWriter.getConsumerStatus().isClosed()) {
+		if (socketReader.isClosed() && socketWriter.isClosed()) {
 			asyncTcpSocket.close();
 		}
 	}

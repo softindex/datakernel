@@ -102,4 +102,8 @@ final class SocketStreamProducer extends AbstractStreamProducer<ByteBuf> {
 		doProduce();
 	}
 
+	public boolean isClosed() {
+		return getProducerStatus().isClosed();
+	}
+
 }
