@@ -18,6 +18,7 @@ package io.datakernel.rpc.protocol.stream;
 
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.SimpleException;
 import io.datakernel.rpc.protocol.RpcConnection;
 import io.datakernel.rpc.protocol.RpcControlMessage;
 import io.datakernel.rpc.protocol.RpcMessage;
@@ -36,8 +37,11 @@ import org.slf4j.LoggerFactory;
 
 @SuppressWarnings("unchecked")
 final class RpcStreamProtocol implements RpcProtocol {
+	private static final SimpleException CONNECTION_CLOSED_EXCEPTION =
+			new SimpleException("Rpc сonnection is already closed");
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
+	private final Eventloop eventloop;
 	private final RpcConnection rpcConnection;
 	private final SimpleStreamProducer<RpcMessage> sender;
 	private final SimpleStreamConsumer<RpcMessage> receiver;
@@ -47,6 +51,7 @@ final class RpcStreamProtocol implements RpcProtocol {
 	                            RpcConnection rpcConnection,
 	                            BufferSerializer<RpcMessage> messageSerializer,
 	                            int defaultPacketSize, int maxPacketSize, boolean compression, boolean server) {
+		this.eventloop = eventloop;
 		this.rpcConnection = rpcConnection;
 
 		if (server) {
@@ -123,12 +128,20 @@ final class RpcStreamProtocol implements RpcProtocol {
 
 	@Override
 	public void sendMessage(RpcMessage message) {
-		sender.send(message);
+		sendRpcMessage(message);
 	}
 
 	@Override
 	public void sendCloseMessage() {
-		sender.send(RpcMessage.of(-1, RpcControlMessage.CLOSE));
+		sendRpcMessage(RpcMessage.of(-1, RpcControlMessage.CLOSE));
+	}
+
+	private void sendRpcMessage(RpcMessage message) {
+		if (sender.getProducerStatus().isClosed()) {
+			eventloop.recordIoError(CONNECTION_CLOSED_EXCEPTION, this);
+			return;
+		}
+		sender.send(message);
 	}
 
 	@Override
