@@ -14,63 +14,56 @@ public class AsyncRunnables {
 	private AsyncRunnables() {
 	}
 
+	private static final class DoneState {
+		boolean done;
+	}
+
 	public static AsyncRunnable timeout(final Eventloop eventloop, final long timestamp, final AsyncRunnable runnable) {
 		return new AsyncRunnable() {
-			boolean done;
-
 			@Override
 			public void run(final CompletionCallback callback) {
-				final long tick = eventloop.getTick();
-				eventloop.schedule(timestamp, new Runnable() {
-					@Override
-					public void run() {
-						if (!done) {
-							done = true;
-							callback.setException(TIMEOUT_EXCEPTION);
-						}
-					}
-				});
+				final DoneState state = new DoneState();
 				runnable.run(new CompletionCallback() {
 					@Override
 					protected void onComplete() {
-						if (!done) {
-							done = true;
-							if (eventloop.getTick() != tick)
-								callback.setComplete();
-							else
-								callback.postComplete(eventloop);
+						if (!state.done) {
+							state.done = true;
+							callback.setComplete();
 						}
 					}
 
 					@Override
 					protected void onException(Exception e) {
-						if (!done) {
-							done = true;
-							if (eventloop.getTick() != tick)
-								callback.setException(e);
-							else
-								callback.postException(eventloop, e);
+						if (!state.done) {
+							state.done = true;
+							callback.setException(e);
 						}
 					}
 				});
+				if (!state.done) {
+					eventloop.schedule(timestamp, new Runnable() {
+						@Override
+						public void run() {
+							if (!state.done) {
+								state.done = true;
+								callback.setException(TIMEOUT_EXCEPTION);
+							}
+						}
+					});
+				}
 			}
 		};
 	}
 
-	public static AsyncRunnable runSequence(final Eventloop eventloop, final AsyncRunnable... runnables) {
-		return runSequence(eventloop, asList(runnables));
+	public static AsyncRunnable runInSequence(final Eventloop eventloop, final AsyncRunnable... runnables) {
+		return runInSequence(eventloop, asList(runnables));
 	}
 
-	public static AsyncRunnable runSequence(final Eventloop eventloop, final List<AsyncRunnable> runnables) {
+	public static AsyncRunnable runInSequence(final Eventloop eventloop, final Iterable<AsyncRunnable> runnables) {
 		return new AsyncRunnable() {
 			@Override
 			public void run(CompletionCallback callback) {
-				if (runnables.isEmpty()) {
-					callback.postComplete(eventloop);
-					return;
-				}
-				Iterator<AsyncRunnable> iterator = runnables.iterator();
-				next(iterator, callback);
+				next(runnables.iterator(), callback);
 			}
 
 			void next(final Iterator<AsyncRunnable> iterator, final CompletionCallback callback) {
@@ -92,47 +85,47 @@ public class AsyncRunnables {
 						}
 					});
 				} else {
-					callback.postComplete(eventloop);
+					callback.setComplete();
 				}
 			}
 		};
 	}
 
-	public static AsyncRunnable runParallel(final Eventloop eventloop, final AsyncRunnable... runnables) {
-		return runParallel(eventloop, asList(runnables));
+	public static AsyncRunnable runInParallel(final Eventloop eventloop, final AsyncRunnable... runnables) {
+		return runInParallel(eventloop, asList(runnables));
 	}
 
-	public static AsyncRunnable runParallel(final Eventloop eventloop, final List<AsyncRunnable> runnables) {
-		return new AsyncRunnable() {
-			int pending = runnables.size();
+	private static final class RunState {
+		int pending;
 
+		public RunState(int pending) {
+			this.pending = pending;
+		}
+	}
+
+	public static AsyncRunnable runInParallel(final Eventloop eventloop, final List<AsyncRunnable> runnables) {
+		return new AsyncRunnable() {
 			@Override
 			public void run(final CompletionCallback callback) {
-				if (pending == 0) {
-					callback.postComplete(eventloop);
+				final RunState state = new RunState(runnables.size());
+				if (state.pending == 0) {
+					callback.setComplete();
 					return;
 				}
-				final long tick = eventloop.getTick();
 				for (AsyncRunnable runnable : runnables) {
 					runnable.run(new CompletionCallback() {
 						@Override
 						protected void onComplete() {
-							if (--pending == 0) {
-								if (eventloop.getTick() != tick)
-									callback.setComplete();
-								else
-									callback.postComplete(eventloop);
+							if (--state.pending == 0) {
+								callback.setComplete();
 							}
 						}
 
 						@Override
 						protected void onException(Exception e) {
-							if (pending > 0) {
-								pending = 0;
-								if (eventloop.getTick() != tick)
-									callback.setException(e);
-								else
-									callback.postException(eventloop, e);
+							if (state.pending > 0) {
+								state.pending = 0;
+								callback.setException(e);
 							}
 						}
 					});

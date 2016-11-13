@@ -48,7 +48,7 @@ public final class StaticServletForFiles extends StaticServlet {
 		Path path = storage.resolve(name).normalize();
 
 		if (!path.startsWith(storage)) {
-			callback.setResult(null);
+			callback.setException(HttpException.notFound404());
 			return;
 		}
 
@@ -62,7 +62,7 @@ public final class StaticServletForFiles extends StaticServlet {
 					@Override
 					public void onException(Exception exception) {
 						if (exception instanceof NoSuchFileException)
-							callback.setResult(null);
+							callback.setException(HttpException.notFound404());
 						else
 							callback.setException(exception);
 					}

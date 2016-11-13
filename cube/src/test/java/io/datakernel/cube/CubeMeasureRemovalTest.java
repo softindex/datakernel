@@ -31,7 +31,6 @@ import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducers;
 import org.jooq.Configuration;
 import org.jooq.SQLDialect;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -48,7 +47,7 @@ import static io.datakernel.aggregation.AggregationPredicates.alwaysTrue;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofDouble;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.sum;
-import static io.datakernel.cube.Cube.AggregationScheme.id;
+import static io.datakernel.cube.Cube.AggregationConfig.id;
 import static io.datakernel.cube.CubeTestUtils.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
@@ -65,7 +64,6 @@ public class CubeMeasureRemovalTest {
 	private static final List<String> LOG_PARTITIONS = asList(LOG_PARTITION_NAME);
 	private static final String LOG_NAME = "testlog";
 
-	@Ignore("Requires DB access to run")
 	@SuppressWarnings("ConstantConditions")
 	@Test
 	public void test() throws Exception {
@@ -180,7 +178,8 @@ public class CubeMeasureRemovalTest {
 		aggregateToMap(map, listOfRandomLogItems2);
 
 		StreamConsumers.ToList<LogItem> queryResultConsumer = new StreamConsumers.ToList<>(eventloop);
-		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(), LogItem.class).streamTo(queryResultConsumer);
+		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(),
+				LogItem.class, DefiningClassLoader.create(classLoader)).streamTo(queryResultConsumer);
 		eventloop.run();
 		List<LogItem> queryResultBeforeConsolidation = queryResultConsumer.getList();
 
@@ -191,7 +190,7 @@ public class CubeMeasureRemovalTest {
 
 		// Consolidate
 		ResultCallbackFuture<Boolean> callback = ResultCallbackFuture.create();
-		cube.consolidate(100, callback);
+		cube.consolidate(callback);
 		eventloop.run();
 		boolean consolidated = callback.isDone() ? callback.get() : false;
 		assertEquals(true, consolidated);
@@ -209,7 +208,8 @@ public class CubeMeasureRemovalTest {
 
 		// Query
 		queryResultConsumer = new StreamConsumers.ToList<>(eventloop);
-		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(), LogItem.class).streamTo(queryResultConsumer);
+		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(),
+				LogItem.class, DefiningClassLoader.create(classLoader)).streamTo(queryResultConsumer);
 		eventloop.run();
 		List<LogItem> queryResultAfterConsolidation = queryResultConsumer.getList();
 

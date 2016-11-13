@@ -128,7 +128,7 @@ public class InvertedIndexTest {
 				.withKeys(InvertedIndexRecord.KEYS)
 				.withFields(InvertedIndexRecord.OUTPUT_FIELDS);
 		StreamConsumers.ToList<InvertedIndexQueryResult> consumerToList = StreamConsumers.toList(eventloop);
-		aggregation.query(query, InvertedIndexQueryResult.class, classLoader).streamTo(consumerToList);
+		aggregation.query(query, InvertedIndexQueryResult.class, DefiningClassLoader.create(classLoader)).streamTo(consumerToList);
 		eventloop.run();
 
 		System.out.println(consumerToList.getList());

@@ -38,7 +38,7 @@ import java.lang.reflect.Type;
 import java.util.List;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
-import static io.datakernel.cube.http.Utils.createGsonBuilder;
+import static io.datakernel.cube.http.Utils.*;
 import static io.datakernel.http.HttpMethod.GET;
 
 public final class ReportingServiceServlet implements AsyncServlet {
@@ -109,40 +109,34 @@ public final class ReportingServiceServlet implements AsyncServlet {
 
 	@SuppressWarnings("unchecked")
 	public CubeQuery parseQuery(HttpRequest request) throws ParseException {
-//		List<String> dimensions = parseListOfStrings(request.getParameter(DIMENSIONS_PARAM));
-		//		String searchString = request.getParameter(SEARCH_PARAM);
-
-//		if (dimensions.isEmpty() && attributes.isEmpty())
-//			throw new ParseException("At least one dimension or attribute must be specified");
-
 		CubeQuery query = CubeQuery.create();
 
 		String parameter;
-		parameter = request.getParameter(Utils.ATTRIBUTES_PARAM);
+		parameter = request.getParameter(ATTRIBUTES_PARAM);
 		if (parameter != null)
-			query = query.withAttributes((List<String>) gson.fromJson(parameter, LIST_OF_STRINGS));
+			query = query.withAttributes(SPLITTER.splitToList(parameter));
 
-		parameter = request.getParameter(Utils.MEASURES_PARAM);
+		parameter = request.getParameter(MEASURES_PARAM);
 		if (parameter != null)
-			query = query.withMeasures((List<String>) gson.fromJson(parameter, LIST_OF_STRINGS));
+			query = query.withMeasures(SPLITTER.splitToList(parameter));
 
-		parameter = request.getParameter(Utils.FILTERS_PARAM);
+		parameter = request.getParameter(FILTERS_PARAM);
 		if (parameter != null)
 			query = query.withPredicate(gson.fromJson(parameter, AggregationPredicate.class));
 
-		parameter = request.getParameter(Utils.SORT_PARAM);
+		parameter = request.getParameter(SORT_PARAM);
 		if (parameter != null)
-			query = query.withOrderings((List<CubeQuery.Ordering>) gson.fromJson(parameter, ORDERINGS));
+			query = query.withOrderings(parseOrderings(parameter));
 
-		parameter = request.getParameter(Utils.HAVING_PARAM);
+		parameter = request.getParameter(HAVING_PARAM);
 		if (parameter != null)
 			query = query.withHaving(gson.fromJson(parameter, AggregationPredicate.class));
 
-		parameter = request.getParameter(Utils.LIMIT_PARAM);
+		parameter = request.getParameter(LIMIT_PARAM);
 		if (parameter != null)
-			query = query.withLimit(Integer.valueOf(parameter));
+			query = query.withLimit(Integer.valueOf(parameter)); // TODO throws ParseException
 
-		parameter = request.getParameter(Utils.OFFSET_PARAM);
+		parameter = request.getParameter(OFFSET_PARAM);
 		if (parameter != null)
 			query = query.withOffset(Integer.valueOf(parameter));
 

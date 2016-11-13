@@ -161,6 +161,11 @@ public final class ClassBuilder<T> {
 		return this;
 	}
 
+	public ClassBuilder<T> withFields(Map<String, Class<?>> fieldsClasses) {
+		fields.putAll(fieldsClasses);
+		return this;
+	}
+
 	/**
 	 * Creates a new method for a dynamic class
 	 *
@@ -173,8 +178,18 @@ public final class ClassBuilder<T> {
 		return this;
 	}
 
+	public ClassBuilder<T> withMethods(Map<Method, Expression> methods) {
+		this.methods.putAll(methods);
+		return this;
+	}
+
 	public ClassBuilder<T> withStaticMethod(Method method, Expression expression) {
-		staticMethods.put(method, expression);
+		this.staticMethods.put(method, expression);
+		return this;
+	}
+
+	public ClassBuilder<T> withStaticMethods(Map<Method, Expression> staticMethods) {
+		this.staticMethods.putAll(staticMethods);
 		return this;
 	}
 
@@ -244,6 +259,14 @@ public final class ClassBuilder<T> {
 		}
 		Preconditions.check(foundMethod != null, "Could not find method '" + methodName + "'");
 		return withMethod(foundMethod, expression);
+	}
+
+	public ClassBuilder<T> withMethod(Map<String, Expression> expressions) {
+		ClassBuilder<T> self = this;
+		for (String methodName : expressions.keySet()) {
+			self = self.withMethod(methodName, expressions.get(methodName));
+		}
+		return self;
 	}
 
 	public ClassBuilder<T> withClassName(String name) {

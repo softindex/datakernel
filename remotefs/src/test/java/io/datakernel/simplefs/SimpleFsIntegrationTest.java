@@ -45,7 +45,7 @@ import java.util.Random;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.async.AsyncRunnables.runParallel;
+import static io.datakernel.async.AsyncRunnables.runInParallel;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.equalsLowerCaseAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -109,7 +109,7 @@ public class SimpleFsIntegrationTest {
 				}
 			});
 		}
-		runParallel(eventloop, tasks).run(new AssertingCompletionCallback() {
+		runInParallel(eventloop, tasks).run(new AssertingCompletionCallback() {
 			@Override
 			protected void onComplete() {
 				server.close(IgnoreCompletionCallback.create());
@@ -337,7 +337,7 @@ public class SimpleFsIntegrationTest {
 				}
 			});
 		}
-		runParallel(eventloop, tasks).run(new AssertingCompletionCallback() {
+		runInParallel(eventloop, tasks).run(new AssertingCompletionCallback() {
 			@Override
 			protected void onComplete() {
 				server.close(IgnoreCompletionCallback.create());

@@ -32,7 +32,7 @@ import java.util.Map;
 
 import static com.google.common.base.Predicates.in;
 import static com.google.common.collect.Maps.filterKeys;
-import static io.datakernel.async.AsyncRunnables.runParallel;
+import static io.datakernel.async.AsyncRunnables.runInParallel;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static java.util.Collections.singletonList;
 
@@ -83,7 +83,7 @@ public final class LogToCubeMetadataStorageStub implements LogToCubeMetadataStor
 				}
 			});
 		}
-		runParallel(getCurrentEventloop(), tasks).run(callback);
+		runInParallel(getCurrentEventloop(), tasks).run(callback);
 	}
 
 }

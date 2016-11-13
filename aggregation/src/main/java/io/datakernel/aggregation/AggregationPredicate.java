@@ -18,7 +18,5 @@ public interface AggregationPredicate {
 
 	interface FieldAccessor {
 		Object toInternalValue(String field, Object value);
-
-		Object toValue(String field, Object internalValue);
 	}
 }

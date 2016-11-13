@@ -17,6 +17,7 @@
 package io.datakernel.cube;
 
 import io.datakernel.aggregation.AggregationChunkStorageStub;
+import io.datakernel.aggregation.CommitCallbackStub;
 import io.datakernel.aggregation.CubeMetadataStorageStub;
 import io.datakernel.aggregation.fieldtype.FieldTypes;
 import io.datakernel.codegen.DefiningClassLoader;
@@ -35,7 +36,7 @@ import static io.datakernel.aggregation.AggregationPredicates.and;
 import static io.datakernel.aggregation.AggregationPredicates.eq;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.sum;
-import static io.datakernel.cube.Cube.AggregationScheme.id;
+import static io.datakernel.cube.Cube.AggregationConfig.id;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
@@ -56,15 +57,15 @@ public class StringDimensionTest {
 				.withMeasure("metric3", sum(ofLong()))
 				.withAggregation(id("detailedAggregation").withDimensions("key1", "key2").withMeasures("metric1", "metric2", "metric3"));
 		StreamProducers.ofIterable(eventloop, asList(new DataItemString1("str1", 2, 10, 20), new DataItemString1("str2", 3, 10, 20)))
-				.streamTo(cube.consumer(DataItemString1.class, DataItemString1.DIMENSIONS, DataItemString1.METRICS, new CubeTest.MyCommitCallback(cube)));
+				.streamTo(cube.consumer(DataItemString1.class, DataItemString1.DIMENSIONS, DataItemString1.METRICS, new CommitCallbackStub(cube)));
 		StreamProducers.ofIterable(eventloop, asList(new DataItemString2("str2", 3, 10, 20), new DataItemString2("str1", 4, 10, 20)))
-				.streamTo(cube.consumer(DataItemString2.class, DataItemString2.DIMENSIONS, DataItemString2.METRICS, new CubeTest.MyCommitCallback(cube)));
+				.streamTo(cube.consumer(DataItemString2.class, DataItemString2.DIMENSIONS, DataItemString2.METRICS, new CommitCallbackStub(cube)));
 		eventloop.run();
 
 		StreamConsumers.ToList<DataItemResultString> consumerToList = StreamConsumers.toList(eventloop);
 		cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"),
 				and(eq("key1", "str2"), eq("key2", 3)),
-				DataItemResultString.class
+				DataItemResultString.class, DefiningClassLoader.create(classLoader)
 		).streamTo(consumerToList);
 		eventloop.run();
 

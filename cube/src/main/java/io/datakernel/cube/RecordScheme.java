@@ -2,10 +2,13 @@ package io.datakernel.cube;
 
 import com.carrotsearch.hppc.ObjectIntOpenHashMap;
 
+import java.lang.reflect.Type;
 import java.util.*;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
 public final class RecordScheme {
-	private final LinkedHashMap<String, Class<?>> fieldTypes = new LinkedHashMap<>();
+	private final LinkedHashMap<String, Type> fieldTypes = new LinkedHashMap<>();
 
 	protected int objects;
 	protected int ints;
@@ -25,21 +28,22 @@ public final class RecordScheme {
 		return new RecordScheme();
 	}
 
-	public RecordScheme withField(String field, Class<?> type) {
+	public RecordScheme withField(String field, Type type) {
+		checkNotNull(type);
 		fieldTypes.put(field, type);
 		fields = Arrays.copyOf(fields, fields.length + 1);
 		fields[fields.length - 1] = field;
 		int rawIndex;
-		if (type == Integer.class) {
+		if (type == int.class) {
 			rawIndex = (1 << 16) + ints;
 			ints++;
-		} else if (type == Double.class) {
+		} else if (type == double.class) {
 			rawIndex = (2 << 16) + doubles;
 			doubles++;
-		} else if (type == Long.class) {
+		} else if (type == long.class) {
 			rawIndex = (3 << 16) + longs;
 			longs++;
-		} else if (type == Float.class) {
+		} else if (type == float.class) {
 			rawIndex = (4 << 16) + floats;
 			floats++;
 		} else {
@@ -68,7 +72,7 @@ public final class RecordScheme {
 		return fields[index];
 	}
 
-	public Class<?> getFieldType(String field) {
+	public Type getFieldType(String field) {
 		return fieldTypes.get(field);
 	}
 

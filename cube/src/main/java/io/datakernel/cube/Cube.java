@@ -21,7 +21,6 @@ import com.google.common.base.Function;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Predicate;
 import com.google.common.collect.*;
-import com.google.common.primitives.Primitives;
 import io.datakernel.aggregation.*;
 import io.datakernel.aggregation.AggregationMetadataStorage.LoadedChunks;
 import io.datakernel.aggregation.fieldtype.FieldType;
@@ -38,6 +37,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
+import io.datakernel.jmx.ValueStats;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
@@ -52,6 +52,7 @@ import java.lang.reflect.Type;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 
+import static com.google.common.base.Functions.forMap;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.base.Predicates.in;
@@ -59,12 +60,12 @@ import static com.google.common.base.Predicates.not;
 import static com.google.common.collect.Iterables.*;
 import static com.google.common.collect.Iterables.filter;
 import static com.google.common.collect.Lists.newArrayList;
-import static com.google.common.collect.Maps.newHashMap;
-import static com.google.common.collect.Maps.newLinkedHashMap;
+import static com.google.common.collect.Maps.*;
 import static com.google.common.collect.Sets.*;
+import static com.google.common.primitives.Primitives.isWrapperType;
 import static io.datakernel.aggregation.AggregationUtils.*;
 import static io.datakernel.aggregation.util.AsyncResultsTracker.ofMultimap;
-import static io.datakernel.async.AsyncRunnables.runParallel;
+import static io.datakernel.async.AsyncRunnables.runInParallel;
 import static io.datakernel.codegen.ExpressionComparator.leftField;
 import static io.datakernel.codegen.ExpressionComparator.rightField;
 import static io.datakernel.codegen.Expressions.*;
@@ -93,6 +94,8 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	private final Map<String, Measure> measures = new LinkedHashMap<>();
 	private final Map<String, ComputedMeasure> computedMeasures = newLinkedHashMap();
 
+	private ListenableResultCallback<LoadedChunks> loadChunksCallback;
+
 	private final ComputedMeasure.StoredMeasures storedMeasures = new ComputedMeasure.StoredMeasures() {
 		@Override
 		public Class<?> getStoredMeasureType(String storedMeasureId) {
@@ -112,12 +115,6 @@ public final class Cube implements ICube, EventloopJmxMBean {
 			return fieldType == null ? value : fieldType.toInternalValue(value);
 		}
 
-		@Override
-		public Object toValue(String field, Object internalValue) {
-			FieldType fieldType = getFieldType(field);
-			return fieldType == null ? internalValue : fieldType.toValue(internalValue);
-		}
-
 		private FieldType getFieldType(String field) {
 			if (dimensionTypes.containsKey(field)) {
 				return dimensionTypes.get(field);
@@ -130,12 +127,11 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	};
 
 	private static final class AttributeResolverInfo {
-		private final List<String> attributes;
+		private final List<String> attributes = new ArrayList<>();
 		private final List<String> dimensions;
 		private final AttributeResolver resolver;
 
-		private AttributeResolverInfo(List<String> dimensions, List<String> attributes, AttributeResolver resolver) {
-			this.attributes = attributes;
+		private AttributeResolverInfo(List<String> dimensions, AttributeResolver resolver) {
 			this.dimensions = dimensions;
 			this.resolver = resolver;
 		}
@@ -149,12 +145,14 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	private final Multimap<String, String> parentChildRelationships = LinkedHashMultimap.create();
 
 	// settings
-	private int aggregationChunkSize = Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE;
-	private int sorterItemsInMemory = Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY;
-	private int sorterBlockSize = Aggregation.DEFAULT_SORTER_BLOCK_SIZE;
-	private int overlappingChunksThreshold = Cube.DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD;
+	private int aggregationsChunkSize = Aggregation.DEFAULT_CHUNK_SIZE;
+	private int aggregationsSorterItemsInMemory = Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY;
+	private int aggregationsSorterBlockSize = Aggregation.DEFAULT_SORTER_BLOCK_SIZE;
+	private int aggregationsMaxChunksToConsolidate = Aggregation.DEFAULT_MAX_CHUNKS_TO_CONSOLIDATE;
+	private boolean aggregationsIgnoreChunkReadingExceptions = false;
+
+	private int maxOverlappingChunksToProcessLogs = Cube.DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD;
 	private int maxIncrementalReloadPeriodMillis = Aggregation.DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS;
-	private boolean ignoreChunkReadingExceptions = false;
 
 	private static final class AggregationInfo {
 		private final Aggregation aggregation;
@@ -166,6 +164,11 @@ public final class Cube implements ICube, EventloopJmxMBean {
 			this.measures = measures;
 			this.predicate = predicate;
 		}
+
+		@Override
+		public String toString() {
+			return aggregation.toString();
+		}
 	}
 
 	// state
@@ -173,7 +176,16 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	private int lastRevisionId;
 	private long lastReloadTimestamp;
 
-	private LRUCache<ClassLoaderCacheKey, DefiningClassLoader> classLoaderCache;
+	private CubeClassLoaderCache classLoaderCache;
+
+	// JMX
+	private final ValueStats queryTimes = ValueStats.create().withSmoothingWindow(10 * 60);
+	private long queryErrors;
+	private Exception queryLastError;
+	private long consolidationStarted;
+	private long consolidationLastTimeMillis;
+	private int consolidations;
+	private Exception consolidationLastError;
 
 	private Cube(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
 	             CubeMetadataStorage cubeMetadataStorage, AggregationChunkStorage aggregationChunkStorage) {
@@ -195,44 +207,47 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	}
 
 	public Cube withAttribute(String attribute, AttributeResolver resolver) {
-		return withAttributes(asList(attribute), resolver);
-	}
-
-	public Cube withAttributes(List<String> attributes, AttributeResolver resolver) {
-		String dimension = null;
-		for (String attribute : attributes) {
-			int pos = attribute.indexOf('.');
-			if (pos == -1)
-				throw new IllegalArgumentException();
-			String d = attribute.substring(0, pos);
-			if (dimension != null && !dimension.equals(d))
-				throw new IllegalArgumentException();
-			dimension = d;
+		checkArgument(!this.attributes.containsKey(attribute), "Attribute %s has already been defined", attribute);
+		int pos = attribute.indexOf('.');
+		if (pos == -1)
+			throw new IllegalArgumentException();
+		String dimension = attribute.substring(0, pos);
+		String attributeName = attribute.substring(pos + 1);
+		checkArgument(resolver.getAttributeTypes().containsKey(attributeName), "Resolver does not support %s", attribute);
+		checkArgument(!isWrapperType(resolver.getAttributeTypes().get(attributeName)), "Unsupported attribute type for %s", attribute);
+		List<String> dimensions = buildDrillDownChain(dimension);
+		checkArgument(dimensions.size() == resolver.getKeyTypes().length, "Parent dimensions: %s, key types: %s", dimensions, newArrayList(resolver.getKeyTypes()));
+		for (int i = 0; i < dimensions.size(); i++) {
+			String d = dimensions.get(i);
+			checkArgument(((Class<?>) dimensionTypes.get(d).getInternalDataType()).equals(resolver.getKeyTypes()[i]), "Dimension type mismatch for %s", d);
 		}
-		return withAttributes(asList(dimension), attributes, resolver);
-	}
-
-	public Cube withAttributes(String dimension, List<String> attributes, AttributeResolver resolver) {
-		return withAttributes(asList(dimension), attributes, resolver);
-	}
-
-	public Cube withAttribute(String dimension, String attribute, AttributeResolver resolver) {
-		return withAttributes(asList(dimension), asList(attribute), resolver);
-	}
-
-	public Cube withAttributes(List<String> dimensions, List<String> attributes, AttributeResolver resolver) {
-		AttributeResolverInfo resolverInfo = new AttributeResolverInfo(dimensions, attributes, resolver);
-		attributeResolvers.add(resolverInfo);
-		Class<?>[] attributeTypes = resolver.getAttributeTypes();
-		for (int i = 0; i < attributes.size(); i++) {
-			String attribute = attributes.get(i);
-			this.attributeTypes.put(attribute, attributeTypes[i]);
-			this.attributes.put(attribute, resolverInfo);
+		AttributeResolverInfo resolverInfo = null;
+		for (AttributeResolverInfo r : attributeResolvers) {
+			if (r.resolver == resolver) {
+				resolverInfo = r;
+				break;
+			}
 		}
+		if (resolverInfo == null) {
+			resolverInfo = new AttributeResolverInfo(dimensions, resolver);
+			attributeResolvers.add(resolverInfo);
+		}
+		resolverInfo.attributes.add(attribute);
+		attributes.put(attribute, resolverInfo);
+		attributeTypes.put(attribute, resolver.getAttributeTypes().get(attributeName));
 		return this;
 	}
 
-	public Cube withCache(LRUCache<ClassLoaderCacheKey, DefiningClassLoader> classLoaderCache) {
+	public Cube withAttributes(Map<String, AttributeResolver> attributes) {
+		Cube cube = this;
+		for (String attribute : attributes.keySet()) {
+			AttributeResolver resolver = attributes.get(attribute);
+			cube = cube.withAttribute(attribute, resolver);
+		}
+		return cube;
+	}
+
+	public Cube withClassLoaderCache(CubeClassLoaderCache classLoaderCache) {
 		this.classLoaderCache = classLoaderCache;
 		return this;
 	}
@@ -287,146 +302,160 @@ public final class Cube implements ICube, EventloopJmxMBean {
 		return this;
 	}
 
-	public static final class AggregationScheme {
+	public static final class AggregationConfig {
 		private final String id;
 		private List<String> dimensions = new ArrayList<>();
 		private List<String> measures = new ArrayList<>();
 		private AggregationPredicate predicate = AggregationPredicates.alwaysTrue();
 		private List<String> partitioningKey = new ArrayList<>();
-		private int aggregationChunkSize;
+		private int chunkSize;
 		private int sorterItemsInMemory;
 		private int sorterBlockSize;
-		private int overlappingChunksThreshold;
-		private int maxIncrementalReloadPeriodMillis;
+		private int maxChunksToConsolidate;
 
-		public AggregationScheme(String id) {
+		public AggregationConfig(String id) {
 			this.id = id;
 		}
 
-		public static AggregationScheme id(String id) {
-			return new AggregationScheme(id);
+		public String getId() {
+			return id;
 		}
 
-		public AggregationScheme withDimensions(Collection<String> dimensions) {
+		public static AggregationConfig id(String id) {
+			return new AggregationConfig(id);
+		}
+
+		public AggregationConfig withDimensions(Collection<String> dimensions) {
 			this.dimensions.addAll(dimensions);
 			return this;
 		}
 
-		public AggregationScheme withDimensions(String... dimensions) {
+		public AggregationConfig withDimensions(String... dimensions) {
 			return withDimensions(asList(dimensions));
 		}
 
-		public AggregationScheme withMeasures(Collection<String> measures) {
+		public AggregationConfig withMeasures(Collection<String> measures) {
 			this.measures.addAll(measures);
 			return this;
 		}
 
-		public AggregationScheme withMeasures(String... measures) {
+		public AggregationConfig withMeasures(String... measures) {
 			return withMeasures(asList(measures));
 		}
 
-		public AggregationScheme withPredicate(AggregationPredicate predicate) {
+		public AggregationConfig withPredicate(AggregationPredicate predicate) {
 			this.predicate = predicate;
 			return this;
 		}
 
-		public AggregationScheme withPartitioningKey(List<String> partitioningKey) {
+		public AggregationConfig withPartitioningKey(List<String> partitioningKey) {
 			this.partitioningKey.addAll(partitioningKey);
 			return this;
 		}
 
-		public AggregationScheme withPartitioningKey(String... partitioningKey) {
+		public AggregationConfig withPartitioningKey(String... partitioningKey) {
 			this.partitioningKey.addAll(asList(partitioningKey));
 			return this;
 		}
 
-		public AggregationScheme withChunkSize(int chunkSize) {
-			this.aggregationChunkSize = chunkSize;
+		public AggregationConfig withChunkSize(int chunkSize) {
+			this.chunkSize = chunkSize;
 			return this;
 		}
 
-		public AggregationScheme withSorterItemsInMemory(int sorterItemsInMemory) {
+		public AggregationConfig withSorterItemsInMemory(int sorterItemsInMemory) {
 			this.sorterItemsInMemory = sorterItemsInMemory;
 			return this;
 		}
 
-		public AggregationScheme withSorterBlockSize(int sorterBlockSize) {
+		public AggregationConfig withSorterBlockSize(int sorterBlockSize) {
 			this.sorterBlockSize = sorterBlockSize;
 			return this;
 		}
 
-		public AggregationScheme withOverlappingChunksThreshold(int overlappingChunksThreshold) {
-			this.overlappingChunksThreshold = overlappingChunksThreshold;
-			return this;
-		}
-
-		public AggregationScheme withMaxIncrementalReloadPeriodMillis(int maxIncrementalReloadPeriodMillis) {
-			this.maxIncrementalReloadPeriodMillis = maxIncrementalReloadPeriodMillis;
+		public AggregationConfig withMaxChunksToConsolidate(int maxChunksToConsolidate) {
+			this.maxChunksToConsolidate = maxChunksToConsolidate;
 			return this;
 		}
 	}
 
-	public Cube withAggregation(AggregationScheme aggregationScheme) {
-		addAggregation(aggregationScheme);
+	public Cube withAggregation(AggregationConfig aggregationConfig) {
+		addAggregation(aggregationConfig);
 		return this;
 	}
 
-	private Cube addAggregation(final AggregationScheme scheme) {
-		checkArgument(!aggregations.containsKey(scheme.id), "Aggregation '%s' is already defined", scheme.id);
+	private Cube addAggregation(final AggregationConfig config) {
+		checkArgument(!aggregations.containsKey(config.id), "Aggregation '%s' is already defined", config.id);
 
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorage() {
 			@Override
 			public void createChunkId(ResultCallback<Long> callback) {
-				cubeMetadataStorage.createChunkId(Cube.this, scheme.id, callback);
+				cubeMetadataStorage.createChunkId(Cube.this, config.id, callback);
 			}
 
 			@Override
 			public void loadChunks(final int lastRevisionId, final ResultCallback<LoadedChunks> callback) {
-				cubeMetadataStorage.loadChunks(Cube.this, lastRevisionId, newHashSet(scheme.id), new ForwardingResultCallback<CubeLoadedChunks>(callback) {
+				if (loadChunksCallback != null) {
+					loadChunksCallback.addListener(callback);
+					return;
+				}
+				loadChunksCallback = ListenableResultCallback.create();
+				loadChunksCallback.addListener(callback);
+
+				cubeMetadataStorage.loadChunks(Cube.this, lastRevisionId, newHashSet(config.id), new ResultCallback<CubeLoadedChunks>() {
 					@Override
 					public void onResult(CubeLoadedChunks result) {
 						loadChunksIntoAggregations(result, true);
 						logger.info("Loading chunks for cube completed");
+						ListenableResultCallback<LoadedChunks> callback = loadChunksCallback;
+						loadChunksCallback = null;
 						callback.setResult(new LoadedChunks(lastRevisionId, EMPTY_LIST, EMPTY_LIST));
+					}
+
+					@Override
+					protected void onException(Exception e) {
+						ListenableResultCallback<LoadedChunks> callback = loadChunksCallback;
+						loadChunksCallback = null;
+						callback.setException(e);
 					}
 				});
 			}
 
 			@Override
 			public void startConsolidation(List<AggregationChunk> chunksToConsolidate, CompletionCallback callback) {
-				cubeMetadataStorage.startConsolidation(Cube.this, scheme.id, chunksToConsolidate, callback);
+				cubeMetadataStorage.startConsolidation(Cube.this, config.id, chunksToConsolidate, callback);
 			}
 
 			@Override
 			public void saveConsolidatedChunks(List<AggregationChunk> originalChunks, List<AggregationChunk.NewChunk> consolidatedChunks, CompletionCallback callback) {
-				cubeMetadataStorage.saveConsolidatedChunks(Cube.this, scheme.id, originalChunks, consolidatedChunks, callback);
+				cubeMetadataStorage.saveConsolidatedChunks(Cube.this, config.id, originalChunks, consolidatedChunks, callback);
 			}
 		};
-		Aggregation aggregation = Aggregation.create(eventloop, executorService, classLoader, aggregationMetadataStorage,
-				aggregationChunkStorage);
 
-		for (String dimension : scheme.dimensions) {
-			aggregation = aggregation.withKey(dimension, this.dimensionTypes.get(dimension));
-		}
-		aggregation = aggregation.withMeasures(this.measures).withPartitioningKey(scheme.partitioningKey);
+		Aggregation aggregation = Aggregation.create(eventloop, executorService, classLoader, aggregationMetadataStorage, aggregationChunkStorage)
+				.withKeys(toMap(config.dimensions, forMap(this.dimensionTypes)))
+				.withMeasures(projectMeasures(Cube.this.measures, config.measures))
+				.withIgnoredMeasures(filterKeys(measuresAsFields(Cube.this.measures), not(in(config.measures))))
+				.withPartitioningKey(config.partitioningKey)
+				.withChunkSize(config.chunkSize != 0 ? config.chunkSize : aggregationsChunkSize)
+				.withSorterItemsInMemory(config.sorterItemsInMemory != 0 ? config.sorterItemsInMemory : aggregationsSorterItemsInMemory)
+				.withSorterBlockSize(config.sorterBlockSize != 0 ? config.sorterBlockSize : aggregationsSorterBlockSize)
+				.withMaxChunksToConsolidate(config.maxChunksToConsolidate != 0 ? config.maxChunksToConsolidate : aggregationsMaxChunksToConsolidate)
+				.withIgnoreChunkReadingExceptions(aggregationsIgnoreChunkReadingExceptions);
 
-		aggregation.setAggregationChunkSize(scheme.aggregationChunkSize != 0 ? scheme.aggregationChunkSize : this.aggregationChunkSize);
-		aggregation.setSorterItemsInMemory(scheme.sorterItemsInMemory != 0 ? scheme.sorterItemsInMemory : this.sorterItemsInMemory);
-		aggregation.setSorterBlockSize(scheme.sorterBlockSize != 0 ? scheme.sorterBlockSize : this.sorterBlockSize);
-		aggregation.setMaxIncrementalReloadPeriodMillis(scheme.maxIncrementalReloadPeriodMillis != 0 ? scheme.maxIncrementalReloadPeriodMillis : this.maxIncrementalReloadPeriodMillis);
-		aggregations.put(scheme.id, new AggregationInfo(aggregation, scheme.measures, scheme.predicate));
-		logger.info("Added aggregation {} for id '{}'", aggregation, scheme.id);
+		aggregations.put(config.id, new AggregationInfo(aggregation, config.measures, config.predicate));
+		logger.info("Added aggregation {} for id '{}'", aggregation, config.id);
 		return this;
 	}
 
-	public Cube withAggregations(Collection<AggregationScheme> aggregations) {
-		for (AggregationScheme aggregation : aggregations) {
+	public Cube withAggregations(Collection<AggregationConfig> aggregations) {
+		for (AggregationConfig aggregation : aggregations) {
 			addAggregation(aggregation);
 		}
 		return this;
 	}
 
-	public Class<?> getAttributeType(String attribute) {
+	public Class<?> getAttributeInternalType(String attribute) {
 		if (dimensionTypes.containsKey(attribute))
 			return dimensionTypes.get(attribute).getInternalDataType();
 		if (attributeTypes.containsKey(attribute))
@@ -442,8 +471,20 @@ public final class Cube implements ICube, EventloopJmxMBean {
 		return null;
 	}
 
-	public Class<?> getMeasureType(String field) {
-		return Primitives.wrap(getMeasureInternalType(field));
+	public Type getAttributeType(String attribute) {
+		if (dimensionTypes.containsKey(attribute))
+			return dimensionTypes.get(attribute).getDataType();
+		if (attributeTypes.containsKey(attribute))
+			return attributeTypes.get(attribute);
+		return null;
+	}
+
+	public Type getMeasureType(String field) {
+		if (measures.containsKey(field))
+			return measures.get(field).getFieldType().getDataType();
+		if (computedMeasures.containsKey(field))
+			return computedMeasures.get(field).getType(storedMeasures);
+		return null;
 	}
 
 	@Override
@@ -569,8 +610,8 @@ public final class Cube implements ICube, EventloopJmxMBean {
 		return queryRawStream(dimensions, storedMeasures, predicate, resultClass, classLoader);
 	}
 
-	private <T> StreamProducer<T> queryRawStream(List<String> dimensions, List<String> storedMeasures, AggregationPredicate predicate,
-	                                            Class<T> resultClass, DefiningClassLoader classLoader) throws QueryException {
+	public <T> StreamProducer<T> queryRawStream(List<String> dimensions, List<String> storedMeasures, AggregationPredicate predicate,
+	                                            Class<T> resultClass, DefiningClassLoader queryClassLoader) throws QueryException {
 		predicate = predicate.simplify();
 		storedMeasures = newArrayList(storedMeasures);
 		List<String> allDimensions = newArrayList(concat(dimensions, predicate.getDimensions()));
@@ -596,7 +637,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 			}
 		});
 
-		Class resultKeyClass = createKeyClass(projectKeys(dimensionTypes, dimensions), classLoader);
+		Class resultKeyClass = createKeyClass(projectKeys(dimensionTypes, dimensions), queryClassLoader);
 
 		CubeQueryPlan queryPlan = CubeQueryPlan.create();
 
@@ -612,10 +653,10 @@ public final class Cube implements ICube, EventloopJmxMBean {
 			queryPlan.addAggregationMeasures(aggregationInfo.aggregation, compatibleMeasures);
 
 			Class aggregationClass = createRecordClass(projectKeys(dimensionTypes, aggregationInfo.aggregation.getKeys()),
-					projectMeasures(measures, compatibleMeasures), classLoader);
+					measuresAsFields(projectMeasures(measures, compatibleMeasures)), queryClassLoader);
 
 			AggregationQuery aggregationQuery = AggregationQuery.create(dimensions, compatibleMeasures, predicate);
-			StreamProducer aggregationProducer = aggregationInfo.aggregation.query(aggregationQuery, aggregationClass, classLoader);
+			StreamProducer aggregationProducer = aggregationInfo.aggregation.query(aggregationQuery, aggregationClass, queryClassLoader);
 
 			if (storedMeasures.isEmpty() && streamReducer.getInputs().isEmpty()) {
 				/*
@@ -623,7 +664,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 				just use mapper instead of reducer to copy requested fields.
 				 */
 				StreamMap.MapperProjection mapper = AggregationUtils.createMapper(aggregationClass, resultClass, dimensions,
-						compatibleMeasures, classLoader);
+						compatibleMeasures, queryClassLoader);
 				StreamMap streamMap = StreamMap.create(eventloop, mapper);
 				aggregationProducer.streamTo(streamMap.getInput());
 				queryResultProducer = streamMap.getOutput();
@@ -631,10 +672,10 @@ public final class Cube implements ICube, EventloopJmxMBean {
 				break;
 			}
 
-			Function keyFunction = AggregationUtils.createKeyFunction(aggregationClass, resultKeyClass, dimensions, classLoader);
+			Function keyFunction = AggregationUtils.createKeyFunction(aggregationClass, resultKeyClass, dimensions, queryClassLoader);
 
 			StreamReducers.Reducer reducer = aggregationInfo.aggregation.aggregationReducer(aggregationClass, resultClass,
-					dimensions, compatibleMeasures, classLoader);
+					dimensions, compatibleMeasures, queryClassLoader);
 
 			StreamConsumer streamReducerInput = streamReducer.newInput(keyFunction, reducer);
 
@@ -655,7 +696,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 
 		for (AggregationInfo aggregationInfo : aggregations.values()) {
 			int numberOfOverlappingChunks = aggregationInfo.aggregation.getNumberOfOverlappingChunks();
-			if (numberOfOverlappingChunks > overlappingChunksThreshold) {
+			if (numberOfOverlappingChunks > maxOverlappingChunksToProcessLogs) {
 				logger.info("Aggregation {} contains {} overlapping chunks", aggregationInfo.aggregation, numberOfOverlappingChunks);
 				excessive = true;
 			}
@@ -701,32 +742,54 @@ public final class Cube implements ICube, EventloopJmxMBean {
 		}
 	}
 
-	public void consolidate(int maxChunksToConsolidate, ResultCallback<Boolean> callback) {
+	public void consolidate(final ResultCallback<Boolean> callback) {
+		if (consolidationStarted != 0) {
+			logger.warn("Consolidation has already been started {} seconds ago", (eventloop.currentTimeMillis() - consolidationStarted) / 1000);
+			callback.setResult(false);
+			return;
+		}
+		consolidationStarted = eventloop.currentTimeMillis();
+
 		logger.info("Launching consolidation");
-		consolidate(maxChunksToConsolidate, false, new ArrayList<>(this.aggregations.values()).iterator(), callback);
+		consolidate(false, new ArrayList<>(this.aggregations.values()).iterator(), new ResultCallback<Boolean>() {
+			@Override
+			protected void onResult(Boolean result) {
+				if (result) {
+					consolidationLastTimeMillis = eventloop.currentTimeMillis() - consolidationStarted;
+					consolidations++;
+				}
+				consolidationStarted = 0;
+				callback.setResult(result);
+			}
+
+			@Override
+			protected void onException(Exception e) {
+				consolidationStarted = 0;
+				consolidationLastError = e;
+				callback.setException(e);
+			}
+		});
 	}
 
-	private void consolidate(final int maxChunksToConsolidate, final boolean found,
-	                         final Iterator<AggregationInfo> iterator, final ResultCallback<Boolean> callback) {
+	private void consolidate(final boolean found, final Iterator<AggregationInfo> iterator, final ResultCallback<Boolean> callback) {
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
 				if (iterator.hasNext()) {
 					final Aggregation aggregation = iterator.next().aggregation;
-					aggregation.consolidateHotSegment(maxChunksToConsolidate, new ResultCallback<Boolean>() {
+					aggregation.consolidateHotSegment(new ResultCallback<Boolean>() {
 						@Override
 						public void onResult(final Boolean hotSegmentConsolidated) {
-							aggregation.consolidateMinKey(maxChunksToConsolidate, new ResultCallback<Boolean>() {
+							aggregation.consolidateMinKey(new ResultCallback<Boolean>() {
 								@Override
 								public void onResult(Boolean minKeyConsolidated) {
-									consolidate(maxChunksToConsolidate,
-											hotSegmentConsolidated || minKeyConsolidated || found, iterator, callback);
+									consolidate(hotSegmentConsolidated || minKeyConsolidated || found, iterator, callback);
 								}
 
 								@Override
 								public void onException(Exception e) {
 									logger.error("Min key consolidation in aggregation '{}' failed", aggregation, e);
-									consolidate(maxChunksToConsolidate, found, iterator, callback);
+									consolidate(found, iterator, callback);
 								}
 							});
 						}
@@ -734,7 +797,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 						@Override
 						public void onException(Exception e) {
 							logger.error("Consolidating hot segment in aggregation '{}' failed", aggregation, e);
-							consolidate(maxChunksToConsolidate, found, iterator, callback);
+							consolidate(found, iterator, callback);
 						}
 					});
 				} else {
@@ -861,30 +924,38 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	// region temp query() method
 	@Override
 	public void query(CubeQuery cubeQuery, final ResultCallback<QueryResult> resultCallback) throws QueryException {
-		DefiningClassLoader localClassLoader = getLocalClassLoader(new ClassLoaderCacheKey(
+		DefiningClassLoader queryClassLoader = getQueryClassLoader(new CubeClassLoaderCache.Key(
 				newLinkedHashSet(cubeQuery.getAttributes()),
 				newLinkedHashSet(cubeQuery.getMeasures()),
 				cubeQuery.getPredicate().getDimensions()));
-		new RequestContext().execute(localClassLoader, cubeQuery, resultCallback);
+		final long queryStarted = eventloop.currentTimeMillis();
+		new RequestContext().execute(queryClassLoader, cubeQuery, new ResultCallback<QueryResult>() {
+			@Override
+			protected void onResult(QueryResult result) {
+				queryTimes.recordValue((int) (eventloop.currentTimeMillis() - queryStarted));
+				resultCallback.setResult(result);
+			}
+
+			@Override
+			protected void onException(Exception e) {
+				queryErrors++;
+				queryLastError = e;
+				resultCallback.setException(e);
+			}
+		});
 	}
 	// endregion
 
-	private DefiningClassLoader getLocalClassLoader(ClassLoaderCacheKey key) {
+	private DefiningClassLoader getQueryClassLoader(CubeClassLoaderCache.Key key) {
 		if (classLoaderCache == null)
 			return this.classLoader;
-		DefiningClassLoader classLoader = classLoaderCache.get(key);
-
-		if (classLoader != null)
-			return classLoader;
-
-		DefiningClassLoader newClassLoader = DefiningClassLoader.create(this.classLoader);
-		classLoaderCache.put(key, newClassLoader);
-		return newClassLoader;
+		return classLoaderCache.getOrCreate(key);
 	}
 
-	class RequestContext {
+	private class RequestContext {
 		DefiningClassLoader queryClassLoader;
 		CubeQuery query;
+
 		AggregationPredicate queryPredicate;
 		AggregationPredicate queryHaving;
 		Set<String> queryDimensions = newLinkedHashSet();
@@ -914,6 +985,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 		void execute(DefiningClassLoader queryClassLoader, CubeQuery query, final ResultCallback<QueryResult> resultCallback) throws QueryException {
 			this.queryClassLoader = queryClassLoader;
 			this.query = query;
+
 			queryPredicate = query.getPredicate().simplify();
 			queryHaving = query.getHaving().simplify();
 			fullySpecifiedDimensions = queryPredicate.getFullySpecifiedDimensions();
@@ -982,10 +1054,11 @@ public final class Cube implements ICube, EventloopJmxMBean {
 			RecordScheme recordScheme = RecordScheme.create();
 			for (String attribute : resultAttributes) {
 				recordScheme = recordScheme.withField(attribute,
-						attributeTypes.get(attribute));
+						getAttributeType(attribute));
 			}
 			for (String measure : queryMeasures) {
-				recordScheme = recordScheme.withField(measure, getMeasureType(measure));
+				recordScheme = recordScheme.withField(measure,
+						getMeasureType(measure));
 			}
 			return recordScheme;
 		}
@@ -996,16 +1069,18 @@ public final class Cube implements ICube, EventloopJmxMBean {
 
 			for (String field : recordScheme.getFields()) {
 				int fieldIndex = recordScheme.getFieldIndex(field);
-				if (resultAttributes.contains(field)) {
+				if (dimensionTypes.containsKey(field)) {
 					copyAttributes.add(call(arg(1), "put", value(fieldIndex),
-							call(arg(2), "toValue", value(field),
-									cast(field(cast(arg(0), resultClass), field.replace('.', '$')), Object.class))));
-				}
-				if (queryMeasures.contains(field)) {
+							cast(dimensionTypes.get(field).toValue(
+									field(cast(arg(0), resultClass), field)), Object.class)));
+				} else if (measures.containsKey(field)) {
 					VarField fieldValue = field(cast(arg(0), resultClass), field);
 					copyMeasures.add(call(arg(1), "put", value(fieldIndex),
-							call(arg(2), "toValue", value(field),
-									cast(measures.containsKey(field) ? measures.get(field).valueOfAccumulator(fieldValue) : fieldValue, Object.class))));
+							cast(measures.get(field).getFieldType().toValue(
+									measures.get(field).valueOfAccumulator(fieldValue)), Object.class)));
+				} else {
+					copyMeasures.add(call(arg(1), "put", value(fieldIndex),
+							cast(field(cast(arg(0), resultClass), field.replace('.', '$')), Object.class)));
 				}
 			}
 
@@ -1120,7 +1195,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 				}
 			}
 
-			runParallel(eventloop, tasks).run(new ForwardingCompletionCallback(callback) {
+			runInParallel(eventloop, tasks).run(new ForwardingCompletionCallback(callback) {
 				@Override
 				protected void onComplete() {
 					processResults2(results, totals, filterAttributes, callback);
@@ -1138,13 +1213,13 @@ public final class Cube implements ICube, EventloopJmxMBean {
 			List<Record> resultRecords = new ArrayList<>(results.size());
 			for (Object result : results) {
 				Record record = Record.create(recordScheme);
-				recordFunction.copyAttributes(result, record, fieldAccessor);
-				recordFunction.copyMeasures(result, record, fieldAccessor);
+				recordFunction.copyAttributes(result, record);
+				recordFunction.copyMeasures(result, record);
 				resultRecords.add(record);
 			}
 
 			Record totalRecord = Record.create(recordScheme);
-			recordFunction.copyMeasures(totals, totalRecord, fieldAccessor);
+			recordFunction.copyMeasures(totals, totalRecord);
 
 			QueryResult result = QueryResult.create(recordScheme,
 					resultRecords, totalRecord, totalCount,
@@ -1220,8 +1295,6 @@ public final class Cube implements ICube, EventloopJmxMBean {
 		}
 
 		TotalsFunction createTotalsFunction() {
-			ClassBuilder<TotalsFunction> builder = ClassBuilder.create(queryClassLoader, TotalsFunction.class);
-
 			ExpressionSequence zeroSequence = ExpressionSequence.create();
 			ExpressionSequence initSequence = ExpressionSequence.create();
 			ExpressionSequence accumulateSequence = ExpressionSequence.create();
@@ -1236,20 +1309,18 @@ public final class Cube implements ICube, EventloopJmxMBean {
 						field(cast(arg(0), resultClass), field),
 						field(cast(arg(1), resultClass), field)));
 			}
-			builder = builder
-					.withMethod("zero", zeroSequence)
-					.withMethod("init", initSequence)
-					.withMethod("accumulate", accumulateSequence);
 
-			List<Expression> computeSequence = new ArrayList<>();
+			ExpressionSequence computeSequence = ExpressionSequence.create();
 			for (String computedMeasure : resultComputedMeasures) {
 				Expression result = cast(arg(0), resultClass);
 				computeSequence.add(set(field(result, computedMeasure),
 						computedMeasures.get(computedMeasure).getExpression(result, storedMeasures)));
 			}
-
-			return builder
-					.withMethod("computeMeasures", sequence(computeSequence))
+			return ClassBuilder.create(queryClassLoader, TotalsFunction.class)
+					.withMethod("zero", zeroSequence)
+					.withMethod("init", initSequence)
+					.withMethod("accumulate", accumulateSequence)
+					.withMethod("computeMeasures", computeSequence)
 					.buildClassAndCreateNewInstance();
 		}
 
@@ -1265,51 +1336,109 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	}
 
 	// jmx
-	@JmxOperation
-	public void flushBuffers() {
-		for (AggregationInfo aggregationInfo : aggregations.values()) {
-			aggregationInfo.aggregation.flushBuffers();
-		}
-	}
-
-	@JmxOperation
-	public void flushBuffers(final String aggregationId) {
-		AggregationInfo aggregationInfo = aggregations.get(aggregationId);
-		if (aggregationInfo != null)
-			aggregationInfo.aggregation.flushBuffers();
-	}
-
-	@JmxOperation
-	public void setChunkSize(String aggregationId, int chunkSize) {
-		AggregationInfo aggregationInfo = aggregations.get(aggregationId);
-		if (aggregationInfo.aggregation != null)
-			aggregationInfo.aggregation.setAggregationChunkSize(chunkSize);
+	@JmxAttribute
+	public int getAggregationsChunkSize() {
+		return aggregationsChunkSize;
 	}
 
 	@JmxAttribute
-	public int getBuffersSize() {
-		int size = 0;
+	public void setAggregationsChunkSize(int aggregationsChunkSize) {
+		this.aggregationsChunkSize = aggregationsChunkSize;
 		for (AggregationInfo aggregationInfo : aggregations.values()) {
-			size += aggregationInfo.aggregation.getBuffersSize();
+			aggregationInfo.aggregation.setChunkSize(aggregationsChunkSize);
 		}
-		return size;
+	}
+
+	public Cube withAggregationsChunkSize(int aggregationsChunkSize) {
+		this.aggregationsChunkSize = aggregationsChunkSize;
+		return this;
 	}
 
 	@JmxAttribute
-	public Map<String, Integer> getBuffersSizeByAggregation() {
-		Map<String, Integer> map = new HashMap<>();
-		for (Map.Entry<String, AggregationInfo> entry : aggregations.entrySet()) {
-			map.put(entry.getKey(), entry.getValue().aggregation.getBuffersSize());
-		}
-		return map;
+	public int getAggregationsSorterItemsInMemory() {
+		return aggregationsSorterItemsInMemory;
 	}
 
 	@JmxAttribute
-	public void setMaxIncrementalReloadPeriodMillis(int maxIncrementalReloadPeriodMillis) {
-		this.maxIncrementalReloadPeriodMillis = maxIncrementalReloadPeriodMillis;
+	public void setAggregationsSorterItemsInMemory(int aggregationsSorterItemsInMemory) {
+		this.aggregationsSorterItemsInMemory = aggregationsSorterItemsInMemory;
 		for (AggregationInfo aggregationInfo : aggregations.values()) {
-			aggregationInfo.aggregation.setMaxIncrementalReloadPeriodMillis(maxIncrementalReloadPeriodMillis);
+			aggregationInfo.aggregation.setSorterItemsInMemory(aggregationsSorterItemsInMemory);
 		}
+	}
+
+	public Cube withAggregationsSorterItemsInMemory(int aggregationsSorterItemsInMemory) {
+		this.aggregationsSorterItemsInMemory = aggregationsSorterItemsInMemory;
+		return this;
+	}
+
+	@JmxAttribute
+	public int getAggregationsSorterBlockSize() {
+		return aggregationsSorterBlockSize;
+	}
+
+	@JmxAttribute
+	public void setAggregationsSorterBlockSize(int aggregationsSorterBlockSize) {
+		this.aggregationsSorterBlockSize = aggregationsSorterBlockSize;
+		for (AggregationInfo aggregationInfo : aggregations.values()) {
+			aggregationInfo.aggregation.setSorterBlockSize(aggregationsSorterBlockSize);
+		}
+	}
+
+	public Cube withAggregationsSorterBlockSize(int aggregationsSorterBlockSize) {
+		this.aggregationsSorterBlockSize = aggregationsSorterBlockSize;
+		return this;
+	}
+
+	@JmxAttribute
+	public int getAggregationsMaxChunksToConsolidate() {
+		return aggregationsMaxChunksToConsolidate;
+	}
+
+	@JmxAttribute
+	public void setAggregationsMaxChunksToConsolidate(int aggregationsMaxChunksToConsolidate) {
+		this.aggregationsMaxChunksToConsolidate = aggregationsMaxChunksToConsolidate;
+		for (AggregationInfo aggregationInfo : aggregations.values()) {
+			aggregationInfo.aggregation.setMaxChunksToConsolidate(aggregationsMaxChunksToConsolidate);
+		}
+	}
+
+	public Cube withAggregationsMaxChunksToConsolidate(int aggregationsMaxChunksToConsolidate) {
+		this.aggregationsMaxChunksToConsolidate = aggregationsMaxChunksToConsolidate;
+		return this;
+	}
+
+	@JmxAttribute
+	public boolean getAggregationsIgnoreChunkReadingExceptions() {
+		return aggregationsIgnoreChunkReadingExceptions;
+	}
+
+	@JmxAttribute
+	public void setAggregationsIgnoreChunkReadingExceptions(boolean aggregationsIgnoreChunkReadingExceptions) {
+		this.aggregationsIgnoreChunkReadingExceptions = aggregationsIgnoreChunkReadingExceptions;
+		for (AggregationInfo aggregation : aggregations.values()) {
+			aggregation.aggregation.setIgnoreChunkReadingExceptions(aggregationsIgnoreChunkReadingExceptions);
+		}
+	}
+
+	public Cube withAggregationsIgnoreChunkReadingExceptions(boolean aggregationsIgnoreChunkReadingExceptions) {
+		this.aggregationsIgnoreChunkReadingExceptions = aggregationsIgnoreChunkReadingExceptions;
+		return this;
+	}
+
+	@JmxAttribute
+	public int getMaxOverlappingChunksToProcessLogs() {
+		return maxOverlappingChunksToProcessLogs;
+	}
+
+	@JmxAttribute
+	public void setMaxOverlappingChunksToProcessLogs(int maxOverlappingChunksToProcessLogs) {
+		this.maxOverlappingChunksToProcessLogs = maxOverlappingChunksToProcessLogs;
+	}
+
+	public Cube withMaxOverlappingChunksToProcessLogs(int maxOverlappingChunksToProcessLogs) {
+		this.maxOverlappingChunksToProcessLogs = maxOverlappingChunksToProcessLogs;
+		return this;
 	}
 
 	@JmxAttribute
@@ -1318,65 +1447,69 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	}
 
 	@JmxAttribute
-	public void setIgnoreChunkReadingExceptions(boolean ignoreChunkReadingExceptions) {
-		this.ignoreChunkReadingExceptions = ignoreChunkReadingExceptions;
-		for (AggregationInfo aggregation : aggregations.values()) {
-			aggregation.aggregation.setIgnoreChunkReadingExceptions(ignoreChunkReadingExceptions);
-		}
+	public void setMaxIncrementalReloadPeriodMillis(int maxIncrementalReloadPeriodMillis) {
+		this.maxIncrementalReloadPeriodMillis = maxIncrementalReloadPeriodMillis;
+	}
+
+	public Cube withMaxIncrementalReloadPeriodMillis(int maxIncrementalReloadPeriodMillis) {
+		this.maxIncrementalReloadPeriodMillis = maxIncrementalReloadPeriodMillis;
+		return this;
 	}
 
 	@JmxAttribute
-	public boolean getIgnoreChunkReadingExceptions() {
-		return ignoreChunkReadingExceptions;
-	}
-
-	@JmxAttribute
-	public void setChunkSize(int chunkSize) {
-		this.aggregationChunkSize = chunkSize;
+	public int getActiveReducersBuffersSize() {
+		int size = 0;
 		for (AggregationInfo aggregationInfo : aggregations.values()) {
-			aggregationInfo.aggregation.setAggregationChunkSize(chunkSize);
+			size += aggregationInfo.aggregation.getActiveReducersBuffersSize();
 		}
+		return size;
 	}
 
-	@JmxAttribute
-	public int getChunkSize() {
-		return aggregationChunkSize;
-	}
-
-	@JmxAttribute
-	public void setSorterItemsInMemory(int sorterItemsInMemory) {
-		this.sorterItemsInMemory = sorterItemsInMemory;
+	@JmxOperation
+	public void flushActiveReducersBuffers() {
 		for (AggregationInfo aggregationInfo : aggregations.values()) {
-			aggregationInfo.aggregation.setSorterItemsInMemory(sorterItemsInMemory);
+			aggregationInfo.aggregation.flushActiveReducersBuffers();
 		}
 	}
 
 	@JmxAttribute
-	public int getSorterItemsInMemory() {
-		return sorterItemsInMemory;
+	public Integer getConsolidationSeconds() {
+		return consolidationStarted == 0 ? null : (int) ((eventloop.currentTimeMillis() - consolidationStarted) / 1000);
 	}
 
 	@JmxAttribute
-	public void setSorterBlockSize(int sorterBlockSize) {
-		this.sorterBlockSize = sorterBlockSize;
-		for (AggregationInfo aggregationInfo : aggregations.values()) {
-			aggregationInfo.aggregation.setSorterBlockSize(sorterBlockSize);
-		}
+	public Integer getConsolidationLastTimeSeconds() {
+		return consolidationLastTimeMillis == 0 ? null : (int) ((consolidationLastTimeMillis) / 1000);
 	}
 
 	@JmxAttribute
-	public int getSorterBlockSize() {
-		return sorterBlockSize;
+	public int getConsolidations() {
+		return consolidations;
 	}
 
 	@JmxAttribute
-	public int getOverlappingChunksThreshold() {
-		return overlappingChunksThreshold;
+	public Exception getConsolidationLastError() {
+		return consolidationLastError;
 	}
 
 	@JmxAttribute
-	public void setOverlappingChunksThreshold(int overlappingChunksThreshold) {
-		this.overlappingChunksThreshold = overlappingChunksThreshold;
+	public ValueStats getQueryTimes() {
+		return queryTimes;
+	}
+
+	@JmxAttribute
+	public long getQueryErrors() {
+		return queryErrors;
+	}
+
+	@JmxAttribute
+	public Exception getQueryLastError() {
+		return queryLastError;
+	}
+
+	@JmxOperation
+	public void consolidate() {
+		consolidate(IgnoreResultCallback.<Boolean>create());
 	}
 
 	@Override

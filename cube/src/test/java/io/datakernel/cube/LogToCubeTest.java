@@ -44,7 +44,7 @@ import java.util.concurrent.Executors;
 import static io.datakernel.aggregation.AggregationPredicates.alwaysTrue;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.sum;
-import static io.datakernel.cube.Cube.AggregationScheme.id;
+import static io.datakernel.cube.Cube.AggregationConfig.id;
 import static io.datakernel.cube.TestUtils.deleteRecursivelyQuietly;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
@@ -103,7 +103,7 @@ public class LogToCubeTest {
 
 		StreamConsumers.ToList<TestAdvResult> consumerToList = StreamConsumers.toList(eventloop);
 		cube.queryRawStream(asList("adv"), asList("advRequests"), alwaysTrue(),
-				TestAdvResult.class
+				TestAdvResult.class, DefiningClassLoader.create(classLoader)
 		).streamTo(consumerToList);
 		eventloop.run();
 

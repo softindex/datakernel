@@ -244,7 +244,7 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 
 		for (int d = 0; d < aggregationKeys.size(); d++) {
 			String key = aggregationKeys.get(d);
-			Class<?> type = cubeTypes.getAttributeType(key);
+			Class<?> type = cubeTypes.getAttributeInternalType(key);
 			minKeyArray[d] = record.getValue("d" + (d + 1) + "_min", type);
 			maxKeyArray[d] = record.getValue("d" + (d + 1) + "_max", type);
 		}

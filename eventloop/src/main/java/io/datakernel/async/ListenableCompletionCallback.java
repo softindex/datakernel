@@ -76,4 +76,9 @@ public class ListenableCompletionCallback extends CompletionCallback {
 
 		listeners.clear();
 	}
+
+	public int getListenersCount() {
+		return listeners.size();
+	}
+
 }

@@ -13,45 +13,43 @@ public class AsyncCallables {
 	private AsyncCallables() {
 	}
 
+	private static final class DoneState {
+		boolean done;
+	}
+
 	public static <T> AsyncCallable<T> timeout(final Eventloop eventloop, final long timestamp, final AsyncCallable<T> callable) {
 		return new AsyncCallable<T>() {
-			boolean done;
-
 			@Override
 			public void call(final ResultCallback<T> callback) {
-				final long tick = eventloop.getTick();
-				eventloop.schedule(timestamp, new Runnable() {
-					@Override
-					public void run() {
-						if (!done) {
-							done = true;
-							callback.setException(TIMEOUT_EXCEPTION);
-						}
-					}
-				});
+				final DoneState state = new DoneState();
 				callable.call(new ResultCallback<T>() {
 					@Override
 					protected void onResult(T result) {
-						if (!done) {
-							done = true;
-							if (eventloop.getTick() != tick)
-								callback.setResult(result);
-							else
-								callback.postResult(eventloop, result);
+						if (!state.done) {
+							state.done = true;
+							callback.setResult(result);
 						}
 					}
 
 					@Override
 					protected void onException(Exception e) {
-						if (!done) {
-							done = true;
-							if (eventloop.getTick() != tick)
-								callback.setException(e);
-							else
-								callback.postException(eventloop, e);
+						if (!state.done) {
+							state.done = true;
+							callback.setException(e);
 						}
 					}
 				});
+				if (!state.done) {
+					eventloop.schedule(timestamp, new Runnable() {
+						@Override
+						public void run() {
+							if (!state.done) {
+								state.done = true;
+								callback.setException(TIMEOUT_EXCEPTION);
+							}
+						}
+					});
+				}
 			}
 		};
 	}
@@ -60,19 +58,25 @@ public class AsyncCallables {
 		return callAll(eventloop, asList(callables));
 	}
 
+	private static final class CallState {
+		int pending;
+
+		public CallState(int pending) {
+			this.pending = pending;
+		}
+	}
+
 	@SuppressWarnings("unchecked")
 	public static <T> AsyncCallable<T[]> callAll(final Eventloop eventloop, final List<AsyncCallable<?>> callables) {
 		return new AsyncCallable<T[]>() {
-			int pending = callables.size();
-
 			@Override
 			public void call(final ResultCallback<T[]> callback) {
+				final CallState state = new CallState(callables.size());
 				final T[] results = (T[]) new Object[callables.size()];
-				if (pending == 0) {
-					callback.postResult(eventloop, results);
+				if (state.pending == 0) {
+					callback.setResult(results);
 					return;
 				}
-				final long tick = eventloop.getTick();
 				for (int i = 0; i < callables.size(); i++) {
 					AsyncCallable<T> callable = (AsyncCallable<T>) callables.get(i);
 					final int finalI = i;
@@ -80,22 +84,16 @@ public class AsyncCallables {
 						@Override
 						protected void onResult(T result) {
 							results[finalI] = result;
-							if (--pending == 0) {
-								if (eventloop.getTick() != tick)
-									callback.setResult(results);
-								else
-									callback.postResult(eventloop, results);
+							if (--state.pending == 0) {
+								callback.setResult(results);
 							}
 						}
 
 						@Override
 						protected void onException(Exception e) {
-							if (pending > 0) {
-								pending = 0;
-								if (eventloop.getTick() != tick)
-									callback.setException(e);
-								else
-									callback.postException(eventloop, e);
+							if (state.pending > 0) {
+								state.pending = 0;
+								callback.setException(e);
 							}
 						}
 					});
@@ -110,25 +108,14 @@ public class AsyncCallables {
 
 	public static <T> AsyncCallable<T[]> callWithTimeout(final Eventloop eventloop, final long timestamp, final List<AsyncCallable<? extends T>> callables) {
 		return new AsyncCallable<T[]>() {
-			int pending = callables.size();
-
 			@Override
 			public void call(final ResultCallback<T[]> callback) {
+				final CallState state = new CallState(callables.size());
 				final T[] results = (T[]) new Object[callables.size()];
-				if (pending == 0) {
-					callback.postResult(eventloop, results);
+				if (state.pending == 0) {
+					callback.setResult(results);
 					return;
 				}
-				eventloop.schedule(timestamp, new Runnable() {
-					@Override
-					public void run() {
-						if (pending > 0) {
-							pending = 0;
-							callback.setResult(results);
-						}
-					}
-				});
-				final long tick = eventloop.getTick();
 				for (int i = 0; i < callables.size(); i++) {
 					final AsyncCallable<T> callable = (AsyncCallable<T>) callables.get(i);
 					final int finalI = i;
@@ -136,22 +123,27 @@ public class AsyncCallables {
 						@Override
 						protected void onResult(T result) {
 							results[finalI] = result;
-							if (--pending == 0) {
-								if (eventloop.getTick() != tick)
-									callback.setResult(results);
-								else
-									callback.postResult(eventloop, results);
+							if (--state.pending == 0) {
+								callback.setResult(results);
 							}
 						}
 
 						@Override
 						protected void onException(Exception e) {
-							if (pending > 0) {
-								pending = 0;
-								if (eventloop.getTick() != tick)
-									callback.setException(e);
-								else
-									callback.postException(eventloop, e);
+							if (state.pending > 0) {
+								state.pending = 0;
+								callback.setException(e);
+							}
+						}
+					});
+				}
+				if (state.pending != 0) {
+					eventloop.schedule(timestamp, new Runnable() {
+						@Override
+						public void run() {
+							if (state.pending > 0) {
+								state.pending = 0;
+								callback.setResult(results);
 							}
 						}
 					});

@@ -16,7 +16,7 @@
 
 package io.datakernel.aggregation.fieldtype;
 
-import io.datakernel.codegen.utils.Primitives;
+import io.datakernel.codegen.Expression;
 import io.datakernel.serializer.asm.SerializerGen;
 
 import java.lang.reflect.Type;
@@ -46,9 +46,6 @@ public class FieldType<T> {
 	}
 
 	public final Type getDataType() {
-		if (dataType instanceof Class<?>) {
-			return Primitives.wrap((Class<Object>) dataType);
-		}
 		return dataType;
 	}
 
@@ -56,8 +53,8 @@ public class FieldType<T> {
 		return serializer;
 	}
 
-	public T toValue(Object internalValue) {
-		return (T) internalValue;
+	public Expression toValue(Expression internalValue) {
+		return internalValue;
 	}
 
 	public Object toInternalValue(T value) {

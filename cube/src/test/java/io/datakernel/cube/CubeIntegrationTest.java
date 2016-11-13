@@ -30,7 +30,6 @@ import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducers;
 import org.jooq.Configuration;
 import org.jooq.SQLDialect;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -45,7 +44,7 @@ import static io.datakernel.aggregation.AggregationPredicates.alwaysTrue;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofDouble;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.sum;
-import static io.datakernel.cube.Cube.AggregationScheme.id;
+import static io.datakernel.cube.Cube.AggregationConfig.id;
 import static io.datakernel.cube.CubeTestUtils.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
@@ -81,7 +80,6 @@ public class CubeIntegrationTest {
 				.withAggregation(id("advertiser").withDimensions("advertiser").withMeasures(LogItem.MEASURES));
 	}
 
-	@Ignore("Requires DB access to run")
 	@SuppressWarnings("ConstantConditions")
 	@Test
 	public void test() throws Exception {
@@ -134,7 +132,8 @@ public class CubeIntegrationTest {
 		eventloop.run();
 
 		StreamConsumers.ToList<LogItem> queryResultConsumer = new StreamConsumers.ToList<>(eventloop);
-		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(), LogItem.class).streamTo(queryResultConsumer);
+		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(),
+				LogItem.class, DefiningClassLoader.create(classLoader)).streamTo(queryResultConsumer);
 		eventloop.run();
 
 		// Aggregate manually
@@ -150,7 +149,7 @@ public class CubeIntegrationTest {
 
 		// Consolidate
 		ResultCallbackFuture<Boolean> callback = ResultCallbackFuture.create();
-		cube.consolidate(100, callback);
+		cube.consolidate(callback);
 		eventloop.run();
 		boolean consolidated = callback.isDone() ? callback.get() : false;
 		assertEquals(true, consolidated);
@@ -161,7 +160,8 @@ public class CubeIntegrationTest {
 
 		// Query
 		queryResultConsumer = new StreamConsumers.ToList<>(eventloop);
-		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(), LogItem.class).streamTo(queryResultConsumer);
+		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(),
+				LogItem.class, DefiningClassLoader.create(classLoader)).streamTo(queryResultConsumer);
 		eventloop.run();
 
 		// Check query results

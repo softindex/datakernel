@@ -60,10 +60,6 @@ public final class AggregationMetadata {
 				return value;
 			}
 
-			@Override
-			public Object toValue(String field, Object internalValue) {
-				return internalValue;
-			}
 		});
 	}
 

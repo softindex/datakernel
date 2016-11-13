@@ -33,7 +33,7 @@ import java.net.InetAddress;
 import java.security.SecureRandom;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.async.AsyncRunnables.runParallel;
+import static io.datakernel.async.AsyncRunnables.runInParallel;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
@@ -134,7 +134,7 @@ public class TestHttpsClientServer {
 
 		server.listen();
 
-		runParallel(eventloop, asList(
+		runInParallel(eventloop, asList(
 				new AsyncRunnable() {
 					@Override
 					public void run(final CompletionCallback callback) {

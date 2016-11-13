@@ -23,20 +23,27 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 import java.util.ArrayList;
 import java.util.List;
 
+import static java.util.Collections.EMPTY_LIST;
 import static org.objectweb.asm.Type.BOOLEAN_TYPE;
 
 /**
  * Defines methods for using logical 'and' for boolean type
  */
 public final class PredicateDefAnd implements PredicateDef {
-	private final List<PredicateDef> predicates = new ArrayList<>();
+	private final List<PredicateDef> predicates;
 
 	// region builders
 	private PredicateDefAnd(List<PredicateDef> predicates) {
-		this.predicates.addAll(predicates);
+		this.predicates = new ArrayList<>(predicates);
 	}
 
-	static PredicateDefAnd create(List<PredicateDef> predicates) {return new PredicateDefAnd(predicates);}
+	public static PredicateDefAnd create() {
+		return new PredicateDefAnd(EMPTY_LIST);
+	}
+
+	public static PredicateDefAnd create(List<PredicateDef> predicates) {
+		return new PredicateDefAnd(predicates);
+	}
 	// region builders
 
 	public PredicateDefAnd add(PredicateDef predicateDef) {

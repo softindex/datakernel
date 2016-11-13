@@ -240,7 +240,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	}
 
 	public static Eventloop getCurrentEventloop() {
-		return CURRENT_EVENTLOOP.get();
+		return checkNotNull(CURRENT_EVENTLOOP.get());
 	}
 
 	/**

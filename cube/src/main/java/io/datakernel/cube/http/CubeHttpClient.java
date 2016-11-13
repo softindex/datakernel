@@ -31,7 +31,7 @@ import java.lang.reflect.Type;
 import java.util.Map;
 
 import static com.google.common.collect.Maps.newLinkedHashMap;
-import static io.datakernel.cube.http.Utils.createGsonBuilder;
+import static io.datakernel.cube.http.Utils.*;
 
 public final class CubeHttpClient implements ICube {
 	private final Eventloop eventloop;
@@ -48,7 +48,7 @@ public final class CubeHttpClient implements ICube {
 		this.url = url.replaceAll("/$", "");
 		this.httpClient = httpClient;
 		this.timeout = timeout;
-		this.gson = createGsonBuilder(attributeTypes, measureTypes).create();
+		this.gson = createGsonBuilder(attributeTypes, measureTypes).create(); // TODO support of external GsonBuilder
 	}
 
 	public static CubeHttpClient create(Eventloop eventloop, String domain, AsyncHttpClient httpClient, int timeout) {
@@ -82,7 +82,7 @@ public final class CubeHttpClient implements ICube {
 			public void onResult(HttpResponse httpResponse) {
 				String response;
 				try {
-					response = ByteBufStrings.decodeUtf8(httpResponse.getBody());
+					response = ByteBufStrings.decodeUtf8(httpResponse.getBody()); // TODO getBodyAsString
 				} catch (ParseException e) {
 					callback.setException(new ParseException("Cube HTTP query failed. Invalid data received", e));
 					return;
@@ -103,15 +103,15 @@ public final class CubeHttpClient implements ICube {
 	private HttpRequest buildRequest(CubeQuery query) {
 		Map<String, String> urlParams = newLinkedHashMap();
 
-		urlParams.put(Utils.ATTRIBUTES_PARAM, gson.toJson(query.getAttributes()));
-		urlParams.put(Utils.MEASURES_PARAM, gson.toJson(query.getMeasures()));
-		urlParams.put(Utils.FILTERS_PARAM, gson.toJson(query.getPredicate()));
-		urlParams.put(Utils.SORT_PARAM, gson.toJson(query.getOrderings()));
-		urlParams.put(Utils.HAVING_PARAM, gson.toJson(query.getHaving()));
+		urlParams.put(ATTRIBUTES_PARAM, JOINER.join(query.getAttributes()));
+		urlParams.put(MEASURES_PARAM, JOINER.join(query.getMeasures()));
+		urlParams.put(FILTERS_PARAM, gson.toJson(query.getPredicate()));
+		urlParams.put(SORT_PARAM, formatOrderings(query.getOrderings()));
+		urlParams.put(HAVING_PARAM, gson.toJson(query.getHaving()));
 		if (query.getLimit() != null)
-			urlParams.put(Utils.LIMIT_PARAM, query.getLimit().toString());
+			urlParams.put(LIMIT_PARAM, query.getLimit().toString());
 		if (query.getOffset() != null)
-			urlParams.put(Utils.OFFSET_PARAM, query.getOffset().toString());
+			urlParams.put(OFFSET_PARAM, query.getOffset().toString());
 
 		String url = this.url + "/" + "?" + HttpUtils.urlQueryString(urlParams);
 

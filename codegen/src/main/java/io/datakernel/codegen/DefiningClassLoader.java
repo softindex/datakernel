@@ -43,13 +43,13 @@ public final class DefiningClassLoader extends ClassLoader implements DefiningCl
 	public static DefiningClassLoader create(ClassLoader parent) {return new DefiningClassLoader(parent);}
 	// endregion
 
-	public Class<?> defineClass(String name, AsmClassKey<?> key, byte[] b) {
+	Class<?> defineClass(String name, AsmClassKey<?> key, byte[] b) {
 		Class<?> definedClass = defineClass(name, b, 0, b.length);
 		definedClasses.put(key, definedClass);
 		return definedClass;
 	}
 
-	public Class<?> getClassByKey(AsmClassKey<?> key) {
+	Class<?> getClassByKey(AsmClassKey<?> key) {
 		return definedClasses.get(key);
 	}
 
@@ -60,18 +60,7 @@ public final class DefiningClassLoader extends ClassLoader implements DefiningCl
 	}
 
 	@Override
-	public Map<String, String> getDefinedClasses() {
-		Map<String, String> map = new HashMap<>(definedClasses.size());
-
-		for (Map.Entry<AsmClassKey<?>, Class<?>> entry : definedClasses.entrySet()) {
-			map.put(entry.getKey().toString(), entry.getValue().toString());
-		}
-
-		return map;
-	}
-
-	@Override
-	public Map<String, Integer> getDefinedClassesByType() {
+	synchronized public Map<String, Integer> getDefinedClassesByType() {
 		Map<String, Integer> map = new HashMap<>();
 
 		for (Map.Entry<AsmClassKey<?>, Class<?>> entry : definedClasses.entrySet()) {
@@ -85,9 +74,6 @@ public final class DefiningClassLoader extends ClassLoader implements DefiningCl
 
 	@Override
 	public String toString() {
-		return "DefiningClassLoader{" +
-				"classes=" + definedClasses.size() +
-				", definedClassesByType=" + getDefinedClassesByType() +
-				'}';
+		return "{classes=" + definedClasses.size() + ", byType=" + getDefinedClassesByType() + '}';
 	}
 }

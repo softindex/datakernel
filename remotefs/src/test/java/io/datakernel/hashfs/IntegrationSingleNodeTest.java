@@ -43,6 +43,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
 import static com.google.common.base.Charsets.UTF_8;
+import static io.datakernel.async.AsyncRunnables.runInParallel;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -169,7 +170,7 @@ public class IntegrationSingleNodeTest {
 		final StreamFileWriter consumerD = create(eventloop, executor, clientStorage.resolve("d_downloaded.txt"));
 		final StreamFileWriter consumerG = create(eventloop, executor, clientStorage.resolve("g_downloaded.txt"));
 
-		AsyncRunnables.runParallel(eventloop,
+		runInParallel(eventloop,
 				new AsyncRunnable() {
 					@Override
 					public void run(CompletionCallback callback) {

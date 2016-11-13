@@ -22,25 +22,26 @@ import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.measure.Measure;
 import io.datakernel.aggregation.util.BiPredicate;
 import io.datakernel.aggregation.util.Predicates;
-import io.datakernel.codegen.ClassBuilder;
-import io.datakernel.codegen.DefiningClassLoader;
-import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.PredicateDefAnd;
+import io.datakernel.codegen.*;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.asm.SerializerGenClass;
 import io.datakernel.stream.processor.StreamMap;
 import io.datakernel.stream.processor.StreamReducers;
+import io.datakernel.util.WithValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Field;
 import java.util.*;
 
+import static com.google.common.base.Functions.forMap;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Throwables.propagate;
 import static com.google.common.collect.Iterables.concat;
 import static com.google.common.collect.Lists.newArrayList;
+import static com.google.common.collect.Maps.toMap;
+import static com.google.common.collect.Maps.transformValues;
 import static com.google.common.collect.Sets.newLinkedHashSet;
 import static io.datakernel.codegen.Expressions.*;
 
@@ -65,6 +66,19 @@ public class AggregationUtils {
 		return projectMap(fieldTypes, fields);
 	}
 
+	public static Map<String, Measure> projectMeasures(Map<String, Measure> measures, List<String> fields) {
+		return projectMap(measures, fields);
+	}
+
+	public static Map<String, FieldType> measuresAsFields(Map<String, Measure> measures) {
+		return transformValues(measures, new Function<Measure, FieldType>() {
+			@Override
+			public FieldType apply(Measure input) {
+				return input.getFieldType();
+			}
+		});
+	}
+
 	private static <K, V> Map<K, V> projectMap(Map<K, V> map, Collection<K> keys) {
 		keys = new HashSet<>(keys);
 		checkArgument(map.keySet().containsAll(keys), "Unknown fields: " + Sets.difference(newLinkedHashSet(keys), map.keySet()));
@@ -82,83 +96,90 @@ public class AggregationUtils {
 	}
 
 	public static Class<?> createKeyClass(Map<String, FieldType> keys, DefiningClassLoader classLoader) {
-		logger.trace("Creating key class for keys {}", keys.keySet());
-		ClassBuilder builder = ClassBuilder.create(classLoader, Comparable.class);
-		for (String key : keys.keySet()) {
-			builder = builder.withField(key, keys.get(key).getInternalDataType());
-		}
 		List<String> keyList = new ArrayList<>(keys.keySet());
-		builder = builder
+		return ClassBuilder.create(classLoader, Comparable.class)
+				.withFields(transformValues(keys, new Function<FieldType, Class<?>>() {
+					@Override
+					public Class<?> apply(FieldType field) {
+						return field.getInternalDataType();
+					}
+				}))
 				.withMethod("compareTo", compareTo(keyList))
 				.withMethod("equals", asEquals(keyList))
 				.withMethod("hashCode", hashCodeOfThis(keyList))
-				.withMethod("toString", asString(keyList));
-
-		return builder.build();
+				.withMethod("toString", asString(keyList)).build();
 	}
 
 	public static Comparator createKeyComparator(Class<?> recordClass, List<String> keys, DefiningClassLoader classLoader) {
-		Expression comparator = compare(recordClass, keys);
-		ClassBuilder<Comparator> builder = ClassBuilder.create(classLoader, Comparator.class)
-				.withMethod("compare", comparator);
-		return builder.buildClassAndCreateNewInstance();
+		return ClassBuilder.create(classLoader, Comparator.class)
+				.withMethod("compare", compare(recordClass, keys))
+				.buildClassAndCreateNewInstance();
 	}
 
-	public static StreamMap.MapperProjection createMapper(Class<?> recordClass, Class<?> resultClass,
-	                                                      List<String> keys, List<String> fields,
+	public static StreamMap.MapperProjection createMapper(final Class<?> recordClass, final Class<?> resultClass,
+	                                                      final List<String> keys, final List<String> fields,
 	                                                      DefiningClassLoader classLoader) {
-		Expression result = let(constructor(resultClass));
-		List<Expression> expressions = new ArrayList<>();
-		expressions.add(result);
-		for (String fieldName : concat(keys, fields)) {
-			expressions.add(set(
-					field(result, fieldName),
-					field(cast(arg(0), recordClass), fieldName)));
-		}
-		expressions.add(result);
-		Expression applyDef = sequence(expressions);
-		ClassBuilder<StreamMap.MapperProjection> builder =
-				ClassBuilder.create(classLoader, StreamMap.MapperProjection.class)
-						.withMethod("apply", applyDef);
-		return builder.buildClassAndCreateNewInstance();
+		return ClassBuilder.create(classLoader, StreamMap.MapperProjection.class)
+				.withMethod("apply", new WithValue<Expression>() {
+					@Override
+					public Expression get() {
+						Expression result1 = let(constructor(resultClass));
+						ExpressionSequence sequence = ExpressionSequence.create();
+						for (String fieldName : concat(keys, fields)) {
+							sequence.add(set(
+									field(result1, fieldName),
+									field(cast(arg(0), recordClass), fieldName)));
+						}
+						return sequence.add(result1);
+					}
+				}.get())
+				.buildClassAndCreateNewInstance();
 	}
 
-	public static Function createKeyFunction(Class<?> recordClass, Class<?> keyClass,
-	                                         List<String> keys,
+	public static Function createKeyFunction(final Class<?> recordClass, final Class<?> keyClass,
+	                                         final List<String> keys,
 	                                         DefiningClassLoader classLoader) {
-		logger.trace("Creating key function for keys {}", keys);
-		Expression key = let(constructor(keyClass));
-		List<Expression> expressions = new ArrayList<>();
-		expressions.add(key);
-		for (String keyString : keys) {
-			expressions.add(set(
-					field(key, keyString),
-					field(cast(arg(0), recordClass), keyString)));
-		}
-		expressions.add(key);
-		Expression applyDef = sequence(expressions);
-		ClassBuilder factory = ClassBuilder.create(classLoader, Function.class)
-				.withMethod("apply", applyDef);
-		return (Function) factory.buildClassAndCreateNewInstance();
+		return ClassBuilder.create(classLoader, Function.class)
+				.withMethod("apply", new WithValue<Expression>() {
+					@Override
+					public Expression get() {
+						Expression key = let(constructor(keyClass));
+						ExpressionSequence sequence = ExpressionSequence.create();
+						for (String keyString : keys) {
+							sequence.add(set(
+									field(key, keyString),
+									field(cast(arg(0), recordClass), keyString)));
+						}
+						return sequence.add(key);
+					}
+				}.get())
+				.buildClassAndCreateNewInstance();
 	}
 
 	public static Class<?> createRecordClass(Aggregation structure,
 	                                         List<String> keys, List<String> fields,
 	                                         DefiningClassLoader classLoader) {
-		return createRecordClass(projectKeys(structure.getKeyTypes(), keys), projectFields(structure.getFieldTypes(), fields), classLoader);
+		return createRecordClass(
+				projectKeys(structure.getKeyTypes(), keys),
+				projectFields(structure.getMeasureTypes(), fields),
+				classLoader);
 	}
 
 	public static Class<?> createRecordClass(Map<String, FieldType> keys, Map<String, FieldType> fields,
 	                                         DefiningClassLoader classLoader) {
-		logger.trace("Creating record class for keys {}, fields {}", keys, fields);
-		ClassBuilder<Object> builder = ClassBuilder.create(classLoader, Object.class);
-		for (String key : keys.keySet()) {
-			builder = builder.withField(key, keys.get(key).getInternalDataType());
-		}
-		for (String field : fields.keySet()) {
-			builder = builder.withField(field, fields.get(field).getInternalDataType());
-		}
-		return builder
+		return ClassBuilder.create(classLoader, Object.class)
+				.withFields(transformValues(keys, new Function<FieldType, Class<?>>() {
+					@Override
+					public Class<?> apply(FieldType fieldType) {
+						return fieldType.getInternalDataType();
+					}
+				}))
+				.withFields(transformValues(fields, new Function<FieldType, Class<?>>() {
+					@Override
+					public Class<?> apply(FieldType fieldType) {
+						return fieldType.getInternalDataType();
+					}
+				}))
 				.withMethod("toString", asString(newArrayList(concat(keys.keySet(), fields.keySet()))))
 				.build();
 	}
@@ -166,7 +187,10 @@ public class AggregationUtils {
 	public static <T> BufferSerializer<T> createBufferSerializer(Aggregation aggregation, Class<T> recordClass,
 	                                                             List<String> keys, List<String> fields,
 	                                                             DefiningClassLoader classLoader) {
-		return createBufferSerializer(recordClass, projectKeys(aggregation.getKeyTypes(), keys), projectFields(aggregation.getFieldTypes(), fields), classLoader);
+		return createBufferSerializer(recordClass,
+				toMap(keys, forMap(aggregation.getKeyTypes())),
+				toMap(fields, forMap(aggregation.getMeasureTypes())),
+				classLoader);
 	}
 
 	private static <T> BufferSerializer<T> createBufferSerializer(Class<T> recordClass,
@@ -198,8 +222,8 @@ public class AggregationUtils {
 	                                                        DefiningClassLoader classLoader) {
 
 		Expression accumulator = let(constructor(outputClass));
-		List<Expression> onFirstItem = new ArrayList<>();
-		List<Expression> onNextItem = new ArrayList<>();
+		ExpressionSequence onFirstItem = ExpressionSequence.create();
+		ExpressionSequence onNextItem = ExpressionSequence.create();
 
 		for (String key : keys) {
 			onFirstItem.add(set(
@@ -208,7 +232,7 @@ public class AggregationUtils {
 		}
 
 		for (String field : fields) {
-			Measure aggregateFunction = aggregation.getFieldAggregateFunction(field);
+			Measure aggregateFunction = aggregation.getMeasure(field);
 			onFirstItem.add(aggregateFunction.initAccumulatorWithAccumulator(
 					field(accumulator, field),
 					field(cast(arg(2), inputClass), field)
@@ -220,12 +244,11 @@ public class AggregationUtils {
 		}
 
 		onFirstItem.add(accumulator);
-		ClassBuilder<StreamReducers.Reducer> builder = ClassBuilder.create(classLoader, StreamReducers.Reducer.class)
-				.withMethod("onFirstItem", sequence(onFirstItem));
-
 		onNextItem.add(arg(3));
-		return builder
-				.withMethod("onNextItem", sequence(onNextItem))
+
+		return ClassBuilder.create(classLoader, StreamReducers.Reducer.class)
+				.withMethod("onFirstItem", onFirstItem)
+				.withMethod("onNextItem", onNextItem)
 				.withMethod("onComplete", call(arg(0), "onData", arg(2)))
 				.buildClassAndCreateNewInstance();
 	}
@@ -236,9 +259,8 @@ public class AggregationUtils {
 	                                            DefiningClassLoader classLoader) {
 
 		Expression accumulator = let(constructor(outputClass));
-		List<Expression> createAccumulatorDefExpressions = new ArrayList<>();
-		createAccumulatorDefExpressions.add(accumulator);
-		List<Expression> accumulateDefExpressions = new ArrayList<>();
+		ExpressionSequence createAccumulatorDefExpressions = ExpressionSequence.create();
+		ExpressionSequence accumulateDefExpressions = ExpressionSequence.create();
 
 		for (String key : keys) {
 			createAccumulatorDefExpressions.add(set(
@@ -249,9 +271,14 @@ public class AggregationUtils {
 		for (String outputField : fields) {
 			String inputField = outputToInputFields != null && outputToInputFields.containsKey(outputField) ?
 					outputToInputFields.get(outputField) : outputField;
-			createAggregateExpressions(aggregation, accumulator, inputField, inputClass,
-					outputField, outputClass,
-					createAccumulatorDefExpressions, accumulateDefExpressions);
+			Measure aggregateFunction = aggregation.getMeasure(outputField);
+
+			createAccumulatorDefExpressions.add(aggregateFunction.initAccumulatorWithValue(
+					field(accumulator, outputField),
+					inputField == null ? null : field(cast(arg(0), inputClass), inputField)));
+			accumulateDefExpressions.add(aggregateFunction.accumulate(
+					field(cast(arg(0), outputClass), outputField),
+					inputField == null ? null : field(cast(arg(1), inputClass), inputField)));
 		}
 
 		createAccumulatorDefExpressions.add(accumulator);
@@ -262,28 +289,12 @@ public class AggregationUtils {
 				.buildClassAndCreateNewInstance();
 	}
 
-	private static void createAggregateExpressions(Aggregation structure, Expression accumulator, String inputField, Class<?> inputClass,
-	                                               String outputField, Class<?> outputClass,
-	                                               List<Expression> createAccumulatorDefExpressions,
-	                                               List<Expression> accumulateDefExpressions) {
-		Measure aggregateFunction = structure.getFieldAggregateFunction(outputField);
-
-		createAccumulatorDefExpressions.add(aggregateFunction.initAccumulatorWithValue(
-				field(accumulator, outputField),
-				inputField == null ? null : field(cast(arg(0), inputClass), inputField)
-		));
-		accumulateDefExpressions.add(aggregateFunction.accumulate(
-				field(cast(arg(0), outputClass), outputField),
-				inputField == null ? null : field(cast(arg(1), inputClass), inputField)
-		));
-	}
-
 	public static BiPredicate createPartitionPredicate(Class recordClass, List<String> partitioningKey,
 	                                                   DefiningClassLoader classLoader) {
 		if (partitioningKey.isEmpty())
 			return Predicates.alwaysTrue();
 
-		PredicateDefAnd predicate = and();
+		PredicateDefAnd predicate = PredicateDefAnd.create();
 		for (String keyComponent : partitioningKey) {
 			predicate.add(cmpEq(
 					field(cast(arg(0), recordClass), keyComponent),

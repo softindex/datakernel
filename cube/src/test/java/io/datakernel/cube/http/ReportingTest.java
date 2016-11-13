@@ -59,7 +59,7 @@ import static io.datakernel.aggregation.AggregationPredicates.*;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.*;
 import static io.datakernel.aggregation.measure.Measures.*;
 import static io.datakernel.cube.ComputedMeasures.*;
-import static io.datakernel.cube.Cube.AggregationScheme.id;
+import static io.datakernel.cube.Cube.AggregationConfig.id;
 import static io.datakernel.cube.CubeQuery.Ordering.asc;
 import static io.datakernel.cube.CubeQuery.Ordering.desc;
 import static io.datakernel.cube.CubeTestUtils.*;
@@ -75,7 +75,7 @@ public class ReportingTest {
 	public static final double DELTA = 1E-3;
 
 	private Eventloop eventloop;
-	private AsyncHttpServer server;
+	private AsyncHttpServer cubeHttpServer;
 	private AsyncHttpClient httpClient;
 	private CubeHttpClient cubeHttpClient;
 
@@ -122,17 +122,17 @@ public class ReportingTest {
 	private static class AdvertiserResolver extends AbstractAttributeResolver<Integer, String> {
 		@Override
 		public Class<?>[] getKeyTypes() {
-			return new Class[]{Integer.class};
+			return new Class[]{int.class};
 		}
 
 		@Override
 		protected Integer toKey(Object[] keyArray) {
-			return (Integer) keyArray[0];
+			return (int) keyArray[0];
 		}
 
 		@Override
-		public Class<?>[] getAttributeTypes() {
-			return new Class[]{String.class};
+		public Map<String, Class<?>> getAttributeTypes() {
+			return ImmutableMap.<String, Class<?>>of("name", String.class);
 		}
 
 		@Override
@@ -283,10 +283,10 @@ public class ReportingTest {
 		cube.loadChunks(IgnoreCompletionCallback.create());
 		eventloop.run();
 
-		server = AsyncHttpServer.create(eventloop, ReportingServiceServlet.createRootServlet(eventloop, cube))
+		cubeHttpServer = AsyncHttpServer.create(eventloop, ReportingServiceServlet.createRootServlet(eventloop, cube))
 				.withListenPort(SERVER_PORT)
 				.withAcceptOnce();
-		server.listen();
+		cubeHttpServer.listen();
 
 		httpClient = AsyncHttpClient.create(eventloop)
 				.withNoKeepAlive();

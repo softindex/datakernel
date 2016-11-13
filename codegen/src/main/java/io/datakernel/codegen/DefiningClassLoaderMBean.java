@@ -21,7 +21,5 @@ import java.util.Map;
 public interface DefiningClassLoaderMBean {
 	int getDefinedClassesCount();
 
-	Map<String, String> getDefinedClasses();
-
 	Map<String, Integer> getDefinedClassesByType();
 }

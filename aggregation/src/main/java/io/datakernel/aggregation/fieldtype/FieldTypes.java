@@ -18,6 +18,8 @@ package io.datakernel.aggregation.fieldtype;
 
 import com.google.common.reflect.TypeParameter;
 import com.google.common.reflect.TypeToken;
+import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.utils.Primitives;
 import io.datakernel.serializer.StringFormat;
 import io.datakernel.serializer.asm.*;
 import org.joda.time.Days;
@@ -25,6 +27,9 @@ import org.joda.time.LocalDate;
 
 import java.lang.reflect.Type;
 import java.util.Set;
+
+import static io.datakernel.codegen.Expressions.call;
+import static io.datakernel.codegen.Expressions.value;
 
 public final class FieldTypes {
 	private FieldTypes() {
@@ -56,8 +61,11 @@ public final class FieldTypes {
 
 	public static <T> FieldType<T> ofSet(FieldType<T> fieldType) {
 		SerializerGenSet serializer = new SerializerGenSet(fieldType.getSerializer());
+		Type wrappedNestedType = fieldType.getDataType() instanceof Class ?
+				Primitives.wrap((Class) fieldType.getDataType()) :
+				fieldType.getDataType();
 		Type dataType = new TypeToken<Set<T>>() {}
-				.where(new TypeParameter<T>() {}, (TypeToken<T>) TypeToken.of(fieldType.getDataType()))
+				.where(new TypeParameter<T>() {}, (TypeToken<T>) TypeToken.of(wrappedNestedType))
 				.getType();
 		return new FieldType<>(Set.class, dataType, serializer);
 	}
@@ -95,8 +103,8 @@ public final class FieldTypes {
 		}
 
 		@Override
-		public LocalDate toValue(Object internalValue) {
-			return startDate.plusDays((Integer) internalValue);
+		public Expression toValue(Expression internalValue) {
+			return call(value(startDate), "plusDays", internalValue);
 		}
 
 		@Override

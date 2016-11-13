@@ -74,7 +74,7 @@ public final class StaticServletForResources extends StaticServlet {
 			if (bytes != ERROR_BYTES) {
 				callback.setResult(ByteBuf.wrapForReading(bytes));
 			} else {
-				callback.setResult(null);
+				callback.setException(HttpException.notFound404());
 			}
 		} else {
 			eventloop.callConcurrently(executor, new Callable<ByteBuf>() {
@@ -87,7 +87,7 @@ public final class StaticServletForResources extends StaticServlet {
 					} catch (IOException e) {
 						cache.put(name, ERROR_BYTES);
 						if (e instanceof FileNotFoundException) {
-							return null;
+							throw HttpException.notFound404();
 						} else {
 							throw e;
 						}

@@ -1,5 +1,5 @@
 package io.datakernel.util;
 
-public interface WithParameter<T> {
+public interface WithValue<T> {
 	T get();
 }

@@ -16,6 +16,8 @@
 
 package io.datakernel.cube.http;
 
+import com.google.common.base.Joiner;
+import com.google.common.base.Splitter;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.TypeAdapter;
@@ -26,10 +28,13 @@ import com.google.gson.stream.JsonWriter;
 import io.datakernel.aggregation.AggregationPredicate;
 import io.datakernel.cube.CubeQuery;
 import io.datakernel.cube.QueryResult;
+import io.datakernel.exception.ParseException;
 import org.joda.time.LocalDate;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 class Utils {
@@ -40,6 +45,39 @@ class Utils {
 	static final String SORT_PARAM = "sort";
 	static final String LIMIT_PARAM = "limit";
 	static final String OFFSET_PARAM = "offset";
+
+	static final Splitter SPLITTER = Splitter.on(',').omitEmptyStrings();
+	static final Joiner JOINER = Joiner.on(',');
+
+	static String formatOrderings(List<CubeQuery.Ordering> orderings) {
+		StringBuilder sb = new StringBuilder();
+		boolean first = true;
+		for (CubeQuery.Ordering ordering : orderings) {
+			sb.append((first ? "" : ",") +
+					ordering.getField() + ":" + (ordering.isAsc() ? "ASC" : "DESC"));
+			first = false;
+		}
+		return sb.toString();
+	}
+
+	static List<CubeQuery.Ordering> parseOrderings(String string) throws ParseException {
+		List<CubeQuery.Ordering> result = new ArrayList<>();
+		for (String s : SPLITTER.split(string)) {
+			int i = s.indexOf(':');
+			if (i == -1) {
+				throw new ParseException();
+			}
+			String field = s.substring(0, i);
+			String tail = s.substring(i + 1).toLowerCase();
+			if ("asc".equals(tail))
+				result.add(CubeQuery.Ordering.asc(field));
+			else if ("desc".equals(tail))
+				result.add(CubeQuery.Ordering.desc(field));
+			else
+				throw new ParseException();
+		}
+		return result;
+	}
 
 	static GsonBuilder createGsonBuilder(final Map<String, Type> attributeTypes, final Map<String, Type> measureTypes) {
 		return new GsonBuilder()

@@ -18,14 +18,23 @@ package io.datakernel.cube;
 
 import java.util.Map;
 
-public interface LRUCacheMBean {
-	int getCurrentCacheSize();
+public interface CubeClassLoaderCacheMBean {
+	// JMX
+	void clear();
 
-	int getCacheRequestsCount();
+	int getTargetCacheKeys();
 
-	int getCachePutCount();
+	void setTargetCacheKeys(int targetCacheKeys);
 
-	double getCacheHitRate();
+	int getDefinedClassesCount();
+
+	int getDefinedClassesCountMaxPerKey();
+
+	int getCacheKeys();
+
+	int getCacheRequests();
+
+	int getCacheMisses();
 
 	Map<String, String> getCacheContents();
 }

@@ -4,6 +4,7 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingCompletionCallback;
 
 import java.util.List;
+import java.util.Map;
 
 public abstract class AbstractAttributeResolver<K, A> implements AttributeResolver {
 	@Override
@@ -12,7 +13,7 @@ public abstract class AbstractAttributeResolver<K, A> implements AttributeResolv
 	protected abstract K toKey(Object[] keyArray);
 
 	@Override
-	public abstract Class<?>[] getAttributeTypes();
+	public abstract Map<String, Class<?>> getAttributeTypes();
 
 	protected abstract Object[] toAttributes(A attributes);
 

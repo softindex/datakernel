@@ -83,10 +83,7 @@ public abstract class StaticServlet implements AsyncServlet {
 		doServeAsync(path, new ForwardingResultCallback<ByteBuf>(callback) {
 			@Override
 			protected void onResult(@Nullable ByteBuf buf) {
-				if (buf == null)
-					callback.setException(HttpException.notFound404());
-				else
-					callback.setResult(createHttpResponse(buf, finalPath));
+				callback.setResult(createHttpResponse(buf, finalPath));
 			}
 		});
 	}

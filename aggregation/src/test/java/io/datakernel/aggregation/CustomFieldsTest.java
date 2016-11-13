@@ -151,7 +151,7 @@ public class CustomFieldsTest {
 				.withKeys(KEYS)
 				.withFields(FIELDS);
 		StreamConsumers.ToList<QueryResult> listConsumer = StreamConsumers.toList(eventloop);
-		aggregation.query(query, QueryResult.class, classLoader).streamTo(listConsumer);
+		aggregation.query(query, QueryResult.class, DefiningClassLoader.create(classLoader)).streamTo(listConsumer);
 		eventloop.run();
 
 		double delta = 1E-3;

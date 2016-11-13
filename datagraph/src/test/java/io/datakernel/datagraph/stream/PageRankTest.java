@@ -49,7 +49,7 @@ import org.junit.Test;
 import java.net.InetSocketAddress;
 import java.util.Arrays;
 
-import static io.datakernel.async.AsyncRunnables.runParallel;
+import static io.datakernel.async.AsyncRunnables.runInParallel;
 import static io.datakernel.datagraph.dataset.Datasets.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
@@ -259,7 +259,7 @@ public class PageRankTest {
 		server1.listen();
 		server2.listen();
 
-		runParallel(eventloop,
+		runInParallel(eventloop,
 				new AsyncRunnable() {
 					@Override
 					public void run(CompletionCallback callback) {
