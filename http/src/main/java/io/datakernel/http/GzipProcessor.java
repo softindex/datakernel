@@ -32,8 +32,7 @@ final class GzipProcessor {
 	static GzipProcessor create() {return new GzipProcessor();}
 
 	static ByteBuf fromGzip(ByteBuf raw) throws ParseException {
-		try {
-			GZIPInputStream gzip = new GZIPInputStream(new ByteArrayInputStream(raw.array(), raw.readPosition(), raw.readRemaining()));
+		try (GZIPInputStream gzip = new GZIPInputStream(new ByteArrayInputStream(raw.array(), raw.readPosition(), raw.readRemaining()))) {
 			int nRead;
 			ByteBuf data = ByteBufPool.allocate(256);
 			while ((nRead = gzip.read(data.array(), data.writePosition(), data.writeRemaining())) != -1) {
@@ -42,11 +41,11 @@ final class GzipProcessor {
 					data = ByteBufPool.ensureTailRemaining(data, data.limit() * 2);
 				}
 			}
-			gzip.close();
-			raw.recycle();
 			return data;
 		} catch (IOException e) {
 			throw new ParseException("Can't decode gzip", e);
+		} finally {
+			raw.recycle();
 		}
 	}
 
@@ -56,10 +55,11 @@ final class GzipProcessor {
 			GZIPOutputStream gzip = new GZIPOutputStream(out);
 			gzip.write(raw.array(), raw.readPosition(), raw.readRemaining());
 			gzip.close();
-			raw.recycle();
 			return out.getBuf();
 		} catch (IOException e) {
 			throw new ParseException("Can't encode gzip", e);
+		} finally {
+			raw.recycle();
 		}
 	}
 

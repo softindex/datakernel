@@ -38,7 +38,7 @@ import org.slf4j.LoggerFactory;
 @SuppressWarnings("unchecked")
 final class RpcStreamProtocol implements RpcProtocol {
 	private static final SimpleException CONNECTION_CLOSED_EXCEPTION =
-			new SimpleException("Rpc сonnection is already closed");
+			new SimpleException("Rpc connection is already closed");
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final Eventloop eventloop;

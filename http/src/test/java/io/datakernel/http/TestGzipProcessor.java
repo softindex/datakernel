@@ -20,6 +20,7 @@ import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
@@ -37,6 +38,7 @@ import static io.datakernel.http.GzipProcessor.toGzip;
 import static io.datakernel.http.HttpHeaders.ACCEPT_ENCODING;
 import static io.datakernel.http.HttpResponse.ok200;
 import static junit.framework.TestCase.assertEquals;
+import static org.junit.Assert.fail;
 
 public class TestGzipProcessor {
 	private static final int PORT = 5595;
@@ -93,6 +95,21 @@ public class TestGzipProcessor {
 
 		eventloop.run();
 		assertEquals(TEST_PHRASE, callback.get());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+	}
+
+	@Test
+	public void recycleByteBufInCaseOfBadInput() {
+		final ByteBuf badBuf = ByteBufPool.allocate(100);
+		badBuf.put(new byte[]{-1, -1, -1, -1, -1, -1});
+
+		try {
+			fromGzip(badBuf);
+			fail();
+		} catch (ParseException ignored) {
+
+		}
+
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 }
