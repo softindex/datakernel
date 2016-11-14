@@ -155,6 +155,11 @@ public final class CallbackRegistry {
 			this.maxCallbacksToShow = maxCallbacksToShow;
 		}
 
+		@JmxAttribute
+		public int totalActiveCallbacks() {
+			return CallbackRegistry.REGISTRY.size();
+		}
+
 		private static List<Map.Entry<Object, CallbackMetaData>> sortByTimestamp(Map<Object, CallbackMetaData> map) {
 			List<Map.Entry<Object, CallbackMetaData>> sortedEntries = new ArrayList<>(map.entrySet());
 			Collections.sort(sortedEntries, new Comparator<Map.Entry<Object, CallbackMetaData>>() {
