@@ -207,6 +207,12 @@ public final class RpcClientConnection implements RpcConnection, RpcSender, JmxR
 		if (callback == null)
 			return;
 
+		if (serverClosing) {
+			if (requests.size() == 0) {
+				close();
+			}
+		}
+
 		// jmx
 		requestsStats.getExpiredRequests().recordEvent();
 		rpcClient.getGeneralRequestsStats().getExpiredRequests().recordEvent();

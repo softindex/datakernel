@@ -409,6 +409,10 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 	}
 
 	void removeConnection(final InetSocketAddress address) {
+		if (!connections.containsKey(address)) {
+			return;
+		}
+
 		logger.info("Connection to {} closed", address);
 
 		connections.remove(address);
