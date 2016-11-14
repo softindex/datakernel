@@ -224,6 +224,8 @@ public final class ByteBufPool {
 		int getOldestByteBufs_settings_MaxByteBufsToShow();
 
 		void setOldestByteBufs_settings_MaxByteBufsToShow(int bufs);
+
+		int getTotalActiveByteBufs();
 	}
 
 	public static final class ByteBufJmxInfo {
@@ -404,6 +406,11 @@ public final class ByteBufPool {
 				throw new IllegalArgumentException("argument must be non-negative");
 			}
 			this.maxBufsToShow = bufs;
+		}
+
+		@Override
+		public int getTotalActiveByteBufs() {
+			return ByteBufRegistry.getActiveByteBufs().size();
 		}
 	}
 
