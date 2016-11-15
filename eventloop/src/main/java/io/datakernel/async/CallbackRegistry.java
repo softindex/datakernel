@@ -156,7 +156,7 @@ public final class CallbackRegistry {
 		}
 
 		@JmxAttribute
-		public int totalActiveCallbacks() {
+		public int getTotalActiveCallbacks() {
 			return CallbackRegistry.REGISTRY.size();
 		}
 
