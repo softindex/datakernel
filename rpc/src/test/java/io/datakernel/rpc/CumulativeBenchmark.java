@@ -24,6 +24,7 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.protocol.RpcException;
+import io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory;
 import io.datakernel.rpc.server.RpcRequestHandler;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.annotations.Deserialize;
@@ -36,6 +37,7 @@ import java.util.concurrent.Executors;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
+import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamProtocol;
 import static io.datakernel.util.MemSize.kilobytes;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -55,13 +57,14 @@ public final class CumulativeBenchmark {
 	private static final int DEFAULT_TIMEOUT = 2_000;
 
 	private static final int SERVICE_PORT = 55555;
+	private static final RpcStreamProtocolFactory PROTOCOL = streamProtocol(kilobytes(64), kilobytes(64), true);
 
 	private final Eventloop serverEventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 	private final Eventloop clientEventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 	private final RpcServer server = RpcServer.create(serverEventloop)
-			.withStreamProtocol(kilobytes(64), kilobytes(64), true)
-			.withMessageTypes(ValueMessage.class, ValueMessage.class)
+			.withProtocol(PROTOCOL)
+			.withMessageTypes(ValueMessage.class)
 			.withHandler(ValueMessage.class, ValueMessage.class, new RpcRequestHandler<ValueMessage, ValueMessage>() {
 				private final ValueMessage currentSum = new ValueMessage(0);
 
@@ -79,7 +82,7 @@ public final class CumulativeBenchmark {
 
 	private final RpcClient client = RpcClient.create(clientEventloop)
 			.withMessageTypes(ValueMessage.class)
-			.withStreamProtocol(kilobytes(64), kilobytes(64), true)
+			.withProtocol(PROTOCOL)
 			.withStrategy(server(new InetSocketAddress(SERVICE_PORT)));
 
 	private final ValueMessage incrementMessage;
@@ -111,14 +114,13 @@ public final class CumulativeBenchmark {
 	private void run() throws Exception {
 		printBenchmarkInfo();
 
+		server.listen();
 		Executors.defaultThreadFactory().newThread(new Runnable() {
 			@Override
 			public void run() {
-				serverEventloop.keepAlive(true);
 				serverEventloop.run();
 			}
 		}).start();
-		server.listen();
 
 		try {
 			final CompletionCallback finishCallback = new CompletionCallback() {
@@ -126,7 +128,8 @@ public final class CumulativeBenchmark {
 				public void onException(Exception exception) {
 					System.err.println("Exception while benchmark: " + exception);
 					try {
-						client.stopFuture().get();
+						client.stopFuture();
+						server.closeFuture();
 					} catch (Exception e) {
 						throw new RuntimeException(e);
 					}
@@ -134,8 +137,11 @@ public final class CumulativeBenchmark {
 
 				@Override
 				public void onComplete() {
+					System.out.println("----------------------------------------");
+					System.out.printf("Average time elapsed per round: %.1f ms\n", totalElapsed / (double) totalRounds);
 					try {
-						client.stopFuture().get();
+						client.stopFuture();
+						server.closeFuture();
 					} catch (Exception e) {
 						throw new RuntimeException(e);
 					}
@@ -176,6 +182,8 @@ public final class CumulativeBenchmark {
 	private int overloads;
 	private int lastResponseValue;
 
+	private int totalElapsed = 0;
+
 	private void startBenchmarkRound(final int roundNumber, final CompletionCallback finishCallback) {
 		if (roundNumber == totalRounds) {
 			finishCallback.setComplete();
@@ -192,6 +200,8 @@ public final class CumulativeBenchmark {
 			@Override
 			public void onComplete() {
 				stopwatch.stop();
+				totalElapsed += stopwatch.elapsed(MILLISECONDS);
+
 				System.out.println((roundNumber + 1) + ": Summary Elapsed " + stopwatch.toString()
 						+ " rps: " + roundRequests * 1000.0 / stopwatch.elapsed(MILLISECONDS)
 						+ " (" + success + "/" + roundRequests + " with " + overloads + " overloads) sum=" + lastResponseValue);
