@@ -92,7 +92,7 @@ public class CubePartitioningTest {
 				.withMeasure("revenue", sum(ofDouble()))
 				.withRelation("campaign", "advertiser")
 				.withRelation("banner", "campaign")
-				.withAggregation(id("date").withDimensions("date").withMeasures(LogItem.MEASURES).withPartitioningKey("date"));
+				.withAggregation(id("date").withDimensions("date").withMeasures(asList("impressions", "clicks", "conversions", "revenue")).withPartitioningKey("date"));
 
 		LogManager<LogItem> logManager = getLogManager(LogItem.class, eventloop, executor, classLoader, logsDir);
 		LogToCubeRunner<LogItem> logToCubeRunner = LogToCubeRunner.create(eventloop, cube, logManager,

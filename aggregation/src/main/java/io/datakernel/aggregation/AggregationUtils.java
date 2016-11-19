@@ -18,6 +18,8 @@ package io.datakernel.aggregation;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Sets;
+import io.datakernel.aggregation.annotation.Key;
+import io.datakernel.aggregation.annotation.Measures;
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.measure.Measure;
 import io.datakernel.aggregation.util.BiPredicate;
@@ -32,7 +34,9 @@ import io.datakernel.util.WithValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.*;
 
 import static com.google.common.base.Functions.forMap;
@@ -156,12 +160,12 @@ public class AggregationUtils {
 				.buildClassAndCreateNewInstance();
 	}
 
-	public static Class<?> createRecordClass(Aggregation structure,
+	public static Class<?> createRecordClass(Aggregation aggregation,
 	                                         List<String> keys, List<String> fields,
 	                                         DefiningClassLoader classLoader) {
 		return createRecordClass(
-				projectKeys(structure.getKeyTypes(), keys),
-				projectFields(structure.getMeasureTypes(), fields),
+				projectKeys(aggregation.getKeyTypes(), keys),
+				projectFields(aggregation.getMeasureTypes(), fields),
 				classLoader);
 	}
 
@@ -254,38 +258,37 @@ public class AggregationUtils {
 	}
 
 	public static Aggregate createPreaggregator(Aggregation aggregation, Class<?> inputClass, Class<?> outputClass,
-	                                            List<String> keys, List<String> fields,
-	                                            Map<String, String> outputToInputFields,
+	                                            Map<String, String> keyFields, Map<String, String> measureFields,
 	                                            DefiningClassLoader classLoader) {
 
 		Expression accumulator = let(constructor(outputClass));
-		ExpressionSequence createAccumulatorDefExpressions = ExpressionSequence.create();
-		ExpressionSequence accumulateDefExpressions = ExpressionSequence.create();
+		ExpressionSequence createAccumulator = ExpressionSequence.create();
+		ExpressionSequence accumulate = ExpressionSequence.create();
 
-		for (String key : keys) {
-			createAccumulatorDefExpressions.add(set(
+		for (String key : keyFields.keySet()) {
+			String inputField = keyFields.get(key);
+			createAccumulator.add(set(
 					field(accumulator, key),
-					field(cast(arg(0), inputClass), key)));
+					field(cast(arg(0), inputClass), inputField)));
 		}
 
-		for (String outputField : fields) {
-			String inputField = outputToInputFields != null && outputToInputFields.containsKey(outputField) ?
-					outputToInputFields.get(outputField) : outputField;
-			Measure aggregateFunction = aggregation.getMeasure(outputField);
+		for (String measure : measureFields.keySet()) {
+			String inputFields = measureFields.get(measure);
+			Measure aggregateFunction = aggregation.getMeasure(measure);
 
-			createAccumulatorDefExpressions.add(aggregateFunction.initAccumulatorWithValue(
-					field(accumulator, outputField),
-					inputField == null ? null : field(cast(arg(0), inputClass), inputField)));
-			accumulateDefExpressions.add(aggregateFunction.accumulate(
-					field(cast(arg(0), outputClass), outputField),
-					inputField == null ? null : field(cast(arg(1), inputClass), inputField)));
+			createAccumulator.add(aggregateFunction.initAccumulatorWithValue(
+					field(accumulator, measure),
+					inputFields == null ? null : field(cast(arg(0), inputClass), inputFields)));
+			accumulate.add(aggregateFunction.accumulate(
+					field(cast(arg(0), outputClass), measure),
+					inputFields == null ? null : field(cast(arg(1), inputClass), inputFields)));
 		}
 
-		createAccumulatorDefExpressions.add(accumulator);
+		createAccumulator.add(accumulator);
 
 		return ClassBuilder.create(classLoader, Aggregate.class)
-				.withMethod("createAccumulator", sequence(createAccumulatorDefExpressions))
-				.withMethod("accumulate", sequence(accumulateDefExpressions))
+				.withMethod("createAccumulator", createAccumulator)
+				.withMethod("accumulate", accumulate)
 				.buildClassAndCreateNewInstance();
 	}
 
@@ -304,5 +307,65 @@ public class AggregationUtils {
 		return ClassBuilder.create(classLoader, BiPredicate.class)
 				.withMethod("test", predicate)
 				.buildClassAndCreateNewInstance();
+	}
+
+	public static <T> Map<String, String> scanKeyFields(Class<T> inputClass) {
+		Map<String, String> keyFields = new LinkedHashMap<>();
+		for (Field field : inputClass.getFields()) {
+			for (Annotation annotation : field.getAnnotations()) {
+				if (annotation.annotationType() == Key.class) {
+					String value = ((Key) annotation).value();
+					keyFields.put("".equals(value) ? field.getName() : value, field.getName());
+				}
+			}
+		}
+		for (Method method : inputClass.getMethods()) {
+			for (Annotation annotation : method.getAnnotations()) {
+				if (annotation.annotationType() == Key.class) {
+					String value = ((Key) annotation).value();
+					keyFields.put("".equals(value) ? method.getName() : value, method.getName());
+				}
+			}
+		}
+		checkArgument(!keyFields.isEmpty(), "Missing @Key annotations in %s", inputClass);
+		return keyFields;
+	}
+
+	public static <T> Map<String, String> scanMeasureFields(Class<T> inputClass) {
+		Map<String, String> measureFields = new LinkedHashMap<>();
+		for (Annotation annotation : inputClass.getAnnotations()) {
+			if (annotation.annotationType() == Measures.class) {
+				for (String measure : ((Measures) annotation).value()) {
+					measureFields.put(measure, null);
+				}
+			}
+		}
+		for (Field field : inputClass.getFields()) {
+			for (Annotation annotation : field.getAnnotations()) {
+				if (annotation.annotationType() == Measures.class) {
+					for (String measure : ((Measures) annotation).value()) {
+						measureFields.put(measure, field.getName());
+					}
+				}
+			}
+		}
+		for (Field field : inputClass.getFields()) {
+			for (Annotation annotation : field.getAnnotations()) {
+				if (annotation.annotationType() == io.datakernel.aggregation.annotation.Measure.class) {
+					String value = ((io.datakernel.aggregation.annotation.Measure) annotation).value();
+					measureFields.put("".equals(value) ? field.getName() : value, field.getName());
+				}
+			}
+		}
+		for (Method method : inputClass.getMethods()) {
+			for (Annotation annotation : method.getAnnotations()) {
+				if (annotation.annotationType() == io.datakernel.aggregation.annotation.Measure.class) {
+					String value = ((io.datakernel.aggregation.annotation.Measure) annotation).value();
+					measureFields.put("".equals(value) ? method.getName() : value, method.getName());
+				}
+			}
+		}
+		checkArgument(!measureFields.isEmpty(), "Missing @Measure(s) annotations in %s", inputClass);
+		return measureFields;
 	}
 }

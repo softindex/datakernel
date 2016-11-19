@@ -16,14 +16,12 @@
 
 package io.datakernel.cube;
 
+import io.datakernel.aggregation.measure.Measure;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Expressions;
 import io.datakernel.codegen.utils.Primitives;
 
-import java.util.Arrays;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static io.datakernel.codegen.Expressions.*;
@@ -42,7 +40,7 @@ public final class ComputedMeasures {
 		}
 
 		@Override
-		public Class<?> getType(StoredMeasures storedMeasures) {
+		public Class<?> getType(Map<String, Measure> storedMeasures) {
 			return null;
 		}
 
@@ -62,7 +60,7 @@ public final class ComputedMeasures {
 		}
 
 		@Override
-		public final Class<?> getType(StoredMeasures storedMeasures) {
+		public final Class<?> getType(Map<String, Measure> storedMeasures) {
 			List<Class<?>> types = newArrayList();
 			for (ComputedMeasure dependency : dependencies) {
 				types.add(dependency.getType(storedMeasures));
@@ -74,12 +72,12 @@ public final class ComputedMeasures {
 	public static ComputedMeasure value(final Object value) {
 		return new ComputedMeasure() {
 			@Override
-			public Class<?> getType(StoredMeasures storedMeasures) {
+			public Class<?> getType(Map<String, Measure> storedMeasures) {
 				return Primitives.unwrap(value.getClass());
 			}
 
 			@Override
-			public Expression getExpression(Expression record, StoredMeasures storedMeasures) {
+			public Expression getExpression(Expression record, Map<String, Measure> storedMeasures) {
 				return Expressions.value(value);
 			}
 
@@ -93,13 +91,13 @@ public final class ComputedMeasures {
 	public static ComputedMeasure measure(final String measureId) {
 		return new ComputedMeasure() {
 			@Override
-			public Class<?> getType(StoredMeasures storedMeasures) {
-				return storedMeasures.getStoredMeasureType(measureId);
+			public Class<?> getType(Map<String, Measure> storedMeasures) {
+				return (Class<?>) storedMeasures.get(measureId).getFieldType().getDataType();
 			}
 
 			@Override
-			public Expression getExpression(Expression record, StoredMeasures storedMeasures) {
-				return storedMeasures.getStoredMeasureValue(record, measureId);
+			public Expression getExpression(Expression record, Map<String, Measure> storedMeasures) {
+				return storedMeasures.get(measureId).valueOfAccumulator(field(record, measureId));
 			}
 
 			@Override
@@ -112,7 +110,7 @@ public final class ComputedMeasures {
 	public static ComputedMeasure add(final ComputedMeasure measure1, final ComputedMeasure measure2) {
 		return new AbstractArithmeticMeasure(measure1, measure2) {
 			@Override
-			public Expression getExpression(Expression record, StoredMeasures storedMeasures) {
+			public Expression getExpression(Expression record, Map<String, Measure> storedMeasures) {
 				return Expressions.add(measure1.getExpression(record, storedMeasures), measure2.getExpression(record, storedMeasures));
 			}
 		};
@@ -121,7 +119,7 @@ public final class ComputedMeasures {
 	public static ComputedMeasure sub(final ComputedMeasure measure1, final ComputedMeasure measure2) {
 		return new AbstractArithmeticMeasure(measure1, measure2) {
 			@Override
-			public Expression getExpression(Expression record, StoredMeasures storedMeasures) {
+			public Expression getExpression(Expression record, Map<String, Measure> storedMeasures) {
 				return Expressions.sub(measure1.getExpression(record, storedMeasures), measure2.getExpression(record, storedMeasures));
 			}
 		};
@@ -130,12 +128,12 @@ public final class ComputedMeasures {
 	public static ComputedMeasure div(final ComputedMeasure measure1, final ComputedMeasure measure2) {
 		return new AbstractComputedMeasure(measure1, measure2) {
 			@Override
-			public Class<?> getType(StoredMeasures storedMeasures) {
+			public Class<?> getType(Map<String, Measure> storedMeasures) {
 				return double.class;
 			}
 
 			@Override
-			public Expression getExpression(Expression record, StoredMeasures storedMeasures) {
+			public Expression getExpression(Expression record, Map<String, Measure> storedMeasures) {
 				Expression value2 = cast(measure2.getExpression(record, storedMeasures), double.class);
 				return Expressions.ifThenElse(Expressions.cmpNe(value2, Expressions.value(0.0)),
 						Expressions.div(measure1.getExpression(record, storedMeasures), value2),
@@ -147,7 +145,7 @@ public final class ComputedMeasures {
 	public static ComputedMeasure mul(final ComputedMeasure measure1, final ComputedMeasure measure2) {
 		return new AbstractArithmeticMeasure(measure1, measure2) {
 			@Override
-			public Expression getExpression(Expression record, StoredMeasures storedMeasures) {
+			public Expression getExpression(Expression record, Map<String, Measure> storedMeasures) {
 				return Expressions.mul(measure1.getExpression(record, storedMeasures), measure2.getExpression(record, storedMeasures));
 			}
 		};
@@ -156,12 +154,12 @@ public final class ComputedMeasures {
 	public static ComputedMeasure sqrt(final ComputedMeasure measure) {
 		return new AbstractComputedMeasure(measure) {
 			@Override
-			public Class<?> getType(StoredMeasures storedMeasures) {
+			public Class<?> getType(Map<String, Measure> storedMeasures) {
 				return double.class;
 			}
 
 			@Override
-			public Expression getExpression(Expression record, StoredMeasures storedMeasures) {
+			public Expression getExpression(Expression record, Map<String, Measure> storedMeasures) {
 				Expression value = let(cast(measure.getExpression(record, storedMeasures), double.class));
 				return ifThenElse(cmpLe(value, Expressions.value(0.0d)),
 						Expressions.value(0.0d),
@@ -173,12 +171,12 @@ public final class ComputedMeasures {
 	public static ComputedMeasure sqr(final ComputedMeasure measure) {
 		return new AbstractComputedMeasure(measure) {
 			@Override
-			public Class<?> getType(StoredMeasures storedMeasures) {
+			public Class<?> getType(Map<String, Measure> storedMeasures) {
 				return double.class;
 			}
 
 			@Override
-			public Expression getExpression(Expression record, StoredMeasures storedMeasures) {
+			public Expression getExpression(Expression record, Map<String, Measure> storedMeasures) {
 				Expression value = let(cast(measure.getExpression(record, storedMeasures), double.class));
 				return Expressions.mul(value, value);
 			}

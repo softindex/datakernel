@@ -93,7 +93,7 @@ public class AggregationChunkerTest {
 
 		List<String> fields = new ArrayList<>();
 		for (AggregationChunk chunk : chunksToConsolidate) {
-			for (String field : chunk.getFields()) {
+			for (String field : chunk.getMeasures()) {
 				if (!fields.contains(field)) {
 					fields.add(field);
 				}
@@ -103,7 +103,7 @@ public class AggregationChunkerTest {
 		Class<?> recordClass = AggregationUtils.createRecordClass(structure, structure.getKeys(), fields, classLoader);
 
 		AggregationChunker aggregationChunker = new AggregationChunker<>(eventloop, NO_OP_TRACKER,
-				structure, structure.getKeys(), structure.getFields(), recordClass, (BiPredicate) Predicates.alwaysTrue(),
+				structure, structure.getKeys(), structure.getMeasures(), recordClass, (BiPredicate) Predicates.alwaysTrue(),
 				aggregationChunkStorage, aggregationMetadataStorage, 1, classLoader, resultCallback);
 
 		StreamProducer<KeyValuePair> producer = StreamProducers.ofIterable(eventloop,
@@ -179,7 +179,7 @@ public class AggregationChunkerTest {
 
 		List<String> fields = new ArrayList<>();
 		for (AggregationChunk chunk : chunksToConsolidate) {
-			for (String field : chunk.getFields()) {
+			for (String field : chunk.getMeasures()) {
 				if (!fields.contains(field)) {
 					fields.add(field);
 				}
@@ -189,7 +189,7 @@ public class AggregationChunkerTest {
 		Class<?> recordClass = AggregationUtils.createRecordClass(structure, keys, fields, classLoader);
 
 		AggregationChunker aggregationChunker = new AggregationChunker<>(eventloop, NO_OP_TRACKER,
-				structure, structure.getKeys(), structure.getFields(), recordClass, (BiPredicate) Predicates.alwaysTrue(),
+				structure, structure.getKeys(), structure.getMeasures(), recordClass, (BiPredicate) Predicates.alwaysTrue(),
 				aggregationChunkStorage, aggregationMetadataStorage, 1, classLoader, resultCallback);
 
 		StreamProducer<KeyValuePair> producer = StreamProducers.concat(eventloop,
@@ -277,7 +277,7 @@ public class AggregationChunkerTest {
 
 		List<String> fields = new ArrayList<>();
 		for (AggregationChunk chunk : chunksToConsolidate) {
-			for (String field : chunk.getFields()) {
+			for (String field : chunk.getMeasures()) {
 				if (!fields.contains(field)) {
 					fields.add(field);
 				}
@@ -287,7 +287,7 @@ public class AggregationChunkerTest {
 		Class<?> recordClass = AggregationUtils.createRecordClass(structure, structure.getKeys(), fields, classLoader);
 
 		AggregationChunker aggregationChunker = new AggregationChunker<>(eventloop, NO_OP_TRACKER,
-				structure, structure.getKeys(), structure.getFields(), recordClass, (BiPredicate) Predicates.alwaysTrue(),
+				structure, structure.getKeys(), structure.getMeasures(), recordClass, (BiPredicate) Predicates.alwaysTrue(),
 				aggregationChunkStorage, aggregationMetadataStorage, 1, classLoader, resultCallback);
 
 		StreamProducer<KeyValuePair> producer = StreamProducers.ofIterable(eventloop, asList(new KeyValuePair(1, 1, 0), new KeyValuePair(1, 2, 1),

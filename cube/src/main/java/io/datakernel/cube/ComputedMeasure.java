@@ -16,21 +16,16 @@
 
 package io.datakernel.cube;
 
+import io.datakernel.aggregation.measure.Measure;
 import io.datakernel.codegen.Expression;
 
+import java.util.Map;
 import java.util.Set;
 
 public interface ComputedMeasure {
+	Class<?> getType(Map<String, Measure> storedMeasures);
 
-	interface StoredMeasures {
-		Class<?> getStoredMeasureType(String storedMeasureId);
-
-		Expression getStoredMeasureValue(Expression record, String storedMeasureId);
-	}
-
-	Class<?> getType(StoredMeasures storedMeasures);
-
-	Expression getExpression(Expression record, StoredMeasures storedMeasures);
+	Expression getExpression(Expression record, Map<String, Measure> storedMeasures);
 
 	Set<String> getMeasureDependencies();
 }

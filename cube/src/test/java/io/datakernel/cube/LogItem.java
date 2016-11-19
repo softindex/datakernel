@@ -16,13 +16,14 @@
 
 package io.datakernel.cube;
 
+import io.datakernel.aggregation.annotation.Key;
+import io.datakernel.aggregation.annotation.Measure;
 import io.datakernel.serializer.annotations.Serialize;
 
 import java.util.List;
 import java.util.Random;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static java.util.Arrays.asList;
 
 /**
  * Represents a log item (or fact).
@@ -32,34 +33,37 @@ import static java.util.Arrays.asList;
  */
 public class LogItem {
 	/* Dimensions */
+	@Key
 	@Serialize(order = 0)
 	public int date = randomInt(16570, 16580);
 
+	@Key
 	@Serialize(order = 1)
 	public int advertiser = randomInt(0, 10);
 
+	@Key
 	@Serialize(order = 2)
 	public int campaign = randomInt(0, 10);
 
+	@Key
 	@Serialize(order = 3)
 	public int banner = randomInt(0, 10);
 
-	/* Measures */
+	@Measure
 	@Serialize(order = 4)
 	public long impressions;
 
+	@Measure
 	@Serialize(order = 5)
 	public long clicks;
 
+	@Measure
 	@Serialize(order = 6)
 	public long conversions;
 
+	@Measure
 	@Serialize(order = 7)
 	public double revenue;
-
-	public static final List<String> DIMENSIONS = asList("date", "advertiser", "campaign", "banner");
-
-	public static final List<String> MEASURES = asList("impressions", "clicks", "conversions", "revenue");
 
 	public LogItem() {
 	}

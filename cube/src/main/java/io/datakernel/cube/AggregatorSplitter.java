@@ -25,8 +25,10 @@ import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.AbstractStreamSplitter;
 
-import java.util.List;
 import java.util.Map;
+
+import static io.datakernel.aggregation.AggregationUtils.scanKeyFields;
+import static io.datakernel.aggregation.AggregationUtils.scanMeasureFields;
 
 /**
  * Represents a logic for input records pre-processing and splitting across multiple cube inputs.
@@ -57,22 +59,28 @@ public abstract class AggregatorSplitter<T> extends AbstractStreamSplitter<T> {
 		return addOutput(new OutputProducer<T>());
 	}
 
-	protected final <O> StreamDataReceiver<O> addOutput(Class<O> aggregationItemType, List<String> dimensions,
-	                                                    List<String> measures) {
-		return addOutput(aggregationItemType, dimensions, measures, null, AggregationPredicates.alwaysTrue());
+	protected final <O> StreamDataReceiver<O> addOutput(Class<O> aggregationItemType) {
+		return addOutput(aggregationItemType, scanKeyFields(aggregationItemType), scanMeasureFields(aggregationItemType));
 	}
 
-	protected final <O> StreamDataReceiver<O> addOutput(Class<O> aggregationItemType, List<String> dimensions,
-	                                                    List<String> measures, Map<String, String> outputToInputFields) {
-		return addOutput(aggregationItemType, dimensions, measures, outputToInputFields, AggregationPredicates.alwaysTrue());
+	protected final <O> StreamDataReceiver<O> addOutput(Class<O> aggregationItemType, AggregationPredicate predicate) {
+		return addOutput(aggregationItemType, scanKeyFields(aggregationItemType), scanMeasureFields(aggregationItemType), predicate);
+	}
+
+	protected final <O> StreamDataReceiver<O> addOutput(Class<O> aggregationItemType,
+	                                                    Map<String, String> dimensionFields,
+	                                                    Map<String, String> measureFields) {
+		return addOutput(aggregationItemType, dimensionFields, measureFields, AggregationPredicates.alwaysTrue());
 	}
 
 	@SuppressWarnings("unchecked")
-	protected final <O> StreamDataReceiver<O> addOutput(Class<O> aggregationItemType, List<String> dimensions,
-	                                                    List<String> measures, Map<String, String> outputToInputFields,
+	protected final <O> StreamDataReceiver<O> addOutput(Class<O> aggregationItemType,
+	                                                    Map<String, String> dimensionFields,
+	                                                    Map<String, String> measureFields,
 	                                                    AggregationPredicate predicate) {
 		StreamProducer streamProducer = newOutput();
-		StreamConsumer streamConsumer = cube.consumer(aggregationItemType, dimensions, measures, outputToInputFields,
+		StreamConsumer streamConsumer = cube.consumer(aggregationItemType,
+				dimensionFields, measureFields,
 				predicate, transaction.addCommitCallback());
 		streamProducer.streamTo(streamConsumer);
 		return streamConsumer.getDataReceiver();

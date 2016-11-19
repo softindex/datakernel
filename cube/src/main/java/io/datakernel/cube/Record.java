@@ -108,7 +108,7 @@ public final class Record {
 
 	public void getInto(Map<String, Object> result) {
 		for (int i = 0; i < scheme.rawIndices.length; i++) {
-			result.put(scheme.fields[i], getRaw(i));
+			result.put(scheme.fields[i], get(i));
 		}
 	}
 

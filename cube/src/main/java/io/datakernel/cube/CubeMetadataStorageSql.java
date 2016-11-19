@@ -207,7 +207,7 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 				insertQuery.addValue(AGGREGATION_DB_CHUNK.AGGREGATION_ID, aggregationId);
 				insertQuery.addValue(AGGREGATION_DB_CHUNK.REVISION_ID, chunk.getRevisionId());
 				insertQuery.addValue(AGGREGATION_DB_CHUNK.KEYS, JOINER.join(aggregation.getKeys()));
-				insertQuery.addValue(AGGREGATION_DB_CHUNK.FIELDS, JOINER.join(chunk.getFields()));
+				insertQuery.addValue(AGGREGATION_DB_CHUNK.FIELDS, JOINER.join(chunk.getMeasures()));
 				insertQuery.addValue(AGGREGATION_DB_CHUNK.COUNT, chunk.getCount());
 				insertQuery.addValue(AGGREGATION_DB_CHUNK.PROCESS_ID, processId);
 

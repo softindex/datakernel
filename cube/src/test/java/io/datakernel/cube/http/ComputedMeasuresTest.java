@@ -16,15 +16,21 @@
 
 package io.datakernel.cube.http;
 
+import io.datakernel.aggregation.measure.Measure;
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
-import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Expressions;
 import io.datakernel.cube.ComputedMeasure;
 import io.datakernel.cube.ComputedMeasures;
 import org.junit.Test;
 
+import java.util.Map;
+
+import static com.google.common.base.Functions.constant;
+import static com.google.common.collect.Maps.asMap;
 import static com.google.common.collect.Sets.newHashSet;
+import static io.datakernel.aggregation.fieldtype.FieldTypes.ofDouble;
+import static io.datakernel.aggregation.measure.Measures.sum;
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.cube.ComputedMeasures.add;
 import static io.datakernel.cube.ComputedMeasures.div;
@@ -34,17 +40,6 @@ import static io.datakernel.cube.ComputedMeasures.sub;
 import static org.junit.Assert.assertEquals;
 
 public class ComputedMeasuresTest {
-	private ComputedMeasure.StoredMeasures storedMeasures = new ComputedMeasure.StoredMeasures() {
-		@Override
-		public Class<?> getStoredMeasureType(String storedMeasureId) {
-			throw new UnsupportedOperationException();
-		}
-
-		@Override
-		public Expression getStoredMeasureValue(Expression record, String storedMeasureId) {
-			return field(record, storedMeasureId);
-		}
-	};
 
 	public interface TestQueryResultPlaceholder {
 		void computeMeasures();
@@ -53,6 +48,8 @@ public class ComputedMeasuresTest {
 
 		Object getResult();
 	}
+
+	private static final Map<String, Measure> MEASURES = asMap(newHashSet("a", "b", "c", "d"), constant(sum(ofDouble())));
 
 	@Test
 	public void test() throws Exception {
@@ -63,7 +60,7 @@ public class ComputedMeasuresTest {
 				.withField("b", long.class)
 				.withField("c", double.class)
 				.withField("d", double.class)
-				.withMethod("computeMeasures", set(field(self(), "d"), d.getExpression(self(), storedMeasures)))
+				.withMethod("computeMeasures", set(field(self(), "d"), d.getExpression(self(), MEASURES)))
 				.withMethod("init", sequence(
 						set(field(self(), "a"), Expressions.value(1)),
 						set(field(self(), "b"), Expressions.value(100)),
@@ -86,7 +83,7 @@ public class ComputedMeasuresTest {
 				.withField("b", long.class)
 				.withField("c", double.class)
 				.withField("d", double.class)
-				.withMethod("computeMeasures", set(field(self(), "d"), d.getExpression(self(), storedMeasures)))
+				.withMethod("computeMeasures", set(field(self(), "d"), d.getExpression(self(), MEASURES)))
 				.withMethod("init", sequence(
 						set(field(self(), "a"), Expressions.value(1)),
 						set(field(self(), "b"), Expressions.value(0)),
@@ -107,7 +104,7 @@ public class ComputedMeasuresTest {
 				.withField("a", double.class)
 				.withField("b", double.class)
 				.withField("c", double.class)
-				.withMethod("computeMeasures", set(field(self(), "c"), c.getExpression(self(), storedMeasures)))
+				.withMethod("computeMeasures", set(field(self(), "c"), c.getExpression(self(), MEASURES)))
 				.withMethod("init", sequence(
 						set(field(self(), "a"), Expressions.value(2.0)),
 						set(field(self(), "b"), Expressions.value(7.0))))
@@ -127,7 +124,7 @@ public class ComputedMeasuresTest {
 				.withField("a", double.class)
 				.withField("b", double.class)
 				.withField("c", double.class)
-				.withMethod("computeMeasures", set(field(self(), "c"), c.getExpression(self(), storedMeasures)))
+				.withMethod("computeMeasures", set(field(self(), "c"), c.getExpression(self(), MEASURES)))
 				.withMethod("init", sequence(
 						set(field(self(), "a"), Expressions.value(0.0)),
 						set(field(self(), "b"), Expressions.value(1E-10))))

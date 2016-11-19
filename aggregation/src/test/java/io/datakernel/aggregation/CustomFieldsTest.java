@@ -17,6 +17,8 @@
 package io.datakernel.aggregation;
 
 import com.google.common.base.MoreObjects;
+import io.datakernel.aggregation.annotation.Key;
+import io.datakernel.aggregation.annotation.Measures;
 import io.datakernel.aggregation.fieldtype.FieldTypes;
 import io.datakernel.aggregation.measure.HyperLogLog;
 import io.datakernel.async.IgnoreCompletionCallback;
@@ -29,9 +31,7 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import java.nio.file.Path;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -42,19 +42,23 @@ import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
 import static junit.framework.TestCase.assertEquals;
 
 public class CustomFieldsTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
+	@Measures({"eventCount"})
 	public static class EventRecord {
 		// dimensions
+		@Key
 		public int siteId;
 
 		// measures
+		@Measures({"sumRevenue", "minRevenue", "maxRevenue"})
 		public double revenue;
+
+		@Measures({"uniqueUserIds", "estimatedUniqueUserIdCount"})
 		public long userId;
 
 		public EventRecord(int siteId, double revenue, long userId) {
@@ -88,23 +92,6 @@ public class CustomFieldsTest {
 		}
 	}
 
-	public static final List<String> KEYS = singletonList("siteId");
-
-	public static final List<String> FIELDS = asList("eventCount", "sumRevenue", "minRevenue", "maxRevenue",
-			"uniqueUserIds", "estimatedUniqueUserIdCount");
-
-	public static final Map<String, String> OUTPUT_TO_INPUT_FIELDS;
-
-	static {
-		OUTPUT_TO_INPUT_FIELDS = new LinkedHashMap<>();
-		OUTPUT_TO_INPUT_FIELDS.put("eventCount", null);
-		OUTPUT_TO_INPUT_FIELDS.put("sumRevenue", "revenue");
-		OUTPUT_TO_INPUT_FIELDS.put("minRevenue", "revenue");
-		OUTPUT_TO_INPUT_FIELDS.put("maxRevenue", "revenue");
-		OUTPUT_TO_INPUT_FIELDS.put("uniqueUserIds", "userId");
-		OUTPUT_TO_INPUT_FIELDS.put("estimatedUniqueUserIdCount", "userId");
-	}
-
 	@Test
 	public void test() throws Exception {
 		ExecutorService executorService = Executors.newCachedThreadPool();
@@ -124,32 +111,28 @@ public class CustomFieldsTest {
 				.withMeasure("uniqueUserIds", union(ofLong()))
 				.withMeasure("estimatedUniqueUserIdCount", hyperLogLog(1024));
 
-		StreamProducers.ofIterable(eventloop, asList(new EventRecord(1, 0.34, 1), new EventRecord(2, 0.42, 3),
-				new EventRecord(3, 0.13, 20))).streamTo(aggregation.consumer(EventRecord.class, FIELDS, OUTPUT_TO_INPUT_FIELDS,
-				metadataStorage.createSaveCallback()));
+		StreamProducers.ofIterable(eventloop, asList(new EventRecord(1, 0.34, 1), new EventRecord(2, 0.42, 3), new EventRecord(3, 0.13, 20)))
+				.streamTo(aggregation.consumer(EventRecord.class, metadataStorage.createSaveCallback()));
 		eventloop.run();
 
-		StreamProducers.ofIterable(eventloop, asList(new EventRecord(2, 0.30, 20), new EventRecord(1, 0.22, 1000),
-				new EventRecord(2, 0.91, 33))).streamTo(aggregation.consumer(EventRecord.class, FIELDS, OUTPUT_TO_INPUT_FIELDS,
-				metadataStorage.createSaveCallback()));
+		StreamProducers.ofIterable(eventloop, asList(new EventRecord(2, 0.30, 20), new EventRecord(1, 0.22, 1000), new EventRecord(2, 0.91, 33)))
+				.streamTo(aggregation.consumer(EventRecord.class, metadataStorage.createSaveCallback()));
 		eventloop.run();
 
-		StreamProducers.ofIterable(eventloop, asList(new EventRecord(1, 0.01, 1), new EventRecord(3, 0.88, 20),
-				new EventRecord(3, 1.01, 21))).streamTo(aggregation.consumer(EventRecord.class, FIELDS, OUTPUT_TO_INPUT_FIELDS,
-				metadataStorage.createSaveCallback()));
+		StreamProducers.ofIterable(eventloop, asList(new EventRecord(1, 0.01, 1), new EventRecord(3, 0.88, 20), new EventRecord(3, 1.01, 21)))
+				.streamTo(aggregation.consumer(EventRecord.class, metadataStorage.createSaveCallback()));
 		eventloop.run();
 
-		StreamProducers.ofIterable(eventloop, asList(new EventRecord(1, 0.35, 500), new EventRecord(1, 0.59, 17),
-				new EventRecord(2, 0.85, 50))).streamTo(aggregation.consumer(EventRecord.class, FIELDS, OUTPUT_TO_INPUT_FIELDS,
-				metadataStorage.createSaveCallback()));
+		StreamProducers.ofIterable(eventloop, asList(new EventRecord(1, 0.35, 500), new EventRecord(1, 0.59, 17), new EventRecord(2, 0.85, 50)))
+				.streamTo(aggregation.consumer(EventRecord.class, metadataStorage.createSaveCallback()));
 		eventloop.run();
 
 		aggregation.loadChunks(IgnoreCompletionCallback.create());
 		eventloop.run();
 
 		AggregationQuery query = AggregationQuery.create()
-				.withKeys(KEYS)
-				.withFields(FIELDS);
+				.withKeys("siteId")
+				.withMeasures("eventCount", "sumRevenue", "minRevenue", "maxRevenue", "uniqueUserIds", "estimatedUniqueUserIdCount");
 		StreamConsumers.ToList<QueryResult> listConsumer = StreamConsumers.toList(eventloop);
 		aggregation.query(query, QueryResult.class, DefiningClassLoader.create(classLoader)).streamTo(listConsumer);
 		eventloop.run();

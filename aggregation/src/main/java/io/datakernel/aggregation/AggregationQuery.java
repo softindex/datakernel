@@ -16,10 +16,7 @@
 
 package io.datakernel.aggregation;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedHashSet;
-import java.util.List;
+import java.util.*;
 
 import static java.util.Collections.unmodifiableList;
 
@@ -28,49 +25,48 @@ import static java.util.Collections.unmodifiableList;
  */
 public final class AggregationQuery {
 	private List<String> keys = new ArrayList<>();
-	private List<String> fields = new ArrayList<>();
+	private List<String> measures = new ArrayList<>();
 	private AggregationPredicate predicate = AggregationPredicates.alwaysTrue();
 
-	public static AggregationQuery create() {return new AggregationQuery();}
+	public static AggregationQuery create() {
+		return new AggregationQuery();
+	}
 
-	public static AggregationQuery create(List<String> keys, List<String> fields) {return new AggregationQuery(keys, fields);}
+	public static AggregationQuery create(List<String> keys, List<String> measures) {
+		return new AggregationQuery(keys, measures);
+	}
 
-	public static AggregationQuery create(List<String> keys, List<String> fields, AggregationPredicate predicate) {return new AggregationQuery(keys, fields, predicate);}
+	public static AggregationQuery create(List<String> keys, List<String> measures, AggregationPredicate predicate) {
+		return new AggregationQuery(keys, measures, predicate);
+	}
 
 	private AggregationQuery() {
 	}
 
-	private AggregationQuery(List<String> keys, List<String> fields) {
+	private AggregationQuery(List<String> keys, List<String> measures) {
 		this.keys.addAll(keys);
-		this.fields.addAll(fields);
+		this.measures.addAll(measures);
 	}
 
-	private AggregationQuery(List<String> keys, List<String> fields, AggregationPredicate predicate) {
+	private AggregationQuery(List<String> keys, List<String> measures, AggregationPredicate predicate) {
 		this.keys.addAll(keys);
-		this.fields.addAll(fields);
+		this.measures.addAll(measures);
 		this.predicate = predicate;
 	}
 
-	public List<String> getResultKeys() {
+	public List<String> getKeys() {
 		return keys;
 	}
 
-	public List<String> getResultFields() {
-		return unmodifiableList(fields);
+	public List<String> getMeasures() {
+		return unmodifiableList(measures);
 	}
 
-	public List<String> getRequestedKeys() {
+	public Set<String> getAllKeys() {
 		LinkedHashSet<String> result = new LinkedHashSet<>();
 		result.addAll(keys);
 		result.addAll(predicate.getDimensions());
-		return new ArrayList<>(result);
-	}
-
-	public List<String> getAllKeys() {
-		LinkedHashSet<String> result = new LinkedHashSet<>();
-		result.addAll(predicate.getDimensions());
-		result.addAll(keys);
-		return new ArrayList<>(result);
+		return result;
 	}
 
 	public AggregationPredicate getPredicate() {
@@ -92,18 +88,18 @@ public final class AggregationQuery {
 		return this;
 	}
 
-	public AggregationQuery withFields(List<String> fields) {
-		this.fields.addAll(fields);
+	public AggregationQuery withMeasures(List<String> fields) {
+		this.measures.addAll(fields);
 		return this;
 	}
 
-	public AggregationQuery withFields(String... fields) {
-		this.fields.addAll(Arrays.asList(fields));
+	public AggregationQuery withMeasures(String... fields) {
+		this.measures.addAll(Arrays.asList(fields));
 		return this;
 	}
 
-	public AggregationQuery withField(String field) {
-		this.fields.add(field);
+	public AggregationQuery withMeasure(String field) {
+		this.measures.add(field);
 		return this;
 	}
 
@@ -128,7 +124,7 @@ public final class AggregationQuery {
 	public String toString() {
 		return "AggregationQuery{" +
 				"keys=" + keys +
-				", fields=" + fields +
+				", fields=" + measures +
 				", predicate=" + predicate +
 				'}';
 	}
@@ -141,7 +137,7 @@ public final class AggregationQuery {
 		AggregationQuery query = (AggregationQuery) o;
 
 		if (!keys.equals(query.keys)) return false;
-		if (!fields.equals(query.fields)) return false;
+		if (!measures.equals(query.measures)) return false;
 		if (!predicate.equals(query.predicate)) return false;
 
 		return true;
@@ -150,7 +146,7 @@ public final class AggregationQuery {
 	@Override
 	public int hashCode() {
 		int result = keys.hashCode();
-		result = 31 * result + fields.hashCode();
+		result = 31 * result + measures.hashCode();
 		result = 31 * result + predicate.hashCode();
 		return result;
 	}

@@ -57,9 +57,9 @@ public class StringDimensionTest {
 				.withMeasure("metric3", sum(ofLong()))
 				.withAggregation(id("detailedAggregation").withDimensions("key1", "key2").withMeasures("metric1", "metric2", "metric3"));
 		StreamProducers.ofIterable(eventloop, asList(new DataItemString1("str1", 2, 10, 20), new DataItemString1("str2", 3, 10, 20)))
-				.streamTo(cube.consumer(DataItemString1.class, DataItemString1.DIMENSIONS, DataItemString1.METRICS, new CommitCallbackStub(cube)));
+				.streamTo(cube.consumer(DataItemString1.class, new CommitCallbackStub(cube)));
 		StreamProducers.ofIterable(eventloop, asList(new DataItemString2("str2", 3, 10, 20), new DataItemString2("str1", 4, 10, 20)))
-				.streamTo(cube.consumer(DataItemString2.class, DataItemString2.DIMENSIONS, DataItemString2.METRICS, new CommitCallbackStub(cube)));
+				.streamTo(cube.consumer(DataItemString2.class, new CommitCallbackStub(cube)));
 		eventloop.run();
 
 		StreamConsumers.ToList<DataItemResultString> consumerToList = StreamConsumers.toList(eventloop);

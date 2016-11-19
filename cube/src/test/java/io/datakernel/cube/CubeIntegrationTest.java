@@ -75,9 +75,15 @@ public class CubeIntegrationTest {
 				.withMeasure("clicks", sum(ofLong()))
 				.withMeasure("conversions", sum(ofLong()))
 				.withMeasure("revenue", sum(ofDouble()))
-				.withAggregation(id("detailed").withDimensions(LogItem.DIMENSIONS).withMeasures(LogItem.MEASURES))
-				.withAggregation(id("date").withDimensions("date").withMeasures(LogItem.MEASURES))
-				.withAggregation(id("advertiser").withDimensions("advertiser").withMeasures(LogItem.MEASURES));
+				.withAggregation(id("detailed")
+						.withDimensions("date", "advertiser", "campaign", "banner")
+						.withMeasures("impressions", "clicks", "conversions", "revenue"))
+				.withAggregation(id("date")
+						.withDimensions("date")
+						.withMeasures("impressions", "clicks", "conversions", "revenue"))
+				.withAggregation(id("advertiser")
+						.withDimensions("advertiser")
+						.withMeasures("impressions", "clicks", "conversions", "revenue"));
 	}
 
 	@SuppressWarnings("ConstantConditions")

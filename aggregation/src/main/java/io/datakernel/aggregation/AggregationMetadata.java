@@ -41,7 +41,6 @@ public final class AggregationMetadata {
 	private final Aggregation aggregation;
 
 	private final Map<Long, AggregationChunk> chunks = new LinkedHashMap<>();
-	private final AggregationPredicate.FieldAccessor predicateKeyConverters;
 	private RangeTree<PrimaryKey, AggregationChunk>[] prefixRanges;
 
 	private static final int EQUALS_QUERIES_THRESHOLD = 1_000;
@@ -52,21 +51,9 @@ public final class AggregationMetadata {
 		}
 	};
 
-	@VisibleForTesting
-	AggregationMetadata(Aggregation aggregation) {
-		this(aggregation, new AggregationPredicate.FieldAccessor() {
-			@Override
-			public Object toInternalValue(String field, Object value) {
-				return value;
-			}
-
-		});
-	}
-
 	@SuppressWarnings("unchecked")
-	AggregationMetadata(Aggregation aggregation, AggregationPredicate.FieldAccessor predicateKeyConverters) {
+	AggregationMetadata(Aggregation aggregation) {
 		this.aggregation = aggregation;
-		this.predicateKeyConverters = predicateKeyConverters;
 		initIndex();
 	}
 
@@ -462,11 +449,11 @@ public final class AggregationMetadata {
 	public List<AggregationChunk> findChunks(AggregationPredicate predicate, List<String> fields) {
 		final Set<String> requestedFields = newHashSet(fields);
 
-		RangeScan rangeScan = toRangeScan(predicate, aggregation.getKeys(), predicateKeyConverters);
+		RangeScan rangeScan = toRangeScan(predicate, aggregation.getKeys(), aggregation.getKeyTypes());
 
 		List<AggregationChunk> chunks = new ArrayList<>();
 		for (AggregationChunk chunk : rangeQuery(rangeScan.getFrom(), rangeScan.getTo())) {
-			if (intersection(newHashSet(chunk.getFields()), requestedFields).isEmpty())
+			if (intersection(newHashSet(chunk.getMeasures()), requestedFields).isEmpty())
 				continue;
 
 			chunks.add(chunk);
@@ -484,6 +471,6 @@ public final class AggregationMetadata {
 
 	@Override
 	public String toString() {
-		return "Aggregation{keys=" + aggregation.getKeys() + ", fields=" + aggregation.getFields() + '}';
+		return "Aggregation{keys=" + aggregation.getKeys() + ", fields=" + aggregation.getMeasures() + '}';
 	}
 }

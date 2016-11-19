@@ -120,9 +120,9 @@ public final class ReportingServiceServlet implements AsyncServlet {
 		if (parameter != null)
 			query = query.withMeasures(SPLITTER.splitToList(parameter));
 
-		parameter = request.getParameter(FILTERS_PARAM);
+		parameter = request.getParameter(WHERE_PARAM);
 		if (parameter != null)
-			query = query.withPredicate(gson.fromJson(parameter, AggregationPredicate.class));
+			query = query.withWhere(gson.fromJson(parameter, AggregationPredicate.class));
 
 		parameter = request.getParameter(SORT_PARAM);
 		if (parameter != null)

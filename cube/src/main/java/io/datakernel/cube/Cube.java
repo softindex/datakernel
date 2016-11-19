@@ -90,56 +90,27 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	private final CubeMetadataStorage cubeMetadataStorage;
 	private final AggregationChunkStorage aggregationChunkStorage;
 
+	private final Map<String, FieldType> fieldTypes = new LinkedHashMap<>();
 	private final Map<String, FieldType> dimensionTypes = new LinkedHashMap<>();
 	private final Map<String, Measure> measures = new LinkedHashMap<>();
 	private final Map<String, ComputedMeasure> computedMeasures = newLinkedHashMap();
 
 	private ListenableResultCallback<LoadedChunks> loadChunksCallback;
 
-	private final ComputedMeasure.StoredMeasures storedMeasures = new ComputedMeasure.StoredMeasures() {
-		@Override
-		public Class<?> getStoredMeasureType(String storedMeasureId) {
-			return (Class<?>) measures.get(storedMeasureId).getFieldType().getDataType();
-		}
-
-		@Override
-		public Expression getStoredMeasureValue(Expression record, String storedMeasureId) {
-			return measures.get(storedMeasureId).valueOfAccumulator(field(record, storedMeasureId));
-		}
-	};
-
-	private final AggregationPredicate.FieldAccessor fieldAccessor = new AggregationPredicate.FieldAccessor() {
-		@Override
-		public Object toInternalValue(String field, Object value) {
-			FieldType fieldType = getFieldType(field);
-			return fieldType == null ? value : fieldType.toInternalValue(value);
-		}
-
-		private FieldType getFieldType(String field) {
-			if (dimensionTypes.containsKey(field)) {
-				return dimensionTypes.get(field);
-			}
-			if (measures.containsKey(field)) {
-				return measures.get(field).getFieldType();
-			}
-			return null;
-		}
-	};
-
-	private static final class AttributeResolverInfo {
+	private static final class AttributeResolverContainer {
 		private final List<String> attributes = new ArrayList<>();
 		private final List<String> dimensions;
 		private final AttributeResolver resolver;
 
-		private AttributeResolverInfo(List<String> dimensions, AttributeResolver resolver) {
+		private AttributeResolverContainer(List<String> dimensions, AttributeResolver resolver) {
 			this.dimensions = dimensions;
 			this.resolver = resolver;
 		}
 	}
 
-	private final List<AttributeResolverInfo> attributeResolvers = newArrayList();
+	private final List<AttributeResolverContainer> attributeResolvers = newArrayList();
 	private final Map<String, Class<?>> attributeTypes = new LinkedHashMap<>();
-	private final Map<String, AttributeResolverInfo> attributes = new LinkedHashMap<>();
+	private final Map<String, AttributeResolverContainer> attributes = new LinkedHashMap<>();
 
 	private final Map<String, String> childParentRelationships = new LinkedHashMap<>();
 	private final Multimap<String, String> parentChildRelationships = LinkedHashMultimap.create();
@@ -154,12 +125,12 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	private int maxOverlappingChunksToProcessLogs = Cube.DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD;
 	private int maxIncrementalReloadPeriodMillis = Aggregation.DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS;
 
-	private static final class AggregationInfo {
+	private static final class AggregationContainer {
 		private final Aggregation aggregation;
 		private final List<String> measures;
 		private final AggregationPredicate predicate;
 
-		private AggregationInfo(Aggregation aggregation, List<String> measures, AggregationPredicate predicate) {
+		private AggregationContainer(Aggregation aggregation, List<String> measures, AggregationPredicate predicate) {
 			this.aggregation = aggregation;
 			this.measures = measures;
 			this.predicate = predicate;
@@ -172,7 +143,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	}
 
 	// state
-	private Map<String, AggregationInfo> aggregations = new LinkedHashMap<>();
+	private Map<String, AggregationContainer> aggregations = new LinkedHashMap<>();
 	private int lastRevisionId;
 	private long lastReloadTimestamp;
 
@@ -221,19 +192,19 @@ public final class Cube implements ICube, EventloopJmxMBean {
 			String d = dimensions.get(i);
 			checkArgument(((Class<?>) dimensionTypes.get(d).getInternalDataType()).equals(resolver.getKeyTypes()[i]), "Dimension type mismatch for %s", d);
 		}
-		AttributeResolverInfo resolverInfo = null;
-		for (AttributeResolverInfo r : attributeResolvers) {
+		AttributeResolverContainer resolverContainer = null;
+		for (AttributeResolverContainer r : attributeResolvers) {
 			if (r.resolver == resolver) {
-				resolverInfo = r;
+				resolverContainer = r;
 				break;
 			}
 		}
-		if (resolverInfo == null) {
-			resolverInfo = new AttributeResolverInfo(dimensions, resolver);
-			attributeResolvers.add(resolverInfo);
+		if (resolverContainer == null) {
+			resolverContainer = new AttributeResolverContainer(dimensions, resolver);
+			attributeResolvers.add(resolverContainer);
 		}
-		resolverInfo.attributes.add(attribute);
-		attributes.put(attribute, resolverInfo);
+		resolverContainer.attributes.add(attribute);
+		attributes.put(attribute, resolverContainer);
 		attributeTypes.put(attribute, resolver.getAttributeTypes().get(attributeName));
 		return this;
 	}
@@ -255,25 +226,31 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	public Cube withDimension(String dimensionId, FieldType type) {
 		checkState(aggregations.isEmpty());
 		dimensionTypes.put(dimensionId, type);
+		fieldTypes.put(dimensionId, type);
 		return this;
 	}
 
 	public Cube withDimensions(Map<String, FieldType> dimensions) {
+		Cube self = this;
+		for (String dimension : dimensions.keySet()) {
+			self = self.withDimension(dimension, dimensions.get(dimension));
+		}
+		return self;
+	}
+
+	public Cube withMeasure(String measureId, Measure measure) {
 		checkState(aggregations.isEmpty());
-		dimensionTypes.putAll(dimensions);
+		measures.put(measureId, measure);
+		fieldTypes.put(measureId, measure.getFieldType());
 		return this;
 	}
 
-	public Cube withMeasure(String measureId, Measure aggregateFunction) {
-		checkState(aggregations.isEmpty());
-		measures.put(measureId, aggregateFunction);
-		return this;
-	}
-
-	public Cube withMeasures(Map<String, Measure> aggregateFunctions) {
-		checkState(aggregations.isEmpty());
-		this.measures.putAll(aggregateFunctions);
-		return this;
+	public Cube withMeasures(Map<String, Measure> measures) {
+		Cube self = this;
+		for (String measure : measures.keySet()) {
+			self = self.withMeasure(measure, measures.get(measure));
+		}
+		return self;
 	}
 
 	public Cube withComputedMeasure(String measureId, ComputedMeasure computedMeasure) {
@@ -443,7 +420,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 				.withMaxChunksToConsolidate(config.maxChunksToConsolidate != 0 ? config.maxChunksToConsolidate : aggregationsMaxChunksToConsolidate)
 				.withIgnoreChunkReadingExceptions(aggregationsIgnoreChunkReadingExceptions);
 
-		aggregations.put(config.id, new AggregationInfo(aggregation, config.measures, config.predicate));
+		aggregations.put(config.id, new AggregationContainer(aggregation, config.measures, config.predicate));
 		logger.info("Added aggregation {} for id '{}'", aggregation, config.id);
 		return this;
 	}
@@ -467,7 +444,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 		if (measures.containsKey(field))
 			return measures.get(field).getFieldType().getInternalDataType();
 		if (computedMeasures.containsKey(field))
-			return computedMeasures.get(field).getType(storedMeasures);
+			return computedMeasures.get(field).getType(measures);
 		return null;
 	}
 
@@ -483,7 +460,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 		if (measures.containsKey(field))
 			return measures.get(field).getFieldType().getDataType();
 		if (computedMeasures.containsKey(field))
-			return computedMeasures.get(field).getType(storedMeasures);
+			return computedMeasures.get(field).getType(measures);
 		return null;
 	}
 
@@ -506,7 +483,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 			result.put(measure, measures.get(measure).getFieldType().getDataType());
 		}
 		for (String measure : computedMeasures.keySet()) {
-			result.put(measure, computedMeasures.get(measure).getType(storedMeasures));
+			result.put(measure, computedMeasures.get(measure).getType(measures));
 		}
 		return result;
 	}
@@ -523,9 +500,12 @@ public final class Cube implements ICube, EventloopJmxMBean {
 		return lastRevisionId;
 	}
 
-	public <T> StreamConsumer<T> consumer(Class<T> inputClass, List<String> dimensions, List<String> measures,
-	                                      ResultCallback<Multimap<String, AggregationChunk.NewChunk>> callback) {
-		return consumer(inputClass, dimensions, measures, null, AggregationPredicates.alwaysTrue(), callback);
+	public <T> StreamConsumer<T> consumer(Class<T> inputClass, ResultCallback<Multimap<String, AggregationChunk.NewChunk>> callback) {
+		return consumer(inputClass, AggregationPredicates.alwaysTrue(), callback);
+	}
+
+	public <T> StreamConsumer<T> consumer(Class<T> inputClass, AggregationPredicate predicate, ResultCallback<Multimap<String, AggregationChunk.NewChunk>> callback) {
+		return consumer(inputClass, scanKeyFields(inputClass), scanMeasureFields(inputClass), predicate, callback);
 	}
 
 	/**
@@ -533,34 +513,35 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	 * The returned {@link StreamConsumer} writes to {@link Aggregation}'s chosen using the specified dimensions, measures and input class.
 	 *
 	 * @param inputClass class of input records
-	 * @param dimensions list of dimension names
-	 * @param measures   list of measure names
 	 * @param callback   callback which is called when records are committed
 	 * @param <T>        data records type
 	 * @return consumer for streaming data to cube
 	 */
-	public <T> StreamConsumer<T> consumer(Class<T> inputClass, List<String> dimensions, List<String> measures,
-	                                      Map<String, String> outputToInputFields, final AggregationPredicate predicate,
+	public <T> StreamConsumer<T> consumer(Class<T> inputClass, Map<String, String> dimensionFields, Map<String, String> measureFields,
+	                                      final AggregationPredicate predicate,
 	                                      final ResultCallback<Multimap<String, AggregationChunk.NewChunk>> callback) {
-		logger.info("Started consuming data. Dimensions: {}. Measures: {}", dimensions, measures);
+		logger.info("Started consuming data. Dimensions: {}. Measures: {}", dimensionFields.keySet(), measureFields.keySet());
 
 		final StreamSplitter<T> streamSplitter = StreamSplitter.create(eventloop);
 		final AsyncResultsTrackerMultimap<String, AggregationChunk.NewChunk> tracker = ofMultimap(callback);
 
-		for (final Map.Entry<String, AggregationInfo> entry : aggregations.entrySet()) {
+		for (final Map.Entry<String, AggregationContainer> entry : aggregations.entrySet()) {
 			final String aggregationId = entry.getKey();
-			final Aggregation aggregation = entry.getValue().aggregation;
-			if (!all(aggregation.getKeys(), in(dimensions)))
+			AggregationContainer container = entry.getValue();
+			final Aggregation aggregation = container.aggregation;
+			if (!all(aggregation.getKeys(), in(dimensionFields.keySet())))
 				continue;
-			if (AggregationPredicates.and(entry.getValue().predicate, predicate).simplify() == alwaysFalse())
+			if (AggregationPredicates.and(container.predicate, predicate).simplify() == alwaysFalse())
 				continue;
 
-			List<String> aggregationMeasures = Lists.newArrayList(Iterables.filter(entry.getValue().measures, in(measures)));
-			if (aggregationMeasures.isEmpty())
+			Map<String, String> aggregationKeyFields = filterKeys(dimensionFields, in(aggregation.getKeys()));
+			Map<String, String> aggregationMeasureFields = filterKeys(measureFields, in(container.measures));
+			if (aggregationMeasureFields.isEmpty())
 				continue;
 
 			tracker.startOperation();
-			StreamConsumer<T> groupReducer = aggregation.consumer(inputClass, aggregationMeasures, outputToInputFields,
+			StreamConsumer<T> groupReducer = aggregation.consumer(inputClass,
+					aggregationKeyFields, aggregationMeasureFields,
 					new ResultCallback<List<AggregationChunk.NewChunk>>() {
 						@Override
 						public void onResult(List<AggregationChunk.NewChunk> chunks) {
@@ -580,14 +561,14 @@ public final class Cube implements ICube, EventloopJmxMBean {
 		return streamSplitter.getInput();
 	}
 
-	public Set<String> getCompatibleMeasures(Collection<String> dimensions, AggregationPredicate predicate) {
+	public Set<String> getCompatibleMeasures(Collection<String> dimensions, AggregationPredicate where) {
 		Set<String> result = newLinkedHashSet();
-		List<String> allDimensions = newArrayList(concat(dimensions, predicate.getDimensions()));
+		List<String> allDimensions = newArrayList(concat(dimensions, where.getDimensions()));
 
-		for (AggregationInfo aggregationInfo : aggregations.values()) {
-			if (!all(allDimensions, in(aggregationInfo.aggregation.getKeys())))
+		for (AggregationContainer aggregationContainer : aggregations.values()) {
+			if (!all(allDimensions, in(aggregationContainer.aggregation.getKeys())))
 				continue;
-			result.addAll(aggregationInfo.measures);
+			result.addAll(aggregationContainer.measures);
 		}
 
 		for (String computedMeasure : computedMeasures.keySet()) {
@@ -605,34 +586,35 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	 * @param resultClass class of output records
 	 * @return producer that streams query results
 	 */
-	public <T> StreamProducer<T> queryRawStream(List<String> dimensions, List<String> storedMeasures, AggregationPredicate predicate,
+	public <T> StreamProducer<T> queryRawStream(List<String> dimensions, List<String> storedMeasures, AggregationPredicate where,
 	                                            Class<T> resultClass) throws QueryException {
-		return queryRawStream(dimensions, storedMeasures, predicate, resultClass, classLoader);
+		return queryRawStream(dimensions, storedMeasures, where, resultClass, classLoader);
 	}
 
-	public <T> StreamProducer<T> queryRawStream(List<String> dimensions, List<String> storedMeasures, AggregationPredicate predicate,
+	public <T> StreamProducer<T> queryRawStream(List<String> dimensions, List<String> storedMeasures, AggregationPredicate where,
 	                                            Class<T> resultClass, DefiningClassLoader queryClassLoader) throws QueryException {
-		predicate = predicate.simplify();
+		where = where.simplify();
 		storedMeasures = newArrayList(storedMeasures);
-		List<String> allDimensions = newArrayList(concat(dimensions, predicate.getDimensions()));
+		List<String> allDimensions = newArrayList(concat(dimensions, where.getDimensions()));
 
-		final Map<AggregationInfo, Double> scores = new HashMap<>();
-		List<AggregationInfo> compatibleAggregations = new ArrayList<>();
-		for (AggregationInfo aggregationInfo : aggregations.values()) {
-			if (!all(allDimensions, in(aggregationInfo.aggregation.getKeys())))
+		final Map<AggregationContainer, Double> scores = new HashMap<>();
+		List<AggregationContainer> compatibleAggregations = new ArrayList<>();
+		for (AggregationContainer aggregationContainer : aggregations.values()) {
+			if (!all(allDimensions, in(aggregationContainer.aggregation.getKeys())))
 				continue;
-			List<String> compatibleMeasures = newArrayList(filter(storedMeasures, in(aggregationInfo.measures)));
+			List<String> compatibleMeasures = newArrayList(filter(storedMeasures, in(aggregationContainer.measures)));
 			if (compatibleMeasures.isEmpty())
 				continue;
 
-			compatibleAggregations.add(aggregationInfo);
-			AggregationQuery aggregationQuery = AggregationQuery.create(dimensions, compatibleMeasures, predicate);
-			scores.put(aggregationInfo, aggregationInfo.aggregation.estimateCost(aggregationQuery));
+			compatibleAggregations.add(aggregationContainer);
+			AggregationQuery aggregationQuery = AggregationQuery.create(dimensions, compatibleMeasures, where);
+			double score = aggregationContainer.aggregation.estimateCost(aggregationQuery);
+			scores.put(aggregationContainer, score);
 		}
 
-		Collections.sort(compatibleAggregations, new Comparator<AggregationInfo>() {
+		Collections.sort(compatibleAggregations, new Comparator<AggregationContainer>() {
 			@Override
-			public int compare(AggregationInfo aggregation1, AggregationInfo aggregation2) {
+			public int compare(AggregationContainer aggregation1, AggregationContainer aggregation2) {
 				return Double.compare(scores.get(aggregation1), scores.get(aggregation2));
 			}
 		});
@@ -644,19 +626,19 @@ public final class Cube implements ICube, EventloopJmxMBean {
 		StreamReducer<Comparable, T, Object> streamReducer = StreamReducer.create(eventloop, Ordering.natural());
 		StreamProducer<T> queryResultProducer = streamReducer.getOutput();
 
-		for (AggregationInfo aggregationInfo : compatibleAggregations) {
-			List<String> compatibleMeasures = newArrayList(filter(storedMeasures, in(aggregationInfo.measures)));
+		for (AggregationContainer aggregationContainer : compatibleAggregations) {
+			List<String> compatibleMeasures = newArrayList(filter(storedMeasures, in(aggregationContainer.measures)));
 			if (compatibleMeasures.isEmpty())
 				continue;
 			storedMeasures.removeAll(compatibleMeasures);
 
-			queryPlan.addAggregationMeasures(aggregationInfo.aggregation, compatibleMeasures);
+			queryPlan.addAggregationMeasures(aggregationContainer.aggregation, compatibleMeasures);
 
-			Class aggregationClass = createRecordClass(projectKeys(dimensionTypes, aggregationInfo.aggregation.getKeys()),
+			Class aggregationClass = createRecordClass(projectKeys(dimensionTypes, dimensions),
 					measuresAsFields(projectMeasures(measures, compatibleMeasures)), queryClassLoader);
 
-			AggregationQuery aggregationQuery = AggregationQuery.create(dimensions, compatibleMeasures, predicate);
-			StreamProducer aggregationProducer = aggregationInfo.aggregation.query(aggregationQuery, aggregationClass, queryClassLoader);
+			AggregationQuery aggregationQuery = AggregationQuery.create(dimensions, compatibleMeasures, where);
+			StreamProducer aggregationProducer = aggregationContainer.aggregation.query(aggregationQuery, aggregationClass, queryClassLoader);
 
 			if (storedMeasures.isEmpty() && streamReducer.getInputs().isEmpty()) {
 				/*
@@ -674,7 +656,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 
 			Function keyFunction = AggregationUtils.createKeyFunction(aggregationClass, resultKeyClass, dimensions, queryClassLoader);
 
-			StreamReducers.Reducer reducer = aggregationInfo.aggregation.aggregationReducer(aggregationClass, resultClass,
+			StreamReducers.Reducer reducer = aggregationContainer.aggregation.aggregationReducer(aggregationClass, resultClass,
 					dimensions, compatibleMeasures, queryClassLoader);
 
 			StreamConsumer streamReducerInput = streamReducer.newInput(keyFunction, reducer);
@@ -694,10 +676,10 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	public boolean containsExcessiveNumberOfOverlappingChunks() {
 		boolean excessive = false;
 
-		for (AggregationInfo aggregationInfo : aggregations.values()) {
-			int numberOfOverlappingChunks = aggregationInfo.aggregation.getNumberOfOverlappingChunks();
+		for (AggregationContainer aggregationContainer : aggregations.values()) {
+			int numberOfOverlappingChunks = aggregationContainer.aggregation.getNumberOfOverlappingChunks();
 			if (numberOfOverlappingChunks > maxOverlappingChunksToProcessLogs) {
-				logger.info("Aggregation {} contains {} overlapping chunks", aggregationInfo.aggregation, numberOfOverlappingChunks);
+				logger.info("Aggregation {} contains {} overlapping chunks", aggregationContainer.aggregation, numberOfOverlappingChunks);
 				excessive = true;
 			}
 		}
@@ -730,7 +712,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 		this.lastRevisionId = result.lastRevisionId;
 		this.lastReloadTimestamp = eventloop.currentTimeMillis();
 
-		for (Map.Entry<String, AggregationInfo> entry : aggregations.entrySet()) {
+		for (Map.Entry<String, AggregationContainer> entry : aggregations.entrySet()) {
 			String aggregationId = entry.getKey();
 			List<Long> consolidatedChunkIds = result.consolidatedChunkIds.get(aggregationId);
 			List<AggregationChunk> newChunks = result.newChunks.get(aggregationId);
@@ -771,7 +753,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 		});
 	}
 
-	private void consolidate(final boolean found, final Iterator<AggregationInfo> iterator, final ResultCallback<Boolean> callback) {
+	private void consolidate(final boolean found, final Iterator<AggregationContainer> iterator, final ResultCallback<Boolean> callback) {
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
@@ -817,26 +799,26 @@ public final class Cube implements ICube, EventloopJmxMBean {
 		}
 	}
 
-	private DrillDownsAndChains getDrillDownsAndChains(Set<String> dimensions, Set<String> measures, AggregationPredicate predicate) {
+	private DrillDownsAndChains getDrillDownsAndChains(Set<String> dimensions, Set<String> measures, AggregationPredicate where) {
 		Set<QueryResult.Drilldown> drilldowns = newHashSet();
 		Set<List<String>> chains = newHashSet();
 
-		List<String> queryDimensions = newArrayList(concat(dimensions, predicate.getFullySpecifiedDimensions().keySet()));
+		List<String> queryDimensions = newArrayList(concat(dimensions, where.getFullySpecifiedDimensions().keySet()));
 
-		for (AggregationInfo aggregationInfo : aggregations.values()) {
+		for (AggregationContainer aggregationContainer : aggregations.values()) {
 			Set<String> aggregationMeasures = newHashSet();
-			aggregationMeasures.addAll(aggregationInfo.measures);
+			aggregationMeasures.addAll(aggregationContainer.measures);
 
-			if (!all(queryDimensions, in(aggregationInfo.aggregation.getKeys())) || !any(measures, in(aggregationMeasures)) ||
-					AggregationPredicates.and(aggregationInfo.predicate, predicate).simplify() == alwaysFalse())
+			if (!all(queryDimensions, in(aggregationContainer.aggregation.getKeys())) || !any(measures, in(aggregationMeasures)) ||
+					AggregationPredicates.and(aggregationContainer.predicate, where).simplify() == alwaysFalse())
 				continue;
 
 			Set<String> availableMeasures = newHashSet();
 			intersection(aggregationMeasures, measures).copyInto(availableMeasures);
 
-			Iterable<String> filteredDimensions = filter(aggregationInfo.aggregation.getKeys(), not(in(queryDimensions)));
+			Iterable<String> filteredDimensions = filter(aggregationContainer.aggregation.getKeys(), not(in(queryDimensions)));
 			Set<List<String>> filteredChains = buildDrillDownChains(newHashSet(queryDimensions), filteredDimensions);
-			Set<List<String>> allChains = buildDrillDownChains(Sets.<String>newHashSet(), aggregationInfo.aggregation.getKeys());
+			Set<List<String>> allChains = buildDrillDownChains(Sets.<String>newHashSet(), aggregationContainer.aggregation.getKeys());
 
 			for (List<String> drillDownChain : filteredChains) {
 				drilldowns.add(QueryResult.Drilldown.create(drillDownChain, availableMeasures));
@@ -902,7 +884,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	public Map<String, List<AggregationMetadata.ConsolidationDebugInfo>> getConsolidationDebugInfo() {
 		Map<String, List<AggregationMetadata.ConsolidationDebugInfo>> m = newHashMap();
 
-		for (Map.Entry<String, AggregationInfo> aggregationEntry : aggregations.entrySet()) {
+		for (Map.Entry<String, AggregationContainer> aggregationEntry : aggregations.entrySet()) {
 			m.put(aggregationEntry.getKey(), aggregationEntry.getValue().aggregation.getConsolidationDebugInfo());
 		}
 
@@ -916,8 +898,8 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	// visible for testing
 	public void setLastReloadTimestamp(long lastReloadTimestamp) {
 		this.lastReloadTimestamp = lastReloadTimestamp;
-		for (AggregationInfo aggregationInfo : aggregations.values()) {
-			aggregationInfo.aggregation.setLastReloadTimestamp(lastReloadTimestamp);
+		for (AggregationContainer aggregationContainer : aggregations.values()) {
+			aggregationContainer.aggregation.setLastReloadTimestamp(lastReloadTimestamp);
 		}
 	}
 
@@ -927,7 +909,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 		DefiningClassLoader queryClassLoader = getQueryClassLoader(new CubeClassLoaderCache.Key(
 				newLinkedHashSet(cubeQuery.getAttributes()),
 				newLinkedHashSet(cubeQuery.getMeasures()),
-				cubeQuery.getPredicate().getDimensions()));
+				cubeQuery.getWhere().getDimensions()));
 		final long queryStarted = eventloop.currentTimeMillis();
 		new RequestContext().execute(queryClassLoader, cubeQuery, new ResultCallback<QueryResult>() {
 			@Override
@@ -986,7 +968,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 			this.queryClassLoader = queryClassLoader;
 			this.query = query;
 
-			queryPredicate = query.getPredicate().simplify();
+			queryPredicate = query.getWhere().simplify();
 			queryHaving = query.getHaving().simplify();
 			fullySpecifiedDimensions = queryPredicate.getFullySpecifiedDimensions();
 
@@ -1021,8 +1003,8 @@ public final class Cube implements ICube, EventloopJmxMBean {
 				if (dimensionTypes.containsKey(attribute)) {
 					dimensions = buildDrillDownChain(attribute);
 				} else if (attributes.containsKey(attribute)) {
-					AttributeResolverInfo resolverInfo = attributes.get(attribute);
-					for (String dimension : resolverInfo.dimensions) {
+					AttributeResolverContainer resolverContainer = attributes.get(attribute);
+					for (String dimension : resolverContainer.dimensions) {
 						dimensions.addAll(buildDrillDownChain(dimension));
 					}
 				} else
@@ -1095,10 +1077,10 @@ public final class Cube implements ICube, EventloopJmxMBean {
 			List<Expression> computeSequence = new ArrayList<>();
 
 			for (String computedMeasure : resultComputedMeasures) {
-				builder = builder.withField(computedMeasure, computedMeasures.get(computedMeasure).getType(storedMeasures));
+				builder = builder.withField(computedMeasure, computedMeasures.get(computedMeasure).getType(measures));
 				Expression record = cast(arg(0), resultClass);
 				computeSequence.add(set(field(record, computedMeasure),
-						computedMeasures.get(computedMeasure).getExpression(record, storedMeasures)));
+						computedMeasures.get(computedMeasure).getExpression(record, measures)));
 			}
 			return builder.withMethod("computeMeasures", sequence(computeSequence))
 					.buildClassAndCreateNewInstance();
@@ -1111,7 +1093,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 				return com.google.common.base.Predicates.alwaysFalse();
 			return ClassBuilder.create(classLoader, Predicate.class)
 					.withMethod("apply", boolean.class, singletonList(Object.class),
-							queryHaving.createPredicateDef(cast(arg(0), resultClass), fieldAccessor))
+							queryHaving.createPredicateDef(cast(arg(0), resultClass), fieldTypes))
 					.buildClassAndCreateNewInstance();
 		}
 
@@ -1168,15 +1150,15 @@ public final class Cube implements ICube, EventloopJmxMBean {
 			totalsFunction.computeMeasures(totals);
 
 			List<AsyncRunnable> tasks = new ArrayList<>();
-			for (final AttributeResolverInfo resolverInfo : attributeResolvers) {
-				List<String> attributes = new ArrayList<>(resolverInfo.attributes);
+			for (final AttributeResolverContainer resolverContainer : attributeResolvers) {
+				List<String> attributes = new ArrayList<>(resolverContainer.attributes);
 				attributes.retainAll(resultAttributes);
 				if (!attributes.isEmpty()) {
 					tasks.add(new AsyncRunnable() {
 						@Override
 						public void run(CompletionCallback callback) {
-							resolveAttributes(results, resolverInfo.resolver,
-									resolverInfo.dimensions, resolverInfo.attributes,
+							resolveAttributes(results, resolverContainer.resolver,
+									resolverContainer.dimensions, resolverContainer.attributes,
 									(Class) resultClass, queryClassLoader, callback);
 						}
 					});
@@ -1184,12 +1166,12 @@ public final class Cube implements ICube, EventloopJmxMBean {
 			}
 
 			final Map<String, Object> filterAttributes = newLinkedHashMap();
-			for (final AttributeResolverInfo resolverInfo : attributeResolvers) {
-				if (fullySpecifiedDimensions.keySet().containsAll(resolverInfo.dimensions)) {
+			for (final AttributeResolverContainer resolverContainer : attributeResolvers) {
+				if (fullySpecifiedDimensions.keySet().containsAll(resolverContainer.dimensions)) {
 					tasks.add(new AsyncRunnable() {
 						@Override
 						public void run(CompletionCallback callback) {
-							resolveSpecifiedDimensions(resolverInfo, filterAttributes, callback);
+							resolveSpecifiedDimensions(resolverContainer, filterAttributes, callback);
 						}
 					});
 				}
@@ -1228,16 +1210,16 @@ public final class Cube implements ICube, EventloopJmxMBean {
 			callback.setResult(result);
 		}
 
-		private void resolveSpecifiedDimensions(final AttributeResolverInfo resolverInfo, final Map<String, Object> result,
+		private void resolveSpecifiedDimensions(final AttributeResolverContainer resolverContainer, final Map<String, Object> result,
 		                                        final CompletionCallback callback) {
-			Object[] key = new Object[resolverInfo.dimensions.size()];
-			for (int i = 0; i < resolverInfo.dimensions.size(); i++) {
-				String dimension = resolverInfo.dimensions.get(i);
+			Object[] key = new Object[resolverContainer.dimensions.size()];
+			for (int i = 0; i < resolverContainer.dimensions.size(); i++) {
+				String dimension = resolverContainer.dimensions.get(i);
 				key[i] = fullySpecifiedDimensions.get(dimension);
 			}
 			final Object[] attributesPlaceholder = new Object[1];
 
-			resolverInfo.resolver.resolveAttributes(singletonList((Object) key),
+			resolverContainer.resolver.resolveAttributes(singletonList((Object) key),
 					new AttributeResolver.KeyFunction() {
 						@Override
 						public Object[] extractKey(Object result) {
@@ -1253,8 +1235,8 @@ public final class Cube implements ICube, EventloopJmxMBean {
 					new ForwardingCompletionCallback(callback) {
 						@Override
 						protected void onComplete() {
-							for (int i = 0; i < resolverInfo.attributes.size(); i++) {
-								String attribute = resolverInfo.attributes.get(i);
+							for (int i = 0; i < resolverContainer.attributes.size(); i++) {
+								String attribute = resolverContainer.attributes.get(i);
 								result.put(attribute, ((Object[]) attributesPlaceholder[0])[i]);
 							}
 							callback.setComplete();
@@ -1314,7 +1296,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 			for (String computedMeasure : resultComputedMeasures) {
 				Expression result = cast(arg(0), resultClass);
 				computeSequence.add(set(field(result, computedMeasure),
-						computedMeasures.get(computedMeasure).getExpression(result, storedMeasures)));
+						computedMeasures.get(computedMeasure).getExpression(result, measures)));
 			}
 			return ClassBuilder.create(queryClassLoader, TotalsFunction.class)
 					.withMethod("zero", zeroSequence)
@@ -1344,8 +1326,8 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	@JmxAttribute
 	public void setAggregationsChunkSize(int aggregationsChunkSize) {
 		this.aggregationsChunkSize = aggregationsChunkSize;
-		for (AggregationInfo aggregationInfo : aggregations.values()) {
-			aggregationInfo.aggregation.setChunkSize(aggregationsChunkSize);
+		for (AggregationContainer aggregationContainer : aggregations.values()) {
+			aggregationContainer.aggregation.setChunkSize(aggregationsChunkSize);
 		}
 	}
 
@@ -1362,8 +1344,8 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	@JmxAttribute
 	public void setAggregationsSorterItemsInMemory(int aggregationsSorterItemsInMemory) {
 		this.aggregationsSorterItemsInMemory = aggregationsSorterItemsInMemory;
-		for (AggregationInfo aggregationInfo : aggregations.values()) {
-			aggregationInfo.aggregation.setSorterItemsInMemory(aggregationsSorterItemsInMemory);
+		for (AggregationContainer aggregationContainer : aggregations.values()) {
+			aggregationContainer.aggregation.setSorterItemsInMemory(aggregationsSorterItemsInMemory);
 		}
 	}
 
@@ -1380,8 +1362,8 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	@JmxAttribute
 	public void setAggregationsSorterBlockSize(int aggregationsSorterBlockSize) {
 		this.aggregationsSorterBlockSize = aggregationsSorterBlockSize;
-		for (AggregationInfo aggregationInfo : aggregations.values()) {
-			aggregationInfo.aggregation.setSorterBlockSize(aggregationsSorterBlockSize);
+		for (AggregationContainer aggregationContainer : aggregations.values()) {
+			aggregationContainer.aggregation.setSorterBlockSize(aggregationsSorterBlockSize);
 		}
 	}
 
@@ -1398,8 +1380,8 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	@JmxAttribute
 	public void setAggregationsMaxChunksToConsolidate(int aggregationsMaxChunksToConsolidate) {
 		this.aggregationsMaxChunksToConsolidate = aggregationsMaxChunksToConsolidate;
-		for (AggregationInfo aggregationInfo : aggregations.values()) {
-			aggregationInfo.aggregation.setMaxChunksToConsolidate(aggregationsMaxChunksToConsolidate);
+		for (AggregationContainer aggregationContainer : aggregations.values()) {
+			aggregationContainer.aggregation.setMaxChunksToConsolidate(aggregationsMaxChunksToConsolidate);
 		}
 	}
 
@@ -1416,7 +1398,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	@JmxAttribute
 	public void setAggregationsIgnoreChunkReadingExceptions(boolean aggregationsIgnoreChunkReadingExceptions) {
 		this.aggregationsIgnoreChunkReadingExceptions = aggregationsIgnoreChunkReadingExceptions;
-		for (AggregationInfo aggregation : aggregations.values()) {
+		for (AggregationContainer aggregation : aggregations.values()) {
 			aggregation.aggregation.setIgnoreChunkReadingExceptions(aggregationsIgnoreChunkReadingExceptions);
 		}
 	}
@@ -1459,16 +1441,16 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	@JmxAttribute
 	public int getActiveReducersBuffersSize() {
 		int size = 0;
-		for (AggregationInfo aggregationInfo : aggregations.values()) {
-			size += aggregationInfo.aggregation.getActiveReducersBuffersSize();
+		for (AggregationContainer aggregationContainer : aggregations.values()) {
+			size += aggregationContainer.aggregation.getActiveReducersBuffersSize();
 		}
 		return size;
 	}
 
 	@JmxOperation
 	public void flushActiveReducersBuffers() {
-		for (AggregationInfo aggregationInfo : aggregations.values()) {
-			aggregationInfo.aggregation.flushActiveReducersBuffers();
+		for (AggregationContainer aggregationContainer : aggregations.values()) {
+			aggregationContainer.aggregation.flushActiveReducersBuffers();
 		}
 	}
 

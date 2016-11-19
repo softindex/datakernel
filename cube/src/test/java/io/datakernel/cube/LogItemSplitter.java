@@ -43,7 +43,7 @@ public class LogItemSplitter extends AggregatorSplitter<LogItem> {
 
 	@Override
 	protected void addOutputs() {
-		logItemAggregator = addOutput(LogItem.class, LogItem.DIMENSIONS, LogItem.MEASURES);
+		logItemAggregator = addOutput(LogItem.class);
 	}
 
 	@Override

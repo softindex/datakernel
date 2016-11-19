@@ -1,5 +1,6 @@
 package io.datakernel.aggregation;
 
+import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.PredicateDef;
 
@@ -14,9 +15,5 @@ public interface AggregationPredicate {
 
 	Map<String, Object> getFullySpecifiedDimensions();
 
-	PredicateDef createPredicateDef(Expression record, FieldAccessor fields);
-
-	interface FieldAccessor {
-		Object toInternalValue(String field, Object value);
-	}
+	PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields);
 }

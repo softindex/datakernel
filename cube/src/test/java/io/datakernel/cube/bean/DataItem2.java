@@ -16,15 +16,22 @@
 
 package io.datakernel.cube.bean;
 
+import io.datakernel.aggregation.annotation.Key;
+import io.datakernel.aggregation.annotation.Measure;
+
 import java.util.List;
 
 import static java.util.Arrays.asList;
 
 public class DataItem2 {
+	@Key
 	public int key1;
+	@Key
 	public int key2;
 
+	@Measure
 	public long metric2;
+	@Measure
 	public long metric3;
 
 	public DataItem2() {

@@ -65,18 +65,18 @@ public class AggregationChunk {
 
 	private final int revisionId;
 	private final long chunkId;
-	private final List<String> fields;
+	private final List<String> measures;
 	private final PrimaryKey minPrimaryKey;
 	private final PrimaryKey maxPrimaryKey;
 	private final int count;
 
 	private AggregationChunk(int revisionId, long chunkId,
-	                         List<String> fields,
+	                         List<String> measures,
 	                         PrimaryKey minPrimaryKey, PrimaryKey maxPrimaryKey,
 	                         int count) {
 		this.revisionId = revisionId;
 		this.chunkId = chunkId;
-		this.fields = fields;
+		this.measures = measures;
 		this.minPrimaryKey = minPrimaryKey;
 		this.maxPrimaryKey = maxPrimaryKey;
 		this.count = count;
@@ -90,8 +90,8 @@ public class AggregationChunk {
 		return revisionId;
 	}
 
-	public List<String> getFields() {
-		return unmodifiableList(fields);
+	public List<String> getMeasures() {
+		return unmodifiableList(measures);
 	}
 
 	public PrimaryKey getMinPrimaryKey() {
@@ -114,14 +114,14 @@ public class AggregationChunk {
 		return revisionId == chunk.revisionId &&
 				chunkId == chunk.chunkId &&
 				count == chunk.count &&
-				Objects.equals(fields, chunk.fields) &&
+				Objects.equals(measures, chunk.measures) &&
 				Objects.equals(minPrimaryKey, chunk.minPrimaryKey) &&
 				Objects.equals(maxPrimaryKey, chunk.maxPrimaryKey);
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(revisionId, chunkId, fields, minPrimaryKey, maxPrimaryKey, count);
+		return Objects.hash(revisionId, chunkId, measures, minPrimaryKey, maxPrimaryKey, count);
 	}
 
 	public AggregationPredicate toPredicate(List<String> primaryKey) {
@@ -144,7 +144,7 @@ public class AggregationChunk {
 		return "{" +
 				"revision=" + revisionId +
 				", id=" + chunkId +
-				", fields=" + fields +
+				", measures=" + measures +
 				", minKey=" + minPrimaryKey +
 				", maxKey=" + maxPrimaryKey +
 				", count=" + count +

@@ -16,18 +16,24 @@
 
 package io.datakernel.cube.bean;
 
-import java.util.List;
-
-import static java.util.Arrays.asList;
+import io.datakernel.aggregation.annotation.Key;
+import io.datakernel.aggregation.annotation.Measure;
 
 public class DataItem4 {
+	@Key
 	public int key1;
+	@Key
 	public int key2;
+	@Key
 	public int key3;
+	@Key
 	public int key4;
+	@Key
 	public int key5;
 
+	@Measure
 	public long metric2;
+	@Measure
 	public long metric3;
 
 	public DataItem4() {
@@ -42,8 +48,4 @@ public class DataItem4 {
 		this.metric2 = metric2;
 		this.metric3 = metric3;
 	}
-
-	public static final List<String> DIMENSIONS = asList("key1", "key2", "key3", "key4", "key5");
-
-	public static final List<String> METRICS = asList("metric2", "metric3");
 }

@@ -16,15 +16,16 @@
 
 package io.datakernel.cube;
 
+import com.google.common.base.Functions;
 import io.datakernel.cube.bean.TestPubRequest;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamDataReceiver;
 
-import java.util.List;
+import java.util.Set;
 
-import static com.google.common.collect.Iterables.concat;
-import static com.google.common.collect.Lists.newArrayList;
-import static java.util.Arrays.asList;
+import static com.google.common.collect.Maps.asMap;
+import static com.google.common.collect.Sets.newHashSet;
+import static com.google.common.collect.Sets.union;
 
 @SuppressWarnings("unchecked")
 public class TestAggregatorSplitter extends AggregatorSplitter<TestPubRequest> {
@@ -44,6 +45,7 @@ public class TestAggregatorSplitter extends AggregatorSplitter<TestPubRequest> {
 		public int date;
 		public int hourOfDay;
 		public int pub;
+
 		public final long pubRequests = 1;
 
 		// adv
@@ -56,13 +58,13 @@ public class TestAggregatorSplitter extends AggregatorSplitter<TestPubRequest> {
 		}
 	}
 
-	private static final List<String> PUB_DIMENSIONS = asList("date", "hourOfDay", "pub");
+	private static final Set<String> PUB_DIMENSIONS = newHashSet("date", "hourOfDay", "pub");
 
-	private static final List<String> PUB_METRICS = asList("pubRequests");
+	private static final Set<String> PUB_METRICS = newHashSet("pubRequests");
 
-	private static final List<String> ADV_DIMENSIONS = newArrayList(concat(PUB_DIMENSIONS, asList("adv")));
+	private static final Set<String> ADV_DIMENSIONS = newHashSet(union(PUB_DIMENSIONS, newHashSet("adv")));
 
-	private static final List<String> ADV_METRICS = asList("advRequests");
+	private static final Set<String> ADV_METRICS = newHashSet("advRequests");
 
 	private StreamDataReceiver<AggregationItem> pubAggregator;
 	private StreamDataReceiver<AggregationItem> advAggregator;
@@ -74,8 +76,10 @@ public class TestAggregatorSplitter extends AggregatorSplitter<TestPubRequest> {
 
 	@Override
 	protected void addOutputs() {
-		pubAggregator = addOutput(AggregationItem.class, PUB_DIMENSIONS, PUB_METRICS);
-		advAggregator = addOutput(AggregationItem.class, ADV_DIMENSIONS, ADV_METRICS);
+		pubAggregator = addOutput(AggregationItem.class,
+				asMap(PUB_DIMENSIONS, Functions.<String>identity()), asMap(PUB_METRICS, Functions.<String>identity()));
+		advAggregator = addOutput(AggregationItem.class,
+				asMap(ADV_DIMENSIONS, Functions.<String>identity()), asMap(ADV_METRICS, Functions.<String>identity()));
 	}
 
 	@Override

@@ -17,35 +17,30 @@
 package io.datakernel.aggregation;
 
 import com.google.common.base.MoreObjects;
-import com.google.common.collect.ImmutableMap;
-
-import java.util.List;
-import java.util.Map;
-
-import static java.util.Arrays.asList;
+import io.datakernel.aggregation.annotation.Key;
+import io.datakernel.aggregation.annotation.Measure;
 
 /**
  * First we define the structure of the input record which represents the word and id of the document that contains this word.
  */
 public class InvertedIndexRecord {
-	public String word;
-	public Integer documentId;
+	private String word;
+	private int documentId;
 
-	public InvertedIndexRecord() {
+	@Key("word")
+	public String getWord() {
+		return word;
 	}
 
-	public InvertedIndexRecord(String word, Integer documentId) {
+	@Measure("documents")
+	public Integer getDocumentId() {
+		return documentId;
+	}
+
+	public InvertedIndexRecord(String word, int documentId) {
 		this.word = word;
 		this.documentId = documentId;
 	}
-
-	public static final List<String> KEYS = asList("word");
-
-	public static final List<String> INPUT_FIELDS = asList("documentId");
-
-	public static final List<String> OUTPUT_FIELDS = asList("documents");
-
-	public static final Map<String, String> OUTPUT_TO_INPUT_FIELDS = ImmutableMap.of("documents", "documentId");
 
 	@Override
 	public boolean equals(Object o) {
@@ -55,14 +50,14 @@ public class InvertedIndexRecord {
 		InvertedIndexRecord that = (InvertedIndexRecord) o;
 
 		if (word != null ? !word.equals(that.word) : that.word != null) return false;
-		return !(documentId != null ? !documentId.equals(that.documentId) : that.documentId != null);
+		return documentId == that.documentId;
 
 	}
 
 	@Override
 	public int hashCode() {
 		int result = word != null ? word.hashCode() : 0;
-		result = 31 * result + (documentId != null ? documentId.hashCode() : 0);
+		result = 31 * result + documentId;
 		return result;
 	}
 

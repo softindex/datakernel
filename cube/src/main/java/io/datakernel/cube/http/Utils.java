@@ -40,7 +40,7 @@ import java.util.Map;
 class Utils {
 	static final String MEASURES_PARAM = "measures";
 	static final String ATTRIBUTES_PARAM = "attributes";
-	static final String FILTERS_PARAM = "filters";
+	static final String WHERE_PARAM = "where";
 	static final String HAVING_PARAM = "having";
 	static final String SORT_PARAM = "sort";
 	static final String LIMIT_PARAM = "limit";

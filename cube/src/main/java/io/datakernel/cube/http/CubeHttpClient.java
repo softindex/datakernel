@@ -28,6 +28,7 @@ import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
 
 import java.lang.reflect.Type;
+import java.net.URI;
 import java.util.Map;
 
 import static com.google.common.collect.Maps.newLinkedHashMap;
@@ -37,22 +38,30 @@ public final class CubeHttpClient implements ICube {
 	private final Eventloop eventloop;
 	private final String url;
 	private final IAsyncHttpClient httpClient;
-	private final int timeout;
+	private int timeout = Integer.MAX_VALUE;
 	private Gson gson;
 	private final Map<String, Type> attributeTypes = newLinkedHashMap();
 	private final Map<String, Type> measureTypes = newLinkedHashMap();
 
 	private CubeHttpClient(Eventloop eventloop, IAsyncHttpClient httpClient,
-	                       String url, int timeout) {
+	                       String url) {
 		this.eventloop = eventloop;
 		this.url = url.replaceAll("/$", "");
 		this.httpClient = httpClient;
-		this.timeout = timeout;
 		this.gson = createGsonBuilder(attributeTypes, measureTypes).create(); // TODO support of external GsonBuilder
 	}
 
-	public static CubeHttpClient create(Eventloop eventloop, String domain, AsyncHttpClient httpClient, int timeout) {
-		return new CubeHttpClient(eventloop, httpClient, domain, timeout);
+	public static CubeHttpClient create(Eventloop eventloop, AsyncHttpClient httpClient, String cubeServletUrl) {
+		return new CubeHttpClient(eventloop, httpClient, cubeServletUrl);
+	}
+
+	public static CubeHttpClient create(Eventloop eventloop, AsyncHttpClient httpClient, URI cubeServletUrl) {
+		return create(eventloop, httpClient, cubeServletUrl.toString());
+	}
+
+	public CubeHttpClient withTimeout(int timeout) {
+		this.timeout = timeout;
+		return this;
 	}
 
 	public CubeHttpClient withAttribute(String attribute, Type type) {
@@ -105,7 +114,7 @@ public final class CubeHttpClient implements ICube {
 
 		urlParams.put(ATTRIBUTES_PARAM, JOINER.join(query.getAttributes()));
 		urlParams.put(MEASURES_PARAM, JOINER.join(query.getMeasures()));
-		urlParams.put(FILTERS_PARAM, gson.toJson(query.getPredicate()));
+		urlParams.put(WHERE_PARAM, gson.toJson(query.getWhere()));
 		urlParams.put(SORT_PARAM, formatOrderings(query.getOrderings()));
 		urlParams.put(HAVING_PARAM, gson.toJson(query.getHaving()));
 		if (query.getLimit() != null)

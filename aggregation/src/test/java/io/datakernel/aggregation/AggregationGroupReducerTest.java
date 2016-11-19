@@ -17,6 +17,7 @@
 package io.datakernel.aggregation;
 
 import com.google.common.base.Function;
+import com.google.common.collect.ImmutableMap;
 import io.datakernel.aggregation.fieldtype.FieldTypes;
 import io.datakernel.aggregation.util.Predicates;
 import io.datakernel.async.CompletionCallback;
@@ -39,7 +40,7 @@ import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-@SuppressWarnings({"Duplicates", "unchecked"})
+@SuppressWarnings({"Duplicates", "unchecked", "ArraysAsListWithZeroOrOneArgument"})
 public class AggregationGroupReducerTest {
 
 	@Rule
@@ -68,7 +69,7 @@ public class AggregationGroupReducerTest {
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub(eventloop);
-		Aggregation structure = Aggregation.createUninitialized()
+		Aggregation aggregation = Aggregation.createUninitialized()
 				.withKey("word", FieldTypes.ofString())
 				.withMeasure("documents", union(ofInt()));
 
@@ -96,16 +97,14 @@ public class AggregationGroupReducerTest {
 		};
 
 		Class<InvertedIndexRecord> inputClass = InvertedIndexRecord.class;
-		Class<?> keyClass = AggregationUtils.createKeyClass(structure, InvertedIndexRecord.KEYS, classLoader);
-		Class<?> aggregationClass = AggregationUtils.createRecordClass(structure,
-				InvertedIndexRecord.KEYS, InvertedIndexRecord.OUTPUT_FIELDS, classLoader);
+		Class<?> keyClass = AggregationUtils.createKeyClass(aggregation, asList("word"), classLoader);
+		Class<?> aggregationClass = AggregationUtils.createRecordClass(aggregation, asList("word"), asList("documents"), classLoader);
 
 		Function<InvertedIndexRecord, Comparable<?>> keyFunction = AggregationUtils.createKeyFunction(inputClass, keyClass,
-				InvertedIndexRecord.KEYS, classLoader);
+				asList("word"), classLoader);
 
-		Aggregate aggregate = AggregationUtils.createPreaggregator(structure, inputClass, aggregationClass,
-				InvertedIndexRecord.KEYS, InvertedIndexRecord.OUTPUT_FIELDS,
-				InvertedIndexRecord.OUTPUT_TO_INPUT_FIELDS, classLoader);
+		Aggregate aggregate = AggregationUtils.createPreaggregator(aggregation, inputClass, aggregationClass,
+				ImmutableMap.of("word", "word"), ImmutableMap.of("documents", "documentId"), classLoader);
 
 		int aggregationChunkSize = 2;
 		final List<List<AggregationChunk.NewChunk>> listCallback = new ArrayList<>();
@@ -122,7 +121,7 @@ public class AggregationGroupReducerTest {
 		};
 
 		AggregationGroupReducer<InvertedIndexRecord> aggregationGroupReducer = new AggregationGroupReducer<>(eventloop, aggregationChunkStorage, NO_OP_TRACKER, aggregationMetadataStorage,
-				structure, InvertedIndexRecord.KEYS, InvertedIndexRecord.OUTPUT_FIELDS,
+				aggregation, asList("word"), asList("documents"),
 				aggregationClass, Predicates.<InvertedIndexRecord, InvertedIndexRecord>alwaysTrue(), keyFunction, aggregate, aggregationChunkSize, classLoader, chunksCallback);
 
 		StreamProducer<InvertedIndexRecord> producer = StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("fox", 1),

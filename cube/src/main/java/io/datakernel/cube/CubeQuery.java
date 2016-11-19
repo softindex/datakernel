@@ -27,7 +27,7 @@ import static java.util.Arrays.asList;
 public final class CubeQuery {
 	private List<String> attributes = new ArrayList<>();
 	private List<String> measures = new ArrayList<>();
-	private AggregationPredicate predicate = AggregationPredicates.alwaysTrue();
+	private AggregationPredicate where = AggregationPredicates.alwaysTrue();
 	private AggregationPredicate having = AggregationPredicates.alwaysTrue();
 	private Integer limit = null;
 	private Integer offset = null;
@@ -60,8 +60,8 @@ public final class CubeQuery {
 		return withAttributes(asList(attributes));
 	}
 
-	public CubeQuery withPredicate(AggregationPredicate predicate) {
-		this.predicate = predicate;
+	public CubeQuery withWhere(AggregationPredicate where) {
+		this.where = where;
 		return this;
 	}
 
@@ -114,8 +114,8 @@ public final class CubeQuery {
 		return measures;
 	}
 
-	public AggregationPredicate getPredicate() {
-		return predicate;
+	public AggregationPredicate getWhere() {
+		return where;
 	}
 
 	public List<CubeQuery.Ordering> getOrderings() {

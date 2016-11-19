@@ -1,7 +1,7 @@
 package io.datakernel.aggregation;
 
 import com.google.common.base.Joiner;
-import io.datakernel.aggregation.AggregationPredicate.FieldAccessor;
+import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Expressions;
 import io.datakernel.codegen.PredicateDef;
@@ -178,7 +178,7 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, FieldAccessor fields) {
+		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
 			return Expressions.alwaysFalse();
 		}
 
@@ -210,7 +210,7 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, FieldAccessor fields) {
+		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
 			return Expressions.alwaysTrue();
 		}
 
@@ -249,7 +249,7 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, FieldAccessor fields) {
+		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
 			return Expressions.not(predicate.createPredicateDef(record, fields));
 		}
 
@@ -307,9 +307,11 @@ public class AggregationPredicates {
 			return singletonMap(key, value);
 		}
 
+		@SuppressWarnings("unchecked")
 		@Override
-		public PredicateDef createPredicateDef(Expression record, FieldAccessor fields) {
-			return cmpEq(field(record, key.replace('.', '$')), value(fields.toInternalValue(key, value)));
+		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
+			return cmpEq(field(record, key.replace('.', '$')),
+					value(toInternalValue(fields, key, value)));
 		}
 
 		@Override
@@ -370,7 +372,7 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, FieldAccessor fields) {
+		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
 			Pattern pattern = Pattern.compile(regexp);
 			return cmpNe(value(false),
 					call(call(value(pattern), "matcher", cast(field(record, key.replace('.', '$')), CharSequence.class)), "matches"));
@@ -440,10 +442,10 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, FieldAccessor fields) {
+		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
 			return Expressions.and(
-					cmpGe(field(record, key.replace('.', '$')), value(fields.toInternalValue(key, from))),
-					cmpLe(field(record, key.replace('.', '$')), value(fields.toInternalValue(key, to))));
+					cmpGe(field(record, key.replace('.', '$')), value(toInternalValue(fields, key, from))),
+					cmpLe(field(record, key.replace('.', '$')), value(toInternalValue(fields, key, to))));
 		}
 
 		@Override
@@ -538,7 +540,7 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, FieldAccessor fields) {
+		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
 			List<PredicateDef> predicateDefs = new ArrayList<>();
 			for (AggregationPredicate predicate : predicates) {
 				predicateDefs.add(predicate.createPredicateDef(record, fields));
@@ -609,7 +611,7 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, FieldAccessor fields) {
+		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
 			List<PredicateDef> predicateDefs = new ArrayList<>();
 			for (AggregationPredicate predicate : predicates) {
 				predicateDefs.add(predicate.createPredicateDef(record, fields));
@@ -723,7 +725,11 @@ public class AggregationPredicates {
 		}
 	}
 
-	public static RangeScan toRangeScan(AggregationPredicate predicate, List<String> primaryKey, FieldAccessor converters) {
+	private static Object toInternalValue(Map<String, FieldType> fields, String key, Object value) {
+		return fields.containsKey(key) ? fields.get(key).toInternalValue(value) : value;
+	}
+
+	public static RangeScan toRangeScan(AggregationPredicate predicate, List<String> primaryKey, Map<String, FieldType> fields) {
 		predicate = predicate.simplify();
 		if (predicate == alwaysFalse())
 			return RangeScan.noScan();
@@ -744,15 +750,15 @@ public class AggregationPredicates {
 				if (conjunction instanceof PredicateEq && ((PredicateEq) conjunction).key.equals(key)) {
 					conjunctions.remove(j);
 					PredicateEq eq = (PredicateEq) conjunction;
-					from.add(converters.toInternalValue(eq.key, eq.value));
-					to.add(converters.toInternalValue(eq.key, eq.value));
+					from.add(toInternalValue(fields, eq.key, eq.value));
+					to.add(toInternalValue(fields, eq.key, eq.value));
 					continue L;
 				}
 				if (conjunction instanceof PredicateBetween && ((PredicateBetween) conjunction).key.equals(key)) {
 					conjunctions.remove(j);
 					PredicateBetween between = (PredicateBetween) conjunction;
-					from.add(converters.toInternalValue(between.key, between.from));
-					to.add(converters.toInternalValue(between.key, between.to));
+					from.add(toInternalValue(fields, between.key, between.from));
+					to.add(toInternalValue(fields, between.key, between.to));
 					break L;
 				}
 			}

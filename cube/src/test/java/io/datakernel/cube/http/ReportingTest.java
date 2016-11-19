@@ -19,6 +19,8 @@ package io.datakernel.cube.http;
 import com.google.common.collect.ImmutableMap;
 import io.datakernel.aggregation.AggregationChunkStorage;
 import io.datakernel.aggregation.LocalFsChunkStorage;
+import io.datakernel.aggregation.annotation.Key;
+import io.datakernel.aggregation.annotation.Measures;
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.measure.Measure;
 import io.datakernel.async.AssertingResultCallback;
@@ -46,14 +48,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Sets.*;
 import static io.datakernel.aggregation.AggregationPredicates.*;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.*;
@@ -89,7 +89,6 @@ public class ReportingTest {
 	private static final String LOG_NAME = "testlog";
 
 	private static final int SERVER_PORT = 50001;
-	private static final int TIMEOUT = 1000;
 
 	private static final Map<String, FieldType> DIMENSIONS = ImmutableMap.<String, FieldType>builder()
 			.put("date", ofLocalDate(LocalDate.parse("2000-01-01")))
@@ -108,16 +107,6 @@ public class ReportingTest {
 			.put("maxRevenue", max(ofDouble()))
 			.put("uniqueUserIdsCount", hyperLogLog(1024))
 			.build();
-
-	private static final Map<String, String> OUTPUT_TO_INPUT_FIELDS;
-
-	static {
-		OUTPUT_TO_INPUT_FIELDS = new HashMap<>();
-		OUTPUT_TO_INPUT_FIELDS.put("eventCount", null);
-		OUTPUT_TO_INPUT_FIELDS.put("minRevenue", "revenue");
-		OUTPUT_TO_INPUT_FIELDS.put("maxRevenue", "revenue");
-		OUTPUT_TO_INPUT_FIELDS.put("uniqueUserIdsCount", "userId");
-	}
 
 	private static class AdvertiserResolver extends AbstractAttributeResolver<Integer, String> {
 		@Override
@@ -155,33 +144,41 @@ public class ReportingTest {
 		}
 	}
 
+	@Measures({"eventCount"})
 	public static class LogItem {
-		/* Dimensions */
+		@Key
 		@Serialize(order = 0)
 		public int date;
 
+		@Key
 		@Serialize(order = 1)
 		public int advertiser;
 
+		@Key
 		@Serialize(order = 2)
 		public int campaign;
 
+		@Key
 		@Serialize(order = 3)
 		public int banner;
 
-		/* Measures */
+		@io.datakernel.aggregation.annotation.Measure
 		@Serialize(order = 4)
 		public long impressions;
 
+		@io.datakernel.aggregation.annotation.Measure
 		@Serialize(order = 5)
 		public long clicks;
 
+		@io.datakernel.aggregation.annotation.Measure
 		@Serialize(order = 6)
 		public long conversions;
 
+		@Measures({"minRevenue", "maxRevenue"})
 		@Serialize(order = 7)
 		public double revenue;
 
+		@io.datakernel.aggregation.annotation.Measure("uniqueUserIdsCount")
 		@Serialize(order = 8)
 		public int userId;
 
@@ -222,8 +219,7 @@ public class ReportingTest {
 
 		@Override
 		protected void addOutputs() {
-			logItemAggregator = addOutput(LogItem.class, newArrayList(DIMENSIONS.keySet()),
-					newArrayList(MEASURES.keySet()), OUTPUT_TO_INPUT_FIELDS);
+			logItemAggregator = addOutput(LogItem.class);
 		}
 
 		@Override
@@ -290,7 +286,7 @@ public class ReportingTest {
 
 		httpClient = AsyncHttpClient.create(eventloop)
 				.withNoKeepAlive();
-		cubeHttpClient = CubeHttpClient.create(eventloop, "http://127.0.0.1:" + SERVER_PORT, httpClient, TIMEOUT)
+		cubeHttpClient = CubeHttpClient.create(eventloop, httpClient, "http://127.0.0.1:" + SERVER_PORT)
 				.withAttribute("date", LocalDate.class)
 				.withAttribute("advertiser", int.class)
 				.withAttribute("campaign", int.class)
@@ -313,7 +309,7 @@ public class ReportingTest {
 		CubeQuery query = CubeQuery.create()
 				.withAttributes("date", "campaign")
 				.withMeasures("impressions", "clicks", "ctr", "revenue")
-				.withPredicate(and(
+				.withWhere(and(
 						eq("banner", 1),
 						between("date", LocalDate.parse("2000-01-02"), LocalDate.parse("2000-01-03"))))
 				.withOrderings(asc("campaign"), asc("ctr"), desc("banner"));
@@ -391,7 +387,7 @@ public class ReportingTest {
 		CubeQuery query = CubeQuery.create()
 				.withAttributes("date", "advertiser.name")
 				.withMeasures("impressions")
-				.withPredicate(eq("advertiser", 1))
+				.withWhere(eq("advertiser", 1))
 				.withOrderings(asc("advertiser.name"))
 				.withHaving(or(eq("advertiser.name", "first"), eq("impressions", 10)))
 				.withLimit(3);

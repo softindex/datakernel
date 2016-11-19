@@ -17,7 +17,6 @@
 package io.datakernel.aggregation;
 
 import com.google.common.base.MoreObjects;
-import io.datakernel.aggregation.fieldtype.FieldTypes;
 import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
@@ -35,6 +34,7 @@ import java.util.concurrent.Executors;
 
 import static com.google.common.collect.Sets.newHashSet;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
+import static io.datakernel.aggregation.fieldtype.FieldTypes.ofString;
 import static io.datakernel.aggregation.measure.Measures.union;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
@@ -94,39 +94,30 @@ public class InvertedIndexTest {
 		AggregationChunkStorage aggregationChunkStorage = LocalFsChunkStorage.create(eventloop, executorService, path);
 
 		Aggregation aggregation = Aggregation.create(eventloop, executorService, classLoader, metadataStorage, aggregationChunkStorage)
-				.withKey("word", FieldTypes.ofString())
+				.withKey("word", ofString())
 				.withMeasure("documents", union(ofInt()));
 
-		StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("fox", 1),
-				new InvertedIndexRecord("brown", 2), new InvertedIndexRecord("fox", 3)))
-				.streamTo(aggregation.consumer(InvertedIndexRecord.class,
-						InvertedIndexRecord.OUTPUT_FIELDS, InvertedIndexRecord.OUTPUT_TO_INPUT_FIELDS,
-						metadataStorage.createSaveCallback()));
+		StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("fox", 1), new InvertedIndexRecord("brown", 2), new InvertedIndexRecord("fox", 3)))
+				.streamTo(aggregation.consumer(InvertedIndexRecord.class, metadataStorage.createSaveCallback()));
 		eventloop.run();
 
 		aggregation.loadChunks(IgnoreCompletionCallback.create());
 		eventloop.run();
 
-		StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("brown", 3),
-				new InvertedIndexRecord("lazy", 4), new InvertedIndexRecord("dog", 1)))
-				.streamTo(aggregation.consumer(InvertedIndexRecord.class,
-						InvertedIndexRecord.OUTPUT_FIELDS, InvertedIndexRecord.OUTPUT_TO_INPUT_FIELDS,
-						metadataStorage.createSaveCallback()));
+		StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("brown", 3), new InvertedIndexRecord("lazy", 4), new InvertedIndexRecord("dog", 1)))
+				.streamTo(aggregation.consumer(InvertedIndexRecord.class, metadataStorage.createSaveCallback()));
 		eventloop.run();
 
-		StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("quick", 1),
-				new InvertedIndexRecord("fox", 4), new InvertedIndexRecord("brown", 10)))
-				.streamTo(aggregation.consumer(InvertedIndexRecord.class,
-						InvertedIndexRecord.OUTPUT_FIELDS, InvertedIndexRecord.OUTPUT_TO_INPUT_FIELDS,
-						metadataStorage.createSaveCallback()));
+		StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("quick", 1), new InvertedIndexRecord("fox", 4), new InvertedIndexRecord("brown", 10)))
+				.streamTo(aggregation.consumer(InvertedIndexRecord.class, metadataStorage.createSaveCallback()));
 		eventloop.run();
 
 		aggregation.loadChunks(IgnoreCompletionCallback.create());
 		eventloop.run();
 
 		AggregationQuery query = AggregationQuery.create()
-				.withKeys(InvertedIndexRecord.KEYS)
-				.withFields(InvertedIndexRecord.OUTPUT_FIELDS);
+				.withKeys("word")
+				.withMeasures("documents");
 		StreamConsumers.ToList<InvertedIndexQueryResult> consumerToList = StreamConsumers.toList(eventloop);
 		aggregation.query(query, InvertedIndexQueryResult.class, DefiningClassLoader.create(classLoader)).streamTo(consumerToList);
 		eventloop.run();

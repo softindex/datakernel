@@ -121,7 +121,7 @@ public class CubeMeasureRemovalTest {
 
 		List<AggregationChunk> chunks = newArrayList(cube.getAggregation("date").getMetadata().getChunks().values());
 		assertEquals(1, chunks.size());
-		assertTrue(chunks.get(0).getFields().contains("revenue"));
+		assertTrue(chunks.get(0).getMeasures().contains("revenue"));
 
 		// Initialize cube with new structure (removed measure)
 		aggregationChunkStorage = LocalFsChunkStorage.create(eventloop, executor, aggregationsDir);
@@ -164,13 +164,13 @@ public class CubeMeasureRemovalTest {
 
 		chunks = newArrayList(cube.getAggregation("date").getMetadata().getChunks().values());
 		assertEquals(2, chunks.size());
-		assertTrue(chunks.get(0).getFields().contains("revenue"));
-		assertFalse(chunks.get(1).getFields().contains("revenue"));
+		assertTrue(chunks.get(0).getMeasures().contains("revenue"));
+		assertFalse(chunks.get(1).getMeasures().contains("revenue"));
 
 		chunks = newArrayList(cube.getAggregation("advertiser").getMetadata().getChunks().values());
 		assertEquals(2, chunks.size());
-		assertTrue(chunks.get(0).getFields().contains("revenue"));
-		assertTrue(chunks.get(1).getFields().contains("revenue"));
+		assertTrue(chunks.get(0).getMeasures().contains("revenue"));
+		assertTrue(chunks.get(1).getMeasures().contains("revenue"));
 
 		// Aggregate manually
 		HashMap<Integer, Long> map = new HashMap<>();
@@ -200,11 +200,11 @@ public class CubeMeasureRemovalTest {
 
 		chunks = newArrayList(cube.getAggregation("date").getMetadata().getChunks().values());
 		assertEquals(1, chunks.size());
-		assertFalse(chunks.get(0).getFields().contains("revenue"));
+		assertFalse(chunks.get(0).getMeasures().contains("revenue"));
 
 		chunks = newArrayList(cube.getAggregation("advertiser").getMetadata().getChunks().values());
 		assertEquals(1, chunks.size());
-		assertTrue(chunks.get(0).getFields().contains("revenue"));
+		assertTrue(chunks.get(0).getMeasures().contains("revenue"));
 
 		// Query
 		queryResultConsumer = new StreamConsumers.ToList<>(eventloop);
