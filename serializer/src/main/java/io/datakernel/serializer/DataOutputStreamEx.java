@@ -59,6 +59,7 @@ public final class DataOutputStreamEx implements Closeable {
 	}
 
 	private void doEnsureSize(int size) throws IOException {
+		// flush previous values before resize
 		doFlush();
 		if (buf.writeRemaining() < size) {
 			buf.recycle();
@@ -89,13 +90,7 @@ public final class DataOutputStreamEx implements Closeable {
 	public void close() throws IOException {
 		flush();
 		outputStream.close();
-	}
-
-	public static int headerSize(int maxMessageSize) {
-		if ((maxMessageSize & 0xffffffff << 7) == 0) return 1;
-		if ((maxMessageSize & 0xffffffff << 14) == 0) return 2;
-		if ((maxMessageSize & 0xffffffff << 21) == 0) return 3;
-		throw new IllegalArgumentException();
+		buf.recycle();
 	}
 
 	private static void writeSize(byte[] buf, int pos, int size, int headerSize) {
@@ -130,6 +125,7 @@ public final class DataOutputStreamEx implements Closeable {
 				serializer.serialize(buf, value);
 			} catch (ArrayIndexOutOfBoundsException e) {
 				int messageSize = buf.limit() - positionItem;
+				buf.writePosition(positionBegin);
 				estimatedMessageSize = messageSize + 1 + (messageSize >>> 1);
 				continue;
 			} catch (Exception e) {

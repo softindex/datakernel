@@ -251,7 +251,7 @@ public final class DataInputStreamEx implements Closeable {
 	public char readChar() throws IOException {
 		ensureRead(2);
 		char c = (char) (((buf.peek(0) & 0xFF) << 8) | ((buf.peek(1) & 0xFF)));
-		buf.moveReadPosition(4);
+		buf.moveReadPosition(2);
 		return c;
 	}
 
