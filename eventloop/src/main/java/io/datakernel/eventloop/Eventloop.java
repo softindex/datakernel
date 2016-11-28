@@ -243,6 +243,10 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		return checkNotNull(CURRENT_EVENTLOOP.get());
 	}
 
+	public Thread getEventloopThread() {
+		return eventloopThread;
+	}
+
 	/**
 	 * Overridden method from Runnable that executes tasks while this eventloop is alive.
 	 */

@@ -19,8 +19,6 @@ package io.datakernel.guice;
 import com.google.inject.*;
 import com.google.inject.name.Named;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.service.Service;
-import io.datakernel.service.ServiceAdapter;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.worker.Worker;
@@ -30,7 +28,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.List;
-import java.util.concurrent.Executor;
 
 import static com.google.inject.name.Names.named;
 import static io.datakernel.bytebuf.ByteBufPool.*;
@@ -58,30 +55,10 @@ public class WorkerNameTest {
 		@Override
 		protected void configure() {
 			install(ServiceGraphModule.defaultInstance()
-					.register(Element4.class, new ServiceAdapter<Element4>() {
-						@Override
-						public Service toService(Element4 instance, Executor executor) {
-							return TestServiceGraphServices.immediateService();
-						}
-					})
-					.register(Element1.class, new ServiceAdapter<Element1>() {
-						@Override
-						public Service toService(Element1 instance, Executor executor) {
-							return TestServiceGraphServices.immediateService();
-						}
-					})
-					.register(Element2.class, new ServiceAdapter<Element2>() {
-						@Override
-						public Service toService(Element2 instance, Executor executor) {
-							return TestServiceGraphServices.immediateService();
-						}
-					})
-					.register(Element3.class, new ServiceAdapter<Element3>() {
-						@Override
-						public Service toService(Element3 instance, Executor executor) {
-							return TestServiceGraphServices.immediateService();
-						}
-					}));
+					.register(Element4.class, TestServiceGraphServices.immediateServiceAdapter())
+					.register(Element1.class, TestServiceGraphServices.immediateServiceAdapter())
+					.register(Element2.class, TestServiceGraphServices.immediateServiceAdapter())
+					.register(Element3.class, TestServiceGraphServices.immediateServiceAdapter()));
 		}
 
 		@Provides

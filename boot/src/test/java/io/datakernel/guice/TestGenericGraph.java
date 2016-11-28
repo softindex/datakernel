@@ -19,8 +19,6 @@ package io.datakernel.guice;
 import com.google.inject.*;
 import com.google.inject.name.Named;
 import com.google.inject.name.Names;
-import io.datakernel.service.Service;
-import io.datakernel.service.ServiceAdapter;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.worker.Worker;
@@ -28,7 +26,6 @@ import io.datakernel.worker.WorkerPool;
 import org.junit.Test;
 
 import java.util.List;
-import java.util.concurrent.Executor;
 
 import static org.junit.Assert.assertEquals;
 
@@ -48,16 +45,10 @@ public class TestGenericGraph {
 	}
 
 	public static class TestModule extends AbstractModule {
-
 		@Override
 		protected void configure() {
 			install(ServiceGraphModule.defaultInstance()
-					.register(Pojo.class, new ServiceAdapter<Pojo>() {
-						@Override
-						public Service toService(Pojo instance, Executor executor) {
-							return TestServiceGraphServices.immediateService();
-						}
-					}));
+					.register(Pojo.class, TestServiceGraphServices.immediateServiceAdapter()));
 		}
 
 		@Provides

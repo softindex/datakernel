@@ -23,6 +23,7 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopServer;
 import io.datakernel.eventloop.EventloopService;
+import io.datakernel.net.BlockingSocketServer;
 import org.slf4j.Logger;
 
 import javax.sql.DataSource;
@@ -63,8 +64,13 @@ public final class ServiceAdapters {
 	public static ServiceAdapter<Service> forService() {
 		return new ServiceAdapter<Service>() {
 			@Override
-			public Service toService(Service instance, Executor executor) {
-				return instance;
+			public ListenableFuture<?> start(Service instance, Executor executor) {
+				return instance.start();
+			}
+
+			@Override
+			public ListenableFuture<?> stop(Service instance, Executor executor) {
+				return instance.stop();
 			}
 		};
 	}
@@ -72,32 +78,27 @@ public final class ServiceAdapters {
 	public static ServiceAdapter<EventloopService> forEventloopService() {
 		return new ServiceAdapter<EventloopService>() {
 			@Override
-			public Service toService(final EventloopService instance, Executor executor) {
-				return new Service() {
+			public ListenableFuture<?> start(final EventloopService instance, Executor executor) {
+				final SettableFuture<?> future = SettableFuture.create();
+				instance.getEventloop().execute(new Runnable() {
 					@Override
-					public ListenableFuture<?> start() {
-						final SettableFuture<?> future = SettableFuture.create();
-						instance.getEventloop().execute(new Runnable() {
-							@Override
-							public void run() {
-								instance.start(toCompletionCallback(future));
-							}
-						});
-						return future;
+					public void run() {
+						instance.start(toCompletionCallback(future));
 					}
+				});
+				return future;
+			}
 
+			@Override
+			public ListenableFuture<?> stop(final EventloopService instance, Executor executor) {
+				final SettableFuture<?> future = SettableFuture.create();
+				instance.getEventloop().execute(new Runnable() {
 					@Override
-					public ListenableFuture<?> stop() {
-						final SettableFuture<?> future = SettableFuture.create();
-						instance.getEventloop().execute(new Runnable() {
-							@Override
-							public void run() {
-								instance.stop(toCompletionCallback(future));
-							}
-						});
-						return future;
+					public void run() {
+						instance.stop(toCompletionCallback(future));
 					}
-				};
+				});
+				return future;
 			}
 		};
 	}
@@ -105,47 +106,42 @@ public final class ServiceAdapters {
 	public static ServiceAdapter<EventloopServer> forEventloopServer() {
 		return new ServiceAdapter<EventloopServer>() {
 			@Override
-			public Service toService(final EventloopServer instance, Executor executor) {
-				return new Service() {
+			public ListenableFuture<?> start(final EventloopServer instance, Executor executor) {
+				final SettableFuture<?> future = SettableFuture.create();
+				instance.getEventloop().execute(new Runnable() {
 					@Override
-					public ListenableFuture<?> start() {
-						final SettableFuture<?> future = SettableFuture.create();
-						instance.getEventloop().execute(new Runnable() {
+					public void run() {
+						try {
+							instance.listen();
+							future.set(null);
+						} catch (IOException e) {
+							future.setException(e);
+						}
+					}
+				});
+				return future;
+			}
+
+			@Override
+			public ListenableFuture<?> stop(final EventloopServer instance, Executor executor) {
+				final SettableFuture<?> future = SettableFuture.create();
+				instance.getEventloop().execute(new Runnable() {
+					@Override
+					public void run() {
+						instance.close(new CompletionCallback() {
 							@Override
-							public void run() {
-								try {
-									instance.listen();
-									future.set(null);
-								} catch (IOException e) {
-									future.setException(e);
-								}
+							protected void onComplete() {
+								future.set(null);
+							}
+
+							@Override
+							protected void onException(Exception e) {
+								future.setException(e);
 							}
 						});
-						return future;
 					}
-
-					@Override
-					public ListenableFuture<?> stop() {
-						final SettableFuture<?> future = SettableFuture.create();
-						instance.getEventloop().execute(new Runnable() {
-							@Override
-							public void run() {
-								instance.close(new CompletionCallback() {
-									@Override
-									protected void onComplete() {
-										future.set(null);
-									}
-
-									@Override
-									protected void onException(Exception e) {
-										future.setException(e);
-									}
-								});
-							}
-						});
-						return future;
-					}
-				};
+				});
+				return future;
 			}
 		};
 	}
@@ -153,39 +149,41 @@ public final class ServiceAdapters {
 	public static ServiceAdapter<Eventloop> forEventloop(final ThreadFactory threadFactory) {
 		return new ServiceAdapter<Eventloop>() {
 			@Override
-			public Service toService(final Eventloop eventloop, final Executor executor) {
-				return new Service() {
-					volatile SettableFuture<?> stopFuture;
-
+			public ListenableFuture<?> start(final Eventloop eventloop, Executor executor) {
+				final SettableFuture<?> future = SettableFuture.create();
+				threadFactory.newThread(new Runnable() {
 					@Override
-					public ListenableFuture<?> start() {
-						final SettableFuture<?> future = SettableFuture.create();
-						threadFactory.newThread(new Runnable() {
-							@Override
-							public void run() {
-								eventloop.keepAlive(true);
-								future.set(null);
-								eventloop.run();
-								if (stopFuture != null) {
-									stopFuture.set(null);
-								}
-							}
-						}).start();
-						return future;
+					public void run() {
+						eventloop.keepAlive(true);
+						future.set(null);
+						eventloop.run();
 					}
+				}).start();
+				return future;
+			}
 
+			@Override
+			public ListenableFuture<?> stop(final Eventloop eventloop, Executor executor) {
+				final SettableFuture<?> future = SettableFuture.create();
+				final Thread eventloopThread = eventloop.getEventloopThread();
+				eventloop.execute(new Runnable() {
 					@Override
-					public ListenableFuture<?> stop() {
-						stopFuture = SettableFuture.create();
-						eventloop.execute(new Runnable() {
-							@Override
-							public void run() {
-								eventloop.keepAlive(false);
-							}
-						});
-						return stopFuture;
+					public void run() {
+						eventloop.keepAlive(false);
 					}
-				};
+				});
+				executor.execute(new Runnable() {
+					@Override
+					public void run() {
+						try {
+							eventloopThread.join();
+							future.set(null);
+						} catch (InterruptedException e) {
+							future.setException(e);
+						}
+					}
+				});
+				return future;
 			}
 		};
 	}
@@ -207,42 +205,70 @@ public final class ServiceAdapters {
 	public static ServiceAdapter<BlockingService> forBlockingService() {
 		return new ServiceAdapter<BlockingService>() {
 			@Override
-			public Service toService(final BlockingService service, final Executor executor) {
-				return new Service() {
+			public ListenableFuture<?> start(final BlockingService service, Executor executor) {
+				final SettableFuture<?> future = SettableFuture.create();
+				executor.execute(new Runnable() {
 					@Override
-					public ListenableFuture<?> start() {
-						final SettableFuture<?> future = SettableFuture.create();
-						executor.execute(new Runnable() {
-							@Override
-							public void run() {
-								try {
-									service.start();
-									future.set(null);
-								} catch (Exception e) {
-									future.setException(e);
-								}
-							}
-						});
-						return future;
+					public void run() {
+						try {
+							service.start();
+							future.set(null);
+						} catch (Exception e) {
+							future.setException(e);
+						}
 					}
+				});
+				return future;
+			}
 
+			@Override
+			public ListenableFuture<?> stop(final BlockingService service, Executor executor) {
+				final SettableFuture<?> future = SettableFuture.create();
+				executor.execute(new Runnable() {
 					@Override
-					public ListenableFuture<?> stop() {
-						final SettableFuture<?> future = SettableFuture.create();
-						executor.execute(new Runnable() {
-							@Override
-							public void run() {
-								try {
-									service.stop();
-									future.set(null);
-								} catch (Exception e) {
-									future.setException(e);
-								}
-							}
-						});
-						return future;
+					public void run() {
+						try {
+							service.stop();
+							future.set(null);
+						} catch (Exception e) {
+							future.setException(e);
+						}
 					}
-				};
+				});
+				return future;
+			}
+		};
+	}
+
+	public static ServiceAdapter<BlockingSocketServer> forBlockingSocketServer() {
+		return new ServiceAdapter<BlockingSocketServer>() {
+			@Override
+			public ListenableFuture<?> start(final BlockingSocketServer service, Executor executor) {
+				final SettableFuture<?> future = SettableFuture.create();
+				try {
+					service.start();
+					future.set(null);
+				} catch (Exception e) {
+					future.setException(e);
+				}
+				return future;
+			}
+
+			@Override
+			public ListenableFuture<?> stop(final BlockingSocketServer service, Executor executor) {
+				final SettableFuture<?> future = SettableFuture.create();
+				executor.execute(new Runnable() {
+					@Override
+					public void run() {
+						try {
+							service.stop();
+							future.set(null);
+						} catch (Exception e) {
+							future.setException(e);
+						}
+					}
+				});
+				return future;
 			}
 		};
 	}
@@ -253,19 +279,14 @@ public final class ServiceAdapters {
 	public static ServiceAdapter<Timer> forTimer() {
 		return new ServiceAdapter<Timer>() {
 			@Override
-			public Service toService(final Timer instance, Executor executor) {
-				return new Service() {
-					@Override
-					public ListenableFuture<?> start() {
-						return Futures.immediateFuture(null);
-					}
+			public ListenableFuture<?> start(Timer instance, Executor executor) {
+				return Futures.immediateFuture(null);
+			}
 
-					@Override
-					public ListenableFuture<?> stop() {
-						instance.cancel();
-						return Futures.immediateFuture(null);
-					}
-				};
+			@Override
+			public ListenableFuture<?> stop(Timer instance, Executor executor) {
+				instance.cancel();
+				return Futures.immediateFuture(null);
 			}
 		};
 	}
@@ -276,26 +297,21 @@ public final class ServiceAdapters {
 	public static ServiceAdapter<ExecutorService> forExecutorService() {
 		return new ServiceAdapter<ExecutorService>() {
 			@Override
-			public Service toService(final ExecutorService executorService, final Executor executor) {
-				return new Service() {
-					@Override
-					public ListenableFuture<?> start() {
-						return Futures.immediateFuture(null);
-					}
+			public ListenableFuture<?> start(ExecutorService instance, Executor executor) {
+				return Futures.immediateFuture(null);
+			}
 
+			@Override
+			public ListenableFuture<?> stop(final ExecutorService executorService, Executor executor) {
+				final SettableFuture<?> future = SettableFuture.create();
+				executor.execute(new Runnable() {
 					@Override
-					public ListenableFuture<?> stop() {
-						final SettableFuture<?> future = SettableFuture.create();
-						executor.execute(new Runnable() {
-							@Override
-							public void run() {
-								executorService.shutdown();
-								future.set(null);
-							}
-						});
-						return future;
+					public void run() {
+						executorService.shutdown();
+						future.set(null);
 					}
-				};
+				});
+				return future;
 			}
 		};
 	}
@@ -306,30 +322,25 @@ public final class ServiceAdapters {
 	public static ServiceAdapter<Closeable> forCloseable() {
 		return new ServiceAdapter<Closeable>() {
 			@Override
-			public Service toService(final Closeable closeable, final Executor executor) {
-				return new Service() {
-					@Override
-					public ListenableFuture<?> start() {
-						return Futures.immediateFuture(null);
-					}
+			public ListenableFuture<?> start(Closeable closeable, Executor executor) {
+				return Futures.immediateFuture(null);
+			}
 
+			@Override
+			public ListenableFuture<?> stop(final Closeable closeable, Executor executor) {
+				final SettableFuture<?> future = SettableFuture.create();
+				executor.execute(new Runnable() {
 					@Override
-					public ListenableFuture<?> stop() {
-						final SettableFuture<?> future = SettableFuture.create();
-						executor.execute(new Runnable() {
-							@Override
-							public void run() {
-								try {
-									closeable.close();
-									future.set(null);
-								} catch (IOException e) {
-									future.setException(e);
-								}
-							}
-						});
-						return future;
+					public void run() {
+						try {
+							closeable.close();
+							future.set(null);
+						} catch (IOException e) {
+							future.setException(e);
+						}
 					}
-				};
+				});
+				return future;
 			}
 		};
 	}
@@ -340,46 +351,41 @@ public final class ServiceAdapters {
 	public static ServiceAdapter<DataSource> forDataSource() {
 		return new ServiceAdapter<DataSource>() {
 			@Override
-			public Service toService(final DataSource dataSource, final Executor executor) {
-				return new Service() {
+			public ListenableFuture<?> start(final DataSource dataSource, Executor executor) {
+				final SettableFuture<?> future = SettableFuture.create();
+				executor.execute(new Runnable() {
 					@Override
-					public ListenableFuture<?> start() {
-						final SettableFuture<?> future = SettableFuture.create();
-						executor.execute(new Runnable() {
-							@Override
-							public void run() {
-								try {
-									Connection connection = dataSource.getConnection();
-									connection.close();
-									future.set(null);
-								} catch (Exception e) {
-									future.setException(e);
-								}
-							}
-						});
-						return future;
-					}
-
-					@Override
-					public ListenableFuture<?> stop() {
-						final SettableFuture<?> future = SettableFuture.create();
-						if (!(dataSource instanceof Closeable)) {
-							return Futures.immediateFuture(null);
+					public void run() {
+						try {
+							Connection connection = dataSource.getConnection();
+							connection.close();
+							future.set(null);
+						} catch (Exception e) {
+							future.setException(e);
 						}
-						executor.execute(new Runnable() {
-							@Override
-							public void run() {
-								try {
-									((Closeable) dataSource).close();
-									future.set(null);
-								} catch (IOException e) {
-									future.setException(e);
-								}
-							}
-						});
-						return future;
 					}
-				};
+				});
+				return future;
+			}
+
+			@Override
+			public ListenableFuture<?> stop(final DataSource dataSource, Executor executor) {
+				final SettableFuture<?> future = SettableFuture.create();
+				if (!(dataSource instanceof Closeable)) {
+					return Futures.immediateFuture(null);
+				}
+				executor.execute(new Runnable() {
+					@Override
+					public void run() {
+						try {
+							((Closeable) dataSource).close();
+							future.set(null);
+						} catch (IOException e) {
+							future.setException(e);
+						}
+					}
+				});
+				return future;
 			}
 		};
 	}

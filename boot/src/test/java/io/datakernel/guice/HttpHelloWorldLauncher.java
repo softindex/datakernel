@@ -26,6 +26,7 @@ import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
+import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
 
@@ -34,6 +35,36 @@ import javax.inject.Singleton;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 
 public class HttpHelloWorldLauncher extends Launcher {
+	private static class HttpHelloWorldModule extends AbstractModule {
+		@Override
+		protected void configure() {
+		}
+
+		@Provides
+		@Singleton
+		Eventloop eventloop() {
+			return Eventloop.create();
+		}
+
+		@Provides
+		@Singleton
+		AsyncHttpServer httpServer(Eventloop eventloop, AsyncServlet rootServlet) {
+			return AsyncHttpServer.create(eventloop, rootServlet)
+					.withListenPort(PORT);
+		}
+
+		@Provides
+		@Singleton
+		AsyncServlet rootServlet() {
+			return new AsyncServlet() {
+				@Override
+				public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
+					callback.setResult(HttpResponse.ok200().withBody(encodeAscii("Hello, World!")));
+				}
+			};
+		}
+	}
+
 	public static final int PORT = 11111;
 
 	@Inject
@@ -42,35 +73,8 @@ public class HttpHelloWorldLauncher extends Launcher {
 	public HttpHelloWorldLauncher() {
 		super(Stage.PRODUCTION,
 				ServiceGraphModule.defaultInstance(),
-				new AbstractModule() {
-					@Override
-					protected void configure() {
-					}
-
-					@Provides
-					@Singleton
-					Eventloop eventloop() {
-						return Eventloop.create();
-					}
-
-					@Provides
-					@Singleton
-					AsyncHttpServer httpServer(Eventloop eventloop, AsyncServlet rootServlet) {
-						return AsyncHttpServer.create(eventloop, rootServlet)
-								.withListenPort(PORT);
-					}
-
-					@Provides
-					@Singleton
-					AsyncServlet rootServlet() {
-						return new AsyncServlet() {
-							@Override
-							public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-								callback.setResult(HttpResponse.ok200().withBody(encodeAscii("Hello, World!")));
-							}
-						};
-					}
-				});
+				JmxModule.create(),
+				new HttpHelloWorldModule());
 	}
 
 	@Override
@@ -81,4 +85,5 @@ public class HttpHelloWorldLauncher extends Launcher {
 	public static void main(String[] args) throws Exception {
 		main(HttpHelloWorldLauncher.class, args);
 	}
+
 }

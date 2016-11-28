@@ -300,7 +300,6 @@ public class Aggregation implements IAggregation, AggregationOperationTracker, E
 		return consumer(inputClass, scanKeyFields(inputClass), scanMeasureFields(inputClass), callback);
 	}
 
-	@Override
 	public double estimateCost(AggregationQuery query) {
 		List<String> aggregationFields = newArrayList(filter(query.getMeasures(), in(getMeasures())));
 		return metadata.findChunks(query.getPredicate(), aggregationFields).size();

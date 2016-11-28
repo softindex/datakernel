@@ -16,6 +16,8 @@
 
 package io.datakernel.service;
 
+import com.google.common.util.concurrent.ListenableFuture;
+
 import java.util.concurrent.Executor;
 
 /**
@@ -24,12 +26,7 @@ import java.util.concurrent.Executor;
  * @param <V> type of service from which you need create ConcurrentService
  */
 public interface ServiceAdapter<V> {
-	/**
-	 * Wraps instances so that it will be ConcurrentService.
-	 *
-	 * @param instance     instance from which will be created ConcurrentService
-	 * @param executor object that executes submitted Runnable tasks
-	 * @return new instance of  ConcurrentService
-	 */
-	Service toService(V instance, Executor executor);
+	ListenableFuture<?> start(V instance, Executor executor);
+
+	ListenableFuture<?> stop(V instance, Executor executor);
 }

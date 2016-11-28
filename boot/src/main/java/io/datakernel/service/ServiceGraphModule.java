@@ -28,6 +28,7 @@ import com.google.inject.spi.*;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopServer;
 import io.datakernel.eventloop.EventloopService;
+import io.datakernel.net.BlockingSocketServer;
 import io.datakernel.worker.WorkerPoolModule;
 import io.datakernel.worker.WorkerPoolObjects;
 import org.slf4j.Logger;
@@ -50,7 +51,7 @@ import static org.slf4j.LoggerFactory.getLogger;
 public final class ServiceGraphModule extends AbstractModule {
 	private final Logger logger = getLogger(this.getClass());
 
-	private final Map<Class<?>, ServiceAdapter<?>> factoryMap = new LinkedHashMap<>();
+	private final Map<Class<?>, ServiceAdapter<?>> registeredServiceAdapters = new LinkedHashMap<>();
 	private final Set<Key<?>> excludedKeys = new LinkedHashSet<>();
 	private final Map<Key<?>, ServiceAdapter<?>> keys = new LinkedHashMap<>();
 
@@ -79,6 +80,7 @@ public final class ServiceGraphModule extends AbstractModule {
 		return newInstance()
 				.register(Service.class, ServiceAdapters.forService())
 				.register(BlockingService.class, ServiceAdapters.forBlockingService())
+				.register(BlockingSocketServer.class, ServiceAdapters.forBlockingSocketServer())
 				.register(Closeable.class, ServiceAdapters.forCloseable())
 				.register(ExecutorService.class, ServiceAdapters.forExecutorService())
 				.register(Timer.class, ServiceAdapters.forTimer())
@@ -152,7 +154,7 @@ public final class ServiceGraphModule extends AbstractModule {
 	 * @return ServiceGraphModule with change
 	 */
 	public <T> ServiceGraphModule register(Class<? extends T> type, ServiceAdapter<T> factory) {
-		factoryMap.put(type, factory);
+		registeredServiceAdapters.put(type, factory);
 		return this;
 	}
 
@@ -258,7 +260,7 @@ public final class ServiceGraphModule extends AbstractModule {
 	}
 
 	@SuppressWarnings("unchecked")
-	private Service getServiceOrNull(Key<?> key, Object instance) {
+	private Service getServiceOrNull(Key<?> key, final Object instance) {
 		checkNotNull(instance);
 		CachedService service = services.get(instance);
 		if (service != null) {
@@ -269,14 +271,37 @@ public final class ServiceGraphModule extends AbstractModule {
 		}
 		ServiceAdapter<?> serviceAdapter = keys.get(key);
 		if (serviceAdapter == null) {
-			for (Map.Entry<Class<?>, ServiceAdapter<?>> entry : factoryMap.entrySet()) {
-				if (entry.getKey().isAssignableFrom(instance.getClass())) {
-					serviceAdapter = entry.getValue();
+			Class<?> foundRegisteredClass = null;
+			for (Map.Entry<Class<?>, ServiceAdapter<?>> entry : registeredServiceAdapters.entrySet()) {
+				Class<?> registeredClass = entry.getKey();
+				if (registeredClass.isAssignableFrom(instance.getClass())) {
+					if (foundRegisteredClass == null) {
+						foundRegisteredClass = registeredClass;
+					} else if (foundRegisteredClass.isAssignableFrom(registeredClass)) {
+						foundRegisteredClass = registeredClass;
+					} else if (!registeredClass.isAssignableFrom(foundRegisteredClass)) {
+						throw new IllegalArgumentException("Instance class " + instance.getClass() +
+								" implements unrelated services: " + registeredClass + " and " + foundRegisteredClass);
+					}
 				}
+			}
+			if (foundRegisteredClass != null) {
+				serviceAdapter = registeredServiceAdapters.get(foundRegisteredClass);
 			}
 		}
 		if (serviceAdapter != null) {
-			Service asyncService = ((ServiceAdapter<Object>) serviceAdapter).toService(instance, executor);
+			final ServiceAdapter finalServiceAdapter = serviceAdapter;
+			Service asyncService = new Service() {
+				@Override
+				public ListenableFuture<?> start() {
+					return finalServiceAdapter.start(instance, executor);
+				}
+
+				@Override
+				public ListenableFuture<?> stop() {
+					return finalServiceAdapter.stop(instance, executor);
+				}
+			};
 			service = new CachedService(asyncService);
 			services.put(instance, service);
 			return service;

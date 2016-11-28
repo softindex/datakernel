@@ -18,36 +18,24 @@ package io.datakernel.guice;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import io.datakernel.service.Service;
+import io.datakernel.service.ServiceAdapter;
+
+import java.util.concurrent.Executor;
 
 public final class TestServiceGraphServices {
 	private TestServiceGraphServices() {
 	}
 
-	public static Service immediateService() {
-		return new Service() {
+	public static <T> ServiceAdapter<T> immediateServiceAdapter() {
+		return new ServiceAdapter<T>() {
 			@Override
-			public ListenableFuture<?> start() {
+			public ListenableFuture<?> start(Object instance, Executor executor) {
 				return Futures.immediateFuture(null);
 			}
 
 			@Override
-			public ListenableFuture<?> stop() {
+			public ListenableFuture<?> stop(Object instance, Executor executor) {
 				return Futures.immediateFuture(null);
-			}
-		};
-	}
-
-	public static Service immediateFailedService(final Exception e) {
-		return new Service() {
-			@Override
-			public ListenableFuture<?> start() {
-				return Futures.immediateFailedFuture(e);
-			}
-
-			@Override
-			public ListenableFuture<?> stop() {
-				return Futures.immediateFailedFuture(e);
 			}
 		};
 	}
