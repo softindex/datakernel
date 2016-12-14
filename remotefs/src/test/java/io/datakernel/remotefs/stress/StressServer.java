@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package io.datakernel.simplefs.stress;
+package io.datakernel.remotefs.stress;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.simplefs.SimpleFsServer;
+import io.datakernel.remotefs.RemoteFsServer;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
@@ -43,7 +43,7 @@ public class StressServer {
 	private static final ExecutorService executor = newCachedThreadPool();
 	private static final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-	public static SimpleFsServer server = SimpleFsServer.create(eventloop, executor, STORAGE_PATH)
+	public static RemoteFsServer server = RemoteFsServer.create(eventloop, executor, STORAGE_PATH)
 			.withListenPort(PORT);
 
 	public static void main(String[] args) throws IOException {

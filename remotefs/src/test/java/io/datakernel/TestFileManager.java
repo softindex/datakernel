@@ -19,6 +19,7 @@ package io.datakernel;
 import com.google.common.base.Charsets;
 import io.datakernel.async.*;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.remotefs.FileManager;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import org.hamcrest.BaseMatcher;

@@ -1,9 +1,9 @@
-package io.datakernel.simplefs.stress;
+package io.datakernel.remotefs.stress;
 
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.simplefs.SimpleFsClient;
+import io.datakernel.remotefs.RemoteFsClient;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 
@@ -41,7 +41,7 @@ public class StressDownload {
 
 		final int[] failures = new int[1];
 
-		SimpleFsClient client = SimpleFsClient.create(eventloop, new InetSocketAddress(5560));
+		RemoteFsClient client = RemoteFsClient.create(eventloop, new InetSocketAddress(5560));
 
 		for (int i = 0; i < OPERATIONS_QUANTITY; i++) {
 			FILES.add(createFile());

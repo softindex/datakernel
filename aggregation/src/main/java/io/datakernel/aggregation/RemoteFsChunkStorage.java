@@ -22,8 +22,8 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.remotefs.RemoteFsClient;
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.simplefs.SimpleFsClient;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
@@ -36,17 +36,17 @@ import java.util.List;
 
 import static io.datakernel.aggregation.AggregationUtils.createBufferSerializer;
 
-public class SimpleFsChunkStorage implements AggregationChunkStorage {
+public class RemoteFsChunkStorage implements AggregationChunkStorage {
 	private final Eventloop eventloop;
-	private final SimpleFsClient client;
+	private final RemoteFsClient client;
 
-	private SimpleFsChunkStorage(Eventloop eventloop, InetSocketAddress serverAddress) {
+	private RemoteFsChunkStorage(Eventloop eventloop, InetSocketAddress serverAddress) {
 		this.eventloop = eventloop;
-		this.client = SimpleFsClient.create(eventloop, serverAddress);
+		this.client = RemoteFsClient.create(eventloop, serverAddress);
 	}
 
-	public static SimpleFsChunkStorage create(Eventloop eventloop, InetSocketAddress serverAddress) {
-		return new SimpleFsChunkStorage(eventloop, serverAddress);
+	public static RemoteFsChunkStorage create(Eventloop eventloop, InetSocketAddress serverAddress) {
+		return new RemoteFsChunkStorage(eventloop, serverAddress);
 	}
 
 	@SuppressWarnings("unchecked")

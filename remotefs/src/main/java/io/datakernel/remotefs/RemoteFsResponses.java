@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel;
+package io.datakernel.remotefs;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -24,7 +24,7 @@ import java.util.Collections;
 import java.util.List;
 
 @SuppressWarnings("WeakerAccess")
-public abstract class FsResponses {
+public final class RemoteFsResponses {
 	static Gson responseGson = new GsonBuilder()
 			.registerTypeAdapter(FsResponse.class, GsonSubclassesAdapter.create()
 					.withSubclassField("commandType")

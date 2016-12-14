@@ -24,7 +24,7 @@ import io.datakernel.async.*;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.bean.*;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.simplefs.SimpleFsServer;
+import io.datakernel.remotefs.RemoteFsServer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducers;
@@ -120,27 +120,27 @@ public class CubeTest {
 
 	private static final int LISTEN_PORT = 45578;
 
-	private SimpleFsServer prepareServer(Eventloop eventloop, Path serverStorage) throws IOException {
+	private RemoteFsServer prepareServer(Eventloop eventloop, Path serverStorage) throws IOException {
 		final ExecutorService executor = Executors.newCachedThreadPool();
-		SimpleFsServer fileServer = SimpleFsServer.create(eventloop, executor, serverStorage)
+		RemoteFsServer fileServer = RemoteFsServer.create(eventloop, executor, serverStorage)
 				.withListenPort(LISTEN_PORT);
 		fileServer.listen();
 		return fileServer;
 	}
 
-	private void stop(SimpleFsServer server) {
+	private void stop(RemoteFsServer server) {
 		server.close(IgnoreCompletionCallback.create());
 	}
 
 	@Test
-	public void testSimpleFsAggregationStorage() throws Exception {
+	public void testRemoteFsAggregationStorage() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		Path serverStorage = temporaryFolder.newFolder("storage").toPath();
-		final SimpleFsServer simpleFsServer1 = prepareServer(eventloop, serverStorage);
+		final RemoteFsServer remoteFsServer1 = prepareServer(eventloop, serverStorage);
 
-		AggregationChunkStorage storage = SimpleFsChunkStorage.create(eventloop,
+		AggregationChunkStorage storage = RemoteFsChunkStorage.create(eventloop,
 				new InetSocketAddress(InetAddress.getLocalHost(), LISTEN_PORT));
 		final Cube cube = newCube(eventloop, Executors.newCachedThreadPool(), classLoader, storage);
 
@@ -164,14 +164,14 @@ public class CubeTest {
 		).run(new AssertingCompletionCallback() {
 			@Override
 			protected void onComplete() {
-				logger.info("Streaming to SimpleFS succeeded.");
-				stop(simpleFsServer1);
+				logger.info("Streaming to RemoteFS succeeded.");
+				stop(remoteFsServer1);
 			}
 		});
 
 		eventloop.run();
 
-		final SimpleFsServer simpleFsServer2 = prepareServer(eventloop, serverStorage);
+		final RemoteFsServer remoteFsServer2 = prepareServer(eventloop, serverStorage);
 		final StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toList(eventloop);
 		cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"),
 				and(eq("key1", 1), eq("key2", 3)),
@@ -180,8 +180,8 @@ public class CubeTest {
 		consumerToList.setCompletionCallback(new AssertingCompletionCallback() {
 			@Override
 			public void onComplete() {
-				logger.info("Streaming query {} result from SimpleFS succeeded.");
-				stop(simpleFsServer2);
+				logger.info("Streaming query {} result from RemoteFS succeeded.");
+				stop(remoteFsServer2);
 			}
 		});
 		eventloop.run();

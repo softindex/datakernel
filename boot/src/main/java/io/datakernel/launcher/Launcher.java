@@ -71,7 +71,7 @@ public abstract class Launcher {
 		modules.add(new AbstractModule() {
 			@Override
 			protected void configure() {
-				bind((Class<?>)Launcher.this.getClass());
+				bind((Class<?>) Launcher.this.getClass());
 			}
 		});
 		return Guice.createInjector(Stage.TOOL, modules);
@@ -133,6 +133,10 @@ public abstract class Launcher {
 	protected final void awaitShutdown() throws InterruptedException {
 		addShutdownHook();
 		shutdownNotification.await();
+	}
+
+	protected final void requestShutdown() {
+		shutdownNotification.requestShutdown();
 	}
 
 	private void addShutdownHook() {

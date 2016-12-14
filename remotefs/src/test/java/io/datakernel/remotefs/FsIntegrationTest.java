@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.simplefs;
+package io.datakernel.remotefs;
 
 import io.datakernel.async.*;
 import io.datakernel.bytebuf.ByteBuf;
@@ -55,7 +55,7 @@ import static java.util.Arrays.asList;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 import static org.junit.Assert.*;
 
-public class SimpleFsIntegrationTest {
+public class FsIntegrationTest {
 //	static {
 //		ch.qos.logback.classic.Logger logger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
 //		logger.setLevel(Level.TRACE);
@@ -94,8 +94,8 @@ public class SimpleFsIntegrationTest {
 		int files = 10;
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = newCachedThreadPool();
-		final SimpleFsServer server = createServer(eventloop, executor);
-		final SimpleFsClient client = createClient(eventloop);
+		final RemoteFsServer server = createServer(eventloop, executor);
+		final RemoteFsClient client = createClient(eventloop);
 
 		server.listen();
 		List<AsyncRunnable> tasks = new ArrayList<>();
@@ -174,8 +174,8 @@ public class SimpleFsIntegrationTest {
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = newCachedThreadPool();
-		final SimpleFsServer server = createServer(eventloop, executor);
-		SimpleFsClient client = createClient(eventloop);
+		final RemoteFsServer server = createServer(eventloop, executor);
+		RemoteFsClient client = createClient(eventloop);
 
 		server.listen();
 		StreamProducer<ByteBuf> producer =
@@ -279,8 +279,8 @@ public class SimpleFsIntegrationTest {
 		String file = "file_not_exist_downloaded.txt";
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = newCachedThreadPool();
-		SimpleFsClient client = createClient(eventloop);
-		final SimpleFsServer server = createServer(eventloop, executor);
+		RemoteFsClient client = createClient(eventloop);
+		final RemoteFsServer server = createServer(eventloop, executor);
 		final List<Exception> expected = new ArrayList<>();
 
 		server.listen();
@@ -311,8 +311,8 @@ public class SimpleFsIntegrationTest {
 		Files.write(storage.resolve(file), CONTENT);
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		final ExecutorService executor = newCachedThreadPool();
-		final SimpleFsClient client = createClient(eventloop);
-		final SimpleFsServer server = createServer(eventloop, executor);
+		final RemoteFsClient client = createClient(eventloop);
+		final RemoteFsServer server = createServer(eventloop, executor);
 		int files = 10;
 
 		server.listen();
@@ -359,8 +359,8 @@ public class SimpleFsIntegrationTest {
 		Files.write(storage.resolve(file), CONTENT);
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = newCachedThreadPool();
-		SimpleFsClient client = createClient(eventloop);
-		SimpleFsServer server = createServer(eventloop, executor);
+		RemoteFsClient client = createClient(eventloop);
+		RemoteFsServer server = createServer(eventloop, executor);
 		server.listen();
 
 		client.delete(file, new CloseCompletionCallback(server, IgnoreCompletionCallback.create()));
@@ -377,8 +377,8 @@ public class SimpleFsIntegrationTest {
 		final String file = "no_file.txt";
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = newCachedThreadPool();
-		SimpleFsClient client = createClient(eventloop);
-		final SimpleFsServer server = createServer(eventloop, executor);
+		RemoteFsClient client = createClient(eventloop);
+		final RemoteFsServer server = createServer(eventloop, executor);
 		server.listen();
 
 		final CompletionCallbackFuture callback = CompletionCallbackFuture.create();
@@ -431,8 +431,8 @@ public class SimpleFsIntegrationTest {
 		Files.write(storage.resolve("file1.txt"), CONTENT);
 		Files.write(storage.resolve("first file.txt"), CONTENT);
 
-		final SimpleFsServer server = createServer(eventloop, executor);
-		final SimpleFsClient client = createClient(eventloop);
+		final RemoteFsServer server = createServer(eventloop, executor);
+		final RemoteFsClient client = createClient(eventloop);
 
 		server.listen();
 		client.list(new ResultCallback<List<String>>() {
@@ -460,8 +460,8 @@ public class SimpleFsIntegrationTest {
 	private void upload(String resultFile, byte[] bytes, ExceptionCallback callback) throws IOException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = newCachedThreadPool();
-		final SimpleFsServer server = createServer(eventloop, executor);
-		SimpleFsClient client = createClient(eventloop);
+		final RemoteFsServer server = createServer(eventloop, executor);
+		RemoteFsClient client = createClient(eventloop);
 
 		server.listen();
 		StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrapForReading(bytes));
@@ -473,8 +473,8 @@ public class SimpleFsIntegrationTest {
 	private List<ByteBuf> download(String file, long startPosition) throws IOException {
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = newCachedThreadPool();
-		SimpleFsClient client = createClient(eventloop);
-		final SimpleFsServer server = createServer(eventloop, executor);
+		RemoteFsClient client = createClient(eventloop);
+		final RemoteFsServer server = createServer(eventloop, executor);
 		final List<ByteBuf> expected = new ArrayList<>();
 
 		server.listen();
@@ -495,12 +495,12 @@ public class SimpleFsIntegrationTest {
 		return expected;
 	}
 
-	private SimpleFsClient createClient(Eventloop eventloop) {
-		return SimpleFsClient.create(eventloop, address);
+	private RemoteFsClient createClient(Eventloop eventloop) {
+		return RemoteFsClient.create(eventloop, address);
 	}
 
-	private SimpleFsServer createServer(Eventloop eventloop, ExecutorService executor) {
-		return SimpleFsServer.create(eventloop, executor, storage)
+	private RemoteFsServer createServer(Eventloop eventloop, ExecutorService executor) {
+		return RemoteFsServer.create(eventloop, executor, storage)
 				.withListenAddress(address);
 	}
 
@@ -515,10 +515,10 @@ public class SimpleFsIntegrationTest {
 	}
 
 	private static class CloseCompletionCallback extends CompletionCallback {
-		private final SimpleFsServer server;
+		private final RemoteFsServer server;
 		private final ExceptionCallback callback;
 
-		public CloseCompletionCallback(SimpleFsServer server, ExceptionCallback callback) {
+		public CloseCompletionCallback(RemoteFsServer server, ExceptionCallback callback) {
 			this.server = server;
 			this.callback = callback;
 		}

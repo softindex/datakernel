@@ -1,4 +1,4 @@
-package io.datakernel;
+package io.datakernel.remotefs;
 
 import io.datakernel.exception.SimpleException;
 

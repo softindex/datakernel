@@ -14,10 +14,21 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs;
+package io.datakernel.remotefs;
+
+import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.ResultCallback;
+import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.stream.StreamProducer;
 
 import java.util.List;
 
-interface HashingStrategy {
-	List<Replica> sortReplicas(String file, List<Replica> replicas);
+public interface IRemoteFsClient {
+	void upload(String fileName, StreamProducer<ByteBuf> producer, CompletionCallback callback);
+
+	void download(String fileName, long startPosition, ResultCallback<StreamProducer<ByteBuf>> callback);
+
+	void delete(String fileName, CompletionCallback callback);
+
+	void list(ResultCallback<List<String>> callback);
 }

@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-package io.datakernel;
+package io.datakernel.remotefs;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import io.datakernel.serializer.GsonSubclassesAdapter;
 
 @SuppressWarnings("WeakerAccess")
-public abstract class FsCommands {
+public final class RemoteFsCommands {
 	static Gson commandGSON = new GsonBuilder()
 			.registerTypeAdapter(FsCommand.class, GsonSubclassesAdapter.create()
 					.withSubclassField("commandType")

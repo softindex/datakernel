@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel;
+package io.datakernel.remotefs;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;

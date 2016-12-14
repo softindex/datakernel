@@ -1,4 +1,4 @@
-package io.datakernel.simplefs;
+package io.datakernel.remotefs;
 
 import io.datakernel.async.CompletionCallbackFuture;
 import io.datakernel.bytebuf.ByteBuf;
@@ -20,7 +20,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.simplefs.SimpleFsIntegrationTest.createBigByteArray;
+import static io.datakernel.remotefs.FsIntegrationTest.createBigByteArray;
 
 public class TestTimeoutsSimpleFs {
 	@Rule
@@ -41,10 +41,10 @@ public class TestTimeoutsSimpleFs {
 	public void testUploadTimeout() throws ExecutionException, InterruptedException, IOException {
 		InetSocketAddress address = new InetSocketAddress(7010);
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
-		SimpleFsClient client = SimpleFsClient.create(eventloop, address);
+		RemoteFsClient client = RemoteFsClient.create(eventloop, address);
 
 		final ExecutorService serverExecutor = Executors.newFixedThreadPool(2);
-		final SimpleFsServer server = SimpleFsServer.create(eventloop, serverExecutor, storagePath)
+		final RemoteFsServer server = RemoteFsServer.create(eventloop, serverExecutor, storagePath)
 				.withSocketSettings(SocketSettings.create().withReadTimeout(1L))
 				.withAcceptOnce()
 				.withListenPort(7010);

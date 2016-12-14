@@ -14,11 +14,9 @@
  * limitations under the License.
  */
 
-package io.datakernel;
+package io.datakernel.remotefs;
 
 import com.google.gson.Gson;
-import io.datakernel.FsCommands.*;
-import io.datakernel.FsResponses.*;
 import io.datakernel.async.*;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
@@ -38,13 +36,11 @@ import java.nio.channels.SocketChannel;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.FsCommands.*;
-import static io.datakernel.FsResponses.*;
 import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
 import static io.datakernel.eventloop.AsyncTcpSocketImpl.wrapChannel;
 import static io.datakernel.stream.net.MessagingSerializers.ofGson;
 
-public abstract class FsClient<S extends FsClient<S>> {
+public final class RemoteFsClient implements IRemoteFsClient {
 	protected final Logger logger = LoggerFactory.getLogger(getClass());
 
 	protected final Eventloop eventloop;
@@ -54,45 +50,49 @@ public abstract class FsClient<S extends FsClient<S>> {
 	protected final SSLContext sslContext;
 	protected final ExecutorService sslExecutor;
 
-	private MessagingSerializer<FsResponse, FsCommand> serializer = ofGson(getResponseGson(), FsResponse.class, getCommandGSON(), FsCommand.class);
+	private final InetSocketAddress address;
+
+	private MessagingSerializer<RemoteFsResponses.FsResponse, RemoteFsCommands.FsCommand> serializer = ofGson(getResponseGson(), RemoteFsResponses.FsResponse.class, getCommandGSON(), RemoteFsCommands.FsCommand.class);
 
 	// creators & builders
-	public FsClient(Eventloop eventloop, SSLContext sslContext, ExecutorService sslExecutor) {
+	protected RemoteFsClient(Eventloop eventloop, InetSocketAddress address,
+	                         SSLContext sslContext, ExecutorService sslExecutor) {
 		this.eventloop = eventloop;
+		this.address = address;
 		this.sslContext = sslContext;
 		this.sslExecutor = sslExecutor;
 	}
 
-	// api
-	public abstract void upload(String destinationFileName, StreamProducer<ByteBuf> producer, CompletionCallback callback);
+	public static RemoteFsClient create(Eventloop eventloop, InetSocketAddress address) {
+		return new RemoteFsClient(eventloop, address, null, null);
+	}
 
-	public abstract void download(String fileName, long startPosition, ResultCallback<StreamProducer<ByteBuf>> callback);
+	public RemoteFsClient withSslEnabled(SSLContext sslContext, ExecutorService sslExecutor) {
+		return new RemoteFsClient(eventloop, address, sslContext, sslExecutor);
+	}
 
-	public abstract void list(ResultCallback<List<String>> callback);
-
-	public abstract void delete(String fileName, CompletionCallback callback);
-
-	// transport code
-	protected final void doUpload(InetSocketAddress address, final String fileName, final StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
+	@Override
+	public void upload(final String fileName, final StreamProducer<ByteBuf> producer,
+	                   final CompletionCallback callback) {
 		connect(address, new MessagingConnectCallback() {
 			@Override
-			public void onConnect(final MessagingWithBinaryStreaming<FsResponse, FsCommand> messaging) {
-				final Upload upload = new Upload(fileName);
+			public void onConnect(final MessagingWithBinaryStreaming<RemoteFsResponses.FsResponse, RemoteFsCommands.FsCommand> messaging) {
+				final RemoteFsCommands.Upload upload = new RemoteFsCommands.Upload(fileName);
 				messaging.send(upload, IgnoreCompletionCallback.create());
 				messaging.sendBinaryStreamFrom(producer, new CompletionCallback() {
 					@Override
 					public void onComplete() {
 						logger.trace("send all bytes for {}", fileName);
-						messaging.receive(new ReceiveMessageCallback<FsResponse>() {
+						messaging.receive(new ReceiveMessageCallback<RemoteFsResponses.FsResponse>() {
 							@Override
-							public void onReceive(FsResponse msg) {
+							public void onReceive(RemoteFsResponses.FsResponse msg) {
 								logger.trace("received {}", msg);
-								if (msg instanceof Acknowledge) {
+								if (msg instanceof RemoteFsResponses.Acknowledge) {
 									messaging.close();
 									callback.setComplete();
-								} else if (msg instanceof Err) {
+								} else if (msg instanceof RemoteFsResponses.Err) {
 									messaging.close();
-									callback.setException(new RemoteFsException(((Err) msg).msg));
+									callback.setException(new RemoteFsException(((RemoteFsResponses.Err) msg).msg));
 								} else {
 									messaging.close();
 									callback.setException(new RemoteFsException("Invalid message received: " + msg));
@@ -129,21 +129,22 @@ public abstract class FsClient<S extends FsClient<S>> {
 		});
 	}
 
-	protected final void doDownload(InetSocketAddress address, final String fileName, final long startPosition,
-	                                final ResultCallback<StreamProducer<ByteBuf>> callback) {
+	@Override
+	public void download(final String fileName, final long startPosition,
+	                     final ResultCallback<StreamProducer<ByteBuf>> callback) {
 		connect(address, new MessagingConnectCallback() {
 			@Override
-			public void onConnect(final MessagingWithBinaryStreaming<FsResponse, FsCommand> messaging) {
-				messaging.send(new Download(fileName, startPosition), new CompletionCallback() {
+			public void onConnect(final MessagingWithBinaryStreaming<RemoteFsResponses.FsResponse, RemoteFsCommands.FsCommand> messaging) {
+				messaging.send(new RemoteFsCommands.Download(fileName, startPosition), new CompletionCallback() {
 					@Override
 					public void onComplete() {
 						logger.trace("command to download {} send", fileName);
-						messaging.receive(new ReceiveMessageCallback<FsResponse>() {
+						messaging.receive(new ReceiveMessageCallback<RemoteFsResponses.FsResponse>() {
 							@Override
-							public void onReceive(FsResponse msg) {
+							public void onReceive(RemoteFsResponses.FsResponse msg) {
 								logger.trace("received {}", msg);
-								if (msg instanceof Ready) {
-									long size = ((Ready) msg).size;
+								if (msg instanceof RemoteFsResponses.Ready) {
+									long size = ((RemoteFsResponses.Ready) msg).size;
 									StreamForwarderWithCounter forwarder = StreamForwarderWithCounter.create(eventloop, size - startPosition);
 									messaging.receiveBinaryStreamTo(forwarder.getInput(), new CompletionCallback() {
 										@Override
@@ -157,9 +158,9 @@ public abstract class FsClient<S extends FsClient<S>> {
 										}
 									});
 									callback.setResult(forwarder.getOutput());
-								} else if (msg instanceof Err) {
+								} else if (msg instanceof RemoteFsResponses.Err) {
 									messaging.close();
-									RemoteFsException exception = new RemoteFsException(((Err) msg).msg);
+									RemoteFsException exception = new RemoteFsException(((RemoteFsResponses.Err) msg).msg);
 									callback.setException(exception);
 								} else {
 									messaging.close();
@@ -200,30 +201,32 @@ public abstract class FsClient<S extends FsClient<S>> {
 		});
 	}
 
-	protected final void doDelete(InetSocketAddress address, String fileName, CompletionCallback callback) {
+	@Override
+	public void delete(String fileName, CompletionCallback callback) {
 		connect(address, new DeleteConnectCallback(fileName, callback));
 	}
 
-	protected final void doList(InetSocketAddress address, final ResultCallback<List<String>> callback) {
+	@Override
+	public void list(final ResultCallback<List<String>> callback) {
 		connect(address, new ListConnectCallback(callback));
 	}
 
-	protected abstract class MessagingConnectCallback extends ExceptionCallback {
-		public final void setConnect(MessagingWithBinaryStreaming<FsResponse, FsCommand> messaging) {
+	private abstract class MessagingConnectCallback extends ExceptionCallback {
+		final void setConnect(MessagingWithBinaryStreaming<RemoteFsResponses.FsResponse, RemoteFsCommands.FsCommand> messaging) {
 			CallbackRegistry.complete(this);
 			onConnect(messaging);
 		}
 
-		protected abstract void onConnect(MessagingWithBinaryStreaming<FsResponse, FsCommand> messaging);
+		protected abstract void onConnect(MessagingWithBinaryStreaming<RemoteFsResponses.FsResponse, RemoteFsCommands.FsCommand> messaging);
 	}
 
-	protected void connect(InetSocketAddress address, final MessagingConnectCallback callback) {
+	private void connect(InetSocketAddress address, final MessagingConnectCallback callback) {
 		eventloop.connect(address, new ConnectCallback() {
 			@Override
 			public void onConnect(SocketChannel socketChannel) {
 				AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings);
 				AsyncTcpSocket asyncTcpSocket = sslContext != null ? wrapClientSocket(eventloop, asyncTcpSocketImpl, sslContext, sslExecutor) : asyncTcpSocketImpl;
-				MessagingWithBinaryStreaming<FsResponse, FsCommand> messaging = MessagingWithBinaryStreaming.create(eventloop, asyncTcpSocket, serializer);
+				MessagingWithBinaryStreaming<RemoteFsResponses.FsResponse, RemoteFsCommands.FsCommand> messaging = MessagingWithBinaryStreaming.create(eventloop, asyncTcpSocket, serializer);
 				asyncTcpSocket.setEventHandler(messaging);
 				asyncTcpSocketImpl.register();
 				callback.setConnect(messaging);
@@ -237,11 +240,11 @@ public abstract class FsClient<S extends FsClient<S>> {
 	}
 
 	protected Gson getCommandGSON() {
-		return commandGSON;
+		return RemoteFsCommands.commandGSON;
 	}
 
 	protected Gson getResponseGson() {
-		return responseGson;
+		return RemoteFsResponses.responseGson;
 	}
 
 	private class DeleteConnectCallback extends MessagingConnectCallback {
@@ -254,21 +257,21 @@ public abstract class FsClient<S extends FsClient<S>> {
 		}
 
 		@Override
-		public void onConnect(final MessagingWithBinaryStreaming<FsResponse, FsCommand> messaging) {
-			messaging.send(new Delete(fileName), new CompletionCallback() {
+		public void onConnect(final MessagingWithBinaryStreaming<RemoteFsResponses.FsResponse, RemoteFsCommands.FsCommand> messaging) {
+			messaging.send(new RemoteFsCommands.Delete(fileName), new CompletionCallback() {
 				@Override
 				public void onComplete() {
 					logger.trace("command to delete {} send", fileName);
-					messaging.receive(new ReceiveMessageCallback<FsResponse>() {
+					messaging.receive(new ReceiveMessageCallback<RemoteFsResponses.FsResponse>() {
 						@Override
-						public void onReceive(FsResponse msg) {
+						public void onReceive(RemoteFsResponses.FsResponse msg) {
 							logger.trace("received {}", msg);
-							if (msg instanceof Ok) {
+							if (msg instanceof RemoteFsResponses.Ok) {
 								messaging.close();
 								callback.setComplete();
-							} else if (msg instanceof Err) {
+							} else if (msg instanceof RemoteFsResponses.Err) {
 								messaging.close();
-								callback.setException(new RemoteFsException(((Err) msg).msg));
+								callback.setException(new RemoteFsException(((RemoteFsResponses.Err) msg).msg));
 							} else {
 								messaging.close();
 								callback.setException(new RemoteFsException("Invalid message received: " + msg));
@@ -312,21 +315,21 @@ public abstract class FsClient<S extends FsClient<S>> {
 		}
 
 		@Override
-		public void onConnect(final MessagingWithBinaryStreaming<FsResponse, FsCommand> messaging) {
-			messaging.send(new ListFiles(), new CompletionCallback() {
+		public void onConnect(final MessagingWithBinaryStreaming<RemoteFsResponses.FsResponse, RemoteFsCommands.FsCommand> messaging) {
+			messaging.send(new RemoteFsCommands.ListFiles(), new CompletionCallback() {
 				@Override
 				public void onComplete() {
 					logger.trace("command to list files send");
-					messaging.receive(new ReceiveMessageCallback<FsResponse>() {
+					messaging.receive(new ReceiveMessageCallback<RemoteFsResponses.FsResponse>() {
 						@Override
-						public void onReceive(FsResponse msg) {
+						public void onReceive(RemoteFsResponses.FsResponse msg) {
 							logger.trace("received {}", msg);
-							if (msg instanceof ListOfFiles) {
+							if (msg instanceof RemoteFsResponses.ListOfFiles) {
 								messaging.close();
-								callback.setResult(((ListOfFiles) msg).files);
-							} else if (msg instanceof Err) {
+								callback.setResult(((RemoteFsResponses.ListOfFiles) msg).files);
+							} else if (msg instanceof RemoteFsResponses.Err) {
 								messaging.close();
-								callback.setException(new RemoteFsException(((Err) msg).msg));
+								callback.setException(new RemoteFsException(((RemoteFsResponses.Err) msg).msg));
 							} else {
 								messaging.close();
 								callback.setException(new RemoteFsException("Invalid message received: " + msg));

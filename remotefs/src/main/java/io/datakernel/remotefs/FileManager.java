@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel;
+package io.datakernel.remotefs;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingResultCallback;
