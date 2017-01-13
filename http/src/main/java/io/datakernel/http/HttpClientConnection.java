@@ -260,6 +260,9 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		if (response != null) {
 			response.recycleBufs();
 		}
+
+		// jmx
+		httpClient.recordConnectionClose();
 	}
 
 	// jmx
@@ -275,19 +278,10 @@ final class HttpClientConnection extends AbstractHttpConnection {
 				", cancellable=" + cancellable +
 				", response=" + response +
 				", httpClient=" + httpClient +
-				", keepAlivePoolByAddress=" + keepAlivePoolByAddress +
-				", keepAlivePoolByAddressNode=" + keepAlivePoolByAddressNode +
-				", lastRequestUrl='" + lastRequestUrl + '\'' +
+				", keepAlivePoolByAddress=" + (keepAlivePoolByAddress == null ? "" : keepAlivePoolByAddress) +
+				", lastRequestUrl='" + (lastRequestUrl == null ? "" : lastRequestUrl) + '\'' +
 				", remoteAddress=" + remoteAddress +
-				", readQueue=" + readQueue +
-				", closed=" + isClosed() +
-				", keepAlive=" + keepAlive +
-				", bodyQueue=" + bodyQueue +
-				", reading=" + reading +
-				", shouldGzip=" + shouldGzip +
-				", contentLength=" + contentLength +
-				", poolTimestamp=" + keepAliveTimestamp +
-				", poolNode=" + poolNode +
+				',' + super.toString() +
 				'}';
 	}
 }

@@ -217,6 +217,10 @@ public final class ByteBufPool {
 
 		void setOldestByteBufs_settings_StoreStackTrace(boolean flag);
 
+		boolean getOldestByteBufs_settings_StoreByteBufs();
+
+		void setOldestByteBufs_settings_StoreByteBufs(boolean flag);
+
 		int getOldestByteBufs_settings_MaxBytesInContent();
 
 		void setOldestByteBufs_settings_MaxBytesInContent(int bytes);
@@ -226,6 +230,22 @@ public final class ByteBufPool {
 		void setOldestByteBufs_settings_MaxByteBufsToShow(int bufs);
 
 		int getTotalActiveByteBufs();
+
+		long getBufs_TotalAllocated();
+
+		long getBufs_TotalRecycled();
+
+		long getBufs_TotalNotRecycled();
+
+		long getBytes_TotalAllocated();
+
+		long getBytes_TotalRecycled();
+
+		long getBytes_TotalNotRecycled();
+
+		void clearRegistry();
+
+		ByteBufDetailedJmxInfo fetchDetailedByteBufInfo(int indexInList, int start, int to);
 	}
 
 	public static final class ByteBufJmxInfo {
@@ -267,6 +287,75 @@ public final class ByteBufPool {
 
 		public String getContent() {
 			return content;
+		}
+	}
+
+	public static final class ByteBufDetailedJmxInfo {
+		private final long duration;
+		private final List<String> stackTrace;
+		private final int size;
+		private final int readPosition;
+		private final int writePosition;
+		private final String content;
+		private final int queriedFirstByteIndex;
+		private final int queriedLastByteIndex;
+		private final String queriedBytes;
+		private final String queriedBytesHex;
+
+		public ByteBufDetailedJmxInfo(long duration, List<String> stackTrace, int size,
+		                              int readPosition, int writePosition, String content,
+		                              int queriedFirstByteIndex, int queriedLastByteIndex,
+		                              String queriedBytes, String queriedBytesHex) {
+			this.duration = duration;
+			this.stackTrace = stackTrace;
+			this.size = size;
+			this.readPosition = readPosition;
+			this.writePosition = writePosition;
+			this.content = content;
+			this.queriedFirstByteIndex = queriedFirstByteIndex;
+			this.queriedLastByteIndex = queriedLastByteIndex;
+			this.queriedBytes = queriedBytes;
+			this.queriedBytesHex = queriedBytesHex;
+		}
+
+		public long getDuration() {
+			return duration;
+		}
+
+		public List<String> getStackTrace() {
+			return stackTrace;
+		}
+
+		public int getSize() {
+			return size;
+		}
+
+		public int getReadPosition() {
+			return readPosition;
+		}
+
+		public int getWritePosition() {
+			return writePosition;
+		}
+
+		public String getContent() {
+			return content;
+		}
+
+		public int getQueriedFirstByteIndex() {
+			return queriedFirstByteIndex;
+		}
+
+		public int getQueriedLastByteIndex() {
+			return queriedLastByteIndex;
+		}
+
+		public String getQueriedBytes() {
+			return queriedBytes;
+		}
+
+		public String getQueriedBytesHex() {
+			return queriedBytesHex;
 		}
 	}
 
@@ -336,13 +425,7 @@ public final class ByteBufPool {
 
 				long duration = currentTimestamp - byteBufMetaInfo.getAllocationTimestamp();
 
-				List<String> stackTraceLines = new ArrayList<>();
-				StackTraceElement[] stackTrace = byteBufMetaInfo.getStackTrace();
-				if (stackTrace != null) {
-					for (StackTraceElement stackTraceElement : stackTrace) {
-						stackTraceLines.add(stackTraceElement.toString());
-					}
-				}
+				List<String> stackTraceLines = fetchStackTrace(byteBufMetaInfo);
 
 				String content = extractContent(buf, maxBytesInContent);
 
@@ -383,6 +466,16 @@ public final class ByteBufPool {
 		}
 
 		@Override
+		public boolean getOldestByteBufs_settings_StoreByteBufs() {
+			return ByteBufRegistry.getStoreByteBufs();
+		}
+
+		@Override
+		public void setOldestByteBufs_settings_StoreByteBufs(boolean flag) {
+			ByteBufRegistry.setStoreByteBufs(flag);
+		}
+
+		@Override
 		public int getOldestByteBufs_settings_MaxBytesInContent() {
 			return maxBytesInContent;
 		}
@@ -411,6 +504,109 @@ public final class ByteBufPool {
 		@Override
 		public int getTotalActiveByteBufs() {
 			return ByteBufRegistry.getActiveByteBufs().size();
+		}
+
+		@Override
+		public long getBufs_TotalAllocated() {
+			return ByteBufRegistry.getTotalAllocatedBufs();
+		}
+
+		@Override
+		public long getBufs_TotalRecycled() {
+			return ByteBufRegistry.getTotalRecycledBufs();
+		}
+
+		@Override
+		public long getBufs_TotalNotRecycled() {
+			return ByteBufRegistry.getTotalAllocatedBufs() - ByteBufRegistry.getTotalRecycledBufs();
+		}
+
+		@Override
+		public long getBytes_TotalAllocated() {
+			return ByteBufRegistry.getTotalAllocatedBytes();
+		}
+
+		@Override
+		public long getBytes_TotalRecycled() {
+			return ByteBufRegistry.getTotalRecycledBytes();
+		}
+
+		@Override
+		public long getBytes_TotalNotRecycled() {
+			return ByteBufRegistry.getTotalAllocatedBytes() - ByteBufRegistry.getTotalRecycledBytes();
+		}
+
+		@Override
+		public void clearRegistry() {
+			ByteBufRegistry.clearRegistry();
+		}
+
+		@Override
+		public ByteBufDetailedJmxInfo fetchDetailedByteBufInfo(int indexInList, int start, int to) {
+			Map<ByteBufWrapper, ByteBufMetaInfo> activeBufs = ByteBufRegistry.getActiveByteBufs();
+			List<ByteBufDetailedJmxInfo> bufsInfo = new ArrayList<>();
+
+			long currentTimestamp = System.currentTimeMillis();
+			int maxBufsToShowCached = maxBufsToShow;
+			for (ByteBufWrapper wrapper : activeBufs.keySet()) {
+				if (bufsInfo.size() == maxBufsToShowCached) {
+					break;
+				}
+
+				ByteBufMetaInfo byteBufMetaInfo = activeBufs.get(wrapper);
+				if (byteBufMetaInfo == null) {
+					continue;
+				}
+
+				ByteBuf buf = wrapper.getByteBuf();
+				if (buf == null) {
+					continue;
+				}
+
+				long duration = currentTimestamp - byteBufMetaInfo.getAllocationTimestamp();
+
+				List<String> stackTraceLines = fetchStackTrace(byteBufMetaInfo);
+
+				String content = extractContent(buf, maxBytesInContent);
+
+				byte[] queriedBytes = Arrays.copyOfRange(buf.array(), start, to);
+				String queriedBytesStr = new String(queriedBytes);
+
+				StringBuilder queriedBytesHex = new StringBuilder(queriedBytes.length * 3);
+				for (byte queriedByte : queriedBytes) {
+					queriedBytesHex.append(byteToHex(queriedByte));
+					queriedBytesHex.append(" ");
+				}
+
+				ByteBufDetailedJmxInfo byteBufJmxInfo = new ByteBufDetailedJmxInfo(duration, stackTraceLines,
+						buf.limit(), buf.readPosition(), buf.writePosition(), content,
+						start, to, queriedBytesStr, queriedBytesHex.toString());
+				bufsInfo.add(byteBufJmxInfo);
+			}
+
+			Collections.sort(bufsInfo, new Comparator<ByteBufDetailedJmxInfo>() {
+				@Override
+				public int compare(ByteBufDetailedJmxInfo o1, ByteBufDetailedJmxInfo o2) {
+					return -(Long.compare(o1.duration, o2.duration));
+				}
+			});
+
+			return bufsInfo.get(indexInList);
+		}
+
+		private List<String> fetchStackTrace(ByteBufMetaInfo byteBufMetaInfo) {
+			List<String> stackTraceLines = new ArrayList<>();
+			StackTraceElement[] stackTrace = byteBufMetaInfo.getStackTrace();
+			if (stackTrace != null) {
+				for (StackTraceElement stackTraceElement : stackTrace) {
+					stackTraceLines.add(stackTraceElement.toString());
+				}
+			}
+			return stackTraceLines;
+		}
+
+		private String byteToHex(byte b) {
+			return String.format("%02X", b);
 		}
 	}
 

@@ -95,6 +95,9 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		this.eventloop = checkNotNull(eventloop);
 		this.channel = checkNotNull(socketChannel);
 
+		// jmx
+		eventloop.getStats().recordSocketCreateEvent();
+
 		assert (this.contractChecker = AsyncTcpSocketContract.create()) != null;
 	}
 	// endregion
@@ -349,6 +352,9 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		} catch (IOException e) {
 			eventloop.recordIoError(e, toString());
 		}
+
+		// jmx
+		eventloop.getStats().recordSocketCloseEvent();
 	}
 
 	private void closeWithError(final Exception e, boolean fireAsync) {
@@ -397,6 +403,30 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	@Override
 	public String toString() {
-		return channel.toString();
+		String keyOps;
+		try {
+			keyOps = (key == null ? "" : opsToString(key.interestOps()));
+		} catch (Exception e) {
+			keyOps = "Key throwed exception: " + e.toString();
+		}
+		return "AsyncTcpSocketImpl{" +
+				"channel=" + (channel == null ? "" : channel.toString()) +
+				", writeQueueSize=" + writeQueue.size() +
+				", writeEndOfStream=" + writeEndOfStream +
+				", key.ops=" + keyOps +
+				", ops=" + opsToString(ops) +
+				", writing=" + writing +
+				'}';
+	}
+
+	private String opsToString(int ops) {
+		StringBuilder sb = new StringBuilder();
+		if ((ops & OP_POSTPONED) != 0)
+			sb.append("OP_POSTPONED ");
+		if ((ops & SelectionKey.OP_WRITE) != 0)
+			sb.append("OP_WRITE ");
+		if ((ops & SelectionKey.OP_READ) != 0)
+			sb.append("OP_READ ");
+		return sb.toString();
 	}
 }

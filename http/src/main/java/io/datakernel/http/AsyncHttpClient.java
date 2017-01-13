@@ -74,7 +74,9 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	private final EventStats httpRequests = EventStats.create();
 	private final EventStats keepAliveRequests = EventStats.create();
 	private final EventStats nonKeepAliveRequests = EventStats.create();
-	private final EventStats expiredConnections = EventStats.create();
+	private final EventStats connectionExpirations = EventStats.create();
+	private final EventStats connectionOpenings = EventStats.create();
+	private final EventStats connectionClosings = EventStats.create();
 	private final ExceptionStats httpProtocolErrors = ExceptionStats.create();
 	private final EventStats timeoutErrors = EventStats.create();
 	private final Map<HttpClientConnection, UrlWithTimestamp> currentRequestToSendTime = new HashMap<>();
@@ -166,7 +168,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 			connection.close();
 			count++;
 		}
-		expiredConnections.recordEvents(count);
+		connectionExpirations.recordEvents(count);
 		return count;
 	}
 
@@ -281,6 +283,9 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 				asyncTcpSocket.setEventHandler(connection);
 				asyncTcpSocketImpl.register();
 
+				// jmx
+				connectionOpenings.recordEvent();
+
 				sendRequest(connection, request, timeoutTime, callback);
 			}
 
@@ -381,14 +386,6 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		timeoutErrors.recordEvent();
 	}
 
-	@JmxAttribute(
-			description = "current number of connections",
-			reducer = JmxReducers.JmxReducerSum.class
-	)
-	public int getConnectionsCount() {
-		return keepAlivePool.size();
-	}
-
 	@JmxAttribute(description = "number of connections per address")
 	public List<String> getAddressConnections() {
 		if (keepAlivePoolsByAddresses.isEmpty())
@@ -431,8 +428,41 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	}
 
 	@JmxAttribute(description = "number of expired connections in keep-alive pool (after appropriate timeout)")
-	public EventStats getExpiredConnections() {
-		return expiredConnections;
+	public EventStats getConnectionExpirations() {
+		return connectionExpirations;
+	}
+
+	@JmxAttribute(description = "number of \"open connection\" events)")
+	public EventStats getConnectionOpenings() {
+		return connectionOpenings;
+	}
+
+	@JmxAttribute(description = "number of \"close connection\" events)")
+	public EventStats getConnectionClosings() {
+		return connectionClosings;
+	}
+
+	@JmxAttribute(
+			description = "current number of live connections (totally in pool and in use)",
+			reducer = JmxReducers.JmxReducerSum.class)
+	public long getConnectionsActive() {
+		return connectionOpenings.getTotalCount() - connectionClosings.getTotalCount();
+	}
+
+	@JmxAttribute(
+			description = "current number of connections in pool",
+			reducer = JmxReducers.JmxReducerSum.class
+	)
+	public long getConnectionsInPool() {
+		return keepAlivePool.size();
+	}
+
+	@JmxAttribute(
+			description = "current number of connections that are currently used for sending/receiving data",
+			reducer = JmxReducers.JmxReducerSum.class
+	)
+	public long getConnectionsInUse() {
+		return getConnectionsActive() - getConnectionsInPool();
 	}
 
 	@JmxAttribute(description = "Number of HTTP responses which could not be parsed " +
@@ -458,6 +488,10 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 			currentRequestToSendTime.clear();
 		}
 		this.monitorCurrentRequestsDuration = monitor;
+	}
+
+	void recordConnectionClose() {
+		connectionClosings.recordEvent();
 	}
 
 	@JmxAttribute(description = "shows duration of current requests " +

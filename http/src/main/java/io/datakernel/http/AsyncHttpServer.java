@@ -71,7 +71,9 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private final EventStats httpRequests = EventStats.create();
 	private final EventStats keepAliveRequests = EventStats.create();
 	private final EventStats nonKeepAliveRequests = EventStats.create();
-	private final EventStats expiredConnections = EventStats.create();
+	private final EventStats connectionExpirations = EventStats.create();
+	private final EventStats connectionOpenings = EventStats.create();
+	private final EventStats connectionClosings = EventStats.create();
 	private final EventStats httpProtocolErrors = EventStats.create();
 	private final EventStats applicationErrors = EventStats.create();
 	private final Map<HttpServerConnection, UrlWithTimestamp> currentRequestHandlingStart = new HashMap<>();
@@ -189,13 +191,17 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 				count++;
 			}
 		}
-		expiredConnections.recordEvents(count);
+		connectionExpirations.recordEvents(count);
 		return count;
 	}
 
 	@Override
 	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 		assert eventloop.inEventloopThread();
+
+		// jmx
+		connectionOpenings.recordEvent();
+
 		return HttpServerConnection.create(
 				eventloop, asyncTcpSocket.getRemoteSocketAddress().getAddress(), asyncTcpSocket,
 				this, servlet, keepAlivePool, headerChars, maxHttpMessageSize);
@@ -303,11 +309,6 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		return nonKeepAliveRequests;
 	}
 
-	@JmxAttribute(description = "number of expired connections in pool (after appropriate timeout)")
-	public EventStats getExpiredConnections() {
-		return expiredConnections;
-	}
-
 	@JmxAttribute(description = "Number of requests which were invalid according to http protocol. " +
 			"Responses were not sent for this requests")
 	public EventStats getHttpProtocolErrors() {
@@ -356,6 +357,48 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 			formattedDurations.add(line);
 		}
 		return formattedDurations;
+	}
+
+	@JmxAttribute(description = "number of expired connections in keep-alive pool (after appropriate timeout)")
+	public EventStats getConnectionExpirations() {
+		return connectionExpirations;
+	}
+
+	@JmxAttribute(description = "number of \"open connection\" events)")
+	public EventStats getConnectionOpenings() {
+		return connectionOpenings;
+	}
+
+	@JmxAttribute(description = "number of \"close connection\" events)")
+	public EventStats getConnectionClosings() {
+		return connectionClosings;
+	}
+
+	@JmxAttribute(
+			description = "current number of live connections (totally in pool and in use)",
+			reducer = JmxReducers.JmxReducerSum.class)
+	public long getConnectionsActive() {
+		return connectionOpenings.getTotalCount() - connectionClosings.getTotalCount();
+	}
+
+	@JmxAttribute(
+			description = "current number of connections in pool",
+			reducer = JmxReducers.JmxReducerSum.class
+	)
+	public long getConnectionsInPool() {
+		return keepAlivePool.size();
+	}
+
+	@JmxAttribute(
+			description = "current number of connections that are currently used for sending/receiving data",
+			reducer = JmxReducers.JmxReducerSum.class
+	)
+	public long getConnectionsInUse() {
+		return getConnectionsActive() - getConnectionsInPool();
+	}
+
+	void recordConnectionClose() {
+		connectionClosings.recordEvent();
 	}
 
 	void requestHandlingStarted(HttpServerConnection conn, HttpRequest request) {

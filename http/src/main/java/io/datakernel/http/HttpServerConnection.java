@@ -152,8 +152,9 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		}
 
 		HttpMethod method = getHttpMethod(line);
-		if (method == null)
-			throw new ParseException("Unknown HTTP method");
+		if (method == null) {
+			throw new ParseException("Unknown HTTP method. First Bytes: " + line.toString(20));
+		}
 
 		int i;
 		for (i = 0; i != line.readRemaining(); i++) {
@@ -319,11 +320,22 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			// request is not being processed by asynchronous servlet at the moment
 			recycleBufs();
 		}
+
+		// jmx
+		server.recordConnectionClose();
 	}
 
 	@Override
 	protected void onHttpProtocolError(ParseException e) {
 		// jmx
 		server.recordHttpProtocolError();
+	}
+
+	@Override
+	public String toString() {
+		return "HttpServerConnection{" +
+				"remoteAddress=" + remoteAddress +
+				',' + super.toString() +
+				'}';
 	}
 }

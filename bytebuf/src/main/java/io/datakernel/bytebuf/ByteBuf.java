@@ -333,7 +333,11 @@ public class ByteBuf {
 
 	@Override
 	public String toString() {
-		char[] chars = new char[readRemaining() < 256 ? readRemaining() : 256];
+		return toString(256);
+	}
+
+	public String toString(int maxBytes) {
+		char[] chars = new char[readRemaining() < maxBytes ? readRemaining() : maxBytes];
 		for (int i = 0; i < chars.length; i++) {
 			byte b = array[readPosition + i];
 			chars[i] = (b >= ' ') ? (char) b : (char) 65533;

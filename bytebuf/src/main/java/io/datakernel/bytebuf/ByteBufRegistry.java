@@ -23,6 +23,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public final class ByteBufRegistry {
 	public static final int CLEAR_EMPTY_WRAPPERS_PERIOD = 1000;
@@ -30,46 +31,89 @@ public final class ByteBufRegistry {
 	private static final ConcurrentHashMap<ByteBufWrapper, ByteBufMetaInfo> activeByteBufs = new ConcurrentHashMap<>();
 	private static AtomicInteger counter = new AtomicInteger(0);
 
+	private static volatile boolean storeByteBufs = false;
 	private static volatile boolean storeStackTrace = false;
+
+	private static final AtomicLong totalAllocatedBufs = new AtomicLong(0);
+	private static final AtomicLong totalRecycledBufs = new AtomicLong(0);
+
+	private static final AtomicLong totalAllocatedBytes = new AtomicLong(0);
+	private static final AtomicLong totalRecycledBytes = new AtomicLong(0);
 
 	private ByteBufRegistry() {}
 
 	// region public api
+	public static void clearRegistry() {
+		activeByteBufs.clear();
+	}
+
 	public static Map<ByteBufWrapper, ByteBufMetaInfo> getActiveByteBufs() {
 		return activeByteBufs;
+	}
+
+	public static boolean getStoreStackTrace() {
+		return storeStackTrace;
 	}
 
 	public static void setStoreStackTrace(boolean store) {
 		storeStackTrace = store;
 	}
 
-	public static boolean getStoreStackTrace() {
-		return storeStackTrace;
+	public static boolean getStoreByteBufs() {
+		return storeByteBufs;
+	}
+
+	public static void setStoreByteBufs(boolean store) {
+		storeByteBufs = store;
+	}
+
+	public static long getTotalAllocatedBufs() {
+		return totalAllocatedBufs.longValue();
+	}
+
+	public static long getTotalRecycledBufs() {
+		return totalRecycledBufs.longValue();
+	}
+
+	public static long getTotalAllocatedBytes() {
+		return totalAllocatedBytes.longValue();
+	}
+
+	public static long getTotalRecycledBytes() {
+		return totalRecycledBytes.longValue();
 	}
 	// endregion
 
 	public static boolean recordAllocate(ByteBuf buf) {
-		int current = counter.incrementAndGet();
-		if (current % CLEAR_EMPTY_WRAPPERS_PERIOD == 0) { // in case of negative values it also works properly
-			clearEmptyWrappers();
-		}
+		totalAllocatedBufs.incrementAndGet();
+		totalAllocatedBytes.addAndGet(buf.array().length);
+		if (storeByteBufs) {
+			int current = counter.incrementAndGet();
+			if (current % CLEAR_EMPTY_WRAPPERS_PERIOD == 0) { // in case of negative values it also works properly
+				clearEmptyWrappers();
+			}
 
-		StackTraceElement[] stackTrace = null;
-		if (storeStackTrace) {
-			// TODO(vmykhalko): maybe use new Exception().getStackTrace instead ? according to performance issues
-			StackTraceElement[] fullStackTrace = Thread.currentThread().getStackTrace();
-			// remove stack trace lines that stand for registration method calls
-			stackTrace = Arrays.copyOfRange(fullStackTrace, 3, fullStackTrace.length);
+			StackTraceElement[] stackTrace = null;
+			if (storeStackTrace) {
+				// TODO(vmykhalko): maybe use new Exception().getStackTrace instead ? according to performance issues
+				StackTraceElement[] fullStackTrace = Thread.currentThread().getStackTrace();
+				// remove stack trace lines that stand for registration method calls
+				stackTrace = Arrays.copyOfRange(fullStackTrace, 3, fullStackTrace.length);
+			}
+			long timestamp = System.currentTimeMillis();
+			ByteBufMetaInfo metaInfo = new ByteBufMetaInfo(stackTrace, timestamp);
+			activeByteBufs.put(new ByteBufWrapper(buf), metaInfo);
 		}
-		long timestamp = System.currentTimeMillis();
-		ByteBufMetaInfo metaInfo = new ByteBufMetaInfo(stackTrace, timestamp);
-		activeByteBufs.put(new ByteBufWrapper(buf), metaInfo);
 
 		return true;
 	}
 
 	public static boolean recordRecycle(ByteBuf buf) {
-		activeByteBufs.remove(new ByteBufWrapper(buf));
+		totalRecycledBufs.incrementAndGet();
+		totalRecycledBytes.addAndGet(buf.array().length);
+		if (storeByteBufs) {
+			activeByteBufs.remove(new ByteBufWrapper(buf));
+		}
 
 		return true;
 	}

@@ -436,4 +436,39 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 		}
 	}
 
+	@Override
+	public String toString() {
+		return ", socket=" + asyncTcpSocket +
+				", readQueue=" + readQueue +
+				", closed=" + closed +
+				", keepAlive=" + keepAlive +
+				", bodyQueue=" + bodyQueue +
+				", reading=" + readingToString(reading) +
+				", isGzipped=" + isGzipped +
+				", shouldGzip=" + shouldGzip +
+				", isChunked=" + isChunked +
+				", chunkSize=" + chunkSize +
+				", contentLength=" + contentLength +
+				", keepAliveTimestamp=" + keepAliveTimestamp;
+	}
+
+	private String readingToString(byte reading) {
+		switch (reading) {
+			case NOTHING:
+				return "NOTHING";
+			case END_OF_STREAM:
+				return "END_OF_STREAM";
+			case FIRSTLINE:
+				return "FIRSTLINE";
+			case HEADERS:
+				return "HEADERS";
+			case BODY:
+				return "BODY";
+			case CHUNK_LENGTH:
+				return "CHUNK_LENGTH";
+			case CHUNK:
+				return "CHUNK";
+		}
+		return "";
+	}
 }
