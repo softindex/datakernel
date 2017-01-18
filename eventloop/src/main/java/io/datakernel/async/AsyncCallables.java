@@ -1,6 +1,7 @@
 package io.datakernel.async;
 
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.ScheduledRunnable;
 
 import java.util.List;
 import java.util.concurrent.TimeoutException;
@@ -40,7 +41,7 @@ public class AsyncCallables {
 					}
 				});
 				if (!state.done) {
-					eventloop.schedule(timestamp, new Runnable() {
+					eventloop.schedule(timestamp, new ScheduledRunnable() {
 						@Override
 						public void run() {
 							if (!state.done) {
@@ -138,7 +139,7 @@ public class AsyncCallables {
 					});
 				}
 				if (state.pending != 0) {
-					eventloop.schedule(timestamp, new Runnable() {
+					eventloop.schedule(timestamp, new ScheduledRunnable() {
 						@Override
 						public void run() {
 							if (state.pending > 0) {

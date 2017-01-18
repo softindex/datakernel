@@ -18,84 +18,57 @@ package io.datakernel.eventloop;
 
 import io.datakernel.async.AsyncCancellable;
 
-public final class ScheduledRunnable implements Comparable<ScheduledRunnable>, AsyncCancellable {
-	/**
-	 * The time after which this runnable will be executed
-	 */
-	private final long timestamp;
-	private Runnable runnable;
+public abstract class ScheduledRunnable implements Runnable, AsyncCancellable {
+	private long timestamp;
 	private boolean cancelled;
 	private boolean complete;
 
-	// region builders
+	ScheduledRunnable next;
+	ScheduledRunnable prev;
+	ScheduledRunnableQueue queue;
 
-	/**
-	 * Initializes a new instance of ScheduledRunnable
-	 *
-	 * @param timestamp timestamp after which this runnable will be executed
-	 * @param runnable  runnable for executing
-	 */
-	private ScheduledRunnable(long timestamp, Runnable runnable) {
-		this.timestamp = timestamp;
-		this.runnable = runnable;
+	public ScheduledRunnable() {
 	}
 
-	public static ScheduledRunnable create(long timestamp, Runnable runnable) {
-		return new ScheduledRunnable(timestamp, runnable);
-	}
-	// endregion
+	public final void reset() {
+		assert queue == null && prev == null && next == null;
 
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-		ScheduledRunnable that = (ScheduledRunnable) o;
-		return timestamp == that.timestamp;
+		timestamp = 0;
+		cancelled = false;
+		complete = false;
 	}
 
-	@Override
-	public int hashCode() {
-		return (int) (timestamp ^ (timestamp >>> 32));
-	}
+	public abstract void run();
 
-	/**
-	 * Compares timestamps of two ScheduledRunnables
-	 *
-	 * @param o ScheduledRunnable for comparing
-	 * @return a negative integer, zero, or a positive integer as this
-	 * timestamp is less than, equal to, or greater than the timestamp of
-	 * ScheduledRunnable from argument.
-	 */
-	@Override
-	public int compareTo(ScheduledRunnable o) {
-		return Long.compare(timestamp, o.timestamp);
-	}
-
-	@Override
-	public void cancel() {
+	public final void cancel() {
 		this.cancelled = true;
-		this.runnable = null;
+		if (queue != null) {
+			queue.remove(this);
+		}
 	}
 
-	public void complete() {
+	public final void complete() {
 		this.complete = true;
-		this.runnable = null;
 	}
 
-	public long getTimestamp() {
-		return timestamp;
-	}
-
-	public Runnable getRunnable() {
-		return runnable;
-	}
-
-	public boolean isCancelled() {
+	public final boolean isCancelled() {
 		return cancelled;
 	}
 
-	public boolean isComplete() {
+	public final boolean isComplete() {
 		return complete;
+	}
+
+	public final boolean isScheduledNow() {
+		return queue != null;
+	}
+
+	final long getTimestamp() {
+		return timestamp;
+	}
+
+	final void setTimestamp(long timestamp) {
+		this.timestamp = timestamp;
 	}
 
 	@Override
@@ -105,7 +78,6 @@ public final class ScheduledRunnable implements Comparable<ScheduledRunnable>, A
 				+ "timestamp=" + timestamp + ", "
 				+ "cancelled=" + cancelled + ", "
 				+ "complete=" + complete + ", "
-				+ "runnable=" + runnable
 				+ "}";
 	}
 }

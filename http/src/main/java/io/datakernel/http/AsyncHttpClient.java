@@ -19,10 +19,7 @@ package io.datakernel.http;
 import io.datakernel.async.*;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.dns.IAsyncDnsClient;
-import io.datakernel.eventloop.AsyncTcpSocket;
-import io.datakernel.eventloop.AsyncTcpSocketImpl;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
+import io.datakernel.eventloop.*;
 import io.datakernel.jmx.*;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.util.MemSize;
@@ -141,7 +138,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 	private void scheduleExpiredConnectionsCheck() {
 		assert expiredConnectionsCheck == null;
-		expiredConnectionsCheck = eventloop.scheduleBackground(eventloop.currentTimeMillis() + CHECK_PERIOD, new Runnable() {
+		expiredConnectionsCheck = eventloop.scheduleBackground(eventloop.currentTimeMillis() + CHECK_PERIOD, new ScheduledRunnable() {
 			@Override
 			public void run() {
 				expiredConnectionsCheck = null;
@@ -220,8 +217,8 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		connection.keepAlivePoolByAddress.removeNode(connection.keepAlivePoolByAddressNode);
 		if (connection.keepAlivePoolByAddress.isEmpty()) {
 			keepAlivePoolsByAddresses.remove(connection.remoteAddress);
-			connection.keepAlivePoolByAddress = null;
 		}
+		connection.keepAlivePoolByAddress = null;
 		connection.keepAliveTimestamp = 0L;
 	}
 

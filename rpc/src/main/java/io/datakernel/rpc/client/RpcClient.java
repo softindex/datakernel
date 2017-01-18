@@ -17,10 +17,7 @@
 package io.datakernel.rpc.client;
 
 import io.datakernel.async.*;
-import io.datakernel.eventloop.AsyncTcpSocket;
-import io.datakernel.eventloop.AsyncTcpSocketImpl;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
+import io.datakernel.eventloop.*;
 import io.datakernel.jmx.*;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.rpc.client.jmx.RpcConnectStats;
@@ -266,7 +263,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 			startCallback = null;
 		} else {
 			if (connectTimeoutMillis != 0) {
-				eventloop.scheduleBackground(eventloop.currentTimeMillis() + connectTimeoutMillis, new Runnable() {
+				eventloop.scheduleBackground(eventloop.currentTimeMillis() + connectTimeoutMillis, new ScheduledRunnable() {
 					@Override
 					public void run() {
 						if (running && startCallback != null) {
@@ -384,7 +381,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 					if (logger.isWarnEnabled()) {
 						logger.warn("Connection failed, reconnecting to {}: {}", address, e.toString());
 					}
-					eventloop.scheduleBackground(eventloop.currentTimeMillis() + reconnectIntervalMillis, new Runnable() {
+					eventloop.scheduleBackground(eventloop.currentTimeMillis() + reconnectIntervalMillis, new ScheduledRunnable() {
 						@Override
 						public void run() {
 							if (running) {
@@ -434,7 +431,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		generalConnectsStats.getClosedConnects().recordEvent();
 		connectsStatsPerAddress.get(address).getClosedConnects().recordEvent();
 
-		eventloop.scheduleBackground(eventloop.currentTimeMillis() + reconnectIntervalMillis, new Runnable() {
+		eventloop.scheduleBackground(eventloop.currentTimeMillis() + reconnectIntervalMillis, new ScheduledRunnable() {
 			@Override
 			public void run() {
 				if (running) {

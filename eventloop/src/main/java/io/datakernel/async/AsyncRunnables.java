@@ -1,6 +1,7 @@
 package io.datakernel.async;
 
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.ScheduledRunnable;
 
 import java.util.Iterator;
 import java.util.List;
@@ -41,7 +42,7 @@ public class AsyncRunnables {
 					}
 				});
 				if (!state.done) {
-					eventloop.schedule(timestamp, new Runnable() {
+					eventloop.schedule(timestamp, new ScheduledRunnable() {
 						@Override
 						public void run() {
 							if (!state.done) {

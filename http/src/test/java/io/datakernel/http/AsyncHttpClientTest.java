@@ -24,6 +24,7 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.eventloop.SimpleServer;
 import io.datakernel.eventloop.SimpleServer.SocketHandlerProvider;
 import io.datakernel.exception.ParseException;
@@ -99,7 +100,7 @@ public class AsyncHttpClientTest {
 		final AsyncHttpServer httpServer = AsyncHttpServer.create(eventloop, new AsyncServlet() {
 			@Override
 			public void serve(HttpRequest request, final ResultCallback<HttpResponse> callback) {
-				eventloop.schedule(eventloop.currentTimeMillis() + (3 * TIMEOUT), new Runnable() {
+				eventloop.schedule(eventloop.currentTimeMillis() + (3 * TIMEOUT), new ScheduledRunnable() {
 					@Override
 					public void run() {
 						callback.setResult(HttpResponse.ok200().withBody(TIMEOUT_EXCEPTION_BYTES));

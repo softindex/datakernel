@@ -22,6 +22,7 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.exception.ParseException;
 import io.datakernel.util.Stopwatch;
 
@@ -208,7 +209,7 @@ public final class HttpRequestsGenerator {
 			}
 		}
 
-		eventloop.schedule(scheduleTimeMillis + intervalMillis, new Runnable() {
+		eventloop.schedule(scheduleTimeMillis + intervalMillis, new ScheduledRunnable() {
 			@Override
 			public void run() {
 				long elapsed = (scheduleTimeMillis == 0) ? 1 : eventloop.currentTimeMillis() - scheduleTimeMillis;

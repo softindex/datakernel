@@ -20,6 +20,7 @@ import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxRefreshable;
 import io.datakernel.rpc.client.jmx.RpcRequestStats;
@@ -84,7 +85,7 @@ public final class RpcClientConnection implements RpcConnection, RpcSender, JmxR
 	private final InetSocketAddress address;
 	private final Map<Integer, ResultCallback<?>> requests = new HashMap<>();
 	private final PriorityQueue<TimeoutCookie> timeoutCookies = new PriorityQueue<>();
-	private final Runnable expiredResponsesTask = createExpiredResponsesTask();
+	private final ScheduledRunnable expiredResponsesTask = createExpiredResponsesTask();
 
 	private AsyncCancellable scheduleExpiredResponsesTask;
 	private int cookieCounter = 0;
@@ -175,8 +176,8 @@ public final class RpcClientConnection implements RpcConnection, RpcSender, JmxR
 		scheduleExpiredResponsesTask = eventloop.schedule(eventloop.currentTimeMillis() + DEFAULT_TIMEOUT_PRECISION, expiredResponsesTask);
 	}
 
-	private Runnable createExpiredResponsesTask() {
-		return new Runnable() {
+	private ScheduledRunnable createExpiredResponsesTask() {
+		return new ScheduledRunnable() {
 			@Override
 			public void run() {
 				checkExpiredResponses();

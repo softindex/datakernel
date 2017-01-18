@@ -99,6 +99,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	@Override
 	public void onClosedWithError(Exception e) {
+		super.onClosedWithError(e);
 		onClosed();
 	}
 
@@ -153,7 +154,13 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 		HttpMethod method = getHttpMethod(line);
 		if (method == null) {
+			line.recycle();
 			throw new ParseException("Unknown HTTP method. First Bytes: " + line.toString(20));
+		}
+
+		if (headerChars.length <= line.readRemaining()) {
+			line.recycle();
+			throw new ParseException("First line is too big");
 		}
 
 		int i;
@@ -170,6 +177,8 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		if (method == GET || method == DELETE) {
 			contentLength = 0;
 		}
+
+		line.recycle();
 	}
 
 	/**
@@ -227,9 +236,10 @@ final class HttpServerConnection extends AbstractHttpConnection {
 					}
 				} else {
 					// connection is closed, but bufs are not recycled, let's recycle them now
-					recycleBufs();
 					httpResponse.recycleBufs();
 				}
+
+				recycleBufs();
 
 				// jmx
 				server.requestHandlingFinished(HttpServerConnection.this);
@@ -241,10 +251,8 @@ final class HttpServerConnection extends AbstractHttpConnection {
 				if (!isClosed()) {
 					writeException(e);
 					server.recordApplicationError();
-				} else {
-					// connection is closed, but bufs are not recycled, let's recycle them now
-					recycleBufs();
 				}
+				recycleBufs();
 
 				// jmx
 				server.requestHandlingFinished(HttpServerConnection.this);
@@ -282,7 +290,6 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			server.recordRequestEvent(isHttpsConnection, true);
 		} else {
 			close();
-			recycleBufs();
 
 			// jmx
 			server.recordRequestEvent(isHttpsConnection, false);

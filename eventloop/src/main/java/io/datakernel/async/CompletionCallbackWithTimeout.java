@@ -39,7 +39,7 @@ public final class CompletionCallbackWithTimeout extends CompletionCallback impl
 	 */
 	private CompletionCallbackWithTimeout(Eventloop eventloop, final CompletionCallback callback, long timeoutMillis) {
 		this.callback = callback;
-		timeouter = eventloop.schedule(eventloop.currentTimeMillis() + timeoutMillis, new Runnable() {
+		timeouter = eventloop.schedule(eventloop.currentTimeMillis() + timeoutMillis, new ScheduledRunnable() {
 			@Override
 			public void run() {
 				callback.setException(TIMEOUT_EXCEPTION);

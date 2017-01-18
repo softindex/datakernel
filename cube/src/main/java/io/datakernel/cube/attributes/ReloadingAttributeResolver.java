@@ -67,7 +67,7 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 
 	private void scheduleReload(long period) {
 		Eventloop eventloop = getEventloop();
-		scheduledRunnable = eventloop.schedule(eventloop.currentTimeMillis() + period, new Runnable() {
+		scheduledRunnable = eventloop.schedule(eventloop.currentTimeMillis() + period, new ScheduledRunnable() {
 			@Override
 			public void run() {
 				doReload();

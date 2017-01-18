@@ -53,8 +53,19 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	private long readTimeout = NO_TIMEOUT;
 	private long writeTimeout = NO_TIMEOUT;
 
-	private ScheduledRunnable checkReadTimeout;
-	private ScheduledRunnable checkWriteTimeout;
+	private ScheduledRunnable checkReadTimeout = new ScheduledRunnable() {
+		@Override
+		public void run() {
+			closeWithError(TIMEOUT_EXCEPTION, false);
+		}
+	};
+
+	private ScheduledRunnable checkWriteTimeout = new ScheduledRunnable() {
+		@Override
+		public void run() {
+			closeWithError(TIMEOUT_EXCEPTION, false);
+		}
+	};
 
 	private AsyncTcpSocketContract contractChecker;
 
@@ -135,35 +146,22 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	// timeouts management
 	void scheduleReadTimeOut() {
-		if (checkReadTimeout != null) checkReadTimeout.cancel();
-		checkReadTimeout = eventloop.scheduleBackground(eventloop.currentTimeMillis() + readTimeout, new Runnable() {
-			@Override
-			public void run() {
-				checkReadTimeOut();
-			}
-		});
+		if (!checkReadTimeout.isScheduledNow()) {
+			long roundedTimestamp = ceilMod(eventloop.currentTimeMillis() + readTimeout, 100);
+			eventloop.scheduleBackground(roundedTimestamp, checkReadTimeout);
+		}
 	}
 
 	void scheduleWriteTimeOut() {
-		if (checkWriteTimeout != null) checkWriteTimeout.cancel();
-		checkWriteTimeout = eventloop.scheduleBackground(eventloop.currentTimeMillis() + writeTimeout, new Runnable() {
-			@Override
-			public void run() {
-				checkWriteTimeOut();
-			}
-		});
+		if (!checkWriteTimeout.isScheduledNow()) {
+			long roundedTimestamp = ceilMod(eventloop.currentTimeMillis() + writeTimeout, 100);
+			eventloop.scheduleBackground(roundedTimestamp, checkWriteTimeout);
+		}
 	}
 
-	void checkReadTimeOut() {
-		if (checkReadTimeout == null) return;
-		checkReadTimeout = null;
-		closeWithError(TIMEOUT_EXCEPTION, false);
-	}
-
-	void checkWriteTimeOut() {
-		if (checkWriteTimeout == null) return;
-		checkWriteTimeout = null;
-		closeWithError(TIMEOUT_EXCEPTION, false);
+	private static long ceilMod(long value, long modulo) {
+		long remainder = value % modulo;
+		return remainder == 0 ? value : value - remainder + modulo;
 	}
 
 	// interests management
@@ -201,9 +199,8 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		int oldOps = ops;
 		ops = ops | OP_POSTPONED;
 		readInterest(false);
-		if (checkReadTimeout != null) {
+		if (checkReadTimeout.isScheduledNow()) {
 			checkReadTimeout.cancel();
-			checkReadTimeout = null;
 		}
 		doRead();
 		int newOps = ops & ~OP_POSTPONED;
@@ -297,7 +294,13 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			@SuppressWarnings("ConstantConditions")
 			ByteBuffer bufferToSend = bufToSend.toReadByteBuffer();
 
-			channel.write(bufferToSend);
+			try {
+				channel.write(bufferToSend);
+			} catch (IOException e) {
+				bufToSend.recycle();
+				throw e;
+			}
+
 			bufToSend.ofReadByteBuffer(bufferToSend);
 
 			if (bufToSend.canRead()) {
@@ -308,9 +311,8 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		}
 
 		if (writeQueue.isEmpty()) {
-			if (checkWriteTimeout != null) {
+			if (checkWriteTimeout.isScheduledNow()) {
 				checkWriteTimeout.cancel();
-				checkWriteTimeout = null;
 			}
 			if (writeEndOfStream) {
 				channel.shutdownOutput();
@@ -335,13 +337,11 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			buf.recycle();
 		}
 		writeQueue.clear();
-		if (checkWriteTimeout != null) {
+		if (checkWriteTimeout.isScheduledNow()) {
 			checkWriteTimeout.cancel();
-			checkWriteTimeout = null;
 		}
-		if (checkReadTimeout != null) {
+		if (checkReadTimeout.isScheduledNow()) {
 			checkReadTimeout.cancel();
-			checkReadTimeout = null;
 		}
 	}
 

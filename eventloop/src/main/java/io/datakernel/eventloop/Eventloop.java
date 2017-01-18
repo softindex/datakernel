@@ -51,11 +51,12 @@ import static io.datakernel.util.Preconditions.checkNotNull;
  * because it is implementation of {@link Runnable}. Working of this eventloop will be ended, when it has
  * not selected keys and its queues with tasks are empty.
  */
-public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler, EventloopExecutor, EventloopJmxMBean {
+public final class Eventloop implements Runnable, CurrentTimeProvider, EventloopExecutor, EventloopJmxMBean {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	public static final TimeoutException CONNECT_TIMEOUT = new TimeoutException("Connection timed out");
 	private static final long DEFAULT_EVENT_TIMEOUT = 20L;
+	public static final int DEFAULT_SCHEDULE_PRECISION = 1;
 
 	private static volatile FatalErrorHandler globalFatalErrorHandler = FatalErrorHandlers.ignoreAllErrors();
 
@@ -72,13 +73,13 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	/**
 	 * Collection of scheduled tasks that are scheduled at particular timestamp.
 	 */
-	private final PriorityQueue<ScheduledRunnable> scheduledTasks = new PriorityQueue<>();
+	private final ScheduledRunnableQueue scheduledTasks = new ScheduledRunnableQueue();
 
 	/**
 	 * Collection of background tasks,
 	 * which mean that if eventloop contains only background tasks, it will be closed
 	 */
-	private final PriorityQueue<ScheduledRunnable> backgroundTasks = new PriorityQueue<>();
+	private final ScheduledRunnableQueue backgroundTasks = new ScheduledRunnableQueue();
 
 	/**
 	 * Count of concurrent operations in other threads, non-zero value prevents event loop from termination.
@@ -326,17 +327,8 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		return Math.min(DEFAULT_EVENT_TIMEOUT, timeout);
 	}
 
-	private long getTimeBeforeExecution(PriorityQueue<ScheduledRunnable> taskQueue) {
-		while (!taskQueue.isEmpty()) {
-			ScheduledRunnable first = taskQueue.peek();
-			assert first != null; // unreachable condition
-			if (first.isCancelled()) {
-				taskQueue.poll();
-				continue;
-			}
-			return first.getTimestamp() - currentTimeMillis();
-		}
-		return DEFAULT_EVENT_TIMEOUT;
+	private long getTimeBeforeExecution(ScheduledRunnableQueue tasks) {
+		return tasks.isEmpty() ? DEFAULT_EVENT_TIMEOUT : tasks.peek().getTimestamp() - currentTimeMillis();
 	}
 
 	/**
@@ -470,39 +462,32 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		executeScheduledTasks(backgroundTasks);
 	}
 
-	private void executeScheduledTasks(PriorityQueue<ScheduledRunnable> taskQueue) {
+	private void executeScheduledTasks(ScheduledRunnableQueue tasks) {
 		int newRunnables = 0;
 		Stopwatch swTotal = monitoring ? Stopwatch.createStarted() : null;
 		Stopwatch sw = monitoring ? Stopwatch.createUnstarted() : null;
 
-		for (; ; ) {
-			ScheduledRunnable peeked = taskQueue.peek();
-			if (peeked == null)
-				break;
-			if (peeked.isCancelled()) {
-				taskQueue.poll();
-				continue;
-			}
-			if (peeked.getTimestamp() >= currentTimeMillis()) {
-				break;
-			}
-			ScheduledRunnable polled = taskQueue.poll();
-			assert polled == peeked;
+		while (!tasks.isEmpty()) {
+			long minTimestamp = tasks.peek().getTimestamp();
 
-			Runnable runnable = polled.getRunnable();
+			if (minTimestamp >= currentTimeMillis()) {
+				break;
+			}
+
+			ScheduledRunnable scheduledRunnable = tasks.poll();
 			if (sw != null) {
 				sw.reset();
 				sw.start();
 			}
 
 			try {
-				runnable.run();
+				scheduledRunnable.run();
 				tick++;
-				polled.complete();
+				scheduledRunnable.complete();
 				if (sw != null)
-					stats.updateScheduledTaskDuration(runnable, sw);
+					stats.updateScheduledTaskDuration(scheduledRunnable, sw);
 			} catch (Throwable e) {
-				recordFatalError(e, runnable);
+				recordFatalError(e, scheduledRunnable);
 			}
 
 			newRunnables++;
@@ -712,7 +697,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 			return connectCallback;
 
 		return new ConnectCallback() {
-			private final ScheduledRunnable scheduledTimeout = schedule(currentTimeMillis() + connectionTime, new Runnable() {
+			private final ScheduledRunnable scheduledTimeout = schedule(currentTimeMillis() + connectionTime, new ScheduledRunnable() {
 				@Override
 				public void run() {
 					recordIoError(CONNECT_TIMEOUT, socketChannel);
@@ -789,38 +774,34 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	}
 
 	/**
-	 * Schedules new task. Returns {@link ScheduledRunnable} with this runnable.
-	 *
-	 * @param timestamp timestamp after which task will be ran
-	 * @param runnable  runnable of this task
-	 * @return scheduledRunnable, which could used for cancelling the task
+	 * Schedules task to be executed after specified timestamp.
+	 * In case when this task is already scheduled, eventloop reschedules this task with new timestamp.
 	 */
-	@Override
-	public ScheduledRunnable schedule(long timestamp, Runnable runnable) {
-		assert inEventloopThread();
-		return addScheduledTask(timestamp, runnable, false);
+	public ScheduledRunnable schedule(long timestamp, ScheduledRunnable schTask) {
+		return schedule(timestamp, schTask, scheduledTasks);
 	}
 
 	/**
-	 * Schedules new background task. Returns {@link ScheduledRunnable} with this runnable.
+	 * Schedules background task to be executed after specified timestamp.
+	 * In case when this task is already scheduled, eventloop reschedules this task with new timestamp.
 	 * <p/>
 	 * If eventloop contains only background tasks, it will be closed
-	 *
-	 * @param timestamp timestamp after which task will be ran
-	 * @param runnable  runnable of this task
-	 * @return scheduledRunnable, which could used for cancelling the task
 	 */
-	@Override
-	public ScheduledRunnable scheduleBackground(long timestamp, Runnable runnable) {
-		assert inEventloopThread();
-		return addScheduledTask(timestamp, runnable, true);
+	public ScheduledRunnable scheduleBackground(long timestamp, ScheduledRunnable scheduledRunnable) {
+		return schedule(timestamp, scheduledRunnable, backgroundTasks);
 	}
 
-	private ScheduledRunnable addScheduledTask(long timestamp, Runnable runnable, boolean background) {
-		ScheduledRunnable scheduledRunnable = ScheduledRunnable.create(timestamp, runnable);
-		PriorityQueue<ScheduledRunnable> taskQueue = background ? backgroundTasks : scheduledTasks;
-		taskQueue.offer(scheduledRunnable);
-		return scheduledRunnable;
+	private ScheduledRunnable schedule(long timestamp, ScheduledRunnable schTask, ScheduledRunnableQueue tasks) {
+		assert inEventloopThread();
+
+		if (schTask.isScheduledNow()) {
+			schTask.cancel();
+		}
+		schTask.reset();
+
+		schTask.setTimestamp(timestamp);
+		tasks.add(schTask);
+		return schTask;
 	}
 
 	/**

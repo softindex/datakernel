@@ -96,7 +96,7 @@ public final class SocketReconnector {
 					if (logger.isWarnEnabled()) {
 						logger.warn("Connection failed, reconnecting to {}: {}", address, exception.toString());
 					}
-					eventloop.scheduleBackground(eventloop.currentTimeMillis() + reconnectTimeout, new Runnable() {
+					eventloop.scheduleBackground(eventloop.currentTimeMillis() + reconnectTimeout, new ScheduledRunnable() {
 						@Override
 						public void run() {
 							reconnect(eventloop, address,

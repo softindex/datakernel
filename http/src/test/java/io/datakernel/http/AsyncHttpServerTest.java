@@ -20,6 +20,7 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.ScheduledRunnable;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -83,7 +84,7 @@ public class AsyncHttpServerTest {
 			@Override
 			public void serve(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
 				final HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
-				primaryEventloop.schedule(primaryEventloop.currentTimeMillis() + random.nextInt(3), new Runnable() {
+				primaryEventloop.schedule(primaryEventloop.currentTimeMillis() + random.nextInt(3), new ScheduledRunnable() {
 					@Override
 					public void run() {
 						callback.setResult(content);

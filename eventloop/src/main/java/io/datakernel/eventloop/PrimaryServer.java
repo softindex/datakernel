@@ -35,7 +35,7 @@ import java.util.concurrent.ExecutorService;
 public final class PrimaryServer extends AbstractServer<PrimaryServer> {
 	private final EventloopServer[] workerServers;
 
-	private int currentAcceptor = 0;
+	private int currentAcceptor = -1; // first server index is currentAcceptor + 1
 
 	// region builders
 	private PrimaryServer(Eventloop primaryEventloop, EventloopServer[] workerServers) {
@@ -83,7 +83,8 @@ public final class PrimaryServer extends AbstractServer<PrimaryServer> {
 
 	@Override
 	protected EventloopServer getWorkerServer() {
-		return workerServers[(currentAcceptor++) % workerServers.length];
+		currentAcceptor = (currentAcceptor + 1) % workerServers.length;
+		return workerServers[currentAcceptor];
 	}
 
 }

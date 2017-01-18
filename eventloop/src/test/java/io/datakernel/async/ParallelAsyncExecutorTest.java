@@ -17,6 +17,7 @@
 package io.datakernel.async;
 
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.ScheduledRunnable;
 import org.junit.Test;
 
 import java.util.HashMap;
@@ -93,7 +94,7 @@ public class ParallelAsyncExecutorTest {
 			@Override
 			public void run(final CompletionCallback callback) {
 				final long startTimestamp = eventloop.currentTimeMillis();
-				eventloop.schedule(eventloop.currentTimeMillis() + 10, new Runnable() {
+				eventloop.schedule(eventloop.currentTimeMillis() + 10, new ScheduledRunnable() {
 					@Override
 					public void run() {
 						long endTimestamp = eventloop.currentTimeMillis();

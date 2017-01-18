@@ -17,6 +17,7 @@
 package io.datakernel.jmx;
 
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.ScheduledRunnable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -436,11 +437,11 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		}
 	}
 
-	private Runnable createRefreshTask(final Eventloop eventloop,
-	                                   final Iterator<JmxRefreshable> previousIterator,
-	                                   final int previousIteratorRefreshesCount,
-	                                   final int supposedJmxRefreshablesCount) {
-		return new Runnable() {
+	private ScheduledRunnable createRefreshTask(final Eventloop eventloop,
+	                                            final Iterator<JmxRefreshable> previousIterator,
+	                                            final int previousIteratorRefreshesCount,
+	                                            final int supposedJmxRefreshablesCount) {
+		return new ScheduledRunnable() {
 			@Override
 			public void run() {
 				long currentTime = eventloop.currentTimeMillis();

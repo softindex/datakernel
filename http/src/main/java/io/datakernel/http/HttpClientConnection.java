@@ -22,6 +22,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncSslSocket;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.exception.ParseException;
 
 import java.net.InetSocketAddress;
@@ -69,6 +70,8 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	@Override
 	public void onClosedWithError(Exception e) {
 		assert eventloop.inEventloopThread();
+
+		super.onClosedWithError(e);
 		if (this.callback != null) {
 			ResultCallback<HttpResponse> callback = this.callback;
 			this.callback = null;
@@ -81,16 +84,20 @@ final class HttpClientConnection extends AbstractHttpConnection {
 
 	@Override
 	protected void onFirstLine(ByteBuf line) throws ParseException {
-		if (line.peek(0) != 'H' || line.peek(1) != 'T' || line.peek(2) != 'T' || line.peek(3) != 'P' || line.peek(4) != '/' || line.peek(5) != '1')
+		if (line.peek(0) != 'H' || line.peek(1) != 'T' || line.peek(2) != 'T' || line.peek(3) != 'P' || line.peek(4) != '/' || line.peek(5) != '1') {
+			line.recycle();
 			throw new ParseException("Invalid response");
+		}
 
 		int sp1;
 		if (line.peek(6) == SP) {
 			sp1 = line.readPosition() + 7;
 		} else if (line.peek(6) == '.' && (line.peek(7) == '1' || line.peek(7) == '0') && line.peek(8) == SP) {
 			sp1 = line.readPosition() + 9;
-		} else
+		} else {
+			line.recycle();
 			throw new ParseException("Invalid response: " + new String(line.array(), line.readPosition(), line.readRemaining()));
+		}
 
 		int sp2;
 		for (sp2 = sp1; sp2 < line.writePosition(); sp2++) {
@@ -100,13 +107,17 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		}
 
 		int statusCode = decodeDecimal(line.array(), sp1, sp2 - sp1);
-		if (!(statusCode >= 100 && statusCode < 600))
+		if (!(statusCode >= 100 && statusCode < 600)) {
+			line.recycle();
 			throw new ParseException("Invalid HTTP Status Code " + statusCode);
+		}
 		response = HttpResponse.ofCode(statusCode);
 		if (isNoBodyMessage(response)) {
 			// Reset Content-Length for the case keep-alive connection
 			contentLength = 0;
 		}
+
+		line.recycle();
 	}
 
 	/**
@@ -215,7 +226,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	private void scheduleTimeout(final long timeoutTime) {
 		assert !isClosed();
 
-		cancellable = eventloop.scheduleBackground(timeoutTime, new Runnable() {
+		cancellable = eventloop.scheduleBackground(timeoutTime, new ScheduledRunnable() {
 			@Override
 			public void run() {
 				if (!isClosed()) {

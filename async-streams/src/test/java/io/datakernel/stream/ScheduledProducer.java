@@ -57,7 +57,7 @@ public class ScheduledProducer extends AbstractStreamProducer<Integer> {
 	public void scheduleNext() {
 		if (scheduledRunnable != null && getProducerStatus().isClosed())
 			return;
-		scheduledRunnable = eventloop.schedule(eventloop.currentTimeMillis() + 1000L, new Runnable() {
+		scheduledRunnable = eventloop.schedule(eventloop.currentTimeMillis() + 1000L, new ScheduledRunnable() {
 			@Override
 			public void run() {
 				send(numberToSend++);

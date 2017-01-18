@@ -23,7 +23,7 @@ public final class ExposedLinkedList<T> {
 
 	public static <T> ExposedLinkedList<T> create() {return new ExposedLinkedList<T>();}
 
-	public static final class Node<T> {
+	public static class Node<T> {
 		final T value;
 		Node<T> prev;
 		Node<T> next;
@@ -40,7 +40,7 @@ public final class ExposedLinkedList<T> {
 			return value;
 		}
 
-		Node(T value) {
+		public Node(T value) {
 			this.value = value;
 		}
 	}

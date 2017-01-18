@@ -18,10 +18,7 @@ package io.datakernel.http;
 
 import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.eventloop.AbstractServer;
-import io.datakernel.eventloop.AsyncTcpSocket;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.InetAddressRange;
+import io.datakernel.eventloop.*;
 import io.datakernel.exception.ParseException;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.JmxAttribute;
@@ -163,16 +160,17 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 	private void scheduleExpiredConnectionsCheck() {
 		assert expiredConnectionsCheck == null;
-		expiredConnectionsCheck = eventloop.scheduleBackground(eventloop.currentTimeMillis() + 1000L, new Runnable() {
-			@Override
-			public void run() {
-				expiredConnectionsCheck = null;
-				checkExpiredConnections();
-				if (!keepAlivePool.isEmpty()) {
-					scheduleExpiredConnectionsCheck();
-				}
-			}
-		});
+		expiredConnectionsCheck =
+				eventloop.scheduleBackground(eventloop.currentTimeMillis() + 1000L, new ScheduledRunnable() {
+					@Override
+					public void run() {
+						expiredConnectionsCheck = null;
+						checkExpiredConnections();
+						if (!keepAlivePool.isEmpty()) {
+							scheduleExpiredConnectionsCheck();
+						}
+					}
+				});
 	}
 
 	private int checkExpiredConnections() {

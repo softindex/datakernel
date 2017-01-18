@@ -129,10 +129,15 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 
 	protected final void closeWithError(final Exception e, Object context) {
 		if (isClosed()) return;
-		eventloop.recordIoError(e, context);
 		asyncTcpSocket.close();
 		readQueue.clear();
 		onClosedWithError(e);
+	}
+
+	@Override
+	public void onClosedWithError(Exception e) {
+		eventloop.recordIoError(e, this);
+		readQueue.clear();
 	}
 
 	protected void onClosed() {
@@ -415,7 +420,6 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 
 				if (reading == FIRSTLINE) {
 					onFirstLine(headerBuf);
-					headerBuf.recycle();
 					reading = HEADERS;
 					maxHeaders = MAX_HEADERS;
 				} else {
