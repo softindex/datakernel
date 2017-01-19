@@ -489,7 +489,8 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	}
 
 	public Aggregation getAggregation(String aggregationId) {
-		return aggregations.get(aggregationId).aggregation;
+		AggregationContainer aggregationContainer = aggregations.get(aggregationId);
+		return (aggregationContainer == null) ? null : aggregationContainer.aggregation;
 	}
 
 	public void incrementLastRevisionId() {
