@@ -113,7 +113,9 @@ public class StreamSorterTest {
 					});
 				} else {
 					send(numberToSend++);
-					scheduleNext();
+					if (isStatusReady()) {
+						scheduleNext();
+					}
 				}
 			}
 		};

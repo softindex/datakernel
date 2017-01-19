@@ -21,82 +21,131 @@ import java.util.TreeMap;
 
 final class ScheduledRunnableQueue {
 	private final SortedMap<Long, ScheduledRunnable> timestampToBucket = new TreeMap<>();
+	private ScheduledRunnable cachedFirst;
 
 	public void add(ScheduledRunnable sr) {
 		assert sr.prev == null && sr.next == null && sr.queue == null;
 
+		sr.queue = this;
+
+		if (cachedFirst == null) {
+			cachedFirst = sr;
+			return;
+		}
+
 		long timestamp = sr.getTimestamp();
-		ScheduledRunnable first = timestampToBucket.get(timestamp);
-		if (first == null) {
+		if (timestamp == cachedFirst.getTimestamp()) {
+			cachedFirst.prev = sr;
+			sr.next = cachedFirst;
+			cachedFirst = sr;
+			return;
+		}
+
+		ScheduledRunnable firstInProperBucket = timestampToBucket.get(timestamp);
+		if (firstInProperBucket == null) {
 			timestampToBucket.put(timestamp, sr);
 		} else {
-			assert timestamp == first.getTimestamp();
+			assert timestamp == firstInProperBucket.getTimestamp();
 
-			sr.next = first;
-			first.prev = sr;
+			sr.next = firstInProperBucket;
+			firstInProperBucket.prev = sr;
 			timestampToBucket.put(timestamp, sr);
 		}
-		sr.queue = this;
 	}
 
 	public ScheduledRunnable peek() {
-		if (timestampToBucket.isEmpty()) {
-			return null;
-		}
-		return timestampToBucket.get(timestampToBucket.firstKey());
+		return cachedFirst;
 	}
 
 	public ScheduledRunnable poll() {
-		if (timestampToBucket.isEmpty()) {
+		if (cachedFirst == null) {
 			return null;
 		}
 
-		long minTimestamp = timestampToBucket.firstKey();
-		ScheduledRunnable first = timestampToBucket.get(minTimestamp);
-		if (first.next == null) {
-			timestampToBucket.remove(minTimestamp);
-		} else {
+		ScheduledRunnable first = cachedFirst;
+
+		if (first.next != null) {
 			first.next.prev = null;
-			timestampToBucket.put(minTimestamp, first.next);
+			cachedFirst = first.next;
 			first.next = null;
+		} else {
+			cacheFirstMapValue();
 		}
 
+		first.queue = null;
 		return first;
 	}
 
+	private void cacheFirstMapValue() {
+		if (!timestampToBucket.isEmpty()) {
+			cachedFirst = timestampToBucket.remove(timestampToBucket.firstKey());
+		} else {
+			cachedFirst = null;
+		}
+	}
+
 	public boolean isEmpty() {
-		return timestampToBucket.isEmpty();
+		return cachedFirst == null;
 	}
 
 	public int size() {
 		int total = 0;
+
+		ScheduledRunnable current = cachedFirst;
+		while (current != null) {
+			total++;
+			current = current.next;
+		}
+
 		for (ScheduledRunnable scheduledRunnable : timestampToBucket.values()) {
-			ScheduledRunnable current = scheduledRunnable;
+			current = scheduledRunnable;
 			while (current != null) {
 				total++;
 				current = current.next;
 			}
 		}
+
 		return total;
 	}
 
 	void remove(ScheduledRunnable sr) {
-		if (sr.prev == null) {
-			if (sr.next == null) {
-				timestampToBucket.remove(sr.getTimestamp());
+		assert cachedFirst != null;
+
+		if (cachedFirst.getTimestamp() == sr.getTimestamp()) { // "sr" is located in cached bucket
+			if (sr.prev == null) {
+				if (sr.next == null) {
+					assert sr == cachedFirst;
+
+					cacheFirstMapValue();
+				} else {
+					sr.next.prev = null;
+					cachedFirst = sr.next;
+				}
 			} else {
-				sr.next.prev = null;
-				timestampToBucket.put(sr.getTimestamp(), sr.next);
+				removeNonFirstNode(sr);
 			}
-		} else {
-			sr.prev.next = sr.next;
-			if (sr.next != null) {
-				sr.next.prev = sr.prev;
+		} else { // "sr" is located in map
+			if (sr.prev == null) {
+				if (sr.next == null) {
+					timestampToBucket.remove(sr.getTimestamp());
+				} else {
+					sr.next.prev = null;
+					timestampToBucket.put(sr.getTimestamp(), sr.next);
+				}
+			} else {
+				removeNonFirstNode(sr);
 			}
 		}
 
 		sr.prev = null;
 		sr.next = null;
 		sr.queue = null;
+	}
+
+	private void removeNonFirstNode(ScheduledRunnable sr) {
+		sr.prev.next = sr.next;
+		if (sr.next != null) {
+			sr.next.prev = sr.prev;
+		}
 	}
 }
