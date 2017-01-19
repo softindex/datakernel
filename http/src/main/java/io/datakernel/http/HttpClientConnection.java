@@ -30,14 +30,11 @@ import java.util.concurrent.TimeoutException;
 
 import static io.datakernel.bytebuf.ByteBufStrings.SP;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeDecimal;
-import static io.datakernel.http.HttpHeaders.CONNECTION;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
 final class HttpClientConnection extends AbstractHttpConnection {
 	private static final TimeoutException TIMEOUT_EXCEPTION = new TimeoutException("HTTP Client Timeout Exception");
 	private static final ParseException CLOSED_CONNECTION = new ParseException("Connection unexpectedly closed");
-
-	private static final HttpHeaders.Value CONNECTION_KEEP_ALIVE = HttpHeaders.asBytes(CONNECTION, "keep-alive");
 
 	private ResultCallback<HttpResponse> callback;
 	private AsyncCancellable cancellable;
@@ -199,9 +196,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	}
 
 	private void writeHttpRequest(HttpRequest httpRequest) {
-		if (keepAlive) {
-			httpRequest.addHeader(CONNECTION_KEEP_ALIVE);
-		}
+		httpRequest.addHeader(keepAlive ? CONNECTION_KEEP_ALIVE_HEADER : CONNECTION_CLOSE_HEADER);
 		asyncTcpSocket.write(httpRequest.toByteBuf());
 	}
 

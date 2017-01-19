@@ -88,8 +88,12 @@ public class HttpTolerantApplicationTest {
 		Socket socket = new Socket();
 
 		socket.connect(new InetSocketAddress(port));
-		write(socket, "GET /abc HTTP1.1\nHost: \tlocalhost\n\n");
-		readAndAssert(socket.getInputStream(), "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\n/abc");
+		write(socket, "GET /abc HTTP/1.1\nHost: \tlocalhost\n\n");
+		readAndAssert(socket.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nContent-Length: 4\r\n\r\n/abc");
+		write(socket, "GET /abc HTTP/1.0\nHost: \tlocalhost \t \nConnection: keep-alive\n\n");
+		readAndAssert(socket.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nContent-Length: 4\r\n\r\n/abc");
+		write(socket, "GET /abc HTTP1.1\nHost: \tlocalhost \t \n\n");
+		readAndAssert(socket.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 4\r\n\r\n/abc");
 		assertTrue(toByteArray(socket.getInputStream()).length == 0);
 		socket.close();
 

@@ -28,7 +28,6 @@ import java.util.Arrays;
 
 import static io.datakernel.bytebuf.ByteBufStrings.SP;
 import static io.datakernel.http.GzipProcessor.toGzip;
-import static io.datakernel.http.HttpHeaders.CONNECTION;
 import static io.datakernel.http.HttpHeaders.CONTENT_ENCODING;
 import static io.datakernel.http.HttpMethod.*;
 
@@ -36,8 +35,6 @@ import static io.datakernel.http.HttpMethod.*;
  * It represents server connection. It can receive requests from clients and respond to them with async servlet.
  */
 final class HttpServerConnection extends AbstractHttpConnection {
-	private static final HttpHeaders.Value CONNECTION_KEEP_ALIVE = HttpHeaders.asBytes(CONNECTION, "keep-alive");
-
 	private static final int HEADERS_SLOTS = 256;
 	private static final int MAX_PROBINGS = 2;
 	private static final HttpMethod[] METHODS = new HttpMethod[HEADERS_SLOTS];
@@ -166,12 +163,23 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		int i;
 		for (i = 0; i != line.readRemaining(); i++) {
 			byte b = line.peek(i);
-			if (b == SP)
+			if (b == SP) {
+				line.moveReadPosition(i);
 				break;
+			}
 			this.headerChars[i] = (char) b;
 		}
 
 		HttpUri url = HttpUri.parseUrl(new String(headerChars, 0, i)); // TODO ?
+
+		keepAlive = false;
+		if (line.readRemaining() > 8) {
+			if (line.peek(1) == 'H' && line.peek(2) == 'T' && line.peek(3) == 'T' && line.peek(4) == 'P'
+					&& line.peek(5) == '/' && line.peek(6) == '1' && line.peek(7) == '.') {
+				keepAlive = (line.peek(8) == '1'); // keep-alive for HTTP/1.1
+			}
+		}
+
 		request = HttpRequest.of(method, url);
 
 		if (method == GET || method == DELETE) {
@@ -194,9 +202,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	}
 
 	private void writeHttpResult(HttpResponse httpResponse) {
-		if (keepAlive) {
-			httpResponse.addHeader(CONNECTION_KEEP_ALIVE);
-		}
+		httpResponse.addHeader(keepAlive ? CONNECTION_KEEP_ALIVE_HEADER : CONNECTION_CLOSE_HEADER);
 		ByteBuf buf = httpResponse.toByteBuf();
 		httpResponse.recycleBufs();
 		asyncTcpSocket.write(buf);
@@ -263,7 +269,6 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	@Override
 	protected void reset() {
 		reading = FIRSTLINE;
-		keepAlive = false;
 		if (request != null) {
 			request.recycleBufs();
 			request = null;

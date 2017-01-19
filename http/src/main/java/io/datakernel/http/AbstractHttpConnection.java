@@ -32,9 +32,13 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 	public static final int MAX_HEADER_LINE_SIZE = 8 * 1024; // http://stackoverflow.com/questions/686217/maximum-on-http-header-values
 	public static final int MAX_HEADERS = 100; // http://httpd.apache.org/docs/2.2/mod/core.html#limitrequestfields
 
-	private static final byte[] CONNECTION_KEEP_ALIVE = encodeAscii("keep-alive");
+	private static final byte[] CONNECTION_KEEP_ALIVE_TOKEN = encodeAscii("keep-alive");
+	private static final byte[] CONNECTION_CLOSE_TOKEN = encodeAscii("close");
 	private static final byte[] TRANSFER_ENCODING_CHUNKED = encodeAscii("chunked");
 	protected static final int UNKNOWN_LENGTH = -1;
+
+	protected static final HttpHeaders.Value CONNECTION_KEEP_ALIVE_HEADER = HttpHeaders.asBytes(CONNECTION, "keep-alive");
+	protected static final HttpHeaders.Value CONNECTION_CLOSE_HEADER = HttpHeaders.asBytes(CONNECTION, "close");
 
 	public static final ParseException HEADER_NAME_ABSENT = new ParseException("Header name is absent");
 	public static final ParseException TOO_BIG_HTTP_MESSAGE = new ParseException("Too big HttpMessage");
@@ -247,7 +251,11 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 				throw TOO_BIG_HTTP_MESSAGE;
 			}
 		} else if (header == CONNECTION) {
-			keepAlive = equalsLowerCaseAscii(CONNECTION_KEEP_ALIVE, value.array(), value.readPosition(), value.readRemaining());
+			if (equalsLowerCaseAscii(CONNECTION_KEEP_ALIVE_TOKEN, value.array(), value.readPosition(), value.readRemaining())) {
+				keepAlive = true;
+			} else if (equalsLowerCaseAscii(CONNECTION_CLOSE_TOKEN, value.array(), value.readPosition(), value.readRemaining())) {
+				keepAlive = false;
+			}
 		} else if (header == TRANSFER_ENCODING) {
 			isChunked = equalsLowerCaseAscii(TRANSFER_ENCODING_CHUNKED, value.array(), value.readPosition(), value.readRemaining());
 		} else if (header == CONTENT_ENCODING) {
