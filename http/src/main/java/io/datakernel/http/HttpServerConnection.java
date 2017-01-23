@@ -27,6 +27,8 @@ import java.net.InetAddress;
 import java.util.Arrays;
 
 import static io.datakernel.bytebuf.ByteBufStrings.SP;
+import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
+import static io.datakernel.bytebuf.ByteBufStrings.equalsLowerCaseAscii;
 import static io.datakernel.http.GzipProcessor.toGzip;
 import static io.datakernel.http.HttpHeaders.CONTENT_ENCODING;
 import static io.datakernel.http.HttpMethod.*;
@@ -60,6 +62,10 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	private HttpRequest request;
 	private final AsyncHttpServer server;
 	private final AsyncServlet servlet;
+
+	private static final byte[] EXPECT_100_CONTINUE = encodeAscii("100-continue");
+	private static final byte[] EXPECT_RESPONSE_CONTINUE = encodeAscii("HTTP/1.1 100 Continue\r\n\r\n");
+	private boolean statusExpectContinue;
 
 	/**
 	 * Creates a new instance of HttpServerConnection
@@ -198,6 +204,12 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	@Override
 	protected void onHeader(HttpHeader header, final ByteBuf value) throws ParseException {
 		super.onHeader(header, value);
+		if (header == HttpHeaders.EXPECT) {
+			if (equalsLowerCaseAscii(EXPECT_100_CONTINUE, value.array(), value.readPosition(), value.readRemaining())) {
+				statusExpectContinue = true;
+				asyncTcpSocket.write(ByteBuf.wrapForReading(EXPECT_RESPONSE_CONTINUE));
+			}
+		}
 		request.addHeader(header, value);
 	}
 
@@ -205,6 +217,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		httpResponse.addHeader(keepAlive ? CONNECTION_KEEP_ALIVE_HEADER : CONNECTION_CLOSE_HEADER);
 		ByteBuf buf = httpResponse.toByteBuf();
 		httpResponse.recycleBufs();
+		statusExpectContinue = false;
 		asyncTcpSocket.write(buf);
 	}
 
@@ -280,6 +293,10 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	public void onWrite() {
 		assert !isClosed();
 		if (reading != NOTHING) return;
+
+		if (statusExpectContinue) {
+			return;
+		}
 
 		// jmx
 		boolean isHttpsConnection = asyncTcpSocket.getClass() == AsyncSslSocket.class;

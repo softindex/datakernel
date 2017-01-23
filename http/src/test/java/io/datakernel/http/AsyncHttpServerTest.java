@@ -249,7 +249,7 @@ public class AsyncHttpServerTest {
 		Socket socket = new Socket();
 
 		socket.connect(new InetSocketAddress(port));
-		writeByRandomParts(socket, "GET /abc HTTP1.1\r\nConnection: close\r\nHost: localhost\r\n\r\n");
+		writeByRandomParts(socket, "GET /abc HTTP/1.1\r\nConnection: close\r\nHost: localhost\r\n\r\n");
 		readAndAssert(socket.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 4\r\n\r\n/abc");
 		assertTrue(toByteArray(socket.getInputStream()).length == 0);
 		socket.close();
@@ -349,6 +349,39 @@ public class AsyncHttpServerTest {
 				eventloop.getStats().getErrorStats().getIoErrors().getLastException().getMessage());
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+	}
+
+	@Test
+	public void testExpectContinue() throws Exception {
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
+		AsyncHttpServer server = AsyncHttpServer.create(eventloop, new AsyncServlet() {
+			@Override
+			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
+				callback.setResult(HttpResponse.ok200().withBody(request.detachBody()));
+			}
+		}).withListenPort(port);
+
+		server.listen();
+		Thread thread = new Thread(eventloop);
+		thread.start();
+
+		Socket socket = new Socket();
+		socket.setTcpNoDelay(true);
+		socket.connect(new InetSocketAddress(port));
+
+		writeByRandomParts(socket, "POST /abc HTTP/1.0\r\nHost: localhost\r\nContent-Length: 5\r\nExpect: 100-continue\r\n\r\n");
+		readAndAssert(socket.getInputStream(), "HTTP/1.1 100 Continue\r\n\r\n");
+
+		writeByRandomParts(socket, "abcde");
+		readAndAssert(socket.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 5\r\n\r\nabcde");
+
+		assertTrue(toByteArray(socket.getInputStream()).length == 0);
+		assertTrue(socket.isClosed());
+		socket.close();
+
+		server.closeFuture().get();
+		thread.join();
 	}
 
 	public static void main(String[] args) throws Exception {
