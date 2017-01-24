@@ -38,7 +38,6 @@ public final class CubeHttpClient implements ICube {
 	private final Eventloop eventloop;
 	private final String url;
 	private final IAsyncHttpClient httpClient;
-	private int timeout = Integer.MAX_VALUE;
 	private Gson gson;
 	private final Map<String, Type> attributeTypes = newLinkedHashMap();
 	private final Map<String, Type> measureTypes = newLinkedHashMap();
@@ -57,11 +56,6 @@ public final class CubeHttpClient implements ICube {
 
 	public static CubeHttpClient create(Eventloop eventloop, AsyncHttpClient httpClient, URI cubeServletUrl) {
 		return create(eventloop, httpClient, cubeServletUrl.toString());
-	}
-
-	public CubeHttpClient withTimeout(int timeout) {
-		this.timeout = timeout;
-		return this;
 	}
 
 	public CubeHttpClient withAttribute(String attribute, Type type) {
@@ -86,7 +80,7 @@ public final class CubeHttpClient implements ICube {
 
 	@Override
 	public void query(CubeQuery query, final ResultCallback<QueryResult> callback) {
-		httpClient.send(buildRequest(query), timeout, new ForwardingResultCallback<HttpResponse>(callback) {
+		httpClient.send(buildRequest(query), new ForwardingResultCallback<HttpResponse>(callback) {
 			@Override
 			public void onResult(HttpResponse httpResponse) {
 				String response;

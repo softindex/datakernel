@@ -16,29 +16,8 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.net.ServerSocketSettings;
-import io.datakernel.net.SocketSettings;
-
-import javax.net.ssl.SSLContext;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.util.Collection;
-import java.util.concurrent.ExecutorService;
-
 public final class SimpleServer extends AbstractServer<SimpleServer> {
 	private final SocketHandlerProvider socketHandlerProvider;
-
-	private SimpleServer(Eventloop eventloop, ServerSocketSettings serverSocketSettings, SocketSettings socketSettings,
-	                     boolean acceptOnce,
-	                     Collection<InetSocketAddress> listenAddresses,
-	                     InetAddressRange range, Collection<InetAddress> bannedAddresses,
-	                     SSLContext sslContext, ExecutorService sslExecutor,
-	                     Collection<InetSocketAddress> sslListenAddresses,
-	                     SimpleServer previousInstance) {
-		super(eventloop, serverSocketSettings, socketSettings, acceptOnce, listenAddresses,
-				range, bannedAddresses, sslContext, sslExecutor, sslListenAddresses);
-		this.socketHandlerProvider = previousInstance.socketHandlerProvider;
-	}
 
 	private SimpleServer(Eventloop eventloop, SocketHandlerProvider socketHandlerProvider) {
 		super(eventloop);
@@ -47,17 +26,6 @@ public final class SimpleServer extends AbstractServer<SimpleServer> {
 
 	public static SimpleServer create(Eventloop eventloop, SocketHandlerProvider socketHandlerProvider) {
 		return new SimpleServer(eventloop, socketHandlerProvider);
-	}
-
-	@Override
-	protected SimpleServer recreate(Eventloop eventloop, ServerSocketSettings serverSocketSettings, SocketSettings socketSettings,
-	                                boolean acceptOnce,
-	                                Collection<InetSocketAddress> listenAddresses,
-	                                InetAddressRange range, Collection<InetAddress> bannedAddresses,
-	                                SSLContext sslContext, ExecutorService sslExecutor,
-	                                Collection<InetSocketAddress> sslListenAddresses) {
-		return new SimpleServer(eventloop, serverSocketSettings, socketSettings, acceptOnce, listenAddresses,
-				range, bannedAddresses, sslContext, sslExecutor, sslListenAddresses, this);
 	}
 
 	@Override

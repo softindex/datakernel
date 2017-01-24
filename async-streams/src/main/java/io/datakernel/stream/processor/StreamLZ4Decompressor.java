@@ -20,8 +20,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
-import io.datakernel.jmx.EventloopJmxMBean;
-import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.ValueStats;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
 import net.jpountz.lz4.LZ4Exception;
@@ -35,7 +34,7 @@ import static io.datakernel.stream.processor.StreamLZ4Compressor.*;
 import static java.lang.Math.min;
 import static java.lang.String.format;
 
-public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> implements EventloopJmxMBean {
+public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> {
 	private final static class Header {
 		private int originalLen;
 		private int compressedLen;
@@ -48,6 +47,27 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<B
 	private final OutputProducer outputProducer;
 
 	private final Header header = new Header();
+
+	public interface Inspector extends AbstractStreamTransformer_1_1.Inspector {
+		void onInputBuf(StreamLZ4Decompressor self, ByteBuf buf);
+
+		void onOutputBuf(StreamLZ4Decompressor self, ByteBuf buf);
+	}
+
+	public static class JmxInspector extends AbstractStreamTransformer_1_1.JmxInspector implements Inspector {
+		private final ValueStats bytesIn = ValueStats.create();
+		private final ValueStats bytesOut = ValueStats.create();
+
+		@Override
+		public void onInputBuf(StreamLZ4Decompressor self, ByteBuf buf) {
+			bytesIn.recordValue(buf.readRemaining());
+		}
+
+		@Override
+		public void onOutputBuf(StreamLZ4Decompressor self, ByteBuf buf) {
+			bytesOut.recordValue(buf.readRemaining());
+		}
+	}
 
 	private final class InputConsumer extends AbstractInputConsumer {
 		@Override
@@ -72,10 +92,7 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<B
 		private ByteBuf inputBuf;
 		private long inputStreamPosition;
 
-		private long jmxBytesInput;
-		private long jmxBytesOutput;
-		private int jmxBufsInput;
-		private int jmxBufsOutput;
+		private final Inspector inspector = (Inspector) StreamLZ4Decompressor.this.inspector;
 
 		private OutputProducer(LZ4FastDecompressor decompressor, StreamingXXHash32 checksum) {
 			this.decompressor = decompressor;
@@ -95,8 +112,7 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<B
 
 		@Override
 		public void onData(ByteBuf buf) {
-			jmxBufsInput++;
-			jmxBytesInput += buf.readRemaining();
+			if (inspector != null) inspector.onInputBuf(StreamLZ4Decompressor.this, buf);
 			try {
 				if (header.finished) {
 					throw new ParseException(format("Unexpected byteBuf after LZ4 EOS packet %s : %s", this, buf));
@@ -144,8 +160,7 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<B
 					outputBuf = readBody(decompressor, checksum, header, inputBuf.array(), 0);
 				}
 				inputStreamPosition += HEADER_LENGTH + header.compressedLen;
-				jmxBufsOutput++;
-				jmxBytesOutput += outputBuf.readRemaining();
+				if (inspector != null) inspector.onOutputBuf(StreamLZ4Decompressor.this, outputBuf);
 
 				inputBuf.rewind();
 				headerBuf.rewind();
@@ -165,17 +180,6 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<B
 				inputBuf = null;
 			}
 		}
-
-		@Override
-		public String toString() {
-			return '{' + super.toString() +
-					" producer:" + inputConsumer.getUpstream() +
-					" inBytes:" + jmxBytesInput +
-					" outBytes:" + jmxBytesOutput +
-					" inBufs:" + jmxBufsInput +
-					" outBufs:" + jmxBufsOutput +
-					'}';
-		}
 	}
 
 	// region creators
@@ -193,6 +197,11 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<B
 	public static StreamLZ4Decompressor create(Eventloop eventloop) {
 		return new StreamLZ4Decompressor(eventloop, LZ4Factory.fastestInstance().fastDecompressor(),
 				XXHashFactory.fastestInstance().newStreamingHash32(DEFAULT_SEED));
+	}
+
+	public StreamLZ4Decompressor withInspector(Inspector inspector) {
+		super.inspector = inspector;
+		return this;
 	}
 	// endregion
 
@@ -257,42 +266,5 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<B
 
 	public long getInputStreamPosition() {
 		return outputProducer.inputStreamPosition;
-	}
-
-	// jmx
-	@Override
-	public Eventloop getEventloop() {
-		return eventloop;
-	}
-
-	@JmxAttribute
-	public long getBytesInput() {
-		return outputProducer.jmxBytesInput;
-	}
-
-	@JmxAttribute
-	public long getBytesOutput() {
-		return outputProducer.jmxBytesOutput;
-	}
-
-	@JmxAttribute
-	public int getBufsInput() {
-		return outputProducer.jmxBufsInput;
-	}
-
-	@JmxAttribute
-	public int getBufsOutput() {
-		return outputProducer.jmxBufsOutput;
-	}
-
-	// miscellaneous
-	@Override
-	public String toString() {
-		return '{' + super.toString() +
-				" inBytes:" + outputProducer.jmxBytesInput +
-				" outBytes:" + outputProducer.jmxBytesOutput +
-				" inBufs:" + outputProducer.jmxBufsInput +
-				" outBufs:" + outputProducer.jmxBufsOutput +
-				'}';
 	}
 }

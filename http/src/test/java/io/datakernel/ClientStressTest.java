@@ -65,7 +65,7 @@ public class ClientStressTest {
 				@Override
 				public void run() {
 					logger.info("sending request to: {}", url);
-					client.send(formRequest(url, random.nextBoolean()), 5000, new ResultCallback<HttpResponse>() {
+					client.send(formRequest(url, random.nextBoolean()), new ResultCallback<HttpResponse>() {
 						@Override
 						public void onResult(HttpResponse result) {
 							logger.info("url: {}, succeed", url);

@@ -56,7 +56,7 @@ public class SimpleProxyServerTest {
 		AsyncServlet servlet = new AsyncServlet() {
 			@Override
 			public void serve(HttpRequest request, final ResultCallback<HttpResponse> callback) {
-				httpClient.send(HttpRequest.get("http://127.0.0.1:" + ECHO_SERVER_PORT + request.getUrl().getPath()), 1000, new ForwardingResultCallback<HttpResponse>(callback) {
+				httpClient.send(HttpRequest.get("http://127.0.0.1:" + ECHO_SERVER_PORT + request.getUrl().getPath()), new ForwardingResultCallback<HttpResponse>(callback) {
 					@Override
 					public void onResult(final HttpResponse result) {
 						int code = result.getCode();

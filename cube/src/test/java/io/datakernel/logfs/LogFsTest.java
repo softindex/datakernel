@@ -128,7 +128,7 @@ public class LogFsTest {
 				BufferSerializers.utf16Serializer());
 		DateTimeFormatter dateTimeFormatter = logManager.getDateTimeFormatter();
 
-		timeProvider.setTime(0); // 00:00
+		timeProvider.setTime(1); // 00:00
 		server.listen();
 		new StreamProducers.OfIterator<>(eventloop, asList("1", "3", "5").iterator())
 				.streamTo(logManager.consumer("p1", createServerStopCallback(server)));

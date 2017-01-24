@@ -56,7 +56,6 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 
 	public static final TimeoutException CONNECT_TIMEOUT = new TimeoutException("Connection timed out");
 	private static final long DEFAULT_EVENT_TIMEOUT = 20L;
-	public static final int DEFAULT_SCHEDULE_PRECISION = 1;
 
 	private static volatile FatalErrorHandler globalFatalErrorHandler = FatalErrorHandlers.ignoreAllErrors();
 

@@ -445,11 +445,7 @@ public final class HttpRequest extends HttpMessage {
 		assert !recycled;
 		if (body != null || method != GET) {
 			if (gzip) {
-				try {
-					body = toGzip(body);
-				} catch (ParseException ignored) {
-					throw new AssertionError("Can't encode http request body");
-				}
+				body = toGzip(body);
 			}
 			setHeader(HttpHeaders.ofDecimal(HttpHeaders.CONTENT_LENGTH, body == null ? 0 : body.readRemaining()));
 		}

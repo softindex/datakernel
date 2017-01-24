@@ -82,6 +82,7 @@ public class TestHttpsClientServer {
 				.withTimeout(500)
 				.withDnsServerAddress(GOOGLE_PUBLIC_DNS);
 		final AsyncHttpClient client = AsyncHttpClient.create(eventloop)
+				.withConnectTimeout(500)
 				.withDnsClient(dnsClient)
 				.withSslEnabled(createSslContext("TLSv1.2", keyManagers, trustManagers, new SecureRandom()), executor);
 
@@ -90,7 +91,7 @@ public class TestHttpsClientServer {
 
 		server.listen();
 
-		client.send(request, 500, new ResultCallback<HttpResponse>() {
+		client.send(request, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
 				callback.setResult(decodeAscii(result.getBody()));
@@ -124,6 +125,7 @@ public class TestHttpsClientServer {
 
 		final AsyncHttpClient client = AsyncHttpClient.create(eventloop)
 				.withDnsClient(dnsClient)
+				.withConnectTimeout(500)
 				.withSslEnabled(context, executor);
 
 		final HttpRequest httpsRequest = post("https://127.0.0.1:" + SSL_PORT).withBody(wrapAscii("Hello, I am Alice!"));
@@ -138,7 +140,7 @@ public class TestHttpsClientServer {
 				new AsyncRunnable() {
 					@Override
 					public void run(final CompletionCallback callback) {
-						client.send(httpsRequest, 500, new AssertingResultCallback<HttpResponse>() {
+						client.send(httpsRequest, new AssertingResultCallback<HttpResponse>() {
 							@Override
 							public void onResult(HttpResponse result) {
 								callbackHttps.setResult(decodeAscii(result.getBody()));
@@ -150,7 +152,7 @@ public class TestHttpsClientServer {
 				new AsyncRunnable() {
 					@Override
 					public void run(final CompletionCallback callback) {
-						client.send(httpRequest, 500, new AssertingResultCallback<HttpResponse>() {
+						client.send(httpRequest, new AssertingResultCallback<HttpResponse>() {
 							@Override
 							public void onResult(HttpResponse result) {
 								callbackHttp.setResult(decodeAscii(result.getBody()));

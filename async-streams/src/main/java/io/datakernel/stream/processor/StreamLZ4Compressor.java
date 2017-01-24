@@ -19,7 +19,7 @@ package io.datakernel.stream.processor;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.ValueStats;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
 import net.jpountz.lz4.LZ4Compressor;
@@ -50,8 +50,22 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 	private final InputConsumer inputConsumer;
 	private final OutputProducer outputProducer;
 
-	private final class InputConsumer extends AbstractInputConsumer {
+	public interface Inspector extends AbstractStreamTransformer_1_1.Inspector {
+		void onBuf(ByteBuf in, ByteBuf out);
+	}
 
+	public static class JmxInspector extends AbstractStreamTransformer_1_1.JmxInspector implements Inspector {
+		private final ValueStats bytesIn = ValueStats.create();
+		private final ValueStats bytesOut = ValueStats.create();
+
+		@Override
+		public void onBuf(ByteBuf in, ByteBuf out) {
+			bytesIn.recordValue(in.readRemaining());
+			bytesOut.recordValue(out.readRemaining());
+		}
+	}
+
+	private final class InputConsumer extends AbstractInputConsumer {
 		@Override
 		protected void onUpstreamEndOfStream() {
 			outputProducer.send(createEndOfStreamBlock());
@@ -67,12 +81,11 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 	private final class OutputProducer extends AbstractOutputProducer implements StreamDataReceiver<ByteBuf> {
 		private final LZ4Compressor compressor;
 		private final StreamingXXHash32 checksum = XXHashFactory.fastestInstance().newStreamingHash32(DEFAULT_SEED);
+		private final Inspector inspector = (Inspector) StreamLZ4Compressor.this.inspector;
 
-		private long jmxBytesInput;
-		private long jmxBytesOutput;
-		private int jmxBufs;
-
-		private OutputProducer(LZ4Compressor compressor) {this.compressor = compressor;}
+		private OutputProducer(LZ4Compressor compressor) {
+			this.compressor = compressor;
+		}
 
 		@Override
 		protected void onDownstreamSuspended() {
@@ -86,13 +99,9 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 
 		@Override
 		public void onData(ByteBuf buf) {
-			jmxBufs++;
-
-			jmxBytesInput += buf.readRemaining();
-			ByteBuf outputBuffer = compressBlock(compressor, checksum, buf.array(), buf.readPosition(), buf.readRemaining());
-			jmxBytesOutput += outputBuffer.readRemaining();
-
-			send(outputBuffer);
+			ByteBuf outputBuf = compressBlock(compressor, checksum, buf.array(), buf.readPosition(), buf.readRemaining());
+			if (inspector != null) inspector.onBuf(buf, outputBuf);
+			send(outputBuf);
 			buf.recycle();
 		}
 	}
@@ -119,6 +128,11 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 
 	public static StreamLZ4Compressor highCompressor(Eventloop eventloop, int compressionLevel) {
 		return new StreamLZ4Compressor(eventloop, LZ4Factory.fastestInstance().highCompressor(compressionLevel));
+	}
+
+	public StreamLZ4Compressor withInspector(Inspector inspector) {
+		super.inspector = inspector;
+		return this;
 	}
 	// endregion
 
@@ -190,31 +204,5 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 
 		outputBuf.writePosition(HEADER_LENGTH);
 		return outputBuf;
-	}
-
-	// jmx
-	@JmxAttribute
-	public long getBytesInput() {
-		return outputProducer.jmxBytesInput;
-	}
-
-	@JmxAttribute
-	public long getBytesOutput() {
-		return outputProducer.jmxBytesOutput;
-	}
-
-	@JmxAttribute
-	public int getBufs() {
-		return outputProducer.jmxBufs;
-	}
-
-	// miscellaneous
-	@Override
-	public String toString() {
-		return '{' + super.toString() +
-				" inBytes:" + outputProducer.jmxBytesInput +
-				" outBytes:" + outputProducer.jmxBytesOutput +
-				" bufs:" + outputProducer.jmxBufs +
-				'}';
 	}
 }

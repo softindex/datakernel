@@ -113,7 +113,7 @@ public class HttpApiTest {
 	public void test() throws IOException, ExecutionException, InterruptedException {
 		server.listen();
 		HttpRequest request = createRequest();
-		client.send(request, 1000, new ResultCallback<HttpResponse>() {
+		client.send(request, new ResultCallback<HttpResponse>() {
 			@Override
 			protected void onResult(HttpResponse result) {
 				try {

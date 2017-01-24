@@ -131,7 +131,7 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 		assert isInPool();
 	}
 
-	protected final void closeWithError(final Exception e, Object context) {
+	protected final void closeWithError(final Exception e) {
 		if (isClosed()) return;
 		asyncTcpSocket.close();
 		readQueue.clear();
@@ -376,24 +376,21 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 		if (reading == NOTHING) {
 			return;
 		}
-		try {
-			if (reading == END_OF_STREAM && readQueue.hasRemaining()) {
-				closeWithError(UNEXPECTED_READ, this);
-				return;
-			}
-			if (readQueue.hasRemaining()) {
+		if (reading == END_OF_STREAM && readQueue.hasRemaining()) {
+			closeWithError(UNEXPECTED_READ);
+			return;
+		}
+		if (readQueue.hasRemaining()) {
+			try {
 				doRead();
+			} catch (ParseException e) {
+				closeWithError(e);
 			}
-			if ((reading != NOTHING || readQueue.isEmpty()) && !isClosed()) {
-				asyncTcpSocket.read();
-			}
-		} catch (ParseException e) {
-			onHttpProtocolError(e);
-			closeWithError(e, this);
+		}
+		if ((reading != NOTHING || readQueue.isEmpty()) && !isClosed()) {
+			asyncTcpSocket.read();
 		}
 	}
-
-	protected abstract void onHttpProtocolError(ParseException e);
 
 	@Override
 	public void onReadEndOfStream() {

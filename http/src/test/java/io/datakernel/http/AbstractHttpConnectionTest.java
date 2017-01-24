@@ -39,7 +39,7 @@ public class AbstractHttpConnectionTest {
 	public void testMultiLineHeader() throws IOException {
 		server.listen();
 		final Map<String, String> data = new HashMap<>();
-		client.send(HttpRequest.get("http://127.0.0.1:" + PORT), 50000, new ResultCallback<HttpResponse>() {
+		client.send(HttpRequest.get("http://127.0.0.1:" + PORT), new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
 				data.put("body", decodeAscii(result.getBody()));

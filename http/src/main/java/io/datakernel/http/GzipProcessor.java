@@ -27,9 +27,12 @@ import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 final class GzipProcessor {
-	private GzipProcessor() {}
+	private GzipProcessor() {
+	}
 
-	static GzipProcessor create() {return new GzipProcessor();}
+	static GzipProcessor create() {
+		return new GzipProcessor();
+	}
 
 	static ByteBuf fromGzip(ByteBuf raw) throws ParseException {
 		try (GZIPInputStream gzip = new GZIPInputStream(new ByteArrayInputStream(raw.array(), raw.readPosition(), raw.readRemaining()))) {
@@ -37,9 +40,7 @@ final class GzipProcessor {
 			ByteBuf data = ByteBufPool.allocate(256);
 			while ((nRead = gzip.read(data.array(), data.writePosition(), data.writeRemaining())) != -1) {
 				data.moveWritePosition(nRead);
-				if (!data.canWrite()) {
-					data = ByteBufPool.ensureTailRemaining(data, data.limit() * 2);
-				}
+				data = ByteBufPool.ensureTailRemaining(data, data.readRemaining());
 			}
 			return data;
 		} catch (IOException e) {
@@ -49,7 +50,7 @@ final class GzipProcessor {
 		}
 	}
 
-	static ByteBuf toGzip(ByteBuf raw) throws ParseException {
+	static ByteBuf toGzip(ByteBuf raw) {
 		try {
 			ByteBufOutputStream out = new ByteBufOutputStream();
 			GZIPOutputStream gzip = new GZIPOutputStream(out);
@@ -57,24 +58,19 @@ final class GzipProcessor {
 			gzip.close();
 			return out.getBuf();
 		} catch (IOException e) {
-			throw new ParseException("Can't encode gzip", e);
+			throw new AssertionError();
 		} finally {
 			raw.recycle();
 		}
 	}
 
 	private static class ByteBufOutputStream extends OutputStream {
-		private ByteBuf container;
+		private ByteBuf buf = ByteBufPool.allocate(256);
 
 		@Override
 		public void write(int b) {
-			if (container == null) {
-				container = ByteBufPool.allocate(256);
-			}
-			if (!container.canWrite()) {
-				container = ByteBufPool.ensureTailRemaining(container, container.limit() * 2);
-			}
-			container.put((byte) b);
+			buf = ByteBufPool.ensureTailRemaining(buf, 1);
+			buf.put((byte) b);
 		}
 
 		@Override
@@ -84,19 +80,12 @@ final class GzipProcessor {
 
 		@Override
 		public void write(byte[] bytes, int off, int len) {
-			if (container == null) {
-				container = ByteBufPool.allocate(256);
-			}
-			while (container.writeRemaining() < len) {
-				container = ByteBufPool.ensureTailRemaining(container, container.limit() * 2);
-			}
-			container.put(bytes, off, len);
+			buf = ByteBufPool.ensureTailRemaining(buf, len);
+			buf.put(bytes, off, len);
 		}
 
 		public ByteBuf getBuf() {
-			ByteBuf res = container;
-			container = null;
-			return res;
+			return buf;
 		}
 	}
 }

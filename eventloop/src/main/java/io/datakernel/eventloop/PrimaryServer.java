@@ -16,16 +16,8 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.net.ServerSocketSettings;
-import io.datakernel.net.SocketSettings;
-
-import javax.net.ssl.SSLContext;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
 
 /**
  * It is the {@link AbstractServer} which only handles accepting to it. It contains collection of
@@ -33,46 +25,29 @@ import java.util.concurrent.ExecutorService;
  * from collection with round-robin algorithm.
  */
 public final class PrimaryServer extends AbstractServer<PrimaryServer> {
-	private final EventloopServer[] workerServers;
+
+	private final WorkerServer[] workerServers;
 
 	private int currentAcceptor = -1; // first server index is currentAcceptor + 1
 
 	// region builders
-	private PrimaryServer(Eventloop primaryEventloop, EventloopServer[] workerServers) {
+	private PrimaryServer(Eventloop primaryEventloop, WorkerServer[] workerServers) {
 		super(primaryEventloop);
 		this.workerServers = workerServers;
 	}
 
-	private PrimaryServer(Eventloop eventloop, ServerSocketSettings serverSocketSettings, SocketSettings socketSettings,
-	                      boolean acceptOnce,
-	                      Collection<InetSocketAddress> listenAddresses,
-	                      InetAddressRange range, Collection<InetAddress> bannedAddresses,
-	                      SSLContext sslContext, ExecutorService sslExecutor,
-	                      Collection<InetSocketAddress> sslListenAddresses,
-	                      PrimaryServer previousInstance) {
-		super(eventloop, serverSocketSettings, socketSettings, acceptOnce, listenAddresses,
-				range, bannedAddresses, sslContext, sslExecutor, sslListenAddresses);
-		this.workerServers = previousInstance.workerServers;
-	}
-
-	public static PrimaryServer create(Eventloop primaryEventloop, List<? extends EventloopServer> workerServers) {
-		EventloopServer[] workerServersArr = workerServers.toArray(new EventloopServer[workerServers.size()]);
+	public static PrimaryServer create(Eventloop primaryEventloop, List<? extends WorkerServer> workerServers) {
+		WorkerServer[] workerServersArr = workerServers.toArray(new WorkerServer[workerServers.size()]);
 		return new PrimaryServer(primaryEventloop, workerServersArr);
 	}
 
-	public static PrimaryServer create(Eventloop primaryEventloop, EventloopServer... workerServer) {
+	public static PrimaryServer create(Eventloop primaryEventloop, WorkerServer... workerServer) {
 		return create(primaryEventloop, Arrays.asList(workerServer));
 	}
 
-	@Override
-	protected PrimaryServer recreate(Eventloop eventloop, ServerSocketSettings serverSocketSettings, SocketSettings socketSettings,
-	                                 boolean acceptOnce,
-	                                 Collection<InetSocketAddress> listenAddresses,
-	                                 InetAddressRange range, Collection<InetAddress> bannedAddresses,
-	                                 SSLContext sslContext, ExecutorService sslExecutor,
-	                                 Collection<InetSocketAddress> sslListenAddresses) {
-		return new PrimaryServer(eventloop, serverSocketSettings, socketSettings, acceptOnce, listenAddresses,
-				range, bannedAddresses, sslContext, sslExecutor, sslListenAddresses, this);
+	public final PrimaryServer withInspector(Inspector inspector) {
+		super.inspector = inspector;
+		return self();
 	}
 	// endregion
 
@@ -82,7 +57,7 @@ public final class PrimaryServer extends AbstractServer<PrimaryServer> {
 	}
 
 	@Override
-	protected EventloopServer getWorkerServer() {
+	protected WorkerServer getWorkerServer() {
 		currentAcceptor = (currentAcceptor + 1) % workerServers.length;
 		return workerServers[currentAcceptor];
 	}

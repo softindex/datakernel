@@ -24,7 +24,6 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.eventloop.SimpleServer;
 import io.datakernel.eventloop.SimpleServer.SocketHandlerProvider;
 import io.datakernel.exception.ParseException;
@@ -45,8 +44,6 @@ public class AsyncHttpClientTest {
 	private static final int PORT = 45788;
 	public static final byte[] TIMEOUT_EXCEPTION_BYTES = encodeAscii("ERROR: Must be TimeoutException");
 
-	public static final int TIMEOUT = 1000;
-
 	private static final InetAddress GOOGLE_PUBLIC_DNS = HttpUtils.inetAddress("8.8.8.8");
 
 	@Before
@@ -65,7 +62,7 @@ public class AsyncHttpClientTest {
 
 		httpServer.listen();
 
-		httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT), 1000, new ResultCallback<HttpResponse>() {
+		httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT), new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(final HttpResponse result) {
 				try {
@@ -93,66 +90,14 @@ public class AsyncHttpClientTest {
 	}
 
 	@Test(expected = TimeoutException.class)
-	public void testTimeout() throws Throwable {
-		final int TIMEOUT = 100;
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
-
-		final AsyncHttpServer httpServer = AsyncHttpServer.create(eventloop, new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, final ResultCallback<HttpResponse> callback) {
-				eventloop.schedule(eventloop.currentTimeMillis() + (3 * TIMEOUT), new ScheduledRunnable() {
-					@Override
-					public void run() {
-						callback.setResult(HttpResponse.ok200().withBody(TIMEOUT_EXCEPTION_BYTES));
-					}
-				});
-			}
-		}).withListenPort(PORT);
-
-		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop);
-		final ResultCallbackFuture<String> resultObserver = ResultCallbackFuture.create();
-
-		httpServer.listen();
-
-		httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT), TIMEOUT, new ResultCallback<HttpResponse>() {
-			@Override
-			public void onResult(HttpResponse result) {
-				try {
-					resultObserver.setResult(decodeUtf8(result.getBody()));
-				} catch (ParseException e) {
-					onException(e);
-				}
-				httpClient.close();
-				httpServer.close(IgnoreCompletionCallback.create());
-			}
-
-			@Override
-			public void onException(Exception exception) {
-				resultObserver.setException(exception);
-				httpClient.close();
-				httpServer.close(IgnoreCompletionCallback.create());
-			}
-		});
-
-		eventloop.run();
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-
-		try {
-			System.err.println("Result: " + resultObserver.get());
-		} catch (ExecutionException e) {
-			throw e.getCause();
-		}
-	}
-
-	@Test(expected = TimeoutException.class)
 	public void testClientTimeoutConnect() throws Throwable {
 		final int TIMEOUT = 1;
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop);
+		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop).withConnectTimeout(TIMEOUT);
 		final ResultCallbackFuture<String> resultObserver = ResultCallbackFuture.create();
 
-		httpClient.send(HttpRequest.get("http://google.com"), TIMEOUT, new ResultCallback<HttpResponse>() {
+		httpClient.send(HttpRequest.get("http://google.com"), new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
 				try {
@@ -182,7 +127,6 @@ public class AsyncHttpClientTest {
 
 	@Test(expected = ParseException.class)
 	public void testBigHttpMessage() throws Throwable {
-		final int TIMEOUT = 1000;
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		final AsyncHttpServer httpServer = HelloWorldServer.helloWorldServer(eventloop, PORT);
@@ -192,7 +136,7 @@ public class AsyncHttpClientTest {
 
 		httpServer.listen();
 
-		httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT), TIMEOUT, new ResultCallback<HttpResponse>() {
+		httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT), new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
 				try {
@@ -265,7 +209,7 @@ public class AsyncHttpClientTest {
 
 		server.listen();
 
-		httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT), TIMEOUT, new ResultCallback<HttpResponse>() {
+		httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT), new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
 				try {

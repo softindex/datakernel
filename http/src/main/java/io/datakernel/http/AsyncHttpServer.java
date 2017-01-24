@@ -18,23 +18,20 @@ package io.datakernel.http;
 
 import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.eventloop.*;
+import io.datakernel.eventloop.AbstractServer;
+import io.datakernel.eventloop.AsyncTcpSocket;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.exception.ParseException;
 import io.datakernel.jmx.EventStats;
+import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxReducers;
-import io.datakernel.net.ServerSocketSettings;
-import io.datakernel.net.SocketSettings;
 import io.datakernel.util.MemSize;
 
-import javax.net.ssl.SSLContext;
 import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.util.*;
-import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
-import static io.datakernel.jmx.MBeanFormat.formatDuration;
 
 public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	public static final long DEFAULT_KEEP_ALIVE_MILLIS = 30 * 1000L;
@@ -54,80 +51,128 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	};
 
 	private final AsyncServlet servlet;
-	private final HttpExceptionFormatter errorFormatter;
-	private final int maxHttpMessageSize;
-	private final long keepAliveTimeMillis;
-	private final ExposedLinkedList<AbstractHttpConnection> keepAlivePool;
-	private final char[] headerChars;
+	private HttpExceptionFormatter errorFormatter = DEFAULT_ERROR_FORMATTER;
+	private int maxHttpMessageSize = Integer.MAX_VALUE;
+	private long keepAliveTimeMillis = DEFAULT_KEEP_ALIVE_MILLIS;
+	private final ExposedLinkedList<AbstractHttpConnection> keepAlivePool = ExposedLinkedList.create();
+	private final char[] headerChars = new char[MAX_HEADER_LINE_SIZE];
 
 	private AsyncCancellable expiredConnectionsCheck;
 
-	// jmx
-	private final EventStats totalRequests = EventStats.create();
-	private final EventStats httpsRequests = EventStats.create();
-	private final EventStats httpRequests = EventStats.create();
-	private final EventStats keepAliveRequests = EventStats.create();
-	private final EventStats nonKeepAliveRequests = EventStats.create();
 	private final EventStats connectionExpirations = EventStats.create();
-	private final EventStats connectionOpenings = EventStats.create();
-	private final EventStats connectionClosings = EventStats.create();
-	private final EventStats httpProtocolErrors = EventStats.create();
-	private final EventStats applicationErrors = EventStats.create();
-	private final Map<HttpServerConnection, UrlWithTimestamp> currentRequestHandlingStart = new HashMap<>();
-	private boolean monitorCurrentRequestsHandlingDuration = false;
+
+	Inspector inspector;
+
+	public interface Inspector extends AbstractServer.Inspector {
+		void onConnectionError(InetAddress remoteAddress, Exception e);
+
+		void onConnectionClosed(InetAddress remoteAddress);
+
+		void onHttpRequest(HttpRequest request);
+
+		void onHttpResponse(HttpRequest request, HttpResponse httpResponse);
+
+		void onServletError(HttpRequest request, Exception e);
+	}
+
+	public static class JmxInspector extends AbstractServer.JmxInspector implements Inspector {
+		private final EventStats totalRequests = EventStats.create();
+		private final EventStats httpsRequests = EventStats.create();
+		private final EventStats closed = EventStats.create();
+		private final ExceptionStats errors = ExceptionStats.create();
+		private final ExceptionStats applicationErrors = ExceptionStats.create();
+
+		@Override
+		public void onConnectionError(InetAddress remoteAddress, Exception e) {
+			errors.recordException(e, remoteAddress);
+		}
+
+		@Override
+		public void onConnectionClosed(InetAddress remoteAddress) {
+			closed.recordEvent();
+		}
+
+		@Override
+		public void onHttpRequest(HttpRequest request) {
+			totalRequests.recordEvent();
+
+			if (request.isHttps())
+				httpsRequests.recordEvent();
+
+//			if (keepAlive) {
+//				keepAliveRequests.recordEvent();
+//			} else {
+//				nonKeepAliveRequests.recordEvent();
+//			}
+
+//			if (isMonitorCurrentRequestsHandlingDuration()) {
+//				String url = request.getFullUrl();
+//				long timestamp = eventloop.currentTimeMillis();
+//				currentRequestHandlingStart.put(conn, new UrlWithTimestamp(url, timestamp));
+//			}
+		}
+
+		@Override
+		public void onHttpResponse(HttpRequest request, HttpResponse httpResponse) {
+//			if (isMonitorCurrentRequestsHandlingDuration()) {
+//				currentRequestHandlingStart.remove(conn);
+//			}
+		}
+
+		@Override
+		public void onServletError(HttpRequest request, Exception e) {
+			applicationErrors.recordException(e, request);
+		}
+
+		@JmxAttribute()
+		public EventStats getTotalRequests() {
+			return totalRequests;
+		}
+
+		@JmxAttribute(description = "requests that was sent over secured connection (https)")
+		public EventStats getHttpsRequests() {
+			return httpsRequests;
+		}
+
+		@JmxAttribute(description = "Number of requests which were invalid according to http protocol. " +
+				"Responses were not sent for this requests")
+		public ExceptionStats getErrors() {
+			return errors;
+		}
+
+		@JmxAttribute(description = "Number of requests which were valid according to http protocol, " +
+				"but application produced error during handling this request " +
+				"(responses with 4xx and 5xx HTTP status codes)")
+		public ExceptionStats getApplicationErrors() {
+			return applicationErrors;
+		}
+
+		@JmxAttribute(description = "number of \"close connection\" events)")
+		public EventStats getClosed() {
+			return closed;
+		}
+
+		@JmxAttribute(
+				description = "current number of live connections (totally in pool and in use)",
+				reducer = JmxReducers.JmxReducerSum.class)
+		public long getConnectionsActive() {
+			return getAccepts().getTotalCount() - closed.getTotalCount();
+		}
+	}
 
 	// region builders
-	private AsyncHttpServer(Eventloop eventloop,
-	                        ServerSocketSettings serverSocketSettings, SocketSettings socketSettings,
-	                        boolean acceptOnce, Collection<InetSocketAddress> listenAddresses,
-	                        InetAddressRange range, Collection<InetAddress> bannedAddresses,
-	                        SSLContext sslContext, ExecutorService sslExecutor,
-	                        Collection<InetSocketAddress> sslListenAddresses,
-	                        AsyncHttpServer prevInstance) {
-
-		super(eventloop, serverSocketSettings, socketSettings, acceptOnce, listenAddresses,
-				range, bannedAddresses, sslContext, sslExecutor, sslListenAddresses);
-		this.servlet = prevInstance.servlet;
-		this.errorFormatter = prevInstance.errorFormatter;
-		this.keepAliveTimeMillis = prevInstance.keepAliveTimeMillis;
-		this.maxHttpMessageSize = prevInstance.maxHttpMessageSize;
-		this.keepAlivePool = prevInstance.keepAlivePool;
-		this.headerChars = prevInstance.headerChars;
-	}
-
-	private AsyncHttpServer(AsyncHttpServer previousInstance, AsyncServlet servlet, HttpExceptionFormatter errorFormatter,
-	                        long keepAliveTimeMillis, int maxHttpMessageSize,
-	                        ExposedLinkedList<AbstractHttpConnection> keepAlivePool, char[] headerChars) {
-		super(previousInstance);
-		this.servlet = servlet;
-		this.errorFormatter = errorFormatter;
-		this.keepAlivePool = keepAlivePool;
-		this.keepAliveTimeMillis = keepAliveTimeMillis;
-		this.maxHttpMessageSize = maxHttpMessageSize;
-		this.headerChars = headerChars;
-	}
-
-	private AsyncHttpServer(Eventloop eventloop, AsyncServlet servlet, HttpExceptionFormatter errorFormatter,
-	                        long keepAliveTimeMillis, int maxHttpMessageSize,
-	                        ExposedLinkedList<AbstractHttpConnection> keepAlivePool, char[] headerChars) {
+	private AsyncHttpServer(Eventloop eventloop, AsyncServlet servlet) {
 		super(eventloop);
 		this.servlet = servlet;
-		this.errorFormatter = errorFormatter;
-		this.keepAlivePool = keepAlivePool;
-		this.keepAliveTimeMillis = keepAliveTimeMillis;
-		this.maxHttpMessageSize = maxHttpMessageSize;
-		this.headerChars = headerChars;
 	}
 
 	public static AsyncHttpServer create(Eventloop eventloop, AsyncServlet servlet) {
-		ExposedLinkedList<AbstractHttpConnection> pool = ExposedLinkedList.create();
-		char[] chars = new char[MAX_HEADER_LINE_SIZE];
-		int maxHttpMessageSize = Integer.MAX_VALUE;
-		return new AsyncHttpServer(eventloop, servlet, DEFAULT_ERROR_FORMATTER, DEFAULT_KEEP_ALIVE_MILLIS, maxHttpMessageSize, pool, chars);
+		return new AsyncHttpServer(eventloop, servlet).withInspector(new JmxInspector());
 	}
 
-	public AsyncHttpServer withKeepAliveTimeMillis(long maxIdleConnectionTime) {
-		return new AsyncHttpServer(this, servlet, errorFormatter, maxIdleConnectionTime, maxHttpMessageSize, keepAlivePool, headerChars);
+	public AsyncHttpServer withKeepAliveTimeMillis(long keepAliveTimeMillis) {
+		this.keepAliveTimeMillis = keepAliveTimeMillis;
+		return self();
 	}
 
 	public AsyncHttpServer withNoKeepAlive() {
@@ -135,7 +180,8 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	}
 
 	public AsyncHttpServer withMaxHttpMessageSize(int maxHttpMessageSize) {
-		return new AsyncHttpServer(this, servlet, errorFormatter, keepAliveTimeMillis, maxHttpMessageSize, keepAlivePool, headerChars);
+		this.maxHttpMessageSize = maxHttpMessageSize;
+		return self();
 	}
 
 	public AsyncHttpServer withMaxHttpMessageSize(MemSize size) {
@@ -143,18 +189,14 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	}
 
 	public AsyncHttpServer withHttpErrorFormatter(HttpExceptionFormatter httpExceptionFormatter) {
-		return new AsyncHttpServer(this, servlet, httpExceptionFormatter, keepAliveTimeMillis, maxHttpMessageSize, keepAlivePool, headerChars);
+		this.errorFormatter = httpExceptionFormatter;
+		return self();
 	}
 
-	@Override
-	protected AsyncHttpServer recreate(Eventloop eventloop, ServerSocketSettings serverSocketSettings, SocketSettings socketSettings,
-	                                   boolean acceptOnce,
-	                                   Collection<InetSocketAddress> listenAddresses,
-	                                   InetAddressRange range, Collection<InetAddress> bannedAddresses,
-	                                   SSLContext sslContext, ExecutorService sslExecutor,
-	                                   Collection<InetSocketAddress> sslListenAddresses) {
-		return new AsyncHttpServer(eventloop, serverSocketSettings, socketSettings, acceptOnce, listenAddresses,
-				range, bannedAddresses, sslContext, sslExecutor, sslListenAddresses, this);
+	public AsyncHttpServer withInspector(Inspector inspector) {
+		super.inspector = inspector;
+		this.inspector = inspector;
+		return self();
 	}
 	// endregion
 
@@ -196,10 +238,6 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	@Override
 	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 		assert eventloop.inEventloopThread();
-
-		// jmx
-		connectionOpenings.recordEvent();
-
 		return HttpServerConnection.create(
 				eventloop, asyncTcpSocket.getRemoteSocketAddress().getAddress(), asyncTcpSocket,
 				this, servlet, keepAlivePool, headerChars, maxHttpMessageSize);
@@ -250,29 +288,6 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	}
 
 	// jmx
-	void recordRequestEvent(boolean https, boolean keepAlive) {
-		totalRequests.recordEvent();
-
-		if (https) {
-			httpsRequests.recordEvent();
-		} else {
-			httpRequests.recordEvent();
-		}
-
-		if (keepAlive) {
-			keepAliveRequests.recordEvent();
-		} else {
-			nonKeepAliveRequests.recordEvent();
-		}
-	}
-
-	void recordHttpProtocolError() {
-		httpProtocolErrors.recordEvent();
-	}
-
-	void recordApplicationError() {
-		applicationErrors.recordEvent();
-	}
 
 	@JmxAttribute(
 			description = "current number of connections",
@@ -282,101 +297,9 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		return keepAlivePool.size();
 	}
 
-	@JmxAttribute()
-	public EventStats getTotalRequests() {
-		return totalRequests;
-	}
-
-	@JmxAttribute(description = "requests that was sent over secured connection (https)")
-	public EventStats getHttpsRequests() {
-		return httpsRequests;
-	}
-
-	@JmxAttribute(description = "requests that was sent over unsecured connection (http)")
-	public EventStats getHttpRequests() {
-		return httpRequests;
-	}
-
-	@JmxAttribute(description = "after handling this type of request connection is returned to pool")
-	public EventStats getKeepAliveRequests() {
-		return keepAliveRequests;
-	}
-
-	@JmxAttribute(description = "after handling this type of request connection is closed")
-	public EventStats getNonKeepAliveRequests() {
-		return nonKeepAliveRequests;
-	}
-
-	@JmxAttribute(description = "Number of requests which were invalid according to http protocol. " +
-			"Responses were not sent for this requests")
-	public EventStats getHttpProtocolErrors() {
-		return httpProtocolErrors;
-	}
-
-	@JmxAttribute(description = "Number of requests which were valid according to http protocol, " +
-			"but application produced error during handling this request " +
-			"(responses with 4xx and 5xx HTTP status codes)")
-	public EventStats getApplicationErrors() {
-		return applicationErrors;
-	}
-
-	@JmxAttribute
-	public boolean isMonitorCurrentRequestsHandlingDuration() {
-		return monitorCurrentRequestsHandlingDuration;
-	}
-
-	@JmxAttribute
-	public void setMonitorCurrentRequestsHandlingDuration(boolean monitor) {
-		if (!monitor) {
-			currentRequestHandlingStart.clear();
-		}
-		this.monitorCurrentRequestsHandlingDuration = monitor;
-	}
-
-	@JmxAttribute(
-			description = "shows duration of current requests handling" +
-					"in case when monitorCurrentRequestsHandlingDuration == true"
-	)
-	public List<String> getCurrentRequestsDuration() {
-		SortedSet<UrlWithDuration> durations = new TreeSet<>();
-		for (HttpServerConnection conn : currentRequestHandlingStart.keySet()) {
-			UrlWithTimestamp urlWithTimestamp = currentRequestHandlingStart.get(conn);
-			int duration = (int) (eventloop.currentTimeMillis() - urlWithTimestamp.getTimestamp());
-			String url = urlWithTimestamp.getUrl();
-			durations.add(new UrlWithDuration(url, duration));
-		}
-
-		List<String> formattedDurations = new ArrayList<>(durations.size());
-		formattedDurations.add("Duration       Url");
-		for (UrlWithDuration urlWithDuration : durations) {
-			String url = urlWithDuration.getUrl();
-			String duration = formatDuration(urlWithDuration.getDuration());
-			String line = String.format("%s   %s", duration, url);
-			formattedDurations.add(line);
-		}
-		return formattedDurations;
-	}
-
 	@JmxAttribute(description = "number of expired connections in keep-alive pool (after appropriate timeout)")
 	public EventStats getConnectionExpirations() {
 		return connectionExpirations;
-	}
-
-	@JmxAttribute(description = "number of \"open connection\" events)")
-	public EventStats getConnectionOpenings() {
-		return connectionOpenings;
-	}
-
-	@JmxAttribute(description = "number of \"close connection\" events)")
-	public EventStats getConnectionClosings() {
-		return connectionClosings;
-	}
-
-	@JmxAttribute(
-			description = "current number of live connections (totally in pool and in use)",
-			reducer = JmxReducers.JmxReducerSum.class)
-	public long getConnectionsActive() {
-		return connectionOpenings.getTotalCount() - connectionClosings.getTotalCount();
 	}
 
 	@JmxAttribute(
@@ -387,74 +310,12 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		return keepAlivePool.size();
 	}
 
-	@JmxAttribute(
-			description = "current number of connections that are currently used for sending/receiving data",
-			reducer = JmxReducers.JmxReducerSum.class
-	)
-	public long getConnectionsInUse() {
-		return getConnectionsActive() - getConnectionsInPool();
-	}
-
-	void recordConnectionClose() {
-		connectionClosings.recordEvent();
-	}
-
-	void requestHandlingStarted(HttpServerConnection conn, HttpRequest request) {
-		if (isMonitorCurrentRequestsHandlingDuration()) {
-			String url = request.getFullUrl();
-			long timestamp = eventloop.currentTimeMillis();
-			currentRequestHandlingStart.put(conn, new UrlWithTimestamp(url, timestamp));
-		}
-	}
-
-	void requestHandlingFinished(HttpServerConnection conn) {
-		if (isMonitorCurrentRequestsHandlingDuration()) {
-			currentRequestHandlingStart.remove(conn);
-		}
-	}
-
 	HttpResponse formatHttpError(Exception e) {
 		return errorFormatter.formatException(e);
 	}
 
-	private static final class UrlWithTimestamp {
-		private final String url;
-		private final long timestamp;
-
-		public UrlWithTimestamp(String url, long timestamp) {
-			this.url = url;
-			this.timestamp = timestamp;
-		}
-
-		public String getUrl() {
-			return url;
-		}
-
-		public long getTimestamp() {
-			return timestamp;
-		}
-	}
-
-	private static final class UrlWithDuration implements Comparable<UrlWithDuration> {
-		private final String url;
-		private final int duration;
-
-		public UrlWithDuration(String url, int duration) {
-			this.url = url;
-			this.duration = duration;
-		}
-
-		public String getUrl() {
-			return url;
-		}
-
-		public int getDuration() {
-			return duration;
-		}
-
-		@Override
-		public int compareTo(UrlWithDuration other) {
-			return -Integer.compare(duration, other.duration);
-		}
+	@JmxAttribute
+	public JmxInspector getStats() {
+		return inspector instanceof JmxInspector ? (JmxInspector) inspector : null;
 	}
 }

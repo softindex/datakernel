@@ -16,36 +16,28 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.AsyncSslSocket;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.exception.ParseException;
 
 import java.net.InetSocketAddress;
-import java.util.concurrent.TimeoutException;
 
 import static io.datakernel.bytebuf.ByteBufStrings.SP;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeDecimal;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
 final class HttpClientConnection extends AbstractHttpConnection {
-	private static final TimeoutException TIMEOUT_EXCEPTION = new TimeoutException("HTTP Client Timeout Exception");
 	private static final ParseException CLOSED_CONNECTION = new ParseException("Connection unexpectedly closed");
 
 	private ResultCallback<HttpResponse> callback;
-	private AsyncCancellable cancellable;
 	private HttpResponse response;
 	private final AsyncHttpClient httpClient;
+	private final AsyncHttpClient.Inspector inspector;
 
 	ExposedLinkedList<HttpClientConnection> keepAlivePoolByAddress;
 	final ExposedLinkedList.Node<HttpClientConnection> keepAlivePoolByAddressNode = new ExposedLinkedList.Node<>(this);
-
-	// jmx
-	private String lastRequestUrl;
 
 	final InetSocketAddress remoteAddress;
 
@@ -55,6 +47,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		super(eventloop, asyncTcpSocket, headerChars, maxHttpMessageSize);
 		this.remoteAddress = remoteAddress;
 		this.httpClient = httpClient;
+		this.inspector = httpClient.inspector;
 	}
 
 	static HttpClientConnection create(Eventloop eventloop, InetSocketAddress remoteAddress,
@@ -67,16 +60,13 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	@Override
 	public void onClosedWithError(Exception e) {
 		assert eventloop.inEventloopThread();
-
 		super.onClosedWithError(e);
-		if (this.callback != null) {
-			ResultCallback<HttpResponse> callback = this.callback;
-			this.callback = null;
-			onClosed();
-			callback.setException(e);
-		} else {
-			onClosed();
+		if (inspector != null) inspector.onConnectionException(this, callback == null, e);
+		if (callback != null) {
+			callback.postException(eventloop, e);
+			callback = null;
 		}
+		onClosed();
 	}
 
 	@Override
@@ -136,31 +126,26 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	@Override
 	protected void onHttpMessage(ByteBuf bodyBuf) {
 		assert !isClosed();
-		response.setBody(bodyBuf);
-		HttpResponse response = this.response;
-		ResultCallback<HttpResponse> callback = this.callback;
+		final ResultCallback<HttpResponse> callback = this.callback;
+		final HttpResponse response = this.response;
 		this.response = null;
 		this.callback = null;
-		// important: process callback before returnToPool!
-		callback.setResult(response);
+		response.setBody(bodyBuf);
+		eventloop.post(new Runnable() {
+			@Override
+			public void run() {
+				callback.setResult(response);
+				response.recycleBufs();
+			}
+		});
 
-		// jmx
-		boolean isHttpsConnection = asyncTcpSocket.getClass() == AsyncSslSocket.class;
-
+		if (inspector != null) inspector.onConnectionResponse(this, response);
 		if (keepAlive) {
 			reset();
 			returnToPool();
-
-			// jmx
-			httpClient.recordRequestEvent(isHttpsConnection, true);
 		} else {
 			close();
-
-			// jmx
-			httpClient.recordRequestEvent(isHttpsConnection, false);
 		}
-
-		response.recycleBufs();
 	}
 
 	@Override
@@ -171,11 +156,8 @@ final class HttpClientConnection extends AbstractHttpConnection {
 				onHttpMessage(bodyQueue.takeRemaining());
 				assert callback == null;
 			} else {
-				closeWithError(CLOSED_CONNECTION, lastRequestUrl);
+				closeWithError(CLOSED_CONNECTION);
 				assert callback == null;
-
-				// jmx
-				httpClient.recordHttpProtocolError(CLOSED_CONNECTION, lastRequestUrl);
 			}
 		}
 		close();
@@ -187,10 +169,6 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		if (response != null) {
 			response.recycleBufs();
 			response = null;
-		}
-		if (cancellable != null) {
-			cancellable.cancel();
-			cancellable = null;
 		}
 		super.reset();
 	}
@@ -204,34 +182,13 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 * Sends the request, recycles it and closes connection in case of timeout
 	 *
 	 * @param request  request for sending
-	 * @param timeout  time after which connection will be closed
 	 * @param callback callback for handling result
 	 */
-	public void send(HttpRequest request, long timeout, ResultCallback<HttpResponse> callback) {
+	public void send(HttpRequest request, ResultCallback<HttpResponse> callback) {
 		this.callback = callback;
 		writeHttpRequest(request);
 
-		// jmx
-		lastRequestUrl = request.getFullUrl();
-
 		request.recycleBufs();
-		scheduleTimeout(timeout);
-	}
-
-	private void scheduleTimeout(final long timeoutTime) {
-		assert !isClosed();
-
-		cancellable = eventloop.scheduleBackground(timeoutTime, new ScheduledRunnable() {
-			@Override
-			public void run() {
-				if (!isClosed()) {
-					closeWithError(TIMEOUT_EXCEPTION, lastRequestUrl);
-
-					// jmx
-					httpClient.recordTimeoutError();
-				}
-			}
-		});
 	}
 
 	@Override
@@ -261,31 +218,22 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	@Override
 	protected void onClosed() {
 		assert callback == null;
+		if (inspector != null) inspector.onConnectionClosed(this);
 		super.onClosed();
 		bodyQueue.clear();
 		if (response != null) {
 			response.recycleBufs();
 		}
-
-		// jmx
-		httpClient.recordConnectionClose();
-	}
-
-	// jmx
-	@Override
-	protected void onHttpProtocolError(ParseException e) {
-		httpClient.recordHttpProtocolError(e, lastRequestUrl);
 	}
 
 	@Override
 	public String toString() {
 		return "HttpClientConnection{" +
 				"callback=" + callback +
-				", cancellable=" + cancellable +
 				", response=" + response +
 				", httpClient=" + httpClient +
 				", keepAlivePoolByAddress=" + (keepAlivePoolByAddress == null ? "" : keepAlivePoolByAddress) +
-				", lastRequestUrl='" + (lastRequestUrl == null ? "" : lastRequestUrl) + '\'' +
+//				", lastRequestUrl='" + (request.getFullUrl() == null ? "" : request.getFullUrl()) + '\'' +
 				", remoteAddress=" + remoteAddress +
 				',' + super.toString() +
 				'}';

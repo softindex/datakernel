@@ -28,9 +28,6 @@ import io.datakernel.datagraph.server.command.DatagraphResponse;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.InetAddressRange;
-import io.datakernel.net.ServerSocketSettings;
-import io.datakernel.net.SocketSettings;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamForwarder;
@@ -38,16 +35,9 @@ import io.datakernel.stream.net.Messaging;
 import io.datakernel.stream.net.MessagingSerializer;
 import io.datakernel.stream.net.MessagingWithBinaryStreaming;
 import io.datakernel.stream.processor.StreamBinarySerializer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import javax.net.ssl.SSLContext;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.stream.net.MessagingSerializers.ofGson;
 
@@ -55,8 +45,6 @@ import static io.datakernel.stream.net.MessagingSerializers.ofGson;
  * Server for processing JSON commands.
  */
 public final class DatagraphServer extends AbstractServer<DatagraphServer> {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
-
 	private final DatagraphEnvironment environment;
 	private final Map<StreamId, StreamForwarder<ByteBuf>> pendingStreams = new HashMap<>();
 	private final MessagingSerializer<DatagraphCommand, DatagraphResponse> serializer;
@@ -85,31 +73,6 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 				.set(DatagraphServer.class, this);
 		DatagraphSerialization serialization = environment.getInstance(DatagraphSerialization.class);
 		this.serializer = ofGson(serialization.gson, DatagraphCommand.class, serialization.gson, DatagraphResponse.class);
-	}
-
-	private DatagraphServer(Eventloop eventloop, ServerSocketSettings serverSocketSettings, SocketSettings socketSettings,
-	                        boolean acceptOnce,
-	                        Collection<InetSocketAddress> listenAddresses,
-	                        InetAddressRange range, Collection<InetAddress> bannedAddresses,
-	                        SSLContext sslContext, ExecutorService sslExecutor,
-	                        Collection<InetSocketAddress> sslListenAddresses,
-	                        DatagraphServer previousInstance) {
-		super(eventloop, serverSocketSettings, socketSettings, acceptOnce, listenAddresses,
-				range, bannedAddresses, sslContext, sslExecutor, sslListenAddresses);
-		this.environment = previousInstance.environment;
-		this.environment.set(DatagraphServer.class, this);
-		this.serializer = previousInstance.serializer;
-	}
-
-	@Override
-	protected DatagraphServer recreate(Eventloop eventloop, ServerSocketSettings serverSocketSettings, SocketSettings socketSettings,
-	                                   boolean acceptOnce,
-	                                   Collection<InetSocketAddress> listenAddresses,
-	                                   InetAddressRange range, Collection<InetAddress> bannedAddresses,
-	                                   SSLContext sslContext, ExecutorService sslExecutor,
-	                                   Collection<InetSocketAddress> sslListenAddresses) {
-		return new DatagraphServer(eventloop, serverSocketSettings, socketSettings, acceptOnce, listenAddresses,
-				range, bannedAddresses, sslContext, sslExecutor, sslListenAddresses, this);
 	}
 	// endregion
 

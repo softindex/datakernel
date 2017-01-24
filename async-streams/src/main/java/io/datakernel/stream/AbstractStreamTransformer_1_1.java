@@ -17,6 +17,9 @@
 package io.datakernel.stream;
 
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.EventStats;
+import io.datakernel.jmx.ExceptionStats;
+import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.stream.processor.StreamTransformer;
 
 import static com.google.common.base.Preconditions.checkState;
@@ -37,6 +40,78 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 
 	protected Object tag;
 
+	protected Inspector inspector;
+
+	public interface Inspector {
+		void onStarted();
+
+		void onEndOfStream();
+
+		void onError(Exception e);
+
+		void onSuspended();
+
+		void onResumed();
+	}
+
+	public static class JmxInspector implements Inspector {
+		private int started;
+		private int endOfStream;
+		private ExceptionStats errors = ExceptionStats.create();
+		private final EventStats suspended = EventStats.create();
+		private final EventStats resumed = EventStats.create();
+
+		@Override
+		public void onStarted() {
+			started++;
+		}
+
+		@Override
+		public void onEndOfStream() {
+			endOfStream++;
+		}
+
+		@Override
+		public void onError(Exception e) {
+			errors.recordException(e);
+		}
+
+		@Override
+		public void onSuspended() {
+			suspended.recordEvent();
+		}
+
+		@Override
+		public void onResumed() {
+			resumed.recordEvent();
+		}
+
+		@JmxAttribute
+		public int getStarted() {
+			return started;
+		}
+
+		@JmxAttribute
+		public int getEndOfStream() {
+			return endOfStream;
+		}
+
+		@JmxAttribute
+		public ExceptionStats getErrors() {
+			return errors;
+		}
+
+		@JmxAttribute
+		public EventStats getSuspended() {
+			return suspended;
+		}
+
+		@JmxAttribute
+		public EventStats getResumed() {
+			return resumed;
+		}
+	}
+
 	protected abstract class AbstractInputConsumer extends AbstractStreamConsumer<I> {
 		protected StreamDataReceiver<O> downstreamDataReceiver;
 
@@ -48,6 +123,7 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 
 		@Override
 		protected final void onStarted() {
+			if (inspector != null) inspector.onStarted();
 			onUpstreamStarted();
 		}
 
@@ -56,6 +132,7 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 
 		@Override
 		protected final void onEndOfStream() {
+			if (inspector != null) inspector.onEndOfStream();
 			onUpstreamEndOfStream();
 		}
 
@@ -63,6 +140,7 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 
 		@Override
 		protected void onError(Exception e) {
+			if (inspector != null) inspector.onError(e);
 			outputProducer.closeWithError(e);
 		}
 
@@ -104,7 +182,6 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 		}
 
 		protected void onDownstreamStarted() {
-
 		}
 
 		@Override
@@ -114,6 +191,7 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 
 		@Override
 		protected final void onSuspended() {
+			if (inspector != null) inspector.onSuspended();
 			onDownstreamSuspended();
 		}
 
@@ -121,6 +199,7 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 
 		@Override
 		protected final void onResumed() {
+			if (inspector != null) inspector.onResumed();
 			onDownstreamResumed();
 		}
 

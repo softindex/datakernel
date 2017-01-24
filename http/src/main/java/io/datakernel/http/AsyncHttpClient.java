@@ -16,28 +16,31 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.*;
+import io.datakernel.async.AsyncCancellable;
+import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.ConnectCallback;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.dns.IAsyncDnsClient;
 import io.datakernel.eventloop.*;
 import io.datakernel.jmx.*;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.util.MemSize;
-import org.slf4j.Logger;
 
 import javax.net.ssl.SSLContext;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map.Entry;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
 import static io.datakernel.eventloop.AsyncTcpSocketImpl.wrapChannel;
 import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
-import static io.datakernel.jmx.MBeanFormat.formatDuration;
 import static io.datakernel.util.Preconditions.checkState;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
@@ -48,92 +51,215 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	private static final long CHECK_PERIOD = 1000L;
 
 	private final Eventloop eventloop;
-	private final IAsyncDnsClient asyncDnsClient;
-	private final SocketSettings socketSettings;
-	private final ExposedLinkedList<AbstractHttpConnection> keepAlivePool;
+	private IAsyncDnsClient asyncDnsClient;
+	private SocketSettings socketSettings = DEFAULT_SOCKET_SETTINGS;
+	private final ExposedLinkedList<AbstractHttpConnection> keepAlivePool = ExposedLinkedList.create();
 	private final HashMap<InetSocketAddress, ExposedLinkedList<HttpClientConnection>> keepAlivePoolsByAddresses = new HashMap<>();
-	private final char[] headerChars;
+	private final char[] headerChars = new char[MAX_HEADER_LINE_SIZE];
 
 	private boolean closed;
 	private AsyncCancellable expiredConnectionsCheck;
-	private final int maxHttpMessageSize;
+	private int maxHttpMessageSize = Integer.MAX_VALUE;
 
 	// timeouts
-	private final long keepAliveTimeMillis;
+	private int connectTimeoutMillis = 0;
+	private long keepAliveTimeMillis = DEFAULT_KEEP_ALIVE_MILLIS;
 
 	// SSL
-	private final SSLContext sslContext;
-	private final ExecutorService sslExecutor;
+	private SSLContext sslContext;
+	private ExecutorService sslExecutor;
 
-	// jmx
-	private final EventStats totalRequests = EventStats.create();
-	private final EventStats httpsRequests = EventStats.create();
-	private final EventStats httpRequests = EventStats.create();
-	private final EventStats keepAliveRequests = EventStats.create();
-	private final EventStats nonKeepAliveRequests = EventStats.create();
-	private final EventStats connectionExpirations = EventStats.create();
-	private final EventStats connectionOpenings = EventStats.create();
-	private final EventStats connectionClosings = EventStats.create();
-	private final ExceptionStats httpProtocolErrors = ExceptionStats.create();
-	private final EventStats timeoutErrors = EventStats.create();
-	private final Map<HttpClientConnection, UrlWithTimestamp> currentRequestToSendTime = new HashMap<>();
-	private boolean monitorCurrentRequestsDuration = false;
+	protected Inspector inspector = new JmxInspector();
+
+	public interface Inspector {
+		AsyncTcpSocketImpl.Inspector socketInspector(HttpRequest httpRequest, InetSocketAddress address, boolean https);
+
+		void onRequest(HttpRequest request);
+
+		void onResolve(HttpRequest request, InetAddress[] inetAddresses);
+
+		void onResolveError(HttpRequest request, Exception e);
+
+		void onConnect(HttpRequest request, HttpClientConnection connection);
+
+		void onConnectError(HttpRequest request, InetSocketAddress address, Exception e);
+
+		void onConnectionResponse(HttpClientConnection connection, HttpResponse response);
+
+		void onConnectionException(HttpClientConnection connection, boolean activeConnection, Exception e);
+
+		void onConnectionClosed(HttpClientConnection connection);
+	}
+
+	public static class JmxInspector implements Inspector {
+		protected final AsyncTcpSocketImpl.JmxInspector socketStats = new AsyncTcpSocketImpl.JmxInspector();
+		protected final AsyncTcpSocketImpl.JmxInspector socketStatsForSSL = new AsyncTcpSocketImpl.JmxInspector();
+		private final EventStats totalRequests = EventStats.create();
+		private final EventStats httpsRequests = EventStats.create();
+		private final ExceptionStats resolveErrors = ExceptionStats.create();
+		private final EventStats connected = EventStats.create();
+		private final ExceptionStats connectErrors = ExceptionStats.create();
+		private long responses;
+		private final ExceptionStats errorsActive = ExceptionStats.create();
+		private final ExceptionStats errorsKeepAlive = ExceptionStats.create();
+		private final EventStats closed = EventStats.create();
+
+		@Override
+		public AsyncTcpSocketImpl.Inspector socketInspector(HttpRequest httpRequest, InetSocketAddress address, boolean https) {
+			return https ? socketStatsForSSL : socketStats;
+		}
+
+		@Override
+		public void onRequest(HttpRequest request) {
+			totalRequests.recordEvent();
+			if (request.isHttps())
+				httpsRequests.recordEvent();
+		}
+
+		@Override
+		public void onResolve(HttpRequest request, InetAddress[] inetAddresses) {
+		}
+
+		@Override
+		public void onResolveError(HttpRequest request, Exception e) {
+			resolveErrors.recordException(e, request);
+		}
+
+		@Override
+		public void onConnect(HttpRequest request, HttpClientConnection connection) {
+			connected.recordEvent();
+		}
+
+		@Override
+		public void onConnectError(HttpRequest request, InetSocketAddress address, Exception e) {
+			connectErrors.recordException(e, request);
+		}
+
+		@Override
+		public void onConnectionResponse(HttpClientConnection connection, HttpResponse response) {
+			responses++;
+		}
+
+		@Override
+		public void onConnectionException(HttpClientConnection connection, boolean activeConnection, Exception e) {
+			if (activeConnection)
+				errorsActive.recordException(e, "url: " + connection.remoteAddress);
+			else
+				errorsKeepAlive.recordException(e, "url: " + connection.remoteAddress);
+		}
+
+		@Override
+		public void onConnectionClosed(HttpClientConnection connection) {
+			closed.recordEvent();
+		}
+
+		@JmxAttribute
+		public AsyncTcpSocketImpl.JmxInspector getSocketStats() {
+			return socketStats;
+		}
+
+		@JmxAttribute(description = "all requests that were sent (both successful and failed)")
+		public EventStats getTotalRequests() {
+			return totalRequests;
+		}
+
+		@JmxAttribute(description = "successful requests that were sent over secured connection (https)")
+		public EventStats getHttpsRequests() {
+			return httpsRequests;
+		}
+
+		@JmxAttribute
+		public ExceptionStats getResolveErrors() {
+			return resolveErrors;
+		}
+
+		@JmxAttribute(description = "number of \"open connection\" events)")
+		public EventStats getConnected() {
+			return connected;
+		}
+
+		@JmxAttribute(description = "number of \"close connection\" events)")
+		public EventStats getClosed() {
+			return closed;
+		}
+
+		@JmxAttribute
+		public ExceptionStats getErrorsActive() {
+			return errorsActive;
+		}
+
+		@JmxAttribute
+		public ExceptionStats getErrorsKeepAlive() {
+			return errorsKeepAlive;
+		}
+
+		@JmxAttribute(description = "current number of live connections (totally in pool and in use)", reducer = JmxReducers.JmxReducerSum.class)
+		public long getActiveConnections() {
+			return connected.getTotalCount() - closed.getTotalCount();
+		}
+
+		@JmxAttribute
+		public long getActiveRequests() {
+			return totalRequests.getTotalCount() -
+					(resolveErrors.getTotal() + connectErrors.getTotal() + errorsActive.getTotal() + responses);
+		}
+
+	}
 
 	private int inetAddressIdx = 0;
 
-	public static AsyncHttpClient create(Eventloop eventloop) {
-		IAsyncDnsClient defaultDnsClient = AsyncDnsClient.create(eventloop);
-		return new AsyncHttpClient(eventloop, defaultDnsClient, DEFAULT_SOCKET_SETTINGS,
-				Integer.MAX_VALUE, DEFAULT_KEEP_ALIVE_MILLIS, null, null);
-	}
-
-	private AsyncHttpClient(Eventloop eventloop, IAsyncDnsClient asyncDnsClient, SocketSettings socketSettings, int maxHttpMessageSize, long keepAliveTimeMillis, SSLContext sslContext, ExecutorService sslExecutor) {
+	private AsyncHttpClient(Eventloop eventloop, IAsyncDnsClient asyncDnsClient) {
 		this.eventloop = eventloop;
 		this.asyncDnsClient = asyncDnsClient;
-		this.socketSettings = socketSettings;
-		this.maxHttpMessageSize = maxHttpMessageSize;
-		this.keepAliveTimeMillis = keepAliveTimeMillis;
-		this.sslContext = sslContext;
-		this.sslExecutor = sslExecutor;
-		this.keepAlivePool = ExposedLinkedList.create();
-		char[] chars = eventloop.get(char[].class);
-		if (chars == null || chars.length < MAX_HEADER_LINE_SIZE) {
-			chars = new char[MAX_HEADER_LINE_SIZE];
-			eventloop.set(char[].class, chars);
-		}
-		this.headerChars = chars;
+	}
+
+	public static AsyncHttpClient create(Eventloop eventloop) {
+		IAsyncDnsClient defaultDnsClient = AsyncDnsClient.create(eventloop);
+		return new AsyncHttpClient(eventloop, defaultDnsClient);
 	}
 
 	public AsyncHttpClient withSocketSettings(SocketSettings socketSettings) {
-		return new AsyncHttpClient(eventloop, asyncDnsClient, socketSettings, maxHttpMessageSize, keepAliveTimeMillis, sslContext, sslExecutor);
+		this.socketSettings = socketSettings;
+		return this;
 	}
 
 	public AsyncHttpClient withDnsClient(IAsyncDnsClient asyncDnsClient) {
-		return new AsyncHttpClient(eventloop, asyncDnsClient, socketSettings, maxHttpMessageSize, keepAliveTimeMillis, sslContext, sslExecutor);
+		this.asyncDnsClient = asyncDnsClient;
+		return this;
 	}
 
 	public AsyncHttpClient withSslEnabled(SSLContext sslContext, ExecutorService sslExecutor) {
-		return new AsyncHttpClient(eventloop, asyncDnsClient, socketSettings, maxHttpMessageSize, keepAliveTimeMillis, sslContext, sslExecutor);
+		this.sslContext = sslContext;
+		this.sslExecutor = sslExecutor;
+		return this;
 	}
 
 	public AsyncHttpClient withKeepAliveTimeMillis(long keepAliveTimeMillis) {
-		return new AsyncHttpClient(eventloop, asyncDnsClient, socketSettings, maxHttpMessageSize, keepAliveTimeMillis, sslContext, sslExecutor);
+		this.keepAliveTimeMillis = keepAliveTimeMillis;
+		return this;
 	}
 
 	public AsyncHttpClient withNoKeepAlive() {
 		return withKeepAliveTimeMillis(0);
 	}
 
+	public AsyncHttpClient withConnectTimeout(long connectTimeoutMillis) {
+		this.connectTimeoutMillis = (int) connectTimeoutMillis;
+		return this;
+	}
+
 	public AsyncHttpClient withMaxHttpMessageSize(int maxHttpMessageSize) {
-		return new AsyncHttpClient(eventloop, asyncDnsClient, socketSettings, maxHttpMessageSize, keepAliveTimeMillis, sslContext, sslExecutor);
+		this.maxHttpMessageSize = maxHttpMessageSize;
+		return this;
 	}
 
 	public AsyncHttpClient withMaxHttpMessageSize(MemSize maxHttpMessageSize) {
 		return withMaxHttpMessageSize((int) maxHttpMessageSize.get());
 	}
 
-	public AsyncHttpClient withLogger(Logger logger) {
-		return new AsyncHttpClient(eventloop, asyncDnsClient, socketSettings, maxHttpMessageSize, keepAliveTimeMillis, sslContext, sslExecutor);
+	public AsyncHttpClient withInspector(Inspector inspector) {
+		this.inspector = inspector;
+		return this;
 	}
 
 	private void scheduleExpiredConnectionsCheck() {
@@ -165,7 +291,6 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 			connection.close();
 			count++;
 		}
-		connectionExpirations.recordEvents(count);
 		return count;
 	}
 
@@ -226,22 +351,29 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	 * Sends the request to server, waits the result timeout and handles result with callback
 	 *
 	 * @param request  request for server
-	 * @param timeout  time which client will wait result
 	 * @param callback callback for handling result
 	 */
 	@Override
-	public void send(final HttpRequest request, final int timeout, final ResultCallback<HttpResponse> callback) {
+	public void send(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
 		assert eventloop.inEventloopThread();
 
-		totalRequests.recordEvent();
-		getUrlAsync(request, timeout, callback);
+		if (inspector != null) inspector.onRequest(request);
+		getUrlAsync(request, callback);
 	}
 
-	private void getUrlAsync(final HttpRequest request, final int timeout, final ResultCallback<HttpResponse> callback) {
-		asyncDnsClient.resolve4(request.getUrl().getHost(), new ForwardingResultCallback<InetAddress[]>(callback) {
+	private void getUrlAsync(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
+		String host = request.getUrl().getHost();
+		asyncDnsClient.resolve4(host, new ResultCallback<InetAddress[]>() {
 			@Override
 			public void onResult(InetAddress[] inetAddresses) {
-				getUrlForHostAsync(request, timeout, inetAddresses, callback);
+				if (inspector != null) inspector.onResolve(request, inetAddresses);
+				getUrlForHostAsync(request, inetAddresses, callback);
+			}
+
+			@Override
+			protected void onException(Exception e) {
+				if (inspector != null) inspector.onResolveError(request, e);
+				callback.setException(e);
 			}
 		});
 	}
@@ -250,7 +382,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		return inetAddresses[((inetAddressIdx++) & Integer.MAX_VALUE) % inetAddresses.length];
 	}
 
-	private void getUrlForHostAsync(final HttpRequest request, int timeout, final InetAddress[] inetAddresses, final ResultCallback<HttpResponse> callback) {
+	private void getUrlForHostAsync(final HttpRequest request, final InetAddress[] inetAddresses, final ResultCallback<HttpResponse> callback) {
 		String host = request.getUrl().getHost();
 		final InetAddress inetAddress = getNextInetAddress(inetAddresses);
 		if (!isValidHost(host, inetAddress)) {
@@ -258,20 +390,21 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 			return;
 		}
 
-		final long timeoutTime = eventloop.currentTimeMillis() + timeout;
 		final InetSocketAddress address = new InetSocketAddress(inetAddress, request.getUrl().getPort());
 
 		HttpClientConnection connection = takeConnection(address);
 		if (connection != null) {
-			sendRequest(connection, request, timeoutTime, callback);
+			connection.send(request, callback);
 			return;
 		}
 
-		eventloop.connect(address, timeout, new ConnectCallback() {
+		eventloop.connect(address, connectTimeoutMillis, new ConnectCallback() {
 			@Override
 			public void onConnect(SocketChannel socketChannel) {
-				AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings);
-				AsyncTcpSocket asyncTcpSocket = request.isHttps() ? wrapClientSocket(eventloop, asyncTcpSocketImpl, sslContext, sslExecutor) : asyncTcpSocketImpl;
+				boolean https = request.isHttps();
+				AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings)
+						.withInspector(inspector == null ? null : inspector.socketInspector(request, address, https));
+				AsyncTcpSocket asyncTcpSocket = https ? wrapClientSocket(eventloop, asyncTcpSocketImpl, sslContext, sslExecutor) : asyncTcpSocketImpl;
 
 				HttpClientConnection connection = HttpClientConnection.create(eventloop, address,
 						asyncTcpSocket,
@@ -280,15 +413,15 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 				asyncTcpSocket.setEventHandler(connection);
 				asyncTcpSocketImpl.register();
 
-				// jmx
-				connectionOpenings.recordEvent();
+				if (inspector != null) inspector.onConnect(request, connection);
 
-				sendRequest(connection, request, timeoutTime, callback);
+				connection.send(request, callback);
 			}
 
 			@Override
-			public void onException(Exception exception) {
-				callback.setException(exception);
+			public void onException(Exception e) {
+				if (inspector != null) inspector.onConnectError(request, address, e);
+				callback.setException(e);
 			}
 
 			@Override
@@ -296,20 +429,6 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 				return "ConnectCallback for address: " + address.toString();
 			}
 		});
-	}
-
-	private void sendRequest(final HttpClientConnection connection, HttpRequest request, long timeoutTime, final ResultCallback<HttpResponse> callback) {
-		// jmx
-		ResultCallback<HttpResponse> responseCallback = callback;
-		if (monitorCurrentRequestsDuration) {
-			currentRequestToSendTime.put(
-					connection,
-					new UrlWithTimestamp(request.getFullUrl(), eventloop.currentTimeMillis())
-			);
-			responseCallback = new MonitorRequestDurationCallback(callback, connection);
-		}
-
-		connection.send(request, timeoutTime, responseCallback);
 	}
 
 	private static boolean isValidHost(String host, InetAddress inetAddress) {
@@ -358,31 +477,6 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		callback.setComplete();
 	}
 
-	// jmx
-	void recordRequestEvent(boolean https, boolean keepAlive) {
-		totalRequests.recordEvent();
-
-		if (https) {
-			httpsRequests.recordEvent();
-		} else {
-			httpRequests.recordEvent();
-		}
-
-		if (keepAlive) {
-			keepAliveRequests.recordEvent();
-		} else {
-			nonKeepAliveRequests.recordEvent();
-		}
-	}
-
-	void recordHttpProtocolError(Throwable e, String url) {
-		httpProtocolErrors.recordException(e, "url: " + url);
-	}
-
-	void recordTimeoutError() {
-		timeoutErrors.recordEvent();
-	}
-
 	@JmxAttribute(description = "number of connections per address")
 	public List<String> getAddressConnections() {
 		if (keepAlivePoolsByAddresses.isEmpty())
@@ -397,55 +491,6 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		return result;
 	}
 
-	@JmxAttribute(description = "all requests that were sent (both successful and failed)")
-	public EventStats getTotalRequests() {
-		return totalRequests;
-	}
-
-	@JmxAttribute(description = "successful requests that were sent over secured connection (https)")
-	public EventStats getHttpsRequests() {
-		return httpsRequests;
-	}
-
-	@JmxAttribute(description = "successful requests that were sent over unsecured connection (http)")
-	public EventStats getHttpRequests() {
-		return httpRequests;
-	}
-
-	@JmxAttribute(description = "after receiving response for this type of request connection is returned to pool " +
-			"(request was successful)")
-	public EventStats getKeepAliveRequests() {
-		return keepAliveRequests;
-	}
-
-	@JmxAttribute(description = "after receiving response for this type of request connection is closed " +
-			"(request was successful)")
-	public EventStats getNonKeepAliveRequests() {
-		return nonKeepAliveRequests;
-	}
-
-	@JmxAttribute(description = "number of expired connections in keep-alive pool (after appropriate timeout)")
-	public EventStats getConnectionExpirations() {
-		return connectionExpirations;
-	}
-
-	@JmxAttribute(description = "number of \"open connection\" events)")
-	public EventStats getConnectionOpenings() {
-		return connectionOpenings;
-	}
-
-	@JmxAttribute(description = "number of \"close connection\" events)")
-	public EventStats getConnectionClosings() {
-		return connectionClosings;
-	}
-
-	@JmxAttribute(
-			description = "current number of live connections (totally in pool and in use)",
-			reducer = JmxReducers.JmxReducerSum.class)
-	public long getConnectionsActive() {
-		return connectionOpenings.getTotalCount() - connectionClosings.getTotalCount();
-	}
-
 	@JmxAttribute(
 			description = "current number of connections in pool",
 			reducer = JmxReducers.JmxReducerSum.class
@@ -454,126 +499,9 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		return keepAlivePool.size();
 	}
 
-	@JmxAttribute(
-			description = "current number of connections that are currently used for sending/receiving data",
-			reducer = JmxReducers.JmxReducerSum.class
-	)
-	public long getConnectionsInUse() {
-		return getConnectionsActive() - getConnectionsInPool();
-	}
-
-	@JmxAttribute(description = "Number of HTTP responses which could not be parsed " +
-			"according to http protocol-specific errors (failed requests)")
-	public ExceptionStats getHttpProtocolErrors() {
-		return httpProtocolErrors;
-	}
-
-	@JmxAttribute(description = "Number of requests that didn't receive response in specified timeout " +
-			"(failed requests)")
-	public EventStats getTimeoutErrors() {
-		return timeoutErrors;
-	}
-
 	@JmxAttribute
-	public boolean isMonitorCurrentRequestsDuration() {
-		return monitorCurrentRequestsDuration;
+	public JmxInspector getStats() {
+		return (inspector instanceof JmxInspector ? (JmxInspector) inspector : null);
 	}
 
-	@JmxAttribute
-	public void setMonitorCurrentRequestsDuration(boolean monitor) {
-		if (!monitor) {
-			currentRequestToSendTime.clear();
-		}
-		this.monitorCurrentRequestsDuration = monitor;
-	}
-
-	void recordConnectionClose() {
-		connectionClosings.recordEvent();
-	}
-
-	@JmxAttribute(description = "shows duration of current requests " +
-			"in case when monitorCurrentRequestsDuration == true")
-	public List<String> getCurrentRequestsDuration() {
-		SortedSet<UrlWithDuration> durations = new TreeSet<>();
-		for (HttpClientConnection conn : currentRequestToSendTime.keySet()) {
-			UrlWithTimestamp urlWithTimestamp = currentRequestToSendTime.get(conn);
-			int duration = (int) (eventloop.currentTimeMillis() - urlWithTimestamp.getTimestamp());
-			String url = urlWithTimestamp.getUrl();
-			durations.add(new UrlWithDuration(url, duration));
-		}
-
-		List<String> formattedDurations = new ArrayList<>(durations.size());
-		formattedDurations.add("Duration       Url");
-		for (UrlWithDuration urlWithDuration : durations) {
-			String url = urlWithDuration.getUrl();
-			String duration = formatDuration(urlWithDuration.getDuration());
-			String line = String.format("%s   %s", duration, url);
-			formattedDurations.add(line);
-		}
-		return formattedDurations;
-	}
-
-	private static final class UrlWithTimestamp {
-		private final String url;
-		private final long timestamp;
-
-		public UrlWithTimestamp(String url, long timestamp) {
-			this.url = url;
-			this.timestamp = timestamp;
-		}
-
-		public String getUrl() {
-			return url;
-		}
-
-		public long getTimestamp() {
-			return timestamp;
-		}
-	}
-
-	private static final class UrlWithDuration implements Comparable<UrlWithDuration> {
-		private final String url;
-		private final int duration;
-
-		public UrlWithDuration(String url, int duration) {
-			this.url = url;
-			this.duration = duration;
-		}
-
-		public String getUrl() {
-			return url;
-		}
-
-		public int getDuration() {
-			return duration;
-		}
-
-		@Override
-		public int compareTo(UrlWithDuration other) {
-			return -Integer.compare(duration, other.duration);
-		}
-	}
-
-	private final class MonitorRequestDurationCallback extends ResultCallback<HttpResponse> {
-		private final ResultCallback<HttpResponse> actualCallback;
-		private final HttpClientConnection connection;
-
-		public MonitorRequestDurationCallback(ResultCallback<HttpResponse> actualCallback,
-		                                      HttpClientConnection connection) {
-			this.actualCallback = actualCallback;
-			this.connection = connection;
-		}
-
-		@Override
-		public void onResult(HttpResponse result) {
-			currentRequestToSendTime.remove(connection);
-			actualCallback.setResult(result);
-		}
-
-		@Override
-		public void onException(Exception exception) {
-			currentRequestToSendTime.remove(connection);
-			actualCallback.setException(exception);
-		}
-	}
 }

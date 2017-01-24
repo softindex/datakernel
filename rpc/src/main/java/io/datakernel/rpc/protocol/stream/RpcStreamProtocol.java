@@ -32,14 +32,11 @@ import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
 import io.datakernel.stream.processor.StreamLZ4Compressor;
 import io.datakernel.stream.processor.StreamLZ4Decompressor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @SuppressWarnings("unchecked")
 final class RpcStreamProtocol implements RpcProtocol {
 	private static final SimpleException CONNECTION_CLOSED_EXCEPTION =
 			new SimpleException("Rpc connection is already closed");
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final Eventloop eventloop;
 	private final RpcConnection rpcConnection;

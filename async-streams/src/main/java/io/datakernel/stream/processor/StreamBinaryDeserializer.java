@@ -20,13 +20,11 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
-import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.ValueStats;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayDeque;
 
@@ -39,11 +37,40 @@ import static java.lang.Math.min;
  *
  * @param <T> original type of data
  */
-public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer_1_1<ByteBuf, T> implements EventloopJmxMBean {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
-
+public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer_1_1<ByteBuf, T> {
 	private final InputConsumer inputConsumer;
 	private final OutputProducer outputProducer;
+
+	public interface Inspector extends AbstractStreamTransformer_1_1.Inspector {
+		void onInput(ByteBuf buf);
+
+		void onOutput();
+	}
+
+	public static class JmxInspector<T> extends AbstractStreamTransformer_1_1.JmxInspector implements Inspector {
+		private final ValueStats inputBufs = ValueStats.create();
+		private long outputItems;
+
+		@Override
+		public void onInput(ByteBuf buf) {
+			inputBufs.recordValue(buf.readRemaining());
+		}
+
+		@Override
+		public void onOutput() {
+			outputItems++;
+		}
+
+		@JmxAttribute
+		public ValueStats getInputBufs() {
+			return inputBufs;
+		}
+
+		@JmxAttribute
+		public long getOutputItems() {
+			return outputItems;
+		}
+	}
 
 	// region creators
 	private StreamBinaryDeserializer(Eventloop eventloop, BufferSerializer<T> valueSerializer,
@@ -81,6 +108,11 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 	                                                     int maxMessageSize, int buffersPoolSize) {
 		return new StreamBinaryDeserializer<>(eventloop, valueSerializer, maxMessageSize, buffersPoolSize);
 	}
+
+	public StreamBinaryDeserializer<T> withInspector(Inspector inspector) {
+		super.inspector = inspector;
+		return this;
+	}
 	// endregion
 
 	private final class InputConsumer extends AbstractInputConsumer {
@@ -111,9 +143,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 
 		private int dataSize;
 
-		private int jmxItems;
-		private int jmxBufs;
-		private long jmxBytes;
+		private final Inspector inspector = (Inspector) StreamBinaryDeserializer.this.inspector;
 
 		private OutputProducer(ArrayDeque<ByteBuf> byteBufs, int maxMessageSize, BufferSerializer<T> valueSerializer,
 		                       int buffersPoolSize) {
@@ -126,8 +156,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 
 		@Override
 		public void onData(ByteBuf buf) {
-			jmxBufs++;
-			jmxBytes += buf.readRemaining();
+			if (inspector != null) inspector.onInput(buf);
 			this.byteBufs.offer(buf);
 			outputProducer.produce();
 			if (this.byteBufs.size() == this.buffersPoolSize) {
@@ -211,7 +240,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 							dataSize = 0;
 							buf.rewind();
 						}
-						++jmxItems;
+						if (inspector != null) inspector.onOutput();
 						downstreamDataReceiver.onData(item);
 					}
 
@@ -230,7 +259,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 				if (byteBufs.isEmpty()) {
 					if (inputConsumer.getConsumerStatus().isClosed()) {
 						outputProducer.sendEndOfStream();
-						logger.info("Deserialized {} objects from {}", jmxItems, inputConsumer.getUpstream());
+//						logger.info("Deserialized {} objects from {}", jmxItems, inputConsumer.getUpstream());
 					} else {
 						if (!isStatusReady()) {
 							resumeProduce();
@@ -283,38 +312,5 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 			byteBufs.clear();
 		}
 
-	}
-
-	// jmx
-	@Override
-	public Eventloop getEventloop() {
-		return eventloop;
-	}
-
-	@JmxAttribute
-	public int getItems() {
-		return outputProducer.jmxItems;
-	}
-
-	@JmxAttribute
-	public int getBufs() {
-		return outputProducer.jmxBufs;
-	}
-
-	@JmxAttribute
-	public long getBytes() {
-		return outputProducer.jmxBytes;
-	}
-
-	@SuppressWarnings({"AssertWithSideEffects", "ConstantConditions"})
-	@Override
-	public String toString() {
-		boolean assertOn = false;
-		assert assertOn = true;
-
-		return '{' + super.toString()
-				+ " items:" + (assertOn ? "" + outputProducer.jmxItems : "?")
-				+ " bufs:" + outputProducer.jmxBufs
-				+ " bytes:" + outputProducer.jmxBytes + '}';
 	}
 }

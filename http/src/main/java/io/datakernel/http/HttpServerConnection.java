@@ -18,7 +18,6 @@ package io.datakernel.http;
 
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.AsyncSslSocket;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
@@ -61,6 +60,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	private HttpRequest request;
 	private final AsyncHttpServer server;
+	private final AsyncHttpServer.Inspector inspector;
 	private final AsyncServlet servlet;
 
 	private static final byte[] EXPECT_100_CONTINUE = encodeAscii("100-continue");
@@ -83,6 +83,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		this.server = server;
 		this.servlet = servlet;
 		this.remoteAddress = remoteAddress;
+		this.inspector = server.inspector;
 	}
 
 	static HttpServerConnection create(Eventloop eventloop, InetAddress remoteAddress,
@@ -103,6 +104,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	@Override
 	public void onClosedWithError(Exception e) {
 		super.onClosedWithError(e);
+		if (inspector != null) inspector.onConnectionError(remoteAddress, e);
 		onClosed();
 	}
 
@@ -235,46 +237,35 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		request.setBody(bodyBuf);
 		request.setRemoteAddress(remoteAddress);
 
-		// jmx
-		server.requestHandlingStarted(this, request);
+		if (inspector != null) inspector.onHttpRequest(request);
 
 		servlet.serve(request, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(final HttpResponse httpResponse) {
 				assert eventloop.inEventloopThread();
+				if (inspector != null) inspector.onHttpResponse(request, httpResponse);
+
 				if (!isClosed()) {
-					try {
-						if (shouldGzip && httpResponse.getBody() != null) {
-							httpResponse.setHeader(HttpHeaders.asBytes(CONTENT_ENCODING, CONTENT_ENCODING_GZIP));
-							httpResponse.setBody(toGzip(httpResponse.detachBody()));
-						}
-						writeHttpResult(httpResponse);
-					} catch (ParseException e) {
-						writeException(e);
-						server.recordApplicationError();
+					if (shouldGzip && httpResponse.getBody() != null) {
+						httpResponse.setHeader(HttpHeaders.asBytes(CONTENT_ENCODING, CONTENT_ENCODING_GZIP));
+						httpResponse.setBody(toGzip(httpResponse.detachBody()));
 					}
+					writeHttpResult(httpResponse);
 				} else {
 					// connection is closed, but bufs are not recycled, let's recycle them now
 					httpResponse.recycleBufs();
 				}
-
 				recycleBufs();
-
-				// jmx
-				server.requestHandlingFinished(HttpServerConnection.this);
 			}
 
 			@Override
 			protected void onException(Exception e) {
 				assert eventloop.inEventloopThread();
+				if (inspector != null) inspector.onServletError(request, e);
 				if (!isClosed()) {
 					writeException(e);
-					server.recordApplicationError();
 				}
 				recycleBufs();
-
-				// jmx
-				server.requestHandlingFinished(HttpServerConnection.this);
 			}
 		});
 	}
@@ -298,23 +289,14 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			return;
 		}
 
-		// jmx
-		boolean isHttpsConnection = asyncTcpSocket.getClass() == AsyncSslSocket.class;
-
 		if (keepAlive) {
 			reset();
 			returnToPool();
 			if (readQueue.hasRemaining()) {
 				onRead(null);
 			}
-
-			// jmx
-			server.recordRequestEvent(isHttpsConnection, true);
 		} else {
 			close();
-
-			// jmx
-			server.recordRequestEvent(isHttpsConnection, false);
 		}
 	}
 
@@ -350,14 +332,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			recycleBufs();
 		}
 
-		// jmx
-		server.recordConnectionClose();
-	}
-
-	@Override
-	protected void onHttpProtocolError(ParseException e) {
-		// jmx
-		server.recordHttpProtocolError();
+		if (inspector != null) inspector.onConnectionClosed(remoteAddress);
 	}
 
 	@Override

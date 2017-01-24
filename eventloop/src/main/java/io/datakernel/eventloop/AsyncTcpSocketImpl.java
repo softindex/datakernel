@@ -19,6 +19,10 @@ package io.datakernel.eventloop;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.exception.SimpleException;
+import io.datakernel.jmx.EventStats;
+import io.datakernel.jmx.ExceptionStats;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.ValueStats;
 import io.datakernel.net.SocketSettings;
 
 import java.io.IOException;
@@ -32,7 +36,7 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 
 @SuppressWarnings({"WeakerAccess", "AssertWithSideEffects"})
 public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEventHandler {
-	public static final int DEFAULT_RECEIVE_BUFFER_SIZE = 16 * 1024;
+	public static final int DEFAULT_READ_BUF_SIZE = 16 * 1024;
 	public static final int OP_POSTPONED = 1 << 7;  // SelectionKey constant
 	private static final int MAX_MERGE_SIZE = 16 * 1024;
 
@@ -48,14 +52,202 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	private SelectionKey key;
 
 	private int ops = 0;
-	private boolean writing = false;
+	private long readTimestamp = 0L;
+	private long writeTimestamp = 0L;
 
 	private long readTimeout = NO_TIMEOUT;
 	private long writeTimeout = NO_TIMEOUT;
+	protected int readMaxSize = DEFAULT_READ_BUF_SIZE;
+	protected int writeMaxSize = MAX_MERGE_SIZE;
+
+	public interface Inspector {
+		void onOpen();
+
+		void onClose();
+
+		void onReadReady(int timeout);
+
+		void onReadTimeout();
+
+		void onReceive(ByteBuf buf);
+
+		void onReceiveEndOfStream();
+
+		void onReceiveError(IOException e);
+
+		void onWrite(ByteBuf buf);
+
+		void onWriteEndOfStream();
+
+		void onWriteReady(int timeout);
+
+		void onWriteTimeout();
+
+		void onSend(ByteBuf buf, int bytes);
+
+		void onSendError(IOException e);
+	}
+
+	public static class JmxInspector implements Inspector {
+		private final EventStats opened = EventStats.create();
+		private final EventStats closed = EventStats.create();
+		private final ValueStats readReady = ValueStats.create();
+		private final EventStats readTimeouts = EventStats.create();
+		private final ValueStats receives = ValueStats.create();
+		private final EventStats receiveEndOfStreams = EventStats.create();
+		private final ExceptionStats recvErrors = ExceptionStats.create();
+		private final ValueStats writes = ValueStats.create();
+		private final EventStats writeEndOfStreams = EventStats.create();
+		private final ValueStats writeReady = ValueStats.create();
+		private final EventStats writeTimeouts = EventStats.create();
+		private final ValueStats sends = ValueStats.create();
+		private final ExceptionStats sendErrors = ExceptionStats.create();
+		private final EventStats sendPartialBufs = EventStats.create();
+
+		@Override
+		public void onOpen() {
+			opened.recordEvent();
+		}
+
+		@Override
+		public void onClose() {
+			closed.recordEvent();
+		}
+
+		@Override
+		public void onReadReady(int timeout) {
+			readReady.recordValue(timeout);
+		}
+
+		@Override
+		public void onReadTimeout() {
+			readTimeouts.recordEvent();
+		}
+
+		@Override
+		public void onReceive(ByteBuf buf) {
+			receives.recordValue(buf.readRemaining());
+		}
+
+		@Override
+		public void onReceiveEndOfStream() {
+			receiveEndOfStreams.recordEvent();
+		}
+
+		@Override
+		public void onReceiveError(IOException e) {
+			recvErrors.recordException(e);
+		}
+
+		@Override
+		public void onWrite(ByteBuf buf) {
+			writes.recordValue(buf.readRemaining());
+		}
+
+		@Override
+		public void onWriteEndOfStream() {
+			writeEndOfStreams.recordEvent();
+		}
+
+		@Override
+		public void onWriteReady(int timeout) {
+			writeReady.recordValue(timeout);
+		}
+
+		@Override
+		public void onWriteTimeout() {
+			writeTimeouts.recordEvent();
+		}
+
+		@Override
+		public void onSend(ByteBuf buf, int bytes) {
+			sends.recordValue(bytes);
+			if (buf.readRemaining() != bytes)
+				sendPartialBufs.recordEvent();
+		}
+
+		@Override
+		public void onSendError(IOException e) {
+			sendErrors.recordException(e);
+		}
+
+		@JmxAttribute
+		public EventStats getOpened() {
+			return opened;
+		}
+
+		@JmxAttribute
+		public EventStats getClosed() {
+			return closed;
+		}
+
+		@JmxAttribute
+		public ValueStats getReadReady() {
+			return readReady;
+		}
+
+		@JmxAttribute
+		public EventStats getReadTimeouts() {
+			return readTimeouts;
+		}
+
+		@JmxAttribute
+		public ValueStats getReceives() {
+			return receives;
+		}
+
+		@JmxAttribute
+		public EventStats getReceiveEndOfStreams() {
+			return receiveEndOfStreams;
+		}
+
+		@JmxAttribute
+		public ExceptionStats getRecvErrors() {
+			return recvErrors;
+		}
+
+		@JmxAttribute
+		public ValueStats getWrites() {
+			return writes;
+		}
+
+		@JmxAttribute
+		public EventStats getWriteEndOfStreams() {
+			return writeEndOfStreams;
+		}
+
+		@JmxAttribute
+		public ValueStats getWriteReady() {
+			return writeReady;
+		}
+
+		@JmxAttribute
+		public EventStats getWriteTimeouts() {
+			return writeTimeouts;
+		}
+
+		@JmxAttribute
+		public ValueStats getSends() {
+			return sends;
+		}
+
+		@JmxAttribute
+		public ExceptionStats getSendErrors() {
+			return sendErrors;
+		}
+
+		@JmxAttribute
+		public EventStats getSendPartialBufs() {
+			return sendPartialBufs;
+		}
+	}
+
+	private Inspector inspector;
 
 	private ScheduledRunnable checkReadTimeout = new ScheduledRunnable() {
 		@Override
 		public void run() {
+			if (inspector != null) inspector.onReadTimeout();
 			closeWithError(TIMEOUT_EXCEPTION, false);
 		}
 	};
@@ -63,20 +255,17 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	private ScheduledRunnable checkWriteTimeout = new ScheduledRunnable() {
 		@Override
 		public void run() {
+			if (inspector != null) inspector.onWriteTimeout();
 			closeWithError(TIMEOUT_EXCEPTION, false);
 		}
 	};
 
-	private AsyncTcpSocketContract contractChecker;
-
-	protected int receiveBufferSize = DEFAULT_RECEIVE_BUFFER_SIZE;
-
 	private final Runnable writeRunnable = new Runnable() {
 		@Override
 		public void run() {
-			if (!writing || !isOpen())
+			if (writeTimestamp == 0L || !isOpen())
 				return;
-			writing = false;
+			writeTimestamp = 0L;
 			try {
 				doWrite();
 			} catch (IOException e) {
@@ -94,12 +283,24 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			throw new AssertionError("Failed to apply socketSettings", e);
 		}
 		AsyncTcpSocketImpl asyncTcpSocket = new AsyncTcpSocketImpl(eventloop, socketChannel);
-		socketSettings.applyReadWriteTimeoutsTo(asyncTcpSocket);
+		if (socketSettings.hasReadTimeout())
+			asyncTcpSocket.readTimeout = socketSettings.getReadTimeout();
+		if (socketSettings.hasWriteTimeout())
+			asyncTcpSocket.writeTimeout = socketSettings.getWriteTimeout();
+		if (socketSettings.hasReadMaxSize())
+			asyncTcpSocket.readMaxSize = socketSettings.getReadMaxSize();
+		if (socketSettings.hasWriteMaxSize())
+			asyncTcpSocket.writeMaxSize = socketSettings.getWriteMaxSize();
 		return asyncTcpSocket;
 	}
 
 	public static AsyncTcpSocketImpl wrapChannel(Eventloop eventloop, SocketChannel socketChannel) {
 		return new AsyncTcpSocketImpl(eventloop, socketChannel);
+	}
+
+	public AsyncTcpSocketImpl withInspector(Inspector inspector) {
+		this.inspector = inspector;
+		return this;
 	}
 
 	private AsyncTcpSocketImpl(Eventloop eventloop, SocketChannel socketChannel) {
@@ -108,8 +309,6 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 		// jmx
 		eventloop.getStats().recordSocketCreateEvent();
-
-		assert (this.contractChecker = AsyncTcpSocketContract.create()) != null;
 	}
 	// endregion
 
@@ -118,17 +317,8 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		this.socketEventHandler = eventHandler;
 	}
 
-	public AsyncTcpSocketImpl readTimeout(long readTimeout) {
-		this.readTimeout = readTimeout;
-		return this;
-	}
-
-	public AsyncTcpSocketImpl writeTimeout(long writeTimeout) {
-		this.writeTimeout = writeTimeout;
-		return this;
-	}
-
 	public final void register() {
+		if (inspector != null) inspector.onOpen();
 		socketEventHandler.onRegistered();
 		try {
 			key = channel.register(eventloop.ensureSelector(), ops, this);
@@ -137,7 +327,6 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 				@Override
 				public void run() {
 					closeChannel();
-					assert contractChecker.onClosedWithError();
 					socketEventHandler.onClosedWithError(e);
 				}
 			});
@@ -186,16 +375,20 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	// read cycle
 	@Override
 	public void read() {
-		assert contractChecker.read();
-
 		if (readTimeout != NO_TIMEOUT) {
 			scheduleReadTimeOut();
 		}
 		readInterest(true);
+		if (readTimestamp == 0L) {
+			readTimestamp = eventloop.currentTimeMillis();
+			assert readTimestamp != 0L;
+		}
 	}
 
 	@Override
 	public void onReadReady() {
+		if (inspector != null) inspector.onReadReady((int) (eventloop.currentTimeMillis() - readTimestamp));
+		readTimestamp = 0L;
 		int oldOps = ops;
 		ops = ops | OP_POSTPONED;
 		readInterest(false);
@@ -209,7 +402,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	}
 
 	private void doRead() {
-		ByteBuf buf = ByteBufPool.allocate(receiveBufferSize);
+		ByteBuf buf = ByteBufPool.allocate(readMaxSize);
 		ByteBuffer buffer = buf.toWriteByteBuffer();
 
 		int numRead;
@@ -218,30 +411,32 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			buf.ofWriteByteBuffer(buffer);
 		} catch (IOException e) {
 			buf.recycle();
+			if (inspector != null) inspector.onReceiveError(e);
 			closeWithError(e, false);
 			return;
 		}
 
 		if (numRead == 0) {
+			if (inspector != null) inspector.onReceive(buf);
 			buf.recycle();
 			return;
 		}
 
 		if (numRead == -1) {
 			buf.recycle();
-			assert contractChecker.onReadEndOfStream();
+			if (inspector != null) inspector.onReceiveEndOfStream();
 			socketEventHandler.onReadEndOfStream();
 			return;
 		}
 
-		assert contractChecker.onRead();
+		if (inspector != null) inspector.onReceive(buf);
 		socketEventHandler.onRead(buf);
 	}
 
 	// write cycle
 	@Override
 	public void write(ByteBuf buf) {
-		assert contractChecker.write();
+		if (inspector != null) inspector.onWrite(buf);
 		assert eventloop.inEventloopThread();
 		if (writeTimeout != NO_TIMEOUT) {
 			scheduleWriteTimeOut();
@@ -252,7 +447,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	@Override
 	public void writeEndOfStream() {
-		assert contractChecker.writeEndOfStream();
+		if (inspector != null) inspector.onWriteEndOfStream();
 		assert eventloop.inEventloopThread();
 		if (writeEndOfStream) return;
 		writeEndOfStream = true;
@@ -261,7 +456,8 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	@Override
 	public void onWriteReady() {
-		writing = false;
+		if (inspector != null) inspector.onWriteReady((int) (eventloop.currentTimeMillis() - writeTimestamp));
+		writeTimestamp = 0L;
 		try {
 			doWrite();
 		} catch (IOException e) {
@@ -283,7 +479,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 				int bytesToCopy = nextBuf.readRemaining(); // bytes to append to bufToSend
 				if (bufToSend.readPosition() + bufToSend.readRemaining() + bytesToCopy > bufToSend.array().length)
 					bytesToCopy += bufToSend.readRemaining(); // append will resize bufToSend
-				if (bytesToCopy < MAX_MERGE_SIZE) {
+				if (bytesToCopy < writeMaxSize) {
 					bufToSend = ByteBufPool.append(bufToSend, nextBuf);
 					writeQueue.poll();
 				} else {
@@ -297,9 +493,13 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			try {
 				channel.write(bufferToSend);
 			} catch (IOException e) {
+				if (inspector != null) inspector.onSendError(e);
 				bufToSend.recycle();
 				throw e;
 			}
+
+			if (inspector != null)
+				inspector.onSend(bufToSend, bufferToSend.position() - bufToSend.readPosition());
 
 			bufToSend.ofReadByteBuffer(bufferToSend);
 
@@ -318,7 +518,6 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 				channel.shutdownOutput();
 			}
 			writeInterest(false);
-			assert contractChecker.onWrite();
 			socketEventHandler.onWrite();
 		} else {
 			writeInterest(true);
@@ -328,7 +527,6 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	// close methods
 	@Override
 	public void close() {
-		assert contractChecker.close();
 		assert eventloop.inEventloopThread();
 		if (key == null) return;
 		closeChannel();
@@ -347,6 +545,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	private void closeChannel() {
 		if (channel == null) return;
+		if (inspector != null) inspector.onClose();
 		try {
 			channel.close();
 		} catch (IOException e) {
@@ -359,18 +558,15 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	private void closeWithError(final Exception e, boolean fireAsync) {
 		if (isOpen()) {
-			assert contractChecker.closeAndNotifyEventHandler();
 			close();
 			if (fireAsync)
 				eventloop.post(new Runnable() {
 					@Override
 					public void run() {
-						assert contractChecker.onClosedWithError();
 						socketEventHandler.onClosedWithError(e);
 					}
 				});
 			else {
-				assert contractChecker.onClosedWithError();
 				socketEventHandler.onClosedWithError(e);
 			}
 		}
@@ -378,8 +574,9 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	// miscellaneous
 	private void postWriteRunnable() {
-		if (!writing) {
-			writing = true;
+		if (writeTimestamp == 0L) {
+			writeTimestamp = eventloop.currentTimeMillis();
+			assert writeTimestamp != 0L;
 			eventloop.post(writeRunnable);
 		}
 	}
@@ -415,7 +612,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 				", writeEndOfStream=" + writeEndOfStream +
 				", key.ops=" + keyOps +
 				", ops=" + opsToString(ops) +
-				", writing=" + writing +
+				", writing=" + (writeTimestamp != 0L) +
 				'}';
 	}
 

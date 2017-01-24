@@ -42,7 +42,6 @@ import static org.junit.Assert.fail;
 
 public class TestGzipProcessor {
 	private static final int PORT = 5595;
-	private static final int TIMEOUT = 500;
 	private static final String TEST_PHRASE = "I grant! I've never seen a goddess go. My mistress, when she walks, treads on the ground";
 
 	@Test
@@ -77,7 +76,7 @@ public class TestGzipProcessor {
 				.withGzipCompression();
 
 		server.listen();
-		client.send(request, TIMEOUT, new ResultCallback<HttpResponse>() {
+		client.send(request, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
 				callback.setResult(decodeAscii(result.getBody()));

@@ -40,6 +40,4 @@ public interface EventloopServer {
 	 * @param callback
 	 */
 	void close(CompletionCallback callback);
-
-	void onAccept(AsyncTcpSocket asyncTcpSocket);
 }

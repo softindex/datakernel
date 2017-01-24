@@ -31,15 +31,22 @@ public final class ExceptionStats implements JmxStats<ExceptionStats> {
 	private int count;
 	private long lastExceptionTimestamp;
 
-	private ExceptionStats() {}
+	private ExceptionStats() {
+	}
 
-	public static ExceptionStats create() {return new ExceptionStats();}
+	public static ExceptionStats create() {
+		return new ExceptionStats();
+	}
 
 	public void recordException(Throwable throwable, Object causeObject) {
 		this.count++;
 		this.throwable = throwable;
 		this.causeObject = causeObject;
 		this.lastExceptionTimestamp = System.currentTimeMillis();
+	}
+
+	public void recordException(Throwable throwable) {
+		recordException(throwable, null);
 	}
 
 	public void resetStats() {

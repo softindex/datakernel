@@ -16,7 +16,6 @@
 
 package io.datakernel.net;
 
-import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.util.MemSize;
 
 import java.io.IOException;
@@ -39,11 +38,14 @@ public final class SocketSettings {
 	private final byte keepAlive;
 	private final byte reuseAddress;
 	private final byte tcpNoDelay;
+
 	private final long readTimeout;
 	private final long writeTimeout;
+	private final int readMaxSize;
+	private final int writeMaxSize;
 
 	// region builders
-	private SocketSettings(int sendBufferSize, int receiveBufferSize, byte keepAlive, byte reuseAddress, byte tcpNoDelay, long readTimeout, long writeTimeout) {
+	private SocketSettings(int sendBufferSize, int receiveBufferSize, byte keepAlive, byte reuseAddress, byte tcpNoDelay, long readTimeout, long writeTimeout, int readMaxSize, int writeMaxSize) {
 		this.sendBufferSize = sendBufferSize;
 		this.receiveBufferSize = receiveBufferSize;
 		this.keepAlive = keepAlive;
@@ -51,14 +53,16 @@ public final class SocketSettings {
 		this.tcpNoDelay = tcpNoDelay;
 		this.readTimeout = readTimeout;
 		this.writeTimeout = writeTimeout;
+		this.readMaxSize = readMaxSize;
+		this.writeMaxSize = writeMaxSize;
 	}
 
 	public static SocketSettings create() {
-		return new SocketSettings(DEF_INT, DEF_INT, DEF_BOOL, DEF_BOOL, DEF_BOOL, DEF_INT, DEF_INT);
+		return new SocketSettings(DEF_INT, DEF_INT, DEF_BOOL, DEF_BOOL, DEF_BOOL, DEF_INT, DEF_INT, DEF_INT, DEF_INT);
 	}
 
 	public SocketSettings withSendBufferSize(int sendBufferSize) {
-		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay, readTimeout, writeTimeout);
+		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay, readTimeout, writeTimeout, readMaxSize, writeMaxSize);
 	}
 
 	public SocketSettings withSendBufferSize(MemSize sendBufferSize) {
@@ -66,7 +70,7 @@ public final class SocketSettings {
 	}
 
 	public SocketSettings withReceiveBufferSize(int receiveBufferSize) {
-		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay, readTimeout, writeTimeout);
+		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay, readTimeout, writeTimeout, readMaxSize, writeMaxSize);
 	}
 
 	public SocketSettings withReceiveBufferSize(MemSize receiveBufferSize) {
@@ -74,23 +78,31 @@ public final class SocketSettings {
 	}
 
 	public SocketSettings withKeepAlive(boolean keepAlive) {
-		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive ? TRUE : FALSE, reuseAddress, tcpNoDelay, readTimeout, writeTimeout);
+		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive ? TRUE : FALSE, reuseAddress, tcpNoDelay, readTimeout, writeTimeout, readMaxSize, writeMaxSize);
 	}
 
 	public SocketSettings withReuseAddress(boolean reuseAddress) {
-		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress ? TRUE : FALSE, tcpNoDelay, readTimeout, writeTimeout);
+		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress ? TRUE : FALSE, tcpNoDelay, readTimeout, writeTimeout, readMaxSize, writeMaxSize);
 	}
 
 	public SocketSettings withTcpNoDelay(boolean tcpNoDelay) {
-		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay ? TRUE : FALSE, readTimeout, writeTimeout);
+		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay ? TRUE : FALSE, readTimeout, writeTimeout, readMaxSize, writeMaxSize);
 	}
 
 	public SocketSettings withReadTimeout(long readTimeout) {
-		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay, readTimeout, writeTimeout);
+		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay, readTimeout, writeTimeout, readMaxSize, writeMaxSize);
 	}
 
 	public SocketSettings withWriteTimeout(long writeTimeout) {
-		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay, readTimeout, writeTimeout);
+		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay, readTimeout, writeTimeout, readMaxSize, writeMaxSize);
+	}
+
+	public SocketSettings withReadBufSize(int readBufSize) {
+		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay, readTimeout, writeTimeout, readBufSize, writeMaxSize);
+	}
+
+	public SocketSettings withWriteBufSize(int writeBufSize) {
+		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay, readTimeout, writeTimeout, readMaxSize, writeBufSize);
 	}
 	// endregion
 
@@ -109,15 +121,6 @@ public final class SocketSettings {
 		}
 		if (tcpNoDelay != DEF_BOOL) {
 			channel.setOption(TCP_NODELAY, tcpNoDelay != FALSE);
-		}
-	}
-
-	public void applyReadWriteTimeoutsTo(AsyncTcpSocketImpl asyncTcpSocket) {
-		if (hasReadTimeout()) {
-			asyncTcpSocket.readTimeout(readTimeout);
-		}
-		if (hasWriteTimeout()) {
-			asyncTcpSocket.writeTimeout(writeTimeout);
 		}
 	}
 
@@ -183,4 +186,23 @@ public final class SocketSettings {
 		assert hasWriteTimeout();
 		return writeTimeout;
 	}
+
+	public boolean hasReadMaxSize() {
+		return readMaxSize != DEF_INT;
+	}
+
+	public int getReadMaxSize() {
+		assert hasReadMaxSize();
+		return readMaxSize;
+	}
+
+	public boolean hasWriteMaxSize() {
+		return writeMaxSize != DEF_INT;
+	}
+
+	public int getWriteMaxSize() {
+		assert hasWriteMaxSize();
+		return writeMaxSize;
+	}
+
 }

@@ -93,6 +93,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 	private final Map<Class<?>, RpcRequestStats> requestStatsPerClass = new HashMap<>();
 	private final Map<InetSocketAddress, RpcConnectStats> connectsStatsPerAddress = new HashMap<>();
 	private final ExceptionStats lastProtocolError = ExceptionStats.create();
+	private final AsyncTcpSocketImpl.JmxInspector socketStats = new AsyncTcpSocketImpl.JmxInspector();
 
 	// region builders
 	private RpcClient(Eventloop eventloop, SocketSettings socketSettings, List<Class<?>> messageTypes,
@@ -350,7 +351,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		eventloop.connect(address, 0, new ConnectCallback() {
 			@Override
 			public void onConnect(SocketChannel socketChannel) {
-				AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings);
+				AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings).withInspector(socketStats);
 				AsyncTcpSocket asyncTcpSocket = sslContext != null ? wrapClientSocket(eventloop, asyncTcpSocketImpl, sslContext, sslExecutor) : asyncTcpSocketImpl;
 				RpcClientConnection connection = RpcClientConnection.create(eventloop, RpcClient.this,
 						asyncTcpSocket, address,
@@ -587,6 +588,11 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 			"(serialization, deserialization, compression, decompression, etc)")
 	public ExceptionStats getLastProtocolError() {
 		return lastProtocolError;
+	}
+
+	@JmxAttribute
+	public AsyncTcpSocketImpl.JmxInspector getSocketStats() {
+		return socketStats;
 	}
 
 	RpcRequestStats ensureRequestStatsPerClass(Class<?> requestClass) {

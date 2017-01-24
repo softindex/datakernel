@@ -38,7 +38,7 @@ public class TestClientMultilineHeaders {
 		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet).withListenPort(PORT);
 		server.listen();
 
-		httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT), 1000, new ResultCallback<HttpResponse>() {
+		httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT), new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
 				resultObserver.setResult(result.getHeader(HttpHeaders.ALLOW));

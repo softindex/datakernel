@@ -22,6 +22,7 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.remotefs.IRemoteFsClient;
 import io.datakernel.remotefs.RemoteFsClient;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamProducer;
@@ -38,7 +39,7 @@ import static io.datakernel.aggregation.AggregationUtils.createBufferSerializer;
 
 public class RemoteFsChunkStorage implements AggregationChunkStorage {
 	private final Eventloop eventloop;
-	private final RemoteFsClient client;
+	private final IRemoteFsClient client;
 
 	private RemoteFsChunkStorage(Eventloop eventloop, InetSocketAddress serverAddress) {
 		this.eventloop = eventloop;

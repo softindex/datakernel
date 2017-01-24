@@ -23,9 +23,6 @@ import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocket.EventHandler;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.InetAddressRange;
-import io.datakernel.net.ServerSocketSettings;
-import io.datakernel.net.SocketSettings;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.file.StreamFileReader;
@@ -33,14 +30,8 @@ import io.datakernel.stream.file.StreamFileWriter;
 import io.datakernel.stream.net.Messaging.ReceiveMessageCallback;
 import io.datakernel.stream.net.MessagingSerializer;
 import io.datakernel.stream.net.MessagingWithBinaryStreaming;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import javax.net.ssl.SSLContext;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.nio.file.Path;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,7 +40,6 @@ import java.util.concurrent.ExecutorService;
 import static io.datakernel.stream.net.MessagingSerializers.ofGson;
 
 public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
-	protected final Logger logger = LoggerFactory.getLogger(this.getClass());
 	protected final FileManager fileManager;
 	private MessagingSerializer<RemoteFsCommands.FsCommand, RemoteFsResponses.FsResponse> serializer = ofGson(getCommandGSON(), RemoteFsCommands.FsCommand.class, getResponseGson(), RemoteFsResponses.FsResponse.class);
 
@@ -62,32 +52,8 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 		this.handlers = createHandlers();
 	}
 
-	private RemoteFsServer(Eventloop eventloop,
-	                       ServerSocketSettings serverSocketSettings, SocketSettings socketSettings,
-	                       boolean acceptOnce, Collection<InetSocketAddress> listenAddresses,
-	                       InetAddressRange range, Collection<InetAddress> bannedAddresses,
-	                       SSLContext sslContext, ExecutorService sslExecutor,
-	                       Collection<InetSocketAddress> sslListenAddresses,
-	                       RemoteFsServer previousInstance) {
-		super(eventloop, serverSocketSettings, socketSettings, acceptOnce, listenAddresses,
-				range, bannedAddresses, sslContext, sslExecutor, sslListenAddresses);
-		this.fileManager = previousInstance.fileManager;
-		this.handlers = previousInstance.handlers;
-	}
-
 	public static RemoteFsServer create(Eventloop eventloop, ExecutorService executor, Path storage) {
 		return new RemoteFsServer(eventloop, FileManager.create(eventloop, executor, storage));
-	}
-
-	@Override
-	protected RemoteFsServer recreate(Eventloop eventloop, ServerSocketSettings serverSocketSettings,
-	                                  SocketSettings socketSettings, boolean acceptOnce,
-	                                  Collection<InetSocketAddress> listenAddresses,
-	                                  InetAddressRange range, Collection<InetAddress> bannedAddresses,
-	                                  SSLContext sslContext, ExecutorService sslExecutor,
-	                                  Collection<InetSocketAddress> sslListenAddresses) {
-		return new RemoteFsServer(eventloop, serverSocketSettings, socketSettings, acceptOnce, listenAddresses,
-				range, bannedAddresses, sslContext, sslExecutor, sslListenAddresses, this);
 	}
 	// endregion
 

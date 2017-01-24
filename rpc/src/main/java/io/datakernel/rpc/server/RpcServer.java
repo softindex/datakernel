@@ -20,7 +20,6 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.InetAddressRange;
 import io.datakernel.jmx.*;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
@@ -29,14 +28,9 @@ import io.datakernel.rpc.protocol.RpcProtocolFactory;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.util.MemSize;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import javax.net.ssl.SSLContext;
 import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamProtocol;
 import static io.datakernel.util.Preconditions.*;
@@ -44,15 +38,13 @@ import static java.lang.ClassLoader.getSystemClassLoader;
 import static java.util.Arrays.asList;
 
 public final class RpcServer extends AbstractServer<RpcServer> {
-	private final Logger logger;
-	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS
-			= ServerSocketSettings.create(16384);
+	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS = ServerSocketSettings.create(16384);
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create().withTcpNoDelay(true);
 
-	private final Map<Class<?>, RpcRequestHandler<?, ?>> handlers;
-	private final RpcProtocolFactory protocolFactory;
-	private final SerializerBuilder serializerBuilder;
-	private final List<Class<?>> messageTypes;
+	private Map<Class<?>, RpcRequestHandler<?, ?>> handlers = new LinkedHashMap<>();
+	private RpcProtocolFactory protocolFactory = streamProtocol();
+	private SerializerBuilder serializerBuilder = SerializerBuilder.create(getSystemClassLoader());
+	private List<Class<?>> messageTypes;
 
 	private final List<RpcServerConnection> connections = new ArrayList<>();
 
@@ -72,53 +64,12 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	private boolean monitoring;
 
 	// region builders
-	private RpcServer(Eventloop eventloop, Map<Class<?>, RpcRequestHandler<?, ?>> handlers,
-	                  RpcProtocolFactory protocolFactory, SerializerBuilder serializerBuilder,
-	                  List<Class<?>> messageTypes, Logger logger) {
+	private RpcServer(Eventloop eventloop) {
 		super(eventloop);
-		this.handlers = handlers;
-		this.protocolFactory = protocolFactory;
-		this.serializerBuilder = serializerBuilder;
-		this.messageTypes = messageTypes;
-		this.logger = logger;
-	}
-
-	private RpcServer(Eventloop eventloop,
-	                  ServerSocketSettings serverSocketSettings, SocketSettings socketSettings,
-	                  boolean acceptOnce, Collection<InetSocketAddress> listenAddresses,
-	                  InetAddressRange range, Collection<InetAddress> bannedAddresses,
-	                  SSLContext sslContext, ExecutorService sslExecutor,
-	                  Collection<InetSocketAddress> sslListenAddresses,
-	                  RpcServer previousInstance) {
-		super(eventloop, serverSocketSettings, socketSettings, acceptOnce, listenAddresses,
-				range, bannedAddresses, sslContext, sslExecutor, sslListenAddresses);
-		this.handlers = previousInstance.handlers;
-		this.protocolFactory = previousInstance.protocolFactory;
-		this.serializerBuilder = previousInstance.serializerBuilder;
-		this.messageTypes = previousInstance.messageTypes;
-		this.logger = previousInstance.logger;
-	}
-
-	private RpcServer(RpcServer previousInstance,
-	                  Map<Class<?>, RpcRequestHandler<?, ?>> handlers,
-	                  RpcProtocolFactory protocolFactory, SerializerBuilder serializerBuilder,
-	                  List<Class<?>> messageTypes, Logger logger) {
-		super(previousInstance);
-		this.handlers = handlers;
-		this.protocolFactory = protocolFactory;
-		this.serializerBuilder = serializerBuilder;
-		this.messageTypes = messageTypes;
-		this.logger = logger;
 	}
 
 	public static RpcServer create(Eventloop eventloop) {
-		HashMap<Class<?>, RpcRequestHandler<?, ?>> requestHandlers = new HashMap<>();
-		RpcProtocolFactory protocolFactory = streamProtocol();
-		SerializerBuilder serializerBuilder = SerializerBuilder.create(getSystemClassLoader());
-		List<Class<?>> messageTypes = null;
-		Logger logger = LoggerFactory.getLogger(RpcServer.class);
-
-		return new RpcServer(eventloop, requestHandlers, protocolFactory, serializerBuilder, messageTypes, logger)
+		return new RpcServer(eventloop)
 				.withServerSocketSettings(DEFAULT_SERVER_SOCKET_SETTINGS)
 				.withSocketSettings(DEFAULT_SOCKET_SETTINGS);
 	}
@@ -129,24 +80,19 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	}
 
 	public RpcServer withMessageTypes(List<Class<?>> messageTypes) {
-		checkNotNull(messageTypes);
 		checkArgument(new HashSet<>(messageTypes).size() == messageTypes.size(), "Message types must be unique");
-		return new RpcServer(this, handlers, protocolFactory, serializerBuilder, messageTypes, logger);
+		this.messageTypes = messageTypes;
+		return self();
 	}
 
 	public RpcServer withSerializerBuilder(SerializerBuilder serializerBuilder) {
-		checkNotNull(serializerBuilder);
-		return new RpcServer(this, handlers, protocolFactory, serializerBuilder, messageTypes, logger);
-	}
-
-	public RpcServer withLogger(Logger logger) {
-		checkNotNull(logger);
-		return new RpcServer(this, handlers, protocolFactory, serializerBuilder, messageTypes, logger);
+		this.serializerBuilder = serializerBuilder;
+		return self();
 	}
 
 	public RpcServer withProtocol(RpcProtocolFactory protocolFactory) {
-		checkNotNull(protocolFactory);
-		return new RpcServer(this, handlers, protocolFactory, serializerBuilder, messageTypes, logger);
+		this.protocolFactory = protocolFactory;
+		return self();
 	}
 
 	public RpcServer withStreamProtocol(int defaultPacketSize, int maxPacketSize, boolean compression) {
@@ -161,17 +107,6 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	public <I, O> RpcServer withHandler(Class<I> requestClass, Class<O> responseClass, RpcRequestHandler<I, O> handler) {
 		handlers.put(requestClass, handler);
 		return this;
-	}
-
-	@Override
-	protected RpcServer recreate(Eventloop eventloop, ServerSocketSettings serverSocketSettings, SocketSettings socketSettings,
-	                             boolean acceptOnce,
-	                             Collection<InetSocketAddress> listenAddresses,
-	                             InetAddressRange range, Collection<InetAddress> bannedAddresses,
-	                             SSLContext sslContext, ExecutorService sslExecutor,
-	                             Collection<InetSocketAddress> sslListenAddresses) {
-		return new RpcServer(eventloop, serverSocketSettings, socketSettings, acceptOnce, listenAddresses,
-				range, bannedAddresses, sslContext, sslExecutor, sslListenAddresses, this);
 	}
 	// endregion
 
