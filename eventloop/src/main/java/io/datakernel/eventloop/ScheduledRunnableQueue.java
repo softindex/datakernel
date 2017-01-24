@@ -34,22 +34,25 @@ final class ScheduledRunnableQueue {
 		}
 
 		long timestamp = sr.getTimestamp();
-		if (timestamp == cachedFirst.getTimestamp()) {
+
+		if (timestamp < cachedFirst.getTimestamp()) {
+			timestampToBucket.put(cachedFirst.getTimestamp(), cachedFirst);
+			cachedFirst = sr;
+		} else if (timestamp == cachedFirst.getTimestamp()) {
 			cachedFirst.prev = sr;
 			sr.next = cachedFirst;
 			cachedFirst = sr;
-			return;
-		}
-
-		ScheduledRunnable firstInProperBucket = timestampToBucket.get(timestamp);
-		if (firstInProperBucket == null) {
-			timestampToBucket.put(timestamp, sr);
 		} else {
-			assert timestamp == firstInProperBucket.getTimestamp();
+			ScheduledRunnable firstInProperBucket = timestampToBucket.get(timestamp);
+			if (firstInProperBucket == null) {
+				timestampToBucket.put(timestamp, sr);
+			} else {
+				assert timestamp == firstInProperBucket.getTimestamp();
 
-			sr.next = firstInProperBucket;
-			firstInProperBucket.prev = sr;
-			timestampToBucket.put(timestamp, sr);
+				sr.next = firstInProperBucket;
+				firstInProperBucket.prev = sr;
+				timestampToBucket.put(timestamp, sr);
+			}
 		}
 	}
 
