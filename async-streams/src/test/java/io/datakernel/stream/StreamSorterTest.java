@@ -91,11 +91,6 @@ public class StreamSorterTest {
 
 		final StreamProducer<Integer> scheduledSource = new ScheduledProducer(eventloop) {
 			@Override
-			protected void onDataReceiverChanged() {
-
-			}
-
-			@Override
 			public void scheduleNext() {
 				if (numberToSend > 9) {
 					abort();

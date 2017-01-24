@@ -204,21 +204,6 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 		}
 
 		protected abstract void onDownstreamResumed();
-
-		@Override
-		public void produce() {
-			super.produce();
-		}
-
-		@Override
-		public void send(O item) {
-			super.send(item);
-		}
-
-		@Override
-		public void sendEndOfStream() {
-			super.sendEndOfStream();
-		}
 	}
 
 	protected AbstractStreamTransformer_1_1(Eventloop eventloop) {

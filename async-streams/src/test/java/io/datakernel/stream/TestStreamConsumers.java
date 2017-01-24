@@ -47,7 +47,6 @@ public class TestStreamConsumers {
 
 		@Override
 		protected void onStarted() {
-
 		}
 
 		@Override

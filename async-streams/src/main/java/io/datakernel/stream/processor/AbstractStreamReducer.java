@@ -115,7 +115,6 @@ public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTrans
 	}
 
 	private final class OutputProducer extends AbstractOutputProducer {
-
 		@Override
 		protected void onDownstreamSuspended() {
 			suspendAllUpstreams();

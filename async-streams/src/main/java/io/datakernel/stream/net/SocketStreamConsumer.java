@@ -77,11 +77,6 @@ final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> impleme
 		}
 	}
 
-	@Override
-	public void closeWithError(Exception e) {
-		super.closeWithError(e);
-	}
-
 	public void onWrite() {
 		writeTick = 0;
 		if (getConsumerStatus() == StreamStatus.SUSPENDED) {

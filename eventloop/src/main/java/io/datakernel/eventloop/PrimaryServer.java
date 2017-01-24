@@ -16,7 +16,8 @@
 
 package io.datakernel.eventloop;
 
-import java.util.Arrays;
+import io.datakernel.jmx.JmxAttribute;
+
 import java.util.List;
 
 /**
@@ -37,12 +38,11 @@ public final class PrimaryServer extends AbstractServer<PrimaryServer> {
 	}
 
 	public static PrimaryServer create(Eventloop primaryEventloop, List<? extends WorkerServer> workerServers) {
-		WorkerServer[] workerServersArr = workerServers.toArray(new WorkerServer[workerServers.size()]);
-		return new PrimaryServer(primaryEventloop, workerServersArr);
+		return create(primaryEventloop, workerServers.toArray(new WorkerServer[workerServers.size()]));
 	}
 
 	public static PrimaryServer create(Eventloop primaryEventloop, WorkerServer... workerServer) {
-		return create(primaryEventloop, Arrays.asList(workerServer));
+		return new PrimaryServer(primaryEventloop, workerServer);
 	}
 
 	public final PrimaryServer withInspector(Inspector inspector) {
@@ -62,4 +62,8 @@ public final class PrimaryServer extends AbstractServer<PrimaryServer> {
 		return workerServers[currentAcceptor];
 	}
 
+	@JmxAttribute
+	public JmxInspector getInspector() {
+		return super.inspector instanceof JmxInspector ? (JmxInspector) super.inspector : null;
+	}
 }

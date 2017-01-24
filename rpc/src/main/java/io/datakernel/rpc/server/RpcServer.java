@@ -19,20 +19,24 @@ package io.datakernel.rpc.server;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
+import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.*;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.rpc.protocol.RpcMessage;
-import io.datakernel.rpc.protocol.RpcProtocolFactory;
+import io.datakernel.rpc.protocol.RpcStream;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.stream.processor.StreamBinaryDeserializer;
+import io.datakernel.stream.processor.StreamBinarySerializer;
+import io.datakernel.stream.processor.StreamLZ4Compressor;
+import io.datakernel.stream.processor.StreamLZ4Decompressor;
 import io.datakernel.util.MemSize;
 
 import java.net.InetAddress;
 import java.util.*;
 
-import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamProtocol;
 import static io.datakernel.util.Preconditions.*;
 import static java.lang.ClassLoader.getSystemClassLoader;
 import static java.util.Arrays.asList;
@@ -41,8 +45,14 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS = ServerSocketSettings.create(16384);
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create().withTcpNoDelay(true);
 
+	public static final int DEFAULT_PACKET_SIZE = 16;
+	public static final int MAX_PACKET_SIZE = StreamBinarySerializer.MAX_SIZE;
+
+	private int defaultPacketSize = DEFAULT_PACKET_SIZE;
+	private int maxPacketSize = MAX_PACKET_SIZE;
+	private boolean compression = false;
+
 	private Map<Class<?>, RpcRequestHandler<?, ?>> handlers = new LinkedHashMap<>();
-	private RpcProtocolFactory protocolFactory = streamProtocol();
 	private SerializerBuilder serializerBuilder = SerializerBuilder.create(getSystemClassLoader());
 	private List<Class<?>> messageTypes;
 
@@ -62,6 +72,12 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	private ExceptionStats lastRequestHandlingException = ExceptionStats.create();
 	private ExceptionStats lastProtocolError = ExceptionStats.create();
 	private boolean monitoring;
+
+	private final AsyncTcpSocketImpl.JmxInspector statsSocket = new AsyncTcpSocketImpl.JmxInspector();
+	private final StreamBinarySerializer.JmxInspector statsSerializer = new StreamBinarySerializer.JmxInspector();
+	private final StreamBinaryDeserializer.JmxInspector statsDeserializer = new StreamBinaryDeserializer.JmxInspector();
+	private final StreamLZ4Compressor.JmxInspector statsCompressor = new StreamLZ4Compressor.JmxInspector();
+	private final StreamLZ4Decompressor.JmxInspector statsDecompressor = new StreamLZ4Decompressor.JmxInspector();
 
 	// region builders
 	private RpcServer(Eventloop eventloop) {
@@ -90,17 +106,15 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		return self();
 	}
 
-	public RpcServer withProtocol(RpcProtocolFactory protocolFactory) {
-		this.protocolFactory = protocolFactory;
+	public RpcServer withStreamProtocol(int defaultPacketSize, int maxPacketSize, boolean compression) {
+		this.defaultPacketSize = defaultPacketSize;
+		this.maxPacketSize = maxPacketSize;
+		this.compression = compression;
 		return self();
 	}
 
-	public RpcServer withStreamProtocol(int defaultPacketSize, int maxPacketSize, boolean compression) {
-		return withProtocol(streamProtocol(defaultPacketSize, maxPacketSize, compression));
-	}
-
 	public RpcServer withStreamProtocol(MemSize defaultPacketSize, MemSize maxPacketSize, boolean compression) {
-		return withProtocol(streamProtocol(defaultPacketSize, maxPacketSize, compression));
+		return withStreamProtocol((int) defaultPacketSize.get(), (int) maxPacketSize.get(), compression);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -120,9 +134,11 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 
 	@Override
 	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
-		BufferSerializer<RpcMessage> messageSerializer = getSerializer();
-		RpcServerConnection connection = RpcServerConnection.create(eventloop, this, asyncTcpSocket,
-				messageSerializer, handlers, protocolFactory);
+		RpcStream stream = new RpcStream(eventloop, asyncTcpSocket, getSerializer(), defaultPacketSize, maxPacketSize, compression, true,
+				statsSerializer, statsDeserializer, statsCompressor, statsDecompressor);
+		RpcServerConnection connection = new RpcServerConnection(eventloop, this,
+				asyncTcpSocket.getRemoteSocketAddress(), handlers, stream);
+		stream.setListener(connection);
 		add(connection);
 
 		// jmx
@@ -130,7 +146,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		totalConnects.recordEvent();
 		connectionsCount.setCount(connections.size());
 
-		return connection.getSocketConnection();
+		return stream.getSocketEventHandler();
 	}
 
 	@Override
@@ -262,6 +278,31 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 			"(serialization, deserialization, compression, decompression, etc)")
 	public ExceptionStats getLastProtocolError() {
 		return lastProtocolError;
+	}
+
+	@JmxAttribute
+	public AsyncTcpSocketImpl.JmxInspector getStatsSocket() {
+		return statsSocket;
+	}
+
+	@JmxAttribute
+	public StreamBinarySerializer.JmxInspector getStatsSerializer() {
+		return statsSerializer;
+	}
+
+	@JmxAttribute
+	public StreamBinaryDeserializer.JmxInspector getStatsDeserializer() {
+		return statsDeserializer;
+	}
+
+	@JmxAttribute
+	public StreamLZ4Compressor.JmxInspector getStatsCompressor() {
+		return compression ? statsCompressor : null;
+	}
+
+	@JmxAttribute
+	public StreamLZ4Decompressor.JmxInspector getStatsDecompressor() {
+		return compression ? statsDecompressor : null;
 	}
 	// endregion
 }

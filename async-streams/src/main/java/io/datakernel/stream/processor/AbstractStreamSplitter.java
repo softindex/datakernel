@@ -23,7 +23,6 @@ import io.datakernel.stream.StreamDataReceiver;
 public abstract class AbstractStreamSplitter<I> extends AbstractStreamTransformer_1_N<I>{
 
 	protected abstract class InputConsumer extends AbstractInputConsumer implements StreamDataReceiver<I> {
-
 		@Override
 		protected void onUpstreamEndOfStream() {
 			for (AbstractOutputProducer<?> downstreamProducer : outputProducers) {

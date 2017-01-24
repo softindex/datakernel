@@ -85,7 +85,7 @@ public class LogManagerTest {
 
 		LocalFsLogFileSystem fileSystem = LocalFsLogFileSystem.create(eventloop, executor, testDir);
 		final LogManagerImpl<String> logManager = LogManagerImpl.create(eventloop, fileSystem, BufferSerializers.utf16Serializer());
-		final SimpleStreamProducer<String> sender = SimpleStreamProducer.create(eventloop);
+		final AbstractStreamProducer<String> sender = new AbstractStreamProducer<String>(eventloop) {};
 		sender.streamTo(logManager.consumer(logPartition));
 
 		Map<Long, String> testData = new LinkedHashMap<>();

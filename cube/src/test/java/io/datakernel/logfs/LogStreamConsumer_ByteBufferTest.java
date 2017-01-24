@@ -428,16 +428,6 @@ public class LogStreamConsumer_ByteBufferTest {
 		protected void onStarted() {
 			produce();
 		}
-
-		@Override
-		protected void onDataReceiverChanged() {
-
-		}
-
-		@Override
-		protected void onSuspended() {
-
-		}
 	}
 
 	class CallbackСallCount {

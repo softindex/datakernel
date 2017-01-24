@@ -62,7 +62,6 @@ public final class StreamUnion<T> extends AbstractStreamTransformer_N_1<T> {
 	}
 
 	public final class OutputProducer extends AbstractOutputProducer {
-
 		@Override
 		protected void onDownstreamStarted() {
 			if (inputConsumers.isEmpty()) {
@@ -79,7 +78,6 @@ public final class StreamUnion<T> extends AbstractStreamTransformer_N_1<T> {
 		protected void onDownstreamResumed() {
 			resumeAllUpstreams();
 		}
-
 	}
 
 	public StreamConsumer<T> newInput() {

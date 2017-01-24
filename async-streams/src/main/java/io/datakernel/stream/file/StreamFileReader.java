@@ -196,11 +196,6 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 	}
 
 	@Override
-	protected void onDataReceiverChanged() {
-		//  empty
-	}
-
-	@Override
 	protected void onError(Exception e) {
 		logger.error("{}: onError", this, e);
 		doCleanup(IgnoreCompletionCallback.create());

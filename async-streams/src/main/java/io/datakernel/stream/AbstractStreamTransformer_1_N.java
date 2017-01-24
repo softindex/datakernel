@@ -50,7 +50,6 @@ public abstract class AbstractStreamTransformer_1_N<I> implements HasInput<I>, H
 		}
 
 		protected void onUpstreamStarted() {
-
 		}
 
 		@Override
@@ -66,22 +65,6 @@ public abstract class AbstractStreamTransformer_1_N<I> implements HasInput<I>, H
 				downstreamProducer.closeWithError(e);
 			}
 		}
-
-		@Override
-		public final void suspend() {
-			super.suspend();
-		}
-
-		@Override
-		public final void resume() {
-			super.resume();
-		}
-
-		@Override
-		public final void closeWithError(Exception e) {
-			super.closeWithError(e);
-		}
-
 	}
 
 	protected abstract class AbstractOutputProducer<O> extends AbstractStreamProducer<O> {
@@ -121,21 +104,6 @@ public abstract class AbstractStreamTransformer_1_N<I> implements HasInput<I>, H
 		}
 
 		protected abstract void onDownstreamResumed();
-
-		@Override
-		public void produce() {
-			super.produce();
-		}
-
-		@Override
-		public void send(O item) {
-			super.send(item);
-		}
-
-		@Override
-		public void sendEndOfStream() {
-			super.sendEndOfStream();
-		}
 	}
 
 	/**

@@ -220,21 +220,6 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T>, Eventl
 		protected void onEndOfStream() {
 			nextState();
 		}
-
-		@Override
-		public void suspend() {
-			super.suspend();
-		}
-
-		@Override
-		public void resume() {
-			super.resume();
-		}
-
-		@Override
-		public void closeWithError(Exception e) {
-			super.closeWithError(e);
-		}
 	}
 
 	@Override

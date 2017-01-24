@@ -48,14 +48,6 @@ final class SocketStreamProducer extends AbstractStreamProducer<ByteBuf> {
 	}
 
 	@Override
-	protected void onDataReceiverChanged() {
-	}
-
-	@Override
-	protected void onSuspended() {
-	}
-
-	@Override
 	protected void onResumed() {
 		resumeProduce();
 	}
@@ -68,11 +60,6 @@ final class SocketStreamProducer extends AbstractStreamProducer<ByteBuf> {
 	@Override
 	protected void onEndOfStream() {
 		completionCallback.setComplete();
-	}
-
-	@Override
-	public void closeWithError(Exception e) {
-		super.closeWithError(e);
 	}
 
 	@Override

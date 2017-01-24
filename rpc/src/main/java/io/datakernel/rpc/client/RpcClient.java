@@ -26,13 +26,15 @@ import io.datakernel.rpc.client.sender.RpcNoSenderException;
 import io.datakernel.rpc.client.sender.RpcSender;
 import io.datakernel.rpc.client.sender.RpcStrategy;
 import io.datakernel.rpc.protocol.RpcMessage;
-import io.datakernel.rpc.protocol.RpcProtocolFactory;
-import io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory;
+import io.datakernel.rpc.protocol.RpcStream;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.stream.processor.StreamBinaryDeserializer;
+import io.datakernel.stream.processor.StreamBinarySerializer;
+import io.datakernel.stream.processor.StreamLZ4Compressor;
+import io.datakernel.stream.processor.StreamLZ4Decompressor;
 import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLContext;
 import java.net.InetSocketAddress;
@@ -43,34 +45,41 @@ import java.util.concurrent.Future;
 
 import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
 import static io.datakernel.eventloop.AsyncTcpSocketImpl.wrapChannel;
-import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamProtocol;
 import static io.datakernel.util.Preconditions.*;
 import static java.lang.ClassLoader.getSystemClassLoader;
+import static org.slf4j.LoggerFactory.getLogger;
 
 public final class RpcClient implements IRpcClient, EventloopService, EventloopJmxMBean {
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create().withTcpNoDelay(true);
 	public static final long DEFAULT_CONNECT_TIMEOUT = 10 * 1000L;
 	public static final long DEFAULT_RECONNECT_INTERVAL = 1 * 1000L;
 
-	private final Logger logger;
+	private Logger logger = getLogger(this.getClass());
 
 	private final Eventloop eventloop;
-	private final SocketSettings socketSettings;
+	private SocketSettings socketSettings = DEFAULT_SOCKET_SETTINGS;
 
 	// SSL
-	private final SSLContext sslContext;
-	private final ExecutorService sslExecutor;
+	private SSLContext sslContext;
+	private ExecutorService sslExecutor;
 
-	private final RpcStrategy strategy;
-	private final List<InetSocketAddress> addresses;
-	private final Map<InetSocketAddress, RpcClientConnection> connections = new HashMap<>();
-	private final RpcProtocolFactory protocolFactory;
-	private final List<Class<?>> messageTypes;
-	private final long connectTimeoutMillis;
-	private final long reconnectIntervalMillis;
-	private final boolean forceStart;
+	private RpcStrategy strategy = new NoServersStrategy();
+	private List<InetSocketAddress> addresses = new ArrayList<>();
+	private Map<InetSocketAddress, RpcClientConnection> connections = new HashMap<>();
 
-	private final SerializerBuilder serializerBuilder;
+	public static final int DEFAULT_PACKET_SIZE = 16;
+	public static final int MAX_PACKET_SIZE = StreamBinarySerializer.MAX_SIZE;
+
+	private int defaultPacketSize = DEFAULT_PACKET_SIZE;
+	private int maxPacketSize = MAX_PACKET_SIZE;
+	private boolean compression = false;
+
+	private List<Class<?>> messageTypes;
+	private long connectTimeoutMillis = DEFAULT_CONNECT_TIMEOUT;
+	private long reconnectIntervalMillis = DEFAULT_RECONNECT_INTERVAL;
+	private boolean forceStart;
+
+	private SerializerBuilder serializerBuilder = SerializerBuilder.create(getSystemClassLoader());
 	private BufferSerializer<RpcMessage> serializer;
 
 	private RpcSender requestSender;
@@ -93,60 +102,26 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 	private final Map<Class<?>, RpcRequestStats> requestStatsPerClass = new HashMap<>();
 	private final Map<InetSocketAddress, RpcConnectStats> connectsStatsPerAddress = new HashMap<>();
 	private final ExceptionStats lastProtocolError = ExceptionStats.create();
-	private final AsyncTcpSocketImpl.JmxInspector socketStats = new AsyncTcpSocketImpl.JmxInspector();
+
+	private final AsyncTcpSocketImpl.JmxInspector statsSocket = new AsyncTcpSocketImpl.JmxInspector();
+	private final StreamBinarySerializer.JmxInspector statsSerializer = new StreamBinarySerializer.JmxInspector();
+	private final StreamBinaryDeserializer.JmxInspector statsDeserializer = new StreamBinaryDeserializer.JmxInspector();
+	private final StreamLZ4Compressor.JmxInspector statsCompressor = new StreamLZ4Compressor.JmxInspector();
+	private final StreamLZ4Decompressor.JmxInspector statsDecompressor = new StreamLZ4Decompressor.JmxInspector();
 
 	// region builders
-	private RpcClient(Eventloop eventloop, SocketSettings socketSettings, List<Class<?>> messageTypes,
-	                  SerializerBuilder serializerBuilder, RpcStrategy strategy, RpcProtocolFactory protocol,
-	                  Logger logger, long connectTimeoutMillis, long reconnectIntervalMillis,
-	                  boolean forceStart, SSLContext sslContext, ExecutorService executor) {
+	private RpcClient(Eventloop eventloop) {
 		this.eventloop = eventloop;
-		this.socketSettings = socketSettings;
-		this.messageTypes = messageTypes;
-		this.serializerBuilder = serializerBuilder;
-		this.protocolFactory = protocol;
-		this.logger = logger;
-		this.connectTimeoutMillis = connectTimeoutMillis;
-		this.reconnectIntervalMillis = reconnectIntervalMillis;
-		this.forceStart = forceStart;
-		this.sslContext = sslContext;
-		this.sslExecutor = executor;
-		this.strategy = strategy;
-		this.addresses = new ArrayList<>(strategy.getAddresses());
-
-		// jmx
-		for (InetSocketAddress address : this.addresses) {
-			if (!connectsStatsPerAddress.containsKey(address)) {
-				connectsStatsPerAddress.put(address, RpcConnectStats.create());
-			}
-		}
 	}
 
 	@SuppressWarnings("ConstantConditions")
 	public static RpcClient create(final Eventloop eventloop) {
-		checkNotNull(eventloop);
-
-		List<Class<?>> defaultMessageTypes = null;
-		SerializerBuilder serializerBuilder = SerializerBuilder.create(getSystemClassLoader());
-		RpcStrategy defaultStrategy = new NoServersStrategy();
-		RpcStreamProtocolFactory defaultProtocol = streamProtocol();
-		Logger defaultLogger = LoggerFactory.getLogger(RpcClient.class);
-		SSLContext nullSslContext = null;
-		ExecutorService nullSslExecutor = null;
-
-		return new RpcClient(
-				eventloop, DEFAULT_SOCKET_SETTINGS, defaultMessageTypes, serializerBuilder,
-				defaultStrategy, defaultProtocol, defaultLogger,
-				DEFAULT_CONNECT_TIMEOUT, DEFAULT_RECONNECT_INTERVAL, false,
-				nullSslContext, nullSslExecutor);
+		return new RpcClient(eventloop);
 	}
 
 	public RpcClient withSocketSettings(SocketSettings socketSettings) {
-		checkNotNull(socketSettings);
-		return new RpcClient(
-				eventloop, socketSettings, messageTypes, serializerBuilder,
-				strategy, protocolFactory, logger, connectTimeoutMillis, reconnectIntervalMillis, forceStart,
-				sslContext, sslExecutor);
+		this.socketSettings = socketSettings;
+		return this;
 	}
 
 	public RpcClient withMessageTypes(Class<?>... messageTypes) {
@@ -155,76 +130,60 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 	}
 
 	public RpcClient withMessageTypes(List<Class<?>> messageTypes) {
-		checkNotNull(messageTypes);
 		checkArgument(new HashSet<>(messageTypes).size() == messageTypes.size(), "Message types must be unique");
-		return new RpcClient(
-				eventloop, socketSettings, messageTypes, serializerBuilder,
-				strategy, protocolFactory, logger, connectTimeoutMillis, reconnectIntervalMillis, forceStart,
-				sslContext, sslExecutor);
+		this.messageTypes = messageTypes;
+		return this;
 	}
 
 	public RpcClient withSerializerBuilder(SerializerBuilder serializerBuilder) {
-		checkNotNull(serializerBuilder);
-		return new RpcClient(
-				eventloop, socketSettings, messageTypes, serializerBuilder,
-				strategy, protocolFactory, logger, connectTimeoutMillis, reconnectIntervalMillis, forceStart,
-				sslContext, sslExecutor);
+		this.serializerBuilder = serializerBuilder;
+		return this;
 	}
 
 	public RpcClient withStrategy(RpcStrategy requestSendingStrategy) {
-		checkNotNull(requestSendingStrategy);
-		return new RpcClient(
-				eventloop, socketSettings, messageTypes, serializerBuilder,
-				requestSendingStrategy, protocolFactory, logger,
-				connectTimeoutMillis, reconnectIntervalMillis, forceStart,
-				sslContext, sslExecutor);
-	}
+		this.strategy = requestSendingStrategy;
+		this.addresses = new ArrayList<>(strategy.getAddresses());
 
-	public RpcClient withProtocol(RpcProtocolFactory protocolFactory) {
-		checkNotNull(protocolFactory);
-		return new RpcClient(
-				eventloop, socketSettings, messageTypes, serializerBuilder,
-				strategy, protocolFactory, logger, connectTimeoutMillis, reconnectIntervalMillis, forceStart,
-				sslContext, sslExecutor);
+		// jmx
+		for (InetSocketAddress address : this.addresses) {
+			if (!connectsStatsPerAddress.containsKey(address)) {
+				connectsStatsPerAddress.put(address, RpcConnectStats.create());
+			}
+		}
+
+		return this;
 	}
 
 	public RpcClient withStreamProtocol(int defaultPacketSize, int maxPacketSize, boolean compression) {
-		return withProtocol(streamProtocol(defaultPacketSize, maxPacketSize, compression));
+		this.defaultPacketSize = defaultPacketSize;
+		this.maxPacketSize = maxPacketSize;
+		this.compression = compression;
+		return this;
 	}
 
 	public RpcClient withStreamProtocol(MemSize defaultPacketSize, MemSize maxPacketSize, boolean compression) {
-		return withProtocol(streamProtocol(defaultPacketSize, maxPacketSize, compression));
+		return withStreamProtocol((int) defaultPacketSize.get(), (int) maxPacketSize.get(), compression);
 	}
 
 	public RpcClient withConnectTimeout(long connectTimeoutMillis) {
-		return new RpcClient(
-				eventloop, socketSettings, messageTypes, serializerBuilder,
-				strategy, protocolFactory, logger, connectTimeoutMillis, reconnectIntervalMillis, forceStart,
-				sslContext, sslExecutor);
+		this.connectTimeoutMillis = connectTimeoutMillis;
+		return this;
 	}
 
 	public RpcClient withReconnectInterval(long reconnectIntervalMillis) {
-		return new RpcClient(
-				eventloop, socketSettings, messageTypes, serializerBuilder,
-				strategy, protocolFactory, logger, connectTimeoutMillis, reconnectIntervalMillis, forceStart,
-				sslContext, sslExecutor);
+		this.reconnectIntervalMillis = reconnectIntervalMillis;
+		return this;
 	}
 
-	public RpcClient withSslEnabled(SSLContext sslContext, ExecutorService executor) {
-		checkNotNull(sslContext);
-		checkNotNull(executor);
-		return new RpcClient(
-				eventloop, socketSettings, messageTypes, serializerBuilder,
-				strategy, protocolFactory, logger, connectTimeoutMillis, reconnectIntervalMillis, forceStart,
-				sslContext, executor);
+	public RpcClient withSslEnabled(SSLContext sslContext, ExecutorService sslExecutor) {
+		this.sslContext = sslContext;
+		this.sslExecutor = sslExecutor;
+		return this;
 	}
 
 	public RpcClient withLogger(Logger logger) {
-		checkNotNull(logger);
-		return new RpcClient(
-				eventloop, socketSettings, messageTypes, serializerBuilder,
-				strategy, protocolFactory, logger, connectTimeoutMillis, reconnectIntervalMillis, forceStart,
-				sslContext, sslExecutor);
+		this.logger = logger;
+		return this;
 	}
 
 	/**
@@ -233,10 +192,8 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 	 * @return
 	 */
 	public RpcClient withForceStart() {
-		return new RpcClient(
-				eventloop, socketSettings, messageTypes, serializerBuilder,
-				strategy, protocolFactory, logger, connectTimeoutMillis, reconnectIntervalMillis, true,
-				sslContext, sslExecutor);
+		this.forceStart = true;
+		return this;
 	}
 	// endregion
 
@@ -351,12 +308,14 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		eventloop.connect(address, 0, new ConnectCallback() {
 			@Override
 			public void onConnect(SocketChannel socketChannel) {
-				AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings).withInspector(socketStats);
+				AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings)
+						.withInspector(statsSocket);
 				AsyncTcpSocket asyncTcpSocket = sslContext != null ? wrapClientSocket(eventloop, asyncTcpSocketImpl, sslContext, sslExecutor) : asyncTcpSocketImpl;
-				RpcClientConnection connection = RpcClientConnection.create(eventloop, RpcClient.this,
-						asyncTcpSocket, address,
-						getSerializer(), protocolFactory);
-				asyncTcpSocket.setEventHandler(connection.getSocketConnection());
+				RpcStream stream = new RpcStream(eventloop, asyncTcpSocket, getSerializer(), defaultPacketSize, maxPacketSize, compression, false,
+						statsSerializer, statsDeserializer, statsCompressor, statsDecompressor);
+				RpcClientConnection connection = new RpcClientConnection(eventloop, RpcClient.this, address, stream);
+				stream.setListener(connection);
+				asyncTcpSocket.setEventHandler(stream.getSocketEventHandler());
 				asyncTcpSocketImpl.register();
 
 				addConnection(address, connection);
@@ -591,8 +550,28 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 	}
 
 	@JmxAttribute
-	public AsyncTcpSocketImpl.JmxInspector getSocketStats() {
-		return socketStats;
+	public AsyncTcpSocketImpl.JmxInspector getStatsSocket() {
+		return statsSocket;
+	}
+
+	@JmxAttribute
+	public StreamBinarySerializer.JmxInspector getStatsSerializer() {
+		return statsSerializer;
+	}
+
+	@JmxAttribute
+	public StreamBinaryDeserializer.JmxInspector getStatsDeserializer() {
+		return statsDeserializer;
+	}
+
+	@JmxAttribute
+	public StreamLZ4Compressor.JmxInspector getStatsCompressor() {
+		return compression ? statsCompressor : null;
+	}
+
+	@JmxAttribute
+	public StreamLZ4Decompressor.JmxInspector getStatsDecompressor() {
+		return compression ? statsDecompressor : null;
 	}
 
 	RpcRequestStats ensureRequestStatsPerClass(Class<?> requestClass) {

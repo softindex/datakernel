@@ -191,21 +191,6 @@ public final class StreamProducers {
 		protected void onStarted() {
 			sendEndOfStream();
 		}
-
-		@Override
-		protected void onDataReceiverChanged() {
-		}
-
-		@Override
-		protected void onSuspended() {
-
-		}
-
-		@Override
-		protected void onResumed() {
-
-		}
-
 	}
 
 	/**
@@ -227,47 +212,11 @@ public final class StreamProducers {
 			logger.trace("{} close with error {}", this, exception.getMessage());
 			closeWithError(exception);
 		}
-
-		@Override
-		protected void onDataReceiverChanged() {
-
-		}
-
-		@Override
-		protected void onSuspended() {
-
-		}
-
-		@Override
-		protected void onResumed() {
-
-		}
-
 	}
 
 	public static class Idle<T> extends AbstractStreamProducer<T> {
 		public Idle(Eventloop eventloop) {
 			super(eventloop);
-		}
-
-		@Override
-		protected void onDataReceiverChanged() {
-
-		}
-
-		@Override
-		protected void onSuspended() {
-
-		}
-
-		@Override
-		protected void onResumed() {
-
-		}
-
-		@Override
-		public void sendEndOfStream() {
-			super.sendEndOfStream();
 		}
 	}
 
@@ -313,16 +262,6 @@ public final class StreamProducers {
 		@Override
 		protected void onStarted() {
 			produce();
-		}
-
-		@Override
-		protected void onDataReceiverChanged() {
-
-		}
-
-		@Override
-		protected void onSuspended() {
-
 		}
 
 		@Override
@@ -374,15 +313,6 @@ public final class StreamProducers {
 		@Override
 		protected void onStarted() {
 			produce();
-		}
-
-		@Override
-		protected void onDataReceiverChanged() {
-		}
-
-		@Override
-		protected void onSuspended() {
-
 		}
 
 		@Override

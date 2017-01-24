@@ -17,24 +17,24 @@
 package io.datakernel.rpc.server;
 
 import io.datakernel.async.ResultCallback;
-import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.jmx.*;
-import io.datakernel.rpc.protocol.*;
-import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.rpc.protocol.RpcMessage;
+import io.datakernel.rpc.protocol.RpcRemoteException;
+import io.datakernel.rpc.protocol.RpcStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.util.Map;
 
-public final class RpcServerConnection implements RpcConnection, JmxRefreshable {
+public final class RpcServerConnection implements RpcStream.Listener, JmxRefreshable {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final Eventloop eventloop;
 	private final RpcServer rpcServer;
-	private final RpcProtocol protocol;
+	private final RpcStream stream;
 	private final Map<Class<?>, RpcRequestHandler<?, ?>> handlers;
 
 	private int activeRequests;
@@ -48,26 +48,16 @@ public final class RpcServerConnection implements RpcConnection, JmxRefreshable 
 	private EventStats failedRequests = EventStats.create();
 	private boolean monitoring = false;
 
-	private RpcServerConnection(Eventloop eventloop, RpcServer rpcServer, AsyncTcpSocket asyncTcpSocket,
-	                            BufferSerializer<RpcMessage> messageSerializer,
-	                            Map<Class<?>, RpcRequestHandler<?, ?>> handlers,
-	                            RpcProtocolFactory protocolFactory) {
+	protected RpcServerConnection(Eventloop eventloop, RpcServer rpcServer, InetSocketAddress remoteAddress,
+	                              Map<Class<?>, RpcRequestHandler<?, ?>> handlers, RpcStream stream) {
 		this.eventloop = eventloop;
 		this.rpcServer = rpcServer;
-		this.protocol = protocolFactory.createServerProtocol(eventloop, asyncTcpSocket, this, messageSerializer);
+		this.stream = stream;
 		this.handlers = handlers;
 		this.readEndOfStream = false;
 
 		// jmx
-		this.remoteAddress = asyncTcpSocket.getRemoteSocketAddress();
-	}
-
-	public static RpcServerConnection create(Eventloop eventloop, RpcServer rpcServer, AsyncTcpSocket asyncTcpSocket,
-	                                         BufferSerializer<RpcMessage> messageSerializer,
-	                                         Map<Class<?>, RpcRequestHandler<?, ?>> handlers,
-	                                         RpcProtocolFactory protocolFactory) {
-		return new RpcServerConnection(eventloop, rpcServer, asyncTcpSocket,
-				messageSerializer, handlers, protocolFactory);
+		this.remoteAddress = remoteAddress;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -96,7 +86,7 @@ public final class RpcServerConnection implements RpcConnection, JmxRefreshable 
 				successfulRequests.recordEvent();
 				rpcServer.getSuccessfulRequests().recordEvent();
 
-				protocol.sendMessage(RpcMessage.of(cookie, result));
+				stream.sendMessage(RpcMessage.of(cookie, result));
 				decrementActiveRequest();
 			}
 
@@ -109,7 +99,7 @@ public final class RpcServerConnection implements RpcConnection, JmxRefreshable 
 				failedRequests.recordEvent();
 				rpcServer.getFailedRequests().recordEvent();
 
-				protocol.sendMessage(RpcMessage.of(cookie, new RpcRemoteException(exception)));
+				stream.sendMessage(RpcMessage.of(cookie, new RpcRemoteException(exception)));
 				decrementActiveRequest();
 				logger.warn("Exception while process request ID {}", cookie, exception);
 			}
@@ -131,7 +121,7 @@ public final class RpcServerConnection implements RpcConnection, JmxRefreshable 
 	private void decrementActiveRequest() {
 		activeRequests--;
 		if (readEndOfStream && activeRequests == 0) {
-			protocol.sendEndOfStream();
+			stream.sendEndOfStream();
 			onClosed();
 		}
 	}
@@ -154,18 +144,13 @@ public final class RpcServerConnection implements RpcConnection, JmxRefreshable 
 	public void onReadEndOfStream() {
 		readEndOfStream = true;
 		if (activeRequests == 0) {
-			protocol.sendEndOfStream();
+			stream.sendEndOfStream();
 			onClosed();
 		}
 	}
 
-	@Override
-	public AsyncTcpSocket.EventHandler getSocketConnection() {
-		return protocol.getSocketConnection();
-	}
-
 	public void close() {
-		protocol.sendCloseMessage();
+		stream.sendCloseMessage();
 	}
 
 	// jmx
@@ -179,7 +164,7 @@ public final class RpcServerConnection implements RpcConnection, JmxRefreshable 
 
 	@JmxAttribute
 	public boolean isOverloaded() {
-		return protocol.isOverloaded();
+		return stream.isOverloaded();
 	}
 
 	@JmxAttribute

@@ -24,16 +24,12 @@ import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Represent the TCP connection which  processes received items with {@link StreamProducer} and {@link StreamConsumer},
  * which organized by binary protocol. It is created with socketChannel and sides exchange ByteBufs.
  */
 public final class SocketStreamingConnection implements AsyncTcpSocket.EventHandler, SocketStreaming {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
-
 	private final Eventloop eventloop;
 	private final AsyncTcpSocket asyncTcpSocket;
 

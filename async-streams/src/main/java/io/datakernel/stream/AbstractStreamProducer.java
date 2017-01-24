@@ -115,7 +115,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	 *
 	 * @param item item to be sent
 	 */
-	protected void send(T item) {
+	public void send(T item) {
 		assert status.isOpen();
 		downstreamDataReceiver.onData(item);
 	}
@@ -123,13 +123,13 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	protected void doProduce() {
 	}
 
-	protected void produce() {
+	public void produce() {
 		if (!isStatusReady())
 			return;
 		doProduce();
 	}
 
-	protected void resumeProduce() {
+	public void resumeProduce() {
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
@@ -165,13 +165,15 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		}
 	}
 
-	protected abstract void onDataReceiverChanged();
+	protected void onDataReceiverChanged() {
+	}
 
 	public StreamDataReceiver<T> getDownstreamDataReceiver() {
 		return downstreamDataReceiver;
 	}
 
-	abstract protected void onSuspended();
+	protected void onSuspended() {
+	}
 
 	@Override
 	public final void onConsumerSuspended() {
@@ -181,7 +183,8 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		onSuspended();
 	}
 
-	abstract protected void onResumed();
+	protected void onResumed() {
+	}
 
 	@Override
 	public final void onConsumerResumed() {
@@ -191,7 +194,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		onResumed();
 	}
 
-	protected void sendEndOfStream() {
+	public void sendEndOfStream() {
 		if (status.isClosed())
 			return;
 		setStatus(END_OF_STREAM);
@@ -217,7 +220,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		doCleanup();
 	}
 
-	protected void closeWithError(Exception e) {
+	public void closeWithError(Exception e) {
 		closeWithError(e, true);
 	}
 

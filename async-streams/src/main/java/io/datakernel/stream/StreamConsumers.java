@@ -119,10 +119,6 @@ public final class StreamConsumers {
 		}
 
 		@Override
-		protected void onEndOfStream() {
-		}
-
-		@Override
 		public StreamDataReceiver<T> getDataReceiver() {
 			return this;
 		}
@@ -139,14 +135,8 @@ public final class StreamConsumers {
 	 * @param <T> type of received data
 	 */
 	public static final class Idle<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
-
 		protected Idle(Eventloop eventloop) {
 			super(eventloop);
-		}
-
-		@Override
-		protected void onEndOfStream() {
-
 		}
 
 		@Override
@@ -156,7 +146,6 @@ public final class StreamConsumers {
 
 		@Override
 		public void onData(T item) {
-
 		}
 	}
 

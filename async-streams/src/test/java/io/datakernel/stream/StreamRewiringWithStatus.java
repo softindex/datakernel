@@ -292,14 +292,8 @@ public class StreamRewiringWithStatus {
 	//------------------------------------------------------------------------------------------------------------------
 
 	private class TestConsumerOneByOne extends AbstractStreamConsumer<Integer> {
-
 		protected TestConsumerOneByOne(Eventloop eventloop) {
 			super(eventloop);
-		}
-
-		@Override
-		protected void onEndOfStream() {
-
 		}
 
 		@Override
@@ -351,16 +345,6 @@ public class StreamRewiringWithStatus {
 		@Override
 		protected void onStarted() {
 			produce();
-		}
-
-		@Override
-		protected void onDataReceiverChanged() {
-
-		}
-
-		@Override
-		protected void onSuspended() {
-
 		}
 
 		@Override

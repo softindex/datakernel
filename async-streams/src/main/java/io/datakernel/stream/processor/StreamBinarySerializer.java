@@ -69,7 +69,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 		void onSerializationError(T item, Exception e);
 	}
 
-	public class JmxInspector extends AbstractStreamTransformer_1_1.JmxInspector implements Inspector<T> {
+	public static class JmxInspector<T> extends AbstractStreamTransformer_1_1.JmxInspector implements Inspector<T> {
 		private int lastSize;
 		private long count;
 		private final ValueStats underEstimations = ValueStats.create();

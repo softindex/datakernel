@@ -32,7 +32,6 @@ public abstract class AbstractStreamMemoryTransformer<I, S, O> extends AbstractS
 	protected S state;
 
 	private final class OutputProducer extends AbstractOutputProducer {
-
 		@Override
 		protected void onDownstreamStarted() {
 			if (inputConsumers.isEmpty()) {
@@ -42,7 +41,6 @@ public abstract class AbstractStreamMemoryTransformer<I, S, O> extends AbstractS
 
 		@Override
 		protected void onDownstreamSuspended() {
-
 		}
 
 		@Override
@@ -61,7 +59,6 @@ public abstract class AbstractStreamMemoryTransformer<I, S, O> extends AbstractS
 	protected abstract void downstreamProducerDoProduce();
 
 	private final class InputConsumer extends AbstractInputConsumer<I> {
-
 		@Override
 		public StreamDataReceiver<I> getDataReceiver() {
 			return AbstractStreamMemoryTransformer.this;

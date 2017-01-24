@@ -48,7 +48,6 @@ public final class StreamFunction<I, O> extends AbstractStreamTransformer_1_1<I,
 	// endregion
 
 	protected final class InputConsumer extends AbstractInputConsumer {
-
 		@Override
 		protected void onUpstreamEndOfStream() {
 			outputProducer.sendEndOfStream();

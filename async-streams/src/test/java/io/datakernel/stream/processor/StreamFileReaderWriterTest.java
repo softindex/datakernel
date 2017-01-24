@@ -146,11 +146,6 @@ public class StreamFileReaderWriterTest {
 			}
 
 			@Override
-			protected void onEndOfStream() {
-
-			}
-
-			@Override
 			public StreamDataReceiver<ByteBuf> getDataReceiver() {
 				return this;
 			}
@@ -368,7 +363,7 @@ public class StreamFileReaderWriterTest {
 		}
 
 		@Override
-		protected void send(ByteBuf item) {
+		public void send(ByteBuf item) {
 			if (item.toString().equals("1")) {
 				item.recycle();
 				closeWithError(new Exception("Intentionally closed with exception"));
@@ -417,11 +412,6 @@ public class StreamFileReaderWriterTest {
 					closeWithError(exception);
 				}
 			});
-		}
-
-		@Override
-		protected void onDataReceiverChanged() {
-
 		}
 
 		@Override

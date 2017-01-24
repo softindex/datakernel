@@ -228,10 +228,6 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		return eventloop;
 	}
 
-	public Inspector getInspector() {
-		return inspector;
-	}
-
 	@Override
 	public final void listen() throws IOException {
 		check(eventloop.inEventloopThread());

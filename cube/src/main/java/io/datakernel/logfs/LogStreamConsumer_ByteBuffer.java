@@ -249,7 +249,6 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 		}
 
 		private class InputConsumer extends AbstractInputConsumer {
-
 			@Override
 			protected void onUpstreamEndOfStream() {
 				downstreamProducer.sendEndOfStream();
@@ -262,7 +261,6 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 		}
 
 		private class OutputProducer extends AbstractOutputProducer {
-
 			@Override
 			protected void onDownstreamSuspended() {
 				upstreamConsumer.suspend();

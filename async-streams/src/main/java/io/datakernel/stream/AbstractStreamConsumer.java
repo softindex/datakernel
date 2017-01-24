@@ -104,13 +104,13 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		return upstreamProducer;
 	}
 
-	protected final void bindUpstream() {
+	public final void bindUpstream() {
 		if (upstreamProducer != null) {
 			upstreamProducer.bindDataReceiver();
 		}
 	}
 
-	protected void suspend() {
+	public void suspend() {
 		if (status == READY) {
 			status = SUSPENDED;
 			if (upstreamProducer != null) {
@@ -119,7 +119,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		}
 	}
 
-	protected void resume() {
+	public void resume() {
 		if (status == SUSPENDED) {
 			status = READY;
 			if (upstreamProducer != null) {
@@ -144,7 +144,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		doCleanup();
 	}
 
-	protected void closeWithError(Exception e) {
+	public void closeWithError(Exception e) {
 		closeWithError(e, true);
 	}
 
@@ -168,7 +168,8 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		closeWithError(e, false);
 	}
 
-	abstract protected void onEndOfStream();
+	protected void onEndOfStream() {
+	}
 
 	protected void onError(Exception e) {
 	}

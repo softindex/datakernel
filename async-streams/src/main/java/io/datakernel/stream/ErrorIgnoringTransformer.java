@@ -39,7 +39,6 @@ public final class ErrorIgnoringTransformer<T> extends AbstractStreamTransformer
 	// endregion
 
 	private class InputConsumer extends AbstractInputConsumer {
-
 		@Override
 		protected void onUpstreamEndOfStream() {
 			outputProducer.sendEndOfStream();
@@ -58,7 +57,6 @@ public final class ErrorIgnoringTransformer<T> extends AbstractStreamTransformer
 	}
 
 	private class OutputProducer extends AbstractOutputProducer {
-
 		@Override
 		protected void onDownstreamSuspended() {
 			inputConsumer.suspend();

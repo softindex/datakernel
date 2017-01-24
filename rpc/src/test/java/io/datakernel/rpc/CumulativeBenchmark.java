@@ -25,7 +25,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.protocol.RpcException;
-import io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory;
 import io.datakernel.rpc.server.RpcRequestHandler;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.annotations.Deserialize;
@@ -38,7 +37,6 @@ import java.util.concurrent.Executors;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
-import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamProtocol;
 import static io.datakernel.util.MemSize.kilobytes;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -58,13 +56,12 @@ public final class CumulativeBenchmark {
 	private static final int DEFAULT_TIMEOUT = 2_000;
 
 	private static final int SERVICE_PORT = 55555;
-	private static final RpcStreamProtocolFactory PROTOCOL = streamProtocol(kilobytes(64), kilobytes(64), true);
 
 	private final Eventloop serverEventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 	private final Eventloop clientEventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 	private final RpcServer server = RpcServer.create(serverEventloop)
-			.withProtocol(PROTOCOL)
+			.withStreamProtocol(kilobytes(64), kilobytes(64), true)
 			.withMessageTypes(ValueMessage.class)
 			.withHandler(ValueMessage.class, ValueMessage.class, new RpcRequestHandler<ValueMessage, ValueMessage>() {
 				private final ValueMessage currentSum = new ValueMessage(0);
@@ -83,7 +80,7 @@ public final class CumulativeBenchmark {
 
 	private final RpcClient client = RpcClient.create(clientEventloop)
 			.withMessageTypes(ValueMessage.class)
-			.withProtocol(PROTOCOL)
+			.withStreamProtocol(kilobytes(64), kilobytes(64), true)
 			.withStrategy(server(new InetSocketAddress(SERVICE_PORT)));
 
 	private final ValueMessage incrementMessage;

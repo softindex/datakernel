@@ -30,7 +30,6 @@ public final class StreamForwarder<T> extends AbstractStreamTransformer_1_1<T, T
 	private final OutputProducer outputProducer;
 
 	protected final class InputConsumer extends AbstractInputConsumer {
-
 		@Override
 		protected void onUpstreamEndOfStream() {
 			outputProducer.sendEndOfStream();
@@ -44,7 +43,6 @@ public final class StreamForwarder<T> extends AbstractStreamTransformer_1_1<T, T
 	}
 
 	protected final class OutputProducer extends AbstractOutputProducer {
-
 		@Override
 		protected void onDownstreamSuspended() {
 			inputConsumer.suspend();

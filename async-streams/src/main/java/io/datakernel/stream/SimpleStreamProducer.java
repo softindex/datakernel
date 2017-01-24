@@ -45,10 +45,6 @@ public final class SimpleStreamProducer<T> extends AbstractStreamProducer<T> {
 	// endregion
 
 	@Override
-	protected void onDataReceiverChanged() {
-	}
-
-	@Override
 	protected void onSuspended() {
 		if (statusListener != null)
 			statusListener.onSuspended();
@@ -64,14 +60,5 @@ public final class SimpleStreamProducer<T> extends AbstractStreamProducer<T> {
 	protected void onError(Exception e) {
 		if (statusListener != null)
 			statusListener.onClosedWithError(e);
-	}
-
-	public void send(T item) {
-		super.send(item);
-	}
-
-	@Override
-	public void sendEndOfStream() {
-		super.sendEndOfStream();
 	}
 }
