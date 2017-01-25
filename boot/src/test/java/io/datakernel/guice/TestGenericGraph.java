@@ -27,6 +27,7 @@ import org.junit.Test;
 
 import java.util.List;
 
+import static io.datakernel.service.ServiceAdapters.immediateServiceAdapter;
 import static org.junit.Assert.assertEquals;
 
 public class TestGenericGraph {
@@ -48,7 +49,7 @@ public class TestGenericGraph {
 		@Override
 		protected void configure() {
 			install(ServiceGraphModule.defaultInstance()
-					.register(Pojo.class, TestServiceGraphServices.immediateServiceAdapter()));
+					.register(Pojo.class, immediateServiceAdapter()));
 		}
 
 		@Provides

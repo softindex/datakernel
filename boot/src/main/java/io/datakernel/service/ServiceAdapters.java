@@ -30,12 +30,10 @@ import javax.sql.DataSource;
 import java.io.Closeable;
 import java.io.IOException;
 import java.sql.Connection;
-import java.util.Timer;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
+import java.util.*;
+import java.util.concurrent.*;
 
+import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
@@ -370,19 +368,86 @@ public final class ServiceAdapters {
 
 			@Override
 			public ListenableFuture<?> stop(final DataSource dataSource, Executor executor) {
-				final SettableFuture<?> future = SettableFuture.create();
-				if (!(dataSource instanceof Closeable)) {
-					return Futures.immediateFuture(null);
-				}
-				executor.execute(new Runnable() {
-					@Override
-					public void run() {
-						try {
-							((Closeable) dataSource).close();
-							future.set(null);
-						} catch (IOException e) {
-							future.setException(e);
+				return Futures.immediateFuture(null);
+			}
+		};
+	}
+
+	public static <T> ServiceAdapter<T> immediateServiceAdapter() {
+		return new ServiceAdapter<T>() {
+			@Override
+			public ListenableFuture<?> start(Object instance, Executor executor) {
+				return Futures.immediateFuture(null);
+			}
+
+			@Override
+			public ListenableFuture<?> stop(Object instance, Executor executor) {
+				return Futures.immediateFuture(null);
+			}
+		};
+	}
+
+	@SafeVarargs
+	public static <T> ServiceAdapter<T> combinedAdapter(ServiceAdapter<? super T>... startOrder) {
+		return combinedAdapter(Arrays.asList(startOrder));
+	}
+
+	public static <T> ServiceAdapter<T> combinedAdapter(final List<? extends ServiceAdapter<? super T>> startOrder) {
+		List<? extends ServiceAdapter<? super T>> stopOrder = new ArrayList<>(startOrder);
+		Collections.reverse(stopOrder);
+		return combinedAdapter(startOrder, stopOrder);
+	}
+
+	private interface Action<T> {
+		ListenableFuture<?> doAction(ServiceAdapter<? super T> serviceAdapter, T instance, Executor executor);
+	}
+
+	public static <T> ServiceAdapter<T> combinedAdapter(final List<? extends ServiceAdapter<? super T>> startOrder,
+	                                                    final List<? extends ServiceAdapter<? super T>> stopOrder) {
+		return new ServiceAdapter<T>() {
+			private void doAction(final T instance, final Executor executor,
+			                      final Iterator<? extends ServiceAdapter<? super T>> iterator, final SettableFuture<?> future,
+			                      final Action<T> action) {
+				if (iterator.hasNext()) {
+					ServiceAdapter<? super T> next = iterator.next();
+					final ListenableFuture<?> nextFuture = action.doAction(next, instance, executor);
+					nextFuture.addListener(new Runnable() {
+						@Override
+						public void run() {
+							try {
+								nextFuture.get();
+								doAction(instance, executor, iterator, future, action);
+							} catch (InterruptedException e) {
+								future.setException(e);
+							} catch (ExecutionException e) {
+								future.setException(e.getCause());
+							}
 						}
+					}, directExecutor());
+				} else {
+					future.set(null);
+				}
+			}
+
+			@Override
+			public ListenableFuture<?> start(T instance, Executor executor) {
+				final SettableFuture<?> future = SettableFuture.create();
+				doAction(instance, executor, startOrder.iterator(), future, new Action<T>() {
+					@Override
+					public ListenableFuture<?> doAction(ServiceAdapter<? super T> serviceAdapter, T instance, Executor executor) {
+						return serviceAdapter.start(instance, executor);
+					}
+				});
+				return future;
+			}
+
+			@Override
+			public ListenableFuture<?> stop(T instance, Executor executor) {
+				final SettableFuture<?> future = SettableFuture.create();
+				doAction(instance, executor, stopOrder.iterator(), future, new Action<T>() {
+					@Override
+					public ListenableFuture<?> doAction(ServiceAdapter<? super T> serviceAdapter, T instance, Executor executor) {
+						return serviceAdapter.stop(instance, executor);
 					}
 				});
 				return future;

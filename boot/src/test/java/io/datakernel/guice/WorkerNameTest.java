@@ -31,6 +31,8 @@ import java.util.List;
 
 import static com.google.inject.name.Names.named;
 import static io.datakernel.bytebuf.ByteBufPool.*;
+import static io.datakernel.service.ServiceAdapters.combinedAdapter;
+import static io.datakernel.service.ServiceAdapters.immediateServiceAdapter;
 import static org.junit.Assert.assertEquals;
 
 public class WorkerNameTest {
@@ -49,16 +51,18 @@ public class WorkerNameTest {
 
 	public static class Element3 {}
 
-	public static class Element4 {}
+	public static class Element4 extends Element1 {}
 
 	public static class TestModule extends AbstractModule {
 		@Override
 		protected void configure() {
 			install(ServiceGraphModule.defaultInstance()
-					.register(Element4.class, TestServiceGraphServices.immediateServiceAdapter())
-					.register(Element1.class, TestServiceGraphServices.immediateServiceAdapter())
-					.register(Element2.class, TestServiceGraphServices.immediateServiceAdapter())
-					.register(Element3.class, TestServiceGraphServices.immediateServiceAdapter()));
+					.register(Element4.class, combinedAdapter(
+							immediateServiceAdapter(),
+							immediateServiceAdapter()))
+					.register(Element1.class, immediateServiceAdapter())
+					.register(Element2.class, immediateServiceAdapter())
+					.register(Element3.class, immediateServiceAdapter()));
 		}
 
 		@Provides
