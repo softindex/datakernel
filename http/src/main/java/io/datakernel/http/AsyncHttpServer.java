@@ -54,6 +54,8 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private HttpExceptionFormatter errorFormatter = DEFAULT_ERROR_FORMATTER;
 	private int maxHttpMessageSize = Integer.MAX_VALUE;
 	private long keepAliveTimeMillis = DEFAULT_KEEP_ALIVE_MILLIS;
+	private boolean gzipResponses = false;
+
 	private final ExposedLinkedList<AbstractHttpConnection> keepAlivePool = ExposedLinkedList.create();
 	private final char[] headerChars = new char[MAX_HEADER_LINE_SIZE];
 
@@ -193,6 +195,11 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		return self();
 	}
 
+	public AsyncHttpServer withGzipResponses(boolean gzipResponses) {
+		this.gzipResponses = gzipResponses;
+		return self();
+	}
+
 	public AsyncHttpServer withInspector(Inspector inspector) {
 		super.inspector = inspector;
 		this.inspector = inspector;
@@ -238,9 +245,8 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	@Override
 	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 		assert eventloop.inEventloopThread();
-		return HttpServerConnection.create(
-				eventloop, asyncTcpSocket.getRemoteSocketAddress().getAddress(), asyncTcpSocket,
-				this, servlet, keepAlivePool, headerChars, maxHttpMessageSize);
+		return new HttpServerConnection(eventloop, asyncTcpSocket.getRemoteSocketAddress().getAddress(), asyncTcpSocket, this, servlet,
+				headerChars, maxHttpMessageSize, gzipResponses);
 	}
 
 	@Override

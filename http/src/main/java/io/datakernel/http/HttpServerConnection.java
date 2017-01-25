@@ -25,9 +25,7 @@ import io.datakernel.exception.ParseException;
 import java.net.InetAddress;
 import java.util.Arrays;
 
-import static io.datakernel.bytebuf.ByteBufStrings.SP;
-import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
-import static io.datakernel.bytebuf.ByteBufStrings.equalsLowerCaseAscii;
+import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.GzipProcessor.toGzip;
 import static io.datakernel.http.HttpHeaders.CONTENT_ENCODING;
 import static io.datakernel.http.HttpMethod.*;
@@ -62,6 +60,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	private final AsyncHttpServer server;
 	private final AsyncHttpServer.Inspector inspector;
 	private final AsyncServlet servlet;
+	private final boolean gzipResponses;
 
 	private static final byte[] EXPECT_100_CONTINUE = encodeAscii("100-continue");
 	private static final byte[] EXPECT_RESPONSE_CONTINUE = encodeAscii("HTTP/1.1 100 Continue\r\n\r\n");
@@ -69,30 +68,20 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	/**
 	 * Creates a new instance of HttpServerConnection
-	 *
 	 * @param eventloop eventloop which will handle its tasks
 	 * @param server
 	 * @param servlet   servlet for handling requests
-	 * @param pool      pool in which will be stored this connection
+	 * @param gzipResponses
 	 */
-	private HttpServerConnection(Eventloop eventloop, InetAddress remoteAddress, AsyncTcpSocket asyncTcpSocket,
-	                             AsyncHttpServer server, AsyncServlet servlet,
-	                             ExposedLinkedList<AbstractHttpConnection> pool, char[] headerChars,
-	                             int maxHttpMessageSize) {
+	HttpServerConnection(Eventloop eventloop, InetAddress remoteAddress, AsyncTcpSocket asyncTcpSocket,
+	                     AsyncHttpServer server, AsyncServlet servlet,
+	                     char[] headerChars, int maxHttpMessageSize, boolean gzipResponses) {
 		super(eventloop, asyncTcpSocket, headerChars, maxHttpMessageSize);
 		this.server = server;
 		this.servlet = servlet;
 		this.remoteAddress = remoteAddress;
 		this.inspector = server.inspector;
-	}
-
-	static HttpServerConnection create(Eventloop eventloop, InetAddress remoteAddress,
-	                                   AsyncTcpSocket asyncTcpSocket, AsyncHttpServer server,
-	                                   AsyncServlet servlet,
-	                                   ExposedLinkedList<AbstractHttpConnection> pool, char[] headerChars,
-	                                   int maxHttpMessageSize) {
-		return new HttpServerConnection(eventloop, remoteAddress, asyncTcpSocket, server, servlet,
-				pool, headerChars, maxHttpMessageSize);
+		this.gzipResponses = gzipResponses;
 	}
 
 	@Override
@@ -246,7 +235,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 				if (inspector != null) inspector.onHttpResponse(request, httpResponse);
 
 				if (!isClosed()) {
-					if (shouldGzip && httpResponse.getBody() != null) {
+					if (acceptGzip && httpResponse.getBody() != null && gzipResponses) {
 						httpResponse.setHeader(HttpHeaders.asBytes(CONTENT_ENCODING, CONTENT_ENCODING_GZIP));
 						httpResponse.setBody(toGzip(httpResponse.detachBody()));
 					}

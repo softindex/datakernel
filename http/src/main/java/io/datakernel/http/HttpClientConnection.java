@@ -41,20 +41,13 @@ final class HttpClientConnection extends AbstractHttpConnection {
 
 	final InetSocketAddress remoteAddress;
 
-	private HttpClientConnection(Eventloop eventloop, InetSocketAddress remoteAddress,
-	                             AsyncTcpSocket asyncTcpSocket, AsyncHttpClient httpClient, char[] headerChars,
-	                             int maxHttpMessageSize) {
+	HttpClientConnection(Eventloop eventloop, InetSocketAddress remoteAddress,
+	                     AsyncTcpSocket asyncTcpSocket, AsyncHttpClient httpClient, char[] headerChars,
+	                     int maxHttpMessageSize) {
 		super(eventloop, asyncTcpSocket, headerChars, maxHttpMessageSize);
 		this.remoteAddress = remoteAddress;
 		this.httpClient = httpClient;
 		this.inspector = httpClient.inspector;
-	}
-
-	static HttpClientConnection create(Eventloop eventloop, InetSocketAddress remoteAddress,
-	                                   AsyncTcpSocket asyncTcpSocket, AsyncHttpClient httpClient,
-	                                   char[] headerChars, int maxHttpMessageSize) {
-		return new HttpClientConnection(eventloop, remoteAddress, asyncTcpSocket,
-				httpClient, headerChars, maxHttpMessageSize);
 	}
 
 	@Override
