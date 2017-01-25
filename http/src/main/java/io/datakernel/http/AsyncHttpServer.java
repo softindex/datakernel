@@ -294,15 +294,6 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	}
 
 	// jmx
-
-	@JmxAttribute(
-			description = "current number of connections",
-			reducer = JmxReducers.JmxReducerSum.class
-	)
-	public int getConnectionsCount() {
-		return keepAlivePool.size();
-	}
-
 	@JmxAttribute(description = "number of expired connections in keep-alive pool (after appropriate timeout)")
 	public EventStats getConnectionExpirations() {
 		return connectionExpirations;
@@ -320,7 +311,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		return errorFormatter.formatException(e);
 	}
 
-	@JmxAttribute
+	@JmxAttribute(name = "")
 	public JmxInspector getStats() {
 		return inspector instanceof JmxInspector ? (JmxInspector) inspector : null;
 	}

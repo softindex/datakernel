@@ -74,7 +74,7 @@ public class ByteBuf {
 	}
 
 	public ByteBuf slice(int offset, int length) {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		if (!isRecycleNeeded()) {
 			return ByteBuf.wrap(array, offset, offset + length);
 		}
@@ -84,7 +84,7 @@ public class ByteBuf {
 
 	// recycling
 	public void recycle() {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		if (refs > 0 && --refs == 0) {
 			assert --refs == -1;
 			ByteBufPool.recycle(this);
@@ -102,7 +102,7 @@ public class ByteBuf {
 	}
 
 	public void rewind() {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		writePosition = 0;
 		readPosition = 0;
 	}
@@ -113,24 +113,24 @@ public class ByteBuf {
 
 	// byte buffers
 	public ByteBuffer toReadByteBuffer() {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		return ByteBuffer.wrap(array, readPosition, readRemaining());
 	}
 
 	public ByteBuffer toWriteByteBuffer() {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		return ByteBuffer.wrap(array, writePosition, writeRemaining());
 	}
 
 	public void ofReadByteBuffer(ByteBuffer byteBuffer) {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		assert array == byteBuffer.array();
 		assert byteBuffer.limit() == writePosition;
 		this.readPosition = byteBuffer.position();
 	}
 
 	public void ofWriteByteBuffer(ByteBuffer byteBuffer) {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		assert array == byteBuffer.array();
 		assert byteBuffer.limit() == array.length;
 		this.writePosition = byteBuffer.position();
@@ -143,12 +143,12 @@ public class ByteBuf {
 	}
 
 	public int readPosition() {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		return readPosition;
 	}
 
 	public int writePosition() {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		return writePosition;
 	}
 
@@ -157,75 +157,75 @@ public class ByteBuf {
 	}
 
 	public void readPosition(int pos) {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		assert pos <= writePosition;
 		this.readPosition = pos;
 	}
 
 	public void writePosition(int pos) {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		assert pos >= readPosition && pos <= array.length;
 		this.writePosition = pos;
 	}
 
 	public void moveReadPosition(int delta) {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		assert readPosition + delta >= 0;
 		assert readPosition + delta <= writePosition;
 		readPosition += delta;
 	}
 
 	public void moveWritePosition(int delta) {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		assert writePosition + delta >= readPosition;
 		assert writePosition + delta <= array.length;
 		writePosition += delta;
 	}
 
 	public int writeRemaining() {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		return array.length - writePosition;
 	}
 
 	public int readRemaining() {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		return writePosition - readPosition;
 	}
 
 	public boolean canWrite() {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		return writePosition != array.length;
 	}
 
 	public boolean canRead() {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		return readPosition != writePosition;
 	}
 
 	public byte get() {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		assert readPosition < writePosition;
 		return array[readPosition++];
 	}
 
 	public byte at(int index) {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		return array[index];
 	}
 
 	public byte peek() {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		return array[readPosition];
 	}
 
 	public byte peek(int offset) {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		assert (readPosition + offset) < writePosition;
 		return array[readPosition + offset];
 	}
 
 	public int drainTo(byte[] array, int offset, int length) {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		assert length >= 0 && (offset + length) <= array.length;
 		assert this.readPosition + length <= this.writePosition;
 		System.arraycopy(this.array, this.readPosition, array, offset, length);
@@ -242,7 +242,7 @@ public class ByteBuf {
 	}
 
 	public void set(int index, byte b) {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		array[index] = b;
 	}
 
@@ -261,7 +261,7 @@ public class ByteBuf {
 	}
 
 	public void put(byte[] bytes, int offset, int length) {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		assert writePosition + length <= array.length;
 		assert offset + length <= bytes.length;
 		System.arraycopy(bytes, offset, array, writePosition, length);
@@ -269,7 +269,7 @@ public class ByteBuf {
 	}
 
 	public int find(byte b) {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		for (int i = readPosition; i < writePosition; i++) {
 			if (array[i] == b) return i;
 		}
@@ -281,7 +281,7 @@ public class ByteBuf {
 	}
 
 	public int find(byte[] bytes, int off, int len) {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		L:
 		for (int pos = readPosition; pos < writePosition - len; pos++) {
 			for (int i = 0; i < len; i++) {
@@ -302,7 +302,7 @@ public class ByteBuf {
 
 	@Override
 	public boolean equals(Object o) {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		if (this == o) return true;
 		if (o == null || !(ByteBuf.class == o.getClass() || ByteBufSlice.class == o.getClass())) return false;
 
@@ -323,7 +323,7 @@ public class ByteBuf {
 
 	@Override
 	public int hashCode() {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		int result = 1;
 		for (int i = readPosition; i < writePosition; i++) {
 			result = 31 * result + array[i];
@@ -347,19 +347,19 @@ public class ByteBuf {
 
 	// region serialization input
 	public int read(byte[] b) {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 
 		return read(b, 0, b.length);
 	}
 
 	public int read(byte[] b, int off, int len) {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 
 		return drainTo(b, off, len);
 	}
 
 	public byte readByte() {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		assert readRemaining() >= 1;
 
 		return array[readPosition++];
@@ -370,7 +370,7 @@ public class ByteBuf {
 	}
 
 	public char readChar() {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		assert readRemaining() >= 2;
 
 		char c = (char) (((array[readPosition] & 0xFF) << 8) | ((array[readPosition + 1] & 0xFF)));
@@ -379,19 +379,19 @@ public class ByteBuf {
 	}
 
 	public double readDouble() {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 
 		return Double.longBitsToDouble(readLong());
 	}
 
 	public float readFloat() {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 
 		return Float.intBitsToFloat(readInt());
 	}
 
 	public int readInt() {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		assert readRemaining() >= 4;
 
 		int result = ((array[readPosition] & 0xFF) << 24)
@@ -403,7 +403,7 @@ public class ByteBuf {
 	}
 
 	public int readVarInt() {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 
 		int result;
 		assert readRemaining() >= 1;
@@ -445,7 +445,7 @@ public class ByteBuf {
 	}
 
 	public long readLong() {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		assert readRemaining() >= 8;
 
 		long result = ((long) array[readPosition] << 56)
@@ -462,7 +462,7 @@ public class ByteBuf {
 	}
 
 	public short readShort() {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 		assert readRemaining() >= 2;
 
 		short result = (short) (((array[readPosition] & 0xFF) << 8)
@@ -472,14 +472,14 @@ public class ByteBuf {
 	}
 
 	public String readIso88591() {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 
 		int length = readVarInt();
 		return doReadIso88591(length);
 	}
 
 	public String readIso88591Nullable() {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 
 		int length = readVarInt();
 		if (length == 0)
@@ -503,7 +503,7 @@ public class ByteBuf {
 
 	@Deprecated
 	public String readCustomUTF8() {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 
 		int length = readVarInt();
 		return doReadCustomUTF8(length);
@@ -511,7 +511,7 @@ public class ByteBuf {
 
 	@Deprecated
 	public String readCustomUTF8Nullable() {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 
 		int length = readVarInt();
 		if (length == 0)
@@ -540,14 +540,14 @@ public class ByteBuf {
 	}
 
 	public String readUTF16() {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 
 		int length = readVarInt();
 		return doReadUTF16(length);
 	}
 
 	public String readUTF16Nullable() {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 
 		int length = readVarInt();
 		if (length == 0) {
@@ -570,7 +570,7 @@ public class ByteBuf {
 	}
 
 	public long readVarLong() {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 
 		long result = 0;
 		for (int offset = 0; offset < 64; offset += 7) {
@@ -583,14 +583,14 @@ public class ByteBuf {
 	}
 
 	public String readJavaUTF8() {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 
 		int length = readVarInt();
 		return doReadJavaUTF8(length);
 	}
 
 	public String readJavaUTF8Nullable() {
-		assert !isRecycled();
+		assert !isRecycled() : "Attempt to use recycled bytebuf";
 
 		int length = readVarInt();
 		if (length == 0) {

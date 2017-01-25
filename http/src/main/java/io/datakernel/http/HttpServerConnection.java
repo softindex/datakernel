@@ -68,9 +68,10 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	/**
 	 * Creates a new instance of HttpServerConnection
-	 * @param eventloop eventloop which will handle its tasks
+	 *
+	 * @param eventloop     eventloop which will handle its tasks
 	 * @param server
-	 * @param servlet   servlet for handling requests
+	 * @param servlet       servlet for handling requests
 	 * @param gzipResponses
 	 */
 	HttpServerConnection(Eventloop eventloop, InetAddress remoteAddress, AsyncTcpSocket asyncTcpSocket,
@@ -148,8 +149,9 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 		HttpMethod method = getHttpMethod(line);
 		if (method == null) {
+			String firstBytes = line.toString(20);
 			line.recycle();
-			throw new ParseException("Unknown HTTP method. First Bytes: " + line.toString(20));
+			throw new ParseException("Unknown HTTP method. First Bytes: " + firstBytes);
 		}
 
 		if (headerChars.length <= line.readRemaining()) {
