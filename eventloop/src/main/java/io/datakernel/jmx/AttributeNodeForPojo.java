@@ -16,10 +16,7 @@
 
 package io.datakernel.jmx;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static io.datakernel.jmx.Utils.concat;
 import static io.datakernel.jmx.Utils.filterNulls;
@@ -71,6 +68,11 @@ final class AttributeNodeForPojo extends AttributeNodeForPojoAbstract {
 	@Override
 	public Iterable<JmxRefreshable> getAllRefreshables(Object source) {
 		Object pojo = fetcher.fetchFrom(source);
+
+		if (pojo == null) {
+			return Collections.emptyList();
+		}
+
 		List<Iterable<JmxRefreshable>> listOfIterators = new ArrayList<>();
 		for (AttributeNode attributeNode : subNodes) {
 			Iterable<JmxRefreshable> iterable = attributeNode.getAllRefreshables(pojo);

@@ -16,6 +16,7 @@
 
 package io.datakernel.jmx;
 
+import java.util.Collections;
 import java.util.List;
 
 import static java.util.Collections.singletonList;
@@ -30,6 +31,7 @@ final class AttributeNodeForJmxRefreshableStats extends AttributeNodeForJmxStats
 
 	@Override
 	public Iterable<JmxRefreshable> getAllRefreshables(Object source) {
-		return singletonList((JmxRefreshable) fetcher.fetchFrom(source));
+		JmxRefreshable jmxRefreshable = (JmxRefreshable) fetcher.fetchFrom(source);
+		return jmxRefreshable != null ? singletonList(jmxRefreshable) : Collections.<JmxRefreshable>emptyList();
 	}
 }

@@ -111,7 +111,10 @@ abstract class AttributeNodeForPojoAbstract implements AttributeNode {
 	protected final List<Object> fetchInnerPojos(List<?> outerPojos) {
 		List<Object> innerPojos = new ArrayList<>(outerPojos.size());
 		for (Object outerPojo : outerPojos) {
-			innerPojos.add(fetcher.fetchFrom(outerPojo));
+			Object pojo = fetcher.fetchFrom(outerPojo);
+			if (pojo != null) {
+				innerPojos.add(pojo);
+			}
 		}
 		return innerPojos;
 	}

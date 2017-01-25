@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static io.datakernel.jmx.Utils.filterNulls;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Arrays.asList;
 
@@ -46,7 +47,10 @@ abstract class AttributeNodeForJmxStatsAbstract extends AttributeNodeForPojoAbst
 			throw new RuntimeException(e);
 		}
 		for (Object pojo : sources) {
-			accumulator.add((JmxStats) fetcher.fetchFrom(pojo));
+			JmxStats jmxStats = (JmxStats) fetcher.fetchFrom(pojo);
+			if (jmxStats != null) {
+				accumulator.add(jmxStats);
+			}
 		}
 
 		Map<String, Object> attrs = new HashMap<>();
@@ -74,6 +78,12 @@ abstract class AttributeNodeForJmxStatsAbstract extends AttributeNodeForPojoAbst
 
 	@Override
 	public final Object aggregateAttribute(String attrName, List<?> sources) {
+		checkNotNull(sources);
+		List<?> notNullSources = filterNulls(sources);
+		if (notNullSources.size() == 0) {
+			return null;
+		}
+
 		Map<String, Object> allAttrs = aggregateAllAttributes(sources);
 		if (!allAttrs.containsKey(attrName)) {
 			throw new IllegalArgumentException("There is no attribute with name: " + attrName);
