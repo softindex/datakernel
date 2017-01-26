@@ -26,10 +26,13 @@ import java.net.InetSocketAddress;
 
 import static io.datakernel.bytebuf.ByteBufStrings.SP;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeDecimal;
+import static io.datakernel.http.HttpHeaders.CONNECTION;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
 final class HttpClientConnection extends AbstractHttpConnection {
 	private static final ParseException CLOSED_CONNECTION = new ParseException("Connection unexpectedly closed");
+
+	private static final HttpHeaders.Value CONNECTION_KEEP_ALIVE = HttpHeaders.asBytes(CONNECTION, "keep-alive");
 
 	private ResultCallback<HttpResponse> callback;
 	private HttpResponse response;
@@ -180,7 +183,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		assert pool == null;
 		(pool = client.poolWriting).addLastNode(this);
 		poolTimestamp = eventloop.currentTimeMillis();
-		request.addHeader(keepAlive ? CONNECTION_KEEP_ALIVE_HEADER : CONNECTION_CLOSE_HEADER);
+		if (keepAlive) request.addHeader(CONNECTION_KEEP_ALIVE);
 		asyncTcpSocket.write(request.toByteBuf());
 		request.recycleBufs();
 	}
