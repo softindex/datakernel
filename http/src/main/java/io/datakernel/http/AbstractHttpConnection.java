@@ -52,8 +52,6 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 	protected final AsyncTcpSocket asyncTcpSocket;
 	protected final ByteBufQueue readQueue = ByteBufQueue.create();
 
-	private boolean closed;
-
 	protected boolean keepAlive = true;
 
 	protected final ByteBufQueue bodyQueue = ByteBufQueue.create();
@@ -82,8 +80,10 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 	private int maxChunkHeaderChars;
 	protected final char[] headerChars;
 
-	long keepAliveTimestamp;
-	final ExposedLinkedList.Node<AbstractHttpConnection> poolNode = new ExposedLinkedList.Node<>(this);
+	ConnectionsLinkedList pool;
+	public AbstractHttpConnection prev;
+	public AbstractHttpConnection next;
+	long poolTimestamp;
 
 	/**
 	 * Creates a new instance of AbstractHttpConnection
@@ -100,16 +100,7 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 	}
 
 	boolean isClosed() {
-		return closed;
-	}
-
-	/**
-	 * After creating this connection adds it to a pool of connections.
-	 */
-	@Override
-	public void onRegistered() {
-		assert !isClosed();
-		assert eventloop.inEventloopThread();
+		return pool == null;
 	}
 
 	public final void close() {
@@ -117,18 +108,6 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 		asyncTcpSocket.close();
 		readQueue.clear();
 		onClosed();
-	}
-
-	boolean isInPool() {
-		return keepAliveTimestamp != 0;
-	}
-
-	protected void returnToPool() {
-		assert !isInPool();
-	}
-
-	protected void removeFromPool() {
-		assert isInPool();
 	}
 
 	protected final void closeWithError(final Exception e) {
@@ -140,16 +119,10 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 
 	@Override
 	public void onClosedWithError(Exception e) {
-		eventloop.recordIoError(e, this);
 		readQueue.clear();
 	}
 
-	protected void onClosed() {
-		closed = true;
-		if (isInPool()) {
-			removeFromPool();
-		}
-	}
+	abstract protected void onClosed();
 
 	protected void reset() {
 		assert eventloop.inEventloopThread();
@@ -449,7 +422,7 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 	public String toString() {
 		return ", socket=" + asyncTcpSocket +
 				", readQueue=" + readQueue +
-				", closed=" + closed +
+				", closed=" + isClosed() +
 				", keepAlive=" + keepAlive +
 				", bodyQueue=" + bodyQueue +
 				", reading=" + readingToString(reading) +
@@ -458,7 +431,7 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 				", isChunked=" + isChunked +
 				", chunkSize=" + chunkSize +
 				", contentLength=" + contentLength +
-				", keepAliveTimestamp=" + keepAliveTimestamp;
+				", poolTimestamp=" + poolTimestamp;
 	}
 
 	private String readingToString(byte reading) {

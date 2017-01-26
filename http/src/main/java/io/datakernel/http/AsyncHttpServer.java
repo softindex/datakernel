@@ -53,15 +53,23 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private final AsyncServlet servlet;
 	private HttpExceptionFormatter errorFormatter = DEFAULT_ERROR_FORMATTER;
 	private int maxHttpMessageSize = Integer.MAX_VALUE;
-	private long keepAliveTimeMillis = DEFAULT_KEEP_ALIVE_MILLIS;
+	int keepAliveTimeoutMillis = (int) DEFAULT_KEEP_ALIVE_MILLIS;
+	private int readTimeoutMillis = 0;
+	private int writeTimeoutMillis = 0;
 	private boolean gzipResponses = false;
 
-	private final ExposedLinkedList<AbstractHttpConnection> keepAlivePool = ExposedLinkedList.create();
+	int connectionsCount;
+	final ConnectionsLinkedList poolKeepAlive = ConnectionsLinkedList.create();
+	final ConnectionsLinkedList poolReading = ConnectionsLinkedList.create();
+	final ConnectionsLinkedList poolWriting = ConnectionsLinkedList.create();
+	final ConnectionsLinkedList poolServing = ConnectionsLinkedList.create();
+	private int poolKeepAliveExpired;
+	private int poolReadingExpired;
+	private int poolWritingExpired;
+
 	private final char[] headerChars = new char[MAX_HEADER_LINE_SIZE];
 
 	private AsyncCancellable expiredConnectionsCheck;
-
-	private final EventStats connectionExpirations = EventStats.create();
 
 	Inspector inspector;
 
@@ -172,13 +180,23 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		return new AsyncHttpServer(eventloop, servlet).withInspector(new JmxInspector());
 	}
 
-	public AsyncHttpServer withKeepAliveTimeMillis(long keepAliveTimeMillis) {
-		this.keepAliveTimeMillis = keepAliveTimeMillis;
+	public AsyncHttpServer withKeepAliveTimeout(long keepAliveTimeMillis) {
+		this.keepAliveTimeoutMillis = (int) keepAliveTimeMillis;
 		return self();
 	}
 
 	public AsyncHttpServer withNoKeepAlive() {
-		return withKeepAliveTimeMillis(0);
+		return withKeepAliveTimeout(0);
+	}
+
+	public AsyncHttpServer withReadTimeout(long readTimeoutMillis) {
+		this.readTimeoutMillis = (int) readTimeoutMillis;
+		return self();
+	}
+
+	public AsyncHttpServer withWriteTimeout(long writeTimeoutMillis) {
+		this.writeTimeoutMillis = (int) writeTimeoutMillis;
+		return self();
 	}
 
 	public AsyncHttpServer withMaxHttpMessageSize(int maxHttpMessageSize) {
@@ -209,102 +227,93 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 	private void scheduleExpiredConnectionsCheck() {
 		assert expiredConnectionsCheck == null;
-		expiredConnectionsCheck =
-				eventloop.scheduleBackground(eventloop.currentTimeMillis() + 1000L, new ScheduledRunnable() {
-					@Override
-					public void run() {
-						expiredConnectionsCheck = null;
-						checkExpiredConnections();
-						if (!keepAlivePool.isEmpty()) {
-							scheduleExpiredConnectionsCheck();
-						}
-					}
-				});
-	}
-
-	private int checkExpiredConnections() {
-		int count = 0;
-		final long now = eventloop.currentTimeMillis();
-
-		ExposedLinkedList.Node<AbstractHttpConnection> node = keepAlivePool.getFirstNode();
-		while (node != null) {
-			AbstractHttpConnection connection = node.getValue();
-			node = node.getNext();
-
-			assert eventloop.inEventloopThread();
-			long idleTime = now - connection.keepAliveTimestamp;
-			if (idleTime > keepAliveTimeMillis) {
-				connection.close(); // self removing from this pool
-				count++;
+		expiredConnectionsCheck = eventloop.scheduleBackground(eventloop.currentTimeMillis() + 1000L, new ScheduledRunnable() {
+			@Override
+			public void run() {
+				expiredConnectionsCheck = null;
+				poolKeepAliveExpired += poolKeepAlive.closeExpiredConnections(eventloop.currentTimeMillis() + keepAliveTimeoutMillis);
+				if (readTimeoutMillis != 0)
+					poolReadingExpired += poolReading.closeExpiredConnections(eventloop.currentTimeMillis() + readTimeoutMillis);
+				if (writeTimeoutMillis != 0)
+					poolWritingExpired += poolWriting.closeExpiredConnections(eventloop.currentTimeMillis() + writeTimeoutMillis);
+				if (connectionsCount != 0)
+					scheduleExpiredConnectionsCheck();
 			}
-		}
-		connectionExpirations.recordEvents(count);
-		return count;
+		});
 	}
 
 	@Override
 	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 		assert eventloop.inEventloopThread();
+		connectionsCount++;
+		if (expiredConnectionsCheck == null)
+			scheduleExpiredConnectionsCheck();
 		return new HttpServerConnection(eventloop, asyncTcpSocket.getRemoteSocketAddress().getAddress(), asyncTcpSocket, this, servlet,
 				headerChars, maxHttpMessageSize, gzipResponses);
 	}
 
+	private CompletionCallback closeCallback;
+
+	void onConnectionClosed() {
+		connectionsCount--;
+		if (connectionsCount == 0 && closeCallback != null) {
+			closeCallback.postComplete(eventloop);
+			closeCallback = null;
+		}
+	}
+
 	@Override
 	protected void onClose(final CompletionCallback completionCallback) {
-		ExposedLinkedList.Node<AbstractHttpConnection> node = keepAlivePool.getFirstNode();
-		while (node != null) {
-			AbstractHttpConnection connection = node.getValue();
-			node = node.getNext();
-
-			assert eventloop.inEventloopThread();
-			connection.close();
+		poolKeepAlive.closeAllConnections();
+		keepAliveTimeoutMillis = 0;
+		if (connectionsCount == 0) {
+			completionCallback.postComplete(eventloop);
+		} else {
+			this.closeCallback = completionCallback;
 		}
-
-		// TODO(vmykhalko): consider proper usage of completion callback
-		eventloop.post(new Runnable() {
-			@Override
-			public void run() {
-				completionCallback.setComplete();
-			}
-		});
-	}
-
-	void returnToPool(final HttpServerConnection connection) {
-		if (!isRunning() || keepAliveTimeMillis == 0) {
-			eventloop.execute(new Runnable() {
-				@Override
-				public void run() {
-					connection.close();
-				}
-			});
-			return;
-		}
-
-		keepAlivePool.addLastNode(connection.poolNode);
-		connection.keepAliveTimestamp = eventloop.currentTimeMillis();
-
-		if (expiredConnectionsCheck == null) {
-			scheduleExpiredConnectionsCheck();
-		}
-	}
-
-	void removeFromPool(HttpServerConnection connection) {
-		keepAlivePool.removeNode(connection.poolNode);
-		connection.keepAliveTimestamp = 0L;
-	}
-
-	// jmx
-	@JmxAttribute(description = "number of expired connections in keep-alive pool (after appropriate timeout)")
-	public EventStats getConnectionExpirations() {
-		return connectionExpirations;
 	}
 
 	@JmxAttribute(
-			description = "current number of connections in pool",
+			description = "current number of connections",
 			reducer = JmxReducers.JmxReducerSum.class
 	)
-	public long getConnectionsInPool() {
-		return keepAlivePool.size();
+	public int getConnectionsCount() {
+		return connectionsCount;
+	}
+
+	@JmxAttribute
+	public int getConnectionsKeepAliveCount() {
+		return poolKeepAlive.size();
+	}
+
+	@JmxAttribute
+	public int getConnectionsReadingCount() {
+		return poolReading.size();
+	}
+
+	@JmxAttribute
+	public int getConnectionsWritingCount() {
+		return poolWriting.size();
+	}
+
+	@JmxAttribute
+	public int getConnectionsServingCount() {
+		return poolServing.size();
+	}
+
+	@JmxAttribute
+	public int getConnectionsKeepAliveExpired() {
+		return poolKeepAliveExpired;
+	}
+
+	@JmxAttribute
+	public int getConnectionsReadingExpired() {
+		return poolReadingExpired;
+	}
+
+	@JmxAttribute
+	public int getConnectionsWritingExpired() {
+		return poolWritingExpired;
 	}
 
 	HttpResponse formatHttpError(Exception e) {

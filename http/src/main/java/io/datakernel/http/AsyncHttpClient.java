@@ -48,22 +48,29 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create();
 	public static final long DEFAULT_KEEP_ALIVE_MILLIS = 30 * 1000L;
 
-	private static final long CHECK_PERIOD = 1000L;
-
 	private final Eventloop eventloop;
 	private IAsyncDnsClient asyncDnsClient;
 	private SocketSettings socketSettings = DEFAULT_SOCKET_SETTINGS;
-	private final ExposedLinkedList<AbstractHttpConnection> keepAlivePool = ExposedLinkedList.create();
-	private final HashMap<InetSocketAddress, ExposedLinkedList<HttpClientConnection>> keepAlivePoolsByAddresses = new HashMap<>();
+
+	int connectionsCount;
+	final HashMap<InetSocketAddress, AddressLinkedList> addresses = new HashMap<>();
+	final ConnectionsLinkedList poolKeepAlive = ConnectionsLinkedList.create();
+	final ConnectionsLinkedList poolReading = ConnectionsLinkedList.create();
+	final ConnectionsLinkedList poolWriting = ConnectionsLinkedList.create();
+	private int poolKeepAliveExpired;
+	private int poolReadingExpired;
+	private int poolWritingExpired;
+
 	private final char[] headerChars = new char[MAX_HEADER_LINE_SIZE];
 
-	private boolean closed;
 	private AsyncCancellable expiredConnectionsCheck;
 	private int maxHttpMessageSize = Integer.MAX_VALUE;
 
 	// timeouts
 	private int connectTimeoutMillis = 0;
-	private long keepAliveTimeMillis = DEFAULT_KEEP_ALIVE_MILLIS;
+	int keepAliveTimeoutMillis = (int) DEFAULT_KEEP_ALIVE_MILLIS;
+	private int readTimeoutMillis = 0;
+	private int writeTimeoutMillis = 0;
 
 	// SSL
 	private SSLContext sslContext;
@@ -234,13 +241,23 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		return this;
 	}
 
-	public AsyncHttpClient withKeepAliveTimeMillis(long keepAliveTimeMillis) {
-		this.keepAliveTimeMillis = keepAliveTimeMillis;
+	public AsyncHttpClient withKeepAliveTimeout(long keepAliveTimeMillis) {
+		this.keepAliveTimeoutMillis = (int) keepAliveTimeMillis;
 		return this;
 	}
 
 	public AsyncHttpClient withNoKeepAlive() {
-		return withKeepAliveTimeMillis(0);
+		return withKeepAliveTimeout(0);
+	}
+
+	public AsyncHttpClient withReadTimeout(long readTimeoutMillis) {
+		this.readTimeoutMillis = (int) readTimeoutMillis;
+		return this;
+	}
+
+	public AsyncHttpClient withWriteTimeout(long writeTimeoutMillis) {
+		this.writeTimeoutMillis = (int) writeTimeoutMillis;
+		return this;
 	}
 
 	public AsyncHttpClient withConnectTimeout(long connectTimeoutMillis) {
@@ -264,87 +281,52 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 	private void scheduleExpiredConnectionsCheck() {
 		assert expiredConnectionsCheck == null;
-		expiredConnectionsCheck = eventloop.scheduleBackground(eventloop.currentTimeMillis() + CHECK_PERIOD, new ScheduledRunnable() {
+		expiredConnectionsCheck = eventloop.scheduleBackground(eventloop.currentTimeMillis() + 1000L, new ScheduledRunnable() {
 			@Override
 			public void run() {
 				expiredConnectionsCheck = null;
-				checkExpiredConnections();
-				if (!keepAlivePool.isEmpty()) {
+				poolKeepAliveExpired += poolKeepAlive.closeExpiredConnections(eventloop.currentTimeMillis() + keepAliveTimeoutMillis);
+				if (readTimeoutMillis != 0)
+					poolReadingExpired += poolReading.closeExpiredConnections(eventloop.currentTimeMillis() + readTimeoutMillis);
+				if (writeTimeoutMillis != 0)
+					poolWritingExpired += poolWriting.closeExpiredConnections(eventloop.currentTimeMillis() + writeTimeoutMillis);
+				if (connectionsCount != 0)
 					scheduleExpiredConnectionsCheck();
-				}
 			}
 		});
 	}
 
-	private int checkExpiredConnections() {
-		int count = 0;
-		final long now = eventloop.currentTimeMillis();
-
-		ExposedLinkedList.Node<AbstractHttpConnection> node = keepAlivePool.getFirstNode();
-		while (node != null) {
-			HttpClientConnection connection = (HttpClientConnection) node.getValue();
-			node = node.getNext();
-
-			long idleTime = now - connection.keepAliveTimestamp;
-			if (idleTime < keepAliveTimeMillis)
-				break; // connections must back ordered by activity
-			connection.close();
-			count++;
+	private HttpClientConnection takeKeepAliveConnection(InetSocketAddress address) {
+		AddressLinkedList addresses = this.addresses.get(address);
+		if (addresses == null)
+			return null;
+		HttpClientConnection connection = addresses.removeLastNode();
+		assert connection.pool == poolKeepAlive;
+		assert connection.remoteAddress.equals(address);
+		connection.pool.removeNode(connection);
+		connection.pool = null;
+		if (addresses.isEmpty()) {
+			this.addresses.remove(address);
 		}
-		return count;
-	}
-
-	private HttpClientConnection takeConnection(InetSocketAddress address) {
-		ExposedLinkedList<HttpClientConnection> addressPool = keepAlivePoolsByAddresses.get(address);
-		if (addressPool == null)
-			return null;
-		HttpClientConnection connection = addressPool.getFirstValue();
-		if (connection == null)
-			return null;
-		removeFromPool(connection);
 		return connection;
 	}
 
-	void returnToPool(final HttpClientConnection connection) {
+	void returnToKeepAlivePool(HttpClientConnection connection) {
 		assert !connection.isClosed();
-		assert !connection.isInPool();
-		if (closed || keepAliveTimeMillis == 0) {
-			eventloop.execute(new Runnable() {
-				@Override
-				public void run() {
-					connection.close();
-				}
-			});
-			return;
+		AddressLinkedList addresses = this.addresses.get(connection.remoteAddress);
+		if (addresses == null) {
+			addresses = AddressLinkedList.create();
+			this.addresses.put(connection.remoteAddress, addresses);
 		}
-
-		ExposedLinkedList<HttpClientConnection> addressPool = connection.keepAlivePoolByAddress;
-		if (addressPool == null) {
-			addressPool = keepAlivePoolsByAddresses.get(connection.remoteAddress);
-			if (addressPool == null) {
-				addressPool = ExposedLinkedList.create();
-				keepAlivePoolsByAddresses.put(connection.remoteAddress, addressPool);
-			}
-			connection.keepAlivePoolByAddress = addressPool;
-		}
-		addressPool.addLastNode(connection.keepAlivePoolByAddressNode);
-		keepAlivePool.addLastNode(connection.poolNode);
-		connection.keepAliveTimestamp = eventloop.currentTimeMillis();
+		addresses.addLastNode(connection);
+		assert connection.pool == poolReading;
+		poolReading.removeNode(connection);
+		(connection.pool = poolKeepAlive).addLastNode(connection);
+		connection.poolTimestamp = eventloop.currentTimeMillis();
 
 		if (expiredConnectionsCheck == null) {
 			scheduleExpiredConnectionsCheck();
 		}
-	}
-
-	void removeFromPool(HttpClientConnection connection) {
-		assert connection.isInPool();
-		keepAlivePool.removeNode(connection.poolNode);
-		connection.keepAlivePoolByAddress.removeNode(connection.keepAlivePoolByAddressNode);
-		if (connection.keepAlivePoolByAddress.isEmpty()) {
-			keepAlivePoolsByAddresses.remove(connection.remoteAddress);
-		}
-		connection.keepAlivePoolByAddress = null;
-		connection.keepAliveTimestamp = 0L;
 	}
 
 	/**
@@ -358,10 +340,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		assert eventloop.inEventloopThread();
 
 		if (inspector != null) inspector.onRequest(request);
-		getUrlAsync(request, callback);
-	}
 
-	private void getUrlAsync(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
 		String host = request.getUrl().getHost();
 		asyncDnsClient.resolve4(host, new ResultCallback<InetAddress[]>() {
 			@Override
@@ -378,13 +357,10 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		});
 	}
 
-	private InetAddress getNextInetAddress(InetAddress[] inetAddresses) {
-		return inetAddresses[((inetAddressIdx++) & Integer.MAX_VALUE) % inetAddresses.length];
-	}
-
-	private void getUrlForHostAsync(final HttpRequest request, final InetAddress[] inetAddresses, final ResultCallback<HttpResponse> callback) {
+	private void getUrlForHostAsync(final HttpRequest request, final InetAddress[] inetAddresses,
+	                                final ResultCallback<HttpResponse> callback) {
 		String host = request.getUrl().getHost();
-		final InetAddress inetAddress = getNextInetAddress(inetAddresses);
+		final InetAddress inetAddress = inetAddresses[((inetAddressIdx++) & Integer.MAX_VALUE) % inetAddresses.length];
 		if (!isValidHost(host, inetAddress)) {
 			callback.setException(new IOException("Invalid IP address " + inetAddress + " for host " + host));
 			return;
@@ -392,7 +368,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 		final InetSocketAddress address = new InetSocketAddress(inetAddress, request.getUrl().getPort());
 
-		HttpClientConnection connection = takeConnection(address);
+		HttpClientConnection connection = takeKeepAliveConnection(address);
 		if (connection != null) {
 			connection.send(request, callback);
 			return;
@@ -413,6 +389,10 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 				asyncTcpSocketImpl.register();
 
 				if (inspector != null) inspector.onConnect(request, connection);
+
+				connectionsCount++;
+				if (expiredConnectionsCheck == null)
+					scheduleExpiredConnectionsCheck();
 
 				connection.send(request, callback);
 			}
@@ -440,24 +420,6 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		return true;
 	}
 
-	public void close() {
-		checkState(eventloop.inEventloopThread());
-		if (closed)
-			return;
-		closed = true;
-		if (expiredConnectionsCheck != null) {
-			expiredConnectionsCheck.cancel();
-			expiredConnectionsCheck = null;
-		}
-
-		ExposedLinkedList.Node<AbstractHttpConnection> node = keepAlivePool.getFirstNode();
-		while (node != null) {
-			AbstractHttpConnection connection = node.getValue();
-			node = node.getNext();
-			connection.close();
-		}
-	}
-
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;
@@ -469,33 +431,80 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		callback.setComplete();
 	}
 
+	private CompletionCallback closeCallback;
+
+	public void onConnectionClosed() {
+		connectionsCount--;
+		if (connectionsCount == 0 && closeCallback != null) {
+			closeCallback.postComplete(eventloop);
+			closeCallback = null;
+		}
+	}
+
 	@Override
 	public void stop(final CompletionCallback callback) {
 		checkState(eventloop.inEventloopThread());
-		close();
-		callback.setComplete();
+		poolKeepAlive.closeAllConnections();
+		assert addresses.isEmpty();
+		keepAliveTimeoutMillis = 0;
+		if (connectionsCount == 0) {
+			assert poolReading.isEmpty() && poolWriting.isEmpty();
+			callback.postComplete(eventloop);
+		} else {
+			this.closeCallback = callback;
+		}
+	}
+
+	@JmxAttribute(
+			description = "current number of connections",
+			reducer = JmxReducers.JmxReducerSum.class
+	)
+	public int getConnectionsCount() {
+		return connectionsCount;
+	}
+
+	@JmxAttribute
+	public int getConnectionsKeepAliveCount() {
+		return poolKeepAlive.size();
+	}
+
+	@JmxAttribute
+	public int getConnectionsReadingCount() {
+		return poolReading.size();
+	}
+
+	@JmxAttribute
+	public int getConnectionsWritingCount() {
+		return poolWriting.size();
+	}
+
+	@JmxAttribute
+	public int getConnectionsKeepAliveExpired() {
+		return poolKeepAliveExpired;
+	}
+
+	@JmxAttribute
+	public int getConnectionsReadingExpired() {
+		return poolReadingExpired;
+	}
+
+	@JmxAttribute
+	public int getConnectionsWritingExpired() {
+		return poolWritingExpired;
 	}
 
 	@JmxAttribute(description = "number of connections per address")
 	public List<String> getAddressConnections() {
-		if (keepAlivePoolsByAddresses.isEmpty())
+		if (addresses.isEmpty())
 			return null;
 		List<String> result = new ArrayList<>();
 		result.add("SocketAddress,ConnectionsCount");
-		for (Entry<InetSocketAddress, ExposedLinkedList<HttpClientConnection>> entry : keepAlivePoolsByAddresses.entrySet()) {
+		for (Entry<InetSocketAddress, AddressLinkedList> entry : addresses.entrySet()) {
 			InetSocketAddress address = entry.getKey();
-			ExposedLinkedList<HttpClientConnection> connections = entry.getValue();
+			AddressLinkedList connections = entry.getValue();
 			result.add(address + "," + connections.size());
 		}
 		return result;
-	}
-
-	@JmxAttribute(
-			description = "current number of connections in pool",
-			reducer = JmxReducers.JmxReducerSum.class
-	)
-	public long getConnectionsInPool() {
-		return keepAlivePool.size();
 	}
 
 	@JmxAttribute

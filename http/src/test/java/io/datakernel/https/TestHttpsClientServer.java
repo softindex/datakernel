@@ -96,14 +96,14 @@ public class TestHttpsClientServer {
 			public void onResult(HttpResponse result) {
 				callback.setResult(decodeAscii(result.getBody()));
 				server.close(IgnoreCompletionCallback.create());
-				client.close();
+				client.stop(IgnoreCompletionCallback.create());
 			}
 
 			@Override
 			public void onException(Exception e) {
 				callback.setException(e);
 				server.close(IgnoreCompletionCallback.create());
-				client.close();
+				client.stop(IgnoreCompletionCallback.create());
 			}
 		});
 		eventloop.run();
@@ -165,7 +165,7 @@ public class TestHttpsClientServer {
 			@Override
 			protected void onComplete() {
 				server.close(IgnoreCompletionCallback.create());
-				client.close();
+				client.stop(IgnoreCompletionCallback.create());
 			}
 		});
 

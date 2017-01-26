@@ -307,7 +307,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		});
 	}
 
-	protected boolean isRunning() {
+	public boolean isRunning() {
 		return running;
 	}
 

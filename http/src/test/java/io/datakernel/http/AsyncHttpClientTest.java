@@ -70,14 +70,14 @@ public class AsyncHttpClientTest {
 				} catch (ParseException e) {
 					onException(e);
 				}
-				httpClient.close();
+				httpClient.stop(IgnoreCompletionCallback.create());
 				httpServer.close(IgnoreCompletionCallback.create());
 			}
 
 			@Override
 			public void onException(Exception exception) {
 				resultObserver.setException(exception);
-				httpClient.close();
+				httpClient.stop(IgnoreCompletionCallback.create());
 				httpServer.close(IgnoreCompletionCallback.create());
 			}
 		});
@@ -105,13 +105,13 @@ public class AsyncHttpClientTest {
 				} catch (ParseException e) {
 					onException(e);
 				}
-				httpClient.close();
+				httpClient.stop(IgnoreCompletionCallback.create());
 			}
 
 			@Override
 			public void onException(Exception exception) {
 				resultObserver.setException(exception);
-				httpClient.close();
+				httpClient.stop(IgnoreCompletionCallback.create());
 			}
 		});
 
@@ -144,14 +144,14 @@ public class AsyncHttpClientTest {
 				} catch (ParseException e) {
 					onException(e);
 				}
-				httpClient.close();
+				httpClient.stop(IgnoreCompletionCallback.create());
 				httpServer.close(IgnoreCompletionCallback.create());
 			}
 
 			@Override
 			public void onException(Exception exception) {
 				resultObserver.setException(exception);
-				httpClient.close();
+				httpClient.stop(IgnoreCompletionCallback.create());
 				httpServer.close(IgnoreCompletionCallback.create());
 			}
 		});
@@ -217,13 +217,13 @@ public class AsyncHttpClientTest {
 				} catch (ParseException e) {
 					onException(e);
 				}
-				httpClient.close();
+				httpClient.stop(IgnoreCompletionCallback.create());
 			}
 
 			@Override
 			public void onException(Exception e) {
 				resultObserver.setException(e);
-				httpClient.close();
+				httpClient.stop(IgnoreCompletionCallback.create());
 				server.close(IgnoreCompletionCallback.create());
 			}
 		});

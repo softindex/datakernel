@@ -87,8 +87,9 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	@Override
 	public void onRegistered() {
-		super.onRegistered();
 		asyncTcpSocket.read();
+		(pool = server.poolReading).addLastNode(this);
+		poolTimestamp = eventloop.currentTimeMillis();
 	}
 
 	@Override
@@ -143,9 +144,9 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	protected void onFirstLine(ByteBuf line) throws ParseException {
 		assert eventloop.inEventloopThread();
 
-		if (isInPool()) {
-			removeFromPool();
-		}
+		pool.removeNode(this);
+		(pool = server.poolReading).addLastNode(this);
+		poolTimestamp = eventloop.currentTimeMillis();
 
 		HttpMethod method = getHttpMethod(line);
 		if (method == null) {
@@ -230,6 +231,10 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 		if (inspector != null) inspector.onHttpRequest(request);
 
+		pool.removeNode(this);
+		(pool = server.poolServing).addLastNode(this);
+		poolTimestamp = eventloop.currentTimeMillis();
+
 		servlet.serve(request, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(final HttpResponse httpResponse) {
@@ -247,6 +252,10 @@ final class HttpServerConnection extends AbstractHttpConnection {
 					httpResponse.recycleBufs();
 				}
 				recycleBufs();
+
+				pool.removeNode(HttpServerConnection.this);
+				(pool = server.poolWriting).addLastNode(HttpServerConnection.this);
+				poolTimestamp = eventloop.currentTimeMillis();
 			}
 
 			@Override
@@ -257,6 +266,10 @@ final class HttpServerConnection extends AbstractHttpConnection {
 					writeException(e);
 				}
 				recycleBufs();
+
+				pool.removeNode(HttpServerConnection.this);
+				(pool = server.poolWriting).addLastNode(HttpServerConnection.this);
+				poolTimestamp = eventloop.currentTimeMillis();
 			}
 		});
 	}
@@ -280,9 +293,11 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			return;
 		}
 
-		if (keepAlive) {
+		if (keepAlive && server.keepAliveTimeoutMillis != 0) {
 			reset();
-			returnToPool();
+			pool.removeNode(HttpServerConnection.this);
+			(pool = server.poolKeepAlive).addLastNode(HttpServerConnection.this);
+			poolTimestamp = eventloop.currentTimeMillis();
 			if (readQueue.hasRemaining()) {
 				onRead(null);
 			}
@@ -303,26 +318,15 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		}
 	}
 
-	@Override
-	protected void returnToPool() {
-		super.returnToPool();
-		server.returnToPool(this);
-	}
-
-	@Override
-	protected void removeFromPool() {
-		super.removeFromPool();
-		server.removeFromPool(this);
-	}
-
-	@Override
 	protected void onClosed() {
-		super.onClosed();
+		pool.removeNode(this);
+		pool = null;
 		if (reading != NOTHING) {
 			// request is not being processed by asynchronous servlet at the moment
 			recycleBufs();
 		}
 
+		server.onConnectionClosed();
 		if (inspector != null) inspector.onConnectionClosed(remoteAddress);
 	}
 

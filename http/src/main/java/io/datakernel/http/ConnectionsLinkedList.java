@@ -16,55 +16,23 @@
 
 package io.datakernel.http;
 
-import io.datakernel.annotation.Nullable;
-
-public final class ExposedLinkedList<T> {
-	private ExposedLinkedList() {}
-
-	public static <T> ExposedLinkedList<T> create() {return new ExposedLinkedList<T>();}
-
-	public static class Node<T> {
-		final T value;
-		Node<T> prev;
-		Node<T> next;
-
-		public Node<T> getPrev() {
-			return prev;
-		}
-
-		public Node<T> getNext() {
-			return next;
-		}
-
-		public T getValue() {
-			return value;
-		}
-
-		public Node(T value) {
-			this.value = value;
-		}
+public final class ConnectionsLinkedList {
+	private ConnectionsLinkedList() {
 	}
 
-	private int size;
-	private Node<T> first;
-	private Node<T> last;
+	public static ConnectionsLinkedList create() {
+		return new ConnectionsLinkedList();
+	}
 
-	public Node<T> getFirstNode() {
+	private AbstractHttpConnection first;
+	private AbstractHttpConnection last;
+
+	public AbstractHttpConnection getFirstNode() {
 		return first;
 	}
 
-	public Node<T> getLastNode() {
+	public AbstractHttpConnection getLastNode() {
 		return last;
-	}
-
-	@Nullable
-	public T getFirstValue() {
-		return first != null ? first.value : null;
-	}
-
-	@Nullable
-	public T getLastValue() {
-		return last != null ? last.value : null;
 	}
 
 	public boolean isEmpty() {
@@ -76,14 +44,10 @@ public final class ExposedLinkedList<T> {
 		last = null;
 	}
 
-	public int size() {
-		return size;
-	}
-
-	public Node<T> removeFirstNode() {
+	public AbstractHttpConnection removeFirstNode() {
 		if (first == null)
 			return null;
-		Node<T> node = first;
+		AbstractHttpConnection node = first;
 		first = node.next;
 		if (node.next != null) {
 			node.next.prev = node.prev;
@@ -91,15 +55,14 @@ public final class ExposedLinkedList<T> {
 			assert last == node;
 			last = node.prev;
 		}
-		size--;
 		node.next = node.prev = null;
 		return node;
 	}
 
-	public Node<T> removeLastNode() {
+	public AbstractHttpConnection removeLastNode() {
 		if (last == null)
 			return null;
-		Node<T> node = last;
+		AbstractHttpConnection node = last;
 		last = node.prev;
 		if (node.prev != null) {
 			node.prev.next = node.next;
@@ -107,42 +70,11 @@ public final class ExposedLinkedList<T> {
 			assert first == node;
 			first = node.next;
 		}
-		size--;
 		node.next = node.prev = null;
 		return node;
 	}
 
-	@Nullable
-	public T removeFirstValue() {
-		Node<T> node = removeFirstNode();
-		if (node == null) {
-			return null;
-		}
-		return node.getValue();
-	}
-
-	@Nullable
-	public T removeLastValue() {
-		Node<T> node = removeLastNode();
-		if (node == null) {
-			return null;
-		}
-		return node.getValue();
-	}
-
-	public Node<T> addFirstValue(T value) {
-		Node<T> node = new Node<>(value);
-		addFirstNode(node);
-		return node;
-	}
-
-	public Node<T> addLastValue(T value) {
-		Node<T> node = new Node<>(value);
-		addLastNode(node);
-		return node;
-	}
-
-	public void addFirstNode(Node<T> node) {
+	public void addFirstNode(AbstractHttpConnection node) {
 		assert node.prev == null && node.next == null;
 		if (first != null) {
 			assert first.prev == null;
@@ -153,10 +85,9 @@ public final class ExposedLinkedList<T> {
 			last = node;
 		}
 		first = node;
-		size++;
 	}
 
-	public void addLastNode(Node<T> node) {
+	public void addLastNode(AbstractHttpConnection node) {
 		assert node.prev == null && node.next == null;
 		if (last != null) {
 			assert last.next == null;
@@ -167,24 +98,23 @@ public final class ExposedLinkedList<T> {
 			first = node;
 		}
 		last = node;
-		size++;
 	}
 
-	public void moveNodeToLast(Node<T> node) {
+	public void moveNodeToLast(AbstractHttpConnection node) {
 		if (node.next == null)
 			return;
 		removeNode(node);
 		addLastNode(node);
 	}
 
-	public void moveNodeToFirst(Node<T> node) {
+	public void moveNodeToFirst(AbstractHttpConnection node) {
 		if (node.prev == null)
 			return;
 		removeNode(node);
 		addFirstNode(node);
 	}
 
-	public void removeNode(Node<T> node) {
+	public void removeNode(AbstractHttpConnection node) {
 		if (node.prev != null) {
 			node.prev.next = node.next;
 		} else {
@@ -198,7 +128,41 @@ public final class ExposedLinkedList<T> {
 			last = node.prev;
 		}
 		node.next = node.prev = null;
-		size--;
 	}
 
+	public int closeExpiredConnections(long expiration) {
+		int count = 0;
+		AbstractHttpConnection connection = getFirstNode();
+		while (connection != null) {
+			AbstractHttpConnection next = connection.next;
+			if (connection.poolTimestamp < expiration)
+				break; // connections must back ordered by activity
+			connection.close();
+			assert connection.prev == null && connection.next == null;
+			connection = next;
+			count++;
+		}
+		return count;
+	}
+
+	public int closeAllConnections() {
+		int count = 0;
+		AbstractHttpConnection connection = getFirstNode();
+		while (connection != null) {
+			AbstractHttpConnection next = connection.next;
+			connection.close();
+			assert connection.prev == null && connection.next == null;
+			connection = next;
+			count++;
+		}
+		return count;
+	}
+
+	public int size() {
+		int count = 0;
+		for (AbstractHttpConnection connection = first; connection != null; connection = connection.next) {
+			count++;
+		}
+		return count;
+	}
 }

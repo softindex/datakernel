@@ -122,14 +122,14 @@ public class HttpApiTest {
 					fail("Invalid response");
 				}
 				server.close(IgnoreCompletionCallback.create());
-				client.close();
+				client.stop(IgnoreCompletionCallback.create());
 			}
 
 			@Override
 			protected void onException(Exception e) {
 				fail("Should not end here");
 				server.close(IgnoreCompletionCallback.create());
-				client.close();
+				client.stop(IgnoreCompletionCallback.create());
 			}
 		});
 		eventloop.run();

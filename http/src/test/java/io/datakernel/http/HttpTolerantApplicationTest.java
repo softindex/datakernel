@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.bytebuf.ByteBuf;
@@ -151,13 +152,13 @@ public class HttpTolerantApplicationTest {
 				@Override
 				protected void onResult(HttpResponse response) {
 					resultObserver.setResult(response.getHeader(HttpHeaders.CONTENT_TYPE));
-					httpClient.close();
+					httpClient.stop(IgnoreCompletionCallback.create());
 				}
 
 				@Override
 				protected void onException(Exception exception) {
 					resultObserver.setException(exception);
-					httpClient.close();
+					httpClient.stop(IgnoreCompletionCallback.create());
 				}
 			});
 

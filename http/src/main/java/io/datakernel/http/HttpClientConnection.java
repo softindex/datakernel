@@ -33,21 +33,24 @@ final class HttpClientConnection extends AbstractHttpConnection {
 
 	private ResultCallback<HttpResponse> callback;
 	private HttpResponse response;
-	private final AsyncHttpClient httpClient;
+	private final AsyncHttpClient client;
 	private final AsyncHttpClient.Inspector inspector;
 
-	ExposedLinkedList<HttpClientConnection> keepAlivePoolByAddress;
-	final ExposedLinkedList.Node<HttpClientConnection> keepAlivePoolByAddressNode = new ExposedLinkedList.Node<>(this);
-
 	final InetSocketAddress remoteAddress;
+	public HttpClientConnection addressPrev;
+	public HttpClientConnection addressNext;
 
 	HttpClientConnection(Eventloop eventloop, InetSocketAddress remoteAddress,
-	                     AsyncTcpSocket asyncTcpSocket, AsyncHttpClient httpClient, char[] headerChars,
+	                     AsyncTcpSocket asyncTcpSocket, AsyncHttpClient client, char[] headerChars,
 	                     int maxHttpMessageSize) {
 		super(eventloop, asyncTcpSocket, headerChars, maxHttpMessageSize);
 		this.remoteAddress = remoteAddress;
-		this.httpClient = httpClient;
-		this.inspector = httpClient.inspector;
+		this.client = client;
+		this.inspector = client.inspector;
+	}
+
+	@Override
+	public void onRegistered() {
 	}
 
 	@Override
@@ -133,9 +136,9 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		});
 
 		if (inspector != null) inspector.onConnectionResponse(this, response);
-		if (keepAlive) {
+		if (keepAlive && client.keepAliveTimeoutMillis != 0) {
 			reset();
-			returnToPool();
+			client.returnToKeepAlivePool(this);
 		} else {
 			close();
 		}
@@ -166,11 +169,6 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		super.reset();
 	}
 
-	private void writeHttpRequest(HttpRequest httpRequest) {
-		httpRequest.addHeader(keepAlive ? CONNECTION_KEEP_ALIVE_HEADER : CONNECTION_CLOSE_HEADER);
-		asyncTcpSocket.write(httpRequest.toByteBuf());
-	}
-
 	/**
 	 * Sends the request, recycles it and closes connection in case of timeout
 	 *
@@ -179,8 +177,11 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 */
 	public void send(HttpRequest request, ResultCallback<HttpResponse> callback) {
 		this.callback = callback;
-		writeHttpRequest(request);
-
+		assert pool == null;
+		(pool = client.poolWriting).addLastNode(this);
+		poolTimestamp = eventloop.currentTimeMillis();
+		request.addHeader(keepAlive ? CONNECTION_KEEP_ALIVE_HEADER : CONNECTION_CLOSE_HEADER);
+		asyncTcpSocket.write(request.toByteBuf());
 		request.recycleBufs();
 	}
 
@@ -189,30 +190,31 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		assert !isClosed();
 		assert eventloop.inEventloopThread();
 		reading = FIRSTLINE;
+		assert pool == client.poolWriting;
+		pool.removeNode(this);
+		(pool = client.poolReading).addLastNode(this);
+		poolTimestamp = eventloop.currentTimeMillis();
 		asyncTcpSocket.read();
 	}
 
-	@Override
-	protected final void returnToPool() {
-		super.returnToPool();
-		httpClient.returnToPool(this);
-	}
-
-	@Override
-	protected final void removeFromPool() {
-		super.removeFromPool();
-		httpClient.removeFromPool(this);
-	}
 
 	/**
 	 * After closing this connection it removes it from its connections cache and recycles
 	 * Http response.
 	 */
-	@Override
 	protected void onClosed() {
 		assert callback == null;
+		if (pool == client.poolKeepAlive) {
+			AddressLinkedList addresses = client.addresses.get(remoteAddress);
+			addresses.removeNode(this);
+			if (addresses.isEmpty()) {
+				client.addresses.remove(remoteAddress);
+			}
+		}
+		pool.removeNode(this);
+		pool = null;
 		if (inspector != null) inspector.onConnectionClosed(this);
-		super.onClosed();
+		client.onConnectionClosed();
 		bodyQueue.clear();
 		if (response != null) {
 			response.recycleBufs();
@@ -224,8 +226,8 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		return "HttpClientConnection{" +
 				"callback=" + callback +
 				", response=" + response +
-				", httpClient=" + httpClient +
-				", keepAlivePoolByAddress=" + (keepAlivePoolByAddress == null ? "" : keepAlivePoolByAddress) +
+				", httpClient=" + client +
+				", keepAlive=" + (pool == client.poolKeepAlive) +
 //				", lastRequestUrl='" + (request.getFullUrl() == null ? "" : request.getFullUrl()) + '\'' +
 				", remoteAddress=" + remoteAddress +
 				',' + super.toString() +

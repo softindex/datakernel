@@ -18,6 +18,7 @@ package io.datakernel.https;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
+import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.dns.AsyncDnsClient;
@@ -71,13 +72,13 @@ public class TestHttpsClient {
 			@Override
 			public void onResult(HttpResponse result) {
 				callback.setResult(result.getCode());
-				client.close();
+				client.stop(IgnoreCompletionCallback.create());
 			}
 
 			@Override
 			public void onException(Exception e) {
 				callback.setException(e);
-				client.close();
+				client.stop(IgnoreCompletionCallback.create());
 			}
 		});
 

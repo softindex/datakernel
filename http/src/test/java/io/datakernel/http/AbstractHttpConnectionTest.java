@@ -44,7 +44,7 @@ public class AbstractHttpConnectionTest {
 			public void onResult(HttpResponse result) {
 				data.put("body", decodeAscii(result.getBody()));
 				data.put("header", result.getHeader(HttpHeaders.CONTENT_TYPE));
-				client.close();
+				client.stop(IgnoreCompletionCallback.create());
 				server.close(IgnoreCompletionCallback.create());
 			}
 

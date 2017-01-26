@@ -42,14 +42,14 @@ public class TestClientMultilineHeaders {
 			@Override
 			public void onResult(HttpResponse result) {
 				resultObserver.setResult(result.getHeader(HttpHeaders.ALLOW));
-				httpClient.close();
+				httpClient.stop(IgnoreCompletionCallback.create());
 				server.close(IgnoreCompletionCallback.create());
 			}
 
 			@Override
 			public void onException(Exception exception) {
 				resultObserver.setException(exception);
-				httpClient.close();
+				httpClient.stop(IgnoreCompletionCallback.create());
 				server.close(IgnoreCompletionCallback.create());
 			}
 		});
