@@ -2,56 +2,50 @@ package io.datakernel.async;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
+import io.datakernel.exception.SimpleException;
 
+import java.util.Collection;
 import java.util.Iterator;
-import java.util.List;
-import java.util.concurrent.TimeoutException;
 
 import static java.util.Arrays.asList;
 
 public class AsyncRunnables {
-	public static final TimeoutException TIMEOUT_EXCEPTION = new TimeoutException();
+	public static final SimpleException RUNNABLE_TIMEOUT_EXCEPTION = new SimpleException("AsyncRunnable timeout");
 
 	private AsyncRunnables() {
-	}
-
-	private static final class DoneState {
-		boolean done;
 	}
 
 	public static AsyncRunnable timeout(final Eventloop eventloop, final long timestamp, final AsyncRunnable runnable) {
 		return new AsyncRunnable() {
 			@Override
 			public void run(final CompletionCallback callback) {
-				final DoneState state = new DoneState();
+				final ScheduledRunnable scheduledRunnable = eventloop.schedule(timestamp, new ScheduledRunnable() {
+					@Override
+					public void run() {
+						callback.setException(RUNNABLE_TIMEOUT_EXCEPTION);
+						if (runnable instanceof AsyncCancellable) {
+							((AsyncCancellable) runnable).cancel();
+						}
+					}
+				});
+
 				runnable.run(new CompletionCallback() {
 					@Override
 					protected void onComplete() {
-						if (!state.done) {
-							state.done = true;
+						if (scheduledRunnable.isScheduledNow()) {
+							scheduledRunnable.cancel();
 							callback.setComplete();
 						}
 					}
 
 					@Override
 					protected void onException(Exception e) {
-						if (!state.done) {
-							state.done = true;
+						if (scheduledRunnable.isScheduledNow()) {
+							scheduledRunnable.cancel();
 							callback.setException(e);
 						}
 					}
 				});
-				if (!state.done) {
-					eventloop.schedule(timestamp, new ScheduledRunnable() {
-						@Override
-						public void run() {
-							if (!state.done) {
-								state.done = true;
-								callback.setException(TIMEOUT_EXCEPTION);
-							}
-						}
-					});
-				}
 			}
 		};
 	}
@@ -60,14 +54,14 @@ public class AsyncRunnables {
 		return runInSequence(eventloop, asList(runnables));
 	}
 
-	public static AsyncRunnable runInSequence(final Eventloop eventloop, final Iterable<AsyncRunnable> runnables) {
+	public static AsyncRunnable runInSequence(final Eventloop eventloop, final Iterable<? extends AsyncRunnable> runnables) {
 		return new AsyncRunnable() {
 			@Override
 			public void run(CompletionCallback callback) {
 				next(runnables.iterator(), callback);
 			}
 
-			void next(final Iterator<AsyncRunnable> iterator, final CompletionCallback callback) {
+			void next(final Iterator<? extends AsyncRunnable> iterator, final CompletionCallback callback) {
 				if (iterator.hasNext()) {
 					AsyncRunnable nextTask = iterator.next();
 					final long tick = eventloop.tick();
@@ -104,13 +98,13 @@ public class AsyncRunnables {
 		}
 	}
 
-	public static AsyncRunnable runInParallel(final Eventloop eventloop, final List<AsyncRunnable> runnables) {
+	public static AsyncRunnable runInParallel(final Eventloop eventloop, final Collection<? extends AsyncRunnable> runnables) {
 		return new AsyncRunnable() {
 			@Override
 			public void run(final CompletionCallback callback) {
 				final RunState state = new RunState(runnables.size());
 				if (state.pending == 0) {
-					callback.setComplete();
+					callback.postComplete(eventloop);
 					return;
 				}
 				for (AsyncRunnable runnable : runnables) {

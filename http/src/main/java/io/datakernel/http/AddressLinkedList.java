@@ -16,47 +16,12 @@
 
 package io.datakernel.http;
 
-public final class AddressLinkedList {
-	private AddressLinkedList() {
-	}
-
-	public static <T> AddressLinkedList create() {
-		return new AddressLinkedList();
-	}
-
+final class AddressLinkedList {
 	private HttpClientConnection first;
 	private HttpClientConnection last;
 
-	public HttpClientConnection getFirstNode() {
-		return first;
-	}
-
-	public HttpClientConnection getLastNode() {
-		return last;
-	}
-
 	public boolean isEmpty() {
 		return first == null;
-	}
-
-	public void clear() {
-		first = null;
-		last = null;
-	}
-
-	public HttpClientConnection removeFirstNode() {
-		if (first == null)
-			return null;
-		HttpClientConnection node = first;
-		first = node.addressNext;
-		if (node.addressNext != null) {
-			node.addressNext.addressPrev = node.addressPrev;
-		} else {
-			assert last == node;
-			last = node.addressPrev;
-		}
-		node.next = node.prev = null;
-		return node;
 	}
 
 	public HttpClientConnection removeLastNode() {
@@ -70,21 +35,8 @@ public final class AddressLinkedList {
 			assert first == node;
 			first = node.addressNext;
 		}
-		node.next = node.prev = null;
+		node.addressNext = node.addressPrev = null;
 		return node;
-	}
-
-	public void addFirstNode(HttpClientConnection node) {
-		assert node.addressPrev == null && node.addressNext == null;
-		if (first != null) {
-			assert first.addressPrev == null;
-			first.addressPrev = node;
-			node.addressNext = first;
-		} else {
-			assert last == null;
-			last = node;
-		}
-		first = node;
 	}
 
 	public void addLastNode(HttpClientConnection node) {

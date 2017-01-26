@@ -2,60 +2,56 @@ package io.datakernel.async;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
+import io.datakernel.exception.SimpleException;
 
+import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.TimeoutException;
 
 import static java.util.Arrays.asList;
 
 public class AsyncCallables {
-	public static final TimeoutException TIMEOUT_EXCEPTION = new TimeoutException();
+	public static final SimpleException CALLABLE_TIMEOUT_EXCEPTION = new SimpleException("AsyncCallable timeout");
 
 	private AsyncCallables() {
 	}
 
-	private static final class DoneState {
-		boolean done;
-	}
-
-	public static <T> AsyncCallable<T> timeout(final Eventloop eventloop, final long timestamp, final AsyncCallable<T> callable) {
+	public static <T> AsyncCallable<T> callWithTimeout(final Eventloop eventloop, final long timestamp, final AsyncCallable<T> callable) {
 		return new AsyncCallable<T>() {
 			@Override
 			public void call(final ResultCallback<T> callback) {
-				final DoneState state = new DoneState();
+				final ScheduledRunnable scheduledRunnable = eventloop.schedule(timestamp, new ScheduledRunnable() {
+					@Override
+					public void run() {
+						callback.setException(CALLABLE_TIMEOUT_EXCEPTION);
+						if (callable instanceof AsyncCancellable) {
+							((AsyncCancellable) callable).cancel();
+						}
+					}
+				});
+
 				callable.call(new ResultCallback<T>() {
 					@Override
 					protected void onResult(T result) {
-						if (!state.done) {
-							state.done = true;
+						if (scheduledRunnable.isScheduledNow()) {
+							scheduledRunnable.cancel();
 							callback.setResult(result);
 						}
 					}
 
 					@Override
 					protected void onException(Exception e) {
-						if (!state.done) {
-							state.done = true;
+						if (scheduledRunnable.isScheduledNow()) {
+							scheduledRunnable.cancel();
 							callback.setException(e);
 						}
 					}
 				});
-				if (!state.done) {
-					eventloop.schedule(timestamp, new ScheduledRunnable() {
-						@Override
-						public void run() {
-							if (!state.done) {
-								state.done = true;
-								callback.setException(TIMEOUT_EXCEPTION);
-							}
-						}
-					});
-				}
 			}
 		};
 	}
 
-	public static <T> AsyncCallable<T[]> callAll(final Eventloop eventloop, final AsyncCallable<?>... callables) {
+	@SafeVarargs
+	public static <T> AsyncCallable<List<T>> callAll(final Eventloop eventloop, final AsyncCallable<T>... callables) {
 		return callAll(eventloop, asList(callables));
 	}
 
@@ -68,14 +64,14 @@ public class AsyncCallables {
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <T> AsyncCallable<T[]> callAll(final Eventloop eventloop, final List<AsyncCallable<?>> callables) {
-		return new AsyncCallable<T[]>() {
+	public static <T> AsyncCallable<List<T>> callAll(final Eventloop eventloop, final List<? extends AsyncCallable<T>> callables) {
+		return new AsyncCallable<List<T>>() {
 			@Override
-			public void call(final ResultCallback<T[]> callback) {
+			public void call(final ResultCallback<List<T>> callback) {
 				final CallState state = new CallState(callables.size());
 				final T[] results = (T[]) new Object[callables.size()];
 				if (state.pending == 0) {
-					callback.setResult(results);
+					callback.postResult(eventloop, Arrays.asList(results));
 					return;
 				}
 				for (int i = 0; i < callables.size(); i++) {
@@ -86,7 +82,7 @@ public class AsyncCallables {
 						protected void onResult(T result) {
 							results[finalI] = result;
 							if (--state.pending == 0) {
-								callback.setResult(results);
+								callback.setResult(Arrays.asList(results));
 							}
 						}
 
@@ -103,20 +99,29 @@ public class AsyncCallables {
 		};
 	}
 
-	public static <T> AsyncCallable<T[]> callWithTimeout(final Eventloop eventloop, final long timestamp, final AsyncCallable<? extends T>... callables) {
-		return callWithTimeout(eventloop, timestamp, asList(callables));
+	@SafeVarargs
+	public static <T> AsyncCallable<List<T>> callAllWithTimeout(final Eventloop eventloop, final long timestamp, final AsyncCallable<T>... callables) {
+		return callAllWithTimeout(eventloop, timestamp, asList(callables));
 	}
 
-	public static <T> AsyncCallable<T[]> callWithTimeout(final Eventloop eventloop, final long timestamp, final List<AsyncCallable<? extends T>> callables) {
-		return new AsyncCallable<T[]>() {
+	public static <T> AsyncCallable<List<T>> callAllWithTimeout(final Eventloop eventloop, final long timestamp, final List<? extends AsyncCallable<T>> callables) {
+		return new AsyncCallable<List<T>>() {
 			@Override
-			public void call(final ResultCallback<T[]> callback) {
+			public void call(final ResultCallback<List<T>> callback) {
 				final CallState state = new CallState(callables.size());
+				@SuppressWarnings("unchecked")
 				final T[] results = (T[]) new Object[callables.size()];
 				if (state.pending == 0) {
-					callback.setResult(results);
+					callback.postResult(eventloop, Arrays.asList(results));
 					return;
 				}
+				final ScheduledRunnable scheduledRunnable = eventloop.schedule(timestamp, new ScheduledRunnable() {
+					@Override
+					public void run() {
+						state.pending = 0;
+						callback.setResult(Arrays.asList(results));
+					}
+				});
 				for (int i = 0; i < callables.size(); i++) {
 					final AsyncCallable<T> callable = (AsyncCallable<T>) callables.get(i);
 					final int finalI = i;
@@ -125,7 +130,8 @@ public class AsyncCallables {
 						protected void onResult(T result) {
 							results[finalI] = result;
 							if (--state.pending == 0) {
-								callback.setResult(results);
+								scheduledRunnable.cancel();
+								callback.setResult(Arrays.asList(results));
 							}
 						}
 
@@ -133,18 +139,8 @@ public class AsyncCallables {
 						protected void onException(Exception e) {
 							if (state.pending > 0) {
 								state.pending = 0;
+								scheduledRunnable.cancel();
 								callback.setException(e);
-							}
-						}
-					});
-				}
-				if (state.pending != 0) {
-					eventloop.schedule(timestamp, new ScheduledRunnable() {
-						@Override
-						public void run() {
-							if (state.pending > 0) {
-								state.pending = 0;
-								callback.setResult(results);
 							}
 						}
 					});

@@ -96,9 +96,17 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	}
 
 	@Override
+	public void onReadEndOfStream() {
+		if (reading == NOTHING)
+			close();
+		else
+			closeWithError(CLOSED_CONNECTION);
+	}
+
+	@Override
 	public void onClosedWithError(Exception e) {
-		super.onClosedWithError(e);
 		if (inspector != null) inspector.onConnectionError(remoteAddress, e);
+		readQueue.clear();
 		onClosed();
 	}
 
@@ -145,8 +153,6 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	 */
 	@Override
 	protected void onFirstLine(ByteBuf line) throws ParseException {
-		assert eventloop.inEventloopThread();
-
 		pool.removeNode(this);
 		(pool = server.poolReading).addLastNode(this);
 		poolTimestamp = eventloop.currentTimeMillis();
@@ -240,16 +246,15 @@ final class HttpServerConnection extends AbstractHttpConnection {
 						httpResponse.setHeader(HttpHeaders.asBytes(CONTENT_ENCODING, CONTENT_ENCODING_GZIP));
 						httpResponse.setBody(toGzip(httpResponse.detachBody()));
 					}
+					pool.removeNode(HttpServerConnection.this);
+					(pool = server.poolWriting).addLastNode(HttpServerConnection.this);
+					poolTimestamp = eventloop.currentTimeMillis();
 					writeHttpResult(httpResponse);
 				} else {
 					// connection is closed, but bufs are not recycled, let's recycle them now
 					httpResponse.recycleBufs();
 				}
 				recycleBufs();
-
-				pool.removeNode(HttpServerConnection.this);
-				(pool = server.poolWriting).addLastNode(HttpServerConnection.this);
-				poolTimestamp = eventloop.currentTimeMillis();
 			}
 
 			@Override
@@ -257,13 +262,12 @@ final class HttpServerConnection extends AbstractHttpConnection {
 				assert eventloop.inEventloopThread();
 				if (inspector != null) inspector.onServletError(request, e);
 				if (!isClosed()) {
+					pool.removeNode(HttpServerConnection.this);
+					(pool = server.poolWriting).addLastNode(HttpServerConnection.this);
+					poolTimestamp = eventloop.currentTimeMillis();
 					writeException(e);
 				}
 				recycleBufs();
-
-				pool.removeNode(HttpServerConnection.this);
-				(pool = server.poolWriting).addLastNode(HttpServerConnection.this);
-				poolTimestamp = eventloop.currentTimeMillis();
 			}
 		});
 	}

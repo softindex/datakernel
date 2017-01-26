@@ -26,12 +26,12 @@ import io.datakernel.exception.ParseException;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxReducers;
+import io.datakernel.jmx.JmxReducers.JmxReducerSum;
 import io.datakernel.util.MemSize;
 
 import java.net.InetAddress;
 
-import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
+import static io.datakernel.http.AbstractHttpConnection.*;
 
 public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	public static final long DEFAULT_KEEP_ALIVE_MILLIS = 30 * 1000L;
@@ -59,10 +59,10 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private boolean gzipResponses = false;
 
 	int connectionsCount;
-	final ConnectionsLinkedList poolKeepAlive = ConnectionsLinkedList.create();
-	final ConnectionsLinkedList poolReading = ConnectionsLinkedList.create();
-	final ConnectionsLinkedList poolWriting = ConnectionsLinkedList.create();
-	final ConnectionsLinkedList poolServing = ConnectionsLinkedList.create();
+	final ConnectionsLinkedList poolKeepAlive = new ConnectionsLinkedList();
+	final ConnectionsLinkedList poolReading = new ConnectionsLinkedList();
+	final ConnectionsLinkedList poolWriting = new ConnectionsLinkedList();
+	final ConnectionsLinkedList poolServing = new ConnectionsLinkedList();
 	private int poolKeepAliveExpired;
 	private int poolReadingExpired;
 	private int poolWritingExpired;
@@ -164,7 +164,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 		@JmxAttribute(
 				description = "current number of live connections (totally in pool and in use)",
-				reducer = JmxReducers.JmxReducerSum.class)
+				reducer = JmxReducerSum.class)
 		public long getConnectionsActive() {
 			return getAccepts().getTotalCount() - closed.getTotalCount();
 		}
@@ -231,11 +231,11 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 			@Override
 			public void run() {
 				expiredConnectionsCheck = null;
-				poolKeepAliveExpired += poolKeepAlive.closeExpiredConnections(eventloop.currentTimeMillis() + keepAliveTimeoutMillis);
+				poolKeepAliveExpired += poolKeepAlive.closeExpiredConnections(eventloop.currentTimeMillis() - keepAliveTimeoutMillis);
 				if (readTimeoutMillis != 0)
-					poolReadingExpired += poolReading.closeExpiredConnections(eventloop.currentTimeMillis() + readTimeoutMillis);
+					poolReadingExpired += poolReading.closeExpiredConnections(eventloop.currentTimeMillis() - readTimeoutMillis, READ_TIMEOUT_ERROR);
 				if (writeTimeoutMillis != 0)
-					poolWritingExpired += poolWriting.closeExpiredConnections(eventloop.currentTimeMillis() + writeTimeoutMillis);
+					poolWritingExpired += poolWriting.closeExpiredConnections(eventloop.currentTimeMillis() - writeTimeoutMillis, WRITE_TIMEOUT_ERROR);
 				if (connectionsCount != 0)
 					scheduleExpiredConnectionsCheck();
 			}
@@ -273,45 +273,42 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		}
 	}
 
-	@JmxAttribute(
-			description = "current number of connections",
-			reducer = JmxReducers.JmxReducerSum.class
-	)
+	@JmxAttribute(description = "current number of connections", reducer = JmxReducerSum.class)
 	public int getConnectionsCount() {
 		return connectionsCount;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(reducer = JmxReducerSum.class)
 	public int getConnectionsKeepAliveCount() {
 		return poolKeepAlive.size();
 	}
 
-	@JmxAttribute
+	@JmxAttribute(reducer = JmxReducerSum.class)
 	public int getConnectionsReadingCount() {
 		return poolReading.size();
 	}
 
-	@JmxAttribute
+	@JmxAttribute(reducer = JmxReducerSum.class)
 	public int getConnectionsWritingCount() {
 		return poolWriting.size();
 	}
 
-	@JmxAttribute
+	@JmxAttribute(reducer = JmxReducerSum.class)
 	public int getConnectionsServingCount() {
 		return poolServing.size();
 	}
 
-	@JmxAttribute
+	@JmxAttribute(reducer = JmxReducerSum.class)
 	public int getConnectionsKeepAliveExpired() {
 		return poolKeepAliveExpired;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(reducer = JmxReducerSum.class)
 	public int getConnectionsReadingExpired() {
 		return poolReadingExpired;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(reducer = JmxReducerSum.class)
 	public int getConnectionsWritingExpired() {
 		return poolWritingExpired;
 	}

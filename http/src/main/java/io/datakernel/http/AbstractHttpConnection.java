@@ -22,26 +22,30 @@ import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
+import io.datakernel.exception.SimpleException;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.GzipProcessor.fromGzip;
 import static io.datakernel.http.HttpHeaders.*;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
-abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
-	public static final int MAX_HEADER_LINE_SIZE = 8 * 1024; // http://stackoverflow.com/questions/686217/maximum-on-http-header-values
-	public static final int MAX_HEADERS = 100; // http://httpd.apache.org/docs/2.2/mod/core.html#limitrequestfields
-
-	private static final byte[] CONNECTION_KEEP_ALIVE = encodeAscii("keep-alive");
-	private static final byte[] TRANSFER_ENCODING_CHUNKED = encodeAscii("chunked");
-	protected static final int UNKNOWN_LENGTH = -1;
-
+public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
+	public static final SimpleException READ_TIMEOUT_ERROR = new SimpleException("HTTP connection read timeout");
+	public static final SimpleException WRITE_TIMEOUT_ERROR = new SimpleException("HTTP connection write timeout");
+	public static final ParseException CLOSED_CONNECTION = new ParseException("HTTP connection unexpectedly closed");
 	public static final ParseException HEADER_NAME_ABSENT = new ParseException("Header name is absent");
 	public static final ParseException TOO_BIG_HTTP_MESSAGE = new ParseException("Too big HttpMessage");
 	public static final ParseException MALFORMED_CHUNK = new ParseException("Malformed chunk");
 	public static final ParseException TOO_LONG_HEADER = new ParseException("Header line exceeds max header size");
 	public static final ParseException TOO_MANY_HEADERS = new ParseException("Too many headers");
 	public static final ParseException UNEXPECTED_READ = new ParseException("Unexpected read data");
+
+	public static final int MAX_HEADER_LINE_SIZE = 8 * 1024; // http://stackoverflow.com/questions/686217/maximum-on-http-header-values
+	public static final int MAX_HEADERS = 100; // http://httpd.apache.org/docs/2.2/mod/core.html#limitrequestfields
+
+	private static final byte[] CONNECTION_KEEP_ALIVE = encodeAscii("keep-alive");
+	private static final byte[] TRANSFER_ENCODING_CHUNKED = encodeAscii("chunked");
+	protected static final int UNKNOWN_LENGTH = -1;
 
 	protected final Eventloop eventloop;
 
@@ -77,8 +81,8 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 	protected final char[] headerChars;
 
 	ConnectionsLinkedList pool;
-	public AbstractHttpConnection prev;
-	public AbstractHttpConnection next;
+	AbstractHttpConnection prev;
+	AbstractHttpConnection next;
 	long poolTimestamp;
 
 	/**
@@ -106,19 +110,16 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 		onClosed();
 	}
 
+	abstract protected void onClosed();
+
 	protected final void closeWithError(final Exception e) {
 		if (isClosed()) return;
 		asyncTcpSocket.close();
-		readQueue.clear();
 		onClosedWithError(e);
 	}
 
 	@Override
-	public void onClosedWithError(Exception e) {
-		readQueue.clear();
-	}
-
-	abstract protected void onClosed();
+	public abstract void onClosedWithError(Exception e);
 
 	protected void reset() {
 		assert eventloop.inEventloopThread();
@@ -355,11 +356,6 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 		if ((reading != NOTHING || readQueue.isEmpty()) && !isClosed()) {
 			asyncTcpSocket.read();
 		}
-	}
-
-	@Override
-	public void onReadEndOfStream() {
-		close();
 	}
 
 	private void doRead() throws ParseException {

@@ -40,7 +40,7 @@ import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
 import static io.datakernel.eventloop.AsyncTcpSocketImpl.wrapChannel;
-import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
+import static io.datakernel.http.AbstractHttpConnection.*;
 import static io.datakernel.util.Preconditions.checkState;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
@@ -54,9 +54,9 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 	int connectionsCount;
 	final HashMap<InetSocketAddress, AddressLinkedList> addresses = new HashMap<>();
-	final ConnectionsLinkedList poolKeepAlive = ConnectionsLinkedList.create();
-	final ConnectionsLinkedList poolReading = ConnectionsLinkedList.create();
-	final ConnectionsLinkedList poolWriting = ConnectionsLinkedList.create();
+	final ConnectionsLinkedList poolKeepAlive = new ConnectionsLinkedList();
+	final ConnectionsLinkedList poolReading = new ConnectionsLinkedList();
+	final ConnectionsLinkedList poolWriting = new ConnectionsLinkedList();
 	private int poolKeepAliveExpired;
 	private int poolReadingExpired;
 	private int poolWritingExpired;
@@ -210,7 +210,6 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 			return totalRequests.getTotalCount() -
 					(resolveErrors.getTotal() + connectErrors.getTotal() + errorsActive.getTotal() + responses);
 		}
-
 	}
 
 	private int inetAddressIdx = 0;
@@ -285,11 +284,11 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 			@Override
 			public void run() {
 				expiredConnectionsCheck = null;
-				poolKeepAliveExpired += poolKeepAlive.closeExpiredConnections(eventloop.currentTimeMillis() + keepAliveTimeoutMillis);
+				poolKeepAliveExpired += poolKeepAlive.closeExpiredConnections(eventloop.currentTimeMillis() - keepAliveTimeoutMillis);
 				if (readTimeoutMillis != 0)
-					poolReadingExpired += poolReading.closeExpiredConnections(eventloop.currentTimeMillis() + readTimeoutMillis);
+					poolReadingExpired += poolReading.closeExpiredConnections(eventloop.currentTimeMillis() - readTimeoutMillis, READ_TIMEOUT_ERROR);
 				if (writeTimeoutMillis != 0)
-					poolWritingExpired += poolWriting.closeExpiredConnections(eventloop.currentTimeMillis() + writeTimeoutMillis);
+					poolWritingExpired += poolWriting.closeExpiredConnections(eventloop.currentTimeMillis() - writeTimeoutMillis, WRITE_TIMEOUT_ERROR);
 				if (connectionsCount != 0)
 					scheduleExpiredConnectionsCheck();
 			}
@@ -315,7 +314,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		assert !connection.isClosed();
 		AddressLinkedList addresses = this.addresses.get(connection.remoteAddress);
 		if (addresses == null) {
-			addresses = AddressLinkedList.create();
+			addresses = new AddressLinkedList();
 			this.addresses.put(connection.remoteAddress, addresses);
 		}
 		addresses.addLastNode(connection);
@@ -338,9 +337,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	@Override
 	public void send(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
 		assert eventloop.inEventloopThread();
-
 		if (inspector != null) inspector.onRequest(request);
-
 		String host = request.getUrl().getHost();
 		asyncDnsClient.resolve4(host, new ResultCallback<InetAddress[]>() {
 			@Override
@@ -455,40 +452,37 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		}
 	}
 
-	@JmxAttribute(
-			description = "current number of connections",
-			reducer = JmxReducers.JmxReducerSum.class
-	)
+	@JmxAttribute(description = "current number of connections", reducer = JmxReducers.JmxReducerSum.class)
 	public int getConnectionsCount() {
 		return connectionsCount;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
 	public int getConnectionsKeepAliveCount() {
 		return poolKeepAlive.size();
 	}
 
-	@JmxAttribute
+	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
 	public int getConnectionsReadingCount() {
 		return poolReading.size();
 	}
 
-	@JmxAttribute
+	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
 	public int getConnectionsWritingCount() {
 		return poolWriting.size();
 	}
 
-	@JmxAttribute
+	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
 	public int getConnectionsKeepAliveExpired() {
 		return poolKeepAliveExpired;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
 	public int getConnectionsReadingExpired() {
 		return poolReadingExpired;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
 	public int getConnectionsWritingExpired() {
 		return poolWritingExpired;
 	}

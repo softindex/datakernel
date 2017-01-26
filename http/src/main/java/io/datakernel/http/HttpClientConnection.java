@@ -30,8 +30,6 @@ import static io.datakernel.http.HttpHeaders.CONNECTION;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
 final class HttpClientConnection extends AbstractHttpConnection {
-	private static final ParseException CLOSED_CONNECTION = new ParseException("Connection unexpectedly closed");
-
 	private static final HttpHeaders.Value CONNECTION_KEEP_ALIVE = HttpHeaders.asBytes(CONNECTION, "keep-alive");
 
 	private ResultCallback<HttpResponse> callback;
@@ -40,8 +38,8 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	private final AsyncHttpClient.Inspector inspector;
 
 	final InetSocketAddress remoteAddress;
-	public HttpClientConnection addressPrev;
-	public HttpClientConnection addressNext;
+	HttpClientConnection addressPrev;
+	HttpClientConnection addressNext;
 
 	HttpClientConnection(Eventloop eventloop, InetSocketAddress remoteAddress,
 	                     AsyncTcpSocket asyncTcpSocket, AsyncHttpClient client, char[] headerChars,
@@ -58,9 +56,8 @@ final class HttpClientConnection extends AbstractHttpConnection {
 
 	@Override
 	public void onClosedWithError(Exception e) {
-		assert eventloop.inEventloopThread();
-		super.onClosedWithError(e);
 		if (inspector != null) inspector.onConnectionException(this, callback == null, e);
+		readQueue.clear();
 		if (callback != null) {
 			callback.postException(eventloop, e);
 			callback = null;
@@ -149,7 +146,6 @@ final class HttpClientConnection extends AbstractHttpConnection {
 
 	@Override
 	public void onReadEndOfStream() {
-		assert eventloop.inEventloopThread();
 		if (callback != null) {
 			if (reading == BODY && contentLength == UNKNOWN_LENGTH) {
 				onHttpMessage(bodyQueue.takeRemaining());
@@ -191,7 +187,6 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	@Override
 	public void onWrite() {
 		assert !isClosed();
-		assert eventloop.inEventloopThread();
 		reading = FIRSTLINE;
 		assert pool == client.poolWriting;
 		pool.removeNode(this);
@@ -199,7 +194,6 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		poolTimestamp = eventloop.currentTimeMillis();
 		asyncTcpSocket.read();
 	}
-
 
 	/**
 	 * After closing this connection it removes it from its connections cache and recycles

@@ -16,75 +16,14 @@
 
 package io.datakernel.http;
 
-public final class ConnectionsLinkedList {
-	private ConnectionsLinkedList() {
-	}
+import io.datakernel.annotation.Nullable;
 
-	public static ConnectionsLinkedList create() {
-		return new ConnectionsLinkedList();
-	}
-
+final class ConnectionsLinkedList {
 	private AbstractHttpConnection first;
 	private AbstractHttpConnection last;
 
-	public AbstractHttpConnection getFirstNode() {
-		return first;
-	}
-
-	public AbstractHttpConnection getLastNode() {
-		return last;
-	}
-
 	public boolean isEmpty() {
 		return first == null;
-	}
-
-	public void clear() {
-		first = null;
-		last = null;
-	}
-
-	public AbstractHttpConnection removeFirstNode() {
-		if (first == null)
-			return null;
-		AbstractHttpConnection node = first;
-		first = node.next;
-		if (node.next != null) {
-			node.next.prev = node.prev;
-		} else {
-			assert last == node;
-			last = node.prev;
-		}
-		node.next = node.prev = null;
-		return node;
-	}
-
-	public AbstractHttpConnection removeLastNode() {
-		if (last == null)
-			return null;
-		AbstractHttpConnection node = last;
-		last = node.prev;
-		if (node.prev != null) {
-			node.prev.next = node.next;
-		} else {
-			assert first == node;
-			first = node.next;
-		}
-		node.next = node.prev = null;
-		return node;
-	}
-
-	public void addFirstNode(AbstractHttpConnection node) {
-		assert node.prev == null && node.next == null;
-		if (first != null) {
-			assert first.prev == null;
-			first.prev = node;
-			node.next = first;
-		} else {
-			assert last == null;
-			last = node;
-		}
-		first = node;
 	}
 
 	public void addLastNode(AbstractHttpConnection node) {
@@ -98,20 +37,6 @@ public final class ConnectionsLinkedList {
 			first = node;
 		}
 		last = node;
-	}
-
-	public void moveNodeToLast(AbstractHttpConnection node) {
-		if (node.next == null)
-			return;
-		removeNode(node);
-		addLastNode(node);
-	}
-
-	public void moveNodeToFirst(AbstractHttpConnection node) {
-		if (node.prev == null)
-			return;
-		removeNode(node);
-		addFirstNode(node);
 	}
 
 	public void removeNode(AbstractHttpConnection node) {
@@ -131,13 +56,20 @@ public final class ConnectionsLinkedList {
 	}
 
 	public int closeExpiredConnections(long expiration) {
+		return closeExpiredConnections(expiration, null);
+	}
+
+	public int closeExpiredConnections(long expiration, @Nullable Exception e) {
 		int count = 0;
-		AbstractHttpConnection connection = getFirstNode();
+		AbstractHttpConnection connection = first;
 		while (connection != null) {
 			AbstractHttpConnection next = connection.next;
-			if (connection.poolTimestamp < expiration)
+			if (connection.poolTimestamp > expiration)
 				break; // connections must back ordered by activity
-			connection.close();
+			if (e == null)
+				connection.close();
+			else
+				connection.closeWithError(e);
 			assert connection.prev == null && connection.next == null;
 			connection = next;
 			count++;
@@ -147,7 +79,7 @@ public final class ConnectionsLinkedList {
 
 	public int closeAllConnections() {
 		int count = 0;
-		AbstractHttpConnection connection = getFirstNode();
+		AbstractHttpConnection connection = first;
 		while (connection != null) {
 			AbstractHttpConnection next = connection.next;
 			connection.close();
