@@ -699,7 +699,6 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 			private final ScheduledRunnable scheduledTimeout = schedule(currentTimeMillis() + connectionTime, new ScheduledRunnable() {
 				@Override
 				public void run() {
-					recordIoError(CONNECT_TIMEOUT, socketChannel);
 					closeQuietly(socketChannel);
 					setException(CONNECT_TIMEOUT);
 				}

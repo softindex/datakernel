@@ -37,8 +37,6 @@ public final class EventloopStats {
 
 	private final BusinessLogicTimeHistogram businessLogicTimeHistogram;
 
-	private final Sockets sockets;
-
 	private EventloopStats(double smoothingWindow) {
 		selectorEvents = new SelectorEvents(smoothingWindow);
 		taskEvents = new TaskEvents(smoothingWindow);
@@ -50,8 +48,6 @@ public final class EventloopStats {
 		longestLocalTask = new DurationRunnable();
 
 		businessLogicTimeHistogram = new BusinessLogicTimeHistogram();
-
-		sockets = new Sockets();
 	}
 
 	public static EventloopStats create(double smoothingWindow) {return new EventloopStats(smoothingWindow);}
@@ -152,14 +148,6 @@ public final class EventloopStats {
 		errorStats.ioErrors.recordException(throwable, causedObject);
 	}
 
-	void recordSocketCreateEvent() {
-		sockets.created++;
-	}
-
-	void recordSocketCloseEvent() {
-		sockets.closed++;
-	}
-
 	@JmxAttribute(description = "total count and smoothed rate of specified key selections " +
 			"starting from launching eventloop")
 	public SelectorEvents getSelectorEvents() {
@@ -200,11 +188,6 @@ public final class EventloopStats {
 	@JmxAttribute(name = "")
 	public BusinessLogicTimeHistogram getBusinessLogicTimeHistogram() {
 		return businessLogicTimeHistogram;
-	}
-
-	@JmxAttribute
-	public Sockets getSockets() {
-		return sockets;
 	}
 
 	public static final class DurationRunnable implements JmxStats<DurationRunnable> {
@@ -546,23 +529,4 @@ public final class EventloopStats {
 		}
 	}
 
-	public static final class Sockets {
-		private long created = 0;
-		private long closed = 0;
-
-		@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
-		public long getCreated() {
-			return created;
-		}
-
-		@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
-		public long getClosed() {
-			return closed;
-		}
-
-		@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
-		public long getSocketsActive() {
-			return created - closed;
-		}
-	}
 }

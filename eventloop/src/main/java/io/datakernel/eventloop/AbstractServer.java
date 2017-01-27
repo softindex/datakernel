@@ -331,7 +331,6 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		try {
 			closeable.close();
 		} catch (Exception e) {
-			eventloop.recordIoError(e, closeable);
 		}
 	}
 

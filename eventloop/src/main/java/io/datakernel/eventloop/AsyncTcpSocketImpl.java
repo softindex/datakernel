@@ -20,7 +20,6 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.exception.SimpleException;
 import io.datakernel.jmx.EventStats;
-import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.ValueStats;
 import io.datakernel.net.SocketSettings;
@@ -61,63 +60,30 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	protected int writeMaxSize = MAX_MERGE_SIZE;
 
 	public interface Inspector {
-		void onOpen();
-
-		void onClose();
-
-		void onReadReady(int timeout);
-
 		void onReadTimeout();
 
-		void onReceive(ByteBuf buf);
+		void onRead(ByteBuf buf);
 
-		void onReceiveEndOfStream();
+		void onReadEndOfStream();
 
-		void onReceiveError(IOException e);
-
-		void onWrite(ByteBuf buf);
-
-		void onWriteEndOfStream();
-
-		void onWriteReady(int timeout);
+		void onReadError(IOException e);
 
 		void onWriteTimeout();
 
-		void onSend(ByteBuf buf, int bytes);
+		void onWrite(ByteBuf buf, int bytes);
 
-		void onSendError(IOException e);
+		void onWriteError(IOException e);
 	}
 
 	public static class JmxInspector implements Inspector {
-		private final EventStats opened = EventStats.create();
-		private final EventStats closed = EventStats.create();
-		private final ValueStats readReady = ValueStats.create();
+		private final ValueStats reads = ValueStats.create();
+		private final EventStats readEndOfStreams = EventStats.create();
+		private final EventStats readErrors = EventStats.create();
 		private final EventStats readTimeouts = EventStats.create();
-		private final ValueStats receives = ValueStats.create();
-		private final EventStats receiveEndOfStreams = EventStats.create();
-		private final ExceptionStats recvErrors = ExceptionStats.create();
 		private final ValueStats writes = ValueStats.create();
-		private final EventStats writeEndOfStreams = EventStats.create();
-		private final ValueStats writeReady = ValueStats.create();
+		private final EventStats writeErrors = EventStats.create();
 		private final EventStats writeTimeouts = EventStats.create();
-		private final ValueStats sends = ValueStats.create();
-		private final ExceptionStats sendErrors = ExceptionStats.create();
-		private final EventStats sendPartialBufs = EventStats.create();
-
-		@Override
-		public void onOpen() {
-			opened.recordEvent();
-		}
-
-		@Override
-		public void onClose() {
-			closed.recordEvent();
-		}
-
-		@Override
-		public void onReadReady(int timeout) {
-			readReady.recordValue(timeout);
-		}
+		private final EventStats writeOverloaded = EventStats.create();
 
 		@Override
 		public void onReadTimeout() {
@@ -125,33 +91,18 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		}
 
 		@Override
-		public void onReceive(ByteBuf buf) {
-			receives.recordValue(buf.readRemaining());
+		public void onRead(ByteBuf buf) {
+			reads.recordValue(buf.readRemaining());
 		}
 
 		@Override
-		public void onReceiveEndOfStream() {
-			receiveEndOfStreams.recordEvent();
+		public void onReadEndOfStream() {
+			readEndOfStreams.recordEvent();
 		}
 
 		@Override
-		public void onReceiveError(IOException e) {
-			recvErrors.recordException(e);
-		}
-
-		@Override
-		public void onWrite(ByteBuf buf) {
-			writes.recordValue(buf.readRemaining());
-		}
-
-		@Override
-		public void onWriteEndOfStream() {
-			writeEndOfStreams.recordEvent();
-		}
-
-		@Override
-		public void onWriteReady(int timeout) {
-			writeReady.recordValue(timeout);
+		public void onReadError(IOException e) {
+			readErrors.recordEvent();
 		}
 
 		@Override
@@ -160,30 +111,15 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		}
 
 		@Override
-		public void onSend(ByteBuf buf, int bytes) {
-			sends.recordValue(bytes);
+		public void onWrite(ByteBuf buf, int bytes) {
+			writes.recordValue(bytes);
 			if (buf.readRemaining() != bytes)
-				sendPartialBufs.recordEvent();
+				writeOverloaded.recordEvent();
 		}
 
 		@Override
-		public void onSendError(IOException e) {
-			sendErrors.recordException(e);
-		}
-
-		@JmxAttribute
-		public EventStats getOpened() {
-			return opened;
-		}
-
-		@JmxAttribute
-		public EventStats getClosed() {
-			return closed;
-		}
-
-		@JmxAttribute
-		public ValueStats getReadReady() {
-			return readReady;
+		public void onWriteError(IOException e) {
+			writeErrors.recordEvent();
 		}
 
 		@JmxAttribute
@@ -192,33 +128,18 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		}
 
 		@JmxAttribute
-		public ValueStats getReceives() {
-			return receives;
+		public ValueStats getReads() {
+			return reads;
 		}
 
 		@JmxAttribute
-		public EventStats getReceiveEndOfStreams() {
-			return receiveEndOfStreams;
+		public EventStats getReadEndOfStreams() {
+			return readEndOfStreams;
 		}
 
 		@JmxAttribute
-		public ExceptionStats getRecvErrors() {
-			return recvErrors;
-		}
-
-		@JmxAttribute
-		public ValueStats getWrites() {
-			return writes;
-		}
-
-		@JmxAttribute
-		public EventStats getWriteEndOfStreams() {
-			return writeEndOfStreams;
-		}
-
-		@JmxAttribute
-		public ValueStats getWriteReady() {
-			return writeReady;
+		public EventStats getReadErrors() {
+			return readErrors;
 		}
 
 		@JmxAttribute
@@ -227,18 +148,18 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		}
 
 		@JmxAttribute
-		public ValueStats getSends() {
-			return sends;
+		public ValueStats getWrites() {
+			return writes;
 		}
 
 		@JmxAttribute
-		public ExceptionStats getSendErrors() {
-			return sendErrors;
+		public EventStats getWriteErrors() {
+			return writeErrors;
 		}
 
 		@JmxAttribute
-		public EventStats getSendPartialBufs() {
-			return sendPartialBufs;
+		public EventStats getWriteOverloaded() {
+			return writeOverloaded;
 		}
 	}
 
@@ -306,9 +227,6 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	private AsyncTcpSocketImpl(Eventloop eventloop, SocketChannel socketChannel) {
 		this.eventloop = checkNotNull(eventloop);
 		this.channel = checkNotNull(socketChannel);
-
-		// jmx
-		eventloop.getStats().recordSocketCreateEvent();
 	}
 	// endregion
 
@@ -318,7 +236,6 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	}
 
 	public final void register() {
-		if (inspector != null) inspector.onOpen();
 		socketEventHandler.onRegistered();
 		try {
 			key = channel.register(eventloop.ensureSelector(), ops, this);
@@ -387,7 +304,6 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	@Override
 	public void onReadReady() {
-		if (inspector != null) inspector.onReadReady((int) (eventloop.currentTimeMillis() - readTimestamp));
 		readTimestamp = 0L;
 		int oldOps = ops;
 		ops = ops | OP_POSTPONED;
@@ -411,32 +327,31 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			buf.ofWriteByteBuffer(buffer);
 		} catch (IOException e) {
 			buf.recycle();
-			if (inspector != null) inspector.onReceiveError(e);
+			if (inspector != null) inspector.onReadError(e);
 			closeWithError(e, false);
 			return;
 		}
 
 		if (numRead == 0) {
-			if (inspector != null) inspector.onReceive(buf);
+			if (inspector != null) inspector.onRead(buf);
 			buf.recycle();
 			return;
 		}
 
 		if (numRead == -1) {
 			buf.recycle();
-			if (inspector != null) inspector.onReceiveEndOfStream();
+			if (inspector != null) inspector.onReadEndOfStream();
 			socketEventHandler.onReadEndOfStream();
 			return;
 		}
 
-		if (inspector != null) inspector.onReceive(buf);
+		if (inspector != null) inspector.onRead(buf);
 		socketEventHandler.onRead(buf);
 	}
 
 	// write cycle
 	@Override
 	public void write(ByteBuf buf) {
-		if (inspector != null) inspector.onWrite(buf);
 		assert eventloop.inEventloopThread();
 		if (writeTimeout != NO_TIMEOUT) {
 			scheduleWriteTimeOut();
@@ -447,7 +362,6 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	@Override
 	public void writeEndOfStream() {
-		if (inspector != null) inspector.onWriteEndOfStream();
 		assert eventloop.inEventloopThread();
 		if (writeEndOfStream) return;
 		writeEndOfStream = true;
@@ -456,7 +370,6 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	@Override
 	public void onWriteReady() {
-		if (inspector != null) inspector.onWriteReady((int) (eventloop.currentTimeMillis() - writeTimestamp));
 		writeTimestamp = 0L;
 		try {
 			doWrite();
@@ -493,13 +406,13 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			try {
 				channel.write(bufferToSend);
 			} catch (IOException e) {
-				if (inspector != null) inspector.onSendError(e);
+				if (inspector != null) inspector.onWriteError(e);
 				bufToSend.recycle();
 				throw e;
 			}
 
 			if (inspector != null)
-				inspector.onSend(bufToSend, bufferToSend.position() - bufToSend.readPosition());
+				inspector.onWrite(bufToSend, bufferToSend.position() - bufToSend.readPosition());
 
 			bufToSend.ofReadByteBuffer(bufferToSend);
 
@@ -545,15 +458,10 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	private void closeChannel() {
 		if (channel == null) return;
-		if (inspector != null) inspector.onClose();
 		try {
 			channel.close();
 		} catch (IOException e) {
-			eventloop.recordIoError(e, toString());
 		}
-
-		// jmx
-		eventloop.getStats().recordSocketCloseEvent();
 	}
 
 	private void closeWithError(final Exception e, boolean fireAsync) {

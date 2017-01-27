@@ -174,13 +174,11 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 		try {
 			channel.close();
 		} catch (IOException e) {
-			eventloop.recordIoError(e, toString());
 		}
 	}
 
 	private void closeWithError(final IOException e) {
 		if (isOpen()) {
-			eventloop.recordIoError(e, this);
 			close();
 			eventHandler.onClosedWithError(e);
 		}
