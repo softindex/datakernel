@@ -9,6 +9,6 @@ import java.nio.channels.SocketChannel;
 public interface WorkerServer {
 	Eventloop getEventloop();
 
-	void doAccept(SocketChannel socketChannel, InetAddress remoteAddress, InetSocketAddress localAddress,
-	              SocketSettings socketSettings, final boolean ssl);
+	void doAccept(SocketChannel socketChannel, InetSocketAddress localAddress, InetAddress remoteAddress,
+	              boolean ssl, SocketSettings socketSettings);
 }

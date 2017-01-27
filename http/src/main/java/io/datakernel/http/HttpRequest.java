@@ -474,12 +474,5 @@ public final class HttpRequest extends HttpMessage {
 			return host;
 		return host + url.getPathAndQuery();
 	}
-
-	public String getFullUrl() {
-		String host = nullToEmpty(getHeader(HttpHeaders.HOST));
-		if (url == null)
-			return host;
-		return host + url.getPathAndQuery();
-	}
 	// endregion
 }

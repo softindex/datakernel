@@ -16,8 +16,6 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.jmx.JmxAttribute;
-
 import java.util.List;
 
 /**
@@ -44,11 +42,6 @@ public final class PrimaryServer extends AbstractServer<PrimaryServer> {
 	public static PrimaryServer create(Eventloop primaryEventloop, WorkerServer... workerServer) {
 		return new PrimaryServer(primaryEventloop, workerServer);
 	}
-
-	public final PrimaryServer withInspector(Inspector inspector) {
-		super.inspector = inspector;
-		return self();
-	}
 	// endregion
 
 	@Override
@@ -60,10 +53,5 @@ public final class PrimaryServer extends AbstractServer<PrimaryServer> {
 	protected WorkerServer getWorkerServer() {
 		currentAcceptor = (currentAcceptor + 1) % workerServers.length;
 		return workerServers[currentAcceptor];
-	}
-
-	@JmxAttribute
-	public JmxInspector getInspector() {
-		return super.inspector instanceof JmxInspector ? (JmxInspector) super.inspector : null;
 	}
 }

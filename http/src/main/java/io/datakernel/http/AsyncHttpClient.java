@@ -93,23 +93,20 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 		void onConnectionResponse(HttpClientConnection connection, HttpResponse response);
 
-		void onConnectionException(HttpClientConnection connection, boolean activeConnection, Exception e);
-
-		void onConnectionClosed(HttpClientConnection connection);
+		void onHttpError(HttpClientConnection connection, boolean keepAliveConnection, Exception e);
 	}
 
 	public static class JmxInspector implements Inspector {
 		protected final AsyncTcpSocketImpl.JmxInspector socketStats = new AsyncTcpSocketImpl.JmxInspector();
 		protected final AsyncTcpSocketImpl.JmxInspector socketStatsForSSL = new AsyncTcpSocketImpl.JmxInspector();
 		private final EventStats totalRequests = EventStats.create();
-		private final EventStats httpsRequests = EventStats.create();
 		private final ExceptionStats resolveErrors = ExceptionStats.create();
 		private final EventStats connected = EventStats.create();
 		private final ExceptionStats connectErrors = ExceptionStats.create();
 		private long responses;
-		private final ExceptionStats errorsActive = ExceptionStats.create();
-		private final ExceptionStats errorsKeepAlive = ExceptionStats.create();
-		private final EventStats closed = EventStats.create();
+		private final EventStats httpTimeouts = EventStats.create();
+		private final ExceptionStats httpErrors = ExceptionStats.create();
+		private long responsesErrors;
 
 		@Override
 		public AsyncTcpSocketImpl.Inspector socketInspector(HttpRequest httpRequest, InetSocketAddress address, boolean https) {
@@ -119,8 +116,6 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		@Override
 		public void onRequest(HttpRequest request) {
 			totalRequests.recordEvent();
-			if (request.isHttps())
-				httpsRequests.recordEvent();
 		}
 
 		@Override
@@ -129,7 +124,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 		@Override
 		public void onResolveError(HttpRequest request, Exception e) {
-			resolveErrors.recordException(e, request);
+			resolveErrors.recordException(e, request.getUrl().getHost());
 		}
 
 		@Override
@@ -139,7 +134,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 		@Override
 		public void onConnectError(HttpRequest request, InetSocketAddress address, Exception e) {
-			connectErrors.recordException(e, request);
+			connectErrors.recordException(e, request.getUrl().getHost());
 		}
 
 		@Override
@@ -148,16 +143,15 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		}
 
 		@Override
-		public void onConnectionException(HttpClientConnection connection, boolean activeConnection, Exception e) {
-			if (activeConnection)
-				errorsActive.recordException(e, "url: " + connection.remoteAddress);
-			else
-				errorsKeepAlive.recordException(e, "url: " + connection.remoteAddress);
-		}
-
-		@Override
-		public void onConnectionClosed(HttpClientConnection connection) {
-			closed.recordEvent();
+		public void onHttpError(HttpClientConnection connection, boolean keepAliveConnection, Exception e) {
+			if (e == AbstractHttpConnection.READ_TIMEOUT_ERROR || e == AbstractHttpConnection.WRITE_TIMEOUT_ERROR) {
+				httpTimeouts.recordEvent();
+			} else {
+				httpErrors.recordException(e);
+				if (!keepAliveConnection) {
+					responsesErrors++;
+				}
+			}
 		}
 
 		@JmxAttribute
@@ -170,11 +164,6 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 			return totalRequests;
 		}
 
-		@JmxAttribute(description = "successful requests that were sent over secured connection (https)")
-		public EventStats getHttpsRequests() {
-			return httpsRequests;
-		}
-
 		@JmxAttribute
 		public ExceptionStats getResolveErrors() {
 			return resolveErrors;
@@ -185,30 +174,15 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 			return connected;
 		}
 
-		@JmxAttribute(description = "number of \"close connection\" events)")
-		public EventStats getClosed() {
-			return closed;
-		}
-
 		@JmxAttribute
-		public ExceptionStats getErrorsActive() {
-			return errorsActive;
-		}
-
-		@JmxAttribute
-		public ExceptionStats getErrorsKeepAlive() {
-			return errorsKeepAlive;
-		}
-
-		@JmxAttribute(description = "current number of live connections (totally in pool and in use)", reducer = JmxReducers.JmxReducerSum.class)
-		public long getActiveConnections() {
-			return connected.getTotalCount() - closed.getTotalCount();
+		public ExceptionStats getHttpErrors() {
+			return httpErrors;
 		}
 
 		@JmxAttribute
 		public long getActiveRequests() {
 			return totalRequests.getTotalCount() -
-					(resolveErrors.getTotal() + connectErrors.getTotal() + errorsActive.getTotal() + responses);
+					(resolveErrors.getTotal() + connectErrors.getTotal() + responsesErrors + responses);
 		}
 	}
 
@@ -501,7 +475,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		return result;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(name = "")
 	public JmxInspector getStats() {
 		return (inspector instanceof JmxInspector ? (JmxInspector) inspector : null);
 	}

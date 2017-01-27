@@ -16,50 +16,31 @@
 
 package io.datakernel.rpc.client.jmx;
 
-import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxRefreshable;
+import io.datakernel.jmx.JmxReducers.JmxReducerSum;
 
-public final class RpcConnectStats implements JmxRefreshable {
-	private final EventStats successfulConnects = EventStats.create();
-	private final EventStats failedConnects = EventStats.create();
-	private final EventStats closedConnects = EventStats.create();
-
-	private RpcConnectStats() {}
-
-	public static RpcConnectStats create() {return new RpcConnectStats();}
+public final class RpcConnectStats {
+	public long successfulConnects;
+	public long failedConnects;
+	public long closedConnects;
 
 	public void reset() {
-		successfulConnects.resetStats();
-		failedConnects.resetStats();
-		closedConnects.resetStats();
+		successfulConnects = failedConnects = closedConnects = 0;
 	}
 
-	public void add(RpcConnectStats statsSet) {
-		successfulConnects.add(statsSet.getSuccessfulConnects());
-		failedConnects.add(statsSet.getFailedConnects());
-		closedConnects.add(statsSet.getClosedConnects());
-	}
-
-	@JmxAttribute
-	public EventStats getSuccessfulConnects() {
+	@JmxAttribute(reducer = JmxReducerSum.class)
+	public long getSuccessfulConnects() {
 		return successfulConnects;
 	}
 
-	@JmxAttribute
-	public EventStats getFailedConnects() {
+	@JmxAttribute(reducer = JmxReducerSum.class)
+	public long getFailedConnects() {
 		return failedConnects;
 	}
 
-	@JmxAttribute
-	public EventStats getClosedConnects() {
+	@JmxAttribute(reducer = JmxReducerSum.class)
+	public long getClosedConnects() {
 		return closedConnects;
 	}
 
-	@Override
-	public void refresh(long timestamp) {
-		successfulConnects.refresh(timestamp);
-		failedConnects.refresh(timestamp);
-		closedConnects.refresh(timestamp);
-	}
 }

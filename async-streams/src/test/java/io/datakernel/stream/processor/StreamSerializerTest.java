@@ -50,7 +50,7 @@ public class StreamSerializerTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(10, 20, 30, 40));
-		StreamBinarySerializer<Integer> serializerStream = StreamBinarySerializer.create(eventloop, intSerializer(), 14, 14, 0, false);
+		StreamBinarySerializer<Integer> serializerStream = StreamBinarySerializer.create(eventloop, intSerializer(), 14, 14);
 		TestStreamConsumers.TestConsumerToList<ByteBuf> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
 		source.streamTo(serializerStream.getInput());
@@ -80,7 +80,7 @@ public class StreamSerializerTest {
 
 		List<Integer> list = new ArrayList<>();
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
-		StreamBinarySerializer<Integer> serializerStream = StreamBinarySerializer.create(eventloop, intSerializer(), 1, StreamBinarySerializer.MAX_SIZE, 0, false);
+		StreamBinarySerializer<Integer> serializerStream = StreamBinarySerializer.create(eventloop, intSerializer(), 1, StreamBinarySerializer.MAX_SIZE);
 		StreamBinaryDeserializer<Integer> deserializerStream = StreamBinaryDeserializer.create(eventloop, intSerializer(), 12);
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
 
@@ -107,7 +107,7 @@ public class StreamSerializerTest {
 
 		List<Integer> list = new ArrayList<>();
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
-		StreamBinarySerializer<Integer> serializerStream = StreamBinarySerializer.create(eventloop, intSerializer(), 1, StreamBinarySerializer.MAX_SIZE, 0, false);
+		StreamBinarySerializer<Integer> serializerStream = StreamBinarySerializer.create(eventloop, intSerializer(), 1, StreamBinarySerializer.MAX_SIZE);
 		StreamBinaryDeserializer<Integer> deserializerStream = StreamBinaryDeserializer.create(eventloop, intSerializer(), 12);
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
 
@@ -138,7 +138,7 @@ public class StreamSerializerTest {
 
 		List<Integer> list = new ArrayList<>();
 		StreamProducer<Integer> source = StreamProducers.closingWithError(eventloop, new Exception("Test Exception"));
-		StreamBinarySerializer<Integer> serializerStream = StreamBinarySerializer.create(eventloop, intSerializer(), 1, StreamBinarySerializer.MAX_SIZE, 0, false);
+		StreamBinarySerializer<Integer> serializerStream = StreamBinarySerializer.create(eventloop, intSerializer(), 1, StreamBinarySerializer.MAX_SIZE);
 		StreamBinaryDeserializer<Integer> deserializerStream = StreamBinaryDeserializer.create(eventloop, intSerializer(), 12);
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
 

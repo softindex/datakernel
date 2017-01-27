@@ -70,10 +70,10 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	private boolean acceptOnce;
 
 	public interface AcceptFilter {
-		boolean canAccept(InetAddress remoteAddress, InetSocketAddress localAddress, boolean ssl);
+		boolean filterAccept(SocketChannel socketChannel, InetSocketAddress localAddress, InetAddress remoteAddress, boolean ssl);
 	}
 
-	protected AcceptFilter acceptFilter;
+	private AcceptFilter acceptFilter;
 
 	private List<InetSocketAddress> listenAddresses = new ArrayList<>();
 
@@ -85,66 +85,11 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	private boolean running = false;
 	private List<ServerSocketChannel> serverSocketChannels;
 
-	protected Inspector inspector = new JmxInspector();
-
-	public interface Inspector {
-		AsyncTcpSocketImpl.Inspector getSocketInspector(InetAddress remoteAddress, InetSocketAddress localAddress, boolean ssl);
-
-		void onAccept(InetAddress remoteAddress, InetSocketAddress localAddress, boolean ssl);
-
-		void onReject(InetAddress remoteAddress, InetSocketAddress localAddress, boolean ssl);
-	}
-
-	public static class JmxInspector implements Inspector {
-		private final AsyncTcpSocketImpl.JmxInspector socketStats = new AsyncTcpSocketImpl.JmxInspector();
-		private final AsyncTcpSocketImpl.JmxInspector socketStatsSsl = new AsyncTcpSocketImpl.JmxInspector();
-		private final EventStats accepts = EventStats.create();
-		private final EventStats acceptsSsl = EventStats.create();
-		private final EventStats rejects = EventStats.create();
-
-		@Override
-		public AsyncTcpSocketImpl.Inspector getSocketInspector(InetAddress remoteAddress, InetSocketAddress localAddress, boolean ssl) {
-			return ssl ? socketStatsSsl : socketStats;
-		}
-
-		@Override
-		public void onAccept(InetAddress remoteAddress, InetSocketAddress localAddress, boolean ssl) {
-			accepts.recordEvent();
-			if (ssl) {
-				acceptsSsl.recordEvent();
-			}
-		}
-
-		@Override
-		public void onReject(InetAddress remoteAddress, InetSocketAddress localAddress, boolean ssl) {
-			rejects.recordEvent();
-		}
-
-		@JmxAttribute(description = "successful accepts")
-		public final EventStats getAccepts() {
-			return accepts;
-		}
-
-		@JmxAttribute
-		public EventStats getAcceptsSsl() {
-			return acceptsSsl;
-		}
-
-		@JmxAttribute
-		public EventStats getRejects() {
-			return rejects;
-		}
-
-		@JmxAttribute
-		public AsyncTcpSocketImpl.JmxInspector getSocketStats() {
-			return socketStats;
-		}
-
-		@JmxAttribute
-		public AsyncTcpSocketImpl.JmxInspector getSocketStatsSsl() {
-			return socketStatsSsl;
-		}
-	}
+	private final AsyncTcpSocketImpl.JmxInspector socketStats = new AsyncTcpSocketImpl.JmxInspector();
+	private final AsyncTcpSocketImpl.JmxInspector socketStatsSsl = new AsyncTcpSocketImpl.JmxInspector();
+	private final EventStats accepts = EventStats.create();
+	private final EventStats acceptsSsl = EventStats.create();
+	private final EventStats filteredAccepts = EventStats.create();
 
 	// region creators & builder methods
 	protected AbstractServer(Eventloop eventloop) {
@@ -338,6 +283,21 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		return this;
 	}
 
+	protected AsyncTcpSocketImpl.Inspector getSocketInspector(InetAddress remoteAddress, InetSocketAddress localAddress, boolean ssl) {
+		return ssl ? socketStatsSsl : socketStats;
+	}
+
+	protected void onAccept(SocketChannel socketChannel, InetSocketAddress localAddress, InetAddress remoteAddress, boolean ssl) {
+		accepts.recordEvent();
+		if (ssl) {
+			acceptsSsl.recordEvent();
+		}
+	}
+
+	protected void onFilteredAccept(SocketChannel socketChannel, InetSocketAddress localAddress, InetAddress remoteAddress, boolean ssl) {
+		filteredAccepts.recordEvent();
+	}
+
 	private void doAccept(final SocketChannel socketChannel, final InetSocketAddress localAddress, final boolean ssl) {
 		assert eventloop.inEventloopThread();
 
@@ -349,9 +309,8 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 			return;
 		}
 
-		if (acceptFilter != null && !acceptFilter.canAccept(remoteAddress, localAddress, ssl)) {
-			if (inspector != null) inspector.onReject(remoteAddress, localAddress, ssl);
-			closeQuietly(socketChannel);
+		if (acceptFilter != null && acceptFilter.filterAccept(socketChannel, localAddress, remoteAddress, ssl)) {
+			onFilteredAccept(socketChannel, localAddress, remoteAddress, ssl);
 			return;
 		}
 
@@ -359,13 +318,13 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		final Eventloop workerServerEventloop = workerServer.getEventloop();
 
 		if (workerServerEventloop == this.eventloop) {
-			doAccept(socketChannel, remoteAddress, localAddress, socketSettings, ssl);
+			doAccept(socketChannel, localAddress, remoteAddress, ssl, socketSettings);
 		} else {
-			if (inspector != null) inspector.onAccept(remoteAddress, localAddress, ssl);
+			onAccept(socketChannel, localAddress, remoteAddress, ssl);
 			workerServerEventloop.execute(new Runnable() {
 				@Override
 				public void run() {
-					workerServer.doAccept(socketChannel, remoteAddress, localAddress, socketSettings, ssl);
+					workerServer.doAccept(socketChannel, localAddress, remoteAddress, ssl, socketSettings);
 				}
 			});
 		}
@@ -376,12 +335,12 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	}
 
 	@Override
-	public void doAccept(SocketChannel socketChannel, InetAddress remoteAddress, InetSocketAddress localAddress,
-	                     SocketSettings socketSettings, final boolean ssl) {
+	public void doAccept(SocketChannel socketChannel, InetSocketAddress localAddress, InetAddress remoteAddress,
+	                     final boolean ssl, SocketSettings socketSettings) {
 		assert eventloop.inEventloopThread();
-		if (inspector != null) inspector.onAccept(remoteAddress, localAddress, ssl);
+		onAccept(socketChannel, localAddress, remoteAddress, ssl);
 		final AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings)
-				.withInspector(inspector == null ? null : inspector.getSocketInspector(remoteAddress, localAddress, ssl));
+				.withInspector(getSocketInspector(remoteAddress, localAddress, ssl));
 		final AsyncTcpSocket asyncTcpSocket = ssl ? wrapServerSocket(eventloop, asyncTcpSocketImpl, sslContext, sslExecutor) : asyncTcpSocketImpl;
 		asyncTcpSocket.setEventHandler(createSocketHandler(asyncTcpSocket));
 		asyncTcpSocketImpl.register();
@@ -393,6 +352,30 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		return listenAddress.getAddress().isAnyLocalAddress();
 	}
 
+	@JmxAttribute
+	public final EventStats getAccepts() {
+		return listenAddresses.isEmpty() ? null : accepts;
+	}
+
+	@JmxAttribute
+	public EventStats getAcceptsSsl() {
+		return sslListenAddresses.isEmpty() ? null : acceptsSsl;
+	}
+
+	@JmxAttribute
+	public EventStats getFilteredAccepts() {
+		return acceptFilter == null ? null : filteredAccepts;
+	}
+
+	@JmxAttribute
+	public AsyncTcpSocketImpl.JmxInspector getSocketStats() {
+		return listenAddresses.isEmpty() ? null : socketStats;
+	}
+
+	@JmxAttribute
+	public AsyncTcpSocketImpl.JmxInspector getSocketStatsSsl() {
+		return sslListenAddresses.isEmpty() ? null : socketStatsSsl;
+	}
 }
 
 

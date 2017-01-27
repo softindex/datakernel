@@ -71,4 +71,9 @@ public class HttpException extends SimpleException {
 	public final int getCode() {
 		return code;
 	}
+
+	@Override
+	public String toString() {
+		return code + ": " + getMessage();
+	}
 }

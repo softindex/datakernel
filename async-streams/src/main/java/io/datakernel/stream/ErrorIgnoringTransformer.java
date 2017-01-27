@@ -33,6 +33,16 @@ public final class ErrorIgnoringTransformer<T> extends AbstractStreamTransformer
 		outputProducer = new OutputProducer();
 	}
 
+	@Override
+	protected AbstractInputConsumer getInputImpl() {
+		return inputConsumer;
+	}
+
+	@Override
+	protected AbstractOutputProducer getOutputImpl() {
+		return outputProducer;
+	}
+
 	public static <T> ErrorIgnoringTransformer<T> create(Eventloop eventloop) {
 		return new ErrorIgnoringTransformer<>(eventloop);
 	}

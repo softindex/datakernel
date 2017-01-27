@@ -101,7 +101,8 @@ public final class StreamMergeSorterStorageImpl<T> implements StreamMergeSorterS
 	@Override
 	public int write(final StreamProducer<T> producer, final CompletionCallback completionCallback) {
 		StreamBinarySerializer<T> streamSerializer = StreamBinarySerializer.create(eventloop, serializer,
-				StreamBinarySerializer.MAX_SIZE_2_BYTE, StreamBinarySerializer.MAX_SIZE, 1000, false);
+				StreamBinarySerializer.MAX_SIZE_2_BYTE, StreamBinarySerializer.MAX_SIZE)
+				.withFlushDelay(1000);
 		StreamByteChunker streamByteChunkerBefore = StreamByteChunker.create(eventloop, blockSize / 2, blockSize);
 		StreamLZ4Compressor streamCompressor = StreamLZ4Compressor.fastCompressor(eventloop);
 		final StreamByteChunker streamByteChunkerAfter = StreamByteChunker.create(eventloop, blockSize / 2, blockSize);

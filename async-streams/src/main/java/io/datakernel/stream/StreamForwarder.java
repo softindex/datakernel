@@ -60,5 +60,15 @@ public final class StreamForwarder<T> extends AbstractStreamTransformer_1_1<T, T
 		this.outputProducer = new OutputProducer();
 	}
 
+	@Override
+	protected AbstractInputConsumer getInputImpl() {
+		return inputConsumer;
+	}
+
+	@Override
+	protected AbstractOutputProducer getOutputImpl() {
+		return outputProducer;
+	}
+
 	public static <T> StreamForwarder<T> create(Eventloop eventloop) {return new StreamForwarder<>(eventloop);}
 }

@@ -64,6 +64,16 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 			inputConsumer = new InputConsumer(datetimeFormat, fileSwitchPeriod, fileSystem, logPartition);
 		}
 
+		@Override
+		protected AbstractInputConsumer getInputImpl() {
+			return inputConsumer;
+		}
+
+		@Override
+		protected AbstractOutputProducer getOutputImpl() {
+			return outputProducer;
+		}
+
 		private class InputConsumer extends AbstractInputConsumer implements StreamDataReceiver<ByteBuf> {
 			private final String logPartition;
 
@@ -246,6 +256,16 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 			super(eventloop);
 			upstreamConsumer = new InputConsumer();
 			downstreamProducer = new OutputProducer();
+		}
+
+		@Override
+		protected AbstractInputConsumer getInputImpl() {
+			return upstreamConsumer;
+		}
+
+		@Override
+		protected AbstractOutputProducer getOutputImpl() {
+			return downstreamProducer;
 		}
 
 		private class InputConsumer extends AbstractInputConsumer {

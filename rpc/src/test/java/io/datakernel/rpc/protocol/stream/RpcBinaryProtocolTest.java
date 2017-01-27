@@ -170,14 +170,14 @@ public class RpcBinaryProtocolTest {
 		StreamLZ4Compressor compressorClient = StreamLZ4Compressor.fastCompressor(eventloop);
 		StreamLZ4Decompressor decompressorClient = StreamLZ4Decompressor.create(eventloop);
 		StreamBinarySerializer<RpcMessage> serializerClient = StreamBinarySerializer.create(eventloop, serializer,
-				defaultPacketSize, maxPacketSize, 0, false);
+				defaultPacketSize, maxPacketSize);
 		StreamBinaryDeserializer<RpcMessage> deserializerClient = StreamBinaryDeserializer.create(eventloop, serializer, maxPacketSize);
 
 		// server side
 		StreamLZ4Compressor compressorServer = StreamLZ4Compressor.fastCompressor(eventloop);
 		StreamLZ4Decompressor decompressorServer = StreamLZ4Decompressor.create(eventloop);
 		StreamBinarySerializer<RpcMessage> serializerServer = StreamBinarySerializer.create(eventloop, serializer,
-				defaultPacketSize, maxPacketSize, 0, false);
+				defaultPacketSize, maxPacketSize);
 		StreamBinaryDeserializer<RpcMessage> deserializerServer = StreamBinaryDeserializer.create(eventloop, serializer, maxPacketSize);
 
 		StreamConsumers.ToList<RpcMessage> results = new StreamConsumers.ToList<>(eventloop);

@@ -105,7 +105,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	@Override
 	public void onClosedWithError(Exception e) {
-		if (inspector != null) inspector.onConnectionError(remoteAddress, e);
+		if (inspector != null) inspector.onHttpError(remoteAddress, e);
 		readQueue.clear();
 		onClosed();
 	}
@@ -260,7 +260,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			@Override
 			protected void onException(Exception e) {
 				assert eventloop.inEventloopThread();
-				if (inspector != null) inspector.onServletError(request, e);
+				if (inspector != null) inspector.onServletException(request, e);
 				if (!isClosed()) {
 					pool.removeNode(HttpServerConnection.this);
 					(pool = server.poolWriting).addLastNode(HttpServerConnection.this);
@@ -324,9 +324,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			// request is not being processed by asynchronous servlet at the moment
 			recycleBufs();
 		}
-
 		server.onConnectionClosed();
-		if (inspector != null) inspector.onConnectionClosed(remoteAddress);
 	}
 
 	@Override

@@ -59,7 +59,7 @@ public class StreamSerializerBenchmark implements Runnable {
 
 		}
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, list);
-		StreamBinarySerializer<Integer> serializerStream = StreamBinarySerializer.create(eventloop, intSerializer(), 1, StreamBinarySerializer.MAX_SIZE, 0, false);
+		StreamBinarySerializer<Integer> serializerStream = StreamBinarySerializer.create(eventloop, intSerializer(), 1, StreamBinarySerializer.MAX_SIZE);
 		StreamBinaryDeserializer<Integer> deserializerStream = StreamBinaryDeserializer.create(eventloop, intSerializer(), 12);
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListOneByOne(eventloop);
 

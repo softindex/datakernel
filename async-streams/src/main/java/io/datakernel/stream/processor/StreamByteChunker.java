@@ -33,6 +33,16 @@ public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteB
 		this.outputProducer = new OutputProducer(minChunkSize, maxChunkSize);
 	}
 
+	@Override
+	protected AbstractInputConsumer getInputImpl() {
+		return inputConsumer;
+	}
+
+	@Override
+	protected AbstractOutputProducer getOutputImpl() {
+		return outputProducer;
+	}
+
 	public static StreamByteChunker create(Eventloop eventloop, int minChunkSize, int maxChunkSize) {
 		return new StreamByteChunker(eventloop, minChunkSize, maxChunkSize);
 	}

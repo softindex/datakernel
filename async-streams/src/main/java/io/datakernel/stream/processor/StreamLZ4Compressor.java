@@ -47,8 +47,10 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 
 	private static final int MIN_BLOCK_SIZE = 64;
 
-	private final InputConsumer inputConsumer;
-	private final OutputProducer outputProducer;
+	private final LZ4Compressor compressor;
+
+	private InputConsumer inputConsumer;
+	private OutputProducer outputProducer;
 
 	public interface Inspector extends AbstractStreamTransformer_1_1.Inspector {
 		void onBuf(ByteBuf in, ByteBuf out);
@@ -109,9 +111,23 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 	// region creators
 	private StreamLZ4Compressor(Eventloop eventloop, LZ4Compressor compressor) {
 		super(eventloop);
+		this.compressor = compressor;
+		rebuild();
+	}
+
+	protected void rebuild() {
 		this.inputConsumer = new InputConsumer();
 		this.outputProducer = new OutputProducer(compressor);
+	}
 
+	@Override
+	protected AbstractInputConsumer getInputImpl() {
+		return inputConsumer;
+	}
+
+	@Override
+	protected AbstractOutputProducer getOutputImpl() {
+		return outputProducer;
 	}
 
 	public static StreamLZ4Compressor rawCompressor(Eventloop eventloop) {
@@ -132,6 +148,7 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 
 	public StreamLZ4Compressor withInspector(Inspector inspector) {
 		super.inspector = inspector;
+		rebuild();
 		return this;
 	}
 	// endregion

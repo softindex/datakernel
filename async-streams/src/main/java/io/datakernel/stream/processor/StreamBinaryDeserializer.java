@@ -38,8 +38,12 @@ import static java.lang.Math.min;
  * @param <T> original type of data
  */
 public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer_1_1<ByteBuf, T> {
-	private final InputConsumer inputConsumer;
-	private final OutputProducer outputProducer;
+	private final BufferSerializer<T> valueSerializer;
+	private final int maxMessageSize;
+	private final int buffersPoolSize;
+
+	private InputConsumer inputConsumer;
+	private OutputProducer outputProducer;
 
 	public interface Inspector extends AbstractStreamTransformer_1_1.Inspector {
 		void onInput(ByteBuf buf);
@@ -78,10 +82,26 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 		super(eventloop);
 		checkArgument(maxMessageSize < (1 << (OutputProducer.MAX_HEADER_BYTES * 7)), "maxMessageSize must be less than 2 MB");
 		checkArgument(buffersPoolSize > 0, "buffersPoolSize must be positive value, got %s", buffersPoolSize);
+		this.valueSerializer = valueSerializer;
+		this.maxMessageSize = maxMessageSize;
+		this.buffersPoolSize = buffersPoolSize;
+		rebuild();
+	}
 
+	private void rebuild() {
 		this.inputConsumer = new InputConsumer();
 		this.outputProducer = new OutputProducer(new ArrayDeque<ByteBuf>(buffersPoolSize), maxMessageSize,
 				valueSerializer, buffersPoolSize);
+	}
+
+	@Override
+	protected AbstractInputConsumer getInputImpl() {
+		return inputConsumer;
+	}
+
+	@Override
+	protected AbstractOutputProducer getOutputImpl() {
+		return outputProducer;
 	}
 
 	/**
@@ -111,6 +131,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 
 	public StreamBinaryDeserializer<T> withInspector(Inspector inspector) {
 		super.inspector = inspector;
+		rebuild();
 		return this;
 	}
 	// endregion

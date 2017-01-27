@@ -17,12 +17,10 @@
 package io.datakernel.stream;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxReducers.JmxReducerSum;
 import io.datakernel.stream.processor.StreamTransformer;
-
-import static com.google.common.base.Preconditions.checkState;
 
 /**
  * Represent {@link StreamProducer} and {@link StreamConsumer} in the one object.
@@ -34,9 +32,6 @@ import static com.google.common.base.Preconditions.checkState;
 @SuppressWarnings("unchecked")
 public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTransformer<I, O> {
 	protected final Eventloop eventloop;
-
-	private AbstractInputConsumer inputConsumer;
-	private AbstractOutputProducer outputProducer;
 
 	protected Object tag;
 
@@ -58,8 +53,8 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 		private int started;
 		private int endOfStream;
 		private ExceptionStats errors = ExceptionStats.create();
-		private final EventStats suspended = EventStats.create();
-		private final EventStats resumed = EventStats.create();
+		private long suspended;
+		private long resumed;
 
 		@Override
 		public void onStarted() {
@@ -78,20 +73,20 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 
 		@Override
 		public void onSuspended() {
-			suspended.recordEvent();
+			suspended++;
 		}
 
 		@Override
 		public void onResumed() {
-			resumed.recordEvent();
+			resumed++;
 		}
 
-		@JmxAttribute
+		@JmxAttribute(reducer = JmxReducerSum.class)
 		public int getStarted() {
 			return started;
 		}
 
-		@JmxAttribute
+		@JmxAttribute(reducer = JmxReducerSum.class)
 		public int getEndOfStream() {
 			return endOfStream;
 		}
@@ -101,13 +96,13 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 			return errors;
 		}
 
-		@JmxAttribute
-		public EventStats getSuspended() {
+		@JmxAttribute(reducer = JmxReducerSum.class)
+		public long getSuspended() {
 			return suspended;
 		}
 
-		@JmxAttribute
-		public EventStats getResumed() {
+		@JmxAttribute(reducer = JmxReducerSum.class)
+		public long getResumed() {
 			return resumed;
 		}
 	}
@@ -117,8 +112,6 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 
 		public AbstractInputConsumer() {
 			super(AbstractStreamTransformer_1_1.this.eventloop);
-			checkState(inputConsumer == null);
-			inputConsumer = this;
 		}
 
 		@Override
@@ -141,7 +134,7 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 		@Override
 		protected void onError(Exception e) {
 			if (inspector != null) inspector.onError(e);
-			outputProducer.closeWithError(e);
+			getOutputImpl().closeWithError(e);
 		}
 
 		@Override
@@ -163,12 +156,11 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 	protected abstract class AbstractOutputProducer extends AbstractStreamProducer<O> {
 		public AbstractOutputProducer() {
 			super(AbstractStreamTransformer_1_1.this.eventloop);
-			checkState(outputProducer == null);
-			outputProducer = this;
 		}
 
 		@Override
 		protected final void onDataReceiverChanged() {
+			AbstractInputConsumer inputConsumer = getInputImpl();
 			inputConsumer.downstreamDataReceiver = this.downstreamDataReceiver;
 			if (inputConsumer.getUpstream() != null) {
 				inputConsumer.getUpstream().bindDataReceiver();
@@ -177,7 +169,7 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 
 		@Override
 		protected final void onStarted() {
-			inputConsumer.bindUpstream();
+			getInputImpl().bindUpstream();
 			onDownstreamStarted();
 		}
 
@@ -186,7 +178,7 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 
 		@Override
 		protected void onError(Exception e) {
-			inputConsumer.closeWithError(e);
+			getInputImpl().closeWithError(e);
 		}
 
 		@Override
@@ -210,14 +202,18 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 		this.eventloop = eventloop;
 	}
 
+	protected abstract AbstractInputConsumer getInputImpl();
+
+	protected abstract AbstractOutputProducer getOutputImpl();
+
 	@Override
-	public StreamConsumer<I> getInput() {
-		return inputConsumer;
+	public final StreamConsumer<I> getInput() {
+		return getInputImpl();
 	}
 
 	@Override
-	public StreamProducer<O> getOutput() {
-		return outputProducer;
+	public final StreamProducer<O> getOutput() {
+		return getOutputImpl();
 	}
 
 	public void setTag(Object tag) {

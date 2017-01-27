@@ -45,6 +45,16 @@ public final class StreamFilter<T> extends AbstractStreamTransformer_1_1<T, T> i
 		this.outputProducer = new OutputProducer(predicate);
 	}
 
+	@Override
+	protected AbstractInputConsumer getInputImpl() {
+		return inputConsumer;
+	}
+
+	@Override
+	protected AbstractOutputProducer getOutputImpl() {
+		return outputProducer;
+	}
+
 	/**
 	 * Creates a new instance of this class
 	 *

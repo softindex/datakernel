@@ -23,6 +23,7 @@ import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxReducers.JmxReducerSum;
 import io.datakernel.jmx.ValueStats;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
@@ -52,12 +53,16 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 
 	private static final int MAX_HEADER_BYTES = 3;
 
-	private final InputConsumer inputConsumer;
-	private final OutputProducer outputProducer;
+	private final BufferSerializer<T> serializer;
+	private final int defaultBufferSize;
+	private final int maxMessageSize;
+	private int flushDelayMillis = 0;
+	private boolean skipSerializationErrors = false;
+
+	private InputConsumer inputConsumer;
+	private OutputProducer outputProducer;
 
 	public interface Inspector<T> extends AbstractStreamTransformer_1_1.Inspector {
-		void onItem(int messageSize);
-
 		void onUnderEstimate(T item, int estimatedMessageSize);
 
 		void onFullBuffer();
@@ -69,34 +74,30 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 		void onSerializationError(T item, Exception e);
 	}
 
+	public interface InspectorEx<T> extends Inspector<T> {
+		void onItem(T item, int messageSize);
+	}
+
 	public static class JmxInspector<T> extends AbstractStreamTransformer_1_1.JmxInspector implements Inspector<T> {
-		private int lastSize;
-		private long count;
-		private final ValueStats underEstimations = ValueStats.create();
-		private final EventStats fullBuffers = EventStats.create();
-		private final ValueStats messageOverflows = ValueStats.create();
+		private long underEstimations;
+		private long fullBuffers;
+		private long messageOverflows;
 		private final ValueStats outputBufs = ValueStats.create();
 		private final ExceptionStats serializationErrors = ExceptionStats.create();
 
 		@Override
-		public void onItem(int messageSize) {
-			lastSize = messageSize;
-			count++;
-		}
-
-		@Override
 		public void onUnderEstimate(T item, int estimatedMessageSize) {
-			underEstimations.recordValue(estimatedMessageSize);
+			underEstimations++;
 		}
 
 		@Override
 		public void onFullBuffer() {
-			fullBuffers.recordEvent();
+			fullBuffers++;
 		}
 
 		@Override
 		public void onMessageOverflow(T item, int messageSize) {
-			messageOverflows.recordValue(messageSize);
+			messageOverflows++;
 		}
 
 		@Override
@@ -109,32 +110,22 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 			serializationErrors.recordException(e, item);
 		}
 
-		@JmxAttribute
-		public int getLastSize() {
-			return lastSize;
-		}
-
-		@JmxAttribute
-		public long getCount() {
-			return count;
-		}
-
-		@JmxAttribute
-		public ValueStats getUnderEstimations() {
+		@JmxAttribute(reducer = JmxReducerSum.class)
+		public long getUnderEstimations() {
 			return underEstimations;
 		}
 
-		@JmxAttribute
-		public EventStats getFullBuffers() {
+		@JmxAttribute(reducer = JmxReducerSum.class)
+		public long getFullBuffers() {
 			return fullBuffers;
 		}
 
-		@JmxAttribute
-		public ValueStats getMessageOverflows() {
+		@JmxAttribute(reducer = JmxReducerSum.class)
+		public long getMessageOverflows() {
 			return messageOverflows;
 		}
 
-		@JmxAttribute
+		@JmxAttribute(extraSubAttributes = {"count", "max"})
 		public ValueStats getOutputBufs() {
 			return outputBufs;
 		}
@@ -145,11 +136,54 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 		}
 	}
 
+	public static class JmxInspectorEx<T> extends JmxInspector<T> implements InspectorEx<T> {
+		private int lastSize;
+		private long count;
+		private final ValueStats underEstimations = ValueStats.create();
+		private final EventStats fullBuffers = EventStats.create();
+		private final ValueStats messageOverflows = ValueStats.create();
+		private final ValueStats outputBufs = ValueStats.create();
+		private final ExceptionStats serializationErrors = ExceptionStats.create();
+
+		@Override
+		public void onItem(T item, int messageSize) {
+			lastSize = messageSize;
+			count++;
+		}
+
+		@JmxAttribute
+		public int getLastSize() {
+			return lastSize;
+		}
+
+		@JmxAttribute
+		public long getCount() {
+			return count;
+		}
+	}
+
 	// region creators
-	private StreamBinarySerializer(Eventloop eventloop, BufferSerializer<T> serializer, int defaultBufferSize, int maxMessageSize, int flushDelayMillis, boolean skipSerializationErrors) {
+	private StreamBinarySerializer(Eventloop eventloop, BufferSerializer<T> serializer, int defaultBufferSize, int maxMessageSize) {
 		super(eventloop);
+		this.serializer = serializer;
+		this.defaultBufferSize = defaultBufferSize;
+		this.maxMessageSize = maxMessageSize;
+		rebuild();
+	}
+
+	private void rebuild() {
 		this.inputConsumer = new InputConsumer();
 		this.outputProducer = new OutputProducer(serializer, defaultBufferSize, maxMessageSize, flushDelayMillis, skipSerializationErrors);
+	}
+
+	@Override
+	protected AbstractInputConsumer getInputImpl() {
+		return inputConsumer;
+	}
+
+	@Override
+	protected AbstractOutputProducer getOutputImpl() {
+		return outputProducer;
 	}
 
 	/**
@@ -160,20 +194,34 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 	 * @param maxMessageSize maximal size of message which this serializer can receive
 	 */
 	public static <T> StreamBinarySerializer<T> create(Eventloop eventloop, BufferSerializer<T> serializer,
-	                                                   int defaultBufferSize, int maxMessageSize,
-	                                                   int flushDelayMillis, boolean skipSerializationErrors) {
-		return new StreamBinarySerializer<>(eventloop, serializer, defaultBufferSize,
-				maxMessageSize, flushDelayMillis, skipSerializationErrors);
+	                                                   int defaultBufferSize, int maxMessageSize) {
+		return new StreamBinarySerializer<>(eventloop, serializer, defaultBufferSize, maxMessageSize);
+	}
+
+	public StreamBinarySerializer<T> withFlushDelay(int flushDelayMillis) {
+		this.flushDelayMillis = flushDelayMillis;
+		rebuild();
+		return this;
+	}
+
+	public StreamBinarySerializer<T> withSkipSerializationErrors() {
+		return withSkipSerializationErrors(true);
+	}
+
+	public StreamBinarySerializer<T> withSkipSerializationErrors(boolean skipSerializationErrors) {
+		this.skipSerializationErrors = skipSerializationErrors;
+		rebuild();
+		return this;
 	}
 
 	public StreamBinarySerializer<T> withInspector(Inspector<T> inspector) {
-		super.inspector = inspector;
+		this.inspector = inspector;
+		rebuild();
 		return this;
 	}
 	// endregion
 
 	private final class InputConsumer extends AbstractInputConsumer {
-
 		@Override
 		protected void onUpstreamEndOfStream() {
 			outputProducer.flushAndClose();
@@ -202,6 +250,8 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 		private final boolean skipSerializationErrors;
 
 		private final Inspector inspector = (Inspector) StreamBinarySerializer.this.inspector;
+		private final InspectorEx inspectorEx = StreamBinarySerializer.this.inspector instanceof InspectorEx ?
+				(InspectorEx) StreamBinarySerializer.this.inspector : null;
 
 		public OutputProducer(BufferSerializer<T> serializer, int defaultBufferSize, int maxMessageSize, int flushDelayMillis, boolean skipSerializationErrors) {
 			checkArgument(maxMessageSize > 0 && maxMessageSize <= MAX_SIZE, "maxMessageSize must be in [4B..2MB) range, got %s", maxMessageSize);
@@ -314,7 +364,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 				return;
 			}
 			writeSize(outputBuf.array(), positionBegin, messageSize);
-			if (inspector != null) inspector.onItem(messageSize);
+			if (inspectorEx != null) inspectorEx.onItem(item, messageSize);
 			messageSize += messageSize >>> 2;
 			if (messageSize > estimatedMessageSize)
 				estimatedMessageSize = messageSize;

@@ -29,9 +29,19 @@ public final class StreamForwarderWithCounter extends AbstractStreamTransformer_
 
 	private StreamForwarderWithCounter(Eventloop eventloop, long requiredSize) {
 		super(eventloop);
+		expectedSize = requiredSize;
 		inputConsumer = new InputConsumer();
 		outputProducer = new OutputProducer();
-		expectedSize = requiredSize;
+	}
+
+	@Override
+	protected AbstractInputConsumer getInputImpl() {
+		return inputConsumer;
+	}
+
+	@Override
+	protected AbstractOutputProducer getOutputImpl() {
+		return outputProducer;
 	}
 
 	public static StreamForwarderWithCounter create(Eventloop eventloop, long requiredSize) {

@@ -42,6 +42,16 @@ public final class StreamFunction<I, O> extends AbstractStreamTransformer_1_1<I,
 		this.outputProducer = new OutputProducer(function);
 	}
 
+	@Override
+	protected AbstractInputConsumer getInputImpl() {
+		return inputConsumer;
+	}
+
+	@Override
+	protected AbstractOutputProducer getOutputImpl() {
+		return outputProducer;
+	}
+
 	public static <I, O> StreamFunction<I, O> create(Eventloop eventloop, Function<I, O> function) {
 		return new StreamFunction<I, O>(eventloop, function);
 	}

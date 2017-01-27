@@ -347,8 +347,17 @@ public final class StreamProducers {
 				outputProducer = new OutputProducer();
 			}
 
-			private class InputConsumer extends AbstractInputConsumer {
+			@Override
+			protected AbstractInputConsumer getInputImpl() {
+				return inputConsumer;
+			}
 
+			@Override
+			protected AbstractOutputProducer getOutputImpl() {
+				return outputProducer;
+			}
+
+			private class InputConsumer extends AbstractInputConsumer {
 				private void doNext() {
 					eventloop.post(new Runnable() {
 						@Override

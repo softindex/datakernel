@@ -88,7 +88,7 @@ public final class SocketStreamingConnectionTest {
 				.withAcceptOnce();
 		server.listen();
 
-		final StreamBinarySerializer<Integer> streamSerializer = StreamBinarySerializer.create(eventloop, intSerializer(), 1, 10, 0, false);
+		final StreamBinarySerializer<Integer> streamSerializer = StreamBinarySerializer.create(eventloop, intSerializer(), 1, 10);
 		eventloop.connect(address, new ConnectCallback() {
 			@Override
 			public void onConnect(SocketChannel socketChannel) {
@@ -142,7 +142,7 @@ public final class SocketStreamingConnectionTest {
 
 		server.listen();
 
-		final StreamBinarySerializer<Integer> streamSerializer = StreamBinarySerializer.create(eventloop, intSerializer(), 1, 10, 0, false);
+		final StreamBinarySerializer<Integer> streamSerializer = StreamBinarySerializer.create(eventloop, intSerializer(), 1, 10);
 		final StreamBinaryDeserializer<Integer> streamDeserializer = StreamBinaryDeserializer.create(eventloop, intSerializer(), 10);
 		eventloop.connect(address, new ConnectCallback() {
 			@Override
@@ -211,7 +211,7 @@ public final class SocketStreamingConnectionTest {
 
 		server.listen();
 
-		final StreamBinarySerializer<Integer> streamSerializer = StreamBinarySerializer.create(eventloop, BufferSerializers.intSerializer(), 1, 50, 0, false);
+		final StreamBinarySerializer<Integer> streamSerializer = StreamBinarySerializer.create(eventloop, BufferSerializers.intSerializer(), 1, 50);
 		final StreamBinaryDeserializer<Integer> streamDeserializer = StreamBinaryDeserializer.create(eventloop, BufferSerializers.intSerializer(), 10);
 		eventloop.connect(address, new ConnectCallback() {
 			@Override

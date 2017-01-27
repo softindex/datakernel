@@ -118,8 +118,8 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 	public <T> StreamConsumer<T> upload(final StreamId streamId, Class<T> type) {
 		BufferSerializer<T> serializer = environment.getInstance(DatagraphSerialization.class).getSerializer(type);
 
-		StreamBinarySerializer<T> streamSerializer = StreamBinarySerializer.create(eventloop, serializer, 256 * 1024,
-				StreamBinarySerializer.MAX_SIZE, 1000, false);
+		StreamBinarySerializer<T> streamSerializer = StreamBinarySerializer.create(eventloop, serializer, 256 * 1024, StreamBinarySerializer.MAX_SIZE)
+				.withFlushDelay(1000);
 		streamSerializer.setTag(streamId);
 
 		StreamForwarder<ByteBuf> forwarder = pendingStreams.remove(streamId);

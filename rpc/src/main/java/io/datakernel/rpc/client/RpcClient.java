@@ -98,7 +98,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 	// jmx
 	private boolean monitoring = false;
 	private final RpcRequestStats generalRequestsStats = RpcRequestStats.create();
-	private final RpcConnectStats generalConnectsStats = RpcConnectStats.create();
+	private final RpcConnectStats generalConnectsStats = new RpcConnectStats();
 	private final Map<Class<?>, RpcRequestStats> requestStatsPerClass = new HashMap<>();
 	private final Map<InetSocketAddress, RpcConnectStats> connectsStatsPerAddress = new HashMap<>();
 	private final ExceptionStats lastProtocolError = ExceptionStats.create();
@@ -147,7 +147,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		// jmx
 		for (InetSocketAddress address : this.addresses) {
 			if (!connectsStatsPerAddress.containsKey(address)) {
-				connectsStatsPerAddress.put(address, RpcConnectStats.create());
+				connectsStatsPerAddress.put(address, new RpcConnectStats());
 			}
 		}
 
@@ -321,8 +321,8 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 				addConnection(address, connection);
 
 				// jmx
-				generalConnectsStats.getSuccessfulConnects().recordEvent();
-				connectsStatsPerAddress.get(address).getSuccessfulConnects().recordEvent();
+				generalConnectsStats.successfulConnects ++;
+				connectsStatsPerAddress.get(address).successfulConnects++;
 
 				logger.info("Connection to {} established", address);
 				if (startCallback != null) {
@@ -334,8 +334,8 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 			@Override
 			public void onException(Exception e) {
 				//jmx
-				generalConnectsStats.getFailedConnects().recordEvent();
-				connectsStatsPerAddress.get(address).getFailedConnects().recordEvent();
+				generalConnectsStats.failedConnects++;
+				connectsStatsPerAddress.get(address).failedConnects++;
 
 				if (running) {
 					if (logger.isWarnEnabled()) {
@@ -388,8 +388,8 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		requestSender = sender != null ? sender : new Sender();
 
 		// jmx
-		generalConnectsStats.getClosedConnects().recordEvent();
-		connectsStatsPerAddress.get(address).getClosedConnects().recordEvent();
+		generalConnectsStats.closedConnects++;
+		connectsStatsPerAddress.get(address).closedConnects++;
 
 		eventloop.scheduleBackground(eventloop.currentTimeMillis() + reconnectIntervalMillis, new ScheduledRunnable() {
 			@Override
@@ -502,7 +502,6 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		for (Class<?> requestClass : requestStatsPerClass.keySet()) {
 			requestStatsPerClass.get(requestClass).resetStats();
 		}
-
 		for (InetSocketAddress address : addresses) {
 			RpcClientConnection connection = connections.get(address);
 			if (connection != null) {

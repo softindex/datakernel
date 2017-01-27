@@ -43,8 +43,11 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<B
 		private boolean finished;
 	}
 
-	private final InputConsumer inputConsumer;
-	private final OutputProducer outputProducer;
+	private final LZ4FastDecompressor decompressor;
+	private final StreamingXXHash32 checksum;
+
+	private InputConsumer inputConsumer;
+	private OutputProducer outputProducer;
 
 	private final Header header = new Header();
 
@@ -185,8 +188,24 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<B
 	// region creators
 	private StreamLZ4Decompressor(Eventloop eventloop, LZ4FastDecompressor decompressor, StreamingXXHash32 checksum) {
 		super(eventloop);
+		this.decompressor = decompressor;
+		this.checksum = checksum;
+		recreate();
+	}
+
+	private void recreate() {
 		this.outputProducer = new OutputProducer(decompressor, checksum);
 		this.inputConsumer = new InputConsumer();
+	}
+
+	@Override
+	protected AbstractInputConsumer getInputImpl() {
+		return inputConsumer;
+	}
+
+	@Override
+	protected AbstractOutputProducer getOutputImpl() {
+		return outputProducer;
 	}
 
 	public static StreamLZ4Decompressor create(Eventloop eventloop, LZ4FastDecompressor decompressor,
@@ -201,6 +220,7 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<B
 
 	public StreamLZ4Decompressor withInspector(Inspector inspector) {
 		super.inspector = inspector;
+		recreate();
 		return this;
 	}
 	// endregion

@@ -94,6 +94,16 @@ final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 			this.inputConsumer = new InputConsumer(chunkSize);
 		}
 
+		@Override
+		protected AbstractInputConsumer getInputImpl() {
+			return inputConsumer;
+		}
+
+		@Override
+		protected AbstractOutputProducer getOutputImpl() {
+			return outputProducer;
+		}
+
 		private class InputConsumer extends AbstractInputConsumer implements StreamDataReceiver<T> {
 			private int chunkSize;
 

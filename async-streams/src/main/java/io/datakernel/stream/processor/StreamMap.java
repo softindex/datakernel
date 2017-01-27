@@ -35,11 +35,24 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public final class StreamMap<I, O> extends AbstractStreamTransformer_1_1<I, O> implements EventloopJmxMBean {
 	private int jmxItems;
 
+	private final InputConsumer inputConsumer;
+	private final OutputProducer outputProducer;
+
 	// region creators
 	private StreamMap(Eventloop eventloop, Mapper<I, O> mapper) {
 		super(eventloop);
 		this.inputConsumer = new InputConsumer();
 		this.outputProducer = new OutputProducer(mapper);
+	}
+
+	@Override
+	protected AbstractInputConsumer getInputImpl() {
+		return inputConsumer;
+	}
+
+	@Override
+	protected AbstractOutputProducer getOutputImpl() {
+		return outputProducer;
 	}
 
 	public static <I, O> StreamMap<I, O> create(Eventloop eventloop, Mapper<I, O> mapper) {
@@ -130,9 +143,6 @@ public final class StreamMap<I, O> extends AbstractStreamTransformer_1_1<I, O> i
 			}
 		};
 	}
-
-	private final InputConsumer inputConsumer;
-	private final OutputProducer outputProducer;
 
 	protected final class InputConsumer extends AbstractInputConsumer {
 
