@@ -188,7 +188,7 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 	 *
 	 * @return last added value
 	 */
-	@JmxAttribute
+	@JmxAttribute(optional = true)
 	public int getLastValue() {
 		return lastValue;
 	}
@@ -198,7 +198,7 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 	 *
 	 * @return smoothed average of added values
 	 */
-	@JmxAttribute
+	@JmxAttribute(optional = true)
 	public double getSmoothedAverage() {
 		if (totalCount == 0) {
 			return 0.0;
@@ -212,7 +212,7 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 	 *
 	 * @return smoothed standard deviation
 	 */
-	@JmxAttribute
+	@JmxAttribute(optional = true)
 	public double getSmoothedStandardDeviation() {
 		if (totalCount == 0) {
 			return 0.0;
@@ -245,7 +245,12 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 		return totalMax;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(name = "")
+	public String getSummary() {
+		return toString();
+	}
+
+	@JmxAttribute(optional = true)
 	public double getAverage() {
 		return totalCount != 0L ? totalSum / (double) totalCount : 0.0;
 	}

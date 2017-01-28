@@ -150,20 +150,21 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				includedOptionals.remove(attrName);
 			}
 
-			if (includedOptionals.size() > 0) {
-				// in this case getter cannot be null
-				throw new RuntimeException(format("Error in \"extraSubAttributes\" parameter in @JmxAnnotation" +
-								" on %s.%s(). There is no field \"%s\" in %s.",
-						getter.getDeclaringClass().getName(), getter.getName(),
-						includedOptionals.iterator().next(), getter.getReturnType().getName()));
-			}
-
 			Type type = attrGetter.getGenericReturnType();
 			Method attrSetter = descriptor.getSetter();
 			AttributeNode attrNode = createAttributeNodeFor(attrName, attrDescription, type,
 					attrAnnotation, attrGetter, attrSetter, mbeanClass);
 			attrNodes.add(attrNode);
 		}
+
+		if (includedOptionals.size() > 0) {
+			// in this case getter cannot be null
+			throw new RuntimeException(format("Error in \"extraSubAttributes\" parameter in @JmxAnnotation" +
+							" on %s.%s(). There is no field \"%s\" in %s.",
+					getter.getDeclaringClass().getName(), getter.getName(),
+					includedOptionals.iterator().next(), getter.getReturnType().getName()));
+		}
+
 		return attrNodes;
 	}
 
@@ -537,10 +538,16 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			OpenType<?> attrType = nameToType.get(attrName);
 			boolean writable = rootNode.isSettable(attrName);
 			boolean isIs = attrType.equals(SimpleType.BOOLEAN);
-			attrsInfo.add(new MBeanAttributeInfo(attrName, attrType.getClassName(), description, true, writable, isIs));
+			// TODO(vmykhalko): refactor
+			attrsInfo.add(new MBeanAttributeInfo(
+					removeTrailingUnderscore(attrName), attrType.getClassName(), description, true, writable, isIs));
 		}
 
 		return attrsInfo.toArray(new MBeanAttributeInfo[attrsInfo.size()]);
+	}
+
+	private static String removeTrailingUnderscore(String str) {
+		return str.charAt(str.length() - 1) == '_' ? str.substring(0, str.length() - 1) : str;
 	}
 
 	private static String createDescription(String name, Map<String, String> groupDescriptions) {
@@ -745,6 +752,9 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		private final AttributeNodeForPojo rootNode;
 		private final Map<OperationKey, Method> opkeyToMethod;
 
+		// TODO(vmykhalko): refactor
+		private final Set<String> namesWithRemovedTrailingUnderscore = new HashSet<>();
+
 		public DynamicMBeanAggregator(MBeanInfo mBeanInfo, List<? extends MBeanWrapper> mbeanWrappers,
 		                              AttributeNodeForPojo rootNode, Map<OperationKey, Method> opkeyToMethod,
 		                              boolean refreshEnabled) {
@@ -759,19 +769,35 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 			this.rootNode = rootNode;
 			this.opkeyToMethod = opkeyToMethod;
+
+			// TODO(vmykhalko): refactor
+			if (rootNode != null) {
+				for (String name : rootNode.getFlattenedOpenTypes().keySet()) {
+					if (name.charAt(name.length() - 1) == '_') {
+						namesWithRemovedTrailingUnderscore.add(removeTrailingUnderscore(name));
+					}
+				}
+			}
 		}
 
 		@SuppressWarnings("unchecked")
 		@Override
 		public Object getAttribute(String attribute)
 				throws AttributeNotFoundException, MBeanException, ReflectionException {
-			return rootNode.aggregateAttribute(attribute, mbeans);
+			// TODO(vmykhalko): refactor
+			String attrName = namesWithRemovedTrailingUnderscore.contains(attribute) ?
+					attribute + "_" :
+					attribute;
+			return rootNode.aggregateAttribute(attrName, mbeans);
 		}
 
 		@Override
 		public void setAttribute(final Attribute attribute)
 				throws AttributeNotFoundException, InvalidAttributeValueException, MBeanException, ReflectionException {
-			final String attrName = attribute.getName();
+			// TODO(vmykhalko): refactor
+			final String attrName = namesWithRemovedTrailingUnderscore.contains(attribute.getName()) ?
+					attribute.getName() + "_" :
+					attribute.getName();
 			final Object attrValue = attribute.getValue();
 
 			final CountDownLatch latch = new CountDownLatch(mbeanWrappers.size());
