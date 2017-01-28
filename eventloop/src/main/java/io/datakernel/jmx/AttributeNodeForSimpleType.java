@@ -124,6 +124,11 @@ final class AttributeNodeForSimpleType implements AttributeNode {
 		}
 	}
 
+	@Override
+	public AttributeNode rebuildOmittingNullPojos(List<?> sources) {
+		return this;
+	}
+
 	private static SimpleType<?> simpleTypeOf(Class<?> clazz) throws IllegalArgumentException {
 		if (clazz == boolean.class || clazz == Boolean.class) {
 			return SimpleType.BOOLEAN;

@@ -95,7 +95,13 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 					"or EventloopJmxMBean interface");
 		}
 
-		AttributeNodeForPojo rootNode = createAttributesTree(mbeanClass);
+		AttributeNodeForPojo rootNode = (AttributeNodeForPojo)
+				createAttributesTree(mbeanClass).rebuildOmittingNullPojos(monitorables);
+
+		if (rootNode == null) {
+			logger.warn("MBeans " + monitorables + " do not contain any attributes");
+		}
+
 		MBeanInfo mBeanInfo = createMBeanInfo(rootNode, mbeanClass, isRefreshEnabled);
 		Map<OperationKey, Method> opkeyToMethod = fetchOpkeyToMethod(mbeanClass);
 
@@ -103,7 +109,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				mBeanInfo, mbeanWrappers, rootNode, opkeyToMethod, isRefreshEnabled
 		);
 
-		if (isRefreshEnabled) {
+		if (isRefreshEnabled && rootNode != null) {
 			handleJmxRefreshables(mbeanWrappers, rootNode);
 		}
 		return mbean;
@@ -509,7 +515,9 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	                                         boolean enableRefresh) {
 		String monitorableName = "";
 		String monitorableDescription = "";
-		MBeanAttributeInfo[] attributes = fetchAttributesInfo(rootNode, enableRefresh);
+		MBeanAttributeInfo[] attributes = rootNode != null ?
+				fetchAttributesInfo(rootNode, enableRefresh) :
+				new MBeanAttributeInfo[0];
 		MBeanOperationInfo[] operations = fetchOperationsInfo(monitorableClass, enableRefresh);
 		return new MBeanInfo(
 				monitorableName,

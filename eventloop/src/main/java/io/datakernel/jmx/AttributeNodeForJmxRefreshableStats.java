@@ -22,16 +22,23 @@ import java.util.List;
 import static java.util.Collections.singletonList;
 
 final class AttributeNodeForJmxRefreshableStats extends AttributeNodeForJmxStatsAbstract {
+	private final Class<? extends JmxRefreshableStats<?>> jmxStatsClass;
 
 	public AttributeNodeForJmxRefreshableStats(String name, String description, ValueFetcher fetcher,
 	                                           Class<? extends JmxRefreshableStats<?>> jmxStatsClass,
 	                                           List<? extends AttributeNode> subNodes) {
 		super(name, description, fetcher, jmxStatsClass, subNodes);
+		this.jmxStatsClass = jmxStatsClass;
 	}
 
 	@Override
 	public Iterable<JmxRefreshable> getAllRefreshables(Object source) {
 		JmxRefreshable jmxRefreshable = (JmxRefreshable) fetcher.fetchFrom(source);
 		return jmxRefreshable != null ? singletonList(jmxRefreshable) : Collections.<JmxRefreshable>emptyList();
+	}
+
+	@Override
+	protected AttributeNode recreate(List<AttributeNode> filteredNodes) {
+		return new AttributeNodeForJmxRefreshableStats(name, description, fetcher, jmxStatsClass, filteredNodes);
 	}
 }

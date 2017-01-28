@@ -82,4 +82,9 @@ final class AttributeNodeForPojo extends AttributeNodeForPojoAbstract {
 		}
 		return concat(listOfIterators);
 	}
+
+	@Override
+	protected AttributeNode recreate(List<AttributeNode> filteredNodes) {
+		return new AttributeNodeForPojo(name, description, fetcher, filteredNodes);
+	}
 }

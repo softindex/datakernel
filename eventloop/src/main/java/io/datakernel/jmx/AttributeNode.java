@@ -38,4 +38,6 @@ interface AttributeNode {
 	boolean isSettable(String attrName);
 
 	void setAttribute(String attrName, Object value, List<?> targets) throws SetterException;
+
+	AttributeNode rebuildOmittingNullPojos(List<?> sources);
 }
