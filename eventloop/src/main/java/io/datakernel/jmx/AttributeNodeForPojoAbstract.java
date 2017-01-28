@@ -30,7 +30,7 @@ abstract class AttributeNodeForPojoAbstract implements AttributeNode {
 	protected static final String ATTRIBUTE_NAME_SEPARATOR = "_";
 
 	protected final String name;
-	private final String description;
+	protected final String description;
 	protected final ValueFetcher fetcher;
 	private final CompositeType compositeType;
 	private final Map<String, OpenType<?>> nameToOpenType;
@@ -196,4 +196,24 @@ abstract class AttributeNodeForPojoAbstract implements AttributeNode {
 			appropriateSubNode.setAttribute(subAttrName, value, fetchInnerPojos(targets));
 		}
 	}
+
+	@Override
+	public AttributeNode rebuildOmittingNullPojos(List<?> sources) {
+		List<?> innerPojos = fetchInnerPojos(sources);
+		if (innerPojos.size() == 0) {
+			return null;
+		}
+
+		List<AttributeNode> filteredNodes = new ArrayList<>();
+		for (AttributeNode subNode : subNodes) {
+			AttributeNode rebuilded = subNode.rebuildOmittingNullPojos(innerPojos);
+			if (rebuilded != null) {
+				filteredNodes.add(rebuilded);
+			}
+		}
+
+		return filteredNodes.size() > 0 ? recreate(filteredNodes) : null;
+	}
+
+	protected abstract AttributeNode recreate(List<AttributeNode> filteredNodes);
 }

@@ -24,6 +24,7 @@ import org.hamcrest.Matcher;
 import org.jmock.Expectations;
 import org.jmock.integration.junit4.JUnitRuleMockery;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -44,6 +45,7 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.junit.Assert.*;
 
+@Ignore
 public class AsyncSslSocketTest {
 	// <editor-fold desc="fields">
 	private static final String KEYSTORE_PATH = "./src/test/resources/keystore.jks";

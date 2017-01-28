@@ -189,4 +189,9 @@ final class AttributeNodeForMap implements AttributeNode {
 	public void setAttribute(String attrName, Object value, List<?> targets) {
 		throw new UnsupportedOperationException();
 	}
+
+	@Override
+	public AttributeNode rebuildOmittingNullPojos(List<?> sources) {
+		return this;
+	}
 }

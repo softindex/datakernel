@@ -140,4 +140,8 @@ final class AttributeNodeForThrowable implements AttributeNode {
 		throw new UnsupportedOperationException();
 	}
 
+	@Override
+	public AttributeNode rebuildOmittingNullPojos(List<?> sources) {
+		return this;
+	}
 }

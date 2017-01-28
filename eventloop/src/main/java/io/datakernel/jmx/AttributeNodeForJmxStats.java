@@ -19,15 +19,22 @@ package io.datakernel.jmx;
 import java.util.List;
 
 final class AttributeNodeForJmxStats extends AttributeNodeForJmxStatsAbstract {
+	private final Class<? extends JmxStats<?>> jmxStatsClass;
 
 	public AttributeNodeForJmxStats(String name, String description,
 	                                ValueFetcher fetcher, Class<? extends JmxStats<?>> jmxStatsClass,
 	                                List<? extends AttributeNode> subNodes) {
 		super(name, description, fetcher, jmxStatsClass, subNodes);
+		this.jmxStatsClass = jmxStatsClass;
 	}
 
 	@Override
 	public Iterable<JmxRefreshable> getAllRefreshables(Object source) {
 		return null;
+	}
+
+	@Override
+	protected AttributeNode recreate(List<AttributeNode> filteredNodes) {
+		return new AttributeNodeForJmxStats(name, description, fetcher, jmxStatsClass, filteredNodes);
 	}
 }

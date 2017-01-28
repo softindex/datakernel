@@ -192,4 +192,10 @@ final class AttributeNodeForList implements AttributeNode {
 		// ArrayType is not supported
 		throw new IllegalArgumentException(format("OpenType \"%s\" cannot be converted to Class", openType));
 	}
+
+	@Override
+	public AttributeNode rebuildOmittingNullPojos(List<?> sources) {
+		return this;
+	}
 }
+

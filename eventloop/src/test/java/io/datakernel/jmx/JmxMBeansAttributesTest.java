@@ -178,6 +178,20 @@ public class JmxMBeansAttributesTest {
 		assertEquals(25, mbean.getAttribute("group_total"));
 	}
 
+	// test empty leaf names
+	@Test
+	public void handlesAttributeWithEmptyLeafNamesProperly() throws Exception {
+		MBeanWithEmptyLeafName monitorable = new MBeanWithEmptyLeafName();
+		DynamicMBean mbean = createDynamicMBeanFor(monitorable);
+
+		MBeanAttributeInfo[] attributesInfoArr = mbean.getMBeanInfo().getAttributes();
+		Map<String, MBeanAttributeInfo> nameToAttr = nameToAttribute(attributesInfoArr);
+
+		assertEquals(1, nameToAttr.size());
+		assertTrue(nameToAttr.containsKey("pojo"));
+		assertEquals(10, mbean.getAttribute("pojo"));
+	}
+
 	// test setters
 	@Test
 	public void returnsInfoAboutWritableAttributesInMBeanInfo() throws Exception {
@@ -451,6 +465,23 @@ public class JmxMBeansAttributesTest {
 		@JmxAttribute(name = "total")
 		public int getTotal() {
 			return total;
+		}
+	}
+
+	// classes for empty leaf names
+	public static final class MBeanWithEmptyLeafName implements ConcurrentJmxMBean {
+		private final PojoWithEmptyLeafName pojo = new PojoWithEmptyLeafName();
+
+		@JmxAttribute
+		public PojoWithEmptyLeafName getPojo() {
+			return pojo;
+		}
+	}
+
+	public static final class PojoWithEmptyLeafName {
+		@JmxAttribute(name = "")
+		public int getNumber() {
+			return 10;
 		}
 	}
 
