@@ -23,7 +23,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.*;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
-import io.datakernel.stream.processor.StreamBinarySerializer;
 import io.datakernel.stream.processor.StreamLZ4Decompressor;
 
 import java.util.ArrayList;
@@ -113,8 +112,7 @@ public class LogStreamProducer<T> extends StreamProducerDecorator<T> {
 				fileSystem.read(logPartition, currentLogFile, first ? startPosition.getPosition() : 0L,
 						currentDecompressor.getInput());
 
-				StreamBinaryDeserializer<T> currentDeserializer = StreamBinaryDeserializer.create(eventloop, serializer,
-						StreamBinarySerializer.MAX_SIZE);
+				StreamBinaryDeserializer<T> currentDeserializer = StreamBinaryDeserializer.create(eventloop, serializer);
 				ErrorIgnoringTransformer<T> errorIgnoringTransformer = ErrorIgnoringTransformer.create(eventloop);
 
 				currentDecompressor.getOutput().streamTo(currentDeserializer.getInput());

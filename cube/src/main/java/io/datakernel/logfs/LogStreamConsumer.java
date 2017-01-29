@@ -33,7 +33,8 @@ public class LogStreamConsumer<T> extends StreamConsumerDecorator<T> {
 	private LogStreamConsumer(Eventloop eventloop, LogFileSystem fileSystem, BufferSerializer<T> serializer,
 	                          String logPartition, DateTimeFormatter dateTimeFormatter, long fileSwitchPeriod,
 	                          int bufferSize, int flushDelayMillis) {
-		StreamBinarySerializer<T> streamBinarySerializer = StreamBinarySerializer.create(eventloop, serializer, bufferSize, StreamBinarySerializer.MAX_SIZE)
+		StreamBinarySerializer<T> streamBinarySerializer = StreamBinarySerializer.create(eventloop, serializer)
+				.withDefaultBufferSize(bufferSize)
 				.withFlushDelay(flushDelayMillis)
 				.withSkipSerializationErrors();
 		StreamLZ4Compressor streamCompressor = StreamLZ4Compressor.fastCompressor(eventloop);

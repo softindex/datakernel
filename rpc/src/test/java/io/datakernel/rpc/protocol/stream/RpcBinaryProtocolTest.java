@@ -169,16 +169,20 @@ public class RpcBinaryProtocolTest {
 
 		StreamLZ4Compressor compressorClient = StreamLZ4Compressor.fastCompressor(eventloop);
 		StreamLZ4Decompressor decompressorClient = StreamLZ4Decompressor.create(eventloop);
-		StreamBinarySerializer<RpcMessage> serializerClient = StreamBinarySerializer.create(eventloop, serializer,
-				defaultPacketSize, maxPacketSize);
-		StreamBinaryDeserializer<RpcMessage> deserializerClient = StreamBinaryDeserializer.create(eventloop, serializer, maxPacketSize);
+		StreamBinarySerializer<RpcMessage> serializerClient = StreamBinarySerializer.create(eventloop, serializer)
+				.withDefaultBufferSize(defaultPacketSize)
+				.withMaxMessageSize(maxPacketSize);
+		StreamBinaryDeserializer<RpcMessage> deserializerClient = StreamBinaryDeserializer.create(eventloop, serializer)
+				.withMaxMessageSize(maxPacketSize);
 
 		// server side
 		StreamLZ4Compressor compressorServer = StreamLZ4Compressor.fastCompressor(eventloop);
 		StreamLZ4Decompressor decompressorServer = StreamLZ4Decompressor.create(eventloop);
-		StreamBinarySerializer<RpcMessage> serializerServer = StreamBinarySerializer.create(eventloop, serializer,
-				defaultPacketSize, maxPacketSize);
-		StreamBinaryDeserializer<RpcMessage> deserializerServer = StreamBinaryDeserializer.create(eventloop, serializer, maxPacketSize);
+		StreamBinarySerializer<RpcMessage> serializerServer = StreamBinarySerializer.create(eventloop, serializer)
+				.withDefaultBufferSize(defaultPacketSize)
+				.withMaxMessageSize(maxPacketSize);
+		StreamBinaryDeserializer<RpcMessage> deserializerServer = StreamBinaryDeserializer.create(eventloop, serializer)
+				.withMaxMessageSize(maxPacketSize);
 
 		StreamConsumers.ToList<RpcMessage> results = new StreamConsumers.ToList<>(eventloop);
 

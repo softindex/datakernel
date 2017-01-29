@@ -25,10 +25,10 @@ import io.datakernel.jmx.ValueStats;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.util.MemSize;
 
 import java.util.ArrayDeque;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.Math.min;
 
 /**
@@ -39,8 +39,8 @@ import static java.lang.Math.min;
  */
 public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer_1_1<ByteBuf, T> {
 	private final BufferSerializer<T> valueSerializer;
-	private final int maxMessageSize;
-	private final int buffersPoolSize;
+	private int maxMessageSize = StreamBinarySerializer.MAX_SIZE - 1;
+	private int buffersToSuspend = 2;
 
 	private InputConsumer inputConsumer;
 	private OutputProducer outputProducer;
@@ -77,22 +77,16 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 	}
 
 	// region creators
-	private StreamBinaryDeserializer(Eventloop eventloop, BufferSerializer<T> valueSerializer,
-	                                 int maxMessageSize, int buffersPoolSize) {
+	private StreamBinaryDeserializer(Eventloop eventloop, BufferSerializer<T> valueSerializer) {
 		super(eventloop);
-		checkArgument(maxMessageSize < (1 << (OutputProducer.MAX_HEADER_BYTES * 7)), "maxMessageSize must be less than 2 MB");
-		checkArgument(buffersPoolSize > 0, "buffersPoolSize must be positive value, got %s", buffersPoolSize);
 		this.valueSerializer = valueSerializer;
-		this.maxMessageSize = maxMessageSize;
-		this.buffersPoolSize = buffersPoolSize;
 		rebuild();
 	}
 
 	private void rebuild() {
 		if (outputProducer != null) outputProducer.buf.recycle();
 		inputConsumer = new InputConsumer();
-		outputProducer = new OutputProducer(new ArrayDeque<ByteBuf>(buffersPoolSize), maxMessageSize,
-				valueSerializer, buffersPoolSize);
+		outputProducer = new OutputProducer(new ArrayDeque<ByteBuf>(), maxMessageSize, valueSerializer, buffersToSuspend);
 	}
 
 	@Override
@@ -110,24 +104,25 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 	 *
 	 * @param eventloop       event loop in which serializer will run
 	 * @param valueSerializer specified BufferSerializer for this type
-	 * @param maxMessageSize  maximal size of message which this deserializer can receive
 	 */
-	public static <T> StreamBinaryDeserializer<T> create(Eventloop eventloop, BufferSerializer<T> valueSerializer,
-	                                                     int maxMessageSize) {
-		return new StreamBinaryDeserializer<>(eventloop, valueSerializer, maxMessageSize, 16);
+	public static <T> StreamBinaryDeserializer<T> create(Eventloop eventloop, BufferSerializer<T> valueSerializer) {
+		return new StreamBinaryDeserializer<>(eventloop, valueSerializer);
 	}
 
-	/**
-	 * Creates a new instance of this class
-	 *
-	 * @param eventloop       event loop in which serializer will run
-	 * @param valueSerializer specified BufferSerializer for this type
-	 * @param buffersPoolSize size of byte buffer pool, while its have not free space, consumer suspends.
-	 * @param maxMessageSize  maximal size of message which this deserializer can receive
-	 */
-	public static <T> StreamBinaryDeserializer<T> create(Eventloop eventloop, BufferSerializer<T> valueSerializer,
-	                                                     int maxMessageSize, int buffersPoolSize) {
-		return new StreamBinaryDeserializer<>(eventloop, valueSerializer, maxMessageSize, buffersPoolSize);
+	public StreamBinaryDeserializer<T> withBuffersToSuspend(int buffersToSuspend) {
+		this.buffersToSuspend = buffersToSuspend;
+		rebuild();
+		return this;
+	}
+
+	public StreamBinaryDeserializer<T> withMaxMessageSize(int maxMessageSize) {
+		this.maxMessageSize = maxMessageSize - 1;
+		rebuild();
+		return this;
+	}
+
+	public StreamBinaryDeserializer<T> withMaxMessageSize(MemSize maxMessageSize) {
+		return withMaxMessageSize((int) maxMessageSize.get());
 	}
 
 	public StreamBinaryDeserializer<T> withInspector(Inspector inspector) {
@@ -159,7 +154,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 
 		private final BufferSerializer<T> valueSerializer;
 
-		private final int buffersPoolSize;
+		private final int buffersToSuspend;
 
 		private ByteBuf buf;
 
@@ -168,11 +163,11 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 		private final Inspector inspector = (Inspector) StreamBinaryDeserializer.this.inspector;
 
 		private OutputProducer(ArrayDeque<ByteBuf> byteBufs, int maxMessageSize, BufferSerializer<T> valueSerializer,
-		                       int buffersPoolSize) {
+		                       int buffersToSuspend) {
 			this.byteBufs = byteBufs;
 			this.maxMessageSize = maxMessageSize;
 			this.valueSerializer = valueSerializer;
-			this.buffersPoolSize = buffersPoolSize;
+			this.buffersToSuspend = buffersToSuspend;
 			this.buf = ByteBufPool.allocate(OutputProducer.INITIAL_BUFFER_SIZE);
 		}
 
@@ -181,7 +176,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 			if (inspector != null) inspector.onInput(buf);
 			this.byteBufs.offer(buf);
 			outputProducer.produce();
-			if (this.byteBufs.size() == this.buffersPoolSize) {
+			if (this.byteBufs.size() == this.buffersToSuspend) {
 				inputConsumer.suspend();
 			}
 		}

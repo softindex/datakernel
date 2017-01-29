@@ -100,8 +100,7 @@ public final class StreamMergeSorterStorageImpl<T> implements StreamMergeSorterS
 
 	@Override
 	public int write(final StreamProducer<T> producer, final CompletionCallback completionCallback) {
-		StreamBinarySerializer<T> streamSerializer = StreamBinarySerializer.create(eventloop, serializer,
-				StreamBinarySerializer.MAX_SIZE_2_BYTE, StreamBinarySerializer.MAX_SIZE)
+		StreamBinarySerializer<T> streamSerializer = StreamBinarySerializer.create(eventloop, serializer)
 				.withFlushDelay(1000);
 		StreamByteChunker streamByteChunkerBefore = StreamByteChunker.create(eventloop, blockSize / 2, blockSize);
 		StreamLZ4Compressor streamCompressor = StreamLZ4Compressor.fastCompressor(eventloop);
@@ -136,8 +135,7 @@ public final class StreamMergeSorterStorageImpl<T> implements StreamMergeSorterS
 		assert partition >= 0;
 
 		final StreamLZ4Decompressor streamDecompressor = StreamLZ4Decompressor.create(eventloop);
-		StreamBinaryDeserializer<T> streamDeserializer = StreamBinaryDeserializer.create(eventloop, serializer,
-				StreamBinarySerializer.MAX_SIZE);
+		StreamBinaryDeserializer<T> streamDeserializer = StreamBinaryDeserializer.create(eventloop, serializer);
 		streamDecompressor.getOutput().streamTo(streamDeserializer.getInput());
 
 		AsyncFile.open(eventloop, executorService, partitionPath(partition), new OpenOption[]{READ}, new ResultCallback<AsyncFile>() {

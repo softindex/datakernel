@@ -32,7 +32,6 @@ import java.util.List;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.processor.StreamBinarySerializer.MAX_SIZE;
 import static java.lang.ClassLoader.getSystemClassLoader;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
@@ -45,8 +44,8 @@ public class StreamBinaryDeserializerTest {
 	@Before
 	public void before() {
 		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
-		deserializer = StreamBinaryDeserializer.create(eventloop, createSerializer(), MAX_SIZE);
-		serializer = StreamBinarySerializer.create(eventloop, createSerializer(), 1, MAX_SIZE);
+		deserializer = StreamBinaryDeserializer.create(eventloop, createSerializer());
+		serializer = StreamBinarySerializer.create(eventloop, createSerializer()).withDefaultBufferSize(1);
 	}
 
 	private BufferSerializer<Data> createSerializer() {

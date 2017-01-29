@@ -169,7 +169,8 @@ public class MessagingWithBinaryStreamingTest {
 					@Override
 					public void onReceive(String msg) {
 						assertEquals("start", msg);
-						StreamBinarySerializer<Long> streamSerializer = StreamBinarySerializer.create(eventloop, longSerializer(), 1, 10);
+						StreamBinarySerializer<Long> streamSerializer = StreamBinarySerializer.create(eventloop, longSerializer())
+								.withDefaultBufferSize(1);
 						StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
 						messaging.sendBinaryStreamFrom(streamSerializer.getOutput(), IgnoreCompletionCallback.create());
 					}
@@ -204,7 +205,7 @@ public class MessagingWithBinaryStreamingTest {
 				messaging.send("start", IgnoreCompletionCallback.create());
 				messaging.sendEndOfStream(IgnoreCompletionCallback.create());
 
-				StreamBinaryDeserializer<Long> streamDeserializer = StreamBinaryDeserializer.create(eventloop, longSerializer(), 10);
+				StreamBinaryDeserializer<Long> streamDeserializer = StreamBinaryDeserializer.create(eventloop, longSerializer());
 				messaging.receiveBinaryStreamTo(streamDeserializer.getInput(), IgnoreCompletionCallback.create());
 				streamDeserializer.getOutput().streamTo(consumerToList);
 
@@ -246,7 +247,7 @@ public class MessagingWithBinaryStreamingTest {
 					public void onReceive(String message) {
 						assertEquals("start", message);
 
-						StreamBinaryDeserializer<Long> streamDeserializer = StreamBinaryDeserializer.create(eventloop, longSerializer(), 10);
+						StreamBinaryDeserializer<Long> streamDeserializer = StreamBinaryDeserializer.create(eventloop, longSerializer());
 						messaging.receiveBinaryStreamTo(streamDeserializer.getInput(), IgnoreCompletionCallback.create());
 						streamDeserializer.getOutput().streamTo(consumerToList);
 
@@ -282,7 +283,8 @@ public class MessagingWithBinaryStreamingTest {
 
 				messaging.send("start", IgnoreCompletionCallback.create());
 
-				StreamBinarySerializer<Long> streamSerializer = StreamBinarySerializer.create(eventloop, longSerializer(), 1, 10);
+				StreamBinarySerializer<Long> streamSerializer = StreamBinarySerializer.create(eventloop, longSerializer())
+						.withDefaultBufferSize(1);
 				StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
 				messaging.sendBinaryStreamFrom(streamSerializer.getOutput(), IgnoreCompletionCallback.create());
 
@@ -327,7 +329,7 @@ public class MessagingWithBinaryStreamingTest {
 					public void onReceive(String msg) {
 						assertEquals("start", msg);
 
-						StreamBinaryDeserializer<Long> streamDeserializer = StreamBinaryDeserializer.create(eventloop, longSerializer(), 10);
+						StreamBinaryDeserializer<Long> streamDeserializer = StreamBinaryDeserializer.create(eventloop, longSerializer());
 						streamDeserializer.getOutput().streamTo(consumerToList);
 						messaging.receiveBinaryStreamTo(streamDeserializer.getInput(), new CompletionCallback() {
 							@Override
@@ -371,7 +373,8 @@ public class MessagingWithBinaryStreamingTest {
 
 				messaging.send("start", IgnoreCompletionCallback.create());
 
-				StreamBinarySerializer<Long> streamSerializer = StreamBinarySerializer.create(eventloop, longSerializer(), 1, 10);
+				StreamBinarySerializer<Long> streamSerializer = StreamBinarySerializer.create(eventloop, longSerializer())
+						.withDefaultBufferSize(1);
 				StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
 				messaging.sendBinaryStreamFrom(streamSerializer.getOutput(), IgnoreCompletionCallback.create());
 
@@ -436,7 +439,7 @@ public class MessagingWithBinaryStreamingTest {
 
 						messaging.sendEndOfStream(IgnoreCompletionCallback.create());
 
-						StreamBinaryDeserializer<Long> streamDeserializer = StreamBinaryDeserializer.create(eventloop, longSerializer(), 10);
+						StreamBinaryDeserializer<Long> streamDeserializer = StreamBinaryDeserializer.create(eventloop, longSerializer());
 						messaging.receiveBinaryStreamTo(streamDeserializer.getInput(), IgnoreCompletionCallback.create());
 
 						streamDeserializer.getOutput().streamTo(consumerToList);
@@ -472,7 +475,8 @@ public class MessagingWithBinaryStreamingTest {
 
 						messaging.send("start", IgnoreCompletionCallback.create());
 
-						StreamBinarySerializer<Long> streamSerializer = StreamBinarySerializer.create(eventloop, longSerializer(), 1, 10);
+						StreamBinarySerializer<Long> streamSerializer = StreamBinarySerializer.create(eventloop, longSerializer())
+								.withDefaultBufferSize(1);
 						StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
 						messaging.sendBinaryStreamFrom(streamSerializer.getOutput(), IgnoreCompletionCallback.create());
 						asyncTcpSocket.setEventHandler(messaging);

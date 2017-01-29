@@ -57,8 +57,7 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage {
 		final StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create(eventloop);
 		BufferSerializer<T> bufferSerializer = createBufferSerializer(aggregation, recordClass,
 				keys, fields, classLoader);
-		StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(eventloop, bufferSerializer,
-				StreamBinarySerializer.MAX_SIZE);
+		StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(eventloop, bufferSerializer);
 		decompressor.getOutput().streamTo(deserializer.getInput());
 
 		client.download(path(id), 0, new ResultCallback<StreamProducer<ByteBuf>>() {
@@ -84,8 +83,8 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage {
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
 		BufferSerializer<T> bufferSerializer = createBufferSerializer(aggregation, recordClass,
 				keys, fields, classLoader);
-		StreamBinarySerializer<T> serializer = StreamBinarySerializer.create(eventloop, bufferSerializer,
-				StreamBinarySerializer.MAX_SIZE_2_BYTE, StreamBinarySerializer.MAX_SIZE)
+		StreamBinarySerializer<T> serializer = StreamBinarySerializer.create(eventloop, bufferSerializer)
+				.withDefaultBufferSize(StreamBinarySerializer.MAX_SIZE_2_BYTE)
 				.withFlushDelay(1000);
 
 		producer.streamTo(serializer.getInput());

@@ -239,8 +239,8 @@ class StressClient {
 		obj.ip = InetAddress.getLocalHost();
 
 		StreamProducer<TestObject> producer = StreamProducers.ofIterable(eventloop, Collections.singletonList(obj));
-		StreamBinarySerializer<TestObject> serializer =
-				StreamBinarySerializer.create(eventloop, bufferSerializer, StreamBinarySerializer.MAX_SIZE, StreamBinarySerializer.MAX_SIZE);
+		StreamBinarySerializer<TestObject> serializer = StreamBinarySerializer.create(eventloop, bufferSerializer)
+				.withDefaultBufferSize(StreamBinarySerializer.MAX_SIZE);
 
 		producer.streamTo(serializer.getInput());
 		client.upload("someName" + i, serializer.getOutput(), IgnoreCompletionCallback.create());

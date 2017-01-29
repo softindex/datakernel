@@ -75,7 +75,7 @@ public final class SocketStreamingConnectionTest {
 			public AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 				SocketStreamingConnection connection = SocketStreamingConnection.createSocketStreamingConnection(eventloop, asyncTcpSocket);
 
-				StreamBinaryDeserializer<Integer> streamDeserializer = StreamBinaryDeserializer.create(eventloop, intSerializer(), 10);
+				StreamBinaryDeserializer<Integer> streamDeserializer = StreamBinaryDeserializer.create(eventloop, intSerializer());
 				streamDeserializer.getOutput().streamTo(consumerToList);
 				connection.receiveStreamTo(streamDeserializer.getInput());
 
@@ -88,7 +88,8 @@ public final class SocketStreamingConnectionTest {
 				.withAcceptOnce();
 		server.listen();
 
-		final StreamBinarySerializer<Integer> streamSerializer = StreamBinarySerializer.create(eventloop, intSerializer(), 1, 10);
+		final StreamBinarySerializer<Integer> streamSerializer = StreamBinarySerializer.create(eventloop, intSerializer())
+				.withDefaultBufferSize(1);
 		eventloop.connect(address, new ConnectCallback() {
 			@Override
 			public void onConnect(SocketChannel socketChannel) {
@@ -142,8 +143,9 @@ public final class SocketStreamingConnectionTest {
 
 		server.listen();
 
-		final StreamBinarySerializer<Integer> streamSerializer = StreamBinarySerializer.create(eventloop, intSerializer(), 1, 10);
-		final StreamBinaryDeserializer<Integer> streamDeserializer = StreamBinaryDeserializer.create(eventloop, intSerializer(), 10);
+		final StreamBinarySerializer<Integer> streamSerializer = StreamBinarySerializer.create(eventloop, intSerializer())
+				.withDefaultBufferSize(1);
+		final StreamBinaryDeserializer<Integer> streamDeserializer = StreamBinaryDeserializer.create(eventloop, intSerializer());
 		eventloop.connect(address, new ConnectCallback() {
 			@Override
 			public void onConnect(SocketChannel socketChannel) {
@@ -211,8 +213,9 @@ public final class SocketStreamingConnectionTest {
 
 		server.listen();
 
-		final StreamBinarySerializer<Integer> streamSerializer = StreamBinarySerializer.create(eventloop, BufferSerializers.intSerializer(), 1, 50);
-		final StreamBinaryDeserializer<Integer> streamDeserializer = StreamBinaryDeserializer.create(eventloop, BufferSerializers.intSerializer(), 10);
+		final StreamBinarySerializer<Integer> streamSerializer = StreamBinarySerializer.create(eventloop, BufferSerializers.intSerializer())
+				.withDefaultBufferSize(1);
+		final StreamBinaryDeserializer<Integer> streamDeserializer = StreamBinaryDeserializer.create(eventloop, BufferSerializers.intSerializer());
 		eventloop.connect(address, new ConnectCallback() {
 			@Override
 			public void onConnect(SocketChannel socketChannel) {

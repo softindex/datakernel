@@ -34,7 +34,6 @@ import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.net.MessagingSerializer;
 import io.datakernel.stream.net.MessagingWithBinaryStreaming;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
-import io.datakernel.stream.processor.StreamBinarySerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -164,8 +163,7 @@ public final class DatagraphClient {
 
 	public <T> StreamProducer<T> download(InetSocketAddress address, final StreamId streamId, Class<T> type) {
 		BufferSerializer<T> serializer = serialization.getSerializer(type);
-		StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(eventloop, serializer,
-				StreamBinarySerializer.MAX_SIZE);
+		StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(eventloop, serializer);
 		connectAndExecute(address, new DownloadConnectCallback(streamId, deserializer.getInput(), new CompletionCallback() {
 			@Override
 			public void onComplete() {

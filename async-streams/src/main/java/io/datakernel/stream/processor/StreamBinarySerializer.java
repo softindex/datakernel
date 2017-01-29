@@ -28,6 +28,7 @@ import io.datakernel.jmx.ValueStats;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,17 +46,16 @@ import static java.lang.Math.max;
 public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1_1<T, ByteBuf> {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	private static final ArrayIndexOutOfBoundsException OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException();
+	public static final int DEFAULT_BUFFER_SIZE = (int) (16 * MemSize.KB);
 
-	public static final int MAX_SIZE_1_BYTE = 127; // (1 << (1 * 7)) - 1
-	public static final int MAX_SIZE_2_BYTE = 16383; // (1 << (2 * 7)) - 1
-	public static final int MAX_SIZE_3_BYTE = 2097151; // (1 << (3 * 7)) - 1
+	public static final int MAX_SIZE_1_BYTE = 128; // (1 << (1 * 7))
+	public static final int MAX_SIZE_2_BYTE = 16384; // (1 << (2 * 7))
+	public static final int MAX_SIZE_3_BYTE = 2097152; // (1 << (3 * 7))
 	public static final int MAX_SIZE = MAX_SIZE_3_BYTE;
 
-	private static final int MAX_HEADER_BYTES = 3;
-
 	private final BufferSerializer<T> serializer;
-	private final int defaultBufferSize;
-	private final int maxMessageSize;
+	private int defaultBufferSize = DEFAULT_BUFFER_SIZE;
+	private int maxMessageSize = MAX_SIZE - 1;
 	private int flushDelayMillis = 0;
 	private boolean skipSerializationErrors = false;
 
@@ -163,11 +163,9 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 	}
 
 	// region creators
-	private StreamBinarySerializer(Eventloop eventloop, BufferSerializer<T> serializer, int defaultBufferSize, int maxMessageSize) {
+	private StreamBinarySerializer(Eventloop eventloop, BufferSerializer<T> serializer) {
 		super(eventloop);
 		this.serializer = serializer;
-		this.defaultBufferSize = defaultBufferSize;
-		this.maxMessageSize = maxMessageSize;
 		rebuild();
 	}
 
@@ -192,11 +190,29 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 	 *
 	 * @param eventloop      event loop in which serializer will run
 	 * @param serializer     specified BufferSerializer for this type
-	 * @param maxMessageSize maximal size of message which this serializer can receive
 	 */
-	public static <T> StreamBinarySerializer<T> create(Eventloop eventloop, BufferSerializer<T> serializer,
-	                                                   int defaultBufferSize, int maxMessageSize) {
-		return new StreamBinarySerializer<>(eventloop, serializer, defaultBufferSize, maxMessageSize);
+	public static <T> StreamBinarySerializer<T> create(Eventloop eventloop, BufferSerializer<T> serializer) {
+		return new StreamBinarySerializer<>(eventloop, serializer);
+	}
+
+	public StreamBinarySerializer<T> withDefaultBufferSize(int bufferSize) {
+		this.defaultBufferSize = bufferSize;
+		rebuild();
+		return this;
+	}
+
+	public StreamBinarySerializer<T> withDefaultBufferSize(MemSize bufferSize) {
+		return withDefaultBufferSize((int) bufferSize.get());
+	}
+
+	public StreamBinarySerializer<T> withMaxMessageSize(int maxMessageSize) {
+		this.maxMessageSize = maxMessageSize - 1;
+		rebuild();
+		return this;
+	}
+
+	public StreamBinarySerializer<T> withMaxMessageSize(MemSize maxMessageSize) {
+		return withMaxMessageSize((int) maxMessageSize.get());
 	}
 
 	public StreamBinarySerializer<T> withFlushDelay(int flushDelayMillis) {
@@ -304,13 +320,6 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 			allocateBuffer();
 		}
 
-		private void ensureSize(int size) {
-			if (outputBuf.writeRemaining() < size) {
-				if (inspector != null) inspector.onFullBuffer();
-				flushBuffer(outputProducer.getDownstreamDataReceiver());
-			}
-		}
-
 		private void writeSize(byte[] buf, int pos, int size) {
 			if (headerSize == 1) {
 				buf[pos] = (byte) size;
@@ -343,7 +352,9 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 			int positionBegin;
 			int positionItem;
 			for (; ; ) {
-				ensureSize(headerSize + estimatedMessageSize);
+				if (outputBuf.writeRemaining() < headerSize + estimatedMessageSize) {
+					onFullBuffer();
+				}
 				positionBegin = outputBuf.writePosition();
 				positionItem = positionBegin + headerSize;
 				outputBuf.writePosition(positionItem);
@@ -375,6 +386,11 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 			if (!flushPosted) {
 				postFlush();
 			}
+		}
+
+		private void onFullBuffer() {
+			if (inspector != null) inspector.onFullBuffer();
+			flushBuffer(outputProducer.getDownstreamDataReceiver());
 		}
 
 		private void onSerializationError(T value, int positionBegin, Exception e) {
