@@ -1208,8 +1208,12 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 		);
 	}
 
-	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
-	public long getTick() {
+	@JmxAttribute
+	public int getTick() {
+		return (int) (tick >>> 32);
+	}
+
+	public long getMicroTick() {
 		return tick;
 	}
 

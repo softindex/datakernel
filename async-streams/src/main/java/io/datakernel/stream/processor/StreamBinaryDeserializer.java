@@ -89,8 +89,9 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 	}
 
 	private void rebuild() {
-		this.inputConsumer = new InputConsumer();
-		this.outputProducer = new OutputProducer(new ArrayDeque<ByteBuf>(buffersPoolSize), maxMessageSize,
+		if (outputProducer != null) outputProducer.buf.recycle();
+		inputConsumer = new InputConsumer();
+		outputProducer = new OutputProducer(new ArrayDeque<ByteBuf>(buffersPoolSize), maxMessageSize,
 				valueSerializer, buffersPoolSize);
 	}
 

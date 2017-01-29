@@ -28,7 +28,7 @@ final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> impleme
 	private final AsyncTcpSocket asyncTcpSocket;
 	private final CompletionCallback completionCallback;
 
-	private long writeTick;
+	private int writeTick;
 
 	private boolean closedProperly;
 
@@ -64,7 +64,7 @@ final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> impleme
 	@Override
 	public void onData(ByteBuf buf) {
 		asyncTcpSocket.write(buf);
-		long tick = eventloop.getTick();
+		int tick = eventloop.getTick();
 
 		if (writeTick == 0) {
 			writeTick = tick;

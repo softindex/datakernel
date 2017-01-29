@@ -145,7 +145,7 @@ public final class DataOutputStreamEx implements Closeable {
 		if (messageSize > estimatedMessageSize)
 			estimatedMessageSize = messageSize;
 		else
-			estimatedMessageSize -= estimatedMessageSize >>> 8;
+			estimatedMessageSize -= estimatedMessageSize >>> 10;
 	}
 
 	public void write(byte[] b) throws IOException {

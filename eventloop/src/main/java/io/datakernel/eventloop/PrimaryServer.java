@@ -33,6 +33,11 @@ public final class PrimaryServer extends AbstractServer<PrimaryServer> {
 	private PrimaryServer(Eventloop primaryEventloop, WorkerServer[] workerServers) {
 		super(primaryEventloop);
 		this.workerServers = workerServers;
+		for (WorkerServer workerServer : workerServers) {
+			if (workerServer instanceof AbstractServer) {
+				((AbstractServer) workerServer).acceptServer = this;
+			}
+		}
 	}
 
 	public static PrimaryServer create(Eventloop primaryEventloop, List<? extends WorkerServer> workerServers) {

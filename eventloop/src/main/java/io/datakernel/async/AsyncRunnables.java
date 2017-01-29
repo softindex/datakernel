@@ -64,11 +64,11 @@ public class AsyncRunnables {
 			void next(final Iterator<? extends AsyncRunnable> iterator, final CompletionCallback callback) {
 				if (iterator.hasNext()) {
 					AsyncRunnable nextTask = iterator.next();
-					final long tick = eventloop.tick();
+					final long microTick = eventloop.getMicroTick();
 					nextTask.run(new ForwardingCompletionCallback(callback) {
 						@Override
 						protected void onComplete() {
-							if (eventloop.getTick() != tick)
+							if (eventloop.getMicroTick() != microTick)
 								next(iterator, callback);
 							else
 								eventloop.post(new Runnable() {

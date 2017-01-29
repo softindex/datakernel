@@ -125,7 +125,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 			return messageOverflows;
 		}
 
-		@JmxAttribute(extraSubAttributes = {"count", "max"})
+		@JmxAttribute
 		public ValueStats getOutputBufs() {
 			return outputBufs;
 		}
@@ -172,8 +172,9 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 	}
 
 	private void rebuild() {
-		this.inputConsumer = new InputConsumer();
-		this.outputProducer = new OutputProducer(serializer, defaultBufferSize, maxMessageSize, flushDelayMillis, skipSerializationErrors);
+		if (outputProducer != null) outputProducer.outputBuf.recycle();
+		inputConsumer = new InputConsumer();
+		outputProducer = new OutputProducer(serializer, defaultBufferSize, maxMessageSize, flushDelayMillis, skipSerializationErrors);
 	}
 
 	@Override
@@ -369,7 +370,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 			if (messageSize > estimatedMessageSize)
 				estimatedMessageSize = messageSize;
 			else
-				estimatedMessageSize -= estimatedMessageSize >>> 8;
+				estimatedMessageSize -= estimatedMessageSize >>> 10;
 
 			if (!flushPosted) {
 				postFlush();

@@ -24,7 +24,7 @@ import static java.lang.Math.*;
  * Class is supposed to work in single thread
  */
 public final class ValueStats implements JmxRefreshableStats<ValueStats> {
-	private static final long TOO_LONG_TIME_PERIOD_BETWEEN_REFRESHES = 60 * 1000; // 1 minute
+	private static final long TOO_LONG_TIME_PERIOD_BETWEEN_REFRESHES = 60 * 60 * 1000; // 1 hour
 	private static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
 
 	private long lastTimestampMillis;
@@ -52,6 +52,7 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 
 	private ValueStats(double smoothingWindow) {
 		this.smoothingWindow = smoothingWindow;
+		resetStats();
 	}
 
 	public static ValueStats create() {
@@ -69,8 +70,8 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 		smoothedSum = 0.0;
 		smoothedSqr = 0.0;
 		smoothedCount = 0.0;
-		totalMax = 0;
-		totalMin = 0;
+		totalMax = Integer.MIN_VALUE;
+		totalMin = Integer.MAX_VALUE;
 		totalSum = 0;
 		totalCount = 0;
 		lastMax = Integer.MIN_VALUE;
@@ -110,6 +111,10 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 			smoothedSum = lastSum;
 			smoothedSqr = lastSqr;
 			smoothedCount = lastCount;
+			totalSum = lastSum;
+			totalCount = lastCount;
+			totalMin = lastMin;
+			totalMax = lastMax;
 		} else {
 			long timeElapsedMillis = timestamp - lastTimestampMillis;
 
@@ -232,7 +237,7 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 	 */
 	@JmxAttribute(name = "min", optional = true)
 	public int getTotalMin() {
-		return totalMin;
+		return totalCount == 0 ? 0 : totalMin;
 	}
 
 	/**
@@ -242,12 +247,7 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 	 */
 	@JmxAttribute(name = "max", optional = true)
 	public int getTotalMax() {
-		return totalMax;
-	}
-
-	@JmxAttribute(name = "")
-	public String getSummary() {
-		return toString();
+		return totalCount == 0 ? 0 : totalMax;
 	}
 
 	@JmxAttribute(optional = true)
@@ -265,10 +265,19 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 		this.smoothingWindow = smoothingWindow;
 	}
 
+	@JmxAttribute(optional = true)
+	public long getCount() {
+		return totalCount;
+	}
+
+	@JmxAttribute(name = "")
+	public String getSummary() {
+		return toString();
+	}
+
 	@Override
 	public String toString() {
-		return String.format("%.2f±%.3f   min: %d   max: %d   last: %d   avg: %.2f",
-				getSmoothedAverage(), getSmoothedStandardDeviation(), getTotalMin(), getTotalMax(), getLastValue(),
-				getAverage());
+		return String.format("%.2f±%.3f [%d..%d]  last: %d",
+				getSmoothedAverage(), getSmoothedStandardDeviation(), getTotalMin(), getTotalMax(), getLastValue());
 	}
 }

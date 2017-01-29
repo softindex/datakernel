@@ -85,6 +85,8 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	private boolean running = false;
 	private List<ServerSocketChannel> serverSocketChannels;
 
+	// jmx
+	AbstractServer acceptServer = this;
 	private final AsyncTcpSocketImpl.JmxInspector socketStats = new AsyncTcpSocketImpl.JmxInspector();
 	private final AsyncTcpSocketImpl.JmxInspector socketStatsSsl = new AsyncTcpSocketImpl.JmxInspector();
 	private final EventStats accepts = EventStats.create();
@@ -354,12 +356,12 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 
 	@JmxAttribute
 	public final EventStats getAccepts() {
-		return listenAddresses.isEmpty() ? null : accepts;
+		return acceptServer.listenAddresses.isEmpty() ? null : accepts;
 	}
 
 	@JmxAttribute
 	public EventStats getAcceptsSsl() {
-		return sslListenAddresses.isEmpty() ? null : acceptsSsl;
+		return acceptServer.sslListenAddresses.isEmpty() ? null : acceptsSsl;
 	}
 
 	@JmxAttribute
@@ -369,12 +371,12 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 
 	@JmxAttribute
 	public AsyncTcpSocketImpl.JmxInspector getSocketStats() {
-		return listenAddresses.isEmpty() ? null : socketStats;
+		return this instanceof PrimaryServer || acceptServer.listenAddresses.isEmpty() ? null : socketStats;
 	}
 
 	@JmxAttribute
 	public AsyncTcpSocketImpl.JmxInspector getSocketStatsSsl() {
-		return sslListenAddresses.isEmpty() ? null : socketStatsSsl;
+		return this instanceof PrimaryServer || acceptServer.sslListenAddresses.isEmpty() ? null : socketStatsSsl;
 	}
 }
 

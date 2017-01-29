@@ -127,7 +127,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			return readTimeouts;
 		}
 
-		@JmxAttribute(extraSubAttributes = {"count", "max"})
+		@JmxAttribute
 		public ValueStats getReads() {
 			return reads;
 		}
@@ -147,7 +147,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			return writeTimeouts;
 		}
 
-		@JmxAttribute(extraSubAttributes = {"count", "max"})
+		@JmxAttribute
 		public ValueStats getWrites() {
 			return writes;
 		}

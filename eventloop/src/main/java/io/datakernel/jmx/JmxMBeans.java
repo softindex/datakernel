@@ -42,7 +42,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 	// refreshing jmx
 	public static final double DEFAULT_REFRESH_PERIOD_IN_SECONDS = 1.0;  // one second
-	public static final int MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT = 50;
+	public static final int MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT = 500;
 	private final int maxJmxRefreshesPerOneCycle;
 	private final long specifiedRefreshPeriod;
 	private final Map<Eventloop, List<Iterable<JmxRefreshable>>> eventloopToJmxRefreshables =

@@ -25,7 +25,7 @@ import static java.lang.Math.log;
  * Class is supposed to work in single thread
  */
 public final class EventStats implements JmxRefreshableStats<EventStats> {
-	private static final long TOO_LONG_TIME_PERIOD_BETWEEN_REFRESHES = 60 * 1000; // 1 minute
+	private static final long TOO_LONG_TIME_PERIOD_BETWEEN_REFRESHES = 60 * 60 * 1000; // 1 hour
 	private static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
 	private static final double LN_2 = log(2);
 
@@ -134,7 +134,7 @@ public final class EventStats implements JmxRefreshableStats<EventStats> {
 	 *
 	 * @return smoothed value of rate in events per second
 	 */
-	@JmxAttribute
+	@JmxAttribute(optional = true)
 	public double getSmoothedRate() {
 		return smoothedRate;
 	}
@@ -144,7 +144,7 @@ public final class EventStats implements JmxRefreshableStats<EventStats> {
 	 *
 	 * @return total amount of recorded events
 	 */
-	@JmxAttribute
+	@JmxAttribute(optional = true)
 	public long getTotalCount() {
 		return totalCount;
 	}
@@ -154,14 +154,18 @@ public final class EventStats implements JmxRefreshableStats<EventStats> {
 		return smoothingWindow;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(optional = true)
 	public void setSmoothingWindow(double smoothingWindow) {
 		this.smoothingWindow = smoothingWindow;
 	}
 
+	@JmxAttribute(name = "")
+	public String getSummary() {
+		return toString();
+	}
+
 	@Override
 	public String toString() {
-		return String.format("total: %d   smoothedRate: %.3f",
-				getTotalCount(), getSmoothedRate());
+		return String.format("%d @ %.3f/s", getTotalCount(), getSmoothedRate());
 	}
 }
