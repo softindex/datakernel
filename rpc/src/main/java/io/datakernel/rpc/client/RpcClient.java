@@ -18,7 +18,11 @@ package io.datakernel.rpc.client;
 
 import io.datakernel.async.*;
 import io.datakernel.eventloop.*;
-import io.datakernel.jmx.*;
+import io.datakernel.jmx.EventloopJmxMBean;
+import io.datakernel.jmx.ExceptionStats;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxOperation;
+import io.datakernel.jmx.JmxReducers.JmxReducerSum;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.rpc.client.jmx.RpcConnectStats;
 import io.datakernel.rpc.client.jmx.RpcRequestStats;
@@ -535,11 +539,18 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		return connections;
 	}
 
-	@JmxAttribute(name = "activeConnections")
-	public CountStats getActiveConnectionsCount() {
-		CountStats countStats = CountStats.create();
-		countStats.setCount(connections.size());
-		return countStats;
+	@JmxAttribute(name = "activeConnections", reducer = JmxReducerSum.class)
+	public int getActiveConnectionsCount() {
+		return connections.size();
+	}
+
+	@JmxAttribute(name = "activeConnections", reducer = JmxReducerSum.class)
+	public int getActiveRequestsCount() {
+		int count = 0;
+		for (RpcClientConnection connection : connections.values()) {
+			count += connection.activeRequests();
+		}
+		return count;
 	}
 
 	@JmxAttribute(description = "exception that occurred because of protocol error " +

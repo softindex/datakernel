@@ -22,6 +22,7 @@ import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.*;
+import io.datakernel.jmx.JmxReducers.JmxReducerSum;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.rpc.protocol.RpcMessage;
@@ -63,7 +64,6 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	private CompletionCallback closeCallback;
 
 	// jmx
-	private CountStats connectionsCount = CountStats.create();
 	private EventStats totalConnects = EventStats.create();
 	private Map<InetAddress, EventStats> connectsPerAddress = new HashMap<>();
 	private EventStats successfulRequests = EventStats.create();
@@ -144,7 +144,6 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		// jmx
 		ensureConnectStats(asyncTcpSocket.getRemoteSocketAddress().getAddress()).recordEvent();
 		totalConnects.recordEvent();
-		connectionsCount.setCount(connections.size());
 
 		return stream.getSocketEventHandler();
 	}
@@ -192,9 +191,6 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 				closeCallback.setComplete();
 			}
 		}
-
-		// jmx
-		connectionsCount.setCount(connections.size());
 	}
 
 	// region JMX
@@ -224,9 +220,9 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		return monitoring;
 	}
 
-	@JmxAttribute(description = "current number of connections")
-	public CountStats getConnectionsCount() {
-		return connectionsCount;
+	@JmxAttribute(description = "current number of connections", reducer = JmxReducerSum.class)
+	public int getConnectionsCount() {
+		return connections.size();
 	}
 
 	@JmxAttribute

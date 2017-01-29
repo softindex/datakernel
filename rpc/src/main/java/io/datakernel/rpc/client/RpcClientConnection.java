@@ -20,6 +20,7 @@ import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
+import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxRefreshable;
 import io.datakernel.rpc.client.jmx.RpcRequestStats;
@@ -35,24 +36,20 @@ import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.concurrent.TimeUnit;
 
+import static io.datakernel.rpc.client.IRpcClient.RPC_OVERLOAD_EXCEPTION;
+import static io.datakernel.rpc.client.IRpcClient.RPC_TIMEOUT_EXCEPTION;
 import static org.slf4j.LoggerFactory.getLogger;
 
 public final class RpcClientConnection implements RpcStream.Listener, RpcSender, JmxRefreshable {
 	public static final int DEFAULT_TIMEOUT_PRECISION = 10; //ms
 
 	private final class TimeoutCookie implements Comparable<TimeoutCookie> {
-		private final int timeout;
 		private final long timestamp;
 		private final int cookie;
 
 		public TimeoutCookie(int cookie, int timeout) {
-			this.timeout = timeout;
 			this.timestamp = eventloop.currentTimeMillis() + timeout;
 			this.cookie = cookie;
-		}
-
-		public int getTimeoutMillis() {
-			return timeout;
 		}
 
 		public boolean isExpired() {
@@ -63,10 +60,6 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 			return cookie;
 		}
 
-		public int getElapsedTime() {
-			return (int) (eventloop.currentTimeMillis() - timestamp + timeout);
-		}
-
 		@Override
 		public int compareTo(TimeoutCookie o) {
 			return Long.compare(timestamp, o.timestamp);
@@ -75,23 +68,24 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 
 	private final Logger logger = getLogger(this.getClass());
 	@SuppressWarnings("ThrowableInstanceNeverThrown")
-	private static final RpcOverloadException OVERLOAD_EXCEPTION = new RpcOverloadException("Write connection is overloaded");
 	private final Eventloop eventloop;
 	private final RpcClient rpcClient;
 	private final RpcStream stream;
 	private final InetSocketAddress address;
-	private final Map<Integer, ResultCallback<?>> requests = new HashMap<>();
+	private final Map<Integer, ResultCallback<?>> activeRequests = new HashMap<>();
 	private final PriorityQueue<TimeoutCookie> timeoutCookies = new PriorityQueue<>();
 	private final ScheduledRunnable expiredResponsesTask = createExpiredResponsesTask();
 
 	private AsyncCancellable scheduleExpiredResponsesTask;
-	private int cookieCounter = 0;
+	private int cookie = 0;
 	private boolean connectionClosing;
 	private boolean serverClosing;
 
 	// JMX
 	private boolean monitoring;
-	private RpcRequestStats requestsStats;
+	private final RpcRequestStats connectionStats;
+	private final EventStats totalRequests;
+	private final EventStats connectionRequests;
 
 	protected RpcClientConnection(Eventloop eventloop, RpcClient rpcClient,
 	                              InetSocketAddress address,
@@ -103,7 +97,9 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 
 		// JMX
 		this.monitoring = false;
-		this.requestsStats = RpcRequestStats.create();
+		this.connectionStats = RpcRequestStats.create();
+		this.connectionRequests = connectionStats.getTotalRequests();
+		this.totalRequests = rpcClient.getGeneralRequestsStats().getTotalRequests();
 	}
 
 	@Override
@@ -111,45 +107,39 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 		assert eventloop.inEventloopThread();
 
 		// jmx
-		requestsStats.getTotalRequests().recordEvent();
-		rpcClient.getGeneralRequestsStats().getTotalRequests().recordEvent();
+		totalRequests.recordEvent();
+		connectionRequests.recordEvent();
 
-		if (!(request instanceof RpcMandatoryData) && stream.isOverloaded()) {
+		if (stream.isOverloaded() && !(request instanceof RpcMandatoryData)) {
 			// jmx
-			requestsStats.getRejectedRequests().recordEvent();
 			rpcClient.getGeneralRequestsStats().getRejectedRequests().recordEvent();
+			connectionStats.getRejectedRequests().recordEvent();
 
 			if (logger.isWarnEnabled())
-				logger.warn(OVERLOAD_EXCEPTION.getMessage());
-			returnProtocolError(callback, OVERLOAD_EXCEPTION);
+				logger.warn(RPC_OVERLOAD_EXCEPTION.getMessage());
+			returnProtocolError(callback, RPC_OVERLOAD_EXCEPTION);
 			return;
 		}
 		sendMessageData(request, timeout, callback);
 	}
 
 	private void sendMessageData(Object request, int timeout, ResultCallback<?> callback) {
-		cookieCounter++;
-		if (requests.containsKey(cookieCounter)) {
-			String msg = "Request ID " + cookieCounter + " is already in use";
-			if (logger.isErrorEnabled())
-				logger.error(msg);
-			throw new IllegalStateException(msg);
-		}
+		cookie++;
 
 		ResultCallback<?> requestCallback = callback;
 
 		// jmx
 		if (isMonitoring()) {
-			Class<?> requestClass = request.getClass();
-			rpcClient.ensureRequestStatsPerClass(requestClass).getTotalRequests().recordEvent();
-			requestCallback = new JmxConnectionMonitoringResultCallback<>(request.getClass(), callback);
+			RpcRequestStats requestStatsPerClass = rpcClient.ensureRequestStatsPerClass(request.getClass());
+			requestStatsPerClass.getTotalRequests().recordEvent();
+			requestCallback = new JmxConnectionMonitoringResultCallback<>(requestStatsPerClass, callback);
 		}
 
-		TimeoutCookie timeoutCookie = new TimeoutCookie(cookieCounter, timeout);
+		TimeoutCookie timeoutCookie = new TimeoutCookie(cookie, timeout);
 		addTimeoutCookie(timeoutCookie);
-		requests.put(cookieCounter, requestCallback);
+		activeRequests.put(cookie, requestCallback);
 
-		stream.sendMessage(RpcMessage.of(cookieCounter, request));
+		stream.sendMessage(RpcMessage.of(cookie, request));
 	}
 
 	private void addTimeoutCookie(TimeoutCookie timeoutCookie) {
@@ -180,38 +170,31 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 			TimeoutCookie timeoutCookie = timeoutCookies.peek();
 			if (timeoutCookie == null)
 				break;
-			if (!requests.containsKey(timeoutCookie.getCookie())) {
+			if (!activeRequests.containsKey(timeoutCookie.getCookie())) {
 				timeoutCookies.remove();
 				continue;
 			}
 			if (!timeoutCookie.isExpired())
 				break;
-			doTimeout(timeoutCookie);
 			timeoutCookies.remove();
+			doTimeout(timeoutCookie);
 		}
 	}
 
 	private void doTimeout(TimeoutCookie timeoutCookie) {
-		ResultCallback<?> callback = requests.remove(timeoutCookie.getCookie());
+		ResultCallback<?> callback = activeRequests.remove(timeoutCookie.getCookie());
 		if (callback == null)
 			return;
 
-		if (serverClosing) {
-			if (requests.size() == 0) {
-				close();
-			}
+		if (serverClosing && activeRequests.size() == 0) {
+			close();
 		}
 
 		// jmx
-		requestsStats.getExpiredRequests().recordEvent();
+		connectionStats.getExpiredRequests().recordEvent();
 		rpcClient.getGeneralRequestsStats().getExpiredRequests().recordEvent();
 
-		returnTimeout(callback, new RpcTimeoutException("Timeout (" + timeoutCookie.getElapsedTime() + "/" + timeoutCookie.getTimeoutMillis()
-				+ " ms) for server (" + address + ") response for request ID " + timeoutCookie.getCookie()));
-	}
-
-	private void removeTimeoutCookie(TimeoutCookie timeoutCookie) {
-		timeoutCookies.remove(timeoutCookie);
+		returnTimeout(callback, RPC_TIMEOUT_EXCEPTION);
 	}
 
 	private void returnTimeout(ResultCallback<?> callback, Exception exception) {
@@ -231,22 +214,10 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 	@Override
 	public void onData(RpcMessage message) {
 		if (message.getData().getClass() == RpcRemoteException.class) {
-			RpcRemoteException remoteException = (RpcRemoteException) message.getData();
-
-			// jmx
-			requestsStats.getFailedRequests().recordEvent();
-			rpcClient.getGeneralRequestsStats().getFailedRequests().recordEvent();
-			requestsStats.getServerExceptions().recordException(remoteException, null);
-			rpcClient.getGeneralRequestsStats().getServerExceptions().recordException(remoteException, null);
-
-			processError(message, remoteException);
+			processError(message);
 		} else if (message.getData().getClass() == RpcControlMessage.class) {
 			handleControlMessage((RpcControlMessage) message.getData());
 		} else {
-			// jmx
-			requestsStats.getSuccessfulRequests().recordEvent();
-			rpcClient.getGeneralRequestsStats().getSuccessfulRequests().recordEvent();
-
 			processResponse(message);
 		}
 	}
@@ -262,41 +233,40 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 	private void handleServerCloseMessage() {
 		rpcClient.removeConnection(address);
 		serverClosing = true;
-		if (requests.size() == 0) {
+		if (activeRequests.size() == 0) {
 			close();
 		}
 	}
 
-	private void processError(RpcMessage message, RpcRemoteException exception) {
-		ResultCallback<?> callback = removeResultCallback(message);
+	private void processError(RpcMessage message) {
+		RpcRemoteException remoteException = (RpcRemoteException) message.getData();
+		// jmx
+		connectionStats.getFailedRequests().recordEvent();
+		rpcClient.getGeneralRequestsStats().getFailedRequests().recordEvent();
+		connectionStats.getServerExceptions().recordException(remoteException, null);
+		rpcClient.getGeneralRequestsStats().getServerExceptions().recordException(remoteException, null);
+
+		ResultCallback<?> callback = activeRequests.remove(message.getCookie());
 		if (callback == null)
 			return;
-		returnError(callback, exception);
+		returnError(callback, remoteException);
 	}
 
 	private void processResponse(RpcMessage message) {
-		ResultCallback<Object> callback = removeResultCallback(message);
-
-		if (serverClosing) {
-			if (requests.size() == 0) {
-				close();
-			}
-		}
-
+		@SuppressWarnings("unchecked")
+		ResultCallback<Object> callback = (ResultCallback<Object>) activeRequests.remove(message.getCookie());
 		if (callback == null)
 			return;
 		callback.setResult(message.getData());
-	}
-
-	@SuppressWarnings("unchecked")
-	private <T> ResultCallback<T> removeResultCallback(RpcMessage message) {
-		return (ResultCallback<T>) requests.remove(message.getCookie());
+		if (serverClosing && activeRequests.size() == 0) {
+			close();
+		}
 	}
 
 	private void finishClosing() {
 		if (scheduleExpiredResponsesTask != null)
 			scheduleExpiredResponsesTask.cancel();
-		if (!requests.isEmpty()) {
+		if (!activeRequests.isEmpty()) {
 			closeNotify();
 		}
 		rpcClient.removeConnection(address);
@@ -318,8 +288,8 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 	}
 
 	private void closeNotify() {
-		for (Integer cookie : new HashSet<>(requests.keySet())) {
-			returnProtocolError(requests.remove(cookie), new RpcException("Connection closed."));
+		for (Integer cookie : new HashSet<>(activeRequests.keySet())) {
+			returnProtocolError(activeRequests.remove(cookie), new RpcException("Connection closed."));
 		}
 	}
 
@@ -343,38 +313,41 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 	}
 
 	public void resetStats() {
-		requestsStats.resetStats();
+		connectionStats.resetStats();
 	}
 
 	@JmxAttribute(name = "")
 	public RpcRequestStats getRequestStats() {
-		return requestsStats;
+		return connectionStats;
+	}
+
+	@JmxAttribute
+	public int activeRequests() {
+		return activeRequests.size();
 	}
 
 	@Override
 	public void refresh(long timestamp) {
-		requestsStats.refresh(timestamp);
+		connectionStats.refresh(timestamp);
 	}
 
 	private final class JmxConnectionMonitoringResultCallback<T> extends ResultCallback<T> {
 
 		private final Stopwatch stopwatch;
 		private final ResultCallback<T> callback;
-		private final Class<?> requestClass;
+		private final RpcRequestStats requestStatsPerClass;
 
-		public JmxConnectionMonitoringResultCallback(Class<?> requestClass, ResultCallback<T> callback) {
+		public JmxConnectionMonitoringResultCallback(RpcRequestStats requestStatsPerClass, ResultCallback<T> callback) {
 			this.stopwatch = Stopwatch.createStarted();
 			this.callback = callback;
-			this.requestClass = requestClass;
+			this.requestStatsPerClass = requestStatsPerClass;
 		}
 
 		@Override
 		public void onResult(T result) {
 			int responseTime = timeElapsed();
-			requestsStats.getSuccessfulRequests().recordEvent();
-			rpcClient.ensureRequestStatsPerClass(requestClass).getSuccessfulRequests().recordEvent();
-			requestsStats.getResponseTime().recordValue(responseTime);
-			rpcClient.ensureRequestStatsPerClass(requestClass).getResponseTime().recordValue(responseTime);
+			connectionStats.getResponseTime().recordValue(responseTime);
+			requestStatsPerClass.getResponseTime().recordValue(responseTime);
 			rpcClient.getGeneralRequestsStats().getResponseTime().recordValue(responseTime);
 
 			callback.setResult(result);
@@ -384,19 +357,19 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 		public void onException(Exception exception) {
 			if (exception instanceof RpcRemoteException) {
 				int responseTime = timeElapsed();
-				requestsStats.getFailedRequests().recordEvent();
-				requestsStats.getResponseTime().recordValue(responseTime);
-				requestsStats.getServerExceptions().recordException(exception, null);
-				rpcClient.ensureRequestStatsPerClass(requestClass).getFailedRequests().recordEvent();
-				rpcClient.ensureRequestStatsPerClass(requestClass).getResponseTime().recordValue(responseTime);
+				connectionStats.getFailedRequests().recordEvent();
+				connectionStats.getResponseTime().recordValue(responseTime);
+				connectionStats.getServerExceptions().recordException(exception, null);
+				requestStatsPerClass.getFailedRequests().recordEvent();
+				requestStatsPerClass.getResponseTime().recordValue(responseTime);
 				rpcClient.getGeneralRequestsStats().getResponseTime().recordValue(responseTime);
-				rpcClient.ensureRequestStatsPerClass(requestClass).getServerExceptions().recordException(exception, null);
+				requestStatsPerClass.getServerExceptions().recordException(exception, null);
 			} else if (exception instanceof RpcTimeoutException) {
-				requestsStats.getExpiredRequests().recordEvent();
-				rpcClient.ensureRequestStatsPerClass(requestClass).getExpiredRequests().recordEvent();
+				connectionStats.getExpiredRequests().recordEvent();
+				requestStatsPerClass.getExpiredRequests().recordEvent();
 			} else if (exception instanceof RpcOverloadException) {
-				requestsStats.getRejectedRequests().recordEvent();
-				rpcClient.ensureRequestStatsPerClass(requestClass).getRejectedRequests().recordEvent();
+				connectionStats.getRejectedRequests().recordEvent();
+				requestStatsPerClass.getRejectedRequests().recordEvent();
 			}
 
 			callback.setException(exception);

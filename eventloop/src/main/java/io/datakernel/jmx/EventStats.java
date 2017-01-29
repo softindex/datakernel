@@ -72,7 +72,7 @@ public final class EventStats implements JmxRefreshableStats<EventStats> {
 	 * Records event and updates rate
 	 */
 	public void recordEvent() {
-		recordEvents(1);
+		lastCount++;
 	}
 
 	/**
@@ -82,7 +82,6 @@ public final class EventStats implements JmxRefreshableStats<EventStats> {
 	 */
 	public void recordEvents(int events) {
 		lastCount += events;
-		totalCount += events;
 	}
 
 	@Override
@@ -102,6 +101,7 @@ public final class EventStats implements JmxRefreshableStats<EventStats> {
 			// skip stats of last time period
 		}
 
+		totalCount += lastCount;
 		lastCount = 0;
 		lastTimestampMillis = timestamp;
 	}

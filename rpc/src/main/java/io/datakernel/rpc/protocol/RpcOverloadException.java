@@ -16,11 +16,7 @@
 
 package io.datakernel.rpc.protocol;
 
-public class RpcOverloadException extends Exception {
-	public RpcOverloadException() {
-	}
+import io.datakernel.exception.SimpleException;
 
-	public RpcOverloadException(String message) {
-		super(message);
-	}
+public class RpcOverloadException extends SimpleException {
 }

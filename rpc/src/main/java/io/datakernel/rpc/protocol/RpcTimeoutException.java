@@ -16,16 +16,7 @@
 
 package io.datakernel.rpc.protocol;
 
-import java.util.concurrent.TimeoutException;
+import io.datakernel.exception.SimpleException;
 
-public class RpcTimeoutException extends TimeoutException {
-
-	public RpcTimeoutException(String message) {
-		super(message);
-	}
-
-	@Override
-	public Throwable fillInStackTrace() {
-		return this;
-	}
+public class RpcTimeoutException extends SimpleException {
 }
