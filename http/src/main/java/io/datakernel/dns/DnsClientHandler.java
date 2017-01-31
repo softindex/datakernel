@@ -19,6 +19,7 @@ package io.datakernel.dns;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.*;
+import io.datakernel.exception.AsyncTimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,10 +29,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeoutException;
 
 public final class DnsClientHandler implements AsyncUdpSocket {
-	private static final TimeoutException TIMEOUT_EXCEPTION = new TimeoutException();
+	private static final AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException();
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final Map<String, Set<ResultCallback<DnsQueryResult>>> resultHandlers = new HashMap<>();

@@ -230,7 +230,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		return totalConnects;
 	}
 
-	@JmxAttribute(description = "number of connects/reconnects per client address")
+//	FIXME (vmykhalko) @JmxAttribute(description = "number of connects/reconnects per client address")
 	public Map<InetAddress, EventStats> getConnectsPerAddress() {
 		return connectsPerAddress;
 	}

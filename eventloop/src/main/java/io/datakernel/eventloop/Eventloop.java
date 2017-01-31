@@ -18,6 +18,7 @@ package io.datakernel.eventloop;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.*;
+import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.SimpleException;
 import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
@@ -54,7 +55,7 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 public final class Eventloop implements Runnable, CurrentTimeProvider, EventloopExecutor, EventloopJmxMBean {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-	public static final TimeoutException CONNECT_TIMEOUT = new TimeoutException("Connection timed out");
+	public static final AsyncTimeoutException CONNECT_TIMEOUT = new AsyncTimeoutException("Connection timed out");
 	private static final long DEFAULT_EVENT_TIMEOUT = 20L;
 
 	private static volatile FatalErrorHandler globalFatalErrorHandler = FatalErrorHandlers.ignoreAllErrors();

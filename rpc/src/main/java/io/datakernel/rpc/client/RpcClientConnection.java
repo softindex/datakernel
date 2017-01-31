@@ -20,6 +20,7 @@ import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
+import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxReducers.JmxReducerSum;
@@ -365,14 +366,13 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 				requestStatsPerClass.getResponseTime().recordValue(responseTime);
 				rpcClient.getGeneralRequestsStats().getResponseTime().recordValue(responseTime);
 				requestStatsPerClass.getServerExceptions().recordException(exception, null);
-			} else if (exception instanceof RpcTimeoutException) {
+			} else if (exception instanceof AsyncTimeoutException) {
 				connectionStats.getExpiredRequests().recordEvent();
 				requestStatsPerClass.getExpiredRequests().recordEvent();
 			} else if (exception instanceof RpcOverloadException) {
 				connectionStats.getRejectedRequests().recordEvent();
 				requestStatsPerClass.getRejectedRequests().recordEvent();
 			}
-
 			callback.setException(exception);
 		}
 

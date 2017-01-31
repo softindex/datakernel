@@ -26,13 +26,13 @@ import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SimpleServer;
 import io.datakernel.eventloop.SimpleServer.SocketHandlerProvider;
+import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.ParseException;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.net.InetAddress;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeUtf8;
@@ -89,7 +89,7 @@ public class AsyncHttpClientTest {
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
-	@Test(expected = TimeoutException.class)
+	@Test(expected = AsyncTimeoutException.class)
 	public void testClientTimeoutConnect() throws Throwable {
 		final int TIMEOUT = 1;
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());

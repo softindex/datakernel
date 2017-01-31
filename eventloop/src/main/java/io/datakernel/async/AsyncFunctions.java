@@ -2,13 +2,13 @@ package io.datakernel.async;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
+import io.datakernel.exception.AsyncTimeoutException;
 
 import java.util.Arrays;
 import java.util.Iterator;
-import java.util.concurrent.TimeoutException;
 
 public class AsyncFunctions {
-	public static final TimeoutException TIMEOUT_EXCEPTION = new TimeoutException();
+	public static final AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException();
 
 	private AsyncFunctions() {
 	}
