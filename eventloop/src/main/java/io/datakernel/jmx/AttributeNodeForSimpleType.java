@@ -20,10 +20,7 @@ import javax.management.openmbean.OpenType;
 import javax.management.openmbean.SimpleType;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static io.datakernel.jmx.Utils.*;
 import static io.datakernel.util.Preconditions.checkArgument;
@@ -34,19 +31,24 @@ final class AttributeNodeForSimpleType implements AttributeNode {
 	private final String description;
 	private final ValueFetcher fetcher;
 	private final Method setter;
+	private final Class<?> attributeType;
 	private final OpenType<?> openType;
 	private final Map<String, OpenType<?>> nameToOpenType;
 	private final JmxReducer reducer;
+	private final boolean visible;
 
-	public AttributeNodeForSimpleType(String name, String description, ValueFetcher fetcher, Method setter,
+	public AttributeNodeForSimpleType(String name, String description, boolean visible,
+	                                  ValueFetcher fetcher, Method setter,
 	                                  Class<?> attributeType, JmxReducer reducer) {
 		this.name = name;
 		this.description = description;
 		this.fetcher = fetcher;
 		this.setter = setter;
+		this.attributeType = attributeType;
 		this.openType = simpleTypeOf(attributeType);
-		this.nameToOpenType = createMapWithOneEntry(name, openType);
+		this.nameToOpenType = wrapAttributeInMap(name, openType, visible);
 		this.reducer = checkNotNull(reducer);
+		this.visible = visible;
 	}
 
 	@Override
@@ -65,8 +67,13 @@ final class AttributeNodeForSimpleType implements AttributeNode {
 	}
 
 	@Override
-	public Map<String, OpenType<?>> getFlattenedOpenTypes() {
+	public Map<String, OpenType<?>> getVisibleFlattenedOpenTypes() {
 		return nameToOpenType;
+	}
+
+	@Override
+	public Set<String> getAllFlattenedAttrNames() {
+		return Collections.singleton(name);
 	}
 
 	@Override
@@ -127,6 +134,16 @@ final class AttributeNodeForSimpleType implements AttributeNode {
 	@Override
 	public AttributeNode rebuildOmittingNullPojos(List<?> sources) {
 		return this;
+	}
+
+	@Override
+	public boolean isVisible() {
+		return visible;
+	}
+
+	@Override
+	public AttributeNode rebuildWithVisible(String attrName) {
+		return new AttributeNodeForSimpleType(name, description, true, fetcher, setter, attributeType, reducer);
 	}
 
 	private static SimpleType<?> simpleTypeOf(Class<?> clazz) throws IllegalArgumentException {

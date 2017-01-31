@@ -31,20 +31,22 @@ final class AttributeNodeForMap implements AttributeNode {
 
 	private final String name;
 	private final String description;
+	private final boolean visible;
 	private final ValueFetcher fetcher;
 	private final AttributeNode subNode;
 	private final TabularType tabularType;
 	private final Map<String, OpenType<?>> nameToOpenType;
 	private final boolean isMapOfJmxRefreshable;
 
-	public AttributeNodeForMap(String name, String description, ValueFetcher fetcher, AttributeNode subNode,
-	                           boolean isMapOfJmxRefreshable) {
+	public AttributeNodeForMap(String name, String description, boolean visible,
+	                           ValueFetcher fetcher, AttributeNode subNode, boolean isMapOfJmxRefreshable) {
 		checkArgument(!name.isEmpty(), "Map attribute cannot have empty name");
 
 		this.name = name;
 		this.description = description;
+		this.visible = visible;
 		this.tabularType = createTabularType(subNode);
-		this.nameToOpenType = createMapWithOneEntry(name, tabularType);
+		this.nameToOpenType = wrapAttributeInMap(name, tabularType, visible);
 		this.fetcher = fetcher;
 		this.subNode = subNode;
 		this.isMapOfJmxRefreshable = isMapOfJmxRefreshable;
@@ -97,8 +99,13 @@ final class AttributeNodeForMap implements AttributeNode {
 	}
 
 	@Override
-	public Map<String, OpenType<?>> getFlattenedOpenTypes() {
+	public Map<String, OpenType<?>> getVisibleFlattenedOpenTypes() {
 		return nameToOpenType;
+	}
+
+	@Override
+	public Set<String> getAllFlattenedAttrNames() {
+		return Collections.singleton(name);
 	}
 
 	@Override
@@ -193,5 +200,15 @@ final class AttributeNodeForMap implements AttributeNode {
 	@Override
 	public AttributeNode rebuildOmittingNullPojos(List<?> sources) {
 		return this;
+	}
+
+	@Override
+	public boolean isVisible() {
+		return visible;
+	}
+
+	@Override
+	public AttributeNode rebuildWithVisible(String attrName) {
+		return new AttributeNodeForMap(name, description, true, fetcher, subNode, isMapOfJmxRefreshable);
 	}
 }

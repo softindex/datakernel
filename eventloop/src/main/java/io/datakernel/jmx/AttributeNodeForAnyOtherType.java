@@ -18,10 +18,7 @@ package io.datakernel.jmx;
 
 import javax.management.openmbean.OpenType;
 import javax.management.openmbean.SimpleType;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 import static io.datakernel.jmx.Utils.*;
 import static io.datakernel.util.Preconditions.checkArgument;
@@ -33,13 +30,15 @@ final class AttributeNodeForAnyOtherType implements AttributeNode {
 	private final ValueFetcher fetcher;
 	private final OpenType<?> openType;
 	private final Map<String, OpenType<?>> nameToOpenType;
+	private final boolean visible;
 
-	public AttributeNodeForAnyOtherType(String name, String description, ValueFetcher fetcher) {
+	public AttributeNodeForAnyOtherType(String name, String description, boolean visible, ValueFetcher fetcher) {
 		this.name = name;
 		this.description = description;
 		this.fetcher = fetcher;
 		this.openType = SimpleType.STRING;
-		this.nameToOpenType = createMapWithOneEntry(name, openType);
+		this.nameToOpenType = wrapAttributeInMap(name, openType, visible);
+		this.visible = visible;
 	}
 
 	@Override
@@ -58,7 +57,7 @@ final class AttributeNodeForAnyOtherType implements AttributeNode {
 	}
 
 	@Override
-	public Map<String, OpenType<?>> getFlattenedOpenTypes() {
+	public Map<String, OpenType<?>> getVisibleFlattenedOpenTypes() {
 		return nameToOpenType;
 	}
 
@@ -110,5 +109,20 @@ final class AttributeNodeForAnyOtherType implements AttributeNode {
 	@Override
 	public AttributeNode rebuildOmittingNullPojos(List<?> sources) {
 		return this;
+	}
+
+	@Override
+	public boolean isVisible() {
+		return visible;
+	}
+
+	@Override
+	public AttributeNode rebuildWithVisible(String attrName) {
+		return new AttributeNodeForAnyOtherType(name, description, true, fetcher);
+	}
+
+	@Override
+	public Set<String> getAllFlattenedAttrNames() {
+		return Collections.singleton(name);
 	}
 }

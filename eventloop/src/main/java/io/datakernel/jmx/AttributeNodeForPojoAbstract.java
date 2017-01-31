@@ -22,8 +22,7 @@ import javax.management.openmbean.OpenType;
 import java.util.*;
 
 import static io.datakernel.jmx.Utils.filterNulls;
-import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.*;
 
 abstract class AttributeNodeForPojoAbstract implements AttributeNode {
 	private static final String COMPOSITE_TYPE_DEFAULT_NAME = "CompositeType";
@@ -31,18 +30,21 @@ abstract class AttributeNodeForPojoAbstract implements AttributeNode {
 
 	protected final String name;
 	protected final String description;
+	protected final boolean visible;
 	protected final ValueFetcher fetcher;
-	private final CompositeType compositeType;
-	private final Map<String, OpenType<?>> nameToOpenType;
+	private final OpenType<?> openType;
+	protected final Map<String, OpenType<?>> visibleNameToOpenType;
 	protected final Map<String, AttributeNode> fullNameToNode;
 	private final List<? extends AttributeNode> subNodes;
 
-	public AttributeNodeForPojoAbstract(String name, String description, ValueFetcher fetcher, List<? extends AttributeNode> subNodes) {
+	public AttributeNodeForPojoAbstract(String name, String description, boolean visible,
+	                                    ValueFetcher fetcher, List<? extends AttributeNode> subNodes) {
 		this.name = name;
 		this.description = description;
+		this.visible = visible;
 		this.fetcher = fetcher;
-		this.compositeType = createCompositeType(name, subNodes);
-		this.nameToOpenType = createNameToOpenTypeMap(name, subNodes);
+		this.openType = createOpenType(name, subNodes);
+		this.visibleNameToOpenType = createNameToOpenTypeMap(name, subNodes);
 		this.fullNameToNode = createFullNameToNodeMapping(name, subNodes);
 		this.subNodes = subNodes;
 	}
@@ -50,9 +52,9 @@ abstract class AttributeNodeForPojoAbstract implements AttributeNode {
 	private static Map<String, AttributeNode> createFullNameToNodeMapping(String name,
 	                                                                      List<? extends AttributeNode> subNodes) {
 		Map<String, AttributeNode> fullNameToNodeMapping = new HashMap<>();
-		String prefix = name.isEmpty() ? "" : name + "_";
+		String prefix = name.isEmpty() ? "" : name + ATTRIBUTE_NAME_SEPARATOR;
 		for (AttributeNode subNode : subNodes) {
-			Set<String> currentSubAttrNames = subNode.getFlattenedOpenTypes().keySet();
+			Set<String> currentSubAttrNames = subNode.getAllFlattenedAttrNames();
 			for (String currentSubAttrName : currentSubAttrNames) {
 				String currentAttrFullName = prefix + currentSubAttrName;
 				if (fullNameToNodeMapping.containsKey(currentAttrFullName)) {
@@ -68,17 +70,19 @@ abstract class AttributeNodeForPojoAbstract implements AttributeNode {
 	private static Map<String, OpenType<?>> createNameToOpenTypeMap(String nodeName,
 	                                                                List<? extends AttributeNode> subNodes) {
 		Map<String, OpenType<?>> nameToOpenType = new HashMap<>();
-		String prefix = nodeName.isEmpty() ? "" : nodeName + "_";
+		String prefix = nodeName.isEmpty() ? "" : nodeName + ATTRIBUTE_NAME_SEPARATOR;
 		for (AttributeNode subNode : subNodes) {
-			Map<String, OpenType<?>> currentSubNodeMap = subNode.getFlattenedOpenTypes();
+//			if (subNode.isVisible()) {
+			Map<String, OpenType<?>> currentSubNodeMap = subNode.getVisibleFlattenedOpenTypes();
 			for (String subNodeAttrName : currentSubNodeMap.keySet()) {
 				nameToOpenType.put(prefix + subNodeAttrName, currentSubNodeMap.get(subNodeAttrName));
 			}
+//			}
 		}
 		return nameToOpenType;
 	}
 
-	private static CompositeType createCompositeType(String name, List<? extends AttributeNode> subNodes) {
+	private static OpenType createOpenType(String name, List<? extends AttributeNode> subNodes) {
 		if (subNodes.size() == 0) {
 			// As far as MBean is itself a POJO and could potentially contain only operation (and no attributes),
 			// we can't use preconditions like this: [checkArgument(subNodes.size() > 0)
@@ -86,11 +90,20 @@ abstract class AttributeNodeForPojoAbstract implements AttributeNode {
 			return null;
 		}
 
+		//			 TODO(vmykhalko): refactor
+		Map<String, OpenType<?>> allVisibleAttrs = new HashMap<>();
+		for (AttributeNode subNode : subNodes) {
+			allVisibleAttrs.putAll(subNode.getVisibleFlattenedOpenTypes());
+		}
+		if (allVisibleAttrs.size() == 1 && allVisibleAttrs.containsKey("")) {
+			return allVisibleAttrs.values().iterator().next();
+		}
+
 		List<String> itemNames = new ArrayList<>();
 		List<OpenType<?>> itemTypes = new ArrayList<>();
-		String prefix = name.isEmpty() ? "" : name + "_";
+		String prefix = name.isEmpty() ? "" : name + ATTRIBUTE_NAME_SEPARATOR;
 		for (AttributeNode subNode : subNodes) {
-			Map<String, OpenType<?>> subNodeFlattenedTypes = subNode.getFlattenedOpenTypes();
+			Map<String, OpenType<?>> subNodeFlattenedTypes = subNode.getVisibleFlattenedOpenTypes();
 			for (String attrName : subNodeFlattenedTypes.keySet()) {
 				itemNames.add(prefix + attrName);
 				itemTypes.add(subNodeFlattenedTypes.get(attrName));
@@ -104,6 +117,8 @@ abstract class AttributeNodeForPojoAbstract implements AttributeNode {
 					itemNamesArr, itemNamesArr,
 					itemTypesArr);
 		} catch (OpenDataException e) {
+			throw new RuntimeException(e);
+		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
 	}
@@ -127,7 +142,7 @@ abstract class AttributeNodeForPojoAbstract implements AttributeNode {
 	@Override
 	public Map<String, Map<String, String>> getDescriptions() {
 		Map<String, Map<String, String>> nameToDescriptions = new HashMap<>();
-		String prefix = name.isEmpty() ? "" : name + "_";
+		String prefix = name.isEmpty() ? "" : name + ATTRIBUTE_NAME_SEPARATOR;
 		for (AttributeNode subNode : subNodes) {
 			Map<String, Map<String, String>> currentSubNodeDescriptions = subNode.getDescriptions();
 			for (String subNodeAttrName : currentSubNodeDescriptions.keySet()) {
@@ -145,12 +160,17 @@ abstract class AttributeNodeForPojoAbstract implements AttributeNode {
 
 	@Override
 	public final OpenType<?> getOpenType() {
-		return compositeType;
+		return openType;
 	}
 
 	@Override
-	public final Map<String, OpenType<?>> getFlattenedOpenTypes() {
-		return nameToOpenType;
+	public final Map<String, OpenType<?>> getVisibleFlattenedOpenTypes() {
+		return visibleNameToOpenType;
+	}
+
+	@Override
+	public Set<String> getAllFlattenedAttrNames() {
+		return fullNameToNode.keySet();
 	}
 
 	@Override
@@ -212,8 +232,50 @@ abstract class AttributeNodeForPojoAbstract implements AttributeNode {
 			}
 		}
 
-		return filteredNodes.size() > 0 ? recreate(filteredNodes) : null;
+		return filteredNodes.size() > 0 ? recreate(filteredNodes, visible) : null;
 	}
 
-	protected abstract AttributeNode recreate(List<AttributeNode> filteredNodes);
+	protected abstract AttributeNode recreate(List<? extends AttributeNode> filteredNodes, boolean visible);
+
+	@Override
+	public boolean isVisible() {
+		return visible;
+	}
+
+	@Override
+	public AttributeNode rebuildWithVisible(String attrName) {
+		if (attrName.equals(name)) {
+			return recreate(subNodes, true);
+		}
+
+		String subAttrName;
+		if (name.isEmpty()) {
+			subAttrName = attrName;
+		} else {
+			checkArgument(attrName.contains(ATTRIBUTE_NAME_SEPARATOR));
+			int indexOfSeparator = attrName.indexOf(ATTRIBUTE_NAME_SEPARATOR);
+			subAttrName = attrName.substring(indexOfSeparator + 1, attrName.length());
+		}
+
+		List<AttributeNode> rebuildedSubnodes = new ArrayList<>();
+		boolean subNodeFound = false;
+		for (AttributeNode subNode : subNodes) {
+			Set<String> subAttrs = subNode.getAllFlattenedAttrNames();
+			AttributeNode actualSubNode = subNode;
+			for (String subAttr : subAttrs) {
+				// TODO(vmykhalko): refactor
+				if (subAttr.startsWith(subAttrName) &&
+						(subAttr.length() == subAttrName.length() ||
+								subAttr.substring(subAttrName.length()).startsWith(ATTRIBUTE_NAME_SEPARATOR))) {
+					checkState(!subNodeFound);
+					subNodeFound = true;
+					actualSubNode = subNode.rebuildWithVisible(subAttrName);
+					break;
+				}
+			}
+			rebuildedSubnodes.add(actualSubNode);
+		}
+
+		return recreate(rebuildedSubnodes, true);
+	}
 }

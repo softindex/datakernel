@@ -24,6 +24,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ThrottlingController;
 import io.datakernel.jmx.DynamicMBeanFactory;
 import io.datakernel.jmx.JmxMBeans;
+import io.datakernel.jmx.MBeanSetting;
 
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
@@ -137,11 +138,11 @@ public class HttpThrottlingServer {
 
 		MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
 		DynamicMBeanFactory mBeanFactory = JmxMBeans.factory();
-		mbeanServer.registerMBean(mBeanFactory.createFor(asList(eventloop), true),
+		mbeanServer.registerMBean(mBeanFactory.createFor(asList(eventloop), MBeanSetting.defaultSettings(), true),
 				new ObjectName(Eventloop.class.getPackage().getName() + ":type=Eventloop"));
 		mbeanServer.registerMBean(ByteBufPool.getStats(),
 				new ObjectName(ByteBufPool.class.getPackage().getName() + ":type=ByteBufPool"));
-		mbeanServer.registerMBean(mBeanFactory.createFor(asList(throttlingController), true),
+		mbeanServer.registerMBean(mBeanFactory.createFor(asList(throttlingController), MBeanSetting.defaultSettings(), true),
 				new ObjectName(ThrottlingController.class.getPackage().getName() + ":type=ThrottlingController"));
 		server.start();
 

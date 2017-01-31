@@ -33,10 +33,14 @@ final class Utils {
 		return out;
 	}
 
-	public static Map<String, OpenType<?>> createMapWithOneEntry(String key, OpenType<?> openType) {
-		Map<String, OpenType<?>> map = new HashMap<>();
-		map.put(key, openType);
-		return map;
+	public static Map<String, OpenType<?>> wrapAttributeInMap(String key, OpenType<?> openType, boolean visible) {
+		if (visible) {
+			Map<String, OpenType<?>> map = new HashMap<>();
+			map.put(key, openType);
+			return map;
+		} else {
+			return Collections.emptyMap();
+		}
 	}
 
 	public static Map<String, Map<String, String>> createDescriptionMap(String name, String description) {

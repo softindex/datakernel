@@ -47,7 +47,7 @@ public class JmxRegistryTest {
 		final ServiceStub service = new ServiceStub();
 
 		context.checking(new Expectations() {{
-			allowing(mbeanFactory).createFor(asList(service), true);
+			allowing(mbeanFactory).createFor(with(asList(service)), with(any(MBeanSetting.class)), with(true));
 			will(returnValue(dynamicMBean));
 
 			oneOf(mBeanServer).registerMBean(with(dynamicMBean), with(objectname(domain + ":type=ServiceStub")));
@@ -63,7 +63,7 @@ public class JmxRegistryTest {
 		final ServiceStub service = new ServiceStub();
 
 		context.checking(new Expectations() {{
-			allowing(mbeanFactory).createFor(asList(service), true);
+			allowing(mbeanFactory).createFor(with(asList(service)), with(any(MBeanSetting.class)), with(true));
 			will(returnValue(dynamicMBean));
 
 			oneOf(mBeanServer).registerMBean(with(dynamicMBean),
@@ -81,7 +81,7 @@ public class JmxRegistryTest {
 		final ServiceStub service = new ServiceStub();
 
 		context.checking(new Expectations() {{
-			allowing(mbeanFactory).createFor(asList(service), true);
+			allowing(mbeanFactory).createFor(with(asList(service)), with(any(MBeanSetting.class)), with(true));
 			will(returnValue(dynamicMBean));
 
 			oneOf(mBeanServer).registerMBean(with(dynamicMBean), with(objectname(domain + ":Group=major")));
@@ -98,7 +98,7 @@ public class JmxRegistryTest {
 		final ServiceStub service = new ServiceStub();
 
 		context.checking(new Expectations() {{
-			allowing(mbeanFactory).createFor(asList(service), true);
+			allowing(mbeanFactory).createFor(with(asList(service)), with(any(MBeanSetting.class)), with(true));
 			will(returnValue(dynamicMBean));
 
 			oneOf(mBeanServer).registerMBean(
@@ -132,17 +132,18 @@ public class JmxRegistryTest {
 
 		context.checking(new Expectations() {{
 			// creating DynamicMBeans for each worker separately
-			allowing(mbeanFactory).createFor(asList(worker_1), false);
+			allowing(mbeanFactory).createFor(with(asList(worker_1)), with(any(MBeanSetting.class)), with(false));
 			will(returnValue(dynamicMBean));
 
-			allowing(mbeanFactory).createFor(asList(worker_2), false);
+			allowing(mbeanFactory).createFor(with(asList(worker_2)), with(any(MBeanSetting.class)), with(false));
 			will(returnValue(dynamicMBean));
 
-			allowing(mbeanFactory).createFor(asList(worker_3), false);
+			allowing(mbeanFactory).createFor(with(asList(worker_3)), with(any(MBeanSetting.class)), with(false));
 			will(returnValue(dynamicMBean));
 
 			// creating DynamicMBean for worker pool
-			allowing(mbeanFactory).createFor(asList(worker_1, worker_2, worker_3), true);
+			allowing(mbeanFactory).createFor(with(asList(worker_1, worker_2, worker_3)),
+					with(any(MBeanSetting.class)), with(true));
 			will(doAll());
 			will(returnValue(dynamicMBean));
 

@@ -69,7 +69,7 @@ public final class JmxRegistry implements ConcurrentJmxMBean {
 		Object mbean;
 		if (isJmxMBean(instanceClass)) {
 			try {
-				mbean = mbeanFactory.createFor(asList(singletonInstance), true);
+				mbean = mbeanFactory.createFor(asList(singletonInstance), MBeanSetting.defaultSettings(), true);
 			} catch (Exception e) {
 				String msg = format("Instance with key %s implemetns ConcurrentJmxMBean or EventloopJmxMBean" +
 						"but exception was thrown during attempt to create DynamicMBean", key.toString());
@@ -175,7 +175,7 @@ public final class JmxRegistry implements ConcurrentJmxMBean {
 		// register aggregated mbean for pool of workers
 		DynamicMBean mbean;
 		try {
-			mbean = mbeanFactory.createFor(poolInstances, true);
+			mbean = mbeanFactory.createFor(poolInstances, MBeanSetting.defaultSettings(), true);
 		} catch (Exception e) {
 			String msg = format("Cannot create DynamicMBean for aggregated MBean of pool of workers with key %s",
 					key.toString());
@@ -271,7 +271,7 @@ public final class JmxRegistry implements ConcurrentJmxMBean {
 
 		DynamicMBean mbean;
 		try {
-			mbean = mbeanFactory.createFor(asList(worker), false);
+			mbean = mbeanFactory.createFor(asList(worker), MBeanSetting.defaultSettings(), false);
 		} catch (Exception e) {
 			String msg = format("Cannot create DynamicMBean for worker " +
 					"of pool of instances with key %s", key.toString());

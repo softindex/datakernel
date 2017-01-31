@@ -19,13 +19,16 @@ package io.datakernel.jmx;
 import javax.management.openmbean.OpenType;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 interface AttributeNode {
 	String getName();
 
 	OpenType<?> getOpenType();
 
-	Map<String, OpenType<?>> getFlattenedOpenTypes();
+	Map<String, OpenType<?>> getVisibleFlattenedOpenTypes();
+
+	Set<String> getAllFlattenedAttrNames();
 
 	Map<String, Map<String, String>> getDescriptions();
 
@@ -39,5 +42,16 @@ interface AttributeNode {
 
 	void setAttribute(String attrName, Object value, List<?> targets) throws SetterException;
 
+	// TODO(vmykhalko): rename into "transformOmittingNullPojos" ?
+	// TODO(vmykhalko): maybe make such nodes not visible but not to remove
 	AttributeNode rebuildOmittingNullPojos(List<?> sources);
+
+	boolean isVisible();
+
+	// TODO(vmykhalko): maybe make tree mutable for simplification ?
+	AttributeNode rebuildWithVisible(String attrName);
+
+//	AttributeNode exclude(String attrName);
+
+//	boolean applyModifier(String attrName, Modifier<?> modifier);
 }

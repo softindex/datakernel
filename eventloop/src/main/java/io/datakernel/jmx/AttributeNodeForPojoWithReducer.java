@@ -16,6 +16,7 @@
 
 package io.datakernel.jmx;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,58 +25,42 @@ import static io.datakernel.jmx.Utils.filterNulls;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Arrays.asList;
 
-abstract class AttributeNodeForJmxStatsAbstract extends AttributeNodeForPojoAbstract {
-	private final Class<? extends JmxStats<?>> jmxStatsClass;
+final class AttributeNodeForPojoWithReducer extends AttributeNodeForPojoAbstract {
+	private final JmxReducer reducer;
 	private final List<? extends AttributeNode> subNodes;
 
-	public AttributeNodeForJmxStatsAbstract(String name, String description, boolean included, ValueFetcher fetcher,
-	                                        Class<? extends JmxStats<?>> jmxStatsClass,
-	                                        List<? extends AttributeNode> subNodes) {
-		super(name, description, included, fetcher, subNodes);
+	public AttributeNodeForPojoWithReducer(String name, String description, boolean visible, ValueFetcher fetcher,
+	                                       JmxReducer reducer, List<? extends AttributeNode> subNodes) {
+		super(name, description, visible, fetcher, subNodes);
 
-		this.jmxStatsClass = checkNotNull(jmxStatsClass);
+		this.reducer = checkNotNull(reducer);
 		this.subNodes = subNodes;
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
 	public final Map<String, Object> aggregateAllAttributes(List<?> sources) {
-		JmxStats accumulator;
-		try {
-			accumulator = createNewInstance(jmxStatsClass);
-		} catch (ReflectiveOperationException e) {
-			throw new RuntimeException(e);
-		}
-		for (Object pojo : sources) {
-			JmxStats jmxStats = (JmxStats) fetcher.fetchFrom(pojo);
-			if (jmxStats != null) {
-				accumulator.add(jmxStats);
+		List<Object> pojos = new ArrayList<>();
+		for (Object source : sources) {
+			Object fetched = fetcher.fetchFrom(source);
+			if (fetched != null) {
+				pojos.add(fetched);
 			}
 		}
 
+		Object reducedPojo = reducer.reduce(pojos);
+		List<?> reducedPojoWrappedInList = asList(reducedPojo);
 		Map<String, Object> attrs = new HashMap<>();
-		List<?> sinlgeAccumulatorWrappedInList = asList(accumulator);
 		String prefix = name.isEmpty() ? "" : name + ATTRIBUTE_NAME_SEPARATOR;
 		for (AttributeNode subNode : subNodes) {
 			if (subNode.isVisible()) {
-				Map<String, Object> subNodeAttrs = subNode.aggregateAllAttributes(sinlgeAccumulatorWrappedInList);
+				Map<String, Object> subNodeAttrs = subNode.aggregateAllAttributes(reducedPojoWrappedInList);
 				for (String subAttrName : subNodeAttrs.keySet()) {
 					attrs.put(prefix + subAttrName, subNodeAttrs.get(subAttrName));
 				}
 			}
 		}
 		return attrs;
-
-	}
-
-	private static JmxStats createNewInstance(Class<?> jmxStatsClass) throws ReflectiveOperationException {
-		if (ReflectionUtils.classHasPublicNoArgConstructor(jmxStatsClass)) {
-			return (JmxStats) jmxStatsClass.newInstance();
-		} else if (ReflectionUtils.classHasStaticFactoryCreateMethod(jmxStatsClass)) {
-			return (JmxStats) jmxStatsClass.getDeclaredMethod("create").invoke(null);
-		} else {
-			throw new RuntimeException("Cannot create instance of class: " + jmxStatsClass.getName());
-		}
 	}
 
 	@Override
@@ -91,5 +76,16 @@ abstract class AttributeNodeForJmxStatsAbstract extends AttributeNodeForPojoAbst
 			throw new IllegalArgumentException("There is no attribute with name: " + attrName);
 		}
 		return allAttrs.get(attrName);
+	}
+
+	@Override
+	public Iterable<JmxRefreshable> getAllRefreshables(Object source) {
+		// TODO(vmykhalko): implement
+		return null;
+	}
+
+	@Override
+	protected AttributeNode recreate(List<? extends AttributeNode> subNodes, boolean visible) {
+		return new AttributeNodeForPojoWithReducer(name, description, visible, fetcher, reducer, subNodes);
 	}
 }

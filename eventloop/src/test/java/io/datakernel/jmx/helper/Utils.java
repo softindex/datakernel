@@ -14,11 +14,18 @@
  * limitations under the License.
  */
 
-package io.datakernel.jmx;
+package io.datakernel.jmx.helper;
 
-import javax.management.DynamicMBean;
-import java.util.List;
+import javax.management.MBeanAttributeInfo;
+import java.util.HashMap;
+import java.util.Map;
 
-public interface DynamicMBeanFactory {
-	DynamicMBean createFor(List<?> monitorables, MBeanSetting setting, boolean enableRefresh);
+public class Utils {
+	public static Map<String, MBeanAttributeInfo> nameToAttribute(MBeanAttributeInfo[] attrs) {
+		Map<String, MBeanAttributeInfo> nameToAttr = new HashMap<>();
+		for (MBeanAttributeInfo attr : attrs) {
+			nameToAttr.put(attr.getName(), attr);
+		}
+		return nameToAttr;
+	}
 }

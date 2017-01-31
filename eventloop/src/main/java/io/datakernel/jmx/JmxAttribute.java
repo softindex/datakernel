@@ -26,6 +26,7 @@ import java.lang.annotation.Target;
 public @interface JmxAttribute {
 	String USE_GETTER_NAME = "_USE_GETTER_NAME_";
 	String NO_DESCRIPTION = "_NO_DESCRIPTION_";
+	Class<? extends JmxReducer<?>> DEFAULT_REDUCER = JmxReducers.JmxReducerDistinct.class;
 
 	String name() default USE_GETTER_NAME;
 

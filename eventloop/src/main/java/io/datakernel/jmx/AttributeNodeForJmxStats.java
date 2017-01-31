@@ -21,10 +21,10 @@ import java.util.List;
 final class AttributeNodeForJmxStats extends AttributeNodeForJmxStatsAbstract {
 	private final Class<? extends JmxStats<?>> jmxStatsClass;
 
-	public AttributeNodeForJmxStats(String name, String description,
+	public AttributeNodeForJmxStats(String name, String description, boolean included,
 	                                ValueFetcher fetcher, Class<? extends JmxStats<?>> jmxStatsClass,
 	                                List<? extends AttributeNode> subNodes) {
-		super(name, description, fetcher, jmxStatsClass, subNodes);
+		super(name, description, included, fetcher, jmxStatsClass, subNodes);
 		this.jmxStatsClass = jmxStatsClass;
 	}
 
@@ -34,7 +34,7 @@ final class AttributeNodeForJmxStats extends AttributeNodeForJmxStatsAbstract {
 	}
 
 	@Override
-	protected AttributeNode recreate(List<AttributeNode> filteredNodes) {
-		return new AttributeNodeForJmxStats(name, description, fetcher, jmxStatsClass, filteredNodes);
+	protected AttributeNode recreate(List<? extends AttributeNode> subNodes, boolean visible) {
+		return new AttributeNodeForJmxStats(name, description, visible, fetcher, jmxStatsClass, subNodes);
 	}
 }

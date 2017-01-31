@@ -57,6 +57,12 @@ public final class JmxModule extends AbstractModule {
 		return this;
 	}
 
+//	public JmxModule with
+
+//	public <T> JmxModule withModifier(Class<?> key, String name, Modifier<T> modifier) {
+//		return this;
+//	}
+
 	@Override
 	protected void configure() {
 		bindListener(new AbstractMatcher<Binding<?>>() {

@@ -24,10 +24,10 @@ import static java.util.Collections.singletonList;
 final class AttributeNodeForJmxRefreshableStats extends AttributeNodeForJmxStatsAbstract {
 	private final Class<? extends JmxRefreshableStats<?>> jmxStatsClass;
 
-	public AttributeNodeForJmxRefreshableStats(String name, String description, ValueFetcher fetcher,
+	public AttributeNodeForJmxRefreshableStats(String name, String description, boolean included, ValueFetcher fetcher,
 	                                           Class<? extends JmxRefreshableStats<?>> jmxStatsClass,
 	                                           List<? extends AttributeNode> subNodes) {
-		super(name, description, fetcher, jmxStatsClass, subNodes);
+		super(name, description, included, fetcher, jmxStatsClass, subNodes);
 		this.jmxStatsClass = jmxStatsClass;
 	}
 
@@ -38,7 +38,8 @@ final class AttributeNodeForJmxRefreshableStats extends AttributeNodeForJmxStats
 	}
 
 	@Override
-	protected AttributeNode recreate(List<AttributeNode> filteredNodes) {
-		return new AttributeNodeForJmxRefreshableStats(name, description, fetcher, jmxStatsClass, filteredNodes);
+	protected AttributeNode recreate(List<? extends AttributeNode> subNodes, boolean visible) {
+		return new AttributeNodeForJmxRefreshableStats(
+				name, description, visible, fetcher, jmxStatsClass, subNodes);
 	}
 }

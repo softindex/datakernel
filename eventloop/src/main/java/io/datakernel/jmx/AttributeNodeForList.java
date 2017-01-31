@@ -29,23 +29,25 @@ import static java.util.Arrays.asList;
 final class AttributeNodeForList implements AttributeNode {
 	private final String name;
 	private final String description;
+	private final boolean visible;
 	private final ValueFetcher fetcher;
 	private final AttributeNode subNode;
 	private final ArrayType<?> arrayType;
 	private final Map<String, OpenType<?>> nameToOpenType;
 	private final boolean isListOfJmxRefreshables;
 
-	public AttributeNodeForList(String name, String description, ValueFetcher fetcher, AttributeNode subNode,
+	public AttributeNodeForList(String name, String description, boolean visible, ValueFetcher fetcher, AttributeNode subNode,
 	                            boolean isListOfJmxRefreshables) {
 		checkArgument(!name.isEmpty(), "List attribute cannot have empty name");
 
 		this.name = name;
 		this.description = description;
 		this.fetcher = fetcher;
+		this.visible = visible;
 		this.subNode = subNode;
 		this.arrayType = createArrayType(subNode);
 		this.isListOfJmxRefreshables = isListOfJmxRefreshables;
-		this.nameToOpenType = createMapWithOneEntry(name, arrayType);
+		this.nameToOpenType = wrapAttributeInMap(name, arrayType, visible);
 	}
 
 	private static ArrayType<?> createArrayType(AttributeNode subNode) {
@@ -57,8 +59,13 @@ final class AttributeNodeForList implements AttributeNode {
 	}
 
 	@Override
-	public Map<String, OpenType<?>> getFlattenedOpenTypes() {
+	public Map<String, OpenType<?>> getVisibleFlattenedOpenTypes() {
 		return nameToOpenType;
+	}
+
+	@Override
+	public Set<String> getAllFlattenedAttrNames() {
+		return Collections.singleton(name);
 	}
 
 	@Override
@@ -196,6 +203,16 @@ final class AttributeNodeForList implements AttributeNode {
 	@Override
 	public AttributeNode rebuildOmittingNullPojos(List<?> sources) {
 		return this;
+	}
+
+	@Override
+	public boolean isVisible() {
+		return visible;
+	}
+
+	@Override
+	public AttributeNode rebuildWithVisible(String attrName) {
+		return new AttributeNodeForList(name, description, true, fetcher, subNode, isListOfJmxRefreshables);
 	}
 }
 

@@ -23,6 +23,7 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.jmx.MBeanSetting.defaultSettings;
 import static java.util.Arrays.asList;
 
 public class JmxMBeansAttributeExceptionsTest {
@@ -36,7 +37,8 @@ public class JmxMBeansAttributeExceptionsTest {
 				"Only EventloopJmxMBeans can be used in pool");
 
 		JmxMBeans.factory().createFor(
-				asList(new ConcurrentJmxMBeanWithSingleIntAttr(), new ConcurrentJmxMBeanWithSingleIntAttr()), false);
+				asList(new ConcurrentJmxMBeanWithSingleIntAttr(), new ConcurrentJmxMBeanWithSingleIntAttr()),
+				defaultSettings(), false);
 	}
 
 	@Test
@@ -45,7 +47,7 @@ public class JmxMBeansAttributeExceptionsTest {
 		expectedException.expectMessage("JmxRefreshableStats can be used only in classes that implements" +
 				" EventloopJmxMBean");
 
-		JmxMBeans.factory().createFor(asList(new ConcurrentJmxMBeanWithJmxStats()), false);
+		JmxMBeans.factory().createFor(asList(new ConcurrentJmxMBeanWithJmxStats()), defaultSettings(), false);
 	}
 
 	// test JmxRefreshableStats as @JmxAttribute, all returned stats should be concrete classes with public no-arg constructor
@@ -55,7 +57,7 @@ public class JmxMBeansAttributeExceptionsTest {
 		expectedException.expectMessage("Return type of JmxRefreshableStats attribute must be concrete class that implements" +
 				" JmxRefreshableStats interface and contains public no-arg constructor");
 
-		JmxMBeans.factory().createFor(asList(new MBeanWithInterfaceAsJmxStatsAttributes()), false);
+		JmxMBeans.factory().createFor(asList(new MBeanWithInterfaceAsJmxStatsAttributes()), defaultSettings(), false);
 	}
 
 	@Test
@@ -64,7 +66,7 @@ public class JmxMBeansAttributeExceptionsTest {
 		expectedException.expectMessage("Return type of JmxRefreshableStats attribute must be concrete class that implements" +
 				" JmxRefreshableStats interface and contains public no-arg constructor");
 
-		JmxMBeans.factory().createFor(asList(new MBeanWithAbstractClassAsJmxStatsAttributes()), false);
+		JmxMBeans.factory().createFor(asList(new MBeanWithAbstractClassAsJmxStatsAttributes()), defaultSettings(), false);
 	}
 
 	@Test
@@ -73,7 +75,7 @@ public class JmxMBeansAttributeExceptionsTest {
 		expectedException.expectMessage("Return type of JmxRefreshableStats attribute must be concrete class that implements" +
 				" JmxRefreshableStats interface and contains public no-arg constructor");
 
-		JmxMBeans.factory().createFor(asList(new MBeanWithJmxStatsClassWhichDoesntHavePublicNoArgConstructor()), false);
+		JmxMBeans.factory().createFor(asList(new MBeanWithJmxStatsClassWhichDoesntHavePublicNoArgConstructor()), defaultSettings(), false);
 	}
 
 	public static final class ConcurrentJmxMBeanWithJmxStats implements ConcurrentJmxMBean {

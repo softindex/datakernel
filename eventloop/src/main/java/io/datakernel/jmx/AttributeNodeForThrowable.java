@@ -17,9 +17,7 @@
 package io.datakernel.jmx;
 
 import javax.management.openmbean.*;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static io.datakernel.jmx.Utils.*;
 import static io.datakernel.util.Preconditions.checkArgument;
@@ -33,16 +31,18 @@ final class AttributeNodeForThrowable implements AttributeNode {
 
 	private final String name;
 	private final String description;
+	private final boolean visible;
 	private final ValueFetcher fetcher;
 	private final CompositeType compositeType;
 	private final Map<String, OpenType<?>> nameToOpenType;
 
-	public AttributeNodeForThrowable(String name, String description, ValueFetcher fetcher) {
+	public AttributeNodeForThrowable(String name, String description, boolean visible, ValueFetcher fetcher) {
 		this.name = name;
 		this.description = description;
+		this.visible = visible;
 		this.fetcher = fetcher;
 		this.compositeType = compositeTypeForThrowable();
-		this.nameToOpenType = createMapWithOneEntry(name, compositeType);
+		this.nameToOpenType = wrapAttributeInMap(name, compositeType, visible);
 	}
 
 	private static CompositeType compositeTypeForThrowable() {
@@ -72,8 +72,13 @@ final class AttributeNodeForThrowable implements AttributeNode {
 	}
 
 	@Override
-	public Map<String, OpenType<?>> getFlattenedOpenTypes() {
+	public Map<String, OpenType<?>> getVisibleFlattenedOpenTypes() {
 		return nameToOpenType;
+	}
+
+	@Override
+	public Set<String> getAllFlattenedAttrNames() {
+		return Collections.singleton(name);
 	}
 
 	@Override
@@ -143,5 +148,15 @@ final class AttributeNodeForThrowable implements AttributeNode {
 	@Override
 	public AttributeNode rebuildOmittingNullPojos(List<?> sources) {
 		return this;
+	}
+
+	@Override
+	public boolean isVisible() {
+		return visible;
+	}
+
+	@Override
+	public AttributeNode rebuildWithVisible(String attrName) {
+		return new AttributeNodeForThrowable(name, description, true, fetcher);
 	}
 }

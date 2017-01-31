@@ -26,16 +26,16 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 final class AttributeNodeForPojo extends AttributeNodeForPojoAbstract {
 	private final List<? extends AttributeNode> subNodes;
 
-	public AttributeNodeForPojo(String name, String description,
+	public AttributeNodeForPojo(String name, String description, boolean visible,
 	                            ValueFetcher fetcher, List<? extends AttributeNode> subNodes) {
-		super(name, description, fetcher, subNodes);
+		super(name, description, visible, fetcher, subNodes);
 		this.subNodes = subNodes;
 	}
 
 	@Override
 	public Map<String, Object> aggregateAllAttributes(List<?> sources) {
 		Map<String, Object> allAttrs = new HashMap<>();
-		for (String attrFullName : fullNameToNode.keySet()) {
+		for (String attrFullName : visibleNameToOpenType.keySet()) {
 			allAttrs.put(attrFullName, aggregateAttribute(attrFullName, sources));
 		}
 		return allAttrs;
@@ -84,7 +84,7 @@ final class AttributeNodeForPojo extends AttributeNodeForPojoAbstract {
 	}
 
 	@Override
-	protected AttributeNode recreate(List<AttributeNode> filteredNodes) {
-		return new AttributeNodeForPojo(name, description, fetcher, filteredNodes);
+	protected AttributeNode recreate(List<? extends AttributeNode> subNodes, boolean visible) {
+		return new AttributeNodeForPojo(name, description, visible, fetcher, subNodes);
 	}
 }

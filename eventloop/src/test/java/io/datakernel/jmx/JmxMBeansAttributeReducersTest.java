@@ -28,10 +28,14 @@ import static org.junit.Assert.assertEquals;
 
 public class JmxMBeansAttributeReducersTest {
 
+	public static final Eventloop EVENTLOOP = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+
+	// region simple type reducers
 	@Test
 	public void createdMBeanShouldUseSpecifiedReducerForAggregation() throws Exception {
 		DynamicMBean mbean = JmxMBeans.factory().createFor(
 				asList(new MBeanWithCustomReducer(200), new MBeanWithCustomReducer(350)),
+				MBeanSetting.defaultSettings(),
 				false
 		);
 
@@ -52,7 +56,7 @@ public class JmxMBeansAttributeReducersTest {
 
 		@Override
 		public Eventloop getEventloop() {
-			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+			return EVENTLOOP;
 		}
 	}
 
@@ -64,4 +68,74 @@ public class JmxMBeansAttributeReducersTest {
 			return CONSTANT_VALUE;
 		}
 	}
+	// simple type reducers
+
+	// region pojo reducers
+	@Test
+	public void properlyAggregatesPojosWithReducer() throws Exception {
+		MBeanWithPojoReducer mbean_1 = new MBeanWithPojoReducer(new PojoStub(10, "abc"));
+		MBeanWithPojoReducer mbean_2 = new MBeanWithPojoReducer(new PojoStub(15, "xz"));
+		DynamicMBean mbean = JmxMBeans.factory().createFor(
+				asList(mbean_1, mbean_2),
+				MBeanSetting.defaultSettings(),
+				false
+		);
+
+		assertEquals(25, mbean.getAttribute("pojo_count"));
+		assertEquals("abcxz", mbean.getAttribute("pojo_name"));
+	}
+
+	public static final class MBeanWithPojoReducer implements EventloopJmxMBean {
+		private final PojoStub pojo;
+
+		public MBeanWithPojoReducer(PojoStub pojo) {
+			this.pojo = pojo;
+		}
+
+		@JmxAttribute(reducer = PojoStubReducer.class)
+		public PojoStub getPojo() {
+			return pojo;
+		}
+
+		@Override
+		public Eventloop getEventloop() {
+			return EVENTLOOP;
+		}
+	}
+
+	public static final class PojoStub {
+		private final int count;
+		private final String name;
+
+		public PojoStub(int count, String name) {
+			this.count = count;
+			this.name = name;
+		}
+
+		@JmxAttribute
+		public int getCount() {
+			return count;
+		}
+
+		@JmxAttribute
+		public String getName() {
+			return name;
+		}
+	}
+
+	public static final class PojoStubReducer implements JmxReducer<PojoStub> {
+		@Override
+		public PojoStub reduce(List<? extends PojoStub> input) {
+			int totalCount = 0;
+			String totalName = "";
+
+			for (PojoStub pojoStub : input) {
+				totalCount += pojoStub.getCount();
+				totalName += pojoStub.getName();
+			}
+
+			return new PojoStub(totalCount, totalName);
+		}
+	}
+	// endregion
 }

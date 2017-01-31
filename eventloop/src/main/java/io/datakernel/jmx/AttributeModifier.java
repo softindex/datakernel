@@ -16,9 +16,6 @@
 
 package io.datakernel.jmx;
 
-import javax.management.DynamicMBean;
-import java.util.List;
-
-public interface DynamicMBeanFactory {
-	DynamicMBean createFor(List<?> monitorables, MBeanSetting setting, boolean enableRefresh);
+public interface AttributeModifier<T> {
+	void apply(T attribute);
 }
