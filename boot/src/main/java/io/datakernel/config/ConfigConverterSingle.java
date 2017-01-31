@@ -23,6 +23,10 @@ public abstract class ConfigConverterSingle<T> implements ConfigConverter<T> {
 
 	protected abstract T fromString(String string);
 
+	protected T fromEmptyString() {
+		return null;
+	}
+
 	protected abstract String toString(T item);
 
 	@Override
@@ -30,19 +34,19 @@ public abstract class ConfigConverterSingle<T> implements ConfigConverter<T> {
 		checkState(config.getChildren().isEmpty());
 		String string = config.get();
 		checkNotNull(string, "Config %s not found", config);
-		return fromString(string);
+		string = string.trim();
+		return string.isEmpty() ? fromEmptyString() : fromString(string);
 	}
 
 	@Override
 	public final T get(Config config, T defaultValue) {
 		checkState(config.getChildren().isEmpty());
-		String defaultString = toString(defaultValue);
+		String defaultString = defaultValue == null ? "" : toString(defaultValue);
 		String string = config.get(defaultString);
-		checkNotNull(string);
+		checkNotNull(string, "Config %s not found", config);
 		string = string.trim();
-		T result = fromString(string);
-		checkNotNull(result);
-		config.set(toString(result));
+		T result = string.isEmpty() ? fromEmptyString() : fromString(string);
+		config.set(result == null ? "" : toString(result));
 		return result;
 	}
 }

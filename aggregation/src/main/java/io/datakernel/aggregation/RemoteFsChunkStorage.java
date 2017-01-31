@@ -84,7 +84,7 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage {
 		BufferSerializer<T> bufferSerializer = createBufferSerializer(aggregation, recordClass,
 				keys, fields, classLoader);
 		StreamBinarySerializer<T> serializer = StreamBinarySerializer.create(eventloop, bufferSerializer)
-				.withDefaultBufferSize(StreamBinarySerializer.MAX_SIZE_2_BYTE)
+				.withDefaultBufferSize(StreamBinarySerializer.MAX_SIZE_2)
 				.withFlushDelay(1000);
 
 		producer.streamTo(serializer.getInput());

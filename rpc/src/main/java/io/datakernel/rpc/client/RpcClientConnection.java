@@ -22,6 +22,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxReducers.JmxReducerSum;
 import io.datakernel.jmx.JmxRefreshable;
 import io.datakernel.rpc.client.jmx.RpcRequestStats;
 import io.datakernel.rpc.client.sender.RpcSender;
@@ -321,8 +322,8 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 		return connectionStats;
 	}
 
-	@JmxAttribute
-	public int activeRequests() {
+	@JmxAttribute(reducer = JmxReducerSum.class)
+	public int getActiveRequests() {
 		return activeRequests.size();
 	}
 

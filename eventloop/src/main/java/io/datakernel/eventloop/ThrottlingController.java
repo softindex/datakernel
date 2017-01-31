@@ -19,6 +19,7 @@ package io.datakernel.eventloop;
 import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
+import io.datakernel.jmx.JmxReducers.JmxReducerSum;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -209,7 +210,7 @@ public final class ThrottlingController implements EventloopJmxMBean {
 		return targetTimeMillis;
 	}
 
-	@JmxOperation
+	@JmxAttribute
 	public void setTargetTimeMillis(int targetTimeMillis) {
 		check(targetTimeMillis > 0);
 		this.targetTimeMillis = targetTimeMillis;
@@ -220,7 +221,7 @@ public final class ThrottlingController implements EventloopJmxMBean {
 		return gcTimeMillis;
 	}
 
-	@JmxOperation
+	@JmxAttribute
 	public void setGcTimeMillis(int gcTimeMillis) {
 		check(gcTimeMillis > 0);
 		this.gcTimeMillis = gcTimeMillis;
@@ -231,7 +232,7 @@ public final class ThrottlingController implements EventloopJmxMBean {
 		return throttlingDecrease;
 	}
 
-	@JmxOperation
+	@JmxAttribute
 	public void setThrottlingDecrease(double throttlingDecrease) {
 		check(throttlingDecrease >= 0.0 && throttlingDecrease <= 1.0);
 		this.throttlingDecrease = throttlingDecrease;
@@ -242,48 +243,48 @@ public final class ThrottlingController implements EventloopJmxMBean {
 		return smoothingWindow;
 	}
 
-	@JmxOperation
+	@JmxAttribute
 	public void setSmoothingWindow(int smoothingWindow) {
 		check(smoothingWindow > 0);
 		this.smoothingWindow = smoothingWindow;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(reducer = JmxReducerSum.class)
 	public long getTotalRequests() {
 		return infoTotalRequests;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(reducer = JmxReducerSum.class)
 	public long getTotalRequestsThrottled() {
 		return infoTotalRequestsThrottled;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(reducer = JmxReducerSum.class)
 	public long getTotalProcessed() {
 		return infoTotalRequests - infoTotalRequestsThrottled;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(reducer = JmxReducerSum.class)
 	public long getTotalTimeMillis() {
 		return infoTotalTimeMillis;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(reducer = JmxReducerSum.class)
 	public long getRounds() {
 		return infoRounds;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(reducer = JmxReducerSum.class)
 	public long getRoundsZeroThrottling() {
 		return infoRoundsZeroThrottling;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(reducer = JmxReducerSum.class)
 	public long getRoundsExceededTargetTime() {
 		return infoRoundsExceededTargetTime;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(reducer = JmxReducerSum.class)
 	public long getInfoRoundsGc() {
 		return infoRoundsGc;
 	}
@@ -291,11 +292,6 @@ public final class ThrottlingController implements EventloopJmxMBean {
 	@JmxAttribute
 	public double getThrottling() {
 		return throttling;
-	}
-
-	@JmxAttribute
-	public String getThrottlingStatus() {
-		return toString();
 	}
 
 	@JmxOperation

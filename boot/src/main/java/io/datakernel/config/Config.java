@@ -283,14 +283,7 @@ public final class Config {
 	}
 
 	synchronized public String get(String defaultValue) {
-		if (this.defaultValue != null) {
-			if (!this.defaultValue.equals(defaultValue)) {
-				throw new IllegalArgumentException("Key '" + getKey() + "': Previous default value '" + this.defaultValue + "' differs from new default value '"
-						+ defaultValue + "'");
-			}
-		} else {
-			this.defaultValue = defaultValue;
-		}
+		this.defaultValue = defaultValue;
 		String result = get();
 		if (result == null) {
 			logger.info("Using default value for '{}'", getKey());
@@ -315,7 +308,6 @@ public final class Config {
 
 	synchronized public <T> T get(ConfigConverter<T> converter, String path, T defaultValue) {
 		checkNotNull(converter);
-		checkNotNull(defaultValue);
 		return converter.get(ensureChild(path), defaultValue);
 	}
 

@@ -204,14 +204,14 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			throw new AssertionError("Failed to apply socketSettings", e);
 		}
 		AsyncTcpSocketImpl asyncTcpSocket = new AsyncTcpSocketImpl(eventloop, socketChannel);
-		if (socketSettings.hasReadTimeout())
-			asyncTcpSocket.readTimeout = socketSettings.getReadTimeout();
-		if (socketSettings.hasWriteTimeout())
-			asyncTcpSocket.writeTimeout = socketSettings.getWriteTimeout();
-		if (socketSettings.hasReadMaxSize())
-			asyncTcpSocket.readMaxSize = socketSettings.getReadMaxSize();
-		if (socketSettings.hasWriteMaxSize())
-			asyncTcpSocket.writeMaxSize = socketSettings.getWriteMaxSize();
+		if (socketSettings.hasImplReadTimeout())
+			asyncTcpSocket.readTimeout = socketSettings.getImplReadTimeout();
+		if (socketSettings.hasImplWriteTimeout())
+			asyncTcpSocket.writeTimeout = socketSettings.getImplWriteTimeout();
+		if (socketSettings.hasImplReadSize())
+			asyncTcpSocket.readMaxSize = socketSettings.getImplReadSize();
+		if (socketSettings.hasImplWriteSize())
+			asyncTcpSocket.writeMaxSize = socketSettings.getImplWriteSize();
 		return asyncTcpSocket;
 	}
 

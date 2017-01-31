@@ -39,7 +39,7 @@ import static java.lang.Math.min;
  */
 public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer_1_1<ByteBuf, T> {
 	private final BufferSerializer<T> valueSerializer;
-	private int maxMessageSize = StreamBinarySerializer.MAX_SIZE - 1;
+	private int maxMessageSize = (int) (StreamBinarySerializer.MAX_SIZE.get());
 	private int buffersToSuspend = 2;
 
 	private InputConsumer inputConsumer;
@@ -116,7 +116,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 	}
 
 	public StreamBinaryDeserializer<T> withMaxMessageSize(int maxMessageSize) {
-		this.maxMessageSize = maxMessageSize - 1;
+		this.maxMessageSize = maxMessageSize;
 		rebuild();
 		return this;
 	}
@@ -223,7 +223,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 								nextBuf.moveReadPosition(-unreadSize);
 								buf.rewind();
 							}
-							if (dataSize > maxMessageSize)
+							if (dataSize >= maxMessageSize)
 								throw new ParseException("Parsed data size > message size");
 						}
 
@@ -276,7 +276,6 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 				if (byteBufs.isEmpty()) {
 					if (inputConsumer.getConsumerStatus().isClosed()) {
 						outputProducer.sendEndOfStream();
-//						logger.info("Deserialized {} objects from {}", jmxItems, inputConsumer.getUpstream());
 					} else {
 						if (!isStatusReady()) {
 							resumeProduce();

@@ -23,7 +23,7 @@ public class AbstractServerTest {
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		InetSocketAddress address = new InetSocketAddress(5588);
-		final SocketSettings settings = SocketSettings.create().withReadTimeout(100000L).withWriteTimeout(100000L);
+		final SocketSettings settings = SocketSettings.create().withImplReadTimeout(100000L).withImplWriteTimeout(100000L);
 
 		SimpleServer.SocketHandlerProvider socketHandlerProvider = new SimpleServer.SocketHandlerProvider() {
 			@Override
@@ -68,7 +68,7 @@ public class AbstractServerTest {
 
 		server.listen();
 
-		eventloop.connect(address, 1000, new ConnectCallback() {
+		eventloop.connect(address, new ConnectCallback() {
 			@Override
 			public void onConnect(SocketChannel socketChannel) {
 				final AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel, settings);

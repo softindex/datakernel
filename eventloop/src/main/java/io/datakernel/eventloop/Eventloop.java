@@ -1208,7 +1208,6 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 		);
 	}
 
-	@JmxAttribute
 	public int getTick() {
 		return (int) (tick >>> 32);
 	}

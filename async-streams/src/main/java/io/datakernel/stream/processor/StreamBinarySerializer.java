@@ -32,7 +32,6 @@ import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static java.lang.Math.max;
 
@@ -46,16 +45,16 @@ import static java.lang.Math.max;
 public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1_1<T, ByteBuf> {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	private static final ArrayIndexOutOfBoundsException OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException();
-	public static final int DEFAULT_BUFFER_SIZE = (int) (16 * MemSize.KB);
+	public static final MemSize DEFAULT_BUFFER_SIZE = MemSize.kilobytes(16);
 
-	public static final int MAX_SIZE_1_BYTE = 128; // (1 << (1 * 7))
-	public static final int MAX_SIZE_2_BYTE = 16384; // (1 << (2 * 7))
-	public static final int MAX_SIZE_3_BYTE = 2097152; // (1 << (3 * 7))
-	public static final int MAX_SIZE = MAX_SIZE_3_BYTE;
+	public static final MemSize MAX_SIZE_1 = MemSize.bytes(128); // (1 << (1 * 7))
+	public static final MemSize MAX_SIZE_2 = MemSize.kilobytes(16); // (1 << (2 * 7))
+	public static final MemSize MAX_SIZE_3 = MemSize.megabytes(2); // (1 << (3 * 7))
+	public static final MemSize MAX_SIZE = MAX_SIZE_3;
 
 	private final BufferSerializer<T> serializer;
-	private int defaultBufferSize = DEFAULT_BUFFER_SIZE;
-	private int maxMessageSize = MAX_SIZE - 1;
+	private int defaultBufferSize = (int) DEFAULT_BUFFER_SIZE.get();
+	private int maxMessageSize = (int) (MAX_SIZE.get());
 	private int flushDelayMillis = 0;
 	private boolean skipSerializationErrors = false;
 
@@ -206,7 +205,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 	}
 
 	public StreamBinarySerializer<T> withMaxMessageSize(int maxMessageSize) {
-		this.maxMessageSize = maxMessageSize - 1;
+		this.maxMessageSize = maxMessageSize;
 		rebuild();
 		return this;
 	}
@@ -271,13 +270,10 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 				(InspectorEx) StreamBinarySerializer.this.inspector : null;
 
 		public OutputProducer(BufferSerializer<T> serializer, int defaultBufferSize, int maxMessageSize, int flushDelayMillis, boolean skipSerializationErrors) {
-			checkArgument(maxMessageSize > 0 && maxMessageSize <= MAX_SIZE, "maxMessageSize must be in [4B..2MB) range, got %s", maxMessageSize);
-			checkArgument(defaultBufferSize > 0, "defaultBufferSize must be positive value, got %s", defaultBufferSize);
-
 			this.skipSerializationErrors = skipSerializationErrors;
 			this.serializer = checkNotNull(serializer);
 			this.maxMessageSize = maxMessageSize;
-			this.headerSize = varint32Size(maxMessageSize);
+			this.headerSize = varint32Size(maxMessageSize - 1);
 			this.estimatedMessageSize = 1;
 			this.defaultBufferSize = defaultBufferSize;
 			this.flushDelayMillis = flushDelayMillis;
@@ -371,7 +367,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 			}
 			int positionEnd = outputBuf.writePosition();
 			int messageSize = positionEnd - positionItem;
-			if (messageSize > maxMessageSize) {
+			if (messageSize >= maxMessageSize) {
 				onMessageOverflow(item, positionBegin, messageSize);
 				return;
 			}

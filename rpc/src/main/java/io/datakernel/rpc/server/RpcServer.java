@@ -46,11 +46,11 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS = ServerSocketSettings.create(16384);
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create().withTcpNoDelay(true);
 
-	public static final int DEFAULT_PACKET_SIZE = 16;
-	public static final int MAX_PACKET_SIZE = StreamBinarySerializer.MAX_SIZE;
+	public static final MemSize DEFAULT_PACKET_SIZE = StreamBinarySerializer.DEFAULT_BUFFER_SIZE;
+	public static final MemSize MAX_PACKET_SIZE = StreamBinarySerializer.MAX_SIZE;
 
-	private int defaultPacketSize = DEFAULT_PACKET_SIZE;
-	private int maxPacketSize = MAX_PACKET_SIZE;
+	private int defaultPacketSize = (int) DEFAULT_PACKET_SIZE.get();
+	private int maxPacketSize = (int) MAX_PACKET_SIZE.get();
 	private boolean compression = false;
 
 	private Map<Class<?>, RpcRequestHandler<?, ?>> handlers = new LinkedHashMap<>();

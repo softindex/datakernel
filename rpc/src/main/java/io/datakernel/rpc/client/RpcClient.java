@@ -57,6 +57,8 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create().withTcpNoDelay(true);
 	public static final long DEFAULT_CONNECT_TIMEOUT = 10 * 1000L;
 	public static final long DEFAULT_RECONNECT_INTERVAL = 1 * 1000L;
+	public static final MemSize DEFAULT_PACKET_SIZE = StreamBinarySerializer.DEFAULT_BUFFER_SIZE;
+	public static final MemSize MAX_PACKET_SIZE = StreamBinarySerializer.MAX_SIZE;
 
 	private Logger logger = getLogger(this.getClass());
 
@@ -71,11 +73,8 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 	private List<InetSocketAddress> addresses = new ArrayList<>();
 	private Map<InetSocketAddress, RpcClientConnection> connections = new HashMap<>();
 
-	public static final int DEFAULT_PACKET_SIZE = 16;
-	public static final int MAX_PACKET_SIZE = StreamBinarySerializer.MAX_SIZE;
-
-	private int defaultPacketSize = DEFAULT_PACKET_SIZE;
-	private int maxPacketSize = MAX_PACKET_SIZE;
+	private int defaultPacketSize = (int) DEFAULT_PACKET_SIZE.get();
+	private int maxPacketSize = (int) MAX_PACKET_SIZE.get();
 	private boolean compression = false;
 
 	private List<Class<?>> messageTypes;
@@ -539,16 +538,16 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		return connections;
 	}
 
-	@JmxAttribute(name = "activeConnections", reducer = JmxReducerSum.class)
-	public int getActiveConnectionsCount() {
+	@JmxAttribute(reducer = JmxReducerSum.class)
+	public int getActiveConnections() {
 		return connections.size();
 	}
 
-	@JmxAttribute(name = "activeConnections", reducer = JmxReducerSum.class)
-	public int getActiveRequestsCount() {
+	@JmxAttribute(reducer = JmxReducerSum.class)
+	public int getActiveRequests() {
 		int count = 0;
 		for (RpcClientConnection connection : connections.values()) {
-			count += connection.activeRequests();
+			count += connection.getActiveRequests();
 		}
 		return count;
 	}

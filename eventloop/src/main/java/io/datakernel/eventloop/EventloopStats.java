@@ -26,6 +26,7 @@ import java.util.concurrent.TimeUnit;
 import static java.util.Arrays.asList;
 
 public final class EventloopStats {
+	private final EventStats loops;
 	private final SelectorEvents selectorEvents;
 	private final TaskEvents taskEvents;
 	private final ErrorStats errorStats;
@@ -38,6 +39,7 @@ public final class EventloopStats {
 	private final BusinessLogicTimeHistogram businessLogicTimeHistogram;
 
 	private EventloopStats(double smoothingWindow) {
+		loops = EventStats.create().withSmoothingWindow(smoothingWindow);
 		selectorEvents = new SelectorEvents(smoothingWindow);
 		taskEvents = new TaskEvents(smoothingWindow);
 		errorStats = new ErrorStats();
@@ -53,12 +55,14 @@ public final class EventloopStats {
 	public static EventloopStats create(double smoothingWindow) {return new EventloopStats(smoothingWindow);}
 
 	public void setSmoothingWindow(double smoothingWindow) {
+		loops.setSmoothingWindow(smoothingWindow);
 		selectorEvents.setSmoothingWindow(smoothingWindow);
 		taskEvents.setSmoothingWindow(smoothingWindow);
 		durationStats.setSmoothingWindow(smoothingWindow);
 	}
 
 	public void resetStats() {
+		loops.resetStats();
 		selectorEvents.reset();
 		taskEvents.reset();
 		durationStats.reset();
@@ -69,6 +73,7 @@ public final class EventloopStats {
 	}
 
 	public void updateBusinessLogicTime(long businessLogicTime) {
+		loops.recordEvent();
 		this.durationStats.businessLogicTime.recordValue((int) businessLogicTime);
 		businessLogicTimeHistogram.update(businessLogicTime);
 	}
@@ -78,12 +83,12 @@ public final class EventloopStats {
 	}
 
 	public void updateSelectedKeysStats(int lastSelectedKeys, int invalidKeys, int acceptKeys, int connectKeys, int readKeys, int writeKeys) {
-		this.selectorEvents.allSelectedKeys.recordEvents(lastSelectedKeys);
-		this.selectorEvents.invalidKeys.recordEvents(invalidKeys);
-		this.selectorEvents.acceptKeys.recordEvents(acceptKeys);
-		this.selectorEvents.connectKeys.recordEvents(connectKeys);
-		this.selectorEvents.readKeys.recordEvents(readKeys);
-		this.selectorEvents.writeKeys.recordEvents(writeKeys);
+		this.selectorEvents.allSelectedKeys.recordValue(lastSelectedKeys);
+		this.selectorEvents.invalidKeys.recordValue(invalidKeys);
+		this.selectorEvents.acceptKeys.recordValue(acceptKeys);
+		this.selectorEvents.connectKeys.recordValue(connectKeys);
+		this.selectorEvents.readKeys.recordValue(readKeys);
+		this.selectorEvents.writeKeys.recordValue(writeKeys);
 	}
 
 	public void updateSelectedKeysTimeStats(@Nullable Stopwatch sw) {
@@ -108,7 +113,7 @@ public final class EventloopStats {
 	public void updateLocalTasksStats(int newTasks, @Nullable Stopwatch sw) {
 		if (sw != null)
 			durationStats.localTasksTime.recordValue((int) sw.elapsed(TimeUnit.MILLISECONDS));
-		taskEvents.localTasks.recordEvents(newTasks);
+		taskEvents.localTasks.recordValue(newTasks);
 	}
 
 	public void updateConcurrentTaskDuration(Runnable runnable, @Nullable Stopwatch sw) {
@@ -118,7 +123,7 @@ public final class EventloopStats {
 	public void updateConcurrentTasksStats(int newTasks, @Nullable Stopwatch sw) {
 		if (sw != null)
 			durationStats.concurrentTasksTime.recordValue((int) sw.elapsed(TimeUnit.MICROSECONDS));
-		taskEvents.concurrentTasks.recordEvents(newTasks);
+		taskEvents.concurrentTasks.recordValue(newTasks);
 	}
 
 	public void updateScheduledTaskDuration(Runnable runnable, @Nullable Stopwatch sw) {
@@ -128,7 +133,7 @@ public final class EventloopStats {
 	public void updateScheduledTasksStats(int newTasks, @Nullable Stopwatch sw) {
 		if (sw != null)
 			durationStats.scheduledTasksTime.recordValue((int) sw.elapsed(TimeUnit.MILLISECONDS));
-		taskEvents.scheduledTasks.recordEvents(newTasks);
+		taskEvents.scheduledTasks.recordValue(newTasks);
 	}
 
 	public void recordFatalError(Throwable throwable, Object causedObject) {
@@ -146,6 +151,11 @@ public final class EventloopStats {
 
 	public void recordIoError(Throwable throwable, Object causedObject) {
 		errorStats.ioErrors.recordException(throwable, causedObject);
+	}
+
+	@JmxAttribute
+	public EventStats getLoops() {
+		return loops;
 	}
 
 	@JmxAttribute(description = "total count and smoothed rate of specified key selections " +
@@ -247,20 +257,20 @@ public final class EventloopStats {
 	}
 
 	public static final class SelectorEvents {
-		private final EventStats allSelectedKeys;
-		private final EventStats invalidKeys;
-		private final EventStats acceptKeys;
-		private final EventStats connectKeys;
-		private final EventStats readKeys;
-		private final EventStats writeKeys;
+		private final ValueStats allSelectedKeys;
+		private final ValueStats invalidKeys;
+		private final ValueStats acceptKeys;
+		private final ValueStats connectKeys;
+		private final ValueStats readKeys;
+		private final ValueStats writeKeys;
 
 		public SelectorEvents(double smoothingWindow) {
-			allSelectedKeys = EventStats.create().withSmoothingWindow(smoothingWindow);
-			invalidKeys = EventStats.create().withSmoothingWindow(smoothingWindow);
-			acceptKeys = EventStats.create().withSmoothingWindow(smoothingWindow);
-			connectKeys = EventStats.create().withSmoothingWindow(smoothingWindow);
-			readKeys = EventStats.create().withSmoothingWindow(smoothingWindow);
-			writeKeys = EventStats.create().withSmoothingWindow(smoothingWindow);
+			allSelectedKeys = ValueStats.create().withSmoothingWindow(smoothingWindow);
+			invalidKeys = ValueStats.create().withSmoothingWindow(smoothingWindow);
+			acceptKeys = ValueStats.create().withSmoothingWindow(smoothingWindow);
+			connectKeys = ValueStats.create().withSmoothingWindow(smoothingWindow);
+			readKeys = ValueStats.create().withSmoothingWindow(smoothingWindow);
+			writeKeys = ValueStats.create().withSmoothingWindow(smoothingWindow);
 		}
 
 		public void setSmoothingWindow(double smoothingWindow) {
@@ -282,45 +292,45 @@ public final class EventloopStats {
 		}
 
 		@JmxAttribute
-		public EventStats getAllSelectedKeys() {
+		public ValueStats getAllSelectedKeys() {
 			return allSelectedKeys;
 		}
 
 		@JmxAttribute
-		public EventStats getInvalidKeys() {
+		public ValueStats getInvalidKeys() {
 			return invalidKeys;
 		}
 
 		@JmxAttribute
-		public EventStats getAcceptKeys() {
+		public ValueStats getAcceptKeys() {
 			return acceptKeys;
 		}
 
 		@JmxAttribute
-		public EventStats getConnectKeys() {
+		public ValueStats getConnectKeys() {
 			return connectKeys;
 		}
 
 		@JmxAttribute
-		public EventStats getReadKeys() {
+		public ValueStats getReadKeys() {
 			return readKeys;
 		}
 
 		@JmxAttribute
-		public EventStats getWriteKeys() {
+		public ValueStats getWriteKeys() {
 			return writeKeys;
 		}
 	}
 
 	public static final class TaskEvents {
-		private final EventStats localTasks;
-		private final EventStats concurrentTasks;
-		private final EventStats scheduledTasks;
+		private final ValueStats localTasks;
+		private final ValueStats concurrentTasks;
+		private final ValueStats scheduledTasks;
 
 		public TaskEvents(double smoothingWindow) {
-			localTasks = EventStats.create().withSmoothingWindow(smoothingWindow);
-			concurrentTasks = EventStats.create().withSmoothingWindow(smoothingWindow);
-			scheduledTasks = EventStats.create().withSmoothingWindow(smoothingWindow);
+			localTasks = ValueStats.create().withSmoothingWindow(smoothingWindow);
+			concurrentTasks = ValueStats.create().withSmoothingWindow(smoothingWindow);
+			scheduledTasks = ValueStats.create().withSmoothingWindow(smoothingWindow);
 		}
 
 		public void setSmoothingWindow(double smoothingWindow) {
@@ -336,17 +346,17 @@ public final class EventloopStats {
 		}
 
 		@JmxAttribute
-		public EventStats getLocalTasks() {
+		public ValueStats getLocalTasks() {
 			return localTasks;
 		}
 
 		@JmxAttribute
-		public EventStats getConcurrentTasks() {
+		public ValueStats getConcurrentTasks() {
 			return concurrentTasks;
 		}
 
 		@JmxAttribute
-		public EventStats getScheduledTasks() {
+		public ValueStats getScheduledTasks() {
 			return scheduledTasks;
 		}
 	}

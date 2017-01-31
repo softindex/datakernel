@@ -34,7 +34,6 @@ import java.util.List;
 
 import static io.datakernel.net.ServerSocketSettings.DEFAULT_BACKLOG;
 import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.Integer.parseInt;
 import static java.util.Collections.emptyList;
 
@@ -45,12 +44,17 @@ public final class ConfigConverters {
 		return new ConfigConverterSingle<String>() {
 			@Override
 			public String fromString(String string) {
-				return checkNotNull(string);
+				return string;
+			}
+
+			@Override
+			protected String fromEmptyString() {
+				return "";
 			}
 
 			@Override
 			public String toString(String item) {
-				return checkNotNull(item);
+				return item;
 			}
 		};
 	}
@@ -214,6 +218,11 @@ public final class ConfigConverters {
 			private final char joinSeparator = separators1.charAt(0);
 
 			@Override
+			protected List<T> fromEmptyString() {
+				return Collections.emptyList();
+			}
+
+			@Override
 			protected List<T> fromString(String string) {
 				string = string.trim();
 				if (string.isEmpty())
@@ -266,10 +275,19 @@ public final class ConfigConverters {
 			public ServerSocketSettings get(Config config, ServerSocketSettings defaultValue) {
 				ServerSocketSettings result = Preconditions.checkNotNull(defaultValue);
 				result = result.withBacklog(config.get(ofInteger(), "backlog", result.getBacklog()));
-				if (config.hasValue("receiveBufferSize"))
-					result = result.withReceiveBufferSize(config.get(ofMemSize(), "receiveBufferSize"));
-				if (config.hasValue("reuseAddress"))
-					result = result.withReuseAddress(config.get(ofBoolean(), "reuseAddress"));
+
+				MemSize receiveBufferSize = config.get(ofMemSize(), "receiveBufferSize", result.hasReceiveBufferSize() ?
+						MemSize.of(result.getReceiveBufferSize()) : null);
+				if (receiveBufferSize != null) {
+					result = result.withReceiveBufferSize(receiveBufferSize);
+				}
+
+				Boolean reuseAddress = config.get(ofBoolean(), "reuseAddress", result.hasReuseAddress() ?
+						result.getReuseAddress() : null);
+				if (reuseAddress != null) {
+					result = result.withReuseAddress(reuseAddress);
+				}
+
 				return result;
 			}
 		};
@@ -285,20 +303,61 @@ public final class ConfigConverters {
 			@Override
 			public SocketSettings get(Config config, SocketSettings defaultValue) {
 				SocketSettings result = Preconditions.checkNotNull(defaultValue);
-				if (config.hasValue("receiveBufferSize"))
-					result = result.withReceiveBufferSize(config.get(ofMemSize(), "receiveBufferSize"));
-				if (config.hasValue("sendBufferSize"))
-					result = result.withSendBufferSize(config.get(ofMemSize(), "sendBufferSize"));
-				if (config.hasValue("reuseAddress"))
-					result = result.withReuseAddress(config.get(ofBoolean(), "reuseAddress"));
-				if (config.hasValue("keepAlive"))
-					result = result.withKeepAlive(config.get(ofBoolean(), "keepAlive"));
-				if (config.hasValue("tcpNoDelay"))
-					result = result.withTcpNoDelay(config.get(ofBoolean(), "tcpNoDelay"));
-				if (config.hasValue("readTimeout"))
-					result = result.withReadTimeout(config.get(ofLong(), "readTimeout"));
-				if (config.hasValue("writeTimeout"))
-					result = result.withWriteTimeout(config.get(ofLong(), "writeTimeout"));
+
+				MemSize receiveBufferSize = config.get(ofMemSize(), "receiveBufferSize", result.hasReceiveBufferSize() ?
+						MemSize.of(result.getReceiveBufferSize()) : null);
+				if (receiveBufferSize != null) {
+					result = result.withReceiveBufferSize(receiveBufferSize);
+				}
+
+				MemSize sendBufferSize = config.get(ofMemSize(), "sendBufferSize", result.hasSendBufferSize() ?
+						MemSize.of(result.getSendBufferSize()) : null);
+				if (sendBufferSize != null) {
+					result = result.withSendBufferSize(sendBufferSize);
+				}
+
+				Boolean reuseAddress = config.get(ofBoolean(), "reuseAddress", result.hasReuseAddress() ?
+						result.getReuseAddress() : null);
+				if (reuseAddress != null) {
+					result = result.withReuseAddress(reuseAddress);
+				}
+
+				Boolean keepAlive = config.get(ofBoolean(), "keepAlive", result.hasKeepAlive() ?
+						result.getKeepAlive() : null);
+				if (keepAlive != null) {
+					result = result.withKeepAlive(keepAlive);
+				}
+
+				Boolean tcpNoDelay = config.get(ofBoolean(), "tcpNoDelay", result.hasTcpNoDelay() ?
+						result.getTcpNoDelay() : null);
+				if (tcpNoDelay != null) {
+					result = result.withTcpNoDelay(tcpNoDelay);
+				}
+
+				Long implReadTimeout = config.get(ofLong(), "implReadTimeout", result.hasImplReadTimeout() ?
+						result.getImplReadTimeout() : null);
+				if (implReadTimeout != null) {
+					result = result.withImplReadTimeout(implReadTimeout);
+				}
+
+				Long implWriteTimeout = config.get(ofLong(), "implWriteTimeout", result.hasImplWriteTimeout() ?
+						result.getImplWriteTimeout() : null);
+				if (implWriteTimeout != null) {
+					result = result.withImplWriteTimeout(implWriteTimeout);
+				}
+
+				MemSize implReadSize = config.get(ofMemSize(), "implReadSize", result.hasImplReadSize() ?
+						MemSize.of(result.getImplReadSize()) : null);
+				if (implReadSize != null) {
+					result = result.withImplReadSize(implReadSize);
+				}
+
+				MemSize implWriteSize = config.get(ofMemSize(), "implWriteSize", result.hasImplWriteSize() ?
+						MemSize.of(result.getImplWriteSize()) : null);
+				if (implWriteSize != null) {
+					result = result.withImplWriteSize(implWriteSize);
+				}
+
 				return result;
 			}
 		};
@@ -314,14 +373,31 @@ public final class ConfigConverters {
 			@Override
 			public DatagramSocketSettings get(Config config, DatagramSocketSettings defaultValue) {
 				DatagramSocketSettings result = Preconditions.checkNotNull(DatagramSocketSettings.create());
-				if (config.hasValue("receiveBufferSize"))
-					result = result.withReceiveBufferSize(config.get(ofMemSize(), "receiveBufferSize"));
-				if (config.hasValue("sendBufferSize"))
-					result = result.withSendBufferSize(config.get(ofMemSize(), "sendBufferSize"));
-				if (config.hasValue("reuseAddress"))
-					result = result.withReuseAddress(config.get(ofBoolean(), "reuseAddress"));
-				if (config.hasValue("broadcast"))
-					result = result.withBroadcast(config.get(ofBoolean(), "broadcast"));
+
+				MemSize receiveBufferSize = config.get(ofMemSize(), "receiveBufferSize", result.hasReceiveBufferSize() ?
+						MemSize.of(result.getReceiveBufferSize()) : null);
+				if (receiveBufferSize != null) {
+					result = result.withReceiveBufferSize(receiveBufferSize);
+				}
+
+				MemSize sendBufferSize = config.get(ofMemSize(), "sendBufferSize", result.hasSendBufferSize() ?
+						MemSize.of(result.getSendBufferSize()) : null);
+				if (sendBufferSize != null) {
+					result = result.withSendBufferSize(sendBufferSize);
+				}
+
+				Boolean reuseAddress = config.get(ofBoolean(), "reuseAddress", result.hasReuseAddress() ?
+						result.getReuseAddress() : null);
+				if (reuseAddress != null) {
+					result = result.withReuseAddress(reuseAddress);
+				}
+
+				Boolean broadcast = config.get(ofBoolean(), "broadcast", result.hasBroadcast() ?
+						result.getBroadcast() : null);
+				if (broadcast != null) {
+					result = result.withBroadcast(broadcast);
+				}
+
 				return result;
 			}
 		};
