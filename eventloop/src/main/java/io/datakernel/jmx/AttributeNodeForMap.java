@@ -211,4 +211,9 @@ final class AttributeNodeForMap implements AttributeNode {
 	public AttributeNode rebuildWithVisible(String attrName) {
 		return new AttributeNodeForMap(name, description, true, fetcher, subNode, isMapOfJmxRefreshable);
 	}
+
+	@Override
+	public void applyModifier(String attrName, AttributeModifier<?> modifier, List<?> target) {
+		throw new UnsupportedOperationException();
+	}
 }

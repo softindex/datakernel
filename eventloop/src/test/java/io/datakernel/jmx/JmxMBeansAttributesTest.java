@@ -241,7 +241,7 @@ public class JmxMBeansAttributesTest {
 	@Test
 	public void worksProperlyWithIsGetters() throws MBeanException, AttributeNotFoundException, ReflectionException {
 		MBeanWithIsGetter mBeanWithIsGetter = new MBeanWithIsGetter();
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(mBeanWithIsGetter), MBeanSetting.defaultSettings(), false);
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(mBeanWithIsGetter), MBeanSettings.defaultSettings(), false);
 
 		MBeanInfo mBeanInfo = mbean.getMBeanInfo();
 		MBeanAttributeInfo[] attributesInfoArr = mBeanInfo.getAttributes();
@@ -265,7 +265,7 @@ public class JmxMBeansAttributesTest {
 		MBeanWithJmxAttributesOfArbitraryTypes obj =
 				new MBeanWithJmxAttributesOfArbitraryTypes(arbitraryType, date);
 
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(obj), MBeanSetting.defaultSettings(), false);
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(obj), MBeanSettings.defaultSettings(), false);
 
 		assertEquals(arbitraryType.toString(), mbean.getAttribute("arbitraryType"));
 		assertEquals(date.toString(), mbean.getAttribute("date"));
@@ -277,7 +277,7 @@ public class JmxMBeansAttributesTest {
 
 	public static DynamicMBean createDynamicMBeanFor(Object... objects) throws Exception {
 		boolean refreshEnabled = false;
-		return JmxMBeans.factory().createFor(asList(objects), MBeanSetting.defaultSettings(), refreshEnabled);
+		return JmxMBeans.factory().createFor(asList(objects), MBeanSettings.defaultSettings(), refreshEnabled);
 	}
 
 	public static Map<String, MBeanAttributeInfo> nameToAttribute(MBeanAttributeInfo[] attrs) {

@@ -214,5 +214,10 @@ final class AttributeNodeForList implements AttributeNode {
 	public AttributeNode rebuildWithVisible(String attrName) {
 		return new AttributeNodeForList(name, description, true, fetcher, subNode, isListOfJmxRefreshables);
 	}
+
+	@Override
+	public void applyModifier(String attrName, AttributeModifier<?> modifier, List<?> target) {
+		throw new UnsupportedOperationException();
+	}
 }
 

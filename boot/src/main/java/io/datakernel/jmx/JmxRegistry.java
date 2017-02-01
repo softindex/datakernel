@@ -26,6 +26,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
@@ -61,7 +62,7 @@ public final class JmxRegistry implements ConcurrentJmxMBean {
 		return this;
 	}
 
-	public void registerSingleton(Key<?> key, Object singletonInstance) {
+	public void registerSingleton(Key<?> key, Object singletonInstance, MBeanSettings settings) {
 		checkNotNull(singletonInstance);
 		checkNotNull(key);
 
@@ -69,7 +70,7 @@ public final class JmxRegistry implements ConcurrentJmxMBean {
 		Object mbean;
 		if (isJmxMBean(instanceClass)) {
 			try {
-				mbean = mbeanFactory.createFor(asList(singletonInstance), MBeanSetting.defaultSettings(), true);
+				mbean = mbeanFactory.createFor(asList(singletonInstance), settings, true);
 			} catch (Exception e) {
 				String msg = format("Instance with key %s implemetns ConcurrentJmxMBean or EventloopJmxMBean" +
 						"but exception was thrown during attempt to create DynamicMBean", key.toString());
@@ -136,7 +137,7 @@ public final class JmxRegistry implements ConcurrentJmxMBean {
 		}
 	}
 
-	public void registerWorkers(Key<?> key, List<?> poolInstances) {
+	public void registerWorkers(Key<?> key, List<?> poolInstances, MBeanSettings settings) {
 		checkNotNull(poolInstances);
 		checkNotNull(key);
 
@@ -169,13 +170,15 @@ public final class JmxRegistry implements ConcurrentJmxMBean {
 
 		// register mbeans for each worker separately
 		for (int i = 0; i < poolInstances.size(); i++) {
-			registerMBeanForWorker(poolInstances.get(i), i, commonName, key);
+			MBeanSettings settingsForOptionals = MBeanSettings.of(
+					settings.getIncludedOptionals(), new HashMap<String, AttributeModifier<?>>());
+			registerMBeanForWorker(poolInstances.get(i), i, commonName, key, settingsForOptionals);
 		}
 
 		// register aggregated mbean for pool of workers
 		DynamicMBean mbean;
 		try {
-			mbean = mbeanFactory.createFor(poolInstances, MBeanSetting.defaultSettings(), true);
+			mbean = mbeanFactory.createFor(poolInstances, settings, true);
 		} catch (Exception e) {
 			String msg = format("Cannot create DynamicMBean for aggregated MBean of pool of workers with key %s",
 					key.toString());
@@ -266,12 +269,13 @@ public final class JmxRegistry implements ConcurrentJmxMBean {
 		return true;
 	}
 
-	private void registerMBeanForWorker(Object worker, int workerId, String commonName, Key<?> key) {
+	private void registerMBeanForWorker(Object worker, int workerId, String commonName,
+	                                    Key<?> key, MBeanSettings settings) {
 		String workerName = createWorkerName(commonName, workerId);
 
 		DynamicMBean mbean;
 		try {
-			mbean = mbeanFactory.createFor(asList(worker), MBeanSetting.defaultSettings(), false);
+			mbean = mbeanFactory.createFor(asList(worker), settings, false);
 		} catch (Exception e) {
 			String msg = format("Cannot create DynamicMBean for worker " +
 					"of pool of instances with key %s", key.toString());

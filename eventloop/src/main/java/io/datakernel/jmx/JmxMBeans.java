@@ -69,7 +69,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	// endregion
 
 	@Override
-	public DynamicMBean createFor(List<?> monitorables, MBeanSetting setting, boolean enableRefresh) {
+	public DynamicMBean createFor(List<?> monitorables, MBeanSettings setting, boolean enableRefresh) {
 		checkNotNull(monitorables);
 		checkArgument(monitorables.size() > 0);
 		checkArgument(!listContainsNullValues(monitorables), "monitorable can not be null");
@@ -100,6 +100,12 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 		for (String included : setting.getIncludedOptionals()) {
 			rootNode = (AttributeNodeForPojo) rootNode.rebuildWithVisible(included);
+		}
+
+		// TODO(vmykhalko): check in JmxRegistry that modifiers are applied only once in case of workers and pool registartion
+		for (String attrName : setting.getModifiers().keySet()) {
+			AttributeModifier<?> modifier = setting.getModifiers().get(attrName);
+			rootNode.applyModifier(attrName, modifier, monitorables);
 		}
 
 		if (rootNode == null) {

@@ -122,6 +122,11 @@ final class AttributeNodeForAnyOtherType implements AttributeNode {
 	}
 
 	@Override
+	public void applyModifier(String attrName, AttributeModifier<?> modifier, List<?> target) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
 	public Set<String> getAllFlattenedAttrNames() {
 		return Collections.singleton(name);
 	}

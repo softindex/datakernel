@@ -24,7 +24,9 @@ import io.datakernel.worker.WorkerPoolModule;
 
 import java.lang.annotation.Annotation;
 import java.lang.management.ManagementFactory;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import static io.datakernel.util.Preconditions.checkArgument;
@@ -35,6 +37,8 @@ public final class JmxModule extends AbstractModule {
 
 	private final Set<Key<?>> singletonKeys = new HashSet<>();
 	private final Set<Key<?>> workerKeys = new HashSet<>();
+
+	private final Map<Key<?>, MBeanSettings> keyToSettings = new HashMap<>();
 
 	private double refreshPeriod = REFRESH_PERIOD_DEFAULT;
 	private int maxJmxRefreshesPerOneCycle = MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT;
@@ -57,11 +61,24 @@ public final class JmxModule extends AbstractModule {
 		return this;
 	}
 
-//	public JmxModule with
+	public <T> JmxModule withModifier(Key<?> key, String attrName, AttributeModifier<T> modifier) {
+		ensureSettings(key).addModifier(attrName, modifier);
+		return this;
+	}
 
-//	public <T> JmxModule withModifier(Class<?> key, String name, Modifier<T> modifier) {
-//		return this;
-//	}
+	public JmxModule withOptional(Key<?> key, String attrName) {
+		ensureSettings(key).addIncludedOptional(attrName);
+		return this;
+	}
+
+	private MBeanSettings ensureSettings(Key<?> key) {
+		MBeanSettings settings = keyToSettings.get(key);
+		if (settings == null) {
+			settings = MBeanSettings.defaultSettings();
+			keyToSettings.put(key, settings);
+		}
+		return settings;
+	}
 
 	@Override
 	protected void configure() {
@@ -123,7 +140,7 @@ public final class JmxModule extends AbstractModule {
 
 	@Provides
 	JmxRegistrator jmxRegistrator(Injector injector, JmxRegistry jmxRegistry) {
-		return JmxRegistrator.create(injector, singletonKeys, workerKeys, jmxRegistry);
+		return JmxRegistrator.create(injector, singletonKeys, workerKeys, jmxRegistry, keyToSettings);
 	}
 
 	@Provides

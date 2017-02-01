@@ -146,6 +146,11 @@ final class AttributeNodeForSimpleType implements AttributeNode {
 		return new AttributeNodeForSimpleType(name, description, true, fetcher, setter, attributeType, reducer);
 	}
 
+	@Override
+	public void applyModifier(String attrName, AttributeModifier<?> modifier, List<?> target) {
+		throw new UnsupportedOperationException();
+	}
+
 	private static SimpleType<?> simpleTypeOf(Class<?> clazz) throws IllegalArgumentException {
 		if (clazz == boolean.class || clazz == Boolean.class) {
 			return SimpleType.BOOLEAN;

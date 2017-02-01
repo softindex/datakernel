@@ -47,7 +47,7 @@ public class GenericTypesRegistrationTest {
 
 		TypeLiteral<ServiceStubOne<String>> gType = new TypeLiteral<ServiceStubOne<String>>() {};
 		Key<?> key = Key.get(gType);
-		jmxRegistry.registerSingleton(key, service);
+		jmxRegistry.registerSingleton(key, service, null);
 	}
 
 	@Test
@@ -63,7 +63,7 @@ public class GenericTypesRegistrationTest {
 		TypeLiteral<ServiceStubThree<String, Integer, Long>> gType =
 				new TypeLiteral<ServiceStubThree<String, Integer, Long>>() {};
 		Key<?> key = Key.get(gType);
-		jmxRegistry.registerSingleton(key, service);
+		jmxRegistry.registerSingleton(key, service, null);
 	}
 
 	public interface ServiceStubOneMBean {

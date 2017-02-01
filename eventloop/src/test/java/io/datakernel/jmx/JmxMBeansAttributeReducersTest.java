@@ -35,7 +35,7 @@ public class JmxMBeansAttributeReducersTest {
 	public void createdMBeanShouldUseSpecifiedReducerForAggregation() throws Exception {
 		DynamicMBean mbean = JmxMBeans.factory().createFor(
 				asList(new MBeanWithCustomReducer(200), new MBeanWithCustomReducer(350)),
-				MBeanSetting.defaultSettings(),
+				MBeanSettings.defaultSettings(),
 				false
 		);
 
@@ -77,7 +77,7 @@ public class JmxMBeansAttributeReducersTest {
 		MBeanWithPojoReducer mbean_2 = new MBeanWithPojoReducer(new PojoStub(15, "xz"));
 		DynamicMBean mbean = JmxMBeans.factory().createFor(
 				asList(mbean_1, mbean_2),
-				MBeanSetting.defaultSettings(),
+				MBeanSettings.defaultSettings(),
 				false
 		);
 

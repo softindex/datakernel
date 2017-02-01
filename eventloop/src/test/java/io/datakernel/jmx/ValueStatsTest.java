@@ -18,9 +18,11 @@ package io.datakernel.jmx;
 
 import org.junit.Test;
 
+import java.util.List;
 import java.util.Random;
 
 import static java.lang.Math.sqrt;
+import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
 public class ValueStatsTest {
@@ -120,6 +122,78 @@ public class ValueStatsTest {
 		double acceptableError = 10E-5;
 		double expectedAccumulatedSmoothedAvg = (5 + 10) / 2.0;
 		assertEquals(expectedAccumulatedSmoothedAvg, accumulator.getSmoothedAverage(), acceptableError);
+	}
+
+	@Test
+	public void itShouldBuildHistogram() {
+		ValueStats stats = ValueStats.create();
+		stats.setHistogramLevels(new int[]{5, 15, 500});
+
+		// first interval
+		stats.recordValue(2);
+		stats.recordValue(3);
+		stats.recordValue(-5);
+		stats.recordValue(0);
+
+		// second interval
+		stats.recordValue(10);
+		stats.recordValue(5);
+		stats.recordValue(14);
+
+		// no data for third interval
+
+		// fourth interval
+		stats.recordValue(600);
+		stats.recordValue(1000);
+
+		// first interval
+		for (int i = 0; i < 10; i++) {
+			stats.recordValue(1);
+		}
+
+		List<String> expected = asList(
+				"( -∞,   5)  :  14",
+				"[  5,  15)  :   3",
+				"[ 15, 500)  :   0",
+				"[500,  +∞)  :   2"
+		);
+		assertEquals(expected, stats.getHistogram());
+	}
+
+	@Test
+	public void itShouldAccumulateHistogram() {
+		ValueStats stats_1 = ValueStats.create();
+		ValueStats stats_2 = ValueStats.create();
+		stats_1.setHistogramLevels(new int[]{5, 10, 15});
+		stats_2.setHistogramLevels(new int[]{5, 10, 15});
+
+		// first interval
+		stats_1.recordValue(2);
+		stats_1.recordValue(4);
+		stats_2.recordValue(1);
+
+		// second interval
+		stats_1.recordValue(8);
+
+		// no data for third interval
+
+		// fourth interval
+		stats_2.recordValue(17);
+
+		stats_1.refresh(1L);
+		stats_2.refresh(1L);
+
+		ValueStats accumulator = ValueStats.create();
+		accumulator.add(stats_1);
+		accumulator.add(stats_2);
+
+		List<String> expected = asList(
+				"(-∞,  5)  :  3",
+				"[ 5, 10)  :  1",
+				"[10, 15)  :  0",
+				"[15, +∞)  :  1"
+		);
+		assertEquals(expected, accumulator.getHistogram());
 	}
 
 	public static int uniformRandom(int min, int max) {

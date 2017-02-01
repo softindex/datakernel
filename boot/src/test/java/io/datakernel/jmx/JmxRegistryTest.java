@@ -41,20 +41,21 @@ public class JmxRegistryTest {
 	private DynamicMBean dynamicMBean = context.mock(DynamicMBean.class);
 	private JmxRegistry jmxRegistry = JmxRegistry.create(mBeanServer, mbeanFactory);
 	private final String domain = ServiceStub.class.getPackage().getName();
+	private final MBeanSettings settings = MBeanSettings.defaultSettings();
 
 	@Test
 	public void registerSingletonInstanceWithout_Annotation_AndComposeAppropriateObjectName() throws Exception {
 		final ServiceStub service = new ServiceStub();
 
 		context.checking(new Expectations() {{
-			allowing(mbeanFactory).createFor(with(asList(service)), with(any(MBeanSetting.class)), with(true));
+			allowing(mbeanFactory).createFor(with(asList(service)), with(any(MBeanSettings.class)), with(true));
 			will(returnValue(dynamicMBean));
 
 			oneOf(mBeanServer).registerMBean(with(dynamicMBean), with(objectname(domain + ":type=ServiceStub")));
 		}});
 
 		Key<?> key_1 = Key.get(ServiceStub.class);
-		jmxRegistry.registerSingleton(key_1, service);
+		jmxRegistry.registerSingleton(key_1, service, settings);
 	}
 
 	@Test
@@ -63,7 +64,7 @@ public class JmxRegistryTest {
 		final ServiceStub service = new ServiceStub();
 
 		context.checking(new Expectations() {{
-			allowing(mbeanFactory).createFor(with(asList(service)), with(any(MBeanSetting.class)), with(true));
+			allowing(mbeanFactory).createFor(with(asList(service)), with(any(MBeanSettings.class)), with(true));
 			will(returnValue(dynamicMBean));
 
 			oneOf(mBeanServer).registerMBean(with(dynamicMBean),
@@ -72,7 +73,7 @@ public class JmxRegistryTest {
 
 		BasicService basicServiceAnnotation = createBasicServiceAnnotation();
 		Key<?> key = Key.get(ServiceStub.class, basicServiceAnnotation);
-		jmxRegistry.registerSingleton(key, service);
+		jmxRegistry.registerSingleton(key, service, settings);
 	}
 
 	@Test
@@ -81,7 +82,7 @@ public class JmxRegistryTest {
 		final ServiceStub service = new ServiceStub();
 
 		context.checking(new Expectations() {{
-			allowing(mbeanFactory).createFor(with(asList(service)), with(any(MBeanSetting.class)), with(true));
+			allowing(mbeanFactory).createFor(with(asList(service)), with(any(MBeanSettings.class)), with(true));
 			will(returnValue(dynamicMBean));
 
 			oneOf(mBeanServer).registerMBean(with(dynamicMBean), with(objectname(domain + ":Group=major")));
@@ -89,7 +90,7 @@ public class JmxRegistryTest {
 
 		Group groupAnnotation = createGroupAnnotation("major");
 		Key<?> key = Key.get(ServiceStub.class, groupAnnotation);
-		jmxRegistry.registerSingleton(key, service);
+		jmxRegistry.registerSingleton(key, service, settings);
 	}
 
 	@Test
@@ -98,7 +99,7 @@ public class JmxRegistryTest {
 		final ServiceStub service = new ServiceStub();
 
 		context.checking(new Expectations() {{
-			allowing(mbeanFactory).createFor(with(asList(service)), with(any(MBeanSetting.class)), with(true));
+			allowing(mbeanFactory).createFor(with(asList(service)), with(any(MBeanSettings.class)), with(true));
 			will(returnValue(dynamicMBean));
 
 			oneOf(mBeanServer).registerMBean(
@@ -107,7 +108,7 @@ public class JmxRegistryTest {
 
 		ComplexAnnotation complexAnnotation = createComplexAnnotation(1, "thread-one");
 		Key<?> key = Key.get(ServiceStub.class, complexAnnotation);
-		jmxRegistry.registerSingleton(key, service);
+		jmxRegistry.registerSingleton(key, service, settings);
 
 	}
 
@@ -132,18 +133,18 @@ public class JmxRegistryTest {
 
 		context.checking(new Expectations() {{
 			// creating DynamicMBeans for each worker separately
-			allowing(mbeanFactory).createFor(with(asList(worker_1)), with(any(MBeanSetting.class)), with(false));
+			allowing(mbeanFactory).createFor(with(asList(worker_1)), with(any(MBeanSettings.class)), with(false));
 			will(returnValue(dynamicMBean));
 
-			allowing(mbeanFactory).createFor(with(asList(worker_2)), with(any(MBeanSetting.class)), with(false));
+			allowing(mbeanFactory).createFor(with(asList(worker_2)), with(any(MBeanSettings.class)), with(false));
 			will(returnValue(dynamicMBean));
 
-			allowing(mbeanFactory).createFor(with(asList(worker_3)), with(any(MBeanSetting.class)), with(false));
+			allowing(mbeanFactory).createFor(with(asList(worker_3)), with(any(MBeanSettings.class)), with(false));
 			will(returnValue(dynamicMBean));
 
 			// creating DynamicMBean for worker pool
 			allowing(mbeanFactory).createFor(with(asList(worker_1, worker_2, worker_3)),
-					with(any(MBeanSetting.class)), with(true));
+					with(any(MBeanSettings.class)), with(true));
 			will(doAll());
 			will(returnValue(dynamicMBean));
 
@@ -166,7 +167,7 @@ public class JmxRegistryTest {
 
 		BasicService basicServiceAnnotation = createBasicServiceAnnotation();
 		Key<?> key = Key.get(ServiceStub.class, basicServiceAnnotation);
-		jmxRegistry.registerWorkers(key, asList(worker_1, worker_2, worker_3));
+		jmxRegistry.registerWorkers(key, asList(worker_1, worker_2, worker_3), settings);
 	}
 
 	@Test

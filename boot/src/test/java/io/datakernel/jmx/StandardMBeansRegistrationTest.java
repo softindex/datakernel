@@ -44,7 +44,7 @@ public class StandardMBeansRegistrationTest {
 		}});
 
 		Key<?> key = Key.get(ServiceStub.class);
-		jmxRegistry.registerSingleton(key, service);
+		jmxRegistry.registerSingleton(key, service, null);
 	}
 
 	@Test
@@ -57,7 +57,7 @@ public class StandardMBeansRegistrationTest {
 		}});
 
 		Key<?> key = Key.get(NonMBeanServiceImpl.class);
-		jmxRegistry.registerSingleton(key, nonMBean);
+		jmxRegistry.registerSingleton(key, nonMBean, null);
 	}
 
 	public interface ServiceStubMBean {

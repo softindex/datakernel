@@ -23,6 +23,7 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.worker.WorkerPools;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public final class JmxRegistrator {
@@ -30,33 +31,38 @@ public final class JmxRegistrator {
 	private final Set<Key<?>> singletonKeys;
 	private final Set<Key<?>> workerKeys;
 	private final JmxRegistry jmxRegistry;
+	private final Map<Key<?>, MBeanSettings> keyToSettings;
 
 	private JmxRegistrator(Injector injector,
 	                       Set<Key<?>> singletonKeys, Set<Key<?>> workerKeys,
-	                       JmxRegistry jmxRegistry) {
+	                       JmxRegistry jmxRegistry, Map<Key<?>, MBeanSettings> keyToSettings) {
 		this.injector = injector;
 		this.singletonKeys = singletonKeys;
 		this.workerKeys = workerKeys;
 		this.jmxRegistry = jmxRegistry;
+		this.keyToSettings = keyToSettings;
 	}
 
 	public static JmxRegistrator create(Injector injector,
 	                                    Set<Key<?>> singletonKeys, Set<Key<?>> workerKeys,
-	                                    JmxRegistry jmxRegistry) {return new JmxRegistrator(injector, singletonKeys, workerKeys, jmxRegistry);}
+	                                    JmxRegistry jmxRegistry, Map<Key<?>, MBeanSettings> keyToSettings) {
+		return new JmxRegistrator(injector, singletonKeys, workerKeys, jmxRegistry, keyToSettings);
+	}
 
 	public void registerJmxMBeans() {
 		// register ByteBufPool
 		Key<?> byteBufPoolKey = Key.get(ByteBufPool.ByteBufPoolStats.class);
-		jmxRegistry.registerSingleton(byteBufPoolKey, ByteBufPool.getStats());
+		jmxRegistry.registerSingleton(byteBufPoolKey, ByteBufPool.getStats(), MBeanSettings.defaultSettings());
 
 		// register CallbackRegistry
 		Key<?> callbackRegistryKey = Key.get(CallbackRegistry.class);
-		jmxRegistry.registerSingleton(callbackRegistryKey, new CallbackRegistry.CallbackRegistryStats());
+		jmxRegistry.registerSingleton(
+				callbackRegistryKey, new CallbackRegistry.CallbackRegistryStats(), MBeanSettings.defaultSettings());
 
 		// register singletons
 		for (Key<?> key : singletonKeys) {
 			Object instance = injector.getInstance(key);
-			jmxRegistry.registerSingleton(key, instance);
+			jmxRegistry.registerSingleton(key, instance, ensureSettingsFor(key));
 		}
 
 		// register workers
@@ -64,9 +70,15 @@ public final class JmxRegistrator {
 			WorkerPools workerPools = injector.getInstance(WorkerPools.class);
 			for (Key<?> key : workerKeys) {
 				List<?> objects = workerPools.getWorkerPoolObjects(key).getObjects();
-				jmxRegistry.registerWorkers(key, objects);
+				jmxRegistry.registerWorkers(key, objects, ensureSettingsFor(key));
 			}
 		}
 
+	}
+
+	private MBeanSettings ensureSettingsFor(Key<?> key) {
+		return keyToSettings.containsKey(key) ?
+				keyToSettings.get(key) :
+				MBeanSettings.defaultSettings();
 	}
 }

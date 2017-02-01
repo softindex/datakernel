@@ -159,4 +159,9 @@ final class AttributeNodeForThrowable implements AttributeNode {
 	public AttributeNode rebuildWithVisible(String attrName) {
 		return new AttributeNodeForThrowable(name, description, true, fetcher);
 	}
+
+	@Override
+	public void applyModifier(String attrName, AttributeModifier<?> modifier, List<?> target) {
+		throw new UnsupportedOperationException();
+	}
 }

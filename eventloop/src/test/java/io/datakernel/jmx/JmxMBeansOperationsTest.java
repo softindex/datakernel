@@ -38,7 +38,7 @@ public class JmxMBeansOperationsTest {
 	@Test
 	public void itShouldCollectInformationAbountJMXOperationsToMBeanInfo() throws Exception {
 		MonitorableStubWithOperations monitorable = new MonitorableStubWithOperations();
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable), MBeanSetting.defaultSettings(), false);
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable), MBeanSettings.defaultSettings(), false);
 
 		MBeanInfo mBeanInfo = mbean.getMBeanInfo();
 		MBeanOperationInfo[] operations = mBeanInfo.getOperations();
@@ -69,7 +69,7 @@ public class JmxMBeansOperationsTest {
 	@Test
 	public void itShouldInvokeAnnotanedOperationsThroughDynamicMBeanInterface() throws Exception {
 		MonitorableStubWithOperations monitorable = new MonitorableStubWithOperations();
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable), MBeanSetting.defaultSettings(), false);
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable), MBeanSettings.defaultSettings(), false);
 
 		mbean.invoke("increment", null, null);
 		mbean.invoke("increment", null, null);
@@ -89,7 +89,7 @@ public class JmxMBeansOperationsTest {
 	public void itShouldBroadcastOperationCallToAllMonitorables() throws Exception {
 		MonitorableStubWithOperations monitorable_1 = new MonitorableStubWithOperations();
 		MonitorableStubWithOperations monitorable_2 = new MonitorableStubWithOperations();
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable_1, monitorable_2), MBeanSetting.defaultSettings(), false);
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable_1, monitorable_2), MBeanSettings.defaultSettings(), false);
 
 		// set manually init value for second monitorable to be different from first
 		monitorable_2.inc();
@@ -120,7 +120,7 @@ public class JmxMBeansOperationsTest {
 	@Test
 	public void operationReturnsValueInCaseOfSingleMBeanInPool() throws Exception {
 		MBeanWithOperationThatReturnsValue mbeanOpWithValue = new MBeanWithOperationThatReturnsValue();
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(mbeanOpWithValue), MBeanSetting.defaultSettings(), false);
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(mbeanOpWithValue), MBeanSettings.defaultSettings(), false);
 
 		assertEquals(15, (int) mbean.invoke("sum", new Object[]{7, 8}, new String[]{"int", "int"}));
 	}
@@ -130,7 +130,7 @@ public class JmxMBeansOperationsTest {
 	public void operationReturnsNullInCaseOfSeveralMBeansInPool() throws Exception {
 		MBeanWithOperationThatReturnsValue mbeanOpWithValue_1 = new MBeanWithOperationThatReturnsValue();
 		MBeanWithOperationThatReturnsValue mbeanOpWithValue_2 = new MBeanWithOperationThatReturnsValue();
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(mbeanOpWithValue_1, mbeanOpWithValue_2), MBeanSetting.defaultSettings(), false);
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(mbeanOpWithValue_1, mbeanOpWithValue_2), MBeanSettings.defaultSettings(), false);
 
 		assertEquals(null, mbean.invoke("sum", new Object[]{7, 8}, new String[]{"int", "int"}));
 	}

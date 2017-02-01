@@ -44,7 +44,7 @@ public class MXBeansRegistrationTest {
 		}});
 
 		Key<?> key = Key.get(ServiceStub.class);
-		jmxRegistry.registerSingleton(key, service);
+		jmxRegistry.registerSingleton(key, service, null);
 	}
 
 	public interface ServiceStubMXBean {
@@ -72,7 +72,7 @@ public class MXBeansRegistrationTest {
 		}});
 
 		Key<?> key = Key.get(ServiceTransitiveInterface.class);
-		jmxRegistry.registerSingleton(key, service);
+		jmxRegistry.registerSingleton(key, service, null);
 	}
 
 	public interface InterfaceMXBean {
@@ -105,7 +105,7 @@ public class MXBeansRegistrationTest {
 		}});
 
 		Key<?> key = Key.get(ServiceTransitiveClass.class);
-		jmxRegistry.registerSingleton(key, service);
+		jmxRegistry.registerSingleton(key, service, null);
 	}
 
 	public abstract class TransitiveClass implements InterfaceMXBean {
@@ -134,7 +134,7 @@ public class MXBeansRegistrationTest {
 		}});
 
 		Key<?> key = Key.get(ServiceWithMXBeanInterfaceAnnotation.class);
-		jmxRegistry.registerSingleton(key, service);
+		jmxRegistry.registerSingleton(key, service, null);
 	}
 
 	@MXBean

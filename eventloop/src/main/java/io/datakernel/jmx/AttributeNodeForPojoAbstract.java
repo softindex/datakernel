@@ -248,6 +248,7 @@ abstract class AttributeNodeForPojoAbstract implements AttributeNode {
 			return recreate(subNodes, true);
 		}
 
+		// TODO(vmykhalko): refactor (extract common code)
 		String subAttrName;
 		if (name.isEmpty()) {
 			subAttrName = attrName;
@@ -277,5 +278,42 @@ abstract class AttributeNodeForPojoAbstract implements AttributeNode {
 		}
 
 		return recreate(rebuildedSubnodes, true);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public void applyModifier(String attrName, AttributeModifier<?> modifier, List<?> target) {
+		if (attrName.equals(name)) {
+			AttributeModifier attrModifierRaw = modifier;
+			List<Object> attributes = fetchInnerPojos(target);
+			for (Object attribute : attributes) {
+				attrModifierRaw.apply(attribute);
+			}
+			return;
+		}
+
+		String subAttrName;
+		if (name.isEmpty()) {
+			subAttrName = attrName;
+		} else {
+			checkArgument(attrName.contains(ATTRIBUTE_NAME_SEPARATOR));
+			int indexOfSeparator = attrName.indexOf(ATTRIBUTE_NAME_SEPARATOR);
+			subAttrName = attrName.substring(indexOfSeparator + 1, attrName.length());
+		}
+
+		for (AttributeNode subNode : subNodes) {
+			Set<String> subAttrs = subNode.getAllFlattenedAttrNames();
+			for (String subAttr : subAttrs) {
+				// TODO(vmykhalko): refactor
+				if (subAttr.startsWith(subAttrName) &&
+						(subAttr.length() == subAttrName.length() ||
+								subAttr.substring(subAttrName.length()).startsWith(ATTRIBUTE_NAME_SEPARATOR))) {
+					subNode.applyModifier(subAttrName, modifier, fetchInnerPojos(target));
+					return;
+				}
+			}
+		}
+
+		throw new RuntimeException("Cannot apply modifier. Attribute not found: " + attrName);
 	}
 }

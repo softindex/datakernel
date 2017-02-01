@@ -16,6 +16,10 @@
 
 package io.datakernel.jmx;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.Math.*;
 
 /**
@@ -47,6 +51,10 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 
 	private double smoothingWindow;
 
+	private int[] histogramLevels;
+	private int[] histogramValues;
+	private String[] histogramLabels;
+
 	// fields for aggregation
 	private int addedStats;
 
@@ -61,6 +69,44 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 
 	public ValueStats withSmoothingWindow(double smoothingWindow) {
 		return new ValueStats(smoothingWindow);
+	}
+
+	public void setHistogramLevels(int[] levels) {
+		checkArgument(levels.length > 0, "levels amount must be at least 1");
+		for (int i = 1; i < levels.length; i++) {
+			checkArgument(levels[i] > levels[i - 1], "levels must be ascending");
+		}
+
+		histogramLevels = levels;
+		histogramValues = new int[levels.length + 1];
+		histogramLabels = createHistogramLabels(levels);
+	}
+
+	private static String[] createHistogramLabels(int[] levels) {
+		int maxLevelStrLen = 0;
+		for (int level : levels) {
+			String levelStr = Integer.toString(level);
+			if (levelStr.length() > maxLevelStrLen) {
+				maxLevelStrLen = levelStr.length();
+			}
+		}
+
+		String negInf = "-∞";
+		String posInf = "+∞";
+
+		int maxLeftSymbols = Math.max(negInf.length(), maxLevelStrLen);
+		int maxRightSymbols = Math.max(posInf.length(), maxLevelStrLen);
+
+		String pattern = "%" + maxLeftSymbols + "s, %" + maxRightSymbols + "s";
+
+		List<String> labels = new ArrayList<>(levels.length + 1);
+		labels.add("(" + String.format(pattern, negInf, levels[0]) + ")");
+		for (int i = 1; i < levels.length; i++) {
+			labels.add("[" + String.format(pattern, levels[i - 1], levels[i]) + ")");
+		}
+		labels.add("[" + String.format(pattern, levels[levels.length - 1], posInf) + ")");
+
+		return labels.toArray(new String[labels.size()]);
 	}
 
 	/**
@@ -81,6 +127,12 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 		lastCount = 0;
 		lastValue = 0;
 		lastTimestampMillis = 0L;
+
+		if (histogramLevels != null) {
+			for (int i = 0; i < histogramValues.length; i++) {
+				histogramValues[i] = 0;
+			}
+		}
 	}
 
 	/**
@@ -100,6 +152,19 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 		lastSum += value;
 		lastSqr += value * value;
 		lastCount++;
+
+		if (histogramLevels != null) {
+			if (value >= histogramLevels[histogramLevels.length - 1]) {
+				histogramValues[histogramValues.length - 1]++;
+			}
+			// TODO(vmykhalko): maybe use binary search ?
+			for (int i = 0; i < histogramLevels.length; i++) {
+				if (value < histogramLevels[i]) {
+					histogramValues[i]++;
+					break;
+				}
+			}
+		}
 	}
 
 	@Override
@@ -185,6 +250,20 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 				smoothingWindow = -1;
 			}
 		}
+
+		// histogram
+		if (addedStats == 0) {
+			this.histogramLevels = anotherStats.histogramLevels;
+			this.histogramLabels = anotherStats.histogramLabels;
+			this.histogramValues = anotherStats.histogramValues;
+		} else {
+			if (this.histogramLevels != null) {
+				for (int i = 0; i < histogramValues.length; i++) {
+					histogramValues[i] += anotherStats.histogramValues[i];
+				}
+			}
+		}
+
 		addedStats++;
 	}
 
@@ -268,6 +347,30 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 	@JmxAttribute(optional = true)
 	public long getCount() {
 		return totalCount;
+	}
+
+	@JmxAttribute(optional = true)
+	public List<String> getHistogram() {
+		if (histogramLevels == null) {
+			return null;
+		}
+
+		List<String> lines = new ArrayList<>(histogramValues.length);
+
+		int maxValueStrLen = 0;
+		for (int value : histogramValues) {
+			String valueStr = Integer.toString(value);
+			if (valueStr.length() > maxValueStrLen) {
+				maxValueStrLen = valueStr.length();
+			}
+		}
+
+		String pattern = "  :  %" + maxValueStrLen + "s";
+		for (int i = 0; i < histogramValues.length; i++) {
+			lines.add(histogramLabels[i] + String.format(pattern, histogramValues[i]));
+		}
+
+		return lines;
 	}
 
 	@JmxAttribute(name = "")

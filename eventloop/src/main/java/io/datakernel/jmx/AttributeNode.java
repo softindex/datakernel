@@ -53,5 +53,5 @@ interface AttributeNode {
 
 //	AttributeNode exclude(String attrName);
 
-//	boolean applyModifier(String attrName, Modifier<?> modifier);
+	void applyModifier(String attrName, AttributeModifier<?> modifier, List<?> target);
 }
