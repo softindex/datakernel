@@ -21,8 +21,8 @@ import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.ParseException;
-import io.datakernel.exception.SimpleException;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.GzipProcessor.fromGzip;
@@ -30,8 +30,8 @@ import static io.datakernel.http.HttpHeaders.*;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
 public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
-	public static final SimpleException READ_TIMEOUT_ERROR = new SimpleException("HTTP connection read timeout");
-	public static final SimpleException WRITE_TIMEOUT_ERROR = new SimpleException("HTTP connection write timeout");
+	public static final AsyncTimeoutException READ_TIMEOUT_ERROR = new AsyncTimeoutException("HTTP connection read timeout");
+	public static final AsyncTimeoutException WRITE_TIMEOUT_ERROR = new AsyncTimeoutException("HTTP connection write timeout");
 	public static final ParseException CLOSED_CONNECTION = new ParseException("HTTP connection unexpectedly closed");
 	public static final ParseException HEADER_NAME_ABSENT = new ParseException("Header name is absent");
 	public static final ParseException TOO_BIG_HTTP_MESSAGE = new ParseException("Too big HttpMessage");

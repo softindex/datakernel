@@ -18,7 +18,7 @@ package io.datakernel.eventloop;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.exception.SimpleException;
+import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.ValueStats;
@@ -40,7 +40,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	private static final int MAX_MERGE_SIZE = 16 * 1024;
 
 	@SuppressWarnings("ThrowableInstanceNeverThrown")
-	public static final SimpleException TIMEOUT_EXCEPTION = new SimpleException("timed out");
+	public static final AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException("timed out");
 	public static final int NO_TIMEOUT = -1;
 
 	private final Eventloop eventloop;

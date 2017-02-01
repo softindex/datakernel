@@ -2,7 +2,7 @@ package io.datakernel.async;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
-import io.datakernel.exception.SimpleException;
+import io.datakernel.exception.AsyncTimeoutException;
 
 import java.util.Collection;
 import java.util.Iterator;
@@ -10,7 +10,8 @@ import java.util.Iterator;
 import static java.util.Arrays.asList;
 
 public class AsyncRunnables {
-	public static final SimpleException RUNNABLE_TIMEOUT_EXCEPTION = new SimpleException("AsyncRunnable timeout");
+	public static final AsyncTimeoutException RUNNABLE_TIMEOUT_EXCEPTION =
+			new AsyncTimeoutException("AsyncRunnable timeout");
 
 	private AsyncRunnables() {
 	}

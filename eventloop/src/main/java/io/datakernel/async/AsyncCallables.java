@@ -2,7 +2,7 @@ package io.datakernel.async;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
-import io.datakernel.exception.SimpleException;
+import io.datakernel.exception.AsyncTimeoutException;
 
 import java.util.Arrays;
 import java.util.List;
@@ -10,7 +10,7 @@ import java.util.List;
 import static java.util.Arrays.asList;
 
 public class AsyncCallables {
-	public static final SimpleException CALLABLE_TIMEOUT_EXCEPTION = new SimpleException("AsyncCallable timeout");
+	public static final AsyncTimeoutException CALLABLE_TIMEOUT_EXCEPTION = new AsyncTimeoutException("AsyncCallable timeout");
 
 	private AsyncCallables() {
 	}
