@@ -78,15 +78,19 @@ final class AttributeNodeForAnyOtherType implements AttributeNode {
 		}
 
 		Object firstPojo = notNullSources.get(0);
-		Object firstValueStringRepresentation = Objects.toString(fetcher.fetchFrom(firstPojo));
+		Object firstValue = (fetcher.fetchFrom(firstPojo));
+		if (firstValue == null) {
+			return null;
+		}
+
 		for (int i = 1; i < notNullSources.size(); i++) {
 			Object currentPojo = notNullSources.get(i);
-			Object currentValueStringRepresentation = Objects.toString(fetcher.fetchFrom(currentPojo));
-			if (!Objects.equals(firstValueStringRepresentation, currentValueStringRepresentation)) {
+			Object currentValue = Objects.toString(fetcher.fetchFrom(currentPojo));
+			if (!Objects.equals(firstPojo, currentValue)) {
 				return null;
 			}
 		}
-		return firstValueStringRepresentation.toString();
+		return firstValue.toString();
 	}
 
 	@Override

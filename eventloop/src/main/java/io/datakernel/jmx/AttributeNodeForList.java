@@ -105,12 +105,22 @@ final class AttributeNodeForList implements AttributeNode {
 			if (currentList != null) {
 				for (Object element : currentList) {
 					Map<String, Object> attributesFromElement = subNode.aggregateAllAttributes(asList(element));
+
+					// TODO(vmykhalko): refactor
+					// TODO(vmykhalko): test this case
+					if (attributesFromElement.size() > 1 && attributesFromElement.containsKey("")) {
+						checkArgument(!attributesFromElement.containsKey("default"));
+						checkArgument(((CompositeData) arrayType.getElementOpenType()).containsKey("default"));
+						attributesFromElement.put("default", attributesFromElement.get(""));
+						attributesFromElement.remove("");
+					}
+
 					attributesFromAllElements.add(attributesFromElement);
 				}
 			}
 		}
 
-		return createArrayFrom(attributesFromAllElements);
+		return attributesFromAllElements.size() > 0 ? createArrayFrom(attributesFromAllElements) : null;
 	}
 
 	private Object[] createArrayFrom(List<Map<String, Object>> attributesFromAllElements) {

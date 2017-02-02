@@ -17,7 +17,6 @@
 package io.datakernel.jmx;
 
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -27,7 +26,7 @@ public final class ExceptionStats implements JmxStats<ExceptionStats> {
 	public static final SimpleDateFormat TIMESTAMP_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 
 	private Throwable throwable;
-	private Object causeObject;
+	private Object context;
 	private int count;
 	private long lastExceptionTimestamp;
 
@@ -38,10 +37,10 @@ public final class ExceptionStats implements JmxStats<ExceptionStats> {
 		return new ExceptionStats();
 	}
 
-	public void recordException(Throwable throwable, Object causeObject) {
+	public void recordException(Throwable throwable, Object context) {
 		this.count++;
 		this.throwable = throwable;
-		this.causeObject = causeObject;
+		this.context = context;
 		this.lastExceptionTimestamp = System.currentTimeMillis();
 	}
 
@@ -52,7 +51,7 @@ public final class ExceptionStats implements JmxStats<ExceptionStats> {
 	public void resetStats() {
 		this.count = 0;
 		this.throwable = null;
-		this.causeObject = null;
+		this.context = null;
 	}
 
 	@Override
@@ -60,7 +59,7 @@ public final class ExceptionStats implements JmxStats<ExceptionStats> {
 		this.count += another.count;
 		if (another.lastExceptionTimestamp > this.lastExceptionTimestamp) {
 			this.throwable = another.throwable;
-			this.causeObject = another.causeObject;
+			this.context = another.context;
 			this.lastExceptionTimestamp = another.lastExceptionTimestamp;
 		}
 	}
@@ -70,36 +69,59 @@ public final class ExceptionStats implements JmxStats<ExceptionStats> {
 		return count;
 	}
 
-	@JmxAttribute
-	public String getLastExceptionType() {
-		return throwable != null ? throwable.getClass().getName() : "";
+	@JmxAttribute(optional = true)
+	public String getLastType() {
+		return throwable != null ? throwable.getClass().getName() : null;
 	}
 
-	@JmxAttribute
-	public String getLastExceptionTimestamp() {
-		return TIMESTAMP_FORMAT.format(new Date(lastExceptionTimestamp));
+	@JmxAttribute(optional = true)
+	public String getLastTimestamp() {
+		return lastExceptionTimestamp != 0 ? TIMESTAMP_FORMAT.format(new Date(lastExceptionTimestamp)) : null;
 	}
 
 	public Throwable getLastException() {
 		return throwable;
 	}
 
-	@JmxAttribute
-	public String getLastExceptionMessage() {
-		return throwable != null ? throwable.getMessage() : "";
+	@JmxAttribute(optional = true)
+	public String getLastMessage() {
+		return throwable != null ? throwable.getMessage() : null;
 	}
 
 	@JmxAttribute
-	public Object getLastExceptionCause() {
-		return causeObject;
+	public Object getLastContext() {
+		return context;
 	}
 
 	@JmxAttribute
-	public List<String> getLastExceptionStackTrace() {
+	public List<String> getLastStackTrace() {
 		if (throwable != null) {
 			return asList(MBeanFormat.formatException(throwable));
 		} else {
-			return new ArrayList<>();
+			return null;
 		}
+	}
+
+//	@JmxAttribute(name = "")
+//	public String getSummary() {
+//		return toString();
+//	}
+
+	@Override
+	public String toString() {
+		String last = "";
+		if (throwable != null) {
+			last = "; " + throwable.getClass().getSimpleName();
+
+			String message = throwable.getMessage();
+			if (message != null && !message.isEmpty()) {
+				last += " : " + message;
+			}
+
+			if (context != null) {
+				last += " @ " + context.toString();
+			}
+		}
+		return Integer.toString(count) + last;
 	}
 }

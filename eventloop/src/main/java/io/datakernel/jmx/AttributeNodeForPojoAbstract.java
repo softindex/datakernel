@@ -105,7 +105,11 @@ abstract class AttributeNodeForPojoAbstract implements AttributeNode {
 		for (AttributeNode subNode : subNodes) {
 			Map<String, OpenType<?>> subNodeFlattenedTypes = subNode.getVisibleFlattenedOpenTypes();
 			for (String attrName : subNodeFlattenedTypes.keySet()) {
-				itemNames.add(prefix + attrName);
+
+				// TODO(vmykhalko): refactor
+				String adjustedName = !attrName.isEmpty() ? attrName : "default";
+
+				itemNames.add(prefix + adjustedName);
 				itemTypes.add(subNodeFlattenedTypes.get(attrName));
 			}
 		}

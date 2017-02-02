@@ -56,7 +56,7 @@ public class ExceptionStatsTest {
 		Object causedObject = "cause";
 		stats.recordException(exception, causedObject);
 
-		assertEquals("msg", stats.getLastExceptionMessage());
+		assertEquals("msg", stats.getLastMessage());
 		assertEquals(1, stats.getTotal());
 	}
 

@@ -125,11 +125,27 @@ final class AttributeNodeForMap implements AttributeNode {
 		}
 
 		Map<Object, List<Object>> groupedByKey = fetchMapsAndGroupEntriesByKey(sources);
+
+		if (groupedByKey.size() == 0) {
+			return null;
+		}
+
 		TabularDataSupport tdSupport = new TabularDataSupport(tabularType);
 		for (Object key : groupedByKey.keySet()) {
 			List<Object> group = groupedByKey.get(key);
 			Map<String, Object> aggregatedGroup = subNode.aggregateAllAttributes(group);
 			try {
+
+				// TODO(vmykhalko): refactor
+				// TODO(vmykhalko): maybe handle nodes that are treated as CompositeData (inner nodes of lists and maps) in different way  ?
+				// TODO(vmykhalko): test this case
+				if (aggregatedGroup.size() > 1 && aggregatedGroup.containsKey("")) {
+					checkArgument(!aggregatedGroup.containsKey("default"));
+					checkArgument(tabularType.getRowType().containsKey("default"));
+					aggregatedGroup.put("default", aggregatedGroup.get(""));
+					aggregatedGroup.remove("");
+				}
+
 				tdSupport.put(createTabularDataRow(key.toString(), aggregatedGroup));
 			} catch (OpenDataException e) {
 				throw new RuntimeException(e);
