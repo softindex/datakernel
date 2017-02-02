@@ -30,6 +30,7 @@ import static java.lang.Math.*;
 public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 	private static final long TOO_LONG_TIME_PERIOD_BETWEEN_REFRESHES = 60 * 60 * 1000; // 1 hour
 	private static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
+	private static final double LN_2 = log(2);
 
 	private long lastTimestampMillis;
 
@@ -48,8 +49,11 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 	private double smoothedSum;
 	private double smoothedSqr;
 	private double smoothedCount;
+	private double smoothedTimeSeconds;
+	private double smoothedRate;
 
 	private double smoothingWindow;
+	private double smoothingWindowCoef;
 
 	private int[] histogramLevels;
 	private int[] histogramValues;
@@ -60,6 +64,7 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 
 	private ValueStats(double smoothingWindow) {
 		this.smoothingWindow = smoothingWindow;
+		this.smoothingWindowCoef = calculateSmoothingWindowCoef(smoothingWindow);
 		resetStats();
 	}
 
@@ -127,6 +132,8 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 		lastCount = 0;
 		lastValue = 0;
 		lastTimestampMillis = 0L;
+		smoothedRate = 0;
+		smoothedTimeSeconds = 0;
 
 		if (histogramLevels != null) {
 			for (int i = 0; i < histogramValues.length; i++) {
@@ -184,12 +191,14 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 			long timeElapsedMillis = timestamp - lastTimestampMillis;
 
 			if (isTimePeriodValid(timeElapsedMillis)) {
-				double windowE = smoothingWindow * 1000.0 / log(2);
-				double weight = exp(-(timeElapsedMillis) / windowE);
+				double timeElapsedSeconds = timeElapsedMillis * 0.001;
+				double smoothingFactor = exp(timeElapsedSeconds * smoothingWindowCoef);
 
-				smoothedSum = lastSum + smoothedSum * weight;
-				smoothedSqr = lastSqr + smoothedSqr * weight;
-				smoothedCount = lastCount + smoothedCount * weight;
+				smoothedSum = lastSum + smoothedSum * smoothingFactor;
+				smoothedSqr = lastSqr + smoothedSqr * smoothingFactor;
+				smoothedCount = lastCount + smoothedCount * smoothingFactor;
+				smoothedTimeSeconds = timeElapsedSeconds + smoothedTimeSeconds * smoothingFactor;
+				smoothedRate = smoothedCount / smoothedTimeSeconds;
 
 				totalSum += lastSum;
 				totalCount += lastCount;
@@ -227,6 +236,7 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 		smoothedSum += anotherStats.smoothedSum;
 		smoothedSqr += anotherStats.smoothedSqr;
 		smoothedCount += anotherStats.smoothedCount;
+		smoothedRate += anotherStats.smoothedRate;
 
 		totalSum += anotherStats.totalSum;
 		totalCount += anotherStats.totalCount;
@@ -244,10 +254,12 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 
 		if (addedStats == 0) {
 			smoothingWindow = anotherStats.smoothingWindow;
+			smoothingWindowCoef = anotherStats.smoothingWindowCoef;
 		} else {
 			// all stats should have same smoothing window, -1 means smoothing windows differ in stats, which is error
 			if (smoothingWindow != anotherStats.smoothingWindow) {
 				smoothingWindow = -1;
+				smoothingWindowCoef = calculateSmoothingWindowCoef(smoothingWindow);
 			}
 		}
 
@@ -265,6 +277,10 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 		}
 
 		addedStats++;
+	}
+
+	private static double calculateSmoothingWindowCoef(double smoothingWindow) {
+		return -(LN_2 / smoothingWindow);
 	}
 
 	/**
@@ -335,6 +351,11 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 	}
 
 	@JmxAttribute(optional = true)
+	public double getSmoothedRate() {
+		return smoothedRate;
+	}
+
+	@JmxAttribute(optional = true)
 	public double getSmoothingWindow() {
 		return smoothingWindow;
 	}
@@ -342,6 +363,7 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 	@JmxAttribute
 	public void setSmoothingWindow(double smoothingWindow) {
 		this.smoothingWindow = smoothingWindow;
+		this.smoothingWindowCoef = calculateSmoothingWindowCoef(smoothingWindowCoef);
 	}
 
 	@JmxAttribute(optional = true)
@@ -380,7 +402,8 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 
 	@Override
 	public String toString() {
-		return String.format("%.2f±%.3f [%d..%d]  last: %d",
-				getSmoothedAverage(), getSmoothedStandardDeviation(), getTotalMin(), getTotalMax(), getLastValue());
+		return String.format("%.2f±%.3f [%d..%d]  last: %d  values: %d @ %.3f/s",
+				getSmoothedAverage(), getSmoothedStandardDeviation(), getTotalMin(), getTotalMax(), getLastValue(),
+				getCount(), getSmoothedRate());
 	}
 }

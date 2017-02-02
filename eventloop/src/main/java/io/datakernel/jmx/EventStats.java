@@ -38,6 +38,7 @@ public final class EventStats implements JmxRefreshableStats<EventStats> {
 	private double smoothedRate;
 
 	private double smoothingWindow;
+	private double smoothingWindowCoef;
 
 	// fields for aggregation
 	private int addedStats;
@@ -45,6 +46,7 @@ public final class EventStats implements JmxRefreshableStats<EventStats> {
 	// region builders
 	private EventStats(double smoothingWindow) {
 		this.smoothingWindow = smoothingWindow;
+		this.smoothingWindowCoef = calculateSmoothingWindowCoef(smoothingWindow);
 	}
 
 	public static EventStats create() {
@@ -55,6 +57,10 @@ public final class EventStats implements JmxRefreshableStats<EventStats> {
 		return new EventStats(smoothingWindow);
 	}
 	// endregion
+
+	private static double calculateSmoothingWindowCoef(double smoothingWindow) {
+		return -(LN_2 / smoothingWindow);
+	}
 
 	/**
 	 * Resets rate to zero
@@ -90,12 +96,10 @@ public final class EventStats implements JmxRefreshableStats<EventStats> {
 
 		if (isTimePeriodValid(timeElapsedMillis)) {
 
-			double timeElapsedSeconds = timeElapsedMillis / 1000.0;
-			double smoothingFactor = exp(-(timeElapsedSeconds / smoothingWindow) * LN_2);
+			double timeElapsedSeconds = timeElapsedMillis * 0.001;
+			double smoothingFactor = exp(timeElapsedSeconds * smoothingWindowCoef);
 			smoothedCount = lastCount + smoothedCount * smoothingFactor;
-			smoothedTimeSeconds =
-					timeElapsedSeconds + smoothedTimeSeconds * smoothingFactor;
-
+			smoothedTimeSeconds = timeElapsedSeconds + smoothedTimeSeconds * smoothingFactor;
 			smoothedRate = smoothedCount / smoothedTimeSeconds;
 		} else {
 			// skip stats of last time period
@@ -118,10 +122,12 @@ public final class EventStats implements JmxRefreshableStats<EventStats> {
 
 		if (addedStats == 0) {
 			smoothingWindow = anotherStats.smoothingWindow;
+			smoothingWindowCoef = anotherStats.smoothingWindowCoef;
 		} else {
 			// all stats should have same smoothing window, -1 means smoothing windows differ in stats, which is error
 			if (smoothingWindow != anotherStats.smoothingWindow) {
 				smoothingWindow = -1;
+				smoothingWindowCoef = calculateSmoothingWindowCoef(smoothingWindow);
 			}
 		}
 		addedStats++;
@@ -157,6 +163,7 @@ public final class EventStats implements JmxRefreshableStats<EventStats> {
 	@JmxAttribute(optional = true)
 	public void setSmoothingWindow(double smoothingWindow) {
 		this.smoothingWindow = smoothingWindow;
+		this.smoothingWindowCoef = calculateSmoothingWindowCoef(smoothingWindow);
 	}
 
 	@JmxAttribute(name = "")
