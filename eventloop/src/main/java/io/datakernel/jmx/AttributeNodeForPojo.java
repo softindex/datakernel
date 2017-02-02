@@ -55,6 +55,7 @@ final class AttributeNodeForPojo extends AttributeNodeForPojoAbstract {
 
 		AttributeNode appropriateSubNode = fullNameToNode.get(attrName);
 
+		// TODO(vmykhalko): refactor - extract common code
 		if (name.isEmpty()) {
 			return appropriateSubNode.aggregateAttribute(attrName, fetchInnerPojos(notNullSources));
 		} else {

@@ -53,6 +53,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	private static final JmxMBeans INSTANCE_WITH_DEFAULT_REFRESH_PERIOD
 			= new JmxMBeans(DEFAULT_REFRESH_PERIOD_IN_SECONDS, MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT);
 
+	private static final long CACHE_EXPIRATION_PERIOD_MILLIS = 200;
+
 	// region constructor and factory methods
 	private JmxMBeans(double refreshPeriod, int maxJmxRefreshesPerOneCycle) {
 		this.specifiedRefreshPeriod = secondsToMillis(refreshPeriod);
@@ -282,11 +284,11 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				if (isJmxRefreshableStats(returnClass)) {
 					return new AttributeNodeForJmxRefreshableStats(attrName, attrDescription, included, defaultFetcher,
 							(Class<? extends JmxRefreshableStats<?>>) returnClass,
-							subNodes);
+							subNodes, createCache());
 				} else {
 					return new AttributeNodeForJmxStats(attrName, attrDescription, included, defaultFetcher,
 							(Class<? extends JmxStats<?>>) returnClass,
-							subNodes);
+							subNodes, createCache());
 				}
 
 			} else {
@@ -311,7 +313,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 						return new AttributeNodeForPojo(attrName, attrDescription, included, defaultFetcher, subNodes);
 					} else {
 						return new AttributeNodeForPojoWithReducer(attrName, attrDescription, included,
-								defaultFetcher, reducer, subNodes);
+								defaultFetcher, reducer, subNodes, createCache());
 					}
 				}
 			}
@@ -322,6 +324,10 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		} else {
 			throw new RuntimeException();
 		}
+	}
+
+	private static Cache<Map<String, Object>> createCache() {
+		return new CacheBasic<>(CACHE_EXPIRATION_PERIOD_MILLIS);
 	}
 
 	private static JmxReducer<?> fetchReducerFrom(Method getter) throws IllegalAccessException, InstantiationException {
@@ -584,11 +590,6 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	}
 
 	private static String createDescription(String name, Map<String, String> groupDescriptions) {
-		// TODO(vmykhalko): remove debug code
-		if (groupDescriptions == null) {
-			System.out.println("wtf");
-		}
-
 		if (groupDescriptions.isEmpty()) {
 			return name;
 		}

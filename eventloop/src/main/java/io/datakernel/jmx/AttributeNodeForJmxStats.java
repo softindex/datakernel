@@ -17,15 +17,20 @@
 package io.datakernel.jmx;
 
 import java.util.List;
+import java.util.Map;
 
 final class AttributeNodeForJmxStats extends AttributeNodeForJmxStatsAbstract {
+	// TODO(vmykhalko): refactor: this class uses fields only for recreate(), maybe they should be passed in recreate method too?
 	private final Class<? extends JmxStats<?>> jmxStatsClass;
+	private final Cache<Map<String, Object>> cache;
 
 	public AttributeNodeForJmxStats(String name, String description, boolean included,
 	                                ValueFetcher fetcher, Class<? extends JmxStats<?>> jmxStatsClass,
-	                                List<? extends AttributeNode> subNodes) {
-		super(name, description, included, fetcher, jmxStatsClass, subNodes);
+	                                List<? extends AttributeNode> subNodes,
+	                                Cache<Map<String, Object>> cache) {
+		super(name, description, included, fetcher, jmxStatsClass, subNodes, cache);
 		this.jmxStatsClass = jmxStatsClass;
+		this.cache = cache;
 	}
 
 	@Override
@@ -35,6 +40,6 @@ final class AttributeNodeForJmxStats extends AttributeNodeForJmxStatsAbstract {
 
 	@Override
 	protected AttributeNode recreate(List<? extends AttributeNode> subNodes, boolean visible) {
-		return new AttributeNodeForJmxStats(name, description, visible, fetcher, jmxStatsClass, subNodes);
+		return new AttributeNodeForJmxStats(name, description, visible, fetcher, jmxStatsClass, subNodes, cache);
 	}
 }

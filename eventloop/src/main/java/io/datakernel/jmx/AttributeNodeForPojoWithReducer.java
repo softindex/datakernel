@@ -22,19 +22,23 @@ import java.util.List;
 import java.util.Map;
 
 import static io.datakernel.jmx.Utils.filterNulls;
+import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Arrays.asList;
 
 final class AttributeNodeForPojoWithReducer extends AttributeNodeForPojoAbstract {
 	private final JmxReducer reducer;
 	private final List<? extends AttributeNode> subNodes;
+	private final Cache<Map<String, Object>> cache;
 
 	public AttributeNodeForPojoWithReducer(String name, String description, boolean visible, ValueFetcher fetcher,
-	                                       JmxReducer reducer, List<? extends AttributeNode> subNodes) {
+	                                       JmxReducer reducer, List<? extends AttributeNode> subNodes,
+	                                       Cache<Map<String, Object>> cache) {
 		super(name, description, visible, fetcher, subNodes);
 
 		this.reducer = checkNotNull(reducer);
 		this.subNodes = subNodes;
+		this.cache = cache;
 	}
 
 	@Override
@@ -71,10 +75,31 @@ final class AttributeNodeForPojoWithReducer extends AttributeNodeForPojoAbstract
 			return null;
 		}
 
+		if (notNullSources.size() == 1) {
+			// TODO(vmykhalko): refactor - extract common code
+			AttributeNode appropriateSubNode = fullNameToNode.get(attrName);
+			if (name.isEmpty()) {
+				return appropriateSubNode.aggregateAttribute(attrName, fetchInnerPojos(notNullSources));
+			} else {
+				checkArgument(attrName.contains(ATTRIBUTE_NAME_SEPARATOR));
+				int indexOfSeparator = attrName.indexOf(ATTRIBUTE_NAME_SEPARATOR);
+				String subAttrName = attrName.substring(indexOfSeparator + 1, attrName.length());
+				return appropriateSubNode.aggregateAttribute(subAttrName, fetchInnerPojos(notNullSources));
+			}
+		}
+
+		// TODO(vmykhalko): extract common code from pojo with reducer and jmx stats (maybe implicitly convert JmxStats into JmxReducer)
+		if (!cache.isExpired()) {
+			return cache.getValue().get(attrName);
+		}
+
 		Map<String, Object> allAttrs = aggregateAllAttributes(sources);
 		if (!allAttrs.containsKey(attrName)) {
 			throw new IllegalArgumentException("There is no attribute with name: " + attrName);
 		}
+
+		cache.update(allAttrs);
+
 		return allAttrs.get(attrName);
 	}
 
@@ -86,6 +111,6 @@ final class AttributeNodeForPojoWithReducer extends AttributeNodeForPojoAbstract
 
 	@Override
 	protected AttributeNode recreate(List<? extends AttributeNode> subNodes, boolean visible) {
-		return new AttributeNodeForPojoWithReducer(name, description, visible, fetcher, reducer, subNodes);
+		return new AttributeNodeForPojoWithReducer(name, description, visible, fetcher, reducer, subNodes, cache);
 	}
 }
