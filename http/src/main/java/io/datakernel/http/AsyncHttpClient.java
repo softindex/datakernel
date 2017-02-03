@@ -28,7 +28,6 @@ import io.datakernel.net.SocketSettings;
 import io.datakernel.util.MemSize;
 
 import javax.net.ssl.SSLContext;
-import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
@@ -317,7 +316,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 			@Override
 			public void onResult(InetAddress[] inetAddresses) {
 				if (inspector != null) inspector.onResolve(request, inetAddresses);
-				getUrlForHostAsync(request, inetAddresses, callback);
+				doSend(request, inetAddresses, callback);
 			}
 
 			@Override
@@ -328,15 +327,9 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		});
 	}
 
-	private void getUrlForHostAsync(final HttpRequest request, final InetAddress[] inetAddresses,
-	                                final ResultCallback<HttpResponse> callback) {
-		String host = request.getUrl().getHost();
+	private void doSend(final HttpRequest request, final InetAddress[] inetAddresses,
+	                    final ResultCallback<HttpResponse> callback) {
 		final InetAddress inetAddress = inetAddresses[((inetAddressIdx++) & Integer.MAX_VALUE) % inetAddresses.length];
-		if (!isValidHost(host, inetAddress)) {
-			callback.setException(new IOException("Invalid IP address " + inetAddress + " for host " + host));
-			return;
-		}
-
 		final InetSocketAddress address = new InetSocketAddress(inetAddress, request.getUrl().getPort());
 
 		HttpClientConnection connection = takeKeepAliveConnection(address);
@@ -379,16 +372,6 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 				return "ConnectCallback for address: " + address.toString();
 			}
 		});
-	}
-
-	private static boolean isValidHost(String host, InetAddress inetAddress) {
-		byte[] addressBytes = inetAddress.getAddress();
-		if (addressBytes == null || addressBytes.length != 4)
-			return false;
-		// 0.0.0.*
-		if (addressBytes[0] == 0 && addressBytes[1] == 0 && addressBytes[2] == 0)
-			return false;
-		return true;
 	}
 
 	@Override
