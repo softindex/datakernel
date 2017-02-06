@@ -271,22 +271,29 @@ public final class ServiceGraphModule extends AbstractModule {
 		}
 		ServiceAdapter<?> serviceAdapter = keys.get(key);
 		if (serviceAdapter == null) {
-			Class<?> foundRegisteredClass = null;
+			List<Class<?>> foundRegisteredClasses = new ArrayList<>();
+			l1:
 			for (Map.Entry<Class<?>, ServiceAdapter<?>> entry : registeredServiceAdapters.entrySet()) {
 				Class<?> registeredClass = entry.getKey();
 				if (registeredClass.isAssignableFrom(instance.getClass())) {
-					if (foundRegisteredClass == null) {
-						foundRegisteredClass = registeredClass;
-					} else if (foundRegisteredClass.isAssignableFrom(registeredClass)) {
-						foundRegisteredClass = registeredClass;
-					} else if (!registeredClass.isAssignableFrom(foundRegisteredClass)) {
-						throw new IllegalArgumentException("Instance class " + instance.getClass() +
-								" implements unrelated services: " + registeredClass + " and " + foundRegisteredClass);
+					Iterator<Class<?>> iterator = foundRegisteredClasses.iterator();
+					while (iterator.hasNext()) {
+						Class<?> foundRegisteredClass = iterator.next();
+						if (registeredClass.isAssignableFrom(foundRegisteredClass))
+							continue l1;
+						if (foundRegisteredClass.isAssignableFrom(registeredClass))
+							iterator.remove();
 					}
+					foundRegisteredClasses.add(registeredClass);
 				}
 			}
-			if (foundRegisteredClass != null) {
-				serviceAdapter = registeredServiceAdapters.get(foundRegisteredClass);
+
+			if (foundRegisteredClasses.size() == 1) {
+				serviceAdapter = registeredServiceAdapters.get(foundRegisteredClasses.get(0));
+			}
+			if (foundRegisteredClasses.size() > 1) {
+				throw new IllegalArgumentException("Ambiguous services found for " + instance.getClass() +
+						" : " + foundRegisteredClasses + ". Use register() methods to specify service.");
 			}
 		}
 		if (serviceAdapter != null) {

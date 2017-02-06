@@ -33,7 +33,7 @@ public final class WorkerPoolModule extends AbstractModule {
 			}
 
 			public Boolean visitScopeAnnotation(Class<? extends Annotation> visitedAnnotation) {
-				return visitedAnnotation == WorkerScope.class || visitedAnnotation == Worker.class;
+				return visitedAnnotation == Worker.class;
 			}
 
 			public Boolean visitScope(Scope visitedScope) {
@@ -65,7 +65,6 @@ public final class WorkerPoolModule extends AbstractModule {
 			}
 		});
 
-		bindScope(WorkerScope.class, workerPoolScope);
 		bindScope(Worker.class, workerPoolScope);
 		bind(Integer.class).annotatedWith(WorkerId.class).toProvider(new Provider<Integer>() {
 			@Override
