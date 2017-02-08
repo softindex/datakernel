@@ -320,7 +320,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		final Eventloop workerServerEventloop = workerServer.getEventloop();
 
 		if (workerServerEventloop == this.eventloop) {
-			doAccept(socketChannel, localAddress, remoteAddress, ssl, socketSettings);
+			workerServer.doAccept(socketChannel, localAddress, remoteAddress, ssl, socketSettings);
 		} else {
 			onAccept(socketChannel, localAddress, remoteAddress, ssl);
 			workerServerEventloop.execute(new Runnable() {

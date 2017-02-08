@@ -187,6 +187,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 	private int inetAddressIdx = 0;
 
+	// region builders
 	private AsyncHttpClient(Eventloop eventloop, IAsyncDnsClient asyncDnsClient) {
 		this.eventloop = eventloop;
 		this.asyncDnsClient = asyncDnsClient;
@@ -250,6 +251,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		this.inspector = inspector;
 		return this;
 	}
+	// endregion
 
 	private void scheduleExpiredConnectionsCheck() {
 		assert expiredConnectionsCheck == null;
@@ -409,6 +411,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		}
 	}
 
+	// region jmx
 	@JmxAttribute(description = "current number of connections", reducer = JmxReducers.JmxReducerSum.class)
 	public int getConnectionsCount() {
 		return connectionsCount;
@@ -462,5 +465,6 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	public JmxInspector getStats() {
 		return (inspector instanceof JmxInspector ? (JmxInspector) inspector : null);
 	}
+	// endregion
 
 }
