@@ -17,10 +17,12 @@
 package io.datakernel.jmx;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.Math.*;
+import static java.util.Arrays.asList;
 
 /**
  * Counts added values and computes dynamic average using exponential smoothing algorithm
@@ -31,6 +33,35 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 	private static final long TOO_LONG_TIME_PERIOD_BETWEEN_REFRESHES = 60 * 60 * 1000; // 1 hour
 	private static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
 	private static final double LN_2 = log(2);
+
+	// region standard levels
+	public static final int[] POWERS_OF_TWO =
+			new int[]{
+					0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072,
+					262144, 524288, 1048576, 2097152, 4194304, 8388608, 16777216, 33554432, 67108864, 134217728,
+					268435456, 536870912, 1073741824
+			};
+
+	public static final int[] POWERS_OF_TEN =
+			new int[]{
+					0, 1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000
+			};
+
+	public static final int[] POWERS_OF_TEN_SEMI_LINEAR =
+			new int[]{
+					0,
+					1, 2, 3, 4, 5, 6, 7, 8, 9,
+					10, 20, 30, 40, 50, 60, 70, 80, 90,
+					100, 200, 300, 400, 500, 600, 700, 800, 900,
+					1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000,
+					10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000, 90000,
+					100000, 200000, 300000, 400000, 500000, 600000, 700000, 800000, 900000,
+					1000000, 2000000, 3000000, 4000000, 5000000, 6000000, 7000000, 8000000, 9000000,
+					10000000, 20000000, 30000000, 40000000, 50000000, 60000000, 70000000, 80000000, 90000000,
+					100000000, 200000000, 300000000, 400000000, 500000000, 600000000, 700000000, 800000000, 900000000,
+					1000000000, 2000000000
+			};
+	// endregion
 
 	private long lastTimestampMillis;
 
@@ -57,14 +88,12 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 
 	private int[] histogramLevels;
 	private int[] histogramValues;
-	private String[] histogramLabels;
 
 	// fields for aggregation
 	private int addedStats;
 
 	private ValueStats(double smoothingWindow) {
-		this.smoothingWindow = smoothingWindow;
-		this.smoothingWindowCoef = calculateSmoothingWindowCoef(smoothingWindow);
+		setSmoothingWindow(smoothingWindow);
 		resetStats();
 	}
 
@@ -73,7 +102,13 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 	}
 
 	public ValueStats withSmoothingWindow(double smoothingWindow) {
-		return new ValueStats(smoothingWindow);
+		setSmoothingWindow(smoothingWindow);
+		return this;
+	}
+
+	public ValueStats withHistogram(int[] levels) {
+		setHistogramLevels(levels);
+		return this;
 	}
 
 	public void setHistogramLevels(int[] levels) {
@@ -84,34 +119,6 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 
 		histogramLevels = levels;
 		histogramValues = new int[levels.length + 1];
-		histogramLabels = createHistogramLabels(levels);
-	}
-
-	private static String[] createHistogramLabels(int[] levels) {
-		int maxLevelStrLen = 0;
-		for (int level : levels) {
-			String levelStr = Integer.toString(level);
-			if (levelStr.length() > maxLevelStrLen) {
-				maxLevelStrLen = levelStr.length();
-			}
-		}
-
-		String negInf = "-∞";
-		String posInf = "+∞";
-
-		int maxLeftSymbols = Math.max(negInf.length(), maxLevelStrLen);
-		int maxRightSymbols = Math.max(posInf.length(), maxLevelStrLen);
-
-		String pattern = "%" + maxLeftSymbols + "s, %" + maxRightSymbols + "s";
-
-		List<String> labels = new ArrayList<>(levels.length + 1);
-		labels.add("(" + String.format(pattern, negInf, levels[0]) + ")");
-		for (int i = 1; i < levels.length; i++) {
-			labels.add("[" + String.format(pattern, levels[i - 1], levels[i]) + ")");
-		}
-		labels.add("[" + String.format(pattern, levels[levels.length - 1], posInf) + ")");
-
-		return labels.toArray(new String[labels.size()]);
 	}
 
 	/**
@@ -161,17 +168,38 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 		lastCount++;
 
 		if (histogramLevels != null) {
-			if (value >= histogramLevels[histogramLevels.length - 1]) {
-				histogramValues[histogramValues.length - 1]++;
+			addToHistogram(value);
+		}
+	}
+
+	private void addToHistogram(int value) {
+		if (value >= histogramLevels[histogramLevels.length - 1]) {
+			histogramValues[histogramValues.length - 1]++;
+		} else {
+			int bucketIndex = binarySearch(histogramLevels, value);
+			histogramValues[bucketIndex]++;
+		}
+	}
+
+	// return index of smallest element that is greater than "value"
+	static int binarySearch(int[] arr, int value) {
+		int found = 0;
+		int left = 0;
+		int right = arr.length - 1;
+		while (left < right) {
+			if (right - left == 1) {
+				found = value < arr[left] ? left : right;
+				break;
 			}
-			// TODO(vmykhalko): maybe use binary search ?
-			for (int i = 0; i < histogramLevels.length; i++) {
-				if (value < histogramLevels[i]) {
-					histogramValues[i]++;
-					break;
-				}
+
+			int middle = left + (right - left) / 2;
+			if (value < arr[middle]) {
+				right = middle;
+			} else {
+				left = middle;
 			}
 		}
+		return found;
 	}
 
 	@Override
@@ -265,9 +293,10 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 
 		// histogram
 		if (addedStats == 0) {
-			this.histogramLevels = anotherStats.histogramLevels;
-			this.histogramLabels = anotherStats.histogramLabels;
-			this.histogramValues = anotherStats.histogramValues;
+			if (anotherStats.histogramLevels != null) {
+				this.histogramLevels = Arrays.copyOf(anotherStats.histogramLevels, anotherStats.histogramLevels.length);
+				this.histogramValues = Arrays.copyOf(anotherStats.histogramValues, anotherStats.histogramValues.length);
+			}
 		} else {
 			if (this.histogramLevels != null) {
 				for (int i = 0; i < histogramValues.length; i++) {
@@ -377,7 +406,16 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 			return null;
 		}
 
-		List<String> lines = new ArrayList<>(histogramValues.length);
+		if (!histogramContainsValues()) {
+			return null;
+		}
+
+		int left = findLeftHistogramLimit();
+		int right = findRightHistogramLimit();
+
+		String[] lines = new String[right - left + 1];
+		String[] labels = createHistogramLabels(histogramLevels, left, right - 1);
+		int[] values = Arrays.copyOfRange(histogramValues, left, right + 1);
 
 		int maxValueStrLen = 0;
 		for (int value : histogramValues) {
@@ -388,11 +426,76 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 		}
 
 		String pattern = "  :  %" + maxValueStrLen + "s";
-		for (int i = 0; i < histogramValues.length; i++) {
-			lines.add(histogramLabels[i] + String.format(pattern, histogramValues[i]));
+		for (int i = 0; i < values.length; i++) {
+			lines[i] = labels[i] + String.format(pattern, values[i]);
 		}
 
-		return lines;
+		return asList(lines);
+	}
+
+	private boolean histogramContainsValues() {
+		if (histogramValues == null) {
+			return false;
+		}
+
+		for (int value : histogramValues) {
+			if (value != 0) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private int findLeftHistogramLimit() {
+		int left = 0;
+		for (int i = 0; i < histogramValues.length; i++) {
+			if (histogramValues[i] != 0) {
+				left = i;
+				break;
+			}
+		}
+		left = left > 0 ? left - 1 : left;
+		return left;
+	}
+
+	private int findRightHistogramLimit() {
+		int right = histogramValues.length - 1;
+		for (int i = histogramValues.length - 1; i >= 0; i--) {
+			if (histogramValues[i] != 0) {
+				right = i;
+				break;
+			}
+		}
+		right = right < histogramValues.length - 1 ? right + 1 : right;
+		return right;
+	}
+
+	private static String[] createHistogramLabels(int[] levels, int left, int right) {
+		int maxLevelStrLen = 0;
+		for (int i = left; i <= right; i++) {
+			String levelStr = Integer.toString(levels[i]);
+			if (levelStr.length() > maxLevelStrLen) {
+				maxLevelStrLen = levelStr.length();
+			}
+		}
+
+		String negInf = "-∞";
+		String posInf = "+∞";
+
+		int maxLeftSymbols = Math.max(negInf.length(), maxLevelStrLen);
+		int maxRightSymbols = Math.max(posInf.length(), maxLevelStrLen);
+
+		String pattern = "%" + maxLeftSymbols + "s, %" + maxRightSymbols + "s";
+
+		List<String> labels = new ArrayList<>(right - left + 1 + 2);
+		labels.add("(" + String.format(pattern, negInf, levels[left]) + ")");
+		for (int i = left + 1; i <= right; i++) {
+			labels.add("[" + String.format(pattern, levels[i - 1], levels[i]) + ")");
+		}
+		labels.add("[" + String.format(pattern, levels[right], posInf) + ")");
+
+		return labels.toArray(new String[labels.size()]);
 	}
 
 	@JmxAttribute(name = "")

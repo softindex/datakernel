@@ -20,10 +20,12 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.jmx.*;
 import io.datakernel.util.Stopwatch;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import static java.util.Arrays.asList;
+import static io.datakernel.jmx.ValueStats.POWERS_OF_TEN;
 
 public final class EventloopStats {
 	private final EventStats loops;
@@ -36,8 +38,6 @@ public final class EventloopStats {
 	private final DurationRunnable longestConcurrentTask;
 	private final DurationRunnable longestScheduledTask;
 
-	private final BusinessLogicTimeHistogram businessLogicTimeHistogram;
-
 	private EventloopStats(double smoothingWindow) {
 		loops = EventStats.create().withSmoothingWindow(smoothingWindow);
 		selectorEvents = new SelectorEvents(smoothingWindow);
@@ -48,8 +48,6 @@ public final class EventloopStats {
 		longestConcurrentTask = new DurationRunnable();
 		longestScheduledTask = new DurationRunnable();
 		longestLocalTask = new DurationRunnable();
-
-		businessLogicTimeHistogram = new BusinessLogicTimeHistogram();
 	}
 
 	public static EventloopStats create(double smoothingWindow) {return new EventloopStats(smoothingWindow);}
@@ -75,7 +73,6 @@ public final class EventloopStats {
 	public void updateBusinessLogicTime(long businessLogicTime) {
 		loops.recordEvent();
 		this.durationStats.businessLogicTime.recordValue((int) businessLogicTime);
-		businessLogicTimeHistogram.update(businessLogicTime);
 	}
 
 	public void updateSelectorSelectTime(long selectorSelectTime) {
@@ -193,11 +190,6 @@ public final class EventloopStats {
 	@JmxAttribute(description = "scheduled task with longest duration (in microseconds)")
 	public DurationRunnable getLongestScheduledTask() {
 		return longestScheduledTask;
-	}
-
-	@JmxAttribute(name = "")
-	public BusinessLogicTimeHistogram getBusinessLogicTimeHistogram() {
-		return businessLogicTimeHistogram;
 	}
 
 	public static final class DurationRunnable implements JmxStats<DurationRunnable> {
@@ -403,7 +395,7 @@ public final class EventloopStats {
 
 		public DurationStats(double smoothingWindow) {
 			selectorSelectTime = ValueStats.create().withSmoothingWindow(smoothingWindow);
-			businessLogicTime = ValueStats.create().withSmoothingWindow(smoothingWindow);
+			businessLogicTime = ValueStats.create().withSmoothingWindow(smoothingWindow).withHistogram(POWERS_OF_TEN);
 
 			selectedKeysTime = ValueStats.create().withSmoothingWindow(smoothingWindow);
 			localTasksTime = ValueStats.create().withSmoothingWindow(smoothingWindow);
@@ -449,7 +441,8 @@ public final class EventloopStats {
 		}
 
 		@JmxAttribute(description = "duration of all localTasks, concurrentTasks, scheduledTasks" +
-				" and handing of keys in one eventloop cycle (in milliseconds)")
+				" and handing of keys in one eventloop cycle (in milliseconds)",
+				extraSubAttributes = {"histogram"})
 		public ValueStats getBusinessLogicTime() {
 			return businessLogicTime;
 		}
@@ -491,52 +484,4 @@ public final class EventloopStats {
 			return scheduledTaskDuration;
 		}
 	}
-
-	public static final class BusinessLogicTimeHistogram
-			implements JmxStats<BusinessLogicTimeHistogram> {
-		// BLT - business logic time
-		private static final int[] BLT_HISTOGRAM_BUCKETS = new int[]{0, 1, 10, 100, 1000, 10_000, 100_000};
-		private static final List<String> BLT_HISTOGRAM_LABELS =
-				asList(
-						"0 - 1       ->  ",
-						"1 - 10      ->  ",
-						"10 - 100    ->  ",
-						"100 - 1k    ->  ",
-						"1k - 10k    ->  ",
-						"10k - 100k  ->  ",
-						"100k+       ->  "
-				);
-
-		private final long[] businessLogicTimeHistogram = new long[7];
-
-		@JmxAttribute(description = "labels are represented in such form: \"min - max\" - " +
-				" which stands for interval in milliseconds from min (exclusively) to max (inclusively)")
-		public List<String> getBusinessLogicTimeHistogram() {
-			List<String> lines = new ArrayList<>(businessLogicTimeHistogram.length);
-			for (int i = 0; i < businessLogicTimeHistogram.length; i++) {
-				lines.add(BLT_HISTOGRAM_LABELS.get(i) + businessLogicTimeHistogram[i]);
-			}
-			return lines;
-		}
-
-		public void update(long businessLogicTime) {
-			for (int i = 1; i < BLT_HISTOGRAM_BUCKETS.length; i++) {
-				if (businessLogicTime <= BLT_HISTOGRAM_BUCKETS[i]) {
-					int bucketIndex = i - 1;
-					businessLogicTimeHistogram[bucketIndex]++;
-					return;
-				}
-			}
-			int lastBucket = BLT_HISTOGRAM_BUCKETS.length - 1;
-			businessLogicTimeHistogram[lastBucket]++;
-		}
-
-		@Override
-		public void add(BusinessLogicTimeHistogram another) {
-			for (int i = 0; i < businessLogicTimeHistogram.length; i++) {
-				businessLogicTimeHistogram[i] += another.businessLogicTimeHistogram[i];
-			}
-		}
-	}
-
 }

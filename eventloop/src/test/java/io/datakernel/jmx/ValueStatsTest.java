@@ -126,8 +126,7 @@ public class ValueStatsTest {
 
 	@Test
 	public void itShouldBuildHistogram() {
-		ValueStats stats = ValueStats.create();
-		stats.setHistogramLevels(new int[]{5, 15, 500});
+		ValueStats stats = ValueStats.create().withHistogram(new int[]{5, 15, 500});
 
 		// first interval
 		stats.recordValue(2);
@@ -161,11 +160,68 @@ public class ValueStatsTest {
 	}
 
 	@Test
+	public void itShouldNotRenderUnusedLeftAndRightHistogramLevels() {
+		ValueStats stats = ValueStats.create().withHistogram(new int[]{5, 10, 15, 20, 25, 30, 35});
+
+		stats.recordValue(12);
+		stats.recordValue(14);
+
+		stats.recordValue(23);
+
+		List<String> expected = asList(
+				"(-∞, 10)  :  0",
+				"[10, 15)  :  2",
+				"[15, 20)  :  0",
+				"[20, 25)  :  1",
+				"[25, +∞)  :  0"
+		);
+		assertEquals(expected, stats.getHistogram());
+	}
+
+	@Test
+	public void itShouldBuildHistogramProperlyInCaseOfOnlyOneIntermediateValue() {
+		ValueStats stats = ValueStats.create().withHistogram(new int[]{5, 15, 500});
+
+		stats.recordValue(17);
+
+		List<String> expected = asList(
+				"( -∞,  15)  :  0",
+				"[ 15, 500)  :  1",
+				"[500,  +∞)  :  0"
+		);
+		assertEquals(expected, stats.getHistogram());
+	}
+
+	@Test
+	public void itShouldBuildHistogramProperlyInCaseOfOnlyOneRightmostValue() {
+		ValueStats stats = ValueStats.create().withHistogram(new int[]{5, 15, 500});
+
+		stats.recordValue(600);
+
+		List<String> expected = asList(
+				"( -∞, 500)  :  0",
+				"[500,  +∞)  :  1"
+		);
+		assertEquals(expected, stats.getHistogram());
+	}
+
+	@Test
+	public void itShouldBuildHistogramProperlyInCaseOfOnlyOneLeftmostValue() {
+		ValueStats stats = ValueStats.create().withHistogram(new int[]{5, 15, 500});
+
+		stats.recordValue(-10);
+
+		List<String> expected = asList(
+				"(-∞,  5)  :  1",
+				"[ 5, +∞)  :  0"
+		);
+		assertEquals(expected, stats.getHistogram());
+	}
+
+	@Test
 	public void itShouldAccumulateHistogram() {
-		ValueStats stats_1 = ValueStats.create();
-		ValueStats stats_2 = ValueStats.create();
-		stats_1.setHistogramLevels(new int[]{5, 10, 15});
-		stats_2.setHistogramLevels(new int[]{5, 10, 15});
+		ValueStats stats_1 = ValueStats.create().withHistogram(new int[]{5, 10, 15});
+		ValueStats stats_2 = ValueStats.create().withHistogram(new int[]{5, 10, 15});
 
 		// first interval
 		stats_1.recordValue(2);
