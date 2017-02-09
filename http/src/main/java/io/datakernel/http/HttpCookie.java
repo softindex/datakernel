@@ -61,10 +61,13 @@ public final class HttpCookie {
 	}
 
 	public static HttpCookie of(String name, String value) {
+		assert isValidKey(value);
+		assert isValidValue(value);
 		return new HttpCookie(name, value);
 	}
 
 	public static HttpCookie of(String name) {
+		assert isValidKey(name);
 		return new HttpCookie(name, null);
 	}
 
@@ -118,7 +121,36 @@ public final class HttpCookie {
 		return value;
 	}
 
+	private static final String VALID_KEY_CHARS = "!#$%&'*+-.^_`|~";
+
+	private static boolean isValidKey(String value) {
+		for (int i = 0; i < value.length(); i++) {
+			char c = value.charAt(i);
+			if ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') | (c >= 'A' && c <= 'Z'))
+				continue;
+			if (VALID_KEY_CHARS.indexOf(c) != -1)
+				continue;
+			return false;
+		}
+		return true;
+	}
+
+	private static final String VALID_VALUE_CHARS = "!#$%&'()*+-./:<=>?@[]^_`{|}~";
+
+	private static boolean isValidValue(String value) {
+		for (int i = 0; i < value.length(); i++) {
+			char c = value.charAt(i);
+			if ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') | (c >= 'A' && c <= 'Z'))
+				continue;
+			if (VALID_VALUE_CHARS.indexOf(c) != -1)
+				continue;
+			return false;
+		}
+		return true;
+	}
+
 	public void setValue(String value) {
+		assert isValidValue(value);
 		this.value = value;
 	}
 
@@ -242,12 +274,10 @@ public final class HttpCookie {
 			pos += cookie.name.length();
 
 			if (cookie.value != null) {
-				encodeAscii(bytes, pos, "=\"");
-				pos += 2;
+				encodeAscii(bytes, pos, "=");
+				pos += 1;
 				encodeAscii(bytes, pos, cookie.value);
 				pos += cookie.value.length();
-				encodeAscii(bytes, pos, "\"");
-				pos += 1;
 			}
 
 			if (i != cookies.size() - 1) {
@@ -282,7 +312,7 @@ public final class HttpCookie {
 
 				if (equalSign == -1) {
 					String key = decodeAscii(bytes, keyStart, valueEnd - keyStart);
-					cookies.add(HttpCookie.of(key));
+					cookies.add(new HttpCookie(key, null));
 				} else {
 					String key = decodeAscii(bytes, keyStart, equalSign - keyStart);
 					String value;
@@ -314,11 +344,10 @@ public final class HttpCookie {
 
 	void renderFull(ByteBuf buf) {
 		putAscii(buf, name);
-		putAscii(buf, "=\"");
+		putAscii(buf, "=");
 		if (value != null) {
 			putAscii(buf, value);
 		}
-		putAscii(buf, "\"");
 		if (expirationDate != null) {
 			putAscii(buf, "; ");
 			buf.put(EXPIRES);
@@ -352,9 +381,8 @@ public final class HttpCookie {
 			buf.put(HTTPONLY);
 		}
 		if (extension != null) {
-			putAscii(buf, "; \"");
+			putAscii(buf, "; ");
 			putAscii(buf, extension);
-			putAscii(buf, "\"");
 		}
 	}
 

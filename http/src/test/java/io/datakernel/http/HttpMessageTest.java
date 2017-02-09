@@ -50,11 +50,11 @@ public class HttpMessageTest {
 		assertHttpResponseEquals("HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\n\r\n", HttpResponse.ofCode(500));
 		assertHttpResponseEquals("HTTP/1.1 502 Error\r\nContent-Length: 9\r\n\r\n" +
 				"Error 502", HttpResponse.ofCode(502).withBody("Error 502".getBytes(StandardCharsets.UTF_8)));
-		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie1=\"value1\"\r\nContent-Length: 0\r\n\r\n",
+		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie1=value1\r\nContent-Length: 0\r\n\r\n",
 				HttpResponse.ofCode(200).withCookies(Collections.singletonList(HttpCookie.of("cookie1", "value1"))));
-		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie1=\"value1\", cookie2=\"value2\"\r\nContent-Length: 0\r\n\r\n",
+		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie1=value1, cookie2=value2\r\nContent-Length: 0\r\n\r\n",
 				HttpResponse.ofCode(200).withCookies(asList(HttpCookie.of("cookie1", "value1"), HttpCookie.of("cookie2", "value2"))));
-		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie1=\"value1\", cookie2=\"value2\"\r\nContent-Length: 0\r\n\r\n",
+		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie1=value1, cookie2=value2\r\nContent-Length: 0\r\n\r\n",
 				HttpResponse.ofCode(200).withCookies(asList(HttpCookie.of("cookie1", "value1"), HttpCookie.of("cookie2", "value2"))));
 	}
 
@@ -66,9 +66,9 @@ public class HttpMessageTest {
 				HttpRequest.post("http://test.com/index.html"));
 		assertHttpRequestEquals("CONNECT /index.html HTTP/1.1\r\nHost: test.com\r\nContent-Length: 0\r\n\r\n",
 				HttpRequest.of(HttpMethod.CONNECT, "http://test.com/index.html"));
-		assertHttpRequestEquals("GET /index.html HTTP/1.1\r\nHost: test.com\r\nCookie: cookie1=\"value1\"\r\n\r\n",
+		assertHttpRequestEquals("GET /index.html HTTP/1.1\r\nHost: test.com\r\nCookie: cookie1=value1\r\n\r\n",
 				HttpRequest.get("http://test.com/index.html").withCookie(HttpCookie.of("cookie1", "value1")));
-		assertHttpRequestEquals("GET /index.html HTTP/1.1\r\nHost: test.com\r\nCookie: cookie1=\"value1\"; cookie2=\"value2\"\r\n\r\n",
+		assertHttpRequestEquals("GET /index.html HTTP/1.1\r\nHost: test.com\r\nCookie: cookie1=value1; cookie2=value2\r\n\r\n",
 				HttpRequest.get("http://test.com/index.html").withCookies(asList(HttpCookie.of("cookie1", "value1"), HttpCookie.of("cookie2", "value2"))));
 
 		HttpRequest request = HttpRequest.post("http://test.com/index.html");
