@@ -72,14 +72,14 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 	private int lastMin;
 	private int lastMax;
 
-	private int totalMin;
-	private int totalMax;
 	private long totalSum;
 	private long totalCount;
 
 	private double smoothedSum;
 	private double smoothedSqr;
 	private double smoothedCount;
+	private double smoothedMin;
+	private double smoothedMax;
 	private double smoothedTimeSeconds;
 	private double smoothedRate;
 
@@ -128,8 +128,8 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 		smoothedSum = 0.0;
 		smoothedSqr = 0.0;
 		smoothedCount = 0.0;
-		totalMax = Integer.MIN_VALUE;
-		totalMin = Integer.MAX_VALUE;
+		smoothedMin = 0.0;
+		smoothedMax = 0.0;
 		totalSum = 0;
 		totalCount = 0;
 		lastMax = Integer.MIN_VALUE;
@@ -213,8 +213,8 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 			smoothedCount = lastCount;
 			totalSum = lastSum;
 			totalCount = lastCount;
-			totalMin = lastMin;
-			totalMax = lastMax;
+			smoothedMin = lastMin;
+			smoothedMax = lastMax;
 		} else {
 			long timeElapsedMillis = timestamp - lastTimestampMillis;
 
@@ -228,15 +228,19 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 				smoothedTimeSeconds = timeElapsedSeconds + smoothedTimeSeconds * smoothingFactor;
 				smoothedRate = smoothedCount / smoothedTimeSeconds;
 
+				double smoothedAverage = smoothedSum / smoothedCount;
+				smoothedMin += (smoothedMax - smoothedAverage) * (1.0 - smoothingFactor);
+				smoothedMax += (smoothedMin - smoothedAverage) * (1.0 - smoothingFactor);
+
 				totalSum += lastSum;
 				totalCount += lastCount;
 
-				if (lastMin < totalMin) {
-					totalMin = lastMin;
+				if (lastMin < smoothedMin) {
+					smoothedMin = lastMin;
 				}
 
-				if (lastMax > totalMax) {
-					totalMax = lastMax;
+				if (lastMax > smoothedMax) {
+					smoothedMax = lastMax;
 				}
 			} else {
 				// skip stats of last time period
@@ -268,11 +272,17 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 
 		totalSum += anotherStats.totalSum;
 		totalCount += anotherStats.totalCount;
-		if (anotherStats.totalMin < totalMin) {
-			totalMin = anotherStats.totalMin;
-		}
-		if (anotherStats.totalMax > totalMax) {
-			totalMax = anotherStats.totalMax;
+
+		if (addedStats == 0) {
+			smoothedMin = anotherStats.smoothedMin;
+			smoothedMax = anotherStats.smoothedMax;
+		} else {
+			if (anotherStats.smoothedMin < smoothedMin) {
+				smoothedMin = anotherStats.smoothedMin;
+			}
+			if (anotherStats.smoothedMax > smoothedMax) {
+				smoothedMax = anotherStats.smoothedMax;
+			}
 		}
 
 		if (anotherStats.lastTimestampMillis > lastTimestampMillis) {
@@ -360,8 +370,8 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 	 * @return minimum of all added values
 	 */
 	@JmxAttribute(name = "min", optional = true)
-	public int getTotalMin() {
-		return totalCount == 0 ? 0 : totalMin;
+	public double getSmoothedMin() {
+		return totalCount == 0 ? 0.0 : smoothedMin;
 	}
 
 	/**
@@ -370,8 +380,8 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 	 * @return maximum of all added values
 	 */
 	@JmxAttribute(name = "max", optional = true)
-	public int getTotalMax() {
-		return totalCount == 0 ? 0 : totalMax;
+	public double getSmoothedMax() {
+		return totalCount == 0 ? 0.0 : smoothedMax;
 	}
 
 	@JmxAttribute(optional = true)
@@ -392,7 +402,7 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 	@JmxAttribute
 	public void setSmoothingWindow(double smoothingWindow) {
 		this.smoothingWindow = smoothingWindow;
-		this.smoothingWindowCoef = calculateSmoothingWindowCoef(smoothingWindowCoef);
+		this.smoothingWindowCoef = calculateSmoothingWindowCoef(smoothingWindow);
 	}
 
 	@JmxAttribute(optional = true)
@@ -505,8 +515,8 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 
 	@Override
 	public String toString() {
-		return String.format("%.2f±%.3f [%d..%d]  last: %d  values: %d @ %.3f/s",
-				getSmoothedAverage(), getSmoothedStandardDeviation(), getTotalMin(), getTotalMax(), getLastValue(),
+		return String.format("%.2f±%.3f [%.2f...%.2f]  last: %d  values: %d @ %.3f/s",
+				getSmoothedAverage(), getSmoothedStandardDeviation(), getSmoothedMin(), getSmoothedMax(), getLastValue(),
 				getCount(), getSmoothedRate());
 	}
 }

@@ -107,7 +107,12 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		// TODO(vmykhalko): check in JmxRegistry that modifiers are applied only once in case of workers and pool registartion
 		for (String attrName : setting.getModifiers().keySet()) {
 			AttributeModifier<?> modifier = setting.getModifiers().get(attrName);
-			rootNode.applyModifier(attrName, modifier, monitorables);
+			try {
+				rootNode.applyModifier(attrName, modifier, monitorables);
+			} catch (ClassCastException cce) {
+				throw new IllegalArgumentException("Cannot apply modifier \"" + modifier.getClass().getName() +
+						"\" for attribute \"" + attrName + "\": " + cce.toString());
+			}
 		}
 
 		if (rootNode == null) {

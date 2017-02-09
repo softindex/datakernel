@@ -18,12 +18,14 @@ package io.datakernel.rpc.client.jmx;
 
 import io.datakernel.jmx.*;
 
+import static io.datakernel.jmx.ValueStats.POWERS_OF_TEN;
+
 public final class RpcRequestStats implements JmxRefreshable {
 	private final EventStats totalRequests = EventStats.create();
 	private final EventStats failedRequests = EventStats.create();
 	private final EventStats rejectedRequests = EventStats.create();
 	private final EventStats expiredRequests = EventStats.create();
-	private final ValueStats responseTime = ValueStats.create();
+	private final ValueStats responseTime = ValueStats.create().withHistogram(POWERS_OF_TEN);
 	private final ExceptionStats serverExceptions = ExceptionStats.create();
 
 	private RpcRequestStats() {}
@@ -68,7 +70,10 @@ public final class RpcRequestStats implements JmxRefreshable {
 		return expiredRequests;
 	}
 
-	@JmxAttribute(description = "delay between request/response (in milliseconds)")
+	@JmxAttribute(
+			description = "delay between request/response (in milliseconds)",
+			extraSubAttributes = "histogram"
+	)
 	public ValueStats getResponseTime() {
 		return responseTime;
 	}

@@ -66,9 +66,33 @@ public final class JmxModule extends AbstractModule {
 		return this;
 	}
 
+	public <T> JmxModule withModifier(Class<?> clazz, String attrName, AttributeModifier<T> modifier) {
+		return withModifier(Key.get(clazz), attrName, modifier);
+	}
+
 	public JmxModule withOptional(Key<?> key, String attrName) {
 		ensureSettings(key).addIncludedOptional(attrName);
 		return this;
+	}
+
+	public JmxModule withOptional(Class<?> clazz, String attrName) {
+		// TODO(vmykhalko): maybe also support keys with binding annotation ? (i.e. condider here all keys that have specified "clazz" regardless of binding annotation)
+		return withOptional(Key.get(clazz), attrName);
+	}
+
+	public JmxModule withHistogram(Key<?> key, String attrName, final int[] histogramLevels) {
+		return this
+				.withOptional(key, attrName + "_histogram")
+				.withModifier(key, attrName, new AttributeModifier<ValueStats>() {
+					@Override
+					public void apply(ValueStats attribute) {
+						attribute.setHistogramLevels(histogramLevels);
+					}
+				});
+	}
+
+	public JmxModule withHistogram(Class<?> clazz, String attrName, final int[] histogramLevels) {
+		return withHistogram(Key.get(clazz), attrName, histogramLevels);
 	}
 
 	private MBeanSettings ensureSettings(Key<?> key) {

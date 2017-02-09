@@ -440,9 +440,11 @@ public final class EventloopStats {
 			return selectorSelectTime;
 		}
 
-		@JmxAttribute(description = "duration of all localTasks, concurrentTasks, scheduledTasks" +
-				" and handing of keys in one eventloop cycle (in milliseconds)",
-				extraSubAttributes = {"histogram"})
+		@JmxAttribute(
+				description = "duration of all localTasks, concurrentTasks, scheduledTasks" +
+						" and handing of keys in one eventloop cycle (in milliseconds)",
+				extraSubAttributes = {"histogram"}
+		)
 		public ValueStats getBusinessLogicTime() {
 			return businessLogicTime;
 		}

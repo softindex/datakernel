@@ -281,6 +281,11 @@ abstract class AttributeNodeForPojoAbstract implements AttributeNode {
 			rebuildedSubnodes.add(actualSubNode);
 		}
 
+		// TODO(vmykhalko): refactor
+		if (rebuildedSubnodes.equals(subNodes)) {
+			throw new IllegalArgumentException("Attribute not found: " + attrName);
+		}
+
 		return recreate(rebuildedSubnodes, true);
 	}
 
@@ -318,6 +323,6 @@ abstract class AttributeNodeForPojoAbstract implements AttributeNode {
 			}
 		}
 
-		throw new RuntimeException("Cannot apply modifier. Attribute not found: " + attrName);
+		throw new IllegalArgumentException("Cannot apply modifier. Attribute not found: " + attrName);
 	}
 }
