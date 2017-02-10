@@ -64,11 +64,12 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	private CompletionCallback closeCallback;
 
 	// jmx
-	private EventStats totalConnects = EventStats.create();
+	static final double SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_1_MINUTE;
+	private EventStats totalConnects = EventStats.create(SMOOTHING_WINDOW);
 	private Map<InetAddress, EventStats> connectsPerAddress = new HashMap<>();
-	private EventStats successfulRequests = EventStats.create();
-	private EventStats failedRequests = EventStats.create();
-	private ValueStats requestHandlingTime = ValueStats.create();
+	private EventStats successfulRequests = EventStats.create(SMOOTHING_WINDOW);
+	private EventStats failedRequests = EventStats.create(SMOOTHING_WINDOW);
+	private ValueStats requestHandlingTime = ValueStats.create(SMOOTHING_WINDOW);
 	private ExceptionStats lastRequestHandlingException = ExceptionStats.create();
 	private ExceptionStats lastProtocolError = ExceptionStats.create();
 	private boolean monitoring;
@@ -230,7 +231,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		return totalConnects;
 	}
 
-//	FIXME (vmykhalko) @JmxAttribute(description = "number of connects/reconnects per client address")
+	//	FIXME (vmykhalko) @JmxAttribute(description = "number of connects/reconnects per client address")
 	public Map<InetAddress, EventStats> getConnectsPerAddress() {
 		return connectsPerAddress;
 	}
@@ -238,7 +239,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	private EventStats ensureConnectStats(InetAddress address) {
 		EventStats stats = connectsPerAddress.get(address);
 		if (stats == null) {
-			stats = EventStats.create();
+			stats = EventStats.create(SMOOTHING_WINDOW);
 			connectsPerAddress.put(address, stats);
 		}
 		return stats;

@@ -26,7 +26,6 @@ import static java.lang.Math.log;
  */
 public final class EventStats implements JmxRefreshableStats<EventStats> {
 	private static final long TOO_LONG_TIME_PERIOD_BETWEEN_REFRESHES = 60 * 60 * 1000; // 1 hour
-	private static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
 	private static final double LN_2 = log(2);
 
 	private long lastTimestampMillis;
@@ -49,11 +48,18 @@ public final class EventStats implements JmxRefreshableStats<EventStats> {
 		this.smoothingWindowCoef = calculateSmoothingWindowCoef(smoothingWindow);
 	}
 
-	public static EventStats create() {
-		return new EventStats(DEFAULT_SMOOTHING_WINDOW);
+	EventStats() {
+		// create accumulator instance, smoothing window will be taken from actual stats
+		this.smoothingWindow = -1;
+		this.smoothingWindowCoef = -1;
 	}
 
-	public EventStats withSmoothingWindow(double smoothingWindow) {
+	/**
+	 * Creates new EventStats with specified smoothing window
+	 *
+	 * @param smoothingWindow in seconds
+	 */
+	public static EventStats create(double smoothingWindow) {
 		return new EventStats(smoothingWindow);
 	}
 	// endregion
@@ -95,7 +101,6 @@ public final class EventStats implements JmxRefreshableStats<EventStats> {
 		long timeElapsedMillis = timestamp - lastTimestampMillis;
 
 		if (isTimePeriodValid(timeElapsedMillis)) {
-
 			double timeElapsedSeconds = timeElapsedMillis * 0.001;
 			double smoothingFactor = exp(timeElapsedSeconds * smoothingWindowCoef);
 			smoothedCount = lastCount + smoothedCount * smoothingFactor;

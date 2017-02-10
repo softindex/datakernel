@@ -30,9 +30,22 @@ import static java.util.Arrays.asList;
  * Class is supposed to work in single thread
  */
 public final class ValueStats implements JmxRefreshableStats<ValueStats> {
-	private static final long TOO_LONG_TIME_PERIOD_BETWEEN_REFRESHES = 60 * 60 * 1000; // 1 hour
-	private static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
+	private static final long TOO_LONG_TIME_PERIOD_BETWEEN_REFRESHES = 5 * 60 * 60 * 1000; // 5 hour
 	private static final double LN_2 = log(2);
+
+	// region smoothing window constants
+	public static final double SMOOTHING_WINDOW_1_SECOND = 1.0;
+	public static final double SMOOTHING_WINDOW_5_SECONDS = 5.0;
+	public static final double SMOOTHING_WINDOW_10_SECONDS = 10.0;
+	public static final double SMOOTHING_WINDOW_20_SECONDS = 20.0;
+	public static final double SMOOTHING_WINDOW_30_SECONDS = 30.0;
+	public static final double SMOOTHING_WINDOW_1_MINUTE = 60.0;
+	public static final double SMOOTHING_WINDOW_5_MINUTES = 5 * 60.0;
+	public static final double SMOOTHING_WINDOW_10_MINUTES = 10 * 60.0;
+	public static final double SMOOTHING_WINDOW_20_MINUTES = 20 * 60.0;
+	public static final double SMOOTHING_WINDOW_30_MINUTES = 30 * 60.0;
+	public static final double SMOOTHING_WINDOW_1_HOUR = 60 * 60.0;
+	// endregion
 
 	// region standard levels
 	public static final int[] POWERS_OF_TWO =
@@ -87,24 +100,33 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 	private double smoothingWindowCoef;
 
 	private int[] histogramLevels;
-	private int[] histogramValues;
+	private long[] histogramValues;
 
 	// fields for aggregation
 	private int addedStats;
 
+	// region builders
 	private ValueStats(double smoothingWindow) {
-		setSmoothingWindow(smoothingWindow);
+		this.smoothingWindow = smoothingWindow;
+		this.smoothingWindowCoef = calculateSmoothingWindowCoef(smoothingWindow);
 		resetStats();
 	}
 
-	public static ValueStats create() {
-		return new ValueStats(DEFAULT_SMOOTHING_WINDOW);
+	ValueStats() {
+		// create accumulator instance, smoothing window will be taken from actual stats
+		this.smoothingWindow = -1;
+		this.smoothingWindowCoef = -1;
 	}
 
-	public ValueStats withSmoothingWindow(double smoothingWindow) {
-		setSmoothingWindow(smoothingWindow);
-		return this;
+	/**
+	 * Creates new ValueStats with specified smoothing window
+	 *
+	 * @param smoothingWindow in seconds
+	 */
+	public static ValueStats create(double smoothingWindow) {
+		return new ValueStats(smoothingWindow);
 	}
+	// endregion
 
 	public ValueStats withHistogram(int[] levels) {
 		setHistogramLevels(levels);
@@ -118,7 +140,7 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 		}
 
 		histogramLevels = levels;
-		histogramValues = new int[levels.length + 1];
+		histogramValues = new long[levels.length + 1];
 	}
 
 	/**
@@ -182,7 +204,7 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 	}
 
 	// return index of smallest element that is greater than "value"
-	static int binarySearch(int[] arr, int value) {
+	private static int binarySearch(int[] arr, int value) {
 		int found = 0;
 		int left = 0;
 		int right = arr.length - 1;
@@ -204,9 +226,6 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 
 	@Override
 	public void refresh(long timestamp) {
-		if (lastCount == 0)
-			return;
-
 		if (lastTimestampMillis == 0L) {
 			smoothedSum = lastSum;
 			smoothedSqr = lastSqr;
@@ -228,19 +247,20 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 				smoothedTimeSeconds = timeElapsedSeconds + smoothedTimeSeconds * smoothingFactor;
 				smoothedRate = smoothedCount / smoothedTimeSeconds;
 
-				double smoothedAverage = smoothedSum / smoothedCount;
-				smoothedMin += (smoothedMax - smoothedAverage) * (1.0 - smoothingFactor);
-				smoothedMax += (smoothedMin - smoothedAverage) * (1.0 - smoothingFactor);
-
 				totalSum += lastSum;
 				totalCount += lastCount;
 
-				if (lastMin < smoothedMin) {
-					smoothedMin = lastMin;
-				}
+				if (lastCount != 0) {
+					smoothedMin += (smoothedMax - smoothedMin) * (1 - smoothingFactor);
+					smoothedMax += (smoothedMin - smoothedMax) * (1 - smoothingFactor);
 
-				if (lastMax > smoothedMax) {
-					smoothedMax = lastMax;
+					if (lastMin < smoothedMin) {
+						smoothedMin = lastMin;
+					}
+
+					if (lastMax > smoothedMax) {
+						smoothedMax = lastMax;
+					}
 				}
 			} else {
 				// skip stats of last time period
@@ -425,11 +445,11 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 
 		String[] lines = new String[right - left + 1];
 		String[] labels = createHistogramLabels(histogramLevels, left, right - 1);
-		int[] values = Arrays.copyOfRange(histogramValues, left, right + 1);
+		long[] values = Arrays.copyOfRange(histogramValues, left, right + 1);
 
 		int maxValueStrLen = 0;
-		for (int value : histogramValues) {
-			String valueStr = Integer.toString(value);
+		for (long value : histogramValues) {
+			String valueStr = Long.toString(value);
 			if (valueStr.length() > maxValueStrLen) {
 				maxValueStrLen = valueStr.length();
 			}
@@ -448,7 +468,7 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 			return false;
 		}
 
-		for (int value : histogramValues) {
+		for (long value : histogramValues) {
 			if (value != 0) {
 				return true;
 			}

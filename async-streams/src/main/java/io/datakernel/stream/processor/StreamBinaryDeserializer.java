@@ -52,7 +52,9 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 	}
 
 	public static class JmxInspector<T> extends AbstractStreamTransformer_1_1.JmxInspector implements Inspector {
-		private final ValueStats inputBufs = ValueStats.create();
+		private static final double SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_1_MINUTE;
+
+		private final ValueStats inputBufs = ValueStats.create(SMOOTHING_WINDOW);
 		private long outputItems;
 
 		@Override

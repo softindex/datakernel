@@ -57,8 +57,10 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 	}
 
 	public static class JmxInspector extends AbstractStreamTransformer_1_1.JmxInspector implements Inspector {
-		private final ValueStats bytesIn = ValueStats.create();
-		private final ValueStats bytesOut = ValueStats.create();
+		private static final double SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_1_MINUTE;
+
+		private final ValueStats bytesIn = ValueStats.create(SMOOTHING_WINDOW);
+		private final ValueStats bytesOut = ValueStats.create(SMOOTHING_WINDOW);
 
 		@Override
 		public void onBuf(ByteBuf in, ByteBuf out) {

@@ -79,8 +79,10 @@ abstract class AttributeNodeForJmxStatsAbstract extends AttributeNodeForPojoAbst
 	private static JmxStats createNewInstance(Class<?> jmxStatsClass) throws ReflectiveOperationException {
 		if (ReflectionUtils.classHasPublicNoArgConstructor(jmxStatsClass)) {
 			return (JmxStats) jmxStatsClass.newInstance();
-		} else if (ReflectionUtils.classHasStaticFactoryCreateMethod(jmxStatsClass)) {
+		} else if (ReflectionUtils.classHasPublicStaticFactoryCreateMethod(jmxStatsClass)) {
 			return (JmxStats) jmxStatsClass.getDeclaredMethod("create").invoke(null);
+		} else if (ReflectionUtils.classHasNoArgConstructor(jmxStatsClass)) {
+			return (JmxStats) jmxStatsClass.getDeclaredConstructor().newInstance();
 		} else {
 			throw new RuntimeException("Cannot create instance of class: " + jmxStatsClass.getName());
 		}

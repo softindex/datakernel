@@ -23,6 +23,7 @@ import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.ValueStats;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
 import org.slf4j.Logger;
@@ -86,12 +87,13 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	private List<ServerSocketChannel> serverSocketChannels;
 
 	// jmx
+	private static final double SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_1_MINUTE;
 	AbstractServer acceptServer = this;
 	private final AsyncTcpSocketImpl.JmxInspector socketStats = new AsyncTcpSocketImpl.JmxInspector();
 	private final AsyncTcpSocketImpl.JmxInspector socketStatsSsl = new AsyncTcpSocketImpl.JmxInspector();
-	private final EventStats accepts = EventStats.create();
-	private final EventStats acceptsSsl = EventStats.create();
-	private final EventStats filteredAccepts = EventStats.create();
+	private final EventStats accepts = EventStats.create(SMOOTHING_WINDOW);
+	private final EventStats acceptsSsl = EventStats.create(SMOOTHING_WINDOW);
+	private final EventStats filteredAccepts = EventStats.create(SMOOTHING_WINDOW);
 
 	// region creators & builder methods
 	protected AbstractServer(Eventloop eventloop) {

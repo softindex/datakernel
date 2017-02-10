@@ -21,16 +21,25 @@ import io.datakernel.jmx.*;
 import static io.datakernel.jmx.ValueStats.POWERS_OF_TEN;
 
 public final class RpcRequestStats implements JmxRefreshable {
-	private final EventStats totalRequests = EventStats.create();
-	private final EventStats failedRequests = EventStats.create();
-	private final EventStats rejectedRequests = EventStats.create();
-	private final EventStats expiredRequests = EventStats.create();
-	private final ValueStats responseTime = ValueStats.create().withHistogram(POWERS_OF_TEN);
-	private final ExceptionStats serverExceptions = ExceptionStats.create();
+	private final EventStats totalRequests;
+	private final EventStats failedRequests;
+	private final EventStats rejectedRequests;
+	private final EventStats expiredRequests;
+	private final ValueStats responseTime;
+	private final ExceptionStats serverExceptions;
 
-	private RpcRequestStats() {}
+	private RpcRequestStats(double smoothingWindow) {
+		totalRequests = EventStats.create(smoothingWindow);
+		failedRequests = EventStats.create(smoothingWindow);
+		rejectedRequests = EventStats.create(smoothingWindow);
+		expiredRequests = EventStats.create(smoothingWindow);
+		responseTime = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TEN);
+		serverExceptions = ExceptionStats.create();
+	}
 
-	public static RpcRequestStats create() {return new RpcRequestStats();}
+	public static RpcRequestStats create(double smoothingWindow) {
+		return new RpcRequestStats(smoothingWindow);
+	}
 
 	public void resetStats() {
 		totalRequests.resetStats();

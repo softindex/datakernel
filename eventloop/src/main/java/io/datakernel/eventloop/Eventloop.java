@@ -20,10 +20,7 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.*;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.SimpleException;
-import io.datakernel.jmx.EventloopJmxMBean;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxOperation;
-import io.datakernel.jmx.JmxReducers;
+import io.datakernel.jmx.*;
 import io.datakernel.net.DatagramSocketSettings;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.time.CurrentTimeProvider;
@@ -132,7 +129,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 
 	// JMX
 
-	private static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
+	private static final double DEFAULT_SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_1_MINUTE;
 	private double smoothingWindow = DEFAULT_SMOOTHING_WINDOW;
 	private final EventloopStats stats = EventloopStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final ConcurrentCallsStats concurrentCallsStats = ConcurrentCallsStats.create(DEFAULT_SMOOTHING_WINDOW);

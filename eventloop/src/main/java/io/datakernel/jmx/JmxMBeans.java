@@ -363,7 +363,9 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			throw new IllegalArgumentException(createErrorMessageForInvalidJmxStatsAttribute(getter));
 		}
 
-		if (!(classHasPublicNoArgConstructor(returnClass) || classHasStaticFactoryCreateMethod(returnClass))) {
+		if (!(classHasPublicNoArgConstructor(returnClass)
+				|| classHasPublicStaticFactoryCreateMethod(returnClass)
+				|| classHasNoArgConstructor(returnClass))) {
 			throw new IllegalArgumentException(createErrorMessageForInvalidJmxStatsAttribute(getter));
 		}
 	}

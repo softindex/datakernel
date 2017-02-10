@@ -70,6 +70,7 @@ import static io.datakernel.codegen.ExpressionComparator.leftField;
 import static io.datakernel.codegen.ExpressionComparator.rightField;
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.cube.Utils.*;
+import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_10_MINUTES;
 import static java.util.Arrays.asList;
 import static java.util.Collections.EMPTY_LIST;
 import static java.util.Collections.singletonList;
@@ -150,7 +151,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	private CubeClassLoaderCache classLoaderCache;
 
 	// JMX
-	private final ValueStats queryTimes = ValueStats.create().withSmoothingWindow(10 * 60);
+	private final ValueStats queryTimes = ValueStats.create(SMOOTHING_WINDOW_10_MINUTES);
 	private long queryErrors;
 	private Exception queryLastError;
 	private long consolidationStarted;

@@ -116,7 +116,16 @@ final class ReflectionUtils {
 		return false;
 	}
 
-	public static boolean classHasStaticFactoryCreateMethod(Class<?> clazz) {
+	public static boolean classHasNoArgConstructor(Class<?> clazz) {
+		for (Constructor<?> constructor : clazz.getDeclaredConstructors()) {
+			if (constructor.getParameterTypes().length == 0) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public static boolean classHasPublicStaticFactoryCreateMethod(Class<?> clazz) {
 		Method createMethod;
 		try {
 			createMethod = clazz.getDeclaredMethod("create");

@@ -78,10 +78,12 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 	}
 
 	public static class JmxInspector<T> extends AbstractStreamTransformer_1_1.JmxInspector implements Inspector<T> {
+		private static final double SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_1_MINUTE;
+
 		private long underEstimations;
 		private long fullBuffers;
 		private long messageOverflows;
-		private final ValueStats outputBufs = ValueStats.create();
+		private final ValueStats outputBufs = ValueStats.create(SMOOTHING_WINDOW);
 		private final ExceptionStats serializationErrors = ExceptionStats.create();
 
 		@Override
@@ -136,12 +138,14 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 	}
 
 	public static class JmxInspectorEx<T> extends JmxInspector<T> implements InspectorEx<T> {
+		private static final double SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_1_MINUTE;
+
 		private int lastSize;
 		private long count;
-		private final ValueStats underEstimations = ValueStats.create();
-		private final EventStats fullBuffers = EventStats.create();
-		private final ValueStats messageOverflows = ValueStats.create();
-		private final ValueStats outputBufs = ValueStats.create();
+		private final ValueStats underEstimations = ValueStats.create(SMOOTHING_WINDOW);
+		private final EventStats fullBuffers = EventStats.create(SMOOTHING_WINDOW);
+		private final ValueStats messageOverflows = ValueStats.create(SMOOTHING_WINDOW);
+		private final ValueStats outputBufs = ValueStats.create(SMOOTHING_WINDOW);
 		private final ExceptionStats serializationErrors = ExceptionStats.create();
 
 		@Override
@@ -187,8 +191,8 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 	/**
 	 * Creates a new instance of this class
 	 *
-	 * @param eventloop      event loop in which serializer will run
-	 * @param serializer     specified BufferSerializer for this type
+	 * @param eventloop  event loop in which serializer will run
+	 * @param serializer specified BufferSerializer for this type
 	 */
 	public static <T> StreamBinarySerializer<T> create(Eventloop eventloop, BufferSerializer<T> serializer) {
 		return new StreamBinarySerializer<>(eventloop, serializer);

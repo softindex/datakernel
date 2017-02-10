@@ -37,10 +37,10 @@ public final class ConcurrentCallsStats {
 	private ConcurrentCallsStats(double smoothingWindow) {
 		this.smoothingWindow = smoothingWindow;
 
-		totalCalls = EventStats.create().withSmoothingWindow(smoothingWindow);
-		rejectedCalls = EventStats.create().withSmoothingWindow(smoothingWindow);
-		executionDuration = ValueStats.create().withSmoothingWindow(smoothingWindow);
-		awaitingStartDuration = ValueStats.create().withSmoothingWindow(smoothingWindow);
+		totalCalls = EventStats.create(smoothingWindow);
+		rejectedCalls = EventStats.create(smoothingWindow);
+		executionDuration = ValueStats.create(smoothingWindow);
+		awaitingStartDuration = ValueStats.create(smoothingWindow);
 	}
 
 	public static ConcurrentCallsStats create(double smoothingWindow) {
@@ -100,10 +100,10 @@ public final class ConcurrentCallsStats {
 		private final ValueStats awaitingStartDuration;
 
 		public DistributedStats(double smoothingWindow) {
-			totalCalls = EventStats.create().withSmoothingWindow(smoothingWindow);
-			rejectedCalls = EventStats.create().withSmoothingWindow(smoothingWindow);
-			executionDuration = ValueStats.create().withSmoothingWindow(smoothingWindow);
-			awaitingStartDuration = ValueStats.create().withSmoothingWindow(smoothingWindow);
+			totalCalls = EventStats.create(smoothingWindow);
+			rejectedCalls = EventStats.create(smoothingWindow);
+			executionDuration = ValueStats.create(smoothingWindow);
+			awaitingStartDuration = ValueStats.create(smoothingWindow);
 		}
 
 		@JmxAttribute

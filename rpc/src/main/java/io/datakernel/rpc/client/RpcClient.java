@@ -18,10 +18,7 @@ package io.datakernel.rpc.client;
 
 import io.datakernel.async.*;
 import io.datakernel.eventloop.*;
-import io.datakernel.jmx.EventloopJmxMBean;
-import io.datakernel.jmx.ExceptionStats;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxOperation;
+import io.datakernel.jmx.*;
 import io.datakernel.jmx.JmxReducers.JmxReducerSum;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.rpc.client.jmx.RpcConnectStats;
@@ -99,8 +96,9 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 	};
 
 	// jmx
+	static final double SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_1_MINUTE;
 	private boolean monitoring = false;
-	private final RpcRequestStats generalRequestsStats = RpcRequestStats.create();
+	private final RpcRequestStats generalRequestsStats = RpcRequestStats.create(SMOOTHING_WINDOW);
 	private final RpcConnectStats generalConnectsStats = new RpcConnectStats();
 	private final Map<Class<?>, RpcRequestStats> requestStatsPerClass = new HashMap<>();
 	private final Map<InetSocketAddress, RpcConnectStats> connectsStatsPerAddress = new HashMap<>();
@@ -324,7 +322,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 				addConnection(address, connection);
 
 				// jmx
-				generalConnectsStats.successfulConnects ++;
+				generalConnectsStats.successfulConnects++;
 				connectsStatsPerAddress.get(address).successfulConnects++;
 
 				logger.info("Connection to {} established", address);
@@ -585,7 +583,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 
 	RpcRequestStats ensureRequestStatsPerClass(Class<?> requestClass) {
 		if (!requestStatsPerClass.containsKey(requestClass)) {
-			requestStatsPerClass.put(requestClass, RpcRequestStats.create());
+			requestStatsPerClass.put(requestClass, RpcRequestStats.create(SMOOTHING_WINDOW));
 		}
 		return requestStatsPerClass.get(requestClass);
 	}

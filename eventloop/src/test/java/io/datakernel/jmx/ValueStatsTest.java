@@ -26,7 +26,7 @@ import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
 public class ValueStatsTest {
-
+	private static final double SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_1_MINUTE;
 	private static final int ONE_SECOND_IN_MILLIS = 1000;
 	private static final Random RANDOM = new Random();
 
@@ -34,7 +34,7 @@ public class ValueStatsTest {
 	public void smoothedAverageAtLimitShouldBeSameAsInputInCaseOfConstantData() {
 		double smoothingWindow = 10.0;
 		long currentTimestamp = 0;
-		ValueStats valueStats = ValueStats.create().withSmoothingWindow(smoothingWindow);
+		ValueStats valueStats = ValueStats.create(smoothingWindow);
 		int inputValue = 5;
 		int iterations = 1000;
 		int refreshPeriod = ONE_SECOND_IN_MILLIS;
@@ -53,7 +53,7 @@ public class ValueStatsTest {
 	public void itShouldReturnProperStandardDeviationAtLimit() {
 		double smoothingWindow = 100.0;
 		long currentTimestamp = 0;
-		ValueStats valueStats = ValueStats.create().withSmoothingWindow(smoothingWindow);
+		ValueStats valueStats = ValueStats.create(smoothingWindow);
 		int iterations = 10000;
 		int minValue = 0;
 		int maxValue = 10;
@@ -76,7 +76,7 @@ public class ValueStatsTest {
 	public void itShouldResetStatsAfterResetMethodCall() {
 		double smoothingWindow = 10.0;
 		long currentTimestamp = 0;
-		ValueStats valueStats = ValueStats.create().withSmoothingWindow(smoothingWindow);
+		ValueStats valueStats = ValueStats.create(smoothingWindow);
 		int inputValue = 5;
 		int iterations = 1000;
 		int refreshPeriod = ONE_SECOND_IN_MILLIS;
@@ -100,8 +100,8 @@ public class ValueStatsTest {
 	public void itShouldAccumulateProperly() {
 		double smoothingWindow = 10.0;
 		long currentTimestamp = 0;
-		ValueStats valueStats_1 = ValueStats.create().withSmoothingWindow(smoothingWindow);
-		ValueStats valueStats_2 = ValueStats.create().withSmoothingWindow(smoothingWindow);
+		ValueStats valueStats_1 = ValueStats.create(smoothingWindow);
+		ValueStats valueStats_2 = ValueStats.create(smoothingWindow);
 		int inputValue_1 = 5;
 		int inputValue_2 = 10;
 		int iterations = 1000;
@@ -115,7 +115,7 @@ public class ValueStatsTest {
 			valueStats_2.refresh(currentTimestamp);
 		}
 
-		ValueStats accumulator = ValueStats.create();
+		ValueStats accumulator = new ValueStats();
 		accumulator.add(valueStats_1);
 		accumulator.add(valueStats_2);
 
@@ -126,7 +126,7 @@ public class ValueStatsTest {
 
 	@Test
 	public void itShouldBuildHistogram() {
-		ValueStats stats = ValueStats.create().withHistogram(new int[]{5, 15, 500});
+		ValueStats stats = ValueStats.create(SMOOTHING_WINDOW).withHistogram(new int[]{5, 15, 500});
 
 		// first interval
 		stats.recordValue(2);
@@ -161,7 +161,7 @@ public class ValueStatsTest {
 
 	@Test
 	public void itShouldNotRenderUnusedLeftAndRightHistogramLevels() {
-		ValueStats stats = ValueStats.create().withHistogram(new int[]{5, 10, 15, 20, 25, 30, 35});
+		ValueStats stats = ValueStats.create(SMOOTHING_WINDOW).withHistogram(new int[]{5, 10, 15, 20, 25, 30, 35});
 
 		stats.recordValue(12);
 		stats.recordValue(14);
@@ -180,7 +180,7 @@ public class ValueStatsTest {
 
 	@Test
 	public void itShouldBuildHistogramProperlyInCaseOfOnlyOneIntermediateValue() {
-		ValueStats stats = ValueStats.create().withHistogram(new int[]{5, 15, 500});
+		ValueStats stats = ValueStats.create(SMOOTHING_WINDOW).withHistogram(new int[]{5, 15, 500});
 
 		stats.recordValue(17);
 
@@ -194,7 +194,7 @@ public class ValueStatsTest {
 
 	@Test
 	public void itShouldBuildHistogramProperlyInCaseOfOnlyOneRightmostValue() {
-		ValueStats stats = ValueStats.create().withHistogram(new int[]{5, 15, 500});
+		ValueStats stats = ValueStats.create(SMOOTHING_WINDOW).withHistogram(new int[]{5, 15, 500});
 
 		stats.recordValue(600);
 
@@ -207,7 +207,7 @@ public class ValueStatsTest {
 
 	@Test
 	public void itShouldBuildHistogramProperlyInCaseOfOnlyOneLeftmostValue() {
-		ValueStats stats = ValueStats.create().withHistogram(new int[]{5, 15, 500});
+		ValueStats stats = ValueStats.create(SMOOTHING_WINDOW).withHistogram(new int[]{5, 15, 500});
 
 		stats.recordValue(-10);
 
@@ -220,8 +220,8 @@ public class ValueStatsTest {
 
 	@Test
 	public void itShouldAccumulateHistogram() {
-		ValueStats stats_1 = ValueStats.create().withHistogram(new int[]{5, 10, 15});
-		ValueStats stats_2 = ValueStats.create().withHistogram(new int[]{5, 10, 15});
+		ValueStats stats_1 = ValueStats.create(SMOOTHING_WINDOW).withHistogram(new int[]{5, 10, 15});
+		ValueStats stats_2 = ValueStats.create(SMOOTHING_WINDOW).withHistogram(new int[]{5, 10, 15});
 
 		// first interval
 		stats_1.recordValue(2);
@@ -239,7 +239,7 @@ public class ValueStatsTest {
 		stats_1.refresh(1L);
 		stats_2.refresh(1L);
 
-		ValueStats accumulator = ValueStats.create();
+		ValueStats accumulator = new ValueStats();
 		accumulator.add(stats_1);
 		accumulator.add(stats_2);
 

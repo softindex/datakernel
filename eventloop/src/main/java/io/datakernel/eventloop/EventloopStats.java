@@ -39,7 +39,7 @@ public final class EventloopStats {
 	private final DurationRunnable longestScheduledTask;
 
 	private EventloopStats(double smoothingWindow) {
-		loops = EventStats.create().withSmoothingWindow(smoothingWindow);
+		loops = EventStats.create(smoothingWindow);
 		selectorEvents = new SelectorEvents(smoothingWindow);
 		taskEvents = new TaskEvents(smoothingWindow);
 		errorStats = new ErrorStats();
@@ -50,7 +50,9 @@ public final class EventloopStats {
 		longestLocalTask = new DurationRunnable();
 	}
 
-	public static EventloopStats create(double smoothingWindow) {return new EventloopStats(smoothingWindow);}
+	public static EventloopStats create(double smoothingWindow) {
+		return new EventloopStats(smoothingWindow);
+	}
 
 	public void setSmoothingWindow(double smoothingWindow) {
 		loops.setSmoothingWindow(smoothingWindow);
@@ -257,12 +259,12 @@ public final class EventloopStats {
 		private final ValueStats writeKeys;
 
 		public SelectorEvents(double smoothingWindow) {
-			allSelectedKeys = ValueStats.create().withSmoothingWindow(smoothingWindow);
-			invalidKeys = ValueStats.create().withSmoothingWindow(smoothingWindow);
-			acceptKeys = ValueStats.create().withSmoothingWindow(smoothingWindow);
-			connectKeys = ValueStats.create().withSmoothingWindow(smoothingWindow);
-			readKeys = ValueStats.create().withSmoothingWindow(smoothingWindow);
-			writeKeys = ValueStats.create().withSmoothingWindow(smoothingWindow);
+			allSelectedKeys = ValueStats.create(smoothingWindow);
+			invalidKeys = ValueStats.create(smoothingWindow);
+			acceptKeys = ValueStats.create(smoothingWindow);
+			connectKeys = ValueStats.create(smoothingWindow);
+			readKeys = ValueStats.create(smoothingWindow);
+			writeKeys = ValueStats.create(smoothingWindow);
 		}
 
 		public void setSmoothingWindow(double smoothingWindow) {
@@ -320,9 +322,9 @@ public final class EventloopStats {
 		private final ValueStats scheduledTasks;
 
 		public TaskEvents(double smoothingWindow) {
-			localTasks = ValueStats.create().withSmoothingWindow(smoothingWindow);
-			concurrentTasks = ValueStats.create().withSmoothingWindow(smoothingWindow);
-			scheduledTasks = ValueStats.create().withSmoothingWindow(smoothingWindow);
+			localTasks = ValueStats.create(smoothingWindow);
+			concurrentTasks = ValueStats.create(smoothingWindow);
+			scheduledTasks = ValueStats.create(smoothingWindow);
 		}
 
 		public void setSmoothingWindow(double smoothingWindow) {
@@ -394,17 +396,17 @@ public final class EventloopStats {
 		private final ValueStats scheduledTaskDuration;
 
 		public DurationStats(double smoothingWindow) {
-			selectorSelectTime = ValueStats.create().withSmoothingWindow(smoothingWindow);
-			businessLogicTime = ValueStats.create().withSmoothingWindow(smoothingWindow).withHistogram(POWERS_OF_TEN);
+			selectorSelectTime = ValueStats.create(smoothingWindow);
+			businessLogicTime = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TEN);
 
-			selectedKeysTime = ValueStats.create().withSmoothingWindow(smoothingWindow);
-			localTasksTime = ValueStats.create().withSmoothingWindow(smoothingWindow);
-			concurrentTasksTime = ValueStats.create().withSmoothingWindow(smoothingWindow);
-			scheduledTasksTime = ValueStats.create().withSmoothingWindow(smoothingWindow);
+			selectedKeysTime = ValueStats.create(smoothingWindow);
+			localTasksTime = ValueStats.create(smoothingWindow);
+			concurrentTasksTime = ValueStats.create(smoothingWindow);
+			scheduledTasksTime = ValueStats.create(smoothingWindow);
 
-			localTaskDuration = ValueStats.create().withSmoothingWindow(smoothingWindow);
-			concurrentTaskDuration = ValueStats.create().withSmoothingWindow(smoothingWindow);
-			scheduledTaskDuration = ValueStats.create().withSmoothingWindow(smoothingWindow);
+			localTaskDuration = ValueStats.create(smoothingWindow);
+			concurrentTaskDuration = ValueStats.create(smoothingWindow);
+			scheduledTaskDuration = ValueStats.create(smoothingWindow);
 		}
 
 		public void setSmoothingWindow(double smoothingWindow) {

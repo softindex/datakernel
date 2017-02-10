@@ -99,7 +99,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 
 		// JMX
 		this.monitoring = false;
-		this.connectionStats = RpcRequestStats.create();
+		this.connectionStats = RpcRequestStats.create(RpcClient.SMOOTHING_WINDOW);
 		this.connectionRequests = connectionStats.getTotalRequests();
 		this.totalRequests = rpcClient.getGeneralRequestsStats().getTotalRequests();
 	}

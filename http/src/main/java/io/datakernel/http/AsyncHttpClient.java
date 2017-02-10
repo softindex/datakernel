@@ -96,14 +96,16 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	}
 
 	public static class JmxInspector implements Inspector {
+		private static final double SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_1_MINUTE;
+
 		protected final AsyncTcpSocketImpl.JmxInspector socketStats = new AsyncTcpSocketImpl.JmxInspector();
 		protected final AsyncTcpSocketImpl.JmxInspector socketStatsForSSL = new AsyncTcpSocketImpl.JmxInspector();
-		private final EventStats totalRequests = EventStats.create();
+		private final EventStats totalRequests = EventStats.create(SMOOTHING_WINDOW);
 		private final ExceptionStats resolveErrors = ExceptionStats.create();
-		private final EventStats connected = EventStats.create();
+		private final EventStats connected = EventStats.create(SMOOTHING_WINDOW);
 		private final ExceptionStats connectErrors = ExceptionStats.create();
 		private long responses;
-		private final EventStats httpTimeouts = EventStats.create();
+		private final EventStats httpTimeouts = EventStats.create(SMOOTHING_WINDOW);
 		private final ExceptionStats httpErrors = ExceptionStats.create();
 		private long responsesErrors;
 

@@ -27,6 +27,7 @@ import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxReducers.JmxReducerSum;
+import io.datakernel.jmx.ValueStats;
 import io.datakernel.util.MemSize;
 
 import java.net.InetAddress;
@@ -84,8 +85,10 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	}
 
 	public static class JmxInspector implements Inspector {
-		private final EventStats totalRequests = EventStats.create();
-		private final EventStats httpErrors = EventStats.create();
+		private static final double SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_1_MINUTE;
+
+		private final EventStats totalRequests = EventStats.create(SMOOTHING_WINDOW);
+		private final EventStats httpErrors = EventStats.create(SMOOTHING_WINDOW);
 		private final ExceptionStats servletExceptions = ExceptionStats.create();
 
 		@Override
