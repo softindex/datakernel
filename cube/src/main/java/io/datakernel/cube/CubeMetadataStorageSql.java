@@ -324,7 +324,7 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 		Record1<Integer> maxRevisionRecord = jooq
 				.select(DSL.max(AGGREGATION_DB_CHUNK.REVISION_ID))
 				.from(AGGREGATION_DB_CHUNK)
-				.where(AGGREGATION_DB_CHUNK.AGGREGATION_ID.notEqual(""))
+				.where(AGGREGATION_DB_CHUNK.AGGREGATION_ID.in(aggregations))
 				.and(AGGREGATION_DB_CHUNK.REVISION_ID.gt(lastRevisionId))
 				.fetchOne();
 		if (maxRevisionRecord.value1() == null) {
@@ -338,7 +338,7 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 			consolidatedChunkIds = jooq
 					.select(AGGREGATION_DB_CHUNK.ID, AGGREGATION_DB_CHUNK.AGGREGATION_ID)
 					.from(AGGREGATION_DB_CHUNK)
-					.where(AGGREGATION_DB_CHUNK.AGGREGATION_ID.notEqual(""))
+					.where(AGGREGATION_DB_CHUNK.AGGREGATION_ID.in(aggregations))
 					.and(AGGREGATION_DB_CHUNK.CONSOLIDATED_REVISION_ID.gt(lastRevisionId))
 					.and(AGGREGATION_DB_CHUNK.CONSOLIDATED_REVISION_ID.le(newRevisionId))
 					.fetchGroups(AGGREGATION_DB_CHUNK.AGGREGATION_ID, AGGREGATION_DB_CHUNK.ID);
@@ -352,13 +352,13 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 		List<Record> newChunkRecords = jooq
 				.select(fieldsToSelect)
 				.from(AGGREGATION_DB_CHUNK)
-				.where(AGGREGATION_DB_CHUNK.AGGREGATION_ID.notEqual(""))
+				.where(AGGREGATION_DB_CHUNK.AGGREGATION_ID.in(aggregations))
 				.and(AGGREGATION_DB_CHUNK.REVISION_ID.gt(lastRevisionId))
 				.and(AGGREGATION_DB_CHUNK.REVISION_ID.le(newRevisionId))
 				.and(AGGREGATION_DB_CHUNK.CONSOLIDATED_REVISION_ID.isNull())
 				.unionAll(jooq.select(fieldsToSelect)
 						.from(AGGREGATION_DB_CHUNK)
-						.where(AGGREGATION_DB_CHUNK.AGGREGATION_ID.notEqual(""))
+						.where(AGGREGATION_DB_CHUNK.AGGREGATION_ID.in(aggregations))
 						.and(AGGREGATION_DB_CHUNK.REVISION_ID.gt(lastRevisionId))
 						.and(AGGREGATION_DB_CHUNK.REVISION_ID.le(newRevisionId))
 						.and(AGGREGATION_DB_CHUNK.CONSOLIDATED_REVISION_ID.gt(newRevisionId)))
