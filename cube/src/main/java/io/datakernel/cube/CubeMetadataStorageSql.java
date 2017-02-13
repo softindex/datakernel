@@ -27,6 +27,7 @@ import io.datakernel.aggregation.AggregationChunk;
 import io.datakernel.aggregation.PrimaryKey;
 import io.datakernel.aggregation.sql.tables.records.AggregationDbChunkRecord;
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import org.jooq.*;
@@ -117,14 +118,20 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 	}
 
 	@Override
-	public void loadChunks(final Cube cube, final int lastRevisionId, final Set<String> aggregations,
-	                       ResultCallback<CubeLoadedChunks> callback) {
+	public void loadChunks(final Cube cube, final int lastRevisionId,
+	                       final CompletionCallback callback) {
 		eventloop.callConcurrently(executor, new Callable<CubeLoadedChunks>() {
 			@Override
 			public CubeLoadedChunks call() {
-				return doLoadChunks(DSL.using(jooqConfiguration), cube, aggregations, lastRevisionId);
+				return doLoadChunks(DSL.using(jooqConfiguration), cube, lastRevisionId);
 			}
-		}, callback);
+		}, new ForwardingResultCallback<CubeLoadedChunks>(callback) {
+			@Override
+			protected void onResult(CubeLoadedChunks result) {
+				cube.loadChunksIntoAggregations(result, lastRevisionId != 0L);
+				callback.setComplete();
+			}
+		});
 	}
 
 	public void truncateTables(DSLContext jooq) {
@@ -298,17 +305,17 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 	}
 
 	private static List<Field<?>> getChunkSelectFields(int maxKeyLength) {
-		List<Field<?>> fieldsToFetch = new ArrayList<>(maxKeyLength * 2 + 4);
-		Collections.addAll(fieldsToFetch, AGGREGATION_DB_CHUNK.ID, AGGREGATION_DB_CHUNK.REVISION_ID,
-				AGGREGATION_DB_CHUNK.FIELDS, AGGREGATION_DB_CHUNK.COUNT);
+		List<Field<?>> fieldsToFetch = new ArrayList<>(Arrays.<Field<?>>asList(
+				AGGREGATION_DB_CHUNK.ID, AGGREGATION_DB_CHUNK.REVISION_ID,
+				AGGREGATION_DB_CHUNK.FIELDS, AGGREGATION_DB_CHUNK.COUNT));
 		addKeyColumns(fieldsToFetch, maxKeyLength);
 		return fieldsToFetch;
 	}
 
 	private static List<Field<?>> getChunkSelectFieldsWithAggregationId(int maxKeyLength) {
-		List<Field<?>> fieldsToSelect = new ArrayList<>(maxKeyLength * 2 + 5);
-		Collections.addAll(fieldsToSelect, AGGREGATION_DB_CHUNK.ID, AGGREGATION_DB_CHUNK.AGGREGATION_ID,
-				AGGREGATION_DB_CHUNK.REVISION_ID, AGGREGATION_DB_CHUNK.FIELDS, AGGREGATION_DB_CHUNK.COUNT);
+		List<Field<?>> fieldsToSelect = new ArrayList<>(Arrays.<Field<?>>asList(
+				AGGREGATION_DB_CHUNK.ID, AGGREGATION_DB_CHUNK.AGGREGATION_ID,
+				AGGREGATION_DB_CHUNK.REVISION_ID, AGGREGATION_DB_CHUNK.FIELDS, AGGREGATION_DB_CHUNK.COUNT));
 		addKeyColumns(fieldsToSelect, maxKeyLength);
 		return fieldsToSelect;
 	}
@@ -320,11 +327,11 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 		}
 	}
 
-	public CubeLoadedChunks doLoadChunks(DSLContext jooq, Cube cube, Set<String> aggregations, int lastRevisionId) {
+	public CubeLoadedChunks doLoadChunks(DSLContext jooq, Cube cube, int lastRevisionId) {
 		Record1<Integer> maxRevisionRecord = jooq
 				.select(DSL.max(AGGREGATION_DB_CHUNK.REVISION_ID))
 				.from(AGGREGATION_DB_CHUNK)
-				.where(AGGREGATION_DB_CHUNK.AGGREGATION_ID.in(aggregations))
+				.where(AGGREGATION_DB_CHUNK.AGGREGATION_ID.notEqual(""))
 				.and(AGGREGATION_DB_CHUNK.REVISION_ID.gt(lastRevisionId))
 				.fetchOne();
 		if (maxRevisionRecord.value1() == null) {
@@ -338,7 +345,7 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 			consolidatedChunkIds = jooq
 					.select(AGGREGATION_DB_CHUNK.ID, AGGREGATION_DB_CHUNK.AGGREGATION_ID)
 					.from(AGGREGATION_DB_CHUNK)
-					.where(AGGREGATION_DB_CHUNK.AGGREGATION_ID.in(aggregations))
+					.where(AGGREGATION_DB_CHUNK.AGGREGATION_ID.notEqual(""))
 					.and(AGGREGATION_DB_CHUNK.CONSOLIDATED_REVISION_ID.gt(lastRevisionId))
 					.and(AGGREGATION_DB_CHUNK.CONSOLIDATED_REVISION_ID.le(newRevisionId))
 					.fetchGroups(AGGREGATION_DB_CHUNK.AGGREGATION_ID, AGGREGATION_DB_CHUNK.ID);
@@ -346,19 +353,19 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 			consolidatedChunkIds = Collections.emptyMap();
 		}
 
-		int maxKeyLength = getMaxKeyLength(cube, aggregations);
+		int maxKeyLength = getMaxKeyLength(cube, cube.getAggregationIds());
 		List<Field<?>> fieldsToSelect = getChunkSelectFieldsWithAggregationId(maxKeyLength);
 
 		List<Record> newChunkRecords = jooq
 				.select(fieldsToSelect)
 				.from(AGGREGATION_DB_CHUNK)
-				.where(AGGREGATION_DB_CHUNK.AGGREGATION_ID.in(aggregations))
+				.where(AGGREGATION_DB_CHUNK.AGGREGATION_ID.notEqual(""))
 				.and(AGGREGATION_DB_CHUNK.REVISION_ID.gt(lastRevisionId))
 				.and(AGGREGATION_DB_CHUNK.REVISION_ID.le(newRevisionId))
 				.and(AGGREGATION_DB_CHUNK.CONSOLIDATED_REVISION_ID.isNull())
 				.unionAll(jooq.select(fieldsToSelect)
 						.from(AGGREGATION_DB_CHUNK)
-						.where(AGGREGATION_DB_CHUNK.AGGREGATION_ID.in(aggregations))
+						.where(AGGREGATION_DB_CHUNK.AGGREGATION_ID.notEqual(""))
 						.and(AGGREGATION_DB_CHUNK.REVISION_ID.gt(lastRevisionId))
 						.and(AGGREGATION_DB_CHUNK.REVISION_ID.le(newRevisionId))
 						.and(AGGREGATION_DB_CHUNK.CONSOLIDATED_REVISION_ID.gt(newRevisionId)))

@@ -47,18 +47,21 @@ public interface AggregationMetadataStorage {
 
 	/**
 	 * Loads metadata of chunks, whose revision id is after {@code lastRevisionId}, to specified {@link Aggregation} asynchronously.
-	 *  @param lastRevisionId lower bound for revision id
+	 *
+	 * @param aggregation
+	 * @param lastRevisionId lower bound for revision id
 	 * @param callback       callback which is called once loading is complete
 	 */
-	void loadChunks(int lastRevisionId, ResultCallback<LoadedChunks> callback);
+	void loadChunks(Aggregation aggregation, int lastRevisionId, CompletionCallback callback);
 
 	void startConsolidation(List<AggregationChunk> chunksToConsolidate, CompletionCallback callback);
 
 	/**
 	 * Asynchronously saves the metadata of the given list of new chunks that are result of consolidation of the list of specified chunks.
-	 * @param originalChunks      list of original chunks
-	 * @param consolidatedChunks  list of chunks that appeared as a result of consolidation of original chunks
-	 * @param callback            callback which is called once saving is complete
+	 *
+	 * @param originalChunks     list of original chunks
+	 * @param consolidatedChunks list of chunks that appeared as a result of consolidation of original chunks
+	 * @param callback           callback which is called once saving is complete
 	 */
 	void saveConsolidatedChunks(List<AggregationChunk> originalChunks, List<AggregationChunk.NewChunk> consolidatedChunks,
 	                            CompletionCallback callback);

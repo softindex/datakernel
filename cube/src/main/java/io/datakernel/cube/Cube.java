@@ -72,7 +72,6 @@ import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.cube.Utils.*;
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_10_MINUTES;
 import static java.util.Arrays.asList;
-import static java.util.Collections.EMPTY_LIST;
 import static java.util.Collections.singletonList;
 
 /**
@@ -96,7 +95,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	private final Map<String, Measure> measures = new LinkedHashMap<>();
 	private final Map<String, ComputedMeasure> computedMeasures = newLinkedHashMap();
 
-	private ListenableResultCallback<LoadedChunks> loadChunksCallback;
+	private ListenableCompletionCallback loadChunksCallback;
 
 	private static final class AttributeResolverContainer {
 		private final List<String> attributes = new ArrayList<>();
@@ -372,31 +371,8 @@ public final class Cube implements ICube, EventloopJmxMBean {
 			}
 
 			@Override
-			public void loadChunks(final int lastRevisionId, final ResultCallback<LoadedChunks> callback) {
-				if (loadChunksCallback != null) {
-					loadChunksCallback.addListener(callback);
-					return;
-				}
-				loadChunksCallback = ListenableResultCallback.create();
-				loadChunksCallback.addListener(callback);
-
-				cubeMetadataStorage.loadChunks(Cube.this, lastRevisionId, newHashSet(config.id), new ResultCallback<CubeLoadedChunks>() {
-					@Override
-					public void onResult(CubeLoadedChunks result) {
-						loadChunksIntoAggregations(result, true);
-						logger.info("Loading chunks for cube completed");
-						ListenableResultCallback<LoadedChunks> callback = loadChunksCallback;
-						loadChunksCallback = null;
-						callback.setResult(new LoadedChunks(lastRevisionId, EMPTY_LIST, EMPTY_LIST));
-					}
-
-					@Override
-					protected void onException(Exception e) {
-						ListenableResultCallback<LoadedChunks> callback = loadChunksCallback;
-						loadChunksCallback = null;
-						callback.setException(e);
-					}
-				});
+			public void loadChunks(Aggregation aggregation, int lastRevisionId, CompletionCallback callback) {
+				Cube.this.loadChunks(callback);
 			}
 
 			@Override
@@ -492,6 +468,10 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	public Aggregation getAggregation(String aggregationId) {
 		AggregationContainer aggregationContainer = aggregations.get(aggregationId);
 		return (aggregationContainer == null) ? null : aggregationContainer.aggregation;
+	}
+
+	public Set<String> getAggregationIds() {
+		return aggregations.keySet();
 	}
 
 	public void incrementLastRevisionId() {
@@ -690,27 +670,38 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	}
 
 	public void loadChunks(final CompletionCallback callback) {
+		if (loadChunksCallback != null) {
+			logger.info("Chunks loading is in progress");
+			loadChunksCallback.addListener(callback);
+			return;
+		}
+		loadChunksCallback = ListenableCompletionCallback.create();
+		loadChunksCallback.addListener(callback);
+
 		final boolean incremental = eventloop.currentTimeMillis() - lastReloadTimestamp <= maxIncrementalReloadPeriodMillis;
 		logger.info("Loading chunks for cube (incremental={})", incremental);
 		int revisionId = incremental ? lastRevisionId : 0;
 
-		cubeMetadataStorage.loadChunks(this, revisionId, aggregations.keySet(), new ResultCallback<CubeLoadedChunks>() {
+		cubeMetadataStorage.loadChunks(this, revisionId, new CompletionCallback() {
 			@Override
-			public void onResult(CubeLoadedChunks result) {
-				loadChunksIntoAggregations(result, incremental);
+			protected void onComplete() {
 				logger.info("Loading chunks for cube completed");
+				CompletionCallback callback = loadChunksCallback;
+				loadChunksCallback = null;
 				callback.setComplete();
 			}
 
 			@Override
 			public void onException(Exception e) {
 				logger.error("Loading chunks for cube failed", e);
+				CompletionCallback callback = loadChunksCallback;
+				loadChunksCallback = null;
 				callback.setException(e);
 			}
 		});
 	}
 
-	private void loadChunksIntoAggregations(CubeLoadedChunks result, boolean incremental) {
+	public void loadChunksIntoAggregations(CubeLoadedChunks result, boolean incremental) {
 		this.lastRevisionId = result.lastRevisionId;
 		this.lastReloadTimestamp = eventloop.currentTimeMillis();
 
@@ -735,7 +726,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 		consolidationStarted = eventloop.currentTimeMillis();
 
 		logger.info("Launching consolidation");
-		consolidate(false, new ArrayList<>(this.aggregations.values()).iterator(), new ResultCallback<Boolean>() {
+		consolidate(false, new ArrayList<>(this.aggregations.keySet()).iterator(), new ResultCallback<Boolean>() {
 			@Override
 			protected void onResult(Boolean result) {
 				if (result) {
@@ -755,12 +746,14 @@ public final class Cube implements ICube, EventloopJmxMBean {
 		});
 	}
 
-	private void consolidate(final boolean found, final Iterator<AggregationContainer> iterator, final ResultCallback<Boolean> callback) {
+	private void consolidate(final boolean found, final Iterator<String> iterator, final ResultCallback<Boolean> callback) {
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
 				if (iterator.hasNext()) {
-					final Aggregation aggregation = iterator.next().aggregation;
+					String aggregationId = iterator.next();
+					final Aggregation aggregation = Cube.this.getAggregation(aggregationId);
+					logger.info("Consolidation of aggregation {}", aggregationId);
 					aggregation.consolidateHotSegment(new ResultCallback<Boolean>() {
 						@Override
 						public void onResult(final Boolean hotSegmentConsolidated) {

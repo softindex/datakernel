@@ -639,10 +639,9 @@ public class Aggregation implements IAggregation, AggregationOperationTracker, E
 		logger.info("Loading chunks for aggregation {} (incremental={})", this, incremental);
 		int revisionId = incremental ? lastRevisionId : 0;
 
-		metadataStorage.loadChunks(revisionId, new ResultCallback<LoadedChunks>() {
+		metadataStorage.loadChunks(this, revisionId, new CompletionCallback() {
 			@Override
-			public void onResult(LoadedChunks loadedChunks) {
-				loadChunks(loadedChunks, incremental);
+			protected void onComplete() {
 				CompletionCallback currentCallback = loadChunksCallback;
 				loadChunksCallback = null;
 				currentCallback.setComplete();

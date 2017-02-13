@@ -22,7 +22,6 @@ import io.datakernel.async.ResultCallback;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public interface CubeMetadataStorage {
 	void createChunkId(Cube cube, String aggregationId, ResultCallback<Long> callback);
@@ -47,6 +46,5 @@ public interface CubeMetadataStorage {
 		}
 	}
 
-	void loadChunks(Cube cube, int lastRevisionId, Set<String> aggregations,
-	                ResultCallback<CubeLoadedChunks> callback);
+	void loadChunks(Cube cube, int lastRevisionId, CompletionCallback callback);
 }

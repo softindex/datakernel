@@ -62,13 +62,14 @@ public class AggregationMetadataStorageStub implements AggregationMetadataStorag
 	}
 
 	@Override
-	public void loadChunks(final int lastRevisionId, ResultCallback<LoadedChunks> callback) {
+	public void loadChunks(Aggregation aggregation, int lastRevisionId, CompletionCallback callback) {
 		List<AggregationChunk> allChunks = new ArrayList<>();
 		for (List<AggregationChunk> chunks : revisionToChunks.tailMap(lastRevisionId, false).values()) {
 			allChunks.addAll(chunks);
 		}
 		LoadedChunks loadedChunks = new LoadedChunks(revisionToChunks.lastKey(), EMPTY_LIST, allChunks);
-		callback.postResult(eventloop, loadedChunks);
+		aggregation.loadChunks(loadedChunks, true);
+		callback.postComplete(eventloop);
 	}
 
 	@Override
