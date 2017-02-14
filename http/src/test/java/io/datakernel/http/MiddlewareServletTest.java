@@ -388,6 +388,7 @@ public class MiddlewareServletTest {
 				.with(GET, "/a/:id/b/d", servlet);
 
 		main.serve(HttpRequest.post(TEMPLATE + "/a/123/b/d"), callback("", 405));
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -408,5 +409,6 @@ public class MiddlewareServletTest {
 				.with(GET, "/a/:id/b/d", servlet)
 				.withFallback("/a/:id/b/d", fallback);
 		main.serve(HttpRequest.post(TEMPLATE + "/a/123/b/d"), callback("Fallback executed", 200));
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 }

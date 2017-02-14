@@ -17,6 +17,8 @@
 package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.bytebuf.ByteBufStrings;
 
 import java.util.Date;
 import java.util.List;
@@ -236,7 +238,11 @@ public final class HttpHeaders {
 
 		@Override
 		public String toString() {
-			return type.toString();
+			ByteBuf buf = ByteBufPool.allocate(estimateSize());
+			ContentType.render(type, buf);
+			String value = ByteBufStrings.decodeAscii(buf);
+			buf.recycle();
+			return value;
 		}
 	}
 
@@ -261,6 +267,15 @@ public final class HttpHeaders {
 		public void writeTo(ByteBuf buf) {
 			AcceptMediaType.render(types, buf);
 		}
+
+		@Override
+		public String toString() {
+			ByteBuf buf = ByteBufPool.allocate(estimateSize());
+			AcceptMediaType.render(types, buf);
+			String value = ByteBufStrings.decodeAscii(buf);
+			buf.recycle();
+			return value;
+		}
 	}
 
 	private static final class ValueOfSimpleCookies extends Value {
@@ -276,14 +291,24 @@ public final class HttpHeaders {
 			int size = 0;
 			for (HttpCookie cookie : cookies) {
 				size += cookie.getName().length();
-				size += cookie.getValue() == null ? 0 : cookie.getValue().length();
+				size += cookie.getValue() == null ? 0 : cookie.getValue().length() + 1;
 			}
+			size += (cookies.size() - 1) * 2; // semicolons and spaces
 			return size;
 		}
 
 		@Override
 		public void writeTo(ByteBuf buf) {
 			HttpCookie.renderSimple(cookies, buf);
+		}
+
+		@Override
+		public String toString() {
+			ByteBuf buf = ByteBufPool.allocate(estimateSize());
+			HttpCookie.renderSimple(cookies, buf);
+			String value = ByteBufStrings.decodeAscii(buf);
+			buf.recycle();
+			return value;
 		}
 	}
 
@@ -300,18 +325,28 @@ public final class HttpHeaders {
 			int size = 0;
 			for (HttpCookie cookie : cookies) {
 				size += cookie.getName().length();
-				size += cookie.getValue() == null ? 0 : cookie.getValue().length();
+				size += cookie.getValue() == null ? 0 : cookie.getValue().length() + 1;
 				size += cookie.getDomain() == null ? 0 : cookie.getDomain().length() + 10;
 				size += cookie.getPath() == null ? 0 : cookie.getPath().length() + 6;
 				size += cookie.getExtension() == null ? 0 : cookie.getExtension().length();
 				size += 102;
 			}
+			size += (cookies.size() - 1) * 2;
 			return size;
 		}
 
 		@Override
 		public void writeTo(ByteBuf buf) {
 			HttpCookie.renderFull(cookies, buf);
+		}
+
+		@Override
+		public String toString() {
+			ByteBuf buf = ByteBufPool.allocate(estimateSize());
+			HttpCookie.renderFull(cookies, buf);
+			String value = ByteBufStrings.decodeAscii(buf);
+			buf.recycle();
+			return value;
 		}
 	}
 
@@ -336,6 +371,15 @@ public final class HttpHeaders {
 		public void writeTo(ByteBuf buf) {
 			AcceptCharset.render(charsets, buf);
 		}
+
+		@Override
+		public String toString() {
+			ByteBuf buf = ByteBufPool.allocate(estimateSize());
+			AcceptCharset.render(charsets, buf);
+			String value = ByteBufStrings.decodeAscii(buf);
+			buf.recycle();
+			return value;
+		}
 	}
 
 	private static final class ValueOfDate extends Value {
@@ -353,8 +397,16 @@ public final class HttpHeaders {
 
 		@Override
 		public void writeTo(ByteBuf buf) {
-			long timestamp = date.getTime();
 			HttpDate.render(date.getTime(), buf);
+		}
+
+		@Override
+		public String toString() {
+			ByteBuf buf = ByteBufPool.allocate(estimateSize());
+			HttpDate.render(date.getTime(), buf);
+			String value = ByteBufStrings.decodeAscii(buf);
+			buf.recycle();
+			return value;
 		}
 	}
 
