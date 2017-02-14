@@ -23,6 +23,10 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 public class MiddlewareServlet implements AsyncServlet {
+	private enum ProcessResult {
+		PROCESSED, NOT_FOUND, NOT_ALLOWED
+	}
+
 	private static final String ROOT = "/";
 
 	protected final Map<String, MiddlewareServlet> routes = new HashMap<>();
@@ -98,26 +102,32 @@ public class MiddlewareServlet implements AsyncServlet {
 
 	@Override
 	public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-		boolean processed = tryServeAsync(request, callback);
-		if (!processed) {
+		ProcessResult processed = tryServeAsync(request, callback);
+		if (processed == ProcessResult.NOT_FOUND) {
 			callback.setException(HttpException.notFound404());
+		} else if (processed == ProcessResult.NOT_ALLOWED) {
+			callback.setException(HttpException.notAllowed405());
 		}
 	}
 
-	protected boolean tryServeAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+	protected ProcessResult tryServeAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
 		int introPosition = request.getPos();
 		String urlPart = request.pollUrlPart();
 		HttpMethod method = request.getMethod();
 
 		if (urlPart.isEmpty()) {
-			AsyncServlet servlet = getRootServletOrWildcard(method);
-			if (servlet != null) {
-				servlet.serve(request, callback);
-				return true;
+			if (!rootServlets.isEmpty()) {
+				AsyncServlet servlet = getRootServletOrWildcard(method);
+				if (servlet != null) {
+					servlet.serve(request, callback);
+					return ProcessResult.PROCESSED;
+				} else if (fallbackServlet == null) {
+					return ProcessResult.NOT_ALLOWED;
+				}
 			}
 		}
 
-		boolean processed = false;
+		ProcessResult processed = ProcessResult.NOT_FOUND;
 
 		MiddlewareServlet transit = routes.get(urlPart);
 		if (transit != null) {
@@ -127,8 +137,8 @@ public class MiddlewareServlet implements AsyncServlet {
 			for (Entry<String, MiddlewareServlet> entry : parameters.entrySet()) {
 				request.putUrlParameter(entry.getKey(), urlPart);
 				processed = entry.getValue().tryServeAsync(request, callback);
-				if (processed) {
-					return true;
+				if (processed == ProcessResult.PROCESSED) {
+					return processed;
 				} else {
 					request.removeUrlParameter(entry.getKey());
 					request.setPos(position);
@@ -136,10 +146,10 @@ public class MiddlewareServlet implements AsyncServlet {
 			}
 		}
 
-		if (!processed && fallbackServlet != null) {
+		if (!(processed == ProcessResult.PROCESSED) && fallbackServlet != null) {
 			request.setPos(introPosition);
 			fallbackServlet.serve(request, callback);
-			processed = true;
+			processed = ProcessResult.PROCESSED;
 		}
 		return processed;
 	}

@@ -68,6 +68,10 @@ public class HttpException extends SimpleException {
 		return new HttpException(500);
 	}
 
+	public static HttpException notAllowed405() {
+		return new HttpException(405);
+	}
+
 	public final int getCode() {
 		return code;
 	}

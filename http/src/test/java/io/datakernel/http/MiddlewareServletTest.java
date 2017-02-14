@@ -375,4 +375,38 @@ public class MiddlewareServletTest {
 		System.out.println();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
+
+	@Test
+	public void test405() throws ParseException {
+		AsyncServlet servlet = new AsyncServlet() {
+			@Override
+			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
+				callback.setResult(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Should not execute")));
+			}
+		};
+		MiddlewareServlet main = MiddlewareServlet.create()
+				.with(GET, "/a/:id/b/d", servlet);
+
+		main.serve(HttpRequest.post(TEMPLATE + "/a/123/b/d"), callback("", 405));
+	}
+
+	@Test
+	public void test405WithFallback() {
+		AsyncServlet servlet = new AsyncServlet() {
+			@Override
+			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
+				callback.setResult(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Should not execute")));
+			}
+		};
+		AsyncServlet fallback = new AsyncServlet() {
+			@Override
+			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
+				callback.setResult(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Fallback executed")));
+			}
+		};
+		MiddlewareServlet main = MiddlewareServlet.create()
+				.with(GET, "/a/:id/b/d", servlet)
+				.withFallback("/a/:id/b/d", fallback);
+		main.serve(HttpRequest.post(TEMPLATE + "/a/123/b/d"), callback("Fallback executed", 200));
+	}
 }
