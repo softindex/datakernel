@@ -230,7 +230,7 @@ public final class Config {
 		}
 	}
 
-	public Config ensureChild(String path) {
+	synchronized public Config ensureChild(String path) {
 		if (path.isEmpty())
 			return this;
 		Config result = this;
