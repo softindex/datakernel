@@ -26,6 +26,23 @@ import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.HttpUtils.skipSpaces;
 
 // RFC 6265
+/*
+ set-cookie-header  = "Set-Cookie:" SP set-cookie-string
+ set-cookie-string  = cookie-pair *( ";" SP cookie-av )
+ cookie-header      = "Cookie:" OWS cookie-string OWS
+ cookie-string      = cookie-pair *( ";" SP cookie-pair )
+
+ cookie-pair        = cookie-name "=" cookie-value
+ cookie-name        = 1*<any CHAR except CTLs or separators>
+ cookie-value       = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
+
+ cookie-octet       = any CHAR except [",;\SPACE] and CTLs
+ separators         = "(" | ")" | "<" | ">" | "@"
+                    | "," | ";" | ":" | "\" | <">
+                    | "/" | "[" | "]" | "?" | "="
+                    | "{" | "}" | SP | HT
+ CTLs               = [\u0000...\0032, DEL]
+*/
 public final class HttpCookie {
 	private abstract static class AvHandler {
 		protected abstract void handle(HttpCookie cookie, byte[] bytes, int start, int end) throws ParseException;
@@ -61,13 +78,13 @@ public final class HttpCookie {
 	}
 
 	public static HttpCookie of(String name, String value) {
-		assert isValidKey(value);
+		assert isValidName(name);
 		assert isValidValue(value);
 		return new HttpCookie(name, value);
 	}
 
 	public static HttpCookie of(String name) {
-		assert isValidKey(name);
+		assert isValidName(name);
 		return new HttpCookie(name, null);
 	}
 
@@ -77,21 +94,25 @@ public final class HttpCookie {
 	}
 
 	public HttpCookie withExpirationDate(Date expirationDate) {
+		// <rfc1123-date, defined in [RFC2616], Section 3.3.1>
 		setExpirationDate(expirationDate);
 		return this;
 	}
 
 	public HttpCookie withMaxAge(int maxAge) {
+		// %x31-39 ; digits 1 through 9
 		setMaxAge(maxAge);
 		return this;
 	}
 
 	public HttpCookie withDomain(String domain) {
+		// https://tools.ietf.org/html/rfc1034#section-3.5
 		setDomain(domain);
 		return this;
 	}
 
 	public HttpCookie withPath(String path) {
+		// <any CHAR except CTLs or ";">
 		setPath(path);
 		return this;
 	}
@@ -107,46 +128,62 @@ public final class HttpCookie {
 	}
 
 	public HttpCookie withExtension(String extension) {
+		// any CHAR except CTLs or ";"
 		setExtension(extension);
 		return this;
 	}
 	// endregion
 
 	// region accessors
+	private static final String SEPARATORS = "()<>@,;:\\\"/[]?={}\u0020\u0009";
+	private static final String RESTRICTED_CHARACTERS_IN_OCTET = "\",;\\\u0020";
+
+	private static boolean isRestrictedInOctet(char c) {
+		return RESTRICTED_CHARACTERS_IN_OCTET.indexOf(c) != -1;
+	}
+
+	private static boolean isSeparator(char c) {
+		return SEPARATORS.indexOf(c) != -1;
+	}
+
+	private static boolean isCTL(char c) {
+		return c <= 31 || c == 127;
+	}
+
+	static boolean isValidName(String key) {
+		if (key.length() < 1)
+			return false;
+		for (int i = 0; i < key.length(); i++) {
+			char c = key.charAt(i);
+			if (isCTL(c) || isSeparator(c)) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	static boolean isValidValue(String value) {
+		int start = 0;
+		int end = value.length();
+		if (value.startsWith("\"") && value.endsWith("\"")) {
+			start++;
+			end--;
+		}
+		for (int i = start; i < end; i++) {
+			char c = value.charAt(i);
+			if (isCTL(c) || isRestrictedInOctet(c)) {
+				return false;
+			}
+		}
+		return true;
+	}
+
 	public String getName() {
 		return name;
 	}
 
 	public String getValue() {
 		return value;
-	}
-
-	private static final String VALID_KEY_CHARS = "!#$%&'*+-.^_`|~";
-
-	private static boolean isValidKey(String value) {
-		for (int i = 0; i < value.length(); i++) {
-			char c = value.charAt(i);
-			if ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') | (c >= 'A' && c <= 'Z'))
-				continue;
-			if (VALID_KEY_CHARS.indexOf(c) != -1)
-				continue;
-			return false;
-		}
-		return true;
-	}
-
-	private static final String VALID_VALUE_CHARS = "!#$%&'()*+-./:<=>?@[]^_`{|}~";
-
-	private static boolean isValidValue(String value) {
-		for (int i = 0; i < value.length(); i++) {
-			char c = value.charAt(i);
-			if ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') | (c >= 'A' && c <= 'Z'))
-				continue;
-			if (VALID_VALUE_CHARS.indexOf(c) != -1)
-				continue;
-			return false;
-		}
-		return true;
 	}
 
 	public void setValue(String value) {

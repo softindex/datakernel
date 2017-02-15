@@ -26,7 +26,6 @@ import java.util.*;
 import static org.junit.Assert.*;
 
 public class HttpCookieTest {
-
 	@Test
 	public void testParser() throws ParseException {
 		String cookieString = "name1=\"value1\"; expires=Thu, 01 Jan 2015 00:00:00 GMT; Secure; name2=value2; HttpOnly";
@@ -90,5 +89,22 @@ public class HttpCookieTest {
 		ByteBuf buf = ByteBuf.wrapForWriting(new byte[expected.length()]);
 		HttpCookie.renderSimple(Arrays.asList(cookie1, cookie2, cookie3), buf);
 		assertEquals(expected, ByteBufStrings.decodeAscii(buf));
+	}
+
+	@Test
+	public void testValidCharactersCreation() {
+		assertFalse(HttpCookie.isValidName("abc,"));
+		assertFalse(HttpCookie.isValidName("\0abc,"));
+		assertFalse(HttpCookie.isValidName("[a:bc,"));
+		assertFalse(HttpCookie.isValidName(""));
+		assertTrue(HttpCookie.isValidName("abc+"));
+		assertTrue(HttpCookie.isValidName("a"));
+
+		assertTrue(HttpCookie.isValidValue("\"abc\""));
+		assertFalse(HttpCookie.isValidValue("\"abc"));
+
+		assertTrue(HttpCookie.isValidValue("aHR0cHM6Ly90cmVsbG8uY29tL2MvdURad0xJZG0vOS0t"));
+		assertFalse(HttpCookie.isValidValue("aHR0cHM6Ly90cmVsbG8u\u007fY29tL2MvdURad0xJZG0vOS0t"));
+		assertTrue(HttpCookie.isValidValue("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/="));
 	}
 }
