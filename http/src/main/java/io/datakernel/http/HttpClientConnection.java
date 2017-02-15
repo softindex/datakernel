@@ -56,7 +56,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 
 	@Override
 	public void onClosedWithError(Exception e) {
-		if (inspector != null) inspector.onHttpError(this, callback == null, e);
+		if (inspector != null && e != null) inspector.onHttpError(this, callback == null, e);
 		readQueue.clear();
 		if (callback != null) {
 			callback.postException(eventloop, e);

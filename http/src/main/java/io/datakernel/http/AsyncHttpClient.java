@@ -179,6 +179,11 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		}
 
 		@JmxAttribute
+		public EventStats getHttpTimeouts() {
+			return httpTimeouts;
+		}
+
+		@JmxAttribute
 		public ExceptionStats getHttpErrors() {
 			return httpErrors;
 		}

@@ -87,12 +87,17 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		private static final double SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_1_MINUTE;
 
 		private final EventStats totalRequests = EventStats.create(SMOOTHING_WINDOW);
-		private final EventStats httpErrors = EventStats.create(SMOOTHING_WINDOW);
+		private final EventStats httpTimeouts = EventStats.create(SMOOTHING_WINDOW);
+		private final ExceptionStats httpErrors = ExceptionStats.create();
 		private final ExceptionStats servletExceptions = ExceptionStats.create();
 
 		@Override
 		public void onHttpError(InetAddress remoteAddress, Exception e) {
-			httpErrors.recordEvent();
+			if (e == AbstractHttpConnection.READ_TIMEOUT_ERROR || e == AbstractHttpConnection.WRITE_TIMEOUT_ERROR) {
+				httpTimeouts.recordEvent();
+			} else {
+				httpErrors.recordException(e);
+			}
 		}
 
 		@Override
@@ -114,9 +119,14 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 			return totalRequests;
 		}
 
+		@JmxAttribute
+		public EventStats getHttpTimeouts() {
+			return httpTimeouts;
+		}
+
 		@JmxAttribute(description = "Number of requests which were invalid according to http protocol. " +
 				"Responses were not sent for this requests")
-		public EventStats getHttpErrors() {
+		public ExceptionStats getHttpErrors() {
 			return httpErrors;
 		}
 

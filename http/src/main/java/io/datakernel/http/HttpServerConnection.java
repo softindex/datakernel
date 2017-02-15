@@ -105,7 +105,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	@Override
 	public void onClosedWithError(Exception e) {
-		if (inspector != null) inspector.onHttpError(remoteAddress, e);
+		if (inspector != null && e != null) inspector.onHttpError(remoteAddress, e);
 		readQueue.clear();
 		onClosed();
 	}
