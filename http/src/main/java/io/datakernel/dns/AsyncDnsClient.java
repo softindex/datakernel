@@ -251,17 +251,19 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 			@Override
 			public void run() {
 				if (connection == null || !connection.isRegistered()) {
-					registerConnection();
+					try {
+						registerConnection();
+					} catch (IOException e) {
+						if (logger.isErrorEnabled()) logger.error("DnsClientConnection registration failed.", e);
+						queryCachingCallback.setException(e);
+						return;
+					}
 				}
 
-				if (connection != null) {
-					if (ipv6) {
-						connection.resolve6(domainName, dnsServerAddress, timeout, queryCachingCallback);
-					} else {
-						connection.resolve4(domainName, dnsServerAddress, timeout, queryCachingCallback);
-					}
+				if (ipv6) {
+					connection.resolve6(domainName, dnsServerAddress, timeout, queryCachingCallback);
 				} else {
-					queryCachingCallback.setException(new IOException("Cannot create connection"));
+					connection.resolve4(domainName, dnsServerAddress, timeout, queryCachingCallback);
 				}
 			}
 		});
@@ -272,15 +274,10 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 	/**
 	 * Registers a new DnsConnection in its eventloop.
 	 */
-	public void registerConnection() {
-		try {
-			DatagramChannel datagramChannel = createDatagramChannel(datagramSocketSettings, null, dnsServerAddress);
-			connection = DnsClientHandler.create(eventloop, datagramChannel);
-			connection.register();
-		} catch (IOException e) {
-			if (logger.isErrorEnabled())
-				logger.error("DnsClientConnection registration failed.", e);
-		}
+	public void registerConnection() throws IOException {
+		DatagramChannel datagramChannel = createDatagramChannel(datagramSocketSettings, null, dnsServerAddress);
+		connection = DnsClientHandler.create(eventloop, datagramChannel);
+		connection.register();
 	}
 
 	@Override
