@@ -32,18 +32,14 @@ public class AsyncCallables {
 				callable.call(new ResultCallback<T>() {
 					@Override
 					protected void onResult(T result) {
-						if (scheduledRunnable.isScheduledNow()) {
-							scheduledRunnable.cancel();
-							callback.setResult(result);
-						}
+						scheduledRunnable.cancel();
+						callback.setResult(result);
 					}
 
 					@Override
 					protected void onException(Exception e) {
-						if (scheduledRunnable.isScheduledNow()) {
-							scheduledRunnable.cancel();
-							callback.setException(e);
-						}
+						scheduledRunnable.cancel();
+						callback.setException(e);
 					}
 				});
 			}

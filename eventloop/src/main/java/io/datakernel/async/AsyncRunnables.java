@@ -33,18 +33,14 @@ public class AsyncRunnables {
 				runnable.run(new CompletionCallback() {
 					@Override
 					protected void onComplete() {
-						if (scheduledRunnable.isScheduledNow()) {
-							scheduledRunnable.cancel();
-							callback.setComplete();
-						}
+						scheduledRunnable.cancel();
+						callback.setComplete();
 					}
 
 					@Override
 					protected void onException(Exception e) {
-						if (scheduledRunnable.isScheduledNow()) {
-							scheduledRunnable.cancel();
-							callback.setException(e);
-						}
+						scheduledRunnable.cancel();
+						callback.setException(e);
 					}
 				});
 			}

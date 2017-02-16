@@ -82,13 +82,12 @@ public final class CubeConsolidatorService implements EventloopService {
 		if (consolidationTask != null && consolidationTask.isCancelled())
 			return;
 
-		consolidationTask =
-				eventloop.scheduleBackground(eventloop.currentTimeMillis() + timeout, new ScheduledRunnable() {
-					@Override
-					public void run() {
-						consolidate();
-					}
-				});
+		consolidationTask = eventloop.scheduleBackground(eventloop.currentTimeMillis() + timeout, new ScheduledRunnable() {
+			@Override
+			public void run() {
+				consolidate();
+			}
+		});
 	}
 
 	@Override

@@ -59,6 +59,9 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	protected int readMaxSize = DEFAULT_READ_BUF_SIZE;
 	protected int writeMaxSize = MAX_MERGE_SIZE;
 
+	private ScheduledRunnable checkReadTimeout;
+	private ScheduledRunnable checkWriteTimeout;
+
 	public interface Inspector {
 		void onReadTimeout();
 
@@ -167,22 +170,6 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	private Inspector inspector;
 
-	private ScheduledRunnable checkReadTimeout = new ScheduledRunnable() {
-		@Override
-		public void run() {
-			if (inspector != null) inspector.onReadTimeout();
-			closeWithError(TIMEOUT_EXCEPTION, false);
-		}
-	};
-
-	private ScheduledRunnable checkWriteTimeout = new ScheduledRunnable() {
-		@Override
-		public void run() {
-			if (inspector != null) inspector.onWriteTimeout();
-			closeWithError(TIMEOUT_EXCEPTION, false);
-		}
-	};
-
 	private final Runnable writeRunnable = new Runnable() {
 		@Override
 		public void run() {
@@ -254,22 +241,33 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	// timeouts management
 	void scheduleReadTimeOut() {
-		if (!checkReadTimeout.isScheduledNow()) {
-			long roundedTimestamp = ceilMod(eventloop.currentTimeMillis() + readTimeout, 100);
-			eventloop.scheduleBackground(roundedTimestamp, checkReadTimeout);
+		if (checkReadTimeout == null) {
+			checkReadTimeout = eventloop.scheduleBackground(
+					eventloop.currentTimeMillis() + readTimeout,
+					new ScheduledRunnable() {
+						@Override
+						public void run() {
+							if (inspector != null) inspector.onReadTimeout();
+							checkReadTimeout = null;
+							closeWithError(TIMEOUT_EXCEPTION, false);
+						}
+					});
 		}
 	}
 
 	void scheduleWriteTimeOut() {
-		if (!checkWriteTimeout.isScheduledNow()) {
-			long roundedTimestamp = ceilMod(eventloop.currentTimeMillis() + writeTimeout, 100);
-			eventloop.scheduleBackground(roundedTimestamp, checkWriteTimeout);
+		if (checkWriteTimeout == null) {
+			checkWriteTimeout = eventloop.scheduleBackground(
+					eventloop.currentTimeMillis() + writeTimeout,
+					new ScheduledRunnable() {
+						@Override
+						public void run() {
+							if (inspector != null) inspector.onWriteTimeout();
+							checkWriteTimeout = null;
+							closeWithError(TIMEOUT_EXCEPTION, false);
+						}
+					});
 		}
-	}
-
-	private static long ceilMod(long value, long modulo) {
-		long remainder = value % modulo;
-		return remainder == 0 ? value : value - remainder + modulo;
 	}
 
 	// interests management
@@ -310,8 +308,9 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		int oldOps = ops;
 		ops = ops | OP_POSTPONED;
 		readInterest(false);
-		if (checkReadTimeout.isScheduledNow()) {
+		if (checkReadTimeout != null) {
 			checkReadTimeout.cancel();
+			checkReadTimeout = null;
 		}
 		doRead();
 		int newOps = ops & ~OP_POSTPONED;
@@ -426,8 +425,9 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		}
 
 		if (writeQueue.isEmpty()) {
-			if (checkWriteTimeout.isScheduledNow()) {
+			if (checkWriteTimeout != null) {
 				checkWriteTimeout.cancel();
+				checkWriteTimeout = null;
 			}
 			if (writeEndOfStream) {
 				channel.shutdownOutput();
@@ -450,11 +450,13 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			buf.recycle();
 		}
 		writeQueue.clear();
-		if (checkWriteTimeout.isScheduledNow()) {
+		if (checkWriteTimeout != null) {
 			checkWriteTimeout.cancel();
+			checkWriteTimeout = null;
 		}
-		if (checkReadTimeout.isScheduledNow()) {
+		if (checkReadTimeout != null) {
 			checkReadTimeout.cancel();
+			checkReadTimeout = null;
 		}
 	}
 
