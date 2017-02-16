@@ -150,11 +150,18 @@ public final class HttpCookie {
 		return c <= 31 || c == 127;
 	}
 
+	private static boolean isAlphaNumeric(char c) {
+		return ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'));
+	}
+
 	static boolean isValidName(String key) {
 		if (key.length() < 1)
 			return false;
 		for (int i = 0; i < key.length(); i++) {
 			char c = key.charAt(i);
+			if (isAlphaNumeric(c)) {
+				continue;
+			}
 			if (isCTL(c) || isSeparator(c)) {
 				return false;
 			}
@@ -171,6 +178,9 @@ public final class HttpCookie {
 		}
 		for (int i = start; i < end; i++) {
 			char c = value.charAt(i);
+			if (isAlphaNumeric(c)) {
+				continue;
+			}
 			if (isCTL(c) || isRestrictedInOctet(c)) {
 				return false;
 			}
