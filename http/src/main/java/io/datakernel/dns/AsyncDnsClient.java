@@ -253,11 +253,15 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 				if (connection == null || !connection.isRegistered()) {
 					registerConnection();
 				}
-				assert connection != null;
-				if (ipv6) {
-					connection.resolve6(domainName, dnsServerAddress, timeout, queryCachingCallback);
+
+				if (connection != null) {
+					if (ipv6) {
+						connection.resolve6(domainName, dnsServerAddress, timeout, queryCachingCallback);
+					} else {
+						connection.resolve4(domainName, dnsServerAddress, timeout, queryCachingCallback);
+					}
 				} else {
-					connection.resolve4(domainName, dnsServerAddress, timeout, queryCachingCallback);
+					queryCachingCallback.setException(new IOException("Cannot create connection"));
 				}
 			}
 		});
@@ -333,13 +337,13 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 	}
 
 	@JmxAttribute(description = "max time to live for cache entry (resolved ip address for domain)")
-	public long getMaxTtlMillis() {
-		return cache.getMaxTtlMillis();
+	public long getMaxTtlSeconds() {
+		return cache.getMaxTtlSeconds();
 	}
 
 	@JmxAttribute
-	public void setMaxTtlMillis(long maxTtlMillis) {
-		cache.setMaxTtlMillis(maxTtlMillis);
+	public void setMaxTtlSeconds(long maxTtlSeconds) {
+		cache.setMaxTtlSeconds(maxTtlSeconds);
 	}
 
 	@JmxOperation

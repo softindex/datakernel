@@ -227,12 +227,12 @@ public final class DnsCache {
 		}
 	}
 
-	public long getMaxTtlMillis() {
-		return maxTtlSeconds * 1000;
+	public long getMaxTtlSeconds() {
+		return maxTtlSeconds;
 	}
 
-	public void setMaxTtlMillis(long maxTtlMillis) {
-		this.maxTtlSeconds = maxTtlMillis / 1000;
+	public void setMaxTtlSeconds(long maxTtlSeconds) {
+		this.maxTtlSeconds = maxTtlSeconds;
 	}
 
 	public void clear() {
