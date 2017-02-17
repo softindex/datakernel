@@ -22,7 +22,10 @@ import io.datakernel.async.ConnectCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.dns.IAsyncDnsClient;
-import io.datakernel.eventloop.*;
+import io.datakernel.eventloop.AsyncTcpSocket;
+import io.datakernel.eventloop.AsyncTcpSocketImpl;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.EventloopService;
 import io.datakernel.jmx.*;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.util.MemSize;
@@ -257,7 +260,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 	private void scheduleExpiredConnectionsCheck() {
 		assert expiredConnectionsCheck == null;
-		expiredConnectionsCheck = eventloop.scheduleBackground(eventloop.currentTimeMillis() + 1000L, new ScheduledRunnable() {
+		expiredConnectionsCheck = eventloop.scheduleBackground(eventloop.currentTimeMillis() + 1000L, new Runnable() {
 			@Override
 			public void run() {
 				expiredConnectionsCheck = null;

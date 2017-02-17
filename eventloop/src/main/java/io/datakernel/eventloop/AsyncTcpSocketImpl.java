@@ -244,7 +244,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		if (checkReadTimeout == null) {
 			checkReadTimeout = eventloop.scheduleBackground(
 					eventloop.currentTimeMillis() + readTimeout,
-					new ScheduledRunnable() {
+					new Runnable() {
 						@Override
 						public void run() {
 							if (inspector != null) inspector.onReadTimeout();
@@ -259,7 +259,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		if (checkWriteTimeout == null) {
 			checkWriteTimeout = eventloop.scheduleBackground(
 					eventloop.currentTimeMillis() + writeTimeout,
-					new ScheduledRunnable() {
+					new Runnable() {
 						@Override
 						public void run() {
 							if (inspector != null) inspector.onWriteTimeout();

@@ -21,7 +21,6 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.exception.ParseException;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.ExceptionStats;
@@ -185,7 +184,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 	private void scheduleExpiredConnectionsCheck() {
 		assert expiredConnectionsCheck == null;
-		expiredConnectionsCheck = eventloop.scheduleBackground(eventloop.currentTimeMillis() + 1000L, new ScheduledRunnable() {
+		expiredConnectionsCheck = eventloop.scheduleBackground(eventloop.currentTimeMillis() + 1000L, new Runnable() {
 			@Override
 			public void run() {
 				expiredConnectionsCheck = null;

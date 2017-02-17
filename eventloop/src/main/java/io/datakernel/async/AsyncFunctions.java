@@ -1,7 +1,6 @@
 package io.datakernel.async;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.exception.AsyncTimeoutException;
 
 import java.util.Arrays;
@@ -40,7 +39,7 @@ public class AsyncFunctions {
 					}
 				});
 				if (!state.done) {
-					eventloop.schedule(timestamp, new ScheduledRunnable() {
+					eventloop.schedule(timestamp, new Runnable() {
 						@Override
 						public void run() {
 							if (!state.done) {

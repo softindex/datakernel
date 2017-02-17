@@ -123,7 +123,7 @@ public final class DnsClientHandler implements AsyncUdpSocket {
 	private void resolve(final String domainName, InetSocketAddress dnsServerAddress, final long timeout,
 	                     final ResultCallback<DnsQueryResult> callback, boolean ipv6) {
 		final ResultCallback<DnsQueryResult> callbackWithTimeout = new ResultCallback<DnsQueryResult>() {
-			private final ScheduledRunnable timeouter = eventloop.schedule(eventloop.currentTimeMillis() + timeout, new ScheduledRunnable() {
+			private final ScheduledRunnable timeouter = eventloop.schedule(eventloop.currentTimeMillis() + timeout, new Runnable() {
 				@Override
 				public void run() {
 					final Set<ResultCallback<DnsQueryResult>> callbacks = resultHandlers.get(domainName);

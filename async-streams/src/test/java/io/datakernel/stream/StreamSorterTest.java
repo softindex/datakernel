@@ -20,7 +20,6 @@ import com.google.common.base.Functions;
 import com.google.common.collect.Ordering;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.stream.helper.StreamMergeSorterStorageStub;
 import io.datakernel.stream.processor.StreamMergeSorterStorage;
 import io.datakernel.stream.processor.StreamSorter;
@@ -99,7 +98,7 @@ public class StreamSorterTest {
 				if (scheduledRunnable != null && getProducerStatus().isClosed())
 					return;
 				if (numberToSend >= 5) {
-					scheduledRunnable = eventloop.schedule(eventloop.currentTimeMillis() + 100L, new ScheduledRunnable() {
+					scheduledRunnable = eventloop.schedule(eventloop.currentTimeMillis() + 100L, new Runnable() {
 						@Override
 						public void run() {
 							send(numberToSend++);

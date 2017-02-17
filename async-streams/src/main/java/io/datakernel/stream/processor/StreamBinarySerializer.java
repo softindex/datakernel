@@ -19,7 +19,6 @@ package io.datakernel.stream.processor;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.JmxAttribute;
@@ -449,7 +448,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 					}
 				});
 			} else {
-				eventloop.scheduleBackground(eventloop.currentTimeMillis() + flushDelayMillis, new ScheduledRunnable() {
+				eventloop.scheduleBackground(eventloop.currentTimeMillis() + flushDelayMillis, new Runnable() {
 					@Override
 					public void run() {
 						if (outputProducer.getProducerStatus().isOpen()) {

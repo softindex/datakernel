@@ -20,7 +20,6 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamConsumerDecorator;
 import io.datakernel.stream.StreamDataReceiver;
@@ -167,7 +166,7 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 						logger.error("{}: creating new unique log file with name {} and stream id {} failed.",
 								LogStreamConsumer_ByteBuffer.this, newChunkName, logPartition);
 
-						eventloop.schedule(1000L, new ScheduledRunnable() {
+						eventloop.schedule(1000L, new Runnable() {
 							@Override
 							public void run() {
 								createWriteStream(newChunkName);

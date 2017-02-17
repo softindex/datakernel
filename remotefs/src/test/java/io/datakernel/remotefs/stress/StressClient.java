@@ -23,7 +23,6 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.remotefs.RemoteFsClient;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
@@ -191,7 +190,7 @@ class StressClient {
 	void start(int operationsQuantity, int maxDuration) throws IOException {
 		setup();
 		for (int i = 0; i < operationsQuantity; i++) {
-			eventloop.schedule(eventloop.currentTimeMillis() + rand.nextInt(maxDuration), new ScheduledRunnable() {
+			eventloop.schedule(eventloop.currentTimeMillis() + rand.nextInt(maxDuration), new Runnable() {
 				@Override
 				public void run() {
 					operations.get(rand.nextInt(4)).go();

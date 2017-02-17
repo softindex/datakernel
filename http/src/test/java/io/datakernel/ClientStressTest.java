@@ -4,7 +4,6 @@ import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.http.*;
 import io.datakernel.util.StringUtils;
 import org.slf4j.Logger;
@@ -61,7 +60,7 @@ public class ClientStressTest {
 		int delay = random.nextInt(10000);
 		final String url = urls.next();
 		if (url != null) {
-			eventloop.schedule(eventloop.currentTimeMillis() + delay, new ScheduledRunnable() {
+			eventloop.schedule(eventloop.currentTimeMillis() + delay, new Runnable() {
 				@Override
 				public void run() {
 					logger.info("sending request to: {}", url);

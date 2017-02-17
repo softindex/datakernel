@@ -18,13 +18,22 @@ package io.datakernel.eventloop;
 
 import io.datakernel.async.AsyncCancellable;
 
-public abstract class ScheduledRunnable implements Comparable<ScheduledRunnable>, AsyncCancellable, Runnable {
-	/**
-	 * The time after which this runnable will be executed
-	 */
-	private long timestamp = 0L;
+public final class ScheduledRunnable implements Comparable<ScheduledRunnable>, AsyncCancellable {
+	private final long timestamp;
+	private Runnable runnable;
 	private boolean cancelled;
 	private boolean complete;
+
+	// region builders
+	private ScheduledRunnable(long timestamp, Runnable runnable) {
+		this.timestamp = timestamp;
+		this.runnable = runnable;
+	}
+
+	public static ScheduledRunnable create(long timestamp, Runnable runnable) {
+		return new ScheduledRunnable(timestamp, runnable);
+	}
+	// endregion
 
 	@Override
 	public boolean equals(Object o) {
@@ -39,14 +48,6 @@ public abstract class ScheduledRunnable implements Comparable<ScheduledRunnable>
 		return (int) (timestamp ^ (timestamp >>> 32));
 	}
 
-	/**
-	 * Compares timestamps of two ScheduledRunnables
-	 *
-	 * @param o ScheduledRunnable for comparing
-	 * @return a negative integer, zero, or a positive integer as this
-	 * timestamp is less than, equal to, or greater than the timestamp of
-	 * ScheduledRunnable from argument.
-	 */
 	@Override
 	public int compareTo(ScheduledRunnable o) {
 		return Long.compare(timestamp, o.timestamp);
@@ -55,21 +56,20 @@ public abstract class ScheduledRunnable implements Comparable<ScheduledRunnable>
 	@Override
 	public void cancel() {
 		this.cancelled = true;
+		this.runnable = null;
 	}
 
 	public void complete() {
 		this.complete = true;
+		this.runnable = null;
 	}
 
 	public long getTimestamp() {
 		return timestamp;
 	}
 
-	void setTimestamp(long timestamp) {
-		assert timestamp > 0L : "timestamp must be greater than zero";
-		assert this.timestamp == 0L : "ScheduledRunnable cannot be reused";
-
-		this.timestamp = timestamp;
+	public Runnable getRunnable() {
+		return runnable;
 	}
 
 	public boolean isCancelled() {
@@ -86,7 +86,8 @@ public abstract class ScheduledRunnable implements Comparable<ScheduledRunnable>
 				+ "{"
 				+ "timestamp=" + timestamp + ", "
 				+ "cancelled=" + cancelled + ", "
-				+ "complete=" + complete
+				+ "complete=" + complete + ", "
+				+ "runnable=" + runnable
 				+ "}";
 	}
 }

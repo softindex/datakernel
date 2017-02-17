@@ -83,7 +83,7 @@ public final class LogProcessorService implements EventloopService {
 		if (processingTask != null && processingTask.isCancelled())
 			return;
 
-		processingTask = eventloop.scheduleBackground(eventloop.currentTimeMillis() + logProcessingPeriodMillis, new ScheduledRunnable() {
+		processingTask = eventloop.scheduleBackground(eventloop.currentTimeMillis() + logProcessingPeriodMillis, new Runnable() {
 			@Override
 			public void run() {
 				processLogs();

@@ -20,7 +20,7 @@ public class AsyncRunnables {
 		return new AsyncRunnable() {
 			@Override
 			public void run(final CompletionCallback callback) {
-				final ScheduledRunnable scheduledRunnable = eventloop.schedule(timestamp, new ScheduledRunnable() {
+				final ScheduledRunnable scheduledRunnable = eventloop.schedule(timestamp, new Runnable() {
 					@Override
 					public void run() {
 						callback.setException(RUNNABLE_TIMEOUT_EXCEPTION);

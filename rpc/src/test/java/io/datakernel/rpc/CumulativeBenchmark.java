@@ -22,7 +22,6 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.protocol.RpcException;
 import io.datakernel.rpc.server.RpcRequestHandler;
@@ -281,7 +280,7 @@ public final class CumulativeBenchmark {
 	}
 
 	private void scheduleContinue(final int numberRequests, final CompletionCallback completionCallback) {
-		clientEventloop.schedule(clientEventloop.currentTimeMillis() + 1, new ScheduledRunnable() {
+		clientEventloop.schedule(clientEventloop.currentTimeMillis() + 1, new Runnable() {
 			@Override
 			public void run() {
 				sendRequests(numberRequests, completionCallback);

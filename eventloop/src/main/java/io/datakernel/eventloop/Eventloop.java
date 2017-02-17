@@ -487,19 +487,20 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 			ScheduledRunnable polled = taskQueue.poll();
 			assert polled == peeked;
 
+			Runnable runnable = polled.getRunnable();
 			if (sw != null) {
 				sw.reset();
 				sw.start();
 			}
 
 			try {
-				polled.run();
+				runnable.run();
 				tick++;
 				polled.complete();
 				if (sw != null)
-					stats.updateScheduledTaskDuration(polled, sw);
+					stats.updateScheduledTaskDuration(runnable, sw);
 			} catch (Throwable e) {
-				recordFatalError(e, polled);
+				recordFatalError(e, runnable);
 			}
 
 			newRunnables++;
@@ -709,7 +710,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 			return connectCallback;
 
 		return new ConnectCallback() {
-			private final ScheduledRunnable scheduledTimeout = schedule(currentTimeMillis() + connectionTime, new ScheduledRunnable() {
+			private final ScheduledRunnable scheduledTimeout = schedule(currentTimeMillis() + connectionTime, new Runnable() {
 				@Override
 				public void run() {
 					closeQuietly(socketChannel);
@@ -792,7 +793,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	 * @return scheduledRunnable, which could used for cancelling the task
 	 */
 	@Override
-	public ScheduledRunnable schedule(long timestamp, ScheduledRunnable runnable) {
+	public ScheduledRunnable schedule(long timestamp, Runnable runnable) {
 		assert inEventloopThread();
 		return addScheduledTask(timestamp, runnable, false);
 	}
@@ -807,13 +808,13 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	 * @return scheduledRunnable, which could used for cancelling the task
 	 */
 	@Override
-	public ScheduledRunnable scheduleBackground(long timestamp, ScheduledRunnable runnable) {
+	public ScheduledRunnable scheduleBackground(long timestamp, Runnable runnable) {
 		assert inEventloopThread();
 		return addScheduledTask(timestamp, runnable, true);
 	}
 
-	private ScheduledRunnable addScheduledTask(long timestamp, ScheduledRunnable scheduledTask, boolean background) {
-		scheduledTask.setTimestamp(timestamp);
+	private ScheduledRunnable addScheduledTask(long timestamp, Runnable runnable, boolean background) {
+		ScheduledRunnable scheduledTask = ScheduledRunnable.create(timestamp, runnable);
 		PriorityQueue<ScheduledRunnable> taskQueue = background ? backgroundTasks : scheduledTasks;
 		taskQueue.offer(scheduledTask);
 		return scheduledTask;

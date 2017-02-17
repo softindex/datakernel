@@ -19,7 +19,7 @@ public class AsyncCallables {
 		return new AsyncCallable<T>() {
 			@Override
 			public void call(final ResultCallback<T> callback) {
-				final ScheduledRunnable scheduledRunnable = eventloop.schedule(timestamp, new ScheduledRunnable() {
+				final ScheduledRunnable scheduledRunnable = eventloop.schedule(timestamp, new Runnable() {
 					@Override
 					public void run() {
 						callback.setException(CALLABLE_TIMEOUT_EXCEPTION);
@@ -111,7 +111,7 @@ public class AsyncCallables {
 					callback.postResult(eventloop, Arrays.asList(results));
 					return;
 				}
-				final ScheduledRunnable scheduledRunnable = eventloop.schedule(timestamp, new ScheduledRunnable() {
+				final ScheduledRunnable scheduledRunnable = eventloop.schedule(timestamp, new Runnable() {
 					@Override
 					public void run() {
 						state.pending = 0;

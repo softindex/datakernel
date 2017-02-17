@@ -22,7 +22,6 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.stream.*;
 import io.datakernel.stream.file.StreamFileReader;
@@ -137,7 +136,7 @@ public class StreamFileReaderWriterTest {
 			@Override
 			protected void onStarted() {
 				suspend();
-				eventloop.schedule(eventloop.currentTimeMillis() + 10, new ScheduledRunnable() {
+				eventloop.schedule(eventloop.currentTimeMillis() + 10, new Runnable() {
 					@Override
 					public void run() {
 						resume();
@@ -154,7 +153,7 @@ public class StreamFileReaderWriterTest {
 			public void onData(ByteBuf item) {
 				list.add(item);
 				suspend();
-				eventloop.schedule(eventloop.currentTimeMillis() + 10, new ScheduledRunnable() {
+				eventloop.schedule(eventloop.currentTimeMillis() + 10, new Runnable() {
 					@Override
 					public void run() {
 						resume();

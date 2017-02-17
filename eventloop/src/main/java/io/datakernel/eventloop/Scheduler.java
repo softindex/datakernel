@@ -20,7 +20,7 @@ import io.datakernel.time.CurrentTimeProvider;
 
 public interface Scheduler extends CurrentTimeProvider {
 
-	ScheduledRunnable schedule(long timestamp, ScheduledRunnable runnable);
+	ScheduledRunnable schedule(long timestamp, Runnable runnable);
 
-	ScheduledRunnable scheduleBackground(long timestamp, ScheduledRunnable runnable);
+	ScheduledRunnable scheduleBackground(long timestamp, Runnable runnable);
 }

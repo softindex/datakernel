@@ -22,7 +22,6 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.stream.*;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
@@ -100,7 +99,7 @@ public class LogStreamConsumer_ByteBufferTest {
 				}
 				send(ByteBuf.wrapForReading(new byte[]{1}));
 				onConsumerSuspended();
-				eventloop.schedule(5L, new ScheduledRunnable() {
+				eventloop.schedule(5L, new Runnable() {
 					@Override
 					public void run() {
 						onConsumerResumed();
@@ -171,7 +170,7 @@ public class LogStreamConsumer_ByteBufferTest {
 				}
 				send(ByteBuf.wrapForReading(new byte[]{1}));
 				onConsumerSuspended();
-				eventloop.schedule(100L, new ScheduledRunnable() {
+				eventloop.schedule(100L, new Runnable() {
 					@Override
 					public void run() {
 						onConsumerResumed();
