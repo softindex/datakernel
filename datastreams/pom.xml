@@ -10,9 +10,9 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>async-streams</artifactId>
+    <artifactId>datastreams</artifactId>
 
-    <name>DataKernel: Async Streams</name>
+    <name>DataKernel: DataStreams</name>
     <description>
         Composable asynchronous/reactive streams with powerful data processing capabilities.
     </description>

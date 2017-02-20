@@ -20,7 +20,7 @@
     <dependencies>
         <dependency>
             <groupId>io.datakernel</groupId>
-            <artifactId>async-streams</artifactId>
+            <artifactId>datastreams</artifactId>
             <version>${version}</version>
         </dependency>
         <dependency>
