@@ -104,13 +104,13 @@ public final class PropertiesConfigModule extends AbstractModule {
 		return this;
 	}
 
-	public PropertiesConfigModule saveResultingConfigTo(File file) {
+	public PropertiesConfigModule saveEffectiveConfigTo(File file) {
 		this.saveFile = file;
 		return this;
 	}
 
-	public PropertiesConfigModule saveResultingConfigTo(String file) {
-		return saveResultingConfigTo(new File(file));
+	public PropertiesConfigModule saveEffectiveConfigTo(String file) {
+		return saveEffectiveConfigTo(new File(file));
 	}
 
 	private class ConfigSaveService implements BlockingService {
