@@ -18,7 +18,7 @@ package io.datakernel.guice;
 
 import com.google.inject.*;
 import com.google.inject.name.Named;
-import com.google.inject.name.Names;
+import io.datakernel.service.ServiceAdapters.SimpleServiceAdapter;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.worker.Worker;
@@ -27,29 +27,35 @@ import org.junit.Test;
 
 import java.util.List;
 
-import static io.datakernel.service.ServiceAdapters.immediateServiceAdapter;
-import static org.junit.Assert.assertEquals;
+import static com.google.inject.name.Names.named;
 
 public class TestGenericGraph {
-	public static final int WORKERS = 1;
+	public static final int WORKERS = 4;
 
-	public static class Pojo<T> {
-		private final T object;
+	public static class Pojo {
+		private final String object;
 
-		public Pojo(T object) {
+		public Pojo(String object) {
 			this.object = object;
 		}
 
-		public T getObject() {
-			return object;
-		}
 	}
 
 	public static class TestModule extends AbstractModule {
 		@Override
 		protected void configure() {
 			install(ServiceGraphModule.defaultInstance()
-					.register(Pojo.class, immediateServiceAdapter()));
+					.register(Pojo.class, new SimpleServiceAdapter<Pojo>(false, false) {
+						@Override
+						protected void start(Pojo instance) throws Exception {
+							System.out.println("...starting " + instance + " : " + instance.object);
+						}
+
+						@Override
+						protected void stop(Pojo instance) throws Exception {
+							System.out.println("...stopping " + instance + " : " + instance.object);
+						}
+					}));
 		}
 
 		@Provides
@@ -60,37 +66,37 @@ public class TestGenericGraph {
 
 		@Provides
 		@Singleton
-		Pojo<Integer> integerPojo(WorkerPool workerPool) {
-			List<Pojo<String>> list = workerPool.getInstances(new TypeLiteral<Pojo<String>>() {});
-			List<Pojo<String>> listOther = workerPool.getInstances(Key.get(new TypeLiteral<Pojo<String>>() {}, Names.named("other")));
-			return new Pojo<>(Integer.valueOf(listOther.get(0).getObject())
-					+ Integer.valueOf(list.get(0).getObject()));
+		Pojo integerPojo(WorkerPool workerPool) {
+			List<Pojo> list = workerPool.getInstances(Key.get(Pojo.class, named("worker")));
+			List<Pojo> listOther = workerPool.getInstances(Key.get(Pojo.class, named("anotherWorker")));
+			return new Pojo("root");
 		}
 
 		@Provides
 		@Worker
-		Pojo<String> stringPojo(@Named("other") Pojo<String> stringPojo) {
-			return new Pojo<>("123");
+		@Named("worker")
+		Pojo stringPojoOther() {
+			return new Pojo("worker");
 		}
 
 		@Provides
 		@Worker
-		@Named("other")
-		Pojo<String> stringPojoOther() {
-			return new Pojo<>("456");
+		@Named("anotherWorker")
+		Pojo stringPojo(@Named("worker") Pojo worker) {
+			return new Pojo("anotherWorker");
 		}
 	}
 
 	@Test
 	public void test() throws Exception {
-		Injector injector = Guice.createInjector(new TestModule());
-		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
+		Injector injector = Guice.createInjector(Stage.PRODUCTION, new TestModule());
+		Provider<ServiceGraph> serviceGraphProvider = injector.getProvider(ServiceGraph.class);
+		ServiceGraph serviceGraph = serviceGraphProvider.get();
 
 		try {
 			serviceGraph.startFuture().get();
 		} finally {
-			Integer integer = injector.getInstance(Key.get(new TypeLiteral<Pojo<Integer>>() {})).getObject();
-			assertEquals(integer.intValue(), 579);
+			Pojo root = injector.getInstance(Pojo.class);
 			serviceGraph.stopFuture().get();
 		}
 	}

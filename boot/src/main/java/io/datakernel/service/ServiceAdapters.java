@@ -16,7 +16,6 @@
 
 package io.datakernel.service;
 
-import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import io.datakernel.async.CompletionCallback;
@@ -24,7 +23,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopServer;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.net.BlockingSocketServer;
-import org.slf4j.Logger;
 
 import javax.sql.DataSource;
 import java.io.Closeable;
@@ -34,14 +32,11 @@ import java.util.*;
 import java.util.concurrent.*;
 
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
-import static org.slf4j.LoggerFactory.getLogger;
 
 /**
  * Static utility methods pertaining to ConcurrentService. Creates ConcurrentService from some other type of instances.
  */
 public final class ServiceAdapters {
-	private final Logger logger = getLogger(this.getClass());
-
 	private ServiceAdapters() {
 	}
 
@@ -57,6 +52,58 @@ public final class ServiceAdapters {
 				future.setException(exception);
 			}
 		};
+	}
+
+	public static abstract class SimpleServiceAdapter<S> implements ServiceAdapter<S> {
+		private final boolean startConcurrently;
+		private final boolean stopConcurrently;
+
+		protected SimpleServiceAdapter(boolean startConcurrently, boolean stopConcurrently) {
+			this.startConcurrently = startConcurrently;
+			this.stopConcurrently = stopConcurrently;
+		}
+
+		protected SimpleServiceAdapter() {
+			this(true, true);
+		}
+
+		protected abstract void start(S instance) throws Exception;
+
+		protected abstract void stop(S instance) throws Exception;
+
+		@Override
+		public final ListenableFuture<?> start(final S instance, Executor executor) {
+			final SettableFuture<Void> future = SettableFuture.create();
+			(startConcurrently ? executor : directExecutor()).execute(new Runnable() {
+				@Override
+				public void run() {
+					try {
+						start(instance);
+						future.set(null);
+					} catch (Exception e) {
+						future.setException(e);
+					}
+				}
+			});
+			return future;
+		}
+
+		@Override
+		public final ListenableFuture<?> stop(final S instance, Executor executor) {
+			final SettableFuture<Void> future = SettableFuture.create();
+			(stopConcurrently ? executor : directExecutor()).execute(new Runnable() {
+				@Override
+				public void run() {
+					try {
+						stop(instance);
+						future.set(null);
+					} catch (Exception e) {
+						future.setException(e);
+					}
+				}
+			});
+			return future;
+		}
 	}
 
 	public static ServiceAdapter<Service> forService() {
@@ -201,72 +248,29 @@ public final class ServiceAdapters {
 	 * Returns factory which transforms blocking Service to asynchronous non-blocking ConcurrentService. It runs blocking operations from other thread from executor.
 	 */
 	public static ServiceAdapter<BlockingService> forBlockingService() {
-		return new ServiceAdapter<BlockingService>() {
+		return new SimpleServiceAdapter<BlockingService>() {
 			@Override
-			public ListenableFuture<?> start(final BlockingService service, Executor executor) {
-				final SettableFuture<?> future = SettableFuture.create();
-				executor.execute(new Runnable() {
-					@Override
-					public void run() {
-						try {
-							service.start();
-							future.set(null);
-						} catch (Exception e) {
-							future.setException(e);
-						}
-					}
-				});
-				return future;
+			protected void start(BlockingService instance) throws Exception {
+				instance.start();
 			}
 
 			@Override
-			public ListenableFuture<?> stop(final BlockingService service, Executor executor) {
-				final SettableFuture<?> future = SettableFuture.create();
-				executor.execute(new Runnable() {
-					@Override
-					public void run() {
-						try {
-							service.stop();
-							future.set(null);
-						} catch (Exception e) {
-							future.setException(e);
-						}
-					}
-				});
-				return future;
+			protected void stop(BlockingService instance) throws Exception {
+				instance.stop();
 			}
 		};
 	}
 
 	public static ServiceAdapter<BlockingSocketServer> forBlockingSocketServer() {
-		return new ServiceAdapter<BlockingSocketServer>() {
+		return new SimpleServiceAdapter<BlockingSocketServer>() {
 			@Override
-			public ListenableFuture<?> start(final BlockingSocketServer service, Executor executor) {
-				final SettableFuture<?> future = SettableFuture.create();
-				try {
-					service.start();
-					future.set(null);
-				} catch (Exception e) {
-					future.setException(e);
-				}
-				return future;
+			protected void start(BlockingSocketServer instance) throws Exception {
+				instance.start();
 			}
 
 			@Override
-			public ListenableFuture<?> stop(final BlockingSocketServer service, Executor executor) {
-				final SettableFuture<?> future = SettableFuture.create();
-				executor.execute(new Runnable() {
-					@Override
-					public void run() {
-						try {
-							service.stop();
-							future.set(null);
-						} catch (Exception e) {
-							future.setException(e);
-						}
-					}
-				});
-				return future;
+			protected void stop(BlockingSocketServer instance) throws Exception {
+				instance.stop();
 			}
 		};
 	}
@@ -275,16 +279,14 @@ public final class ServiceAdapters {
 	 * Returns factory which transforms Timer to ConcurrentService. On starting it doing nothing, on stop it cancel timer.
 	 */
 	public static ServiceAdapter<Timer> forTimer() {
-		return new ServiceAdapter<Timer>() {
+		return new SimpleServiceAdapter<Timer>(false, false) {
 			@Override
-			public ListenableFuture<?> start(Timer instance, Executor executor) {
-				return Futures.immediateFuture(null);
+			protected void start(Timer instance) throws Exception {
 			}
 
 			@Override
-			public ListenableFuture<?> stop(Timer instance, Executor executor) {
+			protected void stop(Timer instance) throws Exception {
 				instance.cancel();
-				return Futures.immediateFuture(null);
 			}
 		};
 	}
@@ -293,23 +295,14 @@ public final class ServiceAdapters {
 	 * Returns factory which transforms ExecutorService to ConcurrentService. On starting it doing nothing, on stopping it shuts down ExecutorService.
 	 */
 	public static ServiceAdapter<ExecutorService> forExecutorService() {
-		return new ServiceAdapter<ExecutorService>() {
+		return new SimpleServiceAdapter<ExecutorService>(false, true) {
 			@Override
-			public ListenableFuture<?> start(ExecutorService instance, Executor executor) {
-				return Futures.immediateFuture(null);
+			protected void start(ExecutorService instance) throws Exception {
 			}
 
 			@Override
-			public ListenableFuture<?> stop(final ExecutorService executorService, Executor executor) {
-				final SettableFuture<?> future = SettableFuture.create();
-				executor.execute(new Runnable() {
-					@Override
-					public void run() {
-						executorService.shutdown();
-						future.set(null);
-					}
-				});
-				return future;
+			protected void stop(ExecutorService instance) throws Exception {
+				instance.shutdown();
 			}
 		};
 	}
@@ -318,27 +311,14 @@ public final class ServiceAdapters {
 	 * Returns factory which transforms Closeable object to ConcurrentService. On starting it doing nothing, on stopping it close Closeable.
 	 */
 	public static ServiceAdapter<Closeable> forCloseable() {
-		return new ServiceAdapter<Closeable>() {
+		return new SimpleServiceAdapter<Closeable>(false, true) {
 			@Override
-			public ListenableFuture<?> start(Closeable closeable, Executor executor) {
-				return Futures.immediateFuture(null);
+			protected void start(Closeable instance) throws Exception {
 			}
 
 			@Override
-			public ListenableFuture<?> stop(final Closeable closeable, Executor executor) {
-				final SettableFuture<?> future = SettableFuture.create();
-				executor.execute(new Runnable() {
-					@Override
-					public void run() {
-						try {
-							closeable.close();
-							future.set(null);
-						} catch (IOException e) {
-							future.setException(e);
-						}
-					}
-				});
-				return future;
+			protected void stop(Closeable instance) throws Exception {
+				instance.close();
 			}
 		};
 	}
@@ -347,42 +327,27 @@ public final class ServiceAdapters {
 	 * Returns factory which transforms DataSource object to ConcurrentService. On starting it checks connecting , on stopping it close DataSource.
 	 */
 	public static ServiceAdapter<DataSource> forDataSource() {
-		return new ServiceAdapter<DataSource>() {
+		return new SimpleServiceAdapter<DataSource>(true, false) {
 			@Override
-			public ListenableFuture<?> start(final DataSource dataSource, Executor executor) {
-				final SettableFuture<?> future = SettableFuture.create();
-				executor.execute(new Runnable() {
-					@Override
-					public void run() {
-						try {
-							Connection connection = dataSource.getConnection();
-							connection.close();
-							future.set(null);
-						} catch (Exception e) {
-							future.setException(e);
-						}
-					}
-				});
-				return future;
+			protected void start(DataSource instance) throws Exception {
+				Connection connection = instance.getConnection();
+				connection.close();
 			}
 
 			@Override
-			public ListenableFuture<?> stop(final DataSource dataSource, Executor executor) {
-				return Futures.immediateFuture(null);
+			protected void stop(DataSource instance) throws Exception {
 			}
 		};
 	}
 
 	public static <T> ServiceAdapter<T> immediateServiceAdapter() {
-		return new ServiceAdapter<T>() {
+		return new SimpleServiceAdapter<T>(false, false) {
 			@Override
-			public ListenableFuture<?> start(Object instance, Executor executor) {
-				return Futures.immediateFuture(null);
+			protected void start(T instance) throws Exception {
 			}
 
 			@Override
-			public ListenableFuture<?> stop(Object instance, Executor executor) {
-				return Futures.immediateFuture(null);
+			protected void stop(T instance) throws Exception {
 			}
 		};
 	}

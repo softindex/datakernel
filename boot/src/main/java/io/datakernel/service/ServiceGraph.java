@@ -291,7 +291,7 @@ public class ServiceGraph {
 					sb.append(repeat("\t", path.size() - 1) + "" + nodeToString(node) + "\n");
 					path.add(forwards.get(node).iterator());
 				} else {
-					sb.append(repeat("\t", path.size() - 1) + nodeToString(node) + " ^" + "\n");
+					sb.append(repeat("\t", path.size() - 1) + "" + nodeToString(node) + " *︎" + "\n");
 				}
 			} else {
 				path.remove(path.size() - 1);
