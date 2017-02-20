@@ -10,7 +10,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>boot</artifactId>
+    <artifactId>datakernel-boot</artifactId>
 
     <name>DataKernel: Boot</name>
     <description>
@@ -20,27 +20,24 @@
     <dependencies>
         <dependency>
             <groupId>io.datakernel</groupId>
-            <artifactId>eventloop</artifactId>
+            <artifactId>datakernel-eventloop</artifactId>
             <version>${version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.datakernel</groupId>
+            <artifactId>datakernel-http</artifactId>
+            <version>${version}</version>
+            <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>com.google.inject</groupId>
             <artifactId>guice</artifactId>
         </dependency>
-
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
         </dependency>
-
-        <dependency>
-            <groupId>io.datakernel</groupId>
-            <artifactId>http</artifactId>
-            <version>${version}</version>
-            <scope>test</scope>
-        </dependency>
-
     </dependencies>
 
 </project>

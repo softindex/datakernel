@@ -10,7 +10,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>uikernel</artifactId>
+    <artifactId>datakernel-uikernel</artifactId>
 
     <name>DataKernel: UiKernel</name>
     <description>
@@ -20,14 +20,15 @@
     <dependencies>
         <dependency>
             <groupId>io.datakernel</groupId>
-            <artifactId>eventloop</artifactId>
+            <artifactId>datakernel-eventloop</artifactId>
             <version>${version}</version>
         </dependency>
         <dependency>
             <groupId>io.datakernel</groupId>
-            <artifactId>http</artifactId>
+            <artifactId>datakernel-http</artifactId>
             <version>${version}</version>
         </dependency>
+
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>

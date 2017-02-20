@@ -10,7 +10,7 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>codegen</artifactId>
+    <artifactId>datakernel-codegen</artifactId>
 
     <name>DataKernel: Codegen</name>
     <description>

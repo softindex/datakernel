@@ -10,7 +10,7 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>bytebuf</artifactId>
+    <artifactId>datakernel-bytebuf</artifactId>
 
     <name>DataKernel: ByteBuf</name>
     <description>

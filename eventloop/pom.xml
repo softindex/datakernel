@@ -10,7 +10,7 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>eventloop</artifactId>
+    <artifactId>datakernel-eventloop</artifactId>
 
     <name>DataKernel: Event Loop</name>
     <description>
@@ -21,7 +21,7 @@
     <dependencies>
         <dependency>
             <groupId>io.datakernel</groupId>
-            <artifactId>bytebuf</artifactId>
+            <artifactId>datakernel-bytebuf</artifactId>
             <version>${version}</version>
         </dependency>
     </dependencies>

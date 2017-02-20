@@ -10,7 +10,7 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>rpc</artifactId>
+    <artifactId>datakernel-rpc</artifactId>
 
     <name>DataKernel: RPC</name>
     <description>
@@ -20,17 +20,17 @@
     <dependencies>
         <dependency>
             <groupId>io.datakernel</groupId>
-            <artifactId>eventloop</artifactId>
+            <artifactId>datakernel-eventloop</artifactId>
             <version>${version}</version>
         </dependency>
         <dependency>
             <groupId>io.datakernel</groupId>
-            <artifactId>serializer</artifactId>
+            <artifactId>datakernel-serializer</artifactId>
             <version>${version}</version>
         </dependency>
         <dependency>
             <groupId>io.datakernel</groupId>
-            <artifactId>datastreams</artifactId>
+            <artifactId>datakernel-datastreams</artifactId>
             <version>${version}</version>
         </dependency>
 

@@ -10,7 +10,7 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>remotefs</artifactId>
+    <artifactId>datakernel-remotefs</artifactId>
 
     <name>DataKernel: RemoteFS</name>
     <description>
@@ -20,12 +20,12 @@
     <dependencies>
         <dependency>
             <groupId>io.datakernel</groupId>
-            <artifactId>datastreams</artifactId>
+            <artifactId>datakernel-datastreams</artifactId>
             <version>${version}</version>
         </dependency>
         <dependency>
             <groupId>io.datakernel</groupId>
-            <artifactId>serializer</artifactId>
+            <artifactId>datakernel-serializer</artifactId>
             <version>${version}</version>
         </dependency>
 

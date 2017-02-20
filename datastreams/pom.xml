@@ -10,7 +10,7 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>datastreams</artifactId>
+    <artifactId>datakernel-datastreams</artifactId>
 
     <name>DataKernel: DataStreams</name>
     <description>
@@ -20,12 +20,12 @@
     <dependencies>
         <dependency>
             <groupId>io.datakernel</groupId>
-            <artifactId>eventloop</artifactId>
+            <artifactId>datakernel-eventloop</artifactId>
             <version>${version}</version>
         </dependency>
         <dependency>
             <groupId>io.datakernel</groupId>
-            <artifactId>serializer</artifactId>
+            <artifactId>datakernel-serializer</artifactId>
             <version>${version}</version>
         </dependency>
 

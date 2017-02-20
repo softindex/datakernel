@@ -11,7 +11,7 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>serializer</artifactId>
+    <artifactId>datakernel-serializer</artifactId>
 
     <name>DataKernel: Serializer</name>
     <description>
@@ -20,19 +20,20 @@
 
     <dependencies>
         <dependency>
+            <groupId>io.datakernel</groupId>
+            <artifactId>datakernel-codegen</artifactId>
+            <version>${version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.datakernel</groupId>
+            <artifactId>datakernel-bytebuf</artifactId>
+            <version>${version}</version>
+        </dependency>
+
+        <dependency>
             <groupId>com.carrotsearch</groupId>
             <artifactId>hppc</artifactId>
             <optional>true</optional>
-        </dependency>
-        <dependency>
-            <groupId>io.datakernel</groupId>
-            <artifactId>codegen</artifactId>
-            <version>${version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.datakernel</groupId>
-            <artifactId>bytebuf</artifactId>
-            <version>${version}</version>
         </dependency>
     </dependencies>
 

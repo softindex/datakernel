@@ -10,7 +10,7 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>datagraph</artifactId>
+    <artifactId>datakernel-datagraph</artifactId>
 
     <name>DataKernel: DataGraph</name>
     <description>
@@ -20,12 +20,12 @@
     <dependencies>
         <dependency>
             <groupId>io.datakernel</groupId>
-            <artifactId>datastreams</artifactId>
+            <artifactId>datakernel-datastreams</artifactId>
             <version>${version}</version>
         </dependency>
         <dependency>
             <groupId>io.datakernel</groupId>
-            <artifactId>codegen</artifactId>
+            <artifactId>datakernel-codegen</artifactId>
             <version>${version}</version>
         </dependency>
 

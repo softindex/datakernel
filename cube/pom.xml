@@ -10,7 +10,7 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>cube</artifactId>
+    <artifactId>datakernel-cube</artifactId>
 
     <name>DataKernel: OLAP Cube</name>
     <description>
@@ -21,12 +21,12 @@
     <dependencies>
         <dependency>
             <groupId>io.datakernel</groupId>
-            <artifactId>aggregation</artifactId>
+            <artifactId>datakernel-aggregation</artifactId>
             <version>${version}</version>
         </dependency>
         <dependency>
             <groupId>io.datakernel</groupId>
-            <artifactId>http</artifactId>
+            <artifactId>datakernel-http</artifactId>
             <version>${version}</version>
         </dependency>
 

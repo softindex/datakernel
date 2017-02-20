@@ -10,7 +10,7 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>http</artifactId>
+    <artifactId>datakernel-http</artifactId>
 
     <name>DataKernel: HTTP</name>
     <description>
@@ -20,7 +20,7 @@
     <dependencies>
         <dependency>
             <groupId>io.datakernel</groupId>
-            <artifactId>eventloop</artifactId>
+            <artifactId>datakernel-eventloop</artifactId>
             <version>${version}</version>
         </dependency>
     </dependencies>
