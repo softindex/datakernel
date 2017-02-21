@@ -20,100 +20,82 @@ import javax.management.openmbean.*;
 import java.lang.reflect.Array;
 import java.util.*;
 
-import static io.datakernel.jmx.Utils.*;
 import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.String.format;
-import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 
-final class AttributeNodeForList implements AttributeNode {
-	private final String name;
-	private final String description;
-	private final boolean visible;
-	private final ValueFetcher fetcher;
+final class AttributeNodeForList extends AttributeNodeForLeafAbstract {
 	private final AttributeNode subNode;
 	private final ArrayType<?> arrayType;
-	private final Map<String, OpenType<?>> nameToOpenType;
 	private final boolean isListOfJmxRefreshables;
 
 	public AttributeNodeForList(String name, String description, boolean visible, ValueFetcher fetcher, AttributeNode subNode,
 	                            boolean isListOfJmxRefreshables) {
+		super(name, description, fetcher, visible);
 		checkArgument(!name.isEmpty(), "List attribute cannot have empty name");
-
-		this.name = name;
-		this.description = description;
-		this.fetcher = fetcher;
-		this.visible = visible;
 		this.subNode = subNode;
-		this.arrayType = createArrayType(subNode);
+		this.arrayType = createArrayType(subNode, name);
 		this.isListOfJmxRefreshables = isListOfJmxRefreshables;
-		this.nameToOpenType = wrapAttributeInMap(name, arrayType, visible);
 	}
 
-	private static ArrayType<?> createArrayType(AttributeNode subNode) {
+	private static ArrayType<?> createArrayType(AttributeNode subNode, String name) {
+		String nodeName = "Attribute name = " + name;
+
+		Set<String> visibleAttrs = subNode.getVisibleAttributes();
+		Map<String, OpenType<?>> attrTypes = subNode.getOpenTypes();
+
+		if (visibleAttrs.size() == 0) {
+			throw new IllegalArgumentException("Arrays must have at least one visible attribute. " + nodeName);
+		}
+
 		try {
-			return new ArrayType<>(1, subNode.getOpenType());
+			OpenType<?> elementType;
+			if (visibleAttrs.size() == 1) {
+				String attr = visibleAttrs.iterator().next();
+				OpenType<?> openType = attrTypes.get(attr);
+
+				// TODO(vmykhalko): check this case
+				if (openType instanceof ArrayType) {
+					throw new IllegalArgumentException("Multidimensional arrays are note supported in JMX. " + nodeName);
+				}
+
+				elementType = openType;
+			} else {
+				List<String> itemNames = new ArrayList<>();
+				List<OpenType<?>> itemTypes = new ArrayList<>();
+				for (String visibleAttr : visibleAttrs) {
+					OpenType<?> visibleAttrType = attrTypes.get(visibleAttr);
+					itemNames.add(visibleAttr);
+					itemTypes.add(visibleAttrType);
+				}
+
+				String[] itemNamesArr = itemNames.toArray(new String[itemNames.size()]);
+				OpenType<?>[] itemTypesArr = itemTypes.toArray(new OpenType<?>[itemTypes.size()]);
+				elementType =
+						new CompositeType("CompositeData", "CompositeData", itemNamesArr, itemNamesArr, itemTypesArr);
+			}
+
+			return new ArrayType<Object>(1, elementType);
 		} catch (OpenDataException e) {
-			throw new RuntimeException(e);
+			throw new IllegalArgumentException("Cannot create ArrayType. " + nodeName, e);
 		}
 	}
 
 	@Override
-	public Map<String, OpenType<?>> getVisibleFlattenedOpenTypes() {
-		return nameToOpenType;
-	}
-
-	@Override
-	public Set<String> getAllFlattenedAttrNames() {
-		return Collections.singleton(name);
-	}
-
-	@Override
-	public Map<String, Object> aggregateAllAttributes(List<?> sources) {
-		Map<String, Object> attrs = new HashMap<>(1);
-		attrs.put(name, aggregateAttribute(name, sources));
-		return attrs;
-	}
-
-	@Override
-	public String getName() {
-		return name;
-	}
-
-	@Override
-	public Map<String, Map<String, String>> getDescriptions() {
-		return createDescriptionMap(name, description);
-	}
-
-	@Override
-	public OpenType<?> getOpenType() {
-		return arrayType;
+	public Map<String, OpenType<?>> getOpenTypes() {
+		return Collections.<String, OpenType<?>>singletonMap(name, arrayType);
 	}
 
 	@Override
 	public Object aggregateAttribute(String attrName, List<?> sources) {
-		checkArgument(attrName.equals(name));
-		checkNotNull(sources);
-		List<?> notNullSources = filterNulls(sources);
-		if (notNullSources.size() == 0) {
-			return null;
-		}
-
 		List<Map<String, Object>> attributesFromAllElements = new ArrayList<>();
-		for (Object source : notNullSources) {
+		Set<String> visibleSubAttrs = subNode.getVisibleAttributes();
+		for (Object source : sources) {
 			List<?> currentList = (List<?>) fetcher.fetchFrom(source);
 			if (currentList != null) {
 				for (Object element : currentList) {
-					Map<String, Object> attributesFromElement = subNode.aggregateAllAttributes(asList(element));
-
-					// TODO(vmykhalko): refactor
-					// TODO(vmykhalko): test this case
-					if (attributesFromElement.size() > 1 && attributesFromElement.containsKey("")) {
-						checkArgument(!attributesFromElement.containsKey("default"));
-						checkArgument(((CompositeData) arrayType.getElementOpenType()).containsKey("default"));
-						attributesFromElement.put("default", attributesFromElement.get(""));
-						attributesFromElement.remove("");
-					}
+					Map<String, Object> attributesFromElement =
+							subNode.aggregateAttributes(visibleSubAttrs, singletonList(element));
 
 					attributesFromAllElements.add(attributesFromElement);
 				}
@@ -208,26 +190,6 @@ final class AttributeNodeForList implements AttributeNode {
 		}
 		// ArrayType is not supported
 		throw new IllegalArgumentException(format("OpenType \"%s\" cannot be converted to Class", openType));
-	}
-
-	@Override
-	public AttributeNode rebuildOmittingNullPojos(List<?> sources) {
-		return this;
-	}
-
-	@Override
-	public boolean isVisible() {
-		return visible;
-	}
-
-	@Override
-	public AttributeNode rebuildWithVisible(String attrName) {
-		return new AttributeNodeForList(name, description, true, fetcher, subNode, isListOfJmxRefreshables);
-	}
-
-	@Override
-	public void applyModifier(String attrName, AttributeModifier<?> modifier, List<?> target) {
-		throw new UnsupportedOperationException();
 	}
 }
 

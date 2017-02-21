@@ -17,32 +17,23 @@
 package io.datakernel.jmx;
 
 import javax.management.openmbean.*;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-import static io.datakernel.jmx.Utils.*;
-import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Arrays.asList;
 
-final class AttributeNodeForThrowable implements AttributeNode {
+final class AttributeNodeForThrowable extends AttributeNodeForLeafAbstract {
 	private static final String THROWABLE_TYPE_KEY = "type";
 	private static final String THROWABLE_MESSAGE_KEY = "message";
 	private static final String THROWABLE_STACK_TRACE_KEY = "stackTrace";
 
-	private final String name;
-	private final String description;
-	private final boolean visible;
-	private final ValueFetcher fetcher;
 	private final CompositeType compositeType;
-	private final Map<String, OpenType<?>> nameToOpenType;
 
 	public AttributeNodeForThrowable(String name, String description, boolean visible, ValueFetcher fetcher) {
-		this.name = name;
-		this.description = description;
-		this.visible = visible;
-		this.fetcher = fetcher;
+		super(name, description, fetcher, visible);
 		this.compositeType = compositeTypeForThrowable();
-		this.nameToOpenType = wrapAttributeInMap(name, compositeType, visible);
 	}
 
 	private static CompositeType compositeTypeForThrowable() {
@@ -57,47 +48,14 @@ final class AttributeNodeForThrowable implements AttributeNode {
 	}
 
 	@Override
-	public String getName() {
-		return name;
-	}
-
-	@Override
-	public Map<String, Map<String, String>> getDescriptions() {
-		return createDescriptionMap(name, description);
-	}
-
-	@Override
-	public OpenType<?> getOpenType() {
-		return compositeType;
-	}
-
-	@Override
-	public Map<String, OpenType<?>> getVisibleFlattenedOpenTypes() {
-		return nameToOpenType;
-	}
-
-	@Override
-	public Set<String> getAllFlattenedAttrNames() {
-		return Collections.singleton(name);
-	}
-
-	@Override
-	public Map<String, Object> aggregateAllAttributes(List<?> sources) {
-		Map<String, Object> attrs = new HashMap<>();
-		attrs.put(name, aggregateAttribute(null, sources));
-		return attrs;
+	public Map<String, OpenType<?>> getOpenTypes() {
+		return Collections.<String, OpenType<?>>singletonMap(name, compositeType);
 	}
 
 	@Override
 	public Object aggregateAttribute(String attrName, List<?> sources) {
-		checkArgument(attrName.equals(name));
-		checkNotNull(sources);
-		List<?> notNullSources = filterNulls(sources);
-		if (notNullSources.size() == 0) {
-			return null;
-		}
-
 		Object firstPojo = sources.get(0);
+		//noinspection UnnecessaryLocalVariable
 		Throwable firstThrowable = (Throwable) fetcher.fetchFrom(firstPojo);
 		Throwable resultThrowable = firstThrowable;
 		for (int i = 1; i < sources.size(); i++) {
@@ -108,11 +66,13 @@ final class AttributeNodeForThrowable implements AttributeNode {
 			}
 		}
 
+		Object compositeData;
 		try {
-			return createCompositeDataFor(resultThrowable);
+			compositeData = createCompositeDataFor(resultThrowable);
 		} catch (OpenDataException e) {
 			throw new RuntimeException(e);
 		}
+		return compositeData;
 	}
 
 	private CompositeData createCompositeDataFor(Throwable throwable) throws OpenDataException {
@@ -142,26 +102,6 @@ final class AttributeNodeForThrowable implements AttributeNode {
 
 	@Override
 	public void setAttribute(String attrName, Object value, List<?> targets) {
-		throw new UnsupportedOperationException();
-	}
-
-	@Override
-	public AttributeNode rebuildOmittingNullPojos(List<?> sources) {
-		return this;
-	}
-
-	@Override
-	public boolean isVisible() {
-		return visible;
-	}
-
-	@Override
-	public AttributeNode rebuildWithVisible(String attrName) {
-		return new AttributeNodeForThrowable(name, description, true, fetcher);
-	}
-
-	@Override
-	public void applyModifier(String attrName, AttributeModifier<?> modifier, List<?> target) {
 		throw new UnsupportedOperationException();
 	}
 }

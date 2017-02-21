@@ -22,12 +22,12 @@
         <dependency>
             <groupId>io.datakernel</groupId>
             <artifactId>datakernel-aggregation</artifactId>
-            <version>${version}</version>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>io.datakernel</groupId>
             <artifactId>datakernel-http</artifactId>
-            <version>${version}</version>
+            <version>${project.version}</version>
         </dependency>
 
         <dependency>

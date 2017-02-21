@@ -22,10 +22,10 @@ import org.junit.Test;
 import javax.management.DynamicMBean;
 import javax.management.MBeanAttributeInfo;
 import javax.management.MBeanInfo;
-import java.util.HashMap;
 import java.util.Map;
 
 import static io.datakernel.jmx.JmxMBeansAttributesTest.createDynamicMBeanFor;
+import static io.datakernel.jmx.helper.Utils.nameToAttribute;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -73,14 +73,6 @@ public class JmxMBeansAttributesSelectionTest {
 
 		assertEquals(1, attributesInfoArr.length);
 		assertEquals("stats_sum", attributesInfoArr[0].getName());
-	}
-
-	public static Map<String, MBeanAttributeInfo> nameToAttribute(MBeanAttributeInfo[] attrs) {
-		Map<String, MBeanAttributeInfo> nameToAttr = new HashMap<>();
-		for (MBeanAttributeInfo attr : attrs) {
-			nameToAttr.put(attr.getName(), attr);
-		}
-		return nameToAttr;
 	}
 
 	public static class MBeanWithNoExtraSubAttributes implements EventloopJmxMBean {

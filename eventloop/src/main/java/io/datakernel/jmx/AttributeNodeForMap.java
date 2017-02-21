@@ -19,54 +19,65 @@ package io.datakernel.jmx;
 import javax.management.openmbean.*;
 import java.util.*;
 
-import static io.datakernel.jmx.Utils.*;
 import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Preconditions.checkNotNull;
 
-final class AttributeNodeForMap implements AttributeNode {
+final class AttributeNodeForMap extends AttributeNodeForLeafAbstract {
 	private static final String KEY_COLUMN_NAME = "> key";
 	private static final String VALUE_COLUMN_NAME = "value";
+	private static final String EMPTY_COLUMN_NAME = "default";
 	private static final String ROW_TYPE_NAME = "RowType";
 	private static final String TABULAR_TYPE_NAME = "TabularType";
 
-	private final String name;
-	private final String description;
-	private final boolean visible;
-	private final ValueFetcher fetcher;
 	private final AttributeNode subNode;
 	private final TabularType tabularType;
-	private final Map<String, OpenType<?>> nameToOpenType;
 	private final boolean isMapOfJmxRefreshable;
 
 	public AttributeNodeForMap(String name, String description, boolean visible,
 	                           ValueFetcher fetcher, AttributeNode subNode, boolean isMapOfJmxRefreshable) {
+		super(name, description, fetcher, visible);
 		checkArgument(!name.isEmpty(), "Map attribute cannot have empty name");
-
-		this.name = name;
-		this.description = description;
-		this.visible = visible;
-		this.tabularType = createTabularType(subNode);
-		this.nameToOpenType = wrapAttributeInMap(name, tabularType, visible);
-		this.fetcher = fetcher;
+		this.tabularType = createTabularType(subNode, name);
 		this.subNode = subNode;
 		this.isMapOfJmxRefreshable = isMapOfJmxRefreshable;
 	}
 
-	private static TabularType createTabularType(AttributeNode subNode) {
+	private static TabularType createTabularType(AttributeNode subNode, String name) {
+		String nodeName = "Attribute name = " + name;
+
+		Set<String> visibleAttrs = subNode.getVisibleAttributes();
+		Map<String, OpenType<?>> attrTypes = subNode.getOpenTypes();
+
+		if (visibleAttrs.size() == 0) {
+			throw new IllegalArgumentException("Arrays must have at least one visible attribute. " + nodeName);
+		}
+
+		Map<String, OpenType<?>> attrNameToType = new HashMap<>();
+		attrNameToType.put(KEY_COLUMN_NAME, SimpleType.STRING);
+		if (visibleAttrs.size() == 1) {
+			String attrName = visibleAttrs.iterator().next();
+			OpenType<?> attrType = attrTypes.get(attrName);
+			String adjustedAttrName = attrName.isEmpty() ? VALUE_COLUMN_NAME : attrName;
+			attrNameToType.put(adjustedAttrName, attrType);
+		} else {
+			for (String attrName : visibleAttrs) {
+				OpenType<?> attrType = attrTypes.get(attrName);
+				String adjustedAttrName = attrName.isEmpty() ? EMPTY_COLUMN_NAME : attrName;
+
+				if (attrNameToType.containsKey(adjustedAttrName)) {
+					throw new IllegalArgumentException("In case of empty attribute name there must not be another " +
+							"empty attribute and attribute with name \"default\"." + nodeName);
+				}
+
+				attrNameToType.put(attrName, attrType);
+			}
+		}
+
 		List<String> columnNames = new ArrayList<>();
 		List<OpenType<?>> columnTypes = new ArrayList<>();
-		columnNames.add(KEY_COLUMN_NAME);
-		columnTypes.add(SimpleType.STRING);
-		OpenType<?> subNodeOpenType = subNode.getOpenType();
-		if (subNodeOpenType instanceof CompositeType) {
-			CompositeType subNodeCompositeType = (CompositeType) subNodeOpenType;
-			for (String subNodeAttrName : subNodeCompositeType.keySet()) {
-				columnNames.add(subNodeAttrName);
-				columnTypes.add(subNodeCompositeType.getType(subNodeAttrName));
-			}
-		} else {
-			columnNames.add(VALUE_COLUMN_NAME);
-			columnTypes.add(subNodeOpenType);
+		for (String subAttrName : attrNameToType.keySet()) {
+			OpenType<?> subAttrType = attrNameToType.get(subAttrName);
+			columnNames.add(subAttrName);
+			columnTypes.add(subAttrType);
 		}
 		String[] columnNamesArr = columnNames.toArray(new String[columnNames.size()]);
 		OpenType<?>[] columnTypesArr = columnTypes.toArray(new OpenType<?>[columnTypes.size()]);
@@ -79,51 +90,17 @@ final class AttributeNodeForMap implements AttributeNode {
 					new String[]{KEY_COLUMN_NAME}
 			);
 		} catch (OpenDataException e) {
-			throw new RuntimeException(e);
+			throw new IllegalArgumentException("Cannot create TabularType. " + nodeName, e);
 		}
 	}
 
 	@Override
-	public String getName() {
-		return name;
-	}
-
-	@Override
-	public Map<String, Map<String, String>> getDescriptions() {
-		return createDescriptionMap(name, description);
-	}
-
-	@Override
-	public OpenType<?> getOpenType() {
-		return tabularType;
-	}
-
-	@Override
-	public Map<String, OpenType<?>> getVisibleFlattenedOpenTypes() {
-		return nameToOpenType;
-	}
-
-	@Override
-	public Set<String> getAllFlattenedAttrNames() {
-		return Collections.singleton(name);
-	}
-
-	@Override
-	public Map<String, Object> aggregateAllAttributes(List<?> sources) {
-		Map<String, Object> attrs = new HashMap<>();
-		attrs.put(getName(), aggregateAttribute(getName(), sources));
-		return attrs;
+	public Map<String, OpenType<?>> getOpenTypes() {
+		return Collections.<String, OpenType<?>>singletonMap(name, tabularType);
 	}
 
 	@Override
 	public Object aggregateAttribute(String attrName, List<?> sources) {
-		checkArgument(attrName.equals(name));
-		checkNotNull(sources);
-		List<?> notNullSources = filterNulls(sources);
-		if (notNullSources.size() == 0) {
-			return null;
-		}
-
 		Map<Object, List<Object>> groupedByKey = fetchMapsAndGroupEntriesByKey(sources);
 
 		if (groupedByKey.size() == 0) {
@@ -131,34 +108,34 @@ final class AttributeNodeForMap implements AttributeNode {
 		}
 
 		TabularDataSupport tdSupport = new TabularDataSupport(tabularType);
+		Set<String> visibleSubAttrs = subNode.getVisibleAttributes();
 		for (Object key : groupedByKey.keySet()) {
 			List<Object> group = groupedByKey.get(key);
-			Map<String, Object> aggregatedGroup = subNode.aggregateAllAttributes(group);
+			Map<String, Object> aggregatedGroup =
+					subNode.aggregateAttributes(visibleSubAttrs, group);
 			try {
-
-				// TODO(vmykhalko): refactor
-				// TODO(vmykhalko): maybe handle nodes that are treated as CompositeData (inner nodes of lists and maps) in different way  ?
-				// TODO(vmykhalko): test this case
-				if (aggregatedGroup.size() > 1 && aggregatedGroup.containsKey("")) {
-					checkArgument(!aggregatedGroup.containsKey("default"));
-					checkArgument(tabularType.getRowType().containsKey("default"));
-					aggregatedGroup.put("default", aggregatedGroup.get(""));
-					aggregatedGroup.remove("");
-				}
-
 				tdSupport.put(createTabularDataRow(key.toString(), aggregatedGroup));
 			} catch (OpenDataException e) {
 				throw new RuntimeException(e);
 			}
 		}
-		return tdSupport;
+		return tdSupport.size() > 0 ? tdSupport : null;
 	}
 
 	private CompositeData createTabularDataRow(String key, Map<String, Object> attributes) throws OpenDataException {
 		Map<String, Object> allAttributes = new HashMap<>(attributes.size() + 1);
-		if (attributes.size() == 1 && tabularType.getRowType().containsKey("value")) {
-			allAttributes.put(VALUE_COLUMN_NAME, attributes.values().iterator().next());
+		if (attributes.size() == 1) {
+			String attrName = attributes.keySet().iterator().next();
+			Object attrValue = attributes.get(attrName);
+			String valueColumnName = attrName.isEmpty() ? VALUE_COLUMN_NAME : attrName;
+			allAttributes.put(valueColumnName, attrValue);
 		} else {
+			if (attributes.containsKey("")) {
+				Object emptyColumnValue = attributes.get("");
+				attributes.remove("");
+				attributes.put(EMPTY_COLUMN_NAME, emptyColumnValue);
+			}
+
 			allAttributes.putAll(attributes);
 		}
 		allAttributes.put(KEY_COLUMN_NAME, key);
@@ -210,26 +187,6 @@ final class AttributeNodeForMap implements AttributeNode {
 
 	@Override
 	public void setAttribute(String attrName, Object value, List<?> targets) {
-		throw new UnsupportedOperationException();
-	}
-
-	@Override
-	public AttributeNode rebuildOmittingNullPojos(List<?> sources) {
-		return this;
-	}
-
-	@Override
-	public boolean isVisible() {
-		return visible;
-	}
-
-	@Override
-	public AttributeNode rebuildWithVisible(String attrName) {
-		return new AttributeNodeForMap(name, description, true, fetcher, subNode, isMapOfJmxRefreshable);
-	}
-
-	@Override
-	public void applyModifier(String attrName, AttributeModifier<?> modifier, List<?> target) {
 		throw new UnsupportedOperationException();
 	}
 }

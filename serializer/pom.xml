@@ -22,12 +22,12 @@
         <dependency>
             <groupId>io.datakernel</groupId>
             <artifactId>datakernel-codegen</artifactId>
-            <version>${version}</version>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>io.datakernel</groupId>
             <artifactId>datakernel-bytebuf</artifactId>
-            <version>${version}</version>
+            <version>${project.version}</version>
         </dependency>
 
         <dependency>

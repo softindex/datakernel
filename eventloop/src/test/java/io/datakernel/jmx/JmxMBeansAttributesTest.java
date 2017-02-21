@@ -28,6 +28,7 @@ import javax.management.openmbean.TabularData;
 import java.util.*;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.jmx.helper.Utils.nameToAttribute;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
@@ -271,31 +272,18 @@ public class JmxMBeansAttributesTest {
 		assertEquals(date.toString(), mbean.getAttribute("date"));
 	}
 
-	/*
-	 * helper methods
- 	 */
-
+	// region helper methods
 	public static DynamicMBean createDynamicMBeanFor(Object... objects) throws Exception {
 		boolean refreshEnabled = false;
 		return JmxMBeans.factory().createFor(asList(objects), MBeanSettings.defaultSettings(), refreshEnabled);
 	}
 
-	public static Map<String, MBeanAttributeInfo> nameToAttribute(MBeanAttributeInfo[] attrs) {
-		Map<String, MBeanAttributeInfo> nameToAttr = new HashMap<>();
-		for (MBeanAttributeInfo attr : attrs) {
-			nameToAttr.put(attr.getName(), attr);
-		}
-		return nameToAttr;
-	}
-
 	public static Object[] keyForTabularData(String key) {
 		return new String[]{key};
 	}
+	// endregion
 
-	/*
-	 * helper classes
-	 */
-
+	// region helper classes
 	public static final class SamplePojo {
 		private final int count;
 		private final long sum;
@@ -594,4 +582,5 @@ public class JmxMBeansAttributesTest {
 			return str;
 		}
 	}
+	// endregion
 }

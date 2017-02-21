@@ -22,11 +22,11 @@ import org.junit.Test;
 import javax.management.DynamicMBean;
 import javax.management.MBeanAttributeInfo;
 import javax.management.MBeanInfo;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.jmx.helper.Utils.nameToAttribute;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
@@ -226,16 +226,6 @@ public class JmxMBeansAttributesHidingTest {
 		public Eventloop getEventloop() {
 			return eventloop;
 		}
-	}
-	// endregion
-
-	// region helper
-	public static Map<String, MBeanAttributeInfo> nameToAttribute(MBeanAttributeInfo[] attrs) {
-		Map<String, MBeanAttributeInfo> nameToAttr = new HashMap<>();
-		for (MBeanAttributeInfo attr : attrs) {
-			nameToAttr.put(attr.getName(), attr);
-		}
-		return nameToAttr;
 	}
 	// endregion
 }
