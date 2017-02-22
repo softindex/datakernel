@@ -528,8 +528,8 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 		return labels.toArray(new String[labels.size()]);
 	}
 
-	@JmxAttribute(name = "")
-	public String getSummary() {
+	@JmxAttribute
+	public String get() {
 		return toString();
 	}
 

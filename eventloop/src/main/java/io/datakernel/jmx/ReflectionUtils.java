@@ -69,7 +69,7 @@ final class ReflectionUtils {
 		boolean isIsGetter = method.getName().length() > 2 && method.getName().startsWith("is") && returnsBoolean;
 
 		boolean doesntReturnVoid = method.getReturnType() != void.class;
-		boolean isGetGetter = method.getName().length() > 3 && method.getName().startsWith("get") && doesntReturnVoid;
+		boolean isGetGetter = method.getName().length() >= 3 && method.getName().startsWith("get") && doesntReturnVoid;
 
 		return isIsGetter || isGetGetter;
 	}
@@ -78,10 +78,14 @@ final class ReflectionUtils {
 		checkArgument(isGetter(getter));
 
 		if (getter.getName().startsWith("get")) {
-			String getterName = getter.getName();
-			String firstLetter = getterName.substring(3, 4);
-			String restOfName = getterName.substring(4);
-			return firstLetter.toLowerCase() + restOfName;
+			if (getter.getName().length() == 3) {
+				return "";
+			} else {
+				String getterName = getter.getName();
+				String firstLetter = getterName.substring(3, 4);
+				String restOfName = getterName.substring(4);
+				return firstLetter.toLowerCase() + restOfName;
+			}
 		} else if (getter.getName().startsWith("is")) {
 			String getterName = getter.getName();
 			String firstLetter = getterName.substring(2, 3);
