@@ -72,10 +72,13 @@ final class HttpClientConnection extends AbstractHttpConnection {
 			throw new ParseException("Invalid response");
 		}
 
+		keepAlive = false;
 		int sp1;
 		if (line.peek(6) == SP) {
 			sp1 = line.readPosition() + 7;
 		} else if (line.peek(6) == '.' && (line.peek(7) == '1' || line.peek(7) == '0') && line.peek(8) == SP) {
+			if (line.peek(7) == '1')
+				keepAlive = true;
 			sp1 = line.readPosition() + 9;
 		} else {
 			line.recycle();
@@ -179,7 +182,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		assert pool == null;
 		(pool = client.poolWriting).addLastNode(this);
 		poolTimestamp = eventloop.currentTimeMillis();
-		if (keepAlive) request.addHeader(CONNECTION_KEEP_ALIVE);
+		request.addHeader(CONNECTION_KEEP_ALIVE);
 		asyncTcpSocket.write(request.toByteBuf());
 		request.recycleBufs();
 	}
