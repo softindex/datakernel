@@ -34,7 +34,7 @@ interface AttributeNode {
 
 	Map<String, Object> aggregateAttributes(Set<String> attrNames, List<?> sources);
 
-	Iterable<JmxRefreshable> getAllRefreshables(Object source);
+	List<JmxRefreshable> getAllRefreshables(Object source);
 
 	boolean isSettable(String attrName);
 

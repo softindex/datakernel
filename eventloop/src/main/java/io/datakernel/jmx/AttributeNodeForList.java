@@ -22,6 +22,7 @@ import java.util.*;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.String.format;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
 final class AttributeNodeForList extends AttributeNodeForLeafAbstract {
@@ -139,19 +140,20 @@ final class AttributeNodeForList extends AttributeNodeForLeafAbstract {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Iterable<JmxRefreshable> getAllRefreshables(final Object source) {
+	public List<JmxRefreshable> getAllRefreshables(final Object source) {
 		if (!isListOfJmxRefreshables) {
-			return null;
+			return emptyList();
 		}
 
 		final List<JmxRefreshable> listRef = (List<JmxRefreshable>) fetcher.fetchFrom(source);
-		return new Iterable<JmxRefreshable>() {
+		return Collections.<JmxRefreshable>singletonList(new JmxRefreshable() {
 			@Override
-			public Iterator<JmxRefreshable> iterator() {
-				List<JmxRefreshable> listCopy = new ArrayList<>(listRef);
-				return listCopy.iterator();
+			public void refresh(long timestamp) {
+				for (JmxRefreshable jmxRefreshableElement : listRef) {
+					jmxRefreshableElement.refresh(timestamp);
+				}
 			}
-		};
+		});
 	}
 
 	@Override

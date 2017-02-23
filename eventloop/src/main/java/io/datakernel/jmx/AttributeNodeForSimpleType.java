@@ -28,6 +28,7 @@ import java.util.Map;
 import static io.datakernel.jmx.Utils.filterNulls;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonMap;
 
 final class AttributeNodeForSimpleType extends AttributeNodeForLeafAbstract {
@@ -62,8 +63,8 @@ final class AttributeNodeForSimpleType extends AttributeNodeForLeafAbstract {
 	}
 
 	@Override
-	public Iterable<JmxRefreshable> getAllRefreshables(Object source) {
-		return null;
+	public List<JmxRefreshable> getAllRefreshables(Object source) {
+		return emptyList();
 	}
 
 	@Override

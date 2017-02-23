@@ -17,6 +17,7 @@
 package io.datakernel.jmx;
 
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.ScheduledRunnable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,7 +47,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	public static final int MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT = 500;
 	private final int maxJmxRefreshesPerOneCycle;
 	private final long specifiedRefreshPeriod;
-	private final Map<Eventloop, List<Iterable<JmxRefreshable>>> eventloopToJmxRefreshables =
+	private final Map<Eventloop, List<JmxRefreshable>> eventloopToJmxRefreshables =
 			new ConcurrentHashMap<>();
 
 	private static final JmxReducer<?> DEFAULT_REDUCER = new JmxReducers.JmxReducerDistinct();
@@ -494,78 +495,62 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	private void handleJmxRefreshables(List<MBeanWrapper> mbeanWrappers, AttributeNodeForPojo rootNode) {
 		for (MBeanWrapper mbeanWrapper : mbeanWrappers) {
 			Eventloop eventloop = mbeanWrapper.getEventloop();
-			Iterable<JmxRefreshable> currentRefreshables = rootNode.getAllRefreshables(mbeanWrapper.getMBean());
+			List<JmxRefreshable> currentRefreshables = rootNode.getAllRefreshables(mbeanWrapper.getMBean());
 			if (!eventloopToJmxRefreshables.containsKey(eventloop)) {
 				eventloopToJmxRefreshables.put(
 						eventloop,
-						singletonList(currentRefreshables)
+						currentRefreshables
 				);
-				eventloop.post(createRefreshTask(eventloop, null, 0, 0));
+				eventloop.post(createRefreshTask(eventloop, null, 0));
 			} else {
-				List<Iterable<JmxRefreshable>> previousRefreshables = eventloopToJmxRefreshables.get(eventloop);
-				List<Iterable<JmxRefreshable>> allRefreshables = new ArrayList<>(previousRefreshables);
-				allRefreshables.add(currentRefreshables);
+				List<JmxRefreshable> previousRefreshables = eventloopToJmxRefreshables.get(eventloop);
+				List<JmxRefreshable> allRefreshables = new ArrayList<>(previousRefreshables);
+				allRefreshables.addAll(currentRefreshables);
 				eventloopToJmxRefreshables.put(eventloop, allRefreshables);
 			}
 		}
 	}
 
 	private Runnable createRefreshTask(final Eventloop eventloop,
-	                                   final Iterator<JmxRefreshable> previousIterator,
-	                                   final int previousIteratorRefreshesCount,
-	                                   final int supposedJmxRefreshablesCount) {
+	                                            final List<JmxRefreshable> previousList,
+	                                            final int previousRefreshes) {
 		return new Runnable() {
 			@Override
 			public void run() {
 				long currentTime = eventloop.currentTimeMillis();
 
-				Iterator<JmxRefreshable> jmxRefreshableIterator;
-				if (previousIterator == null) {
-					List<Iterable<JmxRefreshable>> listOfIterables = eventloopToJmxRefreshables.get(eventloop);
-					jmxRefreshableIterator = Utils.concat(listOfIterables).iterator();
-				} else {
-					jmxRefreshableIterator = previousIterator;
+				List<JmxRefreshable> jmxRefreshableList = previousList;
+				if (jmxRefreshableList == null) {
+					// list might be updated in case of several mbeans in one eventloop
+					jmxRefreshableList = eventloopToJmxRefreshables.get(eventloop);
 				}
 
-				int currentRefreshesCount = 0;
-				while (jmxRefreshableIterator.hasNext()) {
-					if (currentRefreshesCount > maxJmxRefreshesPerOneCycle) {
-						long period = computeEffectiveRefreshPeriod(supposedJmxRefreshablesCount);
-						eventloop.scheduleBackground(
-								currentTime + period,
-								createRefreshTask(
-										eventloop,
-										jmxRefreshableIterator,
-										previousIteratorRefreshesCount + currentRefreshesCount,
-										supposedJmxRefreshablesCount
-								)
-						);
-						return;
+				int currentRefreshes = 0;
+				while (currentRefreshes < maxJmxRefreshesPerOneCycle) {
+					int index = currentRefreshes + previousRefreshes;
+					if (index == jmxRefreshableList.size()) {
+						break;
 					}
-					jmxRefreshableIterator.next().refresh(currentTime);
-					currentRefreshesCount++;
+					jmxRefreshableList.get(index).refresh(currentTime);
+					currentRefreshes++;
 				}
 
-				int freshJmxRefreshablesCount = previousIteratorRefreshesCount + currentRefreshesCount;
-				long period = computeEffectiveRefreshPeriod(freshJmxRefreshablesCount);
-				eventloop.scheduleBackground(
-						currentTime + period,
-						createRefreshTask(
-								eventloop,
-								null,
-								0,
-								freshJmxRefreshablesCount
-						)
-				);
+				long nextTimestamp = currentTime + computeEffectiveRefreshPeriod(jmxRefreshableList.size());
+				int totalRefreshes = currentRefreshes + previousRefreshes;
+				if (totalRefreshes == jmxRefreshableList.size()) {
+					eventloop.schedule(nextTimestamp, createRefreshTask(eventloop, null, 0));
+				} else {
+					eventloop.schedule(nextTimestamp, createRefreshTask(eventloop, jmxRefreshableList, totalRefreshes));
+				}
 			}
 		};
 	}
 
-	private long computeEffectiveRefreshPeriod(int actualRefreshes) {
-		if (actualRefreshes == 0) {
+	private long computeEffectiveRefreshPeriod(int jmxRefreshablesCount) {
+		if (jmxRefreshablesCount == 0) {
 			return specifiedRefreshPeriod;
 		}
-		double ratio = ceil(actualRefreshes / (double) maxJmxRefreshesPerOneCycle);
+		double ratio = ceil(jmxRefreshablesCount / (double) maxJmxRefreshesPerOneCycle);
 		return (long) (specifiedRefreshPeriod / ratio);
 	}
 

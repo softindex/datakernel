@@ -65,7 +65,7 @@ final class AttributeNodeForAnyOtherType extends AttributeNodeForLeafAbstract {
 	}
 
 	@Override
-	public final Iterable<JmxRefreshable> getAllRefreshables(Object source) {
-		return null;
+	public final List<JmxRefreshable> getAllRefreshables(Object source) {
+		return Collections.emptyList();
 	}
 }

@@ -20,6 +20,7 @@ import javax.management.openmbean.*;
 import java.util.*;
 
 import static io.datakernel.util.Preconditions.checkArgument;
+import static java.util.Collections.emptyList;
 
 final class AttributeNodeForMap extends AttributeNodeForLeafAbstract {
 	private static final String KEY_COLUMN_NAME = "> key";
@@ -165,19 +166,20 @@ final class AttributeNodeForMap extends AttributeNodeForLeafAbstract {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Iterable<JmxRefreshable> getAllRefreshables(final Object source) {
+	public List<JmxRefreshable> getAllRefreshables(final Object source) {
 		if (!isMapOfJmxRefreshable) {
-			return null;
+			return emptyList();
 		}
 
 		final Map<?, JmxRefreshable> mapRef = ((Map<?, JmxRefreshable>) fetcher.fetchFrom(source));
-		return new Iterable<JmxRefreshable>() {
+		return Collections.<JmxRefreshable>singletonList(new JmxRefreshable() {
 			@Override
-			public Iterator<JmxRefreshable> iterator() {
-				Set mapValuesCopy = new HashSet(mapRef.values());
-				return mapValuesCopy.iterator();
+			public void refresh(long timestamp) {
+				for (JmxRefreshable jmxRefreshableValue : mapRef.values()) {
+					jmxRefreshableValue.refresh(timestamp);
+				}
 			}
-		};
+		});
 	}
 
 	@Override

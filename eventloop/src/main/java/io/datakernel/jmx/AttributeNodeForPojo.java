@@ -19,7 +19,6 @@ package io.datakernel.jmx;
 import javax.management.openmbean.OpenType;
 import java.util.*;
 
-import static io.datakernel.jmx.Utils.concat;
 import static io.datakernel.jmx.Utils.filterNulls;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Collections.singletonList;
@@ -223,7 +222,7 @@ final class AttributeNodeForPojo implements AttributeNode {
 	}
 
 	@Override
-	public Iterable<JmxRefreshable> getAllRefreshables(Object source) {
+	public List<JmxRefreshable> getAllRefreshables(Object source) {
 		Object pojo = fetcher.fetchFrom(source);
 
 		if (pojo == null) {
@@ -233,14 +232,12 @@ final class AttributeNodeForPojo implements AttributeNode {
 		if (pojo instanceof JmxRefreshable) {
 			return singletonList(((JmxRefreshable) pojo));
 		} else {
-			List<Iterable<JmxRefreshable>> listOfIterators = new ArrayList<>();
+			List<JmxRefreshable> allJmxRefreshables = new ArrayList<>();
 			for (AttributeNode attributeNode : subNodes) {
-				Iterable<JmxRefreshable> iterable = attributeNode.getAllRefreshables(pojo);
-				if (iterable != null) {
-					listOfIterators.add(iterable);
-				}
+				List<JmxRefreshable> subNodeRefreshables = attributeNode.getAllRefreshables(pojo);
+				allJmxRefreshables.addAll(subNodeRefreshables);
 			}
-			return concat(listOfIterators);
+			return allJmxRefreshables;
 		}
 	}
 
