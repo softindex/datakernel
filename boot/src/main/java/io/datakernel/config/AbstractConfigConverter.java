@@ -19,15 +19,15 @@ package io.datakernel.config;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
 
-public abstract class ConfigConverterSingle<T> implements ConfigConverter<T> {
+public abstract class AbstractConfigConverter<T> implements ConfigConverter<T> {
 
-	protected abstract T fromString(String string);
+	public abstract T fromString(String string);
 
-	protected T fromEmptyString() {
+	public T fromEmptyString() {
 		return null;
 	}
 
-	protected abstract String toString(T item);
+	public abstract String toString(T item);
 
 	@Override
 	public final T get(Config config) {

@@ -40,15 +40,15 @@ import static java.util.Collections.emptyList;
 @SuppressWarnings("unused, WeakerAccess")
 public final class ConfigConverters {
 
-	public static ConfigConverterSingle<String> ofString() {
-		return new ConfigConverterSingle<String>() {
+	public static AbstractConfigConverter<String> ofString() {
+		return new AbstractConfigConverter<String>() {
 			@Override
 			public String fromString(String string) {
 				return string;
 			}
 
 			@Override
-			protected String fromEmptyString() {
+			public String fromEmptyString() {
 				return "";
 			}
 
@@ -59,8 +59,8 @@ public final class ConfigConverters {
 		};
 	}
 
-	public static ConfigConverterSingle<Byte> ofByte() {
-		return new ConfigConverterSingle<Byte>() {
+	public static AbstractConfigConverter<Byte> ofByte() {
+		return new AbstractConfigConverter<Byte>() {
 			@Override
 			public Byte fromString(String string) {
 				return Byte.parseByte(string);
@@ -73,8 +73,8 @@ public final class ConfigConverters {
 		};
 	}
 
-	public static ConfigConverterSingle<Integer> ofInteger() {
-		return new ConfigConverterSingle<Integer>() {
+	public static AbstractConfigConverter<Integer> ofInteger() {
+		return new AbstractConfigConverter<Integer>() {
 			@Override
 			public Integer fromString(String string) {
 				return Integer.parseInt(string);
@@ -87,8 +87,8 @@ public final class ConfigConverters {
 		};
 	}
 
-	public static ConfigConverterSingle<Long> ofLong() {
-		return new ConfigConverterSingle<Long>() {
+	public static AbstractConfigConverter<Long> ofLong() {
+		return new AbstractConfigConverter<Long>() {
 			@Override
 			public Long fromString(String string) {
 				return Long.parseLong(string);
@@ -101,8 +101,8 @@ public final class ConfigConverters {
 		};
 	}
 
-	public static ConfigConverterSingle<Float> ofFloat() {
-		return new ConfigConverterSingle<Float>() {
+	public static AbstractConfigConverter<Float> ofFloat() {
+		return new AbstractConfigConverter<Float>() {
 			@Override
 			public Float fromString(String string) {
 				return Float.parseFloat(string);
@@ -115,8 +115,8 @@ public final class ConfigConverters {
 		};
 	}
 
-	public static ConfigConverterSingle<Double> ofDouble() {
-		return new ConfigConverterSingle<Double>() {
+	public static AbstractConfigConverter<Double> ofDouble() {
+		return new AbstractConfigConverter<Double>() {
 			@Override
 			public Double fromString(String string) {
 				return Double.parseDouble(string);
@@ -129,8 +129,8 @@ public final class ConfigConverters {
 		};
 	}
 
-	public static ConfigConverterSingle<Boolean> ofBoolean() {
-		return new ConfigConverterSingle<Boolean>() {
+	public static AbstractConfigConverter<Boolean> ofBoolean() {
+		return new AbstractConfigConverter<Boolean>() {
 			@Override
 			public Boolean fromString(String string) {
 				return Boolean.parseBoolean(string);
@@ -143,27 +143,27 @@ public final class ConfigConverters {
 		};
 	}
 
-	public static <E extends Enum<E>> ConfigConverterSingle<E> ofEnum(Class<E> enumClass) {
+	public static <E extends Enum<E>> AbstractConfigConverter<E> ofEnum(Class<E> enumClass) {
 		final Class<E> enumClass1 = enumClass;
-		return new ConfigConverterSingle<E>() {
+		return new AbstractConfigConverter<E>() {
 			private final Class<E> enumClass = enumClass1;
 
 			@Override
-			protected E fromString(String string) {
+			public E fromString(String string) {
 				return Enum.valueOf(enumClass, string);
 			}
 
 			@Override
-			protected String toString(E item) {
+			public String toString(E item) {
 				return item.name();
 			}
 		};
 	}
 
-	public static ConfigConverterSingle<InetAddress> ofInetAddress() {
-		return new ConfigConverterSingle<InetAddress>() {
+	public static AbstractConfigConverter<InetAddress> ofInetAddress() {
+		return new AbstractConfigConverter<InetAddress>() {
 			@Override
-			protected InetAddress fromString(String address) {
+			public InetAddress fromString(String address) {
 				try {
 					return InetAddress.getByName(address);
 				} catch (UnknownHostException e) {
@@ -172,16 +172,16 @@ public final class ConfigConverters {
 			}
 
 			@Override
-			protected String toString(InetAddress item) {
+			public String toString(InetAddress item) {
 				return item.getAddress().toString();
 			}
 		};
 	}
 
-	public static ConfigConverterSingle<InetSocketAddress> ofInetSocketAddress() {
-		return new ConfigConverterSingle<InetSocketAddress>() {
+	public static AbstractConfigConverter<InetSocketAddress> ofInetSocketAddress() {
+		return new AbstractConfigConverter<InetSocketAddress>() {
 			@Override
-			protected InetSocketAddress fromString(String addressPort) {
+			public InetSocketAddress fromString(String addressPort) {
 				int portPos = addressPort.lastIndexOf(':');
 				checkArgument(portPos != -1, "Invalid address. Port is not specified");
 				String addressStr = addressPort.substring(0, portPos);
@@ -203,27 +203,27 @@ public final class ConfigConverters {
 			}
 
 			@Override
-			protected String toString(InetSocketAddress item) {
+			public String toString(InetSocketAddress item) {
 				return item.getAddress().getHostAddress() + ":" + item.getPort();
 			}
 		};
 	}
 
-	public static <T> ConfigConverter<List<T>> ofList(ConfigConverterSingle<T> elementConverter, CharSequence separators) {
-		final ConfigConverterSingle<T> elementConverter1 = elementConverter;
+	public static <T> ConfigConverter<List<T>> ofList(AbstractConfigConverter<T> elementConverter, CharSequence separators) {
+		final AbstractConfigConverter<T> elementConverter1 = elementConverter;
 		final CharSequence separators1 = separators;
-		return new ConfigConverterSingle<List<T>>() {
-			private final ConfigConverterSingle<T> elementConverter = elementConverter1;
+		return new AbstractConfigConverter<List<T>>() {
+			private final AbstractConfigConverter<T> elementConverter = elementConverter1;
 			private final CharSequence separators = separators1;
 			private final char joinSeparator = separators1.charAt(0);
 
 			@Override
-			protected List<T> fromEmptyString() {
+			public List<T> fromEmptyString() {
 				return Collections.emptyList();
 			}
 
 			@Override
-			protected List<T> fromString(String string) {
+			public List<T> fromString(String string) {
 				string = string.trim();
 				if (string.isEmpty())
 					return emptyList();
@@ -236,7 +236,7 @@ public final class ConfigConverters {
 			}
 
 			@Override
-			protected String toString(List<T> item) {
+			public String toString(List<T> item) {
 				List<String> strings = new ArrayList<>(item.size());
 				for (T e : item) {
 					strings.add(elementConverter.toString(e));
@@ -246,19 +246,19 @@ public final class ConfigConverters {
 		};
 	}
 
-	public static <T> ConfigConverter<List<T>> ofList(ConfigConverterSingle<T> elementConverter) {
+	public static <T> ConfigConverter<List<T>> ofList(AbstractConfigConverter<T> elementConverter) {
 		return ofList(elementConverter, ",;");
 	}
 
-	public static ConfigConverterSingle<MemSize> ofMemSize() {
-		return new ConfigConverterSingle<MemSize>() {
+	public static AbstractConfigConverter<MemSize> ofMemSize() {
+		return new AbstractConfigConverter<MemSize>() {
 			@Override
-			protected MemSize fromString(String string) {
+			public MemSize fromString(String string) {
 				return MemSize.valueOf(string);
 			}
 
 			@Override
-			protected String toString(MemSize item) {
+			public String toString(MemSize item) {
 				return item.format();
 			}
 		};
@@ -403,10 +403,10 @@ public final class ConfigConverters {
 		};
 	}
 
-	public static ConfigConverterSingle<InetAddressRange> ofInetAddressRange() {
-		return new ConfigConverterSingle<InetAddressRange>() {
+	public static AbstractConfigConverter<InetAddressRange> ofInetAddressRange() {
+		return new AbstractConfigConverter<InetAddressRange>() {
 			@Override
-			protected InetAddressRange fromString(String string) {
+			public InetAddressRange fromString(String string) {
 				try {
 					return InetAddressRange.parse(string);
 				} catch (ParseException e) {
@@ -415,7 +415,7 @@ public final class ConfigConverters {
 			}
 
 			@Override
-			protected String toString(InetAddressRange item) {
+			public String toString(InetAddressRange item) {
 				return item.toString();
 			}
 		};
