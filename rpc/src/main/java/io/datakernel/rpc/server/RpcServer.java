@@ -125,17 +125,9 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	}
 	// endregion
 
-	private BufferSerializer<RpcMessage> getSerializer() {
-		checkState(messageTypes != null, "Message types must be specified");
-		if (serializer == null) {
-			serializer = serializerBuilder.withSubclasses(RpcMessage.MESSAGE_TYPES, messageTypes).build(RpcMessage.class);
-		}
-		return serializer;
-	}
-
 	@Override
 	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
-		RpcStream stream = new RpcStream(eventloop, asyncTcpSocket, getSerializer(), defaultPacketSize, maxPacketSize, compression, true,
+		RpcStream stream = new RpcStream(eventloop, asyncTcpSocket, serializer, defaultPacketSize, maxPacketSize, compression, true,
 				statsSerializer, statsDeserializer, statsCompressor, statsDecompressor);
 		RpcServerConnection connection = new RpcServerConnection(eventloop, this,
 				asyncTcpSocket.getRemoteSocketAddress(), handlers, stream);
@@ -147,6 +139,12 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		totalConnects.recordEvent();
 
 		return stream.getSocketEventHandler();
+	}
+
+	@Override
+	protected void onListen() {
+		checkState(messageTypes != null, "Message types must be specified");
+		serializer = serializerBuilder.withSubclasses(RpcMessage.MESSAGE_TYPES, messageTypes).build(RpcMessage.class);
 	}
 
 	@Override

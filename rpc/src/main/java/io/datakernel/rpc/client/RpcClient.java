@@ -214,9 +214,11 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 	public void start(CompletionCallback callback) {
 		checkState(eventloop.inEventloopThread());
 		checkNotNull(callback);
+		checkState(messageTypes != null, "Message types must be specified");
 		checkState(!running);
 		running = true;
 		startCallback = callback;
+		serializer = serializerBuilder.withSubclasses(RpcMessage.MESSAGE_TYPES, messageTypes).build(RpcMessage.class);
 
 		if (forceStart) {
 			startCallback.postComplete(eventloop);
@@ -294,14 +296,6 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		return future;
 	}
 
-	private BufferSerializer<RpcMessage> getSerializer() {
-		checkState(messageTypes != null, "Message types must be specified");
-		if (serializer == null) {
-			serializer = serializerBuilder.withSubclasses(RpcMessage.MESSAGE_TYPES, messageTypes).build(RpcMessage.class);
-		}
-		return serializer;
-	}
-
 	private void connect(final InetSocketAddress address) {
 		if (!running) {
 			return;
@@ -315,7 +309,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 				AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings)
 						.withInspector(statsSocket);
 				AsyncTcpSocket asyncTcpSocket = sslContext != null ? wrapClientSocket(eventloop, asyncTcpSocketImpl, sslContext, sslExecutor) : asyncTcpSocketImpl;
-				RpcStream stream = new RpcStream(eventloop, asyncTcpSocket, getSerializer(), defaultPacketSize, maxPacketSize, compression, false,
+				RpcStream stream = new RpcStream(eventloop, asyncTcpSocket, serializer, defaultPacketSize, maxPacketSize, compression, false,
 						statsSerializer, statsDeserializer, statsCompressor, statsDecompressor);
 				RpcClientConnection connection = new RpcClientConnection(eventloop, RpcClient.this, address, stream);
 				stream.setListener(connection);
