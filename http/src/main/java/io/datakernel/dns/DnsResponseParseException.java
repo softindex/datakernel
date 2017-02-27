@@ -21,5 +21,5 @@ import io.datakernel.exception.ParseException;
 /**
  * Exception which will be threw, at parsing URL
  */
-public class DnsResponseParseException extends ParseException {
+class DnsResponseParseException extends ParseException {
 }

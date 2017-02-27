@@ -18,6 +18,7 @@ package io.datakernel.dns;
 
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.eventloop.AsyncUdpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.DatagramSocketSettings;
 import org.junit.Before;
@@ -35,7 +36,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public class AsyncDnsClientConnectionTest {
-	private DnsClientHandler dnsClientConnection;
+	private DnsClientConnection dnsClientConnection;
 	private Eventloop eventloop;
 	private static InetSocketAddress DNS_SERVER_ADDRESS = new InetSocketAddress("8.8.8.8", 53);
 	private static long TIMEOUT = 1000L;
@@ -89,8 +90,10 @@ public class AsyncDnsClientConnectionTest {
 			public void run() {
 				try {
 					DatagramChannel datagramChannel = createDatagramChannel(DatagramSocketSettings.create(), null, null);
-					dnsClientConnection = DnsClientHandler.create(eventloop, datagramChannel);
-					dnsClientConnection.register();
+					AsyncUdpSocketImpl udpSocket = AsyncUdpSocketImpl.create(eventloop, datagramChannel);
+					dnsClientConnection = DnsClientConnection.create(eventloop, udpSocket);
+					udpSocket.setEventHandler(dnsClientConnection);
+					udpSocket.register();
 				} catch (IOException e) {
 					e.printStackTrace();
 					fail();

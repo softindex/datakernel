@@ -24,7 +24,7 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Random;
 
-public final class DnsMessage {
+final class DnsMessage {
 	private byte[] message;
 	private int idx = 0;
 

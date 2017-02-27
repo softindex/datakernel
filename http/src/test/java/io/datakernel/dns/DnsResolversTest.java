@@ -91,6 +91,8 @@ public class DnsResolversTest {
 				return;
 			}
 
+			System.out.print("Resolved: ");
+
 			for (int i = 0; i < ips.length; ++i) {
 				System.out.print(ips[i]);
 				if (i != ips.length - 1) {

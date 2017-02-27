@@ -20,6 +20,7 @@ import io.datakernel.async.ConcurrentResultCallback;
 import io.datakernel.async.IgnoreResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.dns.DnsCache.DnsCacheQueryResult;
+import io.datakernel.eventloop.AsyncUdpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.HttpUtils;
 import io.datakernel.jmx.EventloopJmxMBean;
@@ -54,7 +55,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 
 	private final Eventloop eventloop;
 
-	private DnsClientHandler connection;
+	private DnsClientConnection connection;
 	private final DatagramSocketSettings datagramSocketSettings;
 
 	private InetSocketAddress dnsServerAddress;
@@ -250,7 +251,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
-				if (connection == null || !connection.isRegistered()) {
+				if (connection == null) {
 					try {
 						registerConnection();
 					} catch (IOException e) {
@@ -271,13 +272,12 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 		cache.performCleanup();
 	}
 
-	/**
-	 * Registers a new DnsConnection in its eventloop.
-	 */
-	public void registerConnection() throws IOException {
+	private void registerConnection() throws IOException {
 		DatagramChannel datagramChannel = createDatagramChannel(datagramSocketSettings, null, dnsServerAddress);
-		connection = DnsClientHandler.create(eventloop, datagramChannel);
-		connection.register();
+		AsyncUdpSocketImpl udpSocket = AsyncUdpSocketImpl.create(eventloop, datagramChannel);
+		connection = DnsClientConnection.create(eventloop, udpSocket);
+		udpSocket.setEventHandler(connection);
+		udpSocket.register();
 	}
 
 	@Override
