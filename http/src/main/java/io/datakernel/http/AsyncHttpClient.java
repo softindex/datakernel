@@ -334,6 +334,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 			@Override
 			protected void onException(Exception e) {
 				if (inspector != null) inspector.onResolveError(request, e);
+				request.recycleBufs();
 				callback.setException(e);
 			}
 		});
@@ -376,6 +377,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 			@Override
 			public void onException(Exception e) {
 				if (inspector != null) inspector.onConnectError(request, address, e);
+				request.recycleBufs();
 				callback.setException(e);
 			}
 
