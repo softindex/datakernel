@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static io.datakernel.jmx.ValueStats.POWERS_OF_TEN;
+import static io.datakernel.jmx.ValueStats.POWERS_OF_TEN_SHORTENED;
 
 public final class EventloopStats {
 	private final EventStats loops;
@@ -515,8 +516,8 @@ public final class EventloopStats {
 		private final ValueStats backgroundTasks;
 
 		public OverdueStats(double smoothingWindow) {
-			this.scheduledTasks = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TEN);
-			this.backgroundTasks = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TEN);
+			this.scheduledTasks = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TEN_SHORTENED);
+			this.backgroundTasks = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TEN_SHORTENED);
 		}
 
 		public void setSmoothingWindow(double smoothingWindow) {
