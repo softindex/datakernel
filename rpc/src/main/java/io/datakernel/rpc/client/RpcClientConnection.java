@@ -133,7 +133,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 		if (isMonitoring()) {
 			RpcRequestStats requestStatsPerClass = rpcClient.ensureRequestStatsPerClass(request.getClass());
 			requestStatsPerClass.getTotalRequests().recordEvent();
-			requestCallback = new JmxConnectionMonitoringResultCallback<>(requestStatsPerClass, callback);
+			requestCallback = new JmxConnectionMonitoringResultCallback<>(requestStatsPerClass, callback, timeout);
 		}
 
 		TimeoutCookie timeoutCookie = new TimeoutCookie(cookie, timeout);
@@ -333,15 +333,17 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 	}
 
 	private final class JmxConnectionMonitoringResultCallback<T> extends ResultCallback<T> {
-
 		private final Stopwatch stopwatch;
 		private final ResultCallback<T> callback;
 		private final RpcRequestStats requestStatsPerClass;
+		private final long dueTimestamp;
 
-		public JmxConnectionMonitoringResultCallback(RpcRequestStats requestStatsPerClass, ResultCallback<T> callback) {
+		public JmxConnectionMonitoringResultCallback(RpcRequestStats requestStatsPerClass, ResultCallback<T> callback,
+		                                             long timeout) {
 			this.stopwatch = Stopwatch.createStarted();
 			this.callback = callback;
 			this.requestStatsPerClass = requestStatsPerClass;
+			this.dueTimestamp = eventloop.currentTimeMillis() + timeout;
 		}
 
 		@Override
@@ -350,7 +352,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 			connectionStats.getResponseTime().recordValue(responseTime);
 			requestStatsPerClass.getResponseTime().recordValue(responseTime);
 			rpcClient.getGeneralRequestsStats().getResponseTime().recordValue(responseTime);
-
+			recordOverdue();
 			callback.setResult(result);
 		}
 
@@ -365,6 +367,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 				requestStatsPerClass.getResponseTime().recordValue(responseTime);
 				rpcClient.getGeneralRequestsStats().getResponseTime().recordValue(responseTime);
 				requestStatsPerClass.getServerExceptions().recordException(exception, null);
+				recordOverdue();
 			} else if (exception instanceof AsyncTimeoutException) {
 				connectionStats.getExpiredRequests().recordEvent();
 				requestStatsPerClass.getExpiredRequests().recordEvent();
@@ -372,11 +375,21 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 				connectionStats.getRejectedRequests().recordEvent();
 				requestStatsPerClass.getRejectedRequests().recordEvent();
 			}
+
 			callback.setException(exception);
 		}
 
 		private int timeElapsed() {
 			return (int) (stopwatch.elapsed(TimeUnit.MILLISECONDS));
+		}
+
+		private void recordOverdue() {
+			int overdue = (int) (System.currentTimeMillis() - dueTimestamp);
+			if (overdue > 0) {
+				connectionStats.getOverdues().recordValue(overdue);
+				requestStatsPerClass.getOverdues().recordValue(overdue);
+				rpcClient.getGeneralRequestsStats().getOverdues().recordValue(overdue);
+			}
 		}
 	}
 }

@@ -493,6 +493,15 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 				sw.start();
 			}
 
+			if (monitoring) {
+				int overdue = (int) (System.currentTimeMillis() - peeked.getTimestamp());
+				if (taskQueue == scheduledTasks) {
+					stats.recordScheduledTaskOverdue(overdue);
+				} else if (taskQueue == backgroundTasks) {
+					stats.recordBackgroundTaskOverdue(overdue);
+				}
+			}
+
 			try {
 				runnable.run();
 				tick++;
