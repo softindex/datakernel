@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static io.datakernel.jmx.ValueStats.POWERS_OF_TEN;
+import static io.datakernel.jmx.ValueStats.POWERS_OF_TEN_SHORTENED;
 
 public final class EventloopStats {
 	private final EventStats loops;
@@ -33,6 +34,7 @@ public final class EventloopStats {
 	private final TaskEvents taskEvents;
 	private final ErrorStats errorStats;
 	private final DurationStats durationStats;
+	private final OverdueStats overdueStats;
 
 	private final DurationRunnable longestLocalTask;
 	private final DurationRunnable longestConcurrentTask;
@@ -44,6 +46,7 @@ public final class EventloopStats {
 		taskEvents = new TaskEvents(smoothingWindow);
 		errorStats = new ErrorStats();
 		durationStats = new DurationStats(smoothingWindow);
+		overdueStats = new OverdueStats(smoothingWindow);
 
 		longestConcurrentTask = new DurationRunnable();
 		longestScheduledTask = new DurationRunnable();
@@ -59,6 +62,7 @@ public final class EventloopStats {
 		selectorEvents.setSmoothingWindow(smoothingWindow);
 		taskEvents.setSmoothingWindow(smoothingWindow);
 		durationStats.setSmoothingWindow(smoothingWindow);
+		overdueStats.setSmoothingWindow(smoothingWindow);
 	}
 
 	public void resetStats() {
@@ -67,6 +71,8 @@ public final class EventloopStats {
 		taskEvents.reset();
 		durationStats.reset();
 		errorStats.reset();
+		overdueStats.reset();
+
 		longestLocalTask.reset();
 		longestConcurrentTask.reset();
 		longestScheduledTask.reset();
@@ -152,6 +158,14 @@ public final class EventloopStats {
 		errorStats.ioErrors.recordException(throwable, causedObject);
 	}
 
+	public void recordScheduledTaskOverdue(int overdue) {
+		overdueStats.scheduledTasks.recordValue(overdue);
+	}
+
+	public void recordBackgroundTaskOverdue(int overdue) {
+		overdueStats.backgroundTasks.recordValue(overdue);
+	}
+
 	@JmxAttribute
 	public EventStats getLoops() {
 		return loops;
@@ -192,6 +206,14 @@ public final class EventloopStats {
 	@JmxAttribute(description = "scheduled task with longest duration (in microseconds)")
 	public DurationRunnable getLongestScheduledTask() {
 		return longestScheduledTask;
+	}
+
+	@JmxAttribute(
+			description = "overdue is difference between actual and specified timestamps of task execution " +
+					"(in milliseconds)"
+	)
+	public OverdueStats getOverdueStats() {
+		return overdueStats;
 	}
 
 	public static final class DurationRunnable implements JmxStats<DurationRunnable> {
@@ -486,6 +508,36 @@ public final class EventloopStats {
 		@JmxAttribute(description = "duration of one scheduled task (in microseconds)")
 		public ValueStats getScheduledTaskDuration() {
 			return scheduledTaskDuration;
+		}
+	}
+
+	public static final class OverdueStats {
+		private final ValueStats scheduledTasks;
+		private final ValueStats backgroundTasks;
+
+		public OverdueStats(double smoothingWindow) {
+			this.scheduledTasks = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TEN_SHORTENED);
+			this.backgroundTasks = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TEN_SHORTENED);
+		}
+
+		public void setSmoothingWindow(double smoothingWindow) {
+			scheduledTasks.setSmoothingWindow(smoothingWindow);
+			backgroundTasks.setSmoothingWindow(smoothingWindow);
+		}
+
+		public void reset() {
+			scheduledTasks.resetStats();
+			backgroundTasks.resetStats();
+		}
+
+		@JmxAttribute(extraSubAttributes = "histogram")
+		public ValueStats getScheduledTasks() {
+			return scheduledTasks;
+		}
+
+		@JmxAttribute(extraSubAttributes = "histogram")
+		public ValueStats getBackgroundTasks() {
+			return backgroundTasks;
 		}
 	}
 }

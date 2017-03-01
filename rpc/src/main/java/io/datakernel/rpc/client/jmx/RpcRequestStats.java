@@ -19,6 +19,7 @@ package io.datakernel.rpc.client.jmx;
 import io.datakernel.jmx.*;
 
 import static io.datakernel.jmx.ValueStats.POWERS_OF_TEN;
+import static io.datakernel.jmx.ValueStats.POWERS_OF_TEN_SHORTENED;
 
 public final class RpcRequestStats implements JmxRefreshable {
 	private final EventStats totalRequests;
@@ -26,6 +27,7 @@ public final class RpcRequestStats implements JmxRefreshable {
 	private final EventStats rejectedRequests;
 	private final EventStats expiredRequests;
 	private final ValueStats responseTime;
+	private final ValueStats overdues;
 	private final ExceptionStats serverExceptions;
 
 	private RpcRequestStats(double smoothingWindow) {
@@ -34,11 +36,22 @@ public final class RpcRequestStats implements JmxRefreshable {
 		rejectedRequests = EventStats.create(smoothingWindow);
 		expiredRequests = EventStats.create(smoothingWindow);
 		responseTime = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TEN);
+		overdues = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TEN_SHORTENED);
 		serverExceptions = ExceptionStats.create();
 	}
 
 	public static RpcRequestStats create(double smoothingWindow) {
 		return new RpcRequestStats(smoothingWindow);
+	}
+
+	@Override
+	public void refresh(long timestamp) {
+		totalRequests.refresh(timestamp);
+		failedRequests.refresh(timestamp);
+		rejectedRequests.refresh(timestamp);
+		expiredRequests.refresh(timestamp);
+		responseTime.refresh(timestamp);
+		overdues.refresh(timestamp);
 	}
 
 	public void resetStats() {
@@ -48,15 +61,7 @@ public final class RpcRequestStats implements JmxRefreshable {
 		expiredRequests.resetStats();
 		responseTime.resetStats();
 		serverExceptions.resetStats();
-	}
-
-	public void add(RpcRequestStats statsSet) {
-		totalRequests.add(statsSet.getTotalRequests());
-		failedRequests.add(statsSet.getFailedRequests());
-		rejectedRequests.add(statsSet.getRejectedRequests());
-		expiredRequests.add(statsSet.getExpiredRequests());
-		responseTime.add(statsSet.getResponseTime());
-		serverExceptions.add(statsSet.getServerExceptions());
+		overdues.resetStats();
 	}
 
 	@JmxAttribute
@@ -80,24 +85,24 @@ public final class RpcRequestStats implements JmxRefreshable {
 	}
 
 	@JmxAttribute(
-			description = "delay between request/response (in milliseconds)",
+			description = "delay between successful or failed request/response (in milliseconds)",
 			extraSubAttributes = "histogram"
 	)
 	public ValueStats getResponseTime() {
 		return responseTime;
 	}
 
+	@JmxAttribute(
+			description = "difference between due time and actual time of passing response to callback for " +
+					"successful or failed requests",
+			extraSubAttributes = "histogram"
+	)
+	public ValueStats getOverdues() {
+		return overdues;
+	}
+
 	@JmxAttribute
 	public ExceptionStats getServerExceptions() {
 		return serverExceptions;
-	}
-
-	@Override
-	public void refresh(long timestamp) {
-		totalRequests.refresh(timestamp);
-		failedRequests.refresh(timestamp);
-		rejectedRequests.refresh(timestamp);
-		expiredRequests.refresh(timestamp);
-		responseTime.refresh(timestamp);
 	}
 }

@@ -60,6 +60,11 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 					0, 1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000
 			};
 
+	public static final int[] POWERS_OF_TEN_SHORTENED =
+			new int[]{
+					0, 1, 10, 100, 1000
+			};
+
 	public static final int[] POWERS_OF_TEN_SEMI_LINEAR =
 			new int[]{
 					0,
@@ -198,9 +203,24 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 		if (value >= histogramLevels[histogramLevels.length - 1]) {
 			histogramValues[histogramValues.length - 1]++;
 		} else {
-			int bucketIndex = binarySearch(histogramLevels, value);
+			int bucketIndex;
+			if (histogramLevels.length <= 6) {
+				bucketIndex = linearSearch(histogramLevels, value);
+			} else {
+				bucketIndex = binarySearch(histogramLevels, value);
+			}
 			histogramValues[bucketIndex]++;
 		}
+	}
+
+	// return index of smallest element that is greater than "value"
+	private static int linearSearch(int[] histogramLevels, int value) {
+		for (int i = 0; i < histogramLevels.length; i++) {
+			if (value < histogramLevels[i]) {
+				return i;
+			}
+		}
+		return histogramLevels.length; //
 	}
 
 	// return index of smallest element that is greater than "value"
