@@ -1,15 +1,20 @@
 package io.datakernel.remotefs;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import io.datakernel.async.CallbackRegistry;
 import io.datakernel.async.CompletionCallbackFuture;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.stream.StreamProducers;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -38,7 +43,11 @@ public class TestTimeoutsSimpleFs {
 	public ExpectedException thrown = ExpectedException.none();
 
 	@Test
+	@Ignore
 	public void testUploadTimeout() throws ExecutionException, InterruptedException, IOException {
+		CallbackRegistry.setStoreStackTrace(true);
+		((Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME)).setLevel(Level.TRACE);
+
 		InetSocketAddress address = new InetSocketAddress(7010);
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		RemoteFsClient client = RemoteFsClient.create(eventloop, address);

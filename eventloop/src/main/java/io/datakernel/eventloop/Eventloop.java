@@ -20,7 +20,10 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.*;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.SimpleException;
-import io.datakernel.jmx.*;
+import io.datakernel.jmx.EventloopJmxMBean;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxOperation;
+import io.datakernel.jmx.ValueStats;
 import io.datakernel.net.DatagramSocketSettings;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.time.CurrentTimeProvider;
@@ -131,13 +134,14 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 
 	private static final double DEFAULT_SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_1_MINUTE;
 	private double smoothingWindow = DEFAULT_SMOOTHING_WINDOW;
-	private final EventloopStats stats = EventloopStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final EventloopStats stats = EventloopStats.create(DEFAULT_SMOOTHING_WINDOW, new ExtraStatsExtractor());
 	private final ConcurrentCallsStats concurrentCallsStats = ConcurrentCallsStats.create(DEFAULT_SMOOTHING_WINDOW);
 
 	private boolean monitoring = false;
 
 	// region builders
-	private Eventloop(CurrentTimeProvider timeProvider, String threadName, int threadPriority, ThrottlingController throttlingController, FatalErrorHandler fatalErrorHandler) {
+	private Eventloop(CurrentTimeProvider timeProvider, String threadName, int threadPriority,
+	                  ThrottlingController throttlingController, FatalErrorHandler fatalErrorHandler) {
 		this.timeProvider = timeProvider;
 		this.threadName = threadName;
 		this.threadPriority = threadPriority;
@@ -146,7 +150,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		if (throttlingController != null) {
 			throttlingController.setEventloop(this);
 		}
-		refreshTimestampAndGet();
+		refreshTimestamp();
 		CURRENT_EVENTLOOP.set(this);
 	}
 
@@ -343,14 +347,15 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	 * @param selectedKeys set that contains all selected keys, returned from NIO Selector.select()
 	 */
 	private void processSelectedKeys(Set<SelectionKey> selectedKeys) {
+		long startTimestamp = timestamp;
+		Stopwatch sw = monitoring ? Stopwatch.createUnstarted() : null;
+
 		int invalidKeys = 0, acceptKeys = 0, connectKeys = 0, readKeys = 0, writeKeys = 0;
 
 		lastSelectedKeys = selectedKeys.size();
 		if (throttlingController != null) {
 			throttlingController.calculateThrottling(lastSelectedKeys);
 		}
-
-		Stopwatch sw = monitoring ? Stopwatch.createStarted() : null;
 
 		Iterator<SelectionKey> iterator = selectedKeys.iterator();
 		while (iterator.hasNext()) {
@@ -360,6 +365,11 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 			if (!key.isValid()) {
 				invalidKeys++;
 				continue;
+			}
+
+			if (sw != null) {
+				sw.reset();
+				sw.start();
 			}
 
 			try {
@@ -383,22 +393,26 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 						invalidKeys++;
 					}
 				}
+				if (sw != null)
+					stats.updateSelectedKeyDuration(sw);
 			} catch (Throwable e) {
 				recordFatalError(e, key.attachment());
 				closeQuietly(key.channel());
 			}
 		}
-		stats.updateSelectedKeysTimeStats(sw);
-		stats.updateSelectedKeysStats(lastSelectedKeys, invalidKeys, acceptKeys, connectKeys, readKeys, writeKeys);
+		long loopTime = refreshTimestampAndGet() - startTimestamp;
+		stats.updateSelectedKeysStats(
+				lastSelectedKeys, invalidKeys, acceptKeys, connectKeys, readKeys, writeKeys, loopTime);
 	}
 
 	/**
 	 * Executes local tasks which were added from current thread
 	 */
 	private void executeLocalTasks() {
+		long startTimestamp = timestamp;
+
 		int newRunnables = 0;
 
-		Stopwatch swTotal = monitoring ? Stopwatch.createStarted() : null;
 		Stopwatch sw = monitoring ? Stopwatch.createUnstarted() : null;
 
 		while (true) {
@@ -422,13 +436,16 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 			}
 			newRunnables++;
 		}
-		stats.updateLocalTasksStats(newRunnables, swTotal);
+		long loopTime = refreshTimestampAndGet() - startTimestamp;
+		stats.updateLocalTasksStats(newRunnables, loopTime);
 	}
 
 	/**
 	 * Executes concurrent tasks which were added from other threads.
 	 */
 	private void executeConcurrentTasks() {
+		long startTimestamp = timestamp;
+
 		int newRunnables = 0;
 
 		Stopwatch swTotal = monitoring ? Stopwatch.createStarted() : null;
@@ -454,7 +471,8 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 			}
 			newRunnables++;
 		}
-		stats.updateConcurrentTasksStats(newRunnables, swTotal);
+		long loopTime = refreshTimestampAndGet() - startTimestamp;
+		stats.updateConcurrentTasksStats(newRunnables, loopTime);
 	}
 
 	/**
@@ -469,8 +487,10 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	}
 
 	private void executeScheduledTasks(PriorityQueue<ScheduledRunnable> taskQueue) {
+		long startTimestamp = timestamp;
+		boolean background = taskQueue == backgroundTasks;
+
 		int newRunnables = 0;
-		Stopwatch swTotal = monitoring ? Stopwatch.createStarted() : null;
 		Stopwatch sw = monitoring ? Stopwatch.createUnstarted() : null;
 
 		for (; ; ) {
@@ -495,11 +515,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 
 			if (monitoring) {
 				int overdue = (int) (System.currentTimeMillis() - peeked.getTimestamp());
-				if (taskQueue == scheduledTasks) {
-					stats.recordScheduledTaskOverdue(overdue);
-				} else if (taskQueue == backgroundTasks) {
-					stats.recordBackgroundTaskOverdue(overdue);
-				}
+				stats.recordScheduledTaskOverdue(overdue, background);
 			}
 
 			try {
@@ -507,14 +523,16 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 				tick++;
 				polled.complete();
 				if (sw != null)
-					stats.updateScheduledTaskDuration(runnable, sw);
+					stats.updateScheduledTaskDuration(runnable, sw, background);
 			} catch (Throwable e) {
 				recordFatalError(e, runnable);
 			}
 
 			newRunnables++;
 		}
-		stats.updateScheduledTasksStats(newRunnables, swTotal);
+
+		long loopTime = refreshTimestampAndGet() - startTimestamp;
+		stats.updateScheduledTasksStats(newRunnables, loopTime, background);
 	}
 
 	/**
@@ -857,8 +875,12 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	}
 
 	public long refreshTimestampAndGet() {
-		timestamp = timeProvider.currentTimeMillis();
+		refreshTimestamp();
 		return timestamp;
+	}
+
+	private void refreshTimestamp() {
+		timestamp = timeProvider.currentTimeMillis();
 	}
 
 	/**
@@ -1140,27 +1162,27 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	@JmxOperation(description = "enable monitoring " +
 			"[ when monitoring is enabled more stats are collected, but it causes more overhead " +
 			"(for example, most of the durationStats are collected only when monitoring is enabled) ]")
-	public void startMonitoring() {
+	public void startExtendedMonitoring() {
 		this.monitoring = true;
 	}
 
 	@JmxOperation(description = "disable monitoring " +
 			"[ when monitoring is enabled more stats are collected, but it causes more overhead " +
 			"(for example, most of the durationStats are collected only when monitoring is enabled) ]")
-	public void stopMonitoring() {
+	public void stopExtendedMonitoring() {
 		this.monitoring = false;
 	}
 
 	@JmxAttribute(
 			description = "when monitoring is enabled more stats are collected, but it causes more overhead " +
 					"(for example, most of the durationStats are collected only when monitoring is enabled)")
-	public boolean isMonitoring() {
+	public boolean isExtendedMonitoring() {
 		return monitoring;
 	}
 
 	@JmxOperation
 	public void resetStats() {
-		stats.resetStats();
+		stats.reset();
 	}
 
 	public void recordIoError(Exception e, Object context) {
@@ -1243,38 +1265,6 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		return tick;
 	}
 
-	@JmxAttribute(
-			description = "number of concurrent tasks to be executed",
-			reducer = JmxReducers.JmxReducerSum.class
-	)
-	public int getCurrentConcurrentTasks() {
-		return concurrentTasks.size();
-	}
-
-	@JmxAttribute(
-			description = "number of scheduled tasks to be executed",
-			reducer = JmxReducers.JmxReducerSum.class
-	)
-	public int getCurrentScheduledTasks() {
-		return scheduledTasks.size();
-	}
-
-	@JmxAttribute(
-			description = "number of background tasks to be executed",
-			reducer = JmxReducers.JmxReducerSum.class
-	)
-	public int getCurrentBackgroundTasks() {
-		return backgroundTasks.size();
-	}
-
-	@JmxAttribute(
-			description = "amount of local tasks to be executed",
-			reducer = JmxReducers.JmxReducerSum.class
-	)
-	public int getCurrentLocalTasks() {
-		return localTasks.size();
-	}
-
 	@JmxAttribute
 	public boolean getKeepAlive() {
 		return keepAlive;
@@ -1301,5 +1291,23 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 
 		stats.setSmoothingWindow(smoothingWindow);
 		concurrentCallsStats.setSmoothingWindow(smoothingWindow);
+	}
+
+	final class ExtraStatsExtractor {
+		int getLocalTasksCount() {
+			return localTasks.size();
+		}
+
+		int getConcurrentTasksCount() {
+			return concurrentTasks.size();
+		}
+
+		int getScheduledTasksCount() {
+			return scheduledTasks.size();
+		}
+
+		int getBackgroundTasksCount() {
+			return backgroundTasks.size();
+		}
 	}
 }

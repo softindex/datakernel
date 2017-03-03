@@ -18,8 +18,7 @@ package io.datakernel.rpc.client.jmx;
 
 import io.datakernel.jmx.*;
 
-import static io.datakernel.jmx.ValueStats.POWERS_OF_TEN;
-import static io.datakernel.jmx.ValueStats.POWERS_OF_TEN_SHORTENED;
+import static io.datakernel.jmx.ValueStats.POWERS_OF_TWO;
 
 public final class RpcRequestStats implements JmxRefreshable {
 	private final EventStats totalRequests;
@@ -35,8 +34,8 @@ public final class RpcRequestStats implements JmxRefreshable {
 		failedRequests = EventStats.create(smoothingWindow);
 		rejectedRequests = EventStats.create(smoothingWindow);
 		expiredRequests = EventStats.create(smoothingWindow);
-		responseTime = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TEN);
-		overdues = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TEN_SHORTENED);
+		responseTime = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
+		overdues = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
 		serverExceptions = ExceptionStats.create();
 	}
 

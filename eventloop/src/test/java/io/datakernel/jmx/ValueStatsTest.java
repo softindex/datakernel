@@ -252,6 +252,45 @@ public class ValueStatsTest {
 		assertEquals(expected, accumulator.getHistogram());
 	}
 
+	@Test
+	public void itShouldProperlyBuild_Pow2_Histogram() {
+		ValueStats stats = ValueStats.create(SMOOTHING_WINDOW).withHistogram(ValueStats.POWERS_OF_TWO);
+
+		stats.recordValue(-10);
+
+		stats.recordValue(0);
+		stats.recordValue(0);
+
+		stats.recordValue(2);
+		stats.recordValue(3);
+		stats.recordValue(3);
+
+		stats.recordValue(7);
+
+		List<String> expected = asList(
+				"(-∞,  0)  :  1",
+				"[ 0,  1)  :  2",
+				"[ 1,  2)  :  0",
+				"[ 2,  4)  :  3",
+				"[ 4,  8)  :  1",
+				"[ 8, +∞)  :  0"
+		);
+		assertEquals(expected, stats.getHistogram());
+	}
+
+	@Test
+	public void itShouldProperlyBuild_Pow2_Histogram_withLimitValues() {
+		ValueStats stats = ValueStats.create(SMOOTHING_WINDOW).withHistogram(ValueStats.POWERS_OF_TWO);
+
+		stats.recordValue(Integer.MAX_VALUE);
+
+		List<String> expected = asList(
+				"(        -∞, 1073741824)  :  0",
+				"[1073741824,         +∞)  :  1"
+		);
+		assertEquals(expected, stats.getHistogram());
+	}
+
 	public static int uniformRandom(int min, int max) {
 		return min + (Math.abs(RANDOM.nextInt()) % (max - min + 1));
 	}

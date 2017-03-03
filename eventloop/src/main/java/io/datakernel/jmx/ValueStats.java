@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static io.datakernel.util.Preconditions.checkArgument;
+import static java.lang.Integer.numberOfLeadingZeros;
 import static java.lang.Math.*;
 import static java.util.Arrays.asList;
 
@@ -200,16 +201,28 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 	}
 
 	private void addToHistogram(int value) {
-		if (value >= histogramLevels[histogramLevels.length - 1]) {
-			histogramValues[histogramValues.length - 1]++;
+		if (histogramLevels == POWERS_OF_TWO) {
+			addToPow2Histogram(value);
 		} else {
-			int bucketIndex;
-			if (histogramLevels.length <= 6) {
-				bucketIndex = linearSearch(histogramLevels, value);
+			if (value >= histogramLevels[histogramLevels.length - 1]) {
+				histogramValues[histogramValues.length - 1]++;
 			} else {
-				bucketIndex = binarySearch(histogramLevels, value);
+				int bucketIndex;
+				if (histogramLevels.length <= 6) {
+					bucketIndex = linearSearch(histogramLevels, value);
+				} else {
+					bucketIndex = binarySearch(histogramLevels, value);
+				}
+				histogramValues[bucketIndex]++;
 			}
-			histogramValues[bucketIndex]++;
+		}
+	}
+
+	private void addToPow2Histogram(int value) {
+		if (value < 0) {
+			histogramValues[0]++;
+		} else {
+			histogramValues[33 - numberOfLeadingZeros(value)]++;
 		}
 	}
 

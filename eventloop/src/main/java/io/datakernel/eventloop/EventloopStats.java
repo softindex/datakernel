@@ -25,80 +25,72 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import static io.datakernel.jmx.ValueStats.POWERS_OF_TEN;
-import static io.datakernel.jmx.ValueStats.POWERS_OF_TEN_SHORTENED;
+import static io.datakernel.jmx.ValueStats.POWERS_OF_TWO;
 
+@SuppressWarnings("unused")
 public final class EventloopStats {
 	private final EventStats loops;
-	private final SelectorEvents selectorEvents;
-	private final TaskEvents taskEvents;
+	private final ValueStats selectorSelectTime;
+	private final ValueStats businessLogicTime;
+	private final Tasks tasks;
+	private final Keys keys;
 	private final ErrorStats errorStats;
-	private final DurationStats durationStats;
-	private final OverdueStats overdueStats;
 
-	private final DurationRunnable longestLocalTask;
-	private final DurationRunnable longestConcurrentTask;
-	private final DurationRunnable longestScheduledTask;
-
-	private EventloopStats(double smoothingWindow) {
+	private EventloopStats(double smoothingWindow, Eventloop.ExtraStatsExtractor extraStatsExtractor) {
 		loops = EventStats.create(smoothingWindow);
-		selectorEvents = new SelectorEvents(smoothingWindow);
-		taskEvents = new TaskEvents(smoothingWindow);
+		selectorSelectTime = ValueStats.create(smoothingWindow);
+		businessLogicTime = ValueStats.create(smoothingWindow);
+		tasks = new Tasks(smoothingWindow, extraStatsExtractor);
+		keys = new Keys(smoothingWindow);
 		errorStats = new ErrorStats();
-		durationStats = new DurationStats(smoothingWindow);
-		overdueStats = new OverdueStats(smoothingWindow);
-
-		longestConcurrentTask = new DurationRunnable();
-		longestScheduledTask = new DurationRunnable();
-		longestLocalTask = new DurationRunnable();
 	}
 
-	public static EventloopStats create(double smoothingWindow) {
-		return new EventloopStats(smoothingWindow);
+	public static EventloopStats create(double smoothingWindow, Eventloop.ExtraStatsExtractor extraStatsExtractor) {
+		return new EventloopStats(smoothingWindow, extraStatsExtractor);
 	}
 
 	public void setSmoothingWindow(double smoothingWindow) {
 		loops.setSmoothingWindow(smoothingWindow);
-		selectorEvents.setSmoothingWindow(smoothingWindow);
-		taskEvents.setSmoothingWindow(smoothingWindow);
-		durationStats.setSmoothingWindow(smoothingWindow);
-		overdueStats.setSmoothingWindow(smoothingWindow);
+		selectorSelectTime.setSmoothingWindow(smoothingWindow);
+		businessLogicTime.setSmoothingWindow(smoothingWindow);
+		tasks.setSmoothingWindow(smoothingWindow);
+		keys.setSmoothingWindow(smoothingWindow);
 	}
 
-	public void resetStats() {
+	public void reset() {
 		loops.resetStats();
-		selectorEvents.reset();
-		taskEvents.reset();
-		durationStats.reset();
+		selectorSelectTime.resetStats();
+		businessLogicTime.resetStats();
+		tasks.reset();
+		keys.reset();
 		errorStats.reset();
-		overdueStats.reset();
-
-		longestLocalTask.reset();
-		longestConcurrentTask.reset();
-		longestScheduledTask.reset();
 	}
 
+	// region updating
 	public void updateBusinessLogicTime(long businessLogicTime) {
 		loops.recordEvent();
-		this.durationStats.businessLogicTime.recordValue((int) businessLogicTime);
+		this.businessLogicTime.recordValue((int) businessLogicTime);
 	}
 
 	public void updateSelectorSelectTime(long selectorSelectTime) {
-		this.durationStats.selectorSelectTime.recordValue((int) selectorSelectTime);
+		this.selectorSelectTime.recordValue((int) selectorSelectTime);
 	}
 
-	public void updateSelectedKeysStats(int lastSelectedKeys, int invalidKeys, int acceptKeys, int connectKeys, int readKeys, int writeKeys) {
-		this.selectorEvents.allSelectedKeys.recordValue(lastSelectedKeys);
-		this.selectorEvents.invalidKeys.recordValue(invalidKeys);
-		this.selectorEvents.acceptKeys.recordValue(acceptKeys);
-		this.selectorEvents.connectKeys.recordValue(connectKeys);
-		this.selectorEvents.readKeys.recordValue(readKeys);
-		this.selectorEvents.writeKeys.recordValue(writeKeys);
+	public void updateSelectedKeyDuration(Stopwatch sw) {
+		if (sw != null) {
+			keys.oneKeyTime.recordValue((int) sw.elapsed(TimeUnit.MICROSECONDS));
+		}
 	}
 
-	public void updateSelectedKeysTimeStats(@Nullable Stopwatch sw) {
-		if (sw != null)
-			durationStats.selectedKeysTime.recordValue((int) sw.elapsed(TimeUnit.MILLISECONDS));
+	public void updateSelectedKeysStats(int lastSelectedKeys, int invalidKeys, int acceptKeys,
+	                                    int connectKeys, int readKeys, int writeKeys, long loopTime) {
+		keys.all.recordEvents(lastSelectedKeys);
+		keys.invalid.recordEvents(invalidKeys);
+		keys.accept.recordEvents(acceptKeys);
+		keys.connect.recordEvents(connectKeys);
+		keys.read.recordEvents(readKeys);
+		keys.write.recordEvents(writeKeys);
+		keys.loopTime.recordValue((int) loopTime);
 	}
 
 	private void updateTaskDuration(ValueStats counter, DurationRunnable longestCounter, Runnable runnable, @Nullable Stopwatch sw) {
@@ -112,33 +104,39 @@ public final class EventloopStats {
 	}
 
 	public void updateLocalTaskDuration(Runnable runnable, @Nullable Stopwatch sw) {
-		updateTaskDuration(durationStats.localTaskDuration, longestLocalTask, runnable, sw);
+		updateTaskDuration(tasks.local.oneTaskTime, tasks.local.longestTask, runnable, sw);
 	}
 
-	public void updateLocalTasksStats(int newTasks, @Nullable Stopwatch sw) {
-		if (sw != null)
-			durationStats.localTasksTime.recordValue((int) sw.elapsed(TimeUnit.MILLISECONDS));
-		taskEvents.localTasks.recordValue(newTasks);
+	public void updateLocalTasksStats(int newTasks, long loopTime) {
+		tasks.local.loopTime.recordValue((int) loopTime);
+		tasks.local.tasksPerLoop.recordValue(newTasks);
 	}
 
 	public void updateConcurrentTaskDuration(Runnable runnable, @Nullable Stopwatch sw) {
-		updateTaskDuration(durationStats.concurrentTaskDuration, longestConcurrentTask, runnable, sw);
+		updateTaskDuration(tasks.concurrent.oneTaskTime, tasks.concurrent.longestTask, runnable, sw);
 	}
 
-	public void updateConcurrentTasksStats(int newTasks, @Nullable Stopwatch sw) {
-		if (sw != null)
-			durationStats.concurrentTasksTime.recordValue((int) sw.elapsed(TimeUnit.MICROSECONDS));
-		taskEvents.concurrentTasks.recordValue(newTasks);
+	public void updateConcurrentTasksStats(int newTasks, long loopTime) {
+		tasks.concurrent.loopTime.recordValue((int) loopTime);
+		tasks.concurrent.tasksPerLoop.recordValue(newTasks);
 	}
 
-	public void updateScheduledTaskDuration(Runnable runnable, @Nullable Stopwatch sw) {
-		updateTaskDuration(durationStats.scheduledTaskDuration, longestScheduledTask, runnable, sw);
+	public void updateScheduledTaskDuration(Runnable runnable, @Nullable Stopwatch sw, boolean background) {
+		if (background) {
+			updateTaskDuration(tasks.background.getOneTaskTime(), tasks.background.getLongestTask(), runnable, sw);
+		} else {
+			updateTaskDuration(tasks.scheduled.getOneTaskTime(), tasks.scheduled.getLongestTask(), runnable, sw);
+		}
 	}
 
-	public void updateScheduledTasksStats(int newTasks, @Nullable Stopwatch sw) {
-		if (sw != null)
-			durationStats.scheduledTasksTime.recordValue((int) sw.elapsed(TimeUnit.MILLISECONDS));
-		taskEvents.scheduledTasks.recordValue(newTasks);
+	public void updateScheduledTasksStats(int newTasks, long loopTime, boolean background) {
+		if (background) {
+			tasks.background.getLoopTime().recordValue((int) loopTime);
+			tasks.background.getTasksPerLoop().recordValue(newTasks);
+		} else {
+			tasks.scheduled.getLoopTime().recordValue((int) loopTime);
+			tasks.scheduled.getTasksPerLoop().recordValue(newTasks);
+		}
 	}
 
 	public void recordFatalError(Throwable throwable, Object causedObject) {
@@ -158,223 +156,288 @@ public final class EventloopStats {
 		errorStats.ioErrors.recordException(throwable, causedObject);
 	}
 
-	public void recordScheduledTaskOverdue(int overdue) {
-		overdueStats.scheduledTasks.recordValue(overdue);
+	public void recordScheduledTaskOverdue(int overdue, boolean background) {
+		if (background) {
+			tasks.background.overdues.recordValue(overdue);
+		} else {
+			tasks.scheduled.overdues.recordValue(overdue);
+		}
 	}
+	// endregion
 
-	public void recordBackgroundTaskOverdue(int overdue) {
-		overdueStats.backgroundTasks.recordValue(overdue);
-	}
-
+	// region root attributes
 	@JmxAttribute
 	public EventStats getLoops() {
 		return loops;
 	}
 
-	@JmxAttribute(description = "total count and smoothed rate of specified key selections " +
-			"starting from launching eventloop")
-	public SelectorEvents getSelectorEvents() {
-		return selectorEvents;
-	}
-
-	@JmxAttribute(description = " total count and smoothed rate of specified tasks that were already executed " +
-			"starting from launching eventloop")
-	public TaskEvents getTaskEvents() {
-		return taskEvents;
+	@JmxAttribute
+	public ValueStats getSelectorSelectTime() {
+		return selectorSelectTime;
 	}
 
 	@JmxAttribute
-	public DurationStats getDurationStats() {
-		return durationStats;
+	public ValueStats getBusinessLogicTime() {
+		return businessLogicTime;
 	}
 
-	@JmxAttribute(description = "all error starting from launching eventloop")
+	@JmxAttribute
+	public Tasks getTasks() {
+		return tasks;
+	}
+
+	@JmxAttribute
+	public Keys getKeys() {
+		return keys;
+	}
+
+	@JmxAttribute
 	public ErrorStats getErrorStats() {
 		return errorStats;
 	}
+	// endregion
 
-	@JmxAttribute(description = "local task with longest duration (in microseconds)")
-	public DurationRunnable getLongestLocalTask() {
-		return longestLocalTask;
-	}
+	// region helper classes for stats grouping
+	public static final class Tasks {
+		private final TaskStats local;
+		private final TaskStats concurrent;
+		private final ScheduledTaskStats scheduled;
+		private final ScheduledTaskStats background;
 
-	@JmxAttribute(description = "concurrent task with longest duration (in microseconds)")
-	public DurationRunnable getLongestConcurrentTask() {
-		return longestConcurrentTask;
-	}
+		public Tasks(double smoothingWindow, final Eventloop.ExtraStatsExtractor extraStatsExtractor) {
+			local = new TaskStats(smoothingWindow, new Count() {
+				@Override
+				public int getCount() {
+					return extraStatsExtractor.getLocalTasksCount();
+				}
+			});
 
-	@JmxAttribute(description = "scheduled task with longest duration (in microseconds)")
-	public DurationRunnable getLongestScheduledTask() {
-		return longestScheduledTask;
-	}
+			concurrent = new TaskStats(smoothingWindow, new Count() {
+				@Override
+				public int getCount() {
+					return extraStatsExtractor.getConcurrentTasksCount();
+				}
+			});
 
-	@JmxAttribute(
-			description = "overdue is difference between actual and specified timestamps of task execution " +
-					"(in milliseconds)"
-	)
-	public OverdueStats getOverdueStats() {
-		return overdueStats;
-	}
+			scheduled = new ScheduledTaskStats(smoothingWindow, new Count() {
+				@Override
+				public int getCount() {
+					return extraStatsExtractor.getScheduledTasksCount();
+				}
+			});
 
-	public static final class DurationRunnable implements JmxStats<DurationRunnable> {
-		private Runnable runnable;
-		private long duration;
-
-		void reset() {
-			duration = 0;
-			runnable = null;
-		}
-
-		void update(Runnable runnable, long duration) {
-			this.duration = duration;
-			this.runnable = runnable;
-		}
-
-		@JmxAttribute()
-		public long getDuration() {
-			return duration;
-		}
-
-		@JmxAttribute
-		public String getClassName() {
-			return (runnable == null) ? "" : runnable.getClass().getName();
-		}
-
-		@Override
-		public void add(DurationRunnable another) {
-			if (another.duration > this.duration) {
-				this.duration = another.duration;
-				this.runnable = another.runnable;
-			}
-		}
-	}
-
-	private static final class StackTrace {
-		private final StackTraceElement[] stackTraceElements;
-
-		public StackTrace(StackTraceElement[] stackTraceElements) {
-			this.stackTraceElements = stackTraceElements;
-		}
-
-		@Override
-		public boolean equals(Object o) {
-			if (this == o) return true;
-			if (!(o instanceof StackTrace)) return false;
-
-			StackTrace that = (StackTrace) o;
-
-			return Arrays.equals(stackTraceElements, that.stackTraceElements);
-		}
-
-		@Override
-		public int hashCode() {
-			return stackTraceElements != null ? Arrays.hashCode(stackTraceElements) : 0;
-		}
-	}
-
-	public static final class SelectorEvents {
-		private final ValueStats allSelectedKeys;
-		private final ValueStats invalidKeys;
-		private final ValueStats acceptKeys;
-		private final ValueStats connectKeys;
-		private final ValueStats readKeys;
-		private final ValueStats writeKeys;
-
-		public SelectorEvents(double smoothingWindow) {
-			allSelectedKeys = ValueStats.create(smoothingWindow);
-			invalidKeys = ValueStats.create(smoothingWindow);
-			acceptKeys = ValueStats.create(smoothingWindow);
-			connectKeys = ValueStats.create(smoothingWindow);
-			readKeys = ValueStats.create(smoothingWindow);
-			writeKeys = ValueStats.create(smoothingWindow);
+			background = new ScheduledTaskStats(smoothingWindow, new Count() {
+				@Override
+				public int getCount() {
+					return extraStatsExtractor.getBackgroundTasksCount();
+				}
+			});
 		}
 
 		public void setSmoothingWindow(double smoothingWindow) {
-			allSelectedKeys.setSmoothingWindow(smoothingWindow);
-			invalidKeys.setSmoothingWindow(smoothingWindow);
-			acceptKeys.setSmoothingWindow(smoothingWindow);
-			connectKeys.setSmoothingWindow(smoothingWindow);
-			readKeys.setSmoothingWindow(smoothingWindow);
-			writeKeys.setSmoothingWindow(smoothingWindow);
+			local.setSmoothingWindow(smoothingWindow);
+			concurrent.setSmoothingWindow(smoothingWindow);
+			scheduled.setSmoothingWindow(smoothingWindow);
+			background.setSmoothingWindow(smoothingWindow);
 		}
 
 		public void reset() {
-			allSelectedKeys.resetStats();
-			invalidKeys.resetStats();
-			acceptKeys.resetStats();
-			connectKeys.resetStats();
-			readKeys.resetStats();
-			writeKeys.resetStats();
+			local.reset();
+			concurrent.reset();
+			scheduled.reset();
+			background.reset();
 		}
 
 		@JmxAttribute
-		public ValueStats getAllSelectedKeys() {
-			return allSelectedKeys;
+		public TaskStats getLocal() {
+			return local;
 		}
 
 		@JmxAttribute
-		public ValueStats getInvalidKeys() {
-			return invalidKeys;
+		public TaskStats getConcurrent() {
+			return concurrent;
 		}
 
 		@JmxAttribute
-		public ValueStats getAcceptKeys() {
-			return acceptKeys;
+		public ScheduledTaskStats getScheduled() {
+			return scheduled;
 		}
 
 		@JmxAttribute
-		public ValueStats getConnectKeys() {
-			return connectKeys;
-		}
-
-		@JmxAttribute
-		public ValueStats getReadKeys() {
-			return readKeys;
-		}
-
-		@JmxAttribute
-		public ValueStats getWriteKeys() {
-			return writeKeys;
+		public ScheduledTaskStats getBackground() {
+			return background;
 		}
 	}
 
-	public static final class TaskEvents {
-		private final ValueStats localTasks;
-		private final ValueStats concurrentTasks;
-		private final ValueStats scheduledTasks;
+	public static class TaskStats {
+		private final ValueStats tasksPerLoop;
+		private final ValueStats loopTime;
+		private final ValueStats oneTaskTime;
+		private final DurationRunnable longestTask;
+		private final Count count;
 
-		public TaskEvents(double smoothingWindow) {
-			localTasks = ValueStats.create(smoothingWindow);
-			concurrentTasks = ValueStats.create(smoothingWindow);
-			scheduledTasks = ValueStats.create(smoothingWindow);
+		public TaskStats(double smoothingWindow, Count count) {
+			this.tasksPerLoop = ValueStats.create(smoothingWindow);
+			this.loopTime = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
+			this.oneTaskTime = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
+			this.longestTask = new DurationRunnable();
+			this.count = count;
 		}
 
 		public void setSmoothingWindow(double smoothingWindow) {
-			localTasks.setSmoothingWindow(smoothingWindow);
-			concurrentTasks.setSmoothingWindow(smoothingWindow);
-			scheduledTasks.setSmoothingWindow(smoothingWindow);
+			tasksPerLoop.setSmoothingWindow(smoothingWindow);
+			loopTime.setSmoothingWindow(smoothingWindow);
+			oneTaskTime.setSmoothingWindow(smoothingWindow);
 		}
 
 		public void reset() {
-			localTasks.resetStats();
-			concurrentTasks.resetStats();
-			scheduledTasks.resetStats();
+			tasksPerLoop.resetStats();
+			loopTime.resetStats();
+			oneTaskTime.resetStats();
+		}
+
+		@JmxAttribute(name = "perLoop")
+		public ValueStats getTasksPerLoop() {
+			return tasksPerLoop;
+		}
+
+		@JmxAttribute(extraSubAttributes = {"histogram"})
+		public ValueStats getLoopTime() {
+			return loopTime;
+		}
+
+		@JmxAttribute(
+				name = "oneTaskTime(μs)",
+				extraSubAttributes = {"histogram"})
+		public ValueStats getOneTaskTime() {
+			return oneTaskTime;
 		}
 
 		@JmxAttribute
-		public ValueStats getLocalTasks() {
-			return localTasks;
+		public DurationRunnable getLongestTask() {
+			return longestTask;
 		}
 
 		@JmxAttribute
-		public ValueStats getConcurrentTasks() {
-			return concurrentTasks;
+		public int getCount() {
+			return count.getCount();
+		}
+	}
+
+	public static final class ScheduledTaskStats extends TaskStats {
+		private final ValueStats overdues;
+
+		public ScheduledTaskStats(double smoothingWindow, Count count) {
+			super(smoothingWindow, count);
+			overdues = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
+		}
+
+		public void setSmoothingWindow(double smoothingWindow) {
+			super.setSmoothingWindow(smoothingWindow);
+			overdues.setSmoothingWindow(smoothingWindow);
+		}
+
+		public void reset() {
+			super.reset();
+			overdues.resetStats();
+		}
+
+		@JmxAttribute(
+				extraSubAttributes = {"histogram"})
+		public ValueStats getOverdues() {
+			return overdues;
+		}
+	}
+
+	public static final class Keys {
+		private final EventStats all;
+		private final EventStats invalid;
+		private final EventStats accept;
+		private final EventStats connect;
+		private final EventStats read;
+		private final EventStats write;
+		private final ValueStats loopTime;
+		private final ValueStats oneKeyTime;
+
+		public Keys(double smoothingWindow) {
+			all = EventStats.create(smoothingWindow);
+			invalid = EventStats.create(smoothingWindow);
+			accept = EventStats.create(smoothingWindow);
+			connect = EventStats.create(smoothingWindow);
+			read = EventStats.create(smoothingWindow);
+			write = EventStats.create(smoothingWindow);
+			loopTime = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
+			oneKeyTime = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
+		}
+
+		public void setSmoothingWindow(double smoothingWindow) {
+			all.setSmoothingWindow(smoothingWindow);
+			invalid.setSmoothingWindow(smoothingWindow);
+			accept.setSmoothingWindow(smoothingWindow);
+			connect.setSmoothingWindow(smoothingWindow);
+			read.setSmoothingWindow(smoothingWindow);
+			write.setSmoothingWindow(smoothingWindow);
+			loopTime.setSmoothingWindow(smoothingWindow);
+			oneKeyTime.setSmoothingWindow(smoothingWindow);
+		}
+
+		public void reset() {
+			all.resetStats();
+			invalid.resetStats();
+			accept.resetStats();
+			connect.resetStats();
+			read.resetStats();
+			write.resetStats();
+			loopTime.resetStats();
+			oneKeyTime.resetStats();
 		}
 
 		@JmxAttribute
-		public ValueStats getScheduledTasks() {
-			return scheduledTasks;
+		public EventStats getAll() {
+			return all;
 		}
+
+		@JmxAttribute
+		public EventStats getInvalid() {
+			return invalid;
+		}
+
+		@JmxAttribute
+		public EventStats getAccept() {
+			return accept;
+		}
+
+		@JmxAttribute
+		public EventStats getConnect() {
+			return connect;
+		}
+
+		@JmxAttribute
+		public EventStats getRead() {
+			return read;
+		}
+
+		@JmxAttribute
+		public EventStats getWrite() {
+			return write;
+		}
+
+		@JmxAttribute(extraSubAttributes = "histogram")
+		public ValueStats getLoopTime() {
+			return loopTime;
+		}
+
+		@JmxAttribute(
+				name = "oneKeyTime(μs)",
+				extraSubAttributes = "histogram"
+		)
+		public ValueStats getOneKeyTime() {
+			return oneKeyTime;
+		}
+	}
+
+	private interface Count {
+		int getCount();
 	}
 
 	public static final class ErrorStats {
@@ -404,140 +467,60 @@ public final class EventloopStats {
 		}
 	}
 
-	public static final class DurationStats {
-		private final ValueStats selectorSelectTime;
-		private final ValueStats businessLogicTime;
+	private static final class StackTrace {
+		private final StackTraceElement[] stackTraceElements;
 
-		private final ValueStats selectedKeysTime;
-		private final ValueStats localTasksTime;
-		private final ValueStats concurrentTasksTime;
-		private final ValueStats scheduledTasksTime;
-
-		private final ValueStats localTaskDuration;
-		private final ValueStats concurrentTaskDuration;
-		private final ValueStats scheduledTaskDuration;
-
-		public DurationStats(double smoothingWindow) {
-			selectorSelectTime = ValueStats.create(smoothingWindow);
-			businessLogicTime = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TEN);
-
-			selectedKeysTime = ValueStats.create(smoothingWindow);
-			localTasksTime = ValueStats.create(smoothingWindow);
-			concurrentTasksTime = ValueStats.create(smoothingWindow);
-			scheduledTasksTime = ValueStats.create(smoothingWindow);
-
-			localTaskDuration = ValueStats.create(smoothingWindow);
-			concurrentTaskDuration = ValueStats.create(smoothingWindow);
-			scheduledTaskDuration = ValueStats.create(smoothingWindow);
+		public StackTrace(StackTraceElement[] stackTraceElements) {
+			this.stackTraceElements = stackTraceElements;
 		}
 
-		public void setSmoothingWindow(double smoothingWindow) {
-			selectorSelectTime.setSmoothingWindow(smoothingWindow);
-			businessLogicTime.setSmoothingWindow(smoothingWindow);
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) return true;
+			if (!(o instanceof StackTrace)) return false;
 
-			selectedKeysTime.setSmoothingWindow(smoothingWindow);
-			localTasksTime.setSmoothingWindow(smoothingWindow);
-			concurrentTasksTime.setSmoothingWindow(smoothingWindow);
-			scheduledTasksTime.setSmoothingWindow(smoothingWindow);
+			StackTrace that = (StackTrace) o;
 
-			localTaskDuration.setSmoothingWindow(smoothingWindow);
-			concurrentTaskDuration.setSmoothingWindow(smoothingWindow);
-			scheduledTaskDuration.setSmoothingWindow(smoothingWindow);
+			return Arrays.equals(stackTraceElements, that.stackTraceElements);
 		}
 
-		public void reset() {
-			selectorSelectTime.resetStats();
-			businessLogicTime.resetStats();
-
-			selectedKeysTime.resetStats();
-			localTasksTime.resetStats();
-			concurrentTasksTime.resetStats();
-			scheduledTasksTime.resetStats();
-
-			localTaskDuration.resetStats();
-			concurrentTaskDuration.resetStats();
-			scheduledTaskDuration.resetStats();
-		}
-
-		@JmxAttribute(description = "duration of selector.select() call in one eventloop cycle (in milliseconds)")
-		public ValueStats getSelectorSelectTime() {
-			return selectorSelectTime;
-		}
-
-		@JmxAttribute(
-				description = "duration of all localTasks, concurrentTasks, scheduledTasks" +
-						" and handing of keys in one eventloop cycle (in milliseconds)",
-				extraSubAttributes = {"histogram"}
-		)
-		public ValueStats getBusinessLogicTime() {
-			return businessLogicTime;
-		}
-
-		@JmxAttribute(description = "duration of handling of all selected keys in one eventloop cycle (in milliseconds)")
-		public ValueStats getSelectedKeysTime() {
-			return selectedKeysTime;
-		}
-
-		@JmxAttribute(description = "duration of all local tasks in one eventloop cycle (in milliseconds)")
-		public ValueStats getLocalTasksTime() {
-			return localTasksTime;
-		}
-
-		@JmxAttribute(description = "duration of all concurrent tasks in one eventloop cycle (in milliseconds)")
-		public ValueStats getConcurrentTasksTime() {
-			return concurrentTasksTime;
-		}
-
-		@JmxAttribute(description =
-				" duration of all scheduled tasks (including background tasks) " +
-						"in one eventloop cycle (in milliseconds)")
-		public ValueStats getScheduledTasksTime() {
-			return scheduledTasksTime;
-		}
-
-		@JmxAttribute(description = "duration of one local task (in microseconds)")
-		public ValueStats getLocalTaskDuration() {
-			return localTaskDuration;
-		}
-
-		@JmxAttribute(description = "duration of one concurrent task (in microseconds)")
-		public ValueStats getConcurrentTaskDuration() {
-			return concurrentTaskDuration;
-		}
-
-		@JmxAttribute(description = "duration of one scheduled task (in microseconds)")
-		public ValueStats getScheduledTaskDuration() {
-			return scheduledTaskDuration;
+		@Override
+		public int hashCode() {
+			return stackTraceElements != null ? Arrays.hashCode(stackTraceElements) : 0;
 		}
 	}
 
-	public static final class OverdueStats {
-		private final ValueStats scheduledTasks;
-		private final ValueStats backgroundTasks;
+	public static final class DurationRunnable implements JmxStats<DurationRunnable> {
+		private Runnable runnable;
+		private long duration;
 
-		public OverdueStats(double smoothingWindow) {
-			this.scheduledTasks = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TEN_SHORTENED);
-			this.backgroundTasks = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TEN_SHORTENED);
+		void reset() {
+			duration = 0;
+			runnable = null;
 		}
 
-		public void setSmoothingWindow(double smoothingWindow) {
-			scheduledTasks.setSmoothingWindow(smoothingWindow);
-			backgroundTasks.setSmoothingWindow(smoothingWindow);
+		void update(Runnable runnable, long duration) {
+			this.duration = duration;
+			this.runnable = runnable;
 		}
 
-		public void reset() {
-			scheduledTasks.resetStats();
-			backgroundTasks.resetStats();
+		@JmxAttribute(name = "duration(μs)")
+		public long getDuration() {
+			return duration;
 		}
 
-		@JmxAttribute(extraSubAttributes = "histogram")
-		public ValueStats getScheduledTasks() {
-			return scheduledTasks;
+		@JmxAttribute
+		public String getClassName() {
+			return (runnable == null) ? "" : runnable.getClass().getName();
 		}
 
-		@JmxAttribute(extraSubAttributes = "histogram")
-		public ValueStats getBackgroundTasks() {
-			return backgroundTasks;
+		@Override
+		public void add(DurationRunnable another) {
+			if (another.duration > this.duration) {
+				this.duration = another.duration;
+				this.runnable = another.runnable;
+			}
 		}
 	}
+	// endregion
 }
