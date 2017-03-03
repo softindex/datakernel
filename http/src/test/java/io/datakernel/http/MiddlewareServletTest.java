@@ -54,6 +54,48 @@ public class MiddlewareServletTest {
 	}
 
 	@Test
+	public void testBase() {
+		MiddlewareServlet servlet1 = MiddlewareServlet.create();
+		servlet1.with(HttpMethod.GET, "/a/b/c", new AsyncServlet() {
+			@Override
+			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
+				callback.setResult(HttpResponse.ofCode(200));
+			}
+		});
+
+		servlet1.serve(HttpRequest.get("http://some-test.com/a/b/c"), callback("", 200));
+		servlet1.serve(HttpRequest.get("http://some-test.com/a/b/c/d"), callback("", 404));
+		servlet1.serve(HttpRequest.post("http://some-test.com/a/b/c"), callback("", 405));
+
+		MiddlewareServlet servlet2 = MiddlewareServlet.create();
+		servlet2.with(HttpMethod.HEAD, "/a/b/c", new AsyncServlet() {
+			@Override
+			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
+				callback.setResult(HttpResponse.ofCode(200));
+			}
+		});
+
+		servlet2.serve(HttpRequest.post("http://some-test.com/a/b/c"), callback("", 405));
+		servlet2.serve(HttpRequest.post("http://some-test.com/a/b/c/d"), callback("", 404));
+		servlet2.serve(HttpRequest.of(HttpMethod.HEAD, "http://some-test.com/a/b/c"), callback("", 200));
+	}
+
+	@Test
+	public void testProcessWildCardRequest() {
+		MiddlewareServlet servlet = MiddlewareServlet.create();
+		servlet.with("/a/b/c/d", new AsyncServlet() {
+			@Override
+			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
+				callback.setResult(HttpResponse.ofCode(200));
+			}
+		});
+
+		servlet.serve(HttpRequest.get("http://some-test.com/a/b/c/d"), callback("", 200));
+		servlet.serve(HttpRequest.post("http://some-test.com/a/b/c/d"), callback("", 200));
+		servlet.serve(HttpRequest.of(HttpMethod.OPTIONS, "http://some-test.com/a/b/c/d"), callback("", 200));
+	}
+
+	@Test
 	public void testMicroMapping() throws ParseException {
 		HttpRequest request1 = HttpRequest.get(TEMPLATE + "/");     // ok
 		HttpRequest request2 = HttpRequest.get(TEMPLATE + "/a");    // ok

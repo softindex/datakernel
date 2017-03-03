@@ -116,12 +116,12 @@ public class MiddlewareServlet implements AsyncServlet {
 		HttpMethod method = request.getMethod();
 
 		if (urlPart.isEmpty()) {
-			if (!rootServlets.isEmpty()) {
-				AsyncServlet servlet = getRootServletOrWildcard(method);
-				if (servlet != null) {
-					servlet.serve(request, callback);
-					return ProcessResult.PROCESSED;
-				} else if (fallbackServlet == null) {
+			AsyncServlet servlet = getRootServletOrWildcard(method);
+			if (servlet != null) {
+				servlet.serve(request, callback);
+				return ProcessResult.PROCESSED;
+			} else if (fallbackServlet == null) {
+				if (!rootServlets.isEmpty()) {
 					return ProcessResult.NOT_ALLOWED;
 				}
 			}
