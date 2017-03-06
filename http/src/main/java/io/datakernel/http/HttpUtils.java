@@ -16,7 +16,6 @@
 
 package io.datakernel.http;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.exception.ParseException;
 
 import java.io.UnsupportedEncodingException;
@@ -201,36 +200,6 @@ public final class HttpUtils {
 		return getRealIp(request);
 	}
 
-	/**
-	 * Returns  the host of Http request
-	 *
-	 * @param request Http request with header host
-	 */
-	@Nullable
-	public static String getHost(HttpRequest request) {
-		String host = request.getHeader(HttpHeaders.HOST);
-		if ((host == null) || host.isEmpty())
-			return null;
-		return host;
-	}
-
-	/**
-	 * Returns the URL from Http Request
-	 *
-	 * @param request Http request with  URL
-	 */
-	@Nullable
-	public static String getFullUrl(HttpRequest request) {
-		HttpUri url = request.getUrl();
-		if (!url.isPartial()) {
-			return url.toString();
-		}
-		String host = getHost(request);
-		if (host == null) {
-			return null;
-		}
-		return "http://" + host + url.getPathAndQuery();
-	}
 
 	/**
 	 * Method which  parses string with URL of query, and returns collection with keys - name of
@@ -239,8 +208,8 @@ public final class HttpUtils {
 	 * @param query string with URL for parsing
 	 * @return collection with keys - name of parameter, value - value of it.
 	 */
-	public static Map<String, String> extractParameters(String query) {
-		return extractParameters(query, ENCODING);
+	public static Map<String, String> parseQueryParameters(String query) {
+		return parseQueryParameters(query, ENCODING);
 	}
 
 	/**
@@ -251,7 +220,7 @@ public final class HttpUtils {
 	 * @param enc   encoding of this string
 	 * @return collection with keys - name of parameter, value - value of it.
 	 */
-	public static Map<String, String> extractParameters(String query, String enc) {
+	public static Map<String, String> parseQueryParameters(String query, String enc) {
 		LinkedHashMap<String, String> qps = new LinkedHashMap<>();
 		for (String pair : splitToList(QUERY_SEPARATOR, query)) {
 			pair = pair.trim();
@@ -283,8 +252,8 @@ public final class HttpUtils {
 	 * @param q map in which keys if name of parameters, value - value of parameters.
 	 * @return string with parameters and its value in format URL
 	 */
-	public static String urlQueryString(Map<String, String> q) {
-		return urlQueryString(q, ENCODING);
+	public static String renderQueryString(Map<String, String> q) {
+		return renderQueryString(q, ENCODING);
 	}
 
 	/**
@@ -294,7 +263,7 @@ public final class HttpUtils {
 	 * @param enc encoding of this string
 	 * @return string with parameters and its value in format URL
 	 */
-	public static String urlQueryString(Map<String, String> q, String enc) {
+	public static String renderQueryString(Map<String, String> q, String enc) {
 		StringBuilder sb = new StringBuilder();
 		for (Map.Entry<String, String> e : q.entrySet()) {
 			String name = encode(e.getKey(), enc);
@@ -318,7 +287,7 @@ public final class HttpUtils {
 	 * @param enc new encoding
 	 * @return the translated String.
 	 */
-	private static String encode(String s, String enc) {
+	static String encode(String s, String enc) {
 		try {
 			return URLEncoder.encode(s, enc);
 		} catch (UnsupportedEncodingException e) {
@@ -335,7 +304,7 @@ public final class HttpUtils {
 	 * @param enc the name of a supported character encoding
 	 * @return the newly decoded String
 	 */
-	private static String decode(String s, String enc) throws ParseException {
+	static String decode(String s, String enc) throws ParseException {
 		try {
 			return URLDecoder.decode(s, enc);
 		} catch (RuntimeException e) {
@@ -352,4 +321,5 @@ public final class HttpUtils {
 	static String nullToEmpty(String string) {
 		return string == null ? "" : string;
 	}
+
 }

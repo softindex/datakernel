@@ -29,6 +29,7 @@ import io.datakernel.eventloop.SimpleServer.SocketHandlerProvider;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.ParseException;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.net.InetAddress;
@@ -225,6 +226,50 @@ public class AsyncHttpClientTest {
 				resultObserver.setException(e);
 				httpClient.stop(IgnoreCompletionCallback.create());
 				server.close(IgnoreCompletionCallback.create());
+			}
+		});
+
+		eventloop.run();
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+
+		try {
+			System.err.println("Result: " + resultObserver.get());
+		} catch (ExecutionException e) {
+			throw e.getCause();
+		}
+	}
+
+	@Ignore
+	@Test(expected = AsyncTimeoutException.class)
+	public void testRecyclesBufsIfFailedToSend() throws Throwable {
+		final int TIMEOUT = 1;
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+
+		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop).withConnectTimeout(TIMEOUT);
+		final ResultCallbackFuture<String> resultObserver = ResultCallbackFuture.create();
+
+		HttpRequest request = HttpRequest.get("http://google.com");
+		request.addHeader(HttpHeaders.COOKIE, ByteBufStrings.wrapAscii("prov=478d2a8b-1d34-4040-9877-893f4204afa1;" +
+				" __qca=P0-372125722-1460720847866; " +
+				"_ym_uid=1462979057991354365; " +
+				"cc=0424c5415e9b42aeb86f333471619b41; " +
+				"_ga=GA1.2.1152383523.1471249212"));
+
+		httpClient.send(request, new ResultCallback<HttpResponse>() {
+			@Override
+			public void onResult(HttpResponse result) {
+				try {
+					resultObserver.setResult(decodeUtf8(result.getBody()));
+				} catch (ParseException e) {
+					onException(e);
+				}
+				httpClient.stop(IgnoreCompletionCallback.create());
+			}
+
+			@Override
+			public void onException(Exception exception) {
+				resultObserver.setException(exception);
+				httpClient.stop(IgnoreCompletionCallback.create());
 			}
 		});
 

@@ -13,6 +13,9 @@ import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.Map;
 
+import static io.datakernel.bytebuf.ByteBufPool.getCreatedItems;
+import static io.datakernel.bytebuf.ByteBufPool.getPoolItems;
+import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static org.junit.Assert.assertEquals;
@@ -58,6 +61,7 @@ public class AbstractHttpConnectionTest {
 		eventloop.run();
 		assertEquals("text/           html", data.get("header"));
 		assertEquals("  <html>\n<body>\n<h1>Hello, World!</h1>\n</body>\n</html>", data.get("body"));
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	private HttpResponse createMultiLineHeaderWithInitialBodySpacesResponse() {
