@@ -180,17 +180,17 @@ public final class EventloopStats {
 		return loops;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(extraSubAttributes = "histogram")
 	public ValueStats getSelectorSelectTime() {
 		return selectorSelectTime;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(extraSubAttributes = "histogram")
 	public ValueStats getSelectorSelectTimeout() {
 		return selectorSelectTimeout;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(extraSubAttributes = "histogram")
 	public ValueStats getBusinessLogicTime() {
 		return businessLogicTime;
 	}
@@ -310,19 +310,17 @@ public final class EventloopStats {
 			oneTaskTime.resetStats();
 		}
 
-		@JmxAttribute(name = "perLoop")
+		@JmxAttribute(name = "perLoop", extraSubAttributes = "histogram")
 		public ValueStats getTasksPerLoop() {
 			return tasksPerLoop;
 		}
 
-		@JmxAttribute(extraSubAttributes = {"histogram"})
+		@JmxAttribute(extraSubAttributes = "histogram")
 		public ValueStats getLoopTime() {
 			return loopTime;
 		}
 
-		@JmxAttribute(
-				name = "oneTaskTime(μs)",
-				extraSubAttributes = {"histogram"})
+		@JmxAttribute(name = "oneTaskTime(μs)", extraSubAttributes = "histogram")
 		public ValueStats getOneTaskTime() {
 			return oneTaskTime;
 		}
@@ -356,8 +354,7 @@ public final class EventloopStats {
 			overdues.resetStats();
 		}
 
-		@JmxAttribute(
-				extraSubAttributes = {"histogram"})
+		@JmxAttribute(extraSubAttributes = "histogram")
 		public ValueStats getOverdues() {
 			return overdues;
 		}
@@ -441,10 +438,7 @@ public final class EventloopStats {
 			return loopTime;
 		}
 
-		@JmxAttribute(
-				name = "oneKeyTime(μs)",
-				extraSubAttributes = "histogram"
-		)
+		@JmxAttribute(name = "oneKeyTime(μs)", extraSubAttributes = "histogram")
 		public ValueStats getOneKeyTime() {
 			return oneKeyTime;
 		}

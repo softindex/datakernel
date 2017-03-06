@@ -272,7 +272,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 			}
 			try {
 				long selectTimeout = getSelectTimeout();
-				stats.updateSelectorSelectTime(selectTimeout);
+				stats.updateSelectorSelectTimeout(selectTimeout);
 				if (selectTimeout <= 0) {
 					lastSelectedKeys = selector.selectNow();
 				} else {
