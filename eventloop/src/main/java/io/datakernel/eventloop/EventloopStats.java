@@ -30,6 +30,7 @@ import static io.datakernel.jmx.ValueStats.POWERS_OF_TWO;
 @SuppressWarnings("unused")
 public final class EventloopStats {
 	private final EventStats loops;
+	private final ValueStats selectorSelectTimeout;
 	private final ValueStats selectorSelectTime;
 	private final ValueStats businessLogicTime;
 	private final Tasks tasks;
@@ -38,8 +39,10 @@ public final class EventloopStats {
 
 	private EventloopStats(double smoothingWindow, Eventloop.ExtraStatsExtractor extraStatsExtractor) {
 		loops = EventStats.create(smoothingWindow);
-		selectorSelectTime = ValueStats.create(smoothingWindow);
-		businessLogicTime = ValueStats.create(smoothingWindow);
+		selectorSelectTimeout = ValueStats.create(smoothingWindow).withHistogram(new int[]{
+				-256, -128, -64, -32, -16, -8, -4, -2, -1, 0, 1, 2, 4, 8, 16, 32});
+		selectorSelectTime = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
+		businessLogicTime = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
 		tasks = new Tasks(smoothingWindow, extraStatsExtractor);
 		keys = new Keys(smoothingWindow);
 		errorStats = new ErrorStats();
@@ -51,6 +54,7 @@ public final class EventloopStats {
 
 	public void setSmoothingWindow(double smoothingWindow) {
 		loops.setSmoothingWindow(smoothingWindow);
+		selectorSelectTimeout.setSmoothingWindow(smoothingWindow);
 		selectorSelectTime.setSmoothingWindow(smoothingWindow);
 		businessLogicTime.setSmoothingWindow(smoothingWindow);
 		tasks.setSmoothingWindow(smoothingWindow);
@@ -59,6 +63,7 @@ public final class EventloopStats {
 
 	public void reset() {
 		loops.resetStats();
+		selectorSelectTimeout.resetStats();
 		selectorSelectTime.resetStats();
 		businessLogicTime.resetStats();
 		tasks.reset();
@@ -74,6 +79,10 @@ public final class EventloopStats {
 
 	public void updateSelectorSelectTime(long selectorSelectTime) {
 		this.selectorSelectTime.recordValue((int) selectorSelectTime);
+	}
+
+	public void updateSelectorSelectTimeout(long selectorSelectTimeout) {
+		this.selectorSelectTimeout.recordValue((int) selectorSelectTimeout);
 	}
 
 	public void updateSelectedKeyDuration(Stopwatch sw) {
@@ -177,6 +186,11 @@ public final class EventloopStats {
 	}
 
 	@JmxAttribute
+	public ValueStats getSelectorSelectTimeout() {
+		return selectorSelectTimeout;
+	}
+
+	@JmxAttribute
 	public ValueStats getBusinessLogicTime() {
 		return businessLogicTime;
 	}
@@ -277,7 +291,7 @@ public final class EventloopStats {
 		private final Count count;
 
 		public TaskStats(double smoothingWindow, Count count) {
-			this.tasksPerLoop = ValueStats.create(smoothingWindow);
+			this.tasksPerLoop = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
 			this.loopTime = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
 			this.oneTaskTime = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
 			this.longestTask = new DurationRunnable();

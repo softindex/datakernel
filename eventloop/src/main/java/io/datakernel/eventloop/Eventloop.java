@@ -90,8 +90,8 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 
 	private final CurrentTimeProvider timeProvider;
 
-	private long timeBeforeSelectorSelect;
 	private long timeAfterSelectorSelect;
+	private long timeAfterBusinessLogic;
 
 	/**
 	 * The NIO selector which selects a set of keys whose corresponding channels
@@ -124,6 +124,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	private long timestamp;
 
 	private ThrottlingController throttlingController;
+	private int throttlingKeys;
 
 	/**
 	 * Count of selected keys for last Selector.select()
@@ -263,33 +264,36 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		ensureSelector();
 		breakEventloop = false;
 
-		timeBeforeSelectorSelect = timeAfterSelectorSelect = 0;
+		timeAfterBusinessLogic = timeAfterSelectorSelect = 0;
 		while (true) {
 			if (!isKeepAlive()) {
 				logger.info("Eventloop {} is complete, exiting...", this);
 				break;
 			}
-
-			tick = (tick + (1L << 32)) & ~0xFFFFFFFFL;
-
-			updateBusinessLogicTimeStats();
-
 			try {
-				selector.select(getSelectTimeout());
+				long selectTimeout = getSelectTimeout();
+				stats.updateSelectorSelectTime(selectTimeout);
+				if (selectTimeout <= 0) {
+					lastSelectedKeys = selector.selectNow();
+				} else {
+					lastSelectedKeys = selector.select(selectTimeout);
+				}
 			} catch (ClosedChannelException e) {
 				logger.error("Selector is closed, exiting...", e);
 				break;
 			} catch (IOException e) {
 				recordIoError(e, selector);
 			}
-
-			updateSelectorSelectTimeStats();
+			updateSelectorSelectStats();
 
 			processSelectedKeys(selector.selectedKeys());
 			executeConcurrentTasks();
 			executeScheduledTasks();
 			executeBackgroundTasks();
 			executeLocalTasks();
+
+			updateBusinessLogicStats();
+			tick = (tick + (1L << 32)) & ~0xFFFFFFFFL;
 		}
 		logger.info("Eventloop {} finished", this);
 		eventloopThread = null;
@@ -300,32 +304,33 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		}
 	}
 
-	private void updateBusinessLogicTimeStats() {
-		timeBeforeSelectorSelect = refreshTimestampAndGet();
-		if (timeAfterSelectorSelect != 0) {
-			long businessLogicTime = timeBeforeSelectorSelect - timeAfterSelectorSelect;
-			if (throttlingController != null) {
-				throttlingController.updateInternalStats(lastSelectedKeys, (int) businessLogicTime);
-			}
-			stats.updateBusinessLogicTime(businessLogicTime);
+	private void updateSelectorSelectStats() {
+		timeAfterSelectorSelect = refreshTimestampAndGet();
+		if (timeAfterBusinessLogic != 0) {
+			long selectorSelectTime = timeAfterSelectorSelect - timeAfterBusinessLogic;
+			stats.updateSelectorSelectTime(selectorSelectTime);
+		}
+		if (throttlingController != null) {
+			throttlingKeys = lastSelectedKeys + concurrentTasks.size();
+			throttlingController.calculateThrottling(throttlingKeys);
 		}
 	}
 
-	private void updateSelectorSelectTimeStats() {
-		timeAfterSelectorSelect = refreshTimestampAndGet();
-		long selectorSelectTime = timeAfterSelectorSelect - timeBeforeSelectorSelect;
-		stats.updateSelectorSelectTime(selectorSelectTime);
+	private void updateBusinessLogicStats() {
+		timeAfterBusinessLogic = timestamp; //refreshTimestampAndGet();
+		long businessLogicTime = timeAfterBusinessLogic - timeAfterSelectorSelect;
+		stats.updateBusinessLogicTime(businessLogicTime);
+		if (throttlingController != null) {
+			throttlingController.updateInternalStats(throttlingKeys, (int) businessLogicTime);
+		}
 	}
 
 	private long getSelectTimeout() {
-		if (!concurrentTasks.isEmpty())
-			return 1L;
+		if (!concurrentTasks.isEmpty() || !localTasks.isEmpty())
+			return 0L;
 		if (scheduledTasks.isEmpty() && backgroundTasks.isEmpty())
 			return DEFAULT_EVENT_TIMEOUT;
-		long timeout = Math.min(getTimeBeforeExecution(scheduledTasks), getTimeBeforeExecution(backgroundTasks));
-		if (timeout < 1L)
-			return 1L;
-		return Math.min(DEFAULT_EVENT_TIMEOUT, timeout);
+		return Math.min(getTimeBeforeExecution(scheduledTasks), getTimeBeforeExecution(backgroundTasks));
 	}
 
 	private long getTimeBeforeExecution(PriorityQueue<ScheduledRunnable> taskQueue) {
@@ -352,12 +357,8 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 
 		int invalidKeys = 0, acceptKeys = 0, connectKeys = 0, readKeys = 0, writeKeys = 0;
 
-		lastSelectedKeys = selectedKeys.size();
-		if (throttlingController != null) {
-			throttlingController.calculateThrottling(lastSelectedKeys);
-		}
-
-		Iterator<SelectionKey> iterator = selectedKeys.iterator();
+		Iterator<SelectionKey> iterator = lastSelectedKeys != 0 ? selectedKeys.iterator()
+				: Collections.<SelectionKey>emptyIterator();
 		while (iterator.hasNext()) {
 			SelectionKey key = iterator.next();
 			iterator.remove();
@@ -401,8 +402,8 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 			}
 		}
 		long loopTime = refreshTimestampAndGet() - startTimestamp;
-		stats.updateSelectedKeysStats(
-				lastSelectedKeys, invalidKeys, acceptKeys, connectKeys, readKeys, writeKeys, loopTime);
+		stats.updateSelectedKeysStats(lastSelectedKeys,
+				invalidKeys, acceptKeys, connectKeys, readKeys, writeKeys, loopTime);
 	}
 
 	/**
