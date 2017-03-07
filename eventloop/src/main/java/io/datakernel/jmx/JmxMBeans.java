@@ -538,9 +538,9 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				long nextTimestamp = currentTime + computeEffectiveRefreshPeriod(jmxRefreshableList.size());
 				int totalRefreshes = currentRefreshes + previousRefreshes;
 				if (totalRefreshes == jmxRefreshableList.size()) {
-					eventloop.schedule(nextTimestamp, createRefreshTask(eventloop, null, 0));
+					eventloop.scheduleBackground(nextTimestamp, createRefreshTask(eventloop, null, 0));
 				} else {
-					eventloop.schedule(nextTimestamp, createRefreshTask(eventloop, jmxRefreshableList, totalRefreshes));
+					eventloop.scheduleBackground(nextTimestamp, createRefreshTask(eventloop, jmxRefreshableList, totalRefreshes));
 				}
 			}
 		};
