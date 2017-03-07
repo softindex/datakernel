@@ -33,7 +33,7 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
 
-public final class JmxRegistry implements ConcurrentJmxMBean {
+public final class JmxRegistry implements JmxRegistryMXBean {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private static final String GENERIC_PARAM_NAME_FORMAT = "T%d=%s";
@@ -447,24 +447,64 @@ public final class JmxRegistry implements ConcurrentJmxMBean {
 		return isJmxMBean(clazz) || isStandardMBean(clazz) || isMXBean(clazz);
 	}
 
-	// jmx
-	@JmxAttribute
+	// region jmx
+	@Override
 	public int getRegisteredSingletons() {
 		return registeredSingletons;
 	}
 
-	@JmxAttribute
+	@Override
 	public int getRegisteredPools() {
 		return registeredPools;
 	}
 
-	@JmxAttribute
+	@Override
 	public int getTotallyRegisteredMBeans() {
 		return totallyRegisteredMBeans;
 	}
 
-	@JmxAttribute
+	@Override
 	public double getRefreshPeriod() {
-		return refreshPeriod;
+		return ((JmxMBeans) mbeanFactory).getSpecifiedRefreshPeriod();
 	}
+
+	@Override
+	public void setRefreshPeriod(double refreshPeriod) {
+		((JmxMBeans) mbeanFactory).setRefreshPeriod(refreshPeriod);
+	}
+
+	@Override
+	public int getMaxRefreshesPerOneCycle() {
+		return ((JmxMBeans) mbeanFactory).getMaxJmxRefreshesPerOneCycle();
+	}
+
+	@Override
+	public void setMaxRefreshesPerOneCycle(int maxRefreshesPerOneCycle) {
+		((JmxMBeans) mbeanFactory).setMaxJmxRefreshesPerOneCycle(maxRefreshesPerOneCycle);
+	}
+
+	@Override
+	public double[] getEffectiveRefreshPeriods() {
+		List<Integer> effectivePeriods =
+				new ArrayList<>(((JmxMBeans) mbeanFactory).getEffectiveRefreshPeriods().values());
+		double[] effectivePeriodsSeconds = new double[effectivePeriods.size()];
+		for (int i = 0; i < effectivePeriods.size(); i++) {
+			int periodMillis = effectivePeriods.get(i);
+			effectivePeriodsSeconds[i] = periodMillis / (double) 1000;
+
+		}
+		return effectivePeriodsSeconds;
+	}
+
+	@Override
+	public int[] getRefreshableStatsCount() {
+		List<Integer> counts = new ArrayList<>(((JmxMBeans) mbeanFactory).getRefreshableStatsCounts().values());
+		int[] refreshableStatsCountsArr = new int[counts.size()];
+		for (int i = 0; i < counts.size(); i++) {
+			Integer count = counts.get(i);
+			refreshableStatsCountsArr[i] = count;
+		}
+		return refreshableStatsCountsArr;
+	}
+	// endregion
 }

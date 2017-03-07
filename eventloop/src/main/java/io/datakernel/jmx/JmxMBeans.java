@@ -17,7 +17,6 @@
 package io.datakernel.jmx;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.ScheduledRunnable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,10 +44,11 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	// refreshing jmx
 	public static final double DEFAULT_REFRESH_PERIOD_IN_SECONDS = 1.0;  // one second
 	public static final int MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT = 500;
-	private final int maxJmxRefreshesPerOneCycle;
-	private final long specifiedRefreshPeriod;
-	private final Map<Eventloop, List<JmxRefreshable>> eventloopToJmxRefreshables =
-			new ConcurrentHashMap<>();
+	private int maxJmxRefreshesPerOneCycle;
+	private long specifiedRefreshPeriod;
+	private final Map<Eventloop, List<JmxRefreshable>> eventloopToJmxRefreshables = new ConcurrentHashMap<>();
+	private final Map<Eventloop, Integer> refreshableStatsCounts = new ConcurrentHashMap<>();
+	private final Map<Eventloop, Integer> effectiveRefreshPeriods = new ConcurrentHashMap<>();
 
 	private static final JmxReducer<?> DEFAULT_REDUCER = new JmxReducers.JmxReducerDistinct();
 
@@ -67,6 +67,32 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 	public static JmxMBeans factory(double refreshPeriod, int maxJmxRefreshesPerOneCycle) {
 		return new JmxMBeans(refreshPeriod, maxJmxRefreshesPerOneCycle);
+	}
+	// endregion
+
+	// region exportable stats for JmxRegistry
+	public Map<Eventloop, Integer> getRefreshableStatsCounts() {
+		return refreshableStatsCounts;
+	}
+
+	public Map<Eventloop, Integer> getEffectiveRefreshPeriods() {
+		return effectiveRefreshPeriods;
+	}
+
+	public double getSpecifiedRefreshPeriod() {
+		return (specifiedRefreshPeriod / 1000.0);
+	}
+
+	public void setRefreshPeriod(double refreshPeriod) {
+		this.specifiedRefreshPeriod = secondsToMillis(refreshPeriod);
+	}
+
+	public int getMaxJmxRefreshesPerOneCycle() {
+		return maxJmxRefreshesPerOneCycle;
+	}
+
+	public void setMaxJmxRefreshesPerOneCycle(int maxJmxRefreshesPerOneCycle) {
+		this.maxJmxRefreshesPerOneCycle = maxJmxRefreshesPerOneCycle;
 	}
 	// endregion
 
@@ -508,12 +534,14 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				allRefreshables.addAll(currentRefreshables);
 				eventloopToJmxRefreshables.put(eventloop, allRefreshables);
 			}
+
+			refreshableStatsCounts.put(eventloop, eventloopToJmxRefreshables.get(eventloop).size());
 		}
 	}
 
 	private Runnable createRefreshTask(final Eventloop eventloop,
-	                                            final List<JmxRefreshable> previousList,
-	                                            final int previousRefreshes) {
+	                                   final List<JmxRefreshable> previousList,
+	                                   final int previousRefreshes) {
 		return new Runnable() {
 			@Override
 			public void run() {
@@ -523,6 +551,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				if (jmxRefreshableList == null) {
 					// list might be updated in case of several mbeans in one eventloop
 					jmxRefreshableList = eventloopToJmxRefreshables.get(eventloop);
+					effectiveRefreshPeriods.put(eventloop, (int) computeEffectiveRefreshPeriod(jmxRefreshableList.size()));
 				}
 
 				int currentRefreshes = 0;
