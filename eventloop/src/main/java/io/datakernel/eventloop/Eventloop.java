@@ -502,7 +502,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 				taskQueue.poll();
 				continue;
 			}
-			if (peeked.getTimestamp() >= currentTimeMillis()) {
+			if (peeked.getTimestamp() > currentTimeMillis()) {
 				break;
 			}
 			ScheduledRunnable polled = taskQueue.poll();
