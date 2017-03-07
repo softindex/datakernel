@@ -18,6 +18,7 @@ package io.datakernel.eventloop;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.jmx.*;
+import io.datakernel.jmx.JmxReducers.JmxReducerSum;
 import io.datakernel.util.Stopwatch;
 
 import java.util.Arrays;
@@ -330,7 +331,7 @@ public final class EventloopStats {
 			return longestTask;
 		}
 
-		@JmxAttribute
+		@JmxAttribute(reducer = JmxReducerSum.class)
 		public int getCount() {
 			return count.getCount();
 		}
