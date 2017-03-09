@@ -34,7 +34,8 @@ import java.util.concurrent.*;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 
 /**
- * Static utility methods pertaining to ConcurrentService. Creates ConcurrentService from some other type of instances.
+ * Static utility methods pertaining to ConcurrentService. Creates
+ * ConcurrentService from some other type of instances.
  */
 public final class ServiceAdapters {
 	private ServiceAdapters() {

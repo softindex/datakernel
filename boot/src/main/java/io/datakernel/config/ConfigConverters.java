@@ -37,6 +37,20 @@ import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.Integer.parseInt;
 import static java.util.Collections.emptyList;
 
+/**
+ * Provides comprehensive static factory methods returning converters for
+ * different data types.
+ * <p>
+ * There are plenty of converter implementations available besides wrappers for
+ * primitives and frequently used standard classes. Consider converters for
+ * classes from DataKernel framework:
+ * {@link #ofMemSize()}, {@link #ofServerSocketSettings()},
+ * {@link #ofSocketSettings()}, {@link #ofDatagramSocketSettings()}
+ * </li>
+ * </ul>
+ *
+ * @see AbstractConfigConverter
+ */
 @SuppressWarnings("unused, WeakerAccess")
 public final class ConfigConverters {
 
@@ -178,6 +192,14 @@ public final class ConfigConverters {
 		};
 	}
 
+	/**
+	 * Creates a converter of {@link InetSocketAddress}. This address may
+	 * include IP address or hostname and port number. Conversion to string
+	 * creates a string with IP address regardless of whether a host part of an
+	 * address was represented by a hostname or IP address.
+	 *
+	 * @return	converter of {@code InetSocketAddress}
+	 */
 	public static AbstractConfigConverter<InetSocketAddress> ofInetSocketAddress() {
 		return new AbstractConfigConverter<InetSocketAddress>() {
 			@Override
@@ -209,6 +231,16 @@ public final class ConfigConverters {
 		};
 	}
 
+	/**
+	 * Creates a converter capable to convert a list. Provide a concrete
+	 * implementation of {@code AbstractConfigConverter<T>} for objects in list
+	 * and char sequence of separators.
+	 *
+	 * @param elementConverter	converter of list objects type
+	 * @param separators		sequence of separators of config property
+	 * @param <T>				type of objects in list
+	 * @return					converter of list
+	 */
 	public static <T> ConfigConverter<List<T>> ofList(AbstractConfigConverter<T> elementConverter, CharSequence separators) {
 		final AbstractConfigConverter<T> elementConverter1 = elementConverter;
 		final CharSequence separators1 = separators;
@@ -363,6 +395,11 @@ public final class ConfigConverters {
 		};
 	}
 
+	/**
+	 * Creates a converter of {@link DatagramSocketSettings}.
+	 *
+	 * @return	converter of provided type
+	 */
 	public static ConfigConverter<DatagramSocketSettings> ofDatagramSocketSettings() {
 		return new ConfigConverter<DatagramSocketSettings>() {
 			@Override
@@ -403,6 +440,12 @@ public final class ConfigConverters {
 		};
 	}
 
+	/**
+	 * Creates a converter of {@link InetAddressRange}. An InetAddressRange supports a lot
+	 * of range types, including CIDR, standalone and ranges of addresses.
+	 *
+	 * @return	converter of provided type
+	 */
 	public static AbstractConfigConverter<InetAddressRange> ofInetAddressRange() {
 		return new AbstractConfigConverter<InetAddressRange>() {
 			@Override

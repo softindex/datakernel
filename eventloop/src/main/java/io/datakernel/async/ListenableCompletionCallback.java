@@ -19,9 +19,10 @@ package io.datakernel.async;
 import java.util.ArrayList;
 
 /**
- * This callback contains collection of listeners-CompletionCallback, on calling complete/fireException this callback
- * it will be call listeners methods too. Each listener can react only on one action, than it will be removed from
- * this ListenableCompletionCallback.
+ * This callback contains collection of listeners {@link CompletionCallback},
+ * on calling {@code onComplete} or {@code onException} of this callback it
+ * calls listeners methods too. Each listener can react only on one action,
+ * than it will be removed from this {@code ListenableCompletionCallback}.
  */
 public class ListenableCompletionCallback extends CompletionCallback {
 	private ArrayList<CompletionCallback> listeners = new ArrayList<>();

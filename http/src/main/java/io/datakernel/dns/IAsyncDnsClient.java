@@ -21,23 +21,24 @@ import io.datakernel.async.ResultCallback;
 import java.net.InetAddress;
 
 /**
- * Resolves the IP address for the specified host name, or null if the given host is not recognized or
- * the associated IP address cannot be used to build an InetAddress instance.
+ * Resolves the IP address for the specified host name, or null if the given
+ * host is not recognized or the associated IP address cannot be used to build
+ * an {@code InetAddress} instance.
  */
 public interface IAsyncDnsClient {
 	/**
 	 * Resolves a IP for the IPv4 addresses and handles it with callback
 	 *
-	 * @param domainName domain name for searching IP
-	 * @param callback   result callback
+	 * @param domainName	domain name for searching IP
+	 * @param callback		result callback
 	 */
 	void resolve4(String domainName, ResultCallback<InetAddress[]> callback);
 
 	/**
 	 * Resolves a IP for the IPv6 addresses and handles it with callback
 	 *
-	 * @param domainName domain name for searching IP
-	 * @param callback   result callback
+	 * @param domainName	domain name for searching IP
+	 * @param callback		result callback
 	 */
 	void resolve6(String domainName, ResultCallback<InetAddress[]> callback);
 }

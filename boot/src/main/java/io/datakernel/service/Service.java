@@ -18,6 +18,9 @@ package io.datakernel.service;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+/**
+ * A service which provides non-blocking start and stop operations.
+ */
 public interface Service {
 	ListenableFuture<?> start();
 

@@ -45,12 +45,19 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 /**
- * It is internal class for asynchronous programming. Eventloop represents infinite loop with only one
- * blocking operation selector.select() which selects a set of keys whose corresponding channels are
- * ready for I/O operations. With this keys and queues with tasks, which was added to Eventloop
- * from the outside, it begins asynchronous executing from one thread it in method run() which is overridden
- * because it is implementation of {@link Runnable}. Working of this eventloop will be ended, when it has
- * not selected keys and its queues with tasks are empty.
+ * It is internal class for asynchronous programming. In asynchronous
+ * programming model, blocking operations (like I/O or long-running computations)
+ * in {@code Eventloop} thread must be avoided. Async versions
+ * of such operations should be used.
+ * <p>
+ * Eventloop represents infinite loop with only one blocking operation
+ * {@code selector.select()} which selects a set of keys whose corresponding
+ * channels are ready for I/O operations. With these keys and queues with
+ * tasks, which was added to {@code Eventloop} from the outside, it begins
+ * asynchronous executing from one thread it in method {@code run()} which is
+ * overridden because it is implementation of {@link Runnable}. Working of this
+ * eventloop will be ended, when it has not selected keys and its queues with
+ * tasks are empty.
  */
 public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler, EventloopExecutor, EventloopJmxMBean {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
@@ -638,7 +645,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	 * @param serverSocketSettings settings from this server channel
 	 * @param acceptCallback       callback that will be called when new incoming connection is being accepted. It can be called multiple times.
 	 * @return server channel
-	 * @throws IOException If some  I/O error occurs
+	 * @throws IOException If some I/O error occurs
 	 */
 	public ServerSocketChannel listen(InetSocketAddress address, ServerSocketSettings serverSocketSettings, AcceptCallback acceptCallback) throws IOException {
 		assert inEventloopThread();

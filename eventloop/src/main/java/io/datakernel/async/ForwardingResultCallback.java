@@ -17,8 +17,8 @@
 package io.datakernel.async;
 
 /**
- * This callback is wrapper over other callback. It redirects callings fireException and sendResult to
- * it to other callback.
+ * This callback is a wrapper over the other callback. It redirects callings onResult
+ * and setResult to other callback.
  */
 public abstract class ForwardingResultCallback<T> extends ResultCallback<T> {
 	private final ExceptionCallback callback;

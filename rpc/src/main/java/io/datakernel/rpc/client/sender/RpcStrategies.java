@@ -26,6 +26,14 @@ import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Arrays.asList;
 
+/**
+ * Strategies used in RPC can be divided in three following categories:
+ * <ul>
+ *     <li>Getting a single RPC-service</li>
+ *     <li>Failover</li>
+ *     <li>Load balancing</li>
+ * </ul>
+ */
 public final class RpcStrategies {
 	private RpcStrategies() {
 	}

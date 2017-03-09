@@ -17,8 +17,10 @@
 package io.datakernel.launcher;
 
 import com.google.inject.*;
+import io.datakernel.config.PropertiesConfigModule;
 import io.datakernel.jmx.JmxRegistrator;
 import io.datakernel.service.ServiceGraph;
+import io.datakernel.service.ServiceGraphModule;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
@@ -27,6 +29,51 @@ import java.util.List;
 
 import static org.slf4j.LoggerFactory.getLogger;
 
+/**
+ * Integrates all modules together and manages application lifecycle by
+ * passing several steps:
+ * <ul>
+ *     <li>wiring modules</li>
+ *     <li>starting services</li>
+ *     <li>running</li>
+ *     <li>stopping services</li>
+ * </ul>
+ * <p>
+ * Example.<br>
+ * Prerequisites: an application consists of three modules, which preferably
+ * should be configured using separate configs and may depend on each other.
+ * <pre><code>
+ * public class ApplicationLauncher extends Launcher {
+ *
+ * 	public ApplicationLauncher() {
+ * 		super({@link Stage Stage.PRODUCTION}, {@link ServiceGraphModule}.defaultInstance(),
+ * 			new DaoTierModule(),
+ * 			new ControllerTierModule(),
+ * 			new ViewTierModule(),
+ * 			{@link PropertiesConfigModule}
+ * 				.{@link PropertiesConfigModule#ofFile(String) ofFile(dao.properties)}
+ * 				.{@link PropertiesConfigModule#addFile(String) addFile(controller.properties)}
+ * 				.{@link PropertiesConfigModule#addOptionalFile(String) addOptionalFile(view.properties)});
+ * 	}
+ *
+ *	{@literal @}Override
+ * 	protected void run() throws Exception {
+ * 		awaitShutdown();
+ * 	}
+ *
+ * 	public static void main(String[] args) throws Exception {
+ * 		main(ApplicationLauncher.class, args);
+ * 	}
+ * }
+ * </code></pre>
+ *
+ * @see ServiceGraph
+ * @see ServiceGraphModule
+ * @see PropertiesConfigModule
+ * @see PropertiesConfigModule#ofFile(String)
+ * @see PropertiesConfigModule#addFile(String)
+ * @see PropertiesConfigModule#addOptionalFile(String)
+ */
 public abstract class Launcher {
 	protected final Logger logger = getLogger(this.getClass());
 

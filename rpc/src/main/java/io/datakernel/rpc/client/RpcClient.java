@@ -28,9 +28,11 @@ import io.datakernel.rpc.client.jmx.RpcConnectStats;
 import io.datakernel.rpc.client.jmx.RpcRequestStats;
 import io.datakernel.rpc.client.sender.RpcNoSenderException;
 import io.datakernel.rpc.client.sender.RpcSender;
+import io.datakernel.rpc.client.sender.RpcStrategies;
 import io.datakernel.rpc.client.sender.RpcStrategy;
 import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.protocol.RpcStream;
+import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
@@ -53,6 +55,85 @@ import static io.datakernel.util.Preconditions.*;
 import static java.lang.ClassLoader.getSystemClassLoader;
 import static org.slf4j.LoggerFactory.getLogger;
 
+/**
+ * Sends requests to the specified servers according to defined
+ * {@code RpcStrategy} strategy. Strategies, represented in
+ * {@link RpcStrategies} satisfy most cases.
+ * <p>
+ * Example. Consider a client which sends a {@code Request} and receives a
+ * {@code Response} from some {@link RpcServer}. To implement such kind of
+ * client its necessary to proceed with following steps:
+ * <ul>
+ * <li>Create request-response classes for the client</li>
+ * <li>Create a request handler for specified types</li>
+	 * <li>Create {@code RpcClient} and adjust it</li>
+ * </ul>
+ * <pre><code>
+ * //create a Request and Response classes
+ * public class RequestClass {
+ * 	private final String info;
+ *
+ * 	public RequestClass(@Deserialize("info") String info) {
+ * 		this.info = info;
+ *   	}
+ *
+ *   	{@literal @}Serialize(order = 0)
+ * 	public String getInfo() {
+ * 		return info;
+ *    	}
+ * }
+ *
+ * public class ResponseClass {
+ * 	private final int count;
+ *
+ * 	public ResponseClass(@Deserialize("count") int count) {
+ * 		this.count = count;
+ * 	}
+ *
+ * 	{@literal @}Serialize(order = 0)
+ * 	public int getCount() {
+ * 		return count;
+ * 	}
+ * }</code></pre>
+ *
+ * The last step is to create an {@code RpcClient} itself:
+ * <pre><code>
+ * //create eventloop
+ * Eventloop eventloop = Eventloop.create();
+ * InetSocketAddress address = new InetSocketAddress("localhost", 40000);
+ * //create client with eventloop
+ * RpcClient client = RpcClient.create(eventloop)
+ * 				.withMessageTypes(RequestClass.class, ResponseClass.class)
+ * 				.withStrategy(RpcStrategies.server(address));
+ * </code></pre>
+ * Finally, make the client to send a request after start:
+ * <code><pre>client.start(new CompletionCallback() {
+ *	{@literal @}Override
+ *	public void onComplete() {
+ *		client.sendRequest(new RequestClass(info), 1000,
+ *			new ResultCallback&lt;ResponseClass&gt;() {
+ *			{@literal @}Override
+ *			public void onResult(ResponseClass result) {
+ *				System.out.println("Request info length: " + result.getCount());
+ *			}
+ *
+ *			{@literal @}Override
+ *			public void onException(Exception exception) {
+ *				System.err.println("Got exception: " + exception);
+ *			}
+ *		});
+ *	}
+ *
+ *	{@literal @}Override
+ *	public void onException(Exception exception) {
+ *		System.err.println("Could not start client: " + exception);
+ *	}
+ *});
+ * </pre></code>
+ *
+ * @see RpcStrategies
+ * @see RpcServer
+ */
 public final class RpcClient implements IRpcClient, EventloopService, EventloopJmxMBean {
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create().withTcpNoDelay(true);
 	public static final long DEFAULT_CONNECT_TIMEOUT = 10 * 1000L;
@@ -123,27 +204,60 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		return new RpcClient(eventloop);
 	}
 
+	/**
+	 * Creates a client that uses provided socket settings.
+	 *
+	 * @param socketSettings	settings for socket
+	 * @return					the RPC client with specified socket settings
+	 */
 	public RpcClient withSocketSettings(SocketSettings socketSettings) {
 		this.socketSettings = socketSettings;
 		return this;
 	}
 
+	/**
+	 * Creates a client with capability of specified message types processing.
+	 *
+	 * @param messageTypes classes of messages processed by a server
+	 * @return client instance capable for handling provided message types
+	 */
 	public RpcClient withMessageTypes(Class<?>... messageTypes) {
 		checkNotNull(messageTypes);
 		return withMessageTypes(Arrays.asList(messageTypes));
 	}
 
+	/**
+	 * Creates a client with capability of specified message types processing.
+	 *
+	 * @param messageTypes	classes of messages processed by a server
+	 * @return				client instance capable for handling provided
+	 * 						message types
+	 */
 	public RpcClient withMessageTypes(List<Class<?>> messageTypes) {
 		checkArgument(new HashSet<>(messageTypes).size() == messageTypes.size(), "Message types must be unique");
 		this.messageTypes = messageTypes;
 		return this;
 	}
 
+	/**
+	 * Creates a client with serializer builder. A serializer builder is used
+	 * for creating fast serializers at runtime.
+	 *
+	 * @param	serializerBuilder serializer builder, used at runtime
+	 * @return	the RPC client with provided serializer builder
+	 */
 	public RpcClient withSerializerBuilder(SerializerBuilder serializerBuilder) {
 		this.serializerBuilder = serializerBuilder;
 		return this;
 	}
 
+	/**
+	 * Creates a client with some strategy. Consider some ready-to-use
+	 * strategies from {@link RpcStrategies}.
+	 *
+	 * @param	requestSendingStrategy strategy of sending requests
+	 * @return	the RPC client, which sends requests according to given strategy
+	 */
 	public RpcClient withStrategy(RpcStrategy requestSendingStrategy) {
 		this.strategy = requestSendingStrategy;
 		this.addresses = new ArrayList<>(strategy.getAddresses());
@@ -169,6 +283,12 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		return withStreamProtocol((int) defaultPacketSize.get(), (int) maxPacketSize.get(), compression);
 	}
 
+	/**
+	 * Waits for a specified time before connecting.
+	 *
+	 * @param	connectTimeoutMillis time before connecting
+	 * @return	the RPC client with connect timeout settings
+	 */
 	public RpcClient withConnectTimeout(long connectTimeoutMillis) {
 		this.connectTimeoutMillis = connectTimeoutMillis;
 		return this;
@@ -191,9 +311,10 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 	}
 
 	/**
-	 * Start RpcClient in case of absence of connections
+	 * Starts client in case of absence of connections
 	 *
-	 * @return
+	 * @return	the RPC client, which starts regardless of connection
+	 * 			availability
 	 */
 	public RpcClient withForceStart() {
 		this.forceStart = true;
@@ -399,6 +520,14 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		});
 	}
 
+	/**
+	 * Sends the request to server, waits the result timeout and handles result with callback
+	 *
+	 * @param request	request for server
+	 * @param callback	callback for handling result
+	 * @param  <I>		request class
+	 * @param  <O>		response class
+	 */
 	@Override
 	public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
 		requestSender.sendRequest(request, timeout, callback);

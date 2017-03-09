@@ -31,7 +31,9 @@ import static io.datakernel.http.HttpHeaders.CONTENT_ENCODING;
 import static io.datakernel.http.HttpMethod.*;
 
 /**
- * It represents server connection. It can receive requests from clients and respond to them with async servlet.
+ * It represents server connection. It can receive {@link HttpRequest requests}
+ * from {@link AsyncHttpClient clients} and respond to them with
+ * {@link AsyncServlet async servlet}.
  */
 final class HttpServerConnection extends AbstractHttpConnection {
 	private static final int HEADERS_SLOTS = 256;
@@ -69,10 +71,11 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	/**
 	 * Creates a new instance of HttpServerConnection
 	 *
-	 * @param eventloop     eventloop which will handle its tasks
-	 * @param server
-	 * @param servlet       servlet for handling requests
-	 * @param gzipResponses
+	 * @param eventloop		eventloop which will handle its tasks
+	 * @param remoteAddress	an address of remote
+	 * @param server		server, which uses this connection
+	 * @param servlet		servlet for handling requests
+	 * @param gzipResponses	determines whether responses are encoded with gzip
 	 */
 	HttpServerConnection(Eventloop eventloop, InetAddress remoteAddress, AsyncTcpSocket asyncTcpSocket,
 	                     AsyncHttpServer server, AsyncServlet servlet,
@@ -146,7 +149,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	/**
 	 * This method is called after received line of header.
 	 *
-	 * @param line received line of header.
+	 * @param line	received line of header.
 	 */
 	@Override
 	protected void onFirstLine(ByteBuf line) throws ParseException {
@@ -202,8 +205,8 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	/**
 	 * This method is called after receiving header. It sets its value to request.
 	 *
-	 * @param header received header
-	 * @param value  value of received header
+	 * @param header	received header
+	 * @param value		value of received header
 	 */
 	@Override
 	protected void onHeader(HttpHeader header, final ByteBuf value) throws ParseException {
@@ -228,10 +231,11 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	/**
 	 * This method is called after receiving every request. It handles it,
 	 * using servlet and sends a response back to the client.
-	 * <p/>
-	 * After sending a response, request and response will be recycled and you can not use it twice.
+	 * <p>
+	 * After sending a response, request and response will be recycled and you
+	 * can not use it twice.
 	 *
-	 * @param bodyBuf the received message
+	 * @param bodyBuf	the received message
 	 */
 	@Override
 	protected void onHttpMessage(ByteBuf bodyBuf) {

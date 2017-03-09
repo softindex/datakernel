@@ -18,6 +18,16 @@ package io.datakernel.rpc.server;
 
 import io.datakernel.async.ResultCallback;
 
+/**
+ * Implementations of this interface specifies the behavior according to
+ * business logic and passes result to callback.
+ * <p>
+ * An example of concrete {@code RpcRequestHandler} can be found in
+ * {@link RpcServer} documentation.
+ *
+ * @param <I>	class of request
+ * @param <O>	class of response
+ */
 public interface RpcRequestHandler<I, O> {
 	void run(I request, ResultCallback<O> callback);
 }
