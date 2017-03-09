@@ -156,7 +156,7 @@ public final class EventloopStats {
 
 		ExceptionStats stats = errorStats.allFatalErrors.get(stackTrace);
 		if (stats == null) {
-			stats = ExceptionStats.create();
+			stats = ExceptionStats.create().withStoreStackTrace(true);
 			errorStats.allFatalErrors.put(stackTrace, stats);
 		}
 		stats.recordException(throwable, causedObject);
@@ -450,7 +450,7 @@ public final class EventloopStats {
 	}
 
 	public static final class ErrorStats {
-		private final ExceptionStats fatalErrors = ExceptionStats.create();
+		private final ExceptionStats fatalErrors = ExceptionStats.create().withStoreStackTrace(true);
 		private final Map<StackTrace, ExceptionStats> allFatalErrors = new HashMap<>();
 		private final ExceptionStats ioErrors = ExceptionStats.create();
 
