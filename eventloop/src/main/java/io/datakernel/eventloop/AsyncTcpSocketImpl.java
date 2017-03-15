@@ -237,7 +237,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 				}
 			});
 		}
-		if ((key.interestOps() & SelectionKey.OP_READ) == 1) {
+		if ((this.ops & SelectionKey.OP_READ) == SelectionKey.OP_READ) {
 			onReadReady();
 		}
 	}
