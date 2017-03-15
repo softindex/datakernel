@@ -133,7 +133,9 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 	@Override
 	public void onClosedWithError(Exception e) {
 		recycleByteBufs();
-		downstreamEventHandler.onClosedWithError(e);
+		if (!closed) {
+			downstreamEventHandler.onClosedWithError(e);
+		}
 	}
 
 	@Override
@@ -189,15 +191,17 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 	private void handleSSLException(final SSLException e, boolean post) {
 		upstream.close();
 		recycleByteBufs();
-		if (post) {
-			eventloop.post(new Runnable() {
-				@Override
-				public void run() {
-					downstreamEventHandler.onClosedWithError(e);
-				}
-			});
-		} else {
-			downstreamEventHandler.onClosedWithError(e);
+		if (!closed) {
+			if (post) {
+				eventloop.post(new Runnable() {
+					@Override
+					public void run() {
+						downstreamEventHandler.onClosedWithError(e);
+					}
+				});
+			} else {
+				downstreamEventHandler.onClosedWithError(e);
+			}
 		}
 	}
 
