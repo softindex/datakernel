@@ -6,11 +6,11 @@
     <parent>
         <groupId>io.datakernel</groupId>
         <artifactId>datakernel</artifactId>
-        <version>2.0.8-SNAPSHOT</version>
+        <version>2.0.9-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>eventloop</artifactId>
+    <artifactId>datakernel-eventloop</artifactId>
 
     <name>DataKernel: Event Loop</name>
     <description>
@@ -21,8 +21,8 @@
     <dependencies>
         <dependency>
             <groupId>io.datakernel</groupId>
-            <artifactId>bytebuf</artifactId>
-            <version>${version}</version>
+            <artifactId>datakernel-bytebuf</artifactId>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
 

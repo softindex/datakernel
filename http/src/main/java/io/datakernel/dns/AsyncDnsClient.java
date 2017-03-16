@@ -20,6 +20,7 @@ import io.datakernel.async.ConcurrentResultCallback;
 import io.datakernel.async.IgnoreResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.dns.DnsCache.DnsCacheQueryResult;
+import io.datakernel.eventloop.AsyncUdpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.HttpUtils;
 import io.datakernel.jmx.EventloopJmxMBean;
@@ -42,6 +43,12 @@ import static io.datakernel.http.HttpUtils.inetAddress;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
 
+/**
+ * An implementation of DNS client which resolves IP addresses.
+ * <p>
+ * Instance of this class is capable to cache resolved addresses and able to
+ * resolve IPv6 and IPv4 addresses.
+ */
 public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean {
 	private final Logger logger = LoggerFactory.getLogger(AsyncDnsClient.class);
 
@@ -54,7 +61,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 
 	private final Eventloop eventloop;
 
-	private DnsClientHandler connection;
+	private DnsClientConnection connection;
 	private final DatagramSocketSettings datagramSocketSettings;
 
 	private InetSocketAddress dnsServerAddress;
@@ -75,21 +82,32 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 	}
 
 	/**
-	 * @param timeout time which this resolver will wait result
+	 * Creates a client which waits for result for specified timeout
+	 *
+	 * @param timeout	time which this resolver will wait result
+	 * @return			a client, waiting for response for specified timeout
 	 */
 	public AsyncDnsClient withTimeout(long timeout) {
 		return new AsyncDnsClient(eventloop, datagramSocketSettings, timeout, dnsServerAddress, cache);
 	}
 
 	/**
-	 * @param address address of DNS server which will resolve domain names
+	 * Creates a client with an address of server responsible for resolving
+	 * domains names
+	 *
+	 * @param address	address of DNS server which will resolve domain names
+	 * @return			a client with specified DNS server address
 	 */
 	public AsyncDnsClient withDnsServerAddress(InetSocketAddress address) {
 		return new AsyncDnsClient(eventloop, datagramSocketSettings, timeout, address, cache);
 	}
 
 	/**
-	 * @param address address of DNS server which will resolve domain names
+	 * Creates a client with an address of server responsible for resolving
+	 * domains names
+	 *
+	 * @param address	address of DNS server which will resolve domain names
+	 * @return			a client with specified DNS server address
 	 */
 	public AsyncDnsClient withDnsServerAddress(InetAddress address) {
 		return new AsyncDnsClient(eventloop, datagramSocketSettings, timeout,
@@ -123,8 +141,8 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 	/**
 	 * Returns the DNS adapted client which will run in other eventloop using the same DNS cache
 	 *
-	 * @param eventloop eventloop in which DnsClient will be ran
-	 * @return DNS client which will run in other eventloop
+	 * @param eventloop	eventloop in which DnsClient will be ran
+	 * @return			DNS client which will run in other eventloop
 	 */
 	public IAsyncDnsClient adaptToAnotherEventloop(final Eventloop eventloop) {
 		if (eventloop == this.eventloop)
@@ -179,8 +197,8 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 	/**
 	 * Resolves the IP for the IPv4 addresses and handles it with callback
 	 *
-	 * @param domainName domain name for searching IP
-	 * @param callback   result callback
+	 * @param domainName	domain name for searching IP
+	 * @param callback		result callback
 	 */
 	@Override
 	public void resolve4(final String domainName, ResultCallback<InetAddress[]> callback) {
@@ -190,8 +208,8 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 	/**
 	 * Resolves the IP for the IPv6 addresses and handles it with callback
 	 *
-	 * @param domainName domain name for searching IP
-	 * @param callback   result callback
+	 * @param domainName	domain name for searching IP
+	 * @param callback		result callback
 	 */
 	@Override
 	public void resolve6(String domainName, ResultCallback<InetAddress[]> callback) {
@@ -250,7 +268,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
-				if (connection == null || !connection.isRegistered()) {
+				if (connection == null) {
 					try {
 						registerConnection();
 					} catch (IOException e) {
@@ -271,13 +289,12 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 		cache.performCleanup();
 	}
 
-	/**
-	 * Registers a new DnsConnection in its eventloop.
-	 */
-	public void registerConnection() throws IOException {
+	private void registerConnection() throws IOException {
 		DatagramChannel datagramChannel = createDatagramChannel(datagramSocketSettings, null, dnsServerAddress);
-		connection = DnsClientHandler.create(eventloop, datagramChannel);
-		connection.register();
+		AsyncUdpSocketImpl udpSocket = AsyncUdpSocketImpl.create(eventloop, datagramChannel);
+		connection = DnsClientConnection.create(eventloop, udpSocket);
+		udpSocket.setEventHandler(connection);
+		udpSocket.register();
 	}
 
 	@Override

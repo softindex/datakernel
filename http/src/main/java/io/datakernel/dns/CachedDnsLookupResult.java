@@ -20,10 +20,7 @@ import io.datakernel.dns.DnsMessage.ResponseErrorCode;
 
 import java.net.InetAddress;
 
-/**
- * Represents a value of entry from DNS Cache
- */
-public final class CachedDnsLookupResult {
+final class CachedDnsLookupResult {
 	private final String domainName;
 	private final InetAddress[] ips;
 	private final long expirationSecond;

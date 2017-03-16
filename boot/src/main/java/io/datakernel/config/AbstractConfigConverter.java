@@ -19,16 +19,32 @@ package io.datakernel.config;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
 
-public abstract class ConfigConverterSingle<T> implements ConfigConverter<T> {
+/**
+ * Such converters are able to make bilateral conversions between data type and
+ * its string representation.
+ * <p>
+ * There are a lot of converters implemented in {@link ConfigConverters} class.
+ *
+ * @param <T> data type for conversion
+ *
+ * @see ConfigConverters
+ */
+public abstract class AbstractConfigConverter<T> implements ConfigConverter<T> {
 
-	protected abstract T fromString(String string);
+	public abstract T fromString(String string);
 
-	protected T fromEmptyString() {
+	public T fromEmptyString() {
 		return null;
 	}
 
-	protected abstract String toString(T item);
+	public abstract String toString(T item);
 
+	/**
+	 * Returns a value of a property, represented by a given config.
+	 *
+	 * @param config		a config instance which represents a property
+	 * @return				value of the property
+	 */
 	@Override
 	public final T get(Config config) {
 		checkState(config.getChildren().isEmpty());
@@ -38,6 +54,14 @@ public abstract class ConfigConverterSingle<T> implements ConfigConverter<T> {
 		return string.isEmpty() ? fromEmptyString() : fromString(string);
 	}
 
+	/**
+	 * Returns a value of a property, represented by a given config.
+	 * Assigns the default value of the property.
+	 *
+	 * @param config		a config instance which represents a property
+	 * @param defaultValue	default value of the property
+	 * @return				value of the property if it exists or null otherwise
+	 */
 	@Override
 	public final T get(Config config, T defaultValue) {
 		checkState(config.getChildren().isEmpty());

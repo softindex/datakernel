@@ -73,8 +73,6 @@ public final class FatalErrorHandlers {
 			public void handle(Throwable error, Object context) {
 				propagate(error);
 			}
-
-			;
 		};
 	}
 

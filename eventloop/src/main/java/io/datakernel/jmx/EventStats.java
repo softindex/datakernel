@@ -171,8 +171,8 @@ public final class EventStats implements JmxRefreshableStats<EventStats> {
 		this.smoothingWindowCoef = calculateSmoothingWindowCoef(smoothingWindow);
 	}
 
-	@JmxAttribute(name = "")
-	public String getSummary() {
+	@JmxAttribute
+	public String get() {
 		return toString();
 	}
 

@@ -20,9 +20,9 @@ import org.junit.Test;
 
 import javax.management.DynamicMBean;
 import javax.management.MBeanAttributeInfo;
-import java.util.HashMap;
 import java.util.Map;
 
+import static io.datakernel.jmx.helper.Utils.nameToAttribute;
 import static java.util.Arrays.asList;
 import static junit.framework.TestCase.assertEquals;
 
@@ -110,13 +110,5 @@ public class JmxMBeansAttributeDescriptionTest {
 				}
 			}
 		}
-	}
-
-	public static Map<String, MBeanAttributeInfo> nameToAttribute(MBeanAttributeInfo[] attrs) {
-		Map<String, MBeanAttributeInfo> nameToAttr = new HashMap<>();
-		for (MBeanAttributeInfo attr : attrs) {
-			nameToAttr.put(attr.getName(), attr);
-		}
-		return nameToAttr;
 	}
 }

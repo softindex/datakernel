@@ -16,11 +16,9 @@
 
 package io.datakernel.config;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Provider;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
+import com.google.inject.*;
 import com.google.inject.util.Providers;
+import io.datakernel.launcher.Launcher;
 import io.datakernel.service.BlockingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,6 +28,33 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
+/**
+ * Represents an easy-to-use properties module, capable of providing a
+ * {@link Config} instance with properties using various parameter types
+ * (e.g. file, filepath or just {@code Properties} object).
+ * <p>
+ * The module is able to unite given configs and save an optimized result into a
+ * single file. The usage example of {@code PropertiesConfigModule}:
+ * <pre><code>
+ * PropertiesConfigModule.{@link #ofFile(String) ofFile("main.properties)}
+ * 	.{@link #addFile(String) addFile("extra.properties")}
+ * 	.{@link #addOptionalFile(String) addOptionalFile(optional.properties")}
+ * 	.{@link #saveEffectiveConfigTo(File)}  saveEffectiveConfigTo("all.properties")};
+ * </code></pre>
+ * <p>
+ * An ease of use of this module are noticeable, for example, when a
+ * {@link Config} is required for instantiating a complex application.
+ * {@code PropertiesConfigModule} simplifies configuration of an application
+ * when used with a {@link Launcher launcher}. Just pass a
+ * {@code PropertiesConfigModule} containing desired configs to the launcher.
+ * <p>
+ * A usage example of {@code PropertiesConfigModule} along with
+ * {@code Launcher} listed in {@link Launcher} is worth seeing.
+ *
+ * @see Config
+ * @see Launcher
+ * @see Launcher#Launcher(Stage, Module...)
+ */
 public final class PropertiesConfigModule extends AbstractModule {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
@@ -48,6 +73,13 @@ public final class PropertiesConfigModule extends AbstractModule {
 		return PropertiesConfigModule.create().addFile(file);
 	}
 
+	/**
+	 * Creates a module with configs contained in given file
+	 *
+	 * @param file	a path to a file with configs
+	 * @return		a new module with configs, contained in a file
+	 * @throws		IllegalArgumentException if an IOException occurred
+	 */
 	public static PropertiesConfigModule ofFile(String file) {
 		return PropertiesConfigModule.create().addFile(file);
 	}
@@ -56,6 +88,13 @@ public final class PropertiesConfigModule extends AbstractModule {
 		return PropertiesConfigModule.create().addProperties(properties);
 	}
 
+	/**
+	 * Adds configs from given file
+	 *
+	 * @param file	a path to a file with configs
+	 * @return		this module with configs, contained in a file
+	 * @throws		IllegalArgumentException if an IOException occurred
+	 */
 	public PropertiesConfigModule addFile(String file) {
 		addFile(new File(file), false);
 		return this;
@@ -66,6 +105,12 @@ public final class PropertiesConfigModule extends AbstractModule {
 		return this;
 	}
 
+	/**
+	 * Adds configs from given file, if it exists
+	 *
+	 * @param file	a path to a file with configs
+	 * @return		this module with configs, contained in file
+	 */
 	public PropertiesConfigModule addOptionalFile(String file) {
 		addFile(new File(file), true);
 		return this;
@@ -104,13 +149,13 @@ public final class PropertiesConfigModule extends AbstractModule {
 		return this;
 	}
 
-	public PropertiesConfigModule saveResultingConfigTo(File file) {
+	public PropertiesConfigModule saveEffectiveConfigTo(File file) {
 		this.saveFile = file;
 		return this;
 	}
 
-	public PropertiesConfigModule saveResultingConfigTo(String file) {
-		return saveResultingConfigTo(new File(file));
+	public PropertiesConfigModule saveEffectiveConfigTo(String file) {
+		return saveEffectiveConfigTo(new File(file));
 	}
 
 	private class ConfigSaveService implements BlockingService {

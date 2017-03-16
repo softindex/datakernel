@@ -27,16 +27,15 @@ import java.util.Arrays;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.GzipProcessor.toGzip;
-import static io.datakernel.http.HttpHeaders.CONNECTION;
 import static io.datakernel.http.HttpHeaders.CONTENT_ENCODING;
 import static io.datakernel.http.HttpMethod.*;
 
 /**
- * It represents server connection. It can receive requests from clients and respond to them with async servlet.
+ * It represents server connection. It can receive {@link HttpRequest requests}
+ * from {@link AsyncHttpClient clients} and respond to them with
+ * {@link AsyncServlet async servlet}.
  */
 final class HttpServerConnection extends AbstractHttpConnection {
-	private static final HttpHeaders.Value CONNECTION_KEEP_ALIVE = HttpHeaders.asBytes(CONNECTION, "keep-alive");
-
 	private static final int HEADERS_SLOTS = 256;
 	private static final int MAX_PROBINGS = 2;
 	private static final HttpMethod[] METHODS = new HttpMethod[HEADERS_SLOTS];
@@ -72,10 +71,11 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	/**
 	 * Creates a new instance of HttpServerConnection
 	 *
-	 * @param eventloop     eventloop which will handle its tasks
-	 * @param server
-	 * @param servlet       servlet for handling requests
-	 * @param gzipResponses
+	 * @param eventloop		eventloop which will handle its tasks
+	 * @param remoteAddress	an address of remote
+	 * @param server		server, which uses this connection
+	 * @param servlet		servlet for handling requests
+	 * @param gzipResponses	determines whether responses are encoded with gzip
 	 */
 	HttpServerConnection(Eventloop eventloop, InetAddress remoteAddress, AsyncTcpSocket asyncTcpSocket,
 	                     AsyncHttpServer server, AsyncServlet servlet,
@@ -105,7 +105,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	@Override
 	public void onClosedWithError(Exception e) {
-		if (inspector != null) inspector.onHttpError(remoteAddress, e);
+		if (inspector != null && e != null) inspector.onHttpError(remoteAddress, e);
 		readQueue.clear();
 		onClosed();
 	}
@@ -149,7 +149,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	/**
 	 * This method is called after received line of header.
 	 *
-	 * @param line received line of header.
+	 * @param line	received line of header.
 	 */
 	@Override
 	protected void onFirstLine(ByteBuf line) throws ParseException {
@@ -169,15 +169,30 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			throw new ParseException("First line is too big");
 		}
 
+		byte[] array = line.array();
 		int i;
-		for (i = 0; i != line.readRemaining(); i++) {
-			byte b = line.peek(i);
+		for (i = 0; i < line.readRemaining(); i++) {
+			byte b = array[line.readPosition() + i];
 			if (b == SP)
 				break;
 			this.headerChars[i] = (char) b;
 		}
 
-		HttpUri url = HttpUri.parseUrl(new String(headerChars, 0, i)); // TODO ?
+		int p;
+		for (p = line.readPosition() + i + 1; p < line.writePosition(); p++) {
+			if (array[p] != SP)
+				break;
+		}
+
+		keepAlive = false;
+		if (p + 7 < line.writePosition()) {
+			if (array[p + 0] == 'H' && array[p + 1] == 'T' && array[p + 2] == 'T' && array[p + 3] == 'P'
+					&& array[p + 4] == '/' && array[p + 5] == '1' && array[p + 6] == '.' && array[p + 7] == '1') {
+				keepAlive = true; // keep-alive for HTTP/1.1
+			}
+		}
+
+		HttpUri url = HttpUri.parseUrl(new String(headerChars, 0, i));
 		request = HttpRequest.of(method, url);
 
 		if (method == GET || method == DELETE) {
@@ -190,8 +205,8 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	/**
 	 * This method is called after receiving header. It sets its value to request.
 	 *
-	 * @param header received header
-	 * @param value  value of received header
+	 * @param header	received header
+	 * @param value		value of received header
 	 */
 	@Override
 	protected void onHeader(HttpHeader header, final ByteBuf value) throws ParseException {
@@ -206,9 +221,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	}
 
 	private void writeHttpResult(HttpResponse httpResponse) {
-		if (keepAlive) {
-			httpResponse.addHeader(CONNECTION_KEEP_ALIVE);
-		}
+		httpResponse.addHeader(keepAlive ? CONNECTION_KEEP_ALIVE_HEADER : CONNECTION_CLOSE_HEADER);
 		ByteBuf buf = httpResponse.toByteBuf();
 		httpResponse.recycleBufs();
 		statusExpectContinue = false;
@@ -218,10 +231,11 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	/**
 	 * This method is called after receiving every request. It handles it,
 	 * using servlet and sends a response back to the client.
-	 * <p/>
-	 * After sending a response, request and response will be recycled and you can not use it twice.
+	 * <p>
+	 * After sending a response, request and response will be recycled and you
+	 * can not use it twice.
 	 *
-	 * @param bodyBuf the received message
+	 * @param bodyBuf	the received message
 	 */
 	@Override
 	protected void onHttpMessage(ByteBuf bodyBuf) {
@@ -275,7 +289,6 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	@Override
 	protected void reset() {
 		reading = FIRSTLINE;
-		keepAlive = false;
 		if (request != null) {
 			request.recycleBufs();
 			request = null;

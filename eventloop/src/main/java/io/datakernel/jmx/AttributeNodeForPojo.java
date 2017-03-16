@@ -16,37 +16,247 @@
 
 package io.datakernel.jmx;
 
+import javax.management.openmbean.OpenType;
 import java.util.*;
 
-import static io.datakernel.jmx.Utils.concat;
 import static io.datakernel.jmx.Utils.filterNulls;
-import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
+import static java.util.Collections.singletonList;
 
-final class AttributeNodeForPojo extends AttributeNodeForPojoAbstract {
+final class AttributeNodeForPojo implements AttributeNode {
+	private static final char ATTRIBUTE_NAME_SEPARATOR = '_';
+
+	private final String name;
+	private final String description;
+	private final ValueFetcher fetcher;
+	private final JmxReducer reducer;
+	private final Map<String, AttributeNode> fullNameToNode;
 	private final List<? extends AttributeNode> subNodes;
+	private boolean visible;
 
 	public AttributeNodeForPojo(String name, String description, boolean visible,
-	                            ValueFetcher fetcher, List<? extends AttributeNode> subNodes) {
-		super(name, description, visible, fetcher, subNodes);
+	                            ValueFetcher fetcher, JmxReducer reducer,
+	                            List<? extends AttributeNode> subNodes) {
+		this.name = name;
+		this.description = description;
+		this.visible = visible;
+		this.fetcher = fetcher;
+		this.reducer = reducer;
+		this.fullNameToNode = createFullNameToNodeMapping(name, subNodes);
 		this.subNodes = subNodes;
 	}
 
-	@Override
-	public Map<String, Object> aggregateAllAttributes(List<?> sources) {
-		Map<String, Object> allAttrs = new HashMap<>();
-		for (String attrFullName : visibleNameToOpenType.keySet()) {
-			allAttrs.put(attrFullName, aggregateAttribute(attrFullName, sources));
+	private static Map<String, AttributeNode> createFullNameToNodeMapping(String name,
+	                                                                      List<? extends AttributeNode> subNodes) {
+		Map<String, AttributeNode> fullNameToNodeMapping = new HashMap<>();
+		for (AttributeNode subNode : subNodes) {
+			Set<String> currentSubAttrNames = subNode.getAllAttributes();
+			for (String currentSubAttrName : currentSubAttrNames) {
+				String currentAttrFullName = addPrefix(currentSubAttrName, name);
+				if (fullNameToNodeMapping.containsKey(currentAttrFullName)) {
+					throw new IllegalArgumentException(
+							"There are several attributes with same name: " + currentSubAttrName);
+				}
+				fullNameToNodeMapping.put(currentAttrFullName, subNode);
+			}
 		}
-		return allAttrs;
+		return fullNameToNodeMapping;
 	}
 
 	@Override
-	public Object aggregateAttribute(String attrName, List<?> sources) {
+	public String getName() {
+		return name;
+	}
+
+	@Override
+	public Set<String> getAllAttributes() {
+		return fullNameToNode.keySet();
+	}
+
+	@Override
+	public Set<String> getVisibleAttributes() {
+		if (!visible) {
+			return Collections.emptySet();
+		} else {
+			Set<String> allVisibleAttrs = new HashSet<>();
+			for (AttributeNode subNode : subNodes) {
+				Set<String> visibleSubAttrs = subNode.getVisibleAttributes();
+				for (String visibleSubAttr : visibleSubAttrs) {
+					String visibleAttr = addPrefix(visibleSubAttr);
+					allVisibleAttrs.add(visibleAttr);
+				}
+			}
+			return allVisibleAttrs;
+		}
+	}
+
+	@Override
+	public Map<String, Map<String, String>> getDescriptions() {
+		Map<String, Map<String, String>> nameToDescriptions = new HashMap<>();
+		for (AttributeNode subNode : subNodes) {
+			Map<String, Map<String, String>> currentSubNodeDescriptions = subNode.getDescriptions();
+			for (String subNodeAttrName : currentSubNodeDescriptions.keySet()) {
+				String resultAttrName = addPrefix(subNodeAttrName);
+				Map<String, String> curDescriptions = new LinkedHashMap<>();
+				if (description != null) {
+					curDescriptions.put(name, description);
+				}
+				curDescriptions.putAll(currentSubNodeDescriptions.get(subNodeAttrName));
+				nameToDescriptions.put(resultAttrName, curDescriptions);
+			}
+		}
+		return nameToDescriptions;
+	}
+
+	@Override
+	public Map<String, OpenType<?>> getOpenTypes() {
+		Map<String, OpenType<?>> allTypes = new HashMap<>();
+		for (AttributeNode subNode : subNodes) {
+			Map<String, OpenType<?>> subAttrTypes = subNode.getOpenTypes();
+			for (String subAttrName : subAttrTypes.keySet()) {
+				OpenType<?> attrType = subAttrTypes.get(subAttrName);
+				String attrName = addPrefix(subAttrName);
+				allTypes.put(attrName, attrType);
+			}
+		}
+		return allTypes;
+	}
+
+	@Override
+	@SuppressWarnings("unchecked")
+	public Map<String, Object> aggregateAttributes(Set<String> attrNames, List<?> sources) {
 		checkNotNull(sources);
+		checkNotNull(attrNames);
 		List<?> notNullSources = filterNulls(sources);
-		if (notNullSources.size() == 0) {
-			return null;
+		if (notNullSources.size() == 0 || attrNames.isEmpty()) {
+			Map<String, Object> nullMap = new HashMap<>();
+			for (String attrName : attrNames) {
+				nullMap.put(attrName, null);
+			}
+			return nullMap;
+		}
+
+		Map<AttributeNode, Set<String>> groupedAttrs = groupBySubnode(attrNames);
+
+		List<Object> subsources;
+		if (notNullSources.size() == 1 || reducer == null) {
+			subsources = fetchInnerPojos(notNullSources);
+		} else {
+			Object reduced = reducer.reduce(fetchInnerPojos(sources));
+			subsources = singletonList(reduced);
+		}
+
+		Map<String, Object> aggregatedAttrs = new HashMap<>();
+		for (AttributeNode subnode : groupedAttrs.keySet()) {
+			Set<String> subAttrNames = groupedAttrs.get(subnode);
+			Map<String, Object> subAttrs;
+
+			try {
+				subAttrs = subnode.aggregateAttributes(subAttrNames, subsources);
+			} catch (Exception | AssertionError e) {
+				for (String subAttrName : subAttrNames) {
+					aggregatedAttrs.put(addPrefix(subAttrName), e);
+				}
+				continue;
+			}
+
+			for (String subAttrName : subAttrs.keySet()) {
+				Object subAttrValue = subAttrs.get(subAttrName);
+				aggregatedAttrs.put(addPrefix(subAttrName), subAttrValue);
+			}
+		}
+
+		return aggregatedAttrs;
+	}
+
+	private List<Object> fetchInnerPojos(List<?> outerPojos) {
+		List<Object> innerPojos = new ArrayList<>(outerPojos.size());
+		for (Object outerPojo : outerPojos) {
+			Object pojo = fetcher.fetchFrom(outerPojo);
+			if (pojo != null) {
+				innerPojos.add(pojo);
+			}
+		}
+		return innerPojos;
+	}
+
+	private Map<AttributeNode, Set<String>> groupBySubnode(Set<String> attrNames) {
+		Map<AttributeNode, Set<String>> selectedSubnodes = new HashMap<>();
+		for (String attrName : attrNames) {
+			AttributeNode subnode = fullNameToNode.get(attrName);
+			Set<String> subnodeAttrs = selectedSubnodes.get(subnode);
+			if (subnodeAttrs == null) {
+				subnodeAttrs = new HashSet<>();
+				selectedSubnodes.put(subnode, subnodeAttrs);
+			}
+			String adjustedName = removePrefix(attrName);
+			subnodeAttrs.add(adjustedName);
+		}
+		return selectedSubnodes;
+	}
+
+	private String removePrefix(String attrName) {
+		String adjustedName;
+		if (name.isEmpty()) {
+			adjustedName = attrName;
+		} else {
+			adjustedName = attrName.substring(name.length(), attrName.length());
+			if (adjustedName.length() > 0) {
+				adjustedName = adjustedName.substring(1, adjustedName.length()); // remove ATTRIBUTE_NAME_SEPARATOR
+			}
+		}
+		return adjustedName;
+	}
+
+	private String addPrefix(String attrName) {
+		return addPrefix(attrName, name);
+	}
+
+	private static String addPrefix(String attrName, String prefix) {
+		if (attrName.isEmpty()) {
+			return prefix;
+		}
+
+		String actualPrefix = prefix.isEmpty() ? "" : prefix + ATTRIBUTE_NAME_SEPARATOR;
+		return actualPrefix + attrName;
+	}
+
+	@Override
+	public List<JmxRefreshable> getAllRefreshables(Object source) {
+		Object pojo = fetcher.fetchFrom(source);
+
+		if (pojo == null) {
+			return Collections.emptyList();
+		}
+
+		if (pojo instanceof JmxRefreshable) {
+			return singletonList(((JmxRefreshable) pojo));
+		} else {
+			List<JmxRefreshable> allJmxRefreshables = new ArrayList<>();
+			for (AttributeNode attributeNode : subNodes) {
+				List<JmxRefreshable> subNodeRefreshables = attributeNode.getAllRefreshables(pojo);
+				allJmxRefreshables.addAll(subNodeRefreshables);
+			}
+			return allJmxRefreshables;
+		}
+	}
+
+	@Override
+	public final boolean isSettable(String attrName) {
+		if (!fullNameToNode.containsKey(attrName)) {
+			throw new IllegalArgumentException("There is no attribute with name: " + attrName);
+		}
+
+		AttributeNode appropriateSubNode = fullNameToNode.get(attrName);
+		return appropriateSubNode.isSettable(removePrefix(attrName));
+	}
+
+	@Override
+	public final void setAttribute(String attrName, Object value, List<?> targets) throws SetterException {
+		checkNotNull(targets);
+		List<?> notNullTargets = filterNulls(targets);
+		if (notNullTargets.size() == 0) {
+			return;
 		}
 
 		if (!fullNameToNode.containsKey(attrName)) {
@@ -54,38 +264,71 @@ final class AttributeNodeForPojo extends AttributeNodeForPojoAbstract {
 		}
 
 		AttributeNode appropriateSubNode = fullNameToNode.get(attrName);
-
-		// TODO(vmykhalko): refactor - extract common code
-		if (name.isEmpty()) {
-			return appropriateSubNode.aggregateAttribute(attrName, fetchInnerPojos(notNullSources));
-		} else {
-			checkArgument(attrName.contains(ATTRIBUTE_NAME_SEPARATOR));
-			int indexOfSeparator = attrName.indexOf(ATTRIBUTE_NAME_SEPARATOR);
-			String subAttrName = attrName.substring(indexOfSeparator + 1, attrName.length());
-			return appropriateSubNode.aggregateAttribute(subAttrName, fetchInnerPojos(notNullSources));
-		}
+		appropriateSubNode.setAttribute(removePrefix(attrName), value, fetchInnerPojos(targets));
 	}
 
 	@Override
-	public Iterable<JmxRefreshable> getAllRefreshables(Object source) {
-		Object pojo = fetcher.fetchFrom(source);
+	public boolean isVisible() {
+		return visible;
+	}
 
-		if (pojo == null) {
-			return Collections.emptyList();
+	@Override
+	public void setVisible(String attrName) {
+		if (attrName.equals(name)) {
+			this.visible = true;
+			return;
 		}
 
-		List<Iterable<JmxRefreshable>> listOfIterators = new ArrayList<>();
-		for (AttributeNode attributeNode : subNodes) {
-			Iterable<JmxRefreshable> iterable = attributeNode.getAllRefreshables(pojo);
-			if (iterable != null) {
-				listOfIterators.add(iterable);
+		if (!fullNameToNode.containsKey(attrName)) {
+			throw new IllegalArgumentException("There is no attribute with name: " + attrName);
+		}
+
+		AttributeNode appropriateSubNode = fullNameToNode.get(attrName);
+		appropriateSubNode.setVisible(removePrefix(attrName));
+	}
+
+	@Override
+	public void hideNullPojos(List<?> sources) {
+		List<?> innerPojos = fetchInnerPojos(sources);
+		if (innerPojos.size() == 0) {
+			this.visible = false;
+			return;
+		}
+
+		for (AttributeNode subNode : subNodes) {
+			subNode.hideNullPojos(innerPojos);
+		}
+	}
+
+	@SuppressWarnings({"unchecked", "UnnecessaryLocalVariable"})
+	@Override
+	public void applyModifier(String attrName, AttributeModifier<?> modifier, List<?> target) {
+		if (attrName.equals(name)) {
+			AttributeModifier attrModifierRaw = modifier;
+			List<Object> attributes = fetchInnerPojos(target);
+			for (Object attribute : attributes) {
+				attrModifierRaw.apply(attribute);
+			}
+			return;
+		}
+
+		for (String fullAttrName : fullNameToNode.keySet()) {
+			if (flattenedAttrNameContainsNode(fullAttrName, attrName)) {
+				AttributeNode appropriateSubNode = fullNameToNode.get(fullAttrName);
+				appropriateSubNode.applyModifier(removePrefix(attrName), modifier, fetchInnerPojos(target));
+				return;
 			}
 		}
-		return concat(listOfIterators);
+
+		if (!fullNameToNode.containsKey(attrName)) {
+			throw new IllegalArgumentException("There is no attribute with name: " + attrName);
+		}
 	}
 
-	@Override
-	protected AttributeNode recreate(List<? extends AttributeNode> subNodes, boolean visible) {
-		return new AttributeNodeForPojo(name, description, visible, fetcher, subNodes);
+	private static boolean flattenedAttrNameContainsNode(String flattenedAttrName, String nodeName) {
+		return flattenedAttrName.startsWith(nodeName) &&
+				(flattenedAttrName.length() == nodeName.length() ||
+						flattenedAttrName.charAt(nodeName.length()) == ATTRIBUTE_NAME_SEPARATOR);
+
 	}
 }

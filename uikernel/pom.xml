@@ -5,12 +5,12 @@
     <parent>
         <groupId>io.datakernel</groupId>
         <artifactId>datakernel</artifactId>
-        <version>2.0.8-SNAPSHOT</version>
+        <version>2.0.9-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>uikernel</artifactId>
+    <artifactId>datakernel-uikernel</artifactId>
 
     <name>DataKernel: UiKernel</name>
     <description>
@@ -20,14 +20,15 @@
     <dependencies>
         <dependency>
             <groupId>io.datakernel</groupId>
-            <artifactId>eventloop</artifactId>
-            <version>${version}</version>
+            <artifactId>datakernel-eventloop</artifactId>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>io.datakernel</groupId>
-            <artifactId>http</artifactId>
-            <version>${version}</version>
+            <artifactId>datakernel-http</artifactId>
+            <version>${project.version}</version>
         </dependency>
+
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>

@@ -6,11 +6,11 @@
     <parent>
         <groupId>io.datakernel</groupId>
         <artifactId>datakernel</artifactId>
-        <version>2.0.8-SNAPSHOT</version>
+        <version>2.0.9-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>aggregation</artifactId>
+    <artifactId>datakernel-aggregation</artifactId>
 
     <name>DataKernel: AggregationDB</name>
     <description>
@@ -20,13 +20,13 @@
     <dependencies>
         <dependency>
             <groupId>io.datakernel</groupId>
-            <artifactId>codegen</artifactId>
-            <version>${version}</version>
+            <artifactId>datakernel-codegen</artifactId>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>io.datakernel</groupId>
-            <artifactId>remotefs</artifactId>
-            <version>${version}</version>
+            <artifactId>datakernel-remotefs</artifactId>
+            <version>${project.version}</version>
         </dependency>
 
         <dependency>

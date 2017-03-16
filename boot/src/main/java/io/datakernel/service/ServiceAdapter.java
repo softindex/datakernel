@@ -21,7 +21,8 @@ import com.google.common.util.concurrent.ListenableFuture;
 import java.util.concurrent.Executor;
 
 /**
- * Adapter which Creates a new ConcurrentServices from other instances for working with ServiceGraph
+ * Adapter which creates a new ConcurrentServices from other instances for
+ * working with {@link ServiceGraph}
  *
  * @param <V> type of service from which you need create ConcurrentService
  */

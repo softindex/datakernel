@@ -25,6 +25,7 @@ import io.datakernel.jmx.*;
 import io.datakernel.jmx.JmxReducers.JmxReducerSum;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
+import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.protocol.RpcStream;
 import io.datakernel.serializer.BufferSerializer;
@@ -42,7 +43,57 @@ import static io.datakernel.util.Preconditions.*;
 import static java.lang.ClassLoader.getSystemClassLoader;
 import static java.util.Arrays.asList;
 
-public final class RpcServer extends AbstractServer<RpcServer> {
+/**
+ * An RPC server that works asynchronously. This server uses fast serializers
+ * and custom optimized communication protocol, improving application
+ * performance.
+ * <p>
+ * In order to set up a server it's mandatory to create it using
+ * {@link #create(Eventloop)}, indicate a types of messages, and specify
+ * an appropriate {@link RpcRequestHandler request handlers} for that types.
+ * <p>
+ * There are two ways of starting a server:
+ * <ul>
+ * <li>Manually: set up the server and call {@code listen()}</li>
+ * <li>Create a module for your RPC server and pass it to a {@code Launcher}
+ * along with {@code ServiceGraphModule}.</li>
+ * </ul>
+ * <p>
+ * Example. Here are the steps, intended to supplement the example, listed in
+ * {@link RpcClient}:
+ * <ul>
+ *     <li>Create a {@code RequestHandler} for {@code RequestClass} and
+ *     {@code ResponseClass}</li>
+ *     <li>Create an {@code RpcServer}</li>
+ *     <li>Run the server</li>
+ * </ul>
+ * The implementation, which matches an example, listed in {@link RpcClient}
+ * could be as follows:
+ * <pre><code>
+ * //create a request handler for RequestClass and ResponseClass
+ * public class SimpleRequestHandler implements RpcRequestHandler&lt;RequestClass, ResponseClass&gt; {
+ *	public void run(RequestClass requestClass, ResultCallback&lt;ResponseClass&gt; resultCallback) {
+ *		int count = compute(requestClass.getInfo());
+ *		resultCallback.setResult(new ResponseClass(count));
+ *	}
+ *
+ *	private int compute(String info) {
+ *		return info.length();
+ *	}
+ *}</code></pre>
+ * Next, instantiate an {@code RpcServer} capable for handling aforementioned
+ * message types and run it:
+ * <pre><code>
+ * RpcServer server = RpcServer.create(eventloop)
+ *	.withHandler(RequestClass.class, ResponseClass.class, new SimpleRequestHandler())
+ *	.withMessageTypes(RequestClass.class, ResponseClass.class)
+ *	.withListenPort(40000);
+ * </code></pre>
+ *
+ * @see RpcRequestHandler
+ * @see RpcClient
+ */
+public final class  RpcServer extends AbstractServer<RpcServer> {
 	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS = ServerSocketSettings.create(16384);
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create().withTcpNoDelay(true);
 
@@ -91,11 +142,23 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 				.withSocketSettings(DEFAULT_SOCKET_SETTINGS);
 	}
 
+	/**
+	 * Creates a server, capable of specified message types processing.
+	 *
+	 * @param messageTypes classes of messages processed by a server
+	 * @return server instance capable for handling provided message types
+	 */
 	public RpcServer withMessageTypes(Class<?>... messageTypes) {
 		checkNotNull(messageTypes);
 		return withMessageTypes(asList(messageTypes));
 	}
 
+	/**
+	 * Creates a server, capable of specified message types processing.
+	 *
+	 * @param messageTypes a list of message types processed by a server
+	 * @return server instance capable for handling provided message types
+	 */
 	public RpcServer withMessageTypes(List<Class<?>> messageTypes) {
 		checkArgument(new HashSet<>(messageTypes).size() == messageTypes.size(), "Message types must be unique");
 		this.messageTypes = messageTypes;
@@ -118,6 +181,17 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		return withStreamProtocol((int) defaultPacketSize.get(), (int) maxPacketSize.get(), compression);
 	}
 
+	/**
+	 * Adds a handler for a specified request-response pair.
+	 *
+	 * @param requestClass  a class representing a request structure
+	 * @param responseClass a class representing a response structure
+	 * @param handler       a class containing logic of request processing and
+	 *                      creating a response
+	 * @param <I>           class of request
+	 * @param <O>           class of response
+	 * @return server instance capable for handling requests of concrete types
+	 */
 	@SuppressWarnings("unchecked")
 	public <I, O> RpcServer withHandler(Class<I> requestClass, Class<O> responseClass, RpcRequestHandler<I, O> handler) {
 		handlers.put(requestClass, handler);
@@ -125,17 +199,9 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	}
 	// endregion
 
-	private BufferSerializer<RpcMessage> getSerializer() {
-		checkState(messageTypes != null, "Message types must be specified");
-		if (serializer == null) {
-			serializer = serializerBuilder.withSubclasses(RpcMessage.MESSAGE_TYPES, messageTypes).build(RpcMessage.class);
-		}
-		return serializer;
-	}
-
 	@Override
 	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
-		RpcStream stream = new RpcStream(eventloop, asyncTcpSocket, getSerializer(), defaultPacketSize, maxPacketSize, compression, true,
+		RpcStream stream = new RpcStream(eventloop, asyncTcpSocket, serializer, defaultPacketSize, maxPacketSize, compression, true,
 				statsSerializer, statsDeserializer, statsCompressor, statsDecompressor);
 		RpcServerConnection connection = new RpcServerConnection(eventloop, this,
 				asyncTcpSocket.getRemoteSocketAddress(), handlers, stream);
@@ -147,6 +213,12 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		totalConnects.recordEvent();
 
 		return stream.getSocketEventHandler();
+	}
+
+	@Override
+	protected void onListen() {
+		checkState(messageTypes != null, "Message types must be specified");
+		serializer = serializerBuilder.withSubclasses(RpcMessage.MESSAGE_TYPES, messageTypes).build(RpcMessage.class);
 	}
 
 	@Override

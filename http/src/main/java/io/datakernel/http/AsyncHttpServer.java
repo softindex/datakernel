@@ -18,8 +18,10 @@ package io.datakernel.http;
 
 import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
+import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.jmx.EventStats;
@@ -30,9 +32,47 @@ import io.datakernel.jmx.ValueStats;
 import io.datakernel.util.MemSize;
 
 import java.net.InetAddress;
+import java.net.Socket;
 
 import static io.datakernel.http.AbstractHttpConnection.*;
 
+/**
+ * A server which works asynchronously. An instance of {@code AsyncHttpServer}
+ * can be created by calling {@link #create(Eventloop, AsyncServlet)} method
+ * and providing an {@link Eventloop} instance and an implementation of
+ * {@link AsyncServlet}.
+ * <p>
+ * The creation of asynchronous http server implies few steps:
+ * <ol>
+ *     <li>Create an {@code eventloop} for a server</li>
+ *     <li>Create a {@code servlet}, which will respond to received request</li>
+ *     <li>Create a {@code server} with these instances</li>
+ * </ol>
+ * For example, consider an {@code AsyncHttpServer}:
+ * <pre><code>final {@link Eventloop Eventloop} eventloop = Eventloop.create();
+ * final {@link AsyncServlet AsyncServlet} servlet = new AsyncServlet() {
+ *    {@literal @}Override
+ *     public void serve({@link HttpRequest HttpRequest} request, final {@link ResultCallback ResultCallback&lt;HttpResponse&gt;} callback) {
+ *     	final HttpResponse response = HttpResponse.ok200().withBody(ByteBufStrings.encodeAscii("Hello, client!"));
+ *     		eventloop.post(new Runnable() {
+ *		   {@literal @}Override
+ *  		    public void run() {
+ *  		    System.out.println("Request body: " + request.getBody().toString());
+ *     			callback.setResult(response);
+ *     		    }
+ *  		});
+ * 	}
+ * };
+ * AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet).withListenPort(40000);
+ * server.listen();
+ * eventloop.run(); //eventloop runs in current thread
+ * </code>
+ * </pre>
+ * Now server is ready for accepting requests and responding to clients with
+ * <pre>"Hello, client!"</pre> message. It's easy to create a client for this
+ * example using {@link AsyncHttpClient} or send a request with, for example,
+ * {@link AsyncTcpSocketImpl}.
+ */
 public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	public static final long DEFAULT_KEEP_ALIVE_MILLIS = 30 * 1000L;
 
@@ -87,12 +127,17 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		private static final double SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_1_MINUTE;
 
 		private final EventStats totalRequests = EventStats.create(SMOOTHING_WINDOW);
-		private final EventStats httpErrors = EventStats.create(SMOOTHING_WINDOW);
+		private final EventStats httpTimeouts = EventStats.create(SMOOTHING_WINDOW);
+		private final ExceptionStats httpErrors = ExceptionStats.create();
 		private final ExceptionStats servletExceptions = ExceptionStats.create();
 
 		@Override
 		public void onHttpError(InetAddress remoteAddress, Exception e) {
-			httpErrors.recordEvent();
+			if (e == AbstractHttpConnection.READ_TIMEOUT_ERROR || e == AbstractHttpConnection.WRITE_TIMEOUT_ERROR) {
+				httpTimeouts.recordEvent();
+			} else {
+				httpErrors.recordException(e);
+			}
 		}
 
 		@Override
@@ -114,9 +159,14 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 			return totalRequests;
 		}
 
+		@JmxAttribute
+		public EventStats getHttpTimeouts() {
+			return httpTimeouts;
+		}
+
 		@JmxAttribute(description = "Number of requests which were invalid according to http protocol. " +
 				"Responses were not sent for this requests")
-		public EventStats getHttpErrors() {
+		public ExceptionStats getHttpErrors() {
 			return httpErrors;
 		}
 

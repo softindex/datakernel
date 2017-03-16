@@ -32,9 +32,13 @@ import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.http.HttpUtils.nullToEmpty;
 
 /**
- * Represent the HTTP request which {@link AsyncHttpClient} send to {@link AsyncHttpServer}. It must have only one owner in
- * each  part of time. After creating in server {@link HttpResponse} it will be recycled and you can not
- * use it later.
+ * Represents the HTTP request which {@link AsyncHttpClient} sends to
+ * {@link AsyncHttpServer}. It must have only one owner in each  part of time.
+ * After creating an {@link HttpResponse} in a server, it will be recycled and
+ * can not be used later.
+ * <p>
+ * {@code HttpRequest} class provides methods which can be used intuitively for
+ * creating and configuring an HTTP request.
  */
 public final class HttpRequest extends HttpMessage {
 	private final HttpMethod method;

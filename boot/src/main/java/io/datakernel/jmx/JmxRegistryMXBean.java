@@ -16,11 +16,23 @@
 
 package io.datakernel.jmx;
 
-public interface Cache<T> {
+public interface JmxRegistryMXBean {
 
-	boolean isExpired();
+	int getRegisteredSingletons();
 
-	T getValue();
+	int getRegisteredPools();
 
-	void update(T value);
+	int getTotallyRegisteredMBeans();
+
+	double getRefreshPeriod();
+
+	void setRefreshPeriod(double refreshPeriod);
+
+	int getMaxRefreshesPerOneCycle();
+
+	void setMaxRefreshesPerOneCycle(int maxRefreshesPerOneCycle);
+
+	double[] getEffectiveRefreshPeriods();
+
+	int[] getRefreshableStatsCount();
 }

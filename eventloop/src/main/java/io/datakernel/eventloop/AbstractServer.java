@@ -185,11 +185,11 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		running = true;
 		onListen();
 		serverSocketChannels = new ArrayList<>();
-		if (listenAddresses != null) {
+		if (listenAddresses != null && !listenAddresses.isEmpty()) {
 			listenAddresses(listenAddresses, false);
 			logger.info("Listening on {}", listenAddresses);
 		}
-		if (sslListenAddresses != null) {
+		if (sslListenAddresses != null && !sslListenAddresses.isEmpty()) {
 			listenAddresses(sslListenAddresses, true);
 			logger.info("Listening SSL on {}", sslListenAddresses);
 		}

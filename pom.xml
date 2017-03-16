@@ -6,7 +6,7 @@
 
     <groupId>io.datakernel</groupId>
     <artifactId>datakernel</artifactId>
-    <version>2.0.8-SNAPSHOT</version>
+    <version>2.0.9-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>DataKernel</name>
@@ -21,19 +21,19 @@
     </properties>
 
     <modules>
-        <module>async-streams</module>
+        <module>aggregation</module>
+        <module>boot</module>
+        <module>bytebuf</module>
         <module>codegen</module>
+        <module>cube</module>
         <module>datagraph</module>
+        <module>datastreams</module>
         <module>eventloop</module>
         <module>http</module>
-        <module>aggregation</module>
-        <module>cube</module>
+        <module>remotefs</module>
         <module>rpc</module>
         <module>serializer</module>
-        <module>boot</module>
         <module>uikernel</module>
-        <module>remotefs</module>
-        <module>bytebuf</module>
     </modules>
 
     <licenses>

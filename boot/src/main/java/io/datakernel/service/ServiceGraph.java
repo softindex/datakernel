@@ -45,21 +45,27 @@ import static java.util.Collections.singleton;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
+/**
+ * Stores the dependency graph of services. Primarily used by
+ * {@link ServiceGraphModule}.
+ */
 public class ServiceGraph {
 
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	/**
-	 * This set used to represent edges between vertices. If N1 and N2 - nodes and between them
-	 * exists edge from N1 to N2, it can be represent as adding to this SetMultimap element <N1,N2>.
-	 * This collection consist of nodes in which there are edges and their keys - previous nodes.
+	 * This set used to represent edges between vertices. If N1 and N2 - nodes
+	 * and between them exists edge from N1 to N2, it can be represent as
+	 * adding to this SetMultimap element <N1,N2>. This collection consist of
+	 * nodes in which there are edges and their keys - previous nodes.
 	 */
 	private final Multimap<Object, Object> forwards = LinkedHashMultimap.create();
 
 	/**
-	 * This set used to represent edges between vertices. If N1 and N2 - nodes and between them
-	 * exists edge from N1 to N2, it can be represent as adding to this SetMultimap element <N2,N1>
-	 * This collection consist of nodes in which there are edges and their keys - previous nodes.
+	 * This set used to represent edges between vertices. If N1 and N2 - nodes
+	 * and between them exists edge from N1 to N2, it can be represent as
+	 * adding to this SetMultimap element <N2,N1>. This collection consist of
+	 * nodes in which there are edges and their keys - previous nodes.
 	 */
 	private final Multimap<Object, Object> backwards = LinkedHashMultimap.create();
 
@@ -209,7 +215,7 @@ public class ServiceGraph {
 	}
 
 	/**
-	 * Stops services from  the service graph
+	 * Stops services from the service graph
 	 */
 	synchronized public ListenableFuture<?> startFuture() {
 		List<Object> circularDependencies = findCircularDependencies();
@@ -221,7 +227,7 @@ public class ServiceGraph {
 	}
 
 	/**
-	 * Stops services from  the service graph
+	 * Stops services from the service graph
 	 */
 	synchronized public ListenableFuture<?> stopFuture() {
 		Set<Object> leafNodes = difference(union(services.keySet(), backwards.keySet()), forwards.keySet());

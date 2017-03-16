@@ -25,23 +25,44 @@ import static java.util.Arrays.asList;
 public final class ExceptionStats implements JmxStats<ExceptionStats> {
 	public static final SimpleDateFormat TIMESTAMP_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 
-	private Throwable throwable;
-	private Object context;
+	private Class<? extends Throwable> exceptionClass;
+	private String exceptionMessage;
 	private int count;
 	private long lastExceptionTimestamp;
+	private ExceptionSummary summary;
+	private ExceptionDetails details;
 
 	private ExceptionStats() {
+		summary = new ExceptionSummary();
+		assert (details = new ExceptionDetails()) != null;
+		assert (summary = null) == null;
 	}
 
 	public static ExceptionStats create() {
 		return new ExceptionStats();
 	}
 
+	public ExceptionStats withStoreStackTrace(boolean store) {
+		if (store) {
+			details = new ExceptionDetails();
+			summary = null;
+		} else {
+			details = null;
+			summary = new ExceptionSummary();
+		}
+		return this;
+	}
+
 	public void recordException(Throwable throwable, Object context) {
 		this.count++;
-		this.throwable = throwable;
-		this.context = context;
+		this.exceptionClass = throwable != null ? throwable.getClass() : null;
+		this.exceptionMessage = throwable != null ? throwable.getMessage() : null;
 		this.lastExceptionTimestamp = System.currentTimeMillis();
+
+		if (details != null) {
+			details.throwable = throwable;
+			details.context = context;
+		}
 	}
 
 	public void recordException(Throwable throwable) {
@@ -49,18 +70,30 @@ public final class ExceptionStats implements JmxStats<ExceptionStats> {
 	}
 
 	public void resetStats() {
+		this.exceptionClass = null;
+		this.exceptionMessage = null;
 		this.count = 0;
-		this.throwable = null;
-		this.context = null;
+		this.lastExceptionTimestamp = 0;
+		if (details != null) {
+			details.throwable = null;
+			details.context = null;
+		}
 	}
 
 	@Override
 	public void add(ExceptionStats another) {
 		this.count += another.count;
 		if (another.lastExceptionTimestamp > this.lastExceptionTimestamp) {
-			this.throwable = another.throwable;
-			this.context = another.context;
+			this.exceptionClass = another.exceptionClass;
+			this.exceptionMessage = another.exceptionMessage;
 			this.lastExceptionTimestamp = another.lastExceptionTimestamp;
+			if (another.details != null) {
+				if (this.details == null) {
+					details = new ExceptionDetails();
+				}
+				this.details.throwable = another.details.throwable;
+				this.details.context = another.details.context;
+			}
 		}
 	}
 
@@ -71,7 +104,7 @@ public final class ExceptionStats implements JmxStats<ExceptionStats> {
 
 	@JmxAttribute(optional = true)
 	public String getLastType() {
-		return throwable != null ? throwable.getClass().getName() : null;
+		return exceptionClass != null ? exceptionClass.toString() : null;
 	}
 
 	@JmxAttribute(optional = true)
@@ -80,48 +113,70 @@ public final class ExceptionStats implements JmxStats<ExceptionStats> {
 	}
 
 	public Throwable getLastException() {
-		return throwable;
+		return details != null ? details.throwable : null;
 	}
 
 	@JmxAttribute(optional = true)
 	public String getLastMessage() {
-		return throwable != null ? throwable.getMessage() : null;
+		return exceptionMessage;
 	}
 
-	@JmxAttribute
-	public Object getLastContext() {
-		return context;
+	@JmxAttribute(name = "")
+	public ExceptionSummary getSummary() {
+		return summary;
 	}
 
-	@JmxAttribute
-	public List<String> getLastStackTrace() {
-		if (throwable != null) {
-			return asList(MBeanFormat.formatException(throwable));
-		} else {
-			return null;
-		}
+	@JmxAttribute(name = "")
+	public ExceptionDetails getDetails() {
+		return details;
 	}
-
-//	@JmxAttribute(name = "")
-//	public String getSummary() {
-//		return toString();
-//	}
 
 	@Override
 	public String toString() {
 		String last = "";
-		if (throwable != null) {
-			last = "; " + throwable.getClass().getSimpleName();
+		if (exceptionClass != null) {
+			last = "; " + exceptionClass.getSimpleName();
 
-			String message = throwable.getMessage();
-			if (message != null && !message.isEmpty()) {
-				last += " : " + message;
+			if (exceptionMessage != null && !exceptionMessage.isEmpty()) {
+				last += " : " + exceptionMessage;
 			}
 
-			if (context != null) {
-				last += " @ " + context.toString();
-			}
+			last += " @ " + getLastTimestamp();
 		}
 		return Integer.toString(count) + last;
+	}
+
+	public static final class ExceptionDetails {
+		private Throwable throwable;
+		private Object context;
+
+		@JmxAttribute
+		public Object getLastContext() {
+			return context;
+		}
+
+		@JmxAttribute
+		public List<String> getLastStackTrace() {
+			if (throwable != null) {
+				return asList(MBeanFormat.formatException(throwable));
+			} else {
+				return null;
+			}
+		}
+	}
+
+	public final class ExceptionSummary {
+		@JmxAttribute
+		public String getLast() {
+			String last = null;
+			if (exceptionClass != null) {
+				last = exceptionClass.getSimpleName();
+
+				if (exceptionMessage != null && !exceptionMessage.isEmpty()) {
+					last += " : " + exceptionMessage;
+				}
+			}
+			return last;
+		}
 	}
 }

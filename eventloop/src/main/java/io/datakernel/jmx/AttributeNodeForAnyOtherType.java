@@ -18,73 +18,32 @@ package io.datakernel.jmx;
 
 import javax.management.openmbean.OpenType;
 import javax.management.openmbean.SimpleType;
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
-import static io.datakernel.jmx.Utils.*;
-import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Preconditions.checkNotNull;
-
-final class AttributeNodeForAnyOtherType implements AttributeNode {
-	private final String name;
-	private final String description;
-	private final ValueFetcher fetcher;
-	private final OpenType<?> openType;
-	private final Map<String, OpenType<?>> nameToOpenType;
-	private final boolean visible;
+final class AttributeNodeForAnyOtherType extends AttributeNodeForLeafAbstract {
 
 	public AttributeNodeForAnyOtherType(String name, String description, boolean visible, ValueFetcher fetcher) {
-		this.name = name;
-		this.description = description;
-		this.fetcher = fetcher;
-		this.openType = SimpleType.STRING;
-		this.nameToOpenType = wrapAttributeInMap(name, openType, visible);
-		this.visible = visible;
+		super(name, description, fetcher, visible);
 	}
 
 	@Override
-	public String getName() {
-		return name;
-	}
-
-	@Override
-	public Map<String, Map<String, String>> getDescriptions() {
-		return createDescriptionMap(name, description);
-	}
-
-	@Override
-	public OpenType<?> getOpenType() {
-		return openType;
-	}
-
-	@Override
-	public Map<String, OpenType<?>> getVisibleFlattenedOpenTypes() {
-		return nameToOpenType;
-	}
-
-	@Override
-	public Map<String, Object> aggregateAllAttributes(List<?> sources) {
-		Map<String, Object> attrs = new HashMap<>();
-		attrs.put(name, aggregateAttribute(name, sources));
-		return attrs;
+	public Map<String, OpenType<?>> getOpenTypes() {
+		return Collections.<String, OpenType<?>>singletonMap(name, SimpleType.STRING);
 	}
 
 	@Override
 	public Object aggregateAttribute(String attrName, List<?> sources) {
-		checkArgument(attrName.equals(name));
-		checkNotNull(sources);
-		List<?> notNullSources = filterNulls(sources);
-		if (notNullSources.size() == 0) {
-			return null;
-		}
-
-		Object firstPojo = notNullSources.get(0);
+		Object firstPojo = sources.get(0);
 		Object firstValue = (fetcher.fetchFrom(firstPojo));
 		if (firstValue == null) {
 			return null;
 		}
 
-		for (int i = 1; i < notNullSources.size(); i++) {
-			Object currentPojo = notNullSources.get(i);
+		for (int i = 1; i < sources.size(); i++) {
+			Object currentPojo = sources.get(i);
 			Object currentValue = Objects.toString(fetcher.fetchFrom(currentPojo));
 			if (!Objects.equals(firstPojo, currentValue)) {
 				return null;
@@ -94,13 +53,8 @@ final class AttributeNodeForAnyOtherType implements AttributeNode {
 	}
 
 	@Override
-	public Iterable<JmxRefreshable> getAllRefreshables(Object source) {
-		return null;
-	}
-
-	@Override
 	public boolean isSettable(String attrName) {
-		checkArgument(attrName.equals(name));
+		assert name.equals(attrName);
 
 		return false;
 	}
@@ -111,27 +65,7 @@ final class AttributeNodeForAnyOtherType implements AttributeNode {
 	}
 
 	@Override
-	public AttributeNode rebuildOmittingNullPojos(List<?> sources) {
-		return this;
-	}
-
-	@Override
-	public boolean isVisible() {
-		return visible;
-	}
-
-	@Override
-	public AttributeNode rebuildWithVisible(String attrName) {
-		return new AttributeNodeForAnyOtherType(name, description, true, fetcher);
-	}
-
-	@Override
-	public void applyModifier(String attrName, AttributeModifier<?> modifier, List<?> target) {
-		throw new UnsupportedOperationException();
-	}
-
-	@Override
-	public Set<String> getAllFlattenedAttrNames() {
-		return Collections.singleton(name);
+	public final List<JmxRefreshable> getAllRefreshables(Object source) {
+		return Collections.emptyList();
 	}
 }

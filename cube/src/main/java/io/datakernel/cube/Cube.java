@@ -49,6 +49,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Type;
+import java.nio.file.NoSuchFileException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 
@@ -900,7 +901,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 
 	// region temp query() method
 	@Override
-	public void query(CubeQuery cubeQuery, final ResultCallback<QueryResult> resultCallback) throws QueryException {
+	public void query(final CubeQuery cubeQuery, final ResultCallback<QueryResult> resultCallback) throws QueryException {
 		DefiningClassLoader queryClassLoader = getQueryClassLoader(new CubeClassLoaderCache.Key(
 				newLinkedHashSet(cubeQuery.getAttributes()),
 				newLinkedHashSet(cubeQuery.getMeasures()),
@@ -917,6 +918,11 @@ public final class Cube implements ICube, EventloopJmxMBean {
 			protected void onException(Exception e) {
 				queryErrors++;
 				queryLastError = e;
+
+				if (e instanceof NoSuchFileException) {
+					logger.warn("Query failed because of NoSuchFileException. " + cubeQuery.toString(), e);
+				}
+
 				resultCallback.setException(e);
 			}
 		});

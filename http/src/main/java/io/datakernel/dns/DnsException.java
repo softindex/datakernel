@@ -19,8 +19,8 @@ package io.datakernel.dns;
 import io.datakernel.exception.SimpleException;
 
 /**
- * Represents an exception which stores name of domain with which error was created ,
- * end  error code.
+ * Represents an exception which stores name of domain with which error was created,
+ * end error code.
  */
 public final class DnsException extends SimpleException {
 	private final String domainName;

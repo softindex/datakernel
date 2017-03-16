@@ -237,6 +237,9 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 				}
 			});
 		}
+		if ((this.ops & SelectionKey.OP_READ) == SelectionKey.OP_READ) {
+			onReadReady();
+		}
 	}
 
 	// timeouts management
@@ -289,7 +292,6 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		interests(writeInterest ? (ops | SelectionKey.OP_WRITE) : (ops & ~SelectionKey.OP_WRITE));
 	}
 
-	// read cycle
 	@Override
 	public void read() {
 		if (readTimeout != NO_TIMEOUT) {
@@ -312,13 +314,17 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			checkReadTimeout.cancel();
 			checkReadTimeout = null;
 		}
-		doRead();
-		int newOps = ops & ~OP_POSTPONED;
-		ops = oldOps;
-		interests(newOps);
+		int bytesRead = doRead();
+		if (bytesRead > 0) {
+			int newOps = ops & ~OP_POSTPONED;
+			ops = oldOps;
+			interests(newOps);
+		} else if (bytesRead == 0) {
+			ops = oldOps;
+		}
 	}
 
-	private void doRead() {
+	private int doRead() {
 		ByteBuf buf = ByteBufPool.allocate(readMaxSize);
 		ByteBuffer buffer = buf.toWriteByteBuffer();
 
@@ -330,24 +336,25 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			buf.recycle();
 			if (inspector != null) inspector.onReadError(e);
 			closeWithError(e, false);
-			return;
+			return -1;
 		}
 
 		if (numRead == 0) {
 			if (inspector != null) inspector.onRead(buf);
 			buf.recycle();
-			return;
+			return numRead;
 		}
 
 		if (numRead == -1) {
 			buf.recycle();
 			if (inspector != null) inspector.onReadEndOfStream();
 			socketEventHandler.onReadEndOfStream();
-			return;
+			return numRead;
 		}
 
 		if (inspector != null) inspector.onRead(buf);
 		socketEventHandler.onRead(buf);
+		return numRead;
 	}
 
 	// write cycle

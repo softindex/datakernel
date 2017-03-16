@@ -22,18 +22,24 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
-import javax.management.*;
+import javax.management.Attribute;
+import javax.management.DynamicMBean;
+import javax.management.MBeanAttributeInfo;
+import javax.management.MBeanInfo;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.TabularData;
 import java.util.*;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.jmx.MBeanSettings.defaultSettings;
+import static io.datakernel.jmx.helper.Utils.nameToAttribute;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
 public class JmxMBeansAttributesTest {
 	@Rule
 	public ExpectedException expectedException = ExpectedException.none();
+	public static final Eventloop eventloop = Eventloop.create();
 
 	@Test
 	public void retreivesProperMBeanInfo() throws Exception {
@@ -239,9 +245,9 @@ public class JmxMBeansAttributesTest {
 	}
 
 	@Test
-	public void worksProperlyWithIsGetters() throws MBeanException, AttributeNotFoundException, ReflectionException {
+	public void worksProperlyWithIsGetters() throws Exception {
 		MBeanWithIsGetter mBeanWithIsGetter = new MBeanWithIsGetter();
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(mBeanWithIsGetter), MBeanSettings.defaultSettings(), false);
+		DynamicMBean mbean = createDynamicMBeanFor(mBeanWithIsGetter);
 
 		MBeanInfo mBeanInfo = mbean.getMBeanInfo();
 		MBeanAttributeInfo[] attributesInfoArr = mBeanInfo.getAttributes();
@@ -258,44 +264,42 @@ public class JmxMBeansAttributesTest {
 
 	@Test
 	public void returns_toString_representationOfObjectsThatAreNeitherSupportedTypesNorPojosWithJmxAttributes()
-			throws MBeanException, AttributeNotFoundException, ReflectionException {
+			throws Exception {
 
 		ArbitraryType arbitraryType = new ArbitraryType("String representation");
 		Date date = new Date();
 		MBeanWithJmxAttributesOfArbitraryTypes obj =
 				new MBeanWithJmxAttributesOfArbitraryTypes(arbitraryType, date);
 
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(obj), MBeanSettings.defaultSettings(), false);
+		DynamicMBean mbean = createDynamicMBeanFor(obj);
 
 		assertEquals(arbitraryType.toString(), mbean.getAttribute("arbitraryType"));
 		assertEquals(date.toString(), mbean.getAttribute("date"));
 	}
 
-	/*
-	 * helper methods
- 	 */
+	@Test
+	public void handlesProperlyDefaultGetter() throws Exception {
+		DynamicMBean mbean = createDynamicMBeanFor(new MBeanWithPojoWithDefaultGetter());
 
-	public static DynamicMBean createDynamicMBeanFor(Object... objects) throws Exception {
-		boolean refreshEnabled = false;
-		return JmxMBeans.factory().createFor(asList(objects), MBeanSettings.defaultSettings(), refreshEnabled);
+		Map<String, MBeanAttributeInfo> attrs = nameToAttribute(mbean.getMBeanInfo().getAttributes());
+
+		assertEquals(1, attrs.size());
+		assertTrue(attrs.containsKey("pojo"));
+		assertEquals("summary", mbean.getAttribute("pojo"));
 	}
 
-	public static Map<String, MBeanAttributeInfo> nameToAttribute(MBeanAttributeInfo[] attrs) {
-		Map<String, MBeanAttributeInfo> nameToAttr = new HashMap<>();
-		for (MBeanAttributeInfo attr : attrs) {
-			nameToAttr.put(attr.getName(), attr);
-		}
-		return nameToAttr;
+	// region helper methods
+	public static DynamicMBean createDynamicMBeanFor(Object... objects) throws Exception {
+		boolean refreshEnabled = false;
+		return JmxMBeans.factory().createFor(asList(objects), defaultSettings(), refreshEnabled);
 	}
 
 	public static Object[] keyForTabularData(String key) {
 		return new String[]{key};
 	}
+	// endregion
 
-	/*
-	 * helper classes
-	 */
-
+	// region helper classes
 	public static final class SamplePojo {
 		private final int count;
 		private final long sum;
@@ -594,4 +598,33 @@ public class JmxMBeansAttributesTest {
 			return str;
 		}
 	}
+
+	// classes for default attribute test (@JmxAttribute get())
+	public static final class MBeanWithPojoWithDefaultGetter implements EventloopJmxMBean {
+		private final PojoWithDefaultGetter pojo = new PojoWithDefaultGetter();
+
+		@JmxAttribute
+		public PojoWithDefaultGetter getPojo() {
+			return pojo;
+		}
+
+		@Override
+		public Eventloop getEventloop() {
+			return eventloop;
+		}
+	}
+
+	public static final class PojoWithDefaultGetter {
+
+		@JmxAttribute(optional = true)
+		public int getValue() {
+			return 10;
+		}
+
+		@JmxAttribute
+		public String get() {
+			return "summary";
+		}
+	}
+	// endregion
 }

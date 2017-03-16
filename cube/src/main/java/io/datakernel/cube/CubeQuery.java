@@ -192,4 +192,17 @@ public final class CubeQuery {
 		}
 	}
 	// endregion
+
+	@Override
+	public String toString() {
+		return "CubeQuery{" +
+				"attributes=" + attributes +
+				", measures=" + measures +
+				", where=" + where +
+				", having=" + having +
+				", limit=" + limit +
+				", offset=" + offset +
+				", orderings=" + orderings +
+				'}';
+	}
 }

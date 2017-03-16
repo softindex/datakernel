@@ -47,7 +47,7 @@ public class ParallelAsyncExecutorTest {
 			submitTestTask(executor, eventloop, executionInfoMap, i);
 		}
 
-		assertEquals(1, eventloop.getCurrentScheduledTasks());
+		assertEquals(1, eventloop.getStats().getTasks().getScheduled().getCount());
 
 		eventloop.run();
 
@@ -71,7 +71,7 @@ public class ParallelAsyncExecutorTest {
 		}
 
 		assertEquals(true, executor.isSaturated());
-		assertEquals(maxParallelism, eventloop.getCurrentScheduledTasks());
+		assertEquals(maxParallelism, eventloop.getStats().getTasks().getScheduled().getCount());
 
 		eventloop.run();
 

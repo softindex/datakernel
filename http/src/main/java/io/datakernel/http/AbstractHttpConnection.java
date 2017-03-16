@@ -43,6 +43,9 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 	public static final int MAX_HEADER_LINE_SIZE = 8 * 1024; // http://stackoverflow.com/questions/686217/maximum-on-http-header-values
 	public static final int MAX_HEADERS = 100; // http://httpd.apache.org/docs/2.2/mod/core.html#limitrequestfields
 
+	protected static final HttpHeaders.Value CONNECTION_KEEP_ALIVE_HEADER = HttpHeaders.asBytes(CONNECTION, "keep-alive");
+	protected static final HttpHeaders.Value CONNECTION_CLOSE_HEADER = HttpHeaders.asBytes(CONNECTION, "close");
+
 	private static final byte[] CONNECTION_KEEP_ALIVE = encodeAscii("keep-alive");
 	private static final byte[] TRANSFER_ENCODING_CHUNKED = encodeAscii("chunked");
 	protected static final int UNKNOWN_LENGTH = -1;
@@ -52,7 +55,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 	protected final AsyncTcpSocket asyncTcpSocket;
 	protected final ByteBufQueue readQueue = ByteBufQueue.create();
 
-	protected boolean keepAlive = true;
+	protected boolean keepAlive;
 
 	protected final ByteBufQueue bodyQueue = ByteBufQueue.create();
 

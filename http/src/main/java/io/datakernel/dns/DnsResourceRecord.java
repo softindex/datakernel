@@ -21,7 +21,7 @@ import java.net.InetAddress;
 /**
  * Represent a resolved domain
  */
-public final class DnsResourceRecord {
+final class DnsResourceRecord {
 	private final InetAddress[] ips;
 	private final int minTtl;
 	private final short type;

@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static io.datakernel.util.Preconditions.checkArgument;
+import static java.lang.Integer.numberOfLeadingZeros;
 import static java.lang.Math.*;
 import static java.util.Arrays.asList;
 
@@ -58,6 +59,11 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 	public static final int[] POWERS_OF_TEN =
 			new int[]{
 					0, 1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000
+			};
+
+	public static final int[] POWERS_OF_TEN_SHORTENED =
+			new int[]{
+					0, 1, 10, 100, 1000
 			};
 
 	public static final int[] POWERS_OF_TEN_SEMI_LINEAR =
@@ -195,12 +201,39 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 	}
 
 	private void addToHistogram(int value) {
-		if (value >= histogramLevels[histogramLevels.length - 1]) {
-			histogramValues[histogramValues.length - 1]++;
+		if (histogramLevels == POWERS_OF_TWO) {
+			addToPow2Histogram(value);
 		} else {
-			int bucketIndex = binarySearch(histogramLevels, value);
-			histogramValues[bucketIndex]++;
+			if (value >= histogramLevels[histogramLevels.length - 1]) {
+				histogramValues[histogramValues.length - 1]++;
+			} else {
+				int bucketIndex;
+				if (histogramLevels.length <= 6) {
+					bucketIndex = linearSearch(histogramLevels, value);
+				} else {
+					bucketIndex = binarySearch(histogramLevels, value);
+				}
+				histogramValues[bucketIndex]++;
+			}
 		}
+	}
+
+	private void addToPow2Histogram(int value) {
+		if (value < 0) {
+			histogramValues[0]++;
+		} else {
+			histogramValues[33 - numberOfLeadingZeros(value)]++;
+		}
+	}
+
+	// return index of smallest element that is greater than "value"
+	private static int linearSearch(int[] histogramLevels, int value) {
+		for (int i = 0; i < histogramLevels.length; i++) {
+			if (value < histogramLevels[i]) {
+				return i;
+			}
+		}
+		return histogramLevels.length; //
 	}
 
 	// return index of smallest element that is greater than "value"
@@ -528,8 +561,8 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 		return labels.toArray(new String[labels.size()]);
 	}
 
-	@JmxAttribute(name = "")
-	public String getSummary() {
+	@JmxAttribute
+	public String get() {
 		return toString();
 	}
 

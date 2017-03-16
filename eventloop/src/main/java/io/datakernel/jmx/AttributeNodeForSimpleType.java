@@ -20,80 +20,41 @@ import javax.management.openmbean.OpenType;
 import javax.management.openmbean.SimpleType;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
-import static io.datakernel.jmx.Utils.*;
+import static io.datakernel.jmx.Utils.filterNulls;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonMap;
 
-final class AttributeNodeForSimpleType implements AttributeNode {
-	private final String name;
-	private final String description;
-	private final ValueFetcher fetcher;
+final class AttributeNodeForSimpleType extends AttributeNodeForLeafAbstract {
 	private final Method setter;
-	private final Class<?> attributeType;
-	private final OpenType<?> openType;
-	private final Map<String, OpenType<?>> nameToOpenType;
+	private final Class<?> type;
 	private final JmxReducer reducer;
-	private final boolean visible;
 
 	public AttributeNodeForSimpleType(String name, String description, boolean visible,
 	                                  ValueFetcher fetcher, Method setter,
 	                                  Class<?> attributeType, JmxReducer reducer) {
-		this.name = name;
-		this.description = description;
-		this.fetcher = fetcher;
+		super(name, description, fetcher, visible);
 		this.setter = setter;
-		this.attributeType = attributeType;
-		this.openType = simpleTypeOf(attributeType);
-		this.nameToOpenType = wrapAttributeInMap(name, openType, visible);
+		this.type = attributeType;
 		this.reducer = checkNotNull(reducer);
-		this.visible = visible;
 	}
 
 	@Override
-	public String getName() {
-		return name;
+	public Map<String, OpenType<?>> getOpenTypes() {
+		return Collections.<String, OpenType<?>>singletonMap(name, simpleTypeOf(type));
 	}
 
 	@Override
-	public Map<String, Map<String, String>> getDescriptions() {
-		return createDescriptionMap(name, description);
-	}
-
-	@Override
-	public OpenType<?> getOpenType() {
-		return openType;
-	}
-
-	@Override
-	public Map<String, OpenType<?>> getVisibleFlattenedOpenTypes() {
-		return nameToOpenType;
-	}
-
-	@Override
-	public Set<String> getAllFlattenedAttrNames() {
-		return Collections.singleton(name);
-	}
-
-	@Override
-	public Map<String, Object> aggregateAllAttributes(List<?> sources) {
-		Map<String, Object> attrs = new HashMap<>();
-		attrs.put(name, aggregateAttribute(name, sources));
-		return attrs;
-	}
-
-	@Override
+	@SuppressWarnings("unchecked")
 	public Object aggregateAttribute(String attrName, List<?> sources) {
-		checkArgument(attrName.equals(name));
-		checkNotNull(sources);
-		List<?> notNullSources = filterNulls(sources);
-		if (notNullSources.size() == 0) {
-			return null;
-		}
-
-		List<Object> values = new ArrayList<>(notNullSources.size());
-		for (Object notNullSource : notNullSources) {
+		List<Object> values = new ArrayList<>(sources.size());
+		for (Object notNullSource : sources) {
 			Object currentValue = fetcher.fetchFrom(notNullSource);
 			values.add(currentValue);
 		}
@@ -102,8 +63,8 @@ final class AttributeNodeForSimpleType implements AttributeNode {
 	}
 
 	@Override
-	public Iterable<JmxRefreshable> getAllRefreshables(Object source) {
-		return null;
+	public List<JmxRefreshable> getAllRefreshables(Object source) {
+		return emptyList();
 	}
 
 	@Override
@@ -119,7 +80,7 @@ final class AttributeNodeForSimpleType implements AttributeNode {
 		checkNotNull(targets);
 		List<?> notNullTargets = filterNulls(targets);
 		if (notNullTargets.size() == 0) {
-			return;
+			singletonMap(attrName, null);
 		}
 
 		for (Object target : notNullTargets) {
@@ -129,26 +90,6 @@ final class AttributeNodeForSimpleType implements AttributeNode {
 				throw new SetterException(e);
 			}
 		}
-	}
-
-	@Override
-	public AttributeNode rebuildOmittingNullPojos(List<?> sources) {
-		return this;
-	}
-
-	@Override
-	public boolean isVisible() {
-		return visible;
-	}
-
-	@Override
-	public AttributeNode rebuildWithVisible(String attrName) {
-		return new AttributeNodeForSimpleType(name, description, true, fetcher, setter, attributeType, reducer);
-	}
-
-	@Override
-	public void applyModifier(String attrName, AttributeModifier<?> modifier, List<?> target) {
-		throw new UnsupportedOperationException();
 	}
 
 	private static SimpleType<?> simpleTypeOf(Class<?> clazz) throws IllegalArgumentException {

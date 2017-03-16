@@ -172,7 +172,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 	}
 
 	private void rebuild() {
-		if (outputProducer != null) outputProducer.outputBuf.recycle();
+		if (outputProducer != null && outputProducer.outputBuf != null) outputProducer.outputBuf.recycle();
 		inputConsumer = new InputConsumer();
 		outputProducer = new OutputProducer(serializer, defaultBufferSize, maxMessageSize, flushDelayMillis, skipSerializationErrors);
 	}
@@ -280,7 +280,6 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 			this.estimatedMessageSize = 1;
 			this.defaultBufferSize = defaultBufferSize;
 			this.flushDelayMillis = flushDelayMillis;
-			allocateBuffer();
 		}
 
 		@Override
@@ -302,21 +301,22 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 			return 5;
 		}
 
-		private void allocateBuffer() {
-			outputBuf = ByteBufPool.allocate(max(defaultBufferSize, headerSize + estimatedMessageSize));
+		private ByteBuf allocateBuffer() {
+			return ByteBufPool.allocate(max(defaultBufferSize, headerSize + estimatedMessageSize));
 		}
 
 		private void flushBuffer(StreamDataReceiver<ByteBuf> receiver) {
-			if (outputBuf.canRead()) {
-				if (inspector != null) inspector.onOutput(outputBuf);
-				if (outputProducer.getProducerStatus().isOpen()) {
-					receiver.onData(outputBuf);
-					outputBuf = null;
+			if (outputBuf != null) {
+				if (outputBuf.canRead()) {
+					if (inspector != null) inspector.onOutput(outputBuf);
+					if (outputProducer.getProducerStatus().isOpen()) {
+						receiver.onData(outputBuf);
+					}
+				} else {
+					outputBuf.recycle();
 				}
-			} else {
-				outputBuf.recycle();
+				outputBuf = null;
 			}
-			allocateBuffer();
 		}
 
 		private void writeSize(byte[] buf, int pos, int size) {
@@ -347,12 +347,16 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 		 */
 		@Override
 		public void onData(T item) {
-			//noinspection AssertWithSideEffects
+			if (outputBuf == null) {
+				outputBuf = allocateBuffer();
+			}
+
 			int positionBegin;
 			int positionItem;
 			for (; ; ) {
 				if (outputBuf.writeRemaining() < headerSize + estimatedMessageSize) {
 					onFullBuffer();
+					outputBuf = allocateBuffer();
 				}
 				positionBegin = outputBuf.writePosition();
 				positionItem = positionBegin + headerSize;
@@ -422,8 +426,6 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 
 		private void flushAndClose() {
 			flushBuffer(outputProducer.getDownstreamDataReceiver());
-			outputBuf.recycle();
-			outputBuf = null;
 			logger.trace("endOfStream {}, upstream: {}", this, inputConsumer.getUpstream());
 			outputProducer.sendEndOfStream();
 		}
