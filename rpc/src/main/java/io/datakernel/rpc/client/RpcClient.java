@@ -545,7 +545,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 					@Override
 					public void run() {
 						RpcClient.this.sendRequest(
-								request, timeout, ConcurrentResultCallback.create(eventloop, callback)
+								request, timeout, ConcurrentResultCallback.create(anotherEventloop, callback)
 						);
 					}
 				});
