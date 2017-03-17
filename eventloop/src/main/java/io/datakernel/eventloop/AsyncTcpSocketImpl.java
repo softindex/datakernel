@@ -237,7 +237,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 				}
 			});
 		}
-		if ((this.ops & SelectionKey.OP_READ) == SelectionKey.OP_READ) {
+		if ((this.ops & SelectionKey.OP_READ) != 0) {
 			onReadReady();
 		}
 	}
@@ -310,10 +310,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		int oldOps = ops;
 		ops = ops | OP_POSTPONED;
 		readInterest(false);
-		if (checkReadTimeout != null) {
-			checkReadTimeout.cancel();
-			checkReadTimeout = null;
-		}
+
 		int bytesRead = doRead();
 		if (bytesRead > 0) {
 			int newOps = ops & ~OP_POSTPONED;
@@ -343,6 +340,11 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			if (inspector != null) inspector.onRead(buf);
 			buf.recycle();
 			return numRead;
+		}
+
+		if (checkReadTimeout != null) {
+			checkReadTimeout.cancel();
+			checkReadTimeout = null;
 		}
 
 		if (numRead == -1) {
