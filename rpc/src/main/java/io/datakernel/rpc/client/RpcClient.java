@@ -533,6 +533,11 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		requestSender.sendRequest(request, timeout, callback);
 	}
 
+	@Override
+	public <I> void sendCommand(I command, int timeout, final CompletionCallback callback) {
+		requestSender.sendRequest(command, timeout, toResultCallback(callback));
+	}
+
 	public IRpcClient adaptToAnotherEventloop(final Eventloop anotherEventloop) {
 		if (anotherEventloop == this.eventloop) {
 			return this;
@@ -541,14 +546,37 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		return new IRpcClient() {
 			@Override
 			public <I, O> void sendRequest(final I request, final int timeout, final ResultCallback<O> callback) {
+				sendConcurrently(request, timeout, callback);
+			}
+
+			@Override
+			public <I> void sendCommand(final I command, final int timeout, final CompletionCallback callback) {
+				sendConcurrently(command, timeout, toResultCallback(callback));
+			}
+
+			private void sendConcurrently(final Object request, final int timeout, final ResultCallback<?> callback) {
 				RpcClient.this.eventloop.execute(new Runnable() {
 					@Override
 					public void run() {
-						RpcClient.this.sendRequest(
+						RpcClient.this.requestSender.sendRequest(
 								request, timeout, ConcurrentResultCallback.create(anotherEventloop, callback)
 						);
 					}
 				});
+			}
+		};
+	}
+
+	private static ResultCallback<Void> toResultCallback(final CompletionCallback callback) {
+		return new ResultCallback<Void>() {
+			@Override
+			protected void onResult(Void nothing) {
+				callback.setComplete();
+			}
+
+			@Override
+			protected void onException(Exception e) {
+				callback.setException(e);
 			}
 		};
 	}
