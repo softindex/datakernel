@@ -440,6 +440,13 @@ public final class HttpUrl {
 	}
 
 	private static int toInt(String str, int pos, int end) throws ParseException {
+		if (pos == end) {
+			throw new ParseException("Empty port value");
+		}
+		if ((end - pos) > 5) {
+			throw new ParseException("Bad port: " + str.substring(pos, end));
+		}
+
 		int result = 0;
 		for (int i = pos; i < end; i++) {
 			int c = (str.charAt(i) - '0');
@@ -447,6 +454,11 @@ public final class HttpUrl {
 				throw new ParseException("Bad port: " + str.substring(pos, end));
 			result = c + result * 10;
 		}
+
+		if (result > 0xFFFF) {
+			throw new ParseException("Bad port: " + str.substring(pos, end));
+		}
+
 		return result;
 	}
 
