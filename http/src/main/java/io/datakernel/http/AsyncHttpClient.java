@@ -396,7 +396,11 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 				boolean https = request.isHttps();
 				AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings)
 						.withInspector(inspector == null ? null : inspector.socketInspector(request, address, https));
-				AsyncTcpSocket asyncTcpSocket = https ? wrapClientSocket(eventloop, asyncTcpSocketImpl, sslContext, sslExecutor) : asyncTcpSocketImpl;
+				AsyncTcpSocket asyncTcpSocket = https ?
+						wrapClientSocket(eventloop, asyncTcpSocketImpl,
+								request.getUrl().getHost(), request.getUrl().getPort(),
+								sslContext, sslExecutor) :
+						asyncTcpSocketImpl;
 
 				HttpClientConnection connection = new HttpClientConnection(eventloop, address, asyncTcpSocket,
 						AsyncHttpClient.this, headerChars, maxHttpMessageSize);

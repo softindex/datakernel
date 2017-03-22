@@ -53,20 +53,33 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 	private boolean closed = false;
 
 	// region builders
-	private static AsyncSslSocket wrapSocket(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, SSLContext sslContext, Executor executor, boolean clientMode) {
+	public static AsyncSslSocket wrapClientSocket(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
+	                                              String host, int port,
+	                                              SSLContext sslContext, Executor executor) {
+		SSLEngine sslEngine = sslContext.createSSLEngine(host, port);
+		sslEngine.setUseClientMode(true);
+		return wrapSocket(eventloop, asyncTcpSocket, sslEngine, executor);
+	}
+
+	public static AsyncSslSocket wrapClientSocket(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
+	                                              SSLContext sslContext, Executor executor) {
 		SSLEngine sslEngine = sslContext.createSSLEngine();
-		sslEngine.setUseClientMode(clientMode);
-		AsyncSslSocket asyncSslSocket = AsyncSslSocket.create(eventloop, asyncTcpSocket, sslEngine, executor);
+		sslEngine.setUseClientMode(true);
+		return wrapSocket(eventloop, asyncTcpSocket, sslEngine, executor);
+	}
+
+	public static AsyncSslSocket wrapServerSocket(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
+	                                              SSLContext sslContext, Executor executor) {
+		SSLEngine sslEngine = sslContext.createSSLEngine();
+		sslEngine.setUseClientMode(false);
+		return wrapSocket(eventloop, asyncTcpSocket, sslEngine, executor);
+	}
+
+	public static AsyncSslSocket wrapSocket(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
+	                                        SSLEngine engine, Executor executor) {
+		AsyncSslSocket asyncSslSocket = AsyncSslSocket.create(eventloop, asyncTcpSocket, engine, executor);
 		asyncTcpSocket.setEventHandler(asyncSslSocket);
 		return asyncSslSocket;
-	}
-
-	public static AsyncSslSocket wrapClientSocket(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, SSLContext sslContext, Executor sslExecutor) {
-		return wrapSocket(eventloop, asyncTcpSocket, sslContext, sslExecutor, true);
-	}
-
-	public static AsyncSslSocket wrapServerSocket(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, SSLContext sslContext, Executor executor) {
-		return wrapSocket(eventloop, asyncTcpSocket, sslContext, executor, false);
 	}
 
 	private AsyncSslSocket(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, SSLEngine engine, Executor executor) {
