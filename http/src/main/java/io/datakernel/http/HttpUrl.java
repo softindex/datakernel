@@ -30,7 +30,7 @@ public final class HttpUrl {
 			private int keyStart;
 			private int currentRecord = 0;
 
-			public QueryParamIterator(int keyStart) {
+			QueryParamIterator(int keyStart) {
 				this.keyStart = keyStart;
 			}
 
@@ -163,24 +163,38 @@ public final class HttpUrl {
 		path = (short) raw.indexOf(SLASH, index);
 		pos = path;
 
-		query = (short) raw.indexOf(QUESTION_MARK);
+		query = (short) raw.indexOf(QUESTION_MARK, index);
 		if (query != -1) {
 			pathEnd = query;
 			query += 1;
-		} else {
-			pathEnd = (short) raw.length();
+			validatePort(query);
 		}
 
 		fragment = (short) raw.indexOf(NUMBER_SIGN, index);
-		fragment = fragment == -1 ? fragment : (short) (fragment + 1);
+		if (fragment != -1) {
+			pathEnd = pathEnd == -1 ? fragment : pathEnd;
+			fragment += 1;
+			validatePort(fragment);
+		}
+
+		if (pathEnd == -1) {
+			pathEnd = (short) raw.length();
+		}
 
 		if (port != -1) {
-			int portEnd = path == -1 ? query == -1 ? fragment == -1 ? raw.length() : fragment : query : path;
+			int portEnd = path == -1 ? query == -1 ? fragment == -1 ? raw.length() : fragment - 1 : query - 1 : path;
 			portValue = toInt(raw, port, portEnd);
 		} else {
 			if (host != -1) {
 				portValue = (https ? 443 : 80);
 			}
+		}
+	}
+
+	// port validation for cases where ':' happens in query and fragment sections
+	private void validatePort(int urlPartIndex) {
+		if (port > urlPartIndex) {
+			port = -1;
 		}
 	}
 
@@ -236,7 +250,7 @@ public final class HttpUrl {
 		if (query == -1) {
 			return "";
 		} else {
-			int queryEnd = fragment == -1 ? raw.length() : fragment;
+			int queryEnd = fragment == -1 ? raw.length() : fragment - 1;
 			return raw.substring(query, queryEnd);
 		}
 	}
@@ -250,20 +264,24 @@ public final class HttpUrl {
 	}
 
 	int getPathAndQueryLength() {
-		if (path == -1) {
-			return 1;
-		} else {
-			int queryEnd = fragment == -1 ? raw.length() : fragment;
-			return queryEnd - path;
-		}
+		int len = 0;
+		len += path == -1 ? 1 : pathEnd - path;
+		len += query == -1 ? 0 : (fragment == -1 ? raw.length() : fragment - 1) - query + 1;
+		return len;
 	}
 
 	void writePathAndQuery(ByteBuf buf) {
 		if (path == -1) {
 			buf.put((byte) '/');
 		} else {
+			for (int i = path; i < pathEnd; i++) {
+				buf.put((byte) raw.charAt(i));
+			}
+		}
+		if (query != -1) {
+			buf.put((byte) '?');
 			int queryEnd = fragment == -1 ? raw.length() : fragment - 1;
-			for (int i = path; i < queryEnd; i++) {
+			for (int i = query; i < queryEnd; i++) {
 				buf.put((byte) raw.charAt(i));
 			}
 		}
@@ -309,7 +327,7 @@ public final class HttpUrl {
 	}
 
 	void parseQueryParameters() {
-		int queryEnd = fragment == -1 ? raw.length() : fragment;
+		int queryEnd = fragment == -1 ? raw.length() : fragment - 1;
 		queryPositions = doParseParameters(raw, query, queryEnd);
 	}
 
@@ -333,7 +351,7 @@ public final class HttpUrl {
 		int record;     // temporary variable
 		for (int i = start; i < end; i++) {
 			char c = src.charAt(i);
-			if (c == QUERY_SEPARATOR) {
+			if (c == QUERY_SEPARATOR && ke == -1) {
 				ke = i;
 			}
 			if (c == QUERY_DELIMITER || i + 1 == end) {
@@ -405,7 +423,8 @@ public final class HttpUrl {
 	String pollUrlPart() {
 		if (pos < pathEnd) {
 			int start = pos + 1;
-			pos = (short) raw.indexOf('/', start);
+			int nextSlash = raw.indexOf('/', start);
+			pos = (short) (nextSlash > pathEnd ? pathEnd : nextSlash);
 			String part;
 			if (pos == -1) {
 				part = raw.substring(start, pathEnd);

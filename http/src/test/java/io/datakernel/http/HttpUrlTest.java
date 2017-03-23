@@ -16,6 +16,9 @@
 
 package io.datakernel.http;
 
+import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.exception.ParseException;
 import org.junit.Test;
 
@@ -144,7 +147,7 @@ public class HttpUrlTest {
 	}
 
 	@Test
-	public void testPollUrlPart() {
+	public void testPollUrlPartBase() {
 		HttpUrl uri = HttpUrl.of("http://example.com/a/b/c/index.html");
 		assertEquals("a", uri.pollUrlPart());
 		assertEquals("/b/c/index.html", uri.getRelativePath());
@@ -156,11 +159,66 @@ public class HttpUrlTest {
 	}
 
 	@Test
+	public void testPollUrlPartWithNotUrlEncodedQuery() throws ParseException {
+		HttpUrl url = HttpUrl.parse("/category/url?url=http://example.com");
+		assertEquals("category", url.pollUrlPart());
+		assertEquals("url", url.pollUrlPart());
+		assertEquals("", url.pollUrlPart());
+
+		url = HttpUrl.parse("/category/url/?url=http://example.com");
+		assertEquals("category", url.pollUrlPart());
+		assertEquals("url", url.pollUrlPart());
+		assertEquals("", url.pollUrlPart());
+	}
+
+	@Test
+	public void testExoticQueries() {
+		HttpUrl url = HttpUrl.of("http://example.com/path1/path2/?url=https://login:pass@example.com/?key1=value1%26key2=value2&ver=2.5.*;#fragment@;.*/:abc");
+		assertEquals("https://login:pass@example.com/?key1=value1&key2=value2", url.getQueryParameter("url"));
+		assertEquals("2.5.*;", url.getQueryParameter("ver"));
+	}
+
+	@Test
 	public void testFragment() {
 		HttpUrl url = HttpUrl.of("http://example.com/a/b/c/index.html?q=1&key=value#section-2.1");
 		assertEquals("example.com", url.getHost());
 		assertEquals("/a/b/c/index.html?q=1&key=value", url.getPathAndQuery());
 		assertEquals("section-2.1", url.getFragment());
+	}
+
+	@Test
+	public void testGetPathAndQueryLength() {
+		HttpUrl url = HttpUrl.of("http://example.com/a/b/c/index.html?q=1&key=value#section-2.1");
+		assertEquals(31, url.getPathAndQueryLength());
+
+		url = HttpUrl.of("http://example.com/?a=a&b=b&c#abcd");
+		assertEquals(11, url.getPathAndQueryLength());
+
+		url = HttpUrl.of("http://example.com/#abcd");
+		assertEquals(1, url.getPathAndQueryLength());
+	}
+
+	@Test
+	public void testWritePathAndQuery() {
+		HttpUrl url = HttpUrl.of("http://example.com:1234/path1/path2/path3/?key1=value1&key2#sec:2.2");
+		ByteBuf buf = ByteBufPool.allocate(64);
+		url.writePathAndQuery(buf);
+
+		assertEquals(0, buf.readPosition());
+		assertEquals(36, buf.writePosition());
+		assertEquals("/path1/path2/path3/?key1=value1&key2", ByteBufStrings.decodeAscii(buf));
+		buf.recycle();
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+
+		url = HttpUrl.of("http://example.com:1234?key1=value1&key2#sec:2.2");
+		buf = ByteBufPool.allocate(64);
+		url.writePathAndQuery(buf);
+
+		assertEquals(0, buf.readPosition());
+		assertEquals(18, buf.writePosition());
+		assertEquals("/?key1=value1&key2", ByteBufStrings.decodeAscii(buf));
+		buf.recycle();
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test(expected = NoSuchElementException.class)
