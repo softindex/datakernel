@@ -103,6 +103,7 @@ public final class  RpcServer extends AbstractServer<RpcServer> {
 	private int defaultPacketSize = (int) DEFAULT_PACKET_SIZE.get();
 	private int maxPacketSize = (int) MAX_PACKET_SIZE.get();
 	private boolean compression = false;
+	private int flushDelayMillis = 0;
 
 	private Map<Class<?>, RpcRequestHandler<?, ?>> handlers = new LinkedHashMap<>();
 	private SerializerBuilder serializerBuilder = SerializerBuilder.create(getSystemClassLoader());
@@ -181,6 +182,11 @@ public final class  RpcServer extends AbstractServer<RpcServer> {
 		return withStreamProtocol((int) defaultPacketSize.get(), (int) maxPacketSize.get(), compression);
 	}
 
+	public RpcServer withFlushDelay(int flushDelayMillis) {
+		this.flushDelayMillis = flushDelayMillis;
+		return this;
+	}
+
 	/**
 	 * Adds a handler for a specified request-response pair.
 	 *
@@ -201,8 +207,8 @@ public final class  RpcServer extends AbstractServer<RpcServer> {
 
 	@Override
 	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
-		RpcStream stream = new RpcStream(eventloop, asyncTcpSocket, serializer, defaultPacketSize, maxPacketSize, compression, true,
-				statsSerializer, statsDeserializer, statsCompressor, statsDecompressor);
+		RpcStream stream = new RpcStream(eventloop, asyncTcpSocket, serializer, defaultPacketSize, maxPacketSize,
+				flushDelayMillis, compression, true, statsSerializer, statsDeserializer, statsCompressor, statsDecompressor);
 		RpcServerConnection connection = new RpcServerConnection(eventloop, this,
 				asyncTcpSocket.getRemoteSocketAddress(), handlers, stream);
 		stream.setListener(connection);
