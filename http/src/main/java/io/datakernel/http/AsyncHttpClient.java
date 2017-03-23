@@ -396,6 +396,11 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 				boolean https = request.isHttps();
 				AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings)
 						.withInspector(inspector == null ? null : inspector.socketInspector(request, address, https));
+
+				if (https && sslContext == null) {
+					throw new IllegalArgumentException("Cannot send HTTPS Request without SSL enabled");
+				}
+
 				AsyncTcpSocket asyncTcpSocket = https ?
 						wrapClientSocket(eventloop, asyncTcpSocketImpl,
 								request.getUrl().getHost(), request.getUrl().getPort(),
