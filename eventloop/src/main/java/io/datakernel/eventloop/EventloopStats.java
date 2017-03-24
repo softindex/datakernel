@@ -36,7 +36,8 @@ public final class EventloopStats {
 	private final ValueStats businessLogicTime;
 	private final Tasks tasks;
 	private final Keys keys;
-	private final ErrorStats errorStats;
+	private final ExceptionStats fatalErrors;
+	private final Map<StackTrace, ExceptionStats> fatalErrorsMap;
 
 	private EventloopStats(double smoothingWindow, Eventloop.ExtraStatsExtractor extraStatsExtractor) {
 		loops = EventStats.create(smoothingWindow);
@@ -46,7 +47,8 @@ public final class EventloopStats {
 		businessLogicTime = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
 		tasks = new Tasks(smoothingWindow, extraStatsExtractor);
 		keys = new Keys(smoothingWindow);
-		errorStats = new ErrorStats();
+		fatalErrors = ExceptionStats.create().withStoreStackTrace(true);
+		fatalErrorsMap = new HashMap<>();
 	}
 
 	public static EventloopStats create(double smoothingWindow, Eventloop.ExtraStatsExtractor extraStatsExtractor) {
@@ -69,7 +71,8 @@ public final class EventloopStats {
 		businessLogicTime.resetStats();
 		tasks.reset();
 		keys.reset();
-		errorStats.reset();
+		fatalErrors.resetStats();
+		fatalErrorsMap.clear();
 	}
 
 	// region updating
@@ -152,18 +155,14 @@ public final class EventloopStats {
 	public void recordFatalError(Throwable throwable, Object causedObject) {
 		StackTrace stackTrace = new StackTrace(throwable.getStackTrace());
 
-		errorStats.fatalErrors.recordException(throwable, causedObject);
+		fatalErrors.recordException(throwable, causedObject);
 
-		ExceptionStats stats = errorStats.allFatalErrors.get(stackTrace);
+		ExceptionStats stats = fatalErrorsMap.get(stackTrace);
 		if (stats == null) {
 			stats = ExceptionStats.create().withStoreStackTrace(true);
-			errorStats.allFatalErrors.put(stackTrace, stats);
+			fatalErrorsMap.put(stackTrace, stats);
 		}
 		stats.recordException(throwable, causedObject);
-	}
-
-	public void recordIoError(Throwable throwable, Object causedObject) {
-		errorStats.ioErrors.recordException(throwable, causedObject);
 	}
 
 	public void recordScheduledTaskOverdue(int overdue, boolean background) {
@@ -207,8 +206,13 @@ public final class EventloopStats {
 	}
 
 	@JmxAttribute
-	public ErrorStats getErrorStats() {
-		return errorStats;
+	public ExceptionStats getFatalErrors() {
+		return fatalErrors;
+	}
+
+	@JmxAttribute
+	public Map<StackTrace, ExceptionStats> getFatalErrorsMap() {
+		return fatalErrorsMap;
 	}
 	// endregion
 
@@ -447,33 +451,6 @@ public final class EventloopStats {
 
 	private interface Count {
 		int getCount();
-	}
-
-	public static final class ErrorStats {
-		private final ExceptionStats fatalErrors = ExceptionStats.create().withStoreStackTrace(true);
-		private final Map<StackTrace, ExceptionStats> allFatalErrors = new HashMap<>();
-		private final ExceptionStats ioErrors = ExceptionStats.create();
-
-		public void reset() {
-			fatalErrors.resetStats();
-			allFatalErrors.clear();
-			ioErrors.resetStats();
-		}
-
-		@JmxAttribute
-		public ExceptionStats getFatalErrors() {
-			return fatalErrors;
-		}
-
-		@JmxAttribute
-		public Map<StackTrace, ExceptionStats> getAllFatalErrors() {
-			return allFatalErrors;
-		}
-
-		@JmxAttribute
-		public ExceptionStats getIoErrors() {
-			return ioErrors;
-		}
 	}
 
 	private static final class StackTrace {
