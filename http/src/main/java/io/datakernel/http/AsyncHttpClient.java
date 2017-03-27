@@ -419,6 +419,12 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 				if (expiredConnectionsCheck == null)
 					scheduleExpiredConnectionsCheck();
 
+				// connection was unexpectedly closed by the peer
+				if (connection.getCloseError() != null) {
+					callback.setException(connection.getCloseError());
+					return;
+				}
+
 				connection.send(request, callback);
 			}
 
