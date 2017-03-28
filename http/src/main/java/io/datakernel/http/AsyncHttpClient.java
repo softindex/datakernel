@@ -396,7 +396,16 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 				boolean https = request.isHttps();
 				AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings)
 						.withInspector(inspector == null ? null : inspector.socketInspector(request, address, https));
-				AsyncTcpSocket asyncTcpSocket = https ? wrapClientSocket(eventloop, asyncTcpSocketImpl, sslContext, sslExecutor) : asyncTcpSocketImpl;
+
+				if (https && sslContext == null) {
+					throw new IllegalArgumentException("Cannot send HTTPS Request without SSL enabled");
+				}
+
+				AsyncTcpSocket asyncTcpSocket = https ?
+						wrapClientSocket(eventloop, asyncTcpSocketImpl,
+								request.getUrl().getHost(), request.getUrl().getPort(),
+								sslContext, sslExecutor) :
+						asyncTcpSocketImpl;
 
 				HttpClientConnection connection = new HttpClientConnection(eventloop, address, asyncTcpSocket,
 						AsyncHttpClient.this, headerChars, maxHttpMessageSize);
@@ -409,6 +418,12 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 				connectionsCount++;
 				if (expiredConnectionsCheck == null)
 					scheduleExpiredConnectionsCheck();
+
+				// connection was unexpectedly closed by the peer
+				if (connection.getCloseError() != null) {
+					callback.setException(connection.getCloseError());
+					return;
+				}
 
 				connection.send(request, callback);
 			}

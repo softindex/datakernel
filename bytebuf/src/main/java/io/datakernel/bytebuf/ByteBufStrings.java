@@ -330,9 +330,13 @@ public final class ByteBufStrings {
 		len = len - trimOffsetRight(array, pos, len);
 		for (int i = pos; i < pos + len; i++) {
 			byte b = (byte) (array[i] - '0');
-			if (b < 0 || b >= 10)
+			if (b < 0 || b >= 10) {
 				throw new ParseException("Not a decimal value" + new String(array, pos, len));
+			}
 			result = b + result * 10;
+			if (result < 0) {
+				throw new ParseException("Bigger than max int value: " + new String(array, pos, len));
+			}
 		}
 		return result;
 	}
