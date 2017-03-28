@@ -41,6 +41,8 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	HttpClientConnection addressPrev;
 	HttpClientConnection addressNext;
 
+	private Exception closeError;
+
 	HttpClientConnection(Eventloop eventloop, InetSocketAddress remoteAddress,
 	                     AsyncTcpSocket asyncTcpSocket, AsyncHttpClient client, char[] headerChars,
 	                     int maxHttpMessageSize) {
@@ -61,6 +63,8 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		if (callback != null) {
 			callback.postException(eventloop, e);
 			callback = null;
+		} else {
+			closeError = e;
 		}
 		onClosed();
 	}
@@ -211,13 +215,22 @@ final class HttpClientConnection extends AbstractHttpConnection {
 				client.addresses.remove(remoteAddress);
 			}
 		}
-		pool.removeNode(this);
-		pool = null;
+
+		// pool will be null if socket was closed by the peer just before connection.send() invocation
+		if (pool != null) {
+			pool.removeNode(this);
+			pool = null;
+		}
+
 		client.onConnectionClosed();
 		bodyQueue.clear();
 		if (response != null) {
 			response.recycleBufs();
 		}
+	}
+
+	public Exception getCloseError() {
+		return closeError;
 	}
 
 	@Override
