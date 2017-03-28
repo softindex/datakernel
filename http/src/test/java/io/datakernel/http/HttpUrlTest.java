@@ -187,6 +187,15 @@ public class HttpUrlTest {
 	}
 
 	@Test
+	public void testGetPathAndQuery() {
+		HttpUrl url = HttpUrl.of("http://example.com/a/b/c/index.html?q=1&key=value#section-2.1");
+		assertEquals("/a/b/c/index.html?q=1&key=value", url.getPathAndQuery());
+
+		url = HttpUrl.of("http://example.com/?a=a&b=b&c#abcd");
+		assertEquals("/?a=a&b=b&c", url.getPathAndQuery());
+	}
+
+	@Test
 	public void testGetPathAndQueryLength() {
 		HttpUrl url = HttpUrl.of("http://example.com/a/b/c/index.html?q=1&key=value#section-2.1");
 		assertEquals(31, url.getPathAndQueryLength());
@@ -196,6 +205,17 @@ public class HttpUrlTest {
 
 		url = HttpUrl.of("http://example.com/#abcd");
 		assertEquals(1, url.getPathAndQueryLength());
+	}
+
+	@Test
+	public void testUrlWithQmInFragment() {
+		HttpUrl url = HttpUrl.of("http://example.com/a/b/c/index.html#section-2.1?q=1&key=value&b:c");
+		assertEquals(17, url.getPathAndQueryLength());
+		ByteBuf buf = ByteBufPool.allocate(64);
+		url.writePathAndQuery(buf);
+		assertEquals("/a/b/c/index.html", ByteBufStrings.decodeAscii(buf));
+		buf.recycle();
+		assertEquals("section-2.1?q=1&key=value&b:c", url.getFragment());
 	}
 
 	@Test

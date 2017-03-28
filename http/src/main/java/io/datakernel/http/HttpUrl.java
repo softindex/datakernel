@@ -164,13 +164,18 @@ public final class HttpUrl {
 		pos = path;
 
 		query = (short) raw.indexOf(QUESTION_MARK, index);
+		fragment = (short) raw.indexOf(NUMBER_SIGN, index);
+
 		if (query != -1) {
-			pathEnd = query;
-			query += 1;
-			validatePort(query);
+			if (fragment == -1 || query < fragment) {
+				pathEnd = query;
+				query += 1;
+				validatePort(query);
+			} else {
+				query = -1;
+			}
 		}
 
-		fragment = (short) raw.indexOf(NUMBER_SIGN, index);
 		if (fragment != -1) {
 			pathEnd = pathEnd == -1 ? fragment : pathEnd;
 			fragment += 1;
@@ -231,7 +236,12 @@ public final class HttpUrl {
 
 	public String getPathAndQuery() {
 		if (path == -1) {
-			return "/";
+			if (query == -1)
+				return "/";
+			else {
+				int queryEnd = fragment == -1 ? raw.length() : fragment - 1;
+				return raw.substring(query, queryEnd);
+			}
 		} else {
 			int queryEnd = fragment == -1 ? raw.length() : fragment - 1;
 			return raw.substring(path, queryEnd);
