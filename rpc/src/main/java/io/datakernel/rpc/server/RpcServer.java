@@ -322,12 +322,12 @@ public final class  RpcServer extends AbstractServer<RpcServer> {
 		return connections;
 	}
 
-	@JmxAttribute(description = "number of requests which were processed correctly")
+	@JmxAttribute(extraSubAttributes = "totalCount", description = "number of requests which were processed correctly")
 	public EventStats getSuccessfulRequests() {
 		return successfulRequests;
 	}
 
-	@JmxAttribute(description = "request with error responses (number of requests which were handled with error)")
+	@JmxAttribute(extraSubAttributes = "totalCount", description = "request with error responses (number of requests which were handled with error)")
 	public EventStats getFailedRequests() {
 		return failedRequests;
 	}

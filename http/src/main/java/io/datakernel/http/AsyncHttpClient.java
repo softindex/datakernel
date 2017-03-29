@@ -132,7 +132,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 		void onConnectError(HttpRequest request, InetSocketAddress address, Exception e);
 
-		void onConnectionResponse(HttpClientConnection connection, HttpResponse response);
+		void onHttpResponse(HttpClientConnection connection, HttpResponse response);
 
 		void onHttpError(HttpClientConnection connection, boolean keepAliveConnection, Exception e);
 	}
@@ -181,7 +181,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		}
 
 		@Override
-		public void onConnectionResponse(HttpClientConnection connection, HttpResponse response) {
+		public void onHttpResponse(HttpClientConnection connection, HttpResponse response) {
 			responses++;
 		}
 
@@ -202,7 +202,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 			return socketStats;
 		}
 
-		@JmxAttribute(description = "all requests that were sent (both successful and failed)")
+		@JmxAttribute(extraSubAttributes = "totalCount", description = "all requests that were sent (both successful and failed)")
 		public EventStats getTotalRequests() {
 			return totalRequests;
 		}
@@ -227,10 +227,15 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 			return httpErrors;
 		}
 
-		@JmxAttribute
+		@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
 		public long getActiveRequests() {
 			return totalRequests.getTotalCount() -
 					(resolveErrors.getTotal() + connectErrors.getTotal() + responsesErrors + responses);
+		}
+
+		@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
+		public long getTotalResponses() {
+			return responses;
 		}
 	}
 
