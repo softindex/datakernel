@@ -19,7 +19,6 @@ package io.datakernel.rpc.server;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
-import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.*;
 import io.datakernel.jmx.JmxReducers.JmxReducerSum;
@@ -126,7 +125,6 @@ public final class  RpcServer extends AbstractServer<RpcServer> {
 	private ExceptionStats lastProtocolError = ExceptionStats.create();
 	private boolean monitoring;
 
-	private final AsyncTcpSocketImpl.JmxInspector statsSocket = new AsyncTcpSocketImpl.JmxInspector();
 	private final StreamBinarySerializer.JmxInspector statsSerializer = new StreamBinarySerializer.JmxInspector();
 	private final StreamBinaryDeserializer.JmxInspector statsDeserializer = new StreamBinaryDeserializer.JmxInspector();
 	private final StreamLZ4Compressor.JmxInspector statsCompressor = new StreamLZ4Compressor.JmxInspector();
@@ -353,11 +351,6 @@ public final class  RpcServer extends AbstractServer<RpcServer> {
 			"(serialization, deserialization, compression, decompression, etc)")
 	public ExceptionStats getLastProtocolError() {
 		return lastProtocolError;
-	}
-
-	@JmxAttribute
-	public AsyncTcpSocketImpl.JmxInspector getStatsSocket() {
-		return statsSocket;
 	}
 
 	@JmxAttribute
