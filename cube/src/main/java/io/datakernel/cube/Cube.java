@@ -1152,14 +1152,14 @@ public final class Cube implements ICube, EventloopJmxMBean {
 
 			List<AsyncRunnable> tasks = new ArrayList<>();
 			for (final AttributeResolverContainer resolverContainer : attributeResolvers) {
-				List<String> attributes = new ArrayList<>(resolverContainer.attributes);
+				final List<String> attributes = new ArrayList<>(resolverContainer.attributes);
 				attributes.retainAll(resultAttributes);
 				if (!attributes.isEmpty()) {
 					tasks.add(new AsyncRunnable() {
 						@Override
 						public void run(CompletionCallback callback) {
 							resolveAttributes(results, resolverContainer.resolver,
-									resolverContainer.dimensions, resolverContainer.attributes,
+									resolverContainer.dimensions, attributes,
 									(Class) resultClass, queryClassLoader, callback);
 						}
 					});
