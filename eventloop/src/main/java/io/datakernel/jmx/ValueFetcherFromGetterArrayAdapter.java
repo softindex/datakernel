@@ -16,11 +16,15 @@
 
 package io.datakernel.jmx;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
 
 final class ValueFetcherFromGetterArrayAdapter implements ValueFetcher {
 	private final Method getter;
@@ -32,9 +36,27 @@ final class ValueFetcherFromGetterArrayAdapter implements ValueFetcher {
 	@Override
 	public Object fetchFrom(Object source) {
 		try {
-			return asList((Object[]) getter.invoke(source));
+			Object arr = getter.invoke(source);
+			if (arr.getClass().getComponentType().isPrimitive()) {
+				return wrapPrimitives(arr);
+			} else {
+				return asList((Object[]) arr);
+			}
 		} catch (IllegalAccessException | InvocationTargetException e) {
 			throw new RuntimeException(e);
 		}
+	}
+
+	private List<Object> wrapPrimitives(Object arr) {
+		int length = Array.getLength(arr);
+		if(length == 0) {
+			return emptyList();
+		}
+
+		List<Object> wrappers = new ArrayList<>(length);
+		for (int i = 0; i < length; i++) {
+			wrappers.add(Array.get(arr, i));
+		}
+		return wrappers;
 	}
 }

@@ -168,21 +168,21 @@ final class AttributeNodeForList extends AttributeNodeForLeafAbstract {
 
 	private static Class<?> classOf(OpenType<?> openType) {
 		if (openType.equals(SimpleType.BOOLEAN)) {
-			return boolean.class;
+			return Boolean.class;
 		} else if (openType.equals(SimpleType.BYTE)) {
-			return byte.class;
+			return Byte.class;
 		} else if (openType.equals(SimpleType.SHORT)) {
-			return short.class;
+			return Short.class;
 		} else if (openType.equals(SimpleType.CHARACTER)) {
-			return char.class;
+			return Character.class;
 		} else if (openType.equals(SimpleType.INTEGER)) {
-			return int.class;
+			return Integer.class;
 		} else if (openType.equals(SimpleType.LONG)) {
-			return long.class;
+			return Long.class;
 		} else if (openType.equals(SimpleType.FLOAT)) {
-			return float.class;
+			return Float.class;
 		} else if (openType.equals(SimpleType.DOUBLE)) {
-			return double.class;
+			return Double.class;
 		} else if (openType.equals(SimpleType.STRING)) {
 			return String.class;
 		} else if (openType instanceof CompositeType) {
