@@ -665,7 +665,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		}
 	}
 
-	@JmxAttribute(name = "requests")
+	@JmxAttribute(name = "requests", extraSubAttributes = "totalRequests")
 	public RpcRequestStats getGeneralRequestsStats() {
 		return generalRequestsStats;
 	}

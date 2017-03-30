@@ -63,22 +63,22 @@ public final class RpcRequestStats implements JmxRefreshable {
 		overdues.resetStats();
 	}
 
-	@JmxAttribute
+	@JmxAttribute(extraSubAttributes = "totalCount")
 	public EventStats getTotalRequests() {
 		return totalRequests;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(extraSubAttributes = "totalCount")
 	public EventStats getFailedRequests() {
 		return failedRequests;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(extraSubAttributes = "totalCount")
 	public EventStats getRejectedRequests() {
 		return rejectedRequests;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(extraSubAttributes = "totalCount")
 	public EventStats getExpiredRequests() {
 		return expiredRequests;
 	}
