@@ -127,6 +127,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		private static final double SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_1_MINUTE;
 
 		private final EventStats totalRequests = EventStats.create(SMOOTHING_WINDOW);
+		private final EventStats totalResponses = EventStats.create(SMOOTHING_WINDOW);
 		private final EventStats httpTimeouts = EventStats.create(SMOOTHING_WINDOW);
 		private final ExceptionStats httpErrors = ExceptionStats.create();
 		private final ExceptionStats servletExceptions = ExceptionStats.create();
@@ -147,6 +148,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 		@Override
 		public void onHttpResponse(HttpRequest request, HttpResponse httpResponse) {
+			totalResponses.recordEvent();
 		}
 
 		@Override
@@ -154,9 +156,14 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 			servletExceptions.recordException(e, request.toString());
 		}
 
-		@JmxAttribute()
+		@JmxAttribute(extraSubAttributes = "totalCount")
 		public EventStats getTotalRequests() {
 			return totalRequests;
+		}
+
+		@JmxAttribute(extraSubAttributes = "totalCount")
+		public EventStats getTotalResponses() {
+			return totalResponses;
 		}
 
 		@JmxAttribute

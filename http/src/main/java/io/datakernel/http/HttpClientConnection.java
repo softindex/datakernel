@@ -142,7 +142,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 			}
 		});
 
-		if (inspector != null) inspector.onConnectionResponse(this, response);
+		if (inspector != null) inspector.onHttpResponse(this, response);
 		if (keepAlive && client.keepAliveTimeoutMillis != 0) {
 			reset();
 			client.returnToKeepAlivePool(this);

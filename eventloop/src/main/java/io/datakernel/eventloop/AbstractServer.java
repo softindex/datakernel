@@ -356,7 +356,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		return listenAddress.getAddress().isAnyLocalAddress();
 	}
 
-	@JmxAttribute
+	@JmxAttribute(extraSubAttributes = "totalCount")
 	public final EventStats getAccepts() {
 		return acceptServer.listenAddresses.isEmpty() ? null : accepts;
 	}
