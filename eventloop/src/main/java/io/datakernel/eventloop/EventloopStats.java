@@ -102,10 +102,10 @@ public final class EventloopStats {
 	                                    int connectKeys, int readKeys, int writeKeys, long loopTime) {
 		keys.all.recordEvents(lastSelectedKeys);
 		keys.invalid.recordEvents(invalidKeys);
-		keys.accept.recordValue(acceptKeys);
-		keys.connect.recordValue(connectKeys);
-		keys.read.recordValue(readKeys);
-		keys.write.recordValue(writeKeys);
+		keys.acceptPerLoop.recordValue(acceptKeys);
+		keys.connectPerLoop.recordValue(connectKeys);
+		keys.readPerLoop.recordValue(readKeys);
+		keys.writePerLoop.recordValue(writeKeys);
 		keys.loopTime.recordValue((int) loopTime);
 	}
 
@@ -381,20 +381,20 @@ public final class EventloopStats {
 	public static final class Keys {
 		private final EventStats all;
 		private final EventStats invalid;
-		private final ValueStats accept;
-		private final ValueStats connect;
-		private final ValueStats read;
-		private final ValueStats write;
+		private final ValueStats acceptPerLoop;
+		private final ValueStats connectPerLoop;
+		private final ValueStats readPerLoop;
+		private final ValueStats writePerLoop;
 		private final ValueStats loopTime;
 		private final ValueStats oneKeyTime;
 
 		public Keys(double smoothingWindow) {
 			all = EventStats.create(smoothingWindow);
 			invalid = EventStats.create(smoothingWindow);
-			accept = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
-			connect = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
-			read = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
-			write = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
+			acceptPerLoop = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
+			connectPerLoop = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
+			readPerLoop = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
+			writePerLoop = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
 			loopTime = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
 			oneKeyTime = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
 		}
@@ -402,10 +402,10 @@ public final class EventloopStats {
 		public void setSmoothingWindow(double smoothingWindow) {
 			all.setSmoothingWindow(smoothingWindow);
 			invalid.setSmoothingWindow(smoothingWindow);
-			accept.setSmoothingWindow(smoothingWindow);
-			connect.setSmoothingWindow(smoothingWindow);
-			read.setSmoothingWindow(smoothingWindow);
-			write.setSmoothingWindow(smoothingWindow);
+			acceptPerLoop.setSmoothingWindow(smoothingWindow);
+			connectPerLoop.setSmoothingWindow(smoothingWindow);
+			readPerLoop.setSmoothingWindow(smoothingWindow);
+			writePerLoop.setSmoothingWindow(smoothingWindow);
 			loopTime.setSmoothingWindow(smoothingWindow);
 			oneKeyTime.setSmoothingWindow(smoothingWindow);
 		}
@@ -413,10 +413,10 @@ public final class EventloopStats {
 		public void reset() {
 			all.resetStats();
 			invalid.resetStats();
-			accept.resetStats();
-			connect.resetStats();
-			read.resetStats();
-			write.resetStats();
+			acceptPerLoop.resetStats();
+			connectPerLoop.resetStats();
+			readPerLoop.resetStats();
+			writePerLoop.resetStats();
 			loopTime.resetStats();
 			oneKeyTime.resetStats();
 		}
@@ -432,23 +432,23 @@ public final class EventloopStats {
 		}
 
 		@JmxAttribute(extraSubAttributes = "histogram")
-		public ValueStats getAccept() {
-			return accept;
+		public ValueStats getAcceptPerLoop() {
+			return acceptPerLoop;
 		}
 
 		@JmxAttribute(extraSubAttributes = "histogram")
-		public ValueStats getConnect() {
-			return connect;
+		public ValueStats getConnectPerLoop() {
+			return connectPerLoop;
 		}
 
 		@JmxAttribute(extraSubAttributes = "histogram")
-		public ValueStats getRead() {
-			return read;
+		public ValueStats getReadPerLoop() {
+			return readPerLoop;
 		}
 
 		@JmxAttribute(extraSubAttributes = "histogram")
-		public ValueStats getWrite() {
-			return write;
+		public ValueStats getWritePerLoop() {
+			return writePerLoop;
 		}
 
 		@JmxAttribute(extraSubAttributes = "histogram")
