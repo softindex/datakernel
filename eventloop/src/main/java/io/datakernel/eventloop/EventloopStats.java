@@ -38,6 +38,7 @@ public final class EventloopStats {
 	private final Keys keys;
 	private final ExceptionStats fatalErrors;
 	private final Map<StackTrace, ExceptionStats> fatalErrorsMap;
+	private final EventStats selectorSpinnings;
 
 	private EventloopStats(double smoothingWindow, Eventloop.ExtraStatsExtractor extraStatsExtractor) {
 		loops = EventStats.create(smoothingWindow);
@@ -49,6 +50,7 @@ public final class EventloopStats {
 		keys = new Keys(smoothingWindow);
 		fatalErrors = ExceptionStats.create().withStoreStackTrace(true);
 		fatalErrorsMap = new HashMap<>();
+		selectorSpinnings = EventStats.create(smoothingWindow);
 	}
 
 	public static EventloopStats create(double smoothingWindow, Eventloop.ExtraStatsExtractor extraStatsExtractor) {
@@ -73,6 +75,7 @@ public final class EventloopStats {
 		keys.reset();
 		fatalErrors.resetStats();
 		fatalErrorsMap.clear();
+		selectorSpinnings.resetStats();
 	}
 
 	// region updating
@@ -99,10 +102,10 @@ public final class EventloopStats {
 	                                    int connectKeys, int readKeys, int writeKeys, long loopTime) {
 		keys.all.recordEvents(lastSelectedKeys);
 		keys.invalid.recordEvents(invalidKeys);
-		keys.accept.recordEvents(acceptKeys);
-		keys.connect.recordEvents(connectKeys);
-		keys.read.recordEvents(readKeys);
-		keys.write.recordEvents(writeKeys);
+		keys.accept.recordValue(acceptKeys);
+		keys.connect.recordValue(connectKeys);
+		keys.read.recordValue(readKeys);
+		keys.write.recordValue(writeKeys);
 		keys.loopTime.recordValue((int) loopTime);
 	}
 
@@ -172,6 +175,10 @@ public final class EventloopStats {
 			tasks.scheduled.overdues.recordValue(overdue);
 		}
 	}
+
+	public void updateProcessedTasksAndKeys(int tasksAndKeys) {
+		if (tasksAndKeys == 0) selectorSpinnings.recordEvent();
+	}
 	// endregion
 
 	// region root attributes
@@ -214,6 +221,12 @@ public final class EventloopStats {
 	public Map<StackTrace, ExceptionStats> getFatalErrorsMap() {
 		return fatalErrorsMap;
 	}
+
+	@JmxAttribute
+	public EventStats getSelectorSpinnings() {
+		return selectorSpinnings;
+	}
+
 	// endregion
 
 	// region helper classes for stats grouping
@@ -368,20 +381,20 @@ public final class EventloopStats {
 	public static final class Keys {
 		private final EventStats all;
 		private final EventStats invalid;
-		private final EventStats accept;
-		private final EventStats connect;
-		private final EventStats read;
-		private final EventStats write;
+		private final ValueStats accept;
+		private final ValueStats connect;
+		private final ValueStats read;
+		private final ValueStats write;
 		private final ValueStats loopTime;
 		private final ValueStats oneKeyTime;
 
 		public Keys(double smoothingWindow) {
 			all = EventStats.create(smoothingWindow);
 			invalid = EventStats.create(smoothingWindow);
-			accept = EventStats.create(smoothingWindow);
-			connect = EventStats.create(smoothingWindow);
-			read = EventStats.create(smoothingWindow);
-			write = EventStats.create(smoothingWindow);
+			accept = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
+			connect = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
+			read = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
+			write = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
 			loopTime = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
 			oneKeyTime = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
 		}
@@ -418,23 +431,23 @@ public final class EventloopStats {
 			return invalid;
 		}
 
-		@JmxAttribute
-		public EventStats getAccept() {
+		@JmxAttribute(extraSubAttributes = "histogram")
+		public ValueStats getAccept() {
 			return accept;
 		}
 
-		@JmxAttribute
-		public EventStats getConnect() {
+		@JmxAttribute(extraSubAttributes = "histogram")
+		public ValueStats getConnect() {
 			return connect;
 		}
 
-		@JmxAttribute
-		public EventStats getRead() {
+		@JmxAttribute(extraSubAttributes = "histogram")
+		public ValueStats getRead() {
 			return read;
 		}
 
-		@JmxAttribute
-		public EventStats getWrite() {
+		@JmxAttribute(extraSubAttributes = "histogram")
+		public ValueStats getWrite() {
 			return write;
 		}
 

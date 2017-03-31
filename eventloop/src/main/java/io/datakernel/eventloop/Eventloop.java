@@ -293,11 +293,13 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 			}
 			updateSelectorSelectStats();
 
-			processSelectedKeys(selector.selectedKeys());
-			executeConcurrentTasks();
-			executeScheduledTasks();
-			executeBackgroundTasks();
-			executeLocalTasks();
+			final int keys = processSelectedKeys(selector.selectedKeys());
+			final int concurrentTasks = executeConcurrentTasks();
+			final int scheduledTasks = executeScheduledTasks();
+			final int backgroundTasks = executeBackgroundTasks();
+			final int localTasks = executeLocalTasks();
+
+			stats.updateProcessedTasksAndKeys(keys + concurrentTasks + scheduledTasks + backgroundTasks + localTasks);
 
 			updateBusinessLogicStats();
 			tick = (tick + (1L << 32)) & ~0xFFFFFFFFL;
@@ -358,7 +360,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	 *
 	 * @param selectedKeys set that contains all selected keys, returned from NIO Selector.select()
 	 */
-	private void processSelectedKeys(Set<SelectionKey> selectedKeys) {
+	private int processSelectedKeys(Set<SelectionKey> selectedKeys) {
 		long startTimestamp = timestamp;
 		Stopwatch sw = monitoring ? Stopwatch.createUnstarted() : null;
 
@@ -401,8 +403,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 						invalidKeys++;
 					}
 				}
-				if (sw != null)
-					stats.updateSelectedKeyDuration(sw);
+				if (sw != null) stats.updateSelectedKeyDuration(sw);
 			} catch (Throwable e) {
 				recordFatalError(e, key.attachment());
 				closeQuietly(key.channel());
@@ -411,12 +412,14 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		long loopTime = refreshTimestampAndGet() - startTimestamp;
 		stats.updateSelectedKeysStats(lastSelectedKeys,
 				invalidKeys, acceptKeys, connectKeys, readKeys, writeKeys, loopTime);
+
+		return acceptKeys + connectKeys + readKeys + writeKeys + invalidKeys;
 	}
 
 	/**
 	 * Executes local tasks which were added from current thread
 	 */
-	private void executeLocalTasks() {
+	private int executeLocalTasks() {
 		long startTimestamp = timestamp;
 
 		int newRunnables = 0;
@@ -446,12 +449,14 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		}
 		long loopTime = refreshTimestampAndGet() - startTimestamp;
 		stats.updateLocalTasksStats(newRunnables, loopTime);
+
+		return newRunnables;
 	}
 
 	/**
 	 * Executes concurrent tasks which were added from other threads.
 	 */
-	private void executeConcurrentTasks() {
+	private int executeConcurrentTasks() {
 		long startTimestamp = timestamp;
 
 		int newRunnables = 0;
@@ -481,20 +486,22 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		}
 		long loopTime = refreshTimestampAndGet() - startTimestamp;
 		stats.updateConcurrentTasksStats(newRunnables, loopTime);
+
+		return newRunnables;
 	}
 
 	/**
 	 * Executes tasks, scheduled for execution at particular timestamps
 	 */
-	private void executeScheduledTasks() {
-		executeScheduledTasks(scheduledTasks);
+	private int executeScheduledTasks() {
+		return executeScheduledTasks(scheduledTasks);
 	}
 
-	private void executeBackgroundTasks() {
-		executeScheduledTasks(backgroundTasks);
+	private int executeBackgroundTasks() {
+		return executeScheduledTasks(backgroundTasks);
 	}
 
-	private void executeScheduledTasks(PriorityQueue<ScheduledRunnable> taskQueue) {
+	private int executeScheduledTasks(PriorityQueue<ScheduledRunnable> taskQueue) {
 		long startTimestamp = timestamp;
 		boolean background = taskQueue == backgroundTasks;
 
@@ -541,6 +548,8 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 
 		long loopTime = refreshTimestampAndGet() - startTimestamp;
 		stats.updateScheduledTasksStats(newRunnables, loopTime, background);
+
+		return newRunnables;
 	}
 
 	/**
