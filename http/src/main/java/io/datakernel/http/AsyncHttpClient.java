@@ -32,6 +32,7 @@ import io.datakernel.net.SocketSettings;
 import io.datakernel.util.MemSize;
 
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
@@ -150,6 +151,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		private final EventStats httpTimeouts = EventStats.create(SMOOTHING_WINDOW);
 		private final ExceptionStats httpErrors = ExceptionStats.create();
 		private long responsesErrors;
+		private final EventStats sslErrors = EventStats.create(SMOOTHING_WINDOW);
 
 		@Override
 		public AsyncTcpSocketImpl.Inspector socketInspector(HttpRequest httpRequest, InetSocketAddress address, boolean https) {
@@ -191,6 +193,9 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 				httpTimeouts.recordEvent();
 			} else {
 				httpErrors.recordException(e);
+				if (SSLException.class == e.getClass()) {
+					sslErrors.recordEvent();
+				}
 				if (!keepAliveConnection) {
 					responsesErrors++;
 				}
@@ -237,6 +242,12 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		public long getTotalResponses() {
 			return responses;
 		}
+
+		@JmxAttribute
+		public EventStats getSslErrors() {
+			return sslErrors;
+		}
+
 	}
 
 	private int inetAddressIdx = 0;
@@ -385,7 +396,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	}
 
 	private void doSend(final HttpRequest request, final InetAddress[] inetAddresses,
-	                    final ResultCallback<HttpResponse> callback) {
+						final ResultCallback<HttpResponse> callback) {
 		final InetAddress inetAddress = inetAddresses[((inetAddressIdx++) & Integer.MAX_VALUE) % inetAddresses.length];
 		final InetSocketAddress address = new InetSocketAddress(inetAddress, request.getUrl().getPort());
 
