@@ -53,7 +53,8 @@ public final class RpcStream {
 
 	public RpcStream(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
 	                 BufferSerializer<RpcMessage> messageSerializer,
-	                 int defaultPacketSize, int maxPacketSize, boolean compression, boolean server,
+	                 int defaultPacketSize, int maxPacketSize,
+	                 int flushDelayMillis, boolean compression, boolean server,
 	                 StreamBinarySerializer.Inspector serializerInspector,
 	                 StreamBinaryDeserializer.Inspector deserializerInspector,
 	                 StreamLZ4Compressor.Inspector compressorInspector,
@@ -128,6 +129,7 @@ public final class RpcStream {
 		serializer = StreamBinarySerializer.create(eventloop, messageSerializer)
 				.withDefaultBufferSize(defaultPacketSize)
 				.withMaxMessageSize(maxPacketSize)
+				.withFlushDelay(flushDelayMillis)
 				.withSkipSerializationErrors()
 				.withInspector(serializerInspector);
 		deserializer = StreamBinaryDeserializer.create(eventloop, messageSerializer)

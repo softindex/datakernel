@@ -603,7 +603,6 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		try {
 			connected = channel.finishConnect();
 		} catch (IOException e) {
-			recordIoError(e, channel);
 			closeQuietly(channel);
 			connectCallback.setException(e);
 			return;
@@ -667,7 +666,6 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 			serverChannel.register(ensureSelector(), SelectionKey.OP_ACCEPT, acceptCallback);
 			return serverChannel;
 		} catch (IOException e) {
-			recordIoError(e, address);
 			closeQuietly(serverChannel);
 			throw e;
 		}
@@ -733,7 +731,6 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 					timeoutConnectCallback(socketChannel, timeout, connectCallback));
 
 		} catch (IOException e) {
-			recordIoError(e, address);
 			closeQuietly(socketChannel);
 			try {
 				connectCallback.setException(e);
@@ -1202,9 +1199,8 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		stats.reset();
 	}
 
-	public void recordIoError(Exception e, Object context) {
+	private void recordIoError(Exception e, Object context) {
 		logger.warn("IO Error in {}: {}", context, e.toString());
-		stats.recordIoError(e, context);
 	}
 
 	public void recordFatalError(final Throwable e, final Object context) {

@@ -397,7 +397,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	}
 
 	private static void checkJmxStatsAreValid(Class<?> returnClass, Class<?> mbeanClass, Method getter) {
-		if (!EventloopJmxMBean.class.isAssignableFrom(mbeanClass)) {
+		if (JmxRefreshableStats.class.isAssignableFrom(returnClass) &&
+				!EventloopJmxMBean.class.isAssignableFrom(mbeanClass)) {
 			throw new IllegalArgumentException("JmxRefreshableStats can be used only in classes that implements" +
 					" EventloopJmxMBean");
 		}

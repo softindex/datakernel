@@ -157,6 +157,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 	private int defaultPacketSize = (int) DEFAULT_PACKET_SIZE.get();
 	private int maxPacketSize = (int) MAX_PACKET_SIZE.get();
 	private boolean compression = false;
+	private int flushDelayMillis = 0;
 
 	private List<Class<?>> messageTypes;
 	private long connectTimeoutMillis = DEFAULT_CONNECT_TIMEOUT;
@@ -281,6 +282,11 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 
 	public RpcClient withStreamProtocol(MemSize defaultPacketSize, MemSize maxPacketSize, boolean compression) {
 		return withStreamProtocol((int) defaultPacketSize.get(), (int) maxPacketSize.get(), compression);
+	}
+
+	public RpcClient withFlushDelay(int flushDelayMillis) {
+		this.flushDelayMillis = flushDelayMillis;
+		return this;
 	}
 
 	/**
@@ -430,8 +436,8 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 				AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings)
 						.withInspector(statsSocket);
 				AsyncTcpSocket asyncTcpSocket = sslContext != null ? wrapClientSocket(eventloop, asyncTcpSocketImpl, sslContext, sslExecutor) : asyncTcpSocketImpl;
-				RpcStream stream = new RpcStream(eventloop, asyncTcpSocket, serializer, defaultPacketSize, maxPacketSize, compression, false,
-						statsSerializer, statsDeserializer, statsCompressor, statsDecompressor);
+				RpcStream stream = new RpcStream(eventloop, asyncTcpSocket, serializer, defaultPacketSize, maxPacketSize,
+						flushDelayMillis, compression, false, statsSerializer, statsDeserializer, statsCompressor, statsDecompressor);
 				RpcClientConnection connection = new RpcClientConnection(eventloop, RpcClient.this, address, stream);
 				stream.setListener(connection);
 				asyncTcpSocket.setEventHandler(stream.getSocketEventHandler());
