@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2015 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.datakernel.aggregation;
 
 import com.google.common.base.Joiner;
@@ -74,13 +90,14 @@ public class AggregationPredicates {
 		PredicateSimplifier simplifierAlwaysFalse = new PredicateSimplifier<PredicateAlwaysFalse, AggregationPredicate>() {
 			@Override
 			public AggregationPredicate simplifyAnd(PredicateAlwaysFalse left, AggregationPredicate right) {
-				return alwaysFalse();
+				return left;
 			}
 		};
 		register(PredicateAlwaysFalse.class, PredicateAlwaysFalse.class, simplifierAlwaysFalse);
 		register(PredicateAlwaysFalse.class, PredicateAlwaysTrue.class, simplifierAlwaysFalse);
 		register(PredicateAlwaysFalse.class, PredicateNot.class, simplifierAlwaysFalse);
 		register(PredicateAlwaysFalse.class, PredicateEq.class, simplifierAlwaysFalse);
+		register(PredicateAlwaysFalse.class, PredicateHas.class, simplifierAlwaysFalse);
 		register(PredicateAlwaysFalse.class, PredicateBetween.class, simplifierAlwaysFalse);
 		register(PredicateAlwaysFalse.class, PredicateRegexp.class, simplifierAlwaysFalse);
 		register(PredicateAlwaysFalse.class, PredicateAnd.class, simplifierAlwaysFalse);
@@ -95,6 +112,7 @@ public class AggregationPredicates {
 		register(PredicateAlwaysTrue.class, PredicateAlwaysTrue.class, simplifierAlwaysTrue);
 		register(PredicateAlwaysTrue.class, PredicateNot.class, simplifierAlwaysTrue);
 		register(PredicateAlwaysTrue.class, PredicateEq.class, simplifierAlwaysTrue);
+		register(PredicateAlwaysTrue.class, PredicateHas.class, simplifierAlwaysTrue);
 		register(PredicateAlwaysTrue.class, PredicateBetween.class, simplifierAlwaysTrue);
 		register(PredicateAlwaysTrue.class, PredicateRegexp.class, simplifierAlwaysTrue);
 		register(PredicateAlwaysTrue.class, PredicateAnd.class, simplifierAlwaysTrue);
@@ -110,6 +128,7 @@ public class AggregationPredicates {
 		};
 		register(PredicateNot.class, PredicateNot.class, simplifierNot);
 		register(PredicateNot.class, PredicateEq.class, simplifierNot);
+		register(PredicateNot.class, PredicateHas.class, simplifierNot);
 		register(PredicateNot.class, PredicateBetween.class, simplifierNot);
 		register(PredicateNot.class, PredicateRegexp.class, simplifierNot);
 		register(PredicateNot.class, PredicateAnd.class, simplifierNot);
@@ -143,6 +162,24 @@ public class AggregationPredicates {
 				return between(left.key, from, to).simplify();
 			}
 		});
+
+		register(PredicateHas.class, PredicateHas.class, new PredicateSimplifier<PredicateHas, PredicateHas>() {
+			@Override
+			public AggregationPredicate simplifyAnd(PredicateHas left, PredicateHas right) {
+				return left.key.equals(right.key) ? left : null;
+			}
+		});
+		PredicateSimplifier simplifierHas = new PredicateSimplifier<PredicateHas, AggregationPredicate>() {
+			@Override
+			public AggregationPredicate simplifyAnd(PredicateHas left, AggregationPredicate right) {
+				return right.getDimensions().contains(left.getKey()) ? right : null;
+			}
+		};
+		register(PredicateHas.class, PredicateEq.class, simplifierHas);
+		register(PredicateHas.class, PredicateBetween.class, simplifierHas);
+		register(PredicateHas.class, PredicateAnd.class, simplifierHas);
+		register(PredicateHas.class, PredicateOr.class, simplifierHas);
+
 	}
 
 	@SuppressWarnings("unchecked")
@@ -336,6 +373,63 @@ public class AggregationPredicates {
 		@Override
 		public String toString() {
 			return key + '=' + value;
+		}
+	}
+
+	public static final class PredicateHas implements AggregationPredicate {
+		final String key;
+
+		private PredicateHas(String key) {
+			this.key = key;
+		}
+
+		public String getKey() {
+			return key;
+		}
+
+		@Override
+		public AggregationPredicate simplify() {
+			return this;
+		}
+
+		@Override
+		public Set<String> getDimensions() {
+			return emptySet();
+		}
+
+		@Override
+		public Map<String, Object> getFullySpecifiedDimensions() {
+			return emptyMap();
+		}
+
+		@SuppressWarnings("unchecked")
+		@Override
+		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
+			return fields.containsKey(key) ? Expressions.alwaysTrue() : Expressions.alwaysFalse();
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) return true;
+			if (o == null || getClass() != o.getClass()) return false;
+
+			PredicateHas that = (PredicateHas) o;
+
+			if (!key.equals(that.key)) return false;
+			return true;
+
+		}
+
+		@Override
+		public int hashCode() {
+			int result = key.hashCode();
+			result = 31 * result;
+			return result;
+		}
+
+		@Override
+		public String toString() {
+			return "HAS " + key;
 		}
 	}
 
@@ -671,6 +765,10 @@ public class AggregationPredicates {
 
 	public static AggregationPredicate eq(String key, Object value) {
 		return new PredicateEq(key, value);
+	}
+
+	public static AggregationPredicate has(String key) {
+		return new PredicateHas(key);
 	}
 
 	public static AggregationPredicate regexp(String key, String pattern) {

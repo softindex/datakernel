@@ -61,6 +61,7 @@ import static com.google.common.base.Predicates.not;
 import static com.google.common.collect.Iterables.*;
 import static com.google.common.collect.Iterables.filter;
 import static com.google.common.collect.Lists.newArrayList;
+import static com.google.common.collect.Lists.transform;
 import static com.google.common.collect.Maps.*;
 import static com.google.common.collect.Sets.*;
 import static com.google.common.primitives.Primitives.isWrapperType;
@@ -514,7 +515,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 			final Aggregation aggregation = container.aggregation;
 			if (!all(aggregation.getKeys(), in(dimensionFields.keySet())))
 				continue;
-			if (AggregationPredicates.and(container.predicate, predicate).simplify() == alwaysFalse())
+			if (AggregationPredicates.and(container.predicate, predicate).simplify() == AggregationPredicates.alwaysFalse())
 				continue;
 
 			Map<String, String> aggregationKeyFields = filterKeys(dimensionFields, in(aggregation.getKeys()));
@@ -580,27 +581,31 @@ public final class Cube implements ICube, EventloopJmxMBean {
 		storedMeasures = newArrayList(storedMeasures);
 		List<String> allDimensions = newArrayList(concat(dimensions, where.getDimensions()));
 
-		final Map<AggregationContainer, Double> scores = new HashMap<>();
-		List<AggregationContainer> compatibleAggregations = new ArrayList<>();
+		AggregationPredicate specifiedWhere = AggregationPredicates.and(newArrayList(concat(singletonList(where),
+				transform(dimensions, new Function<String, AggregationPredicate>() {
+					@Override
+					public AggregationPredicate apply(String input) {
+						return AggregationPredicates.has(input);
+					}
+				})))).simplify();
+
+		List<AggregationContainerWithScore> compatibleAggregations = new ArrayList<>();
 		for (AggregationContainer aggregationContainer : aggregations.values()) {
 			if (!all(allDimensions, in(aggregationContainer.aggregation.getKeys())))
 				continue;
 			List<String> compatibleMeasures = newArrayList(filter(storedMeasures, in(aggregationContainer.measures)));
 			if (compatibleMeasures.isEmpty())
 				continue;
+			AggregationPredicate specifiedWhereIntersection = AggregationPredicates.and(specifiedWhere, aggregationContainer.predicate).simplify();
+			if (!specifiedWhereIntersection.equals(specifiedWhere))
+				continue;
 
-			compatibleAggregations.add(aggregationContainer);
 			AggregationQuery aggregationQuery = AggregationQuery.create(dimensions, compatibleMeasures, where);
 			double score = aggregationContainer.aggregation.estimateCost(aggregationQuery);
-			scores.put(aggregationContainer, score);
+			compatibleAggregations.add(new AggregationContainerWithScore(aggregationContainer, score));
 		}
 
-		Collections.sort(compatibleAggregations, new Comparator<AggregationContainer>() {
-			@Override
-			public int compare(AggregationContainer aggregation1, AggregationContainer aggregation2) {
-				return Double.compare(scores.get(aggregation1), scores.get(aggregation2));
-			}
-		});
+		Collections.sort(compatibleAggregations);
 
 		Class resultKeyClass = createKeyClass(projectKeys(dimensionTypes, dimensions), queryClassLoader);
 
@@ -609,7 +614,8 @@ public final class Cube implements ICube, EventloopJmxMBean {
 		StreamReducer<Comparable, T, Object> streamReducer = StreamReducer.create(eventloop, Ordering.natural());
 		StreamProducer<T> queryResultProducer = streamReducer.getOutput();
 
-		for (AggregationContainer aggregationContainer : compatibleAggregations) {
+		for (AggregationContainerWithScore aggregationContainerWithScore : compatibleAggregations) {
+			AggregationContainer aggregationContainer = aggregationContainerWithScore.aggregationContainer;
 			List<String> compatibleMeasures = newArrayList(filter(storedMeasures, in(aggregationContainer.measures)));
 			if (compatibleMeasures.isEmpty())
 				continue;
@@ -654,6 +660,29 @@ public final class Cube implements ICube, EventloopJmxMBean {
 		}
 
 		return queryResultProducer;
+	}
+
+	private static class AggregationContainerWithScore implements Comparable<AggregationContainerWithScore> {
+		final AggregationContainer aggregationContainer;
+		final double score;
+
+		private AggregationContainerWithScore(AggregationContainer aggregationContainer, double score) {
+			this.score = score;
+			this.aggregationContainer = aggregationContainer;
+		}
+
+		@Override
+		public int compareTo(AggregationContainerWithScore o) {
+			int result;
+			result = -Integer.compare(aggregationContainer.measures.size(), o.aggregationContainer.measures.size());
+			if (result != 0) return result;
+			result = Double.compare(score, o.score);
+			if (result != 0) return result;
+			result = Integer.compare(aggregationContainer.aggregation.getChunks(), o.aggregationContainer.aggregation.getChunks());
+			if (result != 0) return result;
+			result = Integer.compare(aggregationContainer.aggregation.getKeys().size(), o.aggregationContainer.aggregation.getKeys().size());
+			return result;
+		}
 	}
 
 	public boolean containsExcessiveNumberOfOverlappingChunks() {
