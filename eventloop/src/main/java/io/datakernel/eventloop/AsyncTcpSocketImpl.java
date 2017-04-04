@@ -312,11 +312,11 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		readInterest(false);
 
 		int bytesRead = doRead();
-		if (bytesRead > 0) {
+		if (bytesRead != 0) {
 			int newOps = ops & ~OP_POSTPONED;
 			ops = oldOps;
 			interests(newOps);
-		} else if (bytesRead == 0) {
+		} else {
 			ops = oldOps;
 		}
 	}

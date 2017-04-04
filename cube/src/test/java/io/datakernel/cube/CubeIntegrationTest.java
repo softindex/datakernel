@@ -41,6 +41,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.aggregation.AggregationPredicates.alwaysTrue;
+import static io.datakernel.aggregation.AggregationPredicates.has;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofDouble;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.sum;

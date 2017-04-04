@@ -51,6 +51,8 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
 public class CubeTest {
@@ -457,6 +459,53 @@ public class CubeTest {
 		List<DataItemResult> expected = asList(new DataItemResult(1, 4, 0, 30, 60));
 
 		assertEquals(expected, actual);
+	}
+
+	@Test
+	public void testAggregationPredicate() {
+		AggregationPredicate aggregationPredicate;
+		AggregationPredicate query;
+		AggregationPredicate intersection;
+
+		aggregationPredicate = AggregationPredicates.alwaysTrue();
+		query = AggregationPredicates.and(AggregationPredicates.eq("dimensionA", 1), AggregationPredicates.eq("dimensionB", 2)).simplify();
+		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
+		assertTrue(intersection.equals(query));
+
+		aggregationPredicate = AggregationPredicates.eq("dimensionA", 1);
+		query = AggregationPredicates.and(AggregationPredicates.eq("dimensionA", 1), AggregationPredicates.eq("dimensionB", 2)).simplify();
+		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
+		assertTrue(intersection.equals(query));
+
+		aggregationPredicate = AggregationPredicates.eq("dimensionA", 1);
+		query = AggregationPredicates.and(AggregationPredicates.eq("dimensionA", 2), AggregationPredicates.eq("dimensionB", 2)).simplify();
+		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
+		assertFalse(intersection.equals(query));
+
+		aggregationPredicate = AggregationPredicates.eq("dimensionA", 1);
+		query = AggregationPredicates.and(AggregationPredicates.has("dimensionA"), AggregationPredicates.eq("dimensionB", 2)).simplify();
+		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
+		assertFalse(intersection.equals(query));
+
+		aggregationPredicate = AggregationPredicates.has("dimensionX");
+		query = AggregationPredicates.and(AggregationPredicates.eq("dimensionA", 1), AggregationPredicates.eq("dimensionB", 2)).simplify();
+		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
+		assertFalse(intersection.equals(query));
+
+		aggregationPredicate = AggregationPredicates.has("dimensionX");
+		query = AggregationPredicates.and(AggregationPredicates.eq("dimensionX", 1), AggregationPredicates.eq("dimensionB", 2)).simplify();
+		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
+		assertTrue(intersection.equals(query));
+
+		aggregationPredicate = AggregationPredicates.has("dimensionX");
+		query = AggregationPredicates.and(AggregationPredicates.has("dimensionX"), AggregationPredicates.and(AggregationPredicates.eq("dimensionX", 1), AggregationPredicates.eq("dimensionB", 2))).simplify();
+		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
+		assertTrue(intersection.equals(query));
+
+		aggregationPredicate = AggregationPredicates.has("dimensionX");
+		query = AggregationPredicates.and(AggregationPredicates.has("dimensionX"), AggregationPredicates.eq("dimensionX", 1), AggregationPredicates.eq("dimensionB", 2)).simplify();
+		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
+		assertTrue(intersection.equals(query));
 	}
 
 }
