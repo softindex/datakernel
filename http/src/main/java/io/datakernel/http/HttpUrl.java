@@ -162,6 +162,9 @@ public final class HttpUrl {
 		}
 		path = (short) raw.indexOf(SLASH, index);
 		pos = path;
+		if (path != -1) {
+			validatePort(path);
+		}
 
 		query = (short) raw.indexOf(QUESTION_MARK, index);
 		fragment = (short) raw.indexOf(NUMBER_SIGN, index);
@@ -170,6 +173,7 @@ public final class HttpUrl {
 			if (fragment == -1 || query < fragment) {
 				pathEnd = query;
 				query += 1;
+				validatePath(query);
 				validatePort(query);
 			} else {
 				query = -1;
@@ -179,6 +183,10 @@ public final class HttpUrl {
 		if (fragment != -1) {
 			pathEnd = pathEnd == -1 ? fragment : pathEnd;
 			fragment += 1;
+			if (query > fragment) {
+				query = -1;
+			}
+			validatePath(fragment);
 			validatePort(fragment);
 		}
 
@@ -196,10 +204,17 @@ public final class HttpUrl {
 		}
 	}
 
-	// port validation for cases where ':' happens in query and fragment sections
+	// components validation
 	private void validatePort(int urlPartIndex) {
 		if (port > urlPartIndex) {
 			port = -1;
+		}
+	}
+
+	private void validatePath(int urlPartIndex) {
+		if (path > urlPartIndex) {
+			path = -1;
+			pos = -1;
 		}
 	}
 

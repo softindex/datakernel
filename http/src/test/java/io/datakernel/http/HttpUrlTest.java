@@ -33,6 +33,15 @@ import static org.junit.Assert.*;
 
 public class HttpUrlTest {
 	@Test
+	public void testSimple() {
+		HttpUrl url = HttpUrl.of("https://127.0.0.1:45678");
+
+		assertTrue(url.isHttps());
+		assertEquals("127.0.0.1", url.getHost());
+		assertEquals(45678, url.getPort());
+	}
+
+	@Test
 	public void testIPv6() {
 		// with port
 		HttpUrl url = HttpUrl.of("http://[0:0:0:0:0:0:0:1]:52142");
@@ -239,6 +248,29 @@ public class HttpUrlTest {
 		assertEquals("/?key1=value1&key2", ByteBufStrings.decodeAscii(buf));
 		buf.recycle();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+	}
+
+	@Test
+	public void testUrlWithColonInPath() {
+		String domain = "www.examle.in";
+		String path = "/www.examle.in/search/label/www.examle.in/search/label/www.examle.in/search/label/www.examle.in/search/label/www.examle.in/search/label/www.examle.in/search/label/www.examle.in/search/label/www.examle.in/search/label/www.examle.in/search/label/www.examle.in/search/label/www.examle.in/search/label/www.examle.in/search/label/www.examle.in/search/label/www.examle.in/search/label/www.examle.in/search/label/www.examle.in/search/label/www.examle.in/search/label/www.examle.in/search/label/www.examle.in/search/label/javascript:void(0)";
+		String query = "q=v&q";
+		String fragment = "abc/a";
+		String url = "http://" + domain + path + "?" + query + "#" + fragment;
+		HttpUrl httpUrl = HttpUrl.of(url);
+
+		assertEquals(domain, httpUrl.getHost());
+		assertEquals(path, httpUrl.getPath());
+		assertEquals(query, httpUrl.getQuery());
+		assertEquals(fragment, httpUrl.getFragment());
+	}
+
+	@Test
+	public void testWeirdUrl() {
+		HttpUrl url = HttpUrl.of("http://google.com?query=one:two/something");
+		String path = url.getPath();
+
+		assertEquals("/", path);
 	}
 
 	@Test(expected = NoSuchElementException.class)
