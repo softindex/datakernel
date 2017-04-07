@@ -118,7 +118,7 @@ public final class HttpUrl {
 		return httpUrl;
 	}
 
-	static HttpUrl parse(String url) throws ParseException {
+	public static HttpUrl parse(String url) throws ParseException {
 		HttpUrl httpUrl = new HttpUrl(url);
 		httpUrl.parse(true);
 		return httpUrl;
@@ -137,6 +137,10 @@ public final class HttpUrl {
 	}
 
 	private void parse(boolean isRelativePathAllowed) throws ParseException {
+		if (raw.length() > Short.MAX_VALUE) {
+			throw new ParseException("HttpUrl length cannot be greater than " + Short.MAX_VALUE);
+		}
+
 		short index = (short) raw.indexOf(SCHEMA_DELIM);
 		if (index < 0 || index > 5) {
 			if (!isRelativePathAllowed)
@@ -152,70 +156,88 @@ public final class HttpUrl {
 			}
 			index += SCHEMA_DELIM.length();
 			host = index;
+
+			short hostPortEnd = findHostPortEnd(host);
+
 			if (raw.indexOf(IPV6_OPENING_BRACKET, index) != -1) {                   // parse IPv6
 				int closingSection = raw.indexOf(IPV6_CLOSING_SECTION_WITH_PORT, index);
 				port = (short) (closingSection != -1 ? closingSection + 2 : closingSection);
-			} else {                                                                // parse IPv4
-				int colon = raw.indexOf(COLON, index);
-				port = (short) (colon != -1 ? colon + 1 : -1);
-			}
-		}
-		path = (short) raw.indexOf(SLASH, index);
-		pos = path;
-		if (path != -1) {
-			validatePort(path);
-		}
-
-		query = (short) raw.indexOf(QUESTION_MARK, index);
-		fragment = (short) raw.indexOf(NUMBER_SIGN, index);
-
-		if (query != -1) {
-			if (fragment == -1 || query < fragment) {
-				pathEnd = query;
-				query += 1;
-				validatePath(query);
-				validatePort(query);
 			} else {
-				query = -1;
+				// parse IPv4
+				int colon = raw.indexOf(COLON, index);
+				port = (short) ((colon != -1 && colon < hostPortEnd) ? colon + 1 : -1);
 			}
+
+			if (port != -1) {
+				portValue = toInt(raw, port, hostPortEnd);
+			} else {
+				if (host != -1) {
+					portValue = (https ? 443 : 80);
+				}
+			}
+
+			index = hostPortEnd;
 		}
 
-		if (fragment != -1) {
-			pathEnd = pathEnd == -1 ? fragment : pathEnd;
-			fragment += 1;
-			if (query > fragment) {
-				query = -1;
-			}
-			validatePath(fragment);
-			validatePort(fragment);
+		if (index == raw.length()) {
+			return;
 		}
 
-		if (pathEnd == -1) {
-			pathEnd = (short) raw.length();
+		// parse path
+		if (raw.charAt(index) == SLASH) {
+			path = index;
+			pos = path;
+			pathEnd = findPathEnd(path);
+			index = pathEnd;
 		}
 
-		if (port != -1) {
-			int portEnd = path == -1 ? query == -1 ? fragment == -1 ? raw.length() : fragment - 1 : query - 1 : path;
-			portValue = toInt(raw, port, portEnd);
-		} else {
-			if (host != -1) {
-				portValue = (https ? 443 : 80);
-			}
+		if (index == raw.length()) {
+			return;
+		}
+
+		// parse query
+		if (raw.charAt(index) == QUESTION_MARK) {
+			query = (short) (index + 1);
+			index = findQueryEnd(query);
+		}
+
+		if (index == raw.length()) {
+			return;
+		}
+
+		// parse fragment
+		if (raw.charAt(index) == NUMBER_SIGN) {
+			fragment = (short) (index + 1);
 		}
 	}
 
-	// components validation
-	private void validatePort(int urlPartIndex) {
-		if (port > urlPartIndex) {
-			port = -1;
+	private short findHostPortEnd(short from) {
+		short hostPortEnd = -1;
+		for (short i = from; i < raw.length(); i++) {
+			char ch = raw.charAt(i);
+			if (ch == SLASH || ch == QUESTION_MARK || ch == NUMBER_SIGN) {
+				hostPortEnd = i;
+				break;
+			}
 		}
+		return hostPortEnd != -1 ? hostPortEnd : (short) raw.length();
 	}
 
-	private void validatePath(int urlPartIndex) {
-		if (path > urlPartIndex) {
-			path = -1;
-			pos = -1;
+	private short findPathEnd(short from) {
+		short pathEnd = -1;
+		for (short i = from; i < raw.length(); i++) {
+			char ch = raw.charAt(i);
+			if (ch == QUESTION_MARK || ch == NUMBER_SIGN) {
+				pathEnd = i;
+				break;
+			}
 		}
+		return pathEnd != -1 ? pathEnd : (short) raw.length();
+	}
+
+	private short findQueryEnd(short from) {
+		short queryEnd = (short) raw.indexOf(NUMBER_SIGN, from);
+		return queryEnd != -1 ? queryEnd : (short) raw.length();
 	}
 
 	// getters

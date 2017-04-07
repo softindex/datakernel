@@ -265,14 +265,6 @@ public class HttpUrlTest {
 		assertEquals(fragment, httpUrl.getFragment());
 	}
 
-	@Test
-	public void testWeirdUrl() {
-		HttpUrl url = HttpUrl.of("http://google.com?query=one:two/something");
-		String path = url.getPath();
-
-		assertEquals("/", path);
-	}
-
 	@Test(expected = NoSuchElementException.class)
 	public void testQuery() {
 //                                00000000001111111111222222222233333333334444444444555555555566
@@ -300,5 +292,14 @@ public class HttpUrlTest {
 		assertEquals(new QueryParameter("k", ""), paramsIterator.next());
 
 		paramsIterator.next();
+	}
+
+	@Test
+	public void testQueryWithNoPathBefore() {
+		HttpUrl url = HttpUrl.of("http://google.com?query=one:two/something");
+
+		assertEquals("google.com", url.getHost());
+		assertEquals("/", url.getPath());
+		assertEquals("query=one:two/something", url.getQuery());
 	}
 }
