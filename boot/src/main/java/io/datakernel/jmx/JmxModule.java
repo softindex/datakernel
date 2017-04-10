@@ -42,6 +42,7 @@ public final class JmxModule extends AbstractModule {
 
 	private double refreshPeriod = REFRESH_PERIOD_DEFAULT;
 	private int maxJmxRefreshesPerOneCycle = MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT;
+	private final Map<TypeLiteral<?>, String> globalMBeans = new HashMap<>();
 
 	private JmxModule() {}
 
@@ -93,6 +94,17 @@ public final class JmxModule extends AbstractModule {
 
 	public JmxModule withHistogram(Class<?> clazz, String attrName, final int[] histogramLevels) {
 		return withHistogram(Key.get(clazz), attrName, histogramLevels);
+	}
+
+	public JmxModule withGlobalMBean(TypeLiteral<?> type, String name) {
+		checkArgument(!globalMBeans.containsKey(type), "GlobalMBean for \"%s\" was already specified", type);
+
+		globalMBeans.put(type, name);
+		return this;
+	}
+
+	public JmxModule withGlobalMBean(Class clazz, String name) {
+		return withGlobalMBean(TypeLiteral.get(clazz), name);
 	}
 
 	private MBeanSettings ensureSettings(Key<?> key) {
@@ -163,16 +175,22 @@ public final class JmxModule extends AbstractModule {
 	}
 
 	@Provides
-	JmxRegistrator jmxRegistrator(Injector injector, JmxRegistry jmxRegistry) {
-		return JmxRegistrator.create(injector, singletonKeys, workerKeys, jmxRegistry, keyToSettings);
+	DynamicMBeanFactory mbeanFactory() {
+		return JmxMBeans.factory(refreshPeriod, maxJmxRefreshesPerOneCycle);
+	}
+
+	@Provides
+	JmxRegistrator jmxRegistrator(Injector injector, JmxRegistry jmxRegistry, DynamicMBeanFactory mbeanFactory) {
+		return JmxRegistrator.create(injector, singletonKeys, workerKeys, jmxRegistry, mbeanFactory,
+				keyToSettings, globalMBeans);
 	}
 
 	@Provides
 	@Singleton
-	JmxRegistry jmxRegistry() {
+	JmxRegistry jmxRegistry(DynamicMBeanFactory mbeanFactory) {
 		return JmxRegistry.create(
 				ManagementFactory.getPlatformMBeanServer(),
-				JmxMBeans.factory(refreshPeriod, maxJmxRefreshesPerOneCycle)
+				mbeanFactory
 		).withRefreshPeriod(refreshPeriod);
 	}
 }

@@ -48,10 +48,14 @@ public final class EventStats implements JmxRefreshableStats<EventStats> {
 		this.smoothingWindowCoef = calculateSmoothingWindowCoef(smoothingWindow);
 	}
 
-	EventStats() {
+	private EventStats() {
 		// create accumulator instance, smoothing window will be taken from actual stats
 		this.smoothingWindow = -1;
 		this.smoothingWindowCoef = -1;
+	}
+
+	public static EventStats createAccumulator() {
+		return new EventStats();
 	}
 
 	/**

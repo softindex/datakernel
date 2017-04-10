@@ -52,6 +52,10 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 	private static final JmxReducer<?> DEFAULT_REDUCER = new JmxReducers.JmxReducerDistinct();
 
+	// JmxStats creator methods
+	private static final String CREATE = "create";
+	private static final String CREATE_ACCUMULATOR = "createAccumulator";
+
 	private static final JmxMBeans INSTANCE_WITH_DEFAULT_REFRESH_PERIOD
 			= new JmxMBeans(DEFAULT_REFRESH_PERIOD_IN_SECONDS, MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT);
 
@@ -371,12 +375,12 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	private static JmxStats createJmxAccumulator(Class<?> jmxStatsClass) throws ReflectiveOperationException {
 		assert JmxStats.class.isAssignableFrom(jmxStatsClass);
 
-		if (ReflectionUtils.classHasPublicNoArgConstructor(jmxStatsClass)) {
+		if (ReflectionUtils.classHasPublicStaticFactoryMethod(jmxStatsClass, CREATE_ACCUMULATOR)) {
+			return (JmxStats) jmxStatsClass.getDeclaredMethod(CREATE_ACCUMULATOR).invoke(null);
+		} else if (ReflectionUtils.classHasPublicStaticFactoryMethod(jmxStatsClass, CREATE)) {
+			return (JmxStats) jmxStatsClass.getDeclaredMethod(CREATE).invoke(null);
+		} else if (ReflectionUtils.classHasPublicNoArgConstructor(jmxStatsClass)) {
 			return (JmxStats) jmxStatsClass.newInstance();
-		} else if (ReflectionUtils.classHasPublicStaticFactoryCreateMethod(jmxStatsClass)) {
-			return (JmxStats) jmxStatsClass.getDeclaredMethod("create").invoke(null);
-		} else if (ReflectionUtils.classHasNoArgConstructor(jmxStatsClass)) {
-			return (JmxStats) jmxStatsClass.getDeclaredConstructor().newInstance();
 		} else {
 			throw new RuntimeException("Cannot create instance of class: " + jmxStatsClass.getName());
 		}
@@ -399,8 +403,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	private static void checkJmxStatsAreValid(Class<?> returnClass, Class<?> mbeanClass, Method getter) {
 		if (JmxRefreshableStats.class.isAssignableFrom(returnClass) &&
 				!EventloopJmxMBean.class.isAssignableFrom(mbeanClass)) {
-			throw new IllegalArgumentException("JmxRefreshableStats can be used only in classes that implements" +
-					" EventloopJmxMBean");
+			logger.warn("JmxRefreshableStats won't be refreshed when used in classes that do not implement" +
+					" EventloopJmxMBean. MBean class: " + mbeanClass.getName());
 		}
 
 		if (returnClass.isInterface()) {
@@ -411,17 +415,20 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			throw new IllegalArgumentException(createErrorMessageForInvalidJmxStatsAttribute(getter));
 		}
 
-		if (!(classHasPublicNoArgConstructor(returnClass)
-				|| classHasPublicStaticFactoryCreateMethod(returnClass)
-				|| classHasNoArgConstructor(returnClass))) {
+		if (!(classHasPublicStaticFactoryMethod(returnClass, CREATE_ACCUMULATOR)
+				|| classHasPublicStaticFactoryMethod(returnClass, CREATE)
+				|| classHasPublicNoArgConstructor(returnClass))) {
 			throw new IllegalArgumentException(createErrorMessageForInvalidJmxStatsAttribute(getter));
 		}
 	}
 
 	private static String createErrorMessageForInvalidJmxStatsAttribute(Method getter) {
 		String msg = "Return type of JmxRefreshableStats attribute must be concrete class that implements" +
-				" JmxRefreshableStats interface and contains public no-arg constructor " +
-				"or static factory \"create\" method";
+				" JmxRefreshableStats interface and contains" +
+				" static factory \"" + CREATE_ACCUMULATOR + "()\" method or" +
+				" static factory \"" + CREATE + "()\" method or" +
+				" public no-arg constructor";
+
 		if (getter != null) {
 			msg += format(". Error at %s.%s()", getter.getDeclaringClass().getName(), getter.getName());
 		}

@@ -115,7 +115,7 @@ public class ValueStatsTest {
 			valueStats_2.refresh(currentTimestamp);
 		}
 
-		ValueStats accumulator = new ValueStats();
+		ValueStats accumulator = ValueStats.createAccumulator();
 		accumulator.add(valueStats_1);
 		accumulator.add(valueStats_2);
 
@@ -239,7 +239,7 @@ public class ValueStatsTest {
 		stats_1.refresh(1L);
 		stats_2.refresh(1L);
 
-		ValueStats accumulator = new ValueStats();
+		ValueStats accumulator = ValueStats.createAccumulator();
 		accumulator.add(stats_1);
 		accumulator.add(stats_2);
 

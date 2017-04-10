@@ -120,19 +120,10 @@ final class ReflectionUtils {
 		return false;
 	}
 
-	public static boolean classHasNoArgConstructor(Class<?> clazz) {
-		for (Constructor<?> constructor : clazz.getDeclaredConstructors()) {
-			if (constructor.getParameterTypes().length == 0) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	public static boolean classHasPublicStaticFactoryCreateMethod(Class<?> clazz) {
+	public static boolean classHasPublicStaticFactoryMethod(Class<?> clazz, String methodName) {
 		Method createMethod;
 		try {
-			createMethod = clazz.getDeclaredMethod("create");
+			createMethod = clazz.getDeclaredMethod(methodName);
 		} catch (NoSuchMethodException e) {
 			return false;
 		}
