@@ -16,8 +16,23 @@
 
 package io.datakernel.config;
 
-public interface ConfigConverter<T> {
-	T get(Config config, T defaultValue);
+import io.datakernel.config.impl.PropertiesConfig;
+import org.junit.Test;
 
-	T get(Config config);
+import java.util.Properties;
+
+import static io.datakernel.config.TestUtils.testBaseConfig;
+
+public class PropertiesConfigTest {
+	@Test
+	public void testBase() {
+		Properties properties = new Properties();
+		properties.put("a.a.a", "1");
+		properties.put("a.a.b", "2");
+		properties.put("a.b", "3");
+		properties.put("b", "4");
+
+		PropertiesConfig config = PropertiesConfig.ofProperties(properties);
+		testBaseConfig(config);
+	}
 }
