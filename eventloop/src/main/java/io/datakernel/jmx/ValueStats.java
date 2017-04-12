@@ -118,10 +118,14 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 		resetStats();
 	}
 
-	ValueStats() {
+	private ValueStats() {
 		// create accumulator instance, smoothing window will be taken from actual stats
 		this.smoothingWindow = -1;
 		this.smoothingWindowCoef = -1;
+	}
+
+	public static ValueStats createAccumulator() {
+		return new ValueStats();
 	}
 
 	/**

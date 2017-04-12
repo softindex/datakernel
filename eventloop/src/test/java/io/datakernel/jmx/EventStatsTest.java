@@ -94,7 +94,7 @@ public class EventStatsTest {
 			stats_3.refresh(currentTimestamp);
 		}
 
-		EventStats accumulator = new EventStats();
+		EventStats accumulator = EventStats.createAccumulator();
 		accumulator.add(stats_1);
 		accumulator.add(stats_2);
 		accumulator.add(stats_3);

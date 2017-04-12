@@ -77,7 +77,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 				logger.error(msg, e);
 				return;
 			}
-		} else if (isStandardMBean(instanceClass) || isMXBean(instanceClass)) {
+		} else if (isStandardMBean(instanceClass) || isMXBean(instanceClass) || isDynamicMBean(instanceClass)) {
 			mbean = singletonInstance;
 		} else {
 			logger.info(format("Instance with key %s was not registered to jmx, " +
@@ -443,8 +443,12 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		return ConcurrentJmxMBean.class.isAssignableFrom(clazz) || EventloopJmxMBean.class.isAssignableFrom(clazz);
 	}
 
+	private static boolean isDynamicMBean(Class<?> clazz) {
+		return DynamicMBean.class.isAssignableFrom(clazz);
+	}
+
 	private static boolean isMBean(Class<?> clazz) {
-		return isJmxMBean(clazz) || isStandardMBean(clazz) || isMXBean(clazz);
+		return isJmxMBean(clazz) || isStandardMBean(clazz) || isMXBean(clazz) || isDynamicMBean(clazz);
 	}
 
 	// region jmx
