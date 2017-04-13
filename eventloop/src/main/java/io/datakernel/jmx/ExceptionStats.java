@@ -80,7 +80,7 @@ public final class ExceptionStats implements JmxStats<ExceptionStats> {
 	@Override
 	public void add(ExceptionStats another) {
 		this.count += another.count;
-		if (another.lastExceptionTimestamp > this.lastExceptionTimestamp) {
+		if (another.lastExceptionTimestamp >= this.lastExceptionTimestamp) {
 			this.exceptionClass = another.exceptionClass;
 			this.lastExceptionTimestamp = another.lastExceptionTimestamp;
 			if (another.details != null) {
