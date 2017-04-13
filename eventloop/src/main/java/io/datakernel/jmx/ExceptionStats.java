@@ -165,9 +165,7 @@ public final class ExceptionStats implements JmxStats<ExceptionStats> {
 
 		@JmxAttribute
 		public String getSummary() {
-			if (count == 0) {
-				return null;
-			}
+			if (count == 0) return "";
 
 			StringBuilder summary = new StringBuilder("Total: " + count);
 
