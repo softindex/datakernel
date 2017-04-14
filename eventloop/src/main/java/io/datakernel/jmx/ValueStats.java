@@ -84,16 +84,27 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 
 	private long lastTimestampMillis;
 
-	private int lastValue;
-	private int lastSum;
-	private int lastSqr;
-	private int lastCount;
-	private int lastMin;
-	private int lastMax;
+	// integer runtime accumulators
+	private int lastValueInteger;
+	private int lastSumInteger;
+	private int lastSqrInteger;
+	private int lastCountInteger;
+	private int lastMinInteger;
+	private int lastMaxInteger;
 
-	private long totalSum;
+	// double runtime accumulators
+	private double lastValueDouble;
+	private double lastSumDouble;
+	private double lastSqrDouble;
+	private int lastCountDouble;
+	private double lastMinDouble;
+	private double lastMaxDouble;
+
+	// calculated during refresh
+	private double totalSum;
 	private long totalCount;
 
+	// calculated during refresh
 	private double smoothedSum;
 	private double smoothedSqr;
 	private double smoothedCount;
@@ -110,6 +121,9 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 
 	// fields for aggregation
 	private int addedStats;
+
+	// formatting
+	private NumberFormatting formatting = NumberFormatting.DECIMAL_TWO_DIGITS;
 
 	// region builders
 	private ValueStats(double smoothingWindow) {
@@ -143,6 +157,11 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 		return this;
 	}
 
+	public ValueStats withNumberFormatting(NumberFormatting formatting) {
+		this.formatting = formatting;
+		return this;
+	}
+
 	public void setHistogramLevels(int[] levels) {
 		checkArgument(levels.length > 0, "levels amount must be at least 1");
 		for (int i = 1; i < levels.length; i++) {
@@ -162,17 +181,27 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 		smoothedCount = 0.0;
 		smoothedMin = 0.0;
 		smoothedMax = 0.0;
-		totalSum = 0;
-		totalCount = 0;
-		lastMax = Integer.MIN_VALUE;
-		lastMin = Integer.MAX_VALUE;
-		lastSum = 0;
-		lastSqr = 0;
-		lastCount = 0;
-		lastValue = 0;
+
+		lastMaxInteger = Integer.MIN_VALUE;
+		lastMinInteger = Integer.MAX_VALUE;
+		lastSumInteger = 0;
+		lastSqrInteger = 0;
+		lastCountInteger = 0;
+		lastValueInteger = 0;
+
+		lastMaxDouble = -Double.MAX_VALUE;
+		lastMinDouble = Double.MAX_VALUE;
+		lastSumDouble = 0.0;
+		lastSqrDouble = 0.0;
+		lastCountDouble = 0;
+		lastValueDouble = 0.0;
+
 		lastTimestampMillis = 0L;
 		smoothedRate = 0;
 		smoothedTimeSeconds = 0;
+
+		totalSum = 0.0;
+		totalCount = 0;
 
 		if (histogramLevels != null) {
 			for (int i = 0; i < histogramValues.length; i++) {
@@ -185,23 +214,39 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 	 * Adds value
 	 */
 	public void recordValue(int value) {
-		lastValue = value;
+		lastValueInteger = value;
 
-		if (value < lastMin) {
-			lastMin = value;
+		if (value < lastMinInteger) {
+			lastMinInteger = value;
 		}
 
-		if (value > lastMax) {
-			lastMax = value;
+		if (value > lastMaxInteger) {
+			lastMaxInteger = value;
 		}
 
-		lastSum += value;
-		lastSqr += value * value;
-		lastCount++;
+		lastSumInteger += value;
+		lastSqrInteger += value * value;
+		lastCountInteger++;
 
 		if (histogramLevels != null) {
 			addToHistogram(value);
 		}
+	}
+
+	public void recordValue(double value) {
+		lastValueDouble = value;
+
+		if (value < lastMinDouble) {
+			lastMinDouble = value;
+		}
+
+		if (value > lastMaxDouble) {
+			lastMaxDouble = value;
+		}
+
+		lastSumDouble += value;
+		lastSqrDouble += value * value;
+		lastCountDouble++;
 	}
 
 	private void addToHistogram(int value) {
@@ -263,6 +308,25 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 
 	@Override
 	public void refresh(long timestamp) {
+		double lastSum = 0.0;
+		double lastSqr = 0.0;
+		long lastCount = 0;
+
+		if (lastCountDouble > 0) {
+			lastSum += lastSumDouble;
+			lastSqr += lastSqrDouble;
+			lastCount += lastCountDouble;
+		}
+
+		if (lastCountInteger > 0) {
+			lastSum += lastSumInteger;
+			lastSqr += lastSqrInteger;
+			lastCount += lastCountInteger;
+		}
+
+		double lastMin = (lastMinInteger < lastMinDouble) ? lastMinInteger : lastMinDouble;
+		double lastMax = (lastMaxInteger > lastMaxDouble) ? lastMaxInteger : lastMaxDouble;
+
 		if (lastTimestampMillis == 0L) {
 			smoothedSum = lastSum;
 			smoothedSqr = lastSqr;
@@ -306,11 +370,21 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 
 		lastTimestampMillis = timestamp;
 
-		lastSum = 0;
-		lastSqr = 0;
-		lastCount = 0;
-		lastMin = Integer.MAX_VALUE;
-		lastMax = Integer.MIN_VALUE;
+		if (lastCountInteger > 0) {
+			lastSumInteger = 0;
+			lastSqrInteger = 0;
+			lastCountInteger = 0;
+			lastMinInteger = Integer.MAX_VALUE;
+			lastMaxInteger = Integer.MIN_VALUE;
+		}
+
+		if (lastCountDouble > 0) {
+			lastSumDouble = 0;
+			lastSqrDouble = 0;
+			lastCountDouble = 0;
+			lastMinDouble = Double.MAX_VALUE;
+			lastMaxDouble = -Double.MAX_VALUE;
+		}
 	}
 
 	private static boolean isTimePeriodValid(long timePeriod) {
@@ -344,7 +418,7 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 
 		if (anotherStats.lastTimestampMillis > lastTimestampMillis) {
 			lastTimestampMillis = anotherStats.lastTimestampMillis;
-			lastValue = anotherStats.lastValue;
+			lastValueInteger = anotherStats.lastValueInteger;
 		}
 
 		if (addedStats == 0) {
@@ -385,8 +459,8 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 	 * @return last added value
 	 */
 	@JmxAttribute(optional = true)
-	public int getLastValue() {
-		return lastValue;
+	public double getLastValue() {
+		return (lastCountInteger > lastCountDouble) ? lastValueInteger : lastValueDouble;
 	}
 
 	/**
@@ -443,7 +517,7 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 
 	@JmxAttribute(optional = true)
 	public double getAverage() {
-		return totalCount != 0L ? totalSum / (double) totalCount : 0.0;
+		return totalCount != 0L ? totalSum / totalCount : 0.0;
 	}
 
 	@JmxAttribute(optional = true)
@@ -572,8 +646,28 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 
 	@Override
 	public String toString() {
-		return String.format("%.2f±%.3f [%.2f...%.2f]  last: %d  values: %d @ %.3f/s",
-				getSmoothedAverage(), getSmoothedStandardDeviation(), getSmoothedMin(), getSmoothedMax(), getLastValue(),
-				getCount(), getSmoothedRate());
+		String rawTemplate = "{format1}±{format2} [{format1}...{format1}]  last: {format1}  values: %d @ {format2}/s";
+		String template;
+		switch (formatting) {
+			case AUTO:
+				template = rawTemplate.replace("{format1}", "%.2g").replace("{format2}", "%.3g");
+				break;
+			case SCIENTIFIC_NOTATION:
+				template = rawTemplate.replace("{format1}", "%.2e").replace("{format2}", "%.3e");
+				break;
+			case DECIMAL_TWO_DIGITS:
+				template = rawTemplate.replace("{format1}", "%.2f").replace("{format2}", "%.3f");
+				break;
+			default:
+				template = rawTemplate.replace("{format1}", "%.2f").replace("{format2}", "%.3f");
+		}
+		return String.format(template, getSmoothedAverage(), getSmoothedStandardDeviation(), getSmoothedMin(),
+				getSmoothedMax(), getLastValue(), getCount(), getSmoothedRate());
 	}
+
+	// region helper classes
+	public enum NumberFormatting {
+		AUTO, SCIENTIFIC_NOTATION, DECIMAL_TWO_DIGITS
+	}
+	// endregion
 }
