@@ -38,7 +38,8 @@ public final class EventloopStats {
 	private final Keys keys;
 	private final ExceptionStats fatalErrors;
 	private final Map<StackTrace, ExceptionStats> fatalErrorsMap;
-	private final EventStats selectorSpinnings;
+	private final EventStats idleLoops;
+	private final EventStats selectOverdues;
 
 	private EventloopStats(double smoothingWindow, Eventloop.ExtraStatsExtractor extraStatsExtractor) {
 		loops = EventStats.create(smoothingWindow);
@@ -50,7 +51,8 @@ public final class EventloopStats {
 		keys = new Keys(smoothingWindow);
 		fatalErrors = ExceptionStats.create().withStoreStackTrace(true);
 		fatalErrorsMap = new HashMap<>();
-		selectorSpinnings = EventStats.create(smoothingWindow);
+		idleLoops = EventStats.create(smoothingWindow);
+		selectOverdues = EventStats.create(smoothingWindow);
 	}
 
 	public static EventloopStats create(double smoothingWindow, Eventloop.ExtraStatsExtractor extraStatsExtractor) {
@@ -75,7 +77,8 @@ public final class EventloopStats {
 		keys.reset();
 		fatalErrors.resetStats();
 		fatalErrorsMap.clear();
-		selectorSpinnings.resetStats();
+		idleLoops.resetStats();
+		selectOverdues.resetStats();
 	}
 
 	// region updating
@@ -90,6 +93,7 @@ public final class EventloopStats {
 
 	public void updateSelectorSelectTimeout(long selectorSelectTimeout) {
 		this.selectorSelectTimeout.recordValue((int) selectorSelectTimeout);
+		if(selectorSelectTimeout < 0) this.selectOverdues.recordEvent();
 	}
 
 	public void updateSelectedKeyDuration(Stopwatch sw) {
@@ -177,7 +181,7 @@ public final class EventloopStats {
 	}
 
 	public void updateProcessedTasksAndKeys(int tasksAndKeys) {
-		if (tasksAndKeys == 0) selectorSpinnings.recordEvent();
+		if (tasksAndKeys == 0) idleLoops.recordEvent();
 	}
 	// endregion
 
@@ -223,8 +227,13 @@ public final class EventloopStats {
 	}
 
 	@JmxAttribute
-	public EventStats getSelectorSpinnings() {
-		return selectorSpinnings;
+	public EventStats getIdleLoops() {
+		return idleLoops;
+	}
+
+	@JmxAttribute
+	public EventStats getSelectOverdues() {
+		return selectOverdues;
 	}
 
 	// endregion
