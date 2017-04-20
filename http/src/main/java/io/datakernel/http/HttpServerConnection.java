@@ -71,11 +71,11 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	/**
 	 * Creates a new instance of HttpServerConnection
 	 *
-	 * @param eventloop		eventloop which will handle its tasks
-	 * @param remoteAddress	an address of remote
-	 * @param server		server, which uses this connection
-	 * @param servlet		servlet for handling requests
-	 * @param gzipResponses	determines whether responses are encoded with gzip
+	 * @param eventloop     eventloop which will handle its tasks
+	 * @param remoteAddress an address of remote
+	 * @param server        server, which uses this connection
+	 * @param servlet       servlet for handling requests
+	 * @param gzipResponses determines whether responses are encoded with gzip
 	 */
 	HttpServerConnection(Eventloop eventloop, InetAddress remoteAddress, AsyncTcpSocket asyncTcpSocket,
 	                     AsyncHttpServer server, AsyncServlet servlet,
@@ -149,7 +149,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	/**
 	 * This method is called after received line of header.
 	 *
-	 * @param line	received line of header.
+	 * @param line received line of header.
 	 */
 	@Override
 	protected void onFirstLine(ByteBuf line) throws ParseException {
@@ -205,8 +205,8 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	/**
 	 * This method is called after receiving header. It sets its value to request.
 	 *
-	 * @param header	received header
-	 * @param value		value of received header
+	 * @param header received header
+	 * @param value  value of received header
 	 */
 	@Override
 	protected void onHeader(HttpHeader header, final ByteBuf value) throws ParseException {
@@ -235,7 +235,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	 * After sending a response, request and response will be recycled and you
 	 * can not use it twice.
 	 *
-	 * @param bodyBuf	the received message
+	 * @param bodyBuf the received message
 	 */
 	@Override
 	protected void onHttpMessage(ByteBuf bodyBuf) {
@@ -257,6 +257,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 				if (!isClosed()) {
 					if (acceptGzip && httpResponse.getBody() != null && gzipResponses) {
+						acceptGzip = false;
 						httpResponse.setHeader(HttpHeaders.asBytes(CONTENT_ENCODING, CONTENT_ENCODING_GZIP));
 						httpResponse.setBody(toGzip(httpResponse.detachBody()));
 					}
@@ -330,6 +331,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		}
 	}
 
+	@Override
 	protected void onClosed() {
 		pool.removeNode(this);
 		pool = null;

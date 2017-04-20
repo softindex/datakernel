@@ -35,6 +35,7 @@ final class GzipProcessor {
 	}
 
 	static ByteBuf fromGzip(ByteBuf raw) throws ParseException {
+		assert raw.readRemaining() > 0;
 		try (GZIPInputStream gzip = new GZIPInputStream(new ByteArrayInputStream(raw.array(), raw.readPosition(), raw.readRemaining()))) {
 			int nRead;
 			ByteBuf data = ByteBufPool.allocate(256);
@@ -51,6 +52,7 @@ final class GzipProcessor {
 	}
 
 	static ByteBuf toGzip(ByteBuf raw) {
+		assert raw.readRemaining() > 0;
 		try {
 			ByteBufOutputStream out = new ByteBufOutputStream();
 			GZIPOutputStream gzip = new GZIPOutputStream(out);
