@@ -265,7 +265,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 			if (actualBytes == bytesToRead) {
 //				if (!readQueue.isEmpty())
 //					throw new IllegalStateException("Extra bytes outside of HTTP message");
-				onHttpMessage(isGzipped ? fromGzip(bodyQueue.takeRemaining()) : bodyQueue.takeRemaining());
+				onCompleteMessage(bodyQueue.takeRemaining());
 			}
 		} else {
 			assert reading == CHUNK || reading == CHUNK_LENGTH;
@@ -313,7 +313,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 						check(c1 == CR && c2 == LF && c3 == CR && c4 == LF, MALFORMED_CHUNK);
 //						if (!readQueue.isEmpty())
 //							throw new IllegalStateException("Extra bytes outside of chunk");
-						onHttpMessage(isGzipped ? fromGzip(bodyQueue.takeRemaining()) : bodyQueue.takeRemaining());
+						onCompleteMessage(bodyQueue.takeRemaining());
 						return;
 					}
 				}
@@ -334,6 +334,16 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 				}
 			}
 		}
+	}
+
+	private void onCompleteMessage(ByteBuf raw) throws ParseException {
+		if (isGzipped) {
+			if (raw.readRemaining() > 0) {
+				raw = fromGzip(raw);
+			}
+			isGzipped = false;
+		}
+		onHttpMessage(raw);
 	}
 
 	@Override
