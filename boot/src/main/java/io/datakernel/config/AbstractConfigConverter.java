@@ -26,7 +26,8 @@ public abstract class AbstractConfigConverter<T> implements ConfigConverter<T> {
 	@Override
 	public final T get(Config config, T defaultValue) {
 		String defaultString = defaultValue == null ? null : toString(defaultValue);
-		return fromString(config.get(Config.THIS, defaultString));
+		String value = config.get(Config.THIS, defaultString);
+		return value == null ? null : fromString(value);
 	}
 
 	protected abstract T fromString(String value);

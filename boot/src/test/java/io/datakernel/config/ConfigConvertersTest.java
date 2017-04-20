@@ -17,6 +17,10 @@
 package io.datakernel.config;
 
 import io.datakernel.eventloop.InetAddressRange;
+import io.datakernel.net.DatagramSocketSettings;
+import io.datakernel.net.ServerSocketSettings;
+import io.datakernel.net.SocketSettings;
+import io.datakernel.util.MemSize;
 import org.junit.Test;
 
 import java.net.Inet4Address;
@@ -30,6 +34,7 @@ import java.util.Map;
 
 import static io.datakernel.config.Config.THIS;
 import static io.datakernel.config.ConfigConverters.*;
+import static io.datakernel.config.Configs.emptyConfig;
 import static org.junit.Assert.*;
 
 public class ConfigConvertersTest {
@@ -151,5 +156,63 @@ public class ConfigConvertersTest {
 				(Inet4Address) InetAddress.getByName("192.168.255.255")
 		);
 		assertEquals(expected, rangeConverter.get(root));
+	}
+
+	@Test
+	public void testDefaultNullValues() throws UnknownHostException {
+		Integer value = ofInteger().get(emptyConfig(), null);
+		assertNull(value);
+	}
+
+	@Test
+	public void testDatagraphSocketSettingsConverter() throws UnknownHostException {
+		Config emptyConfig = emptyConfig();
+		DatagramSocketSettings expected = DatagramSocketSettings.create()
+				.withReceiveBufferSize(MemSize.bytes(256))
+				.withSendBufferSize(1024)
+				.withReuseAddress(false)
+				.withBroadcast(true);
+
+		DatagramSocketSettings actual = emptyConfig.get(ofDatagramSocketSettings(), THIS, expected);
+
+		assertEquals(expected.getBroadcast(), actual.getBroadcast());
+		assertEquals(expected.getReuseAddress(), actual.getReuseAddress());
+		assertEquals(expected.getReceiveBufferSize(), actual.getReceiveBufferSize());
+		assertEquals(expected.getSendBufferSize(), actual.getSendBufferSize());
+	}
+
+	@Test
+	public void testServerSocketSettings() {
+		Config emptyConfig = emptyConfig();
+		ServerSocketSettings expected = ServerSocketSettings.create(1)
+				.withReceiveBufferSize(64)
+				.withReuseAddress(true);
+
+		ServerSocketSettings actual = emptyConfig.get(ofServerSocketSettings(), THIS, expected);
+		assertEquals(expected.getBacklog(), actual.getBacklog());
+		assertEquals(expected.getReceiveBufferSize(), actual.getReceiveBufferSize());
+		assertEquals(expected.getReuseAddress(), actual.getReuseAddress());
+	}
+
+	@Test
+	public void testSocketSettings() {
+		Config emptyConfig = emptyConfig();
+		SocketSettings expected = SocketSettings.create()
+				.withTcpNoDelay(true)
+				.withReuseAddress(false)
+				.withReceiveBufferSize(256)
+				.withSendBufferSize(512)
+				.withKeepAlive(true);
+
+		SocketSettings actual = emptyConfig.get(ofSocketSettings(), THIS, expected);
+
+		assertFalse(actual.hasImplReadSize());
+		assertFalse(actual.hasImplWriteSize());
+
+		assertEquals(expected.getTcpNoDelay(), actual.getTcpNoDelay());
+		assertEquals(expected.getReuseAddress(), actual.getReuseAddress());
+		assertEquals(expected.getReceiveBufferSize(), actual.getReceiveBufferSize());
+		assertEquals(expected.getSendBufferSize(), actual.getSendBufferSize());
+		assertEquals(expected.getKeepAlive(), actual.getKeepAlive());
 	}
 }

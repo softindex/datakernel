@@ -388,7 +388,7 @@ public final class ConfigConverters {
 
 			@Override
 			public DatagramSocketSettings get(Config config, DatagramSocketSettings defaultValue) {
-				DatagramSocketSettings result = Preconditions.checkNotNull(DatagramSocketSettings.create());
+				DatagramSocketSettings result = Preconditions.checkNotNull(defaultValue);
 
 				MemSize receiveBufferSize = config.get(ofMemSize(), "receiveBufferSize", result.hasReceiveBufferSize() ?
 						MemSize.of(result.getReceiveBufferSize()) : null);
