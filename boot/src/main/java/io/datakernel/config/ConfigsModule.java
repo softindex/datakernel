@@ -29,12 +29,12 @@ import java.nio.file.Paths;
 public final class ConfigsModule extends AbstractModule {
 	private static final Logger logger = LoggerFactory.getLogger(ConfigsModule.class);
 
-	private Config root;
+	private Config config;
 	private Path saveFile;
 
 	// creators & builders
-	private ConfigsModule(Config root) {
-		this.root = root;
+	private ConfigsModule(Config config) {
+		this.config = config;
 	}
 
 	public static ConfigsModule create(Config config) {
@@ -55,8 +55,8 @@ public final class ConfigsModule extends AbstractModule {
 		@Override
 		public void start() throws Exception {
 			logger.info("Saving resulting config to {}", saveFile);
-			if (root instanceof EffectiveConfig) {
-				((EffectiveConfig) root).saveEffectiveConfig(saveFile);
+			if (config instanceof EffectiveConfig) {
+				((EffectiveConfig) config).saveEffectiveConfig(saveFile);
 			}
 		}
 
@@ -68,6 +68,7 @@ public final class ConfigsModule extends AbstractModule {
 	@Override
 	protected void configure() {
 		if (saveFile != null) {
+			config = EffectiveConfig.create(config);
 			bind(ConfigSaveService.class).toInstance(new ConfigSaveService());
 		}
 	}
@@ -75,9 +76,6 @@ public final class ConfigsModule extends AbstractModule {
 	@Provides
 	@Singleton
 	Config provideConfig() {
-		if (saveFile != null) {
-			root = EffectiveConfig.create(root);
-		}
-		return root;
+		return config;
 	}
 }

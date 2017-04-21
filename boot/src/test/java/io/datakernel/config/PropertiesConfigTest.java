@@ -21,7 +21,7 @@ import org.junit.Test;
 
 import java.util.Properties;
 
-import static io.datakernel.config.TestUtils.testBaseConfig;
+import static io.datakernel.config.ConfigTestUtils.testBaseConfig;
 
 public class PropertiesConfigTest {
 	@Test

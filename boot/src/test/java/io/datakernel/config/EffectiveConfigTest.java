@@ -19,21 +19,27 @@ package io.datakernel.config;
 import io.datakernel.config.impl.TreeConfig;
 import io.datakernel.net.ServerSocketSettings;
 import org.junit.Before;
-import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 import java.io.IOException;
-import java.nio.file.Paths;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static io.datakernel.config.ConfigConverters.ofLong;
 import static io.datakernel.config.ConfigConverters.ofServerSocketSettings;
-import static io.datakernel.config.TestUtils.testBaseConfig;
-import static org.junit.Assert.assertEquals;
+import static io.datakernel.config.ConfigTestUtils.testBaseConfig;
+import static junit.framework.TestCase.assertNotNull;
+import static org.junit.Assert.*;
 
 public class EffectiveConfigTest {
+	@Rule
+	public TemporaryFolder folder = new TemporaryFolder();
+
 	private EffectiveConfig config;
 
 	@Before
@@ -94,7 +100,29 @@ public class EffectiveConfigTest {
 		assertEquals(true, settings.getReuseAddress());
 	}
 
-	@Ignore("Creates file another.properties; used to check whether the effective file is informative enough")
+	@Test
+	public void testWorksWithDefaultNulls() throws IOException {
+		String expected =
+				"# DEFAULT: a.a.a = \n" +
+						"# UNUSED:  a.a.b = value1\n" +
+						"# DEFAULT: a.a.c = \n" +
+						"a.a.c = value2\n" +
+						"# UNUSED:  a.b.a = value3\n";
+
+		EffectiveConfig config = EffectiveConfig.create(
+				TreeConfig.ofTree()
+						.withValue("a.a.b", "value1")
+						.withValue("a.a.c", "value2")
+						.withValue("a.b.a", "value3")
+		);
+
+		assertNull(config.get("a.a.a", null));
+		assertNotNull(config.get("a.a.c", null));
+
+		String actual = EffectiveConfig.render(config);
+		assertEquals(expected, actual);
+	}
+
 	@Test
 	public void testEffectiveConfig() throws IOException {
 		assertEquals("jdbc:mysql://localhost:3306/some_schema", config.get("DataBase.jdbcUrl"));
@@ -102,6 +130,8 @@ public class EffectiveConfigTest {
 		assertEquals("root", config.get("DataBase.password", "default"));
 
 		assertEquals(1000L, (long) config.get(ofLong(), "Server.AsyncClient.clientTimeout"));
-		config.saveEffectiveConfig(Paths.get("./another.properties"));
+		Path outputPath = folder.newFile("./effective.properties").toPath();
+		config.saveEffectiveConfig(outputPath);
+		assertTrue(Files.exists(outputPath));
 	}
 }

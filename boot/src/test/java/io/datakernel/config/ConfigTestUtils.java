@@ -24,7 +24,7 @@ import static io.datakernel.config.Configs.EMPTY_CONFIG;
 import static org.junit.Assert.*;
 
 @SuppressWarnings("WeakerAccess")
-public class TestUtils {
+public class ConfigTestUtils {
 	/**
 	 * Config of the following form is required:
 	 * key: a.a.a, value: value1;

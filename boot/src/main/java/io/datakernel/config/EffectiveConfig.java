@@ -22,6 +22,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
 
+import static com.google.common.base.Strings.nullToEmpty;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.*;
 
@@ -158,7 +159,7 @@ final class EffectiveConfig implements Config {
 		}
 	}
 
-	private static String render(EffectiveConfig config) throws IOException {
+	static String render(EffectiveConfig config) throws IOException {
 		CallsRegistry register = config.callsRegistry;
 		StringBuilder sb = new StringBuilder();
 
@@ -170,29 +171,28 @@ final class EffectiveConfig implements Config {
 			String value = register.all.get(key);
 			String defaultValue = register.defaultCalls.get(key);
 
-			if (used == null) {
+			if (!register.calls.containsKey(key)) {
 				sb.append("# UNUSED:  ");
-			}
-
-			if (value == null) {
-				value = defaultValue;
-			}
-
-			sb.append(encodeForPropertiesFile(key, true));
-			sb.append(" = ");
-			sb.append(encodeForPropertiesFile(value, false));
-			sb.append("\n");
-
-			if (defaultValue != null) {
-				sb.append("# DEFAULT: ");
-				sb.append(encodeForPropertiesFile(key, true));
-				sb.append(" = ");
-				sb.append(encodeForPropertiesFile(defaultValue, false));
-				sb.append("\n");
+				writeProperty(sb, key, value);
+			} else {
+				if (register.defaultCalls.containsKey(key) && (used == null || !used.equals(defaultValue))) {
+					sb.append("# DEFAULT: ");
+					writeProperty(sb, key, nullToEmpty(defaultValue));
+				}
+				if (used != null) {
+					writeProperty(sb, key, used);
+				}
 			}
 		}
 
 		return sb.toString();
+	}
+
+	private static void writeProperty(StringBuilder sb, String key, String value) {
+		sb.append(encodeForPropertiesFile(key, true));
+		sb.append(" = ");
+		sb.append(encodeForPropertiesFile(value, false));
+		sb.append("\n");
 	}
 
 	private static String encodeForPropertiesFile(String string, boolean escapeKey) {

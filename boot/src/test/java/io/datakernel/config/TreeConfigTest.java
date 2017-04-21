@@ -25,7 +25,7 @@ import java.util.NoSuchElementException;
 
 import static io.datakernel.config.ConfigConverters.ofByte;
 import static io.datakernel.config.ConfigConverters.ofInteger;
-import static io.datakernel.config.TestUtils.testBaseConfig;
+import static io.datakernel.config.ConfigTestUtils.testBaseConfig;
 import static org.junit.Assert.*;
 
 public class TreeConfigTest {
@@ -68,7 +68,9 @@ public class TreeConfigTest {
 		assertEquals(ImmutableSet.of("key1", "key2", "key5"), config.getChildren());
 
 		assertEquals(
-				config.getChild("key2.key3.key4"), config.getChild("key2").getChild("key3").getChild("key4"));
+				config.getChild("key2.key3.key4"),
+				config.getChild("key2").getChild("key3").getChild("key4")
+		);
 	}
 
 	@Test

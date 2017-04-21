@@ -24,6 +24,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
 public final class TreeConfig extends AbstractConfig {
 	private static final Logger logger = LoggerFactory.getLogger(TreeConfig.class);
 
@@ -69,7 +71,7 @@ public final class TreeConfig extends AbstractConfig {
 	public void addLeaf(String key, String value) {
 		assert this.value == null;
 		assert !key.contains(".");
-		this.children.put(key, new TreeConfig(this, Collections.<String, TreeConfig>emptyMap(), value));
+		this.children.put(key, new TreeConfig(this, Collections.<String, TreeConfig>emptyMap(), checkNotNull(value)));
 	}
 
 	// api
