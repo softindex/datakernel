@@ -125,7 +125,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	private boolean aggregationsIgnoreChunkReadingExceptions = false;
 
 	private int maxOverlappingChunksToProcessLogs = Cube.DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD;
-	private int maxIncrementalReloadPeriodMillis = Aggregation.DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS;
+	private long maxIncrementalReloadPeriodMillis = Aggregation.DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS;
 
 	private static final class AggregationContainer {
 		private final Aggregation aggregation;
@@ -1454,7 +1454,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	}
 
 	@JmxAttribute
-	public int getMaxIncrementalReloadPeriodMillis() {
+	public long getMaxIncrementalReloadPeriodMillis() {
 		return maxIncrementalReloadPeriodMillis;
 	}
 
@@ -1463,7 +1463,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 		this.maxIncrementalReloadPeriodMillis = maxIncrementalReloadPeriodMillis;
 	}
 
-	public Cube withMaxIncrementalReloadPeriodMillis(int maxIncrementalReloadPeriodMillis) {
+	public Cube withMaxIncrementalReloadPeriodMillis(long maxIncrementalReloadPeriodMillis) {
 		this.maxIncrementalReloadPeriodMillis = maxIncrementalReloadPeriodMillis;
 		return this;
 	}
