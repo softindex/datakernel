@@ -70,7 +70,7 @@ public class Aggregation implements IAggregation, AggregationOperationTracker, E
 	public static final int DEFAULT_CHUNK_SIZE = 1_000_000;
 	public static final int DEFAULT_SORTER_ITEMS_IN_MEMORY = 1_000_000;
 	public static final int DEFAULT_SORTER_BLOCK_SIZE = 256 * 1024;
-	public static final int DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS = 10 * 60 * 1000; // 10 minutes
+	public static final long DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS = 10 * 60 * 1000; // 10 minutes
 	public static final int DEFAULT_MAX_CHUNKS_TO_CONSOLIDATE = 1000;
 
 	private final Eventloop eventloop;
@@ -89,7 +89,7 @@ public class Aggregation implements IAggregation, AggregationOperationTracker, E
 	private int chunkSize = DEFAULT_CHUNK_SIZE;
 	private int sorterItemsInMemory = DEFAULT_SORTER_ITEMS_IN_MEMORY;
 	private int sorterBlockSize = DEFAULT_SORTER_BLOCK_SIZE;
-	private int maxIncrementalReloadPeriodMillis = DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS;
+	private long maxIncrementalReloadPeriodMillis = DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS;
 	private boolean ignoreChunkReadingExceptions = false;
 	private int maxChunksToConsolidate = DEFAULT_MAX_CHUNKS_TO_CONSOLIDATE;
 
@@ -696,12 +696,12 @@ public class Aggregation implements IAggregation, AggregationOperationTracker, E
 	// jmx
 
 	@JmxAttribute
-	public int getMaxIncrementalReloadPeriodMillis() {
+	public long getMaxIncrementalReloadPeriodMillis() {
 		return maxIncrementalReloadPeriodMillis;
 	}
 
 	@JmxAttribute
-	public void setMaxIncrementalReloadPeriodMillis(int maxIncrementalReloadPeriodMillis) {
+	public void setMaxIncrementalReloadPeriodMillis(long maxIncrementalReloadPeriodMillis) {
 		this.maxIncrementalReloadPeriodMillis = maxIncrementalReloadPeriodMillis;
 	}
 

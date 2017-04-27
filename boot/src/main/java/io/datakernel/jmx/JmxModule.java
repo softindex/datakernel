@@ -24,6 +24,7 @@ import io.datakernel.worker.WorkerPoolModule;
 
 import java.lang.annotation.Annotation;
 import java.lang.management.ManagementFactory;
+import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -39,10 +40,11 @@ public final class JmxModule extends AbstractModule {
 	private final Set<Key<?>> workerKeys = new HashSet<>();
 
 	private final Map<Key<?>, MBeanSettings> keyToSettings = new HashMap<>();
+	private final Map<Type, MBeanSettings> typeToSettings = new HashMap<>();
 
 	private double refreshPeriod = REFRESH_PERIOD_DEFAULT;
 	private int maxJmxRefreshesPerOneCycle = MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT;
-	private final Map<TypeLiteral<?>, String> globalMBeans = new HashMap<>();
+	private final Map<Type, String> globalMBeans = new HashMap<>();
 
 	private JmxModule() {}
 
@@ -67,8 +69,9 @@ public final class JmxModule extends AbstractModule {
 		return this;
 	}
 
-	public <T> JmxModule withModifier(Class<?> clazz, String attrName, AttributeModifier<T> modifier) {
-		return withModifier(Key.get(clazz), attrName, modifier);
+	public <T> JmxModule withModifier(Type type, String attrName, AttributeModifier<T> modifier) {
+		ensureSettings(type).addModifier(attrName, modifier);
+		return this;
 	}
 
 	public JmxModule withOptional(Key<?> key, String attrName) {
@@ -76,9 +79,9 @@ public final class JmxModule extends AbstractModule {
 		return this;
 	}
 
-	public JmxModule withOptional(Class<?> clazz, String attrName) {
-		// TODO(vmykhalko): maybe also support keys with binding annotation ? (i.e. condider here all keys that have specified "clazz" regardless of binding annotation)
-		return withOptional(Key.get(clazz), attrName);
+	public JmxModule withOptional(Type type, String attrName) {
+		ensureSettings(type).addIncludedOptional(attrName);
+		return this;
 	}
 
 	public JmxModule withHistogram(Key<?> key, String attrName, final int[] histogramLevels) {
@@ -96,15 +99,11 @@ public final class JmxModule extends AbstractModule {
 		return withHistogram(Key.get(clazz), attrName, histogramLevels);
 	}
 
-	public JmxModule withGlobalMBean(TypeLiteral<?> type, String name) {
+	public JmxModule withGlobalMBean(Type type, String name) {
 		checkArgument(!globalMBeans.containsKey(type), "GlobalMBean for \"%s\" was already specified", type);
 
 		globalMBeans.put(type, name);
 		return this;
-	}
-
-	public JmxModule withGlobalMBean(Class clazz, String name) {
-		return withGlobalMBean(TypeLiteral.get(clazz), name);
 	}
 
 	private MBeanSettings ensureSettings(Key<?> key) {
@@ -112,6 +111,15 @@ public final class JmxModule extends AbstractModule {
 		if (settings == null) {
 			settings = MBeanSettings.defaultSettings();
 			keyToSettings.put(key, settings);
+		}
+		return settings;
+	}
+
+	private MBeanSettings ensureSettings(Type key) {
+		MBeanSettings settings = typeToSettings.get(key);
+		if (settings == null) {
+			settings = MBeanSettings.defaultSettings();
+			typeToSettings.put(key, settings);
 		}
 		return settings;
 	}
@@ -182,7 +190,7 @@ public final class JmxModule extends AbstractModule {
 	@Provides
 	JmxRegistrator jmxRegistrator(Injector injector, JmxRegistry jmxRegistry, DynamicMBeanFactory mbeanFactory) {
 		return JmxRegistrator.create(injector, singletonKeys, workerKeys, jmxRegistry, mbeanFactory,
-				keyToSettings, globalMBeans);
+				keyToSettings, typeToSettings, globalMBeans);
 	}
 
 	@Provides
