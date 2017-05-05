@@ -967,6 +967,21 @@ public class ExpressionTest {
 		assertEquals(instance.method(null), true);
 	}
 
+	public interface TestIsNotNull {
+		boolean method(Object a);
+	}
+
+	@org.junit.Test
+	public void testIsNotNull() {
+		final DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
+		final TestIsNotNull instance = ClassBuilder.create(definingClassLoader, TestIsNotNull.class)
+				.withMethod("method", isNotNull(arg(0)))
+				.buildClassAndCreateNewInstance();
+		assertEquals(instance.method("42"), true);
+		assertEquals(instance.method(42), true);
+		assertEquals(instance.method(null), false);
+	}
+
 	public interface TestNewArray {
 		int[] ints(int size);
 
