@@ -87,6 +87,11 @@ public final class HttpResponse extends HttpMessage {
 		return this;
 	}
 
+	public HttpResponse withGzipCompression(boolean allow) {
+		setGzipCompression(allow);
+		return this;
+	}
+
 	// specific builder methods
 	public HttpResponse withNoCache() {
 		setNoCache();

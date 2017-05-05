@@ -34,6 +34,7 @@ public abstract class HttpMessage {
 	final ArrayList<HttpHeaders.Value> headers = new ArrayList<>();
 	private ArrayList<ByteBuf> headerBufs;
 	protected ByteBuf body;
+	protected Boolean useGzip;
 
 	protected HttpMessage() {
 	}
@@ -119,6 +120,11 @@ public abstract class HttpMessage {
 	public void setBody(byte[] body) {
 		assert !recycled;
 		this.body = ByteBuf.wrapForReading(body);
+	}
+
+	public void setGzipCompression(boolean allow) {
+		// we are not setting header as it still could be prohibited to use compression on the server level
+		this.useGzip = allow ? Boolean.TRUE : Boolean.FALSE;
 	}
 
 	// getters

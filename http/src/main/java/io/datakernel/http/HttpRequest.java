@@ -183,7 +183,7 @@ public final class HttpRequest extends HttpMessage {
 	}
 
 	public HttpRequest withGzipCompression() {
-		setGzipCompression();
+		setGzipCompression(true);
 		return this;
 	}
 	// endregion
@@ -410,6 +410,7 @@ public final class HttpRequest extends HttpMessage {
 	private final static int LONGEST_HTTP_METHOD_SIZE = 12;
 	private static final byte[] HTTP_1_1 = encodeAscii(" HTTP/1.1");
 	private static final int HTTP_1_1_SIZE = HTTP_1_1.length;
+	private static final byte[] GZIP_BYTES = encodeAscii("gzip");
 
 	public String getUrlParameter(String key) {
 		return urlParameters == null ? null : urlParameters.get(key);
@@ -448,8 +449,9 @@ public final class HttpRequest extends HttpMessage {
 	public ByteBuf toByteBuf() {
 		assert !recycled;
 		if (body != null || method != GET) {
-			if (gzip) {
+			if (useGzip == Boolean.TRUE && body != null && body.readRemaining() > 0) {
 				body = toGzip(body);
+				setHeader(asBytes(CONTENT_ENCODING, GZIP_BYTES));
 			}
 			setHeader(HttpHeaders.ofDecimal(HttpHeaders.CONTENT_LENGTH, body == null ? 0 : body.readRemaining()));
 		}

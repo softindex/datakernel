@@ -36,8 +36,8 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.GzipProcessor.fromGzip;
 import static io.datakernel.http.GzipProcessor.toGzip;
 import static io.datakernel.http.HttpHeaders.ACCEPT_ENCODING;
-import static io.datakernel.http.HttpResponse.ok200;
 import static junit.framework.TestCase.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 public class TestGzipProcessor {
@@ -53,18 +53,37 @@ public class TestGzipProcessor {
 	}
 
 	@Test
+	public void recycleByteBufInCaseOfBadInput() {
+		final ByteBuf badBuf = ByteBufPool.allocate(100);
+		badBuf.put(new byte[]{-1, -1, -1, -1, -1, -1});
+
+		try {
+			fromGzip(badBuf);
+			fail();
+		} catch (ParseException ignored) {
+
+		}
+
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+	}
+
+	@Test
 	public void testGzippedCommunicationBetweenClientServer() throws IOException, ParseException, ExecutionException, InterruptedException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		AsyncServlet servlet = new AsyncServlet() {
 			@Override
 			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
 				String receivedData = ByteBufStrings.decodeAscii(request.getBody());
+				assertEquals("gzip", request.getHeader(HttpHeaders.CONTENT_ENCODING));
+				assertEquals("gzip", request.getHeader(HttpHeaders.ACCEPT_ENCODING));
 				assertEquals(TEST_PHRASE, receivedData);
-				callback.setResult(ok200().withBody(ByteBufStrings.wrapAscii(receivedData)));
+				callback.setResult(HttpResponse.ok200().withBody(ByteBufStrings.wrapAscii(receivedData)));
 			}
 		};
 
-		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet).withListenPort(PORT);
+		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
+				.withGzipResponses(true)
+				.withListenPort(PORT);
 
 		final AsyncHttpClient client = AsyncHttpClient.create(eventloop);
 
@@ -79,6 +98,8 @@ public class TestGzipProcessor {
 		client.send(request, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
+				assertEquals("gzip", result.getHeader(HttpHeaders.CONTENT_ENCODING));
+
 				callback.setResult(decodeAscii(result.getBody()));
 				server.close(IgnoreCompletionCallback.create());
 				client.stop(IgnoreCompletionCallback.create());
@@ -98,17 +119,52 @@ public class TestGzipProcessor {
 	}
 
 	@Test
-	public void recycleByteBufInCaseOfBadInput() {
-		final ByteBuf badBuf = ByteBufPool.allocate(100);
-		badBuf.put(new byte[]{-1, -1, -1, -1, -1, -1});
+	public void testServerDoNotGzipIfResponseRestricts() throws Exception {
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		AsyncServlet servlet = new AsyncServlet() {
+			@Override
+			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
+				callback.setResult(HttpResponse.ok200()
+						.withBody(request.detachBody())
+						.withGzipCompression(false)
+				);
+			}
+		};
 
-		try {
-			fromGzip(badBuf);
-			fail();
-		} catch (ParseException ignored) {
+		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
+				.withGzipResponses(true)
+				.withListenPort(PORT);
 
-		}
+		final AsyncHttpClient client = AsyncHttpClient.create(eventloop);
 
+		final ResultCallbackFuture<String> callback = ResultCallbackFuture.create();
+
+		HttpRequest request = HttpRequest.get("http://127.0.0.1:" + PORT)
+				.withHeader(ACCEPT_ENCODING, "gzip")
+				.withBody(wrapAscii(TEST_PHRASE))
+				.withGzipCompression();
+
+		server.listen();
+		client.send(request, new ResultCallback<HttpResponse>() {
+			@Override
+			public void onResult(HttpResponse result) {
+				assertNull(result.getHeader(HttpHeaders.CONTENT_ENCODING));
+
+				callback.setResult(decodeAscii(result.getBody()));
+				server.close(IgnoreCompletionCallback.create());
+				client.stop(IgnoreCompletionCallback.create());
+			}
+
+			@Override
+			public void onException(Exception e) {
+				callback.setException(e);
+				server.close(IgnoreCompletionCallback.create());
+				client.stop(IgnoreCompletionCallback.create());
+			}
+		});
+
+		eventloop.run();
+		assertEquals(TEST_PHRASE, callback.get());
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 }
