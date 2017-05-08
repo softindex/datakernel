@@ -470,8 +470,9 @@ public class AggregationPredicates {
 		@Override
 		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
 			Pattern pattern = Pattern.compile(regexp);
-			return Expressions.and(Expressions.isNotNull(field(record, key.replace('.', '$'))), cmpNe(value(false),
-					call(call(value(pattern), "matcher", cast(field(record, key.replace('.', '$')), CharSequence.class)), "matches")));
+			return Expressions.and(cmpNe(value(false), call(call(value(pattern), "matcher",
+					cast(callStatic(String.class, "valueOf", cast(field(record, key.replace('.', '$')), Object.class)),
+							CharSequence.class)), "matches")));
 		}
 
 		@Override
