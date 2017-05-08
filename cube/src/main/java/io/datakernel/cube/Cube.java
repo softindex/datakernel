@@ -1459,7 +1459,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	}
 
 	@JmxAttribute
-	public void setMaxIncrementalReloadPeriodMillis(int maxIncrementalReloadPeriodMillis) {
+	public void setMaxIncrementalReloadPeriodMillis(long maxIncrementalReloadPeriodMillis) {
 		this.maxIncrementalReloadPeriodMillis = maxIncrementalReloadPeriodMillis;
 	}
 
