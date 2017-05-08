@@ -68,6 +68,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
 import static java.util.Collections.singletonList;
 import static junit.framework.TestCase.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class ReportingTest {
@@ -135,7 +136,7 @@ public class ReportingTest {
 				case 1:
 					return "first";
 				case 2:
-					return "second";
+					return null;
 				case 3:
 					return "third";
 				default:
@@ -244,6 +245,7 @@ public class ReportingTest {
 				CubeMetadataStorageSql.create(eventloop, executor, jooqConfiguration, "processId");
 
 		Cube cube = Cube.create(eventloop, executor, classLoader, cubeMetadataStorageSql, aggregationChunkStorage)
+				.withClassLoaderCache(CubeClassLoaderCache.create(classLoader, 5))
 				.withDimensions(DIMENSIONS)
 				.withMeasures(MEASURES)
 				.withRelation("campaign", "advertiser")
@@ -349,6 +351,101 @@ public class ReportingTest {
 	}
 
 	@Test
+	public void testBetweenQueryOnPrimitives() throws Exception {
+		CubeQuery query = CubeQuery.create()
+				.withAttributes("advertiser", "advertiser.name")
+				.withMeasures("clicks")
+				.withHaving(and(between("advertiser", 1, 3), alwaysTrue(), alwaysTrue()));
+
+		final QueryResult[] queryResult = new QueryResult[1];
+		cubeHttpClient.query(query, new AssertingResultCallback<QueryResult>() {
+			@Override
+			protected void onResult(QueryResult result) {
+				queryResult[0] = result;
+			}
+		});
+
+		eventloop.run();
+
+		List<Record> records = queryResult[0].getRecords();
+		assertEquals(3, records.size());
+	}
+
+	@Test
+	public void testQueryWithNullAttributes() {
+		CubeQuery query = CubeQuery.create()
+				.withAttributes("date", "advertiser.name")
+				.withMeasures("impressions")
+				.withOrderings(asc("date"), asc("advertiser.name"))
+				.withHaving(and(
+						or(eq("advertiser.name", null), regexp("advertiser.name", ".*f.*")),
+						between("date", LocalDate.parse("2000-01-01"), LocalDate.parse("2000-01-03"))));
+
+		final QueryResult[] queryResult = new QueryResult[1];
+		cubeHttpClient.query(query, new AssertingResultCallback<QueryResult>() {
+			@Override
+			protected void onResult(QueryResult result) {
+				queryResult[0] = result;
+			}
+		});
+
+		eventloop.run();
+
+		List<Record> records = queryResult[0].getRecords();
+		assertEquals(4, records.size());
+		assertEquals(newHashSet("date", "advertiser", "advertiser.name"), newHashSet(queryResult[0].getAttributes()));
+		assertEquals(newHashSet("impressions"), newHashSet(queryResult[0].getMeasures()));
+
+		assertEquals(LocalDate.parse("2000-01-01"), records.get(0).get("date"));
+		assertEquals(1, (int) records.get(0).get("advertiser"));
+		assertEquals("first", (String) records.get(0).get("advertiser.name"));
+		assertEquals(10, (long) records.get(0).get("impressions"));
+
+		assertEquals(LocalDate.parse("2000-01-02"), records.get(1).get("date"));
+		assertEquals(2, (int) records.get(1).get("advertiser"));
+		assertEquals(null, (String) records.get(1).get("advertiser.name"));
+		assertEquals(100, (long) records.get(1).get("impressions"));
+
+		assertEquals(LocalDate.parse("2000-01-02"), records.get(2).get("date"));
+		assertEquals(1, (int) records.get(2).get("advertiser"));
+		assertEquals("first", (String) records.get(2).get("advertiser.name"));
+		assertEquals(20, (long) records.get(2).get("impressions"));
+
+		assertEquals(LocalDate.parse("2000-01-03"), records.get(3).get("date"));
+		assertEquals(1, (int) records.get(3).get("advertiser"));
+		assertEquals("first", (String) records.get(3).get("advertiser.name"));
+		assertEquals(15, (long) records.get(3).get("impressions"));
+
+		Record totals = queryResult[0].getTotals();
+		assertEquals(255, (long) totals.get("impressions"));
+		assertEquals(newHashSet("date", "advertiser.name"), newHashSet(queryResult[0].getSortedBy()));
+	}
+
+	@Test
+	public void testQueryWithNullAttributeAndBetweenPredicate() {
+		CubeQuery query = CubeQuery.create()
+				.withAttributes("advertiser.name")
+				.withMeasures("impressions")
+				.withHaving(or(between("advertiser.name", "a", "z"), eq("advertiser.name", null)));
+
+		final QueryResult[] queryResult = new QueryResult[1];
+		cubeHttpClient.query(query, new AssertingResultCallback<QueryResult>() {
+			@Override
+			protected void onResult(QueryResult result) {
+				queryResult[0] = result;
+			}
+		});
+
+		eventloop.run();
+
+		List<Record> records = queryResult[0].getRecords();
+		assertEquals(3, records.size());
+		assertEquals("first", (String) records.get(0).get("advertiser.name"));
+		assertEquals(null, (String) records.get(1).get("advertiser.name"));
+		assertEquals("third", (String) records.get(2).get("advertiser.name"));
+	}
+
+	@Test
 	public void testPaginationAndDrillDowns() throws Exception {
 		CubeQuery query = CubeQuery.create()
 				.withAttributes("date")
@@ -387,10 +484,9 @@ public class ReportingTest {
 		CubeQuery query = CubeQuery.create()
 				.withAttributes("date", "advertiser.name")
 				.withMeasures("impressions")
-				.withWhere(eq("advertiser", 1))
+				.withWhere(eq("advertiser", 2))
 				.withOrderings(asc("advertiser.name"))
-				.withHaving(or(eq("advertiser.name", "first"), eq("impressions", 10)))
-				.withLimit(3);
+				.withHaving(eq("advertiser.name", null));
 
 		final QueryResult[] queryResult = new QueryResult[1];
 		cubeHttpClient.query(query, new AssertingResultCallback<QueryResult>() {
@@ -404,7 +500,8 @@ public class ReportingTest {
 
 		Map<String, Object> filterAttributes = queryResult[0].getFilterAttributes();
 		assertEquals(1, filterAttributes.size());
-		assertEquals("first", filterAttributes.get("advertiser.name"));
+		assertTrue(filterAttributes.containsKey("advertiser.name"));
+		assertNull(filterAttributes.get("advertiser.name"));
 	}
 
 	@Test
@@ -412,7 +509,7 @@ public class ReportingTest {
 		CubeQuery query = CubeQuery.create()
 				.withAttributes("advertiser.name")
 				.withMeasures("clicks")
-				.withHaving(regexp("advertiser.name", ".*s.*"));
+				.withHaving(or(regexp("advertiser.name", ".*s.*"), eq("advertiser.name", null)));
 
 		final QueryResult[] queryResult = new QueryResult[1];
 		cubeHttpClient.query(query, new AssertingResultCallback<QueryResult>() {
@@ -432,7 +529,7 @@ public class ReportingTest {
 		assertEquals(1, (int) records.get(0).get("advertiser"));
 		assertEquals("first", records.get(0).get("advertiser.name"));
 		assertEquals(2, (int) records.get(1).get("advertiser"));
-		assertEquals("second", records.get(1).get("advertiser.name"));
+		assertEquals(null, records.get(1).get("advertiser.name"));
 	}
 
 	@Test

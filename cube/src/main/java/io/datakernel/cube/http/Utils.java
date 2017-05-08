@@ -80,7 +80,7 @@ class Utils {
 	}
 
 	static GsonBuilder createGsonBuilder(final Map<String, Type> attributeTypes, final Map<String, Type> measureTypes) {
-		return new GsonBuilder()
+		return new GsonBuilder().serializeNulls()
 				.registerTypeAdapterFactory(new TypeAdapterFactory() {
 					@SuppressWarnings("unchecked")
 					@Override
