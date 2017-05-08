@@ -18,6 +18,9 @@ package io.datakernel.eventloop;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.jmx.EventStats;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.ValueStats;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -44,6 +47,74 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 
 	private int ops = 0;
 
+	// region jmx classes
+	public interface Inspector {
+		void onReceive(UdpPacket packet);
+
+		void onReceiveError(IOException e);
+
+		void onSend(UdpPacket packet);
+
+		void onSendError(IOException e);
+	}
+
+	public static class JmxInspector implements Inspector {
+		private final ValueStats receives;
+		private final EventStats receiveErrors;
+		private final ValueStats sends;
+		private final EventStats sendErrors;
+
+		public JmxInspector(double smoothingWindow) {
+			this.receives = ValueStats.create(smoothingWindow);
+			this.receiveErrors = EventStats.create(smoothingWindow);
+			this.sends = ValueStats.create(smoothingWindow);
+			this.sendErrors = EventStats.create(smoothingWindow);
+		}
+
+		@Override
+		public void onReceive(UdpPacket packet) {
+			receives.recordValue(packet.getBuf().readRemaining());
+		}
+
+		@Override
+		public void onReceiveError(IOException e) {
+			receiveErrors.recordEvent();
+		}
+
+		@Override
+		public void onSend(UdpPacket packet) {
+			sends.recordValue(packet.getBuf().readRemaining());
+		}
+
+		@Override
+		public void onSendError(IOException e) {
+			sendErrors.recordEvent();
+		}
+
+		@JmxAttribute(description = "Received packet size")
+		public ValueStats getReceives() {
+			return receives;
+		}
+
+		@JmxAttribute
+		public EventStats getReceiveErrors() {
+			return receiveErrors;
+		}
+
+		@JmxAttribute(description = "Sent packet size")
+		public ValueStats getSends() {
+			return sends;
+		}
+
+		@JmxAttribute
+		public EventStats getSendErrors() {
+			return sendErrors;
+		}
+	}
+	// endregion
+
+	private Inspector inspector;
+
 	// region creators && builder methods
 	private AsyncUdpSocketImpl(Eventloop eventloop, DatagramChannel channel) {
 		this.eventloop = checkNotNull(eventloop);
@@ -52,6 +123,11 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 
 	public static AsyncUdpSocketImpl create(Eventloop eventloop, DatagramChannel channel) {
 		return new AsyncUdpSocketImpl(eventloop, channel);
+	}
+
+	public AsyncUdpSocketImpl withInspector(Inspector inspector) {
+		this.inspector = inspector;
+		return this;
 	}
 	// endregion
 
@@ -86,7 +162,7 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 
 	//  read cycle
 	@Override
-	public void read() {
+	public void receive() {
 		readInterest(true);
 	}
 
@@ -100,6 +176,7 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 				sourceAddress = (InetSocketAddress) channel.receive(buffer);
 			} catch (IOException e) {
 				buf.recycle();
+				if (inspector != null) inspector.onReceiveError(e);
 				closeWithError(e);
 				return;
 			}
@@ -110,7 +187,9 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 			}
 
 			buf.ofWriteByteBuffer(buffer);
-			eventHandler.onRead(UdpPacket.of(buf, sourceAddress));
+			UdpPacket packet = UdpPacket.of(buf, sourceAddress);
+			if (inspector != null) inspector.onReceive(packet);
+			eventHandler.onReceive(packet);
 		}
 	}
 
@@ -133,6 +212,7 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 			try {
 				sent = channel.send(buffer, packet.getSocketAddress());
 			} catch (IOException e) {
+				if (inspector != null) inspector.onSendError(e);
 				closeWithError(e);
 				return;
 			}
@@ -141,12 +221,14 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 				break;
 			}
 
+			if (inspector != null) inspector.onSend(packet);
+
 			writeQueue.poll();
 			packet.recycle();
 		}
 
 		if (writeQueue.isEmpty()) {
-			eventHandler.onSent();
+			eventHandler.onSend();
 			writeInterest(false);
 		} else {
 			writeInterest(true);

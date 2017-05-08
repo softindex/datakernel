@@ -20,16 +20,16 @@ public interface AsyncUdpSocket {
 	interface EventHandler {
 		void onRegistered();
 
-		void onSent();
+		void onSend();
 
-		void onRead(UdpPacket packet);
+		void onReceive(UdpPacket packet);
 
 		void onClosedWithError(Exception e);
 	}
 
 	void setEventHandler(AsyncUdpSocket.EventHandler eventHandler);
 
-	void read();
+	void receive();
 
 	void send(UdpPacket packet);
 
