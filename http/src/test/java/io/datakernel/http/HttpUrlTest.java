@@ -159,9 +159,9 @@ public class HttpUrlTest {
 	public void testPollUrlPartBase() {
 		HttpUrl uri = HttpUrl.of("http://example.com/a/b/c/index.html");
 		assertEquals("a", uri.pollUrlPart());
-		assertEquals("/b/c/index.html", uri.getRelativePath());
+		assertEquals("/b/c/index.html", uri.getPartialPath());
 		assertEquals("b", uri.pollUrlPart());
-		assertEquals("/c/index.html", uri.getRelativePath());
+		assertEquals("/c/index.html", uri.getPartialPath());
 		assertEquals("c", uri.pollUrlPart());
 		assertEquals("index.html", uri.pollUrlPart());
 		assertEquals("", uri.pollUrlPart());
@@ -178,6 +178,16 @@ public class HttpUrlTest {
 		assertEquals("category", url.pollUrlPart());
 		assertEquals("url", url.pollUrlPart());
 		assertEquals("", url.pollUrlPart());
+	}
+
+	@Test
+	public void testGetPartialPathInUrlWithEmptyPath() {
+		HttpUrl urlWoSlash = HttpUrl.of("https://127.0.0.1:45678");
+		HttpUrl urlWSlash = HttpUrl.of("https://127.0.0.1:45678/");
+		assertEquals("/", urlWoSlash.getPartialPath());
+		assertEquals("/", urlWSlash.getPartialPath());
+		assertEquals("", urlWoSlash.pollUrlPart());
+		assertEquals("", urlWSlash.pollUrlPart());
 	}
 
 	@Test

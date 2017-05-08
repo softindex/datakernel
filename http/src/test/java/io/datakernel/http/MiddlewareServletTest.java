@@ -402,7 +402,7 @@ public class MiddlewareServletTest {
 		AsyncServlet def = new AsyncServlet() {
 			@Override
 			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				callback.setResult(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Stopped at admin: " + request.getRelativePath())));
+				callback.setResult(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Stopped at admin: " + request.getPartialPath())));
 				request.recycleBufs();
 			}
 		};

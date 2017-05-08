@@ -107,7 +107,7 @@ public final class HttpUrl {
 	private short pathEnd = -1;
 	private short query = -1;
 	private short fragment = -1;
-	short pos;
+	short pos = -1;
 
 	int[] queryPositions;
 
@@ -460,9 +460,9 @@ public final class HttpUrl {
 	}
 
 	// work with path
-	public String getRelativePath() {
+	String getPartialPath() {
 		if (pos == -1) {
-			return "";
+			return "/";
 		}
 		return raw.substring(pos, pathEnd);
 	}

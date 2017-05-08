@@ -456,9 +456,9 @@ public final class HttpRequest extends HttpMessage {
 		url.pos = (short) pos;
 	}
 
-	String getRelativePath() {
+	String getPartialPath() {
 		assert !recycled;
-		return url.getRelativePath();
+		return url.getPartialPath();
 	}
 
 	String pollUrlPart() {

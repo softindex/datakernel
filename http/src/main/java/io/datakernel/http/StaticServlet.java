@@ -62,7 +62,7 @@ public abstract class StaticServlet implements AsyncServlet {
 
 	@Override
 	public final void serve(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
-		String path = request.getRelativePath();
+		String path = request.getPartialPath();
 
 		if (request.getMethod() != HttpMethod.GET) {
 			callback.setException(METHOD_NOT_ALLOWED);
