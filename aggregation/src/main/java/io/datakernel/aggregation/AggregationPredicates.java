@@ -149,7 +149,7 @@ public class AggregationPredicates {
 				if (!left.key.equals(right.key))
 					return null;
 				if (right.from.compareTo(left.value) <= 0 && right.to.compareTo(left.value) >= 0)
-					return right;
+					return left;
 				return alwaysFalse();
 			}
 		});
