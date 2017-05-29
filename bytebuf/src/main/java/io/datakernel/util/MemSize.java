@@ -64,7 +64,7 @@ public final class MemSize {
 	public static MemSize valueOf(String string) {
 		Matcher matcher = PATTERN.matcher(string);
 		if (!matcher.matches())
-			throw new IllegalArgumentException("Illegal format: " + string);
+			throw new IllegalArgumentException("Illegal format: \'" + string + "\'");
 		try {
 			double value = Double.valueOf(matcher.group(1));
 			String units = matcher.group(3).toLowerCase();
@@ -87,12 +87,12 @@ public final class MemSize {
 					unit = TB;
 					break;
 				default:
-					throw new IllegalArgumentException("Illegal units: " + string);
+					throw new IllegalArgumentException("Illegal units: \'" + string + "\'");
 			}
 			long bytes = (long) (value * unit);
 			return new MemSize(bytes);
 		} catch (NumberFormatException e) {
-			throw new IllegalArgumentException("Illegal number format: " + string, e);
+			throw new IllegalArgumentException("Illegal number format: \'" + string + "\'", e);
 		}
 	}
 

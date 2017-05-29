@@ -24,7 +24,7 @@ public abstract class AbstractConfig implements Config {
 	@Override
 	public final String get(String path) {
 		if (path.equals(THIS)) {
-			return doGet();
+			return trimIfNotNull(doGet());
 		} else {
 			int dot = path.indexOf(DELIMITER);
 			if (dot == -1) {
@@ -40,7 +40,7 @@ public abstract class AbstractConfig implements Config {
 	@Override
 	public final String get(String path, String defaultValue) {
 		if (path.equals(THIS)) {
-			return doGet(defaultValue);
+			return trimIfNotNull(doGet(defaultValue));
 		} else {
 			int dot = path.indexOf(DELIMITER);
 			if (dot == -1) {
@@ -100,4 +100,11 @@ public abstract class AbstractConfig implements Config {
 	}
 
 	protected abstract boolean doHasChild(String key);
+
+	private String trimIfNotNull(String value) {
+		if (value != null) {
+			return value.trim();
+		}
+		return null;
+	}
 }
