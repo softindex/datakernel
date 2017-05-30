@@ -50,9 +50,7 @@ import static io.datakernel.cube.Cube.AggregationConfig.id;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
 public class CubeTest {
@@ -506,6 +504,39 @@ public class CubeTest {
 		query = AggregationPredicates.and(AggregationPredicates.has("dimensionX"), AggregationPredicates.eq("dimensionX", 1), AggregationPredicates.eq("dimensionB", 2)).simplify();
 		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
 		assertTrue(intersection.equals(query));
+
+		// betweens
+
+		aggregationPredicate = AggregationPredicates.and(AggregationPredicates.has("dimensionX"), AggregationPredicates.between("date", 100, 200));
+		query = AggregationPredicates.and(AggregationPredicates.has("dimensionX"), AggregationPredicates.eq("date", 1)).simplify();
+		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
+		assertFalse(intersection.equals(query));
+
+		query = AggregationPredicates.and(AggregationPredicates.has("dimensionX"), AggregationPredicates.eq("date", 150)).simplify();
+		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
+		assertTrue(intersection.equals(query));
+
+		query = AggregationPredicates.and(AggregationPredicates.has("dimensionX"), AggregationPredicates.eq("date", 250)).simplify();
+		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
+		assertFalse(intersection.equals(query));
+
+		query = AggregationPredicates.and(AggregationPredicates.has("dimensionX"), AggregationPredicates.between("date", 110, 190)).simplify();
+		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
+		assertTrue(intersection.equals(query));
+
+		query = AggregationPredicates.and(AggregationPredicates.has("dimensionX"), AggregationPredicates.between("date", 10, 90)).simplify();
+		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
+		assertFalse(intersection.equals(query));
+		assertTrue(intersection.equals(AggregationPredicates.alwaysFalse()));
+
+		query = AggregationPredicates.and(AggregationPredicates.has("dimensionX"), AggregationPredicates.between("date", 210, 290)).simplify();
+		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
+		assertFalse(intersection.equals(query));
+		assertTrue(intersection.equals(AggregationPredicates.alwaysFalse()));
+
+		query = AggregationPredicates.and(AggregationPredicates.has("dimensionX"), AggregationPredicates.between("date", 10, 290)).simplify();
+		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
+		assertFalse(intersection.equals(query));
 	}
 
 }
