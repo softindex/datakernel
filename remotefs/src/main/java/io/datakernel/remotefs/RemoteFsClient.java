@@ -73,7 +73,7 @@ public final class RemoteFsClient implements IRemoteFsClient {
 	// endregion
 
 	@Override
-	public void upload(final String fileName, final StreamProducer<ByteBuf> producer,
+	public void upload(final StreamProducer<ByteBuf> producer, final String fileName,
 	                   final CompletionCallback callback) {
 		connect(address, new MessagingConnectCallback() {
 			@Override

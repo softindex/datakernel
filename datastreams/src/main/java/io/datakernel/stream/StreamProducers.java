@@ -55,6 +55,11 @@ public final class StreamProducers {
 		return new ClosingWithError<>(eventloop, e);
 	}
 
+	public static <T> StreamProducer<T> noEndOfStream(StreamProducer<T> streamProducer) {
+		return new NoEndOfStream<>(streamProducer);
+	}
+
+
 	/**
 	 * Creates producer which sends value and closes itself
 	 *
@@ -220,14 +225,87 @@ public final class StreamProducers {
 		}
 	}
 
+	private static class NoEndOfStream<T> implements StreamProducer<T> {
+		private final StreamProducer<T> streamProducer;
+
+		public NoEndOfStream(final StreamProducer<T> streamProducer) {
+			this.streamProducer = streamProducer;
+		}
+
+		@Override
+		public void streamTo(final StreamConsumer<T> downstreamConsumer) {
+			streamProducer.streamTo(new StreamConsumer<T>() {
+				@Override
+				public StreamDataReceiver<T> getDataReceiver() {
+					return downstreamConsumer.getDataReceiver();
+				}
+
+				@Override
+				public void streamFrom(StreamProducer<T> upstreamProducer) {
+					downstreamConsumer.streamFrom(upstreamProducer);
+				}
+
+				@Override
+				public void onProducerEndOfStream() {
+					// DO NOTHING
+				}
+
+				@Override
+				public void onProducerError(Exception e) {
+					downstreamConsumer.onProducerError(e);
+				}
+
+				@Override
+				public StreamStatus getConsumerStatus() {
+					return downstreamConsumer.getConsumerStatus();
+				}
+
+				@Override
+				public Exception getConsumerException() {
+					return downstreamConsumer.getConsumerException();
+				}
+			});
+		}
+
+		@Override
+		public void bindDataReceiver() {
+			streamProducer.bindDataReceiver();
+		}
+
+		@Override
+		public void onConsumerSuspended() {
+			streamProducer.onConsumerSuspended();
+		}
+
+		@Override
+		public void onConsumerResumed() {
+			streamProducer.onConsumerResumed();
+		}
+
+		@Override
+		public void onConsumerError(Exception e) {
+			streamProducer.onConsumerError(e);
+		}
+
+		@Override
+		public StreamStatus getProducerStatus() {
+			StreamStatus status = streamProducer.getProducerStatus();
+			return status != StreamStatus.END_OF_STREAM ? status : StreamStatus.SUSPENDED;
+		}
+
+		@Override
+		public Exception getProducerException() {
+			return streamProducer.getProducerException();
+		}
+	}
+
 	/**
 	 * Represents a {@link AbstractStreamProducer} which will send all values from iterator.
 	 *
 	 * @param <T> type of output data
 	 */
-	public static class OfIterator<T> extends AbstractStreamProducer<T> {
+	static class OfIterator<T> extends AbstractStreamProducer<T> {
 		private final Iterator<T> iterator;
-		private boolean sendEndOfStream = true;
 
 		/**
 		 * Creates a new instance of  StreamProducerOfIterator
@@ -235,14 +313,9 @@ public final class StreamProducers {
 		 * @param eventloop event loop where producer will run
 		 * @param iterator  iterator with object which need to send
 		 */
-		public OfIterator(Eventloop eventloop, Iterator<T> iterator) {
-			this(eventloop, iterator, true);
-		}
-
-		public OfIterator(Eventloop eventloop, Iterator<T> iterator, boolean sendEndOfStream) {
+		private OfIterator(Eventloop eventloop, Iterator<T> iterator) {
 			super(eventloop);
 			this.iterator = checkNotNull(iterator);
-			this.sendEndOfStream = sendEndOfStream;
 		}
 
 		@Override
@@ -255,8 +328,7 @@ public final class StreamProducers {
 				T item = iterator.next();
 				send(item);
 			}
-			if (sendEndOfStream)
-				sendEndOfStream();
+			sendEndOfStream();
 		}
 
 		@Override
@@ -268,7 +340,6 @@ public final class StreamProducers {
 		protected void onResumed() {
 			resumeProduce();
 		}
-
 	}
 
 	/**

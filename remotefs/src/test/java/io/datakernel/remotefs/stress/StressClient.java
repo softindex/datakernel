@@ -84,7 +84,7 @@ class StressClient {
 					StreamFileReader producer =
 							StreamFileReader.readFileFully(eventloop, executor, 16 * 1024, file);
 
-					client.upload(fileName, producer, new CompletionCallback() {
+					client.upload(producer, fileName, new CompletionCallback() {
 						@Override
 						public void onComplete() {
 							logger.info("Uploaded: " + fileName);
@@ -242,7 +242,7 @@ class StressClient {
 				.withDefaultBufferSize(StreamBinarySerializer.MAX_SIZE);
 
 		producer.streamTo(serializer.getInput());
-		client.upload("someName" + i, serializer.getOutput(), IgnoreCompletionCallback.create());
+		client.upload(serializer.getOutput(), "someName" + i, IgnoreCompletionCallback.create());
 		eventloop.run();
 	}
 

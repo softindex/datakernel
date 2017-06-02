@@ -18,6 +18,7 @@ package io.datakernel.datagraph.node;
 
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.graph.TaskContext;
+import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 
 import java.util.Collection;
@@ -46,12 +47,12 @@ public final class NodeProducerOfIterable<T> implements Node {
 	@SuppressWarnings("unchecked")
 	@Override
 	public void createAndBind(TaskContext taskContext) {
-		StreamProducers.OfIterator<T> producer;
+		StreamProducer<T> producer;
 		Object object = taskContext.environment().get(iterableId);
 		if (object instanceof Iterator) {
-			producer = new StreamProducers.OfIterator<>(taskContext.getEventloop(), ((Iterable<T>) object).iterator());
+			producer = StreamProducers.ofIterator(taskContext.getEventloop(), ((Iterable<T>) object).iterator());
 		} else if (object instanceof Iterable) {
-			producer = new StreamProducers.OfIterator<>(taskContext.getEventloop(), ((Iterable<T>) object).iterator());
+			producer = StreamProducers.ofIterator(taskContext.getEventloop(), ((Iterable<T>) object).iterator());
 		} else
 			throw new IllegalArgumentException();
 		taskContext.export(output, producer);

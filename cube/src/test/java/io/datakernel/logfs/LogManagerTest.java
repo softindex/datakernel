@@ -173,7 +173,7 @@ public class LogManagerTest {
 		BufferSerializer<TestItem> serializer = SerializerBuilder.create(DefiningClassLoader.create()).build(TestItem.class);
 		LogManager<TestItem> logManager = LogManagerImpl.create(eventloop, fileSystem, serializer);
 		LogStreamConsumer<TestItem> logConsumer = logManager.consumer("p1");
-		new StreamProducers.OfIterator<>(eventloop, asList(new TestItem("a"), new TestItem(null),
+		StreamProducers.ofIterator(eventloop, asList(new TestItem("a"), new TestItem(null),
 				new TestItem("b"), new TestItem(null), new TestItem("c")).iterator()).streamTo(logConsumer);
 		eventloop.run();
 

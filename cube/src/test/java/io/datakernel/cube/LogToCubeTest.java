@@ -84,7 +84,7 @@ public class LogToCubeTest {
 		LogToCubeRunner<TestPubRequest> logToCubeRunner = LogToCubeRunner.create(eventloop, cube, logManager, TestAggregatorSplitter.factory(),
 				"testlog", asList("partitionA"), logToCubeMetadataStorageStub);
 
-		new StreamProducers.OfIterator<>(eventloop, asList(
+		StreamProducers.ofIterator(eventloop, asList(
 				new TestPubRequest(1000, 1, asList(new TestPubRequest.TestAdvRequest(10))),
 				new TestPubRequest(1001, 2, asList(new TestPubRequest.TestAdvRequest(10), new TestPubRequest.TestAdvRequest(20))),
 				new TestPubRequest(1002, 1, asList(new TestPubRequest.TestAdvRequest(30))),

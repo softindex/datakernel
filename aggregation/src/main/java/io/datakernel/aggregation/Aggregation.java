@@ -488,40 +488,45 @@ public class Aggregation implements IAggregation, AggregationOperationTracker, E
 		return streamReducer.getOutput();
 	}
 
-	private StreamProducer sequentialProducer(final AggregationPredicate where,
-	                                          List<AggregationChunk> individualChunks, final Class<?> sequenceClass,
-	                                          final DefiningClassLoader queryClassLoader) {
+	private <T> StreamProducer sequentialProducer(final AggregationPredicate where,
+	                                              List<AggregationChunk> individualChunks, final Class<T> sequenceClass,
+	                                              final DefiningClassLoader queryClassLoader) {
 		checkArgument(!individualChunks.isEmpty());
-		AsyncIterator<StreamProducer<Object>> producerAsyncIterator = AsyncIterators.transform(individualChunks.iterator(),
-				new AsyncFunction<AggregationChunk, StreamProducer<Object>>() {
+		AsyncIterator<StreamProducer<T>> producerAsyncIterator = AsyncIterators.transform(individualChunks.iterator(),
+				new AsyncFunction<AggregationChunk, StreamProducer<T>>() {
 					@Override
-					public void apply(AggregationChunk chunk, ResultCallback<StreamProducer<Object>> producerCallback) {
-						producerCallback.setResult(chunkReaderWithFilter(where, chunk, sequenceClass, queryClassLoader));
+					public void apply(AggregationChunk chunk, ResultCallback<StreamProducer<T>> callback) {
+						chunkReaderWithFilter(where, chunk, sequenceClass, queryClassLoader, callback);
 					}
 				});
 		return StreamProducers.concat(eventloop, producerAsyncIterator);
 	}
 
-	private StreamProducer chunkReaderWithFilter(AggregationPredicate where, AggregationChunk chunk,
-	                                             Class<?> chunkRecordClass, DefiningClassLoader queryClassLoader) {
-		StreamProducer chunkReader = aggregationChunkStorage.chunkReader(this, getKeys(), chunk.getMeasures(),
-				chunkRecordClass, chunk.getChunkId(), this.classLoader);
-		StreamProducer chunkProducer = chunkReader;
-		if (ignoreChunkReadingExceptions) {
-			ErrorIgnoringTransformer errorIgnoringTransformer = ErrorIgnoringTransformer.create(eventloop);
-			chunkReader.streamTo(errorIgnoringTransformer.getInput());
-			chunkProducer = errorIgnoringTransformer.getOutput();
-		}
-		if (where == null || where == AggregationPredicates.alwaysTrue())
-			return chunkProducer;
-		StreamFilter streamFilter = StreamFilter.create(eventloop,
-				createPredicate(chunkRecordClass, where, queryClassLoader));
-		chunkProducer.streamTo(streamFilter.getInput());
-		return streamFilter.getOutput();
+	private <T> void chunkReaderWithFilter(final AggregationPredicate where, AggregationChunk chunk,
+	                                       final Class<T> chunkRecordClass, final DefiningClassLoader queryClassLoader,
+	                                       final ResultCallback<StreamProducer<T>> callback) {
+		aggregationChunkStorage.read(this, getKeys(), chunk.getMeasures(), chunkRecordClass, chunk.getChunkId(), classLoader,
+				new ForwardingResultCallback<StreamProducer<T>>(callback) {
+					@Override
+					protected void onResult(StreamProducer<T> chunkProducer) {
+						if (ignoreChunkReadingExceptions) {
+							ErrorIgnoringTransformer errorIgnoringTransformer = ErrorIgnoringTransformer.create(eventloop);
+							chunkProducer.streamTo(errorIgnoringTransformer.getInput());
+							chunkProducer = errorIgnoringTransformer.getOutput();
+						}
+						if (where != null && where != AggregationPredicates.alwaysTrue()) {
+							StreamFilter<T> streamFilter = StreamFilter.create(eventloop,
+									createPredicate(chunkRecordClass, where, queryClassLoader));
+							chunkProducer.streamTo(streamFilter.getInput());
+							chunkProducer = streamFilter.getOutput();
+						}
+						callback.setResult(chunkProducer);
+					}
+				});
 	}
 
-	private Predicate createPredicate(Class<?> chunkRecordClass,
-	                                  AggregationPredicate where, DefiningClassLoader classLoader) {
+	private <T> Predicate<T> createPredicate(Class<T> chunkRecordClass,
+	                                         AggregationPredicate where, DefiningClassLoader classLoader) {
 		return ClassBuilder.create(classLoader, Predicate.class)
 				.withMethod("apply", boolean.class, singletonList(Object.class),
 						where.createPredicateDef(cast(arg(0), chunkRecordClass), keyTypes))

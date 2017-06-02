@@ -24,7 +24,7 @@ import io.datakernel.stream.StreamProducer;
 import java.util.List;
 
 public interface IRemoteFsClient {
-	void upload(String fileName, StreamProducer<ByteBuf> producer, CompletionCallback callback);
+	void upload(StreamProducer<ByteBuf> producer, String fileName, CompletionCallback callback);
 
 	void download(String fileName, long startPosition, ResultCallback<StreamProducer<ByteBuf>> callback);
 

@@ -71,27 +71,27 @@ public class LogFsTest {
 		DateTimeFormatter dateTimeFormatter = logManager.getDateTimeFormatter();
 
 		timeProvider.setTime(0); // 00:00
-		new StreamProducers.OfIterator<>(eventloop, asList("1", "2", "3").iterator())
+		StreamProducers.ofIterator(eventloop, asList("1", "2", "3").iterator())
 				.streamTo(logManager.consumer(logPartition));
 		eventloop.run();
 
 		timeProvider.setTime(ONE_HOUR_MILLIS - 15 * ONE_MINUTE_MILLIS); // 00:45
-		new StreamProducers.OfIterator<>(eventloop, asList("4", "5", "6").iterator())
+		StreamProducers.ofIterator(eventloop, asList("4", "5", "6").iterator())
 				.streamTo(logManager.consumer(logPartition));
 		eventloop.run();
 
 		timeProvider.setTime(2 * ONE_HOUR_MILLIS - 15 * ONE_MINUTE_MILLIS); // 01:45
-		new StreamProducers.OfIterator<>(eventloop, asList("7", "8", "9").iterator())
+		StreamProducers.ofIterator(eventloop, asList("7", "8", "9").iterator())
 				.streamTo(logManager.consumer(logPartition));
 		eventloop.run();
 
 		timeProvider.setTime(3 * ONE_HOUR_MILLIS - 30 * ONE_MINUTE_MILLIS); // 02:30
-		new StreamProducers.OfIterator<>(eventloop, asList("10", "11", "12").iterator())
+		StreamProducers.ofIterator(eventloop, asList("10", "11", "12").iterator())
 				.streamTo(logManager.consumer(logPartition));
 		eventloop.run();
 
 		timeProvider.setTime(4 * ONE_HOUR_MILLIS - 45 * ONE_MINUTE_MILLIS); // 03:15
-		new StreamProducers.OfIterator<>(eventloop, asList("13", "14", "15").iterator())
+		StreamProducers.ofIterator(eventloop, asList("13", "14", "15").iterator())
 				.streamTo(logManager.consumer(logPartition));
 		eventloop.run();
 
@@ -130,31 +130,31 @@ public class LogFsTest {
 
 		timeProvider.setTime(1); // 00:00
 		server.listen();
-		new StreamProducers.OfIterator<>(eventloop, asList("1", "3", "5").iterator())
+		StreamProducers.ofIterator(eventloop, asList("1", "3", "5").iterator())
 				.streamTo(logManager.consumer("p1", createServerStopCallback(server)));
 		eventloop.run();
 		server.listen();
-		new StreamProducers.OfIterator<>(eventloop, asList("2", "4", "6").iterator())
+		StreamProducers.ofIterator(eventloop, asList("2", "4", "6").iterator())
 				.streamTo(logManager.consumer("p2", createServerStopCallback(server)));
 		eventloop.run();
 
 		timeProvider.setTime(2 * ONE_HOUR_MILLIS - 15 * ONE_MINUTE_MILLIS); // 01:45
 		server.listen();
-		new StreamProducers.OfIterator<>(eventloop, asList("7", "9", "11").iterator())
+		StreamProducers.ofIterator(eventloop, asList("7", "9", "11").iterator())
 				.streamTo(logManager.consumer("p1", createServerStopCallback(server)));
 		eventloop.run();
 		server.listen();
-		new StreamProducers.OfIterator<>(eventloop, asList("8", "10", "12").iterator())
+		StreamProducers.ofIterator(eventloop, asList("8", "10", "12").iterator())
 				.streamTo(logManager.consumer("p2", createServerStopCallback(server)));
 		eventloop.run();
 
 		timeProvider.setTime(2 * ONE_HOUR_MILLIS + 15 * ONE_MINUTE_MILLIS); // 02:15
 		server.listen();
-		new StreamProducers.OfIterator<>(eventloop, asList("13", "15", "17").iterator())
+		StreamProducers.ofIterator(eventloop, asList("13", "15", "17").iterator())
 				.streamTo(logManager.consumer("p1", createServerStopCallback(server)));
 		eventloop.run();
 		server.listen();
-		new StreamProducers.OfIterator<>(eventloop, asList("14", "16", "18").iterator())
+		StreamProducers.ofIterator(eventloop, asList("14", "16", "18").iterator())
 				.streamTo(logManager.consumer("p2", createServerStopCallback(server)));
 		eventloop.run();
 

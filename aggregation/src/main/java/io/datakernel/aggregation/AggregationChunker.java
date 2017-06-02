@@ -182,8 +182,8 @@ final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 					@Override
 					protected void onResult(final Long chunkId) {
 						logger.info("Retrieved new chunk id '{}' for aggregation {}", chunkId, keys);
-						storage.chunkWriter(aggregation, keys, fields, recordClass,
-								chunkId, forwarder.getOutput(), classLoader, new CompletionCallback() {
+						storage.write(forwarder.getOutput(), aggregation, keys, fields, recordClass,
+								chunkId, classLoader, new CompletionCallback() {
 									@Override
 									protected void onComplete() {
 										AggregationChunk.NewChunk newChunk = createNewChunk(chunkId, metadata.first,

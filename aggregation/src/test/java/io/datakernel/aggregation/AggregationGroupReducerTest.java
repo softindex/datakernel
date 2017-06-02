@@ -76,14 +76,13 @@ public class AggregationGroupReducerTest {
 		final List<StreamConsumer> listConsumers = new ArrayList<>();
 		final List items = new ArrayList();
 		AggregationChunkStorage aggregationChunkStorage = new AggregationChunkStorage() {
-
 			@Override
-			public <T> StreamProducer<T> chunkReader(Aggregation aggregation, List<String> keys, List<String> fields, Class<T> recordClass, long id, DefiningClassLoader classLoader) {
-				return new StreamProducers.OfIterator<>(eventloop, items.iterator());
+			public <T> void read(Aggregation aggregation, List<String> keys, List<String> fields, Class<T> recordClass, long id, DefiningClassLoader classLoader, ResultCallback<StreamProducer<T>> callback) {
+				callback.setResult(StreamProducers.ofIterator(eventloop, items.iterator()));
 			}
 
 			@Override
-			public <T> void chunkWriter(Aggregation aggregation, List<String> keys, List<String> fields, Class<T> recordClass, long id, StreamProducer<T> producer, DefiningClassLoader classLoader, CompletionCallback callback) {
+			public <T> void write(StreamProducer<T> producer, Aggregation aggregation, List<String> keys, List<String> fields, Class<T> recordClass, long id, DefiningClassLoader classLoader, CompletionCallback callback) {
 				StreamConsumers.ToList consumer = StreamConsumers.toList(eventloop, items);
 				consumer.setCompletionCallback(callback);
 				listConsumers.add(consumer);
@@ -92,7 +91,6 @@ public class AggregationGroupReducerTest {
 
 			@Override
 			public void removeChunk(long id, CompletionCallback callback) {
-
 			}
 		};
 

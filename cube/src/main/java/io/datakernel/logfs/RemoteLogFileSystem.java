@@ -79,7 +79,7 @@ public final class RemoteLogFileSystem extends AbstractLogFileSystem {
 	@Override
 	public void write(String logPartition, LogFile logFile, StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
 		final String fileName = path(logPartition, logFile);
-		client.upload(fileName, producer, new CompletionCallback() {
+		client.upload(producer, fileName, new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				callback.setComplete();
