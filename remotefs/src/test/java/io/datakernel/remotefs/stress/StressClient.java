@@ -53,7 +53,7 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 
 class StressClient {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
-	private InetSocketAddress address = new InetSocketAddress(5560);
+	private InetSocketAddress address = new InetSocketAddress("localhost", 5560);
 	private Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 	private ExecutorService executor = Executors.newCachedThreadPool();
 

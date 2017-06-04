@@ -80,7 +80,7 @@ public final class CumulativeBenchmark {
 	private final RpcClient client = RpcClient.create(clientEventloop)
 			.withMessageTypes(ValueMessage.class)
 			.withStreamProtocol(kilobytes(64), kilobytes(64), true)
-			.withStrategy(server(new InetSocketAddress(SERVICE_PORT)));
+			.withStrategy(server(new InetSocketAddress("localhost", SERVICE_PORT)));
 
 	private final ValueMessage incrementMessage;
 	private final int totalRounds;

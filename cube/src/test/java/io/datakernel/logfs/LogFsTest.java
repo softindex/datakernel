@@ -119,7 +119,7 @@ public class LogFsTest {
 	@Test
 	public void testRemoteFs() throws Exception {
 		String logName = "log";
-		InetSocketAddress address = new InetSocketAddress(33333);
+		InetSocketAddress address = new InetSocketAddress("localhost", 33333);
 		final RemoteFsServer server = createServer(address, path);
 		RemoteFsClient client = createClient(address);
 

@@ -67,7 +67,7 @@ public class FsIntegrationTest {
 	@Rule
 	public final TemporaryFolder temporaryFolder = new TemporaryFolder();
 
-	private static final InetSocketAddress address = new InetSocketAddress(5560);
+	private static final InetSocketAddress address = new InetSocketAddress("localhost", 5560);
 
 	private static Path storage;
 	private static final byte[] BIG_FILE = createBigByteArray();
