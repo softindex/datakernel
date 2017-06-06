@@ -57,7 +57,7 @@ public class AsyncHttpServerTest {
 			}
 		};
 
-		return AsyncHttpServer.create(primaryEventloop, servlet).withListenPort(port);
+		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", port));
 	}
 
 	public static AsyncHttpServer asyncHttpServer(final Eventloop primaryEventloop, int port) {
@@ -74,7 +74,7 @@ public class AsyncHttpServerTest {
 			}
 		};
 
-		return AsyncHttpServer.create(primaryEventloop, servlet).withListenPort(port);
+		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", port));
 	}
 
 	public static AsyncHttpServer delayedHttpServer(final Eventloop primaryEventloop, int port) {
@@ -92,7 +92,7 @@ public class AsyncHttpServerTest {
 			}
 		};
 
-		return AsyncHttpServer.create(primaryEventloop, servlet).withListenPort(port);
+		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", port));
 	}
 
 	public static void writeByRandomParts(Socket socket, String string) throws IOException {
@@ -215,7 +215,7 @@ public class AsyncHttpServerTest {
 
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 		AsyncHttpServer server = blockingHttpServer(eventloop, port);
-		server.withListenPort(port);
+		server.withListenAddress(new InetSocketAddress("localhost", port));
 		server.listen();
 		Thread thread = new Thread(eventloop);
 		thread.start();
@@ -240,7 +240,7 @@ public class AsyncHttpServerTest {
 
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 		AsyncHttpServer server = blockingHttpServer(eventloop, port);
-		server.withListenPort(port);
+		server.withListenAddress(new InetSocketAddress("localhost", port));
 		server.listen();
 		Thread thread = new Thread(eventloop);
 		thread.start();
@@ -271,7 +271,7 @@ public class AsyncHttpServerTest {
 	}
 
 	private void doTestPipelining(Eventloop eventloop, AsyncHttpServer server, int port) throws Exception {
-		server.withListenPort(port);
+		server.withListenAddress(new InetSocketAddress("localhost", port));
 		server.listen();
 		Thread thread = new Thread(eventloop);
 		thread.start();
@@ -318,7 +318,7 @@ public class AsyncHttpServerTest {
 	}
 
 	private void doTestPipelining2(Eventloop eventloop, AsyncHttpServer server, int port) throws Exception {
-		server.withListenPort(port);
+		server.withListenAddress(new InetSocketAddress("localhost", port));
 		server.listen();
 		Thread thread = new Thread(eventloop);
 		thread.start();
@@ -377,7 +377,7 @@ public class AsyncHttpServerTest {
 
 		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
 				.withMaxHttpMessageSize(25)
-				.withListenPort(port);
+				.withListenAddress(new InetSocketAddress("localhost", port));
 		server.listen();
 		Thread thread = new Thread(eventloop);
 		thread.start();
@@ -406,7 +406,7 @@ public class AsyncHttpServerTest {
 			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
 				callback.setResult(HttpResponse.ok200().withBody(request.detachBody()));
 			}
-		}).withListenPort(port);
+		}).withListenAddress(new InetSocketAddress("localhost", port));
 
 		server.listen();
 		Thread thread = new Thread(eventloop);

@@ -48,6 +48,7 @@ import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetSocketAddress;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
@@ -282,7 +283,7 @@ public class ReportingTest {
 		eventloop.run();
 
 		cubeHttpServer = AsyncHttpServer.create(eventloop, ReportingServiceServlet.createRootServlet(eventloop, cube))
-				.withListenPort(SERVER_PORT)
+				.withListenAddress(new InetSocketAddress("localhost", SERVER_PORT))
 				.withAcceptOnce();
 		cubeHttpServer.listen();
 

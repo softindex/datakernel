@@ -23,6 +23,7 @@ import io.datakernel.remotefs.RemoteFsServer;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -44,7 +45,7 @@ public class StressServer {
 	private static final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 	public static RemoteFsServer server = RemoteFsServer.create(eventloop, executor, STORAGE_PATH)
-			.withListenPort(PORT);
+			.withListenAddress(new InetSocketAddress("localhost", PORT));
 
 	public static void main(String[] args) throws IOException {
 		Files.createDirectories(STORAGE_PATH);

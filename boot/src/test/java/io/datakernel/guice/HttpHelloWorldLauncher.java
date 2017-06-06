@@ -32,6 +32,8 @@ import io.datakernel.service.ServiceGraphModule;
 
 import javax.inject.Singleton;
 
+import java.net.InetSocketAddress;
+
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 
 public class HttpHelloWorldLauncher extends Launcher {
@@ -50,7 +52,7 @@ public class HttpHelloWorldLauncher extends Launcher {
 		@Singleton
 		AsyncHttpServer httpServer(Eventloop eventloop, AsyncServlet rootServlet) {
 			return AsyncHttpServer.create(eventloop, rootServlet)
-					.withListenPort(PORT);
+					.withListenAddress(new InetSocketAddress("localhost", PORT));
 		}
 
 		@Provides

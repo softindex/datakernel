@@ -19,6 +19,8 @@ package io.datakernel.http;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 
+import java.net.InetSocketAddress;
+
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 
@@ -35,7 +37,7 @@ public final class HelloWorldServer {
 			}
 		};
 
-		return AsyncHttpServer.create(primaryEventloop, servlet).withListenPort(port).withAcceptOnce(false);
+		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", port)).withAcceptOnce(false);
 	}
 
 	public static void main(String[] args) throws Exception {

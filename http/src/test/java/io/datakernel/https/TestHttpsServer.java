@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.TrustManager;
 import java.io.File;
+import java.net.InetSocketAddress;
 import java.security.SecureRandom;
 import java.util.concurrent.ExecutorService;
 
@@ -62,7 +63,7 @@ public class TestHttpsServer {
 
 		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, bobServlet)
 				.withSslListenPort(createSslContext("TLSv1", keyManagers, trustManagers, new SecureRandom()), executor, PORT)
-				.withListenPort(5569);
+				.withListenAddress(new InetSocketAddress("localhost", 5569));
 
 		System.out.println("https://127.0.0.1:" + PORT);
 

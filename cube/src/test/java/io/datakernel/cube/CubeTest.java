@@ -123,7 +123,7 @@ public class CubeTest {
 	private RemoteFsServer prepareServer(Eventloop eventloop, Path serverStorage) throws IOException {
 		final ExecutorService executor = Executors.newCachedThreadPool();
 		RemoteFsServer fileServer = RemoteFsServer.create(eventloop, executor, serverStorage)
-				.withListenPort(LISTEN_PORT);
+				.withListenAddress(new InetSocketAddress("localhost", LISTEN_PORT));
 		fileServer.listen();
 		return fileServer;
 	}
@@ -141,7 +141,7 @@ public class CubeTest {
 		final RemoteFsServer remoteFsServer1 = prepareServer(eventloop, serverStorage);
 
 		AggregationChunkStorage storage = RemoteFsChunkStorage.create(eventloop,
-				new InetSocketAddress(InetAddress.getLocalHost(), LISTEN_PORT));
+				new InetSocketAddress("localhost", LISTEN_PORT));
 		final Cube cube = newCube(eventloop, Executors.newCachedThreadPool(), classLoader, storage);
 
 		runInParallel(eventloop,

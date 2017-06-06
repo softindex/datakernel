@@ -30,6 +30,7 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import java.io.File;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.security.SecureRandom;
 import java.util.concurrent.ExecutorService;
 
@@ -117,7 +118,7 @@ public class TestHttpsClientServer {
 	public void testServesTwoPortsSimultaneously() throws Exception {
 		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, bobServlet)
 				.withSslListenPort(context, executor, SSL_PORT)
-				.withListenPort(PORT);
+				.withListenAddress(new InetSocketAddress("localhost", PORT));
 
 		final AsyncDnsClient dnsClient = AsyncDnsClient.create(eventloop)
 				.withTimeout(500)

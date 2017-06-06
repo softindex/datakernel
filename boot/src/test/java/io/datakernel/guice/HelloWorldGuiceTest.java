@@ -88,7 +88,7 @@ public class HelloWorldGuiceTest {
 		@Singleton
 		PrimaryServer primaryServer(@Named("PrimaryEventloop") Eventloop primaryEventloop, WorkerPool workerPool) {
 			List<AsyncHttpServer> workerHttpServers = workerPool.getInstances(AsyncHttpServer.class);
-			return PrimaryServer.create(primaryEventloop, workerHttpServers).withListenPort(PORT);
+			return PrimaryServer.create(primaryEventloop, workerHttpServers).withListenAddress(new InetSocketAddress("localhost", PORT));
 		}
 
 		@Provides

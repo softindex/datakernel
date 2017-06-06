@@ -62,7 +62,7 @@ public class HttpTolerantApplicationTest {
 			}
 		};
 
-		return AsyncHttpServer.create(primaryEventloop, servlet).withListenPort(port);
+		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", port));
 	}
 
 	private static void write(Socket socket, String string) throws IOException {

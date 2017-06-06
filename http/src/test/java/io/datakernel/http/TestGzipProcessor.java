@@ -27,6 +27,7 @@ import io.datakernel.exception.ParseException;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
@@ -83,7 +84,7 @@ public class TestGzipProcessor {
 
 		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
 				.withGzipResponses(true)
-				.withListenPort(PORT);
+				.withListenAddress(new InetSocketAddress("localhost", PORT));
 
 		final AsyncHttpClient client = AsyncHttpClient.create(eventloop);
 
@@ -133,7 +134,7 @@ public class TestGzipProcessor {
 
 		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
 				.withGzipResponses(true)
-				.withListenPort(PORT);
+				.withListenAddress(new InetSocketAddress("localhost", PORT));
 
 		final AsyncHttpClient client = AsyncHttpClient.create(eventloop);
 

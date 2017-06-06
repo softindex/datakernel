@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLContext;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Iterator;
@@ -41,7 +42,7 @@ public class ClientStressTest {
 			callback.setResult(HttpResponse.ok200());
 		}
 	};
-	private AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet).withListenPort(1234);
+	private AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet).withListenAddress(new InetSocketAddress("localhost", 1234));
 
 	private final SSLContext context = SSLContext.getDefault();
 

@@ -56,7 +56,7 @@ public class TestTimeoutsSimpleFs {
 		final RemoteFsServer server = RemoteFsServer.create(eventloop, serverExecutor, storagePath)
 				.withSocketSettings(SocketSettings.create().withImplReadTimeout(1L))
 				.withAcceptOnce()
-				.withListenPort(7010);
+				.withListenAddress(new InetSocketAddress("localhost", 7010));
 
 		server.listen();
 

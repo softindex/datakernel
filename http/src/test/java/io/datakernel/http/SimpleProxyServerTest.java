@@ -67,7 +67,7 @@ public class SimpleProxyServerTest {
 			}
 		};
 
-		return AsyncHttpServer.create(primaryEventloop, servlet).withListenPort(PROXY_SERVER_PORT);
+		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", PROXY_SERVER_PORT));
 	}
 
 	public static AsyncHttpServer echoServer(Eventloop primaryEventloop) {
@@ -80,7 +80,7 @@ public class SimpleProxyServerTest {
 
 		};
 
-		return AsyncHttpServer.create(primaryEventloop, servlet).withListenPort(ECHO_SERVER_PORT);
+		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", ECHO_SERVER_PORT));
 	}
 
 	private void readAndAssert(InputStream is, String expected) throws IOException {

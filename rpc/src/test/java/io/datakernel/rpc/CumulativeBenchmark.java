@@ -75,7 +75,7 @@ public final class CumulativeBenchmark {
 					callback.setResult(currentSum);
 				}
 			})
-			.withListenPort(SERVICE_PORT);
+			.withListenAddress(new InetSocketAddress("localhost", SERVICE_PORT));
 
 	private final RpcClient client = RpcClient.create(clientEventloop)
 			.withMessageTypes(ValueMessage.class)
