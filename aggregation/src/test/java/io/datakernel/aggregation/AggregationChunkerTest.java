@@ -16,8 +16,7 @@
 
 package io.datakernel.aggregation;
 
-import io.datakernel.aggregation.util.BiPredicate;
-import io.datakernel.aggregation.util.Predicates;
+import io.datakernel.aggregation.util.PartitionPredicate;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.DefiningClassLoader;
@@ -31,7 +30,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.aggregation.AggregationGroupReducerTest.NO_OP_TRACKER;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.sum;
@@ -102,8 +100,8 @@ public class AggregationChunkerTest {
 
 		Class<?> recordClass = AggregationUtils.createRecordClass(structure, structure.getKeys(), fields, classLoader);
 
-		AggregationChunker aggregationChunker = new AggregationChunker<>(eventloop, NO_OP_TRACKER,
-				structure, structure.getKeys(), structure.getMeasures(), recordClass, (BiPredicate) Predicates.alwaysTrue(),
+		AggregationChunker aggregationChunker = new AggregationChunker<>(eventloop,
+				structure, structure.getKeys(), structure.getMeasures(), recordClass, (PartitionPredicate) AggregationUtils.singlePartition(),
 				aggregationChunkStorage, aggregationMetadataStorage, 1, classLoader, resultCallback);
 
 		StreamProducer<KeyValuePair> producer = StreamProducers.ofIterable(eventloop,
@@ -188,8 +186,8 @@ public class AggregationChunkerTest {
 
 		Class<?> recordClass = AggregationUtils.createRecordClass(structure, keys, fields, classLoader);
 
-		AggregationChunker aggregationChunker = new AggregationChunker<>(eventloop, NO_OP_TRACKER,
-				structure, structure.getKeys(), structure.getMeasures(), recordClass, (BiPredicate) Predicates.alwaysTrue(),
+		AggregationChunker aggregationChunker = new AggregationChunker<>(eventloop,
+				structure, structure.getKeys(), structure.getMeasures(), recordClass, (PartitionPredicate) AggregationUtils.singlePartition(),
 				aggregationChunkStorage, aggregationMetadataStorage, 1, classLoader, resultCallback);
 
 		StreamProducer<KeyValuePair> producer = StreamProducers.concat(eventloop,
@@ -286,8 +284,8 @@ public class AggregationChunkerTest {
 
 		Class<?> recordClass = AggregationUtils.createRecordClass(structure, structure.getKeys(), fields, classLoader);
 
-		AggregationChunker aggregationChunker = new AggregationChunker<>(eventloop, NO_OP_TRACKER,
-				structure, structure.getKeys(), structure.getMeasures(), recordClass, (BiPredicate) Predicates.alwaysTrue(),
+		AggregationChunker aggregationChunker = new AggregationChunker<>(eventloop,
+				structure, structure.getKeys(), structure.getMeasures(), recordClass, (PartitionPredicate) AggregationUtils.singlePartition(),
 				aggregationChunkStorage, aggregationMetadataStorage, 1, classLoader, resultCallback);
 
 		StreamProducer<KeyValuePair> producer = StreamProducers.ofIterable(eventloop, asList(new KeyValuePair(1, 1, 0), new KeyValuePair(1, 2, 1),

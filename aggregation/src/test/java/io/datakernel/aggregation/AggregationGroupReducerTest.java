@@ -19,7 +19,6 @@ package io.datakernel.aggregation;
 import com.google.common.base.Function;
 import com.google.common.collect.ImmutableMap;
 import io.datakernel.aggregation.fieldtype.FieldTypes;
-import io.datakernel.aggregation.util.Predicates;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.DefiningClassLoader;
@@ -45,24 +44,6 @@ public class AggregationGroupReducerTest {
 
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
-
-	public static AggregationOperationTracker NO_OP_TRACKER = new AggregationOperationTracker() {
-		@Override
-		public void reportStart(AggregationChunker chunker) {
-		}
-
-		@Override
-		public void reportCompletion(AggregationChunker chunker) {
-		}
-
-		@Override
-		public void reportStart(AggregationGroupReducer groupReducer) {
-		}
-
-		@Override
-		public void reportCompletion(AggregationGroupReducer groupReducer) {
-		}
-	};
 
 	@Test
 	public void test() throws IOException {
@@ -118,9 +99,9 @@ public class AggregationGroupReducerTest {
 			}
 		};
 
-		AggregationGroupReducer<InvertedIndexRecord> aggregationGroupReducer = new AggregationGroupReducer<>(eventloop, aggregationChunkStorage, NO_OP_TRACKER, aggregationMetadataStorage,
+		AggregationGroupReducer<InvertedIndexRecord> aggregationGroupReducer = new AggregationGroupReducer<>(eventloop, aggregationChunkStorage, aggregationMetadataStorage,
 				aggregation, asList("word"), asList("documents"),
-				aggregationClass, Predicates.<InvertedIndexRecord, InvertedIndexRecord>alwaysTrue(), keyFunction, aggregate, aggregationChunkSize, classLoader, chunksCallback);
+				aggregationClass, AggregationUtils.<InvertedIndexRecord>singlePartition(), keyFunction, aggregate, aggregationChunkSize, classLoader, chunksCallback);
 
 		StreamProducer<InvertedIndexRecord> producer = StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("fox", 1),
 				new InvertedIndexRecord("brown", 2), new InvertedIndexRecord("fox", 3),

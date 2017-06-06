@@ -25,7 +25,7 @@ import io.datakernel.aggregation.*;
 import io.datakernel.aggregation.AggregationMetadataStorage.LoadedChunks;
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.measure.Measure;
-import io.datakernel.aggregation.util.AsyncResultsTracker.AsyncResultsTrackerMultimap;
+import io.datakernel.aggregation.util.AsyncResultsReducer;
 import io.datakernel.async.*;
 import io.datakernel.codegen.*;
 import io.datakernel.cube.CubeMetadataStorage.CubeLoadedChunks;
@@ -66,7 +66,7 @@ import static com.google.common.collect.Maps.*;
 import static com.google.common.collect.Sets.*;
 import static com.google.common.primitives.Primitives.isWrapperType;
 import static io.datakernel.aggregation.AggregationUtils.*;
-import static io.datakernel.aggregation.util.AsyncResultsTracker.ofMultimap;
+import static io.datakernel.async.AsyncCallbacks.postTo;
 import static io.datakernel.async.AsyncRunnables.runInParallel;
 import static io.datakernel.codegen.ExpressionComparator.leftField;
 import static io.datakernel.codegen.ExpressionComparator.rightField;
@@ -507,7 +507,8 @@ public final class Cube implements ICube, EventloopJmxMBean {
 		logger.info("Started consuming data. Dimensions: {}. Measures: {}", dimensionFields.keySet(), measureFields.keySet());
 
 		final StreamSplitter<T> streamSplitter = StreamSplitter.create(eventloop);
-		final AsyncResultsTrackerMultimap<String, AggregationChunk.NewChunk> tracker = ofMultimap(callback);
+		final AsyncResultsReducer<Multimap<String, AggregationChunk.NewChunk>> tracker = AsyncResultsReducer.create(postTo(callback),
+				HashMultimap.<String, AggregationChunk.NewChunk>create());
 
 		for (final Map.Entry<String, AggregationContainer> entry : aggregations.entrySet()) {
 			final String aggregationId = entry.getKey();
@@ -523,24 +524,19 @@ public final class Cube implements ICube, EventloopJmxMBean {
 			if (aggregationMeasureFields.isEmpty())
 				continue;
 
-			tracker.startOperation();
 			StreamConsumer<T> groupReducer = aggregation.consumer(inputClass,
 					aggregationKeyFields, aggregationMeasureFields,
-					new ResultCallback<List<AggregationChunk.NewChunk>>() {
+					tracker.newResultCallback(new AsyncResultsReducer.ResultReducer<Multimap<String, AggregationChunk.NewChunk>, List<AggregationChunk.NewChunk>>() {
 						@Override
-						public void onResult(List<AggregationChunk.NewChunk> chunks) {
-							tracker.completeWithResults(aggregationId, chunks);
+						public Multimap<String, AggregationChunk.NewChunk> applyResult(Multimap<String, AggregationChunk.NewChunk> accumulator, List<AggregationChunk.NewChunk> value) {
+							accumulator.putAll(aggregationId, value);
+							return accumulator;
 						}
-
-						@Override
-						public void onException(Exception e) {
-							tracker.completeWithException(e);
-						}
-					});
+					}));
 
 			streamSplitter.newOutput().streamTo(groupReducer);
 		}
-		tracker.shutDown();
+		tracker.setComplete();
 
 		return streamSplitter.getInput();
 	}

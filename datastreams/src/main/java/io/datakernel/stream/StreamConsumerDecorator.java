@@ -27,51 +27,49 @@ import static com.google.common.base.Preconditions.checkState;
  * @param <T> item type
  */
 public abstract class StreamConsumerDecorator<T> implements StreamConsumer<T> {
-
-	private StreamConsumer<T> actualConsumer;
+	protected StreamConsumer<T> delegateConsumer;
 
 	// region creators
-	public StreamConsumerDecorator() {
-
+	protected StreamConsumerDecorator() {
 	}
 
-	public StreamConsumerDecorator(StreamConsumer<T> actualConsumer) {
-		setActualConsumer(actualConsumer);
+	protected StreamConsumerDecorator(StreamConsumer<T> delegateConsumer) {
+		setDelegateConsumer(delegateConsumer);
 	}
 	// region creators
 
-	public void setActualConsumer(StreamConsumer<T> actualConsumer) {
-		checkState(this.actualConsumer == null, "Decorator is already wired");
-		this.actualConsumer = actualConsumer;
+	protected void setDelegateConsumer(StreamConsumer<T> delegateConsumer) {
+		checkState(this.delegateConsumer == null, "Decorator is already wired");
+		this.delegateConsumer = delegateConsumer;
 	}
 
 	@Override
 	public StreamDataReceiver<T> getDataReceiver() {
-		return actualConsumer.getDataReceiver();
+		return delegateConsumer.getDataReceiver();
 	}
 
 	@Override
-	public final void streamFrom(StreamProducer<T> upstreamProducer) {
-		actualConsumer.streamFrom(upstreamProducer);
+	public void streamFrom(StreamProducer<T> upstreamProducer) {
+		delegateConsumer.streamFrom(upstreamProducer);
 	}
 
 	@Override
 	public void onProducerEndOfStream() {
-		actualConsumer.onProducerEndOfStream();
+		delegateConsumer.onProducerEndOfStream();
 	}
 
 	@Override
 	public void onProducerError(Exception e) {
-		actualConsumer.onProducerError(e);
+		delegateConsumer.onProducerError(e);
 	}
 
 	@Override
-	public final StreamStatus getConsumerStatus() {
-		return actualConsumer.getConsumerStatus();
+	public StreamStatus getConsumerStatus() {
+		return delegateConsumer.getConsumerStatus();
 	}
 
 	@Override
 	public Exception getConsumerException() {
-		return actualConsumer.getConsumerException();
+		return delegateConsumer.getConsumerException();
 	}
 }

@@ -63,7 +63,7 @@ import static java.util.Collections.singletonList;
  * Provides methods for loading and querying data.
  */
 @SuppressWarnings("unchecked")
-public class Aggregation implements IAggregation, AggregationOperationTracker, EventloopJmxMBean {
+public class Aggregation implements IAggregation, EventloopJmxMBean {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	private static final Joiner JOINER = Joiner.on(", ");
 
@@ -289,7 +289,7 @@ public class Aggregation implements IAggregation, AggregationOperationTracker, E
 				keyFields, measureFields,
 				classLoader);
 
-		return new AggregationGroupReducer<>(eventloop, aggregationChunkStorage, this, metadataStorage,
+		return new AggregationGroupReducer<>(eventloop, aggregationChunkStorage, metadataStorage,
 				this, getKeys(), measures,
 				accumulatorClass,
 				createPartitionPredicate(accumulatorClass, getPartitioningKey(), classLoader),
@@ -375,7 +375,7 @@ public class Aggregation implements IAggregation, AggregationOperationTracker, E
 
 		ConsolidationPlan consolidationPlan = ConsolidationPlan.create();
 		consolidatedProducer(getKeys(), measures, resultClass, null, chunksToConsolidate, null, consolidationPlan, classLoader)
-				.streamTo(new AggregationChunker<>(eventloop, this,
+				.streamTo(new AggregationChunker<>(eventloop,
 						this, getKeys(), measures, resultClass,
 						createPartitionPredicate(resultClass, getPartitioningKey(), classLoader),
 						aggregationChunkStorage, metadataStorage, chunkSize, classLoader, callback));
@@ -820,26 +820,6 @@ public class Aggregation implements IAggregation, AggregationOperationTracker, E
 	@JmxAttribute
 	public int getChunks() {
 		return metadata.getChunks().size();
-	}
-
-	@Override
-	public void reportStart(AggregationChunker chunker) {
-		activeChunkers.add(chunker);
-	}
-
-	@Override
-	public void reportCompletion(AggregationChunker chunker) {
-		activeChunkers.remove(chunker);
-	}
-
-	@Override
-	public void reportStart(AggregationGroupReducer groupReducer) {
-		activeGroupReducers.add(groupReducer);
-	}
-
-	@Override
-	public void reportCompletion(AggregationGroupReducer groupReducer) {
-		activeGroupReducers.remove(groupReducer);
 	}
 
 	@Override

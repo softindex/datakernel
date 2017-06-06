@@ -22,8 +22,7 @@ import io.datakernel.aggregation.annotation.Key;
 import io.datakernel.aggregation.annotation.Measures;
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.measure.Measure;
-import io.datakernel.aggregation.util.BiPredicate;
-import io.datakernel.aggregation.util.Predicates;
+import io.datakernel.aggregation.util.PartitionPredicate;
 import io.datakernel.codegen.*;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
@@ -292,10 +291,21 @@ public class AggregationUtils {
 				.buildClassAndCreateNewInstance();
 	}
 
-	public static BiPredicate createPartitionPredicate(Class recordClass, List<String> partitioningKey,
-	                                                   DefiningClassLoader classLoader) {
+	private static final PartitionPredicate SINGLE_PARTITION = new PartitionPredicate() {
+		@Override
+		public boolean isSamePartition(Object t, Object u) {
+			return true;
+		}
+	};
+
+	public static <T> PartitionPredicate<T> singlePartition() {
+		return SINGLE_PARTITION;
+	}
+
+	public static PartitionPredicate createPartitionPredicate(Class recordClass, List<String> partitioningKey,
+	                                                          DefiningClassLoader classLoader) {
 		if (partitioningKey.isEmpty())
-			return Predicates.alwaysTrue();
+			return singlePartition();
 
 		PredicateDefAnd predicate = PredicateDefAnd.create();
 		for (String keyComponent : partitioningKey) {
@@ -304,8 +314,8 @@ public class AggregationUtils {
 					field(cast(arg(1), recordClass), keyComponent)));
 		}
 
-		return ClassBuilder.create(classLoader, BiPredicate.class)
-				.withMethod("test", predicate)
+		return ClassBuilder.create(classLoader, PartitionPredicate.class)
+				.withMethod("isSamePartition", predicate)
 				.buildClassAndCreateNewInstance();
 	}
 
@@ -368,4 +378,5 @@ public class AggregationUtils {
 		checkArgument(!measureFields.isEmpty(), "Missing @Measure(s) annotations in %s", inputClass);
 		return measureFields;
 	}
+
 }

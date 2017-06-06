@@ -225,77 +225,25 @@ public final class StreamProducers {
 		}
 	}
 
-	private static class NoEndOfStream<T> implements StreamProducer<T> {
-		private final StreamProducer<T> streamProducer;
-
+	public static class NoEndOfStream<T> extends StreamProducerDecorator<T> {
 		public NoEndOfStream(final StreamProducer<T> streamProducer) {
-			this.streamProducer = streamProducer;
+			super(streamProducer);
 		}
 
 		@Override
 		public void streamTo(final StreamConsumer<T> downstreamConsumer) {
-			streamProducer.streamTo(new StreamConsumer<T>() {
-				@Override
-				public StreamDataReceiver<T> getDataReceiver() {
-					return downstreamConsumer.getDataReceiver();
-				}
-
-				@Override
-				public void streamFrom(StreamProducer<T> upstreamProducer) {
-					downstreamConsumer.streamFrom(upstreamProducer);
-				}
-
+			delegateProducer.streamTo(new StreamConsumerDecorator<T>(downstreamConsumer) {
 				@Override
 				public void onProducerEndOfStream() {
 					// DO NOTHING
-				}
-
-				@Override
-				public void onProducerError(Exception e) {
-					downstreamConsumer.onProducerError(e);
-				}
-
-				@Override
-				public StreamStatus getConsumerStatus() {
-					return downstreamConsumer.getConsumerStatus();
-				}
-
-				@Override
-				public Exception getConsumerException() {
-					return downstreamConsumer.getConsumerException();
 				}
 			});
 		}
 
 		@Override
-		public void bindDataReceiver() {
-			streamProducer.bindDataReceiver();
-		}
-
-		@Override
-		public void onConsumerSuspended() {
-			streamProducer.onConsumerSuspended();
-		}
-
-		@Override
-		public void onConsumerResumed() {
-			streamProducer.onConsumerResumed();
-		}
-
-		@Override
-		public void onConsumerError(Exception e) {
-			streamProducer.onConsumerError(e);
-		}
-
-		@Override
 		public StreamStatus getProducerStatus() {
-			StreamStatus status = streamProducer.getProducerStatus();
+			StreamStatus status = delegateProducer.getProducerStatus();
 			return status != StreamStatus.END_OF_STREAM ? status : StreamStatus.SUSPENDED;
-		}
-
-		@Override
-		public Exception getProducerException() {
-			return streamProducer.getProducerException();
 		}
 	}
 
@@ -304,7 +252,7 @@ public final class StreamProducers {
 	 *
 	 * @param <T> type of output data
 	 */
-	static class OfIterator<T> extends AbstractStreamProducer<T> {
+	public static class OfIterator<T> extends AbstractStreamProducer<T> {
 		private final Iterator<T> iterator;
 
 		/**
@@ -405,7 +353,7 @@ public final class StreamProducers {
 		public StreamProducerConcat(Eventloop eventloop, AsyncIterator<StreamProducer<T>> iterator) {
 			this.forwarderConcat = new ForwarderConcat(eventloop);
 			this.iterator = iterator;
-			setActualProducer(forwarderConcat.getOutput());
+			setDelegateProducer(forwarderConcat.getOutput());
 		}
 
 		private class ForwarderConcat extends AbstractStreamTransformer_1_1<T, T> {

@@ -16,13 +16,6 @@
 
 package io.datakernel.aggregation.util;
 
-public final class Predicates {
-	public static <T, U> BiPredicate<T, U> alwaysTrue() {
-		return new BiPredicate<T, U>() {
-			@Override
-			public boolean test(T t, U u) {
-				return true;
-			}
-		};
-	}
+public interface PartitionPredicate<T> {
+	boolean isSamePartition(T item1, T item2);
 }
