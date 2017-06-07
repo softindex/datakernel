@@ -125,8 +125,8 @@ final class AggregationChunker<T> extends AbstractStreamConsumer<T> implements S
 
 	@Override
 	protected void onError(Exception e) {
-		super.onError(e);
 		chunksAccumulator.setException(e);
+		outputProducer.closeWithError(e);
 	}
 
 	@Override
@@ -146,7 +146,7 @@ final class AggregationChunker<T> extends AbstractStreamConsumer<T> implements S
 	protected void onEndOfStream() {
 		if (outputProducer.getDownstream() != null) {
 			currentChunkMetadata.set(first, last, count);
-			outputProducer.sendEndOfStream();
+			StreamProducers.<T>closing(eventloop).streamTo(outputProducer.getDownstream());
 		}
 		chunksAccumulator.setComplete();
 	}
@@ -154,7 +154,7 @@ final class AggregationChunker<T> extends AbstractStreamConsumer<T> implements S
 	private void rotateChunk() {
 		if (outputProducer.getDownstream() != null) {
 			currentChunkMetadata.set(first, last, count);
-			outputProducer.getDownstream().onProducerEndOfStream();
+			StreamProducers.<T>closing(eventloop).streamTo(outputProducer.getDownstream());
 		}
 		startNewChunk();
 	}

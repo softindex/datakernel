@@ -210,9 +210,9 @@ public class AggregationChunkerTest {
 		assertEquals(StreamStatus.CLOSED_WITH_ERROR, producer.getProducerStatus());
 		assertEquals(StreamStatus.CLOSED_WITH_ERROR, aggregationChunker.getConsumerStatus());
 		for (int i = 0; i < listConsumers.size() - 1; i++) {
-			assertEquals(listConsumers.get(i).getConsumerStatus(), StreamStatus.END_OF_STREAM);
+			assertEquals(StreamStatus.END_OF_STREAM, listConsumers.get(i).getConsumerStatus());
 		}
-		assertEquals(getLast(listConsumers).getConsumerStatus(), StreamStatus.CLOSED_WITH_ERROR);
+		assertEquals(StreamStatus.CLOSED_WITH_ERROR, getLast(listConsumers).getConsumerStatus());
 	}
 
 	static <T> T getLast(List<T> list) {
