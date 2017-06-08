@@ -92,19 +92,19 @@ public class HttpCookieTest {
 	}
 
 	@Test
-	public void testValidCharactersCreation() {
-		assertFalse(HttpCookie.isValidName("abc,"));
-		assertFalse(HttpCookie.isValidName("\0abc,"));
-		assertFalse(HttpCookie.isValidName("[a:bc,"));
-		assertFalse(HttpCookie.isValidName(""));
-		assertTrue(HttpCookie.isValidName("abc+"));
-		assertTrue(HttpCookie.isValidName("a"));
+	public void testParse() throws ParseException {
+		final String cookieName = "HMECOMDIC";
+		final String cookieValue = "{\"osVersion\":\"x86_64\",\"deviceOs\":\"Linux\",\"deviceType\":\"DESKTOP\"}";
+		final byte[] bytes = ByteBufStrings.encodeAscii(cookieName + "=" + cookieValue);
 
-		assertTrue(HttpCookie.isValidValue("\"abc\""));
-		assertFalse(HttpCookie.isValidValue("\"abc"));
+		final ArrayList<HttpCookie> cookies = new ArrayList<>();
+		HttpCookie.parse(bytes, 0, bytes.length, cookies);
 
-		assertTrue(HttpCookie.isValidValue("aHR0cHM6Ly90cmVsbG8uY29tL2MvdURad0xJZG0vOS0t"));
-		assertFalse(HttpCookie.isValidValue("aHR0cHM6Ly90cmVsbG8u\u007fY29tL2MvdURad0xJZG0vOS0t"));
-		assertTrue(HttpCookie.isValidValue("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/="));
+		assertEquals(1, cookies.size());
+
+		final HttpCookie cookie = cookies.iterator().next();
+
+		assertEquals(cookieName, cookie.getName());
+		assertEquals(cookieValue, cookie.getValue());
 	}
 }

@@ -78,13 +78,10 @@ public final class HttpCookie {
 	}
 
 	public static HttpCookie of(String name, String value) {
-		assert isValidName(name);
-		assert isValidValue(value);
 		return new HttpCookie(name, value);
 	}
 
 	public static HttpCookie of(String name) {
-		assert isValidName(name);
 		return new HttpCookie(name, null);
 	}
 
@@ -134,60 +131,6 @@ public final class HttpCookie {
 	}
 	// endregion
 
-	// region accessors
-	private static final String SEPARATORS = "()<>@,;:\\\"/[]?={}\u0020\u0009";
-	private static final String RESTRICTED_CHARACTERS_IN_OCTET = "\",;\\\u0020";
-
-	private static boolean isRestrictedInOctet(char c) {
-		return RESTRICTED_CHARACTERS_IN_OCTET.indexOf(c) != -1;
-	}
-
-	private static boolean isSeparator(char c) {
-		return SEPARATORS.indexOf(c) != -1;
-	}
-
-	private static boolean isCTL(char c) {
-		return c <= 31 || c == 127;
-	}
-
-	private static boolean isAlphaNumeric(char c) {
-		return ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'));
-	}
-
-	static boolean isValidName(String key) {
-		if (key.length() < 1)
-			return false;
-		for (int i = 0; i < key.length(); i++) {
-			char c = key.charAt(i);
-			if (isAlphaNumeric(c)) {
-				continue;
-			}
-			if (isCTL(c) || isSeparator(c)) {
-				return false;
-			}
-		}
-		return true;
-	}
-
-	static boolean isValidValue(String value) {
-		int start = 0;
-		int end = value.length();
-		if (value.startsWith("\"") && value.endsWith("\"")) {
-			start++;
-			end--;
-		}
-		for (int i = start; i < end; i++) {
-			char c = value.charAt(i);
-			if (isAlphaNumeric(c)) {
-				continue;
-			}
-			if (isCTL(c) || isRestrictedInOctet(c)) {
-				return false;
-			}
-		}
-		return true;
-	}
-
 	public String getName() {
 		return name;
 	}
@@ -197,7 +140,6 @@ public final class HttpCookie {
 	}
 
 	public void setValue(String value) {
-		assert isValidValue(value);
 		this.value = value;
 	}
 
@@ -274,7 +216,7 @@ public final class HttpCookie {
 			while (pos < end) {
 				pos = skipSpaces(bytes, pos, end);
 				int keyStart = pos;
-				while (pos < end && !(bytes[pos] == ';' || bytes[pos] == ',')) {
+				while (pos < end && bytes[pos] != ';') {
 					pos++;
 				}
 				int valueEnd = pos;
