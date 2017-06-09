@@ -79,10 +79,12 @@ final class HttpDate {
 				}
 			}
 
-			int year = decodeDecimal(bytes, start + 12, 4);
-			int hour = decodeDecimal(bytes, start + 17, 2);
-			int minutes = decodeDecimal(bytes, start + 20, 2);
-			int seconds = decodeDecimal(bytes, start + 23, 2);
+			final int yearLength = '0' <=  bytes[start + 12 + 2] && bytes[start + 12 + 2] <= '9' ? 4 : 2;
+
+			int year = (yearLength == 2 ? 2000 : 0) + decodeDecimal(bytes, start + 12, yearLength);
+			int hour = decodeDecimal(bytes, start + 13 + yearLength, 2);
+			int minutes = decodeDecimal(bytes, start + 16 + yearLength, 2);
+			int seconds = decodeDecimal(bytes, start + 19 + yearLength, 2);
 			boolean isLeapYear = isLeap(year);
 
 			int[] days = isLeapYear ? DAYS_IN_MONTH_LEAP : DAYS_IN_MONTH;

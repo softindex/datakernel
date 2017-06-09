@@ -61,4 +61,15 @@ public class HttpDateTest {
 		Date actual = new Date(HttpDate.parse(bytes, 0));
 		assertEquals(4073580000000l, actual.getTime());
 	}
+
+	@Test
+	public void testDateWithShortYear() throws ParseException {
+		final String date = "Thu, 01 Jan 15 00:00:00 GMT";
+		long actual = HttpDate.parse(date.getBytes(Charset.forName("ISO-8859-1")), 0);
+
+		final GregorianCalendar calendar = new GregorianCalendar(2015, 0, 1);
+		calendar.setTimeZone(TimeZone.getTimeZone("GMT"));
+
+		assertEquals(calendar.getTime().getTime(), actual);
+	}
 }
