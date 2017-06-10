@@ -49,7 +49,6 @@ import static com.google.common.base.Functions.identity;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Predicates.in;
 import static com.google.common.collect.Iterables.filter;
-import static com.google.common.collect.Iterables.getLast;
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Sets.*;
 import static io.datakernel.aggregation.AggregationUtils.*;
@@ -330,18 +329,12 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 
 		List<AggregationChunk> allChunks = metadata.findChunks(query.getPredicate(), aggregationFields);
 
-		AggregationQueryPlan queryPlan = AggregationQueryPlan.create();
-
-		StreamProducer streamProducer = consolidatedProducer(query.getKeys(),
-				aggregationFields, outputClass, query.getPredicate(), allChunks, queryPlan, null, queryClassLoader);
-
-		logger.info("Query plan for {} in aggregation {}: {}", query, this, queryPlan);
-
-		return streamProducer;
+		return consolidatedProducer(query.getKeys(),
+				aggregationFields, outputClass, query.getPredicate(), allChunks, queryClassLoader);
 	}
 
-	private <T> StreamProducer<T> getOrderedStream(StreamProducer<T> rawStream, Class<T> resultClass,
-	                                               List<String> allKeys, List<String> measures, DefiningClassLoader classLoader) {
+	private <T> StreamProducer<T> sortStream(StreamProducer<T> unsortedStream, Class<T> resultClass,
+	                                         List<String> allKeys, List<String> measures, DefiningClassLoader classLoader) {
 		Comparator keyComparator = createKeyComparator(resultClass, allKeys, classLoader);
 		Path path = Paths.get("sorterStorage", "%d.part");
 		BufferSerializer bufferSerializer = createBufferSerializer(this, resultClass,
@@ -350,7 +343,7 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 				bufferSerializer, path, sorterBlockSize);
 		StreamSorter sorter = StreamSorter.create(eventloop, sorterStorage, identity(), keyComparator, false,
 				sorterItemsInMemory);
-		rawStream.streamTo(sorter.getInput());
+		unsortedStream.streamTo(sorter.getInput());
 		return sorter.getOutput();
 	}
 
@@ -373,100 +366,117 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 
 		Class resultClass = createRecordClass(this, getKeys(), measures, classLoader);
 
-		ConsolidationPlan consolidationPlan = ConsolidationPlan.create();
-		consolidatedProducer(getKeys(), measures, resultClass, null, chunksToConsolidate, null, consolidationPlan, classLoader)
-				.streamTo(new AggregationChunker<>(eventloop,
-						this, getKeys(), measures, resultClass,
-						createPartitionPredicate(resultClass, getPartitioningKey(), classLoader),
-						aggregationChunkStorage, metadataStorage, chunkSize, classLoader, callback));
-		logger.info("Consolidation plan: {}", consolidationPlan);
+		StreamProducer<Object> consolidatedProducer = consolidatedProducer(getKeys(), measures, resultClass, null, chunksToConsolidate, classLoader);
+		AggregationChunker<Object> chunker = new AggregationChunker<>(eventloop,
+				this, getKeys(), measures, resultClass,
+				createPartitionPredicate(resultClass, getPartitioningKey(), classLoader),
+				aggregationChunkStorage, metadataStorage, chunkSize, classLoader, callback);
+		consolidatedProducer.streamTo(chunker);
+	}
+
+	private static void addChunkToPlan(Map<Set<String>, TreeMap<PrimaryKey, List<QueryPlan.Sequence>>> planIndex,
+	                                   AggregationChunk chunk) {
+		Set<String> fields = new LinkedHashSet<>(chunk.getMeasures());
+		TreeMap<PrimaryKey, List<QueryPlan.Sequence>> map = planIndex.get(fields);
+		if (map == null) {
+			map = new TreeMap<>();
+			planIndex.put(fields, map);
+		}
+
+		Map.Entry<PrimaryKey, List<QueryPlan.Sequence>> entry = map.lowerEntry(chunk.getMinPrimaryKey());
+		QueryPlan.Sequence sequence;
+		if (entry == null) {
+			sequence = new QueryPlan.Sequence(chunk.getMeasures());
+		} else {
+			List<QueryPlan.Sequence> list = entry.getValue();
+			sequence = list.remove(list.size() - 1);
+			if (list.isEmpty()) {
+				map.remove(entry.getKey());
+			}
+		}
+		sequence.add(chunk);
+		List<QueryPlan.Sequence> list = map.get(chunk.getMaxPrimaryKey());
+		if (list == null) {
+			list = new ArrayList<>();
+			map.put(chunk.getMaxPrimaryKey(), list);
+		}
+		list.add(sequence);
+	}
+
+	static QueryPlan createPlan(List<AggregationChunk> chunks) {
+		Map<Set<String>, TreeMap<PrimaryKey, List<QueryPlan.Sequence>>> index = new HashMap<>();
+		chunks = newArrayList(chunks);
+		Collections.sort(chunks, new Comparator<AggregationChunk>() {
+			@Override
+			public int compare(AggregationChunk chunk1, AggregationChunk chunk2) {
+				return chunk1.getMinPrimaryKey().compareTo(chunk2.getMinPrimaryKey());
+			}
+		});
+		for (AggregationChunk chunk : chunks) {
+			addChunkToPlan(index, chunk);
+		}
+		List<QueryPlan.Sequence> sequences = new ArrayList<>();
+		for (TreeMap<PrimaryKey, List<QueryPlan.Sequence>> map : index.values()) {
+			for (List<QueryPlan.Sequence> list : map.values()) {
+				sequences.addAll(list);
+			}
+		}
+		return new QueryPlan(sequences);
 	}
 
 	private <T> StreamProducer<T> consolidatedProducer(List<String> queryKeys,
 	                                                   List<String> measures, Class<T> resultClass,
 	                                                   AggregationPredicate where,
 	                                                   List<AggregationChunk> individualChunks,
-	                                                   AggregationQueryPlan queryPlan,
-	                                                   ConsolidationPlan consolidationPlan,
 	                                                   DefiningClassLoader queryClassLoader) {
-		individualChunks = newArrayList(individualChunks);
-		Collections.sort(individualChunks, new Comparator<AggregationChunk>() {
-			@Override
-			public int compare(AggregationChunk chunk1, AggregationChunk chunk2) {
-				return chunk1.getMinPrimaryKey().compareTo(chunk2.getMinPrimaryKey());
-			}
-		});
+		QueryPlan plan = createPlan(individualChunks);
 
-		List<StreamProducer> producers = new ArrayList<>();
-		List<List<String>> producersFields = new ArrayList<>();
-		List<Class<?>> producersClasses = new ArrayList<>();
+		logger.info("Query plan for {} in aggregation {}: {}", queryKeys, this, plan);
 
-		List<AggregationChunk> chunks = new ArrayList<>();
+		boolean alreadySorted = this.getKeys().subList(0, min(this.getKeys().size(), queryKeys.size())).equals(queryKeys);
 
-		/*
-		Build producers. Chunks can be read sequentially (using StreamProducers.concat) when the ranges of their keys do not overlap.
-		 */
-		for (int i = 0; i <= individualChunks.size(); i++) {
-			AggregationChunk chunk = (i != individualChunks.size()) ? individualChunks.get(i) : null;
+		List<SequenceStream> sequenceStreams = new ArrayList<>();
 
-			boolean nextSequence = chunks.isEmpty() || chunk == null ||
-					getLast(chunks).getMaxPrimaryKey().compareTo(chunk.getMinPrimaryKey()) >= 0 ||
-					!newHashSet(getLast(chunks).getMeasures()).equals(newHashSet(chunk.getMeasures()));
+		for (QueryPlan.Sequence sequence : plan.getSequences()) {
+			Class<?> sequenceClass = createRecordClass(this, this.getKeys(), sequence.getFields(), classLoader);
 
-			if (nextSequence && !chunks.isEmpty()) {
-				List<String> sequenceMeasures = chunks.get(0).getMeasures();
-				Set<String> requestedMeasuresInSequence = intersection(newHashSet(measures), newLinkedHashSet(sequenceMeasures));
-
-				Class<?> chunksClass = createRecordClass(this, getKeys(), sequenceMeasures, classLoader);
-
-				producersFields.add(sequenceMeasures);
-				producersClasses.add(chunksClass);
-
-				List<AggregationChunk> sequentialChunkGroup = newArrayList(chunks);
-
-				boolean sorted = false;
-				StreamProducer producer = sequentialProducer(where, sequentialChunkGroup, chunksClass, queryClassLoader);
-				if (!getKeys().subList(0, min(getKeys().size(), queryKeys.size())).equals(queryKeys)) {
-					producer = getOrderedStream(producer, chunksClass, queryKeys, sequenceMeasures, classLoader);
-					sorted = true;
-				}
-				producers.add(producer);
-
-				chunks.clear();
-
-				if (queryPlan != null)
-					queryPlan.addChunkGroup(newArrayList(requestedMeasuresInSequence), sequentialChunkGroup, sorted);
-
-				if (consolidationPlan != null)
-					consolidationPlan.addChunkGroup(newArrayList(requestedMeasuresInSequence), sequentialChunkGroup);
+			StreamProducer stream = sequenceStream(where, sequence.getChunks(), sequenceClass, queryClassLoader);
+			if (!alreadySorted) {
+				stream = sortStream(stream, sequenceClass, queryKeys, sequence.getFields(), classLoader);
 			}
 
-			if (chunk != null) {
-				chunks.add(chunk);
-			}
+			sequenceStreams.add(new SequenceStream(stream, sequence.getFields(), sequenceClass));
 		}
 
-		return mergeProducers(queryKeys, measures, resultClass, producers, producersFields,
-				producersClasses, queryPlan, queryClassLoader);
+		return mergeSequences(queryKeys, measures, resultClass, sequenceStreams, queryClassLoader);
 	}
 
-	private <T> StreamProducer<T> mergeProducers(List<String> queryKeys, List<String> measures,
-	                                             Class<?> resultClass, List<StreamProducer> producers,
-	                                             List<List<String>> producersFields, List<Class<?>> producerClasses,
-	                                             AggregationQueryPlan queryPlan, DefiningClassLoader classLoader) {
-		if (newHashSet(queryKeys).equals(newHashSet(getKeys())) && producers.size() == 1) {
+	static final class SequenceStream<T> {
+		final StreamProducer<T> stream;
+		final List<String> fields;
+		final Class<T> type;
+
+		private SequenceStream(StreamProducer<T> stream, List<String> fields, Class<T> type) {
+			this.stream = stream;
+			this.fields = fields;
+			this.type = type;
+		}
+	}
+
+	private <T> StreamProducer<T> mergeSequences(List<String> queryKeys, List<String> measures,
+	                                             Class<?> resultClass, List<SequenceStream> sequences,
+	                                             DefiningClassLoader classLoader) {
+		if (sequences.size() == 1 && newHashSet(queryKeys).equals(newHashSet(getKeys()))) {
 			/*
 			If there is only one sequential producer and all aggregation keys are requested, then there is no need for
 			using StreamReducer, because all records have unique keys and all we need to do is copy requested measures
 			from record class to result class.
 			 */
-			StreamMap.MapperProjection mapper = createMapper(producerClasses.get(0), resultClass,
-					queryKeys, newArrayList(filter(measures, in(producersFields.get(0)))),
-					classLoader);
+			SequenceStream sequence = sequences.get(0);
+			StreamMap.MapperProjection mapper = createMapper(sequence.type, resultClass,
+					queryKeys, newArrayList(filter(measures, in(sequence.fields))), classLoader);
 			StreamMap<Object, T> streamMap = StreamMap.create(eventloop, mapper);
-			producers.get(0).streamTo(streamMap.getInput());
-			if (queryPlan != null)
-				queryPlan.setOptimizedAwayReducer(true);
+			sequence.stream.streamTo(streamMap.getInput());
 			return streamMap.getOutput();
 		}
 
@@ -474,23 +484,21 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 
 		Class<?> keyClass = createKeyClass(this, queryKeys, this.classLoader);
 
-		for (int i = 0; i < producers.size(); i++) {
-			StreamProducer producer = producers.get(i);
+		for (SequenceStream sequence : sequences) {
+			Function extractKeyFunction = createKeyFunction(sequence.type, keyClass, queryKeys, this.classLoader);
 
-			Function extractKeyFunction = createKeyFunction(producerClasses.get(i), keyClass, queryKeys, this.classLoader);
+			StreamReducers.Reducer reducer = AggregationUtils.aggregationReducer(this, sequence.type, resultClass,
+					queryKeys, newArrayList(filter(measures, in(sequence.fields))), classLoader);
 
-			StreamReducers.Reducer reducer = AggregationUtils.aggregationReducer(this, producerClasses.get(i), resultClass,
-					queryKeys, newArrayList(filter(measures, in(producersFields.get(i)))), classLoader);
-
-			producer.streamTo(streamReducer.newInput(extractKeyFunction, reducer));
+			sequence.stream.streamTo(streamReducer.newInput(extractKeyFunction, reducer));
 		}
 
 		return streamReducer.getOutput();
 	}
 
-	private <T> StreamProducer sequentialProducer(final AggregationPredicate where,
-	                                              List<AggregationChunk> individualChunks, final Class<T> sequenceClass,
-	                                              final DefiningClassLoader queryClassLoader) {
+	private <T> StreamProducer sequenceStream(final AggregationPredicate where,
+	                                          List<AggregationChunk> individualChunks, final Class<T> sequenceClass,
+	                                          final DefiningClassLoader queryClassLoader) {
 		checkArgument(!individualChunks.isEmpty());
 		AsyncIterator<StreamProducer<T>> producerAsyncIterator = AsyncIterators.transform(individualChunks.iterator(),
 				new AsyncFunction<AggregationChunk, StreamProducer<T>>() {
