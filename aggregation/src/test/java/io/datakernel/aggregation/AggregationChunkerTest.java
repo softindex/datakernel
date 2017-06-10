@@ -75,14 +75,14 @@ public class AggregationChunkerTest {
 			}
 		};
 
-		final List<List<AggregationChunk.NewChunk>> list = new ArrayList<>();
-		ResultCallback<List<AggregationChunk.NewChunk>> resultCallback = new ResultCallback<List<AggregationChunk.NewChunk>>() {
+		final List<List<AggregationChunk>> list = new ArrayList<>();
+		ResultCallback<List<AggregationChunk>> resultCallback = new ResultCallback<List<AggregationChunk>>() {
 			@Override
 			protected void onException(Exception exception) {
 			}
 
 			@Override
-			protected void onResult(List<AggregationChunk.NewChunk> result) {
+			protected void onResult(List<AggregationChunk> result) {
 				list.add(result);
 			}
 		};
@@ -160,15 +160,15 @@ public class AggregationChunkerTest {
 
 		List<String> keys = structure.getKeys();
 
-		final List<List<AggregationChunk.NewChunk>> list = new ArrayList<>();
-		ResultCallback<List<AggregationChunk.NewChunk>> resultCallback = new ResultCallback<List<AggregationChunk.NewChunk>>() {
+		final List<List<AggregationChunk>> list = new ArrayList<>();
+		ResultCallback<List<AggregationChunk>> resultCallback = new ResultCallback<List<AggregationChunk>>() {
 
 			@Override
 			protected void onException(Exception exception) {
 			}
 
 			@Override
-			protected void onResult(List<AggregationChunk.NewChunk> result) {
+			protected void onResult(List<AggregationChunk> result) {
 				list.add(result);
 			}
 		};
@@ -258,15 +258,15 @@ public class AggregationChunkerTest {
 			}
 		};
 
-		final List<List<AggregationChunk.NewChunk>> list = new ArrayList<>();
-		ResultCallback<List<AggregationChunk.NewChunk>> resultCallback = new ResultCallback<List<AggregationChunk.NewChunk>>() {
+		final List<List<AggregationChunk>> list = new ArrayList<>();
+		ResultCallback<List<AggregationChunk>> resultCallback = new ResultCallback<List<AggregationChunk>>() {
 
 			@Override
 			protected void onException(Exception exception) {
 			}
 
 			@Override
-			protected void onResult(List<AggregationChunk.NewChunk> result) {
+			protected void onResult(List<AggregationChunk> result) {
 				list.add(result);
 			}
 		};

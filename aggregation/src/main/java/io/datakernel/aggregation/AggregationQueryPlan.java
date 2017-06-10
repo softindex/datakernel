@@ -22,9 +22,12 @@ import java.util.List;
 import static com.google.common.collect.Lists.newArrayList;
 
 final class AggregationQueryPlan {
-	private AggregationQueryPlan() {}
+	private AggregationQueryPlan() {
+	}
 
-	static AggregationQueryPlan create() {return new AggregationQueryPlan();}
+	static AggregationQueryPlan create() {
+		return new AggregationQueryPlan();
+	}
 
 	private static class FieldsWithChunks {
 		private final List<String> fields;
@@ -72,12 +75,12 @@ final class AggregationQueryPlan {
 		sb.append('[');
 		for (; ; ) {
 			AggregationChunk chunk = it.next();
-			sb.append("{" + "revision=").append(chunk.getRevisionId())
-					.append(", id=").append(chunk.getChunkId())
-					.append(", minKey=").append(chunk.getMinPrimaryKey())
-					.append(", maxKey=").append(chunk.getMaxPrimaryKey())
-					.append(", count=").append(chunk.getCount())
-					.append('}');
+			sb.append("{")
+					.append(", id=" + chunk.getChunkId())
+					.append(", minKey=" + chunk.getMinPrimaryKey())
+					.append(", maxKey=" + chunk.getMaxPrimaryKey())
+					.append(", count=" + chunk.getCount())
+					.append("}");
 			if (!it.hasNext())
 				return sb.append(']').toString();
 			sb.append(',').append(' ');

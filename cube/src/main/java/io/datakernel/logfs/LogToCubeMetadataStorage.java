@@ -43,15 +43,16 @@ public interface LogToCubeMetadataStorage {
 	 * Commits information about processing log to metadata storage.
 	 * Updates (in storage) old log positions with the new values, contained in the list of new log positions.
 	 * Saves metadata on new chunks, that appeared as a result of processing log, to the given cube.
-	 * @param log          name of log file
-	 * @param oldPositions old log positions
-	 * @param newPositions new log positions
-	 * @param newChunksByAggregation    metadata on new chunks
-	 * @param callback     callback which is called once committing is complete
+	 *
+	 * @param log                 name of log file
+	 * @param oldPositions        old log positions
+	 * @param newPositions        new log positions
+	 * @param chunksByAggregation metadata on new chunks
+	 * @param callback            callback which is called once committing is complete
 	 */
 	void saveCommit(Cube cube, String log,
 	                Map<String, LogPosition> oldPositions,
 	                Map<String, LogPosition> newPositions,
-	                Multimap<String, AggregationChunk.NewChunk> newChunksByAggregation,
+	                Multimap<String, AggregationChunk> chunksByAggregation,
 	                CompletionCallback callback);
 }

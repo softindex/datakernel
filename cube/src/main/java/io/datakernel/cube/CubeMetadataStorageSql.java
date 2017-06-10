@@ -43,7 +43,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static io.datakernel.aggregation.AggregationChunk.createChunk;
 import static io.datakernel.aggregation.sql.tables.AggregationDbChunk.AGGREGATION_DB_CHUNK;
 import static io.datakernel.aggregation.sql.tables.AggregationDbRevision.AGGREGATION_DB_REVISION;
 import static io.datakernel.aggregation.util.JooqUtils.onDuplicateKeyUpdateValues;
@@ -108,7 +107,7 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 	}
 
 	@Override
-	public void saveConsolidatedChunks(final Cube cube, final String aggregationId, final List<AggregationChunk> originalChunks, final List<AggregationChunk.NewChunk> consolidatedChunks, CompletionCallback callback) {
+	public void saveConsolidatedChunks(final Cube cube, final String aggregationId, final List<AggregationChunk> originalChunks, final List<AggregationChunk> consolidatedChunks, CompletionCallback callback) {
 		eventloop.runConcurrently(executor, new Runnable() {
 			@Override
 			public void run() {
@@ -164,9 +163,9 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 	}
 
 	public void doSaveNewChunks(DSLContext jooq, Cube cube,
-	                            Multimap<String, AggregationChunk.NewChunk> newChunksByAggregation) {
+	                            Multimap<String, AggregationChunk> chunksByAggregation) {
 		int revisionId = nextRevisionId(jooq);
-		doSaveNewChunks(jooq, cube, revisionId, newChunksByAggregation);
+		doSaveNewChunks(jooq, cube, revisionId, chunksByAggregation);
 	}
 
 	private static int getMaxKeyLength(Cube cube, Collection<String> aggregations) {
@@ -196,23 +195,21 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 	}
 
 	private void doSaveNewChunks(DSLContext jooq, Cube cube, final int revisionId,
-	                             Multimap<String, AggregationChunk.NewChunk> newChunksByAggregation) {
+	                             Multimap<String, AggregationChunk> chunksByAggregation) {
 		InsertQuery<AggregationDbChunkRecord> insertQuery = jooq.insertQuery(AGGREGATION_DB_CHUNK);
 
-		Set<String> aggregations = newChunksByAggregation.keySet();
+		Set<String> aggregations = chunksByAggregation.keySet();
 
 		int maxKeyLength = getMaxKeyLength(cube, aggregations);
 
 		for (String aggregationId : aggregations) {
 			Aggregation aggregation = cube.getAggregation(aggregationId);
-			for (AggregationChunk.NewChunk newChunk : newChunksByAggregation.get(aggregationId)) {
+			for (AggregationChunk chunk : chunksByAggregation.get(aggregationId)) {
 				insertQuery.newRecord();
-
-				AggregationChunk chunk = createChunk(revisionId, newChunk);
 
 				insertQuery.addValue(AGGREGATION_DB_CHUNK.ID, chunk.getChunkId());
 				insertQuery.addValue(AGGREGATION_DB_CHUNK.AGGREGATION_ID, aggregationId);
-				insertQuery.addValue(AGGREGATION_DB_CHUNK.REVISION_ID, chunk.getRevisionId());
+				insertQuery.addValue(AGGREGATION_DB_CHUNK.REVISION_ID, revisionId);
 				insertQuery.addValue(AGGREGATION_DB_CHUNK.KEYS, JOINER.join(aggregation.getKeys()));
 				insertQuery.addValue(AGGREGATION_DB_CHUNK.FIELDS, JOINER.join(chunk.getMeasures()));
 				insertQuery.addValue(AGGREGATION_DB_CHUNK.COUNT, chunk.getCount());
@@ -265,7 +262,7 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 
 		for (Record record : chunkRecords) {
 			ChunkKey chunkKey = getChunkKey(record, cubeTypes, aggregationKeys);
-			AggregationChunk chunk = AggregationChunk.create(record.getValue(AGGREGATION_DB_CHUNK.REVISION_ID),
+			AggregationChunk chunk = AggregationChunk.create(
 					record.getValue(AGGREGATION_DB_CHUNK.ID).intValue(),
 					newArrayList(SPLITTER.split(record.getValue(AGGREGATION_DB_CHUNK.FIELDS))),
 					PrimaryKey.ofArray(chunkKey.minKeyArray),
@@ -288,7 +285,7 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 				continue;
 
 			ChunkKey chunkKey = getChunkKey(record, cube, aggregation.getKeys());
-			AggregationChunk chunk = AggregationChunk.create(record.getValue(AGGREGATION_DB_CHUNK.REVISION_ID),
+			AggregationChunk chunk = AggregationChunk.create(
 					record.getValue(AGGREGATION_DB_CHUNK.ID).intValue(),
 					newArrayList(SPLITTER.split(record.getValue(AGGREGATION_DB_CHUNK.FIELDS))),
 					PrimaryKey.ofArray(chunkKey.minKeyArray),
@@ -379,7 +376,7 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 	private void doSaveConsolidatedChunks(final Cube cube,
 	                                      final String aggregationId,
 	                                      final List<AggregationChunk> originalChunks,
-	                                      final List<AggregationChunk.NewChunk> consolidatedChunks) {
+	                                      final List<AggregationChunk> consolidatedChunks) {
 		executeExclusiveTransaction(new TransactionalRunnable() {
 			@Override
 			public void run(Configuration configuration) throws Exception {
@@ -399,7 +396,7 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 								}))))
 						.execute();
 
-				Multimap<String, AggregationChunk.NewChunk> chunks = HashMultimap.create();
+				Multimap<String, AggregationChunk> chunks = HashMultimap.create();
 				chunks.putAll(aggregationId, consolidatedChunks);
 				doSaveNewChunks(jooq, cube, revisionId, chunks);
 			}

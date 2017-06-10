@@ -383,7 +383,7 @@ public final class Cube implements ICube, EventloopJmxMBean {
 			}
 
 			@Override
-			public void saveConsolidatedChunks(List<AggregationChunk> originalChunks, List<AggregationChunk.NewChunk> consolidatedChunks, CompletionCallback callback) {
+			public void saveConsolidatedChunks(List<AggregationChunk> originalChunks, List<AggregationChunk> consolidatedChunks, CompletionCallback callback) {
 				cubeMetadataStorage.saveConsolidatedChunks(Cube.this, config.id, originalChunks, consolidatedChunks, callback);
 			}
 		};
@@ -484,11 +484,11 @@ public final class Cube implements ICube, EventloopJmxMBean {
 		return lastRevisionId;
 	}
 
-	public <T> StreamConsumer<T> consumer(Class<T> inputClass, ResultCallback<Multimap<String, AggregationChunk.NewChunk>> callback) {
+	public <T> StreamConsumer<T> consumer(Class<T> inputClass, ResultCallback<Multimap<String, AggregationChunk>> callback) {
 		return consumer(inputClass, AggregationPredicates.alwaysTrue(), callback);
 	}
 
-	public <T> StreamConsumer<T> consumer(Class<T> inputClass, AggregationPredicate predicate, ResultCallback<Multimap<String, AggregationChunk.NewChunk>> callback) {
+	public <T> StreamConsumer<T> consumer(Class<T> inputClass, AggregationPredicate predicate, ResultCallback<Multimap<String, AggregationChunk>> callback) {
 		return consumer(inputClass, scanKeyFields(inputClass), scanMeasureFields(inputClass), predicate, callback);
 	}
 
@@ -503,12 +503,12 @@ public final class Cube implements ICube, EventloopJmxMBean {
 	 */
 	public <T> StreamConsumer<T> consumer(Class<T> inputClass, Map<String, String> dimensionFields, Map<String, String> measureFields,
 	                                      final AggregationPredicate predicate,
-	                                      final ResultCallback<Multimap<String, AggregationChunk.NewChunk>> callback) {
+	                                      final ResultCallback<Multimap<String, AggregationChunk>> callback) {
 		logger.info("Started consuming data. Dimensions: {}. Measures: {}", dimensionFields.keySet(), measureFields.keySet());
 
 		final StreamSplitter<T> streamSplitter = StreamSplitter.create(eventloop);
-		final AsyncResultsReducer<Multimap<String, AggregationChunk.NewChunk>> tracker = AsyncResultsReducer.create(postTo(callback),
-				HashMultimap.<String, AggregationChunk.NewChunk>create());
+		final AsyncResultsReducer<Multimap<String, AggregationChunk>> tracker = AsyncResultsReducer.create(postTo(callback),
+				HashMultimap.<String, AggregationChunk>create());
 
 		for (final Map.Entry<String, AggregationContainer> entry : aggregations.entrySet()) {
 			final String aggregationId = entry.getKey();
@@ -526,9 +526,9 @@ public final class Cube implements ICube, EventloopJmxMBean {
 
 			StreamConsumer<T> groupReducer = aggregation.consumer(inputClass,
 					aggregationKeyFields, aggregationMeasureFields,
-					tracker.newResultCallback(new AsyncResultsReducer.ResultReducer<Multimap<String, AggregationChunk.NewChunk>, List<AggregationChunk.NewChunk>>() {
+					tracker.newResultCallback(new AsyncResultsReducer.ResultReducer<Multimap<String, AggregationChunk>, List<AggregationChunk>>() {
 						@Override
-						public Multimap<String, AggregationChunk.NewChunk> applyResult(Multimap<String, AggregationChunk.NewChunk> accumulator, List<AggregationChunk.NewChunk> value) {
+						public Multimap<String, AggregationChunk> applyResult(Multimap<String, AggregationChunk> accumulator, List<AggregationChunk> value) {
 							accumulator.putAll(aggregationId, value);
 							return accumulator;
 						}

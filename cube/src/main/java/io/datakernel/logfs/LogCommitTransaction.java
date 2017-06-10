@@ -37,7 +37,7 @@ public final class LogCommitTransaction<T> {
 	private final String log;
 	private final Map<String, LogPosition> oldPositions;
 
-	private ListMultimap<String, AggregationChunk.NewChunk> newChunks = LinkedListMultimap.create();
+	private ListMultimap<String, AggregationChunk> newChunks = LinkedListMultimap.create();
 	private Map<String, LogPosition> newPositions = new LinkedHashMap<>();
 	private Exception exception;
 
@@ -63,12 +63,12 @@ public final class LogCommitTransaction<T> {
 		return new LogCommitTransaction<T>(eventloop, logManager, log, oldPositions, callback);
 	}
 
-	public ResultCallback<Multimap<String, AggregationChunk.NewChunk>> addCommitCallback() {
+	public ResultCallback<Multimap<String, AggregationChunk>> addCommitCallback() {
 		commitCallbacks++;
 		logger.trace("Added commit callback. Commit callbacks: {}. Log callbacks: {}", commitCallbacks, logCallbacks);
-		return new ResultCallback<Multimap<String, AggregationChunk.NewChunk>>() {
+		return new ResultCallback<Multimap<String, AggregationChunk>>() {
 			@Override
-			protected void onResult(Multimap<String, AggregationChunk.NewChunk> resultChunks) {
+			protected void onResult(Multimap<String, AggregationChunk> resultChunks) {
 				newChunks.putAll(resultChunks);
 				commitCallbacks--;
 				logger.trace("Commit callback onResult called. Commit callbacks: {}. Log callbacks: {}",

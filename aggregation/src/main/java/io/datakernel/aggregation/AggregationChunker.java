@@ -41,7 +41,7 @@ final class AggregationChunker<T> extends AbstractStreamConsumer<T> implements S
 	private final PartitionPredicate<T> partitionPredicate;
 	private final AggregationChunkStorage storage;
 	private final AggregationMetadataStorage metadataStorage;
-	private final AsyncResultsReducer<List<AggregationChunk.NewChunk>> chunksAccumulator;
+	private final AsyncResultsReducer<List<AggregationChunk>> chunksAccumulator;
 	private final DefiningClassLoader classLoader;
 
 	private StreamDataReceiver<T> downstreamDataReceiver;
@@ -68,9 +68,9 @@ final class AggregationChunker<T> extends AbstractStreamConsumer<T> implements S
 		}
 	};
 
-	private static final AsyncResultsReducer.ResultReducer<List<AggregationChunk.NewChunk>, AggregationChunk.NewChunk> REDUCER = new AsyncResultsReducer.ResultReducer<List<AggregationChunk.NewChunk>, AggregationChunk.NewChunk>() {
+	private static final AsyncResultsReducer.ResultReducer<List<AggregationChunk>, AggregationChunk> REDUCER = new AsyncResultsReducer.ResultReducer<List<AggregationChunk>, AggregationChunk>() {
 		@Override
-		public List<AggregationChunk.NewChunk> applyResult(List<AggregationChunk.NewChunk> accumulator, AggregationChunk.NewChunk value) {
+		public List<AggregationChunk> applyResult(List<AggregationChunk> accumulator, AggregationChunk value) {
 			accumulator.add(value);
 			return accumulator;
 		}
@@ -81,7 +81,7 @@ final class AggregationChunker<T> extends AbstractStreamConsumer<T> implements S
 	                          Class<T> recordClass, PartitionPredicate<T> partitionPredicate,
 	                          AggregationChunkStorage storage, AggregationMetadataStorage metadataStorage,
 	                          int chunkSize, DefiningClassLoader classLoader,
-	                          final ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
+	                          final ResultCallback<List<AggregationChunk>> chunksCallback) {
 		super(eventloop);
 		this.aggregation = aggregation;
 		this.keys = keys;
@@ -90,7 +90,7 @@ final class AggregationChunker<T> extends AbstractStreamConsumer<T> implements S
 		this.partitionPredicate = partitionPredicate;
 		this.storage = storage;
 		this.metadataStorage = metadataStorage;
-		this.chunksAccumulator = AsyncResultsReducer.create(postTo(chunksCallback), new ArrayList<AggregationChunk.NewChunk>());
+		this.chunksAccumulator = AsyncResultsReducer.create(postTo(chunksCallback), new ArrayList<AggregationChunk>());
 		this.chunkSize = chunkSize;
 		this.classLoader = classLoader;
 	}
@@ -172,7 +172,7 @@ final class AggregationChunker<T> extends AbstractStreamConsumer<T> implements S
 
 		logger.info("Retrieving new chunk id for aggregation {}", keys);
 
-		final ResultCallback<AggregationChunk.NewChunk> newChunkCallback = chunksAccumulator.newResultCallback(REDUCER);
+		final ResultCallback<AggregationChunk> newChunkCallback = chunksAccumulator.newResultCallback(REDUCER);
 		applySuspendOrResume();
 
 		metadataStorage.createChunkId(new ResultCallback<Long>() {
@@ -182,7 +182,7 @@ final class AggregationChunker<T> extends AbstractStreamConsumer<T> implements S
 				storage.write(forwarder.getOutput(), aggregation, keys, fields, recordClass, chunkId, classLoader, new CompletionCallback() {
 					@Override
 					protected void onComplete() {
-						AggregationChunk.NewChunk newChunk = new AggregationChunk.NewChunk(chunkId,
+						AggregationChunk newChunk = AggregationChunk.create(chunkId,
 								fields,
 								PrimaryKey.ofObject(metadata.first, keys),
 								PrimaryKey.ofObject(metadata.last, keys),

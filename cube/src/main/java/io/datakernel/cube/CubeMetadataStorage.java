@@ -29,7 +29,7 @@ public interface CubeMetadataStorage {
 	void startConsolidation(Cube cube, String aggregationId, List<AggregationChunk> chunksToConsolidate, CompletionCallback callback);
 
 	void saveConsolidatedChunks(Cube cube, String aggregationId,
-	                            List<AggregationChunk> originalChunks, List<AggregationChunk.NewChunk> consolidatedChunks,
+	                            List<AggregationChunk> originalChunks, List<AggregationChunk> consolidatedChunks,
 	                            CompletionCallback callback);
 
 

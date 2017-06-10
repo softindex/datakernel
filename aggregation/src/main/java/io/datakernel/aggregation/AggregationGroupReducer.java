@@ -45,15 +45,15 @@ final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> impleme
 	private final Class<?> recordClass;
 	private final Function<T, Comparable<?>> keyFunction;
 	private final Aggregate aggregate;
-	private final AsyncResultsReducer<List<AggregationChunk.NewChunk>> resultsTracker;
+	private final AsyncResultsReducer<List<AggregationChunk>> resultsTracker;
 	private final DefiningClassLoader classLoader;
 	private int chunkSize;
 
 	private final HashMap<Comparable<?>, Object> map = new HashMap<>();
 
-	private static final AsyncResultsReducer.ResultReducer<List<AggregationChunk.NewChunk>, List<AggregationChunk.NewChunk>> REDUCER = new AsyncResultsReducer.ResultReducer<List<AggregationChunk.NewChunk>, List<AggregationChunk.NewChunk>>() {
+	private static final AsyncResultsReducer.ResultReducer<List<AggregationChunk>, List<AggregationChunk>> REDUCER = new AsyncResultsReducer.ResultReducer<List<AggregationChunk>, List<AggregationChunk>>() {
 		@Override
-		public List<AggregationChunk.NewChunk> applyResult(List<AggregationChunk.NewChunk> accumulator, List<AggregationChunk.NewChunk> value) {
+		public List<AggregationChunk> applyResult(List<AggregationChunk> accumulator, List<AggregationChunk> value) {
 			accumulator.addAll(value);
 			return accumulator;
 		}
@@ -65,7 +65,7 @@ final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> impleme
 	                               Class<?> recordClass, PartitionPredicate<T> partitionPredicate,
 	                               Function<T, Comparable<?>> keyFunction, Aggregate aggregate,
 	                               int chunkSize, DefiningClassLoader classLoader,
-	                               final ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
+	                               final ResultCallback<List<AggregationChunk>> chunksCallback) {
 		super(eventloop);
 		this.storage = storage;
 		this.metadataStorage = metadataStorage;
@@ -77,7 +77,7 @@ final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> impleme
 		this.aggregate = aggregate;
 		this.chunkSize = chunkSize;
 		this.aggregation = aggregation;
-		this.resultsTracker = AsyncResultsReducer.create(postTo(chunksCallback), new ArrayList<AggregationChunk.NewChunk>());
+		this.resultsTracker = AsyncResultsReducer.create(postTo(chunksCallback), new ArrayList<AggregationChunk>());
 		this.classLoader = classLoader;
 	}
 
@@ -126,14 +126,14 @@ final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> impleme
 			list.add(entry.getValue());
 		}
 
-		final ResultCallback<List<AggregationChunk.NewChunk>> callback = resultsTracker.newResultCallback(REDUCER);
+		final ResultCallback<List<AggregationChunk>> callback = resultsTracker.newResultCallback(REDUCER);
 
 		StreamProducer producer = StreamProducers.ofIterable(eventloop, list);
 		AggregationChunker consumer = new AggregationChunker(eventloop, aggregation, keys, fields, recordClass,
 				partitionPredicate, storage, metadataStorage, chunkSize, classLoader,
-				new ResultCallback<List<AggregationChunk.NewChunk>>() {
+				new ResultCallback<List<AggregationChunk>>() {
 					@Override
-					protected void onResult(List<AggregationChunk.NewChunk> newChunks) {
+					protected void onResult(List<AggregationChunk> newChunks) {
 						callback.setResult(newChunks);
 						resume();
 					}

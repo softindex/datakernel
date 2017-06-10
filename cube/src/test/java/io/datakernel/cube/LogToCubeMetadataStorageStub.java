@@ -67,15 +67,15 @@ public final class LogToCubeMetadataStorageStub implements LogToCubeMetadataStor
 	public void saveCommit(Cube cube, String log,
 	                       Map<String, LogPosition> oldPositions,
 	                       Map<String, LogPosition> newPositions,
-	                       Multimap<String, AggregationChunk.NewChunk> newChunks,
+	                       Multimap<String, AggregationChunk> newChunks,
 	                       final CompletionCallback callback) {
 		Map<String, LogPosition> logPositionMap = ensureLogPositions(log);
 		logPositionMap.putAll(newPositions);
 
 		List<AsyncRunnable> tasks = new ArrayList<>();
-		for (Map.Entry<String, AggregationChunk.NewChunk> entry : newChunks.entries()) {
+		for (Map.Entry<String, AggregationChunk> entry : newChunks.entries()) {
 			final String aggregationId = entry.getKey();
-			final AggregationChunk.NewChunk newChunk = entry.getValue();
+			final AggregationChunk newChunk = entry.getValue();
 			tasks.add(new AsyncRunnable() {
 				@Override
 				public void run(CompletionCallback callback) {

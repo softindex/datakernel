@@ -86,10 +86,10 @@ public class AggregationGroupReducerTest {
 				ImmutableMap.of("word", "word"), ImmutableMap.of("documents", "documentId"), classLoader);
 
 		int aggregationChunkSize = 2;
-		final List<List<AggregationChunk.NewChunk>> listCallback = new ArrayList<>();
-		ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback = new ResultCallback<List<AggregationChunk.NewChunk>>() {
+		final List<List<AggregationChunk>> listCallback = new ArrayList<>();
+		ResultCallback<List<AggregationChunk>> chunksCallback = new ResultCallback<List<AggregationChunk>>() {
 			@Override
-			public void onResult(List<AggregationChunk.NewChunk> result) {
+			public void onResult(List<AggregationChunk> result) {
 				listCallback.add(result);
 			}
 

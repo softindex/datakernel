@@ -272,7 +272,7 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 	 */
 	@SuppressWarnings("unchecked")
 	public <T> StreamConsumer<T> consumer(Class<T> inputClass, Map<String, String> keyFields, Map<String, String> measureFields,
-	                                      ResultCallback<List<AggregationChunk.NewChunk>> callback) {
+	                                      ResultCallback<List<AggregationChunk>> callback) {
 		checkArgument(newHashSet(getKeys()).equals(keyFields.keySet()), "Expected keys: %s, actual keyFields: %s", getKeys(), keyFields);
 		checkArgument(measures.keySet().containsAll(measureFields.keySet()), "Unknown measures: %s", difference(measureFields.keySet(), measures.keySet()));
 
@@ -296,7 +296,7 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 				keyFunction, aggregate, chunkSize, classLoader, callback);
 	}
 
-	public <T> StreamConsumer<T> consumer(Class<T> inputClass, ResultCallback<List<AggregationChunk.NewChunk>> callback) {
+	public <T> StreamConsumer<T> consumer(Class<T> inputClass, ResultCallback<List<AggregationChunk>> callback) {
 		return consumer(inputClass, scanKeyFields(inputClass), scanMeasureFields(inputClass), callback);
 	}
 
@@ -359,7 +359,7 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 	}
 
 	private void doConsolidation(final List<AggregationChunk> chunksToConsolidate,
-	                             final ResultCallback<List<AggregationChunk.NewChunk>> callback) {
+	                             final ResultCallback<List<AggregationChunk>> callback) {
 		Set<String> aggregationFields = newHashSet(getMeasures());
 		Set<String> chunkFields = newHashSet();
 		for (AggregationChunk chunk : chunksToConsolidate) {
@@ -596,9 +596,9 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 			@Override
 			public void onComplete() {
 				logger.info("Completed writing consolidation start metadata in aggregation '{}'", Aggregation.this);
-				doConsolidation(chunks, new ForwardingResultCallback<List<AggregationChunk.NewChunk>>(callback) {
+				doConsolidation(chunks, new ForwardingResultCallback<List<AggregationChunk>>(callback) {
 					@Override
-					public void onResult(final List<AggregationChunk.NewChunk> consolidatedChunks) {
+					public void onResult(final List<AggregationChunk> consolidatedChunks) {
 						logger.info("Saving consolidation results to metadata storage in aggregation '{}'", Aggregation.this);
 						metadataStorage.saveConsolidatedChunks(chunks, consolidatedChunks, new ForwardingCompletionCallback(callback) {
 							@Override
@@ -606,7 +606,7 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 								logger.info("Completed consolidation of the following chunks ({}) " +
 												"in aggregation '{}': [{}]. Created chunks ({}): [{}]",
 										chunks.size(), metadata, getChunkIds(chunks),
-										consolidatedChunks.size(), getNewChunkIds(consolidatedChunks));
+										consolidatedChunks.size(), getChunkIds(consolidatedChunks));
 								callback.setResult(true);
 							}
 						});
@@ -614,14 +614,6 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 				});
 			}
 		});
-	}
-
-	public static String getNewChunkIds(Iterable<AggregationChunk.NewChunk> chunks) {
-		List<Long> ids = new ArrayList<>();
-		for (AggregationChunk.NewChunk chunk : chunks) {
-			ids.add(chunk.chunkId);
-		}
-		return JOINER.join(ids);
 	}
 
 	public static String getChunkIds(Iterable<AggregationChunk> chunks) {

@@ -152,11 +152,11 @@ public class ConsolidationChunkSelectionTest {
 
 	private static AggregationChunk createTestChunk(int id, int d1Min, int d1Max, int d2Min, int d2Max, int d3Min,
 	                                                int d3Max) {
-		return AggregationChunk.create(0, id, new ArrayList<String>(), PrimaryKey.ofArray(d1Min, d2Min, d3Min),
+		return AggregationChunk.create(id, new ArrayList<String>(), PrimaryKey.ofArray(d1Min, d2Min, d3Min),
 				PrimaryKey.ofArray(d1Max, d2Max, d3Max), 10);
 	}
 
 	private static AggregationChunk createTestChunk(int id, int min, int max, int count) {
-		return AggregationChunk.create(0, id, new ArrayList<String>(), PrimaryKey.ofArray(min), PrimaryKey.ofArray(max), count);
+		return AggregationChunk.create(id, new ArrayList<String>(), PrimaryKey.ofArray(min), PrimaryKey.ofArray(max), count);
 	}
 }

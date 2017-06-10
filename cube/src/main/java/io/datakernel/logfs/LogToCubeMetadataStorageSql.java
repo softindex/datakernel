@@ -125,12 +125,12 @@ public final class LogToCubeMetadataStorageSql implements LogToCubeMetadataStora
 	public void saveCommit(final Cube cube, final String log,
 	                       final Map<String, LogPosition> oldPositions,
 	                       final Map<String, LogPosition> newPositions,
-	                       final Multimap<String, AggregationChunk.NewChunk> newChunksByAggregation,
+	                       final Multimap<String, AggregationChunk> chunksByAggregation,
 	                       CompletionCallback callback) {
 		eventloop.runConcurrently(executor, new Runnable() {
 			@Override
 			public void run() {
-				saveCommit(cube, log, oldPositions, newPositions, newChunksByAggregation);
+				saveCommit(cube, log, oldPositions, newPositions, chunksByAggregation);
 			}
 		}, callback);
 	}
@@ -138,7 +138,7 @@ public final class LogToCubeMetadataStorageSql implements LogToCubeMetadataStora
 	private void saveCommit(final Cube cube, final String log,
 	                        final Map<String, LogPosition> oldPositions,
 	                        final Map<String, LogPosition> newPositions,
-	                        final Multimap<String, AggregationChunk.NewChunk> newChunksByAggregation) {
+	                        final Multimap<String, AggregationChunk> chunksByAggregation) {
 		cubeMetadataStorage.executeExclusiveTransaction(new TransactionalRunnable() {
 			@Override
 			public void run(Configuration configuration) throws Exception {
@@ -165,8 +165,8 @@ public final class LogToCubeMetadataStorageSql implements LogToCubeMetadataStora
 							.execute();
 				}
 
-				if (!newChunksByAggregation.isEmpty())
-					cubeMetadataStorage.doSaveNewChunks(jooq, cube, newChunksByAggregation);
+				if (!chunksByAggregation.isEmpty())
+					cubeMetadataStorage.doSaveNewChunks(jooq, cube, chunksByAggregation);
 			}
 		});
 	}
