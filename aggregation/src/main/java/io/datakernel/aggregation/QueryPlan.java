@@ -20,9 +20,12 @@ import com.google.common.base.Function;
 import com.google.common.collect.Lists;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import static java.util.Collections.unmodifiableList;
+import static java.util.Collections.unmodifiableSet;
 
 public final class QueryPlan {
 	private final List<Sequence> sequences;
@@ -32,11 +35,20 @@ public final class QueryPlan {
 	}
 
 	public static class Sequence {
-		private final List<String> fields;
+		private final List<String> queryFields;
+		private final Set<String> chunksFields = new LinkedHashSet<>();
 		private final List<AggregationChunk> chunks = new ArrayList<>();
 
-		public List<String> getFields() {
-			return unmodifiableList(fields);
+		public Sequence(List<String> queryFields) {
+			this.queryFields = queryFields;
+		}
+
+		public List<String> getQueryFields() {
+			return unmodifiableList(queryFields);
+		}
+
+		public Set<String> getChunksFields() {
+			return unmodifiableSet(chunksFields);
 		}
 
 		public List<AggregationChunk> getChunks() {
@@ -45,10 +57,7 @@ public final class QueryPlan {
 
 		public void add(AggregationChunk chunk) {
 			chunks.add(chunk);
-		}
-
-		public Sequence(List<String> fields) {
-			this.fields = fields;
+			chunksFields.addAll(chunk.getMeasures());
 		}
 
 		@Override

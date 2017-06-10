@@ -103,7 +103,7 @@ public class AggregationChunk {
 	@Override
 	public String toString() {
 		return "{" +
-				", id=" + chunkId +
+				"id=" + chunkId +
 				", measures=" + measures +
 				", minKey=" + minPrimaryKey +
 				", maxKey=" + maxPrimaryKey +

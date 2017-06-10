@@ -325,12 +325,12 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 				break;
 		}
 		checkArgument(cl != null, "Unrelated queryClassLoader");
-		List<String> aggregationFields = newArrayList(filter(query.getMeasures(), in(getMeasures())));
+		List<String> fields = newArrayList(filter(getMeasures(), in(query.getMeasures())));
 
-		List<AggregationChunk> allChunks = metadata.findChunks(query.getPredicate(), aggregationFields);
+		List<AggregationChunk> allChunks = metadata.findChunks(query.getPredicate(), fields);
 
 		return consolidatedProducer(query.getKeys(),
-				aggregationFields, outputClass, query.getPredicate(), allChunks, queryClassLoader);
+				fields, outputClass, query.getPredicate(), allChunks, queryClassLoader);
 	}
 
 	private <T> StreamProducer<T> sortStream(StreamProducer<T> unsortedStream, Class<T> resultClass,
@@ -345,10 +345,6 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 				sorterItemsInMemory);
 		unsortedStream.streamTo(sorter.getInput());
 		return sorter.getOutput();
-	}
-
-	private boolean alreadySorted(List<String> keys) {
-		return getKeys().subList(0, min(getKeys().size(), keys.size())).equals(keys);
 	}
 
 	private void doConsolidation(final List<AggregationChunk> chunksToConsolidate,
@@ -374,19 +370,21 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 		consolidatedProducer.streamTo(chunker);
 	}
 
-	private static void addChunkToPlan(Map<Set<String>, TreeMap<PrimaryKey, List<QueryPlan.Sequence>>> planIndex,
-	                                   AggregationChunk chunk) {
-		Set<String> fields = new LinkedHashSet<>(chunk.getMeasures());
-		TreeMap<PrimaryKey, List<QueryPlan.Sequence>> map = planIndex.get(fields);
+	private static void addChunkToPlan(Map<List<String>, TreeMap<PrimaryKey, List<QueryPlan.Sequence>>> planIndex,
+	                                   AggregationChunk chunk, List<String> queryFields) {
+		queryFields = new ArrayList<>(queryFields);
+		queryFields.retainAll(chunk.getMeasures());
+		checkArgument(!queryFields.isEmpty());
+		TreeMap<PrimaryKey, List<QueryPlan.Sequence>> map = planIndex.get(queryFields);
 		if (map == null) {
 			map = new TreeMap<>();
-			planIndex.put(fields, map);
+			planIndex.put(queryFields, map);
 		}
 
 		Map.Entry<PrimaryKey, List<QueryPlan.Sequence>> entry = map.lowerEntry(chunk.getMinPrimaryKey());
 		QueryPlan.Sequence sequence;
 		if (entry == null) {
-			sequence = new QueryPlan.Sequence(chunk.getMeasures());
+			sequence = new QueryPlan.Sequence(queryFields);
 		} else {
 			List<QueryPlan.Sequence> list = entry.getValue();
 			sequence = list.remove(list.size() - 1);
@@ -403,8 +401,8 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 		list.add(sequence);
 	}
 
-	static QueryPlan createPlan(List<AggregationChunk> chunks) {
-		Map<Set<String>, TreeMap<PrimaryKey, List<QueryPlan.Sequence>>> index = new HashMap<>();
+	private static QueryPlan createPlan(List<AggregationChunk> chunks, List<String> queryFields) {
+		Map<List<String>, TreeMap<PrimaryKey, List<QueryPlan.Sequence>>> index = new HashMap<>();
 		chunks = newArrayList(chunks);
 		Collections.sort(chunks, new Comparator<AggregationChunk>() {
 			@Override
@@ -413,7 +411,7 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 			}
 		});
 		for (AggregationChunk chunk : chunks) {
-			addChunkToPlan(index, chunk);
+			addChunkToPlan(index, chunk, queryFields);
 		}
 		List<QueryPlan.Sequence> sequences = new ArrayList<>();
 		for (TreeMap<PrimaryKey, List<QueryPlan.Sequence>> map : index.values()) {
@@ -429,7 +427,7 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 	                                                   AggregationPredicate where,
 	                                                   List<AggregationChunk> individualChunks,
 	                                                   DefiningClassLoader queryClassLoader) {
-		QueryPlan plan = createPlan(individualChunks);
+		QueryPlan plan = createPlan(individualChunks, measures);
 
 		logger.info("Query plan for {} in aggregation {}: {}", queryKeys, this, plan);
 
@@ -438,14 +436,14 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 		List<SequenceStream> sequenceStreams = new ArrayList<>();
 
 		for (QueryPlan.Sequence sequence : plan.getSequences()) {
-			Class<?> sequenceClass = createRecordClass(this, this.getKeys(), sequence.getFields(), classLoader);
+			Class<?> sequenceClass = createRecordClass(this, this.getKeys(), sequence.getChunksFields(), classLoader);
 
 			StreamProducer stream = sequenceStream(where, sequence.getChunks(), sequenceClass, queryClassLoader);
 			if (!alreadySorted) {
-				stream = sortStream(stream, sequenceClass, queryKeys, sequence.getFields(), classLoader);
+				stream = sortStream(stream, sequenceClass, queryKeys, sequence.getQueryFields(), classLoader);
 			}
 
-			sequenceStreams.add(new SequenceStream(stream, sequence.getFields(), sequenceClass));
+			sequenceStreams.add(new SequenceStream(stream, sequence.getQueryFields(), sequenceClass));
 		}
 
 		return mergeSequences(queryKeys, measures, resultClass, sequenceStreams, queryClassLoader);

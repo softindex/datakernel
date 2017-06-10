@@ -61,15 +61,15 @@ public class AggregationUtils {
 	private AggregationUtils() {
 	}
 
-	public static Map<String, FieldType> projectKeys(Map<String, FieldType> keyTypes, List<String> keys) {
+	public static Map<String, FieldType> projectKeys(Map<String, FieldType> keyTypes, Collection<String> keys) {
 		return projectMap(keyTypes, keys);
 	}
 
-	public static Map<String, FieldType> projectFields(Map<String, FieldType> fieldTypes, List<String> fields) {
+	public static Map<String, FieldType> projectFields(Map<String, FieldType> fieldTypes, Collection<String> fields) {
 		return projectMap(fieldTypes, fields);
 	}
 
-	public static Map<String, Measure> projectMeasures(Map<String, Measure> measures, List<String> fields) {
+	public static Map<String, Measure> projectMeasures(Map<String, Measure> measures, Collection<String> fields) {
 		return projectMap(measures, fields);
 	}
 
@@ -160,7 +160,7 @@ public class AggregationUtils {
 	}
 
 	public static Class<?> createRecordClass(Aggregation aggregation,
-	                                         List<String> keys, List<String> fields,
+	                                         Collection<String> keys, Collection<String> fields,
 	                                         DefiningClassLoader classLoader) {
 		return createRecordClass(
 				projectKeys(aggregation.getKeyTypes(), keys),
