@@ -41,9 +41,9 @@ import static com.google.common.base.Preconditions.checkArgument;
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
 public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTransformer_N_1<O> {
-	public static final int BUFFER_SIZE = 1024;
+	public static final int DEFAULT_BUFFER_SIZE = 256;
 
-	private final int bufferSize;
+	private int bufferSize = DEFAULT_BUFFER_SIZE;
 
 	private InputConsumer<?> lastInput;
 	private K key = null;
@@ -51,11 +51,46 @@ public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTrans
 
 	private final PriorityQueue<InputConsumer> priorityQueue;
 	private int streamsAwaiting;
+	private int streamsOpen;
 
 	private int jmxInputItems;
 	private int jmxOnFirst;
 	private int jmxOnNext;
 	private int jmxOnComplete;
+
+	/**
+	 * Creates a new instance of AbstractStreamReducer
+	 *
+	 * @param eventloop     eventloop in which runs reducer
+	 * @param keyComparator comparator for compare keys
+	 */
+	public AbstractStreamReducer(Eventloop eventloop, final Comparator<K> keyComparator) {
+		super(eventloop);
+		this.outputProducer = new OutputProducer();
+		this.priorityQueue = new PriorityQueue<>(1, new Comparator<InputConsumer>() {
+			@Override
+			public int compare(InputConsumer o1, InputConsumer o2) {
+				int compare = ((Comparator) keyComparator).compare(o1.headKey, o2.headKey);
+				if (compare != 0)
+					return compare;
+				return o1.index - o2.index;
+			}
+		});
+	}
+
+	protected AbstractStreamReducer<K, O, A> withBufferSize(int bufferSize) {
+		checkArgument(bufferSize >= 0, "bufferSize must be positive value, got %s", bufferSize);
+		this.bufferSize = bufferSize;
+		return this;
+	}
+
+	protected <I> StreamConsumer<I> newInput(Function<I, K> keyFunction, StreamReducers.Reducer<K, I, O, A> reducer) {
+		InputConsumer input = new InputConsumer<>(priorityQueue, keyFunction, reducer);
+		addInput(input);
+		streamsAwaiting++;
+		streamsOpen++;
+		return input;
+	}
 
 	private final class InputConsumer<I> extends AbstractInputConsumer<I> implements StreamDataReceiver<I> {
 		private final int index = inputConsumers.size();
@@ -92,11 +127,9 @@ public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTrans
 			} else {
 				deque.offer(item);
 			}
-			if (deque.size() == bufferSize && streamsAwaiting == 0) {
+			if (deque.size() >= bufferSize) {
+				suspend();
 				outputProducer.produce();
-				if (!outputProducer.isStatusReady()) {
-					suspendAllUpstreams();
-				}
 			}
 		}
 
@@ -107,6 +140,7 @@ public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTrans
 
 		@Override
 		protected void onUpstreamEndOfStream() {
+			streamsOpen--;
 			if (headItem == null) {
 				streamsAwaiting--;
 			}
@@ -117,20 +151,16 @@ public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTrans
 	private final class OutputProducer extends AbstractOutputProducer {
 		@Override
 		protected void onDownstreamSuspended() {
-			suspendAllUpstreams();
 		}
 
 		@Override
 		protected void onDownstreamResumed() {
-			resumeAllUpstreams();
 			resumeProduce();
 		}
 
 		@Override
 		protected void onDownstreamStarted() {
-			if (inputConsumers.isEmpty()) {
-				sendEndOfStream();
-			}
+			resumeProduce();
 		}
 
 		@Override
@@ -158,17 +188,14 @@ public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTrans
 					priorityQueue.offer(input);
 				} else {
 					if (input.getConsumerStatus().isOpen()) {
+						input.resume();
 						streamsAwaiting++;
 						break;
 					}
 				}
 			}
 
-			if (isStatusReady()) {
-				resumeAllUpstreams();
-			}
-
-			if (isStatusReady() && priorityQueue.isEmpty() && streamsAwaiting == 0) {
+			if (streamsOpen == 0 && priorityQueue.isEmpty()) {
 				if (lastInput != null) {
 					assert jmxOnComplete != ++jmxOnComplete;
 					lastInput.reducer.onComplete(downstreamDataReceiver, key, accumulator);
@@ -179,46 +206,6 @@ public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTrans
 				sendEndOfStream();
 			}
 		}
-	}
-
-	/**
-	 * Creates a new instance of AbstractStreamReducer
-	 *
-	 * @param eventloop     eventloop in which runs reducer
-	 * @param keyComparator comparator for compare keys
-	 * @param bufferSize    maximal size of items which can be stored before reducing
-	 */
-	public AbstractStreamReducer(Eventloop eventloop, final Comparator<K> keyComparator, int bufferSize) {
-		super(eventloop);
-		checkArgument(bufferSize >= 0, "bufferSize must be positive value, got %s", bufferSize);
-		this.outputProducer = new OutputProducer();
-		this.bufferSize = bufferSize;
-		this.priorityQueue = new PriorityQueue<>(1, new Comparator<InputConsumer>() {
-			@Override
-			public int compare(InputConsumer o1, InputConsumer o2) {
-				int compare = ((Comparator) keyComparator).compare(o1.headKey, o2.headKey);
-				if (compare != 0)
-					return compare;
-				return o1.index - o2.index;
-			}
-		});
-	}
-
-	/**
-	 * Creates a new instance of AbstractStreamReducer with default buffer size - 1024
-	 *
-	 * @param eventloop     eventloop in which runs reducer
-	 * @param keyComparator comparator for compare keys
-	 */
-	public AbstractStreamReducer(Eventloop eventloop, Comparator<K> keyComparator) {
-		this(eventloop, keyComparator, BUFFER_SIZE);
-	}
-
-	protected <I> StreamConsumer<I> newInput(Function<I, K> keyFunction, StreamReducers.Reducer<K, I, O, A> reducer) {
-		InputConsumer input = new InputConsumer<>(priorityQueue, keyFunction, reducer);
-		addInput(input);
-		streamsAwaiting++;
-		return input;
 	}
 
 	@JmxAttribute

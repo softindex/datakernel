@@ -84,6 +84,10 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 
 	@Override
 	public void start(final CompletionCallback callback) {
+		if (reloadPeriod == 0) {
+			callback.setComplete();
+			return;
+		}
 		final long reloadTimestamp = getEventloop().currentTimeMillis();
 		reload(timestamp, new ForwardingResultCallback<Map<K, A>>(callback) {
 			@Override
@@ -99,7 +103,9 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 
 	@Override
 	public void stop(CompletionCallback callback) {
-		scheduledRunnable.cancel();
+		if (scheduledRunnable != null) {
+			scheduledRunnable.cancel();
+		}
 		callback.setComplete();
 	}
 

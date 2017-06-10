@@ -31,7 +31,7 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 	static final byte[] MAGIC = new byte[]{'L', 'Z', '4', 'B', 'l', 'o', 'c', 'k'};
 	static final int MAGIC_LENGTH = MAGIC.length;
 
-	static final int HEADER_LENGTH =
+	public static final int HEADER_LENGTH =
 			MAGIC_LENGTH    // magic bytes
 					+ 1     // token
 					+ 4     // compressed length

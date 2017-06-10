@@ -19,6 +19,7 @@ package io.datakernel.logfs;
 import io.datakernel.async.AsyncIterator;
 import io.datakernel.async.IteratorCallback;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.*;
@@ -36,6 +37,7 @@ public class LogStreamProducer<T> extends StreamProducerDecorator<T> {
 	private final LogFile endFile;
 	private LogFile currentLogFile;
 	private StreamLZ4Decompressor currentDecompressor;
+	private long inputStreamPosition;
 	private LogFileSystem fileSystem;
 	private BufferSerializer<T> serializer;
 	private final ResultCallback<LogPosition> positionCallback;
@@ -107,7 +109,38 @@ public class LogStreamProducer<T> extends StreamProducerDecorator<T> {
 				boolean first = currentLogFile == null;
 				currentLogFile = it.next();
 
-				currentDecompressor = StreamLZ4Decompressor.create(eventloop);
+				inputStreamPosition = 0L;
+				currentDecompressor = StreamLZ4Decompressor.create(eventloop)
+						.withInspector(new StreamLZ4Decompressor.Inspector() {
+							@Override
+							public void onInputBuf(StreamLZ4Decompressor self, ByteBuf buf) {
+							}
+
+							@Override
+							public void onBlock(StreamLZ4Decompressor self, StreamLZ4Decompressor.Header header, ByteBuf inputBuf, ByteBuf outputBuf) {
+								inputStreamPosition += StreamLZ4Decompressor.HEADER_LENGTH + header.compressedLen;
+							}
+
+							@Override
+							public void onStarted() {
+							}
+
+							@Override
+							public void onEndOfStream() {
+							}
+
+							@Override
+							public void onError(Exception e) {
+							}
+
+							@Override
+							public void onSuspended() {
+							}
+
+							@Override
+							public void onResumed() {
+							}
+						});
 
 				fileSystem.read(logPartition, currentLogFile, first ? startPosition.getPosition() : 0L,
 						currentDecompressor.getInput());
@@ -132,8 +165,8 @@ public class LogStreamProducer<T> extends StreamProducerDecorator<T> {
 			return startPosition;
 
 		if (currentLogFile.equals(startPosition.getLogFile()))
-			return LogPosition.create(currentLogFile, startPosition.getPosition() + currentDecompressor.getInputStreamPosition());
+			return LogPosition.create(currentLogFile, startPosition.getPosition() + inputStreamPosition);
 
-		return LogPosition.create(currentLogFile, currentDecompressor.getInputStreamPosition());
+		return LogPosition.create(currentLogFile, inputStreamPosition);
 	}
 }

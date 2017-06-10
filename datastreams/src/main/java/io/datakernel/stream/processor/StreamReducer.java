@@ -33,12 +33,7 @@ import java.util.Comparator;
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
 public final class StreamReducer<K, O, A> extends AbstractStreamReducer<K, O, A> {
-
 	// region creators
-	private StreamReducer(Eventloop eventloop, Comparator<K> keyComparator, int bufferSize) {
-		super(eventloop, keyComparator, bufferSize);
-	}
-
 	private StreamReducer(Eventloop eventloop, Comparator<K> keyComparator) {
 		super(eventloop, keyComparator);
 	}
@@ -50,19 +45,11 @@ public final class StreamReducer<K, O, A> extends AbstractStreamReducer<K, O, A>
 	 * @param keyComparator comparator for compare keys
 	 */
 	public static <K, O, A> StreamReducer<K, O, A> create(Eventloop eventloop, Comparator<K> keyComparator) {
-		return new StreamReducer<K, O, A>(eventloop, keyComparator);
+		return new StreamReducer<>(eventloop, keyComparator);
 	}
 
-	/**
-	 * Creates a new instance of StreamReducer
-	 *
-	 * @param eventloop     eventloop in which runs reducer
-	 * @param keyComparator comparator for compare keys
-	 * @param bufferSize    maximal size of items which can be stored before reducing
-	 */
-	public static <K, O, A> StreamReducer<K, O, A> create(Eventloop eventloop, Comparator<K> keyComparator,
-	                                                      int bufferSize) {
-		return new StreamReducer<K, O, A>(eventloop, keyComparator, bufferSize);
+	public StreamReducer<K, O, A> withBufferSize(int bufferSize) {
+		return (StreamReducer<K, O, A>) super.withBufferSize(bufferSize);
 	}
 	// endregion
 

@@ -261,7 +261,7 @@ public final class StreamProducers {
 		 * @param eventloop event loop where producer will run
 		 * @param iterator  iterator with object which need to send
 		 */
-		private OfIterator(Eventloop eventloop, Iterator<T> iterator) {
+		public OfIterator(Eventloop eventloop, Iterator<T> iterator) {
 			super(eventloop);
 			this.iterator = checkNotNull(iterator);
 		}
