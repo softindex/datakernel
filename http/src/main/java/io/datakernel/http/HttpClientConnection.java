@@ -21,6 +21,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
+import io.datakernel.net.CloseWithoutNotifyException;
 
 import java.net.InetSocketAddress;
 
@@ -58,6 +59,12 @@ final class HttpClientConnection extends AbstractHttpConnection {
 
 	@Override
 	public void onClosedWithError(Exception e) {
+		if (reading == BODY
+				&& contentLength == UNKNOWN_LENGTH
+				&& e instanceof CloseWithoutNotifyException) {
+			onReadEndOfStream();
+			return;
+		}
 		if (inspector != null && e != null) inspector.onHttpError(this, callback == null, e);
 		readQueue.clear();
 		if (callback != null) {
@@ -154,7 +161,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	@Override
 	public void onReadEndOfStream() {
 		if (callback != null) {
-			if (reading == BODY && contentLength == UNKNOWN_LENGTH) {
+			if ((reading == BODY || reading == HEADERS) && contentLength == UNKNOWN_LENGTH) {
 				onHttpMessage(bodyQueue.takeRemaining());
 				assert callback == null;
 			} else {
