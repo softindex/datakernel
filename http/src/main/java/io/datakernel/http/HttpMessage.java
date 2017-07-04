@@ -122,8 +122,8 @@ public abstract class HttpMessage {
 		this.body = ByteBuf.wrapForReading(body);
 	}
 
-	public void setGzipCompression(boolean allow) {
-		// we are not setting header as it still could be prohibited to use compression on the server level
+	protected void setGzipCompression(boolean allow) {
+		// if we are setting explicitly - don't care about server defaults, but! can have no body -> not header yet
 		this.useGzip = allow ? Boolean.TRUE : Boolean.FALSE;
 	}
 

@@ -32,7 +32,6 @@ import io.datakernel.jmx.ValueStats;
 import io.datakernel.util.MemSize;
 
 import java.net.InetAddress;
-import java.net.Socket;
 
 import static io.datakernel.http.AbstractHttpConnection.*;
 
@@ -228,7 +227,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		return self();
 	}
 
-	public AsyncHttpServer withGzipResponses(boolean gzipResponses) {
+	public AsyncHttpServer withDefaultGzipCompression(boolean gzipResponses) {
 		this.gzipResponses = gzipResponses;
 		return self();
 	}

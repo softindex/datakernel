@@ -28,6 +28,7 @@ import java.util.Arrays;
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.GzipProcessor.toGzip;
 import static io.datakernel.http.HttpHeaders.CONTENT_ENCODING;
+import static io.datakernel.http.HttpHeaders.asBytes;
 import static io.datakernel.http.HttpMethod.*;
 
 /**
@@ -62,7 +63,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	private final AsyncHttpServer server;
 	private final AsyncHttpServer.Inspector inspector;
 	private final AsyncServlet servlet;
-	private final boolean gzipIsEnabled;
+	private final boolean defaultGzipBehaviour;
 
 	private static final byte[] EXPECT_100_CONTINUE = encodeAscii("100-continue");
 	private static final byte[] EXPECT_RESPONSE_CONTINUE = encodeAscii("HTTP/1.1 100 Continue\r\n\r\n");
@@ -75,17 +76,17 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	 * @param remoteAddress an address of remote
 	 * @param server        server, which uses this connection
 	 * @param servlet       servlet for handling requests
-	 * @param gzipIsEnabled determines whether responses are encoded with gzip
+	 * @param defaultGzipBehaviour determines whether responses are encoded with gzip
 	 */
 	HttpServerConnection(Eventloop eventloop, InetAddress remoteAddress, AsyncTcpSocket asyncTcpSocket,
 	                     AsyncHttpServer server, AsyncServlet servlet,
-	                     char[] headerChars, int maxHttpMessageSize, boolean gzipIsEnabled) {
+	                     char[] headerChars, int maxHttpMessageSize, boolean defaultGzipBehaviour) {
 		super(eventloop, asyncTcpSocket, headerChars, maxHttpMessageSize);
 		this.server = server;
 		this.servlet = servlet;
 		this.remoteAddress = remoteAddress;
 		this.inspector = server.inspector;
-		this.gzipIsEnabled = gzipIsEnabled;
+		this.defaultGzipBehaviour = defaultGzipBehaviour;
 	}
 
 	@Override
@@ -256,13 +257,10 @@ final class HttpServerConnection extends AbstractHttpConnection {
 				if (inspector != null) inspector.onHttpResponse(request, httpResponse);
 
 				if (!isClosed()) {
-					if (remoteExpectsGzip) {                                    // remote side can accept response gzipped
-						boolean gzip = gzipIsEnabled                            // gzip is enabled on server level(default level)
-								&& httpResponse.getBody() != null               // there is some content to compress
-								&& httpResponse.getBody().readRemaining() > 0
-								&& httpResponse.useGzip != Boolean.FALSE;       // message has no restrictions whether to compress body
-						if (gzip) {
-							httpResponse.setHeader(HttpHeaders.asBytes(CONTENT_ENCODING, CONTENT_ENCODING_GZIP));
+					if (remoteExpectsGzip) {
+						boolean gzip = httpResponse.useGzip == null ? defaultGzipBehaviour : httpResponse.useGzip;
+						if (gzip && httpResponse.getBody() != null && httpResponse.getBody().readRemaining() > 0) {
+							httpResponse.setHeader(asBytes(CONTENT_ENCODING, CONTENT_ENCODING_GZIP));
 							httpResponse.setBody(toGzip(httpResponse.detachBody()));
 						}
 						remoteExpectsGzip = false;

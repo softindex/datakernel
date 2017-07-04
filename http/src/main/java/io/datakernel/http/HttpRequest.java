@@ -47,7 +47,6 @@ public final class HttpRequest extends HttpMessage {
 	private Map<String, String> urlParameters;
 	private Map<String, String> bodyParameters;
 	private int pos;
-	private boolean gzip = false;
 
 	// region builders
 	private HttpRequest(HttpMethod method) {
@@ -98,6 +97,18 @@ public final class HttpRequest extends HttpMessage {
 	}
 
 	public HttpRequest withBody(ByteBuf body) {
+		setBody(body);
+		return this;
+	}
+
+	public HttpRequest withBody(byte[] array, boolean compressGzip) {
+		setGzipCompression(compressGzip);
+		setBody(array);
+		return this;
+	}
+
+	public HttpRequest withBody(ByteBuf body, boolean compressGzip) {
+		setGzipCompression(compressGzip);
 		setBody(body);
 		return this;
 	}
@@ -182,8 +193,8 @@ public final class HttpRequest extends HttpMessage {
 		return this;
 	}
 
-	public HttpRequest withGzipCompression() {
-		setGzipCompression(true);
+	public HttpRequest withAcceptGzip() {
+		setHeader(HttpHeaders.ofString(ACCEPT_ENCODING, "gzip"));
 		return this;
 	}
 	// endregion
@@ -258,9 +269,8 @@ public final class HttpRequest extends HttpMessage {
 		this.remoteAddress = inetAddress;
 	}
 
-	public void setGzipCompression() {
-		setHeader(HttpHeaders.ofString(CONTENT_ENCODING, "gzip"));
-		gzip = true;
+	public void setAcceptGzip() {
+		setHeader(HttpHeaders.ofString(ACCEPT_ENCODING, "gzip"));
 	}
 	// endregion
 

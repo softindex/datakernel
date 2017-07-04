@@ -38,6 +38,7 @@ import static io.datakernel.http.GzipProcessor.fromGzip;
 import static io.datakernel.http.GzipProcessor.toGzip;
 import static io.datakernel.http.HttpHeaders.ACCEPT_ENCODING;
 import static junit.framework.TestCase.assertEquals;
+import static junit.framework.TestCase.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
@@ -83,7 +84,7 @@ public class TestGzipProcessor {
 		};
 
 		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
-				.withGzipResponses(true)
+				.withDefaultGzipCompression(true)
 				.withListenAddress(new InetSocketAddress("localhost", PORT));
 
 		final AsyncHttpClient client = AsyncHttpClient.create(eventloop);
@@ -92,8 +93,104 @@ public class TestGzipProcessor {
 
 		HttpRequest request = HttpRequest.get("http://127.0.0.1:" + PORT)
 				.withHeader(ACCEPT_ENCODING, "gzip")
-				.withBody(wrapAscii(TEST_PHRASE))
-				.withGzipCompression();
+				.withBody(wrapAscii(TEST_PHRASE), true);
+
+		server.listen();
+		client.send(request, new ResultCallback<HttpResponse>() {
+			@Override
+			public void onResult(HttpResponse result) {
+				assertEquals("gzip", result.getHeader(HttpHeaders.CONTENT_ENCODING));
+
+				callback.setResult(decodeAscii(result.getBody()));
+				server.close(IgnoreCompletionCallback.create());
+				client.stop(IgnoreCompletionCallback.create());
+			}
+
+			@Override
+			public void onException(Exception e) {
+				callback.setException(e);
+				server.close(IgnoreCompletionCallback.create());
+				client.stop(IgnoreCompletionCallback.create());
+			}
+		});
+
+		eventloop.run();
+		assertEquals(TEST_PHRASE, callback.get());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+	}
+
+	// test response directives have higher priority then server
+	@Test
+	public void testServerDoesGzipResponseDoesNot() throws Exception {
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		AsyncServlet servlet = new AsyncServlet() {
+			@Override
+			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
+				callback.setResult(HttpResponse.ok200()
+						.withBody(request.detachBody(), false)
+				);
+			}
+		};
+
+		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
+				.withDefaultGzipCompression(true)
+				.withListenAddress(new InetSocketAddress("localhost", PORT));
+
+		final AsyncHttpClient client = AsyncHttpClient.create(eventloop);
+
+		final ResultCallbackFuture<String> callback = ResultCallbackFuture.create();
+
+		HttpRequest request = HttpRequest.get("http://127.0.0.1:" + PORT)
+				.withHeader(ACCEPT_ENCODING, "gzip")
+				.withBody(wrapAscii(TEST_PHRASE), false);
+
+		server.listen();
+		client.send(request, new ResultCallback<HttpResponse>() {
+			@Override
+			public void onResult(HttpResponse result) {
+				assertNull(result.getHeader(HttpHeaders.CONTENT_ENCODING));
+
+				callback.setResult(decodeAscii(result.getBody()));
+				server.close(IgnoreCompletionCallback.create());
+				client.stop(IgnoreCompletionCallback.create());
+			}
+
+			@Override
+			public void onException(Exception e) {
+				callback.setException(e);
+				server.close(IgnoreCompletionCallback.create());
+				client.stop(IgnoreCompletionCallback.create());
+			}
+		});
+
+		eventloop.run();
+		assertEquals(TEST_PHRASE, callback.get());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+	}
+
+	@Test
+	public void testServerDoesNotGzipResponseDoes() throws Exception {
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		AsyncServlet servlet = new AsyncServlet() {
+			@Override
+			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
+				callback.setResult(HttpResponse.ok200()
+						.withBody(request.detachBody(), true)
+				);
+			}
+		};
+
+		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
+				.withDefaultGzipCompression(false)
+				.withListenAddress(new InetSocketAddress("localhost", PORT));
+
+		final AsyncHttpClient client = AsyncHttpClient.create(eventloop);
+
+		final ResultCallbackFuture<String> callback = ResultCallbackFuture.create();
+
+		HttpRequest request = HttpRequest.get("http://127.0.0.1:" + PORT)
+				.withHeader(ACCEPT_ENCODING, "gzip")
+				.withBody(wrapAscii(TEST_PHRASE), false);
 
 		server.listen();
 		client.send(request, new ResultCallback<HttpResponse>() {
@@ -120,20 +217,19 @@ public class TestGzipProcessor {
 	}
 
 	@Test
-	public void testServerDoNotGzipIfResponseRestricts() throws Exception {
+	public void testDefaultServerBehaviour() throws Exception {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		AsyncServlet servlet = new AsyncServlet() {
 			@Override
 			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
 				callback.setResult(HttpResponse.ok200()
 						.withBody(request.detachBody())
-						.withGzipCompression(false)
 				);
 			}
 		};
 
 		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
-				.withGzipResponses(true)
+				.withDefaultGzipCompression(true)
 				.withListenAddress(new InetSocketAddress("localhost", PORT));
 
 		final AsyncHttpClient client = AsyncHttpClient.create(eventloop);
@@ -142,14 +238,13 @@ public class TestGzipProcessor {
 
 		HttpRequest request = HttpRequest.get("http://127.0.0.1:" + PORT)
 				.withHeader(ACCEPT_ENCODING, "gzip")
-				.withBody(wrapAscii(TEST_PHRASE))
-				.withGzipCompression();
+				.withBody(wrapAscii(TEST_PHRASE));
 
 		server.listen();
 		client.send(request, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
-				assertNull(result.getHeader(HttpHeaders.CONTENT_ENCODING));
+				assertNotNull(result.getHeader(HttpHeaders.CONTENT_ENCODING));
 
 				callback.setResult(decodeAscii(result.getBody()));
 				server.close(IgnoreCompletionCallback.create());

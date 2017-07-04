@@ -87,8 +87,15 @@ public final class HttpResponse extends HttpMessage {
 		return this;
 	}
 
-	public HttpResponse withGzipCompression(boolean allow) {
-		setGzipCompression(allow);
+	public HttpResponse withBody(ByteBuf body, boolean compressGzip) {
+		setGzipCompression(compressGzip);
+		setBody(body);
+		return this;
+	}
+
+	public HttpResponse withBody(byte[] array, boolean compressGzip) {
+		setGzipCompression(compressGzip);
+		setBody(array);
 		return this;
 	}
 

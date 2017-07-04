@@ -103,7 +103,7 @@ public class AbstractHttpConnectionTest {
 			}
 		};
 		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
-				.withGzipResponses(true)
+				.withDefaultGzipCompression(true)
 				.withListenAddress(new InetSocketAddress("localhost", PORT));
 		server.listen();
 
