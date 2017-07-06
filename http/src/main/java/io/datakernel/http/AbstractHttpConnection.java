@@ -339,7 +339,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 	private void onCompleteMessage(ByteBuf raw) throws ParseException {
 		if (isGzipped) {
 			if (raw.readRemaining() > 0) {
-				raw = fromGzip(raw);
+				raw = fromGzip(raw, maxHttpMessageSize);
 			}
 			isGzipped = false;
 		}
