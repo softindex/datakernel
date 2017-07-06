@@ -25,7 +25,7 @@ import java.nio.charset.Charset;
 import java.util.*;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
-import static io.datakernel.http.GzipProcessor.toGzip;
+import static io.datakernel.http.GzipProcessorUtils.toGzip;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;

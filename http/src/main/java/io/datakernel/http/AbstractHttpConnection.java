@@ -25,7 +25,7 @@ import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.ParseException;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
-import static io.datakernel.http.GzipProcessor.fromGzip;
+import static io.datakernel.http.GzipProcessorUtils.fromGzip;
 import static io.datakernel.http.HttpHeaders.*;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")

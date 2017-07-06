@@ -26,7 +26,7 @@ import java.net.InetAddress;
 import java.util.Arrays;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
-import static io.datakernel.http.GzipProcessor.toGzip;
+import static io.datakernel.http.GzipProcessorUtils.toGzip;
 import static io.datakernel.http.HttpHeaders.CONTENT_ENCODING;
 import static io.datakernel.http.HttpHeaders.asBytes;
 import static io.datakernel.http.HttpMethod.*;
