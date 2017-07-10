@@ -31,19 +31,11 @@ public final class GzipCompressingBehaviourExample {
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		final MiddlewareServlet dispatcher = MiddlewareServlet.create();
 
-		// serves gzip by default if other side expects - depends on server settings
-		dispatcher.with(HttpMethod.GET, "/default/", new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				callback.setResult(HttpResponse.ok200().withBody(encodeAscii("Hello!")));
-			}
-		});
-
-		// always responds in gzip - if other side requires
+		// always responds in gzip
 		dispatcher.with(HttpMethod.GET, "/gzip/", new AsyncServlet() {
 			@Override
 			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				callback.setResult(HttpResponse.ok200().withBody(encodeAscii("Hello!"), true));
+				callback.setResult(HttpResponse.ok200().withBodyGzipCompression().withBody(encodeAscii("Hello!")));
 			}
 		});
 
@@ -51,14 +43,11 @@ public final class GzipCompressingBehaviourExample {
 		dispatcher.with(HttpMethod.GET, "/nogzip/", new AsyncServlet() {
 			@Override
 			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				callback.setResult(HttpResponse.ok200().withBody(encodeAscii("Hello!"), false));
+				callback.setResult(HttpResponse.ok200().withBody(encodeAscii("Hello!")));
 			}
 		});
 
-		// enables compression by default, if nothing specified on the response level
-		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, dispatcher)
-				.withDefaultGzipCompression(true)
-				.withListenPort(1234);
+		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, dispatcher).withListenPort(1234);
 
 		server.listen();
 		eventloop.run();
@@ -69,7 +58,8 @@ public final class GzipCompressingBehaviourExample {
 
 		// !sic, you should call withAcceptGzip for your request if you want to get the response gzipped
 		final HttpRequest request = HttpRequest.post("http://example.com")
-				.withBody(encodeAscii("Hello!"), true)
+				.withBody(encodeAscii("Hello, world!"))
+				.withBodyGzipCompression()
 				.withAcceptGzip();
 
 		client.send(request, IgnoreResultCallback.<HttpResponse>create());

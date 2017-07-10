@@ -34,7 +34,7 @@ public abstract class HttpMessage {
 	final ArrayList<HttpHeaders.Value> headers = new ArrayList<>();
 	private ArrayList<ByteBuf> headerBufs;
 	protected ByteBuf body;
-	protected Boolean useGzip;
+	protected boolean useGzip;
 
 	protected HttpMessage() {
 	}
@@ -122,9 +122,8 @@ public abstract class HttpMessage {
 		this.body = ByteBuf.wrapForReading(body);
 	}
 
-	protected void setGzipCompression(boolean allow) {
-		// if we are setting explicitly - don't care about server defaults, but! can have no body -> not header yet
-		this.useGzip = allow ? Boolean.TRUE : Boolean.FALSE;
+	public void setBodyGzipCompression() {
+		this.useGzip = true;
 	}
 
 	// getters

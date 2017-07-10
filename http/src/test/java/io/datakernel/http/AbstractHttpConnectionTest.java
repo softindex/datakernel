@@ -89,7 +89,7 @@ public class AbstractHttpConnectionTest {
 
 			@Override
 			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				HttpResponse response = HttpResponse.ok200();
+				HttpResponse response = HttpResponse.ok200().withBodyGzipCompression();
 				if (!first) {
 					response.withBody((ByteBuf) null);
 					callback.setResult(response);
@@ -103,7 +103,6 @@ public class AbstractHttpConnectionTest {
 			}
 		};
 		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
-				.withDefaultGzipCompression(true)
 				.withListenAddress(new InetSocketAddress("localhost", PORT));
 		server.listen();
 

@@ -101,18 +101,6 @@ public final class HttpRequest extends HttpMessage {
 		return this;
 	}
 
-	public HttpRequest withBody(byte[] array, boolean compressGzip) {
-		setGzipCompression(compressGzip);
-		setBody(array);
-		return this;
-	}
-
-	public HttpRequest withBody(ByteBuf body, boolean compressGzip) {
-		setGzipCompression(compressGzip);
-		setBody(body);
-		return this;
-	}
-
 	// specific builder methods
 	public HttpRequest withAccept(List<AcceptMediaType> value) {
 		setAccept(value);
@@ -190,6 +178,11 @@ public final class HttpRequest extends HttpMessage {
 
 	public HttpRequest withRemoteAddress(InetAddress inetAddress) {
 		setRemoteAddress(inetAddress);
+		return this;
+	}
+
+	public HttpRequest withBodyGzipCompression() {
+		super.setBodyGzipCompression();
 		return this;
 	}
 
@@ -345,6 +338,11 @@ public final class HttpRequest extends HttpMessage {
 			}
 		return null;
 	}
+
+	public boolean remoteExpectsGzip() {
+		String acceptEncoding = this.getHeader(HttpHeaders.ACCEPT_ENCODING);
+		return acceptEncoding != null && acceptEncoding.contains("gzip");
+	}
 	// endregion
 
 	// region internal
@@ -459,7 +457,7 @@ public final class HttpRequest extends HttpMessage {
 	public ByteBuf toByteBuf() {
 		assert !recycled;
 		if (body != null || method != GET) {
-			if (useGzip == Boolean.TRUE && body != null && body.readRemaining() > 0) {
+			if (useGzip && body != null && body.readRemaining() > 0) {
 				body = toGzip(body);
 				setHeader(asBytes(CONTENT_ENCODING, GZIP_BYTES));
 			}

@@ -63,7 +63,6 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	private final AsyncHttpServer server;
 	private final AsyncHttpServer.Inspector inspector;
 	private final AsyncServlet servlet;
-	private final boolean defaultGzipBehaviour;
 
 	private static final byte[] EXPECT_100_CONTINUE = encodeAscii("100-continue");
 	private static final byte[] EXPECT_RESPONSE_CONTINUE = encodeAscii("HTTP/1.1 100 Continue\r\n\r\n");
@@ -76,17 +75,15 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	 * @param remoteAddress an address of remote
 	 * @param server        server, which uses this connection
 	 * @param servlet       servlet for handling requests
-	 * @param defaultGzipBehaviour determines whether responses are encoded with gzip
 	 */
 	HttpServerConnection(Eventloop eventloop, InetAddress remoteAddress, AsyncTcpSocket asyncTcpSocket,
 	                     AsyncHttpServer server, AsyncServlet servlet,
-	                     char[] headerChars, int maxHttpMessageSize, boolean defaultGzipBehaviour) {
+	                     char[] headerChars, int maxHttpMessageSize) {
 		super(eventloop, asyncTcpSocket, headerChars, maxHttpMessageSize);
 		this.server = server;
 		this.servlet = servlet;
 		this.remoteAddress = remoteAddress;
 		this.inspector = server.inspector;
-		this.defaultGzipBehaviour = defaultGzipBehaviour;
 	}
 
 	@Override
@@ -257,15 +254,10 @@ final class HttpServerConnection extends AbstractHttpConnection {
 				if (inspector != null) inspector.onHttpResponse(request, httpResponse);
 
 				if (!isClosed()) {
-					if (remoteExpectsGzip) {
-						boolean gzip = httpResponse.useGzip == null ? defaultGzipBehaviour : httpResponse.useGzip;
-						if (gzip && httpResponse.getBody() != null && httpResponse.getBody().readRemaining() > 0) {
-							httpResponse.setHeader(asBytes(CONTENT_ENCODING, CONTENT_ENCODING_GZIP));
-							httpResponse.setBody(toGzip(httpResponse.detachBody()));
-						}
-						remoteExpectsGzip = false;
+					if (httpResponse.useGzip && httpResponse.getBody() != null && httpResponse.getBody().readRemaining() > 0) {
+						httpResponse.setHeader(asBytes(CONTENT_ENCODING, CONTENT_ENCODING_GZIP));
+						httpResponse.setBody(toGzip(httpResponse.detachBody()));
 					}
-
 					pool.removeNode(HttpServerConnection.this);
 					(pool = server.poolWriting).addLastNode(HttpServerConnection.this);
 					poolTimestamp = eventloop.currentTimeMillis();
