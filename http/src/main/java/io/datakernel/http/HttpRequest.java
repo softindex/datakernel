@@ -186,7 +186,7 @@ public final class HttpRequest extends HttpMessage {
 		return this;
 	}
 
-	public HttpRequest withAcceptGzip() {
+	public HttpRequest withAcceptEncodingGzip() {
 		setHeader(HttpHeaders.ofString(ACCEPT_ENCODING, "gzip"));
 		return this;
 	}
@@ -262,7 +262,7 @@ public final class HttpRequest extends HttpMessage {
 		this.remoteAddress = inetAddress;
 	}
 
-	public void setAcceptGzip() {
+	public void setAcceptEncodingGzip() {
 		setHeader(HttpHeaders.ofString(ACCEPT_ENCODING, "gzip"));
 	}
 	// endregion
@@ -339,7 +339,7 @@ public final class HttpRequest extends HttpMessage {
 		return null;
 	}
 
-	public boolean remoteExpectsGzip() {
+	public boolean isAcceptEncodingGzip() {
 		String acceptEncoding = this.getHeader(HttpHeaders.ACCEPT_ENCODING);
 		return acceptEncoding != null && acceptEncoding.contains("gzip");
 	}

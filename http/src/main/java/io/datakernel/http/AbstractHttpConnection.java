@@ -71,7 +71,6 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 
 	protected static final byte[] CONTENT_ENCODING_GZIP = encodeAscii("gzip");
 	private boolean isGzipped = false;
-	protected boolean remoteExpectsGzip = false;
 
 	private boolean isChunked = false;
 	private int chunkSize = 0;
@@ -229,8 +228,6 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 			isChunked = equalsLowerCaseAscii(TRANSFER_ENCODING_CHUNKED, value.array(), value.readPosition(), value.readRemaining());
 		} else if (header == CONTENT_ENCODING) {
 			isGzipped = equalsLowerCaseAscii(CONTENT_ENCODING_GZIP, value.array(), value.readPosition(), value.readRemaining());
-		} else if (header == ACCEPT_ENCODING) {
-			remoteExpectsGzip = contains(value, CONTENT_ENCODING_GZIP);
 		}
 	}
 
@@ -428,7 +425,6 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 				", bodyQueue=" + bodyQueue +
 				", reading=" + readingToString(reading) +
 				", isGzipped=" + isGzipped +
-				", remoteExpectsGzip=" + remoteExpectsGzip +
 				", isChunked=" + isChunked +
 				", chunkSize=" + chunkSize +
 				", contentLength=" + contentLength +

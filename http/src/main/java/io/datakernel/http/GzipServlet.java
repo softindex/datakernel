@@ -57,7 +57,7 @@ public final class GzipServlet implements AsyncServlet {
 	}
 
 	private static boolean test(HttpRequest request) {
-		return request.remoteExpectsGzip();
+		return request.isAcceptEncodingGzip();
 	}
 
 	private static boolean test(HttpResponse response, int minimumSizeThreshold) {

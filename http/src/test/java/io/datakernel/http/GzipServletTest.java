@@ -42,7 +42,7 @@ public class GzipServletTest {
 		HttpRequest request = HttpRequest.get("http://example.com")
 				.withBody(wrapAscii("Hello, world!"));
 		HttpRequest requestGzip = HttpRequest.get("http://example.com")
-				.withAcceptGzip().withBody(wrapAscii("Hello, world!"));
+				.withAcceptEncodingGzip().withBody(wrapAscii("Hello, world!"));
 
 		ResultCallbackFuture<HttpResponse> future = ResultCallbackFuture.create();
 		gzipServlet.serve(request, future);
@@ -73,8 +73,8 @@ public class GzipServletTest {
 			}
 		};
 		GzipServlet customGzipServlet = GzipServlet.create(20, asyncServlet);
-		HttpRequest requestWBody = HttpRequest.get("http://example.com").withAcceptGzip().withBody(wrapAscii("1"));
-		HttpRequest requestWOBody = HttpRequest.get("http://example.com").withAcceptGzip().withBody(wrapAscii("2"));
+		HttpRequest requestWBody = HttpRequest.get("http://example.com").withAcceptEncodingGzip().withBody(wrapAscii("1"));
+		HttpRequest requestWOBody = HttpRequest.get("http://example.com").withAcceptEncodingGzip().withBody(wrapAscii("2"));
 
 		ResultCallbackFuture<HttpResponse> future = ResultCallbackFuture.create();
 		customGzipServlet.serve(requestWOBody, future);
@@ -117,7 +117,7 @@ public class GzipServletTest {
 				new AsyncRunnable() {
 					@Override
 					public void run(final CompletionCallback callback) {
-						client.send(HttpRequest.get("http://127.0.0.1:1239").withAcceptGzip(), new ForwardingResultCallback<HttpResponse>(callback) {
+						client.send(HttpRequest.get("http://127.0.0.1:1239").withAcceptEncodingGzip(), new ForwardingResultCallback<HttpResponse>(callback) {
 							@Override
 							protected void onResult(HttpResponse result) {
 								assertNotNull(result.getHeader(HttpHeaders.CONTENT_ENCODING));

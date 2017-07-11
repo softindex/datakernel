@@ -56,11 +56,11 @@ public final class GzipCompressingBehaviourExample {
 		// if the content of the response is gzipped - it would be decompressed automatically
 		final AsyncHttpClient client = AsyncHttpClient.create(eventloop);
 
-		// !sic, you should call withAcceptGzip for your request if you want to get the response gzipped
+		// !sic, you should call withAcceptEncodingGzip for your request if you want to get the response gzipped
 		final HttpRequest request = HttpRequest.post("http://example.com")
 				.withBody(encodeAscii("Hello, world!"))
 				.withBodyGzipCompression()
-				.withAcceptGzip();
+				.withAcceptEncodingGzip();
 
 		client.send(request, IgnoreResultCallback.<HttpResponse>create());
 	}
