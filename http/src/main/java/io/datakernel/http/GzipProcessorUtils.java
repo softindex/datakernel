@@ -35,6 +35,7 @@ package io.datakernel.http;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.exception.ParseException;
+import io.datakernel.util.ConcurrentStack;
 
 import java.util.zip.CRC32;
 import java.util.zip.DataFormatException;
@@ -65,6 +66,9 @@ final class GzipProcessorUtils {
 	public static final ParseException INCORRECT_ID_HEADER_BYTES = new ParseException("Incorrect identification bytes. Not in GZIP format");
 	public static final ParseException UNSUPPORTED_COMPRESSION_METHOD = new ParseException("Unsupported compression method. Deflate compression required");
 
+	private static final ConcurrentStack<Inflater> decompressors = new ConcurrentStack<>();
+	private static final ConcurrentStack<Deflater> compressors = new ConcurrentStack<>();
+
 	private GzipProcessorUtils() {}
 
 	static ByteBuf fromGzip(ByteBuf src, int maxMessageSize) throws ParseException {
@@ -73,15 +77,18 @@ final class GzipProcessorUtils {
 		int expectedSize = readExpectedInputSize(src);
 		check(expectedSize <= maxMessageSize, src, DECOMPRESSED_SIZE_EXCEEDS_EXPECTED_MAX_SIZE);
 		processHeader(src);
-		ByteBuf dst = ByteBufPool.allocate(expectedSize + SPARE_BYTES_COUNT);
-		Inflater decompressor = wrapForDecompression(src);
+		ByteBuf dst = ByteBufPool.allocate(expectedSize);
+		Inflater decompressor = ensureDecompressor();
+		decompressor.setInput(src.array(), src.readPosition(), src.readRemaining());
 		try {
 			dst = readDecompressedData(decompressor, src, dst, maxMessageSize);
 		} catch (DataFormatException e) {
+			moveDecompressorToPool(decompressor);
 			src.recycle();
 			dst.recycle();
 			throw DATA_FORMAT_EXCEPTION;
 		}
+		moveDecompressorToPool(decompressor);
 		check(expectedSize == dst.readRemaining(), src, dst, ACTUAL_DECOMPRESSED_DATA_SIZE_IS_NOT_EQUAL_TO_EXPECTED);
 		check(src.readRemaining() == GZIP_FOOTER_SIZE, src, dst, COMPRESSED_DATA_WAS_NOT_READ_FULLY);
 
@@ -92,17 +99,19 @@ final class GzipProcessorUtils {
 	static ByteBuf toGzip(ByteBuf src) {
 		assert src.readRemaining() > 0;
 
-		Deflater compressor = wrapForCompression(src);
+		Deflater compressor = ensureCompressor();
+		compressor.setInput(src.array(), src.readPosition(), src.readRemaining());
+		compressor.finish();
 		int dataSize = src.readRemaining();
 		int crc = getCrc(src, dataSize);
 		int maxDataSize = estimateMaxCompressedSize(dataSize);
 		ByteBuf dst = ByteBufPool.allocate(GZIP_HEADER_SIZE + maxDataSize + GZIP_FOOTER_SIZE + SPARE_BYTES_COUNT);
 		dst.put(GZIP_HEADER);
 		dst = writeCompressedData(compressor, src, dst);
-		dst = ByteBufPool.ensureTailRemaining(dst, GZIP_FOOTER_SIZE);
 		dst.writeInt(Integer.reverseBytes(crc));
 		dst.writeInt(Integer.reverseBytes(dataSize));
 
+		moveCompressorToPool(compressor);
 		src.recycle();
 		return dst;
 	}
@@ -143,35 +152,16 @@ final class GzipProcessorUtils {
 		}
 	}
 
-	private static Inflater wrapForDecompression(ByteBuf buf) {
-		Inflater decompressor = new Inflater(true);
-		decompressor.setInput(buf.array(), buf.readPosition(), buf.readRemaining());
-		return decompressor;
-	}
-
 	private static ByteBuf readDecompressedData(Inflater decompressor, ByteBuf src, ByteBuf dst, int maxSize) throws DataFormatException, ParseException {
 		int totalUncompressedBytesCount = 0;
-		while (!decompressor.finished()) {
-			int count = decompressor.inflate(dst.array(), dst.writePosition(), dst.writeRemaining());
-			totalUncompressedBytesCount += count;
-			dst.moveWritePosition(count);
-			if (decompressor.finished()) {
-				break;
-			}
-			check(totalUncompressedBytesCount < maxSize, dst, src, DECOMPRESSED_SIZE_EXCEEDS_EXPECTED_MAX_SIZE);
-			dst = ByteBufPool.ensureTailRemaining(dst, maxSize);
-		}
+		int count = decompressor.inflate(dst.array(), dst.writePosition(), dst.writeRemaining());
+		totalUncompressedBytesCount += count;
+		dst.moveWritePosition(count);
+		check(totalUncompressedBytesCount < maxSize, dst, src, DECOMPRESSED_SIZE_EXCEEDS_EXPECTED_MAX_SIZE);
+		check(decompressor.finished(), dst, src, ACTUAL_DECOMPRESSED_DATA_SIZE_IS_NOT_EQUAL_TO_EXPECTED);
 		int totalRead = decompressor.getTotalIn();
-		decompressor.end();
 		src.moveReadPosition(totalRead);
 		return dst;
-	}
-
-	private static Deflater wrapForCompression(ByteBuf buf) {
-		Deflater compressor = new Deflater(Deflater.DEFAULT_COMPRESSION, true);
-		compressor.setInput(buf.array(), buf.readPosition(), buf.readRemaining());
-		compressor.finish();
-		return compressor;
 	}
 
 	private static int estimateMaxCompressedSize(int dataSize) {
@@ -191,7 +181,6 @@ final class GzipProcessorUtils {
 			dst = ByteBufPool.ensureTailRemaining(dst, newTailRemaining);
 		}
 		src.moveReadPosition(compressor.getTotalIn());
-		compressor.end();
 		return dst;
 	}
 
@@ -216,6 +205,32 @@ final class GzipProcessorUtils {
 			}
 		}
 		throw CORRUPTED_GZIP_HEADER;
+	}
+
+	private static Inflater ensureDecompressor() {
+		Inflater decompressor = decompressors.pop();
+		if (decompressor == null) {
+			decompressor = new Inflater(true);
+		}
+		return decompressor;
+	}
+
+	private static void moveDecompressorToPool(Inflater decompressor) {
+		decompressor.reset();
+		decompressors.push(decompressor);
+	}
+
+	private static Deflater ensureCompressor() {
+		Deflater compressor = compressors.pop();
+		if (compressor == null) {
+			compressor = new Deflater(Deflater.DEFAULT_COMPRESSION, true);
+		}
+		return compressor;
+	}
+
+	private static void moveCompressorToPool(Deflater compressor) {
+		compressor.reset();
+		compressors.push(compressor);
 	}
 
 	private static void check(boolean condition, ByteBuf buf1, ByteBuf buf2, ParseException e) throws ParseException {
