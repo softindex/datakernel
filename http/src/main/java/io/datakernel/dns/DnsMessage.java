@@ -59,6 +59,7 @@ final class DnsMessage {
 		NAME_ERROR,
 		NOT_IMPLEMENTED,
 		REFUSED,
+		TIMED_OUT,
 		UNKNOWN
 	}
 

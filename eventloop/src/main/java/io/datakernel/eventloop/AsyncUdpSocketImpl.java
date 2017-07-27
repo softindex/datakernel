@@ -79,13 +79,10 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 		while (isOpen()) {
 			ByteBuf buf = ByteBufPool.allocate(receiveBufferSize);
 			ByteBuffer buffer = buf.toWriteByteBuffer();
-			InetSocketAddress sourceAddress;
+			InetSocketAddress sourceAddress = null;
 			try {
 				sourceAddress = (InetSocketAddress) channel.receive(buffer);
 			} catch (IOException e) {
-				buf.recycle();
-				closeWithError(e);
-				return;
 			}
 
 			if (sourceAddress == null) {
@@ -112,13 +109,11 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 			ByteBuffer buffer = packet.getBuf().toReadByteBuffer();
 
 			int needToSend = buffer.remaining();
-			int sent;
+			int sent = -1;
 
 			try {
 				sent = channel.send(buffer, packet.getSocketAddress());
 			} catch (IOException e) {
-				closeWithError(e);
-				return;
 			}
 
 			if (sent != needToSend) {
@@ -174,13 +169,6 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 		try {
 			channel.close();
 		} catch (IOException e) {
-		}
-	}
-
-	private void closeWithError(final IOException e) {
-		if (isOpen()) {
-			close();
-			eventHandler.onClosedWithError(e);
 		}
 	}
 
