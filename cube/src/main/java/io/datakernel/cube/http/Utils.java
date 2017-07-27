@@ -45,6 +45,7 @@ class Utils {
 	static final String SORT_PARAM = "sort";
 	static final String LIMIT_PARAM = "limit";
 	static final String OFFSET_PARAM = "offset";
+	static final String REPORT_TYPE_PARAM = "reportType";
 
 	static final Splitter SPLITTER = Splitter.on(',').omitEmptyStrings();
 	static final Joiner JOINER = Joiner.on(',');

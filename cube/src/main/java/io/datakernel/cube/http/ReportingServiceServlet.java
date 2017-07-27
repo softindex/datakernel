@@ -18,24 +18,16 @@ package io.datakernel.cube.http;
 
 import com.google.common.base.Charsets;
 import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import io.datakernel.aggregation.AggregationPredicate;
 import io.datakernel.aggregation.QueryException;
 import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.cube.Cube;
-import io.datakernel.cube.CubeQuery;
-import io.datakernel.cube.ICube;
-import io.datakernel.cube.QueryResult;
-import io.datakernel.eventloop.Eventloop;
+import io.datakernel.cube.*;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
 import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.lang.reflect.Type;
-import java.util.List;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.cube.http.Utils.*;
@@ -44,28 +36,21 @@ import static io.datakernel.http.HttpMethod.GET;
 public final class ReportingServiceServlet implements AsyncServlet {
 	protected final Logger logger = LoggerFactory.getLogger(ReportingServiceServlet.class);
 
-	private static final Type LIST_OF_STRINGS = new TypeToken<List<String>>() {}.getType();
-	private static final Type ORDERINGS = new TypeToken<List<CubeQuery.Ordering>>() {}.getType();
-
-	private final Eventloop eventloop;
-
 	private final ICube cube;
 	private final Gson gson;
 
-	private ReportingServiceServlet(Eventloop eventloop, ICube cube, Gson gson) {
-		this.eventloop = eventloop;
+	private ReportingServiceServlet(ICube cube, Gson gson) {
 		this.gson = gson;
 		this.cube = cube;
 	}
 
-	public static ReportingServiceServlet create(Eventloop eventloop, ICube cube) {
+	public static ReportingServiceServlet create(ICube cube) {
 		Gson gson = createGsonBuilder(cube.getAttributeTypes(), cube.getMeasureTypes()).create();
-		return new ReportingServiceServlet(eventloop, cube, gson);
+		return new ReportingServiceServlet(cube, gson);
 	}
 
-	public static MiddlewareServlet createRootServlet(Eventloop eventloop, ICube cube) {
-		MiddlewareServlet middlewareServlet = MiddlewareServlet.create()
-				.with(GET, "/", create(eventloop, cube));
+	public static MiddlewareServlet createRootServlet(ICube cube) {
+		MiddlewareServlet middlewareServlet = MiddlewareServlet.create().with(GET, "/", create(cube));
 		if (cube instanceof Cube) {
 			middlewareServlet = middlewareServlet
 					.with(GET, "/consolidation-debug", ConsolidationDebugServlet.create((Cube) cube));
@@ -139,6 +124,10 @@ public final class ReportingServiceServlet implements AsyncServlet {
 		parameter = request.getParameter(OFFSET_PARAM);
 		if (parameter != null)
 			query = query.withOffset(Integer.valueOf(parameter));
+
+		parameter = request.getParameter(REPORT_TYPE_PARAM);
+		if (parameter != null)
+			query = query.withReportType(ReportType.valueOf(parameter.toUpperCase()));
 
 		return query;
 	}

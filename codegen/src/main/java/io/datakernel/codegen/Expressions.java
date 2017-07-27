@@ -178,6 +178,10 @@ public final class Expressions {
 		return cmp(PredicateDefCmp.Operation.LT, left, right);
 	}
 
+	public static PredicateDefCmp cmpGt(Expression left, Expression right) {
+		return cmp(PredicateDefCmp.Operation.GT, left, right);
+	}
+
 	public static PredicateDefCmp cmpNe(Expression left, Expression right) {
 		return cmp(PredicateDefCmp.Operation.NE, left, right);
 	}

@@ -18,7 +18,9 @@ package io.datakernel.cube;
 
 import com.google.common.base.MoreObjects;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 public final class QueryResult {
 	private final RecordScheme recordScheme;
@@ -30,29 +32,48 @@ public final class QueryResult {
 	private final Record totals;
 	private final int totalCount;
 
-	private final Collection<Drilldown> drilldowns;
-	private final Collection<List<String>> chains;
 	private final Map<String, Object> filterAttributes;
+	private final ReportType reportType;
 
 	private QueryResult(RecordScheme recordScheme, List<Record> records, Record totals, int totalCount,
 	                    List<String> attributes, List<String> measures, List<String> sortedBy,
-	                    Collection<Drilldown> drilldowns, Collection<List<String>> chains, Map<String, Object> filterAttributes) {
+	                    Map<String, Object> filterAttributes, ReportType reportType) {
 		this.recordScheme = recordScheme;
 		this.records = records;
 		this.totals = totals;
 		this.totalCount = totalCount;
-		this.drilldowns = drilldowns;
-		this.chains = chains;
 		this.attributes = attributes;
 		this.measures = measures;
 		this.sortedBy = sortedBy;
 		this.filterAttributes = filterAttributes;
+		this.reportType = reportType;
 	}
 
 	public static QueryResult create(RecordScheme recordScheme, List<Record> records, Record totals, int totalCount,
 	                                 List<String> attributes, List<String> measures, List<String> sortedBy,
-	                                 Collection<Drilldown> drilldowns, Collection<List<String>> chains, Map<String, Object> filterAttributes) {
-		return new QueryResult(recordScheme, records, totals, totalCount, attributes, measures, sortedBy, drilldowns, chains, filterAttributes);
+	                                 Map<String, Object> filterAttributes, ReportType reportType) {
+		return new QueryResult(recordScheme, records, totals, totalCount, attributes, measures, sortedBy,
+				filterAttributes, reportType);
+	}
+
+	public static QueryResult createForMetadata(RecordScheme recordScheme, List<String> attributes,
+	                                            List<String> measures) {
+		return create(recordScheme, Collections.<Record>emptyList(), Record.create(recordScheme), 0, attributes,
+				measures, Collections.<String>emptyList(), Collections.<String, Object>emptyMap(), ReportType.METADATA);
+	}
+
+	public static QueryResult createForData(RecordScheme recordScheme, List<Record> records, List<String> attributes,
+	                                        List<String> measures, List<String> sortedBy,
+	                                        Map<String, Object> filterAttributes) {
+		return create(recordScheme, records, Record.create(recordScheme), 0, attributes, measures, sortedBy,
+				filterAttributes, ReportType.DATA);
+	}
+
+	public static QueryResult createForDataWithTotals(RecordScheme recordScheme, List<Record> records, Record totals,
+	                                                  int totalCount, List<String> attributes, List<String> measures,
+	                                                  List<String> sortedBy, Map<String, Object> filterAttributes) {
+		return create(recordScheme, records, totals, totalCount, attributes, measures, sortedBy, filterAttributes,
+				ReportType.DATA_WITH_TOTALS);
 	}
 
 	public RecordScheme getRecordScheme() {
@@ -79,14 +100,6 @@ public final class QueryResult {
 		return totalCount;
 	}
 
-	public Collection<Drilldown> getDrilldowns() {
-		return drilldowns;
-	}
-
-	public Collection<List<String>> getChains() {
-		return chains;
-	}
-
 	public Map<String, Object> getFilterAttributes() {
 		return filterAttributes;
 	}
@@ -95,58 +108,19 @@ public final class QueryResult {
 		return sortedBy;
 	}
 
+	public ReportType getReportType() {
+		return reportType;
+	}
+
 	@Override
 	public String toString() {
 		return MoreObjects.toStringHelper(this)
+				.add("attributes", attributes)
+				.add("measures", measures)
 				.add("records", records)
 				.add("totals", totals)
 				.add("count", totalCount)
-				.add("drillDowns", drilldowns)
-				.add("chains", chains)
-				.add("measures", measures)
 				.add("sortedBy", sortedBy)
 				.toString();
-	}
-
-	public static final class Drilldown {
-		private final List<String> chain;
-		private final Set<String> measures;
-
-		private Drilldown(List<String> chain, Set<String> measures) {
-			this.chain = chain;
-			this.measures = measures;
-		}
-
-		public static Drilldown create(List<String> chain, Set<String> measures) {return new Drilldown(chain, measures);}
-
-		public List<String> getChain() {
-			return chain;
-		}
-
-		public Set<String> getMeasures() {
-			return measures;
-		}
-
-		@Override
-		public boolean equals(Object o) {
-			if (this == o) return true;
-			if (o == null || getClass() != o.getClass()) return false;
-			Drilldown drilldown1 = (Drilldown) o;
-			return Objects.equals(chain, drilldown1.chain) &&
-					Objects.equals(measures, drilldown1.measures);
-		}
-
-		@Override
-		public int hashCode() {
-			return Objects.hash(chain, measures);
-		}
-
-		@Override
-		public String toString() {
-			return MoreObjects.toStringHelper(this)
-					.add("chain", chain)
-					.add("measures", measures)
-					.toString();
-		}
 	}
 }
