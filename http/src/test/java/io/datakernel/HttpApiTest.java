@@ -26,6 +26,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -84,7 +85,7 @@ public class HttpApiTest {
 			}
 		};
 
-		server = AsyncHttpServer.create(eventloop, servlet).withListenPort(PORT);
+		server = AsyncHttpServer.create(eventloop, servlet).withListenAddress(new InetSocketAddress("localhost", PORT));
 		client = AsyncHttpClient.create(eventloop);
 
 		// setup request and response data

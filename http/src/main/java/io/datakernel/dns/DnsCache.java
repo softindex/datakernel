@@ -43,6 +43,7 @@ final class DnsCache {
 	private final CurrentTimeProvider timeProvider;
 
 	private long maxTtlSeconds = Long.MAX_VALUE;
+	private final long timedOutExceptionTtlSeconds;
 
 	private AsyncDnsClient.Inspector inspector;
 
@@ -72,20 +73,21 @@ final class DnsCache {
 	 * @param timeProvider               time provider
 	 * @param errorCacheExpirationMillis expiration time for errors without time to live
 	 * @param hardExpirationDeltaMillis  delta between time at which entry is considered resolved, but needs
-	 *                                   refreshing and time at which entry is considered not resolved
+	 * @param timedOutExceptionTtlMillis expiration time for timed out exception
 	 */
 	private DnsCache(CurrentTimeProvider timeProvider, long errorCacheExpirationMillis, long hardExpirationDeltaMillis,
-	                 AsyncDnsClient.Inspector inspector) {
+	                 long timedOutExceptionTtlMillis, AsyncDnsClient.Inspector inspector) {
 		this.errorCacheExpirationSeconds = errorCacheExpirationMillis / 1000;
 		this.hardExpirationDeltaSeconds = hardExpirationDeltaMillis / 1000;
 		this.timeProvider = timeProvider;
+		this.timedOutExceptionTtlSeconds = timedOutExceptionTtlMillis / 1000;
 		this.lastCleanupSecond = getCurrentSecond();
 		this.inspector = inspector;
 	}
 
 	public static DnsCache create(CurrentTimeProvider timeProvider, long errorCacheExpirationMillis,
-	                              long hardExpirationDeltaMillis, AsyncDnsClient.Inspector inspector) {
-		return new DnsCache(timeProvider, errorCacheExpirationMillis, hardExpirationDeltaMillis, inspector);
+	                              long hardExpirationDeltaMillis, long timedOutExceptionTtl, AsyncDnsClient.Inspector inspector) {
+		return new DnsCache(timeProvider, errorCacheExpirationMillis, hardExpirationDeltaMillis, timedOutExceptionTtl, inspector);
 	}
 
 	private boolean isRequestedType(CachedDnsLookupResult cachedResult, boolean requestedIpv6) {
@@ -202,6 +204,9 @@ final class DnsCache {
 	 */
 	public void add(DnsException exception) {
 		long expirationSecond = errorCacheExpirationSeconds + getCurrentSecond();
+		if (exception.getErrorCode() == DnsMessage.ResponseErrorCode.TIMED_OUT) {
+			expirationSecond = timedOutExceptionTtlSeconds + getCurrentSecond();
+		}
 		String domainName = exception.getDomainName();
 		cache.put(domainName, CachedDnsLookupResult.fromExceptionWithExpiration(exception, expirationSecond));
 		setExpiration(expirations, expirationSecond + hardExpirationDeltaSeconds, domainName);
@@ -240,6 +245,10 @@ final class DnsCache {
 
 	public void setMaxTtlSeconds(long maxTtlSeconds) {
 		this.maxTtlSeconds = maxTtlSeconds;
+	}
+
+	public long getTimedOutExceptionTtlSeconds() {
+		return timedOutExceptionTtlSeconds;
 	}
 
 	public void clear() {
@@ -299,12 +308,13 @@ final class DnsCache {
 		StringBuilder sb = new StringBuilder();
 
 		if (!cache.isEmpty())
-			cacheEntries.add("domainName;ips;secondsToSoftExpiration;secondsToHardExpiration");
+			cacheEntries.add("domainName;ips;secondsToSoftExpiration;secondsToHardExpiration;status");
 
 		for (Map.Entry<String, CachedDnsLookupResult> detailedCacheEntry : cache.entrySet()) {
 			String domainName = detailedCacheEntry.getKey();
-			InetAddress[] ips = detailedCacheEntry.getValue().getIps();
-			long softExpirationSecond = detailedCacheEntry.getValue().getExpirationSecond();
+			CachedDnsLookupResult dnsLookupResult = detailedCacheEntry.getValue();
+			InetAddress[] ips = dnsLookupResult.getIps();
+			long softExpirationSecond = dnsLookupResult.getExpirationSecond();
 			long hardExpirationSecond = getHardExpirationSecond(softExpirationSecond);
 			long currentSecond = getCurrentSecond();
 			long secondsToSoftExpiration = softExpirationSecond - currentSecond;
@@ -316,6 +326,8 @@ final class DnsCache {
 			sb.append(secondsToSoftExpiration <= 0 ? "expired" : secondsToSoftExpiration);
 			sb.append(";");
 			sb.append(secondsToHardExpiration <= 0 ? "expired" : secondsToHardExpiration);
+			sb.append(";");
+			sb.append(dnsLookupResult.getErrorCode());
 			cacheEntries.add(sb.toString());
 			sb.setLength(0);
 		}

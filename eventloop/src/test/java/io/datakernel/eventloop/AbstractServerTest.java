@@ -38,7 +38,7 @@ public class AbstractServerTest {
 	public void testTimeouts() throws IOException {
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		InetSocketAddress address = new InetSocketAddress(5588);
+		InetSocketAddress address = new InetSocketAddress("localhost", 5588);
 		final SocketSettings settings = SocketSettings.create().withImplReadTimeout(100000L).withImplWriteTimeout(100000L);
 
 		SimpleServer.SocketHandlerProvider socketHandlerProvider = new SimpleServer.SocketHandlerProvider() {

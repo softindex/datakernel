@@ -57,6 +57,10 @@ public final class StreamReducerSimple<K, I, O, A> extends AbstractStreamReducer
 	                                                                  StreamReducers.Reducer<K, I, O, A> reducer) {
 		return new StreamReducerSimple<K, I, O, A>(eventloop, keyFunction, keyComparator, reducer);
 	}
+
+	public StreamReducerSimple<K, I, O, A> withBufferSize(int bufferSize) {
+		return (StreamReducerSimple<K, I, O, A>) super.withBufferSize(bufferSize);
+	}
 	// endregion
 
 	/**

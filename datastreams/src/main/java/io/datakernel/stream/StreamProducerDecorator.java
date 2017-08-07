@@ -27,56 +27,54 @@ import static com.google.common.base.Preconditions.checkState;
  * @param <T> item type
  */
 public abstract class StreamProducerDecorator<T> implements StreamProducer<T> {
-
-	private StreamProducer<T> actualProducer;
+	protected StreamProducer<T> delegateProducer;
 
 	// region creators
-	public StreamProducerDecorator() {
-
+	protected StreamProducerDecorator() {
 	}
 
-	public StreamProducerDecorator(StreamProducer<T> actualProducer) {
-		setActualProducer(actualProducer);
+	protected StreamProducerDecorator(StreamProducer<T> delegateProducer) {
+		setDelegateProducer(delegateProducer);
 	}
 	// endregion
 
-	public void setActualProducer(StreamProducer<T> actualProducer) {
-		checkState(this.actualProducer == null, "Decorator is already wired");
-		this.actualProducer = actualProducer;
+	protected void setDelegateProducer(StreamProducer<T> delegateProducer) {
+		checkState(this.delegateProducer == null, "Decorator is already wired");
+		this.delegateProducer = delegateProducer;
 	}
 
 	@Override
-	public final void streamTo(StreamConsumer<T> downstreamConsumer) {
-		actualProducer.streamTo(downstreamConsumer);
+	public void streamTo(StreamConsumer<T> downstreamConsumer) {
+		delegateProducer.streamTo(downstreamConsumer);
 	}
 
 	@Override
 	public void bindDataReceiver() {
-		actualProducer.bindDataReceiver();
+		delegateProducer.bindDataReceiver();
 	}
 
 	@Override
 	public void onConsumerSuspended() {
-		actualProducer.onConsumerSuspended();
+		delegateProducer.onConsumerSuspended();
 	}
 
 	@Override
 	public void onConsumerResumed() {
-		actualProducer.onConsumerResumed();
+		delegateProducer.onConsumerResumed();
 	}
 
 	@Override
 	public void onConsumerError(Exception e) {
-		actualProducer.onConsumerError(e);
+		delegateProducer.onConsumerError(e);
 	}
 
 	@Override
-	public final StreamStatus getProducerStatus() {
-		return actualProducer.getProducerStatus();
+	public StreamStatus getProducerStatus() {
+		return delegateProducer.getProducerStatus();
 	}
 
 	@Override
 	public Exception getProducerException() {
-		return actualProducer.getProducerException();
+		return delegateProducer.getProducerException();
 	}
 }

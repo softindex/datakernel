@@ -35,7 +35,7 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 	private LogStreamConsumer_ByteBuffer(Eventloop eventloop, DateTimeFormatter datetimeFormat, long fileSwitchPeriod,
 	                                     LogFileSystem fileSystem, String logPartition) {
 		this.streamWriteLog = new StreamWriteLog(eventloop, datetimeFormat, fileSwitchPeriod, fileSystem, logPartition);
-		setActualConsumer(streamWriteLog.getInput());
+		setDelegateConsumer(streamWriteLog.getInput());
 	}
 
 	public static LogStreamConsumer_ByteBuffer create(Eventloop eventloop, DateTimeFormatter datetimeFormat,

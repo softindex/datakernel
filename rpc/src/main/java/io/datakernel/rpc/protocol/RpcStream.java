@@ -133,7 +133,6 @@ public final class RpcStream {
 				.withSkipSerializationErrors()
 				.withInspector(serializerInspector);
 		deserializer = StreamBinaryDeserializer.create(eventloop, messageSerializer)
-				.withMaxMessageSize(maxPacketSize)
 				.withInspector(deserializerInspector);
 
 		if (compression) {

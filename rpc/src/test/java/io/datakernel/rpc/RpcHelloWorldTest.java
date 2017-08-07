@@ -95,7 +95,7 @@ public class RpcHelloWorldTest {
 						return "Hello, " + name + "!";
 					}
 				}))
-				.withListenPort(PORT);
+				.withListenAddress(new InetSocketAddress("localhost", PORT));
 	}
 
 	private static class BlockingHelloClient implements HelloService, AutoCloseable {

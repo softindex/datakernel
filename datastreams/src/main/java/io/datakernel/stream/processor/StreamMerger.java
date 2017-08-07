@@ -58,7 +58,11 @@ public final class StreamMerger<K, T> extends AbstractStreamReducer<K, T, Void> 
 	public static <K, T> StreamMerger<K, T> create(Eventloop eventloop, Function<T, K> keyFunction,
 	                                               Comparator<K> keyComparator,
 	                                               boolean deduplicate) {
-		return new StreamMerger<K, T>(eventloop, keyFunction, keyComparator, deduplicate);
+		return new StreamMerger<>(eventloop, keyFunction, keyComparator, deduplicate);
+	}
+
+	public StreamMerger<K, T> withBufferSize(int bufferSize) {
+		return (StreamMerger<K, T>) super.withBufferSize(bufferSize);
 	}
 	// endregion
 

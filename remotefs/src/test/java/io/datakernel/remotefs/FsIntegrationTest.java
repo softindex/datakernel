@@ -67,7 +67,7 @@ public class FsIntegrationTest {
 	@Rule
 	public final TemporaryFolder temporaryFolder = new TemporaryFolder();
 
-	private static final InetSocketAddress address = new InetSocketAddress(5560);
+	private static final InetSocketAddress address = new InetSocketAddress("localhost", 5560);
 
 	private static Path storage;
 	private static final byte[] BIG_FILE = createBigByteArray();
@@ -105,7 +105,7 @@ public class FsIntegrationTest {
 			tasks.add(new AsyncRunnable() {
 				@Override
 				public void run(CompletionCallback callback) {
-					client.upload("file" + finalI, producer, callback);
+					client.upload(producer, "file" + finalI, callback);
 				}
 			});
 		}
@@ -189,7 +189,7 @@ public class FsIntegrationTest {
 						StreamProducers.ofValue(eventloop, ByteBufStrings.wrapUtf8("Test4")));
 
 		final CompletionCallbackFuture callback = CompletionCallbackFuture.create();
-		client.upload(resultFile, producer, new CompletionCallback() {
+		client.upload(producer, resultFile, new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				server.close(IgnoreCompletionCallback.create());
@@ -465,7 +465,7 @@ public class FsIntegrationTest {
 
 		server.listen();
 		StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrapForReading(bytes));
-		client.upload(resultFile, producer, new CloseCompletionCallback(server, callback));
+		client.upload(producer, resultFile, new CloseCompletionCallback(server, callback));
 		eventloop.run();
 		executor.shutdown();
 	}

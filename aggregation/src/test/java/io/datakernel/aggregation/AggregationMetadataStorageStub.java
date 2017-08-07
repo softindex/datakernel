@@ -37,15 +37,12 @@ public class AggregationMetadataStorageStub implements AggregationMetadataStorag
 		this.eventloop = eventloop;
 	}
 
-	public AssertingResultCallback<List<AggregationChunk.NewChunk>> createSaveCallback() {
-		return new AssertingResultCallback<List<AggregationChunk.NewChunk>>() {
+	public AssertingResultCallback<List<AggregationChunk>> createSaveCallback() {
+		return new AssertingResultCallback<List<AggregationChunk>>() {
 			@Override
-			protected void onResult(List<AggregationChunk.NewChunk> newChunks) {
+			protected void onResult(List<AggregationChunk> newChunks) {
 				List<AggregationChunk> chunks = new ArrayList<>();
-				for (AggregationChunk.NewChunk newChunk : newChunks) {
-					AggregationChunk chunk = AggregationChunk.createChunk(revisionId, newChunk);
-					chunks.add(chunk);
-				}
+				chunks.addAll(newChunks);
 				revisionToChunks.put(++revisionId, chunks);
 			}
 		};
@@ -73,7 +70,7 @@ public class AggregationMetadataStorageStub implements AggregationMetadataStorag
 	}
 
 	@Override
-	public void saveConsolidatedChunks(List<AggregationChunk> originalChunks, List<AggregationChunk.NewChunk> consolidatedChunks, CompletionCallback callback) {
+	public void saveConsolidatedChunks(List<AggregationChunk> originalChunks, List<AggregationChunk> consolidatedChunks, CompletionCallback callback) {
 		throw new UnsupportedOperationException();
 	}
 

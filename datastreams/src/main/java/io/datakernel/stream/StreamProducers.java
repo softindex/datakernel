@@ -55,6 +55,11 @@ public final class StreamProducers {
 		return new ClosingWithError<>(eventloop, e);
 	}
 
+	public static <T> StreamProducer<T> noEndOfStream(StreamProducer<T> streamProducer) {
+		return new NoEndOfStream<>(streamProducer);
+	}
+
+
 	/**
 	 * Creates producer which sends value and closes itself
 	 *
@@ -220,6 +225,28 @@ public final class StreamProducers {
 		}
 	}
 
+	public static class NoEndOfStream<T> extends StreamProducerDecorator<T> {
+		public NoEndOfStream(final StreamProducer<T> streamProducer) {
+			super(streamProducer);
+		}
+
+		@Override
+		public void streamTo(final StreamConsumer<T> downstreamConsumer) {
+			delegateProducer.streamTo(new StreamConsumerDecorator<T>(downstreamConsumer) {
+				@Override
+				public void onProducerEndOfStream() {
+					// DO NOTHING
+				}
+			});
+		}
+
+		@Override
+		public StreamStatus getProducerStatus() {
+			StreamStatus status = delegateProducer.getProducerStatus();
+			return status != StreamStatus.END_OF_STREAM ? status : StreamStatus.SUSPENDED;
+		}
+	}
+
 	/**
 	 * Represents a {@link AbstractStreamProducer} which will send all values from iterator.
 	 *
@@ -227,7 +254,6 @@ public final class StreamProducers {
 	 */
 	public static class OfIterator<T> extends AbstractStreamProducer<T> {
 		private final Iterator<T> iterator;
-		private boolean sendEndOfStream = true;
 
 		/**
 		 * Creates a new instance of  StreamProducerOfIterator
@@ -236,13 +262,8 @@ public final class StreamProducers {
 		 * @param iterator  iterator with object which need to send
 		 */
 		public OfIterator(Eventloop eventloop, Iterator<T> iterator) {
-			this(eventloop, iterator, true);
-		}
-
-		public OfIterator(Eventloop eventloop, Iterator<T> iterator, boolean sendEndOfStream) {
 			super(eventloop);
 			this.iterator = checkNotNull(iterator);
-			this.sendEndOfStream = sendEndOfStream;
 		}
 
 		@Override
@@ -255,8 +276,7 @@ public final class StreamProducers {
 				T item = iterator.next();
 				send(item);
 			}
-			if (sendEndOfStream)
-				sendEndOfStream();
+			sendEndOfStream();
 		}
 
 		@Override
@@ -268,7 +288,6 @@ public final class StreamProducers {
 		protected void onResumed() {
 			resumeProduce();
 		}
-
 	}
 
 	/**
@@ -334,7 +353,7 @@ public final class StreamProducers {
 		public StreamProducerConcat(Eventloop eventloop, AsyncIterator<StreamProducer<T>> iterator) {
 			this.forwarderConcat = new ForwarderConcat(eventloop);
 			this.iterator = iterator;
-			setActualProducer(forwarderConcat.getOutput());
+			setDelegateProducer(forwarderConcat.getOutput());
 		}
 
 		private class ForwarderConcat extends AbstractStreamTransformer_1_1<T, T> {

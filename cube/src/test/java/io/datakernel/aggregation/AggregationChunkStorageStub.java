@@ -19,6 +19,7 @@ package io.datakernel.aggregation;
 import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
@@ -46,7 +47,7 @@ public class AggregationChunkStorageStub implements AggregationChunkStorage {
 	}
 
 	@Override
-	public <T> StreamProducer<T> chunkReader(Aggregation aggregation, List<String> keys, List<String> fields, Class<T> recordClass, long id, DefiningClassLoader classLoader) {
+	public <T> void read(Aggregation aggregation, List<String> keys, List<String> fields, Class<T> recordClass, long id, DefiningClassLoader classLoader, ResultCallback<StreamProducer<T>> callback) {
 		Class<?> sourceClass = chunkTypes.get(id);
 
 		Expression result = let(constructor(recordClass));
@@ -68,14 +69,12 @@ public class AggregationChunkStorageStub implements AggregationChunkStorage {
 		ClassBuilder<Function> factory = ClassBuilder.create(classLoader, Function.class)
 				.withMethod("apply", applyDef);
 		Function function = factory.buildClassAndCreateNewInstance();
-		StreamProducers.OfIterator<T> chunkReader = (StreamProducers.OfIterator<T>) StreamProducers.ofIterable(eventloop,
-				Iterables.transform(lists.get(id), function));
-		chunkReader.setTag(id);
-		return chunkReader;
+		StreamProducer<T> chunkReader = StreamProducers.ofIterable(eventloop, Iterables.transform(lists.get(id), function));
+		callback.setResult(chunkReader);
 	}
 
 	@Override
-	public <T> void chunkWriter(Aggregation aggregation, List<String> keys, List<String> fields, Class<T> recordClass, long id, StreamProducer<T> producer, DefiningClassLoader classLoader, CompletionCallback callback) {
+	public <T> void write(StreamProducer<T> producer, Aggregation aggregation, List<String> keys, List<String> fields, Class<T> recordClass, long id, DefiningClassLoader classLoader, CompletionCallback callback) {
 		chunkTypes.put(id, recordClass);
 		ArrayList<Object> list = new ArrayList<>();
 		lists.put(id, list);

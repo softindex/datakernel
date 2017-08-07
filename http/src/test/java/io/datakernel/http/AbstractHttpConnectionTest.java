@@ -22,6 +22,7 @@ import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
 import org.junit.Test;
 
+import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -51,7 +52,7 @@ public class AbstractHttpConnectionTest {
 			}
 		};
 		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
-				.withListenPort(PORT);
+				.withListenAddress(new InetSocketAddress("localhost", PORT));
 		server.listen();
 
 		final CompletionCallbackFuture future = CompletionCallbackFuture.create();
@@ -88,7 +89,7 @@ public class AbstractHttpConnectionTest {
 
 			@Override
 			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				HttpResponse response = HttpResponse.ok200();
+				HttpResponse response = HttpResponse.ok200().withBodyGzipCompression();
 				if (!first) {
 					response.withBody((ByteBuf) null);
 					callback.setResult(response);
@@ -102,8 +103,7 @@ public class AbstractHttpConnectionTest {
 			}
 		};
 		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
-				.withGzipResponses(true)
-				.withListenPort(PORT);
+				.withListenAddress(new InetSocketAddress("localhost", PORT));
 		server.listen();
 
 		final CompletionCallbackFuture future = CompletionCallbackFuture.create();

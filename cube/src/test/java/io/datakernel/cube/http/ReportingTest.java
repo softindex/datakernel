@@ -36,6 +36,7 @@ import io.datakernel.logfs.LogToCubeMetadataStorage;
 import io.datakernel.logfs.LogToCubeRunner;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import org.joda.time.LocalDate;
 import org.jooq.Configuration;
@@ -47,6 +48,7 @@ import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetSocketAddress;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
@@ -270,8 +272,7 @@ public class ReportingTest {
 				new LogItem(3, 1, 1, 1, 30, 5, 2, 0.30, 3),
 				new LogItem(1, 2, 2, 2, 100, 5, 0, 0.36, 10),
 				new LogItem(1, 3, 3, 3, 80, 5, 0, 0.60, 1));
-		StreamProducers.OfIterator<LogItem> producerOfRandomLogItems =
-				new StreamProducers.OfIterator<>(eventloop, logItems.iterator());
+		StreamProducer<LogItem> producerOfRandomLogItems = StreamProducers.ofIterator(eventloop, logItems.iterator());
 		producerOfRandomLogItems.streamTo(logManager.consumer(LOG_PARTITION_NAME));
 		eventloop.run();
 
@@ -282,7 +283,7 @@ public class ReportingTest {
 		eventloop.run();
 
 		cubeHttpServer = AsyncHttpServer.create(eventloop, ReportingServiceServlet.createRootServlet(eventloop, cube))
-				.withListenPort(SERVER_PORT)
+				.withListenAddress(new InetSocketAddress("localhost", SERVER_PORT))
 				.withAcceptOnce();
 		cubeHttpServer.listen();
 

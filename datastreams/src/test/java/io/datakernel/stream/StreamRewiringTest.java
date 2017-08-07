@@ -38,7 +38,7 @@ public class StreamRewiringTest {
 	public void noRewire() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		StreamProducers.OfIterator<Integer> producer = new StreamProducers.OfIterator<>(eventloop, asList(1, 2, 3).iterator());
+		StreamProducer<Integer> producer = StreamProducers.ofIterator(eventloop, asList(1, 2, 3).iterator());
 		StreamFunction<Integer, Integer> function1 = StreamFunction.create(eventloop, Functions.<Integer>identity());
 		StreamFunction<Integer, String> function2 = StreamFunction.create(eventloop, new Function<Integer, String>() {
 			@Override
@@ -64,7 +64,7 @@ public class StreamRewiringTest {
 	public void rewireConsumer1() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		StreamProducers.OfIterator<Integer> producer = new StreamProducers.OfIterator<>(eventloop, asList(1, 2, 3).iterator());
+		StreamProducer<Integer> producer = StreamProducers.ofIterator(eventloop, asList(1, 2, 3).iterator());
 		StreamFunction<Integer, Integer> function1 = StreamFunction.create(eventloop, Functions.<Integer>identity());
 		StreamFunction<Integer, String> function2 = StreamFunction.create(eventloop, new Function<Integer, String>() {
 			@Override
@@ -96,7 +96,7 @@ public class StreamRewiringTest {
 	public void rewireConsumer2() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		StreamProducers.OfIterator<Integer> producer = new StreamProducers.OfIterator<>(eventloop, asList(1, 2, 3).iterator());
+		StreamProducer<Integer> producer = StreamProducers.ofIterator(eventloop, asList(1, 2, 3).iterator());
 		StreamFunction<Integer, Integer> function1 = StreamFunction.create(eventloop, Functions.<Integer>identity());
 		StreamFunction<Integer, String> function2 = StreamFunction.create(eventloop, new Function<Integer, String>() {
 			@Override
@@ -127,10 +127,10 @@ public class StreamRewiringTest {
 	public void rewireProducer1() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		StreamProducers.OfIterator<Integer> producer0 = new StreamProducers.OfIterator<>(eventloop, asList(0).iterator(), false);
-		StreamProducers.OfIterator<Integer> producer1 = new StreamProducers.OfIterator<>(eventloop, asList(1, 2, 3).iterator(), false);
-		StreamProducers.OfIterator<Integer> producer2 = new StreamProducers.OfIterator<>(eventloop, asList(4, 5, 6).iterator());
-		StreamProducers.OfIterator<Integer> producer3 = new StreamProducers.OfIterator<>(eventloop, asList(10).iterator());
+		StreamProducer<Integer> producer0 = StreamProducers.noEndOfStream(StreamProducers.ofIterator(eventloop, asList(0).iterator()));
+		StreamProducer<Integer> producer1 = StreamProducers.noEndOfStream(StreamProducers.ofIterator(eventloop, asList(1, 2, 3).iterator()));
+		StreamProducer<Integer> producer2 = StreamProducers.ofIterator(eventloop, asList(4, 5, 6).iterator());
+		StreamProducer<Integer> producer3 = StreamProducers.ofIterator(eventloop, asList(10).iterator());
 		StreamFunction<Integer, Integer> function1 = StreamFunction.create(eventloop, Functions.<Integer>identity());
 		StreamFunction<Integer, String> function2 = StreamFunction.create(eventloop, new Function<Integer, String>() {
 			@Override

@@ -63,6 +63,6 @@ public interface AggregationMetadataStorage {
 	 * @param consolidatedChunks list of chunks that appeared as a result of consolidation of original chunks
 	 * @param callback           callback which is called once saving is complete
 	 */
-	void saveConsolidatedChunks(List<AggregationChunk> originalChunks, List<AggregationChunk.NewChunk> consolidatedChunks,
+	void saveConsolidatedChunks(List<AggregationChunk> originalChunks, List<AggregationChunk> consolidatedChunks,
 	                            CompletionCallback callback);
 }

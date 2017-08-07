@@ -1,0 +1,205 @@
+package io.datakernel.async;
+
+import io.datakernel.eventloop.Eventloop;
+
+import java.util.List;
+
+public class AsyncCallbacks {
+	private AsyncCallbacks() {
+	}
+
+	public static CompletionCallback completionTo(final List<? extends CompletionCallback> callbacks) {
+		return new CompletionCallback() {
+			@Override
+			protected void onComplete() {
+				for (CompletionCallback callback : callbacks) {
+					callback.setComplete();
+				}
+			}
+
+			@Override
+			protected void onException(Exception e) {
+				for (CompletionCallback callback : callbacks) {
+					callback.setException(e);
+				}
+			}
+		};
+	}
+
+	public static <T> CompletionCallback asCompletionCallback(final ResultCallback<T> callback, final T value) {
+		return new ForwardingCompletionCallback(callback) {
+			@Override
+			protected void onComplete() {
+				callback.setResult(value);
+			}
+		};
+	}
+
+	public static <T> ResultCallback<T> asResultCallback(final CompletionCallback callback) {
+		return new ForwardingResultCallback<T>(callback) {
+			@Override
+			protected void onResult(T ignored) {
+				callback.setComplete();
+			}
+		};
+	}
+
+	public static CompletionCallback completionTo(final CompletionCallback... callbacks) {
+		return new CompletionCallback() {
+			@Override
+			protected void onComplete() {
+				for (CompletionCallback callback : callbacks) {
+					callback.setComplete();
+				}
+			}
+
+			@Override
+			protected void onException(Exception e) {
+				for (CompletionCallback callback : callbacks) {
+					callback.setException(e);
+				}
+			}
+		};
+	}
+
+	public static <T> ResultCallback<T> resultTo(final List<? extends ResultCallback<T>> callbacks) {
+		return new ResultCallback<T>() {
+			@Override
+			protected void onResult(T result) {
+				for (ResultCallback<T> callback : callbacks) {
+					callback.setResult(result);
+				}
+			}
+
+			@Override
+			protected void onException(Exception e) {
+				for (ResultCallback<T> callback : callbacks) {
+					callback.setException(e);
+				}
+			}
+		};
+	}
+
+	@SafeVarargs
+	public static <T> ResultCallback<T> resultTo(final ResultCallback<T>... callbacks) {
+		return new ResultCallback<T>() {
+			@Override
+			protected void onResult(T result) {
+				for (ResultCallback<T> callback : callbacks) {
+					callback.setResult(result);
+				}
+			}
+
+			@Override
+			protected void onException(Exception e) {
+				for (ResultCallback<T> callback : callbacks) {
+					callback.setException(e);
+				}
+			}
+		};
+	}
+
+	public static <T> ResultCallback<T> postTo(final Eventloop eventloop, final ResultCallback<T> callback) {
+		return new ResultCallback<T>() {
+			@Override
+			protected void onResult(T result) {
+				callback.postResult(eventloop, result);
+			}
+
+			@Override
+			protected void onException(Exception e) {
+				callback.postException(eventloop, e);
+			}
+		};
+	}
+
+	public static <T> ResultCallback<T> postTo(final ResultCallback<T> callback) {
+		return new ResultCallback<T>() {
+			@Override
+			protected void onResult(T result) {
+				callback.postResult(result);
+			}
+
+			@Override
+			protected void onException(Exception e) {
+				callback.postException(e);
+			}
+		};
+	}
+
+	public static CompletionCallback postTo(final Eventloop eventloop, final CompletionCallback callback) {
+		return new CompletionCallback() {
+			@Override
+			protected void onComplete() {
+				callback.postComplete(eventloop);
+			}
+
+			@Override
+			protected void onException(Exception e) {
+				callback.postException(eventloop, e);
+			}
+		};
+	}
+
+	public static CompletionCallback postTo(final CompletionCallback callback) {
+		return new CompletionCallback() {
+			@Override
+			protected void onComplete() {
+				callback.postComplete();
+			}
+
+			@Override
+			protected void onException(Exception e) {
+				callback.postException(e);
+			}
+		};
+	}
+
+	public static <T> ResultCallback<T> postToAnotherEventloop(final Eventloop eventloop, final ResultCallback<T> callback) {
+		return new ResultCallback<T>() {
+			@Override
+			protected void onResult(final T result) {
+				eventloop.execute(new Runnable() {
+					@Override
+					public void run() {
+						callback.setResult(result);
+					}
+				});
+			}
+
+			@Override
+			protected void onException(final Exception e) {
+				eventloop.execute(new Runnable() {
+					@Override
+					public void run() {
+						callback.setException(e);
+					}
+				});
+			}
+		};
+	}
+
+	public static CompletionCallback postToAnotherEventloop(final Eventloop anotherEventloop, final CompletionCallback callback) {
+		return new CompletionCallback() {
+			@Override
+			protected void onComplete() {
+				anotherEventloop.execute(new Runnable() {
+					@Override
+					public void run() {
+						callback.setComplete();
+					}
+				});
+			}
+
+			@Override
+			protected void onException(final Exception e) {
+				anotherEventloop.execute(new Runnable() {
+					@Override
+					public void run() {
+						callback.setException(e);
+					}
+				});
+			}
+		};
+	}
+}

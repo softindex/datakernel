@@ -16,44 +16,73 @@
 
 package io.datakernel.aggregation;
 
-import io.datakernel.aggregation.util.AsyncResultsTracker;
-import io.datakernel.aggregation.util.AsyncResultsTracker.AsyncResultsTrackerList;
-import io.datakernel.aggregation.util.BiPredicate;
+import io.datakernel.aggregation.util.AsyncResultsReducer;
+import io.datakernel.aggregation.util.PartitionPredicate;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.AbstractStreamTransformer_1_1;
-import io.datakernel.stream.StreamConsumerDecorator;
-import io.datakernel.stream.StreamDataReceiver;
-import io.datakernel.stream.StreamForwarder;
+import io.datakernel.stream.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.async.AsyncCallbacks.postTo;
 
-final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
+final class AggregationChunker<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final Aggregation aggregation;
 	private final List<String> keys;
 	private final List<String> fields;
 	private final Class<T> recordClass;
-	private final BiPredicate<T, T> partitionPredicate;
+	private final PartitionPredicate<T> partitionPredicate;
 	private final AggregationChunkStorage storage;
 	private final AggregationMetadataStorage metadataStorage;
-	private final Chunker chunker;
-	private final AsyncResultsTrackerList<AggregationChunk.NewChunk> resultsTracker;
+	private final AsyncResultsReducer<List<AggregationChunk>> chunksAccumulator;
 	private final DefiningClassLoader classLoader;
 
-	public AggregationChunker(Eventloop eventloop, final AggregationOperationTracker operationTracker,
+	private StreamDataReceiver<T> downstreamDataReceiver;
+
+	private AbstractStreamProducer<T> outputProducer = new AbstractStreamProducer<T>(eventloop) {
+		@Override
+		protected final void onDataReceiverChanged() {
+			AggregationChunker.this.downstreamDataReceiver = this.downstreamDataReceiver;
+		}
+
+		@Override
+		protected void onSuspended() {
+			applySuspendOrResume();
+		}
+
+		@Override
+		protected void onResumed() {
+			applySuspendOrResume();
+		}
+
+		@Override
+		protected void onError(Exception e) {
+			AggregationChunker.this.closeWithError(e);
+		}
+	};
+
+	private static final AsyncResultsReducer.ResultReducer<List<AggregationChunk>, AggregationChunk> REDUCER = new AsyncResultsReducer.ResultReducer<List<AggregationChunk>, AggregationChunk>() {
+		@Override
+		public List<AggregationChunk> applyResult(List<AggregationChunk> accumulator, AggregationChunk value) {
+			accumulator.add(value);
+			return accumulator;
+		}
+	};
+
+	public AggregationChunker(Eventloop eventloop,
 	                          Aggregation aggregation, List<String> keys, List<String> fields,
-	                          Class<T> recordClass, BiPredicate<T, T> partitionPredicate,
+	                          Class<T> recordClass, PartitionPredicate<T> partitionPredicate,
 	                          AggregationChunkStorage storage, AggregationMetadataStorage metadataStorage,
 	                          int chunkSize, DefiningClassLoader classLoader,
-	                          final ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
+	                          final ResultCallback<List<AggregationChunk>> chunksCallback) {
+		super(eventloop);
 		this.aggregation = aggregation;
 		this.keys = keys;
 		this.fields = fields;
@@ -61,183 +90,131 @@ final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 		this.partitionPredicate = partitionPredicate;
 		this.storage = storage;
 		this.metadataStorage = metadataStorage;
-		this.resultsTracker = AsyncResultsTracker.ofList(new ResultCallback<List<AggregationChunk.NewChunk>>() {
-			@Override
-			public void onResult(List<AggregationChunk.NewChunk> result) {
-				operationTracker.reportCompletion(AggregationChunker.this);
-				chunksCallback.setResult(result);
-			}
-
-			@Override
-			public void onException(Exception e) {
-				operationTracker.reportCompletion(AggregationChunker.this);
-				chunksCallback.setException(e);
-			}
-		});
+		this.chunksAccumulator = AsyncResultsReducer.create(postTo(chunksCallback), new ArrayList<AggregationChunk>());
+		this.chunkSize = chunkSize;
 		this.classLoader = classLoader;
-		this.chunker = new Chunker(eventloop, chunkSize);
-		setActualConsumer(chunker.getInput());
-		operationTracker.reportStart(this);
 	}
 
 	public void setChunkSize(int chunkSize) {
-		this.chunker.inputConsumer.chunkSize = chunkSize;
+		this.chunkSize = chunkSize;
 	}
 
-	private class Chunker extends AbstractStreamTransformer_1_1<T, T> {
-		private final InputConsumer inputConsumer;
-		private final OutputProducer outputProducer;
+	private int chunkSize;
 
-		protected Chunker(Eventloop eventloop, int chunkSize) {
-			super(eventloop);
-			this.outputProducer = new OutputProducer();
-			this.inputConsumer = new InputConsumer(chunkSize);
+	private T first;
+	private T last;
+	private int count = Integer.MAX_VALUE;
+	private Metadata<T> currentChunkMetadata;
+
+	private static final class Metadata<T> {
+		private T first;
+		private T last;
+		private int count;
+
+		private void set(T first, T last, int count) {
+			this.first = first;
+			this.last = last;
+			this.count = count;
+		}
+	}
+
+	@Override
+	public StreamDataReceiver<T> getDataReceiver() {
+		return this;
+	}
+
+	@Override
+	protected void onError(Exception e) {
+		chunksAccumulator.setException(e);
+		outputProducer.closeWithError(e);
+	}
+
+	@Override
+	public void onData(T item) {
+		if (count >= chunkSize || !partitionPredicate.isSamePartition(last, item)) {
+			rotateChunk();
+			first = item;
 		}
 
-		@Override
-		protected AbstractInputConsumer getInputImpl() {
-			return inputConsumer;
+		++count;
+
+		downstreamDataReceiver.onData(item);
+		last = item;
+	}
+
+	@Override
+	protected void onEndOfStream() {
+		if (outputProducer.getDownstream() != null) {
+			currentChunkMetadata.set(first, last, count);
+			StreamProducers.<T>closing(eventloop).streamTo(outputProducer.getDownstream());
 		}
+		chunksAccumulator.setComplete();
+	}
 
-		@Override
-		protected AbstractOutputProducer getOutputImpl() {
-			return outputProducer;
+	private void rotateChunk() {
+		if (outputProducer.getDownstream() != null) {
+			currentChunkMetadata.set(first, last, count);
+			StreamProducers.<T>closing(eventloop).streamTo(outputProducer.getDownstream());
 		}
+		startNewChunk();
+	}
 
-		private class InputConsumer extends AbstractInputConsumer implements StreamDataReceiver<T> {
-			private int chunkSize;
+	private void startNewChunk() {
+		first = null;
+		last = null;
+		count = 0;
 
-			private T first;
-			private T last;
-			private int count = Integer.MAX_VALUE;
-			private Metadata currentChunkMetadata;
+		final Metadata<T> metadata = new Metadata<>();
+		currentChunkMetadata = metadata;
 
-			public InputConsumer(int chunkSize) {
-				checkArgument(chunkSize > 0);
-				this.chunkSize = chunkSize;
-			}
+		final StreamForwarder<T> forwarder = StreamForwarder.create(eventloop);
+		outputProducer.streamTo(forwarder.getInput());
 
+		logger.info("Retrieving new chunk id for aggregation {}", keys);
+
+		final ResultCallback<AggregationChunk> newChunkCallback = chunksAccumulator.newResultCallback(REDUCER);
+		applySuspendOrResume();
+
+		metadataStorage.createChunkId(new ResultCallback<Long>() {
 			@Override
-			protected void onUpstreamEndOfStream() {
-				if (outputProducer.getDownstream() != null) {
-					currentChunkMetadata.init(first, last, count);
-					outputProducer.sendEndOfStream();
-				}
-
-				resultsTracker.shutDown();
-			}
-
-			@Override
-			protected void onError(Exception e) {
-				super.onError(e);
-				resultsTracker.shutDownWithException(e);
-			}
-
-			@Override
-			public StreamDataReceiver<T> getDataReceiver() {
-				return this;
-			}
-
-			@Override
-			public void onData(T item) {
-				if (count >= chunkSize || !partitionPredicate.test(last, item)) {
-					rotateChunk();
-					first = item;
-				}
-
-				++count;
-
-				downstreamDataReceiver.onData(item);
-				last = item;
-			}
-
-			private void rotateChunk() {
-				if (outputProducer.getDownstream() != null) {
-					currentChunkMetadata.init(first, last, count);
-					outputProducer.getDownstream().onProducerEndOfStream();
-				}
-				startNewChunk();
-			}
-
-			private AggregationChunk.NewChunk createNewChunk(long id, T first, T last, int count) {
-				return new AggregationChunk.NewChunk(id, fields,
-						PrimaryKey.ofObject(first, keys),
-						PrimaryKey.ofObject(last, keys), count);
-			}
-
-			private void startNewChunk() {
-				resultsTracker.startOperation();
-				first = null;
-				last = null;
-				count = 0;
-
-				final Metadata metadata = new Metadata();
-				currentChunkMetadata = metadata;
-
-				final StreamForwarder<T> forwarder = StreamForwarder.create(eventloop);
-				outputProducer.streamTo(forwarder.getInput());
-
-				logger.info("Retrieving new chunk id for aggregation {}", keys);
-				metadataStorage.createChunkId(new ResultCallback<Long>() {
+			protected void onResult(final Long chunkId) {
+				logger.info("Retrieved new chunk id '{}' for aggregation {}", chunkId, keys);
+				storage.write(forwarder.getOutput(), aggregation, keys, fields, recordClass, chunkId, classLoader, new CompletionCallback() {
 					@Override
-					protected void onResult(final Long chunkId) {
-						logger.info("Retrieved new chunk id '{}' for aggregation {}", chunkId, keys);
-						storage.chunkWriter(aggregation, keys, fields, recordClass,
-								chunkId, forwarder.getOutput(), classLoader, new CompletionCallback() {
-									@Override
-									protected void onComplete() {
-										AggregationChunk.NewChunk newChunk = createNewChunk(chunkId, metadata.first,
-												metadata.last, metadata.count);
-
-										resultsTracker.completeWithResult(newChunk);
-
-										logger.trace("Saving new chunk with id {} to storage {} completed",
-												chunkId, storage);
-									}
-
-									@Override
-									protected void onException(Exception e) {
-										logger.error("Saving new chunk with id {} to storage {} failed",
-												chunkId, storage, e);
-										closeWithError(e);
-										resultsTracker.completeWithException(e);
-									}
-								});
+					protected void onComplete() {
+						AggregationChunk newChunk = AggregationChunk.create(chunkId,
+								fields,
+								PrimaryKey.ofObject(metadata.first, keys),
+								PrimaryKey.ofObject(metadata.last, keys),
+								metadata.count);
+						newChunkCallback.setResult(newChunk);
+						applySuspendOrResume();
+						logger.trace("Saving new chunk with id {} to storage {} completed", chunkId, storage);
 					}
 
 					@Override
 					protected void onException(Exception e) {
-						logger.error("Failed to retrieve new chunk id from metadata storage {}",
-								metadataStorage, e);
+						logger.error("Saving new chunk with id {} to storage {} failed", chunkId, storage, e);
 						closeWithError(e);
-						resultsTracker.completeWithException(e);
+						newChunkCallback.setException(e);
 					}
 				});
 			}
-		}
-
-		private class OutputProducer extends AbstractOutputProducer {
-			@Override
-			protected void onDownstreamSuspended() {
-				inputConsumer.suspend();
-			}
 
 			@Override
-			protected void onDownstreamResumed() {
-				inputConsumer.resume();
+			protected void onException(Exception e) {
+				logger.error("Failed to retrieve new chunk id from metadata storage {}", metadataStorage, e);
+				closeWithError(e);
+				newChunkCallback.setException(e);
 			}
-		}
+		});
+	}
 
-		private final class Metadata {
-			private T first;
-			private T last;
-			private int count;
-
-			private void init(T first, T last, int count) {
-				this.first = first;
-				this.last = last;
-				this.count = count;
-			}
+	private void applySuspendOrResume() {
+		if (outputProducer.getProducerStatus() == StreamStatus.READY && chunksAccumulator.getActiveCallbacks() <= 1) {
+			resume();
+		} else {
+			suspend();
 		}
 	}
 }

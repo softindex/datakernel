@@ -56,6 +56,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 	public static final InetSocketAddress GOOGLE_PUBLIC_DNS = new InetSocketAddress(inetAddress("8.8.8.8"), DNS_SERVER_PORT);
 	public static final InetSocketAddress LOCAL_DNS = new InetSocketAddress(inetAddress("192.168.0.1"), DNS_SERVER_PORT);
 	public static final long DEFAULT_TIMEOUT = 3_000L;
+	public static final long DEFAULT_TIMED_OUT_EXCEPTION_TTL_MILLIS = 1_000L;
 
 	private final Eventloop eventloop;
 
@@ -67,6 +68,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 	private final DnsCache cache;
 
 	private final long timeout;
+	private final long timedOutExceptionTtl;
 
 	// jmx
 	Inspector inspector;
@@ -168,10 +170,11 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 
 	// region builders
 	private AsyncDnsClient(Eventloop eventloop, DatagramSocketSettings datagramSocketSettings, long timeout,
-	                       InetSocketAddress dnsServerAddress, DnsCache cache, Inspector inspector) {
+	                       long timedOutExceptionTtl, InetSocketAddress dnsServerAddress, DnsCache cache, Inspector inspector) {
 		this.eventloop = eventloop;
 		this.datagramSocketSettings = datagramSocketSettings;
 		this.timeout = timeout;
+		this.timedOutExceptionTtl = timedOutExceptionTtl;
 		this.dnsServerAddress = dnsServerAddress;
 		this.cache = cache;
 		this.inspector = inspector;
@@ -179,53 +182,63 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 
 	public static AsyncDnsClient create(Eventloop eventloop) {
 		Inspector inspector = new JmxInspector();
-		DnsCache cache = DnsCache.create(eventloop, ONE_MINUTE_MILLIS, ONE_MINUTE_MILLIS, inspector);
+		DnsCache cache = DnsCache.create(eventloop, ONE_MINUTE_MILLIS, ONE_MINUTE_MILLIS, DEFAULT_TIMED_OUT_EXCEPTION_TTL_MILLIS, inspector);
 
-		return new AsyncDnsClient(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
-				DEFAULT_TIMEOUT, GOOGLE_PUBLIC_DNS, cache, inspector);
+		return new AsyncDnsClient(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, DEFAULT_TIMEOUT,
+				DEFAULT_TIMED_OUT_EXCEPTION_TTL_MILLIS, GOOGLE_PUBLIC_DNS, cache, inspector);
 	}
 
 	public AsyncDnsClient withDatagramSocketSetting(DatagramSocketSettings setting) {
-		return new AsyncDnsClient(eventloop, setting, timeout, dnsServerAddress, cache, inspector);
+		return new AsyncDnsClient(eventloop, setting, timeout, timedOutExceptionTtl, dnsServerAddress, cache, inspector);
 	}
 
 	/**
 	 * Creates a client which waits for result for specified timeout
 	 *
-	 * @param timeout	time which this resolver will wait result
-	 * @return			a client, waiting for response for specified timeout
+	 * @param timeout time which this resolver will wait result
+	 * @return a client, waiting for response for specified timeout
 	 */
 	public AsyncDnsClient withTimeout(long timeout) {
-		return new AsyncDnsClient(eventloop, datagramSocketSettings, timeout, dnsServerAddress, cache, inspector);
+		return new AsyncDnsClient(eventloop, datagramSocketSettings, timeout, timedOutExceptionTtl, dnsServerAddress, cache, inspector);
+	}
+
+	public AsyncDnsClient withTimedOutExceptionTtl(long timedOutExceptionTtl) {
+		DnsCache cache = DnsCache.create(eventloop, ONE_MINUTE_MILLIS, ONE_MINUTE_MILLIS, timedOutExceptionTtl, inspector);
+		return new AsyncDnsClient(eventloop, datagramSocketSettings, timeout, timedOutExceptionTtl, dnsServerAddress, cache, inspector);
 	}
 
 	/**
 	 * Creates a client with an address of server responsible for resolving
 	 * domains names
 	 *
-	 * @param address	address of DNS server which will resolve domain names
-	 * @return			a client with specified DNS server address
+	 * @param address address of DNS server which will resolve domain names
+	 * @return a client with specified DNS server address
 	 */
 	public AsyncDnsClient withDnsServerAddress(InetSocketAddress address) {
-		return new AsyncDnsClient(eventloop, datagramSocketSettings, timeout, address, cache, inspector);
+		return new AsyncDnsClient(eventloop, datagramSocketSettings, timeout, timedOutExceptionTtl, address, cache, inspector);
 	}
 
 	/**
 	 * Creates a client with an address of server responsible for resolving
 	 * domains names
 	 *
-	 * @param address	address of DNS server which will resolve domain names
-	 * @return			a client with specified DNS server address
+	 * @param address address of DNS server which will resolve domain names
+	 * @return a client with specified DNS server address
 	 */
 	public AsyncDnsClient withDnsServerAddress(InetAddress address) {
-		return new AsyncDnsClient(eventloop, datagramSocketSettings, timeout,
+		return new AsyncDnsClient(eventloop, datagramSocketSettings, timeout, timedOutExceptionTtl,
 				new InetSocketAddress(address, DNS_SERVER_PORT), cache, inspector);
 	}
 
 	public AsyncDnsClient withExpiration(long errorCacheExpirationMillis, long hardExpirationDeltaMillis) {
-		DnsCache cache = DnsCache.create(eventloop, errorCacheExpirationMillis, hardExpirationDeltaMillis, inspector);
-		return new AsyncDnsClient(eventloop, datagramSocketSettings, timeout, dnsServerAddress, cache, inspector);
+		return withExpiration(errorCacheExpirationMillis, hardExpirationDeltaMillis, DEFAULT_TIMED_OUT_EXCEPTION_TTL_MILLIS);
 	}
+
+	public AsyncDnsClient withExpiration(long errorCacheExpirationMillis, long hardExpirationDeltaMillis, long timedOutExceptionTtl) {
+		DnsCache cache = DnsCache.create(eventloop, errorCacheExpirationMillis, hardExpirationDeltaMillis, timedOutExceptionTtl, inspector);
+		return new AsyncDnsClient(eventloop, datagramSocketSettings, timeout, timedOutExceptionTtl, dnsServerAddress, cache, inspector);
+	}
+
 
 	public AsyncDnsClient withInspector(AsyncDnsClient.Inspector inspector) {
 		this.inspector = inspector;
@@ -237,8 +250,8 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 	/**
 	 * Returns the DNS adapted client which will run in other eventloop using the same DNS cache
 	 *
-	 * @param eventloop	eventloop in which DnsClient will be ran
-	 * @return			DNS client which will run in other eventloop
+	 * @param eventloop eventloop in which DnsClient will be ran
+	 * @return DNS client which will run in other eventloop
 	 */
 	public IAsyncDnsClient adaptToAnotherEventloop(final Eventloop eventloop) {
 		if (eventloop == this.eventloop)
@@ -293,8 +306,8 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 	/**
 	 * Resolves the IP for the IPv4 addresses and handles it with callback
 	 *
-	 * @param domainName	domain name for searching IP
-	 * @param callback		result callback
+	 * @param domainName domain name for searching IP
+	 * @param callback   result callback
 	 */
 	@Override
 	public void resolve4(final String domainName, ResultCallback<InetAddress[]> callback) {
@@ -304,8 +317,8 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 	/**
 	 * Resolves the IP for the IPv6 addresses and handles it with callback
 	 *
-	 * @param domainName	domain name for searching IP
-	 * @param callback		result callback
+	 * @param domainName domain name for searching IP
+	 * @param callback   result callback
 	 */
 	@Override
 	public void resolve6(String domainName, ResultCallback<InetAddress[]> callback) {
@@ -432,6 +445,11 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 	@JmxAttribute
 	public void setMaxTtlSeconds(long maxTtlSeconds) {
 		cache.setMaxTtlSeconds(maxTtlSeconds);
+	}
+
+	@JmxAttribute
+	public long getTimedOutExceptionTtlSeconds() {
+		return cache.getTimedOutExceptionTtlSeconds();
 	}
 
 	@JmxAttribute(name = "")

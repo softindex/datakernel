@@ -18,6 +18,7 @@ package io.datakernel.dns;
 
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.dns.DnsMessage.ResponseErrorCode;
 import io.datakernel.eventloop.AsyncUdpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
@@ -92,6 +93,9 @@ final class DnsClientConnection implements AsyncUdpSocket.EventHandler {
 			@Override
 			protected void onException(Exception e) {
 				if (!timeouter.isCancelled() && !timeouter.isComplete()) {
+					if (e instanceof AsyncTimeoutException) {
+						e = new DnsException(domainName, ResponseErrorCode.TIMED_OUT);
+					}
 					timeouter.cancel();
 					if (inspector != null) inspector.onDnsQueryError(domainName, e);
 					callback.setException(e);

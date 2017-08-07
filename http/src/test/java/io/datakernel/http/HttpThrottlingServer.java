@@ -29,6 +29,7 @@ import io.datakernel.jmx.MBeanSettings;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 import java.lang.management.ManagementFactory;
+import java.net.InetSocketAddress;
 import java.util.Random;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -96,7 +97,7 @@ public class HttpThrottlingServer {
 			}
 		};
 
-		return AsyncHttpServer.create(eventloop, servlet).withListenPort(SERVER_PORT);
+		return AsyncHttpServer.create(eventloop, servlet).withListenAddress(new InetSocketAddress("localhost", SERVER_PORT));
 	}
 
 	protected static HttpResponse longBusinessLogic(String response, int loadBusinessLogic) {

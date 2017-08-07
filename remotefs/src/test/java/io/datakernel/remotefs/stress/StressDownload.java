@@ -57,7 +57,7 @@ public class StressDownload {
 
 		final int[] failures = new int[1];
 
-		RemoteFsClient client = RemoteFsClient.create(eventloop, new InetSocketAddress(5560));
+		RemoteFsClient client = RemoteFsClient.create(eventloop, new InetSocketAddress("localhost", 5560));
 
 		for (int i = 0; i < OPERATIONS_QUANTITY; i++) {
 			FILES.add(createFile());

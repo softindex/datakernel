@@ -19,7 +19,6 @@ package io.datakernel.aggregation;
 import com.google.common.base.Function;
 import com.google.common.collect.ImmutableMap;
 import io.datakernel.aggregation.fieldtype.FieldTypes;
-import io.datakernel.aggregation.util.Predicates;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.DefiningClassLoader;
@@ -46,24 +45,6 @@ public class AggregationGroupReducerTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
-	public static AggregationOperationTracker NO_OP_TRACKER = new AggregationOperationTracker() {
-		@Override
-		public void reportStart(AggregationChunker chunker) {
-		}
-
-		@Override
-		public void reportCompletion(AggregationChunker chunker) {
-		}
-
-		@Override
-		public void reportStart(AggregationGroupReducer groupReducer) {
-		}
-
-		@Override
-		public void reportCompletion(AggregationGroupReducer groupReducer) {
-		}
-	};
-
 	@Test
 	public void test() throws IOException {
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
@@ -76,14 +57,13 @@ public class AggregationGroupReducerTest {
 		final List<StreamConsumer> listConsumers = new ArrayList<>();
 		final List items = new ArrayList();
 		AggregationChunkStorage aggregationChunkStorage = new AggregationChunkStorage() {
-
 			@Override
-			public <T> StreamProducer<T> chunkReader(Aggregation aggregation, List<String> keys, List<String> fields, Class<T> recordClass, long id, DefiningClassLoader classLoader) {
-				return new StreamProducers.OfIterator<>(eventloop, items.iterator());
+			public <T> void read(Aggregation aggregation, List<String> keys, List<String> fields, Class<T> recordClass, long id, DefiningClassLoader classLoader, ResultCallback<StreamProducer<T>> callback) {
+				callback.setResult(StreamProducers.ofIterator(eventloop, items.iterator()));
 			}
 
 			@Override
-			public <T> void chunkWriter(Aggregation aggregation, List<String> keys, List<String> fields, Class<T> recordClass, long id, StreamProducer<T> producer, DefiningClassLoader classLoader, CompletionCallback callback) {
+			public <T> void write(StreamProducer<T> producer, Aggregation aggregation, List<String> keys, List<String> fields, Class<T> recordClass, long id, DefiningClassLoader classLoader, CompletionCallback callback) {
 				StreamConsumers.ToList consumer = StreamConsumers.toList(eventloop, items);
 				consumer.setCompletionCallback(callback);
 				listConsumers.add(consumer);
@@ -92,7 +72,6 @@ public class AggregationGroupReducerTest {
 
 			@Override
 			public void removeChunk(long id, CompletionCallback callback) {
-
 			}
 		};
 
@@ -107,10 +86,10 @@ public class AggregationGroupReducerTest {
 				ImmutableMap.of("word", "word"), ImmutableMap.of("documents", "documentId"), classLoader);
 
 		int aggregationChunkSize = 2;
-		final List<List<AggregationChunk.NewChunk>> listCallback = new ArrayList<>();
-		ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback = new ResultCallback<List<AggregationChunk.NewChunk>>() {
+		final List<List<AggregationChunk>> listCallback = new ArrayList<>();
+		ResultCallback<List<AggregationChunk>> chunksCallback = new ResultCallback<List<AggregationChunk>>() {
 			@Override
-			public void onResult(List<AggregationChunk.NewChunk> result) {
+			public void onResult(List<AggregationChunk> result) {
 				listCallback.add(result);
 			}
 
@@ -120,9 +99,9 @@ public class AggregationGroupReducerTest {
 			}
 		};
 
-		AggregationGroupReducer<InvertedIndexRecord> aggregationGroupReducer = new AggregationGroupReducer<>(eventloop, aggregationChunkStorage, NO_OP_TRACKER, aggregationMetadataStorage,
+		AggregationGroupReducer<InvertedIndexRecord> aggregationGroupReducer = new AggregationGroupReducer<>(eventloop, aggregationChunkStorage, aggregationMetadataStorage,
 				aggregation, asList("word"), asList("documents"),
-				aggregationClass, Predicates.<InvertedIndexRecord, InvertedIndexRecord>alwaysTrue(), keyFunction, aggregate, aggregationChunkSize, classLoader, chunksCallback);
+				aggregationClass, AggregationUtils.<InvertedIndexRecord>singlePartition(), keyFunction, aggregate, aggregationChunkSize, classLoader, chunksCallback);
 
 		StreamProducer<InvertedIndexRecord> producer = StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("fox", 1),
 				new InvertedIndexRecord("brown", 2), new InvertedIndexRecord("fox", 3),

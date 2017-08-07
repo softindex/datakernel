@@ -33,6 +33,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
@@ -204,7 +205,7 @@ public class AsyncHttpClientTest {
 			}
 		};
 
-		final SimpleServer server = SimpleServer.create(eventloop, socketHandlerProvider).withListenPort(PORT);
+		final SimpleServer server = SimpleServer.create(eventloop, socketHandlerProvider).withListenAddress(new InetSocketAddress("localhost", PORT));
 		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop);
 		final ResultCallbackFuture<String> resultObserver = ResultCallbackFuture.create();
 

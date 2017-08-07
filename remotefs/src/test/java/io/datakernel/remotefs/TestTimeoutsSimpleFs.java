@@ -64,7 +64,7 @@ public class TestTimeoutsSimpleFs {
 		CallbackRegistry.setStoreStackTrace(true);
 		((Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME)).setLevel(Level.TRACE);
 
-		InetSocketAddress address = new InetSocketAddress(7010);
+		InetSocketAddress address = new InetSocketAddress("localhost", 7010);
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		RemoteFsClient client = RemoteFsClient.create(eventloop, address);
 
@@ -72,13 +72,13 @@ public class TestTimeoutsSimpleFs {
 		final RemoteFsServer server = RemoteFsServer.create(eventloop, serverExecutor, storagePath)
 				.withSocketSettings(SocketSettings.create().withImplReadTimeout(1L))
 				.withAcceptOnce()
-				.withListenPort(7010);
+				.withListenAddress(new InetSocketAddress("localhost", 7010));
 
 		server.listen();
 
 		CompletionCallbackFuture callback = CompletionCallbackFuture.create();
 
-		client.upload("fileName.txt", StreamProducers.ofValue(eventloop, ByteBuf.wrapForReading(BIG_FILE)), callback);
+		client.upload(StreamProducers.ofValue(eventloop, ByteBuf.wrapForReading(BIG_FILE)), "fileName.txt", callback);
 
 		eventloop.run();
 

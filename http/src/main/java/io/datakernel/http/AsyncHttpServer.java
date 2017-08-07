@@ -32,7 +32,6 @@ import io.datakernel.jmx.ValueStats;
 import io.datakernel.util.MemSize;
 
 import java.net.InetAddress;
-import java.net.Socket;
 
 import static io.datakernel.http.AbstractHttpConnection.*;
 
@@ -96,7 +95,6 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	int keepAliveTimeoutMillis = (int) DEFAULT_KEEP_ALIVE_MILLIS;
 	private int readTimeoutMillis = 0;
 	private int writeTimeoutMillis = 0;
-	private boolean gzipResponses = false;
 
 	private int connectionsCount;
 	final ConnectionsLinkedList poolKeepAlive = new ConnectionsLinkedList();
@@ -228,11 +226,6 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		return self();
 	}
 
-	public AsyncHttpServer withGzipResponses(boolean gzipResponses) {
-		this.gzipResponses = gzipResponses;
-		return self();
-	}
-
 	public AsyncHttpServer withInspector(Inspector inspector) {
 		this.inspector = inspector;
 		return self();
@@ -263,7 +256,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		if (expiredConnectionsCheck == null)
 			scheduleExpiredConnectionsCheck();
 		return new HttpServerConnection(eventloop, asyncTcpSocket.getRemoteSocketAddress().getAddress(), asyncTcpSocket, this, servlet,
-				headerChars, maxHttpMessageSize, gzipResponses);
+				headerChars, maxHttpMessageSize);
 	}
 
 	private CompletionCallback closeCallback;

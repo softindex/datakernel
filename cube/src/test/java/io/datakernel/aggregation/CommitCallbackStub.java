@@ -23,9 +23,7 @@ import io.datakernel.cube.Cube;
 
 import java.util.Map;
 
-import static io.datakernel.aggregation.AggregationChunk.createChunk;
-
-public class CommitCallbackStub extends ResultCallback<Multimap<String, AggregationChunk.NewChunk>> {
+public class CommitCallbackStub extends ResultCallback<Multimap<String, AggregationChunk>> {
 	private final Cube cube;
 	private final CompletionCallback callback;
 
@@ -39,12 +37,12 @@ public class CommitCallbackStub extends ResultCallback<Multimap<String, Aggregat
 	}
 
 	@Override
-	public void onResult(Multimap<String, AggregationChunk.NewChunk> newChunks) {
+	public void onResult(Multimap<String, AggregationChunk> newChunks) {
 		cube.incrementLastRevisionId();
-		for (Map.Entry<String, AggregationChunk.NewChunk> entry : newChunks.entries()) {
+		for (Map.Entry<String, AggregationChunk> entry : newChunks.entries()) {
 			String aggregationId = entry.getKey();
-			AggregationChunk.NewChunk newChunk = entry.getValue();
-			cube.getAggregation(aggregationId).getMetadata().addToIndex(createChunk(cube.getLastRevisionId(), newChunk));
+			AggregationChunk newChunk = entry.getValue();
+			cube.getAggregation(aggregationId).getMetadata().addToIndex(newChunk);
 		}
 
 		if (callback != null)

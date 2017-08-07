@@ -77,6 +77,11 @@ public final class HttpResponse extends HttpMessage {
 		return this;
 	}
 
+	public HttpResponse withBodyGzipCompression() {
+		super.setBodyGzipCompression();
+		return this;
+	}
+
 	public HttpResponse withBody(ByteBuf body) {
 		setBody(body);
 		return this;
@@ -84,11 +89,6 @@ public final class HttpResponse extends HttpMessage {
 
 	public HttpResponse withBody(byte[] array) {
 		setBody(array);
-		return this;
-	}
-
-	public HttpResponse withGzipCompression(boolean allow) {
-		setGzipCompression(allow);
 		return this;
 	}
 

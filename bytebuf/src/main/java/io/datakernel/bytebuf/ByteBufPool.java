@@ -49,7 +49,7 @@ public final class ByteBufPool {
 		} else {
 			buf = ByteBuf.wrapForWriting(new byte[1 << index]);
 			buf.refs++;
-			assert created[index].incrementAndGet() != 0;
+			created[index].incrementAndGet();
 		}
 
 		assert ByteBufRegistry.recordAllocate(buf);
@@ -151,12 +151,10 @@ public final class ByteBufPool {
 	}
 
 	public static int getCreatedItems(int slab) {
-		assert slab >= 0 && slab < slabs.length;
 		return created[slab].get();
 	}
 
 	public static int getPoolItems(int slab) {
-		assert slab >= 0 && slab < slabs.length;
 		return slabs[slab].size();
 	}
 

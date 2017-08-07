@@ -25,7 +25,7 @@ import java.nio.charset.Charset;
 import java.util.*;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
-import static io.datakernel.http.GzipProcessor.toGzip;
+import static io.datakernel.http.GzipProcessorUtils.toGzip;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
@@ -182,8 +182,13 @@ public final class HttpRequest extends HttpMessage {
 		return this;
 	}
 
-	public HttpRequest withGzipCompression() {
-		setGzipCompression(true);
+	public HttpRequest withBodyGzipCompression() {
+		super.setBodyGzipCompression();
+		return this;
+	}
+
+	public HttpRequest withAcceptEncodingGzip() {
+		setHeader(HttpHeaders.ofString(ACCEPT_ENCODING, "gzip"));
 		return this;
 	}
 	// endregion
@@ -254,9 +259,8 @@ public final class HttpRequest extends HttpMessage {
 		setHeader(ofDate(IF_UNMODIFIED_SINCE, date));
 	}
 
-	public void setGzipCompression() {
-		setHeader(HttpHeaders.ofString(CONTENT_ENCODING, "gzip"));
-		gzip = true;
+	public void setAcceptEncodingGzip() {
+		setHeader(HttpHeaders.ofString(ACCEPT_ENCODING, "gzip"));
 	}
 	// endregion
 
@@ -432,6 +436,11 @@ public final class HttpRequest extends HttpMessage {
 		}
 		return cookie;
 	}
+
+	public boolean isAcceptEncodingGzip() {
+		String acceptEncoding = this.getHeader(HttpHeaders.ACCEPT_ENCODING);
+		return acceptEncoding != null && acceptEncoding.contains("gzip");
+	}
 	// endregion
 
 	// region internal
@@ -486,7 +495,7 @@ public final class HttpRequest extends HttpMessage {
 	public ByteBuf toByteBuf() {
 		assert !recycled;
 		if (body != null || method != GET) {
-			if (useGzip == Boolean.TRUE && body != null && body.readRemaining() > 0) {
+			if (useGzip && body != null && body.readRemaining() > 0) {
 				body = toGzip(body);
 				setHeader(asBytes(CONTENT_ENCODING, GZIP_BYTES));
 			}

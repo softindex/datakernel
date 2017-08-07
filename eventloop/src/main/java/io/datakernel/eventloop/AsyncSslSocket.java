@@ -18,6 +18,7 @@ package io.datakernel.eventloop;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.net.CloseWithoutNotifyException;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
@@ -118,7 +119,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		try {
 			engine.closeInbound();
 		} catch (SSLException e) {
-			downstreamEventHandler.onClosedWithError(e);
+			downstreamEventHandler.onClosedWithError(new CloseWithoutNotifyException(e));
 			recycleByteBufs();
 			upstream.close();
 		}
@@ -259,6 +260,10 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		} catch (SSLException e) {
 			dstBuf.recycle();
 			throw e;
+		} catch (RuntimeException e) {
+			// https://bugs.openjdk.java.net/browse/JDK-8072452
+			dstBuf.recycle();
+			throw new SSLException(e);
 		}
 
 		app2engine.ofReadByteBuffer(srcBuffer);

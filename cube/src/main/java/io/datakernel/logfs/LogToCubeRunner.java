@@ -100,7 +100,7 @@ public final class LogToCubeRunner<T> {
 			@Override
 			protected void onCommit(String log, Map<String, LogPosition> oldPositions,
 			                        Map<String, LogPosition> newPositions,
-			                        Multimap<String, AggregationChunk.NewChunk> newChunks) {
+			                        Multimap<String, AggregationChunk> newChunks) {
 				processLog_doCommit(log, oldPositions, newPositions, newChunks, callback);
 
 				sw.stop();
@@ -129,7 +129,7 @@ public final class LogToCubeRunner<T> {
 
 	private void processLog_doCommit(final String log, Map<String, LogPosition> oldPositions,
 	                                 Map<String, LogPosition> newPositions,
-	                                 final Multimap<String, AggregationChunk.NewChunk> newChunks,
+	                                 final Multimap<String, AggregationChunk> newChunks,
 	                                 final CompletionCallback callback) {
 		logger.trace("processLog_doCommit called. Log: {}. Old positions: {}. New positions: {}. New chunks: {}.", log, oldPositions, newPositions, newChunks);
 		logger.info("Saving commit to metadata storage. Log: {}", log);
@@ -148,7 +148,7 @@ public final class LogToCubeRunner<T> {
 				});
 	}
 
-	private void processLog_afterCommit(Multimap<String, AggregationChunk.NewChunk> newChunks, CompletionCallback callback) {
+	private void processLog_afterCommit(Multimap<String, AggregationChunk> newChunks, CompletionCallback callback) {
 		logger.trace("processLog_afterCommit called. New chunks: {}", newChunks);
 		callback.setComplete();
 	}

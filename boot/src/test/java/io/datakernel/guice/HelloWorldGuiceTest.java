@@ -88,7 +88,7 @@ public class HelloWorldGuiceTest {
 		@Singleton
 		PrimaryServer primaryServer(@Named("PrimaryEventloop") Eventloop primaryEventloop, WorkerPool workerPool) {
 			List<AsyncHttpServer> workerHttpServers = workerPool.getInstances(AsyncHttpServer.class);
-			return PrimaryServer.create(primaryEventloop, workerHttpServers).withListenPort(PORT);
+			return PrimaryServer.create(primaryEventloop, workerHttpServers).withListenAddress(new InetSocketAddress("localhost", PORT));
 		}
 
 		@Provides
@@ -124,8 +124,8 @@ public class HelloWorldGuiceTest {
 		try {
 			serviceGraph.startFuture().get();
 
-			socket0.connect(new InetSocketAddress(PORT));
-			socket1.connect(new InetSocketAddress(PORT));
+			socket0.connect(new InetSocketAddress("localhost", PORT));
+			socket1.connect(new InetSocketAddress("localhost", PORT));
 
 			for (int i = 0; i < 10; i++) {
 				socket0.getOutputStream().write(encodeAscii("GET /abc HTTP1.1\r\nHost: localhost\r\nConnection: keep-alive\n\r\n"));

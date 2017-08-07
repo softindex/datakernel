@@ -18,13 +18,10 @@ package io.datakernel.remotefs;
 
 import com.google.gson.Gson;
 import io.datakernel.async.*;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocket.EventHandler;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import io.datakernel.stream.net.Messaging.ReceiveMessageCallback;
@@ -56,33 +53,6 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 		return new RemoteFsServer(eventloop, FileManager.create(eventloop, executor, storage));
 	}
 	// endregion
-
-	// public api
-	public void upload(String fileName, final ResultCallback<StreamConsumer<ByteBuf>> callback) {
-		fileManager.save(fileName, new ForwardingResultCallback<StreamFileWriter>(callback) {
-			@Override
-			public void onResult(StreamFileWriter result) {
-				callback.setResult(result);
-			}
-		});
-	}
-
-	public void download(String fileName, long startPosition, final ResultCallback<StreamProducer<ByteBuf>> callback) {
-		fileManager.get(fileName, startPosition, new ForwardingResultCallback<StreamFileReader>(callback) {
-			@Override
-			public void onResult(StreamFileReader result) {
-				callback.setResult(result);
-			}
-		});
-	}
-
-	public void delete(String fileName, CompletionCallback callback) {
-		fileManager.delete(fileName, callback);
-	}
-
-	protected void list(ResultCallback<List<String>> callback) {
-		fileManager.scan(callback);
-	}
 
 	// set up connection
 	@Override
@@ -146,12 +116,13 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 	private class UploadMessagingHandler implements MessagingHandler<RemoteFsCommands.Upload, RemoteFsResponses.FsResponse> {
 		@Override
 		public void onMessage(final MessagingWithBinaryStreaming<RemoteFsCommands.Upload, RemoteFsResponses.FsResponse> messaging, final RemoteFsCommands.Upload item) {
-			upload(item.filePath, new ResultCallback<StreamConsumer<ByteBuf>>() {
+			fileManager.save(item.filePath, new ResultCallback<StreamFileWriter>() {
 				@Override
-				public void onResult(StreamConsumer<ByteBuf> result) {
-					messaging.receiveBinaryStreamTo(result, new ForwardingCompletionCallback(this) {
+				public void onResult(StreamFileWriter fileWriter) {
+					messaging.receiveBinaryStreamTo(fileWriter, IgnoreCompletionCallback.create());
+					fileWriter.setFlushCallback(new ForwardingCompletionCallback(this) {
 						@Override
-						public void onComplete() {
+						protected void onComplete() {
 							logger.trace("read all bytes for {}", item.filePath);
 							messaging.send(new RemoteFsResponses.Acknowledge(), IgnoreCompletionCallback.create());
 							messaging.sendEndOfStream(IgnoreCompletionCallback.create());
@@ -180,21 +151,17 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 						messaging.send(new RemoteFsResponses.Ready(size), new ForwardingCompletionCallback(this) {
 							@Override
 							public void onComplete() {
-								download(item.filePath, item.startPosition, new ForwardingResultCallback<StreamProducer<ByteBuf>>(this) {
+								fileManager.get(item.filePath, item.startPosition, new ForwardingResultCallback<StreamFileReader>(this) {
 									@Override
-									public void onResult(final StreamProducer<ByteBuf> result) {
-										messaging.sendBinaryStreamFrom(result, new CompletionCallback() {
+									public void onResult(final StreamFileReader fileReader) {
+										messaging.sendBinaryStreamFrom(fileReader, new CompletionCallback() {
 											@Override
 											protected void onException(Exception e) {
-												onCompleteOrException();
+												messaging.close();
 											}
 
 											@Override
 											protected void onComplete() {
-												onCompleteOrException();
-											}
-
-											void onCompleteOrException() {
 												messaging.close();
 											}
 										});
@@ -217,7 +184,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 	private class DeleteMessagingHandler implements MessagingHandler<RemoteFsCommands.Delete, RemoteFsResponses.FsResponse> {
 		@Override
 		public void onMessage(final MessagingWithBinaryStreaming<RemoteFsCommands.Delete, RemoteFsResponses.FsResponse> messaging, final RemoteFsCommands.Delete item) {
-			delete(item.filePath, new CompletionCallback() {
+			fileManager.delete(item.filePath, new CompletionCallback() {
 				@Override
 				public void onComplete() {
 					messaging.send(new RemoteFsResponses.Ok(), IgnoreCompletionCallback.create());
@@ -236,7 +203,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 	private class ListFilesMessagingHandler implements MessagingHandler<RemoteFsCommands.ListFiles, RemoteFsResponses.FsResponse> {
 		@Override
 		public void onMessage(final MessagingWithBinaryStreaming<RemoteFsCommands.ListFiles, RemoteFsResponses.FsResponse> messaging, RemoteFsCommands.ListFiles item) {
-			list(new ResultCallback<List<String>>() {
+			fileManager.scan(new ResultCallback<List<String>>() {
 				@Override
 				public void onResult(List<String> result) {
 					messaging.send(new RemoteFsResponses.ListOfFiles(result), IgnoreCompletionCallback.create());

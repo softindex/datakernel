@@ -26,11 +26,10 @@ import io.datakernel.cube.CubeMetadataStorage;
 import java.util.*;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static io.datakernel.aggregation.AggregationChunk.createChunk;
 
 public class CubeMetadataStorageStub implements CubeMetadataStorage {
 	private long chunkId;
-	private Map<String, List<AggregationChunk.NewChunk>> tmpChunks = new HashMap<>();
+	private Map<String, List<AggregationChunk>> tmpChunks = new HashMap<>();
 
 	public long newChunkId() {
 		return ++chunkId;
@@ -47,7 +46,7 @@ public class CubeMetadataStorageStub implements CubeMetadataStorage {
 	}
 
 	@Override
-	public void saveConsolidatedChunks(Cube cube, String aggregationId, List<AggregationChunk> originalChunks, List<AggregationChunk.NewChunk> consolidatedChunks, CompletionCallback callback) {
+	public void saveConsolidatedChunks(Cube cube, String aggregationId, List<AggregationChunk> originalChunks, List<AggregationChunk> consolidatedChunks, CompletionCallback callback) {
 		callback.setComplete();
 	}
 
@@ -56,17 +55,12 @@ public class CubeMetadataStorageStub implements CubeMetadataStorage {
 		Map<String, List<AggregationChunk>> newChunks = new HashMap<>();
 
 		for (String aggregationId : cube.getAggregationIds()) {
-			List<AggregationChunk.NewChunk> chunks = tmpChunks.get(aggregationId);
+			List<AggregationChunk> chunks = tmpChunks.get(aggregationId);
 
 			if (chunks == null)
 				chunks = new ArrayList<>();
 
-			newChunks.put(aggregationId, newArrayList(Collections2.transform(chunks, new Function<AggregationChunk.NewChunk, AggregationChunk>() {
-				@Override
-				public AggregationChunk apply(AggregationChunk.NewChunk input) {
-					return createChunk(lastRevisionId, input);
-				}
-			})));
+			newChunks.put(aggregationId, chunks);
 		}
 
 		CubeLoadedChunks cubeLoadedChunks = new CubeLoadedChunks(lastRevisionId + 1, Collections.<String, List<Long>>emptyMap(), newChunks);
@@ -75,7 +69,7 @@ public class CubeMetadataStorageStub implements CubeMetadataStorage {
 		callback.postComplete();
 	}
 
-	public void doSaveChunk(String aggregationId, List<AggregationChunk.NewChunk> newChunks, CompletionCallback callback) {
+	public void doSaveChunk(String aggregationId, List<AggregationChunk> newChunks, CompletionCallback callback) {
 		tmpChunks.put(aggregationId, newChunks);
 		callback.setComplete();
 	}

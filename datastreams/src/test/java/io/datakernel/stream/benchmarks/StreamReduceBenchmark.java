@@ -69,7 +69,7 @@ public class StreamReduceBenchmark implements Runnable {
 		StreamProducer<Integer> source6 = StreamProducers.ofIterable(eventloop, testList);
 		StreamProducer<Integer> source7 = StreamProducers.ofIterable(eventloop, testList);
 
-		StreamReducer<Integer, Integer, Void> streamReducer = StreamReducer.create(eventloop, Ordering.<Integer>natural(), 1);
+		StreamReducer<Integer, Integer, Void> streamReducer = StreamReducer.create(eventloop, Ordering.<Integer>natural());
 		Function<Integer, Integer> keyFunction = Functions.identity();
 		StreamReducers.Reducer<Integer, Integer, Integer, Void> reducer = mergeDeduplicateReducer();
 
