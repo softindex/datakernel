@@ -16,20 +16,25 @@
 
 package io.datakernel.cube;
 
-import io.datakernel.aggregation.AggregationChunkStorageStub;
-import io.datakernel.aggregation.CommitCallbackStub;
-import io.datakernel.aggregation.CubeMetadataStorageStub;
+import io.datakernel.aggregation.AggregationChunkStorage;
+import io.datakernel.aggregation.LocalFsChunkStorage;
 import io.datakernel.aggregation.fieldtype.FieldTypes;
+import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.bean.DataItemResultString;
 import io.datakernel.cube.bean.DataItemString1;
 import io.datakernel.cube.bean.DataItemString2;
+import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducers;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
+import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.aggregation.AggregationPredicates.and;
@@ -42,25 +47,35 @@ import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
 public class StringDimensionTest {
+	@Rule
+	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
 	@Test
 	public void testQuery() throws Exception {
-		DefiningClassLoader classLoader = DefiningClassLoader.create();
+		Path aggregationsDir = temporaryFolder.newFolder().toPath();
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
-		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop);
-		CubeMetadataStorageStub cubeMetadataStorage = new CubeMetadataStorageStub();
-		Cube cube = Cube.create(eventloop, Executors.newCachedThreadPool(), classLoader, cubeMetadataStorage, storage)
+		ExecutorService executor = Executors.newCachedThreadPool();
+		DefiningClassLoader classLoader = DefiningClassLoader.create();
+
+		AggregationChunkStorage aggregationChunkStorage = LocalFsChunkStorage.create(eventloop, executor, new IdGeneratorStub(), aggregationsDir);
+		Cube cube = Cube.create(eventloop, executor, classLoader, aggregationChunkStorage)
 				.withDimension("key1", FieldTypes.ofString())
 				.withDimension("key2", FieldTypes.ofInt())
 				.withMeasure("metric1", sum(ofLong()))
 				.withMeasure("metric2", sum(ofLong()))
 				.withMeasure("metric3", sum(ofLong()))
 				.withAggregation(id("detailedAggregation").withDimensions("key1", "key2").withMeasures("metric1", "metric2", "metric3"));
+
+		ResultCallbackFuture<CubeDiff> future1 = ResultCallbackFuture.create();
+		ResultCallbackFuture<CubeDiff> future2 = ResultCallbackFuture.create();
 		StreamProducers.ofIterable(eventloop, asList(new DataItemString1("str1", 2, 10, 20), new DataItemString1("str2", 3, 10, 20)))
-				.streamTo(cube.consumer(DataItemString1.class, new CommitCallbackStub(cube)));
+				.streamTo(cube.consumer(DataItemString1.class, future1));
 		StreamProducers.ofIterable(eventloop, asList(new DataItemString2("str2", 3, 10, 20), new DataItemString2("str1", 4, 10, 20)))
-				.streamTo(cube.consumer(DataItemString2.class, new CommitCallbackStub(cube)));
+				.streamTo(cube.consumer(DataItemString2.class, future2));
 		eventloop.run();
+
+		cube.apply(future1.get());
+		cube.apply(future2.get());
 
 		StreamConsumers.ToList<DataItemResultString> consumerToList = StreamConsumers.toList(eventloop);
 		cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"),

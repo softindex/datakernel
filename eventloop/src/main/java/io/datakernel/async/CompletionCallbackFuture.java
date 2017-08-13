@@ -25,9 +25,12 @@ public final class CompletionCallbackFuture extends CompletionCallback implement
 	private Exception exception;
 
 	// region builders
-	private CompletionCallbackFuture() {}
+	private CompletionCallbackFuture() {
+	}
 
-	public static CompletionCallbackFuture create() {return new CompletionCallbackFuture();}
+	public static CompletionCallbackFuture create() {
+		return new CompletionCallbackFuture();
+	}
 	// endregion
 
 	@Override
@@ -56,6 +59,14 @@ public final class CompletionCallbackFuture extends CompletionCallback implement
 	@Override
 	public boolean isDone() {
 		return latch.getCount() == 0;
+	}
+
+	public boolean isComplete() {
+		return isDone() && exception == null;
+	}
+
+	public boolean isException() {
+		return isDone() && exception != null;
 	}
 
 	@Override
@@ -87,5 +98,10 @@ public final class CompletionCallbackFuture extends CompletionCallback implement
 
 	public void await(long timeout, TimeUnit unit) throws InterruptedException, TimeoutException, ExecutionException {
 		get(timeout, unit);
+	}
+
+	@Override
+	public String toString() {
+		return "{" + (isComplete() ? "complete" : (isException() ? exception : "?"));
 	}
 }

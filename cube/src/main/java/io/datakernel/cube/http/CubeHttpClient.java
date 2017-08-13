@@ -16,7 +16,8 @@
 
 package io.datakernel.cube.http;
 
-import com.google.gson.Gson;
+import com.google.gson.TypeAdapter;
+import io.datakernel.aggregation.AggregationPredicate;
 import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBufStrings;
@@ -26,7 +27,11 @@ import io.datakernel.cube.QueryResult;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
+import io.datakernel.utils.GsonAdapters;
+import io.datakernel.utils.GsonAdapters.TypeAdapterRegistry;
+import io.datakernel.utils.GsonAdapters.TypeAdapterRegistryImpl;
 
+import java.io.IOException;
 import java.lang.reflect.Type;
 import java.net.URI;
 import java.util.Map;
@@ -38,19 +43,21 @@ public final class CubeHttpClient implements ICube {
 	private final Eventloop eventloop;
 	private final String url;
 	private final IAsyncHttpClient httpClient;
-	private Gson gson;
+	private final TypeAdapterRegistryImpl registry;
+	private TypeAdapter<QueryResult> queryResultJson;
+	private TypeAdapter<AggregationPredicate> aggregationPredicateJson;
 	private final Map<String, Type> attributeTypes = newLinkedHashMap();
 	private final Map<String, Type> measureTypes = newLinkedHashMap();
 
-	private CubeHttpClient(Eventloop eventloop, IAsyncHttpClient httpClient, String url) {
+	private CubeHttpClient(Eventloop eventloop, IAsyncHttpClient httpClient, String url, TypeAdapterRegistryImpl registry) {
 		this.eventloop = eventloop;
 		this.url = url.replaceAll("/$", "");
 		this.httpClient = httpClient;
-		this.gson = createGsonBuilder(attributeTypes, measureTypes).create(); // TODO support of external GsonBuilder
+		this.registry = registry;
 	}
 
 	public static CubeHttpClient create(Eventloop eventloop, AsyncHttpClient httpClient, String cubeServletUrl) {
-		return new CubeHttpClient(eventloop, httpClient, cubeServletUrl);
+		return new CubeHttpClient(eventloop, httpClient, cubeServletUrl, createCubeTypeAdaptersRegistry());
 	}
 
 	public static CubeHttpClient create(Eventloop eventloop, AsyncHttpClient httpClient, URI cubeServletUrl) {
@@ -65,6 +72,20 @@ public final class CubeHttpClient implements ICube {
 	public CubeHttpClient withMeasure(String measureId, Class<?> type) {
 		measureTypes.put(measureId, type);
 		return this;
+	}
+
+	private TypeAdapter<AggregationPredicate> getAggregationPredicateJson() {
+		if (aggregationPredicateJson == null) {
+			aggregationPredicateJson = AggregationPredicateGsonAdapter.create(registry, attributeTypes, measureTypes);
+		}
+		return aggregationPredicateJson;
+	}
+
+	private TypeAdapter<QueryResult> getQueryResultJson() {
+		if (queryResultJson == null) {
+			queryResultJson = QueryResultGsonAdapter.create(registry, attributeTypes, measureTypes);
+		}
+		return queryResultJson;
 	}
 
 	@Override
@@ -96,7 +117,14 @@ public final class CubeHttpClient implements ICube {
 					return;
 				}
 
-				QueryResult result = gson.fromJson(response, QueryResult.class);
+				QueryResult result;
+				try {
+					result = getQueryResultJson().fromJson(response);
+				} catch (IOException e) {
+					callback.setException(new ParseException("Cube HTTP query failed. Invalid data received", e));
+					return;
+				}
+
 				callback.setResult(result);
 			}
 		});
@@ -107,9 +135,9 @@ public final class CubeHttpClient implements ICube {
 
 		urlParams.put(ATTRIBUTES_PARAM, JOINER.join(query.getAttributes()));
 		urlParams.put(MEASURES_PARAM, JOINER.join(query.getMeasures()));
-		urlParams.put(WHERE_PARAM, gson.toJson(query.getWhere()));
+		urlParams.put(WHERE_PARAM, getAggregationPredicateJson().toJson(query.getWhere()));
 		urlParams.put(SORT_PARAM, formatOrderings(query.getOrderings()));
-		urlParams.put(HAVING_PARAM, gson.toJson(query.getHaving()));
+		urlParams.put(HAVING_PARAM, getAggregationPredicateJson().toJson(query.getHaving()));
 		if (query.getLimit() != null)
 			urlParams.put(LIMIT_PARAM, query.getLimit().toString());
 		if (query.getOffset() != null)

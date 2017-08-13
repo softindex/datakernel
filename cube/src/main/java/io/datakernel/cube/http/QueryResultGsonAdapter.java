@@ -16,16 +16,16 @@
 
 package io.datakernel.cube.http;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonParseException;
 import com.google.gson.TypeAdapter;
-import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 import io.datakernel.cube.QueryResult;
 import io.datakernel.cube.Record;
 import io.datakernel.cube.RecordScheme;
 import io.datakernel.cube.ReportType;
+import io.datakernel.utils.GsonAdapters;
+import io.datakernel.utils.GsonAdapters.TypeAdapterRegistry;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -36,6 +36,7 @@ import java.util.Map;
 import static com.google.common.base.MoreObjects.firstNonNull;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.Maps.newLinkedHashMap;
+import static io.datakernel.utils.GsonAdapters.asNullable;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 
@@ -48,7 +49,6 @@ final class QueryResultGsonAdapter extends TypeAdapter<QueryResult> {
 	private static final String COUNT_FIELD = "count";
 	private static final String SORTED_BY_FIELD = "sortedBy";
 	private static final String METADATA_FIELD = "metadata";
-	private static final String RELATIONS = "relations";
 
 	private final Map<String, TypeAdapter<?>> attributeAdapters;
 	private final Map<String, TypeAdapter<?>> measureAdapters;
@@ -56,37 +56,31 @@ final class QueryResultGsonAdapter extends TypeAdapter<QueryResult> {
 	private final Map<String, Class<?>> attributeTypes;
 	private final Map<String, Class<?>> measureTypes;
 
-	private final TypeAdapter<List<String>> stringListAdapter;
-	private final TypeAdapter<Map<String, String>> childParentRelationsAdapter;
+	private final TypeAdapter<List<String>> stringListAdapter = GsonAdapters.ofList(GsonAdapters.STRING_JSON);
 
-	public QueryResultGsonAdapter(Map<String, TypeAdapter<?>> attributeAdapters, Map<String, TypeAdapter<?>> measureAdapters, Map<String, Class<?>> attributeTypes, Map<String, Class<?>> measureTypes, TypeAdapter<Map<String, String>> childParentRelationsAdapter, TypeAdapter<List<String>> stringListAdapter) {
+	public QueryResultGsonAdapter(Map<String, TypeAdapter<?>> attributeAdapters, Map<String, TypeAdapter<?>> measureAdapters, Map<String, Class<?>> attributeTypes, Map<String, Class<?>> measureTypes) {
 		this.attributeAdapters = attributeAdapters;
 		this.measureAdapters = measureAdapters;
 		this.attributeTypes = attributeTypes;
 		this.measureTypes = measureTypes;
-		this.stringListAdapter = stringListAdapter;
-		this.childParentRelationsAdapter = childParentRelationsAdapter;
 	}
 
-	public static QueryResultGsonAdapter create(Gson gson, Map<String, Type> attributeTypes, Map<String, Type> measureTypes) {
+	public static QueryResultGsonAdapter create(TypeAdapterRegistry typeAdapterRegistry, Map<String, Type> attributeTypes, Map<String, Type> measureTypes) {
 		Map<String, TypeAdapter<?>> attributeAdapters = newLinkedHashMap();
 		Map<String, TypeAdapter<?>> measureAdapters = newLinkedHashMap();
 		Map<String, Class<?>> attributeRawTypes = newLinkedHashMap();
 		Map<String, Class<?>> measureRawTypes = newLinkedHashMap();
 		for (String attribute : attributeTypes.keySet()) {
-			TypeToken<?> typeToken = TypeToken.get(attributeTypes.get(attribute));
-			attributeAdapters.put(attribute, gson.getAdapter(typeToken));
-			attributeRawTypes.put(attribute, typeToken.getRawType());
+			Type type = attributeTypes.get(attribute);
+			attributeAdapters.put(attribute, asNullable(typeAdapterRegistry.getAdapter(type)));
+			attributeRawTypes.put(attribute, (Class<?>) type);
 		}
 		for (String measure : measureTypes.keySet()) {
-			TypeToken<?> typeToken = TypeToken.get(measureTypes.get(measure));
-			measureAdapters.put(measure, gson.getAdapter(typeToken));
-			measureRawTypes.put(measure, typeToken.getRawType());
+			Type type = measureTypes.get(measure);
+			measureAdapters.put(measure, typeAdapterRegistry.getAdapter(type));
+			measureRawTypes.put(measure, (Class<?>) type);
 		}
-		TypeAdapter<Map<String, String>> childParentRelationsAdapter = gson.getAdapter(new TypeToken<Map<String, String>>() {});
-		TypeAdapter<List<String>> stringListAdapter = gson.getAdapter(new TypeToken<List<String>>() {});
-		return new QueryResultGsonAdapter(attributeAdapters, measureAdapters, attributeRawTypes, measureRawTypes,
-				childParentRelationsAdapter, stringListAdapter);
+		return new QueryResultGsonAdapter(attributeAdapters, measureAdapters, attributeRawTypes, measureRawTypes);
 	}
 
 	@Override

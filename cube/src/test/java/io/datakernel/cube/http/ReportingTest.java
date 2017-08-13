@@ -17,6 +17,7 @@
 package io.datakernel.cube.http;
 
 import com.google.common.collect.ImmutableMap;
+import com.zaxxer.hikari.HikariDataSource;
 import io.datakernel.aggregation.Aggregation;
 import io.datakernel.aggregation.AggregationChunk;
 import io.datakernel.aggregation.AggregationChunkStorage;
@@ -26,34 +27,38 @@ import io.datakernel.aggregation.annotation.Measures;
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.measure.Measure;
 import io.datakernel.async.AssertingResultCallback;
-import io.datakernel.async.IgnoreCompletionCallback;
+import io.datakernel.async.CompletionCallbackFuture;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.*;
 import io.datakernel.cube.attributes.AbstractAttributeResolver;
+import io.datakernel.cube.ot.CubeDiff;
+import io.datakernel.cube.ot.CubeDiffJson;
+import io.datakernel.cube.ot.CubeOT;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.AsyncHttpServer;
+import io.datakernel.logfs.LocalFsLogFileSystem;
 import io.datakernel.logfs.LogManager;
-import io.datakernel.logfs.LogToCubeMetadataStorage;
-import io.datakernel.logfs.LogToCubeRunner;
+import io.datakernel.logfs.LogManagerImpl;
+import io.datakernel.logfs.ot.*;
+import io.datakernel.ot.OTCommit;
+import io.datakernel.ot.OTRemoteAdapter;
+import io.datakernel.ot.OTRemoteSql;
+import io.datakernel.ot.OTStateManager;
+import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Serialize;
-import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamProducers;
 import org.joda.time.LocalDate;
-import org.jooq.Configuration;
-import org.jooq.SQLDialect;
+import org.junit.After;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-import java.io.IOException;
+import javax.sql.DataSource;
+import java.net.InetSocketAddress;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -67,7 +72,7 @@ import static io.datakernel.aggregation.measure.Measures.*;
 import static io.datakernel.cube.ComputedMeasures.*;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
 import static io.datakernel.cube.CubeQuery.Ordering.asc;
-import static io.datakernel.cube.CubeTestUtils.*;
+import static io.datakernel.cube.CubeTestUtils.dataSource;
 import static io.datakernel.cube.ReportType.DATA;
 import static io.datakernel.cube.ReportType.DATA_WITH_TOTALS;
 import static io.datakernel.cube.http.ReportingTest.LogItem.*;
@@ -81,22 +86,16 @@ import static org.junit.Assert.assertTrue;
 public class ReportingTest {
 	public static final double DELTA = 1E-3;
 
-	private static Configuration jooqConfiguration;
 	private Eventloop eventloop;
 	private AsyncHttpServer cubeHttpServer;
 	private AsyncHttpClient httpClient;
 	private CubeHttpClient cubeHttpClient;
 	private Cube cube;
 	private DefiningClassLoader classLoader;
+	private HikariDataSource dataSource;
 
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
-
-	private static final String DATABASE_PROPERTIES_PATH = "test.properties";
-	private static final SQLDialect DATABASE_DIALECT = SQLDialect.MYSQL;
-	private static final String LOG_PARTITION_NAME = "partitionA";
-	private static final List<String> LOG_PARTITIONS = singletonList(LOG_PARTITION_NAME);
-	private static final String LOG_NAME = "testlog";
 
 	private static final int SERVER_PORT = 50001;
 
@@ -251,61 +250,17 @@ public class ReportingTest {
 		}
 	}
 
-	public static class LogItemSplitter extends AggregatorSplitter<LogItem> {
-		private static final AggregatorSplitter.Factory<LogItem> FACTORY = new AggregatorSplitter.Factory<LogItem>() {
-			@Override
-			public AggregatorSplitter<LogItem> create(Eventloop eventloop) {
-				return new LogItemSplitter(eventloop);
-			}
-		};
-
-		public LogItemSplitter(Eventloop eventloop) {
-			super(eventloop);
-		}
-
-		public static Factory<LogItem> factory() {
-			return FACTORY;
-		}
-
-		private StreamDataReceiver<LogItem> dateAggregator;
-		private StreamDataReceiver<LogItem> dateAggregator2;
-
-		@Override
-		protected void addOutputs() {
-			dateAggregator = addOutput(LogItem.class, and(notEq("advertiser", EXCLUDE_ADVERTISER), notEq("campaign", EXCLUDE_CAMPAIGN), notEq("banner", EXCLUDE_BANNER)));
-			dateAggregator2 = addOutput(LogItem.class, and(notEq("affiliate", EXCLUDE_AFFILIATE), notEq("site", EXCLUDE_SITE)));
-		}
-
-		@Override
-		protected void processItem(LogItem item) {
-			if (item.advertiser != EXCLUDE_ADVERTISER && item.campaign != EXCLUDE_CAMPAIGN && item.banner != EXCLUDE_BANNER) {
-				dateAggregator.onData(item);
-			} else if (item.affiliate != 0 && !EXCLUDE_SITE.equals(item.site)) {
-				dateAggregator2.onData(item);
-			}
-		}
-	}
-
-	@BeforeClass
-	public static void initJooqConfiguration() throws IOException {
-		jooqConfiguration = getJooqConfiguration(DATABASE_PROPERTIES_PATH, DATABASE_DIALECT);
-	}
-
 	@Before
-	public void setUp() throws IOException {
-		ExecutorService executor = Executors.newCachedThreadPool();
-
-		classLoader = DefiningClassLoader.create();
-		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+	public void setUp() throws Exception {
 		Path aggregationsDir = temporaryFolder.newFolder().toPath();
 		Path logsDir = temporaryFolder.newFolder().toPath();
 
-		AggregationChunkStorage aggregationChunkStorage =
-				LocalFsChunkStorage.create(eventloop, executor, aggregationsDir);
-		CubeMetadataStorageSql cubeMetadataStorageSql =
-				CubeMetadataStorageSql.create(eventloop, executor, jooqConfiguration, "processId");
+		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		ExecutorService executor = Executors.newCachedThreadPool();
+		DefiningClassLoader classLoader = DefiningClassLoader.create();
 
-		cube = Cube.create(eventloop, executor, classLoader, cubeMetadataStorageSql, aggregationChunkStorage)
+		AggregationChunkStorage aggregationChunkStorage = LocalFsChunkStorage.create(eventloop, executor, new IdGeneratorStub(), aggregationsDir);
+		cube = Cube.create(eventloop, executor, classLoader, aggregationChunkStorage)
 				.withClassLoaderCache(CubeClassLoaderCache.create(classLoader, 5))
 				.withDimensions(DIMENSIONS_CUBE)
 				.withMeasures(MEASURES)
@@ -331,11 +286,41 @@ public class ReportingTest {
 						.withDimensions(DIMENSIONS_DATE_AGGREGATION.keySet())
 						.withMeasures(MEASURES.keySet()));
 
-		LogToCubeMetadataStorage logToCubeMetadataStorage =
-				getLogToCubeMetadataStorage(eventloop, executor, jooqConfiguration, cubeMetadataStorageSql);
-		LogManager<LogItem> logManager = getLogManager(LogItem.class, eventloop, executor, classLoader, logsDir);
-		LogToCubeRunner<LogItem> logToCubeRunner = LogToCubeRunner.create(eventloop, cube, logManager,
-				LogItemSplitter.factory(), LOG_NAME, LOG_PARTITIONS, logToCubeMetadataStorage);
+		dataSource = dataSource("test.properties");
+		OTRemoteSql<LogDiff<CubeDiff>> otSourceSql = OTRemoteSql.create(dataSource, LogDiffJson.create(CubeDiffJson.create(cube)));
+		otSourceSql.truncateTables();
+		otSourceSql.push(OTCommit.<Integer, LogDiff<CubeDiff>>ofRoot(1));
+
+		OTStateManager<Integer, LogDiff<CubeDiff>> logCubeStateManager = new OTStateManager<>(eventloop,
+				LogOT.createLogOT(CubeOT.createCubeOT()),
+				OTRemoteAdapter.ofBlockingRemote(eventloop, executor, otSourceSql),
+				new Comparator<Integer>() {
+					@Override
+					public int compare(Integer o1, Integer o2) {
+						return Integer.compare(o1, o2);
+					}
+				},
+				new LogOTState<>(cube));
+
+		LogManager<LogItem> logManager = LogManagerImpl.create(eventloop,
+				LocalFsLogFileSystem.create(eventloop, executor, logsDir),
+				SerializerBuilder.create(classLoader).build(LogItem.class));
+
+		LogOTProcessor<Integer, LogItem, CubeDiff> logOTProcessor = LogOTProcessor.create(eventloop,
+				logManager,
+				cube.logStreamConsumer(LogItem.class),
+				"testlog",
+				asList("partitionA"),
+				logCubeStateManager);
+
+		CompletionCallbackFuture future;
+
+		// checkout first (root) revision
+
+		future = CompletionCallbackFuture.create();
+		logCubeStateManager.checkout(future);
+		eventloop.run();
+		future.get();
 
 		List<LogItem> logItemsForAdvertisersAggregations = asList(
 				new LogItem(1, 1, 1, 1, 20, 3, 1, 0.12, 2, 2, EXCLUDE_AFFILIATE, EXCLUDE_SITE),
@@ -354,27 +339,25 @@ public class ReportingTest {
 				new LogItem(2, EXCLUDE_ADVERTISER, EXCLUDE_CAMPAIGN, EXCLUDE_BANNER, 30, 2, 13, 0.9, 0, 2, 4, "site1.com"),
 				new LogItem(3, EXCLUDE_ADVERTISER, EXCLUDE_CAMPAIGN, EXCLUDE_BANNER, 40, 3, 2, 1.0, 0, 1, 4, "site1.com"));
 
-		StreamProducers.OfIterator<LogItem> producerOfRandomLogItems = new StreamProducers.OfIterator<>(eventloop,
+		StreamProducers.OfIterator<LogItem> producer = new StreamProducers.OfIterator<>(eventloop,
 				concat(logItemsForAdvertisersAggregations, logItemsForAffiliatesAggregation).iterator());
 
-		producerOfRandomLogItems.streamTo(logManager.consumer(LOG_PARTITION_NAME));
+		producer.streamTo(logManager.consumer("partitionA"));
 		eventloop.run();
 
-		logToCubeRunner.processLog(IgnoreCompletionCallback.create());
+		future = CompletionCallbackFuture.create();
+		logOTProcessor.processLog(future);
 		eventloop.run();
+		future.get();
 
-		cube.loadChunks(IgnoreCompletionCallback.create());
-		eventloop.run();
-
-		int serverPort = 40000 + new Random().nextInt(100);
 		cubeHttpServer = AsyncHttpServer.create(eventloop, ReportingServiceServlet.createRootServlet(cube))
-				.withListenPort(serverPort)
+				.withListenAddress(new InetSocketAddress("localhost", SERVER_PORT))
 				.withAcceptOnce();
 		cubeHttpServer.listen();
 
 		httpClient = AsyncHttpClient.create(eventloop)
 				.withNoKeepAlive();
-		cubeHttpClient = CubeHttpClient.create(eventloop, httpClient, "http://127.0.0.1:" + serverPort)
+		cubeHttpClient = CubeHttpClient.create(eventloop, httpClient, "http://127.0.0.1:" + SERVER_PORT)
 				.withAttribute("date", LocalDate.class)
 				.withAttribute("advertiser", int.class)
 				.withAttribute("campaign", int.class)
@@ -393,6 +376,13 @@ public class ReportingTest {
 				.withMeasure("ctr", double.class)
 				.withMeasure("uniqueUserIdsCount", int.class)
 				.withMeasure("uniqueUserPercent", double.class);
+	}
+
+	@After
+	public void after() {
+		cubeHttpServer.closeFuture();
+		eventloop.run();
+		dataSource.close();
 	}
 
 	@Test
@@ -737,9 +727,8 @@ public class ReportingTest {
 	@Test
 	public void testDataCorrectlyLoadedIntoAggregations() {
 		Aggregation daily = cube.getAggregation("daily");
-
 		int dailyAggregationItemsCount = getAggregationItemsCount(daily);
-		assertEquals(6, dailyAggregationItemsCount);
+		assertEquals(3, dailyAggregationItemsCount);
 
 		Aggregation advertisers = cube.getAggregation("advertisers");
 		int advertisersAggregationItemsCount = getAggregationItemsCount(advertisers);
@@ -872,7 +861,7 @@ public class ReportingTest {
 
 	private static int getAggregationItemsCount(Aggregation aggregation) {
 		int count = 0;
-		for (Map.Entry<Long, AggregationChunk> chunk : aggregation.getMetadata().getChunks().entrySet()) {
+		for (Map.Entry<Long, AggregationChunk> chunk : aggregation.getState().getChunks().entrySet()) {
 			count += chunk.getValue().getCount();
 		}
 		return count;

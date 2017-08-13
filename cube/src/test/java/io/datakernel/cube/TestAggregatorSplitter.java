@@ -17,10 +17,14 @@
 package io.datakernel.cube;
 
 import com.google.common.base.Functions;
+import io.datakernel.aggregation.util.AsyncResultsReducer;
 import io.datakernel.cube.bean.TestPubRequest;
+import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.logfs.ot.LogDataConsumerSplitter;
 import io.datakernel.stream.StreamDataReceiver;
 
+import java.util.List;
 import java.util.Set;
 
 import static com.google.common.collect.Maps.asMap;
@@ -28,16 +32,12 @@ import static com.google.common.collect.Sets.newHashSet;
 import static com.google.common.collect.Sets.union;
 
 @SuppressWarnings("unchecked")
-public class TestAggregatorSplitter extends AggregatorSplitter<TestPubRequest> {
-	private static final AggregatorSplitter.Factory<TestPubRequest> FACTORY = new AggregatorSplitter.Factory<TestPubRequest>() {
-		@Override
-		public AggregatorSplitter<TestPubRequest> create(Eventloop eventloop) {
-			return new TestAggregatorSplitter(eventloop);
-		}
-	};
+public class TestAggregatorSplitter extends LogDataConsumerSplitter<TestPubRequest, CubeDiff> {
+	private final Cube cube;
 
-	public static Factory<TestPubRequest> factory() {
-		return FACTORY;
+	public TestAggregatorSplitter(Eventloop eventloop, Cube cube) {
+		super(eventloop);
+		this.cube = cube;
 	}
 
 	public static class AggregationItem {
@@ -59,38 +59,37 @@ public class TestAggregatorSplitter extends AggregatorSplitter<TestPubRequest> {
 	}
 
 	private static final Set<String> PUB_DIMENSIONS = newHashSet("date", "hourOfDay", "pub");
-
 	private static final Set<String> PUB_METRICS = newHashSet("pubRequests");
-
 	private static final Set<String> ADV_DIMENSIONS = newHashSet(union(PUB_DIMENSIONS, newHashSet("adv")));
-
 	private static final Set<String> ADV_METRICS = newHashSet("advRequests");
 
-	private StreamDataReceiver<AggregationItem> pubAggregator;
-	private StreamDataReceiver<AggregationItem> advAggregator;
-	private final AggregationItem outputItem = new AggregationItem();
-
-	public TestAggregatorSplitter(Eventloop eventloop) {
-		super(eventloop);
-	}
-
 	@Override
-	protected void addOutputs() {
-		pubAggregator = addOutput(AggregationItem.class,
-				asMap(PUB_DIMENSIONS, Functions.<String>identity()), asMap(PUB_METRICS, Functions.<String>identity()));
-		advAggregator = addOutput(AggregationItem.class,
-				asMap(ADV_DIMENSIONS, Functions.<String>identity()), asMap(ADV_METRICS, Functions.<String>identity()));
+	protected AbstractSplitter createSplitter(AsyncResultsReducer<List<CubeDiff>> resultsReducer) {
+		return new AbstractSplitter(eventloop, resultsReducer) {
+			private final AggregationItem outputItem = new AggregationItem();
+
+			private final StreamDataReceiver<AggregationItem> pubAggregator = addOutput(
+					cube.logStreamConsumer(AggregationItem.class,
+							asMap(PUB_DIMENSIONS, Functions.<String>identity()),
+							asMap(PUB_METRICS, Functions.<String>identity())));
+
+			private final StreamDataReceiver<AggregationItem> advAggregator = addOutput(
+					cube.logStreamConsumer(AggregationItem.class,
+							asMap(ADV_DIMENSIONS, Functions.<String>identity()),
+							asMap(ADV_METRICS, Functions.<String>identity())));
+
+			@Override
+			public void onData(TestPubRequest pubRequest) {
+				outputItem.date = (int) (pubRequest.timestamp / (24 * 60 * 60 * 1000L));
+				outputItem.hourOfDay = (byte) ((pubRequest.timestamp / (60 * 60 * 1000L)) % 24);
+				outputItem.pub = pubRequest.pub;
+				pubAggregator.onData(outputItem);
+				for (TestPubRequest.TestAdvRequest remRequest : pubRequest.advRequests) {
+					outputItem.adv = remRequest.adv;
+					advAggregator.onData(outputItem);
+				}
+			}
+		};
 	}
 
-	@Override
-	protected void processItem(TestPubRequest pubRequest) {
-		outputItem.date = (int) (pubRequest.timestamp / (24 * 60 * 60 * 1000L));
-		outputItem.hourOfDay = (byte) ((pubRequest.timestamp / (60 * 60 * 1000L)) % 24);
-		outputItem.pub = pubRequest.pub;
-		pubAggregator.onData(outputItem);
-		for (TestPubRequest.TestAdvRequest remRequest : pubRequest.advRequests) {
-			outputItem.adv = remRequest.adv;
-			advAggregator.onData(outputItem);
-		}
-	}
 }

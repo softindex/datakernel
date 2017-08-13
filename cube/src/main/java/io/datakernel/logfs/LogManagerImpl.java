@@ -66,12 +66,12 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 		return new LogManagerImpl<T>(eventloop, fileSystem, serializer, dateTimeFormatter, fileSwitchPeriod);
 	}
 
-	public LogManagerImpl<T> fileSystemBufferSize(int bufferSize) {
+	public LogManagerImpl<T> withBufferSize(int bufferSize) {
 		this.bufferSize = bufferSize;
 		return this;
 	}
 
-	public LogManagerImpl<T> autoFlushDelayMillis(int flushDelayMillis) {
+	public LogManagerImpl<T> withFlushDelayMillis(int flushDelayMillis) {
 		this.flushDelayMillis = flushDelayMillis;
 		return this;
 	}

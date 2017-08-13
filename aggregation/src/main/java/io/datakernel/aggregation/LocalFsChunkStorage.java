@@ -16,11 +16,13 @@
 
 package io.datakernel.aggregation;
 
+import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.RunnableWithException;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamProducer;
@@ -34,10 +36,13 @@ import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 
 import java.io.IOException;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileTime;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
 import static java.nio.file.StandardOpenOption.READ;
@@ -48,30 +53,34 @@ import static org.slf4j.LoggerFactory.getLogger;
  */
 public class LocalFsChunkStorage implements AggregationChunkStorage {
 	private final Logger logger = getLogger(this.getClass());
+	public static final String LOG = ".log";
 
 	private final Eventloop eventloop;
 	private final ExecutorService executorService;
+	private final IdGenerator<Long> idGenerator;
 
 	private final Path dir;
 
 	private int bufferSize = 1024 * 1024;
+	private long cleanupTimeout = 10 * 60 * 1000L;
 
 	/**
 	 * Constructs an aggregation storage, that runs in the specified event loop, performs blocking IO in the given executor,
 	 * serializes records according to specified aggregation structure and stores data in the given directory.
-	 *
 	 * @param eventloop       event loop, in which aggregation storage is to run
 	 * @param executorService executor, where blocking IO operations are to be run
+	 * @param idGenerator
 	 * @param dir             directory where data is saved
 	 */
-	private LocalFsChunkStorage(Eventloop eventloop, ExecutorService executorService, Path dir) {
+	private LocalFsChunkStorage(Eventloop eventloop, ExecutorService executorService, IdGenerator<Long> idGenerator, Path dir) {
 		this.eventloop = eventloop;
 		this.executorService = executorService;
 		this.dir = dir;
+		this.idGenerator = idGenerator;
 	}
 
-	public static LocalFsChunkStorage create(Eventloop eventloop, ExecutorService executorService, Path dir) {
-		return new LocalFsChunkStorage(eventloop, executorService, dir);
+	public static LocalFsChunkStorage create(Eventloop eventloop, ExecutorService executorService, IdGenerator<Long> idGenerator, Path dir) {
+		return new LocalFsChunkStorage(eventloop, executorService, idGenerator, dir);
 	}
 
 	public LocalFsChunkStorage withBufferSize(int bufferSize) {
@@ -84,32 +93,16 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 		return this;
 	}
 
-	private Path path(long id) {
-		try {
-			Files.createDirectories(dir);
-		} catch (IOException e) {
-			logger.error("createDirectories error", e);
-		}
-		return dir.resolve(id + ".log");
+	public LocalFsChunkStorage withCleanupTimeout(long millis) {
+		this.cleanupTimeout = millis;
+		return this;
 	}
 
 	@Override
-	public void removeChunk(long id, CompletionCallback callback) {
-		Path path = path(id);
-		try {
-			Files.delete(path);
-			callback.setComplete();
-		} catch (IOException e) {
-			logger.error("delete error", e);
-			callback.setException(e);
-		}
-	}
-
-	@Override
-	public <T> void read(final Aggregation aggregation, final List<String> keys, final List<String> fields,
+	public <T> void read(final AggregationStructure aggregation, final List<String> fields,
 	                     final Class<T> recordClass, long id, final DefiningClassLoader classLoader,
 	                     final ResultCallback<StreamProducer<T>> callback) {
-		AsyncFile.open(eventloop, executorService, path(id), new OpenOption[]{READ}, new ForwardingResultCallback<AsyncFile>(callback) {
+		AsyncFile.open(eventloop, executorService, dir.resolve(id + LOG), new OpenOption[]{READ}, new ForwardingResultCallback<AsyncFile>(callback) {
 			@Override
 			protected void onResult(AsyncFile file) {
 				StreamFileReader fileReader = StreamFileReader.readFileFrom(eventloop, file, bufferSize, 0L);
@@ -118,7 +111,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 				fileReader.streamTo(decompressor.getInput());
 
 				BufferSerializer<T> bufferSerializer = AggregationUtils.createBufferSerializer(aggregation, recordClass,
-						keys, fields, classLoader);
+						aggregation.getKeys(), fields, classLoader);
 				StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(eventloop, bufferSerializer);
 
 				decompressor.getOutput().streamTo(deserializer.getInput());
@@ -128,13 +121,13 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 	}
 
 	@Override
-	public <T> void write(StreamProducer<T> producer, Aggregation aggregation, List<String> keys, List<String> fields,
+	public <T> void write(StreamProducer<T> producer, AggregationStructure aggregation, List<String> fields,
 	                      Class<T> recordClass, long id,
 	                      DefiningClassLoader classLoader,
 	                      final CompletionCallback callback) {
 		final StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
 		BufferSerializer<T> bufferSerializer = AggregationUtils.createBufferSerializer(aggregation, recordClass,
-				keys, fields, classLoader);
+				aggregation.getKeys(), fields, classLoader);
 		StreamBinarySerializer<T> serializer = StreamBinarySerializer.create(eventloop, bufferSerializer)
 				.withDefaultBufferSize(StreamBinarySerializer.MAX_SIZE_2)
 				.withFlushDelay(1000);
@@ -142,7 +135,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 		producer.streamTo(serializer.getInput());
 		serializer.getOutput().streamTo(compressor.getInput());
 
-		AsyncFile.open(eventloop, executorService, path(id), StreamFileWriter.CREATE_OPTIONS,
+		AsyncFile.open(eventloop, executorService, dir.resolve(id + LOG), StreamFileWriter.CREATE_OPTIONS,
 				new ForwardingResultCallback<AsyncFile>(callback) {
 					@Override
 					protected void onResult(AsyncFile file) {
@@ -151,5 +144,57 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 						writer.setFlushCallback(callback);
 					}
 				});
+	}
+
+	@Override
+	public void createId(ResultCallback<Long> callback) {
+		idGenerator.createId(callback);
+	}
+
+	public void backup(final String backupId, final Set<Long> chunkIds, CompletionCallback callback) {
+		eventloop.runConcurrently(executorService, new RunnableWithException() {
+			@Override
+			public void runWithException() throws Exception {
+				Path backupDir = dir.resolve("backups/" + backupId + "/");
+				Files.createDirectories(backupDir);
+				for (long chunkId : chunkIds) {
+					Path target = dir.resolve(chunkId + LOG).toAbsolutePath();
+					Path link = backupDir.resolve(chunkId + LOG).toAbsolutePath();
+					Files.createSymbolicLink(link, target);
+				}
+			}
+		}, callback);
+	}
+
+	public void cleanup(final Set<Long> chunkIds, CompletionCallback callback) {
+		eventloop.runConcurrently(executorService, new RunnableWithException() {
+			@Override
+			public void runWithException() throws Exception {
+				try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
+					for (Path file : stream) {
+						if (!file.toString().endsWith(LOG))
+							continue;
+						long id;
+						try {
+							String filename = file.getFileName().toString();
+							id = Long.parseLong((filename.substring(0, filename.length() - LOG.length())));
+						} catch (NumberFormatException e) {
+							logger.warn("Invalid chunk filename: " + file);
+							continue;
+						}
+						if (chunkIds.contains(id))
+							continue;
+						FileTime lastModifiedTime = Files.getLastModifiedTime(file);
+						if (cleanupTimeout != 0 && lastModifiedTime.toMillis() > System.currentTimeMillis() - cleanupTimeout)
+							continue;
+						try {
+							Files.delete(file);
+						} catch (IOException e) {
+							logger.warn("Could not delete file: " + file);
+						}
+					}
+				}
+			}
+		}, callback);
 	}
 }

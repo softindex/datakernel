@@ -19,28 +19,62 @@ package io.datakernel.stream.processor;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.stream.AbstractStreamTransformer_1_N;
 import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamProducer;
 
 @SuppressWarnings("unchecked")
-public final class StreamSplitter<T> extends AbstractStreamSplitter<T> implements EventloopJmxMBean {
+public final class StreamSplitter<T> extends AbstractStreamTransformer_1_N<T> implements EventloopJmxMBean {
 	private int jmxItems;
+
+	protected final class InputConsumer extends AbstractInputConsumer implements StreamDataReceiver<T> {
+		@Override
+		protected void onUpstreamEndOfStream() {
+			for (AbstractOutputProducer<?> downstreamProducer : outputProducers) {
+				downstreamProducer.sendEndOfStream();
+			}
+		}
+
+		@Override
+		public StreamDataReceiver<T> getDataReceiver() {
+			return this;
+		}
+
+		@Override
+		public void onData(T item) {
+			assert jmxItems != ++jmxItems;
+			for (StreamDataReceiver<T> streamCallback : (StreamDataReceiver<T>[]) dataReceivers) {
+				streamCallback.onData(item);
+			}
+		}
+	}
+
+	protected final class OutputProducer<O> extends AbstractOutputProducer<O> {
+		public OutputProducer() {
+		}
+
+		@Override
+		protected void onDownstreamSuspended() {
+			inputConsumer.suspend();
+		}
+
+		@Override
+		protected void onDownstreamResumed() {
+			if (allOutputsResumed()) {
+				inputConsumer.resume();
+			}
+		}
+	}
 
 	// region creators
 	private StreamSplitter(Eventloop eventloop) {
 		super(eventloop);
-		this.inputConsumer = new InputConsumer() {
-			@Override
-			public void onData(T item) {
-				assert jmxItems != ++jmxItems;
-				for (StreamDataReceiver<T> streamCallback : (StreamDataReceiver<T>[]) dataReceivers) {
-					streamCallback.onData(item);
-				}
-			}
-		};
+		setInputConsumer(new InputConsumer());
 	}
 
-	public static <T> StreamSplitter<T> create(Eventloop eventloop) {return new StreamSplitter<T>(eventloop);}
+	public static <T> StreamSplitter<T> create(Eventloop eventloop) {
+		return new StreamSplitter<T>(eventloop);
+	}
 	// endregion
 
 	public StreamProducer<T> newOutput() {

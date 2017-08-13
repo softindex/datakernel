@@ -16,6 +16,7 @@
 
 package io.datakernel.aggregation;
 
+import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.IgnoreCompletionCallback;
@@ -34,25 +35,28 @@ import io.datakernel.stream.processor.StreamLZ4Decompressor;
 
 import java.net.InetSocketAddress;
 import java.util.List;
+import java.util.Set;
 
 import static io.datakernel.aggregation.AggregationUtils.createBufferSerializer;
 
 public class RemoteFsChunkStorage implements AggregationChunkStorage {
 	private final Eventloop eventloop;
 	private final IRemoteFsClient client;
+	private final IdGenerator<Long> idGenerator;
 
-	private RemoteFsChunkStorage(Eventloop eventloop, InetSocketAddress serverAddress) {
+	private RemoteFsChunkStorage(Eventloop eventloop, IdGenerator<Long> idGenerator, InetSocketAddress serverAddress) {
 		this.eventloop = eventloop;
+		this.idGenerator = idGenerator;
 		this.client = RemoteFsClient.create(eventloop, serverAddress);
 	}
 
-	public static RemoteFsChunkStorage create(Eventloop eventloop, InetSocketAddress serverAddress) {
-		return new RemoteFsChunkStorage(eventloop, serverAddress);
+	public static RemoteFsChunkStorage create(Eventloop eventloop, IdGenerator<Long> idGenerator, InetSocketAddress serverAddress) {
+		return new RemoteFsChunkStorage(eventloop, idGenerator, serverAddress);
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public <T> void read(final Aggregation aggregation, final List<String> keys, final List<String> fields,
+	public <T> void read(final AggregationStructure aggregation, final List<String> fields,
 	                     final Class<T> recordClass, long id, final DefiningClassLoader classLoader,
 	                     final ResultCallback<StreamProducer<T>> callback) {
 		client.download(path(id), 0, new ForwardingResultCallback<StreamProducer<ByteBuf>>(callback) {
@@ -62,7 +66,7 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage {
 				producer.streamTo(decompressor.getInput());
 
 				BufferSerializer<T> bufferSerializer = createBufferSerializer(aggregation, recordClass,
-						keys, fields, classLoader);
+						aggregation.getKeys(), fields, classLoader);
 				StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(eventloop, bufferSerializer);
 
 				decompressor.getOutput().streamTo(deserializer.getInput());
@@ -73,11 +77,11 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public <T> void write(StreamProducer<T> producer, Aggregation aggregation, List<String> keys, List<String> fields, Class<T> recordClass,
+	public <T> void write(StreamProducer<T> producer, AggregationStructure aggregation, List<String> fields, Class<T> recordClass,
 	                      final long id, DefiningClassLoader classLoader, final CompletionCallback callback) {
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
 		BufferSerializer<T> bufferSerializer = createBufferSerializer(aggregation, recordClass,
-				keys, fields, classLoader);
+				aggregation.getKeys(), fields, classLoader);
 		StreamBinarySerializer<T> serializer = StreamBinarySerializer.create(eventloop, bufferSerializer)
 				.withDefaultBufferSize(StreamBinarySerializer.MAX_SIZE_2)
 				.withFlushDelay(1000);
@@ -104,7 +108,7 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage {
 	}
 
 	@Override
-	public void removeChunk(final long id, CompletionCallback callback) {
-		client.delete(path(id), callback);
+	public void createId(ResultCallback<Long> callback) {
+		idGenerator.createId(callback);
 	}
 }

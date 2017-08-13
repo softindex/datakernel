@@ -1,6 +1,6 @@
 package io.datakernel.async;
 
-public abstract class AssertingResultCallback<T> extends ResultCallback<T>  {
+public class AssertingResultCallback<T> extends ResultCallback<T>  {
 	@Override
 	protected void onResult(T result) {
 	}

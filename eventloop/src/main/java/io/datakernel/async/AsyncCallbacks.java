@@ -1,32 +1,42 @@
 package io.datakernel.async;
 
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.util.Function;
 
-import java.util.List;
+import java.util.Arrays;
+import java.util.Collection;
 
+@SuppressWarnings("WeakerAccess")
 public class AsyncCallbacks {
 	private AsyncCallbacks() {
 	}
 
-	public static CompletionCallback completionTo(final List<? extends CompletionCallback> callbacks) {
-		return new CompletionCallback() {
-			@Override
-			protected void onComplete() {
-				for (CompletionCallback callback : callbacks) {
-					callback.setComplete();
-				}
-			}
+	public static <T> ResultCallback<T> ignoreResult() {
+		return IgnoreResultCallback.create();
+	}
 
+	public static CompletionCallback ignoreCompletion() {
+		return IgnoreCompletionCallback.create();
+	}
+
+	public static <T> ResultCallback<T> assertResult() {
+		return new AssertingResultCallback<>();
+	}
+
+	public static CompletionCallback assertCompletion() {
+		return new AssertingCompletionCallback();
+	}
+
+	public static <I, O> ResultCallback<I> transformTo(final ResultCallback<O> callback, final Function<I, O> function) {
+		return new ForwardingResultCallback<I>(callback) {
 			@Override
-			protected void onException(Exception e) {
-				for (CompletionCallback callback : callbacks) {
-					callback.setException(e);
-				}
+			protected void onResult(I result) {
+				callback.setResult(function.apply(result));
 			}
 		};
 	}
 
-	public static <T> CompletionCallback asCompletionCallback(final ResultCallback<T> callback, final T value) {
+	public static <T> CompletionCallback toResultCallback(final ResultCallback<T> callback, final T value) {
 		return new ForwardingCompletionCallback(callback) {
 			@Override
 			protected void onComplete() {
@@ -35,7 +45,7 @@ public class AsyncCallbacks {
 		};
 	}
 
-	public static <T> ResultCallback<T> asResultCallback(final CompletionCallback callback) {
+	public static <T> ResultCallback<T> toCompletionCallback(final CompletionCallback callback) {
 		return new ForwardingResultCallback<T>(callback) {
 			@Override
 			protected void onResult(T ignored) {
@@ -44,7 +54,7 @@ public class AsyncCallbacks {
 		};
 	}
 
-	public static CompletionCallback completionTo(final CompletionCallback... callbacks) {
+	public static CompletionCallback toCompletionCallbacks(final Collection<CompletionCallback> callbacks) {
 		return new CompletionCallback() {
 			@Override
 			protected void onComplete() {
@@ -62,7 +72,11 @@ public class AsyncCallbacks {
 		};
 	}
 
-	public static <T> ResultCallback<T> resultTo(final List<? extends ResultCallback<T>> callbacks) {
+	public static CompletionCallback toCompletionCallbacks(final CompletionCallback... callbacks) {
+		return toCompletionCallbacks(Arrays.asList(callbacks));
+	}
+
+	public static <T> ResultCallback<T> toResultCallbacks(final Collection<? extends ResultCallback<T>> callbacks) {
 		return new ResultCallback<T>() {
 			@Override
 			protected void onResult(T result) {
@@ -81,7 +95,7 @@ public class AsyncCallbacks {
 	}
 
 	@SafeVarargs
-	public static <T> ResultCallback<T> resultTo(final ResultCallback<T>... callbacks) {
+	public static <T> ResultCallback<T> toResultCallbacks(final ResultCallback<T>... callbacks) {
 		return new ResultCallback<T>() {
 			@Override
 			protected void onResult(T result) {

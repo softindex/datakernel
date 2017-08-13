@@ -16,14 +16,14 @@
 
 package io.datakernel.cube.http;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonParseException;
 import com.google.gson.TypeAdapter;
-import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 import io.datakernel.aggregation.AggregationPredicate;
+import io.datakernel.utils.GsonAdapters;
+import io.datakernel.utils.GsonAdapters.TypeAdapterRegistry;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -35,6 +35,7 @@ import java.util.Set;
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Maps.newLinkedHashMap;
 import static io.datakernel.aggregation.AggregationPredicates.*;
+import static io.datakernel.utils.GsonAdapters.asNullable;
 
 final class AggregationPredicateGsonAdapter extends TypeAdapter<AggregationPredicate> {
 	public static final String EMPTY_STRING = "";
@@ -67,15 +68,14 @@ final class AggregationPredicateGsonAdapter extends TypeAdapter<AggregationPredi
 		this.attributeAdapters = attributeAdapters;
 	}
 
-	public static AggregationPredicateGsonAdapter create(Gson gson, Map<String, Type> attributeTypes, Map<String, Type> measureTypes) {
+	public static AggregationPredicateGsonAdapter create(TypeAdapterRegistry registry,
+	                                                     Map<String, Type> attributeTypes, Map<String, Type> measureTypes) {
 		Map<String, TypeAdapter<?>> attributeAdapters = newLinkedHashMap();
 		for (String attribute : attributeTypes.keySet()) {
-			TypeToken<?> typeToken = TypeToken.get(attributeTypes.get(attribute));
-			attributeAdapters.put(attribute, gson.getAdapter(typeToken));
+			attributeAdapters.put(attribute, asNullable(registry.getAdapter(attributeTypes.get(attribute))));
 		}
 		for (String measure : measureTypes.keySet()) {
-			TypeToken<?> typeToken = TypeToken.get(measureTypes.get(measure));
-			attributeAdapters.put(measure, gson.getAdapter(typeToken));
+			attributeAdapters.put(measure, registry.getAdapter(measureTypes.get(measure)));
 		}
 		return new AggregationPredicateGsonAdapter(attributeAdapters);
 	}

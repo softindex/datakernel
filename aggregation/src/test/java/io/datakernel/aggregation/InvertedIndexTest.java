@@ -17,7 +17,9 @@
 package io.datakernel.aggregation;
 
 import com.google.common.base.MoreObjects;
-import io.datakernel.async.IgnoreCompletionCallback;
+import io.datakernel.aggregation.ot.AggregationDiff;
+import io.datakernel.aggregation.ot.AggregationStructure;
+import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumers;
@@ -89,31 +91,32 @@ public class InvertedIndexTest {
 		ExecutorService executorService = Executors.newCachedThreadPool();
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		AggregationMetadataStorageStub metadataStorage = new AggregationMetadataStorageStub(eventloop);
 		Path path = temporaryFolder.newFolder().toPath();
-		AggregationChunkStorage aggregationChunkStorage = LocalFsChunkStorage.create(eventloop, executorService, path);
+		AggregationChunkStorage aggregationChunkStorage = LocalFsChunkStorage.create(eventloop, executorService, new IdGeneratorStub(), path);
 
-		Aggregation aggregation = Aggregation.create(eventloop, executorService, classLoader, metadataStorage, aggregationChunkStorage)
+		AggregationStructure structure = new AggregationStructure()
 				.withKey("word", ofString())
 				.withMeasure("documents", union(ofInt()));
 
+		Aggregation aggregation = Aggregation.create(eventloop, executorService, classLoader, aggregationChunkStorage, structure);
+
+		ResultCallbackFuture<AggregationDiff> diffFuture1 = ResultCallbackFuture.create();
 		StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("fox", 1), new InvertedIndexRecord("brown", 2), new InvertedIndexRecord("fox", 3)))
-				.streamTo(aggregation.consumer(InvertedIndexRecord.class, metadataStorage.createSaveCallback()));
+				.streamTo(aggregation.consumer(InvertedIndexRecord.class, diffFuture1));
 		eventloop.run();
+		aggregation.getState().apply(diffFuture1.get());
 
-		aggregation.loadChunks(IgnoreCompletionCallback.create());
-		eventloop.run();
-
+		ResultCallbackFuture<AggregationDiff> diffFuture2 = ResultCallbackFuture.create();
 		StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("brown", 3), new InvertedIndexRecord("lazy", 4), new InvertedIndexRecord("dog", 1)))
-				.streamTo(aggregation.consumer(InvertedIndexRecord.class, metadataStorage.createSaveCallback()));
+				.streamTo(aggregation.consumer(InvertedIndexRecord.class, diffFuture2));
 		eventloop.run();
+		aggregation.getState().apply(diffFuture2.get());
 
+		ResultCallbackFuture<AggregationDiff> diffFuture3 = ResultCallbackFuture.create();
 		StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("quick", 1), new InvertedIndexRecord("fox", 4), new InvertedIndexRecord("brown", 10)))
-				.streamTo(aggregation.consumer(InvertedIndexRecord.class, metadataStorage.createSaveCallback()));
+				.streamTo(aggregation.consumer(InvertedIndexRecord.class, diffFuture3));
 		eventloop.run();
-
-		aggregation.loadChunks(IgnoreCompletionCallback.create());
-		eventloop.run();
+		aggregation.getState().apply(diffFuture3.get());
 
 		AggregationQuery query = AggregationQuery.create()
 				.withKeys("word")

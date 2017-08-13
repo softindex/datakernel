@@ -21,7 +21,9 @@ import io.datakernel.aggregation.annotation.Key;
 import io.datakernel.aggregation.annotation.Measures;
 import io.datakernel.aggregation.fieldtype.FieldTypes;
 import io.datakernel.aggregation.measure.HyperLogLog;
-import io.datakernel.async.IgnoreCompletionCallback;
+import io.datakernel.aggregation.ot.AggregationDiff;
+import io.datakernel.aggregation.ot.AggregationStructure;
+import io.datakernel.async.AssertingResultCallback;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumers;
@@ -97,12 +99,11 @@ public class CustomFieldsTest {
 		ExecutorService executorService = Executors.newCachedThreadPool();
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		AggregationMetadataStorageStub metadataStorage = new AggregationMetadataStorageStub(eventloop);
 
 		Path path = temporaryFolder.newFolder().toPath();
-		AggregationChunkStorage aggregationChunkStorage = LocalFsChunkStorage.create(eventloop, executorService, path);
+		AggregationChunkStorage aggregationChunkStorage = LocalFsChunkStorage.create(eventloop, executorService, new IdGeneratorStub(), path);
 
-		Aggregation aggregation = Aggregation.create(eventloop, executorService, classLoader, metadataStorage, aggregationChunkStorage)
+		AggregationStructure structure = new AggregationStructure()
 				.withKey("siteId", FieldTypes.ofInt())
 				.withMeasure("eventCount", count(ofLong()))
 				.withMeasure("sumRevenue", sum(ofDouble()))
@@ -111,23 +112,22 @@ public class CustomFieldsTest {
 				.withMeasure("uniqueUserIds", union(ofLong()))
 				.withMeasure("estimatedUniqueUserIdCount", hyperLogLog(1024));
 
+		Aggregation aggregation = Aggregation.create(eventloop, executorService, classLoader, aggregationChunkStorage, structure);
+
 		StreamProducers.ofIterable(eventloop, asList(new EventRecord(1, 0.34, 1), new EventRecord(2, 0.42, 3), new EventRecord(3, 0.13, 20)))
-				.streamTo(aggregation.consumer(EventRecord.class, metadataStorage.createSaveCallback()));
+				.streamTo(aggregation.consumer(EventRecord.class, new TestCallback(aggregation)));
 		eventloop.run();
 
 		StreamProducers.ofIterable(eventloop, asList(new EventRecord(2, 0.30, 20), new EventRecord(1, 0.22, 1000), new EventRecord(2, 0.91, 33)))
-				.streamTo(aggregation.consumer(EventRecord.class, metadataStorage.createSaveCallback()));
+				.streamTo(aggregation.consumer(EventRecord.class, new TestCallback(aggregation)));
 		eventloop.run();
 
 		StreamProducers.ofIterable(eventloop, asList(new EventRecord(1, 0.01, 1), new EventRecord(3, 0.88, 20), new EventRecord(3, 1.01, 21)))
-				.streamTo(aggregation.consumer(EventRecord.class, metadataStorage.createSaveCallback()));
+				.streamTo(aggregation.consumer(EventRecord.class, new TestCallback(aggregation)));
 		eventloop.run();
 
 		StreamProducers.ofIterable(eventloop, asList(new EventRecord(1, 0.35, 500), new EventRecord(1, 0.59, 17), new EventRecord(2, 0.85, 50)))
-				.streamTo(aggregation.consumer(EventRecord.class, metadataStorage.createSaveCallback()));
-		eventloop.run();
-
-		aggregation.loadChunks(IgnoreCompletionCallback.create());
+				.streamTo(aggregation.consumer(EventRecord.class, new TestCallback(aggregation)));
 		eventloop.run();
 
 		AggregationQuery query = AggregationQuery.create()
@@ -168,4 +168,18 @@ public class CustomFieldsTest {
 		assertEquals(newHashSet(20L, 21L), s3.uniqueUserIds);
 		assertEquals(2, s3.estimatedUniqueUserIdCount.estimate());
 	}
+
+	private static class TestCallback extends AssertingResultCallback<AggregationDiff> {
+		private final Aggregation aggregation;
+
+		public TestCallback(Aggregation aggregation) {
+			this.aggregation = aggregation;
+		}
+
+		@Override
+		protected void onResult(AggregationDiff result) {
+			aggregation.getState().apply(result);
+		}
+	}
+
 }

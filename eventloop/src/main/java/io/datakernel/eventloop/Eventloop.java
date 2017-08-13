@@ -59,7 +59,7 @@ import static io.datakernel.util.Preconditions.checkNotNull;
  * eventloop will be ended, when it has not selected keys and its queues with
  * tasks are empty.
  */
-public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler, EventloopExecutor, EventloopJmxMBean {
+public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, CurrentTimeProvider, EventloopJmxMBean {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	public static final AsyncTimeoutException CONNECT_TIMEOUT = new AsyncTimeoutException("Connection timed out");

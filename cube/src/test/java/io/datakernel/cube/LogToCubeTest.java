@@ -16,18 +16,24 @@
 
 package io.datakernel.cube;
 
-import io.datakernel.aggregation.AggregationChunkStorageStub;
-import io.datakernel.aggregation.CubeMetadataStorageStub;
+import io.datakernel.aggregation.AggregationChunkStorage;
+import io.datakernel.aggregation.LocalFsChunkStorage;
 import io.datakernel.aggregation.fieldtype.FieldTypes;
-import io.datakernel.async.IgnoreCompletionCallback;
+import io.datakernel.async.CompletionCallbackFuture;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.bean.TestPubRequest;
+import io.datakernel.cube.ot.CubeDiff;
+import io.datakernel.cube.ot.CubeDiffJson;
+import io.datakernel.cube.ot.CubeOT;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.logfs.LocalFsLogFileSystem;
 import io.datakernel.logfs.LogManager;
 import io.datakernel.logfs.LogManagerImpl;
-import io.datakernel.logfs.LogToCubeRunner;
-import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.logfs.ot.*;
+import io.datakernel.ot.OTCommit;
+import io.datakernel.ot.OTRemoteAdapter;
+import io.datakernel.ot.OTRemoteSql;
+import io.datakernel.ot.OTStateManager;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducers;
@@ -35,8 +41,10 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+import javax.sql.DataSource;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -45,7 +53,7 @@ import static io.datakernel.aggregation.AggregationPredicates.alwaysTrue;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.sum;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
-import static io.datakernel.cube.TestUtils.deleteRecursivelyQuietly;
+import static io.datakernel.cube.CubeTestUtils.dataSource;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
@@ -57,14 +65,15 @@ public class LogToCubeTest {
 
 	@Test
 	public void testStubStorage() throws Exception {
-		DefiningClassLoader classLoader = DefiningClassLoader.create();
+		Path aggregationsDir = temporaryFolder.newFolder().toPath();
+		Path logsDir = temporaryFolder.newFolder().toPath();
+
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = Executors.newCachedThreadPool();
-		CubeMetadataStorageStub cubeMetadataStorage = new CubeMetadataStorageStub();
-		AggregationChunkStorageStub aggregationStorage = new AggregationChunkStorageStub(eventloop);
-		LogToCubeMetadataStorageStub logToCubeMetadataStorageStub = new LogToCubeMetadataStorageStub(cubeMetadataStorage);
+		DefiningClassLoader classLoader = DefiningClassLoader.create();
 
-		Cube cube = Cube.create(eventloop, executor, classLoader, cubeMetadataStorage, aggregationStorage)
+		AggregationChunkStorage aggregationChunkStorage = LocalFsChunkStorage.create(eventloop, executor, new IdGeneratorStub(), aggregationsDir);
+		Cube cube = Cube.create(eventloop, executor, classLoader, aggregationChunkStorage)
 				.withDimension("pub", FieldTypes.ofInt())
 				.withDimension("adv", FieldTypes.ofInt())
 				.withMeasure("pubRequests", sum(ofLong()))
@@ -72,17 +81,34 @@ public class LogToCubeTest {
 				.withAggregation(id("pub").withDimensions("pub").withMeasures("pubRequests"))
 				.withAggregation(id("adv").withDimensions("adv").withMeasures("advRequests"));
 
-		Path dir = temporaryFolder.newFolder().toPath();
-		deleteRecursivelyQuietly(dir);
-		LocalFsLogFileSystem fileSystem = LocalFsLogFileSystem.create(eventloop, executor, dir);
-		BufferSerializer<TestPubRequest> bufferSerializer = SerializerBuilder
-				.create(classLoader)
-				.build(TestPubRequest.class);
+		DataSource dataSource = dataSource("test.properties");
+		OTRemoteSql<LogDiff<CubeDiff>> otSourceSql = OTRemoteSql.create(dataSource, LogDiffJson.create(CubeDiffJson.create(cube)));
+		otSourceSql.truncateTables();
+		otSourceSql.push(OTCommit.<Integer, LogDiff<CubeDiff>>ofRoot(1));
 
-		LogManager<TestPubRequest> logManager = LogManagerImpl.create(eventloop, fileSystem, bufferSerializer);
+		OTStateManager<Integer, LogDiff<CubeDiff>> logCubeStateManager = new OTStateManager<>(eventloop,
+				LogOT.createLogOT(CubeOT.createCubeOT()),
+				OTRemoteAdapter.ofBlockingRemote(eventloop, executor, otSourceSql),
+				new Comparator<Integer>() {
+					@Override
+					public int compare(Integer o1, Integer o2) {
+						return Integer.compare(o1, o2);
+					}
+				},
+				new LogOTState<>(cube));
 
-		LogToCubeRunner<TestPubRequest> logToCubeRunner = LogToCubeRunner.create(eventloop, cube, logManager, TestAggregatorSplitter.factory(),
-				"testlog", asList("partitionA"), logToCubeMetadataStorageStub);
+		LogManager<TestPubRequest> logManager = LogManagerImpl.create(eventloop,
+				LocalFsLogFileSystem.create(eventloop, executor, logsDir),
+				SerializerBuilder.create(classLoader).build(TestPubRequest.class));
+
+		LogOTProcessor<Integer, TestPubRequest, CubeDiff> logOTProcessor = LogOTProcessor.create(eventloop,
+				logManager,
+				new TestAggregatorSplitter(eventloop, cube), // TestAggregatorSplitter.create(eventloop, cube),
+				"testlog",
+				asList("partitionA"),
+				logCubeStateManager);
+
+		CompletionCallbackFuture future;
 
 		StreamProducers.ofIterator(eventloop, asList(
 				new TestPubRequest(1000, 1, asList(new TestPubRequest.TestAdvRequest(10))),
@@ -90,16 +116,17 @@ public class LogToCubeTest {
 				new TestPubRequest(1002, 1, asList(new TestPubRequest.TestAdvRequest(30))),
 				new TestPubRequest(1002, 2, Arrays.<TestPubRequest.TestAdvRequest>asList())).iterator())
 				.streamTo(logManager.consumer("partitionA"));
-
 		eventloop.run();
 
-		logToCubeRunner.processLog(IgnoreCompletionCallback.create());
-
+		future = CompletionCallbackFuture.create();
+		logCubeStateManager.checkout(future);
 		eventloop.run();
+		future.get();
 
-		cube.loadChunks(IgnoreCompletionCallback.create());
-
+		future = CompletionCallbackFuture.create();
+		logOTProcessor.processLog(future);
 		eventloop.run();
+		future.get();
 
 		StreamConsumers.ToList<TestAdvResult> consumerToList = StreamConsumers.toList(eventloop);
 		cube.queryRawStream(asList("adv"), asList("advRequests"), alwaysTrue(),
@@ -107,12 +134,8 @@ public class LogToCubeTest {
 		).streamTo(consumerToList);
 		eventloop.run();
 
-		List<TestAdvResult> actualResults = consumerToList.getList();
-		List<TestAdvResult> expectedResults = asList(new TestAdvResult(10, 2), new TestAdvResult(20, 1), new TestAdvResult(30, 1));
-
-		System.out.println(consumerToList.getList());
-
-		assertEquals(expectedResults, actualResults);
+		List<TestAdvResult> expected = asList(new TestAdvResult(10, 2), new TestAdvResult(20, 1), new TestAdvResult(30, 1));
+		assertEquals(expected, consumerToList.getList());
 	}
 
 	public static final class TestPubResult {

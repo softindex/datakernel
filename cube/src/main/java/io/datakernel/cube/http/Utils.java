@@ -29,6 +29,7 @@ import io.datakernel.aggregation.AggregationPredicate;
 import io.datakernel.cube.CubeQuery;
 import io.datakernel.cube.QueryResult;
 import io.datakernel.exception.ParseException;
+import io.datakernel.utils.GsonAdapters;
 import org.joda.time.LocalDate;
 
 import java.io.IOException;
@@ -80,22 +81,9 @@ class Utils {
 		return result;
 	}
 
-	static GsonBuilder createGsonBuilder(final Map<String, Type> attributeTypes, final Map<String, Type> measureTypes) {
-		return new GsonBuilder().serializeNulls()
-				.registerTypeAdapterFactory(new TypeAdapterFactory() {
-					@SuppressWarnings("unchecked")
-					@Override
-					public <T> TypeAdapter<T> create(Gson gson, TypeToken<T> type) {
-						if (AggregationPredicate.class.isAssignableFrom(type.getRawType())) {
-							return (TypeAdapter<T>) AggregationPredicateGsonAdapter.create(gson, attributeTypes, measureTypes);
-						}
-						if (type.getRawType() == QueryResult.class) {
-							return (TypeAdapter<T>) QueryResultGsonAdapter.create(gson, attributeTypes, measureTypes);
-						}
-						return null;
-					}
-				})
-				.registerTypeAdapter(LocalDate.class, new TypeAdapter<LocalDate>() {
+	public static GsonAdapters.TypeAdapterRegistryImpl createCubeTypeAdaptersRegistry() {
+		return GsonAdapters.TypeAdapterRegistryImpl.create()
+				.with(LocalDate.class, new TypeAdapter<LocalDate>() {
 					@Override
 					public void write(JsonWriter out, LocalDate value) throws IOException {
 						out.value(value.toString());
@@ -105,8 +93,6 @@ class Utils {
 					public LocalDate read(JsonReader in) throws IOException {
 						return LocalDate.parse(in.nextString());
 					}
-				})
-				.registerTypeAdapter(CubeQuery.Ordering.class, QueryOrderingGsonAdapter.create());
+				});
 	}
-
 }

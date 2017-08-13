@@ -24,7 +24,8 @@ public final class ResultCallbackFuture<T> extends ResultCallback<T> implements 
 	private Exception exception;
 
 	// region builders
-	private ResultCallbackFuture() {}
+	private ResultCallbackFuture() {
+	}
 
 	public static <T> ResultCallbackFuture<T> create() {
 		return new ResultCallbackFuture<>();
@@ -61,6 +62,14 @@ public final class ResultCallbackFuture<T> extends ResultCallback<T> implements 
 		return latch.getCount() == 0;
 	}
 
+	public boolean isComplete() {
+		return isDone() && exception == null;
+	}
+
+	public boolean isException() {
+		return isDone() && exception != null;
+	}
+
 	@Override
 	public T get() throws InterruptedException, ExecutionException {
 		latch.await();
@@ -84,4 +93,8 @@ public final class ResultCallbackFuture<T> extends ResultCallback<T> implements 
 		}
 	}
 
+	@Override
+	public String toString() {
+		return "{" + (result != null ? result : (exception != null ? exception : "?")) + '}';
+	}
 }

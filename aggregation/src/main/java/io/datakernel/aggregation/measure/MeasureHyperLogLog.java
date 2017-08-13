@@ -24,6 +24,7 @@ import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.asm.SerializerGenArray;
 import io.datakernel.serializer.asm.SerializerGenByte;
 import io.datakernel.serializer.asm.SerializerGenClass;
+import io.datakernel.utils.GsonAdapters;
 import org.objectweb.asm.Type;
 
 import static io.datakernel.codegen.Expressions.*;
@@ -34,7 +35,7 @@ public final class MeasureHyperLogLog extends Measure {
 
 	private static final class FieldTypeHyperLogLog extends FieldType<Integer> {
 		public FieldTypeHyperLogLog() {
-			super(HyperLogLog.class, int.class, serializerGen());
+			super(HyperLogLog.class, int.class, serializerGen(), GsonAdapters.INTEGER_JSON, null);
 		}
 
 		private static SerializerGen serializerGen() {

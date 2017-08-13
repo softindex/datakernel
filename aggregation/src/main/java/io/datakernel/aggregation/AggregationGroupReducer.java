@@ -17,8 +17,10 @@
 package io.datakernel.aggregation;
 
 import com.google.common.base.Function;
+import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.aggregation.util.AsyncResultsReducer;
 import io.datakernel.aggregation.util.PartitionPredicate;
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
@@ -33,19 +35,18 @@ import java.util.*;
 
 import static io.datakernel.async.AsyncCallbacks.postTo;
 
-final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
+public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final AggregationChunkStorage storage;
-	private final AggregationMetadataStorage metadataStorage;
-	private final Aggregation aggregation;
-	private final List<String> keys;
+	private final AggregationStructure aggregation;
 	private final List<String> fields;
 	private final PartitionPredicate<T> partitionPredicate;
 	private final Class<?> recordClass;
 	private final Function<T, Comparable<?>> keyFunction;
 	private final Aggregate aggregate;
 	private final AsyncResultsReducer<List<AggregationChunk>> resultsTracker;
+	private final CompletionCallback completionCallback;
 	private final DefiningClassLoader classLoader;
 	private int chunkSize;
 
@@ -60,16 +61,13 @@ final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> impleme
 	};
 
 	public AggregationGroupReducer(Eventloop eventloop, AggregationChunkStorage storage,
-	                               AggregationMetadataStorage metadataStorage,
-	                               Aggregation aggregation, List<String> keys, List<String> fields,
+	                               AggregationStructure aggregation, List<String> fields,
 	                               Class<?> recordClass, PartitionPredicate<T> partitionPredicate,
 	                               Function<T, Comparable<?>> keyFunction, Aggregate aggregate,
 	                               int chunkSize, DefiningClassLoader classLoader,
 	                               final ResultCallback<List<AggregationChunk>> chunksCallback) {
 		super(eventloop);
 		this.storage = storage;
-		this.metadataStorage = metadataStorage;
-		this.keys = keys;
 		this.fields = fields;
 		this.partitionPredicate = partitionPredicate;
 		this.recordClass = recordClass;
@@ -77,7 +75,9 @@ final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> impleme
 		this.aggregate = aggregate;
 		this.chunkSize = chunkSize;
 		this.aggregation = aggregation;
-		this.resultsTracker = AsyncResultsReducer.create(postTo(chunksCallback), new ArrayList<AggregationChunk>());
+		this.resultsTracker = AsyncResultsReducer.<List<AggregationChunk>>create(new ArrayList<AggregationChunk>())
+				.withResultCallback(postTo(eventloop, chunksCallback));
+		this.completionCallback = resultsTracker.newCompletionCallback();
 		this.classLoader = classLoader;
 	}
 
@@ -129,8 +129,8 @@ final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> impleme
 		final ResultCallback<List<AggregationChunk>> callback = resultsTracker.newResultCallback(REDUCER);
 
 		StreamProducer producer = StreamProducers.ofIterable(eventloop, list);
-		AggregationChunker consumer = new AggregationChunker(eventloop, aggregation, keys, fields, recordClass,
-				partitionPredicate, storage, metadataStorage, chunkSize, classLoader,
+		AggregationChunker consumer = new AggregationChunker(eventloop, aggregation, fields, recordClass,
+				partitionPredicate, storage, chunkSize, classLoader,
 				new ResultCallback<List<AggregationChunk>>() {
 					@Override
 					protected void onResult(List<AggregationChunk> newChunks) {
@@ -151,12 +151,12 @@ final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> impleme
 	@Override
 	public void onEndOfStream() {
 		doFlush();
-		resultsTracker.setComplete();
+		completionCallback.setComplete();
 	}
 
 	@Override
 	protected void onError(Exception e) {
-		resultsTracker.setException(e);
+		completionCallback.setException(e);
 	}
 
 	// jmx

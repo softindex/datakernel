@@ -16,14 +16,13 @@
 
 package io.datakernel.aggregation;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Ordering;
-import io.datakernel.aggregation.AggregationMetadataStorage.LoadedChunks;
 import io.datakernel.aggregation.fieldtype.FieldType;
-import io.datakernel.aggregation.measure.Measure;
+import io.datakernel.aggregation.ot.AggregationDiff;
+import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.async.*;
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
@@ -50,7 +49,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Predicates.in;
 import static com.google.common.collect.Iterables.filter;
 import static com.google.common.collect.Lists.newArrayList;
-import static com.google.common.collect.Sets.*;
+import static com.google.common.collect.Sets.difference;
+import static com.google.common.collect.Sets.newHashSet;
 import static io.datakernel.aggregation.AggregationUtils.*;
 import static io.datakernel.codegen.Expressions.arg;
 import static io.datakernel.codegen.Expressions.cast;
@@ -75,14 +75,10 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 	private final Eventloop eventloop;
 	private final ExecutorService executorService;
 	private final DefiningClassLoader classLoader;
-	private final AggregationMetadataStorage metadataStorage;
 	private final AggregationChunkStorage aggregationChunkStorage;
-	private final AggregationMetadata metadata;
 
-	private final Map<String, FieldType> keyTypes = new LinkedHashMap<>();
-	private final Map<String, FieldType> measureTypes = new LinkedHashMap<>();
-	private final List<String> partitioningKey = new ArrayList<>();
-	private final Map<String, Measure> measures = new LinkedHashMap<>();
+	private final AggregationStructure structure;
+	private AggregationState state;
 
 	// settings
 	private int chunkSize = DEFAULT_CHUNK_SIZE;
@@ -91,11 +87,6 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 	private long maxIncrementalReloadPeriodMillis = DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS;
 	private boolean ignoreChunkReadingExceptions = false;
 	private int maxChunksToConsolidate = DEFAULT_MAX_CHUNKS_TO_CONSOLIDATE;
-
-	// state
-	private int lastRevisionId;
-	private long lastReloadTimestamp;
-	private ListenableCompletionCallback loadChunksCallback;
 
 	// jmx
 	private final List<AggregationGroupReducer> activeGroupReducers = new ArrayList<>();
@@ -106,13 +97,14 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 	private Exception consolidationLastError;
 
 	private Aggregation(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
-	                    AggregationMetadataStorage metadataStorage, AggregationChunkStorage aggregationChunkStorage) {
+	                    AggregationChunkStorage aggregationChunkStorage, AggregationStructure structure,
+	                    AggregationState state) {
 		this.eventloop = eventloop;
 		this.executorService = executorService;
 		this.classLoader = classLoader;
-		this.metadataStorage = metadataStorage;
 		this.aggregationChunkStorage = aggregationChunkStorage;
-		this.metadata = new AggregationMetadata(this);
+		this.structure = structure;
+		this.state = state;
 	}
 
 	/**
@@ -125,17 +117,11 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 	 *
 	 * @param eventloop               event loop, in which the aggregation is to run
 	 * @param classLoader             class loader for defining dynamic classes
-	 * @param metadataStorage         storage for persisting aggregation metadata
 	 * @param aggregationChunkStorage storage for data chunks
 	 */
 	public static Aggregation create(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
-	                                 AggregationMetadataStorage metadataStorage, AggregationChunkStorage aggregationChunkStorage) {
-		return new Aggregation(eventloop, executorService, classLoader, metadataStorage, aggregationChunkStorage);
-	}
-
-	@VisibleForTesting
-	static Aggregation createUninitialized() {
-		return new Aggregation(null, null, null, null, null);
+	                                 AggregationChunkStorage aggregationChunkStorage, AggregationStructure structure) {
+		return new Aggregation(eventloop, executorService, classLoader, aggregationChunkStorage, structure, new AggregationState(structure));
 	}
 
 	public Aggregation withChunkSize(int chunkSize) {
@@ -168,96 +154,48 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 		return this;
 	}
 
-	public Aggregation withKey(String keyId, FieldType type) {
-		checkArgument(!keyTypes.containsKey(keyId));
-		keyTypes.put(keyId, type);
-		metadata.initIndex();
-		return this;
+	public AggregationStructure getStructure() {
+		return structure;
 	}
 
-	public Aggregation withKeys(Map<String, FieldType> keyTypes) {
-		this.keyTypes.putAll(keyTypes);
-		metadata.initIndex();
-		return this;
+	public AggregationState getState() {
+		return state;
 	}
 
-	public Aggregation withMeasure(String measureId, Measure aggregateFunction) {
-		checkArgument(!measureTypes.containsKey(measureId));
-		measureTypes.put(measureId, aggregateFunction.getFieldType());
-		measures.put(measureId, aggregateFunction);
-		return this;
+	public void setState(AggregationState state) {
+		this.state = state;
 	}
 
-	public Aggregation withMeasures(Map<String, Measure> measures) {
-		for (String measureId : measures.keySet()) {
-			withMeasure(measureId, measures.get(measureId));
-		}
-		return this;
-	}
-
-	public Aggregation withIgnoredMeasure(String measureId, FieldType measureType) {
-		checkArgument(!measureTypes.containsKey(measureId));
-		measureTypes.put(measureId, measureType);
-		return this;
-	}
-
-	public Aggregation withIgnoredMeasures(Map<String, FieldType> measureTypes) {
-		checkArgument(intersection(this.measureTypes.keySet(), measureTypes.keySet()).isEmpty());
-		this.measureTypes.putAll(measureTypes);
-		return this;
-	}
-
-	public Aggregation withPartitioningKey(List<String> partitioningKey) {
-		this.partitioningKey.addAll(partitioningKey);
-		return this;
-	}
-
-	public Aggregation withPartitioningKey(String... partitioningKey) {
-		this.partitioningKey.addAll(Arrays.asList(partitioningKey));
-		return this;
+	public AggregationState detachState() {
+		AggregationState state = this.state;
+		this.state = null;
+		return state;
 	}
 
 	public List<String> getKeys() {
-		return newArrayList(keyTypes.keySet());
+		return structure.getKeys();
 	}
 
 	public List<String> getMeasures() {
-		return newArrayList(measures.keySet());
+		return structure.getMeasures();
 	}
 
 	public Map<String, FieldType> getKeyTypes() {
-		return keyTypes;
+		return structure.getKeyTypes();
 	}
 
 	public Map<String, FieldType> getMeasureTypes() {
-		return measureTypes;
-	}
-
-	public Measure getMeasure(String field) {
-		return measures.get(field);
-	}
-
-	public FieldType getKeyType(String key) {
-		return keyTypes.get(key);
-	}
-
-	public FieldType getMeasureType(String field) {
-		return measureTypes.get(field);
+		return structure.getMeasureTypes();
 	}
 
 	public List<String> getPartitioningKey() {
-		return partitioningKey;
-	}
-
-	@VisibleForTesting
-	public AggregationMetadata getMetadata() {
-		return metadata;
+		return structure.getPartitioningKey();
 	}
 
 	public StreamReducers.Reducer aggregationReducer(Class<?> inputClass, Class<?> outputClass,
 	                                                 List<String> keys, List<String> measures,
 	                                                 DefiningClassLoader classLoader) {
-		return AggregationUtils.aggregationReducer(this, inputClass, outputClass,
+		return AggregationUtils.aggregationReducer(structure, inputClass, outputClass,
 				keys, measures, classLoader);
 	}
 
@@ -271,37 +209,42 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 	 */
 	@SuppressWarnings("unchecked")
 	public <T> StreamConsumer<T> consumer(Class<T> inputClass, Map<String, String> keyFields, Map<String, String> measureFields,
-	                                      ResultCallback<List<AggregationChunk>> callback) {
+	                                      final ResultCallback<AggregationDiff> callback) {
 		checkArgument(newHashSet(getKeys()).equals(keyFields.keySet()), "Expected keys: %s, actual keyFields: %s", getKeys(), keyFields);
-		checkArgument(measures.keySet().containsAll(measureFields.keySet()), "Unknown measures: %s", difference(measureFields.keySet(), measures.keySet()));
+		checkArgument(getMeasureTypes().keySet().containsAll(measureFields.keySet()), "Unknown measures: %s", difference(measureFields.keySet(), getMeasureTypes().keySet()));
 
 		logger.info("Started consuming data in aggregation {}. Keys: {} Measures: {}", this, keyFields.keySet(), measureFields.keySet());
 
-		Class<?> keyClass = createKeyClass(this, getKeys(), classLoader);
-		List<String> measures = newArrayList(filter(this.measures.keySet(), in(measureFields.keySet())));
-		Class<?> accumulatorClass = createRecordClass(this, getKeys(),
-				measures, classLoader);
+		Class<?> keyClass = createKeyClass(structure, getKeys(), classLoader);
+		List<String> measures = newArrayList(filter(this.getMeasureTypes().keySet(), in(measureFields.keySet())));
+		Class<?> accumulatorClass = createRecordClass(structure, getKeys(), measures, classLoader);
 
 		Function<T, Comparable<?>> keyFunction = createKeyFunction(inputClass, keyClass, getKeys(), classLoader);
 
-		Aggregate aggregate = createPreaggregator(this, inputClass, accumulatorClass,
+		Aggregate aggregate = createPreaggregator(structure, inputClass, accumulatorClass,
 				keyFields, measureFields,
 				classLoader);
 
-		return new AggregationGroupReducer<>(eventloop, aggregationChunkStorage, metadataStorage,
-				this, getKeys(), measures,
+		return new AggregationGroupReducer<>(eventloop, aggregationChunkStorage,
+				structure, measures,
 				accumulatorClass,
 				createPartitionPredicate(accumulatorClass, getPartitioningKey(), classLoader),
-				keyFunction, aggregate, chunkSize, classLoader, callback);
+				keyFunction, aggregate, chunkSize, classLoader,
+				new ForwardingResultCallback<List<AggregationChunk>>(callback) {
+					@Override
+					protected void onResult(List<AggregationChunk> result) {
+						callback.setResult(AggregationDiff.ofCommit(new HashSet<>(result)));
+					}
+				});
 	}
 
-	public <T> StreamConsumer<T> consumer(Class<T> inputClass, ResultCallback<List<AggregationChunk>> callback) {
+	public <T> StreamConsumer<T> consumer(Class<T> inputClass, ResultCallback<AggregationDiff> callback) {
 		return consumer(inputClass, scanKeyFields(inputClass), scanMeasureFields(inputClass), callback);
 	}
 
 	public double estimateCost(AggregationQuery query) {
 		List<String> aggregationFields = newArrayList(filter(query.getMeasures(), in(getMeasures())));
-		return metadata.findChunks(query.getPredicate(), aggregationFields).size();
+		return state.findChunks(query.getPredicate(), aggregationFields).size();
 	}
 
 	public <T> StreamProducer<T> query(AggregationQuery query, Class<T> outputClass) {
@@ -327,7 +270,7 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 		checkArgument(cl != null, "Unrelated queryClassLoader");
 		List<String> fields = newArrayList(filter(getMeasures(), in(query.getMeasures())));
 
-		List<AggregationChunk> allChunks = metadata.findChunks(query.getPredicate(), fields);
+		List<AggregationChunk> allChunks = state.findChunks(query.getPredicate(), fields);
 
 		return consolidatedProducer(query.getKeys(),
 				fields, outputClass, query.getPredicate(), allChunks, queryClassLoader);
@@ -337,7 +280,7 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 	                                         List<String> allKeys, List<String> measures, DefiningClassLoader classLoader) {
 		Comparator keyComparator = createKeyComparator(resultClass, allKeys, classLoader);
 		Path path = Paths.get("sorterStorage", "%d.part");
-		BufferSerializer bufferSerializer = createBufferSerializer(this, resultClass,
+		BufferSerializer bufferSerializer = createBufferSerializer(structure, resultClass,
 				getKeys(), measures, classLoader);
 		StreamMergeSorterStorage sorterStorage = StreamMergeSorterStorageImpl.create(eventloop, executorService,
 				bufferSerializer, path, sorterBlockSize);
@@ -360,13 +303,13 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 
 		List<String> measures = Ordering.explicit(getMeasures()).sortedCopy(chunkFields);
 
-		Class resultClass = createRecordClass(this, getKeys(), measures, classLoader);
+		Class resultClass = createRecordClass(structure, getKeys(), measures, classLoader);
 
 		StreamProducer<Object> consolidatedProducer = consolidatedProducer(getKeys(), measures, resultClass, null, chunksToConsolidate, classLoader);
 		AggregationChunker<Object> chunker = new AggregationChunker<>(eventloop,
-				this, getKeys(), measures, resultClass,
+				structure, measures, resultClass,
 				createPartitionPredicate(resultClass, getPartitioningKey(), classLoader),
-				aggregationChunkStorage, metadataStorage, chunkSize, classLoader, callback);
+				aggregationChunkStorage, chunkSize, classLoader, callback);
 		consolidatedProducer.streamTo(chunker);
 	}
 
@@ -436,7 +379,7 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 		List<SequenceStream> sequenceStreams = new ArrayList<>();
 
 		for (QueryPlan.Sequence sequence : plan.getSequences()) {
-			Class<?> sequenceClass = createRecordClass(this, this.getKeys(), sequence.getChunksFields(), classLoader);
+			Class<?> sequenceClass = createRecordClass(structure, this.getKeys(), sequence.getChunksFields(), classLoader);
 
 			StreamProducer stream = sequenceStream(where, sequence.getChunks(), sequenceClass, queryClassLoader);
 			if (!alreadySorted) {
@@ -480,12 +423,12 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 
 		StreamReducer<Comparable, T, Object> streamReducer = StreamReducer.create(eventloop, Ordering.natural());
 
-		Class<?> keyClass = createKeyClass(this, queryKeys, this.classLoader);
+		Class<?> keyClass = createKeyClass(structure, queryKeys, this.classLoader);
 
 		for (SequenceStream sequence : sequences) {
 			Function extractKeyFunction = createKeyFunction(sequence.type, keyClass, queryKeys, this.classLoader);
 
-			StreamReducers.Reducer reducer = AggregationUtils.aggregationReducer(this, sequence.type, resultClass,
+			StreamReducers.Reducer reducer = AggregationUtils.aggregationReducer(structure, sequence.type, resultClass,
 					queryKeys, newArrayList(filter(measures, in(sequence.fields))), classLoader);
 
 			sequence.stream.streamTo(streamReducer.newInput(extractKeyFunction, reducer));
@@ -511,7 +454,7 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 	private <T> void chunkReaderWithFilter(final AggregationPredicate where, AggregationChunk chunk,
 	                                       final Class<T> chunkRecordClass, final DefiningClassLoader queryClassLoader,
 	                                       final ResultCallback<StreamProducer<T>> callback) {
-		aggregationChunkStorage.read(this, getKeys(), chunk.getMeasures(), chunkRecordClass, chunk.getChunkId(), classLoader,
+		aggregationChunkStorage.read(structure, chunk.getMeasures(), chunkRecordClass, chunk.getChunkId(), classLoader,
 				new ForwardingResultCallback<StreamProducer<T>>(callback) {
 					@Override
 					protected void onResult(StreamProducer<T> chunkProducer) {
@@ -535,39 +478,43 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 	                                         AggregationPredicate where, DefiningClassLoader classLoader) {
 		return ClassBuilder.create(classLoader, Predicate.class)
 				.withMethod("apply", boolean.class, singletonList(Object.class),
-						where.createPredicateDef(cast(arg(0), chunkRecordClass), keyTypes))
+						where.createPredicateDef(cast(arg(0), chunkRecordClass), getKeyTypes()))
 				.buildClassAndCreateNewInstance();
 	}
 
 	@JmxAttribute
 	public int getNumberOfOverlappingChunks() {
-		return metadata.findOverlappingChunks().size();
+		return state.findOverlappingChunks().size();
 	}
 
-	public void consolidateMinKey(final ResultCallback<Boolean> callback) {
-		consolidate(false, callback);
+	public void consolidateMinKey(final ResultCallback<AggregationDiff> callback) {
+		doConsolidate(false, callback);
 	}
 
-	public void consolidateHotSegment(final ResultCallback<Boolean> callback) {
-		consolidate(true, callback);
+	public void consolidateHotSegment(final ResultCallback<AggregationDiff> callback) {
+		doConsolidate(true, callback);
 	}
 
-	private void consolidate(final boolean hotSegment, final ResultCallback<Boolean> callback) {
-		if (consolidationStarted != 0) {
-			logger.warn("Consolidation has already been started {} seconds ago", (eventloop.currentTimeMillis() - consolidationStarted) / 1000);
-			callback.setResult(false);
+	private void doConsolidate(boolean hotSegment, final ResultCallback<AggregationDiff> callback) {
+		final List<AggregationChunk> chunks = hotSegment ?
+				state.findChunksForConsolidationHotSegment(maxChunksToConsolidate) :
+				state.findChunksForConsolidationMinKey(maxChunksToConsolidate, chunkSize);
+
+		if (chunks.isEmpty()) {
+			logger.info("Nothing to consolidate in aggregation '{}", this);
+			callback.setResult(AggregationDiff.empty());
 			return;
 		}
+
+		logger.info("Starting consolidation of aggregation '{}'", this);
 		consolidationStarted = eventloop.currentTimeMillis();
-		doConsolidate(hotSegment, new ResultCallback<Boolean>() {
+
+		doConsolidation(chunks, new ResultCallback<List<AggregationChunk>>() {
 			@Override
-			protected void onResult(Boolean result) {
-				if (result) {
-					consolidationLastTimeMillis = eventloop.currentTimeMillis() - consolidationStarted;
-					consolidations++;
-				}
-				consolidationStarted = 0;
-				callback.setResult(result);
+			public void onResult(final List<AggregationChunk> consolidatedChunks) {
+				consolidationLastTimeMillis = eventloop.currentTimeMillis() - consolidationStarted;
+				consolidations++;
+				callback.setResult(AggregationDiff.of(new LinkedHashSet<>(consolidatedChunks), new LinkedHashSet<>(chunks)));
 			}
 
 			@Override
@@ -579,121 +526,12 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 		});
 	}
 
-	private void doConsolidate(final boolean hotSegment, final ResultCallback<Boolean> callback) {
-		loadChunks(new ForwardingCompletionCallback(callback) {
-			@Override
-			public void onComplete() {
-				List<AggregationChunk> chunks = hotSegment ?
-						metadata.findChunksForConsolidationHotSegment(maxChunksToConsolidate) :
-						metadata.findChunksForConsolidationMinKey(maxChunksToConsolidate, chunkSize);
-				doConsolidate(chunks, callback);
-			}
-		});
-	}
-
-	private void doConsolidate(final List<AggregationChunk> chunks, final ResultCallback<Boolean> callback) {
-		if (chunks.isEmpty()) {
-			logger.info("Nothing to consolidate in aggregation '{}", this);
-			callback.setResult(false);
-			return;
-		}
-		logger.info("Starting consolidation of aggregation '{}'", this);
-		metadataStorage.startConsolidation(chunks, new ForwardingCompletionCallback(callback) {
-			@Override
-			public void onComplete() {
-				logger.info("Completed writing consolidation start metadata in aggregation '{}'", Aggregation.this);
-				doConsolidation(chunks, new ForwardingResultCallback<List<AggregationChunk>>(callback) {
-					@Override
-					public void onResult(final List<AggregationChunk> consolidatedChunks) {
-						logger.info("Saving consolidation results to metadata storage in aggregation '{}'", Aggregation.this);
-						metadataStorage.saveConsolidatedChunks(chunks, consolidatedChunks, new ForwardingCompletionCallback(callback) {
-							@Override
-							public void onComplete() {
-								logger.info("Completed consolidation of the following chunks ({}) " +
-												"in aggregation '{}': [{}]. Created chunks ({}): [{}]",
-										chunks.size(), metadata, getChunkIds(chunks),
-										consolidatedChunks.size(), getChunkIds(consolidatedChunks));
-								callback.setResult(true);
-							}
-						});
-					}
-				});
-			}
-		});
-	}
-
 	public static String getChunkIds(Iterable<AggregationChunk> chunks) {
 		List<Long> ids = new ArrayList<>();
 		for (AggregationChunk chunk : chunks) {
 			ids.add(chunk.getChunkId());
 		}
 		return JOINER.join(ids);
-	}
-
-	public void loadChunks(final CompletionCallback callback) {
-		if (loadChunksCallback != null) {
-			loadChunksCallback.addListener(callback);
-			return;
-		}
-		loadChunksCallback = ListenableCompletionCallback.create();
-		loadChunksCallback.addListener(callback);
-
-		final boolean incremental = eventloop.currentTimeMillis() - lastReloadTimestamp <= maxIncrementalReloadPeriodMillis;
-		logger.info("Loading chunks for aggregation {} (incremental={})", this, incremental);
-		int revisionId = incremental ? lastRevisionId : 0;
-
-		metadataStorage.loadChunks(this, revisionId, new CompletionCallback() {
-			@Override
-			protected void onComplete() {
-				CompletionCallback currentCallback = loadChunksCallback;
-				loadChunksCallback = null;
-				currentCallback.setComplete();
-			}
-
-			@Override
-			public void onException(Exception exception) {
-				logger.error("Loading chunks for aggregation {} failed", this, exception);
-				CompletionCallback currentCallback = loadChunksCallback;
-				loadChunksCallback = null;
-				currentCallback.setException(exception);
-			}
-		});
-	}
-
-	public void loadChunks(LoadedChunks loadedChunks, boolean incremental) {
-		if (!incremental) {
-			metadata.clearIndex();
-		}
-
-		for (AggregationChunk newChunk : loadedChunks.newChunks) {
-			metadata.addToIndex(newChunk);
-			logger.trace("Added chunk {} to index", newChunk);
-		}
-
-		for (Long consolidatedChunkId : loadedChunks.consolidatedChunkIds) {
-			AggregationChunk chunk = metadata.getChunks().get(consolidatedChunkId);
-			if (chunk != null) {
-				metadata.removeFromIndex(chunk);
-				logger.trace("Removed chunk {} from index", chunk);
-			}
-		}
-
-		this.lastRevisionId = loadedChunks.lastRevisionId;
-		this.lastReloadTimestamp = eventloop.currentTimeMillis();
-
-		logger.info("Loading chunks for aggregation {} completed. " +
-						"Loaded {} new chunks and {} consolidated chunks. Revision id: {}",
-				this, loadedChunks.newChunks.size(), loadedChunks.consolidatedChunkIds.size(),
-				loadedChunks.lastRevisionId);
-	}
-
-	public List<AggregationMetadata.ConsolidationDebugInfo> getConsolidationDebugInfo() {
-		return metadata.getConsolidationDebugInfo();
-	}
-
-	@VisibleForTesting
-	public void setLastReloadTimestamp(long lastReloadTimestamp) {
-		this.lastReloadTimestamp = lastReloadTimestamp;
 	}
 
 	// jmx
@@ -780,21 +618,6 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 		return size;
 	}
 
-	@JmxOperation
-	public void reloadChunks() {
-		loadChunks(IgnoreCompletionCallback.create());
-	}
-
-	@JmxOperation
-	public void consolidateHotSegment() {
-		consolidateHotSegment(IgnoreResultCallback.<Boolean>create());
-	}
-
-	@JmxOperation
-	public void consolidateMinKey() {
-		consolidateMinKey(IgnoreResultCallback.<Boolean>create());
-	}
-
 	@JmxAttribute
 	public Integer getConsolidationSeconds() {
 		return consolidationStarted == 0 ? null : (int) ((eventloop.currentTimeMillis() - consolidationStarted) / 1000);
@@ -817,12 +640,12 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 
 	@JmxAttribute
 	public int getChunks() {
-		return metadata.getChunks().size();
+		return state.getChunks().size();
 	}
 
 	@Override
 	public String toString() {
-		return "{" + keyTypes.keySet() + " " + measures.keySet() + '}';
+		return "{" + getKeyTypes().keySet() + " " + getMeasureTypes().keySet() + '}';
 	}
 
 	@Override

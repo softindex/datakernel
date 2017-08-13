@@ -16,27 +16,29 @@
 
 package io.datakernel.aggregation;
 
+import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.stream.StreamProducer;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * Manages persistence of aggregations (chunks of data).
  */
-public interface AggregationChunkStorage {
+public interface AggregationChunkStorage extends IdGenerator<Long> {
 	/**
 	 * Creates a {@code StreamProducer} that streams records contained in the chunk.
 	 * The chunk to read is determined by {@code aggregationId} and {@code id}.
 	 *
 	 * @param recordClass class of chunk record
-	 * @param id          id of chunk
+	 * @param chunkId          id of chunk
 	 * @return StreamProducer, which will stream read records to its wired consumer.
 	 */
-	<T> void read(Aggregation aggregation, List<String> keys, List<String> fields,
-	              Class<T> recordClass, long id, DefiningClassLoader classLoader,
+	<T> void read(AggregationStructure aggregation, List<String> fields,
+	              Class<T> recordClass, long chunkId, DefiningClassLoader classLoader,
 	              ResultCallback<StreamProducer<T>> callback);
 
 	/**
@@ -46,16 +48,9 @@ public interface AggregationChunkStorage {
 	 * @param producer    producer of records
 	 * @param fields      fields of chunk record
 	 * @param recordClass class of chunk record
-	 * @param id          id of chunk
+	 * @param chunkId          id of chunk
 	 */
-	<T> void write(StreamProducer<T> producer, Aggregation aggregation, List<String> keys, List<String> fields, Class<T>
-			recordClass, long id, DefiningClassLoader classLoader, CompletionCallback callback);
-
-	/**
-	 * Removes the chunk determined by {@code aggregationId} and {@code id}.
-	 *
-	 * @param id       id of chunk
-	 * @param callback callback
-	 */
-	void removeChunk(long id, CompletionCallback callback);
+	<T> void write(StreamProducer<T> producer, AggregationStructure aggregation, List<String> fields,
+	               Class<T> recordClass, long chunkId, DefiningClassLoader classLoader, CompletionCallback callback);
 }
+

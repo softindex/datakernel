@@ -37,8 +37,10 @@ public abstract class AbstractStreamTransformer_1_N<I> implements HasInput<I>, H
 	protected final List<AbstractOutputProducer<?>> outputProducers = new ArrayList<>();
 	private int suspendedProducersCount;
 
+	protected StreamDataReceiver<?>[] dataReceivers = new StreamDataReceiver[0];
+
 	protected abstract class AbstractInputConsumer extends AbstractStreamConsumer<I> {
-		protected StreamDataReceiver<?>[] dataReceivers = new StreamDataReceiver[0];
+		protected StreamDataReceiver<?>[] dataReceivers;
 
 		public AbstractInputConsumer() {
 			super(AbstractStreamTransformer_1_N.this.eventloop);
@@ -117,13 +119,17 @@ public abstract class AbstractStreamTransformer_1_N<I> implements HasInput<I>, H
 
 	protected void setInputConsumer(AbstractInputConsumer inputConsumer) {
 		this.inputConsumer = inputConsumer;
+		this.inputConsumer.dataReceivers = dataReceivers;
 	}
 
-	protected <T> StreamProducer<T> addOutput(final AbstractOutputProducer<T> downstreamProducer) {
-		StreamDataReceiver<?>[] oldDataReceivers = inputConsumer.dataReceivers;
+	protected <T, P extends AbstractOutputProducer<T>> P addOutput(final P downstreamProducer) {
+		StreamDataReceiver<?>[] oldDataReceivers = dataReceivers;
 		StreamDataReceiver<?>[] newDataReceivers = new StreamDataReceiver[oldDataReceivers.length + 1];
 		arraycopy(oldDataReceivers, 0, newDataReceivers, 0, oldDataReceivers.length);
-		inputConsumer.dataReceivers = newDataReceivers;
+		dataReceivers = newDataReceivers;
+		if (inputConsumer != null) {
+			inputConsumer.dataReceivers = newDataReceivers;
+		}
 
 		downstreamProducer.index = outputProducers.size();
 		outputProducers.add(downstreamProducer);

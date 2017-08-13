@@ -19,24 +19,26 @@ package io.datakernel.aggregation.util;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 
-public final class AsyncResultsReducer<A> extends CompletionCallback {
-	private final ResultCallback<A> callback;
+public final class AsyncResultsReducer<A> {
+	private ResultCallback<A> callback;
 
 	private A accumulator;
+	private Exception exception;
 
-	private int activeCallbacks;
+	private int activeResultCallbacks;
+	private int activeCompletionCallbacks;
 
-	public enum State {RUNNING, FINISHING, FINISHED, ERROR}
-
-	private State state = State.RUNNING;
-
-	private AsyncResultsReducer(ResultCallback<A> callback, A initialAccumulator) {
-		this.callback = callback;
+	private AsyncResultsReducer(A initialAccumulator) {
 		this.accumulator = initialAccumulator;
 	}
 
-	public static <A> AsyncResultsReducer<A> create(ResultCallback<A> callback, A initialAccumulator) {
-		return new AsyncResultsReducer<>(callback, initialAccumulator);
+	public static <A> AsyncResultsReducer<A> create(A initialAccumulator) {
+		return new AsyncResultsReducer<>(initialAccumulator);
+	}
+
+	public AsyncResultsReducer<A> withResultCallback(ResultCallback<A> callback) {
+		this.callback = callback;
+		return this;
 	}
 
 	public interface ResultReducer<A, V> {
@@ -44,26 +46,32 @@ public final class AsyncResultsReducer<A> extends CompletionCallback {
 	}
 
 	public <V> ResultCallback<V> newResultCallback(final ResultReducer<A, V> reducer) {
-		activeCallbacks++;
+		activeResultCallbacks++;
 		return new ResultCallback<V>() {
 			@Override
 			protected void onResult(V result) {
-				if (state == State.RUNNING || state == State.FINISHING) {
+				if (accumulator != null) {
 					accumulator = reducer.applyResult(accumulator, result);
+					assert accumulator != null;
 				}
 
-				if (--activeCallbacks == 0 && state == State.FINISHING) {
-					state = State.FINISHED;
+				activeResultCallbacks--;
+				if ((activeResultCallbacks + activeCompletionCallbacks) == 0 && callback != null && exception == null) {
 					callback.setResult(accumulator);
+					callback = null;
 				}
 			}
 
 			@Override
 			protected void onException(Exception e) {
-				--activeCallbacks;
-				if (state == State.RUNNING || state == State.FINISHING) {
-					state = State.ERROR;
-					callback.setException(e);
+				activeResultCallbacks--;
+				if (exception == null) {
+					exception = e;
+					accumulator = null;
+					if (callback != null) {
+						callback.setException(e);
+						callback = null;
+					}
 				}
 			}
 		};
@@ -73,56 +81,75 @@ public final class AsyncResultsReducer<A> extends CompletionCallback {
 		A applyCompletion(A accumulator);
 	}
 
-	public <V> CompletionCallback newCompletionCallback(final CompletionReducer<A> reducer) {
-		activeCallbacks++;
+	public CompletionCallback newCompletionCallback() {
+		return newCompletionCallback(new CompletionReducer<A>() {
+			@Override
+			public A applyCompletion(A accumulator) {
+				return accumulator;
+			}
+		});
+	}
+
+	public CompletionCallback newCompletionCallback(final CompletionReducer<A> reducer) {
+		activeCompletionCallbacks++;
 		return new CompletionCallback() {
 			@Override
 			protected void onComplete() {
-				if (state == State.RUNNING || state == State.FINISHING) {
+				if (exception != null) {
 					accumulator = reducer.applyCompletion(accumulator);
 				}
 
-				if (--activeCallbacks == 0 && state == State.FINISHING) {
-					state = State.FINISHED;
+				activeCompletionCallbacks--;
+				if ((activeResultCallbacks + activeCompletionCallbacks) == 0 && callback != null && exception == null) {
 					callback.setResult(accumulator);
+					callback = null;
 				}
 			}
 
 			@Override
 			protected void onException(Exception e) {
-				--activeCallbacks;
-				if (state == State.RUNNING || state == State.FINISHING) {
-					state = State.ERROR;
-					callback.setException(e);
+				--activeCompletionCallbacks;
+				if (exception == null) {
+					exception = e;
+					if (callback != null) {
+						callback.setException(e);
+						callback = null;
+					}
 				}
 			}
 		};
 	}
 
-	@Override
-	protected void onComplete() {
-		if (state == State.RUNNING) {
-			state = State.FINISHING;
+	public void setResultTo(ResultCallback<A> callback) {
+		assert this.callback == null;
+		if (exception != null) {
+			callback.setException(exception);
+			return;
 		}
-		if (activeCallbacks == 0 && state == State.FINISHING) {
-			state = State.FINISHED;
+		if ((activeResultCallbacks + activeCompletionCallbacks) == 0) {
 			callback.setResult(accumulator);
+			return;
 		}
-	}
-
-	@Override
-	protected void onException(Exception e) {
-		if (state == State.RUNNING || state == State.FINISHING) {
-			state = State.ERROR;
-			callback.setException(e);
-		}
+		this.callback = callback;
 	}
 
 	public int getActiveCallbacks() {
-		return activeCallbacks;
+		return activeResultCallbacks + activeCompletionCallbacks;
 	}
 
-	public State getState() {
-		return state;
+	public int getActiveResultCallbacks() {
+		return activeResultCallbacks;
+	}
+
+	public int getActiveCompletionCallbacks() {
+		return activeCompletionCallbacks;
+	}
+
+	public Exception getException() {
+		return exception;
+	}
+
+	public A getAccumulator() {
+		return accumulator;
 	}
 }

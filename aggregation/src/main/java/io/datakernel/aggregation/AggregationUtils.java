@@ -18,10 +18,12 @@ package io.datakernel.aggregation;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Sets;
+import com.google.gson.TypeAdapter;
 import io.datakernel.aggregation.annotation.Key;
 import io.datakernel.aggregation.annotation.Measures;
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.measure.Measure;
+import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.aggregation.util.PartitionPredicate;
 import io.datakernel.codegen.*;
 import io.datakernel.serializer.BufferSerializer;
@@ -30,6 +32,7 @@ import io.datakernel.serializer.asm.SerializerGenClass;
 import io.datakernel.stream.processor.StreamMap;
 import io.datakernel.stream.processor.StreamReducers;
 import io.datakernel.util.WithValue;
+import io.datakernel.utils.GsonAdapters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -94,7 +97,7 @@ public class AggregationUtils {
 		return result;
 	}
 
-	public static Class<?> createKeyClass(Aggregation aggregation, List<String> keys, DefiningClassLoader classLoader) {
+	public static Class<?> createKeyClass(AggregationStructure aggregation, List<String> keys, DefiningClassLoader classLoader) {
 		return createKeyClass(projectKeys(aggregation.getKeyTypes(), keys), classLoader);
 	}
 
@@ -159,7 +162,7 @@ public class AggregationUtils {
 				.buildClassAndCreateNewInstance();
 	}
 
-	public static Class<?> createRecordClass(Aggregation aggregation,
+	public static Class<?> createRecordClass(AggregationStructure aggregation,
 	                                         Collection<String> keys, Collection<String> fields,
 	                                         DefiningClassLoader classLoader) {
 		return createRecordClass(
@@ -187,7 +190,7 @@ public class AggregationUtils {
 				.build();
 	}
 
-	public static <T> BufferSerializer<T> createBufferSerializer(Aggregation aggregation, Class<T> recordClass,
+	public static <T> BufferSerializer<T> createBufferSerializer(AggregationStructure aggregation, Class<T> recordClass,
 	                                                             List<String> keys, List<String> fields,
 	                                                             DefiningClassLoader classLoader) {
 		return createBufferSerializer(recordClass,
@@ -220,7 +223,7 @@ public class AggregationUtils {
 		return SerializerBuilder.create(classLoader).build(serializerGenClass);
 	}
 
-	public static StreamReducers.Reducer aggregationReducer(Aggregation aggregation, Class<?> inputClass, Class<?> outputClass,
+	public static StreamReducers.Reducer aggregationReducer(AggregationStructure aggregation, Class<?> inputClass, Class<?> outputClass,
 	                                                        List<String> keys, List<String> fields,
 	                                                        DefiningClassLoader classLoader) {
 
@@ -256,7 +259,7 @@ public class AggregationUtils {
 				.buildClassAndCreateNewInstance();
 	}
 
-	public static Aggregate createPreaggregator(Aggregation aggregation, Class<?> inputClass, Class<?> outputClass,
+	public static Aggregate createPreaggregator(AggregationStructure aggregation, Class<?> inputClass, Class<?> outputClass,
 	                                            Map<String, String> keyFields, Map<String, String> measureFields,
 	                                            DefiningClassLoader classLoader) {
 
@@ -379,4 +382,26 @@ public class AggregationUtils {
 		return measureFields;
 	}
 
+	public static TypeAdapter<PrimaryKey> getPrimaryKeyJson(AggregationStructure aggregation) {
+		TypeAdapter<?>[] keyTypeAdapters = new TypeAdapter<?>[aggregation.getKeys().size()];
+		for (int i = 0; i < aggregation.getKeys().size(); i++) {
+			String key = aggregation.getKeys().get(i);
+			FieldType keyType = aggregation.getKeyTypes().get(key);
+			keyTypeAdapters[i] = keyType.getInternalJson();
+		}
+		TypeAdapter<Object[]> typeAdapter = GsonAdapters.ofHeterogeneousArray(keyTypeAdapters);
+		return GsonAdapters.transform(typeAdapter,
+				new io.datakernel.util.Function<Object[], PrimaryKey>() {
+					@Override
+					public PrimaryKey apply(Object[] array) {
+						return PrimaryKey.ofArray(array);
+					}
+				},
+				new io.datakernel.util.Function<PrimaryKey, Object[]>() {
+					@Override
+					public Object[] apply(PrimaryKey primaryKey) {
+						return primaryKey.getArray();
+					}
+				});
+	}
 }

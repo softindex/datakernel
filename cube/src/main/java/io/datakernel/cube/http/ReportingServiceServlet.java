@@ -17,15 +17,15 @@
 package io.datakernel.cube.http;
 
 import com.google.common.base.Charsets;
-import com.google.gson.Gson;
+import com.google.gson.TypeAdapter;
 import io.datakernel.aggregation.AggregationPredicate;
 import io.datakernel.aggregation.QueryException;
 import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.cube.*;
-import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
 import io.datakernel.util.Stopwatch;
+import io.datakernel.utils.GsonAdapters.TypeAdapterRegistryImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,16 +37,17 @@ public final class ReportingServiceServlet implements AsyncServlet {
 	protected final Logger logger = LoggerFactory.getLogger(ReportingServiceServlet.class);
 
 	private final ICube cube;
-	private final Gson gson;
+	private final TypeAdapterRegistryImpl registry;
+	private TypeAdapter<QueryResult> queryResultJson;
+	private TypeAdapter<AggregationPredicate> aggregationPredicateJson;
 
-	private ReportingServiceServlet(ICube cube, Gson gson) {
-		this.gson = gson;
+	private ReportingServiceServlet(ICube cube, TypeAdapterRegistryImpl registry) {
 		this.cube = cube;
+		this.registry = registry;
 	}
 
 	public static ReportingServiceServlet create(ICube cube) {
-		Gson gson = createGsonBuilder(cube.getAttributeTypes(), cube.getMeasureTypes()).create();
-		return new ReportingServiceServlet(cube, gson);
+		return new ReportingServiceServlet(cube, createCubeTypeAdaptersRegistry());
 	}
 
 	public static MiddlewareServlet createRootServlet(ICube cube) {
@@ -56,6 +57,20 @@ public final class ReportingServiceServlet implements AsyncServlet {
 					.with(GET, "/consolidation-debug", ConsolidationDebugServlet.create((Cube) cube));
 		}
 		return middlewareServlet;
+	}
+
+	private TypeAdapter<AggregationPredicate> getAggregationPredicateJson() {
+		if (aggregationPredicateJson == null) {
+			aggregationPredicateJson = AggregationPredicateGsonAdapter.create(registry, cube.getAttributeTypes(), cube.getMeasureTypes());
+		}
+		return aggregationPredicateJson;
+	}
+
+	private TypeAdapter<QueryResult> getQueryResultJson() {
+		if (queryResultJson == null) {
+			queryResultJson = QueryResultGsonAdapter.create(registry, cube.getAttributeTypes(), cube.getMeasureTypes());
+		}
+		return queryResultJson;
 	}
 
 	@Override
@@ -68,19 +83,19 @@ public final class ReportingServiceServlet implements AsyncServlet {
 				@Override
 				protected void onResult(QueryResult result) {
 					Stopwatch resultProcessingStopwatch = Stopwatch.createStarted();
-					String json = gson.toJson(result);
+					String json = getQueryResultJson().toJson(result);
 					HttpResponse httpResponse = createResponse(json);
 					logger.info("Processed request {} ({}) [totalTime={}, jsonConstruction={}]", httpRequest,
 							cubeQuery, totalTimeStopwatch, resultProcessingStopwatch);
 					callback.setResult(httpResponse);
 				}
 			});
-		} catch (ParseException e) {
-			logger.error("Parse exception: " + httpRequest, e);
-			callback.setException(e);
 		} catch (QueryException e) {
 			logger.error("Query exception: " + httpRequest, e);
-			callback.setException(e);
+			callback.setResult(createErrorResponse(e.getMessage()));
+		} catch (Exception e) {
+			logger.error("Parse exception: " + httpRequest, e);
+			callback.setResult(createErrorResponse(e.getMessage()));
 		}
 	}
 
@@ -91,9 +106,16 @@ public final class ReportingServiceServlet implements AsyncServlet {
 		response.addHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
 		return response;
 	}
+	private static HttpResponse createErrorResponse(String body) {
+		HttpResponse response = HttpResponse.ofCode(400);
+		response.setContentType(ContentType.of(MediaTypes.PLAIN_TEXT, Charsets.UTF_8));
+		response.setBody(wrapUtf8(body));
+		response.addHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
+		return response;
+	}
 
 	@SuppressWarnings("unchecked")
-	public CubeQuery parseQuery(HttpRequest request) throws ParseException {
+	public CubeQuery parseQuery(HttpRequest request) throws Exception {
 		CubeQuery query = CubeQuery.create();
 
 		String parameter;
@@ -107,7 +129,7 @@ public final class ReportingServiceServlet implements AsyncServlet {
 
 		parameter = request.getParameter(WHERE_PARAM);
 		if (parameter != null)
-			query = query.withWhere(gson.fromJson(parameter, AggregationPredicate.class));
+			query = query.withWhere(getAggregationPredicateJson().fromJson(parameter));
 
 		parameter = request.getParameter(SORT_PARAM);
 		if (parameter != null)
@@ -115,7 +137,7 @@ public final class ReportingServiceServlet implements AsyncServlet {
 
 		parameter = request.getParameter(HAVING_PARAM);
 		if (parameter != null)
-			query = query.withHaving(gson.fromJson(parameter, AggregationPredicate.class));
+			query = query.withHaving(getAggregationPredicateJson().fromJson(parameter));
 
 		parameter = request.getParameter(LIMIT_PARAM);
 		if (parameter != null)

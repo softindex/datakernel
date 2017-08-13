@@ -20,23 +20,32 @@ import io.datakernel.aggregation.AggregationChunk;
 import io.datakernel.aggregation.AggregationChunkStorage;
 import io.datakernel.aggregation.LocalFsChunkStorage;
 import io.datakernel.aggregation.fieldtype.FieldTypes;
-import io.datakernel.async.IgnoreCompletionCallback;
+import io.datakernel.async.CompletionCallbackFuture;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.codegen.DefiningClassLoader;
+import io.datakernel.cube.ot.CubeDiff;
+import io.datakernel.cube.ot.CubeDiffJson;
+import io.datakernel.cube.ot.CubeOT;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.logfs.LocalFsLogFileSystem;
 import io.datakernel.logfs.LogManager;
-import io.datakernel.logfs.LogToCubeMetadataStorage;
-import io.datakernel.logfs.LogToCubeRunner;
+import io.datakernel.logfs.LogManagerImpl;
+import io.datakernel.logfs.ot.*;
+import io.datakernel.ot.OTCommit;
+import io.datakernel.ot.OTRemoteAdapter;
+import io.datakernel.ot.OTRemoteSql;
+import io.datakernel.ot.OTStateManager;
+import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
-import org.jooq.Configuration;
-import org.jooq.SQLDialect;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+import javax.sql.DataSource;
 import java.nio.file.Path;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,7 +58,7 @@ import static io.datakernel.aggregation.fieldtype.FieldTypes.ofDouble;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.sum;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
-import static io.datakernel.cube.CubeTestUtils.*;
+import static io.datakernel.cube.CubeTestUtils.dataSource;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
@@ -59,31 +68,18 @@ public class CubeMeasureRemovalTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
-	private static final String DATABASE_PROPERTIES_PATH = "test.properties";
-	private static final SQLDialect DATABASE_DIALECT = SQLDialect.MYSQL;
-	private static final String LOG_PARTITION_NAME = "partitionA";
-	private static final List<String> LOG_PARTITIONS = asList(LOG_PARTITION_NAME);
-	private static final String LOG_NAME = "testlog";
-
 	@SuppressWarnings("ConstantConditions")
 	@Test
 	public void test() throws Exception {
-		ExecutorService executor = Executors.newCachedThreadPool();
-
-		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		Path aggregationsDir = temporaryFolder.newFolder().toPath();
 		Path logsDir = temporaryFolder.newFolder().toPath();
 
-		Configuration jooqConfiguration = getJooqConfiguration(DATABASE_PROPERTIES_PATH, DATABASE_DIALECT);
-		AggregationChunkStorage aggregationChunkStorage =
-				LocalFsChunkStorage.create(eventloop, executor, aggregationsDir);
-		CubeMetadataStorageSql cubeMetadataStorageSql =
-				CubeMetadataStorageSql.create(eventloop, executor, jooqConfiguration, "processId");
-		LogToCubeMetadataStorage logToCubeMetadataStorage =
-				getLogToCubeMetadataStorage(eventloop, executor, jooqConfiguration, cubeMetadataStorageSql);
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		ExecutorService executor = Executors.newCachedThreadPool();
+		DefiningClassLoader classLoader = DefiningClassLoader.create();
 
-		Cube cube = Cube.create(eventloop, executor, classLoader, cubeMetadataStorageSql, aggregationChunkStorage)
+		AggregationChunkStorage aggregationChunkStorage = LocalFsChunkStorage.create(eventloop, executor, new IdGeneratorStub(), aggregationsDir);
+		Cube cube = Cube.create(eventloop, executor, classLoader, aggregationChunkStorage)
 				.withDimension("date", FieldTypes.ofLocalDate())
 				.withDimension("advertiser", FieldTypes.ofInt())
 				.withDimension("campaign", FieldTypes.ofInt())
@@ -104,30 +100,59 @@ public class CubeMeasureRemovalTest {
 				.withRelation("campaign", "advertiser")
 				.withRelation("banner", "campaign");
 
-		LogManager<LogItem> logManager = getLogManager(LogItem.class, eventloop, executor, classLoader, logsDir);
-		LogToCubeRunner<LogItem> logToCubeRunner = LogToCubeRunner.create(eventloop, cube, logManager,
-				LogItemSplitter.factory(), LOG_NAME, LOG_PARTITIONS, logToCubeMetadataStorage);
+		DataSource dataSource = dataSource("test.properties");
+		OTRemoteSql<LogDiff<CubeDiff>> otSourceSql = OTRemoteSql.create(dataSource, LogDiffJson.create(CubeDiffJson.create(cube)));
+		otSourceSql.truncateTables();
+		otSourceSql.push(OTCommit.<Integer, LogDiff<CubeDiff>>ofRoot(1));
+
+		LogManager<LogItem> logManager = LogManagerImpl.create(eventloop,
+				LocalFsLogFileSystem.create(eventloop, executor, logsDir),
+				SerializerBuilder.create(classLoader).build(LogItem.class));
+
+		OTStateManager<Integer, LogDiff<CubeDiff>> logCubeStateManager = new OTStateManager<>(eventloop,
+				LogOT.createLogOT(CubeOT.createCubeOT()),
+				OTRemoteAdapter.ofBlockingRemote(eventloop, executor, otSourceSql),
+				new Comparator<Integer>() {
+					@Override
+					public int compare(Integer o1, Integer o2) {
+						return Integer.compare(o1, o2);
+					}
+				},
+				new LogOTState<>(cube));
+
+		LogOTProcessor<Integer, LogItem, CubeDiff> logOTProcessor = LogOTProcessor.create(eventloop,
+				logManager,
+				cube.logStreamConsumer(LogItem.class),
+				"testlog",
+				asList("partitionA"),
+				logCubeStateManager);
+
+		CompletionCallbackFuture future;
+
+		// checkout first (root) revision
+
+		future = CompletionCallbackFuture.create();
+		logCubeStateManager.checkout(future);
+		eventloop.run();
+		future.get();
 
 		// Save and aggregate logs
 		List<LogItem> listOfRandomLogItems = LogItem.getListOfRandomLogItems(100);
 		StreamProducer<LogItem> producerOfRandomLogItems = StreamProducers.ofIterator(eventloop, listOfRandomLogItems.iterator());
-		producerOfRandomLogItems.streamTo(logManager.consumer(LOG_PARTITION_NAME));
+		producerOfRandomLogItems.streamTo(logManager.consumer("partitionA"));
 		eventloop.run();
 
-		logToCubeRunner.processLog(IgnoreCompletionCallback.create());
+		future = CompletionCallbackFuture.create();
+		logOTProcessor.processLog(future);
 		eventloop.run();
+		future.get();
 
-		cube.loadChunks(IgnoreCompletionCallback.create());
-		eventloop.run();
-
-		List<AggregationChunk> chunks = newArrayList(cube.getAggregation("date").getMetadata().getChunks().values());
+		List<AggregationChunk> chunks = newArrayList(cube.getAggregation("date").getState().getChunks().values());
 		assertEquals(1, chunks.size());
 		assertTrue(chunks.get(0).getMeasures().contains("revenue"));
 
 		// Initialize cube with new structure (removed measure)
-		aggregationChunkStorage = LocalFsChunkStorage.create(eventloop, executor, aggregationsDir);
-
-		cube = Cube.create(eventloop, executor, classLoader, cubeMetadataStorageSql, aggregationChunkStorage)
+		cube = Cube.create(eventloop, executor, classLoader, aggregationChunkStorage)
 				.withDimension("date", FieldTypes.ofLocalDate())
 				.withDimension("advertiser", FieldTypes.ofInt())
 				.withDimension("campaign", FieldTypes.ofInt())
@@ -148,27 +173,46 @@ public class CubeMeasureRemovalTest {
 				.withRelation("campaign", "advertiser")
 				.withRelation("banner", "campaign");
 
-		logToCubeRunner = LogToCubeRunner.create(eventloop, cube, logManager,
-				LogItemSplitter.factory(), LOG_NAME, LOG_PARTITIONS, logToCubeMetadataStorage);
+		logCubeStateManager = new OTStateManager<>(eventloop,
+				LogOT.createLogOT(CubeOT.createCubeOT()),
+				OTRemoteAdapter.ofBlockingRemote(eventloop, executor, otSourceSql),
+				new Comparator<Integer>() {
+					@Override
+					public int compare(Integer o1, Integer o2) {
+						return Integer.compare(o1, o2);
+					}
+				},
+				new LogOTState<>(cube));
+
+		logOTProcessor = LogOTProcessor.create(eventloop,
+				logManager,
+				cube.logStreamConsumer(LogItem.class),
+				"testlog",
+				asList("partitionA"),
+				logCubeStateManager);
+
+		future = CompletionCallbackFuture.create();
+		logCubeStateManager.checkout(future);
+		eventloop.run();
+		future.get();
 
 		// Save and aggregate logs
 		List<LogItem> listOfRandomLogItems2 = LogItem.getListOfRandomLogItems(100);
 		producerOfRandomLogItems = StreamProducers.ofIterator(eventloop, listOfRandomLogItems2.iterator());
-		producerOfRandomLogItems.streamTo(logManager.consumer(LOG_PARTITION_NAME));
+		producerOfRandomLogItems.streamTo(logManager.consumer("partitionA"));
 		eventloop.run();
 
-		logToCubeRunner.processLog(IgnoreCompletionCallback.create());
+		future = CompletionCallbackFuture.create();
+		logOTProcessor.processLog(future);
 		eventloop.run();
+		future.get();
 
-		cube.loadChunks(IgnoreCompletionCallback.create());
-		eventloop.run();
-
-		chunks = newArrayList(cube.getAggregation("date").getMetadata().getChunks().values());
+		chunks = newArrayList(cube.getAggregation("date").getState().getChunks().values());
 		assertEquals(2, chunks.size());
 		assertTrue(chunks.get(0).getMeasures().contains("revenue"));
 		assertFalse(chunks.get(1).getMeasures().contains("revenue"));
 
-		chunks = newArrayList(cube.getAggregation("advertiser").getMetadata().getChunks().values());
+		chunks = newArrayList(cube.getAggregation("advertiser").getState().getChunks().values());
 		assertEquals(2, chunks.size());
 		assertTrue(chunks.get(0).getMeasures().contains("revenue"));
 		assertTrue(chunks.get(1).getMeasures().contains("revenue"));
@@ -190,20 +234,22 @@ public class CubeMeasureRemovalTest {
 		}
 
 		// Consolidate
-		ResultCallbackFuture<Boolean> callback = ResultCallbackFuture.create();
+		ResultCallbackFuture<CubeDiff> callback = ResultCallbackFuture.create();
 		cube.consolidate(callback);
 		eventloop.run();
-		boolean consolidated = callback.isDone() ? callback.get() : false;
-		assertEquals(true, consolidated);
+		CubeDiff consolidatingCubeDiff = callback.get();
+		assertEquals(false, consolidatingCubeDiff.isEmpty());
 
-		cube.loadChunks(IgnoreCompletionCallback.create());
+		future = CompletionCallbackFuture.create();
+		logCubeStateManager.apply(LogDiff.forCurrentPosition(consolidatingCubeDiff));
+		logCubeStateManager.commitAndPush(future);
 		eventloop.run();
 
-		chunks = newArrayList(cube.getAggregation("date").getMetadata().getChunks().values());
+		chunks = newArrayList(cube.getAggregation("date").getState().getChunks().values());
 		assertEquals(1, chunks.size());
 		assertFalse(chunks.get(0).getMeasures().contains("revenue"));
 
-		chunks = newArrayList(cube.getAggregation("advertiser").getMetadata().getChunks().values());
+		chunks = newArrayList(cube.getAggregation("advertiser").getState().getChunks().values());
 		assertEquals(1, chunks.size());
 		assertTrue(chunks.get(0).getMeasures().contains("revenue"));
 

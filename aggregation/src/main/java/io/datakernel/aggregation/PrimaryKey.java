@@ -70,6 +70,10 @@ public class PrimaryKey implements Comparable<PrimaryKey> {
 		return ImmutableList.copyOf(values);
 	}
 
+	public Object[] getArray() {
+		return values;
+	}
+
 	public int size() {
 		return values.length;
 	}

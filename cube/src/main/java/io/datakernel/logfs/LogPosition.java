@@ -16,7 +16,7 @@
 
 package io.datakernel.logfs;
 
-public final class LogPosition {
+public final class LogPosition implements Comparable<LogPosition> {
 	private final LogFile logFile;
 	private final long position;
 
@@ -30,9 +30,13 @@ public final class LogPosition {
 		this.position = 0L;
 	}
 
-	public static LogPosition create() {return new LogPosition();}
+	public static LogPosition create() {
+		return new LogPosition();
+	}
 
-	public static LogPosition create(LogFile logFile, long position) {return new LogPosition(logFile, position);}
+	public static LogPosition create(LogFile logFile, long position) {
+		return new LogPosition(logFile, position);
+	}
 
 	public boolean isBeginning() {
 		return position == 0L;
@@ -47,7 +51,33 @@ public final class LogPosition {
 	}
 
 	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		LogPosition that = (LogPosition) o;
+
+		if (position != that.position) return false;
+		return logFile.equals(that.logFile);
+	}
+
+	@Override
+	public int hashCode() {
+		int result = logFile.hashCode();
+		result = 31 * result + (int) (position ^ (position >>> 32));
+		return result;
+	}
+
+	@Override
 	public String toString() {
 		return "LogPosition{logFile=" + logFile + ", position=" + position + '}';
+	}
+
+	@Override
+	public int compareTo(LogPosition o) {
+		int result = this.logFile.compareTo(o.logFile);
+		if (result != 0)
+			return result;
+		return Long.compare(this.position, o.position);
 	}
 }
