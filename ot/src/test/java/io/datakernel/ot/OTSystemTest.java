@@ -2,7 +2,6 @@ package io.datakernel.ot;
 
 import com.google.common.base.Function;
 import com.google.common.collect.ImmutableSet;
-import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.ot.OTSystemImpl.SquashFunction;
 import org.junit.Test;
@@ -11,6 +10,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 import static com.google.common.collect.Maps.transformValues;
 import static io.datakernel.async.AsyncCallbacks.assertCompletion;
@@ -365,43 +365,52 @@ public class OTSystemTest {
 //		eventloop.run();
 //		System.out.println(future.get());
 
-		OTUtils.mergeHeadsAndPush(eventloop, system, otSourceStub, comparator, AsyncCallbacks.<String>assertResult());
+		CompletableFuture<?> future;
+
+		future = OTUtils.mergeHeadsAndPush(system, otSourceStub, comparator).toCompletableFuture();
 		eventloop.run();
+		future.get();
 		System.out.println(otSourceStub.loadCommit("m"));
 		System.out.println(stateManager);
 		System.out.println();
 
-		stateManager.apply(new TestAdd(110, 50));
+		stateManager.add(new TestAdd(110, 50));
 		System.out.println(stateManager);
-		stateManager.commit(assertCompletion());
+		future = stateManager.commit().toCompletableFuture();
 		eventloop.run();
+		future.get();
+		future.get();
 		System.out.println(stateManager);
 		System.out.println();
 
-		stateManager.apply(new TestAdd(160, 3));
+		stateManager.add(new TestAdd(160, 3));
 		System.out.println(stateManager);
-		stateManager.rebase(assertCompletion());
+		future = stateManager.pull().toCompletableFuture();
 		eventloop.run();
+		future.get();
 		System.out.println(stateManager);
 		System.out.println();
 
-		stateManager.commit(assertCompletion());
+		future = stateManager.commit().toCompletableFuture();
 		eventloop.run();
+		future.get();
 		System.out.println(stateManager);
 		System.out.println();
 
 		System.out.println(otSourceStub);
 		System.out.println(stateManager);
-		stateManager.push(assertCompletion());
+		future = stateManager.push().toCompletableFuture();
 		eventloop.run();
+		future.get();
 		System.out.println(otSourceStub.loadCommit("x"));
 		System.out.println(otSourceStub.loadCommit("y"));
 		System.out.println(stateManager);
 		System.out.println();
 
 		System.out.println(otSourceStub);
-		OTUtils.mergeHeadsAndPush(eventloop, system, otSourceStub, comparator, AsyncCallbacks.<String>assertResult());
+		future = OTUtils.mergeHeadsAndPush(system, otSourceStub, comparator).toCompletableFuture();
 		eventloop.run();
+		future.get();
 		System.out.println(stateManager);
 		System.out.println();
 

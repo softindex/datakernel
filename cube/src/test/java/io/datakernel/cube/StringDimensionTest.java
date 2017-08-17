@@ -27,6 +27,7 @@ import io.datakernel.cube.bean.DataItemString2;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumers;
+import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import org.junit.Rule;
 import org.junit.Test;
@@ -34,6 +35,7 @@ import org.junit.rules.TemporaryFolder;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -66,12 +68,12 @@ public class StringDimensionTest {
 				.withMeasure("metric3", sum(ofLong()))
 				.withAggregation(id("detailedAggregation").withDimensions("key1", "key2").withMeasures("metric1", "metric2", "metric3"));
 
-		ResultCallbackFuture<CubeDiff> future1 = ResultCallbackFuture.create();
-		ResultCallbackFuture<CubeDiff> future2 = ResultCallbackFuture.create();
-		StreamProducers.ofIterable(eventloop, asList(new DataItemString1("str1", 2, 10, 20), new DataItemString1("str2", 3, 10, 20)))
-				.streamTo(cube.consumer(DataItemString1.class, future1));
-		StreamProducers.ofIterable(eventloop, asList(new DataItemString2("str2", 3, 10, 20), new DataItemString2("str1", 4, 10, 20)))
-				.streamTo(cube.consumer(DataItemString2.class, future2));
+		StreamProducer<DataItemString1> producer1 = StreamProducers.ofIterable(eventloop, asList(
+				new DataItemString1("str1", 2, 10, 20),
+				new DataItemString1("str2", 3, 10, 20)));
+		CompletableFuture<CubeDiff> future1 = cube.consume(producer1, DataItemString1.class).toCompletableFuture();
+		StreamProducer<DataItemString2> producer2 = StreamProducers.ofIterable(eventloop, asList(new DataItemString2("str2", 3, 10, 20), new DataItemString2("str1", 4, 10, 20)));
+		CompletableFuture<CubeDiff> future2 = cube.consume(producer2, DataItemString2.class).toCompletableFuture();
 		eventloop.run();
 
 		cube.apply(future1.get());

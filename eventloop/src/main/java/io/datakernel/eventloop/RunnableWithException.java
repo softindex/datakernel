@@ -19,20 +19,11 @@ package io.datakernel.eventloop;
 /**
  * Represents the runnable which will be ran with exception, which will be threw from runWithException()
  */
-public abstract class RunnableWithException implements Runnable {
+public interface RunnableWithException {
 
 	/**
 	 * Throws the exception
 	 */
-	public abstract void runWithException() throws Exception;
-
-	@Override
-	public final void run() {
-		try {
-			runWithException();
-		} catch (Exception e) {
-			throw new RunnableException(e);
-		}
-	}
+	void runWithException() throws Exception;
 
 }

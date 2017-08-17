@@ -25,6 +25,7 @@ import io.datakernel.stream.StreamProducer;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletionStage;
 
 @SuppressWarnings("unchecked")
 public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T, D> {
@@ -35,11 +36,11 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 	}
 
 	@Override
-	public final void consume(StreamProducer<T> logStream, ResultCallback<List<D>> callback) {
-		AsyncResultsReducer<List<D>> resultsReducer = AsyncResultsReducer.<List<D>>create(new ArrayList<D>());
+	public final CompletionStage<List<D>> consume(StreamProducer<T> logStream) {
+		AsyncResultsReducer<List<D>> resultsReducer = AsyncResultsReducer.<List<D>>create(new ArrayList<>());
 		AbstractSplitter splitter = createSplitter(resultsReducer);
 		logStream.streamTo(splitter.getInput());
-		resultsReducer.setResultTo(callback);
+		return resultsReducer.getResult();
 	}
 
 	protected abstract AbstractSplitter createSplitter(AsyncResultsReducer<List<D>> resultsReducer);
@@ -56,14 +57,10 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 		protected final <X> StreamDataReceiver<X> addOutput(LogDataConsumer<X, D> logDataConsumer) {
 			Output<X> output = new Output<>();
 			addOutput(output);
-			AsyncResultsReducer.ResultReducer<List<D>, List<D>> reducer = new AsyncResultsReducer.ResultReducer<List<D>, List<D>>() {
-				@Override
-				public List<D> applyResult(List<D> accumulator, List<D> diffs) {
-					accumulator.addAll(diffs);
-					return accumulator;
-				}
-			};
-			logDataConsumer.consume(output, resultsReducer.newResultCallback(reducer));
+			resultsReducer.addStage(logDataConsumer.consume(output), (accumulator, diffs) -> {
+				accumulator.addAll(diffs);
+				return accumulator;
+			});
 			return output.getDownstreamDataReceiver();
 		}
 

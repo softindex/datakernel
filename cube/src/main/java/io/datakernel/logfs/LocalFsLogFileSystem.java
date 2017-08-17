@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 
+import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static java.nio.file.StandardOpenOption.READ;
 
 /**
@@ -46,38 +47,33 @@ import static java.nio.file.StandardOpenOption.READ;
 public final class LocalFsLogFileSystem extends AbstractLogFileSystem {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-	private final Eventloop eventloop;
 	private final ExecutorService executorService;
 	private final Path dir;
 
 	/**
 	 * Constructs a log file system, that runs in the given event loop, runs blocking IO operations in the specified executor,
 	 * stores logs in the given directory.
-	 *
-	 * @param eventloop       event loop, which log file system is to run
-	 * @param executorService executor for blocking IO operations
+	 *  @param executorService executor for blocking IO operations
 	 * @param dir             directory for storing log files
 	 */
-	private LocalFsLogFileSystem(Eventloop eventloop, ExecutorService executorService,
+	private LocalFsLogFileSystem(ExecutorService executorService,
 	                             Path dir) {
-		this.eventloop = eventloop;
 		this.executorService = executorService;
 		this.dir = dir;
 	}
 
-	private LocalFsLogFileSystem(Eventloop eventloop, ExecutorService executorService, Path dir, String logName) {
-		this.eventloop = eventloop;
+	private LocalFsLogFileSystem(ExecutorService executorService, Path dir, String logName) {
 		this.executorService = executorService;
 		this.dir = dir.resolve(logName);
 	}
 
-	public static LocalFsLogFileSystem create(Eventloop eventloop, ExecutorService executorService, Path dir) {
-		return new LocalFsLogFileSystem(eventloop, executorService, dir);
+	public static LocalFsLogFileSystem create(ExecutorService executorService, Path dir) {
+		return new LocalFsLogFileSystem(executorService, dir);
 	}
 
-	public static LocalFsLogFileSystem create(Eventloop eventloop, ExecutorService executorService,
+	public static LocalFsLogFileSystem create(ExecutorService executorService,
 	                                          Path dir, String logName) {
-		return new LocalFsLogFileSystem(eventloop, executorService, dir, logName);
+		return new LocalFsLogFileSystem(executorService, dir, logName);
 	}
 
 	private Path path(String logPartition, LogFile logFile) {
@@ -86,65 +82,63 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem {
 
 	@Override
 	public void list(final String logPartition, final ResultCallback<List<LogFile>> callback) {
+		Eventloop eventloop = getCurrentEventloop();
 		final Eventloop.ConcurrentOperationTracker concurrentOperationTracker = eventloop.startConcurrentOperation();
 		try {
-			executorService.execute(new Runnable() {
-				@Override
-				public void run() {
-					final List<LogFile> entries = new ArrayList<>();
+			executorService.execute(() -> {
+				final List<LogFile> entries = new ArrayList<>();
 
-					try {
-						Files.createDirectories(dir);
-						Files.walkFileTree(dir, new FileVisitor<Path>() {
-							@Override
-							public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-								return FileVisitResult.CONTINUE;
-							}
+				try {
+					Files.createDirectories(dir);
+					Files.walkFileTree(dir, new FileVisitor<Path>() {
+						@Override
+						public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+							return FileVisitResult.CONTINUE;
+						}
 
-							@Override
-							public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-								PartitionAndFile partitionAndFile = parse(file.getFileName().toString());
-								if (partitionAndFile != null && partitionAndFile.logPartition.equals(logPartition)) {
-									entries.add(partitionAndFile.logFile);
-								}
-								return FileVisitResult.CONTINUE;
+						@Override
+						public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+							PartitionAndFile partitionAndFile = parse(file.getFileName().toString());
+							if (partitionAndFile != null && partitionAndFile.logPartition.equals(logPartition)) {
+								entries.add(partitionAndFile.logFile);
 							}
+							return FileVisitResult.CONTINUE;
+						}
 
-							@Override
-							public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
-								if (exc != null) {
-									logger.error("visitFileFailed error", exc);
-								}
-								return FileVisitResult.CONTINUE;
+						@Override
+						public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
+							if (exc != null) {
+								logger.error("visitFileFailed error", exc);
 							}
+							return FileVisitResult.CONTINUE;
+						}
 
-							@Override
-							public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-								if (exc != null) {
-									logger.error("postVisitDirectory error", exc);
-								}
-								return FileVisitResult.CONTINUE;
+						@Override
+						public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+							if (exc != null) {
+								logger.error("postVisitDirectory error", exc);
 							}
-						});
-						eventloop.execute(new Runnable() {
-							@Override
-							public void run() {
-								callback.setResult(entries);
-							}
-						});
-					} catch (final IOException e) {
-						// TODO ?
-						logger.error("walkFileTree error", e);
-						eventloop.execute(new Runnable() {
-							@Override
-							public void run() {
-								callback.setException(e);
-							}
-						});
-					}
-
-					concurrentOperationTracker.complete();
+							return FileVisitResult.CONTINUE;
+						}
+					});
+					eventloop.execute(new Runnable() {
+						@Override
+						public void run() {
+							callback.setResult(entries);
+						}
+					});
+				} catch (final IOException e) {
+					// TODO ?
+					logger.error("walkFileTree error", e);
+					eventloop.execute(new Runnable() {
+						@Override
+						public void run() {
+							callback.setException(e);
+						}
+					});
 				}
+
+				concurrentOperationTracker.complete();
 			});
 		} catch (RejectedExecutionException e) {
 			concurrentOperationTracker.complete();
@@ -154,6 +148,7 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem {
 
 	@Override
 	public void read(String logPartition, LogFile logFile, final long startPosition, final StreamConsumer<ByteBuf> consumer) {
+		Eventloop eventloop = getCurrentEventloop();
 		AsyncFile.open(eventloop, executorService, path(logPartition, logFile), new OpenOption[]{READ}, new ResultCallback<AsyncFile>() {
 			@Override
 			protected void onResult(AsyncFile file) {
@@ -170,6 +165,7 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem {
 
 	@Override
 	public void write(String logPartition, LogFile logFile, final StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
+		Eventloop eventloop = getCurrentEventloop();
 		AsyncFile.open(eventloop, executorService, path(logPartition, logFile), StreamFileWriter.CREATE_OPTIONS, new ForwardingResultCallback<AsyncFile>(callback) {
 			@Override
 			protected void onResult(AsyncFile file) {

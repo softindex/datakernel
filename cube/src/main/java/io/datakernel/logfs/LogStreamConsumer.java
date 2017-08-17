@@ -41,10 +41,6 @@ public class LogStreamConsumer<T> extends StreamConsumerDecorator<T> {
 		logStreamConsumer_byteBuffer = LogStreamConsumer_ByteBuffer.create(eventloop, dateTimeFormatter, fileSwitchPeriod,
 				fileSystem, logPartition);
 
-		logStreamConsumer_byteBuffer.setTag(logPartition);
-		streamCompressor.setTag(logPartition);
-		streamBinarySerializer.setTag(logPartition);
-
 		setDelegateConsumer(streamBinarySerializer.getInput());
 		streamBinarySerializer.getOutput().streamTo(streamCompressor.getInput());
 		streamCompressor.getOutput().streamTo(logStreamConsumer_byteBuffer);
@@ -54,7 +50,7 @@ public class LogStreamConsumer<T> extends StreamConsumerDecorator<T> {
 	                                              BufferSerializer<T> serializer,
 	                                              String logPartition, DateTimeFormatter dateTimeFormatter,
 	                                              long fileSwitchPeriod, int bufferSize, int flushDelayMillis) {
-		return new LogStreamConsumer<T>(eventloop, fileSystem, serializer, logPartition,
+		return new LogStreamConsumer<>(eventloop, fileSystem, serializer, logPartition,
 				dateTimeFormatter, fileSwitchPeriod, bufferSize, flushDelayMillis);
 	}
 

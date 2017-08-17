@@ -16,17 +16,17 @@
 
 package io.datakernel.aggregation.util;
 
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SettableStage;
+
+import java.util.concurrent.CompletionStage;
 
 public final class AsyncResultsReducer<A> {
-	private ResultCallback<A> callback;
+	private SettableStage<A> resultStage;
 
 	private A accumulator;
-	private Exception exception;
+	private Throwable error;
 
-	private int activeResultCallbacks;
-	private int activeCompletionCallbacks;
+	private int activeStages;
 
 	private AsyncResultsReducer(A initialAccumulator) {
 		this.accumulator = initialAccumulator;
@@ -36,8 +36,8 @@ public final class AsyncResultsReducer<A> {
 		return new AsyncResultsReducer<>(initialAccumulator);
 	}
 
-	public AsyncResultsReducer<A> withResultCallback(ResultCallback<A> callback) {
-		this.callback = callback;
+	public <V> AsyncResultsReducer<A> withStage(CompletionStage<V> stage, final ResultReducer<A, V> reducer) {
+		addStage(stage, reducer);
 		return this;
 	}
 
@@ -45,111 +45,49 @@ public final class AsyncResultsReducer<A> {
 		A applyResult(A accumulator, V value);
 	}
 
-	public <V> ResultCallback<V> newResultCallback(final ResultReducer<A, V> reducer) {
-		activeResultCallbacks++;
-		return new ResultCallback<V>() {
-			@Override
-			protected void onResult(V result) {
+	public <V> void addStage(CompletionStage<V> stage, final ResultReducer<A, V> reducer) {
+		activeStages++;
+		stage.whenComplete((result, throwable) -> {
+			if (throwable == null) {
 				if (accumulator != null) {
 					accumulator = reducer.applyResult(accumulator, result);
 					assert accumulator != null;
 				}
 
-				activeResultCallbacks--;
-				if ((activeResultCallbacks + activeCompletionCallbacks) == 0 && callback != null && exception == null) {
-					callback.setResult(accumulator);
-					callback = null;
+				activeStages--;
+				if (activeStages == 0 && resultStage != null && error == null) {
+					resultStage.setResult(accumulator);
+					resultStage = null;
 				}
-			}
-
-			@Override
-			protected void onException(Exception e) {
-				activeResultCallbacks--;
-				if (exception == null) {
-					exception = e;
+			} else {
+				activeStages--;
+				if (error == null) {
+					error = throwable;
 					accumulator = null;
-					if (callback != null) {
-						callback.setException(e);
-						callback = null;
+					if (resultStage != null) {
+						resultStage.setError(throwable);
+						resultStage = null;
 					}
 				}
-			}
-		};
-	}
-
-	public interface CompletionReducer<A> {
-		A applyCompletion(A accumulator);
-	}
-
-	public CompletionCallback newCompletionCallback() {
-		return newCompletionCallback(new CompletionReducer<A>() {
-			@Override
-			public A applyCompletion(A accumulator) {
-				return accumulator;
 			}
 		});
 	}
 
-	public CompletionCallback newCompletionCallback(final CompletionReducer<A> reducer) {
-		activeCompletionCallbacks++;
-		return new CompletionCallback() {
-			@Override
-			protected void onComplete() {
-				if (exception != null) {
-					accumulator = reducer.applyCompletion(accumulator);
-				}
-
-				activeCompletionCallbacks--;
-				if ((activeResultCallbacks + activeCompletionCallbacks) == 0 && callback != null && exception == null) {
-					callback.setResult(accumulator);
-					callback = null;
-				}
-			}
-
-			@Override
-			protected void onException(Exception e) {
-				--activeCompletionCallbacks;
-				if (exception == null) {
-					exception = e;
-					if (callback != null) {
-						callback.setException(e);
-						callback = null;
-					}
-				}
-			}
-		};
-	}
-
-	public void setResultTo(ResultCallback<A> callback) {
-		assert this.callback == null;
-		if (exception != null) {
-			callback.setException(exception);
-			return;
+	public CompletionStage<A> getResult() {
+		assert resultStage == null;
+		resultStage = SettableStage.create();
+		if (error != null) {
+			resultStage.setError(error);
+			return resultStage;
 		}
-		if ((activeResultCallbacks + activeCompletionCallbacks) == 0) {
-			callback.setResult(accumulator);
-			return;
+		if (activeStages == 0) {
+			resultStage.setResult(accumulator);
+			return resultStage;
 		}
-		this.callback = callback;
+		return resultStage;
 	}
 
-	public int getActiveCallbacks() {
-		return activeResultCallbacks + activeCompletionCallbacks;
-	}
-
-	public int getActiveResultCallbacks() {
-		return activeResultCallbacks;
-	}
-
-	public int getActiveCompletionCallbacks() {
-		return activeCompletionCallbacks;
-	}
-
-	public Exception getException() {
-		return exception;
-	}
-
-	public A getAccumulator() {
-		return accumulator;
+	public int getActiveStages() {
+		return activeStages;
 	}
 }

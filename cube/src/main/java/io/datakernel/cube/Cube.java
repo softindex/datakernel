@@ -53,6 +53,7 @@ import org.slf4j.LoggerFactory;
 import java.lang.reflect.Type;
 import java.nio.file.NoSuchFileException;
 import java.util.*;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
 import static com.google.common.base.Functions.forMap;
@@ -68,6 +69,7 @@ import static com.google.common.primitives.Primitives.isWrapperType;
 import static io.datakernel.aggregation.AggregationUtils.*;
 import static io.datakernel.async.AsyncCallbacks.postTo;
 import static io.datakernel.async.AsyncRunnables.runInParallel;
+import static io.datakernel.async.SettableStage.immediateStage;
 import static io.datakernel.codegen.ExpressionComparator.leftField;
 import static io.datakernel.codegen.ExpressionComparator.rightField;
 import static io.datakernel.codegen.Expressions.*;
@@ -150,10 +152,6 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 	private final ValueStats queryTimes = ValueStats.create(SMOOTHING_WINDOW_10_MINUTES);
 	private long queryErrors;
 	private Exception queryLastError;
-	private long consolidationStarted;
-	private long consolidationLastTimeMillis;
-	private int consolidations;
-	private Exception consolidationLastError;
 
 	private Cube(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
 	             AggregationChunkStorage aggregationChunkStorage) {
@@ -225,7 +223,6 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 		fieldTypes.put(dimensionId, type);
 		return this;
 	}
-
 
 	public Cube withDimensions(Map<String, FieldType> dimensions) {
 		Cube self = this;
@@ -477,23 +474,19 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 	                                                          final AggregationPredicate predicate) {
 		return new LogDataConsumer<T, CubeDiff>() {
 			@Override
-			public void consume(StreamProducer<T> logStream, final ResultCallback<List<CubeDiff>> callback) {
-				logStream.streamTo(Cube.this.consumer(inputClass, dimensionFields, measureFields, predicate, new ForwardingResultCallback<CubeDiff>(callback) {
-					@Override
-					protected void onResult(CubeDiff result) {
-						callback.setResult(singletonList(result));
-					}
-				}));
+			public CompletionStage<List<CubeDiff>> consume(StreamProducer<T> producer) {
+				return Cube.this.consume(producer, inputClass, dimensionFields, measureFields, predicate)
+						.thenApply(Collections::singletonList);
 			}
 		};
 	}
 
-	public <T> StreamConsumer<T> consumer(Class<T> inputClass, ResultCallback<CubeDiff> callback) {
-		return consumer(inputClass, AggregationPredicates.alwaysTrue(), callback);
+	public <T> CompletionStage<CubeDiff> consume(StreamProducer<T> producer, Class<T> inputClass) {
+		return consume(producer, inputClass, AggregationPredicates.alwaysTrue());
 	}
 
-	public <T> StreamConsumer<T> consumer(Class<T> inputClass, AggregationPredicate predicate, ResultCallback<CubeDiff> callback) {
-		return consumer(inputClass, scanKeyFields(inputClass), scanMeasureFields(inputClass), predicate, callback);
+	public <T> CompletionStage<CubeDiff> consume(StreamProducer<T> producer, Class<T> inputClass, AggregationPredicate predicate) {
+		return consume(producer, inputClass, scanKeyFields(inputClass), scanMeasureFields(inputClass), predicate);
 	}
 
 	/**
@@ -501,18 +494,18 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 	 * The returned {@link StreamConsumer} writes to {@link Aggregation}'s chosen using the specified dimensions, measures and input class.
 	 *
 	 * @param inputClass class of input records
-	 * @param callback   callback which is called when records are committed
 	 * @param <T>        data records type
 	 * @return consumer for streaming data to cube
 	 */
-	public <T> StreamConsumer<T> consumer(Class<T> inputClass, Map<String, String> dimensionFields, Map<String, String> measureFields,
-	                                      final AggregationPredicate dataPredicate,
-	                                      final ResultCallback<CubeDiff> callback) {
+	public <T> CompletionStage<CubeDiff> consume(StreamProducer<T> producer,
+	                                             Class<T> inputClass, Map<String, String> dimensionFields, Map<String, String> measureFields,
+	                                             final AggregationPredicate dataPredicate) {
 		logger.info("Started consuming data. Dimensions: {}. Measures: {}", dimensionFields.keySet(), measureFields.keySet());
 
-		final StreamSplitter<T> streamSplitter = StreamSplitter.create(eventloop);
-		final AsyncResultsReducer<Map<String, AggregationDiff>> tracker = AsyncResultsReducer.<Map<String, AggregationDiff>>create(
-				new HashMap<String, AggregationDiff>());
+		StreamSplitter<T> streamSplitter = StreamSplitter.create(eventloop);
+		producer.streamTo(streamSplitter.getInput());
+
+		AsyncResultsReducer<Map<String, AggregationDiff>> tracker = AsyncResultsReducer.create(new HashMap<>());
 		Map<String, AggregationPredicate> compatibleAggregations = getCompatibleAggregationsForDataInput(dimensionFields, measureFields, dataPredicate);
 		for (final Map.Entry<String, AggregationPredicate> aggregationToDataInputFilterPredicate : compatibleAggregations.entrySet()) {
 			final String aggregationId = aggregationToDataInputFilterPredicate.getKey();
@@ -522,34 +515,23 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 			Map<String, String> aggregationKeyFields = filterKeys(dimensionFields, in(aggregation.getKeys()));
 			Map<String, String> aggregationMeasureFields = filterKeys(measureFields, in(aggregationContainer.measures));
 
-			StreamConsumer<T> groupReducer = aggregation.consumer(inputClass, aggregationKeyFields, aggregationMeasureFields,
-					tracker.newResultCallback(new AsyncResultsReducer.ResultReducer<Map<String, AggregationDiff>, AggregationDiff>() {
-						@Override
-						public Map<String, AggregationDiff> applyResult(Map<String, AggregationDiff> accumulator, AggregationDiff diff) {
-							accumulator.put(aggregationId, diff);
-							return accumulator;
-						}
-					}));
-
 			AggregationPredicate dataInputFilterPredicate = aggregationToDataInputFilterPredicate.getValue();
+			StreamProducer<T> output = streamSplitter.newOutput();
 			if (!dataInputFilterPredicate.equals(AggregationPredicates.alwaysTrue())) {
 				Predicate<T> filterPredicate = createFilterPredicate(inputClass, dataInputFilterPredicate, getClassLoader(), fieldTypes);
 				StreamFilter<T> filter = StreamFilter.create(eventloop, filterPredicate);
-				streamSplitter.newOutput().streamTo(filter.getInput());
-				filter.getOutput().streamTo(groupReducer);
-			} else {
-				streamSplitter.newOutput().streamTo(groupReducer);
+				output.streamTo(filter.getInput());
+				output = filter.getOutput();
 			}
+
+			CompletionStage<AggregationDiff> consume = aggregation.consume(output, inputClass, aggregationKeyFields, aggregationMeasureFields);
+			tracker.addStage(consume, (accumulator, diff) -> {
+				accumulator.put(aggregationId, diff);
+				return accumulator;
+			});
 		}
 
-		tracker.setResultTo(postTo(eventloop, new ForwardingResultCallback<Map<String, AggregationDiff>>(callback) {
-			@Override
-			protected void onResult(Map<String, AggregationDiff> result) {
-				callback.setResult(CubeDiff.of(result));
-			}
-		}));
-
-		return streamSplitter.getInput();
+		return tracker.getResult().thenApply(CubeDiff::of);
 	}
 
 	Map<String, AggregationPredicate> getCompatibleAggregationsForDataInput(final Map<String, String> dimensionFields,
@@ -745,66 +727,23 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 		return excessive;
 	}
 
-	public void consolidate(final ResultCallback<CubeDiff> callback) {
-		if (consolidationStarted != 0) {
-			logger.warn("Consolidation has already been started {} seconds ago", (eventloop.currentTimeMillis() - consolidationStarted) / 1000);
-			callback.setResult(CubeDiff.empty());
-			return;
-		}
-		consolidationStarted = eventloop.currentTimeMillis();
-
+	public CompletionStage<CubeDiff> consolidate() {
 		logger.info("Launching consolidation");
-		final Map<String, AggregationDiff> diffs = new HashMap<>();
-		consolidate(new ArrayList<>(this.aggregations.keySet()).iterator(), diffs, new CompletionCallback() {
-			@Override
-			protected void onComplete() {
-				if (!diffs.isEmpty()) {
-					consolidationLastTimeMillis = eventloop.currentTimeMillis() - consolidationStarted;
-					consolidations++;
+
+		AsyncResultsReducer<Map<String, AggregationDiff>> reducer = AsyncResultsReducer.create(new HashMap<>());
+
+		for (String aggregationId : aggregations.keySet()) {
+			Aggregation aggregation = aggregations.get(aggregationId).aggregation;
+			CompletionStage<AggregationDiff> aggregationDiffCompletionStage = aggregation.consolidateHotSegment();
+			reducer.addStage(aggregationDiffCompletionStage, (accumulator, result) -> {
+				if (!result.isEmpty()) {
+					accumulator.put(aggregationId, result);
 				}
-				consolidationStarted = 0;
+				return accumulator;
+			});
+		}
 
-				callback.setResult(CubeDiff.of(diffs));
-			}
-
-			@Override
-			protected void onException(Exception e) {
-				consolidationStarted = 0;
-				consolidationLastError = e;
-				callback.setException(e);
-			}
-		});
-	}
-
-	private void consolidate(final Iterator<String> iterator, final Map<String, AggregationDiff> diffs,
-	                         final CompletionCallback callback) {
-		eventloop.post(new Runnable() {
-			@Override
-			public void run() {
-				if (iterator.hasNext()) {
-					final String aggregationId = iterator.next();
-					final Aggregation aggregation = Cube.this.getAggregation(aggregationId);
-					logger.info("Consolidation of aggregation {}", aggregationId);
-					aggregation.consolidateHotSegment(new ResultCallback<AggregationDiff>() {
-						@Override
-						protected void onResult(AggregationDiff result) {
-							if (!result.isEmpty()) {
-								diffs.put(aggregationId, result);
-							}
-							consolidate(iterator, diffs, callback);
-						}
-
-						@Override
-						public void onException(Exception e) {
-							logger.error("Consolidation in aggregation '{}' failed", aggregation, e);
-							consolidate(iterator, diffs, callback);
-						}
-					});
-				} else {
-					callback.setComplete();
-				}
-			}
-		});
+		return reducer.getResult().thenApply(CubeDiff::of);
 	}
 
 	private List<String> getAllParents(String dimension) {
@@ -1418,26 +1357,6 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 		for (AggregationContainer aggregationContainer : aggregations.values()) {
 			aggregationContainer.aggregation.flushActiveReducersBuffers();
 		}
-	}
-
-	@JmxAttribute
-	public Integer getConsolidationSeconds() {
-		return consolidationStarted == 0 ? null : (int) ((eventloop.currentTimeMillis() - consolidationStarted) / 1000);
-	}
-
-	@JmxAttribute
-	public Integer getConsolidationLastTimeSeconds() {
-		return consolidationLastTimeMillis == 0 ? null : (int) ((consolidationLastTimeMillis) / 1000);
-	}
-
-	@JmxAttribute
-	public int getConsolidations() {
-		return consolidations;
-	}
-
-	@JmxAttribute
-	public Exception getConsolidationLastError() {
-		return consolidationLastError;
 	}
 
 	@JmxAttribute

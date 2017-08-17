@@ -65,7 +65,7 @@ public class LogFsTest {
 	@Test
 	public void testLocalFs() throws Exception {
 		String logPartition = "p1";
-		LocalFsLogFileSystem fileSystem = LocalFsLogFileSystem.create(eventloop, executor, path);
+		LocalFsLogFileSystem fileSystem = LocalFsLogFileSystem.create(executor, path);
 		LogManagerImpl<String> logManager = LogManagerImpl.create(eventloop, fileSystem,
 				BufferSerializers.utf16Serializer());
 		DateTimeFormatter dateTimeFormatter = logManager.getDateTimeFormatter();

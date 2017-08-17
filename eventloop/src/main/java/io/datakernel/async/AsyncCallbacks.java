@@ -5,10 +5,70 @@ import io.datakernel.util.Function;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.function.BiConsumer;
 
 @SuppressWarnings("WeakerAccess")
 public class AsyncCallbacks {
 	private AsyncCallbacks() {
+	}
+
+	public static <T> ResultCallback<T> resultToStage(SettableStage<T> stage) {
+		return new ResultCallback<T>() {
+			@Override
+			protected void onResult(T result) {
+				stage.setResult(result);
+			}
+
+			@Override
+			protected void onException(Exception e) {
+				stage.setError(e);
+			}
+		};
+	}
+
+	public static CompletionCallback completionToStage(SettableStage<Void> stage) {
+		return new CompletionCallback() {
+			@Override
+			protected void onComplete() {
+				stage.setResult(null);
+			}
+
+			@Override
+			protected void onException(Exception e) {
+				stage.setError(e);
+			}
+		};
+	}
+
+	public static <T> BiConsumer<T, Throwable> forwardTo(CompletionCallback callback) {
+		return (o, throwable) -> {
+			if (throwable == null)
+				callback.setComplete();
+			else
+				callback.setException(throwableToException(throwable));
+		};
+	}
+
+	public static <T> BiConsumer<T, Throwable> forwardTo(ResultCallback<T> callback) {
+		return (o, throwable) -> {
+			if (throwable == null)
+				callback.setResult(o);
+			else
+				callback.setException(throwableToException(throwable));
+		};
+	}
+
+	public static Exception throwableToException(Throwable throwable) {
+		return throwable instanceof Exception ? (Exception) throwable : new RuntimeException(throwable);
+	}
+
+	public static <T> BiConsumer<T, Throwable> forwardTo(SettableStage<T> callback) {
+		return (o, throwable) -> {
+			if (throwable == null)
+				callback.setResult(o);
+			else
+				callback.setError(throwable);
+		};
 	}
 
 	public static <T> ResultCallback<T> ignoreResult() {

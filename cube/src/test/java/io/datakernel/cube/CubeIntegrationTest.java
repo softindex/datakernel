@@ -18,9 +18,6 @@ package io.datakernel.cube;
 
 import io.datakernel.aggregation.LocalFsChunkStorage;
 import io.datakernel.aggregation.fieldtype.FieldTypes;
-import io.datakernel.async.AsyncCallbacks;
-import io.datakernel.async.IgnoreCompletionCallback;
-import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.cube.ot.CubeDiffJson;
@@ -31,7 +28,6 @@ import io.datakernel.logfs.LogManager;
 import io.datakernel.logfs.LogManagerImpl;
 import io.datakernel.logfs.ot.*;
 import io.datakernel.ot.OTCommit;
-import io.datakernel.ot.OTRemoteAdapter;
 import io.datakernel.ot.OTRemoteSql;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.serializer.SerializerBuilder;
@@ -46,6 +42,7 @@ import javax.sql.DataSource;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -53,7 +50,6 @@ import static io.datakernel.aggregation.AggregationPredicates.alwaysTrue;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofDouble;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.sum;
-import static io.datakernel.async.AsyncCallbacks.assertCompletion;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
 import static io.datakernel.cube.CubeTestUtils.dataSource;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -99,23 +95,18 @@ public class CubeIntegrationTest {
 						.withMeasures("impressions", "clicks", "conversions", "revenue"));
 
 		DataSource dataSource = dataSource("test.properties");
-		OTRemoteSql<LogDiff<CubeDiff>> otSourceSql = OTRemoteSql.create(dataSource, LogDiffJson.create(CubeDiffJson.create(cube)));
+		OTRemoteSql<LogDiff<CubeDiff>> otSourceSql = OTRemoteSql.create(executor, dataSource, LogDiffJson.create(CubeDiffJson.create(cube)));
 		otSourceSql.truncateTables();
-		otSourceSql.push(OTCommit.<Integer, LogDiff<CubeDiff>>ofRoot(1));
+		otSourceSql.push(OTCommit.ofRoot(1));
 
 		OTStateManager<Integer, LogDiff<CubeDiff>> logCubeStateManager = new OTStateManager<>(eventloop,
 				LogOT.createLogOT(CubeOT.createCubeOT()),
-				OTRemoteAdapter.ofBlockingRemote(eventloop, executor, otSourceSql),
-				new Comparator<Integer>() {
-					@Override
-					public int compare(Integer o1, Integer o2) {
-						return Integer.compare(o1, o2);
-					}
-				},
+				otSourceSql,
+				(o1, o2) -> Integer.compare(o1, o2),
 				new LogOTState<>(cube));
 
 		LogManager<LogItem> logManager = LogManagerImpl.create(eventloop,
-				LocalFsLogFileSystem.create(eventloop, executor, logsDir),
+				LocalFsLogFileSystem.create(executor, logsDir),
 				SerializerBuilder.create(classLoader).build(LogItem.class));
 
 		LogOTProcessor<Integer, LogItem, CubeDiff> logOTProcessor = LogOTProcessor.create(eventloop,
@@ -127,8 +118,11 @@ public class CubeIntegrationTest {
 
 		// checkout first (root) revision
 
-		logCubeStateManager.checkout(assertCompletion());
+		CompletableFuture<?> future;
+
+		future = logCubeStateManager.checkout().toCompletableFuture();
 		eventloop.run();
+		future.get();
 
 		// Save and aggregate logs
 		List<LogItem> listOfRandomLogItems = LogItem.getListOfRandomLogItems(100);
@@ -136,30 +130,35 @@ public class CubeIntegrationTest {
 		producerOfRandomLogItems.streamTo(logManager.consumer("partitionA"));
 		eventloop.run();
 
-		logOTProcessor.processLog(assertCompletion());
+		future = logOTProcessor.processLog().toCompletableFuture();
 		eventloop.run();
+		future.get();
 
-		logOTProcessor.processLog(assertCompletion());
+		future = logOTProcessor.processLog().toCompletableFuture();
 		eventloop.run();
+		future.get();
 
 		List<LogItem> listOfRandomLogItems2 = LogItem.getListOfRandomLogItems(300);
 		producerOfRandomLogItems = StreamProducers.ofIterator(eventloop, listOfRandomLogItems2.iterator());
 		producerOfRandomLogItems.streamTo(logManager.consumer("partitionA"));
 		eventloop.run();
 
-		logOTProcessor.processLog(assertCompletion());
+		future = logOTProcessor.processLog().toCompletableFuture();
 		eventloop.run();
+		future.get();
 
 		List<LogItem> listOfRandomLogItems3 = LogItem.getListOfRandomLogItems(50);
 		producerOfRandomLogItems = StreamProducers.ofIterator(eventloop, listOfRandomLogItems3.iterator());
 		producerOfRandomLogItems.streamTo(logManager.consumer("partitionA"));
 		eventloop.run();
 
-		logOTProcessor.processLog(assertCompletion());
+		future = logOTProcessor.processLog().toCompletableFuture();
 		eventloop.run();
+		future.get();
 
-		aggregationChunkStorage.backup("backup1", cube.getAllChunks(), assertCompletion());
+		future = aggregationChunkStorage.backup("backup1", cube.getAllChunks()).toCompletableFuture();
 		eventloop.run();
+		future.get();
 
 		StreamConsumers.ToList<LogItem> queryResultConsumer = new StreamConsumers.ToList<>(eventloop);
 		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(),
@@ -178,34 +177,39 @@ public class CubeIntegrationTest {
 		}
 
 		// checkout revision 3 and consolidate it:
-		logCubeStateManager.checkout(3, IgnoreCompletionCallback.create());
+		future = logCubeStateManager.checkout(3).toCompletableFuture();
 		eventloop.run();
+		future.get();
 
-		ResultCallbackFuture<CubeDiff> callback = ResultCallbackFuture.create();
-		cube.consolidate(callback);
+		CompletableFuture<CubeDiff> future1 = cube.consolidate().toCompletableFuture();
 		eventloop.run();
-		CubeDiff consolidatingCubeDiff = callback.get();
+		CubeDiff consolidatingCubeDiff = future1.get();
 		assertEquals(false, consolidatingCubeDiff.isEmpty());
 
-		logCubeStateManager.apply(LogDiff.forCurrentPosition(consolidatingCubeDiff));
-		logCubeStateManager.commitAndPush(assertCompletion());
+		logCubeStateManager.add(LogDiff.forCurrentPosition(consolidatingCubeDiff));
+		future = logCubeStateManager.commitAndPush().toCompletableFuture();
 		eventloop.run();
+		future.get();
 
 		// merge heads: revision 4, and revision 5 (which is a consolidation of 3)
 
-		logCubeStateManager.mergeHeadsAndPush(AsyncCallbacks.<Integer>assertResult());
+		future = logCubeStateManager.mergeHeadsAndPush().toCompletableFuture();
 		eventloop.run();
+		future.get();
 
 		// make a checkpoint and checkout it
 
-		logCubeStateManager.makeCheckpointForNode(6, AsyncCallbacks.<Integer>assertResult());
+		future = logCubeStateManager.makeCheckpointForNode(6).toCompletableFuture();
 		eventloop.run();
+		future.get();
 
-		logCubeStateManager.checkout(7, assertCompletion());
+		future = logCubeStateManager.checkout(7).toCompletableFuture();
 		eventloop.run();
+		future.get();
 
-		aggregationChunkStorage.cleanup(cube.getAllChunks(), assertCompletion());
+		future = aggregationChunkStorage.cleanup(cube.getAllChunks()).toCompletableFuture();
 		eventloop.run();
+		future.get();
 
 		// Query
 		queryResultConsumer = new StreamConsumers.ToList<>(eventloop);

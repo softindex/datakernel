@@ -28,6 +28,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.RemoteFsServer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumers;
+import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import org.junit.Rule;
 import org.junit.Test;
@@ -39,11 +40,13 @@ import java.net.InetSocketAddress;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.aggregation.AggregationPredicates.*;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.sum;
+import static io.datakernel.async.AsyncCallbacks.forwardTo;
 import static io.datakernel.async.AsyncRunnables.runInParallel;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -86,31 +89,24 @@ public class CubeTest {
 				.withAggregation(id("detailedAggregation").withDimensions("key1", "key2", "key3", "key4", "key5").withMeasures("metric1", "metric2", "metric3"));
 	}
 
-	private static ResultCallback<CubeDiff> commitToCube(final Cube cube) {
-		return commitToCube(cube, IgnoreCompletionCallback.create());
-	}
-
-	private static ResultCallback<CubeDiff> commitToCube(final Cube cube, final CompletionCallback callback) {
-		return new AssertingResultCallback<CubeDiff>() {
-			@Override
-			protected void onResult(CubeDiff result) {
-				cube.apply(result);
-				callback.setComplete();
-			}
-		};
-	}
-
 	@Test
 	public void testQuery1() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
-		StreamProducers.ofIterable(eventloop, asList(new DataItem1(1, 2, 10, 20), new DataItem1(1, 3, 10, 20)))
-				.streamTo(cube.consumer(DataItem1.class, commitToCube(cube)));
-		StreamProducers.ofIterable(eventloop, asList(new DataItem2(1, 3, 10, 20), new DataItem2(1, 4, 10, 20)))
-				.streamTo(cube.consumer(DataItem2.class, commitToCube(cube)));
+
+		StreamProducer<DataItem1> producer1 = StreamProducers.ofIterable(eventloop, asList(
+				new DataItem1(1, 2, 10, 20),
+				new DataItem1(1, 3, 10, 20)));
+		CompletableFuture<CubeDiff> future1 = cube.consume(producer1, DataItem1.class).toCompletableFuture();
+		StreamProducer<DataItem2> producer2 = StreamProducers.ofIterable(eventloop,
+				asList(new DataItem2(1, 3, 10, 20),
+						new DataItem2(1, 4, 10, 20)));
+		CompletableFuture<CubeDiff> future2 = cube.consume(producer2, DataItem2.class).toCompletableFuture();
 		eventloop.run();
+		cube.apply(future1.get());
+		cube.apply(future2.get());
 
 		StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toList(eventloop);
 		cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"),
@@ -156,17 +152,19 @@ public class CubeTest {
 				new AsyncRunnable() {
 					@Override
 					public void run(CompletionCallback callback) {
-						final StreamConsumer<DataItem1> cubeConsumer1 = cube.consumer(DataItem1.class, commitToCube(cube, callback));
-						StreamProducers.ofIterable(eventloop, asList(new DataItem1(1, 2, 10, 20), new DataItem1(1, 3, 10, 20)))
-								.streamTo(cubeConsumer1);
+						StreamProducer<DataItem1> producer = StreamProducers.ofIterable(eventloop, asList(
+								new DataItem1(1, 2, 10, 20),
+								new DataItem1(1, 3, 10, 20)));
+						cube.consume(producer, DataItem1.class).thenAccept(cube::apply).whenComplete(forwardTo(callback));
 					}
 				},
 				new AsyncRunnable() {
 					@Override
 					public void run(CompletionCallback callback) {
-						final StreamConsumer<DataItem2> cubeConsumer2 = cube.consumer(DataItem2.class, commitToCube(cube, callback));
-						StreamProducers.ofIterable(eventloop, asList(new DataItem2(1, 3, 10, 20), new DataItem2(1, 4, 10, 20)))
-								.streamTo(cubeConsumer2);
+						StreamProducer<DataItem2> producer = StreamProducers.ofIterable(eventloop, asList(
+								new DataItem2(1, 3, 10, 20),
+								new DataItem2(1, 4, 10, 20)));
+						cube.consume(producer, DataItem2.class).thenAccept(cube::apply).whenComplete(forwardTo(callback));
 					}
 				}
 		).run(new AssertingCompletionCallback() {
@@ -208,12 +206,19 @@ public class CubeTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
-		StreamProducers.ofIterable(eventloop, asList(new DataItem1(1, 2, 30, 25), new DataItem1(1, 3, 40, 10),
-				new DataItem1(1, 4, 23, 48), new DataItem1(1, 3, 4, 18)))
-				.streamTo(cube.consumer(DataItem1.class, commitToCube(cube)));
-		StreamProducers.ofIterable(eventloop, asList(new DataItem2(1, 3, 15, 5), new DataItem2(1, 4, 55, 20),
-				new DataItem2(1, 2, 12, 42), new DataItem2(1, 4, 58, 22)))
-				.streamTo(cube.consumer(DataItem2.class, commitToCube(cube)));
+
+		StreamProducer<DataItem1> producer1 = StreamProducers.ofIterable(eventloop, asList(
+				new DataItem1(1, 2, 30, 25),
+				new DataItem1(1, 3, 40, 10),
+				new DataItem1(1, 4, 23, 48),
+				new DataItem1(1, 3, 4, 18)));
+		cube.consume(producer1, DataItem1.class).thenAccept(cube::apply);
+		StreamProducer<DataItem2> producer2 = StreamProducers.ofIterable(eventloop, asList(
+				new DataItem2(1, 3, 15, 5),
+				new DataItem2(1, 4, 55, 20),
+				new DataItem2(1, 2, 12, 42),
+				new DataItem2(1, 4, 58, 22)));
+		cube.consume(producer2, DataItem2.class).thenAccept(cube::apply);
 		eventloop.run();
 
 		StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toList(eventloop);
@@ -239,12 +244,19 @@ public class CubeTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
-		StreamProducers.ofIterable(eventloop, asList(new DataItem1(1, 3, 30, 25), new DataItem1(1, 4, 40, 10),
-				new DataItem1(1, 5, 23, 48), new DataItem1(1, 6, 4, 18)))
-				.streamTo(cube.consumer(DataItem1.class, commitToCube(cube)));
-		StreamProducers.ofIterable(eventloop, asList(new DataItem2(1, 7, 15, 5), new DataItem2(1, 8, 55, 20),
-				new DataItem2(1, 9, 12, 42), new DataItem2(1, 10, 58, 22)))
-				.streamTo(cube.consumer(DataItem2.class, commitToCube(cube)));
+
+		StreamProducer<DataItem1> producer1 = StreamProducers.ofIterable(eventloop, asList(
+				new DataItem1(1, 3, 30, 25),
+				new DataItem1(1, 4, 40, 10),
+				new DataItem1(1, 5, 23, 48),
+				new DataItem1(1, 6, 4, 18)));
+		cube.consume(producer1, DataItem1.class).thenAccept(cube::apply);
+		StreamProducer<DataItem2> producer2 = StreamProducers.ofIterable(eventloop, asList(
+				new DataItem2(1, 7, 15, 5),
+				new DataItem2(1, 8, 55, 20),
+				new DataItem2(1, 9, 12, 42),
+				new DataItem2(1, 10, 58, 22)));
+		cube.consume(producer2, DataItem2.class).thenAccept(cube::apply);
 		eventloop.run();
 
 		StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toList(eventloop);
@@ -275,7 +287,8 @@ public class CubeTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
-		StreamProducers.ofIterable(eventloop, asList(
+
+		StreamProducer<DataItem1> producer1 = StreamProducers.ofIterable(eventloop, asList(
 				new DataItem1(14, 1, 30, 25),
 				new DataItem1(13, 3, 40, 10),
 				new DataItem1(9, 4, 23, 48),
@@ -283,9 +296,9 @@ public class CubeTest {
 				new DataItem1(10, 5, 22, 16),
 				new DataItem1(20, 7, 13, 49),
 				new DataItem1(15, 9, 11, 12),
-				new DataItem1(5, 99, 40, 36)))
-				.streamTo(cube.consumer(DataItem1.class, commitToCube(cube)));
-		StreamProducers.ofIterable(eventloop, asList(
+				new DataItem1(5, 99, 40, 36)));
+		cube.consume(producer1, DataItem1.class).thenAccept(cube::apply);
+		StreamProducer<DataItem2> producer2 = StreamProducers.ofIterable(eventloop, asList(
 				new DataItem2(9, 3, 15, 5),
 				new DataItem2(11, 4, 55, 20),
 				new DataItem2(17, 2, 12, 42),
@@ -293,8 +306,8 @@ public class CubeTest {
 				new DataItem2(19, 18, 22, 55),
 				new DataItem2(7, 14, 28, 6),
 				new DataItem2(8, 42, 33, 17),
-				new DataItem2(5, 77, 88, 98)))
-				.streamTo(cube.consumer(DataItem2.class, commitToCube(cube)));
+				new DataItem2(5, 77, 88, 98)));
+		cube.consume(producer2, DataItem2.class).thenAccept(cube::apply);
 		eventloop.run();
 
 		StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toList(eventloop);
@@ -321,7 +334,8 @@ public class CubeTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 		Cube cube = newSophisticatedCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
-		StreamProducers.ofIterable(eventloop, asList(
+
+		StreamProducer<DataItem3> producer3 = StreamProducers.ofIterable(eventloop, asList(
 				new DataItem3(14, 1, 42, 25, 53, 30, 25),
 				new DataItem3(13, 3, 49, 13, 50, 40, 10),
 				new DataItem3(9, 4, 59, 17, 79, 23, 48),
@@ -329,9 +343,9 @@ public class CubeTest {
 				new DataItem3(10, 5, 33, 21, 69, 22, 16),
 				new DataItem3(20, 7, 39, 29, 65, 13, 49),
 				new DataItem3(15, 9, 57, 26, 59, 11, 12),
-				new DataItem3(5, 99, 35, 27, 76, 40, 36)))
-				.streamTo(cube.consumer(DataItem3.class, commitToCube(cube)));
-		StreamProducers.ofIterable(eventloop, asList(
+				new DataItem3(5, 99, 35, 27, 76, 40, 36)));
+		cube.consume(producer3, DataItem3.class).thenAccept(cube::apply);
+		StreamProducer<DataItem4> producer4 = StreamProducers.ofIterable(eventloop, asList(
 				new DataItem4(9, 3, 41, 11, 65, 15, 5),
 				new DataItem4(11, 4, 38, 10, 68, 55, 20),
 				new DataItem4(17, 2, 40, 15, 52, 12, 42),
@@ -339,8 +353,8 @@ public class CubeTest {
 				new DataItem4(19, 18, 52, 24, 80, 22, 55),
 				new DataItem4(7, 14, 31, 14, 73, 28, 6),
 				new DataItem4(8, 42, 46, 19, 75, 33, 17),
-				new DataItem4(5, 77, 50, 20, 56, 88, 98)))
-				.streamTo(cube.consumer(DataItem4.class, commitToCube(cube)));
+				new DataItem4(5, 77, 50, 20, 56, 88, 98)));
+		cube.consume(producer4, DataItem4.class).thenAccept(cube::apply);
 		eventloop.run();
 
 		StreamConsumers.ToList<DataItemResult3> consumerToList = StreamConsumers.toList(eventloop);
@@ -364,13 +378,20 @@ public class CubeTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
-		StreamProducers.ofIterable(eventloop, asList(new DataItem1(1, 2, 10, 20), new DataItem1(1, 3, 10, 20),
-				new DataItem1(1, 2, 15, 25), new DataItem1(1, 1, 95, 85), new DataItem1(2, 1, 55, 65),
-				new DataItem1(1, 4, 5, 35)))
-				.streamTo(cube.consumer(DataItem1.class, commitToCube(cube)));
-		StreamProducers.ofIterable(eventloop, asList(new DataItem2(1, 3, 20, 10), new DataItem2(1, 4, 10, 20),
-				new DataItem2(1, 1, 80, 75)))
-				.streamTo(cube.consumer(DataItem2.class, commitToCube(cube)));
+
+		StreamProducer<DataItem1> producer1 = StreamProducers.ofIterable(eventloop, asList(
+				new DataItem1(1, 2, 10, 20),
+				new DataItem1(1, 3, 10, 20),
+				new DataItem1(1, 2, 15, 25),
+				new DataItem1(1, 1, 95, 85),
+				new DataItem1(2, 1, 55, 65),
+				new DataItem1(1, 4, 5, 35)));
+		cube.consume(producer1, DataItem1.class).thenAccept(cube::apply);
+		StreamProducer<DataItem2> producer2 = StreamProducers.ofIterable(eventloop, asList(
+				new DataItem2(1, 3, 20, 10),
+				new DataItem2(1, 4, 10, 20),
+				new DataItem2(1, 1, 80, 75)));
+		cube.consume(producer2, DataItem2.class).thenAccept(cube::apply);
 		eventloop.run();
 
 		StreamConsumers.ToList<DataItemResult2> consumerToList = StreamConsumers.toList(eventloop);
@@ -382,8 +403,11 @@ public class CubeTest {
 		eventloop.run();
 
 		List<DataItemResult2> actual = consumerToList.getList();
-		List<DataItemResult2> expected = asList(new DataItemResult2(1, 150, 230, 75), new DataItemResult2(2, 25, 45, 0),
-				new DataItemResult2(3, 10, 40, 10), new DataItemResult2(4, 5, 45, 20));
+		List<DataItemResult2> expected = asList(
+				new DataItemResult2(1, 150, 230, 75),
+				new DataItemResult2(2, 25, 45, 0),
+				new DataItemResult2(3, 10, 40, 10),
+				new DataItemResult2(4, 5, 45, 20));
 
 		System.out.println(consumerToList.getList());
 
@@ -396,14 +420,23 @@ public class CubeTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
-		StreamProducers.ofIterable(eventloop, asList(new DataItem1(1, 2, 10, 20), new DataItem1(1, 3, 10, 20)))
-				.streamTo(cube.consumer(DataItem1.class, commitToCube(cube)));
-		StreamProducers.ofIterable(eventloop, asList(new DataItem2(1, 3, 10, 20), new DataItem2(1, 4, 10, 20)))
-				.streamTo(cube.consumer(DataItem2.class, commitToCube(cube)));
-		StreamProducers.ofIterable(eventloop, asList(new DataItem2(1, 2, 10, 20), new DataItem2(1, 4, 10, 20)))
-				.streamTo(cube.consumer(DataItem2.class, commitToCube(cube)));
-		StreamProducers.ofIterable(eventloop, asList(new DataItem2(1, 4, 10, 20), new DataItem2(1, 5, 100, 200)))
-				.streamTo(cube.consumer(DataItem2.class, commitToCube(cube)));
+
+		StreamProducer<DataItem1> producer1 = StreamProducers.ofIterable(eventloop, asList(
+				new DataItem1(1, 2, 10, 20),
+				new DataItem1(1, 3, 10, 20)));
+		cube.consume(producer1, DataItem1.class).thenAccept(cube::apply);
+		StreamProducer<DataItem2> producer2 = StreamProducers.ofIterable(eventloop, asList(
+				new DataItem2(1, 3, 10, 20),
+				new DataItem2(1, 4, 10, 20)));
+		cube.consume(producer2, DataItem2.class).thenAccept(cube::apply);
+		StreamProducer<DataItem2> producer3 = StreamProducers.ofIterable(eventloop, asList(
+				new DataItem2(1, 2, 10, 20),
+				new DataItem2(1, 4, 10, 20)));
+		cube.consume(producer3, DataItem2.class).thenAccept(cube::apply);
+		StreamProducer<DataItem2> producer4 = StreamProducers.ofIterable(eventloop, asList(
+				new DataItem2(1, 4, 10, 20),
+				new DataItem2(1, 5, 100, 200)));
+		cube.consume(producer4, DataItem2.class).thenAccept(cube::apply);
 		eventloop.run();
 
 		StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toList(eventloop);
@@ -427,21 +460,32 @@ public class CubeTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
-		StreamProducers.ofIterable(eventloop, asList(new DataItem1(1, 2, 10, 20), new DataItem1(1, 3, 10, 20)))
-				.streamTo(cube.consumer(DataItem1.class, commitToCube(cube)));
-		StreamProducers.ofIterable(eventloop, asList(new DataItem2(1, 3, 10, 20), new DataItem2(1, 4, 10, 20)))
-				.streamTo(cube.consumer(DataItem2.class, commitToCube(cube)));
-		StreamProducers.ofIterable(eventloop, asList(new DataItem2(1, 2, 10, 20), new DataItem2(1, 4, 10, 20)))
-				.streamTo(cube.consumer(DataItem2.class, commitToCube(cube)));
-		StreamProducers.ofIterable(eventloop, asList(new DataItem2(1, 4, 10, 20), new DataItem2(1, 5, 100, 200)))
-				.streamTo(cube.consumer(DataItem2.class, commitToCube(cube)));
+
+		StreamProducer<DataItem1> producer1 = StreamProducers.ofIterable(eventloop, asList(
+				new DataItem1(1, 2, 10, 20),
+				new DataItem1(1, 3, 10, 20)));
+		cube.consume(producer1, DataItem1.class).thenAccept(cube::apply);
+		StreamProducer<DataItem2> producer2 = StreamProducers.ofIterable(eventloop, asList(
+				new DataItem2(1, 3, 10, 20),
+				new DataItem2(1, 4, 10, 20)));
+		cube.consume(producer2, DataItem2.class).thenAccept(cube::apply);
+		StreamProducer<DataItem2> producer3 = StreamProducers.ofIterable(eventloop, asList(
+				new DataItem2(1, 2, 10, 20),
+				new DataItem2(1, 4, 10, 20)));
+		cube.consume(producer3, DataItem2.class).thenAccept(cube::apply);
+		StreamProducer<DataItem2> producer4 = StreamProducers.ofIterable(eventloop, asList(
+				new DataItem2(1, 4, 10, 20),
+				new DataItem2(1, 5, 100, 200)));
+		cube.consume(producer4, DataItem2.class).thenAccept(cube::apply);
 		eventloop.run();
 
-		cube.consolidate(commitToCube(cube));
+		CompletableFuture<CubeDiff> future1 = cube.consolidate().toCompletableFuture();
 		eventloop.run();
+		assertTrue(!future1.get().isEmpty());
 
-		cube.consolidate(commitToCube(cube));
+		CompletableFuture<CubeDiff> future2 = cube.consolidate().toCompletableFuture();
 		eventloop.run();
+		assertTrue(!future2.get().isEmpty());
 
 		StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toList(eventloop);
 		cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"),

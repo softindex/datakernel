@@ -1,19 +1,17 @@
 package io.datakernel.ot;
 
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ResultCallback;
-
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletionStage;
 
 public interface OTRemote<K, D> {
-	void createId(ResultCallback<K> callback);
+	CompletionStage<K> createId();
 
-	void push(List<OTCommit<K, D>> commits, CompletionCallback callback);
+	CompletionStage<Void> push(List<OTCommit<K, D>> commits);
 
-	void getHeads(ResultCallback<Set<K>> callback);
+	CompletionStage<Set<K>> getHeads();
 
-	void getCheckpoint(ResultCallback<K> callback);
+	CompletionStage<K> getCheckpoint();
 
-	void loadCommit(K revisionId, ResultCallback<OTCommit<K, D>> callback);
+	CompletionStage<OTCommit<K, D>> loadCommit(K revisionId);
 }

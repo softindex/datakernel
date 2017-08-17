@@ -16,10 +16,8 @@
 
 package io.datakernel.logfs.ot;
 
-import io.datakernel.aggregation.util.AsyncResultsReducer;
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ForwardingCompletionCallback;
-import io.datakernel.async.ForwardingResultCallback;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.logfs.LogFile;
@@ -27,6 +25,7 @@ import io.datakernel.logfs.LogManager;
 import io.datakernel.logfs.LogPosition;
 import io.datakernel.logfs.ot.LogDiff.LogPositionDiff;
 import io.datakernel.ot.OTStateManager;
+import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.StreamUnion;
 import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
@@ -36,6 +35,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.concurrent.CompletionStage;
 
 /**
  * Processes logs. Creates new aggregation chunks and persists them using logic defined in supplied {@code AggregatorSplitter}.
@@ -77,84 +77,71 @@ public final class LogOTProcessor<K, T, D> implements EventloopService {
 
 	@Override
 	public void start(CompletionCallback callback) {
-		stateManager.start(callback);
+		callback.setComplete();
 	}
 
 	@Override
 	public void stop(CompletionCallback callback) {
-		stateManager.stop(callback);
+		callback.setComplete();
 	}
 
-	public void rebase(CompletionCallback callback) {
-		stateManager.rebase(callback);
+	public CompletionStage<Void> rebase() {
+		return stateManager.pull();
 	}
 
-	public void processLog(final CompletionCallback callback) {
-		stateManager.rebase(new ForwardingCompletionCallback(callback) {
-			@Override
-			public void onComplete() {
-				processLog_gotPositions(callback);
-			}
+	public CompletionStage<Void> processLog() {
+		return stateManager.pull().thenCompose($ -> {
+			logger.trace("processLog_gotPositions called. Positions: {}", state.positions);
+
+			HashMap<String, LogPositionDiff> resultPositions = new LinkedHashMap<>();
+			List<D> resultDataDiffs = new ArrayList<>();
+
+			StreamProducer<T> producer = getProducer(resultPositions);
+
+			return logStreamConsumer.consume(producer)
+					.thenApply(diffs -> {
+						resultDataDiffs.addAll(diffs);
+						return LogDiff.of(resultPositions, resultDataDiffs);
+					})
+					.thenCompose(logDiff -> {
+						logger.info("Log '{}' processing complete. Positions: {}", log, logDiff.positions);
+						stateManager.add(logDiff);
+						return stateManager.pull().thenCompose($2 -> stateManager.commitAndPush());
+					});
 		});
 	}
 
-	private String logName(String partition) {
-		return log != null && !log.isEmpty() ? log + "." + partition : partition;
-	}
-
-	private void processLog_gotPositions(final CompletionCallback callback) {
-		logger.trace("processLog_gotPositions called. Positions: {}", state.positions);
-		final Stopwatch sw = Stopwatch.createStarted();
-
-		final HashMap<String, LogPositionDiff> resultPositions = new LinkedHashMap<>();
-		final List<D> resultDataDiffs = new ArrayList<>();
-		AsyncResultsReducer<LogDiff<D>> resultsReducer = AsyncResultsReducer.create(LogDiff.of(resultPositions, resultDataDiffs));
-
-		final StreamUnion<T> streamUnion = StreamUnion.create(eventloop);
-		for (final String partition : this.partitions) {
-			final String logName = logName(partition);
+	private StreamProducer<T> getProducer(HashMap<String, LogPositionDiff> resultPositions) {
+		StreamUnion<T> streamUnion = StreamUnion.create(eventloop);
+		for (String partition : this.partitions) {
+			String logName = logName(partition);
 			LogPosition logPosition = state.positions.get(logName);
 			if (logPosition == null) {
 				logPosition = LogPosition.create(new LogFile("", 0), 0L);
 			}
 			logger.info("Starting reading '{}' from position {}", logName, logPosition);
-			final LogPosition logPositionFrom = logPosition;
+
+			LogPosition logPositionFrom = logPosition;
 			logManager.producer(partition, logPosition.getLogFile(), logPosition.getPosition(),
-					resultsReducer.newResultCallback(new AsyncResultsReducer.ResultReducer<LogDiff<D>, LogPosition>() {
+					new ResultCallback<LogPosition>() {
 						@Override
-						public LogDiff<D> applyResult(LogDiff<D> accumulator, LogPosition logPositionTo) {
+						protected void onResult(LogPosition logPositionTo) {
 							if (!logPositionTo.equals(logPositionFrom)) {
 								resultPositions.put(logName, new LogPositionDiff(logPositionFrom, logPositionTo));
 							}
-							return accumulator;
 						}
-					}))
+
+						@Override
+						protected void onException(Exception e) {
+						}
+					})
 					.streamTo(streamUnion.newInput());
 		}
+		return streamUnion.getOutput();
+	}
 
-		logStreamConsumer.consume(streamUnion.getOutput(),
-				resultsReducer.newResultCallback(new AsyncResultsReducer.ResultReducer<LogDiff<D>, List<D>>() {
-					@Override
-					public LogDiff<D> applyResult(LogDiff<D> accumulator, List<D> diffs) {
-						resultDataDiffs.addAll(diffs);
-						return accumulator;
-					}
-				}));
-
-		resultsReducer.setResultTo(new ForwardingResultCallback<LogDiff<D>>(callback) {
-			@Override
-			public void onResult(final LogDiff<D> result1) {
-				sw.stop();
-				logger.info("Log '{}' processing complete in {}. Positions: {}", log, sw, result1.positions);
-				stateManager.apply(result1);
-				stateManager.rebase(new ForwardingCompletionCallback(callback) {
-					@Override
-					public void onComplete() {
-						stateManager.commitAndPush(callback);
-					}
-				});
-			}
-		});
+	private String logName(String partition) {
+		return log != null && !log.isEmpty() ? log + "." + partition : partition;
 	}
 
 }

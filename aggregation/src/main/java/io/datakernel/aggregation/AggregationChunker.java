@@ -20,7 +20,7 @@ import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.aggregation.util.AsyncResultsReducer;
 import io.datakernel.aggregation.util.PartitionPredicate;
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SettableStage;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
@@ -29,8 +29,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.async.AsyncCallbacks.postTo;
+import static io.datakernel.async.AsyncCallbacks.throwableToException;
 
 public final class AggregationChunker<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
@@ -41,7 +43,7 @@ public final class AggregationChunker<T> extends AbstractStreamConsumer<T> imple
 	private final PartitionPredicate<T> partitionPredicate;
 	private final AggregationChunkStorage storage;
 	private final AsyncResultsReducer<List<AggregationChunk>> chunksAccumulator;
-	private final CompletionCallback completionCallback;
+	private final SettableStage<Void> completionStage = SettableStage.create();
 	private final DefiningClassLoader classLoader;
 
 	private StreamDataReceiver<T> downstreamDataReceiver;
@@ -80,19 +82,21 @@ public final class AggregationChunker<T> extends AbstractStreamConsumer<T> imple
 	                          AggregationStructure aggregation, List<String> fields,
 	                          Class<T> recordClass, PartitionPredicate<T> partitionPredicate,
 	                          AggregationChunkStorage storage,
-	                          int chunkSize, DefiningClassLoader classLoader,
-	                          final ResultCallback<List<AggregationChunk>> chunksCallback) {
+	                          int chunkSize, DefiningClassLoader classLoader) {
 		super(eventloop);
 		this.aggregation = aggregation;
 		this.fields = fields;
 		this.recordClass = recordClass;
 		this.partitionPredicate = partitionPredicate;
 		this.storage = storage;
-		this.chunksAccumulator = AsyncResultsReducer.<List<AggregationChunk>>create(new ArrayList<AggregationChunk>())
-				.withResultCallback(postTo(eventloop, chunksCallback));
-		this.completionCallback = chunksAccumulator.newCompletionCallback();
+		this.chunksAccumulator = AsyncResultsReducer.<List<AggregationChunk>>create(new ArrayList<>())
+				.withStage(this.completionStage, (accumulator, value) -> accumulator);
 		this.chunkSize = chunkSize;
 		this.classLoader = classLoader;
+	}
+
+	public CompletionStage<List<AggregationChunk>> getResult() {
+		return chunksAccumulator.getResult();
 	}
 
 	public void setChunkSize(int chunkSize) {
@@ -125,7 +129,7 @@ public final class AggregationChunker<T> extends AbstractStreamConsumer<T> imple
 
 	@Override
 	protected void onError(Exception e) {
-		completionCallback.setException(e);
+		completionStage.setError(e);
 		outputProducer.closeWithError(e);
 	}
 
@@ -148,7 +152,7 @@ public final class AggregationChunker<T> extends AbstractStreamConsumer<T> imple
 			currentChunkMetadata.set(first, last, count);
 			StreamProducers.<T>closing(eventloop).streamTo(outputProducer.getDownstream());
 		}
-		completionCallback.setComplete();
+		completionStage.setResult(null);
 	}
 
 	private void rotateChunk() {
@@ -172,46 +176,46 @@ public final class AggregationChunker<T> extends AbstractStreamConsumer<T> imple
 
 		logger.info("Retrieving new chunk id for aggregation {}", aggregation);
 
-		final ResultCallback<AggregationChunk> newChunkCallback = chunksAccumulator.newResultCallback(REDUCER);
+		SettableStage<AggregationChunk> newChunkState = SettableStage.create();
+		chunksAccumulator.addStage(newChunkState, REDUCER);
 		applySuspendOrResume();
 
-		storage.createId(new ResultCallback<Long>() {
-			@Override
-			protected void onResult(final Long chunkId) {
-				logger.info("Retrieved new chunk id '{}' for aggregation {}", chunkId, aggregation);
-				storage.write(forwarder.getOutput(), aggregation, fields, recordClass, chunkId, classLoader, new CompletionCallback() {
-					@Override
-					protected void onComplete() {
-						AggregationChunk newChunk = AggregationChunk.create(chunkId,
-								fields,
-								PrimaryKey.ofObject(metadata.first, aggregation.getKeys()),
-								PrimaryKey.ofObject(metadata.last, aggregation.getKeys()),
-								metadata.count);
-						newChunkCallback.setResult(newChunk);
-						applySuspendOrResume();
-						logger.trace("Saving new chunk with id {} to storage {} completed", chunkId, storage);
-					}
+		storage.createId()
+				.thenAccept(chunkId -> {
+					logger.info("Retrieved new chunk id '{}' for aggregation {}", chunkId, aggregation);
+					storage.write(forwarder.getOutput(), aggregation, fields, recordClass, chunkId, classLoader, new CompletionCallback() {
+						@Override
+						protected void onComplete() {
+							AggregationChunk newChunk = AggregationChunk.create(chunkId,
+									fields,
+									PrimaryKey.ofObject(metadata.first, aggregation.getKeys()),
+									PrimaryKey.ofObject(metadata.last, aggregation.getKeys()),
+									metadata.count);
+							newChunkState.setResult(newChunk);
+							applySuspendOrResume();
+							logger.trace("Saving new chunk with id {} to storage {} completed", chunkId, storage);
+						}
 
-					@Override
-					protected void onException(Exception e) {
-						logger.error("Saving new chunk with id {} to storage {} failed", chunkId, storage, e);
+						@Override
+						protected void onException(Exception e) {
+							logger.error("Saving new chunk with id {} to storage {} failed", chunkId, storage, e);
+							closeWithError(e);
+							newChunkState.setError(e);
+						}
+					});
+				})
+				.whenComplete(($, throwable) -> {
+					if (throwable != null) {
+						logger.error("Failed to retrieve new chunk id from metadata storage {}", storage, throwable);
+						Exception e = throwableToException(throwable);
 						closeWithError(e);
-						newChunkCallback.setException(e);
+						newChunkState.setError(e);
 					}
 				});
-			}
-
-			@Override
-			protected void onException(Exception e) {
-				logger.error("Failed to retrieve new chunk id from metadata storage {}", storage, e);
-				closeWithError(e);
-				newChunkCallback.setException(e);
-			}
-		});
 	}
 
 	private void applySuspendOrResume() {
-		if (outputProducer.getProducerStatus() == StreamStatus.READY && chunksAccumulator.getActiveResultCallbacks() <= 1) {
+		if (outputProducer.getProducerStatus() == StreamStatus.READY && (chunksAccumulator.getActiveStages() - 1) <= 1) {
 			resume();
 		} else {
 			suspend();

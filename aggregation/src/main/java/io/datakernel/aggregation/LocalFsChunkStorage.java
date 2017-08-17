@@ -43,6 +43,7 @@ import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
 import static java.nio.file.StandardOpenOption.READ;
@@ -147,54 +148,48 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 	}
 
 	@Override
-	public void createId(ResultCallback<Long> callback) {
-		idGenerator.createId(callback);
+	public CompletionStage<Long> createId() {
+		return idGenerator.createId();
 	}
 
-	public void backup(final String backupId, final Set<Long> chunkIds, CompletionCallback callback) {
-		eventloop.runConcurrently(executorService, new RunnableWithException() {
-			@Override
-			public void runWithException() throws Exception {
-				Path backupDir = dir.resolve("backups/" + backupId + "/");
-				Files.createDirectories(backupDir);
-				for (long chunkId : chunkIds) {
-					Path target = dir.resolve(chunkId + LOG).toAbsolutePath();
-					Path link = backupDir.resolve(chunkId + LOG).toAbsolutePath();
-					Files.createSymbolicLink(link, target);
-				}
+	public CompletionStage<Void> backup(final String backupId, final Set<Long> chunkIds) {
+		return eventloop.runConcurrentlyWithException(executorService, () -> {
+			Path backupDir = dir.resolve("backups/" + backupId + "/");
+			Files.createDirectories(backupDir);
+			for (long chunkId : chunkIds) {
+				Path target = dir.resolve(chunkId + LOG).toAbsolutePath();
+				Path link = backupDir.resolve(chunkId + LOG).toAbsolutePath();
+				Files.createSymbolicLink(link, target);
 			}
-		}, callback);
+		});
 	}
 
-	public void cleanup(final Set<Long> chunkIds, CompletionCallback callback) {
-		eventloop.runConcurrently(executorService, new RunnableWithException() {
-			@Override
-			public void runWithException() throws Exception {
-				try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
-					for (Path file : stream) {
-						if (!file.toString().endsWith(LOG))
-							continue;
-						long id;
-						try {
-							String filename = file.getFileName().toString();
-							id = Long.parseLong((filename.substring(0, filename.length() - LOG.length())));
-						} catch (NumberFormatException e) {
-							logger.warn("Invalid chunk filename: " + file);
-							continue;
-						}
-						if (chunkIds.contains(id))
-							continue;
-						FileTime lastModifiedTime = Files.getLastModifiedTime(file);
-						if (cleanupTimeout != 0 && lastModifiedTime.toMillis() > System.currentTimeMillis() - cleanupTimeout)
-							continue;
-						try {
-							Files.delete(file);
-						} catch (IOException e) {
-							logger.warn("Could not delete file: " + file);
-						}
+	public CompletionStage<Void> cleanup(final Set<Long> chunkIds) {
+		return eventloop.runConcurrentlyWithException(executorService, () -> {
+			try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
+				for (Path file : stream) {
+					if (!file.toString().endsWith(LOG))
+						continue;
+					long id;
+					try {
+						String filename = file.getFileName().toString();
+						id = Long.parseLong((filename.substring(0, filename.length() - LOG.length())));
+					} catch (NumberFormatException e) {
+						logger.warn("Invalid chunk filename: " + file);
+						continue;
+					}
+					if (chunkIds.contains(id))
+						continue;
+					FileTime lastModifiedTime = Files.getLastModifiedTime(file);
+					if (cleanupTimeout != 0 && lastModifiedTime.toMillis() > System.currentTimeMillis() - cleanupTimeout)
+						continue;
+					try {
+						Files.delete(file);
+					} catch (IOException e) {
+						logger.warn("Could not delete file: " + file);
 					}
 				}
 			}
-		}, callback);
+		});
 	}
 }

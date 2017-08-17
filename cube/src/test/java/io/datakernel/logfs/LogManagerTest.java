@@ -83,7 +83,7 @@ public class LogManagerTest {
 		final SettableCurrentTimeProvider timeProvider = SettableCurrentTimeProvider.create();
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentTimeProvider(timeProvider);
 
-		LocalFsLogFileSystem fileSystem = LocalFsLogFileSystem.create(eventloop, executor, testDir);
+		LocalFsLogFileSystem fileSystem = LocalFsLogFileSystem.create(executor, testDir);
 		final LogManagerImpl<String> logManager = LogManagerImpl.create(eventloop, fileSystem, BufferSerializers.utf16Serializer());
 		final AbstractStreamProducer<String> sender = new AbstractStreamProducer<String>(eventloop) {};
 		sender.streamTo(logManager.consumer(logPartition));
@@ -169,7 +169,7 @@ public class LogManagerTest {
 		SettableCurrentTimeProvider timeProvider = SettableCurrentTimeProvider.create();
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentTimeProvider(timeProvider);
 		timeProvider.setTime(new LocalDateTime("1970-01-01T00:00:00").toDateTime(DateTimeZone.UTC).getMillis());
-		LogFileSystem fileSystem = LocalFsLogFileSystem.create(eventloop, executor, testDir);
+		LogFileSystem fileSystem = LocalFsLogFileSystem.create(executor, testDir);
 		BufferSerializer<TestItem> serializer = SerializerBuilder.create(DefiningClassLoader.create()).build(TestItem.class);
 		LogManager<TestItem> logManager = LogManagerImpl.create(eventloop, fileSystem, serializer);
 		LogStreamConsumer<TestItem> logConsumer = logManager.consumer("p1");

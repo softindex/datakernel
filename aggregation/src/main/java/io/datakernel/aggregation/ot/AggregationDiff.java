@@ -19,7 +19,7 @@ public final class AggregationDiff {
 		return new AggregationDiff(addedChunks, removedChunks);
 	}
 
-	public static AggregationDiff ofCommit(Set<AggregationChunk> addedChunks) {
+	public static AggregationDiff of(Set<AggregationChunk> addedChunks) {
 		return new AggregationDiff(addedChunks, Collections.<AggregationChunk>emptySet());
 	}
 

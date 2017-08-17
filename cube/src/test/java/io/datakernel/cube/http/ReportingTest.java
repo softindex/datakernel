@@ -27,7 +27,6 @@ import io.datakernel.aggregation.annotation.Measures;
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.measure.Measure;
 import io.datakernel.async.AssertingResultCallback;
-import io.datakernel.async.CompletionCallbackFuture;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.*;
 import io.datakernel.cube.attributes.AbstractAttributeResolver;
@@ -42,7 +41,6 @@ import io.datakernel.logfs.LogManager;
 import io.datakernel.logfs.LogManagerImpl;
 import io.datakernel.logfs.ot.*;
 import io.datakernel.ot.OTCommit;
-import io.datakernel.ot.OTRemoteAdapter;
 import io.datakernel.ot.OTRemoteSql;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.serializer.SerializerBuilder;
@@ -55,10 +53,12 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-import javax.sql.DataSource;
 import java.net.InetSocketAddress;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -150,7 +150,7 @@ public class ReportingTest {
 
 		@Override
 		public Map<String, Class<?>> getAttributeTypes() {
-			return ImmutableMap.<String, Class<?>>of("name", String.class);
+			return ImmutableMap.of("name", String.class);
 		}
 
 		@Override
@@ -287,23 +287,18 @@ public class ReportingTest {
 						.withMeasures(MEASURES.keySet()));
 
 		dataSource = dataSource("test.properties");
-		OTRemoteSql<LogDiff<CubeDiff>> otSourceSql = OTRemoteSql.create(dataSource, LogDiffJson.create(CubeDiffJson.create(cube)));
+		OTRemoteSql<LogDiff<CubeDiff>> otSourceSql = OTRemoteSql.create(executor, dataSource, LogDiffJson.create(CubeDiffJson.create(cube)));
 		otSourceSql.truncateTables();
-		otSourceSql.push(OTCommit.<Integer, LogDiff<CubeDiff>>ofRoot(1));
+		otSourceSql.push(OTCommit.ofRoot(1));
 
 		OTStateManager<Integer, LogDiff<CubeDiff>> logCubeStateManager = new OTStateManager<>(eventloop,
 				LogOT.createLogOT(CubeOT.createCubeOT()),
-				OTRemoteAdapter.ofBlockingRemote(eventloop, executor, otSourceSql),
-				new Comparator<Integer>() {
-					@Override
-					public int compare(Integer o1, Integer o2) {
-						return Integer.compare(o1, o2);
-					}
-				},
+				otSourceSql,
+				(o1, o2) -> Integer.compare(o1, o2),
 				new LogOTState<>(cube));
 
 		LogManager<LogItem> logManager = LogManagerImpl.create(eventloop,
-				LocalFsLogFileSystem.create(eventloop, executor, logsDir),
+				LocalFsLogFileSystem.create(executor, logsDir),
 				SerializerBuilder.create(classLoader).build(LogItem.class));
 
 		LogOTProcessor<Integer, LogItem, CubeDiff> logOTProcessor = LogOTProcessor.create(eventloop,
@@ -313,12 +308,11 @@ public class ReportingTest {
 				asList("partitionA"),
 				logCubeStateManager);
 
-		CompletionCallbackFuture future;
-
 		// checkout first (root) revision
 
-		future = CompletionCallbackFuture.create();
-		logCubeStateManager.checkout(future);
+		CompletableFuture<Void> future;
+
+		future = logCubeStateManager.checkout().toCompletableFuture();
 		eventloop.run();
 		future.get();
 
@@ -345,8 +339,7 @@ public class ReportingTest {
 		producer.streamTo(logManager.consumer("partitionA"));
 		eventloop.run();
 
-		future = CompletionCallbackFuture.create();
-		logOTProcessor.processLog(future);
+		future = logOTProcessor.processLog().toCompletableFuture();
 		eventloop.run();
 		future.get();
 

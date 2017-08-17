@@ -23,10 +23,10 @@ import io.datakernel.aggregation.fieldtype.FieldTypes;
 import io.datakernel.aggregation.measure.HyperLogLog;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
-import io.datakernel.async.AssertingResultCallback;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumers;
+import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import org.junit.Rule;
 import org.junit.Test;
@@ -35,6 +35,7 @@ import org.junit.rules.TemporaryFolder;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -114,21 +115,38 @@ public class CustomFieldsTest {
 
 		Aggregation aggregation = Aggregation.create(eventloop, executorService, classLoader, aggregationChunkStorage, structure);
 
-		StreamProducers.ofIterable(eventloop, asList(new EventRecord(1, 0.34, 1), new EventRecord(2, 0.42, 3), new EventRecord(3, 0.13, 20)))
-				.streamTo(aggregation.consumer(EventRecord.class, new TestCallback(aggregation)));
-		eventloop.run();
+		StreamProducer<EventRecord> producer = StreamProducers.ofIterable(eventloop, asList(
+				new EventRecord(1, 0.34, 1),
+				new EventRecord(2, 0.42, 3),
+				new EventRecord(3, 0.13, 20)));
 
-		StreamProducers.ofIterable(eventloop, asList(new EventRecord(2, 0.30, 20), new EventRecord(1, 0.22, 1000), new EventRecord(2, 0.91, 33)))
-				.streamTo(aggregation.consumer(EventRecord.class, new TestCallback(aggregation)));
+		CompletableFuture<AggregationDiff> future = aggregation.consume(producer, EventRecord.class).toCompletableFuture();
 		eventloop.run();
+		aggregation.getState().apply(future.get());
 
-		StreamProducers.ofIterable(eventloop, asList(new EventRecord(1, 0.01, 1), new EventRecord(3, 0.88, 20), new EventRecord(3, 1.01, 21)))
-				.streamTo(aggregation.consumer(EventRecord.class, new TestCallback(aggregation)));
+		producer = StreamProducers.ofIterable(eventloop, asList(
+				new EventRecord(2, 0.30, 20),
+				new EventRecord(1, 0.22, 1000),
+				new EventRecord(2, 0.91, 33)));
+		future = aggregation.consume(producer, EventRecord.class).toCompletableFuture();
 		eventloop.run();
+		aggregation.getState().apply(future.get());
 
-		StreamProducers.ofIterable(eventloop, asList(new EventRecord(1, 0.35, 500), new EventRecord(1, 0.59, 17), new EventRecord(2, 0.85, 50)))
-				.streamTo(aggregation.consumer(EventRecord.class, new TestCallback(aggregation)));
+		producer = StreamProducers.ofIterable(eventloop, asList(
+				new EventRecord(1, 0.01, 1),
+				new EventRecord(3, 0.88, 20),
+				new EventRecord(3, 1.01, 21)));
+		future = aggregation.consume(producer, EventRecord.class).toCompletableFuture();
 		eventloop.run();
+		aggregation.getState().apply(future.get());
+
+		producer = StreamProducers.ofIterable(eventloop, asList(
+				new EventRecord(1, 0.35, 500),
+				new EventRecord(1, 0.59, 17),
+				new EventRecord(2, 0.85, 50)));
+		future = aggregation.consume(producer, EventRecord.class).toCompletableFuture();
+		eventloop.run();
+		aggregation.getState().apply(future.get());
 
 		AggregationQuery query = AggregationQuery.create()
 				.withKeys("siteId")
@@ -167,19 +185,6 @@ public class CustomFieldsTest {
 		assertEquals(1.01, s3.maxRevenue, delta);
 		assertEquals(newHashSet(20L, 21L), s3.uniqueUserIds);
 		assertEquals(2, s3.estimatedUniqueUserIdCount.estimate());
-	}
-
-	private static class TestCallback extends AssertingResultCallback<AggregationDiff> {
-		private final Aggregation aggregation;
-
-		public TestCallback(Aggregation aggregation) {
-			this.aggregation = aggregation;
-		}
-
-		@Override
-		protected void onResult(AggregationDiff result) {
-			aggregation.getState().apply(result);
-		}
 	}
 
 }

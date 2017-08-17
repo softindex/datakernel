@@ -47,7 +47,7 @@ public class ConsolidationChunkSelectionTest {
 		chunks.add(createTestChunk(7, 5, 8));
 		chunks.add(createTestChunk(8, 7, 8));
 
-		state.apply(AggregationDiff.ofCommit(chunks));
+		state.apply(AggregationDiff.of(chunks));
 
 		List<AggregationChunk> selectedChunks = state.findChunksForConsolidationHotSegment(100);
 		assertEquals(chunks, newHashSet(selectedChunks));
@@ -83,7 +83,7 @@ public class ConsolidationChunkSelectionTest {
 		chunks2.add(createTestChunk(12, 10, 13));
 		chunks2.add(createTestChunk(13, 12, 13));
 
-		state.apply(AggregationDiff.ofCommit(newHashSet(concat(chunks1, chunks2))));
+		state.apply(AggregationDiff.of(newHashSet(concat(chunks1, chunks2))));
 
 		List<AggregationChunk> selectedChunks = state.findChunksForConsolidationMinKey(100, 4000);
 		assertEquals(chunks1, newHashSet(selectedChunks));
@@ -112,7 +112,7 @@ public class ConsolidationChunkSelectionTest {
 		chunks3.add(createTestChunk(8, 14, 15, 3));
 		chunks3.add(createTestChunk(9, 14, 15, 6));
 
-		state.apply(AggregationDiff.ofCommit(newHashSet(concat(chunks1, chunks2, chunks3))));
+		state.apply(AggregationDiff.of(newHashSet(concat(chunks1, chunks2, chunks3))));
 
 		List<AggregationChunk> selectedChunks = state.findChunksForConsolidationMinKey(maxChunks, optimalChunkSize);
 		assertEquals(chunks2, newHashSet(selectedChunks));
@@ -136,7 +136,7 @@ public class ConsolidationChunkSelectionTest {
 		chunks3.add(createTestChunk(6, 2, 2, 2, 2, 1, 1));
 		chunks3.add(createTestChunk(7, 2, 2, 2, 2, 1, 10));
 
-		state.apply(AggregationDiff.ofCommit(newHashSet(concat(chunks1, chunks2, chunks3))));
+		state.apply(AggregationDiff.of(newHashSet(concat(chunks1, chunks2, chunks3))));
 
 		Map<PrimaryKey, RangeTree<PrimaryKey, AggregationChunk>> partitioningKeyToTree = state.groupByPartition(2);
 

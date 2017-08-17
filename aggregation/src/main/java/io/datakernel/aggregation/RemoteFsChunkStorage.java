@@ -36,6 +36,7 @@ import io.datakernel.stream.processor.StreamLZ4Decompressor;
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.aggregation.AggregationUtils.createBufferSerializer;
 
@@ -108,7 +109,7 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage {
 	}
 
 	@Override
-	public void createId(ResultCallback<Long> callback) {
-		idGenerator.createId(callback);
+	public CompletionStage<Long> createId() {
+		return idGenerator.createId();
 	}
 }

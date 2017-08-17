@@ -42,6 +42,7 @@ import org.slf4j.LoggerFactory;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
 import static com.google.common.base.Functions.identity;
@@ -52,6 +53,7 @@ import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Sets.difference;
 import static com.google.common.collect.Sets.newHashSet;
 import static io.datakernel.aggregation.AggregationUtils.*;
+import static io.datakernel.async.SettableStage.immediateStage;
 import static io.datakernel.codegen.Expressions.arg;
 import static io.datakernel.codegen.Expressions.cast;
 import static java.lang.Math.min;
@@ -94,7 +96,7 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 	private long consolidationStarted;
 	private long consolidationLastTimeMillis;
 	private int consolidations;
-	private Exception consolidationLastError;
+	private Throwable consolidationLastError;
 
 	private Aggregation(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
 	                    AggregationChunkStorage aggregationChunkStorage, AggregationStructure structure,
@@ -203,13 +205,12 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 	 * Provides a {@link StreamConsumer} for streaming data to this aggregation.
 	 *
 	 * @param inputClass class of input records
-	 * @param callback   callback which is called when chunks are created
 	 * @param <T>        data records type
 	 * @return consumer for streaming data to aggregation
 	 */
 	@SuppressWarnings("unchecked")
-	public <T> StreamConsumer<T> consumer(Class<T> inputClass, Map<String, String> keyFields, Map<String, String> measureFields,
-	                                      final ResultCallback<AggregationDiff> callback) {
+	public <T> CompletionStage<AggregationDiff> consume(StreamProducer<T> producer,
+	                                                    Class<T> inputClass, Map<String, String> keyFields, Map<String, String> measureFields) {
 		checkArgument(newHashSet(getKeys()).equals(keyFields.keySet()), "Expected keys: %s, actual keyFields: %s", getKeys(), keyFields);
 		checkArgument(getMeasureTypes().keySet().containsAll(measureFields.keySet()), "Unknown measures: %s", difference(measureFields.keySet(), getMeasureTypes().keySet()));
 
@@ -219,27 +220,24 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 		List<String> measures = newArrayList(filter(this.getMeasureTypes().keySet(), in(measureFields.keySet())));
 		Class<?> accumulatorClass = createRecordClass(structure, getKeys(), measures, classLoader);
 
-		Function<T, Comparable<?>> keyFunction = createKeyFunction(inputClass, keyClass, getKeys(), classLoader);
-
 		Aggregate aggregate = createPreaggregator(structure, inputClass, accumulatorClass,
 				keyFields, measureFields,
 				classLoader);
 
-		return new AggregationGroupReducer<>(eventloop, aggregationChunkStorage,
+		AggregationGroupReducer<T> groupReducer = new AggregationGroupReducer<>(eventloop, aggregationChunkStorage,
 				structure, measures,
 				accumulatorClass,
 				createPartitionPredicate(accumulatorClass, getPartitioningKey(), classLoader),
-				keyFunction, aggregate, chunkSize, classLoader,
-				new ForwardingResultCallback<List<AggregationChunk>>(callback) {
-					@Override
-					protected void onResult(List<AggregationChunk> result) {
-						callback.setResult(AggregationDiff.ofCommit(new HashSet<>(result)));
-					}
-				});
+				createKeyFunction(inputClass, keyClass, getKeys(), classLoader),
+				aggregate, chunkSize, classLoader);
+
+		producer.streamTo(groupReducer);
+
+		return groupReducer.getResult().thenApply(chunks -> AggregationDiff.of(new HashSet<>(chunks)));
 	}
 
-	public <T> StreamConsumer<T> consumer(Class<T> inputClass, ResultCallback<AggregationDiff> callback) {
-		return consumer(inputClass, scanKeyFields(inputClass), scanMeasureFields(inputClass), callback);
+	public <T> CompletionStage<AggregationDiff> consume(StreamProducer<T> producer, Class<T> inputClass) {
+		return consume(producer, inputClass, scanKeyFields(inputClass), scanMeasureFields(inputClass));
 	}
 
 	public double estimateCost(AggregationQuery query) {
@@ -290,8 +288,7 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 		return sorter.getOutput();
 	}
 
-	private void doConsolidation(final List<AggregationChunk> chunksToConsolidate,
-	                             final ResultCallback<List<AggregationChunk>> callback) {
+	private CompletionStage<List<AggregationChunk>> doConsolidation(List<AggregationChunk> chunksToConsolidate) {
 		Set<String> aggregationFields = newHashSet(getMeasures());
 		Set<String> chunkFields = newHashSet();
 		for (AggregationChunk chunk : chunksToConsolidate) {
@@ -309,8 +306,10 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 		AggregationChunker<Object> chunker = new AggregationChunker<>(eventloop,
 				structure, measures, resultClass,
 				createPartitionPredicate(resultClass, getPartitioningKey(), classLoader),
-				aggregationChunkStorage, chunkSize, classLoader, callback);
+				aggregationChunkStorage, chunkSize, classLoader);
 		consolidatedProducer.streamTo(chunker);
+
+		return chunker.getResult();
 	}
 
 	private static void addChunkToPlan(Map<List<String>, TreeMap<PrimaryKey, List<QueryPlan.Sequence>>> planIndex,
@@ -487,43 +486,38 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 		return state.findOverlappingChunks().size();
 	}
 
-	public void consolidateMinKey(final ResultCallback<AggregationDiff> callback) {
-		doConsolidate(false, callback);
+	public CompletionStage<AggregationDiff> consolidateMinKey() {
+		return doConsolidate(false);
 	}
 
-	public void consolidateHotSegment(final ResultCallback<AggregationDiff> callback) {
-		doConsolidate(true, callback);
+	public CompletionStage<AggregationDiff> consolidateHotSegment() {
+		return doConsolidate(true);
 	}
 
-	private void doConsolidate(boolean hotSegment, final ResultCallback<AggregationDiff> callback) {
+	private CompletionStage<AggregationDiff> doConsolidate(boolean hotSegment) {
 		final List<AggregationChunk> chunks = hotSegment ?
 				state.findChunksForConsolidationHotSegment(maxChunksToConsolidate) :
 				state.findChunksForConsolidationMinKey(maxChunksToConsolidate, chunkSize);
 
 		if (chunks.isEmpty()) {
 			logger.info("Nothing to consolidate in aggregation '{}", this);
-			callback.setResult(AggregationDiff.empty());
-			return;
+			return immediateStage(AggregationDiff.empty());
 		}
 
 		logger.info("Starting consolidation of aggregation '{}'", this);
 		consolidationStarted = eventloop.currentTimeMillis();
 
-		doConsolidation(chunks, new ResultCallback<List<AggregationChunk>>() {
-			@Override
-			public void onResult(final List<AggregationChunk> consolidatedChunks) {
-				consolidationLastTimeMillis = eventloop.currentTimeMillis() - consolidationStarted;
-				consolidations++;
-				callback.setResult(AggregationDiff.of(new LinkedHashSet<>(consolidatedChunks), new LinkedHashSet<>(chunks)));
-			}
-
-			@Override
-			protected void onException(Exception e) {
-				consolidationStarted = 0;
-				consolidationLastError = e;
-				callback.setException(e);
-			}
-		});
+		return doConsolidation(chunks)
+				.whenComplete(($, throwable) -> {
+					if (throwable == null) {
+						consolidationLastTimeMillis = eventloop.currentTimeMillis() - consolidationStarted;
+						consolidations++;
+					} else {
+						consolidationStarted = 0;
+						consolidationLastError = throwable;
+					}
+				})
+				.thenApply(removedChunks -> AggregationDiff.of(new LinkedHashSet<>(removedChunks), new LinkedHashSet<>(chunks)));
 	}
 
 	public static String getChunkIds(Iterable<AggregationChunk> chunks) {
@@ -634,7 +628,7 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 	}
 
 	@JmxAttribute
-	public Exception getConsolidationLastError() {
+	public Throwable getConsolidationLastError() {
 		return consolidationLastError;
 	}
 

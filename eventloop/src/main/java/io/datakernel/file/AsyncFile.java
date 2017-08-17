@@ -109,12 +109,7 @@ public final class AsyncFile {
 	 */
 	public static void delete(Eventloop eventloop, ExecutorService executor,
 	                          final Path path, CompletionCallback callback) {
-		eventloop.runConcurrently(executor, new RunnableWithException() {
-			@Override
-			public void runWithException() throws Exception {
-				Files.delete(path);
-			}
-		}, callback);
+		eventloop.runConcurrentlyWithException(executor, () -> Files.delete(path), callback);
 	}
 
 	public static void length(Eventloop eventloop, ExecutorService executor, final Path path,
@@ -143,12 +138,7 @@ public final class AsyncFile {
 	 */
 	public static void move(Eventloop eventloop, ExecutorService executor,
 	                        final Path source, final Path target, final CopyOption[] options, CompletionCallback callback) {
-		eventloop.runConcurrently(executor, new RunnableWithException() {
-			@Override
-			public void runWithException() throws Exception {
-				Files.move(source, target, options);
-			}
-		}, callback);
+		eventloop.runConcurrentlyWithException(executor, () -> Files.move(source, target, options), callback);
 	}
 
 	/**
@@ -161,12 +151,7 @@ public final class AsyncFile {
 	 */
 	public static void createDirectory(Eventloop eventloop, ExecutorService executor,
 	                                   final Path dir, @Nullable final FileAttribute<?>[] attrs, CompletionCallback callback) {
-		eventloop.runConcurrently(executor, new RunnableWithException() {
-			@Override
-			public void runWithException() throws Exception {
-				Files.createDirectory(dir, attrs == null ? new FileAttribute<?>[0] : attrs);
-			}
-		}, callback);
+		eventloop.runConcurrentlyWithException(executor, () -> Files.createDirectory(dir, attrs == null ? new FileAttribute<?>[0] : attrs), callback);
 	}
 
 	/**
@@ -179,12 +164,7 @@ public final class AsyncFile {
 	 */
 	public static void createDirectories(Eventloop eventloop, ExecutorService executor,
 	                                     final Path dir, @Nullable final FileAttribute<?>[] attrs, CompletionCallback callback) {
-		eventloop.runConcurrently(executor, new RunnableWithException() {
-			@Override
-			public void runWithException() throws Exception {
-				Files.createDirectories(dir, attrs == null ? new FileAttribute<?>[0] : attrs);
-			}
-		}, callback);
+		eventloop.runConcurrentlyWithException(executor, () -> Files.createDirectories(dir, attrs == null ? new FileAttribute<?>[0] : attrs), callback);
 	}
 
 	/**
@@ -498,12 +478,9 @@ public final class AsyncFile {
 	}
 
 	public void forceAndClose(CompletionCallback callback) {
-		eventloop.runConcurrently(executor, new RunnableWithException() {
-			@Override
-			public void runWithException() throws Exception {
-				channel.force(true);
-				channel.close();
-			}
+		eventloop.runConcurrentlyWithException(executor, () -> {
+			channel.force(true);
+			channel.close();
 		}, callback);
 	}
 
@@ -513,12 +490,7 @@ public final class AsyncFile {
 	 * @param callback which will be called after complete
 	 */
 	public void close(CompletionCallback callback) {
-		eventloop.runConcurrently(executor, new RunnableWithException() {
-			@Override
-			public void runWithException() throws Exception {
-				channel.close();
-			}
-		}, callback);
+		eventloop.runConcurrentlyWithException(executor, channel::close, callback);
 	}
 
 	/**
@@ -528,12 +500,7 @@ public final class AsyncFile {
 	 * @param callback which will be called after complete
 	 */
 	public void truncate(final long size, CompletionCallback callback) {
-		eventloop.runConcurrently(executor, new RunnableWithException() {
-			@Override
-			public void runWithException() throws Exception {
-				channel.truncate(size);
-			}
-		}, callback);
+		eventloop.runConcurrentlyWithException(executor, () -> channel.truncate(size), callback);
 	}
 
 	/**
@@ -544,12 +511,7 @@ public final class AsyncFile {
 	 * @param callback which will be called after complete
 	 */
 	public void force(final boolean metaData, CompletionCallback callback) {
-		eventloop.runConcurrently(executor, new RunnableWithException() {
-			@Override
-			public void runWithException() throws Exception {
-				channel.force(metaData);
-			}
-		}, callback);
+		eventloop.runConcurrentlyWithException(executor, () -> channel.force(metaData), callback);
 	}
 
 	public Eventloop getEventloop() {

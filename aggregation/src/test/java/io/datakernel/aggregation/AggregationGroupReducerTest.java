@@ -32,10 +32,13 @@ import org.junit.rules.TemporaryFolder;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
 import static io.datakernel.aggregation.measure.Measures.union;
+import static io.datakernel.async.SettableStage.immediateStage;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
@@ -48,7 +51,7 @@ public class AggregationGroupReducerTest {
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
 	@Test
-	public void test() throws IOException {
+	public void test() throws IOException, ExecutionException, InterruptedException {
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		AggregationStructure structure = new AggregationStructure()
@@ -59,6 +62,7 @@ public class AggregationGroupReducerTest {
 		final List items = new ArrayList();
 		AggregationChunkStorage aggregationChunkStorage = new AggregationChunkStorage() {
 			long chunkId;
+
 			@Override
 			public <T> void read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long id, DefiningClassLoader classLoader, ResultCallback<StreamProducer<T>> callback) {
 				callback.setResult(StreamProducers.ofIterator(eventloop, items.iterator()));
@@ -73,8 +77,8 @@ public class AggregationGroupReducerTest {
 			}
 
 			@Override
-			public void createId(ResultCallback<Long> callback) {
-				callback.setResult(++chunkId);
+			public CompletionStage<Long> createId() {
+				return immediateStage(++chunkId);
 			}
 		};
 
@@ -89,22 +93,6 @@ public class AggregationGroupReducerTest {
 				ImmutableMap.of("word", "word"), ImmutableMap.of("documents", "documentId"), classLoader);
 
 		int aggregationChunkSize = 2;
-		final List<List<AggregationChunk>> listCallback = new ArrayList<>();
-		ResultCallback<List<AggregationChunk>> chunksCallback = new ResultCallback<List<AggregationChunk>>() {
-			@Override
-			public void onResult(List<AggregationChunk> result) {
-				listCallback.add(result);
-			}
-
-			@Override
-			public void onException(Exception exception) {
-				fail(exception.getMessage());
-			}
-		};
-
-		AggregationGroupReducer<InvertedIndexRecord> aggregationGroupReducer = new AggregationGroupReducer<>(eventloop, aggregationChunkStorage,
-				structure, asList("documents"),
-				aggregationClass, AggregationUtils.<InvertedIndexRecord>singlePartition(), keyFunction, aggregate, aggregationChunkSize, classLoader, chunksCallback);
 
 		StreamProducer<InvertedIndexRecord> producer = StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("fox", 1),
 				new InvertedIndexRecord("brown", 2), new InvertedIndexRecord("fox", 3),
@@ -112,15 +100,19 @@ public class AggregationGroupReducerTest {
 				new InvertedIndexRecord("dog", 1), new InvertedIndexRecord("quick", 1),
 				new InvertedIndexRecord("fox", 4), new InvertedIndexRecord("brown", 10)));
 
-		producer.streamTo(aggregationGroupReducer);
+		AggregationGroupReducer<InvertedIndexRecord> groupReducer = new AggregationGroupReducer<>(eventloop, aggregationChunkStorage,
+				structure, asList("documents"),
+				aggregationClass, AggregationUtils.singlePartition(), keyFunction, aggregate, aggregationChunkSize, classLoader);
+
+		producer.streamTo(groupReducer);
+		CompletableFuture<List<AggregationChunk>> future = groupReducer.getResult().toCompletableFuture();
 
 		eventloop.run();
 
 		assertEquals(producer.getProducerStatus(), StreamStatus.END_OF_STREAM);
-		assertEquals(aggregationGroupReducer.getConsumerStatus(), StreamStatus.END_OF_STREAM);
-		assertEquals(listCallback.size(), 1);
+		assertEquals(groupReducer.getConsumerStatus(), StreamStatus.END_OF_STREAM);
+		assertEquals(future.get().size(), 5);
 
-		assertEquals((listCallback.get(0)).size(), 5);
 		for (StreamConsumer consumer : listConsumers) {
 			assertEquals(consumer.getConsumerStatus(), StreamStatus.END_OF_STREAM);
 		}

@@ -73,7 +73,7 @@ public class LogStreamProducer<T> extends StreamProducerDecorator<T> {
 	                                              BufferSerializer<T> serializer, String logPartition,
 	                                              LogPosition startPosition, LogFile endFile,
 	                                              ResultCallback<LogPosition> positionCallback) {
-		return new LogStreamProducer<T>(eventloop, fileSystem, serializer, logPartition,
+		return new LogStreamProducer<>(eventloop, fileSystem, serializer, logPartition,
 				startPosition, endFile, positionCallback);
 	}
 

@@ -23,6 +23,7 @@ import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumers;
+import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import org.junit.Rule;
 import org.junit.Test;
@@ -31,6 +32,7 @@ import org.junit.rules.TemporaryFolder;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -100,23 +102,31 @@ public class InvertedIndexTest {
 
 		Aggregation aggregation = Aggregation.create(eventloop, executorService, classLoader, aggregationChunkStorage, structure);
 
-		ResultCallbackFuture<AggregationDiff> diffFuture1 = ResultCallbackFuture.create();
-		StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("fox", 1), new InvertedIndexRecord("brown", 2), new InvertedIndexRecord("fox", 3)))
-				.streamTo(aggregation.consumer(InvertedIndexRecord.class, diffFuture1));
+		StreamProducer<InvertedIndexRecord> producer = StreamProducers.ofIterable(eventloop,
+				asList(
+						new InvertedIndexRecord("fox", 1),
+						new InvertedIndexRecord("brown", 2),
+						new InvertedIndexRecord("fox", 3)));
+		CompletableFuture<AggregationDiff> future = aggregation.consume(producer, InvertedIndexRecord.class).toCompletableFuture();
 		eventloop.run();
-		aggregation.getState().apply(diffFuture1.get());
+		aggregation.getState().apply(future.get());
 
-		ResultCallbackFuture<AggregationDiff> diffFuture2 = ResultCallbackFuture.create();
-		StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("brown", 3), new InvertedIndexRecord("lazy", 4), new InvertedIndexRecord("dog", 1)))
-				.streamTo(aggregation.consumer(InvertedIndexRecord.class, diffFuture2));
+		producer = StreamProducers.ofIterable(eventloop,
+				asList(
+						new InvertedIndexRecord("brown", 3),
+						new InvertedIndexRecord("lazy", 4),
+						new InvertedIndexRecord("dog", 1)));
+		future = aggregation.consume(producer, InvertedIndexRecord.class).toCompletableFuture();
 		eventloop.run();
-		aggregation.getState().apply(diffFuture2.get());
+		aggregation.getState().apply(future.get());
 
-		ResultCallbackFuture<AggregationDiff> diffFuture3 = ResultCallbackFuture.create();
-		StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("quick", 1), new InvertedIndexRecord("fox", 4), new InvertedIndexRecord("brown", 10)))
-				.streamTo(aggregation.consumer(InvertedIndexRecord.class, diffFuture3));
+		producer = StreamProducers.ofIterable(eventloop, asList(
+				new InvertedIndexRecord("quick", 1),
+				new InvertedIndexRecord("fox", 4),
+				new InvertedIndexRecord("brown", 10)));
+		future = aggregation.consume(producer, InvertedIndexRecord.class).toCompletableFuture();
 		eventloop.run();
-		aggregation.getState().apply(diffFuture3.get());
+		aggregation.getState().apply(future.get());
 
 		AggregationQuery query = AggregationQuery.create()
 				.withKeys("word")

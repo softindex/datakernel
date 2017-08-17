@@ -219,7 +219,11 @@ public class GsonAdapters {
 			if (registeredClasses.containsKey(type))
 				return registeredClasses.get(type);
 			if (type instanceof Class<?>) {
-				return ofPrimitive((Class<?>) type);
+				Class<?> clazz = (Class<?>) type;
+				if (clazz.isEnum()) {
+					return (TypeAdapter) ofEnum((Class) clazz);
+				}
+				return ofPrimitive(clazz);
 			}
 			if (type instanceof ParameterizedType) {
 				ParameterizedType parameterizedType = (ParameterizedType) type;

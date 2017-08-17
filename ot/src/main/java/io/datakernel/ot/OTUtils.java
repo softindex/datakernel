@@ -3,17 +3,14 @@ package io.datakernel.ot;
 import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.ForwardingResultCallback;
-import io.datakernel.async.ResultCallback;
-import io.datakernel.eventloop.Eventloop;
 
 import java.util.*;
+import java.util.concurrent.CompletionStage;
 
-import static io.datakernel.async.AsyncCallbacks.postTo;
-import static io.datakernel.async.AsyncCallbacks.toResultCallback;
+import static io.datakernel.async.SettableStage.immediateFailedStage;
+import static io.datakernel.async.SettableStage.immediateStage;
 import static io.datakernel.util.Preconditions.checkNotNull;
-import static java.util.Collections.singleton;
-import static java.util.Collections.singletonList;
+import static java.util.Collections.*;
 
 public class OTUtils {
 	private OTUtils() {
@@ -88,195 +85,130 @@ public class OTUtils {
 		}
 	}
 
-	public static <K, D> void findCheckpoint(final Eventloop eventloop, final OTRemote<K, D> source, final Comparator<K> keyComparator,
-	                                         final ResultCallback<FindResult<K, D>> callback) {
-		source.getHeads(new ForwardingResultCallback<Set<K>>(callback) {
-			@Override
-			protected void onResult(Set<K> heads) {
-				findCheckpoint(eventloop, source, keyComparator, heads, null, new ForwardingResultCallback<OTUtils.FindResult<K, D>>(callback) {
-					@Override
-					protected void onResult(OTUtils.FindResult<K, D> result) {
-						if (result.isFound()) {
-							callback.setResult(result);
-						} else {
-							callback.setException(new IllegalStateException("Could not find snapshot"));
-						}
-					}
-				});
-			}
-		});
+	public static <K, D> CompletionStage<FindResult<K, D>> findCheckpoint(OTRemote<K, D> source, Comparator<K> keyComparator) {
+		return source.getHeads().thenCompose(heads ->
+				findCheckpoint(source, keyComparator, heads, null).thenCompose(result ->
+						result.isFound() ?
+								immediateStage(result) :
+								immediateFailedStage(new IllegalStateException("Could not find snapshot"))));
 	}
 
-	public static <K, D> void findCheckpoint(Eventloop eventloop, OTRemote<K, D> source, Comparator<K> keyComparator,
-	                                         Set<K> startNodes, @Nullable K lastNode,
-	                                         ResultCallback<FindResult<K, D>> callback) {
-		findParent(eventloop, source, keyComparator,
+	public static <K, D> CompletionStage<FindResult<K, D>> findCheckpoint(OTRemote<K, D> source, Comparator<K> keyComparator,
+	                                                                      Set<K> startNodes, @Nullable K lastNode) {
+		return findParent(source, keyComparator,
 				startNodes, lastNode,
-				new Predicate<OTCommit<K, D>>() {
-					@Override
-					public boolean apply(OTCommit<K, D> input) {
-						return input.isCheckpoint();
-					}
-				},
-				callback);
+				OTCommit::isCheckpoint);
 	}
 
-	public static <K, D> void findParent(final Eventloop eventloop, final OTRemote<K, D> source, final Comparator<K> keyComparator,
-	                                     K startNode, @Nullable final K lastNode,
-	                                     Predicate<OTCommit<K, D>> matchPredicate,
-	                                     ResultCallback<FindResult<K, D>> callback) {
-		findParent(eventloop, source, keyComparator, singleton(startNode), lastNode, matchPredicate, callback);
+	public static <K, D> CompletionStage<FindResult<K, D>> findParent(OTRemote<K, D> source, Comparator<K> keyComparator,
+	                                                                  K startNode, @Nullable K lastNode,
+	                                                                  Predicate<OTCommit<K, D>> matchPredicate) {
+		return findParent(source, keyComparator, singleton(startNode), lastNode, matchPredicate);
 	}
 
-	public static <K, D> void findParent(final Eventloop eventloop, final OTRemote<K, D> source, final Comparator<K> keyComparator,
-	                                     Set<K> startNodes, @Nullable final K lastNode,
-	                                     Predicate<OTCommit<K, D>> matchPredicate,
-	                                     ResultCallback<FindResult<K, D>> callback) {
-		findParent(eventloop, source, keyComparator,
+	public static <K, D> CompletionStage<FindResult<K, D>> findParent(OTRemote<K, D> source, Comparator<K> keyComparator,
+	                                                                  Set<K> startNodes, @Nullable K lastNode,
+	                                                                  Predicate<OTCommit<K, D>> matchPredicate) {
+		return findParent(source, keyComparator,
 				startNodes,
 				lastNode == null ?
-						Predicates.<K>alwaysTrue() :
-						new Predicate<K>() {
-							@Override
-							public boolean apply(K key) {
-								return keyComparator.compare(key, lastNode) >= 0;
-							}
-						},
-				matchPredicate,
-				callback);
+						Predicates.alwaysTrue() :
+						(Predicate<K>) key -> keyComparator.compare(key, lastNode) >= 0,
+				matchPredicate);
 	}
 
-	public static <K, D> void findParent(final Eventloop eventloop, final OTRemote<K, D> source, final Comparator<K> keyComparator,
-	                                     Set<K> startNodes, Predicate<K> loadPredicate,
-	                                     Predicate<OTCommit<K, D>> matchPredicate,
-	                                     ResultCallback<FindResult<K, D>> callback) {
+	public static <K, D> CompletionStage<FindResult<K, D>> findParent(OTRemote<K, D> source, Comparator<K> keyComparator,
+	                                                                  Set<K> startNodes, Predicate<K> loadPredicate,
+	                                                                  Predicate<OTCommit<K, D>> matchPredicate) {
 		PriorityQueue<Entry<K, D>> queue = new PriorityQueue<>(11,
-				new Comparator<Entry<K, D>>() {
-					@Override
-					public int compare(Entry<K, D> o1, Entry<K, D> o2) {
-						return keyComparator.compare(o2.parent, o1.parent);
-					}
-				});
+				(o1, o2) -> keyComparator.compare(o2.parent, o1.parent));
 		for (K startNode : startNodes) {
-			queue.add(new Entry<>(startNode, startNode, Collections.<D>emptyList()));
+			queue.add(new Entry<>(startNode, startNode, emptyList()));
 		}
-		findParent(eventloop, source, queue, new HashSet<K>(), loadPredicate, matchPredicate, callback);
+		return findParent(source, queue, new HashSet<>(), loadPredicate, matchPredicate);
 	}
 
-	private static <K, D> void findParent(final Eventloop eventloop, final OTRemote<K, D> source,
-	                                      final PriorityQueue<Entry<K, D>> queue, final Set<K> visited,
-	                                      final Predicate<K> loadPredicate,
-	                                      final Predicate<OTCommit<K, D>> matchPredicate,
-	                                      final ResultCallback<FindResult<K, D>> callback) {
+	private static <K, D> CompletionStage<FindResult<K, D>> findParent(OTRemote<K, D> source,
+	                                                                   PriorityQueue<Entry<K, D>> queue, Set<K> visited,
+	                                                                   Predicate<K> loadPredicate,
+	                                                                   Predicate<OTCommit<K, D>> matchPredicate) {
 		while (!queue.isEmpty()) {
-			final Entry<K, D> nodeWithPath = queue.poll();
-			final K node = nodeWithPath.parent;
+			Entry<K, D> nodeWithPath = queue.poll();
+			K node = nodeWithPath.parent;
 			if (!visited.add(node))
 				continue;
-			source.loadCommit(node, new ForwardingResultCallback<OTCommit<K, D>>(callback) {
-				@Override
-				protected void onResult(OTCommit<K, D> commit) {
-					if (matchPredicate.apply(commit)) {
-						List<D> path = new ArrayList<>();
-						path.addAll(nodeWithPath.parentToChild);
-						callback.setResult(FindResult.of(commit, nodeWithPath.child, path));
-						return;
-					}
-					for (Map.Entry<K, List<D>> parentEntry : commit.getParents().entrySet()) {
-						K parent = parentEntry.getKey();
-						if (parentEntry.getValue() == null)
-							continue;
-						if (loadPredicate.apply(parent)) {
-							List<D> parentDiffs = new ArrayList<>();
-							parentDiffs.addAll(parentEntry.getValue());
-							parentDiffs.addAll(nodeWithPath.parentToChild);
-							queue.add(new Entry<>(parent, nodeWithPath.child, parentDiffs));
+			return source.loadCommit(node)
+					.thenCompose(commit -> {
+						if (matchPredicate.apply(commit)) {
+							List<D> path = new ArrayList<>();
+							path.addAll(nodeWithPath.parentToChild);
+							return immediateStage(FindResult.of(commit, nodeWithPath.child, path));
 						}
-					}
-					eventloop.post(new Runnable() {
-						@Override
-						public void run() {
-							findParent(eventloop, source, queue, visited, loadPredicate, matchPredicate, callback);
+						for (Map.Entry<K, List<D>> parentEntry : commit.getParents().entrySet()) {
+							K parent = parentEntry.getKey();
+							if (parentEntry.getValue() == null)
+								continue;
+							if (loadPredicate.apply(parent)) {
+								List<D> parentDiffs = new ArrayList<>();
+								parentDiffs.addAll(parentEntry.getValue());
+								parentDiffs.addAll(nodeWithPath.parentToChild);
+								queue.add(new Entry<>(parent, nodeWithPath.child, parentDiffs));
+							}
 						}
+						return findParent(source, queue, visited, loadPredicate, matchPredicate);
 					});
-				}
-			});
-			return;
 		}
-		callback.setResult(FindResult.<K, D>notFound());
+		return immediateStage(FindResult.notFound());
 	}
 
 	public static <K1, K2, V> Map<K2, V> ensureMapValue(Map<K1, Map<K2, V>> map, K1 key) {
-		Map<K2, V> value = map.get(key);
-		if (value == null) {
-			value = new HashMap<>();
-			map.put(key, value);
-		}
-		return value;
+		return map.computeIfAbsent(key, k -> new HashMap<>());
 	}
 
 	public static <K, V> Set<V> ensureSetValue(Map<K, Set<V>> map, K key) {
-		Set<V> value = map.get(key);
-		if (value == null) {
-			value = new HashSet<>();
-			map.put(key, value);
-		}
-		return value;
+		return map.computeIfAbsent(key, k -> new HashSet<>());
 	}
 
 	public static <K, V> List<V> ensureListValue(Map<K, List<V>> map, K key) {
-		List<V> value = map.get(key);
-		if (value == null) {
-			value = new ArrayList<>();
-			map.put(key, value);
-		}
-		return value;
+		return map.computeIfAbsent(key, k -> new ArrayList<>());
 	}
 
-	private static <K, D> void loadCommitForMerge(final Eventloop eventloop, final OTRemote<K, D> source, final OTSystem<D> otSystem,
-	                                              final K node, final Set<K> visitedNodes,
-	                                              final List<D> squashedPath, final Set<K> squashedPathNodes,
-	                                              final ResultCallback<OTCommit<K, D>> callback) {
+	private static <K, D> CompletionStage<OTCommit<K, D>> loadCommitForMerge(OTRemote<K, D> source, OTSystem<D> otSystem,
+	                                                                         K node, Set<K> visitedNodes,
+	                                                                         List<D> squashedPath, Set<K> squashedPathNodes) {
 		squashedPathNodes.add(node);
-		source.loadCommit(node, postTo(eventloop, new ForwardingResultCallback<OTCommit<K, D>>(callback) {
-			@Override
-			protected void onResult(OTCommit<K, D> commit) {
-				if (commit.isRoot() || commit.isMerge() || visitedNodes.contains(commit.getId())) {
-					callback.setResult(commit);
-					return;
-				}
-				assert commit.getParents().size() == 1;
-				Map.Entry<K, List<D>> parentEntry = commit.getParents().entrySet().iterator().next();
-				K parentId = parentEntry.getKey();
-				List<D> parentPath = parentEntry.getValue();
-				squashedPath.addAll(0, parentPath);
-				loadCommitForMerge(eventloop, source, otSystem, parentId, visitedNodes, squashedPath, squashedPathNodes, callback);
-			}
-		}));
+		return source.loadCommit(node)
+				.thenCompose(commit -> {
+					if (commit.isRoot() || commit.isMerge() || visitedNodes.contains(commit.getId())) {
+						return immediateStage(commit);
+					}
+					assert commit.getParents().size() == 1;
+					Map.Entry<K, List<D>> parentEntry = commit.getParents().entrySet().iterator().next();
+					K parentId = parentEntry.getKey();
+					List<D> parentPath = parentEntry.getValue();
+					squashedPath.addAll(0, parentPath);
+					return loadCommitForMerge(source, otSystem, parentId, visitedNodes, squashedPath, squashedPathNodes);
+				});
 	}
 
-	public static <K, D> void merge(final Eventloop eventloop, final OTSystem<D> otSystem, final OTRemote<K, D> source, final Comparator<K> keyComparator,
-	                                final Set<K> nodes,
-	                                final ResultCallback<Map<K, List<D>>> callback) {
-		doMerge(eventloop, otSystem, source, keyComparator, nodes, new HashSet<K>(), null, callback);
+	public static <K, D> CompletionStage<Map<K, List<D>>> merge(OTSystem<D> otSystem, OTRemote<K, D> source, Comparator<K> keyComparator,
+	                                                            Set<K> nodes) {
+		return doMerge(otSystem, source, keyComparator, nodes, new HashSet<>(), null);
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <K, D> void doMerge(final Eventloop eventloop, final OTSystem<D> otSystem, final OTRemote<K, D> source, final Comparator<K> keyComparator,
-	                                  final Set<K> nodes, final Set<K> visitedNodes, final K rootNode,
-	                                  final ResultCallback<Map<K, List<D>>> callback) {
+	public static <K, D> CompletionStage<Map<K, List<D>>> doMerge(OTSystem<D> otSystem, OTRemote<K, D> source, Comparator<K> keyComparator,
+	                                                              Set<K> nodes, Set<K> visitedNodes, K rootNode) {
 		if (nodes.size() == 0) {
-			callback.setResult(Collections.<K, List<D>>emptyMap());
-			return;
+			return immediateStage(emptyMap());
 		}
 
 		if (nodes.size() == 1) {
 			Map<K, List<D>> result = new HashMap<>();
 			K node = nodes.iterator().next();
-			result.put(node, Collections.<D>emptyList());
+			result.put(node, emptyList());
 			visitedNodes.add(node);
-			callback.setResult(result);
-			return;
+			return immediateStage(result);
 		}
 
 		K pivot = null;
@@ -288,125 +220,91 @@ public class OTUtils {
 				pivot = node;
 			}
 		}
-		final HashSet<K> otherNodes = new HashSet<>(nodes);
+		Set<K> otherNodes = new HashSet<>(nodes);
 		otherNodes.remove(pivot);
 
-		final List<D> squashPath = new ArrayList<>();
-		final Set<K> squashNodes = new HashSet<>();
-		final K finalPivot = pivot;
-		loadCommitForMerge(eventloop, source, otSystem, pivot, visitedNodes, squashPath, squashNodes, postTo(eventloop, new ForwardingResultCallback<OTCommit<K, D>>(callback) {
-			@Override
-			protected void onResult(final OTCommit<K, D> commit) {
-				if (rootNode == null && commit.isRoot()) {
-					doMerge(eventloop, otSystem, source, keyComparator, nodes, visitedNodes, commit.getId(), callback);
-					return;
+		List<D> squashPath = new ArrayList<>();
+		Set<K> squashNodes = new HashSet<>();
+		K finalPivot = pivot;
+		return loadCommitForMerge(source, otSystem, pivot, visitedNodes, squashPath, squashNodes).thenCompose(commit -> {
+			if (rootNode == null && commit.isRoot()) {
+				return doMerge(otSystem, source, keyComparator, nodes, visitedNodes, commit.getId());
+			}
+			visitedNodes.addAll(squashNodes);
+
+			Set<K> recursiveMergeNodes = new HashSet<>(otherNodes);
+			recursiveMergeNodes.addAll(commit.isRoot() ? singleton(commit.getId()) : commit.getParents().keySet());
+
+			return doMerge(otSystem, source, keyComparator, recursiveMergeNodes, visitedNodes, rootNode).thenApply(mergeResult -> {
+				K parent = null;
+				for (Map.Entry<K, List<D>> entry : commit.getParents().entrySet()) {
+					if (entry.getValue() == null)
+						continue;
+					parent = entry.getKey();
+					break;
 				}
-				visitedNodes.addAll(squashNodes);
 
-				Set<K> recursiveMergeNodes = new HashSet<>(otherNodes);
-				recursiveMergeNodes.addAll(commit.isRoot() ? singleton(commit.getId()) : commit.getParents().keySet());
+				if (commit.isRoot())
+					parent = commit.getId();
 
-				doMerge(eventloop, otSystem, source, keyComparator, recursiveMergeNodes, visitedNodes, rootNode, postTo(eventloop, new ForwardingResultCallback<Map<K, List<D>>>(callback) {
-					@Override
-					protected void onResult(Map<K, List<D>> mergeResult) {
-						K parent = null;
-						for (Map.Entry<K, List<D>> entry : commit.getParents().entrySet()) {
-							if (entry.getValue() == null)
-								continue;
-							parent = entry.getKey();
-							break;
-						}
+				Map<K, List<D>> result = new HashMap<>();
 
-						if (commit.isRoot())
-							parent = commit.getId();
+				List<D> pivotPath = new ArrayList<>();
+				if (!commit.isRoot())
+					pivotPath.addAll(otSystem.invert(commit.getParents().get(parent)));
+				pivotPath.addAll(mergeResult.get(parent));
 
-						Map<K, List<D>> result = new HashMap<>();
+				DiffPair<D> transformed = otSystem.transform(DiffPair.of(otSystem.squash(squashPath), otSystem.squash(pivotPath)));
 
-						List<D> pivotPath = new ArrayList<>();
-						if (!commit.isRoot())
-							pivotPath.addAll(otSystem.invert(commit.getParents().get(parent)));
-						pivotPath.addAll(mergeResult.get(parent));
+				result.put(finalPivot, transformed.left);
 
-						DiffPair<D> transformed = otSystem.transform(DiffPair.of(otSystem.squash(squashPath), otSystem.squash(pivotPath)));
+				for (K node : otherNodes) {
+					List<D> list = new ArrayList<>();
+					list.addAll(mergeResult.get(node));
+					list.addAll(transformed.right);
+					result.put(node, list);
+				}
 
-						result.put(finalPivot, transformed.left);
-
-						for (K node : otherNodes) {
-							List<D> list = new ArrayList<>();
-							list.addAll(mergeResult.get(node));
-							list.addAll(transformed.right);
-							result.put(node, list);
-						}
-
-						callback.setResult(result);
-					}
-				}));
-			}
-		}));
-	}
-
-	public static <K, D> void mergeHeadsAndPush(final Eventloop eventloop, final OTSystem<D> otSystem, final OTRemote<K, D> source, final Comparator<K> keyComparator,
-	                                            final ResultCallback<K> callback) {
-		source.getHeads(new ForwardingResultCallback<Set<K>>(callback) {
-			@Override
-			protected void onResult(Set<K> heads) {
-				merge(eventloop, otSystem, source, keyComparator, heads, new ForwardingResultCallback<Map<K, List<D>>>(callback) {
-					@Override
-					protected void onResult(final Map<K, List<D>> merge) {
-						source.createId(new ForwardingResultCallback<K>(callback) {
-							@Override
-							protected void onResult(K mergeCommitId) {
-								source.push(singletonList(OTCommit.ofMerge(mergeCommitId, merge)),
-										toResultCallback(callback, mergeCommitId));
-							}
-						});
-					}
-				});
-			}
+				return result;
+			});
 		});
 	}
 
-	private static <K, D> void doMakeCheckpoint(final OTSystem<D> otSystem, final OTRemote<K, D> source,
-	                                            final FindResult<K, D> result,
-	                                            final ResultCallback<K> callback) {
+	public static <K, D> CompletionStage<K> mergeHeadsAndPush(OTSystem<D> otSystem, OTRemote<K, D> source, Comparator<K> keyComparator) {
+		return source.getHeads().thenCompose(heads ->
+				merge(otSystem, source, keyComparator, heads).thenCompose(merge ->
+						source.createId().thenCompose(mergeCommitId ->
+								source.push(singletonList(OTCommit.ofMerge(mergeCommitId, merge)))
+										.thenApply($ -> mergeCommitId))));
+	}
+
+	private static <K, D> CompletionStage<K> doMakeCheckpoint(OTSystem<D> otSystem, OTRemote<K, D> source,
+	                                                          FindResult<K, D> result) {
 		if (result.isFound()) {
 			List<D> diffs = new ArrayList<>();
 			diffs.addAll(result.getParentCommit().getCheckpoint());
 			diffs.addAll(result.getParentToChild());
-			final List<D> checkpoint = otSystem.squash(diffs);
+			List<D> checkpoint = otSystem.squash(diffs);
 
-			source.createId(new ForwardingResultCallback<K>(callback) {
-				@Override
-				protected void onResult(final K checkpointId) {
-					OTCommit<K, D> commit = OTCommit.ofCheckpoint(checkpointId, result.getChild(), checkpoint);
-					source.push(singletonList(commit),
-							toResultCallback(callback, checkpointId));
-				}
+			return source.createId().thenCompose(checkpointId -> {
+				OTCommit<K, D> commit = OTCommit.ofCheckpoint(checkpointId, result.getChild(), checkpoint);
+				return source.push(singletonList(commit))
+						.thenApply($ -> checkpointId);
 			});
 		} else {
-			callback.setException(new IllegalArgumentException("No checkpoint found for HEAD(s)"));
+			return immediateFailedStage(new IllegalArgumentException("No checkpoint found for HEAD(s)"));
 		}
 	}
 
-	public static <K, D> void makeCheckpointForHeads(final Eventloop eventloop, final OTSystem<D> otSystem, final OTRemote<K, D> source, final Comparator<K> keyComparator,
-	                                                 final ResultCallback<K> callback) {
-		findCheckpoint(eventloop, source, keyComparator, new ForwardingResultCallback<FindResult<K, D>>(callback) {
-			@Override
-			protected void onResult(final FindResult<K, D> result) {
-				doMakeCheckpoint(otSystem, source, result, callback);
-			}
-		});
+	public static <K, D> CompletionStage<K> makeCheckpointForHeads(OTSystem<D> otSystem, OTRemote<K, D> source, Comparator<K> keyComparator) {
+		return findCheckpoint(source, keyComparator).thenCompose(result ->
+				doMakeCheckpoint(otSystem, source, result));
 	}
 
-	public static <K, D> void makeCheckpointForNode(final Eventloop eventloop, final OTSystem<D> otSystem, final OTRemote<K, D> source, final Comparator<K> keyComparator,
-	                                                K node,
-	                                                final ResultCallback<K> callback) {
-		findCheckpoint(eventloop, source, keyComparator, singleton(node), null, new ForwardingResultCallback<FindResult<K, D>>(callback) {
-			@Override
-			protected void onResult(final FindResult<K, D> result) {
-				doMakeCheckpoint(otSystem, source, result, callback);
-			}
-		});
+	public static <K, D> CompletionStage<K> makeCheckpointForNode(OTSystem<D> otSystem, OTRemote<K, D> source, Comparator<K> keyComparator,
+	                                                              K node) {
+		return findCheckpoint(source, keyComparator, singleton(node), null).thenCompose(result ->
+				doMakeCheckpoint(otSystem, source, result));
 	}
 
 }

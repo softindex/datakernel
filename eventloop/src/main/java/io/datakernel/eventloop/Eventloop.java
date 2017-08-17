@@ -42,6 +42,8 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static io.datakernel.async.AsyncCallbacks.completionToStage;
+import static io.datakernel.async.AsyncCallbacks.resultToStage;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 /**
@@ -105,6 +107,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 */
 	private Selector selector;
 
+	private final SelectorProvider selectorProvider;
+
 	/**
 	 * The thread where eventloop is running
 	 */
@@ -149,12 +153,13 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 	// region builders
 	private Eventloop(CurrentTimeProvider timeProvider, String threadName, int threadPriority,
-	                  ThrottlingController throttlingController, FatalErrorHandler fatalErrorHandler) {
+	                  ThrottlingController throttlingController, FatalErrorHandler fatalErrorHandler, SelectorProvider selectorProvider) {
 		this.timeProvider = timeProvider;
 		this.threadName = threadName;
 		this.threadPriority = threadPriority;
 		this.fatalErrorHandler = fatalErrorHandler;
 		this.throttlingController = throttlingController;
+		this.selectorProvider = selectorProvider;
 		if (throttlingController != null) {
 			throttlingController.setEventloop(this);
 		}
@@ -163,28 +168,33 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	public static Eventloop create() {
-		return new Eventloop(CurrentTimeProviderSystem.instance(), null, 0, null, null);
+		return new Eventloop(CurrentTimeProviderSystem.instance(), null, 0, null, null, null);
 	}
 
 	public Eventloop withCurrentTimeProvider(CurrentTimeProvider timeProvider) {
-		return new Eventloop(timeProvider, threadName, threadPriority, throttlingController, fatalErrorHandler);
+		return new Eventloop(timeProvider, threadName, threadPriority, throttlingController, fatalErrorHandler, selectorProvider);
 	}
 
 	public Eventloop withThreadName(String threadName) {
-		return new Eventloop(timeProvider, threadName, threadPriority, throttlingController, fatalErrorHandler);
+		return new Eventloop(timeProvider, threadName, threadPriority, throttlingController, fatalErrorHandler, selectorProvider);
 	}
 
 	public Eventloop withThreadPriority(int threadPriority) {
-		return new Eventloop(timeProvider, threadName, threadPriority, throttlingController, fatalErrorHandler);
+		return new Eventloop(timeProvider, threadName, threadPriority, throttlingController, fatalErrorHandler, selectorProvider);
 	}
 
 	public Eventloop withThrottlingController(ThrottlingController throttlingController) {
-		return new Eventloop(timeProvider, threadName, threadPriority, throttlingController, fatalErrorHandler);
+		return new Eventloop(timeProvider, threadName, threadPriority, throttlingController, fatalErrorHandler, selectorProvider);
 	}
 
 	public Eventloop withFatalErrorHandler(FatalErrorHandler fatalErrorHandler) {
-		return new Eventloop(timeProvider, threadName, threadPriority, throttlingController, fatalErrorHandler);
+		return new Eventloop(timeProvider, threadName, threadPriority, throttlingController, fatalErrorHandler, selectorProvider);
 	}
+
+	public Eventloop withSelectorProvider(SelectorProvider selectorProvider) {
+		return new Eventloop(timeProvider, threadName, threadPriority, throttlingController, fatalErrorHandler, selectorProvider);
+	}
+
 	// endregion
 
 	public ThrottlingController getThrottlingController() {
@@ -194,7 +204,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	private void openSelector() {
 		if (selector == null) {
 			try {
-				selector = SelectorProvider.provider().openSelector();
+				selector = (selectorProvider != null ? selectorProvider : SelectorProvider.provider()).openSelector();
 			} catch (Exception exception) {
 				logger.error("Could not open selector", exception);
 				throw new RuntimeException(exception);
@@ -1010,6 +1020,35 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		return future;
 	}
 
+	public CompletionStage<Void> runConcurrently(ExecutorService executor, final Runnable runnable) {
+		SettableStage<Void> stage = SettableStage.create();
+		runConcurrently(executor, runnable, completionToStage(stage));
+		return stage;
+	}
+
+	public CompletionStage<Void> runConcurrentlyWithException(ExecutorService executor, final RunnableWithException runnable) {
+		SettableStage<Void> stage = SettableStage.create();
+		runConcurrently(executor, () -> {
+			try {
+				runnable.runWithException();
+			} catch (Exception e) {
+				throw new RunnableException(e);
+			}
+		}, completionToStage(stage));
+		return stage;
+	}
+
+	public AsyncCancellable runConcurrentlyWithException(ExecutorService executor,
+	                                                     final RunnableWithException runnable, final CompletionCallback callback) {
+		return runConcurrently(executor, () -> {
+			try {
+				runnable.runWithException();
+			} catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+		}, callback);
+	}
+
 	public AsyncCancellable runConcurrently(ExecutorService executor,
 	                                        final Runnable runnable, final CompletionCallback callback) {
 		assert inEventloopThread();
@@ -1089,6 +1128,12 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 				}
 			};
 		}
+	}
+
+	public <T> CompletionStage<T> callConcurrently(ExecutorService executor, final Callable<T> callable) {
+		SettableStage<T> stage = SettableStage.create();
+		callConcurrently(executor, callable, resultToStage(stage));
+		return stage;
 	}
 
 	public <T> AsyncCancellable callConcurrently(ExecutorService executor,

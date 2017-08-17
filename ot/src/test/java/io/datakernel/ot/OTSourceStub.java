@@ -2,11 +2,11 @@ package io.datakernel.ot;
 
 import com.google.common.collect.Sets;
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ResultCallback;
 
 import java.util.*;
+import java.util.concurrent.CompletionStage;
 
+import static io.datakernel.async.SettableStage.immediateStage;
 import static io.datakernel.ot.OTUtils.ensureMapValue;
 
 public final class OTSourceStub<K, D> implements OTRemote<K, D> {
@@ -71,22 +71,13 @@ public final class OTSourceStub<K, D> implements OTRemote<K, D> {
 	}
 
 	@Override
-	public void createId(ResultCallback<K> callback) {
-		callback.setResult(createId());
-	}
-
-	public K createId() {
+	public CompletionStage<K> createId() {
 		revisionId = sequence.next(revisionId);
-		return revisionId;
+		return immediateStage(revisionId);
 	}
 
 	@Override
-	public void push(List<OTCommit<K, D>> otCommits, CompletionCallback callback) {
-		push(otCommits);
-		callback.setComplete();
-	}
-
-	public void push(List<OTCommit<K, D>> commits) {
+	public CompletionStage<Void> push(List<OTCommit<K, D>> commits) {
 		for (OTCommit<K, D> commit : commits) {
 			K to = commit.getId();
 			for (K from : commit.getParents().keySet()) {
@@ -98,6 +89,7 @@ public final class OTSourceStub<K, D> implements OTRemote<K, D> {
 				checkpoints.put(to, checkpoint != null ? checkpoint : Collections.<D>emptyList());
 			}
 		}
+		return immediateStage(null);
 	}
 
 	public void add(K from, K to, List<? extends D> diffs) {
@@ -112,36 +104,24 @@ public final class OTSourceStub<K, D> implements OTRemote<K, D> {
 	}
 
 	@Override
-	public void getHeads(ResultCallback<Set<K>> callback) {
-		callback.setResult(getHeads());
-	}
-
-	public Set<K> getHeads() {
-		return Sets.difference(nodes, forward.keySet());
+	public CompletionStage<Set<K>> getHeads() {
+		return immediateStage(Sets.difference(nodes, forward.keySet()));
 	}
 
 	@Override
-	public void getCheckpoint(ResultCallback<K> callback) {
-		callback.setResult(getCheckpoint());
-	}
-
-	public K getCheckpoint() {
-		return checkpoints.lastKey();
+	public CompletionStage<K> getCheckpoint() {
+		return immediateStage(checkpoints.lastKey());
 	}
 
 	@Override
-	public void loadCommit(K revisionId, ResultCallback<OTCommit<K, D>> callback) {
-		callback.setResult(loadCommit(revisionId));
-	}
-
-	public OTCommit<K, D> loadCommit(K revisionId) {
+	public CompletionStage<OTCommit<K, D>> loadCommit(K revisionId) {
 		if (!nodes.contains(revisionId))
-			return null;
+			throw new IllegalArgumentException("id="+ revisionId);
 		Map<K, List<? extends D>> parentDiffs = backward.get(revisionId);
 		if (parentDiffs == null) {
 			parentDiffs = Collections.emptyMap();
 		}
-		return OTCommit.of(revisionId, checkpoints.get(revisionId), parentDiffs);
+		return immediateStage(OTCommit.of(revisionId, checkpoints.get(revisionId), parentDiffs));
 	}
 
 	@Override
