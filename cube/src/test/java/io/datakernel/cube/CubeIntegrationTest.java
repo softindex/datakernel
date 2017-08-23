@@ -45,6 +45,7 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Stream;
 
 import static io.datakernel.aggregation.AggregationPredicates.alwaysTrue;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofDouble;
@@ -229,9 +230,7 @@ public class CubeIntegrationTest {
 			actualChunkFileNames.add(file.getName());
 		}
 		Set<String> expectedChunkFileNames = new TreeSet<>();
-		for (int i = 1; i <= 9; ++i) {
-			expectedChunkFileNames.add(i + ".log");
-		}
+		Stream.of(7, 8, 9, 10, 11, 12).map(n -> n + ".log").forEach(expectedChunkFileNames::add);
 		expectedChunkFileNames.add("backups");
 		assertEquals(expectedChunkFileNames, actualChunkFileNames);
 	}

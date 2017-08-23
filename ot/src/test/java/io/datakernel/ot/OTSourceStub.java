@@ -2,6 +2,7 @@ package io.datakernel.ot;
 
 import com.google.common.collect.Sets;
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.SettableStage;
 
 import java.util.*;
 import java.util.concurrent.CompletionStage;
@@ -21,18 +22,18 @@ public final class OTSourceStub<K, D> implements OTRemote<K, D> {
 		}
 	}
 
-	public static class ProvidedSequence<K> implements Sequence<K> {
+	public static class TestSequence<K> implements Sequence<K> {
 		final Iterator<K> iterator;
 
-		private ProvidedSequence(Iterator<K> iterator) {
+		private TestSequence(Iterator<K> iterator) {
 			this.iterator = iterator;
 		}
 
-		public static <K> ProvidedSequence<K> of(Iterable<K> iterable) {
-			return new ProvidedSequence<K>(iterable.iterator());
+		public static <K> TestSequence<K> of(Iterable<K> iterable) {
+			return new TestSequence<K>(iterable.iterator());
 		}
 
-		public static <K> ProvidedSequence<K> of(K... iterable) {
+		public static <K> TestSequence<K> of(K... iterable) {
 			return of(Arrays.asList(iterable));
 		}
 
@@ -114,7 +115,7 @@ public final class OTSourceStub<K, D> implements OTRemote<K, D> {
 	}
 
 	@Override
-	public CompletionStage<OTCommit<K, D>> loadCommit(K revisionId) {
+	public SettableStage<OTCommit<K, D>> loadCommit(K revisionId) {
 		if (!nodes.contains(revisionId))
 			throw new IllegalArgumentException("id="+ revisionId);
 		Map<K, List<? extends D>> parentDiffs = backward.get(revisionId);

@@ -173,27 +173,38 @@ public class OTUtils {
 		return map.computeIfAbsent(key, k -> new ArrayList<>());
 	}
 
-	private static <K, D> CompletionStage<OTCommit<K, D>> loadCommitForMerge(OTRemote<K, D> source, OTSystem<D> otSystem,
-	                                                                         K node, Set<K> visitedNodes,
-	                                                                         List<D> squashedPath, Set<K> squashedPathNodes) {
-		squashedPathNodes.add(node);
-		return source.loadCommit(node)
-				.thenCompose(commit -> {
-					if (commit.isRoot() || commit.isMerge() || visitedNodes.contains(commit.getId())) {
-						return immediateStage(commit);
-					}
-					assert commit.getParents().size() == 1;
-					Map.Entry<K, List<D>> parentEntry = commit.getParents().entrySet().iterator().next();
-					K parentId = parentEntry.getKey();
-					List<D> parentPath = parentEntry.getValue();
-					squashedPath.addAll(0, parentPath);
-					return loadCommitForMerge(source, otSystem, parentId, visitedNodes, squashedPath, squashedPathNodes);
-				});
+	private static <K, D> CompletionStage<List<OTCommit<K, D>>> loadEdge(OTRemote<K, D> source, OTSystem<D> otSystem,
+	                                                                     K node) {
+		return source.loadCommit(node).thenCompose(commit -> {
+			if (commit.isRoot() || commit.isMerge()) {
+				List<OTCommit<K, D>> edge = new ArrayList<>();
+				edge.add(commit);
+				return immediateStage(edge);
+			}
+			assert commit.getParents().size() == 1;
+			K parentId = commit.getParents().keySet().iterator().next();
+			return loadEdge(source, otSystem, parentId).thenApply(edge -> {
+				edge.add(commit);
+				return edge;
+			});
+		});
 	}
 
 	public static <K, D> CompletionStage<Map<K, List<D>>> merge(OTSystem<D> otSystem, OTRemote<K, D> source, Comparator<K> keyComparator,
 	                                                            Set<K> nodes) {
 		return doMerge(otSystem, source, keyComparator, nodes, new HashSet<>(), null);
+	}
+
+	public static <K, D> List<D> diff(List<OTCommit<K, D>> path) {
+		List<D> result = new ArrayList<>();
+		K prev = null;
+		for (OTCommit<K, D> commit : path) {
+			if (prev != null) {
+				result.addAll(commit.getParents().get(prev));
+			}
+			prev = commit.getId();
+		}
+		return result;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -211,62 +222,94 @@ public class OTUtils {
 			return immediateStage(result);
 		}
 
-		K pivot = null;
+		K lastNode = null;
 		for (K node : nodes) {
 			if (rootNode != null && rootNode.equals(node)) {
 				continue;
 			}
-			if (pivot == null || keyComparator.compare(pivot, node) > 0) {
-				pivot = node;
+			if (lastNode == null || keyComparator.compare(node, lastNode) > 0) {
+				lastNode = node;
 			}
 		}
-		Set<K> otherNodes = new HashSet<>(nodes);
-		otherNodes.remove(pivot);
+		Set<K> earlierNodes = new HashSet<>(nodes);
+		earlierNodes.remove(lastNode);
 
-		List<D> squashPath = new ArrayList<>();
-		Set<K> squashNodes = new HashSet<>();
-		K finalPivot = pivot;
-		return loadCommitForMerge(source, otSystem, pivot, visitedNodes, squashPath, squashNodes).thenCompose(commit -> {
-			if (rootNode == null && commit.isRoot()) {
-				return doMerge(otSystem, source, keyComparator, nodes, visitedNodes, commit.getId());
+		final K finalLastNode = lastNode;
+		return loadEdge(source, otSystem, lastNode).thenCompose((List<OTCommit<K, D>> edge) -> {
+			if (rootNode == null && edge.get(0).isRoot()) {
+				return doMerge(otSystem, source, keyComparator, nodes, visitedNodes, edge.get(0).getId());
 			}
-			visitedNodes.addAll(squashNodes);
 
-			Set<K> recursiveMergeNodes = new HashSet<>(otherNodes);
-			recursiveMergeNodes.addAll(commit.isRoot() ? singleton(commit.getId()) : commit.getParents().keySet());
+			if (edge.size() != 1) {
+				OTCommit<K, D> base = edge.get(0);
+				Set<K> recursiveMergeNodes = new HashSet<>(earlierNodes);
+				recursiveMergeNodes.add(base.getId());
 
-			return doMerge(otSystem, source, keyComparator, recursiveMergeNodes, visitedNodes, rootNode).thenApply(mergeResult -> {
-				K parent = null;
-				for (Map.Entry<K, List<D>> entry : commit.getParents().entrySet()) {
-					if (entry.getValue() == null)
-						continue;
-					parent = entry.getKey();
-					break;
-				}
+				return doMerge(otSystem, source, keyComparator, recursiveMergeNodes, visitedNodes, rootNode).thenApply((Map<K, List<D>> mergeResult) -> {
+					int surfaceNodeIdx = 0;
+					for (int i = 0; i < edge.size(); i++) {
+						if (visitedNodes.contains(edge.get(i).getId())) {
+							surfaceNodeIdx = i;
+						} else {
+							break;
+						}
+					}
 
-				if (commit.isRoot())
-					parent = commit.getId();
+					List<OTCommit<K, D>> inner = edge.subList(0, surfaceNodeIdx + 1);
+					List<OTCommit<K, D>> outer = edge.subList(surfaceNodeIdx, edge.size());
 
-				Map<K, List<D>> result = new HashMap<>();
+					List<D> surfaceToMerge = new ArrayList<>();
+					surfaceToMerge.addAll(otSystem.invert(diff(inner)));
+					surfaceToMerge.addAll(mergeResult.get(base.getId()));
 
-				List<D> pivotPath = new ArrayList<>();
-				if (!commit.isRoot())
-					pivotPath.addAll(otSystem.invert(commit.getParents().get(parent)));
-				pivotPath.addAll(mergeResult.get(parent));
+					List<D> surfaceToLast = diff(outer);
 
-				DiffPair<D> transformed = otSystem.transform(DiffPair.of(otSystem.squash(squashPath), otSystem.squash(pivotPath)));
+					List<D> squash = otSystem.squash(surfaceToMerge);
+					TransformResult<D> transformed = otSystem.transform(squash, otSystem.squash(surfaceToLast));
 
-				result.put(finalPivot, transformed.left);
+					Map<K, List<D>> result = new HashMap<>();
+					result.put(finalLastNode, transformed.right);
+					for (K node : earlierNodes) {
+						List<D> list = new ArrayList<>();
+						list.addAll(mergeResult.get(node));
+						list.addAll(transformed.left);
+						result.put(node, otSystem.squash(list));
+					}
 
-				for (K node : otherNodes) {
-					List<D> list = new ArrayList<>();
-					list.addAll(mergeResult.get(node));
-					list.addAll(transformed.right);
-					result.put(node, list);
-				}
+					edge.stream().map(OTCommit::getId).forEach(visitedNodes::add);
 
-				return result;
-			});
+					return result;
+				});
+			} else {
+				OTCommit<K, D> last = edge.get(0);
+				Set<K> recursiveMergeNodes = new HashSet<>(earlierNodes);
+				recursiveMergeNodes.addAll(last.getParents().keySet());
+
+				return doMerge(otSystem, source, keyComparator, recursiveMergeNodes, visitedNodes, rootNode).thenApply((Map<K, List<D>> mergeResult) -> {
+					K parentNode = null;
+					for (Map.Entry<K, List<D>> entry : last.getParents().entrySet()) {
+						if (entry.getValue() == null)
+							continue;
+						parentNode = entry.getKey();
+						break;
+					}
+
+					List<D> baseToMerge = new ArrayList<>();
+					baseToMerge.addAll(otSystem.invert(last.getParents().get(parentNode)));
+					baseToMerge.addAll(mergeResult.get(parentNode));
+
+					Map<K, List<D>> result = new HashMap<>();
+					result.put(finalLastNode, otSystem.squash(baseToMerge));
+					for (K node : earlierNodes) {
+						result.put(node, mergeResult.get(node));
+					}
+
+					edge.stream().map(OTCommit::getId).forEach(visitedNodes::add);
+
+					return result;
+				});
+
+			}
 		});
 	}
 

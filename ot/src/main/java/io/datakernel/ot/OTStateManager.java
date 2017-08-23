@@ -101,7 +101,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 					return immediateStage(null);
 				}
 				List<D> pathToNewHead = findResult.getParentToChild();
-				DiffPair<D> transformed = otSystem.transform(DiffPair.of(otSystem.squash(workingDiffs), otSystem.squash(pathToNewHead)));
+				TransformResult<D> transformed = otSystem.transform(otSystem.squash(workingDiffs), otSystem.squash(pathToNewHead));
 				apply(transformed.left);
 				workingDiffs = new ArrayList<>(transformed.right);
 				head = findResult.getChild();

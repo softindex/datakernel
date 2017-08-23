@@ -2,10 +2,11 @@ package io.datakernel.cube.ot;
 
 import io.datakernel.aggregation.ot.AggregationDiff;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+
+import static java.util.Collections.emptyMap;
 
 public class CubeDiff {
 	private final Map<String, AggregationDiff> diffs;
@@ -34,7 +35,7 @@ public class CubeDiff {
 	}
 
 	public static CubeDiff empty() {
-		return new CubeDiff(Collections.<String, AggregationDiff>emptyMap());
+		return new CubeDiff(emptyMap());
 	}
 
 	public CubeDiff inverse() {

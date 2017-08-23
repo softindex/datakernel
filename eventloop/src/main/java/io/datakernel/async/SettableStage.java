@@ -5,9 +5,8 @@ import java.util.concurrent.CompletionStage;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
 public final class SettableStage<T> extends AbstractCompletionStage<T> {
-	private static final Object NO_RESULT = new Object();
-
-	private T result = (T) NO_RESULT;
+	private boolean done;
+	private T result = null;
 	private Throwable error;
 
 	private SettableStage() {
@@ -30,6 +29,8 @@ public final class SettableStage<T> extends AbstractCompletionStage<T> {
 	}
 
 	public void setResult(T result) {
+		assert !isDone();
+		done = true;
 		if (next == null) {
 			this.result = result;
 		} else {
@@ -38,6 +39,8 @@ public final class SettableStage<T> extends AbstractCompletionStage<T> {
 	}
 
 	public void setError(Throwable error) {
+		assert !isDone();
+		done = true;
 		if (next == null) {
 			this.error = error;
 		} else {
@@ -47,10 +50,10 @@ public final class SettableStage<T> extends AbstractCompletionStage<T> {
 
 	@Override
 	protected <X> CompletionStage<X> subscribe(NextCompletionStage<T, X> next) {
-		if (result != NO_RESULT || error != null) {
+		if (isDone()) {
 			if (this.next == null) {
 				getCurrentEventloop().post(() -> {
-					if (result != NO_RESULT)
+					if (error == null)
 						complete(result);
 					else
 						completeExceptionally(error);
@@ -60,5 +63,14 @@ public final class SettableStage<T> extends AbstractCompletionStage<T> {
 			}
 		}
 		return super.subscribe(next);
+	}
+
+	public boolean isDone() {
+		return done;
+	}
+
+	@Override
+	public String toString() {
+		return "{" + (isDone() ? (error == null ? result : error.getMessage()) : "") + "}";
 	}
 }

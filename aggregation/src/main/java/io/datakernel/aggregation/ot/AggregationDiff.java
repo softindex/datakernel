@@ -3,6 +3,7 @@ package io.datakernel.aggregation.ot;
 import io.datakernel.aggregation.AggregationChunk;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -43,14 +44,21 @@ public final class AggregationDiff {
 		return addedChunks.isEmpty() && removedChunks.isEmpty();
 	}
 
-	public static AggregationDiff simplify(AggregationDiff commit1, AggregationDiff commit2) {
-		Set<AggregationChunk> addedChunks = new LinkedHashSet<>(commit1.addedChunks);
-		addedChunks.removeAll(commit2.removedChunks);
-		addedChunks.addAll(commit2.addedChunks);
+	public static AggregationDiff squash(AggregationDiff commit1, AggregationDiff commit2) {
+		Set<AggregationChunk> addedChunks1 = new LinkedHashSet<>(commit1.addedChunks);
+		addedChunks1.removeAll(commit2.removedChunks);
+		Set<AggregationChunk> addedChunks2 = new LinkedHashSet<>(commit2.addedChunks);
+		addedChunks2.removeAll(commit1.removedChunks);
+		Set<AggregationChunk> addedChunks = new HashSet<>();
+		addedChunks.addAll(addedChunks1);
+		addedChunks.addAll(addedChunks2);
 
-		Set<AggregationChunk> removedChunks = new LinkedHashSet<>(commit1.removedChunks);
+		Set<AggregationChunk> removedChunks1 = new LinkedHashSet<>(commit1.removedChunks);
+		removedChunks1.removeAll(commit2.addedChunks);
 		Set<AggregationChunk> removedChunks2 = new LinkedHashSet<>(commit2.removedChunks);
 		removedChunks2.removeAll(commit1.addedChunks);
+		Set<AggregationChunk> removedChunks = new HashSet<>();
+		removedChunks.addAll(removedChunks1);
 		removedChunks.addAll(removedChunks2);
 
 		return of(addedChunks, removedChunks);

@@ -22,6 +22,10 @@ public class LogDiff<D> {
 			return new LogPositionDiff(to, from);
 		}
 
+		public boolean isEmpty() {
+			return from.equals(to);
+		}
+
 		@Override
 		public int compareTo(LogPositionDiff o) {
 			return this.to.compareTo(o.to);
