@@ -126,10 +126,6 @@ public final class OTStateManager<K, D> implements EventloopService {
 		return commit().thenCompose($ -> push());
 	}
 
-	public CompletionStage<Void> rebaseAndCommitAndPush() {
-		return pull().thenCompose($ -> commit()).thenCompose($ -> push());
-	}
-
 	public CompletionStage<Void> commit() {
 		if (workingDiffs.isEmpty()) {
 			return immediateStage(null);

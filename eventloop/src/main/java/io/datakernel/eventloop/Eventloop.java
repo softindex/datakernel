@@ -1044,7 +1044,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			try {
 				runnable.runWithException();
 			} catch (Exception e) {
-				throw new RuntimeException(e);
+				throw new RunnableException(e);
 			}
 		}, callback);
 	}

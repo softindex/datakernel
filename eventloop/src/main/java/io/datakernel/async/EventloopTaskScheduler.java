@@ -3,17 +3,18 @@ package io.datakernel.async;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.eventloop.ScheduledRunnable;
+import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static io.datakernel.async.AsyncCallbacks.toResultCallback;
+import java.util.concurrent.CompletionStage;
 
-public final class EventloopTaskScheduler<T> implements EventloopService {
+public final class EventloopTaskScheduler implements EventloopService, EventloopJmxMBean {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final Eventloop eventloop;
-	private final AsyncCallable<T> task;
+	private final AsyncCallable<?> task;
 
 	private long initialDelay;
 	private long period;
@@ -24,8 +25,8 @@ public final class EventloopTaskScheduler<T> implements EventloopService {
 
 	private long lastStartTime;
 	private long lastCompleteTime;
-	private T lastResult;
-	private Exception lastError;
+	private Object lastResult;
+	private Throwable lastError;
 	private int lastErrorsCount;
 
 	// JMX
@@ -35,11 +36,11 @@ public final class EventloopTaskScheduler<T> implements EventloopService {
 	private int totalErrorsCount;
 	private long totalErrorsDuration;
 
-	public interface TimestampFunction<T> {
-		long nextTimestamp(long now, long lastStartTime, long lastCompleteTime, T lastResult, Exception lastError, int lastErrorsCount);
+	public interface ScheduleFunction<T> {
+		long nextTimestamp(long now, long lastStartTime, long lastCompleteTime, T lastResult, Throwable lastError, int lastErrorsCount);
 	}
 
-	private TimestampFunction<T> timestampFunction = (now, lastStartTime, lastCompleteTime, lastResult, lastError, lastErrorsCount) -> {
+	private ScheduleFunction<Object> scheduleFunction = (now, lastStartTime, lastCompleteTime, lastResult, lastError, lastErrorsCount) -> {
 		long from;
 		long delay;
 		if (period != 0) {
@@ -65,40 +66,45 @@ public final class EventloopTaskScheduler<T> implements EventloopService {
 
 	private ScheduledRunnable scheduledTask;
 
-	private EventloopTaskScheduler(Eventloop eventloop, AsyncCallable<T> task) {
+	private EventloopTaskScheduler(Eventloop eventloop, AsyncCallable<?> task) {
 		this.eventloop = eventloop;
 		this.task = task;
 	}
 
-	public static <T> EventloopTaskScheduler<T> create(Eventloop eventloop, AsyncCallable<T> task) {
-		return new EventloopTaskScheduler<>(eventloop, task);
+	public static EventloopTaskScheduler create(Eventloop eventloop, AsyncCallable<?> task) {
+		return new EventloopTaskScheduler(eventloop, task);
 	}
 
-	public static EventloopTaskScheduler<Void> create(Eventloop eventloop, AsyncRunnable task) {
-		return new EventloopTaskScheduler<>(eventloop, callback -> task.run(toResultCallback(callback, null)));
+	public static EventloopTaskScheduler create(Eventloop eventloop, AsyncRunnable task) {
+		return EventloopTaskScheduler.create(eventloop, new AsyncCallable<Void>() {
+			@Override
+			public CompletionStage<Void> call() {
+				return task.run();
+			}
+		});
 	}
 
-	public EventloopTaskScheduler<T> withInitialDelay(long initialDelayMillis) {
+	public EventloopTaskScheduler withInitialDelay(long initialDelayMillis) {
 		this.initialDelay = initialDelayMillis;
 		return this;
 	}
 
-	public EventloopTaskScheduler<T> withPeriod(long refreshPeriodMillis) {
+	public EventloopTaskScheduler withPeriod(long refreshPeriodMillis) {
 		this.period = refreshPeriodMillis;
 		return this;
 	}
 
-	public EventloopTaskScheduler<T> withInterval(long intervalMillis) {
+	public EventloopTaskScheduler withInterval(long intervalMillis) {
 		this.interval = intervalMillis;
 		return this;
 	}
 
-	public EventloopTaskScheduler<T> withTimestampFunction(TimestampFunction<T> timestampFunction) {
-		this.timestampFunction = timestampFunction;
+	public EventloopTaskScheduler withScheduleFunction(ScheduleFunction<?> scheduleFunction) {
+		this.scheduleFunction = (ScheduleFunction<Object>) scheduleFunction;
 		return this;
 	}
 
-	public EventloopTaskScheduler<T> withAbortOnError(boolean abortOnError) {
+	public EventloopTaskScheduler withAbortOnError(boolean abortOnError) {
 		this.abortOnError = abortOnError;
 		return this;
 	}
@@ -114,15 +120,14 @@ public final class EventloopTaskScheduler<T> implements EventloopService {
 
 		long timestamp = (lastStartTime == 0) ?
 				eventloop.currentTimeMillis() + initialDelay :
-				timestampFunction.nextTimestamp(eventloop.currentTimeMillis(), lastStartTime, lastCompleteTime, lastResult, lastError, lastErrorsCount);
+				scheduleFunction.nextTimestamp(eventloop.currentTimeMillis(), lastStartTime, lastCompleteTime, lastResult, lastError, lastErrorsCount);
 
 		scheduledTask = eventloop.scheduleBackground(
 				timestamp,
 				() -> {
 					long startTime = eventloop.currentTimeMillis();
-					task.call(new ResultCallback<T>() {
-						@Override
-						protected void onResult(T result) {
+					task.call().whenComplete((result, throwable) -> {
+						if (throwable == null) {
 							lastStartTime = startTime;
 							lastCompleteTime = eventloop.currentTimeMillis();
 							lastResult = result;
@@ -131,21 +136,18 @@ public final class EventloopTaskScheduler<T> implements EventloopService {
 							totalCount++;
 							totalDuration += lastCompleteTime - lastStartTime;
 							scheduleTask();
-						}
-
-						@Override
-						protected void onException(Exception e) {
+						} else {
 							lastStartTime = startTime;
 							lastCompleteTime = eventloop.currentTimeMillis();
 							lastResult = null;
-							lastError = e;
+							lastError = throwable;
 							lastErrorsCount++;
 							totalErrorsCount++;
 							totalErrorsDuration += lastCompleteTime - lastStartTime;
-							logger.error("Task failures: " + lastErrorsCount, e);
+							logger.error("Task failures: " + lastErrorsCount, throwable);
 							if (abortOnError) {
 								scheduledTask.cancel();
-								throw new RuntimeException(e);
+								throw new RuntimeException(throwable);
 							} else {
 								scheduleTask();
 							}
@@ -215,12 +217,12 @@ public final class EventloopTaskScheduler<T> implements EventloopService {
 	}
 
 	@JmxAttribute
-	public T getLastResult() {
+	public Object getLastResult() {
 		return lastResult;
 	}
 
 	@JmxAttribute
-	public Exception getLastError() {
+	public Throwable getLastError() {
 		return lastError;
 	}
 

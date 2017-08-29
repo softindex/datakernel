@@ -5,6 +5,7 @@ import io.datakernel.eventloop.ScheduledRunnable;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeoutException;
@@ -39,7 +40,7 @@ public class Stages {
 		}
 	}
 
-	public static <T> CompletionStage<List<T>> parallel(List<CompletionStage<T>> stages) {
+	public static <T> CompletionStage<List<T>> all(List<CompletionStage<T>> stages) {
 		if (stages.size() == 0)
 			return SettableStage.immediateStage(emptyList());
 		if (stages.size() == 1) {
@@ -68,6 +69,18 @@ public class Stages {
 			});
 		}
 		return resultStage;
+	}
+
+	public static CompletionStage<Void> sequence(Iterable<StageRunnable> stages) {
+		return sequence(stages.iterator());
+	}
+
+	public static CompletionStage<Void> sequence(Iterator<StageRunnable> stages) {
+		if (!stages.hasNext()) {
+			return SettableStage.immediateStage(null);
+		}
+		StageRunnable next = stages.next();
+		return next.run().thenAccept($ -> sequence(stages));
 	}
 
 }

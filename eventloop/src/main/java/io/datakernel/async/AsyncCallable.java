@@ -16,6 +16,34 @@
 
 package io.datakernel.async;
 
+import java.util.concurrent.CompletionStage;
+
+import static io.datakernel.async.AsyncCallbacks.throwableToException;
+
 public interface AsyncCallable<T> {
-	void call(ResultCallback<T> callback);
+	default CompletionStage<T> call() {
+		SettableStage<T> stage = SettableStage.create();
+		call(new ResultCallback<T>() {
+			@Override
+			protected void onResult(T result) {
+				stage.setResult(result);
+			}
+
+			@Override
+			protected void onException(Exception e) {
+				stage.setError(e);
+			}
+		});
+		return stage;
+	}
+
+	default void call(ResultCallback<T> callback) {
+		call().whenComplete((t, throwable) -> {
+			if (throwable == null) {
+				callback.setResult(t);
+			} else {
+				callback.setException(throwableToException(throwable));
+			}
+		});
+	}
 }
