@@ -16,7 +16,6 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 import org.junit.Test;
@@ -25,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.BiConsumer;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
@@ -203,28 +203,23 @@ public class StreamUnionTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamUnion<Integer> streamUnion = StreamUnion.create(eventloop);
-		CheckCallCallback checkCallCallback = new CheckCallCallback();
+		CheckBiConsumer checkBiConsumer = new CheckBiConsumer();
 		StreamConsumers.ToList<Integer> toList = StreamConsumers.toList(eventloop);
-		toList.setCompletionCallback(checkCallCallback);
+		toList.getCompletionStage().whenComplete(checkBiConsumer);
 
 		streamUnion.getOutput().streamTo(toList);
 		eventloop.run();
 
-		assertTrue(checkCallCallback.isCall());
+		assertTrue(checkBiConsumer.isCall());
 	}
 
-	class CheckCallCallback extends CompletionCallback {
+	class CheckBiConsumer implements BiConsumer<Void, Throwable> {
 		private int onComplete;
 		private int onException;
 
 		@Override
-		public void onComplete() {
-			onComplete++;
-		}
-
-		@Override
-		public void onException(Exception exception) {
-			onException++;
+		public void accept(Void aVoid, Throwable throwable) {
+			if (throwable == null) onComplete++; else onException++;
 		}
 
 		public int getOnComplete() {

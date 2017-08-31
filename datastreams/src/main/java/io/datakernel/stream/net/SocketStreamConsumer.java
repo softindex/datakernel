@@ -16,7 +16,7 @@
 
 package io.datakernel.stream.net;
 
-import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
@@ -24,9 +24,11 @@ import io.datakernel.stream.AbstractStreamConsumer;
 import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamStatus;
 
+import java.util.concurrent.CompletionStage;
+
 final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> implements StreamDataReceiver<ByteBuf> {
 	private final AsyncTcpSocket asyncTcpSocket;
-	private final CompletionCallback completionCallback;
+	private final SettableStage<Void> completionStage;
 
 	private int writeTick;
 
@@ -34,15 +36,14 @@ final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> impleme
 
 	// region creators
 	private SocketStreamConsumer(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
-	                             CompletionCallback completionCallback) {
+	                             SettableStage<Void> completionStage) {
 		super(eventloop);
 		this.asyncTcpSocket = asyncTcpSocket;
-		this.completionCallback = completionCallback;
+		this.completionStage = completionStage;
 	}
 
-	public static SocketStreamConsumer create(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
-	                                          CompletionCallback completionCallback) {
-		return new SocketStreamConsumer(eventloop, asyncTcpSocket, completionCallback);
+	public static SocketStreamConsumer create(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket) {
+		return new SocketStreamConsumer(eventloop, asyncTcpSocket, SettableStage.create());
 	}
 	// endregion
 
@@ -58,7 +59,7 @@ final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> impleme
 
 	@Override
 	protected void onError(Exception e) {
-		completionCallback.setException(e);
+		completionStage.setError(e);
 	}
 
 	@Override
@@ -83,7 +84,7 @@ final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> impleme
 			resume();
 		} else if (getConsumerStatus() == StreamStatus.END_OF_STREAM) {
 			closedProperly = true;
-			completionCallback.setComplete();
+			completionStage.setResult(null);
 		}
 	}
 
@@ -91,4 +92,7 @@ final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> impleme
 		return closedProperly || getConsumerStatus() == StreamStatus.CLOSED_WITH_ERROR;
 	}
 
+	public CompletionStage<Void> getCompletionStage() {
+		return completionStage;
+	}
 }

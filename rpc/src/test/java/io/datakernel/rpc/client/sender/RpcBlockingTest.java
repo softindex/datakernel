@@ -17,8 +17,7 @@
 package io.datakernel.rpc.client.sender;
 
 import com.google.common.net.InetAddresses;
-import io.datakernel.async.ResultCallback;
-import io.datakernel.async.ResultCallbackFuture;
+import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.rpc.client.RpcClient;
@@ -32,6 +31,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
@@ -158,14 +158,10 @@ public class RpcBlockingTest {
 
 	private static String blockingRequest(final RpcClient rpcClient, final String name) throws Exception {
 		try {
-			final ResultCallbackFuture<HelloResponse> future = ResultCallbackFuture.create();
-			rpcClient.getEventloop().execute(new Runnable() {
-				@Override
-				public void run() {
-					rpcClient.sendRequest(new HelloRequest(name), TIMEOUT, future);
-				}
-			});
-			return future.get().message;
+			return rpcClient.getEventloop()
+					.submit(() -> rpcClient.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT))
+					.toCompletableFuture()
+					.get().message;
 		} catch (ExecutionException e) {
 			throw (Exception) e.getCause();
 		}
@@ -226,15 +222,14 @@ public class RpcBlockingTest {
 	private static RpcRequestHandler<HelloRequest, HelloResponse> helloServiceRequestHandler(final HelloService helloService) {
 		return new RpcRequestHandler<HelloRequest, HelloResponse>() {
 			@Override
-			public void run(HelloRequest request, ResultCallback<HelloResponse> callback) {
+			public CompletionStage<HelloResponse> run(HelloRequest request) {
 				String result;
 				try {
 					result = helloService.hello(request.name);
 				} catch (Exception e) {
-					callback.setException(e);
-					return;
+					return SettableStage.immediateFailedStage(e);
 				}
-				callback.setResult(new HelloResponse(result));
+				return SettableStage.immediateStage(new HelloResponse(result));
 			}
 		};
 	}

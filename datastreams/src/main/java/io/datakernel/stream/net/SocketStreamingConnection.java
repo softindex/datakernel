@@ -16,7 +16,7 @@
 
 package io.datakernel.stream.net;
 
-import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
@@ -40,26 +40,18 @@ public final class SocketStreamingConnection implements AsyncTcpSocket.EventHand
 	private SocketStreamingConnection(Eventloop eventloop, final AsyncTcpSocket asyncTcpSocket) {
 		this.eventloop = eventloop;
 		this.asyncTcpSocket = asyncTcpSocket;
-		this.socketWriter = SocketStreamConsumer.create(eventloop, asyncTcpSocket, new CompletionCallback() {
-			@Override
-			public void onException(Exception e) {
-				socketReader.closeWithError(e);
+		this.socketWriter = SocketStreamConsumer.create(eventloop, asyncTcpSocket);
+		this.socketWriter.getCompletionStage().whenComplete(($, throwable) -> {
+			if (throwable != null) {
+				SocketStreamingConnection.this.socketReader.closeWithError(AsyncCallbacks.throwableToException(throwable));
 				asyncTcpSocket.close();
-			}
-
-			@Override
-			public void onComplete() {
 			}
 		});
-		this.socketReader = SocketStreamProducer.create(eventloop, asyncTcpSocket, new CompletionCallback() {
-			@Override
-			public void onException(Exception e) {
-				socketWriter.closeWithError(e);
+		this.socketReader = SocketStreamProducer.create(eventloop, asyncTcpSocket);
+		this.socketReader.getCompletionStage().whenComplete(($, throwable) -> {
+			if (throwable != null) {
+				socketWriter.closeWithError(AsyncCallbacks.throwableToException(throwable));
 				asyncTcpSocket.close();
-			}
-
-			@Override
-			public void onComplete() {
 			}
 		});
 		socketReader.streamTo(StreamConsumers.<ByteBuf>idle(eventloop));

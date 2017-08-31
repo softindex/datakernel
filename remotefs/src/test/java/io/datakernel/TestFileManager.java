@@ -17,8 +17,8 @@
 package io.datakernel;
 
 import com.google.common.base.Charsets;
-import io.datakernel.async.*;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.file.AsyncFile;
 import io.datakernel.remotefs.FileManager;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.nio.file.*;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
@@ -106,18 +107,14 @@ public class TestFileManager {
 		FileManager fs = FileManager.create(eventloop, executor, storage);
 		final Path inputFile = client.resolve("c.txt");
 
-		fs.save("1/c.txt", new ForwardingResultCallback<StreamFileWriter>(IgnoreCompletionCallback.create()) {
-			@Override
-			public void onResult(StreamFileWriter writer) {
-				try {
-					readFileFully(eventloop,
-							open(eventloop, executor, inputFile, READ_OPTIONS), bufferSize)
-							.streamTo(writer);
-				} catch (IOException e) {
-					this.setException(e);
-				}
+		fs.save("1/c.txt").thenAccept(fileWriter -> {
+			try {
+				final AsyncFile open = open(eventloop, executor, inputFile, READ_OPTIONS);
+				readFileFully(eventloop, open, bufferSize).streamTo(fileWriter);
+			} catch (IOException ignore) {
 			}
 		});
+
 		eventloop.run();
 		executor.shutdown();
 
@@ -130,18 +127,14 @@ public class TestFileManager {
 		FileManager fs = FileManager.create(eventloop, executor, storage);
 		final Path outputFile = client.resolve("d.txt");
 
-		fs.get("2/b/d.txt", 0, new ForwardingResultCallback<StreamFileReader>(IgnoreResultCallback.create()) {
-			@Override
-			public void onResult(StreamFileReader reader) {
-				try {
-					reader.streamTo(
-							StreamFileWriter.create(eventloop, open(
-									eventloop, executor, outputFile, CREATE_OPTIONS)));
-				} catch (IOException e) {
-					this.setException(e);
-				}
+		fs.get("2/b/d.txt", 0).thenAccept(fileReader -> {
+			try {
+				final AsyncFile open = open(eventloop, executor, outputFile, CREATE_OPTIONS);
+				fileReader.streamTo(StreamFileWriter.create(eventloop, open));
+			} catch (IOException ignored) {
 			}
 		});
+
 		eventloop.run();
 		executor.shutdown();
 
@@ -152,9 +145,8 @@ public class TestFileManager {
 	@Test
 	public void testDoDownloadFailed() throws Exception {
 		FileManager fs = FileManager.create(eventloop, executor, storage);
-		ResultCallbackFuture<StreamFileReader> callbackFuture = ResultCallbackFuture.create();
 
-		fs.get("no_file.txt", 0, callbackFuture);
+		final CompletableFuture<StreamFileReader> future = fs.get("no_file.txt", 0).toCompletableFuture();
 		eventloop.run();
 		executor.shutdown();
 
@@ -170,7 +162,7 @@ public class TestFileManager {
 				// empty
 			}
 		});
-		callbackFuture.get();
+		future.get();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
@@ -179,7 +171,7 @@ public class TestFileManager {
 		FileManager fs = FileManager.create(eventloop, executor, storage);
 		assertTrue(exists(storage.resolve("2/3/a.txt")));
 
-		fs.delete("2/3/a.txt", IgnoreCompletionCallback.create());
+		fs.delete("2/3/a.txt");
 		eventloop.run();
 		executor.shutdown();
 
@@ -190,9 +182,8 @@ public class TestFileManager {
 	@Test
 	public void testDeleteFailed() throws Exception {
 		FileManager fs = FileManager.create(eventloop, executor, storage);
-		CompletionCallbackFuture callbackFuture = CompletionCallbackFuture.create();
 
-		fs.delete("no_file.txt", callbackFuture);
+		final CompletableFuture<Void> future = fs.delete("no_file.txt").toCompletableFuture();
 		eventloop.run();
 		executor.shutdown();
 
@@ -208,7 +199,7 @@ public class TestFileManager {
 				// empty
 			}
 		});
-		callbackFuture.get();
+		future.get();
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
@@ -219,12 +210,10 @@ public class TestFileManager {
 		List<String> expected = asList("1/a.txt", "1/b.txt", "2/3/a.txt", "2/b/d.txt", "2/b/e.txt");
 		List<String> actual;
 
-		ResultCallbackFuture<List<String>> callbackFuture = ResultCallbackFuture.create();
-
-		fs.scan(callbackFuture);
+		final CompletableFuture<List<String>> future = fs.scanAsync().toCompletableFuture();
 		eventloop.run();
 		executor.shutdown();
-		actual = callbackFuture.get();
+		actual = future.get();
 		Collections.sort(expected);
 		Collections.sort(actual);
 

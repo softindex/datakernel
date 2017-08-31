@@ -16,7 +16,9 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.async.*;
+import io.datakernel.async.AsyncCallbacks;
+import io.datakernel.async.AsyncRunnable;
+import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
@@ -42,6 +44,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
@@ -83,7 +87,7 @@ public class FsIntegrationTest {
 		String resultFile = "file_uploaded.txt";
 		byte[] bytes = "content".getBytes(UTF_8);
 
-		upload(resultFile, bytes, IgnoreCompletionCallback.create());
+		upload(resultFile, bytes);
 
 		assertArrayEquals(readAllBytes(storage.resolve(resultFile)), bytes);
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
@@ -102,19 +106,9 @@ public class FsIntegrationTest {
 		for (int i = 0; i < files; i++) {
 			final StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrapForReading(CONTENT));
 			final int finalI = i;
-			tasks.add(new AsyncRunnable() {
-				@Override
-				public void run(CompletionCallback callback) {
-					client.upload(producer, "file" + finalI, callback);
-				}
-			});
+			tasks.add(() -> client.upload(producer, "file" + finalI));
 		}
-		runInParallel(eventloop, tasks).run(new AssertingCompletionCallback() {
-			@Override
-			protected void onComplete() {
-				server.close(IgnoreCompletionCallback.create());
-			}
-		});
+		runInParallel(eventloop, tasks).run().whenComplete(AsyncCallbacks.assertBiConsumer($ -> server.close()));
 
 		eventloop.run();
 		executor.shutdown();
@@ -133,7 +127,7 @@ public class FsIntegrationTest {
 			BIG_FILE[i] = (byte) (rand.nextInt(256) - 128);
 		}
 
-		upload(resultFile, BIG_FILE, IgnoreCompletionCallback.create());
+		upload(resultFile, BIG_FILE);
 
 		assertArrayEquals(readAllBytes(storage.resolve(resultFile)), BIG_FILE);
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
@@ -143,7 +137,7 @@ public class FsIntegrationTest {
 	public void testUploadLong() throws IOException {
 		String resultFile = "this/is/not/empty/directory/2/file2_uploaded.txt";
 
-		upload(resultFile, CONTENT, IgnoreCompletionCallback.create());
+		upload(resultFile, CONTENT);
 
 		assertArrayEquals(readAllBytes(storage.resolve(resultFile)), CONTENT);
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
@@ -153,14 +147,11 @@ public class FsIntegrationTest {
 	public void testUploadExistingFile() throws IOException {
 		String resultFile = "this/is/not/empty/directory/2/file2_uploaded.txt";
 
-		final Exception es[] = new Exception[1];
+		final Throwable es[] = new Throwable[1];
 
-		upload(resultFile, CONTENT, IgnoreCompletionCallback.create());
-		upload(resultFile, CONTENT, new ExceptionCallback() {
-			@Override
-			public void onException(Exception e) {
-				es[0] = e;
-			}
+		upload(resultFile, CONTENT);
+		upload(resultFile, CONTENT).whenComplete((aVoid, throwable) -> {
+			if (throwable != null) es[0] = throwable;
 		});
 
 		assertNotNull(es[0]);
@@ -188,20 +179,7 @@ public class FsIntegrationTest {
 						StreamProducers.<ByteBuf>closingWithError(eventloop, new SimpleException("Test exception")),
 						StreamProducers.ofValue(eventloop, ByteBufStrings.wrapUtf8("Test4")));
 
-		final CompletionCallbackFuture callback = CompletionCallbackFuture.create();
-		client.upload(producer, resultFile, new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				server.close(IgnoreCompletionCallback.create());
-				callback.setComplete();
-			}
-
-			@Override
-			public void onException(Exception e) {
-				server.close(IgnoreCompletionCallback.create());
-				callback.setException(e);
-			}
-		});
+		final CompletableFuture<Void> future = client.upload(producer, resultFile).whenComplete((aVoid, throwable) -> server.close()).toCompletableFuture();
 
 		eventloop.run();
 		executor.shutdownNow();
@@ -218,7 +196,7 @@ public class FsIntegrationTest {
 				// empty
 			}
 		});
-		callback.get();
+		future.get();
 
 		assertTrue(Files.exists(storage.resolve(resultFile)));
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
@@ -281,20 +259,12 @@ public class FsIntegrationTest {
 		ExecutorService executor = newCachedThreadPool();
 		RemoteFsClient client = createClient(eventloop);
 		final RemoteFsServer server = createServer(eventloop, executor);
-		final List<Exception> expected = new ArrayList<>();
+		final List<Throwable> expected = new ArrayList<>();
 
 		server.listen();
-		client.download(file, 0, new ResultCallback<StreamProducer<ByteBuf>>() {
-			@Override
-			public void onResult(StreamProducer<ByteBuf> producer) {
-				server.close(IgnoreCompletionCallback.create());
-			}
-
-			@Override
-			public void onException(Exception e) {
-				expected.add(e);
-				server.close(IgnoreCompletionCallback.create());
-			}
+		client.download(file, 0).whenComplete((byteBufStreamProducer, throwable) -> {
+			if (throwable != null) expected.add(throwable);
+			server.close();
 		});
 		eventloop.run();
 		executor.shutdown();
@@ -320,29 +290,16 @@ public class FsIntegrationTest {
 		List<AsyncRunnable> tasks = new ArrayList<>();
 		for (int i = 0; i < files; i++) {
 			final int finalI = i;
-			tasks.add(new AsyncRunnable() {
-				@Override
-				public void run(final CompletionCallback callback) {
-					client.download(file, 0, new AssertingResultCallback<StreamProducer<ByteBuf>>() {
-						@Override
-						public void onResult(StreamProducer<ByteBuf> producer) {
-							try {
-								producer.streamTo(StreamFileWriter.create(eventloop, executor, storage.resolve("file" + finalI)));
-							} catch (IOException e) {
-								this.setException(e);
-							}
-							callback.setComplete();
-						}
-					});
+			tasks.add(() -> client.download(file, 0).thenCompose(producer -> {
+				try {
+					producer.streamTo(StreamFileWriter.create(eventloop, executor, storage.resolve("file" + finalI)));
+					return SettableStage.<Void>immediateStage(null);
+				} catch (IOException e) {
+					return SettableStage.<Void>immediateFailedStage(e);
 				}
-			});
+			}));
 		}
-		runInParallel(eventloop, tasks).run(new AssertingCompletionCallback() {
-			@Override
-			protected void onComplete() {
-				server.close(IgnoreCompletionCallback.create());
-			}
-		});
+		runInParallel(eventloop, tasks).run().whenComplete(AsyncCallbacks.assertBiConsumer($ -> server.close()));
 
 		eventloop.run();
 		executor.shutdown();
@@ -363,7 +320,7 @@ public class FsIntegrationTest {
 		RemoteFsServer server = createServer(eventloop, executor);
 		server.listen();
 
-		client.delete(file, new CloseCompletionCallback(server, IgnoreCompletionCallback.create()));
+		client.delete(file).whenComplete((aVoid, throwable) -> server.close());
 
 		eventloop.run();
 		executor.shutdown();
@@ -381,20 +338,8 @@ public class FsIntegrationTest {
 		final RemoteFsServer server = createServer(eventloop, executor);
 		server.listen();
 
-		final CompletionCallbackFuture callback = CompletionCallbackFuture.create();
-		client.delete(file, new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				callback.setComplete();
-				server.close(IgnoreCompletionCallback.create());
-			}
-
-			@Override
-			public void onException(Exception e) {
-				callback.setException(e);
-				server.close(IgnoreCompletionCallback.create());
-			}
-		});
+		final CompletableFuture<Void> future = client.delete(file)
+				.whenComplete((aVoid, throwable) -> server.close()).toCompletableFuture();
 
 		eventloop.run();
 		executor.shutdown();
@@ -404,7 +349,7 @@ public class FsIntegrationTest {
 			@Override
 			public boolean matches(Object item) {
 				return item instanceof Exception && ((Exception) item)
-						.getMessage().equals(storage.resolve(file).toAbsolutePath().toString());
+						.getMessage().endsWith(storage.resolve(file).toAbsolutePath().toString());
 			}
 
 			@Override
@@ -412,7 +357,7 @@ public class FsIntegrationTest {
 				// empty
 			}
 		});
-		callback.get();
+		future.get();
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
@@ -435,17 +380,10 @@ public class FsIntegrationTest {
 		final RemoteFsClient client = createClient(eventloop);
 
 		server.listen();
-		client.list(new ResultCallback<List<String>>() {
-			@Override
-			public void onResult(List<String> result) {
-				actual.addAll(result);
-				server.close(IgnoreCompletionCallback.create());
-			}
 
-			@Override
-			public void onException(Exception ignored) {
-				server.close(IgnoreCompletionCallback.create());
-			}
+		client.list().whenComplete((strings, throwable) -> {
+			if (throwable == null) actual.addAll(strings);
+			server.close();
 		});
 
 		eventloop.run();
@@ -457,7 +395,7 @@ public class FsIntegrationTest {
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
-	private void upload(String resultFile, byte[] bytes, ExceptionCallback callback) throws IOException {
+	private CompletionStage<Void> upload(String resultFile, byte[] bytes) throws IOException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = newCachedThreadPool();
 		final RemoteFsServer server = createServer(eventloop, executor);
@@ -465,9 +403,14 @@ public class FsIntegrationTest {
 
 		server.listen();
 		StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrapForReading(bytes));
-		client.upload(producer, resultFile, new CloseCompletionCallback(server, callback));
+
+		final CompletableFuture<Void> future = client.upload(producer, resultFile)
+				.whenComplete((aVoid, throwable) -> server.close())
+				.toCompletableFuture();
+
 		eventloop.run();
 		executor.shutdown();
+		return future;
 	}
 
 	private List<ByteBuf> download(String file, long startPosition) throws IOException {
@@ -478,18 +421,12 @@ public class FsIntegrationTest {
 		final List<ByteBuf> expected = new ArrayList<>();
 
 		server.listen();
-		client.download(file, startPosition, new ResultCallback<StreamProducer<ByteBuf>>() {
-			@Override
-			public void onResult(StreamProducer<ByteBuf> producer) {
-				producer.streamTo(StreamConsumers.toList(eventloop, expected));
-				server.close(IgnoreCompletionCallback.create());
-			}
 
-			@Override
-			public void onException(Exception e) {
-				server.close(IgnoreCompletionCallback.create());
-			}
+		client.download(file, startPosition).whenComplete((producer, throwable) -> {
+			if (throwable == null) producer.streamTo(StreamConsumers.toList(eventloop, expected));
+			server.close();
 		});
+
 		eventloop.run();
 		executor.shutdown();
 		return expected;
@@ -514,24 +451,4 @@ public class FsIntegrationTest {
 
 	}
 
-	private static class CloseCompletionCallback extends CompletionCallback {
-		private final RemoteFsServer server;
-		private final ExceptionCallback callback;
-
-		public CloseCompletionCallback(RemoteFsServer server, ExceptionCallback callback) {
-			this.server = server;
-			this.callback = callback;
-		}
-
-		@Override
-		public void onComplete() {
-			server.close(IgnoreCompletionCallback.create());
-		}
-
-		@Override
-		public void onException(Exception e) {
-			server.close(IgnoreCompletionCallback.create());
-			callback.setException(e);
-		}
-	}
 }

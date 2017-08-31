@@ -3,9 +3,11 @@ package io.datakernel.async;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.util.Function;
 
+import java.nio.channels.SocketChannel;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 @SuppressWarnings("WeakerAccess")
 public class AsyncCallbacks {
@@ -40,13 +42,28 @@ public class AsyncCallbacks {
 		};
 	}
 
-	public static <T> BiConsumer<T, Throwable> forwardTo(CompletionCallback callback) {
-		return (o, throwable) -> {
-			if (throwable == null)
-				callback.setComplete();
-			else
-				callback.setException(throwableToException(throwable));
+	public static BiConsumer<SocketChannel, Throwable> forwardTo(ConnectCallback callback) {
+		return new BiConsumer<SocketChannel, Throwable>() {
+			@Override
+			public void accept(SocketChannel socketChannel, Throwable throwable) {
+				if (throwable == null) {
+					callback.setConnect(socketChannel);
+				} else {
+					callback.setException(AsyncCallbacks.throwableToException(throwable));
+				}
+			}
 		};
+	}
+
+	public static <T> BiConsumer<T, Throwable> forwardTo(CompletionCallback callback) {
+		return (o, throwable) -> forwardTo(callback, throwable);
+	}
+
+	public static void forwardTo(CompletionCallback callback, Throwable throwable) {
+		if (throwable == null)
+			callback.setComplete();
+		else
+			callback.setException(throwableToException(throwable));
 	}
 
 	public static <T> BiConsumer<T, Throwable> forwardTo(ResultCallback<T> callback) {
@@ -62,14 +79,18 @@ public class AsyncCallbacks {
 		return throwable instanceof Exception ? (Exception) throwable : new RuntimeException(throwable);
 	}
 
-	public static <T> BiConsumer<T, Throwable> forwardTo(SettableStage<T> callback) {
-		return (o, throwable) -> {
-			if (throwable == null)
-				callback.setResult(o);
-			else
-				callback.setError(throwable);
-		};
+	public static <T> BiConsumer<T, Throwable> forwardTo(SettableStage<T> stage) {
+		return (o, throwable) -> forwardTo(stage, o, throwable);
 	}
+
+	public static <T> void forwardTo(SettableStage<T> stage, T o, Throwable throwable) {
+		if (throwable == null) {
+			stage.setResult(o);
+		} else {
+			stage.setError(throwable);
+		}
+	}
+
 
 	public static <T> ResultCallback<T> ignoreResult() {
 		return IgnoreResultCallback.create();
@@ -85,6 +106,13 @@ public class AsyncCallbacks {
 
 	public static CompletionCallback assertCompletion() {
 		return new AssertingCompletionCallback();
+	}
+
+	public static <T> BiConsumer<T, ? super Throwable> assertBiConsumer(Consumer<T> consumer) {
+		return (BiConsumer<T, Throwable>) (t, throwable) -> {
+			if (throwable != null) throw new AssertionError("Fatal error in bi consumer", throwable);
+			consumer.accept(t);
+		};
 	}
 
 	public static <I, O> ResultCallback<I> transformTo(final ResultCallback<O> callback, final Function<I, O> function) {

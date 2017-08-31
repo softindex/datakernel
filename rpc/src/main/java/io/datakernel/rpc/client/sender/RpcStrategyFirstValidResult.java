@@ -16,12 +16,14 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.AsyncCallbacks;
+import io.datakernel.async.SettableStage;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
@@ -85,17 +87,26 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
-			FirstResultCallback<O> resultCallback
-					= new FirstResultCallback<>(callback, (ResultValidator<O>) resultValidator, subSenders.length, noValidResultException);
+		public <I, O> CompletionStage<O> sendRequest(I request, int timeout) {
+			final SettableStage<O> stage = SettableStage.create();
+			FirstResultHandler<O> resultHandler = new FirstResultHandler<>(stage,
+					(ResultValidator<O>) resultValidator, subSenders.length, noValidResultException);
 			for (RpcSender sender : subSenders) {
-				sender.sendRequest(request, timeout, resultCallback.getCallback());
+				sender.<I, O>sendRequest(request, timeout).whenComplete((o, throwable) -> {
+					if (throwable != null) {
+						resultHandler.onException(AsyncCallbacks.throwableToException(throwable));
+					} else {
+						resultHandler.onResult(o);
+					}
+				});
 			}
+
+			return stage;
 		}
 	}
 
-	private static final class FirstResultCallback<T> {
-		private final ResultCallback<T> resultCallback;
+	private static final class FirstResultHandler<T> {
+		private final SettableStage<T> resultStage;
 		private final ResultValidator<T> resultValidator;
 		private final Exception noValidResultException;
 		private int expectedCalls;
@@ -104,36 +115,30 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 		private boolean hasResult;
 		private boolean complete;
 
-		public FirstResultCallback(ResultCallback<T> resultCallback, ResultValidator<T> resultValidator, int expectedCalls,
-		                           Exception noValidResultException) {
+		public FirstResultHandler(SettableStage<T> resultStage, ResultValidator<T> resultValidator, int expectedCalls,
+		                          Exception noValidResultException) {
 			checkArgument(expectedCalls > 0);
 			this.expectedCalls = expectedCalls;
-			this.resultCallback = checkNotNull(resultCallback);
+			this.resultStage = checkNotNull(resultStage);
 			this.resultValidator = checkNotNull(resultValidator);
 			this.noValidResultException = noValidResultException;
 		}
 
-		public ResultCallback<T> getCallback() {
-			return new ResultCallback<T>() {
-				@Override
-				protected void onResult(T result) {
-					--expectedCalls;
-					if (!hasResult && resultValidator.isValidResult(result)) {
-						FirstResultCallback.this.result = result;  // first valid result
-						FirstResultCallback.this.hasResult = true;
-					}
-					processResult();
-				}
+		public void onResult(T value) {
+			--expectedCalls;
+			if (!hasResult && resultValidator.isValidResult(value)) {
+				result = value;  // first valid result
+				hasResult = true;
+			}
+			processResult();
+		}
 
-				@Override
-				protected void onException(Exception exception) {
-					--expectedCalls;
-					if (!hasResult) {
-						FirstResultCallback.this.exception = exception; // last Exception
-					}
-					processResult();
-				}
-			};
+		public void onException(Exception exception) {
+			--expectedCalls;
+			if (!hasResult) {
+				FirstResultHandler.this.exception = exception; // last Exception
+			}
+			processResult();
 		}
 
 		private boolean resultReady() {
@@ -146,13 +151,13 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 			}
 			complete = true;
 			if (hasResult) {
-				resultCallback.setResult(result);
+				resultStage.setResult(result);
 			} else {
 				resolveException();
 				if (exception == null) {
-					resultCallback.setResult(null);
+					resultStage.setResult(null);
 				} else {
-					resultCallback.setException(exception);
+					resultStage.setError(exception);
 				}
 			}
 		}

@@ -16,8 +16,8 @@
 
 package io.datakernel.logfs.ot;
 
-import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SettableStage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.logfs.LogFile;
@@ -27,7 +27,6 @@ import io.datakernel.logfs.ot.LogDiff.LogPositionDiff;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.StreamUnion;
-import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,13 +75,13 @@ public final class LogOTProcessor<K, T, D> implements EventloopService {
 	}
 
 	@Override
-	public void start(CompletionCallback callback) {
-		callback.setComplete();
+	public CompletionStage<Void> start() {
+		return SettableStage.immediateStage(null);
 	}
 
 	@Override
-	public void stop(CompletionCallback callback) {
-		callback.setComplete();
+	public CompletionStage<Void> stop() {
+		return SettableStage.immediateStage(null);
 	}
 
 	public CompletionStage<Void> rebase() {

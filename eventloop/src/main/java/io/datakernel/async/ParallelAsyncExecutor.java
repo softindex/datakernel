@@ -18,10 +18,12 @@ package io.datakernel.async;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.concurrent.CompletionStage;
+import java.util.function.BiConsumer;
 
 public final class ParallelAsyncExecutor implements AsyncExecutor {
 	private final Deque<AsyncRunnable> taskQueue = new ArrayDeque<>();
-	private final Deque<CompletionCallback> callbackQueue = new ArrayDeque<>();
+	private final Deque<SettableStage<Void>> callbackQueue = new ArrayDeque<>();
 	private final int maxParallelism;
 	private final int queueSaturationThreshold;
 
@@ -43,13 +45,15 @@ public final class ParallelAsyncExecutor implements AsyncExecutor {
 	// endregion
 
 	@Override
-	public void submit(AsyncRunnable asyncRunnable, CompletionCallback callback) {
+	public CompletionStage<Void> submit(AsyncRunnable asyncRunnable) {
 		if (taskQueue.isEmpty() && executing < maxParallelism) {
 			++executing;
-			asyncRunnable.run(getInternalCallback(callback));
+			return asyncRunnable.run().whenComplete(getInternalConsumer());
 		} else {
 			taskQueue.add(asyncRunnable);
-			callbackQueue.add(callback);
+			final SettableStage<Void> stage = SettableStage.create();
+			callbackQueue.add(stage);
+			return stage;
 		}
 	}
 
@@ -58,30 +62,21 @@ public final class ParallelAsyncExecutor implements AsyncExecutor {
 		return taskQueue.size() > queueSaturationThreshold;
 	}
 
-	private CompletionCallback getInternalCallback(final CompletionCallback realCallback) {
-		return new CompletionCallback() {
-			@Override
-			protected void onComplete() {
-				--executing;
-				realCallback.setComplete();
-				executeNextTask();
-			}
-
-			@Override
-			protected void onException(Exception exception) {
-				--executing;
-				realCallback.setException(exception);
-				executeNextTask();
-			}
+	private BiConsumer<Void, Throwable> getInternalConsumer() {
+		return ($, throwable) -> {
+			--executing;
+			executeNextTask();
 		};
 	}
 
 	private void executeNextTask() {
 		if (!taskQueue.isEmpty()) {
 			AsyncRunnable queuedTask = taskQueue.pollFirst();
-			CompletionCallback queuedCallback = callbackQueue.pollFirst();
+			SettableStage<Void> queuedCallback = callbackQueue.pollFirst();
 			++executing;
-			queuedTask.run(getInternalCallback(queuedCallback));
+			queuedTask.run()
+					.whenComplete(getInternalConsumer())
+					.whenComplete(AsyncCallbacks.forwardTo(queuedCallback));
 		}
 	}
 }

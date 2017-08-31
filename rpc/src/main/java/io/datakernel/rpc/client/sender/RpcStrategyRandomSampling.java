@@ -16,11 +16,11 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 
 import java.net.InetSocketAddress;
 import java.util.*;
+import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 
@@ -98,8 +98,8 @@ public class RpcStrategyRandomSampling implements RpcStrategy {
 		}
 
 		@Override
-		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
-			chooseSender().sendRequest(request, timeout, callback);
+		public <I, O> CompletionStage<O> sendRequest(I request, int timeout) {
+			return chooseSender().sendRequest(request, timeout);
 		}
 
 		private RpcSender chooseSender() {

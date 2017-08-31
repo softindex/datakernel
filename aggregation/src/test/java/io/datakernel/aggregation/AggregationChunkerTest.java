@@ -18,6 +18,7 @@ package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.aggregation.util.PartitionPredicate;
+import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.DefiningClassLoader;
@@ -30,7 +31,6 @@ import org.junit.rules.TemporaryFolder;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
@@ -76,7 +76,7 @@ public class AggregationChunkerTest {
 			@Override
 			public <T> void write(StreamProducer<T> producer, AggregationStructure structure, List<String> fields, Class<T> recordClass, long id, DefiningClassLoader classLoader, CompletionCallback callback) {
 				StreamConsumers.ToList<T> consumer = StreamConsumers.toList(eventloop, items);
-				consumer.setCompletionCallback(callback);
+				consumer.getCompletionStage().whenComplete(AsyncCallbacks.forwardTo(callback));
 				listConsumers.add(consumer);
 				producer.streamTo(consumer);
 			}
@@ -147,7 +147,7 @@ public class AggregationChunkerTest {
 			@Override
 			public <T> void write(StreamProducer<T> producer, AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long id, DefiningClassLoader classLoader, CompletionCallback callback) {
 				StreamConsumers.ToList<T> consumer = StreamConsumers.toList(eventloop, items);
-				consumer.setCompletionCallback(callback);
+				consumer.getCompletionStage().whenComplete(AsyncCallbacks.forwardTo(callback));
 				listConsumers.add(consumer);
 				producer.streamTo(consumer);
 			}
@@ -231,7 +231,7 @@ public class AggregationChunkerTest {
 					producer.streamTo(toList);
 				} else {
 					StreamConsumers.ClosingWithError<T> consumer = StreamConsumers.closingWithError(eventloop, new Exception("Test Exception"));
-					consumer.setCompletionCallback(callback);
+					consumer.getCompletionStage().whenComplete(AsyncCallbacks.forwardTo(callback));
 					listConsumers.add(consumer);
 					producer.streamTo(consumer);
 				}

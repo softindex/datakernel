@@ -18,7 +18,6 @@ package io.datakernel.stream.net;
 
 import com.google.common.collect.Lists;
 import com.google.common.net.InetAddresses;
-import io.datakernel.async.ConnectCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.AsyncTcpSocket;
@@ -38,7 +37,6 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;
-import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -90,19 +88,15 @@ public final class SocketStreamingConnectionTest {
 
 		final StreamBinarySerializer<Integer> streamSerializer = StreamBinarySerializer.create(eventloop, intSerializer())
 				.withDefaultBufferSize(1);
-		eventloop.connect(address, new ConnectCallback() {
-			@Override
-			public void onConnect(SocketChannel socketChannel) {
+		eventloop.connect(address).whenComplete((socketChannel, throwable) -> {
+			if (throwable == null) {
 				AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
 				SocketStreamingConnection connection = SocketStreamingConnection.createSocketStreamingConnection(eventloop, asyncTcpSocket);
 				connection.sendStreamFrom(streamSerializer.getOutput());
 				StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
 				asyncTcpSocket.setEventHandler(connection);
 				asyncTcpSocket.register();
-			}
-
-			@Override
-			public void onException(Exception exception) {
+			} else {
 				fail();
 			}
 		});
@@ -146,9 +140,9 @@ public final class SocketStreamingConnectionTest {
 		final StreamBinarySerializer<Integer> streamSerializer = StreamBinarySerializer.create(eventloop, intSerializer())
 				.withDefaultBufferSize(1);
 		final StreamBinaryDeserializer<Integer> streamDeserializer = StreamBinaryDeserializer.create(eventloop, intSerializer());
-		eventloop.connect(address, new ConnectCallback() {
-			@Override
-			public void onConnect(SocketChannel socketChannel) {
+
+		eventloop.connect(address).whenComplete((socketChannel, throwable) -> {
+			if (throwable == null) {
 				AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
 				SocketStreamingConnection connection = SocketStreamingConnection.createSocketStreamingConnection(eventloop, asyncTcpSocket);
 				connection.sendStreamFrom(streamSerializer.getOutput());
@@ -157,10 +151,7 @@ public final class SocketStreamingConnectionTest {
 				streamDeserializer.getOutput().streamTo(consumerToList);
 				asyncTcpSocket.setEventHandler(connection);
 				asyncTcpSocket.register();
-			}
-
-			@Override
-			public void onException(Exception exception) {
+			} else {
 				fail();
 			}
 		});
@@ -194,17 +185,14 @@ public final class SocketStreamingConnectionTest {
 			}
 		};
 
-		SocketHandlerProvider socketHandlerProvider = new SocketHandlerProvider() {
-			@Override
-			public AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
-				SocketStreamingConnection connection = SocketStreamingConnection.createSocketStreamingConnection(eventloop, asyncTcpSocket);
+		SocketHandlerProvider socketHandlerProvider = asyncTcpSocket -> {
+			SocketStreamingConnection connection = SocketStreamingConnection.createSocketStreamingConnection(eventloop, asyncTcpSocket);
 
-				StreamForwarder<ByteBuf> forwarder = StreamForwarder.create(eventloop);
-				connection.receiveStreamTo(forwarder.getInput());
-				connection.sendStreamFrom(forwarder.getOutput());
+			StreamForwarder<ByteBuf> forwarder = StreamForwarder.create(eventloop);
+			connection.receiveStreamTo(forwarder.getInput());
+			connection.sendStreamFrom(forwarder.getOutput());
 
-				return connection;
-			}
+			return connection;
 		};
 
 		SimpleServer server = SimpleServer.create(eventloop, socketHandlerProvider)
@@ -216,9 +204,9 @@ public final class SocketStreamingConnectionTest {
 		final StreamBinarySerializer<Integer> streamSerializer = StreamBinarySerializer.create(eventloop, BufferSerializers.intSerializer())
 				.withDefaultBufferSize(1);
 		final StreamBinaryDeserializer<Integer> streamDeserializer = StreamBinaryDeserializer.create(eventloop, BufferSerializers.intSerializer());
-		eventloop.connect(address, new ConnectCallback() {
-			@Override
-			public void onConnect(SocketChannel socketChannel) {
+
+		eventloop.connect(address).whenComplete((socketChannel, throwable) -> {
+			if (throwable == null) {
 				AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
 				SocketStreamingConnection connection = SocketStreamingConnection.createSocketStreamingConnection(eventloop, asyncTcpSocket);
 				connection.sendStreamFrom(streamSerializer.getOutput());
@@ -227,10 +215,7 @@ public final class SocketStreamingConnectionTest {
 				streamDeserializer.getOutput().streamTo(consumerToListWithError);
 				asyncTcpSocket.setEventHandler(connection);
 				asyncTcpSocket.register();
-			}
-
-			@Override
-			public void onException(Exception exception) {
+			} else {
 				fail();
 			}
 		});

@@ -17,11 +17,9 @@
 package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.ot.AggregationStructure;
+import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ForwardingResultCallback;
-import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.IRemoteFsClient;
@@ -35,7 +33,6 @@ import io.datakernel.stream.processor.StreamLZ4Decompressor;
 
 import java.net.InetSocketAddress;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.aggregation.AggregationUtils.createBufferSerializer;
@@ -60,9 +57,8 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage {
 	public <T> void read(final AggregationStructure aggregation, final List<String> fields,
 	                     final Class<T> recordClass, long id, final DefiningClassLoader classLoader,
 	                     final ResultCallback<StreamProducer<T>> callback) {
-		client.download(path(id), 0, new ForwardingResultCallback<StreamProducer<ByteBuf>>(callback) {
-			@Override
-			public void onResult(StreamProducer<ByteBuf> producer) {
+		client.download(path(id), 0).whenComplete((producer, throwable) -> {
+			if (throwable == null) {
 				StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create(eventloop);
 				producer.streamTo(decompressor.getInput());
 
@@ -72,6 +68,8 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage {
 
 				decompressor.getOutput().streamTo(deserializer.getInput());
 				callback.setResult(deserializer.getOutput());
+			} else {
+				callback.setException(AsyncCallbacks.throwableToException(throwable));
 			}
 		});
 	}
@@ -90,16 +88,12 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage {
 		producer.streamTo(serializer.getInput());
 		serializer.getOutput().streamTo(compressor.getInput());
 
-		client.upload(compressor.getOutput(), path(id), new CompletionCallback() {
-			@Override
-			public void onComplete() {
+		client.upload(compressor.getOutput(), path(id)).whenComplete((aVoid, throwable) -> {
+			if (throwable == null) {
 				callback.setComplete();
-			}
-
-			@Override
-			public void onException(Exception e) {
-				client.delete(path(id), IgnoreCompletionCallback.create());
-				callback.setException(e);
+			} else {
+				client.delete(path(id));
+				callback.setException(AsyncCallbacks.throwableToException(throwable));
 			}
 		});
 	}

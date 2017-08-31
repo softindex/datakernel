@@ -6,6 +6,7 @@ import io.datakernel.exception.AsyncTimeoutException;
 
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.concurrent.CompletionStage;
 
 import static java.util.Arrays.asList;
 
@@ -17,33 +18,21 @@ public class AsyncRunnables {
 	}
 
 	public static AsyncRunnable timeout(final Eventloop eventloop, final long timestamp, final AsyncRunnable runnable) {
-		return new AsyncRunnable() {
-			@Override
-			public void run(final CompletionCallback callback) {
-				final ScheduledRunnable scheduledRunnable = eventloop.schedule(timestamp, new Runnable() {
-					@Override
-					public void run() {
-						callback.setException(RUNNABLE_TIMEOUT_EXCEPTION);
-						if (runnable instanceof AsyncCancellable) {
-							((AsyncCancellable) runnable).cancel();
-						}
-					}
-				});
+		return () -> {
+			final SettableStage<Void> stage = SettableStage.create();
+			final CompletionStage<Void> stageRun = runnable.run();
+			final ScheduledRunnable scheduledRunnable = eventloop.schedule(timestamp, () -> {
+				stage.setError(RUNNABLE_TIMEOUT_EXCEPTION);
+				Stages.tryCancel(stageRun);
+			});
 
-				runnable.run(new CompletionCallback() {
-					@Override
-					protected void onComplete() {
-						scheduledRunnable.cancel();
-						callback.setComplete();
-					}
+			stageRun.whenComplete(($, throwable) -> {
+				if (scheduledRunnable.isComplete()) return;
+				scheduledRunnable.cancel();
+				AsyncCallbacks.forwardTo(stage, null, throwable);
+			});
 
-					@Override
-					protected void onException(Exception e) {
-						scheduledRunnable.cancel();
-						callback.setException(e);
-					}
-				});
-			}
+			return stage;
 		};
 	}
 
@@ -54,30 +43,26 @@ public class AsyncRunnables {
 	public static AsyncRunnable runInSequence(final Eventloop eventloop, final Iterable<? extends AsyncRunnable> runnables) {
 		return new AsyncRunnable() {
 			@Override
-			public void run(CompletionCallback callback) {
-				next(runnables.iterator(), callback);
+			public CompletionStage<Void> run() {
+				final SettableStage<Void> stage = SettableStage.create();
+				next(runnables.iterator(), stage);
+				return stage;
 			}
 
-			void next(final Iterator<? extends AsyncRunnable> iterator, final CompletionCallback callback) {
+			void next(final Iterator<? extends AsyncRunnable> iterator, SettableStage<Void> stage) {
 				if (iterator.hasNext()) {
 					AsyncRunnable nextTask = iterator.next();
 					final long microTick = eventloop.getMicroTick();
-					nextTask.run(new ForwardingCompletionCallback(callback) {
-						@Override
-						protected void onComplete() {
-							if (eventloop.getMicroTick() != microTick)
-								next(iterator, callback);
-							else
-								eventloop.post(new Runnable() {
-									@Override
-									public void run() {
-										next(iterator, callback);
-									}
-								});
+					nextTask.run().whenComplete((aVoid, throwable) -> {
+						if (throwable == null) {
+							if (eventloop.getMicroTick() != microTick) next(iterator, stage);
+							else eventloop.post(() -> next(iterator, stage));
+						} else {
+							stage.setError(throwable);
 						}
 					});
 				} else {
-					callback.setComplete();
+					stage.setResult(null);
 				}
 			}
 		};
@@ -96,33 +81,30 @@ public class AsyncRunnables {
 	}
 
 	public static AsyncRunnable runInParallel(final Eventloop eventloop, final Collection<? extends AsyncRunnable> runnables) {
-		return new AsyncRunnable() {
-			@Override
-			public void run(final CompletionCallback callback) {
-				final RunState state = new RunState(runnables.size());
-				if (state.pending == 0) {
-					callback.postComplete(eventloop);
-					return;
-				}
-				for (AsyncRunnable runnable : runnables) {
-					runnable.run(new CompletionCallback() {
-						@Override
-						protected void onComplete() {
-							if (--state.pending == 0) {
-								callback.setComplete();
-							}
-						}
-
-						@Override
-						protected void onException(Exception e) {
-							if (state.pending > 0) {
-								state.pending = 0;
-								callback.setException(e);
-							}
-						}
-					});
-				}
+		return () -> {
+			final SettableStage<Void> stage = SettableStage.create();
+			final RunState state = new RunState(runnables.size());
+			if (state.pending == 0) {
+				stage.postResult(eventloop, null);
+				return stage;
 			}
+
+			for (AsyncRunnable runnable : runnables) {
+				runnable.run().whenComplete((aVoid, throwable) -> {
+					if (throwable == null) {
+						if (--state.pending == 0) {
+							stage.setResult(null);
+						}
+					} else {
+						if (state.pending > 0) {
+							state.pending = 0;
+							stage.setError(throwable);
+						}
+					}
+				});
+			}
+
+			return stage;
 		};
 	}
 }

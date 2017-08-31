@@ -17,9 +17,7 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.CompletionCallbackFuture;
-import io.datakernel.async.IgnoreCompletionCallback;
+import io.datakernel.async.SettableStage;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
@@ -37,6 +35,7 @@ import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
@@ -207,7 +206,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 				serverSocketChannels.add(serverSocketChannel);
 			} catch (IOException e) {
 				logger.error("Can't listen on {}", this, address);
-				close(IgnoreCompletionCallback.create());
+				close();
 				throw e;
 			}
 		}
@@ -217,43 +216,22 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	}
 
 	@Override
-	public final void close(CompletionCallback callback) {
+	public final CompletionStage<Void> close() {
 		check(eventloop.inEventloopThread());
-		if (!running)
-			return;
+		if (!running) return SettableStage.immediateStage(null);
 		running = false;
 		closeServerSocketChannels();
-		onClose(callback);
+		final SettableStage<Void> stage = SettableStage.create();
+		onClose(stage);
+		return stage;
 	}
 
 	public final Future<?> closeFuture() {
-		final CompletionCallbackFuture future = CompletionCallbackFuture.create();
-		eventloop.execute(new Runnable() {
-			@Override
-			public void run() {
-				close(new CompletionCallback() {
-					@Override
-					protected void onComplete() {
-						future.setComplete();
-					}
-
-					@Override
-					protected void onException(Exception e) {
-						future.setException(e);
-					}
-				});
-			}
-		});
-		return future;
+		return eventloop.submit(this::close);
 	}
 
-	protected void onClose(final CompletionCallback completionCallback) {
-		eventloop.post(new Runnable() {
-			@Override
-			public void run() {
-				completionCallback.setComplete();
-			}
-		});
+	protected void onClose(SettableStage<Void> stage) {
+		stage.postResult(eventloop, null);
 	}
 
 	public boolean isRunning() {
@@ -334,7 +312,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		}
 
 		if (acceptOnce) {
-			close(IgnoreCompletionCallback.create());
+			close();
 		}
 	}
 

@@ -16,8 +16,6 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.annotation.Nullable;
-import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.Eventloop.ConcurrentOperationTracker;
@@ -35,6 +33,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -51,72 +50,71 @@ public class DnsResolversTest {
 
 	private final Logger logger = LoggerFactory.getLogger(DnsResolversTest.class);
 
-	private class ConcurrentDnsResolveCallback extends ResultCallback<InetAddress[]> {
-		private final DnsResolveCallback callback;
+	private class ConcurrentDnsResolveConsumer implements BiConsumer<InetAddress[], Throwable> {
+		private final DnsResolveConsumer consumer;
 		private final ConcurrentOperationTracker localEventloopConcurrentOperationTracker;
 		private final ConcurrentOperationsCounter counter;
 
-		public ConcurrentDnsResolveCallback(DnsResolveCallback callback,
+		public ConcurrentDnsResolveConsumer(DnsResolveConsumer consumer,
 		                                    ConcurrentOperationTracker localEventloopConcurrentOperationTracker,
 		                                    ConcurrentOperationsCounter counter) {
-			this.callback = callback;
+			this.consumer = consumer;
 			this.localEventloopConcurrentOperationTracker = localEventloopConcurrentOperationTracker;
 			this.counter = counter;
 		}
 
 		@Override
-		protected void onResult(InetAddress[] result) {
-			callback.setResult(result);
-			localEventloopConcurrentOperationTracker.complete();
-			counter.completeOperation();
-		}
-
-		@Override
-		protected void onException(Exception e) {
-			callback.setException(e);
-			localEventloopConcurrentOperationTracker.complete();
-			counter.completeOperation();
+		public void accept(InetAddress[] inetAddresses, Throwable throwable) {
+			if (throwable == null) {
+				consumer.accept(inetAddresses, null);
+				localEventloopConcurrentOperationTracker.complete();
+				counter.completeOperation();
+			} else {
+				consumer.accept(null, throwable);
+				localEventloopConcurrentOperationTracker.complete();
+				counter.completeOperation();
+			}
 		}
 	}
 
-	private class DnsResolveCallback extends ResultCallback<InetAddress[]> {
+	private class DnsResolveConsumer implements BiConsumer<InetAddress[], Throwable> {
 		private InetAddress[] result = null;
-		private Exception exception = null;
+		private Throwable exception = null;
 
 		@Override
-		protected void onResult(@Nullable InetAddress[] ips) {
-			this.result = ips;
+		public void accept(InetAddress[] ips, Throwable throwable) {
+			if (throwable == null) {
+				this.result = ips;
 
-			if (ips == null) {
-				return;
-			}
-
-			System.out.print("Resolved: ");
-
-			for (int i = 0; i < ips.length; ++i) {
-				System.out.print(ips[i]);
-				if (i != ips.length - 1) {
-					System.out.print(", ");
+				if (ips == null) {
+					return;
 				}
+
+				System.out.print("Resolved: ");
+
+				for (int i = 0; i < ips.length; ++i) {
+					System.out.print(ips[i]);
+					if (i != ips.length - 1) {
+						System.out.print(", ");
+					}
+				}
+
+				System.out.println(".");
+			} else {
+				this.exception = throwable;
+				System.out.println("Resolving IP addresses for host failed. Stack trace: ");
+				throwable.printStackTrace();
 			}
-
-			System.out.println(".");
-		}
-
-		@Override
-		protected void onException(Exception e) {
-			this.exception = e;
-			System.out.println("Resolving IP addresses for host failed. Stack trace: ");
-			e.printStackTrace();
 		}
 
 		public InetAddress[] getResult() {
 			return result;
 		}
 
-		public Exception getException() {
+		public Throwable getException() {
 			return exception;
 		}
+
 	}
 
 	private final class ConcurrentOperationsCounter {
@@ -149,14 +147,9 @@ public class DnsResolversTest {
 	@Ignore
 	@Test
 	public void testResolversWithCorrectDomainNames() throws Exception {
-		DnsResolveCallback nativeResult1 = new DnsResolveCallback();
-		nativeDnsResolver.resolve4("www.google.com", nativeResult1);
-
-		DnsResolveCallback nativeResult2 = new DnsResolveCallback();
-		nativeDnsResolver.resolve4("www.stackoverflow.com", nativeResult2);
-
-		DnsResolveCallback nativeResult3 = new DnsResolveCallback();
-		nativeDnsResolver.resolve4("microsoft.com", nativeResult3);
+		nativeDnsResolver.resolve4("www.google.com").whenComplete(new DnsResolveConsumer());
+		nativeDnsResolver.resolve4("www.stackoverflow.com").whenComplete(new DnsResolveConsumer());
+		nativeDnsResolver.resolve4("microsoft.com").whenComplete(new DnsResolveConsumer());
 
 		eventloop.run();
 
@@ -173,11 +166,11 @@ public class DnsResolversTest {
 	@Ignore
 	@Test
 	public void testResolve6() throws Exception {
-		DnsResolveCallback nativeDnsResolverCallback = new DnsResolveCallback();
-		nativeDnsResolver.resolve6("www.google.com", nativeDnsResolverCallback);
+		DnsResolveConsumer nativeDnsResolverCallback = new DnsResolveConsumer();
+		nativeDnsResolver.resolve6("www.google.com").whenComplete(nativeDnsResolverCallback);
 
-		nativeDnsResolver.resolve6("www.stackoverflow.com", new DnsResolveCallback());
-		nativeDnsResolver.resolve6("www.oracle.com", new DnsResolveCallback());
+		nativeDnsResolver.resolve6("www.stackoverflow.com").whenComplete(new DnsResolveConsumer());
+		nativeDnsResolver.resolve6("www.oracle.com").whenComplete(new DnsResolveConsumer());
 
 		eventloop.run();
 
@@ -193,8 +186,8 @@ public class DnsResolversTest {
 	@Ignore
 	@Test
 	public void testResolversWithIncorrectDomainNames() throws Exception {
-		DnsResolveCallback nativeDnsResolverCallback = new DnsResolveCallback();
-		nativeDnsResolver.resolve4("fsafa", nativeDnsResolverCallback);
+		DnsResolveConsumer nativeDnsResolverCallback = new DnsResolveConsumer();
+		nativeDnsResolver.resolve4("fsafa").whenComplete(nativeDnsResolverCallback);
 
 		eventloop.run();
 
@@ -231,24 +224,21 @@ public class DnsResolversTest {
 
 	private void resolveInAnotherThreadWithDelay(final AsyncDnsClient asyncDnsClient, final String domainName,
 	                                             final int delayMillis, final ConcurrentOperationsCounter counter) {
-		new Thread(new Runnable() {
-			@Override
-			public void run() {
-				try {
-					Thread.sleep(delayMillis);
-				} catch (InterruptedException e) {
-					logger.warn("Thread interrupted.", e);
-				}
-				Eventloop callerEventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
-				ConcurrentOperationTracker concurrentOperationTracker = callerEventloop.startConcurrentOperation();
-				ConcurrentDnsResolveCallback callback = new ConcurrentDnsResolveCallback(new DnsResolveCallback(),
-						concurrentOperationTracker, counter);
-				logger.info("Attempting to resolve host {} from thread {}.", domainName, Thread.currentThread().getName());
-				IAsyncDnsClient dnsClient = asyncDnsClient.adaptToAnotherEventloop(callerEventloop);
-				dnsClient.resolve4(domainName, callback);
-				callerEventloop.run();
-				logger.info("Thread {} execution finished.", Thread.currentThread().getName());
+		new Thread(() -> {
+			try {
+				Thread.sleep(delayMillis);
+			} catch (InterruptedException e) {
+				logger.warn("Thread interrupted.", e);
 			}
+			Eventloop callerEventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+			ConcurrentOperationTracker concurrentOperationTracker = callerEventloop.startConcurrentOperation();
+			ConcurrentDnsResolveConsumer callback = new ConcurrentDnsResolveConsumer(new DnsResolveConsumer(),
+					concurrentOperationTracker, counter);
+			logger.info("Attempting to resolve host {} from thread {}.", domainName, Thread.currentThread().getName());
+			IAsyncDnsClient dnsClient = asyncDnsClient.adaptToAnotherEventloop(callerEventloop);
+			dnsClient.resolve4(domainName).whenComplete(callback);
+			callerEventloop.run();
+			logger.info("Thread {} execution finished.", Thread.currentThread().getName());
 		}).start();
 	}
 
@@ -264,28 +254,28 @@ public class DnsResolversTest {
 
 	@Test
 	public void testNativeDnsResolverCache() throws Exception {
-		DnsResolveCallback callback = new DnsResolveCallback();
+		DnsResolveConsumer consumer = new DnsResolveConsumer();
 		testCacheInitialize((AsyncDnsClient) nativeDnsResolver);
-		nativeDnsResolver.resolve4("www.google.com", callback);
+		nativeDnsResolver.resolve4("www.google.com").whenComplete(consumer);
 
 		eventloop.run();
 
-		assertNotNull(callback.result);
-		assertNull(callback.exception);
+		assertNotNull(consumer.result);
+		assertNull(consumer.exception);
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
 	public void testNativeDnsResolverErrorCache() throws Exception {
-		DnsResolveCallback callback = new DnsResolveCallback();
+		DnsResolveConsumer consumer = new DnsResolveConsumer();
 		testErrorCacheInitialize((AsyncDnsClient) nativeDnsResolver);
-		nativeDnsResolver.resolve4("www.google.com", callback);
+		nativeDnsResolver.resolve4("www.google.com").whenComplete(consumer);
 
 		eventloop.run();
 
-		assertTrue(callback.exception instanceof DnsException);
-		assertNull(callback.result);
+		assertTrue(consumer.exception instanceof DnsException);
+		assertNull(consumer.result);
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
@@ -309,18 +299,17 @@ public class DnsResolversTest {
 
 		timeProvider.setTime(1500);
 		eventloop.refreshTimestampAndGet();
-		nativeResolver.resolve4(domainName, new DnsResolveCallback());
+		nativeResolver.resolve4(domainName).whenComplete(new DnsResolveConsumer());
 
 		timeProvider.setTime(3500);
 		eventloop.refreshTimestampAndGet();
-		DnsResolveCallback callback = new DnsResolveCallback();
-		nativeResolver.resolve4(domainName, callback);
+		nativeResolver.resolve4(domainName).whenComplete(new DnsResolveConsumer());
 		eventloop.run();
 		cache.add(testResult);
 
 		timeProvider.setTime(70000);
 		eventloop.refreshTimestampAndGet();
-		nativeResolver.resolve4(domainName, new DnsResolveCallback());
+		nativeResolver.resolve4(domainName).whenComplete(new DnsResolveConsumer());
 		eventloop.run();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
@@ -329,9 +318,11 @@ public class DnsResolversTest {
 	@Test
 	public void testTimeout() throws Exception {
 		String domainName = "www.google.com";
-		AsyncDnsClient asyncDnsClient
-				= AsyncDnsClient.create(eventloop).withTimeout(3_000L).withDnsServerAddress(UNREACHABLE_DNS);
-		asyncDnsClient.resolve4(domainName, new DnsResolveCallback());
+		AsyncDnsClient asyncDnsClient = AsyncDnsClient.create(eventloop)
+				.withTimeout(3_000L)
+				.withDnsServerAddress(UNREACHABLE_DNS);
+
+		asyncDnsClient.resolve4(domainName).whenComplete(new DnsResolveConsumer());
 		eventloop.run();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());

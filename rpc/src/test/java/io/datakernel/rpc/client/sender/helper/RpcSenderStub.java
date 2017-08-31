@@ -16,8 +16,10 @@
 
 package io.datakernel.rpc.client.sender.helper;
 
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SettableStage;
 import io.datakernel.rpc.client.sender.RpcSender;
+
+import java.util.concurrent.CompletionStage;
 
 public final class RpcSenderStub implements RpcSender {
 	private int requests;
@@ -27,7 +29,8 @@ public final class RpcSenderStub implements RpcSender {
 	}
 
 	@Override
-	public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
+	public <I, O> CompletionStage<O> sendRequest(I request, int timeout) {
 		requests++;
+		return SettableStage.create();
 	}
 }

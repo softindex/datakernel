@@ -18,7 +18,6 @@ package io.datakernel.service;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
-import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopServer;
 import io.datakernel.eventloop.EventloopService;
@@ -30,6 +29,7 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.function.BiConsumer;
 
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 
@@ -41,17 +41,10 @@ public final class ServiceAdapters {
 	private ServiceAdapters() {
 	}
 
-	private static CompletionCallback toCompletionCallback(final SettableFuture<?> future) {
-		return new CompletionCallback() {
-			@Override
-			protected void onComplete() {
-				future.set(null);
-			}
-
-			@Override
-			protected void onException(Exception exception) {
-				future.setException(exception);
-			}
+	private static BiConsumer<Void, Throwable> completeFuture(SettableFuture<?> future) {
+		return (aVoid, throwable) -> {
+			if (throwable != null) future.setException(throwable);
+			else future.set(null);
 		};
 	}
 
@@ -126,24 +119,14 @@ public final class ServiceAdapters {
 			@Override
 			public ListenableFuture<?> start(final EventloopService instance, Executor executor) {
 				final SettableFuture<?> future = SettableFuture.create();
-				instance.getEventloop().execute(new Runnable() {
-					@Override
-					public void run() {
-						instance.start(toCompletionCallback(future));
-					}
-				});
+				instance.getEventloop().execute(() -> instance.start().whenComplete(completeFuture(future)));
 				return future;
 			}
 
 			@Override
 			public ListenableFuture<?> stop(final EventloopService instance, Executor executor) {
 				final SettableFuture<?> future = SettableFuture.create();
-				instance.getEventloop().execute(new Runnable() {
-					@Override
-					public void run() {
-						instance.stop(toCompletionCallback(future));
-					}
-				});
+				instance.getEventloop().execute(() -> instance.stop().whenComplete(completeFuture(future)));
 				return future;
 			}
 		};
@@ -171,22 +154,7 @@ public final class ServiceAdapters {
 			@Override
 			public ListenableFuture<?> stop(final EventloopServer instance, Executor executor) {
 				final SettableFuture<?> future = SettableFuture.create();
-				instance.getEventloop().execute(new Runnable() {
-					@Override
-					public void run() {
-						instance.close(new CompletionCallback() {
-							@Override
-							protected void onComplete() {
-								future.set(null);
-							}
-
-							@Override
-							protected void onException(Exception e) {
-								future.setException(e);
-							}
-						});
-					}
-				});
+				instance.getEventloop().execute(() -> instance.close().whenComplete(completeFuture(future)));
 				return future;
 			}
 		};

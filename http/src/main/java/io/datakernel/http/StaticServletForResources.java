@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 
@@ -25,7 +25,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
-import java.util.concurrent.Callable;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 
@@ -68,32 +68,29 @@ public final class StaticServletForResources extends StaticServlet {
 	}
 
 	@Override
-	protected final void doServeAsync(final String name, final ResultCallback<ByteBuf> callback) {
+	protected final CompletionStage<ByteBuf> doServeAsync(final String name) {
 		byte[] bytes = cache.get(name);
 		if (bytes != null) {
 			if (bytes != ERROR_BYTES) {
-				callback.setResult(ByteBuf.wrapForReading(bytes));
+				return SettableStage.immediateStage(ByteBuf.wrapForReading(bytes));
 			} else {
-				callback.setException(HttpException.notFound404());
+				return SettableStage.immediateFailedStage(HttpException.notFound404());
 			}
 		} else {
-			eventloop.callConcurrently(executor, new Callable<ByteBuf>() {
-				@Override
-				public ByteBuf call() throws Exception {
-					try {
-						byte[] bytes = loadResource(root, name);
-						cache.put(name, bytes);
-						return ByteBuf.wrapForReading(bytes);
-					} catch (IOException e) {
-						cache.put(name, ERROR_BYTES);
-						if (e instanceof FileNotFoundException) {
-							throw HttpException.notFound404();
-						} else {
-							throw e;
-						}
+			return eventloop.callConcurrently(executor, () -> {
+				try {
+					byte[] bytes1 = loadResource(root, name);
+					cache.put(name, bytes1);
+					return ByteBuf.wrapForReading(bytes1);
+				} catch (IOException e) {
+					cache.put(name, ERROR_BYTES);
+					if (e instanceof FileNotFoundException) {
+						throw HttpException.notFound404();
+					} else {
+						throw e;
 					}
 				}
-			}, callback);
+			});
 		}
 	}
 }

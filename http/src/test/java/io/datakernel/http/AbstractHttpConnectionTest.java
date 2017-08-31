@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.*;
+import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
@@ -25,8 +25,9 @@ import org.junit.Test;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
-import static io.datakernel.async.AsyncRunnables.runInParallel;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
@@ -45,26 +46,17 @@ public class AbstractHttpConnectionTest {
 
 	@Test
 	public void testMultiLineHeader() throws Exception {
-		AsyncServlet servlet = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				callback.setResult(createMultiLineHeaderWithInitialBodySpacesResponse());
-			}
-		};
+		AsyncServlet servlet = request -> SettableStage.immediateStage(createMultiLineHeaderWithInitialBodySpacesResponse());
 		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
 				.withListenAddress(new InetSocketAddress("localhost", PORT));
 		server.listen();
 
-		final CompletionCallbackFuture future = CompletionCallbackFuture.create();
 		final Map<String, String> data = new HashMap<>();
-		client.send(HttpRequest.get(url), new ForwardingResultCallback<HttpResponse>(future) {
-			@Override
-			public void onResult(HttpResponse result) {
-				data.put("body", decodeAscii(result.getBody()));
-				data.put("header", result.getHeader(CONTENT_TYPE));
-				stopClientAndServer(client, server, future);
-			}
-		});
+		final CompletableFuture<Void> future = client.send(HttpRequest.get(url)).thenCompose(result -> {
+			data.put("body", decodeAscii(result.getBody()));
+			data.put("header", result.getHeader(CONTENT_TYPE));
+			return stopClientAndServer(client, server);
+		}).toCompletableFuture();
 
 		eventloop.run();
 		future.get();
@@ -88,17 +80,13 @@ public class AbstractHttpConnectionTest {
 			boolean first = true;
 
 			@Override
-			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
+			public CompletionStage<HttpResponse> serve(HttpRequest request) {
 				HttpResponse response = HttpResponse.ok200().withBodyGzipCompression();
 				if (!first) {
-					response.withBody((ByteBuf) null);
-					callback.setResult(response);
-					assertNull(response.getHeaderValue(CONTENT_ENCODING));
+					return SettableStage.immediateStage(response.withBody((ByteBuf) null));
 				} else {
 					first = false;
-					response.withBody(encodeAscii("Test message"));
-					callback.setResult(response);
-					assertNotNull(response.getHeaderValue(CONTENT_ENCODING));
+					return SettableStage.immediateStage(response.withBody(encodeAscii("Test message")));
 				}
 			}
 		};
@@ -106,23 +94,14 @@ public class AbstractHttpConnectionTest {
 				.withListenAddress(new InetSocketAddress("localhost", PORT));
 		server.listen();
 
-		final CompletionCallbackFuture future = CompletionCallbackFuture.create();
-
-		client.send(HttpRequest.get(url).withHeader(ACCEPT_ENCODING, "gzip"),
-				new ForwardingResultCallback<HttpResponse>(future) {
-					@Override
-					protected void onResult(HttpResponse result) {
-						assertNotNull(result.getHeaderValue(CONTENT_ENCODING));
-						client.send(HttpRequest.get(url), new ForwardingResultCallback<HttpResponse>(future) {
-							@Override
-							protected void onResult(HttpResponse result) {
-								assertNull(result.getHeaderValue(CONTENT_ENCODING));
-								stopClientAndServer(client, server, future);
-							}
-						});
-					}
-				}
-		);
+		final HttpRequest request = HttpRequest.get(url).withHeader(ACCEPT_ENCODING, "gzip");
+		final CompletableFuture<Void> future = client.send(request).thenCompose(response -> {
+			assertNotNull(response.getHeaderValue(CONTENT_ENCODING));
+			return client.send(HttpRequest.get(url)).thenCompose(innerResponse -> {
+				assertNull(innerResponse.getHeaderValue(CONTENT_ENCODING));
+				return stopClientAndServer(client, server);
+			});
+		}).toCompletableFuture();
 
 		eventloop.run();
 		future.get();
@@ -130,22 +109,8 @@ public class AbstractHttpConnectionTest {
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
-	private void stopClientAndServer(final AsyncHttpClient client, final AsyncHttpServer server,
-	                                 CompletionCallbackFuture callback) {
-		runInParallel(
-				eventloop,
-				new AsyncRunnable() {
-					@Override
-					public void run(CompletionCallback callback) {
-						server.close(callback);
-					}
-				},
-				new AsyncRunnable() {
-					@Override
-					public void run(CompletionCallback callback) {
-						client.stop(callback);
-					}
-				})
-				.run(callback);
+	private CompletionStage<Void> stopClientAndServer(final AsyncHttpClient client, final AsyncHttpServer server) {
+		return client.stop().runAfterBoth(server.close(), () -> {
+		});
 	}
 }

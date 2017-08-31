@@ -16,8 +16,7 @@
 
 package io.datakernel;
 
-import io.datakernel.async.IgnoreResultCallback;
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SettableStage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
 
@@ -32,20 +31,12 @@ public final class GzipCompressingBehaviourExample {
 		final MiddlewareServlet dispatcher = MiddlewareServlet.create();
 
 		// always responds in gzip
-		dispatcher.with(HttpMethod.GET, "/gzip/", new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				callback.setResult(HttpResponse.ok200().withBodyGzipCompression().withBody(encodeAscii("Hello!")));
-			}
-		});
+		dispatcher.with(HttpMethod.GET, "/gzip/", request -> SettableStage.immediateStage(
+				HttpResponse.ok200().withBodyGzipCompression().withBody(encodeAscii("Hello!"))));
 
 		// never responds in gzip
-		dispatcher.with(HttpMethod.GET, "/nogzip/", new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				callback.setResult(HttpResponse.ok200().withBody(encodeAscii("Hello!")));
-			}
-		});
+		dispatcher.with(HttpMethod.GET, "/nogzip/", reques -> SettableStage.immediateStage(
+				HttpResponse.ok200().withBody(encodeAscii("Hello!"))));
 
 		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, dispatcher).withListenPort(1234);
 
@@ -62,6 +53,6 @@ public final class GzipCompressingBehaviourExample {
 				.withBodyGzipCompression()
 				.withAcceptEncodingGzip();
 
-		client.send(request, IgnoreResultCallback.<HttpResponse>create());
+		client.send(request);
 	}
 }

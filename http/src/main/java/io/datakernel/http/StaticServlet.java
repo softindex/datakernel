@@ -16,13 +16,12 @@
 
 package io.datakernel.http;
 
-import io.datakernel.annotation.Nullable;
-import io.datakernel.async.ForwardingResultCallback;
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBuf;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.CompletionStage;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown, WeakerAccess")
 public abstract class StaticServlet implements AsyncServlet {
@@ -52,7 +51,7 @@ public abstract class StaticServlet implements AsyncServlet {
 		return type;
 	}
 
-	protected abstract void doServeAsync(String name, ResultCallback<ByteBuf> callback);
+	protected abstract CompletionStage<ByteBuf> doServeAsync(String name);
 
 	protected HttpResponse createHttpResponse(ByteBuf buf, String path) {
 		return HttpResponse.ofCode(200)
@@ -61,18 +60,11 @@ public abstract class StaticServlet implements AsyncServlet {
 	}
 
 	@Override
-	public final void serve(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
+	public final CompletionStage<HttpResponse> serve(final HttpRequest request) {
 		String path = request.getRelativePath();
 
-		if (request.getMethod() != HttpMethod.GET) {
-			callback.setException(METHOD_NOT_ALLOWED);
-			return;
-		}
-
-		if (path.isEmpty() || path.charAt(0) != '/') {
-			callback.setException(BAD_PATH_ERROR);
-			return;
-		}
+		if (request.getMethod() != HttpMethod.GET) return SettableStage.immediateFailedStage(METHOD_NOT_ALLOWED);
+		if (path.isEmpty() || path.charAt(0) != '/') return SettableStage.immediateFailedStage(BAD_PATH_ERROR);
 
 		if (path.equals("/")) {
 			path = DEFAULT_INDEX_FILE_NAME;
@@ -80,12 +72,8 @@ public abstract class StaticServlet implements AsyncServlet {
 			path = path.substring(1); // removing initial '/'
 		}
 		final String finalPath = path;
-		doServeAsync(path, new ForwardingResultCallback<ByteBuf>(callback) {
-			@Override
-			protected void onResult(@Nullable ByteBuf buf) {
-				callback.setResult(createHttpResponse(buf, finalPath));
-			}
-		});
+
+		return doServeAsync(path).thenApply(byteBuf -> createHttpResponse(byteBuf, finalPath));
 	}
 
 }

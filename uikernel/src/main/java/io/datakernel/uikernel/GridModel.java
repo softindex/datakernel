@@ -16,20 +16,19 @@
 
 package io.datakernel.uikernel;
 
-import io.datakernel.async.ResultCallback;
-
 import java.util.List;
+import java.util.concurrent.CompletionStage;
 
 public interface GridModel<K, R extends AbstractRecord<K>> {
-	void create(R record, ResultCallback<CreateResponse<K>> callback);
+	CompletionStage<CreateResponse<K>> create(R record);
 
-	void read(K id, ReadSettings<K> settings, ResultCallback<R> callback);
+	CompletionStage<R> read(K id, ReadSettings<K> settings);
 
-	void read(ReadSettings<K> settings, ResultCallback<ReadResponse<K, R>> callback);
+	CompletionStage<ReadResponse<K, R>> read(ReadSettings<K> settings);
 
-	void update(List<R> changes, ResultCallback<UpdateResponse<K, R>> callback);
+	CompletionStage<UpdateResponse<K, R>> update(List<R> changes);
 
-	void delete(K id, ResultCallback<DeleteResponse> callback);
+	CompletionStage<DeleteResponse> delete(K id);
 
 	Class<K> getIdType();
 

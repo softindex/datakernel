@@ -16,10 +16,10 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.async.CompletionCallback;
 import io.datakernel.stream.StreamProducer;
 
 import java.util.List;
+import java.util.concurrent.CompletionStage;
 
 /**
  * This class uses for  splitting a single input stream into smaller partitions during merge sort,
@@ -34,7 +34,7 @@ public interface StreamMergeSorterStorage<T> {
 	 *
 	 * @return partition number
 	 */
-	int write(StreamProducer<T> producer, CompletionCallback completionCallback);
+	PartitionStage write(StreamProducer<T> producer);
 
 	/**
 	 * Method for creating producer for reading from storage partition of elements
@@ -42,10 +42,47 @@ public interface StreamMergeSorterStorage<T> {
 	 * @param partition index of partition
 	 * @return producer for streaming to storage
 	 */
-	StreamProducer<T> read(int partition, CompletionCallback callback);
+	ProducerStage<T> read(int partition);
 
 	/**
 	 * Method for removing all stored created objects
 	 */
 	void cleanup(List<Integer> partitionsToDelete);
+
+	public static class PartitionStage {
+		private final int partition;
+		private final CompletionStage<Void> stage;
+
+		public PartitionStage(int partition, CompletionStage<Void> stage) {
+			this.partition = partition;
+			this.stage = stage;
+		}
+
+		public int getPartition() {
+			return partition;
+		}
+
+		public CompletionStage<Void> getStage() {
+			return stage;
+		}
+	}
+
+	public static class ProducerStage<T> {
+		private final StreamProducer<T> producer;
+		private final CompletionStage<Void> stage;
+
+		public ProducerStage(StreamProducer<T> producer, CompletionStage<Void> stage) {
+			this.producer = producer;
+			this.stage = stage;
+		}
+
+		public StreamProducer<T> getProducer() {
+			return producer;
+		}
+
+		public CompletionStage<Void> getStage() {
+			return stage;
+		}
+	}
+
 }

@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
@@ -49,29 +49,20 @@ public class AsyncHttpServerTest {
 	}
 
 	public static AsyncHttpServer blockingHttpServer(Eventloop primaryEventloop, int port) {
-		AsyncServlet servlet = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
-				callback.setResult(content);
-			}
+		AsyncServlet servlet = request -> {
+			HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
+			return SettableStage.immediateStage(content);
 		};
 
 		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", port));
 	}
 
 	public static AsyncHttpServer asyncHttpServer(final Eventloop primaryEventloop, int port) {
-		AsyncServlet servlet = new AsyncServlet() {
-			@Override
-			public void serve(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
-				final HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
-				primaryEventloop.post(new Runnable() {
-					@Override
-					public void run() {
-						callback.setResult(content);
-					}
-				});
-			}
+		AsyncServlet servlet = request -> {
+			final SettableStage<HttpResponse> stage = SettableStage.create();
+			final HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
+			stage.postResult(primaryEventloop, content);
+			return stage;
 		};
 
 		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", port));
@@ -79,17 +70,11 @@ public class AsyncHttpServerTest {
 
 	public static AsyncHttpServer delayedHttpServer(final Eventloop primaryEventloop, int port) {
 		final Random random = new Random();
-		AsyncServlet servlet = new AsyncServlet() {
-			@Override
-			public void serve(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
-				final HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
-				primaryEventloop.schedule(primaryEventloop.currentTimeMillis() + random.nextInt(3), new Runnable() {
-					@Override
-					public void run() {
-						callback.setResult(content);
-					}
-				});
-			}
+		AsyncServlet servlet = (request) -> {
+			final SettableStage<HttpResponse> stage = SettableStage.create();
+			final HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
+			primaryEventloop.schedule(primaryEventloop.currentTimeMillis() + random.nextInt(3), () -> stage.setResult(content));
+			return stage;
 		};
 
 		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", port));
@@ -306,7 +291,7 @@ public class AsyncHttpServerTest {
 		thread.join();
 	}
 
-//	@Test
+	//	@Test
 	public void testPipelining2() throws Exception {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
@@ -362,17 +347,11 @@ public class AsyncHttpServerTest {
 						.withBody(ByteBuf.wrapForReading(encodeAscii("Test big HTTP message body")))
 						.toByteBuf();
 
-		AsyncServlet servlet = new AsyncServlet() {
-			@Override
-			public void serve(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
-				final HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
-				eventloop.post(new Runnable() {
-					@Override
-					public void run() {
-						callback.setResult(content);
-					}
-				});
-			}
+		AsyncServlet servlet = request -> {
+			final SettableStage<HttpResponse> stage = SettableStage.create();
+			final HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
+			stage.postResult(eventloop, content);
+			return stage;
 		};
 
 		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
@@ -401,12 +380,9 @@ public class AsyncHttpServerTest {
 	public void testExpectContinue() throws Exception {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
-		AsyncHttpServer server = AsyncHttpServer.create(eventloop, new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				callback.setResult(HttpResponse.ok200().withBody(request.detachBody()));
-			}
-		}).withListenAddress(new InetSocketAddress("localhost", port));
+		AsyncHttpServer server = AsyncHttpServer.create(eventloop, request ->
+				SettableStage.immediateStage(HttpResponse.ok200().withBody(request.detachBody())))
+				.withListenAddress(new InetSocketAddress("localhost", port));
 
 		server.listen();
 		Thread thread = new Thread(eventloop);

@@ -17,7 +17,7 @@
 package io.datakernel.stream.processor;
 
 import com.google.common.base.Function;
-import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
@@ -162,24 +162,14 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T>, Eventl
 				queueProducer.streamTo(merger.newInput());
 
 				for (int partition : listOfPartitions) {
-					storage.read(partition, new CompletionCallback() {
-						@Override
-						protected void onException(Exception e) {
-							onCompleteOrException();
+					final StreamMergeSorterStorage.ProducerStage<T> producerStage = storage.read(partition);
+					producerStage.getStage().whenComplete((aVoid, throwable) -> {
+						++readPartitions;
+						if (readPartitions == listOfPartitions.size()) {
+							storage.cleanup(listOfPartitions);
 						}
-
-						@Override
-						protected void onComplete() {
-							onCompleteOrException();
-						}
-
-						void onCompleteOrException() {
-							++readPartitions;
-							if (readPartitions == listOfPartitions.size()) {
-								storage.cleanup(listOfPartitions);
-							}
-						}
-					}).streamTo(merger.newInput());
+					});
+					producerStage.getProducer().streamTo(merger.newInput());
 				}
 				merger.getOutput().streamTo(forwarder.getInput());
 
@@ -189,26 +179,20 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T>, Eventl
 			if (bufferFull) {
 				Collections.sort(list, itemComparator);
 				writing = true;
-				int partition = storage.write(StreamProducers.ofIterable(eventloop, list), new CompletionCallback() {
-					@Override
-					protected void onComplete() {
-						eventloop.post(new Runnable() {
-							@Override
-							public void run() {
-								writing = false;
-								nextState();
-							}
+				final StreamMergeSorterStorage.PartitionStage partitionStage = storage.write(StreamProducers.ofIterable(eventloop, list));
+				partitionStage.getStage().whenComplete(($, throwable) -> {
+					if (throwable == null) {
+						eventloop.post(() -> {
+							writing = false;
+							nextState();
 						});
-					}
-
-					@Override
-					protected void onException(Exception e) {
+					} else {
+						final Exception e = AsyncCallbacks.throwableToException(throwable);
 						new StreamProducers.ClosingWithError<T>(eventloop, e).streamTo(merger.newInput());
 						closeWithError(e);
-
 					}
 				});
-				listOfPartitions.add(partition);
+				listOfPartitions.add(partitionStage.getPartition());
 				list = new ArrayList<>(list.size() + (list.size() >> 8));
 				return;
 			}

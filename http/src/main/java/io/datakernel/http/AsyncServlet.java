@@ -18,6 +18,8 @@ package io.datakernel.http;
 
 import io.datakernel.async.ResultCallback;
 
+import java.util.concurrent.CompletionStage;
+
 /**
  * Servlet receives and responds to {@link HttpRequest} from clients across
  * HTTP. Receives {@link HttpRequest}, creates {@link HttpResponse} and sends
@@ -28,8 +30,6 @@ public interface AsyncServlet {
 	 * Handles the received {@link HttpRequest},  creating the
 	 * {@link HttpResponse} and responds to client with {@link ResultCallback}
 	 *
-	 * @param request  received request
-	 * @param callback ResultCallback for handling result
 	 */
-	void serve(HttpRequest request, ResultCallback<HttpResponse> callback);
+	CompletionStage<HttpResponse> serve(HttpRequest request);
 }

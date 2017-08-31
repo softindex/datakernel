@@ -10,25 +10,11 @@ public class AsyncRunnablesTest {
 	public void test() {
 		Eventloop eventloop = Eventloop.create();
 
-		AsyncRunnable runnable1 = new AsyncRunnable() {
-			@Override
-			public void run(CompletionCallback callback) {
-				callback.setComplete();
-			}
-		};
-		AsyncRunnable runnable2 = new AsyncRunnable() {
-			@Override
-			public void run(CompletionCallback callback) {
-				callback.setComplete();
-			}
-		};
+		AsyncRunnable runnable1 = () -> SettableStage.immediateStage(null);
+		AsyncRunnable runnable2 = () -> SettableStage.immediateStage(null);
 
 		AsyncRunnable timeoutCallable = AsyncRunnables.runInParallel(eventloop, asList(runnable1, runnable2));
-		timeoutCallable.run(new AssertingCompletionCallback() {
-			@Override
-			protected void onComplete() {
-			}
-		});
+		timeoutCallable.run().whenComplete(AsyncCallbacks.assertBiConsumer($ -> {}));
 
 		eventloop.run();
 	}

@@ -16,9 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.IgnoreCompletionCallback;
-import io.datakernel.async.ResultCallback;
-import io.datakernel.async.ResultCallbackFuture;
+import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
@@ -31,6 +29,7 @@ import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.concurrent.CompletableFuture;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.bytebuf.ByteBufStrings.*;
@@ -49,17 +48,10 @@ public class HttpTolerantApplicationTest {
 	}
 
 	public static AsyncHttpServer asyncHttpServer(final Eventloop primaryEventloop, int port) {
-		AsyncServlet servlet = new AsyncServlet() {
-			@Override
-			public void serve(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
-				primaryEventloop.post(new Runnable() {
-					@Override
-					public void run() {
-						HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
-						callback.setResult(content);
-					}
-				});
-			}
+		AsyncServlet servlet = request -> {
+			final SettableStage<HttpResponse> stage = SettableStage.create();
+			primaryEventloop.post(() -> stage.setResult(HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()))));
+			return stage;
 		};
 
 		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", port));
@@ -143,28 +135,18 @@ public class HttpTolerantApplicationTest {
 	@Test
 	public void testTolerantClient() throws Exception {
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
-		final ResultCallbackFuture<String> resultObserver = ResultCallbackFuture.create();
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		try (ServerSocket ignored = socketServer(port, "HTTP/1.1 200 OK\nContent-Type:  \t  text/html; charset=UTF-8\nContent-Length:  4\n\n/abc")) {
 			final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop);
 
-			httpClient.send(HttpRequest.get("http://127.0.0.1:" + port), new ResultCallback<HttpResponse>() {
-				@Override
-				protected void onResult(HttpResponse response) {
-					resultObserver.setResult(response.getHeader(HttpHeaders.CONTENT_TYPE));
-					httpClient.stop(IgnoreCompletionCallback.create());
-				}
-
-				@Override
-				protected void onException(Exception exception) {
-					resultObserver.setException(exception);
-					httpClient.stop(IgnoreCompletionCallback.create());
-				}
-			});
+			final CompletableFuture<String> future = httpClient.send(HttpRequest.get("http://127.0.0.1:" + port)).thenApply(response -> {
+				httpClient.stop();
+				return response.getHeader(HttpHeaders.CONTENT_TYPE);
+			}).toCompletableFuture();
 
 			eventloop.run();
+			assertEquals("text/html; charset=UTF-8", future.get());
 		}
-		assertEquals("text/html; charset=UTF-8", resultObserver.get());
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}

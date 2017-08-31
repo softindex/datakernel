@@ -6,6 +6,7 @@ import io.datakernel.exception.AsyncTimeoutException;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CompletionStage;
 
 import static java.util.Arrays.asList;
 
@@ -16,33 +17,21 @@ public class AsyncCallables {
 	}
 
 	public static <T> AsyncCallable<T> callWithTimeout(final Eventloop eventloop, final long timestamp, final AsyncCallable<T> callable) {
-		return new AsyncCallable<T>() {
-			@Override
-			public void call(final ResultCallback<T> callback) {
-				final ScheduledRunnable scheduledRunnable = eventloop.schedule(timestamp, new Runnable() {
-					@Override
-					public void run() {
-						callback.setException(CALLABLE_TIMEOUT_EXCEPTION);
-						if (callable instanceof AsyncCancellable) {
-							((AsyncCancellable) callable).cancel();
-						}
-					}
-				});
+		return () -> {
+			final SettableStage<T> stage = SettableStage.create();
+			final CompletionStage<T> stageCall = callable.call();
+			final ScheduledRunnable scheduledRunnable = eventloop.schedule(timestamp, () -> {
+				stage.setError(CALLABLE_TIMEOUT_EXCEPTION);
+				Stages.tryCancel(stageCall);
+			});
 
-				callable.call(new ResultCallback<T>() {
-					@Override
-					protected void onResult(T result) {
-						scheduledRunnable.cancel();
-						callback.setResult(result);
-					}
+			stageCall.whenComplete((t, throwable) -> {
+				if (scheduledRunnable.isComplete()) return;
+				scheduledRunnable.cancel();
+				AsyncCallbacks.forwardTo(stage, t, throwable);
+			});
 
-					@Override
-					protected void onException(Exception e) {
-						scheduledRunnable.cancel();
-						callback.setException(e);
-					}
-				});
-			}
+			return stage;
 		};
 	}
 
@@ -61,37 +50,34 @@ public class AsyncCallables {
 
 	@SuppressWarnings("unchecked")
 	public static <T> AsyncCallable<List<T>> callAll(final Eventloop eventloop, final List<? extends AsyncCallable<T>> callables) {
-		return new AsyncCallable<List<T>>() {
-			@Override
-			public void call(final ResultCallback<List<T>> callback) {
-				final CallState state = new CallState(callables.size());
-				final T[] results = (T[]) new Object[callables.size()];
-				if (state.pending == 0) {
-					callback.postResult(eventloop, Arrays.asList(results));
-					return;
-				}
-				for (int i = 0; i < callables.size(); i++) {
-					AsyncCallable<T> callable = (AsyncCallable<T>) callables.get(i);
-					final int finalI = i;
-					callable.call(new ResultCallback<T>() {
-						@Override
-						protected void onResult(T result) {
-							results[finalI] = result;
-							if (--state.pending == 0) {
-								callback.setResult(Arrays.asList(results));
-							}
-						}
-
-						@Override
-						protected void onException(Exception e) {
-							if (state.pending > 0) {
-								state.pending = 0;
-								callback.setException(e);
-							}
-						}
-					});
-				}
+		return () -> {
+			final SettableStage<List<T>> stage = SettableStage.create();
+			final CallState state = new CallState(callables.size());
+			final T[] results = (T[]) new Object[callables.size()];
+			if (state.pending == 0) {
+				stage.postResult(eventloop, Arrays.asList(results));
+				return stage;
 			}
+
+			for (int i = 0; i < callables.size(); i++) {
+				AsyncCallable<T> callable = callables.get(i);
+				final int finalI = i;
+				callable.call().whenComplete((t, throwable) -> {
+					if (throwable != null) {
+						if (state.pending > 0) {
+							state.pending = 0;
+							stage.setError(throwable);
+						}
+					} else {
+						results[finalI] = t;
+						if (--state.pending == 0) {
+							stage.setResult(Arrays.asList(results));
+						}
+					}
+				});
+
+			}
+			return stage;
 		};
 	}
 
@@ -101,47 +87,41 @@ public class AsyncCallables {
 	}
 
 	public static <T> AsyncCallable<List<T>> callAllWithTimeout(final Eventloop eventloop, final long timestamp, final List<? extends AsyncCallable<T>> callables) {
-		return new AsyncCallable<List<T>>() {
-			@Override
-			public void call(final ResultCallback<List<T>> callback) {
-				final CallState state = new CallState(callables.size());
-				@SuppressWarnings("unchecked")
-				final T[] results = (T[]) new Object[callables.size()];
-				if (state.pending == 0) {
-					callback.postResult(eventloop, Arrays.asList(results));
-					return;
-				}
-				final ScheduledRunnable scheduledRunnable = eventloop.schedule(timestamp, new Runnable() {
-					@Override
-					public void run() {
-						state.pending = 0;
-						callback.setResult(Arrays.asList(results));
+		return () -> {
+			final SettableStage<List<T>> stage = SettableStage.create();
+			final CallState state = new CallState(callables.size());
+			@SuppressWarnings("unchecked")
+			final T[] results = (T[]) new Object[callables.size()];
+			if (state.pending == 0) {
+				stage.postResult(eventloop, Arrays.asList(results));
+				return stage;
+			}
+			final ScheduledRunnable scheduledRunnable = eventloop.schedule(timestamp, () -> {
+				state.pending = 0;
+				stage.setResult(Arrays.asList(results));
+			});
+
+			for (int i = 0; i < callables.size(); i++) {
+				final AsyncCallable<T> callable = callables.get(i);
+				final int finalI = i;
+				callable.call().whenComplete((t, throwable) -> {
+					if (throwable != null) {
+						if (state.pending > 0) {
+							state.pending = 0;
+							scheduledRunnable.cancel();
+							stage.setError(throwable);
+						}
+					} else {
+						results[finalI] = t;
+						if (--state.pending == 0) {
+							scheduledRunnable.cancel();
+							stage.setResult(Arrays.asList(results));
+						}
 					}
 				});
-				for (int i = 0; i < callables.size(); i++) {
-					final AsyncCallable<T> callable = (AsyncCallable<T>) callables.get(i);
-					final int finalI = i;
-					callable.call(new ResultCallback<T>() {
-						@Override
-						protected void onResult(T result) {
-							results[finalI] = result;
-							if (--state.pending == 0) {
-								scheduledRunnable.cancel();
-								callback.setResult(Arrays.asList(results));
-							}
-						}
-
-						@Override
-						protected void onException(Exception e) {
-							if (state.pending > 0) {
-								state.pending = 0;
-								scheduledRunnable.cancel();
-								callback.setException(e);
-							}
-						}
-					});
-				}
 			}
+
+			return stage;
 		};
 	}
 }

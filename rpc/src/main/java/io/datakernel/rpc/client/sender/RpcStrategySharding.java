@@ -16,13 +16,14 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SettableStage;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.hash.ShardingFunction;
 
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
@@ -87,15 +88,14 @@ public final class RpcStrategySharding implements RpcStrategy {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
-			checkNotNull(callback);
+		public <I, O> CompletionStage<O> sendRequest(I request, int timeout) {
 
 			int shardIndex = ((ShardingFunction<Object>) shardingFunction).getShard(request);
 			RpcSender sender = subSenders[shardIndex];
 			if (sender != null) {
-				sender.sendRequest(request, timeout, callback);
+				return sender.sendRequest(request, timeout);
 			} else {
-				callback.setException(NO_SENDER_AVAILABLE_EXCEPTION);
+				return SettableStage.immediateFailedStage(NO_SENDER_AVAILABLE_EXCEPTION);
 			}
 		}
 

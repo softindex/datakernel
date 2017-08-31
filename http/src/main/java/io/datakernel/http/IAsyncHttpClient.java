@@ -1,7 +1,7 @@
 package io.datakernel.http;
 
-import io.datakernel.async.ResultCallback;
+import java.util.concurrent.CompletionStage;
 
 public interface IAsyncHttpClient {
-	void send(HttpRequest request, ResultCallback<HttpResponse> callback);
+	CompletionStage<HttpResponse> send(HttpRequest request);
 }

@@ -114,22 +114,14 @@ public final class StreamProducers {
 	 */
 	public static <T> StreamProducer<T> asynchronouslyResolving(final Eventloop eventloop, final AsyncCallable<StreamProducer<T>> producerCallable) {
 		final StreamForwarder<T> forwarder = StreamForwarder.create(eventloop);
-		eventloop.post(new Runnable() {
-			@Override
-			public void run() {
-				producerCallable.call(new ResultCallback<StreamProducer<T>>() {
-					@Override
-					protected void onResult(StreamProducer<T> actualProducer) {
-						actualProducer.streamTo(forwarder.getInput());
-					}
-
-					@Override
-					protected void onException(Exception exception) {
-						new ClosingWithError<T>(eventloop, exception).streamTo(forwarder.getInput());
-					}
-				});
+		eventloop.post(() -> producerCallable.call().whenComplete((actualProducer, throwable) -> {
+			if (throwable != null) {
+				final Exception exception = AsyncCallbacks.throwableToException(throwable);
+				new ClosingWithError<T>(eventloop, exception).streamTo(forwarder.getInput());
+			} else {
+				actualProducer.streamTo(forwarder.getInput());
 			}
-		});
+		}));
 		return forwarder.getOutput();
 	}
 

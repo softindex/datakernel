@@ -16,7 +16,8 @@
 
 package io.datakernel.stream.file;
 
-import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.AsyncCallbacks;
+import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
@@ -29,6 +30,7 @@ import java.io.IOException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
@@ -52,7 +54,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 	private boolean pendingAsyncOperation;
 
-	private CompletionCallback flushCallback;
+	private SettableStage<Void> flushStage;
 
 	// region creators
 	private StreamFileWriter(Eventloop eventloop, AsyncFile asyncFile, boolean forceOnClose) {
@@ -80,20 +82,18 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	// endregion
 
 	// region api
-	public void setFlushCallback(CompletionCallback flushCallback) {
+	public CompletionStage<Void> getFlushStage() {
 		if (queue.isEmpty() && !pendingAsyncOperation) {
 			if (getConsumerStatus() == END_OF_STREAM) {
-				flushCallback.setComplete();
-				return;
+				return SettableStage.immediateStage(null);
 			}
 
 			if (getConsumerStatus() == CLOSED_WITH_ERROR) {
-				flushCallback.setException(getConsumerException());
-				return;
+				return SettableStage.immediateFailedStage(getConsumerException());
 			}
 		}
 
-		this.flushCallback = flushCallback;
+		return this.flushStage = SettableStage.create();
 	}
 
 	@Override
@@ -109,9 +109,14 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 		final ByteBuf buf = queue.poll();
 		final int length = buf.readRemaining();
-		asyncFile.writeFully(buf, position, new CompletionCallback() {
-			@Override
-			protected void onComplete() {
+		asyncFile.writeFully(buf, position).whenComplete((aVoid, throwable) -> {
+			if (throwable != null) {
+				logger.error("{}: failed to flush", StreamFileWriter.this, throwable);
+				doWriterCleanup(false).whenComplete((aVoid1, throwable1) -> {
+					pendingAsyncOperation = false;
+					closeWithError(AsyncCallbacks.throwableToException(throwable1));
+				});
+			} else {
 				logger.trace("{}: completed flush", StreamFileWriter.this);
 				position += length;
 				pendingAsyncOperation = false;
@@ -120,73 +125,38 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 				}
 				postFlush();
 			}
-
-			@Override
-			protected void onException(final Exception e) {
-				logger.error("{}: failed to flush", StreamFileWriter.this, e);
-				doCleanup(false, new CompletionCallback() {
-					@Override
-					protected void onException(Exception e) {
-						onCompleteOrException();
-					}
-
-					@Override
-					protected void onComplete() {
-						onCompleteOrException();
-					}
-
-					void onCompleteOrException() {
-						pendingAsyncOperation = false;
-						closeWithError(e);
-					}
-				});
-			}
 		});
 	}
 
 	private void postFlush() {
 		if (!queue.isEmpty() && !pendingAsyncOperation) {
 			pendingAsyncOperation = true;
-			eventloop.post(new Runnable() {
-				@Override
-				public void run() {
-					doFlush();
-				}
-			});
+			eventloop.post(this::doFlush);
 			logger.trace("{}: posted flush", this);
 		}
 		if (getConsumerStatus() == END_OF_STREAM && queue.isEmpty() && !pendingAsyncOperation) {
 			pendingAsyncOperation = true;
-			doCleanup(forceOnClose, new CompletionCallback() {
-				@Override
-				protected void onComplete() {
+			doWriterCleanup(forceOnClose).whenComplete(($, throwable) -> {
+				if (throwable == null) {
 					pendingAsyncOperation = false;
 					logger.info("{}: finished writing", StreamFileWriter.this);
-					if (flushCallback != null) {
-						flushCallback.setComplete();
-					}
-				}
-
-				@Override
-				protected void onException(Exception e) {
+					if (flushStage != null) flushStage.setResult(null);
+				} else {
 					pendingAsyncOperation = false;
 					closeWithError(new Exception("Can't do cleanup for file\t" + asyncFile));
+
 				}
 			});
 		}
 	}
 
-	private void doCleanup(boolean forceOnClose, CompletionCallback callback) {
+	private CompletionStage<Void> doWriterCleanup(boolean forceOnClose) {
 		for (ByteBuf buf : queue) {
 			buf.recycle();
 		}
 		queue.clear();
 
-		if (forceOnClose) {
-			asyncFile.forceAndClose(callback);
-		} else {
-			asyncFile.close(callback);
-		}
+		return forceOnClose ? asyncFile.forceAndClose() : asyncFile.close();
 	}
 
 	@Override
@@ -213,22 +183,10 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	protected void onError(final Exception e) {
 		logger.error("{}: onError", this, e);
 		pendingAsyncOperation = true;
-		doCleanup(false, new CompletionCallback() {
-			@Override
-			protected void onException(Exception e) {
-				onCompleteOrException();
-			}
 
-			@Override
-			protected void onComplete() {
-				onCompleteOrException();
-			}
-
-			void onCompleteOrException() {
-				pendingAsyncOperation = false;
-				if (flushCallback != null)
-					flushCallback.setException(e);
-			}
+		doWriterCleanup(false).whenComplete(($, throwable) -> {
+			pendingAsyncOperation = false;
+			if (flushStage != null) flushStage.setError(e);
 		});
 	}
 

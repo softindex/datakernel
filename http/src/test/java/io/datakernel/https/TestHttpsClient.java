@@ -18,21 +18,18 @@ package io.datakernel.https;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
-import io.datakernel.async.IgnoreCompletionCallback;
-import io.datakernel.async.ResultCallback;
-import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AcceptMediaType;
 import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.HttpRequest;
-import io.datakernel.http.HttpResponse;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLContext;
 import java.security.NoSuchAlgorithmException;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
@@ -65,27 +62,16 @@ public class TestHttpsClient {
 				.withDnsClient(dnsClient)
 				.withSslEnabled(SSLContext.getDefault(), executor);
 
-		final ResultCallbackFuture<Integer> callback = ResultCallbackFuture.create();
-
 		String url = "https://en.wikipedia.org/wiki/Wikipedia";
-		client.send(get(url), new ResultCallback<HttpResponse>() {
-			@Override
-			public void onResult(HttpResponse result) {
-				callback.setResult(result.getCode());
-				client.stop(IgnoreCompletionCallback.create());
-			}
-
-			@Override
-			public void onException(Exception e) {
-				callback.setException(e);
-				client.stop(IgnoreCompletionCallback.create());
-			}
-		});
+		final CompletableFuture<Integer> future = client.send(get(url)).thenApply(response -> {
+			client.stop();
+			return response.getCode();
+		}).toCompletableFuture();
 
 		eventloop.run();
 		executor.shutdown();
 
-		assertEquals(200, (int) callback.get());
+		assertEquals(200, (int) future.get());
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 

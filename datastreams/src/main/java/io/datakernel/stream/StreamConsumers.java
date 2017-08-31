@@ -16,15 +16,14 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.AsyncCallable;
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.*;
 import io.datakernel.eventloop.Eventloop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletionStage;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
@@ -64,38 +63,30 @@ public final class StreamConsumers {
 
 	public static <T> StreamConsumer<T> asynchronouslyResolving(final Eventloop eventloop, final AsyncCallable<StreamConsumer<T>> consumerGetter) {
 		final StreamForwarder<T> forwarder = StreamForwarder.create(eventloop);
-		eventloop.post(new Runnable() {
-			@Override
-			public void run() {
-				consumerGetter.call(new ResultCallback<StreamConsumer<T>>() {
-					@Override
-					protected void onResult(StreamConsumer<T> result) {
-						forwarder.getOutput().streamTo(result);
-					}
-
-					@Override
-					protected void onException(Exception exception) {
-						forwarder.getOutput().streamTo(new ClosingWithError<T>(eventloop, exception));
-					}
-				});
+		eventloop.post(() -> consumerGetter.call().whenComplete((result, throwable) -> {
+			if (throwable != null) {
+				final Exception exception = AsyncCallbacks.throwableToException(throwable);
+				forwarder.getOutput().streamTo(new ClosingWithError<T>(eventloop, exception));
+			} else {
+				forwarder.getOutput().streamTo(result);
 			}
-		});
+		}));
 		return forwarder.getInput();
 	}
 
 	public static final class ClosingWithError<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
 		protected static final Logger logger = LoggerFactory.getLogger(ClosingWithError.class);
-		private CompletionCallback callback;
+		private SettableStage<Void> completionStage;
 		private final Exception exception;
 
-		public void setCompletionCallback(CompletionCallback callback) {
+		public CompletionStage<Void> getCompletionStage() {
 			if (getConsumerStatus().isOpen()) {
-				this.callback = callback;
+				return this.completionStage = SettableStage.create();
 			} else {
 				if (getConsumerStatus() == StreamStatus.END_OF_STREAM) {
-					callback.setComplete();
+					return SettableStage.immediateStage(null);
 				} else {
-					callback.setException(getConsumerException());
+					return SettableStage.immediateFailedStage(getConsumerException());
 				}
 			}
 		}
@@ -107,8 +98,8 @@ public final class StreamConsumers {
 
 		@Override
 		protected void onError(Exception e) {
-			if (callback != null) {
-				callback.setException(e);
+			if (completionStage != null) {
+				completionStage.setError(e);
 			}
 		}
 
@@ -156,8 +147,8 @@ public final class StreamConsumers {
 	 */
 	public static final class ToList<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
 		protected final List<T> list;
-		private CompletionCallback completionCallback;
-		private ResultCallback<List<T>> resultCallback;
+		private SettableStage<Void> completionStage;
+		private SettableStage<List<T>> resultStage;
 
 		/**
 		 * Creates a new instance of ConsumerToList with empty list and event loop from argument, in which
@@ -167,48 +158,47 @@ public final class StreamConsumers {
 			this(eventloop, new ArrayList<T>());
 		}
 
-		public void setCompletionCallback(CompletionCallback completionCallback) {
+		public CompletionStage<Void> getCompletionStage() {
 			if (getConsumerStatus().isOpen()) {
-				this.completionCallback = completionCallback;
+				return this.completionStage = SettableStage.create();
 			} else {
 				if (getConsumerStatus() == StreamStatus.END_OF_STREAM) {
-					completionCallback.setComplete();
+					return SettableStage.immediateStage(null);
 				} else {
-					completionCallback.setException(getConsumerException());
+					return SettableStage.immediateFailedStage(getConsumerException());
 				}
 			}
 		}
 
-		public void setResultCallback(ResultCallback<List<T>> resultCallback) {
+		public CompletionStage<List<T>> getResultStage() {
 			if (getConsumerStatus().isOpen()) {
-				this.resultCallback = resultCallback;
+				return this.resultStage = SettableStage.create();
 			} else {
 				if (error != null) {
-					onError(getConsumerException());
+					return SettableStage.immediateFailedStage(getConsumerException());
 				} else {
-					onEndOfStream();
+					return SettableStage.immediateStage(null);
 				}
 			}
-
 		}
 
 		@Override
 		protected void onEndOfStream() {
-			if (completionCallback != null) {
-				completionCallback.setComplete();
+			if (completionStage != null) {
+				completionStage.setResult(null);
 			}
-			if (resultCallback != null) {
-				resultCallback.setResult(list);
+			if (resultStage != null) {
+				resultStage.setResult(list);
 			}
 		}
 
 		@Override
 		protected void onError(Exception e) {
-			if (completionCallback != null) {
-				completionCallback.setException(e);
+			if (completionStage != null) {
+				completionStage.setError(e);
 			}
-			if (resultCallback != null) {
-				resultCallback.setException(e);
+			if (resultStage != null) {
+				resultStage.setError(e);
 			}
 		}
 

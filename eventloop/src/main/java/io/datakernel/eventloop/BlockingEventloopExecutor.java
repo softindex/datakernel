@@ -16,10 +16,12 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.async.*;
+import io.datakernel.async.AsyncCallable;
+import io.datakernel.async.AsyncCallbacks;
+import io.datakernel.async.AsyncRunnable;
 
 import java.util.concurrent.Callable;
-import java.util.concurrent.Future;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -61,11 +63,11 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 		}
 	}
 
-	private void post(final Runnable runnable, ResultCallbackFuture<?> future) {
+	private void post(final Runnable runnable, CompletableFuture<?> future) {
 		try {
 			post(runnable);
 		} catch (InterruptedException e) {
-			future.setException(e);
+			future.completeExceptionally(e);
 		}
 	}
 
@@ -98,128 +100,86 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 
 	public void execute(final AsyncRunnable asyncRunnable) {
 		try {
-			post(new Runnable() {
-				@Override
-				public void run() {
-					asyncRunnable.run(new CompletionCallback() {
-						@Override
-						protected void onComplete() {
-							complete();
-						}
-
-						@Override
-						protected void onException(Exception exception) {
-							complete();
-						}
-					});
-				}
-			});
+			post(() -> asyncRunnable.run().thenRun(this::complete));
 		} catch (InterruptedException ignored) {
 		}
 	}
 
 	@Override
-	public Future<?> submit(Runnable runnable) {
+	public CompletableFuture<Void> submit(Runnable runnable) {
 		return submit(runnable, null);
 	}
 
 	@Override
-	public Future<?> submit(AsyncRunnable asyncRunnable) {
+	public CompletableFuture<Void> submit(AsyncRunnable asyncRunnable) {
 		return submit(asyncRunnable, null);
 	}
 
 	@Override
-	public <T> Future<T> submit(final Runnable runnable, final T result) {
-		final ResultCallbackFuture<T> future = ResultCallbackFuture.create();
-		post(new Runnable() {
-			@Override
-			public void run() {
-				Exception exception = null;
-				try {
-					runnable.run();
-				} catch (Exception e) {
-					exception = e;
-				}
-				complete();
-				if (exception == null) {
-					future.setResult(result);
-				} else {
-					future.setException(exception);
-				}
+	public <T> CompletableFuture<T> submit(final Runnable runnable, final T result) {
+		final CompletableFuture<T> future = new CompletableFuture<>();
+		post(() -> {
+			Exception exception = null;
+			try {
+				runnable.run();
+			} catch (Exception e) {
+				exception = e;
+			}
+			complete();
+			if (exception == null) {
+				future.complete(result);
+			} else {
+				future.completeExceptionally(exception);
 			}
 		}, future);
 		return future;
 	}
 
 	@Override
-	public <T> Future<T> submit(final AsyncRunnable asyncRunnable, final T result) {
-		final ResultCallbackFuture<T> future = ResultCallbackFuture.create();
-		post(new Runnable() {
-			@Override
-			public void run() {
-				asyncRunnable.run(new CompletionCallback() {
-					@Override
-					protected void onComplete() {
-						setComplete();
-						future.setResult(result);
-					}
+	public <T> CompletableFuture<T> submit(final AsyncRunnable asyncRunnable, final T result) {
+		final CompletableFuture<T> future = new CompletableFuture<>();
+		post(() -> asyncRunnable.run().whenComplete((aVoid, throwable) -> {
+			complete();
+			if (throwable == null) {
+				future.complete(result);
+			} else {
+				future.completeExceptionally(AsyncCallbacks.throwableToException(throwable));
+			}
+		}), future);
+		return future;
+	}
 
-					@Override
-					protected void onException(Exception exception) {
-						setComplete();
-						future.setException(exception);
-					}
-				});
+	@Override
+	public <T> CompletableFuture<T> submit(final Callable<T> callable) {
+		final CompletableFuture<T> future = new CompletableFuture<>();
+		post((Runnable) () -> {
+			T result = null;
+			Exception exception = null;
+			try {
+				result = callable.call();
+			} catch (Exception e) {
+				exception = e;
+			}
+			complete();
+			if (exception == null) {
+				future.complete(result);
+			} else {
+				future.completeExceptionally(exception);
 			}
 		}, future);
 		return future;
 	}
 
 	@Override
-	public <T> Future<T> submit(final Callable<T> callable) {
-		final ResultCallbackFuture<T> future = ResultCallbackFuture.create();
-		post(new Runnable() {
-			@Override
-			public void run() {
-				T result = null;
-				Exception exception = null;
-				try {
-					result = callable.call();
-				} catch (Exception e) {
-					exception = e;
-				}
-				complete();
-				if (exception == null) {
-					future.setResult(result);
-				} else {
-					future.setException(exception);
-				}
+	public <T> CompletableFuture<T> submit(final AsyncCallable<T> asyncCallable) {
+		final CompletableFuture<T> future = new CompletableFuture<>();
+		post(() -> asyncCallable.call().whenComplete((t, throwable) -> complete()).whenComplete((t, throwable) -> {
+			if (throwable == null) {
+				future.complete(t);
+			} else {
+				future.completeExceptionally(throwable);
 			}
-		}, future);
-		return future;
-	}
-
-	@Override
-	public <T> Future<T> submit(final AsyncCallable<T> asyncCallable) {
-		final ResultCallbackFuture<T> future = ResultCallbackFuture.create();
-		post(new Runnable() {
-			@Override
-			public void run() {
-				asyncCallable.call(new ResultCallback<T>() {
-					@Override
-					protected void onResult(T result) {
-						complete();
-						future.setResult(result);
-					}
-
-					@Override
-					protected void onException(Exception exception) {
-						complete();
-						future.setException(exception);
-					}
-				});
-			}
-		}, future);
+		}), future);
 		return future;
 	}
 

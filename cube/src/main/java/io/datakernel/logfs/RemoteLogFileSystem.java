@@ -16,8 +16,8 @@
 
 package io.datakernel.logfs;
 
+import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
@@ -48,29 +48,16 @@ public final class RemoteLogFileSystem extends AbstractLogFileSystem {
 
 	@Override
 	public void list(final String logPartition, final ResultCallback<List<LogFile>> callback) {
-		client.list(new ResultCallback<List<String>>() {
-			@Override
-			public void onResult(List<String> files) {
-				callback.setResult(getLogFiles(files, logPartition));
-			}
-
-			@Override
-			public void onException(Exception exception) {
-				callback.setException(exception);
-			}
-		});
+		client.list().thenApply(files -> getLogFiles(files, logPartition)).whenComplete(AsyncCallbacks.forwardTo(callback));
 	}
 
 	@Override
 	public void read(String logPartition, LogFile logFile, long startPosition, final StreamConsumer<ByteBuf> consumer) {
-		client.download(path(logPartition, logFile), startPosition, new ResultCallback<StreamProducer<ByteBuf>>() {
-			@Override
-			public void onResult(StreamProducer<ByteBuf> producer) {
+		client.download(path(logPartition, logFile), startPosition).whenComplete((producer, throwable) -> {
+			if (throwable == null) {
 				producer.streamTo(consumer);
-			}
-
-			@Override
-			public void onException(Exception e) {
+			} else {
+				final Exception e = AsyncCallbacks.throwableToException(throwable);
 				StreamProducers.<ByteBuf>closingWithError(eventloop, e).streamTo(consumer);
 			}
 		});
@@ -79,16 +66,12 @@ public final class RemoteLogFileSystem extends AbstractLogFileSystem {
 	@Override
 	public void write(String logPartition, LogFile logFile, StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
 		final String fileName = path(logPartition, logFile);
-		client.upload(producer, fileName, new CompletionCallback() {
-			@Override
-			public void onComplete() {
+		client.upload(producer, fileName).whenComplete((aVoid, throwable) -> {
+			if (throwable == null) {
 				callback.setComplete();
-			}
-
-			@Override
-			public void onException(Exception e) {
-				client.delete(fileName, IgnoreCompletionCallback.create());
-				callback.setException(e);
+			} else {
+				client.delete(fileName);
+				callback.setException(AsyncCallbacks.throwableToException(throwable));
 			}
 		});
 	}

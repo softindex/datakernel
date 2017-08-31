@@ -16,9 +16,8 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.async.ResultCallback;
-
 import java.net.InetAddress;
+import java.util.concurrent.CompletionStage;
 
 /**
  * Resolves the IP address for the specified host name, or null if the given
@@ -30,17 +29,15 @@ public interface IAsyncDnsClient {
 	 * Resolves a IP for the IPv4 addresses and handles it with callback
 	 *
 	 * @param domainName	domain name for searching IP
-	 * @param callback		result callback
 	 */
-	void resolve4(String domainName, ResultCallback<InetAddress[]> callback);
+	CompletionStage<InetAddress[]> resolve4(String domainName);
 
 	/**
 	 * Resolves a IP for the IPv6 addresses and handles it with callback
 	 *
 	 * @param domainName	domain name for searching IP
-	 * @param callback		result callback
 	 */
-	void resolve6(String domainName, ResultCallback<InetAddress[]> callback);
+	CompletionStage<InetAddress[]> resolve6(String domainName);
 }
 
 

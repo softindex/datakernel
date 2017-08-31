@@ -17,7 +17,8 @@
 package io.datakernel.remotefs;
 
 import com.google.gson.Gson;
-import io.datakernel.async.*;
+import io.datakernel.async.AsyncCallbacks;
+import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
@@ -32,9 +33,10 @@ import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLContext;
 import java.net.InetSocketAddress;
-import java.nio.channels.SocketChannel;
 import java.util.List;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
+import java.util.function.Function;
 
 import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
 import static io.datakernel.eventloop.AsyncTcpSocketImpl.wrapChannel;
@@ -73,170 +75,198 @@ public final class RemoteFsClient implements IRemoteFsClient {
 	// endregion
 
 	@Override
-	public void upload(final StreamProducer<ByteBuf> producer, final String fileName,
-	                   final CompletionCallback callback) {
-		connect(address, new MessagingConnectCallback() {
-			@Override
-			public void onConnect(final MessagingWithBinaryStreaming<RemoteFsResponses.FsResponse, RemoteFsCommands.FsCommand> messaging) {
-				final RemoteFsCommands.Upload upload = new RemoteFsCommands.Upload(fileName);
-				messaging.send(upload, IgnoreCompletionCallback.create());
-				messaging.sendBinaryStreamFrom(producer, new CompletionCallback() {
+	public CompletionStage<Void> upload(final StreamProducer<ByteBuf> producer, final String fileName) {
+		return connect(address).thenCompose(doUpload(producer, fileName));
+	}
+
+	private Function<MessagingWithBinaryStreaming<RemoteFsResponses.FsResponse, RemoteFsCommands.FsCommand>, CompletionStage<Void>> doUpload(StreamProducer<ByteBuf> producer, String fileName) {
+		return messaging -> {
+			messaging.send(new RemoteFsCommands.Upload(fileName));
+			return messaging.sendBinaryStreamFrom(producer).thenCompose($ -> {
+				final SettableStage<Void> stage = SettableStage.create();
+				logger.trace("send all bytes for {}", fileName);
+				messaging.receive(new ReceiveMessageCallback<RemoteFsResponses.FsResponse>() {
 					@Override
-					public void onComplete() {
-						logger.trace("send all bytes for {}", fileName);
-						messaging.receive(new ReceiveMessageCallback<RemoteFsResponses.FsResponse>() {
-							@Override
-							public void onReceive(RemoteFsResponses.FsResponse msg) {
-								logger.trace("received {}", msg);
-								if (msg instanceof RemoteFsResponses.Acknowledge) {
-									messaging.close();
-									callback.setComplete();
-								} else if (msg instanceof RemoteFsResponses.Err) {
-									messaging.close();
-									callback.setException(new RemoteFsException(((RemoteFsResponses.Err) msg).msg));
-								} else {
-									messaging.close();
-									callback.setException(new RemoteFsException("Invalid message received: " + msg));
-								}
-							}
+					public void onReceive(RemoteFsResponses.FsResponse msg) {
+						logger.trace("received {}", msg);
+						if (msg instanceof RemoteFsResponses.Acknowledge) {
+							stage.setResult(null);
+						} else if (msg instanceof RemoteFsResponses.Err) {
+							stage.setError(new RemoteFsException(((RemoteFsResponses.Err) msg).msg));
+						} else {
+							stage.setError(new RemoteFsException("Invalid message received: " + msg));
+						}
+					}
 
-							@Override
-							public void onReceiveEndOfStream() {
-								logger.warn("received unexpected end of stream");
-								messaging.close();
-								callback.setException(new RemoteFsException("Unexpected end of stream for: " + fileName));
-							}
+					@Override
+					public void onReceiveEndOfStream() {
+						logger.warn("received unexpected end of stream");
+						stage.setError(new RemoteFsException("Unexpected end of stream for: " + fileName));
+					}
 
-							@Override
-							public void onException(Exception e) {
-								messaging.close();
-								callback.setException(e);
-							}
-						});
+					@Override
+					public void onException(Exception e) {
+						stage.setError(e);
+					}
+				});
+				return stage;
+			}).whenComplete((aVoid, throwable) -> messaging.close());
+		};
+	}
+
+	@Override
+	public CompletionStage<StreamProducer<ByteBuf>> download(final String fileName, final long startPosition) {
+		return connect(address).thenCompose(doDownload(fileName, startPosition));
+	}
+
+	private Function<MessagingWithBinaryStreaming<RemoteFsResponses.FsResponse, RemoteFsCommands.FsCommand>, CompletionStage<StreamProducer<ByteBuf>>> doDownload(String fileName, long startPosition) {
+		return messaging -> {
+			final RemoteFsCommands.Download msg = new RemoteFsCommands.Download(fileName, startPosition);
+
+
+
+			return messaging.send(msg).thenCompose(aVoid -> {
+				logger.trace("command to download {} send", fileName);
+				final SettableStage<StreamProducer<ByteBuf>> stage = SettableStage.create();
+				messaging.receive(new ReceiveMessageCallback<RemoteFsResponses.FsResponse>() {
+					@Override
+					public void onReceive(RemoteFsResponses.FsResponse msg) {
+						logger.trace("received {}", msg);
+						if (msg instanceof RemoteFsResponses.Ready) {
+							long size = ((RemoteFsResponses.Ready) msg).size;
+							StreamForwarderWithCounter forwarder = StreamForwarderWithCounter.create(eventloop, size - startPosition);
+							messaging.receiveBinaryStreamTo(forwarder.getInput()).whenComplete(($, throwable1) -> messaging.close());
+							stage.setResult(forwarder.getOutput());
+						} else if (msg instanceof RemoteFsResponses.Err) {
+							stage.setError(new RemoteFsException(((RemoteFsResponses.Err) msg).msg));
+						} else {
+							stage.setError(new RemoteFsException("Invalid message received: " + msg));
+						}
+					}
+
+					@Override
+					public void onReceiveEndOfStream() {
+						logger.warn("received unexpected end of stream");
+						stage.setError(new RemoteFsException("Unexpected end of stream for: " + fileName));
+					}
+
+					@Override
+					public void onException(Exception e) {
+						stage.setError(new RemoteFsException(e));
+					}
+				});
+				return stage;
+			}).whenComplete((byteBufStreamProducer, throwable) -> {
+				if (throwable != null) messaging.close();
+			});
+		};
+	}
+
+	@Override
+	public CompletionStage<Void> delete(String fileName) {
+		return connect(address).thenCompose(messaging -> doDelete(fileName, messaging));
+	}
+
+	public CompletionStage<Void> doDelete(final String fileName, final MessagingWithBinaryStreaming<RemoteFsResponses.FsResponse, RemoteFsCommands.FsCommand> messaging) {
+		final SettableStage<Void> stage = SettableStage.create();
+		messaging.send(new RemoteFsCommands.Delete(fileName)).whenComplete(($, throwable) -> {
+			if (throwable == null) {
+				logger.trace("command to delete {} send", fileName);
+				messaging.receive(new ReceiveMessageCallback<RemoteFsResponses.FsResponse>() {
+					@Override
+					public void onReceive(RemoteFsResponses.FsResponse msg) {
+						logger.trace("received {}", msg);
+						if (msg instanceof RemoteFsResponses.Ok) {
+							messaging.close();
+							stage.setResult(null);
+						} else if (msg instanceof RemoteFsResponses.Err) {
+							messaging.close();
+							stage.setError(new RemoteFsException(((RemoteFsResponses.Err) msg).msg));
+						} else {
+							messaging.close();
+							stage.setError(new RemoteFsException("Invalid message received: " + msg));
+						}
+					}
+
+					@Override
+					public void onReceiveEndOfStream() {
+						logger.warn("received unexpected end of stream");
+						messaging.close();
+						stage.setError(new RemoteFsException("Unexpected end of stream for: " + fileName));
 					}
 
 					@Override
 					public void onException(Exception e) {
 						messaging.close();
-						callback.setException(e);
+						stage.setError(e);
 					}
 				});
-			}
-
-			@Override
-			public void onException(Exception exception) {
-				callback.setException(exception);
+			} else {
+				messaging.close();
+				stage.setError(AsyncCallbacks.throwableToException(throwable));
 			}
 		});
+		return stage;
 	}
 
 	@Override
-	public void download(final String fileName, final long startPosition,
-	                     final ResultCallback<StreamProducer<ByteBuf>> callback) {
-		connect(address, new MessagingConnectCallback() {
-			@Override
-			public void onConnect(final MessagingWithBinaryStreaming<RemoteFsResponses.FsResponse, RemoteFsCommands.FsCommand> messaging) {
-				messaging.send(new RemoteFsCommands.Download(fileName, startPosition), new CompletionCallback() {
+	public CompletionStage<List<String>> list() {
+		return connect(address).thenCompose(this::doList);
+	}
+
+	public CompletionStage<List<String>> doList(final MessagingWithBinaryStreaming<RemoteFsResponses.FsResponse, RemoteFsCommands.FsCommand> messaging) {
+		final SettableStage<List<String>> stage = SettableStage.create();
+		messaging.send(new RemoteFsCommands.ListFiles()).whenComplete(($, throwable) -> {
+			if (throwable == null) {
+				logger.trace("command to list files send");
+				messaging.receive(new ReceiveMessageCallback<RemoteFsResponses.FsResponse>() {
 					@Override
-					public void onComplete() {
-						logger.trace("command to download {} send", fileName);
-						messaging.receive(new ReceiveMessageCallback<RemoteFsResponses.FsResponse>() {
-							@Override
-							public void onReceive(RemoteFsResponses.FsResponse msg) {
-								logger.trace("received {}", msg);
-								if (msg instanceof RemoteFsResponses.Ready) {
-									long size = ((RemoteFsResponses.Ready) msg).size;
-									StreamForwarderWithCounter forwarder = StreamForwarderWithCounter.create(eventloop, size - startPosition);
-									messaging.receiveBinaryStreamTo(forwarder.getInput(), new CompletionCallback() {
-										@Override
-										public void onComplete() {
-											messaging.close();
-										}
+					public void onReceive(RemoteFsResponses.FsResponse msg) {
+						logger.trace("received {}", msg);
+						if (msg instanceof RemoteFsResponses.ListOfFiles) {
+							messaging.close();
+							stage.setResult(((RemoteFsResponses.ListOfFiles) msg).files);
+						} else if (msg instanceof RemoteFsResponses.Err) {
+							messaging.close();
+							stage.setError(new RemoteFsException(((RemoteFsResponses.Err) msg).msg));
+						} else {
+							messaging.close();
+							stage.setError(new RemoteFsException("Invalid message received: " + msg));
+						}
+					}
 
-										@Override
-										public void onException(Exception e) {
-											messaging.close();
-										}
-									});
-									callback.setResult(forwarder.getOutput());
-								} else if (msg instanceof RemoteFsResponses.Err) {
-									messaging.close();
-									RemoteFsException exception = new RemoteFsException(((RemoteFsResponses.Err) msg).msg);
-									callback.setException(exception);
-								} else {
-									messaging.close();
-									RemoteFsException exception = new RemoteFsException("Invalid message received: " + msg);
-									callback.setException(exception);
-								}
-							}
-
-							@Override
-							public void onReceiveEndOfStream() {
-								logger.warn("received unexpected end of stream");
-								messaging.close();
-								RemoteFsException exception = new RemoteFsException("Unexpected end of stream for: " + fileName);
-								callback.setException(exception);
-							}
-
-							@Override
-							public void onException(Exception e) {
-								messaging.close();
-								callback.setException(new RemoteFsException(e));
-							}
-
-						});
+					@Override
+					public void onReceiveEndOfStream() {
+						logger.warn("received unexpected end of stream");
+						messaging.close();
+						stage.setError(new RemoteFsException("Unexpected end of stream while trying to list files"));
 					}
 
 					@Override
 					public void onException(Exception e) {
 						messaging.close();
-						callback.setException(new RemoteFsException(e));
+						stage.setError(e);
 					}
 				});
-			}
-
-			@Override
-			public void onException(Exception e) {
-				callback.setException(e);
+			} else {
+				messaging.close();
+				stage.setError(AsyncCallbacks.throwableToException(throwable));
 			}
 		});
+		return stage;
 	}
 
-	@Override
-	public void delete(String fileName, CompletionCallback callback) {
-		connect(address, new DeleteConnectCallback(fileName, callback));
-	}
-
-	@Override
-	public void list(final ResultCallback<List<String>> callback) {
-		connect(address, new ListConnectCallback(callback));
-	}
-
-	private abstract class MessagingConnectCallback extends ExceptionCallback {
-		final void setConnect(MessagingWithBinaryStreaming<RemoteFsResponses.FsResponse, RemoteFsCommands.FsCommand> messaging) {
-			CallbackRegistry.complete(this);
-			onConnect(messaging);
-		}
-
-		protected abstract void onConnect(MessagingWithBinaryStreaming<RemoteFsResponses.FsResponse, RemoteFsCommands.FsCommand> messaging);
-	}
-
-	private void connect(InetSocketAddress address, final MessagingConnectCallback callback) {
-		eventloop.connect(address, new ConnectCallback() {
-			@Override
-			public void onConnect(SocketChannel socketChannel) {
-				AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings);
-				AsyncTcpSocket asyncTcpSocket = sslContext != null ? wrapClientSocket(eventloop, asyncTcpSocketImpl, sslContext, sslExecutor) : asyncTcpSocketImpl;
-				MessagingWithBinaryStreaming<RemoteFsResponses.FsResponse, RemoteFsCommands.FsCommand> messaging = MessagingWithBinaryStreaming.create(eventloop, asyncTcpSocket, serializer);
-				asyncTcpSocket.setEventHandler(messaging);
-				asyncTcpSocketImpl.register();
-				callback.setConnect(messaging);
-			}
-
-			@Override
-			public void onException(Exception exception) {
-				callback.setException(exception);
-			}
+	private CompletionStage<MessagingWithBinaryStreaming<RemoteFsResponses.FsResponse, RemoteFsCommands.FsCommand>> connect(InetSocketAddress address) {
+		return eventloop.connect(address).thenApply(socketChannel -> {
+			AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings);
+			AsyncTcpSocket asyncTcpSocket = sslContext != null
+					? wrapClientSocket(eventloop, asyncTcpSocketImpl, sslContext, sslExecutor)
+					: asyncTcpSocketImpl;
+			MessagingWithBinaryStreaming<RemoteFsResponses.FsResponse, RemoteFsCommands.FsCommand> messaging =
+					MessagingWithBinaryStreaming.create(eventloop, asyncTcpSocket, serializer);
+			asyncTcpSocket.setEventHandler(messaging);
+			asyncTcpSocketImpl.register();
+			return messaging;
 		});
 	}
 
@@ -246,124 +276,6 @@ public final class RemoteFsClient implements IRemoteFsClient {
 
 	protected Gson getResponseGson() {
 		return RemoteFsResponses.responseGson;
-	}
-
-	private class DeleteConnectCallback extends MessagingConnectCallback {
-		private final String fileName;
-		private final CompletionCallback callback;
-
-		DeleteConnectCallback(String fileName, CompletionCallback callback) {
-			this.fileName = fileName;
-			this.callback = callback;
-		}
-
-		@Override
-		public void onConnect(final MessagingWithBinaryStreaming<RemoteFsResponses.FsResponse, RemoteFsCommands.FsCommand> messaging) {
-			messaging.send(new RemoteFsCommands.Delete(fileName), new CompletionCallback() {
-				@Override
-				public void onComplete() {
-					logger.trace("command to delete {} send", fileName);
-					messaging.receive(new ReceiveMessageCallback<RemoteFsResponses.FsResponse>() {
-						@Override
-						public void onReceive(RemoteFsResponses.FsResponse msg) {
-							logger.trace("received {}", msg);
-							if (msg instanceof RemoteFsResponses.Ok) {
-								messaging.close();
-								callback.setComplete();
-							} else if (msg instanceof RemoteFsResponses.Err) {
-								messaging.close();
-								callback.setException(new RemoteFsException(((RemoteFsResponses.Err) msg).msg));
-							} else {
-								messaging.close();
-								callback.setException(new RemoteFsException("Invalid message received: " + msg));
-							}
-						}
-
-						@Override
-						public void onReceiveEndOfStream() {
-							logger.warn("received unexpected end of stream");
-							messaging.close();
-							callback.setException(new RemoteFsException("Unexpected end of stream for: " + fileName));
-						}
-
-						@Override
-						public void onException(Exception e) {
-							messaging.close();
-							callback.setException(e);
-						}
-					});
-				}
-
-				@Override
-				public void onException(Exception e) {
-					messaging.close();
-					callback.setException(e);
-				}
-			});
-		}
-
-		@Override
-		public void onException(Exception e) {
-			callback.setException(e);
-		}
-	}
-
-	private class ListConnectCallback extends MessagingConnectCallback {
-		private final ResultCallback<List<String>> callback;
-
-		ListConnectCallback(ResultCallback<List<String>> callback) {
-			this.callback = callback;
-		}
-
-		@Override
-		public void onConnect(final MessagingWithBinaryStreaming<RemoteFsResponses.FsResponse, RemoteFsCommands.FsCommand> messaging) {
-			messaging.send(new RemoteFsCommands.ListFiles(), new CompletionCallback() {
-				@Override
-				public void onComplete() {
-					logger.trace("command to list files send");
-					messaging.receive(new ReceiveMessageCallback<RemoteFsResponses.FsResponse>() {
-						@Override
-						public void onReceive(RemoteFsResponses.FsResponse msg) {
-							logger.trace("received {}", msg);
-							if (msg instanceof RemoteFsResponses.ListOfFiles) {
-								messaging.close();
-								callback.setResult(((RemoteFsResponses.ListOfFiles) msg).files);
-							} else if (msg instanceof RemoteFsResponses.Err) {
-								messaging.close();
-								callback.setException(new RemoteFsException(((RemoteFsResponses.Err) msg).msg));
-							} else {
-								messaging.close();
-								callback.setException(new RemoteFsException("Invalid message received: " + msg));
-							}
-						}
-
-						@Override
-						public void onReceiveEndOfStream() {
-							logger.warn("received unexpected end of stream");
-							messaging.close();
-							callback.setException(new RemoteFsException("Unexpected end of stream while trying to list files"));
-						}
-
-						@Override
-						public void onException(Exception e) {
-							messaging.close();
-							callback.setException(e);
-						}
-					});
-				}
-
-				@Override
-				public void onException(Exception e) {
-					messaging.close();
-					callback.setException(e);
-				}
-			});
-		}
-
-		@Override
-		public void onException(Exception e) {
-			callback.setException(e);
-		}
 	}
 
 }

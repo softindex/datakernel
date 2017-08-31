@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SettableStage;
 import io.datakernel.eventloop.Eventloop;
 
 import java.net.InetSocketAddress;
@@ -30,13 +30,10 @@ public final class HelloWorldPostServer {
 	public static final String HELLO_WORLD = "Hello, World!";
 
 	public static AsyncHttpServer helloWorldServer(Eventloop primaryEventloop, int port) {
-		AsyncServlet servlet = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				String s = HELLO_WORLD + decodeAscii(request.getBody());
-				HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(s));
-				callback.setResult(content);
-			}
+		AsyncServlet servlet = request -> {
+			String s = HELLO_WORLD + decodeAscii(request.getBody());
+			HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(s));
+			return SettableStage.immediateStage(content);
 		};
 
 		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", port));

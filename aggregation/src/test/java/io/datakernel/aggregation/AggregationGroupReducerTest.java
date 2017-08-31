@@ -20,6 +20,7 @@ import com.google.common.base.Function;
 import com.google.common.collect.ImmutableMap;
 import io.datakernel.aggregation.fieldtype.FieldTypes;
 import io.datakernel.aggregation.ot.AggregationStructure;
+import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.DefiningClassLoader;
@@ -42,7 +43,6 @@ import static io.datakernel.async.SettableStage.immediateStage;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 @SuppressWarnings({"Duplicates", "unchecked", "ArraysAsListWithZeroOrOneArgument"})
 public class AggregationGroupReducerTest {
@@ -71,7 +71,7 @@ public class AggregationGroupReducerTest {
 			@Override
 			public <T> void write(StreamProducer<T> producer, AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long id, DefiningClassLoader classLoader, CompletionCallback callback) {
 				StreamConsumers.ToList consumer = StreamConsumers.toList(eventloop, items);
-				consumer.setCompletionCallback(callback);
+				consumer.getCompletionStage().whenComplete(AsyncCallbacks.forwardTo(callback));
 				listConsumers.add(consumer);
 				producer.streamTo(consumer);
 			}

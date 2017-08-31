@@ -16,7 +16,7 @@
 
 package io.datakernel.stream.net;
 
-import io.datakernel.async.CompletionCallback;
+import java.util.concurrent.CompletionStage;
 
 public interface Messaging<I, O> {
 	interface ReceiveMessageCallback<I> {
@@ -29,9 +29,9 @@ public interface Messaging<I, O> {
 
 	void receive(ReceiveMessageCallback<I> callback);
 
-	void send(O msg, CompletionCallback callback);
+	CompletionStage<Void> send(O msg);
 
-	void sendEndOfStream(CompletionCallback callback);
+	CompletionStage<Void> sendEndOfStream();
 
 	void close();
 }

@@ -71,6 +71,12 @@ public class Stages {
 		return resultStage;
 	}
 
+	public static void tryCancel(CompletionStage<?> stage) {
+		if (stage instanceof AsyncCancellable) {
+			((AsyncCancellable) stage).cancel();
+		}
+	}
+
 	public static CompletionStage<Void> sequence(Iterable<StageRunnable> stages) {
 		return sequence(stages.iterator());
 	}

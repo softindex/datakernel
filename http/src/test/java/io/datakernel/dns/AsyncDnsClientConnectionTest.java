@@ -16,7 +16,6 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.AsyncUdpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
@@ -28,6 +27,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.channels.DatagramChannel;
+import java.util.function.BiConsumer;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.Eventloop.createDatagramChannel;
@@ -50,77 +50,59 @@ public class AsyncDnsClientConnectionTest {
 		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 	}
 
-	private class DnsResolveCallback extends ResultCallback<DnsQueryResult> {
+	private class DnsResolveConsumer implements BiConsumer<DnsQueryResult, Throwable> {
+
 		@Override
-		protected void onResult(DnsQueryResult result) {
-			if (result.isSuccessful()) {
-				InetAddress[] ips = result.getIps();
+		public void accept(DnsQueryResult result, Throwable throwable) {
+			if (throwable == null) {
+				if (result.isSuccessful()) {
+					InetAddress[] ips = result.getIps();
 
-				System.out.print("Resolved IPs for " + result.getDomainName() + ": ");
+					System.out.print("Resolved IPs for " + result.getDomainName() + ": ");
 
-				for (int i = 0; i < ips.length; ++i) {
-					System.out.print(ips[i]);
-					if (i != ips.length - 1) {
-						System.out.print(", ");
+					for (int i = 0; i < ips.length; ++i) {
+						System.out.print(ips[i]);
+						if (i != ips.length - 1) {
+							System.out.print(", ");
+						}
 					}
+
+					System.out.println(".");
+				} else {
+					System.out.println("Resolving IPs for " + result.getDomainName() + " failed with error code: " + result.getErrorCode());
 				}
-
-				System.out.println(".");
+				++answersReceived;
+				if (answersReceived == 3) {
+					dnsClientConnection.close();
+				}
 			} else {
-				System.out.println("Resolving IPs for " + result.getDomainName() + " failed with error code: " + result.getErrorCode());
-			}
-			++answersReceived;
-			if (answersReceived == 3) {
-				dnsClientConnection.close();
+				throwable.printStackTrace();
+				fail();
 			}
 		}
-
-		@Override
-		protected void onException(Exception e) {
-			e.printStackTrace();
-			fail();
-		}
-
 	}
 
 	@Test
 	public void testResolve() throws Exception {
-		eventloop.postLater(new Runnable() {
-			@Override
-			public void run() {
-				try {
-					DatagramChannel datagramChannel = createDatagramChannel(DatagramSocketSettings.create(), null, null);
-					AsyncUdpSocketImpl udpSocket = AsyncUdpSocketImpl.create(eventloop, datagramChannel);
-					dnsClientConnection = DnsClientConnection.create(eventloop, udpSocket);
-					udpSocket.setEventHandler(dnsClientConnection);
-					udpSocket.register();
-				} catch (IOException e) {
-					e.printStackTrace();
-					fail();
-				}
+		eventloop.postLater(() -> {
+			try {
+				DatagramChannel datagramChannel = createDatagramChannel(DatagramSocketSettings.create(), null, null);
+				AsyncUdpSocketImpl udpSocket = AsyncUdpSocketImpl.create(eventloop, datagramChannel);
+				dnsClientConnection = DnsClientConnection.create(eventloop, udpSocket);
+				udpSocket.setEventHandler(dnsClientConnection);
+				udpSocket.register();
+			} catch (IOException e) {
+				e.printStackTrace();
+				fail();
 			}
 		});
 
-		eventloop.postLater(new Runnable() {
-			@Override
-			public void run() {
-				dnsClientConnection.resolve4("www.github.com", DNS_SERVER_ADDRESS, TIMEOUT, new DnsResolveCallback());
-			}
-		});
-
-		eventloop.postLater(new Runnable() {
-			@Override
-			public void run() {
-				dnsClientConnection.resolve4("www.kpi.ua", DNS_SERVER_ADDRESS, TIMEOUT, new DnsResolveCallback());
-			}
-		});
-
-		eventloop.postLater(new Runnable() {
-			@Override
-			public void run() {
-				dnsClientConnection.resolve4("www.google.com", DNS_SERVER_ADDRESS, TIMEOUT, new DnsResolveCallback());
-			}
-		});
+		eventloop.postLater(() -> dnsClientConnection.resolve4("www.github.com", DNS_SERVER_ADDRESS, TIMEOUT)
+				.whenComplete(new DnsResolveConsumer()));
+		eventloop.postLater(() -> dnsClientConnection.resolve4("www.kpi.ua", DNS_SERVER_ADDRESS, TIMEOUT)
+				.whenComplete(new DnsResolveConsumer()));
+		eventloop.postLater(() -> dnsClientConnection.resolve4("www.google.com", DNS_SERVER_ADDRESS, TIMEOUT)
+				.whenComplete(new DnsResolveConsumer()));
 
 		eventloop.run();
 

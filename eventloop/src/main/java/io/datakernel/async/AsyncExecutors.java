@@ -16,6 +16,8 @@
 
 package io.datakernel.async;
 
+import java.util.concurrent.CompletionStage;
+
 public final class AsyncExecutors {
 	private AsyncExecutors() {}
 
@@ -38,8 +40,8 @@ public final class AsyncExecutors {
 	public static AsyncExecutor immediateExecutor() {
 		return new AsyncExecutor() {
 			@Override
-			public void submit(AsyncRunnable asyncRunnable, CompletionCallback callback) {
-				asyncRunnable.run(callback);
+			public CompletionStage<Void> submit(AsyncRunnable asyncRunnable) {
+				return asyncRunnable.run();
 			}
 
 			@Override

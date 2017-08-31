@@ -85,23 +85,20 @@ public class ParallelAsyncExecutorTest {
 	}
 
 	private static void submitTestTask(AsyncExecutor executor, Eventloop eventloop, Map<Integer, ExecutionInfo> executionInfoMap, int n) {
-		executor.submit(getTestTask(eventloop, n, executionInfoMap), IgnoreCompletionCallback.create());
+		executor.submit(getTestTask(eventloop, n, executionInfoMap));
 	}
 
 	private static AsyncRunnable getTestTask(final Eventloop eventloop, final int n, final Map<Integer, ExecutionInfo> executionInfoMap) {
-		return new AsyncRunnable() {
-			@Override
-			public void run(final CompletionCallback callback) {
-				final long startTimestamp = eventloop.currentTimeMillis();
-				eventloop.schedule(eventloop.currentTimeMillis() + 10, new Runnable() {
-					@Override
-					public void run() {
-						long endTimestamp = eventloop.currentTimeMillis();
-						executionInfoMap.put(n, new ExecutionInfo(startTimestamp, endTimestamp));
-						callback.setComplete();
-					}
-				});
-			}
+		return () -> {
+			final SettableStage<Void> stage = SettableStage.create();
+			final long startTimestamp = eventloop.currentTimeMillis();
+			eventloop.schedule(eventloop.currentTimeMillis() + 10, () -> {
+				long endTimestamp = eventloop.currentTimeMillis();
+				executionInfoMap.put(n, new ExecutionInfo(startTimestamp, endTimestamp));
+				stage.setResult(null);
+			});
+
+			return stage;
 		};
 	}
 }

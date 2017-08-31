@@ -16,9 +16,6 @@
 
 package io.datakernel.file;
 
-import io.datakernel.async.AssertingCompletionCallback;
-import io.datakernel.async.AssertingResultCallback;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import org.junit.Rule;
 import org.junit.Test;
@@ -34,6 +31,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.Executors;
 
+import static io.datakernel.async.AsyncCallbacks.assertBiConsumer;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.nio.file.StandardOpenOption.READ;
@@ -51,37 +49,26 @@ public class AsyncFileTest {
 		final File tempFile = temporaryFolder.newFile("hello-2.html");
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		final Path srcPath = Paths.get("test_data/hello.html");
-		AsyncFile.open(eventloop, Executors.newCachedThreadPool(), srcPath, new OpenOption[]{READ}, new AssertingResultCallback<AsyncFile>() {
-			@Override
-			protected void onResult(AsyncFile result) {
-				logger.info("Opened file.");
-				result.readFully(new AssertingResultCallback<ByteBuf>() {
-					@Override
-					protected void onResult(final ByteBuf result) {
-						final Path destPath = Paths.get(tempFile.getAbsolutePath());
-						AsyncFile.open(eventloop, Executors.newCachedThreadPool(), destPath, new OpenOption[]{WRITE}, new AssertingResultCallback<AsyncFile>() {
-							@Override
-							protected void onResult(AsyncFile file) {
-								logger.info("Finished reading file.");
+		AsyncFile.openAsync(eventloop, Executors.newCachedThreadPool(), srcPath, new OpenOption[]{READ}).whenComplete(assertBiConsumer(asyncFile -> {
+			logger.info("Opened file.");
+			asyncFile.readFully().whenComplete(assertBiConsumer(byteBuf -> {
+				final Path destPath = Paths.get(tempFile.getAbsolutePath());
 
-								file.writeFully(result, 0, new AssertingCompletionCallback() {
-									@Override
-									protected void onComplete() {
-										logger.info("Finished writing file");
-										try {
-											assertArrayEquals(Files.readAllBytes(srcPath), Files.readAllBytes(destPath));
-										} catch (IOException e) {
-											logger.info("Could not compare files {} and {}", srcPath, destPath);
-											throw new RuntimeException(e);
-										}
-									}
-								});
-							}
-						});
-					}
-				});
-			}
-		});
+				AsyncFile.openAsync(eventloop, Executors.newCachedThreadPool(), destPath, new OpenOption[]{WRITE}).whenComplete(assertBiConsumer(file -> {
+					logger.info("Finished reading file.");
+
+					file.writeFully(byteBuf, 0).whenComplete(assertBiConsumer($ -> {
+						logger.info("Finished writing file");
+						try {
+							assertArrayEquals(Files.readAllBytes(srcPath), Files.readAllBytes(destPath));
+						} catch (IOException e) {
+							logger.info("Could not compare files {} and {}", srcPath, destPath);
+							throw new RuntimeException(e);
+						}
+					}));
+				}));
+			}));
+		}));
 
 		eventloop.run();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());

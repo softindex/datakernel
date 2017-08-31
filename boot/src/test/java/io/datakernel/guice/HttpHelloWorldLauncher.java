@@ -20,18 +20,16 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
 import com.google.inject.Stage;
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SettableStage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
-import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
 
 import javax.inject.Singleton;
-
 import java.net.InetSocketAddress;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
@@ -58,12 +56,7 @@ public class HttpHelloWorldLauncher extends Launcher {
 		@Provides
 		@Singleton
 		AsyncServlet rootServlet() {
-			return new AsyncServlet() {
-				@Override
-				public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-					callback.setResult(HttpResponse.ok200().withBody(encodeAscii("Hello, World!")));
-				}
-			};
+			return request -> SettableStage.immediateStage(HttpResponse.ok200().withBody(encodeAscii("Hello, World!")));
 		}
 	}
 

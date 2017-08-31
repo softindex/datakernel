@@ -59,19 +59,14 @@ public final class AsyncIterators {
 	 * @param <T>   type of value
 	 */
 	public static <T> AsyncIterable<T> asyncIterableOfValue(final T value) {
-		return new AsyncIterable<T>() {
-			@Override
-			public AsyncIterator<T> asyncIterator() {
-				return asyncIteratorOfValue(value);
-			}
-		};
+		return () -> asyncIteratorOfValue(value);
 	}
 
 	/**
 	 * Returns the AsyncIterator which iterates result of calling method get() from callable
 	 *
 	 * @param callable callable for iterate
-	 * @param <T>    type of result
+	 * @param <T>      type of result
 	 */
 	public static <T> AsyncIterator<T> asyncIteratorOfCallable(final AsyncCallable<T> callable) {
 		return new AsyncIterator<T>() {
@@ -81,16 +76,9 @@ public final class AsyncIterators {
 			public void next(final IteratorCallback<T> callback) {
 				if (hasNext) {
 					hasNext = false;
-					callable.call(new ResultCallback<T>() {
-						@Override
-						protected void onResult(T result) {
-							callback.setNext(result);
-						}
-
-						@Override
-						protected void onException(Exception exception) {
-							callback.setException(exception);
-						}
+					callable.call().whenComplete((result, throwable) -> {
+						if (throwable != null) callback.setException(AsyncCallbacks.throwableToException(throwable));
+						else callback.setNext(result);
 					});
 				} else {
 					callback.setEnd();
@@ -103,15 +91,10 @@ public final class AsyncIterators {
 	 * Returns the AsyncIterable with iterator asyncIteratorOfCallable
 	 *
 	 * @param callable callable for iterate
-	 * @param <T>    type of result
+	 * @param <T>      type of result
 	 */
 	public static <T> AsyncIterable<T> asyncIterableOfCallable(final AsyncCallable<T> callable) {
-		return new AsyncIterable<T>() {
-			@Override
-			public AsyncIterator<T> asyncIterator() {
-				return asyncIteratorOfCallable(callable);
-			}
-		};
+		return () -> asyncIteratorOfCallable(callable);
 	}
 
 	/**
@@ -121,14 +104,11 @@ public final class AsyncIterators {
 	 * @param <T>      type of elements in iterator
 	 */
 	public static <T> AsyncIterator<T> asyncIteratorOfIterator(final Iterator<T> iterator) {
-		return new AsyncIterator<T>() {
-			@Override
-			public void next(IteratorCallback<T> callback) {
-				if (iterator.hasNext())
-					callback.setNext(iterator.next());
-				else
-					callback.setEnd();
-			}
+		return callback -> {
+			if (iterator.hasNext())
+				callback.setNext(iterator.next());
+			else
+				callback.setEnd();
 		};
 	}
 
@@ -139,12 +119,7 @@ public final class AsyncIterators {
 	 * @param <T>      type of elements  in iterator
 	 */
 	public static <T> AsyncIterable<T> asyncIterableOfIterable(final Iterable<T> iterable) {
-		return new AsyncIterable<T>() {
-			@Override
-			public AsyncIterator<T> asyncIterator() {
-				return asyncIteratorOfIterator(iterable.iterator());
-			}
-		};
+		return () -> asyncIteratorOfIterator(iterable.iterator());
 	}
 
 	/**
@@ -169,40 +144,25 @@ public final class AsyncIterators {
 	 * @param <T>      type of elements  in iterator
 	 */
 	public static <T> AsyncIterable<T> asyncIterableOfIterator(final Iterator<T> iterator) {
-		return new AsyncIterable<T>() {
-			@Override
-			public AsyncIterator<T> asyncIterator() {
-				return asyncIteratorOfIterator(iterator);
-			}
-		};
+		return () -> asyncIteratorOfIterator(iterator);
 	}
 
 	/**
 	 * Creates the AsyncIterator from non-asynchronous  iterator of asyncCallables
 	 *
 	 * @param asyncCallables non-asynchronous  iterator of asyncCallables
-	 * @param <T>          type of result of callable
+	 * @param <T>            type of result of callable
 	 */
 	public static <T> AsyncIterator<T> asyncIteratorOfCallables(final Iterator<AsyncCallable<T>> asyncCallables) {
-		return new AsyncIterator<T>() {
-			@Override
-			public void next(final IteratorCallback<T> callback) {
-				if (asyncCallables.hasNext()) {
-					AsyncCallable<T> asyncCallable = asyncCallables.next();
-					asyncCallable.call(new ResultCallback<T>() {
-						@Override
-						protected void onResult(T result) {
-							callback.setNext(result);
-						}
-
-						@Override
-						protected void onException(Exception exception) {
-							callback.setException(exception);
-						}
-					});
-				} else {
-					callback.setEnd();
-				}
+		return callback -> {
+			if (asyncCallables.hasNext()) {
+				AsyncCallable<T> asyncCallable = asyncCallables.next();
+				asyncCallable.call().whenComplete((t, throwable) -> {
+					if (throwable != null) callback.setException(AsyncCallbacks.throwableToException(throwable));
+					else callback.setNext(t);
+				});
+			} else {
+				callback.setEnd();
 			}
 		};
 	}
@@ -211,7 +171,7 @@ public final class AsyncIterators {
 	 * Creates the AsyncIterable from non-asynchronous  iterable of asyncCallables
 	 *
 	 * @param callables non-asynchronous  iterable of asyncCallables
-	 * @param <T>     type of result of callable
+	 * @param <T>       type of result of callable
 	 */
 	public static <T> AsyncIterable<T> asyncIterableOfCallables(final Iterable<AsyncCallable<T>> callables) {
 		return new AsyncIterable<T>() {
@@ -278,28 +238,23 @@ public final class AsyncIterators {
 	 * @param <T>           type for output function
 	 */
 	public static <F, T> AsyncIterator<T> transform(final AsyncIterator<F> asyncIterator, final Function<F, T> function) {
-		return new AsyncIterator<T>() {
+		return callback -> asyncIterator.next(new IteratorCallback<F>() {
 			@Override
-			public void next(final IteratorCallback<T> callback) {
-				asyncIterator.next(new IteratorCallback<F>() {
-					@Override
-					protected void onNext(F from) {
-						T to = function.apply(from);
-						callback.setNext(to);
-					}
-
-					@Override
-					protected void onEnd() {
-						callback.setEnd();
-					}
-
-					@Override
-					protected void onException(Exception e) {
-						callback.setException(e);
-					}
-				});
+			protected void onNext(F from) {
+				T to = function.apply(from);
+				callback.setNext(to);
 			}
-		};
+
+			@Override
+			protected void onEnd() {
+				callback.setEnd();
+			}
+
+			@Override
+			protected void onException(Exception e) {
+				callback.setException(e);
+			}
+		});
 	}
 
 	/**
@@ -330,58 +285,43 @@ public final class AsyncIterators {
 	 * @param <T>           type for output function
 	 */
 	public static <F, T> AsyncIterator<T> transform(final AsyncIterator<F> asyncIterator, final AsyncFunction<F, T> asyncFunction) {
-		return new AsyncIterator<T>() {
+		return callback -> asyncIterator.next(new IteratorCallback<F>() {
 			@Override
-			public void next(final IteratorCallback<T> callback) {
-				asyncIterator.next(new IteratorCallback<F>() {
-					@Override
-					protected void onNext(F from) {
-						asyncFunction.apply(from, new ResultCallback<T>() {
-							@Override
-							protected void onResult(T to) {
-								callback.setNext(to);
-							}
-
-							@Override
-							protected void onException(Exception exception) {
-								callback.setException(exception);
-							}
-						});
-					}
-
-					@Override
-					protected void onEnd() {
-						callback.setEnd();
-					}
-
-					@Override
-					protected void onException(Exception e) {
-						callback.setException(e);
+			protected void onNext(F from) {
+				asyncFunction.apply(from).whenComplete((t, throwable) -> {
+					if (throwable == null) {
+						callback.setNext(t);
+					} else {
+						callback.setException(AsyncCallbacks.throwableToException(throwable));
 					}
 				});
 			}
-		};
+
+			@Override
+			protected void onEnd() {
+				callback.setEnd();
+			}
+
+			@Override
+			protected void onException(Exception e) {
+				callback.setException(e);
+			}
+		});
 	}
 
 	public static <F, T> AsyncIterator<T> transform(final Iterator<F> iterator, final AsyncFunction<F, T> asyncFunction) {
-		return new AsyncIterator<T>() {
-			@Override
-			public void next(final IteratorCallback<T> callback) {
-				if (iterator.hasNext()) {
-					F from = iterator.next();
-					asyncFunction.apply(from, new ResultCallback<T>() {
-						@Override
-						protected void onResult(T to) {
-							callback.setNext(to);
-						}
-
-						@Override
-						protected void onException(Exception exception) {
-							callback.setException(exception);
-						}
-					});
-				} else
-					callback.setEnd();
+		return callback -> {
+			if (iterator.hasNext()) {
+				F from = iterator.next();
+				asyncFunction.apply(from).whenComplete((t, throwable) -> {
+					if (throwable == null) {
+						callback.setNext(t);
+					} else {
+						callback.setException(AsyncCallbacks.throwableToException(throwable));
+					}
+				});
+			} else {
+				callback.setEnd();
 			}
 		};
 	}

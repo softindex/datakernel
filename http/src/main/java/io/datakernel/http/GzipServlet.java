@@ -16,9 +16,9 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ForwardingResultCallback;
-import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
+
+import java.util.concurrent.CompletionStage;
 
 @SuppressWarnings({"unused", "WeakerAccess"})
 public final class GzipServlet implements AsyncServlet {
@@ -41,19 +41,12 @@ public final class GzipServlet implements AsyncServlet {
 	}
 
 	@Override
-	public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-		boolean remoteExpectsGzip = test(request);
-		if (remoteExpectsGzip) {
-			final ResultCallback<HttpResponse> resultingCallback = callback;
-			callback = new ForwardingResultCallback<HttpResponse>(callback) {
-				@Override
-				protected void onResult(HttpResponse response) {
-					response = test(response, minBodySizeThreshold) ? response.withBodyGzipCompression() : response;
-					resultingCallback.setResult(response);
-				}
-			};
-		}
-		asyncServlet.serve(request, callback);
+	public CompletionStage<HttpResponse> serve(HttpRequest request) {
+		final CompletionStage<HttpResponse> serve = asyncServlet.serve(request);
+		if (!test(request)) return serve;
+
+		return serve.thenApply(response ->
+				test(response, minBodySizeThreshold) ? response.withBodyGzipCompression() : response);
 	}
 
 	private static boolean test(HttpRequest request) {

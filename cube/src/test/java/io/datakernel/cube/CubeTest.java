@@ -20,13 +20,12 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import io.datakernel.aggregation.*;
 import io.datakernel.aggregation.fieldtype.FieldTypes;
-import io.datakernel.async.*;
+import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.bean.*;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.RemoteFsServer;
-import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
@@ -46,7 +45,6 @@ import java.util.concurrent.ExecutorService;
 import static io.datakernel.aggregation.AggregationPredicates.*;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.sum;
-import static io.datakernel.async.AsyncCallbacks.forwardTo;
 import static io.datakernel.async.AsyncRunnables.runInParallel;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -134,7 +132,7 @@ public class CubeTest {
 	}
 
 	private void stop(RemoteFsServer server) {
-		server.close(IgnoreCompletionCallback.create());
+		server.close();
 	}
 
 	@Test
@@ -149,31 +147,22 @@ public class CubeTest {
 		final Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
 		runInParallel(eventloop,
-				new AsyncRunnable() {
-					@Override
-					public void run(CompletionCallback callback) {
-						StreamProducer<DataItem1> producer = StreamProducers.ofIterable(eventloop, asList(
-								new DataItem1(1, 2, 10, 20),
-								new DataItem1(1, 3, 10, 20)));
-						cube.consume(producer, DataItem1.class).thenAccept(cube::apply).whenComplete(forwardTo(callback));
-					}
+				() -> {
+					StreamProducer<DataItem1> producer = StreamProducers.ofIterable(eventloop, asList(
+							new DataItem1(1, 2, 10, 20),
+							new DataItem1(1, 3, 10, 20)));
+					return cube.consume(producer, DataItem1.class).thenAccept(cube::apply);
 				},
-				new AsyncRunnable() {
-					@Override
-					public void run(CompletionCallback callback) {
-						StreamProducer<DataItem2> producer = StreamProducers.ofIterable(eventloop, asList(
-								new DataItem2(1, 3, 10, 20),
-								new DataItem2(1, 4, 10, 20)));
-						cube.consume(producer, DataItem2.class).thenAccept(cube::apply).whenComplete(forwardTo(callback));
-					}
+				() -> {
+					StreamProducer<DataItem2> producer = StreamProducers.ofIterable(eventloop, asList(
+							new DataItem2(1, 3, 10, 20),
+							new DataItem2(1, 4, 10, 20)));
+					return cube.consume(producer, DataItem2.class).thenAccept(cube::apply);
 				}
-		).run(new AssertingCompletionCallback() {
-			@Override
-			protected void onComplete() {
-				logger.info("Streaming to RemoteFS succeeded.");
-				stop(remoteFsServer1);
-			}
-		});
+		).run().whenComplete(AsyncCallbacks.assertBiConsumer(aVoid -> {
+			logger.info("Streaming to RemoteFS succeeded.");
+			stop(remoteFsServer1);
+		}));
 
 		eventloop.run();
 
@@ -183,13 +172,10 @@ public class CubeTest {
 				and(eq("key1", 1), eq("key2", 3)),
 				DataItemResult.class, DefiningClassLoader.create(classLoader)
 		).streamTo(consumerToList);
-		consumerToList.setCompletionCallback(new AssertingCompletionCallback() {
-			@Override
-			public void onComplete() {
-				logger.info("Streaming query {} result from RemoteFS succeeded.");
-				stop(remoteFsServer2);
-			}
-		});
+		consumerToList.getCompletionStage().whenComplete(AsyncCallbacks.assertBiConsumer($ -> {
+			logger.info("Streaming query {} result from RemoteFS succeeded.");
+			stop(remoteFsServer2);
+		}));
 		eventloop.run();
 
 		List<DataItemResult> actual = consumerToList.getList();

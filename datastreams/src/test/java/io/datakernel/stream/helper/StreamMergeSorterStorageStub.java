@@ -16,7 +16,7 @@
 
 package io.datakernel.stream.helper;
 
-import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.SettableStage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
@@ -38,21 +38,20 @@ public class StreamMergeSorterStorageStub<T> implements StreamMergeSorterStorage
 	}
 
 	@Override
-	public int write(StreamProducer<T> producer, CompletionCallback completionCallback) {
+	public PartitionStage write(StreamProducer<T> producer) {
 		List<T> list = new ArrayList<>();
 		int newPartition = partition++;
 		storage.put(newPartition, list);
 		StreamConsumers.ToList<T> consumer = StreamConsumers.toList(eventloop, list);
 		producer.streamTo(consumer);
-		consumer.setCompletionCallback(completionCallback);
-		return newPartition;
+		return new PartitionStage(newPartition, consumer.getCompletionStage());
 	}
 
 	@Override
-	public StreamProducer<T> read(int partition, CompletionCallback callback) {
+	public ProducerStage<T> read(int partition) {
 		List<T> iterable = storage.get(partition);
-		callback.setComplete();
-		return StreamProducers.ofIterable(eventloop, iterable);
+		final StreamProducer<T> producer = StreamProducers.ofIterable(eventloop, iterable);
+		return new ProducerStage<>(producer, SettableStage.immediateStage(null));
 	}
 
 	@Override

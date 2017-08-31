@@ -16,11 +16,12 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SettableStage;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.CompletionStage;
 
 public class MiddlewareServlet implements AsyncServlet {
 	private enum ProcessResult {
@@ -101,16 +102,29 @@ public class MiddlewareServlet implements AsyncServlet {
 	}
 
 	@Override
-	public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-		ProcessResult processed = tryServeAsync(request, callback);
-		if (processed == ProcessResult.NOT_FOUND) {
-			callback.setException(HttpException.notFound404());
-		} else if (processed == ProcessResult.NOT_ALLOWED) {
-			callback.setException(HttpException.notAllowed405());
+	public CompletionStage<HttpResponse> serve(HttpRequest request) {
+		ProcessResultStage resultStage = tryServeAsync(request);
+		if (resultStage.processResult == ProcessResult.NOT_FOUND) {
+			return SettableStage.immediateFailedStage(HttpException.notFound404());
+		} else if (resultStage.processResult == ProcessResult.NOT_ALLOWED) {
+			return SettableStage.immediateFailedStage(HttpException.notAllowed405());
+		} else {
+			return resultStage.stage;
 		}
 	}
 
-	protected ProcessResult tryServeAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+	// TODO: refactor
+	private static class ProcessResultStage {
+		public final CompletionStage<HttpResponse> stage;
+		public final ProcessResult processResult;
+
+		private ProcessResultStage(CompletionStage<HttpResponse> stage, ProcessResult processResult) {
+			this.stage = stage;
+			this.processResult = processResult;
+		}
+	}
+
+	protected ProcessResultStage tryServeAsync(HttpRequest request) {
 		int introPosition = request.getPos();
 		String urlPart = request.pollUrlPart();
 		HttpMethod method = request.getMethod();
@@ -118,26 +132,26 @@ public class MiddlewareServlet implements AsyncServlet {
 		if (urlPart.isEmpty()) {
 			AsyncServlet servlet = getRootServletOrWildcard(method);
 			if (servlet != null) {
-				servlet.serve(request, callback);
-				return ProcessResult.PROCESSED;
+				return new ProcessResultStage(servlet.serve(request), ProcessResult.PROCESSED);
 			} else if (fallbackServlet == null) {
 				if (!rootServlets.isEmpty()) {
-					return ProcessResult.NOT_ALLOWED;
+					return new ProcessResultStage(null, ProcessResult.NOT_ALLOWED);
 				}
 			}
 		}
 
-		ProcessResult processed = ProcessResult.NOT_FOUND;
+		final SettableStage<HttpResponse> stage = SettableStage.create();
+		ProcessResultStage processed = new ProcessResultStage(stage, ProcessResult.NOT_FOUND);
 
 		MiddlewareServlet transit = routes.get(urlPart);
 		if (transit != null) {
-			processed = transit.tryServeAsync(request, callback);
+			processed = transit.tryServeAsync(request);
 		} else {
 			int position = request.getPos();
 			for (Entry<String, MiddlewareServlet> entry : parameters.entrySet()) {
 				request.putUrlParameter(entry.getKey(), urlPart);
-				processed = entry.getValue().tryServeAsync(request, callback);
-				if (processed == ProcessResult.PROCESSED) {
+				processed = entry.getValue().tryServeAsync(request);
+				if (processed.processResult == ProcessResult.PROCESSED) {
 					return processed;
 				} else {
 					request.removeUrlParameter(entry.getKey());
@@ -146,10 +160,9 @@ public class MiddlewareServlet implements AsyncServlet {
 			}
 		}
 
-		if (!(processed == ProcessResult.PROCESSED) && fallbackServlet != null) {
+		if (!(processed.processResult == ProcessResult.PROCESSED) && fallbackServlet != null) {
 			request.setPos(introPosition);
-			fallbackServlet.serve(request, callback);
-			processed = ProcessResult.PROCESSED;
+			processed = new ProcessResultStage(fallbackServlet.serve(request), ProcessResult.PROCESSED);
 		}
 		return processed;
 	}

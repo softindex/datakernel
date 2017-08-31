@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.client;
 
-import io.datakernel.async.*;
+import io.datakernel.async.SettableStage;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
@@ -44,8 +44,8 @@ import org.slf4j.Logger;
 
 import javax.net.ssl.SSLContext;
 import java.net.InetSocketAddress;
-import java.nio.channels.SocketChannel;
 import java.util.*;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
@@ -66,7 +66,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  * <ul>
  * <li>Create request-response classes for the client</li>
  * <li>Create a request handler for specified types</li>
-	 * <li>Create {@code RpcClient} and adjust it</li>
+ * <li>Create {@code RpcClient} and adjust it</li>
  * </ul>
  * <pre><code>
  * //create a Request and Response classes
@@ -75,12 +75,12 @@ import static org.slf4j.LoggerFactory.getLogger;
  *
  * 	public RequestClass(@Deserialize("info") String info) {
  * 		this.info = info;
- *   	}
+ *    }
  *
- *   	{@literal @}Serialize(order = 0)
+ *    {@literal @}Serialize(order = 0)
  * 	public String getInfo() {
  * 		return info;
- *    	}
+ *        }
  * }
  *
  * public class ResponseClass {
@@ -88,14 +88,14 @@ import static org.slf4j.LoggerFactory.getLogger;
  *
  * 	public ResponseClass(@Deserialize("count") int count) {
  * 		this.count = count;
- * 	}
+ *    }
  *
- * 	{@literal @}Serialize(order = 0)
+ *    {@literal @}Serialize(order = 0)
  * 	public int getCount() {
  * 		return count;
- * 	}
+ *    }
  * }</code></pre>
- *
+ * <p>
  * The last step is to create an {@code RpcClient} itself:
  * <pre><code>
  * //create eventloop
@@ -108,27 +108,27 @@ import static org.slf4j.LoggerFactory.getLogger;
  * </code></pre>
  * Finally, make the client to send a request after start:
  * <code><pre>client.start(new CompletionCallback() {
- *	{@literal @}Override
- *	public void onComplete() {
- *		client.sendRequest(new RequestClass(info), 1000,
- *			new ResultCallback&lt;ResponseClass&gt;() {
- *			{@literal @}Override
- *			public void onResult(ResponseClass result) {
- *				System.out.println("Request info length: " + result.getCount());
- *			}
- *
- *			{@literal @}Override
- *			public void onException(Exception exception) {
- *				System.err.println("Got exception: " + exception);
- *			}
- *		});
- *	}
- *
- *	{@literal @}Override
- *	public void onException(Exception exception) {
- *		System.err.println("Could not start client: " + exception);
- *	}
- *});
+ *    {@literal @}Override
+ * 	public void onComplete() {
+ * 		client.sendRequest(new RequestClass(info), 1000,
+ * 			new ResultCallback&lt;ResponseClass&gt;() {
+ *            {@literal @}Override
+ * 			public void onResult(ResponseClass result) {
+ * 				System.out.println("Request info length: " + result.getCount());
+ *            }
+ * <p>
+ *            {@literal @}Override
+ * 			public void onException(Exception exception) {
+ * 				System.err.println("Got exception: " + exception);
+ *            }
+ *        });
+ *    }
+ * <p>
+ *    {@literal @}Override
+ * 	public void onException(Exception exception) {
+ * 		System.err.println("Could not start client: " + exception);
+ *    }
+ * });
  * </pre></code>
  *
  * @see RpcStrategies
@@ -169,16 +169,11 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 
 	private RpcSender requestSender;
 
-	private CompletionCallback startCallback;
-	private CompletionCallback stopCallback;
+	private SettableStage<Void> startStage;
+	private SettableStage<Void> stopStage;
 	private boolean running;
 
-	private final RpcClientConnectionPool pool = new RpcClientConnectionPool() {
-		@Override
-		public RpcClientConnection get(InetSocketAddress address) {
-			return connections.get(address);
-		}
-	};
+	private final RpcClientConnectionPool pool = address -> connections.get(address);
 
 	// jmx
 	static final double SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_1_MINUTE;
@@ -208,8 +203,8 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 	/**
 	 * Creates a client that uses provided socket settings.
 	 *
-	 * @param socketSettings	settings for socket
-	 * @return					the RPC client with specified socket settings
+	 * @param socketSettings settings for socket
+	 * @return the RPC client with specified socket settings
 	 */
 	public RpcClient withSocketSettings(SocketSettings socketSettings) {
 		this.socketSettings = socketSettings;
@@ -230,9 +225,9 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 	/**
 	 * Creates a client with capability of specified message types processing.
 	 *
-	 * @param messageTypes	classes of messages processed by a server
-	 * @return				client instance capable for handling provided
-	 * 						message types
+	 * @param messageTypes classes of messages processed by a server
+	 * @return client instance capable for handling provided
+	 * message types
 	 */
 	public RpcClient withMessageTypes(List<Class<?>> messageTypes) {
 		checkArgument(new HashSet<>(messageTypes).size() == messageTypes.size(), "Message types must be unique");
@@ -244,8 +239,8 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 	 * Creates a client with serializer builder. A serializer builder is used
 	 * for creating fast serializers at runtime.
 	 *
-	 * @param	serializerBuilder serializer builder, used at runtime
-	 * @return	the RPC client with provided serializer builder
+	 * @param serializerBuilder serializer builder, used at runtime
+	 * @return the RPC client with provided serializer builder
 	 */
 	public RpcClient withSerializerBuilder(SerializerBuilder serializerBuilder) {
 		this.serializerBuilder = serializerBuilder;
@@ -256,8 +251,8 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 	 * Creates a client with some strategy. Consider some ready-to-use
 	 * strategies from {@link RpcStrategies}.
 	 *
-	 * @param	requestSendingStrategy strategy of sending requests
-	 * @return	the RPC client, which sends requests according to given strategy
+	 * @param requestSendingStrategy strategy of sending requests
+	 * @return the RPC client, which sends requests according to given strategy
 	 */
 	public RpcClient withStrategy(RpcStrategy requestSendingStrategy) {
 		this.strategy = requestSendingStrategy;
@@ -292,8 +287,8 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 	/**
 	 * Waits for a specified time before connecting.
 	 *
-	 * @param	connectTimeoutMillis time before connecting
-	 * @return	the RPC client with connect timeout settings
+	 * @param connectTimeoutMillis time before connecting
+	 * @return the RPC client with connect timeout settings
 	 */
 	public RpcClient withConnectTimeout(long connectTimeoutMillis) {
 		this.connectTimeoutMillis = connectTimeoutMillis;
@@ -319,8 +314,8 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 	/**
 	 * Starts client in case of absence of connections
 	 *
-	 * @return	the RPC client, which starts regardless of connection
-	 * 			availability
+	 * @return the RPC client, which starts regardless of connection
+	 * availability
 	 */
 	public RpcClient withForceStart() {
 		this.forceStart = true;
@@ -338,32 +333,30 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 	}
 
 	@Override
-	public void start(CompletionCallback callback) {
+	public CompletionStage<Void> start() {
 		checkState(eventloop.inEventloopThread());
-		checkNotNull(callback);
 		checkState(messageTypes != null, "Message types must be specified");
 		checkState(!running);
+
+		final SettableStage<Void> stage = SettableStage.create();
 		running = true;
-		startCallback = callback;
+		startStage = stage;
 		serializer = serializerBuilder.withSubclasses(RpcMessage.MESSAGE_TYPES, messageTypes).build(RpcMessage.class);
 
 		if (forceStart) {
-			startCallback.postComplete(eventloop);
+			startStage.postResult(eventloop, null);
 			RpcSender sender = strategy.createSender(pool);
 			requestSender = sender != null ? sender : new Sender();
-			startCallback = null;
+			startStage = null;
 		} else {
 			if (connectTimeoutMillis != 0) {
-				eventloop.scheduleBackground(eventloop.currentTimeMillis() + connectTimeoutMillis, new Runnable() {
-					@Override
-					public void run() {
-						if (running && startCallback != null) {
-							String errorMsg = String.format("Some of the required servers did not respond within %.1f sec",
-									connectTimeoutMillis / 1000.0);
-							startCallback.postException(eventloop, new InterruptedException(errorMsg));
-							running = false;
-							startCallback = null;
-						}
+				eventloop.scheduleBackground(eventloop.currentTimeMillis() + connectTimeoutMillis, () -> {
+					if (running && this.startStage != null) {
+						String errorMsg = String.format("Some of the required servers did not respond within %.1f sec",
+								connectTimeoutMillis / 1000.0);
+						this.startStage.postError(eventloop, new InterruptedException(errorMsg));
+						running = false;
+						this.startStage = null;
 					}
 				});
 			}
@@ -372,55 +365,41 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		for (InetSocketAddress address : addresses) {
 			connect(address);
 		}
+
+		return stage;
 	}
 
 	public Future<Void> startFuture() {
-		final CompletionCallbackFuture future = CompletionCallbackFuture.create();
-		eventloop.execute(new Runnable() {
-			@Override
-			public void run() {
-				start(future);
-			}
-		});
-		return future;
+		return eventloop.submit(this::start);
 	}
 
 	@Override
-	public void stop(final CompletionCallback callback) {
-		checkNotNull(callback);
+	public CompletionStage<Void> stop() {
 		checkState(eventloop.inEventloopThread());
 		checkState(running);
 
+		final SettableStage<Void> stage = SettableStage.create();
+
 		running = false;
-		if (startCallback != null) {
-			startCallback.postException(eventloop, new InterruptedException("Start aborted"));
-			startCallback = null;
+		if (startStage != null) {
+			startStage.postError(eventloop, new InterruptedException("Start aborted"));
+			startStage = null;
 		}
 
 		if (connections.size() == 0) {
-			eventloop.post(new Runnable() {
-				@Override
-				public void run() {
-					callback.setComplete();
-				}
-			});
+			stage.postResult(eventloop, null);
 		} else {
-			stopCallback = callback;
+			stopStage = stage;
 			for (RpcClientConnection connection : new ArrayList<>(connections.values())) {
 				connection.close();
 			}
 		}
+
+		return stage;
 	}
 
 	public Future<Void> stopFuture() {
-		final CompletionCallbackFuture future = CompletionCallbackFuture.create();
-		eventloop.execute(new Runnable() {
-			@Override
-			public void run() {
-				stop(future);
-			}
-		});
-		return future;
+		return eventloop.submit(this::stop);
 	}
 
 	private void connect(final InetSocketAddress address) {
@@ -430,9 +409,8 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 
 		logger.info("Connecting {}", address);
 
-		eventloop.connect(address, 0, new ConnectCallback() {
-			@Override
-			public void onConnect(SocketChannel socketChannel) {
+		eventloop.connect(address, 0).whenComplete((socketChannel, throwable) -> {
+			if (throwable == null) {
 				AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings)
 						.withInspector(statsSocket);
 				AsyncTcpSocket asyncTcpSocket = sslContext != null ? wrapClientSocket(eventloop, asyncTcpSocketImpl, sslContext, sslExecutor) : asyncTcpSocketImpl;
@@ -450,28 +428,22 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 				connectsStatsPerAddress.get(address).successfulConnects++;
 
 				logger.info("Connection to {} established", address);
-				if (startCallback != null) {
-					startCallback.postComplete(eventloop);
-					startCallback = null;
+				if (startStage != null) {
+					startStage.postResult(eventloop, null);
+					startStage = null;
 				}
-			}
-
-			@Override
-			public void onException(Exception e) {
+			} else {
 				//jmx
 				generalConnectsStats.failedConnects++;
 				connectsStatsPerAddress.get(address).failedConnects++;
 
 				if (running) {
 					if (logger.isWarnEnabled()) {
-						logger.warn("Connection failed, reconnecting to {}: {}", address, e.toString());
+						logger.warn("Connection failed, reconnecting to {}: {}", address, throwable.toString());
 					}
-					eventloop.scheduleBackground(eventloop.currentTimeMillis() + reconnectIntervalMillis, new Runnable() {
-						@Override
-						public void run() {
-							if (running) {
-								connect(address);
-							}
+					eventloop.scheduleBackground(eventloop.currentTimeMillis() + reconnectIntervalMillis, () -> {
+						if (running) {
+							connect(address);
 						}
 					});
 				}
@@ -499,13 +471,10 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 
 		connections.remove(address);
 
-		if (stopCallback != null && connections.size() == 0) {
-			eventloop.post(new Runnable() {
-				@Override
-				public void run() {
-					stopCallback.setComplete();
-					stopCallback = null;
-				}
+		if (stopStage != null && connections.size() == 0) {
+			eventloop.post(() -> {
+				stopStage.setResult(null);
+				stopStage = null;
 			});
 		}
 
@@ -529,14 +498,13 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 	/**
 	 * Sends the request to server, waits the result timeout and handles result with callback
 	 *
-	 * @param request	request for server
-	 * @param callback	callback for handling result
-	 * @param  <I>		request class
-	 * @param  <O>		response class
+	 * @param <I>           request class
+	 * @param <O>           response class
+	 * @param request       request for server
 	 */
 	@Override
-	public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
-		requestSender.sendRequest(request, timeout, callback);
+	public <I, O> CompletionStage<O> sendRequest(I request, int timeout) {
+		return requestSender.sendRequest(request, timeout);
 	}
 
 	public IRpcClient adaptToAnotherEventloop(final Eventloop anotherEventloop) {
@@ -546,15 +514,17 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 
 		return new IRpcClient() {
 			@Override
-			public <I, O> void sendRequest(final I request, final int timeout, final ResultCallback<O> callback) {
-				RpcClient.this.eventloop.execute(new Runnable() {
-					@Override
-					public void run() {
-						RpcClient.this.sendRequest(
-								request, timeout, ConcurrentResultCallback.create(anotherEventloop, callback)
-						);
+			public <I, O> CompletionStage<O> sendRequest(final I request, final int timeout) {
+				final SettableStage<O> stage = SettableStage.create();
+				RpcClient.this.eventloop.execute(() -> RpcClient.this.sendRequest(request, timeout).whenComplete((o, throwable) -> {
+					if (throwable != null) {
+						anotherEventloop.execute(() -> stage.setError(throwable));
+					} else {
+						anotherEventloop.execute(() -> stage.setResult((O) o));
 					}
-				});
+				}));
+
+				return stage;
 			}
 		};
 	}
@@ -570,13 +540,10 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 				= new RpcNoSenderException("No senders available");
 
 		@Override
-		public <I, O> void sendRequest(I request, int timeout, final ResultCallback<O> callback) {
-			eventloop.post(new Runnable() {
-				@Override
-				public void run() {
-					callback.setException(NO_SENDER_AVAILABLE_EXCEPTION);
-				}
-			});
+		public <I, O> CompletionStage<O> sendRequest(I request, int timeout) {
+			final SettableStage<O> stage = SettableStage.create();
+			stage.postError(eventloop, NO_SENDER_AVAILABLE_EXCEPTION);
+			return stage;
 		}
 	}
 

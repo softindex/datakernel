@@ -1,11 +1,10 @@
 package io.datakernel.remotefs.stress;
 
-import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.file.AsyncFile;
 import io.datakernel.remotefs.RemoteFsClient;
 import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducer;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -49,25 +48,20 @@ public class StressDownload {
 
 		for (int i = 0; i < OPERATIONS_QUANTITY; i++) {
 			final String file = FILES.get(rand.nextInt(OPERATIONS_QUANTITY));
-			client.download(file, 0, new ResultCallback<StreamProducer<ByteBuf>>() {
-				@Override
-				public void onResult(StreamProducer<ByteBuf> producer) {
+			client.download(file, 0).whenComplete((producer, throwable) -> {
+				if (throwable == null) {
 					try {
-						StreamConsumer<ByteBuf> consumer = create(eventloop,
-								open(eventloop, executor,
-										CLIENT_STORAGE.resolve(file),
-										CREATE_OPTIONS));
+						final AsyncFile open = open(eventloop, executor, CLIENT_STORAGE.resolve(file), CREATE_OPTIONS);
+						StreamConsumer<ByteBuf> consumer = create(eventloop, open);
 						producer.streamTo(consumer);
 					} catch (IOException e) {
-						onException(e);
+						failures[0]++;
 					}
-				}
-
-				@Override
-				public void onException(Exception e) {
+				} else {
 					failures[0]++;
 				}
 			});
+
 			eventloop.run();
 		}
 

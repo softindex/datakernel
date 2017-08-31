@@ -16,7 +16,7 @@
 
 package io.datakernel.stream.net;
 
-import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.AsyncTcpSocket;
@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletionStage;
 
 import static com.google.common.base.Preconditions.checkState;
 
@@ -46,7 +47,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 	private ByteBuf readBuf;
 	private boolean readEndOfStream;
 	private ReceiveMessageCallback<I> receiveMessageCallback;
-	private List<CompletionCallback> writeCallbacks = new ArrayList<>();
+	private List<SettableStage<Void>> writeCallbacks = new ArrayList<>();
 	private boolean writeEndOfStreamRequest;
 	private SocketStreamProducer socketReader;
 	private SocketStreamConsumer socketWriter;
@@ -128,69 +129,72 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 	}
 
 	@Override
-	public void send(O msg, CompletionCallback callback) {
+	public CompletionStage<Void> send(O msg) {
 		checkState(socketWriter == null && !writeEndOfStreamRequest);
 
 		if (closedException != null) {
-			callback.setException(closedException);
-			return;
+			return SettableStage.immediateFailedStage(closedException);
 		}
 
-		writeCallbacks.add(callback);
+
+		final SettableStage<Void> stage = SettableStage.create();
+		writeCallbacks.add(stage);
 		ByteBuf buf = serializer.serialize(msg);
 		asyncTcpSocket.write(buf);
+
+		return stage;
 	}
 
 	@Override
-	public void sendEndOfStream(CompletionCallback callback) {
+	public CompletionStage<Void> sendEndOfStream() {
 		checkState(socketWriter == null && !writeEndOfStreamRequest);
 
 		if (closedException != null) {
-			callback.setException(closedException);
-			return;
+			return SettableStage.immediateFailedStage(closedException);
 		}
 
+		final SettableStage<Void> stage = SettableStage.create();
 		writeEndOfStreamRequest = true;
-		writeCallbacks.add(callback);
+		writeCallbacks.add(stage);
 		asyncTcpSocket.writeEndOfStream();
+
+		return stage;
 	}
 
-	public void sendBinaryStreamFrom(StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
+	public CompletionStage<Void> sendBinaryStreamFrom(StreamProducer<ByteBuf> producer) {
 		checkState(socketWriter == null && !writeEndOfStreamRequest);
 
 		writeCallbacks.clear();
 		if (closedException != null) {
-			callback.setException(closedException);
-			return;
+			return SettableStage.immediateFailedStage(closedException);
 		}
 
-		socketWriter = SocketStreamConsumer.create(eventloop, asyncTcpSocket, callback);
+
+		socketWriter = SocketStreamConsumer.create(eventloop, asyncTcpSocket);
 		producer.streamTo(socketWriter);
+		return socketWriter.getCompletionStage();
 	}
 
-	public void receiveBinaryStreamTo(StreamConsumer<ByteBuf> consumer, final CompletionCallback callback) {
+	public CompletionStage<Void> receiveBinaryStreamTo(StreamConsumer<ByteBuf> consumer) {
 		checkState(this.socketReader == null && this.receiveMessageCallback == null);
 
 		if (closedException != null) {
-			callback.setException(closedException);
-			return;
+			return SettableStage.immediateFailedStage(closedException);
 		}
 
-		socketReader = SocketStreamProducer.create(eventloop, asyncTcpSocket, callback);
+		socketReader = SocketStreamProducer.create(eventloop, asyncTcpSocket);
 		socketReader.streamTo(consumer);
 		if (readBuf != null || readEndOfStream) {
-			eventloop.post(new Runnable() {
-				@Override
-				public void run() {
-					if (readBuf != null) {
-						readUnconsumedBuf();
-					}
-					if (readEndOfStream) {
-						socketReader.onReadEndOfStream();
-					}
+			eventloop.post(() -> {
+				if (readBuf != null) {
+					readUnconsumedBuf();
+				}
+				if (readEndOfStream) {
+					socketReader.onReadEndOfStream();
 				}
 			});
 		}
+		return socketReader.getCompletionStage();
 	}
 
 	@Override
@@ -263,10 +267,10 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 	public void onWrite() {
 		logger.trace("onWrite", this);
 		if (socketWriter == null) {
-			List<CompletionCallback> callbacks = this.writeCallbacks;
+			List<SettableStage<Void>> callbacks = this.writeCallbacks;
 			writeCallbacks = new ArrayList<>();
-			for (CompletionCallback callback : callbacks) {
-				callback.setComplete();
+			for (SettableStage<Void> callback : callbacks) {
+				callback.setResult(null);
 			}
 			if (writeEndOfStreamRequest)
 				writeDone = true;
@@ -293,8 +297,8 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 		if (receiveMessageCallback != null) {
 			receiveMessageCallback.onException(e);
 		} else if (!writeCallbacks.isEmpty()) {
-			for (CompletionCallback writeCallback : writeCallbacks) {
-				writeCallback.setException(e);
+			for (SettableStage writeCallback : writeCallbacks) {
+				writeCallback.setError(e);
 			}
 		}
 

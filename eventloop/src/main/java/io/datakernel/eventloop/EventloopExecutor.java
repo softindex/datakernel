@@ -20,19 +20,19 @@ import io.datakernel.async.AsyncCallable;
 import io.datakernel.async.AsyncRunnable;
 
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Future;
 
 public interface EventloopExecutor extends Executor {
-	Future<?> submit(Runnable runnable);
+	CompletableFuture<Void> submit(Runnable runnable);
 
-	Future<?> submit(AsyncRunnable asyncRunnable);
+	CompletableFuture<Void> submit(AsyncRunnable asyncRunnable);
 
-	<T> Future<T> submit(Runnable runnable, T result);
+	<T> CompletableFuture<T> submit(Runnable runnable, T result);
 
-	<T> Future<T> submit(AsyncRunnable asyncRunnable, T result);
+	<T> CompletableFuture<T> submit(AsyncRunnable asyncRunnable, T result);
 
-	<T> Future<T> submit(Callable<T> callable);
+	<T> CompletableFuture<T> submit(Callable<T> callable);
 
-	<T> Future<T> submit(AsyncCallable<T> asyncCallable);
+	<T> CompletableFuture<T> submit(AsyncCallable<T> asyncCallable);
 }

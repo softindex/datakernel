@@ -20,14 +20,16 @@ import com.google.common.base.Charsets;
 import com.google.gson.TypeAdapter;
 import io.datakernel.aggregation.AggregationPredicate;
 import io.datakernel.aggregation.QueryException;
-import io.datakernel.async.ForwardingResultCallback;
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.AsyncCallbacks;
+import io.datakernel.async.SettableStage;
 import io.datakernel.cube.*;
 import io.datakernel.http.*;
 import io.datakernel.util.Stopwatch;
 import io.datakernel.utils.GsonAdapters.TypeAdapterRegistryImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.cube.http.Utils.*;
@@ -74,28 +76,27 @@ public final class ReportingServiceServlet implements AsyncServlet {
 	}
 
 	@Override
-	public void serve(final HttpRequest httpRequest, final ResultCallback<HttpResponse> callback) {
+	public CompletionStage<HttpResponse> serve(final HttpRequest httpRequest) {
 		logger.info("Received request: {}", httpRequest);
 		try {
 			final Stopwatch totalTimeStopwatch = Stopwatch.createStarted();
 			final CubeQuery cubeQuery = parseQuery(httpRequest);
-			cube.query(cubeQuery, new ForwardingResultCallback<QueryResult>(callback) {
-				@Override
-				protected void onResult(QueryResult result) {
-					Stopwatch resultProcessingStopwatch = Stopwatch.createStarted();
-					String json = getQueryResultJson().toJson(result);
-					HttpResponse httpResponse = createResponse(json);
-					logger.info("Processed request {} ({}) [totalTime={}, jsonConstruction={}]", httpRequest,
-							cubeQuery, totalTimeStopwatch, resultProcessingStopwatch);
-					callback.setResult(httpResponse);
-				}
+			final SettableStage<QueryResult> stage = SettableStage.create();
+			cube.query(cubeQuery, AsyncCallbacks.resultToStage(stage));
+			return stage.thenApply(result -> {
+				Stopwatch resultProcessingStopwatch = Stopwatch.createStarted();
+				String json = getQueryResultJson().toJson(result);
+				HttpResponse httpResponse = createResponse(json);
+				logger.info("Processed request {} ({}) [totalTime={}, jsonConstruction={}]", httpRequest,
+						cubeQuery, totalTimeStopwatch, resultProcessingStopwatch);
+				return httpResponse;
 			});
 		} catch (QueryException e) {
 			logger.error("Query exception: " + httpRequest, e);
-			callback.setResult(createErrorResponse(e.getMessage()));
+			return SettableStage.immediateStage(createErrorResponse(e.getMessage()));
 		} catch (Exception e) {
 			logger.error("Parse exception: " + httpRequest, e);
-			callback.setResult(createErrorResponse(e.getMessage()));
+			return SettableStage.immediateStage(createErrorResponse(e.getMessage()));
 		}
 	}
 

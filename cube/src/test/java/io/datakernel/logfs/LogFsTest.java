@@ -164,7 +164,7 @@ public class LogFsTest {
 				IgnoreResultCallback.<LogPosition>create()); // from 01:00
 		StreamConsumers.ToList<String> consumer = new StreamConsumers.ToList<>(eventloop);
 		producer.streamTo(consumer);
-		consumer.setCompletionCallback(createServerStopCallback(server));
+		consumer.getCompletionStage().whenComplete(AsyncCallbacks.forwardTo(createServerStopCallback(server)));
 		eventloop.run();
 
 		assertEquals(asList("7", "9", "11", "13", "15", "17"), consumer.getList());
@@ -174,7 +174,7 @@ public class LogFsTest {
 		return new AssertingCompletionCallback() {
 			@Override
 			protected void onComplete() {
-				server.close(IgnoreCompletionCallback.create());
+				server.close();
 			}
 		};
 	}

@@ -20,13 +20,13 @@ import com.google.common.base.Function;
 import com.google.common.base.Functions;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.Ordering;
-import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiConsumer;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
@@ -506,28 +506,23 @@ public class StreamReducerTest {
 
 		StreamReducer<Integer, Integer, Void> streamReducer = StreamReducer.<Integer, Integer, Void>create(eventloop, Ordering.<Integer>natural())
 				.withBufferSize(1);
-		CheckCallCallback checkCallCallback = new CheckCallCallback();
+		CheckBiConsumer checkBiConsumer = new CheckBiConsumer();
 		StreamConsumers.ToList<Integer> toList = StreamConsumers.toList(eventloop);
-		toList.setCompletionCallback(checkCallCallback);
+		toList.getCompletionStage().whenComplete(checkBiConsumer);
 
 		streamReducer.getOutput().streamTo(toList);
 		eventloop.run();
 
-		assertTrue(checkCallCallback.isCall());
+		assertTrue(checkBiConsumer.isCall());
 	}
 
-	class CheckCallCallback extends CompletionCallback {
+	class CheckBiConsumer implements BiConsumer<Void, Throwable> {
 		private int onComplete;
 		private int onException;
 
 		@Override
-		protected void onComplete() {
-			onComplete++;
-		}
-
-		@Override
-		protected void onException(Exception exception) {
-			onException++;
+		public void accept(Void aVoid, Throwable throwable) {
+			if (throwable == null) onComplete++; else onException++;
 		}
 
 		public int getOnComplete() {

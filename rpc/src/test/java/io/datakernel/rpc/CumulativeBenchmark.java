@@ -18,9 +18,8 @@ package io.datakernel.rpc;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.IgnoreCompletionCallback;
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.AsyncCallbacks;
+import io.datakernel.async.SettableStage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.protocol.RpcException;
@@ -32,7 +31,9 @@ import io.datakernel.util.Stopwatch;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executors;
+import java.util.function.BiConsumer;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
@@ -66,13 +67,13 @@ public final class CumulativeBenchmark {
 				private final ValueMessage currentSum = new ValueMessage(0);
 
 				@Override
-				public void run(ValueMessage request, ResultCallback<ValueMessage> callback) {
+				public CompletionStage<ValueMessage> run(ValueMessage request) {
 					if (request.value != 0) {
 						currentSum.value += request.value;
 					} else {
 						currentSum.value = 0;
 					}
-					callback.setResult(currentSum);
+					return SettableStage.immediateStage(currentSum);
 				}
 			})
 			.withListenAddress(new InetSocketAddress("localhost", SERVICE_PORT));
@@ -112,28 +113,11 @@ public final class CumulativeBenchmark {
 		printBenchmarkInfo();
 
 		server.listen();
-		Executors.defaultThreadFactory().newThread(new Runnable() {
-			@Override
-			public void run() {
-				serverEventloop.run();
-			}
-		}).start();
+		Executors.defaultThreadFactory().newThread(serverEventloop).start();
 
 		try {
-			final CompletionCallback finishCallback = new CompletionCallback() {
-				@Override
-				public void onException(Exception exception) {
-					System.err.println("Exception while benchmark: " + exception);
-					try {
-						client.stopFuture();
-						server.closeFuture();
-					} catch (Exception e) {
-						throw new RuntimeException(e);
-					}
-				}
-
-				@Override
-				public void onComplete() {
+			client.start().whenComplete((aVoid, throwable) -> {
+				if (throwable == null) {
 					System.out.println("----------------------------------------");
 					System.out.printf("Average time elapsed per round: %.1f ms\n", totalElapsed / (double) totalRounds);
 					try {
@@ -142,33 +126,21 @@ public final class CumulativeBenchmark {
 					} catch (Exception e) {
 						throw new RuntimeException(e);
 					}
+				} else {
+					System.err.println("Exception while benchmark: " + throwable);
+					try {
+						client.stopFuture();
+						server.closeFuture();
+					} catch (Exception e) {
+						throw new RuntimeException(e);
+					}
 				}
-			};
-
-			CompletionCallback startCallback = new CompletionCallback() {
-				@Override
-				public void onComplete() {
-					startBenchmarkRound(0, finishCallback);
-				}
-
-				@Override
-				public void onException(Exception exception) {
-					finishCallback.setException(exception);
-				}
-			};
-
-			client.start(startCallback);
+			});
 
 			clientEventloop.run();
 
 		} finally {
-			serverEventloop.execute(new Runnable() {
-				@Override
-				public void run() {
-
-					server.close(IgnoreCompletionCallback.create());
-				}
-			});
+			serverEventloop.execute(server::close);
 			serverEventloop.keepAlive(false);
 
 		}
@@ -181,9 +153,15 @@ public final class CumulativeBenchmark {
 
 	private int totalElapsed = 0;
 
-	private void startBenchmarkRound(final int roundNumber, final CompletionCallback finishCallback) {
+	private CompletionStage<Void> startBenchmarkRound(final int roundNumber) {
+		final SettableStage<Void> stage = SettableStage.create();
+		startBenchmarkRound(roundNumber, stage);
+		return stage;
+	}
+
+	private void startBenchmarkRound(final int roundNumber, final SettableStage<Void> stage) {
 		if (roundNumber == totalRounds) {
-			finishCallback.setComplete();
+			stage.setResult(null);
 			return;
 		}
 
@@ -193,9 +171,9 @@ public final class CumulativeBenchmark {
 		lastResponseValue = 0;
 
 		final Stopwatch stopwatch = Stopwatch.createUnstarted();
-		final CompletionCallback roundComplete = new CompletionCallback() {
-			@Override
-			public void onComplete() {
+		clientEventloop.post(() -> {
+			stopwatch.start();
+			sendRequests(roundRequests).thenAccept(aVoid -> {
 				stopwatch.stop();
 				totalElapsed += stopwatch.elapsed(MILLISECONDS);
 
@@ -203,89 +181,67 @@ public final class CumulativeBenchmark {
 						+ " rps: " + roundRequests * 1000.0 / stopwatch.elapsed(MILLISECONDS)
 						+ " (" + success + "/" + roundRequests + " with " + overloads + " overloads) sum=" + lastResponseValue);
 
-				clientEventloop.post(new Runnable() {
-					@Override
-					public void run() {
-						startBenchmarkRound(roundNumber + 1, finishCallback);
-					}
-				});
-			}
-
-			@Override
-			public void onException(Exception exception) {
-				finishCallback.setException(exception);
-			}
-		};
-
-		clientEventloop.post(new Runnable() {
-			@Override
-			public void run() {
-				stopwatch.start();
-				sendRequests(roundRequests, roundComplete);
-			}
+				clientEventloop.post(() -> startBenchmarkRound(roundNumber + 1, stage));
+			});
 		});
 	}
 
 	private boolean clientOverloaded;
 
-	private void sendRequests(final int numberRequests, final CompletionCallback completionCallback) {
+	private CompletionStage<Void> sendRequests(final int numberRequests) {
+		final SettableStage<Void> stage = SettableStage.create();
+		sendRequests(numberRequests, stage);
+		return stage;
+	}
+
+	private void sendRequests(final int numberRequests, final SettableStage<Void> stage) {
 		clientOverloaded = false;
 
 		for (int i = 0; i < requestsAtOnce; i++) {
 			if (i >= numberRequests)
 				return;
 
-			client.sendRequest(incrementMessage, requestTimeout, new ResultCallback<ValueMessage>() {
+			client.<ValueMessage, ValueMessage>sendRequest(incrementMessage, requestTimeout).whenComplete(new BiConsumer<ValueMessage, Throwable>() {
 				@Override
-				public void onResult(ValueMessage result) {
-					success++;
-					lastResponseValue = result.value;
-					tryCompete();
+				public void accept(ValueMessage valueMessage, Throwable throwable) {
+					if (throwable != null) {
+						if (throwable.getClass() == RpcException.class) {
+							clientOverloaded = true;
+							overloads++;
+						} else {
+							errors++;
+						}
+						tryCompete();
+					} else {
+						success++;
+						lastResponseValue = valueMessage.value;
+						tryCompete();
+					}
 				}
 
 				private void tryCompete() {
 					int totalCompletion = success + errors;
 					if (totalCompletion == roundRequests)
-						completionCallback.setComplete();
-				}
-
-				@Override
-				public void onException(Exception exception) {
-					if (exception.getClass() == RpcException.class) {
-						clientOverloaded = true;
-						overloads++;
-					} else {
-						errors++;
-					}
-					tryCompete();
+						stage.setResult(null);
 				}
 			});
 
 			if (clientOverloaded) {
 				// post to next event loop
-				scheduleContinue(numberRequests - i, completionCallback);
+				scheduleContinue(numberRequests - i, stage);
 				return;
 			}
 		}
-		postContinue(numberRequests - requestsAtOnce, completionCallback);
+		postContinue(numberRequests - requestsAtOnce, stage);
 	}
 
-	private void postContinue(final int numberRequests, final CompletionCallback completionCallback) {
-		clientEventloop.post(new Runnable() {
-			@Override
-			public void run() {
-				sendRequests(numberRequests, completionCallback);
-			}
-		});
+	private void postContinue(final int numberRequests, SettableStage<Void> stage) {
+		clientEventloop.post(() -> sendRequests(numberRequests).whenComplete(AsyncCallbacks.forwardTo(stage)));
 	}
 
-	private void scheduleContinue(final int numberRequests, final CompletionCallback completionCallback) {
-		clientEventloop.schedule(clientEventloop.currentTimeMillis() + 1, new Runnable() {
-			@Override
-			public void run() {
-				sendRequests(numberRequests, completionCallback);
-			}
-		});
+	private void scheduleContinue(final int numberRequests, SettableStage<Void> stage) {
+		clientEventloop.schedule(clientEventloop.currentTimeMillis() + 1, () ->
+				sendRequests(numberRequests).whenComplete(AsyncCallbacks.forwardTo(stage)));
 	}
 
 	public static void main(String[] args) throws Exception {

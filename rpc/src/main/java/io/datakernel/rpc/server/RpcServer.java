@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.server;
 
-import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.SettableStage;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
@@ -112,7 +112,7 @@ public final class  RpcServer extends AbstractServer<RpcServer> {
 
 	private BufferSerializer<RpcMessage> serializer;
 
-	private CompletionCallback closeCallback;
+	private SettableStage<Void> closeStage;
 
 	// jmx
 	static final double SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_1_MINUTE;
@@ -226,21 +226,16 @@ public final class  RpcServer extends AbstractServer<RpcServer> {
 	}
 
 	@Override
-	protected void onClose(final CompletionCallback completionCallback) {
+	protected void onClose(SettableStage<Void> stage) {
 		if (connections.size() == 0) {
 			logger.info("RpcServer is closing. Active connections count: 0.");
-			eventloop.post(new Runnable() {
-				@Override
-				public void run() {
-					completionCallback.setComplete();
-				}
-			});
+			stage.postResult(eventloop, null);
 		} else {
 			logger.info("RpcServer is closing. Active connections count: " + connections.size());
 			for (final RpcServerConnection connection : new ArrayList<>(connections)) {
 				connection.close();
 			}
-			closeCallback = completionCallback;
+			closeStage = stage;
 		}
 	}
 
@@ -260,12 +255,12 @@ public final class  RpcServer extends AbstractServer<RpcServer> {
 			logger.info("Client disconnected on {}", connection);
 		connections.remove(connection);
 
-		if (closeCallback != null) {
+		if (closeStage != null) {
 			logger.info("RpcServer is closing. One more connection was closed. " +
 					"Active connections count: " + connections.size());
 
 			if (connections.size() == 0) {
-				closeCallback.setComplete();
+				closeStage.setResult(null);
 			}
 		}
 	}

@@ -1,9 +1,14 @@
 package io.datakernel.async;
 
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.FatalErrorHandlers;
 import org.junit.Test;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ExecutionException;
+
+import static org.junit.Assert.assertEquals;
 
 public class CompletionStageTest {
 
@@ -30,13 +35,36 @@ public class CompletionStageTest {
 
 	@Test
 	public void testStage() throws Exception {
-		Eventloop eventloop = Eventloop.create();
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
 		eventloop.post(() ->
 				multiplyAndPrintX("123")
 						.whenComplete(($, throwable) -> System.out.println(throwable == null ? "Done" : throwable.toString())));
 		eventloop.run();
 	}
 
+	@Test
+	public void testSimpleResult() throws ExecutionException, InterruptedException {
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+		final CompletableFuture<Integer> future = SettableStage.immediateStage(41)
+				.thenApply(integer -> integer + 1)
+				.toCompletableFuture();
+		eventloop.run();
+		assertEquals(42, ((int) future.get()));
+	}
 
+	@Test(expected = RuntimeException.class)
+	public void testError() throws Throwable {
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+		final CompletableFuture<Integer> future = SettableStage.<Integer>immediateFailedStage(new RuntimeException("Test"))
+				.thenApply(integer -> integer + 1)
+				.toCompletableFuture();
+		eventloop.run();
+
+		try {
+			future.get();
+		} catch (Exception e) {
+			throw e.getCause();
+		}
+	}
 
 }

@@ -1,7 +1,5 @@
 package io.datakernel.async;
 
-import io.datakernel.util.Preconditions;
-
 import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -11,10 +9,9 @@ import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import static io.datakernel.util.Preconditions.checkState;
-
 public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 	protected static abstract class NextCompletionStage<F, T> extends AbstractCompletionStage<T> {
+
 		protected abstract void onResult(F result);
 
 		protected void onError(Throwable error) {
@@ -22,7 +19,7 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		}
 	}
 
-	private static final NextCompletionStage COMPLETED_STAGE = new NextCompletionStage() {
+ 	private static final NextCompletionStage COMPLETED_STAGE = new NextCompletionStage() {
 		@Override
 		protected void onResult(Object result) {
 			throw new IllegalStateException();

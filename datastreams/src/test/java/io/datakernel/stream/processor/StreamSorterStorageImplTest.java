@@ -16,7 +16,6 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamProducer;
@@ -61,8 +60,8 @@ public class StreamSorterStorageImplTest {
 		File workPath = tempFolder.newFolder("tmp");
 		StreamMergeSorterStorageImpl<Integer> storage = StreamMergeSorterStorageImpl.create(eventloop, executor, intSerializer(), Paths.get(workPath.getAbsolutePath(), "%d.part"), 64);
 
-		int firstStorage = storage.write(source1, IgnoreCompletionCallback.create());
-		int secondStorage = storage.write(source2, IgnoreCompletionCallback.create());
+		int firstStorage = storage.write(source1).getPartition();
+		int secondStorage = storage.write(source2).getPartition();
 
 		eventloop.run();
 
@@ -71,8 +70,8 @@ public class StreamSorterStorageImplTest {
 
 		TestStreamConsumers.TestConsumerToList<Integer> consumer1 = TestStreamConsumers.toListOneByOne(eventloop);
 		TestStreamConsumers.TestConsumerToList<Integer> consumer2 = TestStreamConsumers.toListRandomlySuspending(eventloop);
-		storage.read(firstStorage, IgnoreCompletionCallback.create()).streamTo(consumer1);
-		storage.read(secondStorage, IgnoreCompletionCallback.create()).streamTo(consumer2);
+		storage.read(firstStorage).getProducer().streamTo(consumer1);
+		storage.read(secondStorage).getProducer().streamTo(consumer2);
 		eventloop.run();
 
 		assertEquals(asList(1, 2, 3, 4, 5, 6, 7), consumer1.getList());

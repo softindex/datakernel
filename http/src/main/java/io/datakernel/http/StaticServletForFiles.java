@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
@@ -24,8 +24,10 @@ import io.datakernel.file.AsyncFile;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
+import static io.datakernel.async.AsyncCallbacks.forwardTo;
 import static java.nio.file.StandardOpenOption.READ;
 
 public final class StaticServletForFiles extends StaticServlet {
@@ -44,28 +46,19 @@ public final class StaticServletForFiles extends StaticServlet {
 	}
 
 	@Override
-	protected final void doServeAsync(String name, final ResultCallback<ByteBuf> callback) {
-		Path path = storage.resolve(name).normalize();
+	protected final CompletionStage<ByteBuf> doServeAsync(String name) {
+		final Path path = storage.resolve(name).normalize();
 
-		if (!path.startsWith(storage)) {
-			callback.setException(HttpException.notFound404());
-			return;
-		}
+		if (!path.startsWith(storage)) return SettableStage.immediateFailedStage(HttpException.notFound404());
 
-		AsyncFile.open(eventloop, executor, path,
-				new OpenOption[]{READ}, new ResultCallback<AsyncFile>() {
-					@Override
-					public void onResult(AsyncFile file) {
-						file.readFully(callback);
-					}
-
-					@Override
-					public void onException(Exception exception) {
-						if (exception instanceof NoSuchFileException)
-							callback.setException(HttpException.notFound404());
-						else
-							callback.setException(exception);
-					}
-				});
+		final SettableStage<ByteBuf> stage = SettableStage.create();
+		AsyncFile.openAsync(eventloop, executor, path, new OpenOption[]{READ}).whenComplete((asyncFile, throwable) -> {
+			if (throwable != null) {
+				stage.setError(throwable instanceof NoSuchFileException ? HttpException.notFound404() : throwable);
+			} else {
+				asyncFile.readFully().whenComplete(forwardTo(stage));
+			}
+		});
+		return stage;
 	}
 }

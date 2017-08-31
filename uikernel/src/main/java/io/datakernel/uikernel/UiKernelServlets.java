@@ -17,8 +17,7 @@
 package io.datakernel.uikernel;
 
 import com.google.gson.Gson;
-import io.datakernel.async.ForwardingResultCallback;
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
@@ -49,111 +48,73 @@ public class UiKernelServlets {
 	}
 
 	public static <K, R extends AbstractRecord<K>> AsyncServlet read(final GridModel<K, R> model, final Gson gson) {
-		return new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, final ResultCallback<HttpResponse> callback) {
-				try {
-					Map<String, String> parameters = request.getParameters();
-					ReadSettings<K> settings = ReadSettings.from(gson, parameters);
-					model.read(settings, new ForwardingResultCallback<ReadResponse<K,R>>(callback) {
-						@Override
-						protected void onResult(ReadResponse<K, R> response) {
-							String json = response.toJson(gson, model.getRecordType(), model.getIdType());
-							callback.setResult(createResponse(json));
-						}
-					});
-				} catch (ParseException e) {
-					callback.setException(e);
-				}
+		return request -> {
+			try {
+				Map<String, String> parameters = request.getParameters();
+				ReadSettings<K> settings = ReadSettings.from(gson, parameters);
+				return model.read(settings).thenApply(response ->
+						createResponse(response.toJson(gson, model.getRecordType(), model.getIdType())));
+			} catch (ParseException e) {
+				return SettableStage.immediateFailedStage(e);
 			}
 		};
 	}
 
 	public static <K, R extends AbstractRecord<K>> AsyncServlet get(final GridModel<K, R> model, final Gson gson) {
-		return new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, final ResultCallback<HttpResponse> callback) {
-				try {
-					Map<String, String> parameters = request.getParameters();
-					ReadSettings<K> settings = ReadSettings.from(gson, parameters);
-					K id = fromJson(gson, request.getUrlParameter(ID_PARAMETER_NAME), model.getIdType());
-					model.read(id, settings, new ForwardingResultCallback<R>(callback) {
-						@Override
-						protected void onResult(R obj) {
-							String json = gson.toJson(obj, model.getRecordType());
-							callback.setResult(createResponse(json));
-						}
-					});
-				} catch (ParseException e) {
-					callback.setException(e);
-				}
+		return request -> {
+			try {
+				Map<String, String> parameters = request.getParameters();
+				ReadSettings<K> settings = ReadSettings.from(gson, parameters);
+				K id = fromJson(gson, request.getUrlParameter(ID_PARAMETER_NAME), model.getIdType());
+				return model.read(id, settings).thenApply(obj ->
+						createResponse(gson.toJson(obj, model.getRecordType())));
+			} catch (ParseException e) {
+				return SettableStage.immediateFailedStage(e);
 			}
 		};
 	}
 
 	public static <K, R extends AbstractRecord<K>> AsyncServlet create(final GridModel<K, R> model, final Gson gson) {
-		return new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, final ResultCallback<HttpResponse> callback) {
-				try {
-					String json = ByteBufStrings.decodeUtf8(request.getBody());
-					R obj = fromJson(gson, json, model.getRecordType());
-					model.create(obj, new ForwardingResultCallback<CreateResponse<K>>(callback) {
-						@Override
-						protected void onResult(CreateResponse<K> response) {
-							String json = response.toJson(gson, model.getIdType());
-							callback.setResult(createResponse(json));
-						}
-					});
-				} catch (ParseException e) {
-					callback.setException(e);
-				}
+		return request -> {
+			try {
+				String json = ByteBufStrings.decodeUtf8(request.getBody());
+				R obj = fromJson(gson, json, model.getRecordType());
+				return model.create(obj).thenApply(response ->
+						createResponse(response.toJson(gson, model.getIdType())));
+			} catch (ParseException e) {
+				return SettableStage.immediateFailedStage(e);
 			}
 		};
 	}
 
 	public static <K, R extends AbstractRecord<K>> AsyncServlet update(final GridModel<K, R> model, final Gson gson) {
-		return new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, final ResultCallback<HttpResponse> callback) {
-				try {
-					String json = ByteBufStrings.decodeUtf8(request.getBody());
-					List<R> list = deserializeUpdateRequest(gson, json, model.getRecordType(), model.getIdType());
-					model.update(list, new ForwardingResultCallback<UpdateResponse<K,R>>(callback) {
-						@Override
-						protected void onResult(UpdateResponse<K, R> result) {
-							String json = result.toJson(gson, model.getRecordType(), model.getIdType());
-							callback.setResult(createResponse(json));
-						}
-					});
-				} catch (ParseException e) {
-					callback.setException(e);
-				}
+		return request -> {
+			try {
+				String json = ByteBufStrings.decodeUtf8(request.getBody());
+				List<R> list = deserializeUpdateRequest(gson, json, model.getRecordType(), model.getIdType());
+				return model.update(list).thenApply(result ->
+						createResponse(result.toJson(gson, model.getRecordType(), model.getIdType())));
+			} catch (ParseException e) {
+				return SettableStage.immediateFailedStage(e);
 			}
 		};
 	}
 
 	public static <K, R extends AbstractRecord<K>> AsyncServlet delete(final GridModel<K, R> model, final Gson gson) {
-		return new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, final ResultCallback<HttpResponse> callback) {
-				try {
-					K id = fromJson(gson, request.getUrlParameter("id"), model.getIdType());
-					model.delete(id, new ForwardingResultCallback<DeleteResponse>(callback) {
-						@Override
-						protected void onResult(DeleteResponse response) {
-							HttpResponse res = HttpResponse.ok200();
-							if (response.hasErrors()) {
-								String json = gson.toJson(response.getErrors());
-								res.setContentType(JSON_UTF8);
-								res.setBody(ByteBufStrings.wrapUtf8(json));
-							}
-							callback.setResult(res);
-						}
-					});
-				} catch (ParseException e) {
-					callback.setException(e);
-				}
+		return request -> {
+			try {
+				K id = fromJson(gson, request.getUrlParameter("id"), model.getIdType());
+				return model.delete(id).thenApply(response -> {
+					HttpResponse res = HttpResponse.ok200();
+					if (response.hasErrors()) {
+						String json = gson.toJson(response.getErrors());
+						res.setContentType(JSON_UTF8);
+						res.setBody(ByteBufStrings.wrapUtf8(json));
+					}
+					return res;
+				});
+			} catch (ParseException e) {
+				return SettableStage.immediateFailedStage(e);
 			}
 		};
 	}

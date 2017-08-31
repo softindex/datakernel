@@ -5,6 +5,7 @@ import io.datakernel.exception.AsyncTimeoutException;
 
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.concurrent.CompletionStage;
 
 public class AsyncFunctions {
 	public static final AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException();
@@ -17,39 +18,24 @@ public class AsyncFunctions {
 	}
 
 	public static <I, O> AsyncFunction<I, O> timeout(final Eventloop eventloop, final long timestamp, final AsyncFunction<I, O> function) {
-		return new AsyncFunction<I, O>() {
-			@Override
-			public void apply(I input, final ResultCallback<O> callback) {
-				final DoneState state = new DoneState();
-				function.apply(input, new ResultCallback<O>() {
-					@Override
-					protected void onResult(O result) {
-						if (!state.done) {
-							state.done = true;
-							callback.setResult(result);
-						}
-					}
+		return input -> {
+			final DoneState state = new DoneState();
+			final SettableStage<O> stage = SettableStage.create();
 
-					@Override
-					protected void onException(Exception e) {
-						if (!state.done) {
-							state.done = true;
-							callback.setException(e);
-						}
+			function.apply(input).whenComplete((o, throwable) -> {
+				if (!state.done) state.done = true;
+				AsyncCallbacks.forwardTo(stage, o, throwable);
+			});
+			if (!state.done) {
+				eventloop.schedule(timestamp, () -> {
+					if (!state.done) {
+						state.done = true;
+						stage.setError(TIMEOUT_EXCEPTION);
 					}
 				});
-				if (!state.done) {
-					eventloop.schedule(timestamp, new Runnable() {
-						@Override
-						public void run() {
-							if (!state.done) {
-								state.done = true;
-								callback.setException(TIMEOUT_EXCEPTION);
-							}
-						}
-					});
-				}
 			}
+
+			return stage;
 		};
 	}
 
@@ -58,17 +44,7 @@ public class AsyncFunctions {
 	}
 
 	public static <I, T, O> AsyncFunction<I, O> pipeline(final AsyncFunction<I, T> f, final AsyncFunction<T, O> g) {
-		return new AsyncFunction<I, O>() {
-			@Override
-			public void apply(I input, final ResultCallback<O> callback) {
-				f.apply(input, new ForwardingResultCallback<T>(callback) {
-					@Override
-					protected void onResult(T result) {
-						g.apply(result, callback);
-					}
-				});
-			}
-		};
+		return input -> f.apply(input).thenCompose(g::apply);
 	}
 
 	public static <I, O> AsyncFunction<I, O> pipeline(AsyncFunction<?, ?>... functions) {
@@ -79,21 +55,24 @@ public class AsyncFunctions {
 	public static <I, O> AsyncFunction<I, O> pipeline(final Iterable<AsyncFunction<?, ?>> functions) {
 		return new AsyncFunction<I, O>() {
 			@Override
-			public void apply(I input, ResultCallback<O> callback) {
-				next(input, (Iterator) functions.iterator(), callback);
+			public CompletionStage<O> apply(I input) {
+				final SettableStage<O> stage = SettableStage.create();
+				next(input, (Iterator) functions.iterator(), stage);
+				return stage;
 			}
 
-			private void next(Object item, final Iterator<AsyncFunction<Object, Object>> iterator, final ResultCallback<O> callback) {
+			private void next(Object item, final Iterator<AsyncFunction<Object, Object>> iterator, final SettableStage<O> stage) {
 				if (iterator.hasNext()) {
 					AsyncFunction<Object, Object> next = iterator.next();
-					next.apply(item, new ForwardingResultCallback<Object>(callback) {
-						@Override
-						protected void onResult(Object result) {
-							next(result, iterator, callback);
+					next.apply(item).whenComplete((o, throwable) -> {
+						if (throwable == null) {
+							next(o, iterator, stage);
+						} else {
+							stage.setError(throwable);
 						}
 					});
 				} else {
-					callback.setResult((O) item);
+					stage.setResult((O) item);
 				}
 			}
 		};

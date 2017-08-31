@@ -2,7 +2,7 @@ package io.datakernel.ot;
 
 import com.google.common.base.Predicate;
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.SettableStage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.ot.OTUtils.FindResult;
@@ -10,7 +10,6 @@ import io.datakernel.ot.OTUtils.FindResult;
 import java.util.*;
 import java.util.concurrent.CompletionStage;
 
-import static io.datakernel.async.AsyncCallbacks.forwardTo;
 import static io.datakernel.async.SettableStage.immediateFailedStage;
 import static io.datakernel.async.SettableStage.immediateStage;
 import static java.util.Collections.singleton;
@@ -46,16 +45,14 @@ public final class OTStateManager<K, D> implements EventloopService {
 	}
 
 	@Override
-	public void start(CompletionCallback callback) {
-		checkout()
-				.thenCompose($ -> pull())
-				.whenComplete(forwardTo(callback));
+	public CompletionStage<Void> start() {
+		return checkout().thenCompose($ -> pull());
 	}
 
 	@Override
-	public void stop(CompletionCallback callback) {
+	public CompletionStage<Void> stop() {
 		invalidateInternalState();
-		callback.setComplete();
+		return SettableStage.immediateStage(null);
 	}
 
 	public CompletionStage<Void> checkout() {

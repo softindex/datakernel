@@ -17,8 +17,7 @@
 package io.datakernel.rpc.hello;
 
 import com.google.common.net.InetAddresses;
-import io.datakernel.async.ResultCallback;
-import io.datakernel.async.ResultCallbackFuture;
+import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.rpc.client.RpcClient;
@@ -68,32 +67,25 @@ public class RpcHelloWorldTest {
 	}
 
 	private static RpcRequestHandler<HelloRequest, HelloResponse> helloServiceRequestHandler(final HelloService helloService) {
-		return new RpcRequestHandler<HelloRequest, HelloResponse>() {
-			@Override
-			public void run(HelloRequest request, ResultCallback<HelloResponse> callback) {
-				String result;
-				try {
-					result = helloService.hello(request.name);
-				} catch (Exception e) {
-					callback.setException(e);
-					return;
-				}
-				callback.setResult(new HelloResponse(result));
+		return request -> {
+			String result;
+			try {
+				result = helloService.hello(request.name);
+			} catch (Exception e) {
+				return SettableStage.immediateFailedStage(e);
 			}
+			return SettableStage.immediateStage(new HelloResponse(result));
 		};
 	}
 
 	private static RpcServer createServer(Eventloop eventloop) {
 		return RpcServer.create(eventloop)
 				.withMessageTypes(HelloRequest.class, HelloResponse.class)
-				.withHandler(HelloRequest.class, HelloResponse.class, helloServiceRequestHandler(new HelloService() {
-					@Override
-					public String hello(String name) throws Exception {
-						if (name.equals("--")) {
-							throw new Exception("Illegal name");
-						}
-						return "Hello, " + name + "!";
+				.withHandler(HelloRequest.class, HelloResponse.class, helloServiceRequestHandler(name -> {
+					if (name.equals("--")) {
+						throw new Exception("Illegal name");
 					}
+					return "Hello, " + name + "!";
 				}))
 				.withListenAddress(new InetSocketAddress("localhost", PORT));
 	}
@@ -114,14 +106,10 @@ public class RpcHelloWorldTest {
 		@Override
 		public String hello(final String name) throws Exception {
 			try {
-				final ResultCallbackFuture<HelloResponse> future = ResultCallbackFuture.create();
-				rpcClient.getEventloop().execute(new Runnable() {
-					@Override
-					public void run() {
-						rpcClient.sendRequest(new HelloRequest(name), TIMEOUT, future);
-					}
-				});
-				return future.get().message;
+				return rpcClient.getEventloop().submit(() -> rpcClient
+						.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT))
+						.toCompletableFuture()
+						.get().message;
 			} catch (ExecutionException e) {
 				throw (Exception) e.getCause();
 			}
@@ -169,25 +157,16 @@ public class RpcHelloWorldTest {
 			final CountDownLatch latch = new CountDownLatch(count);
 			for (int i = 0; i < count; i++) {
 				final String name = "World" + i;
-				client.eventloop.execute(new Runnable() {
-					@Override
-					public void run() {
-						client.rpcClient.sendRequest(new HelloRequest(name), TIMEOUT, new ResultCallback<HelloResponse>() {
-							@Override
-							protected void onResult(final HelloResponse response) {
+				client.eventloop.execute(() -> client.rpcClient.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT)
+						.whenComplete((helloResponse, throwable) -> {
+							if (throwable != null) {
+								System.err.println(throwable.getMessage());
+							} else {
 								success.incrementAndGet();
-								latch.countDown();
-								assertEquals("Hello, " + name + "!", response.message);
+								assertEquals("Hello, " + name + "!", helloResponse.message);
 							}
-
-							@Override
-							protected void onException(final Exception exception) {
-								latch.countDown();
-								System.err.println(exception.getMessage());
-							}
-						});
-					}
-				});
+							latch.countDown();
+						}));
 			}
 			latch.await();
 		} finally {
@@ -233,42 +212,24 @@ public class RpcHelloWorldTest {
 
 			for (int i = 0; i < count; i++) {
 				final String name = "world" + i;
-				client1.eventloop.execute(new Runnable() {
-					@Override
-					public void run() {
-						client1.rpcClient.sendRequest(new HelloRequest(name), TIMEOUT, new ResultCallback<HelloResponse>() {
-							@Override
-							protected void onResult(final HelloResponse response) {
-								latch1.countDown();
-								assertEquals("Hello, " + name + "!", response.message);
+				client1.eventloop.execute(() -> client1.rpcClient.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT)
+						.whenComplete((helloResponse, throwable) -> {
+							latch1.countDown();
+							if (throwable != null) {
+								fail(throwable.getMessage());
+							} else {
+								assertEquals("Hello, " + name + "!", helloResponse.message);
 							}
-
-							@Override
-							protected void onException(final Exception exception) {
-								latch1.countDown();
-								fail(exception.getMessage());
+						}));
+				client2.eventloop.execute(() -> client2.rpcClient.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT)
+						.whenComplete((helloResponse, throwable) -> {
+							latch2.countDown();
+							if (throwable != null) {
+								fail(throwable.getMessage());
+							} else {
+								assertEquals("Hello, " + name + "!", helloResponse.message);
 							}
-						});
-					}
-				});
-				client2.eventloop.execute(new Runnable() {
-					@Override
-					public void run() {
-						client2.rpcClient.sendRequest(new HelloRequest(name), TIMEOUT, new ResultCallback<HelloResponse>() {
-							@Override
-							protected void onResult(final HelloResponse response) {
-								latch2.countDown();
-								assertEquals("Hello, " + name + "!", response.message);
-							}
-
-							@Override
-							protected void onException(final Exception exception) {
-								latch2.countDown();
-								fail(exception.getMessage());
-							}
-						});
-					}
-				});
+						}));
 			}
 			latch1.await();
 			latch2.await();
@@ -290,24 +251,15 @@ public class RpcHelloWorldTest {
 				Stopwatch stopwatch = Stopwatch.createUnstarted();
 				stopwatch.start();
 				for (int i = 0; i < count; i++) {
-					client.eventloop.execute(new Runnable() {
-						@Override
-						public void run() {
-							client.rpcClient.sendRequest(new HelloRequest("benchmark"), TIMEOUT, new ResultCallback<HelloResponse>() {
-								@Override
-								protected void onResult(HelloResponse result) {
-									latch.countDown();
+					client.eventloop.execute(() -> client.rpcClient.<HelloRequest, HelloResponse>sendRequest(new HelloRequest("benchmark"), TIMEOUT)
+							.whenComplete((helloResponse, throwable) -> {
+								latch.countDown();
+								if (throwable != null) {
+									error.incrementAndGet();
+								} else {
 									success.incrementAndGet();
 								}
-
-								@Override
-								protected void onException(Exception exception) {
-									latch.countDown();
-									error.incrementAndGet();
-								}
-							});
-						}
-					});
+							}));
 				}
 				latch.await();
 				System.out.println(t + ": Elapsed " + stopwatch.stop().toString() + " rps: " + count * 1000.0 / stopwatch.elapsed(MILLISECONDS)

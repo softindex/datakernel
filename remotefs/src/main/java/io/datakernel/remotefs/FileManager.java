@@ -16,9 +16,6 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ForwardingResultCallback;
-import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.stream.file.StreamFileReader;
@@ -34,7 +31,7 @@ import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Callable;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.stream.file.StreamFileReader.readFileFrom;
@@ -70,55 +67,42 @@ public final class FileManager {
 		return new FileManager(eventloop, executor, storagePath);
 	}
 
-	public void get(String fileName, final long startPosition, final ResultCallback<StreamFileReader> callback) {
+	public CompletionStage<StreamFileReader> get(String fileName, final long startPosition) {
 		logger.trace("downloading file: {}, position: {}", fileName, startPosition);
-		AsyncFile.open(eventloop, executor, storagePath.resolve(fileName),
-				new OpenOption[]{READ}, new ForwardingResultCallback<AsyncFile>(callback) {
-					@Override
-					public void onResult(AsyncFile result) {
-						logger.trace("{} opened", result);
-						callback.setResult(readFileFrom(eventloop, result, readerBufferSize, startPosition));
-					}
-				});
-	}
-
-	public void save(String fileName, final ResultCallback<StreamFileWriter> callback) {
-		logger.trace("uploading file: {}", fileName);
-		ensureDirectory(storagePath, fileName, new ForwardingResultCallback<Path>(callback) {
-			@Override
-			public void onResult(Path path) {
-				logger.trace("ensured directory: {}", storagePath);
-				AsyncFile.open(eventloop, executor, path, CREATE_OPTIONS, new ForwardingResultCallback<AsyncFile>(callback) {
-					@Override
-					public void onResult(AsyncFile result) {
-						logger.trace("{} opened", result);
-						callback.setResult(StreamFileWriter.create(eventloop, result, true));
-					}
-				});
-			}
+		return AsyncFile.openAsync(eventloop, executor, storagePath.resolve(fileName), new OpenOption[]{READ}).thenApply(result -> {
+			logger.trace("{} opened", result);
+			return readFileFrom(eventloop, result, readerBufferSize, startPosition);
 		});
 	}
 
-	public void delete(String fileName, CompletionCallback callback) {
+	public CompletionStage<StreamFileWriter> save(String fileName) {
+		logger.trace("uploading file: {}", fileName);
+		return ensureDirectoryAsync(storagePath, fileName).thenCompose(path -> {
+			logger.trace("ensured directory: {}", storagePath);
+			return AsyncFile.openAsync(eventloop, executor, path, CREATE_OPTIONS).thenApply(result -> {
+				logger.trace("{} opened", result);
+				return StreamFileWriter.create(eventloop, result, true);
+			});
+		});
+	}
+
+	public CompletionStage<Void> delete(String fileName) {
 		logger.trace("deleting file: {}", fileName);
-		AsyncFile.delete(eventloop, executor, storagePath.resolve(fileName), callback);
+		return AsyncFile.delete(eventloop, executor, storagePath.resolve(fileName));
 	}
 
-	public void size(String fileName, ResultCallback<Long> callback) {
+	public CompletionStage<Long> size(String fileName) {
 		logger.trace("calculating file size: {}", fileName);
-		AsyncFile.length(eventloop, executor, storagePath.resolve(fileName), callback);
+		return AsyncFile.length(eventloop, executor, storagePath.resolve(fileName));
 	}
 
-	public void scan(ResultCallback<List<String>> callback) {
-		eventloop.callConcurrently(executor, new Callable<List<String>>() {
-			@Override
-			public List<String> call() throws Exception {
-				logger.trace("listing files");
-				List<String> result = new ArrayList<>();
-				doScan(storagePath, result, "");
-				return result;
-			}
-		}, callback);
+	public CompletionStage<List<String>> scanAsync() {
+		return eventloop.callConcurrently(executor, () -> {
+			logger.trace("listing files");
+			List<String> result = new ArrayList<>();
+			doScan(storagePath, result, "");
+			return result;
+		});
 	}
 
 	public List<String> scan() throws IOException {
@@ -139,13 +123,8 @@ public final class FileManager {
 		}
 	}
 
-	private void ensureDirectory(final Path container, final String path, ResultCallback<Path> callback) {
-		eventloop.callConcurrently(executor, new Callable<Path>() {
-			@Override
-			public Path call() throws Exception {
-				return ensureDirectory(container, path);
-			}
-		}, callback);
+	private CompletionStage<Path> ensureDirectoryAsync(final Path container, final String path) {
+		return eventloop.callConcurrently(executor, () -> ensureDirectory(container, path));
 	}
 
 	private Path ensureDirectory(Path container, String path) throws IOException {

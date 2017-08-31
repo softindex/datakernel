@@ -18,7 +18,7 @@ package io.datakernel.cube.http;
 
 import com.google.gson.TypeAdapter;
 import io.datakernel.aggregation.AggregationPredicate;
-import io.datakernel.async.ForwardingResultCallback;
+import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.cube.CubeQuery;
@@ -26,9 +26,10 @@ import io.datakernel.cube.ICube;
 import io.datakernel.cube.QueryResult;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
-import io.datakernel.http.*;
-import io.datakernel.utils.GsonAdapters;
-import io.datakernel.utils.GsonAdapters.TypeAdapterRegistry;
+import io.datakernel.http.AsyncHttpClient;
+import io.datakernel.http.HttpRequest;
+import io.datakernel.http.HttpUtils;
+import io.datakernel.http.IAsyncHttpClient;
 import io.datakernel.utils.GsonAdapters.TypeAdapterRegistryImpl;
 
 import java.io.IOException;
@@ -100,9 +101,10 @@ public final class CubeHttpClient implements ICube {
 
 	@Override
 	public void query(CubeQuery query, final ResultCallback<QueryResult> callback) {
-		httpClient.send(buildRequest(query), new ForwardingResultCallback<HttpResponse>(callback) {
-			@Override
-			public void onResult(HttpResponse httpResponse) {
+		httpClient.send(buildRequest(query)).whenComplete((httpResponse, throwable) -> {
+			if (throwable != null) {
+				callback.setException(AsyncCallbacks.throwableToException(throwable));
+			} else {
 				String response;
 				try {
 					response = ByteBufStrings.decodeUtf8(httpResponse.getBody()); // TODO getBodyAsString

@@ -16,13 +16,18 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.FatalErrorHandlers;
 import io.datakernel.exception.ParseException;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+
+import java.util.function.BiConsumer;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.http.HttpMethod.*;
@@ -32,67 +37,55 @@ public class MiddlewareServletTest {
 
 	private static final String TEMPLATE = "http://www.site.org";
 	private static final String DELIM = "*****************************************************************************";
+	private Eventloop eventloop;
+
+	@Before
+	public void before() {
+		eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+	}
 
 	@Rule
 	public ExpectedException expectedException = ExpectedException.none();
 
-	private static ResultCallback<HttpResponse> callback(final String expectedBody, final int expectedCode) {
-		return new ResultCallback<HttpResponse>() {
-			@Override
-			public void onResult(HttpResponse result) {
+	private static BiConsumer<HttpResponse, Throwable> assertResult(String expectedBody, int expectedCode) {
+		return (result, throwable) -> {
+			if (throwable == null) {
 				assertEquals(expectedBody, result.getBody() == null ? "" : result.getBody().toString());
 				assertEquals(expectedCode, result.getCode());
 				System.out.println(result + "  " + result.getBody());
 				result.recycleBufs();
-			}
-
-			@Override
-			protected void onException(Exception e) {
-				assertEquals(expectedCode, ((HttpException) e).getCode());
+			} else {
+				assertEquals(expectedCode, ((HttpException) throwable).getCode());
 			}
 		};
 	}
 
+
 	@Test
 	public void testBase() {
 		MiddlewareServlet servlet1 = MiddlewareServlet.create();
-		servlet1.with(HttpMethod.GET, "/a/b/c", new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				callback.setResult(HttpResponse.ofCode(200));
-			}
-		});
+		servlet1.with(HttpMethod.GET, "/a/b/c", request -> SettableStage.immediateStage(HttpResponse.ofCode(200)));
 
-		servlet1.serve(HttpRequest.get("http://some-test.com/a/b/c"), callback("", 200));
-		servlet1.serve(HttpRequest.get("http://some-test.com/a/b/c/d"), callback("", 404));
-		servlet1.serve(HttpRequest.post("http://some-test.com/a/b/c"), callback("", 405));
+		servlet1.serve(HttpRequest.get("http://some-test.com/a/b/c")).whenComplete(assertResult("", 200));
+		servlet1.serve(HttpRequest.get("http://some-test.com/a/b/c/d")).whenComplete(assertResult("", 404));
+		servlet1.serve(HttpRequest.post("http://some-test.com/a/b/c")).whenComplete(assertResult("", 405));
 
 		MiddlewareServlet servlet2 = MiddlewareServlet.create();
-		servlet2.with(HttpMethod.HEAD, "/a/b/c", new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				callback.setResult(HttpResponse.ofCode(200));
-			}
-		});
+		servlet2.with(HttpMethod.HEAD, "/a/b/c", request -> SettableStage.immediateStage(HttpResponse.ofCode(200)));
 
-		servlet2.serve(HttpRequest.post("http://some-test.com/a/b/c"), callback("", 405));
-		servlet2.serve(HttpRequest.post("http://some-test.com/a/b/c/d"), callback("", 404));
-		servlet2.serve(HttpRequest.of(HttpMethod.HEAD, "http://some-test.com/a/b/c"), callback("", 200));
+		servlet2.serve(HttpRequest.post("http://some-test.com/a/b/c")).whenComplete(assertResult("", 405));
+		servlet2.serve(HttpRequest.post("http://some-test.com/a/b/c/d")).whenComplete(assertResult("", 404));
+		servlet2.serve(HttpRequest.of(HttpMethod.HEAD, "http://some-test.com/a/b/c")).whenComplete(assertResult("", 200));
 	}
 
 	@Test
 	public void testProcessWildCardRequest() {
 		MiddlewareServlet servlet = MiddlewareServlet.create();
-		servlet.with("/a/b/c/d", new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				callback.setResult(HttpResponse.ofCode(200));
-			}
-		});
+		servlet.with("/a/b/c/d", request -> SettableStage.immediateStage(HttpResponse.ofCode(200)));
 
-		servlet.serve(HttpRequest.get("http://some-test.com/a/b/c/d"), callback("", 200));
-		servlet.serve(HttpRequest.post("http://some-test.com/a/b/c/d"), callback("", 200));
-		servlet.serve(HttpRequest.of(HttpMethod.OPTIONS, "http://some-test.com/a/b/c/d"), callback("", 200));
+		servlet.serve(HttpRequest.get("http://some-test.com/a/b/c/d")).whenComplete(assertResult("", 200));
+		servlet.serve(HttpRequest.post("http://some-test.com/a/b/c/d")).whenComplete(assertResult("", 200));
+		servlet.serve(HttpRequest.of(HttpMethod.OPTIONS, "http://some-test.com/a/b/c/d")).whenComplete(assertResult("", 200));
 	}
 
 	@Test
@@ -106,12 +99,9 @@ public class MiddlewareServletTest {
 		HttpRequest request7 = HttpRequest.get(TEMPLATE + "/b/f");  // ok
 		HttpRequest request8 = HttpRequest.get(TEMPLATE + "/b/g");  // ok
 
-		AsyncServlet action = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
-				callback.setResult(HttpResponse.ofCode(200).withBody(msg));
-			}
+		AsyncServlet action = request -> {
+			ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
+			return SettableStage.immediateStage(HttpResponse.ofCode(200).withBody(msg));
 		};
 
 		MiddlewareServlet a = MiddlewareServlet.create()
@@ -129,15 +119,16 @@ public class MiddlewareServletTest {
 				.with(GET, "/b", b);
 
 		System.out.println("Micro mapping" + DELIM);
-		main.serve(request1, callback("Executed: /", 200));
-		main.serve(request2, callback("Executed: /a", 200));
-		main.serve(request3, callback("Executed: /a/c", 200));
-		main.serve(request4, callback("Executed: /a/d", 200));
-		main.serve(request5, callback("", 404));
-		main.serve(request6, callback("", 404));
-		main.serve(request7, callback("Executed: /b/f", 200));
-		main.serve(request8, callback("Executed: /b/g", 200));
+		main.serve(request1).whenComplete(assertResult("Executed: /", 200));
+		main.serve(request2).whenComplete(assertResult("Executed: /a", 200));
+		main.serve(request3).whenComplete(assertResult("Executed: /a/c", 200));
+		main.serve(request4).whenComplete(assertResult("Executed: /a/d", 200));
+		main.serve(request5).whenComplete(assertResult("", 404));
+		main.serve(request6).whenComplete(assertResult("", 404));
+		main.serve(request7).whenComplete(assertResult("Executed: /b/f", 200));
+		main.serve(request8).whenComplete(assertResult("Executed: /b/g", 200));
 		System.out.println();
+		eventloop.run();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
@@ -152,12 +143,9 @@ public class MiddlewareServletTest {
 		HttpRequest request7 = HttpRequest.get(TEMPLATE + "/b/f");  // ok
 		HttpRequest request8 = HttpRequest.get(TEMPLATE + "/b/g");  // ok
 
-		AsyncServlet action = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
-				callback.setResult(HttpResponse.ofCode(200).withBody(msg));
-			}
+		AsyncServlet action = request -> {
+			ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
+			return SettableStage.immediateStage(HttpResponse.ofCode(200).withBody(msg));
 		};
 
 		MiddlewareServlet main = MiddlewareServlet.create()
@@ -169,15 +157,16 @@ public class MiddlewareServletTest {
 				.with(GET, "/b/g", action);
 
 		System.out.println("Long mapping " + DELIM);
-		main.serve(request1, callback("Executed: /", 200));
-		main.serve(request2, callback("Executed: /a", 200));
-		main.serve(request3, callback("Executed: /a/c", 200));
-		main.serve(request4, callback("Executed: /a/d", 200));
-		main.serve(request5, callback("", 404));
-		main.serve(request6, callback("", 404));
-		main.serve(request7, callback("Executed: /b/f", 200));
-		main.serve(request8, callback("Executed: /b/g", 200));
+		main.serve(request1).whenComplete(assertResult("Executed: /", 200));
+		main.serve(request2).whenComplete(assertResult("Executed: /a", 200));
+		main.serve(request3).whenComplete(assertResult("Executed: /a/c", 200));
+		main.serve(request4).whenComplete(assertResult("Executed: /a/d", 200));
+		main.serve(request5).whenComplete(assertResult("", 404));
+		main.serve(request6).whenComplete(assertResult("", 404));
+		main.serve(request7).whenComplete(assertResult("Executed: /b/f", 200));
+		main.serve(request8).whenComplete(assertResult("Executed: /b/g", 200));
 		System.out.println();
+		eventloop.run();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
@@ -187,16 +176,8 @@ public class MiddlewareServletTest {
 		expectedException.expectMessage("Can't map. Servlet already exists");
 
 		MiddlewareServlet s1 = MiddlewareServlet.create()
-				.with(GET, "/", new AsyncServlet() {
-					@Override
-					public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-					}
-				})
-				.with(GET, "/", new AsyncServlet() {
-					@Override
-					public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-					}
-				});
+				.with(GET, "/", request -> SettableStage.immediateStage(null))
+				.with(GET, "/", request -> SettableStage.immediateStage(null));
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
@@ -211,12 +192,9 @@ public class MiddlewareServletTest {
 		HttpRequest request6 = HttpRequest.get(TEMPLATE + "/a/e");      // ok
 		HttpRequest request7 = HttpRequest.get(TEMPLATE + "/a/c/f");    // ok
 
-		AsyncServlet action = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
-				callback.setResult(HttpResponse.ofCode(200).withBody(msg));
-			}
+		AsyncServlet action = request -> {
+			ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
+			return SettableStage.immediateStage(HttpResponse.ofCode(200).withBody(msg));
 		};
 
 		MiddlewareServlet main = MiddlewareServlet.create()
@@ -230,14 +208,15 @@ public class MiddlewareServletTest {
 						.with(GET, "/a/c/f", action));
 
 		System.out.println("Merge   " + DELIM);
-		main.serve(request1, callback("Executed: /", 200));
-		main.serve(request2, callback("Executed: /a", 200));
-		main.serve(request3, callback("Executed: /b", 200));
-		main.serve(request4, callback("Executed: /a/c", 200));
-		main.serve(request5, callback("Executed: /a/d", 200));
-		main.serve(request6, callback("Executed: /a/e", 200));
-		main.serve(request7, callback("Executed: /a/c/f", 200));
+		main.serve(request1).whenComplete(assertResult("Executed: /", 200));
+		main.serve(request2).whenComplete(assertResult("Executed: /a", 200));
+		main.serve(request3).whenComplete(assertResult("Executed: /b", 200));
+		main.serve(request4).whenComplete(assertResult("Executed: /a/c", 200));
+		main.serve(request5).whenComplete(assertResult("Executed: /a/d", 200));
+		main.serve(request6).whenComplete(assertResult("Executed: /a/e", 200));
+		main.serve(request7).whenComplete(assertResult("Executed: /a/c/f", 200));
 		System.out.println();
+		eventloop.run();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
@@ -245,20 +224,14 @@ public class MiddlewareServletTest {
 	public void testFailMerge() throws ParseException {
 		HttpRequest request = HttpRequest.get(TEMPLATE + "/a/c/f");    // fail
 
-		AsyncServlet action = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
-				callback.setResult(HttpResponse.ofCode(200).withBody(msg));
-			}
+		AsyncServlet action = request12 -> {
+			ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request12.getPath());
+			return SettableStage.immediateStage(HttpResponse.ofCode(200).withBody(msg));
 		};
 
-		AsyncServlet anotherAction = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				ByteBuf msg = ByteBufStrings.wrapUtf8("Shall not be executed: " + request.getPath());
-				callback.setResult(HttpResponse.ofCode(200).withBody(msg));
-			}
+		AsyncServlet anotherAction = request1 -> {
+			ByteBuf msg = ByteBufStrings.wrapUtf8("Shall not be executed: " + request1.getPath());
+			return SettableStage.immediateStage(HttpResponse.ofCode(200).withBody(msg));
 		};
 
 		// /a/c/f already mapped
@@ -272,22 +245,21 @@ public class MiddlewareServletTest {
 				.with(GET, "/", MiddlewareServlet.create()
 						.with(GET, "/a/c/f", anotherAction));
 
-		main.serve(request, callback("SHALL NOT BE EXECUTED", 500));
+		main.serve(request).whenComplete(assertResult("SHALL NOT BE EXECUTED", 500));
+		eventloop.run();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
 	public void testParameter() throws ParseException {
-		AsyncServlet printParameters = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				String body = request.getUrlParameter("id")
-						+ " " + request.getUrlParameter("uid")
-						+ " " + request.getUrlParameter("eid");
-				ByteBuf bodyByteBuf = ByteBufStrings.wrapUtf8(body);
-				callback.setResult(HttpResponse.ofCode(200).withBody(bodyByteBuf));
-				request.recycleBufs();
-			}
+		AsyncServlet printParameters = request -> {
+			String body = request.getUrlParameter("id")
+					+ " " + request.getUrlParameter("uid")
+					+ " " + request.getUrlParameter("eid");
+			ByteBuf bodyByteBuf = ByteBufStrings.wrapUtf8(body);
+			final HttpResponse httpResponse = HttpResponse.ofCode(200).withBody(bodyByteBuf);
+			request.recycleBufs();
+			return SettableStage.immediateStage(httpResponse);
 		};
 
 		MiddlewareServlet main = MiddlewareServlet.create()
@@ -295,29 +267,24 @@ public class MiddlewareServletTest {
 				.with(GET, "/:id/a/:uid", printParameters);
 
 		System.out.println("Parameter test " + DELIM);
-		main.serve(HttpRequest.get("http://www.coursera.org/123/a/456/b/789"), callback("123 456 789", 200));
-		main.serve(HttpRequest.get("http://www.coursera.org/555/a/777"), callback("555 777 null", 200));
-		main.serve(HttpRequest.get("http://www.coursera.org"), callback("", 404));
+		main.serve(HttpRequest.get("http://www.coursera.org/123/a/456/b/789")).whenComplete(assertResult("123 456 789", 200));
+		main.serve(HttpRequest.get("http://www.coursera.org/555/a/777")).whenComplete(assertResult("555 777 null", 200));
+		main.serve(HttpRequest.get("http://www.coursera.org")).whenComplete(assertResult("", 404));
 		System.out.println();
+		eventloop.run();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
 	public void testMultiParameters() throws ParseException {
-		AsyncServlet serveCar = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				ByteBuf body = ByteBufStrings.wrapUtf8("served car: " + request.getUrlParameter("cid"));
-				callback.setResult(HttpResponse.ofCode(200).withBody(body));
-			}
+		AsyncServlet serveCar = request -> {
+			ByteBuf body = ByteBufStrings.wrapUtf8("served car: " + request.getUrlParameter("cid"));
+			return SettableStage.immediateStage(HttpResponse.ofCode(200).withBody(body));
 		};
 
-		AsyncServlet serveMan = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				ByteBuf body = ByteBufStrings.wrapUtf8("served man: " + request.getUrlParameter("mid"));
-				callback.setResult(HttpResponse.ofCode(200).withBody(body));
-			}
+		AsyncServlet serveMan = request -> {
+			ByteBuf body = ByteBufStrings.wrapUtf8("served man: " + request.getUrlParameter("mid"));
+			return SettableStage.immediateStage(HttpResponse.ofCode(200).withBody(body));
 		};
 
 		MiddlewareServlet ms = MiddlewareServlet.create()
@@ -325,9 +292,10 @@ public class MiddlewareServletTest {
 				.with(GET, "/serve/:mid/feed", serveMan);
 
 		System.out.println("Multi parameters " + DELIM);
-		ms.serve(HttpRequest.get(TEMPLATE + "/serve/1/wash"), callback("served car: 1", 200));
-		ms.serve(HttpRequest.get(TEMPLATE + "/serve/2/feed"), callback("served man: 2", 200));
+		ms.serve(HttpRequest.get(TEMPLATE + "/serve/1/wash")).whenComplete(assertResult("served car: 1", 200));
+		ms.serve(HttpRequest.get(TEMPLATE + "/serve/2/feed")).whenComplete(assertResult("served man: 2", 200));
 		System.out.println();
+		eventloop.run();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
@@ -337,26 +305,11 @@ public class MiddlewareServletTest {
 		HttpRequest request2 = HttpRequest.post(TEMPLATE + "/a/b/c/action");
 		HttpRequest request3 = HttpRequest.of(CONNECT, TEMPLATE + "/a/b/c/action");
 
-		AsyncServlet post = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				callback.setResult(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("POST")));
-			}
-		};
+		AsyncServlet post = request -> SettableStage.immediateStage(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("POST")));
 
-		AsyncServlet get = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				callback.setResult(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("GET")));
-			}
-		};
+		AsyncServlet get = request -> SettableStage.immediateStage(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("GET")));
 
-		AsyncServlet wildcard = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				callback.setResult(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("WILDCARD")));
-			}
-		};
+		AsyncServlet wildcard = request -> SettableStage.immediateStage(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("WILDCARD")));
 
 		MiddlewareServlet servlet = MiddlewareServlet.create()
 				.with("/a/b/c/action", wildcard)
@@ -364,28 +317,21 @@ public class MiddlewareServletTest {
 				.with(GET, "/a/b/c/action", get);
 
 		System.out.println("Different methods " + DELIM);
-		servlet.serve(request1, callback("GET", 200));
-		servlet.serve(request2, callback("POST", 200));
-		servlet.serve(request3, callback("WILDCARD", 200));
+		servlet.serve(request1).whenComplete(assertResult("GET", 200));
+		servlet.serve(request2).whenComplete(assertResult("POST", 200));
+		servlet.serve(request3).whenComplete(assertResult("WILDCARD", 200));
 		System.out.println();
+		eventloop.run();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
 	public void testDefault() throws ParseException {
-		AsyncServlet def = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				callback.setResult(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Stopped at admin: " + request.getRelativePath())));
-			}
-		};
+		AsyncServlet def = request -> SettableStage.immediateStage(
+				HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Stopped at admin: " + request.getRelativePath())));
 
-		AsyncServlet action = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				callback.setResult(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Action executed")));
-			}
-		};
+		AsyncServlet action = request -> SettableStage.immediateStage(
+				HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Action executed")));
 
 		HttpRequest request1 = HttpRequest.get(TEMPLATE + "/html/admin/action");
 		HttpRequest request2 = HttpRequest.get(TEMPLATE + "/html/admin/action/ban");
@@ -395,62 +341,48 @@ public class MiddlewareServletTest {
 				.withFallback("/html/admin", def);
 
 		System.out.println("Default stop " + DELIM);
-		main.serve(request1, callback("Action executed", 200));
-		main.serve(request2, callback("Stopped at admin: /action/ban", 200));
+		main.serve(request1).whenComplete(assertResult("Action executed", 200));
+		main.serve(request2).whenComplete(assertResult("Stopped at admin: /action/ban", 200));
 		System.out.println();
+		eventloop.run();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
 	public void test404() throws ParseException {
-		AsyncServlet servlet = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				callback.setResult(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("All OK")));
-			}
-		};
+		AsyncServlet servlet = request -> SettableStage.immediateStage(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("All OK")));
 		MiddlewareServlet main = MiddlewareServlet.create()
 				.with("/a/:id/b/d", servlet);
 
 		System.out.println("404 " + DELIM);
-		main.serve(HttpRequest.get(TEMPLATE + "/a/123/b/c"), callback("", 404));
+		main.serve(HttpRequest.get(TEMPLATE + "/a/123/b/c")).whenComplete(assertResult("", 404));
 		System.out.println();
+		eventloop.run();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
 	public void test405() throws ParseException {
-		AsyncServlet servlet = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				callback.setResult(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Should not execute")));
-			}
-		};
+		AsyncServlet servlet = request -> SettableStage.immediateStage(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Should not execute")));
 		MiddlewareServlet main = MiddlewareServlet.create()
 				.with(GET, "/a/:id/b/d", servlet);
 
-		main.serve(HttpRequest.post(TEMPLATE + "/a/123/b/d"), callback("", 405));
+		main.serve(HttpRequest.post(TEMPLATE + "/a/123/b/d")).whenComplete(assertResult("", 405));
+		eventloop.run();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
 	public void test405WithFallback() {
-		AsyncServlet servlet = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				callback.setResult(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Should not execute")));
-			}
-		};
-		AsyncServlet fallback = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				callback.setResult(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Fallback executed")));
-			}
-		};
+		AsyncServlet servlet = request -> SettableStage.immediateStage(
+				HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Should not execute")));
+		AsyncServlet fallback = request -> SettableStage.immediateStage(
+				HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Fallback executed")));
 		MiddlewareServlet main = MiddlewareServlet.create()
 				.with(GET, "/a/:id/b/d", servlet)
 				.withFallback("/a/:id/b/d", fallback);
-		main.serve(HttpRequest.post(TEMPLATE + "/a/123/b/d"), callback("Fallback executed", 200));
+		main.serve(HttpRequest.post(TEMPLATE + "/a/123/b/d")).whenComplete(assertResult("Fallback executed", 200));
+		eventloop.run();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 }

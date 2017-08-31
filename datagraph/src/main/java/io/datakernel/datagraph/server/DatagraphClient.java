@@ -16,8 +16,8 @@
 
 package io.datakernel.datagraph.server;
 
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ConnectCallback;
+import io.datakernel.async.AsyncCallbacks;
+import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.node.Node;
@@ -42,6 +42,7 @@ import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.stream.net.MessagingSerializers.ofGson;
 
@@ -70,125 +71,118 @@ public final class DatagraphClient {
 		this.serializer = ofGson(serialization.gson, DatagraphResponse.class, serialization.gson, DatagraphCommand.class);
 	}
 
-	public void connectAndExecute(InetSocketAddress address, ConnectCallback callback) {
-		eventloop.connect(address, callback);
+	public CompletionStage<SocketChannel> connectAndExecute(InetSocketAddress address) {
+		return eventloop.connect(address);
 	}
 
-	private class DownloadConnectCallback extends ConnectCallback {
+	private class DownloadHandler {
 		private final StreamId streamId;
 		private final StreamConsumer<ByteBuf> consumer;
-		private final CompletionCallback callback;
+		private final SettableStage<Void> completionStage;
 
-		public DownloadConnectCallback(StreamId streamId, StreamConsumer<ByteBuf> consumer, CompletionCallback callback) {
+		public DownloadHandler(StreamId streamId, StreamConsumer<ByteBuf> consumer) {
 			this.streamId = streamId;
 			this.consumer = consumer;
-			this.callback = callback;
+			this.completionStage = SettableStage.create();
 		}
 
-		@Override
 		public void onConnect(SocketChannel socketChannel) {
 			AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel, socketSettings);
 			final MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = MessagingWithBinaryStreaming.create(eventloop, asyncTcpSocket, serializer);
 			DatagraphCommandDownload commandDownload = new DatagraphCommandDownload(streamId);
 
-			messaging.send(commandDownload, new CompletionCallback() {
-				@Override
-				public void onComplete() {
-					messaging.receiveBinaryStreamTo(consumer, new CompletionCallback() {
-						@Override
-						public void onComplete() {
-							messaging.close();
-							callback.setComplete();
-						}
-
-						@Override
-						public void onException(Exception e) {
-							messaging.close();
-							callback.setException(e);
-						}
+			messaging.send(commandDownload).whenComplete(($, throwable) -> {
+				if (throwable == null) {
+					messaging.receiveBinaryStreamTo(consumer).whenComplete((aVoid, throwable1) -> {
+						messaging.close();
+						AsyncCallbacks.forwardTo(completionStage, null, throwable1);
 					});
-				}
-
-				@Override
-				public void onException(Exception e) {
+				} else {
 					messaging.close();
-					callback.setException(e);
+					completionStage.setError(throwable);
 				}
 			});
 			asyncTcpSocket.setEventHandler(messaging);
 			asyncTcpSocket.register();
 		}
 
-		@Override
-		public void onException(Exception e) {
-			callback.setException(e);
+		public void onException(Throwable e) {
+			completionStage.setError(e);
+		}
+
+		public CompletionStage<Void> getCompletionStage() {
+			return completionStage;
 		}
 	}
 
-	private class ExecuteConnectCallback extends ConnectCallback {
+	private class ExecuteHandler {
 		private final List<Node> nodes;
-		private final CompletionCallback callback;
+		private final SettableStage<Void> completionStage = SettableStage.create();
 
-		private ExecuteConnectCallback(List<Node> nodes, CompletionCallback callback) {
+		private ExecuteHandler(List<Node> nodes) {
 			this.nodes = nodes;
-			this.callback = callback;
 		}
 
-		@Override
 		public void onConnect(SocketChannel socketChannel) {
 			AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel, socketSettings);
 			final MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = MessagingWithBinaryStreaming.create(eventloop, asyncTcpSocket, serializer);
 			DatagraphCommandExecute commandExecute = new DatagraphCommandExecute(nodes);
-			messaging.send(commandExecute, new CompletionCallback() {
-				@Override
-				public void onComplete() {
-					messaging.close();
-				}
 
-				@Override
-				public void onException(Exception e) {
+			messaging.send(commandExecute).whenComplete(($, throwable) -> {
+				if (throwable == null) {
 					messaging.close();
-					callback.setException(e);
+					completionStage.setResult(null);
+				} else {
+					messaging.close();
+					completionStage.setError(throwable);
 				}
 			});
+
 			asyncTcpSocket.setEventHandler(messaging);
 			asyncTcpSocket.register();
 		}
 
-		@Override
-		public void onException(Exception e) {
-			callback.setException(e);
+		public void onException(Throwable e) {
+			completionStage.setError(e);
+		}
+
+		public SettableStage<Void> getCompletionStage() {
+			return completionStage;
 		}
 	}
 
 	public <T> StreamProducer<T> download(InetSocketAddress address, final StreamId streamId, Class<T> type) {
 		BufferSerializer<T> serializer = serialization.getSerializer(type);
 		StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(eventloop, serializer);
-		connectAndExecute(address, new DownloadConnectCallback(streamId, deserializer.getInput(), new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				logger.info("Downloading stream {} completed", streamId);
-			}
+		final DownloadHandler downloadhandler = new DownloadHandler(streamId, deserializer.getInput());
+		downloadhandler.getCompletionStage().whenComplete(($, throwable) -> {
+			if (throwable == null) logger.info("Downloading stream {} completed", streamId);
+			else logger.error("Failed to download stream {}", streamId, throwable);
+		});
 
-			@Override
-			public void onException(Exception e) {
-				logger.error("Failed to download stream {}", streamId, e);
+		connectAndExecute(address).whenComplete((socketChannel, throwable) -> {
+			if (throwable == null) {
+				downloadhandler.onConnect(socketChannel);
+			} else {
+				downloadhandler.onException(throwable);
 			}
-		}));
+		});
 		return deserializer.getOutput();
 	}
 
 	public void execute(InetSocketAddress address, final Collection<Node> nodes) {
-		connectAndExecute(address, new ExecuteConnectCallback(new ArrayList<>(nodes), new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				logger.info("Execute command sent to nodes {}", nodes);
-			}
+		final ExecuteHandler executeHandler = new ExecuteHandler(new ArrayList<>(nodes));
+		executeHandler.getCompletionStage().whenComplete((aVoid, throwable) -> {
+			if (throwable == null) logger.info("Execute command sent to nodes {}", nodes);
+			else logger.error("Failed to send execute command to nodes {}", nodes, throwable);
+		});
 
-			@Override
-			public void onException(Exception e) {
-				logger.error("Failed to send execute command to nodes {}", nodes, e);
+		connectAndExecute(address).whenComplete((socketChannel, throwable) -> {
+			if (throwable == null) {
+				executeHandler.onConnect(socketChannel);
+			} else {
+				executeHandler.onException(throwable);
 			}
-		}));
+		});
 	}
 }

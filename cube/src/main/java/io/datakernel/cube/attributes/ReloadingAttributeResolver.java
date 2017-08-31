@@ -1,9 +1,7 @@
 package io.datakernel.cube.attributes;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ForwardingResultCallback;
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.*;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.eventloop.ScheduledRunnable;
@@ -13,6 +11,7 @@ import io.datakernel.jmx.ValueStats;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_1_HOUR;
 
@@ -83,30 +82,34 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 	}
 
 	@Override
-	public void start(final CompletionCallback callback) {
-		if (reloadPeriod == 0) {
-			callback.setComplete();
-			return;
-		}
+	public CompletionStage<Void> start() {
+		if (reloadPeriod == 0) return SettableStage.immediateStage(null);
+
+		final SettableStage<Void> stage = SettableStage.create();
 		final long reloadTimestamp = getEventloop().currentTimeMillis();
-		reload(timestamp, new ForwardingResultCallback<Map<K, A>>(callback) {
+		reload(timestamp, new ResultCallback<Map<K, A>>() {
 			@Override
 			protected void onResult(Map<K, A> result) {
 				reloadTime.recordValue((int) (getEventloop().currentTimeMillis() - reloadTimestamp));
 				cache.putAll(result);
 				timestamp = reloadTimestamp;
 				scheduleReload(reloadPeriod);
-				callback.setComplete();
+				stage.setResult(null);
+			}
+
+			@Override
+			protected void onException(Exception e) {
+				stage.setError(AsyncCallbacks.throwableToException(e));
 			}
 		});
+
+		return stage;
 	}
 
 	@Override
-	public void stop(CompletionCallback callback) {
-		if (scheduledRunnable != null) {
-			scheduledRunnable.cancel();
-		}
-		callback.setComplete();
+	public CompletionStage<Void> stop() {
+		if (scheduledRunnable != null) scheduledRunnable.cancel();
+		return SettableStage.immediateStage(null);
 	}
 
 	@JmxOperation

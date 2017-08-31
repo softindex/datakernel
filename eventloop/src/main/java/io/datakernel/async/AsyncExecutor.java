@@ -16,8 +16,10 @@
 
 package io.datakernel.async;
 
+import java.util.concurrent.CompletionStage;
+
 public interface AsyncExecutor {
-	void submit(AsyncRunnable asyncRunnable, CompletionCallback callback);
+	CompletionStage<Void> submit(AsyncRunnable asyncRunnable);
 
 	boolean isSaturated();
 }

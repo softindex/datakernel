@@ -1,7 +1,5 @@
 package io.datakernel.eventloop;
 
-import io.datakernel.async.ConnectCallback;
-import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.AsyncTcpSocket.EventHandler;
@@ -10,7 +8,6 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.nio.channels.SocketChannel;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -68,9 +65,8 @@ public class AbstractServerTest {
 
 		server.listen();
 
-		eventloop.connect(address, new ConnectCallback() {
-			@Override
-			public void onConnect(SocketChannel socketChannel) {
+		eventloop.connect(address).whenComplete((socketChannel, throwable) -> {
+			if (throwable == null) {
 				final AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel, settings);
 				asyncTcpSocket.setEventHandler(new EventHandler() {
 					@Override
@@ -82,7 +78,7 @@ public class AbstractServerTest {
 					public void onRead(ByteBuf buf) {
 						buf.recycle();
 						asyncTcpSocket.close();
-						server.close(IgnoreCompletionCallback.create());
+						server.close();
 					}
 
 					@Override
@@ -98,15 +94,12 @@ public class AbstractServerTest {
 					@Override
 					public void onClosedWithError(Exception e) {
 						asyncTcpSocket.close();
-						server.close(IgnoreCompletionCallback.create());
+						server.close();
 					}
 				});
 				asyncTcpSocket.register();
-			}
-
-			@Override
-			public void onException(Exception e) {
-				e.printStackTrace();
+			} else {
+				throwable.printStackTrace();
 				fail();
 			}
 		});

@@ -16,9 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.IgnoreCompletionCallback;
-import io.datakernel.async.ResultCallback;
-import io.datakernel.async.ResultCallbackFuture;
+import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufStrings;
@@ -33,6 +31,7 @@ import org.junit.Test;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
@@ -59,33 +58,23 @@ public class AsyncHttpClientTest {
 
 		final AsyncHttpServer httpServer = HelloWorldServer.helloWorldServer(eventloop, PORT);
 		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop);
-		final ResultCallbackFuture<String> resultObserver = ResultCallbackFuture.create();
 
 		httpServer.listen();
 
-		httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT), new ResultCallback<HttpResponse>() {
-			@Override
-			public void onResult(final HttpResponse result) {
-				try {
-					resultObserver.setResult(decodeUtf8(result.getBody()));
-				} catch (ParseException e) {
-					onException(e);
-				}
-				httpClient.stop(IgnoreCompletionCallback.create());
-				httpServer.close(IgnoreCompletionCallback.create());
+		final CompletableFuture<String> future = httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT)).thenCompose(response -> {
+			try {
+				return SettableStage.immediateStage(decodeUtf8(response.getBody()));
+			} catch (ParseException e) {
+				return SettableStage.immediateFailedStage(e);
+			} finally {
+				httpClient.stop();
+				httpServer.close();
 			}
-
-			@Override
-			public void onException(Exception exception) {
-				resultObserver.setException(exception);
-				httpClient.stop(IgnoreCompletionCallback.create());
-				httpServer.close(IgnoreCompletionCallback.create());
-			}
-		});
+		}).toCompletableFuture();
 
 		eventloop.run();
 
-		assertEquals(decodeUtf8(HelloWorldServer.HELLO_WORLD), resultObserver.get());
+		assertEquals(decodeUtf8(HelloWorldServer.HELLO_WORLD), future.get());
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
@@ -96,31 +85,22 @@ public class AsyncHttpClientTest {
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop).withConnectTimeout(TIMEOUT);
-		final ResultCallbackFuture<String> resultObserver = ResultCallbackFuture.create();
 
-		httpClient.send(HttpRequest.get("http://google.com"), new ResultCallback<HttpResponse>() {
-			@Override
-			public void onResult(HttpResponse result) {
-				try {
-					resultObserver.setResult(decodeUtf8(result.getBody()));
-				} catch (ParseException e) {
-					onException(e);
-				}
-				httpClient.stop(IgnoreCompletionCallback.create());
+		final CompletableFuture<String> future = httpClient.send(HttpRequest.get("http://google.com")).thenCompose(response -> {
+			try {
+				return SettableStage.immediateStage(decodeUtf8(response.getBody()));
+			} catch (ParseException e) {
+				return SettableStage.immediateFailedStage(e);
+			} finally {
+				httpClient.stop();
 			}
-
-			@Override
-			public void onException(Exception exception) {
-				resultObserver.setException(exception);
-				httpClient.stop(IgnoreCompletionCallback.create());
-			}
-		});
+		}).toCompletableFuture();
 
 		eventloop.run();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 
 		try {
-			System.err.println("Result: " + resultObserver.get());
+			System.err.println("Result: " + future.get());
 		} catch (ExecutionException e) {
 			throw e.getCause();
 		}
@@ -131,37 +111,26 @@ public class AsyncHttpClientTest {
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		final AsyncHttpServer httpServer = HelloWorldServer.helloWorldServer(eventloop, PORT);
-		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop)
-				.withMaxHttpMessageSize(12);
-		final ResultCallbackFuture<String> resultObserver = ResultCallbackFuture.create();
+		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop).withMaxHttpMessageSize(12);
 
 		httpServer.listen();
 
-		httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT), new ResultCallback<HttpResponse>() {
-			@Override
-			public void onResult(HttpResponse result) {
-				try {
-					resultObserver.setResult(decodeUtf8(result.getBody()));
-				} catch (ParseException e) {
-					onException(e);
-				}
-				httpClient.stop(IgnoreCompletionCallback.create());
-				httpServer.close(IgnoreCompletionCallback.create());
+		final CompletableFuture<String> future = httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT)).thenCompose(response -> {
+			try {
+				return SettableStage.immediateStage(decodeUtf8(response.getBody()));
+			} catch (ParseException e) {
+				return SettableStage.immediateFailedStage(e);
 			}
-
-			@Override
-			public void onException(Exception exception) {
-				resultObserver.setException(exception);
-				httpClient.stop(IgnoreCompletionCallback.create());
-				httpServer.close(IgnoreCompletionCallback.create());
-			}
-		});
+		}).whenComplete((s, throwable) -> {
+			httpClient.stop();
+			httpServer.close();
+		}).toCompletableFuture();
 
 		eventloop.run();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 
 		try {
-			System.err.println("Result: " + resultObserver.get());
+			System.err.println("Result: " + future.get());
 		} catch (ExecutionException e) {
 			throw e.getCause();
 		}
@@ -171,69 +140,56 @@ public class AsyncHttpClientTest {
 	public void testEmptyLineResponse() throws Throwable {
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		final SocketHandlerProvider socketHandlerProvider = new SocketHandlerProvider() {
+		final SocketHandlerProvider socketHandlerProvider = asyncTcpSocket -> new AsyncTcpSocket.EventHandler() {
 			@Override
-			public AsyncTcpSocket.EventHandler createSocketHandler(final AsyncTcpSocket asyncTcpSocket) {
-				return new AsyncTcpSocket.EventHandler() {
-					@Override
-					public void onRegistered() {
-						asyncTcpSocket.read();
-					}
+			public void onRegistered() {
+				asyncTcpSocket.read();
+			}
 
-					@Override
-					public void onRead(ByteBuf buf) {
-						buf.recycle();
-						asyncTcpSocket.write(ByteBufStrings.wrapAscii("\r\n"));
-					}
+			@Override
+			public void onRead(ByteBuf buf) {
+				buf.recycle();
+				asyncTcpSocket.write(ByteBufStrings.wrapAscii("\r\n"));
+			}
 
-					@Override
-					public void onReadEndOfStream() {
-						// empty
-					}
+			@Override
+			public void onReadEndOfStream() {
+				// empty
+			}
 
-					@Override
-					public void onWrite() {
-						asyncTcpSocket.close();
-					}
+			@Override
+			public void onWrite() {
+				asyncTcpSocket.close();
+			}
 
-					@Override
-					public void onClosedWithError(Exception e) {
-						// empty
-					}
-				};
+			@Override
+			public void onClosedWithError(Exception e) {
+				// empty
 			}
 		};
 
 		final SimpleServer server = SimpleServer.create(eventloop, socketHandlerProvider).withListenAddress(new InetSocketAddress("localhost", PORT));
 		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop);
-		final ResultCallbackFuture<String> resultObserver = ResultCallbackFuture.create();
 
 		server.listen();
 
-		httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT), new ResultCallback<HttpResponse>() {
-			@Override
-			public void onResult(HttpResponse result) {
+		final HttpRequest request = HttpRequest.get("http://127.0.0.1:" + PORT);
+		final CompletableFuture<String> future = httpClient.send(request).thenCompose(response -> {
 				try {
-					resultObserver.setResult(decodeUtf8(result.getBody()));
+					return SettableStage.immediateStage(decodeUtf8(response.getBody()));
 				} catch (ParseException e) {
-					onException(e);
+					return SettableStage.immediateFailedStage(e);
 				}
-				httpClient.stop(IgnoreCompletionCallback.create());
-			}
-
-			@Override
-			public void onException(Exception e) {
-				resultObserver.setException(e);
-				httpClient.stop(IgnoreCompletionCallback.create());
-				server.close(IgnoreCompletionCallback.create());
-			}
-		});
+		}).whenComplete((s, throwable) -> {
+			httpClient.stop();
+			server.close();
+		}).toCompletableFuture();
 
 		eventloop.run();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 
 		try {
-			System.err.println("Result: " + resultObserver.get());
+			System.err.println("Result: " + future.get());
 		} catch (ExecutionException e) {
 			throw e.getCause();
 		}

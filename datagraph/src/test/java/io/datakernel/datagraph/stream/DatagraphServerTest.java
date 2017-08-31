@@ -20,8 +20,7 @@ import com.google.common.base.Function;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Ordering;
 import com.google.common.net.InetAddresses;
-import io.datakernel.async.AssertingCompletionCallback;
-import io.datakernel.async.IgnoreCompletionCallback;
+import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.datagraph.dataset.Dataset;
 import io.datakernel.datagraph.dataset.LocallySortedDataset;
 import io.datakernel.datagraph.dataset.SortedDataset;
@@ -124,19 +123,9 @@ public class DatagraphServerTest {
 		server1.listen();
 		server2.listen();
 
-		result1.setCompletionCallback(new AssertingCompletionCallback() {
-			@Override
-			protected void onComplete() {
-				server1.close(IgnoreCompletionCallback.create());
-			}
-		});
+		result1.getCompletionStage().whenComplete(AsyncCallbacks.assertBiConsumer(aVoid -> server1.close()));
 
-		result2.setCompletionCallback(new AssertingCompletionCallback() {
-			@Override
-			protected void onComplete() {
-				server2.close(IgnoreCompletionCallback.create());
-			}
-		});
+		result2.getCompletionStage().whenComplete(AsyncCallbacks.assertBiConsumer(aVoid -> server2.close()));
 
 		graph.execute();
 
@@ -188,19 +177,9 @@ public class DatagraphServerTest {
 		server1.listen();
 		server2.listen();
 
-		result1.setCompletionCallback(new AssertingCompletionCallback() {
-			@Override
-			protected void onComplete() {
-				server1.close(IgnoreCompletionCallback.create());
-			}
-		});
+		result1.getCompletionStage().whenComplete(AsyncCallbacks.assertBiConsumer(aVoid -> server1.close()));
 
-		result2.setCompletionCallback(new AssertingCompletionCallback() {
-			@Override
-			protected void onComplete() {
-				server2.close(IgnoreCompletionCallback.create());
-			}
-		});
+		result2.getCompletionStage().whenComplete(AsyncCallbacks.assertBiConsumer(aVoid -> server2.close()));
 
 		graph.execute();
 
@@ -264,19 +243,9 @@ public class DatagraphServerTest {
 		server1.listen();
 		server2.listen();
 
-		result1.setCompletionCallback(new AssertingCompletionCallback() {
-			@Override
-			protected void onComplete() {
-				server1.close(IgnoreCompletionCallback.create());
-			}
-		});
+		result1.getCompletionStage().whenComplete(AsyncCallbacks.assertBiConsumer(aVoid -> server1.close()));
 
-		result2.setCompletionCallback(new AssertingCompletionCallback() {
-			@Override
-			protected void onComplete() {
-				server2.close(IgnoreCompletionCallback.create());
-			}
-		});
+		result2.getCompletionStage().whenComplete(AsyncCallbacks.assertBiConsumer(aVoid -> server2.close()));
 
 		graph.execute();
 
@@ -337,13 +306,10 @@ public class DatagraphServerTest {
 		StreamProducer<TestItem> resultProducer = collector.compile(graph);
 		resultProducer.streamTo(resultConsumer);
 
-		resultConsumer.setCompletionCallback(new AssertingCompletionCallback() {
-			@Override
-			protected void onComplete() {
-				server1.close(IgnoreCompletionCallback.create());
-				server2.close(IgnoreCompletionCallback.create());
-			}
-		});
+		resultConsumer.getCompletionStage().whenComplete(AsyncCallbacks.assertBiConsumer(aVoid -> {
+			server1.close();
+			server2.close();
+		}));
 
 		graph.execute();
 

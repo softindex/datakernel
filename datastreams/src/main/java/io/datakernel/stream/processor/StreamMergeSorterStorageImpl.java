@@ -16,9 +16,7 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ForwardingResultCallback;
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
@@ -34,9 +32,11 @@ import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.List;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -99,7 +99,7 @@ public final class StreamMergeSorterStorageImpl<T> implements StreamMergeSorterS
 	}
 
 	@Override
-	public int write(final StreamProducer<T> producer, final CompletionCallback completionCallback) {
+	public PartitionStage write(final StreamProducer<T> producer) {
 		StreamBinarySerializer<T> streamSerializer = StreamBinarySerializer.create(eventloop, serializer)
 				.withFlushDelay(1000);
 		StreamByteChunker streamByteChunkerBefore = StreamByteChunker.create(eventloop, blockSize / 2, blockSize);
@@ -112,16 +112,15 @@ public final class StreamMergeSorterStorageImpl<T> implements StreamMergeSorterS
 		streamCompressor.getOutput().streamTo(streamByteChunkerAfter.getInput());
 
 		int partition = PARTITION.incrementAndGet();
-		AsyncFile.open(eventloop, executorService, partitionPath(partition), StreamFileWriter.CREATE_OPTIONS,
-				new ForwardingResultCallback<AsyncFile>(completionCallback) {
-					@Override
-					protected void onResult(AsyncFile file) {
-						StreamFileWriter streamWriter = StreamFileWriter.create(eventloop, file);
-						streamByteChunkerAfter.getOutput().streamTo(streamWriter);
-						streamWriter.setFlushCallback(completionCallback);
-					}
+
+		final Path path = partitionPath(partition);
+		final CompletionStage<Void> stage = AsyncFile.openAsync(eventloop, executorService, path, StreamFileWriter.CREATE_OPTIONS)
+				.thenCompose(file -> {
+					StreamFileWriter streamWriter = StreamFileWriter.create(eventloop, file);
+					streamByteChunkerAfter.getOutput().streamTo(streamWriter);
+					return streamWriter.getFlushStage();
 				});
-		return partition;
+		return new PartitionStage(partition, stage);
 	}
 
 	/**
@@ -131,38 +130,27 @@ public final class StreamMergeSorterStorageImpl<T> implements StreamMergeSorterS
 	 * @param partition index of partition to read
 	 */
 	@Override
-	public StreamProducer<T> read(int partition, final CompletionCallback callback) {
+	public ProducerStage<T> read(int partition) {
 		assert partition >= 0;
 
 		final StreamLZ4Decompressor streamDecompressor = StreamLZ4Decompressor.create(eventloop);
 		StreamBinaryDeserializer<T> streamDeserializer = StreamBinaryDeserializer.create(eventloop, serializer);
 		streamDecompressor.getOutput().streamTo(streamDeserializer.getInput());
 
-		AsyncFile.open(eventloop, executorService, partitionPath(partition), new OpenOption[]{READ}, new ResultCallback<AsyncFile>() {
-			@Override
-			protected void onResult(AsyncFile file) {
-				StreamFileReader fileReader = StreamFileReader.readFileFrom(eventloop, file, 1024 * 1024, 0L);
-				fileReader.streamTo(streamDecompressor.getInput());
-				fileReader.setPositionCallback(new ResultCallback<Long>() {
-					@Override
-					public void onResult(Long position) {
-						callback.setComplete();
-					}
-
-					@Override
-					public void onException(Exception e) {
-						callback.setException(e);
+		final Path path = partitionPath(partition);
+		final CompletionStage<Void> stage1 = AsyncFile.openAsync(eventloop, executorService, path, new OpenOption[]{READ})
+				.thenCompose((Function<AsyncFile, CompletionStage<Void>>) file -> {
+					StreamFileReader fileReader = StreamFileReader.readFileFrom(eventloop, file, 1024 * 1024, 0L);
+					fileReader.streamTo(streamDecompressor.getInput());
+					return fileReader.getPositionStage().thenApply(aLong -> null);
+				}).whenComplete((aVoid, throwable) -> {
+					if (throwable != null) {
+						final Exception e = AsyncCallbacks.throwableToException(throwable);
+						StreamProducers.<ByteBuf>closingWithError(eventloop, e).streamTo(streamDecompressor.getInput());
 					}
 				});
-			}
 
-			@Override
-			protected void onException(Exception e) {
-				StreamProducers.<ByteBuf>closingWithError(eventloop, e).streamTo(streamDecompressor.getInput());
-			}
-		});
-
-		return streamDeserializer.getOutput();
+		return new ProducerStage<>(streamDeserializer.getOutput(), stage1);
 	}
 
 	/**
@@ -171,24 +159,21 @@ public final class StreamMergeSorterStorageImpl<T> implements StreamMergeSorterS
 	@Override
 	public void cleanup(final List<Integer> partitionsToDelete) {
 		try {
-			executorService.execute(new Runnable() {
-				@Override
-				public void run() {
-					try {
-						Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
-							@Override
-							public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-								for (Integer partitionToDelete : partitionsToDelete) {
-									if (file.getFileName().toString().equals(format(filePattern, partitionToDelete))) {
-										Files.delete(file);
-									}
+			executorService.execute(() -> {
+				try {
+					Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
+						@Override
+						public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+							for (Integer partitionToDelete : partitionsToDelete) {
+								if (file.getFileName().toString().equals(format(filePattern, partitionToDelete))) {
+									Files.delete(file);
 								}
-								return FileVisitResult.CONTINUE;
 							}
-						});
-					} catch (IOException e) {
-						logger.error("Exception occurred while trying to perform cleanup", e);
-					}
+							return FileVisitResult.CONTINUE;
+						}
+					});
+				} catch (IOException e) {
+					logger.error("Exception occurred while trying to perform cleanup", e);
 				}
 			});
 		} catch (RejectedExecutionException e) {

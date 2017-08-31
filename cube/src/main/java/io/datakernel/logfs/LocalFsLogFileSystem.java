@@ -16,8 +16,8 @@
 
 package io.datakernel.logfs;
 
+import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
@@ -149,16 +149,13 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem {
 	@Override
 	public void read(String logPartition, LogFile logFile, final long startPosition, final StreamConsumer<ByteBuf> consumer) {
 		Eventloop eventloop = getCurrentEventloop();
-		AsyncFile.open(eventloop, executorService, path(logPartition, logFile), new OpenOption[]{READ}, new ResultCallback<AsyncFile>() {
-			@Override
-			protected void onResult(AsyncFile file) {
+		AsyncFile.openAsync(eventloop, executorService, path(logPartition, logFile), new OpenOption[]{READ}).whenComplete((file, throwable) -> {
+			if (throwable != null) {
+				final Exception e = AsyncCallbacks.throwableToException(throwable);
+				StreamProducers.<ByteBuf>closingWithError(eventloop, e).streamTo(consumer);
+			} else {
 				StreamFileReader fileReader = StreamFileReader.readFileFrom(eventloop, file, 1024 * 1024, startPosition);
 				fileReader.streamTo(consumer);
-			}
-
-			@Override
-			protected void onException(Exception e) {
-				StreamProducers.<ByteBuf>closingWithError(eventloop, e).streamTo(consumer);
 			}
 		});
 	}
@@ -166,12 +163,13 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem {
 	@Override
 	public void write(String logPartition, LogFile logFile, final StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
 		Eventloop eventloop = getCurrentEventloop();
-		AsyncFile.open(eventloop, executorService, path(logPartition, logFile), StreamFileWriter.CREATE_OPTIONS, new ForwardingResultCallback<AsyncFile>(callback) {
-			@Override
-			protected void onResult(AsyncFile file) {
+		AsyncFile.openAsync(eventloop, executorService, path(logPartition, logFile), StreamFileWriter.CREATE_OPTIONS).whenComplete((file, throwable) -> {
+			if (throwable == null) {
 				StreamFileWriter fileWriter = StreamFileWriter.create(eventloop, file, true);
 				producer.streamTo(fileWriter);
-				fileWriter.setFlushCallback(callback);
+				fileWriter.getFlushStage().whenComplete(AsyncCallbacks.forwardTo(callback));
+			} else {
+				callback.setException(AsyncCallbacks.throwableToException(throwable));
 			}
 		});
 	}

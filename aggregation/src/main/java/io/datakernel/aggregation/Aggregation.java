@@ -440,13 +440,11 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 	                                          List<AggregationChunk> individualChunks, final Class<T> sequenceClass,
 	                                          final DefiningClassLoader queryClassLoader) {
 		checkArgument(!individualChunks.isEmpty());
-		AsyncIterator<StreamProducer<T>> producerAsyncIterator = AsyncIterators.transform(individualChunks.iterator(),
-				new AsyncFunction<AggregationChunk, StreamProducer<T>>() {
-					@Override
-					public void apply(AggregationChunk chunk, ResultCallback<StreamProducer<T>> callback) {
-						chunkReaderWithFilter(where, chunk, sequenceClass, queryClassLoader, callback);
-					}
-				});
+		AsyncIterator<StreamProducer<T>> producerAsyncIterator = AsyncIterators.transform(individualChunks.iterator(), chunk -> {
+			final SettableStage<StreamProducer<T>> stage = SettableStage.create();
+			chunkReaderWithFilter(where, chunk, sequenceClass, queryClassLoader, AsyncCallbacks.resultToStage(stage));
+			return stage;
+		});
 		return StreamProducers.concat(eventloop, producerAsyncIterator);
 	}
 

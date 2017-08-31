@@ -16,7 +16,6 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.async.CompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
@@ -111,7 +110,6 @@ public class StreamByteChunkerTest {
 	private static class StreamFixedSizeConsumer implements StreamConsumer<ByteBuf>, StreamDataReceiver<ByteBuf> {
 
 		private List<ByteBuf> buffers = new ArrayList<>();
-		private List<CompletionCallback> callbacks = new ArrayList<>();
 
 		@Override
 		public StreamDataReceiver<ByteBuf> getDataReceiver() {
@@ -125,9 +123,6 @@ public class StreamByteChunkerTest {
 
 		@Override
 		public void onProducerEndOfStream() {
-			for (CompletionCallback callback : callbacks) {
-				callback.setComplete();
-			}
 		}
 
 		@Override

@@ -3,10 +3,10 @@ package io.datakernel.remotefs;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import io.datakernel.async.CallbackRegistry;
-import io.datakernel.async.CompletionCallbackFuture;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.SocketSettings;
+import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -60,14 +61,13 @@ public class TestTimeoutsSimpleFs {
 
 		server.listen();
 
-		CompletionCallbackFuture callback = CompletionCallbackFuture.create();
-
-		client.upload(StreamProducers.ofValue(eventloop, ByteBuf.wrapForReading(BIG_FILE)), "fileName.txt", callback);
+		final StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrapForReading(BIG_FILE));
+		final CompletableFuture<Void> future = client.upload(producer, "fileName.txt").toCompletableFuture();
 
 		eventloop.run();
 
 //		thrown.expect(ExecutionException.class);
-		callback.get();
+		future.get();
 	}
 
 }

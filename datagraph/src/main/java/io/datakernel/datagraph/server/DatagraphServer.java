@@ -16,7 +16,6 @@
 
 package io.datakernel.datagraph.server;
 
-import io.datakernel.async.CompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.graph.TaskContext;
@@ -88,17 +87,11 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 				forwarder = StreamForwarder.create(eventloop);
 				pendingStreams.put(streamId, forwarder);
 			}
-			messaging.sendBinaryStreamFrom(forwarder.getOutput(), new CompletionCallback() {
-				@Override
-				public void onComplete() {
-					messaging.close();
-				}
-
-				@Override
-				public void onException(Exception e) {
+			messaging.sendBinaryStreamFrom(forwarder.getOutput()).whenComplete(($, throwable) -> {
+				if (throwable != null) {
 					logger.warn("Exception occurred while trying to send data");
-					messaging.close();
 				}
+				messaging.close();
 			});
 		}
 	}

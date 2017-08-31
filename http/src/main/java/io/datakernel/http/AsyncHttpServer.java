@@ -17,8 +17,8 @@
 package io.datakernel.http;
 
 import io.datakernel.async.AsyncCancellable;
-import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SettableStage;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
@@ -259,24 +259,24 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 				headerChars, maxHttpMessageSize);
 	}
 
-	private CompletionCallback closeCallback;
+	private SettableStage<Void> closeStage;
 
 	void onConnectionClosed() {
 		connectionsCount--;
-		if (connectionsCount == 0 && closeCallback != null) {
-			closeCallback.postComplete(eventloop);
-			closeCallback = null;
+		if (connectionsCount == 0 && closeStage != null) {
+			closeStage.postResult(eventloop, null);
+			closeStage = null;
 		}
 	}
 
 	@Override
-	protected void onClose(final CompletionCallback completionCallback) {
+	protected void onClose(final SettableStage<Void> stage) {
 		poolKeepAlive.closeAllConnections();
 		keepAliveTimeoutMillis = 0;
 		if (connectionsCount == 0) {
-			completionCallback.postComplete(eventloop);
+			stage.postResult(eventloop, null);
 		} else {
-			this.closeCallback = completionCallback;
+			this.closeStage = stage;
 		}
 	}
 

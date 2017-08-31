@@ -16,11 +16,14 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.*;
+import io.datakernel.async.AsyncRunnables;
+import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.FatalErrorHandlers;
 import org.junit.Test;
+
+import java.util.concurrent.CompletableFuture;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
@@ -29,29 +32,26 @@ import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.*;
 
 public class GzipServletTest {
-	private static final AsyncServlet helloWorldServlet = new AsyncServlet() {
-		@Override
-		public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-			callback.setResult(HttpResponse.ok200().withBody(wrapAscii("Hello, World!")));
-		}
-	};
+	private static final AsyncServlet helloWorldServlet = request -> SettableStage.immediateStage(
+			HttpResponse.ok200().withBody(wrapAscii("Hello, World!")));
 
 	@Test
 	public void testGzipServletBase() throws Exception {
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
 		GzipServlet gzipServlet = GzipServlet.create(5, helloWorldServlet);
 		HttpRequest request = HttpRequest.get("http://example.com")
 				.withBody(wrapAscii("Hello, world!"));
 		HttpRequest requestGzip = HttpRequest.get("http://example.com")
 				.withAcceptEncodingGzip().withBody(wrapAscii("Hello, world!"));
 
-		ResultCallbackFuture<HttpResponse> future = ResultCallbackFuture.create();
-		gzipServlet.serve(request, future);
+		CompletableFuture<HttpResponse> future = gzipServlet.serve(request).toCompletableFuture();
+		eventloop.run();
 		HttpResponse response = future.get();
 		assertFalse(response.useGzip);
 		response.recycleBufs();
 
-		future = ResultCallbackFuture.create();
-		gzipServlet.serve(requestGzip, future);
+		future = gzipServlet.serve(requestGzip).toCompletableFuture();
+		eventloop.run();
 		response = future.get();
 		assertTrue(response.useGzip);
 		response.recycleBufs();
@@ -63,27 +63,25 @@ public class GzipServletTest {
 
 	@Test
 	public void testDoesNotServeSmallBodies() throws Exception {
-		AsyncServlet asyncServlet = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				HttpResponse response = HttpResponse.ok200();
-				String requestNum = decodeAscii(request.getBody());
-				ByteBuf body = "1".equals(requestNum) ? wrapAscii("0123456789012345678901") : wrapAscii("0");
-				callback.setResult(response.withBody(body));
-			}
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+		AsyncServlet asyncServlet = request -> {
+			HttpResponse response = HttpResponse.ok200();
+			String requestNum = decodeAscii(request.getBody());
+			ByteBuf body = "1".equals(requestNum) ? wrapAscii("0123456789012345678901") : wrapAscii("0");
+			return SettableStage.immediateStage(response.withBody(body));
 		};
 		GzipServlet customGzipServlet = GzipServlet.create(20, asyncServlet);
 		HttpRequest requestWBody = HttpRequest.get("http://example.com").withAcceptEncodingGzip().withBody(wrapAscii("1"));
 		HttpRequest requestWOBody = HttpRequest.get("http://example.com").withAcceptEncodingGzip().withBody(wrapAscii("2"));
 
-		ResultCallbackFuture<HttpResponse> future = ResultCallbackFuture.create();
-		customGzipServlet.serve(requestWOBody, future);
+		CompletableFuture<HttpResponse> future = customGzipServlet.serve(requestWOBody).toCompletableFuture();
+		eventloop.run();
 		HttpResponse response = future.get();
 		assertFalse(response.useGzip);
 		response.recycleBufs();
 
-		future = ResultCallbackFuture.create();
-		customGzipServlet.serve(requestWBody, future);
+		future = customGzipServlet.serve(requestWBody).toCompletableFuture();
+		eventloop.run();
 		response = future.get();
 		assertTrue(response.useGzip);
 		response.recycleBufs();
@@ -102,43 +100,20 @@ public class GzipServletTest {
 
 		server.listen();
 		AsyncRunnables.runInSequence(eventloop,
-				new AsyncRunnable() {
-					@Override
-					public void run(final CompletionCallback callback) {
-						client.send(HttpRequest.get("http://127.0.0.1:1239"), new ForwardingResultCallback<HttpResponse>(callback) {
-							@Override
-							protected void onResult(HttpResponse result) {
-								assertNull(result.getHeader(HttpHeaders.CONTENT_ENCODING));
-								callback.setComplete();
-							}
-						});
+				() -> client.send(HttpRequest.get("http://127.0.0.1:1239")).thenAccept(response ->
+						assertNull(response.getHeader(HttpHeaders.CONTENT_ENCODING))),
+				() -> client.send(HttpRequest.get("http://127.0.0.1:1239").withAcceptEncodingGzip()).thenAccept(response ->
+						assertNotNull(response.getHeader(HttpHeaders.CONTENT_ENCODING))))
+				.run()
+				.whenComplete((aVoid, throwable) -> {
+					if (throwable != null) {
+						throwable.printStackTrace();
+						fail("should not end here");
+					} else {
+						server.close();
+						client.stop();
 					}
-				},
-				new AsyncRunnable() {
-					@Override
-					public void run(final CompletionCallback callback) {
-						client.send(HttpRequest.get("http://127.0.0.1:1239").withAcceptEncodingGzip(), new ForwardingResultCallback<HttpResponse>(callback) {
-							@Override
-							protected void onResult(HttpResponse result) {
-								assertNotNull(result.getHeader(HttpHeaders.CONTENT_ENCODING));
-								callback.setComplete();
-							}
-						});
-					}
-				}
-		).run(new CompletionCallback() {
-			@Override
-			protected void onComplete() {
-				server.close(IgnoreCompletionCallback.create());
-				client.stop(IgnoreCompletionCallback.create());
-			}
-
-			@Override
-			protected void onException(Exception e) {
-				e.printStackTrace();
-				fail("should not end here");
-			}
-		});
+				});
 		eventloop.run();
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());

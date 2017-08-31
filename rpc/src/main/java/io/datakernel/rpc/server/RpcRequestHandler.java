@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.server;
 
-import io.datakernel.async.ResultCallback;
+import java.util.concurrent.CompletionStage;
 
 /**
  * Implementations of this interface specifies the behavior according to
@@ -29,5 +29,5 @@ import io.datakernel.async.ResultCallback;
  * @param <O>	class of response
  */
 public interface RpcRequestHandler<I, O> {
-	void run(I request, ResultCallback<O> callback);
+	CompletionStage<O> run(I request);
 }

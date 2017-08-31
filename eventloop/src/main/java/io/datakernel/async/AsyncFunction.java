@@ -16,6 +16,8 @@
 
 package io.datakernel.async;
 
+import java.util.concurrent.CompletionStage;
+
 /**
  * Asynchronous determines an output value based on an input value.
  *
@@ -26,7 +28,6 @@ public interface AsyncFunction<I, O> {
 	/**
 	 * Returns the result of applying this function to input.
 	 *
-	 * @param callback callback which are calling after applying
 	 */
-	void apply(I input, ResultCallback<O> callback);
+	CompletionStage<O> apply(I input);
 }

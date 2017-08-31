@@ -16,9 +16,9 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.ResultCallbackFuture;
-import io.datakernel.rpc.client.sender.helper.ResultCallbackStub;
+import io.datakernel.rpc.client.sender.helper.BiConsumerStub;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionPoolStub;
+import io.datakernel.rpc.client.sender.helper.RpcMessageDataStub;
 import io.datakernel.rpc.client.sender.helper.RpcSenderStub;
 import io.datakernel.rpc.hash.HashFunction;
 import io.datakernel.rpc.hash.ShardingFunction;
@@ -63,7 +63,7 @@ public class RpcStrategiesTest {
 
 		RpcSender sender = strategy.createSender(pool);
 		for (int i = 0; i < iterations; i++) {
-			sender.sendRequest(new Object(), 50, ResultCallbackFuture.create());
+			sender.sendRequest(new Object(), 50);
 		}
 
 		List<RpcSenderStub> connections =
@@ -84,7 +84,7 @@ public class RpcStrategiesTest {
 		pool.put(ADDRESS_2, connection2);
 		// we don't put connection3
 		pool.put(ADDRESS_4, connection4);
-		ResultCallbackStub callback = new ResultCallbackStub();
+		BiConsumerStub consumer = new BiConsumerStub();
 		int iterations = 20;
 		RpcStrategy strategy = roundRobin(
 				firstAvailable(servers(ADDRESS_1, ADDRESS_2)),
@@ -92,7 +92,7 @@ public class RpcStrategiesTest {
 
 		RpcSender sender = strategy.createSender(pool);
 		for (int i = 0; i < iterations; i++) {
-			sender.sendRequest(new Object(), 50, callback);
+			sender.<Object, RpcMessageDataStub>sendRequest(new Object(), 50).whenComplete(consumer);
 		}
 
 		assertEquals(iterations / 2, connection1.getRequests());
@@ -115,23 +115,18 @@ public class RpcStrategiesTest {
 		pool.put(ADDRESS_4, connection4);
 		pool.put(ADDRESS_5, connection5);
 		final int shardsCount = 2;
-		ShardingFunction<Integer> shardingFunction = new ShardingFunction<Integer>() {
-			@Override
-			public int getShard(Integer item) {
-				return item % shardsCount;
-			}
-		};
-		ResultCallbackStub callback = new ResultCallbackStub();
+		ShardingFunction<Integer> shardingFunction = item -> item % shardsCount;
+		BiConsumerStub consumer = new BiConsumerStub();
 		RpcStrategy strategy = sharding(shardingFunction,
 				firstValidResult(servers(ADDRESS_1, ADDRESS_2)),
 				firstValidResult(servers(ADDRESS_3, ADDRESS_4, ADDRESS_5)));
 
 		RpcSender sender = strategy.createSender(pool);
-		sender.sendRequest(0, 50, callback);
-		sender.sendRequest(0, 50, callback);
-		sender.sendRequest(1, 50, callback);
-		sender.sendRequest(1, 50, callback);
-		sender.sendRequest(0, 50, callback);
+		sender.<Object, RpcMessageDataStub>sendRequest(0, 50).whenComplete(consumer);
+		sender.<Object, RpcMessageDataStub>sendRequest(0, 50).whenComplete(consumer);
+		sender.<Object, RpcMessageDataStub>sendRequest(1, 50).whenComplete(consumer);
+		sender.<Object, RpcMessageDataStub>sendRequest(1, 50).whenComplete(consumer);
+		sender.<Object, RpcMessageDataStub>sendRequest(0, 50).whenComplete(consumer);
 
 		assertEquals(3, connection1.getRequests());
 		assertEquals(0, connection2.getRequests());
@@ -148,12 +143,7 @@ public class RpcStrategiesTest {
 		RpcSenderStub connection3 = new RpcSenderStub();
 		RpcSenderStub connection4 = new RpcSenderStub();
 		RpcSenderStub connection5 = new RpcSenderStub();
-		HashFunction<Integer> hashFunction = new HashFunction<Integer>() {
-			@Override
-			public int hashCode(Integer item) {
-				return item;
-			}
-		};
+		HashFunction<Integer> hashFunction = item -> item;
 		RpcStrategy strategy = rendezvousHashing(hashFunction)
 				.withShard(1, firstAvailable(servers(ADDRESS_1, ADDRESS_2)))
 				.withShard(2, firstAvailable(servers(ADDRESS_3, ADDRESS_4)))
@@ -168,13 +158,13 @@ public class RpcStrategiesTest {
 		pool.put(ADDRESS_5, connection5);
 		sender = strategy.createSender(pool);
 		for (int i = 0; i < iterationsPerLoop; i++) {
-			sender.sendRequest(i, 50, ResultCallbackFuture.create());
+			sender.sendRequest(i, 50);
 		}
 		pool.remove(ADDRESS_3);
 		pool.remove(ADDRESS_4);
 		sender = strategy.createSender(pool);
 		for (int i = 0; i < iterationsPerLoop; i++) {
-			sender.sendRequest(i, 50, ResultCallbackFuture.create());
+			sender.sendRequest(i, 50);
 		}
 
 		double acceptableError = iterationsPerLoop / 10.0;
@@ -199,7 +189,7 @@ public class RpcStrategiesTest {
 		pool.put(ADDRESS_4, connection4);
 		pool.put(ADDRESS_5, connection5);
 		int timeout = 50;
-		ResultCallbackStub callback = new ResultCallbackStub();
+		BiConsumerStub consumer = new BiConsumerStub();
 		int iterationsPerDataStub = 25;
 		int iterationsPerDataStubWithKey = 35;
 		RpcSender sender;
@@ -211,10 +201,10 @@ public class RpcStrategiesTest {
 
 		sender = strategy.createSender(pool);
 		for (int i = 0; i < iterationsPerDataStub; i++) {
-			sender.sendRequest(new Object(), timeout, callback);
+			sender.<Object, RpcMessageDataStub>sendRequest(new Object(), timeout).whenComplete(consumer);
 		}
 		for (int i = 0; i < iterationsPerDataStubWithKey; i++) {
-			sender.sendRequest("request", timeout, callback);
+			sender.<Object, RpcMessageDataStub>sendRequest("request", timeout).whenComplete(consumer);
 		}
 
 		assertEquals(iterationsPerDataStubWithKey, connection1.getRequests());

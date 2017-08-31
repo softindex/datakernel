@@ -17,10 +17,6 @@
 package io.datakernel.remotefs.stress;
 
 import com.google.common.base.Charsets;
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.IgnoreCompletionCallback;
-import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.RemoteFsClient;
@@ -84,16 +80,9 @@ class StressClient {
 					StreamFileReader producer =
 							StreamFileReader.readFileFully(eventloop, executor, 16 * 1024, file);
 
-					client.upload(producer, fileName, new CompletionCallback() {
-						@Override
-						public void onComplete() {
-							logger.info("Uploaded: " + fileName);
-						}
-
-						@Override
-						public void onException(Exception e) {
-							logger.info("Failed to upload: {}", e.getMessage());
-						}
+					client.upload(producer, fileName).whenComplete(($, throwable) -> {
+						if (throwable == null) logger.info("Uploaded: " + fileName);
+						else logger.info("Failed to upload: {}", throwable.getMessage());
 					});
 				} catch (IOException e) {
 					logger.info(e.getMessage());
@@ -114,26 +103,16 @@ class StressClient {
 
 				try {
 					final StreamFileWriter consumer = StreamFileWriter.create(eventloop, executor, downloads.resolve(fileName));
-					consumer.setFlushCallback(new CompletionCallback() {
-						@Override
-						public void onComplete() {
-							logger.info("Downloaded: " + fileName);
-						}
-
-						@Override
-						public void onException(Exception e) {
-							logger.info("Failed to download: {}", e.getMessage());
-						}
+					consumer.getFlushStage().whenComplete(($, throwable) -> {
+						if (throwable == null) logger.info("Downloaded: " + fileName);
+						else logger.info("Failed to download: {}", throwable.getMessage());
 					});
-					client.download(fileName, 0, new ResultCallback<StreamProducer<ByteBuf>>() {
-						@Override
-						public void onResult(StreamProducer<ByteBuf> producer) {
-							producer.streamTo(consumer);
-						}
 
-						@Override
-						public void onException(Exception e) {
-							logger.info("can't download: {}", e.getMessage());
+					client.download(fileName, 0).whenComplete((producer, throwable) -> {
+						if (throwable == null) {
+							producer.streamTo(consumer);
+						} else {
+							logger.info("can't download: {}", throwable.getMessage());
 						}
 					});
 				} catch (IOException e) {
@@ -152,50 +131,30 @@ class StressClient {
 				int index = rand.nextInt(existingClientFiles.size());
 				final String fileName = existingClientFiles.get(index);
 
-				client.delete(fileName, new CompletionCallback() {
-					@Override
-					public void onComplete() {
+				client.delete(fileName).whenComplete((aVoid, throwable) -> {
+					if (throwable == null) {
 						existingClientFiles.remove(fileName);
 						logger.info("Deleted: " + fileName);
-					}
-
-					@Override
-					public void onException(Exception e) {
-						logger.info("Failed to delete: {}", e.getMessage());
+					} else {
+						logger.info("Failed to delete: {}", throwable.getMessage());
 					}
 				});
 			}
 		});
 
 		// list file
-		operations.add(new Operation() {
-			@Override
-			public void go() {
-				client.list(new ResultCallback<List<String>>() {
-					@Override
-					public void onResult(List<String> result) {
-						logger.info("Listed: " + result.size());
-					}
-
-					@Override
-					public void onException(Exception e) {
-						logger.info("Failed to list files: {}", e.getMessage());
-					}
-				});
-			}
-		});
+		operations.add(() -> client.list().whenComplete((strings, throwable) -> {
+			if (throwable == null) logger.info("Listed: " + strings.size());
+			else logger.info("Failed to list files: {}", throwable.getMessage());
+		}));
 
 	}
 
 	void start(int operationsQuantity, int maxDuration) throws IOException {
 		setup();
 		for (int i = 0; i < operationsQuantity; i++) {
-			eventloop.schedule(eventloop.currentTimeMillis() + rand.nextInt(maxDuration), new Runnable() {
-				@Override
-				public void run() {
-					operations.get(rand.nextInt(4)).go();
-				}
-			});
+			eventloop.schedule(eventloop.currentTimeMillis() + rand.nextInt(maxDuration), () ->
+					operations.get(rand.nextInt(4)).go());
 		}
 		eventloop.run();
 		executor.shutdown();
@@ -242,28 +201,25 @@ class StressClient {
 				.withDefaultBufferSize(StreamBinarySerializer.MAX_SIZE);
 
 		producer.streamTo(serializer.getInput());
-		client.upload(serializer.getOutput(), "someName" + i, IgnoreCompletionCallback.create());
+		client.upload(serializer.getOutput(), "someName" + i);
 		eventloop.run();
 	}
 
 	void downloadSmallObjects(int i) {
 		final String name = "someName" + i;
-		client.download(name, 0, new ResultCallback<StreamProducer<ByteBuf>>() {
-			@Override
-			public void onResult(StreamProducer<ByteBuf> producer) {
+		client.download(name, 0).whenComplete((producer, throwable) -> {
+			if (throwable != null) {
+				logger.error("can't download", throwable);
+			} else {
 				try {
 					StreamFileWriter writer = StreamFileWriter.create(eventloop, executor, downloads.resolve(name));
 					producer.streamTo(writer);
 				} catch (IOException e) {
-					this.setException(e);
+					logger.error("can't download", e);
 				}
 			}
-
-			@Override
-			public void onException(Exception e) {
-				logger.error("can't download", e);
-			}
 		});
+
 		eventloop.run();
 	}
 

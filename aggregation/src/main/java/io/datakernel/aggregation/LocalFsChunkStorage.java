@@ -17,12 +17,11 @@
 package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.ot.AggregationStructure;
+import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.RunnableWithException;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamProducer;
@@ -68,6 +67,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 	/**
 	 * Constructs an aggregation storage, that runs in the specified event loop, performs blocking IO in the given executor,
 	 * serializes records according to specified aggregation structure and stores data in the given directory.
+	 *
 	 * @param eventloop       event loop, in which aggregation storage is to run
 	 * @param executorService executor, where blocking IO operations are to be run
 	 * @param idGenerator
@@ -103,9 +103,8 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 	public <T> void read(final AggregationStructure aggregation, final List<String> fields,
 	                     final Class<T> recordClass, long id, final DefiningClassLoader classLoader,
 	                     final ResultCallback<StreamProducer<T>> callback) {
-		AsyncFile.open(eventloop, executorService, dir.resolve(id + LOG), new OpenOption[]{READ}, new ForwardingResultCallback<AsyncFile>(callback) {
-			@Override
-			protected void onResult(AsyncFile file) {
+		AsyncFile.openAsync(eventloop, executorService, dir.resolve(id + LOG), new OpenOption[]{READ}).whenComplete((file, throwable) -> {
+			if (throwable == null) {
 				StreamFileReader fileReader = StreamFileReader.readFileFrom(eventloop, file, bufferSize, 0L);
 
 				StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create(eventloop);
@@ -117,6 +116,8 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 
 				decompressor.getOutput().streamTo(deserializer.getInput());
 				callback.setResult(deserializer.getOutput());
+			} else {
+				callback.setException(AsyncCallbacks.throwableToException(throwable));
 			}
 		});
 	}
@@ -136,15 +137,15 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 		producer.streamTo(serializer.getInput());
 		serializer.getOutput().streamTo(compressor.getInput());
 
-		AsyncFile.open(eventloop, executorService, dir.resolve(id + LOG), StreamFileWriter.CREATE_OPTIONS,
-				new ForwardingResultCallback<AsyncFile>(callback) {
-					@Override
-					protected void onResult(AsyncFile file) {
-						StreamFileWriter writer = StreamFileWriter.create(eventloop, file, true);
-						compressor.getOutput().streamTo(writer);
-						writer.setFlushCallback(callback);
-					}
-				});
+		AsyncFile.openAsync(eventloop, executorService, dir.resolve(id + LOG), StreamFileWriter.CREATE_OPTIONS).whenComplete((file, throwable) -> {
+			if (throwable == null) {
+				StreamFileWriter writer = StreamFileWriter.create(eventloop, file, true);
+				compressor.getOutput().streamTo(writer);
+				writer.getFlushStage().whenComplete(AsyncCallbacks.forwardTo(callback));
+			} else {
+				callback.setException(AsyncCallbacks.throwableToException(throwable));
+			}
+		});
 	}
 
 	@Override

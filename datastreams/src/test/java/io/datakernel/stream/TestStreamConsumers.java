@@ -16,13 +16,13 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SettableStage;
 import io.datakernel.eventloop.Eventloop;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.CompletionStage;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
@@ -30,19 +30,19 @@ import static com.google.common.base.Preconditions.checkState;
 public class TestStreamConsumers {
 	public static abstract class TestConsumerToList<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
 		protected final List<T> list;
-		private CompletionCallback completionCallback;
-		private ResultCallback<List<T>> resultCallback;
+		private SettableStage<Void> completionStage = SettableStage.create();
+		private SettableStage<List<T>> resultStage = SettableStage.create();
 
 		public TestConsumerToList(Eventloop eventloop) {
 			this(eventloop, new ArrayList<T>());
 		}
 
-		public void setCompletionCallback(CompletionCallback completionCallback) {
-			this.completionCallback = completionCallback;
+		public CompletionStage<Void> getCompletionStage() {
+			return completionStage;
 		}
 
-		public void setResultCallback(ResultCallback<List<T>> resultCallback) {
-			this.resultCallback = resultCallback;
+		public CompletionStage<List<T>> getResultStage() {
+			return resultStage;
 		}
 
 		@Override
@@ -51,21 +51,21 @@ public class TestStreamConsumers {
 
 		@Override
 		protected void onEndOfStream() {
-			if (completionCallback != null) {
-				completionCallback.setComplete();
+			if (completionStage != null) {
+				completionStage.setResult(null);
 			}
-			if (resultCallback != null) {
-				resultCallback.setResult(list);
+			if (resultStage != null) {
+				resultStage.setResult(list);
 			}
 		}
 
 		@Override
 		protected void onError(Exception e) {
-			if (completionCallback != null) {
-				completionCallback.setException(e);
+			if (completionStage != null) {
+				completionStage.setError(e);
 			}
-			if (resultCallback != null) {
-				resultCallback.setException(e);
+			if (resultStage != null) {
+				resultStage.setError(e);
 			}
 		}
 
@@ -97,12 +97,7 @@ public class TestStreamConsumers {
 			public void onData(T item) {
 				list.add(item);
 				this.suspend();
-				this.eventloop.post(new Runnable() {
-					@Override
-					public void run() {
-						resume();
-					}
-				});
+				this.eventloop.post(this::resume);
 			}
 		};
 	}
@@ -118,12 +113,7 @@ public class TestStreamConsumers {
 				list.add(item);
 				if (random.nextBoolean()) {
 					suspend();
-					this.eventloop.post(new Runnable() {
-						@Override
-						public void run() {
-							resume();
-						}
-					});
+					this.eventloop.post(this::resume);
 				}
 			}
 		};

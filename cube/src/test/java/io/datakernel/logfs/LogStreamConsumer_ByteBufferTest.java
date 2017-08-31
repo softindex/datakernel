@@ -16,6 +16,7 @@
 
 package io.datakernel.logfs;
 
+import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
@@ -153,7 +154,7 @@ public class LogStreamConsumer_ByteBufferTest {
 					listWriter.add(writer);
 					writer.onProducerError(new Exception("Test Exception"));
 					producer.streamTo(writer);
-					writer.setFlushCallback(callback);
+					writer.getFlushStage().whenComplete(AsyncCallbacks.forwardTo(callback));
 				} catch (IOException e) {
 					callback.setException(e);
 				}
@@ -403,7 +404,7 @@ public class LogStreamConsumer_ByteBufferTest {
 			try {
 				StreamFileWriter writer = StreamFileWriter.create(eventloop, executorService, path(logPartition, logFile));
 				producer.streamTo(writer);
-				writer.setFlushCallback(callback);
+				writer.getFlushStage().whenComplete(AsyncCallbacks.forwardTo(callback));
 				listWriter.add(writer);
 			} catch (IOException e) {
 				callback.setException(e);

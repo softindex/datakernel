@@ -19,7 +19,7 @@ package io.datakernel.guice;
 import com.google.common.io.Closeables;
 import com.google.inject.*;
 import com.google.inject.name.Named;
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufStrings;
@@ -27,8 +27,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.PrimaryServer;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
-import io.datakernel.http.HttpRequest;
-import io.datakernel.http.HttpResponse;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.jmx.JmxRegistrator;
 import io.datakernel.service.ServiceGraph;
@@ -106,12 +104,9 @@ public class HelloWorldGuiceTest {
 		@Provides
 		@Worker
 		AsyncServlet servlet(@WorkerId final int workerId) {
-			return new AsyncServlet() {
-				@Override
-				public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-					byte[] body = ByteBufStrings.encodeAscii("Hello world: worker server #" + workerId);
-					callback.setResult(ok200().withBody(ByteBuf.wrapForReading(body)));
-				}
+			return request -> {
+				byte[] body = ByteBufStrings.encodeAscii("Hello world: worker server #" + workerId);
+				return SettableStage.immediateStage(ok200().withBody(ByteBuf.wrapForReading(body)));
 			};
 		}
 	}

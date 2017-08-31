@@ -18,14 +18,11 @@ package io.datakernel.rpc.protocol.stream;
 
 import com.google.common.collect.Lists;
 import com.google.common.net.InetAddresses;
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.IgnoreCompletionCallback;
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.protocol.RpcMessage;
-import io.datakernel.rpc.server.RpcRequestHandler;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
@@ -42,6 +39,7 @@ import org.junit.Test;
 import java.net.InetSocketAddress;
 import java.util.List;
 
+import static io.datakernel.async.AsyncCallbacks.throwableToException;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
@@ -51,10 +49,6 @@ import static org.junit.Assert.assertEquals;
 public class RpcBinaryProtocolTest {
 	private static final int LISTEN_PORT = 12345;
 	private static final InetSocketAddress address = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), LISTEN_PORT);
-
-	interface TestService {
-		void call(String request, ResultCallback<String> resultCallback);
-	}
 
 	@Before
 	public void before() {
@@ -74,67 +68,49 @@ public class RpcBinaryProtocolTest {
 
 		final RpcServer server = RpcServer.create(eventloop)
 				.withMessageTypes(String.class)
-				.withHandler(String.class, String.class, new RpcRequestHandler<String, String>() {
-					@Override
-					public void run(String request, ResultCallback<String> callback) {
-						callback.setResult("Hello, " + request + "!");
-					}
-				})
+				.withHandler(String.class, String.class, request -> SettableStage.immediateStage("Hello, " + request + "!"))
 				.withListenAddress(address);
 		server.listen();
 
 		final int countRequests = 10;
 		final List<String> results = Lists.newArrayList();
-		class ResultObserver extends ResultCallback<String> {
-			@Override
-			public void onException(Exception exception) {
-				client.stop(new CompletionCallback() {
-					@Override
-					public void onComplete() {
-						System.out.println("Client stopped");
-						server.close(IgnoreCompletionCallback.create());
-					}
+		class ResultObserver {
 
-					@Override
-					public void onException(Exception exception) {
-						throw new RuntimeException(exception);
-					}
+			public void setException(Throwable exception) {
+				client.stop().whenComplete(($, throwable) -> {
+					if (throwable != null) throw new RuntimeException(throwable);
+					System.out.println("Client stopped");
+					server.close();
 				});
 			}
 
-			@Override
-			public void onResult(String result) {
+			public void setResult(String result) {
 				results.add(result);
 				if (results.size() == countRequests) {
-					client.stop(new CompletionCallback() {
-						@Override
-						public void onComplete() {
-							System.out.println("Client stopped");
-							server.close(IgnoreCompletionCallback.create());
-						}
-
-						@Override
-						public void onException(Exception exception) {
-							throw new RuntimeException(exception);
-						}
+					client.stop().whenComplete(($, throwable) -> {
+						if (throwable != null) throw new RuntimeException(throwable);
+						System.out.println("Client stopped");
+						server.close();
 					});
 				}
 			}
 
 		}
-		;
 
-		client.start(new CompletionCallback() {
-			@Override
-			public void onComplete() {
+		client.start().whenComplete(($, throwable) -> {
+			final ResultObserver resultObserver = new ResultObserver();
+			if (throwable != null) {
+				resultObserver.setException(throwableToException(throwable));
+			} else {
 				for (int i = 0; i < countRequests; i++) {
-					client.sendRequest(testMessage, 1000, new ResultObserver());
+					client.<String, String>sendRequest(testMessage, 1000).whenComplete((s, throwable1) -> {
+						if (throwable1 == null) {
+							resultObserver.setResult(s);
+						} else {
+							resultObserver.setException(throwable1);
+						}
+					});
 				}
-			}
-
-			@Override
-			public void onException(Exception e) {
-				new ResultObserver().setException(e);
 			}
 		});
 

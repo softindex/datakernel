@@ -16,9 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ForwardingResultCallback;
-import io.datakernel.async.IgnoreCompletionCallback;
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
@@ -53,32 +51,21 @@ public class SimpleProxyServerTest {
 	}
 
 	public static AsyncHttpServer proxyHttpServer(final Eventloop primaryEventloop, final AsyncHttpClient httpClient) {
-		AsyncServlet servlet = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, final ResultCallback<HttpResponse> callback) {
-				httpClient.send(HttpRequest.get("http://127.0.0.1:" + ECHO_SERVER_PORT + request.getUrl().getPath()), new ForwardingResultCallback<HttpResponse>(callback) {
-					@Override
-					public void onResult(final HttpResponse result) {
-						int code = result.getCode();
-						byte[] body = encodeAscii("FORWARDED: " + decodeAscii(result.getBody()));
-						callback.setResult(HttpResponse.ofCode(code).withBody(body));
-					}
-				});
-			}
+		AsyncServlet servlet = request -> {
+			final String path = ECHO_SERVER_PORT + request.getUrl().getPath();
+			return httpClient.send(HttpRequest.get("http://127.0.0.1:" + path)).thenApply(result -> {
+				int code = result.getCode();
+				byte[] body = encodeAscii("FORWARDED: " + decodeAscii(result.getBody()));
+				return HttpResponse.ofCode(code).withBody(body);
+			});
 		};
 
 		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", PROXY_SERVER_PORT));
 	}
 
 	public static AsyncHttpServer echoServer(Eventloop primaryEventloop) {
-		AsyncServlet servlet = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
-				callback.setResult(content);
-			}
-
-		};
+		AsyncServlet servlet = request ->
+				SettableStage.immediateStage(HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery())));
 
 		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", ECHO_SERVER_PORT));
 	}
@@ -117,12 +104,7 @@ public class SimpleProxyServerTest {
 		stream.write(encodeAscii("GET /hello HTTP1.1\r\nHost: localhost\r\nConnection: close\n\r\n"));
 		readAndAssert(socket.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 17\r\n\r\nFORWARDED: /hello");
 
-		httpClient.getEventloop().execute(new Runnable() {
-			@Override
-			public void run() {
-				httpClient.stop(IgnoreCompletionCallback.create());
-			}
-		});
+		httpClient.getEventloop().execute(httpClient::stop);
 
 		echoServer.closeFuture().get();
 

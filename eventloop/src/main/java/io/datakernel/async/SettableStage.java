@@ -1,5 +1,7 @@
 package io.datakernel.async;
 
+import io.datakernel.eventloop.Eventloop;
+
 import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
@@ -15,6 +17,7 @@ public final class SettableStage<T> extends AbstractCompletionStage<T> {
 	public static <T> SettableStage<T> create() {
 		return new SettableStage<>();
 	}
+
 
 	public static <T> SettableStage<T> immediateStage(T value) {
 		SettableStage<T> stage = new SettableStage<>();
@@ -48,15 +51,22 @@ public final class SettableStage<T> extends AbstractCompletionStage<T> {
 		}
 	}
 
+	public void postResult(Eventloop eventloop, T result) {
+		eventloop.post(() -> setResult(result));
+	}
+
+	public void postError(Eventloop eventloop, Throwable error) {
+		eventloop.post(() -> setError(error));
+	}
+
 	@Override
 	protected <X> CompletionStage<X> subscribe(NextCompletionStage<T, X> next) {
 		if (isDone()) {
 			if (this.next == null) {
 				getCurrentEventloop().post(() -> {
-					if (error == null)
-						complete(result);
-					else
-						completeExceptionally(error);
+					if (error == null) complete(result);
+					else  completeExceptionally(error);
+
 					result = null;
 					error = null;
 				});

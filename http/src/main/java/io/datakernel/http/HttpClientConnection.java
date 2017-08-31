@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
@@ -24,6 +24,7 @@ import io.datakernel.exception.ParseException;
 import io.datakernel.net.CloseWithoutNotifyException;
 
 import java.net.InetSocketAddress;
+import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.bytebuf.ByteBufStrings.SP;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeDecimal;
@@ -33,7 +34,7 @@ import static io.datakernel.http.HttpHeaders.CONNECTION;
 final class HttpClientConnection extends AbstractHttpConnection {
 	private static final HttpHeaders.Value CONNECTION_KEEP_ALIVE = HttpHeaders.asBytes(CONNECTION, "keep-alive");
 
-	private ResultCallback<HttpResponse> callback;
+	private SettableStage<HttpResponse> stage;
 	private HttpResponse response;
 	private final AsyncHttpClient client;
 	private final AsyncHttpClient.Inspector inspector;
@@ -65,11 +66,11 @@ final class HttpClientConnection extends AbstractHttpConnection {
 			onReadEndOfStream();
 			return;
 		}
-		if (inspector != null && e != null) inspector.onHttpError(this, callback == null, e);
+		if (inspector != null && e != null) inspector.onHttpError(this, stage == null, e);
 		readQueue.clear();
-		if (callback != null) {
-			callback.postException(eventloop, e);
-			callback = null;
+		if (stage != null) {
+			stage.postError(eventloop, e);
+			stage = null;
 		} else {
 			closeError = e;
 		}
@@ -136,17 +137,14 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	@Override
 	protected void onHttpMessage(ByteBuf bodyBuf) {
 		assert !isClosed();
-		final ResultCallback<HttpResponse> callback = this.callback;
+		final SettableStage<HttpResponse> stage = this.stage;
 		final HttpResponse response = this.response;
 		this.response = null;
-		this.callback = null;
+		this.stage = null;
 		response.setBody(bodyBuf);
-		eventloop.post(new Runnable() {
-			@Override
-			public void run() {
-				callback.setResult(response);
-				response.recycleBufs();
-			}
+		eventloop.post(() -> {
+			stage.setResult(response);
+			response.recycleBufs();
 		});
 
 		if (inspector != null) inspector.onHttpResponse(this, response);
@@ -160,13 +158,13 @@ final class HttpClientConnection extends AbstractHttpConnection {
 
 	@Override
 	public void onReadEndOfStream() {
-		if (callback != null) {
+		if (stage != null) {
 			if ((reading == BODY || reading == HEADERS) && contentLength == UNKNOWN_LENGTH) {
 				onHttpMessage(bodyQueue.takeRemaining());
-				assert callback == null;
+				assert stage == null;
 			} else {
 				closeWithError(CLOSED_CONNECTION);
-				assert callback == null;
+				assert stage == null;
 			}
 		}
 		close();
@@ -186,16 +184,16 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 * Sends the request, recycles it and closes connection in case of timeout
 	 *
 	 * @param request  request for sending
-	 * @param callback callback for handling result
 	 */
-	public void send(HttpRequest request, ResultCallback<HttpResponse> callback) {
-		this.callback = callback;
+	public CompletionStage<HttpResponse> send(HttpRequest request) {
+		this.stage = SettableStage.create();
 		assert pool == null;
 		(pool = client.poolWriting).addLastNode(this);
 		poolTimestamp = eventloop.currentTimeMillis();
 		request.addHeader(CONNECTION_KEEP_ALIVE);
 		asyncTcpSocket.write(request.toByteBuf());
 		request.recycleBufs();
+		return stage;
 	}
 
 	@Override
@@ -214,7 +212,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 * Http response.
 	 */
 	protected void onClosed() {
-		assert callback == null;
+		assert stage == null;
 		if (pool == client.poolKeepAlive) {
 			AddressLinkedList addresses = client.addresses.get(remoteAddress);
 			addresses.removeNode(this);
@@ -243,7 +241,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	@Override
 	public String toString() {
 		return "HttpClientConnection{" +
-				"callback=" + callback +
+				"stage=" + stage +
 				", response=" + response +
 				", httpClient=" + client +
 				", keepAlive=" + (pool == client.poolKeepAlive) +

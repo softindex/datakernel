@@ -16,8 +16,7 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.async.IgnoreCompletionCallback;
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
@@ -328,9 +327,8 @@ public class StreamFileReaderWriterTest {
 
 			final ByteBuf buf = ByteBufPool.allocate((int) min(bufferSize, length));
 
-			asyncFile.read(buf, position, new ResultCallback<Integer>() {
-				@Override
-				public void onResult(Integer result) {
+			asyncFile.read(buf, position).whenComplete((result, throwable) -> {
+				if (throwable == null) {
 					if (getProducerStatus().isClosed()) {
 						buf.recycle();
 						doCleanup();
@@ -348,15 +346,11 @@ public class StreamFileReaderWriterTest {
 						if (length != Long.MAX_VALUE)
 							length -= result;
 					}
-					if (isStatusReady())
-						postFlush();
-				}
-
-				@Override
-				public void onException(Exception e) {
+					if (isStatusReady()) postFlush();
+				} else {
 					buf.recycle();
 					doCleanup();
-					closeWithError(e);
+					closeWithError(AsyncCallbacks.throwableToException(throwable));
 				}
 			});
 		}
@@ -375,12 +369,7 @@ public class StreamFileReaderWriterTest {
 			if (asyncFile == null || pendingAsyncOperation)
 				return;
 			pendingAsyncOperation = true;
-			eventloop.post(new Runnable() {
-				@Override
-				public void run() {
-					doFlush();
-				}
-			});
+			eventloop.post(this::doFlush);
 		}
 
 		@Override
@@ -398,17 +387,13 @@ public class StreamFileReaderWriterTest {
 			if (asyncFile != null || pendingAsyncOperation)
 				return;
 			pendingAsyncOperation = true;
-			AsyncFile.open(eventloop, executor, path, new OpenOption[]{READ}, new ResultCallback<AsyncFile>() {
-				@Override
-				public void onResult(AsyncFile file) {
+			AsyncFile.openAsync(eventloop, executor, path, new OpenOption[]{READ}).whenComplete((file, throwable) -> {
+				if (throwable == null) {
 					pendingAsyncOperation = false;
 					asyncFile = file;
 					postFlush();
-				}
-
-				@Override
-				public void onException(Exception exception) {
-					closeWithError(exception);
+				} else {
+					closeWithError(AsyncCallbacks.throwableToException(throwable));
 				}
 			});
 		}
@@ -421,7 +406,7 @@ public class StreamFileReaderWriterTest {
 		@Override
 		protected void doCleanup() {
 			if (asyncFile != null) {
-				asyncFile.close(IgnoreCompletionCallback.create());
+				asyncFile.close();
 				asyncFile = null;
 			}
 		}

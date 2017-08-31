@@ -99,26 +99,18 @@ public class LogManagerTest {
 		executor.submit(eventloop);
 
 		for (final Entry<Long, String> entry : testData.entrySet()) {
-			eventloop.execute(new Runnable() {
-				@Override
-				public void run() {
-					timeProvider.setTime(entry.getKey());
-					long timestamp = eventloop.refreshTimestampAndGet();
-					sender.send(entry.getValue());
-					timeProvider.setTime(timestamp + LogManagerImpl.DEFAULT_FLUSH_DELAY + 1);
-					eventloop.refreshTimestampAndGet();
-				}
+			eventloop.execute(() -> {
+				timeProvider.setTime(entry.getKey());
+				long timestamp = eventloop.refreshTimestampAndGet();
+				sender.send(entry.getValue());
+				timeProvider.setTime(timestamp + LogManagerImpl.DEFAULT_FLUSH_DELAY + 1);
+				eventloop.refreshTimestampAndGet();
 			});
 			Thread.sleep(200L);
 		}
 		timeProvider.setTime(eventloop.currentTimeMillis() + LogManagerImpl.DEFAULT_FLUSH_DELAY * 2);
 		eventloop.refreshTimestampAndGet();
-		eventloop.execute(new Runnable() {
-			@Override
-			public void run() {
-				sender.sendEndOfStream();
-			}
-		});
+		eventloop.execute(sender::sendEndOfStream);
 
 		// Wait for ends Eventloop
 		eventloop.keepAlive(false);

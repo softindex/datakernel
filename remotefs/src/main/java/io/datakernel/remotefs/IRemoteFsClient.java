@@ -16,19 +16,18 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.stream.StreamProducer;
 
 import java.util.List;
+import java.util.concurrent.CompletionStage;
 
 public interface IRemoteFsClient {
-	void upload(StreamProducer<ByteBuf> producer, String fileName, CompletionCallback callback);
+	CompletionStage<Void> upload(StreamProducer<ByteBuf> producer, String fileName);
 
-	void download(String fileName, long startPosition, ResultCallback<StreamProducer<ByteBuf>> callback);
+	CompletionStage<StreamProducer<ByteBuf>> download(String fileName, long startPosition);
 
-	void delete(String fileName, CompletionCallback callback);
+	CompletionStage<Void> delete(String fileName);
 
-	void list(ResultCallback<List<String>> callback);
+	CompletionStage<List<String>> list();
 }

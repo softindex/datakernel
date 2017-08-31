@@ -16,13 +16,14 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SettableStage;
 import io.datakernel.time.CurrentTimeProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.util.*;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static io.datakernel.dns.DnsMessage.AAAA_RECORD_TYPE;
@@ -104,22 +105,22 @@ final class DnsCache {
 	 *
 	 * @param domainName domain name for finding entry
 	 * @param ipv6       type of result, if true - IPv6, false - IPv4
-	 * @param callback   callback with which it will handle result
 	 * @return DnsCacheQueryResult for this domain name
 	 */
-	public DnsCacheQueryResult tryToResolve(String domainName, boolean ipv6, ResultCallback<InetAddress[]> callback) {
+
+	public DnsCacheResultStage<InetAddress[]> tryToResolve(String domainName, boolean ipv6) {
 		CachedDnsLookupResult cachedResult = cache.get(domainName);
 
 		if (cachedResult == null) {
 			if (logger.isDebugEnabled())
 				logger.debug("Cache miss for host: {}", domainName);
-			return DnsCacheQueryResult.NOT_RESOLVED;
+			return new DnsCacheResultStage<>(null, DnsCacheQueryResult.NOT_RESOLVED);
 		}
 
 		if (cachedResult.isSuccessful() && !isRequestedType(cachedResult, ipv6)) {
 			if (logger.isDebugEnabled())
 				logger.debug("Cache miss for host: {}", domainName);
-			return DnsCacheQueryResult.NOT_RESOLVED;
+			return new DnsCacheResultStage<>(null, DnsCacheQueryResult.NOT_RESOLVED);
 		}
 
 		DnsCacheEntryFreshness freshness = getResultFreshness(cachedResult);
@@ -128,34 +129,32 @@ final class DnsCache {
 			case HARD_TTL_EXPIRED: {
 				if (logger.isDebugEnabled())
 					logger.debug("Hard TTL expired for host: {}", domainName);
-				return DnsCacheQueryResult.NOT_RESOLVED;
+				return new DnsCacheResultStage<>(null, DnsCacheQueryResult.NOT_RESOLVED);
 			}
 
 			case SOFT_TTL_EXPIRED: {
 				if (logger.isDebugEnabled())
 					logger.debug("Soft TTL expired for host: {}", domainName);
-				returnResultThroughCallback(domainName, cachedResult, callback);
-				return DnsCacheQueryResult.RESOLVED_NEEDS_REFRESHING;
+				final CompletionStage<InetAddress[]> stage = returnResultThroughStage(domainName, cachedResult);
+				return new DnsCacheResultStage<>(stage, DnsCacheQueryResult.RESOLVED_NEEDS_REFRESHING);
 			}
 
 			default: {
-				returnResultThroughCallback(domainName, cachedResult, callback);
-				return DnsCacheQueryResult.RESOLVED;
+				final CompletionStage<InetAddress[]> stage = returnResultThroughStage(domainName, cachedResult);
+				return new DnsCacheResultStage<>(stage, DnsCacheQueryResult.RESOLVED);
 			}
 		}
 	}
 
-	private void returnResultThroughCallback(String domainName, CachedDnsLookupResult result, ResultCallback<InetAddress[]> callback) {
+	private CompletionStage<InetAddress[]> returnResultThroughStage(String domainName, CachedDnsLookupResult result) {
 		if (result.isSuccessful()) {
 			InetAddress[] ipsFromCache = result.getIps();
-			callback.setResult(ipsFromCache);
-			if (logger.isDebugEnabled())
-				logger.debug("Cache hit for host: {}", domainName);
+			if (logger.isDebugEnabled()) logger.debug("Cache hit for host: {}", domainName);
+			return SettableStage.immediateStage(ipsFromCache);
 		} else {
 			DnsException exception = result.getException();
-			callback.setException(exception);
-			if (logger.isDebugEnabled())
-				logger.debug("Error cache hit for host: {}", domainName);
+			if (logger.isDebugEnabled()) logger.debug("Error cache hit for host: {}", domainName);
+			return SettableStage.immediateFailedStage(exception);
 		}
 	}
 
@@ -336,5 +335,27 @@ final class DnsCache {
 			expirations.put(time, sameTime);
 		}
 		sameTime.add(domain);
+	}
+
+	public static class DnsCacheResultStage<T> {
+		private final CompletionStage<T> stage;
+		private final DnsCacheQueryResult dnsCacheResult;
+
+		public DnsCacheResultStage(CompletionStage<T> stage, DnsCacheQueryResult dnsCacheResult) {
+			this.stage = stage;
+			this.dnsCacheResult = dnsCacheResult;
+		}
+
+		public CompletionStage<T> getStage() {
+			return stage;
+		}
+
+		public DnsCacheQueryResult getDnsCacheResult() {
+			return dnsCacheResult;
+		}
+
+		public boolean isStageEnable() {
+			return stage != null;
+		}
 	}
 }

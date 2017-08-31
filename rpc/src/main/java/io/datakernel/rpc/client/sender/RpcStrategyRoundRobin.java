@@ -16,12 +16,12 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 
@@ -70,10 +70,10 @@ public final class RpcStrategyRoundRobin implements RpcStrategy {
 		}
 
 		@Override
-		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
+		public <I, O> CompletionStage<O> sendRequest(I request, int timeout) {
 			RpcSender sender = subSenders[nextSender];
 			nextSender = (nextSender + 1) % subSenders.length;
-			sender.sendRequest(request, timeout, callback);
+			return sender.sendRequest(request, timeout);
 		}
 
 	}

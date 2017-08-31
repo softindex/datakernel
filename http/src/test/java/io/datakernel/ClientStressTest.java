@@ -1,7 +1,6 @@
 package io.datakernel;
 
-import io.datakernel.async.IgnoreCompletionCallback;
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SettableStage;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
@@ -35,12 +34,9 @@ public class ClientStressTest {
 	private Random random = new Random();
 	private Iterator<String> urls = getUrls().iterator();
 
-	private AsyncServlet servlet = new AsyncServlet() {
-		@Override
-		public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-			test();
-			callback.setResult(HttpResponse.ok200());
-		}
+	private AsyncServlet servlet = request -> {
+		test();
+		return SettableStage.immediateStage(HttpResponse.ok200());
 	};
 	private AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet).withListenAddress(new InetSocketAddress("localhost", 1234));
 
@@ -61,26 +57,16 @@ public class ClientStressTest {
 		int delay = random.nextInt(10000);
 		final String url = urls.next();
 		if (url != null) {
-			eventloop.schedule(eventloop.currentTimeMillis() + delay, new Runnable() {
-				@Override
-				public void run() {
-					logger.info("sending request to: {}", url);
-					client.send(formRequest(url, random.nextBoolean()), new ResultCallback<HttpResponse>() {
-						@Override
-						public void onResult(HttpResponse result) {
-							logger.info("url: {}, succeed", url);
-						}
-
-						@Override
-						public void onException(Exception e) {
-							logger.error("url: {}, failed", url, e);
-						}
-					});
-					test();
-				}
+			eventloop.schedule(eventloop.currentTimeMillis() + delay, () -> {
+				logger.info("sending request to: {}", url);
+				client.send(formRequest(url, random.nextBoolean())).whenComplete((response, throwable) -> {
+					if (throwable != null) logger.error("url: {}, failed", url, throwable);
+					else logger.info("url: {}, succeed", url);
+				});
+				test();
 			});
 		} else {
-			server.close(IgnoreCompletionCallback.create());
+			server.close();
 		}
 	}
 

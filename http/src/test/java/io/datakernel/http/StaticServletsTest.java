@@ -16,10 +16,6 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ForwardingResultCallback;
-import io.datakernel.async.IgnoreResultCallback;
-import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -31,6 +27,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -70,13 +67,11 @@ public class StaticServletsTest {
 		final List<String> res = new ArrayList<>();
 
 		StaticServletForFiles servlet = StaticServletForFiles.create(eventloop, executor, resources);
-		servlet.doServeAsync("index.html", new ForwardingResultCallback<ByteBuf>(IgnoreResultCallback.create()) {
-			@Override
-			protected void onResult(ByteBuf result) {
-				res.add(decodeAscii(result));
-				result.recycle();
-			}
+		final CompletionStage<Void> stage = servlet.doServeAsync("index.html").thenAccept(byteBuf -> {
+			res.add(decodeAscii(byteBuf));
+			byteBuf.recycle();
 		});
+
 		eventloop.run();
 		executor.shutdown();
 		assertEquals(1, res.size());
@@ -89,18 +84,12 @@ public class StaticServletsTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = Executors.newCachedThreadPool();
 
-		final List<Exception> res = new ArrayList<>();
+		final List<Throwable> res = new ArrayList<>();
 
 		StaticServletForFiles servlet = StaticServletForFiles.create(eventloop, executor, resources);
-		servlet.serve(HttpRequest.get("http://127.0.0.1/../cant_touch.txt"), new ResultCallback<HttpResponse>() {
-			@Override
-			public void onResult(HttpResponse result) {
-			}
 
-			@Override
-			protected void onException(Exception e) {
-				res.add(e);
-			}
+		servlet.serve(HttpRequest.get("http://127.0.0.1/../cant_touch.txt")).whenComplete((httpResponse, throwable) -> {
+			if (throwable != null) res.add(throwable);
 		});
 		eventloop.run();
 		executor.shutdown();
@@ -114,19 +103,13 @@ public class StaticServletsTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = Executors.newCachedThreadPool();
 
-		final List<Exception> res = new ArrayList<>();
+		final List<Throwable> res = new ArrayList<>();
 
 		StaticServletForResources servlet = StaticServletForResources.create(eventloop, executor, "./");
-		servlet.serve(HttpRequest.get("http://127.0.0.1/../cant_touch.txt"), new ResultCallback<HttpResponse>() {
-			@Override
-			public void onResult(HttpResponse result) {
-			}
-
-			@Override
-			protected void onException(Exception e) {
-				res.add(e);
-			}
+		servlet.serve(HttpRequest.get("http://127.0.0.1/../cant_touch.txt")).whenComplete((httpResponse, throwable) -> {
+			if (throwable != null) res.add(throwable);
 		});
+
 		eventloop.run();
 		executor.shutdown();
 		assertEquals(1, res.size());
@@ -139,20 +122,13 @@ public class StaticServletsTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = Executors.newCachedThreadPool();
 
-		final List<Exception> res = new ArrayList<>();
+		final List<Throwable> res = new ArrayList<>();
 
 		StaticServletForFiles servlet = StaticServletForFiles.create(eventloop, executor, resources);
-		servlet.serve(HttpRequest.get("http://127.0.0.1/file/not/found.txt"), new ResultCallback<HttpResponse>() {
-			@Override
-			public void onResult(HttpResponse result) {
-				// empty
-			}
-
-			@Override
-			protected void onException(Exception e) {
-				res.add(e);
-			}
+		servlet.serve(HttpRequest.get("http://127.0.0.1/../cant_touch.txt")).whenComplete((httpResponse, throwable) -> {
+			if (throwable != null) res.add(throwable);
 		});
+
 		eventloop.run();
 		executor.shutdown();
 
@@ -166,20 +142,13 @@ public class StaticServletsTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = Executors.newCachedThreadPool();
 
-		final List<Exception> res = new ArrayList<>();
+		final List<Throwable> res = new ArrayList<>();
 
 		StaticServletForResources servlet = StaticServletForResources.create(eventloop, executor, "./");
-		servlet.serve(HttpRequest.get("http://127.0.0.1/file/not/found.txt"), new ResultCallback<HttpResponse>() {
-			@Override
-			public void onResult(HttpResponse result) {
-				// empty
-			}
-
-			@Override
-			protected void onException(Exception e) {
-				res.add(e);
-			}
+		servlet.serve(HttpRequest.get("http://127.0.0.1/../cant_touch.txt")).whenComplete((httpResponse, throwable) -> {
+			if (throwable != null) res.add(throwable);
 		});
+
 		eventloop.run();
 		executor.shutdown();
 		assertEquals(1, res.size());

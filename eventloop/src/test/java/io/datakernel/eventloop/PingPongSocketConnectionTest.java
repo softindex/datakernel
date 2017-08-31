@@ -1,7 +1,5 @@
 package io.datakernel.eventloop;
 
-import io.datakernel.async.ConnectCallback;
-import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.SimpleServer.SocketHandlerProvider;
 import org.junit.Test;
@@ -10,7 +8,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.nio.channels.SocketChannel;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
@@ -42,17 +39,13 @@ public class PingPongSocketConnectionTest {
 
 		ppServer.listen();
 
-		eventloop.connect(ADDRESS, new ConnectCallback() {
-			@Override
-			public void onConnect(SocketChannel socketChannel) {
+		eventloop.connect(ADDRESS).whenComplete((socketChannel, throwable) -> {
+			if (throwable == null) {
 				AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
 				asyncTcpSocket.setEventHandler(new ClientConnection(asyncTcpSocket, ppServer));
 				asyncTcpSocket.register();
-			}
-
-			@Override
-			public void onException(Exception e) {
-				fail("Exception: " + e);
+			} else {
+				fail("Exception: " + throwable);
 			}
 		});
 
@@ -121,7 +114,7 @@ public class PingPongSocketConnectionTest {
 			assertEquals(RESPONSE_MSG, decodeAscii(buf));
 			if (++counter == ITERATIONS) {
 				clientTcpSocket.close();
-				server.close(IgnoreCompletionCallback.create());
+				server.close();
 			} else {
 				clientTcpSocket.write(wrapAscii(REQUEST_MSG));
 			}

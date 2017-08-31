@@ -16,8 +16,7 @@
 
 package io.datakernel;
 
-import io.datakernel.async.IgnoreCompletionCallback;
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SettableStage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
@@ -72,16 +71,13 @@ public class HttpApiTest {
 	@Before
 	public void setUp() {
 		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
-		AsyncServlet servlet = new AsyncServlet() {
-			@Override
-			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				try {
-					testRequest(request);
-					HttpResponse response = createResponse();
-					callback.setResult(response);
-				} catch (ParseException e) {
-					callback.setException(e);
-				}
+		AsyncServlet servlet = request -> {
+			try {
+				testRequest(request);
+				HttpResponse response = createResponse();
+				return SettableStage.immediateStage(response);
+			} catch (ParseException e) {
+				return SettableStage.immediateFailedStage(e);
 			}
 		};
 
@@ -114,25 +110,23 @@ public class HttpApiTest {
 	public void test() throws IOException, ExecutionException, InterruptedException {
 		server.listen();
 		HttpRequest request = createRequest();
-		client.send(request, new ResultCallback<HttpResponse>() {
-			@Override
-			protected void onResult(HttpResponse result) {
-				try {
-					testResponse(result);
-				} catch (ParseException e) {
-					fail("Invalid response");
-				}
-				server.close(IgnoreCompletionCallback.create());
-				client.stop(IgnoreCompletionCallback.create());
-			}
+		client.send(request)
+				.whenComplete((response, throwable) -> {
+					if (throwable != null) {
+						fail("Should not end here");
+					} else {
+						try {
+							testResponse(response);
+						} catch (ParseException e) {
+							fail("Invalid response");
+						}
+					}
+				})
+				.thenRun(() -> {
+					server.close();
+					client.stop();
+				});
 
-			@Override
-			protected void onException(Exception e) {
-				fail("Should not end here");
-				server.close(IgnoreCompletionCallback.create());
-				client.stop(IgnoreCompletionCallback.create());
-			}
-		});
 		eventloop.run();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}

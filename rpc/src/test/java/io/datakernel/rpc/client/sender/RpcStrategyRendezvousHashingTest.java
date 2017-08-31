@@ -57,24 +57,24 @@ public class RpcStrategyRendezvousHashingTest {
 		RpcSender sender;
 		int callsPerLoop = 10000;
 		int timeout = 50;
-		ResultCallbackStub callback = new ResultCallbackStub();
+		BiConsumerStub consumer = new BiConsumerStub();
 
 		pool.put(ADDRESS_1, connection1);
 		pool.put(ADDRESS_2, connection2);
 		pool.put(ADDRESS_3, connection3);
 		sender = rendezvousHashing.createSender(pool);
 		for (int i = 0; i < callsPerLoop; i++) {
-			sender.sendRequest(new RpcMessageDataStubWithKey(i), timeout, callback);
+			sender.<Object, RpcMessageDataStub>sendRequest(new RpcMessageDataStubWithKey(i), timeout).whenComplete(consumer);
 		}
 		pool.remove(ADDRESS_1);
 		sender = rendezvousHashing.createSender(pool);
 		for (int i = 0; i < callsPerLoop; i++) {
-			sender.sendRequest(new RpcMessageDataStubWithKey(i), timeout, callback);
+			sender.<Object, RpcMessageDataStub>sendRequest(new RpcMessageDataStubWithKey(i), timeout).whenComplete(consumer);
 		}
 		pool.remove(ADDRESS_3);
 		sender = rendezvousHashing.createSender(pool);
 		for (int i = 0; i < callsPerLoop; i++) {
-			sender.sendRequest(new RpcMessageDataStubWithKey(i), timeout, callback);
+			sender.<Object, RpcMessageDataStub>sendRequest(new RpcMessageDataStubWithKey(i), timeout).whenComplete(consumer);
 		}
 
 		int expectedCallsOfConnection1 = callsPerLoop / 3;

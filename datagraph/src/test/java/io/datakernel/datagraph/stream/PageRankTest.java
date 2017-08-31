@@ -20,10 +20,7 @@ import com.google.common.base.Function;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.Ordering;
 import com.google.common.net.InetAddresses;
-import io.datakernel.async.AssertingCompletionCallback;
-import io.datakernel.async.AsyncRunnable;
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.IgnoreCompletionCallback;
+import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.datagraph.dataset.Dataset;
 import io.datakernel.datagraph.dataset.SortedDataset;
 import io.datakernel.datagraph.dataset.impl.DatasetListConsumer;
@@ -259,26 +256,12 @@ public class PageRankTest {
 		server1.listen();
 		server2.listen();
 
-		runInParallel(eventloop,
-				new AsyncRunnable() {
-					@Override
-					public void run(CompletionCallback callback) {
-						result1.setCompletionCallback(callback);
-					}
-				},
-				new AsyncRunnable() {
-					@Override
-					public void run(CompletionCallback callback) {
-						result2.setCompletionCallback(callback);
-					}
-				}
-		).run(new AssertingCompletionCallback() {
-			@Override
-			protected void onComplete() {
-				server1.close(IgnoreCompletionCallback.create());
-				server2.close(IgnoreCompletionCallback.create());
-			}
-		});
+		runInParallel(eventloop, result1::getCompletionStage, result2::getCompletionStage)
+				.run()
+				.whenComplete(AsyncCallbacks.assertBiConsumer(aVoid -> {
+					server1.close();
+					server2.close();
+				}));
 
 		graph.execute();
 

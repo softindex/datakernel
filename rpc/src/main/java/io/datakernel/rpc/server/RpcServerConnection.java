@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.server;
 
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SettableStage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.jmx.*;
@@ -28,6 +28,8 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.util.Map;
+import java.util.concurrent.CompletionStage;
+import java.util.function.BiConsumer;
 
 public final class RpcServerConnection implements RpcStream.Listener, JmxRefreshable {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
@@ -61,13 +63,12 @@ public final class RpcServerConnection implements RpcStream.Listener, JmxRefresh
 	}
 
 	@SuppressWarnings("unchecked")
-	private void apply(Object request, ResultCallback<Object> callback) {
+	private CompletionStage<Object> apply(Object request) {
 		RpcRequestHandler requestHandler = handlers.get(request.getClass());
 		if (requestHandler == null) {
-			callback.setException(new ParseException("Failed to process request " + request));
-			return;
+			return SettableStage.immediateFailedStage(new ParseException("Failed to process request " + request));
 		}
-		requestHandler.run(request, callback);
+		return requestHandler.run(request);
 	}
 
 	@Override
@@ -78,30 +79,29 @@ public final class RpcServerConnection implements RpcStream.Listener, JmxRefresh
 		final long startTime = monitoring ? System.currentTimeMillis() : 0;
 
 		final Object messageData = message.getData();
-		apply(messageData, new ResultCallback<Object>() {
+		apply(messageData).whenComplete(new BiConsumer<Object, Throwable>() {
 			@Override
-			public void onResult(Object result) {
-				// jmx
-				updateProcessTime();
-				successfulRequests.recordEvent();
-				rpcServer.getSuccessfulRequests().recordEvent();
+			public void accept(Object result, Throwable throwable) {
+				if (throwable == null) {
+					// jmx
+					updateProcessTime();
+					successfulRequests.recordEvent();
+					rpcServer.getSuccessfulRequests().recordEvent();
 
-				stream.sendMessage(RpcMessage.of(cookie, result));
-				decrementActiveRequest();
-			}
+					stream.sendMessage(RpcMessage.of(cookie, result));
+					decrementActiveRequest();
+				} else {
+					// jmx
+					updateProcessTime();
+					lastRequestHandlingException.recordException(throwable, messageData);
+					rpcServer.getLastRequestHandlingException().recordException(throwable, messageData);
+					failedRequests.recordEvent();
+					rpcServer.getFailedRequests().recordEvent();
 
-			@Override
-			public void onException(Exception exception) {
-				// jmx
-				updateProcessTime();
-				lastRequestHandlingException.recordException(exception, messageData);
-				rpcServer.getLastRequestHandlingException().recordException(exception, messageData);
-				failedRequests.recordEvent();
-				rpcServer.getFailedRequests().recordEvent();
-
-				stream.sendMessage(RpcMessage.of(cookie, new RpcRemoteException(exception)));
-				decrementActiveRequest();
-				logger.warn("Exception while process request ID {}", cookie, exception);
+					stream.sendMessage(RpcMessage.of(cookie, new RpcRemoteException(throwable)));
+					decrementActiveRequest();
+					logger.warn("Exception while process request ID {}", cookie, throwable);
+				}
 			}
 
 			private void updateProcessTime() {

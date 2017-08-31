@@ -16,8 +16,7 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.AsyncCallable;
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SettableStage;
 import io.datakernel.eventloop.Eventloop;
 import org.junit.Test;
 
@@ -30,13 +29,9 @@ public class AsyncStreamsTest {
 	@Test
 	public void testDelayedProducer() throws Exception {
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		StreamProducer<Integer> producer = StreamProducers.asynchronouslyResolving(eventloop, () ->
+				SettableStage.immediateStage(StreamProducers.ofIterable(eventloop, asList(1, 2, 3))));
 
-		StreamProducer<Integer> producer = StreamProducers.asynchronouslyResolving(eventloop, new AsyncCallable<StreamProducer<Integer>>() {
-			@Override
-			public void call(ResultCallback<StreamProducer<Integer>> callback) {
-				callback.postResult(StreamProducers.ofIterable(eventloop, asList(1, 2, 3)));
-			}
-		});
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
 		producer.streamTo(consumer);

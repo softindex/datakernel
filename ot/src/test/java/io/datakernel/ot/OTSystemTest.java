@@ -8,7 +8,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-import static io.datakernel.async.AsyncCallbacks.assertCompletion;
 import static io.datakernel.util.Preconditions.check;
 import static io.datakernel.util.Preconditions.checkState;
 import static java.util.Arrays.asList;
@@ -194,7 +193,9 @@ public class OTSystemTest {
 				comparator,
 				state);
 
-		stateManager.start(assertCompletion());
+		stateManager.start().exceptionally(throwable -> {
+			throw new AssertionError("Fatal error on start", throwable);
+		});
 		eventloop.run();
 		System.out.println(stateManager);
 		System.out.println();
@@ -277,7 +278,9 @@ public class OTSystemTest {
 				comparator,
 				state);
 
-		stateManager.start(assertCompletion());
+		stateManager.start().exceptionally(throwable -> {
+			throw new AssertionError("Fatal error on start", throwable);
+		});
 		eventloop.run();
 		System.out.println(stateManager);
 		System.out.println();
@@ -312,7 +315,9 @@ public class OTSystemTest {
 				comparator,
 				state);
 
-		stateManager.start(assertCompletion());
+		stateManager.start().exceptionally(throwable -> {
+			throw new AssertionError("Fatal error on start", throwable);
+		});
 		eventloop.run();
 		System.out.println(stateManager);
 		System.out.println();

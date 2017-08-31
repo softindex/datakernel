@@ -18,7 +18,6 @@ package io.datakernel.stream;
 
 import com.google.common.base.Functions;
 import com.google.common.collect.Ordering;
-import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.helper.StreamMergeSorterStorageStub;
 import io.datakernel.stream.processor.StreamMergeSorterStorage;
@@ -153,7 +152,7 @@ public class StreamSorterTest {
 
 		StreamMergeSorterStorage<Integer> storage = new StreamMergeSorterStorageStub<Integer>(eventloop) {
 			@Override
-			public int write(StreamProducer<Integer> producer, final CompletionCallback completionCallback) {
+			public PartitionStage write(StreamProducer<Integer> producer) {
 				final List<Integer> list = new ArrayList<>();
 				int newPartition = partition++;
 				storage.put(newPartition, list);
@@ -168,8 +167,7 @@ public class StreamSorterTest {
 				};
 				producer.streamTo(consumer);
 
-				consumer.setCompletionCallback(completionCallback);
-				return newPartition;
+				return new PartitionStage(newPartition, consumer.getCompletionStage());
 			}
 		};
 		StreamSorter<Integer, Integer> sorter = StreamSorter.create(eventloop,

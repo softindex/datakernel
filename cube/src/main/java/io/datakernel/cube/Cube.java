@@ -67,9 +67,7 @@ import static com.google.common.collect.Maps.*;
 import static com.google.common.collect.Sets.newLinkedHashSet;
 import static com.google.common.primitives.Primitives.isWrapperType;
 import static io.datakernel.aggregation.AggregationUtils.*;
-import static io.datakernel.async.AsyncCallbacks.postTo;
 import static io.datakernel.async.AsyncRunnables.runInParallel;
-import static io.datakernel.async.SettableStage.immediateStage;
 import static io.datakernel.codegen.ExpressionComparator.leftField;
 import static io.datakernel.codegen.ExpressionComparator.rightField;
 import static io.datakernel.codegen.Expressions.*;
@@ -872,15 +870,16 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 			havingPredicate = createHavingPredicate();
 			recordFunction = createRecordFunction();
 
-			StreamConsumers.ToList consumer = StreamConsumers.toList(eventloop);
+			StreamConsumers.ToList<Object> consumer = StreamConsumers.toList(eventloop);
 			StreamProducer queryResultProducer = queryRawStream(newArrayList(queryDimensions), newArrayList(resultStoredMeasures),
 					queryPredicate, resultClass, queryClassLoader, compatibleAggregations);
 			queryResultProducer.streamTo(consumer);
 
-			consumer.setResultCallback(new ForwardingResultCallback<List<Object>>(resultCallback) {
-				@Override
-				protected void onResult(List<Object> results) {
-					processResults(results, resultCallback);
+			consumer.getResultStage().whenComplete((objects, throwable) -> {
+				if (throwable == null) {
+					processResults(objects, resultCallback);
+				} else {
+					resultCallback.setException(AsyncCallbacks.throwableToException(throwable));
 				}
 			});
 		}
@@ -1050,30 +1049,29 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 				final List<String> attributes = new ArrayList<>(resolverContainer.attributes);
 				attributes.retainAll(resultAttributes);
 				if (!attributes.isEmpty()) {
-					tasks.add(new AsyncRunnable() {
-						@Override
-						public void run(CompletionCallback callback) {
-							Utils.resolveAttributes(results, resolverContainer.resolver,
-									resolverContainer.dimensions, attributes,
-									(Class) resultClass, queryClassLoader, callback);
-						}
+					tasks.add(() -> {
+						final SettableStage<Void> stage = SettableStage.create();
+						Utils.resolveAttributes(results, resolverContainer.resolver,
+								resolverContainer.dimensions, attributes,
+								(Class) resultClass, queryClassLoader, AsyncCallbacks.completionToStage(stage));
+						return stage;
 					});
 				}
 			}
 
 			for (final AttributeResolverContainer resolverContainer : attributeResolvers) {
 				if (fullySpecifiedDimensions.keySet().containsAll(resolverContainer.dimensions)) {
-					tasks.add(new AsyncRunnable() {
-						@Override
-						public void run(CompletionCallback callback) {
-							resolveSpecifiedDimensions(resolverContainer, filterAttributes, callback);
-						}
+					tasks.add(() -> {
+						final SettableStage<Void> stage = SettableStage.create();
+						resolveSpecifiedDimensions(resolverContainer, filterAttributes, AsyncCallbacks.completionToStage(stage));
+						return stage;
 					});
 				}
 			}
-			runInParallel(eventloop, tasks).run(new ForwardingCompletionCallback(callback) {
-				@Override
-				protected void onComplete() {
+			runInParallel(eventloop, tasks).run().whenComplete((aVoid, throwable) -> {
+				if (throwable != null) {
+					callback.setException(AsyncCallbacks.throwableToException(throwable));
+				} else {
 					processResults2(results, totals, filterAttributes, callback);
 				}
 			});

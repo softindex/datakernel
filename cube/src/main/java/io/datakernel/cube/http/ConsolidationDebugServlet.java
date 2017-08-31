@@ -18,11 +18,12 @@ package io.datakernel.cube.http;
 
 import com.google.gson.*;
 import io.datakernel.aggregation.PrimaryKey;
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SettableStage;
 import io.datakernel.cube.Cube;
 import io.datakernel.http.*;
 
 import java.lang.reflect.Type;
+import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 
@@ -53,11 +54,9 @@ public final class ConsolidationDebugServlet implements AsyncServlet {
 	}
 
 	@Override
-	public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-		callback.setResult(HttpResponse.ok200()
+	public CompletionStage<HttpResponse> serve(HttpRequest request) {
+		return SettableStage.immediateStage(HttpResponse.ok200()
 				.withContentType(ContentType.of(MediaTypes.JSON))
-				.withBody(wrapUtf8(gson.toJson(cube.getConsolidationDebugInfo())))
-		);
-
+				.withBody(wrapUtf8(gson.toJson(cube.getConsolidationDebugInfo()))));
 	}
 }

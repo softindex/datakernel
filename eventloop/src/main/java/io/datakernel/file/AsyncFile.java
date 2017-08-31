@@ -17,11 +17,10 @@
 package io.datakernel.file;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.*;
+import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.RunnableWithException;
 
 import java.io.File;
 import java.io.IOException;
@@ -35,7 +34,7 @@ import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.concurrent.Callable;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -88,16 +87,10 @@ public final class AsyncFile {
 	 * @param executor    executor for running tasks in other thread
 	 * @param path        the  path of the file to open or create
 	 * @param openOptions options specifying how the file is opened
-	 * @param callback    callback which will be called after opening
 	 */
-	public static void open(final Eventloop eventloop, final ExecutorService executor,
-	                        final Path path, final OpenOption[] openOptions, ResultCallback<AsyncFile> callback) {
-		eventloop.callConcurrently(executor, new Callable<AsyncFile>() {
-			@Override
-			public AsyncFile call() throws Exception {
-				return open(eventloop, executor, path, openOptions);
-			}
-		}, callback);
+	public static CompletionStage<AsyncFile> openAsync(final Eventloop eventloop, final ExecutorService executor,
+	                                                   final Path path, final OpenOption[] openOptions) {
+		return eventloop.callConcurrently(executor, () -> open(eventloop, executor, path, openOptions));
 	}
 
 	/**
@@ -105,26 +98,17 @@ public final class AsyncFile {
 	 *
 	 * @param eventloop event loop in which a file will be used
 	 * @param executor  @param path     the  path of the file to open or create
-	 * @param callback  callback which will be called after opening
 	 */
-	public static void delete(Eventloop eventloop, ExecutorService executor,
-	                          final Path path, CompletionCallback callback) {
-		eventloop.runConcurrentlyWithException(executor, () -> Files.delete(path), callback);
+	public static CompletionStage<Void> delete(Eventloop eventloop, ExecutorService executor,
+	                                           final Path path) {
+		return eventloop.runConcurrentlyWithException(executor, () -> Files.delete(path));
 	}
 
-	public static void length(Eventloop eventloop, ExecutorService executor, final Path path,
-	                          ResultCallback<Long> callback) {
-		eventloop.callConcurrently(executor, new Callable<Long>() {
-			@Override
-			public Long call() throws Exception {
-				File file = path.toFile();
-				if (!file.exists() || file.isDirectory()) {
-					return -1L;
-				} else {
-					return file.length();
-				}
-			}
-		}, callback);
+	public static CompletionStage<Long> length(Eventloop eventloop, ExecutorService executor, final Path path) {
+		return eventloop.callConcurrently(executor, () -> {
+			final File file = path.toFile();
+			return !file.exists() || file.isDirectory() ? -1L : file.length();
+		});
 	}
 
 	/**
@@ -134,11 +118,10 @@ public final class AsyncFile {
 	 * @param executor  @param source   the path to the file to move
 	 * @param target    the path to the target file (may be associated with a different provider to the source path)
 	 * @param options   options specifying how the move should be done
-	 * @param callback  callback which will be called after moving
 	 */
-	public static void move(Eventloop eventloop, ExecutorService executor,
-	                        final Path source, final Path target, final CopyOption[] options, CompletionCallback callback) {
-		eventloop.runConcurrentlyWithException(executor, () -> Files.move(source, target, options), callback);
+	public static CompletionStage<Void> move(Eventloop eventloop, ExecutorService executor,
+	                                         final Path source, final Path target, final CopyOption[] options) {
+		return eventloop.runConcurrentlyWithException(executor, () -> Files.move(source, target, options));
 	}
 
 	/**
@@ -147,11 +130,11 @@ public final class AsyncFile {
 	 * @param eventloop event loop in which a file will be used
 	 * @param executor  @param dir      the directory to create
 	 * @param attrs     an optional list of file attributes to set atomically when creating the directory
-	 * @param callback  callback which will be called after creating
 	 */
-	public static void createDirectory(Eventloop eventloop, ExecutorService executor,
-	                                   final Path dir, @Nullable final FileAttribute<?>[] attrs, CompletionCallback callback) {
-		eventloop.runConcurrentlyWithException(executor, () -> Files.createDirectory(dir, attrs == null ? new FileAttribute<?>[0] : attrs), callback);
+	public static CompletionStage<Void> createDirectory(Eventloop eventloop, ExecutorService executor,
+	                                                    final Path dir, @Nullable final FileAttribute<?>[] attrs) {
+		return eventloop.runConcurrentlyWithException(executor, () ->
+				Files.createDirectory(dir, attrs == null ? new FileAttribute<?>[0] : attrs));
 	}
 
 	/**
@@ -160,11 +143,11 @@ public final class AsyncFile {
 	 * @param eventloop event loop in which a file will be used
 	 * @param executor  @param dir      the directory to create
 	 * @param attrs     an optional list of file attributes to set atomically when creating the directory
-	 * @param callback  callback which will be called after creating
 	 */
-	public static void createDirectories(Eventloop eventloop, ExecutorService executor,
-	                                     final Path dir, @Nullable final FileAttribute<?>[] attrs, CompletionCallback callback) {
-		eventloop.runConcurrentlyWithException(executor, () -> Files.createDirectories(dir, attrs == null ? new FileAttribute<?>[0] : attrs), callback);
+	public static CompletionStage<Void> createDirectories(Eventloop eventloop, ExecutorService executor,
+	                                                      final Path dir, @Nullable final FileAttribute<?>[] attrs) {
+		return eventloop.runConcurrentlyWithException(executor, () ->
+				Files.createDirectories(dir, attrs == null ? new FileAttribute<?>[0] : attrs));
 	}
 
 	/**
@@ -172,28 +155,10 @@ public final class AsyncFile {
 	 *
 	 * @param eventloop event loop in which a file will be used
 	 * @param executor  @param path     the  path of the file to read
-	 * @param callback  which will be called after complete
 	 */
-	public static void readFile(Eventloop eventloop, ExecutorService executor,
-	                            Path path, final ResultCallback<ByteBuf> callback) {
-		open(eventloop, executor, path, new OpenOption[]{READ}, new ForwardingResultCallback<AsyncFile>(callback) {
-			@Override
-			public void onResult(final AsyncFile file) {
-				file.readFully(new ResultCallback<ByteBuf>() {
-					@Override
-					public void onResult(ByteBuf buf) {
-						file.close(IgnoreCompletionCallback.create());
-						callback.setResult(buf);
-					}
-
-					@Override
-					public void onException(Exception e) {
-						file.close(IgnoreCompletionCallback.create());
-						callback.setException(e);
-					}
-				});
-			}
-		});
+	public static CompletionStage<ByteBuf> readFile(Eventloop eventloop, ExecutorService executor, Path path) {
+		return openAsync(eventloop, executor, path, new OpenOption[]{READ}).thenCompose(
+				file -> file.readFully().whenComplete((byteBuf, throwable) -> file.close()));
 	}
 
 	/**
@@ -203,28 +168,11 @@ public final class AsyncFile {
 	 * @param eventloop event loop in which a file will be used
 	 * @param executor  @param path     the  path of the file to create and write
 	 * @param buf       the  buffer from which bytes are to be transferred byteBuffer
-	 * @param callback  which will be called after complete
 	 */
-	public static void createNewAndWriteFile(Eventloop eventloop, ExecutorService executor,
-	                                         Path path, final ByteBuf buf, final CompletionCallback callback) {
-		open(eventloop, executor, path, new OpenOption[]{WRITE, CREATE_NEW}, new ForwardingResultCallback<AsyncFile>(callback) {
-			@Override
-			public void onResult(AsyncFile file) {
-				file.writeFully(buf, 0L, new CompletionCallback() {
-					@Override
-					public void onComplete() {
-						buf.recycle();
-						callback.setComplete();
-					}
-
-					@Override
-					public void onException(Exception exception) {
-						buf.recycle();
-						callback.setException(exception);
-					}
-				});
-			}
-		});
+	public static CompletionStage<Void> createNewAndWriteFile(Eventloop eventloop, ExecutorService executor,
+	                                                          Path path, final ByteBuf buf) {
+		return openAsync(eventloop, executor, path, new OpenOption[]{WRITE, CREATE_NEW}).thenCompose(
+				file -> file.writeFully(buf, 0L).whenComplete(($, throwable) -> buf.recycle()));
 	}
 
 	/**
@@ -233,35 +181,30 @@ public final class AsyncFile {
 	 *
 	 * @param buf      the  buffer from which bytes are to be transferred
 	 * @param position the  file position at which the transfer is to begin; must be non-negative
-	 * @param callback callback which will be called after complete
 	 */
-	public void write(final ByteBuf buf, long position, final ResultCallback<Integer> callback) {
+	public CompletionStage<Integer> write(final ByteBuf buf, long position) {
 		final Eventloop.ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();
 		final ByteBuffer byteBuffer = buf.toReadByteBuffer();
+		final SettableStage<Integer> stage = SettableStage.create();
 		channel.write(byteBuffer, position, null, new CompletionHandler<Integer, Object>() {
 			@Override
 			public void completed(final Integer result, Object attachment) {
 				buf.ofReadByteBuffer(byteBuffer);
-				eventloop.execute(new Runnable() {
-					@Override
-					public void run() {
-						tracker.complete();
-						callback.setResult(result);
-					}
+				eventloop.execute(() -> {
+					tracker.complete();
+					stage.setResult(result);
 				});
 			}
 
 			@Override
 			public void failed(final Throwable exc, Object attachment) {
-				eventloop.execute(new Runnable() {
-					@Override
-					public void run() {
-						tracker.complete();
-						callback.setException(exc instanceof Exception ? (Exception) exc : new Exception(exc));
-					}
+				eventloop.execute(() -> {
+					tracker.complete();
+					stage.setError(exc instanceof Exception ? (Exception) exc : new Exception(exc));
 				});
 			}
 		});
+		return stage;
 	}
 
 	/**
@@ -269,74 +212,70 @@ public final class AsyncFile {
 	 *
 	 * @param buf      the  buffer into which bytes are to be transferred
 	 * @param position the file position at which the transfer is to begin; must be non-negative
-	 * @param callback which will be called after complete
 	 */
-	public void read(final ByteBuf buf, long position, final ResultCallback<Integer> callback) {
+	public CompletionStage<Integer> read(final ByteBuf buf, long position) {
 		final Eventloop.ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();
 		final ByteBuffer byteBuffer = buf.toWriteByteBuffer();
+		final SettableStage<Integer> stage = SettableStage.create();
 		channel.read(byteBuffer, position, null, new CompletionHandler<Integer, Object>() {
 			@Override
 			public void completed(final Integer result, Object attachment) {
 				buf.ofWriteByteBuffer(byteBuffer);
-				eventloop.execute(new Runnable() {
-					@Override
-					public void run() {
-						tracker.complete();
-						callback.setResult(result);
-					}
+				eventloop.execute(() -> {
+					tracker.complete();
+					stage.setResult(result);
 				});
 			}
 
 			@Override
 			public void failed(final Throwable exc, Object attachment) {
-				eventloop.execute(new Runnable() {
-					@Override
-					public void run() {
-						tracker.complete();
-						callback.setException(exc instanceof Exception ? (Exception) exc : new Exception(exc));
-					}
+				eventloop.execute(() -> {
+					tracker.complete();
+					stage.setError(exc instanceof Exception ? (Exception) exc : new Exception(exc));
 				});
 			}
 		});
+		return stage;
 	}
 
-	private void writeFully(final ByteBuf buf, final long position, final Eventloop.ConcurrentOperationTracker tracker,
-	                        final AtomicBoolean cancelled, final CompletionCallback callback) {
+	private CompletionStage<Void> writeFully(final ByteBuf buf, final long position, final Eventloop.ConcurrentOperationTracker tracker,
+	                                         final AtomicBoolean cancelled) {
 		final ByteBuffer byteBuffer = buf.toReadByteBuffer();
+		final SettableStage<Void> stage = SettableStage.create();
 		channel.write(byteBuffer, position, null, new CompletionHandler<Integer, Object>() {
 			@Override
 			public void completed(Integer result, Object attachment) {
 				buf.ofReadByteBuffer(byteBuffer);
 				if (buf.readRemaining() == 0) {
-					eventloop.execute(new Runnable() {
-						@Override
-						public void run() {
-							buf.recycle();
-							tracker.complete();
-							callback.setComplete();
-						}
+					eventloop.execute(() -> {
+						buf.recycle();
+						tracker.complete();
+						stage.setResult(null);
 					});
 				} else {
 					if (cancelled.get()) {
 						tracker.complete();
 						return;
 					}
-					writeFully(buf, position + result, tracker, cancelled, callback);
+					writeFully(buf, position + result, tracker, cancelled).whenComplete(($, throwable) -> {
+						// TODO: improve
+						if (throwable != null) stage.setError(throwable);
+						else stage.setResult(null);
+					});
 				}
 			}
 
 			@Override
 			public void failed(final Throwable exc, Object attachment) {
-				eventloop.execute(new Runnable() {
-					@Override
-					public void run() {
-						buf.recycle();
-						tracker.complete();
-						callback.setException(exc instanceof Exception ? (Exception) exc : new Exception(exc));
-					}
+				eventloop.execute(() -> {
+					buf.recycle();
+					tracker.complete();
+					stage.setError(exc instanceof Exception ? (Exception) exc : new Exception(exc));
 				});
 			}
 		});
+
+		return stage;
 	}
 
 	/**
@@ -345,42 +284,33 @@ public final class AsyncFile {
 	 *
 	 * @param byteBuf  the  buffer from which bytes are to be transferred
 	 * @param position the  file position at which the transfer is to begin; must be non-negative
-	 * @param callback callback which will be called after complete
 	 */
-	public AsyncCancellable writeFully(ByteBuf byteBuf, long position, CompletionCallback callback) {
-		Eventloop.ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();
+	public CompletionStage<Void> writeFully(ByteBuf byteBuf, long position) {
+		final Eventloop.ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();
 		final AtomicBoolean cancelled = new AtomicBoolean();
-		writeFully(byteBuf, position, tracker, cancelled, callback);
-		return new AsyncCancellable() {
-			@Override
-			public void cancel() {
-				cancelled.set(true);
-			}
-		};
+		// TODO: add cancel logic
+		return writeFully(byteBuf, position, tracker, cancelled);
 	}
 
-	private void readFully(final ByteBuf buf, final long position, final long size,
-	                       final Eventloop.ConcurrentOperationTracker tracker,
-	                       final AtomicBoolean cancelled, final CompletionCallback callback) {
+	private CompletionStage<Void> readFully(final ByteBuf buf, final long position, final long size,
+	                                        final Eventloop.ConcurrentOperationTracker tracker, final AtomicBoolean cancelled) {
+		final SettableStage<Void> stage = SettableStage.create();
 		final ByteBuffer byteBuffer = buf.toWriteByteBuffer();
 		channel.read(byteBuffer, position, null, new CompletionHandler<Integer, Object>() {
 			@Override
 			public void completed(Integer result, Object attachment) {
 				buf.ofWriteByteBuffer(byteBuffer);
 				if (buf.readRemaining() == size || result == -1) {
-					eventloop.execute(new Runnable() {
-						@Override
-						public void run() {
-							try {
-								channel.close();
-								tracker.complete();
-								callback.setComplete();
-							} catch (IOException e) {
-								tracker.complete();
-								callback.setException(e);
-							}
-
+					eventloop.execute(() -> {
+						try {
+							channel.close();
+							tracker.complete();
+							stage.setResult(null);
+						} catch (IOException e) {
+							tracker.complete();
+							stage.setError(e);
 						}
+
 					});
 				} else {
 					if (cancelled.get()) {
@@ -391,25 +321,28 @@ public final class AsyncFile {
 						tracker.complete();
 						return;
 					}
-					readFully(buf, position, size, tracker, cancelled, callback);
+					readFully(buf, position, size, tracker, cancelled).whenComplete(($, throwable) -> {
+						// TODO: improve
+						if (throwable != null) stage.setError(throwable);
+						else stage.setResult(null);
+					});
 				}
 			}
 
 			@Override
 			public void failed(final Throwable exc, Object attachment) {
-				eventloop.execute(new Runnable() {
-					@Override
-					public void run() {
-						try {
-							channel.close();
-						} catch (IOException ignore) {
-						}
-						tracker.complete();
-						callback.setException(exc instanceof Exception ? (Exception) exc : new Exception(exc));
+				eventloop.execute(() -> {
+					try {
+						channel.close();
+					} catch (IOException ignore) {
 					}
+					tracker.complete();
+					stage.setError(exc instanceof Exception ? (Exception) exc : new Exception(exc));
 				});
 			}
 		});
+
+		return stage;
 	}
 
 	/**
@@ -418,89 +351,61 @@ public final class AsyncFile {
 	 *
 	 * @param buf      the  buffer into which bytes are to be transferred
 	 * @param position the file position at which the transfer is to begin; must be non-negative
-	 * @param callback which will be called after complete
 	 */
-	public AsyncCancellable readFully(ByteBuf buf, long position, CompletionCallback callback) {
+	public CompletionStage<Void> readFully(ByteBuf buf, long position) {
 		long size;
 
 		try {
 			size = channel.size();
 		} catch (IOException e) {
-			callback.setException(e);
-
-			return new AsyncCancellable() {
-				@Override
-				public void cancel() {
-					// do nothing
-				}
-			};
+			return SettableStage.immediateFailedStage(e);
 		}
 
 		Eventloop.ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();
 		final AtomicBoolean cancelled = new AtomicBoolean();
-		readFully(buf, position, size, tracker, cancelled, callback);
-		return new AsyncCancellable() {
-			@Override
-			public void cancel() {
-				cancelled.set(true);
-			}
-		};
+		// TODO: add cancel logic
+		return readFully(buf, position, size, tracker, cancelled);
 	}
 
 	/**
-	 * Reads all sequence of bytes from this channel into buffer and sends this buffer to {@code callback}
-	 *
-	 * @param callback which will be called after complete
+	 * Reads all sequence of bytes from this channel into buffer and sends this buffer to {@code stage}
 	 */
-	public void readFully(final ResultCallback<ByteBuf> callback) {
+	public CompletionStage<ByteBuf> readFully() {
 		long size;
 
 		try {
 			size = channel.size();
 		} catch (IOException e) {
-			callback.setException(e);
-			return;
+			return SettableStage.immediateFailedStage(e);
 		}
 
 		final ByteBuf buf = ByteBufPool.allocate((int) size);
-		readFully(buf, 0, new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				callback.setResult(buf);
-			}
-
-			@Override
-			public void onException(Exception e) {
-				buf.recycle();
-				callback.setException(e);
-			}
-		});
+		return readFully(buf, 0).whenComplete((aVoid, throwable) -> {
+			if (throwable != null) buf.recycle();
+		}).thenApply(aVoid -> buf);
 	}
 
-	public void forceAndClose(CompletionCallback callback) {
-		eventloop.runConcurrentlyWithException(executor, () -> {
+	public CompletionStage<Void> forceAndClose() {
+		return eventloop.runConcurrentlyWithException(executor, () -> {
 			channel.force(true);
 			channel.close();
-		}, callback);
+		});
 	}
 
 	/**
 	 * Closes the channel
-	 *
-	 * @param callback which will be called after complete
 	 */
-	public void close(CompletionCallback callback) {
-		eventloop.runConcurrentlyWithException(executor, channel::close, callback);
+	public CompletionStage<Void> close() {
+		return eventloop.runConcurrentlyWithException(executor, channel::close);
 	}
 
 	/**
 	 * Truncates this file to the given size.
 	 *
 	 * @param size     the new size, a non-negative byte count
-	 * @param callback which will be called after complete
 	 */
-	public void truncate(final long size, CompletionCallback callback) {
-		eventloop.runConcurrentlyWithException(executor, () -> channel.truncate(size), callback);
+	public CompletionStage<Void> truncate(final long size) {
+		return eventloop.runConcurrentlyWithException(executor, () -> channel.truncate(size));
 	}
 
 	/**
@@ -508,10 +413,9 @@ public final class AsyncFile {
 	 *
 	 * @param metaData if true then this method is required to force changes to both the file's
 	 *                 content and metadata to be written to storage; otherwise, it need only force content changes to be written
-	 * @param callback which will be called after complete
 	 */
-	public void force(final boolean metaData, CompletionCallback callback) {
-		eventloop.runConcurrentlyWithException(executor, () -> channel.force(metaData), callback);
+	public CompletionStage<Void> force(final boolean metaData) {
+		return eventloop.runConcurrentlyWithException(executor, () -> channel.force(metaData));
 	}
 
 	public Eventloop getEventloop() {

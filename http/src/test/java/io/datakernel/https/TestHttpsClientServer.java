@@ -18,10 +18,13 @@ package io.datakernel.https;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
-import io.datakernel.async.*;
+import io.datakernel.async.SettableStage;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.*;
+import io.datakernel.http.AsyncHttpClient;
+import io.datakernel.http.AsyncHttpServer;
+import io.datakernel.http.AsyncServlet;
+import io.datakernel.http.HttpRequest;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
 
@@ -32,9 +35,9 @@ import java.io.File;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.security.SecureRandom;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.async.AsyncRunnables.runInParallel;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
@@ -43,7 +46,6 @@ import static io.datakernel.http.HttpRequest.post;
 import static io.datakernel.http.HttpResponse.ok200;
 import static io.datakernel.http.HttpUtils.inetAddress;
 import static io.datakernel.https.SslUtils.*;
-import static java.util.Arrays.asList;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 import static junit.framework.TestCase.assertEquals;
 
@@ -59,12 +61,7 @@ public class TestHttpsClientServer {
 
 	private KeyManager[] keyManagers = createKeyManagers(new File("./src/test/resources/keystore.jks"), "testtest", "testtest");
 	private TrustManager[] trustManagers = createTrustManagers(new File("./src/test/resources/truststore.jks"), "testtest");
-	private AsyncServlet bobServlet = new AsyncServlet() {
-		@Override
-		public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
-			callback.setResult(ok200().withBody(wrapAscii("Hello, I am Bob!")));
-		}
-	};
+	private AsyncServlet bobServlet = request -> SettableStage.immediateStage(ok200().withBody(wrapAscii("Hello, I am Bob!")));
 	private Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 	private ExecutorService executor = newCachedThreadPool();
 	private SSLContext context = createSslContext("TLSv1.2", keyManagers, trustManagers, new SecureRandom());
@@ -88,29 +85,19 @@ public class TestHttpsClientServer {
 				.withSslEnabled(createSslContext("TLSv1.2", keyManagers, trustManagers, new SecureRandom()), executor);
 
 		HttpRequest request = post("https://127.0.0.1:" + SSL_PORT).withBody(wrapAscii("Hello, I am Alice!"));
-		final ResultCallbackFuture<String> callback = ResultCallbackFuture.create();
 
 		server.listen();
 
-		client.send(request, new ResultCallback<HttpResponse>() {
-			@Override
-			public void onResult(HttpResponse result) {
-				callback.setResult(decodeAscii(result.getBody()));
-				server.close(IgnoreCompletionCallback.create());
-				client.stop(IgnoreCompletionCallback.create());
-			}
+		final CompletableFuture<String> future = client.send(request).thenApply(httpResponse -> {
+			server.close();
+			client.stop();
+			return decodeAscii(httpResponse.getBody());
+		}).toCompletableFuture();
 
-			@Override
-			public void onException(Exception e) {
-				callback.setException(e);
-				server.close(IgnoreCompletionCallback.create());
-				client.stop(IgnoreCompletionCallback.create());
-			}
-		});
 		eventloop.run();
 		executor.shutdown();
 
-		assertEquals("Hello, I am Bob!", callback.get());
+		assertEquals("Hello, I am Bob!", future.get());
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
@@ -132,48 +119,25 @@ public class TestHttpsClientServer {
 		final HttpRequest httpsRequest = post("https://127.0.0.1:" + SSL_PORT).withBody(wrapAscii("Hello, I am Alice!"));
 		final HttpRequest httpRequest = post("http://127.0.0.1:" + PORT).withBody(wrapAscii("Hello, I am Alice!"));
 
-		final ResultCallbackFuture<String> callbackHttps = ResultCallbackFuture.create();
-		final ResultCallbackFuture<String> callbackHttp = ResultCallbackFuture.create();
-
 		server.listen();
 
-		runInParallel(eventloop, asList(
-				new AsyncRunnable() {
-					@Override
-					public void run(final CompletionCallback callback) {
-						client.send(httpsRequest, new AssertingResultCallback<HttpResponse>() {
-							@Override
-							public void onResult(HttpResponse result) {
-								callbackHttps.setResult(decodeAscii(result.getBody()));
-								callback.setComplete();
-							}
-						});
-					}
-				},
-				new AsyncRunnable() {
-					@Override
-					public void run(final CompletionCallback callback) {
-						client.send(httpRequest, new AssertingResultCallback<HttpResponse>() {
-							@Override
-							public void onResult(HttpResponse result) {
-								callbackHttp.setResult(decodeAscii(result.getBody()));
-								callback.setComplete();
-							}
-						});
-					}
-				}
-		)).run(new AssertingCompletionCallback() {
-			@Override
-			protected void onComplete() {
-				server.close(IgnoreCompletionCallback.create());
-				client.stop(IgnoreCompletionCallback.create());
-			}
+		final CompletableFuture<String> httpsFuture = client.send(httpsRequest)
+				.thenApply(response -> decodeAscii(response.getBody()))
+				.toCompletableFuture();
+
+		final CompletableFuture<String> httpFuture = client.send(httpRequest)
+				.thenApply(response -> decodeAscii(response.getBody()))
+				.toCompletableFuture();
+
+		httpFuture.runAfterBoth(httpsFuture, () -> {
+			server.close();
+			client.stop();
 		});
 
 		eventloop.run();
 		executor.shutdown();
 
-		assertEquals(callbackHttp.get(), callbackHttps.get());
+		assertEquals(httpFuture.get(), httpsFuture.get());
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 }
