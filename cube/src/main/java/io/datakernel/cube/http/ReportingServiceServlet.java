@@ -147,7 +147,7 @@ public final class ReportingServiceServlet implements AsyncServlet {
 		if (parameter != null)
 			query = query.withOffset(Integer.valueOf(parameter));
 
-		parameter = request.getParameter(REPORT_TYPE_PARAM);
+		parameter = request.getQueryParameter(REPORT_TYPE_PARAM);
 		if (parameter != null)
 			query = query.withReportType(ReportType.valueOf(parameter.toUpperCase()));
 
