@@ -203,7 +203,6 @@ public class AsyncHttpClientTest {
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop).withConnectTimeout(TIMEOUT);
-		final ResultCallbackFuture<String> resultObserver = ResultCallbackFuture.create();
 
 		HttpRequest request = HttpRequest.get("http://google.com");
 		request.addHeader(HttpHeaders.COOKIE, ByteBufStrings.wrapAscii("prov=478d2a8b-1d34-4040-9877-893f4204afa1;" +
@@ -212,29 +211,19 @@ public class AsyncHttpClientTest {
 				"cc=0424c5415e9b42aeb86f333471619b41; " +
 				"_ga=GA1.2.1152383523.1471249212"));
 
-		httpClient.send(request, new ResultCallback<HttpResponse>() {
-			@Override
-			public void onResult(HttpResponse result) {
-				try {
-					resultObserver.setResult(decodeUtf8(result.getBody()));
-				} catch (ParseException e) {
-					onException(e);
-				}
-				httpClient.stop(IgnoreCompletionCallback.create());
+		final CompletableFuture<String> future = httpClient.send(request).thenCompose(response -> {
+			try {
+				return SettableStage.immediateStage(decodeUtf8(response.getBody()));
+			} catch (ParseException e) {
+				return SettableStage.immediateFailedStage(e);
 			}
-
-			@Override
-			public void onException(Exception exception) {
-				resultObserver.setException(exception);
-				httpClient.stop(IgnoreCompletionCallback.create());
-			}
-		});
+		}).whenComplete((s, throwable) -> httpClient.stop()).toCompletableFuture();
 
 		eventloop.run();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 
 		try {
-			System.err.println("Result: " + resultObserver.get());
+			System.err.println("Result: " + future.get());
 		} catch (ExecutionException e) {
 			throw e.getCause();
 		}

@@ -85,7 +85,7 @@ final class DnsClientConnection implements AsyncUdpSocket.EventHandler {
 					throwable = new DnsException(domainName, ResponseErrorCode.TIMED_OUT);
 				}
 				if (inspector != null) {
-					if (throwable != null) inspector.onDnsQueryResult(domainName, dnsQueryResult);
+					if (throwable == null) inspector.onDnsQueryResult(domainName, dnsQueryResult);
 					else inspector.onDnsQueryError(domainName, AsyncCallbacks.throwableToException(throwable));
 				}
 				AsyncCallbacks.forwardTo(stage, dnsQueryResult, throwable);

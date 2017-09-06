@@ -498,18 +498,13 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 	/**
 	 * Sends the request to server, waits the result timeout and handles result with callback
 	 *
-	 * @param <I>           request class
-	 * @param <O>           response class
-	 * @param request       request for server
+	 * @param <I>     request class
+	 * @param <O>     response class
+	 * @param request request for server
 	 */
 	@Override
 	public <I, O> CompletionStage<O> sendRequest(I request, int timeout) {
 		return requestSender.sendRequest(request, timeout);
-	}
-
-	@Override
-	public <I> void sendCommand(I command, int timeout, final CompletionCallback callback) {
-		requestSender.sendRequest(command, timeout, toResultCallback(callback));
 	}
 
 	public IRpcClient adaptToAnotherEventloop(final Eventloop anotherEventloop) {
@@ -520,39 +515,20 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		return new IRpcClient() {
 			@Override
 			public <I, O> CompletionStage<O> sendRequest(final I request, final int timeout) {
+				return sendConcurrently(request, timeout);
+			}
+
+			private <I, O> CompletionStage<O> sendConcurrently(final I request, final int timeout) {
 				final SettableStage<O> stage = SettableStage.create();
-				sendConcurrently(request, timeout, callback);
-			}
-
-			@Override
-			public <I> void sendCommand(final I command, final int timeout, final CompletionCallback callback) {
-				sendConcurrently(command, timeout, toResultCallback(callback));
-			}
-
-			private void sendConcurrently(final Object request, final int timeout, final ResultCallback<?> callback) {
-				RpcClient.this.eventloop.execute(() -> RpcClient.this.requestSender.sendRequest(request, timeout).whenComplete((o, throwable) -> {
+				RpcClient.this.eventloop.execute(() -> RpcClient.this.requestSender.<I, O>sendRequest(request, timeout).whenComplete((o, throwable) -> {
 					if (throwable != null) {
 						anotherEventloop.execute(() -> stage.setError(throwable));
 					} else {
-						anotherEventloop.execute(() -> stage.setResult((O) o));
+						anotherEventloop.execute(() -> stage.setResult(o));
 					}
 				}));
 
 				return stage;
-			}
-		};
-	}
-
-	private static ResultCallback<Void> toResultCallback(final CompletionCallback callback) {
-		return new ResultCallback<Void>() {
-			@Override
-			protected void onResult(Void nothing) {
-				callback.setComplete();
-			}
-
-			@Override
-			protected void onException(Exception e) {
-				callback.setException(e);
 			}
 		};
 	}
