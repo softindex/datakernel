@@ -218,7 +218,9 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 
 	@Override
 	public void onData(RpcMessage message) {
-		if (message.getData().getClass() == RpcRemoteException.class) {
+		if (message.getData() == null) {
+			processResponse(message);
+		} else if (message.getData().getClass() == RpcRemoteException.class) {
 			processError(message);
 		} else if (message.getData().getClass() == RpcControlMessage.class) {
 			handleControlMessage((RpcControlMessage) message.getData());

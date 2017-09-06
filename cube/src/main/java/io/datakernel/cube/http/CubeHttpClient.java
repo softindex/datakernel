@@ -145,7 +145,7 @@ public final class CubeHttpClient implements ICube {
 		if (query.getOffset() != null)
 			urlParams.put(OFFSET_PARAM, query.getOffset().toString());
 		urlParams.put(REPORT_TYPE_PARAM, query.getReportType().toString().toLowerCase());
-		String url = this.url + "/" + "?" + HttpUtils.urlQueryString(urlParams);
+		String url = this.url + "/" + "?" + HttpUtils.renderQueryString(urlParams);
 
 		return HttpRequest.get(url);
 	}

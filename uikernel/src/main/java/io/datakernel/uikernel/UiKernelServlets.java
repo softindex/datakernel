@@ -24,7 +24,6 @@ import io.datakernel.http.*;
 
 import java.nio.charset.Charset;
 import java.util.List;
-import java.util.Map;
 
 import static io.datakernel.http.HttpMethod.*;
 import static io.datakernel.uikernel.Utils.deserializeUpdateRequest;
@@ -48,28 +47,32 @@ public class UiKernelServlets {
 	}
 
 	public static <K, R extends AbstractRecord<K>> AsyncServlet read(final GridModel<K, R> model, final Gson gson) {
-		return request -> {
-			try {
-				Map<String, String> parameters = request.getParameters();
-				ReadSettings<K> settings = ReadSettings.from(gson, parameters);
-				return model.read(settings).thenApply(response ->
-						createResponse(response.toJson(gson, model.getRecordType(), model.getIdType())));
-			} catch (ParseException e) {
-				return SettableStage.immediateFailedStage(e);
+		return  request-> {
+				try {
+
+					ReadSettings<K> settings = ReadSettings.from(gson, request);
+					returnmodel.read(settings).thenApply( response->
+							createResponse( response.toJson(gson, model.getRecordType(), model.getIdType())));
+
+				} catch (ParseException e) {
+					return SettableStage.immediateFailedStage(e);
+
 			}
 		};
 	}
 
 	public static <K, R extends AbstractRecord<K>> AsyncServlet get(final GridModel<K, R> model, final Gson gson) {
-		return request -> {
-			try {
-				Map<String, String> parameters = request.getParameters();
-				ReadSettings<K> settings = ReadSettings.from(gson, parameters);
-				K id = fromJson(gson, request.getUrlParameter(ID_PARAMETER_NAME), model.getIdType());
-				return model.read(id, settings).thenApply(obj ->
-						createResponse(gson.toJson(obj, model.getRecordType())));
-			} catch (ParseException e) {
-				return SettableStage.immediateFailedStage(e);
+		return  request-> {
+				try {
+
+					ReadSettings<K> settings = ReadSettings.from(gson, request);
+					K id = fromJson(gson, request.getPathParameter(ID_PARAMETER_NAME), model.getIdType());
+					returnmodel.read(id, settings).thenApply( obj->
+							createResponse( gson.toJson(obj, model.getRecordType())));
+
+				} catch (ParseException e) {
+					return SettableStage.immediateFailedStage(e);
+
 			}
 		};
 	}
@@ -103,7 +106,7 @@ public class UiKernelServlets {
 	public static <K, R extends AbstractRecord<K>> AsyncServlet delete(final GridModel<K, R> model, final Gson gson) {
 		return request -> {
 			try {
-				K id = fromJson(gson, request.getUrlParameter("id"), model.getIdType());
+				K id = fromJson(gson, request.getPathParameter("id"), model.getIdType());
 				return model.delete(id).thenApply(response -> {
 					HttpResponse res = HttpResponse.ok200();
 					if (response.hasErrors()) {

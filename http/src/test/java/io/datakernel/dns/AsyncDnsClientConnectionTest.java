@@ -88,7 +88,7 @@ public class AsyncDnsClientConnectionTest {
 			try {
 				DatagramChannel datagramChannel = createDatagramChannel(DatagramSocketSettings.create(), null, null);
 				AsyncUdpSocketImpl udpSocket = AsyncUdpSocketImpl.create(eventloop, datagramChannel);
-				dnsClientConnection = DnsClientConnection.create(eventloop, udpSocket);
+				dnsClientConnection = DnsClientConnection.create(eventloop, udpSocket, null);
 				udpSocket.setEventHandler(dnsClientConnection);
 				udpSocket.register();
 			} catch (IOException e) {

@@ -43,16 +43,16 @@ public class UdpSocketHandlerTest {
 		socket.setEventHandler(new AsyncUdpSocket.EventHandler() {
 			@Override
 			public void onRegistered() {
-				socket.read();
+				socket.receive();
 			}
 
 			@Override
-			public void onRead(UdpPacket packet) {
+			public void onReceive(UdpPacket packet) {
 				socket.send(packet);
 			}
 
 			@Override
-			public void onSent() {
+			public void onSend() {
 				socket.close();
 			}
 
@@ -73,7 +73,7 @@ public class UdpSocketHandlerTest {
 			}
 
 			@Override
-			public void onRead(UdpPacket packet) {
+			public void onReceive(UdpPacket packet) {
 				byte[] bytesReceived = packet.getBuf().array();
 				byte[] message = new byte[packet.getBuf().readRemaining()];
 
@@ -85,8 +85,8 @@ public class UdpSocketHandlerTest {
 			}
 
 			@Override
-			public void onSent() {
-				socket.read();
+			public void onSend() {
+				socket.receive();
 			}
 
 			@Override

@@ -17,7 +17,7 @@
 package io.datakernel.launcher;
 
 import com.google.inject.*;
-import io.datakernel.config.PropertiesConfigModule;
+import io.datakernel.config.ConfigsModule;
 import io.datakernel.jmx.JmxRegistrator;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
@@ -50,10 +50,10 @@ import static org.slf4j.LoggerFactory.getLogger;
  * 			new DaoTierModule(),
  * 			new ControllerTierModule(),
  * 			new ViewTierModule(),
- * 			{@link PropertiesConfigModule}
- * 				.{@link PropertiesConfigModule#ofFile(String) ofFile(dao.properties)}
- * 				.{@link PropertiesConfigModule#addFile(String) addFile(controller.properties)}
- * 				.{@link PropertiesConfigModule#addOptionalFile(String) addOptionalFile(view.properties)});
+ * 			{@link ConfigsModule}
+ * 				.{@link ConfigsModule#ofFile(String) ofFile(dao.properties)}
+ * 				.{@link ConfigsModule#addFile(String) addFile(controller.properties)}
+ * 				.{@link ConfigsModule#addOptionalFile(String) addOptionalFile(view.properties)});
  * 	}
  *
  *	{@literal @}Override
@@ -69,10 +69,10 @@ import static org.slf4j.LoggerFactory.getLogger;
  *
  * @see ServiceGraph
  * @see ServiceGraphModule
- * @see PropertiesConfigModule
- * @see PropertiesConfigModule#ofFile(String)
- * @see PropertiesConfigModule#addFile(String)
- * @see PropertiesConfigModule#addOptionalFile(String)
+ * @see ConfigsModule
+ * @see ConfigsModule#ofFile(String)
+ * @see ConfigsModule#addFile(String)
+ * @see ConfigsModule#addOptionalFile(String)
  */
 public abstract class Launcher {
 	protected final Logger logger = getLogger(this.getClass());

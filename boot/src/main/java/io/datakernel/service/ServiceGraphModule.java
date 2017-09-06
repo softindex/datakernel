@@ -127,7 +127,6 @@ public final class ServiceGraphModule extends AbstractModule {
 				.register(Eventloop.class, ServiceAdapters.forEventloop());
 	}
 
-
 	public static ServiceGraphModule newInstance() {
 		return new ServiceGraphModule();
 	}
@@ -186,10 +185,10 @@ public final class ServiceGraphModule extends AbstractModule {
 	/**
 	 * Puts an instance of class and its factory to the factoryMap
 	 *
-	 * @param <T>		type of service
-	 * @param type		key with which the specified factory is to be associated
-	 * @param factory	value to be associated with the specified type
-	 * @return			ServiceGraphModule with change
+	 * @param <T>     type of service
+	 * @param type    key with which the specified factory is to be associated
+	 * @param factory value to be associated with the specified type
+	 * @return ServiceGraphModule with change
 	 */
 	public <T> ServiceGraphModule register(Class<? extends T> type, ServiceAdapter<T> factory) {
 		registeredServiceAdapters.put(type, factory);
@@ -199,10 +198,10 @@ public final class ServiceGraphModule extends AbstractModule {
 	/**
 	 * Puts the key and its factory to the keys
 	 *
-	 * @param key		key with which the specified factory is to be associated
-	 * @param factory	value to be associated with the specified key
-	 * @param <T>		type of service
-	 * @return			ServiceGraphModule with change
+	 * @param key     key with which the specified factory is to be associated
+	 * @param factory value to be associated with the specified key
+	 * @param <T>     type of service
+	 * @return ServiceGraphModule with change
 	 */
 	public <T> ServiceGraphModule registerForSpecificKey(Key<T> key, ServiceAdapter<T> factory) {
 		keys.put(key, factory);
@@ -217,9 +216,9 @@ public final class ServiceGraphModule extends AbstractModule {
 	/**
 	 * Adds the dependency for key
 	 *
-	 * @param key			key for adding dependency
-	 * @param keyDependency	key of dependency
-	 * @return				ServiceGraphModule with change
+	 * @param key           key for adding dependency
+	 * @param keyDependency key of dependency
+	 * @return ServiceGraphModule with change
 	 */
 	public ServiceGraphModule addDependency(Key<?> key, Key<?> keyDependency) {
 		addedDependencies.put(key, keyDependency);
@@ -229,9 +228,9 @@ public final class ServiceGraphModule extends AbstractModule {
 	/**
 	 * Removes the dependency
 	 *
-	 * @param key			key for removing dependency
-	 * @param keyDependency	key of dependency
-	 * @return				ServiceGraphModule with change
+	 * @param key           key for removing dependency
+	 * @param keyDependency key of dependency
+	 * @return ServiceGraphModule with change
 	 */
 	public ServiceGraphModule removeDependency(Key<?> key, Key<?> keyDependency) {
 		removedDependencies.put(key, keyDependency);
@@ -456,8 +455,8 @@ public final class ServiceGraphModule extends AbstractModule {
 	 * Creates the new {@code ServiceGraph} without circular dependencies and
 	 * intermediary nodes
 	 *
-	 * @param injector	injector for building the graphs of objects
-	 * @return			created ServiceGraph
+	 * @param injector injector for building the graphs of objects
+	 * @return created ServiceGraph
 	 */
 	@Provides
 	synchronized ServiceGraph serviceGraph(final Injector injector) {

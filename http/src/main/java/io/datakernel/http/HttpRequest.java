@@ -29,7 +29,6 @@ import static io.datakernel.http.GzipProcessorUtils.toGzip;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
-import static io.datakernel.http.HttpUtils.nullToEmpty;
 
 /**
  * Represents the HTTP request which {@link AsyncHttpClient} sends to
@@ -42,28 +41,30 @@ import static io.datakernel.http.HttpUtils.nullToEmpty;
  */
 public final class HttpRequest extends HttpMessage {
 	private final HttpMethod method;
-	private HttpUri url;
+	private HttpUrl url;
 	private InetAddress remoteAddress;
-	private Map<String, String> urlParameters;
+
 	private Map<String, String> bodyParameters;
-	private int pos;
+	private Map<String, String> pathParameters;
+
+	private boolean gzip = false;
 
 	// region builders
 	private HttpRequest(HttpMethod method) {
 		this.method = method;
 	}
 
-	public static HttpRequest of(HttpMethod method, String url) {
+	public static HttpRequest of(HttpMethod method, String url) throws IllegalArgumentException {
 		assert method != null;
 		HttpRequest request = new HttpRequest(method);
 		request.setUrl(url);
 		return request;
 	}
 
-	public static HttpRequest of(HttpMethod method, HttpUri url) {
+	static HttpRequest of(HttpMethod method, HttpUrl url) {
 		assert method != null;
 		HttpRequest request = new HttpRequest(method);
-		request.setUrl(url);
+		request.url = url;
 		return request;
 	}
 
@@ -76,6 +77,16 @@ public final class HttpRequest extends HttpMessage {
 	}
 
 	// common builder methods
+	public HttpRequest withUrl(String url) throws IllegalArgumentException {
+		setUrl(url);
+		return this;
+	}
+
+	public HttpRequest withRemoteAddress(InetAddress inetAddress) {
+		setRemoteAddress(inetAddress);
+		return this;
+	}
+
 	public HttpRequest withHeader(HttpHeader header, ByteBuf value) {
 		addHeader(header, value);
 		return this;
@@ -171,16 +182,6 @@ public final class HttpRequest extends HttpMessage {
 		return this;
 	}
 
-	public HttpRequest withUrl(String url) {
-		setUrl(url);
-		return this;
-	}
-
-	public HttpRequest withRemoteAddress(InetAddress inetAddress) {
-		setRemoteAddress(inetAddress);
-		return this;
-	}
-
 	public HttpRequest withBodyGzipCompression() {
 		super.setBodyGzipCompression();
 		return this;
@@ -193,6 +194,19 @@ public final class HttpRequest extends HttpMessage {
 	// endregion
 
 	// region setters
+	public void setUrl(String url) throws IllegalArgumentException {
+		assert !recycled;
+		this.url = HttpUrl.of(url);
+		if (!this.url.isRelativePath()) {
+			setHeader(HttpHeaders.ofString(HttpHeaders.HOST, this.url.getHostAndPort()));
+		}
+	}
+
+	public void setRemoteAddress(InetAddress inetAddress) {
+		assert !recycled;
+		this.remoteAddress = inetAddress;
+	}
+
 	public void setAccept(List<AcceptMediaType> value) {
 		addHeader(ofAcceptContentTypes(HttpHeaders.ACCEPT, value));
 	}
@@ -245,29 +259,113 @@ public final class HttpRequest extends HttpMessage {
 		setHeader(ofDate(IF_UNMODIFIED_SINCE, date));
 	}
 
-	public void setUrl(HttpUri url) {
-		assert !recycled;
-		this.url = url;
-		if (!url.isPartial()) {
-			setHeader(HttpHeaders.ofString(HttpHeaders.HOST, url.getHostAndPort()));
-		}
-	}
-
-	public final void setUrl(String url) {
-		setUrl(HttpUri.ofUrl(url));
-	}
-
-	public void setRemoteAddress(InetAddress inetAddress) {
-		assert !recycled;
-		this.remoteAddress = inetAddress;
-	}
-
 	public void setAcceptEncodingGzip() {
 		setHeader(HttpHeaders.ofString(ACCEPT_ENCODING, "gzip"));
 	}
 	// endregion
 
 	// region getters
+	public HttpMethod getMethod() {
+		assert !recycled;
+		return method;
+	}
+
+	public InetAddress getRemoteAddress() {
+		assert !recycled;
+		return remoteAddress;
+	}
+
+	public String getFullUrl() {
+		if (!url.isRelativePath()) {
+			return url.toString();
+		}
+		String host = getHost();
+		if (host == null) {
+			return null;
+		}
+		return "http://" + host + url.getPathAndQuery();
+	}
+
+	public boolean isHttps() {
+		return url.isHttps();
+	}
+
+	HttpUrl getUrl() {
+		assert !recycled;
+		return url;
+	}
+
+	public String getHostAndPort() {
+		return url.getHostAndPort();
+	}
+
+	public String getHost() {
+		String host = getHeader(HttpHeaders.HOST);
+		if ((host == null) || host.isEmpty())
+			return null;
+		return host;
+	}
+
+	public String getPath() {
+		assert !recycled;
+		return url.getPath();
+	}
+
+	public String getPathAndQuery() {
+		assert !recycled;
+		return url.getPathAndQuery();
+	}
+
+	public String getQuery() {
+		return url.getQuery();
+	}
+
+	public String getFragment() {
+		return url.getFragment();
+	}
+
+	public String getQueryParameter(String key) {
+		assert !recycled;
+		return url.getQueryParameter(key);
+	}
+
+	public List<String> getQueryParameters(String key) {
+		assert !recycled;
+		return url.getQueryParameters(key);
+	}
+
+	public Iterable<QueryParameter> getQueryParametersIterable() {
+		assert !recycled;
+		return url.getQueryParametersIterable();
+	}
+
+	public Map<String, String> getQueryParameters() {
+		assert !recycled;
+		return url.getQueryParameters();
+	}
+
+	public String getPostParameter(String key) {
+		assert !recycled;
+		parseBodyParams();
+		return bodyParameters.get(key);
+	}
+
+	public Map<String, String> getPostParameters() {
+		assert !recycled;
+		parseBodyParams();
+		return bodyParameters;
+	}
+
+	public String getPathParameter(String key) {
+		assert !recycled;
+		return pathParameters == null ? null : pathParameters.get(key);
+	}
+
+	public Map<String, String> getPathParameters() {
+		assert !recycled;
+		return pathParameters == null ? Collections.<String, String>emptyMap() : pathParameters;
+	}
+
 	public List<AcceptMediaType> getAccept() {
 		assert !recycled;
 		List<AcceptMediaType> list = new ArrayList<>();
@@ -298,22 +396,6 @@ public final class HttpRequest extends HttpMessage {
 		return charsets;
 	}
 
-	@Override
-	public List<HttpCookie> getCookies() {
-		assert !recycled;
-		List<HttpCookie> cookie = new ArrayList<>();
-		List<Value> headers = getHeaderValues(COOKIE);
-		for (Value header : headers) {
-			ValueOfBytes value = (ValueOfBytes) header;
-			try {
-				HttpCookie.parseSimple(value.array, value.offset, value.offset + value.size, cookie);
-			} catch (ParseException e) {
-				return new ArrayList<>();
-			}
-		}
-		return cookie;
-	}
-
 	public Date getIfModifiedSince() {
 		assert !recycled;
 		ValueOfBytes header = (ValueOfBytes) getHeaderValue(IF_MODIFIED_SINCE);
@@ -339,6 +421,22 @@ public final class HttpRequest extends HttpMessage {
 		return null;
 	}
 
+	@Override
+	public List<HttpCookie> getCookies() {
+		assert !recycled;
+		List<HttpCookie> cookie = new ArrayList<>();
+		List<Value> headers = getHeaderValues(COOKIE);
+		for (Value header : headers) {
+			ValueOfBytes value = (ValueOfBytes) header;
+			try {
+				HttpCookie.parseSimple(value.array, value.offset, value.offset + value.size, cookie);
+			} catch (ParseException e) {
+				return new ArrayList<>();
+			}
+		}
+		return cookie;
+	}
+
 	public boolean isAcceptEncodingGzip() {
 		String acceptEncoding = this.getHeader(HttpHeaders.ACCEPT_ENCODING);
 		return acceptEncoding != null && acceptEncoding.contains("gzip");
@@ -346,112 +444,52 @@ public final class HttpRequest extends HttpMessage {
 	// endregion
 
 	// region internal
-	public Map<String, String> getParameters() {
-		assert !recycled;
-		return url.getParameters();
-	}
-
-	public Map<String, String> getPostParameters() {
-		assert !recycled;
-		if (method == POST && getContentType() != null
+	private void parseBodyParams() {
+		if (bodyParameters != null)
+			return;
+		if (method == POST
+				&& getContentType() != null
 				&& getContentType().getMediaType() == MediaTypes.X_WWW_FORM_URLENCODED
 				&& body.readPosition() != body.writePosition()) {
-			if (bodyParameters == null) {
-				bodyParameters = HttpUtils.extractParameters(decodeAscii(getBody()));
-			}
-			return bodyParameters;
+			bodyParameters = HttpUtils.parseQueryParameters(decodeAscii(getBody()));
 		} else {
-			return Collections.emptyMap();
+			bodyParameters = Collections.emptyMap();
 		}
-	}
-
-	public String getPostParameter(String name) {
-		return getPostParameters().get(name);
-	}
-
-	public String getParameter(String name) {
-		assert !recycled;
-		return url.getParameter(name);
 	}
 
 	int getPos() {
-		return pos;
+		return url.pos;
 	}
 
 	void setPos(int pos) {
-		this.pos = pos;
+		url.pos = (short) pos;
 	}
 
-	public boolean isHttps() {
-		return getUrl().getSchema().equals("https");
-	}
-
-	public HttpMethod getMethod() {
+	String getPartialPath() {
 		assert !recycled;
-		return method;
+		return url.getPartialPath();
 	}
 
-	public HttpUri getUrl() {
+	String pollUrlPart() {
 		assert !recycled;
-		return url;
+		return url.pollUrlPart();
 	}
 
-	public InetAddress getRemoteAddress() {
-		assert !recycled;
-		return remoteAddress;
+	void removePathParameter(String key) {
+		pathParameters.remove(key);
 	}
 
-	public String getPath() {
-		assert !recycled;
-		return url.getPath();
-	}
-
-	String getRelativePath() {
-		assert !recycled;
-		String path = url.getPath();
-		if (pos < path.length()) {
-			return path.substring(pos);
+	void putPathParameter(String key, String value) {
+		if (pathParameters == null) {
+			pathParameters = new HashMap<>();
 		}
-		return "";
+		pathParameters.put(key, value);
 	}
 
 	private final static int LONGEST_HTTP_METHOD_SIZE = 12;
 	private static final byte[] HTTP_1_1 = encodeAscii(" HTTP/1.1");
 	private static final int HTTP_1_1_SIZE = HTTP_1_1.length;
 	private static final byte[] GZIP_BYTES = encodeAscii("gzip");
-
-	public String getUrlParameter(String key) {
-		return urlParameters == null ? null : urlParameters.get(key);
-	}
-
-	String pollUrlPart() {
-		String path = url.getPath();
-		if (pos < path.length()) {
-			int start = pos + 1;
-			pos = path.indexOf('/', start);
-			String part;
-			if (pos == -1) {
-				part = path.substring(start);
-				pos = path.length();
-			} else {
-				part = path.substring(start, pos);
-			}
-			return part;
-		} else {
-			return "";
-		}
-	}
-
-	void removeUrlParameter(String key) {
-		urlParameters.remove(key);
-	}
-
-	void putUrlParameter(String key, String value) {
-		if (urlParameters == null) {
-			urlParameters = new HashMap<>();
-		}
-		urlParameters.put(key, value);
-	}
 
 	@Override
 	public ByteBuf toByteBuf() {
@@ -465,13 +503,13 @@ public final class HttpRequest extends HttpMessage {
 		}
 		int estimatedSize = estimateSize(LONGEST_HTTP_METHOD_SIZE
 				+ 1 // SPACE
-				+ url.getPathAndQuery().length())
+				+ url.getPathAndQueryLength())
 				+ HTTP_1_1_SIZE;
 		ByteBuf buf = ByteBufPool.allocate(estimatedSize);
 
 		method.write(buf);
 		buf.put(SP);
-		putAscii(buf, url.getPathAndQuery());
+		url.writePathAndQuery(buf);
 		buf.put(HTTP_1_1);
 
 		writeHeaders(buf);
@@ -483,10 +521,7 @@ public final class HttpRequest extends HttpMessage {
 
 	@Override
 	public String toString() {
-		String host = nullToEmpty(getHeader(HttpHeaders.HOST));
-		if (url == null)
-			return host;
-		return host + url.getPathAndQuery();
+		return getFullUrl();
 	}
 	// endregion
 }

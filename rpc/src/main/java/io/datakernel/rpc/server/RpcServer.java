@@ -17,6 +17,7 @@
 package io.datakernel.rpc.server;
 
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
@@ -92,7 +93,7 @@ import static java.util.Arrays.asList;
  * @see RpcRequestHandler
  * @see RpcClient
  */
-public final class  RpcServer extends AbstractServer<RpcServer> {
+public final class RpcServer extends AbstractServer<RpcServer> {
 	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS = ServerSocketSettings.create(16384);
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create().withTcpNoDelay(true);
 
@@ -200,6 +201,30 @@ public final class  RpcServer extends AbstractServer<RpcServer> {
 	public <I, O> RpcServer withHandler(Class<I> requestClass, Class<O> responseClass, RpcRequestHandler<I, O> handler) {
 		handlers.put(requestClass, handler);
 		return this;
+	}
+
+	public <I> RpcServer withHandler(Class<I> commandClass, RpcCommandHandler<I> handler) {
+		handlers.put(commandClass, toRequestHandler(handler));
+		return this;
+	}
+
+	private static <I> RpcRequestHandler<I, Void> toRequestHandler(final RpcCommandHandler<I> commandHandler) {
+		return new RpcRequestHandler<I, Void>() {
+			@Override
+			public void run(I request, final ResultCallback<Void> callback) {
+				commandHandler.run(request, new CompletionCallback() {
+					@Override
+					protected void onComplete() {
+						callback.setResult(null);
+					}
+
+					@Override
+					protected void onException(Exception e) {
+						callback.setException(e);
+					}
+				});
+			}
+		};
 	}
 	// endregion
 

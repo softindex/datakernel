@@ -61,7 +61,7 @@ public abstract class StaticServlet implements AsyncServlet {
 
 	@Override
 	public final CompletionStage<HttpResponse> serve(final HttpRequest request) {
-		String path = request.getRelativePath();
+		String path = request.getPartialPath();
 
 		if (request.getMethod() != HttpMethod.GET) return SettableStage.immediateFailedStage(METHOD_NOT_ALLOWED);
 		if (path.isEmpty() || path.charAt(0) != '/') return SettableStage.immediateFailedStage(BAD_PATH_ERROR);
