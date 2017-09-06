@@ -428,6 +428,7 @@ public class AsyncHttpServerTest {
 
 		server.closeFuture().get();
 		thread.join();
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	public static void main(String[] args) throws Exception {

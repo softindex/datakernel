@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.rpc.hello;
+package io.datakernel.rpc;
 
 import com.google.common.net.InetAddresses;
 import io.datakernel.async.ResultCallback;

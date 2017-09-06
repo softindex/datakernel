@@ -24,7 +24,7 @@ import java.net.InetAddress;
  * A DNS query packet which is sent to a server to receive a DNS response packet with information
  * answering a DnsQuery's questions.
  */
-final class DnsQueryResult {
+public final class DnsQueryResult {
 	private final String domainName;
 	private final InetAddress[] ips;
 	private final Integer minTtl;

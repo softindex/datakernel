@@ -119,31 +119,31 @@ public final class ReportingServiceServlet implements AsyncServlet {
 		CubeQuery query = CubeQuery.create();
 
 		String parameter;
-		parameter = request.getParameter(ATTRIBUTES_PARAM);
+		parameter = request.getQueryParameter(ATTRIBUTES_PARAM);
 		if (parameter != null)
 			query = query.withAttributes(SPLITTER.splitToList(parameter));
 
-		parameter = request.getParameter(MEASURES_PARAM);
+		parameter = request.getQueryParameter(MEASURES_PARAM);
 		if (parameter != null)
 			query = query.withMeasures(SPLITTER.splitToList(parameter));
 
-		parameter = request.getParameter(WHERE_PARAM);
+		parameter = request.getQueryParameter(WHERE_PARAM);
 		if (parameter != null)
 			query = query.withWhere(getAggregationPredicateJson().fromJson(parameter));
 
-		parameter = request.getParameter(SORT_PARAM);
+		parameter = request.getQueryParameter(SORT_PARAM);
 		if (parameter != null)
 			query = query.withOrderings(parseOrderings(parameter));
 
-		parameter = request.getParameter(HAVING_PARAM);
+		parameter = request.getQueryParameter(HAVING_PARAM);
 		if (parameter != null)
 			query = query.withHaving(getAggregationPredicateJson().fromJson(parameter));
 
-		parameter = request.getParameter(LIMIT_PARAM);
+		parameter = request.getQueryParameter(LIMIT_PARAM);
 		if (parameter != null)
 			query = query.withLimit(Integer.valueOf(parameter)); // TODO throws ParseException
 
-		parameter = request.getParameter(OFFSET_PARAM);
+		parameter = request.getQueryParameter(OFFSET_PARAM);
 		if (parameter != null)
 			query = query.withOffset(Integer.valueOf(parameter));
 

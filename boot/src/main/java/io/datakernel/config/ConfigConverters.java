@@ -16,19 +16,22 @@
 
 package io.datakernel.config;
 
-import com.google.common.base.Preconditions;
 import io.datakernel.eventloop.InetAddressRange;
 import io.datakernel.exception.ParseException;
 import io.datakernel.net.DatagramSocketSettings;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.util.MemSize;
+import io.datakernel.util.Preconditions;
 import io.datakernel.util.StringUtils;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -37,52 +40,22 @@ import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.Integer.parseInt;
 import static java.util.Collections.emptyList;
 
-/**
- * Provides comprehensive static factory methods returning converters for
- * different data types.
- * <p>
- * There are plenty of converter implementations available besides wrappers for
- * primitives and frequently used standard classes. Consider converters for
- * classes from DataKernel framework:
- * {@link #ofMemSize()}, {@link #ofServerSocketSettings()},
- * {@link #ofSocketSettings()}, {@link #ofDatagramSocketSettings()}
- * </li>
- * </ul>
- *
- * @see AbstractConfigConverter
- */
-@SuppressWarnings("unused, WeakerAccess")
+@SuppressWarnings({"unused", "WeakerAccess"})
 public final class ConfigConverters {
-
-	public static AbstractConfigConverter<String> ofString() {
-		return new AbstractConfigConverter<String>() {
-			@Override
-			public String fromString(String string) {
-				return string;
-			}
-
-			@Override
-			public String fromEmptyString() {
-				return "";
-			}
-
-			@Override
-			public String toString(String item) {
-				return item;
-			}
-		};
+	private ConfigConverters() {
 	}
 
-	public static AbstractConfigConverter<Byte> ofByte() {
+	// simple
+	public static ConfigConverter<Byte> ofByte() {
 		return new AbstractConfigConverter<Byte>() {
 			@Override
-			public Byte fromString(String string) {
-				return Byte.parseByte(string);
+			protected Byte fromString(String value) {
+				return Byte.valueOf(value);
 			}
 
 			@Override
-			public String toString(Byte item) {
-				return Byte.toString(item);
+			protected String toString(Byte defaultValue) {
+				return Byte.toString(defaultValue);
 			}
 		};
 	}
@@ -90,13 +63,13 @@ public final class ConfigConverters {
 	public static AbstractConfigConverter<Integer> ofInteger() {
 		return new AbstractConfigConverter<Integer>() {
 			@Override
-			public Integer fromString(String string) {
-				return Integer.parseInt(string);
+			protected Integer fromString(String value) {
+				return Integer.valueOf(value);
 			}
 
 			@Override
-			public String toString(Integer item) {
-				return Integer.toString(item);
+			protected String toString(Integer defaultValue) {
+				return Integer.toString(defaultValue);
 			}
 		};
 	}
@@ -109,8 +82,8 @@ public final class ConfigConverters {
 			}
 
 			@Override
-			public String toString(Long item) {
-				return Long.toString(item);
+			public String toString(Long defaultValue) {
+				return Long.toString(defaultValue);
 			}
 		};
 	}
@@ -123,8 +96,8 @@ public final class ConfigConverters {
 			}
 
 			@Override
-			public String toString(Float item) {
-				return Float.toString(item);
+			public String toString(Float defaultValue) {
+				return Float.toString(defaultValue);
 			}
 		};
 	}
@@ -137,8 +110,8 @@ public final class ConfigConverters {
 			}
 
 			@Override
-			public String toString(Double item) {
-				return Double.toString(item);
+			public String toString(Double defaultValue) {
+				return Double.toString(defaultValue);
 			}
 		};
 	}
@@ -151,8 +124,8 @@ public final class ConfigConverters {
 			}
 
 			@Override
-			public String toString(Boolean item) {
-				return Boolean.toString(item);
+			public String toString(Boolean defaultValue) {
+				return Boolean.toString(defaultValue);
 			}
 		};
 	}
@@ -168,8 +141,8 @@ public final class ConfigConverters {
 			}
 
 			@Override
-			public String toString(E item) {
-				return item.name();
+			public String toString(E defaultValue) {
+				return defaultValue.name();
 			}
 		};
 	}
@@ -187,19 +160,11 @@ public final class ConfigConverters {
 
 			@Override
 			public String toString(InetAddress item) {
-				return item.getAddress().toString();
+				return Arrays.toString(item.getAddress());
 			}
 		};
 	}
 
-	/**
-	 * Creates a converter of {@link InetSocketAddress}. This address may
-	 * include IP address or hostname and port number. Conversion to string
-	 * creates a string with IP address regardless of whether a host part of an
-	 * address was represented by a hostname or IP address.
-	 *
-	 * @return	converter of {@code InetSocketAddress}
-	 */
 	public static AbstractConfigConverter<InetSocketAddress> ofInetSocketAddress() {
 		return new AbstractConfigConverter<InetSocketAddress>() {
 			@Override
@@ -231,28 +196,59 @@ public final class ConfigConverters {
 		};
 	}
 
-	/**
-	 * Creates a converter capable to convert a list. Provide a concrete
-	 * implementation of {@code AbstractConfigConverter<T>} for objects in list
-	 * and char sequence of separators.
-	 *
-	 * @param elementConverter	converter of list objects type
-	 * @param separators		sequence of separators of config property
-	 * @param <T>				type of objects in list
-	 * @return					converter of list
-	 */
-	public static <T> ConfigConverter<List<T>> ofList(AbstractConfigConverter<T> elementConverter, CharSequence separators) {
+	public static AbstractConfigConverter<Path> ofPath() {
+		return new AbstractConfigConverter<Path>() {
+			@Override
+			protected Path fromString(String value) {
+				return Paths.get(value);
+			}
+
+			@Override
+			protected String toString(Path defaultValue) {
+				return defaultValue.toAbsolutePath().normalize().toString();
+			}
+		};
+	}
+
+	public static AbstractConfigConverter<MemSize> ofMemSize() {
+		return new AbstractConfigConverter<MemSize>() {
+			@Override
+			public MemSize fromString(String string) {
+				return MemSize.valueOf(string);
+			}
+
+			@Override
+			public String toString(MemSize item) {
+				return item.format();
+			}
+		};
+	}
+
+	public static AbstractConfigConverter<InetAddressRange> ofInetAddressRange() {
+		return new AbstractConfigConverter<InetAddressRange>() {
+			@Override
+			public InetAddressRange fromString(String string) {
+				try {
+					return InetAddressRange.parse(string);
+				} catch (ParseException e) {
+					throw new IllegalArgumentException("Can't parse inetAddressRange config", e);
+				}
+			}
+
+			@Override
+			public String toString(InetAddressRange item) {
+				return item.toString();
+			}
+		};
+	}
+
+	public static <T> AbstractConfigConverter<List<T>> ofList(AbstractConfigConverter<T> elementConverter, CharSequence separators) {
 		final AbstractConfigConverter<T> elementConverter1 = elementConverter;
 		final CharSequence separators1 = separators;
 		return new AbstractConfigConverter<List<T>>() {
 			private final AbstractConfigConverter<T> elementConverter = elementConverter1;
 			private final CharSequence separators = separators1;
 			private final char joinSeparator = separators1.charAt(0);
-
-			@Override
-			public List<T> fromEmptyString() {
-				return Collections.emptyList();
-			}
 
 			@Override
 			public List<T> fromString(String string) {
@@ -278,24 +274,11 @@ public final class ConfigConverters {
 		};
 	}
 
-	public static <T> ConfigConverter<List<T>> ofList(AbstractConfigConverter<T> elementConverter) {
+	public static <T> AbstractConfigConverter<List<T>> ofList(AbstractConfigConverter<T> elementConverter) {
 		return ofList(elementConverter, ",;");
 	}
 
-	public static AbstractConfigConverter<MemSize> ofMemSize() {
-		return new AbstractConfigConverter<MemSize>() {
-			@Override
-			public MemSize fromString(String string) {
-				return MemSize.valueOf(string);
-			}
-
-			@Override
-			public String toString(MemSize item) {
-				return item.format();
-			}
-		};
-	}
-
+	// compound
 	public static ConfigConverter<ServerSocketSettings> ofServerSocketSettings() {
 		return new ConfigConverter<ServerSocketSettings>() {
 			@Override
@@ -306,6 +289,7 @@ public final class ConfigConverters {
 			@Override
 			public ServerSocketSettings get(Config config, ServerSocketSettings defaultValue) {
 				ServerSocketSettings result = Preconditions.checkNotNull(defaultValue);
+
 				result = result.withBacklog(config.get(ofInteger(), "backlog", result.getBacklog()));
 
 				MemSize receiveBufferSize = config.get(ofMemSize(), "receiveBufferSize", result.hasReceiveBufferSize() ?
@@ -395,11 +379,6 @@ public final class ConfigConverters {
 		};
 	}
 
-	/**
-	 * Creates a converter of {@link DatagramSocketSettings}.
-	 *
-	 * @return	converter of provided type
-	 */
 	public static ConfigConverter<DatagramSocketSettings> ofDatagramSocketSettings() {
 		return new ConfigConverter<DatagramSocketSettings>() {
 			@Override
@@ -409,7 +388,7 @@ public final class ConfigConverters {
 
 			@Override
 			public DatagramSocketSettings get(Config config, DatagramSocketSettings defaultValue) {
-				DatagramSocketSettings result = Preconditions.checkNotNull(DatagramSocketSettings.create());
+				DatagramSocketSettings result = Preconditions.checkNotNull(defaultValue);
 
 				MemSize receiveBufferSize = config.get(ofMemSize(), "receiveBufferSize", result.hasReceiveBufferSize() ?
 						MemSize.of(result.getReceiveBufferSize()) : null);
@@ -439,29 +418,4 @@ public final class ConfigConverters {
 			}
 		};
 	}
-
-	/**
-	 * Creates a converter of {@link InetAddressRange}. An InetAddressRange supports a lot
-	 * of range types, including CIDR, standalone and ranges of addresses.
-	 *
-	 * @return	converter of provided type
-	 */
-	public static AbstractConfigConverter<InetAddressRange> ofInetAddressRange() {
-		return new AbstractConfigConverter<InetAddressRange>() {
-			@Override
-			public InetAddressRange fromString(String string) {
-				try {
-					return InetAddressRange.parse(string);
-				} catch (ParseException e) {
-					throw new IllegalArgumentException("Can't parse inetAddressRange config", e);
-				}
-			}
-
-			@Override
-			public String toString(InetAddressRange item) {
-				return item.toString();
-			}
-		};
-	}
 }
-

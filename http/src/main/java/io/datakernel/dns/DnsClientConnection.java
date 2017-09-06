@@ -42,14 +42,18 @@ final class DnsClientConnection implements AsyncUdpSocket.EventHandler {
 	private final Eventloop eventloop;
 	private final AsyncUdpSocket socket;
 
-	private DnsClientConnection(Eventloop eventloop, AsyncUdpSocket socket) {
+	private AsyncDnsClient.Inspector inspector;
+
+	private DnsClientConnection(Eventloop eventloop, AsyncUdpSocket socket, AsyncDnsClient.Inspector inspector) {
 		this.eventloop = eventloop;
 		this.socket = socket;
 		this.socket.setEventHandler(this);
+		this.inspector = inspector;
 	}
 
-	public static DnsClientConnection create(Eventloop eventloop, AsyncUdpSocket udpSocket) {
-		return new DnsClientConnection(eventloop, udpSocket);
+	public static DnsClientConnection create(Eventloop eventloop, AsyncUdpSocket udpSocket,
+	                                         AsyncDnsClient.Inspector inspector) {
+		return new DnsClientConnection(eventloop, udpSocket, inspector);
 	}
 
 	public void resolve4(String domainName, InetSocketAddress dnsServerAddress, long timeout, ResultCallback<DnsQueryResult> callback) {
@@ -81,6 +85,7 @@ final class DnsClientConnection implements AsyncUdpSocket.EventHandler {
 			protected void onResult(DnsQueryResult result) {
 				if (!timeouter.isCancelled() && !timeouter.isComplete()) {
 					timeouter.cancel();
+					if (inspector != null) inspector.onDnsQueryResult(domainName, result);
 					callback.setResult(result);
 				}
 			}
@@ -92,6 +97,7 @@ final class DnsClientConnection implements AsyncUdpSocket.EventHandler {
 						e = new DnsException(domainName, ResponseErrorCode.TIMED_OUT);
 					}
 					timeouter.cancel();
+					if (inspector != null) inspector.onDnsQueryError(domainName, e);
 					callback.setException(e);
 				}
 			}
@@ -104,10 +110,11 @@ final class DnsClientConnection implements AsyncUdpSocket.EventHandler {
 		}
 		callbacks.add(callbackWithTimeout);
 		ByteBuf query = DnsMessage.newQuery(domainName, ipv6);
+		if (inspector != null) inspector.onDnsQuery(domainName, query);
 		UdpPacket queryPacket = UdpPacket.of(query, dnsServerAddress);
 		socket.send(queryPacket);
 
-		socket.read();
+		socket.receive();
 	}
 
 	public void close() {
@@ -133,7 +140,7 @@ final class DnsClientConnection implements AsyncUdpSocket.EventHandler {
 	}
 
 	@Override
-	public void onRead(UdpPacket packet) {
+	public void onReceive(UdpPacket packet) {
 		byte[] response = packet.getBuf().array();
 
 		try {
@@ -163,7 +170,7 @@ final class DnsClientConnection implements AsyncUdpSocket.EventHandler {
 	}
 
 	@Override
-	public void onSent() {
+	public void onSend() {
 	}
 
 	@Override

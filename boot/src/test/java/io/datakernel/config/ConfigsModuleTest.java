@@ -16,6 +16,7 @@
 
 package io.datakernel.config;
 
+import io.datakernel.config.impl.PropertiesConfig;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -24,7 +25,31 @@ import java.util.Properties;
 
 import static io.datakernel.config.ConfigConverters.*;
 
-public class PropertiesConfigModuleTest {
+public class ConfigsModuleTest {
+	private static class TestClass {
+		int field1;
+		double field2;
+		boolean field3;
+
+		TestClass() {
+		}
+
+		TestClass(int field1, double field2, boolean field3) {
+			this.field1 = field1;
+			this.field2 = field2;
+			this.field3 = field3;
+		}
+
+		@SuppressWarnings("EqualsWhichDoesntCheckParameterClass")
+		@Override
+		public boolean equals(Object o) {
+			TestClass testClass = (TestClass) o;
+			return field1 == testClass.field1
+					&& Double.compare(testClass.field2, field2) == 0
+					&& field3 == testClass.field3;
+		}
+	}
+
 	@Test
 	public void testConfigs() throws IOException {
 		Properties properties1 = new Properties();
@@ -52,37 +77,18 @@ public class PropertiesConfigModuleTest {
 				return testClass;
 			}
 		};
-		Config config = PropertiesConfigModule.create()
-				.addProperties(properties1)
-				.addProperties(properties2)
+		Config config = ConfigsModule.create(
+				Configs.union(
+						Configs.PROHIBIT_COLLISIONS,
+						PropertiesConfig.ofProperties(properties1),
+						PropertiesConfig.ofProperties(properties2),
+						PropertiesConfig.ofProperties("not-existing.properties", true)
+				))
+				.saveEffectiveConfigTo("resulting.properties")
 				.provideConfig();
 
 		Assert.assertEquals(1234, (int) config.get(ofInteger(), "port"));
-		Assert.assertEquals("Test phrase", config.get(ofString(), "msg"));
+		Assert.assertEquals("Test phrase", config.get("msg"));
 		Assert.assertEquals(new TestClass(2, 3.5, true), config.get(configConverter, "innerClass"));
-	}
-
-	private static class TestClass {
-		public int field1;
-		public double field2;
-		public boolean field3;
-
-		public TestClass() {
-		}
-
-		public TestClass(int field1, double field2, boolean field3) {
-			this.field1 = field1;
-			this.field2 = field2;
-			this.field3 = field3;
-		}
-
-		@SuppressWarnings("EqualsWhichDoesntCheckParameterClass")
-		@Override
-		public boolean equals(Object o) {
-			TestClass testClass = (TestClass) o;
-			return field1 == testClass.field1
-					&& Double.compare(testClass.field2, field2) == 0
-					&& field3 == testClass.field3;
-		}
 	}
 }

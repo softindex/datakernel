@@ -45,6 +45,8 @@ final class DnsCache {
 	private long maxTtlSeconds = Long.MAX_VALUE;
 	private final long timedOutExceptionTtlSeconds;
 
+	private AsyncDnsClient.Inspector inspector;
+
 	/**
 	 * Enum with freshness cache's entry.
 	 * <ul>
@@ -74,17 +76,18 @@ final class DnsCache {
 	 * @param timedOutExceptionTtlMillis expiration time for timed out exception
 	 */
 	private DnsCache(CurrentTimeProvider timeProvider, long errorCacheExpirationMillis, long hardExpirationDeltaMillis,
-	                 long timedOutExceptionTtlMillis) {
+	                 long timedOutExceptionTtlMillis, AsyncDnsClient.Inspector inspector) {
 		this.errorCacheExpirationSeconds = errorCacheExpirationMillis / 1000;
 		this.hardExpirationDeltaSeconds = hardExpirationDeltaMillis / 1000;
 		this.timeProvider = timeProvider;
 		this.timedOutExceptionTtlSeconds = timedOutExceptionTtlMillis / 1000;
 		this.lastCleanupSecond = getCurrentSecond();
+		this.inspector = inspector;
 	}
 
 	public static DnsCache create(CurrentTimeProvider timeProvider, long errorCacheExpirationMillis,
-	                              long hardExpirationDeltaMillis, long timedOutExceptionTtl) {
-		return new DnsCache(timeProvider, errorCacheExpirationMillis, hardExpirationDeltaMillis, timedOutExceptionTtl);
+	                              long hardExpirationDeltaMillis, long timedOutExceptionTtl, AsyncDnsClient.Inspector inspector) {
+		return new DnsCache(timeProvider, errorCacheExpirationMillis, hardExpirationDeltaMillis, timedOutExceptionTtl, inspector);
 	}
 
 	private boolean isRequestedType(CachedDnsLookupResult cachedResult, boolean requestedIpv6) {
@@ -148,11 +151,13 @@ final class DnsCache {
 	private void returnResultThroughCallback(String domainName, CachedDnsLookupResult result, ResultCallback<InetAddress[]> callback) {
 		if (result.isSuccessful()) {
 			InetAddress[] ipsFromCache = result.getIps();
+			if (inspector != null) inspector.onCacheHit(domainName, ipsFromCache);
 			callback.setResult(ipsFromCache);
 			if (logger.isDebugEnabled())
 				logger.debug("Cache hit for host: {}", domainName);
 		} else {
 			DnsException exception = result.getException();
+			if (inspector != null) inspector.onCacheHitError(domainName, exception);
 			callback.setException(exception);
 			if (logger.isDebugEnabled())
 				logger.debug("Error cache hit for host: {}", domainName);
@@ -226,6 +231,7 @@ final class DnsCache {
 				for (String domainName : domainNames) {
 					CachedDnsLookupResult cachedResult = cache.get(domainName);
 					if (cachedResult != null && getResultFreshness(cachedResult) == DnsCacheEntryFreshness.HARD_TTL_EXPIRED) {
+						if (inspector != null) inspector.onDomainExpired(domainName);
 						cache.remove(domainName);
 					}
 				}
@@ -297,7 +303,7 @@ final class DnsCache {
 		return domainNames.toArray(new String[domainNames.size()]);
 	}
 
-	public String[] getAllCacheEntries() {
+	public String[] getAllCacheEntriesWithHeaderLine() {
 		List<String> cacheEntries = new ArrayList<>();
 		StringBuilder sb = new StringBuilder();
 
@@ -336,5 +342,9 @@ final class DnsCache {
 			expirations.put(time, sameTime);
 		}
 		sameTime.add(domain);
+	}
+
+	void setInspector(AsyncDnsClient.Inspector inspector) {
+		this.inspector = inspector;
 	}
 }

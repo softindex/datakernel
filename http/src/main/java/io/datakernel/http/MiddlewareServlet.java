@@ -135,12 +135,12 @@ public class MiddlewareServlet implements AsyncServlet {
 		} else {
 			int position = request.getPos();
 			for (Entry<String, MiddlewareServlet> entry : parameters.entrySet()) {
-				request.putUrlParameter(entry.getKey(), urlPart);
+				request.putPathParameter(entry.getKey(), urlPart);
 				processed = entry.getValue().tryServeAsync(request, callback);
 				if (processed == ProcessResult.PROCESSED) {
 					return processed;
 				} else {
-					request.removeUrlParameter(entry.getKey());
+					request.removePathParameter(entry.getKey());
 					request.setPos(position);
 				}
 			}

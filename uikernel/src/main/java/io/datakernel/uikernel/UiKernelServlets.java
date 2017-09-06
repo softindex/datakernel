@@ -25,7 +25,6 @@ import io.datakernel.http.*;
 
 import java.nio.charset.Charset;
 import java.util.List;
-import java.util.Map;
 
 import static io.datakernel.http.HttpMethod.*;
 import static io.datakernel.uikernel.Utils.deserializeUpdateRequest;
@@ -53,8 +52,7 @@ public class UiKernelServlets {
 			@Override
 			public void serve(HttpRequest request, final ResultCallback<HttpResponse> callback) {
 				try {
-					Map<String, String> parameters = request.getParameters();
-					ReadSettings<K> settings = ReadSettings.from(gson, parameters);
+					ReadSettings<K> settings = ReadSettings.from(gson, request);
 					model.read(settings, new ForwardingResultCallback<ReadResponse<K,R>>(callback) {
 						@Override
 						protected void onResult(ReadResponse<K, R> response) {
@@ -74,9 +72,8 @@ public class UiKernelServlets {
 			@Override
 			public void serve(HttpRequest request, final ResultCallback<HttpResponse> callback) {
 				try {
-					Map<String, String> parameters = request.getParameters();
-					ReadSettings<K> settings = ReadSettings.from(gson, parameters);
-					K id = fromJson(gson, request.getUrlParameter(ID_PARAMETER_NAME), model.getIdType());
+					ReadSettings<K> settings = ReadSettings.from(gson, request);
+					K id = fromJson(gson, request.getPathParameter(ID_PARAMETER_NAME), model.getIdType());
 					model.read(id, settings, new ForwardingResultCallback<R>(callback) {
 						@Override
 						protected void onResult(R obj) {
@@ -138,7 +135,7 @@ public class UiKernelServlets {
 			@Override
 			public void serve(HttpRequest request, final ResultCallback<HttpResponse> callback) {
 				try {
-					K id = fromJson(gson, request.getUrlParameter("id"), model.getIdType());
+					K id = fromJson(gson, request.getPathParameter("id"), model.getIdType());
 					model.delete(id, new ForwardingResultCallback<DeleteResponse>(callback) {
 						@Override
 						protected void onResult(DeleteResponse response) {
