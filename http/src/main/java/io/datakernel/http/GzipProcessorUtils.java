@@ -64,6 +64,7 @@ final class GzipProcessorUtils {
 	public static final ParseException DATA_FORMAT_EXCEPTION = new ParseException("Data format exception");
 	public static final ParseException ACTUAL_DECOMPRESSED_DATA_SIZE_IS_NOT_EQUAL_TO_EXPECTED = new ParseException("Decompressed data size is not equal to input size from GZIP trailer");
 	public static final ParseException INCORRECT_ID_HEADER_BYTES = new ParseException("Incorrect identification bytes. Not in GZIP format");
+	public static final ParseException INCORRECT_UNCOMPRESSED_INPUT_SIZE = new ParseException("Incorrect uncompressed input size");
 	public static final ParseException UNSUPPORTED_COMPRESSION_METHOD = new ParseException("Unsupported compression method. Deflate compression required");
 
 	private static final ConcurrentStack<Inflater> decompressors = new ConcurrentStack<>();
@@ -75,6 +76,7 @@ final class GzipProcessorUtils {
 		assert src.readRemaining() > 0;
 
 		int expectedSize = readExpectedInputSize(src);
+		check(expectedSize >= 0, src, INCORRECT_UNCOMPRESSED_INPUT_SIZE);
 		check(expectedSize <= maxMessageSize, src, DECOMPRESSED_SIZE_EXCEEDS_EXPECTED_MAX_SIZE);
 		processHeader(src);
 		ByteBuf dst = ByteBufPool.allocate(expectedSize);
