@@ -42,8 +42,7 @@ public final class CubeHttpClient implements ICube {
 	private final Map<String, Type> attributeTypes = newLinkedHashMap();
 	private final Map<String, Type> measureTypes = newLinkedHashMap();
 
-	private CubeHttpClient(Eventloop eventloop, IAsyncHttpClient httpClient,
-	                       String url) {
+	private CubeHttpClient(Eventloop eventloop, IAsyncHttpClient httpClient, String url) {
 		this.eventloop = eventloop;
 		this.url = url.replaceAll("/$", "");
 		this.httpClient = httpClient;
@@ -115,7 +114,7 @@ public final class CubeHttpClient implements ICube {
 			urlParams.put(LIMIT_PARAM, query.getLimit().toString());
 		if (query.getOffset() != null)
 			urlParams.put(OFFSET_PARAM, query.getOffset().toString());
-
+		urlParams.put(REPORT_TYPE_PARAM, query.getReportType().toString().toLowerCase());
 		String url = this.url + "/" + "?" + HttpUtils.renderQueryString(urlParams);
 
 		return HttpRequest.get(url);

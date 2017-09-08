@@ -33,9 +33,9 @@ public final class CubeQuery {
 	private Integer offset = null;
 	private List<Ordering> orderings = new ArrayList<>();
 
-	private CubeQuery() {
+	private ReportType reportType = ReportType.DATA_WITH_TOTALS;
 
-	}
+	private CubeQuery() {}
 
 	public static CubeQuery create() {
 		return new CubeQuery();
@@ -94,12 +94,13 @@ public final class CubeQuery {
 		return this;
 	}
 
-	public Integer getLimit() {
-		return limit;
-	}
-
 	public CubeQuery withOffset(Integer offset) {
 		this.offset = offset;
+		return this;
+	}
+
+	public CubeQuery withReportType(ReportType reportType) {
+		this.reportType = reportType;
 		return this;
 	}
 
@@ -126,8 +127,16 @@ public final class CubeQuery {
 		return having;
 	}
 
+	public Integer getLimit() {
+		return limit;
+	}
+
 	public Integer getOffset() {
 		return offset;
+	}
+
+	public ReportType getReportType() {
+		return reportType;
 	}
 
 	// endregion
@@ -191,6 +200,7 @@ public final class CubeQuery {
 			return field + " " + (desc ? "desc" : "asc");
 		}
 	}
+
 	// endregion
 
 	@Override
@@ -203,6 +213,6 @@ public final class CubeQuery {
 				", limit=" + limit +
 				", offset=" + offset +
 				", orderings=" + orderings +
-				'}';
+				", reportType=" + reportType + '}';
 	}
 }

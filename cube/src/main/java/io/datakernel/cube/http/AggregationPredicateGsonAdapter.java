@@ -27,15 +27,26 @@ import io.datakernel.aggregation.AggregationPredicate;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Maps.newLinkedHashMap;
 import static io.datakernel.aggregation.AggregationPredicates.*;
 
 final class AggregationPredicateGsonAdapter extends TypeAdapter<AggregationPredicate> {
+	public static final String EMPTY_STRING = "";
+	public static final String SPACES = "\\s+";
 	public static final String EQ = "eq";
+	public static final String NOT_EQ = "notEq";
+	public static final String HAS = "has";
+	public static final String GE = "ge";
+	public static final String GT = "gt";
+	public static final String LE = "le";
+	public static final String LT = "lt";
+	public static final String IN = "in";
 	public static final String BETWEEN = "between";
 	public static final String REGEXP = "regexp";
 	public static final String AND = "and";
@@ -43,6 +54,13 @@ final class AggregationPredicateGsonAdapter extends TypeAdapter<AggregationPredi
 	public static final String NOT = "not";
 	public static final String TRUE = "true";
 	public static final String FALSE = "false";
+	public static final String EQ_SIGN = "=";
+	public static final String NOT_EQ_SIGN = "<>";
+	public static final String GE_SIGN = ">=";
+	public static final String GT_SIGN = ">";
+	public static final String LE_SIGN = "<=";
+	public static final String LT_SIGN = "<";
+	public static final String IN_SIGN = "IN";
 	private final Map<String, TypeAdapter<?>> attributeAdapters;
 
 	private AggregationPredicateGsonAdapter(Map<String, TypeAdapter<?>> attributeAdapters) {
@@ -67,6 +85,50 @@ final class AggregationPredicateGsonAdapter extends TypeAdapter<AggregationPredi
 		writer.name(predicate.getKey());
 		TypeAdapter typeAdapter = attributeAdapters.get(predicate.getKey());
 		typeAdapter.write(writer, predicate.getValue());
+	}
+
+	@SuppressWarnings("unchecked")
+	private void writeNotEq(JsonWriter writer, PredicateNotEq predicate) throws IOException {
+		writer.value(predicate.getKey());
+		TypeAdapter typeAdapter = attributeAdapters.get(predicate.getKey());
+		typeAdapter.write(writer, predicate.getValue());
+	}
+
+	@SuppressWarnings("unchecked")
+	private void writeGe(JsonWriter writer, PredicateGe predicate) throws IOException {
+		writer.value(predicate.getKey());
+		TypeAdapter typeAdapter = attributeAdapters.get(predicate.getKey());
+		typeAdapter.write(writer, predicate.getValue());
+	}
+
+	@SuppressWarnings("unchecked")
+	private void writeGt(JsonWriter writer, PredicateGt predicate) throws IOException {
+		writer.value(predicate.getKey());
+		TypeAdapter typeAdapter = attributeAdapters.get(predicate.getKey());
+		typeAdapter.write(writer, predicate.getValue());
+	}
+
+	@SuppressWarnings("unchecked")
+	private void writeLe(JsonWriter writer, PredicateLe predicate) throws IOException {
+		writer.value(predicate.getKey());
+		TypeAdapter typeAdapter = attributeAdapters.get(predicate.getKey());
+		typeAdapter.write(writer, predicate.getValue());
+	}
+
+	@SuppressWarnings("unchecked")
+	private void writeLt(JsonWriter writer, PredicateLt predicate) throws IOException {
+		writer.value(predicate.getKey());
+		TypeAdapter typeAdapter = attributeAdapters.get(predicate.getKey());
+		typeAdapter.write(writer, predicate.getValue());
+	}
+
+	@SuppressWarnings("unchecked")
+	private void writeIn(JsonWriter writer, PredicateIn predicate) throws IOException {
+		writer.value(predicate.getKey());
+		TypeAdapter typeAdapter = attributeAdapters.get(predicate.getKey());
+		for (Object value : predicate.getValues()) {
+			typeAdapter.write(writer, value);
+		}
 	}
 
 	@SuppressWarnings("unchecked")
@@ -110,7 +172,28 @@ final class AggregationPredicateGsonAdapter extends TypeAdapter<AggregationPredi
 			writer.endObject();
 		} else {
 			writer.beginArray();
-			if (predicate instanceof PredicateBetween) {
+			if (predicate instanceof PredicateNotEq) {
+				writer.value(NOT_EQ);
+				writeNotEq(writer, (PredicateNotEq) predicate);
+			} else if (predicate instanceof PredicateGe) {
+				writer.value(GE);
+				writeGe(writer, (PredicateGe) predicate);
+			} else if (predicate instanceof PredicateHas) {
+				writer.value(HAS);
+				writer.value(((PredicateHas) predicate).getKey());
+			} else if (predicate instanceof PredicateGt) {
+				writer.value(GT);
+				writeGt(writer, (PredicateGt) predicate);
+			} else if (predicate instanceof PredicateLe) {
+				writer.value(LE);
+				writeLe(writer, (PredicateLe) predicate);
+			} else if (predicate instanceof PredicateLt) {
+				writer.value(LT);
+				writeLt(writer, (PredicateLt) predicate);
+			} else if (predicate instanceof PredicateIn) {
+				writer.value(IN);
+				writeIn(writer, (PredicateIn) predicate);
+			} else if (predicate instanceof PredicateBetween) {
 				writer.value(BETWEEN);
 				writeBetween(writer, (PredicateBetween) predicate);
 			} else if (predicate instanceof PredicateRegexp) {
@@ -135,13 +218,42 @@ final class AggregationPredicateGsonAdapter extends TypeAdapter<AggregationPredi
 		}
 	}
 
-	private AggregationPredicate readEqOfObject(JsonReader reader) throws IOException {
+	private AggregationPredicate readObjectWithAlgebraOfSetsOperator(JsonReader reader) throws IOException {
 		List<AggregationPredicate> predicates = newArrayList();
 		while (reader.hasNext()) {
-			String field = reader.nextName();
+			String[] fieldWithOperator = reader.nextName().split(SPACES);
+			String field = fieldWithOperator[0];
+			String operator = (fieldWithOperator.length == 1) ? EMPTY_STRING : fieldWithOperator[1];
 			TypeAdapter typeAdapter = attributeAdapters.get(field);
 			Object value = typeAdapter.read(reader);
-			predicates.add(eq(field, value));
+			AggregationPredicate comparisonPredicate;
+			switch (operator) {
+				case EMPTY_STRING:
+				case EQ_SIGN:
+					comparisonPredicate = eq(field, value);
+					break;
+				case NOT_EQ_SIGN:
+					comparisonPredicate = notEq(field, value);
+					break;
+				case GE_SIGN:
+					comparisonPredicate = ge(field, (Comparable) value);
+					break;
+				case GT_SIGN:
+					comparisonPredicate = gt(field, (Comparable) value);
+					break;
+				case LE_SIGN:
+					comparisonPredicate = le(field, (Comparable) value);
+					break;
+				case LT_SIGN:
+					comparisonPredicate = lt(field, (Comparable) value);
+					break;
+				case IN_SIGN:
+					comparisonPredicate = in(field, (Set) value);
+					break;
+				default:
+					throw new IllegalArgumentException();
+			}
+			predicates.add(comparisonPredicate);
 		}
 		return predicates.size() == 1 ? predicates.get(0) : and(predicates);
 	}
@@ -151,6 +263,52 @@ final class AggregationPredicateGsonAdapter extends TypeAdapter<AggregationPredi
 		TypeAdapter typeAdapter = attributeAdapters.get(field);
 		Object value = typeAdapter.read(reader);
 		return eq(field, value);
+	}
+
+	private AggregationPredicate readNotEq(JsonReader reader) throws IOException {
+		String field = reader.nextString();
+		TypeAdapter typeAdapter = attributeAdapters.get(field);
+		Object value = typeAdapter.read(reader);
+		return notEq(field, value);
+	}
+
+	private AggregationPredicate readGe(JsonReader reader) throws IOException {
+		String field = reader.nextString();
+		TypeAdapter typeAdapter = attributeAdapters.get(field);
+		Comparable value = (Comparable) typeAdapter.read(reader);
+		return ge(field, value);
+	}
+
+	private AggregationPredicate readGt(JsonReader reader) throws IOException {
+		String field = reader.nextString();
+		TypeAdapter typeAdapter = attributeAdapters.get(field);
+		Comparable value = (Comparable) typeAdapter.read(reader);
+		return gt(field, value);
+	}
+
+	private AggregationPredicate readLe(JsonReader reader) throws IOException {
+		String field = reader.nextString();
+		TypeAdapter typeAdapter = attributeAdapters.get(field);
+		Comparable value = (Comparable) typeAdapter.read(reader);
+		return le(field, value);
+	}
+
+	private AggregationPredicate readLt(JsonReader reader) throws IOException {
+		String field = reader.nextString();
+		TypeAdapter typeAdapter = attributeAdapters.get(field);
+		Comparable value = (Comparable) typeAdapter.read(reader);
+		return lt(field, value);
+	}
+
+	private AggregationPredicate readIn(JsonReader reader) throws IOException {
+		String field = reader.nextString();
+		TypeAdapter typeAdapter = attributeAdapters.get(field);
+		Set values = new LinkedHashSet();
+		while (reader.hasNext()) {
+			Object value = typeAdapter.read(reader);
+			values.add(value);
+		}
+		return in(field, values);
 	}
 
 	private AggregationPredicate readBetween(JsonReader reader) throws IOException {
@@ -195,13 +353,25 @@ final class AggregationPredicateGsonAdapter extends TypeAdapter<AggregationPredi
 		AggregationPredicate predicate = null;
 		if (reader.peek() == JsonToken.BEGIN_OBJECT) {
 			reader.beginObject();
-			predicate = readEqOfObject(reader);
+			predicate = readObjectWithAlgebraOfSetsOperator(reader);
 			reader.endObject();
 		} else {
 			reader.beginArray();
 			String type = reader.nextString();
 			if (EQ.equals(type))
 				predicate = readEq(reader);
+			if (NOT_EQ.equals(type))
+				predicate = readNotEq(reader);
+			if (GE.equals(type))
+				predicate = readGe(reader);
+			if (GT.equals(type))
+				predicate = readGt(reader);
+			if (LE.equals(type))
+				predicate = readLe(reader);
+			if (LT.equals(type))
+				predicate = readLt(reader);
+			if (IN.equals(type))
+				predicate = readIn(reader);
 			if (BETWEEN.equals(type))
 				predicate = readBetween(reader);
 			if (REGEXP.equals(type))
