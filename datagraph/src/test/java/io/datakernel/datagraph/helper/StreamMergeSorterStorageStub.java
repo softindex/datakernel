@@ -16,19 +16,19 @@
 
 package io.datakernel.datagraph.helper;
 
-import io.datakernel.async.SettableStage;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.StreamConsumers;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
-import io.datakernel.stream.processor.StreamMergeSorterStorage;
+import io.datakernel.stream.*;
+import io.datakernel.stream.processor.StreamSorterStorage;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletionStage;
 
-public class StreamMergeSorterStorageStub<T> implements StreamMergeSorterStorage<T> {
+import static io.datakernel.async.SettableStage.immediateStage;
+
+public class StreamMergeSorterStorageStub<T> implements StreamSorterStorage<T> {
 	protected final Eventloop eventloop;
 	protected final Map<Integer, List<T>> storage = new HashMap<>();
 	protected int partition;
@@ -38,26 +38,26 @@ public class StreamMergeSorterStorageStub<T> implements StreamMergeSorterStorage
 	}
 
 	@Override
-	public PartitionStage write(StreamProducer<T> producer) {
+	public CompletionStage<StreamConsumerWithResult<T, Integer>> write() {
 		List<T> list = new ArrayList<>();
 		int newPartition = partition++;
 		storage.put(newPartition, list);
 		StreamConsumers.ToList<T> consumer = StreamConsumers.toList(eventloop, list);
-		producer.streamTo(consumer);
-		return new PartitionStage(newPartition, consumer.getCompletionStage());
+		return immediateStage(StreamConsumerWithResult.create(consumer, immediateStage(newPartition)));
 	}
 
 	@Override
-	public ProducerStage<T> read(int partition) {
+	public CompletionStage<StreamProducerWithResult<T, Void>> read(int partition) {
 		List<T> iterable = storage.get(partition);
 		final StreamProducer<T> producer = StreamProducers.ofIterable(eventloop, iterable);
-		return new ProducerStage<>(producer, SettableStage.immediateStage(null));
+		return immediateStage(StreamProducerWithResult.wrap(producer));
 	}
 
 	@Override
-	public void cleanup(List<Integer> partitionsToDelete) {
+	public CompletionStage<Void> cleanup(List<Integer> partitionsToDelete) {
 		for (Integer partition : partitionsToDelete) {
 			storage.remove(partition);
 		}
+		return immediateStage(null);
 	}
 }

@@ -16,16 +16,14 @@
 
 package io.datakernel.remotefs;
 
+import ch.qos.logback.classic.Level;
 import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.AsyncRunnable;
-import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.SimpleException;
-import io.datakernel.stream.StreamConsumers;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.*;
 import io.datakernel.stream.file.StreamFileWriter;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
@@ -34,6 +32,8 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -50,6 +50,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.async.AsyncRunnables.runInParallel;
+import static io.datakernel.async.SettableStage.immediateFailedStage;
+import static io.datakernel.async.SettableStage.immediateStage;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.equalsLowerCaseAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -60,10 +62,10 @@ import static java.util.concurrent.Executors.newCachedThreadPool;
 import static org.junit.Assert.*;
 
 public class FsIntegrationTest {
-//	static {
-//		ch.qos.logback.classic.Logger logger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
-//		logger.setLevel(Level.TRACE);
-//	}
+	static {
+		ch.qos.logback.classic.Logger logger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+		logger.setLevel(Level.TRACE);
+	}
 
 	@Rule
 	public ExpectedException thrown = ExpectedException.none();
@@ -106,7 +108,10 @@ public class FsIntegrationTest {
 		for (int i = 0; i < files; i++) {
 			final StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrapForReading(CONTENT));
 			final int finalI = i;
-			tasks.add(() -> client.upload(producer, "file" + finalI));
+			tasks.add(() -> {
+				producer.streamTo(client.uploadStream("file" + finalI));
+				return immediateStage(null);
+			});
 		}
 		runInParallel(eventloop, tasks).run().whenComplete(AsyncCallbacks.assertBiConsumer($ -> server.close()));
 
@@ -176,10 +181,12 @@ public class FsIntegrationTest {
 								ByteBufStrings.wrapUtf8(" Test2"),
 								ByteBufStrings.wrapUtf8(" Test3"))),
 						StreamProducers.ofValue(eventloop, ByteBuf.wrapForReading(BIG_FILE)),
-						StreamProducers.<ByteBuf>closingWithError(eventloop, new SimpleException("Test exception")),
+						StreamProducers.closingWithError(eventloop, new SimpleException("Test exception")),
 						StreamProducers.ofValue(eventloop, ByteBufStrings.wrapUtf8("Test4")));
 
-		final CompletableFuture<Void> future = client.upload(producer, resultFile).whenComplete((aVoid, throwable) -> server.close()).toCompletableFuture();
+		StreamConsumerWithResult<ByteBuf, Void> consumer = client.uploadStream(resultFile);
+		producer.streamTo(consumer);
+		CompletableFuture<Void> future = consumer.getResult().whenComplete(($, throwable) -> server.close()).toCompletableFuture();
 
 		eventloop.run();
 		executor.shutdownNow();
@@ -262,7 +269,9 @@ public class FsIntegrationTest {
 		final List<Throwable> expected = new ArrayList<>();
 
 		server.listen();
-		client.download(file, 0).whenComplete((byteBufStreamProducer, throwable) -> {
+		StreamProducerWithResult<ByteBuf, Void> producer = client.downloadStream(file, 0);
+		producer.streamTo(StreamConsumers.idle());
+		producer.getResult().whenComplete(($, throwable) -> {
 			if (throwable != null) expected.add(throwable);
 			server.close();
 		});
@@ -290,14 +299,15 @@ public class FsIntegrationTest {
 		List<AsyncRunnable> tasks = new ArrayList<>();
 		for (int i = 0; i < files; i++) {
 			final int finalI = i;
-			tasks.add(() -> client.download(file, 0).thenCompose(producer -> {
+			tasks.add(() -> {
+				StreamProducerWithResult<ByteBuf, Void> producer = client.downloadStream(file, 0);
 				try {
 					producer.streamTo(StreamFileWriter.create(eventloop, executor, storage.resolve("file" + finalI)));
-					return SettableStage.<Void>immediateStage(null);
 				} catch (IOException e) {
-					return SettableStage.<Void>immediateFailedStage(e);
+					return immediateFailedStage(e);
 				}
-			}));
+				return producer.getResult();
+			});
 		}
 		runInParallel(eventloop, tasks).run().whenComplete(AsyncCallbacks.assertBiConsumer($ -> server.close()));
 
@@ -398,14 +408,16 @@ public class FsIntegrationTest {
 	private CompletionStage<Void> upload(String resultFile, byte[] bytes) throws IOException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = newCachedThreadPool();
-		final RemoteFsServer server = createServer(eventloop, executor);
+		RemoteFsServer server = createServer(eventloop, executor);
 		RemoteFsClient client = createClient(eventloop);
 
 		server.listen();
 		StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrapForReading(bytes));
 
-		final CompletableFuture<Void> future = client.upload(producer, resultFile)
-				.whenComplete((aVoid, throwable) -> server.close())
+		StreamConsumerWithResult<ByteBuf, Void> consumer = client.uploadStream(resultFile);
+		producer.streamTo(consumer);
+		CompletableFuture<Void> future = consumer.getResult()
+				.whenComplete(($, throwable) -> server.close())
 				.toCompletableFuture();
 
 		eventloop.run();
@@ -422,8 +434,9 @@ public class FsIntegrationTest {
 
 		server.listen();
 
-		client.download(file, startPosition).whenComplete((producer, throwable) -> {
-			if (throwable == null) producer.streamTo(StreamConsumers.toList(eventloop, expected));
+		StreamProducerWithResult<ByteBuf, Void> producer = client.downloadStream(file, startPosition);
+		producer.streamTo(StreamConsumers.toList(eventloop, expected));
+		producer.getResult().whenComplete(($, throwable) -> {
 			server.close();
 		});
 

@@ -28,6 +28,7 @@ import java.util.List;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
+import static io.datakernel.stream.processor.Utils.assertStatus;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -54,9 +55,9 @@ public class StreamMapTest {
 
 		eventloop.run();
 		assertEquals(asList(11, 12, 13), consumer.getList());
-		assertEquals(END_OF_STREAM, source.getProducerStatus());
-		assertEquals(END_OF_STREAM, projection.getInput().getConsumerStatus());
-		assertEquals(END_OF_STREAM, projection.getOutput().getProducerStatus());
+		assertStatus(END_OF_STREAM, source);
+		assertStatus(END_OF_STREAM, projection.getInput());
+		assertStatus(END_OF_STREAM, projection.getOutput());
 	}
 
 	@Test
@@ -75,13 +76,8 @@ public class StreamMapTest {
 					closeWithError(new Exception("Test Exception"));
 					return;
 				}
-				upstreamProducer.onConsumerSuspended();
-				eventloop.post(new Runnable() {
-					@Override
-					public void run() {
-						upstreamProducer.onConsumerResumed();
-					}
-				});
+				getProducer().suspend();
+				eventloop.post(() -> getProducer().produce(this));
 			}
 		};
 
@@ -90,10 +86,10 @@ public class StreamMapTest {
 
 		eventloop.run();
 		assertTrue(list.size() == 2);
-		assertEquals(CLOSED_WITH_ERROR, source.getProducerStatus());
-		assertEquals(CLOSED_WITH_ERROR, consumer.getConsumerStatus());
-		assertEquals(CLOSED_WITH_ERROR, projection.getInput().getConsumerStatus());
-		assertEquals(CLOSED_WITH_ERROR, projection.getOutput().getProducerStatus());
+		assertStatus(CLOSED_WITH_ERROR, source);
+		assertStatus(CLOSED_WITH_ERROR, consumer);
+		assertStatus(CLOSED_WITH_ERROR, projection.getInput());
+		assertStatus(CLOSED_WITH_ERROR, projection.getOutput());
 	}
 
 	@Test
@@ -103,7 +99,7 @@ public class StreamMapTest {
 		StreamProducer<Integer> source = StreamProducers.concat(eventloop,
 				StreamProducers.ofValue(eventloop, 1),
 				StreamProducers.ofValue(eventloop, 2),
-				StreamProducers.<Integer>closingWithError(eventloop, new Exception("Test Exception")));
+				StreamProducers.closingWithError(eventloop, new Exception("Test Exception")));
 
 		StreamMap<Integer, Integer> projection = StreamMap.create(eventloop, FUNCTION);
 
@@ -115,7 +111,7 @@ public class StreamMapTest {
 
 		eventloop.run();
 		assertTrue(list.size() == 2);
-		assertEquals(CLOSED_WITH_ERROR, consumer.getUpstream().getProducerStatus());
+		assertStatus(CLOSED_WITH_ERROR, consumer.getProducer());
 	}
 
 	@Test
@@ -133,8 +129,8 @@ public class StreamMapTest {
 		eventloop.run();
 
 		assertEquals(asList(11, 12, 13), consumer.getList());
-		assertEquals(END_OF_STREAM, source.getProducerStatus());
-		assertEquals(END_OF_STREAM, projection.getInput().getConsumerStatus());
-		assertEquals(END_OF_STREAM, projection.getOutput().getProducerStatus());
+		assertStatus(END_OF_STREAM, source);
+		assertStatus(END_OF_STREAM, projection.getInput());
+		assertStatus(END_OF_STREAM, projection.getOutput());
 	}
 }

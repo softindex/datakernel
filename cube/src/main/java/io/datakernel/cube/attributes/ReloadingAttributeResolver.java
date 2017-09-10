@@ -110,12 +110,12 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 				cache.putAll(result);
 				timestamp = reloadTimestamp;
 				scheduleReload(reloadPeriod);
-				stage.setResult(null);
+				stage.set(null);
 			}
 
 			@Override
 			protected void onException(Exception e) {
-				stage.setError(AsyncCallbacks.throwableToException(e));
+				stage.setException(AsyncCallbacks.throwableToException(e));
 			}
 		});
 

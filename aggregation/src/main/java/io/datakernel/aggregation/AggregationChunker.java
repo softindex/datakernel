@@ -17,208 +17,137 @@
 package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.ot.AggregationStructure;
-import io.datakernel.aggregation.util.AsyncResultsReducer;
 import io.datakernel.aggregation.util.PartitionPredicate;
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.StagesAccumulator;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import io.datakernel.stream.StreamConsumerDecorator;
+import io.datakernel.stream.StreamConsumerSwitcher;
+import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.stream.StreamDataReceiver;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
 
-import static io.datakernel.async.AsyncCallbacks.postTo;
-import static io.datakernel.async.AsyncCallbacks.throwableToException;
-
-public final class AggregationChunker<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
+	private final Eventloop eventloop;
+	private final StreamConsumerSwitcher<T> switcher;
 
 	private final AggregationStructure aggregation;
 	private final List<String> fields;
 	private final Class<T> recordClass;
 	private final PartitionPredicate<T> partitionPredicate;
 	private final AggregationChunkStorage storage;
-	private final AsyncResultsReducer<List<AggregationChunk>> chunksAccumulator;
-	private final SettableStage<Void> completionStage = SettableStage.create();
+	private final StagesAccumulator<List<AggregationChunk>> chunksAccumulator;
 	private final DefiningClassLoader classLoader;
 
-	private StreamDataReceiver<T> downstreamDataReceiver;
+	private int chunkSize = Aggregation.DEFAULT_CHUNK_SIZE;
 
-	private AbstractStreamProducer<T> outputProducer = new AbstractStreamProducer<T>(eventloop) {
-		@Override
-		protected final void onDataReceiverChanged() {
-			AggregationChunker.this.downstreamDataReceiver = this.downstreamDataReceiver;
-		}
-
-		@Override
-		protected void onSuspended() {
-			applySuspendOrResume();
-		}
-
-		@Override
-		protected void onResumed() {
-			applySuspendOrResume();
-		}
-
-		@Override
-		protected void onError(Exception e) {
-			AggregationChunker.this.closeWithError(e);
-		}
-	};
-
-	private static final AsyncResultsReducer.ResultReducer<List<AggregationChunk>, AggregationChunk> REDUCER = new AsyncResultsReducer.ResultReducer<List<AggregationChunk>, AggregationChunk>() {
-		@Override
-		public List<AggregationChunk> applyResult(List<AggregationChunk> accumulator, AggregationChunk value) {
-			accumulator.add(value);
-			return accumulator;
-		}
-	};
-
-	public AggregationChunker(Eventloop eventloop,
-	                          AggregationStructure aggregation, List<String> fields,
-	                          Class<T> recordClass, PartitionPredicate<T> partitionPredicate,
-	                          AggregationChunkStorage storage,
-	                          int chunkSize, DefiningClassLoader classLoader) {
-		super(eventloop);
+	private AggregationChunker(Eventloop eventloop, StreamConsumerSwitcher<T> switcher,
+	                           AggregationStructure aggregation, List<String> fields,
+	                           Class<T> recordClass, PartitionPredicate<T> partitionPredicate,
+	                           AggregationChunkStorage storage,
+	                           DefiningClassLoader classLoader) {
+		super(switcher);
+		this.eventloop = eventloop;
+		this.switcher = switcher;
 		this.aggregation = aggregation;
 		this.fields = fields;
 		this.recordClass = recordClass;
 		this.partitionPredicate = partitionPredicate;
 		this.storage = storage;
-		this.chunksAccumulator = AsyncResultsReducer.<List<AggregationChunk>>create(new ArrayList<>())
-				.withStage(this.completionStage, (accumulator, value) -> accumulator);
-		this.chunkSize = chunkSize;
 		this.classLoader = classLoader;
+		this.chunksAccumulator = StagesAccumulator.<List<AggregationChunk>>create(new ArrayList<>())
+				.withStage(switcher.getCompletionStage(), (accumulator, $) -> accumulator);
 	}
 
-	public CompletionStage<List<AggregationChunk>> getResult() {
-		return chunksAccumulator.getResult();
+	public static <T> AggregationChunker<T> create(Eventloop eventloop,
+	                                               AggregationStructure aggregation, List<String> fields,
+	                                               Class<T> recordClass, PartitionPredicate<T> partitionPredicate,
+	                                               AggregationChunkStorage storage,
+	                                               DefiningClassLoader classLoader) {
+		AggregationChunker<T> chunker = new AggregationChunker<>(eventloop, StreamConsumerSwitcher.create(eventloop), aggregation, fields, recordClass, partitionPredicate, storage, classLoader);
+		chunker.startNewChunk();
+		return chunker;
+	}
+
+	public AggregationChunker<T> withChunkSize(int chunkSize) {
+		setChunkSize(chunkSize);
+		return this;
 	}
 
 	public void setChunkSize(int chunkSize) {
 		this.chunkSize = chunkSize;
 	}
 
-	private int chunkSize;
+	public CompletionStage<List<AggregationChunk>> getResult() {
+		return chunksAccumulator.get();
+	}
 
-	private T first;
-	private T last;
-	private int count = Integer.MAX_VALUE;
-	private Metadata<T> currentChunkMetadata;
+	private class ChunkWriter extends StreamConsumerDecorator<T> implements StreamDataReceiver<T> {
+		private final CompletionStage<AggregationChunk> result;
+		private final long chunkId;
+		private final int chunkSize;
+		private final PartitionPredicate<T> partitionPredicate;
+		private StreamDataReceiver<T> dataReceiver;
 
-	private static final class Metadata<T> {
 		private T first;
 		private T last;
 		private int count;
 
-		private void set(T first, T last, int count) {
-			this.first = first;
-			this.last = last;
-			this.count = count;
-		}
-	}
+		boolean switched;
 
-	@Override
-	public StreamDataReceiver<T> getDataReceiver() {
-		return this;
-	}
-
-	@Override
-	protected void onError(Exception e) {
-		completionStage.setError(e);
-		outputProducer.closeWithError(e);
-	}
-
-	@Override
-	public void onData(T item) {
-		if (count >= chunkSize || !partitionPredicate.isSamePartition(last, item)) {
-			rotateChunk();
-			first = item;
+		public ChunkWriter(StreamConsumerWithResult<T, ?> actualConsumer,
+		                   long chunkId, int chunkSize, PartitionPredicate<T> partitionPredicate) {
+			super(actualConsumer);
+			this.chunkId = chunkId;
+			this.chunkSize = chunkSize;
+			this.partitionPredicate = partitionPredicate;
+			this.result = actualConsumer.getResult().thenApply($ -> count == 0 ? null :
+					AggregationChunk.create(chunkId,
+							fields,
+							PrimaryKey.ofObject(first, aggregation.getKeys()),
+							PrimaryKey.ofObject(last, aggregation.getKeys()),
+							count));
 		}
 
-		++count;
-
-		downstreamDataReceiver.onData(item);
-		last = item;
-	}
-
-	@Override
-	protected void onEndOfStream() {
-		if (outputProducer.getDownstream() != null) {
-			currentChunkMetadata.set(first, last, count);
-			StreamProducers.<T>closing(eventloop).streamTo(outputProducer.getDownstream());
+		@Override
+		protected void onProduce(StreamDataReceiver<T> dataReceiver) {
+			this.dataReceiver = dataReceiver;
+			super.onProduce(this);
 		}
-		completionStage.setResult(null);
-	}
 
-	private void rotateChunk() {
-		if (outputProducer.getDownstream() != null) {
-			currentChunkMetadata.set(first, last, count);
-			StreamProducers.<T>closing(eventloop).streamTo(outputProducer.getDownstream());
+		@Override
+		public void onData(T item) {
+			if (first == null) {
+				first = item;
+			}
+			last = item;
+			dataReceiver.onData(item);
+			if (++count == chunkSize || (partitionPredicate != null && !partitionPredicate.isSamePartition(last, item))) {
+				if (!switched) {
+					switched = true;
+					startNewChunk();
+				}
+			}
 		}
-		startNewChunk();
 	}
 
 	private void startNewChunk() {
-		first = null;
-		last = null;
-		count = 0;
+		StreamConsumerWithResult<T, AggregationChunk> consumer = StreamConsumerWithResult.ofStage(
+				storage.createId().thenCompose(chunkId ->
+						storage.write(aggregation, fields, recordClass, chunkId, classLoader).thenApply(streamConsumer -> {
+							ChunkWriter chunkWriter = new ChunkWriter(streamConsumer, chunkId, chunkSize, partitionPredicate);
+							return StreamConsumerWithResult.create(chunkWriter, chunkWriter.result);
+						})));
 
-		final Metadata<T> metadata = new Metadata<>();
-		currentChunkMetadata = metadata;
+		switcher.switchTo(consumer);
 
-		final StreamForwarder<T> forwarder = StreamForwarder.create(eventloop);
-		outputProducer.streamTo(forwarder.getInput());
-
-		logger.info("Retrieving new chunk id for aggregation {}", aggregation);
-
-		SettableStage<AggregationChunk> newChunkState = SettableStage.create();
-		chunksAccumulator.addStage(newChunkState, REDUCER);
-		applySuspendOrResume();
-
-		storage.createId()
-				.thenAccept(chunkId -> {
-					logger.info("Retrieved new chunk id '{}' for aggregation {}", chunkId, aggregation);
-					storage.write(forwarder.getOutput(), aggregation, fields, recordClass, chunkId, classLoader, new CompletionCallback() {
-						@Override
-						protected void onComplete() {
-							AggregationChunk newChunk = AggregationChunk.create(chunkId,
-									fields,
-									PrimaryKey.ofObject(metadata.first, aggregation.getKeys()),
-									PrimaryKey.ofObject(metadata.last, aggregation.getKeys()),
-									metadata.count);
-							newChunkState.setResult(newChunk);
-							applySuspendOrResume();
-							logger.trace("Saving new chunk with id {} to storage {} completed", chunkId, storage);
-						}
-
-						@Override
-						protected void onException(Exception e) {
-							logger.error("Saving new chunk with id {} to storage {} failed", chunkId, storage, e);
-							closeWithError(e);
-							newChunkState.setError(e);
-						}
-					});
-				})
-				.whenComplete(($, throwable) -> {
-					if (throwable != null) {
-						logger.error("Failed to retrieve new chunk id from metadata storage {}", storage, throwable);
-						Exception e = throwableToException(throwable);
-						closeWithError(e);
-						newChunkState.setError(e);
-					}
-				});
+		chunksAccumulator.addStage(consumer.getResult(), (accumulator, newChunk) -> {
+			if (newChunk != null && newChunk.getCount() != 0) accumulator.add(newChunk);
+			return accumulator;
+		});
 	}
 
-	private void applySuspendOrResume() {
-		if (outputProducer.getProducerStatus() == StreamStatus.READY && (chunksAccumulator.getActiveStages() - 1) <= 1) {
-			resume();
-		} else {
-			suspend();
-		}
-	}
 }

@@ -26,7 +26,6 @@ import io.datakernel.aggregation.annotation.Key;
 import io.datakernel.aggregation.annotation.Measures;
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.measure.Measure;
-import io.datakernel.aggregation.util.AsyncResultsReducer;
 import io.datakernel.async.AssertingResultCallback;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.*;
@@ -261,8 +260,8 @@ public class ReportingTest {
 		}
 
 		@Override
-		protected AbstractSplitter createSplitter(AsyncResultsReducer<List<CubeDiff>> resultsReducer) {
-			return new AbstractSplitter(eventloop, resultsReducer) {
+		protected StreamDataReceiver<LogItem> createSplitter() {
+			return new StreamDataReceiver<LogItem>() {
 				private final StreamDataReceiver<LogItem> dateAggregator = addOutput(cube.logStreamConsumer(
 						LogItem.class,
 						and(notEq("advertiser", EXCLUDE_ADVERTISER), notEq("campaign", EXCLUDE_CAMPAIGN), notEq("banner", EXCLUDE_BANNER))));
@@ -368,7 +367,7 @@ public class ReportingTest {
 		StreamProducers.OfIterator<LogItem> producer = new StreamProducers.OfIterator<>(eventloop,
 				concat(logItemsForAdvertisersAggregations, logItemsForAffiliatesAggregation).iterator());
 
-		producer.streamTo(logManager.consumer("partitionA"));
+		producer.streamTo(logManager.consumerStream("partitionA"));
 		eventloop.run();
 
 		future = logOTProcessor.processLog().toCompletableFuture();

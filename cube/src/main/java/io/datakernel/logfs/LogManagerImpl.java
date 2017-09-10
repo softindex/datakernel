@@ -16,54 +16,58 @@
 
 package io.datakernel.logfs;
 
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.IgnoreCompletionCallback;
-import io.datakernel.async.IgnoreResultCallback;
-import io.datakernel.async.ResultCallback;
+import io.datakernel.annotation.Nullable;
+import io.datakernel.async.SettableStage;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.stream.*;
+import io.datakernel.stream.processor.StreamBinaryDeserializer;
+import io.datakernel.stream.processor.StreamBinarySerializer;
+import io.datakernel.stream.processor.StreamLZ4Compressor;
+import io.datakernel.stream.processor.StreamLZ4Decompressor;
+import io.datakernel.util.MemSize;
 import io.datakernel.util.Preconditions;
 import org.joda.time.DateTimeZone;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.concurrent.CompletionStage;
+import java.util.stream.Collectors;
+
 public final class LogManagerImpl<T> implements LogManager<T> {
 	public static final DateTimeFormatter DEFAULT_DATE_TIME_FORMATTER = DateTimeFormat.forPattern("yyyy-MM-dd_HH").withZone(DateTimeZone.UTC);
-	public static final DateTimeFormatter DETAILED_DATE_TIME_FORMATTER = DateTimeFormat.forPattern("yyyy-MM-dd_HH-mm-ss").withZone(DateTimeZone.UTC);
-	public static final long DEFAULT_FILE_SWITCH_PERIOD = 60 * 60 * 1000L; // 1 hour
-	public static final int DEFAULT_BUFFER_SIZE = LogStreamConsumer.DEFAULT_BUFFER_SIZE;
-	public static final int DEFAULT_FLUSH_DELAY = LogStreamConsumer.DEFAULT_FLUSH_DELAY;
+	public static final int DEFAULT_BUFFER_SIZE = 256 * 1024;
 
 	private final Eventloop eventloop;
 	private final LogFileSystem fileSystem;
 	private final BufferSerializer<T> serializer;
 	private final DateTimeFormatter dateTimeFormatter;
-	private final long fileSwitchPeriod;
 	private int bufferSize = DEFAULT_BUFFER_SIZE;
-	private int flushDelayMillis = DEFAULT_FLUSH_DELAY;
 
 	private LogManagerImpl(Eventloop eventloop, LogFileSystem fileSystem, BufferSerializer<T> serializer) {
-		this(eventloop, fileSystem, serializer, DEFAULT_DATE_TIME_FORMATTER, DEFAULT_FILE_SWITCH_PERIOD);
+		this(eventloop, fileSystem, serializer, DEFAULT_DATE_TIME_FORMATTER);
 	}
 
 	private LogManagerImpl(Eventloop eventloop, LogFileSystem fileSystem, BufferSerializer<T> serializer,
-	                       DateTimeFormatter dateTimeFormatter, long fileSwitchPeriod) {
+	                       DateTimeFormatter dateTimeFormatter) {
 		this.eventloop = eventloop;
 		this.fileSystem = fileSystem;
 		this.serializer = serializer;
 		this.dateTimeFormatter = dateTimeFormatter;
-		this.fileSwitchPeriod = fileSwitchPeriod;
 	}
 
 	public static <T> LogManagerImpl<T> create(Eventloop eventloop, LogFileSystem fileSystem,
 	                                           BufferSerializer<T> serializer) {
-		return new LogManagerImpl<T>(eventloop, fileSystem, serializer);
+		return new LogManagerImpl<>(eventloop, fileSystem, serializer);
 	}
 
 	public static <T> LogManagerImpl<T> create(Eventloop eventloop, LogFileSystem fileSystem,
-	                                           BufferSerializer<T> serializer, DateTimeFormatter dateTimeFormatter,
-	                                           long fileSwitchPeriod) {
-		return new LogManagerImpl<T>(eventloop, fileSystem, serializer, dateTimeFormatter, fileSwitchPeriod);
+	                                           BufferSerializer<T> serializer, DateTimeFormatter dateTimeFormatter) {
+		return new LogManagerImpl<>(eventloop, fileSystem, serializer, dateTimeFormatter);
 	}
 
 	public LogManagerImpl<T> withBufferSize(int bufferSize) {
@@ -71,60 +75,108 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 		return this;
 	}
 
-	public LogManagerImpl<T> withFlushDelayMillis(int flushDelayMillis) {
-		this.flushDelayMillis = flushDelayMillis;
+	public LogManagerImpl<T> withBufferSize(MemSize bufferSize) {
+		this.bufferSize = (int) bufferSize.get();
 		return this;
 	}
 
 	@Override
-	public LogStreamConsumer<T> consumer(String logPartition) {
+	public CompletionStage<StreamConsumer<T>> consumer(String logPartition) {
 		validateLogPartition(logPartition);
-		return consumer(logPartition, IgnoreCompletionCallback.create());
+
+		StreamBinarySerializer<T> streamBinarySerializer = StreamBinarySerializer.create(eventloop, serializer)
+				.withDefaultBufferSize(bufferSize)
+				.withSkipSerializationErrors();
+		StreamLZ4Compressor streamCompressor = StreamLZ4Compressor.fastCompressor(eventloop);
+
+		StreamConsumer<ByteBuf> writer = LogStreamChunker.create(eventloop, fileSystem, dateTimeFormatter, logPartition);
+
+		streamBinarySerializer.getOutput().streamTo(streamCompressor.getInput());
+		streamCompressor.getOutput().streamTo(writer);
+
+		return SettableStage.immediateStage(streamBinarySerializer.getInput());
 	}
 
 	@Override
-	public LogStreamConsumer<T> consumer(String logPartition, CompletionCallback callback) {
+	public CompletionStage<StreamProducerWithResult<T, LogPosition>> producer(String logPartition,
+	                                                                          LogFile startLogFile, long startOffset,
+	                                                                          LogFile endLogFile) {
 		validateLogPartition(logPartition);
-		LogStreamConsumer<T> logStreamConsumer = LogStreamConsumer.create(eventloop, fileSystem, serializer,
-				logPartition, dateTimeFormatter, fileSwitchPeriod, bufferSize, flushDelayMillis);
-		logStreamConsumer.setCompletionCallback(callback);
-		return logStreamConsumer;
-	}
+		LogPosition startPosition = LogPosition.create(startLogFile, startOffset);
+		return fileSystem.list(logPartition).thenApply(logFiles -> {
+			List<LogFile> logFilesToRead = logFiles.stream().filter(logFile -> isFileInRange(logFile, startPosition, endLogFile)).collect(Collectors.toList());
+			Collections.sort(logFilesToRead);
 
-	@Override
-	public LogStreamProducer<T> producer(String logPartition, LogFile startLogFile, long startPosition,
-	                                     ResultCallback<LogPosition> positionCallback) {
-		validateLogPartition(logPartition);
-		return LogStreamProducer.create(eventloop, fileSystem, serializer, logPartition,
-				LogPosition.create(startLogFile, startPosition), null, positionCallback);
-	}
+			Iterator<LogFile> it = logFilesToRead.iterator();
+			SettableStage<LogPosition> positionStage = SettableStage.create();
 
-	@Override
-	public LogStreamProducer<T> producer(String logPartition, LogFile startLogFile, long startPosition,
-	                                     LogFile endLogFile, ResultCallback<LogPosition> positionCallback) {
-		validateLogPartition(logPartition);
-		return LogStreamProducer.create(eventloop, fileSystem, serializer, logPartition,
-				LogPosition.create(startLogFile, startPosition), endLogFile,
-				positionCallback);
-	}
+			return StreamProducerWithResult.create(StreamProducers.concat(eventloop, new Iterator<StreamProducer<T>>() {
+				private int n;
 
-	@Override
-	public LogStreamProducer<T> producer(String logPartition, long startTimestamp, long endTimestamp) {
-		validateLogPartition(logPartition);
-		return producer(logPartition, new LogFile(dateTimeFormatter.print(startTimestamp), 0), 0,
-				new LogFile(dateTimeFormatter.print(endTimestamp), 0),
-				IgnoreResultCallback.<LogPosition>create());
-	}
+				private LogFile currentLogFile;
+				private long inputStreamPosition;
 
-	@Override
-	public LogStreamProducer<T> producer(String logPartition, String startLogFileName, String endLogFileName) {
-		validateLogPartition(logPartition);
-		return producer(logPartition, new LogFile(startLogFileName, 0), 0, new LogFile(endLogFileName, 0),
-				IgnoreResultCallback.<LogPosition>create());
+				@Override
+				public boolean hasNext() {
+					if (it.hasNext()) return true;
+					positionStage.set(getLogPosition());
+					return false;
+				}
+
+				public LogPosition getLogPosition() {
+					if (currentLogFile == null)
+						return startPosition;
+
+					if (currentLogFile.equals(startPosition.getLogFile()))
+						return LogPosition.create(currentLogFile, startPosition.getPosition() + inputStreamPosition);
+
+					return LogPosition.create(currentLogFile, inputStreamPosition);
+				}
+
+				@Override
+				public StreamProducer<T> next() {
+					currentLogFile = it.next();
+					CompletionStage<StreamProducer<T>> stage = fileSystem.read(logPartition, currentLogFile, n++ == 0 ? startPosition.getPosition() : 0L)
+							.thenApply(producer -> {
+								inputStreamPosition = 0L;
+
+								StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create(eventloop)
+										.withInspector(new StreamLZ4Decompressor.Inspector() {
+											@Override
+											public void onInputBuf(StreamLZ4Decompressor self, ByteBuf buf) {
+											}
+
+											@Override
+											public void onBlock(StreamLZ4Decompressor self, StreamLZ4Decompressor.Header header, ByteBuf inputBuf, ByteBuf outputBuf) {
+												inputStreamPosition += StreamLZ4Decompressor.HEADER_LENGTH + header.compressedLen;
+											}
+										});
+								StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(eventloop, serializer);
+
+								producer.streamTo(decompressor.getInput());
+								decompressor.getOutput().streamTo(deserializer.getInput());
+
+								return StreamProducers.closingOnError(deserializer.getOutput());
+							});
+
+					return StreamProducers.ofStage(stage);
+				}
+			}), positionStage);
+		});
 	}
 
 	private static void validateLogPartition(String logPartition) {
 		Preconditions.checkArgument(!logPartition.contains("-"), "Using dash (-) in log partition name is not allowed");
+	}
+
+	private boolean isFileInRange(LogFile logFile, LogPosition startPosition, @Nullable LogFile endFile) {
+		if (startPosition.getLogFile() != null && logFile.compareTo(startPosition.getLogFile()) < 0)
+			return false;
+
+		if (endFile != null && logFile.compareTo(endFile) > 0)
+			return false;
+
+		return true;
 	}
 
 	public DateTimeFormatter getDateTimeFormatter() {

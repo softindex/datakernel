@@ -17,9 +17,8 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.StreamConsumers;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.*;
+import io.datakernel.stream.StreamConsumers.ToList;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -39,14 +38,14 @@ public class ProducerOfIteratorTest {
 		List<Integer> list = Arrays.asList(1, 2, 3);
 
 		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, list);
-		StreamConsumers.ToList<Integer> consumer = new StreamConsumers.ToList<>(eventloop, new ArrayList<Integer>());
+		ToList<Integer> consumer = StreamConsumers.toList(eventloop, new ArrayList<Integer>());
 		producer.streamTo(consumer);
 
 		eventloop.run();
 
 		assertEquals(list, consumer.getList());
-		assertEquals(END_OF_STREAM, producer.getProducerStatus());
-		assertEquals(END_OF_STREAM, consumer.getConsumerStatus());
+		assertEquals(END_OF_STREAM, ((AbstractStreamProducer<?>) producer).getStatus());
+		assertEquals(END_OF_STREAM, ((AbstractStreamConsumer<?>) consumer).getStatus());
 	}
 
 }

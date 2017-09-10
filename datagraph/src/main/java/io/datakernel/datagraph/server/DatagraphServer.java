@@ -29,7 +29,8 @@ import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamForwarder;
+import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.stream.processor.StreamForwarder;
 import io.datakernel.stream.net.Messaging;
 import io.datakernel.stream.net.MessagingSerializer;
 import io.datakernel.stream.net.MessagingWithBinaryStreaming;
@@ -87,7 +88,9 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 				forwarder = StreamForwarder.create(eventloop);
 				pendingStreams.put(streamId, forwarder);
 			}
-			messaging.sendBinaryStreamFrom(forwarder.getOutput()).whenComplete(($, throwable) -> {
+			StreamConsumerWithResult<ByteBuf, Void> consumer = messaging.sendBinaryStream();
+			forwarder.getOutput().streamTo(consumer);
+			consumer.getResult().whenComplete(($, throwable) -> {
 				if (throwable != null) {
 					logger.warn("Exception occurred while trying to send data");
 				}
@@ -113,8 +116,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 
 		StreamBinarySerializer<T> streamSerializer = StreamBinarySerializer.create(eventloop, serializer)
 				.withDefaultBufferSize(256 * 1024)
-				.withFlushDelay(1000);
-		streamSerializer.setTag(streamId);
+				.withAutoFlush(1000);
 
 		StreamForwarder<ByteBuf> forwarder = pendingStreams.remove(streamId);
 		if (forwarder != null) {

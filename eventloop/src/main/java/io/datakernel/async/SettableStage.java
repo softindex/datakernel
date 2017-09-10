@@ -7,9 +7,11 @@ import java.util.concurrent.CompletionStage;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
 public final class SettableStage<T> extends AbstractCompletionStage<T> {
-	private boolean done;
-	private T result = null;
-	private Throwable error;
+	private static final Object NO_RESULT = new Object();
+
+	@SuppressWarnings("unchecked")
+	private T value = (T) NO_RESULT;
+	private Throwable exception;
 
 	private SettableStage() {
 	}
@@ -18,69 +20,84 @@ public final class SettableStage<T> extends AbstractCompletionStage<T> {
 		return new SettableStage<>();
 	}
 
-
 	public static <T> SettableStage<T> immediateStage(T value) {
 		SettableStage<T> stage = new SettableStage<>();
-		stage.setResult(value);
+		stage.set(value);
 		return stage;
 	}
 
-	public static <T> SettableStage<T> immediateFailedStage(Throwable error) {
+	public static <T> SettableStage<T> immediateFailedStage(Throwable t) {
 		SettableStage<T> stage = new SettableStage<>();
-		stage.setError(error);
+		stage.setException(t);
 		return stage;
 	}
 
-	public void setResult(T result) {
-		assert !isDone();
-		done = true;
+	public void set(T result) {
+		assert !isSet();
 		if (next == null) {
-			this.result = result;
+			this.value = result;
 		} else {
+			this.value = null;
 			complete(result);
 		}
 	}
 
-	public void setError(Throwable error) {
-		assert !isDone();
-		done = true;
+	public void setException(Throwable t) {
+		assert !isSet();
 		if (next == null) {
-			this.error = error;
+			this.value = null;
+			this.exception = t;
 		} else {
-			completeExceptionally(error);
+			this.value = null;
+			completeExceptionally(t);
 		}
 	}
 
 	public void postResult(Eventloop eventloop, T result) {
-		eventloop.post(() -> setResult(result));
+		eventloop.post(() -> set(result));
 	}
 
 	public void postError(Eventloop eventloop, Throwable error) {
-		eventloop.post(() -> setError(error));
+		eventloop.post(() -> setException(error));
+	}
+
+	public void setStage(CompletionStage<T> stage) {
+		stage.whenComplete((t, throwable) -> {
+			if (throwable == null) {
+				set(t);
+			} else {
+				setException(throwable);
+			}
+		});
 	}
 
 	@Override
 	protected <X> CompletionStage<X> subscribe(NextCompletionStage<T, X> next) {
-		if (isDone()) {
+		if (isSet()) {
 			if (this.next == null) {
 				getCurrentEventloop().post(() -> {
-					if (error == null) complete(result);
-					else  completeExceptionally(error);
+					if (exception == null) complete(value);
+					else completeExceptionally(exception);
 
-					result = null;
-					error = null;
+					value = null;
+					exception = null;
 				});
 			}
 		}
 		return super.subscribe(next);
 	}
 
-	public boolean isDone() {
-		return done;
+	public boolean isSet() {
+		return value != NO_RESULT;
+	}
+
+	@Override
+	public boolean isComplete() {
+		return super.isComplete();
 	}
 
 	@Override
 	public String toString() {
-		return "{" + (isDone() ? (error == null ? result : error.getMessage()) : "") + "}";
+		return "{" + (isSet() ? (exception == null ? value : exception.getMessage()) : "") + "}";
 	}
 }

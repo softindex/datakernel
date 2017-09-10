@@ -192,7 +192,7 @@ public final class AsyncFile {
 				buf.ofReadByteBuffer(byteBuffer);
 				eventloop.execute(() -> {
 					tracker.complete();
-					stage.setResult(result);
+					stage.set(result);
 				});
 			}
 
@@ -200,7 +200,7 @@ public final class AsyncFile {
 			public void failed(final Throwable exc, Object attachment) {
 				eventloop.execute(() -> {
 					tracker.complete();
-					stage.setError(exc instanceof Exception ? (Exception) exc : new Exception(exc));
+					stage.setException(exc instanceof Exception ? (Exception) exc : new Exception(exc));
 				});
 			}
 		});
@@ -219,11 +219,11 @@ public final class AsyncFile {
 		final SettableStage<Integer> stage = SettableStage.create();
 		channel.read(byteBuffer, position, null, new CompletionHandler<Integer, Object>() {
 			@Override
-			public void completed(final Integer result, Object attachment) {
+			public void completed(final Integer bytesRead, Object attachment) {
 				buf.ofWriteByteBuffer(byteBuffer);
 				eventloop.execute(() -> {
 					tracker.complete();
-					stage.setResult(result);
+					stage.set(bytesRead);
 				});
 			}
 
@@ -231,7 +231,7 @@ public final class AsyncFile {
 			public void failed(final Throwable exc, Object attachment) {
 				eventloop.execute(() -> {
 					tracker.complete();
-					stage.setError(exc instanceof Exception ? (Exception) exc : new Exception(exc));
+					stage.setException(exc instanceof Exception ? (Exception) exc : new Exception(exc));
 				});
 			}
 		});
@@ -250,7 +250,7 @@ public final class AsyncFile {
 					eventloop.execute(() -> {
 						buf.recycle();
 						tracker.complete();
-						stage.setResult(null);
+						stage.set(null);
 					});
 				} else {
 					if (cancelled.get()) {
@@ -259,8 +259,8 @@ public final class AsyncFile {
 					}
 					writeFully(buf, position + result, tracker, cancelled).whenComplete(($, throwable) -> {
 						// TODO: improve
-						if (throwable != null) stage.setError(throwable);
-						else stage.setResult(null);
+						if (throwable != null) stage.setException(throwable);
+						else stage.set(null);
 					});
 				}
 			}
@@ -270,7 +270,7 @@ public final class AsyncFile {
 				eventloop.execute(() -> {
 					buf.recycle();
 					tracker.complete();
-					stage.setError(exc instanceof Exception ? (Exception) exc : new Exception(exc));
+					stage.setException(exc instanceof Exception ? (Exception) exc : new Exception(exc));
 				});
 			}
 		});
@@ -305,10 +305,10 @@ public final class AsyncFile {
 						try {
 							channel.close();
 							tracker.complete();
-							stage.setResult(null);
+							stage.set(null);
 						} catch (IOException e) {
 							tracker.complete();
-							stage.setError(e);
+							stage.setException(e);
 						}
 
 					});
@@ -323,8 +323,8 @@ public final class AsyncFile {
 					}
 					readFully(buf, position, size, tracker, cancelled).whenComplete(($, throwable) -> {
 						// TODO: improve
-						if (throwable != null) stage.setError(throwable);
-						else stage.setResult(null);
+						if (throwable != null) stage.setException(throwable);
+						else stage.set(null);
 					});
 				}
 			}
@@ -337,7 +337,7 @@ public final class AsyncFile {
 					} catch (IOException ignore) {
 					}
 					tracker.complete();
-					stage.setError(exc instanceof Exception ? (Exception) exc : new Exception(exc));
+					stage.setException(exc instanceof Exception ? (Exception) exc : new Exception(exc));
 				});
 			}
 		});

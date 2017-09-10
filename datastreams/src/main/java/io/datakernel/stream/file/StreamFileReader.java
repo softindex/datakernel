@@ -16,12 +16,14 @@
 
 package io.datakernel.stream.file;
 
-import io.datakernel.async.*;
+import io.datakernel.async.AsyncCallbacks;
+import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.stream.AbstractStreamProducer;
+import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -90,13 +92,13 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 
 	// region api
 	public CompletionStage<Long> getPositionStage() {
-		if (getProducerStatus().isOpen()) {
+		if (getStatus().isOpen()) {
 			return this.positionStage = SettableStage.create();
 		} else {
-			if (getProducerStatus() == StreamStatus.END_OF_STREAM) {
+			if (getStatus() == StreamStatus.END_OF_STREAM) {
 				return SettableStage.immediateStage(position);
 			} else {
-				return SettableStage.immediateFailedStage(getProducerException());
+				return SettableStage.immediateFailedStage(getException());
 			}
 		}
 	}
@@ -108,53 +110,49 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 
 	// region functional
 	protected void doFlush() {
-		if (getProducerStatus().isClosed()) {
+		if (getStatus().isClosed()) {
 			return;
 		}
 
 		if (length == 0L) {
-			doReaderCleanup();
 			sendEndOfStream();
 			return;
 		}
 
 		final ByteBuf buf = ByteBufPool.allocate((int) min(bufferSize, length));
 
-		asyncFile.read(buf, position).whenComplete((result, throwable) -> {
-			if (throwable != null) {
-				buf.recycle();
-				doReaderCleanup();
-				closeWithError(AsyncCallbacks.throwableToException(throwable));
-
-				if (positionStage != null) {
-					positionStage.setError(AsyncCallbacks.throwableToException(throwable));
-				}
-			} else {
-				if (getProducerStatus().isClosed()) {
+		asyncFile.read(buf, position).whenComplete((bytesRead, throwable) -> {
+			pendingAsyncOperation = false;
+			if (throwable == null) {
+				if (getStatus().isClosed()) {
 					buf.recycle();
-					doReaderCleanup();
 					return;
 				}
-				pendingAsyncOperation = false;
-				if (result == -1) {
+				if (bytesRead == -1) {
 					buf.recycle();
-					doReaderCleanup();
 					sendEndOfStream();
 
 					if (positionStage != null) {
-						positionStage.setResult(position);
+						positionStage.set(position);
 					}
 
 					return;
 				} else {
-					position += result;
-					send(buf);
+					position += bytesRead;
+					getLastDataReceiver().onData(buf);
 					if (length != Long.MAX_VALUE) {
-						length -= result;
+						length -= bytesRead;
 					}
 				}
-				if (isStatusReady()) {
+				if (isReceiverReady()) {
 					postFlush();
+				}
+			} else {
+				buf.recycle();
+				closeWithError(AsyncCallbacks.throwableToException(throwable));
+
+				if (positionStage != null) {
+					positionStage.setException(AsyncCallbacks.throwableToException(throwable));
 				}
 			}
 		});
@@ -164,38 +162,22 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 		if (!pendingAsyncOperation) {
 			pendingAsyncOperation = true;
 			eventloop.post(this::doFlush);
-			logger.trace("{}: posted flush", this);
 		}
 	}
 
 	@Override
-	public void onSuspended() {
-		logger.trace("{}: downstream consumer {} suspended.", this, downstreamConsumer);
-	}
-
-	@Override
-	public void onResumed() {
-		logger.trace("{}: downstream consumer {} resumed.", this, downstreamConsumer);
-		postFlush();
-	}
-
-	@Override
-	protected void onStarted() {
-		logger.info("{}: started reading", this);
+	protected void onProduce(StreamDataReceiver<ByteBuf> dataReceiver) {
 		postFlush();
 	}
 
 	@Override
 	protected void onError(Exception e) {
-		logger.error("{}: onError", this, e);
-		doReaderCleanup();
 	}
 
-	protected CompletionStage<Void> doReaderCleanup() {
-		logger.info("{}: finished reading", this);
-		return asyncFile.close().whenComplete(($, throwable) -> {
+	@Override
+	protected void cleanup() {
+		asyncFile.close().whenComplete(($, throwable) -> {
 			if (throwable != null) logger.error("{}: failed to close file", this, throwable);
-			else logger.trace("{}: closed file", this);
 		});
 	}
 

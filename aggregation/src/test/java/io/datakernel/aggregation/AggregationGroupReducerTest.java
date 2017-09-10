@@ -20,9 +20,6 @@ import com.google.common.base.Function;
 import com.google.common.collect.ImmutableMap;
 import io.datakernel.aggregation.fieldtype.FieldTypes;
 import io.datakernel.aggregation.ot.AggregationStructure;
-import io.datakernel.async.AsyncCallbacks;
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
@@ -41,6 +38,7 @@ import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
 import static io.datakernel.aggregation.measure.Measures.union;
 import static io.datakernel.async.SettableStage.immediateStage;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.stream.processor.Utils.assertStatus;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
@@ -64,16 +62,15 @@ public class AggregationGroupReducerTest {
 			long chunkId;
 
 			@Override
-			public <T> void read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long id, DefiningClassLoader classLoader, ResultCallback<StreamProducer<T>> callback) {
-				callback.setResult(StreamProducers.ofIterator(eventloop, items.iterator()));
+			public <T> CompletionStage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
+				return immediateStage(StreamProducerWithResult.wrap(StreamProducers.ofIterator(eventloop, items.iterator())));
 			}
 
 			@Override
-			public <T> void write(StreamProducer<T> producer, AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long id, DefiningClassLoader classLoader, CompletionCallback callback) {
+			public <T> CompletionStage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
 				StreamConsumers.ToList consumer = StreamConsumers.toList(eventloop, items);
-				consumer.getCompletionStage().whenComplete(AsyncCallbacks.forwardTo(callback));
 				listConsumers.add(consumer);
-				producer.streamTo(consumer);
+				return immediateStage(StreamConsumerWithResult.wrap(consumer));
 			}
 
 			@Override
@@ -109,12 +106,12 @@ public class AggregationGroupReducerTest {
 
 		eventloop.run();
 
-		assertEquals(producer.getProducerStatus(), StreamStatus.END_OF_STREAM);
-		assertEquals(groupReducer.getConsumerStatus(), StreamStatus.END_OF_STREAM);
+		assertStatus(StreamStatus.END_OF_STREAM, producer);
+		assertStatus(StreamStatus.END_OF_STREAM, groupReducer);
 		assertEquals(future.get().size(), 5);
 
 		for (StreamConsumer consumer : listConsumers) {
-			assertEquals(consumer.getConsumerStatus(), StreamStatus.END_OF_STREAM);
+			assertStatus(StreamStatus.END_OF_STREAM, consumer);
 		}
 	}
 

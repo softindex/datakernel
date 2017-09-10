@@ -73,7 +73,7 @@ public class AsyncHttpServerTest {
 		AsyncServlet servlet = (request) -> {
 			final SettableStage<HttpResponse> stage = SettableStage.create();
 			final HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
-			primaryEventloop.schedule(primaryEventloop.currentTimeMillis() + random.nextInt(3), () -> stage.setResult(content));
+			primaryEventloop.schedule(primaryEventloop.currentTimeMillis() + random.nextInt(3), () -> stage.set(content));
 			return stage;
 		};
 

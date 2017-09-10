@@ -31,6 +31,7 @@ import io.datakernel.net.SocketSettings;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.net.MessagingSerializer;
 import io.datakernel.stream.net.MessagingWithBinaryStreaming;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
@@ -93,13 +94,15 @@ public final class DatagraphClient {
 
 			messaging.send(commandDownload).whenComplete(($, throwable) -> {
 				if (throwable == null) {
-					messaging.receiveBinaryStreamTo(consumer).whenComplete((aVoid, throwable1) -> {
+					StreamProducerWithResult<ByteBuf, Void> producer = messaging.receiveBinaryStream();
+					producer.streamTo(consumer);
+					producer.getResult().whenComplete(($1, throwable1) -> {
 						messaging.close();
 						AsyncCallbacks.forwardTo(completionStage, null, throwable1);
 					});
 				} else {
 					messaging.close();
-					completionStage.setError(throwable);
+					completionStage.setException(throwable);
 				}
 			});
 			asyncTcpSocket.setEventHandler(messaging);
@@ -107,7 +110,7 @@ public final class DatagraphClient {
 		}
 
 		public void onException(Throwable e) {
-			completionStage.setError(e);
+			completionStage.setException(e);
 		}
 
 		public CompletionStage<Void> getCompletionStage() {
@@ -131,10 +134,10 @@ public final class DatagraphClient {
 			messaging.send(commandExecute).whenComplete(($, throwable) -> {
 				if (throwable == null) {
 					messaging.close();
-					completionStage.setResult(null);
+					completionStage.set(null);
 				} else {
 					messaging.close();
-					completionStage.setError(throwable);
+					completionStage.setException(throwable);
 				}
 			});
 
@@ -143,7 +146,7 @@ public final class DatagraphClient {
 		}
 
 		public void onException(Throwable e) {
-			completionStage.setError(e);
+			completionStage.setException(e);
 		}
 
 		public SettableStage<Void> getCompletionStage() {

@@ -26,6 +26,7 @@ import io.datakernel.cube.bean.DataItemString1;
 import io.datakernel.cube.bean.DataItemString2;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
@@ -71,9 +72,13 @@ public class StringDimensionTest {
 		StreamProducer<DataItemString1> producer1 = StreamProducers.ofIterable(eventloop, asList(
 				new DataItemString1("str1", 2, 10, 20),
 				new DataItemString1("str2", 3, 10, 20)));
-		CompletableFuture<CubeDiff> future1 = cube.consume(producer1, DataItemString1.class).toCompletableFuture();
+		StreamConsumerWithResult<DataItemString1, CubeDiff> consumer1 = cube.consume(DataItemString1.class);
+		producer1.streamTo(consumer1);
+		CompletableFuture<CubeDiff> future1 = consumer1.getResult().toCompletableFuture();
 		StreamProducer<DataItemString2> producer2 = StreamProducers.ofIterable(eventloop, asList(new DataItemString2("str2", 3, 10, 20), new DataItemString2("str1", 4, 10, 20)));
-		CompletableFuture<CubeDiff> future2 = cube.consume(producer2, DataItemString2.class).toCompletableFuture();
+		StreamConsumerWithResult<DataItemString2, CubeDiff> consumer2 = cube.consume(DataItemString2.class);
+		producer2.streamTo(consumer2);
+		CompletableFuture<CubeDiff> future2 = consumer2.getResult().toCompletableFuture();
 		eventloop.run();
 
 		cube.apply(future1.get());

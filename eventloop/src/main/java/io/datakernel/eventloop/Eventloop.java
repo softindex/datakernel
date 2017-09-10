@@ -614,14 +614,14 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			connected = channel.finishConnect();
 		} catch (IOException e) {
 			closeQuietly(channel);
-			connectStage.setError(e);
+			connectStage.setException(e);
 			return;
 		}
 
 		if (connected) {
-			connectStage.setResult(channel);
+			connectStage.set(channel);
 		} else {
-			connectStage.setError(new SimpleException("Not connected"));
+			connectStage.setException(new SimpleException("Not connected"));
 		}
 	}
 
@@ -742,7 +742,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		} catch (IOException e) {
 			closeQuietly(socketChannel);
 			try {
-				stage.setError(e);
+				stage.setException(e);
 			} catch (Throwable e1) {
 				recordFatalError(e1, stage);
 			}
@@ -761,7 +761,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 		final ScheduledRunnable scheduledTimeout = schedule(currentTimeMillis() + connectionTime, () -> {
 			closeQuietly(socketChannel);
-			stage.setError(CONNECT_TIMEOUT);
+			stage.setException(CONNECT_TIMEOUT);
 		});
 
 		final SettableStage<SocketChannel> timeoutStage = SettableStage.create();

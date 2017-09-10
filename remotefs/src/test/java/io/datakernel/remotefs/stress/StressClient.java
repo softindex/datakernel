@@ -17,12 +17,14 @@
 package io.datakernel.remotefs.stress;
 
 import com.google.common.base.Charsets;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.RemoteFsClient;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Serialize;
+import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.file.StreamFileReader;
@@ -80,7 +82,9 @@ class StressClient {
 					StreamFileReader producer =
 							StreamFileReader.readFileFully(eventloop, executor, 16 * 1024, file);
 
-					client.upload(producer, fileName).whenComplete(($, throwable) -> {
+					StreamConsumerWithResult<ByteBuf, Void> consumer = client.uploadStream(fileName);
+					producer.streamTo(consumer);
+					consumer.getResult().whenComplete(($, throwable) -> {
 						if (throwable == null) logger.info("Uploaded: " + fileName);
 						else logger.info("Failed to upload: {}", throwable.getMessage());
 					});
@@ -201,7 +205,7 @@ class StressClient {
 				.withDefaultBufferSize(StreamBinarySerializer.MAX_SIZE);
 
 		producer.streamTo(serializer.getInput());
-		client.upload(serializer.getOutput(), "someName" + i);
+		serializer.getOutput().streamTo(client.uploadStream("someName" + i));
 		eventloop.run();
 	}
 

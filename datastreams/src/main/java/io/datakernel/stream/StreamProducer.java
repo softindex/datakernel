@@ -29,34 +29,24 @@ public interface StreamProducer<T> {
 	 * Changes consumer for this producer, removes itself from previous consumer and removes
 	 * previous producer for new consumer. Begins to stream to consumer.
 	 *
-	 * @param downstreamConsumer consumer for streaming
+	 * @param consumer consumer for streaming
 	 */
-	void streamTo(StreamConsumer<T> downstreamConsumer);
-
-	/**
-	 * This method is called if consumer was changed for changing consumer status of this producer
-	 * and its dependencies
-	 */
-	void bindDataReceiver();
-
-	/**
-	 * This method is called for stop streaming of this producer
-	 */
-	void onConsumerSuspended();
+	void streamTo(StreamConsumer<T> consumer);
 
 	/**
 	 * This method is called for restore streaming of this producer
 	 */
-	void onConsumerResumed();
+	void produce(StreamDataReceiver<T> dataReceiver);
+
+	/**
+	 * This method is called for stop streaming of this producer
+	 */
+	void suspend();
 
 	/**
 	 * This method is called for close with error
 	 *
 	 * @param e exception which was found
 	 */
-	void onConsumerError(Exception e);
-
-	StreamStatus getProducerStatus();
-
-	Exception getProducerException();
+	void closeWithError(Exception e);
 }

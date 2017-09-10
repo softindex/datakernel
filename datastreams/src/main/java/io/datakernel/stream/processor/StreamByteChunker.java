@@ -19,28 +19,22 @@ package io.datakernel.stream.processor;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.AbstractStreamTransformer_1_1;
-import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.*;
 
-public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> {
-	private final InputConsumer inputConsumer;
-	private final OutputProducer outputProducer;
+import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
+import static java.lang.Math.max;
+import static java.lang.Math.min;
+
+public final class StreamByteChunker implements StreamTransformer<ByteBuf, ByteBuf> {
+	private final Eventloop eventloop;
+	private final Input input;
+	private final Output output;
 
 	// region creators
 	private StreamByteChunker(Eventloop eventloop, int minChunkSize, int maxChunkSize) {
-		super(eventloop);
-		this.inputConsumer = new InputConsumer();
-		this.outputProducer = new OutputProducer(minChunkSize, maxChunkSize);
-	}
-
-	@Override
-	protected AbstractInputConsumer getInputImpl() {
-		return inputConsumer;
-	}
-
-	@Override
-	protected AbstractOutputProducer getOutputImpl() {
-		return outputProducer;
+		this.eventloop = eventloop;
+		this.input = new Input(eventloop);
+		this.output = new Output(eventloop, minChunkSize, maxChunkSize);
 	}
 
 	public static StreamByteChunker create(Eventloop eventloop, int minChunkSize, int maxChunkSize) {
@@ -48,73 +42,105 @@ public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteB
 	}
 	// endregion
 
-	protected final class InputConsumer extends AbstractInputConsumer {
+	@Override
+	public StreamConsumer<ByteBuf> getInput() {
+		return input;
+	}
 
-		@Override
-		protected void onUpstreamEndOfStream() {
-			outputProducer.flushAndClose();
+	@Override
+	public StreamProducer<ByteBuf> getOutput() {
+		return output;
+	}
+
+	protected final class Input extends AbstractStreamConsumer<ByteBuf> {
+		protected Input(Eventloop eventloop) {
+			super(eventloop);
 		}
 
 		@Override
-		public StreamDataReceiver<ByteBuf> getDataReceiver() {
-			return outputProducer;
+		protected void onEndOfStream() {
+			output.tryFlushAndClose();
+		}
+
+		@Override
+		protected void onError(Exception e) {
+			output.closeWithError(e);
 		}
 	}
 
-	protected final class OutputProducer extends AbstractOutputProducer implements StreamDataReceiver<ByteBuf> {
+	protected final class Output extends AbstractStreamProducer<ByteBuf> implements StreamDataReceiver<ByteBuf> {
 		private final int minChunkSize;
 		private final int maxChunkSize;
-		private ByteBuf internalBuf;
+		private ByteBuf internalBuf = ByteBuf.empty();
 
-		public OutputProducer(int minChunkSize, int maxChunkSize) {
+		public Output(Eventloop eventloop, int minChunkSize, int maxChunkSize) {
+			super(eventloop);
 			this.minChunkSize = minChunkSize;
 			this.maxChunkSize = maxChunkSize;
-			this.internalBuf = ByteBufPool.allocate(maxChunkSize);
 		}
 
 		@Override
-		protected void onDownstreamSuspended() {
-			inputConsumer.suspend();
+		protected void produce() {
+			tryFlushAndClose(); // chunk and send out any remaining data in internalBuf
+			if (isReceiverReady()) { // if more data is needed
+				input.getProducer().produce(this);
+			}
 		}
 
 		@Override
-		protected void onDownstreamResumed() {
-			inputConsumer.resume();
+		protected void onSuspended() {
+			input.getProducer().suspend();
 		}
 
 		@Override
 		public void onData(ByteBuf buf) {
-			while (internalBuf.writePosition() + buf.readRemaining() >= minChunkSize) {
-				if (internalBuf.writePosition() == 0) {
-					int chunkSize = Math.min(maxChunkSize, buf.readRemaining());
+			if (!internalBuf.canRead()) {
+				while (isReceiverReady() && buf.readRemaining() >= minChunkSize) {
+					int chunkSize = min(buf.readRemaining(), maxChunkSize);
 					ByteBuf slice = buf.slice(chunkSize);
 					send(slice);
 					buf.moveReadPosition(chunkSize);
-				} else {
-					buf.drainTo(internalBuf, minChunkSize - internalBuf.writePosition());
-					send(internalBuf);
-					internalBuf = ByteBufPool.allocate(maxChunkSize);
 				}
 			}
 
-			buf.drainTo(internalBuf, buf.readRemaining());
-			assert internalBuf.writePosition() < minChunkSize;
-
+			if (buf.canRead()) {
+				internalBuf = ByteBufPool.ensureTailRemaining(internalBuf,
+						max(maxChunkSize - internalBuf.writePosition(), buf.readRemaining()));
+				internalBuf.put(buf);
+			}
 			buf.recycle();
+
+			tryFlushAndClose();
 		}
 
-		private void flushAndClose() {
-			if (internalBuf.canRead()) {
-				outputProducer.send(internalBuf);
-			} else {
-				internalBuf.recycle();
+		private void tryFlushAndClose() {
+			while (isReceiverReady() && internalBuf.readRemaining() >= minChunkSize) {
+				int chunkSize = min(internalBuf.readRemaining(), maxChunkSize);
+				assert chunkSize >= minChunkSize && chunkSize <= maxChunkSize;
+				ByteBuf slice = internalBuf.slice(internalBuf.readPosition(), chunkSize);
+				send(slice);
+				internalBuf.moveReadPosition(chunkSize);
 			}
-			internalBuf = null;
-			outputProducer.sendEndOfStream();
+
+			if (!isReceiverReady())
+				return;
+
+			if (input.getStatus() == END_OF_STREAM) {
+				if (internalBuf.canRead()) {
+					output.send(internalBuf);
+					internalBuf = null;
+				}
+				output.sendEndOfStream();
+			}
 		}
 
 		@Override
-		protected void doCleanup() {
+		protected void onError(Exception e) {
+			input.closeWithError(e);
+		}
+
+		@Override
+		protected void cleanup() {
 			if (internalBuf != null) {
 				internalBuf.recycle();
 				internalBuf = null;

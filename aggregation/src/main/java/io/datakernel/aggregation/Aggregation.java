@@ -23,7 +23,6 @@ import com.google.common.collect.Ordering;
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
-import io.datakernel.async.*;
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
@@ -31,7 +30,6 @@ import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.stream.ErrorIgnoringTransformer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
@@ -39,8 +37,10 @@ import io.datakernel.stream.processor.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
@@ -78,6 +78,7 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 	private final ExecutorService executorService;
 	private final DefiningClassLoader classLoader;
 	private final AggregationChunkStorage aggregationChunkStorage;
+	private Path temporarySortDir;
 
 	private final AggregationStructure structure;
 	private AggregationState state;
@@ -105,6 +106,7 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 		this.executorService = executorService;
 		this.classLoader = classLoader;
 		this.aggregationChunkStorage = aggregationChunkStorage;
+		this.temporarySortDir = temporarySortDir;
 		this.structure = structure;
 		this.state = state;
 	}
@@ -153,6 +155,11 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 
 	public Aggregation withMaxChunksToConsolidate(int maxChunksToConsolidate) {
 		this.maxChunksToConsolidate = maxChunksToConsolidate;
+		return this;
+	}
+
+	public Aggregation withTemporarySortDir(Path temporarySortDir) {
+		this.temporarySortDir = temporarySortDir;
 		return this;
 	}
 
@@ -277,11 +284,17 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 	private <T> StreamProducer<T> sortStream(StreamProducer<T> unsortedStream, Class<T> resultClass,
 	                                         List<String> allKeys, List<String> measures, DefiningClassLoader classLoader) {
 		Comparator keyComparator = createKeyComparator(resultClass, allKeys, classLoader);
-		Path path = Paths.get("sorterStorage", "%d.part");
 		BufferSerializer bufferSerializer = createBufferSerializer(structure, resultClass,
 				getKeys(), measures, classLoader);
-		StreamMergeSorterStorage sorterStorage = StreamMergeSorterStorageImpl.create(eventloop, executorService,
-				bufferSerializer, path, sorterBlockSize);
+		if (temporarySortDir == null) {
+			try {
+				temporarySortDir = Files.createTempDirectory("aggregation_sort_dir");
+			} catch (IOException e) {
+				throw new UncheckedIOException(e);
+			}
+		}
+		StreamSorterStorage sorterStorage = StreamSorterStorageImpl.create(eventloop, executorService,
+				bufferSerializer, temporarySortDir);
 		StreamSorter sorter = StreamSorter.create(eventloop, sorterStorage, identity(), keyComparator, false,
 				sorterItemsInMemory);
 		unsortedStream.streamTo(sorter.getInput());
@@ -302,11 +315,11 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 
 		Class resultClass = createRecordClass(structure, getKeys(), measures, classLoader);
 
-		StreamProducer<Object> consolidatedProducer = consolidatedProducer(getKeys(), measures, resultClass, null, chunksToConsolidate, classLoader);
-		AggregationChunker<Object> chunker = new AggregationChunker<>(eventloop,
+		StreamProducer<Object> consolidatedProducer = consolidatedProducer(getKeys(), measures, resultClass, AggregationPredicates.alwaysTrue(), chunksToConsolidate, classLoader);
+		AggregationChunker<Object> chunker = AggregationChunker.create(eventloop,
 				structure, measures, resultClass,
 				createPartitionPredicate(resultClass, getPartitioningKey(), classLoader),
-				aggregationChunkStorage, chunkSize, classLoader);
+				aggregationChunkStorage, classLoader);
 		consolidatedProducer.streamTo(chunker);
 
 		return chunker.getResult();
@@ -436,39 +449,34 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 		return streamReducer.getOutput();
 	}
 
-	private <T> StreamProducer sequenceStream(final AggregationPredicate where,
-	                                          List<AggregationChunk> individualChunks, final Class<T> sequenceClass,
-	                                          final DefiningClassLoader queryClassLoader) {
-		checkArgument(!individualChunks.isEmpty());
-		AsyncIterator<StreamProducer<T>> producerAsyncIterator = AsyncIterators.transform(individualChunks.iterator(), chunk -> {
-			final SettableStage<StreamProducer<T>> stage = SettableStage.create();
-			chunkReaderWithFilter(where, chunk, sequenceClass, queryClassLoader, AsyncCallbacks.resultToStage(stage));
-			return stage;
+	private <T> StreamProducer<T> sequenceStream(AggregationPredicate where,
+	                                             List<AggregationChunk> individualChunks, Class<T> sequenceClass,
+	                                             DefiningClassLoader queryClassLoader) {
+		Iterator<AggregationChunk> chunkIterator = individualChunks.iterator();
+		return StreamProducers.concat(eventloop, new Iterator<StreamProducer<T>>() {
+			@Override
+			public boolean hasNext() {
+				return chunkIterator.hasNext();
+			}
+
+			@Override
+			public StreamProducer<T> next() {
+				AggregationChunk chunk = chunkIterator.next();
+				return chunkReaderWithFilter(where, chunk, sequenceClass, queryClassLoader);
+			}
 		});
-		return StreamProducers.concat(eventloop, producerAsyncIterator);
 	}
 
-	private <T> void chunkReaderWithFilter(final AggregationPredicate where, AggregationChunk chunk,
-	                                       final Class<T> chunkRecordClass, final DefiningClassLoader queryClassLoader,
-	                                       final ResultCallback<StreamProducer<T>> callback) {
-		aggregationChunkStorage.read(structure, chunk.getMeasures(), chunkRecordClass, chunk.getChunkId(), classLoader,
-				new ForwardingResultCallback<StreamProducer<T>>(callback) {
-					@Override
-					protected void onResult(StreamProducer<T> chunkProducer) {
-						if (ignoreChunkReadingExceptions) {
-							ErrorIgnoringTransformer errorIgnoringTransformer = ErrorIgnoringTransformer.create(eventloop);
-							chunkProducer.streamTo(errorIgnoringTransformer.getInput());
-							chunkProducer = errorIgnoringTransformer.getOutput();
-						}
-						if (where != null && where != AggregationPredicates.alwaysTrue()) {
-							StreamFilter<T> streamFilter = StreamFilter.create(eventloop,
-									createPredicate(chunkRecordClass, where, queryClassLoader));
-							chunkProducer.streamTo(streamFilter.getInput());
-							chunkProducer = streamFilter.getOutput();
-						}
-						callback.setResult(chunkProducer);
-					}
-				});
+	private <T> StreamProducer<T> chunkReaderWithFilter(final AggregationPredicate where, AggregationChunk chunk,
+	                                                    final Class<T> chunkRecordClass, final DefiningClassLoader queryClassLoader) {
+		StreamProducer<T> producer = aggregationChunkStorage.readStream(structure, chunk.getMeasures(), chunkRecordClass, chunk.getChunkId(), classLoader);
+		if (where != AggregationPredicates.alwaysTrue()) {
+			StreamFilter<T> streamFilter = StreamFilter.create(eventloop,
+					createPredicate(chunkRecordClass, where, queryClassLoader));
+			producer.streamTo(streamFilter.getInput());
+			return streamFilter.getOutput();
+		}
+		return producer;
 	}
 
 	private <T> Predicate<T> createPredicate(Class<T> chunkRecordClass,

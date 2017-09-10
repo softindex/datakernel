@@ -54,117 +54,109 @@ public final class RpcStream {
 	public RpcStream(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
 	                 BufferSerializer<RpcMessage> messageSerializer,
 	                 int defaultPacketSize, int maxPacketSize,
-	                 int flushDelayMillis, boolean compression, boolean server,
-	                 StreamBinarySerializer.Inspector serializerInspector,
-	                 StreamBinaryDeserializer.Inspector deserializerInspector,
-	                 StreamLZ4Compressor.Inspector compressorInspector,
-	                 StreamLZ4Decompressor.Inspector decompressorInspector) {
+	                 int autoFlushIntervalMillis, boolean compression, boolean server) {
 		this.eventloop = eventloop;
 		this.compression = compression;
 
-		connection = SocketStreamingConnection.createSocketStreamingConnection(eventloop, asyncTcpSocket);
+		connection = SocketStreamingConnection.create(eventloop, asyncTcpSocket);
 
 		if (server) {
 			sender = new AbstractStreamProducer<RpcMessage>(eventloop) {
 				@Override
-				protected void onDataReceiverChanged() {
-					RpcStream.this.downstreamDataReceiver = this.downstreamDataReceiver;
+				protected void onProduce(StreamDataReceiver<RpcMessage> dataReceiver) {
+					RpcStream.this.downstreamDataReceiver = dataReceiver;
+					receiver.getProducer().produce(RpcStream.this.listener);
+					producerStatus = getStatus();
 				}
 
 				@Override
 				protected void onSuspended() {
-					receiver.suspend();
-					producerStatus = getProducerStatus();
-				}
-
-				@Override
-				protected void onResumed() {
-					receiver.resume();
-					producerStatus = getProducerStatus();
+					receiver.getProducer().suspend();
+					producerStatus = getStatus();
 				}
 
 				@Override
 				protected void onError(Exception e) {
 					RpcStream.this.listener.onClosedWithError(e);
-					producerStatus = getProducerStatus();
+					producerStatus = getStatus();
 				}
 			};
 		} else {
 			sender = new AbstractStreamProducer<RpcMessage>(eventloop) {
 				@Override
-				protected void onDataReceiverChanged() {
-					RpcStream.this.downstreamDataReceiver = this.downstreamDataReceiver;
+				protected void onProduce(StreamDataReceiver<RpcMessage> dataReceiver) {
+					RpcStream.this.downstreamDataReceiver = dataReceiver;
+					producerStatus = getStatus();
 				}
 
 				@Override
 				protected void onSuspended() {
-					producerStatus = getProducerStatus();
-				}
-
-				@Override
-				protected void onResumed() {
-					producerStatus = getProducerStatus();
+					producerStatus = getStatus();
 				}
 
 				@Override
 				protected void onError(Exception e) {
 					RpcStream.this.listener.onClosedWithError(e);
-					producerStatus = getProducerStatus();
+					producerStatus = getStatus();
 				}
 			};
 		}
 
 		receiver = new AbstractStreamConsumer<RpcMessage>(eventloop) {
 			@Override
+			protected void onStarted() {
+				getProducer().produce(RpcStream.this.listener);
+			}
+
+			@Override
 			protected void onEndOfStream() {
 				RpcStream.this.listener.onReadEndOfStream();
 			}
 
 			@Override
-			public StreamDataReceiver<RpcMessage> getDataReceiver() {
-				return listener;
+			protected void onError(Exception e) {
 			}
 		};
 
 		serializer = StreamBinarySerializer.create(eventloop, messageSerializer)
 				.withDefaultBufferSize(defaultPacketSize)
 				.withMaxMessageSize(maxPacketSize)
-				.withFlushDelay(flushDelayMillis)
+				.withAutoFlush(autoFlushIntervalMillis)
 				.withSkipSerializationErrors()
-				.withInspector(serializerInspector);
-		deserializer = StreamBinaryDeserializer.create(eventloop, messageSerializer)
-				.withInspector(deserializerInspector);
+//				.withInspector(serializerInspector)
+		;
+		deserializer = StreamBinaryDeserializer.create(eventloop, messageSerializer);
 
 		if (compression) {
-			compressor = StreamLZ4Compressor.fastCompressor(eventloop).withInspector(compressorInspector);
-			decompressor = StreamLZ4Decompressor.create(eventloop).withInspector(decompressorInspector);
-			connection.receiveStreamTo(decompressor.getInput());
+			compressor = StreamLZ4Compressor.fastCompressor(eventloop);
+			decompressor = StreamLZ4Decompressor.create(eventloop);
+			connection.getSocketReader().streamTo(decompressor.getInput());
 			decompressor.getOutput().streamTo(deserializer.getInput());
 
 			serializer.getOutput().streamTo(compressor.getInput());
-			connection.sendStreamFrom(compressor.getOutput());
+			connection.getSocketWriter().streamFrom(compressor.getOutput());
 		} else {
 			compressor = null;
 			decompressor = null;
-			connection.receiveStreamTo(deserializer.getInput());
-			connection.sendStreamFrom(serializer.getOutput());
+			connection.getSocketReader().streamTo(deserializer.getInput());
+			connection.getSocketWriter().streamFrom(serializer.getOutput());
 		}
 	}
 
 	public void setListener(Listener listener) {
 		this.listener = listener;
 
-		producerStatus = sender.getProducerStatus();
+		producerStatus = sender.getStatus();
 
 		if (compression) {
-			connection.receiveStreamTo(decompressor.getInput());
+			connection.getSocketReader().streamTo(decompressor.getInput());
 			decompressor.getOutput().streamTo(deserializer.getInput());
 
 			serializer.getOutput().streamTo(compressor.getInput());
-			connection.sendStreamFrom(compressor.getOutput());
+			connection.getSocketWriter().streamFrom(compressor.getOutput());
 		} else {
-			connection.receiveStreamTo(deserializer.getInput());
-			connection.sendStreamFrom(serializer.getOutput());
+			connection.getSocketReader().streamTo(deserializer.getInput());
+			connection.getSocketWriter().streamFrom(serializer.getOutput());
 		}
 
 		deserializer.getOutput().streamTo(receiver);

@@ -16,13 +16,12 @@
 
 package io.datakernel.stream.processor;
 
-import com.google.common.base.Function;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.EventloopJmxMBean;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.stream.AbstractStreamTransformer_1_N;
-import io.datakernel.stream.StreamDataReceiver;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.*;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -30,93 +29,96 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * It is {@link AbstractStreamTransformer_1_N} which divides input stream  into groups with some key
  * function, and sends obtained streams to consumers.
  *
- * @param <K> type of result key function
  * @param <T> type of input items
  */
 @SuppressWarnings("unchecked")
-public final class StreamSharder<K, T> extends AbstractStreamTransformer_1_N<T> implements EventloopJmxMBean {
-	private long jmxItems;
+public final class StreamSharder<T> implements HasInput<T>, HasOutputs, StreamDataReceiver<T> {
+	private final Eventloop eventloop;
+	private final Sharder<T> sharder;
 
-	// region creators
-	private StreamSharder(Eventloop eventloop, Sharder<K> sharder, Function<T, K> keyFunction) {
-		super(eventloop);
-		checkNotNull(sharder);
-		checkNotNull(keyFunction);
-		setInputConsumer(new InputConsumer(sharder, keyFunction));
+	private final InputConsumer input;
+	private final List<Output> outputs = new ArrayList<>();
+
+	private StreamDataReceiver<T>[] dataReceivers = new StreamDataReceiver[0];
+	private int suspended = 0;
+
+	private StreamSharder(Eventloop eventloop, Sharder<T> sharder) {
+		this.eventloop = eventloop;
+		this.sharder = sharder;
+		this.input = new InputConsumer(eventloop);
 	}
 
-	public static <K, T> StreamSharder<K, T> create(Eventloop eventloop, Sharder<K> sharder,
-	                                                Function<T, K> keyFunction) {
-		return new StreamSharder<K, T>(eventloop, sharder, keyFunction);
+	public static <T> StreamSharder<T> create(Eventloop eventloop, Sharder<T> sharder) {
+		return new StreamSharder<T>(eventloop, sharder);
 	}
 	// endregion
 
-	protected final class InputConsumer extends AbstractInputConsumer implements StreamDataReceiver<T> {
-		private final Sharder<K> sharder;
-		private final Function<T, K> keyFunction;
+	public StreamProducer<T> newOutput() {
+		Output output = new Output(eventloop, outputs.size());
+		dataReceivers = Arrays.copyOf(dataReceivers, dataReceivers.length + 1);
+		suspended++;
+		outputs.add(output);
+		return output;
+	}
 
-		public InputConsumer(Sharder<K> sharder, Function<T, K> keyFunction) {
-			this.sharder = sharder;
-			this.keyFunction = keyFunction;
+	@Override
+	public StreamConsumer<T> getInput() {
+		return input;
+	}
+
+	@Override
+	public List<? extends StreamProducer<T>> getOutputs() {
+		return outputs;
+	}
+
+	@Override
+	public void onData(T item) {
+		int shard = sharder.shard(item);
+		dataReceivers[shard].onData(item);
+	}
+
+	protected final class InputConsumer extends AbstractStreamConsumer<T> {
+		public InputConsumer(Eventloop eventloop) {
+			super(eventloop);
 		}
 
-		@SuppressWarnings("AssertWithSideEffects")
 		@Override
-		public void onData(T item) {
-			assert jmxItems != ++jmxItems;
-			K key = keyFunction.apply(item);
-			int shard = sharder.shard(key);
-			StreamDataReceiver<T> streamCallback = (StreamDataReceiver<T>) dataReceivers[shard];
-			streamCallback.onData(item);
+		protected void onEndOfStream() {
+			outputs.forEach(Output::sendEndOfStream);
 		}
 
 		@Override
-		public StreamDataReceiver<T> getDataReceiver() {
-			return this;
-		}
-
-		@Override
-		protected void onUpstreamEndOfStream() {
-			sendEndOfStreamToDownstreams();
+		protected void onError(Exception e) {
+			outputs.forEach(output -> output.closeWithError(e));
 		}
 	}
 
-	protected final class OutputProducer extends AbstractOutputProducer<T> {
-		private final InputConsumer inputConsumer = (InputConsumer) StreamSharder.this.inputConsumer;
+	protected final class Output extends AbstractStreamProducer<T> {
+		private final int index;
 
-		@Override
-		protected void onDownstreamSuspended() {
-			inputConsumer.suspend();
+		protected Output(Eventloop eventloop, int index) {
+			super(eventloop);
+			this.index = index;
 		}
 
 		@Override
-		protected void onDownstreamResumed() {
-			if (allOutputsResumed()) {
-				inputConsumer.resume();
+		protected void onSuspended() {
+			suspended++;
+			input.getProducer().suspend();
+		}
+
+		@Override
+		protected void onProduce(StreamDataReceiver<T> dataReceiver) {
+			dataReceivers[index] = dataReceiver;
+			if (--suspended == 0) {
+				input.getProducer().produce(StreamSharder.this);
 			}
 		}
+
+		@Override
+		protected void onError(Exception e) {
+			input.closeWithError(e);
+		}
 	}
 
-	public StreamProducer<T> newOutput() {
-		return addOutput(new OutputProducer());
-	}
-
-	// jmx
-	@Override
-	public Eventloop getEventloop() {
-		return eventloop;
-	}
-
-	@JmxAttribute
-	public long getItems() {
-		return jmxItems;
-	}
-
-	@SuppressWarnings("AssertWithSideEffects")
-	@Override
-	public String toString() {
-		String items = "?";
-		assert (items = "" + jmxItems) != null;
-		return '{' + super.toString() + " items:" + items + '}';
-	}
 }

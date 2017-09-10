@@ -16,78 +16,36 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.file.AsyncFile;
 import io.datakernel.stream.*;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
-import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.OpenOption;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static com.google.common.base.Preconditions.checkNotNull;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
-import static java.lang.Math.min;
-import static java.nio.file.StandardOpenOption.READ;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 public class StreamFileReaderWriterTest {
 	Eventloop eventloop;
 	ExecutorService executor;
-	StreamFileReaderWithError reader;
 
 	@Rule
 	public TemporaryFolder tempFolder = new TemporaryFolder();
-
-	@Test
-	public void testStreamWriterOnError() throws IOException {
-		File tempFile = tempFolder.newFile("outWriterWithError.dat");
-		StreamFileWriter writer = StreamFileWriter.create(eventloop, executor, Paths.get(tempFile.getAbsolutePath()));
-
-		reader.streamTo(writer);
-
-		eventloop.run();
-		assertEquals(CLOSED_WITH_ERROR, reader.getProducerStatus());
-		assertEquals(CLOSED_WITH_ERROR, writer.getConsumerStatus());
-		assertEquals(Files.exists(Paths.get("test/outWriterWithError.dat")), false);
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-	}
-
-	@Test
-	public void testStreamReaderOnCloseWithError() throws IOException {
-		final File tempFile = tempFolder.newFile("outReaderWithError.dat");
-		final StreamFileWriter writer = StreamFileWriter.create(eventloop, executor,
-				Paths.get(tempFile.getAbsolutePath()));
-
-		reader.streamTo(writer);
-		eventloop.run();
-
-		assertEquals(CLOSED_WITH_ERROR, reader.getProducerStatus());
-		assertEquals(CLOSED_WITH_ERROR, writer.getConsumerStatus());
-		assertArrayEquals(com.google.common.io.Files.toByteArray(tempFile), "Test".getBytes());
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-	}
 
 	@Test
 	public void testStreamFileReader() throws IOException {
@@ -134,30 +92,23 @@ public class StreamFileReaderWriterTest {
 
 			@Override
 			protected void onStarted() {
-				suspend();
-				eventloop.schedule(eventloop.currentTimeMillis() + 10, new Runnable() {
-					@Override
-					public void run() {
-						resume();
-					}
-				});
+				getProducer().suspend();
+				eventloop.schedule(eventloop.currentTimeMillis() + 10, () -> getProducer().produce(this));
 			}
 
 			@Override
-			public StreamDataReceiver<ByteBuf> getDataReceiver() {
-				return this;
+			protected void onEndOfStream() {
+			}
+
+			@Override
+			protected void onError(Exception e) {
 			}
 
 			@Override
 			public void onData(ByteBuf item) {
 				list.add(item);
-				suspend();
-				eventloop.schedule(eventloop.currentTimeMillis() + 10, new Runnable() {
-					@Override
-					public void run() {
-						resume();
-					}
-				});
+				getProducer().suspend();
+				eventloop.schedule(eventloop.currentTimeMillis() + 10, () -> getProducer().produce(this));
 			}
 		}
 
@@ -216,203 +167,4 @@ public class StreamFileReaderWriterTest {
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
-	@Test
-	public void testStreamReaderRecycle() throws IOException {
-		final TestStreamConsumers.TestConsumerToList<ByteBuf> writer = new TestStreamConsumers.TestConsumerToList<ByteBuf>(eventloop) {
-			@Override
-			public void onData(ByteBuf item) {
-				super.onData(item);
-				item.recycle();
-			}
-		};
-
-		reader.streamTo(writer);
-		eventloop.run();
-
-		assertEquals(CLOSED_WITH_ERROR, reader.getProducerStatus());
-		assertEquals(CLOSED_WITH_ERROR, writer.getConsumerStatus());
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-	}
-
-	@Before
-	public void before() {
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
-
-		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
-		executor = Executors.newCachedThreadPool();
-		reader = new StreamFileReaderWithError(eventloop, executor, 1, Paths.get("test_data/in.dat"), 0, Long.MAX_VALUE);
-
-	}
-
-	// override send(ByteBuf item) with error
-	public final static class StreamFileReaderWithError extends AbstractStreamProducer<ByteBuf> {
-		private final Logger logger = LoggerFactory.getLogger(this.getClass());
-
-		private final ExecutorService executor;
-		protected AsyncFile asyncFile;
-		private Path path;
-
-		protected final int bufferSize;
-		protected long position;
-		protected long length;
-
-		protected boolean pendingAsyncOperation;
-
-		public StreamFileReaderWithError(Eventloop eventloop, ExecutorService executor,
-		                                 int bufferSize,
-		                                 Path path, long position, long length) {
-			super(eventloop);
-			this.executor = checkNotNull(executor);
-			this.bufferSize = bufferSize;
-			this.path = path;
-			this.position = position;
-			this.length = length;
-		}
-
-		/**
-		 * Returns new StreamFileReader for reading file segment
-		 *
-		 * @param eventloop  event loop in which it will work
-		 * @param executor   executor in which file will be opened
-		 * @param bufferSize size of buffer, size of data which can be read at once
-		 * @param path       location of file
-		 * @param position   position after which reader will read file
-		 * @param length     number of elements for reading
-		 */
-		public static StreamFileReaderWithError readFileSegment(Eventloop eventloop, ExecutorService executor,
-		                                                        int bufferSize,
-		                                                        Path path, long position, long length) {
-			return new StreamFileReaderWithError(eventloop, executor, bufferSize, path, position, length);
-		}
-
-		/**
-		 * Returns new StreamFileReader for full reading file
-		 *
-		 * @param eventloop  event loop in which it will work
-		 * @param executor   executor it which file will be opened
-		 * @param bufferSize size of buffer, size of data which can be read at once
-		 * @param path       location of file
-		 */
-		public static StreamFileReaderWithError readFileFully(Eventloop eventloop, ExecutorService executor,
-		                                                      int bufferSize,
-		                                                      Path path) {
-			return new StreamFileReaderWithError(eventloop, executor, bufferSize, path, 0, Long.MAX_VALUE);
-		}
-
-		/**
-		 * Returns new StreamFileReader for reading file after some position
-		 *
-		 * @param eventloop  event loop in which it will work
-		 * @param executor   executor it which file will be opened
-		 * @param bufferSize size of buffer, size of data which can be read at once
-		 * @param path       location of file
-		 * @param position   position after which reader will read file
-		 */
-		public static StreamFileReaderWithError readFileFrom(Eventloop eventloop, ExecutorService executor,
-		                                                     int bufferSize,
-		                                                     Path path, long position) {
-			return new StreamFileReaderWithError(eventloop, executor, bufferSize, path, position, Long.MAX_VALUE);
-		}
-
-		protected void doFlush() {
-			if (getProducerStatus().isClosed() || asyncFile == null)
-				return;
-
-			if (length == 0L) {
-				doCleanup();
-				sendEndOfStream();
-				return;
-			}
-
-			final ByteBuf buf = ByteBufPool.allocate((int) min(bufferSize, length));
-
-			asyncFile.read(buf, position).whenComplete((result, throwable) -> {
-				if (throwable == null) {
-					if (getProducerStatus().isClosed()) {
-						buf.recycle();
-						doCleanup();
-						return;
-					}
-					pendingAsyncOperation = false;
-					if (result == -1) {
-						buf.recycle();
-						doCleanup();
-						sendEndOfStream();
-						return;
-					} else {
-						position += result;
-						send(buf);
-						if (length != Long.MAX_VALUE)
-							length -= result;
-					}
-					if (isStatusReady()) postFlush();
-				} else {
-					buf.recycle();
-					doCleanup();
-					closeWithError(AsyncCallbacks.throwableToException(throwable));
-				}
-			});
-		}
-
-		@Override
-		public void send(ByteBuf item) {
-			if (item.toString().equals("1")) {
-				item.recycle();
-				closeWithError(new Exception("Intentionally closed with exception"));
-				return;
-			}
-			super.send(item);
-		}
-
-		protected void postFlush() {
-			if (asyncFile == null || pendingAsyncOperation)
-				return;
-			pendingAsyncOperation = true;
-			eventloop.post(this::doFlush);
-		}
-
-		@Override
-		public void onSuspended() {
-			logger.trace("{}: downstream consumer {} suspended.", this, downstreamConsumer);
-		}
-
-		@Override
-		public void onResumed() {
-			postFlush();
-		}
-
-		@Override
-		protected void onStarted() {
-			if (asyncFile != null || pendingAsyncOperation)
-				return;
-			pendingAsyncOperation = true;
-			AsyncFile.openAsync(eventloop, executor, path, new OpenOption[]{READ}).whenComplete((file, throwable) -> {
-				if (throwable == null) {
-					pendingAsyncOperation = false;
-					asyncFile = file;
-					postFlush();
-				} else {
-					closeWithError(AsyncCallbacks.throwableToException(throwable));
-				}
-			});
-		}
-
-		@Override
-		protected void onError(Exception e) {
-			logger.error("{}: downstream consumer {} exception.", this, downstreamConsumer);
-		}
-
-		@Override
-		protected void doCleanup() {
-			if (asyncFile != null) {
-				asyncFile.close();
-				asyncFile = null;
-			}
-		}
-
-		public long getPosition() {
-			return position;
-		}
-	}
 }

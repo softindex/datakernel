@@ -16,7 +16,9 @@
 
 package io.datakernel.stream;
 
+import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
+import static io.datakernel.stream.StreamStatus.SUSPENDED;
 
 /**
  * See also:
@@ -26,55 +28,104 @@ import static com.google.common.base.Preconditions.checkState;
  *
  * @param <T> item type
  */
-public abstract class StreamProducerDecorator<T> implements StreamProducer<T> {
-	protected StreamProducer<T> delegateProducer;
+public class StreamProducerDecorator<T> implements StreamProducer<T> {
+	private StreamProducer<T> actualProducer;
+	private StreamConsumer<T> consumer;
+
+	private StreamDataReceiver<T> pendingDataReceiver;
+	private Exception pendingError;
 
 	// region creators
 	protected StreamProducerDecorator() {
 	}
 
-	protected StreamProducerDecorator(StreamProducer<T> delegateProducer) {
-		setDelegateProducer(delegateProducer);
+	protected StreamProducerDecorator(StreamProducer<T> actualProducer) {
+		setActualProducer(actualProducer);
+	}
+
+	public static <T> StreamProducerDecorator<T> create() {
+		return new StreamProducerDecorator<T>();
 	}
 	// endregion
 
-	protected void setDelegateProducer(StreamProducer<T> delegateProducer) {
-		checkState(this.delegateProducer == null, "Decorator is already wired");
-		this.delegateProducer = delegateProducer;
+	public final void setActualProducer(StreamProducer<T> producer) {
+		checkState(this.actualProducer == null, "Decorator is already wired");
+		actualProducer = producer;
+		actualProducer.streamTo(new StreamConsumer<T>() {
+			@Override
+			public void streamFrom(StreamProducer<T> producer) {
+				assert producer == actualProducer;
+			}
+
+			@Override
+			public void endOfStream() {
+				onEndOfStream();
+			}
+
+			@Override
+			public void closeWithError(Exception e) {
+				onCloseWithError(e);
+			}
+		});
+		if (pendingError != null) {
+			actualProducer.closeWithError(pendingError);
+		} else if (pendingDataReceiver != null) {
+			actualProducer.produce(pendingDataReceiver);
+		}
+	}
+
+	public final StreamProducer<T> getActualProducer() {
+		return actualProducer;
+	}
+
+	public StreamConsumer<T> getConsumer() {
+		return consumer;
 	}
 
 	@Override
-	public void streamTo(StreamConsumer<T> downstreamConsumer) {
-		delegateProducer.streamTo(downstreamConsumer);
+	public final void streamTo(StreamConsumer<T> consumer) {
+		checkNotNull(consumer);
+		if (this.consumer == consumer) return;
+		checkState(this.consumer == null);
+
+		this.consumer = consumer;
+
+		consumer.streamFrom(this);
 	}
 
 	@Override
-	public void bindDataReceiver() {
-		delegateProducer.bindDataReceiver();
+	public final void produce(StreamDataReceiver<T> dataReceiver) {
+		if (actualProducer != null) {
+			actualProducer.produce(dataReceiver);
+		} else {
+			pendingDataReceiver = dataReceiver;
+		}
 	}
 
 	@Override
-	public void onConsumerSuspended() {
-		delegateProducer.onConsumerSuspended();
+	public final void suspend() {
+		if (actualProducer != null) {
+			actualProducer.suspend();
+		} else {
+			pendingDataReceiver = null;
+		}
 	}
 
 	@Override
-	public void onConsumerResumed() {
-		delegateProducer.onConsumerResumed();
+	public final void closeWithError(Exception e) {
+		if (actualProducer != null) {
+			actualProducer.closeWithError(e);
+		} else {
+			pendingError = e;
+		}
 	}
 
-	@Override
-	public void onConsumerError(Exception e) {
-		delegateProducer.onConsumerError(e);
+	protected void onEndOfStream() {
+		consumer.endOfStream();
 	}
 
-	@Override
-	public StreamStatus getProducerStatus() {
-		return delegateProducer.getProducerStatus();
+	protected void onCloseWithError(Exception e) {
+		consumer.closeWithError(e);
 	}
 
-	@Override
-	public Exception getProducerException() {
-		return delegateProducer.getProducerException();
-	}
 }

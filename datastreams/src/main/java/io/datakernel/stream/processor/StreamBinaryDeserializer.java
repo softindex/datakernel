@@ -20,11 +20,10 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.ValueStats;
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.stream.AbstractStreamTransformer_1_1;
-import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.*;
+
+import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 
 /**
  * Represent deserializer which deserializes data from ByteBuffer to some type. Is a {@link AbstractStreamTransformer_1_1}
@@ -32,68 +31,22 @@ import io.datakernel.stream.StreamDataReceiver;
  *
  * @param <T> original type of data
  */
-public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer_1_1<ByteBuf, T> {
+public final class StreamBinaryDeserializer<T> implements StreamTransformer<ByteBuf, T> {
 	public static final ParseException HEADER_SIZE_EXCEPTION = new ParseException("Header size is too large");
 	public static final ParseException DESERIALIZED_SIZE_EXCEPTION = new ParseException("Deserialized size != parsed data size");
 
+	private final Eventloop eventloop;
 	private final BufferSerializer<T> valueSerializer;
 
-	private InputConsumer inputConsumer;
-	private OutputProducer outputProducer;
-
-	public interface Inspector extends AbstractStreamTransformer_1_1.Inspector {
-		void onInput(ByteBuf buf);
-
-		void onOutput();
-	}
-
-	public static class JmxInspector<T> extends AbstractStreamTransformer_1_1.JmxInspector implements Inspector {
-		private static final double SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_1_MINUTE;
-
-		private final ValueStats inputBufs = ValueStats.create(SMOOTHING_WINDOW);
-		private long outputItems;
-
-		@Override
-		public void onInput(ByteBuf buf) {
-			inputBufs.recordValue(buf.readRemaining());
-		}
-
-		@Override
-		public void onOutput() {
-			outputItems++;
-		}
-
-		@JmxAttribute
-		public ValueStats getInputBufs() {
-			return inputBufs;
-		}
-
-		@JmxAttribute
-		public long getOutputItems() {
-			return outputItems;
-		}
-	}
+	private Input input;
+	private Output output;
 
 	// region creators
 	private StreamBinaryDeserializer(Eventloop eventloop, BufferSerializer<T> valueSerializer) {
-		super(eventloop);
+		this.eventloop = eventloop;
 		this.valueSerializer = valueSerializer;
-		rebuild();
-	}
-
-	private void rebuild() {
-		inputConsumer = new InputConsumer();
-		outputProducer = new OutputProducer(valueSerializer);
-	}
-
-	@Override
-	protected AbstractInputConsumer getInputImpl() {
-		return inputConsumer;
-	}
-
-	@Override
-	protected AbstractOutputProducer getOutputImpl() {
-		return outputProducer;
+		this.input = new Input(eventloop);
+		this.output = new Output(eventloop, valueSerializer);
 	}
 
 	/**
@@ -106,58 +59,64 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 		return new StreamBinaryDeserializer<>(eventloop, valueSerializer);
 	}
 
-	public StreamBinaryDeserializer<T> withInspector(Inspector inspector) {
-		super.inspector = inspector;
-		rebuild();
-		return this;
+	@Override
+	public StreamConsumer<ByteBuf> getInput() {
+		return input;
 	}
+
+	@Override
+	public StreamProducer<T> getOutput() {
+		return output;
+	}
+
 	// endregion
 
-	private final class InputConsumer extends AbstractInputConsumer {
-		@Override
-		protected void onUpstreamEndOfStream() {
-			outputProducer.produce();
+	private final class Input extends AbstractStreamConsumer<ByteBuf> {
+		protected Input(Eventloop eventloop) {
+			super(eventloop);
 		}
 
 		@Override
-		public StreamDataReceiver<ByteBuf> getDataReceiver() {
-			return outputProducer;
+		protected void onEndOfStream() {
+			output.produce();
 		}
 
+		@Override
+		protected void onError(Exception e) {
+			output.closeWithError(e);
+		}
 	}
 
-	private final class OutputProducer extends AbstractOutputProducer implements StreamDataReceiver<ByteBuf> {
+	private final class Output extends AbstractStreamProducer<T> implements StreamDataReceiver<ByteBuf> {
 		private final ByteBufQueue queue = ByteBufQueue.create();
 
 		private final BufferSerializer<T> valueSerializer;
 
-		private final Inspector inspector = (Inspector) StreamBinaryDeserializer.this.inspector;
-
-		private OutputProducer(BufferSerializer<T> valueSerializer) {
+		private Output(Eventloop eventloop, BufferSerializer<T> valueSerializer) {
+			super(eventloop);
 			this.valueSerializer = valueSerializer;
 		}
 
 		@Override
 		public void onData(ByteBuf buf) {
-			if (inspector != null) inspector.onInput(buf);
-			this.queue.add(buf);
-			outputProducer.produce();
+			queue.add(buf);
+			produce();
 		}
 
 		@Override
-		protected void onDownstreamSuspended() {
-			inputConsumer.suspend();
+		protected void onWired() {
+			super.onWired();
 		}
 
 		@Override
-		protected void onDownstreamResumed() {
-			resumeProduce();
+		protected void onSuspended() {
+			input.getProducer().suspend();
 		}
 
 		@Override
-		protected void doProduce() {
+		protected void produce() {
 			try {
-				while (isStatusReady() && queue.hasRemaining()) {
+				while (isReceiverReady() && queue.hasRemaining()) {
 					int dataSize = tryPeekSize(queue);
 					int headerSize = dataSize >>> 24;
 					int size = headerSize + (dataSize & 0xFFFFFF);
@@ -182,23 +141,28 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 						throw DESERIALIZED_SIZE_EXCEPTION;
 					buf.recycle();
 
-					downstreamDataReceiver.onData(item);
+					send(item);
 				}
 
-				if (isStatusReady())
-					inputConsumer.resume();
-
-				if (queue.isEmpty() && inputConsumer.getConsumerStatus().isClosed()) {
-					outputProducer.sendEndOfStream();
+				if (isReceiverReady()) {
+					input.getProducer().produce(this);
 				}
 
+				if (queue.isEmpty() && input.getStatus() == END_OF_STREAM) {
+					output.sendEndOfStream();
+				}
 			} catch (ParseException e) {
 				closeWithError(e);
 			}
 		}
 
 		@Override
-		protected void doCleanup() {
+		protected void onError(Exception e) {
+			input.closeWithError(e);
+		}
+
+		@Override
+		protected void cleanup() {
 			queue.clear();
 		}
 	}

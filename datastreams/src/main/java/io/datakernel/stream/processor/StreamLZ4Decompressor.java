@@ -21,9 +21,7 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
-import io.datakernel.jmx.ValueStats;
-import io.datakernel.stream.AbstractStreamTransformer_1_1;
-import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.*;
 import net.jpountz.lz4.LZ4Exception;
 import net.jpountz.lz4.LZ4Factory;
 import net.jpountz.lz4.LZ4FastDecompressor;
@@ -31,86 +29,109 @@ import net.jpountz.util.SafeUtils;
 import net.jpountz.xxhash.StreamingXXHash32;
 import net.jpountz.xxhash.XXHashFactory;
 
+import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.processor.StreamLZ4Compressor.*;
 import static java.lang.String.format;
 
-public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> {
+public final class StreamLZ4Decompressor implements StreamTransformer<ByteBuf,ByteBuf> {
 	public static final int HEADER_LENGTH = StreamLZ4Compressor.HEADER_LENGTH;
 
-	public final static class Header {
-		public int originalLen;
-		public int compressedLen;
-		public int compressionMethod;
-		public int check;
-		public boolean finished;
-	}
-
+	private final Eventloop eventloop;
 	private final LZ4FastDecompressor decompressor;
 	private final StreamingXXHash32 checksum;
 
-	private InputConsumer inputConsumer;
-	private OutputProducer outputProducer;
+	private Input input;
+	private Output output;
 
-	private final Header header = new Header();
+	private Inspector inspector;
 
-	public interface Inspector extends AbstractStreamTransformer_1_1.Inspector {
+	public interface Inspector {
 		void onInputBuf(StreamLZ4Decompressor self, ByteBuf buf);
 
 		void onBlock(StreamLZ4Decompressor self, Header header, ByteBuf inputBuf, ByteBuf outputBuf);
 	}
 
-	public static class JmxInspector extends AbstractStreamTransformer_1_1.JmxInspector implements Inspector {
-		private static final double SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_1_MINUTE;
+	// region creators
+	private StreamLZ4Decompressor(Eventloop eventloop, LZ4FastDecompressor decompressor, StreamingXXHash32 checksum) {
+		this.eventloop = eventloop;
+		this.decompressor = decompressor;
+		this.checksum = checksum;
+		recreate();
+	}
 
-		private final ValueStats bytesIn = ValueStats.create(SMOOTHING_WINDOW);
-		private final ValueStats bytesOut = ValueStats.create(SMOOTHING_WINDOW);
+	private void recreate() {
+		this.output = new Output(eventloop, decompressor, checksum);
+		this.input = new Input(eventloop);
+	}
 
-		@Override
-		public void onInputBuf(StreamLZ4Decompressor self, ByteBuf buf) {
-			bytesIn.recordValue(buf.readRemaining());
+	@Override
+	public StreamConsumer<ByteBuf> getInput() {
+		return input;
+	}
+
+	@Override
+	public StreamProducer<ByteBuf> getOutput() {
+		return output;
+	}
+
+	public static StreamLZ4Decompressor create(Eventloop eventloop, LZ4FastDecompressor decompressor,
+	                                           StreamingXXHash32 checksum) {
+		return new StreamLZ4Decompressor(eventloop, decompressor, checksum);
+	}
+
+	public static StreamLZ4Decompressor create(Eventloop eventloop) {
+		return new StreamLZ4Decompressor(eventloop, LZ4Factory.fastestInstance().fastDecompressor(),
+				XXHashFactory.fastestInstance().newStreamingHash32(DEFAULT_SEED));
+	}
+
+	public StreamLZ4Decompressor withInspector(Inspector inspector) {
+		this.inspector = inspector;
+		recreate();
+		return this;
+	}
+	// endregion
+
+	private final class Input extends AbstractStreamConsumer<ByteBuf> {
+		protected Input(Eventloop eventloop) {
+			super(eventloop);
 		}
 
 		@Override
-		public void onBlock(StreamLZ4Decompressor self, Header header, ByteBuf inputBuf, ByteBuf outputBuf) {
-			bytesOut.recordValue(outputBuf.readRemaining());
+		protected void onEndOfStream() {
+			output.produce();
+		}
+
+		@Override
+		protected void onError(Exception e) {
+			output.closeWithError(e);
 		}
 	}
 
-	private final class InputConsumer extends AbstractInputConsumer {
-		@Override
-		protected void onUpstreamEndOfStream() {
-			outputProducer.produce();
-		}
-
-		@Override
-		public StreamDataReceiver<ByteBuf> getDataReceiver() {
-			return outputProducer;
-		}
-	}
-
-	private final class OutputProducer extends AbstractOutputProducer implements StreamDataReceiver<ByteBuf> {
+	private final class Output extends AbstractStreamProducer<ByteBuf> implements StreamDataReceiver<ByteBuf> {
 		private final LZ4FastDecompressor decompressor;
 		private final StreamingXXHash32 checksum;
 
 		private final ByteBufQueue queue = ByteBufQueue.create();
 
 		private final ByteBuf headerBuf = ByteBuf.wrapForWriting(new byte[HEADER_LENGTH]);
+		private final Header header = new Header();
 
 		private final Inspector inspector = (Inspector) StreamLZ4Decompressor.this.inspector;
 
-		private OutputProducer(LZ4FastDecompressor decompressor, StreamingXXHash32 checksum) {
+		private Output(Eventloop eventloop, LZ4FastDecompressor decompressor, StreamingXXHash32 checksum) {
+			super(eventloop);
 			this.decompressor = decompressor;
 			this.checksum = checksum;
 		}
 
 		@Override
-		protected void onDownstreamSuspended() {
-			inputConsumer.suspend();
+		protected void onSuspended() {
+			input.getProducer().suspend();
 		}
 
 		@Override
-		protected void onDownstreamResumed() {
-			resumeProduce();
+		protected void onError(Exception e) {
+			input.closeWithError(e);
 		}
 
 		@Override
@@ -121,16 +142,16 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<B
 					throw new ParseException(format("Unexpected byteBuf after LZ4 EOS packet %s : %s", this, buf));
 				}
 				queue.add(buf);
-				outputProducer.produce();
+				output.produce();
 			} catch (ParseException e) {
-				inputConsumer.closeWithError(e);
+				input.closeWithError(e);
 			}
 		}
 
 		@Override
-		protected void doProduce() {
+		protected void produce() {
 			try {
-				while (isStatusReady()) {
+				while (isReceiverReady()) {
 					if (!queue.hasRemainingBytes(headerBuf.writeRemaining()))
 						break;
 
@@ -154,68 +175,27 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<B
 					ByteBuf outputBuf = readBody(decompressor, checksum, header, inputBuf.array(), inputBuf.readPosition());
 					if (inspector != null) inspector.onBlock(StreamLZ4Decompressor.this, header, inputBuf, outputBuf);
 					inputBuf.recycle();
-					downstreamDataReceiver.onData(outputBuf);
+					send(outputBuf);
 					headerBuf.rewind();
 				}
 
-				if (isStatusReady()) {
-					inputConsumer.resume();
+				if (isReceiverReady()) {
+					input.getProducer().produce(this);
 				}
 
-				if (queue.isEmpty() && inputConsumer.getConsumerStatus().isClosed()) {
-					outputProducer.sendEndOfStream();
+				if (queue.isEmpty() && input.getStatus() == END_OF_STREAM) {
+					output.sendEndOfStream();
 				}
-
 			} catch (ParseException e) {
 				closeWithError(e);
 			}
 		}
 
 		@Override
-		protected void doCleanup() {
+		protected void cleanup() {
 			queue.clear();
 		}
 	}
-
-	// region creators
-	private StreamLZ4Decompressor(Eventloop eventloop, LZ4FastDecompressor decompressor, StreamingXXHash32 checksum) {
-		super(eventloop);
-		this.decompressor = decompressor;
-		this.checksum = checksum;
-		recreate();
-	}
-
-	private void recreate() {
-		this.outputProducer = new OutputProducer(decompressor, checksum);
-		this.inputConsumer = new InputConsumer();
-	}
-
-	@Override
-	protected AbstractInputConsumer getInputImpl() {
-		return inputConsumer;
-	}
-
-	@Override
-	protected AbstractOutputProducer getOutputImpl() {
-		return outputProducer;
-	}
-
-	public static StreamLZ4Decompressor create(Eventloop eventloop, LZ4FastDecompressor decompressor,
-	                                           StreamingXXHash32 checksum) {
-		return new StreamLZ4Decompressor(eventloop, decompressor, checksum);
-	}
-
-	public static StreamLZ4Decompressor create(Eventloop eventloop) {
-		return new StreamLZ4Decompressor(eventloop, LZ4Factory.fastestInstance().fastDecompressor(),
-				XXHashFactory.fastestInstance().newStreamingHash32(DEFAULT_SEED));
-	}
-
-	public StreamLZ4Decompressor withInspector(Inspector inspector) {
-		super.inspector = inspector;
-		recreate();
-		return this;
-	}
-	// endregion
 
 	private static ByteBuf readBody(LZ4FastDecompressor decompressor, StreamingXXHash32 checksum, Header header,
 	                                byte[] bytes, int off) throws ParseException {
@@ -244,6 +224,14 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<B
 			throw new ParseException("Stream is corrupted");
 		}
 		return outputBuf;
+	}
+
+	public final static class Header {
+		public int originalLen;
+		public int compressedLen;
+		public int compressionMethod;
+		public int check;
+		public boolean finished;
 	}
 
 	private static void readHeader(Header header, byte[] buf, int off) throws ParseException {

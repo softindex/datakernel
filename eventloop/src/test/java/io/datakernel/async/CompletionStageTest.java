@@ -26,9 +26,9 @@ public class CompletionStageTest {
 		SettableStage<Integer> asyncResult = SettableStage.create();
 		try {
 			Integer result = Integer.valueOf(param);
-			asyncResult.setResult(result);
+			asyncResult.set(result);
 		} catch (NumberFormatException e) {
-			asyncResult.setError(e);
+			asyncResult.setException(e);
 		}
 		return asyncResult;
 	}
@@ -84,7 +84,7 @@ public class CompletionStageTest {
 		}
 
 		final CompletableFuture<Integer> future = powerOfTwo.toCompletableFuture();
-		startStage.setResult(1);
+		startStage.set(1);
 		eventloop.run();
 		future.get();
 	}
@@ -98,7 +98,7 @@ public class CompletionStageTest {
 		}
 
 		final CompletableFuture<Integer> future = powerOfTwo.toCompletableFuture();
-		startStage.setError(new RuntimeException("Test"));
+		startStage.setException(new RuntimeException("Test"));
 		eventloop.run();
 		try {
 			future.get();
@@ -222,7 +222,7 @@ public class CompletionStageTest {
 		final SettableStage<Integer> stage2 = SettableStage.immediateStage(40);
 		final CompletableFuture<Void> future = stage1.runAfterEitherAsync(stage2, () -> {
 			assertFalse(eventloop.inEventloopThread());
-			assertTrue(stage1.isDone() || stage2.isDone());
+			assertTrue(stage1.isSet() || stage2.isSet());
 			result.set(42);
 		}, executor).toCompletableFuture();
 

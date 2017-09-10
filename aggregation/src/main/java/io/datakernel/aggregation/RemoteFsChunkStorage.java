@@ -17,15 +17,13 @@
 package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.ot.AggregationStructure;
-import io.datakernel.async.AsyncCallbacks;
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.IRemoteFsClient;
 import io.datakernel.remotefs.RemoteFsClient;
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
 import io.datakernel.stream.processor.StreamLZ4Compressor;
@@ -52,49 +50,40 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage {
 		return new RemoteFsChunkStorage(eventloop, idGenerator, serverAddress);
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
-	public <T> void read(final AggregationStructure aggregation, final List<String> fields,
-	                     final Class<T> recordClass, long id, final DefiningClassLoader classLoader,
-	                     final ResultCallback<StreamProducer<T>> callback) {
-		client.download(path(id), 0).whenComplete((producer, throwable) -> {
-			if (throwable == null) {
-				StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create(eventloop);
-				producer.streamTo(decompressor.getInput());
+	public <T> CompletionStage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields,
+	                                                                   Class<T> recordClass, long chunkId,
+	                                                                   DefiningClassLoader classLoader) {
+		return client.download(path(chunkId), 0).thenApply(producer -> {
+			StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create(eventloop);
 
-				BufferSerializer<T> bufferSerializer = createBufferSerializer(aggregation, recordClass,
-						aggregation.getKeys(), fields, classLoader);
-				StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(eventloop, bufferSerializer);
+			BufferSerializer<T> bufferSerializer = createBufferSerializer(aggregation, recordClass,
+					aggregation.getKeys(), fields, classLoader);
+			StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(eventloop, bufferSerializer);
 
-				decompressor.getOutput().streamTo(deserializer.getInput());
-				callback.setResult(deserializer.getOutput());
-			} else {
-				callback.setException(AsyncCallbacks.throwableToException(throwable));
-			}
+			producer.streamTo(decompressor.getInput());
+			decompressor.getOutput().streamTo(deserializer.getInput());
+
+			return StreamProducerWithResult.wrap(deserializer.getOutput());
 		});
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
-	public <T> void write(StreamProducer<T> producer, AggregationStructure aggregation, List<String> fields, Class<T> recordClass,
-	                      final long id, DefiningClassLoader classLoader, final CompletionCallback callback) {
-		StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
-		BufferSerializer<T> bufferSerializer = createBufferSerializer(aggregation, recordClass,
-				aggregation.getKeys(), fields, classLoader);
-		StreamBinarySerializer<T> serializer = StreamBinarySerializer.create(eventloop, bufferSerializer)
-				.withDefaultBufferSize(StreamBinarySerializer.MAX_SIZE_2)
-				.withFlushDelay(1000);
+	public <T> CompletionStage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields,
+	                                                                    Class<T> recordClass, long chunkId,
+	                                                                    DefiningClassLoader classLoader) {
+		return client.upload(path(chunkId)).thenApply(consumer -> {
+			StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
+			BufferSerializer<T> bufferSerializer = createBufferSerializer(aggregation, recordClass,
+					aggregation.getKeys(), fields, classLoader);
 
-		producer.streamTo(serializer.getInput());
-		serializer.getOutput().streamTo(compressor.getInput());
+			StreamBinarySerializer<T> serializer = StreamBinarySerializer.create(eventloop, bufferSerializer)
+					.withDefaultBufferSize(StreamBinarySerializer.MAX_SIZE_2);
 
-		client.upload(compressor.getOutput(), path(id)).whenComplete((aVoid, throwable) -> {
-			if (throwable == null) {
-				callback.setComplete();
-			} else {
-				client.delete(path(id));
-				callback.setException(AsyncCallbacks.throwableToException(throwable));
-			}
+			serializer.getOutput().streamTo(compressor.getInput());
+			compressor.getOutput().streamTo(consumer);
+
+			return StreamConsumerWithResult.create(serializer.getInput(), consumer.getResult());
 		});
 	}
 

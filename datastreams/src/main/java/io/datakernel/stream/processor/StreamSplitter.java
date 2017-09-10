@@ -17,87 +17,98 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.EventloopJmxMBean;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.stream.AbstractStreamTransformer_1_N;
-import io.datakernel.stream.StreamDataReceiver;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.*;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 @SuppressWarnings("unchecked")
-public final class StreamSplitter<T> extends AbstractStreamTransformer_1_N<T> implements EventloopJmxMBean {
-	private int jmxItems;
+public final class StreamSplitter<T> implements HasInput<T>, HasOutputs, StreamDataReceiver<T> {
+	private final Eventloop eventloop;
 
-	protected final class InputConsumer extends AbstractInputConsumer implements StreamDataReceiver<T> {
-		@Override
-		protected void onUpstreamEndOfStream() {
-			for (AbstractOutputProducer<?> downstreamProducer : outputProducers) {
-				downstreamProducer.sendEndOfStream();
-			}
-		}
+	private final Input input;
+	private final List<Output> outputs = new ArrayList<>();
 
-		@Override
-		public StreamDataReceiver<T> getDataReceiver() {
-			return this;
-		}
+	private StreamDataReceiver<T>[] dataReceivers = new StreamDataReceiver[0];
+	private int suspended = 0;
 
-		@Override
-		public void onData(T item) {
-			assert jmxItems != ++jmxItems;
-			for (StreamDataReceiver<T> streamCallback : (StreamDataReceiver<T>[]) dataReceivers) {
-				streamCallback.onData(item);
-			}
-		}
-	}
-
-	protected final class OutputProducer<O> extends AbstractOutputProducer<O> {
-		public OutputProducer() {
-		}
-
-		@Override
-		protected void onDownstreamSuspended() {
-			inputConsumer.suspend();
-		}
-
-		@Override
-		protected void onDownstreamResumed() {
-			if (allOutputsResumed()) {
-				inputConsumer.resume();
-			}
-		}
-	}
-
-	// region creators
 	private StreamSplitter(Eventloop eventloop) {
-		super(eventloop);
-		setInputConsumer(new InputConsumer());
+		this.eventloop = eventloop;
+		this.input = new Input(eventloop);
 	}
 
 	public static <T> StreamSplitter<T> create(Eventloop eventloop) {
-		return new StreamSplitter<T>(eventloop);
+		return new StreamSplitter<>(eventloop);
 	}
-	// endregion
 
 	public StreamProducer<T> newOutput() {
-		return addOutput(new OutputProducer<T>());
+		Output output = new Output(eventloop, outputs.size());
+		dataReceivers = Arrays.copyOf(dataReceivers, dataReceivers.length + 1);
+		suspended++;
+		outputs.add(output);
+		return output;
 	}
-
-	// jmx
 
 	@Override
-	public Eventloop getEventloop() {
-		return eventloop;
+	public StreamConsumer<T> getInput() {
+		return input;
 	}
 
-	@JmxAttribute
-	public int getItems() {
-		return jmxItems;
-	}
-
-	@SuppressWarnings("AssertWithSideEffects")
 	@Override
-	public String toString() {
-		String items = "?";
-		assert (items = "" + jmxItems) != null;
-		return '{' + super.toString() + " items:" + items + '}';
+	public List<? extends StreamProducer<T>> getOutputs() {
+		return outputs;
 	}
+
+	@Override
+	public void onData(T item) {
+		for (int i = 0; i < dataReceivers.length; i++) {
+			dataReceivers[i].onData(item);
+		}
+	}
+
+	protected final class Input extends AbstractStreamConsumer<T> {
+		protected Input(Eventloop eventloop) {
+			super(eventloop);
+		}
+
+		@Override
+		protected void onEndOfStream() {
+			outputs.forEach(Output::sendEndOfStream);
+		}
+
+		@Override
+		protected void onError(Exception e) {
+			outputs.forEach(output -> output.closeWithError(e));
+		}
+	}
+
+	protected final class Output extends AbstractStreamProducer<T> {
+		private final int index;
+
+		protected Output(Eventloop eventloop, int index) {
+			super(eventloop);
+			this.index = index;
+		}
+
+		@Override
+		protected void onSuspended() {
+			suspended++;
+			input.getProducer().suspend();
+		}
+
+		@Override
+		protected void onProduce(StreamDataReceiver<T> dataReceiver) {
+			dataReceivers[index] = dataReceiver;
+			if (--suspended == 0) {
+				input.getProducer().produce(StreamSplitter.this);
+			}
+		}
+
+		@Override
+		protected void onError(Exception e) {
+			input.closeWithError(e);
+		}
+	}
+
 }

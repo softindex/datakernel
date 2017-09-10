@@ -16,10 +16,7 @@
 
 package io.datakernel.logfs;
 
-import io.datakernel.async.ForwardingResultCallback;
-import io.datakernel.async.ResultCallback;
-
-import java.util.List;
+import java.util.concurrent.CompletionStage;
 
 public abstract class AbstractLogFileSystem implements LogFileSystem {
 	protected static final class PartitionAndFile {
@@ -66,18 +63,15 @@ public abstract class AbstractLogFileSystem implements LogFileSystem {
 	}
 
 	@Override
-	public void makeUniqueLogFile(String logPartition, final String logName, final ResultCallback<LogFile> callback) {
-		list(logPartition, new ForwardingResultCallback<List<LogFile>>(callback) {
-			@Override
-			protected void onResult(List<LogFile> logFiles) {
-				int chunkN = 0;
-				for (LogFile logFile : logFiles) {
-					if (logFile.getName().equals(logName)) {
-						chunkN = Math.max(chunkN, logFile.getN() + 1);
-					}
+	public CompletionStage<LogFile> makeUniqueLogFile(String logPartition, String logName) {
+		return list(logPartition).thenApply(logFiles -> {
+			int chunkN = 0;
+			for (LogFile logFile : logFiles) {
+				if (logFile.getName().equals(logName)) {
+					chunkN = Math.max(chunkN, logFile.getN() + 1);
 				}
-				callback.setResult(new LogFile(logName, chunkN));
 			}
+			return new LogFile(logName, chunkN);
 		});
 	}
 }

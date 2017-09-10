@@ -16,8 +16,9 @@
 
 package io.datakernel.logfs.ot;
 
-import io.datakernel.async.ResultCallback;
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
+import io.datakernel.async.StagesAccumulator;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.logfs.LogFile;
@@ -25,15 +26,15 @@ import io.datakernel.logfs.LogManager;
 import io.datakernel.logfs.LogPosition;
 import io.datakernel.logfs.ot.LogDiff.LogPositionDiff;
 import io.datakernel.ot.OTStateManager;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.processor.StreamUnion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletionStage;
 
 /**
@@ -88,19 +89,20 @@ public final class LogOTProcessor<K, T, D> implements EventloopService {
 		return stateManager.pull();
 	}
 
+	@SuppressWarnings("unchecked")
 	public CompletionStage<Void> processLog() {
 		return stateManager.pull().thenCompose($ -> {
 			logger.trace("processLog_gotPositions called. Positions: {}", state.positions);
 
-			HashMap<String, LogPositionDiff> resultPositions = new LinkedHashMap<>();
-			List<D> resultDataDiffs = new ArrayList<>();
+			StreamProducerWithResult<T, Map<String, LogPositionDiff>> producer = getProducer();
+			StreamConsumerWithResult<T, List<D>> consumer = logStreamConsumer.consume();
+			producer.streamTo(consumer);
 
-			StreamProducer<T> producer = getProducer(resultPositions);
-
-			return logStreamConsumer.consume(producer)
-					.thenApply(diffs -> {
-						resultDataDiffs.addAll(diffs);
-						return LogDiff.of(resultPositions, resultDataDiffs);
+			return Stages.all(producer.getResult(), consumer.getResult())
+					.thenApply(objects -> {
+						Map<String, LogPositionDiff> positions = (Map<String, LogPositionDiff>) objects[0];
+						List<D> diffs = (List<D>) objects[1];
+						return LogDiff.of(positions, diffs);
 					})
 					.thenCompose(logDiff -> {
 						logger.info("Log '{}' processing complete. Positions: {}", log, logDiff.positions);
@@ -110,7 +112,8 @@ public final class LogOTProcessor<K, T, D> implements EventloopService {
 		});
 	}
 
-	private StreamProducer<T> getProducer(HashMap<String, LogPositionDiff> resultPositions) {
+	private StreamProducerWithResult<T, Map<String, LogPositionDiff>> getProducer() {
+		StagesAccumulator<Map<String, LogPositionDiff>> result = StagesAccumulator.create(new HashMap<>());
 		StreamUnion<T> streamUnion = StreamUnion.create(eventloop);
 		for (String partition : this.partitions) {
 			String logName = logName(partition);
@@ -121,22 +124,16 @@ public final class LogOTProcessor<K, T, D> implements EventloopService {
 			logger.info("Starting reading '{}' from position {}", logName, logPosition);
 
 			LogPosition logPositionFrom = logPosition;
-			logManager.producer(partition, logPosition.getLogFile(), logPosition.getPosition(),
-					new ResultCallback<LogPosition>() {
-						@Override
-						protected void onResult(LogPosition logPositionTo) {
-							if (!logPositionTo.equals(logPositionFrom)) {
-								resultPositions.put(logName, new LogPositionDiff(logPositionFrom, logPositionTo));
-							}
-						}
-
-						@Override
-						protected void onException(Exception e) {
-						}
-					})
-					.streamTo(streamUnion.newInput());
+			StreamProducerWithResult<T, LogPosition> producer = logManager.producerStream(partition, logPosition.getLogFile(), logPosition.getPosition(), null);
+			producer.streamTo(streamUnion.newInput());
+			result.addStage(producer.getResult(), (accumulator, logPositionTo) -> {
+				if (!logPositionTo.equals(logPositionFrom)) {
+					accumulator.put(logName, new LogPositionDiff(logPositionFrom, logPositionTo));
+				}
+				return accumulator;
+			});
 		}
-		return streamUnion.getOutput();
+		return StreamProducerWithResult.create(streamUnion.getOutput(), result.get());
 	}
 
 	private String logName(String partition) {

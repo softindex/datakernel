@@ -346,7 +346,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 		final SettableStage<InetAddress[]> stage = SettableStage.create();
 		final BiConsumer<DnsQueryResult, Throwable> queryConsumer = (dnsQueryResult, throwable) -> {
 			if (throwable == null) {
-				if (!resolvedFromCache) stage.setResult(dnsQueryResult.getIps());
+				if (!resolvedFromCache) stage.set(dnsQueryResult.getIps());
 				cache.add(dnsQueryResult);
 				closeConnectionIfDone();
 			} else {
@@ -354,7 +354,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 					DnsException dnsException = (DnsException) throwable;
 					cache.add(dnsException);
 				}
-				if (!resolvedFromCache) stage.setError(throwable);
+				if (!resolvedFromCache) stage.setException(throwable);
 				closeConnectionIfDone();
 			}
 		};

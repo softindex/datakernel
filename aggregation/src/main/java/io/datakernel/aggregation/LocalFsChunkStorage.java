@@ -17,14 +17,12 @@
 package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.ot.AggregationStructure;
-import io.datakernel.async.AsyncCallbacks;
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
@@ -100,51 +98,39 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 	}
 
 	@Override
-	public <T> void read(final AggregationStructure aggregation, final List<String> fields,
-	                     final Class<T> recordClass, long id, final DefiningClassLoader classLoader,
-	                     final ResultCallback<StreamProducer<T>> callback) {
-		AsyncFile.openAsync(eventloop, executorService, dir.resolve(id + LOG), new OpenOption[]{READ}).whenComplete((file, throwable) -> {
-			if (throwable == null) {
-				StreamFileReader fileReader = StreamFileReader.readFileFrom(eventloop, file, bufferSize, 0L);
+	public <T> CompletionStage<StreamProducerWithResult<T, Void>> read(final AggregationStructure aggregation, final List<String> fields,
+	                                                                   final Class<T> recordClass, long id, final DefiningClassLoader classLoader) {
+		return AsyncFile.openAsync(eventloop, executorService, dir.resolve(id + LOG), new OpenOption[]{READ}).thenApply(file -> {
+			StreamFileReader fileReader = StreamFileReader.readFileFrom(eventloop, file, bufferSize, 0L);
 
-				StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create(eventloop);
-				fileReader.streamTo(decompressor.getInput());
+			StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create(eventloop);
+			fileReader.streamTo(decompressor.getInput());
 
-				BufferSerializer<T> bufferSerializer = AggregationUtils.createBufferSerializer(aggregation, recordClass,
-						aggregation.getKeys(), fields, classLoader);
-				StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(eventloop, bufferSerializer);
+			BufferSerializer<T> bufferSerializer = AggregationUtils.createBufferSerializer(aggregation, recordClass,
+					aggregation.getKeys(), fields, classLoader);
+			StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(eventloop, bufferSerializer);
 
-				decompressor.getOutput().streamTo(deserializer.getInput());
-				callback.setResult(deserializer.getOutput());
-			} else {
-				callback.setException(AsyncCallbacks.throwableToException(throwable));
-			}
+			decompressor.getOutput().streamTo(deserializer.getInput());
+			return StreamProducerWithResult.wrap(deserializer.getOutput());
 		});
 	}
 
 	@Override
-	public <T> void write(StreamProducer<T> producer, AggregationStructure aggregation, List<String> fields,
-	                      Class<T> recordClass, long id,
-	                      DefiningClassLoader classLoader,
-	                      final CompletionCallback callback) {
-		final StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
+	public <T> CompletionStage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields,
+	                                                                    Class<T> recordClass, long id,
+	                                                                    DefiningClassLoader classLoader) {
 		BufferSerializer<T> bufferSerializer = AggregationUtils.createBufferSerializer(aggregation, recordClass,
 				aggregation.getKeys(), fields, classLoader);
-		StreamBinarySerializer<T> serializer = StreamBinarySerializer.create(eventloop, bufferSerializer)
-				.withDefaultBufferSize(StreamBinarySerializer.MAX_SIZE_2)
-				.withFlushDelay(1000);
+		return AsyncFile.openAsync(eventloop, executorService, dir.resolve(id + LOG), StreamFileWriter.CREATE_OPTIONS).thenApply(file -> {
+			StreamBinarySerializer<T> serializer = StreamBinarySerializer.create(eventloop, bufferSerializer)
+					.withDefaultBufferSize(StreamBinarySerializer.MAX_SIZE_2);
+			StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
+			StreamFileWriter writer = StreamFileWriter.create(eventloop, file, true);
 
-		producer.streamTo(serializer.getInput());
-		serializer.getOutput().streamTo(compressor.getInput());
+			serializer.getOutput().streamTo(compressor.getInput());
+			compressor.getOutput().streamTo(writer);
 
-		AsyncFile.openAsync(eventloop, executorService, dir.resolve(id + LOG), StreamFileWriter.CREATE_OPTIONS).whenComplete((file, throwable) -> {
-			if (throwable == null) {
-				StreamFileWriter writer = StreamFileWriter.create(eventloop, file, true);
-				compressor.getOutput().streamTo(writer);
-				writer.getFlushStage().whenComplete(AsyncCallbacks.forwardTo(callback));
-			} else {
-				callback.setException(AsyncCallbacks.throwableToException(throwable));
-			}
+			return StreamConsumerWithResult.create(serializer.getInput(), writer.getFlushStage());
 		});
 	}
 

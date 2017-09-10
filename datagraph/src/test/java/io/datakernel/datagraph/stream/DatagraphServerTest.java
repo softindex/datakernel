@@ -34,7 +34,8 @@ import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.processor.StreamMergeSorterStorage;
+import io.datakernel.stream.processor.StreamSorterStorage;
+import io.datakernel.stream.processor.StreamSorterStorageImpl;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;
@@ -203,7 +204,7 @@ public class DatagraphServerTest {
 		DatagraphEnvironment environment = DatagraphEnvironment.create()
 				.setInstance(DatagraphSerialization.class, serialization)
 				.setInstance(DatagraphClient.class, client)
-				.setInstance(StreamMergeSorterStorage.class, new StreamMergeSorterStorageStub(eventloop));
+				.setInstance(StreamSorterStorage.class, new StreamMergeSorterStorageStub(eventloop));
 		DatagraphEnvironment environment1 = environment.extend()
 				.set("items", asList(new TestItem(6), new TestItem(4), new TestItem(2),
 						new TestItem(3), new TestItem(1)))
@@ -268,7 +269,7 @@ public class DatagraphServerTest {
 		DatagraphEnvironment environment = DatagraphEnvironment.create()
 				.setInstance(DatagraphSerialization.class, serialization)
 				.setInstance(DatagraphClient.class, client)
-				.setInstance(StreamMergeSorterStorage.class, new StreamMergeSorterStorageStub(eventloop));
+				.setInstance(StreamSorterStorage.class, new StreamMergeSorterStorageStub(eventloop));
 		DatagraphEnvironment environment1 = environment.extend()
 				.set("items", asList(new TestItem(1), new TestItem(2), new TestItem(3),
 						new TestItem(4), new TestItem(5)));

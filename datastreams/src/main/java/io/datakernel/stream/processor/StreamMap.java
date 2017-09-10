@@ -17,46 +17,40 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.EventloopJmxMBean;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.stream.AbstractStreamTransformer_1_1;
-import io.datakernel.stream.StreamDataReceiver;
-
-import static com.google.common.base.Preconditions.checkNotNull;
+import io.datakernel.stream.*;
 
 /**
  * Provides to create some MapperProjection which will change received data, and send it to the
- * destination. It is {@link AbstractStreamTransformer_1_1} which receives original
+ * destination. It is {@link StreamMap} which receives original
  * data and streams changed data.
  *
  * @param <I> type of input data
  * @param <O> type of output data
  */
-public final class StreamMap<I, O> extends AbstractStreamTransformer_1_1<I, O> implements EventloopJmxMBean {
-	private int jmxItems;
-
-	private final InputConsumer inputConsumer;
-	private final OutputProducer outputProducer;
+public final class StreamMap<I, O> implements StreamTransformer<I, O> {
+	private final Input input;
+	private final Output output;
+	private final Mapper<I, O> mapper;
 
 	// region creators
 	private StreamMap(Eventloop eventloop, Mapper<I, O> mapper) {
-		super(eventloop);
-		this.inputConsumer = new InputConsumer();
-		this.outputProducer = new OutputProducer(mapper);
-	}
-
-	@Override
-	protected AbstractInputConsumer getInputImpl() {
-		return inputConsumer;
-	}
-
-	@Override
-	protected AbstractOutputProducer getOutputImpl() {
-		return outputProducer;
+		this.mapper = mapper;
+		this.input = new Input(eventloop);
+		this.output = new Output(eventloop);
 	}
 
 	public static <I, O> StreamMap<I, O> create(Eventloop eventloop, Mapper<I, O> mapper) {
 		return new StreamMap<I, O>(eventloop, mapper);
+	}
+
+	@Override
+	public StreamConsumer<I> getInput() {
+		return input;
+	}
+
+	@Override
+	public StreamProducer<O> getOutput() {
+		return output;
 	}
 	// endregion
 
@@ -131,74 +125,46 @@ public final class StreamMap<I, O> extends AbstractStreamTransformer_1_1<I, O> i
 	 * @return new mapper which is composition from two mappers from arguments
 	 */
 	public static <I, T, O> Mapper<I, O> combine(final Mapper<I, T> mapper1, final Mapper<T, O> mapper2) {
-		return new Mapper<I, O>() {
-			@Override
-			public void map(I input, final StreamDataReceiver<O> output) {
-				mapper1.map(input, new StreamDataReceiver<T>() {
-					@Override
-					public void onData(T item) {
-						mapper2.map(item, output);
-					}
-				});
-			}
-		};
+		return (input, output) -> mapper1.map(input, item -> mapper2.map(item, output));
 	}
 
-	protected final class InputConsumer extends AbstractInputConsumer {
-
-		@Override
-		protected void onUpstreamEndOfStream() {
-			outputProducer.sendEndOfStream();
+	protected final class Input extends AbstractStreamConsumer<I> {
+		protected Input(Eventloop eventloop) {
+			super(eventloop);
 		}
 
-		@SuppressWarnings("unchecked")
 		@Override
-		public StreamDataReceiver<I> getDataReceiver() {
-			return outputProducer;
+		protected void onEndOfStream() {
+			output.sendEndOfStream();
+		}
+
+		@Override
+		protected void onError(Exception e) {
+			output.closeWithError(e);
 		}
 	}
 
-	protected final class OutputProducer extends AbstractOutputProducer implements StreamDataReceiver<I> {
-		private final Mapper<I, O> mapper;
-
-		public OutputProducer(Mapper<I, O> mapper) {this.mapper = checkNotNull(mapper);}
-
-		@Override
-		protected void onDownstreamSuspended() {
-			inputConsumer.suspend();
+	protected final class Output extends AbstractStreamProducer<O> {
+		protected Output(Eventloop eventloop) {
+			super(eventloop);
 		}
 
 		@Override
-		protected void onDownstreamResumed() {
-			inputConsumer.resume();
+		protected void onSuspended() {
+			input.getProducer().suspend();
 		}
 
-		@SuppressWarnings("AssertWithSideEffects")
 		@Override
-		public void onData(I item) {
-			assert jmxItems != ++jmxItems;
-			mapper.map(item, downstreamDataReceiver);
+		protected void onError(Exception e) {
+			input.closeWithError(e);
+		}
+
+		@Override
+		protected void onProduce(StreamDataReceiver<O> dataReceiver) {
+			input.getProducer().produce(item -> mapper.map(item, dataReceiver));
 		}
 	}
 
 	// jmx
-
-	@Override
-	public Eventloop getEventloop() {
-		return eventloop;
-	}
-
-	@JmxAttribute
-	public int getItems() {
-		return jmxItems;
-	}
-
-	@SuppressWarnings("AssertWithSideEffects")
-	@Override
-	public String toString() {
-		String items = "?";
-		assert (items = "" + jmxItems) != null;
-		return '{' + super.toString() + " items:" + items + '}';
-	}
 
 }

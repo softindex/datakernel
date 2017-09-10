@@ -21,9 +21,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
 
 /**
  * Represent the TCP connection which  processes received items with {@link StreamProducer} and {@link StreamConsumer},
@@ -41,7 +39,7 @@ public final class SocketStreamingConnection implements AsyncTcpSocket.EventHand
 		this.eventloop = eventloop;
 		this.asyncTcpSocket = asyncTcpSocket;
 		this.socketWriter = SocketStreamConsumer.create(eventloop, asyncTcpSocket);
-		this.socketWriter.getCompletionStage().whenComplete(($, throwable) -> {
+		this.socketWriter.getSentStage().whenComplete(($, throwable) -> {
 			if (throwable != null) {
 				SocketStreamingConnection.this.socketReader.closeWithError(AsyncCallbacks.throwableToException(throwable));
 				asyncTcpSocket.close();
@@ -54,24 +52,22 @@ public final class SocketStreamingConnection implements AsyncTcpSocket.EventHand
 				asyncTcpSocket.close();
 			}
 		});
-		socketReader.streamTo(StreamConsumers.<ByteBuf>idle(eventloop));
-		new StreamProducers.EndOfStream<ByteBuf>(eventloop).streamTo(socketWriter);
 	}
 
-	public static SocketStreamingConnection createSocketStreamingConnection(Eventloop eventloop,
-	                                                                        final AsyncTcpSocket asyncTcpSocket) {
+	public static SocketStreamingConnection create(Eventloop eventloop,
+	                                               AsyncTcpSocket asyncTcpSocket) {
 		return new SocketStreamingConnection(eventloop, asyncTcpSocket);
 	}
 	// endregion
 
 	@Override
-	public void sendStreamFrom(StreamProducer<ByteBuf> producer) {
-		producer.streamTo(socketWriter);
+	public StreamConsumer<ByteBuf> getSocketWriter() {
+		return socketWriter;
 	}
 
 	@Override
-	public void receiveStreamTo(StreamConsumer<ByteBuf> consumer) {
-		socketReader.streamTo(consumer);
+	public StreamProducer<ByteBuf> getSocketReader() {
+		return socketReader;
 	}
 
 	/**

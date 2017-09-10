@@ -38,8 +38,8 @@ import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.processor.StreamJoin;
 import io.datakernel.stream.processor.StreamMap;
-import io.datakernel.stream.processor.StreamMergeSorterStorage;
 import io.datakernel.stream.processor.StreamReducers;
+import io.datakernel.stream.processor.StreamSorterStorage;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -228,7 +228,7 @@ public class PageRankTest {
 		DatagraphEnvironment environment = DatagraphEnvironment.create()
 				.setInstance(DatagraphSerialization.class, serialization)
 				.setInstance(DatagraphClient.class, client)
-				.setInstance(StreamMergeSorterStorage.class, new StreamMergeSorterStorageStub(eventloop));
+				.setInstance(StreamSorterStorage.class, new StreamMergeSorterStorageStub(eventloop));
 		DatagraphEnvironment environment1 = environment.extend()
 				.set("items", asList(new Page(1, new long[]{1, 2, 3}), new Page(3, new long[]{1})))
 				.set("result", result1);

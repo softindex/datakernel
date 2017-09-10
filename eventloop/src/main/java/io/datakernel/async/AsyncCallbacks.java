@@ -18,12 +18,12 @@ public class AsyncCallbacks {
 		return new ResultCallback<T>() {
 			@Override
 			protected void onResult(T result) {
-				stage.setResult(result);
+				stage.set(result);
 			}
 
 			@Override
 			protected void onException(Exception e) {
-				stage.setError(e);
+				stage.setException(e);
 			}
 		};
 	}
@@ -32,12 +32,12 @@ public class AsyncCallbacks {
 		return new CompletionCallback() {
 			@Override
 			protected void onComplete() {
-				stage.setResult(null);
+				stage.set(null);
 			}
 
 			@Override
 			protected void onException(Exception e) {
-				stage.setError(e);
+				stage.setException(e);
 			}
 		};
 	}
@@ -85,9 +85,9 @@ public class AsyncCallbacks {
 
 	public static <T> void forwardTo(SettableStage<T> stage, T o, Throwable throwable) {
 		if (throwable == null) {
-			stage.setResult(o);
+			stage.set(o);
 		} else {
-			stage.setError(throwable);
+			stage.setException(throwable);
 		}
 	}
 

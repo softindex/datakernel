@@ -23,8 +23,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.stream.AbstractStreamConsumer;
 import io.datakernel.stream.StreamDataReceiver;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.OpenOption;
@@ -42,7 +40,6 @@ import static java.nio.file.StandardOpenOption.*;
  * data and writes it to file.
  */
 public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> implements StreamDataReceiver<ByteBuf> {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	public static final OpenOption[] CREATE_OPTIONS = new OpenOption[]{WRITE, CREATE, TRUNCATE_EXISTING};
 
 	private final ArrayDeque<ByteBuf> queue = new ArrayDeque<>();
@@ -84,44 +81,37 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	// region api
 	public CompletionStage<Void> getFlushStage() {
 		if (queue.isEmpty() && !pendingAsyncOperation) {
-			if (getConsumerStatus() == END_OF_STREAM) {
+			if (getStatus() == END_OF_STREAM) {
 				return SettableStage.immediateStage(null);
 			}
 
-			if (getConsumerStatus() == CLOSED_WITH_ERROR) {
-				return SettableStage.immediateFailedStage(getConsumerException());
+			if (getStatus() == CLOSED_WITH_ERROR) {
+				return SettableStage.immediateFailedStage(getException());
 			}
 		}
 
 		return this.flushStage = SettableStage.create();
 	}
-
-	@Override
-	public StreamDataReceiver<ByteBuf> getDataReceiver() {
-		return this;
-	}
 	// endregion
 
 	// region functional
 	private void doFlush() {
-		if (getConsumerStatus() == CLOSED_WITH_ERROR)
+		if (getStatus() == CLOSED_WITH_ERROR)
 			return;
 
 		final ByteBuf buf = queue.poll();
 		final int length = buf.readRemaining();
 		asyncFile.writeFully(buf, position).whenComplete((aVoid, throwable) -> {
 			if (throwable != null) {
-				logger.error("{}: failed to flush", StreamFileWriter.this, throwable);
 				doWriterCleanup(false).whenComplete((aVoid1, throwable1) -> {
 					pendingAsyncOperation = false;
 					closeWithError(AsyncCallbacks.throwableToException(throwable1));
 				});
 			} else {
-				logger.trace("{}: completed flush", StreamFileWriter.this);
 				position += length;
 				pendingAsyncOperation = false;
 				if (queue.size() <= 1) {
-					resume();
+					getProducer().produce(this);
 				}
 				postFlush();
 			}
@@ -132,15 +122,13 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 		if (!queue.isEmpty() && !pendingAsyncOperation) {
 			pendingAsyncOperation = true;
 			eventloop.post(this::doFlush);
-			logger.trace("{}: posted flush", this);
 		}
-		if (getConsumerStatus() == END_OF_STREAM && queue.isEmpty() && !pendingAsyncOperation) {
+		if (getStatus() == END_OF_STREAM && queue.isEmpty() && !pendingAsyncOperation) {
 			pendingAsyncOperation = true;
 			doWriterCleanup(forceOnClose).whenComplete(($, throwable) -> {
 				if (throwable == null) {
 					pendingAsyncOperation = false;
-					logger.info("{}: finished writing", StreamFileWriter.this);
-					if (flushStage != null) flushStage.setResult(null);
+					if (flushStage != null) flushStage.set(null);
 				} else {
 					pendingAsyncOperation = false;
 					closeWithError(new Exception("Can't do cleanup for file\t" + asyncFile));
@@ -161,32 +149,30 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 	@Override
 	protected void onStarted() {
-		logger.info("{}: started writing", this);
+		getProducer().produce(this);
 	}
 
 	@Override
 	public void onData(ByteBuf buf) {
 		queue.offer(buf);
 		if (queue.size() > 1) {
-			suspend();
+			getProducer().suspend();
 		}
 		postFlush();
 	}
 
 	@Override
 	protected void onEndOfStream() {
-		logger.trace("endOfStream for {}, upstream: {}", this, getUpstream());
 		postFlush();
 	}
 
 	@Override
 	protected void onError(final Exception e) {
-		logger.error("{}: onError", this, e);
 		pendingAsyncOperation = true;
 
 		doWriterCleanup(false).whenComplete(($, throwable) -> {
 			pendingAsyncOperation = false;
-			if (flushStage != null) flushStage.setError(e);
+			if (flushStage != null) flushStage.setException(e);
 		});
 	}
 

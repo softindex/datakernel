@@ -23,7 +23,9 @@ import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducerWithResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,6 +34,7 @@ import java.util.List;
 import java.util.concurrent.CompletionStage;
 
 import static com.google.common.base.Preconditions.checkState;
+import static io.datakernel.async.SettableStage.immediateFailedStage;
 
 /**
  * Represent the TCP connection which  processes received items with {@link StreamProducer} and {@link StreamConsumer},
@@ -82,12 +85,9 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 
 		receiveMessageCallback = callback;
 		if (readBuf != null || readEndOfStream) {
-			eventloop.post(new Runnable() {
-				@Override
-				public void run() {
-					if (socketReader == null && receiveMessageCallback != null) {
-						tryReadMessage();
-					}
+			eventloop.post(() -> {
+				if (socketReader == null && receiveMessageCallback != null) {
+					tryReadMessage();
 				}
 			});
 		} else {
@@ -133,9 +133,8 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 		checkState(socketWriter == null && !writeEndOfStreamRequest);
 
 		if (closedException != null) {
-			return SettableStage.immediateFailedStage(closedException);
+			return immediateFailedStage(closedException);
 		}
-
 
 		final SettableStage<Void> stage = SettableStage.create();
 		writeCallbacks.add(stage);
@@ -150,7 +149,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 		checkState(socketWriter == null && !writeEndOfStreamRequest);
 
 		if (closedException != null) {
-			return SettableStage.immediateFailedStage(closedException);
+			return immediateFailedStage(closedException);
 		}
 
 		final SettableStage<Void> stage = SettableStage.create();
@@ -161,29 +160,28 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 		return stage;
 	}
 
-	public CompletionStage<Void> sendBinaryStreamFrom(StreamProducer<ByteBuf> producer) {
+	@Override
+	public StreamConsumerWithResult<ByteBuf, Void> sendBinaryStream() {
 		checkState(socketWriter == null && !writeEndOfStreamRequest);
 
 		writeCallbacks.clear();
 		if (closedException != null) {
-			return SettableStage.immediateFailedStage(closedException);
+			return StreamConsumerWithResult.closingWithError(closedException);
 		}
 
-
 		socketWriter = SocketStreamConsumer.create(eventloop, asyncTcpSocket);
-		producer.streamTo(socketWriter);
-		return socketWriter.getCompletionStage();
+		return StreamConsumerWithResult.create(socketWriter, socketWriter.getSentStage());
 	}
 
-	public CompletionStage<Void> receiveBinaryStreamTo(StreamConsumer<ByteBuf> consumer) {
+	@Override
+	public StreamProducerWithResult<ByteBuf, Void> receiveBinaryStream() {
 		checkState(this.socketReader == null && this.receiveMessageCallback == null);
 
 		if (closedException != null) {
-			return SettableStage.immediateFailedStage(closedException);
+			return StreamProducerWithResult.closingWithError(closedException);
 		}
 
 		socketReader = SocketStreamProducer.create(eventloop, asyncTcpSocket);
-		socketReader.streamTo(consumer);
 		if (readBuf != null || readEndOfStream) {
 			eventloop.post(() -> {
 				if (readBuf != null) {
@@ -194,7 +192,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 				}
 			});
 		}
-		return socketReader.getCompletionStage();
+		return StreamProducerWithResult.wrap(socketReader);
 	}
 
 	@Override
@@ -270,13 +268,13 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 			List<SettableStage<Void>> callbacks = this.writeCallbacks;
 			writeCallbacks = new ArrayList<>();
 			for (SettableStage<Void> callback : callbacks) {
-				callback.setResult(null);
+				callback.set(null);
 			}
 			if (writeEndOfStreamRequest)
 				writeDone = true;
 		} else {
 			socketWriter.onWrite();
-			if (socketWriter.getConsumerStatus().isClosed())
+			if (socketWriter.getStatus().isClosed())
 				writeDone = true;
 		}
 		closeIfDone();
@@ -298,7 +296,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 			receiveMessageCallback.onException(e);
 		} else if (!writeCallbacks.isEmpty()) {
 			for (SettableStage writeCallback : writeCallbacks) {
-				writeCallback.setError(e);
+				writeCallback.setException(e);
 			}
 		}
 

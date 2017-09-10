@@ -113,7 +113,8 @@ public class CustomFieldsTest {
 				.withMeasure("uniqueUserIds", union(ofLong()))
 				.withMeasure("estimatedUniqueUserIdCount", hyperLogLog(1024));
 
-		Aggregation aggregation = Aggregation.create(eventloop, executorService, classLoader, aggregationChunkStorage, structure);
+		Aggregation aggregation = Aggregation.create(eventloop, executorService, classLoader, aggregationChunkStorage, structure)
+				.withTemporarySortDir(temporaryFolder.newFolder().toPath());
 
 		StreamProducer<EventRecord> producer = StreamProducers.ofIterable(eventloop, asList(
 				new EventRecord(1, 0.34, 1),

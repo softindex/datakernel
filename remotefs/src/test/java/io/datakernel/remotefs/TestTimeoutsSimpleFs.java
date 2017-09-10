@@ -22,6 +22,7 @@ import io.datakernel.async.CallbackRegistry;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.SocketSettings;
+import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import org.junit.Before;
@@ -69,16 +70,18 @@ public class TestTimeoutsSimpleFs {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		RemoteFsClient client = RemoteFsClient.create(eventloop, address);
 
-		final ExecutorService serverExecutor = Executors.newFixedThreadPool(2);
-		final RemoteFsServer server = RemoteFsServer.create(eventloop, serverExecutor, storagePath)
+		ExecutorService serverExecutor = Executors.newFixedThreadPool(2);
+		RemoteFsServer server = RemoteFsServer.create(eventloop, serverExecutor, storagePath)
 				.withSocketSettings(SocketSettings.create().withImplReadTimeout(1L))
 				.withAcceptOnce()
 				.withListenAddress(new InetSocketAddress("localhost", 7010));
 
 		server.listen();
 
-		final StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrapForReading(BIG_FILE));
-		final CompletableFuture<Void> future = client.upload(producer, "fileName.txt").toCompletableFuture();
+		StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrapForReading(BIG_FILE));
+		StreamConsumerWithResult<ByteBuf, Void> consumer = client.uploadStream("fileName.txt");
+		producer.streamTo(consumer);
+		CompletableFuture<Void> future = consumer.getResult().toCompletableFuture();
 
 		eventloop.run();
 

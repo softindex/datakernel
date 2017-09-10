@@ -143,7 +143,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		this.stage = null;
 		response.setBody(bodyBuf);
 		eventloop.post(() -> {
-			stage.setResult(response);
+			stage.set(response);
 			response.recycleBufs();
 		});
 

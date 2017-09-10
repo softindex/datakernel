@@ -161,7 +161,7 @@ public final class CumulativeBenchmark {
 
 	private void startBenchmarkRound(final int roundNumber, final SettableStage<Void> stage) {
 		if (roundNumber == totalRounds) {
-			stage.setResult(null);
+			stage.set(null);
 			return;
 		}
 
@@ -222,7 +222,7 @@ public final class CumulativeBenchmark {
 				private void tryCompete() {
 					int totalCompletion = success + errors;
 					if (totalCompletion == roundRequests)
-						stage.setResult(null);
+						stage.set(null);
 				}
 			});
 

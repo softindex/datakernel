@@ -19,77 +19,82 @@ package io.datakernel.stream.processor;
 import com.google.common.base.Function;
 import com.google.common.base.Functions;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.AbstractStreamTransformer_1_1;
-import io.datakernel.stream.StreamDataReceiver;
-
-import static com.google.common.base.Preconditions.checkNotNull;
+import io.datakernel.stream.*;
 
 /**
- * Provides you apply function before sending data to the destination. It is a {@link AbstractStreamTransformer_1_1}
+ * Provides you apply function before sending data to the destination. It is a {@link StreamFunction}
  * which receives specified type and streams set of function's result  to the destination .
  *
  * @param <I> type of input data
  * @param <O> type of output data
  */
-public final class StreamFunction<I, O> extends AbstractStreamTransformer_1_1<I, O> {
-	private final InputConsumer inputConsumer;
-	private final OutputProducer outputProducer;
+public final class StreamFunction<I, O> implements StreamTransformer<I, O> {
+	private final Eventloop eventloop;
+	private final Function<I, O> function;
+	private final Input input;
+	private final Output output;
 
 	// region creators
 	private StreamFunction(Eventloop eventloop, Function<I, O> function) {
-		super(eventloop);
-		this.inputConsumer = new InputConsumer();
-		this.outputProducer = new OutputProducer(function);
-	}
-
-	@Override
-	protected AbstractInputConsumer getInputImpl() {
-		return inputConsumer;
-	}
-
-	@Override
-	protected AbstractOutputProducer getOutputImpl() {
-		return outputProducer;
+		this.eventloop = eventloop;
+		this.function = function;
+		this.input = new Input(eventloop);
+		this.output = new Output(eventloop);
 	}
 
 	public static <I, O> StreamFunction<I, O> create(Eventloop eventloop, Function<I, O> function) {
 		return new StreamFunction<I, O>(eventloop, function);
 	}
+
+	@Override
+	public StreamConsumer<I> getInput() {
+		return input;
+	}
+
+	@Override
+	public StreamProducer<O> getOutput() {
+		return output;
+	}
 	// endregion
 
-	protected final class InputConsumer extends AbstractInputConsumer {
+	protected final class Input extends AbstractStreamConsumer<I> {
+		protected Input(Eventloop eventloop) {
+			super(eventloop);
+		}
+
 		@Override
-		protected void onUpstreamEndOfStream() {
-			outputProducer.sendEndOfStream();
+		protected void onEndOfStream() {
+			output.sendEndOfStream();
+		}
+
+		@Override
+		protected void onError(Exception e) {
+			output.closeWithError(e);
+		}
+	}
+
+	protected final class Output extends AbstractStreamProducer<O> {
+		protected Output(Eventloop eventloop) {
+			super(eventloop);
+		}
+
+		@Override
+		protected void onSuspended() {
+			input.getProducer().suspend();
+		}
+
+		@Override
+		protected void onError(Exception e) {
+			input.closeWithError(e);
 		}
 
 		@SuppressWarnings("unchecked")
 		@Override
-		public StreamDataReceiver<I> getDataReceiver() {
-			return outputProducer.function == Functions.identity() ?
-					(StreamDataReceiver<I>) outputProducer.getDownstreamDataReceiver() :
-					outputProducer;
-		}
-	}
-
-	protected final class OutputProducer extends AbstractOutputProducer implements StreamDataReceiver<I> {
-		private final Function<I, O> function;
-
-		public OutputProducer(Function<I, O> function) {this.function = checkNotNull(function);}
-
-		@Override
-		protected void onDownstreamSuspended() {
-			inputConsumer.suspend();
-		}
-
-		@Override
-		protected void onDownstreamResumed() {
-			inputConsumer.resume();
-		}
-
-		@Override
-		public void onData(I item) {
-			send(function.apply(item));
+		protected void onProduce(StreamDataReceiver<O> dataReceiver) {
+			input.getProducer().produce(
+					function == Functions.identity() ?
+							(StreamDataReceiver<I>) dataReceiver :
+							item -> dataReceiver.onData(function.apply(item)));
 		}
 	}
 }

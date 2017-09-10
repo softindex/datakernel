@@ -14,27 +14,17 @@ import java.util.function.Function;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
-public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
+abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 	protected static abstract class NextCompletionStage<F, T> extends AbstractCompletionStage<T> {
 
-		protected abstract void onResult(F result);
+		protected abstract void onComplete(F value);
 
-		protected void onError(Throwable error) {
+		protected void onCompleteExceptionally(Throwable error) {
 			completeExceptionally(error);
 		}
 	}
 
-	private static final NextCompletionStage COMPLETED_STAGE = new NextCompletionStage() {
-		@Override
-		protected void onResult(Object result) {
-			throw new IllegalStateException();
-		}
-
-		@Override
-		protected void onError(Throwable error) {
-			throw new IllegalStateException();
-		}
-	};
+	private static final NextCompletionStage COMPLETED_STAGE = new CompletedStage();
 
 	protected NextCompletionStage<T, ?> next;
 
@@ -42,10 +32,10 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		return next == COMPLETED_STAGE;
 	}
 
-	protected final void complete(T result) {
+	protected final void complete(T value) {
 		assert !isComplete();
 		if (next != null) {
-			next.onResult(result);
+			next.onComplete(value);
 			next = COMPLETED_STAGE;
 		}
 	}
@@ -53,7 +43,7 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 	protected void completeExceptionally(Throwable error) {
 		assert !isComplete();
 		if (next != null) {
-			next.onError(error);
+			next.onCompleteExceptionally(error);
 			next = COMPLETED_STAGE;
 		}
 	}
@@ -61,23 +51,24 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 	private static final class SplittingStage<T> extends NextCompletionStage<T, T> {
 		private final ArrayList<NextCompletionStage<T, ?>> list = new ArrayList<>();
 
-		private static <T> SplittingStage<T> convertOf(NextCompletionStage<T, ?> existing) {
+		private static <T> SplittingStage<T> of(NextCompletionStage<T, ?> existing, NextCompletionStage<T, ?> next) {
 			SplittingStage<T> stage = new SplittingStage<>();
 			stage.list.add(existing);
+			stage.list.add(next);
 			return stage;
 		}
 
 		@Override
-		protected void onResult(T result) {
+		protected void onComplete(T value) {
 			for (NextCompletionStage<T, ?> next : list) {
-				next.onResult(result);
+				next.onComplete(value);
 			}
 		}
 
 		@Override
-		protected void onError(Throwable error) {
+		protected void onCompleteExceptionally(Throwable error) {
 			for (NextCompletionStage<T, ?> next : list) {
-				next.onError(error);
+				next.onCompleteExceptionally(error);
 			}
 		}
 	}
@@ -91,7 +82,7 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 			if (this.next instanceof SplittingStage) {
 				((SplittingStage<T>) this.next).list.add(next);
 			} else {
-				this.next = SplittingStage.convertOf(this.next);
+				this.next = SplittingStage.of(this.next, next);
 			}
 		}
 		return next;
@@ -101,8 +92,8 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 	public <U> CompletionStage<U> thenApply(Function<? super T, ? extends U> fn) {
 		return subscribe(new NextCompletionStage<T, U>() {
 			@Override
-			protected void onResult(T input) {
-				complete(fn.apply(input));
+			protected void onComplete(T value) {
+				complete(fn.apply(value));
 			}
 		});
 	}
@@ -118,7 +109,7 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		final Eventloop eventloop = getCurrentEventloop();
 		return subscribe(new NextCompletionStage<T, U>() {
 			@Override
-			protected void onResult(T result) {
+			protected void onComplete(T result) {
 				final ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();
 				executor.execute(() -> {
 					final U apply = fn.apply(result);
@@ -130,7 +121,7 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 			}
 
 			@Override
-			protected void onError(Throwable error) {
+			protected void onCompleteExceptionally(Throwable error) {
 				eventloop.post(() -> completeExceptionally(error));
 			}
 		});
@@ -140,8 +131,8 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 	public CompletionStage<Void> thenAccept(Consumer<? super T> action) {
 		return subscribe(new NextCompletionStage<T, Void>() {
 			@Override
-			protected void onResult(T result) {
-				action.accept(result);
+			protected void onComplete(T value) {
+				action.accept(value);
 				complete(null);
 			}
 		});
@@ -158,7 +149,7 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		final Eventloop eventloop = getCurrentEventloop();
 		return subscribe(new NextCompletionStage<T, Void>() {
 			@Override
-			protected void onResult(T result) {
+			protected void onComplete(T result) {
 				final ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();
 				executor.execute(() -> {
 					action.accept(result);
@@ -170,7 +161,7 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 			}
 
 			@Override
-			protected void onError(Throwable error) {
+			protected void onCompleteExceptionally(Throwable error) {
 				eventloop.post(() -> completeExceptionally(error));
 			}
 		});
@@ -180,7 +171,7 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 	public CompletionStage<Void> thenRun(Runnable action) {
 		return subscribe(new NextCompletionStage<T, Void>() {
 			@Override
-			protected void onResult(T result) {
+			protected void onComplete(T value) {
 				action.run();
 				complete(null);
 			}
@@ -198,7 +189,7 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		final Eventloop eventloop = getCurrentEventloop();
 		return subscribe(new NextCompletionStage<T, Void>() {
 			@Override
-			protected void onResult(T result) {
+			protected void onComplete(T result) {
 				final ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();
 				executor.execute(() -> {
 					action.run();
@@ -210,7 +201,7 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 			}
 
 			@Override
-			protected void onError(Throwable error) {
+			protected void onCompleteExceptionally(Throwable error) {
 				eventloop.post(() -> completeExceptionally(error));
 			}
 		});
@@ -235,13 +226,13 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		}
 
 		@Override
-		protected void onResult(T result) {
-			thisResult = result;
+		protected void onComplete(T value) {
+			thisResult = value;
 			tryComplete();
 		}
 
 		@Override
-		protected void onError(Throwable error) {
+		protected void onCompleteExceptionally(Throwable error) {
 			countdown = 0;
 			completeExceptionally(error);
 		}
@@ -256,7 +247,7 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 				resultingStage.otherResult = result;
 				resultingStage.tryComplete();
 			} else {
-				resultingStage.onError(throwable);
+				resultingStage.onCompleteExceptionally(throwable);
 			}
 		});
 
@@ -299,13 +290,13 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		}
 
 		@Override
-		protected void onResult(T result) {
+		protected void onComplete(T result) {
 			thisResult = result;
 			tryComplete();
 		}
 
 		@Override
-		protected void onError(Throwable error) {
+		protected void onCompleteExceptionally(Throwable error) {
 			countdown = 0;
 			eventloop.post(() -> completeExceptionally(error));
 		}
@@ -320,7 +311,7 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 				resultingStage.otherResult = result;
 				resultingStage.tryComplete();
 			} else {
-				resultingStage.onError(throwable);
+				resultingStage.onCompleteExceptionally(throwable);
 			}
 		});
 
@@ -330,8 +321,8 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 	private static final class ThenAcceptBothStage<T, U> extends NextCompletionStage<T, Void> {
 		private final BiConsumer<? super T, ? super U> consumer;
 		private int countdown = 2;
-		private T thisResult;
-		private U otherResult;
+		private T thisValue;
+		private U otherValue;
 
 		private ThenAcceptBothStage(BiConsumer<? super T, ? super U> consumer) {
 			this.consumer = consumer;
@@ -339,21 +330,21 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 
 		private void tryComplete() {
 			if (--countdown == 0) {
-				consumer.accept(thisResult, otherResult);
-				thisResult = null;
-				otherResult = null;
+				consumer.accept(thisValue, otherValue);
+				thisValue = null;
+				otherValue = null;
 				complete(null);
 			}
 		}
 
 		@Override
-		protected void onResult(T result) {
-			thisResult = result;
+		protected void onComplete(T value) {
+			thisValue = value;
 			tryComplete();
 		}
 
 		@Override
-		protected void onError(Throwable error) {
+		protected void onCompleteExceptionally(Throwable error) {
 			if (!isComplete()) {
 				countdown = 0;
 				completeExceptionally(error);
@@ -367,10 +358,10 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 
 		other.whenComplete((result, throwable) -> {
 			if (throwable == null) {
-				resultingStage.otherResult = result;
+				resultingStage.otherValue = result;
 				resultingStage.tryComplete();
 			} else {
-				resultingStage.onError(throwable);
+				resultingStage.onCompleteExceptionally(throwable);
 			}
 		});
 
@@ -413,13 +404,13 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		}
 
 		@Override
-		protected void onResult(T result) {
+		protected void onComplete(T result) {
 			thisResult = result;
 			tryComplete();
 		}
 
 		@Override
-		protected void onError(Throwable error) {
+		protected void onCompleteExceptionally(Throwable error) {
 			if (!isComplete()) {
 				countdown = 0;
 				eventloop.post(() -> completeExceptionally(error));
@@ -436,7 +427,7 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 				resultingStage.otherResult = result;
 				resultingStage.tryComplete();
 			} else {
-				resultingStage.onError(throwable);
+				resultingStage.onCompleteExceptionally(throwable);
 			}
 		});
 
@@ -452,7 +443,7 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		}
 
 		@Override
-		protected void onResult(T result) {
+		protected void onComplete(T value) {
 			if (--countdown == 0) {
 				action.run();
 				complete(null);
@@ -460,7 +451,7 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		}
 
 		@Override
-		protected void onError(Throwable error) {
+		protected void onCompleteExceptionally(Throwable error) {
 			if (!isComplete()) {
 				countdown = 0;
 				completeExceptionally(error);
@@ -474,9 +465,9 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 
 		other.whenComplete((o, throwable) -> {
 			if (throwable == null) {
-				resultingStage.onResult(null);
+				resultingStage.onComplete(null);
 			} else {
-				resultingStage.onError(throwable);
+				resultingStage.onCompleteExceptionally(throwable);
 			}
 		});
 
@@ -502,7 +493,7 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		}
 
 		@Override
-		protected void onResult(T result) {
+		protected void onComplete(T result) {
 			if (--countdown == 0) {
 				final ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();
 				executor.execute(() -> {
@@ -516,7 +507,7 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		}
 
 		@Override
-		protected void onError(Throwable error) {
+		protected void onCompleteExceptionally(Throwable error) {
 			if (!isComplete()) {
 				countdown = 0;
 				eventloop.post(() -> completeExceptionally(error));
@@ -530,9 +521,9 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 
 		other.whenComplete((o, throwable) -> {
 			if (throwable == null) {
-				resultingStage.onResult(null);
+				resultingStage.onComplete(null);
 			} else {
-				resultingStage.onError(throwable);
+				resultingStage.onCompleteExceptionally(throwable);
 			}
 		});
 
@@ -543,14 +534,14 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 	public <U> CompletionStage<U> applyToEither(CompletionStage<? extends T> other, Function<? super T, U> fn) {
 		NextCompletionStage<T, U> resultingStage = new NextCompletionStage<T, U>() {
 			@Override
-			protected void onResult(T result) {
+			protected void onComplete(T value) {
 				if (!isComplete()) {
-					complete(fn.apply(result));
+					complete(fn.apply(value));
 				}
 			}
 
 			@Override
-			protected void onError(Throwable error) {
+			protected void onCompleteExceptionally(Throwable error) {
 				if (!isComplete()) {
 					completeExceptionally(error);
 				}
@@ -583,7 +574,7 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		final Eventloop eventloop = getCurrentEventloop();
 		NextCompletionStage<T, U> resultingStage = new NextCompletionStage<T, U>() {
 			@Override
-			protected void onResult(T result) {
+			protected void onComplete(T result) {
 				if (!isComplete()) {
 					final ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();
 					executor.execute(() -> {
@@ -597,7 +588,7 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 			}
 
 			@Override
-			protected void onError(Throwable error) {
+			protected void onCompleteExceptionally(Throwable error) {
 				if (!isComplete()) {
 					eventloop.post(() -> completeExceptionally(error));
 				}
@@ -630,15 +621,15 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 	public CompletionStage<Void> acceptEither(CompletionStage<? extends T> other, Consumer<? super T> action) {
 		NextCompletionStage<T, Void> resultingStage = new NextCompletionStage<T, Void>() {
 			@Override
-			protected void onResult(T result) {
+			protected void onComplete(T value) {
 				if (!isComplete()) {
-					action.accept(result);
+					action.accept(value);
 					complete(null);
 				}
 			}
 
 			@Override
-			protected void onError(Throwable error) {
+			protected void onCompleteExceptionally(Throwable error) {
 				if (!isComplete()) {
 					completeExceptionally(error);
 				}
@@ -672,7 +663,7 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		final Eventloop eventloop = getCurrentEventloop();
 		NextCompletionStage<T, Void> resultingStage = new NextCompletionStage<T, Void>() {
 			@Override
-			protected void onResult(T result) {
+			protected void onComplete(T result) {
 				if (!isComplete()) {
 					final ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();
 					executor.execute(() -> {
@@ -686,7 +677,7 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 			}
 
 			@Override
-			protected void onError(Throwable error) {
+			protected void onCompleteExceptionally(Throwable error) {
 				if (!isComplete()) {
 					eventloop.post(() -> completeExceptionally(error));
 				}
@@ -719,7 +710,7 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 	public CompletionStage<Void> runAfterEither(CompletionStage<?> other, Runnable action) {
 		NextCompletionStage<T, Void> resultingStage = new NextCompletionStage<T, Void>() {
 			@Override
-			protected void onResult(T result) {
+			protected void onComplete(T value) {
 				if (!isComplete()) {
 					action.run();
 					complete(null);
@@ -727,7 +718,7 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 			}
 
 			@Override
-			protected void onError(Throwable error) {
+			protected void onCompleteExceptionally(Throwable error) {
 				if (!isComplete()) {
 					completeExceptionally(error);
 				}
@@ -761,7 +752,7 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		final Eventloop eventloop = getCurrentEventloop();
 		NextCompletionStage<T, Void> resultingStage = new NextCompletionStage<T, Void>() {
 			@Override
-			protected void onResult(T result) {
+			protected void onComplete(T result) {
 				if (!isComplete()) {
 					final ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();
 					executor.execute(() -> {
@@ -775,7 +766,7 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 			}
 
 			@Override
-			protected void onError(Throwable error) {
+			protected void onCompleteExceptionally(Throwable error) {
 				if (!isComplete()) {
 					eventloop.post(() -> completeExceptionally(error));
 				}
@@ -808,8 +799,8 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 	public <U> CompletionStage<U> thenCompose(Function<? super T, ? extends CompletionStage<U>> fn) {
 		return subscribe(new NextCompletionStage<T, U>() {
 			@Override
-			protected void onResult(T result) {
-				fn.apply(result)
+			protected void onComplete(T value) {
+				fn.apply(value)
 						.whenComplete((u, throwable) -> {
 							if (throwable != null) {
 								completeExceptionally(throwable);
@@ -820,7 +811,7 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 			}
 
 			@Override
-			protected void onError(Throwable error) {
+			protected void onCompleteExceptionally(Throwable error) {
 				completeExceptionally(error);
 			}
 		});
@@ -837,7 +828,7 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		final Eventloop eventloop = getCurrentEventloop();
 		return subscribe(new NextCompletionStage<T, U>() {
 			@Override
-			protected void onResult(T result) {
+			protected void onComplete(T result) {
 				final ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();
 				executor.execute(() -> {
 					final CompletionStage<U> apply = fn.apply(result);
@@ -853,7 +844,7 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 			}
 
 			@Override
-			protected void onError(Throwable error) {
+			protected void onCompleteExceptionally(Throwable error) {
 				eventloop.post(() -> completeExceptionally(error));
 			}
 		});
@@ -863,12 +854,12 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 	public CompletionStage<T> exceptionally(Function<Throwable, ? extends T> fn) {
 		return subscribe(new NextCompletionStage<T, T>() {
 			@Override
-			protected void onResult(T result) {
-				complete(result);
+			protected void onComplete(T value) {
+				complete(value);
 			}
 
 			@Override
-			protected void onError(Throwable error) {
+			protected void onCompleteExceptionally(Throwable error) {
 				complete(fn.apply(error));
 			}
 		});
@@ -878,13 +869,13 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 	public CompletionStage<T> whenComplete(BiConsumer<? super T, ? super Throwable> action) {
 		return subscribe(new NextCompletionStage<T, T>() {
 			@Override
-			protected void onResult(T result) {
-				action.accept(result, null);
-				complete(result);
+			protected void onComplete(T value) {
+				action.accept(value, null);
+				complete(value);
 			}
 
 			@Override
-			protected void onError(Throwable error) {
+			protected void onCompleteExceptionally(Throwable error) {
 				action.accept(null, error);
 				completeExceptionally(error);
 			}
@@ -902,7 +893,7 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		final Eventloop eventloop = getCurrentEventloop();
 		return subscribe(new NextCompletionStage<T, T>() {
 			@Override
-			protected void onResult(T result) {
+			protected void onComplete(T result) {
 				final ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();
 				executor.execute(() -> {
 					action.accept(result, null);
@@ -914,7 +905,7 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 			}
 
 			@Override
-			protected void onError(Throwable error) {
+			protected void onCompleteExceptionally(Throwable error) {
 				final ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();
 				executor.execute(() -> {
 					action.accept(null, error);
@@ -931,13 +922,13 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 	public <U> CompletionStage<U> handle(BiFunction<? super T, Throwable, ? extends U> fn) {
 		return subscribe(new NextCompletionStage<T, U>() {
 			@Override
-			protected void onResult(T result) {
-				U u = fn.apply(result, null);
+			protected void onComplete(T value) {
+				U u = fn.apply(value, null);
 				complete(u);
 			}
 
 			@Override
-			protected void onError(Throwable error) {
+			protected void onCompleteExceptionally(Throwable error) {
 				U u = fn.apply(null, error);
 				complete(u);
 			}
@@ -955,7 +946,7 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		final Eventloop eventloop = getCurrentEventloop();
 		return subscribe(new NextCompletionStage<T, U>() {
 			@Override
-			protected void onResult(T result) {
+			protected void onComplete(T result) {
 				final ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();
 				executor.execute(() -> {
 					U u = fn.apply(result, null);
@@ -967,7 +958,7 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 			}
 
 			@Override
-			protected void onError(Throwable error) {
+			protected void onCompleteExceptionally(Throwable error) {
 				final ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();
 				executor.execute(() -> {
 					U u = fn.apply(null, error);
@@ -985,12 +976,12 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		CompletableFuture<T> future = new CompletableFuture<>();
 		subscribe(new NextCompletionStage<T, Object>() {
 			@Override
-			protected void onResult(T result) {
-				future.complete(result);
+			protected void onComplete(T value) {
+				future.complete(value);
 			}
 
 			@Override
-			protected void onError(Throwable error) {
+			protected void onCompleteExceptionally(Throwable error) {
 				future.completeExceptionally(error);
 			}
 		});
@@ -998,15 +989,26 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 	}
 
 	private static class PostNextCompletionStage<U> extends NextCompletionStage<U, U> {
-
 		@Override
-		protected void onResult(U result) {
+		protected void onComplete(U result) {
 			getCurrentEventloop().post(() -> complete(result));
 		}
 
 		@Override
-		protected void onError(Throwable error) {
+		protected void onCompleteExceptionally(Throwable error) {
 			getCurrentEventloop().post(() -> completeExceptionally(error));
+		}
+	}
+
+	private static class CompletedStage extends NextCompletionStage {
+		@Override
+		protected void onComplete(Object value) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		protected void onCompleteExceptionally(Throwable error) {
+			throw new UnsupportedOperationException();
 		}
 	}
 }

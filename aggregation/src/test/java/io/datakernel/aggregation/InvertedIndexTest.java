@@ -19,7 +19,6 @@ package io.datakernel.aggregation;
 import com.google.common.base.MoreObjects;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
-import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumers;
@@ -100,7 +99,8 @@ public class InvertedIndexTest {
 				.withKey("word", ofString())
 				.withMeasure("documents", union(ofInt()));
 
-		Aggregation aggregation = Aggregation.create(eventloop, executorService, classLoader, aggregationChunkStorage, structure);
+		Aggregation aggregation = Aggregation.create(eventloop, executorService, classLoader, aggregationChunkStorage, structure)
+				.withTemporarySortDir(temporaryFolder.newFolder().toPath());
 
 		StreamProducer<InvertedIndexRecord> producer = StreamProducers.ofIterable(eventloop,
 				asList(

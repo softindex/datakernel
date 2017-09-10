@@ -16,9 +16,7 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamStatus;
+import io.datakernel.stream.*;
 
 import java.util.Arrays;
 import java.util.List;
@@ -33,7 +31,7 @@ public class Utils {
 		StreamStatus[] result = new StreamStatus[streamProducers.size()];
 		for (int i = 0; i < streamProducers.size(); i++) {
 			StreamProducer<?> streamProducer = streamProducers.get(i);
-			result[i] = streamProducer.getProducerStatus();
+			result[i] = ((AbstractStreamProducer<?>)streamProducer).getStatus();
 		}
 		return result;
 	}
@@ -42,7 +40,7 @@ public class Utils {
 		StreamStatus[] result = new StreamStatus[streamConsumers.size()];
 		for (int i = 0; i < streamConsumers.size(); i++) {
 			StreamConsumer<?> streamConsumer = streamConsumers.get(i);
-			result[i] = streamConsumer.getConsumerStatus();
+			result[i] = ((AbstractStreamConsumer<?>)streamConsumer).getStatus();
 		}
 		return result;
 	}
@@ -60,5 +58,15 @@ public class Utils {
 			assertEquals("Expected " + expected + ", actual: " + Arrays.toString(statuses), expected, status);
 		}
 	}
+
+	public static void assertStatus(StreamStatus expectedStatus, StreamProducer<?> streamProducer) {
+		assertEquals(expectedStatus, ((AbstractStreamProducer<?>) streamProducer).getStatus());
+	}
+
+	public static void assertStatus(StreamStatus expectedStatus, StreamConsumer<?> streamProducer) {
+		assertEquals(expectedStatus, ((AbstractStreamConsumer<?>) streamProducer).getStatus());
+	}
+
+
 
 }

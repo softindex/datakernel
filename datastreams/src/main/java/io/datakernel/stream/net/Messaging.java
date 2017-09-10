@@ -16,6 +16,10 @@
 
 package io.datakernel.stream.net;
 
+import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.stream.StreamProducerWithResult;
+
 import java.util.concurrent.CompletionStage;
 
 public interface Messaging<I, O> {
@@ -32,6 +36,10 @@ public interface Messaging<I, O> {
 	CompletionStage<Void> send(O msg);
 
 	CompletionStage<Void> sendEndOfStream();
+
+	StreamProducerWithResult<ByteBuf, Void> receiveBinaryStream();
+
+	StreamConsumerWithResult<ByteBuf, Void> sendBinaryStream();
 
 	void close();
 }

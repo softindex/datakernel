@@ -30,43 +30,10 @@ import static com.google.common.base.Preconditions.checkState;
 public class TestStreamConsumers {
 	public static abstract class TestConsumerToList<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
 		protected final List<T> list;
-		private SettableStage<Void> completionStage = SettableStage.create();
 		private SettableStage<List<T>> resultStage = SettableStage.create();
 
 		public TestConsumerToList(Eventloop eventloop) {
-			this(eventloop, new ArrayList<T>());
-		}
-
-		public CompletionStage<Void> getCompletionStage() {
-			return completionStage;
-		}
-
-		public CompletionStage<List<T>> getResultStage() {
-			return resultStage;
-		}
-
-		@Override
-		protected void onStarted() {
-		}
-
-		@Override
-		protected void onEndOfStream() {
-			if (completionStage != null) {
-				completionStage.setResult(null);
-			}
-			if (resultStage != null) {
-				resultStage.setResult(list);
-			}
-		}
-
-		@Override
-		protected void onError(Exception e) {
-			if (completionStage != null) {
-				completionStage.setError(e);
-			}
-			if (resultStage != null) {
-				resultStage.setError(e);
-			}
+			this(eventloop, new ArrayList<>());
 		}
 
 		public TestConsumerToList(Eventloop eventloop, List<T> list) {
@@ -75,14 +42,32 @@ public class TestStreamConsumers {
 			this.list = list;
 		}
 
-		public final List<T> getList() {
-			checkState(getConsumerStatus() == StreamStatus.END_OF_STREAM, "ToList consumer is not closed");
-			return list;
+		public CompletionStage<List<T>> getResultStage() {
+			return resultStage;
 		}
 
 		@Override
-		public StreamDataReceiver<T> getDataReceiver() {
-			return this;
+		protected void onStarted() {
+			getProducer().produce(this);
+		}
+
+		@Override
+		protected void onEndOfStream() {
+			if (resultStage != null) {
+				resultStage.set(list);
+			}
+		}
+
+		@Override
+		protected void onError(Exception e) {
+			if (resultStage != null) {
+				resultStage.setException(e);
+			}
+		}
+
+		public final List<T> getList() {
+			checkState(getStatus() == StreamStatus.END_OF_STREAM, "ToList consumer is not closed");
+			return list;
 		}
 
 		@Override
@@ -96,8 +81,8 @@ public class TestStreamConsumers {
 			@Override
 			public void onData(T item) {
 				list.add(item);
-				this.suspend();
-				this.eventloop.post(this::resume);
+				getProducer().suspend();
+				this.eventloop.post(() -> getProducer().produce(this));
 			}
 		};
 	}
@@ -112,8 +97,8 @@ public class TestStreamConsumers {
 			public void onData(T item) {
 				list.add(item);
 				if (random.nextBoolean()) {
-					suspend();
-					this.eventloop.post(this::resume);
+					getProducer().suspend();
+					this.eventloop.post(() -> getProducer().produce(this));
 				}
 			}
 		};

@@ -95,7 +95,7 @@ public class ParallelAsyncExecutorTest {
 			eventloop.schedule(eventloop.currentTimeMillis() + 10, () -> {
 				long endTimestamp = eventloop.currentTimeMillis();
 				executionInfoMap.put(n, new ExecutionInfo(startTimestamp, endTimestamp));
-				stage.setResult(null);
+				stage.set(null);
 			});
 
 			return stage;

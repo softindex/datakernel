@@ -280,6 +280,7 @@ public class DnsResolversTest {
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
+	@Ignore
 	@Test
 	public void testNativeDnsResolverCache2() throws Exception {
 		String domainName = "www.google.com";

@@ -16,77 +16,129 @@
 
 package io.datakernel.logfs.ot;
 
-import io.datakernel.aggregation.util.AsyncResultsReducer;
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.StagesAccumulator;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.AbstractStreamTransformer_1_N;
-import io.datakernel.stream.StreamDataReceiver;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.*;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.CompletionStage;
+
+import static io.datakernel.util.Preconditions.checkState;
 
 @SuppressWarnings("unchecked")
 public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T, D> {
 	protected final Eventloop eventloop;
+
+	private final List<LogDataConsumer<?, D>> logDataConsumers = new ArrayList<>();
+	private Iterator<? extends StreamDataReceiver<?>> receivers;
 
 	protected LogDataConsumerSplitter(Eventloop eventloop) {
 		this.eventloop = eventloop;
 	}
 
 	@Override
-	public final CompletionStage<List<D>> consume(StreamProducer<T> logStream) {
-		AsyncResultsReducer<List<D>> resultsReducer = AsyncResultsReducer.<List<D>>create(new ArrayList<>());
-		AbstractSplitter splitter = createSplitter(resultsReducer);
-		logStream.streamTo(splitter.getInput());
-		return resultsReducer.getResult();
-	}
-
-	protected abstract AbstractSplitter createSplitter(AsyncResultsReducer<List<D>> resultsReducer);
-
-	protected abstract class AbstractSplitter extends AbstractStreamTransformer_1_N<T> implements StreamDataReceiver<T> {
-		private final AsyncResultsReducer<List<D>> resultsReducer;
-
-		protected AbstractSplitter(Eventloop eventloop, AsyncResultsReducer<List<D>> resultsReducer) {
-			super(eventloop);
-			this.resultsReducer = resultsReducer;
-			setInputConsumer(new Input());
+	public StreamConsumerWithResult<T, List<D>> consume() {
+		if (receivers == null) {
+			createSplitter(); // recording scheme
 		}
-
-		protected final <X> StreamDataReceiver<X> addOutput(LogDataConsumer<X, D> logDataConsumer) {
-			Output<X> output = new Output<>();
-			addOutput(output);
-			resultsReducer.addStage(logDataConsumer.consume(output), (accumulator, diffs) -> {
+		StagesAccumulator<List<D>> resultsReducer = StagesAccumulator.create(new ArrayList<>());
+		Splitter splitter = new Splitter(eventloop, resultsReducer);
+		for (LogDataConsumer<?, D> logDataConsumer : logDataConsumers) {
+			StreamConsumerWithResult<?, List<D>> consumer = logDataConsumer.consume();
+			resultsReducer.addStage(consumer.getResult(), (accumulator, diffs) -> {
 				accumulator.addAll(diffs);
 				return accumulator;
 			});
-			return output.getDownstreamDataReceiver();
+			Splitter.Output<?> output = splitter.new Output<>(eventloop);
+			splitter.outputs.add(output);
+			output.streamTo((StreamConsumer) consumer);
+		}
+		return StreamConsumerWithResult.create(splitter.getInput(), resultsReducer.get());
+	}
+
+	protected abstract StreamDataReceiver<T> createSplitter();
+
+	protected final <X> StreamDataReceiver<X> addOutput(LogDataConsumer<X, D> logDataConsumer) {
+		if (receivers == null) {
+			// initial run, recording scheme
+			logDataConsumers.add(logDataConsumer);
+			return null;
+		}
+		// receivers must correspond outputs for recorded scheme
+		return (StreamDataReceiver<X>) receivers.next();
+	}
+
+	final class Splitter implements HasInput<T>, HasOutputs {
+		private final Input input;
+		private final List<Output<?>> outputs = new ArrayList<>();
+		private final StagesAccumulator<List<D>> resultsReducer;
+
+		private StreamDataReceiver<T> inputReceiver;
+
+		private int ready = 0;
+
+		protected Splitter(Eventloop eventloop, StagesAccumulator<List<D>> resultsReducer) {
+			this.resultsReducer = resultsReducer;
+			this.input = new Input(eventloop);
 		}
 
-		private final class Input extends AbstractInputConsumer {
-			@Override
-			public StreamDataReceiver<T> getDataReceiver() {
-				return AbstractSplitter.this;
+		@Override
+		public StreamConsumer<T> getInput() {
+			return input;
+		}
+
+		@Override
+		public List<? extends StreamProducer<?>> getOutputs() {
+			return outputs;
+		}
+
+		final class Input extends AbstractStreamConsumer<T> {
+			Input(Eventloop eventloop) {
+				super(eventloop);
 			}
 
 			@Override
-			protected void onUpstreamEndOfStream() {
-				sendEndOfStreamToDownstreams();
+			protected void onEndOfStream() {
+				outputs.forEach(output -> output.getConsumer().endOfStream());
+			}
+
+			@Override
+			protected void onError(Exception e) {
+				outputs.forEach(output -> output.closeWithError(e));
 			}
 		}
 
-		private final class Output<X> extends AbstractOutputProducer<X> {
-			@Override
-			protected void onDownstreamSuspended() {
-				inputConsumer.suspend();
+		final class Output<X> extends AbstractStreamProducer<X> {
+			private StreamDataReceiver<?> dataReceiver;
+
+			Output(Eventloop eventloop) {
+				super(eventloop);
 			}
 
 			@Override
-			protected void onDownstreamResumed() {
-				if (allOutputsResumed()) {
-					inputConsumer.resume();
+			protected void onProduce(StreamDataReceiver<X> dataReceiver) {
+				this.dataReceiver = dataReceiver;
+				if (++ready == outputs.size()) {
+					if (inputReceiver == null) {
+						receivers = outputs.stream().map(output -> output.dataReceiver).iterator();
+						inputReceiver = createSplitter();
+						checkState(!receivers.hasNext());
+						receivers = null;
+					}
+					input.getProducer().produce(inputReceiver);
 				}
+			}
+
+			@Override
+			protected void onSuspended() {
+				--ready;
+				input.getProducer().suspend();
+			}
+
+			@Override
+			protected void onError(Exception e) {
+				input.closeWithError(e);
 			}
 		}
 	}

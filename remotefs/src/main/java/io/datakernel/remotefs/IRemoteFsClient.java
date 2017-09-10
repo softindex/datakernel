@@ -17,15 +17,24 @@
 package io.datakernel.remotefs;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.stream.StreamProducerWithResult;
 
 import java.util.List;
 import java.util.concurrent.CompletionStage;
 
 public interface IRemoteFsClient {
-	CompletionStage<Void> upload(StreamProducer<ByteBuf> producer, String fileName);
+	CompletionStage<StreamConsumerWithResult<ByteBuf, Void>> upload(String fileName);
 
-	CompletionStage<StreamProducer<ByteBuf>> download(String fileName, long startPosition);
+	default StreamConsumerWithResult<ByteBuf, Void> uploadStream(String fileName) {
+		return StreamConsumerWithResult.ofStage(upload(fileName));
+	}
+
+	CompletionStage<StreamProducerWithResult<ByteBuf, Void>> download(String fileName, long startPosition);
+
+	default StreamProducerWithResult<ByteBuf, Void> downloadStream(String fileName, long startPosition) {
+		return StreamProducerWithResult.ofStage(download(fileName, startPosition));
+	}
 
 	CompletionStage<Void> delete(String fileName);
 

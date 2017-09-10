@@ -20,14 +20,15 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.ValueStats;
-import io.datakernel.stream.AbstractStreamTransformer_1_1;
-import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.*;
 import net.jpountz.lz4.LZ4Compressor;
 import net.jpountz.lz4.LZ4Factory;
 import net.jpountz.xxhash.StreamingXXHash32;
 import net.jpountz.xxhash.XXHashFactory;
 
-public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> {
+import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
+
+public final class StreamLZ4Compressor implements StreamTransformer<ByteBuf, ByteBuf> {
 	static final byte[] MAGIC = new byte[]{'L', 'Z', '4', 'B', 'l', 'o', 'c', 'k'};
 	static final int MAGIC_LENGTH = MAGIC.length;
 
@@ -47,10 +48,11 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 
 	private static final int MIN_BLOCK_SIZE = 64;
 
+	private final Eventloop eventloop;
 	private final LZ4Compressor compressor;
 
-	private InputConsumer inputConsumer;
-	private OutputProducer outputProducer;
+	private Input input;
+	private Output output;
 
 	public interface Inspector extends AbstractStreamTransformer_1_1.Inspector {
 		void onBuf(ByteBuf in, ByteBuf out);
@@ -69,67 +71,77 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 		}
 	}
 
-	private final class InputConsumer extends AbstractInputConsumer {
-		@Override
-		protected void onUpstreamEndOfStream() {
-			outputProducer.send(createEndOfStreamBlock());
-			outputProducer.sendEndOfStream();
+	private final class Input extends AbstractStreamConsumer<ByteBuf> {
+		protected Input(Eventloop eventloop) {
+			super(eventloop);
 		}
 
 		@Override
-		public StreamDataReceiver<ByteBuf> getDataReceiver() {
-			return outputProducer;
+		protected void onEndOfStream() {
+			output.flushAndClose();
+		}
+
+		@Override
+		protected void onError(Exception e) {
+			output.closeWithError(e);
 		}
 	}
 
-	private final class OutputProducer extends AbstractOutputProducer implements StreamDataReceiver<ByteBuf> {
+	private final class Output extends AbstractStreamProducer<ByteBuf> implements StreamDataReceiver<ByteBuf> {
 		private final LZ4Compressor compressor;
 		private final StreamingXXHash32 checksum = XXHashFactory.fastestInstance().newStreamingHash32(DEFAULT_SEED);
-		private final Inspector inspector = (Inspector) StreamLZ4Compressor.this.inspector;
 
-		private OutputProducer(LZ4Compressor compressor) {
+		private Output(Eventloop eventloop, LZ4Compressor compressor) {
+			super(eventloop);
 			this.compressor = compressor;
 		}
 
 		@Override
-		protected void onDownstreamSuspended() {
-			inputConsumer.suspend();
+		protected void onSuspended() {
+			input.getProducer().suspend();
 		}
 
 		@Override
-		protected void onDownstreamResumed() {
-			inputConsumer.resume();
+		protected void produce() {
+			if (input.getStatus() != END_OF_STREAM) {
+				input.getProducer().produce(this);
+			} else {
+				flushAndClose();
+			}
+		}
+
+		private void flushAndClose() {
+			if (isReceiverReady()) {
+				send(createEndOfStreamBlock());
+				sendEndOfStream();
+			}
+		}
+
+		@Override
+		protected void onError(Exception e) {
+			input.closeWithError(e);
 		}
 
 		@Override
 		public void onData(ByteBuf buf) {
-			ByteBuf outputBuf = compressBlock(compressor, checksum, buf.array(), buf.readPosition(), buf.readRemaining());
-			if (inspector != null) inspector.onBuf(buf, outputBuf);
-			send(outputBuf);
+			if (buf.canRead()) {
+				ByteBuf outputBuf = compressBlock(compressor, checksum, buf.array(), buf.readPosition(), buf.readRemaining());
+				send(outputBuf);
+			}
 			buf.recycle();
 		}
 	}
 
 	// region creators
 	private StreamLZ4Compressor(Eventloop eventloop, LZ4Compressor compressor) {
-		super(eventloop);
+		this.eventloop = eventloop;
 		this.compressor = compressor;
 		rebuild();
 	}
 
 	protected void rebuild() {
-		this.inputConsumer = new InputConsumer();
-		this.outputProducer = new OutputProducer(compressor);
-	}
-
-	@Override
-	protected AbstractInputConsumer getInputImpl() {
-		return inputConsumer;
-	}
-
-	@Override
-	protected AbstractOutputProducer getOutputImpl() {
-		return outputProducer;
+		this.input = new Input(eventloop);
+		this.output = new Output(eventloop, compressor);
 	}
 
 	public static StreamLZ4Compressor rawCompressor(Eventloop eventloop) {
@@ -148,11 +160,16 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 		return new StreamLZ4Compressor(eventloop, LZ4Factory.fastestInstance().highCompressor(compressionLevel));
 	}
 
-	public StreamLZ4Compressor withInspector(Inspector inspector) {
-		super.inspector = inspector;
-		rebuild();
-		return this;
+	@Override
+	public StreamConsumer<ByteBuf> getInput() {
+		return input;
 	}
+
+	@Override
+	public StreamProducer<ByteBuf> getOutput() {
+		return output;
+	}
+
 	// endregion
 
 	private static int compressionLevel(int blockSize) {
@@ -172,6 +189,8 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 	}
 
 	private static ByteBuf compressBlock(LZ4Compressor compressor, StreamingXXHash32 checksum, byte[] bytes, int off, int len) {
+		assert len != 0;
+
 		int compressionLevel = compressionLevel(len < MIN_BLOCK_SIZE ? MIN_BLOCK_SIZE : len);
 
 		int outputBufMaxSize = HEADER_LENGTH + ((compressor == null) ? len : compressor.maxCompressedLength(len));

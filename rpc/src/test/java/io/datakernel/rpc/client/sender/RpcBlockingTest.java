@@ -117,8 +117,11 @@ public class RpcBlockingTest {
 
 		client.startFuture().get();
 
-		String currentName = "John";
-		String currentResponse = blockingRequest(client, currentName);
+		String currentName;
+		String currentResponse;
+
+		currentName = "John";
+		currentResponse = blockingRequest(client, currentName);
 		System.out.println("Request with name \"" + currentName + "\": " + currentResponse);
 		assertEquals("Hello, " + currentName + "!", currentResponse);
 

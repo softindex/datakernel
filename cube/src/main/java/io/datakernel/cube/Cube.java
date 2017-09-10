@@ -28,7 +28,6 @@ import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.measure.Measure;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
-import io.datakernel.aggregation.util.AsyncResultsReducer;
 import io.datakernel.async.*;
 import io.datakernel.codegen.*;
 import io.datakernel.cube.asm.MeasuresFunction;
@@ -44,14 +43,19 @@ import io.datakernel.jmx.ValueStats;
 import io.datakernel.logfs.ot.LogDataConsumer;
 import io.datakernel.ot.OTState;
 import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.lang.reflect.Type;
+import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
@@ -91,6 +95,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 	private final ExecutorService executorService;
 	private final DefiningClassLoader classLoader;
 	private final AggregationChunkStorage aggregationChunkStorage;
+	private Path temporarySortDir;
 
 	private final Map<String, FieldType> fieldTypes = new LinkedHashMap<>();
 	private final Map<String, FieldType> dimensionTypes = new LinkedHashMap<>();
@@ -274,6 +279,11 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 		return this;
 	}
 
+	public Cube withTemporarySortDir(Path temporarySortDir) {
+		this.temporarySortDir = temporarySortDir;
+		return this;
+	}
+
 	public static final class AggregationConfig {
 		private final String id;
 		private List<String> dimensions = new ArrayList<>();
@@ -366,6 +376,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 				.withPartitioningKey(config.partitioningKey);
 
 		Aggregation aggregation = Aggregation.create(eventloop, executorService, classLoader, aggregationChunkStorage, structure)
+				.withTemporarySortDir(temporarySortDir)
 				.withChunkSize(config.chunkSize != 0 ? config.chunkSize : aggregationsChunkSize)
 				.withSorterItemsInMemory(config.sorterItemsInMemory != 0 ? config.sorterItemsInMemory : aggregationsSorterItemsInMemory)
 				.withSorterBlockSize(config.sorterBlockSize != 0 ? config.sorterBlockSize : aggregationsSorterBlockSize)
@@ -481,19 +492,19 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 	                                                          final AggregationPredicate predicate) {
 		return new LogDataConsumer<T, CubeDiff>() {
 			@Override
-			public CompletionStage<List<CubeDiff>> consume(StreamProducer<T> producer) {
-				return Cube.this.consume(producer, inputClass, dimensionFields, measureFields, predicate)
-						.thenApply(Collections::singletonList);
+			public StreamConsumerWithResult<T, List<CubeDiff>> consume() {
+				StreamConsumerWithResult<T, CubeDiff> consumer = Cube.this.consume(inputClass, dimensionFields, measureFields, predicate);
+				return StreamConsumerWithResult.create(consumer, consumer.getResult().thenApply(Collections::singletonList));
 			}
 		};
 	}
 
-	public <T> CompletionStage<CubeDiff> consume(StreamProducer<T> producer, Class<T> inputClass) {
-		return consume(producer, inputClass, AggregationPredicates.alwaysTrue());
+	public <T> StreamConsumerWithResult<T, CubeDiff> consume(Class<T> inputClass) {
+		return consume(inputClass, AggregationPredicates.alwaysTrue());
 	}
 
-	public <T> CompletionStage<CubeDiff> consume(StreamProducer<T> producer, Class<T> inputClass, AggregationPredicate predicate) {
-		return consume(producer, inputClass, scanKeyFields(inputClass), scanMeasureFields(inputClass), predicate);
+	public <T> StreamConsumerWithResult<T, CubeDiff> consume(Class<T> inputClass, AggregationPredicate predicate) {
+		return consume(inputClass, scanKeyFields(inputClass), scanMeasureFields(inputClass), predicate);
 	}
 
 	/**
@@ -504,15 +515,13 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 	 * @param <T>        data records type
 	 * @return consumer for streaming data to cube
 	 */
-	public <T> CompletionStage<CubeDiff> consume(StreamProducer<T> producer,
-	                                             Class<T> inputClass, Map<String, String> dimensionFields, Map<String, String> measureFields,
-	                                             final AggregationPredicate dataPredicate) {
+	public <T> StreamConsumerWithResult<T, CubeDiff> consume(Class<T> inputClass, Map<String, String> dimensionFields, Map<String, String> measureFields,
+	                                                         AggregationPredicate dataPredicate) {
 		logger.info("Started consuming data. Dimensions: {}. Measures: {}", dimensionFields.keySet(), measureFields.keySet());
 
 		StreamSplitter<T> streamSplitter = StreamSplitter.create(eventloop);
-		producer.streamTo(streamSplitter.getInput());
 
-		AsyncResultsReducer<Map<String, AggregationDiff>> tracker = AsyncResultsReducer.create(new HashMap<>());
+		StagesAccumulator<Map<String, AggregationDiff>> tracker = StagesAccumulator.create(new HashMap<>());
 		Map<String, AggregationPredicate> compatibleAggregations = getCompatibleAggregationsForDataInput(dimensionFields, measureFields, dataPredicate);
 		for (final Map.Entry<String, AggregationPredicate> aggregationToDataInputFilterPredicate : compatibleAggregations.entrySet()) {
 			final String aggregationId = aggregationToDataInputFilterPredicate.getKey();
@@ -536,7 +545,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 				return accumulator;
 			});
 		}
-		return tracker.getResult().thenApply(CubeDiff::of);
+		return StreamConsumerWithResult.create(streamSplitter.getInput(), tracker.get().thenApply(CubeDiff::of));
 	}
 
 	Map<String, AggregationPredicate> getCompatibleAggregationsForDataInput(final Map<String, String> dimensionFields,
@@ -717,7 +726,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 	public CompletionStage<CubeDiff> consolidate() {
 		logger.info("Launching consolidation");
 
-		AsyncResultsReducer<Map<String, AggregationDiff>> reducer = AsyncResultsReducer.create(new HashMap<>());
+		StagesAccumulator<Map<String, AggregationDiff>> reducer = StagesAccumulator.create(new HashMap<>());
 
 		for (String aggregationId : aggregations.keySet()) {
 			Aggregation aggregation = aggregations.get(aggregationId).aggregation;
@@ -730,7 +739,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 			});
 		}
 
-		return reducer.getResult().thenApply(CubeDiff::of);
+		return reducer.get().thenApply(CubeDiff::of);
 	}
 
 	private List<String> getAllParents(String dimension) {

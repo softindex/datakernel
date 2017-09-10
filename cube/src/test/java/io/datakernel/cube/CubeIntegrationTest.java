@@ -128,7 +128,7 @@ public class CubeIntegrationTest {
 		// Save and aggregate logs
 		List<LogItem> listOfRandomLogItems = LogItem.getListOfRandomLogItems(100);
 		StreamProducer<LogItem> producerOfRandomLogItems = StreamProducers.ofIterator(eventloop, listOfRandomLogItems.iterator());
-		producerOfRandomLogItems.streamTo(logManager.consumer("partitionA"));
+		producerOfRandomLogItems.streamTo(logManager.consumerStream("partitionA"));
 		eventloop.run();
 
 		future = logOTProcessor.processLog().toCompletableFuture();
@@ -141,7 +141,7 @@ public class CubeIntegrationTest {
 
 		List<LogItem> listOfRandomLogItems2 = LogItem.getListOfRandomLogItems(300);
 		producerOfRandomLogItems = StreamProducers.ofIterator(eventloop, listOfRandomLogItems2.iterator());
-		producerOfRandomLogItems.streamTo(logManager.consumer("partitionA"));
+		producerOfRandomLogItems.streamTo(logManager.consumerStream("partitionA"));
 		eventloop.run();
 
 		future = logOTProcessor.processLog().toCompletableFuture();
@@ -150,7 +150,7 @@ public class CubeIntegrationTest {
 
 		List<LogItem> listOfRandomLogItems3 = LogItem.getListOfRandomLogItems(50);
 		producerOfRandomLogItems = StreamProducers.ofIterator(eventloop, listOfRandomLogItems3.iterator());
-		producerOfRandomLogItems.streamTo(logManager.consumer("partitionA"));
+		producerOfRandomLogItems.streamTo(logManager.consumerStream("partitionA"));
 		eventloop.run();
 
 		future = logOTProcessor.processLog().toCompletableFuture();

@@ -14,29 +14,27 @@
  * limitations under the License.
  */
 
-package io.datakernel.aggregation.util;
-
-import io.datakernel.async.SettableStage;
+package io.datakernel.async;
 
 import java.util.concurrent.CompletionStage;
 
-public final class AsyncResultsReducer<A> {
+public final class StagesAccumulator<A> {
 	private SettableStage<A> resultStage;
 
 	private A accumulator;
-	private Throwable error;
+	private Throwable exception;
 
 	private int activeStages;
 
-	private AsyncResultsReducer(A initialAccumulator) {
+	private StagesAccumulator(A initialAccumulator) {
 		this.accumulator = initialAccumulator;
 	}
 
-	public static <A> AsyncResultsReducer<A> create(A initialAccumulator) {
-		return new AsyncResultsReducer<>(initialAccumulator);
+	public static <A> StagesAccumulator<A> create(A initialAccumulator) {
+		return new StagesAccumulator<>(initialAccumulator);
 	}
 
-	public <V> AsyncResultsReducer<A> withStage(CompletionStage<V> stage, final ResultReducer<A, V> reducer) {
+	public <V> StagesAccumulator<A> withStage(CompletionStage<V> stage, final ResultReducer<A, V> reducer) {
 		addStage(stage, reducer);
 		return this;
 	}
@@ -45,9 +43,9 @@ public final class AsyncResultsReducer<A> {
 		A applyResult(A accumulator, V value);
 	}
 
-	public <V> void addStage(CompletionStage<V> stage, final ResultReducer<A, V> reducer) {
+	public <V> CompletionStage<V> addStage(CompletionStage<V> stage, final ResultReducer<A, V> reducer) {
 		activeStages++;
-		stage.whenComplete((result, throwable) -> {
+		return stage.whenComplete((result, throwable) -> {
 			if (throwable == null) {
 				if (accumulator != null) {
 					accumulator = reducer.applyResult(accumulator, result);
@@ -55,17 +53,17 @@ public final class AsyncResultsReducer<A> {
 				}
 
 				activeStages--;
-				if (activeStages == 0 && resultStage != null && error == null) {
-					resultStage.setResult(accumulator);
+				if (activeStages == 0 && resultStage != null && exception == null) {
+					resultStage.set(accumulator);
 					resultStage = null;
 				}
 			} else {
 				activeStages--;
-				if (error == null) {
-					error = throwable;
+				if (exception == null) {
+					exception = throwable;
 					accumulator = null;
 					if (resultStage != null) {
-						resultStage.setError(throwable);
+						resultStage.setException(throwable);
 						resultStage = null;
 					}
 				}
@@ -73,18 +71,33 @@ public final class AsyncResultsReducer<A> {
 		});
 	}
 
-	public CompletionStage<A> getResult() {
-		assert resultStage == null;
+	public <V> SettableStage<V> newStage(final ResultReducer<A, V> reducer) {
+		SettableStage<V> resultStage = SettableStage.create();
+		addStage(resultStage, reducer);
+		return resultStage;
+	}
+
+	public CompletionStage<A> get() {
+		if (resultStage != null)
+			return resultStage;
 		resultStage = SettableStage.create();
-		if (error != null) {
-			resultStage.setError(error);
+		if (exception != null) {
+			resultStage.setException(exception);
 			return resultStage;
 		}
 		if (activeStages == 0) {
-			resultStage.setResult(accumulator);
+			resultStage.set(accumulator);
 			return resultStage;
 		}
 		return resultStage;
+	}
+
+	public A getAccumulator() {
+		return accumulator;
+	}
+
+	public Throwable getException() {
+		return exception;
 	}
 
 	public int getActiveStages() {

@@ -54,7 +54,7 @@ public final class StaticServletForFiles extends StaticServlet {
 		final SettableStage<ByteBuf> stage = SettableStage.create();
 		AsyncFile.openAsync(eventloop, executor, path, new OpenOption[]{READ}).whenComplete((asyncFile, throwable) -> {
 			if (throwable != null) {
-				stage.setError(throwable instanceof NoSuchFileException ? HttpException.notFound404() : throwable);
+				stage.setException(throwable instanceof NoSuchFileException ? HttpException.notFound404() : throwable);
 			} else {
 				asyncFile.readFully().whenComplete(forwardTo(stage));
 			}

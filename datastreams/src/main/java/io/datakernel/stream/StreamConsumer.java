@@ -26,38 +26,21 @@ package io.datakernel.stream;
  */
 public interface StreamConsumer<T> {
 	/**
-	 * Returns StreamDataReceiver that will process receiving data.
-	 * <p>Stream consumer is free to use any appropriate instance implementing the receiver interface, including itself.
-	 * <p>Moreover, it is possible (and encouraged) to forward data receiver from 'downstream' consumers.
-	 * This design principle makes it possible to implement zero-overhead stream transformers:
-	 * <ul>
-	 * <li>function transformer with identity function
-	 * <li>fan-out stream splitters and sharders with single output
-	 * <li>to delegate stream processing to 'downstream' consumers, sequentially one after another
-	 * </ul>
-	 */
-	StreamDataReceiver<T> getDataReceiver();
-
-	/**
 	 * Sets wired producer. It will sent data to this consumer
 	 *
-	 * @param upstreamProducer stream producer for setting
+	 * @param producer stream producer for setting
 	 */
-	void streamFrom(StreamProducer<T> upstreamProducer);
+	void streamFrom(StreamProducer<T> producer);
 
 	/**
 	 * This method is called when consumer has finished with sending information
 	 */
-	void onProducerEndOfStream();
+	void endOfStream();
 
 	/**
 	 * This method is called when consumer has error
 	 *
 	 * @param e exception which was found
 	 */
-	void onProducerError(Exception e);
-
-	StreamStatus getConsumerStatus();
-
-	Exception getConsumerException();
+	void closeWithError(Exception e);
 }

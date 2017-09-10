@@ -16,17 +16,14 @@
 
 package io.datakernel.logfs;
 
-import io.datakernel.async.AsyncCallbacks;
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
+import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,8 +32,8 @@ import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.RejectedExecutionException;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static java.nio.file.StandardOpenOption.READ;
@@ -47,13 +44,18 @@ import static java.nio.file.StandardOpenOption.READ;
 public final class LocalFsLogFileSystem extends AbstractLogFileSystem {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
+	public static final int DEFAULT_READ_BLOCK_SIZE = 256 * 1024;
+
 	private final ExecutorService executorService;
 	private final Path dir;
+
+	private int readBlockSize = DEFAULT_READ_BLOCK_SIZE;
 
 	/**
 	 * Constructs a log file system, that runs in the given event loop, runs blocking IO operations in the specified executor,
 	 * stores logs in the given directory.
-	 *  @param executorService executor for blocking IO operations
+	 *
+	 * @param executorService executor for blocking IO operations
 	 * @param dir             directory for storing log files
 	 */
 	private LocalFsLogFileSystem(ExecutorService executorService,
@@ -62,18 +64,22 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem {
 		this.dir = dir;
 	}
 
-	private LocalFsLogFileSystem(ExecutorService executorService, Path dir, String logName) {
-		this.executorService = executorService;
-		this.dir = dir.resolve(logName);
-	}
-
 	public static LocalFsLogFileSystem create(ExecutorService executorService, Path dir) {
 		return new LocalFsLogFileSystem(executorService, dir);
 	}
 
 	public static LocalFsLogFileSystem create(ExecutorService executorService,
 	                                          Path dir, String logName) {
-		return new LocalFsLogFileSystem(executorService, dir, logName);
+		return create(executorService, dir.resolve(logName));
+	}
+
+	public LocalFsLogFileSystem withReadBlockSize(int readBlockSize) {
+		this.readBlockSize = readBlockSize;
+		return this;
+	}
+
+	public LocalFsLogFileSystem withReadBlockSize(MemSize readBlockSize) {
+		return withReadBlockSize((int) readBlockSize.get());
 	}
 
 	private Path path(String logPartition, LogFile logFile) {
@@ -81,96 +87,61 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem {
 	}
 
 	@Override
-	public void list(final String logPartition, final ResultCallback<List<LogFile>> callback) {
+	public CompletionStage<List<LogFile>> list(String logPartition) {
 		Eventloop eventloop = getCurrentEventloop();
-		final Eventloop.ConcurrentOperationTracker concurrentOperationTracker = eventloop.startConcurrentOperation();
-		try {
-			executorService.execute(() -> {
-				final List<LogFile> entries = new ArrayList<>();
+		return eventloop.callConcurrently(executorService, () -> {
+			final List<LogFile> entries = new ArrayList<>();
 
-				try {
-					Files.createDirectories(dir);
-					Files.walkFileTree(dir, new FileVisitor<Path>() {
-						@Override
-						public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-							return FileVisitResult.CONTINUE;
-						}
-
-						@Override
-						public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-							PartitionAndFile partitionAndFile = parse(file.getFileName().toString());
-							if (partitionAndFile != null && partitionAndFile.logPartition.equals(logPartition)) {
-								entries.add(partitionAndFile.logFile);
-							}
-							return FileVisitResult.CONTINUE;
-						}
-
-						@Override
-						public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
-							if (exc != null) {
-								logger.error("visitFileFailed error", exc);
-							}
-							return FileVisitResult.CONTINUE;
-						}
-
-						@Override
-						public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-							if (exc != null) {
-								logger.error("postVisitDirectory error", exc);
-							}
-							return FileVisitResult.CONTINUE;
-						}
-					});
-					eventloop.execute(new Runnable() {
-						@Override
-						public void run() {
-							callback.setResult(entries);
-						}
-					});
-				} catch (final IOException e) {
-					// TODO ?
-					logger.error("walkFileTree error", e);
-					eventloop.execute(new Runnable() {
-						@Override
-						public void run() {
-							callback.setException(e);
-						}
-					});
+			Files.createDirectories(dir);
+			Files.walkFileTree(dir, new FileVisitor<Path>() {
+				@Override
+				public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+					return FileVisitResult.CONTINUE;
 				}
 
-				concurrentOperationTracker.complete();
-			});
-		} catch (RejectedExecutionException e) {
-			concurrentOperationTracker.complete();
-			callback.setException(e);
-		}
-	}
+				@Override
+				public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+					PartitionAndFile partitionAndFile = parse(file.getFileName().toString());
+					if (partitionAndFile != null && partitionAndFile.logPartition.equals(logPartition)) {
+						entries.add(partitionAndFile.logFile);
+					}
+					return FileVisitResult.CONTINUE;
+				}
 
-	@Override
-	public void read(String logPartition, LogFile logFile, final long startPosition, final StreamConsumer<ByteBuf> consumer) {
-		Eventloop eventloop = getCurrentEventloop();
-		AsyncFile.openAsync(eventloop, executorService, path(logPartition, logFile), new OpenOption[]{READ}).whenComplete((file, throwable) -> {
-			if (throwable != null) {
-				final Exception e = AsyncCallbacks.throwableToException(throwable);
-				StreamProducers.<ByteBuf>closingWithError(eventloop, e).streamTo(consumer);
-			} else {
-				StreamFileReader fileReader = StreamFileReader.readFileFrom(eventloop, file, 1024 * 1024, startPosition);
-				fileReader.streamTo(consumer);
-			}
+				@Override
+				public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
+					if (exc != null) {
+						logger.error("visitFileFailed error", exc);
+					}
+					return FileVisitResult.CONTINUE;
+				}
+
+				@Override
+				public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+					if (exc != null) {
+						logger.error("postVisitDirectory error", exc);
+					}
+					return FileVisitResult.CONTINUE;
+				}
+			});
+			return entries;
 		});
 	}
 
 	@Override
-	public void write(String logPartition, LogFile logFile, final StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
+	public CompletionStage<StreamProducerWithResult<ByteBuf, Void>> read(String logPartition, LogFile logFile, long startPosition) {
 		Eventloop eventloop = getCurrentEventloop();
-		AsyncFile.openAsync(eventloop, executorService, path(logPartition, logFile), StreamFileWriter.CREATE_OPTIONS).whenComplete((file, throwable) -> {
-			if (throwable == null) {
-				StreamFileWriter fileWriter = StreamFileWriter.create(eventloop, file, true);
-				producer.streamTo(fileWriter);
-				fileWriter.getFlushStage().whenComplete(AsyncCallbacks.forwardTo(callback));
-			} else {
-				callback.setException(AsyncCallbacks.throwableToException(throwable));
-			}
+		return AsyncFile.openAsync(eventloop, executorService, path(logPartition, logFile), new OpenOption[]{READ})
+				.thenApply(file -> StreamProducerWithResult.wrap(
+						StreamFileReader.readFileFrom(eventloop, file, readBlockSize, startPosition)));
+	}
+
+	@Override
+	public CompletionStage<StreamConsumerWithResult<ByteBuf, Void>> write(String logPartition, LogFile logFile) {
+		Eventloop eventloop = getCurrentEventloop();
+		return AsyncFile.openAsync(eventloop, executorService, path(logPartition, logFile), StreamFileWriter.CREATE_OPTIONS).thenApply(file -> {
+			StreamFileWriter writer = StreamFileWriter.create(eventloop, file, true);
+			return StreamConsumerWithResult.create(writer, writer.getFlushStage());
 		});
 	}
 }

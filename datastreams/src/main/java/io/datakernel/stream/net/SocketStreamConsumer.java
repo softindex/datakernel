@@ -28,18 +28,18 @@ import java.util.concurrent.CompletionStage;
 
 final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> implements StreamDataReceiver<ByteBuf> {
 	private final AsyncTcpSocket asyncTcpSocket;
-	private final SettableStage<Void> completionStage;
+	private final SettableStage<Void> sentStage;
 
 	private int writeTick;
 
-	private boolean closedProperly;
+	private boolean sent;
 
 	// region creators
 	private SocketStreamConsumer(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
-	                             SettableStage<Void> completionStage) {
+	                             SettableStage<Void> sentStage) {
 		super(eventloop);
 		this.asyncTcpSocket = asyncTcpSocket;
-		this.completionStage = completionStage;
+		this.sentStage = sentStage;
 	}
 
 	public static SocketStreamConsumer create(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket) {
@@ -48,8 +48,8 @@ final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> impleme
 	// endregion
 
 	@Override
-	public StreamDataReceiver<ByteBuf> getDataReceiver() {
-		return this;
+	protected void onStarted() {
+		getProducer().produce(this);
 	}
 
 	@Override
@@ -59,7 +59,7 @@ final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> impleme
 
 	@Override
 	protected void onError(Exception e) {
-		completionStage.setError(e);
+		sentStage.setException(e);
 	}
 
 	@Override
@@ -74,25 +74,25 @@ final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> impleme
 
 		if (tick != writeTick) {
 			writeTick = tick;
-			suspend();
+			getProducer().suspend();
 		}
 	}
 
 	public void onWrite() {
 		writeTick = 0;
-		if (getConsumerStatus() == StreamStatus.SUSPENDED) {
-			resume();
-		} else if (getConsumerStatus() == StreamStatus.END_OF_STREAM) {
-			closedProperly = true;
-			completionStage.setResult(null);
+		if (getStatus() == StreamStatus.SUSPENDED) {
+			getProducer().produce(this);
+		} else if (getStatus() == StreamStatus.END_OF_STREAM) {
+			sent = true;
+			sentStage.set(null);
 		}
 	}
 
 	public boolean isClosed() {
-		return closedProperly || getConsumerStatus() == StreamStatus.CLOSED_WITH_ERROR;
+		return !isWired() || sent || getStatus() == StreamStatus.CLOSED_WITH_ERROR;
 	}
 
-	public CompletionStage<Void> getCompletionStage() {
-		return completionStage;
+	public CompletionStage<Void> getSentStage() {
+		return sentStage;
 	}
 }

@@ -19,14 +19,8 @@ package io.datakernel.stream.processor;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.EventStats;
-import io.datakernel.jmx.ExceptionStats;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxReducers.JmxReducerSum;
-import io.datakernel.jmx.ValueStats;
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.stream.AbstractStreamTransformer_1_1;
-import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.*;
 import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +35,7 @@ import static java.lang.Math.max;
  * @param <T> original type of data
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
-public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1_1<T, ByteBuf> {
+public final class StreamBinarySerializer<T> implements StreamTransformer<T, ByteBuf> {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	private static final ArrayIndexOutOfBoundsException OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException();
 	public static final MemSize DEFAULT_BUFFER_SIZE = MemSize.kilobytes(16);
@@ -51,140 +45,27 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 	public static final MemSize MAX_SIZE_3 = MemSize.megabytes(2); // (1 << (3 * 7))
 	public static final MemSize MAX_SIZE = MAX_SIZE_3;
 
+	private final Eventloop eventloop;
 	private final BufferSerializer<T> serializer;
 	private int defaultBufferSize = (int) DEFAULT_BUFFER_SIZE.get();
 	private int maxMessageSize = (int) (MAX_SIZE.get());
-	private int flushDelayMillis = 0;
+	private int autoFlushIntervalMillis = -1;
 	private boolean skipSerializationErrors = false;
 
-	private InputConsumer inputConsumer;
-	private OutputProducer outputProducer;
-
-	public interface Inspector<T> extends AbstractStreamTransformer_1_1.Inspector {
-		void onUnderEstimate(T item, int estimatedMessageSize);
-
-		void onFullBuffer();
-
-		void onMessageOverflow(T item, int messageSize);
-
-		void onOutput(ByteBuf buf);
-
-		void onSerializationError(T item, Exception e);
-	}
-
-	public interface InspectorEx<T> extends Inspector<T> {
-		void onItem(T item, int messageSize);
-	}
-
-	public static class JmxInspector<T> extends AbstractStreamTransformer_1_1.JmxInspector implements Inspector<T> {
-		private static final double SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_1_MINUTE;
-
-		private long underEstimations;
-		private long fullBuffers;
-		private long messageOverflows;
-		private final ValueStats outputBufs = ValueStats.create(SMOOTHING_WINDOW);
-		private final ExceptionStats serializationErrors = ExceptionStats.create();
-
-		@Override
-		public void onUnderEstimate(T item, int estimatedMessageSize) {
-			underEstimations++;
-		}
-
-		@Override
-		public void onFullBuffer() {
-			fullBuffers++;
-		}
-
-		@Override
-		public void onMessageOverflow(T item, int messageSize) {
-			messageOverflows++;
-		}
-
-		@Override
-		public void onOutput(ByteBuf buf) {
-			outputBufs.recordValue(buf.readRemaining());
-		}
-
-		@Override
-		public void onSerializationError(T item, Exception e) {
-			serializationErrors.recordException(e, item);
-		}
-
-		@JmxAttribute(reducer = JmxReducerSum.class)
-		public long getUnderEstimations() {
-			return underEstimations;
-		}
-
-		@JmxAttribute(reducer = JmxReducerSum.class)
-		public long getFullBuffers() {
-			return fullBuffers;
-		}
-
-		@JmxAttribute(reducer = JmxReducerSum.class)
-		public long getMessageOverflows() {
-			return messageOverflows;
-		}
-
-		@JmxAttribute
-		public ValueStats getOutputBufs() {
-			return outputBufs;
-		}
-
-		@JmxAttribute
-		public ExceptionStats getSerializationErrors() {
-			return serializationErrors;
-		}
-	}
-
-	public static class JmxInspectorEx<T> extends JmxInspector<T> implements InspectorEx<T> {
-		private static final double SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_1_MINUTE;
-
-		private int lastSize;
-		private long count;
-		private final ValueStats underEstimations = ValueStats.create(SMOOTHING_WINDOW);
-		private final EventStats fullBuffers = EventStats.create(SMOOTHING_WINDOW);
-		private final ValueStats messageOverflows = ValueStats.create(SMOOTHING_WINDOW);
-		private final ValueStats outputBufs = ValueStats.create(SMOOTHING_WINDOW);
-		private final ExceptionStats serializationErrors = ExceptionStats.create();
-
-		@Override
-		public void onItem(T item, int messageSize) {
-			lastSize = messageSize;
-			count++;
-		}
-
-		@JmxAttribute
-		public int getLastSize() {
-			return lastSize;
-		}
-
-		@JmxAttribute
-		public long getCount() {
-			return count;
-		}
-	}
+	private Input input;
+	private Output output;
 
 	// region creators
 	private StreamBinarySerializer(Eventloop eventloop, BufferSerializer<T> serializer) {
-		super(eventloop);
+		this.eventloop = eventloop;
 		this.serializer = serializer;
 		rebuild();
 	}
 
 	private void rebuild() {
-		if (outputProducer != null && outputProducer.outputBuf != null) outputProducer.outputBuf.recycle();
-		inputConsumer = new InputConsumer();
-		outputProducer = new OutputProducer(serializer, defaultBufferSize, maxMessageSize, flushDelayMillis, skipSerializationErrors);
-	}
-
-	@Override
-	protected AbstractInputConsumer getInputImpl() {
-		return inputConsumer;
-	}
-
-	@Override
-	protected AbstractOutputProducer getOutputImpl() {
-		return outputProducer;
+		if (output != null && output.outputBuf != null) output.outputBuf.recycle();
+		input = new Input(eventloop);
+		output = new Output(eventloop, serializer, defaultBufferSize, maxMessageSize, autoFlushIntervalMillis, skipSerializationErrors);
 	}
 
 	/**
@@ -217,8 +98,8 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 		return withMaxMessageSize((int) maxMessageSize.get());
 	}
 
-	public StreamBinarySerializer<T> withFlushDelay(int flushDelayMillis) {
-		this.flushDelayMillis = flushDelayMillis;
+	public StreamBinarySerializer<T> withAutoFlush(int autoFlushIntervalMillis) {
+		this.autoFlushIntervalMillis = autoFlushIntervalMillis;
 		rebuild();
 		return this;
 	}
@@ -233,90 +114,89 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 		return this;
 	}
 
-	public StreamBinarySerializer<T> withInspector(Inspector<T> inspector) {
-		this.inspector = inspector;
-		rebuild();
-		return this;
+	@Override
+	public StreamConsumer<T> getInput() {
+		return input;
 	}
+
+	@Override
+	public StreamProducer<ByteBuf> getOutput() {
+		return output;
+	}
+
 	// endregion
 
-	private final class InputConsumer extends AbstractInputConsumer {
-		@Override
-		protected void onUpstreamEndOfStream() {
-			outputProducer.flushAndClose();
+	private final class Input extends AbstractStreamConsumer<T> {
+		protected Input(Eventloop eventloop) {
+			super(eventloop);
 		}
 
 		@Override
-		public StreamDataReceiver<T> getDataReceiver() {
-			return outputProducer;
+		protected void onEndOfStream() {
+			output.flushAndClose();
+		}
+
+		@Override
+		protected void onError(Exception e) {
+			output.closeWithError(e);
 		}
 	}
 
-	private final class OutputProducer extends AbstractOutputProducer implements StreamDataReceiver<T> {
+	private final class Output extends AbstractStreamProducer<ByteBuf> implements StreamDataReceiver<T> {
 		private final BufferSerializer<T> serializer;
 
 		private final int defaultBufferSize;
 		private final int maxMessageSize;
 		private final int headerSize;
 
-		// TODO (dvolvach): queue of serialized buffers
-		private ByteBuf outputBuf;
+		private ByteBuf outputBuf = allocateBuffer();
 		private int estimatedMessageSize;
 
-		private final int flushDelayMillis;
+		private final int autoFlushIntervalMillis;
 		private boolean flushPosted;
-
 		private final boolean skipSerializationErrors;
 
-		private final Inspector inspector = (Inspector) StreamBinarySerializer.this.inspector;
-		private final InspectorEx inspectorEx = StreamBinarySerializer.this.inspector instanceof InspectorEx ?
-				(InspectorEx) StreamBinarySerializer.this.inspector : null;
-
-		public OutputProducer(BufferSerializer<T> serializer, int defaultBufferSize, int maxMessageSize, int flushDelayMillis, boolean skipSerializationErrors) {
+		public Output(Eventloop eventloop, BufferSerializer<T> serializer, int defaultBufferSize, int maxMessageSize, int autoFlushIntervalMillis, boolean skipSerializationErrors) {
+			super(eventloop);
 			this.skipSerializationErrors = skipSerializationErrors;
 			this.serializer = checkNotNull(serializer);
 			this.maxMessageSize = maxMessageSize;
 			this.headerSize = varint32Size(maxMessageSize - 1);
 			this.estimatedMessageSize = 1;
 			this.defaultBufferSize = defaultBufferSize;
-			this.flushDelayMillis = flushDelayMillis;
+			this.autoFlushIntervalMillis = autoFlushIntervalMillis;
 		}
 
 		@Override
-		protected void onDownstreamSuspended() {
-			inputConsumer.suspend();
+		protected void onSuspended() {
+			input.getProducer().suspend();
 		}
 
 		@Override
-		protected void onDownstreamResumed() {
-			inputConsumer.resume();
-			resumeProduce();
+		protected void produce() {
+			if (input.getStatus() != StreamStatus.END_OF_STREAM) {
+				input.getProducer().produce(this);
+			} else {
+				flushAndClose();
+			}
 		}
 
-		private int varint32Size(int value) {
-			if ((value & 0xffffffff << 7) == 0) return 1;
-			if ((value & 0xffffffff << 14) == 0) return 2;
-			if ((value & 0xffffffff << 21) == 0) return 3;
-			if ((value & 0xffffffff << 28) == 0) return 4;
-			return 5;
+		@Override
+		protected void onError(Exception e) {
+			input.closeWithError(e);
 		}
 
 		private ByteBuf allocateBuffer() {
 			return ByteBufPool.allocate(max(defaultBufferSize, headerSize + estimatedMessageSize));
 		}
 
-		private void flushBuffer(StreamDataReceiver<ByteBuf> receiver) {
-			if (outputBuf != null) {
-				if (outputBuf.canRead()) {
-					if (inspector != null) inspector.onOutput(outputBuf);
-					if (outputProducer.getProducerStatus().isOpen()) {
-						receiver.onData(outputBuf);
-					}
-				} else {
-					outputBuf.recycle();
-				}
-				outputBuf = null;
+		private void flush() {
+			if (outputBuf.canRead()) {
+				getLastDataReceiver().onData(outputBuf);
+			} else {
+				outputBuf.recycle();
 			}
+			outputBuf = allocateBuffer();
 		}
 
 		private void writeSize(byte[] buf, int pos, int size) {
@@ -333,7 +213,6 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 			}
 
 			assert headerSize == 3;
-
 			buf[pos + 1] = (byte) ((size & 0x7F) | 0x80);
 			size >>>= 7;
 			buf[pos + 2] = (byte) size;
@@ -347,16 +226,11 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 		 */
 		@Override
 		public void onData(T item) {
-			if (outputBuf == null) {
-				outputBuf = allocateBuffer();
-			}
-
 			int positionBegin;
 			int positionItem;
 			for (; ; ) {
 				if (outputBuf.writeRemaining() < headerSize + estimatedMessageSize) {
 					onFullBuffer();
-					outputBuf = allocateBuffer();
 				}
 				positionBegin = outputBuf.writePosition();
 				positionItem = positionBegin + headerSize;
@@ -379,38 +253,31 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 				return;
 			}
 			writeSize(outputBuf.array(), positionBegin, messageSize);
-			if (inspectorEx != null) inspectorEx.onItem(item, messageSize);
 			messageSize += messageSize >>> 2;
 			if (messageSize > estimatedMessageSize)
 				estimatedMessageSize = messageSize;
 			else
 				estimatedMessageSize -= estimatedMessageSize >>> 10;
-
 			if (!flushPosted) {
 				postFlush();
 			}
 		}
 
 		private void onFullBuffer() {
-			if (inspector != null) inspector.onFullBuffer();
-			flushBuffer(outputProducer.getDownstreamDataReceiver());
+			flush();
 		}
 
 		private void onSerializationError(T value, int positionBegin, Exception e) {
-			if (inspector != null) inspector.onSerializationError(value, e);
 			outputBuf.writePosition(positionBegin);
 			handleSerializationError(e);
 		}
 
 		private void onMessageOverflow(T value, int positionBegin, int messageSize) {
-			if (inspector != null) inspector.onMessageOverflow(value, messageSize);
 			outputBuf.writePosition(positionBegin);
 			handleSerializationError(OUT_OF_BOUNDS_EXCEPTION);
 		}
 
 		private void onUnderEstimate(T value, int positionBegin, int positionItem) {
-			if (inspector != null)
-				inspector.onUnderEstimate(value, estimatedMessageSize);
 			outputBuf.writePosition(positionBegin);
 			int messageSize = outputBuf.limit() - positionItem;
 			estimatedMessageSize = messageSize + 1 + (messageSize >>> 1);
@@ -425,52 +292,49 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 		}
 
 		private void flushAndClose() {
-			flushBuffer(outputProducer.getDownstreamDataReceiver());
-			logger.trace("endOfStream {}, upstream: {}", this, inputConsumer.getUpstream());
-			outputProducer.sendEndOfStream();
-		}
-
-		/**
-		 * Bytes will be sent immediately.
-		 */
-		private void flush() {
-			flushBuffer(outputProducer.getDownstreamDataReceiver());
-			flushPosted = false;
+			flush();
+			output.sendEndOfStream();
 		}
 
 		private void postFlush() {
 			flushPosted = true;
-			if (flushDelayMillis == 0) {
-				eventloop.postLater(new Runnable() {
-					@Override
-					public void run() {
-						if (outputProducer.getProducerStatus().isOpen()) {
-							flush();
-						}
-					}
+			if (autoFlushIntervalMillis == -1)
+				return;
+			if (autoFlushIntervalMillis == 0) {
+				eventloop.postLater(() -> {
+					flushPosted = false;
+					flush();
 				});
 			} else {
-				eventloop.scheduleBackground(eventloop.currentTimeMillis() + flushDelayMillis, new Runnable() {
-					@Override
-					public void run() {
-						if (outputProducer.getProducerStatus().isOpen()) {
+				eventloop.scheduleBackground(eventloop.currentTimeMillis() + autoFlushIntervalMillis,
+						() -> {
+							flushPosted = false;
 							flush();
-						}
-					}
-				});
+						});
 			}
 		}
 
 		@Override
-		protected void doCleanup() {
+		protected void cleanup() {
 			if (outputBuf != null) {
 				outputBuf.recycle();
-				outputBuf = null;
+				outputBuf = ByteBuf.empty();
 			}
 		}
 	}
 
 	public void flush() {
-		outputProducer.flush();
+		if (output.getStatus().isOpen() && output.getLastDataReceiver() != null) {
+			output.flush();
+		}
 	}
+
+	private static int varint32Size(int value) {
+		if ((value & 0xffffffff << 7) == 0) return 1;
+		if ((value & 0xffffffff << 14) == 0) return 2;
+		if ((value & 0xffffffff << 21) == 0) return 3;
+		if ((value & 0xffffffff << 28) == 0) return 4;
+		return 5;
+	}
+
 }

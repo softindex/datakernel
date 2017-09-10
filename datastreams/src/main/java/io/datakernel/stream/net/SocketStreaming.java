@@ -21,7 +21,7 @@ import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 
 public interface SocketStreaming {
-	void receiveStreamTo(StreamConsumer<ByteBuf> streamConsumer);
+	StreamProducer<ByteBuf> getSocketReader();
 
-	void sendStreamFrom(StreamProducer<ByteBuf> streamProducer);
+	StreamConsumer<ByteBuf> getSocketWriter();
 }

@@ -17,11 +17,14 @@
 package io.datakernel.stream;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.SettableStage;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.ExpectedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkState;
 import static io.datakernel.stream.StreamStatus.*;
 
 /**
@@ -34,14 +37,14 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 
 	protected final Eventloop eventloop;
 
-	protected StreamProducer<T> upstreamProducer;
+	private StreamProducer<T> producer;
 
 	private StreamStatus status = READY;
-	protected Exception error;
+	private Exception error;
 
-	private boolean rewiring;
+	private final SettableStage<Void> completionStage = SettableStage.create();
 
-	protected Object tag;
+	private Object tag;
 
 	protected AbstractStreamConsumer(Eventloop eventloop) {
 		this.eventloop = checkNotNull(eventloop);
@@ -50,136 +53,85 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	/**
 	 * Sets wired producer. It will sent data to this consumer
 	 *
-	 * @param upstreamProducer stream producer for setting
+	 * @param producer stream producer for setting
 	 */
 
 	@Override
-	public final void streamFrom(StreamProducer<T> upstreamProducer) {
-		checkNotNull(upstreamProducer);
-		if (rewiring || this.upstreamProducer == upstreamProducer)
-			return;
-		rewiring = true;
+	public final void streamFrom(StreamProducer<T> producer) {
+		checkNotNull(producer);
+		if (this.producer == producer) return;
 
-		boolean firstTime = this.upstreamProducer == null;
+		checkState(this.producer == null);
+		checkState(status == READY);
 
-		if (this.upstreamProducer != null) {
-			this.upstreamProducer.streamTo(StreamConsumers.<T>closingWithError(eventloop,
-					new Exception("Downstream disconnected")));
-		}
+		this.producer = producer;
 
-		if (status.isClosed()) {
-			upstreamProducer.onConsumerError(new Exception("Connection to closed consumer"));
-			return;
-		}
+		producer.streamTo(this);
 
-		this.upstreamProducer = upstreamProducer;
+		onWired();
+	}
 
-		if (status == READY) {
-			this.upstreamProducer.onConsumerResumed();
-		}
-
-		if (status == SUSPENDED) {
-			this.upstreamProducer.onConsumerSuspended();
-		}
-
-		upstreamProducer.streamTo(this);
-
-		if (firstTime) {
-			eventloop.post(new Runnable() {
-				@Override
-				public void run() {
-					onStarted();
-				}
-			});
-		}
-		rewiring = false;
+	protected void onWired() {
+		eventloop.post(this::onStarted);
 	}
 
 	protected void onStarted() {
+	}
 
+	public boolean isWired() {
+		return producer != null;
 	}
 
 	@Nullable
-	public final StreamProducer<T> getUpstream() {
-		return upstreamProducer;
-	}
-
-	public final void bindUpstream() {
-		if (upstreamProducer != null) {
-			upstreamProducer.bindDataReceiver();
-		}
-	}
-
-	public void suspend() {
-		if (status == READY) {
-			status = SUSPENDED;
-			if (upstreamProducer != null) {
-				upstreamProducer.onConsumerSuspended();
-			}
-		}
-	}
-
-	public void resume() {
-		if (status == SUSPENDED) {
-			status = READY;
-			if (upstreamProducer != null) {
-				upstreamProducer.onConsumerResumed();
-			}
-		}
-	}
-
-	private void closeWithError(Exception e, boolean sendToProducer) {
-		if (status.isClosed())
-			return;
-
-		status = CLOSED_WITH_ERROR;
-		error = e;
-		logger.trace("StreamConsumer {} closed with error {}", this, e.toString());
-		if (sendToProducer) {
-			if (upstreamProducer != null) {
-				upstreamProducer.onConsumerError(e);
-			}
-		}
-		onError(e);
-		doCleanup();
-	}
-
-	public void closeWithError(Exception e) {
-		closeWithError(e, true);
+	public final StreamProducer<T> getProducer() {
+		return producer;
 	}
 
 	@Override
-	public final void onProducerEndOfStream() {
+	public final void endOfStream() {
 		if (status.isClosed())
 			return;
 		status = END_OF_STREAM;
 
 		onEndOfStream();
-		doCleanup();
+		eventloop.post(this::cleanup);
+		completionStage.set(null);
 	}
 
-	@Override
-	public final StreamStatus getConsumerStatus() {
+	public final StreamStatus getStatus() {
 		return status;
 	}
 
 	@Override
-	public final void onProducerError(Exception e) {
-		closeWithError(e, false);
+	public final void closeWithError(Exception e) {
+		if (status.isClosed())
+			return;
+		status = CLOSED_WITH_ERROR;
+		error = e;
+		if (!(e instanceof ExpectedException)) {
+			if (logger.isWarnEnabled()) {
+				logger.warn("StreamConsumer {} closed with error {}", this, e.toString());
+			}
+		}
+		producer.closeWithError(e);
+		onError(e);
+		eventloop.post(this::cleanup);
+		completionStage.setException(e);
 	}
 
-	protected void onEndOfStream() {
+	protected abstract void onEndOfStream();
+
+	protected abstract void onError(Exception e);
+
+	protected void cleanup() {
 	}
 
-	protected void onError(Exception e) {
-	}
-
-	protected void doCleanup() {
-	}
-
-	@Override
-	public final Exception getConsumerException() {
+	public final Exception getException() {
 		return error;
+	}
+
+	public final SettableStage<Void> getCompletionStage() {
+		return completionStage;
 	}
 
 	public Object getTag() {

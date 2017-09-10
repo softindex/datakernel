@@ -26,6 +26,7 @@ import java.util.List;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
+import static io.datakernel.stream.processor.Utils.assertStatus;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
@@ -40,14 +41,14 @@ public class StreamConsumerDecoratorTest {
 
 		StreamProducer<Integer> producer = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, asList(1, 2, 3)),
-				StreamProducers.<Integer>closingWithError(eventloop, new Exception("Test Exception")));
+				StreamProducers.closingWithError(eventloop, new Exception("Test Exception")));
 
 		producer.streamTo(consumerDecorator);
 		eventloop.run();
 
 		assertEquals(list, asList(1, 2, 3));
-		assertEquals(CLOSED_WITH_ERROR, consumer.getConsumerStatus());
-		assertEquals(CLOSED_WITH_ERROR, consumerDecorator.getConsumerStatus());
+		assertStatus(CLOSED_WITH_ERROR, producer);
+		assertStatus(CLOSED_WITH_ERROR, consumer);
 	}
 
 	@Test
@@ -64,8 +65,8 @@ public class StreamConsumerDecoratorTest {
 		eventloop.run();
 
 		assertEquals(list, asList(1, 2, 3, 4, 5));
-		assertEquals(END_OF_STREAM, consumer.getConsumerStatus());
-		assertEquals(END_OF_STREAM, decorator.getConsumerStatus());
+		assertStatus(END_OF_STREAM, producer);
+		assertStatus(END_OF_STREAM, consumer);
 	}
 
 }

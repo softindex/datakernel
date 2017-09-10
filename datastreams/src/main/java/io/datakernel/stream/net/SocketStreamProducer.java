@@ -16,85 +16,63 @@
 
 package io.datakernel.stream.net;
 
-import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamProducer;
 
-import java.util.concurrent.CompletionStage;
-
 final class SocketStreamProducer extends AbstractStreamProducer<ByteBuf> {
-	private final SettableStage<Void> completionStage;
 	private final AsyncTcpSocket asyncTcpSocket;
 	protected final ByteBufQueue readQueue = ByteBufQueue.create();
 	private boolean readEndOfStream;
 
 	// region creators
-	private SocketStreamProducer(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, SettableStage<Void> completionStage) {
+	private SocketStreamProducer(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket) {
 		super(eventloop);
 		this.asyncTcpSocket = asyncTcpSocket;
-		this.completionStage = completionStage;
 	}
 
 	public static SocketStreamProducer create(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket) {
-		return new SocketStreamProducer(eventloop, asyncTcpSocket, SettableStage.create());
+		return new SocketStreamProducer(eventloop, asyncTcpSocket);
 	}
 	// endregion
 
 	@Override
-	protected void onStarted() {
-		produce();
-	}
-
-	@Override
-	protected void onResumed() {
-		resumeProduce();
-	}
-
-	@Override
-	protected void onError(Exception e) {
-		completionStage.setError(e);
-	}
-
-	@Override
-	protected void onEndOfStream() {
-		completionStage.setResult(null);
-	}
-
-	@Override
-	protected void doProduce() {
-		while (isStatusReady() && readQueue.hasRemaining()) {
+	protected void produce() {
+		while (isReceiverReady() && readQueue.hasRemaining()) {
 			ByteBuf buf = readQueue.take();
 			send(buf);
 		}
 		if (readEndOfStream) {
-			if (readQueue.hasRemaining()) {
-				ByteBuf buf = readQueue.takeRemaining();
-				send(buf);
+			if (isReceiverReady()) {
+				if (readQueue.hasRemaining()) {
+					ByteBuf buf = readQueue.takeRemaining();
+					send(buf);
+				}
+				sendEndOfStream();
 			}
-			sendEndOfStream();
 		} else if (readQueue.remainingBufs() <= 1) {
 			asyncTcpSocket.read();
 		}
 	}
 
+	@Override
+	protected void onError(Exception e) {
+	}
+
 	public void onRead(ByteBuf buf) {
 		readQueue.add(buf);
-		doProduce();
+		produce();
 	}
 
 	public void onReadEndOfStream() {
 		this.readEndOfStream = true;
-		doProduce();
+		produce();
 	}
 
 	public boolean isClosed() {
-		return getProducerStatus().isClosed();
+		return !isWired() || getStatus().isClosed();
 	}
 
-	public CompletionStage<Void> getCompletionStage() {
-		return completionStage;
-	}
 }

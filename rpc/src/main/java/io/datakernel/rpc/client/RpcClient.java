@@ -35,10 +35,7 @@ import io.datakernel.rpc.protocol.RpcStream;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
-import io.datakernel.stream.processor.StreamLZ4Compressor;
-import io.datakernel.stream.processor.StreamLZ4Decompressor;
 import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 
@@ -185,10 +182,10 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 	private final ExceptionStats lastProtocolError = ExceptionStats.create();
 
 	private final AsyncTcpSocketImpl.JmxInspector statsSocket = new AsyncTcpSocketImpl.JmxInspector();
-	private final StreamBinarySerializer.JmxInspector statsSerializer = new StreamBinarySerializer.JmxInspector();
-	private final StreamBinaryDeserializer.JmxInspector statsDeserializer = new StreamBinaryDeserializer.JmxInspector();
-	private final StreamLZ4Compressor.JmxInspector statsCompressor = new StreamLZ4Compressor.JmxInspector();
-	private final StreamLZ4Decompressor.JmxInspector statsDecompressor = new StreamLZ4Decompressor.JmxInspector();
+//	private final StreamBinarySerializer.JmxInspector statsSerializer = new StreamBinarySerializer.JmxInspector();
+//	private final StreamBinaryDeserializer.JmxInspector statsDeserializer = new StreamBinaryDeserializer.JmxInspector();
+//	private final StreamLZ4Compressor.JmxInspector statsCompressor = new StreamLZ4Compressor.JmxInspector();
+//	private final StreamLZ4Decompressor.JmxInspector statsDecompressor = new StreamLZ4Decompressor.JmxInspector();
 
 	// region builders
 	private RpcClient(Eventloop eventloop) {
@@ -346,7 +343,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		if (forceStart) {
 			startStage.postResult(eventloop, null);
 			RpcSender sender = strategy.createSender(pool);
-			requestSender = sender != null ? sender : new Sender();
+			requestSender = sender != null ? sender : new NoSenderAvailable();
 			startStage = null;
 		} else {
 			if (connectTimeoutMillis != 0) {
@@ -415,7 +412,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 						.withInspector(statsSocket);
 				AsyncTcpSocket asyncTcpSocket = sslContext != null ? wrapClientSocket(eventloop, asyncTcpSocketImpl, sslContext, sslExecutor) : asyncTcpSocketImpl;
 				RpcStream stream = new RpcStream(eventloop, asyncTcpSocket, serializer, defaultPacketSize, maxPacketSize,
-						flushDelayMillis, compression, false, statsSerializer, statsDeserializer, statsCompressor, statsDecompressor);
+						flushDelayMillis, compression, false); // , statsSerializer, statsDeserializer, statsCompressor, statsDecompressor);
 				RpcClientConnection connection = new RpcClientConnection(eventloop, RpcClient.this, address, stream);
 				stream.setListener(connection);
 				asyncTcpSocket.setEventHandler(stream.getSocketEventHandler());
@@ -428,9 +425,10 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 				connectsStatsPerAddress.get(address).successfulConnects++;
 
 				logger.info("Connection to {} established", address);
-				if (startStage != null) {
-					startStage.postResult(eventloop, null);
-					startStage = null;
+				if (startStage != null && !(requestSender instanceof NoSenderAvailable)) {
+					SettableStage<Void> startStage = this.startStage;
+					this.startStage = null;
+					eventloop.postLater(() -> startStage.set(null));
 				}
 			} else {
 				//jmx
@@ -459,7 +457,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 			connection.startMonitoring();
 		}
 		RpcSender sender = strategy.createSender(pool);
-		requestSender = sender != null ? sender : new Sender();
+		requestSender = sender != null ? sender : new NoSenderAvailable();
 	}
 
 	void removeConnection(final InetSocketAddress address) {
@@ -473,13 +471,13 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 
 		if (stopStage != null && connections.size() == 0) {
 			eventloop.post(() -> {
-				stopStage.setResult(null);
+				stopStage.set(null);
 				stopStage = null;
 			});
 		}
 
 		RpcSender sender = strategy.createSender(pool);
-		requestSender = sender != null ? sender : new Sender();
+		requestSender = sender != null ? sender : new NoSenderAvailable();
 
 		// jmx
 		generalConnectsStats.closedConnects++;
@@ -522,9 +520,9 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 				final SettableStage<O> stage = SettableStage.create();
 				RpcClient.this.eventloop.execute(() -> RpcClient.this.requestSender.<I, O>sendRequest(request, timeout).whenComplete((o, throwable) -> {
 					if (throwable != null) {
-						anotherEventloop.execute(() -> stage.setError(throwable));
+						anotherEventloop.execute(() -> stage.setException(throwable));
 					} else {
-						anotherEventloop.execute(() -> stage.setResult(o));
+						anotherEventloop.execute(() -> stage.set(o));
 					}
 				}));
 
@@ -538,7 +536,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		return requestSender;
 	}
 
-	private final class Sender implements RpcSender {
+	private final class NoSenderAvailable implements RpcSender {
 		@SuppressWarnings("ThrowableInstanceNeverThrown")
 		private final RpcNoSenderException NO_SENDER_AVAILABLE_EXCEPTION
 				= new RpcNoSenderException("No senders available");
@@ -664,25 +662,25 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		return statsSocket;
 	}
 
-	@JmxAttribute
-	public StreamBinarySerializer.JmxInspector getStatsSerializer() {
-		return statsSerializer;
-	}
-
-	@JmxAttribute
-	public StreamBinaryDeserializer.JmxInspector getStatsDeserializer() {
-		return statsDeserializer;
-	}
-
-	@JmxAttribute
-	public StreamLZ4Compressor.JmxInspector getStatsCompressor() {
-		return compression ? statsCompressor : null;
-	}
-
-	@JmxAttribute
-	public StreamLZ4Decompressor.JmxInspector getStatsDecompressor() {
-		return compression ? statsDecompressor : null;
-	}
+//	@JmxAttribute
+//	public StreamBinarySerializer.JmxInspector getStatsSerializer() {
+//		return statsSerializer;
+//	}
+//
+//	@JmxAttribute
+//	public StreamBinaryDeserializer.JmxInspector getStatsDeserializer() {
+//		return statsDeserializer;
+//	}
+//
+//	@JmxAttribute
+//	public StreamLZ4Compressor.JmxInspector getStatsCompressor() {
+//		return compression ? statsCompressor : null;
+//	}
+//
+//	@JmxAttribute
+//	public StreamLZ4Decompressor.JmxInspector getStatsDecompressor() {
+//		return compression ? statsDecompressor : null;
+//	}
 
 	RpcRequestStats ensureRequestStatsPerClass(Class<?> requestClass) {
 		if (!requestStatsPerClass.containsKey(requestClass)) {

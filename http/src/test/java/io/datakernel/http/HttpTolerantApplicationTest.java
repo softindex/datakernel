@@ -50,7 +50,7 @@ public class HttpTolerantApplicationTest {
 	public static AsyncHttpServer asyncHttpServer(final Eventloop primaryEventloop, int port) {
 		AsyncServlet servlet = request -> {
 			final SettableStage<HttpResponse> stage = SettableStage.create();
-			primaryEventloop.post(() -> stage.setResult(HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()))));
+			primaryEventloop.post(() -> stage.set(HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()))));
 			return stage;
 		};
 

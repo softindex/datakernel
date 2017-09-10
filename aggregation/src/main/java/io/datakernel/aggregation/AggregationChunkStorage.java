@@ -17,13 +17,12 @@
 package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.ot.AggregationStructure;
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.DefiningClassLoader;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.stream.StreamProducerWithResult;
 
 import java.util.List;
-import java.util.Set;
+import java.util.concurrent.CompletionStage;
 
 /**
  * Manages persistence of aggregations (chunks of data).
@@ -34,23 +33,33 @@ public interface AggregationChunkStorage extends IdGenerator<Long> {
 	 * The chunk to read is determined by {@code aggregationId} and {@code id}.
 	 *
 	 * @param recordClass class of chunk record
-	 * @param chunkId          id of chunk
+	 * @param chunkId     id of chunk
 	 * @return StreamProducer, which will stream read records to its wired consumer.
 	 */
-	<T> void read(AggregationStructure aggregation, List<String> fields,
-	              Class<T> recordClass, long chunkId, DefiningClassLoader classLoader,
-	              ResultCallback<StreamProducer<T>> callback);
+	<T> CompletionStage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields,
+	                                                            Class<T> recordClass, long chunkId, DefiningClassLoader classLoader);
+
+	default <T> StreamProducerWithResult<T, Void> readStream(AggregationStructure aggregation, List<String> fields,
+	                                                         Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
+		return StreamProducerWithResult.ofStage(read(aggregation, fields, recordClass, chunkId, classLoader));
+	}
 
 	/**
 	 * Creates a {@code StreamConsumer} that persists streamed records.
 	 * The chunk to write is determined by {@code aggregationId} and {@code id}.
 	 *
-	 * @param producer    producer of records
 	 * @param fields      fields of chunk record
 	 * @param recordClass class of chunk record
-	 * @param chunkId          id of chunk
+	 * @param chunkId     id of chunk
 	 */
-	<T> void write(StreamProducer<T> producer, AggregationStructure aggregation, List<String> fields,
-	               Class<T> recordClass, long chunkId, DefiningClassLoader classLoader, CompletionCallback callback);
+	<T> CompletionStage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields,
+	                                                             Class<T> recordClass, long chunkId, DefiningClassLoader classLoader);
+
+	default <T> StreamConsumerWithResult<T, Void> writeStream(AggregationStructure aggregation, List<String> fields,
+	                                                          Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
+		return StreamConsumerWithResult.ofStage(write(aggregation, fields, recordClass, chunkId, classLoader));
+	}
+
 }
+
 

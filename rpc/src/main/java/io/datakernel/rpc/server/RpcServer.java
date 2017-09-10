@@ -125,10 +125,10 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	private ExceptionStats lastProtocolError = ExceptionStats.create();
 	private boolean monitoring;
 
-	private final StreamBinarySerializer.JmxInspector statsSerializer = new StreamBinarySerializer.JmxInspector();
-	private final StreamBinaryDeserializer.JmxInspector statsDeserializer = new StreamBinaryDeserializer.JmxInspector();
-	private final StreamLZ4Compressor.JmxInspector statsCompressor = new StreamLZ4Compressor.JmxInspector();
-	private final StreamLZ4Decompressor.JmxInspector statsDecompressor = new StreamLZ4Decompressor.JmxInspector();
+//	private final StreamBinarySerializer.JmxInspector statsSerializer = new StreamBinarySerializer.JmxInspector();
+//	private final StreamBinaryDeserializer.JmxInspector statsDeserializer = new StreamBinaryDeserializer.JmxInspector();
+//	private final StreamLZ4Compressor.JmxInspector statsCompressor = new StreamLZ4Compressor.JmxInspector();
+//	private final StreamLZ4Decompressor.JmxInspector statsDecompressor = new StreamLZ4Decompressor.JmxInspector();
 
 	// region builders
 	private RpcServer(Eventloop eventloop) {
@@ -207,7 +207,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	@Override
 	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 		RpcStream stream = new RpcStream(eventloop, asyncTcpSocket, serializer, defaultPacketSize, maxPacketSize,
-				flushDelayMillis, compression, true, statsSerializer, statsDeserializer, statsCompressor, statsDecompressor);
+				flushDelayMillis, compression, true); // , statsSerializer, statsDeserializer, statsCompressor, statsDecompressor);
 		RpcServerConnection connection = new RpcServerConnection(eventloop, this,
 				asyncTcpSocket.getRemoteSocketAddress(), handlers, stream);
 		stream.setListener(connection);
@@ -261,7 +261,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 					"Active connections count: " + connections.size());
 
 			if (connections.size() == 0) {
-				closeStage.setResult(null);
+				closeStage.set(null);
 			}
 		}
 	}
@@ -349,25 +349,25 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		return lastProtocolError;
 	}
 
-	@JmxAttribute
-	public StreamBinarySerializer.JmxInspector getStatsSerializer() {
-		return statsSerializer;
-	}
-
-	@JmxAttribute
-	public StreamBinaryDeserializer.JmxInspector getStatsDeserializer() {
-		return statsDeserializer;
-	}
-
-	@JmxAttribute
-	public StreamLZ4Compressor.JmxInspector getStatsCompressor() {
-		return compression ? statsCompressor : null;
-	}
-
-	@JmxAttribute
-	public StreamLZ4Decompressor.JmxInspector getStatsDecompressor() {
-		return compression ? statsDecompressor : null;
-	}
+//	@JmxAttribute
+//	public StreamBinarySerializer.JmxInspector getStatsSerializer() {
+//		return statsSerializer;
+//	}
+//
+//	@JmxAttribute
+//	public StreamBinaryDeserializer.JmxInspector getStatsDeserializer() {
+//		return statsDeserializer;
+//	}
+//
+//	@JmxAttribute
+//	public StreamLZ4Compressor.JmxInspector getStatsCompressor() {
+//		return compression ? statsCompressor : null;
+//	}
+//
+//	@JmxAttribute
+//	public StreamLZ4Decompressor.JmxInspector getStatsDecompressor() {
+//		return compression ? statsDecompressor : null;
+//	}
 	// endregion
 }
 

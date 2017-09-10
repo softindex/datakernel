@@ -73,7 +73,7 @@ final class DnsClientConnection implements AsyncUdpSocket.EventHandler {
 			final Set<SettableStage<DnsQueryResult>> stages = resultHandlers.get(domainName);
 			stages.remove(innerStage);
 			if (stages.isEmpty()) resultHandlers.remove(domainName);
-			innerStage.setError(TIMEOUT_EXCEPTION);
+			innerStage.setException(TIMEOUT_EXCEPTION);
 		});
 
 		final SettableStage<DnsQueryResult> stage = SettableStage.create();
@@ -137,12 +137,12 @@ final class DnsClientConnection implements AsyncUdpSocket.EventHandler {
 			if (stages != null) {
 				if (dnsQueryResult.isSuccessful()) {
 					for (SettableStage<DnsQueryResult> stage : stages) {
-						stage.setResult(dnsQueryResult);
+						stage.set(dnsQueryResult);
 					}
 				} else {
 					final DnsException exception = dnsQueryResult.getException();
 					for (SettableStage<DnsQueryResult> stage : stages) {
-						stage.setError(exception);
+						stage.setException(exception);
 					}
 				}
 			}

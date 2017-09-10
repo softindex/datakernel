@@ -18,19 +18,20 @@ package io.datakernel.stream.processor;
 
 import com.google.common.base.Function;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.AbstractStreamTransformer_N_1;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.*;
 
 import java.util.ArrayDeque;
 import java.util.Comparator;
+import java.util.List;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
+import static java.util.Arrays.asList;
 
 /**
  * Represents a object which has left and right consumers, and one producer. After receiving data
  * it can join it, available are inner join and left join. It work analogous joins from SQL.
- * It is a {@link AbstractStreamTransformer_N_1} which receives specified type and streams
+ * It is a {@link StreamJoin} which receives specified type and streams
  * set of join's result  to the destination .
  *
  * @param <K> type of  keys
@@ -38,7 +39,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * @param <R> type of data from right stream
  * @param <V> type of output data
  */
-public final class StreamJoin<K, L, R, V> extends AbstractStreamTransformer_N_1<V> {
+public final class StreamJoin<K, L, R, V> implements HasOutput<V>, HasInputs {
 
 	/**
 	 * It is primary interface of joiner. It contains methods which will join streams
@@ -139,9 +140,11 @@ public final class StreamJoin<K, L, R, V> extends AbstractStreamTransformer_N_1<
 		}
 	}
 
+	private final Eventloop eventloop;
 	private final Comparator<K> keyComparator;
-	private final StreamConsumer<L> left;
-	private final StreamConsumer<R> right;
+	private final Input<L> left;
+	private final Input<R> right;
+	private final Output output;
 
 	private final ArrayDeque<L> leftDeque = new ArrayDeque<>();
 	private final ArrayDeque<R> rightDeque = new ArrayDeque<>();
@@ -155,14 +158,14 @@ public final class StreamJoin<K, L, R, V> extends AbstractStreamTransformer_N_1<
 	private StreamJoin(Eventloop eventloop, Comparator<K> keyComparator,
 	                   Function<L, K> leftKeyFunction, Function<R, K> rightKeyFunction,
 	                   Joiner<K, L, R, V> joiner) {
-		super(eventloop);
+		this.eventloop = eventloop;
 		this.keyComparator = checkNotNull(keyComparator);
 		this.joiner = checkNotNull(joiner);
-		this.left = addInput(new InputConsumer<>(leftDeque));
-		this.right = addInput(new InputConsumer<>(rightDeque));
+		this.left = new Input<>(eventloop, leftDeque);
+		this.right = new Input<>(eventloop, rightDeque);
 		this.leftKeyFunction = checkNotNull(leftKeyFunction);
 		this.rightKeyFunction = checkNotNull(rightKeyFunction);
-		this.outputProducer = new OutputProducer();
+		this.output = new Output(eventloop);
 	}
 
 	/**
@@ -181,54 +184,56 @@ public final class StreamJoin<K, L, R, V> extends AbstractStreamTransformer_N_1<
 	}
 	// endregion
 
-	protected final class InputConsumer<I> extends AbstractInputConsumer<I> implements StreamDataReceiver<I> {
+	protected final class Input<I> extends AbstractStreamConsumer<I> implements StreamDataReceiver<I> {
 		private final ArrayDeque<I> deque;
 
-		public InputConsumer(ArrayDeque<I> deque) {
+		public Input(Eventloop eventloop, ArrayDeque<I> deque) {
+			super(eventloop);
 			this.deque = deque;
-		}
-
-		@Override
-		public StreamDataReceiver<I> getDataReceiver() {
-			return this;
 		}
 
 		@Override
 		public void onData(I item) {
 			deque.add(item);
-			outputProducer.produce();
+			output.produce();
 		}
 
 		@Override
-		protected void onUpstreamStarted() {
-			outputProducer.produce();
+		protected void onStarted() {
+			output.produce();
 		}
 
 		@Override
-		protected void onUpstreamEndOfStream() {
-			outputProducer.produce();
+		protected void onEndOfStream() {
+			output.produce();
+		}
+
+		@Override
+		protected void onError(Exception e) {
+			output.closeWithError(e);
 		}
 	}
 
-	protected final class OutputProducer extends AbstractOutputProducer {
-		@Override
-		protected void onDownstreamStarted() {
-			produce();
+	protected final class Output extends AbstractStreamProducer<V> {
+		protected Output(Eventloop eventloop) {
+			super(eventloop);
 		}
 
 		@Override
-		protected void onDownstreamSuspended() {
-			suspendAllUpstreams();
+		protected void onSuspended() {
+			left.getProducer().suspend();
+			right.getProducer().suspend();
 		}
 
 		@Override
-		protected void onDownstreamResumed() {
-			resumeProduce();
+		protected void onError(Exception e) {
+			left.closeWithError(e);
+			right.closeWithError(e);
 		}
 
 		@Override
-		protected void doProduce() {
-			if (isStatusReady() && !leftDeque.isEmpty() && !rightDeque.isEmpty()) {
+		protected void produce() {
+			if (isReceiverReady() && !leftDeque.isEmpty() && !rightDeque.isEmpty()) {
 				L leftValue = leftDeque.peek();
 				K leftKey = leftKeyFunction.apply(leftValue);
 				R rightValue = rightDeque.peek();
@@ -236,7 +241,7 @@ public final class StreamJoin<K, L, R, V> extends AbstractStreamTransformer_N_1<
 				for (; ; ) {
 					int compare = keyComparator.compare(leftKey, rightKey);
 					if (compare < 0) {
-						joiner.onLeftJoin(leftKey, leftValue, getDownstreamDataReceiver());
+						joiner.onLeftJoin(leftKey, leftValue, getCurrentDataReceiver());
 						leftDeque.poll();
 						if (leftDeque.isEmpty())
 							break;
@@ -249,22 +254,23 @@ public final class StreamJoin<K, L, R, V> extends AbstractStreamTransformer_N_1<
 						rightValue = rightDeque.peek();
 						rightKey = rightKeyFunction.apply(rightValue);
 					} else {
-						joiner.onInnerJoin(leftKey, leftValue, rightValue, getDownstreamDataReceiver());
+						joiner.onInnerJoin(leftKey, leftValue, rightValue, getCurrentDataReceiver());
 						leftDeque.poll();
 						if (leftDeque.isEmpty())
 							break;
-						if (!isStatusReady())
+						if (!isReceiverReady())
 							break;
 						leftValue = leftDeque.peek();
 						leftKey = leftKeyFunction.apply(leftValue);
 					}
 				}
 			}
-			if (isStatusReady()) {
-				if (allUpstreamsEndOfStream()) {
+			if (isReceiverReady()) {
+				if (left.getStatus() == END_OF_STREAM && right.getStatus() == END_OF_STREAM) {
 					sendEndOfStream();
 				} else {
-					resumeAllUpstreams();
+					left.getProducer().produce(left);
+					right.getProducer().produce(right);
 				}
 			}
 		}
@@ -284,4 +290,13 @@ public final class StreamJoin<K, L, R, V> extends AbstractStreamTransformer_N_1<
 		return right;
 	}
 
+	@Override
+	public List<? extends StreamConsumer<?>> getInputs() {
+		return asList(left, right);
+	}
+
+	@Override
+	public StreamProducer<V> getOutput() {
+		return output;
+	}
 }

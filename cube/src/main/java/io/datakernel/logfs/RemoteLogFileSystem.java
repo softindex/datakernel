@@ -16,18 +16,15 @@
 
 package io.datakernel.logfs;
 
-import io.datakernel.async.AsyncCallbacks;
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.RemoteFsClient;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.stream.StreamProducerWithResult;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletionStage;
 
 public final class RemoteLogFileSystem extends AbstractLogFileSystem {
 	private static final String LOG_NAME_DELIMITER = "/";
@@ -47,33 +44,19 @@ public final class RemoteLogFileSystem extends AbstractLogFileSystem {
 	}
 
 	@Override
-	public void list(final String logPartition, final ResultCallback<List<LogFile>> callback) {
-		client.list().thenApply(files -> getLogFiles(files, logPartition)).whenComplete(AsyncCallbacks.forwardTo(callback));
+	public CompletionStage<List<LogFile>> list(String logPartition) {
+		return client.list().thenApply(files -> getLogFiles(files, logPartition));
 	}
 
 	@Override
-	public void read(String logPartition, LogFile logFile, long startPosition, final StreamConsumer<ByteBuf> consumer) {
-		client.download(path(logPartition, logFile), startPosition).whenComplete((producer, throwable) -> {
-			if (throwable == null) {
-				producer.streamTo(consumer);
-			} else {
-				final Exception e = AsyncCallbacks.throwableToException(throwable);
-				StreamProducers.<ByteBuf>closingWithError(eventloop, e).streamTo(consumer);
-			}
-		});
+	public CompletionStage<StreamProducerWithResult<ByteBuf, Void>> read(String logPartition, LogFile logFile, long startPosition) {
+		return client.download(path(logPartition, logFile), startPosition);
 	}
 
 	@Override
-	public void write(String logPartition, LogFile logFile, StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
+	public CompletionStage<StreamConsumerWithResult<ByteBuf, Void>> write(String logPartition, LogFile logFile) {
 		final String fileName = path(logPartition, logFile);
-		client.upload(producer, fileName).whenComplete((aVoid, throwable) -> {
-			if (throwable == null) {
-				callback.setComplete();
-			} else {
-				client.delete(fileName);
-				callback.setException(AsyncCallbacks.throwableToException(throwable));
-			}
-		});
+		return client.upload(fileName);
 	}
 
 	private String path(String logPartition, LogFile logFile) {

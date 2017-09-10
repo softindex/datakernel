@@ -16,8 +16,8 @@
 
 package io.datakernel.stream.processor;
 
-import com.google.common.base.Predicate;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.TestStreamConsumers;
@@ -29,6 +29,7 @@ import java.util.List;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.*;
+import static io.datakernel.stream.processor.Utils.assertStatus;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -40,13 +41,7 @@ public class StreamFilterTest {
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
 
-		Predicate<Integer> predicate = new Predicate<Integer>() {
-			@Override
-			public boolean apply(Integer input) {
-				return input % 2 == 1;
-			}
-		};
-		StreamFilter<Integer> filter = StreamFilter.create(eventloop, predicate);
+		StreamFilter<Integer> filter = StreamFilter.create(eventloop, input -> input % 2 == 1);
 
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
@@ -55,9 +50,9 @@ public class StreamFilterTest {
 
 		eventloop.run();
 		assertEquals(asList(1, 3), consumer.getList());
-		assertEquals(END_OF_STREAM, source.getProducerStatus());
-		assertEquals(END_OF_STREAM, filter.getInput().getConsumerStatus());
-		assertEquals(END_OF_STREAM, filter.getOutput().getProducerStatus());
+		assertStatus(END_OF_STREAM, source);
+		assertStatus(END_OF_STREAM, filter.getInput());
+		assertStatus(END_OF_STREAM, filter.getOutput());
 	}
 
 	@Test
@@ -67,29 +62,18 @@ public class StreamFilterTest {
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
 
-		Predicate<Integer> predicate = new Predicate<Integer>() {
-			@Override
-			public boolean apply(Integer input) {
-				return input % 2 != 2;
-			}
-		};
-		StreamFilter<Integer> streamFilter = StreamFilter.create(eventloop, predicate);
+		StreamFilter<Integer> streamFilter = StreamFilter.create(eventloop, input -> input % 2 != 2);
 
 		TestStreamConsumers.TestConsumerToList<Integer> consumer1 = new TestStreamConsumers.TestConsumerToList<Integer>(eventloop, list) {
 			@Override
 			public void onData(Integer item) {
 				list.add(item);
 				if (item == 3) {
-					closeWithError(new Exception("Test Exception"));
+					closeWithError(new ExpectedException("Test Exception"));
 					return;
 				}
-				upstreamProducer.onConsumerSuspended();
-				eventloop.post(new Runnable() {
-					@Override
-					public void run() {
-						upstreamProducer.onConsumerResumed();
-					}
-				});
+				getProducer().suspend();
+				eventloop.post(() -> getProducer().produce(this));
 			}
 		};
 
@@ -99,11 +83,10 @@ public class StreamFilterTest {
 		eventloop.run();
 
 		assertEquals(asList(1, 2, 3), list);
-		assertEquals(CLOSED_WITH_ERROR, source.getProducerStatus());
-		assertEquals(CLOSED_WITH_ERROR, consumer1.getConsumerStatus());
-		assertEquals(CLOSED_WITH_ERROR, streamFilter.getInput().getConsumerStatus());
-		assertEquals(CLOSED_WITH_ERROR, streamFilter.getOutput().getProducerStatus());
-
+		assertStatus(CLOSED_WITH_ERROR, source);
+		assertStatus(CLOSED_WITH_ERROR, consumer1);
+		assertStatus(CLOSED_WITH_ERROR, streamFilter.getInput());
+		assertStatus(CLOSED_WITH_ERROR, streamFilter.getOutput());
 	}
 
 	@SuppressWarnings("unchecked")
@@ -113,15 +96,9 @@ public class StreamFilterTest {
 
 		StreamProducer<Integer> source = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, Arrays.asList(1, 2, 3)),
-				StreamProducers.<Integer>closingWithError(eventloop, new Exception("Test Exception")));
+				StreamProducers.closingWithError(eventloop, new ExpectedException("Test Exception")));
 
-		Predicate<Integer> predicate = new Predicate<Integer>() {
-			@Override
-			public boolean apply(Integer input) {
-				return input % 2 != 2;
-			}
-		};
-		StreamFilter<Integer> streamFilter = StreamFilter.create(eventloop, predicate);
+		StreamFilter<Integer> streamFilter = StreamFilter.create(eventloop, input -> input % 2 != 2);
 
 		List<Integer> list = new ArrayList<>();
 		TestStreamConsumers.TestConsumerToList consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
@@ -132,40 +109,10 @@ public class StreamFilterTest {
 		eventloop.run();
 
 		assertTrue(list.size() == 3);
-		assertEquals(CLOSED_WITH_ERROR, consumer.getUpstream().getProducerStatus());
-		assertEquals(CLOSED_WITH_ERROR, consumer.getConsumerStatus());
-		assertEquals(CLOSED_WITH_ERROR, streamFilter.getInput().getConsumerStatus());
-		assertEquals(CLOSED_WITH_ERROR, streamFilter.getOutput().getProducerStatus());
+		assertStatus(CLOSED_WITH_ERROR, consumer.getProducer());
+		assertStatus(CLOSED_WITH_ERROR, consumer);
+		assertStatus(CLOSED_WITH_ERROR, streamFilter.getInput());
+		assertStatus(CLOSED_WITH_ERROR, streamFilter.getOutput());
 	}
 
-	@Test
-	public void testWithoutConsumer() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
-
-		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
-
-		Predicate<Integer> predicate = new Predicate<Integer>() {
-			@Override
-			public boolean apply(Integer input) {
-				return input % 2 == 1;
-			}
-		};
-		StreamFilter<Integer> filter = StreamFilter.create(eventloop, predicate);
-
-		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
-
-		source.streamTo(filter.getInput());
-		eventloop.run();
-
-		assertEquals(SUSPENDED, filter.getInput().getConsumerStatus());
-		assertEquals(SUSPENDED, filter.getOutput().getProducerStatus());
-
-		filter.getOutput().streamTo(consumer);
-		eventloop.run();
-
-		assertEquals(asList(1, 3), consumer.getList());
-		assertEquals(END_OF_STREAM, source.getProducerStatus());
-		assertEquals(END_OF_STREAM, filter.getInput().getConsumerStatus());
-		assertEquals(END_OF_STREAM, filter.getOutput().getProducerStatus());
-	}
 }

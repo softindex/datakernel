@@ -17,10 +17,12 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.AbstractStreamTransformer_1_1;
-import io.datakernel.stream.AbstractStreamTransformer_N_1;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.*;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static io.datakernel.util.Preconditions.checkState;
 
 /**
  * It is {@link AbstractStreamTransformer_1_1} which unions all input streams and streams it
@@ -28,59 +30,85 @@ import io.datakernel.stream.StreamDataReceiver;
  *
  * @param <T> type of output data
  */
-public final class StreamUnion<T> extends AbstractStreamTransformer_N_1<T> {
+public final class StreamUnion<T> implements HasOutput<T>, HasInputs {
+	private final Eventloop eventloop;
+	private final List<Input> inputs = new ArrayList<>();
+	private final Output output;
+
 	// region creators
 	private StreamUnion(Eventloop eventloop) {
-		super(eventloop);
-		this.outputProducer = new OutputProducer();
+		this.eventloop = eventloop;
+		this.output = new Output(eventloop);
 	}
 
-	public static <T> StreamUnion<T> create(Eventloop eventloop) {return new StreamUnion<T>(eventloop);}
-	// endregion
-
-	protected final class InputConsumer extends AbstractInputConsumer<T> implements StreamDataReceiver<T> {
-		private final OutputProducer outputProducer = (OutputProducer) StreamUnion.this.outputProducer;
-
-		@Override
-		public StreamDataReceiver<T> getDataReceiver() {
-			return outputProducer.getDownstreamDataReceiver() != null
-					? outputProducer.getDownstreamDataReceiver()
-					: this;
-		}
-
-		@Override
-		public void onData(T item) {
-			outputProducer.send(item);
-		}
-
-		@Override
-		protected void onUpstreamEndOfStream() {
-			if (allUpstreamsEndOfStream()) {
-				outputProducer.sendEndOfStream();
-			}
-		}
+	public static <T> StreamUnion<T> create(Eventloop eventloop) {
+		return new StreamUnion<T>(eventloop);
 	}
 
-	public final class OutputProducer extends AbstractOutputProducer {
-		@Override
-		protected void onDownstreamStarted() {
-			if (inputConsumers.isEmpty()) {
-				sendEndOfStream();
-			}
-		}
+	@Override
+	public List<? extends StreamConsumer<?>> getInputs() {
+		return inputs;
+	}
 
-		@Override
-		protected void onDownstreamSuspended() {
-			suspendAllUpstreams();
-		}
-
-		@Override
-		protected void onDownstreamResumed() {
-			resumeAllUpstreams();
-		}
+	@Override
+	public StreamProducer<T> getOutput() {
+		return output;
 	}
 
 	public StreamConsumer<T> newInput() {
-		return addInput(new InputConsumer());
+		checkState(output.getStatus().isOpen());
+		Input input = new Input(eventloop);
+		inputs.add(input);
+		return input;
 	}
+
+	// endregion
+
+	private final class Input extends AbstractStreamConsumer<T> {
+		protected Input(Eventloop eventloop) {
+			super(eventloop);
+		}
+
+		@Override
+		protected void onEndOfStream() {
+			if (inputs.stream().allMatch(input -> input.getStatus() == StreamStatus.END_OF_STREAM)) {
+				output.sendEndOfStream();
+			}
+		}
+
+		@Override
+		protected void onError(Exception e) {
+			output.closeWithError(e);
+		}
+	}
+
+	private final class Output extends AbstractStreamProducer<T> {
+		protected Output(Eventloop eventloop) {
+			super(eventloop);
+		}
+
+		@Override
+		protected void onSuspended() {
+			for (int i = 0; i < inputs.size(); i++) {
+				inputs.get(i).getProducer().suspend();
+			}
+		}
+
+		@Override
+		protected void onProduce(StreamDataReceiver<T> dataReceiver) {
+			if (!inputs.isEmpty()) {
+				for (int i = 0; i < inputs.size(); i++) {
+					inputs.get(i).getProducer().produce(dataReceiver);
+				}
+			} else {
+				eventloop.post(this::sendEndOfStream);
+			}
+		}
+
+		@Override
+		protected void onError(Exception e) {
+			inputs.forEach(input -> input.closeWithError(e));
+		}
+	}
+
 }

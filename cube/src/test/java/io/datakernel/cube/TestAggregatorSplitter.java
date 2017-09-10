@@ -17,7 +17,7 @@
 package io.datakernel.cube;
 
 import com.google.common.base.Functions;
-import io.datakernel.aggregation.util.AsyncResultsReducer;
+import io.datakernel.async.StagesAccumulator;
 import io.datakernel.cube.bean.TestPubRequest;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
@@ -64,8 +64,8 @@ public class TestAggregatorSplitter extends LogDataConsumerSplitter<TestPubReque
 	private static final Set<String> ADV_METRICS = newHashSet("advRequests");
 
 	@Override
-	protected AbstractSplitter createSplitter(AsyncResultsReducer<List<CubeDiff>> resultsReducer) {
-		return new AbstractSplitter(eventloop, resultsReducer) {
+	protected StreamDataReceiver<TestPubRequest> createSplitter() {
+		return new StreamDataReceiver<TestPubRequest>() {
 			private final AggregationItem outputItem = new AggregationItem();
 
 			private final StreamDataReceiver<AggregationItem> pubAggregator = addOutput(

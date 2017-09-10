@@ -212,7 +212,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 
 	private void returnError(SettableStage<?> callback, Exception exception) {
 		if (callback != null) {
-			callback.setError(exception);
+			callback.setException(exception);
 		}
 	}
 
@@ -264,7 +264,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 		SettableStage<Object> callback = (SettableStage<Object>) activeRequests.remove(message.getCookie());
 		if (callback == null) return;
 
-		callback.setResult(message.getData());
+		callback.set(message.getData());
 		if (serverClosing && activeRequests.size() == 0) close();
 	}
 

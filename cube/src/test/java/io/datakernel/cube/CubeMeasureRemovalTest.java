@@ -128,9 +128,9 @@ public class CubeMeasureRemovalTest {
 		future.get();
 
 		// Save and aggregate logs
-		List<LogItem> listOfRandomLogItems = LogItem.getListOfRandomLogItems(100);
-		StreamProducer<LogItem> producerOfRandomLogItems = StreamProducers.ofIterator(eventloop, listOfRandomLogItems.iterator());
-		producerOfRandomLogItems.streamTo(logManager.consumer("partitionA"));
+		List<LogItem> listOfRandomLogItems1 = LogItem.getListOfRandomLogItems(100);
+		StreamProducer<LogItem> producerOfRandomLogItems1 = StreamProducers.ofIterator(eventloop, listOfRandomLogItems1.iterator());
+		producerOfRandomLogItems1.streamTo(logManager.consumerStream("partitionA"));
 		eventloop.run();
 
 		future = logOTProcessor.processLog().toCompletableFuture();
@@ -140,6 +140,19 @@ public class CubeMeasureRemovalTest {
 		List<AggregationChunk> chunks = newArrayList(cube.getAggregation("date").getState().getChunks().values());
 		assertEquals(1, chunks.size());
 		assertTrue(chunks.get(0).getMeasures().contains("revenue"));
+
+		StreamConsumers.ToList<LogItem> queryResultConsumer1 = new StreamConsumers.ToList<>(eventloop);
+		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(),
+				LogItem.class, DefiningClassLoader.create(classLoader)).streamTo(queryResultConsumer1);
+		eventloop.run();
+
+		HashMap<Integer, Long> map1 = new HashMap<>();
+		aggregateToMap(map1, listOfRandomLogItems1);
+
+		List<LogItem> queryResult1 = queryResultConsumer1.getList();
+		for (LogItem logItem : queryResult1) {
+			assertEquals(logItem.clicks, map1.get(logItem.date).longValue());
+		}
 
 		// Initialize cube with new structure (removed measure)
 		cube = Cube.create(eventloop, executor, classLoader, aggregationChunkStorage)
@@ -182,8 +195,8 @@ public class CubeMeasureRemovalTest {
 
 		// Save and aggregate logs
 		List<LogItem> listOfRandomLogItems2 = LogItem.getListOfRandomLogItems(100);
-		producerOfRandomLogItems = StreamProducers.ofIterator(eventloop, listOfRandomLogItems2.iterator());
-		producerOfRandomLogItems.streamTo(logManager.consumer("partitionA"));
+		StreamProducer<LogItem> producerOfRandomLogItems2 = StreamProducers.ofIterator(eventloop, listOfRandomLogItems2.iterator());
+		producerOfRandomLogItems2.streamTo(logManager.consumerStream("partitionA"));
 		eventloop.run();
 
 		future = logOTProcessor.processLog().toCompletableFuture();
@@ -201,19 +214,19 @@ public class CubeMeasureRemovalTest {
 		assertTrue(chunks.get(1).getMeasures().contains("revenue"));
 
 		// Aggregate manually
-		HashMap<Integer, Long> map = new HashMap<>();
-		aggregateToMap(map, listOfRandomLogItems);
-		aggregateToMap(map, listOfRandomLogItems2);
+		HashMap<Integer, Long> map2 = new HashMap<>();
+		aggregateToMap(map2, listOfRandomLogItems1);
+		aggregateToMap(map2, listOfRandomLogItems2);
 
-		StreamConsumers.ToList<LogItem> queryResultConsumer = new StreamConsumers.ToList<>(eventloop);
+		StreamConsumers.ToList<LogItem> queryResultConsumer2 = new StreamConsumers.ToList<>(eventloop);
 		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(),
-				LogItem.class, DefiningClassLoader.create(classLoader)).streamTo(queryResultConsumer);
+				LogItem.class, DefiningClassLoader.create(classLoader)).streamTo(queryResultConsumer2);
 		eventloop.run();
-		List<LogItem> queryResultBeforeConsolidation = queryResultConsumer.getList();
 
 		// Check query results
-		for (LogItem logItem : queryResultBeforeConsolidation) {
-			assertEquals(logItem.clicks, map.get(logItem.date).longValue());
+		List<LogItem> queryResult2 = queryResultConsumer2.getList();
+		for (LogItem logItem : queryResult2) {
+			assertEquals(logItem.clicks, map2.get(logItem.date).longValue());
 		}
 
 		// Consolidate
@@ -236,17 +249,17 @@ public class CubeMeasureRemovalTest {
 		assertTrue(chunks.get(0).getMeasures().contains("revenue"));
 
 		// Query
-		queryResultConsumer = new StreamConsumers.ToList<>(eventloop);
+		StreamConsumers.ToList<LogItem> queryResultConsumer3 = new StreamConsumers.ToList<>(eventloop);
 		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(),
-				LogItem.class, DefiningClassLoader.create(classLoader)).streamTo(queryResultConsumer);
+				LogItem.class, DefiningClassLoader.create(classLoader)).streamTo(queryResultConsumer3);
 		eventloop.run();
-		List<LogItem> queryResultAfterConsolidation = queryResultConsumer.getList();
+		List<LogItem> queryResult3 = queryResultConsumer3.getList();
 
 		// Check that query results before and after consolidation match
-		assertEquals(queryResultBeforeConsolidation.size(), queryResultAfterConsolidation.size());
-		for (int i = 0; i < queryResultBeforeConsolidation.size(); ++i) {
-			assertEquals(queryResultBeforeConsolidation.get(i).date, queryResultAfterConsolidation.get(i).date);
-			assertEquals(queryResultBeforeConsolidation.get(i).clicks, queryResultAfterConsolidation.get(i).clicks);
+		assertEquals(queryResult2.size(), queryResult3.size());
+		for (int i = 0; i < queryResult2.size(); ++i) {
+			assertEquals(queryResult2.get(i).date, queryResult3.get(i).date);
+			assertEquals(queryResult2.get(i).clicks, queryResult3.get(i).clicks);
 		}
 	}
 

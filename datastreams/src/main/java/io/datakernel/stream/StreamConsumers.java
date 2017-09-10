@@ -16,7 +16,7 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.*;
+import io.datakernel.async.SettableStage;
 import io.datakernel.eventloop.Eventloop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,17 +27,28 @@ import java.util.concurrent.CompletionStage;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
+import static io.datakernel.async.AsyncCallbacks.throwableToException;
+import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
 public final class StreamConsumers {
 	private StreamConsumers() {
 	}
 
-	public static <T> Idle<T> idle(Eventloop eventloop) {
-		return new Idle<>(eventloop);
+	public static <T> Idle<T> idle() {
+		return new Idle<>();
 	}
 
 	public static <T> ClosingWithError<T> closingWithError(Eventloop eventloop, Exception exception) {
 		return new ClosingWithError<>(eventloop, exception);
+	}
+
+	public static <T> StreamConsumer<T> ofStage(CompletionStage<StreamConsumer<T>> consumerStage) {
+		StreamConsumerDecorator<T> decorator = StreamConsumerDecorator.create();
+		consumerStage
+				.exceptionally(throwable ->
+						closingWithError(getCurrentEventloop(), throwableToException(throwable)))
+				.thenAccept(decorator::setActualConsumer);
+		return decorator;
 	}
 
 	/**
@@ -48,7 +59,7 @@ public final class StreamConsumers {
 	 * @param <T>       type of item
 	 */
 	public static <T> ToList<T> toList(Eventloop eventloop, List<T> list) {
-		return new ToList<T>(eventloop, list);
+		return new ToList<>(eventloop, list);
 	}
 
 	/**
@@ -61,35 +72,9 @@ public final class StreamConsumers {
 		return toList(eventloop, new ArrayList<T>());
 	}
 
-	public static <T> StreamConsumer<T> asynchronouslyResolving(final Eventloop eventloop, final AsyncCallable<StreamConsumer<T>> consumerGetter) {
-		final StreamForwarder<T> forwarder = StreamForwarder.create(eventloop);
-		eventloop.post(() -> consumerGetter.call().whenComplete((result, throwable) -> {
-			if (throwable != null) {
-				final Exception exception = AsyncCallbacks.throwableToException(throwable);
-				forwarder.getOutput().streamTo(new ClosingWithError<T>(eventloop, exception));
-			} else {
-				forwarder.getOutput().streamTo(result);
-			}
-		}));
-		return forwarder.getInput();
-	}
-
-	public static final class ClosingWithError<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
+	public static final class ClosingWithError<T> extends AbstractStreamConsumer<T> {
 		protected static final Logger logger = LoggerFactory.getLogger(ClosingWithError.class);
-		private SettableStage<Void> completionStage;
 		private final Exception exception;
-
-		public CompletionStage<Void> getCompletionStage() {
-			if (getConsumerStatus().isOpen()) {
-				return this.completionStage = SettableStage.create();
-			} else {
-				if (getConsumerStatus() == StreamStatus.END_OF_STREAM) {
-					return SettableStage.immediateStage(null);
-				} else {
-					return SettableStage.immediateFailedStage(getConsumerException());
-				}
-			}
-		}
 
 		public ClosingWithError(Eventloop eventloop, Exception exception) {
 			super(eventloop);
@@ -98,9 +83,6 @@ public final class StreamConsumers {
 
 		@Override
 		protected void onError(Exception e) {
-			if (completionStage != null) {
-				completionStage.setError(e);
-			}
 		}
 
 		@Override
@@ -110,13 +92,7 @@ public final class StreamConsumers {
 		}
 
 		@Override
-		public StreamDataReceiver<T> getDataReceiver() {
-			return this;
-		}
-
-		@Override
-		public void onData(T item) {
-			closeWithError(exception);
+		protected void onEndOfStream() {
 		}
 	}
 
@@ -125,18 +101,31 @@ public final class StreamConsumers {
 	 *
 	 * @param <T> type of received data
 	 */
-	public static final class Idle<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
-		protected Idle(Eventloop eventloop) {
-			super(eventloop);
+	public static final class Idle<T> implements StreamConsumer<T> {
+		private StreamProducer<T> producer;
+
+		@Override
+		public void streamFrom(StreamProducer<T> producer) {
+			checkNotNull(producer);
+			if (this.producer == producer) return;
+
+			checkState(this.producer == null);
+
+			this.producer = producer;
+			producer.streamTo(this);
 		}
 
 		@Override
-		public StreamDataReceiver<T> getDataReceiver() {
-			return this;
+		public void endOfStream() {
 		}
 
 		@Override
-		public void onData(T item) {
+		public void closeWithError(Exception e) {
+			producer.closeWithError(e);
+		}
+
+		public StreamProducer<T> getProducer() {
+			return producer;
 		}
 	}
 
@@ -147,7 +136,6 @@ public final class StreamConsumers {
 	 */
 	public static final class ToList<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
 		protected final List<T> list;
-		private SettableStage<Void> completionStage;
 		private SettableStage<List<T>> resultStage;
 
 		/**
@@ -155,27 +143,15 @@ public final class StreamConsumers {
 		 * this customer will run
 		 */
 		public ToList(Eventloop eventloop) {
-			this(eventloop, new ArrayList<T>());
-		}
-
-		public CompletionStage<Void> getCompletionStage() {
-			if (getConsumerStatus().isOpen()) {
-				return this.completionStage = SettableStage.create();
-			} else {
-				if (getConsumerStatus() == StreamStatus.END_OF_STREAM) {
-					return SettableStage.immediateStage(null);
-				} else {
-					return SettableStage.immediateFailedStage(getConsumerException());
-				}
-			}
+			this(eventloop, new ArrayList<>());
 		}
 
 		public CompletionStage<List<T>> getResultStage() {
-			if (getConsumerStatus().isOpen()) {
+			if (getStatus().isOpen()) {
 				return this.resultStage = SettableStage.create();
 			} else {
-				if (error != null) {
-					return SettableStage.immediateFailedStage(getConsumerException());
+				if (getException() != null) {
+					return SettableStage.immediateFailedStage(getException());
 				} else {
 					return SettableStage.immediateStage(null);
 				}
@@ -183,22 +159,21 @@ public final class StreamConsumers {
 		}
 
 		@Override
+		protected void onStarted() {
+			getProducer().produce(this);
+		}
+
+		@Override
 		protected void onEndOfStream() {
-			if (completionStage != null) {
-				completionStage.setResult(null);
-			}
 			if (resultStage != null) {
-				resultStage.setResult(list);
+				resultStage.set(list);
 			}
 		}
 
 		@Override
 		protected void onError(Exception e) {
-			if (completionStage != null) {
-				completionStage.setError(e);
-			}
 			if (resultStage != null) {
-				resultStage.setError(e);
+				resultStage.setException(e);
 			}
 		}
 
@@ -218,13 +193,8 @@ public final class StreamConsumers {
 		 * Returns list with received items
 		 */
 		public final List<T> getList() {
-			checkState(getConsumerStatus() == StreamStatus.END_OF_STREAM, "ToList consumer is not closed");
+			checkState(getStatus() == StreamStatus.END_OF_STREAM, "ToList consumer is not closed");
 			return list;
-		}
-
-		@Override
-		public StreamDataReceiver<T> getDataReceiver() {
-			return this;
 		}
 
 		@Override
@@ -238,12 +208,17 @@ public final class StreamConsumers {
 		private boolean endOfStream;
 
 		protected ToListSuspend(Eventloop eventloop) {
-			this(eventloop, new ArrayList<T>());
+			this(eventloop, new ArrayList<>());
 		}
 
 		public ToListSuspend(Eventloop eventloop, List<T> list) {
 			super(eventloop);
 			this.list = list;
+		}
+
+		@Override
+		protected void onStarted() {
+			getProducer().produce(this);
 		}
 
 		@Override
@@ -257,14 +232,9 @@ public final class StreamConsumers {
 		}
 
 		@Override
-		public StreamDataReceiver<T> getDataReceiver() {
-			return this;
-		}
-
-		@Override
 		public void onData(T item) {
 			list.add(item);
-			suspend();
+			getProducer().suspend();
 		}
 
 		public final List<T> getList() {
@@ -276,12 +246,12 @@ public final class StreamConsumers {
 		}
 
 		public Exception getOnError() {
-			return error;
+			return getException();
 		}
 	}
 
 	public static <T> ToListSuspend<T> toListSuspend(Eventloop eventloop, List<T> list) {
-		return new ToListSuspend<T>(eventloop, list);
+		return new ToListSuspend<>(eventloop, list);
 	}
 
 	public static <T> ToListSuspend<T> toListSuspend(Eventloop eventloop) {

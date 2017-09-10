@@ -18,9 +18,8 @@ package io.datakernel.aggregation;
 
 import com.google.common.base.Function;
 import io.datakernel.aggregation.ot.AggregationStructure;
-import io.datakernel.aggregation.util.AsyncResultsReducer;
 import io.datakernel.aggregation.util.PartitionPredicate;
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.StagesAccumulator;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamConsumer;
@@ -30,10 +29,11 @@ import io.datakernel.stream.StreamProducers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletionStage;
-
-import static io.datakernel.async.AsyncCallbacks.throwableToException;
 
 public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
@@ -42,23 +42,14 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 	private final AggregationStructure aggregation;
 	private final List<String> fields;
 	private final PartitionPredicate<T> partitionPredicate;
-	private final Class<?> recordClass;
+	private final Class<T> recordClass;
 	private final Function<T, Comparable<?>> keyFunction;
 	private final Aggregate aggregate;
-	private final AsyncResultsReducer<List<AggregationChunk>> resultsTracker;
-	private final SettableStage<Void> completionStage = SettableStage.create();
+	private final StagesAccumulator<List<AggregationChunk>> resultsTracker;
 	private final DefiningClassLoader classLoader;
 	private int chunkSize;
 
 	private final HashMap<Comparable<?>, Object> map = new HashMap<>();
-
-	private static final AsyncResultsReducer.ResultReducer<List<AggregationChunk>, List<AggregationChunk>> REDUCER = new AsyncResultsReducer.ResultReducer<List<AggregationChunk>, List<AggregationChunk>>() {
-		@Override
-		public List<AggregationChunk> applyResult(List<AggregationChunk> accumulator, List<AggregationChunk> value) {
-			accumulator.addAll(value);
-			return accumulator;
-		}
-	};
 
 	public AggregationGroupReducer(Eventloop eventloop, AggregationChunkStorage storage,
 	                               AggregationStructure aggregation, List<String> fields,
@@ -69,23 +60,18 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 		this.storage = storage;
 		this.fields = fields;
 		this.partitionPredicate = partitionPredicate;
-		this.recordClass = recordClass;
+		this.recordClass = (Class<T>) recordClass;
 		this.keyFunction = keyFunction;
 		this.aggregate = aggregate;
 		this.chunkSize = chunkSize;
 		this.aggregation = aggregation;
-		this.resultsTracker = AsyncResultsReducer.<List<AggregationChunk>>create(new ArrayList<>())
-				.withStage(this.completionStage, (accumulator, value) -> accumulator);
+		this.resultsTracker = StagesAccumulator.<List<AggregationChunk>>create(new ArrayList<>())
+				.withStage(getCompletionStage(), (accumulator, value) -> accumulator);
 		this.classLoader = classLoader;
 	}
 
 	public CompletionStage<List<AggregationChunk>> getResult() {
-		return resultsTracker.getResult();
-	}
-
-	@Override
-	public StreamDataReceiver<T> getDataReceiver() {
-		return this;
+		return resultsTracker.get();
 	}
 
 	@Override
@@ -104,17 +90,22 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 		}
 	}
 
+	@Override
+	protected void onStarted() {
+		getProducer().produce(this);
+	}
+
 	@SuppressWarnings("unchecked")
 	private void doFlush() {
 		if (map.isEmpty())
 			return;
 
-		suspend();
+		suspendOrResume();
 
 		List<Map.Entry<Comparable<?>, Object>> entryList = new ArrayList<>(map.entrySet());
 		map.clear();
 
-		Collections.sort(entryList, (o1, o2) -> {
+		entryList.sort((o1, o2) -> {
 			Comparable<Object> key1 = (Comparable<Object>) o1.getKey();
 			Comparable<Object> key2 = (Comparable<Object>) o2.getKey();
 			return key1.compareTo(key2);
@@ -125,36 +116,32 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 			list.add(entry.getValue());
 		}
 
-		SettableStage<List<AggregationChunk>> newChunkStage = SettableStage.create();
-		resultsTracker.addStage(newChunkStage, REDUCER);
-
 		StreamProducer producer = StreamProducers.ofIterable(eventloop, list);
-		AggregationChunker<Object> chunker = new AggregationChunker(eventloop, aggregation, fields, recordClass,
-				partitionPredicate, storage, chunkSize, classLoader);
+		AggregationChunker<T> chunker = AggregationChunker.create(eventloop, aggregation, fields, recordClass,
+				partitionPredicate, storage, classLoader);
 		producer.streamTo(chunker);
 
-		chunker.getResult()
-				.whenComplete((newChunks, throwable) -> {
-					if (throwable == null) {
-						newChunkStage.setResult(newChunks);
-						resume();
-					} else {
-						logger.error("Streaming to chunker failed", throwable);
-						newChunkStage.setError(throwable);
-						closeWithError(throwableToException(throwable));
-					}
-				});
+		resultsTracker.addStage(chunker.getResult(), (accumulator, newChunks) -> {
+			accumulator.addAll(newChunks);
+			return accumulator;
+		}).thenAccept(aggregationChunks -> suspendOrResume());
+	}
+
+	private void suspendOrResume() {
+		if (resultsTracker.getActiveStages() > 2) {
+			getProducer().suspend();
+		} else {
+			getProducer().produce(this);
+		}
 	}
 
 	@Override
 	public void onEndOfStream() {
 		doFlush();
-		completionStage.setResult(null);
 	}
 
 	@Override
 	protected void onError(Exception e) {
-		completionStage.setError(e);
 	}
 
 	// jmx

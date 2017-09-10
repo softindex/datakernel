@@ -37,7 +37,7 @@ public class AsyncCallables {
 			final SettableStage<T> stage = SettableStage.create();
 			final CompletionStage<T> stageCall = callable.call();
 			final ScheduledRunnable scheduledRunnable = eventloop.schedule(timestamp, () -> {
-				stage.setError(CALLABLE_TIMEOUT_EXCEPTION);
+				stage.setException(CALLABLE_TIMEOUT_EXCEPTION);
 				Stages.tryCancel(stageCall);
 			});
 
@@ -82,12 +82,12 @@ public class AsyncCallables {
 					if (throwable != null) {
 						if (state.pending > 0) {
 							state.pending = 0;
-							stage.setError(throwable);
+							stage.setException(throwable);
 						}
 					} else {
 						results[finalI] = t;
 						if (--state.pending == 0) {
-							stage.setResult(Arrays.asList(results));
+							stage.set(Arrays.asList(results));
 						}
 					}
 				});
@@ -114,7 +114,7 @@ public class AsyncCallables {
 			}
 			final ScheduledRunnable scheduledRunnable = eventloop.schedule(timestamp, () -> {
 				state.pending = 0;
-				stage.setResult(Arrays.asList(results));
+				stage.set(Arrays.asList(results));
 			});
 
 			for (int i = 0; i < callables.size(); i++) {
@@ -125,13 +125,13 @@ public class AsyncCallables {
 						if (state.pending > 0) {
 							state.pending = 0;
 							scheduledRunnable.cancel();
-							stage.setError(throwable);
+							stage.setException(throwable);
 						}
 					} else {
 						results[finalI] = t;
 						if (--state.pending == 0) {
 							scheduledRunnable.cancel();
-							stage.setResult(Arrays.asList(results));
+							stage.set(Arrays.asList(results));
 						}
 					}
 				});

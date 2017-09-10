@@ -16,23 +16,31 @@
 
 package io.datakernel.logfs;
 
-import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.stream.StreamProducerWithResult;
 
 import java.util.List;
+import java.util.concurrent.CompletionStage;
 
 /**
  * Represents a file system where logs are persisted.
  */
 public interface LogFileSystem {
-	void makeUniqueLogFile(String logPartition, String logName, ResultCallback<LogFile> callback);
+	CompletionStage<LogFile> makeUniqueLogFile(String logPartition, String logName);
 
-	void list(String logPartition, ResultCallback<List<LogFile>> callback);
+	CompletionStage<List<LogFile>> list(String logPartition);
 
-	void read(String logPartition, LogFile logFile, long startPosition, StreamConsumer<ByteBuf> consumer);
+	CompletionStage<StreamProducerWithResult<ByteBuf, Void>> read(String logPartition, LogFile logFile, long startPosition);
 
-	void write(String logPartition, LogFile logFile, StreamProducer<ByteBuf> producer, CompletionCallback callback);
+	default StreamProducerWithResult<ByteBuf, Void> readStream(String logPartition, LogFile logFile, long startPosition) {
+		return StreamProducerWithResult.ofStage(read(logPartition, logFile, startPosition));
+	}
+
+	CompletionStage<StreamConsumerWithResult<ByteBuf, Void>> write(String logPartition, LogFile logFile);
+
+	default StreamConsumerWithResult<ByteBuf, Void> writeStream(String logPartition, LogFile logFile) {
+		return StreamConsumerWithResult.ofStage(write(logPartition, logFile));
+	}
 }

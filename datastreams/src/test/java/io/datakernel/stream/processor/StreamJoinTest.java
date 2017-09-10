@@ -16,10 +16,10 @@
 
 package io.datakernel.stream.processor;
 
-import com.google.common.base.Function;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.Ordering;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.StreamStatus;
@@ -31,11 +31,13 @@ import java.util.List;
 
 import static com.google.common.base.Objects.equal;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
+import static io.datakernel.stream.processor.Utils.assertStatus;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
-public class StreamJoinAsUnsortedStreamTest {
+public class StreamJoinTest {
 	private static final class DataItemMaster {
 		int id;
 		int detailId;
@@ -125,19 +127,9 @@ public class StreamJoinAsUnsortedStreamTest {
 				new DataItemDetail(20, "detailY")));
 
 		StreamJoin<Integer, DataItemMaster, DataItemDetail, DataItemMasterDetail> streamJoin =
-				StreamJoin.create(eventloop, Ordering.<Integer>natural(),
-						new Function<DataItemMaster, Integer>() {
-							@Override
-							public Integer apply(DataItemMaster input) {
-								return input.detailId;
-							}
-						},
-						new Function<DataItemDetail, Integer>() {
-							@Override
-							public Integer apply(DataItemDetail input) {
-								return input.id;
-							}
-						},
+				StreamJoin.create(eventloop, Ordering.natural(),
+						input -> input.detailId,
+						input -> input.id,
 						new StreamJoin.ValueJoiner<Integer, DataItemMaster, DataItemDetail, DataItemMasterDetail>() {
 							@Override
 							public DataItemMasterDetail doInnerJoin(Integer key, DataItemMaster left, DataItemDetail right) {
@@ -168,8 +160,8 @@ public class StreamJoinAsUnsortedStreamTest {
 						new DataItemMasterDetail(30, 20, "masterC", "detailY"),
 						new DataItemMasterDetail(40, 20, "masterD", "detailY")},
 				result.toArray(new DataItemMasterDetail[result.size()]));
-		assertEquals(END_OF_STREAM, source1.getProducerStatus());
-		assertEquals(END_OF_STREAM, source2.getProducerStatus());
+		assertStatus(END_OF_STREAM, source1);
+		assertStatus(END_OF_STREAM, source2);
 	}
 
 	@Test
@@ -189,19 +181,9 @@ public class StreamJoinAsUnsortedStreamTest {
 				new DataItemDetail(20, "detailY")));
 
 		StreamJoin<Integer, DataItemMaster, DataItemDetail, DataItemMasterDetail> streamJoin =
-				StreamJoin.create(eventloop, Ordering.<Integer>natural(),
-						new Function<DataItemMaster, Integer>() {
-							@Override
-							public Integer apply(DataItemMaster input) {
-								return input.detailId;
-							}
-						},
-						new Function<DataItemDetail, Integer>() {
-							@Override
-							public Integer apply(DataItemDetail input) {
-								return input.id;
-							}
-						},
+				StreamJoin.create(eventloop, Ordering.natural(),
+						input -> input.detailId,
+						input -> input.id,
 						new StreamJoin.ValueJoiner<Integer, DataItemMaster, DataItemDetail, DataItemMasterDetail>() {
 							@Override
 							public DataItemMasterDetail doInnerJoin(Integer key, DataItemMaster left, DataItemDetail right) {
@@ -220,16 +202,11 @@ public class StreamJoinAsUnsortedStreamTest {
 			public void onData(DataItemMasterDetail item) {
 				list.add(item);
 				if (list.size() == 1) {
-					closeWithError(new Exception("Test Exception"));
+					closeWithError(new ExpectedException("Test Exception"));
 					return;
 				}
-				upstreamProducer.onConsumerSuspended();
-				eventloop.post(new Runnable() {
-					@Override
-					public void run() {
-						upstreamProducer.onConsumerResumed();
-					}
-				});
+				getProducer().suspend();
+				eventloop.post(() -> getProducer().produce(this));
 			}
 		};
 
@@ -240,8 +217,8 @@ public class StreamJoinAsUnsortedStreamTest {
 
 		eventloop.run();
 		assertTrue(list.size() == 1);
-		assertTrue((source1).getProducerStatus() == StreamStatus.CLOSED_WITH_ERROR);
-		assertTrue((source2).getProducerStatus() == StreamStatus.END_OF_STREAM);
+		assertStatus(CLOSED_WITH_ERROR, source1);
+		assertStatus(END_OF_STREAM, source2);
 	}
 
 	@Test
@@ -249,7 +226,7 @@ public class StreamJoinAsUnsortedStreamTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		StreamProducer<DataItemMaster> source1 = StreamProducers.concat(eventloop,
 				StreamProducers.ofValue(eventloop, new DataItemMaster(10, 10, "masterA")),
-				StreamProducers.<DataItemMaster>closingWithError(eventloop, new Exception("Test Exception")),
+				StreamProducers.closingWithError(eventloop, new ExpectedException("Test Exception")),
 				StreamProducers.ofValue(eventloop, new DataItemMaster(20, 10, "masterB")),
 				StreamProducers.ofValue(eventloop, new DataItemMaster(25, 15, "masterB+")),
 				StreamProducers.ofValue(eventloop, new DataItemMaster(30, 20, "masterC")),
@@ -259,23 +236,13 @@ public class StreamJoinAsUnsortedStreamTest {
 		StreamProducer<DataItemDetail> source2 = StreamProducers.concat(eventloop,
 				StreamProducers.ofValue(eventloop, new DataItemDetail(10, "detailX")),
 				StreamProducers.ofValue(eventloop, new DataItemDetail(20, "detailY")),
-				StreamProducers.<DataItemDetail>closingWithError(eventloop, new Exception("Test Exception"))
+				StreamProducers.closingWithError(eventloop, new ExpectedException("Test Exception"))
 		);
 
 		StreamJoin<Integer, DataItemMaster, DataItemDetail, DataItemMasterDetail> streamJoin =
-				StreamJoin.create(eventloop, Ordering.<Integer>natural(),
-						new Function<DataItemMaster, Integer>() {
-							@Override
-							public Integer apply(DataItemMaster input) {
-								return input.detailId;
-							}
-						},
-						new Function<DataItemDetail, Integer>() {
-							@Override
-							public Integer apply(DataItemDetail input) {
-								return input.id;
-							}
-						},
+				StreamJoin.create(eventloop, Ordering.natural(),
+						input -> input.detailId,
+						input -> input.id,
 						new StreamJoin.ValueJoiner<Integer, DataItemMaster, DataItemDetail, DataItemMasterDetail>() {
 							@Override
 							public DataItemMasterDetail doInnerJoin(Integer key, DataItemMaster left, DataItemDetail right) {
@@ -299,7 +266,7 @@ public class StreamJoinAsUnsortedStreamTest {
 
 		eventloop.run();
 		assertTrue(list.size() == 0);
-		assertTrue((source1).getProducerStatus() == StreamStatus.CLOSED_WITH_ERROR);
-		assertTrue((source2).getProducerStatus() == StreamStatus.CLOSED_WITH_ERROR);
+		assertStatus(CLOSED_WITH_ERROR, source1);
+		assertStatus(CLOSED_WITH_ERROR, source2);
 	}
 }

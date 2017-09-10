@@ -34,6 +34,7 @@ import java.util.Random;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
+import static io.datakernel.stream.processor.Utils.assertStatus;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
@@ -74,7 +75,7 @@ public class StreamLZ4Test {
 
 		List<ByteBuf> buffers = new ArrayList<>();
 		Random random = new Random(123456);
-		int buffersCount = 1000;
+		int buffersCount = 100;
 		for (int i = 0; i < buffersCount; i++) {
 			buffers.add(createRandomByteBuf(random));
 		}
@@ -87,10 +88,14 @@ public class StreamLZ4Test {
 		StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create(eventloop);
 		TestStreamConsumers.TestConsumerToList<ByteBuf> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
+//		source.streamTo(compressor.getInput());
 		source.streamTo(preBuf.getInput());
 		preBuf.getOutput().streamTo(compressor.getInput());
+
+//		compressor.getOutput().streamTo(decompressor.getInput());
 		compressor.getOutput().streamTo(postBuf.getInput());
 		postBuf.getOutput().streamTo(decompressor.getInput());
+
 		decompressor.getOutput().streamTo(consumer);
 
 		eventloop.run();
@@ -101,21 +106,21 @@ public class StreamLZ4Test {
 		}
 
 		assertArrayEquals(expected, actual);
-		assertEquals(END_OF_STREAM, source.getProducerStatus());
+		assertStatus(END_OF_STREAM, source);
+
+//		assertStatus(END_OF_STREAM, preBuf.getInput());
+//		assertStatus(END_OF_STREAM, preBuf.getOutput());
+
+		assertStatus(END_OF_STREAM, compressor.getInput());
+		assertStatus(END_OF_STREAM, compressor.getOutput());
+
+//		assertStatus(END_OF_STREAM, postBuf.getInput());
+//		assertStatus(END_OF_STREAM, postBuf.getOutput());
+
+		assertStatus(END_OF_STREAM, decompressor.getInput());
+		assertStatus(END_OF_STREAM, decompressor.getOutput());
+
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-
-		assertEquals(END_OF_STREAM, preBuf.getInput().getConsumerStatus());
-		assertEquals(END_OF_STREAM, preBuf.getOutput().getProducerStatus());
-
-		assertEquals(END_OF_STREAM, compressor.getInput().getConsumerStatus());
-		assertEquals(END_OF_STREAM, compressor.getOutput().getProducerStatus());
-
-		assertEquals(END_OF_STREAM, postBuf.getInput().getConsumerStatus());
-		assertEquals(END_OF_STREAM, postBuf.getOutput().getProducerStatus());
-
-		assertEquals(END_OF_STREAM, decompressor.getInput().getConsumerStatus());
-		assertEquals(END_OF_STREAM, decompressor.getOutput().getProducerStatus());
-
 	}
 
 	@Test
@@ -159,20 +164,20 @@ public class StreamLZ4Test {
 		}
 
 		assertArrayEquals(expected, actual);
-		assertEquals(END_OF_STREAM, source.getProducerStatus());
+		assertStatus(END_OF_STREAM, source);
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 
-		assertEquals(END_OF_STREAM, preBuf.getInput().getConsumerStatus());
-		assertEquals(END_OF_STREAM, preBuf.getOutput().getProducerStatus());
+		assertStatus(END_OF_STREAM, preBuf.getInput());
+		assertStatus(END_OF_STREAM, preBuf.getOutput());
 
-		assertEquals(END_OF_STREAM, compressor.getInput().getConsumerStatus());
-		assertEquals(END_OF_STREAM, compressor.getOutput().getProducerStatus());
+		assertStatus(END_OF_STREAM, compressor.getInput());
+		assertStatus(END_OF_STREAM, compressor.getOutput());
 
-		assertEquals(END_OF_STREAM, postBuf.getInput().getConsumerStatus());
-		assertEquals(END_OF_STREAM, postBuf.getOutput().getProducerStatus());
+		assertStatus(END_OF_STREAM, postBuf.getInput());
+		assertStatus(END_OF_STREAM, postBuf.getOutput());
 
-		assertEquals(END_OF_STREAM, decompressor.getInput().getConsumerStatus());
-		assertEquals(END_OF_STREAM, decompressor.getOutput().getProducerStatus());
+		assertStatus(END_OF_STREAM, decompressor.getInput());
+		assertStatus(END_OF_STREAM, decompressor.getOutput());
 	}
 
 	@Test
@@ -230,7 +235,7 @@ public class StreamLZ4Test {
 		}
 		assertArrayEquals(actual, expected);
 
-		assertEquals(END_OF_STREAM, source.getProducerStatus());
+		assertStatus(END_OF_STREAM, source);
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 

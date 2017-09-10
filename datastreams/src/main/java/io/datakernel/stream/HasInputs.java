@@ -21,5 +21,7 @@ import java.util.List;
 public interface HasInputs {
 	List<? extends StreamConsumer<?>> getInputs();
 
-	StreamConsumer<?> getInput(int index);
+	default StreamConsumer<?> getInput(int index) {
+		return getInputs().get(index);
+	}
 }

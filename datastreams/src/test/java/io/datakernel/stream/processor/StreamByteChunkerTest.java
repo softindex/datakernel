@@ -16,6 +16,7 @@
 
 package io.datakernel.stream.processor;
 
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
@@ -81,14 +82,14 @@ public class StreamByteChunkerTest {
 
 		StreamProducer<ByteBuf> source = StreamProducers.ofIterable(eventloop, buffers);
 		StreamByteChunker resizer = StreamByteChunker.create(eventloop, bufSize / 2, bufSize);
-		StreamFixedSizeConsumer streamFixedSizeConsumer = new StreamFixedSizeConsumer();
+		StreamConsumers.ToList<ByteBuf> streamFixedSizeConsumer = StreamConsumers.toList(eventloop);
 
 		source.streamTo(resizer.getInput());
 		resizer.getOutput().streamTo(streamFixedSizeConsumer);
 
 		eventloop.run();
 
-		List<ByteBuf> receivedBuffers = streamFixedSizeConsumer.getBuffers();
+		List<ByteBuf> receivedBuffers = streamFixedSizeConsumer.getList();
 		byte[] received = byteBufsToByteArray(receivedBuffers);
 		assertArrayEquals(received, expected);
 
@@ -107,47 +108,5 @@ public class StreamByteChunkerTest {
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
-	private static class StreamFixedSizeConsumer implements StreamConsumer<ByteBuf>, StreamDataReceiver<ByteBuf> {
-
-		private List<ByteBuf> buffers = new ArrayList<>();
-
-		@Override
-		public StreamDataReceiver<ByteBuf> getDataReceiver() {
-			return this;
-		}
-
-		@Override
-		public void streamFrom(StreamProducer<ByteBuf> upstreamProducer) {
-
-		}
-
-		@Override
-		public void onProducerEndOfStream() {
-		}
-
-		@Override
-		public void onProducerError(Exception e) {
-
-		}
-
-		@Override
-		public StreamStatus getConsumerStatus() {
-			return null;
-		}
-
-		@Override
-		public Exception getConsumerException() {
-			return null;
-		}
-
-		@Override
-		public void onData(ByteBuf item) {
-			buffers.add(item);
-		}
-
-		public List<ByteBuf> getBuffers() {
-			return buffers;
-		}
-	}
 
 }

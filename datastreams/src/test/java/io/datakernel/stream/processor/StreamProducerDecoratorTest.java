@@ -30,6 +30,7 @@ import java.util.List;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
+import static io.datakernel.stream.processor.Utils.assertStatus;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
@@ -44,17 +45,12 @@ public class StreamProducerDecoratorTest {
 			@Override
 			public void onData(Integer item) {
 				if (item == 3) {
-					upstreamProducer.onConsumerError(new Exception("Test Exception"));
+					getProducer().closeWithError(new Exception("Test Exception"));
 					return;
 				}
 				list.add(item);
-				upstreamProducer.onConsumerSuspended();
-				eventloop.post(new Runnable() {
-					@Override
-					public void run() {
-						upstreamProducer.onConsumerResumed();
-					}
-				});
+				getProducer().suspend();
+				eventloop.post(() -> getProducer().produce(this));
 			}
 		};
 
@@ -66,8 +62,8 @@ public class StreamProducerDecoratorTest {
 		eventloop.run();
 
 		assertEquals(list, asList(1, 2));
-		assertEquals(CLOSED_WITH_ERROR, consumer.getUpstream().getProducerStatus());
-		assertEquals(CLOSED_WITH_ERROR, producer.getProducerStatus());
+		assertStatus(CLOSED_WITH_ERROR, producer);
+		assertStatus(CLOSED_WITH_ERROR, consumer);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -85,8 +81,8 @@ public class StreamProducerDecoratorTest {
 		eventloop.run();
 
 		assertEquals(consumer.getList(), asList(1, 2, 3, 4, 5));
-		assertEquals(END_OF_STREAM, consumer.getUpstream().getProducerStatus());
-		assertEquals(END_OF_STREAM, producer.getProducerStatus());
+		assertStatus(END_OF_STREAM, producer);
+		assertStatus(END_OF_STREAM, consumer);
 	}
 
 	@Test
@@ -106,7 +102,7 @@ public class StreamProducerDecoratorTest {
 		eventloop.run();
 
 		assertEquals(consumer.getList(), asList(1, 2, 3, 4, 5));
-		assertEquals(END_OF_STREAM, consumer.getUpstream().getProducerStatus());
-		assertEquals(END_OF_STREAM, producer.getProducerStatus());
+		assertStatus(END_OF_STREAM, producer);
+		assertStatus(END_OF_STREAM, consumer);
 	}
 }

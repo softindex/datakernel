@@ -16,7 +16,8 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.stream.StreamProducerWithResult;
 
 import java.util.List;
 import java.util.concurrent.CompletionStage;
@@ -28,13 +29,17 @@ import java.util.concurrent.CompletionStage;
  *
  * @param <T> type of storing data
  */
-public interface StreamMergeSorterStorage<T> {
+public interface StreamSorterStorage<T> {
 	/**
 	 * Method for writing to storage partition of elements
 	 *
 	 * @return partition number
 	 */
-	PartitionStage write(StreamProducer<T> producer);
+	CompletionStage<StreamConsumerWithResult<T, Integer>> write();
+
+	default StreamConsumerWithResult<T, Integer> writeStream() {
+		return StreamConsumerWithResult.ofStage(write());
+	}
 
 	/**
 	 * Method for creating producer for reading from storage partition of elements
@@ -42,47 +47,14 @@ public interface StreamMergeSorterStorage<T> {
 	 * @param partition index of partition
 	 * @return producer for streaming to storage
 	 */
-	ProducerStage<T> read(int partition);
+	CompletionStage<StreamProducerWithResult<T, Void>> read(int partition);
+
+	default StreamProducerWithResult<T, Void> readStream(int partition) {
+		return StreamProducerWithResult.ofStage(read(partition));
+	}
 
 	/**
 	 * Method for removing all stored created objects
 	 */
-	void cleanup(List<Integer> partitionsToDelete);
-
-	public static class PartitionStage {
-		private final int partition;
-		private final CompletionStage<Void> stage;
-
-		public PartitionStage(int partition, CompletionStage<Void> stage) {
-			this.partition = partition;
-			this.stage = stage;
-		}
-
-		public int getPartition() {
-			return partition;
-		}
-
-		public CompletionStage<Void> getStage() {
-			return stage;
-		}
-	}
-
-	public static class ProducerStage<T> {
-		private final StreamProducer<T> producer;
-		private final CompletionStage<Void> stage;
-
-		public ProducerStage(StreamProducer<T> producer, CompletionStage<Void> stage) {
-			this.producer = producer;
-			this.stage = stage;
-		}
-
-		public StreamProducer<T> getProducer() {
-			return producer;
-		}
-
-		public CompletionStage<Void> getStage() {
-			return stage;
-		}
-	}
-
+	CompletionStage<Void> cleanup(List<Integer> partitionsToDelete);
 }
