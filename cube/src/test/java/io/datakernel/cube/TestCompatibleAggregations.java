@@ -219,7 +219,7 @@ public class TestCompatibleAggregations {
 
 		//matches all aggregations, but with different filtering logic
 		assertTrue(compatibleAggregations.containsKey(LIMITED_DATES_AGGREGATION.getId()));
-		assertEquals(AggregationPredicates.alwaysTrue(), compatibleAggregations.get(LIMITED_DATES_AGGREGATION.getId()));
+		assertEquals(LIMITED_DATES_AGGREGATION_PREDICATE.simplify(), compatibleAggregations.get(LIMITED_DATES_AGGREGATION.getId()));
 
 		assertTrue(compatibleAggregations.containsKey(DAILY_AGGREGATION.getId()));
 		assertEquals(AggregationPredicates.alwaysTrue(), compatibleAggregations.get(DAILY_AGGREGATION.getId()));
