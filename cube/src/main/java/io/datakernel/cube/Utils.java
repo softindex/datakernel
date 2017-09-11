@@ -27,6 +27,7 @@ import io.datakernel.util.WithValue;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static io.datakernel.codegen.Expressions.*;
@@ -62,8 +63,16 @@ class Utils {
 	@SuppressWarnings("unchecked")
 	public static <R> void resolveAttributes(final List<R> results, final AttributeResolver attributeResolver,
 	                                         final List<String> recordDimensions, final List<String> recordAttributes,
+	                                         final Map<String, Object> fullySpecifiedDimensions,
 	                                         final Class<R> recordClass, DefiningClassLoader classLoader,
 	                                         CompletionCallback callback) {
+		final Object[] fullySpecifiedDimensionsArray = new Object[recordDimensions.size()];
+		for (int i = 0; i < recordDimensions.size(); i++) {
+			String dimension = recordDimensions.get(i);
+			if (fullySpecifiedDimensions.containsKey(dimension)) {
+				fullySpecifiedDimensionsArray[i] = fullySpecifiedDimensions.get(dimension);
+			}
+		}
 		final AttributeResolver.KeyFunction keyFunction = ClassBuilder.create(classLoader, AttributeResolver.KeyFunction.class)
 				.withMethod("extractKey", new WithValue<Expression>() {
 					@Override
@@ -73,7 +82,9 @@ class Utils {
 						for (int i = 0; i < recordDimensions.size(); i++) {
 							String dimension = recordDimensions.get(i);
 							extractKey.add(setArrayItem(key, value(i),
-									cast(field(cast(arg(0), recordClass), dimension), Object.class)));
+									fullySpecifiedDimensions.containsKey(dimension) ?
+											getArrayItem(value(fullySpecifiedDimensionsArray), value(i)) :
+											cast(field(cast(arg(0), recordClass), dimension), Object.class)));
 						}
 						return extractKey.add(key);
 					}

@@ -45,6 +45,11 @@ public final class RecordScheme {
 	}
 
 	public RecordScheme withField(String field, Type type) {
+		addField(field, type);
+		return this;
+	}
+
+	public void addField(String field, Type type) {
 		checkNotNull(type);
 		fieldTypes.put(field, type);
 		fields = Arrays.copyOf(fields, fields.length + 1);
@@ -70,14 +75,17 @@ public final class RecordScheme {
 		fieldRawIndices.put(field, rawIndex);
 		rawIndices = Arrays.copyOf(rawIndices, rawIndices.length + 1);
 		rawIndices[rawIndices.length - 1] = rawIndex;
-		return this;
 	}
 
 	public RecordScheme withFields(Map<String, Class<?>> types) {
+		addFields(types);
+		return this;
+	}
+
+	public void addFields(Map<String, Class<?>> types) {
 		for (String field : types.keySet()) {
 			withField(field, types.get(field));
 		}
-		return this;
 	}
 
 	public List<String> getFields() {

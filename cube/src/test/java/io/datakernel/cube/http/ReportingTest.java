@@ -26,6 +26,7 @@ import io.datakernel.aggregation.annotation.Key;
 import io.datakernel.aggregation.annotation.Measures;
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.measure.Measure;
+import io.datakernel.aggregation.util.AsyncResultsReducer;
 import io.datakernel.async.AssertingResultCallback;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.*;
@@ -45,6 +46,7 @@ import io.datakernel.ot.OTRemoteSql;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Serialize;
+import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamProducers;
 import org.joda.time.LocalDate;
 import org.junit.After;
@@ -250,6 +252,36 @@ public class ReportingTest {
 		}
 	}
 
+	public static class LogItemSplitter extends LogDataConsumerSplitter<LogItem, CubeDiff> {
+		private final Cube cube;
+
+		public LogItemSplitter(Eventloop eventloop, Cube cube) {
+			super(eventloop);
+			this.cube = cube;
+		}
+
+		@Override
+		protected AbstractSplitter createSplitter(AsyncResultsReducer<List<CubeDiff>> resultsReducer) {
+			return new AbstractSplitter(eventloop, resultsReducer) {
+				private final StreamDataReceiver<LogItem> dateAggregator = addOutput(cube.logStreamConsumer(
+						LogItem.class,
+						and(notEq("advertiser", EXCLUDE_ADVERTISER), notEq("campaign", EXCLUDE_CAMPAIGN), notEq("banner", EXCLUDE_BANNER))));
+				private final StreamDataReceiver<LogItem> dateAggregator2 = addOutput(cube.logStreamConsumer(
+						LogItem.class,
+						and(notEq("affiliate", EXCLUDE_AFFILIATE), notEq("site", EXCLUDE_SITE))));
+
+				@Override
+				public void onData(LogItem item) {
+					if (item.advertiser != EXCLUDE_ADVERTISER && item.campaign != EXCLUDE_CAMPAIGN && item.banner != EXCLUDE_BANNER) {
+						dateAggregator.onData(item);
+					} else if (item.affiliate != 0 && !EXCLUDE_SITE.equals(item.site)) {
+						dateAggregator2.onData(item);
+					}
+				}
+			};
+		}
+	}
+
 	@Before
 	public void setUp() throws Exception {
 		Path aggregationsDir = temporaryFolder.newFolder().toPath();
@@ -303,7 +335,7 @@ public class ReportingTest {
 
 		LogOTProcessor<Integer, LogItem, CubeDiff> logOTProcessor = LogOTProcessor.create(eventloop,
 				logManager,
-				cube.logStreamConsumer(LogItem.class),
+				new LogItemSplitter(eventloop, cube),
 				"testlog",
 				asList("partitionA"),
 				logCubeStateManager);
@@ -368,7 +400,8 @@ public class ReportingTest {
 				.withMeasure("maxRevenue", double.class)
 				.withMeasure("ctr", double.class)
 				.withMeasure("uniqueUserIdsCount", int.class)
-				.withMeasure("uniqueUserPercent", double.class);
+				.withMeasure("uniqueUserPercent", double.class)
+				.withMeasure("errorsPercent", double.class);
 	}
 
 	@After
@@ -577,6 +610,21 @@ public class ReportingTest {
 	}
 
 	@Test
+	public void testRecordsWithFullySpecifiedAttributes() throws Exception {
+		CubeQuery query = CubeQuery.create()
+				.withAttributes("date", "advertiser.name")
+				.withMeasures("impressions")
+				.withWhere(and(eq("advertiser", 1), notEq("campaign", EXCLUDE_CAMPAIGN), notEq("banner", EXCLUDE_BANNER)));
+
+		final QueryResult queryResult = getQueryResult(query);
+
+		assertEquals(3, queryResult.getRecords().size());
+		assertEquals("first", queryResult.getRecords().get(0).get("advertiser.name"));
+		assertEquals("first", queryResult.getRecords().get(1).get("advertiser.name"));
+		assertEquals("first", queryResult.getRecords().get(2).get("advertiser.name"));
+	}
+
+	@Test
 	public void testSearchAndFieldsParameter() throws Exception {
 		CubeQuery query = CubeQuery.create()
 				.withAttributes("advertiser.name")
@@ -589,12 +637,10 @@ public class ReportingTest {
 
 		List<Record> records = queryResult.getRecords();
 		assertEquals(2, records.size());
-		assertEquals(asList("advertiser", "advertiser.name", "clicks"), records.get(0).getScheme().getFields());
-		assertEquals(asList("advertiser", "advertiser.name"), queryResult.getAttributes());
+		assertEquals(asList("advertiser.name", "clicks"), records.get(0).getScheme().getFields());
+		assertEquals(asList("advertiser.name"), queryResult.getAttributes());
 		assertEquals(asList("clicks"), queryResult.getMeasures());
-		assertEquals(1, (int) records.get(0).get("advertiser"));
 		assertEquals("first", records.get(0).get("advertiser.name"));
-		assertEquals(2, (int) records.get(1).get("advertiser"));
 		assertEquals(null, records.get(1).get("advertiser.name"));
 	}
 
@@ -662,7 +708,7 @@ public class ReportingTest {
 
 		final QueryResult metadata = getQueryResult(onlyMetaQuery);
 
-		assertEquals(7, metadata.getRecordScheme().getFields().size());
+		assertEquals(6, metadata.getRecordScheme().getFields().size());
 		assertEquals(0, metadata.getTotalCount());
 		assertTrue(metadata.getRecords().isEmpty());
 		assertTrue(metadata.getFilterAttributes().isEmpty());
@@ -698,7 +744,7 @@ public class ReportingTest {
 				.withReportType(ReportType.METADATA);
 
 		final QueryResult metadata = getQueryResult(queryAffectingNonCompatibleAggregations);
-		assertTrue(metadata.getMeasures().isEmpty());
+		assertEquals(0, metadata.getMeasures().size());
 	}
 
 	@Test
@@ -721,7 +767,7 @@ public class ReportingTest {
 	public void testDataCorrectlyLoadedIntoAggregations() {
 		Aggregation daily = cube.getAggregation("daily");
 		int dailyAggregationItemsCount = getAggregationItemsCount(daily);
-		assertEquals(3, dailyAggregationItemsCount);
+		assertEquals(6, dailyAggregationItemsCount);
 
 		Aggregation advertisers = cube.getAggregation("advertisers");
 		int advertisersAggregationItemsCount = getAggregationItemsCount(advertisers);
