@@ -86,7 +86,7 @@ public class Stages {
 			return SettableStage.immediateStage(null);
 		}
 		StageRunnable next = stages.next();
-		return next.run().thenAccept($ -> sequence(stages));
+		return next.run().thenCompose($ -> sequence(stages));
 	}
 
 }
