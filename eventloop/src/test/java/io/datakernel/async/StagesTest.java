@@ -28,21 +28,21 @@ public class StagesTest {
 				.whenComplete(AsyncCallbacks.forwardTo(sequenceStage));
 
 		eventloop.run();
-		assertFalse(stage1.isDone());
-		assertFalse(stage2.isDone());
-		assertFalse(sequenceStage.isDone());
+		assertFalse(stage1.isSet());
+		assertFalse(stage2.isSet());
+		assertFalse(sequenceStage.isSet());
 
-		stage1.setResult(null);
+		stage1.set(null);
 		eventloop.run();
-		assertTrue(stage1.isDone());
-		assertFalse(stage2.isDone());
-		assertFalse(sequenceStage.isDone());
+		assertTrue(stage1.isSet());
+		assertFalse(stage2.isSet());
+		assertFalse(sequenceStage.isSet());
 
-		stage2.setResult(null);
+		stage2.set(null);
 		eventloop.run();
-		assertTrue(stage1.isDone());
-		assertTrue(stage2.isDone());
-		assertTrue(sequenceStage.isDone());
+		assertTrue(stage1.isSet());
+		assertTrue(stage2.isSet());
+		assertTrue(sequenceStage.isSet());
 	}
 
 }
