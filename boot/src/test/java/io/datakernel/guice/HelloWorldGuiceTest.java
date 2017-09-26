@@ -19,7 +19,7 @@ package io.datakernel.guice;
 import com.google.common.io.Closeables;
 import com.google.inject.*;
 import com.google.inject.name.Named;
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufStrings;
@@ -106,7 +106,7 @@ public class HelloWorldGuiceTest {
 		AsyncServlet servlet(@WorkerId final int workerId) {
 			return request -> {
 				byte[] body = ByteBufStrings.encodeAscii("Hello world: worker server #" + workerId);
-				return SettableStage.immediateStage(ok200().withBody(ByteBuf.wrapForReading(body)));
+				return Stages.of(ok200().withBody(ByteBuf.wrapForReading(body)));
 			};
 		}
 	}

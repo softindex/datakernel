@@ -2,7 +2,7 @@ package io.datakernel.ot;
 
 import com.google.common.base.Predicate;
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.ot.OTUtils.FindResult;
@@ -10,8 +10,6 @@ import io.datakernel.ot.OTUtils.FindResult;
 import java.util.*;
 import java.util.concurrent.CompletionStage;
 
-import static io.datakernel.async.SettableStage.immediateFailedStage;
-import static io.datakernel.async.SettableStage.immediateStage;
 import static java.util.Collections.singleton;
 import static java.util.Collections.singletonList;
 
@@ -52,7 +50,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 	@Override
 	public CompletionStage<Void> stop() {
 		invalidateInternalState();
-		return SettableStage.immediateStage(null);
+		return Stages.of(null);
 	}
 
 	public CompletionStage<Void> checkout() {
@@ -74,35 +72,35 @@ public final class OTStateManager<K, D> implements EventloopService {
 		state.init();
 		return findCheckpoint(singleton(commitId), null).thenCompose(findResult -> {
 			if (!findResult.isFound()) {
-				return immediateFailedStage(new IllegalStateException("Could not find path to original head"));
+				return Stages.ofException(new IllegalStateException("Could not find path to original head"));
 			}
 			List<D> pathToNewHead = findResult.getParentToChild();
 			apply(findResult.getParentCommit().getCheckpoint());
 			apply(pathToNewHead);
 			head = findResult.getChild();
-			return immediateStage(null);
+			return Stages.of((Void) null);
 		});
 	}
 
 	public CompletionStage<Void> pull() {
 		if (!pendingCommits.isEmpty()) {
-			return immediateStage(null);
+			return Stages.of(null);
 		}
 		return source.getHeads().thenCompose(newHeads -> {
 			Predicate<OTCommit<K, D>> isHead = input -> input.getId().equals(head);
 			return findParent(newHeads, head, isHead).thenCompose(findResult -> {
 				if (!findResult.isFound()) {
-					return immediateFailedStage(new IllegalStateException("Could not find path to original head"));
+					return Stages.ofException(new IllegalStateException("Could not find path to original head"));
 				}
 				if (!pendingCommits.isEmpty()) {
-					return immediateStage(null);
+					return Stages.of(null);
 				}
 				List<D> pathToNewHead = findResult.getParentToChild();
 				TransformResult<D> transformed = otSystem.transform(otSystem.squash(workingDiffs), otSystem.squash(pathToNewHead));
 				apply(transformed.left);
 				workingDiffs = new ArrayList<>(transformed.right);
 				head = findResult.getChild();
-				return immediateStage(null);
+				return Stages.of((Void) null);
 			});
 		});
 	}
@@ -125,7 +123,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 
 	public CompletionStage<Void> commit() {
 		if (workingDiffs.isEmpty()) {
-			return immediateStage(null);
+			return Stages.of(null);
 		}
 		return source.createId().thenAccept(newId -> {
 			pendingCommits.put(newId, otSystem.squash(workingDiffs));
@@ -135,7 +133,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 
 	public CompletionStage<Void> push() {
 		if (pendingCommits.isEmpty()) {
-			return immediateStage(null);
+			return Stages.of(null);
 		}
 		K parent = head;
 		List<OTCommit<K, D>> list = new ArrayList<>();

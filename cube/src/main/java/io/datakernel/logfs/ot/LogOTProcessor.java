@@ -16,7 +16,6 @@
 
 package io.datakernel.logfs.ot;
 
-import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stages;
 import io.datakernel.async.StagesAccumulator;
 import io.datakernel.eventloop.Eventloop;
@@ -78,12 +77,12 @@ public final class LogOTProcessor<K, T, D> implements EventloopService {
 
 	@Override
 	public CompletionStage<Void> start() {
-		return SettableStage.immediateStage(null);
+		return Stages.of(null);
 	}
 
 	@Override
 	public CompletionStage<Void> stop() {
-		return SettableStage.immediateStage(null);
+		return Stages.of(null);
 	}
 
 	public CompletionStage<Void> rebase() {

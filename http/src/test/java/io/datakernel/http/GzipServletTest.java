@@ -17,7 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.AsyncRunnables;
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.FatalErrorHandlers;
@@ -32,8 +32,7 @@ import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.*;
 
 public class GzipServletTest {
-	private static final AsyncServlet helloWorldServlet = request -> SettableStage.immediateStage(
-			HttpResponse.ok200().withBody(wrapAscii("Hello, World!")));
+	private static final AsyncServlet helloWorldServlet = request -> Stages.of(HttpResponse.ok200().withBody(wrapAscii("Hello, World!")));
 
 	@Test
 	public void testGzipServletBase() throws Exception {
@@ -68,7 +67,7 @@ public class GzipServletTest {
 			HttpResponse response = HttpResponse.ok200();
 			String requestNum = decodeAscii(request.getBody());
 			ByteBuf body = "1".equals(requestNum) ? wrapAscii("0123456789012345678901") : wrapAscii("0");
-			return SettableStage.immediateStage(response.withBody(body));
+			return Stages.of(response.withBody(body));
 		};
 		GzipServlet customGzipServlet = GzipServlet.create(20, asyncServlet);
 		HttpRequest requestWBody = HttpRequest.get("http://example.com").withAcceptEncodingGzip().withBody(wrapAscii("1"));

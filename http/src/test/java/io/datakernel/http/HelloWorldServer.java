@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
 
 import java.net.InetSocketAddress;
@@ -29,7 +29,7 @@ public final class HelloWorldServer {
 	public static final byte[] HELLO_WORLD = encodeAscii("Hello, World!");
 
 	public static AsyncHttpServer helloWorldServer(Eventloop primaryEventloop, int port) {
-		AsyncServlet servlet = request -> SettableStage.immediateStage(HttpResponse.ok200().withBody(HELLO_WORLD));
+		AsyncServlet servlet = request -> Stages.of(HttpResponse.ok200().withBody(HELLO_WORLD));
 
 		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", port)).withAcceptOnce(false);
 	}

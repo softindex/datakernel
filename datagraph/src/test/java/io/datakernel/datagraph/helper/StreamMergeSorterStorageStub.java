@@ -16,6 +16,7 @@
 
 package io.datakernel.datagraph.helper;
 
+import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 import io.datakernel.stream.processor.StreamSorterStorage;
@@ -25,8 +26,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
-
-import static io.datakernel.async.SettableStage.immediateStage;
 
 public class StreamMergeSorterStorageStub<T> implements StreamSorterStorage<T> {
 	protected final Eventloop eventloop;
@@ -43,14 +42,14 @@ public class StreamMergeSorterStorageStub<T> implements StreamSorterStorage<T> {
 		int newPartition = partition++;
 		storage.put(newPartition, list);
 		StreamConsumerToList<T> consumer = new StreamConsumerToList<>(eventloop, list);
-		return immediateStage(StreamConsumers.withResult(consumer, immediateStage(newPartition)));
+		return Stages.of(StreamConsumers.withResult(consumer, Stages.of(newPartition)));
 	}
 
 	@Override
 	public CompletionStage<StreamProducerWithResult<T, Void>> read(int partition) {
 		List<T> iterable = storage.get(partition);
 		StreamProducer<T> producer = StreamProducers.ofIterable(eventloop, iterable);
-		return immediateStage(StreamProducers.withResult(producer));
+		return Stages.of(StreamProducers.withResult(producer));
 	}
 
 	@Override
@@ -58,6 +57,6 @@ public class StreamMergeSorterStorageStub<T> implements StreamSorterStorage<T> {
 		for (Integer partition : partitionsToDelete) {
 			storage.remove(partition);
 		}
-		return immediateStage(null);
+		return Stages.of(null);
 	}
 }

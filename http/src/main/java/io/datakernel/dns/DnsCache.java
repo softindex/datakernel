@@ -16,7 +16,7 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.time.CurrentTimeProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -150,12 +150,12 @@ final class DnsCache {
 			InetAddress[] ipsFromCache = result.getIps();
 			if (logger.isDebugEnabled()) logger.debug("Cache hit for host: {}", domainName);
 			if (inspector != null) inspector.onCacheHit(domainName, ipsFromCache);
-			return SettableStage.immediateStage(ipsFromCache);
+			return Stages.of(ipsFromCache);
 		} else {
 			DnsException exception = result.getException();
 			if (logger.isDebugEnabled()) logger.debug("Error cache hit for host: {}", domainName);
 			if (inspector != null) inspector.onCacheHitError(domainName, exception);
-			return SettableStage.immediateFailedStage(exception);
+			return Stages.ofException(exception);
 		}
 	}
 

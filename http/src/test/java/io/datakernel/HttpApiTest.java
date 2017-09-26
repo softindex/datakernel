@@ -16,7 +16,7 @@
 
 package io.datakernel;
 
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
@@ -75,9 +75,9 @@ public class HttpApiTest {
 			try {
 				testRequest(request);
 				HttpResponse response = createResponse();
-				return SettableStage.immediateStage(response);
+				return Stages.of(response);
 			} catch (ParseException e) {
-				return SettableStage.immediateFailedStage(e);
+				return Stages.ofException((Throwable) e);
 			}
 		};
 

@@ -3,41 +3,30 @@ package io.datakernel.async;
 import io.datakernel.eventloop.Eventloop;
 
 import java.util.concurrent.CompletionStage;
+import java.util.function.Supplier;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
 public final class SettableStage<T> extends AbstractCompletionStage<T> {
-	private static final Object NO_RESULT = new Object();
+	private static final Supplier NO_RESULT = () -> {throw new UnsupportedOperationException();};
 
 	@SuppressWarnings("unchecked")
-	private T value = (T) NO_RESULT;
-	private Throwable exception;
+	protected Supplier<T> supplier = (Supplier<T>) NO_RESULT;
+	protected Throwable exception;
 
-	private SettableStage() {
+	protected SettableStage() {
 	}
 
 	public static <T> SettableStage<T> create() {
 		return new SettableStage<>();
 	}
 
-	public static <T> SettableStage<T> immediateStage(T value) {
-		SettableStage<T> stage = new SettableStage<>();
-		stage.set(value);
-		return stage;
-	}
-
-	public static <T> SettableStage<T> immediateFailedStage(Throwable t) {
-		SettableStage<T> stage = new SettableStage<>();
-		stage.setException(t);
-		return stage;
-	}
-
 	public void set(T result) {
 		assert !isSet();
 		if (next == null) {
-			this.value = result;
+			this.supplier = () -> result;
 		} else {
-			this.value = null;
+			this.supplier = null;
 			complete(result);
 		}
 	}
@@ -45,10 +34,10 @@ public final class SettableStage<T> extends AbstractCompletionStage<T> {
 	public void setException(Throwable t) {
 		assert !isSet();
 		if (next == null) {
-			this.value = null;
+			this.supplier = null;
 			this.exception = t;
 		} else {
-			this.value = null;
+			this.supplier = null;
 			completeExceptionally(t);
 		}
 	}
@@ -117,12 +106,12 @@ public final class SettableStage<T> extends AbstractCompletionStage<T> {
 			if (this.next == null) {
 				getCurrentEventloop().post(() -> {
 					if (exception == null) {
-						complete(value);
+						complete(supplier.get());
 					} else {
 						completeExceptionally(exception);
 					}
 
-					value = null;
+					supplier = null;
 					exception = null;
 				});
 			}
@@ -131,7 +120,7 @@ public final class SettableStage<T> extends AbstractCompletionStage<T> {
 	}
 
 	public boolean isSet() {
-		return value != NO_RESULT;
+		return supplier != NO_RESULT;
 	}
 
 	@Override
@@ -141,6 +130,6 @@ public final class SettableStage<T> extends AbstractCompletionStage<T> {
 
 	@Override
 	public String toString() {
-		return "{" + (isSet() ? (exception == null ? value : exception.getMessage()) : "") + "}";
+		return "{" + (isSet() ? (exception == null ? supplier : exception.getMessage()) : "") + "}";
 	}
 }

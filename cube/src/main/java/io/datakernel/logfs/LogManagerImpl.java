@@ -18,6 +18,7 @@ package io.datakernel.logfs;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
@@ -86,18 +87,19 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 	@Override
 	public CompletionStage<StreamConsumer<T>> consumer(String logPartition) {
 		validateLogPartition(logPartition);
+		return Stages.ofSupplier(() -> {
+			StreamBinarySerializer<T> streamBinarySerializer = StreamBinarySerializer.create(eventloop, serializer)
+					.withDefaultBufferSize(bufferSize)
+					.withSkipSerializationErrors();
+			StreamLZ4Compressor streamCompressor = StreamLZ4Compressor.fastCompressor(eventloop);
 
-		StreamBinarySerializer<T> streamBinarySerializer = StreamBinarySerializer.create(eventloop, serializer)
-				.withDefaultBufferSize(bufferSize)
-				.withSkipSerializationErrors();
-		StreamLZ4Compressor streamCompressor = StreamLZ4Compressor.fastCompressor(eventloop);
+			StreamConsumer<ByteBuf> writer = LogStreamChunker.create(eventloop, fileSystem, dateTimeFormatter, logPartition);
 
-		StreamConsumer<ByteBuf> writer = LogStreamChunker.create(eventloop, fileSystem, dateTimeFormatter, logPartition);
+			streamBinarySerializer.getOutput().streamTo(streamCompressor.getInput());
+			streamCompressor.getOutput().streamTo(writer);
 
-		streamBinarySerializer.getOutput().streamTo(streamCompressor.getInput());
-		streamCompressor.getOutput().streamTo(writer);
-
-		return SettableStage.immediateStage(streamBinarySerializer.getInput());
+			return streamBinarySerializer.getInput();
+		});
 	}
 
 	@Override

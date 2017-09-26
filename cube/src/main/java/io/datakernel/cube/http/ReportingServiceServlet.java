@@ -20,7 +20,7 @@ import com.google.common.base.Charsets;
 import com.google.gson.TypeAdapter;
 import io.datakernel.aggregation.AggregationPredicate;
 import io.datakernel.aggregation.QueryException;
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.cube.*;
 import io.datakernel.http.*;
 import io.datakernel.util.Stopwatch;
@@ -90,10 +90,10 @@ public final class ReportingServiceServlet implements AsyncServlet {
 			});
 		} catch (QueryException e) {
 			logger.error("Query exception: " + httpRequest, e);
-			return SettableStage.immediateStage(createErrorResponse(e.getMessage()));
+			return Stages.of(createErrorResponse(e.getMessage()));
 		} catch (Exception e) {
 			logger.error("Parse exception: " + httpRequest, e);
-			return SettableStage.immediateStage(createErrorResponse(e.getMessage()));
+			return Stages.of(createErrorResponse(e.getMessage()));
 		}
 	}
 

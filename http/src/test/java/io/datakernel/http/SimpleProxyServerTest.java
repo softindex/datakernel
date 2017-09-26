@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
@@ -64,8 +64,7 @@ public class SimpleProxyServerTest {
 	}
 
 	public static AsyncHttpServer echoServer(Eventloop primaryEventloop) {
-		AsyncServlet servlet = request ->
-				SettableStage.immediateStage(HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery())));
+		AsyncServlet servlet = request -> Stages.of(HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery())));
 
 		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", ECHO_SERVER_PORT));
 	}

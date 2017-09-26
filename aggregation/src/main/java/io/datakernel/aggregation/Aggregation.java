@@ -23,6 +23,7 @@ import com.google.common.collect.Ordering;
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
+import io.datakernel.async.Stages;
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
@@ -53,7 +54,6 @@ import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Sets.difference;
 import static com.google.common.collect.Sets.newHashSet;
 import static io.datakernel.aggregation.AggregationUtils.*;
-import static io.datakernel.async.SettableStage.immediateStage;
 import static io.datakernel.codegen.Expressions.arg;
 import static io.datakernel.codegen.Expressions.cast;
 import static java.lang.Math.min;
@@ -507,7 +507,7 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 
 		if (chunks.isEmpty()) {
 			logger.info("Nothing to consolidate in aggregation '{}", this);
-			return immediateStage(AggregationDiff.empty());
+			return Stages.of(AggregationDiff.empty());
 		}
 
 		logger.info("Starting consolidation of aggregation '{}'", this);

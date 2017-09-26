@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 
@@ -72,9 +72,9 @@ public final class StaticServletForResources extends StaticServlet {
 		byte[] bytes = cache.get(name);
 		if (bytes != null) {
 			if (bytes != ERROR_BYTES) {
-				return SettableStage.immediateStage(ByteBuf.wrapForReading(bytes));
+				return Stages.of(ByteBuf.wrapForReading(bytes));
 			} else {
-				return SettableStage.immediateFailedStage(HttpException.notFound404());
+				return Stages.ofException(HttpException.notFound404());
 			}
 		} else {
 			return eventloop.callConcurrently(executor, () -> {

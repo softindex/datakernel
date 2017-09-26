@@ -2,15 +2,14 @@ package io.datakernel.ot;
 
 import com.google.common.collect.Sets;
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 
 import java.util.*;
 import java.util.concurrent.CompletionStage;
 
-import static io.datakernel.async.SettableStage.immediateStage;
 import static io.datakernel.ot.OTUtils.ensureMapValue;
 
-public final class OTSourceStub<K, D> implements OTRemote<K, D> {
+public final class OTSourceStub<K, D> implements OTRemote<K,D> {
 	public interface Sequence<K> {
 		K next(@Nullable K prev);
 	}
@@ -74,7 +73,7 @@ public final class OTSourceStub<K, D> implements OTRemote<K, D> {
 	@Override
 	public CompletionStage<K> createId() {
 		revisionId = sequence.next(revisionId);
-		return immediateStage(revisionId);
+		return Stages.of(revisionId);
 	}
 
 	@Override
@@ -90,7 +89,7 @@ public final class OTSourceStub<K, D> implements OTRemote<K, D> {
 				checkpoints.put(to, checkpoint != null ? checkpoint : Collections.<D>emptyList());
 			}
 		}
-		return immediateStage(null);
+		return Stages.of(null);
 	}
 
 	public void add(K from, K to, List<? extends D> diffs) {
@@ -106,23 +105,23 @@ public final class OTSourceStub<K, D> implements OTRemote<K, D> {
 
 	@Override
 	public CompletionStage<Set<K>> getHeads() {
-		return immediateStage(Sets.difference(nodes, forward.keySet()));
+		return Stages.of(Sets.difference(nodes, forward.keySet()));
 	}
 
 	@Override
 	public CompletionStage<K> getCheckpoint() {
-		return immediateStage(checkpoints.lastKey());
+		return Stages.of(checkpoints.lastKey());
 	}
 
 	@Override
-	public SettableStage<OTCommit<K, D>> loadCommit(K revisionId) {
+	public CompletionStage<OTCommit<K, D>> loadCommit(K revisionId) {
 		if (!nodes.contains(revisionId))
 			throw new IllegalArgumentException("id="+ revisionId);
 		Map<K, List<? extends D>> parentDiffs = backward.get(revisionId);
 		if (parentDiffs == null) {
 			parentDiffs = Collections.emptyMap();
 		}
-		return immediateStage(OTCommit.of(revisionId, checkpoints.get(revisionId), parentDiffs));
+		return Stages.of(OTCommit.of(revisionId, checkpoints.get(revisionId), parentDiffs));
 	}
 
 	@Override

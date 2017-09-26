@@ -17,6 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -105,9 +106,9 @@ public class MiddlewareServlet implements AsyncServlet {
 	public CompletionStage<HttpResponse> serve(HttpRequest request) {
 		ProcessResultStage resultStage = tryServeAsync(request);
 		if (resultStage.processResult == ProcessResult.NOT_FOUND) {
-			return SettableStage.immediateFailedStage(HttpException.notFound404());
+			return Stages.ofException(HttpException.notFound404());
 		} else if (resultStage.processResult == ProcessResult.NOT_ALLOWED) {
-			return SettableStage.immediateFailedStage(HttpException.notAllowed405());
+			return Stages.ofException(HttpException.notAllowed405());
 		} else {
 			return resultStage.stage;
 		}

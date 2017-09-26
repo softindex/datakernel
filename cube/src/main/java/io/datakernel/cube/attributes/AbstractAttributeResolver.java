@@ -16,7 +16,7 @@
 
 package io.datakernel.cube.attributes;
 
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 
 import java.util.List;
 import java.util.Map;
@@ -36,7 +36,7 @@ public abstract class AbstractAttributeResolver<K, A> implements AttributeResolv
 	protected abstract A resolveAttributes(K key);
 
 	protected CompletionStage<Void> prepareToResolveAttributes(List<Object> results, KeyFunction keyFunction, AttributesFunction attributesFunction) {
-		return SettableStage.immediateStage(null);
+		return Stages.of(null);
 	}
 
 	private CompletionStage<Void> doResolveAttributes(List<Object> results, KeyFunction keyFunction, AttributesFunction attributesFunction) {
@@ -47,7 +47,7 @@ public abstract class AbstractAttributeResolver<K, A> implements AttributeResolv
 				attributesFunction.applyAttributes(result, toAttributes(attributes));
 			}
 		}
-		return SettableStage.immediateStage(null);
+		return Stages.of(null);
 	}
 
 	@Override

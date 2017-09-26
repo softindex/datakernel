@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 
 import java.net.InetSocketAddress;
@@ -109,7 +109,7 @@ public final class RpcStrategyTypeDispatching implements RpcStrategy {
 			if (sender != null) {
 				return sender.sendRequest(request, timeout);
 			} else {
-				return SettableStage.immediateFailedStage(NO_SENDER_AVAILABLE_EXCEPTION);
+				return Stages.ofException(NO_SENDER_AVAILABLE_EXCEPTION);
 			}
 		}
 	}

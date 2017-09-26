@@ -17,6 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
@@ -48,7 +49,7 @@ public final class StaticServletForFiles extends StaticServlet {
 	protected final CompletionStage<ByteBuf> doServeAsync(String name) {
 		Path path = storage.resolve(name).normalize();
 
-		if (!path.startsWith(storage)) return SettableStage.immediateFailedStage(HttpException.notFound404());
+		if (!path.startsWith(storage)) return Stages.ofException(HttpException.notFound404());
 
 		SettableStage<ByteBuf> stage = SettableStage.create();
 		AsyncFile.openAsync(eventloop, executor, path, new OpenOption[]{READ})

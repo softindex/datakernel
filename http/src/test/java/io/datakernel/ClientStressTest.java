@@ -16,7 +16,7 @@
 
 package io.datakernel;
 
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
@@ -52,7 +52,7 @@ public class ClientStressTest {
 
 	private AsyncServlet servlet = request -> {
 		test();
-		return SettableStage.immediateStage(HttpResponse.ok200());
+		return Stages.of(HttpResponse.ok200());
 	};
 	private AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet).withListenAddress(new InetSocketAddress("localhost", 1234));
 

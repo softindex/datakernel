@@ -17,6 +17,7 @@
 package io.datakernel.stream.net;
 
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.AsyncTcpSocket;
@@ -31,7 +32,6 @@ import java.util.List;
 import java.util.concurrent.CompletionStage;
 
 import static com.google.common.base.Preconditions.checkState;
-import static io.datakernel.async.SettableStage.immediateFailedStage;
 import static io.datakernel.stream.StreamConsumers.closingWithError;
 
 /**
@@ -131,7 +131,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 		checkState(socketWriter == null && !writeEndOfStreamRequest);
 
 		if (closedException != null) {
-			return immediateFailedStage(closedException);
+			return Stages.ofException(closedException);
 		}
 
 		final SettableStage<Void> stage = SettableStage.create();
@@ -147,7 +147,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 		checkState(socketWriter == null && !writeEndOfStreamRequest);
 
 		if (closedException != null) {
-			return immediateFailedStage(closedException);
+			return Stages.ofException(closedException);
 		}
 
 		final SettableStage<Void> stage = SettableStage.create();

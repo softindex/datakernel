@@ -159,13 +159,13 @@ public final class EventloopTaskScheduler implements EventloopService, Eventloop
 	@Override
 	public CompletionStage<Void> start() {
 		scheduleTask();
-		return SettableStage.immediateStage(null);
+		return Stages.of(null);
 	}
 
 	@Override
 	public CompletionStage<Void> stop() {
 		scheduledTask.cancel();
-		return SettableStage.immediateStage(null);
+		return Stages.of(null);
 	}
 
 	@JmxAttribute

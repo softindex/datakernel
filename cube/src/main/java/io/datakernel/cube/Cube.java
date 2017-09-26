@@ -28,7 +28,6 @@ import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.measure.Measure;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
-import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stages;
 import io.datakernel.async.StagesAccumulator;
 import io.datakernel.codegen.*;
@@ -842,7 +841,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 			resultClass = createResultClass(resultAttributes, resultMeasures, Cube.this, queryClassLoader);
 			recordScheme = createRecordScheme();
 			if (query.getReportType() == ReportType.METADATA) {
-				return SettableStage.immediateStage(QueryResult.createForMetadata(recordScheme, recordAttributes, recordMeasures));
+				return Stages.of(QueryResult.createForMetadata(recordScheme, recordAttributes, recordMeasures));
 			}
 			measuresFunction = createMeasuresFunction();
 			totalsFunction = createTotalsFunction();

@@ -17,6 +17,7 @@
 package io.datakernel.stream.file;
 
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
@@ -95,9 +96,9 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 			return this.positionStage = SettableStage.create();
 		} else {
 			if (getStatus() == StreamStatus.END_OF_STREAM) {
-				return SettableStage.immediateStage(position);
+				return Stages.of(position);
 			} else {
-				return SettableStage.immediateFailedStage(getException());
+				return Stages.ofException(getException());
 			}
 		}
 	}

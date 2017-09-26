@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 
 import java.nio.charset.Charset;
@@ -63,8 +63,8 @@ public abstract class StaticServlet implements AsyncServlet {
 	public final CompletionStage<HttpResponse> serve(final HttpRequest request) {
 		String path = request.getPartialPath();
 
-		if (request.getMethod() != HttpMethod.GET) return SettableStage.immediateFailedStage(METHOD_NOT_ALLOWED);
-		if (path.isEmpty() || path.charAt(0) != '/') return SettableStage.immediateFailedStage(BAD_PATH_ERROR);
+		if (request.getMethod() != HttpMethod.GET) return Stages.ofException(METHOD_NOT_ALLOWED);
+		if (path.isEmpty() || path.charAt(0) != '/') return Stages.ofException(BAD_PATH_ERROR);
 
 		if (path.equals("/")) {
 			path = DEFAULT_INDEX_FILE_NAME;

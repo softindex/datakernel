@@ -18,7 +18,7 @@ package io.datakernel.cube.http;
 
 import com.google.gson.TypeAdapter;
 import io.datakernel.aggregation.AggregationPredicate;
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.cube.CubeQuery;
 import io.datakernel.cube.ICube;
@@ -106,24 +106,21 @@ public final class CubeHttpClient implements ICube {
 			try {
 				response = ByteBufStrings.decodeUtf8(httpResponse.getBody()); // TODO getBodyAsString
 			} catch (ParseException e) {
-				return SettableStage.immediateFailedStage(
-						new ParseException("Cube HTTP query failed. Invalid data received", e));
+				return Stages.ofException(new ParseException("Cube HTTP query failed. Invalid data received", e));
 			}
 
 			if (httpResponse.getCode() != 200) {
-				return SettableStage.immediateFailedStage(
-						new ParseException("Cube HTTP query failed. Response code: " + httpResponse.getCode() + " Body: " + response));
+				return Stages.ofException(new ParseException("Cube HTTP query failed. Response code: " + httpResponse.getCode() + " Body: " + response));
 			}
 
 			QueryResult result;
 			try {
 				result = getQueryResultJson().fromJson(response);
 			} catch (IOException e) {
-				return SettableStage.immediateFailedStage(
-						new ParseException("Cube HTTP query failed. Invalid data received", e));
+				return Stages.ofException(new ParseException("Cube HTTP query failed. Invalid data received", e));
 			}
 
-			return SettableStage.immediateStage(result);
+			return Stages.of(result);
 		});
 	}
 

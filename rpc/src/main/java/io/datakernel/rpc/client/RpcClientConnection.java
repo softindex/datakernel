@@ -18,6 +18,7 @@ package io.datakernel.rpc.client;
 
 import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.jmx.EventStats;
@@ -120,7 +121,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 
 			if (logger.isWarnEnabled()) logger.warn(RPC_OVERLOAD_EXCEPTION.getMessage());
 
-			return SettableStage.immediateFailedStage(RPC_OVERLOAD_EXCEPTION);
+			return Stages.ofException(RPC_OVERLOAD_EXCEPTION);
 		}
 
 		return (CompletionStage<O>) sendMessageData(request, timeout);

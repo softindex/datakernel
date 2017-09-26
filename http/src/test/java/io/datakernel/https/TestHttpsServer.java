@@ -18,7 +18,7 @@ package io.datakernel.https;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
@@ -50,7 +50,7 @@ public class TestHttpsServer {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = newCachedThreadPool();
 
-		AsyncServlet bobServlet = request -> SettableStage.immediateStage(HttpResponse.ok200().withBody(wrapAscii("Hello, I am Bob!")));
+		AsyncServlet bobServlet = request -> Stages.of(HttpResponse.ok200().withBody(wrapAscii("Hello, I am Bob!")));
 
 		KeyManager[] keyManagers = createKeyManagers(new File("./src/test/resources/keystore.jks"), "testtest", "testtest");
 		TrustManager[] trustManagers = createTrustManagers(new File("./src/test/resources/truststore.jks"), "testtest");

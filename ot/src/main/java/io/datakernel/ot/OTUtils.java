@@ -3,12 +3,11 @@ package io.datakernel.ot;
 import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.Stages;
 
 import java.util.*;
 import java.util.concurrent.CompletionStage;
 
-import static io.datakernel.async.SettableStage.immediateFailedStage;
-import static io.datakernel.async.SettableStage.immediateStage;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Collections.*;
 
@@ -87,10 +86,9 @@ public class OTUtils {
 
 	public static <K, D> CompletionStage<FindResult<K, D>> findCheckpoint(OTRemote<K, D> source, Comparator<K> keyComparator) {
 		return source.getHeads().thenCompose(heads ->
-				findCheckpoint(source, keyComparator, heads, null).thenCompose(result ->
-						result.isFound() ?
-								immediateStage(result) :
-								immediateFailedStage(new IllegalStateException("Could not find snapshot"))));
+				findCheckpoint(source, keyComparator, heads, null).thenCompose(result -> result.isFound() ?
+						Stages.of(result) :
+						Stages.ofException(new IllegalStateException("Could not find snapshot"))));
 	}
 
 	public static <K, D> CompletionStage<FindResult<K, D>> findCheckpoint(OTRemote<K, D> source, Comparator<K> keyComparator,
@@ -142,7 +140,7 @@ public class OTUtils {
 						if (matchPredicate.apply(commit)) {
 							List<D> path = new ArrayList<>();
 							path.addAll(nodeWithPath.parentToChild);
-							return immediateStage(FindResult.of(commit, nodeWithPath.child, path));
+							return Stages.of(FindResult.of(commit, nodeWithPath.child, path));
 						}
 						for (Map.Entry<K, List<D>> parentEntry : commit.getParents().entrySet()) {
 							K parent = parentEntry.getKey();
@@ -158,7 +156,7 @@ public class OTUtils {
 						return findParent(source, queue, visited, loadPredicate, matchPredicate);
 					});
 		}
-		return immediateStage(FindResult.notFound());
+		return Stages.of(FindResult.notFound());
 	}
 
 	public static <K1, K2, V> Map<K2, V> ensureMapValue(Map<K1, Map<K2, V>> map, K1 key) {
@@ -179,7 +177,7 @@ public class OTUtils {
 			if (commit.isRoot() || commit.isMerge()) {
 				List<OTCommit<K, D>> edge = new ArrayList<>();
 				edge.add(commit);
-				return immediateStage(edge);
+				return Stages.of(edge);
 			}
 			assert commit.getParents().size() == 1;
 			K parentId = commit.getParents().keySet().iterator().next();
@@ -211,7 +209,7 @@ public class OTUtils {
 	public static <K, D> CompletionStage<Map<K, List<D>>> doMerge(OTSystem<D> otSystem, OTRemote<K, D> source, Comparator<K> keyComparator,
 	                                                              Set<K> nodes, Set<K> visitedNodes, K rootNode) {
 		if (nodes.size() == 0) {
-			return immediateStage(emptyMap());
+			return Stages.of(emptyMap());
 		}
 
 		if (nodes.size() == 1) {
@@ -219,7 +217,7 @@ public class OTUtils {
 			K node = nodes.iterator().next();
 			result.put(node, emptyList());
 			visitedNodes.add(node);
-			return immediateStage(result);
+			return Stages.of(result);
 		}
 
 		K lastNode = null;
@@ -335,7 +333,7 @@ public class OTUtils {
 						.thenApply($ -> checkpointId);
 			});
 		} else {
-			return immediateFailedStage(new IllegalArgumentException("No checkpoint found for HEAD(s)"));
+			return Stages.ofException(new IllegalArgumentException("No checkpoint found for HEAD(s)"));
 		}
 	}
 

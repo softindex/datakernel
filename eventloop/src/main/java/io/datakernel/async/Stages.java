@@ -10,9 +10,29 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeoutException;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public final class Stages {
 	private Stages() {
+	}
+
+	public static <T> CompletionStage<T> of(T value) {
+		SettableStage<T> stage = new SettableStage<>();
+		stage.supplier = () -> value;
+		return stage;
+	}
+
+	public static <T> CompletionStage<T> ofSupplier(Supplier<T> supplier) {
+		SettableStage<T> stage = new SettableStage<>();
+		stage.supplier = supplier;
+		return stage;
+	}
+
+	public static <T> CompletionStage<T> ofException(Throwable throwable) {
+		SettableStage<T> stage = new SettableStage<>();
+		stage.supplier = null;
+		stage.exception = throwable;
+		return stage;
 	}
 
 	public static <T> CompletionStage<T> timeout(Eventloop eventloop, CompletionStage<T> stage, long timestampMillis) {
@@ -41,8 +61,9 @@ public final class Stages {
 
 	@SuppressWarnings("unchecked")
 	public static <T> CompletionStage<T[]> all(CompletionStage<? extends T>... stages) {
-		if (stages.length == 0)
-			return SettableStage.immediateStage((T[]) new Object[0]);
+		if (stages.length == 0) {
+			return of((T[]) new Object[0]);
+		}
 		if (stages.length == 1) {
 			return stages[0].thenApply(t -> (T[]) new Object[]{t});
 		}
@@ -84,7 +105,7 @@ public final class Stages {
 
 	public static CompletionStage<Void> sequence(Iterator<StageRunnable> stages) {
 		if (!stages.hasNext()) {
-			return SettableStage.immediateStage(null);
+			return of(null);
 		}
 		StageRunnable next = stages.next();
 		return next.run().thenCompose($ -> sequence(stages));

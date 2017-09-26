@@ -17,6 +17,7 @@
 package io.datakernel.stream.file;
 
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
@@ -81,11 +82,11 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	public CompletionStage<Void> getFlushStage() {
 		if (queue.isEmpty() && !pendingAsyncOperation) {
 			if (getStatus() == END_OF_STREAM) {
-				return SettableStage.immediateStage(null);
+				return Stages.of(null);
 			}
 
 			if (getStatus() == CLOSED_WITH_ERROR) {
-				return SettableStage.immediateFailedStage(getException());
+				return Stages.ofException(getException());
 			}
 		}
 

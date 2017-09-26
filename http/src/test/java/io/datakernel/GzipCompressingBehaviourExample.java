@@ -16,7 +16,7 @@
 
 package io.datakernel;
 
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
 
@@ -31,12 +31,10 @@ public final class GzipCompressingBehaviourExample {
 		final MiddlewareServlet dispatcher = MiddlewareServlet.create();
 
 		// always responds in gzip
-		dispatcher.with(HttpMethod.GET, "/gzip/", request -> SettableStage.immediateStage(
-				HttpResponse.ok200().withBodyGzipCompression().withBody(encodeAscii("Hello!"))));
+		dispatcher.with(HttpMethod.GET, "/gzip/", request -> Stages.of(HttpResponse.ok200().withBodyGzipCompression().withBody(encodeAscii("Hello!"))));
 
 		// never responds in gzip
-		dispatcher.with(HttpMethod.GET, "/nogzip/", reques -> SettableStage.immediateStage(
-				HttpResponse.ok200().withBody(encodeAscii("Hello!"))));
+		dispatcher.with(HttpMethod.GET, "/nogzip/", reques -> Stages.of(HttpResponse.ok200().withBody(encodeAscii("Hello!"))));
 
 		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, dispatcher).withListenPort(1234);
 

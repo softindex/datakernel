@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
@@ -46,7 +46,7 @@ public class AbstractHttpConnectionTest {
 
 	@Test
 	public void testMultiLineHeader() throws Exception {
-		AsyncServlet servlet = request -> SettableStage.immediateStage(createMultiLineHeaderWithInitialBodySpacesResponse());
+		AsyncServlet servlet = request -> Stages.of(createMultiLineHeaderWithInitialBodySpacesResponse());
 		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
 				.withListenAddress(new InetSocketAddress("localhost", PORT));
 		server.listen();
@@ -83,10 +83,10 @@ public class AbstractHttpConnectionTest {
 			public CompletionStage<HttpResponse> serve(HttpRequest request) {
 				HttpResponse response = HttpResponse.ok200().withBodyGzipCompression();
 				if (!first) {
-					return SettableStage.immediateStage(response.withBody((ByteBuf) null));
+					return Stages.of(response.withBody((ByteBuf) null));
 				} else {
 					first = false;
-					return SettableStage.immediateStage(response.withBody(encodeAscii("Test message")));
+					return Stages.of(response.withBody(encodeAscii("Test message")));
 				}
 			}
 		};

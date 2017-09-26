@@ -1,14 +1,14 @@
 package io.datakernel.aggregation;
 
-import java.util.concurrent.CompletionStage;
+import io.datakernel.async.Stages;
 
-import static io.datakernel.async.SettableStage.immediateStage;
+import java.util.concurrent.CompletionStage;
 
 public class IdGeneratorStub implements IdGenerator<Long> {
 	public long chunkId;
 
 	@Override
 	public CompletionStage<Long> createId() {
-		return immediateStage(++chunkId);
+		return Stages.of(++chunkId);
 	}
 }

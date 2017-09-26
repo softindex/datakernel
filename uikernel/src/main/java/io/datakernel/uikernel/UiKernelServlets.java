@@ -17,7 +17,7 @@
 package io.datakernel.uikernel;
 
 import com.google.gson.Gson;
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
@@ -55,7 +55,7 @@ public class UiKernelServlets {
 						createResponse(response.toJson(gson, model.getRecordType(), model.getIdType())));
 
 			} catch (ParseException e) {
-				return SettableStage.immediateFailedStage(e);
+				return Stages.ofException((Throwable) e);
 
 			}
 		};
@@ -71,7 +71,7 @@ public class UiKernelServlets {
 						createResponse(gson.toJson(obj, model.getRecordType())));
 
 			} catch (ParseException e) {
-				return SettableStage.immediateFailedStage(e);
+				return Stages.ofException((Throwable) e);
 
 			}
 		};
@@ -85,7 +85,7 @@ public class UiKernelServlets {
 				return model.create(obj).thenApply(response ->
 						createResponse(response.toJson(gson, model.getIdType())));
 			} catch (ParseException e) {
-				return SettableStage.immediateFailedStage(e);
+				return Stages.ofException((Throwable) e);
 			}
 		};
 	}
@@ -98,7 +98,7 @@ public class UiKernelServlets {
 				return model.update(list).thenApply(result ->
 						createResponse(result.toJson(gson, model.getRecordType(), model.getIdType())));
 			} catch (ParseException e) {
-				return SettableStage.immediateFailedStage(e);
+				return Stages.ofException((Throwable) e);
 			}
 		};
 	}
@@ -117,7 +117,7 @@ public class UiKernelServlets {
 					return res;
 				});
 			} catch (ParseException e) {
-				return SettableStage.immediateFailedStage(e);
+				return Stages.ofException((Throwable) e);
 			}
 		};
 	}

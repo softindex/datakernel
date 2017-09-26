@@ -20,7 +20,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
 import com.google.inject.Stage;
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
@@ -56,7 +56,7 @@ public class HttpHelloWorldLauncher extends Launcher {
 		@Provides
 		@Singleton
 		AsyncServlet rootServlet() {
-			return request -> SettableStage.immediateStage(HttpResponse.ok200().withBody(encodeAscii("Hello, World!")));
+			return request -> Stages.of(HttpResponse.ok200().withBody(encodeAscii("Hello, World!")));
 		}
 	}
 

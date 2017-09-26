@@ -18,6 +18,7 @@ package io.datakernel.eventloop;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
@@ -218,7 +219,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	@Override
 	public final CompletionStage<Void> close() {
 		check(eventloop.inEventloopThread());
-		if (!running) return SettableStage.immediateStage(null);
+		if (!running) return Stages.of(null);
 		running = false;
 		closeServerSocketChannels();
 		final SettableStage<Void> stage = SettableStage.create();

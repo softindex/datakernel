@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.FatalErrorHandlers;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
@@ -178,7 +178,7 @@ public class RpcStrategyFirstValidResultTest {
 	private static final class SenderOnResultWithNullCaller implements RpcSender {
 		@Override
 		public <I, O> CompletionStage<O> sendRequest(I request, int timeout) {
-			return SettableStage.immediateStage(null);
+			return Stages.of(null);
 		}
 	}
 
@@ -192,7 +192,7 @@ public class RpcStrategyFirstValidResultTest {
 		@SuppressWarnings("unchecked")
 		@Override
 		public <I, O> CompletionStage<O> sendRequest(I request, int timeout) {
-			return SettableStage.immediateStage((O) data);
+			return Stages.of((O) data);
 		}
 	}
 

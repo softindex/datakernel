@@ -24,8 +24,6 @@ import java.util.concurrent.CompletionStage;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
-import static io.datakernel.async.SettableStage.immediateFailedStage;
-import static io.datakernel.async.SettableStage.immediateStage;
 
 public final class StreamProducerWithResultImpl<T, X> implements StreamProducerWithResult<T, X> {
 	private final StreamProducer<T> wrappedProducer;
@@ -72,7 +70,7 @@ public final class StreamProducerWithResultImpl<T, X> implements StreamProducerW
 	}
 
 	public static <T, X> StreamProducerWithResult<T, X> wrap(StreamProducer<T> wrappedProducer, X result) {
-		return new StreamProducerWithResultImpl<>(wrappedProducer, immediateStage(result));
+		return new StreamProducerWithResultImpl<>(wrappedProducer, Stages.of(result));
 	}
 
 	public static <T> StreamProducerWithResult<T, Void> wrap(StreamProducer<T> wrappedProducer) {
@@ -80,7 +78,7 @@ public final class StreamProducerWithResultImpl<T, X> implements StreamProducerW
 	}
 
 	public static <T, X> StreamProducerWithResult<T, X> closingWithError(Throwable exception) {
-		return create(StreamProducers.idle(), immediateFailedStage(exception));
+		return create(StreamProducers.idle(), Stages.ofException(exception));
 	}
 
 	public static <T, X> StreamProducerWithResult<T, X> ofStage(CompletionStage<StreamProducerWithResult<T, X>> stage) {

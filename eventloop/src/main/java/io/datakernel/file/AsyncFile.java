@@ -18,6 +18,7 @@ package io.datakernel.file;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
@@ -374,7 +375,7 @@ public final class AsyncFile {
 		try {
 			size = channel.size();
 		} catch (IOException e) {
-			return SettableStage.immediateFailedStage(e);
+			return Stages.ofException(e);
 		}
 
 		Eventloop.ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();
@@ -392,7 +393,7 @@ public final class AsyncFile {
 		try {
 			size = channel.size();
 		} catch (IOException e) {
-			return SettableStage.immediateFailedStage(e);
+			return Stages.ofException(e);
 		}
 
 		final ByteBuf buf = ByteBufPool.allocate((int) size);

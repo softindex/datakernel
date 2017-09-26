@@ -18,6 +18,7 @@ package io.datakernel.http;
 
 import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.dns.IAsyncDnsClient;
 import io.datakernel.eventloop.AsyncTcpSocket;
@@ -391,7 +392,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 			// connection was unexpectedly closed by the peer
 			if (connection1.getCloseError() != null) {
-				return SettableStage.immediateFailedStage(connection1.getCloseError());
+				return Stages.ofException(connection1.getCloseError());
 			}
 
 			return connection1.send(request);
@@ -406,7 +407,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	@Override
 	public CompletionStage<Void> start() {
 		checkState(eventloop.inEventloopThread());
-		return SettableStage.immediateStage(null);
+		return Stages.of(null);
 	}
 
 	private SettableStage<Void> closeStage;

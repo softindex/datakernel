@@ -50,8 +50,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.async.AsyncRunnables.runInParallel;
-import static io.datakernel.async.SettableStage.immediateFailedStage;
-import static io.datakernel.async.SettableStage.immediateStage;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.equalsLowerCaseAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -110,7 +108,7 @@ public class FsIntegrationTest {
 			final int finalI = i;
 			tasks.add(() -> {
 				producer.streamTo(client.uploadStream("file" + finalI));
-				return immediateStage(null);
+				return Stages.of(null);
 			});
 		}
 		runInParallel(eventloop, tasks).run().whenComplete(Stages.assertBiConsumer($ -> server.close()));
@@ -304,7 +302,7 @@ public class FsIntegrationTest {
 				try {
 					producer.streamTo(StreamFileWriter.create(eventloop, executor, storage.resolve("file" + finalI)));
 				} catch (IOException e) {
-					return immediateFailedStage(e);
+					return Stages.ofException(e);
 				}
 				return producer.getResult();
 			});

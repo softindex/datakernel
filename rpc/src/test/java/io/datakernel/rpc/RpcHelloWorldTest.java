@@ -17,7 +17,7 @@
 package io.datakernel.rpc;
 
 import com.google.common.net.InetAddresses;
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.rpc.client.RpcClient;
@@ -72,9 +72,9 @@ public class RpcHelloWorldTest {
 			try {
 				result = helloService.hello(request.name);
 			} catch (Exception e) {
-				return SettableStage.immediateFailedStage(e);
+				return Stages.ofException((Throwable) e);
 			}
-			return SettableStage.immediateStage(new HelloResponse(result));
+			return Stages.of(new HelloResponse(result));
 		};
 	}
 

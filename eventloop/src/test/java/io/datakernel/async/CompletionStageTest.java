@@ -53,7 +53,7 @@ public class CompletionStageTest {
 
 	@Test
 	public void testSimpleResult() throws ExecutionException, InterruptedException {
-		final CompletableFuture<Integer> future = SettableStage.immediateStage(41)
+		CompletableFuture<Integer> future = Stages.of(41)
 				.thenApply(integer -> integer + 1)
 				.toCompletableFuture();
 		eventloop.run();
@@ -62,8 +62,7 @@ public class CompletionStageTest {
 
 	@Test(expected = RuntimeException.class)
 	public void testError() throws Throwable {
-		final CompletableFuture<Integer> future = SettableStage
-				.<Integer>immediateFailedStage(new RuntimeException("Test"))
+		CompletableFuture<Integer> future = Stages.<Integer>ofException(new RuntimeException("Test"))
 				.thenApply(integer -> integer + 1)
 				.toCompletableFuture();
 		eventloop.run();
@@ -77,13 +76,13 @@ public class CompletionStageTest {
 
 	@Test
 	public void testLongStagesChainResult() throws ExecutionException, InterruptedException {
-		final SettableStage<Integer> startStage = SettableStage.create();
+		SettableStage<Integer> startStage = SettableStage.create();
 		CompletionStage<Integer> powerOfTwo = startStage;
 		for (int i = 0; i < 100_000; i++) {
 			powerOfTwo = powerOfTwo.thenApplyAsync(integer -> (integer * 2) % 1000000007);
 		}
 
-		final CompletableFuture<Integer> future = powerOfTwo.toCompletableFuture();
+		CompletableFuture<Integer> future = powerOfTwo.toCompletableFuture();
 		startStage.set(1);
 		eventloop.run();
 		future.get();
@@ -91,13 +90,13 @@ public class CompletionStageTest {
 
 	@Test(expected = RuntimeException.class)
 	public void testLongStagesChainError() throws Throwable {
-		final SettableStage<Integer> startStage = SettableStage.create();
+		SettableStage<Integer> startStage = SettableStage.create();
 		CompletionStage<Integer> powerOfTwo = startStage;
 		for (int i = 0; i < 100_000; i++) {
 			powerOfTwo = powerOfTwo.thenApplyAsync(integer -> (integer * 2) % 1000000007);
 		}
 
-		final CompletableFuture<Integer> future = powerOfTwo.toCompletableFuture();
+		CompletableFuture<Integer> future = powerOfTwo.toCompletableFuture();
 		startStage.setException(new RuntimeException("Test"));
 		eventloop.run();
 		try {
@@ -109,7 +108,7 @@ public class CompletionStageTest {
 
 	@Test
 	public void testApplyWithExecutor() throws ExecutionException, InterruptedException {
-		final CompletableFuture<Integer> future = SettableStage.immediateStage(2).thenApplyAsync(integer -> {
+		CompletableFuture<Integer> future = Stages.of(2).thenApplyAsync(integer -> {
 			assertFalse(eventloop.inEventloopThread());
 			return 40 + integer;
 		}, executor).toCompletableFuture();
@@ -120,8 +119,8 @@ public class CompletionStageTest {
 
 	@Test
 	public void testAcceptWithExecutor() throws ExecutionException, InterruptedException {
-		final AtomicInteger result = new AtomicInteger(0);
-		final CompletableFuture<Void> future = SettableStage.immediateStage(null).thenAcceptAsync(integer -> {
+		AtomicInteger result = new AtomicInteger(0);
+		CompletableFuture<Void> future = Stages.of(null).thenAcceptAsync(integer -> {
 			assertFalse(eventloop.inEventloopThread());
 			result.set(42);
 		}, executor).toCompletableFuture();
@@ -133,8 +132,8 @@ public class CompletionStageTest {
 
 	@Test
 	public void testRunWithExecutor() throws ExecutionException, InterruptedException {
-		final AtomicInteger result = new AtomicInteger(0);
-		final CompletableFuture<Void> future = SettableStage.immediateStage(null).thenRunAsync(() -> {
+		AtomicInteger result = new AtomicInteger(0);
+		CompletableFuture<Void> future = Stages.of(null).thenRunAsync(() -> {
 			assertFalse(eventloop.inEventloopThread());
 			result.set(42);
 		}, executor).toCompletableFuture();
@@ -146,9 +145,9 @@ public class CompletionStageTest {
 
 	@Test
 	public void testCombineWithExecutor() throws ExecutionException, InterruptedException {
-		final SettableStage<Integer> stage1 = SettableStage.immediateStage(40);
-		final SettableStage<Integer> stage2 = SettableStage.immediateStage(2);
-		final CompletableFuture<Integer> future = stage1.thenCombineAsync(stage2, (integer, integer2) -> {
+		CompletionStage<Integer> stage1 = Stages.of(40);
+		CompletionStage<Integer> stage2 = Stages.of(2);
+		CompletableFuture<Integer> future = stage1.thenCombineAsync(stage2, (integer, integer2) -> {
 			assertFalse(eventloop.inEventloopThread());
 			return integer + integer2;
 		}, executor).toCompletableFuture();
@@ -159,10 +158,10 @@ public class CompletionStageTest {
 
 	@Test
 	public void testAcceptBothWithExecutor() throws ExecutionException, InterruptedException {
-		final AtomicInteger result = new AtomicInteger(0);
-		final SettableStage<Integer> stage1 = SettableStage.immediateStage(2);
-		final SettableStage<Integer> stage2 = SettableStage.immediateStage(40);
-		final CompletableFuture<Void> future = stage1.thenAcceptBothAsync(stage2, (integer, integer2) -> {
+		AtomicInteger result = new AtomicInteger(0);
+		CompletionStage<Integer> stage1 = Stages.of(2);
+		CompletionStage<Integer> stage2 = Stages.of(40);
+		CompletableFuture<Void> future = stage1.thenAcceptBothAsync(stage2, (integer, integer2) -> {
 			assertFalse(eventloop.inEventloopThread());
 			result.set(integer + integer2);
 		}, executor).toCompletableFuture();
@@ -174,10 +173,10 @@ public class CompletionStageTest {
 
 	@Test
 	public void testRunAfterBothWithExecutor() throws ExecutionException, InterruptedException {
-		final AtomicInteger result = new AtomicInteger(0);
-		final SettableStage<Object> stage1 = SettableStage.immediateStage(null);
-		final SettableStage<Object> stage2 = SettableStage.immediateStage(null);
-		final CompletableFuture<Void> future = stage1.runAfterBothAsync(stage2, () -> {
+		AtomicInteger result = new AtomicInteger(0);
+		CompletionStage<Object> stage1 = Stages.of(null);
+		CompletionStage<Object> stage2 = Stages.of(null);
+		CompletableFuture<Void> future = stage1.runAfterBothAsync(stage2, () -> {
 			assertFalse(eventloop.inEventloopThread());
 			result.set(42);
 		}, executor).toCompletableFuture();
@@ -189,9 +188,9 @@ public class CompletionStageTest {
 
 	@Test
 	public void testApplyToEitherWithExecutor() throws ExecutionException, InterruptedException {
-		final SettableStage<Integer> stage1 = SettableStage.immediateStage(2);
-		final SettableStage<Integer> stage2 = SettableStage.immediateStage(40);
-		final CompletableFuture<Integer> future = stage1.applyToEitherAsync(stage2, integer -> {
+		CompletionStage<Integer> stage1 = Stages.of(2);
+		CompletionStage<Integer> stage2 = Stages.of(40);
+		CompletableFuture<Integer> future = stage1.applyToEitherAsync(stage2, integer -> {
 			assertFalse(eventloop.inEventloopThread());
 			return integer;
 		}, executor).toCompletableFuture();
@@ -202,10 +201,10 @@ public class CompletionStageTest {
 
 	@Test
 	public void testAcceptEitherWithExecutor() throws ExecutionException, InterruptedException {
-		final AtomicInteger result = new AtomicInteger(0);
-		final SettableStage<Integer> stage1 = SettableStage.immediateStage(2);
-		final SettableStage<Integer> stage2 = SettableStage.immediateStage(40);
-		final CompletableFuture<Void> future = stage1.acceptEitherAsync(stage2, integer -> {
+		AtomicInteger result = new AtomicInteger(0);
+		CompletionStage<Integer> stage1 = Stages.of(2);
+		CompletionStage<Integer> stage2 = Stages.of(40);
+		CompletableFuture<Void> future = stage1.acceptEitherAsync(stage2, integer -> {
 			assertFalse(eventloop.inEventloopThread());
 			result.set(integer);
 		}, executor).toCompletableFuture();
@@ -217,12 +216,11 @@ public class CompletionStageTest {
 
 	@Test
 	public void testRunAfterEitherWithExecutor() throws ExecutionException, InterruptedException {
-		final AtomicInteger result = new AtomicInteger(0);
-		final SettableStage<Integer> stage1 = SettableStage.immediateStage(2);
-		final SettableStage<Integer> stage2 = SettableStage.immediateStage(40);
-		final CompletableFuture<Void> future = stage1.runAfterEitherAsync(stage2, () -> {
+		AtomicInteger result = new AtomicInteger(0);
+		CompletionStage<Integer> stage1 = Stages.of(2);
+		CompletionStage<Integer> stage2 = Stages.of(40);
+		CompletableFuture<Void> future = stage1.runAfterEitherAsync(stage2, () -> {
 			assertFalse(eventloop.inEventloopThread());
-			assertTrue(stage1.isSet() || stage2.isSet());
 			result.set(42);
 		}, executor).toCompletableFuture();
 
@@ -233,9 +231,9 @@ public class CompletionStageTest {
 
 	@Test
 	public void testComposeWithExecutor() throws ExecutionException, InterruptedException {
-		final CompletableFuture<Integer> future = SettableStage.immediateStage(2).thenComposeAsync(integer -> {
+		CompletableFuture<Integer> future = Stages.of(2).thenComposeAsync(integer -> {
 			assertFalse(eventloop.inEventloopThread());
-			return SettableStage.immediateStage(40 + integer);
+			return Stages.of(40 + integer);
 		}, executor).toCompletableFuture();
 
 		eventloop.run();
@@ -244,8 +242,8 @@ public class CompletionStageTest {
 
 	@Test
 	public void testWhenCompleteWithExecutor() throws ExecutionException, InterruptedException {
-		final AtomicInteger result = new AtomicInteger(0);
-		final CompletableFuture<Integer> future = SettableStage.immediateStage(2).whenCompleteAsync((integer, throwable) -> {
+		AtomicInteger result = new AtomicInteger(0);
+		CompletableFuture<Integer> future = Stages.of(2).whenCompleteAsync((integer, throwable) -> {
 			assertFalse(eventloop.inEventloopThread());
 			result.set(40 + integer);
 		}, executor).toCompletableFuture();
@@ -257,8 +255,8 @@ public class CompletionStageTest {
 
 	@Test
 	public void testHandleWithExecutor() throws ExecutionException, InterruptedException {
-		final SettableStage<Integer> stage1 = SettableStage.immediateStage(2);
-		final CompletableFuture<Integer> future = stage1.handleAsync((integer, throwable) -> {
+		CompletionStage<Integer> stage1 = Stages.of(2);
+		CompletableFuture<Integer> future = stage1.handleAsync((integer, throwable) -> {
 			assertFalse(eventloop.inEventloopThread());
 			return 40 + integer;
 		}, executor).toCompletableFuture();

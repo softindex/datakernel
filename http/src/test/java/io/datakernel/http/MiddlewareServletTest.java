@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
@@ -63,14 +63,14 @@ public class MiddlewareServletTest {
 	@Test
 	public void testBase() {
 		MiddlewareServlet servlet1 = MiddlewareServlet.create();
-		servlet1.with(HttpMethod.GET, "/a/b/c", request -> SettableStage.immediateStage(HttpResponse.ofCode(200)));
+		servlet1.with(HttpMethod.GET, "/a/b/c", request -> Stages.of(HttpResponse.ofCode(200)));
 
 		servlet1.serve(HttpRequest.get("http://some-test.com/a/b/c")).whenComplete(assertResult("", 200));
 		servlet1.serve(HttpRequest.get("http://some-test.com/a/b/c/d")).whenComplete(assertResult("", 404));
 		servlet1.serve(HttpRequest.post("http://some-test.com/a/b/c")).whenComplete(assertResult("", 405));
 
 		MiddlewareServlet servlet2 = MiddlewareServlet.create();
-		servlet2.with(HttpMethod.HEAD, "/a/b/c", request -> SettableStage.immediateStage(HttpResponse.ofCode(200)));
+		servlet2.with(HttpMethod.HEAD, "/a/b/c", request -> Stages.of(HttpResponse.ofCode(200)));
 
 		servlet2.serve(HttpRequest.post("http://some-test.com/a/b/c")).whenComplete(assertResult("", 405));
 		servlet2.serve(HttpRequest.post("http://some-test.com/a/b/c/d")).whenComplete(assertResult("", 404));
@@ -80,7 +80,7 @@ public class MiddlewareServletTest {
 	@Test
 	public void testProcessWildCardRequest() {
 		MiddlewareServlet servlet = MiddlewareServlet.create();
-		servlet.with("/a/b/c/d", request -> SettableStage.immediateStage(HttpResponse.ofCode(200)));
+		servlet.with("/a/b/c/d", request -> Stages.of(HttpResponse.ofCode(200)));
 
 		servlet.serve(HttpRequest.get("http://some-test.com/a/b/c/d")).whenComplete(assertResult("", 200));
 		servlet.serve(HttpRequest.post("http://some-test.com/a/b/c/d")).whenComplete(assertResult("", 200));
@@ -101,7 +101,7 @@ public class MiddlewareServletTest {
 		AsyncServlet action = request -> {
 			ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
 			request.recycleBufs();
-			return SettableStage.immediateStage(HttpResponse.ofCode(200).withBody(msg));
+			return Stages.of(HttpResponse.ofCode(200).withBody(msg));
 		};
 
 		MiddlewareServlet a = MiddlewareServlet.create()
@@ -150,7 +150,7 @@ public class MiddlewareServletTest {
 		AsyncServlet action = request -> {
 			ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
 			request.recycleBufs();
-			return SettableStage.immediateStage(HttpResponse.ofCode(200).withBody(msg));
+			return Stages.of(HttpResponse.ofCode(200).withBody(msg));
 		};
 
 		MiddlewareServlet main = MiddlewareServlet.create()
@@ -185,8 +185,8 @@ public class MiddlewareServletTest {
 		expectedException.expectMessage("Can't map. Servlet already exists");
 
 		MiddlewareServlet s1 = MiddlewareServlet.create()
-				.with(GET, "/", request -> SettableStage.immediateStage(null))
-				.with(GET, "/", request -> SettableStage.immediateStage(null));
+				.with(GET, "/", request -> Stages.of(null))
+				.with(GET, "/", request -> Stages.of(null));
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
@@ -204,7 +204,7 @@ public class MiddlewareServletTest {
 		AsyncServlet action = request -> {
 			ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
 			request.recycleBufs();
-			return SettableStage.immediateStage(HttpResponse.ofCode(200).withBody(msg));
+			return Stages.of(HttpResponse.ofCode(200).withBody(msg));
 		};
 
 		MiddlewareServlet main = MiddlewareServlet.create()
@@ -235,13 +235,13 @@ public class MiddlewareServletTest {
 		AsyncServlet action = request -> {
 			ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
 			request.recycleBufs();
-			return SettableStage.immediateStage(HttpResponse.ofCode(200).withBody(msg));
+			return Stages.of(HttpResponse.ofCode(200).withBody(msg));
 		};
 
 		AsyncServlet anotherAction = request -> {
 			ByteBuf msg = ByteBufStrings.wrapUtf8("Shall not be executed: " + request.getPath());
 			request.recycleBufs();
-			return SettableStage.immediateStage(HttpResponse.ofCode(200).withBody(msg));
+			return Stages.of(HttpResponse.ofCode(200).withBody(msg));
 		};
 
 		HttpRequest request = HttpRequest.get(TEMPLATE + "/a/c/f");    // fail
@@ -275,7 +275,7 @@ public class MiddlewareServletTest {
 			ByteBuf bodyByteBuf = ByteBufStrings.wrapUtf8(body);
 			final HttpResponse httpResponse = HttpResponse.ofCode(200).withBody(bodyByteBuf);
 			request.recycleBufs();
-			return SettableStage.immediateStage(httpResponse);
+			return Stages.of(httpResponse);
 		};
 
 		MiddlewareServlet main = MiddlewareServlet.create()
@@ -298,13 +298,13 @@ public class MiddlewareServletTest {
 		AsyncServlet serveCar = request -> {
 			ByteBuf body = ByteBufStrings.wrapUtf8("served car: " + request.getPathParameter("cid"));
 			request.recycleBufs();
-			return SettableStage.immediateStage(HttpResponse.ofCode(200).withBody(body));
+			return Stages.of(HttpResponse.ofCode(200).withBody(body));
 		};
 
 		AsyncServlet serveMan = request -> {
 			ByteBuf body = ByteBufStrings.wrapUtf8("served man: " + request.getPathParameter("mid"));
 			request.recycleBufs();
-			return SettableStage.immediateStage(HttpResponse.ofCode(200).withBody(body));
+			return Stages.of(HttpResponse.ofCode(200).withBody(body));
 		};
 
 		MiddlewareServlet ms = MiddlewareServlet.create()
@@ -327,17 +327,17 @@ public class MiddlewareServletTest {
 
 		AsyncServlet post = request -> {
 			request.recycleBufs();
-			return SettableStage.immediateStage(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("POST")));
+			return Stages.of(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("POST")));
 		};
 
 		AsyncServlet get = request -> {
 			request.recycleBufs();
-			return SettableStage.immediateStage(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("GET")));
+			return Stages.of(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("GET")));
 		};
 
 		AsyncServlet wildcard = request -> {
 			request.recycleBufs();
-			return SettableStage.immediateStage(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("WILDCARD")));
+			return Stages.of(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("WILDCARD")));
 		};
 
 		MiddlewareServlet servlet = MiddlewareServlet.create()
@@ -359,14 +359,12 @@ public class MiddlewareServletTest {
 		AsyncServlet def = request -> {
 			final ByteBuf body = ByteBufStrings.wrapUtf8("Stopped at admin: " + request.getPartialPath());
 			request.recycleBufs();
-			return SettableStage.immediateStage(
-					HttpResponse.ofCode(200).withBody(body));
+			return Stages.of(HttpResponse.ofCode(200).withBody(body));
 		};
 
 		AsyncServlet action = request -> {
 			request.recycleBufs();
-			return SettableStage.immediateStage(
-					HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Action executed")));
+			return Stages.of(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Action executed")));
 		};
 
 		HttpRequest request1 = HttpRequest.get(TEMPLATE + "/html/admin/action");
@@ -388,7 +386,7 @@ public class MiddlewareServletTest {
 	public void test404() throws ParseException {
 		AsyncServlet servlet = request -> {
 			request.recycleBufs();
-			return SettableStage.immediateStage(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("All OK")));
+			return Stages.of(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("All OK")));
 		};
 		MiddlewareServlet main = MiddlewareServlet.create()
 				.with("/a/:id/b/d", servlet);
@@ -406,7 +404,7 @@ public class MiddlewareServletTest {
 	public void test405() throws ParseException {
 		AsyncServlet servlet = request -> {
 			request.recycleBufs();
-			return SettableStage.immediateStage(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Should not execute")));
+			return Stages.of(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Should not execute")));
 		};
 		MiddlewareServlet main = MiddlewareServlet.create()
 				.with(GET, "/a/:id/b/d", servlet);
@@ -422,13 +420,11 @@ public class MiddlewareServletTest {
 	public void test405WithFallback() {
 		AsyncServlet servlet = request -> {
 			request.recycleBufs();
-			return SettableStage.immediateStage(
-					HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Should not execute")));
+			return Stages.of(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Should not execute")));
 		};
 		AsyncServlet fallback = request -> {
 			request.recycleBufs();
-			return SettableStage.immediateStage(
-					HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Fallback executed")));
+			return Stages.of(HttpResponse.ofCode(200).withBody(ByteBufStrings.wrapUtf8("Fallback executed")));
 		};
 		MiddlewareServlet main = MiddlewareServlet.create()
 				.with(GET, "/a/:id/b/d", servlet)

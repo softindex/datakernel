@@ -1,6 +1,7 @@
 package io.datakernel.logfs;
 
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.FatalErrorHandlers;
@@ -24,7 +25,6 @@ import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
 public class LogManagerImplTest {
-
 	private Eventloop eventloop;
 	private LogFileSystem logFileSystem;
 	private BufferSerializer<String> serializer;
@@ -80,14 +80,14 @@ public class LogManagerImplTest {
 
 		@Override
 		public CompletionStage<List<LogFile>> list(String logPartition) {
-			return SettableStage.immediateStage(new ArrayList<>(partitions.get(logPartition).keySet()));
+			return Stages.of(new ArrayList<>(partitions.get(logPartition).keySet()));
 		}
 
 		@Override
 		public CompletionStage<StreamProducerWithResult<ByteBuf, Void>> read(String logPartition, LogFile logFile, long startPosition) {
 			final List<ByteBuf> byteBufs = getOffset(partitions.get(logPartition).get(logFile), startPosition);
 			final StreamProducer<ByteBuf> producer = ofIterable(eventloop, byteBufs);
-			return SettableStage.immediateStage(StreamProducers.withResult(producer));
+			return Stages.of(StreamProducers.withResult(producer));
 		}
 
 		private static List<ByteBuf> getOffset(List<ByteBuf> byteBufs, long startPosition) {
@@ -113,7 +113,7 @@ public class LogManagerImplTest {
 		public CompletionStage<StreamConsumerWithResult<ByteBuf, Void>> write(String logPartition, LogFile logFile) {
 			final StreamConsumerWithResult<ByteBuf, List<ByteBuf>> listConsumer = StreamConsumers.toList(eventloop);
 			listConsumer.getResult().thenAccept(byteBufs -> partitions.get(logPartition).get(logFile).addAll(byteBufs));
-			return SettableStage.immediateStage(StreamConsumers.withResult(listConsumer));
+			return Stages.of(StreamConsumers.withResult(listConsumer));
 		}
 	}
 

@@ -17,6 +17,7 @@
 package io.datakernel.dns;
 
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.dns.DnsCache.DnsCacheResultStage;
 import io.datakernel.eventloop.AsyncUdpSocketImpl;
@@ -272,7 +273,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 				checkArgument(domainName != null && !domainName.isEmpty(), "Domain name cannot be null or empty");
 
 				if (HttpUtils.isInetAddress(domainName)) {
-					return SettableStage.immediateStage(new InetAddress[]{inetAddress(domainName)});
+					return Stages.of(new InetAddress[]{inetAddress(domainName)});
 				}
 
 				DnsCacheResultStage<InetAddress[]> cacheQueryResult = cache.tryToResolve(domainName, ipv6);
@@ -327,7 +328,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 		checkArgument(domainName != null && !domainName.isEmpty(), "Domain name cannot be null or empty");
 
 		if (HttpUtils.isInetAddress(domainName)) {
-			return SettableStage.immediateStage(new InetAddress[]{HttpUtils.inetAddress(domainName)});
+			return Stages.of(new InetAddress[]{HttpUtils.inetAddress(domainName)});
 		}
 
 		DnsCacheResultStage<InetAddress[]> cacheQueryResult = cache.tryToResolve(domainName, ipv6);

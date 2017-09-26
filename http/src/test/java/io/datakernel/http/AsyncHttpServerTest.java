@@ -17,6 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
@@ -51,7 +52,7 @@ public class AsyncHttpServerTest {
 	public static AsyncHttpServer blockingHttpServer(Eventloop primaryEventloop, int port) {
 		AsyncServlet servlet = request -> {
 			HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
-			return SettableStage.immediateStage(content);
+			return Stages.of(content);
 		};
 
 		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", port));
@@ -380,8 +381,7 @@ public class AsyncHttpServerTest {
 	public void testExpectContinue() throws Exception {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
-		AsyncHttpServer server = AsyncHttpServer.create(eventloop, request ->
-				SettableStage.immediateStage(HttpResponse.ok200().withBody(request.detachBody())))
+		AsyncHttpServer server = AsyncHttpServer.create(eventloop, request -> Stages.of(HttpResponse.ok200().withBody(request.detachBody())))
 				.withListenAddress(new InetSocketAddress("localhost", port));
 
 		server.listen();

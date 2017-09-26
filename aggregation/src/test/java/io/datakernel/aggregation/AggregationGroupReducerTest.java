@@ -20,6 +20,7 @@ import com.google.common.base.Function;
 import com.google.common.collect.ImmutableMap;
 import io.datakernel.aggregation.fieldtype.FieldTypes;
 import io.datakernel.aggregation.ot.AggregationStructure;
+import io.datakernel.async.Stages;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
@@ -36,7 +37,6 @@ import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
 import static io.datakernel.aggregation.measure.Measures.union;
-import static io.datakernel.async.SettableStage.immediateStage;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.TestUtils.assertStatus;
 import static java.util.Arrays.asList;
@@ -63,19 +63,19 @@ public class AggregationGroupReducerTest {
 
 			@Override
 			public <T> CompletionStage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
-				return immediateStage(StreamProducers.withResult(StreamProducers.ofIterator(eventloop, items.iterator())));
+				return Stages.of(StreamProducers.withResult(StreamProducers.ofIterator(eventloop, items.iterator())));
 			}
 
 			@Override
 			public <T> CompletionStage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
 				StreamConsumerToList consumer = new StreamConsumerToList<>(eventloop, items);
 				listConsumers.add(consumer);
-				return immediateStage(StreamConsumers.withResult(consumer));
+				return Stages.of(StreamConsumers.withResult(consumer));
 			}
 
 			@Override
 			public CompletionStage<Long> createId() {
-				return immediateStage(++chunkId);
+				return Stages.of(++chunkId);
 			}
 		};
 

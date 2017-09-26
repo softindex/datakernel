@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
 import org.junit.Test;
 
@@ -43,7 +43,7 @@ public class TestClientMultilineHeaders {
 		AsyncServlet servlet = request -> {
 			HttpResponse response = HttpResponse.ok200();
 			response.addHeader(HttpHeaders.ALLOW, "GET,\r\n HEAD");
-			return SettableStage.immediateStage(response);
+			return Stages.of(response);
 		};
 
 		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet).withListenAddress(new InetSocketAddress("localhost", PORT));

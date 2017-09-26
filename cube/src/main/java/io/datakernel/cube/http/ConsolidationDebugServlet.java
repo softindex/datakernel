@@ -18,7 +18,7 @@ package io.datakernel.cube.http;
 
 import com.google.gson.*;
 import io.datakernel.aggregation.PrimaryKey;
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.cube.Cube;
 import io.datakernel.http.*;
 
@@ -55,7 +55,7 @@ public final class ConsolidationDebugServlet implements AsyncServlet {
 
 	@Override
 	public CompletionStage<HttpResponse> serve(HttpRequest request) {
-		return SettableStage.immediateStage(HttpResponse.ok200()
+		return Stages.of(HttpResponse.ok200()
 				.withContentType(ContentType.of(MediaTypes.JSON))
 				.withBody(wrapUtf8(gson.toJson(cube.getConsolidationDebugInfo()))));
 	}

@@ -18,7 +18,7 @@ package io.datakernel.https;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpClient;
@@ -61,7 +61,7 @@ public class TestHttpsClientServer {
 
 	private KeyManager[] keyManagers = createKeyManagers(new File("./src/test/resources/keystore.jks"), "testtest", "testtest");
 	private TrustManager[] trustManagers = createTrustManagers(new File("./src/test/resources/truststore.jks"), "testtest");
-	private AsyncServlet bobServlet = request -> SettableStage.immediateStage(ok200().withBody(wrapAscii("Hello, I am Bob!")));
+	private AsyncServlet bobServlet = request -> Stages.of(ok200().withBody(wrapAscii("Hello, I am Bob!")));
 	private Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 	private ExecutorService executor = newCachedThreadPool();
 	private SSLContext context = createSslContext("TLSv1.2", keyManagers, trustManagers, new SecureRandom());
