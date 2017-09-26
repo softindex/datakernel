@@ -16,17 +16,20 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.async.CompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.*;
+import io.datakernel.stream.StreamConsumerToList;
+import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducers;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.CompletableFuture;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -82,14 +85,15 @@ public class StreamByteChunkerTest {
 
 		StreamProducer<ByteBuf> source = StreamProducers.ofIterable(eventloop, buffers);
 		StreamByteChunker resizer = StreamByteChunker.create(eventloop, bufSize / 2, bufSize);
-		StreamConsumers.ToList<ByteBuf> streamFixedSizeConsumer = StreamConsumers.toList(eventloop);
+		StreamConsumerWithResult<ByteBuf, List<ByteBuf>> streamFixedSizeConsumer = new StreamConsumerToList<>(eventloop);
+		CompletableFuture<List<ByteBuf>> listFuture = streamFixedSizeConsumer.getResult().toCompletableFuture();
 
 		source.streamTo(resizer.getInput());
 		resizer.getOutput().streamTo(streamFixedSizeConsumer);
 
 		eventloop.run();
 
-		List<ByteBuf> receivedBuffers = streamFixedSizeConsumer.getList();
+		List<ByteBuf> receivedBuffers = listFuture.get();
 		byte[] received = byteBufsToByteArray(receivedBuffers);
 		assertArrayEquals(received, expected);
 

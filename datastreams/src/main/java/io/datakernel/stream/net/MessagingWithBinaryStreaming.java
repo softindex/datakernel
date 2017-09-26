@@ -22,10 +22,7 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducerWithResult;
+import io.datakernel.stream.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,6 +32,7 @@ import java.util.concurrent.CompletionStage;
 
 import static com.google.common.base.Preconditions.checkState;
 import static io.datakernel.async.SettableStage.immediateFailedStage;
+import static io.datakernel.stream.StreamConsumers.closingWithError;
 
 /**
  * Represent the TCP connection which  processes received items with {@link StreamProducer} and {@link StreamConsumer},
@@ -166,11 +164,11 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 
 		writeCallbacks.clear();
 		if (closedException != null) {
-			return StreamConsumerWithResult.closingWithError(closedException);
+			return StreamConsumers.withResult(closingWithError(closedException));
 		}
 
 		socketWriter = SocketStreamConsumer.create(eventloop, asyncTcpSocket);
-		return StreamConsumerWithResult.create(socketWriter, socketWriter.getSentStage());
+		return StreamConsumers.withResult(socketWriter, socketWriter.getSentStage());
 	}
 
 	@Override
@@ -178,7 +176,8 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 		checkState(this.socketReader == null && this.receiveMessageCallback == null);
 
 		if (closedException != null) {
-			return StreamProducerWithResult.closingWithError(closedException);
+			StreamProducer<ByteBuf> producer = StreamProducers.closingWithError(closedException);
+			return StreamProducers.withResult(producer);
 		}
 
 		socketReader = SocketStreamProducer.create(eventloop, asyncTcpSocket);
@@ -192,7 +191,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 				}
 			});
 		}
-		return StreamProducerWithResult.wrap(socketReader);
+		return StreamProducers.withResult(socketReader);
 	}
 
 	@Override

@@ -20,7 +20,10 @@ import com.google.common.base.Functions;
 import com.google.common.collect.Ordering;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
-import io.datakernel.stream.*;
+import io.datakernel.stream.StreamConsumerToList;
+import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducers;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -38,7 +41,7 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.serializer.asm.BufferSerializers.intSerializer;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
-import static io.datakernel.stream.processor.Utils.assertStatus;
+import static io.datakernel.stream.TestUtils.assertStatus;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -58,8 +61,8 @@ public class StreamSorterTest {
 		StreamSorterStorageImpl<Integer> storage = StreamSorterStorageImpl.create(eventloop, executor, intSerializer(), tempFolder.getRoot().toPath())
 				.withWriteBlockSize(64);
 
-		StreamConsumerWithResult<Integer, Integer> writer1 = StreamConsumerWithResult.ofStage(storage.write());
-		StreamConsumerWithResult<Integer, Integer> writer2 = StreamConsumerWithResult.ofStage(storage.write());
+		StreamConsumerWithResult<Integer, Integer> writer1 = storage.writeStream();
+		StreamConsumerWithResult<Integer, Integer> writer2 = storage.writeStream();
 		source1.streamTo(writer1);
 		source2.streamTo(writer2);
 
@@ -71,10 +74,10 @@ public class StreamSorterTest {
 		assertStatus(END_OF_STREAM, source1);
 		assertStatus(END_OF_STREAM, source2);
 
-		TestStreamConsumers.TestConsumerToList<Integer> consumer1 = TestStreamConsumers.toListOneByOne(eventloop);
-		TestStreamConsumers.TestConsumerToList<Integer> consumer2 = TestStreamConsumers.toListRandomlySuspending(eventloop);
-		StreamProducerWithResult.ofStage(storage.read(chunk1.get())).streamTo(consumer1);
-		StreamProducerWithResult.ofStage(storage.read(chunk2.get())).streamTo(consumer2);
+		StreamConsumerToList<Integer> consumer1 = StreamConsumerToList.oneByOne(eventloop);
+		StreamConsumerToList<Integer> consumer2 = StreamConsumerToList.randomlySuspending(eventloop);
+		storage.readStream(chunk1.get()).streamTo(consumer1);
+		storage.readStream(chunk2.get()).streamTo(consumer2);
 		eventloop.run();
 		assertEquals(asList(1, 2, 3, 4, 5, 6, 7), consumer1.getList());
 		assertEquals(asList(111), consumer2.getList());
@@ -96,36 +99,11 @@ public class StreamSorterTest {
 		StreamSorter<Integer, Integer> sorter = StreamSorter.create(eventloop,
 				storage, Functions.identity(), Ordering.natural(), true, 2);
 
-		TestStreamConsumers.TestConsumerToList<Integer> consumerToList = TestStreamConsumers.toListRandomlySuspending(eventloop);
+		StreamConsumerToList<Integer> consumerToList = StreamConsumerToList.randomlySuspending(eventloop);
 
 		source.streamTo(sorter.getInput());
 		sorter.getOutput().streamTo(consumerToList);
 
-		eventloop.run();
-
-		assertEquals(asList(1, 2, 3, 4, 5), consumerToList.getList());
-		assertStatus(END_OF_STREAM, source);
-//		assertStatus(END_OF_STREAM, sorter.getOutput());
-		assertStatus(END_OF_STREAM, sorter.getInput());
-	}
-
-	@Test
-	public void testWithoutConsumer() throws IOException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
-		ExecutorService executor = Executors.newCachedThreadPool();
-
-		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(3, 1, 3, 2, 5, 1, 4, 3, 2));
-
-		StreamSorterStorage<Integer> storage = StreamSorterStorageImpl.create(eventloop, executor, intSerializer(), tempFolder.newFolder().toPath());
-		StreamSorter<Integer, Integer> sorter = StreamSorter.create(eventloop,
-				storage, Functions.identity(), Ordering.natural(), true, 2);
-
-		TestStreamConsumers.TestConsumerToList<Integer> consumerToList = TestStreamConsumers.toListRandomlySuspending(eventloop);
-
-		source.streamTo(sorter.getInput());
-		eventloop.run();
-
-		sorter.getOutput().streamTo(consumerToList);
 		eventloop.run();
 
 		assertEquals(asList(1, 2, 3, 4, 5), consumerToList.getList());
@@ -146,7 +124,7 @@ public class StreamSorterTest {
 				storage, Functions.identity(), Ordering.natural(), true, 2);
 
 		final List<Integer> list = new ArrayList<>();
-		TestStreamConsumers.TestConsumerToList<Integer> consumerToList = new TestStreamConsumers.TestConsumerToList<Integer>(eventloop, list) {
+		StreamConsumerToList<Integer> consumerToList = new StreamConsumerToList<Integer>(eventloop, list) {
 			@Override
 			public void onData(Integer item) {
 				list.add(item);
@@ -175,22 +153,21 @@ public class StreamSorterTest {
 
 		StreamProducer<Integer> source = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, asList(3, 1, 3, 2)),
-				StreamProducers.closingWithError(eventloop, new ExpectedException())
+				StreamProducers.closingWithError(new ExpectedException())
 		);
 
 		StreamSorterStorage<Integer> storage = StreamSorterStorageImpl.create(eventloop, executor, intSerializer(), tempFolder.newFolder().toPath());
 		StreamSorter<Integer, Integer> sorter = StreamSorter.create(eventloop,
 				storage, Functions.identity(), Ordering.natural(), true, 2);
 
-		final List<Integer> list = new ArrayList<>();
-		StreamConsumers.ToList<Integer> consumerToList = new StreamConsumers.ToList<>(eventloop, list);
+		StreamConsumerToList<Integer> consumerToList = StreamConsumerToList.create(eventloop);
 
 		source.streamTo(sorter.getInput());
 		sorter.getOutput().streamTo(consumerToList);
 
 		eventloop.run();
 
-		assertTrue(list.size() == 0);
+		assertTrue(consumerToList.getList().size() == 0);
 
 		assertStatus(CLOSED_WITH_ERROR, consumerToList);
 //		assertStatus(CLOSED_WITH_ERROR, sorter.getOutput());

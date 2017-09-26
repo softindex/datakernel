@@ -16,7 +16,6 @@
 
 package io.datakernel.stream.file;
 
-import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
@@ -149,10 +148,10 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 				}
 			} else {
 				buf.recycle();
-				closeWithError(AsyncCallbacks.throwableToException(throwable));
+				closeWithError(throwable);
 
 				if (positionStage != null) {
-					positionStage.setException(AsyncCallbacks.throwableToException(throwable));
+					positionStage.setException(throwable);
 				}
 			}
 		});
@@ -171,7 +170,7 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 	}
 
 	@Override
-	protected void onError(Exception e) {
+	protected void onError(Throwable t) {
 	}
 
 	@Override

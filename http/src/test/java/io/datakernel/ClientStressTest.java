@@ -76,8 +76,11 @@ public class ClientStressTest {
 			eventloop.schedule(eventloop.currentTimeMillis() + delay, () -> {
 				logger.info("sending request to: {}", url);
 				client.send(formRequest(url, random.nextBoolean())).whenComplete((response, throwable) -> {
-					if (throwable != null) logger.error("url: {}, failed", url, throwable);
-					else logger.info("url: {}, succeed", url);
+					if (throwable != null) {
+						logger.error("url: {}, failed", url, throwable);
+					} else {
+						logger.info("url: {}, succeed", url);
+					}
 				});
 				test();
 			});

@@ -10,7 +10,7 @@ public class StreamForwarder<T> implements StreamTransformer<T, T> {
 	private Output output;
 
 	private boolean pendingEndOfStream;
-	private Exception pendingException;
+	private Throwable pendingException;
 	private StreamDataReceiver<T> pendingDataReceiver;
 
 	private StreamForwarder(Eventloop eventloop) {
@@ -19,16 +19,8 @@ public class StreamForwarder<T> implements StreamTransformer<T, T> {
 		this.output = new Output(eventloop);
 	}
 
-	public static <T> StreamForwarder<T> create(Eventloop eventloop, SizeCounter<T> sizeCounter) {
-		return new StreamForwarder<T>(eventloop);
-	}
-
 	public static <T> StreamForwarder<T> create(Eventloop eventloop) {
-		return new StreamForwarder<T>(eventloop);
-	}
-
-	public interface SizeCounter<T> {
-		int size(T item);
+		return new StreamForwarder<>(eventloop);
 	}
 
 	@Override
@@ -92,11 +84,11 @@ public class StreamForwarder<T> implements StreamTransformer<T, T> {
 		}
 
 		@Override
-		protected void onError(Exception e) {
+		protected void onError(Throwable t) {
 			if (output != null) {
-				output.getConsumer().closeWithError(e);
+				output.getConsumer().closeWithError(t);
 			} else {
-				pendingException = e;
+				pendingException = t;
 			}
 		}
 	}
@@ -126,11 +118,11 @@ public class StreamForwarder<T> implements StreamTransformer<T, T> {
 		}
 
 		@Override
-		protected void onError(Exception e) {
+		protected void onError(Throwable t) {
 			if (input != null) {
-				input.getProducer().closeWithError(e);
+				input.getProducer().closeWithError(t);
 			} else {
-				pendingException = e;
+				pendingException = t;
 			}
 		}
 	}

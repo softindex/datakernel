@@ -23,6 +23,8 @@ import io.datakernel.exception.ExpectedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.CompletionStage;
+
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 import static io.datakernel.stream.StreamStatus.*;
@@ -40,14 +42,14 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	private StreamConsumer<T> consumer;
 
 	private StreamStatus status = SUSPENDED;
-	private Exception error;
+	private Throwable exception;
+
+	private final SettableStage<Void> completionStage = SettableStage.create();
 
 	private StreamDataReceiver<T> currentDataReceiver;
 	private StreamDataReceiver<T> lastDataReceiver;
 	private boolean producing;
 	private boolean posted;
-
-	private final SettableStage<Void> completionStage = SettableStage.create();
 
 	private Object tag;
 
@@ -62,16 +64,10 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	 * @param consumer consumer for streaming
 	 */
 	@Override
-	public final void streamTo(final StreamConsumer<T> consumer) {
+	public final void setConsumer(final StreamConsumer<T> consumer) {
 		checkNotNull(consumer);
-		if (this.consumer == consumer) return;
 		checkState(this.consumer == null);
-		checkState(status == SUSPENDED);
-
 		this.consumer = consumer;
-
-		consumer.streamFrom(this);
-
 		onWired();
 	}
 
@@ -153,7 +149,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		onSuspended();
 	}
 
-	public void sendEndOfStream() {
+	public final void sendEndOfStream() {
 		if (status.isClosed())
 			return;
 		status = END_OF_STREAM;
@@ -165,16 +161,16 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	}
 
 	@Override
-	public final void closeWithError(Exception e) {
+	public final void closeWithError(Throwable e) {
 		if (status.isClosed())
 			return;
 		status = CLOSED_WITH_ERROR;
 		currentDataReceiver = null;
 		lastDataReceiver = item -> {};
-		error = e;
+		exception = e;
 		if (!(e instanceof ExpectedException)) {
 			if (logger.isWarnEnabled()) {
-				logger.warn("StreamProducer {} closed with error {}", this, error.toString());
+				logger.warn("StreamProducer {} closed with error {}", this, exception.toString());
 			}
 		}
 		consumer.closeWithError(e);
@@ -183,7 +179,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		completionStage.setException(e);
 	}
 
-	protected abstract void onError(Exception e);
+	protected abstract void onError(Throwable t);
 
 	protected void cleanup() {
 	}
@@ -192,11 +188,11 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		return status;
 	}
 
-	public final Exception getException() {
-		return error;
+	public final Throwable getException() {
+		return exception;
 	}
 
-	public final SettableStage<Void> getCompletionStage() {
+	public final CompletionStage<Void> getCompletion() {
 		return completionStage;
 	}
 

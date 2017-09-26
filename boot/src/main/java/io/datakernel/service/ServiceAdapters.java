@@ -42,9 +42,12 @@ public final class ServiceAdapters {
 	}
 
 	private static BiConsumer<Void, Throwable> completeFuture(SettableFuture<?> future) {
-		return (aVoid, throwable) -> {
-			if (throwable != null) future.setException(throwable);
-			else future.set(null);
+		return ($, throwable) -> {
+			if (throwable != null) {
+				future.setException(throwable);
+			} else {
+				future.set(null);
+			}
 		};
 	}
 

@@ -26,7 +26,7 @@ import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SimpleServer;
 import io.datakernel.eventloop.SimpleServer.SocketHandlerProvider;
-import io.datakernel.stream.StreamConsumers;
+import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.net.Messaging.ReceiveMessageCallback;
@@ -37,7 +37,6 @@ import org.junit.Test;
 
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
 
@@ -155,8 +154,7 @@ public class MessagingWithBinaryStreamingTest {
 
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		List<Long> l = new ArrayList<>();
-		final StreamConsumers.ToList<Long> consumerToList = StreamConsumers.toList(eventloop, l);
+		StreamConsumerToList<Long> consumerToList = StreamConsumerToList.create(eventloop);
 
 		SocketHandlerProvider socketHandlerProvider = asyncTcpSocket -> {
 			final MessagingWithBinaryStreaming<String, String> messaging = MessagingWithBinaryStreaming.create(eventloop, asyncTcpSocket,
@@ -226,7 +224,7 @@ public class MessagingWithBinaryStreamingTest {
 
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		final StreamConsumers.ToList<Long> consumerToList = StreamConsumers.toList(eventloop);
+		StreamConsumerToList<Long> consumerToList = StreamConsumerToList.create(eventloop);
 
 		SocketHandlerProvider socketHandlerProvider = asyncTcpSocket -> {
 			final MessagingWithBinaryStreaming<String, String> messaging = MessagingWithBinaryStreaming.create(eventloop, asyncTcpSocket,
@@ -301,7 +299,7 @@ public class MessagingWithBinaryStreamingTest {
 
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		final StreamConsumers.ToList<Long> consumerToList = StreamConsumers.toList(eventloop);
+		final StreamConsumerToList<Long> consumerToList = StreamConsumerToList.create(eventloop);
 
 		SocketHandlerProvider socketHandlerProvider = asyncTcpSocket -> {
 			final MessagingWithBinaryStreaming<String, String> messaging = MessagingWithBinaryStreaming.create(eventloop, asyncTcpSocket,
@@ -316,7 +314,7 @@ public class MessagingWithBinaryStreamingTest {
 					streamDeserializer.getOutput().streamTo(consumerToList);
 					StreamProducerWithResult<ByteBuf, Void> producer = messaging.receiveBinaryStream();
 					producer.streamTo(streamDeserializer.getInput());
-					producer.getResult().thenAccept(aVoid -> {
+					producer.getResult().thenAccept($ -> {
 						messaging.send("ack");
 						messaging.sendEndOfStream();
 					});
@@ -397,7 +395,7 @@ public class MessagingWithBinaryStreamingTest {
 
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		final StreamConsumers.ToList<Long> consumerToList = StreamConsumers.toList(eventloop);
+		final StreamConsumerToList<Long> consumerToList = StreamConsumerToList.create(eventloop);
 
 		SocketHandlerProvider socketHandlerProvider = asyncTcpSocket -> {
 			final MessagingWithBinaryStreaming<String, String> messaging = MessagingWithBinaryStreaming.create(eventloop, asyncTcpSocket,

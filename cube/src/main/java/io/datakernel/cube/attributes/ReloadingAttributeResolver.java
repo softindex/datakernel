@@ -17,7 +17,7 @@
 package io.datakernel.cube.attributes;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.*;
+import io.datakernel.async.SettableStage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.eventloop.ScheduledRunnable;
@@ -59,23 +59,19 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 		return result;
 	}
 
-	protected abstract void reload(@Nullable long lastTimestamp, ResultCallback<Map<K, A>> callback);
+	protected abstract CompletionStage<Map<K, A>> reload(@Nullable long lastTimestamp);
 
 	private void doReload() {
 		reloads++;
 		scheduledRunnable.cancel();
 		final long reloadTimestamp = getEventloop().currentTimeMillis();
-		reload(timestamp, new ResultCallback<Map<K, A>>() {
-			@Override
-			protected void onResult(Map<K, A> result) {
+		CompletionStage<Map<K, A>> reload = reload(timestamp).whenComplete((result, throwable) -> {
+			if (throwable == null) {
 				reloadTime.recordValue((int) (getEventloop().currentTimeMillis() - reloadTimestamp));
 				cache.putAll(result);
 				timestamp = reloadTimestamp;
 				scheduleReload(reloadPeriod);
-			}
-
-			@Override
-			protected void onException(Exception e) {
+			} else {
 				reloadErrors++;
 				scheduleReload(retryPeriod);
 			}
@@ -100,26 +96,13 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 	@Override
 	public CompletionStage<Void> start() {
 		if (reloadPeriod == 0) return SettableStage.immediateStage(null);
-
-		final SettableStage<Void> stage = SettableStage.create();
-		final long reloadTimestamp = getEventloop().currentTimeMillis();
-		reload(timestamp, new ResultCallback<Map<K, A>>() {
-			@Override
-			protected void onResult(Map<K, A> result) {
-				reloadTime.recordValue((int) (getEventloop().currentTimeMillis() - reloadTimestamp));
-				cache.putAll(result);
-				timestamp = reloadTimestamp;
-				scheduleReload(reloadPeriod);
-				stage.set(null);
-			}
-
-			@Override
-			protected void onException(Exception e) {
-				stage.setException(AsyncCallbacks.throwableToException(e));
-			}
+		long reloadTimestamp = getEventloop().currentTimeMillis();
+		return reload(timestamp).thenAccept(result -> {
+			reloadTime.recordValue((int) (getEventloop().currentTimeMillis() - reloadTimestamp));
+			cache.putAll(result);
+			timestamp = reloadTimestamp;
+			scheduleReload(reloadPeriod);
 		});
-
-		return stage;
 	}
 
 	@Override

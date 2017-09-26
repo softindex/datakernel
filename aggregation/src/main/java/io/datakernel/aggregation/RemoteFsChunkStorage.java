@@ -23,7 +23,9 @@ import io.datakernel.remotefs.IRemoteFsClient;
 import io.datakernel.remotefs.RemoteFsClient;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducerWithResult;
+import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
 import io.datakernel.stream.processor.StreamLZ4Compressor;
@@ -64,7 +66,7 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage {
 			producer.streamTo(decompressor.getInput());
 			decompressor.getOutput().streamTo(deserializer.getInput());
 
-			return StreamProducerWithResult.wrap(deserializer.getOutput());
+			return StreamProducers.withResult(deserializer.getOutput());
 		});
 	}
 
@@ -83,7 +85,7 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage {
 			serializer.getOutput().streamTo(compressor.getInput());
 			compressor.getOutput().streamTo(consumer);
 
-			return StreamConsumerWithResult.create(serializer.getInput(), consumer.getResult());
+			return StreamConsumers.withResult(serializer.getInput(), consumer.getResult());
 		});
 	}
 

@@ -17,11 +17,9 @@
 package io.datakernel.http;
 
 import io.datakernel.async.AsyncCancellable;
-import io.datakernel.async.ResultCallback;
 import io.datakernel.async.SettableStage;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
-import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.jmx.EventStats;
@@ -35,49 +33,12 @@ import java.net.InetAddress;
 
 import static io.datakernel.http.AbstractHttpConnection.*;
 
-/**
- * A server which works asynchronously. An instance of {@code AsyncHttpServer}
- * can be created by calling {@link #create(Eventloop, AsyncServlet)} method
- * and providing an {@link Eventloop} instance and an implementation of
- * {@link AsyncServlet}.
- * <p>
- * The creation of asynchronous http server implies few steps:
- * <ol>
- *     <li>Create an {@code eventloop} for a server</li>
- *     <li>Create a {@code servlet}, which will respond to received request</li>
- *     <li>Create a {@code server} with these instances</li>
- * </ol>
- * For example, consider an {@code AsyncHttpServer}:
- * <pre><code>final {@link Eventloop Eventloop} eventloop = Eventloop.create();
- * final {@link AsyncServlet AsyncServlet} servlet = new AsyncServlet() {
- *    {@literal @}Override
- *     public void serve({@link HttpRequest HttpRequest} request, final {@link ResultCallback ResultCallback&lt;HttpResponse&gt;} callback) {
- *     	final HttpResponse response = HttpResponse.ok200().withBody(ByteBufStrings.encodeAscii("Hello, client!"));
- *     		eventloop.post(new Runnable() {
- *		   {@literal @}Override
- *  		    public void run() {
- *  		    System.out.println("Request body: " + request.getBody().toString());
- *     			callback.setResult(response);
- *     		    }
- *  		});
- * 	}
- * };
- * AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet).withListenPort(40000);
- * server.listen();
- * eventloop.run(); //eventloop runs in current thread
- * </code>
- * </pre>
- * Now server is ready for accepting requests and responding to clients with
- * <pre>"Hello, client!"</pre> message. It's easy to create a client for this
- * example using {@link AsyncHttpClient} or send a request with, for example,
- * {@link AsyncTcpSocketImpl}.
- */
 public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	public static final long DEFAULT_KEEP_ALIVE_MILLIS = 30 * 1000L;
 
 	private static final HttpExceptionFormatter DEFAULT_ERROR_FORMATTER = new HttpExceptionFormatter() {
 		@Override
-		public HttpResponse formatException(Exception e) {
+		public HttpResponse formatException(Throwable e) {
 			if (e instanceof HttpException) {
 				HttpException httpException = (HttpException) e;
 				return HttpResponse.ofCode(httpException.getCode()).withNoCache();
@@ -112,13 +73,13 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	Inspector inspector;
 
 	public interface Inspector {
-		void onHttpError(InetAddress remoteAddress, Exception e);
+		void onHttpError(InetAddress remoteAddress, Throwable e);
 
 		void onHttpRequest(HttpRequest request);
 
 		void onHttpResponse(HttpRequest request, HttpResponse httpResponse);
 
-		void onServletException(HttpRequest request, Exception e);
+		void onServletException(HttpRequest request, Throwable e);
 	}
 
 	public static class JmxInspector implements Inspector {
@@ -131,7 +92,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		private final ExceptionStats servletExceptions = ExceptionStats.create();
 
 		@Override
-		public void onHttpError(InetAddress remoteAddress, Exception e) {
+		public void onHttpError(InetAddress remoteAddress, Throwable e) {
 			if (e == AbstractHttpConnection.READ_TIMEOUT_ERROR || e == AbstractHttpConnection.WRITE_TIMEOUT_ERROR) {
 				httpTimeouts.recordEvent();
 			} else {
@@ -150,7 +111,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		}
 
 		@Override
-		public void onServletException(HttpRequest request, Exception e) {
+		public void onServletException(HttpRequest request, Throwable e) {
 			servletExceptions.recordException(e, request.toString());
 		}
 
@@ -320,7 +281,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		return poolWritingExpired;
 	}
 
-	HttpResponse formatHttpError(Exception e) {
+	HttpResponse formatHttpError(Throwable e) {
 		return errorFormatter.formatException(e);
 	}
 

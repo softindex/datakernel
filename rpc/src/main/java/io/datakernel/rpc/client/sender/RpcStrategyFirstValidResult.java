@@ -16,7 +16,6 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.SettableStage;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 
@@ -94,7 +93,7 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 			for (RpcSender sender : subSenders) {
 				sender.<I, O>sendRequest(request, timeout).whenComplete((o, throwable) -> {
 					if (throwable != null) {
-						resultHandler.onException(AsyncCallbacks.throwableToException(throwable));
+						resultHandler.onException(throwable);
 					} else {
 						resultHandler.onResult(o);
 					}
@@ -111,7 +110,7 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 		private final Exception noValidResultException;
 		private int expectedCalls;
 		private T result;
-		private Exception exception;
+		private Throwable exception;
 		private boolean hasResult;
 		private boolean complete;
 
@@ -133,7 +132,7 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 			processResult();
 		}
 
-		public void onException(Exception exception) {
+		public void onException(Throwable exception) {
 			--expectedCalls;
 			if (!hasResult) {
 				FirstResultHandler.this.exception = exception; // last Exception

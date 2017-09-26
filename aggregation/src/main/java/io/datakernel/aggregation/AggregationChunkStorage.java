@@ -19,10 +19,13 @@ package io.datakernel.aggregation;
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducerWithResult;
 
 import java.util.List;
 import java.util.concurrent.CompletionStage;
+
+import static io.datakernel.stream.StreamProducers.ofStageWithResult;
 
 /**
  * Manages persistence of aggregations (chunks of data).
@@ -41,7 +44,7 @@ public interface AggregationChunkStorage extends IdGenerator<Long> {
 
 	default <T> StreamProducerWithResult<T, Void> readStream(AggregationStructure aggregation, List<String> fields,
 	                                                         Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
-		return StreamProducerWithResult.ofStage(read(aggregation, fields, recordClass, chunkId, classLoader));
+		return ofStageWithResult(read(aggregation, fields, recordClass, chunkId, classLoader));
 	}
 
 	/**
@@ -57,7 +60,7 @@ public interface AggregationChunkStorage extends IdGenerator<Long> {
 
 	default <T> StreamConsumerWithResult<T, Void> writeStream(AggregationStructure aggregation, List<String> fields,
 	                                                          Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
-		return StreamConsumerWithResult.ofStage(write(aggregation, fields, recordClass, chunkId, classLoader));
+		return StreamConsumers.ofStageWithResult(write(aggregation, fields, recordClass, chunkId, classLoader));
 	}
 
 }

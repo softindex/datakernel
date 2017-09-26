@@ -105,7 +105,7 @@ public class GzipServletTest {
 				() -> client.send(HttpRequest.get("http://127.0.0.1:1239").withAcceptEncodingGzip()).thenAccept(response ->
 						assertNotNull(response.getHeader(HttpHeaders.CONTENT_ENCODING))))
 				.run()
-				.whenComplete((aVoid, throwable) -> {
+				.whenComplete(($, throwable) -> {
 					if (throwable != null) {
 						throwable.printStackTrace();
 						fail("should not end here");

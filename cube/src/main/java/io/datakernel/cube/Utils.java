@@ -16,7 +16,6 @@
 
 package io.datakernel.cube;
 
-import io.datakernel.async.CompletionCallback;
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
@@ -28,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletionStage;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static io.datakernel.codegen.Expressions.*;
@@ -61,11 +61,10 @@ class Utils {
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <R> void resolveAttributes(final List<R> results, final AttributeResolver attributeResolver,
-	                                         final List<String> recordDimensions, final List<String> recordAttributes,
-	                                         final Map<String, Object> fullySpecifiedDimensions,
-	                                         final Class<R> recordClass, DefiningClassLoader classLoader,
-	                                         CompletionCallback callback) {
+	public static <R> CompletionStage<Void> resolveAttributes(final List<R> results, final AttributeResolver attributeResolver,
+	                                                    final List<String> recordDimensions, final List<String> recordAttributes,
+	                                                    final Map<String, Object> fullySpecifiedDimensions,
+	                                                    final Class<R> recordClass, DefiningClassLoader classLoader) {
 		final Object[] fullySpecifiedDimensionsArray = new Object[recordDimensions.size()];
 		for (int i = 0; i < recordDimensions.size(); i++) {
 			String dimension = recordDimensions.get(i);
@@ -109,7 +108,7 @@ class Utils {
 				}.get())
 				.buildClassAndCreateNewInstance();
 
-		attributeResolver.resolveAttributes((List) results, keyFunction, attributesFunction, callback);
+		return attributeResolver.resolveAttributes((List) results, keyFunction, attributesFunction);
 	}
 
 }

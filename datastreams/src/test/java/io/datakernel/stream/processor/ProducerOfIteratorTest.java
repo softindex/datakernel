@@ -18,10 +18,8 @@ package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
-import io.datakernel.stream.StreamConsumers.ToList;
 import org.junit.Test;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -38,7 +36,7 @@ public class ProducerOfIteratorTest {
 		List<Integer> list = Arrays.asList(1, 2, 3);
 
 		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, list);
-		ToList<Integer> consumer = StreamConsumers.toList(eventloop, new ArrayList<Integer>());
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(eventloop);
 		producer.streamTo(consumer);
 
 		eventloop.run();

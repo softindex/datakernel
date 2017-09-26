@@ -17,7 +17,6 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.async.AsyncCallable;
-import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.AsyncRunnable;
 
 import java.util.concurrent.Callable;
@@ -138,12 +137,12 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 	@Override
 	public <T> CompletableFuture<T> submit(final AsyncRunnable asyncRunnable, final T result) {
 		final CompletableFuture<T> future = new CompletableFuture<>();
-		post(() -> asyncRunnable.run().whenComplete((aVoid, throwable) -> {
+		post(() -> asyncRunnable.run().whenComplete(($, throwable) -> {
 			complete();
 			if (throwable == null) {
 				future.complete(result);
 			} else {
-				future.completeExceptionally(AsyncCallbacks.throwableToException(throwable));
+				future.completeExceptionally(throwable);
 			}
 		}), future);
 		return future;

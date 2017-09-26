@@ -27,7 +27,6 @@ import java.nio.file.Path;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.async.AsyncCallbacks.forwardTo;
 import static java.nio.file.StandardOpenOption.READ;
 
 public final class StaticServletForFiles extends StaticServlet {
@@ -47,18 +46,20 @@ public final class StaticServletForFiles extends StaticServlet {
 
 	@Override
 	protected final CompletionStage<ByteBuf> doServeAsync(String name) {
-		final Path path = storage.resolve(name).normalize();
+		Path path = storage.resolve(name).normalize();
 
 		if (!path.startsWith(storage)) return SettableStage.immediateFailedStage(HttpException.notFound404());
 
-		final SettableStage<ByteBuf> stage = SettableStage.create();
-		AsyncFile.openAsync(eventloop, executor, path, new OpenOption[]{READ}).whenComplete((asyncFile, throwable) -> {
-			if (throwable != null) {
-				stage.setException(throwable instanceof NoSuchFileException ? HttpException.notFound404() : throwable);
-			} else {
-				asyncFile.readFully().whenComplete(forwardTo(stage));
-			}
-		});
+		SettableStage<ByteBuf> stage = SettableStage.create();
+		AsyncFile.openAsync(eventloop, executor, path, new OpenOption[]{READ})
+				.thenCompose(AsyncFile::readFully)
+				.whenComplete((result, throwable) -> {
+					if (throwable == null) {
+						stage.set(result);
+					} else {
+						stage.setException(throwable instanceof NoSuchFileException ? HttpException.notFound404() : throwable);
+					}
+				});
 		return stage;
 	}
 }

@@ -16,7 +16,6 @@
 
 package io.datakernel.stream.net;
 
-import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
@@ -41,14 +40,14 @@ public final class SocketStreamingConnection implements AsyncTcpSocket.EventHand
 		this.socketWriter = SocketStreamConsumer.create(eventloop, asyncTcpSocket);
 		this.socketWriter.getSentStage().whenComplete(($, throwable) -> {
 			if (throwable != null) {
-				SocketStreamingConnection.this.socketReader.closeWithError(AsyncCallbacks.throwableToException(throwable));
+				SocketStreamingConnection.this.socketReader.closeWithError(throwable);
 				asyncTcpSocket.close();
 			}
 		});
 		this.socketReader = SocketStreamProducer.create(eventloop, asyncTcpSocket);
-		this.socketReader.getCompletionStage().whenComplete(($, throwable) -> {
+		this.socketReader.getCompletion().whenComplete(($, throwable) -> {
 			if (throwable != null) {
-				socketWriter.closeWithError(AsyncCallbacks.throwableToException(throwable));
+				socketWriter.closeWithError(throwable);
 				asyncTcpSocket.close();
 			}
 		});

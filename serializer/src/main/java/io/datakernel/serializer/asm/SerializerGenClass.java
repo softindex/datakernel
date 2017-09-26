@@ -297,7 +297,9 @@ public class SerializerGenClass implements SerializerGen {
 			} else if (fieldGen.method != null) {
 				fieldGen.serializer.prepareSerializeStaticMethods(version, staticMethods, compatibilityLevel);
 				list.add(set(arg(1), fieldGen.serializer.serialize(arg(0), arg(1), cast(call(arg(2), fieldGen.method.getName()), type), version, staticMethods, compatibilityLevel)));
-			} else throw new AssertionError();
+			} else {
+				throw new AssertionError();
+			}
 		}
 		list.add(arg(1));
 

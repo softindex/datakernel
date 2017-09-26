@@ -42,15 +42,15 @@ public class StreamMergeSorterStorageStub<T> implements StreamSorterStorage<T> {
 		List<T> list = new ArrayList<>();
 		int newPartition = partition++;
 		storage.put(newPartition, list);
-		StreamConsumers.ToList<T> consumer = StreamConsumers.toList(eventloop, list);
-		return immediateStage(StreamConsumerWithResult.create(consumer, immediateStage(newPartition)));
+		StreamConsumerToList<T> consumer = new StreamConsumerToList<>(eventloop, list);
+		return immediateStage(StreamConsumers.withResult(consumer, immediateStage(newPartition)));
 	}
 
 	@Override
 	public CompletionStage<StreamProducerWithResult<T, Void>> read(int partition) {
 		List<T> iterable = storage.get(partition);
-		final StreamProducer<T> producer = StreamProducers.ofIterable(eventloop, iterable);
-		return immediateStage(StreamProducerWithResult.wrap(producer));
+		StreamProducer<T> producer = StreamProducers.ofIterable(eventloop, iterable);
+		return immediateStage(StreamProducers.withResult(producer));
 	}
 
 	@Override

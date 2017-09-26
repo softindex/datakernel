@@ -16,7 +16,6 @@
 
 package io.datakernel.rpc.client;
 
-import io.datakernel.async.ResultCallback;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.rpc.protocol.RpcOverloadException;
 

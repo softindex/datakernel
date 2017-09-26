@@ -160,11 +160,11 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 		public void onMessage(final Messaging<RemoteFsCommands.Download, RemoteFsResponses.FsResponse> messaging, final RemoteFsCommands.Download item) {
 			fileManager.size(item.filePath).whenComplete(errorHandlingConsumer(messaging, (size, throwable) -> {
 				if (size >= 0) {
-					messaging.send(new RemoteFsResponses.Ready(size)).whenComplete(errorHandlingConsumer(messaging, (aVoid, throwable1) ->
+					messaging.send(new RemoteFsResponses.Ready(size)).whenComplete(errorHandlingConsumer(messaging, ($, throwable1) ->
 							fileManager.get(item.filePath, item.startPosition).whenComplete(errorHandlingConsumer(messaging, (fileReader, throwable2) -> {
 								StreamConsumerWithResult<ByteBuf, Void> consumer = messaging.sendBinaryStream();
 								fileReader.streamTo(consumer);
-								consumer.getResult().whenComplete(($, throwable3) -> messaging.close());
+								consumer.getResult().whenComplete(($_, throwable3) -> messaging.close());
 							}))));
 				} else {
 					onException(messaging, new Throwable("File not found"));
@@ -176,7 +176,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 	private class DeleteMessagingHandler implements MessagingHandler<RemoteFsCommands.Delete, RemoteFsResponses.FsResponse> {
 		@Override
 		public void onMessage(final Messaging<RemoteFsCommands.Delete, RemoteFsResponses.FsResponse> messaging, final RemoteFsCommands.Delete item) {
-			fileManager.delete(item.filePath).whenComplete((aVoid, throwable) -> {
+			fileManager.delete(item.filePath).whenComplete(($, throwable) -> {
 				messaging.send(throwable == null
 						? new RemoteFsResponses.Ok()
 						: new RemoteFsResponses.Err(throwable.getMessage()));

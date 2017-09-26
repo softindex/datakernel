@@ -16,10 +16,11 @@
 
 package io.datakernel.logfs;
 
-import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducerWithResult;
+import io.datakernel.stream.StreamProducers;
 
 import java.util.List;
 import java.util.concurrent.CompletionStage;
@@ -35,12 +36,12 @@ public interface LogFileSystem {
 	CompletionStage<StreamProducerWithResult<ByteBuf, Void>> read(String logPartition, LogFile logFile, long startPosition);
 
 	default StreamProducerWithResult<ByteBuf, Void> readStream(String logPartition, LogFile logFile, long startPosition) {
-		return StreamProducerWithResult.ofStage(read(logPartition, logFile, startPosition));
+		return StreamProducers.ofStageWithResult(read(logPartition, logFile, startPosition));
 	}
 
 	CompletionStage<StreamConsumerWithResult<ByteBuf, Void>> write(String logPartition, LogFile logFile);
 
 	default StreamConsumerWithResult<ByteBuf, Void> writeStream(String logPartition, LogFile logFile) {
-		return StreamConsumerWithResult.ofStage(write(logPartition, logFile));
+		return StreamConsumers.ofStageWithResult(write(logPartition, logFile));
 	}
 }

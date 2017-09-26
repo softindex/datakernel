@@ -23,8 +23,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
 /**
  * It is {@link AbstractStreamTransformer_1_N} which divides input stream  into groups with some key
  * function, and sends obtained streams to consumers.
@@ -88,8 +86,8 @@ public final class StreamSharder<T> implements HasInput<T>, HasOutputs, StreamDa
 		}
 
 		@Override
-		protected void onError(Exception e) {
-			outputs.forEach(output -> output.closeWithError(e));
+		protected void onError(Throwable t) {
+			outputs.forEach(output -> output.closeWithError(t));
 		}
 	}
 
@@ -116,8 +114,8 @@ public final class StreamSharder<T> implements HasInput<T>, HasOutputs, StreamDa
 		}
 
 		@Override
-		protected void onError(Exception e) {
-			input.closeWithError(e);
+		protected void onError(Throwable t) {
+			input.closeWithError(t);
 		}
 	}
 

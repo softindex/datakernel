@@ -19,7 +19,7 @@ package io.datakernel.datagraph.node;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.graph.TaskContext;
 import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamConsumers;
+import io.datakernel.stream.StreamConsumerToList;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -61,7 +61,7 @@ public final class NodeConsumerToList<T> implements Node {
 		}
 		StreamConsumer<T> consumer;
 		if (object instanceof List) {
-			consumer = new StreamConsumers.ToList<>(taskContext.getEventloop(), (List<T>) object);
+			consumer = new StreamConsumerToList<>(taskContext.getEventloop(), (List<T>) object);
 		} else if (object instanceof StreamConsumer) {
 			consumer = (StreamConsumer<T>) object;
 		} else {

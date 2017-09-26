@@ -26,7 +26,6 @@ import io.datakernel.aggregation.annotation.Key;
 import io.datakernel.aggregation.annotation.Measures;
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.measure.Measure;
-import io.datakernel.async.AssertingResultCallback;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.*;
 import io.datakernel.cube.attributes.AbstractAttributeResolver;
@@ -46,6 +45,7 @@ import io.datakernel.ot.OTStateManager;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import org.joda.time.LocalDate;
 import org.junit.After;
@@ -364,7 +364,7 @@ public class ReportingTest {
 				new LogItem(2, EXCLUDE_ADVERTISER, EXCLUDE_CAMPAIGN, EXCLUDE_BANNER, 30, 2, 13, 0.9, 0, 2, 4, "site1.com"),
 				new LogItem(3, EXCLUDE_ADVERTISER, EXCLUDE_CAMPAIGN, EXCLUDE_BANNER, 40, 3, 2, 1.0, 0, 1, 4, "site1.com"));
 
-		StreamProducers.OfIterator<LogItem> producer = new StreamProducers.OfIterator<>(eventloop,
+		StreamProducer<LogItem> producer = StreamProducers.ofIterator(eventloop,
 				concat(logItemsForAdvertisersAggregations, logItemsForAffiliatesAggregation).iterator());
 
 		producer.streamTo(logManager.consumerStream("partitionA"));
@@ -532,7 +532,7 @@ public class ReportingTest {
 	}
 
 	@Test
-	public void testQueryWithNullAttributes() {
+	public void testQueryWithNullAttributes() throws Exception {
 		CubeQuery query = CubeQuery.create()
 				.withAttributes("date", "advertiser.name", "advertiser")
 				.withMeasures("impressions")
@@ -574,7 +574,7 @@ public class ReportingTest {
 	}
 
 	@Test
-	public void testQueryWithNullAttributeAndBetweenPredicate() {
+	public void testQueryWithNullAttributeAndBetweenPredicate() throws Exception {
 		CubeQuery query = CubeQuery.create()
 				.withAttributes("advertiser.name")
 				.withMeasures("impressions")
@@ -692,7 +692,7 @@ public class ReportingTest {
 	}
 
 	@Test
-	public void testMetadataOnlyQuery() {
+	public void testMetadataOnlyQuery() throws Exception {
 		String[] attributes = {"date", "advertiser", "advertiser.name"};
 		CubeQuery onlyMetaQuery = CubeQuery.create()
 				.withAttributes(attributes)
@@ -714,7 +714,7 @@ public class ReportingTest {
 	}
 
 	@Test
-	public void testQueryWithInPredicate() {
+	public void testQueryWithInPredicate() throws Exception {
 		String[] attributes = {"advertiser"};
 		CubeQuery queryWithPredicateIn = CubeQuery.create()
 				.withAttributes(attributes)
@@ -736,7 +736,7 @@ public class ReportingTest {
 	}
 
 	@Test
-	public void testMetaOnlyQueryHasEmptyMeasuresWhenNoAggregationsFound() {
+	public void testMetaOnlyQueryHasEmptyMeasuresWhenNoAggregationsFound() throws Exception {
 		CubeQuery queryAffectingNonCompatibleAggregations = CubeQuery.create()
 				.withAttributes("date", "advertiser", "affiliate")
 				.withMeasures("errors", "errorsPercent")
@@ -747,7 +747,7 @@ public class ReportingTest {
 	}
 
 	@Test
-	public void testMetaOnlyQueryResultHasCorrectMeasuresWhenSomeAggregationsAreIncompatible() {
+	public void testMetaOnlyQueryResultHasCorrectMeasuresWhenSomeAggregationsAreIncompatible() throws Exception {
 		CubeQuery queryAffectingNonCompatibleAggregations = CubeQuery.create()
 				.withAttributes("date", "advertiser")
 				.withMeasures("impressions", "incompatible_measure", "clicks")
@@ -778,7 +778,7 @@ public class ReportingTest {
 	}
 
 	@Test
-	public void testAdvertisersAggregationTotals() {
+	public void testAdvertisersAggregationTotals() throws Exception {
 		CubeQuery queryAdvertisers = CubeQuery.create()
 				.withAttributes("date", "advertiser")
 				.withMeasures(newArrayList("clicks", "impressions", "revenue", "errors"))
@@ -800,7 +800,7 @@ public class ReportingTest {
 	}
 
 	@Test
-	public void testAffiliatesAggregationTotals() {
+	public void testAffiliatesAggregationTotals() throws Exception {
 		CubeQuery queryAffiliates = CubeQuery.create()
 				.withAttributes("date", "affiliate")
 				.withMeasures(newArrayList("clicks", "impressions", "revenue", "errors"))
@@ -822,7 +822,7 @@ public class ReportingTest {
 	}
 
 	@Test
-	public void testDailyAggregationTotals() {
+	public void testDailyAggregationTotals() throws Exception {
 		CubeQuery queryDate = CubeQuery.create()
 				.withAttributes("date")
 				.withMeasures(newArrayList("clicks", "impressions", "revenue", "errors"))
@@ -843,7 +843,7 @@ public class ReportingTest {
 	}
 
 	@Test
-	public void testResultContainsTotals_whenDataWithTotalsRequested() {
+	public void testResultContainsTotals_whenDataWithTotalsRequested() throws Exception {
 		ArrayList<String> measures = newArrayList("clicks", "impressions", "revenue", "errors");
 		ArrayList<String> requestMeasures = newArrayList(measures);
 		requestMeasures.add(3, "nonexistentMeasure");
@@ -871,7 +871,7 @@ public class ReportingTest {
 	}
 
 	@Test
-	public void testResultContainsTotalsAndMetadata_whenTotalsAndMetadataRequested() {
+	public void testResultContainsTotalsAndMetadata_whenTotalsAndMetadataRequested() throws Exception {
 		ArrayList<String> measures = newArrayList("clicks", "impressions", "revenue", "errors");
 		ArrayList<String> requestMeasures = newArrayList(measures);
 		requestMeasures.add("unexpected");
@@ -905,15 +905,9 @@ public class ReportingTest {
 		return count;
 	}
 
-	private QueryResult getQueryResult(CubeQuery query) {
-		final QueryResult[] queryResult = new QueryResult[1];
-		cubeHttpClient.query(query, new AssertingResultCallback<QueryResult>() {
-			@Override
-			protected void onResult(QueryResult result) {
-				queryResult[0] = result;
-			}
-		});
+	private QueryResult getQueryResult(CubeQuery query) throws Exception {
+		CompletableFuture<QueryResult> future = cubeHttpClient.query(query).toCompletableFuture();
 		eventloop.run();
-		return queryResult[0];
+		return future.get();
 	}
 }

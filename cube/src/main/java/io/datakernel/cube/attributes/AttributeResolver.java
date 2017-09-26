@@ -16,18 +16,16 @@
 
 package io.datakernel.cube.attributes;
 
-import io.datakernel.async.CompletionCallback;
-
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletionStage;
 
 public interface AttributeResolver {
 	Class<?>[] getKeyTypes();
 
 	Map<String, Class<?>> getAttributeTypes();
 
-	void resolveAttributes(List<Object> results, KeyFunction keyFunction, AttributesFunction attributesFunction,
-	                       CompletionCallback callback);
+	CompletionStage<Void> resolveAttributes(List<Object> results, KeyFunction keyFunction, AttributesFunction attributesFunction);
 
 	interface KeyFunction {
 		Object[] extractKey(Object result);

@@ -25,7 +25,7 @@ import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.StreamConsumers;
+import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import org.junit.Rule;
@@ -152,7 +152,7 @@ public class CustomFieldsTest {
 		AggregationQuery query = AggregationQuery.create()
 				.withKeys("siteId")
 				.withMeasures("eventCount", "sumRevenue", "minRevenue", "maxRevenue", "uniqueUserIds", "estimatedUniqueUserIdCount");
-		StreamConsumers.ToList<QueryResult> listConsumer = StreamConsumers.toList(eventloop);
+		StreamConsumerToList<QueryResult> listConsumer = new StreamConsumerToList<>(eventloop);
 		aggregation.query(query, QueryResult.class, DefiningClassLoader.create(classLoader)).streamTo(listConsumer);
 		eventloop.run();
 

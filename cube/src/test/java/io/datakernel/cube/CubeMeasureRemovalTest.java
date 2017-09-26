@@ -33,7 +33,7 @@ import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTRemoteSql;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.stream.StreamConsumers;
+import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import org.junit.Rule;
@@ -141,7 +141,7 @@ public class CubeMeasureRemovalTest {
 		assertEquals(1, chunks.size());
 		assertTrue(chunks.get(0).getMeasures().contains("revenue"));
 
-		StreamConsumers.ToList<LogItem> queryResultConsumer1 = new StreamConsumers.ToList<>(eventloop);
+		StreamConsumerToList<LogItem> queryResultConsumer1 = new StreamConsumerToList<>(eventloop);
 		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(),
 				LogItem.class, DefiningClassLoader.create(classLoader)).streamTo(queryResultConsumer1);
 		eventloop.run();
@@ -218,7 +218,7 @@ public class CubeMeasureRemovalTest {
 		aggregateToMap(map2, listOfRandomLogItems1);
 		aggregateToMap(map2, listOfRandomLogItems2);
 
-		StreamConsumers.ToList<LogItem> queryResultConsumer2 = new StreamConsumers.ToList<>(eventloop);
+		StreamConsumerToList<LogItem> queryResultConsumer2 = new StreamConsumerToList<>(eventloop);
 		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(),
 				LogItem.class, DefiningClassLoader.create(classLoader)).streamTo(queryResultConsumer2);
 		eventloop.run();
@@ -249,7 +249,7 @@ public class CubeMeasureRemovalTest {
 		assertTrue(chunks.get(0).getMeasures().contains("revenue"));
 
 		// Query
-		StreamConsumers.ToList<LogItem> queryResultConsumer3 = new StreamConsumers.ToList<>(eventloop);
+		StreamConsumerToList<LogItem> queryResultConsumer3 = new StreamConsumerToList<>(eventloop);
 		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(),
 				LogItem.class, DefiningClassLoader.create(classLoader)).streamTo(queryResultConsumer3);
 		eventloop.run();

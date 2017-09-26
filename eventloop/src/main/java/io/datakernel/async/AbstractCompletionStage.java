@@ -16,7 +16,6 @@ import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
 abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 	protected static abstract class NextCompletionStage<F, T> extends AbstractCompletionStage<T> {
-
 		protected abstract void onComplete(F value);
 
 		protected void onCompleteExceptionally(Throwable error) {
@@ -93,7 +92,8 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		return subscribe(new NextCompletionStage<T, U>() {
 			@Override
 			protected void onComplete(T value) {
-				complete(fn.apply(value));
+				U resultValue = fn.apply(value);
+				complete(resultValue);
 			}
 		});
 	}

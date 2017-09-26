@@ -58,8 +58,8 @@ final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> impleme
 	}
 
 	@Override
-	protected void onError(Exception e) {
-		sentStage.setException(e);
+	protected void onError(Throwable t) {
+		sentStage.setException(t);
 	}
 
 	@Override

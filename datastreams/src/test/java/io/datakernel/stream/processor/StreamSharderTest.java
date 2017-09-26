@@ -18,7 +18,10 @@ package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
-import io.datakernel.stream.*;
+import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamConsumerToList;
+import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducers;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -27,8 +30,8 @@ import java.util.List;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
-import static io.datakernel.stream.processor.Utils.assertProducerStatuses;
-import static io.datakernel.stream.processor.Utils.assertStatus;
+import static io.datakernel.stream.TestUtils.assertProducerStatuses;
+import static io.datakernel.stream.TestUtils.assertStatus;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -44,8 +47,8 @@ public class StreamSharderTest {
 		StreamSharder<Integer> streamSharder = StreamSharder.create(eventloop, SHARDER);
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4));
-		TestStreamConsumers.TestConsumerToList<Integer> consumer1 = TestStreamConsumers.toListRandomlySuspending(eventloop);
-		TestStreamConsumers.TestConsumerToList<Integer> consumer2 = TestStreamConsumers.toListRandomlySuspending(eventloop);
+		StreamConsumerToList<Integer> consumer1 = StreamConsumerToList.randomlySuspending(eventloop);
+		StreamConsumerToList<Integer> consumer2 = StreamConsumerToList.randomlySuspending(eventloop);
 
 		source.streamTo(streamSharder.getInput());
 		streamSharder.newOutput().streamTo(consumer1);
@@ -69,8 +72,8 @@ public class StreamSharderTest {
 		StreamSharder<Integer> streamSharder = StreamSharder.create(eventloop, SHARDER);
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4));
-		TestStreamConsumers.TestConsumerToList<Integer> consumer1 = TestStreamConsumers.toListRandomlySuspending(eventloop);
-		TestStreamConsumers.TestConsumerToList<Integer> consumer2 = TestStreamConsumers.toListRandomlySuspending(eventloop);
+		StreamConsumerToList<Integer> consumer1 = StreamConsumerToList.randomlySuspending(eventloop);
+		StreamConsumerToList<Integer> consumer2 = StreamConsumerToList.randomlySuspending(eventloop);
 
 		source.streamTo(streamSharder.getInput());
 		streamSharder.newOutput().streamTo(consumer1);
@@ -97,10 +100,10 @@ public class StreamSharderTest {
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4));
 
 		List<Integer> list1 = new ArrayList<>();
-		StreamConsumers.ToList<Integer> consumer1 = new StreamConsumers.ToList<>(eventloop, list1);
+		StreamConsumerToList<Integer> consumer1 = StreamConsumerToList.create(eventloop, list1);
 
 		List<Integer> list2 = new ArrayList<>();
-		TestStreamConsumers.TestConsumerToList<Integer> consumer2 = new TestStreamConsumers.TestConsumerToList<Integer>(eventloop, list2) {
+		StreamConsumerToList<Integer> consumer2 = new StreamConsumerToList<Integer>(eventloop, list2) {
 			@Override
 			public void onData(Integer item) {
 				list.add(item);
@@ -139,13 +142,13 @@ public class StreamSharderTest {
 				StreamProducers.ofValue(eventloop, 1),
 				StreamProducers.ofValue(eventloop, 2),
 				StreamProducers.ofValue(eventloop, 3),
-				StreamProducers.closingWithError(eventloop, new ExpectedException("Test Exception"))
+				StreamProducers.closingWithError(new ExpectedException("Test Exception"))
 		);
 
 		List<Integer> list1 = new ArrayList<>();
-		StreamConsumer<Integer> consumer1 = TestStreamConsumers.toListOneByOne(eventloop, list1);
+		StreamConsumer<Integer> consumer1 = StreamConsumerToList.oneByOne(eventloop, list1);
 		List<Integer> list2 = new ArrayList<>();
-		StreamConsumer<Integer> consumer2 = TestStreamConsumers.toListOneByOne(eventloop, list2);
+		StreamConsumer<Integer> consumer2 = StreamConsumerToList.oneByOne(eventloop, list2);
 
 		source.streamTo(streamSharder.getInput());
 		streamSharder.newOutput().streamTo(consumer1);

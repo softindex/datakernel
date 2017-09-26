@@ -16,7 +16,6 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
@@ -250,13 +249,12 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		servlet.serve(request).whenComplete((httpResponse, throwable) -> {
 			if (throwable != null) {
 				assert eventloop.inEventloopThread();
-				final Exception e = AsyncCallbacks.throwableToException(throwable);
-				if (inspector != null) inspector.onServletException(request, e);
+				if (inspector != null) inspector.onServletException(request, throwable);
 				if (!isClosed()) {
 					pool.removeNode(HttpServerConnection.this);
 					(pool = server.poolWriting).addLastNode(HttpServerConnection.this);
 					poolTimestamp = eventloop.currentTimeMillis();
-					writeException(e);
+					writeException(throwable);
 				}
 				recycleBufs();
 			} else {
@@ -313,7 +311,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		}
 	}
 
-	private void writeException(Exception e) {
+	private void writeException(Throwable e) {
 		writeHttpResult(server.formatHttpError(e));
 	}
 

@@ -33,7 +33,7 @@ import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTRemoteSql;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.stream.StreamConsumers;
+import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducers;
 import org.junit.Ignore;
 import org.junit.Rule;
@@ -122,7 +122,7 @@ public class LogToCubeTest {
 		eventloop.run();
 		future.get();
 
-		StreamConsumers.ToList<TestAdvResult> consumerToList = StreamConsumers.toList(eventloop);
+		StreamConsumerToList<TestAdvResult> consumerToList = new StreamConsumerToList<>(eventloop);
 		cube.queryRawStream(asList("adv"), asList("advRequests"), alwaysTrue(),
 				TestAdvResult.class, DefiningClassLoader.create(classLoader)
 		).streamTo(consumerToList);

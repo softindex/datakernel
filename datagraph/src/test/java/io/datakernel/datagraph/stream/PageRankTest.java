@@ -20,7 +20,7 @@ import com.google.common.base.Function;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.Ordering;
 import com.google.common.net.InetAddresses;
-import io.datakernel.async.AsyncCallbacks;
+import io.datakernel.async.Stages;
 import io.datakernel.datagraph.dataset.Dataset;
 import io.datakernel.datagraph.dataset.SortedDataset;
 import io.datakernel.datagraph.dataset.impl.DatasetListConsumer;
@@ -34,7 +34,7 @@ import io.datakernel.datagraph.server.DatagraphServer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
-import io.datakernel.stream.StreamConsumers;
+import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.processor.StreamJoin;
 import io.datakernel.stream.processor.StreamMap;
@@ -46,7 +46,6 @@ import org.junit.Test;
 import java.net.InetSocketAddress;
 import java.util.Arrays;
 
-import static io.datakernel.async.AsyncRunnables.runInParallel;
 import static io.datakernel.datagraph.dataset.Datasets.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
@@ -221,8 +220,8 @@ public class PageRankTest {
 		InetSocketAddress address2 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1572);
 
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
-		final StreamConsumers.ToList<Rank> result1 = new StreamConsumers.ToList<>(eventloop);
-		final StreamConsumers.ToList<Rank> result2 = new StreamConsumers.ToList<>(eventloop);
+		final StreamConsumerToList<Rank> result1 = new StreamConsumerToList<>(eventloop);
+		final StreamConsumerToList<Rank> result2 = new StreamConsumerToList<>(eventloop);
 
 		DatagraphClient client = new DatagraphClient(eventloop, serialization);
 		DatagraphEnvironment environment = DatagraphEnvironment.create()
@@ -256,9 +255,8 @@ public class PageRankTest {
 		server1.listen();
 		server2.listen();
 
-		runInParallel(eventloop, result1::getCompletionStage, result2::getCompletionStage)
-				.run()
-				.whenComplete(AsyncCallbacks.assertBiConsumer(aVoid -> {
+		Stages.all(result1.getResult(), result2.getResult())
+				.whenComplete(Stages.assertBiConsumer($ -> {
 					server1.close();
 					server2.close();
 				}));

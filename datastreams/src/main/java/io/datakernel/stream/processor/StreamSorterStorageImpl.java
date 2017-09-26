@@ -20,7 +20,9 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducerWithResult;
+import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import org.slf4j.Logger;
@@ -120,8 +122,6 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 		return path.resolve(format(filePattern, i));
 	}
 
-
-
 	@Override
 	public CompletionStage<StreamConsumerWithResult<T, Integer>> write() {
 		int partition = PARTITION.incrementAndGet();
@@ -140,7 +140,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 			streamCompressor.getOutput().streamTo(streamByteChunkerAfter.getInput());
 			streamByteChunkerAfter.getOutput().streamTo(streamWriter);
 
-			return StreamConsumerWithResult.create(streamSerializer.getInput(), streamWriter.getFlushStage().thenApply($ -> partition));
+			return StreamConsumers.withResult(streamSerializer.getInput(), streamWriter.getFlushStage().thenApply($ -> partition));
 		});
 	}
 
@@ -162,7 +162,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 					fileReader.streamTo(streamDecompressor.getInput());
 					streamDecompressor.getOutput().streamTo(streamDeserializer.getInput());
 
-					return StreamProducerWithResult.wrap(streamDeserializer.getOutput());
+					return StreamProducers.withResult(streamDeserializer.getOutput());
 				});
 	}
 

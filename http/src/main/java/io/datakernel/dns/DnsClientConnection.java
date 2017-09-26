@@ -16,7 +16,6 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.dns.DnsMessage.ResponseErrorCode;
@@ -85,10 +84,13 @@ final class DnsClientConnection implements AsyncUdpSocket.EventHandler {
 					throwable = new DnsException(domainName, ResponseErrorCode.TIMED_OUT);
 				}
 				if (inspector != null) {
-					if (throwable == null) inspector.onDnsQueryResult(domainName, dnsQueryResult);
-					else inspector.onDnsQueryError(domainName, AsyncCallbacks.throwableToException(throwable));
+					if (throwable == null) {
+						inspector.onDnsQueryResult(domainName, dnsQueryResult);
+					} else {
+						inspector.onDnsQueryError(domainName, throwable);
+					}
 				}
-				AsyncCallbacks.forwardTo(stage, dnsQueryResult, throwable);
+				stage.set(dnsQueryResult, throwable);
 			}
 		});
 

@@ -23,6 +23,8 @@ import io.datakernel.exception.ExpectedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.CompletionStage;
+
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 import static io.datakernel.stream.StreamStatus.*;
@@ -40,7 +42,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	private StreamProducer<T> producer;
 
 	private StreamStatus status = READY;
-	private Exception error;
+	private Throwable exception;
 
 	private final SettableStage<Void> completionStage = SettableStage.create();
 
@@ -57,17 +59,10 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	 */
 
 	@Override
-	public final void streamFrom(StreamProducer<T> producer) {
+	public final void setProducer(StreamProducer<T> producer) {
 		checkNotNull(producer);
-		if (this.producer == producer) return;
-
 		checkState(this.producer == null);
-		checkState(status == READY);
-
 		this.producer = producer;
-
-		producer.streamTo(this);
-
 		onWired();
 	}
 
@@ -98,47 +93,47 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		completionStage.set(null);
 	}
 
-	public final StreamStatus getStatus() {
-		return status;
-	}
+	protected abstract void onEndOfStream();
 
 	@Override
-	public final void closeWithError(Exception e) {
+	public final void closeWithError(Throwable t) {
 		if (status.isClosed())
 			return;
 		status = CLOSED_WITH_ERROR;
-		error = e;
-		if (!(e instanceof ExpectedException)) {
+		exception = t;
+		if (!(t instanceof ExpectedException)) {
 			if (logger.isWarnEnabled()) {
-				logger.warn("StreamConsumer {} closed with error {}", this, e.toString());
+				logger.warn("StreamConsumer {} closed with error {}", this, t.toString());
 			}
 		}
-		producer.closeWithError(e);
-		onError(e);
+		producer.closeWithError(t);
+		onError(t);
 		eventloop.post(this::cleanup);
-		completionStage.setException(e);
+		completionStage.setException(t);
 	}
 
-	protected abstract void onEndOfStream();
-
-	protected abstract void onError(Exception e);
+	protected abstract void onError(Throwable t);
 
 	protected void cleanup() {
 	}
 
-	public final Exception getException() {
-		return error;
+	public final StreamStatus getStatus() {
+		return status;
 	}
 
-	public final SettableStage<Void> getCompletionStage() {
+	public final Throwable getException() {
+		return exception;
+	}
+
+	public final CompletionStage<Void> getCompletion() {
 		return completionStage;
 	}
 
-	public Object getTag() {
+	public final Object getTag() {
 		return tag;
 	}
 
-	public void setTag(Object tag) {
+	public final void setTag(Object tag) {
 		this.tag = tag;
 	}
 

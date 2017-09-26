@@ -28,7 +28,9 @@ import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.measure.Measure;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
-import io.datakernel.async.*;
+import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
+import io.datakernel.async.StagesAccumulator;
 import io.datakernel.codegen.*;
 import io.datakernel.cube.asm.MeasuresFunction;
 import io.datakernel.cube.asm.RecordFunction;
@@ -42,18 +44,12 @@ import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.ValueStats;
 import io.datakernel.logfs.ot.LogDataConsumer;
 import io.datakernel.ot.OTState;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.StreamConsumers;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.*;
 import io.datakernel.stream.processor.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.lang.reflect.Type;
-import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.*;
@@ -71,7 +67,6 @@ import static com.google.common.collect.Maps.*;
 import static com.google.common.collect.Sets.newLinkedHashSet;
 import static com.google.common.primitives.Primitives.isWrapperType;
 import static io.datakernel.aggregation.AggregationUtils.*;
-import static io.datakernel.async.AsyncRunnables.runInParallel;
 import static io.datakernel.codegen.ExpressionComparator.leftField;
 import static io.datakernel.codegen.ExpressionComparator.rightField;
 import static io.datakernel.codegen.Expressions.*;
@@ -155,7 +150,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 	// JMX
 	private final ValueStats queryTimes = ValueStats.create(SMOOTHING_WINDOW_10_MINUTES);
 	private long queryErrors;
-	private Exception queryLastError;
+	private Throwable queryLastError;
 
 	private Cube(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
 	             AggregationChunkStorage aggregationChunkStorage) {
@@ -494,7 +489,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 			@Override
 			public StreamConsumerWithResult<T, List<CubeDiff>> consume() {
 				StreamConsumerWithResult<T, CubeDiff> consumer = Cube.this.consume(inputClass, dimensionFields, measureFields, predicate);
-				return StreamConsumerWithResult.create(consumer, consumer.getResult().thenApply(Collections::singletonList));
+				return StreamConsumers.withResult(consumer, consumer.getResult().thenApply(Collections::singletonList));
 			}
 		};
 	}
@@ -545,7 +540,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 				return accumulator;
 			});
 		}
-		return StreamConsumerWithResult.create(streamSplitter.getInput(), tracker.get().thenApply(CubeDiff::of));
+		return StreamConsumers.withResult(streamSplitter.getInput(), tracker.get().thenApply(CubeDiff::of));
 	}
 
 	Map<String, AggregationPredicate> getCompatibleAggregationsForDataInput(final Map<String, String> dimensionFields,
@@ -776,31 +771,25 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 
 	// region temp query() method
 	@Override
-	public void query(final CubeQuery cubeQuery, final ResultCallback<QueryResult> resultCallback) throws QueryException {
+	public CompletionStage<QueryResult> query(CubeQuery cubeQuery) throws QueryException {
 		DefiningClassLoader queryClassLoader = getQueryClassLoader(new CubeClassLoaderCache.Key(
 				newLinkedHashSet(cubeQuery.getAttributes()),
 				newLinkedHashSet(cubeQuery.getMeasures()),
 				cubeQuery.getWhere().getDimensions()));
-		final long queryStarted = eventloop.currentTimeMillis();
-		new RequestContext().execute(queryClassLoader, cubeQuery, new ResultCallback<QueryResult>() {
-			@Override
-			protected void onResult(QueryResult result) {
-				queryTimes.recordValue((int) (eventloop.currentTimeMillis() - queryStarted));
-				resultCallback.setResult(result);
-			}
+		long queryStarted = eventloop.currentTimeMillis();
+		return new RequestContext().execute(queryClassLoader, cubeQuery)
+				.whenComplete((queryResult, throwable) -> {
+					if (throwable == null) {
+						queryTimes.recordValue((int) (eventloop.currentTimeMillis() - queryStarted));
+					} else {
+						queryErrors++;
+						queryLastError = throwable;
 
-			@Override
-			protected void onException(Exception e) {
-				queryErrors++;
-				queryLastError = e;
-
-				if (e instanceof NoSuchFileException) {
-					logger.warn("Query failed because of NoSuchFileException. " + cubeQuery.toString(), e);
-				}
-
-				resultCallback.setException(e);
-			}
-		});
+						if (throwable instanceof NoSuchFileException) {
+							logger.warn("Query failed because of NoSuchFileException. " + cubeQuery.toString(), throwable);
+						}
+					}
+				});
 	}
 	// endregion
 
@@ -839,7 +828,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 		RecordScheme recordScheme;
 		RecordFunction recordFunction;
 
-		void execute(final DefiningClassLoader queryClassLoader, CubeQuery query, final ResultCallback<QueryResult> resultCallback) throws QueryException {
+		CompletionStage<QueryResult> execute(final DefiningClassLoader queryClassLoader, CubeQuery query) throws QueryException {
 			this.queryClassLoader = queryClassLoader;
 			this.query = query;
 
@@ -852,11 +841,8 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 
 			resultClass = createResultClass(resultAttributes, resultMeasures, Cube.this, queryClassLoader);
 			recordScheme = createRecordScheme();
-			if (ReportType.METADATA == query.getReportType()) {
-				resultCallback.setResult(QueryResult.createForMetadata(recordScheme,
-						recordAttributes,
-						recordMeasures));
-				return;
+			if (query.getReportType() == ReportType.METADATA) {
+				return SettableStage.immediateStage(QueryResult.createForMetadata(recordScheme, recordAttributes, recordMeasures));
 			}
 			measuresFunction = createMeasuresFunction();
 			totalsFunction = createTotalsFunction();
@@ -864,18 +850,12 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 			havingPredicate = createHavingPredicate();
 			recordFunction = createRecordFunction();
 
-			StreamConsumers.ToList<Object> consumer = StreamConsumers.toList(eventloop);
+			StreamConsumerToList<Object> consumer = new StreamConsumerToList<>(eventloop);
 			StreamProducer queryResultProducer = queryRawStream(newArrayList(resultDimensions), newArrayList(resultStoredMeasures),
 					queryPredicate, resultClass, queryClassLoader, compatibleAggregations);
 			queryResultProducer.streamTo(consumer);
 
-			consumer.getResultStage().whenComplete((objects, throwable) -> {
-				if (throwable == null) {
-					processResults(objects, resultCallback);
-				} else {
-					resultCallback.setException(AsyncCallbacks.throwableToException(throwable));
-				}
-			});
+			return consumer.getResult().thenCompose(this::processResults);
 		}
 
 		void prepareDimensions() throws QueryException {
@@ -1027,7 +1007,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 		}
 
 		@SuppressWarnings("unchecked")
-		void processResults(final List<Object> results, final ResultCallback<QueryResult> callback) {
+		CompletionStage<QueryResult> processResults(List<Object> results) {
 			final Object totals;
 			try {
 				totals = resultClass.newInstance();
@@ -1053,41 +1033,28 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 			Record totalRecord = Record.create(recordScheme);
 			recordFunction.copyMeasures(totals, totalRecord);
 
-			List<AsyncRunnable> tasks = new ArrayList<>();
-			final Map<String, Object> filterAttributes = newLinkedHashMap();
-			for (final AttributeResolverContainer resolverContainer : attributeResolvers) {
-				final List<String> attributes = new ArrayList<>(resolverContainer.attributes);
+			List<CompletionStage<Void>> tasks = new ArrayList<>();
+			Map<String, Object> filterAttributes = newLinkedHashMap();
+			for (AttributeResolverContainer resolverContainer : attributeResolvers) {
+				List<String> attributes = new ArrayList<>(resolverContainer.attributes);
 				attributes.retainAll(resultAttributes);
 				if (!attributes.isEmpty()) {
-					tasks.add(() -> {
-						final SettableStage<Void> stage = SettableStage.create();
-						Utils.resolveAttributes(results, resolverContainer.resolver,
-								resolverContainer.dimensions, attributes,
-								fullySpecifiedDimensions, (Class) resultClass, queryClassLoader, AsyncCallbacks.completionToStage(stage));
-						return stage;
-					});
+					tasks.add(Utils.resolveAttributes(results, resolverContainer.resolver,
+							resolverContainer.dimensions, attributes,
+							fullySpecifiedDimensions, (Class) resultClass, queryClassLoader));
 				}
 			}
 
-			for (final AttributeResolverContainer resolverContainer : attributeResolvers) {
+			for (AttributeResolverContainer resolverContainer : attributeResolvers) {
 				if (fullySpecifiedDimensions.keySet().containsAll(resolverContainer.dimensions)) {
-					tasks.add(() -> {
-						final SettableStage<Void> stage = SettableStage.create();
-						resolveSpecifiedDimensions(resolverContainer, filterAttributes, AsyncCallbacks.completionToStage(stage));
-						return stage;
-					});
+					tasks.add(resolveSpecifiedDimensions(resolverContainer, filterAttributes));
 				}
 			}
-			runInParallel(eventloop, tasks).run().whenComplete((aVoid, throwable) -> {
-				if (throwable != null) {
-					callback.setException(AsyncCallbacks.throwableToException(throwable));
-				} else {
-					processResults2(results, totals, filterAttributes, callback);
-				}
-			});
+			return Stages.all(tasks)
+					.thenApply($ -> processResults2(results, totals, filterAttributes));
 		}
 
-		void processResults2(List<Object> results, Object totals, Map<String, Object> filterAttributes, final ResultCallback<QueryResult> callback) {
+		QueryResult processResults2(List<Object> results, Object totals, Map<String, Object> filterAttributes) {
 			results = newArrayList(Iterables.filter(results, (Predicate<Object>) havingPredicate));
 
 			int totalCount = results.size();
@@ -1103,19 +1070,18 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 			}
 
 			if (query.getReportType() == ReportType.DATA) {
-				QueryResult result = QueryResult.createForData(recordScheme,
+				return QueryResult.createForData(recordScheme,
 						resultRecords,
 						recordAttributes,
 						recordMeasures,
-						resultOrderings, filterAttributes);
-				callback.setResult(result);
-				return;
+						resultOrderings,
+						filterAttributes);
 			}
 
-			Record totalRecord = Record.create(recordScheme);
 			if (query.getReportType() == ReportType.DATA_WITH_TOTALS) {
+				Record totalRecord = Record.create(recordScheme);
 				recordFunction.copyMeasures(totals, totalRecord);
-				QueryResult result = QueryResult.createForDataWithTotals(recordScheme,
+				return QueryResult.createForDataWithTotals(recordScheme,
 						resultRecords,
 						totalRecord,
 						totalCount,
@@ -1123,40 +1089,27 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 						recordMeasures,
 						resultOrderings,
 						filterAttributes);
-				callback.setResult(result);
 			}
+
+			throw new AssertionError();
 		}
 
-		private void resolveSpecifiedDimensions(final AttributeResolverContainer resolverContainer,
-		                                        final Map<String, Object> result, final CompletionCallback callback) {
+		private CompletionStage<Void> resolveSpecifiedDimensions(AttributeResolverContainer resolverContainer,
+		                                                         Map<String, Object> result) {
 			Object[] key = new Object[resolverContainer.dimensions.size()];
 			for (int i = 0; i < resolverContainer.dimensions.size(); i++) {
 				String dimension = resolverContainer.dimensions.get(i);
 				key[i] = fullySpecifiedDimensions.get(dimension);
 			}
-			final Object[] attributesPlaceholder = new Object[1];
+			Object[] attributesPlaceholder = new Object[1];
 
-			resolverContainer.resolver.resolveAttributes(singletonList((Object) key),
-					new AttributeResolver.KeyFunction() {
-						@Override
-						public Object[] extractKey(Object result) {
-							return (Object[]) result;
-						}
-					},
-					new AttributeResolver.AttributesFunction() {
-						@Override
-						public void applyAttributes(Object result, Object[] attributes) {
-							attributesPlaceholder[0] = attributes;
-						}
-					},
-					new ForwardingCompletionCallback(callback) {
-						@Override
-						protected void onComplete() {
-							for (int i = 0; i < resolverContainer.attributes.size(); i++) {
-								String attribute = resolverContainer.attributes.get(i);
-								result.put(attribute, attributesPlaceholder[0] != null ? ((Object[]) attributesPlaceholder[0])[i] : null);
-							}
-							callback.setComplete();
+			return resolverContainer.resolver.resolveAttributes(singletonList(key),
+					result1 -> (Object[]) result1,
+					(result12, attributes) -> attributesPlaceholder[0] = attributes)
+					.thenAccept($ -> {
+						for (int i = 0; i < resolverContainer.attributes.size(); i++) {
+							String attribute = resolverContainer.attributes.get(i);
+							result.put(attribute, attributesPlaceholder[0] != null ? ((Object[]) attributesPlaceholder[0])[i] : null);
 						}
 					});
 		}
@@ -1381,7 +1334,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 	}
 
 	@JmxAttribute
-	public Exception getQueryLastError() {
+	public Throwable getQueryLastError() {
 		return queryLastError;
 	}
 

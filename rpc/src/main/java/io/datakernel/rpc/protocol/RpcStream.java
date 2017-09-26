@@ -76,8 +76,8 @@ public final class RpcStream {
 				}
 
 				@Override
-				protected void onError(Exception e) {
-					RpcStream.this.listener.onClosedWithError(e);
+				protected void onError(Throwable t) {
+					RpcStream.this.listener.onClosedWithError(t);
 					producerStatus = getStatus();
 				}
 			};
@@ -95,8 +95,8 @@ public final class RpcStream {
 				}
 
 				@Override
-				protected void onError(Exception e) {
-					RpcStream.this.listener.onClosedWithError(e);
+				protected void onError(Throwable t) {
+					RpcStream.this.listener.onClosedWithError(t);
 					producerStatus = getStatus();
 				}
 			};
@@ -114,7 +114,7 @@ public final class RpcStream {
 			}
 
 			@Override
-			protected void onError(Exception e) {
+			protected void onError(Throwable t) {
 			}
 		};
 
@@ -134,33 +134,22 @@ public final class RpcStream {
 			decompressor.getOutput().streamTo(deserializer.getInput());
 
 			serializer.getOutput().streamTo(compressor.getInput());
-			connection.getSocketWriter().streamFrom(compressor.getOutput());
+			compressor.getOutput().streamTo(connection.getSocketWriter());
 		} else {
 			compressor = null;
 			decompressor = null;
 			connection.getSocketReader().streamTo(deserializer.getInput());
-			connection.getSocketWriter().streamFrom(serializer.getOutput());
+			serializer.getOutput().streamTo(connection.getSocketWriter());
 		}
+
+		producerStatus = sender.getStatus();
+
+		deserializer.getOutput().streamTo(receiver);
+		sender.streamTo(serializer.getInput());
 	}
 
 	public void setListener(Listener listener) {
 		this.listener = listener;
-
-		producerStatus = sender.getStatus();
-
-		if (compression) {
-			connection.getSocketReader().streamTo(decompressor.getInput());
-			decompressor.getOutput().streamTo(deserializer.getInput());
-
-			serializer.getOutput().streamTo(compressor.getInput());
-			connection.getSocketWriter().streamFrom(compressor.getOutput());
-		} else {
-			connection.getSocketReader().streamTo(deserializer.getInput());
-			connection.getSocketWriter().streamFrom(serializer.getOutput());
-		}
-
-		deserializer.getOutput().streamTo(receiver);
-		sender.streamTo(serializer.getInput());
 	}
 
 	public void sendMessage(RpcMessage message) {

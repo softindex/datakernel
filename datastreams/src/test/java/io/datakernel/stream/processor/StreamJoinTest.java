@@ -20,10 +20,9 @@ import com.google.common.base.MoreObjects;
 import com.google.common.collect.Ordering;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
+import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
-import io.datakernel.stream.StreamStatus;
-import io.datakernel.stream.TestStreamConsumers;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -33,9 +32,10 @@ import static com.google.common.base.Objects.equal;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
-import static io.datakernel.stream.processor.Utils.assertStatus;
+import static io.datakernel.stream.TestUtils.assertStatus;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertTrue;
 
 public class StreamJoinTest {
 	private static final class DataItemMaster {
@@ -143,7 +143,7 @@ public class StreamJoinTest {
 						}
 				);
 
-		TestStreamConsumers.TestConsumerToList<DataItemMasterDetail> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
+		StreamConsumerToList<DataItemMasterDetail> consumer = StreamConsumerToList.randomlySuspending(eventloop);
 
 		source1.streamTo(streamJoin.getLeft());
 		source2.streamTo(streamJoin.getRight());
@@ -197,7 +197,7 @@ public class StreamJoinTest {
 						}
 				);
 
-		TestStreamConsumers.TestConsumerToList<DataItemMasterDetail> consumer = new TestStreamConsumers.TestConsumerToList<DataItemMasterDetail>(eventloop, list) {
+		StreamConsumerToList<DataItemMasterDetail> consumer = new StreamConsumerToList<DataItemMasterDetail>(eventloop, list) {
 			@Override
 			public void onData(DataItemMasterDetail item) {
 				list.add(item);
@@ -226,7 +226,7 @@ public class StreamJoinTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		StreamProducer<DataItemMaster> source1 = StreamProducers.concat(eventloop,
 				StreamProducers.ofValue(eventloop, new DataItemMaster(10, 10, "masterA")),
-				StreamProducers.closingWithError(eventloop, new ExpectedException("Test Exception")),
+				StreamProducers.closingWithError(new ExpectedException("Test Exception")),
 				StreamProducers.ofValue(eventloop, new DataItemMaster(20, 10, "masterB")),
 				StreamProducers.ofValue(eventloop, new DataItemMaster(25, 15, "masterB+")),
 				StreamProducers.ofValue(eventloop, new DataItemMaster(30, 20, "masterC")),
@@ -236,7 +236,7 @@ public class StreamJoinTest {
 		StreamProducer<DataItemDetail> source2 = StreamProducers.concat(eventloop,
 				StreamProducers.ofValue(eventloop, new DataItemDetail(10, "detailX")),
 				StreamProducers.ofValue(eventloop, new DataItemDetail(20, "detailY")),
-				StreamProducers.closingWithError(eventloop, new ExpectedException("Test Exception"))
+				StreamProducers.closingWithError(new ExpectedException("Test Exception"))
 		);
 
 		StreamJoin<Integer, DataItemMaster, DataItemDetail, DataItemMasterDetail> streamJoin =
@@ -257,7 +257,7 @@ public class StreamJoinTest {
 				);
 
 		List<DataItemMasterDetail> list = new ArrayList<>();
-		TestStreamConsumers.TestConsumerToList<DataItemMasterDetail> consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
+		StreamConsumerToList<DataItemMasterDetail> consumer = StreamConsumerToList.oneByOne(eventloop, list);
 
 		source1.streamTo(streamJoin.getLeft());
 		source2.streamTo(streamJoin.getRight());

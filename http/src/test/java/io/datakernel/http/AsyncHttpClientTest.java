@@ -27,7 +27,6 @@ import io.datakernel.eventloop.SimpleServer.SocketHandlerProvider;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.ParseException;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.net.InetAddress;
@@ -55,14 +54,14 @@ public class AsyncHttpClientTest {
 
 	@Test
 	public void testAsyncClient() throws Exception {
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		final AsyncHttpServer httpServer = HelloWorldServer.helloWorldServer(eventloop, PORT);
-		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop);
+		AsyncHttpServer httpServer = HelloWorldServer.helloWorldServer(eventloop, PORT);
+		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop);
 
 		httpServer.listen();
 
-		final CompletableFuture<String> future = httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT)).thenCompose(response -> {
+		CompletableFuture<String> future = httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT)).thenCompose(response -> {
 			try {
 				return SettableStage.immediateStage(decodeUtf8(response.getBody()));
 			} catch (ParseException e) {
@@ -82,12 +81,12 @@ public class AsyncHttpClientTest {
 
 	@Test(expected = AsyncTimeoutException.class)
 	public void testClientTimeoutConnect() throws Throwable {
-		final int TIMEOUT = 1;
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		int TIMEOUT = 1;
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop).withConnectTimeout(TIMEOUT);
+		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop).withConnectTimeout(TIMEOUT);
 
-		final CompletableFuture<String> future = httpClient.send(HttpRequest.get("http://google.com")).thenCompose(response -> {
+		CompletableFuture<String> future = httpClient.send(HttpRequest.get("http://google.com")).thenCompose(response -> {
 			try {
 				return SettableStage.immediateStage(decodeUtf8(response.getBody()));
 			} catch (ParseException e) {
@@ -109,14 +108,14 @@ public class AsyncHttpClientTest {
 
 	@Test(expected = ParseException.class)
 	public void testBigHttpMessage() throws Throwable {
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		final AsyncHttpServer httpServer = HelloWorldServer.helloWorldServer(eventloop, PORT);
-		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop).withMaxHttpMessageSize(12);
+		AsyncHttpServer httpServer = HelloWorldServer.helloWorldServer(eventloop, PORT);
+		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop).withMaxHttpMessageSize(12);
 
 		httpServer.listen();
 
-		final CompletableFuture<String> future = httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT)).thenCompose(response -> {
+		CompletableFuture<String> future = httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT)).thenCompose(response -> {
 			try {
 				return SettableStage.immediateStage(decodeUtf8(response.getBody()));
 			} catch (ParseException e) {
@@ -139,9 +138,9 @@ public class AsyncHttpClientTest {
 
 	@Test(expected = ParseException.class)
 	public void testEmptyLineResponse() throws Throwable {
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		final SocketHandlerProvider socketHandlerProvider = asyncTcpSocket -> new AsyncTcpSocket.EventHandler() {
+		SocketHandlerProvider socketHandlerProvider = asyncTcpSocket -> new AsyncTcpSocket.EventHandler() {
 			@Override
 			public void onRegistered() {
 				asyncTcpSocket.read();
@@ -169,18 +168,18 @@ public class AsyncHttpClientTest {
 			}
 		};
 
-		final SimpleServer server = SimpleServer.create(eventloop, socketHandlerProvider).withListenAddress(new InetSocketAddress("localhost", PORT));
-		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop);
+		SimpleServer server = SimpleServer.create(eventloop, socketHandlerProvider).withListenAddress(new InetSocketAddress("localhost", PORT));
+		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop);
 
 		server.listen();
 
-		final HttpRequest request = HttpRequest.get("http://127.0.0.1:" + PORT);
-		final CompletableFuture<String> future = httpClient.send(request).thenCompose(response -> {
-				try {
-					return SettableStage.immediateStage(decodeUtf8(response.getBody()));
-				} catch (ParseException e) {
-					return SettableStage.immediateFailedStage(e);
-				}
+		HttpRequest request = HttpRequest.get("http://127.0.0.1:" + PORT);
+		CompletableFuture<String> future = httpClient.send(request).thenCompose(response -> {
+			try {
+				return SettableStage.immediateStage(decodeUtf8(response.getBody()));
+			} catch (ParseException e) {
+				return SettableStage.immediateFailedStage(e);
+			}
 		}).whenComplete((s, throwable) -> {
 			httpClient.stop();
 			server.close();
@@ -196,36 +195,4 @@ public class AsyncHttpClientTest {
 		}
 	}
 
-	@Ignore
-	@Test(expected = AsyncTimeoutException.class)
-	public void testRecyclesBufsIfFailedToSend() throws Throwable {
-		final int TIMEOUT = 1;
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
-
-		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop).withConnectTimeout(TIMEOUT);
-
-		HttpRequest request = HttpRequest.get("http://google.com");
-		request.addHeader(HttpHeaders.COOKIE, ByteBufStrings.wrapAscii("prov=478d2a8b-1d34-4040-9877-893f4204afa1;" +
-				" __qca=P0-372125722-1460720847866; " +
-				"_ym_uid=1462979057991354365; " +
-				"cc=0424c5415e9b42aeb86f333471619b41; " +
-				"_ga=GA1.2.1152383523.1471249212"));
-
-		final CompletableFuture<String> future = httpClient.send(request).thenCompose(response -> {
-			try {
-				return SettableStage.immediateStage(decodeUtf8(response.getBody()));
-			} catch (ParseException e) {
-				return SettableStage.immediateFailedStage(e);
-			}
-		}).whenComplete((s, throwable) -> httpClient.stop()).toCompletableFuture();
-
-		eventloop.run();
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-
-		try {
-			System.err.println("Result: " + future.get());
-		} catch (ExecutionException e) {
-			throw e.getCause();
-		}
-	}
 }

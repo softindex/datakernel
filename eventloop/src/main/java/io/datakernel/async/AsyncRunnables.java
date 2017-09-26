@@ -45,7 +45,7 @@ public class AsyncRunnables {
 			stageRun.whenComplete(($, throwable) -> {
 				if (scheduledRunnable.isComplete()) return;
 				scheduledRunnable.cancel();
-				AsyncCallbacks.forwardTo(stage, null, throwable);
+				stage.set(null, throwable);
 			});
 
 			return stage;
@@ -69,10 +69,13 @@ public class AsyncRunnables {
 				if (iterator.hasNext()) {
 					AsyncRunnable nextTask = iterator.next();
 					final long microTick = eventloop.getMicroTick();
-					nextTask.run().whenComplete((aVoid, throwable) -> {
+					nextTask.run().whenComplete(($, throwable) -> {
 						if (throwable == null) {
-							if (eventloop.getMicroTick() != microTick) next(iterator, stage);
-							else eventloop.post(() -> next(iterator, stage));
+							if (eventloop.getMicroTick() != microTick) {
+								next(iterator, stage);
+							} else {
+								eventloop.post(() -> next(iterator, stage));
+							}
 						} else {
 							stage.setException(throwable);
 						}
@@ -106,7 +109,7 @@ public class AsyncRunnables {
 			}
 
 			for (AsyncRunnable runnable : runnables) {
-				runnable.run().whenComplete((aVoid, throwable) -> {
+				runnable.run().whenComplete(($, throwable) -> {
 					if (throwable == null) {
 						if (--state.pending == 0) {
 							stage.set(null);

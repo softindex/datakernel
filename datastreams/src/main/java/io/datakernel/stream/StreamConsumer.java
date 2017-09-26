@@ -30,7 +30,7 @@ public interface StreamConsumer<T> {
 	 *
 	 * @param producer stream producer for setting
 	 */
-	void streamFrom(StreamProducer<T> producer);
+	void setProducer(StreamProducer<T> producer);
 
 	/**
 	 * This method is called when consumer has finished with sending information
@@ -40,7 +40,7 @@ public interface StreamConsumer<T> {
 	/**
 	 * This method is called when consumer has error
 	 *
-	 * @param e exception which was found
+	 * @param t exception which was found
 	 */
-	void closeWithError(Exception e);
+	void closeWithError(Throwable t);
 }

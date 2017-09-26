@@ -17,7 +17,8 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.StreamConsumers;
+import io.datakernel.stream.StreamConsumerToList;
+import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import org.junit.Test;
 
@@ -25,6 +26,7 @@ import java.util.LinkedList;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
+import static io.datakernel.stream.TestUtils.assertStatus;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -38,41 +40,41 @@ public class ProducerOfValueTest {
 
 	@Test
 	public void test1() {
-		StreamConsumers.ToList<Integer> consumer1 = new StreamConsumers.ToList<>(eventloop, new LinkedList<Integer>());
-		StreamProducers.OfValue<Integer> producer1 = new StreamProducers.OfValue<>(eventloop, TEST_INT);
+		StreamConsumerToList<Integer> consumer1 = new StreamConsumerToList<>(eventloop, new LinkedList<Integer>());
+		StreamProducer<Integer> producer1 = StreamProducers.ofValue(eventloop, TEST_INT);
 		producer1.streamTo(consumer1);
 
 		eventloop.run();
 
 		assertEquals(TEST_INT, consumer1.getList().get(0));
-		assertEquals(END_OF_STREAM, producer1.getStatus());
+		assertStatus(END_OF_STREAM, producer1);
 
-		StreamConsumers.ToList<String> consumer2 = new StreamConsumers.ToList<>(eventloop, new LinkedList<String>());
-		StreamProducers.OfValue<String> producer2 = new StreamProducers.OfValue<>(eventloop, TEST_STRING);
+		StreamConsumerToList<String> consumer2 = new StreamConsumerToList<>(eventloop, new LinkedList<String>());
+		StreamProducer<String> producer2 = StreamProducers.ofValue(eventloop, TEST_STRING);
 		producer2.streamTo(consumer2);
 		eventloop.run();
 
 		assertEquals(TEST_STRING, consumer2.getList().get(0));
-		assertEquals(END_OF_STREAM, producer2.getStatus());
+		assertStatus(END_OF_STREAM, producer2);
 
-		StreamConsumers.ToList<DataItem1> consumer3 = new StreamConsumers.ToList<>(eventloop, new LinkedList<DataItem1>());
-		StreamProducers.OfValue<DataItem1> producer3 = new StreamProducers.OfValue<>(eventloop, TEST_OBJECT);
+		StreamConsumerToList<DataItem1> consumer3 = new StreamConsumerToList<>(eventloop, new LinkedList<DataItem1>());
+		StreamProducer<DataItem1> producer3 = StreamProducers.ofValue(eventloop, TEST_OBJECT);
 		producer3.streamTo(consumer3);
 		eventloop.run();
 
 		assertEquals(TEST_OBJECT, consumer3.getList().get(0));
-		assertEquals(END_OF_STREAM, producer3.getStatus());
+		assertStatus(END_OF_STREAM, producer3);
 	}
 
 	@Test
 	public void testNull() {
-		StreamConsumers.ToList<Object> consumer3 = new StreamConsumers.ToList<>(eventloop, new LinkedList<>());
-		StreamProducers.OfValue<Object> producer3 = new StreamProducers.OfValue<>(eventloop, TEST_NULL);
+		StreamConsumerToList<Object> consumer3 = new StreamConsumerToList<>(eventloop, new LinkedList<>());
+		StreamProducer<Object> producer3 = StreamProducers.ofValue(eventloop, TEST_NULL);
 		producer3.streamTo(consumer3);
 		eventloop.run();
 
 		assertTrue(consumer3.getList().get(0) == null);
-		assertEquals(END_OF_STREAM, producer3.getStatus());
+		assertStatus(END_OF_STREAM, producer3);
 	}
 
 }

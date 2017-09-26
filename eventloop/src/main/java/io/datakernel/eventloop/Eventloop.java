@@ -17,7 +17,9 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.*;
+import io.datakernel.async.AsyncCallable;
+import io.datakernel.async.AsyncRunnable;
+import io.datakernel.async.SettableStage;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.SimpleException;
 import io.datakernel.jmx.EventloopJmxMBean;
@@ -42,8 +44,6 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static io.datakernel.async.AsyncCallbacks.completionToStage;
-import static io.datakernel.async.AsyncCallbacks.resultToStage;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 /**
@@ -768,7 +768,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		timeoutStage.whenComplete((socketChannel1, throwable) -> {
 			assert !scheduledTimeout.isComplete();
 			scheduledTimeout.cancel();
-			AsyncCallbacks.forwardTo(stage, socketChannel1, throwable);
+			stage.set(socketChannel1, throwable);
 		});
 
 		return timeoutStage;
@@ -956,7 +956,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			if (throwable == null) {
 				future.complete(result);
 			} else {
-				future.completeExceptionally(AsyncCallbacks.throwableToException(throwable));
+				future.completeExceptionally(throwable);
 			}
 		}));
 		return future;
@@ -996,196 +996,54 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	public CompletionStage<Void> runConcurrently(ExecutorService executor, final Runnable runnable) {
-		SettableStage<Void> stage = SettableStage.create();
-		runConcurrently(executor, runnable, completionToStage(stage));
-		return stage;
+		return callConcurrently(executor, () -> {
+			runnable.run();
+			return null;
+		});
 	}
 
-	public CompletionStage<Void> runConcurrentlyWithException(ExecutorService executor, final RunnableWithException runnable) {
-		SettableStage<Void> stage = SettableStage.create();
-		runConcurrently(executor, () -> {
-			try {
-				runnable.runWithException();
-			} catch (Exception e) {
-				throw new RunnableException(e);
-			}
-		}, completionToStage(stage));
-		return stage;
-	}
-
-	private AsyncCancellable runConcurrentlyWithException(ExecutorService executor,
-	                                                      final RunnableWithException runnable, final CompletionCallback callback) {
-		return runConcurrently(executor, () -> {
-			try {
-				runnable.runWithException();
-			} catch (Exception e) {
-				throw new RunnableException(e);
-			}
-		}, callback);
-	}
-
-	private AsyncCancellable runConcurrently(ExecutorService executor,
-	                                         final Runnable runnable, final CompletionCallback callback) {
+	public <T> CompletionStage<T> callConcurrently(ExecutorService executor, Callable<T> callable) {
 		assert inEventloopThread();
-
-		final ConcurrentOperationTracker tracker = startConcurrentOperation();
-
-		// jmx
-		final String taskName = runnable.getClass().getName();
-		concurrentCallsStats.recordCall(taskName);
-		final long submissionStart = currentTimeMillis();
-
-		try {
-			final Future<?> future = executor.submit(new Runnable() {
-				@Override
-				public void run() {
-
-					// jmx
-					final long executingStart = System.currentTimeMillis();
-
-					try {
-						runnable.run();
-
-						// jmx
-						final long executingFinish = System.currentTimeMillis();
-
-						Eventloop.this.execute(new Runnable() {
-							@Override
-							public void run() {
-								// jmx
-								updateConcurrentCallsStatsTimings(
-										taskName, submissionStart, executingStart, executingFinish);
-
-								tracker.complete();
-								callback.setComplete();
-							}
-						});
-					} catch (final Exception e) {
-						// jmx
-						final long executingFinish = System.currentTimeMillis();
-
-						final Exception actualException =
-								e instanceof RunnableException ? ((RunnableException) e).getActualException() : e;
-
-						Eventloop.this.execute(new Runnable() {
-							@Override
-							public void run() {
-								// jmx
-								updateConcurrentCallsStatsTimings(
-										taskName, submissionStart, executingStart, executingFinish);
-
-								tracker.complete();
-								callback.setException(actualException);
-							}
-						});
-					} catch (final Throwable throwable) {
-						recordFatalError(throwable, runnable);
-					}
-				}
-			});
-			return new AsyncCancellable() {
-				@Override
-				public void cancel() {
-					future.cancel(true);
-				}
-			};
-		} catch (RejectedExecutionException e) {
-			// jmx
-			concurrentCallsStats.recordRejectedCall(taskName);
-
-			tracker.complete();
-			callback.setException(e);
-
-			return new AsyncCancellable() {
-				@Override
-				public void cancel() {
-					// do nothing
-				}
-			};
-		}
-	}
-
-	public <T> CompletionStage<T> callConcurrently(ExecutorService executor, final Callable<T> callable) {
 		SettableStage<T> stage = SettableStage.create();
-		callConcurrently(executor, callable, resultToStage(stage));
-		return stage;
-	}
-
-	private <T> AsyncCancellable callConcurrently(ExecutorService executor,
-	                                              final Callable<T> callable, final ResultCallback<T> callback) {
-		assert inEventloopThread();
-
-		final ConcurrentOperationTracker tracker = startConcurrentOperation();
-
+		ConcurrentOperationTracker tracker = startConcurrentOperation();
 		// jmx
-		final String taskName = callable.getClass().getName();
+		String taskName = callable.getClass().getName();
 		concurrentCallsStats.recordCall(taskName);
-		final long submissionStart = currentTimeMillis();
-
+		long submissionStart = currentTimeMillis();
 		try {
-			final Future<?> future = executor.submit(new Runnable() {
-				@Override
-				public void run() {
+			executor.submit(() -> {
+				// jmx
+				long executingStart = System.currentTimeMillis();
+				try {
+					T result = callable.call();
 					// jmx
-					final long executingStart = System.currentTimeMillis();
-
-					try {
-						final T result = callable.call();
-
+					long executingFinish = System.currentTimeMillis();
+					this.execute(() -> {
 						// jmx
-						final long executingFinish = System.currentTimeMillis();
-
-						Eventloop.this.execute(new Runnable() {
-							@Override
-							public void run() {
-								// jmx
-								updateConcurrentCallsStatsTimings(
-										taskName, submissionStart, executingStart, executingFinish);
-
-								tracker.complete();
-								callback.setResult(result);
-							}
-						});
-					} catch (final Exception e) {
+						updateConcurrentCallsStatsTimings(taskName, submissionStart, executingStart, executingFinish);
+						tracker.complete();
+						stage.set(result);
+					});
+				} catch (Exception e) {
+					// jmx
+					long executingFinish = System.currentTimeMillis();
+					this.execute(() -> {
 						// jmx
-						final long executingFinish = System.currentTimeMillis();
-
-						Eventloop.this.execute(new Runnable() {
-							@Override
-							public void run() {
-								// jmx
-								updateConcurrentCallsStatsTimings(
-										taskName, submissionStart, executingStart, executingFinish);
-
-								tracker.complete();
-								callback.setException(e);
-							}
-						});
-					} catch (final Throwable throwable) {
-						recordFatalError(throwable, callable);
-					}
+						updateConcurrentCallsStatsTimings(taskName, submissionStart, executingStart, executingFinish);
+						tracker.complete();
+						stage.setException(e);
+					});
+				} catch (Throwable throwable) {
+					recordFatalError(throwable, callable);
 				}
 			});
-			return new AsyncCancellable() {
-				@Override
-				public void cancel() {
-					future.cancel(true);
-				}
-			};
 		} catch (RejectedExecutionException e) {
 			// jmx
 			concurrentCallsStats.recordRejectedCall(taskName);
-
 			tracker.complete();
-			callback.setException(e);
-
-			return new AsyncCancellable() {
-				@Override
-				public void cancel() {
-					// do nothing
-				}
-			};
+			stage.setException(e);
 		}
+		return stage;
 	}
 
 	public static void setGlobalFatalErrorHandler(FatalErrorHandler handler) {

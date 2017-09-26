@@ -19,15 +19,14 @@ package io.datakernel.cube;
 import io.datakernel.aggregation.AggregationChunkStorage;
 import io.datakernel.aggregation.LocalFsChunkStorage;
 import io.datakernel.aggregation.fieldtype.FieldTypes;
-import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.bean.DataItemResultString;
 import io.datakernel.cube.bean.DataItemString1;
 import io.datakernel.cube.bean.DataItemString2;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import org.junit.Rule;
@@ -84,7 +83,7 @@ public class StringDimensionTest {
 		cube.apply(future1.get());
 		cube.apply(future2.get());
 
-		StreamConsumers.ToList<DataItemResultString> consumerToList = StreamConsumers.toList(eventloop);
+		StreamConsumerToList<DataItemResultString> consumerToList = new StreamConsumerToList<>(eventloop);
 		cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"),
 				and(eq("key1", "str2"), eq("key2", 3)),
 				DataItemResultString.class, DefiningClassLoader.create(classLoader)

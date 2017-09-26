@@ -38,7 +38,7 @@ import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
 import static io.datakernel.aggregation.measure.Measures.union;
 import static io.datakernel.async.SettableStage.immediateStage;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.processor.Utils.assertStatus;
+import static io.datakernel.stream.TestUtils.assertStatus;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
@@ -63,14 +63,14 @@ public class AggregationGroupReducerTest {
 
 			@Override
 			public <T> CompletionStage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
-				return immediateStage(StreamProducerWithResult.wrap(StreamProducers.ofIterator(eventloop, items.iterator())));
+				return immediateStage(StreamProducers.withResult(StreamProducers.ofIterator(eventloop, items.iterator())));
 			}
 
 			@Override
 			public <T> CompletionStage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
-				StreamConsumers.ToList consumer = StreamConsumers.toList(eventloop, items);
+				StreamConsumerToList consumer = new StreamConsumerToList<>(eventloop, items);
 				listConsumers.add(consumer);
-				return immediateStage(StreamConsumerWithResult.wrap(consumer));
+				return immediateStage(StreamConsumers.withResult(consumer));
 			}
 
 			@Override

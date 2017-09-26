@@ -16,7 +16,6 @@
 
 package io.datakernel.datagraph.server;
 
-import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.datagraph.graph.StreamId;
@@ -98,7 +97,7 @@ public final class DatagraphClient {
 					producer.streamTo(consumer);
 					producer.getResult().whenComplete(($1, throwable1) -> {
 						messaging.close();
-						AsyncCallbacks.forwardTo(completionStage, null, throwable1);
+						completionStage.set(null, throwable1);
 					});
 				} else {
 					messaging.close();
@@ -159,8 +158,11 @@ public final class DatagraphClient {
 		StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(eventloop, serializer);
 		final DownloadHandler downloadhandler = new DownloadHandler(streamId, deserializer.getInput());
 		downloadhandler.getCompletionStage().whenComplete(($, throwable) -> {
-			if (throwable == null) logger.info("Downloading stream {} completed", streamId);
-			else logger.error("Failed to download stream {}", streamId, throwable);
+			if (throwable == null) {
+				logger.info("Downloading stream {} completed", streamId);
+			} else {
+				logger.error("Failed to download stream {}", streamId, throwable);
+			}
 		});
 
 		connectAndExecute(address).whenComplete((socketChannel, throwable) -> {
@@ -175,7 +177,7 @@ public final class DatagraphClient {
 
 	public void execute(InetSocketAddress address, final Collection<Node> nodes) {
 		final ExecuteHandler executeHandler = new ExecuteHandler(new ArrayList<>(nodes));
-		executeHandler.getCompletionStage().whenComplete((aVoid, throwable) -> {
+		executeHandler.getCompletionStage().whenComplete(($, throwable) -> {
 			if (throwable == null) logger.info("Execute command sent to nodes {}", nodes);
 			else logger.error("Failed to send execute command to nodes {}", nodes, throwable);
 		});

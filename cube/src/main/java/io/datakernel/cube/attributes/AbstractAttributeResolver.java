@@ -16,11 +16,11 @@
 
 package io.datakernel.cube.attributes;
 
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ForwardingCompletionCallback;
+import io.datakernel.async.SettableStage;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletionStage;
 
 public abstract class AbstractAttributeResolver<K, A> implements AttributeResolver {
 	@Override
@@ -35,12 +35,11 @@ public abstract class AbstractAttributeResolver<K, A> implements AttributeResolv
 
 	protected abstract A resolveAttributes(K key);
 
-	protected void prepareToResolveAttributes(List<Object> results, KeyFunction keyFunction, AttributesFunction attributesFunction,
-	                                          CompletionCallback callback) {
-		doResolveAttributes(results, keyFunction, attributesFunction, callback);
+	protected CompletionStage<Void> prepareToResolveAttributes(List<Object> results, KeyFunction keyFunction, AttributesFunction attributesFunction) {
+		return SettableStage.immediateStage(null);
 	}
 
-	private void doResolveAttributes(List<Object> results, KeyFunction keyFunction, AttributesFunction attributesFunction, CompletionCallback callback) {
+	private CompletionStage<Void> doResolveAttributes(List<Object> results, KeyFunction keyFunction, AttributesFunction attributesFunction) {
 		for (Object result : results) {
 			K key = toKey(keyFunction.extractKey(result));
 			A attributes = resolveAttributes(key);
@@ -48,18 +47,13 @@ public abstract class AbstractAttributeResolver<K, A> implements AttributeResolv
 				attributesFunction.applyAttributes(result, toAttributes(attributes));
 			}
 		}
-		callback.postComplete();
+		return SettableStage.immediateStage(null);
 	}
 
 	@Override
-	public final void resolveAttributes(final List<Object> results, final KeyFunction keyFunction, final AttributesFunction attributesFunction,
-	                                    final CompletionCallback callback) {
-		prepareToResolveAttributes(results, keyFunction, attributesFunction, new ForwardingCompletionCallback(callback) {
-			@Override
-			protected void onComplete() {
-				doResolveAttributes(results, keyFunction, attributesFunction, callback);
-			}
-		});
+	public final CompletionStage<Void> resolveAttributes(final List<Object> results, final KeyFunction keyFunction, final AttributesFunction attributesFunction) {
+		return prepareToResolveAttributes(results, keyFunction, attributesFunction).thenCompose($ ->
+				doResolveAttributes(results, keyFunction, attributesFunction));
 	}
 
 }

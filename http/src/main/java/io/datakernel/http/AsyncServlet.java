@@ -16,8 +16,6 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ResultCallback;
-
 import java.util.concurrent.CompletionStage;
 
 /**
@@ -26,10 +24,5 @@ import java.util.concurrent.CompletionStage;
  * it.
  */
 public interface AsyncServlet {
-	/**
-	 * Handles the received {@link HttpRequest},  creating the
-	 * {@link HttpResponse} and responds to client with {@link ResultCallback}
-	 *
-	 */
 	CompletionStage<HttpResponse> serve(HttpRequest request);
 }

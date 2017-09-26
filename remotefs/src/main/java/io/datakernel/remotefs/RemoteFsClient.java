@@ -17,7 +17,6 @@
 package io.datakernel.remotefs;
 
 import com.google.gson.Gson;
-import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
@@ -26,7 +25,9 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.remotefs.RemoteFsCommands.Download;
 import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducerWithResult;
+import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.net.Messaging.ReceiveMessageCallback;
 import io.datakernel.stream.net.MessagingSerializer;
 import io.datakernel.stream.net.MessagingWithBinaryStreaming;
@@ -108,7 +109,7 @@ public final class RemoteFsClient implements IRemoteFsClient {
 				}
 			});
 
-			StreamConsumerWithResult<ByteBuf, Void> consumerWithResult = StreamConsumerWithResult.create(consumer, ack);
+			StreamConsumerWithResult<ByteBuf, Void> consumerWithResult = StreamConsumers.withResult(consumer, ack);
 			consumerWithResult.getResult().whenComplete(($, throwable) -> {if (throwable != null) messaging.close();});
 			return consumerWithResult;
 		});
@@ -141,7 +142,7 @@ public final class RemoteFsClient implements IRemoteFsClient {
 								}
 							});
 
-							StreamProducerWithResult<ByteBuf, Void> producerWithResult = StreamProducerWithResult.create(sizeCounter.getOutput(), ack);
+							StreamProducerWithResult<ByteBuf, Void> producerWithResult = StreamProducers.withResult(sizeCounter.getOutput(), ack);
 							stage.set(producerWithResult);
 						} else if (msg instanceof RemoteFsResponses.Err) {
 							stage.setException(new RemoteFsException(((RemoteFsResponses.Err) msg).msg));
@@ -206,7 +207,7 @@ public final class RemoteFsClient implements IRemoteFsClient {
 					});
 				} else {
 					messaging.close();
-					ack.setException(AsyncCallbacks.throwableToException(throwable));
+					ack.setException(throwable);
 				}
 			});
 			return ack;
@@ -251,7 +252,7 @@ public final class RemoteFsClient implements IRemoteFsClient {
 					});
 				} else {
 					messaging.close();
-					ack.setException(AsyncCallbacks.throwableToException(throwable));
+					ack.setException(throwable);
 				}
 			});
 			return ack;

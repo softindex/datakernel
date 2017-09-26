@@ -25,13 +25,18 @@ package io.datakernel.stream;
  * @param <T> type of output data
  */
 public interface StreamProducer<T> {
+	default void streamTo(StreamConsumer<T> consumer) {
+		this.setConsumer(consumer);
+		consumer.setProducer(this);
+	}
+
 	/**
 	 * Changes consumer for this producer, removes itself from previous consumer and removes
 	 * previous producer for new consumer. Begins to stream to consumer.
 	 *
 	 * @param consumer consumer for streaming
 	 */
-	void streamTo(StreamConsumer<T> consumer);
+	void setConsumer(StreamConsumer<T> consumer);
 
 	/**
 	 * This method is called for restore streaming of this producer
@@ -46,7 +51,7 @@ public interface StreamProducer<T> {
 	/**
 	 * This method is called for close with error
 	 *
-	 * @param e exception which was found
+	 * @param t exception which was found
 	 */
-	void closeWithError(Exception e);
+	void closeWithError(Throwable t);
 }

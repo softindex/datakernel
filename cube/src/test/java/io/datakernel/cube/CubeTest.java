@@ -20,14 +20,14 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import io.datakernel.aggregation.*;
 import io.datakernel.aggregation.fieldtype.FieldTypes;
-import io.datakernel.async.AsyncCallbacks;
+import io.datakernel.async.Stages;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.bean.*;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.RemoteFsServer;
+import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import org.junit.Rule;
@@ -111,7 +111,7 @@ public class CubeTest {
 		cube.apply(future1.get());
 		cube.apply(future2.get());
 
-		StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toList(eventloop);
+		StreamConsumerToList<DataItemResult> consumerToList = new StreamConsumerToList<>(eventloop);
 		cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"),
 				and(eq("key1", 1), eq("key2", 3)),
 				DataItemResult.class, DefiningClassLoader.create(classLoader)
@@ -168,7 +168,7 @@ public class CubeTest {
 					producer.streamTo(consumer);
 					return consumer.getResult().thenAccept(cube::apply);
 				}
-		).run().whenComplete(AsyncCallbacks.assertBiConsumer(aVoid -> {
+		).run().whenComplete(Stages.assertBiConsumer($ -> {
 			logger.info("Streaming to RemoteFS succeeded.");
 			stop(remoteFsServer1);
 		}));
@@ -176,12 +176,12 @@ public class CubeTest {
 		eventloop.run();
 
 		final RemoteFsServer remoteFsServer2 = prepareServer(eventloop, serverStorage);
-		final StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toList(eventloop);
+		final StreamConsumerToList<DataItemResult> consumerToList = new StreamConsumerToList<>(eventloop);
 		cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"),
 				and(eq("key1", 1), eq("key2", 3)),
 				DataItemResult.class, DefiningClassLoader.create(classLoader)
 		).streamTo(consumerToList);
-		consumerToList.getCompletionStage().whenComplete(AsyncCallbacks.assertBiConsumer($ -> {
+		consumerToList.getResult().whenComplete(Stages.assertBiConsumer($ -> {
 			logger.info("Streaming query {} result from RemoteFS succeeded.");
 			stop(remoteFsServer2);
 		}));
@@ -220,7 +220,7 @@ public class CubeTest {
 		consumer2.getResult().thenAccept(cube::apply);
 		eventloop.run();
 
-		StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toList(eventloop);
+		StreamConsumerToList<DataItemResult> consumerToList = new StreamConsumerToList<>(eventloop);
 		cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"), alwaysTrue(),
 				DataItemResult.class, DefiningClassLoader.create(classLoader)
 		).streamTo(consumerToList);
@@ -262,7 +262,7 @@ public class CubeTest {
 		consumer2.getResult().thenAccept(cube::apply);
 		eventloop.run();
 
-		StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toList(eventloop);
+		StreamConsumerToList<DataItemResult> consumerToList = new StreamConsumerToList<>(eventloop);
 		cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"), alwaysTrue(),
 				DataItemResult.class, DefiningClassLoader.create(classLoader)
 		).streamTo(consumerToList);
@@ -317,7 +317,7 @@ public class CubeTest {
 		consumer2.getResult().thenAccept(cube::apply);
 		eventloop.run();
 
-		StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toList(eventloop);
+		StreamConsumerToList<DataItemResult> consumerToList = new StreamConsumerToList<>(eventloop);
 		cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"),
 				and(between("key1", 5, 10), between("key2", 40, 1000)),
 				DataItemResult.class, DefiningClassLoader.create(classLoader)
@@ -368,7 +368,7 @@ public class CubeTest {
 		consumer4.getResult().thenAccept(cube::apply);
 		eventloop.run();
 
-		StreamConsumers.ToList<DataItemResult3> consumerToList = StreamConsumers.toList(eventloop);
+		StreamConsumerToList<DataItemResult3> consumerToList = new StreamConsumerToList<>(eventloop);
 		cube.queryRawStream(asList("key1", "key2", "key3", "key4", "key5"), asList("metric1", "metric2", "metric3"),
 				and(eq("key1", 5), between("key2", 75, 99), between("key3", 35, 50), eq("key4", 20), eq("key5", 56)),
 				DataItemResult3.class, DefiningClassLoader.create(classLoader)
@@ -409,7 +409,7 @@ public class CubeTest {
 		consumer2.getResult().thenAccept(cube::apply);
 		eventloop.run();
 
-		StreamConsumers.ToList<DataItemResult2> consumerToList = StreamConsumers.toList(eventloop);
+		StreamConsumerToList<DataItemResult2> consumerToList = new StreamConsumerToList<>(eventloop);
 		cube.queryRawStream(asList("key2"), asList("metric1", "metric2", "metric3"),
 				alwaysTrue(),
 				DataItemResult2.class, DefiningClassLoader.create(classLoader)
@@ -462,7 +462,7 @@ public class CubeTest {
 		consumer4.getResult().thenAccept(cube::apply);
 		eventloop.run();
 
-		StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toList(eventloop);
+		StreamConsumerToList<DataItemResult> consumerToList = new StreamConsumerToList<>(eventloop);
 		cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"),
 				and(eq("key1", 1), eq("key2", 3)),
 				DataItemResult.class, DefiningClassLoader.create(classLoader)
@@ -518,7 +518,7 @@ public class CubeTest {
 		eventloop.run();
 		assertTrue(!future2.get().isEmpty());
 
-		StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toList(eventloop);
+		StreamConsumerToList<DataItemResult> consumerToList = new StreamConsumerToList<>(eventloop);
 		cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"),
 				and(eq("key1", 1), eq("key2", 4)),
 				DataItemResult.class, DefiningClassLoader.create(classLoader)

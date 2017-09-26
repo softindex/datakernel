@@ -30,7 +30,7 @@ public class AsyncRunnablesTest {
 		AsyncRunnable runnable2 = () -> SettableStage.immediateStage(null);
 
 		AsyncRunnable timeoutCallable = AsyncRunnables.runInParallel(eventloop, asList(runnable1, runnable2));
-		timeoutCallable.run().whenComplete(AsyncCallbacks.assertBiConsumer($ -> {}));
+		timeoutCallable.run().whenComplete(Stages.assertBiConsumer($ -> {}));
 
 		eventloop.run();
 	}

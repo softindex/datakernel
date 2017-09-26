@@ -16,7 +16,6 @@
 
 package io.datakernel.stream.file;
 
-import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
@@ -101,11 +100,11 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 		final ByteBuf buf = queue.poll();
 		final int length = buf.readRemaining();
-		asyncFile.writeFully(buf, position).whenComplete((aVoid, throwable) -> {
+		asyncFile.writeFully(buf, position).whenComplete(($, throwable) -> {
 			if (throwable != null) {
 				doWriterCleanup(false).whenComplete((aVoid1, throwable1) -> {
 					pendingAsyncOperation = false;
-					closeWithError(AsyncCallbacks.throwableToException(throwable1));
+					closeWithError(throwable1);
 				});
 			} else {
 				position += length;
@@ -167,12 +166,12 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	}
 
 	@Override
-	protected void onError(final Exception e) {
+	protected void onError(final Throwable t) {
 		pendingAsyncOperation = true;
 
 		doWriterCleanup(false).whenComplete(($, throwable) -> {
 			pendingAsyncOperation = false;
-			if (flushStage != null) flushStage.setException(e);
+			if (flushStage != null) flushStage.setException(t);
 		});
 	}
 

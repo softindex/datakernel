@@ -51,7 +51,7 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 	}
 
 	@Override
-	protected final void onError(Exception e) {
+	protected final void onError(Throwable t) {
 		switchTo(StreamConsumers.idle());
 	}
 
@@ -61,19 +61,19 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 				currentInternalProducer.sendError(getException());
 			}
 			currentInternalProducer = new InternalProducer(eventloop, StreamConsumers.idle());
-			StreamProducers.<T>closingWithError(eventloop, getException()).streamTo(newConsumer);
+			StreamProducers.<T>closingWithError(getException()).streamTo(newConsumer);
 		} else if (getStatus() == END_OF_STREAM) {
 			if (currentInternalProducer != null) {
 				currentInternalProducer.sendEndOfStream();
 			}
 			currentInternalProducer = new InternalProducer(eventloop, StreamConsumers.idle());
-			StreamProducers.<T>closing(eventloop).streamTo(newConsumer);
+			StreamProducers.<T>closing().streamTo(newConsumer);
 		} else {
 			if (currentInternalProducer != null) {
 				currentInternalProducer.sendEndOfStream();
 			}
 			currentInternalProducer = new InternalProducer(eventloop, newConsumer);
-			newConsumer.streamFrom(currentInternalProducer);
+			currentInternalProducer.streamTo(newConsumer);
 		}
 	}
 
@@ -91,7 +91,7 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 		}
 
 		@Override
-		public void streamTo(StreamConsumer<T> consumer) {
+		public void setConsumer(StreamConsumer<T> consumer) {
 			assert consumer == this.consumer;
 		}
 
@@ -137,8 +137,8 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 		}
 
 		@Override
-		public void closeWithError(Exception e) {
-			StreamConsumerSwitcher.this.closeWithError(e);
+		public void closeWithError(Throwable t) {
+			StreamConsumerSwitcher.this.closeWithError(t);
 		}
 
 		public void onData(T item) {
@@ -153,7 +153,7 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 			}
 		}
 
-		public void sendError(Exception exception) {
+		public void sendError(Throwable exception) {
 			lastDataReceiver = item -> {};
 			consumer.closeWithError(exception);
 		}

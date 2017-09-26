@@ -18,7 +18,10 @@ package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
-import io.datakernel.stream.*;
+import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamConsumerToList;
+import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducers;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -27,8 +30,8 @@ import java.util.List;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
-import static io.datakernel.stream.processor.Utils.assertProducerStatuses;
-import static io.datakernel.stream.processor.Utils.assertStatus;
+import static io.datakernel.stream.TestUtils.assertProducerStatuses;
+import static io.datakernel.stream.TestUtils.assertStatus;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -40,8 +43,8 @@ public class StreamSplitterTest {
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
 		StreamSplitter<Integer> streamConcat = StreamSplitter.create(eventloop);
-		TestStreamConsumers.TestConsumerToList<Integer> consumerToList1 = TestStreamConsumers.toListRandomlySuspending(eventloop);
-		TestStreamConsumers.TestConsumerToList<Integer> consumerToList2 = TestStreamConsumers.toListRandomlySuspending(eventloop);
+		StreamConsumerToList<Integer> consumerToList1 = StreamConsumerToList.randomlySuspending(eventloop);
+		StreamConsumerToList<Integer> consumerToList2 = StreamConsumerToList.randomlySuspending(eventloop);
 
 		source.streamTo(streamConcat.getInput());
 		streamConcat.newOutput().streamTo(consumerToList1);
@@ -62,12 +65,12 @@ public class StreamSplitterTest {
 		StreamSplitter<Integer> streamConcat = StreamSplitter.create(eventloop);
 
 		List<Integer> toList1 = new ArrayList<>();
-		TestStreamConsumers.TestConsumerToList<Integer> consumerToList1 = TestStreamConsumers.toListOneByOne(eventloop, toList1);
+		StreamConsumerToList<Integer> consumerToList1 = StreamConsumerToList.oneByOne(eventloop, toList1);
 		List<Integer> toList2 = new ArrayList<>();
-		TestStreamConsumers.TestConsumerToList<Integer> consumerToList2 = TestStreamConsumers.toListOneByOne(eventloop, toList2);
+		StreamConsumerToList<Integer> consumerToList2 = StreamConsumerToList.oneByOne(eventloop, toList2);
 
 		List<Integer> toBadList = new ArrayList<>();
-		TestStreamConsumers.TestConsumerToList<Integer> badConsumer = new TestStreamConsumers.TestConsumerToList<Integer>(eventloop, toBadList) {
+		StreamConsumerToList<Integer> badConsumer = new StreamConsumerToList<Integer>(eventloop, toBadList) {
 			@Override
 			public void onData(Integer item) {
 				list.add(item);
@@ -105,17 +108,17 @@ public class StreamSplitterTest {
 				StreamProducers.ofValue(eventloop, 1),
 				StreamProducers.ofValue(eventloop, 2),
 				StreamProducers.ofValue(eventloop, 3),
-				StreamProducers.closingWithError(eventloop, new ExpectedException("Test Exception"))
+				StreamProducers.closingWithError(new ExpectedException("Test Exception"))
 		);
 
 		StreamSplitter<Integer> splitter = StreamSplitter.create(eventloop);
 
 		List<Integer> list1 = new ArrayList<>();
-		StreamConsumer<Integer> consumer1 = TestStreamConsumers.toListOneByOne(eventloop, list1);
+		StreamConsumer<Integer> consumer1 = StreamConsumerToList.oneByOne(eventloop, list1);
 		List<Integer> list2 = new ArrayList<>();
-		StreamConsumer<Integer> consumer2 = TestStreamConsumers.toListOneByOne(eventloop, list2);
+		StreamConsumer<Integer> consumer2 = StreamConsumerToList.oneByOne(eventloop, list2);
 		List<Integer> list3 = new ArrayList<>();
-		StreamConsumer<Integer> consumer3 = TestStreamConsumers.toListOneByOne(eventloop, list3);
+		StreamConsumer<Integer> consumer3 = StreamConsumerToList.oneByOne(eventloop, list3);
 
 		source.streamTo(splitter.getInput());
 		splitter.newOutput().streamTo(consumer1);

@@ -16,9 +16,12 @@
 
 package io.datakernel.stream;
 
+import io.datakernel.async.SettableStage;
+
+import java.util.concurrent.CompletionStage;
+
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
-import static io.datakernel.stream.StreamStatus.SUSPENDED;
 
 /**
  * See also:
@@ -28,32 +31,28 @@ import static io.datakernel.stream.StreamStatus.SUSPENDED;
  *
  * @param <T> item type
  */
-public class StreamProducerDecorator<T> implements StreamProducer<T> {
+public abstract class StreamProducerDecorator<T, X> implements StreamProducerWithResult<T, X> {
+	private final SettableStage<Void> completionStage = SettableStage.create();
+	private final SettableStage<X> resultStage = SettableStage.create();
 	private StreamProducer<T> actualProducer;
 	private StreamConsumer<T> consumer;
 
 	private StreamDataReceiver<T> pendingDataReceiver;
-	private Exception pendingError;
+	private Throwable pendingException;
 
-	// region creators
-	protected StreamProducerDecorator() {
+	public StreamProducerDecorator() {
 	}
-
-	protected StreamProducerDecorator(StreamProducer<T> actualProducer) {
-		setActualProducer(actualProducer);
-	}
-
-	public static <T> StreamProducerDecorator<T> create() {
-		return new StreamProducerDecorator<T>();
-	}
-	// endregion
 
 	public final void setActualProducer(StreamProducer<T> producer) {
+		setActualProducer(producer, SettableStage.create());
+	}
+
+	public final void setActualProducer(StreamProducer<T> producer, CompletionStage<X> producerResult) {
 		checkState(this.actualProducer == null, "Decorator is already wired");
 		actualProducer = producer;
-		actualProducer.streamTo(new StreamConsumer<T>() {
+		actualProducer.setConsumer(new StreamConsumer<T>() {
 			@Override
-			public void streamFrom(StreamProducer<T> producer) {
+			public void setProducer(StreamProducer<T> producer) {
 				assert producer == actualProducer;
 			}
 
@@ -63,38 +62,47 @@ public class StreamProducerDecorator<T> implements StreamProducer<T> {
 			}
 
 			@Override
-			public void closeWithError(Exception e) {
-				onCloseWithError(e);
+			public void closeWithError(Throwable t) {
+				onCloseWithError(t);
 			}
 		});
-		if (pendingError != null) {
-			actualProducer.closeWithError(pendingError);
+		if (pendingException != null) {
+			actualProducer.closeWithError(pendingException);
+			completionStage.trySetException(pendingException);
+			resultStage.trySetException(pendingException);
 		} else if (pendingDataReceiver != null) {
 			actualProducer.produce(pendingDataReceiver);
 		}
+		producerResult.whenCompleteAsync((x, throwable) -> {
+			if (throwable == null) {
+				resultStage.trySet(x);
+			} else {
+				producer.closeWithError(throwable);
+				resultStage.trySetException(throwable);
+			}
+		});
 	}
 
 	public final StreamProducer<T> getActualProducer() {
 		return actualProducer;
 	}
 
-	public StreamConsumer<T> getConsumer() {
+	public final StreamConsumer<T> getConsumer() {
 		return consumer;
 	}
 
 	@Override
-	public final void streamTo(StreamConsumer<T> consumer) {
+	public final void setConsumer(StreamConsumer<T> consumer) {
 		checkNotNull(consumer);
 		if (this.consumer == consumer) return;
 		checkState(this.consumer == null);
 
 		this.consumer = consumer;
-
-		consumer.streamFrom(this);
 	}
 
 	@Override
 	public final void produce(StreamDataReceiver<T> dataReceiver) {
+		dataReceiver = onProduce(dataReceiver);
 		if (actualProducer != null) {
 			actualProducer.produce(dataReceiver);
 		} else {
@@ -112,20 +120,37 @@ public class StreamProducerDecorator<T> implements StreamProducer<T> {
 	}
 
 	@Override
-	public final void closeWithError(Exception e) {
+	public final void closeWithError(Throwable t) {
 		if (actualProducer != null) {
-			actualProducer.closeWithError(e);
+			actualProducer.closeWithError(t);
+			completionStage.trySetException(t);
+			resultStage.trySetException(t);
 		} else {
-			pendingError = e;
+			pendingException = t;
 		}
+	}
+
+	public final CompletionStage<Void> getCompletion() {
+		return completionStage;
+	}
+
+	@Override
+	public final CompletionStage<X> getResult() {
+		return resultStage;
+	}
+
+	protected StreamDataReceiver<T> onProduce(StreamDataReceiver<T> dataReceiver) {
+		return dataReceiver;
 	}
 
 	protected void onEndOfStream() {
 		consumer.endOfStream();
+		completionStage.trySet(null);
 	}
 
-	protected void onCloseWithError(Exception e) {
-		consumer.closeWithError(e);
+	protected void onCloseWithError(Throwable t) {
+		consumer.closeWithError(t);
+		completionStage.trySetException(t);
 	}
 
 }

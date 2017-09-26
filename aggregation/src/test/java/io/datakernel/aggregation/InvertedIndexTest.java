@@ -21,7 +21,7 @@ import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.StreamConsumers;
+import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import org.junit.Rule;
@@ -131,7 +131,7 @@ public class InvertedIndexTest {
 		AggregationQuery query = AggregationQuery.create()
 				.withKeys("word")
 				.withMeasures("documents");
-		StreamConsumers.ToList<InvertedIndexQueryResult> consumerToList = StreamConsumers.toList(eventloop);
+		StreamConsumerToList<InvertedIndexQueryResult> consumerToList = new StreamConsumerToList<>(eventloop);
 		aggregation.query(query, InvertedIndexQueryResult.class, DefiningClassLoader.create(classLoader)).streamTo(consumerToList);
 		eventloop.run();
 

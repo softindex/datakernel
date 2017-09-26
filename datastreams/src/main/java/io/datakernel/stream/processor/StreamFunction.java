@@ -68,8 +68,8 @@ public final class StreamFunction<I, O> implements StreamTransformer<I, O> {
 		}
 
 		@Override
-		protected void onError(Exception e) {
-			output.closeWithError(e);
+		protected void onError(Throwable t) {
+			output.closeWithError(t);
 		}
 	}
 
@@ -84,8 +84,8 @@ public final class StreamFunction<I, O> implements StreamTransformer<I, O> {
 		}
 
 		@Override
-		protected void onError(Exception e) {
-			input.closeWithError(e);
+		protected void onError(Throwable t) {
+			input.closeWithError(t);
 		}
 
 		@SuppressWarnings("unchecked")

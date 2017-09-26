@@ -19,10 +19,10 @@ package io.datakernel.stream.processor;
 import com.google.common.base.Functions;
 import com.google.common.collect.Ordering;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.StreamStatus;
-import io.datakernel.stream.TestStreamConsumers;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -32,7 +32,7 @@ import java.util.List;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
-import static io.datakernel.stream.processor.Utils.*;
+import static io.datakernel.stream.TestUtils.*;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
@@ -47,7 +47,7 @@ public class StreamMergerTest {
 
 		StreamMerger<Integer, Integer> merger = StreamMerger.create(eventloop, Functions.identity(), Ordering.<Integer>natural(), true);
 
-		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending(eventloop);
 
 		source0.streamTo(merger.newInput());
 		source1.streamTo(merger.newInput());
@@ -75,7 +75,7 @@ public class StreamMergerTest {
 
 		StreamMerger<Integer, Integer> merger = StreamMerger.create(eventloop, Functions.identity(), Ordering.<Integer>natural(), false);
 
-		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending(eventloop);
 
 		source0.streamTo(merger.newInput());
 		source1.streamTo(merger.newInput());
@@ -116,7 +116,7 @@ public class StreamMergerTest {
 		StreamMerger<Integer, DataItem1> merger = StreamMerger.create(eventloop,
 				input -> input.key2, Ordering.<Integer>natural(), false);
 
-		TestStreamConsumers.TestConsumerToList<DataItem1> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
+		StreamConsumerToList<DataItem1> consumer = StreamConsumerToList.randomlySuspending(eventloop);
 
 		source1.streamTo(merger.newInput());
 		source2.streamTo(merger.newInput());
@@ -148,7 +148,7 @@ public class StreamMergerTest {
 		StreamMerger<Integer, Integer> merger = StreamMerger.create(eventloop, Functions.identity(), Ordering.<Integer>natural(), true);
 
 		List<Integer> list = new ArrayList<>();
-		TestStreamConsumers.TestConsumerToList<Integer> consumer = new TestStreamConsumers.TestConsumerToList<Integer>(eventloop, list) {
+		StreamConsumerToList<Integer> consumer = new StreamConsumerToList<Integer>(eventloop, list) {
 			@Override
 			public void onData(Integer item) {
 				list.add(item);
@@ -184,7 +184,7 @@ public class StreamMergerTest {
 		StreamProducer<Integer> source1 = StreamProducers.concat(eventloop,
 				StreamProducers.ofValue(eventloop, 7),
 				StreamProducers.ofValue(eventloop, 8),
-				StreamProducers.closingWithError(eventloop, new Exception("Test Exception")),
+				StreamProducers.closingWithError(new Exception("Test Exception")),
 				StreamProducers.ofValue(eventloop, 3),
 				StreamProducers.ofValue(eventloop, 9)
 		);
@@ -198,7 +198,7 @@ public class StreamMergerTest {
 		StreamMerger<Integer, Integer> merger = StreamMerger.create(eventloop, Functions.identity(), Ordering.<Integer>natural(), true);
 
 		List<Integer> list = new ArrayList<>();
-		TestStreamConsumers.TestConsumerToList consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
+		StreamConsumerToList consumer = StreamConsumerToList.oneByOne(eventloop, list);
 
 		source1.streamTo(merger.newInput());
 		source2.streamTo(merger.newInput());
@@ -224,7 +224,7 @@ public class StreamMergerTest {
 
 		StreamMerger<Integer, Integer> merger = StreamMerger.create(eventloop, Functions.identity(), Ordering.<Integer>natural(), true);
 
-		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending(eventloop);
 
 		source0.streamTo(merger.newInput());
 		source1.streamTo(merger.newInput());

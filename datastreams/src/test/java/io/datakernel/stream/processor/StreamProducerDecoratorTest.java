@@ -18,10 +18,10 @@ package io.datakernel.stream.processor;
 
 import com.google.common.base.Functions;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducerDecorator;
 import io.datakernel.stream.StreamProducers;
-import io.datakernel.stream.TestStreamConsumers;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -30,7 +30,7 @@ import java.util.List;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
-import static io.datakernel.stream.processor.Utils.assertStatus;
+import static io.datakernel.stream.TestUtils.assertStatus;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
@@ -41,7 +41,7 @@ public class StreamProducerDecoratorTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		List<Integer> list = new ArrayList<>();
 
-		TestStreamConsumers.TestConsumerToList consumer = new TestStreamConsumers.TestConsumerToList<Integer>(eventloop, list) {
+		StreamConsumerToList consumer = new StreamConsumerToList<Integer>(eventloop, list) {
 			@Override
 			public void onData(Integer item) {
 				if (item == 3) {
@@ -54,8 +54,9 @@ public class StreamProducerDecoratorTest {
 			}
 		};
 
-		final StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
-		StreamProducerDecorator<Integer> producerDecorator = new StreamProducerDecorator<Integer>(producer) {};
+		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
+		StreamProducerDecorator<Integer, Void> producerDecorator = new StreamProducerDecorator<Integer, Void>() {};
+		producerDecorator.setActualProducer(producer);
 
 		producerDecorator.streamTo(consumer);
 
@@ -72,9 +73,10 @@ public class StreamProducerDecoratorTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		List<Integer> list = new ArrayList<>();
-		TestStreamConsumers.TestConsumerToList consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
-		final StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
-		StreamProducerDecorator<Integer> producerDecorator = new StreamProducerDecorator<Integer>(producer) {};
+		StreamConsumerToList consumer = StreamConsumerToList.oneByOne(eventloop, list);
+		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
+		StreamProducerDecorator<Integer, Void> producerDecorator = new StreamProducerDecorator<Integer, Void>() {};
+		producerDecorator.setActualProducer(producer);
 
 		producerDecorator.streamTo(consumer);
 
@@ -90,9 +92,10 @@ public class StreamProducerDecoratorTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		List<Integer> list = new ArrayList<>();
-		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.oneByOne(eventloop, list);
 		final StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
-		StreamProducerDecorator<Integer> producerDecorator = new StreamProducerDecorator<Integer>(producer) {};
+		StreamProducerDecorator<Integer, Void> producerDecorator = new StreamProducerDecorator<Integer, Void>() {};
+		producerDecorator.setActualProducer(producer);
 		StreamFunction<Integer, Integer> function = StreamFunction.create(eventloop, Functions.<Integer>identity());
 
 		producerDecorator.streamTo(function.getInput());

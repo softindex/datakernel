@@ -1,7 +1,6 @@
 package io.datakernel.cube;
 
 import io.datakernel.aggregation.IdGenerator;
-import io.datakernel.async.ResultCallback;
 
 import java.util.concurrent.CompletionStage;
 

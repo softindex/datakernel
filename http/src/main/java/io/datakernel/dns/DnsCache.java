@@ -67,7 +67,6 @@ final class DnsCache {
 		RESOLVED_NEEDS_REFRESHING,
 		NOT_RESOLVED
 	}
-
 	/**
 	 * Creates a new DNS cache.
 	 *
@@ -97,10 +96,7 @@ final class DnsCache {
 		if (cachedResultType == A_RECORD_TYPE & !requestedIpv6)
 			return true;
 
-		if (cachedResultType == AAAA_RECORD_TYPE & requestedIpv6)
-			return true;
-
-		else return false;
+		return cachedResultType == AAAA_RECORD_TYPE & requestedIpv6;
 	}
 
 	/**

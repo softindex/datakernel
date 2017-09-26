@@ -16,7 +16,6 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.dns.DnsCache.DnsCacheResultStage;
@@ -85,7 +84,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 
 		void onDnsQueryResult(String domain, DnsQueryResult result);
 
-		void onDnsQueryError(String domain, Exception e);
+		void onDnsQueryError(String domain, Throwable e);
 
 		void onDomainExpired(String domain);
 	}
@@ -129,7 +128,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 		}
 
 		@Override
-		public void onDnsQueryError(String domain, Exception e) {
+		public void onDnsQueryError(String domain, Throwable e) {
 			failedQueries.recordEvent();
 		}
 
@@ -240,7 +239,6 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 		return new AsyncDnsClient(eventloop, datagramSocketSettings, timeout, timedOutExceptionTtl, dnsServerAddress, cache, inspector);
 	}
 
-
 	public AsyncDnsClient withInspector(AsyncDnsClient.Inspector inspector) {
 		this.inspector = inspector;
 		this.cache.setInspector(inspector);
@@ -290,7 +288,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 				if (cacheQueryResult.getDnsCacheResult() == NOT_RESOLVED) {
 					AsyncDnsClient.this.eventloop.execute(() ->
 							AsyncDnsClient.this.resolve(domainName, ipv6).whenComplete((inetAddresses, throwable) ->
-							eventloop.execute(() -> AsyncCallbacks.forwardTo(stage, inetAddresses, throwable))));
+									eventloop.execute(() -> stage.set(inetAddresses, throwable))));
 				}
 
 				return stage;

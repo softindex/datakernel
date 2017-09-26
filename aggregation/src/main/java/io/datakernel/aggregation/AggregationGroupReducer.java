@@ -66,7 +66,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 		this.chunkSize = chunkSize;
 		this.aggregation = aggregation;
 		this.resultsTracker = StagesAccumulator.<List<AggregationChunk>>create(new ArrayList<>())
-				.withStage(getCompletionStage(), (accumulator, value) -> accumulator);
+				.withStage(this.getCompletion(), (accumulator, $) -> accumulator);
 		this.classLoader = classLoader;
 	}
 
@@ -141,7 +141,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 	}
 
 	@Override
-	protected void onError(Exception e) {
+	protected void onError(Throwable t) {
 	}
 
 	// jmx

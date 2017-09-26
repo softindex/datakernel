@@ -31,7 +31,7 @@ import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTRemoteSql;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.stream.StreamConsumers;
+import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import org.junit.Rule;
@@ -161,7 +161,7 @@ public class CubeIntegrationTest {
 		eventloop.run();
 		future.get();
 
-		StreamConsumers.ToList<LogItem> queryResultConsumer = new StreamConsumers.ToList<>(eventloop);
+		StreamConsumerToList<LogItem> queryResultConsumer = new StreamConsumerToList<>(eventloop);
 		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(),
 				LogItem.class, DefiningClassLoader.create(classLoader)).streamTo(queryResultConsumer);
 		eventloop.run();
@@ -213,7 +213,7 @@ public class CubeIntegrationTest {
 		future.get();
 
 		// Query
-		queryResultConsumer = new StreamConsumers.ToList<>(eventloop);
+		queryResultConsumer = new StreamConsumerToList<>(eventloop);
 		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(),
 				LogItem.class, DefiningClassLoader.create(classLoader)).streamTo(queryResultConsumer);
 		eventloop.run();

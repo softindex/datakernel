@@ -16,7 +16,8 @@
 
 package io.datakernel.rpc.client;
 
-import io.datakernel.async.*;
+import io.datakernel.async.AsyncCancellable;
+import io.datakernel.async.SettableStage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.jmx.EventStats;
@@ -142,8 +143,11 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 			requestStatsPerClass.getTotalRequests().recordEvent();
 			final JmxConnectionMonitor<Object> jmxMonitor = new JmxConnectionMonitor<>(requestStatsPerClass, timeout);
 			return stage.whenComplete((BiConsumer<Object, Throwable>) (o, throwable) -> {
-				if (throwable == null) jmxMonitor.setResult(o);
-				else jmxMonitor.setException(AsyncCallbacks.throwableToException(throwable));
+				if (throwable == null) {
+					jmxMonitor.setResult(o);
+				} else {
+					jmxMonitor.setException(throwable);
+				}
 			});
 		} else {
 			return stage;
@@ -355,7 +359,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 			recordOverdue();
 		}
 
-		public void setException(Exception exception) {
+		public void setException(Throwable exception) {
 			if (exception instanceof RpcRemoteException) {
 				int responseTime = timeElapsed();
 				connectionStats.getFailedRequests().recordEvent();

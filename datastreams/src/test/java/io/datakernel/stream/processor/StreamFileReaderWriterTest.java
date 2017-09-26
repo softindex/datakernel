@@ -57,7 +57,7 @@ public class StreamFileReaderWriterTest {
 				1, Paths.get("test_data/in.dat"));
 
 		List<ByteBuf> list = new ArrayList<>();
-		StreamConsumers.ToList<ByteBuf> consumer = StreamConsumers.toList(eventloop, list);
+		StreamConsumerToList<ByteBuf> consumer = StreamConsumerToList.create(eventloop, list);
 
 		reader.streamTo(consumer);
 		eventloop.run();
@@ -101,7 +101,7 @@ public class StreamFileReaderWriterTest {
 			}
 
 			@Override
-			protected void onError(Exception e) {
+			protected void onError(Throwable t) {
 			}
 
 			@Override
@@ -157,7 +157,7 @@ public class StreamFileReaderWriterTest {
 
 		StreamProducer<ByteBuf> producer = StreamProducers.concat(eventloop,
 				StreamProducers.ofValue(eventloop, ByteBuf.wrapForReading(bytes)),
-				StreamProducers.<ByteBuf>closingWithError(eventloop, new Exception("Test Exception")));
+				StreamProducers.closingWithError(new Exception("Test Exception")));
 
 		StreamFileWriter writer = StreamFileWriter.create(eventloop, executor, Paths.get(tempFile.getAbsolutePath()));
 

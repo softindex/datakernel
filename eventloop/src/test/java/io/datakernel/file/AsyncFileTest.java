@@ -31,7 +31,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.Executors;
 
-import static io.datakernel.async.AsyncCallbacks.assertBiConsumer;
+import static io.datakernel.async.Stages.assertBiConsumer;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.nio.file.StandardOpenOption.READ;

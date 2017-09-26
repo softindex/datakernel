@@ -18,15 +18,12 @@ package io.datakernel.logfs;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.StreamConsumerDecorator;
-import io.datakernel.stream.StreamConsumerSwitcher;
-import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.*;
 import org.joda.time.format.DateTimeFormatter;
 
 import java.util.concurrent.CompletionStage;
 
-public final class LogStreamChunker extends StreamConsumerDecorator<ByteBuf> implements StreamDataReceiver<ByteBuf> {
+public final class LogStreamChunker extends StreamConsumerDecorator<ByteBuf, Void> implements StreamDataReceiver<ByteBuf> {
 	private final Eventloop eventloop;
 	private final StreamConsumerSwitcher<ByteBuf> switcher;
 
@@ -40,7 +37,6 @@ public final class LogStreamChunker extends StreamConsumerDecorator<ByteBuf> imp
 	private LogStreamChunker(Eventloop eventloop, StreamConsumerSwitcher<ByteBuf> switcher,
 	                         LogFileSystem fileSystem, DateTimeFormatter datetimeFormat,
 	                         String logPartition) {
-		super(switcher);
 		this.eventloop = eventloop;
 		this.switcher = switcher;
 		this.datetimeFormat = datetimeFormat;
@@ -53,6 +49,7 @@ public final class LogStreamChunker extends StreamConsumerDecorator<ByteBuf> imp
 	                                       String logPartition) {
 		StreamConsumerSwitcher<ByteBuf> switcher = StreamConsumerSwitcher.create(eventloop);
 		LogStreamChunker chunker = new LogStreamChunker(eventloop, switcher, fileSystem, datetimeFormat, logPartition);
+		chunker.setActualConsumer(switcher);
 		long timestamp = eventloop.currentTimeMillis();
 		String chunkName = datetimeFormat.print(timestamp);
 		chunker.startNewChunk(chunkName);
@@ -72,7 +69,7 @@ public final class LogStreamChunker extends StreamConsumerDecorator<ByteBuf> imp
 	}
 
 	@Override
-	protected StreamDataReceiver<ByteBuf> onReceiver(StreamDataReceiver<ByteBuf> dataReceiver) {
+	protected StreamDataReceiver<ByteBuf> onProduce(StreamDataReceiver<ByteBuf> dataReceiver) {
 		this.dataReceiver = dataReceiver;
 		return this;
 	}
@@ -82,7 +79,7 @@ public final class LogStreamChunker extends StreamConsumerDecorator<ByteBuf> imp
 		CompletionStage<StreamConsumerWithResult<ByteBuf, Void>> stage = fileSystem.makeUniqueLogFile(logPartition, newChunkName).thenCompose(logFile ->
 				fileSystem.write(logPartition, logFile));
 
-		switcher.switchTo(StreamConsumerWithResult.ofStage(stage));
+		switcher.switchTo(StreamConsumers.ofStageWithResult(stage));
 	}
 
 }

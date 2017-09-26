@@ -85,8 +85,11 @@ class StressClient {
 					StreamConsumerWithResult<ByteBuf, Void> consumer = client.uploadStream(fileName);
 					producer.streamTo(consumer);
 					consumer.getResult().whenComplete(($, throwable) -> {
-						if (throwable == null) logger.info("Uploaded: " + fileName);
-						else logger.info("Failed to upload: {}", throwable.getMessage());
+						if (throwable == null) {
+							logger.info("Uploaded: " + fileName);
+						} else {
+							logger.info("Failed to upload: {}", throwable.getMessage());
+						}
 					});
 				} catch (IOException e) {
 					logger.info(e.getMessage());
@@ -135,7 +138,7 @@ class StressClient {
 				int index = rand.nextInt(existingClientFiles.size());
 				final String fileName = existingClientFiles.get(index);
 
-				client.delete(fileName).whenComplete((aVoid, throwable) -> {
+				client.delete(fileName).whenComplete(($, throwable) -> {
 					if (throwable == null) {
 						existingClientFiles.remove(fileName);
 						logger.info("Deleted: " + fileName);
@@ -148,8 +151,11 @@ class StressClient {
 
 		// list file
 		operations.add(() -> client.list().whenComplete((strings, throwable) -> {
-			if (throwable == null) logger.info("Listed: " + strings.size());
-			else logger.info("Failed to list files: {}", throwable.getMessage());
+			if (throwable == null) {
+				logger.info("Listed: " + strings.size());
+			} else {
+				logger.info("Failed to list files: {}", throwable.getMessage());
+			}
 		}));
 
 	}

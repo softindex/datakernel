@@ -101,7 +101,10 @@ public final class AsyncFile {
 	 */
 	public static CompletionStage<Void> delete(Eventloop eventloop, ExecutorService executor,
 	                                           final Path path) {
-		return eventloop.runConcurrentlyWithException(executor, () -> Files.delete(path));
+		return eventloop.callConcurrently(executor, () -> {
+			Files.delete(path);
+			return null;
+		});
 	}
 
 	public static CompletionStage<Long> length(Eventloop eventloop, ExecutorService executor, final Path path) {
@@ -121,7 +124,10 @@ public final class AsyncFile {
 	 */
 	public static CompletionStage<Void> move(Eventloop eventloop, ExecutorService executor,
 	                                         final Path source, final Path target, final CopyOption[] options) {
-		return eventloop.runConcurrentlyWithException(executor, () -> Files.move(source, target, options));
+		return eventloop.callConcurrently(executor, () -> {
+			Files.move(source, target, options);
+			return null;
+		});
 	}
 
 	/**
@@ -133,8 +139,10 @@ public final class AsyncFile {
 	 */
 	public static CompletionStage<Void> createDirectory(Eventloop eventloop, ExecutorService executor,
 	                                                    final Path dir, @Nullable final FileAttribute<?>[] attrs) {
-		return eventloop.runConcurrentlyWithException(executor, () ->
-				Files.createDirectory(dir, attrs == null ? new FileAttribute<?>[0] : attrs));
+		return eventloop.callConcurrently(executor, () -> {
+			Files.createDirectory(dir, attrs == null ? new FileAttribute<?>[0] : attrs);
+			return null;
+		});
 	}
 
 	/**
@@ -146,8 +154,10 @@ public final class AsyncFile {
 	 */
 	public static CompletionStage<Void> createDirectories(Eventloop eventloop, ExecutorService executor,
 	                                                      final Path dir, @Nullable final FileAttribute<?>[] attrs) {
-		return eventloop.runConcurrentlyWithException(executor, () ->
-				Files.createDirectories(dir, attrs == null ? new FileAttribute<?>[0] : attrs));
+		return eventloop.callConcurrently(executor, () -> {
+			Files.createDirectories(dir, attrs == null ? new FileAttribute<?>[0] : attrs);
+			return null;
+		});
 	}
 
 	/**
@@ -259,8 +269,11 @@ public final class AsyncFile {
 					}
 					writeFully(buf, position + result, tracker, cancelled).whenComplete(($, throwable) -> {
 						// TODO: improve
-						if (throwable != null) stage.setException(throwable);
-						else stage.set(null);
+						if (throwable != null) {
+							stage.setException(throwable);
+						} else {
+							stage.set(null);
+						}
 					});
 				}
 			}
@@ -323,8 +336,11 @@ public final class AsyncFile {
 					}
 					readFully(buf, position, size, tracker, cancelled).whenComplete(($, throwable) -> {
 						// TODO: improve
-						if (throwable != null) stage.setException(throwable);
-						else stage.set(null);
+						if (throwable != null) {
+							stage.setException(throwable);
+						} else {
+							stage.set(null);
+						}
 					});
 				}
 			}
@@ -380,15 +396,16 @@ public final class AsyncFile {
 		}
 
 		final ByteBuf buf = ByteBufPool.allocate((int) size);
-		return readFully(buf, 0).whenComplete((aVoid, throwable) -> {
+		return readFully(buf, 0).whenComplete(($, throwable) -> {
 			if (throwable != null) buf.recycle();
-		}).thenApply(aVoid -> buf);
+		}).thenApply($ -> buf);
 	}
 
 	public CompletionStage<Void> forceAndClose() {
-		return eventloop.runConcurrentlyWithException(executor, () -> {
+		return eventloop.callConcurrently(executor, () -> {
 			channel.force(true);
 			channel.close();
+			return null;
 		});
 	}
 
@@ -396,16 +413,22 @@ public final class AsyncFile {
 	 * Closes the channel
 	 */
 	public CompletionStage<Void> close() {
-		return eventloop.runConcurrentlyWithException(executor, channel::close);
+		return eventloop.callConcurrently(executor, () -> {
+			channel.close();
+			return null;
+		});
 	}
 
 	/**
 	 * Truncates this file to the given size.
 	 *
-	 * @param size     the new size, a non-negative byte count
+	 * @param size the new size, a non-negative byte count
 	 */
 	public CompletionStage<Void> truncate(final long size) {
-		return eventloop.runConcurrentlyWithException(executor, () -> channel.truncate(size));
+		return eventloop.callConcurrently(executor, () -> {
+			channel.truncate(size);
+			return null;
+		});
 	}
 
 	/**
@@ -415,7 +438,10 @@ public final class AsyncFile {
 	 *                 content and metadata to be written to storage; otherwise, it need only force content changes to be written
 	 */
 	public CompletionStage<Void> force(final boolean metaData) {
-		return eventloop.runConcurrentlyWithException(executor, () -> channel.force(metaData));
+		return eventloop.callConcurrently(executor, () -> {
+			channel.force(metaData);
+			return null;
+		});
 	}
 
 	public Eventloop getEventloop() {

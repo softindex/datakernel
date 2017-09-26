@@ -21,7 +21,7 @@ import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
-import io.datakernel.stream.StreamConsumers;
+import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import org.junit.Before;
@@ -56,7 +56,7 @@ public class StreamBinaryDeserializerTest {
 	public void deserializesSingleMessage() {
 		Data data = new Data("a");
 		StreamProducer<Data> producer = StreamProducers.ofValue(eventloop, data);
-		StreamConsumers.ToList<Data> consumer = StreamConsumers.toList(eventloop);
+		StreamConsumerToList<Data> consumer = StreamConsumerToList.create(eventloop);
 
 		producer.streamTo(serializer.getInput());
 		serializer.getOutput().streamTo(deserializer.getInput());
@@ -72,7 +72,7 @@ public class StreamBinaryDeserializerTest {
 	public void deserializesMultipleMessages() {
 		List<Data> inputData = asList(new Data("a"), new Data("b"), new Data("c"));
 		StreamProducer<Data> producer = StreamProducers.ofIterable(eventloop, inputData);
-		StreamConsumers.ToList<Data> consumer = StreamConsumers.toList(eventloop);
+		StreamConsumerToList<Data> consumer = StreamConsumerToList.create(eventloop);
 
 		producer.streamTo(serializer.getInput());
 		serializer.getOutput().streamTo(deserializer.getInput());
@@ -88,7 +88,7 @@ public class StreamBinaryDeserializerTest {
 	public void deserializesMultipleMessages_SplittedIntoDifferentBytebufs() {
 		List<Data> inputData = asList(new Data("a"), new Data("b"), new Data("c"));
 		StreamProducer<Data> producer = StreamProducers.ofIterable(eventloop, inputData);
-		StreamConsumers.ToList<Data> consumer = StreamConsumers.toList(eventloop);
+		StreamConsumerToList<Data> consumer = StreamConsumerToList.create(eventloop);
 
 		StreamByteChunker bufSplitter = StreamByteChunker.create(eventloop, 4, 4);
 
@@ -108,7 +108,7 @@ public class StreamBinaryDeserializerTest {
 		List<Data> inputData =
 				asList(new Data("1"), new Data("8282"), new Data("80982"), new Data("3634921"), new Data("7162"));
 		StreamProducer<Data> producer = StreamProducers.ofIterable(eventloop, inputData);
-		StreamConsumers.ToList<Data> consumer = StreamConsumers.toList(eventloop);
+		StreamConsumerToList<Data> consumer = StreamConsumerToList.create(eventloop);
 		StreamByteChunker bufSplitter = StreamByteChunker.create(eventloop, 1, 1);
 
 		producer.streamTo(serializer.getInput());

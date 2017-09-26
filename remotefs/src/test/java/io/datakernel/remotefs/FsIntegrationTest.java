@@ -17,8 +17,8 @@
 package io.datakernel.remotefs;
 
 import ch.qos.logback.classic.Level;
-import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.AsyncRunnable;
+import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
@@ -113,7 +113,7 @@ public class FsIntegrationTest {
 				return immediateStage(null);
 			});
 		}
-		runInParallel(eventloop, tasks).run().whenComplete(AsyncCallbacks.assertBiConsumer($ -> server.close()));
+		runInParallel(eventloop, tasks).run().whenComplete(Stages.assertBiConsumer($ -> server.close()));
 
 		eventloop.run();
 		executor.shutdown();
@@ -155,7 +155,7 @@ public class FsIntegrationTest {
 		final Throwable es[] = new Throwable[1];
 
 		upload(resultFile, CONTENT);
-		upload(resultFile, CONTENT).whenComplete((aVoid, throwable) -> {
+		upload(resultFile, CONTENT).whenComplete(($, throwable) -> {
 			if (throwable != null) es[0] = throwable;
 		});
 
@@ -181,7 +181,7 @@ public class FsIntegrationTest {
 								ByteBufStrings.wrapUtf8(" Test2"),
 								ByteBufStrings.wrapUtf8(" Test3"))),
 						StreamProducers.ofValue(eventloop, ByteBuf.wrapForReading(BIG_FILE)),
-						StreamProducers.closingWithError(eventloop, new SimpleException("Test exception")),
+						StreamProducers.closingWithError(new SimpleException("Test exception")),
 						StreamProducers.ofValue(eventloop, ByteBufStrings.wrapUtf8("Test4")));
 
 		StreamConsumerWithResult<ByteBuf, Void> consumer = client.uploadStream(resultFile);
@@ -309,7 +309,7 @@ public class FsIntegrationTest {
 				return producer.getResult();
 			});
 		}
-		runInParallel(eventloop, tasks).run().whenComplete(AsyncCallbacks.assertBiConsumer($ -> server.close()));
+		runInParallel(eventloop, tasks).run().whenComplete(Stages.assertBiConsumer($ -> server.close()));
 
 		eventloop.run();
 		executor.shutdown();
@@ -330,7 +330,7 @@ public class FsIntegrationTest {
 		RemoteFsServer server = createServer(eventloop, executor);
 		server.listen();
 
-		client.delete(file).whenComplete((aVoid, throwable) -> server.close());
+		client.delete(file).whenComplete(($, throwable) -> server.close());
 
 		eventloop.run();
 		executor.shutdown();
@@ -349,7 +349,7 @@ public class FsIntegrationTest {
 		server.listen();
 
 		final CompletableFuture<Void> future = client.delete(file)
-				.whenComplete((aVoid, throwable) -> server.close()).toCompletableFuture();
+				.whenComplete(($, throwable) -> server.close()).toCompletableFuture();
 
 		eventloop.run();
 		executor.shutdown();
@@ -435,7 +435,7 @@ public class FsIntegrationTest {
 		server.listen();
 
 		StreamProducerWithResult<ByteBuf, Void> producer = client.downloadStream(file, startPosition);
-		producer.streamTo(StreamConsumers.toList(eventloop, expected));
+		producer.streamTo(new StreamConsumerToList<>(eventloop, expected));
 		producer.getResult().whenComplete(($, throwable) -> {
 			server.close();
 		});

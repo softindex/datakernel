@@ -38,7 +38,7 @@ import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.sum;
 import static io.datakernel.async.SettableStage.immediateStage;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.processor.Utils.assertStatus;
+import static io.datakernel.stream.TestUtils.assertStatus;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -67,14 +67,15 @@ public class AggregationChunkerTest {
 
 			@Override
 			public <T> CompletionStage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
-				return immediateStage(StreamProducerWithResult.wrap(StreamProducers.ofIterator(eventloop, items.iterator())));
+				StreamProducer streamProducer = StreamProducers.ofIterator(eventloop, items.iterator());
+				return immediateStage(StreamProducers.withResult(streamProducer));
 			}
 
 			@Override
 			public <T> CompletionStage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
-				StreamConsumers.ToList<T> consumer = StreamConsumers.toList(eventloop, items);
+				StreamConsumerToList<T> consumer = new StreamConsumerToList<>(eventloop, items);
 				listConsumers.add(consumer);
-				return immediateStage(StreamConsumerWithResult.wrap(consumer));
+				return immediateStage(StreamConsumers.withResult(consumer));
 			}
 
 			@Override
@@ -139,14 +140,14 @@ public class AggregationChunkerTest {
 
 			@Override
 			public <T> CompletionStage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
-				return immediateStage(StreamProducerWithResult.wrap(StreamProducers.ofIterator(eventloop, items.iterator())));
+				return immediateStage(StreamProducers.withResult(StreamProducers.ofIterator(eventloop, items.iterator())));
 			}
 
 			@Override
 			public <T> CompletionStage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
-				StreamConsumers.ToList<T> consumer = StreamConsumers.toList(eventloop, items);
+				StreamConsumerToList<T> consumer = new StreamConsumerToList<>(eventloop, items);
 				listConsumers.add(consumer);
-				return immediateStage(StreamConsumerWithResult.wrap(consumer));
+				return immediateStage(StreamConsumers.withResult(consumer));
 			}
 
 			@Override
@@ -177,7 +178,7 @@ public class AggregationChunkerTest {
 						new KeyValuePair(1, 1, 2))),
 				StreamProducers.ofIterable(eventloop, asList(new KeyValuePair(1, 1, 0), new KeyValuePair(1, 2, 1),
 						new KeyValuePair(1, 1, 2))),
-				StreamProducers.<KeyValuePair>closingWithError(eventloop, new ExpectedException("Test Exception"))
+				StreamProducers.<KeyValuePair>closingWithError(new ExpectedException("Test Exception"))
 		);
 		AggregationChunker<KeyValuePair> chunker = AggregationChunker.create(eventloop,
 				structure, structure.getMeasures(), recordClass, (PartitionPredicate) AggregationUtils.singlePartition(),
@@ -217,19 +218,19 @@ public class AggregationChunkerTest {
 
 			@Override
 			public <T> CompletionStage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
-				return immediateStage(StreamProducerWithResult.wrap(StreamProducers.ofIterator(eventloop, items.iterator())));
+				return immediateStage(StreamProducers.withResult(StreamProducers.ofIterator(eventloop, items.iterator())));
 			}
 
 			@Override
 			public <T> CompletionStage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
 				if (chunkId == 1) {
-					StreamConsumers.ToList<T> toList = StreamConsumers.toList(eventloop, items);
+					StreamConsumerToList<T> toList = new StreamConsumerToList<>(eventloop, items);
 					listConsumers.add(toList);
-					return immediateStage(StreamConsumerWithResult.wrap(toList));
+					return immediateStage(StreamConsumers.withResult(toList));
 				} else {
-					StreamConsumers.ClosingWithError<T> consumer = StreamConsumers.closingWithError(eventloop, new Exception("Test Exception"));
+					StreamConsumer<T> consumer = StreamConsumers.closingWithError(new Exception("Test Exception"));
 					listConsumers.add(consumer);
-					return immediateStage(StreamConsumerWithResult.wrap(consumer));
+					return immediateStage(StreamConsumers.withResult(consumer));
 				}
 			}
 

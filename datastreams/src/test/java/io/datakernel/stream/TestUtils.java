@@ -14,24 +14,20 @@
  * limitations under the License.
  */
 
-package io.datakernel.stream.processor;
-
-import io.datakernel.stream.*;
+package io.datakernel.stream;
 
 import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 
-public class Utils {
-	private Utils() {
-	}
+public class TestUtils {
 
 	public static StreamStatus[] producerStatuses(List<? extends StreamProducer<?>> streamProducers) {
 		StreamStatus[] result = new StreamStatus[streamProducers.size()];
 		for (int i = 0; i < streamProducers.size(); i++) {
 			StreamProducer<?> streamProducer = streamProducers.get(i);
-			result[i] = ((AbstractStreamProducer<?>)streamProducer).getStatus();
+			result[i] = ((AbstractStreamProducer<?>) streamProducer).getStatus();
 		}
 		return result;
 	}
@@ -40,7 +36,7 @@ public class Utils {
 		StreamStatus[] result = new StreamStatus[streamConsumers.size()];
 		for (int i = 0; i < streamConsumers.size(); i++) {
 			StreamConsumer<?> streamConsumer = streamConsumers.get(i);
-			result[i] = ((AbstractStreamConsumer<?>)streamConsumer).getStatus();
+			result[i] = ((AbstractStreamConsumer<?>) streamConsumer).getStatus();
 		}
 		return result;
 	}
@@ -60,13 +56,25 @@ public class Utils {
 	}
 
 	public static void assertStatus(StreamStatus expectedStatus, StreamProducer<?> streamProducer) {
+		if (streamProducer instanceof StreamProducerDecorator) {
+			assertStatus(expectedStatus, ((StreamProducerDecorator) streamProducer).getActualProducer());
+			return;
+		}
+		if (expectedStatus == StreamStatus.END_OF_STREAM && streamProducer instanceof StreamProducers.EndOfStreamImpl)
+			return;
+		if (expectedStatus == StreamStatus.CLOSED_WITH_ERROR && streamProducer instanceof StreamProducers.ClosingWithErrorImpl)
+			return;
 		assertEquals(expectedStatus, ((AbstractStreamProducer<?>) streamProducer).getStatus());
 	}
 
-	public static void assertStatus(StreamStatus expectedStatus, StreamConsumer<?> streamProducer) {
-		assertEquals(expectedStatus, ((AbstractStreamConsumer<?>) streamProducer).getStatus());
+	public static void assertStatus(StreamStatus expectedStatus, StreamConsumer<?> streamConsumer) {
+		if (streamConsumer instanceof StreamConsumerDecorator) {
+			assertStatus(expectedStatus, ((StreamConsumerDecorator) streamConsumer).getActualConsumer());
+			return;
+		}
+		if (expectedStatus == StreamStatus.CLOSED_WITH_ERROR && streamConsumer instanceof StreamConsumers.ClosingWithErrorImpl)
+			return;
+		assertEquals(expectedStatus, ((AbstractStreamConsumer<?>) streamConsumer).getStatus());
 	}
-
-
 
 }

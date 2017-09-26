@@ -26,7 +26,7 @@ import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.stream.StreamConsumers;
+import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
@@ -39,7 +39,6 @@ import org.junit.Test;
 import java.net.InetSocketAddress;
 import java.util.List;
 
-import static io.datakernel.async.AsyncCallbacks.throwableToException;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
@@ -100,7 +99,7 @@ public class RpcBinaryProtocolTest {
 		client.start().whenComplete(($, throwable) -> {
 			final ResultObserver resultObserver = new ResultObserver();
 			if (throwable != null) {
-				resultObserver.setException(throwableToException(throwable));
+				resultObserver.setException(throwable);
 			} else {
 				for (int i = 0; i < countRequests; i++) {
 					client.<String, String>sendRequest(testMessage, 1000).whenComplete((s, throwable1) -> {
@@ -158,7 +157,7 @@ public class RpcBinaryProtocolTest {
 				.withMaxMessageSize(maxPacketSize);
 		StreamBinaryDeserializer<RpcMessage> deserializerServer = StreamBinaryDeserializer.create(eventloop, serializer);
 
-		StreamConsumers.ToList<RpcMessage> results = new StreamConsumers.ToList<>(eventloop);
+		StreamConsumerToList<RpcMessage> results = new StreamConsumerToList<>(eventloop);
 
 		client.streamTo(serializerClient.getInput());
 		serializerClient.getOutput().streamTo(compressorClient.getInput());

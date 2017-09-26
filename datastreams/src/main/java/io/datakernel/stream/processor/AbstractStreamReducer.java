@@ -156,8 +156,8 @@ public abstract class AbstractStreamReducer<K, O, A> implements HasOutput<O>, Ha
 		}
 
 		@Override
-		protected void onError(Exception e) {
-			output.closeWithError(e);
+		protected void onError(Throwable t) {
+			output.closeWithError(t);
 		}
 	}
 
@@ -167,8 +167,8 @@ public abstract class AbstractStreamReducer<K, O, A> implements HasOutput<O>, Ha
 		}
 
 		@Override
-		protected void onError(Exception e) {
-			inputs.forEach(input -> input.closeWithError(e));
+		protected void onError(Throwable t) {
+			inputs.forEach(input -> input.closeWithError(t));
 		}
 
 		@Override

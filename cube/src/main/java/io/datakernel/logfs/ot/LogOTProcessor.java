@@ -28,6 +28,7 @@ import io.datakernel.logfs.ot.LogDiff.LogPositionDiff;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducerWithResult;
+import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.processor.StreamUnion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -98,12 +99,8 @@ public final class LogOTProcessor<K, T, D> implements EventloopService {
 			StreamConsumerWithResult<T, List<D>> consumer = logStreamConsumer.consume();
 			producer.streamTo(consumer);
 
-			return Stages.all(producer.getResult(), consumer.getResult())
-					.thenApply(objects -> {
-						Map<String, LogPositionDiff> positions = (Map<String, LogPositionDiff>) objects[0];
-						List<D> diffs = (List<D>) objects[1];
-						return LogDiff.of(positions, diffs);
-					})
+			return Stages.tuple(producer.getResult(), consumer.getResult())
+					.thenApply(objects -> LogDiff.of(objects.getValue1(), objects.getValue2()))
 					.thenCompose(logDiff -> {
 						logger.info("Log '{}' processing complete. Positions: {}", log, logDiff.positions);
 						stateManager.add(logDiff);
@@ -133,7 +130,7 @@ public final class LogOTProcessor<K, T, D> implements EventloopService {
 				return accumulator;
 			});
 		}
-		return StreamProducerWithResult.create(streamUnion.getOutput(), result.get());
+		return StreamProducers.withResult(streamUnion.getOutput(), result.get());
 	}
 
 	private String logName(String partition) {

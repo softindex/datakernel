@@ -22,7 +22,7 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SimpleServer;
-import io.datakernel.stream.StreamConsumers;
+import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
@@ -59,7 +59,7 @@ public final class SocketStreamingConnectionTest {
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		StreamConsumers.ToList<Integer> consumerToList = StreamConsumers.toList(eventloop);
+		StreamConsumerToList<Integer> consumerToList = StreamConsumerToList.create(eventloop);
 
 		SimpleServer server = SimpleServer.create(eventloop,
 				asyncTcpSocket -> {
@@ -104,7 +104,7 @@ public final class SocketStreamingConnectionTest {
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		StreamConsumers.ToList<Integer> consumerToList = StreamConsumers.toList(eventloop);
+		StreamConsumerToList<Integer> consumerToList = StreamConsumerToList.create(eventloop);
 
 		SimpleServer server = SimpleServer.create(eventloop,
 				asyncTcpSocket -> {
@@ -123,7 +123,7 @@ public final class SocketStreamingConnectionTest {
 
 			AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
 			SocketStreamingConnection connection = SocketStreamingConnection.create(eventloop, asyncTcpSocket);
-			connection.getSocketWriter().streamFrom(streamSerializer.getOutput());
+			streamSerializer.getOutput().streamTo(connection.getSocketWriter());
 			connection.getSocketReader().streamTo(streamDeserializer.getInput());
 
 			StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());

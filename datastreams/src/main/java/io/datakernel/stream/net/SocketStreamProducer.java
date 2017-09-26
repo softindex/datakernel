@@ -58,7 +58,7 @@ final class SocketStreamProducer extends AbstractStreamProducer<ByteBuf> {
 	}
 
 	@Override
-	protected void onError(Exception e) {
+	protected void onError(Throwable t) {
 	}
 
 	public void onRead(ByteBuf buf) {

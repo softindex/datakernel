@@ -54,7 +54,7 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 			splitter.outputs.add(output);
 			output.streamTo((StreamConsumer) consumer);
 		}
-		return StreamConsumerWithResult.create(splitter.getInput(), resultsReducer.get());
+		return StreamConsumers.withResult(splitter.getInput(), resultsReducer.get());
 	}
 
 	protected abstract StreamDataReceiver<T> createSplitter();
@@ -104,8 +104,8 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 			}
 
 			@Override
-			protected void onError(Exception e) {
-				outputs.forEach(output -> output.closeWithError(e));
+			protected void onError(Throwable t) {
+				outputs.forEach(output -> output.closeWithError(t));
 			}
 		}
 
@@ -137,8 +137,8 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 			}
 
 			@Override
-			protected void onError(Exception e) {
-				input.closeWithError(e);
+			protected void onError(Throwable t) {
+				input.closeWithError(t);
 			}
 		}
 	}

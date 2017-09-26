@@ -20,7 +20,9 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducerWithResult;
+import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import io.datakernel.util.MemSize;
@@ -132,7 +134,7 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem {
 	public CompletionStage<StreamProducerWithResult<ByteBuf, Void>> read(String logPartition, LogFile logFile, long startPosition) {
 		Eventloop eventloop = getCurrentEventloop();
 		return AsyncFile.openAsync(eventloop, executorService, path(logPartition, logFile), new OpenOption[]{READ})
-				.thenApply(file -> StreamProducerWithResult.wrap(
+				.thenApply(file -> StreamProducers.withResult(
 						StreamFileReader.readFileFrom(eventloop, file, readBlockSize, startPosition)));
 	}
 
@@ -141,7 +143,7 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem {
 		Eventloop eventloop = getCurrentEventloop();
 		return AsyncFile.openAsync(eventloop, executorService, path(logPartition, logFile), StreamFileWriter.CREATE_OPTIONS).thenApply(file -> {
 			StreamFileWriter writer = StreamFileWriter.create(eventloop, file, true);
-			return StreamConsumerWithResult.create(writer, writer.getFlushStage());
+			return StreamConsumers.withResult(writer, writer.getFlushStage());
 		});
 	}
 }

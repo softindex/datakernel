@@ -21,7 +21,10 @@ import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.stream.*;
+import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducerWithResult;
+import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
 import io.datakernel.stream.processor.StreamLZ4Compressor;
@@ -110,7 +113,7 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 			Iterator<LogFile> it = logFilesToRead.iterator();
 			SettableStage<LogPosition> positionStage = SettableStage.create();
 
-			return StreamProducerWithResult.create(StreamProducers.concat(eventloop, new Iterator<StreamProducer<T>>() {
+			return StreamProducers.withResult(StreamProducers.concat(eventloop, new Iterator<StreamProducer<T>>() {
 				private int n;
 
 				private LogFile currentLogFile;
@@ -156,7 +159,7 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 								producer.streamTo(decompressor.getInput());
 								decompressor.getOutput().streamTo(deserializer.getInput());
 
-								return StreamProducers.closingOnError(deserializer.getOutput());
+								return StreamProducers.endOfStreamOnError(deserializer.getOutput());
 							});
 
 					return StreamProducers.ofStage(stage);

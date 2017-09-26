@@ -18,14 +18,10 @@ package io.datakernel.cube.http;
 
 import com.google.common.base.Charsets;
 import com.google.gson.TypeAdapter;
-import com.google.gson.Gson;
 import io.datakernel.aggregation.AggregationPredicate;
 import io.datakernel.aggregation.QueryException;
-import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.SettableStage;
 import io.datakernel.cube.*;
-import io.datakernel.cube.*;
-import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
 import io.datakernel.util.Stopwatch;
 import io.datakernel.utils.GsonAdapters.TypeAdapterRegistryImpl;
@@ -84,11 +80,9 @@ public final class ReportingServiceServlet implements AsyncServlet {
 		try {
 			final Stopwatch totalTimeStopwatch = Stopwatch.createStarted();
 			final CubeQuery cubeQuery = parseQuery(httpRequest);
-			final SettableStage<QueryResult> stage = SettableStage.create();
-			cube.query(cubeQuery, AsyncCallbacks.resultToStage(stage));
-			return stage.thenApply(result -> {
+			return cube.query(cubeQuery).thenApply(queryResult -> {
 				Stopwatch resultProcessingStopwatch = Stopwatch.createStarted();
-				String json = getQueryResultJson().toJson(result);
+				String json = getQueryResultJson().toJson(queryResult);
 				HttpResponse httpResponse = createResponse(json);
 				logger.info("Processed request {} ({}) [totalTime={}, jsonConstruction={}]", httpRequest,
 						cubeQuery, totalTimeStopwatch, resultProcessingStopwatch);
@@ -110,6 +104,7 @@ public final class ReportingServiceServlet implements AsyncServlet {
 		response.addHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
 		return response;
 	}
+
 	private static HttpResponse createErrorResponse(String body) {
 		HttpResponse response = HttpResponse.ofCode(400);
 		response.setContentType(ContentType.of(MediaTypes.PLAIN_TEXT, Charsets.UTF_8));

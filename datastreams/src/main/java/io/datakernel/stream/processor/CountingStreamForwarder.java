@@ -87,9 +87,9 @@ public class CountingStreamForwarder<T> implements StreamTransformer<T, T>, Stre
 		}
 
 		@Override
-		protected void onError(Exception e) {
-			output.getConsumer().closeWithError(e);
-			resultStage.setException(e);
+		protected void onError(Throwable t) {
+			output.getConsumer().closeWithError(t);
+			resultStage.setException(t);
 		}
 	}
 
@@ -110,8 +110,8 @@ public class CountingStreamForwarder<T> implements StreamTransformer<T, T>, Stre
 		}
 
 		@Override
-		protected void onError(Exception e) {
-			input.getProducer().closeWithError(e);
+		protected void onError(Throwable t) {
+			input.getProducer().closeWithError(t);
 		}
 	}
 

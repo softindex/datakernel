@@ -22,11 +22,12 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
-import static io.datakernel.stream.processor.Utils.assertStatus;
+import static io.datakernel.stream.TestUtils.assertStatus;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
@@ -36,12 +37,13 @@ public class StreamConsumerDecoratorTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		List<Integer> list = new ArrayList<>();
-		final TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
-		StreamConsumerDecorator<Integer> consumerDecorator = new StreamConsumerDecorator<Integer>(consumer) {};
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.oneByOne(eventloop, list);
+		StreamConsumerDecorator<Integer, Void> consumerDecorator = new StreamConsumerDecorator<Integer, Void>() {};
+		consumerDecorator.setActualConsumer(consumer);
 
 		StreamProducer<Integer> producer = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, asList(1, 2, 3)),
-				StreamProducers.closingWithError(eventloop, new Exception("Test Exception")));
+				StreamProducers.closingWithError(new Exception("Test Exception")));
 
 		producer.streamTo(consumerDecorator);
 		eventloop.run();
@@ -52,19 +54,20 @@ public class StreamConsumerDecoratorTest {
 	}
 
 	@Test
-	public void test1() {
+	public void test1() throws Exception {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		List<Integer> list = new ArrayList<>();
-		final StreamConsumers.ToList<Integer> consumer = StreamConsumers.toList(eventloop, list);
-		StreamConsumerDecorator<Integer> decorator = new StreamConsumerDecorator<Integer>(consumer) {};
+		StreamConsumerWithResult<Integer, List<Integer>> consumer = new StreamConsumerToList<>(eventloop);
+		CompletableFuture<List<Integer>> listFuture = consumer.getResult().toCompletableFuture();
+		StreamConsumerDecorator<Integer, Void> decorator = new StreamConsumerDecorator<Integer, Void>() {};
+		decorator.setActualConsumer(consumer);
 		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
 
 		producer.streamTo(decorator);
 
 		eventloop.run();
 
-		assertEquals(list, asList(1, 2, 3, 4, 5));
+		assertEquals(listFuture.get(), asList(1, 2, 3, 4, 5));
 		assertStatus(END_OF_STREAM, producer);
 		assertStatus(END_OF_STREAM, consumer);
 	}

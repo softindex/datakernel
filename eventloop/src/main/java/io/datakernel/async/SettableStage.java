@@ -53,6 +53,36 @@ public final class SettableStage<T> extends AbstractCompletionStage<T> {
 		}
 	}
 
+	public void set(T result, Throwable throwable) {
+		if (throwable == null) {
+			set(result);
+		} else {
+			setException(throwable);
+		}
+	}
+
+	public boolean trySet(T result) {
+		if (isSet()) return false;
+		set(result);
+		return true;
+	}
+
+	public boolean trySetException(Throwable t) {
+		if (isSet()) return false;
+		setException(t);
+		return true;
+	}
+
+	public boolean trySet(T result, Throwable throwable) {
+		if (isSet()) return false;
+		if (throwable == null) {
+			set(result);
+		} else {
+			setException(throwable);
+		}
+		return true;
+	}
+
 	public void postResult(Eventloop eventloop, T result) {
 		eventloop.post(() -> set(result));
 	}
@@ -71,13 +101,26 @@ public final class SettableStage<T> extends AbstractCompletionStage<T> {
 		});
 	}
 
+	public void trySetStage(CompletionStage<T> stage) {
+		stage.whenComplete((t, throwable) -> {
+			if (throwable == null) {
+				trySet(t);
+			} else {
+				trySetException(throwable);
+			}
+		});
+	}
+
 	@Override
 	protected <X> CompletionStage<X> subscribe(NextCompletionStage<T, X> next) {
 		if (isSet()) {
 			if (this.next == null) {
 				getCurrentEventloop().post(() -> {
-					if (exception == null) complete(value);
-					else completeExceptionally(exception);
+					if (exception == null) {
+						complete(value);
+					} else {
+						completeExceptionally(exception);
+					}
 
 					value = null;
 					exception = null;

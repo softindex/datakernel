@@ -18,7 +18,9 @@ package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
-import io.datakernel.stream.*;
+import io.datakernel.stream.StreamConsumerToList;
+import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducers;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -28,7 +30,7 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamProducers.concat;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
-import static io.datakernel.stream.processor.Utils.assertStatus;
+import static io.datakernel.stream.TestUtils.assertStatus;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
@@ -41,7 +43,7 @@ public class StreamFunctionTest {
 		StreamFunction<Integer, Integer> streamFunction = StreamFunction.create(eventloop, input -> input * input);
 
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
-		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending(eventloop);
 
 		source1.streamTo(streamFunction.getInput());
 		streamFunction.getOutput().streamTo(consumer);
@@ -63,7 +65,7 @@ public class StreamFunctionTest {
 
 		List<Integer> list = new ArrayList<>();
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
-		TestStreamConsumers.TestConsumerToList<Integer> consumer = new TestStreamConsumers.TestConsumerToList<Integer>(eventloop, list) {
+		StreamConsumerToList<Integer> consumer = new StreamConsumerToList<Integer>(eventloop, list) {
 			@Override
 			public void onData(Integer item) {
 				list.add(item);
@@ -89,24 +91,23 @@ public class StreamFunctionTest {
 	}
 
 	@Test
-	public void testFunctionProducerError() {
+	public void testFunctionProducerError() throws Exception {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamFunction<Integer, Integer> streamFunction = StreamFunction.create(eventloop, input -> input * input);
 
-		List<Integer> list = new ArrayList<>();
 		StreamProducer<Integer> source1 = concat(eventloop,
 				StreamProducers.ofIterable(eventloop, asList(1, 2, 3)),
 				StreamProducers.ofIterable(eventloop, asList(4, 5, 6)),
-				StreamProducers.closingWithError(eventloop, new ExpectedException("Test Exception")));
+				StreamProducers.closingWithError(new ExpectedException("Test Exception")));
 
-		StreamConsumers.ToList<Integer> consumer = StreamConsumers.toList(eventloop, list);
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(eventloop);
 
 		source1.streamTo(streamFunction.getInput());
 		streamFunction.getOutput().streamTo(consumer);
 		eventloop.run();
 
-		assertEquals(asList(1, 4, 9, 16, 25, 36), list);
+		assertEquals(asList(1, 4, 9, 16, 25, 36), consumer.getList());
 
 		assertStatus(CLOSED_WITH_ERROR, consumer.getProducer());
 		assertStatus(CLOSED_WITH_ERROR, streamFunction.getInput());
@@ -120,7 +121,7 @@ public class StreamFunctionTest {
 		StreamFunction<Integer, Integer> streamFunction = StreamFunction.create(eventloop, input -> input * input);
 
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
-		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending(eventloop);
 
 		source1.streamTo(streamFunction.getInput());
 		eventloop.run();

@@ -22,7 +22,9 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducerWithResult;
+import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
@@ -111,7 +113,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 			StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(eventloop, bufferSerializer);
 
 			decompressor.getOutput().streamTo(deserializer.getInput());
-			return StreamProducerWithResult.wrap(deserializer.getOutput());
+			return StreamProducers.withResult(deserializer.getOutput());
 		});
 	}
 
@@ -130,7 +132,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 			serializer.getOutput().streamTo(compressor.getInput());
 			compressor.getOutput().streamTo(writer);
 
-			return StreamConsumerWithResult.create(serializer.getInput(), writer.getFlushStage());
+			return StreamConsumers.withResult(serializer.getInput(), writer.getFlushStage());
 		});
 	}
 
@@ -140,7 +142,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 	}
 
 	public CompletionStage<Void> backup(final String backupId, final Set<Long> chunkIds) {
-		return eventloop.runConcurrentlyWithException(executorService, () -> {
+		return eventloop.callConcurrently(executorService, () -> {
 			Path backupDir = dir.resolve("backups/" + backupId + "/");
 			Files.createDirectories(backupDir);
 			for (long chunkId : chunkIds) {
@@ -148,11 +150,12 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 				Path link = backupDir.resolve(chunkId + LOG).toAbsolutePath();
 				Files.createSymbolicLink(link, target);
 			}
+			return null;
 		});
 	}
 
 	public CompletionStage<Void> cleanup(final Set<Long> chunkIds) {
-		return eventloop.runConcurrentlyWithException(executorService, () -> {
+		return eventloop.callConcurrently(executorService, () -> {
 			try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
 				for (Path file : stream) {
 					if (!file.toString().endsWith(LOG))
@@ -177,6 +180,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 					}
 				}
 			}
+			return null;
 		});
 	}
 }

@@ -68,7 +68,7 @@ public final class StreamSorter<K, T> implements HasInput<T>, HasOutput<T> {
 
 		this.input = new Input(eventloop);
 
-		this.temporaryStreams.addStage(input.getCompletionStage(), (accumulator, $) -> accumulator);
+		this.temporaryStreams.addStage(input.getCompletion(), (accumulator, $) -> accumulator);
 		CompletionStage<StreamProducer<T>> outputStreamStage = this.temporaryStreams.get()
 				.thenApply(streamIds -> {
 					input.list.sort(itemComparator);
@@ -78,7 +78,9 @@ public final class StreamSorter<K, T> implements HasInput<T>, HasOutput<T> {
 					} else {
 						StreamMerger<K, T> streamMerger = StreamMerger.create(eventloop, keyFunction, keyComparator, deduplicate);
 						listProducer.streamTo(streamMerger.newInput());
-						streamIds.forEach(streamId -> StreamProducerWithResult.ofStage(storage.read(streamId)).streamTo(streamMerger.newInput()));
+						streamIds.forEach(streamId ->
+								StreamProducers.ofStageWithResult(storage.read(streamId))
+										.streamTo(streamMerger.newInput()));
 						return streamMerger.getOutput();
 					}
 				});
@@ -153,7 +155,7 @@ public final class StreamSorter<K, T> implements HasInput<T>, HasOutput<T> {
 		}
 
 		@Override
-		protected void onError(Exception e) {
+		protected void onError(Throwable t) {
 			// do nothing
 		}
 	}

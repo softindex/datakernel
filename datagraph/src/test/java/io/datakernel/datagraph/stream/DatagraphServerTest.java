@@ -20,7 +20,7 @@ import com.google.common.base.Function;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Ordering;
 import com.google.common.net.InetAddresses;
-import io.datakernel.async.AsyncCallbacks;
+import io.datakernel.async.Stages;
 import io.datakernel.datagraph.dataset.Dataset;
 import io.datakernel.datagraph.dataset.LocallySortedDataset;
 import io.datakernel.datagraph.dataset.SortedDataset;
@@ -32,10 +32,9 @@ import io.datakernel.datagraph.server.*;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
-import io.datakernel.stream.StreamConsumers;
+import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.StreamSorterStorage;
-import io.datakernel.stream.processor.StreamSorterStorageImpl;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;
@@ -91,8 +90,8 @@ public class DatagraphServerTest {
 		InetSocketAddress address2 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1512);
 
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
-		StreamConsumers.ToList<TestItem> result1 = new StreamConsumers.ToList<>(eventloop);
-		StreamConsumers.ToList<TestItem> result2 = new StreamConsumers.ToList<>(eventloop);
+		StreamConsumerToList<TestItem> result1 = new StreamConsumerToList<>(eventloop);
+		StreamConsumerToList<TestItem> result2 = new StreamConsumerToList<>(eventloop);
 
 		DatagraphEnvironment environment = DatagraphEnvironment.create()
 				.setInstance(DatagraphSerialization.class, serialization);
@@ -124,9 +123,9 @@ public class DatagraphServerTest {
 		server1.listen();
 		server2.listen();
 
-		result1.getCompletionStage().whenComplete(AsyncCallbacks.assertBiConsumer(aVoid -> server1.close()));
+		result1.getResult().whenComplete(Stages.assertBiConsumer($ -> server1.close()));
 
-		result2.getCompletionStage().whenComplete(AsyncCallbacks.assertBiConsumer(aVoid -> server2.close()));
+		result2.getResult().whenComplete(Stages.assertBiConsumer($ -> server2.close()));
 
 		graph.execute();
 
@@ -143,8 +142,8 @@ public class DatagraphServerTest {
 		InetSocketAddress address2 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1512);
 
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
-		StreamConsumers.ToList<TestItem> result1 = new StreamConsumers.ToList<>(eventloop);
-		StreamConsumers.ToList<TestItem> result2 = new StreamConsumers.ToList<>(eventloop);
+		StreamConsumerToList<TestItem> result1 = new StreamConsumerToList<>(eventloop);
+		StreamConsumerToList<TestItem> result2 = new StreamConsumerToList<>(eventloop);
 
 		DatagraphClient client = new DatagraphClient(eventloop, serialization);
 
@@ -178,9 +177,9 @@ public class DatagraphServerTest {
 		server1.listen();
 		server2.listen();
 
-		result1.getCompletionStage().whenComplete(AsyncCallbacks.assertBiConsumer(aVoid -> server1.close()));
+		result1.getResult().whenComplete(Stages.assertBiConsumer($ -> server1.close()));
 
-		result2.getCompletionStage().whenComplete(AsyncCallbacks.assertBiConsumer(aVoid -> server2.close()));
+		result2.getResult().whenComplete(Stages.assertBiConsumer($ -> server2.close()));
 
 		graph.execute();
 
@@ -198,8 +197,8 @@ public class DatagraphServerTest {
 
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		DatagraphClient client = new DatagraphClient(eventloop, serialization);
-		StreamConsumers.ToList<TestItem> result1 = new StreamConsumers.ToList<>(eventloop);
-		StreamConsumers.ToList<TestItem> result2 = new StreamConsumers.ToList<>(eventloop);
+		StreamConsumerToList<TestItem> result1 = new StreamConsumerToList<>(eventloop);
+		StreamConsumerToList<TestItem> result2 = new StreamConsumerToList<>(eventloop);
 
 		DatagraphEnvironment environment = DatagraphEnvironment.create()
 				.setInstance(DatagraphSerialization.class, serialization)
@@ -244,9 +243,9 @@ public class DatagraphServerTest {
 		server1.listen();
 		server2.listen();
 
-		result1.getCompletionStage().whenComplete(AsyncCallbacks.assertBiConsumer(aVoid -> server1.close()));
+		result1.getResult().whenComplete(Stages.assertBiConsumer($ -> server1.close()));
 
-		result2.getCompletionStage().whenComplete(AsyncCallbacks.assertBiConsumer(aVoid -> server2.close()));
+		result2.getResult().whenComplete(Stages.assertBiConsumer($ -> server2.close()));
 
 		graph.execute();
 
@@ -264,7 +263,7 @@ public class DatagraphServerTest {
 
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		DatagraphClient client = new DatagraphClient(eventloop, serialization);
-		final StreamConsumers.ToList<TestItem> resultConsumer = new StreamConsumers.ToList<>(eventloop);
+		final StreamConsumerToList<TestItem> resultConsumer = new StreamConsumerToList<>(eventloop);
 
 		DatagraphEnvironment environment = DatagraphEnvironment.create()
 				.setInstance(DatagraphSerialization.class, serialization)
@@ -307,7 +306,7 @@ public class DatagraphServerTest {
 		StreamProducer<TestItem> resultProducer = collector.compile(graph);
 		resultProducer.streamTo(resultConsumer);
 
-		resultConsumer.getCompletionStage().whenComplete(AsyncCallbacks.assertBiConsumer(aVoid -> {
+		resultConsumer.getResult().whenComplete(Stages.assertBiConsumer($ -> {
 			server1.close();
 			server2.close();
 		}));

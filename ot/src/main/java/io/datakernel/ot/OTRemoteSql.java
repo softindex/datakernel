@@ -110,7 +110,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 
 	@Override
 	public CompletionStage<Void> push(List<OTCommit<Integer, D>> commits) {
-		return getCurrentEventloop().runConcurrentlyWithException(executor, () -> {
+		return getCurrentEventloop().callConcurrently(executor, () -> {
 			try (Connection connection = dataSource.getConnection()) {
 				connection.setAutoCommit(false);
 
@@ -157,6 +157,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 
 				connection.commit();
 			}
+			return null;
 		});
 	}
 
