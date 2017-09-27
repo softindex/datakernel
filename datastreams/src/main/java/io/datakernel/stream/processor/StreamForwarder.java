@@ -1,129 +1,93 @@
 package io.datakernel.stream.processor;
 
+import io.datakernel.async.SettableStage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 
-public class StreamForwarder<T> implements StreamTransformer<T, T> {
+import java.util.concurrent.CompletionStage;
+
+public class StreamForwarder<T> {
 	private final Eventloop eventloop;
 
-	private Input input;
-	private Output output;
+	private final SettableStage<StreamProducer<T>> producerStage;
+	private final SettableStage<StreamConsumer<T>> consumerStage;
 
-	private boolean pendingEndOfStream;
-	private Throwable pendingException;
-	private StreamDataReceiver<T> pendingDataReceiver;
+	private final Input input;
+	private final Output output;
 
-	private StreamForwarder(Eventloop eventloop) {
+	private StreamForwarder(Eventloop eventloop,
+	                        SettableStage<StreamProducer<T>> producerStage,
+	                        SettableStage<StreamConsumer<T>> consumerStage) {
 		this.eventloop = eventloop;
+		this.producerStage = producerStage;
+		this.consumerStage = consumerStage;
 		this.input = new Input(eventloop);
 		this.output = new Output(eventloop);
+		StreamProducer<T> producer = StreamProducers.ofStage(this.producerStage);
+		StreamConsumer<T> consumer = StreamConsumers.ofStage(this.consumerStage);
+		producer.streamTo(input);
+		output.streamTo(consumer);
 	}
 
 	public static <T> StreamForwarder<T> create(Eventloop eventloop) {
-		return new StreamForwarder<>(eventloop);
+		return new StreamForwarder<>(eventloop, SettableStage.create(), SettableStage.create());
 	}
 
-	@Override
-	public StreamConsumer<T> getInput() {
-		if (input == null) {
-			input = new Input(eventloop);
-			if (pendingException != null) {
-				eventloop.post(() -> {
-					if (pendingException != null) {
-						input.closeWithError(pendingException);
-						pendingException = null;
-					}
-				});
-			} else if (pendingDataReceiver != null) {
-				eventloop.post(() -> {
-					if (pendingDataReceiver != null) {
-						input.getProducer().produce(pendingDataReceiver);
-						pendingDataReceiver = null;
-					}
-				});
-			}
-		}
-		return input;
+	public static <T> StreamForwarder<T> create(Eventloop eventloop,
+	                                             SettableStage<StreamProducer<T>> producerStage,
+	                                             SettableStage<StreamConsumer<T>> consumerStage) {
+		return new StreamForwarder<>(eventloop, producerStage, consumerStage);
 	}
 
-	@Override
-	public StreamProducer<T> getOutput() {
-		if (output == null) {
-			output = new Output(eventloop);
-			if (pendingException != null) {
-				eventloop.post(() -> {
-					if (pendingException != null) {
-						output.closeWithError(pendingException);
-						pendingException = null;
-					}
-				});
-			} else if (pendingEndOfStream) {
-				eventloop.post(() -> {
-					if (pendingEndOfStream) {
-						output.sendEndOfStream();
-						pendingEndOfStream = false;
-					}
-				});
-			}
-		}
-		return output;
+	public static <T> StreamForwarder<T> create(Eventloop eventloop,
+	                                             CompletionStage<StreamProducer<T>> producerStage,
+	                                             CompletionStage<StreamConsumer<T>> consumerStage) {
+		return new StreamForwarder<>(eventloop, SettableStage.of(producerStage), SettableStage.of(consumerStage));
 	}
 
-	private class Input extends AbstractStreamConsumer<T> {
+	public void setProducer(StreamProducer<T> producer) {
+		producerStage.set(producer);
+	}
+
+	public void setConsumer(StreamConsumer<T> consumer) {
+		consumerStage.set(consumer);
+	}
+
+	protected final class Input extends AbstractStreamConsumer<T> {
 		protected Input(Eventloop eventloop) {
 			super(eventloop);
 		}
 
 		@Override
 		protected void onEndOfStream() {
-			if (output != null) {
-				output.getConsumer().endOfStream();
-			} else {
-				pendingEndOfStream = true;
-			}
+			output.sendEndOfStream();
 		}
 
 		@Override
 		protected void onError(Throwable t) {
-			if (output != null) {
-				output.getConsumer().closeWithError(t);
-			} else {
-				pendingException = t;
-			}
+			output.closeWithError(t);
 		}
 	}
 
-	private class Output extends AbstractStreamProducer<T> {
+	protected final class Output extends AbstractStreamProducer<T> {
 		protected Output(Eventloop eventloop) {
 			super(eventloop);
 		}
 
 		@Override
-		protected void onProduce(StreamDataReceiver<T> dataReceiver) {
-			if (input != null) {
-				pendingDataReceiver = null;
-				input.getProducer().produce(dataReceiver);
-			} else {
-				pendingDataReceiver = dataReceiver;
-			}
-		}
-
-		@Override
 		protected void onSuspended() {
-			if (input != null) {
-				input.getProducer().suspend();
-			} else {
-				pendingDataReceiver = null;
-			}
+			input.getProducer().suspend();
 		}
 
 		@Override
 		protected void onError(Throwable t) {
-			if (input != null) {
-				input.getProducer().closeWithError(t);
-			} else {
-				pendingException = t;
-			}
+			input.closeWithError(t);
+		}
+
+		@SuppressWarnings("unchecked")
+		@Override
+		protected void onProduce(StreamDataReceiver<T> dataReceiver) {
+			input.getProducer().produce(dataReceiver);
 		}
 	}
 

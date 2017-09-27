@@ -30,11 +30,11 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.processor.StreamForwarder;
 import io.datakernel.stream.net.Messaging;
 import io.datakernel.stream.net.MessagingSerializer;
 import io.datakernel.stream.net.MessagingWithBinaryStreaming;
 import io.datakernel.stream.processor.StreamBinarySerializer;
+import io.datakernel.stream.processor.StreamForwarder;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -89,7 +89,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 				pendingStreams.put(streamId, forwarder);
 			}
 			StreamConsumerWithResult<ByteBuf, Void> consumer = messaging.sendBinaryStream();
-			forwarder.getOutput().streamTo(consumer);
+			forwarder.setConsumer(consumer);
 			consumer.getResult().whenComplete(($, throwable) -> {
 				if (throwable != null) {
 					logger.warn("Exception occurred while trying to send data");
@@ -126,7 +126,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 			forwarder = StreamForwarder.create(eventloop);
 			pendingStreams.put(streamId, forwarder);
 		}
-		streamSerializer.getOutput().streamTo(forwarder.getInput());
+		forwarder.setProducer(streamSerializer.getOutput());
 		return streamSerializer.getInput();
 	}
 

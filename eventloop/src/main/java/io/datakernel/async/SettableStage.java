@@ -21,6 +21,12 @@ public final class SettableStage<T> extends AbstractCompletionStage<T> {
 		return new SettableStage<>();
 	}
 
+	public static <T> SettableStage<T> of(CompletionStage<T> stage) {
+		SettableStage<T> settableStage = new SettableStage<>();
+		settableStage.setStage(stage);
+		return settableStage;
+	}
+
 	public void set(T result) {
 		assert !isSet();
 		if (next == null) {

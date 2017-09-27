@@ -20,6 +20,7 @@ import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.graph.TaskContext;
 import io.datakernel.datagraph.server.DatagraphClient;
 import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducers;
 
 import java.net.InetSocketAddress;
 import java.util.Collection;
@@ -52,7 +53,7 @@ public final class NodeDownload<T> implements Node {
 	@Override
 	public void createAndBind(TaskContext taskContext) {
 		DatagraphClient client = taskContext.environment().getInstance(DatagraphClient.class);
-		StreamProducer<T> stream = client.download(address, streamId, type);
+		StreamProducer<T> stream = StreamProducers.ofStage(client.download(address, streamId, type));
 		taskContext.export(output, stream);
 	}
 
