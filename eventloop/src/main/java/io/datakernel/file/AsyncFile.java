@@ -194,7 +194,7 @@ public final class AsyncFile {
 	 * @param position the  file position at which the transfer is to begin; must be non-negative
 	 */
 	public CompletionStage<Integer> write(final ByteBuf buf, long position) {
-		final Eventloop.ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();
+		eventloop.startConcurrentOperation();
 		final ByteBuffer byteBuffer = buf.toReadByteBuffer();
 		final SettableStage<Integer> stage = SettableStage.create();
 		channel.write(byteBuffer, position, null, new CompletionHandler<Integer, Object>() {
@@ -202,7 +202,7 @@ public final class AsyncFile {
 			public void completed(final Integer result, Object attachment) {
 				buf.ofReadByteBuffer(byteBuffer);
 				eventloop.execute(() -> {
-					tracker.complete();
+					eventloop.completeConcurrentOperation();
 					stage.set(result);
 				});
 			}
@@ -210,7 +210,7 @@ public final class AsyncFile {
 			@Override
 			public void failed(final Throwable exc, Object attachment) {
 				eventloop.execute(() -> {
-					tracker.complete();
+					eventloop.completeConcurrentOperation();
 					stage.setException(exc instanceof Exception ? (Exception) exc : new Exception(exc));
 				});
 			}
@@ -225,7 +225,7 @@ public final class AsyncFile {
 	 * @param position the file position at which the transfer is to begin; must be non-negative
 	 */
 	public CompletionStage<Integer> read(final ByteBuf buf, long position) {
-		final Eventloop.ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();
+		eventloop.startConcurrentOperation();
 		final ByteBuffer byteBuffer = buf.toWriteByteBuffer();
 		final SettableStage<Integer> stage = SettableStage.create();
 		channel.read(byteBuffer, position, null, new CompletionHandler<Integer, Object>() {
@@ -233,7 +233,7 @@ public final class AsyncFile {
 			public void completed(final Integer bytesRead, Object attachment) {
 				buf.ofWriteByteBuffer(byteBuffer);
 				eventloop.execute(() -> {
-					tracker.complete();
+					eventloop.completeConcurrentOperation();
 					stage.set(bytesRead);
 				});
 			}
@@ -241,7 +241,7 @@ public final class AsyncFile {
 			@Override
 			public void failed(final Throwable exc, Object attachment) {
 				eventloop.execute(() -> {
-					tracker.complete();
+					eventloop.completeConcurrentOperation();
 					stage.setException(exc instanceof Exception ? (Exception) exc : new Exception(exc));
 				});
 			}
@@ -249,7 +249,7 @@ public final class AsyncFile {
 		return stage;
 	}
 
-	private CompletionStage<Void> writeFully(final ByteBuf buf, final long position, final Eventloop.ConcurrentOperationTracker tracker,
+	private CompletionStage<Void> writeFully(final ByteBuf buf, final long position,
 	                                         final AtomicBoolean cancelled) {
 		final ByteBuffer byteBuffer = buf.toReadByteBuffer();
 		final SettableStage<Void> stage = SettableStage.create();
@@ -260,15 +260,15 @@ public final class AsyncFile {
 				if (buf.readRemaining() == 0) {
 					eventloop.execute(() -> {
 						buf.recycle();
-						tracker.complete();
+						eventloop.completeConcurrentOperation();
 						stage.set(null);
 					});
 				} else {
 					if (cancelled.get()) {
-						tracker.complete();
+						eventloop.completeConcurrentOperation();
 						return;
 					}
-					writeFully(buf, position + result, tracker, cancelled).whenComplete(($, throwable) -> {
+					writeFully(buf, position + result, cancelled).whenComplete(($, throwable) -> {
 						// TODO: improve
 						if (throwable != null) {
 							stage.setException(throwable);
@@ -283,7 +283,7 @@ public final class AsyncFile {
 			public void failed(final Throwable exc, Object attachment) {
 				eventloop.execute(() -> {
 					buf.recycle();
-					tracker.complete();
+					eventloop.completeConcurrentOperation();
 					stage.setException(exc instanceof Exception ? (Exception) exc : new Exception(exc));
 				});
 			}
@@ -300,14 +300,14 @@ public final class AsyncFile {
 	 * @param position the  file position at which the transfer is to begin; must be non-negative
 	 */
 	public CompletionStage<Void> writeFully(ByteBuf byteBuf, long position) {
-		final Eventloop.ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();
-		final AtomicBoolean cancelled = new AtomicBoolean();
+		eventloop.startConcurrentOperation();
+		AtomicBoolean cancelled = new AtomicBoolean();
 		// TODO: add cancel logic
-		return writeFully(byteBuf, position, tracker, cancelled);
+		return writeFully(byteBuf, position, cancelled);
 	}
 
 	private CompletionStage<Void> readFully(final ByteBuf buf, final long position, final long size,
-	                                        final Eventloop.ConcurrentOperationTracker tracker, final AtomicBoolean cancelled) {
+	                                        final AtomicBoolean cancelled) {
 		final SettableStage<Void> stage = SettableStage.create();
 		final ByteBuffer byteBuffer = buf.toWriteByteBuffer();
 		channel.read(byteBuffer, position, null, new CompletionHandler<Integer, Object>() {
@@ -318,10 +318,10 @@ public final class AsyncFile {
 					eventloop.execute(() -> {
 						try {
 							channel.close();
-							tracker.complete();
+							eventloop.completeConcurrentOperation();
 							stage.set(null);
 						} catch (IOException e) {
-							tracker.complete();
+							eventloop.completeConcurrentOperation();
 							stage.setException(e);
 						}
 
@@ -332,10 +332,10 @@ public final class AsyncFile {
 							channel.close();
 						} catch (IOException ignore) {
 						}
-						tracker.complete();
+						eventloop.completeConcurrentOperation();
 						return;
 					}
-					readFully(buf, position, size, tracker, cancelled).whenComplete(($, throwable) -> {
+					readFully(buf, position, size, cancelled).whenComplete(($, throwable) -> {
 						// TODO: improve
 						if (throwable != null) {
 							stage.setException(throwable);
@@ -353,7 +353,7 @@ public final class AsyncFile {
 						channel.close();
 					} catch (IOException ignore) {
 					}
-					tracker.complete();
+					eventloop.completeConcurrentOperation();
 					stage.setException(exc instanceof Exception ? (Exception) exc : new Exception(exc));
 				});
 			}
@@ -378,10 +378,10 @@ public final class AsyncFile {
 			return Stages.ofException(e);
 		}
 
-		Eventloop.ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();
+		eventloop.startConcurrentOperation();
 		final AtomicBoolean cancelled = new AtomicBoolean();
 		// TODO: add cancel logic
-		return readFully(buf, position, size, tracker, cancelled);
+		return readFully(buf, position, size, cancelled);
 	}
 
 	/**

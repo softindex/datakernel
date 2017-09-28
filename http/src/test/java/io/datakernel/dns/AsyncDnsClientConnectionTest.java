@@ -16,6 +16,7 @@
 
 package io.datakernel.dns;
 
+import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.AsyncUdpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
@@ -23,24 +24,22 @@ import io.datakernel.net.DatagramSocketSettings;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.channels.DatagramChannel;
-import java.util.function.BiConsumer;
+import java.util.stream.Stream;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.Eventloop.createDatagramChannel;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 public class AsyncDnsClientConnectionTest {
 	private DnsClientConnection dnsClientConnection;
 	private Eventloop eventloop;
 	private static InetSocketAddress DNS_SERVER_ADDRESS = new InetSocketAddress("8.8.8.8", 53);
 	private static long TIMEOUT = 1000L;
-	private int answersReceived = 0;
 
 	@Before
 	public void setUp() throws Exception {
@@ -50,59 +49,34 @@ public class AsyncDnsClientConnectionTest {
 		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 	}
 
-	private class DnsResolveConsumer implements BiConsumer<DnsQueryResult, Throwable> {
+	private void print(DnsQueryResult result) {
+		InetAddress[] ips = result.getIps();
+		System.out.print("Resolved IPs for " + result.getDomainName() + ": ");
 
-		@Override
-		public void accept(DnsQueryResult result, Throwable throwable) {
-			if (throwable == null) {
-				if (result.isSuccessful()) {
-					InetAddress[] ips = result.getIps();
-
-					System.out.print("Resolved IPs for " + result.getDomainName() + ": ");
-
-					for (int i = 0; i < ips.length; ++i) {
-						System.out.print(ips[i]);
-						if (i != ips.length - 1) {
-							System.out.print(", ");
-						}
-					}
-
-					System.out.println(".");
-				} else {
-					System.out.println("Resolving IPs for " + result.getDomainName() + " failed with error code: " + result.getErrorCode());
-				}
-				++answersReceived;
-				if (answersReceived == 3) {
-					dnsClientConnection.close();
-				}
-			} else {
-				throwable.printStackTrace();
-				fail();
+		for (int i = 0; i < ips.length; ++i) {
+			System.out.print(ips[i]);
+			if (i != ips.length - 1) {
+				System.out.print(", ");
 			}
 		}
+
+		System.out.println(".");
 	}
 
 	@Test
 	public void testResolve() throws Exception {
-		eventloop.postLater(() -> {
-			try {
-				DatagramChannel datagramChannel = createDatagramChannel(DatagramSocketSettings.create(), null, null);
-				AsyncUdpSocketImpl udpSocket = AsyncUdpSocketImpl.create(eventloop, datagramChannel);
-				dnsClientConnection = DnsClientConnection.create(eventloop, udpSocket, null);
-				udpSocket.setEventHandler(dnsClientConnection);
-				udpSocket.register();
-			} catch (IOException e) {
-				e.printStackTrace();
-				fail();
-			}
-		});
+		DatagramChannel datagramChannel = createDatagramChannel(DatagramSocketSettings.create(), null, null);
+		AsyncUdpSocketImpl udpSocket = AsyncUdpSocketImpl.create(eventloop, datagramChannel);
+		dnsClientConnection = DnsClientConnection.create(eventloop, udpSocket, null);
+		udpSocket.setEventHandler(dnsClientConnection);
+		udpSocket.register();
 
-		eventloop.postLater(() -> dnsClientConnection.resolve4("www.github.com", DNS_SERVER_ADDRESS, TIMEOUT)
-				.whenComplete(new DnsResolveConsumer()));
-		eventloop.postLater(() -> dnsClientConnection.resolve4("www.kpi.ua", DNS_SERVER_ADDRESS, TIMEOUT)
-				.whenComplete(new DnsResolveConsumer()));
-		eventloop.postLater(() -> dnsClientConnection.resolve4("www.google.com", DNS_SERVER_ADDRESS, TIMEOUT)
-				.whenComplete(new DnsResolveConsumer()));
+		Stages.all(
+				Stream.of("www.github.com", "www.kpi.ua", "www.google.com")
+						.map(domain -> dnsClientConnection.resolve4(domain, DNS_SERVER_ADDRESS, TIMEOUT))
+						.collect(toList()))
+				.thenAccept(dnsQueryResults -> dnsQueryResults.forEach(this::print))
+				.whenComplete(($, throwable) -> dnsClientConnection.close());
 
 		eventloop.run();
 

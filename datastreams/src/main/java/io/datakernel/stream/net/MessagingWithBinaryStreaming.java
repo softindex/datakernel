@@ -134,7 +134,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 			return Stages.ofException(closedException);
 		}
 
-		final SettableStage<Void> stage = SettableStage.create();
+		SettableStage<Void> stage = SettableStage.create();
 		writeCallbacks.add(stage);
 		ByteBuf buf = serializer.serialize(msg);
 		asyncTcpSocket.write(buf);
@@ -150,7 +150,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 			return Stages.ofException(closedException);
 		}
 
-		final SettableStage<Void> stage = SettableStage.create();
+		SettableStage<Void> stage = SettableStage.create();
 		writeEndOfStreamRequest = true;
 		writeCallbacks.add(stage);
 		asyncTcpSocket.writeEndOfStream();

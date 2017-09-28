@@ -83,13 +83,8 @@ public final class DatagraphClient {
 						StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(eventloop, serializer);
 
 						producer.streamTo(deserializer.getInput());
-						producer.getResult().whenComplete(($_, throwable1) -> messaging.close());
+						producer.getResult().thenAccept($_ -> messaging.close());
 						return deserializer.getOutput();
-					})
-					.whenComplete(($, throwable) -> {
-						if (throwable != null) {
-							messaging.close();
-						}
 					});
 		});
 	}
@@ -104,13 +99,7 @@ public final class DatagraphClient {
 
 			DatagraphCommandExecute commandExecute = new DatagraphCommandExecute(new ArrayList<>(nodes));
 			return messaging.send(commandExecute)
-					.whenComplete(($, throwable) -> {
-						if (throwable == null) {
-							messaging.close();
-						} else {
-							messaging.close();
-						}
-					});
+					.thenAccept($ -> messaging.sendEndOfStream());
 		});
 	}
 }

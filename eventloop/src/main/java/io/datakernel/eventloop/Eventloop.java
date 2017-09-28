@@ -41,7 +41,6 @@ import java.nio.channels.*;
 import java.nio.channels.spi.SelectorProvider;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
@@ -868,23 +867,12 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 * called after completing concurrent operation.
 	 * Failure to call complete() method will prevent the event loop from exiting.
 	 */
-	public ConcurrentOperationTracker startConcurrentOperation() {
+	public void startConcurrentOperation() {
 		concurrentOperationsCount.incrementAndGet();
+	}
 
-		return new ConcurrentOperationTracker() {
-			private final AtomicBoolean complete = new AtomicBoolean(false);
-
-			@Override
-			public void complete() {
-				if (complete.compareAndSet(false, true)) {
-					if (concurrentOperationsCount.decrementAndGet() < 0) {
-						logger.error("Concurrent operations count < 0");
-					}
-				} else {
-					logger.error("Concurrent operation is already complete");
-				}
-			}
-		};
+	public void completeConcurrentOperation() {
+		concurrentOperationsCount.decrementAndGet();
 	}
 
 	public long refreshTimestampAndGet() {
@@ -911,13 +899,6 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	@Override
 	public Eventloop getEventloop() {
 		return this;
-	}
-
-	/**
-	 * Interface for reporting to Eventloop about the end of concurrent operation
-	 */
-	public interface ConcurrentOperationTracker {
-		void complete();
 	}
 
 	@Override
@@ -1005,7 +986,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	public <T> CompletionStage<T> callConcurrently(ExecutorService executor, Callable<T> callable) {
 		assert inEventloopThread();
 		SettableStage<T> stage = SettableStage.create();
-		ConcurrentOperationTracker tracker = startConcurrentOperation();
+		startConcurrentOperation();
 		// jmx
 		String taskName = callable.getClass().getName();
 		concurrentCallsStats.recordCall(taskName);
@@ -1021,7 +1002,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 					this.execute(() -> {
 						// jmx
 						updateConcurrentCallsStatsTimings(taskName, submissionStart, executingStart, executingFinish);
-						tracker.complete();
+						completeConcurrentOperation();
 						stage.set(result);
 					});
 				} catch (Exception e) {
@@ -1030,7 +1011,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 					this.execute(() -> {
 						// jmx
 						updateConcurrentCallsStatsTimings(taskName, submissionStart, executingStart, executingFinish);
-						tracker.complete();
+						completeConcurrentOperation();
 						stage.setException(e);
 					});
 				} catch (Throwable throwable) {
@@ -1040,7 +1021,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		} catch (RejectedExecutionException e) {
 			// jmx
 			concurrentCallsStats.recordRejectedCall(taskName);
-			tracker.complete();
+			completeConcurrentOperation();
 			stage.setException(e);
 		}
 		return stage;
