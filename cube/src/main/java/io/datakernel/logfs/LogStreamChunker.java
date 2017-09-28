@@ -21,8 +21,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 import org.joda.time.format.DateTimeFormatter;
 
-import java.util.concurrent.CompletionStage;
-
 public final class LogStreamChunker extends StreamConsumerDecorator<ByteBuf, Void> implements StreamDataReceiver<ByteBuf> {
 	private final Eventloop eventloop;
 	private final StreamConsumerSwitcher<ByteBuf> switcher;
@@ -33,6 +31,7 @@ public final class LogStreamChunker extends StreamConsumerDecorator<ByteBuf, Voi
 
 	private String currentChunkName;
 	private StreamDataReceiver<ByteBuf> dataReceiver;
+	private StreamConsumerWithResult<ByteBuf, Void> currentConsumer;
 
 	private LogStreamChunker(Eventloop eventloop, StreamConsumerSwitcher<ByteBuf> switcher,
 	                         LogFileSystem fileSystem, DateTimeFormatter datetimeFormat,
@@ -45,11 +44,12 @@ public final class LogStreamChunker extends StreamConsumerDecorator<ByteBuf, Voi
 	}
 
 	public static LogStreamChunker create(Eventloop eventloop,
-	                                       LogFileSystem fileSystem, DateTimeFormatter datetimeFormat,
-	                                       String logPartition) {
+	                                      LogFileSystem fileSystem, DateTimeFormatter datetimeFormat,
+	                                      String logPartition) {
 		StreamConsumerSwitcher<ByteBuf> switcher = StreamConsumerSwitcher.create(eventloop);
 		LogStreamChunker chunker = new LogStreamChunker(eventloop, switcher, fileSystem, datetimeFormat, logPartition);
-		chunker.setActualConsumer(switcher);
+		chunker.setActualConsumer(switcher, chunker.getCompletion()
+				.thenCompose(aVoid -> chunker.currentConsumer.getResult()));
 		long timestamp = eventloop.currentTimeMillis();
 		String chunkName = datetimeFormat.print(timestamp);
 		chunker.startNewChunk(chunkName);
@@ -76,10 +76,10 @@ public final class LogStreamChunker extends StreamConsumerDecorator<ByteBuf, Voi
 
 	private void startNewChunk(String newChunkName) {
 		currentChunkName = newChunkName;
-		CompletionStage<StreamConsumerWithResult<ByteBuf, Void>> stage = fileSystem.makeUniqueLogFile(logPartition, newChunkName).thenCompose(logFile ->
-				fileSystem.write(logPartition, logFile));
-
-		switcher.switchTo(StreamConsumers.ofStageWithResult(stage));
+		currentConsumer = StreamConsumers.ofStageWithResult(fileSystem
+				.makeUniqueLogFile(logPartition, newChunkName)
+				.thenCompose(logFile -> fileSystem.write(logPartition, logFile)));
+		switcher.switchTo(currentConsumer);
 	}
 
 }

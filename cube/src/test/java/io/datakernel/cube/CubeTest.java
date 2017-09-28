@@ -25,6 +25,7 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.bean.*;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.FatalErrorHandlers;
 import io.datakernel.remotefs.RemoteFsServer;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamConsumerWithResult;
@@ -43,6 +44,8 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
+import static com.google.common.base.Functions.identity;
+import static com.google.common.collect.Maps.toMap;
 import static io.datakernel.aggregation.AggregationPredicates.*;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.sum;
@@ -611,6 +614,34 @@ public class CubeTest {
 		query = AggregationPredicates.and(AggregationPredicates.has("dimensionX"), AggregationPredicates.between("date", 10, 290)).simplify();
 		intersection = AggregationPredicates.and(query, aggregationPredicate).simplify();
 		assertFalse(intersection.equals(query));
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testUnknownDimensions() throws IOException {
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+		final AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(),
+				new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
+
+		final Cube cube = newCube(eventloop, newCachedThreadPool(), DefiningClassLoader.create(), chunkStorage);
+
+		cube.consume(DataItem1.class,
+				toMap(asList("unknownKey"), identity()),
+				toMap(asList("metric1", "metric2", "metric3"), identity()),
+				AggregationPredicates.alwaysTrue());
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testUnknownMeasure() throws IOException {
+		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+		final AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(),
+				new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
+
+		final Cube cube = newCube(eventloop, newCachedThreadPool(), DefiningClassLoader.create(), chunkStorage);
+
+		cube.consume(DataItem1.class,
+				toMap(asList("key1", "key2"), identity()),
+				toMap(asList("UnknownMetric"), identity()),
+				AggregationPredicates.alwaysTrue());
 	}
 
 }

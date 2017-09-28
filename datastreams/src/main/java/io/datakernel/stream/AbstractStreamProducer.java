@@ -92,7 +92,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	}
 
 	public final void send(T item) {
-		currentDataReceiver.onData(item);
+		lastDataReceiver.onData(item);
 	}
 
 	@Nullable

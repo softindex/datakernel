@@ -18,16 +18,18 @@ package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.*;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.stream.StreamProducers.ofIterable;
+import static io.datakernel.stream.StreamProducers.withResult;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.TestUtils.assertProducerStatuses;
@@ -37,11 +39,16 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class StreamSplitterTest {
+	private Eventloop eventloop;
+
+	@Before
+	public void before() {
+		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+	}
+
 	@Test
 	public void test1() throws Exception {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
-
-		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
+		StreamProducer<Integer> source = ofIterable(eventloop, asList(1, 2, 3));
 		StreamSplitter<Integer> streamConcat = StreamSplitter.create(eventloop);
 		StreamConsumerToList<Integer> consumerToList1 = StreamConsumerToList.randomlySuspending(eventloop);
 		StreamConsumerToList<Integer> consumerToList2 = StreamConsumerToList.randomlySuspending(eventloop);
@@ -61,7 +68,7 @@ public class StreamSplitterTest {
 	public void testConsumerDisconnectWithError() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
+		StreamProducer<Integer> source = ofIterable(eventloop, asList(1, 2, 3, 4, 5));
 		StreamSplitter<Integer> streamConcat = StreamSplitter.create(eventloop);
 
 		List<Integer> toList1 = new ArrayList<>();
@@ -102,8 +109,6 @@ public class StreamSplitterTest {
 
 	@Test
 	public void testProducerDisconnectWithError() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
-
 		StreamProducer<Integer> source = StreamProducers.concat(eventloop,
 				StreamProducers.ofValue(eventloop, 1),
 				StreamProducers.ofValue(eventloop, 2),
@@ -133,5 +138,17 @@ public class StreamSplitterTest {
 
 		assertStatus(CLOSED_WITH_ERROR, splitter.getInput());
 		assertProducerStatuses(CLOSED_WITH_ERROR, splitter.getOutputs());
+	}
+
+	@Test(expected = IllegalStateException.class)
+	public void testNoOutputs() throws ExecutionException, InterruptedException {
+		final StreamSplitter<Integer> splitter = StreamSplitter.create(eventloop);
+
+		final StreamProducerWithResult<Integer, Void> producer = withResult(ofIterable(eventloop, asList(1, 2, 3, 4)));
+		producer.streamTo(splitter.getInput());
+		final CompletableFuture<Void> future = producer.getResult().toCompletableFuture();
+
+		eventloop.run();
+		future.get();
 	}
 }

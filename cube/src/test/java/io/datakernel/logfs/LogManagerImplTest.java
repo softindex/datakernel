@@ -19,7 +19,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 
-import static io.datakernel.stream.StreamConsumers.ofStage;
+import static io.datakernel.stream.StreamConsumers.ofStageWithResult;
 import static io.datakernel.stream.StreamProducers.ofIterable;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
@@ -43,7 +43,7 @@ public class LogManagerImplTest {
 
 		final List<String> values = asList("test1", "test2", "test3");
 
-		ofIterable(eventloop, values).streamTo(ofStage(logManager.consumer(testPartition)));
+		ofIterable(eventloop, values).streamTo(ofStageWithResult(logManager.consumer(testPartition)));
 
 		eventloop.run();
 

@@ -73,6 +73,11 @@ public final class StreamSplitter<T> implements HasInput<T>, HasOutputs, StreamD
 		}
 
 		@Override
+		protected void onStarted() {
+			if (outputs.isEmpty()) throw new IllegalStateException("Empty outputs");
+		}
+
+		@Override
 		protected void onEndOfStream() {
 			outputs.forEach(Output::sendEndOfStream);
 		}

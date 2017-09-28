@@ -71,6 +71,7 @@ import static io.datakernel.codegen.ExpressionComparator.rightField;
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.cube.Utils.createResultClass;
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_10_MINUTES;
+import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.Collections.sort;
@@ -517,6 +518,11 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 
 		StagesAccumulator<Map<String, AggregationDiff>> tracker = StagesAccumulator.create(new HashMap<>());
 		Map<String, AggregationPredicate> compatibleAggregations = getCompatibleAggregationsForDataInput(dimensionFields, measureFields, dataPredicate);
+		if (compatibleAggregations.size() == 0) {
+			throw new IllegalArgumentException(format("No compatible aggregation for " +
+					"dimensions fields: %s, measureFields: %s", dimensionFields, measureFields));
+		}
+
 		for (final Map.Entry<String, AggregationPredicate> aggregationToDataInputFilterPredicate : compatibleAggregations.entrySet()) {
 			final String aggregationId = aggregationToDataInputFilterPredicate.getKey();
 			final AggregationContainer aggregationContainer = aggregations.get(aggregationToDataInputFilterPredicate.getKey());
