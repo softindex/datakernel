@@ -5,6 +5,7 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 import io.datakernel.aggregation.AggregationChunk;
 import io.datakernel.aggregation.AggregationChunkJson;
+import io.datakernel.aggregation.PrimaryKey;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -26,7 +27,9 @@ public class AggregationDiffJson extends TypeAdapter<AggregationDiff> {
 	}
 
 	public static AggregationDiffJson create(AggregationStructure structure) {
-		return new AggregationDiffJson(AggregationChunkJson.create(getPrimaryKeyJson(structure)));
+		final Set<String> allowedMeasures = structure.getMeasureTypes().keySet();
+		final TypeAdapter<PrimaryKey> primaryKeyJson = getPrimaryKeyJson(structure);
+		return new AggregationDiffJson(AggregationChunkJson.create(primaryKeyJson, allowedMeasures));
 	}
 
 	@Override

@@ -27,7 +27,6 @@ import io.datakernel.logfs.ot.LogDiff.LogPositionDiff;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.StreamUnion;
-import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

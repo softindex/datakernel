@@ -32,22 +32,27 @@ import io.datakernel.logfs.ot.*;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTRemoteSql;
 import io.datakernel.ot.OTStateManager;
+import io.datakernel.ot.OTSystem;
+import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
 
 import javax.sql.DataSource;
+import java.io.IOException;
 import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Stream;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static io.datakernel.aggregation.AggregationPredicates.alwaysTrue;
@@ -58,12 +63,43 @@ import static io.datakernel.cube.Cube.AggregationConfig.id;
 import static io.datakernel.cube.CubeTestUtils.dataSource;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
+import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.reducing;
+import static org.hamcrest.core.IsInstanceOf.instanceOf;
 import static org.junit.Assert.*;
+import static org.junit.internal.matchers.ThrowableCauseMatcher.hasCause;
 
 @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
 public class CubeMeasureRemovalTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+	@Rule
+	public final ExpectedException exception = ExpectedException.none();
+
+	private Eventloop eventloop;
+	private ExecutorService executor;
+	private DefiningClassLoader classLoader;
+	private DataSource dataSource;
+	private LocalFsLogFileSystem fileSystem;
+	private AggregationChunkStorage aggregationChunkStorage;
+	private BufferSerializer<LogItem> serializer;
+	private OTSystem<LogDiff<CubeDiff>> logOTSystem;
+
+	@Before
+	public void before() throws IOException {
+		Path aggregationsDir = temporaryFolder.newFolder().toPath();
+		Path logsDir = temporaryFolder.newFolder().toPath();
+
+		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		executor = Executors.newCachedThreadPool();
+		classLoader = DefiningClassLoader.create();
+		dataSource = dataSource("test.properties");
+		fileSystem = LocalFsLogFileSystem.create(executor, logsDir);
+		aggregationChunkStorage = LocalFsChunkStorage.create(eventloop, executor, new IdGeneratorStub(), aggregationsDir);
+		serializer = SerializerBuilder.create(classLoader).build(LogItem.class);
+		logOTSystem = LogOT.createLogOT(CubeOT.createCubeOT());
+	}
 
 	@SuppressWarnings("ConstantConditions")
 	@Test
@@ -101,6 +137,7 @@ public class CubeMeasureRemovalTest {
 		OTRemoteSql<LogDiff<CubeDiff>> otSourceSql = OTRemoteSql.create(executor, dataSource, LogDiffJson.create(CubeDiffJson.create(cube)));
 		otSourceSql.truncateTables();
 		otSourceSql.push(OTCommit.ofRoot(1));
+		eventloop.run();
 
 		LogManager<LogItem> logManager = LogManagerImpl.create(eventloop,
 				LocalFsLogFileSystem.create(executor, logsDir),
@@ -201,20 +238,21 @@ public class CubeMeasureRemovalTest {
 		assertTrue(chunks.get(1).getMeasures().contains("revenue"));
 
 		// Aggregate manually
-		HashMap<Integer, Long> map = new HashMap<>();
-		aggregateToMap(map, listOfRandomLogItems);
-		aggregateToMap(map, listOfRandomLogItems2);
+		final Map<Integer, Long> map = Stream.concat(listOfRandomLogItems.stream(), listOfRandomLogItems2.stream())
+				.collect(groupingBy(o -> o.date, reducing(0L, o -> o.clicks, (v, v2) -> v + v2)));
 
 		StreamConsumers.ToList<LogItem> queryResultConsumer = new StreamConsumers.ToList<>(eventloop);
-		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(),
-				LogItem.class, DefiningClassLoader.create(classLoader)).streamTo(queryResultConsumer);
+		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(), LogItem.class, classLoader)
+				.streamTo(queryResultConsumer);
+
 		eventloop.run();
 		List<LogItem> queryResultBeforeConsolidation = queryResultConsumer.getList();
 
 		// Check query results
 		for (LogItem logItem : queryResultBeforeConsolidation) {
-			assertEquals(logItem.clicks, map.get(logItem.date).longValue());
+			assertEquals(logItem.clicks, map.remove(logItem.date).longValue());
 		}
+		assertTrue(map.isEmpty());
 
 		// Consolidate
 		CompletableFuture<CubeDiff> future1 = cube.consolidate().toCompletableFuture();
@@ -250,16 +288,134 @@ public class CubeMeasureRemovalTest {
 		}
 	}
 
-	private void aggregateToMap(Map<Integer, Long> map, List<LogItem> logItems) {
-		for (LogItem logItem : logItems) {
-			int date = logItem.date;
-			long clicks = logItem.clicks;
-			if (map.get(date) == null) {
-				map.put(date, clicks);
-			} else {
-				Long clicksForDate = map.get(date);
-				map.put(date, clicksForDate + clicks);
-			}
+	@SuppressWarnings("ConstantConditions")
+	@Test
+	public void testNewUnknownMeasureInAggregationDiffOnDeserialization() throws Throwable {
+		{
+			final Cube cube1 = Cube.create(eventloop, executor, classLoader, aggregationChunkStorage)
+					.withDimension("date", FieldTypes.ofLocalDate())
+					.withMeasure("impressions", sum(ofLong()))
+					.withMeasure("clicks", sum(ofLong()))
+					.withMeasure("conversions", sum(ofLong()))
+					.withAggregation(id("date")
+							.withDimensions("date")
+							.withMeasures("impressions", "clicks", "conversions"));
+
+			final LogDiffJson<CubeDiff> diffAdapter1 = LogDiffJson.create(CubeDiffJson.create(cube1));
+			final OTRemoteSql<LogDiff<CubeDiff>> otSourceSql1 = OTRemoteSql.create(executor, dataSource, diffAdapter1);
+			otSourceSql1.truncateTables();
+			otSourceSql1.push(OTCommit.ofRoot(1));
+			eventloop.run();
+
+			final OTStateManager<Integer, LogDiff<CubeDiff>> logCubeStateManager1 = new OTStateManager<>(eventloop,
+					logOTSystem, otSourceSql1, Integer::compare, new LogOTState<>(cube1));
+
+			final LogManager<LogItem> logManager = LogManagerImpl.create(eventloop, fileSystem, serializer);
+
+			final LogDataConsumer<LogItem, CubeDiff> logStreamConsumer1 = cube1.logStreamConsumer(LogItem.class);
+			final LogOTProcessor<Integer, LogItem, CubeDiff> logOTProcessor1 = LogOTProcessor.create(eventloop,
+					logManager, logStreamConsumer1, "testlog", asList("partitionA"), logCubeStateManager1);
+
+			logCubeStateManager1.checkout();
+			eventloop.run();
+
+			final List<LogItem> listOfRandomLogItems = LogItem.getListOfRandomLogItems(100);
+			StreamProducers.ofIterable(eventloop, listOfRandomLogItems).streamTo(logManager.consumer("partitionA"));
+			eventloop.run();
+
+			logOTProcessor1.processLog();
+			eventloop.run();
 		}
+
+		// Initialize cube with new structure (remove "clicks" from cube configuration)
+		final Cube cube2 = Cube.create(eventloop, executor, classLoader, aggregationChunkStorage)
+				.withDimension("date", FieldTypes.ofLocalDate())
+				.withMeasure("impressions", sum(ofLong()))
+				.withAggregation(id("date")
+						.withDimensions("date")
+						.withMeasures("impressions"));
+
+		final LogDiffJson<CubeDiff> diffAdapter2 = LogDiffJson.create(CubeDiffJson.create(cube2));
+		final OTRemoteSql<LogDiff<CubeDiff>> otSourceSql2 = OTRemoteSql.create(executor, dataSource, diffAdapter2);
+
+		exception.expectCause(hasCause(instanceOf(IOException.class)));
+		exception.expectMessage("Unknown fields: [clicks, conversions]");
+
+		final CompletableFuture<OTCommit<Integer, LogDiff<CubeDiff>>> future = otSourceSql2.getHeads()
+				.thenCompose(newHeads -> {
+					assertEquals(1, newHeads.size());
+					return otSourceSql2.loadCommit(newHeads.iterator().next());
+				}).toCompletableFuture();
+
+		eventloop.run();
+		future.get();
+	}
+
+	@Test
+	public void testUnknownAggregation() throws Throwable {
+		{
+			final Cube cube1 = Cube.create(eventloop, executor, classLoader, aggregationChunkStorage)
+					.withDimension("date", FieldTypes.ofLocalDate())
+					.withMeasure("impressions", sum(ofLong()))
+					.withMeasure("clicks", sum(ofLong()))
+					.withAggregation(id("date")
+							.withDimensions("date")
+							.withMeasures("impressions", "clicks"))
+					.withAggregation(id("impressionsAggregation")
+							.withDimensions("date")
+							.withMeasures("impressions"))
+					.withAggregation(id("otherAggregation")
+							.withDimensions("date")
+							.withMeasures("clicks"));
+
+			final LogDiffJson<CubeDiff> diffAdapter1 = LogDiffJson.create(CubeDiffJson.create(cube1));
+			final OTRemoteSql<LogDiff<CubeDiff>> otSourceSql1 = OTRemoteSql.create(executor, dataSource, diffAdapter1);
+			otSourceSql1.truncateTables();
+			otSourceSql1.push(OTCommit.ofRoot(1));
+			eventloop.run();
+
+			final OTStateManager<Integer, LogDiff<CubeDiff>> logCubeStateManager1 = new OTStateManager<>(eventloop,
+					logOTSystem, otSourceSql1, Integer::compare, new LogOTState<>(cube1));
+
+			final LogManager<LogItem> logManager = LogManagerImpl.create(eventloop, fileSystem, serializer);
+			final LogDataConsumer<LogItem, CubeDiff> logStreamConsumer1 = cube1.logStreamConsumer(LogItem.class);
+
+			final LogOTProcessor<Integer, LogItem, CubeDiff> logOTProcessor1 = LogOTProcessor.create(eventloop,
+					logManager, logStreamConsumer1, "testlog", asList("partitionA"), logCubeStateManager1);
+
+			logCubeStateManager1.checkout();
+			eventloop.run();
+
+			final List<LogItem> listOfRandomLogItems = LogItem.getListOfRandomLogItems(100);
+			StreamProducers.ofIterable(eventloop, listOfRandomLogItems).streamTo(logManager.consumer("partitionA"));
+			eventloop.run();
+
+			logOTProcessor1.processLog();
+			eventloop.run();
+		}
+
+		// Initialize cube with new structure (remove "impressions" aggregation from cube configuration)
+		final Cube cube2 = Cube.create(eventloop, executor, classLoader, aggregationChunkStorage)
+				.withDimension("date", FieldTypes.ofLocalDate())
+				.withMeasure("impressions", sum(ofLong()))
+				.withMeasure("clicks", sum(ofLong()))
+				.withAggregation(id("date")
+						.withDimensions("date")
+						.withMeasures("impressions", "clicks"));
+
+		final LogDiffJson<CubeDiff> diffAdapter2 = LogDiffJson.create(CubeDiffJson.create(cube2));
+		final OTRemoteSql<LogDiff<CubeDiff>> otSourceSql2 = OTRemoteSql.create(executor, dataSource, diffAdapter2);
+
+		exception.expectCause(hasCause(instanceOf(IOException.class)));
+		exception.expectMessage("Unknown aggregations: [impressionsAggregation, otherAggregation]");
+
+		final CompletableFuture<OTCommit<Integer, LogDiff<CubeDiff>>> future = otSourceSql2.getHeads()
+				.thenCompose(newHeads -> {
+					assertEquals(1, newHeads.size());
+					return otSourceSql2.loadCommit(newHeads.iterator().next());
+				}).toCompletableFuture();
+
+		eventloop.run();
+		future.get();
 	}
 }
