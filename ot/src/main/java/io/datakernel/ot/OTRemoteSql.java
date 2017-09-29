@@ -104,8 +104,8 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 		return GsonAdapters.fromJson(diffsAdapter, json);
 	}
 
-	public void push(OTCommit<Integer, D> commit) {
-		push(singletonList(commit));
+	public CompletionStage<Void> push(OTCommit<Integer, D> commit) {
+		return push(singletonList(commit));
 	}
 
 	@Override
