@@ -5,7 +5,9 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static io.datakernel.utils.GsonAdapters.STRING_JSON;
@@ -20,14 +22,16 @@ public class AggregationChunkJson extends TypeAdapter<AggregationChunk> {
 
 	private final TypeAdapter<PrimaryKey> primaryKeyTypeAdapter;
 	private final TypeAdapter<List<String>> stringListAdapter;
+	private final Set<String> allowedMeasures;
 
-	private AggregationChunkJson(TypeAdapter<PrimaryKey> primaryKeyTypeAdapter, TypeAdapter<List<String>> stringListAdapter) {
+	private AggregationChunkJson(TypeAdapter<PrimaryKey> primaryKeyTypeAdapter, TypeAdapter<List<String>> stringListAdapter, Set<String> allowedMeasures) {
 		this.primaryKeyTypeAdapter = primaryKeyTypeAdapter;
 		this.stringListAdapter = stringListAdapter;
+		this.allowedMeasures = allowedMeasures;
 	}
 
-	public static AggregationChunkJson create(TypeAdapter<PrimaryKey> primaryKeyTypeAdapter) {
-		return new AggregationChunkJson(primaryKeyTypeAdapter, ofList(STRING_JSON));
+	public static AggregationChunkJson create(TypeAdapter<PrimaryKey> primaryKeyTypeAdapter, Set<String> allowedMeasures) {
+		return new AggregationChunkJson(primaryKeyTypeAdapter, ofList(STRING_JSON), allowedMeasures);
 	}
 
 	@Override
@@ -71,9 +75,22 @@ public class AggregationChunkJson extends TypeAdapter<AggregationChunk> {
 		checkArgument(MEASURES.equals(reader.nextName()));
 		List<String> measures = stringListAdapter.read(reader);
 
+		final List<String> invalidMeasures = getInvalidMeasures(measures);
+		if (!invalidMeasures.isEmpty()) throw new IOException("Unknown fields: " + invalidMeasures);
+
 		reader.endObject();
 
 		return AggregationChunk.create(id, measures, from, to, count);
+	}
+
+	private List<String> getInvalidMeasures(List<String> measures) {
+		final List<String> invalidMeasures = new ArrayList<>();
+		for (String measure : measures) {
+			if (!allowedMeasures.contains(measure)) {
+				invalidMeasures.add(measure);
+			}
+		}
+		return invalidMeasures;
 	}
 
 }

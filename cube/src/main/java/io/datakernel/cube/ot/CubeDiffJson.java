@@ -9,8 +9,7 @@ import io.datakernel.aggregation.ot.AggregationDiffJson;
 import io.datakernel.cube.Cube;
 
 import java.io.IOException;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 
 public class CubeDiffJson extends TypeAdapter<CubeDiff> {
 	private final Map<String, AggregationDiffJson> aggregationDiffJsons;
@@ -51,10 +50,30 @@ public class CubeDiffJson extends TypeAdapter<CubeDiff> {
 		while (in.hasNext()) {
 			String aggregation = in.nextName();
 			AggregationDiffJson aggregationDiffJson = aggregationDiffJsons.get(aggregation);
+			if (aggregationDiffJson == null) {
+				in.skipValue();
+				final StringJoiner joiner = new StringJoiner(", ", "[", "]");
+				joiner.add(aggregation);
+				getUnknownAggregations(in).forEach(joiner::add);
+				throw new IOException("Unknown aggregations: " + joiner.toString());
+			}
+
 			AggregationDiff aggregationDiff = aggregationDiffJson.read(in);
 			map.put(aggregation, aggregationDiff);
 		}
 		in.endObject();
 		return CubeDiff.of(map);
+	}
+
+	private List<String> getUnknownAggregations(JsonReader in) throws IOException {
+		final ArrayList<String> list = new ArrayList<>();
+		while (in.hasNext()) {
+			final String aggregation = in.nextName();
+			in.skipValue();
+			if (!aggregationDiffJsons.containsKey(aggregation)) {
+				list.add(aggregation);
+			}
+		}
+		return list;
 	}
 }
