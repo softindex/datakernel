@@ -49,7 +49,7 @@ public class StreamMergeSorterStorageStub<T> implements StreamSorterStorage<T> {
 	public CompletionStage<StreamProducerWithResult<T, Void>> read(int partition) {
 		List<T> iterable = storage.get(partition);
 		StreamProducer<T> producer = StreamProducers.ofIterable(eventloop, iterable);
-		return Stages.of(StreamProducers.withResult(producer));
+		return Stages.of(StreamProducers.withEndOfStream(producer));
 	}
 
 	@Override

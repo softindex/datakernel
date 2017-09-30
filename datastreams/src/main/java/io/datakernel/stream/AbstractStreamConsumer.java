@@ -34,7 +34,7 @@ import static io.datakernel.stream.StreamStatus.*;
  *
  * @param <T> type of received item
  */
-public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
+public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T>, HasEndOfStream {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	protected final Eventloop eventloop;
@@ -44,7 +44,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	private StreamStatus status = READY;
 	private Throwable exception;
 
-	private final SettableStage<Void> completionStage = SettableStage.create();
+	private final SettableStage<Void> endOfStream = SettableStage.create();
 
 	private Object tag;
 
@@ -90,7 +90,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 
 		onEndOfStream();
 		eventloop.post(this::cleanup);
-		completionStage.set(null);
+		endOfStream.set(null);
 	}
 
 	protected abstract void onEndOfStream();
@@ -109,7 +109,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		producer.closeWithError(t);
 		onError(t);
 		eventloop.post(this::cleanup);
-		completionStage.setException(t);
+		endOfStream.setException(t);
 	}
 
 	protected abstract void onError(Throwable t);
@@ -125,8 +125,9 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		return exception;
 	}
 
-	public final CompletionStage<Void> getCompletion() {
-		return completionStage;
+	@Override
+	public final CompletionStage<Void> getEndOfStream() {
+		return endOfStream;
 	}
 
 	public final Object getTag() {

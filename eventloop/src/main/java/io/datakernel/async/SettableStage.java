@@ -1,7 +1,5 @@
 package io.datakernel.async;
 
-import io.datakernel.eventloop.Eventloop;
-
 import java.util.concurrent.CompletionStage;
 import java.util.function.Supplier;
 
@@ -76,14 +74,6 @@ public final class SettableStage<T> extends AbstractCompletionStage<T> {
 			setException(throwable);
 		}
 		return true;
-	}
-
-	public void postResult(Eventloop eventloop, T result) {
-		eventloop.post(() -> set(result));
-	}
-
-	public void postError(Eventloop eventloop, Throwable error) {
-		eventloop.post(() -> setException(error));
 	}
 
 	public void setStage(CompletionStage<T> stage) {

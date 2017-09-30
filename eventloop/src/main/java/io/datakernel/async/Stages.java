@@ -3,6 +3,7 @@ package io.datakernel.async;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -13,6 +14,7 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 public final class Stages {
+
 	private Stages() {
 	}
 
@@ -59,25 +61,51 @@ public final class Stages {
 		}
 	}
 
+	public static CompletionStage<Void> run(CompletionStage<?>... stages) {
+		return run(Arrays.asList(stages));
+	}
+
+	public static CompletionStage<Void> run(List<? extends CompletionStage<?>> stages) {
+		return reduce(null, (accumulator, value, index) -> {}, stages);
+	}
+
+	@SafeVarargs
+	public static <T> CompletionStage<List<T>> collect(CompletionStage<? extends T>... stages) {
+		return collect(Arrays.asList(stages));
+	}
+
 	@SuppressWarnings("unchecked")
-	public static <T> CompletionStage<T[]> all(CompletionStage<? extends T>... stages) {
-		if (stages.length == 0) {
-			return of((T[]) new Object[0]);
+	public static <T> CompletionStage<List<T>> collect(List<? extends CompletionStage<? extends T>> stages) {
+		return reduce(Arrays.asList((T[]) new Object[stages.size()]), (accumulator, value, index) -> accumulator.set(index, value), stages);
+	}
+
+	@SafeVarargs
+	public static <A, T> CompletionStage<A> reduce(A accumulator, IndexedReducer<A, T> reducer,
+	                                               CompletionStage<? extends T>... stages) {
+		return reduce(accumulator, reducer, Arrays.asList(stages));
+	}
+
+	public static <A, T> CompletionStage<A> reduce(A accumulator, IndexedReducer<A, T> reducer,
+	                                               List<? extends CompletionStage<? extends T>> stages) {
+		if (stages.size() == 0) {
+			return of(accumulator);
 		}
-		if (stages.length == 1) {
-			return stages[0].thenApply(t -> (T[]) new Object[]{t});
+		if (stages.size() == 1) {
+			return stages.get(0).thenApply(value -> {
+				reducer.accumulate(accumulator, value, 0);
+				return accumulator;
+			});
 		}
-		SettableStage<T[]> resultStage = SettableStage.create();
-		T[] results = (T[]) new Object[stages.length];
-		Counter counter = new Counter(stages.length);
-		for (int i = 0; i < stages.length; i++) {
+		SettableStage<A> resultStage = SettableStage.create();
+		Counter counter = new Counter(stages.size());
+		for (int i = 0; i < stages.size(); i++) {
 			int finalI = i;
-			stages[i].whenComplete((result, throwable) -> {
+			stages.get(i).whenComplete((result, throwable) -> {
 				if (throwable == null) {
 					if (!resultStage.isSet()) {
-						results[finalI] = result;
+						reducer.accumulate(accumulator, result, finalI);
 						if (--counter.counter == 0) {
-							resultStage.set(results);
+							resultStage.set(accumulator);
 						}
 					}
 				} else {
@@ -88,146 +116,132 @@ public final class Stages {
 		return resultStage;
 	}
 
-	@SuppressWarnings("unchecked")
-	public static <T> CompletionStage<List<T>> all(List<? extends CompletionStage<T>> stages) {
-		return all(stages.toArray((CompletionStage<T>[]) new CompletionStage[stages.size()])).thenApply(Arrays::asList);
+	public static CompletionStage<Void> runSequence(AsyncCallable<?>... stages) {
+		return runSequence(Arrays.asList(stages));
 	}
 
-	public static void tryCancel(CompletionStage<?> stage) {
-		if (stage instanceof AsyncCancellable) {
-			((AsyncCancellable) stage).cancel();
-		}
+	public static CompletionStage<Void> runSequence(Iterable<? extends AsyncCallable<?>> stages) {
+		return reduceSequence(null, (accumulator, value, index) -> {}, stages.iterator());
 	}
 
-	public static CompletionStage<Void> sequence(Iterable<StageRunnable> stages) {
-		return sequence(stages.iterator());
+	public static CompletionStage<Void> runSequence(Iterator<? extends AsyncCallable<?>> stages) {
+		return reduceSequence(null, (accumulator, value, index) -> {}, stages);
 	}
 
-	public static CompletionStage<Void> sequence(Iterator<StageRunnable> stages) {
+	@SafeVarargs
+	public static <T> CompletionStage<List<T>> collectSequence(AsyncCallable<? extends T>... stages) {
+		return collectSequence(Arrays.asList(stages));
+	}
+
+	public static <T> CompletionStage<List<T>> collectSequence(Iterable<? extends AsyncCallable<? extends T>> stages) {
+		return reduceSequence(new ArrayList<>(), (accumulator, value, index) -> accumulator.add(value), stages);
+	}
+
+	public static <T> CompletionStage<List<T>> collectSequence(Iterator<? extends AsyncCallable<? extends T>> stages) {
+		return reduceSequence(new ArrayList<>(), (accumulator, value, index) -> accumulator.add(value), stages);
+	}
+
+	@SafeVarargs
+	public static <T, A> CompletionStage<A> reduceSequence(A accumulator, IndexedReducer<A, T> reducer,
+	                                                       AsyncCallable<? extends T>... stages) {
+		return reduceSequence(accumulator, reducer, Arrays.asList(stages));
+	}
+
+	public static <T, A> CompletionStage<A> reduceSequence(A accumulator, IndexedReducer<A, T> reducer,
+	                                                       Iterable<? extends AsyncCallable<? extends T>> stages) {
+		return reduceSequence(accumulator, reducer, stages.iterator());
+	}
+
+	public static <T, A> CompletionStage<A> reduceSequence(A accumulator, IndexedReducer<A, T> reducer,
+	                                                       Iterator<? extends AsyncCallable<? extends T>> stages) {
+		return reduceSequenceImpl(accumulator, reducer, 0, stages);
+	}
+
+	private static <T, A> CompletionStage<A> reduceSequenceImpl(A accumulator, IndexedReducer<A, T> reducer, int index,
+	                                                            Iterator<? extends AsyncCallable<? extends T>> stages) {
 		if (!stages.hasNext()) {
-			return of(null);
+			return of(accumulator);
 		}
-		StageRunnable next = stages.next();
-		return next.run().thenCompose($ -> sequence(stages));
+		return stages.next().call().thenCompose(value -> {
+			reducer.accumulate(accumulator, value, index);
+			return reduceSequenceImpl(accumulator, reducer, index + 1, stages);
+		});
 	}
 
-	public static final class Tuple2<V1, V2> {
+	public static <T> Iterator<CompletionStage<T>> iterator(Iterator<AsyncCallable<T>> callables) {
+		return new Iterator<CompletionStage<T>>() {
+			@Override
+			public boolean hasNext() {
+				return callables.hasNext();
+			}
+
+			@Override
+			public CompletionStage<T> next() {
+				return callables.next().call();
+			}
+		};
+	}
+
+	public static <T> Iterable<CompletionStage<T>> iterable(Iterable<AsyncCallable<T>> callables) {
+		return () -> iterator(callables.iterator());
+	}
+
+	public static final class Pair<L, R> {
 		private int counter = 2;
-		private V1 value1;
-		private V2 value2;
+		private L left;
+		private R right;
 
-		private Tuple2() {
+		private Pair() {
 		}
 
-		public V1 getValue1() {
-			return value1;
+		public L getLeft() {
+			return left;
 		}
 
-		public V2 getValue2() {
-			return value2;
+		public R getRight() {
+			return right;
 		}
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <V1, V2> CompletionStage<Tuple2<V1, V2>> tuple(CompletionStage<V1> stage1, CompletionStage<V2> stage2) {
-		SettableStage<Tuple2<V1, V2>> resultStage = SettableStage.create();
-		Tuple2<V1, V2> results = new Tuple2<>();
-		stage1.whenComplete((result, throwable) -> {
+	public static <L, R> CompletionStage<Pair<L, R>> pair(CompletionStage<L> left, CompletionStage<R> right) {
+		SettableStage<Pair<L, R>> resultStage = SettableStage.create();
+		Pair<L, R> results = new Pair<>();
+		left.whenComplete((result, throwable) -> {
 			if (throwable == null) {
 				if (!resultStage.isSet()) {
-					results.value1 = result;
+					results.left = result;
 					if (--results.counter == 0) {
 						resultStage.set(results);
 					}
 				}
 			} else {
+				results.left = null;
+				results.right = null;
 				resultStage.trySetException(throwable);
 			}
 		});
-		stage2.whenComplete((result, throwable) -> {
+		right.whenComplete((result, throwable) -> {
 			if (throwable == null) {
 				if (!resultStage.isSet()) {
-					results.value2 = result;
+					results.right = result;
 					if (--results.counter == 0) {
 						resultStage.set(results);
 					}
 				}
 			} else {
+				results.left = null;
+				results.right = null;
 				resultStage.trySetException(throwable);
 			}
 		});
 		return resultStage;
 	}
 
-	public static final class Tuple3<V1, V2, V3> {
-		private int counter = 3;
-		private V1 value1;
-		private V2 value2;
-		private V3 value3;
-
-		private Tuple3() {
-		}
-
-		public V1 getValue1() {
-			return value1;
-		}
-
-		public V2 getValue2() {
-			return value2;
-		}
-
-		public V3 getValue3() {
-			return value3;
-		}
-	}
-
-	@SuppressWarnings("unchecked")
-	public static <V1, V2, V3> CompletionStage<Tuple3<V1, V2, V3>> tuple(CompletionStage<V1> stage1, CompletionStage<V2> stage2, CompletionStage<V3> stage3) {
-		SettableStage<Tuple3<V1, V2, V3>> resultStage = SettableStage.create();
-		Tuple3<V1, V2, V3> results = new Tuple3<>();
-		stage1.whenComplete((result, throwable) -> {
-			if (throwable == null) {
-				if (!resultStage.isSet()) {
-					results.value1 = result;
-					if (--results.counter == 0) {
-						resultStage.set(results);
-					}
-				}
-			} else {
-				resultStage.trySetException(throwable);
-			}
-		});
-		stage2.whenComplete((result, throwable) -> {
-			if (throwable == null) {
-				if (!resultStage.isSet()) {
-					results.value2 = result;
-					if (--results.counter == 0) {
-						resultStage.set(results);
-					}
-				}
-			} else {
-				resultStage.trySetException(throwable);
-			}
-		});
-		stage3.whenComplete((result, throwable) -> {
-			if (throwable == null) {
-				if (!resultStage.isSet()) {
-					results.value3 = result;
-					if (--results.counter == 0) {
-						resultStage.set(results);
-					}
-				}
-			} else {
-				resultStage.trySetException(throwable);
-			}
-		});
-		return resultStage;
-	}
-
-	public static <T> BiConsumer<T, ? super Throwable> assertBiConsumer(Consumer<T> consumer) {
+	public static <T> BiConsumer<T, ? super Throwable> assertComplete(Consumer<T> consumer) {
 		return (BiConsumer<T, Throwable>) (t, throwable) -> {
 			if (throwable != null)
-				throw new AssertionError("Fatal error in bi consumer", throwable);
+				throw new AssertionError(throwable);
 			consumer.accept(t);
 		};
 	}

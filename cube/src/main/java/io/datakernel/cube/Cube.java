@@ -540,10 +540,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 				output = filter.getOutput();
 			}
 			CompletionStage<AggregationDiff> consume = aggregation.consume(output, inputClass, aggregationKeyFields, aggregationMeasureFields);
-			tracker.addStage(consume, (accumulator, diff) -> {
-				accumulator.put(aggregationId, diff);
-				return accumulator;
-			});
+			tracker.addStage(consume, (accumulator, diff) -> accumulator.put(aggregationId, diff));
 		}
 		return StreamConsumers.withResult(streamSplitter.getInput(), tracker.get().thenApply(CubeDiff::of));
 	}
@@ -735,7 +732,6 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 				if (!result.isEmpty()) {
 					accumulator.put(aggregationId, result);
 				}
-				return accumulator;
 			});
 		}
 
@@ -1055,7 +1051,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 					tasks.add(resolveSpecifiedDimensions(resolverContainer, filterAttributes));
 				}
 			}
-			return Stages.all(tasks)
+			return Stages.run(tasks)
 					.thenApply($ -> processResults2(results, totals, filterAttributes));
 		}
 

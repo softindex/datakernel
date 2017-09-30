@@ -16,7 +16,6 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.AsyncRunnables;
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
@@ -98,22 +97,18 @@ public class GzipServletTest {
 		final AsyncHttpClient client = AsyncHttpClient.create(eventloop);
 
 		server.listen();
-		AsyncRunnables.runInSequence(eventloop,
-				() -> client.send(HttpRequest.get("http://127.0.0.1:1239")).thenAccept(response ->
-						assertNull(response.getHeader(HttpHeaders.CONTENT_ENCODING))),
-				() -> client.send(HttpRequest.get("http://127.0.0.1:1239").withAcceptEncodingGzip()).thenAccept(response ->
-						assertNotNull(response.getHeader(HttpHeaders.CONTENT_ENCODING))))
-				.run()
+		CompletableFuture<Void> future = Stages.run(
+				client.send(HttpRequest.get("http://127.0.0.1:1239"))
+						.thenAccept(response -> assertNull(response.getHeader(HttpHeaders.CONTENT_ENCODING))),
+				client.send(HttpRequest.get("http://127.0.0.1:1239").withAcceptEncodingGzip())
+						.thenAccept(response -> assertNotNull(response.getHeader(HttpHeaders.CONTENT_ENCODING))))
 				.whenComplete(($, throwable) -> {
-					if (throwable != null) {
-						throwable.printStackTrace();
-						fail("should not end here");
-					} else {
-						server.close();
-						client.stop();
-					}
-				});
+					server.close();
+					client.stop();
+				})
+				.toCompletableFuture();
 		eventloop.run();
+		future.get();
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}

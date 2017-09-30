@@ -68,14 +68,14 @@ public class AggregationChunkerTest {
 			@Override
 			public <T> CompletionStage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
 				StreamProducer streamProducer = StreamProducers.ofIterator(eventloop, items.iterator());
-				return Stages.of(StreamProducers.withResult(streamProducer));
+				return Stages.of(StreamProducers.withEndOfStream(streamProducer));
 			}
 
 			@Override
 			public <T> CompletionStage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
 				StreamConsumerToList<T> consumer = new StreamConsumerToList<>(eventloop, items);
 				listConsumers.add(consumer);
-				return Stages.of(StreamConsumers.withResult(consumer));
+				return Stages.of(StreamConsumers.withEndOfStream(consumer));
 			}
 
 			@Override
@@ -140,14 +140,14 @@ public class AggregationChunkerTest {
 
 			@Override
 			public <T> CompletionStage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
-				return Stages.of(StreamProducers.withResult(StreamProducers.ofIterator(eventloop, items.iterator())));
+				return Stages.of(StreamProducers.withEndOfStream(StreamProducers.ofIterator(eventloop, items.iterator())));
 			}
 
 			@Override
 			public <T> CompletionStage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
 				StreamConsumerToList<T> consumer = new StreamConsumerToList<>(eventloop, items);
 				listConsumers.add(consumer);
-				return Stages.of(StreamConsumers.withResult(consumer));
+				return Stages.of(StreamConsumers.withEndOfStream(consumer));
 			}
 
 			@Override
@@ -218,7 +218,7 @@ public class AggregationChunkerTest {
 
 			@Override
 			public <T> CompletionStage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
-				return Stages.of(StreamProducers.withResult(StreamProducers.ofIterator(eventloop, items.iterator())));
+				return Stages.of(StreamProducers.withEndOfStream(StreamProducers.ofIterator(eventloop, items.iterator())));
 			}
 
 			@Override
@@ -226,11 +226,11 @@ public class AggregationChunkerTest {
 				if (chunkId == 1) {
 					StreamConsumerToList<T> toList = new StreamConsumerToList<>(eventloop, items);
 					listConsumers.add(toList);
-					return Stages.of(StreamConsumers.withResult(toList));
+					return Stages.of(StreamConsumers.withEndOfStream(toList));
 				} else {
 					StreamConsumer<T> consumer = StreamConsumers.closingWithError(new Exception("Test Exception"));
 					listConsumers.add(consumer);
-					return Stages.of(StreamConsumers.withResult(consumer));
+					return Stages.of(StreamConsumers.withEndOfStream(consumer));
 				}
 			}
 

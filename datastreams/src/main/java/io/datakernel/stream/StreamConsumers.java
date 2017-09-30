@@ -62,9 +62,32 @@ public final class StreamConsumers {
 		return decorator;
 	}
 
-	public static <T> StreamConsumerWithResult<T, Void> withResult(StreamConsumer<T> consumer) {
+	public static <T> StreamConsumerWithResult<T, Void> withEndOfStream(StreamConsumer<T> consumer) {
+		if (consumer instanceof HasEndOfStream) {
+			return new StreamConsumerWithResult<T, Void>() {
+				@Override
+				public void setProducer(StreamProducer<T> producer) {
+					consumer.setProducer(producer);
+				}
+
+				@Override
+				public void endOfStream() {
+					consumer.endOfStream();
+				}
+
+				@Override
+				public void closeWithError(Throwable t) {
+					consumer.closeWithError(t);
+				}
+
+				@Override
+				public CompletionStage<Void> getResult() {
+					return ((HasEndOfStream) consumer).getEndOfStream();
+				}
+			};
+		}
 		StreamConsumerDecorator<T, Void> decorator = new StreamConsumerDecorator<T, Void>() {};
-		decorator.setActualConsumer(consumer, decorator.getCompletion());
+		decorator.setActualConsumer(consumer, decorator.getEndOfStream());
 		return decorator;
 	}
 

@@ -20,7 +20,6 @@ import com.google.common.base.Function;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Ordering;
 import com.google.common.net.InetAddresses;
-import io.datakernel.async.Stages;
 import io.datakernel.datagraph.dataset.Dataset;
 import io.datakernel.datagraph.dataset.LocallySortedDataset;
 import io.datakernel.datagraph.dataset.SortedDataset;
@@ -39,6 +38,7 @@ import org.junit.Test;
 
 import java.net.InetSocketAddress;
 
+import static io.datakernel.async.Stages.assertComplete;
 import static io.datakernel.datagraph.dataset.Datasets.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
@@ -123,9 +123,9 @@ public class DatagraphServerTest {
 		server1.listen();
 		server2.listen();
 
-		result1.getResult().whenComplete(Stages.assertBiConsumer($ -> server1.close()));
+		result1.getResult().whenComplete(assertComplete($ -> server1.close()));
 
-		result2.getResult().whenComplete(Stages.assertBiConsumer($ -> server2.close()));
+		result2.getResult().whenComplete(assertComplete($ -> server2.close()));
 
 		graph.execute();
 
@@ -177,9 +177,9 @@ public class DatagraphServerTest {
 		server1.listen();
 		server2.listen();
 
-		result1.getResult().whenComplete(Stages.assertBiConsumer($ -> server1.close()));
+		result1.getResult().whenComplete(assertComplete($ -> server1.close()));
 
-		result2.getResult().whenComplete(Stages.assertBiConsumer($ -> server2.close()));
+		result2.getResult().whenComplete(assertComplete($ -> server2.close()));
 
 		graph.execute();
 
@@ -243,9 +243,9 @@ public class DatagraphServerTest {
 		server1.listen();
 		server2.listen();
 
-		result1.getResult().whenComplete(Stages.assertBiConsumer($ -> server1.close()));
+		result1.getResult().whenComplete(assertComplete($ -> server1.close()));
 
-		result2.getResult().whenComplete(Stages.assertBiConsumer($ -> server2.close()));
+		result2.getResult().whenComplete(assertComplete($ -> server2.close()));
 
 		graph.execute();
 
@@ -306,7 +306,7 @@ public class DatagraphServerTest {
 		StreamProducer<TestItem> resultProducer = collector.compile(graph);
 		resultProducer.streamTo(resultConsumer);
 
-		resultConsumer.getResult().whenComplete(Stages.assertBiConsumer($ -> {
+		resultConsumer.getResult().whenComplete(assertComplete($ -> {
 			server1.close();
 			server2.close();
 		}));

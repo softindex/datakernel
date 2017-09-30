@@ -75,15 +75,6 @@ public final class EventloopTaskScheduler implements EventloopService, Eventloop
 		return new EventloopTaskScheduler(eventloop, task);
 	}
 
-	public static EventloopTaskScheduler create(Eventloop eventloop, AsyncRunnable task) {
-		return EventloopTaskScheduler.create(eventloop, new AsyncCallable<Void>() {
-			@Override
-			public CompletionStage<Void> call() {
-				return task.run();
-			}
-		});
-	}
-
 	public EventloopTaskScheduler withInitialDelay(long initialDelayMillis) {
 		this.initialDelay = initialDelayMillis;
 		return this;

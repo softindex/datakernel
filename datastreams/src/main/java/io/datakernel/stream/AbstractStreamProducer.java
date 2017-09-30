@@ -34,7 +34,7 @@ import static io.datakernel.stream.StreamStatus.*;
  *
  * @param <T> type of received item
  */
-public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
+public abstract class AbstractStreamProducer<T> implements StreamProducer<T>, HasEndOfStream {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	protected final Eventloop eventloop;
@@ -44,7 +44,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	private StreamStatus status = SUSPENDED;
 	private Throwable exception;
 
-	private final SettableStage<Void> completionStage = SettableStage.create();
+	private final SettableStage<Void> endOfStream = SettableStage.create();
 
 	private StreamDataReceiver<T> currentDataReceiver;
 	private StreamDataReceiver<T> lastDataReceiver;
@@ -157,7 +157,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		lastDataReceiver = item -> {};
 		consumer.endOfStream();
 		eventloop.post(this::cleanup);
-		completionStage.set(null);
+		endOfStream.set(null);
 	}
 
 	@Override
@@ -176,7 +176,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		consumer.closeWithError(e);
 		onError(e);
 		eventloop.post(this::cleanup);
-		completionStage.setException(e);
+		endOfStream.setException(e);
 	}
 
 	protected abstract void onError(Throwable t);
@@ -192,8 +192,9 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		return exception;
 	}
 
-	public final CompletionStage<Void> getCompletion() {
-		return completionStage;
+	@Override
+	public final CompletionStage<Void> getEndOfStream() {
+		return endOfStream;
 	}
 
 	public final Object getTag() {

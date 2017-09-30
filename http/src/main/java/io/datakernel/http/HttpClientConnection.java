@@ -69,7 +69,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		if (inspector != null && e != null) inspector.onHttpError(this, stage == null, e);
 		readQueue.clear();
 		if (stage != null) {
-			stage.postError(eventloop, e);
+			stage.setException(e);
 			stage = null;
 		} else {
 			closeError = e;

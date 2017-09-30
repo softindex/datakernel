@@ -66,7 +66,7 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage {
 			producer.streamTo(decompressor.getInput());
 			decompressor.getOutput().streamTo(deserializer.getInput());
 
-			return StreamProducers.withResult(deserializer.getOutput());
+			return StreamProducers.withEndOfStream(deserializer.getOutput());
 		});
 	}
 

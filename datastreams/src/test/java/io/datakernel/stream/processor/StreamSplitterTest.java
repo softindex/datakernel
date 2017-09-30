@@ -29,7 +29,6 @@ import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamProducers.ofIterable;
-import static io.datakernel.stream.StreamProducers.withResult;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.TestUtils.assertProducerStatuses;
@@ -144,7 +143,7 @@ public class StreamSplitterTest {
 	public void testNoOutputs() throws ExecutionException, InterruptedException {
 		final StreamSplitter<Integer> splitter = StreamSplitter.create(eventloop);
 
-		final StreamProducerWithResult<Integer, Void> producer = withResult(ofIterable(eventloop, asList(1, 2, 3, 4)));
+		final StreamProducerWithResult<Integer, Void> producer = StreamProducers.withEndOfStream(ofIterable(eventloop, asList(1, 2, 3, 4)));
 		producer.streamTo(splitter.getInput());
 		final CompletableFuture<Void> future = producer.getResult().toCompletableFuture();
 

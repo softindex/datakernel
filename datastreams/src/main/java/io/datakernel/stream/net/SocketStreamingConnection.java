@@ -45,7 +45,7 @@ public final class SocketStreamingConnection implements AsyncTcpSocket.EventHand
 			}
 		});
 		this.socketReader = SocketStreamProducer.create(eventloop, asyncTcpSocket);
-		this.socketReader.getCompletion().whenComplete(($, throwable) -> {
+		this.socketReader.getEndOfStream().whenComplete(($, throwable) -> {
 			if (throwable != null) {
 				socketWriter.closeWithError(throwable);
 				asyncTcpSocket.close();

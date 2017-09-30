@@ -17,7 +17,6 @@
 package io.datakernel.remotefs;
 
 import ch.qos.logback.classic.Level;
-import io.datakernel.async.AsyncRunnable;
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
@@ -49,7 +48,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.async.AsyncRunnables.runInParallel;
+import static io.datakernel.async.Stages.assertComplete;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.equalsLowerCaseAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -102,16 +101,14 @@ public class FsIntegrationTest {
 		final RemoteFsClient client = createClient(eventloop);
 
 		server.listen();
-		List<AsyncRunnable> tasks = new ArrayList<>();
+		List<CompletionStage<Void>> tasks = new ArrayList<>();
 		for (int i = 0; i < files; i++) {
-			final StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrapForReading(CONTENT));
-			final int finalI = i;
-			tasks.add(() -> {
-				producer.streamTo(client.uploadStream("file" + finalI));
-				return Stages.of(null);
-			});
+			StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrapForReading(CONTENT));
+			StreamConsumerWithResult<ByteBuf, Void> consumer = client.uploadStream("file" + i);
+			producer.streamTo(consumer);
+			tasks.add(consumer.getResult());
 		}
-		runInParallel(eventloop, tasks).run().whenComplete(Stages.assertBiConsumer($ -> server.close()));
+		Stages.run(tasks).whenComplete(assertComplete($ -> server.close()));
 
 		eventloop.run();
 		executor.shutdown();
@@ -294,20 +291,14 @@ public class FsIntegrationTest {
 
 		server.listen();
 
-		List<AsyncRunnable> tasks = new ArrayList<>();
+		List<CompletionStage<Void>> tasks = new ArrayList<>();
 		for (int i = 0; i < files; i++) {
-			final int finalI = i;
-			tasks.add(() -> {
-				StreamProducerWithResult<ByteBuf, Void> producer = client.downloadStream(file, 0);
-				try {
-					producer.streamTo(StreamFileWriter.create(eventloop, executor, storage.resolve("file" + finalI)));
-				} catch (IOException e) {
-					return Stages.ofException(e);
-				}
-				return producer.getResult();
-			});
+			StreamProducerWithResult<ByteBuf, Void> producer = client.downloadStream(file, 0);
+			StreamFileWriter consumer = StreamFileWriter.create(eventloop, executor, storage.resolve("file" + i));
+			producer.streamTo(consumer);
+			tasks.add(producer.getResult());
 		}
-		runInParallel(eventloop, tasks).run().whenComplete(Stages.assertBiConsumer($ -> server.close()));
+		Stages.run(tasks).whenComplete(assertComplete($ -> server.close()));
 
 		eventloop.run();
 		executor.shutdown();

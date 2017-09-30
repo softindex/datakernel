@@ -63,14 +63,14 @@ public class AggregationGroupReducerTest {
 
 			@Override
 			public <T> CompletionStage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
-				return Stages.of(StreamProducers.withResult(StreamProducers.ofIterator(eventloop, items.iterator())));
+				return Stages.of(StreamProducers.withEndOfStream(StreamProducers.ofIterator(eventloop, items.iterator())));
 			}
 
 			@Override
 			public <T> CompletionStage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
 				StreamConsumerToList consumer = new StreamConsumerToList<>(eventloop, items);
 				listConsumers.add(consumer);
-				return Stages.of(StreamConsumers.withResult(consumer));
+				return Stages.of(StreamConsumers.withEndOfStream(consumer));
 			}
 
 			@Override

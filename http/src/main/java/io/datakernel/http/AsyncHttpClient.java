@@ -415,7 +415,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	public void onConnectionClosed() {
 		connectionsCount--;
 		if (connectionsCount == 0 && closeStage != null) {
-			closeStage.postResult(eventloop, null);
+			closeStage.set(null);
 			closeStage = null;
 		}
 	}
@@ -430,7 +430,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		keepAliveTimeoutMillis = 0;
 		if (connectionsCount == 0) {
 			assert poolReading.isEmpty() && poolWriting.isEmpty();
-			stage.postResult(eventloop, null);
+			stage.set(null);
 		} else {
 			this.closeStage = stage;
 		}

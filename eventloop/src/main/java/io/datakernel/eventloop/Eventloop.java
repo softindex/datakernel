@@ -18,7 +18,6 @@ package io.datakernel.eventloop;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncCallable;
-import io.datakernel.async.AsyncRunnable;
 import io.datakernel.async.SettableStage;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.SimpleException;
@@ -892,10 +891,6 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		return timestamp;
 	}
 
-	public String getThreadName() {
-		return (eventloopThread == null) ? null : eventloopThread.getName();
-	}
-
 	@Override
 	public Eventloop getEventloop() {
 		return this;
@@ -903,17 +898,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 	@Override
 	public CompletableFuture<Void> submit(final Runnable runnable) {
-		return submit(runnable, null);
-	}
-
-	@Override
-	public CompletableFuture<Void> submit(AsyncRunnable asyncRunnable) {
-		return submit(asyncRunnable, null);
-	}
-
-	@Override
-	public <T> CompletableFuture<T> submit(final Runnable runnable, final T result) {
-		final CompletableFuture<T> future = new CompletableFuture<>();
+		final CompletableFuture<Void> future = new CompletableFuture<>();
 		execute(() -> {
 			Exception exception = null;
 			try {
@@ -922,24 +907,11 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 				exception = e;
 			}
 			if (exception == null) {
-				future.complete(result);
+				future.complete(null);
 			} else {
 				future.completeExceptionally(exception);
 			}
 		});
-		return future;
-	}
-
-	@Override
-	public <T> CompletableFuture<T> submit(final AsyncRunnable asyncRunnable, final T result) {
-		final CompletableFuture<T> future = new CompletableFuture<>();
-		execute(() -> asyncRunnable.run().whenComplete(($, throwable) -> {
-			if (throwable == null) {
-				future.complete(result);
-			} else {
-				future.completeExceptionally(throwable);
-			}
-		}));
 		return future;
 	}
 

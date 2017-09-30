@@ -113,7 +113,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 			StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(eventloop, bufferSerializer);
 
 			decompressor.getOutput().streamTo(deserializer.getInput());
-			return StreamProducers.withResult(deserializer.getOutput());
+			return StreamProducers.withEndOfStream(deserializer.getOutput());
 		});
 	}
 

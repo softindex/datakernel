@@ -48,7 +48,7 @@ public final class LogStreamChunker extends StreamConsumerDecorator<ByteBuf, Voi
 	                                      String logPartition) {
 		StreamConsumerSwitcher<ByteBuf> switcher = StreamConsumerSwitcher.create(eventloop);
 		LogStreamChunker chunker = new LogStreamChunker(eventloop, switcher, fileSystem, datetimeFormat, logPartition);
-		chunker.setActualConsumer(switcher, chunker.getCompletion()
+		chunker.setActualConsumer(switcher, chunker.getEndOfStream()
 				.thenCompose(aVoid -> chunker.currentConsumer.getResult()));
 		long timestamp = eventloop.currentTimeMillis();
 		String chunkName = datetimeFormat.print(timestamp);

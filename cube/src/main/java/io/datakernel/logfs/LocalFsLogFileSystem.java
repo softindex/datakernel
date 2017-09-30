@@ -134,7 +134,7 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem {
 	public CompletionStage<StreamProducerWithResult<ByteBuf, Void>> read(String logPartition, LogFile logFile, long startPosition) {
 		Eventloop eventloop = getCurrentEventloop();
 		return AsyncFile.openAsync(eventloop, executorService, path(logPartition, logFile), new OpenOption[]{READ})
-				.thenApply(file -> StreamProducers.withResult(
+				.thenApply(file -> StreamProducers.withEndOfStream(
 						StreamFileReader.readFileFrom(eventloop, file, readBlockSize, startPosition)));
 	}
 

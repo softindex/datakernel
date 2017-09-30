@@ -162,7 +162,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 					fileReader.streamTo(streamDecompressor.getInput());
 					streamDecompressor.getOutput().streamTo(streamDeserializer.getInput());
 
-					return StreamProducers.withResult(streamDeserializer.getOutput());
+					return StreamProducers.withEndOfStream(streamDeserializer.getOutput());
 				});
 	}
 

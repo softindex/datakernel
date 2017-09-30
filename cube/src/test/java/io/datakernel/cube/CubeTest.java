@@ -39,9 +39,11 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
 import static com.google.common.base.Functions.identity;
@@ -49,7 +51,7 @@ import static com.google.common.collect.Maps.toMap;
 import static io.datakernel.aggregation.AggregationPredicates.*;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.sum;
-import static io.datakernel.async.AsyncRunnables.runInParallel;
+import static io.datakernel.async.Stages.assertComplete;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
@@ -154,27 +156,24 @@ public class CubeTest {
 		AggregationChunkStorage chunkStorage = RemoteFsChunkStorage.create(eventloop, new IdGeneratorStub(), new InetSocketAddress("localhost", LISTEN_PORT));
 		final Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
-		runInParallel(eventloop,
-				() -> {
-					StreamProducer<DataItem1> producer = StreamProducers.ofIterable(eventloop, asList(
-							new DataItem1(1, 2, 10, 20),
-							new DataItem1(1, 3, 10, 20)));
-					StreamConsumerWithResult<DataItem1, CubeDiff> consumer = cube.consume(DataItem1.class);
-					producer.streamTo(consumer);
-					return consumer.getResult().thenAccept(cube::apply);
-				},
-				() -> {
-					StreamProducer<DataItem2> producer = StreamProducers.ofIterable(eventloop, asList(
-							new DataItem2(1, 3, 10, 20),
-							new DataItem2(1, 4, 10, 20)));
-					StreamConsumerWithResult<DataItem2, CubeDiff> consumer = cube.consume(DataItem2.class);
-					producer.streamTo(consumer);
-					return consumer.getResult().thenAccept(cube::apply);
-				}
-		).run().whenComplete(Stages.assertBiConsumer($ -> {
-			logger.info("Streaming to RemoteFS succeeded.");
-			stop(remoteFsServer1);
-		}));
+		List<CompletionStage<Void>> tasks = new ArrayList<>();
+		{
+			StreamProducer<DataItem1> producer = StreamProducers.ofIterable(eventloop, asList(
+					new DataItem1(1, 2, 10, 20),
+					new DataItem1(1, 3, 10, 20)));
+			StreamConsumerWithResult<DataItem1, CubeDiff> consumer = cube.consume(DataItem1.class);
+			producer.streamTo(consumer);
+			tasks.add(consumer.getResult().thenAccept(cube::apply));
+		}
+		{
+			StreamProducer<DataItem2> producer = StreamProducers.ofIterable(eventloop, asList(
+					new DataItem2(1, 3, 10, 20),
+					new DataItem2(1, 4, 10, 20)));
+			StreamConsumerWithResult<DataItem2, CubeDiff> consumer = cube.consume(DataItem2.class);
+			producer.streamTo(consumer);
+			tasks.add(consumer.getResult().thenAccept(cube::apply));
+		}
+		Stages.run(tasks).whenComplete(assertComplete($ -> stop(remoteFsServer1)));
 
 		eventloop.run();
 
@@ -184,7 +183,7 @@ public class CubeTest {
 				and(eq("key1", 1), eq("key2", 3)),
 				DataItemResult.class, DefiningClassLoader.create(classLoader)
 		).streamTo(consumerToList);
-		consumerToList.getResult().whenComplete(Stages.assertBiConsumer($ -> {
+		consumerToList.getResult().whenComplete(assertComplete($ -> {
 			logger.info("Streaming query {} result from RemoteFS succeeded.");
 			stop(remoteFsServer2);
 		}));

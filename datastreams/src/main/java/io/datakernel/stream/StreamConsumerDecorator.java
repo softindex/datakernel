@@ -31,20 +31,21 @@ import static com.google.common.base.Preconditions.checkState;
  *
  * @param <T> item type
  */
-public abstract class StreamConsumerDecorator<T, X> implements StreamConsumerWithResult<T, X> {
-	private final SettableStage<Void> completionStage = SettableStage.create();
-	private final SettableStage<X> resultStage = SettableStage.create();
+public abstract class StreamConsumerDecorator<T, X> implements StreamConsumerWithResult<T, X>, HasEndOfStream {
+	private final SettableStage<Void> endOfStream = SettableStage.create();
+	private final SettableStage<X> result = SettableStage.create();
 	private StreamProducer<T> producer;
 	private StreamConsumer<T> actualConsumer;
 
 	private Throwable pendingException;
 	private boolean pendingEndOfStream;
 
-	public final void setActualConsumer(StreamConsumer<T> consumer) {
-		setActualConsumer(consumer, SettableStage.create());
+	public final void setActualConsumer(StreamConsumer<T> consumer, CompletionStage<X> consumerResult) {
+		setActualConsumer(consumer);
+		setResult(consumerResult);
 	}
 
-	public final void setActualConsumer(StreamConsumer<T> consumer, CompletionStage<X> consumerResult) {
+	public final void setActualConsumer(StreamConsumer<T> consumer) {
 		checkState(this.actualConsumer == null, "Decorator is already wired");
 		actualConsumer = consumer;
 		actualConsumer.setProducer(new StreamProducer<T>() {
@@ -71,18 +72,21 @@ public abstract class StreamConsumerDecorator<T, X> implements StreamConsumerWit
 		});
 		if (pendingException != null) {
 			actualConsumer.closeWithError(pendingException);
-			completionStage.trySetException(pendingException);
-			resultStage.trySetException(pendingException);
+			endOfStream.trySetException(pendingException);
+			result.trySetException(pendingException);
 		} else if (pendingEndOfStream) {
 			actualConsumer.endOfStream();
-			completionStage.trySet(null);
+			endOfStream.trySet(null);
 		}
-		consumerResult.whenCompleteAsync((x, throwable) -> {
+	}
+
+	public final void setResult(CompletionStage<X> result) {
+		result.whenCompleteAsync((x, throwable) -> {
 			if (throwable == null) {
-				resultStage.trySet(x);
+				this.result.trySet(x);
 			} else {
 				producer.closeWithError(throwable);
-				resultStage.trySetException(throwable);
+				this.result.trySetException(throwable);
 			}
 		});
 	}
@@ -106,7 +110,7 @@ public abstract class StreamConsumerDecorator<T, X> implements StreamConsumerWit
 	public final void endOfStream() {
 		if (actualConsumer != null) {
 			actualConsumer.endOfStream();
-			completionStage.trySet(null);
+			endOfStream.trySet(null);
 		} else {
 			pendingEndOfStream = true;
 		}
@@ -116,20 +120,21 @@ public abstract class StreamConsumerDecorator<T, X> implements StreamConsumerWit
 	public final void closeWithError(Throwable t) {
 		if (actualConsumer != null) {
 			actualConsumer.closeWithError(t);
-			completionStage.trySetException(t);
-			resultStage.trySetException(t);
+			endOfStream.trySetException(t);
+			result.trySetException(t);
 		} else {
 			pendingException = t;
 		}
 	}
 
 	@Override
-	public final CompletionStage<X> getResult() {
-		return resultStage;
+	public final CompletionStage<Void> getEndOfStream() {
+		return endOfStream;
 	}
 
-	public final CompletionStage<Void> getCompletion() {
-		return completionStage;
+	@Override
+	public final CompletionStage<X> getResult() {
+		return result;
 	}
 
 	protected StreamDataReceiver<T> onProduce(StreamDataReceiver<T> dataReceiver) {

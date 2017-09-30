@@ -18,6 +18,6 @@ package io.datakernel.stream;
 
 import java.util.concurrent.CompletionStage;
 
-public interface StreamProducerWithResult<T, X> extends StreamProducer<T> {
+public interface StreamProducerWithResult<T, X> extends StreamProducer<T>, HasStreamResult<X> {
 	CompletionStage<X> getResult();
 }

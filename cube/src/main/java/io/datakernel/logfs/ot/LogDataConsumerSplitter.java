@@ -46,10 +46,7 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 		Splitter splitter = new Splitter(eventloop, resultsReducer);
 		for (LogDataConsumer<?, D> logDataConsumer : logDataConsumers) {
 			StreamConsumerWithResult<?, List<D>> consumer = logDataConsumer.consume();
-			resultsReducer.addStage(consumer.getResult(), (accumulator, diffs) -> {
-				accumulator.addAll(diffs);
-				return accumulator;
-			});
+			resultsReducer.addStage(consumer.getResult(), List::addAll);
 			Splitter.Output<?> output = splitter.new Output<>(eventloop);
 			splitter.outputs.add(output);
 			output.streamTo((StreamConsumer) consumer);

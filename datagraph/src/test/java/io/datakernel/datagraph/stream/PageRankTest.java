@@ -46,6 +46,7 @@ import org.junit.Test;
 import java.net.InetSocketAddress;
 import java.util.Arrays;
 
+import static io.datakernel.async.Stages.assertComplete;
 import static io.datakernel.datagraph.dataset.Datasets.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
@@ -242,7 +243,7 @@ public class PageRankTest {
 		Partition partition2 = new Partition(client, address2);
 
 		final DataGraph graph = new DataGraph(serialization,
-				Arrays.asList(partition1, partition2));
+				asList(partition1, partition2));
 
 		SortedDataset<Long, Page> pages = repartition_Sort(sortedDatasetOfList("items",
 				Page.class, Long.class, Page.KEY_FUNCTION, Ordering.<Long>natural()));
@@ -255,8 +256,8 @@ public class PageRankTest {
 		server1.listen();
 		server2.listen();
 
-		Stages.all(result1.getResult(), result2.getResult())
-				.whenComplete(Stages.assertBiConsumer($ -> {
+		Stages.run(result1.getResult(), result2.getResult())
+				.whenComplete(assertComplete($ -> {
 					server1.close();
 					server2.close();
 				}));

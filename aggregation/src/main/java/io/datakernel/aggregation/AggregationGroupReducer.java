@@ -66,7 +66,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 		this.chunkSize = chunkSize;
 		this.aggregation = aggregation;
 		this.resultsTracker = StagesAccumulator.<List<AggregationChunk>>create(new ArrayList<>())
-				.withStage(this.getCompletion(), (accumulator, $) -> accumulator);
+				.withStage(this.getEndOfStream(), (accumulator, $) -> {});
 		this.classLoader = classLoader;
 	}
 
@@ -121,10 +121,8 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 				partitionPredicate, storage, classLoader);
 		producer.streamTo(chunker);
 
-		resultsTracker.addStage(chunker.getResult(), (accumulator, newChunks) -> {
-			accumulator.addAll(newChunks);
-			return accumulator;
-		}).thenAccept(aggregationChunks -> suspendOrResume());
+		resultsTracker.addStage(chunker.getResult(), List::addAll)
+				.thenAccept(aggregationChunks -> suspendOrResume());
 	}
 
 	private void suspendOrResume() {

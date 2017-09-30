@@ -222,7 +222,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		if (!running) return Stages.of(null);
 		running = false;
 		closeServerSocketChannels();
-		final SettableStage<Void> stage = SettableStage.create();
+		SettableStage<Void> stage = SettableStage.create();
 		onClose(stage);
 		return stage;
 	}
@@ -232,7 +232,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	}
 
 	protected void onClose(SettableStage<Void> stage) {
-		stage.postResult(eventloop, null);
+		stage.set(null);
 	}
 
 	public boolean isRunning() {

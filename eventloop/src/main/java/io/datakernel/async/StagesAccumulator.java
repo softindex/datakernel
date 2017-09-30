@@ -34,21 +34,17 @@ public final class StagesAccumulator<A> {
 		return new StagesAccumulator<>(initialAccumulator);
 	}
 
-	public <V> StagesAccumulator<A> withStage(CompletionStage<V> stage, final ResultReducer<A, V> reducer) {
+	public <V> StagesAccumulator<A> withStage(CompletionStage<V> stage, final Reducer<A, V> reducer) {
 		addStage(stage, reducer);
 		return this;
 	}
 
-	public interface ResultReducer<A, V> {
-		A applyResult(A accumulator, V value);
-	}
-
-	public <V> CompletionStage<V> addStage(CompletionStage<V> stage, final ResultReducer<A, V> reducer) {
+	public <V> CompletionStage<V> addStage(CompletionStage<V> stage, final Reducer<A, V> reducer) {
 		activeStages++;
 		return stage.whenComplete((result, throwable) -> {
 			if (throwable == null) {
 				if (accumulator != null) {
-					accumulator = reducer.applyResult(accumulator, result);
+					reducer.accumulate(accumulator, result);
 					assert accumulator != null;
 				}
 
@@ -71,7 +67,7 @@ public final class StagesAccumulator<A> {
 		});
 	}
 
-	public <V> SettableStage<V> newStage(final ResultReducer<A, V> reducer) {
+	public <V> SettableStage<V> newStage(final Reducer<A, V> reducer) {
 		SettableStage<V> resultStage = SettableStage.create();
 		addStage(resultStage, reducer);
 		return resultStage;

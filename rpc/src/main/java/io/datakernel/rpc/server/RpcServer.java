@@ -29,10 +29,7 @@ import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.protocol.RpcStream;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
-import io.datakernel.stream.processor.StreamLZ4Compressor;
-import io.datakernel.stream.processor.StreamLZ4Decompressor;
 import io.datakernel.util.MemSize;
 
 import java.net.InetAddress;
@@ -230,7 +227,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	protected void onClose(SettableStage<Void> stage) {
 		if (connections.size() == 0) {
 			logger.info("RpcServer is closing. Active connections count: 0.");
-			stage.postResult(eventloop, null);
+			stage.set(null);
 		} else {
 			logger.info("RpcServer is closing. Active connections count: " + connections.size());
 			for (final RpcServerConnection connection : new ArrayList<>(connections)) {

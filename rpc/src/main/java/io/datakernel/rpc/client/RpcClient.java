@@ -341,7 +341,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		serializer = serializerBuilder.withSubclasses(RpcMessage.MESSAGE_TYPES, messageTypes).build(RpcMessage.class);
 
 		if (forceStart) {
-			startStage.postResult(eventloop, null);
+			startStage.set(null);
 			RpcSender sender = strategy.createSender(pool);
 			requestSender = sender != null ? sender : new NoSenderAvailable();
 			startStage = null;
@@ -351,7 +351,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 					if (running && this.startStage != null) {
 						String errorMsg = String.format("Some of the required servers did not respond within %.1f sec",
 								connectTimeoutMillis / 1000.0);
-						this.startStage.postError(eventloop, new InterruptedException(errorMsg));
+						this.startStage.setException(new InterruptedException(errorMsg));
 						running = false;
 						this.startStage = null;
 					}
@@ -379,12 +379,12 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 
 		running = false;
 		if (startStage != null) {
-			startStage.postError(eventloop, new InterruptedException("Start aborted"));
+			startStage.setException(new InterruptedException("Start aborted"));
 			startStage = null;
 		}
 
 		if (connections.size() == 0) {
-			stage.postResult(eventloop, null);
+			stage.set(null);
 		} else {
 			stopStage = stage;
 			for (RpcClientConnection connection : new ArrayList<>(connections.values())) {
@@ -544,7 +544,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		@Override
 		public <I, O> CompletionStage<O> sendRequest(I request, int timeout) {
 			final SettableStage<O> stage = SettableStage.create();
-			stage.postError(eventloop, NO_SENDER_AVAILABLE_EXCEPTION);
+			stage.setException(NO_SENDER_AVAILABLE_EXCEPTION);
 			return stage;
 		}
 	}

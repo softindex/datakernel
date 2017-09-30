@@ -62,7 +62,7 @@ public class AsyncHttpServerTest {
 		AsyncServlet servlet = request -> {
 			final SettableStage<HttpResponse> stage = SettableStage.create();
 			final HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
-			stage.postResult(primaryEventloop, content);
+			stage.set(content);
 			return stage;
 		};
 
@@ -351,7 +351,7 @@ public class AsyncHttpServerTest {
 		AsyncServlet servlet = request -> {
 			final SettableStage<HttpResponse> stage = SettableStage.create();
 			final HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
-			stage.postResult(eventloop, content);
+			stage.set(content);
 			return stage;
 		};
 

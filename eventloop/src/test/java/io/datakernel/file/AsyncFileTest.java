@@ -31,7 +31,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.Executors;
 
-import static io.datakernel.async.Stages.assertBiConsumer;
+import static io.datakernel.async.Stages.assertComplete;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.nio.file.StandardOpenOption.READ;
@@ -49,15 +49,15 @@ public class AsyncFileTest {
 		final File tempFile = temporaryFolder.newFile("hello-2.html");
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		final Path srcPath = Paths.get("test_data/hello.html");
-		AsyncFile.openAsync(eventloop, Executors.newCachedThreadPool(), srcPath, new OpenOption[]{READ}).whenComplete(assertBiConsumer(asyncFile -> {
+		AsyncFile.openAsync(eventloop, Executors.newCachedThreadPool(), srcPath, new OpenOption[]{READ}).whenComplete(assertComplete(asyncFile -> {
 			logger.info("Opened file.");
-			asyncFile.readFully().whenComplete(assertBiConsumer(byteBuf -> {
+			asyncFile.readFully().whenComplete(assertComplete(byteBuf -> {
 				final Path destPath = Paths.get(tempFile.getAbsolutePath());
 
-				AsyncFile.openAsync(eventloop, Executors.newCachedThreadPool(), destPath, new OpenOption[]{WRITE}).whenComplete(assertBiConsumer(file -> {
+				AsyncFile.openAsync(eventloop, Executors.newCachedThreadPool(), destPath, new OpenOption[]{WRITE}).whenComplete(assertComplete(file -> {
 					logger.info("Finished reading file.");
 
-					file.writeFully(byteBuf, 0).whenComplete(assertBiConsumer($ -> {
+					file.writeFully(byteBuf, 0).whenComplete(assertComplete($ -> {
 						logger.info("Finished writing file");
 						try {
 							assertArrayEquals(Files.readAllBytes(srcPath), Files.readAllBytes(destPath));

@@ -55,7 +55,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T, List
 		this.storage = storage;
 		this.classLoader = classLoader;
 		this.chunksAccumulator = StagesAccumulator.<List<AggregationChunk>>create(new ArrayList<>())
-				.withStage(switcher.getCompletion(), (accumulator, $) -> accumulator);
+				.withStage(switcher.getEndOfStream(), (accumulator, $) -> {});
 	}
 
 	public static <T> AggregationChunker<T> create(Eventloop eventloop,
@@ -139,8 +139,9 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T, List
 		switcher.switchTo(consumer);
 
 		chunksAccumulator.addStage(consumer.getResult(), (accumulator, newChunk) -> {
-			if (newChunk != null && newChunk.getCount() != 0) accumulator.add(newChunk);
-			return accumulator;
+			if (newChunk != null && newChunk.getCount() != 0) {
+				accumulator.add(newChunk);
+			}
 		});
 	}
 

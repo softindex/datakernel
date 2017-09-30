@@ -28,7 +28,8 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import java.util.function.BiConsumer;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
@@ -481,44 +482,15 @@ public class StreamReducerTest {
 	}
 
 	@Test
-	public void testWithoutProducer() {
+	public void testWithoutProducer() throws ExecutionException, InterruptedException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		StreamReducer<Integer, Integer, Void> streamReducer = StreamReducer.<Integer, Integer, Void>create(eventloop, Ordering.natural())
-				.withBufferSize(1);
-		CheckBiConsumer checkBiConsumer = new CheckBiConsumer();
+		StreamReducer<Integer, Integer, Void> streamReducer = StreamReducer.<Integer, Integer, Void>create(eventloop, Ordering.natural()).withBufferSize(1);
 		StreamConsumerToList<Integer> toList = StreamConsumerToList.create(eventloop);
-		toList.getCompletion().whenComplete(checkBiConsumer);
-
 		streamReducer.getOutput().streamTo(toList);
+		CompletableFuture<Void> future = toList.getEndOfStream().toCompletableFuture();
 		eventloop.run();
-
-		assertTrue(checkBiConsumer.isCall());
+		future.get();
 	}
 
-	class CheckBiConsumer implements BiConsumer<Void, Throwable> {
-		private int onComplete;
-		private int onException;
-
-		@Override
-		public void accept(Void $, Throwable throwable) {
-			if (throwable == null) {
-				onComplete++;
-			} else {
-				onException++;
-			}
-		}
-
-		public int getOnComplete() {
-			return onComplete;
-		}
-
-		public int getOnException() {
-			return onException;
-		}
-
-		public boolean isCall() {
-			return (onComplete == 1 && onException == 0) || (onComplete == 0 && onException == 1);
-		}
-	}
 }

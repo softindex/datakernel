@@ -98,12 +98,12 @@ public final class LogOTProcessor<K, T, D> implements EventloopService {
 			StreamConsumerWithResult<T, List<D>> consumer = logStreamConsumer.consume();
 			producer.streamTo(consumer);
 
-			return Stages.tuple(producer.getResult(), consumer.getResult())
-					.thenApply(objects -> LogDiff.of(objects.getValue1(), objects.getValue2()))
+			return Stages.pair(producer.getResult(), consumer.getResult())
+					.thenApply(pair -> LogDiff.of(pair.getLeft(), pair.getRight()))
 					.thenCompose(logDiff -> {
 						logger.info("Log '{}' processing complete. Positions: {}", log, logDiff.positions);
 						stateManager.add(logDiff);
-						return stateManager.pull().thenCompose($2 -> stateManager.commitAndPush());
+						return stateManager.pull().thenCompose($_ -> stateManager.commitAndPush());
 					});
 		});
 	}
@@ -126,7 +126,6 @@ public final class LogOTProcessor<K, T, D> implements EventloopService {
 				if (!logPositionTo.equals(logPositionFrom)) {
 					accumulator.put(logName, new LogPositionDiff(logPositionFrom, logPositionTo));
 				}
-				return accumulator;
 			});
 		}
 		return StreamProducers.withResult(streamUnion.getOutput(), result.get());

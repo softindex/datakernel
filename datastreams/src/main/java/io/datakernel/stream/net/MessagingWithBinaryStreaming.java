@@ -164,7 +164,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 
 		writeCallbacks.clear();
 		if (closedException != null) {
-			return StreamConsumers.withResult(closingWithError(closedException));
+			return StreamConsumers.withEndOfStream(closingWithError(closedException));
 		}
 
 		socketWriter = SocketStreamConsumer.create(eventloop, asyncTcpSocket);
@@ -177,7 +177,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 
 		if (closedException != null) {
 			StreamProducer<ByteBuf> producer = StreamProducers.closingWithError(closedException);
-			return StreamProducers.withResult(producer);
+			return StreamProducers.withEndOfStream(producer);
 		}
 
 		socketReader = SocketStreamProducer.create(eventloop, asyncTcpSocket);
@@ -191,7 +191,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 				}
 			});
 		}
-		return StreamProducers.withResult(socketReader);
+		return StreamProducers.withEndOfStream(socketReader);
 	}
 
 	@Override

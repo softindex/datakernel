@@ -225,7 +225,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	void onConnectionClosed() {
 		connectionsCount--;
 		if (connectionsCount == 0 && closeStage != null) {
-			closeStage.postResult(eventloop, null);
+			closeStage.set(null);
 			closeStage = null;
 		}
 	}
@@ -235,7 +235,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		poolKeepAlive.closeAllConnections();
 		keepAliveTimeoutMillis = 0;
 		if (connectionsCount == 0) {
-			stage.postResult(eventloop, null);
+			stage.set(null);
 		} else {
 			this.closeStage = stage;
 		}

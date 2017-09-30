@@ -68,7 +68,7 @@ public final class StreamSorter<K, T> implements HasInput<T>, HasOutput<T> {
 
 		this.input = new Input(eventloop);
 
-		this.temporaryStreams.addStage(input.getCompletion(), (accumulator, $) -> accumulator);
+		this.temporaryStreams.addStage(input.getEndOfStream(), (accumulator, $) -> {});
 		CompletionStage<StreamProducer<T>> outputStreamStage = this.temporaryStreams.get()
 				.thenApply(streamIds -> {
 					input.list.sort(itemComparator);
@@ -135,10 +135,7 @@ public final class StreamSorter<K, T> implements HasInput<T>, HasOutput<T> {
 								producer.streamTo(consumer);
 								return consumer.getResult();
 							}),
-					(accumulator, streamId) -> {
-						accumulator.add(streamId);
-						return accumulator;
-					});
+					List::add);
 		}
 
 		private void suspendOrResume() {

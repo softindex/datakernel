@@ -17,7 +17,6 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.async.AsyncCallable;
-import io.datakernel.async.AsyncRunnable;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
@@ -97,26 +96,9 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 		}
 	}
 
-	public void execute(final AsyncRunnable asyncRunnable) {
-		try {
-			post(() -> asyncRunnable.run().thenRun(this::complete));
-		} catch (InterruptedException ignored) {
-		}
-	}
-
 	@Override
-	public CompletableFuture<Void> submit(Runnable runnable) {
-		return submit(runnable, null);
-	}
-
-	@Override
-	public CompletableFuture<Void> submit(AsyncRunnable asyncRunnable) {
-		return submit(asyncRunnable, null);
-	}
-
-	@Override
-	public <T> CompletableFuture<T> submit(final Runnable runnable, final T result) {
-		final CompletableFuture<T> future = new CompletableFuture<>();
+	public CompletableFuture<Void> submit(final Runnable runnable) {
+		final CompletableFuture<Void> future = new CompletableFuture<>();
 		post(() -> {
 			Exception exception = null;
 			try {
@@ -126,7 +108,7 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 			}
 			complete();
 			if (exception == null) {
-				future.complete(result);
+				future.complete(null);
 			} else {
 				future.completeExceptionally(exception);
 			}
@@ -135,23 +117,9 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 	}
 
 	@Override
-	public <T> CompletableFuture<T> submit(final AsyncRunnable asyncRunnable, final T result) {
-		final CompletableFuture<T> future = new CompletableFuture<>();
-		post(() -> asyncRunnable.run().whenComplete(($, throwable) -> {
-			complete();
-			if (throwable == null) {
-				future.complete(result);
-			} else {
-				future.completeExceptionally(throwable);
-			}
-		}), future);
-		return future;
-	}
-
-	@Override
 	public <T> CompletableFuture<T> submit(final Callable<T> callable) {
 		final CompletableFuture<T> future = new CompletableFuture<>();
-		post((Runnable) () -> {
+		post(() -> {
 			T result = null;
 			Exception exception = null;
 			try {
