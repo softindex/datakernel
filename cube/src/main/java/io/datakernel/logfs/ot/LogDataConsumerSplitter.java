@@ -39,11 +39,12 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 
 	@Override
 	public StreamConsumerWithResult<T, List<D>> consume() {
-		if (receivers == null) {
+		if (logDataConsumers.isEmpty()) {
 			createSplitter(); // recording scheme
+			checkState(!logDataConsumers.isEmpty(), "addOutput() should be called at least once");
 		}
 		StagesAccumulator<List<D>> resultsReducer = StagesAccumulator.create(new ArrayList<>());
-		Splitter splitter = new Splitter(eventloop, resultsReducer);
+		Splitter splitter = new Splitter(eventloop);
 		for (LogDataConsumer<?, D> logDataConsumer : logDataConsumers) {
 			StreamConsumerWithResult<?, List<D>> consumer = logDataConsumer.consume();
 			resultsReducer.addStage(consumer.getResult(), List::addAll);
@@ -69,14 +70,12 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 	final class Splitter implements HasInput<T>, HasOutputs {
 		private final Input input;
 		private final List<Output<?>> outputs = new ArrayList<>();
-		private final StagesAccumulator<List<D>> resultsReducer;
 
 		private StreamDataReceiver<T> inputReceiver;
 
 		private int ready = 0;
 
-		protected Splitter(Eventloop eventloop, StagesAccumulator<List<D>> resultsReducer) {
-			this.resultsReducer = resultsReducer;
+		protected Splitter(Eventloop eventloop) {
 			this.input = new Input(eventloop);
 		}
 
