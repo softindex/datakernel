@@ -30,6 +30,14 @@ public class LogDiff<D> {
 		public int compareTo(LogPositionDiff o) {
 			return this.to.compareTo(o.to);
 		}
+
+		@Override
+		public String toString() {
+			return "LogPositionDiff{" +
+					"from=" + from +
+					", to=" + to +
+					'}';
+		}
 	}
 
 	public final Map<String, LogPositionDiff> positions;
@@ -54,5 +62,13 @@ public class LogDiff<D> {
 
 	public static <D> LogDiff<D> forCurrentPosition(D diff) {
 		return forCurrentPosition(singletonList(diff));
+	}
+
+	@Override
+	public String toString() {
+		return "LogDiff{" +
+				"positions=" + positions +
+				", diffs=" + diffs +
+				'}';
 	}
 }
