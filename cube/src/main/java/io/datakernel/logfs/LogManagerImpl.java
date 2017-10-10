@@ -42,12 +42,15 @@ import java.util.stream.Collectors;
 public final class LogManagerImpl<T> implements LogManager<T> {
 	public static final DateTimeFormatter DEFAULT_DATE_TIME_FORMATTER = DateTimeFormat.forPattern("yyyy-MM-dd_HH").withZone(DateTimeZone.UTC);
 	public static final int DEFAULT_BUFFER_SIZE = 256 * 1024;
+	public static final int DEFAULT_AUTO_FLUSH_INTERVAL = -1;
 
 	private final Eventloop eventloop;
 	private final LogFileSystem fileSystem;
 	private final BufferSerializer<T> serializer;
 	private final DateTimeFormatter dateTimeFormatter;
+
 	private int bufferSize = DEFAULT_BUFFER_SIZE;
+	private int autoFlushIntervalMillis = DEFAULT_AUTO_FLUSH_INTERVAL;
 
 	private LogManagerImpl(Eventloop eventloop, LogFileSystem fileSystem, BufferSerializer<T> serializer) {
 		this(eventloop, fileSystem, serializer, DEFAULT_DATE_TIME_FORMATTER);
@@ -81,13 +84,20 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 		return this;
 	}
 
+	public LogManagerImpl<T> withAutoDelay(int autoFlushIntervalMillis) {
+		this.autoFlushIntervalMillis = autoFlushIntervalMillis;
+		return this;
+	}
+
 	@Override
 	public CompletionStage<StreamConsumerWithResult<T, Void>> consumer(String logPartition) {
 		validateLogPartition(logPartition);
 		return Stages.ofSupplier(() -> {
 			StreamBinarySerializer<T> streamBinarySerializer = StreamBinarySerializer.create(eventloop, serializer)
+					.withAutoFlush(autoFlushIntervalMillis)
 					.withDefaultBufferSize(bufferSize)
 					.withSkipSerializationErrors();
+
 			StreamLZ4Compressor streamCompressor = StreamLZ4Compressor.fastCompressor(eventloop);
 
 			LogStreamChunker writer = LogStreamChunker.create(eventloop, fileSystem, dateTimeFormatter, logPartition);
