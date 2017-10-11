@@ -145,7 +145,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 			parent = key;
 		}
 		return source.push(list).thenAccept($ -> {
-			pendingCommits = new LinkedHashMap<>();
+			list.forEach(commit -> pendingCommits.remove(commit.getId()));
 			head = list.get(list.size() - 1).getId();
 		});
 	}

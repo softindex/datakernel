@@ -1,8 +1,10 @@
-package io.datakernel.ot;
+package io.datakernel.ot.utils;
 
 import com.google.common.collect.Sets;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Stages;
+import io.datakernel.ot.OTCommit;
+import io.datakernel.ot.OTRemote;
 
 import java.util.*;
 import java.util.concurrent.CompletionStage;
@@ -80,6 +82,8 @@ public final class OTSourceStub<K, D> implements OTRemote<K,D> {
 	public CompletionStage<Void> push(List<OTCommit<K, D>> commits) {
 		for (OTCommit<K, D> commit : commits) {
 			K to = commit.getId();
+			if (commit.isRoot()) nodes.add(commit.getId());
+
 			for (K from : commit.getParents().keySet()) {
 				List<D> diffs = commit.getParents().get(from);
 				add(from, to, diffs);
