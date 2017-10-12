@@ -116,8 +116,12 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 
 				for (int i = 0; i < commits.size(); i++) {
 					OTCommit<Integer, D> commit = commits.get(i);
-					try (PreparedStatement ps = connection.prepareStatement(
-							sql("REPLACE INTO ot_revisions (scope, id, type, checkpoint) VALUES (?, ?, ?, ?)"))) {
+					try (PreparedStatement ps = connection.prepareStatement(sql("" +
+							"INSERT INTO ot_revisions (scope, id, type, checkpoint) VALUES (?, ?, ?, ?) " +
+							"ON DUPLICATE KEY UPDATE " +
+							"scope = values(scope)," +
+							"type = values(type)," +
+							"checkpoint = values(checkpoint)"))) {
 						ps.setString(1, scope);
 						ps.setInt(2, commit.getId());
 						ps.setString(3, (i == commits.size() - 1) ? "HEAD" : "INNER");
