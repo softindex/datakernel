@@ -1,7 +1,5 @@
 package io.datakernel.async;
 
-import io.datakernel.util.Preconditions;
-
 import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -11,7 +9,7 @@ import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import static io.datakernel.util.Preconditions.checkState;
+import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
 public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 	protected static abstract class NextCompletionStage<F, T> extends AbstractCompletionStage<T> {
@@ -481,7 +479,7 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 
 	@Override
 	public <U> CompletionStage<U> thenComposeAsync(Function<? super T, ? extends CompletionStage<U>> fn) {
-		return null;
+		return ((NextCompletionStage<U, U>) thenCompose(fn)).subscribe(new PostNextCompletionStage<>());
 	}
 
 	@Override
@@ -575,4 +573,15 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		return future;
 	}
 
+	private static class PostNextCompletionStage<U> extends NextCompletionStage<U, U> {
+		@Override
+		protected void onResult(U result) {
+			getCurrentEventloop().post(() -> complete(result));
+		}
+
+		@Override
+		protected void onError(Throwable error) {
+			getCurrentEventloop().post(() -> completeExceptionally(error));
+		}
+	}
 }
