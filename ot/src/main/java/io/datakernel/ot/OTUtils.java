@@ -136,7 +136,7 @@ public class OTUtils {
 			if (!visited.add(node))
 				continue;
 			return source.loadCommit(node)
-					.thenCompose(commit -> {
+					.thenComposeAsync(commit -> {
 						if (matchPredicate.apply(commit)) {
 							List<D> path = new ArrayList<>();
 							path.addAll(nodeWithPath.parentToChild);
