@@ -28,6 +28,7 @@ import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.measure.Measure;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
+import io.datakernel.async.AsyncCallable;
 import io.datakernel.async.Stages;
 import io.datakernel.async.StagesAccumulator;
 import io.datakernel.codegen.*;
@@ -723,19 +724,20 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 	public CompletionStage<CubeDiff> consolidate() {
 		logger.info("Launching consolidation");
 
-		StagesAccumulator<Map<String, AggregationDiff>> reducer = StagesAccumulator.create(new HashMap<>());
+		final Map<String, AggregationDiff> map = new HashMap<>();
+		final List<AsyncCallable<Void>> runnables = new ArrayList<>();
 
-		for (String aggregationId : aggregations.keySet()) {
-			Aggregation aggregation = aggregations.get(aggregationId).aggregation;
-			CompletionStage<AggregationDiff> aggregationDiffCompletionStage = aggregation.consolidateHotSegment();
-			reducer.addStage(aggregationDiffCompletionStage, (accumulator, result) -> {
-				if (!result.isEmpty()) {
-					accumulator.put(aggregationId, result);
+		aggregations.forEach((aggregationId, aggregationContainer) -> {
+			final Aggregation aggregation = aggregationContainer.aggregation;
+
+			runnables.add(() -> aggregation.consolidateHotSegment().thenAccept(aggregationDiff -> {
+				if (!aggregationDiff.isEmpty()) {
+					map.put(aggregationId, aggregationDiff);
 				}
-			});
-		}
+			}));
+		});
 
-		return reducer.get().thenApply(CubeDiff::of);
+		return Stages.runSequence(runnables).thenApply($ -> CubeDiff.of(map));
 	}
 
 	private List<String> getAllParents(String dimension) {
