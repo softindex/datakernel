@@ -717,20 +717,20 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 	public CompletionStage<CubeDiff> consolidate() {
 		logger.info("Launching consolidation");
 
-		AsyncResultsReducer<Map<String, AggregationDiff>> reducer = AsyncResultsReducer.create(new HashMap<>());
+		final Map<String, AggregationDiff> map = new HashMap<>();
+		final List<StageRunnable> runnables = new ArrayList<>();
 
-		for (String aggregationId : aggregations.keySet()) {
-			Aggregation aggregation = aggregations.get(aggregationId).aggregation;
-			CompletionStage<AggregationDiff> aggregationDiffCompletionStage = aggregation.consolidateHotSegment();
-			reducer.addStage(aggregationDiffCompletionStage, (accumulator, result) -> {
-				if (!result.isEmpty()) {
-					accumulator.put(aggregationId, result);
+		aggregations.forEach((aggregationId, aggregationContainer) -> {
+			final Aggregation aggregation = aggregationContainer.aggregation;
+
+			runnables.add(() -> aggregation.consolidateHotSegment().thenAccept(aggregationDiff -> {
+				if (!aggregationDiff.isEmpty()) {
+					map.put(aggregationId, aggregationDiff);
 				}
-				return accumulator;
-			});
-		}
+			}));
+		});
 
-		return reducer.getResult().thenApply(CubeDiff::of);
+		return Stages.sequence(runnables).thenApply($ -> CubeDiff.of(map));
 	}
 
 	private List<String> getAllParents(String dimension) {
