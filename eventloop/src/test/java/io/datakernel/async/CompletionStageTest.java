@@ -107,6 +107,16 @@ public class CompletionStageTest {
 	}
 
 	@Test
+	public void testThenApplyAsync() throws ExecutionException, InterruptedException {
+		CompletableFuture<Integer> future = Stages.of(2)
+				.thenApplyAsync(integer -> integer + 40)
+				.toCompletableFuture();
+
+		eventloop.run();
+		assertEquals(42, ((int) future.get()));
+	}
+
+	@Test
 	public void testApplyWithExecutor() throws ExecutionException, InterruptedException {
 		CompletableFuture<Integer> future = Stages.of(2).thenApplyAsync(integer -> {
 			assertFalse(eventloop.inEventloopThread());
@@ -118,12 +128,36 @@ public class CompletionStageTest {
 	}
 
 	@Test
+	public void testThenAcceptAsync() throws ExecutionException, InterruptedException {
+		AtomicInteger result = new AtomicInteger(0);
+		CompletableFuture<Void> future = Stages.of(5)
+				.thenAcceptAsync(result::set)
+				.toCompletableFuture();
+
+		eventloop.run();
+		future.get();
+		assertEquals(5, result.get());
+	}
+
+	@Test
 	public void testAcceptWithExecutor() throws ExecutionException, InterruptedException {
 		AtomicInteger result = new AtomicInteger(0);
 		CompletableFuture<Void> future = Stages.of(null).thenAcceptAsync(integer -> {
 			assertFalse(eventloop.inEventloopThread());
 			result.set(42);
 		}, executor).toCompletableFuture();
+
+		eventloop.run();
+		future.get();
+		assertEquals(42, result.get());
+	}
+
+	@Test
+	public void testThenRunAsync() throws ExecutionException, InterruptedException {
+		AtomicInteger result = new AtomicInteger(0);
+		CompletableFuture<Void> future = Stages.of(null)
+				.thenRunAsync(() -> result.set(42))
+				.toCompletableFuture();
 
 		eventloop.run();
 		future.get();
@@ -144,6 +178,19 @@ public class CompletionStageTest {
 	}
 
 	@Test
+	public void testThenCombineAsync() throws ExecutionException, InterruptedException {
+		CompletionStage<Integer> stage1 = Stages.of(40);
+		CompletionStage<Integer> stage2 = Stages.of(2);
+
+		CompletableFuture<Integer> future = stage1
+				.thenCombineAsync(stage2, Integer::sum)
+				.toCompletableFuture();
+
+		eventloop.run();
+		assertEquals(42, ((int) future.get()));
+	}
+
+	@Test
 	public void testCombineWithExecutor() throws ExecutionException, InterruptedException {
 		CompletionStage<Integer> stage1 = Stages.of(40);
 		CompletionStage<Integer> stage2 = Stages.of(2);
@@ -157,6 +204,20 @@ public class CompletionStageTest {
 	}
 
 	@Test
+	public void testAcceptBothAsync() throws ExecutionException, InterruptedException {
+		AtomicInteger result = new AtomicInteger(0);
+		CompletionStage<Integer> stage1 = Stages.of(2);
+		CompletionStage<Integer> stage2 = Stages.of(40);
+		CompletableFuture<Void> future = stage1
+				.thenAcceptBothAsync(stage2, (integer, integer2) -> result.set(integer + integer2))
+				.toCompletableFuture();
+
+		eventloop.run();
+		future.get();
+		assertEquals(42, result.get());
+	}
+
+	@Test
 	public void testAcceptBothWithExecutor() throws ExecutionException, InterruptedException {
 		AtomicInteger result = new AtomicInteger(0);
 		CompletionStage<Integer> stage1 = Stages.of(2);
@@ -165,6 +226,20 @@ public class CompletionStageTest {
 			assertFalse(eventloop.inEventloopThread());
 			result.set(integer + integer2);
 		}, executor).toCompletableFuture();
+
+		eventloop.run();
+		future.get();
+		assertEquals(42, result.get());
+	}
+
+	@Test
+	public void testRunAfterBothAsync() throws ExecutionException, InterruptedException {
+		AtomicInteger result = new AtomicInteger(0);
+		CompletionStage<Object> stage1 = Stages.of(null);
+		CompletionStage<Object> stage2 = Stages.of(null);
+		CompletableFuture<Void> future = stage1
+				.runAfterBothAsync(stage2, () -> result.set(42))
+				.toCompletableFuture();
 
 		eventloop.run();
 		future.get();
@@ -187,6 +262,19 @@ public class CompletionStageTest {
 	}
 
 	@Test
+	public void testApplyToEitherAsync() throws ExecutionException, InterruptedException {
+		CompletionStage<Integer> stage1 = Stages.of(2);
+		CompletionStage<Integer> stage2 = Stages.of(40);
+
+		CompletableFuture<Integer> future = stage1
+				.applyToEitherAsync(stage2, integer -> integer)
+				.toCompletableFuture();
+
+		eventloop.run();
+		assertTrue(asList(2, 40).contains(future.get()));
+	}
+
+	@Test
 	public void testApplyToEitherWithExecutor() throws ExecutionException, InterruptedException {
 		CompletionStage<Integer> stage1 = Stages.of(2);
 		CompletionStage<Integer> stage2 = Stages.of(40);
@@ -197,6 +285,22 @@ public class CompletionStageTest {
 
 		eventloop.run();
 		assertTrue(asList(2, 40).contains(future.get()));
+	}
+
+	@Test
+	public void testAcceptEitherAsync() throws ExecutionException, InterruptedException {
+		AtomicInteger result = new AtomicInteger(0);
+
+		CompletionStage<Integer> stage1 = Stages.of(2);
+		CompletionStage<Integer> stage2 = Stages.of(40);
+
+		CompletableFuture<Void> future = stage1
+				.acceptEitherAsync(stage2, result::set)
+				.toCompletableFuture();
+
+		eventloop.run();
+		future.get();
+		assertTrue(asList(2, 40).contains(result.get()));
 	}
 
 	@Test
@@ -215,6 +319,22 @@ public class CompletionStageTest {
 	}
 
 	@Test
+	public void testRunAfterEitherAsync() throws ExecutionException, InterruptedException {
+		AtomicInteger result = new AtomicInteger(0);
+
+		CompletionStage<Integer> stage1 = Stages.of(2);
+		CompletionStage<Integer> stage2 = Stages.of(40);
+
+		CompletableFuture<Void> future = stage1
+				.runAfterEitherAsync(stage2, () -> result.set(42))
+				.toCompletableFuture();
+
+		eventloop.run();
+		future.get();
+		assertEquals(42, result.get());
+	}
+
+	@Test
 	public void testRunAfterEitherWithExecutor() throws ExecutionException, InterruptedException {
 		AtomicInteger result = new AtomicInteger(0);
 		CompletionStage<Integer> stage1 = Stages.of(2);
@@ -230,6 +350,16 @@ public class CompletionStageTest {
 	}
 
 	@Test
+	public void testThenComposeAsync() throws ExecutionException, InterruptedException {
+		CompletableFuture<Integer> future = Stages.of(2)
+				.thenComposeAsync(integer -> Stages.of(40 + integer))
+				.toCompletableFuture();
+
+		eventloop.run();
+		assertEquals(42, ((int) future.get()));
+	}
+
+	@Test
 	public void testComposeWithExecutor() throws ExecutionException, InterruptedException {
 		CompletableFuture<Integer> future = Stages.of(2).thenComposeAsync(integer -> {
 			assertFalse(eventloop.inEventloopThread());
@@ -238,6 +368,18 @@ public class CompletionStageTest {
 
 		eventloop.run();
 		assertEquals(42, ((int) future.get()));
+	}
+
+	@Test
+	public void testWhenCompleteAsync() throws ExecutionException, InterruptedException {
+		AtomicInteger result = new AtomicInteger(0);
+		CompletableFuture<Integer> future = Stages.of(2)
+				.whenCompleteAsync((integer, throwable) -> result.set(40 + integer))
+				.toCompletableFuture();
+
+		eventloop.run();
+		future.get();
+		assertEquals(42, result.get());
 	}
 
 	@Test
@@ -251,6 +393,17 @@ public class CompletionStageTest {
 		eventloop.run();
 		future.get();
 		assertEquals(42, result.get());
+	}
+
+	@Test
+	public void testHandleAsync() throws ExecutionException, InterruptedException {
+		CompletionStage<Integer> stage = Stages.of(2);
+		CompletableFuture<Integer> future = stage.
+				handleAsync((integer, throwable) -> 40 + integer)
+				.toCompletableFuture();
+
+		eventloop.run();
+		assertEquals(42, ((int) future.get()));
 	}
 
 	@Test
