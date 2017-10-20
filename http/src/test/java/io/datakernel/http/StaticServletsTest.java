@@ -49,7 +49,7 @@ import static org.junit.Assert.assertEquals;
 
 @SuppressWarnings("ThrowableResultOfMethodCallIgnored")
 public class StaticServletsTest {
-    public static final String EXPECTED_CONTENT = "This is a test string";
+    public static final String EXPECTED_CONTENT = "Test";
 
     @Rule
     public ExpectedException exception = ExpectedException.none();
@@ -79,7 +79,11 @@ public class StaticServletsTest {
 
         HttpRequest request = get("http://test.com:8080/index.html");
         CompletableFuture<String> future = servlet.serve(request)
-                .thenApply(httpResponse -> decodeAscii(httpResponse.getBody()))
+                .thenApply(httpResponse -> {
+                    final String body = decodeAscii(httpResponse.getBody());
+                    httpResponse.recycleBufs();
+                    return body;
+                })
                 .toCompletableFuture();
 
         eventloop.run();
@@ -119,7 +123,11 @@ public class StaticServletsTest {
 
         HttpRequest request = get("http://test.com:8080/index.html");
         CompletableFuture<String> future = servlet.serve(request)
-                .thenApply(httpResponse -> decodeAscii(httpResponse.getBody()))
+                .thenApply(httpResponse -> {
+                    final String body = decodeAscii(httpResponse.getBody());
+                    httpResponse.recycleBufs();
+                    return body;
+                })
                 .toCompletableFuture();
 
         eventloop.run();
@@ -159,7 +167,11 @@ public class StaticServletsTest {
 
         HttpRequest request = get("http://test.com:8080/testFile.txt");
         CompletableFuture<String> future = servlet.serve(request)
-                .thenApply(httpResponse -> decodeAscii(httpResponse.getBody()))
+                .thenApply(httpResponse -> {
+                    final String body = decodeAscii(httpResponse.getBody());
+                    httpResponse.recycleBufs();
+                    return body;
+                })
                 .toCompletableFuture();
 
         eventloop.run();
@@ -198,7 +210,11 @@ public class StaticServletsTest {
 
         HttpRequest request = get("http://test.com:8080/testFile.txt");
         CompletableFuture<String> future = servlet.serve(request)
-                .thenApply(httpResponse -> decodeAscii(httpResponse.getBody()))
+                .thenApply(httpResponse -> {
+                    final String body = decodeAscii(httpResponse.getBody());
+                    httpResponse.recycleBufs();
+                    return body;
+                })
                 .toCompletableFuture();
 
         eventloop.run();
@@ -248,7 +264,11 @@ public class StaticServletsTest {
 
         HttpRequest request = get("http://test.com:8080/dir2/testFile.txt");
         CompletableFuture<String> future = servlet.serve(request)
-                .thenApply(httpResponse -> decodeAscii(httpResponse.getBody()))
+                .thenApply(httpResponse -> {
+                    final String body = decodeAscii(httpResponse.getBody());
+                    httpResponse.recycleBufs();
+                    return body;
+                })
                 .toCompletableFuture();
 
         eventloop.run();
@@ -274,12 +294,15 @@ public class StaticServletsTest {
         StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
 
         CompletableFuture<String> future = servlet.serve(get("http://test.com:8080/index.html"))
-                .thenApply(httpResponse -> decodeAscii(httpResponse.getBody()))
+                .thenApply(httpResponse -> {
+                    final String body = decodeAscii(httpResponse.getBody());
+                    httpResponse.recycleBufs();
+                    return body;
+                })
                 .toCompletableFuture();
 
         eventloop.run();
-        String content = future.get();
-        assertEquals(EXPECTED_CONTENT, content);
+        assertEquals(EXPECTED_CONTENT, future.get());
         assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
     }
 }
