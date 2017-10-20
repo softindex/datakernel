@@ -18,19 +18,30 @@ package io.datakernel.http;
 
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.loader.StaticLoader;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletionStage;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown, WeakerAccess")
-public abstract class StaticServlet implements AsyncServlet {
+public final class StaticServlet implements AsyncServlet {
 	public static final Charset DEFAULT_TXT_ENCODING = StandardCharsets.UTF_8;
 	public static final String DEFAULT_INDEX_FILE_NAME = "index.html"; // response for get request asking for root
 	public static final HttpException BAD_PATH_ERROR = HttpException.ofCode(400, "Bad path and query section");
 	public static final HttpException METHOD_NOT_ALLOWED = HttpException.ofCode(405, "Only GET is being allowed");
 
-	protected StaticServlet() {
+	private final Eventloop eventloop;
+	private final StaticLoader resourceLoader;
+
+	private StaticServlet(Eventloop eventloop, StaticLoader resourceLoader) {
+		this.eventloop = eventloop;
+		this.resourceLoader = resourceLoader;
+	}
+
+	public static StaticServlet create(Eventloop eventloop, StaticLoader resourceLoader) {
+		return new StaticServlet(eventloop, resourceLoader);
 	}
 
 	protected ContentType getContentType(String path) {
@@ -51,8 +62,6 @@ public abstract class StaticServlet implements AsyncServlet {
 		return type;
 	}
 
-	protected abstract CompletionStage<ByteBuf> doServeAsync(String name);
-
 	protected HttpResponse createHttpResponse(ByteBuf buf, String path) {
 		return HttpResponse.ofCode(200)
 				.withBody(buf)
@@ -61,6 +70,8 @@ public abstract class StaticServlet implements AsyncServlet {
 
 	@Override
 	public final CompletionStage<HttpResponse> serve(final HttpRequest request) {
+		assert eventloop.inEventloopThread();
+
 		String path = request.getPartialPath();
 
 		if (request.getMethod() != HttpMethod.GET) return Stages.ofException(METHOD_NOT_ALLOWED);
@@ -73,7 +84,6 @@ public abstract class StaticServlet implements AsyncServlet {
 		}
 		final String finalPath = path;
 
-		return doServeAsync(path).thenApply(byteBuf -> createHttpResponse(byteBuf, finalPath));
+		return resourceLoader.getResource(path).thenApply(byteBuf -> createHttpResponse(byteBuf, finalPath));
 	}
-
 }
