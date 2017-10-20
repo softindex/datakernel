@@ -109,8 +109,21 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 
 	@Override
 	public <U> CompletionStage<U> thenApplyAsync(Function<? super T, ? extends U> fn) {
-		//noinspection unchecked
-		return ((NextCompletionStage<U, U>) thenApply(fn)).subscribe(new PostNextCompletionStage());
+        final Eventloop eventloop = getCurrentEventloop();
+		return subscribe(new NextCompletionStage<T, U>() {
+            @Override
+            protected void onResult(T value) {
+                eventloop.post(() -> {
+                    U resultValue = fn.apply(value);
+                    complete(resultValue);
+                });
+            }
+
+            @Override
+            protected void onError(Throwable error) {
+                eventloop.post(() -> completeExceptionally(error));
+            }
+        });
 	}
 
 	@Override
@@ -149,8 +162,21 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 
 	@Override
 	public CompletionStage<Void> thenAcceptAsync(Consumer<? super T> action) {
-		//noinspection unchecked
-		return ((NextCompletionStage<Void, Void>) thenAccept(action)).subscribe(new PostNextCompletionStage());
+        final Eventloop eventloop = getCurrentEventloop();
+		return subscribe(new NextCompletionStage<T, Void>() {
+            @Override
+            protected void onResult(T value) {
+                eventloop.post(() -> {
+                    action.accept(value);
+                    complete(null);
+                });
+            }
+
+            @Override
+            protected void onError(Throwable error) {
+                eventloop.post(() -> completeExceptionally(error));
+            }
+        });
 	}
 
 	@Override
@@ -189,8 +215,21 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 
 	@Override
 	public CompletionStage<Void> thenRunAsync(Runnable action) {
-		//noinspection unchecked
-		return ((NextCompletionStage<Void, Void>) thenRun(action)).subscribe(new PostNextCompletionStage());
+	    final Eventloop eventloop = getCurrentEventloop();
+        return subscribe(new NextCompletionStage<T, Void>() {
+            @Override
+            protected void onResult(T value) {
+                eventloop.post(() -> {
+                    action.run();
+                    complete(null);
+                });
+            }
+
+            @Override
+            protected void onError(Throwable error) {
+                eventloop.post(() -> completeExceptionally(error));
+            }
+        });
 	}
 
 	@Override
@@ -242,8 +281,10 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 
 		@Override
 		protected void onError(Throwable error) {
-			countdown = 0;
-			completeExceptionally(error);
+			if (!isComplete()) {
+				countdown = 0;
+				completeExceptionally(error);
+			}
 		}
 	}
 
@@ -263,10 +304,57 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		return subscribe(resultingStage);
 	}
 
+	private static class ThenCombineAsyncStage<T, V, U> extends NextCompletionStage<T, V> {
+		private final BiFunction<? super T, ? super U, ? extends V> fn;
+		private final Eventloop eventloop;
+		private int countdown = 2;
+		private T thisResult;
+		private U otherResult;
+
+		ThenCombineAsyncStage(Eventloop eventloop, BiFunction<? super T, ? super U, ? extends V> fn) {
+			this.fn = fn;
+			this.eventloop = eventloop;
+		}
+
+		private void tryComplete() {
+			if (--countdown == 0) {
+				eventloop.post(() -> {
+					complete(fn.apply(thisResult, otherResult));
+					thisResult = null;
+					otherResult = null;
+				});
+			}
+		}
+
+		@Override
+		protected void onResult(T value) {
+			thisResult = value;
+			tryComplete();
+		}
+
+		@Override
+		protected void onError(Throwable error) {
+			if (!isComplete()) {
+				countdown = 0;
+				eventloop.post(() -> completeExceptionally(error));
+			}
+		}
+	}
+
 	@Override
 	public <U, V> CompletionStage<V> thenCombineAsync(CompletionStage<? extends U> other, BiFunction<? super T, ? super U, ? extends V> fn) {
-		//noinspection unchecked
-		return ((NextCompletionStage<V, V>) thenCombine(other, fn)).subscribe(new PostNextCompletionStage());
+	    ThenCombineAsyncStage<T, V, U> resultingStage = new ThenCombineAsyncStage<>(getCurrentEventloop(), fn);
+
+		other.whenComplete((BiConsumer<U, Throwable>) (result, throwable) -> {
+			if (throwable == null) {
+				resultingStage.otherResult = result;
+				resultingStage.tryComplete();
+			} else {
+				resultingStage.onError(throwable);
+			}
+		});
+
+        return subscribe(resultingStage);
 	}
 
 	private static class ConcurrentThenCombineStage<T, V, U> extends NextCompletionStage<T, V> {
@@ -306,8 +394,10 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 
 		@Override
 		protected void onError(Throwable error) {
-			countdown = 0;
-			eventloop.post(() -> completeExceptionally(error));
+			if (!isComplete()) {
+				countdown = 0;
+				eventloop.post(() -> completeExceptionally(error));
+			}
 		}
 	}
 
@@ -327,7 +417,7 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		return subscribe(resultingStage);
 	}
 
-	private static final class ThenAcceptBothStage<T, U> extends NextCompletionStage<T, Void> {
+	private static class ThenAcceptBothStage<T, U> extends NextCompletionStage<T, Void> {
 		private final BiConsumer<? super T, ? super U> consumer;
 		private int countdown = 2;
 		private T thisResult;
@@ -377,10 +467,58 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		return subscribe(resultingStage);
 	}
 
+	private static class ThenAcceptBothAsyncStage<T, U> extends NextCompletionStage<T, Void> {
+		private final BiConsumer<? super T, ? super U> consumer;
+		private final Eventloop eventloop;
+		private int countdown = 2;
+		private T thisValue;
+		private U otherValue;
+
+		private ThenAcceptBothAsyncStage(Eventloop eventloop, BiConsumer<? super T, ? super U> consumer) {
+			this.consumer = consumer;
+			this.eventloop = eventloop;
+		}
+
+		private void tryComplete() {
+			if (--countdown == 0) {
+				eventloop.post(() -> {
+					consumer.accept(thisValue, otherValue);
+					thisValue = null;
+					otherValue = null;
+					complete(null);
+				});
+			}
+		}
+
+		@Override
+		protected void onResult(T value) {
+			thisValue = value;
+			tryComplete();
+		}
+
+		@Override
+		protected void onError(Throwable error) {
+			if (!isComplete()) {
+				countdown = 0;
+				eventloop.post(() -> completeExceptionally(error));
+			}
+		}
+	}
+
 	@Override
 	public <U> CompletionStage<Void> thenAcceptBothAsync(CompletionStage<? extends U> other, BiConsumer<? super T, ? super U> action) {
-		//noinspection unchecked
-		return ((NextCompletionStage<Void, Void>) thenAcceptBoth(other, action)).subscribe(new PostNextCompletionStage());
+	    ThenAcceptBothAsyncStage<T, U> resultingStage = new ThenAcceptBothAsyncStage<>(getCurrentEventloop(), action);
+
+		other.whenComplete((result, throwable) -> {
+			if (throwable == null) {
+				resultingStage.otherValue = result;
+				resultingStage.tryComplete();
+			} else {
+				resultingStage.onError(throwable);
+			}
+		});
+
+        return subscribe(resultingStage);
 	}
 
 	private static final class ConcurrentThenAcceptBothStage<T, U> extends NextCompletionStage<T, Void> {
@@ -443,15 +581,15 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		return subscribe(resultingStage);
 	}
 
-	private static final class RunAfterBothStage<T> extends NextCompletionStage<T, Void> {
+	private static class RunAfterBothStage<T> extends NextCompletionStage<T, Void> {
 		private final Runnable action;
-		private int countdown = 2;
+		int countdown = 2;
 
 		private RunAfterBothStage(Runnable action) {
 			this.action = action;
 		}
 
-		@Override
+        @Override
 		protected void onResult(T result) {
 			if (--countdown == 0) {
 				action.run();
@@ -483,10 +621,48 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		return subscribe(resultingStage);
 	}
 
+	private static class RunAfterBothAsyncStage<T> extends NextCompletionStage<T, Void> {
+		private final Runnable action;
+		private final Eventloop eventloop;
+		int countdown = 2;
+
+		private RunAfterBothAsyncStage(Eventloop eventloop, Runnable action) {
+			this.action = action;
+			this.eventloop = eventloop;
+		}
+
+		@Override
+		protected void onResult(T value) {
+			if (--countdown == 0) {
+				eventloop.post(() -> {
+					action.run();
+					complete(null);
+				});
+			}
+		}
+
+		@Override
+		protected void onError(Throwable error) {
+			if (!isComplete()) {
+				countdown = 0;
+				eventloop.post(() -> completeExceptionally(error));
+			}
+		}
+	}
+
 	@Override
 	public CompletionStage<Void> runAfterBothAsync(CompletionStage<?> other, Runnable action) {
-		//noinspection unchecked
-		return ((NextCompletionStage<Void, Void>) runAfterBoth(other, action)).subscribe(new PostNextCompletionStage());
+       	RunAfterBothAsyncStage<T> resultingStage = new RunAfterBothAsyncStage<>(getCurrentEventloop(), action);
+
+		other.whenComplete((o, throwable) -> {
+			if (throwable == null) {
+				resultingStage.onResult(null);
+			} else {
+				resultingStage.onError(throwable);
+			}
+		});
+
+        return subscribe(resultingStage);
 	}
 
 	private static final class ConcurrentRunAfterBothStage<T> extends NextCompletionStage<T, Void> {
@@ -574,8 +750,42 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 
 	@Override
 	public <U> CompletionStage<U> applyToEitherAsync(CompletionStage<? extends T> other, Function<? super T, U> fn) {
-		//noinspection unchecked
-		return ((NextCompletionStage<U, U>) applyToEither(other, fn)).subscribe(new PostNextCompletionStage());
+	    final Eventloop eventloop = getCurrentEventloop();
+        NextCompletionStage<T, U> resultingStage = new NextCompletionStage<T, U>() {
+            @Override
+            protected void onResult(T value) {
+                if (!isComplete()) {
+                    eventloop.post(() -> {
+                        if (!isComplete()) {
+                            complete(fn.apply(value));
+                        }
+                    });
+                }
+            }
+
+            @Override
+            protected void onError(Throwable error) {
+                if (!isComplete()) {
+                    eventloop.post(() -> completeExceptionally(error));
+                }
+            }
+        };
+
+        other.whenComplete((o, throwable) -> {
+            if (throwable == null) {
+                eventloop.post(() -> {
+                    if (!resultingStage.isComplete()) {
+                        resultingStage.complete(fn.apply(o));
+                    }
+                });
+            } else {
+                if (!resultingStage.isComplete()) {
+                    eventloop.post(() -> resultingStage.completeExceptionally(throwable));
+                }
+            }
+        });
+
+        return subscribe(resultingStage);
 	}
 
 	@Override
@@ -663,8 +873,44 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 
 	@Override
 	public CompletionStage<Void> acceptEitherAsync(CompletionStage<? extends T> other, Consumer<? super T> action) {
-		//noinspection unchecked
-		return ((NextCompletionStage<Void, Void>) acceptEither(other, action)).subscribe(new PostNextCompletionStage());
+	    final Eventloop eventloop = getCurrentEventloop();
+        NextCompletionStage<T, Void> resultingStage = new NextCompletionStage<T, Void>() {
+            @Override
+            protected void onResult(T value) {
+                if (!isComplete()) {
+                    eventloop.post(() -> {
+                        if (!isComplete()) {
+                            action.accept(value);
+                            complete(null);
+                        }
+                    });
+                }
+            }
+
+            @Override
+            protected void onError(Throwable error) {
+                if (!isComplete()) {
+                    eventloop.post(() -> completeExceptionally(error));
+                }
+            }
+        };
+
+        other.whenComplete((o, throwable) -> {
+            if (throwable == null) {
+                eventloop.post(() -> {
+                    if (!resultingStage.isComplete()) {
+                        action.accept(o);
+                        resultingStage.complete(null);
+                    }
+                });
+            } else {
+                if (!resultingStage.isComplete()) {
+                    eventloop.post(() -> resultingStage.completeExceptionally(throwable));
+                }
+            }
+        });
+
+        return subscribe(resultingStage);
 	}
 
 	@Override
@@ -752,8 +998,44 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 
 	@Override
 	public CompletionStage<Void> runAfterEitherAsync(CompletionStage<?> other, Runnable action) {
-		//noinspection unchecked
-		return ((NextCompletionStage<Void, Void>) runAfterEither(other, action)).subscribe(new PostNextCompletionStage());
+	    final Eventloop eventloop = getCurrentEventloop();
+        NextCompletionStage<T, Void> resultingStage = new NextCompletionStage<T, Void>() {
+            @Override
+            protected void onResult(T value) {
+                if (!isComplete()) {
+                    eventloop.post(() -> {
+                        if (!isComplete()) {
+                            action.run();
+                            complete(null);
+                        }
+                    });
+                }
+            }
+
+            @Override
+            protected void onError(Throwable error) {
+                if (!isComplete()) {
+                    eventloop.post(() -> completeExceptionally(error));
+                }
+            }
+        };
+
+        other.whenComplete((o, throwable) -> {
+            if (throwable == null) {
+                eventloop.post(() -> {
+                    if (!resultingStage.isComplete()) {
+                        action.run();
+                        resultingStage.complete(null);
+                    }
+                });
+            } else {
+                if (!resultingStage.isComplete()) {
+                    eventloop.post(() -> resultingStage.completeExceptionally(throwable));
+                }
+            }
+        });
+
+        return subscribe(resultingStage);
 	}
 
 	@Override
@@ -818,18 +1100,31 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 							}
 						});
 			}
-
-			@Override
-			protected void onError(Throwable error) {
-				completeExceptionally(error);
-			}
 		});
 	}
 
 	@Override
 	public <U> CompletionStage<U> thenComposeAsync(Function<? super T, ? extends CompletionStage<U>> fn) {
-		//noinspection unchecked
-		return ((NextCompletionStage<U, U>) thenCompose(fn)).subscribe(new PostNextCompletionStage());
+		final Eventloop eventloop = getCurrentEventloop();
+	    return subscribe(new NextCompletionStage<T, U>() {
+            @Override
+            protected void onResult(T value) {
+                eventloop.post(() ->
+                        fn.apply(value)
+                            .whenComplete((u, throwable) -> {
+                                if (throwable != null) {
+                                    completeExceptionally(throwable);
+                                } else {
+                                    complete(u);
+                                }
+                            }));
+            }
+
+            @Override
+            protected void onError(Throwable error) {
+                eventloop.post(() -> completeExceptionally(error));
+            }
+        });
 	}
 
 	@Override
@@ -893,8 +1188,24 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 
 	@Override
 	public CompletionStage<T> whenCompleteAsync(BiConsumer<? super T, ? super Throwable> action) {
-		//noinspection unchecked
-		return ((NextCompletionStage<T, T>) whenComplete(action)).subscribe(new PostNextCompletionStage());
+		final Eventloop eventloop = getCurrentEventloop();
+	    return subscribe(new NextCompletionStage<T, T>() {
+            @Override
+            protected void onResult(T value) {
+                eventloop.post(() -> {
+                    action.accept(value, null);
+                    complete(value);
+                });
+            }
+
+            @Override
+            protected void onError(Throwable error) {
+                eventloop.post(() -> {
+                    action.accept(null, error);
+                    completeExceptionally(error);
+                });
+            }
+        });
 	}
 
 	@Override
@@ -946,8 +1257,24 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 
 	@Override
 	public <U> CompletionStage<U> handleAsync(BiFunction<? super T, Throwable, ? extends U> fn) {
-		//noinspection unchecked
-		return ((NextCompletionStage<U, U>) handle(fn)).subscribe(new PostNextCompletionStage());
+		final Eventloop eventloop = getCurrentEventloop();
+	    return subscribe(new NextCompletionStage<T, U>() {
+            @Override
+            protected void onResult(T value) {
+                eventloop.post(() -> {
+                    U u = fn.apply(value, null);
+                    complete(u);
+                });
+            }
+
+            @Override
+            protected void onError(Throwable error) {
+                eventloop.post(() -> {
+                    U u = fn.apply(null, error);
+                    complete(u);
+                });
+            }
+        });
 	}
 
 	@Override
@@ -997,16 +1324,4 @@ public abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		return future;
 	}
 
-	private static class PostNextCompletionStage<U> extends NextCompletionStage<U, U> {
-
-		@Override
-		protected void onResult(U result) {
-			getCurrentEventloop().post(() -> complete(result));
-		}
-
-		@Override
-		protected void onError(Throwable error) {
-			getCurrentEventloop().post(() -> completeExceptionally(error));
-		}
-	}
 }
