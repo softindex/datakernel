@@ -148,7 +148,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 			for (long chunkId : chunkIds) {
 				Path target = dir.resolve(chunkId + LOG).toAbsolutePath();
 				Path link = backupDir.resolve(chunkId + LOG).toAbsolutePath();
-				Files.createSymbolicLink(link, target);
+				Files.createLink(link, target);
 			}
 			return null;
 		});
