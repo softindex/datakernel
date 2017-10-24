@@ -22,7 +22,6 @@ import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.RunnableWithException;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamProducer;
@@ -159,7 +158,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 			for (long chunkId : chunkIds) {
 				Path target = dir.resolve(chunkId + LOG).toAbsolutePath();
 				Path link = backupDir.resolve(chunkId + LOG).toAbsolutePath();
-				Files.createSymbolicLink(link, target);
+				Files.createLink(link, target);
 			}
 		});
 	}
