@@ -117,17 +117,19 @@ public final class OTStateManager<K, D> implements EventloopService {
 		workingDiffs = new ArrayList<>();
 	}
 
-	public CompletionStage<Void> commitAndPush() {
-		return commit().thenCompose($ -> push());
+	public CompletionStage<K> commitAndPush() {
+		return commit().thenCompose(id -> push().thenApply($ -> id));
 	}
 
-	public CompletionStage<Void> commit() {
+	public CompletionStage<K> commit() {
 		if (workingDiffs.isEmpty()) {
 			return Stages.of(null);
 		}
-		return source.createId().thenAccept(newId -> {
-			pendingCommits.put(newId, otSystem.squash(workingDiffs));
-			workingDiffs = new ArrayList<>();
+		return source.createId().whenComplete((newId, throwable) -> {
+			if (throwable == null) {
+				pendingCommits.put(newId, otSystem.squash(workingDiffs));
+				workingDiffs = new ArrayList<>();
+			}
 		});
 	}
 

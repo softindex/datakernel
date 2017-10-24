@@ -103,7 +103,7 @@ public final class LogOTProcessor<K, T, D> implements EventloopService {
 					.thenCompose(logDiff -> {
 						logger.info("Log '{}' processing complete. Positions: {}", log, logDiff.positions);
 						stateManager.add(logDiff);
-						return stateManager.pull().thenCompose($_ -> stateManager.commitAndPush());
+						return stateManager.pull().thenCompose($_ -> stateManager.commitAndPush().thenApply(k -> null));
 					});
 		});
 	}
