@@ -20,13 +20,15 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import io.datakernel.aggregation.*;
 import io.datakernel.aggregation.fieldtype.FieldTypes;
-import io.datakernel.async.*;
+import io.datakernel.async.AssertingCompletionCallback;
+import io.datakernel.async.AsyncRunnable;
+import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.bean.*;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.RemoteFsServer;
-import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
@@ -479,11 +481,11 @@ public class CubeTest {
 		cube.consume(producer4, DataItem2.class).thenAccept(cube::apply);
 		eventloop.run();
 
-		CompletableFuture<CubeDiff> future1 = cube.consolidate().toCompletableFuture();
+		CompletableFuture<CubeDiff> future1 = cube.consolidate(Aggregation::consolidateHotSegment).toCompletableFuture();
 		eventloop.run();
 		assertTrue(!future1.get().isEmpty());
 
-		CompletableFuture<CubeDiff> future2 = cube.consolidate().toCompletableFuture();
+		CompletableFuture<CubeDiff> future2 = cube.consolidate(Aggregation::consolidateHotSegment).toCompletableFuture();
 		eventloop.run();
 		assertTrue(!future2.get().isEmpty());
 

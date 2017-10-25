@@ -62,7 +62,6 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 	private final Path dir;
 
 	private int bufferSize = 1024 * 1024;
-	private long cleanupTimeout = 10 * 60 * 1000L;
 
 	/**
 	 * Constructs an aggregation storage, that runs in the specified event loop, performs blocking IO in the given executor,
@@ -90,11 +89,6 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 
 	public LocalFsChunkStorage withBufferSize(MemSize bufferSize) {
 		this.bufferSize = (int) bufferSize.get();
-		return this;
-	}
-
-	public LocalFsChunkStorage withCleanupTimeout(long millis) {
-		this.cleanupTimeout = millis;
 		return this;
 	}
 
@@ -163,12 +157,15 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 		});
 	}
 
-	public CompletionStage<Void> cleanup(final Set<Long> chunkIds) {
+	public CompletionStage<Void> cleanup(final Set<Long> saveChunks) {
+		return cleanupBeforeTimestamp(saveChunks, -1);
+	}
+
+	public CompletionStage<Void> cleanupBeforeTimestamp(final Set<Long> saveChunks, long timestamp) {
 		return eventloop.runConcurrentlyWithException(executorService, () -> {
 			try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
 				for (Path file : stream) {
-					if (!file.toString().endsWith(LOG))
-						continue;
+					if (!file.toString().endsWith(LOG)) continue;
 					long id;
 					try {
 						String filename = file.getFileName().toString();
@@ -177,11 +174,9 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 						logger.warn("Invalid chunk filename: " + file);
 						continue;
 					}
-					if (chunkIds.contains(id))
-						continue;
+					if (saveChunks.contains(id)) continue;
 					FileTime lastModifiedTime = Files.getLastModifiedTime(file);
-					if (cleanupTimeout != 0 && lastModifiedTime.toMillis() > System.currentTimeMillis() - cleanupTimeout)
-						continue;
+					if (timestamp != -1 && lastModifiedTime.toMillis() > timestamp) continue;
 					try {
 						Files.delete(file);
 					} catch (IOException e) {
