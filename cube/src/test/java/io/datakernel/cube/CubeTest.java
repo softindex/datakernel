@@ -512,11 +512,11 @@ public class CubeTest {
 		consumer4.getResult().thenAccept(cube::apply);
 		eventloop.run();
 
-		CompletableFuture<CubeDiff> future1 = cube.consolidate().toCompletableFuture();
+		CompletableFuture<CubeDiff> future1 = cube.consolidate(Aggregation::consolidateHotSegment).toCompletableFuture();
 		eventloop.run();
 		assertTrue(!future1.get().isEmpty());
 
-		CompletableFuture<CubeDiff> future2 = cube.consolidate().toCompletableFuture();
+		CompletableFuture<CubeDiff> future2 = cube.consolidate(Aggregation::consolidateHotSegment).toCompletableFuture();
 		eventloop.run();
 		assertTrue(!future2.get().isEmpty());
 

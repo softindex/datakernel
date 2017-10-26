@@ -34,7 +34,7 @@ public class LogOT {
 					for (String log : intersection) {
 						LogPositionDiff leftPosition = left.positions.get(log);
 						LogPositionDiff rightPosition = right.positions.get(log);
-						Preconditions.check(leftPosition.from == rightPosition.from);
+						Preconditions.check(leftPosition.from.equals(rightPosition.from));
 						comparison += leftPosition.compareTo(rightPosition);
 					}
 

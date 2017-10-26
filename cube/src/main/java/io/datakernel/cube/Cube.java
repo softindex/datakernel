@@ -721,7 +721,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 		return excessive;
 	}
 
-	public CompletionStage<CubeDiff> consolidate() {
+	public CompletionStage<CubeDiff> consolidate(java.util.function.Function<Aggregation, CompletionStage<AggregationDiff>> consolidator) {
 		logger.info("Launching consolidation");
 
 		final Map<String, AggregationDiff> map = new HashMap<>();
@@ -730,7 +730,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 		aggregations.forEach((aggregationId, aggregationContainer) -> {
 			final Aggregation aggregation = aggregationContainer.aggregation;
 
-			runnables.add(() -> aggregation.consolidateHotSegment().thenAccept(aggregationDiff -> {
+			runnables.add(() -> consolidator.apply(aggregation).thenAccept(aggregationDiff -> {
 				if (!aggregationDiff.isEmpty()) {
 					map.put(aggregationId, aggregationDiff);
 				}

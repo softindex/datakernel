@@ -16,6 +16,7 @@
 
 package io.datakernel.cube;
 
+import io.datakernel.aggregation.Aggregation;
 import io.datakernel.aggregation.AggregationChunk;
 import io.datakernel.aggregation.AggregationChunkStorage;
 import io.datakernel.aggregation.LocalFsChunkStorage;
@@ -254,7 +255,7 @@ public class CubeMeasureRemovalTest {
 		assertTrue(map.isEmpty());
 
 		// Consolidate
-		CompletableFuture<CubeDiff> future1 = cube.consolidate().toCompletableFuture();
+		CompletableFuture<CubeDiff> future1 = cube.consolidate(Aggregation::consolidateHotSegment).toCompletableFuture();
 		eventloop.run();
 		CubeDiff consolidatingCubeDiff = future1.get();
 		assertEquals(false, consolidatingCubeDiff.isEmpty());

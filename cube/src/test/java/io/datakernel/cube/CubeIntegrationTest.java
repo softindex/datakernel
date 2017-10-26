@@ -16,6 +16,7 @@
 
 package io.datakernel.cube;
 
+import io.datakernel.aggregation.Aggregation;
 import io.datakernel.aggregation.LocalFsChunkStorage;
 import io.datakernel.aggregation.fieldtype.FieldTypes;
 import io.datakernel.codegen.DefiningClassLoader;
@@ -72,8 +73,7 @@ public class CubeIntegrationTest {
 		ExecutorService executor = Executors.newCachedThreadPool();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 
-		LocalFsChunkStorage aggregationChunkStorage = LocalFsChunkStorage.create(eventloop, executor, new IdGeneratorStub(), aggregationsDir)
-				.withCleanupTimeout(0L);
+		LocalFsChunkStorage aggregationChunkStorage = LocalFsChunkStorage.create(eventloop, executor, new IdGeneratorStub(), aggregationsDir);
 		Cube cube = Cube.create(eventloop, executor, classLoader, aggregationChunkStorage)
 				.withDimension("date", FieldTypes.ofLocalDate())
 				.withDimension("advertiser", FieldTypes.ofInt())
@@ -182,7 +182,7 @@ public class CubeIntegrationTest {
 		eventloop.run();
 		future.get();
 
-		CompletableFuture<CubeDiff> future1 = cube.consolidate().toCompletableFuture();
+		CompletableFuture<CubeDiff> future1 = cube.consolidate(Aggregation::consolidateHotSegment).toCompletableFuture();
 		eventloop.run();
 		CubeDiff consolidatingCubeDiff = future1.get();
 		assertEquals(false, consolidatingCubeDiff.isEmpty());
