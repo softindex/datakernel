@@ -465,11 +465,11 @@ public class CubeTest {
 		cube.consume(producer4, DataItem2.class).thenAccept(cube::apply);
 		eventloop.run();
 
-		CompletableFuture<CubeDiff> future1 = cube.consolidate().toCompletableFuture();
+		CompletableFuture<CubeDiff> future1 = cube.consolidate(Aggregation::consolidateHotSegment).toCompletableFuture();
 		eventloop.run();
 		assertTrue(!future1.get().isEmpty());
 
-		CompletableFuture<CubeDiff> future2 = cube.consolidate().toCompletableFuture();
+		CompletableFuture<CubeDiff> future2 = cube.consolidate(Aggregation::consolidateHotSegment).toCompletableFuture();
 		eventloop.run();
 		assertTrue(!future2.get().isEmpty());
 
