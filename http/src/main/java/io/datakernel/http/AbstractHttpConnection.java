@@ -48,7 +48,6 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 
 	private static final byte[] CONNECTION_KEEP_ALIVE = encodeAscii("keep-alive");
 	private static final byte[] TRANSFER_ENCODING_CHUNKED = encodeAscii("chunked");
-	protected static final int UNKNOWN_LENGTH = -1;
 
 	protected final Eventloop eventloop;
 
@@ -125,7 +124,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 
 	protected void reset() {
 		assert eventloop.inEventloopThread();
-		contentLength = UNKNOWN_LENGTH;
+		contentLength = 0;
 		isChunked = false;
 		bodyQueue.clear();
 	}
@@ -252,11 +251,6 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 		assert eventloop.inEventloopThread();
 
 		if (reading == BODY) {
-			if (contentLength == UNKNOWN_LENGTH) {
-				check(bodyQueue.remainingBytes() + readQueue.remainingBytes() <= maxHttpMessageSize, TOO_BIG_HTTP_MESSAGE);
-				readQueue.drainTo(bodyQueue);
-				return;
-			}
 			int bytesToRead = contentLength - bodyQueue.remainingBytes();
 			int actualBytes = readQueue.drainTo(bodyQueue, bytesToRead);
 			if (actualBytes == bytesToRead) {

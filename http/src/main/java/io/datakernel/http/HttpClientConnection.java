@@ -21,7 +21,6 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
-import io.datakernel.net.CloseWithoutNotifyException;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.CompletionStage;
@@ -60,12 +59,6 @@ final class HttpClientConnection extends AbstractHttpConnection {
 
 	@Override
 	public void onClosedWithError(Exception e) {
-		if (reading == BODY
-				&& contentLength == UNKNOWN_LENGTH
-				&& e instanceof CloseWithoutNotifyException) {
-			onReadEndOfStream();
-			return;
-		}
 		if (inspector != null && e != null) inspector.onHttpError(this, stage == null, e);
 		readQueue.clear();
 		if (stage != null) {
@@ -159,13 +152,8 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	@Override
 	public void onReadEndOfStream() {
 		if (stage != null) {
-			if ((reading == BODY || reading == HEADERS) && contentLength == UNKNOWN_LENGTH) {
-				onHttpMessage(bodyQueue.takeRemaining());
-				assert stage == null;
-			} else {
-				closeWithError(CLOSED_CONNECTION);
-				assert stage == null;
-			}
+			closeWithError(CLOSED_CONNECTION);
+			assert stage == null;
 		}
 		close();
 	}
@@ -183,7 +171,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	/**
 	 * Sends the request, recycles it and closes connection in case of timeout
 	 *
-	 * @param request  request for sending
+	 * @param request request for sending
 	 */
 	public CompletionStage<HttpResponse> send(HttpRequest request) {
 		this.stage = SettableStage.create();
