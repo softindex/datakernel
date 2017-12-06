@@ -383,37 +383,40 @@ public final class HttpUrl {
 		assert start != -1;
 		assert src.length() <= 0xFFFF;
 
-		int n = 1; // if not empty -> at least 1 parameter exist
-
-		// looking for parameters quantity
-		for (int i = start; i < end; i++) {
-			if (src.charAt(i) == QUERY_DELIMITER) n++;
+		int n = 0;
+		// adding parameters
+		int ks = start; // key start
+		for (int i = ks; i < end; i++) {
+			if (src.charAt(i) == QUERY_DELIMITER) {
+				if (i != ks) n++;
+				ks = i + 1;
+			}
 		}
+		if (ks != end) n++;
+
 		int[] positions = new int[n];
 
 		// adding parameters
+		ks = start; // key start
 		int ke = -1;    // key end
-		int ve;         // val end
 		int k = 0;      // parameter #
-		int record;     // temporary variable
-		for (int i = start; i < end; i++) {
+		for (int i = ks; i < end; i++) {
 			char c = src.charAt(i);
-			if (c == QUERY_SEPARATOR && ke == -1) {
-				ke = i;
-			}
-			if (c == QUERY_DELIMITER || i + 1 == end) {
-				if (i + 1 == end) {
-					i++;
+			if (c == QUERY_SEPARATOR && ke == -1) ke = i;
+
+			if (c == QUERY_DELIMITER) {
+				if (i != ks) {
+					positions[k++] = ((ke != -1 ? ke : i) << 16) | (i & 0xFFFF);
 				}
-				if (ke == -1) {
-					ke = i;
-				}
-				ve = i;
-				record = (ke << 16) | (ve & 0xFFFF);
-				positions[k++] = record;
+				ks = i + 1;
 				ke = -1;
 			}
 		}
+
+		if (end != ks) {
+			positions[k] = ((ke != -1 ? ke : end) << 16) | (end & 0xFFFF);
+		}
+
 		return positions;
 	}
 

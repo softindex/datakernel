@@ -20,12 +20,11 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.exception.ParseException;
+import org.hamcrest.collection.IsEmptyCollection;
 import org.junit.Test;
 
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
-import java.util.NoSuchElementException;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static junit.framework.TestCase.assertEquals;
@@ -311,5 +310,51 @@ public class HttpUrlTest {
 		assertEquals("google.com", url.getHost());
 		assertEquals("/", url.getPath());
 		assertEquals("query=one:two/something", url.getQuery());
+	}
+
+	private static Map<String, String> map(String[]... values) {
+		return Arrays.stream(values).collect(Collectors.toMap(o -> o[0], o -> o[1]));
+	}
+
+	private static String[] entry(String key, String value) {
+		return new String[]{key, value};
+	}
+
+	@Test
+	public void testLastEmptyValue() {
+		final Map<String, String> map = map(
+				entry("key1", "value"),
+				entry("key2", ""),
+				entry("key3", "value2"),
+				entry("key4", "another_value"),
+				entry("k5", ""));
+
+		final HttpUrl url = HttpUrl.of("http://abc.com/?key1=value&key2&key3=value2&key4=another_value&k5");
+		assertEquals(map, url.getQueryParameters());
+		for (String key : map.keySet()) {
+			assertEquals(map.get(key), url.getQueryParameter(key));
+		}
+	}
+
+	@Test
+	public void testAmpersandLastCharacter() {
+		final Map<String, String> map = map(
+				entry("key1", "value"),
+				entry("key2", ""),
+				entry("key3", "value2"),
+				entry("key4", "another_value"));
+
+		final HttpUrl url = HttpUrl.of("http://abc.com/?key1=value&key2&key3=value2&key4=another_value&");
+		assertEquals(map, url.getQueryParameters());
+		for (String key : map.keySet()) {
+			assertEquals(map.get(key), url.getQueryParameter(key));
+		}
+	}
+
+	@Test
+	public void testEmptyQuery() {
+		final HttpUrl url = HttpUrl.of("http://127.0.0.1/?&&");
+		final Set<String> actual = url.getQueryParameters().keySet();
+		assertThat(actual, IsEmptyCollection.empty());
 	}
 }
