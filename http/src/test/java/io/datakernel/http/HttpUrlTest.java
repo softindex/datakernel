@@ -27,6 +27,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
+import static java.util.Collections.singletonMap;
 import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.*;
 
@@ -356,5 +357,15 @@ public class HttpUrlTest {
 		final HttpUrl url = HttpUrl.of("http://127.0.0.1/?&&");
 		final Set<String> actual = url.getQueryParameters().keySet();
 		assertThat(actual, IsEmptyCollection.empty());
+	}
+
+	@Test
+	public void testEmptyValueBeforeAmpersandWithSeparator() {
+		final Map<String, String> map = singletonMap("key", "");
+		final HttpUrl url = HttpUrl.of("http://abc.com/?key=&");
+		assertEquals(map, url.getQueryParameters());
+		for (String key : map.keySet()) {
+			assertEquals(map.get(key), url.getQueryParameter(key));
+		}
 	}
 }
