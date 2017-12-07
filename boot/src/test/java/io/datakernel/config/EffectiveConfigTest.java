@@ -102,12 +102,11 @@ public class EffectiveConfigTest {
 
 	@Test
 	public void testWorksWithDefaultNulls() throws IOException {
-		String expected =
-				"# DEFAULT: a.a.a = \n" +
-						"# UNUSED:  a.a.b = value1\n" +
-						"# DEFAULT: a.a.c = \n" +
-						"a.a.c = value2\n" +
-						"# UNUSED:  a.b.a = value3\n";
+		String expected
+				= "# a.a.a = \n"
+				+ "## a.a.b = value1\n"
+				+ "a.a.c = value2\n"
+				+ "## a.b.a = value3\n";
 
 		EffectiveConfig config = EffectiveConfig.create(
 				TreeConfig.ofTree()
@@ -119,7 +118,7 @@ public class EffectiveConfigTest {
 		assertNull(config.get("a.a.a", null));
 		assertNotNull(config.get("a.a.c", null));
 
-		String actual = EffectiveConfig.render(config);
+		String actual = config.render();
 		assertEquals(expected, actual);
 	}
 
