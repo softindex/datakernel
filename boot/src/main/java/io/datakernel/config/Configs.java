@@ -18,8 +18,6 @@ package io.datakernel.config;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
@@ -54,8 +52,6 @@ public final class Configs {
 	};
 
 	public static final Config EMPTY_CONFIG = new AbstractConfig() {
-		private final Logger logger = LoggerFactory.getLogger(Config.class);
-
 		@Override
 		protected String doGet() {
 			throw new NoSuchElementException();
@@ -63,7 +59,6 @@ public final class Configs {
 
 		@Override
 		protected String doGet(String defaultString) {
-			logger.warn("using default config value {} for unknown path", defaultString);
 			return defaultString;
 		}
 
@@ -99,8 +94,6 @@ public final class Configs {
 
 	public static Config ofValue(final String value) {
 		return new AbstractConfig() {
-			private final Logger logger = LoggerFactory.getLogger(Config.class);
-
 			@Override
 			protected String doGet() {
 				return value;
@@ -108,7 +101,6 @@ public final class Configs {
 
 			@Override
 			protected String doGet(String defaultString) {
-				logger.warn("using default config value {} for unknown path", defaultString);
 				return value;
 			}
 
@@ -217,8 +209,6 @@ public final class Configs {
 
 	public static Config ofMap(final Map<String, ? extends Config> map) {
 		return new AbstractConfig() {
-			private final Logger logger = LoggerFactory.getLogger(Config.class);
-
 			@Override
 			protected String doGet() throws NoSuchElementException {
 				throw new NoSuchElementException();
@@ -226,7 +216,6 @@ public final class Configs {
 
 			@Override
 			protected String doGet(String defaultString) {
-				logger.warn("using default config value {} for unknown path", defaultString);
 				return defaultString;
 			}
 
