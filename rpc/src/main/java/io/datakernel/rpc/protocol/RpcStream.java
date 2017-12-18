@@ -22,7 +22,6 @@ import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.AbstractStreamConsumer;
 import io.datakernel.stream.AbstractStreamProducer;
 import io.datakernel.stream.StreamDataReceiver;
-import io.datakernel.stream.StreamStatus;
 import io.datakernel.stream.net.SocketStreamingConnection;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
@@ -48,7 +47,7 @@ public final class RpcStream {
 	private final StreamLZ4Decompressor decompressor;
 	private final SocketStreamingConnection connection;
 
-	private StreamStatus producerStatus;
+	private boolean ready;
 	private StreamDataReceiver<RpcMessage> downstreamDataReceiver;
 
 	public RpcStream(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
@@ -66,19 +65,19 @@ public final class RpcStream {
 				protected void onProduce(StreamDataReceiver<RpcMessage> dataReceiver) {
 					RpcStream.this.downstreamDataReceiver = dataReceiver;
 					receiver.getProducer().produce(RpcStream.this.listener);
-					producerStatus = getStatus();
+					ready = true;
 				}
 
 				@Override
 				protected void onSuspended() {
 					receiver.getProducer().suspend();
-					producerStatus = getStatus();
+					ready = false;
 				}
 
 				@Override
 				protected void onError(Throwable t) {
 					RpcStream.this.listener.onClosedWithError(t);
-					producerStatus = getStatus();
+					ready = false;
 				}
 			};
 		} else {
@@ -86,18 +85,18 @@ public final class RpcStream {
 				@Override
 				protected void onProduce(StreamDataReceiver<RpcMessage> dataReceiver) {
 					RpcStream.this.downstreamDataReceiver = dataReceiver;
-					producerStatus = getStatus();
+					ready = true;
 				}
 
 				@Override
 				protected void onSuspended() {
-					producerStatus = getStatus();
+					ready = false;
 				}
 
 				@Override
 				protected void onError(Throwable t) {
 					RpcStream.this.listener.onClosedWithError(t);
-					producerStatus = getStatus();
+					ready = false;
 				}
 			};
 		}
@@ -142,8 +141,6 @@ public final class RpcStream {
 			serializer.getOutput().streamTo(connection.getSocketWriter());
 		}
 
-		producerStatus = sender.getStatus();
-
 		deserializer.getOutput().streamTo(receiver);
 		sender.streamTo(serializer.getInput());
 	}
@@ -161,15 +158,13 @@ public final class RpcStream {
 	}
 
 	private void sendRpcMessage(RpcMessage message) {
-		if (producerStatus == StreamStatus.CLOSED_WITH_ERROR) {
-			return;
+		if (ready) {
+			downstreamDataReceiver.onData(message);
 		}
-		assert producerStatus != StreamStatus.END_OF_STREAM;
-		downstreamDataReceiver.onData(message);
 	}
 
 	public boolean isOverloaded() {
-		return producerStatus != StreamStatus.READY;
+		return !ready;
 	}
 
 	public AsyncTcpSocket.EventHandler getSocketEventHandler() {

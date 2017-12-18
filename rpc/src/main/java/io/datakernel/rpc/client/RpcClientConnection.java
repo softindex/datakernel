@@ -119,7 +119,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 			rpcClient.getGeneralRequestsStats().getRejectedRequests().recordEvent();
 			connectionStats.getRejectedRequests().recordEvent();
 
-			if (logger.isWarnEnabled()) logger.warn(RPC_OVERLOAD_EXCEPTION.getMessage());
+			if (logger.isTraceEnabled()) logger.trace("RPC client uplink is overloaded");
 
 			return Stages.ofException(RPC_OVERLOAD_EXCEPTION);
 		}

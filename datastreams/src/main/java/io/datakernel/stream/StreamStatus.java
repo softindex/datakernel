@@ -17,16 +17,15 @@
 package io.datakernel.stream;
 
 public enum StreamStatus {
-	READY,
-	SUSPENDED,
+	OPEN,
 	END_OF_STREAM,
 	CLOSED_WITH_ERROR;
 
 	public boolean isOpen() {
-		return this.ordinal() <= SUSPENDED.ordinal();
+		return this == OPEN;
 	}
 
 	public boolean isClosed() {
-		return this.ordinal() >= END_OF_STREAM.ordinal();
+		return this != OPEN;
 	}
 }

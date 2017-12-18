@@ -39,7 +39,7 @@ import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.EventloopThreadFactory.defaultEventloopThreadFactory;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static org.junit.Assert.*;
 
 public class RpcHelloWorldTest {
@@ -239,12 +239,12 @@ public class RpcHelloWorldTest {
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
-	//@Test
+//	@Test
 	public void benchmark() throws Exception {
-		int count = 2_000_000; // amount requests
+		int count = 1_000_000; // amount requests
 
 		try (BlockingHelloClient client = new BlockingHelloClient(eventloop)) {
-			for (int t = 0; t < 5; t++) {
+			for (int t = 0; t < 10; t++) {
 				final AtomicInteger success = new AtomicInteger(0);
 				final AtomicInteger error = new AtomicInteger(0);
 				final CountDownLatch latch = new CountDownLatch(count);
@@ -262,7 +262,7 @@ public class RpcHelloWorldTest {
 							}));
 				}
 				latch.await();
-				System.out.println(t + ": Elapsed " + stopwatch.stop().toString() + " rps: " + count * 1000.0 / stopwatch.elapsed(MILLISECONDS)
+				System.out.println(t + ": Elapsed " + stopwatch.stop().toString() + " rps: " + count * 1000000.0 / stopwatch.elapsed(MICROSECONDS)
 						+ " (" + success.get() + "/" + count + " [" + error.get() + "])");
 			}
 		} finally {

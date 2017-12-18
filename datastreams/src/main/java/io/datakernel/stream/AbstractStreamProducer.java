@@ -41,7 +41,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T>, Ha
 
 	private StreamConsumer<T> consumer;
 
-	private StreamStatus status = SUSPENDED;
+	private StreamStatus status = OPEN;
 	private Throwable exception;
 
 	private final SettableStage<Void> endOfStream = SettableStage.create();
@@ -131,7 +131,6 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T>, Ha
 			return;
 		if (status.isClosed())
 			return;
-		status = READY;
 		currentDataReceiver = dataReceiver;
 		lastDataReceiver = dataReceiver;
 		onProduce(dataReceiver);
@@ -144,7 +143,6 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T>, Ha
 	public final void suspend() {
 		if (!isReceiverReady())
 			return;
-		status = SUSPENDED;
 		currentDataReceiver = null;
 		onSuspended();
 	}

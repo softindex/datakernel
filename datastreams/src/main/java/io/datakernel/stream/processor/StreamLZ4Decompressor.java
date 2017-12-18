@@ -33,7 +33,7 @@ import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.processor.StreamLZ4Compressor.*;
 import static java.lang.String.format;
 
-public final class StreamLZ4Decompressor implements StreamTransformer<ByteBuf,ByteBuf> {
+public final class StreamLZ4Decompressor implements StreamTransformer<ByteBuf, ByteBuf> {
 	public static final int HEADER_LENGTH = StreamLZ4Compressor.HEADER_LENGTH;
 
 	private final Eventloop eventloop;
@@ -164,7 +164,8 @@ public final class StreamLZ4Decompressor implements StreamTransformer<ByteBuf,By
 						if (!queue.isEmpty()) {
 							throw new ParseException(format("Unexpected byteBuf after LZ4 EOS packet %s : %s", this, queue));
 						}
-						if (inspector != null) inspector.onBlock(StreamLZ4Decompressor.this, header, ByteBuf.empty(), ByteBuf.empty());
+						if (inspector != null)
+							inspector.onBlock(StreamLZ4Decompressor.this, header, ByteBuf.empty(), ByteBuf.empty());
 						break;
 					}
 

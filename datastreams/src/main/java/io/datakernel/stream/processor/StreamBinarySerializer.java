@@ -26,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static java.lang.Math.max;
 
 /**
@@ -174,7 +175,7 @@ public final class StreamBinarySerializer<T> implements StreamTransformer<T, Byt
 
 		@Override
 		protected void produce() {
-			if (input.getStatus() != StreamStatus.END_OF_STREAM) {
+			if (input.getStatus() != END_OF_STREAM) {
 				input.getProducer().produce(this);
 			} else {
 				flushAndClose();

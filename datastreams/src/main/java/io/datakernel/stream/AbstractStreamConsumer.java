@@ -41,7 +41,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T>, Ha
 
 	private StreamProducer<T> producer;
 
-	private StreamStatus status = READY;
+	private StreamStatus status = OPEN;
 	private Throwable exception;
 
 	private final SettableStage<Void> endOfStream = SettableStage.create();

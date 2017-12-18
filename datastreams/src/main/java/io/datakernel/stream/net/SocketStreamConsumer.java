@@ -80,7 +80,7 @@ final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> impleme
 
 	public void onWrite() {
 		writeTick = 0;
-		if (getStatus() == StreamStatus.SUSPENDED) {
+		if (getStatus().isOpen()) {
 			getProducer().produce(this);
 		} else if (getStatus() == StreamStatus.END_OF_STREAM) {
 			sent = true;

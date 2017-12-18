@@ -170,20 +170,6 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	private Inspector inspector;
 
-	private final Runnable writeRunnable = new Runnable() {
-		@Override
-		public void run() {
-			if (writeTimestamp == 0L || !isOpen())
-				return;
-			writeTimestamp = 0L;
-			try {
-				doWrite();
-			} catch (IOException e) {
-				closeWithError(e, true);
-			}
-		}
-	};
-
 	// region builders
 	public static AsyncTcpSocketImpl wrapChannel(Eventloop eventloop, SocketChannel socketChannel,
 	                                             SocketSettings socketSettings) {
@@ -498,7 +484,16 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		if (writeTimestamp == 0L) {
 			writeTimestamp = eventloop.currentTimeMillis();
 			assert writeTimestamp != 0L;
-			eventloop.post(writeRunnable);
+			eventloop.post(() -> {
+				if (writeTimestamp == 0L || !isOpen())
+					return;
+				writeTimestamp = 0L;
+				try {
+					doWrite();
+				} catch (IOException e) {
+					closeWithError(e, true);
+				}
+			});
 		}
 	}
 
