@@ -23,6 +23,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.*;
 
 import static com.google.common.base.Strings.nullToEmpty;
+import static java.lang.Math.min;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.*;
 
@@ -151,7 +152,7 @@ final class EffectiveConfig implements Config {
 		try {
 			String renderedConfig;
 			synchronized (callsRegistry) {
-				renderedConfig = render(this);
+				renderedConfig = this.render();
 			}
 			Files.write(outputPath, renderedConfig.getBytes(UTF_8), new StandardOpenOption[]{CREATE, WRITE, TRUNCATE_EXISTING});
 		} catch (IOException e) {
@@ -159,29 +160,37 @@ final class EffectiveConfig implements Config {
 		}
 	}
 
-	static String render(EffectiveConfig config) throws IOException {
-		CallsRegistry register = config.callsRegistry;
+	String render() {
+		CallsRegistry register = this.callsRegistry;
 		StringBuilder sb = new StringBuilder();
 
 		TreeSet<String> keys = new TreeSet<>();
 		keys.addAll(register.calls.keySet());   // to get default
 		keys.addAll(register.all.keySet());     // to get unused
+		String lastKey = "";
 		for (String key : keys) {
+			int commonDots = 0;
+			for (int i = 0; i < min(lastKey.length(), key.length()); i++) {
+				if (key.charAt(i) != lastKey.charAt(i)) break;
+				if (key.charAt(i) == '.') commonDots++;
+			}
+			if (!lastKey.isEmpty() && commonDots == 0) {
+				sb.append("\n");
+			}
+			lastKey = key;
+
 			String used = register.calls.get(key);
 			String value = register.all.get(key);
 			String defaultValue = register.defaultCalls.get(key);
 
 			if (!register.calls.containsKey(key)) {
-				sb.append("# UNUSED:  ");
+				sb.append("## ");
 				writeProperty(sb, key, value);
 			} else {
-				if (register.defaultCalls.containsKey(key) && (used == null || !used.equals(defaultValue))) {
-					sb.append("# DEFAULT: ");
-					writeProperty(sb, key, nullToEmpty(defaultValue));
+				if (Objects.equals(used, defaultValue)) {
+					sb.append("# ");
 				}
-				if (used != null) {
-					writeProperty(sb, key, used);
-				}
+				writeProperty(sb, key, nullToEmpty(used));
 			}
 		}
 
@@ -235,7 +244,7 @@ final class EffectiveConfig implements Config {
 				case ':':
 				case '#':
 				case '!':
-					sb.append('\\');
+					if (escapeKey) sb.append('\\');
 					sb.append(c);
 					break;
 				default:

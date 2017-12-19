@@ -52,7 +52,6 @@ public final class Configs {
 	};
 
 	public static final Config EMPTY_CONFIG = new AbstractConfig() {
-
 		@Override
 		protected String doGet() {
 			throw new NoSuchElementException();
@@ -95,7 +94,6 @@ public final class Configs {
 
 	public static Config ofValue(final String value) {
 		return new AbstractConfig() {
-
 			@Override
 			protected String doGet() {
 				return value;
@@ -211,7 +209,6 @@ public final class Configs {
 
 	public static Config ofMap(final Map<String, ? extends Config> map) {
 		return new AbstractConfig() {
-
 			@Override
 			protected String doGet() throws NoSuchElementException {
 				throw new NoSuchElementException();

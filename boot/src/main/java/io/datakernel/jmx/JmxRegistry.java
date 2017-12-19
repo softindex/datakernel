@@ -80,7 +80,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		} else if (isStandardMBean(instanceClass) || isMXBean(instanceClass) || isDynamicMBean(instanceClass)) {
 			mbean = singletonInstance;
 		} else {
-			logger.info(format("Instance with key %s was not registered to jmx, " +
+			logger.trace(format("Instance with key %s was not registered to jmx, " +
 					"because its type does not implement ConcurrentJmxMBean, EventloopJmxMBean " +
 					"and does not implement neither *MBean nor *MXBean interface", key.toString()));
 			return;
@@ -107,7 +107,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 
 		try {
 			mbs.registerMBean(mbean, objectName);
-			logger.info(format("Instance with key %s was successfully registered to jmx " +
+			logger.trace(format("Instance with key %s was successfully registered to jmx " +
 					"with ObjectName \"%s\" ", key.toString(), objectName.toString()));
 
 			registeredSingletons++;
@@ -198,7 +198,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 
 		try {
 			mbs.registerMBean(mbean, objectName);
-			logger.info(format("Pool of instances with key %s was successfully registered to jmx " +
+			logger.trace(format("Pool of instances with key %s was successfully registered to jmx " +
 					"with ObjectName \"%s\"", key.toString(), objectName.toString()));
 
 			registeredPools++;
