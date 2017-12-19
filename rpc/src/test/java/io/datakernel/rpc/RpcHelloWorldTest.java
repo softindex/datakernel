@@ -239,9 +239,9 @@ public class RpcHelloWorldTest {
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
-//	@Test
-	public void benchmark() throws Exception {
-		int count = 1_000_000; // amount requests
+	//	@Test
+	public void testRejectedRequests() throws Exception {
+		int count = 1_000_000;
 
 		try (BlockingHelloClient client = new BlockingHelloClient(eventloop)) {
 			for (int t = 0; t < 10; t++) {

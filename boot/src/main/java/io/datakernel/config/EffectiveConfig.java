@@ -169,12 +169,7 @@ final class EffectiveConfig implements Config {
 		keys.addAll(register.all.keySet());     // to get unused
 		String lastKey = "";
 		for (String key : keys) {
-			int commonDots = 0;
-			for (int i = 0; i < min(lastKey.length(), key.length()); i++) {
-				if (key.charAt(i) != lastKey.charAt(i)) break;
-				if (key.charAt(i) == '.') commonDots++;
-			}
-			if (!lastKey.isEmpty() && commonDots == 0) {
+			if (!lastKey.isEmpty() && commonDots(lastKey, key) == 0) {
 				sb.append("\n");
 			}
 			lastKey = key;
@@ -195,6 +190,15 @@ final class EffectiveConfig implements Config {
 		}
 
 		return sb.toString();
+	}
+
+	private static int commonDots(String key1, String key2) {
+		int commonDots = 0;
+		for (int i = 0; i < min(key1.length(), key2.length()); i++) {
+			if (key2.charAt(i) != key1.charAt(i)) break;
+			if (key2.charAt(i) == '.') commonDots++;
+		}
+		return commonDots;
 	}
 
 	private static void writeProperty(StringBuilder sb, String key, String value) {
