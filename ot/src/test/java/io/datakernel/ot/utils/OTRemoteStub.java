@@ -4,13 +4,12 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Stages;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTRemote;
+import io.datakernel.util.CollectionUtils;
 
 import java.util.*;
 import java.util.concurrent.CompletionStage;
 
-import static io.datakernel.ot.OTUtils.ensureMapValue;
-
-public final class OTSourceStub<K, D> implements OTRemote<K, D> {
+public final class OTRemoteStub<K, D> implements OTRemote<K, D> {
 	public interface Sequence<K> {
 		K next(@Nullable K prev);
 	}
@@ -43,8 +42,6 @@ public final class OTSourceStub<K, D> implements OTRemote<K, D> {
 		}
 	}
 
-	public static final IntegerSequence INTEGER_SEQUENCE = new IntegerSequence();
-
 	public final Sequence<K> sequence;
 	public final Comparator<K> comparator;
 
@@ -54,24 +51,23 @@ public final class OTSourceStub<K, D> implements OTRemote<K, D> {
 	public final TreeSet<K> nodes;
 	public final Map<K, Map<K, List<? extends D>>> forward = new LinkedHashMap<>();
 	public final Map<K, Map<K, List<? extends D>>> backward = new LinkedHashMap<>();
-	public final Map<Set<K>, Map<K, List<D>>> merges = new LinkedHashMap<>();
 	public final Map<K, List<D>> snapshots = new LinkedHashMap<>();
 
-	private OTSourceStub(Sequence<K> sequence, Comparator<K> comparator, TreeSet<K> nodes) {
+	private OTRemoteStub(Sequence<K> sequence, Comparator<K> comparator, TreeSet<K> nodes) {
 		this.sequence = sequence;
 		this.comparator = comparator;
 		this.nodes = nodes;
 	}
 
-	public static <K, D> OTSourceStub<K, D> create(Sequence<K> sequence, Comparator<K> comparator) {
-		OTSourceStub<K, D> result = new OTSourceStub<>(sequence, comparator, new TreeSet<>(comparator));
+	public static <K, D> OTRemoteStub<K, D> create(Sequence<K> sequence, Comparator<K> comparator) {
+		OTRemoteStub<K, D> result = new OTRemoteStub<>(sequence, comparator, new TreeSet<>(comparator));
 //		K revisionId = sequence.next(null);
 //		result.push(OTCommit.<K, D>ofRoot(revisionId));
 		return result;
 	}
 
-	public static <K, D> OTSourceStub<K, D> create(Comparator<K> comparator) {
-		return new OTSourceStub<>(null, comparator, new TreeSet<>(comparator));
+	public static <K, D> OTRemoteStub<K, D> create(Comparator<K> comparator) {
+		return new OTRemoteStub<>(null, comparator, new TreeSet<>(comparator));
 	}
 
 	@Override
@@ -98,8 +94,8 @@ public final class OTSourceStub<K, D> implements OTRemote<K, D> {
 	public void add(K from, K to, List<? extends D> diffs) {
 		nodes.add(from);
 		nodes.add(to);
-		ensureMapValue(forward, from).put(to, diffs);
-		ensureMapValue(backward, to).put(from, diffs);
+		forward.computeIfAbsent(from, CollectionUtils.$::newHashMap).put(to, diffs);
+		backward.computeIfAbsent(to, CollectionUtils.$::newHashMap).put(from, diffs);
 	}
 
 	public void push(OTCommit<K, D> commit) {
@@ -129,20 +125,9 @@ public final class OTSourceStub<K, D> implements OTRemote<K, D> {
 	}
 
 	@Override
-	public CompletionStage<Void> saveMerge(Map<K, List<D>> diffs) {
-		merges.put(diffs.keySet(), diffs);
-		return Stages.of(null);
-	}
-
-	@Override
 	public CompletionStage<Void> saveSnapshot(K revisionId, List<D> diffs) {
 		snapshots.put(revisionId, diffs);
 		return Stages.of(null);
-	}
-
-	@Override
-	public CompletionStage<Map<K, List<D>>> loadMerge(Set<K> nodes) {
-		return Stages.of(merges.getOrDefault(nodes, Collections.emptyMap()));
 	}
 
 	@Override

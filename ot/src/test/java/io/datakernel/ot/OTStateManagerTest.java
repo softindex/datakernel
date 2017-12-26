@@ -5,7 +5,7 @@ import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.FatalErrorHandlers;
 import io.datakernel.ot.exceptions.OTTransformException;
-import io.datakernel.ot.utils.OTSourceStub;
+import io.datakernel.ot.utils.OTRemoteStub;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.ot.utils.TestOpState;
 import org.hamcrest.collection.IsEmptyCollection;
@@ -14,7 +14,6 @@ import org.junit.Test;
 
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -23,8 +22,8 @@ import java.util.stream.IntStream;
 
 import static io.datakernel.ot.OTCommit.ofCommit;
 import static io.datakernel.ot.OTCommit.ofRoot;
-import static io.datakernel.ot.utils.OTSourceStub.TestSequence.of;
-import static io.datakernel.ot.utils.OTSourceStub.create;
+import static io.datakernel.ot.utils.OTRemoteStub.TestSequence.of;
+import static io.datakernel.ot.utils.OTRemoteStub.create;
 import static io.datakernel.ot.utils.Utils.*;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
@@ -301,9 +300,9 @@ public class OTStateManagerTest {
 	}
 
 	private class OTRemoteDecorator<K, D> implements OTRemote<K, D> {
-		private final OTSourceStub<K, D> remote;
+		private final OTRemoteStub<K, D> remote;
 
-		private OTRemoteDecorator(OTSourceStub<K, D> remote) {
+		private OTRemoteDecorator(OTRemoteStub<K, D> remote) {
 			this.remote = remote;
 		}
 
@@ -338,18 +337,8 @@ public class OTStateManagerTest {
 		}
 
 		@Override
-		public CompletionStage<Void> saveMerge(Map<K, List<D>> diffs) {
-			return remote.saveMerge(diffs);
-		}
-
-		@Override
 		public CompletionStage<Void> saveSnapshot(K revisionId, List<D> diffs) {
 			return remote.saveSnapshot(revisionId, diffs);
-		}
-
-		@Override
-		public CompletionStage<Map<K, List<D>>> loadMerge(Set<K> nodes) {
-			return remote.loadMerge(nodes);
 		}
 
 		@Override

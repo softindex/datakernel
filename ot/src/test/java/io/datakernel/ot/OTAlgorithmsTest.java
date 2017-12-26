@@ -13,7 +13,7 @@ import java.util.stream.Stream;
 
 import static io.datakernel.ot.OTUtils.loadAllChanges;
 import static io.datakernel.ot.utils.GraphBuilder.edge;
-import static io.datakernel.ot.utils.OTSourceStub.TestSequence.of;
+import static io.datakernel.ot.utils.OTRemoteStub.TestSequence.of;
 import static io.datakernel.ot.utils.Utils.add;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
@@ -29,7 +29,7 @@ public class OTAlgorithmsTest {
 		final Eventloop eventloop = Eventloop.create();
 		final TestOpState opState = new TestOpState();
 		final List<Integer> commitIds = IntStream.rangeClosed(0, 5).boxed().collect(Collectors.toList());
-		final OTRemote<Integer, TestOp> otRemote = OTSourceStub.create(of(commitIds), Integer::compareTo);
+		final OTRemote<Integer, TestOp> otRemote = OTRemoteStub.create(of(commitIds), Integer::compareTo);
 
 		otRemote.createId().thenCompose(id -> otRemote.push(asList(OTCommit.ofRoot(id))));
 		eventloop.run();
@@ -55,7 +55,7 @@ public class OTAlgorithmsTest {
 		final Eventloop eventloop = Eventloop.create();
 		final Comparator<Integer> comparator = Integer::compareTo;
 		final List<Integer> commitIds = IntStream.rangeClosed(0, 8).boxed().collect(Collectors.toList());
-		final OTRemote<Integer, TestOp> otRemote = OTSourceStub.create(of(commitIds), Integer::compareTo);
+		final OTRemote<Integer, TestOp> otRemote = OTRemoteStub.create(of(commitIds), Integer::compareTo);
 		final GraphBuilder<Integer, TestOp> graphBuilder = new GraphBuilder<>(otRemote);
 		final CompletableFuture<Map<Integer, Integer>> graphFuture = graphBuilder.buildGraph(asList(
 				edge(0, 1, add(1)),
@@ -89,7 +89,7 @@ public class OTAlgorithmsTest {
 		final Eventloop eventloop = Eventloop.create();
 		final Comparator<Integer> comparator = Integer::compareTo;
 		final List<Integer> commitIds = IntStream.rangeClosed(0, 8).boxed().collect(Collectors.toList());
-		final OTRemote<Integer, TestOp> otRemote = OTSourceStub.create(of(commitIds), Integer::compareTo);
+		final OTRemote<Integer, TestOp> otRemote = OTRemoteStub.create(of(commitIds), Integer::compareTo);
 		final GraphBuilder<Integer, TestOp> graphBuilder = new GraphBuilder<>(otRemote);
 		final CompletableFuture<Map<Integer, Integer>> graphFuture = graphBuilder.buildGraph(asList(
 				edge(0, 1, add(1)),

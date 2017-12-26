@@ -28,7 +28,6 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 
 	public static final String TABLE_REVISION = "ot_revision";
 	public static final String TABLE_DIFFS = "ot_diffs";
-	public static final String TABLE_MERGES = "ot_merges";
 
 	private final ExecutorService executor;
 	private final OTSystem<D> otSystem;
@@ -39,12 +38,11 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 
 	private final String tableRevision;
 	private final String tableDiffs;
-	private final String tableMerges;
 	private final String createdBy;
 
 	private OTRemoteSql(ExecutorService executor, OTSystem<D> otSystem, TypeAdapter<List<D>> diffsAdapter,
 	                    TypeAdapter<Map<Integer, List<D>>> mapAdapter, DataSource dataSource,
-	                    String tableRevision, String tableDiffs, String tableMerges, String createdBy) {
+	                    String tableRevision, String tableDiffs, String createdBy) {
 		this.executor = executor;
 		this.otSystem = otSystem;
 		this.dataSource = dataSource;
@@ -52,7 +50,6 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 		this.mapAdapter = mapAdapter;
 		this.tableRevision = tableRevision;
 		this.tableDiffs = tableDiffs;
-		this.tableMerges = tableMerges;
 		this.createdBy = createdBy;
 	}
 
@@ -62,21 +59,20 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 		final TypeAdapter<Map<Integer, List<D>>> mapDiffsAdapter = GsonAdapters.transform(GsonAdapters.ofMap(listAdapter),
 				value -> value.entrySet().stream().collect(Collectors.toMap(entry -> Integer.parseInt(entry.getKey()), Map.Entry::getValue)),
 				value -> value.entrySet().stream().collect(Collectors.toMap(entry -> String.valueOf(entry.getKey()), Map.Entry::getValue)));
-		return new OTRemoteSql<>(executor, otSystem, listAdapter, mapDiffsAdapter, dataSource, TABLE_REVISION, TABLE_DIFFS, TABLE_MERGES, null);
+		return new OTRemoteSql<>(executor, otSystem, listAdapter, mapDiffsAdapter, dataSource, TABLE_REVISION, TABLE_DIFFS, null);
 	}
 
 	public OTRemoteSql<D> withCreatedBy(String createdBy) {
-		return new OTRemoteSql<>(executor, otSystem, diffsAdapter, mapAdapter, dataSource, tableRevision, tableDiffs, tableMerges, createdBy);
+		return new OTRemoteSql<>(executor, otSystem, diffsAdapter, mapAdapter, dataSource, tableRevision, tableDiffs, createdBy);
 	}
 
 	public OTRemoteSql<D> withCustomTableNames(String tableRevision, String tableDiffs, String tableMerges) {
-		return new OTRemoteSql<>(executor, otSystem, diffsAdapter, mapAdapter, dataSource, tableRevision, tableDiffs, tableMerges, createdBy);
+		return new OTRemoteSql<>(executor, otSystem, diffsAdapter, mapAdapter, dataSource, tableRevision, tableDiffs, createdBy);
 	}
 
 	private String sql(String sql) {
 		return sql.replace(TABLE_REVISION, tableRevision)
-				.replace(TABLE_DIFFS, tableDiffs)
-				.replace(TABLE_MERGES, tableMerges);
+				.replace(TABLE_DIFFS, tableDiffs);
 	}
 
 	public void truncateTables() throws SQLException {
@@ -276,51 +272,6 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 
 				logger.trace("Finish load commit: {}, parentIds: {}", revisionId, parentDiffs.keySet());
 				return OTCommit.of(revisionId, parentDiffs);
-			}
-		});
-	}
-
-	@Override
-	public CompletionStage<Void> saveMerge(Map<Integer, List<D>> diffs) {
-		return getCurrentEventloop().callConcurrently(executor, () -> {
-			logger.trace("Start save merges for commits: {}", diffs.keySet());
-			final String diffJson = GsonAdapters.toJson(mapAdapter, diffs);
-			final List<Integer> parents = diffs.keySet().stream().sorted().collect(toList());
-			final String parentIds = parents.stream().map(Object::toString).collect(joining(" "));
-			try (Connection connection = dataSource.getConnection()) {
-				try (PreparedStatement ps = connection.prepareStatement(
-						sql("INSERT INTO ot_merges(parent_ids, diff, min_parent_id, max_parent_id, created_by) " +
-								"VALUES (?, ?, ?, ?, ?) " +
-								"ON DUPLICATE KEY UPDATE created_by=created_by"))) {
-					ps.setString(1, parentIds);
-					ps.setString(2, diffJson);
-					ps.setInt(3, parents.get(0));
-					ps.setInt(4, parents.get(parents.size() - 1));
-					ps.setString(5, createdBy);
-					ps.executeUpdate();
-					logger.trace("Finish save merges for commits: {}", diffs.keySet());
-					return null;
-				}
-			}
-		});
-	}
-
-	@Override
-	public CompletionStage<Map<Integer, List<D>>> loadMerge(Set<Integer> nodes) {
-		return getCurrentEventloop().callConcurrently(executor, () -> {
-			logger.trace("Start load merge: {}", nodes);
-			final String parentIds = nodes.stream().sorted().map(Object::toString).collect(joining(" "));
-			try (Connection connection = dataSource.getConnection()) {
-				try (PreparedStatement ps = connection.prepareStatement(
-						sql("SELECT diff FROM ot_merges WHERE parent_ids=?"))) {
-					ps.setString(1, parentIds);
-					final ResultSet resultSet = ps.executeQuery();
-					logger.trace("Finish load merge: {}", nodes);
-					return resultSet.next()
-							? GsonAdapters.fromJson(mapAdapter, resultSet.getString(1))
-							: Collections.emptyMap();
-
-				}
 			}
 		});
 	}

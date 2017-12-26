@@ -20,9 +20,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
-import static io.datakernel.ot.OTUtils.saveSnapshot;
 import static io.datakernel.ot.OTCommit.ofCommit;
 import static io.datakernel.ot.OTCommit.ofRoot;
+import static io.datakernel.ot.OTUtils.saveSnapshot;
 import static io.datakernel.ot.utils.GraphBuilder.edge;
 import static io.datakernel.ot.utils.Utils.add;
 import static java.util.Arrays.asList;

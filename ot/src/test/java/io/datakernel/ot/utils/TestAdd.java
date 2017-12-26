@@ -1,5 +1,7 @@
 package io.datakernel.ot.utils;
 
+import java.util.Objects;
+
 public class TestAdd implements TestOp {
 	private final int delta;
 
@@ -17,7 +19,7 @@ public class TestAdd implements TestOp {
 
 	@Override
 	public String toString() {
-		return String.valueOf(delta);
+		return (delta > 0 ? "+" : "") + String.valueOf(delta);
 	}
 
 	@Override
@@ -29,14 +31,13 @@ public class TestAdd implements TestOp {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-
 		TestAdd testAdd = (TestAdd) o;
-
 		return delta == testAdd.delta;
 	}
 
 	@Override
 	public int hashCode() {
-		return delta;
+
+		return Objects.hash(delta);
 	}
 }

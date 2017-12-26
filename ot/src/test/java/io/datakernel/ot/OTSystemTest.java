@@ -1,9 +1,8 @@
 package io.datakernel.ot;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.ot.OTUtils.FindResult;
-import io.datakernel.ot.utils.OTSourceStub;
-import io.datakernel.ot.utils.OTSourceStub.TestSequence;
+import io.datakernel.ot.utils.OTRemoteStub;
+import io.datakernel.ot.utils.OTRemoteStub.TestSequence;
 import io.datakernel.ot.utils.TestAdd;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.ot.utils.TestOpState;
@@ -15,7 +14,6 @@ import java.util.concurrent.CompletableFuture;
 
 import static io.datakernel.ot.utils.Utils.*;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertEquals;
 
 @SuppressWarnings({"ArraysAsListWithZeroOrOneArgument", "WeakerAccess"})
 public class OTSystemTest {
@@ -60,7 +58,7 @@ public class OTSystemTest {
 	public void testOtSource2() throws Exception {
 		final OTSystem<TestOp> system = createTestOp();
 		Comparator<String> comparator = (o1, o2) -> reverse(o1).compareTo(reverse(o2));
-		OTSourceStub<String, TestOp> otSource = OTSourceStub.create(TestSequence.of("m", "x", "y", "m2"), comparator);
+		OTRemoteStub<String, TestOp> otSource = OTRemoteStub.create(TestSequence.of("m", "x", "y", "m2"), comparator);
 
 		otSource.push(OTCommit.ofRoot("*"));
 		otSource.add("*", "a1", asList(add(1)));
@@ -146,7 +144,7 @@ public class OTSystemTest {
 	public void testOtSource3() throws Exception {
 		final OTSystem<TestOp> system = createTestOp();
 		Comparator<String> comparator = (o1, o2) -> reverse(o1).compareTo(reverse(o2));
-		OTSourceStub<String, TestOp> otSource = OTSourceStub.create(TestSequence.of("m"), comparator);
+		OTRemoteStub<String, TestOp> otSource = OTRemoteStub.create(TestSequence.of("m"), comparator);
 
 		otSource.push(OTCommit.ofRoot("*"));
 		otSource.add("*", "a1", asList(add(1)));
@@ -181,7 +179,7 @@ public class OTSystemTest {
 	public void testOtSource4() throws Exception {
 		final OTSystem<TestOp> system = createTestOp();
 		Comparator<String> comparator = (o1, o2) -> reverse(o1).compareTo(reverse(o2));
-		OTSourceStub<String, TestOp> otSource = OTSourceStub.create(TestSequence.of("m"), comparator);
+		OTRemoteStub<String, TestOp> otSource = OTRemoteStub.create(TestSequence.of("m"), comparator);
 
 		otSource.push(OTCommit.ofRoot("*"));
 		otSource.add("*", "a1", asList(add(1)));
@@ -212,41 +210,6 @@ public class OTSystemTest {
 		future.get();
 		System.out.println(otSource);
 		System.out.println(stateManager);
-	}
-
-	@Test
-	public void testMerge() throws Exception {
-		final OTSystem<TestOp> system = createTestOp();
-		Comparator<String> comparator = (o1, o2) -> reverse(o1).compareTo(reverse(o2));
-		OTSourceStub<String, TestOp> otSource = OTSourceStub.create(TestSequence.of("m"), comparator);
-
-		otSource.push(OTCommit.ofRoot("*"));
-		otSource.add("*", "a1", asList(add(1)));
-		otSource.add("*", "b1", asList(add(1)));
-		otSource.add("*", "c1", asList(add(1)));
-
-		otSource.add("a1", "a2", asList(add(1)));
-		otSource.add("a2", "a3", asList(add(1)));
-		otSource.add("a3", "m1", asList(add(1)));
-
-		otSource.add("b1", "m1", asList(add(1)));
-
-		otSource.add("c1", "c2", asList(add(1)));
-		otSource.add("c2", "c3", asList(add(1)));
-		otSource.add("c2", "m1", asList(add(1)));
-
-		otSource.add("m1", "a4", asList(add(1)));
-		otSource.add("a4", "a5", asList(add(1)));
-		otSource.add("m1", "b2", asList(add(1)));
-		otSource.add("m1", "c4", asList(add(1)));
-
-		Eventloop eventloop = Eventloop.create();
-		TestOpState state = new TestOpState();
-		OTStateManager<String, TestOp> stateManager = new OTStateManager<>(eventloop, system, otSource, comparator, state);
-
-		final CompletableFuture<FindResult<String, TestOp, List<TestOp>>> merge = stateManager.findMerge().toCompletableFuture();
-		eventloop.run();
-		assertEquals(merge.get().getParentCommit().getId(), "m1");
 	}
 
 }

@@ -319,14 +319,6 @@ public final class OTStateManager<K, D> implements EventloopService {
 				});
 	}
 
-	public CompletionStage<FindResult<K, D, List<D>>> findMerge(K lastNode) {
-		return OTUtils.findMerge(source, comparator, lastNode);
-	}
-
-	public CompletionStage<FindResult<K, D, List<D>>> findMerge() {
-		return OTUtils.findMerge(source, comparator, null);
-	}
-
 	@Override
 	public String toString() {
 		return "OTStateManager{" +

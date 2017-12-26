@@ -3,7 +3,6 @@ package io.datakernel.ot;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncPredicate;
 import io.datakernel.async.Stages;
-import io.datakernel.ot.exceptions.OTTransformException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,10 +12,11 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import static io.datakernel.util.CollectionUtils.$;
+import static io.datakernel.util.CollectionUtils.concat;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.String.format;
 import static java.util.Collections.*;
-import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 
 public class OTUtils {
@@ -98,13 +98,6 @@ public class OTUtils {
 		}
 	}
 
-	private static <D> List<D> concat(List<D> a, List<D> b) {
-		final ArrayList<D> list = new ArrayList<>(a.size() + b.size());
-		list.addAll(a);
-		list.addAll(b);
-		return list;
-	}
-
 	public static <K, D> CompletionStage<FindResult<K, D, List<D>>> findParentCommits(OTRemote<K, D> source, Comparator<K> keyComparator,
 	                                                                                  K startNode, @Nullable K lastNode,
 	                                                                                  AsyncPredicate<OTCommit<K, D>> matchPredicate) {
@@ -121,7 +114,7 @@ public class OTUtils {
 	public static <K, D> CompletionStage<FindResult<K, D, List<D>>> findParentCommits(OTRemote<K, D> source, Comparator<K> keyComparator,
 	                                                                                  Set<K> startNodes, @Nullable K lastNode,
 	                                                                                  AsyncPredicate<OTCommit<K, D>> matchPredicate) {
-		final Map<K, List<D>> startMap = startNodes.stream().collect(toMap(Function.identity(), k -> new ArrayList<>()));
+		final Map<K, List<D>> startMap = startNodes.stream().collect(toMap(Function.identity(), $::newArrayList));
 		return findParent(source, keyComparator, startMap, lastNode, matchPredicate, (ds, ds2) -> concat(ds2, ds));
 	}
 
@@ -189,210 +182,21 @@ public class OTUtils {
 		return Stages.of(FindResult.notFound());
 	}
 
-	public static <K1, K2, V> Map<K2, V> ensureMapValue(Map<K1, Map<K2, V>> map, K1 key) {
-		return map.computeIfAbsent(key, k -> new HashMap<>());
-	}
-
-	public static <K, V> Set<V> ensureSetValue(Map<K, Set<V>> map, K key) {
-		return map.computeIfAbsent(key, k -> new HashSet<>());
-	}
-
-	public static <K, V> List<V> ensureListValue(Map<K, List<V>> map, K key) {
-		return map.computeIfAbsent(key, k -> new ArrayList<>());
-	}
-
-	private static <K, D> CompletionStage<List<OTCommit<K, D>>> loadEdge(OTRemote<K, D> source, K node) {
-		return Stages.pair(source.loadCommit(node), source.isSnapshot(node)).thenComposeAsync(commitInfo -> {
-			final OTCommit<K, D> commit = commitInfo.getLeft();
-			final boolean snapshot = commitInfo.getRight();
-
-			if (commit.isRoot() || commit.isMerge() || snapshot) {
-				List<OTCommit<K, D>> edge = new ArrayList<>();
-				edge.add(commit);
-				return Stages.of(edge);
-			}
-			assert commit.getParents().size() == 1;
-			K parentId = commit.getParents().keySet().iterator().next();
-			return loadEdge(source, parentId).thenApply(edge -> {
-				edge.add(commit);
-				return edge;
-			});
-		});
-	}
-
-	public static <K, D> CompletionStage<Map<K, List<D>>> merge(OTSystem<D> otSystem, OTRemote<K, D> source, Comparator<K> keyComparator,
-	                                                            Set<K> nodes) {
-		return doMergeCache(otSystem, source, keyComparator, nodes, nodes, new HashSet<>(), null);
-	}
-
-	private static <K, D> CompletionStage<Map<K, List<D>>> doMergeCache(OTSystem<D> otSystem, OTRemote<K, D> source, Comparator<K> keyComparator,
-	                                                                    Set<K> originalNodes, Set<K> nodes, Set<K> visitedNodes, K rootNode) {
-		if (logger.isTraceEnabled()) {
-			logger.trace("Do merge for nodes: {}, rootNode: {}, visitedNodes: {}", nodes, rootNode, visitedNodes);
-		}
-		if (nodes.size() == 0) {
-			return Stages.of(emptyMap());
-		}
-
-		if (nodes.size() == 1) {
-			Map<K, List<D>> result = new HashMap<>();
-			K node = nodes.iterator().next();
-			result.put(node, emptyList());
-			visitedNodes.add(node);
-			return Stages.of(result);
-		}
-
-		return source.loadMerge(nodes).thenCompose(mergeCache -> {
-			if (!mergeCache.isEmpty()) {
-				logger.trace("Cache hit for nodes: {}, originalNodes: {}", nodes, originalNodes);
-				visitedNodes.addAll(nodes);
-				return Stages.of(mergeCache);
-			}
-
-			return doMerge(otSystem, source, keyComparator, originalNodes, nodes, visitedNodes, rootNode);
-		}).thenCompose(mergeResult -> {
-			if (originalNodes.stream().noneMatch(nodes::contains)) {
-				return source.saveMerge(mergeResult).thenApply($ -> mergeResult);
-			}
-			return Stages.of(mergeResult);
-		});
-	}
-
-	public static <K, D> List<D> diff(List<OTCommit<K, D>> path) {
-		List<D> result = new ArrayList<>();
-		K prev = null;
-		for (OTCommit<K, D> commit : path) {
-			if (prev != null) {
-				result.addAll(commit.getParents().get(prev));
-			}
-			prev = commit.getId();
-		}
-		return result;
-	}
-
-	@SuppressWarnings("unchecked")
-	private static <K, D> CompletionStage<Map<K, List<D>>> doMerge(OTSystem<D> otSystem, OTRemote<K, D> source, Comparator<K> keyComparator,
-	                                                               Set<K> originalNodes, Set<K> nodes, Set<K> visitedNodes, K rootNode) {
-		K lastNode = null;
-		for (K node : nodes) {
-			if (rootNode != null && rootNode.equals(node)) {
-				continue;
-			}
-			if (lastNode == null || keyComparator.compare(node, lastNode) > 0) {
-				lastNode = node;
-			}
-		}
-		Set<K> earlierNodes = new HashSet<>(nodes);
-		earlierNodes.remove(lastNode);
-
-		final K finalLastNode = lastNode;
-		if (logger.isTraceEnabled()) logger.trace("Start edges load for node: {}", lastNode);
-		return loadEdge(source, lastNode).thenComposeAsync((List<OTCommit<K, D>> edge) -> {
-			if (logger.isTraceEnabled()) {
-				final List<K> edgesId = edge.stream().map(OTCommit::getId).collect(toList());
-				logger.trace("Finish edges load for node: {}, edges: {}", finalLastNode, edgesId);
-			}
-			if (rootNode == null && edge.get(0).isRoot()) {
-				return doMergeCache(otSystem, source, keyComparator, originalNodes, nodes, visitedNodes, edge.get(0).getId());
-			}
-
-			if (edge.size() != 1) {
-				OTCommit<K, D> base = edge.get(0);
-				Set<K> recursiveMergeNodes = new HashSet<>(earlierNodes);
-				recursiveMergeNodes.add(base.getId());
-
-				return doMergeCache(otSystem, source, keyComparator, originalNodes, recursiveMergeNodes, visitedNodes, rootNode).thenCompose((Map<K, List<D>> mergeResult) -> {
-					int surfaceNodeIdx = 0;
-					for (int i = 0; i < edge.size(); i++) {
-						if (visitedNodes.contains(edge.get(i).getId())) {
-							surfaceNodeIdx = i;
-						} else {
-							break;
-						}
-					}
-
-					List<OTCommit<K, D>> inner = edge.subList(0, surfaceNodeIdx + 1);
-					List<OTCommit<K, D>> outer = edge.subList(surfaceNodeIdx, edge.size());
-
-					List<D> surfaceToMerge = new ArrayList<>();
-					surfaceToMerge.addAll(otSystem.invert(diff(inner)));
-					surfaceToMerge.addAll(mergeResult.get(base.getId()));
-
-					List<D> surfaceToLast = diff(outer);
-
-					List<D> squash = otSystem.squash(surfaceToMerge);
-					TransformResult<D> transformed = null;
-					try {
-						transformed = otSystem.transform(squash, otSystem.squash(surfaceToLast));
-					} catch (OTTransformException e) {
-						return Stages.ofException(e);
-					}
-
-					Map<K, List<D>> result = new HashMap<>();
-					result.put(finalLastNode, transformed.right);
-					for (K node : earlierNodes) {
-						List<D> list = new ArrayList<>();
-						list.addAll(mergeResult.get(node));
-						list.addAll(transformed.left);
-						result.put(node, otSystem.squash(list));
-					}
-
-					edge.stream().map(OTCommit::getId).forEach(visitedNodes::add);
-
-					return Stages.of(result);
-				});
-			} else {
-				OTCommit<K, D> last = edge.get(0);
-				Set<K> recursiveMergeNodes = new HashSet<>(earlierNodes);
-				recursiveMergeNodes.addAll(last.getParents().keySet());
-
-				return doMergeCache(otSystem, source, keyComparator, originalNodes, recursiveMergeNodes, visitedNodes, rootNode).thenApply((Map<K, List<D>> mergeResult) -> {
-					K parentNode = null;
-					for (Map.Entry<K, List<D>> entry : last.getParents().entrySet()) {
-						if (entry.getValue() == null)
-							continue;
-						parentNode = entry.getKey();
-						break;
-					}
-
-					List<D> baseToMerge = new ArrayList<>();
-					baseToMerge.addAll(otSystem.invert(last.getParents().get(parentNode)));
-					baseToMerge.addAll(mergeResult.get(parentNode));
-
-					Map<K, List<D>> result = new HashMap<>();
-					result.put(finalLastNode, otSystem.squash(baseToMerge));
-					for (K node : earlierNodes) {
-						result.put(node, mergeResult.get(node));
-					}
-
-					edge.stream().map(OTCommit::getId).forEach(visitedNodes::add);
-
-					return result;
-				});
-
-			}
-		});
-	}
-
 	public static <K, D> CompletionStage<K> mergeHeadsAndPush(OTSystem<D> otSystem, OTRemote<K, D> source, Comparator<K> keyComparator) {
 		return source.getHeads().thenCompose(heads -> mergeHeadsAndPush(otSystem, source, keyComparator, heads));
 	}
 
 	public static <K, D> CompletionStage<K> tryMergeHeadsAndPush(OTSystem<D> otSystem, OTRemote<K, D> source, Comparator<K> keyComparator) {
 		return source.getHeads().thenCompose(heads -> heads.size() != 1 ?
-				mergeHeadsAndPush(otSystem, source, keyComparator, heads)
-				: Stages.of(heads.iterator().next()));
+				mergeHeadsAndPush(otSystem, source, keyComparator, heads) :
+				Stages.of(heads.iterator().next()));
 	}
 
 	private static <K, D> CompletionStage<K> mergeHeadsAndPush(OTSystem<D> otSystem, OTRemote<K, D> source, Comparator<K> keyComparator, Set<K> heads) {
-		return merge(otSystem, source, keyComparator, heads).thenCompose(merge ->
+		return OTMergeAlgorithm.loadAndMerge(otSystem, source, keyComparator, heads).thenCompose(merge ->
 				source.createId().thenCompose(mergeCommitId ->
 						source.push(singletonList(OTCommit.ofMerge(mergeCommitId, merge)))
 								.thenApply($ -> mergeCommitId)));
-	}
-
-	public static <K, D> CompletionStage<FindResult<K, D, List<D>>> findMerge(OTRemote<K, D> source, Comparator<K> keyComparator, @Nullable K lastNode) {
-		return source.getHeads().thenCompose(heads -> findMerge(heads, source, keyComparator, lastNode));
 	}
 
 	public static <K, D> CompletionStage<FindResult<K, D, List<D>>> findSnapshotOrRoot(OTRemote<K, D> source, Comparator<K> keyComparator, Set<K> startNode, @Nullable K lastNode) {
@@ -400,10 +204,6 @@ public class OTUtils {
 			if (commit.isRoot()) return Stages.of(true);
 			return source.isSnapshot(commit.getId());
 		});
-	}
-
-	public static <K, D> CompletionStage<FindResult<K, D, List<D>>> findMerge(Set<K> heads, OTRemote<K, D> source, Comparator<K> keyComparator, @Nullable K lastNode) {
-		return findParentCommits(source, keyComparator, heads, lastNode, commit -> Stages.of(commit.isMerge()));
 	}
 
 	public static <K, D> CompletionStage<FindResult<K, D, List<D>>> findChildPath(OTRemote<K, D> source, Comparator<K> keyComparator, K startNode, K headNode) {
