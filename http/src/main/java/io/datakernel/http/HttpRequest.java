@@ -41,7 +41,7 @@ import static io.datakernel.http.HttpMethod.POST;
  */
 public final class HttpRequest extends HttpMessage {
 	private final HttpMethod method;
-	private HttpUrl url;
+	private UrlParser url;
 	private InetAddress remoteAddress;
 
 	private Map<String, String> bodyParameters;
@@ -61,7 +61,7 @@ public final class HttpRequest extends HttpMessage {
 		return request;
 	}
 
-	static HttpRequest of(HttpMethod method, HttpUrl url) {
+	static HttpRequest of(HttpMethod method, UrlParser url) {
 		assert method != null;
 		HttpRequest request = new HttpRequest(method);
 		request.url = url;
@@ -196,7 +196,7 @@ public final class HttpRequest extends HttpMessage {
 	// region setters
 	public void setUrl(String url) throws IllegalArgumentException {
 		assert !recycled;
-		this.url = HttpUrl.of(url);
+		this.url = UrlParser.of(url);
 		if (!this.url.isRelativePath()) {
 			setHeader(HttpHeaders.ofString(HttpHeaders.HOST, this.url.getHostAndPort()));
 		}
@@ -290,7 +290,7 @@ public final class HttpRequest extends HttpMessage {
 		return url.isHttps();
 	}
 
-	HttpUrl getUrl() {
+	UrlParser getUrl() {
 		assert !recycled;
 		return url;
 	}
@@ -451,7 +451,7 @@ public final class HttpRequest extends HttpMessage {
 				&& getContentType() != null
 				&& getContentType().getMediaType() == MediaTypes.X_WWW_FORM_URLENCODED
 				&& body.readPosition() != body.writePosition()) {
-			bodyParameters = HttpUtils.parseQueryParameters(decodeAscii(getBody()));
+			bodyParameters = UrlParser.parseQueryIntoMap(decodeAscii(getBody()));
 		} else {
 			bodyParameters = Collections.emptyMap();
 		}

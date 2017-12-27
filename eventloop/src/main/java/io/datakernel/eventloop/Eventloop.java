@@ -93,8 +93,6 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 */
 	private final AtomicInteger concurrentOperationsCount = new AtomicInteger(0);
 
-	private final Map<Class<?>, Object> localMap = new HashMap<>();
-
 	private final CurrentTimeProvider timeProvider;
 
 	private long timeAfterSelectorSelect;
@@ -770,17 +768,6 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		});
 
 		return timeoutStage;
-	}
-
-	@SuppressWarnings("unchecked")
-	public <T> T get(Class<T> type) {
-		assert inEventloopThread();
-		return (T) localMap.get(type);
-	}
-
-	public <T> void set(Class<T> type, T value) {
-		assert inEventloopThread();
-		localMap.put(type, value);
 	}
 
 	public long tick() {

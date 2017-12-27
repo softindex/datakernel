@@ -246,11 +246,11 @@ public final class ByteBufStrings {
 		return byteBuffer;
 	}
 
-	public static String decodeUtf8(byte[] array, int pos, int len, char[] tmpBuffer) throws ParseException {
-		int c, charIndex = 0, end = pos + len;
+	public static int decodeUtf8(byte[] array, int pos, int len, char[] buffer, int to) throws ParseException {
+		int end = pos + len;
 		try {
 			while (pos < end) {
-				c = array[pos++] & 0xff;
+				int c = array[pos++] & 0xff;
 				switch ((c >> 4) & 0x0F) {
 					case 0:
 					case 1:
@@ -260,14 +260,14 @@ public final class ByteBufStrings {
 					case 5:
 					case 6:
 					case 7:
-						tmpBuffer[charIndex++] = (char) c;
+						buffer[to++] = (char) c;
 						break;
 					case 12:
 					case 13:
-						tmpBuffer[charIndex++] = (char) ((c & 0x1F) << 6 | array[pos++] & 0x3F);
+						buffer[to++] = (char) ((c & 0x1F) << 6 | array[pos++] & 0x3F);
 						break;
 					case 14:
-						tmpBuffer[charIndex++] = (char) ((c & 0x0F) << 12 | (array[pos++] & 0x3F) << 6 | (array[pos++] & 0x3F));
+						buffer[to++] = (char) ((c & 0x0F) << 12 | (array[pos++] & 0x3F) << 6 | (array[pos++] & 0x3F));
 						break;
 				}
 			}
@@ -275,6 +275,12 @@ public final class ByteBufStrings {
 		} catch (ArrayIndexOutOfBoundsException e) {
 			throw READ_PAST_ARRAY_LENGTH;
 		}
+		return to;
+	}
+
+	public static String decodeUtf8(byte[] array, int pos, int len, char[] tmpBuffer) throws ParseException {
+		int charIndex = 0;
+		charIndex = decodeUtf8(array, pos, len, tmpBuffer, charIndex);
 		return new String(tmpBuffer, 0, charIndex);
 	}
 

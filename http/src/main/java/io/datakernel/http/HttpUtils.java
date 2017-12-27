@@ -20,22 +20,17 @@ import io.datakernel.exception.ParseException;
 
 import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
-import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.net.UnknownHostException;
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static io.datakernel.bytebuf.ByteBufStrings.decodeDecimal;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
-import static io.datakernel.util.StringUtils.splitToList;
 
 /**
  * Util for working with {@link HttpRequest}
  */
 public final class HttpUtils {
-	private static final char COMMA_SEPARATOR = ',';
-	private static final char QUERY_SEPARATOR = '&';
 	private static final String ENCODING = "UTF-8";
 
 	public static InetAddress inetAddress(String host) {
@@ -109,19 +104,19 @@ public final class HttpUtils {
 	}
 
 	/*
-	*   http://stackoverflow.com/questions/5963199/ipv6-validation
-	*   rfc4291
-	*
-	*   IPV6 addresses are represented as 8, 4 hex digit groups of numbers
-	*   2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d
-	*
-	*   leading zeros are not necessary, however at least one digit should be present
-	*
-	*   the null group ':0000:0000:0000'(one or more) could be substituted with '::' once per address
-	*
-	*   x:x:x:x:x:x:d.d.d.d - 6 ipv6 + 4 ipv4
-	*   ::d.d.d.d
-	* */
+	 *   http://stackoverflow.com/questions/5963199/ipv6-validation
+	 *   rfc4291
+	 *
+	 *   IPV6 addresses are represented as 8, 4 hex digit groups of numbers
+	 *   2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d
+	 *
+	 *   leading zeros are not necessary, however at least one digit should be present
+	 *
+	 *   the null group ':0000:0000:0000'(one or more) could be substituted with '::' once per address
+	 *
+	 *   x:x:x:x:x:x:d.d.d.d - 6 ipv6 + 4 ipv4
+	 *   ::d.d.d.d
+	 * */
 	private static boolean checkIpv6(byte[] bytes, int pos, int length) {
 		boolean shortHand = false;  // denotes usage of ::
 		int numCount = 0;
@@ -173,80 +168,6 @@ public final class HttpUtils {
 	}
 
 	/**
-	 * Returns a real IP of client which send this request, if it has header X_FORWARDED_FOR
-	 *
-	 * @param request received request
-	 */
-	public static InetAddress getRealIp(HttpRequest request) {
-		String s = request.getHeader(HttpHeaders.X_FORWARDED_FOR);
-		if (!isNullOrEmpty(s)) {
-			String clientIP = splitToList(COMMA_SEPARATOR, s).iterator().next().trim();
-			try {
-				return HttpUtils.inetAddress(clientIP);
-			} catch (Exception ignored) {
-			}
-		}
-		return request.getRemoteAddress();
-	}
-
-	public static InetAddress getRealIpNginx(HttpRequest request) {
-		String s = request.getHeader(HttpHeaders.X_REAL_IP);
-		if (!isNullOrEmpty(s)) {
-			try {
-				return InetAddress.getByName(s.trim());
-			} catch (Exception ignored) {
-			}
-		}
-		return getRealIp(request);
-	}
-
-
-	/**
-	 * Method which  parses string with URL of query, and returns collection with keys - name of
-	 * parameter, value - value of it. Using encoding UTF-8
-	 *
-	 * @param query string with URL for parsing
-	 * @return collection with keys - name of parameter, value - value of it.
-	 */
-	public static Map<String, String> parseQueryParameters(String query) {
-		return parseQueryParameters(query, ENCODING);
-	}
-
-	/**
-	 * Method which  parses string with URL of query, and returns collection with keys - name of
-	 * parameter, value - value of it.
-	 *
-	 * @param query string with URL for parsing
-	 * @param enc   encoding of this string
-	 * @return collection with keys - name of parameter, value - value of it.
-	 */
-	public static Map<String, String> parseQueryParameters(String query, String enc) {
-		LinkedHashMap<String, String> qps = new LinkedHashMap<>();
-		for (String pair : splitToList(QUERY_SEPARATOR, query)) {
-			pair = pair.trim();
-			int pos = pair.indexOf('=');
-			String name;
-			String val = null;
-			if (pos < 0)
-				name = pair;
-			else {
-				name = pos == 0 ? "" : pair.substring(0, pos);
-				++pos;
-				val = pos < pair.length() ? pair.substring(pos) : "";
-			}
-			try {
-				name = decode(name, enc);
-				if (val != null) {
-					val = decode(val, enc);
-					qps.put(name, val);
-				}
-			} catch (ParseException ignored) {
-			}
-		}
-		return qps;
-	}
-
-	/**
 	 * Method which creates string with parameters and its value in format URL. Using encoding UTF-8
 	 *
 	 * @param q map in which keys if name of parameters, value - value of parameters.
@@ -295,31 +216,6 @@ public final class HttpUtils {
 		}
 	}
 
-	/**
-	 * Decodes a application/x-www-form-urlencoded string using a specific encoding scheme. The supplied
-	 * encoding is used to determine what characters are represented by any consecutive sequences of the
-	 * form "%xy".
-	 *
-	 * @param s   string for decoding
-	 * @param enc the name of a supported character encoding
-	 * @return the newly decoded String
-	 */
-	static String decode(String s, String enc) throws ParseException {
-		try {
-			return URLDecoder.decode(s, enc);
-		} catch (RuntimeException e) {
-			throw new ParseException(e);
-		} catch (UnsupportedEncodingException e) {
-			throw new IllegalArgumentException("Can't decode with supplied encoding: " + enc, e);
-		}
-	}
 
-	static boolean isNullOrEmpty(String s) {
-		return s == null || s.isEmpty();
-	}
-
-	static String nullToEmpty(String string) {
-		return string == null ? "" : string;
-	}
 
 }

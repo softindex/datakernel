@@ -25,7 +25,6 @@ import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.AverageTime)
@@ -40,23 +39,11 @@ public class HttpUrlBenchmark {
 	public void benchmarkNew(Blackhole bh) {
 		int[] positions;
 		for (int i = 0; i < 1_000_000; i++) {
-			positions = HttpUrl.doParseParameters(query, 0, query.length());
-			bh.consume(HttpUrl.findParameter(query, positions, 0, "key0"));
-			bh.consume(HttpUrl.findParameter(query, positions, 0, "key1"));
-			bh.consume(HttpUrl.findParameter(query, positions, 0, "key2"));
-			bh.consume(HttpUrl.findParameter(query, positions, 0, "key3"));
-		}
-	}
-
-	@Benchmark
-	public void benchmarkOld(Blackhole bh) {
-		Map<String, String> map;
-		for (int i = 0; i < 1_000_000; i++) {
-			map = HttpUtils.parseQueryParameters(query);
-			bh.consume(map.get("key0"));
-			bh.consume(map.get("key1"));
-			bh.consume(map.get("key2"));
-			bh.consume(map.get("key3"));
+			positions = UrlParser.parseQueryParameters(query, 0, query.length());
+			bh.consume(UrlParser.findParameter(query, positions, "key0"));
+			bh.consume(UrlParser.findParameter(query, positions, "key1"));
+			bh.consume(UrlParser.findParameter(query, positions, "key2"));
+			bh.consume(UrlParser.findParameter(query, positions, "key3"));
 		}
 	}
 

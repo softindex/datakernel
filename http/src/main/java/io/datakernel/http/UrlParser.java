@@ -17,81 +17,61 @@
 package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.exception.ParseException;
 
-import java.net.URLDecoder;
 import java.util.*;
 
 import static java.util.Collections.emptyList;
 
-public final class HttpUrl {
-	private static final class KeyValueQueryIterable implements Iterable<QueryParameter> {
-		private class QueryParamIterator implements Iterator<QueryParameter> {
-			private int keyStart;
-			private int currentRecord = 0;
-
-			QueryParamIterator(int keyStart) {
-				this.keyStart = keyStart;
-			}
-
-			@Override
-			public boolean hasNext() {
-				return currentRecord < positions.length;
-			}
-
-			@Override
-			public QueryParameter next() {
-				try {
-					return doNext();
-				} catch (IndexOutOfBoundsException e) {
-					throw new NoSuchElementException();
-				}
-			}
-
-			private QueryParameter doNext() {
-				int record = positions[currentRecord++];
-				int keyEnd = record >> 16;
-				int valueEnd = record & 0xFFFF;
-				String key = src.substring(keyStart, keyEnd);
-				String value = valueEnd == keyEnd ? "" : decodeQuietly(src.substring(keyEnd + 1, valueEnd), enc);
-				keyStart = valueEnd + 1;
-				return new QueryParameter(key, value);
-			}
-
-			@Override
-			public void remove() {
-				throw new UnsupportedOperationException();
-			}
-		}
-
+public final class UrlParser {
+	private static class QueryParamIterator implements Iterator<QueryParameter> {
 		private final String src;
 		private final int[] positions;
-		private final String enc;
-		private final short keyStart;
+		private int i = 0;
 
-		KeyValueQueryIterable(String src, int[] positions, short keyStart, String enc) {
+		private QueryParamIterator(String src, int[] positions) {
 			this.src = src;
 			this.positions = positions;
-			this.enc = enc;
-			this.keyStart = keyStart;
 		}
 
 		@Override
-		public Iterator<QueryParameter> iterator() {
-			return new QueryParamIterator(keyStart);
+		public boolean hasNext() {
+			return i < positions.length && positions[i] != 0;
+		}
+
+		@Override
+		public QueryParameter next() {
+			if (!hasNext())
+				throw new NoSuchElementException();
+			int record = positions[i++];
+			int keyStart = record & 0xFFFF;
+			int keyEnd = record >>> 16;
+			String key = src.substring(keyStart, keyEnd);
+			String value = keyValueDecode(src, keyEnd);
+			return new QueryParameter(key, value);
+		}
+
+		@Override
+		public void remove() {
+			throw new UnsupportedOperationException();
 		}
 	}
 
+	private static final class CachedBuffers {
+		private final char[] chars;
+		private final byte[] bytes;
+
+		private CachedBuffers(char[] chars, byte[] bytes) {
+			this.chars = chars;
+			this.bytes = bytes;
+		}
+	}
+
+	private static final ThreadLocal<CachedBuffers> CACHED_BUFFERS = new ThreadLocal<>();
+
 	private static final char IPV6_OPENING_BRACKET = '[';
 	private static final String IPV6_CLOSING_SECTION_WITH_PORT = "]:";
-	private static final String SCHEMA_DELIM = "://";
-	private static final char SLASH = '/';
-	private static final char COLON = ':';
-	private static final char QUESTION_MARK = '?';
-	private static final char NUMBER_SIGN = '#';
-	private static final char QUERY_DELIMITER = '&';
-	private static final char QUERY_SEPARATOR = '=';
-	private static final String QUERY_ENCODING = "UTF-8";
 
 	private static final String HTTP = "http";
 	private static final String HTTPS = "https";
@@ -112,19 +92,19 @@ public final class HttpUrl {
 	int[] queryPositions;
 
 	// creators
-	public static HttpUrl of(String url) throws IllegalArgumentException {
-		HttpUrl httpUrl = new HttpUrl(url);
+	public static UrlParser of(String url) throws IllegalArgumentException {
+		UrlParser httpUrl = new UrlParser(url);
 		httpUrl.parseQuietly(false);
 		return httpUrl;
 	}
 
-	public static HttpUrl parse(String url) throws ParseException {
-		HttpUrl httpUrl = new HttpUrl(url);
+	public static UrlParser parse(String url) throws ParseException {
+		UrlParser httpUrl = new UrlParser(url);
 		httpUrl.parse(true);
 		return httpUrl;
 	}
 
-	private HttpUrl(String raw) {
+	private UrlParser(String raw) {
 		this.raw = raw;
 	}
 
@@ -141,7 +121,7 @@ public final class HttpUrl {
 			throw new ParseException("HttpUrl length cannot be greater than " + Short.MAX_VALUE);
 		}
 
-		short index = (short) raw.indexOf(SCHEMA_DELIM);
+		short index = (short) raw.indexOf("://");
 		if (index < 0 || index > 5) {
 			if (!isRelativePathAllowed)
 				throw new ParseException("Partial URI is not allowed: " + raw);
@@ -154,7 +134,7 @@ public final class HttpUrl {
 			} else {
 				throw new ParseException("Unsupported schema: " + raw.substring(0, index));
 			}
-			index += SCHEMA_DELIM.length();
+			index += "://".length();
 			host = index;
 
 			short hostPortEnd = findHostPortEnd(host);
@@ -164,7 +144,7 @@ public final class HttpUrl {
 				port = (short) (closingSection != -1 ? closingSection + 2 : closingSection);
 			} else {
 				// parse IPv4
-				int colon = raw.indexOf(COLON, index);
+				int colon = raw.indexOf(':', index);
 				port = (short) ((colon != -1 && colon < hostPortEnd) ? colon + 1 : -1);
 			}
 
@@ -184,7 +164,7 @@ public final class HttpUrl {
 		}
 
 		// parse path
-		if (raw.charAt(index) == SLASH) {
+		if (raw.charAt(index) == '/') {
 			path = index;
 			pos = path;
 			pathEnd = findPathEnd(path);
@@ -196,7 +176,7 @@ public final class HttpUrl {
 		}
 
 		// parse query
-		if (raw.charAt(index) == QUESTION_MARK) {
+		if (raw.charAt(index) == '?') {
 			query = (short) (index + 1);
 			index = findQueryEnd(query);
 		}
@@ -206,7 +186,7 @@ public final class HttpUrl {
 		}
 
 		// parse fragment
-		if (raw.charAt(index) == NUMBER_SIGN) {
+		if (raw.charAt(index) == '#') {
 			fragment = (short) (index + 1);
 		}
 	}
@@ -215,7 +195,7 @@ public final class HttpUrl {
 		short hostPortEnd = -1;
 		for (short i = from; i < raw.length(); i++) {
 			char ch = raw.charAt(i);
-			if (ch == SLASH || ch == QUESTION_MARK || ch == NUMBER_SIGN) {
+			if (ch == '/' || ch == '?' || ch == '#') {
 				hostPortEnd = i;
 				break;
 			}
@@ -227,7 +207,7 @@ public final class HttpUrl {
 		short pathEnd = -1;
 		for (short i = from; i < raw.length(); i++) {
 			char ch = raw.charAt(i);
-			if (ch == QUESTION_MARK || ch == NUMBER_SIGN) {
+			if (ch == '?' || ch == '#') {
 				pathEnd = i;
 				break;
 			}
@@ -236,7 +216,7 @@ public final class HttpUrl {
 	}
 
 	private short findQueryEnd(short from) {
-		short queryEnd = (short) raw.indexOf(NUMBER_SIGN, from);
+		short queryEnd = (short) raw.indexOf('#', from);
 		return queryEnd != -1 ? queryEnd : (short) raw.length();
 	}
 
@@ -342,7 +322,7 @@ public final class HttpUrl {
 		if (queryPositions == null) {
 			parseQueryParameters();
 		}
-		return findParameter(raw, queryPositions, query, key);
+		return findParameter(raw, queryPositions, key);
 	}
 
 	public List<String> getQueryParameters(String key) {
@@ -352,7 +332,7 @@ public final class HttpUrl {
 		if (queryPositions == null) {
 			parseQueryParameters();
 		}
-		return findParameters(raw, queryPositions, query, key);
+		return findParameters(raw, queryPositions, key);
 	}
 
 	public Iterable<QueryParameter> getQueryParametersIterable() {
@@ -362,7 +342,7 @@ public final class HttpUrl {
 		if (queryPositions == null) {
 			parseQueryParameters();
 		}
-		return findParameters(raw, queryPositions, query);
+		return () -> new QueryParamIterator(raw, queryPositions);
 	}
 
 	public Map<String, String> getQueryParameters() {
@@ -375,91 +355,89 @@ public final class HttpUrl {
 
 	void parseQueryParameters() {
 		int queryEnd = fragment == -1 ? raw.length() : fragment - 1;
-		queryPositions = doParseParameters(raw, query, queryEnd);
+		queryPositions = parseQueryParameters(raw, query, queryEnd);
 	}
 
-	static int[] doParseParameters(String src, int start, int end) {
-		assert src.length() >= end;
-		assert start != -1;
-		assert src.length() <= 0xFFFF;
+	private static final int[] NO_PARAMETERS = new int[]{};
 
-		int n = 0;
-		// adding parameters
-		int ks = start; // key start
-		for (int i = ks; i < end; i++) {
-			if (src.charAt(i) == QUERY_DELIMITER) {
-				if (i != ks) n++;
-				ks = i + 1;
+	static int[] parseQueryParameters(String query, int pos, int end) {
+		if (pos == end)
+			return NO_PARAMETERS;
+		assert query.length() >= end;
+		assert pos != -1;
+		assert query.length() <= 0xFFFF;
+
+		int[] positions = new int[8];
+
+		int k = 0;
+		int keyStart = pos;
+		while (keyStart < end) {
+			int keyEnd = keyStart;
+			while (keyEnd < end) {
+				char c = query.charAt(keyEnd);
+				if (c == '&' || c == '=') break;
+				keyEnd++;
 			}
-		}
-		if (ks != end) n++;
-
-		int[] positions = new int[n];
-
-		// adding parameters
-		ks = start; // key start
-		int ke = -1;    // key end
-		int k = 0;      // parameter #
-		for (int i = ks; i < end; i++) {
-			char c = src.charAt(i);
-			if (c == QUERY_SEPARATOR && ke == -1) ke = i;
-
-			if (c == QUERY_DELIMITER) {
-				if (i != ks) {
-					positions[k++] = ((ke != -1 ? ke : i) << 16) | (i & 0xFFFF);
+			if (keyStart != keyEnd) {
+				if (k >= positions.length) {
+					positions = Arrays.copyOf(positions, positions.length * 2);
 				}
-				ks = i + 1;
-				ke = -1;
+				positions[k++] = keyStart | (keyEnd << 16);
 			}
-		}
-
-		if (end != ks) {
-			positions[k] = ((ke != -1 ? ke : end) << 16) | (end & 0xFFFF);
+			while (keyStart < end) {
+				if (query.charAt(keyStart++) == '&') break;
+			}
 		}
 
 		return positions;
 	}
 
-	static String findParameter(String src, int[] parsedPositions, int startPosition, String key) {
-		int keyStart = startPosition;
-		for (int record : parsedPositions) {
-			int keyEnd = record >> 16;
-			int valueEnd = record & 0xFFFF;
-			if (isEqual(key, src, keyStart, keyEnd)) {
-				if (valueEnd == keyEnd) {
-					return "";
-				}
-				return decodeQuietly(src.substring(keyEnd + 1, valueEnd), QUERY_ENCODING);
+	public static Map<String, String> parseQueryIntoMap(String query) {
+		Map<String, String> result = new LinkedHashMap<>();
+
+		int end = query.length();
+		int keyStart = 0;
+		while (keyStart < end) {
+			int keyEnd = keyStart;
+			while (keyEnd < end) {
+				char c = query.charAt(keyEnd);
+				if (c == '&' || c == '=') break;
+				keyEnd++;
 			}
-			keyStart = valueEnd + 1;
+			if (keyStart != keyEnd) {
+				result.putIfAbsent(query.substring(keyStart, keyEnd), keyValueDecode(query, keyEnd));
+			}
+			while (keyStart < end) {
+				if (query.charAt(keyStart++) == '&') break;
+			}
+		}
+
+		return result;
+	}
+
+	static String findParameter(String src, int[] parsedPositions, String key) {
+		for (int record : parsedPositions) {
+			if (record == 0) break;
+			int keyStart = record & 0xFFFF;
+			int keyEnd = record >>> 16;
+			if (isEqual(key, src, keyStart, keyEnd)) {
+				return keyValueDecode(src, keyEnd);
+			}
 		}
 		return null;
 	}
 
-	static List<String> findParameters(String src, int[] parsedPositions, int startPosition, String key) {
-		int keyStart = startPosition;
-		List<String> container = null;
+	static List<String> findParameters(String src, int[] parsedPositions, String key) {
+		List<String> container = new ArrayList<>();
 		for (int record : parsedPositions) {
-			int keyEnd = record >> 16;
-			int valueEnd = record & 0xFFFF;
-
+			if (record == 0) break;
+			int keyStart = record & 0xFFFF;
+			int keyEnd = record >>> 16;
 			if (isEqual(key, src, keyStart, keyEnd)) {
-				if (container == null) {
-					container = new ArrayList<>();
-				}
-				if (valueEnd == keyEnd) {
-					container.add("");
-				} else {
-					container.add(decodeQuietly(src.substring(keyEnd + 1, valueEnd), QUERY_ENCODING));
-				}
+				container.add(keyValueDecode(src, keyEnd));
 			}
-			keyStart = valueEnd + 1;
 		}
 		return container;
-	}
-
-	static Iterable<QueryParameter> findParameters(String src, int[] parsedPositions, short startPosition) {
-		return new KeyValueQueryIterable(src, parsedPositions, startPosition, QUERY_ENCODING);
 	}
 
 	// work with path
@@ -485,15 +463,6 @@ public final class HttpUrl {
 			return part;
 		} else {
 			return "";
-		}
-	}
-
-	// utils
-	private static String decodeQuietly(String string, String enc) {
-		try {
-			return URLDecoder.decode(string, enc);
-		} catch (Exception e) {
-			return null;
 		}
 	}
 
@@ -529,6 +498,100 @@ public final class HttpUrl {
 		}
 
 		return result;
+	}
+
+	private static String keyValueDecode(String url, int keyEnd) {
+		return urlDecode(url,
+				(keyEnd < url.length() && url.charAt(keyEnd) == '=') ? (keyEnd + 1) : keyEnd);
+	}
+
+	/**
+	 * Decodes a application/x-www-form-urlencoded string using a specific encoding scheme. The supplied
+	 * encoding is used to determine what characters are represented by any consecutive sequences of the
+	 * form "%xy".
+	 *
+	 * @param s string for decoding
+	 * @return the newly decoded String
+	 */
+	public static String urlDecode(String s) {
+		return urlDecode(s, 0);
+	}
+
+	private static String urlDecode(String s, int pos) {
+		int len = s.length();
+		for (int i = pos; i < len; i++) {
+			char c = s.charAt(i);
+			if (c == '+' || c == '%')
+				return _urlDecode(s, pos, i); // inline hint
+			if (c == '&' || c == '#')
+				return s.substring(pos, i);
+		}
+		return s.substring(pos);
+	}
+
+	private static String _urlDecode(String s, int pos, int encodedSuffixPos) {
+		int len = s.length();
+
+		CachedBuffers cachedBuffers = CACHED_BUFFERS.get();
+		if (cachedBuffers == null || cachedBuffers.bytes.length < len - pos) {
+			int newCount = len - pos + (len - pos << 1);
+			cachedBuffers = new CachedBuffers(new char[newCount], new byte[newCount]);
+			CACHED_BUFFERS.set(cachedBuffers);
+		}
+		char[] chars = cachedBuffers.chars;
+		byte[] bytes = cachedBuffers.bytes;
+
+		int charsPos = 0;
+		for (; pos < encodedSuffixPos; pos++) {
+			chars[charsPos++] = s.charAt(pos);
+		}
+		try {
+			LOOP:
+			while (pos < len) {
+				char c = s.charAt(pos);
+				switch (c) {
+					case '&':
+					case '#':
+						break LOOP;
+					case '+':
+						chars[charsPos++] = ' ';
+						pos++;
+						break;
+					case '%':
+						int bytesPos = 0;
+
+						while ((pos + 2 < len) && (c == '%')) {
+							bytes[bytesPos++] = (byte) ((parseHex(s.charAt(pos + 1)) << 4) + parseHex(s.charAt(pos + 2)));
+							pos += 3;
+							if (pos < len) {
+								c = s.charAt(pos);
+							}
+						}
+
+						if ((pos < len) && (c == '%'))
+							return null;
+
+						charsPos = ByteBufStrings.decodeUtf8(bytes, 0, bytesPos, chars, charsPos);
+						break;
+					default:
+						chars[charsPos++] = c;
+						pos++;
+						break;
+				}
+			}
+			return new String(chars, 0, charsPos);
+		} catch (ParseException e) {
+			return null;
+		}
+	}
+
+	private static final ParseException PARSE_EXCEPTION = new ParseException();
+
+	private static byte parseHex(char c) throws ParseException {
+		if (c >= '0' && c <= '9') return (byte) (c - '0');
+		if (c >= 'a' && c <= 'f') return (byte) (c - 'a' + 10);
+		if (c >= 'A' && c <= 'F') return (byte) (c - 'A' + 10);
+		throw PARSE_EXCEPTION;
 	}
 
 	@Override

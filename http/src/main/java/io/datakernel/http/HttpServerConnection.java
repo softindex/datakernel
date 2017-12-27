@@ -189,7 +189,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			}
 		}
 
-		HttpUrl url = HttpUrl.parse(new String(headerChars, 0, i));
+		UrlParser url = UrlParser.parse(new String(headerChars, 0, i));
 		request = HttpRequest.of(method, url);
 
 		if (method == GET || method == DELETE) {

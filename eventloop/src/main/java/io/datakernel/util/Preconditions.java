@@ -17,7 +17,8 @@
 package io.datakernel.util;
 
 public final class Preconditions {
-	private Preconditions() {}
+	private Preconditions() {
+	}
 
 	public static void check(boolean expression) {
 		if (!expression) {
@@ -38,24 +39,24 @@ public final class Preconditions {
 	}
 
 	public static <T> T checkNotNull(T reference) {
-		if (reference == null) {
-			throw new NullPointerException();
+		if (reference != null) {
+			return reference;
 		}
-		return reference;
+		throw new NullPointerException();
 	}
 
 	public static <T> T checkNotNull(T reference, Object message) {
-		if (reference == null) {
-			throw new NullPointerException(String.valueOf(message));
+		if (reference != null) {
+			return reference;
 		}
-		return reference;
+		throw new NullPointerException(String.valueOf(message));
 	}
 
 	public static <T> T checkNotNull(T reference, String template, Object... args) {
-		if (reference == null) {
-			throw new NullPointerException(String.format(template, args));
+		if (reference != null) {
+			return reference;
 		}
-		return reference;
+		throw new NullPointerException(String.format(template, args));
 	}
 
 	public static void checkState(boolean expression) {
