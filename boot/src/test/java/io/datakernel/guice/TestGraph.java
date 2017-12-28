@@ -24,7 +24,7 @@ import com.google.inject.Singleton;
 import java.util.Arrays;
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkState;
+import static io.datakernel.util.Preconditions.checkState;
 
 public class TestGraph {
 

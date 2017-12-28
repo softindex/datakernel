@@ -16,7 +16,9 @@
 
 package io.datakernel.stream.processor;
 
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.ParseException;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Deserialize;
@@ -29,6 +31,8 @@ import org.junit.Test;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -120,6 +124,36 @@ public class StreamBinaryDeserializerTest {
 
 		assertEquals(inputData, consumer.getList());
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+	}
+
+	@Test(expected = ParseException.class)
+	public void deserializeTruncatedMessageOnEndOfStream() throws Throwable {
+		final Data data = new Data("a");
+		final StreamConsumerToList<ByteBuf> bufferConsumer = StreamConsumerToList.create(eventloop);
+
+		StreamProducers.ofValue(eventloop, data).streamTo(serializer.getInput());
+		serializer.getOutput().streamTo(bufferConsumer);
+		eventloop.run();
+
+		final List<ByteBuf> buffers = bufferConsumer.getList();
+		System.out.println(buffers);
+		assertEquals(1, buffers.size());
+
+		final StreamConsumerToList<Data> consumer = StreamConsumerToList.create(eventloop);
+		final CompletableFuture<List<Data>> future = consumer.getResult().toCompletableFuture();
+		StreamProducers.ofValue(eventloop, buffers.get(0).slice(3)).streamTo(deserializer.getInput());
+		deserializer.getOutput().streamTo(consumer);
+		eventloop.run();
+
+		buffers.forEach(ByteBuf::recycle);
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+
+		try {
+			future.get();
+		} catch (ExecutionException e) {
+			throw e.getCause();
+		}
+
 	}
 
 	public static class Data {

@@ -1,6 +1,5 @@
 package io.datakernel.ot.utils;
 
-import com.google.common.collect.Sets;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Stages;
 import io.datakernel.ot.OTCommit;
@@ -11,7 +10,7 @@ import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.ot.OTUtils.ensureMapValue;
 
-public final class OTSourceStub<K, D> implements OTRemote<K,D> {
+public final class OTSourceStub<K, D> implements OTRemote<K, D> {
 	public interface Sequence<K> {
 		K next(@Nullable K prev);
 	}
@@ -47,29 +46,32 @@ public final class OTSourceStub<K, D> implements OTRemote<K,D> {
 	public static final IntegerSequence INTEGER_SEQUENCE = new IntegerSequence();
 
 	public final Sequence<K> sequence;
+	public final Comparator<K> comparator;
 
 	public K revisionId;
+	public K root;
 
 	public final TreeSet<K> nodes;
 	public final Map<K, Map<K, List<? extends D>>> forward = new LinkedHashMap<>();
 	public final Map<K, Map<K, List<? extends D>>> backward = new LinkedHashMap<>();
+	public final Map<Set<K>, Map<K, List<D>>> merges = new LinkedHashMap<>();
+	public final Map<K, List<D>> snapshots = new LinkedHashMap<>();
 
-	public final TreeMap<K, List<D>> checkpoints = new TreeMap<>();
-
-	private OTSourceStub(Sequence<K> sequence, TreeSet<K> nodes) {
+	private OTSourceStub(Sequence<K> sequence, Comparator<K> comparator, TreeSet<K> nodes) {
 		this.sequence = sequence;
+		this.comparator = comparator;
 		this.nodes = nodes;
 	}
 
 	public static <K, D> OTSourceStub<K, D> create(Sequence<K> sequence, Comparator<K> comparator) {
-		OTSourceStub<K, D> result = new OTSourceStub<>(sequence, new TreeSet<K>(comparator));
+		OTSourceStub<K, D> result = new OTSourceStub<>(sequence, comparator, new TreeSet<>(comparator));
 //		K revisionId = sequence.next(null);
 //		result.push(OTCommit.<K, D>ofRoot(revisionId));
 		return result;
 	}
 
 	public static <K, D> OTSourceStub<K, D> create(Comparator<K> comparator) {
-		return new OTSourceStub<>(null, new TreeSet<K>(comparator));
+		return new OTSourceStub<>(null, comparator, new TreeSet<>(comparator));
 	}
 
 	@Override
@@ -88,10 +90,7 @@ public final class OTSourceStub<K, D> implements OTRemote<K,D> {
 				List<D> diffs = commit.getParents().get(from);
 				add(from, to, diffs);
 			}
-			if (commit.isCheckpoint()) {
-				List<D> checkpoint = commit.getCheckpoint();
-				checkpoints.put(to, checkpoint != null ? checkpoint : Collections.<D>emptyList());
-			}
+			if (commit.isRoot() && root == null) root = commit.getId();
 		}
 		return Stages.of(null);
 	}
@@ -109,23 +108,54 @@ public final class OTSourceStub<K, D> implements OTRemote<K,D> {
 
 	@Override
 	public CompletionStage<Set<K>> getHeads() {
-		return Stages.of(Sets.difference(nodes, forward.keySet()));
+		return Stages.of(difference(nodes, forward.keySet()));
 	}
 
-	@Override
-	public CompletionStage<K> getCheckpoint() {
-		return Stages.of(checkpoints.lastKey());
+	public static <T> Set<T> difference(Set<T> a, Set<T> b) {
+		Set<T> set = new HashSet<>(a);
+		set.removeAll(b);
+		return set;
 	}
 
 	@Override
 	public CompletionStage<OTCommit<K, D>> loadCommit(K revisionId) {
 		if (!nodes.contains(revisionId))
-			throw new IllegalArgumentException("id="+ revisionId);
+			throw new IllegalArgumentException("id=" + revisionId);
 		Map<K, List<? extends D>> parentDiffs = backward.get(revisionId);
 		if (parentDiffs == null) {
 			parentDiffs = Collections.emptyMap();
 		}
-		return Stages.of(OTCommit.of(revisionId, checkpoints.get(revisionId), parentDiffs));
+		return Stages.of(OTCommit.of(revisionId, parentDiffs));
+	}
+
+	@Override
+	public CompletionStage<Void> saveMerge(Map<K, List<D>> diffs) {
+		merges.put(diffs.keySet(), diffs);
+		return Stages.of(null);
+	}
+
+	@Override
+	public CompletionStage<Void> saveSnapshot(K revisionId, List<D> diffs) {
+		snapshots.put(revisionId, diffs);
+		return Stages.of(null);
+	}
+
+	@Override
+	public CompletionStage<Map<K, List<D>>> loadMerge(Set<K> nodes) {
+		return Stages.of(merges.getOrDefault(nodes, Collections.emptyMap()));
+	}
+
+	@Override
+	public CompletionStage<List<D>> loadSnapshot(K revisionId) {
+		return snapshots.containsKey(revisionId)
+				? Stages.of(snapshots.get(revisionId))
+				: Stages.ofException(new IllegalArgumentException());
+
+	}
+
+	@Override
+	public CompletionStage<Boolean> isSnapshot(K revisionId) {
+		return Stages.of(snapshots.containsKey(revisionId));
 	}
 
 	@Override
@@ -133,7 +163,7 @@ public final class OTSourceStub<K, D> implements OTRemote<K,D> {
 		StringBuilder sb = new StringBuilder();
 		String separator = "";
 		for (K node : nodes) {
-			sb.append(separator + loadCommit(node).toString());
+			sb.append(separator).append(loadCommit(node).toString());
 			separator = "\n";
 		}
 		return sb.toString();

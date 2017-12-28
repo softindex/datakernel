@@ -16,11 +16,11 @@
 
 package io.datakernel.stream.processor;
 
-import com.google.common.base.Function;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
 
 import java.util.Comparator;
+import java.util.function.Function;
 
 /**
  * Perform aggregative functions on the elements sorted by keys from input streams. Searches key of item

@@ -22,18 +22,12 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 import io.datakernel.aggregation.AggregationPredicate;
-import io.datakernel.utils.GsonAdapters;
 import io.datakernel.utils.GsonAdapters.TypeAdapterRegistry;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
-import static com.google.common.collect.Lists.newArrayList;
-import static com.google.common.collect.Maps.newLinkedHashMap;
 import static io.datakernel.aggregation.AggregationPredicates.*;
 import static io.datakernel.utils.GsonAdapters.asNullable;
 
@@ -70,7 +64,7 @@ final class AggregationPredicateGsonAdapter extends TypeAdapter<AggregationPredi
 
 	public static AggregationPredicateGsonAdapter create(TypeAdapterRegistry registry,
 	                                                     Map<String, Type> attributeTypes, Map<String, Type> measureTypes) {
-		Map<String, TypeAdapter<?>> attributeAdapters = newLinkedHashMap();
+		Map<String, TypeAdapter<?>> attributeAdapters = new LinkedHashMap<>();
 		for (String attribute : attributeTypes.keySet()) {
 			attributeAdapters.put(attribute, asNullable(registry.getAdapter(attributeTypes.get(attribute))));
 		}
@@ -219,7 +213,7 @@ final class AggregationPredicateGsonAdapter extends TypeAdapter<AggregationPredi
 	}
 
 	private AggregationPredicate readObjectWithAlgebraOfSetsOperator(JsonReader reader) throws IOException {
-		List<AggregationPredicate> predicates = newArrayList();
+		List<AggregationPredicate> predicates = new ArrayList<>();
 		while (reader.hasNext()) {
 			String[] fieldWithOperator = reader.nextName().split(SPACES);
 			String field = fieldWithOperator[0];
@@ -326,7 +320,7 @@ final class AggregationPredicateGsonAdapter extends TypeAdapter<AggregationPredi
 	}
 
 	private AggregationPredicate readAnd(JsonReader reader) throws IOException {
-		List<AggregationPredicate> predicates = newArrayList();
+		List<AggregationPredicate> predicates = new ArrayList<>();
 		while (reader.hasNext()) {
 			AggregationPredicate predicate = read(reader);
 			predicates.add(predicate);
@@ -335,7 +329,7 @@ final class AggregationPredicateGsonAdapter extends TypeAdapter<AggregationPredi
 	}
 
 	private AggregationPredicate readOr(JsonReader reader) throws IOException {
-		List<AggregationPredicate> predicates = newArrayList();
+		List<AggregationPredicate> predicates = new ArrayList<>();
 		while (reader.hasNext()) {
 			AggregationPredicate predicate = read(reader);
 			predicates.add(predicate);

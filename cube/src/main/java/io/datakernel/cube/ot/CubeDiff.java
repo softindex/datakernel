@@ -1,10 +1,12 @@
 package io.datakernel.cube.ot;
 
+import io.datakernel.aggregation.AggregationChunk;
 import io.datakernel.aggregation.ot.AggregationDiff;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import static java.util.Collections.emptyMap;
 
@@ -50,5 +52,33 @@ public class CubeDiff {
 
 	public boolean isEmpty() {
 		return diffs.isEmpty();
+	}
+
+	public Stream<Long> addedChunks() {
+		return diffs.values().stream()
+				.flatMap(aggregationDiff -> aggregationDiff.getAddedChunks().stream())
+				.map(AggregationChunk::getChunkId);
+	}
+
+	@Override
+	public String toString() {
+		return "CubeDiff{" +
+				"diffs=" + diffs +
+				'}';
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		CubeDiff cubeDiff = (CubeDiff) o;
+
+		return diffs != null ? diffs.equals(cubeDiff.diffs) : cubeDiff.diffs == null;
+	}
+
+	@Override
+	public int hashCode() {
+		return diffs != null ? diffs.hashCode() : 0;
 	}
 }

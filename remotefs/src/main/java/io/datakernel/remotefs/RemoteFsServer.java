@@ -17,6 +17,7 @@
 package io.datakernel.remotefs;
 
 import com.google.gson.Gson;
+import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
@@ -30,9 +31,12 @@ import io.datakernel.stream.net.MessagingWithBinaryStreaming;
 
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
 
 import static io.datakernel.stream.net.MessagingSerializers.ofGson;
 
@@ -109,6 +113,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 		map.put(RemoteFsCommands.Download.class, new DownloadMessagingHandler());
 		map.put(RemoteFsCommands.Delete.class, new DeleteMessagingHandler());
 		map.put(RemoteFsCommands.ListFiles.class, new ListFilesMessagingHandler());
+		map.put(RemoteFsCommands.Move.class, new MoveMessagingHandler());
 		return map;
 	}
 
@@ -191,6 +196,22 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 			fileManager.scanAsync().whenComplete((strings, throwable) -> {
 				messaging.send(throwable == null
 						? new RemoteFsResponses.ListOfFiles(strings)
+						: new RemoteFsResponses.Err(throwable.getMessage()));
+				messaging.sendEndOfStream();
+			});
+		}
+	}
+
+	private class MoveMessagingHandler implements MessagingHandler<RemoteFsCommands.Move, RemoteFsResponses.FsResponse> {
+		@Override
+		public void onMessage(Messaging<RemoteFsCommands.Move, RemoteFsResponses.FsResponse> messaging, RemoteFsCommands.Move item) {
+			final List<CompletionStage<Void>> tasks = item.changes.entrySet().stream()
+					.map(e -> fileManager.move(e.getKey(), e.getValue()))
+					.collect(Collectors.toList());
+
+			Stages.run(tasks).whenComplete((aVoid, throwable) -> {
+				messaging.send(throwable == null
+						? new RemoteFsResponses.Ok()
 						: new RemoteFsResponses.Err(throwable.getMessage()));
 				messaging.sendEndOfStream();
 			});

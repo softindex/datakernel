@@ -20,14 +20,12 @@ import io.datakernel.async.SettableStage;
 
 import java.util.concurrent.CompletionStage;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
+import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.checkState;
 
 /**
  * See also:
  * <br><a href="http://en.wikipedia.org/wiki/Decorator_pattern">Decorator Pattern</a>
- * <br>{@link com.google.common.collect.ForwardingObject}
- * <br>{@link com.google.common.collect.ForwardingCollection}
  *
  * @param <T> item type
  */

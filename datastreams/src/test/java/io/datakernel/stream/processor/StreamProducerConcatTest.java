@@ -16,7 +16,6 @@
 
 package io.datakernel.stream.processor;
 
-import com.google.common.base.Functions;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumerToList;
@@ -28,6 +27,7 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
@@ -120,7 +120,7 @@ public class StreamProducerConcatTest {
 				StreamProducers.closing());
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(eventloop);
-		StreamFunction<Integer, Integer> function = StreamFunction.create(eventloop, Functions.<Integer>identity());
+		StreamFunction<Integer, Integer> function = StreamFunction.create(eventloop, Function.<Integer>identity());
 
 		producer.streamTo(function.getInput());
 		eventloop.run();

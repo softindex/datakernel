@@ -16,9 +16,11 @@
 
 package io.datakernel.config;
 
-import com.google.common.collect.Sets;
 
+import java.util.HashSet;
 import java.util.NoSuchElementException;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static io.datakernel.config.Configs.EMPTY_CONFIG;
 import static org.junit.Assert.*;
@@ -80,11 +82,11 @@ public class ConfigTestUtils {
 	}
 
 	private static void testGetChildren(Config config) {
-		assertEquals(Sets.newHashSet("a", "b"), config.getChildren());
-		assertEquals(Sets.newHashSet("a", "b"), config.getChild("a").getChildren());
-		assertEquals(Sets.newHashSet("a", "b"), config.getChild("a.a").getChildren());
+		assertEquals(Stream.of("a", "b").collect(Collectors.toSet()), config.getChildren());
+		assertEquals(Stream.of("a", "b").collect(Collectors.toSet()), config.getChild("a").getChildren());
+		assertEquals(Stream.of("a", "b").collect(Collectors.toSet()), config.getChild("a.a").getChildren());
 
-		assertEquals(Sets.newHashSet(), config.getChild("a.a.a").getChildren());
+		assertEquals(new HashSet<>(), config.getChild("a.a.a").getChildren());
 	}
 
 	private static void testHasValue(Config config) {

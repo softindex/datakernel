@@ -24,7 +24,6 @@ import io.datakernel.logfs.LogFile;
 import io.datakernel.logfs.LogManager;
 import io.datakernel.logfs.LogPosition;
 import io.datakernel.logfs.ot.LogDiff.LogPositionDiff;
-import io.datakernel.ot.OTStateManager;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.StreamProducers;
@@ -37,10 +36,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
 
+import static io.datakernel.async.Stages.onResult;
+
 /**
  * Processes logs. Creates new aggregation chunks and persists them using logic defined in supplied {@code AggregatorSplitter}.
  */
-public final class LogOTProcessor<K, T, D> implements EventloopService {
+public final class LogOTProcessor<T, D> implements EventloopService {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final Eventloop eventloop;
@@ -50,24 +51,22 @@ public final class LogOTProcessor<K, T, D> implements EventloopService {
 	private final String log;
 	private final List<String> partitions;
 
-	private final OTStateManager<K, LogDiff<D>> stateManager;
 	private final LogOTState<D> state;
 
-	private LogOTProcessor(Eventloop eventloop, LogManager<T> logManager, LogDataConsumer<T, D> logStreamConsumer, String log, List<String> partitions,
-	                       OTStateManager<K, LogDiff<D>> stateManager, LogOTState<D> state) {
+	private LogOTProcessor(Eventloop eventloop, LogManager<T> logManager, LogDataConsumer<T, D> logStreamConsumer,
+	                       String log, List<String> partitions, LogOTState<D> state) {
 		this.eventloop = eventloop;
 		this.logManager = logManager;
 		this.logStreamConsumer = logStreamConsumer;
 		this.log = log;
 		this.partitions = partitions;
-		this.stateManager = stateManager;
 		this.state = state;
 	}
 
-	public static <K, T, D> LogOTProcessor<K, T, D> create(Eventloop eventloop, LogManager<T> logManager, LogDataConsumer<T, D> logStreamConsumer, String log, List<String> partitions,
-	                                                       OTStateManager<K, LogDiff<D>> stateManager) {
-		return new LogOTProcessor<>(eventloop, logManager, logStreamConsumer, log, partitions, stateManager,
-				(LogOTState<D>) stateManager.getState());
+	public static <T, D> LogOTProcessor<T, D> create(Eventloop eventloop, LogManager<T> logManager,
+	                                                 LogDataConsumer<T, D> logStreamConsumer,
+	                                                 String log, List<String> partitions, LogOTState<D> state) {
+		return new LogOTProcessor<>(eventloop, logManager, logStreamConsumer, log, partitions, state);
 	}
 
 	@Override
@@ -85,27 +84,18 @@ public final class LogOTProcessor<K, T, D> implements EventloopService {
 		return Stages.of(null);
 	}
 
-	public CompletionStage<Void> rebase() {
-		return stateManager.pull();
-	}
-
 	@SuppressWarnings("unchecked")
-	public CompletionStage<Void> processLog() {
-		return stateManager.pull().thenCompose($ -> {
-			logger.trace("processLog_gotPositions called. Positions: {}", state.positions);
+	public CompletionStage<LogDiff<D>> processLog() {
+		logger.trace("processLog_gotPositions called. Positions: {}", state.positions);
 
-			StreamProducerWithResult<T, Map<String, LogPositionDiff>> producer = getProducer();
-			StreamConsumerWithResult<T, List<D>> consumer = logStreamConsumer.consume();
-			producer.streamTo(consumer);
+		StreamProducerWithResult<T, Map<String, LogPositionDiff>> producer = getProducer();
+		StreamConsumerWithResult<T, List<D>> consumer = logStreamConsumer.consume();
+		producer.streamTo(consumer);
 
-			return Stages.pair(producer.getResult(), consumer.getResult())
-					.thenApply(pair -> LogDiff.of(pair.getLeft(), pair.getRight()))
-					.thenCompose(logDiff -> {
-						logger.info("Log '{}' processing complete. Positions: {}", log, logDiff.positions);
-						stateManager.add(logDiff);
-						return stateManager.pull().thenCompose($_ -> stateManager.commitAndPush().thenApply(k -> null));
-					});
-		});
+		return Stages.pair(producer.getResult(), consumer.getResult())
+				.thenApply(pair -> LogDiff.of(pair.getLeft(), pair.getRight()))
+				.whenComplete(onResult(logDiff ->
+						logger.info("Log '{}' processing complete. Positions: {}", log, logDiff.positions)));
 	}
 
 	private StreamProducerWithResult<T, Map<String, LogPositionDiff>> getProducer() {

@@ -16,14 +16,13 @@
 
 package io.datakernel.guice;
 
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
 import com.google.inject.*;
 import io.datakernel.service.Service;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
 import org.junit.Test;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
@@ -36,15 +35,15 @@ public class TestStartTwice {
 
 	static class ServiceImpl implements A {
 		@Override
-		public ListenableFuture<?> start() {
+		public CompletableFuture<Void> start() {
 			countStart.incrementAndGet();
-			return Futures.immediateFuture(null);
+			return CompletableFuture.completedFuture(null);
 		}
 
 		@Override
-		public ListenableFuture<?> stop() {
+		public CompletableFuture<Void> stop() {
 			countStop.incrementAndGet();
-			return Futures.immediateFuture(null);
+			return CompletableFuture.completedFuture(null);
 		}
 	}
 

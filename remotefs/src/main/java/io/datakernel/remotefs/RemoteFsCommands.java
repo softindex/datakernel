@@ -20,6 +20,8 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import io.datakernel.serializer.GsonSubclassesAdapter;
 
+import java.util.Map;
+
 @SuppressWarnings("WeakerAccess")
 public final class RemoteFsCommands {
 	static Gson commandGSON = new GsonBuilder()
@@ -28,7 +30,8 @@ public final class RemoteFsCommands {
 					.withSubclass("Upload", Upload.class)
 					.withSubclass("Download", Download.class)
 					.withSubclass("Delete", Delete.class)
-					.withSubclass("List", ListFiles.class))
+					.withSubclass("List", ListFiles.class)
+					.withSubclass("Move", Move.class))
 			.setPrettyPrinting()
 			.enableComplexMapKeySerialization()
 			.create();
@@ -75,6 +78,19 @@ public final class RemoteFsCommands {
 		@Override
 		public String toString() {
 			return "Download{filepath=\'" + filePath + "\',startPosition=" + startPosition + "}";
+		}
+	}
+
+	public static final class Move extends FsCommand {
+		public final Map<String, String> changes;
+
+		public Move(Map<String, String> changes) {
+			this.changes = changes;
+		}
+
+		@Override
+		public String toString() {
+			return "Move{changes=" + changes + '}';
 		}
 	}
 

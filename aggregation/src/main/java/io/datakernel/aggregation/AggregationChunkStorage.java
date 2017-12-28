@@ -23,6 +23,7 @@ import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducerWithResult;
 
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.stream.StreamProducers.ofStageWithResult;
@@ -62,6 +63,8 @@ public interface AggregationChunkStorage extends IdGenerator<Long> {
 	                                                          Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
 		return StreamConsumers.ofStageWithResult(write(aggregation, fields, recordClass, chunkId, classLoader));
 	}
+
+	CompletionStage<Void> finish(Set<Long> chunkIds);
 
 }
 

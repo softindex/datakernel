@@ -16,7 +16,6 @@
 
 package io.datakernel.datagraph.dataset.impl;
 
-import com.google.common.base.Predicate;
 import io.datakernel.datagraph.dataset.Dataset;
 import io.datakernel.datagraph.graph.DataGraph;
 import io.datakernel.datagraph.graph.StreamId;
@@ -24,6 +23,7 @@ import io.datakernel.datagraph.node.NodeFilter;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
 
 public final class DatasetFilter<T> extends Dataset<T> {
 	private final Dataset<T> input;

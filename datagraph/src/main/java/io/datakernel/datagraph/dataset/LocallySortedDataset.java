@@ -16,9 +16,8 @@
 
 package io.datakernel.datagraph.dataset;
 
-import com.google.common.base.Function;
-
 import java.util.Comparator;
+import java.util.function.Function;
 
 /**
  * Represents a locally sorted dataset, which means that data on each stream is sorted by key independently.

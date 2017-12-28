@@ -31,8 +31,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
 
-import static com.google.common.base.Preconditions.checkState;
 import static io.datakernel.stream.StreamConsumers.closingWithError;
+import static io.datakernel.util.Preconditions.checkState;
 
 /**
  * Represent the TCP connection which  processes received items with {@link StreamProducer} and {@link StreamConsumer},

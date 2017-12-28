@@ -16,8 +16,6 @@
 
 package io.datakernel.stream.processor;
 
-import com.google.common.base.MoreObjects;
-
 public class DataItemResult {
 	public int key1;
 	public int key2;
@@ -47,12 +45,12 @@ public class DataItemResult {
 
 	@Override
 	public String toString() {
-		return MoreObjects.toStringHelper(this)
-				.add("key1", key1)
-				.add("key2", key2)
-				.add("metric1", metric1)
-				.add("metric2", metric2)
-				.add("metric3", metric3)
-				.toString();
+		return "DataItemResult{" +
+				"key1=" + key1 +
+				", key2=" + key2 +
+				", metric1=" + metric1 +
+				", metric2=" + metric2 +
+				", metric3=" + metric3 +
+				'}';
 	}
 }

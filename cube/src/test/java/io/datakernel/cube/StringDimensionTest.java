@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 import static io.datakernel.aggregation.AggregationPredicates.and;
 import static io.datakernel.aggregation.AggregationPredicates.eq;
@@ -78,6 +79,10 @@ public class StringDimensionTest {
 		StreamConsumerWithResult<DataItemString2, CubeDiff> consumer2 = cube.consume(DataItemString2.class);
 		producer2.streamTo(consumer2);
 		CompletableFuture<CubeDiff> future2 = consumer2.getResult().toCompletableFuture();
+		eventloop.run();
+
+		aggregationChunkStorage.finish(future1.get().addedChunks().collect(Collectors.toSet()));
+		aggregationChunkStorage.finish(future2.get().addedChunks().collect(Collectors.toSet()));
 		eventloop.run();
 
 		cube.apply(future1.get());

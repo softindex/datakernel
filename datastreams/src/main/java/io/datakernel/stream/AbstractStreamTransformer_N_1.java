@@ -16,14 +16,6 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.eventloop.Eventloop;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static com.google.common.base.Preconditions.checkNotNull;
-import static java.util.Collections.unmodifiableList;
-
 /**
  * Represents {@link AbstractStreamProducer} with few {@link AbstractStreamConsumer}.
  *

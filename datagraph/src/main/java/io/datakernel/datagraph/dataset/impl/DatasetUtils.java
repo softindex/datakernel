@@ -16,7 +16,6 @@
 
 package io.datakernel.datagraph.dataset.impl;
 
-import com.google.common.base.Function;
 import io.datakernel.datagraph.dataset.LocallySortedDataset;
 import io.datakernel.datagraph.graph.DataGraph;
 import io.datakernel.datagraph.graph.Partition;
@@ -29,6 +28,7 @@ import io.datakernel.stream.processor.StreamReducers;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
 public class DatasetUtils {
 	private DatasetUtils() {

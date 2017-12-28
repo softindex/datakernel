@@ -16,12 +16,6 @@
 
 package io.datakernel.cube;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Function;
-import com.google.common.base.MoreObjects;
-import com.google.common.base.Predicate;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Ordering;
 import io.datakernel.aggregation.*;
 import io.datakernel.aggregation.AggregationState.ConsolidationDebugInfo;
 import io.datakernel.aggregation.fieldtype.FieldType;
@@ -53,29 +47,28 @@ import java.lang.reflect.Type;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-import static com.google.common.base.Functions.forMap;
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.base.Predicates.in;
-import static com.google.common.base.Predicates.not;
-import static com.google.common.collect.Iterables.*;
-import static com.google.common.collect.Lists.newArrayList;
-import static com.google.common.collect.Maps.*;
-import static com.google.common.collect.Sets.newLinkedHashSet;
-import static com.google.common.primitives.Primitives.isWrapperType;
 import static io.datakernel.aggregation.AggregationUtils.*;
 import static io.datakernel.codegen.ExpressionComparator.leftField;
 import static io.datakernel.codegen.ExpressionComparator.rightField;
 import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.codegen.utils.Primitives.isWrapperType;
 import static io.datakernel.cube.Utils.createResultClass;
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_10_MINUTES;
+import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.util.Preconditions.checkState;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.Collections.sort;
+import static java.util.stream.Collectors.toList;
 
 /**
  * Represents an OLAP cube. Provides methods for loading and querying data.
@@ -97,7 +90,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 	private final Map<String, FieldType> dimensionTypes = new LinkedHashMap<>();
 	private final Map<String, Object> dimensionEmptyElements = new LinkedHashMap<>();
 	private final Map<String, Measure> measures = new LinkedHashMap<>();
-	private final Map<String, ComputedMeasure> computedMeasures = newLinkedHashMap();
+	private final Map<String, ComputedMeasure> computedMeasures = new LinkedHashMap<>();
 
 	private static final class AttributeResolverContainer {
 		private final List<String> attributes = new ArrayList<>();
@@ -110,7 +103,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 		}
 	}
 
-	private final List<AttributeResolverContainer> attributeResolvers = newArrayList();
+	private final List<AttributeResolverContainer> attributeResolvers = new ArrayList<>();
 	private final Map<String, Class<?>> attributeTypes = new LinkedHashMap<>();
 	private final Map<String, AttributeResolverContainer> attributes = new LinkedHashMap<>();
 
@@ -166,7 +159,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 		return new Cube(eventloop, executorService, classLoader, aggregationChunkStorage);
 	}
 
-	@VisibleForTesting
+	// VisibleForTesting
 	static Cube createUninitialized() {
 		return new Cube(null, null, null, null);
 	}
@@ -181,7 +174,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 		checkArgument(resolver.getAttributeTypes().containsKey(attributeName), "Resolver does not support %s", attribute);
 		checkArgument(!isWrapperType(resolver.getAttributeTypes().get(attributeName)), "Unsupported attribute type for %s", attribute);
 		List<String> dimensions = getAllParents(dimension);
-		checkArgument(dimensions.size() == resolver.getKeyTypes().length, "Parent dimensions: %s, key types: %s", dimensions, newArrayList(resolver.getKeyTypes()));
+		checkArgument(dimensions.size() == resolver.getKeyTypes().length, "Parent dimensions: %s, key types: %s", dimensions, asList(resolver.getKeyTypes()));
 		for (int i = 0; i < dimensions.size(); i++) {
 			String d = dimensions.get(i);
 			checkArgument(((Class<?>) dimensionTypes.get(d).getInternalDataType()).equals(resolver.getKeyTypes()[i]), "Dimension type mismatch for %s", d);
@@ -362,13 +355,18 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 		return this;
 	}
 
+	private static <K, V> Stream<Entry<K, V>> filterKeys(Stream<Entry<K, V>> stream, Predicate<K> predicate) {
+		return stream.filter(kvEntry -> predicate.test(kvEntry.getKey()));
+	}
+
 	private Cube addAggregation(final AggregationConfig config) {
 		checkArgument(!aggregations.containsKey(config.id), "Aggregation '%s' is already defined", config.id);
 
+		final Stream<Entry<String, FieldType>> measuresAsFields = measuresAsFields(Cube.this.measures).entrySet().stream();
 		AggregationStructure structure = new AggregationStructure()
-				.withKeys(toMap(config.dimensions, forMap(this.dimensionTypes)))
+				.withKeys(streamToLinkedMap(config.dimensions.stream(), this.dimensionTypes::get))
 				.withMeasures(projectMeasures(Cube.this.measures, config.measures))
-				.withIgnoredMeasures(filterKeys(measuresAsFields(Cube.this.measures), not(in(config.measures))))
+				.withIgnoredMeasures(valuesToLinkedMap(filterKeys(measuresAsFields, s -> !config.measures.contains(s))))
 				.withPartitioningKey(config.partitioningKey);
 
 		Aggregation aggregation = Aggregation.create(eventloop, executorService, classLoader, aggregationChunkStorage, structure)
@@ -425,7 +423,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 
 	@Override
 	public Map<String, Type> getAttributeTypes() {
-		Map<String, Type> result = newLinkedHashMap();
+		Map<String, Type> result = new LinkedHashMap<>();
 		for (String dimension : dimensionTypes.keySet()) {
 			result.put(dimension, dimensionTypes.get(dimension).getDataType());
 		}
@@ -437,7 +435,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 
 	@Override
 	public Map<String, Type> getMeasureTypes() {
-		Map<String, Type> result = newLinkedHashMap();
+		Map<String, Type> result = new LinkedHashMap<>();
 		for (String measure : measures.keySet()) {
 			result.put(measure, measures.get(measure).getFieldType().getDataType());
 		}
@@ -486,12 +484,9 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 
 	public <T> LogDataConsumer<T, CubeDiff> logStreamConsumer(final Class<T> inputClass, final Map<String, String> dimensionFields, final Map<String, String> measureFields,
 	                                                          final AggregationPredicate predicate) {
-		return new LogDataConsumer<T, CubeDiff>() {
-			@Override
-			public StreamConsumerWithResult<T, List<CubeDiff>> consume() {
-				StreamConsumerWithResult<T, CubeDiff> consumer = Cube.this.consume(inputClass, dimensionFields, measureFields, predicate);
-				return StreamConsumers.withResult(consumer, consumer.getResult().thenApply(Collections::singletonList));
-			}
+		return () -> {
+			StreamConsumerWithResult<T, CubeDiff> consumer = Cube.this.consume(inputClass, dimensionFields, measureFields, predicate);
+			return StreamConsumers.withResult(consumer, consumer.getResult().thenApply(Collections::singletonList));
 		};
 	}
 
@@ -524,13 +519,14 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 					"dimensions fields: %s, measureFields: %s", dimensionFields, measureFields));
 		}
 
-		for (final Map.Entry<String, AggregationPredicate> aggregationToDataInputFilterPredicate : compatibleAggregations.entrySet()) {
+		for (final Entry<String, AggregationPredicate> aggregationToDataInputFilterPredicate : compatibleAggregations.entrySet()) {
 			final String aggregationId = aggregationToDataInputFilterPredicate.getKey();
 			final AggregationContainer aggregationContainer = aggregations.get(aggregationToDataInputFilterPredicate.getKey());
 			final Aggregation aggregation = aggregationContainer.aggregation;
 
-			Map<String, String> aggregationKeyFields = filterKeys(dimensionFields, in(aggregation.getKeys()));
-			Map<String, String> aggregationMeasureFields = filterKeys(measureFields, in(aggregationContainer.measures));
+			final List<String> keys = aggregation.getKeys();
+			Map<String, String> aggregationKeyFields = valuesToLinkedMap(filterKeys(dimensionFields.entrySet().stream(), keys::contains));
+			Map<String, String> aggregationMeasureFields = valuesToLinkedMap(filterKeys(measureFields.entrySet().stream(), aggregationContainer.measures::contains));
 
 			AggregationPredicate dataInputFilterPredicate = aggregationToDataInputFilterPredicate.getValue();
 			StreamProducer<T> output = streamSplitter.newOutput();
@@ -550,22 +546,21 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 	                                                                        final Map<String, String> measureFields,
 	                                                                        final AggregationPredicate predicate) {
 		AggregationPredicate dataPredicate = predicate.simplify();
-		Map<String, AggregationPredicate> aggregationToDataInputFilterPredicate = newHashMap();
-		for (Map.Entry<String, AggregationContainer> aggregationContainer : aggregations.entrySet()) {
+		Map<String, AggregationPredicate> aggregationToDataInputFilterPredicate = new HashMap<>();
+		for (Entry<String, AggregationContainer> aggregationContainer : aggregations.entrySet()) {
 			final AggregationContainer container = aggregationContainer.getValue();
 			final Aggregation aggregation = container.aggregation;
-			if (!all(aggregation.getKeys(), in(dimensionFields.keySet())))
-				continue;
 
-			Map<String, String> aggregationMeasureFields = filterKeys(measureFields, in(container.measures));
-			if (aggregationMeasureFields.isEmpty())
-				continue;
+			final Set<String> dimensions = dimensionFields.keySet();
+			if (!aggregation.getKeys().stream().allMatch(dimensions::contains)) continue;
+
+			Map<String, String> aggregationMeasureFields = valuesToLinkedMap(filterKeys(measureFields.entrySet().stream(), container.measures::contains));
+			if (aggregationMeasureFields.isEmpty()) continue;
 
 			AggregationPredicate containerPredicate = container.predicate.simplify();
 
 			AggregationPredicate intersection = AggregationPredicates.and(containerPredicate, dataPredicate).simplify();
-			if (AggregationPredicates.alwaysFalse().equals(intersection))
-				continue;
+			if (AggregationPredicates.alwaysFalse().equals(intersection)) continue;
 
 			if (intersection.equals(containerPredicate)) {
 				aggregationToDataInputFilterPredicate.put(aggregationContainer.getKey(), AggregationPredicates.alwaysTrue());
@@ -582,7 +577,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 	                                       DefiningClassLoader classLoader,
 	                                       Map<String, FieldType> keyTypes) {
 		return ClassBuilder.create(classLoader, Predicate.class)
-				.withMethod("apply", boolean.class, singletonList(Object.class),
+				.withMethod("test", boolean.class, singletonList(Object.class),
 						predicate.createPredicateDef(cast(arg(0), inputClass), keyTypes))
 				.buildClassAndCreateNewInstance();
 	}
@@ -610,7 +605,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 	private <T> StreamProducer<T> queryRawStream(List<String> dimensions, List<String> storedMeasures, AggregationPredicate where,
 	                                             Class<T> resultClass, DefiningClassLoader queryClassLoader,
 	                                             List<AggregationContainer> compatibleAggregations) throws QueryException {
-		List<AggregationContainerWithScore> containerWithScores = newArrayList();
+		List<AggregationContainerWithScore> containerWithScores = new ArrayList<>();
 		for (AggregationContainer compatibleAggregation : compatibleAggregations) {
 			AggregationQuery aggregationQuery = AggregationQuery.create(dimensions, storedMeasures, where);
 			double score = compatibleAggregation.aggregation.estimateCost(aggregationQuery);
@@ -620,13 +615,13 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 
 		Class resultKeyClass = createKeyClass(projectKeys(dimensionTypes, dimensions), queryClassLoader);
 
-		StreamReducer<Comparable, T, Object> streamReducer = StreamReducer.create(eventloop, Ordering.natural());
+		StreamReducer<Comparable, T, Object> streamReducer = StreamReducer.create(eventloop, Comparable::compareTo);
 		StreamProducer<T> queryResultProducer = streamReducer.getOutput();
 
-		storedMeasures = newArrayList(storedMeasures);
+		storedMeasures = new ArrayList<>(storedMeasures);
 		for (AggregationContainerWithScore aggregationContainerWithScore : containerWithScores) {
 			AggregationContainer aggregationContainer = aggregationContainerWithScore.aggregationContainer;
-			List<String> compatibleMeasures = newArrayList(filter(storedMeasures, in(aggregationContainer.measures)));
+			List<String> compatibleMeasures = storedMeasures.stream().filter(aggregationContainer.measures::contains).collect(toList());
 			if (compatibleMeasures.isEmpty())
 				continue;
 			storedMeasures.removeAll(compatibleMeasures);
@@ -667,18 +662,18 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 	                                                             Collection<String> storedMeasures,
 	                                                             AggregationPredicate where) {
 		where = where.simplify();
-		List<String> allDimensions = newArrayList(concat(dimensions, where.getDimensions()));
+		List<String> allDimensions = Stream.concat(dimensions.stream(), where.getDimensions().stream()).collect(toList());
 
 		List<AggregationContainer> compatibleAggregations = new ArrayList<>();
 		for (AggregationContainer aggregationContainer : aggregations.values()) {
-			if (!all(allDimensions, in(aggregationContainer.aggregation.getKeys())))
-				continue;
-			List<String> compatibleMeasures = newArrayList(filter(storedMeasures, in(aggregationContainer.measures)));
-			if (compatibleMeasures.isEmpty())
-				continue;
+			final List<String> keys = aggregationContainer.aggregation.getKeys();
+			if (!allDimensions.stream().allMatch(keys::contains)) continue;
+
+			List<String> compatibleMeasures = storedMeasures.stream().filter(aggregationContainer.measures::contains).collect(toList());
+			if (compatibleMeasures.isEmpty()) continue;
 			AggregationPredicate intersection = AggregationPredicates.and(where, aggregationContainer.predicate).simplify();
-			if (!intersection.equals(where))
-				continue;
+
+			if (!intersection.equals(where)) continue;
 			compatibleAggregations.add(aggregationContainer);
 		}
 		return compatibleAggregations;
@@ -761,8 +756,8 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 	}
 
 	public Map<String, List<ConsolidationDebugInfo>> getConsolidationDebugInfo() {
-		Map<String, List<ConsolidationDebugInfo>> m = newHashMap();
-		for (Map.Entry<String, AggregationContainer> aggregationEntry : aggregations.entrySet()) {
+		Map<String, List<ConsolidationDebugInfo>> m = new HashMap<>();
+		for (Entry<String, AggregationContainer> aggregationEntry : aggregations.entrySet()) {
 			m.put(aggregationEntry.getKey(), aggregationEntry.getValue().aggregation.getState().getConsolidationDebugInfo());
 		}
 		return m;
@@ -776,8 +771,8 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 	@Override
 	public CompletionStage<QueryResult> query(CubeQuery cubeQuery) throws QueryException {
 		DefiningClassLoader queryClassLoader = getQueryClassLoader(new CubeClassLoaderCache.Key(
-				newLinkedHashSet(cubeQuery.getAttributes()),
-				newLinkedHashSet(cubeQuery.getMeasures()),
+				new LinkedHashSet<>(cubeQuery.getAttributes()),
+				new LinkedHashSet<>(cubeQuery.getMeasures()),
 				cubeQuery.getWhere().getDimensions()));
 		long queryStarted = eventloop.currentTimeMillis();
 		return new RequestContext().execute(queryClassLoader, cubeQuery)
@@ -809,19 +804,19 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 		AggregationPredicate queryPredicate;
 		AggregationPredicate queryHaving;
 
-		List<AggregationContainer> compatibleAggregations = newArrayList();
+		List<AggregationContainer> compatibleAggregations = new ArrayList<>();
 		Map<String, Object> fullySpecifiedDimensions;
 
-		Set<String> resultDimensions = newLinkedHashSet();
-		Set<String> resultAttributes = newLinkedHashSet();
+		Set<String> resultDimensions = new LinkedHashSet<>();
+		Set<String> resultAttributes = new LinkedHashSet<>();
 
-		Set<String> resultMeasures = newLinkedHashSet();
-		Set<String> resultStoredMeasures = newLinkedHashSet();
-		Set<String> resultComputedMeasures = newLinkedHashSet();
+		Set<String> resultMeasures = new LinkedHashSet<>();
+		Set<String> resultStoredMeasures = new LinkedHashSet<>();
+		Set<String> resultComputedMeasures = new LinkedHashSet<>();
 
 		Class<?> resultClass;
 		Predicate<?> havingPredicate;
-		List<String> resultOrderings = newArrayList();
+		List<String> resultOrderings = new ArrayList<>();
 		Comparator<?> comparator;
 		MeasuresFunction measuresFunction;
 		TotalsFunction totalsFunction;
@@ -854,7 +849,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 			recordFunction = createRecordFunction();
 
 			StreamConsumerToList<Object> consumer = new StreamConsumerToList<>(eventloop);
-			StreamProducer queryResultProducer = queryRawStream(newArrayList(resultDimensions), newArrayList(resultStoredMeasures),
+			StreamProducer queryResultProducer = queryRawStream(new ArrayList<>(resultDimensions), new ArrayList<>(resultStoredMeasures),
 					queryPredicate, resultClass, queryClassLoader, compatibleAggregations);
 			queryResultProducer.streamTo(consumer);
 
@@ -866,7 +861,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 //				if (resultAttributes.contains(attribute))
 //					continue;
 				recordAttributes.add(attribute);
-				List<String> dimensions = newArrayList();
+				List<String> dimensions = new ArrayList<>();
 				if (dimensionTypes.containsKey(attribute)) {
 					dimensions = getAllParents(attribute);
 				} else if (attributes.containsKey(attribute)) {
@@ -893,7 +888,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 			}
 			compatibleAggregations = getCompatibleAggregationsForQuery(resultDimensions, queryStoredMeasures, queryPredicate);
 
-			Set<String> compatibleMeasures = newLinkedHashSet();
+			Set<String> compatibleMeasures = new LinkedHashSet<>();
 			for (AggregationContainer aggregationContainer : compatibleAggregations) {
 				compatibleMeasures.addAll(aggregationContainer.measures);
 			}
@@ -974,12 +969,11 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 		}
 
 		private Predicate createHavingPredicate() {
-			if (queryHaving == AggregationPredicates.alwaysTrue())
-				return com.google.common.base.Predicates.alwaysTrue();
-			if (queryHaving == AggregationPredicates.alwaysFalse())
-				return com.google.common.base.Predicates.alwaysFalse();
+			if (queryHaving == AggregationPredicates.alwaysTrue()) return o -> true;
+			if (queryHaving == AggregationPredicates.alwaysFalse()) return o -> false;
+
 			return ClassBuilder.create(queryClassLoader, Predicate.class)
-					.withMethod("apply", boolean.class, singletonList(Object.class),
+					.withMethod("test", boolean.class, singletonList(Object.class),
 							queryHaving.createPredicateDef(cast(arg(0), resultClass), fieldTypes))
 					.buildClassAndCreateNewInstance();
 		}
@@ -987,7 +981,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 		@SuppressWarnings("unchecked")
 		Comparator<Object> createComparator() {
 			if (query.getOrderings().isEmpty())
-				return Ordering.allEqual();
+				return (o1, o2) -> 0;
 
 			ExpressionComparator comparator = ExpressionComparator.create();
 
@@ -1037,7 +1031,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 			recordFunction.copyMeasures(totals, totalRecord);
 
 			List<CompletionStage<Void>> tasks = new ArrayList<>();
-			Map<String, Object> filterAttributes = newLinkedHashMap();
+			Map<String, Object> filterAttributes = new LinkedHashMap<>();
 			for (AttributeResolverContainer resolverContainer : attributeResolvers) {
 				List<String> attributes = new ArrayList<>(resolverContainer.attributes);
 				attributes.retainAll(resultAttributes);
@@ -1058,7 +1052,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 		}
 
 		QueryResult processResults2(List<Object> results, Object totals, Map<String, Object> filterAttributes) {
-			results = newArrayList(Iterables.filter(results, (Predicate<Object>) havingPredicate));
+			results = results.stream().filter(((Predicate<Object>) havingPredicate)).collect(toList());
 
 			int totalCount = results.size();
 
@@ -1127,7 +1121,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 				start = 0;
 				offset = 0;
 			} else if (offset >= results.size()) {
-				return newArrayList();
+				return new ArrayList();
 			} else {
 				start = offset;
 			}
@@ -1142,8 +1136,11 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 			}
 
 			if (comparator != null) {
-				int upperBound = offset + limit > results.size() ? results.size() : offset + limit;
-				return Ordering.from(comparator).leastOf(results, upperBound).subList(offset, upperBound);
+				return ((List<Object>) results).stream()
+						.sorted(((Comparator<Object>) comparator))
+						.skip(offset)
+						.limit(limit)
+						.collect(Collectors.toList());
 			}
 
 			return results.subList(start, end);
@@ -1184,9 +1181,9 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 
 	@Override
 	public String toString() {
-		return MoreObjects.toStringHelper(this)
-				.add("aggregations", aggregations)
-				.toString();
+		return "Cube{" +
+				"aggregations=" + aggregations +
+				'}';
 	}
 
 	// jmx

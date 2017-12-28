@@ -23,7 +23,6 @@ import io.datakernel.codegen.utils.Primitives;
 
 import java.util.*;
 
-import static com.google.common.collect.Lists.newArrayList;
 import static io.datakernel.codegen.Expressions.*;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
@@ -61,7 +60,7 @@ public final class ComputedMeasures {
 
 		@Override
 		public final Class<?> getType(Map<String, Measure> storedMeasures) {
-			List<Class<?>> types = newArrayList();
+			List<Class<?>> types = new ArrayList<>();
 			for (ComputedMeasure dependency : dependencies) {
 				types.add(dependency.getType(storedMeasures));
 			}

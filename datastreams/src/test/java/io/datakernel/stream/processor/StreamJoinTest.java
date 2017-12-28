@@ -16,8 +16,6 @@
 
 package io.datakernel.stream.processor;
 
-import com.google.common.base.MoreObjects;
-import com.google.common.collect.Ordering;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumerToList;
@@ -27,8 +25,8 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
-import static com.google.common.base.Objects.equal;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
@@ -51,11 +49,11 @@ public class StreamJoinTest {
 
 		@Override
 		public String toString() {
-			return MoreObjects.toStringHelper(this)
-					.add("id", id)
-					.add("detailId", detailId)
-					.add("master", master)
-					.toString();
+			return "DataItemMaster{" +
+					"id=" + id +
+					", detailId=" + detailId +
+					", master='" + master + '\'' +
+					'}';
 		}
 	}
 
@@ -70,10 +68,10 @@ public class StreamJoinTest {
 
 		@Override
 		public String toString() {
-			return MoreObjects.toStringHelper(this)
-					.add("id", id)
-					.add("detail", detail)
-					.toString();
+			return "DataItemDetail{" +
+					"id=" + id +
+					", detail='" + detail + '\'' +
+					'}';
 		}
 	}
 
@@ -95,19 +93,19 @@ public class StreamJoinTest {
 			DataItemMasterDetail that = (DataItemMasterDetail) o;
 			if (id != that.id) return false;
 			if (detailId != that.detailId) return false;
-			if (!equal(detail, that.detail)) return false;
-			if (!equal(master, that.master)) return false;
+			if (!Objects.equals(detail, that.detail)) return false;
+			if (!Objects.equals(master, that.master)) return false;
 			return true;
 		}
 
 		@Override
 		public String toString() {
-			return MoreObjects.toStringHelper(this)
-					.add("id", id)
-					.add("detailId", detailId)
-					.add("master", master)
-					.add("detail", detail)
-					.toString();
+			return "DataItemMasterDetail{" +
+					"id=" + id +
+					", detailId=" + detailId +
+					", master='" + master + '\'' +
+					", detail='" + detail + '\'' +
+					'}';
 		}
 	}
 
@@ -127,7 +125,7 @@ public class StreamJoinTest {
 				new DataItemDetail(20, "detailY")));
 
 		StreamJoin<Integer, DataItemMaster, DataItemDetail, DataItemMasterDetail> streamJoin =
-				StreamJoin.create(eventloop, Ordering.natural(),
+				StreamJoin.create(eventloop, Integer::compareTo,
 						input -> input.detailId,
 						input -> input.id,
 						new StreamJoin.ValueJoiner<Integer, DataItemMaster, DataItemDetail, DataItemMasterDetail>() {
@@ -181,7 +179,7 @@ public class StreamJoinTest {
 				new DataItemDetail(20, "detailY")));
 
 		StreamJoin<Integer, DataItemMaster, DataItemDetail, DataItemMasterDetail> streamJoin =
-				StreamJoin.create(eventloop, Ordering.natural(),
+				StreamJoin.create(eventloop, Integer::compareTo,
 						input -> input.detailId,
 						input -> input.id,
 						new StreamJoin.ValueJoiner<Integer, DataItemMaster, DataItemDetail, DataItemMasterDetail>() {
@@ -240,7 +238,7 @@ public class StreamJoinTest {
 		);
 
 		StreamJoin<Integer, DataItemMaster, DataItemDetail, DataItemMasterDetail> streamJoin =
-				StreamJoin.create(eventloop, Ordering.natural(),
+				StreamJoin.create(eventloop, Integer::compareTo,
 						input -> input.detailId,
 						input -> input.id,
 						new StreamJoin.ValueJoiner<Integer, DataItemMaster, DataItemDetail, DataItemMasterDetail>() {

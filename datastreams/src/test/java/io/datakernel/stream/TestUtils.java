@@ -16,6 +16,9 @@
 
 package io.datakernel.stream;
 
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.stream.processor.StreamTransformer;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -75,6 +78,83 @@ public class TestUtils {
 		if (expectedStatus == StreamStatus.CLOSED_WITH_ERROR && streamConsumer instanceof StreamConsumers.ClosingWithErrorImpl)
 			return;
 		assertEquals(expectedStatus, ((AbstractStreamConsumer<?>) streamConsumer).getStatus());
+	}
+
+	public static class CountTransformer<T> implements StreamTransformer<T, T> {
+		private final AbstractStreamConsumer<T> input;
+		private final AbstractStreamProducer<T> output;
+
+		private boolean isEndOfStream = false;
+		private int suspended = 0;
+		private int resumed = 0;
+
+		public CountTransformer(Eventloop eventloop) {
+			this.input = new Input(eventloop);
+			this.output = new Output(eventloop);
+		}
+
+		@Override
+		public StreamConsumer<T> getInput() {
+			return input;
+		}
+
+		@Override
+		public StreamProducer<T> getOutput() {
+			return output;
+		}
+
+		public boolean isEndOfStream() {
+			return isEndOfStream;
+		}
+
+		public int getSuspended() {
+			return suspended;
+		}
+
+		public int getResumed() {
+			return resumed;
+		}
+
+		protected final class Input extends AbstractStreamConsumer<T> {
+			protected Input(Eventloop eventloop) {
+				super(eventloop);
+			}
+
+			@Override
+			protected void onEndOfStream() {
+				isEndOfStream = true;
+				output.sendEndOfStream();
+			}
+
+			@Override
+			protected void onError(Throwable t) {
+				output.closeWithError(t);
+			}
+
+		}
+
+		protected final class Output extends AbstractStreamProducer<T> {
+			protected Output(Eventloop eventloop) {
+				super(eventloop);
+			}
+
+			@Override
+			protected void onSuspended() {
+				suspended++;
+				input.getProducer().suspend();
+			}
+
+			@Override
+			protected void onError(Throwable t) {
+				input.closeWithError(t);
+			}
+
+			@Override
+			protected void onProduce(StreamDataReceiver<T> dataReceiver) {
+				resumed++;
+				input.getProducer().produce(dataReceiver);
+			}
+		}
 	}
 
 }

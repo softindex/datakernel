@@ -16,10 +16,10 @@
 
 package io.datakernel.stream.processor;
 
-import com.google.common.base.Predicate;
-import com.google.common.base.Predicates;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
+
+import java.util.function.Predicate;
 
 /**
  * Provides you to filter data for sending. It checks predicate's verity for inputting data and if
@@ -29,6 +29,8 @@ import io.datakernel.stream.*;
  * @param <T>
  */
 public final class StreamFilter<T> implements StreamTransformer<T, T> {
+	public static final Predicate<Object> ALWAYS_TRUE = t -> true;
+
 	private final Eventloop eventloop;
 	private final Input input;
 	private final Output output;
@@ -97,12 +99,12 @@ public final class StreamFilter<T> implements StreamTransformer<T, T> {
 
 		@Override
 		protected void onProduce(StreamDataReceiver<T> dataReceiver) {
-			if (predicate == Predicates.alwaysTrue()) {
+			if (predicate.equals(ALWAYS_TRUE)) {
 				input.getProducer().produce(dataReceiver);
 			} else {
 				Predicate<T> predicate = StreamFilter.this.predicate;
 				input.getProducer().produce(item -> {
-					if (predicate.apply(item)) {
+					if (predicate.test(item)) {
 						dataReceiver.onData(item);
 					}
 				});

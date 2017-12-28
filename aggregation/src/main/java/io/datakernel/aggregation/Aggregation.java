@@ -16,10 +16,6 @@
 
 package io.datakernel.aggregation;
 
-import com.google.common.base.Function;
-import com.google.common.base.Joiner;
-import com.google.common.base.Predicate;
-import com.google.common.collect.Ordering;
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
@@ -45,19 +41,18 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
-import static com.google.common.base.Functions.identity;
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Predicates.in;
-import static com.google.common.collect.Iterables.filter;
-import static com.google.common.collect.Lists.newArrayList;
-import static com.google.common.collect.Sets.difference;
-import static com.google.common.collect.Sets.newHashSet;
 import static io.datakernel.aggregation.AggregationUtils.*;
 import static io.datakernel.codegen.Expressions.arg;
 import static io.datakernel.codegen.Expressions.cast;
+import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.Math.min;
 import static java.util.Collections.singletonList;
+import static java.util.Comparator.comparing;
+import static java.util.stream.Collectors.toList;
 
 /**
  * Represents an aggregation, which aggregates data using custom reducer and preaggregator.
@@ -66,7 +61,6 @@ import static java.util.Collections.singletonList;
 @SuppressWarnings("unchecked")
 public class Aggregation implements IAggregation, EventloopJmxMBean {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
-	private static final Joiner JOINER = Joiner.on(", ");
 
 	public static final int DEFAULT_CHUNK_SIZE = 1_000_000;
 	public static final int DEFAULT_SORTER_ITEMS_IN_MEMORY = 1_000_000;
@@ -208,6 +202,12 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 				keys, measures, classLoader);
 	}
 
+	private static <T> Set<T> difference(Set<T> a, Set<T> b) {
+		Set<T> set = new HashSet<>(a);
+		set.removeAll(b);
+		return set;
+	}
+
 	/**
 	 * Provides a {@link StreamConsumer} for streaming data to this aggregation.
 	 *
@@ -218,13 +218,15 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 	@SuppressWarnings("unchecked")
 	public <T> CompletionStage<AggregationDiff> consume(StreamProducer<T> producer,
 	                                                    Class<T> inputClass, Map<String, String> keyFields, Map<String, String> measureFields) {
-		checkArgument(newHashSet(getKeys()).equals(keyFields.keySet()), "Expected keys: %s, actual keyFields: %s", getKeys(), keyFields);
+		checkArgument(new HashSet<>(getKeys()).equals(keyFields.keySet()), "Expected keys: %s, actual keyFields: %s", getKeys(), keyFields);
 		checkArgument(getMeasureTypes().keySet().containsAll(measureFields.keySet()), "Unknown measures: %s", difference(measureFields.keySet(), getMeasureTypes().keySet()));
 
 		logger.info("Started consuming data in aggregation {}. Keys: {} Measures: {}", this, keyFields.keySet(), measureFields.keySet());
 
 		Class<?> keyClass = createKeyClass(structure, getKeys(), classLoader);
-		List<String> measures = newArrayList(filter(this.getMeasureTypes().keySet(), in(measureFields.keySet())));
+		final Set<String> measureFieldKeys = measureFields.keySet();
+		List<String> measures = this.getMeasureTypes().keySet().stream().filter(measureFieldKeys::contains).collect(toList());
+
 		Class<?> accumulatorClass = createRecordClass(structure, getKeys(), measures, classLoader);
 
 		Aggregate aggregate = createPreaggregator(structure, inputClass, accumulatorClass,
@@ -248,7 +250,8 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 	}
 
 	public double estimateCost(AggregationQuery query) {
-		List<String> aggregationFields = newArrayList(filter(query.getMeasures(), in(getMeasures())));
+		final List<String> measures = getMeasures();
+		List<String> aggregationFields = query.getMeasures().stream().filter(measures::contains).collect(toList());
 		return state.findChunks(query.getPredicate(), aggregationFields).size();
 	}
 
@@ -273,7 +276,8 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 				break;
 		}
 		checkArgument(cl != null, "Unrelated queryClassLoader");
-		List<String> fields = newArrayList(filter(getMeasures(), in(query.getMeasures())));
+		final List<String> measures = query.getMeasures();
+		List<String> fields = getMeasures().stream().filter(measures::contains).collect(toList());
 
 		List<AggregationChunk> allChunks = state.findChunks(query.getPredicate(), fields);
 
@@ -295,15 +299,15 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 		}
 		StreamSorterStorage sorterStorage = StreamSorterStorageImpl.create(eventloop, executorService,
 				bufferSerializer, temporarySortDir);
-		StreamSorter sorter = StreamSorter.create(eventloop, sorterStorage, identity(), keyComparator, false,
+		StreamSorter sorter = StreamSorter.create(eventloop, sorterStorage, o -> o, keyComparator, false,
 				sorterItemsInMemory);
 		unsortedStream.streamTo(sorter.getInput());
 		return sorter.getOutput();
 	}
 
 	private CompletionStage<List<AggregationChunk>> doConsolidation(List<AggregationChunk> chunksToConsolidate) {
-		Set<String> aggregationFields = newHashSet(getMeasures());
-		Set<String> chunkFields = newHashSet();
+		Set<String> aggregationFields = new HashSet<>(getMeasures());
+		Set<String> chunkFields = new HashSet<>();
 		for (AggregationChunk chunk : chunksToConsolidate) {
 			for (String measure : chunk.getMeasures()) {
 				if (aggregationFields.contains(measure))
@@ -311,9 +315,8 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 			}
 		}
 
-		List<String> measures = Ordering.explicit(getMeasures()).sortedCopy(chunkFields);
-
-		Class resultClass = createRecordClass(structure, getKeys(), measures, classLoader);
+		final List<String> measures = getMeasures().stream().filter(chunkFields::contains).collect(toList());
+		final Class resultClass = createRecordClass(structure, getKeys(), measures, classLoader);
 
 		StreamProducer<Object> consolidatedProducer = consolidatedProducer(getKeys(), measures, resultClass, AggregationPredicates.alwaysTrue(), chunksToConsolidate, classLoader);
 		AggregationChunker<Object> chunker = AggregationChunker.create(eventloop,
@@ -330,11 +333,7 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 		queryFields = new ArrayList<>(queryFields);
 		queryFields.retainAll(chunk.getMeasures());
 		checkArgument(!queryFields.isEmpty());
-		TreeMap<PrimaryKey, List<QueryPlan.Sequence>> map = planIndex.get(queryFields);
-		if (map == null) {
-			map = new TreeMap<>();
-			planIndex.put(queryFields, map);
-		}
+		TreeMap<PrimaryKey, List<QueryPlan.Sequence>> map = planIndex.computeIfAbsent(queryFields, k -> new TreeMap<>());
 
 		Map.Entry<PrimaryKey, List<QueryPlan.Sequence>> entry = map.lowerEntry(chunk.getMinPrimaryKey());
 		QueryPlan.Sequence sequence;
@@ -348,23 +347,14 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 			}
 		}
 		sequence.add(chunk);
-		List<QueryPlan.Sequence> list = map.get(chunk.getMaxPrimaryKey());
-		if (list == null) {
-			list = new ArrayList<>();
-			map.put(chunk.getMaxPrimaryKey(), list);
-		}
+		List<QueryPlan.Sequence> list = map.computeIfAbsent(chunk.getMaxPrimaryKey(), k -> new ArrayList<>());
 		list.add(sequence);
 	}
 
 	private static QueryPlan createPlan(List<AggregationChunk> chunks, List<String> queryFields) {
 		Map<List<String>, TreeMap<PrimaryKey, List<QueryPlan.Sequence>>> index = new HashMap<>();
-		chunks = newArrayList(chunks);
-		Collections.sort(chunks, new Comparator<AggregationChunk>() {
-			@Override
-			public int compare(AggregationChunk chunk1, AggregationChunk chunk2) {
-				return chunk1.getMinPrimaryKey().compareTo(chunk2.getMinPrimaryKey());
-			}
-		});
+		chunks = new ArrayList<>(chunks);
+		chunks.sort(comparing(AggregationChunk::getMinPrimaryKey));
 		for (AggregationChunk chunk : chunks) {
 			addChunkToPlan(index, chunk, queryFields);
 		}
@@ -419,29 +409,30 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 	private <T> StreamProducer<T> mergeSequences(List<String> queryKeys, List<String> measures,
 	                                             Class<?> resultClass, List<SequenceStream> sequences,
 	                                             DefiningClassLoader classLoader) {
-		if (sequences.size() == 1 && newHashSet(queryKeys).equals(newHashSet(getKeys()))) {
+		if (sequences.size() == 1 && new HashSet<>(queryKeys).equals(new HashSet<>(getKeys()))) {
 			/*
 			If there is only one sequential producer and all aggregation keys are requested, then there is no need for
 			using StreamReducer, because all records have unique keys and all we need to do is copy requested measures
 			from record class to result class.
 			 */
 			SequenceStream sequence = sequences.get(0);
-			StreamMap.MapperProjection mapper = createMapper(sequence.type, resultClass,
-					queryKeys, newArrayList(filter(measures, in(sequence.fields))), classLoader);
+			final List<String> collect = measures.stream().filter(sequence.fields::contains).collect(toList());
+			StreamMap.MapperProjection mapper = createMapper(sequence.type, resultClass, queryKeys, collect, classLoader);
 			StreamMap<Object, T> streamMap = StreamMap.create(eventloop, mapper);
 			sequence.stream.streamTo(streamMap.getInput());
 			return streamMap.getOutput();
 		}
 
-		StreamReducer<Comparable, T, Object> streamReducer = StreamReducer.create(eventloop, Ordering.natural());
+		StreamReducer<Comparable, T, Object> streamReducer = StreamReducer.create(eventloop, Comparable::compareTo);
 
 		Class<?> keyClass = createKeyClass(structure, queryKeys, this.classLoader);
 
 		for (SequenceStream sequence : sequences) {
 			Function extractKeyFunction = createKeyFunction(sequence.type, keyClass, queryKeys, this.classLoader);
 
+			final List<String> collect = measures.stream().filter(sequence.fields::contains).collect(toList());
 			StreamReducers.Reducer reducer = AggregationUtils.aggregationReducer(structure, sequence.type, resultClass,
-					queryKeys, newArrayList(filter(measures, in(sequence.fields))), classLoader);
+					queryKeys, collect, classLoader);
 
 			sequence.stream.streamTo(streamReducer.newInput(extractKeyFunction, reducer));
 		}
@@ -482,7 +473,7 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 	private <T> Predicate<T> createPredicate(Class<T> chunkRecordClass,
 	                                         AggregationPredicate where, DefiningClassLoader classLoader) {
 		return ClassBuilder.create(classLoader, Predicate.class)
-				.withMethod("apply", boolean.class, singletonList(Object.class),
+				.withMethod("test", boolean.class, singletonList(Object.class),
 						where.createPredicateDef(cast(arg(0), chunkRecordClass), getKeyTypes()))
 				.buildClassAndCreateNewInstance();
 	}
@@ -531,7 +522,7 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 		for (AggregationChunk chunk : chunks) {
 			ids.add(chunk.getChunkId());
 		}
-		return JOINER.join(ids);
+		return ids.stream().map(Object::toString).collect(Collectors.joining(", "));
 	}
 
 	// jmx

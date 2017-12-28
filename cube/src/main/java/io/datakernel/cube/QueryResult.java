@@ -16,8 +16,6 @@
 
 package io.datakernel.cube;
 
-import com.google.common.base.MoreObjects;
-
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -114,13 +112,13 @@ public final class QueryResult {
 
 	@Override
 	public String toString() {
-		return MoreObjects.toStringHelper(this)
-				.add("attributes", attributes)
-				.add("measures", measures)
-				.add("records", records)
-				.add("totals", totals)
-				.add("count", totalCount)
-				.add("sortedBy", sortedBy)
-				.toString();
+		return "QueryResult{" +
+				"attributes=" + attributes +
+				", measures=" + measures +
+				", records=" + records +
+				", totals=" + totals +
+				", count=" + totalCount +
+				", sortedBy=" + sortedBy +
+				'}';
 	}
 }

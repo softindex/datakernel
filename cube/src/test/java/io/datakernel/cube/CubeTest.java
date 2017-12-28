@@ -45,9 +45,9 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-import static com.google.common.base.Functions.identity;
-import static com.google.common.collect.Maps.toMap;
 import static io.datakernel.aggregation.AggregationPredicates.*;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.sum;
@@ -113,6 +113,9 @@ public class CubeTest {
 		producer2.streamTo(consumer2);
 		CompletableFuture<CubeDiff> future2 = consumer2.getResult().toCompletableFuture();
 		eventloop.run();
+
+		chunkStorage.finish(future1.get().addedChunks().collect(Collectors.toSet()));
+		chunkStorage.finish(future2.get().addedChunks().collect(Collectors.toSet()));
 		cube.apply(future1.get());
 		cube.apply(future2.get());
 
@@ -163,7 +166,10 @@ public class CubeTest {
 					new DataItem1(1, 3, 10, 20)));
 			StreamConsumerWithResult<DataItem1, CubeDiff> consumer = cube.consume(DataItem1.class);
 			producer.streamTo(consumer);
-			tasks.add(consumer.getResult().thenAccept(cube::apply));
+			tasks.add(consumer.getResult()
+					.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+							.thenApply(aVoid -> cubeDiff))
+					.thenAccept(cube::apply));
 		}
 		{
 			StreamProducer<DataItem2> producer = StreamProducers.ofIterable(eventloop, asList(
@@ -171,7 +177,10 @@ public class CubeTest {
 					new DataItem2(1, 4, 10, 20)));
 			StreamConsumerWithResult<DataItem2, CubeDiff> consumer = cube.consume(DataItem2.class);
 			producer.streamTo(consumer);
-			tasks.add(consumer.getResult().thenAccept(cube::apply));
+			tasks.add(consumer.getResult()
+					.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+							.thenApply(aVoid -> cubeDiff))
+					.thenAccept(cube::apply));
 		}
 		Stages.run(tasks).whenComplete(assertComplete($ -> stop(remoteFsServer1)));
 
@@ -211,7 +220,10 @@ public class CubeTest {
 				new DataItem1(1, 3, 4, 18)));
 		StreamConsumerWithResult<DataItem1, CubeDiff> consumer1 = cube.consume(DataItem1.class);
 		producer1.streamTo(consumer1);
-		consumer1.getResult().thenAccept(cube::apply);
+		consumer1.getResult()
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+						.thenApply(aVoid -> cubeDiff))
+				.thenAccept(cube::apply);
 		StreamProducer<DataItem2> producer2 = StreamProducers.ofIterable(eventloop, asList(
 				new DataItem2(1, 3, 15, 5),
 				new DataItem2(1, 4, 55, 20),
@@ -219,7 +231,10 @@ public class CubeTest {
 				new DataItem2(1, 4, 58, 22)));
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer2 = cube.consume(DataItem2.class);
 		producer2.streamTo(consumer2);
-		consumer2.getResult().thenAccept(cube::apply);
+		consumer2.getResult()
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+						.thenApply(aVoid -> cubeDiff))
+				.thenAccept(cube::apply);
 		eventloop.run();
 
 		StreamConsumerToList<DataItemResult> consumerToList = new StreamConsumerToList<>(eventloop);
@@ -253,7 +268,10 @@ public class CubeTest {
 				new DataItem1(1, 6, 4, 18)));
 		StreamConsumerWithResult<DataItem1, CubeDiff> consumer1 = cube.consume(DataItem1.class);
 		producer1.streamTo(consumer1);
-		consumer1.getResult().thenAccept(cube::apply);
+		consumer1.getResult()
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+						.thenApply(aVoid -> cubeDiff))
+				.thenAccept(cube::apply);
 		StreamProducer<DataItem2> producer2 = StreamProducers.ofIterable(eventloop, asList(
 				new DataItem2(1, 7, 15, 5),
 				new DataItem2(1, 8, 55, 20),
@@ -261,7 +279,10 @@ public class CubeTest {
 				new DataItem2(1, 10, 58, 22)));
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer2 = cube.consume(DataItem2.class);
 		producer2.streamTo(consumer2);
-		consumer2.getResult().thenAccept(cube::apply);
+		consumer2.getResult()
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+						.thenApply(aVoid -> cubeDiff))
+				.thenAccept(cube::apply);
 		eventloop.run();
 
 		StreamConsumerToList<DataItemResult> consumerToList = new StreamConsumerToList<>(eventloop);
@@ -304,7 +325,10 @@ public class CubeTest {
 				new DataItem1(5, 99, 40, 36)));
 		StreamConsumerWithResult<DataItem1, CubeDiff> consumer1 = cube.consume(DataItem1.class);
 		producer1.streamTo(consumer1);
-		consumer1.getResult().thenAccept(cube::apply);
+		consumer1.getResult()
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+						.thenApply(aVoid -> cubeDiff))
+				.thenAccept(cube::apply);
 		StreamProducer<DataItem2> producer2 = StreamProducers.ofIterable(eventloop, asList(
 				new DataItem2(9, 3, 15, 5),
 				new DataItem2(11, 4, 55, 20),
@@ -316,7 +340,10 @@ public class CubeTest {
 				new DataItem2(5, 77, 88, 98)));
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer2 = cube.consume(DataItem2.class);
 		producer2.streamTo(consumer2);
-		consumer2.getResult().thenAccept(cube::apply);
+		consumer2.getResult()
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+						.thenApply(aVoid -> cubeDiff))
+				.thenAccept(cube::apply);
 		eventloop.run();
 
 		StreamConsumerToList<DataItemResult> consumerToList = new StreamConsumerToList<>(eventloop);
@@ -355,7 +382,10 @@ public class CubeTest {
 				new DataItem3(5, 99, 35, 27, 76, 40, 36)));
 		StreamConsumerWithResult<DataItem3, CubeDiff> consumer3 = cube.consume(DataItem3.class);
 		producer3.streamTo(consumer3);
-		consumer3.getResult().thenAccept(cube::apply);
+		consumer3.getResult()
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+						.thenApply(aVoid -> cubeDiff))
+				.thenAccept(cube::apply);
 		StreamProducer<DataItem4> producer4 = StreamProducers.ofIterable(eventloop, asList(
 				new DataItem4(9, 3, 41, 11, 65, 15, 5),
 				new DataItem4(11, 4, 38, 10, 68, 55, 20),
@@ -367,7 +397,10 @@ public class CubeTest {
 				new DataItem4(5, 77, 50, 20, 56, 88, 98)));
 		StreamConsumerWithResult<DataItem4, CubeDiff> consumer4 = cube.consume(DataItem4.class);
 		producer4.streamTo(consumer4);
-		consumer4.getResult().thenAccept(cube::apply);
+		consumer4.getResult()
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+						.thenApply(aVoid -> cubeDiff))
+				.thenAccept(cube::apply);
 		eventloop.run();
 
 		StreamConsumerToList<DataItemResult3> consumerToList = new StreamConsumerToList<>(eventloop);
@@ -401,14 +434,20 @@ public class CubeTest {
 				new DataItem1(1, 4, 5, 35)));
 		StreamConsumerWithResult<DataItem1, CubeDiff> consumer1 = cube.consume(DataItem1.class);
 		producer1.streamTo(consumer1);
-		consumer1.getResult().thenAccept(cube::apply);
+		consumer1.getResult()
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+						.thenApply(aVoid -> cubeDiff))
+				.thenAccept(cube::apply);
 		StreamProducer<DataItem2> producer2 = StreamProducers.ofIterable(eventloop, asList(
 				new DataItem2(1, 3, 20, 10),
 				new DataItem2(1, 4, 10, 20),
 				new DataItem2(1, 1, 80, 75)));
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer2 = cube.consume(DataItem2.class);
 		producer2.streamTo(consumer2);
-		consumer2.getResult().thenAccept(cube::apply);
+		consumer2.getResult()
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+						.thenApply(aVoid -> cubeDiff))
+				.thenAccept(cube::apply);
 		eventloop.run();
 
 		StreamConsumerToList<DataItemResult2> consumerToList = new StreamConsumerToList<>(eventloop);
@@ -443,25 +482,37 @@ public class CubeTest {
 				new DataItem1(1, 3, 10, 20)));
 		StreamConsumerWithResult<DataItem1, CubeDiff> consumer1 = cube.consume(DataItem1.class);
 		producer1.streamTo(consumer1);
-		consumer1.getResult().thenAccept(cube::apply);
+		consumer1.getResult()
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+						.thenApply(aVoid -> cubeDiff))
+				.thenAccept(cube::apply);
 		StreamProducer<DataItem2> producer2 = StreamProducers.ofIterable(eventloop, asList(
 				new DataItem2(1, 3, 10, 20),
 				new DataItem2(1, 4, 10, 20)));
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer2 = cube.consume(DataItem2.class);
 		producer2.streamTo(consumer2);
-		consumer2.getResult().thenAccept(cube::apply);
+		consumer2.getResult()
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+						.thenApply(aVoid -> cubeDiff))
+				.thenAccept(cube::apply);
 		StreamProducer<DataItem2> producer3 = StreamProducers.ofIterable(eventloop, asList(
 				new DataItem2(1, 2, 10, 20),
 				new DataItem2(1, 4, 10, 20)));
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer3 = cube.consume(DataItem2.class);
 		producer3.streamTo(consumer3);
-		consumer3.getResult().thenAccept(cube::apply);
+		consumer3.getResult()
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+						.thenApply(aVoid -> cubeDiff))
+				.thenAccept(cube::apply);
 		StreamProducer<DataItem2> producer4 = StreamProducers.ofIterable(eventloop, asList(
 				new DataItem2(1, 4, 10, 20),
 				new DataItem2(1, 5, 100, 200)));
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer4 = cube.consume(DataItem2.class);
 		producer4.streamTo(consumer4);
-		consumer4.getResult().thenAccept(cube::apply);
+		consumer4.getResult()
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+						.thenApply(aVoid -> cubeDiff))
+				.thenAccept(cube::apply);
 		eventloop.run();
 
 		StreamConsumerToList<DataItemResult> consumerToList = new StreamConsumerToList<>(eventloop);
@@ -491,25 +542,37 @@ public class CubeTest {
 				new DataItem1(1, 3, 10, 20)));
 		StreamConsumerWithResult<DataItem1, CubeDiff> consumer1 = cube.consume(DataItem1.class);
 		producer1.streamTo(consumer1);
-		consumer1.getResult().thenAccept(cube::apply);
+		consumer1.getResult()
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+						.thenApply(aVoid -> cubeDiff))
+				.thenAccept(cube::apply);
 		StreamProducer<DataItem2> producer2 = StreamProducers.ofIterable(eventloop, asList(
 				new DataItem2(1, 3, 10, 20),
 				new DataItem2(1, 4, 10, 20)));
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer2 = cube.consume(DataItem2.class);
 		producer2.streamTo(consumer2);
-		consumer2.getResult().thenAccept(cube::apply);
+		consumer2.getResult()
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+						.thenApply(aVoid -> cubeDiff))
+				.thenAccept(cube::apply);
 		StreamProducer<DataItem2> producer3 = StreamProducers.ofIterable(eventloop, asList(
 				new DataItem2(1, 2, 10, 20),
 				new DataItem2(1, 4, 10, 20)));
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer3 = cube.consume(DataItem2.class);
 		producer3.streamTo(consumer3);
-		consumer3.getResult().thenAccept(cube::apply);
+		consumer3.getResult()
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+						.thenApply(aVoid -> cubeDiff))
+				.thenAccept(cube::apply);
 		StreamProducer<DataItem2> producer4 = StreamProducers.ofIterable(eventloop, asList(
 				new DataItem2(1, 4, 10, 20),
 				new DataItem2(1, 5, 100, 200)));
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer4 = cube.consume(DataItem2.class);
 		producer4.streamTo(consumer4);
-		consumer4.getResult().thenAccept(cube::apply);
+		consumer4.getResult()
+				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
+						.thenApply(aVoid -> cubeDiff))
+				.thenAccept(cube::apply);
 		eventloop.run();
 
 		CompletableFuture<CubeDiff> future1 = cube.consolidate(Aggregation::consolidateHotSegment).toCompletableFuture();
@@ -624,8 +687,8 @@ public class CubeTest {
 		final Cube cube = newCube(eventloop, newCachedThreadPool(), DefiningClassLoader.create(), chunkStorage);
 
 		cube.consume(DataItem1.class,
-				toMap(asList("unknownKey"), identity()),
-				toMap(asList("metric1", "metric2", "metric3"), identity()),
+				AggregationUtils.streamToLinkedMap(Stream.of("unknownKey"), o -> o),
+				AggregationUtils.streamToLinkedMap(Stream.of("metric1", "metric2", "metric3"), o -> o),
 				AggregationPredicates.alwaysTrue());
 	}
 
@@ -638,8 +701,8 @@ public class CubeTest {
 		final Cube cube = newCube(eventloop, newCachedThreadPool(), DefiningClassLoader.create(), chunkStorage);
 
 		cube.consume(DataItem1.class,
-				toMap(asList("key1", "key2"), identity()),
-				toMap(asList("UnknownMetric"), identity()),
+				AggregationUtils.streamToLinkedMap(Stream.of("key1", "key2"), o -> o),
+				AggregationUtils.streamToLinkedMap(Stream.of("UnknownMetric"), o -> o),
 				AggregationPredicates.alwaysTrue());
 	}
 

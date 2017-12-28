@@ -11,8 +11,8 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Set;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static io.datakernel.aggregation.AggregationUtils.getPrimaryKeyJson;
+import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.utils.GsonAdapters.ofSet;
 import static io.datakernel.utils.GsonAdapters.oneline;
 

@@ -16,8 +16,7 @@
 
 package io.datakernel.service;
 
-import com.google.common.util.concurrent.ListenableFuture;
-
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
 /**
@@ -27,7 +26,7 @@ import java.util.concurrent.Executor;
  * @param <V> type of service from which you need create ConcurrentService
  */
 public interface ServiceAdapter<V> {
-	ListenableFuture<?> start(V instance, Executor executor);
+	CompletableFuture<Void> start(V instance, Executor executor);
 
-	ListenableFuture<?> stop(V instance, Executor executor);
+	CompletableFuture<Void> stop(V instance, Executor executor);
 }

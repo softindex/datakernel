@@ -16,6 +16,7 @@
 
 package io.datakernel.remotefs;
 
+import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.stream.file.StreamFileReader;
@@ -25,10 +26,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.OpenOption;
-import java.nio.file.Path;
+import java.nio.file.*;
+import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
@@ -102,6 +101,26 @@ public final class FileManager {
 			List<String> result = new ArrayList<>();
 			doScan(storagePath, result, "");
 			return result;
+		});
+	}
+
+	public CompletionStage<Void> move(String fileName, String targetName, CopyOption... options) {
+		logger.trace("move {} to {}", fileName, targetName);
+
+		final String targetAbsolutePath = storagePath.resolve(targetName).toFile().getAbsolutePath();
+		final String storageAbsolutePath = storagePath.toFile().getAbsolutePath();
+		if (!targetAbsolutePath.startsWith(storageAbsolutePath)) {
+			return Stages.ofException(new IllegalArgumentException(targetName));
+		}
+
+		return ensureDirectoryAsync(storagePath, targetName).thenCompose(target -> {
+			try {
+				final Path source = storagePath.resolve(fileName);
+				Files.setLastModifiedTime(source, FileTime.fromMillis(eventloop.currentTimeMillis()));
+				return AsyncFile.move(eventloop, executor, source, target, options);
+			} catch (IOException e) {
+				return Stages.ofException(e);
+			}
 		});
 	}
 

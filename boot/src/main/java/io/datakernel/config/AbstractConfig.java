@@ -16,10 +16,7 @@
 
 package io.datakernel.config;
 
-import com.google.common.base.Splitter;
-
 public abstract class AbstractConfig implements Config {
-	protected static final Splitter PATH_SPLITTER = Splitter.on(DELIMITER);
 
 	@Override
 	public final String get(String path) {

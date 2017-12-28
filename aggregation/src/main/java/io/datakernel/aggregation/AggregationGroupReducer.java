@@ -16,7 +16,6 @@
 
 package io.datakernel.aggregation;
 
-import com.google.common.base.Function;
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.aggregation.util.PartitionPredicate;
 import io.datakernel.async.StagesAccumulator;
@@ -34,13 +33,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
+import java.util.function.Function;
 
 public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final AggregationChunkStorage storage;
 	private final AggregationStructure aggregation;
-	private final List<String> fields;
+	private final List<String> measures;
 	private final PartitionPredicate<T> partitionPredicate;
 	private final Class<T> recordClass;
 	private final Function<T, Comparable<?>> keyFunction;
@@ -52,13 +52,13 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 	private final HashMap<Comparable<?>, Object> map = new HashMap<>();
 
 	public AggregationGroupReducer(Eventloop eventloop, AggregationChunkStorage storage,
-	                               AggregationStructure aggregation, List<String> fields,
+	                               AggregationStructure aggregation, List<String> measures,
 	                               Class<?> recordClass, PartitionPredicate<T> partitionPredicate,
 	                               Function<T, Comparable<?>> keyFunction, Aggregate aggregate,
 	                               int chunkSize, DefiningClassLoader classLoader) {
 		super(eventloop);
 		this.storage = storage;
-		this.fields = fields;
+		this.measures = measures;
 		this.partitionPredicate = partitionPredicate;
 		this.recordClass = (Class<T>) recordClass;
 		this.keyFunction = keyFunction;
@@ -66,7 +66,8 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 		this.chunkSize = chunkSize;
 		this.aggregation = aggregation;
 		this.resultsTracker = StagesAccumulator.<List<AggregationChunk>>create(new ArrayList<>())
-				.withStage(this.getEndOfStream(), (accumulator, $) -> {});
+				.withStage(this.getEndOfStream(), (accumulator, $) -> {
+				});
 		this.classLoader = classLoader;
 	}
 
@@ -117,7 +118,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 		}
 
 		StreamProducer producer = StreamProducers.ofIterable(eventloop, list);
-		AggregationChunker<T> chunker = AggregationChunker.create(eventloop, aggregation, fields, recordClass,
+		AggregationChunker<T> chunker = AggregationChunker.create(eventloop, aggregation, measures, recordClass,
 				partitionPredicate, storage, classLoader);
 		producer.streamTo(chunker);
 
@@ -127,8 +128,10 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 
 	private void suspendOrResume() {
 		if (resultsTracker.getActiveStages() > 2) {
+			logger.info("Suspend group reduce: {}", this);
 			getProducer().suspend();
 		} else {
+			logger.info("Resume group reduce: {}", this);
 			getProducer().produce(this);
 		}
 	}
@@ -153,5 +156,15 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 
 	public void setChunkSize(int chunkSize) {
 		this.chunkSize = chunkSize;
+	}
+
+	@Override
+	public String toString() {
+		return "AggregationGroupReducer{" +
+				"keys=" + aggregation.getKeys() +
+				"measures=" + measures +
+				", chunkSize=" + chunkSize +
+				", map.size=" + map.size() +
+				'}';
 	}
 }

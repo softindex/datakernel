@@ -16,14 +16,14 @@
 
 package io.datakernel.aggregation;
 
-import com.google.common.collect.ImmutableList;
-
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import static java.lang.System.arraycopy;
+import static java.util.Arrays.asList;
 
 public class PrimaryKey implements Comparable<PrimaryKey> {
 	private final Object[] values;
@@ -67,7 +67,7 @@ public class PrimaryKey implements Comparable<PrimaryKey> {
 	}
 
 	public List<Object> values() {
-		return ImmutableList.copyOf(values);
+		return Collections.unmodifiableList(asList(values));
 	}
 
 	public Object[] getArray() {

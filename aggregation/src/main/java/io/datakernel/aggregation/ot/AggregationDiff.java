@@ -64,4 +64,29 @@ public final class AggregationDiff {
 		return of(addedChunks, removedChunks);
 	}
 
+	@Override
+	public String toString() {
+		return "AggregationDiff{" +
+				"addedChunks=" + addedChunks +
+				", removedChunks=" + removedChunks +
+				'}';
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		AggregationDiff that = (AggregationDiff) o;
+
+		if (addedChunks != null ? !addedChunks.equals(that.addedChunks) : that.addedChunks != null) return false;
+		return removedChunks != null ? removedChunks.equals(that.removedChunks) : that.removedChunks == null;
+	}
+
+	@Override
+	public int hashCode() {
+		int result = addedChunks != null ? addedChunks.hashCode() : 0;
+		result = 31 * result + (removedChunks != null ? removedChunks.hashCode() : 0);
+		return result;
+	}
 }

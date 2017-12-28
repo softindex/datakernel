@@ -16,12 +16,8 @@
 
 package io.datakernel.cube.http;
 
-import com.google.common.collect.ImmutableMap;
 import com.zaxxer.hikari.HikariDataSource;
-import io.datakernel.aggregation.Aggregation;
-import io.datakernel.aggregation.AggregationChunk;
-import io.datakernel.aggregation.AggregationChunkStorage;
-import io.datakernel.aggregation.LocalFsChunkStorage;
+import io.datakernel.aggregation.*;
 import io.datakernel.aggregation.annotation.Key;
 import io.datakernel.aggregation.annotation.Measures;
 import io.datakernel.aggregation.fieldtype.FieldType;
@@ -42,6 +38,7 @@ import io.datakernel.logfs.ot.*;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTRemoteSql;
 import io.datakernel.ot.OTStateManager;
+import io.datakernel.ot.OTSystem;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.stream.StreamDataReceiver;
@@ -56,17 +53,12 @@ import org.junit.rules.TemporaryFolder;
 
 import java.net.InetSocketAddress;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Stream;
 
-import static com.google.common.collect.Iterables.concat;
-import static com.google.common.collect.Lists.newArrayList;
-import static com.google.common.collect.Sets.newHashSet;
-import static com.google.common.collect.Sets.newLinkedHashSet;
 import static io.datakernel.aggregation.AggregationPredicates.*;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.*;
 import static io.datakernel.aggregation.measure.Measures.*;
@@ -80,6 +72,8 @@ import static io.datakernel.cube.http.ReportingTest.LogItem.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
+import static java.util.Collections.singletonMap;
+import static java.util.stream.Collectors.toSet;
 import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -100,43 +94,38 @@ public class ReportingTest {
 
 	private static final int SERVER_PORT = 50001;
 
-	private static final Map<String, FieldType> DIMENSIONS_CUBE = ImmutableMap.<String, FieldType>builder()
-			.put("date", ofLocalDate(LocalDate.parse("2000-01-01")))
-			.put("advertiser", ofInt())
-			.put("campaign", ofInt())
-			.put("banner", ofInt())
-			.put("affiliate", ofInt())
-			.put("site", ofString())
-			.build();
+	private static final Map<String, FieldType> DIMENSIONS_CUBE = AggregationUtils.valuesToLinkedMap(Stream.of(
+			new AbstractMap.SimpleEntry<>("date", ofLocalDate(LocalDate.parse("2000-01-01"))),
+			new AbstractMap.SimpleEntry<>("advertiser", ofInt()),
+			new AbstractMap.SimpleEntry<>("campaign", ofInt()),
+			new AbstractMap.SimpleEntry<>("banner", ofInt()),
+			new AbstractMap.SimpleEntry<>("affiliate", ofInt()),
+			new AbstractMap.SimpleEntry<>("site", ofString())));
 
-	private static final Map<String, FieldType> DIMENSIONS_DATE_AGGREGATION = ImmutableMap.<String, FieldType>builder()
-			.put("date", ofLocalDate(LocalDate.parse("2000-01-01")))
-			.build();
+	private static final Map<String, FieldType> DIMENSIONS_DATE_AGGREGATION =
+			singletonMap("date", ofLocalDate(LocalDate.parse("2000-01-01")));
 
-	private static final Map<String, FieldType> DIMENSIONS_ADVERTISERS_AGGREGATION = ImmutableMap.<String, FieldType>builder()
-			.put("date", ofLocalDate(LocalDate.parse("2000-01-01")))
-			.put("advertiser", ofInt())
-			.put("campaign", ofInt())
-			.put("banner", ofInt())
-			.build();
+	private static final Map<String, FieldType> DIMENSIONS_ADVERTISERS_AGGREGATION = AggregationUtils.valuesToLinkedMap(Stream.of(
+			new AbstractMap.SimpleEntry<>("date", ofLocalDate(LocalDate.parse("2000-01-01"))),
+			new AbstractMap.SimpleEntry<>("advertiser", ofInt()),
+			new AbstractMap.SimpleEntry<>("campaign", ofInt()),
+			new AbstractMap.SimpleEntry<>("banner", ofInt())));
 
-	private static final Map<String, FieldType> DIMENSIONS_AFFILIATES_AGGREGATION = ImmutableMap.<String, FieldType>builder()
-			.put("date", ofLocalDate(LocalDate.parse("2000-01-01")))
-			.put("affiliate", ofInt())
-			.put("site", ofString())
-			.build();
+	private static final Map<String, FieldType> DIMENSIONS_AFFILIATES_AGGREGATION = AggregationUtils.valuesToLinkedMap(Stream.of(
+			new AbstractMap.SimpleEntry<>("date", ofLocalDate(LocalDate.parse("2000-01-01"))),
+			new AbstractMap.SimpleEntry<>("affiliate", ofInt()),
+			new AbstractMap.SimpleEntry<>("site", ofString())));
 
-	private static final Map<String, Measure> MEASURES = ImmutableMap.<String, Measure>builder()
-			.put("impressions", sum(ofLong()))
-			.put("clicks", sum(ofLong()))
-			.put("conversions", sum(ofLong()))
-			.put("revenue", sum(ofDouble()))
-			.put("eventCount", count(ofInt()))
-			.put("minRevenue", min(ofDouble()))
-			.put("maxRevenue", max(ofDouble()))
-			.put("uniqueUserIdsCount", hyperLogLog(1024))
-			.put("errors", sum(ofLong()))
-			.build();
+	private static final Map<String, Measure> MEASURES = AggregationUtils.valuesToLinkedMap(Stream.of(
+			new AbstractMap.SimpleEntry<>("impressions", sum(ofLong())),
+			new AbstractMap.SimpleEntry<>("clicks", sum(ofLong())),
+			new AbstractMap.SimpleEntry<>("conversions", sum(ofLong())),
+			new AbstractMap.SimpleEntry<>("revenue", sum(ofDouble())),
+			new AbstractMap.SimpleEntry<>("eventCount", count(ofInt())),
+			new AbstractMap.SimpleEntry<>("minRevenue", min(ofDouble())),
+			new AbstractMap.SimpleEntry<>("maxRevenue", max(ofDouble())),
+			new AbstractMap.SimpleEntry<>("uniqueUserIdsCount", hyperLogLog(1024)),
+			new AbstractMap.SimpleEntry<>("errors", sum(ofLong()))));
 
 	private static class AdvertiserResolver extends AbstractAttributeResolver<Integer, String> {
 		@Override
@@ -151,7 +140,7 @@ public class ReportingTest {
 
 		@Override
 		public Map<String, Class<?>> getAttributeTypes() {
-			return ImmutableMap.of("name", String.class);
+			return singletonMap("name", String.class);
 		}
 
 		@Override
@@ -318,30 +307,33 @@ public class ReportingTest {
 						.withMeasures(MEASURES.keySet()));
 
 		dataSource = dataSource("test.properties");
-		OTRemoteSql<LogDiff<CubeDiff>> otSourceSql = OTRemoteSql.create(executor, dataSource, LogDiffJson.create(CubeDiffJson.create(cube)));
+		final OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
+		OTRemoteSql<LogDiff<CubeDiff>> otSourceSql = OTRemoteSql.create(executor, dataSource, otSystem, LogDiffJson.create(CubeDiffJson.create(cube)));
 		otSourceSql.truncateTables();
-		otSourceSql.push(OTCommit.ofRoot(1));
+		otSourceSql.createId().thenCompose(integer -> otSourceSql.push(OTCommit.ofRoot(integer)));
+		eventloop.run();
 
+		final LogOTState<CubeDiff> cubeDiffLogOTState = new LogOTState<>(cube);
 		OTStateManager<Integer, LogDiff<CubeDiff>> logCubeStateManager = new OTStateManager<>(eventloop,
-				LogOT.createLogOT(CubeOT.createCubeOT()),
+				otSystem,
 				otSourceSql,
-				(o1, o2) -> Integer.compare(o1, o2),
-				new LogOTState<>(cube));
+				Integer::compare,
+				cubeDiffLogOTState);
 
 		LogManager<LogItem> logManager = LogManagerImpl.create(eventloop,
 				LocalFsLogFileSystem.create(executor, logsDir),
 				SerializerBuilder.create(classLoader).build(LogItem.class));
 
-		LogOTProcessor<Integer, LogItem, CubeDiff> logOTProcessor = LogOTProcessor.create(eventloop,
+		LogOTProcessor<LogItem, CubeDiff> logOTProcessor = LogOTProcessor.create(eventloop,
 				logManager,
 				new LogItemSplitter(eventloop, cube),
 				"testlog",
 				asList("partitionA"),
-				logCubeStateManager);
+				cubeDiffLogOTState);
 
 		// checkout first (root) revision
 
-		CompletableFuture<Void> future;
+		CompletableFuture<?> future;
 
 		future = logCubeStateManager.checkout().toCompletableFuture();
 		eventloop.run();
@@ -365,12 +357,19 @@ public class ReportingTest {
 				new LogItem(3, EXCLUDE_ADVERTISER, EXCLUDE_CAMPAIGN, EXCLUDE_BANNER, 40, 3, 2, 1.0, 0, 1, 4, "site1.com"));
 
 		StreamProducer<LogItem> producer = StreamProducers.ofIterator(eventloop,
-				concat(logItemsForAdvertisersAggregations, logItemsForAffiliatesAggregation).iterator());
+				Stream.concat(logItemsForAdvertisersAggregations.stream(), logItemsForAffiliatesAggregation.stream()).iterator());
 
 		producer.streamTo(logManager.consumerStream("partitionA"));
 		eventloop.run();
 
-		future = logOTProcessor.processLog().toCompletableFuture();
+		future = logOTProcessor.processLog()
+				.thenCompose(logDiff -> aggregationChunkStorage
+						.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).collect(toSet()))
+						.thenApply($ -> logDiff))
+				.thenAccept(logCubeStateManager::add)
+				.thenApply(u -> logCubeStateManager)
+				.thenCompose(OTStateManager::commitAndPush)
+				.toCompletableFuture();
 		eventloop.run();
 		future.get();
 
@@ -423,8 +422,8 @@ public class ReportingTest {
 
 		List<Record> records = queryResult.getRecords();
 		assertEquals(2, records.size());
-		assertEquals(newHashSet("date"), newHashSet(queryResult.getAttributes()));
-		assertEquals(newHashSet("impressions", "clicks", "ctr", "revenue"), newHashSet(queryResult.getMeasures()));
+		assertEquals(set("date"), set(queryResult.getAttributes()));
+		assertEquals(set("impressions", "clicks", "ctr", "revenue"), set(queryResult.getMeasures()));
 		assertEquals(LocalDate.parse("2000-01-03"), records.get(0).get("date"));
 		assertEquals(5, (long) records.get(0).get("clicks"));
 		assertEquals(65, (long) records.get(0).get("impressions"));
@@ -438,7 +437,15 @@ public class ReportingTest {
 		assertEquals(38, (long) totals.get("clicks"));
 		assertEquals(500, (long) totals.get("impressions"));
 		assertEquals(38.0 / 500.0 * 100.0, (double) totals.get("ctr"), DELTA);
-		assertEquals(newHashSet("date"), newHashSet(queryResult.getSortedBy()));
+		assertEquals(set("date"), set(queryResult.getSortedBy()));
+	}
+
+	private static <T> Set<T> set(T... values) {
+		return Arrays.stream(values).collect(toSet());
+	}
+
+	private static <T> Set<T> set(Collection<T> values) {
+		return new HashSet<>(values);
 	}
 
 	@Test
@@ -454,8 +461,8 @@ public class ReportingTest {
 
 		List<Record> records = queryResult.getRecords();
 		assertEquals(2, records.size());
-		assertEquals(newHashSet("date"), newHashSet(queryResult.getAttributes()));
-		assertEquals(newHashSet("impressions", "clicks", "ctr", "revenue"), newHashSet(queryResult.getMeasures()));
+		assertEquals(set("date"), set(queryResult.getAttributes()));
+		assertEquals(set("impressions", "clicks", "ctr", "revenue"), set(queryResult.getMeasures()));
 		assertEquals(LocalDate.parse("2000-01-03"), records.get(0).get("date"));
 		assertEquals(5, (long) records.get(0).get("clicks"));
 		assertEquals(65, (long) records.get(0).get("impressions"));
@@ -469,7 +476,7 @@ public class ReportingTest {
 		assertEquals(38, (long) totals.get("clicks"));
 		assertEquals(500, (long) totals.get("impressions"));
 		assertEquals(38.0 / 500.0 * 100.0, (double) totals.get("ctr"), DELTA);
-		assertEquals(newHashSet("date"), newHashSet(queryResult.getSortedBy()));
+		assertEquals(set("date"), set(queryResult.getSortedBy()));
 	}
 
 	@Test
@@ -488,8 +495,8 @@ public class ReportingTest {
 
 		List<Record> records = queryResult.getRecords();
 		assertEquals(2, records.size());
-		assertEquals(newHashSet("date"), newHashSet(queryResult.getAttributes()));
-		assertEquals(newHashSet("impressions", "clicks", "ctr", "revenue"), newHashSet(queryResult.getMeasures()));
+		assertEquals(set("date"), set(queryResult.getAttributes()));
+		assertEquals(set("impressions", "clicks", "ctr", "revenue"), set(queryResult.getMeasures()));
 		assertEquals(LocalDate.parse("2000-01-03"), records.get(0).get("date"));
 		assertEquals(2, (long) records.get(0).get("clicks"));
 		assertEquals(15, (long) records.get(0).get("impressions"));
@@ -503,7 +510,7 @@ public class ReportingTest {
 		assertEquals(35, (long) totals.get("impressions"));
 		assertEquals(5, (long) totals.get("clicks"));
 		assertEquals(5.0 / 35.0 * 100.0, (double) totals.get("ctr"), DELTA);
-		assertEquals(newHashSet("ctr"), newHashSet(queryResult.getSortedBy()));
+		assertEquals(set("ctr"), set(queryResult.getSortedBy()));
 	}
 
 	@Test
@@ -549,8 +556,8 @@ public class ReportingTest {
 
 		List<Record> records = queryResult.getRecords();
 		assertEquals(3, records.size());
-		assertEquals(newHashSet("date", "advertiser", "advertiser.name"), newHashSet(queryResult.getAttributes()));
-		assertEquals(newHashSet("impressions"), newHashSet(queryResult.getMeasures()));
+		assertEquals(set("date", "advertiser", "advertiser.name"), set(queryResult.getAttributes()));
+		assertEquals(set("impressions"), set(queryResult.getMeasures()));
 
 		assertEquals(LocalDate.parse("2000-01-02"), records.get(0).get("date"));
 		assertEquals(2, (int) records.get(0).get("advertiser"));
@@ -570,7 +577,7 @@ public class ReportingTest {
 		Record totals = queryResult.getTotals();
 		// totals evaluated before applying having predicate
 		assertEquals(245, (long) totals.get("impressions"));
-		assertEquals(newHashSet("date", "advertiser.name"), newHashSet(queryResult.getSortedBy()));
+		assertEquals(set("date", "advertiser.name"), set(queryResult.getSortedBy()));
 	}
 
 	@Test
@@ -654,8 +661,8 @@ public class ReportingTest {
 		final QueryResult queryResult = getQueryResult(query);
 
 		List<Record> records = queryResult.getRecords();
-		assertEquals(newHashSet("eventCount", "minRevenue", "maxRevenue", "uniqueUserIdsCount", "uniqueUserPercent", "clicks"),
-				newHashSet(queryResult.getMeasures()));
+		assertEquals(set("eventCount", "minRevenue", "maxRevenue", "uniqueUserIdsCount", "uniqueUserPercent", "clicks"),
+				set(queryResult.getMeasures()));
 		assertEquals(3, records.size());
 
 		Record r1 = records.get(0);
@@ -718,16 +725,16 @@ public class ReportingTest {
 		String[] attributes = {"advertiser"};
 		CubeQuery queryWithPredicateIn = CubeQuery.create()
 				.withAttributes(attributes)
-				.withWhere(and(in("advertiser", newLinkedHashSet(newArrayList(1, 2))), notEq("advertiser", EXCLUDE_ADVERTISER),
+				.withWhere(and(in("advertiser", new LinkedHashSet(asList(1, 2))), notEq("advertiser", EXCLUDE_ADVERTISER),
 						notEq("banner", EXCLUDE_BANNER),
 						notEq("campaign", EXCLUDE_CAMPAIGN)))
 				.withMeasures("clicks", "ctr", "conversions")
 				.withReportType(DATA_WITH_TOTALS)
-				.withHaving(in("advertiser", newArrayList(1, 2)));
+				.withHaving(in("advertiser", asList(1, 2)));
 
 		final QueryResult in = getQueryResult(queryWithPredicateIn);
 
-		List<String> expectedRecordFields = newArrayList("advertiser", "clicks", "ctr", "conversions");
+		List<String> expectedRecordFields = asList("advertiser", "clicks", "ctr", "conversions");
 		assertEquals(expectedRecordFields.size(), in.getRecordScheme().getFields().size());
 		assertEquals(2, in.getTotalCount());
 
@@ -758,7 +765,7 @@ public class ReportingTest {
 				.withReportType(ReportType.METADATA);
 
 		final QueryResult metadata = getQueryResult(queryAffectingNonCompatibleAggregations);
-		List<String> expectedMeasures = newArrayList("impressions", "clicks");
+		List<String> expectedMeasures = asList("impressions", "clicks");
 		assertEquals(expectedMeasures, metadata.getMeasures());
 	}
 
@@ -781,7 +788,7 @@ public class ReportingTest {
 	public void testAdvertisersAggregationTotals() throws Exception {
 		CubeQuery queryAdvertisers = CubeQuery.create()
 				.withAttributes("date", "advertiser")
-				.withMeasures(newArrayList("clicks", "impressions", "revenue", "errors"))
+				.withMeasures(asList("clicks", "impressions", "revenue", "errors"))
 				.withWhere(and(notEq("advertiser", EXCLUDE_ADVERTISER), notEq("campaign", EXCLUDE_CAMPAIGN), notEq("banner", EXCLUDE_BANNER),
 						between("date", LocalDate.parse("2000-01-02"), LocalDate.parse("2000-01-02"))))
 				.withReportType(DATA_WITH_TOTALS);
@@ -803,7 +810,7 @@ public class ReportingTest {
 	public void testAffiliatesAggregationTotals() throws Exception {
 		CubeQuery queryAffiliates = CubeQuery.create()
 				.withAttributes("date", "affiliate")
-				.withMeasures(newArrayList("clicks", "impressions", "revenue", "errors"))
+				.withMeasures(asList("clicks", "impressions", "revenue", "errors"))
 				.withWhere(and(notEq("affiliate", 0), notEq("site", EXCLUDE_SITE),
 						between("date", LocalDate.parse("2000-01-02"), LocalDate.parse("2000-01-02"))))
 				.withReportType(DATA_WITH_TOTALS);
@@ -825,7 +832,7 @@ public class ReportingTest {
 	public void testDailyAggregationTotals() throws Exception {
 		CubeQuery queryDate = CubeQuery.create()
 				.withAttributes("date")
-				.withMeasures(newArrayList("clicks", "impressions", "revenue", "errors"))
+				.withMeasures(asList("clicks", "impressions", "revenue", "errors"))
 				.withWhere(between("date", LocalDate.parse("2000-01-02"), LocalDate.parse("2000-01-02")))
 				.withReportType(DATA_WITH_TOTALS);
 
@@ -844,8 +851,8 @@ public class ReportingTest {
 
 	@Test
 	public void testResultContainsTotals_whenDataWithTotalsRequested() throws Exception {
-		ArrayList<String> measures = newArrayList("clicks", "impressions", "revenue", "errors");
-		ArrayList<String> requestMeasures = newArrayList(measures);
+		List<String> measures = asList("clicks", "impressions", "revenue", "errors");
+		List<String> requestMeasures = new ArrayList<>(measures);
 		requestMeasures.add(3, "nonexistentMeasure");
 		List<String> dateDimension = singletonList("date");
 		CubeQuery queryDate = CubeQuery.create()
@@ -872,8 +879,8 @@ public class ReportingTest {
 
 	@Test
 	public void testResultContainsTotalsAndMetadata_whenTotalsAndMetadataRequested() throws Exception {
-		ArrayList<String> measures = newArrayList("clicks", "impressions", "revenue", "errors");
-		ArrayList<String> requestMeasures = newArrayList(measures);
+		List<String> measures = asList("clicks", "impressions", "revenue", "errors");
+		List<String> requestMeasures = new ArrayList<>(measures);
 		requestMeasures.add("unexpected");
 		CubeQuery queryDate = CubeQuery.create()
 				.withAttributes("date")

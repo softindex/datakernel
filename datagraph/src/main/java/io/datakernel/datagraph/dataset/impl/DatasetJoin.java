@@ -16,7 +16,6 @@
 
 package io.datakernel.datagraph.dataset.impl;
 
-import com.google.common.base.Function;
 import io.datakernel.datagraph.dataset.SortedDataset;
 import io.datakernel.datagraph.graph.DataGraph;
 import io.datakernel.datagraph.graph.StreamId;
@@ -25,6 +24,7 @@ import io.datakernel.stream.processor.StreamJoin;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
 import static io.datakernel.datagraph.dataset.impl.DatasetUtils.repartitionAndSort;
 

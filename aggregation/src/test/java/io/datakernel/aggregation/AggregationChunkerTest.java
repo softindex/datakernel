@@ -30,6 +30,7 @@ import org.junit.rules.TemporaryFolder;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
@@ -81,6 +82,11 @@ public class AggregationChunkerTest {
 			@Override
 			public CompletionStage<Long> createId() {
 				return Stages.of(++chunkId);
+			}
+
+			@Override
+			public CompletionStage<Void> finish(Set<Long> chunkIds) {
+				return Stages.of(null);
 			}
 		};
 
@@ -153,6 +159,11 @@ public class AggregationChunkerTest {
 			@Override
 			public CompletionStage<Long> createId() {
 				return Stages.of(++chunkId);
+			}
+
+			@Override
+			public CompletionStage<Void> finish(Set<Long> chunkIds) {
+				return Stages.of(null);
 			}
 		};
 
@@ -237,6 +248,11 @@ public class AggregationChunkerTest {
 			@Override
 			public CompletionStage<Long> createId() {
 				return Stages.of(++chunkId);
+			}
+
+			@Override
+			public CompletionStage<Void> finish(Set<Long> chunkIds) {
+				return Stages.of(null);
 			}
 		};
 

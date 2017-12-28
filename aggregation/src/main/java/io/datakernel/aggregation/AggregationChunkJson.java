@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.utils.GsonAdapters.STRING_JSON;
 import static io.datakernel.utils.GsonAdapters.ofList;
 

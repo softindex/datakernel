@@ -16,8 +16,6 @@
 
 package io.datakernel.stream.processor;
 
-import com.google.common.base.Functions;
-import com.google.common.collect.Ordering;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumerToList;
@@ -35,6 +33,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Function;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -97,7 +96,7 @@ public class StreamSorterTest {
 
 		StreamSorterStorage<Integer> storage = StreamSorterStorageImpl.create(eventloop, executor, intSerializer(), tempFolder.newFolder().toPath());
 		StreamSorter<Integer, Integer> sorter = StreamSorter.create(eventloop,
-				storage, Functions.identity(), Ordering.natural(), true, 2);
+				storage, Function.identity(), Integer::compareTo, true, 2);
 
 		StreamConsumerToList<Integer> consumerToList = StreamConsumerToList.randomlySuspending(eventloop);
 
@@ -121,7 +120,7 @@ public class StreamSorterTest {
 
 		StreamSorterStorage<Integer> storage = StreamSorterStorageImpl.create(eventloop, executor, intSerializer(), tempFolder.newFolder().toPath());
 		StreamSorter<Integer, Integer> sorter = StreamSorter.create(eventloop,
-				storage, Functions.identity(), Ordering.natural(), true, 2);
+				storage, Function.identity(), Integer::compareTo, true, 2);
 
 		final List<Integer> list = new ArrayList<>();
 		StreamConsumerToList<Integer> consumerToList = new StreamConsumerToList<Integer>(eventloop, list) {
@@ -158,7 +157,7 @@ public class StreamSorterTest {
 
 		StreamSorterStorage<Integer> storage = StreamSorterStorageImpl.create(eventloop, executor, intSerializer(), tempFolder.newFolder().toPath());
 		StreamSorter<Integer, Integer> sorter = StreamSorter.create(eventloop,
-				storage, Functions.identity(), Ordering.natural(), true, 2);
+				storage, Function.identity(), Integer::compareTo, true, 2);
 
 		StreamConsumerToList<Integer> consumerToList = StreamConsumerToList.create(eventloop);
 

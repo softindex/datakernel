@@ -21,7 +21,7 @@ import com.carrotsearch.hppc.ObjectIntOpenHashMap;
 import java.lang.reflect.Type;
 import java.util.*;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class RecordScheme {
 	private final LinkedHashMap<String, Type> fieldTypes = new LinkedHashMap<>();

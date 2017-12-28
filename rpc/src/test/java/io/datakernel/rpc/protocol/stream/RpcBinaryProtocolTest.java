@@ -16,8 +16,6 @@
 
 package io.datakernel.rpc.protocol.stream;
 
-import com.google.common.collect.Lists;
-import com.google.common.net.InetAddresses;
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
@@ -36,7 +34,10 @@ import io.datakernel.stream.processor.StreamLZ4Decompressor;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.List;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
@@ -47,7 +48,14 @@ import static org.junit.Assert.assertEquals;
 
 public class RpcBinaryProtocolTest {
 	private static final int LISTEN_PORT = 12345;
-	private static final InetSocketAddress address = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), LISTEN_PORT);
+	private static final InetSocketAddress address;
+	static {
+		try {
+			address = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), LISTEN_PORT);
+		} catch (UnknownHostException e) {
+			throw new RuntimeException(e);
+		}
+	}
 
 	@Before
 	public void before() {
@@ -72,7 +80,7 @@ public class RpcBinaryProtocolTest {
 		server.listen();
 
 		final int countRequests = 10;
-		final List<String> results = Lists.newArrayList();
+		final List<String> results = new ArrayList<>();
 		class ResultObserver {
 
 			public void setException(Throwable exception) {
@@ -136,7 +144,7 @@ public class RpcBinaryProtocolTest {
 
 		// client side
 		String testMessage = "Test";
-		List<RpcMessage> sourceList = Lists.newArrayList();
+		List<RpcMessage> sourceList = new ArrayList<>();
 		for (int i = 0; i < countRequests; i++) {
 			sourceList.add(RpcMessage.of(i, testMessage));
 		}

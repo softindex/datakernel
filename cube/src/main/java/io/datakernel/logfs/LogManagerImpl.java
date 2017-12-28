@@ -29,9 +29,12 @@ import io.datakernel.stream.processor.StreamLZ4Compressor;
 import io.datakernel.stream.processor.StreamLZ4Decompressor;
 import io.datakernel.util.MemSize;
 import io.datakernel.util.Preconditions;
+import io.datakernel.util.Stopwatch;
 import org.joda.time.DateTimeZone;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.Iterator;
@@ -39,11 +42,16 @@ import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 
+import static io.datakernel.stream.StreamProducers.endOfStreamOnError;
+import static io.datakernel.stream.StreamProducers.onEndOfStream;
+import static java.util.concurrent.TimeUnit.SECONDS;
+
 public final class LogManagerImpl<T> implements LogManager<T> {
 	public static final DateTimeFormatter DEFAULT_DATE_TIME_FORMATTER = DateTimeFormat.forPattern("yyyy-MM-dd_HH").withZone(DateTimeZone.UTC);
 	public static final int DEFAULT_BUFFER_SIZE = 256 * 1024;
 	public static final int DEFAULT_AUTO_FLUSH_INTERVAL = -1;
 
+	private final Logger logger = LoggerFactory.getLogger(LogManagerImpl.class);
 	private final Eventloop eventloop;
 	private final LogFileSystem fileSystem;
 	private final BufferSerializer<T> serializer;
@@ -128,6 +136,8 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 				private LogFile currentLogFile;
 				private long inputStreamPosition;
 
+				final Stopwatch sw = Stopwatch.createUnstarted();
+
 				@Override
 				public boolean hasNext() {
 					if (it.hasNext()) return true;
@@ -148,10 +158,15 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 				@Override
 				public StreamProducer<T> next() {
 					currentLogFile = it.next();
-					CompletionStage<StreamProducer<T>> stage = fileSystem.read(logPartition, currentLogFile, n++ == 0 ? startPosition.getPosition() : 0L)
+					final long position = n++ == 0 ? startPosition.getPosition() : 0L;
+
+					if (logger.isTraceEnabled()) logger.trace("Read log file `{}` from: {}", currentLogFile, position);
+
+					CompletionStage<StreamProducer<T>> stage = fileSystem.read(logPartition, currentLogFile, position)
 							.thenApply(producer -> {
 								inputStreamPosition = 0L;
 
+								sw.reset().start();
 								StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create(eventloop)
 										.withInspector(new StreamLZ4Decompressor.Inspector() {
 											@Override
@@ -168,10 +183,20 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 								producer.streamTo(decompressor.getInput());
 								decompressor.getOutput().streamTo(deserializer.getInput());
 
-								return StreamProducers.endOfStreamOnError(deserializer.getOutput());
+								return onEndOfStream(endOfStreamOnError(deserializer.getOutput()), this::log);
 							});
 
 					return StreamProducers.ofStage(stage);
+				}
+
+				private void log(Void aVoid, Throwable throwable) {
+					if (throwable == null && logger.isTraceEnabled()) {
+						logger.trace("Finish log file `{}` in {}, compressed bytes: {} ({} bytes/ses)", currentLogFile,
+								sw, inputStreamPosition, inputStreamPosition / Math.max(sw.elapsed(SECONDS), 1));
+					} else if (throwable != null && logger.isWarnEnabled()) {
+						logger.warn("Error on log file `{}` in {}, compressed bytes: {} ({} bytes/ses)", currentLogFile,
+								sw, inputStreamPosition, inputStreamPosition / Math.max(sw.elapsed(SECONDS), 1), throwable);
+					}
 				}
 			}), positionStage);
 		});

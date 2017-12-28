@@ -16,13 +16,11 @@
 
 package io.datakernel.aggregation;
 
-import com.google.common.base.Function;
-import com.google.common.collect.Lists;
-
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableSet;
@@ -62,12 +60,9 @@ public final class QueryPlan {
 
 		@Override
 		public String toString() {
-			return Lists.transform(chunks, new Function<AggregationChunk, String>() {
-				@Override
-				public String apply(AggregationChunk chunk) {
-					return "" + chunk.getChunkId();
-				}
-			}).toString();
+			return chunks.stream().map(AggregationChunk::getChunkId)
+					.map(Object::toString)
+					.collect(Collectors.joining(",", "[", "]"));
 		}
 	}
 

@@ -16,13 +16,16 @@
 
 package io.datakernel.datagraph.node;
 
-import com.google.common.base.Function;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.graph.TaskContext;
 import io.datakernel.stream.processor.StreamReducerSimple;
 import io.datakernel.stream.processor.StreamReducers;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.List;
+import java.util.function.Function;
 
 import static java.util.Collections.singletonList;
 

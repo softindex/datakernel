@@ -16,10 +16,6 @@
 
 package io.datakernel.datagraph.stream;
 
-import com.google.common.base.Function;
-import com.google.common.base.MoreObjects;
-import com.google.common.collect.Ordering;
-import com.google.common.net.InetAddresses;
 import io.datakernel.async.Stages;
 import io.datakernel.datagraph.dataset.Dataset;
 import io.datakernel.datagraph.dataset.SortedDataset;
@@ -43,8 +39,11 @@ import io.datakernel.stream.processor.StreamSorterStorage;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.Arrays;
+import java.util.Comparator;
+import java.util.function.Function;
 
 import static io.datakernel.async.Stages.assertComplete;
 import static io.datakernel.datagraph.dataset.Datasets.*;
@@ -72,19 +71,14 @@ public class PageRankTest {
 			}
 		}
 
-		public static final Function<Page, Long> KEY_FUNCTION = new Function<Page, Long>() {
-			@Override
-			public Long apply(Page page) {
-				return page.pageId;
-			}
-		};
+		public static final Function<Page, Long> KEY_FUNCTION = page -> page.pageId;
 
 		@Override
 		public String toString() {
-			return MoreObjects.toStringHelper(this)
-					.add("pageId", pageId)
-					.add("links", Arrays.toString(links))
-					.toString();
+			return "Page{" +
+					"pageId=" + pageId +
+					", links=" + Arrays.toString(links) +
+					'}';
 		}
 	}
 
@@ -99,19 +93,14 @@ public class PageRankTest {
 			this.value = value;
 		}
 
-		public static final Function<Rank, Long> KEY_FUNCTION = new Function<Rank, Long>() {
-			@Override
-			public Long apply(Rank rank) {
-				return rank.pageId;
-			}
-		};
+		public static final Function<Rank, Long> KEY_FUNCTION = rank -> rank.pageId;
 
 		@Override
 		public String toString() {
-			return MoreObjects.toStringHelper(this)
-					.add("pageId", pageId)
-					.add("value", value)
-					.toString();
+			return "Rank{" +
+					"pageId=" + pageId +
+					", value=" + value +
+					'}';
 		}
 
 		@SuppressWarnings({"SimplifiableIfStatement", "EqualsWhichDoesntCheckParameterClass"})
@@ -137,19 +126,14 @@ public class PageRankTest {
 			this.pageId = pageId;
 		}
 
-		public static final Function<RankAccumulator, Long> KEY_FUNCTION = new Function<RankAccumulator, Long>() {
-			@Override
-			public Long apply(RankAccumulator rankAccumulator) {
-				return rankAccumulator.pageId;
-			}
-		};
+		public static final Function<RankAccumulator, Long> KEY_FUNCTION = rankAccumulator -> rankAccumulator.pageId;
 
 		@Override
 		public String toString() {
-			return MoreObjects.toStringHelper(this)
-					.add("pageId", pageId)
-					.add("accumulatedRank", accumulatedRank)
-					.toString();
+			return "RankAccumulator{" +
+					"pageId=" + pageId +
+					", accumulatedRank=" + accumulatedRank +
+					'}';
 		}
 	}
 
@@ -188,11 +172,11 @@ public class PageRankTest {
 				Rank.class, Rank.KEY_FUNCTION);
 
 		Dataset<Rank> newRanks = sort_Reduce_Repartition_Reduce(updates, new RankAccumulatorReducer(),
-				Long.class, Rank.KEY_FUNCTION, Ordering.<Long>natural(),
+				Long.class, Rank.KEY_FUNCTION, Long::compareTo,
 				RankAccumulator.class, RankAccumulator.KEY_FUNCTION,
 				Rank.class);
 
-		return castToSorted(newRanks, Long.class, Rank.KEY_FUNCTION, Ordering.<Long>natural());
+		return castToSorted(newRanks, Long.class, Rank.KEY_FUNCTION, Long::compareTo);
 	}
 
 	public static SortedDataset<Long, Rank> pageRank(SortedDataset<Long, Page> pages) {
@@ -203,7 +187,7 @@ public class PageRankTest {
 						return new Rank(page.pageId, 1.0);
 					}
 				},
-				Rank.class), Long.class, Rank.KEY_FUNCTION, Ordering.<Long>natural());
+				Rank.class), Long.class, Rank.KEY_FUNCTION, Comparator.naturalOrder());
 
 		for (int i = 0; i < 10; i++) {
 			ranks = pageRankIteration(pages, ranks);
@@ -217,8 +201,8 @@ public class PageRankTest {
 	@Test
 	public void test2() throws Exception {
 		DatagraphSerialization serialization = new DatagraphSerialization();
-		InetSocketAddress address1 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1571);
-		InetSocketAddress address2 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1572);
+		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1571);
+		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1572);
 
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		final StreamConsumerToList<Rank> result1 = new StreamConsumerToList<>(eventloop);
@@ -246,7 +230,7 @@ public class PageRankTest {
 				asList(partition1, partition2));
 
 		SortedDataset<Long, Page> pages = repartition_Sort(sortedDatasetOfList("items",
-				Page.class, Long.class, Page.KEY_FUNCTION, Ordering.<Long>natural()));
+				Page.class, Long.class, Page.KEY_FUNCTION, Comparator.naturalOrder()));
 
 		SortedDataset<Long, Rank> pageRanks = pageRank(pages);
 

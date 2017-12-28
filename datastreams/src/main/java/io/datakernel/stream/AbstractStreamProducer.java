@@ -25,9 +25,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.CompletionStage;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
 import static io.datakernel.stream.StreamStatus.*;
+import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.checkState;
 
 /**
  * It is basic implementation of {@link StreamProducer}
@@ -126,6 +126,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T>, Ha
 
 	@Override
 	public final void produce(StreamDataReceiver<T> dataReceiver) {
+		if (logger.isTraceEnabled()) logger.trace("Start producing: {}", this);
 		assert dataReceiver != null;
 		if (currentDataReceiver == dataReceiver)
 			return;
@@ -141,6 +142,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T>, Ha
 
 	@Override
 	public final void suspend() {
+		if (logger.isTraceEnabled()) logger.trace("Suspend producer: {}", this);
 		if (!isReceiverReady())
 			return;
 		currentDataReceiver = null;
@@ -152,7 +154,8 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T>, Ha
 			return;
 		status = END_OF_STREAM;
 		currentDataReceiver = null;
-		lastDataReceiver = item -> {};
+		lastDataReceiver = item -> {
+		};
 		consumer.endOfStream();
 		eventloop.post(this::cleanup);
 		endOfStream.set(null);
@@ -164,7 +167,8 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T>, Ha
 			return;
 		status = CLOSED_WITH_ERROR;
 		currentDataReceiver = null;
-		lastDataReceiver = item -> {};
+		lastDataReceiver = item -> {
+		};
 		exception = e;
 		if (!(e instanceof ExpectedException)) {
 			if (logger.isWarnEnabled()) {

@@ -16,8 +16,6 @@
 
 package io.datakernel.aggregation;
 
-import com.google.common.base.MoreObjects;
-
 import java.util.List;
 
 import static java.util.Arrays.asList;
@@ -67,10 +65,10 @@ public class KeyValuePair {
 
 	@Override
 	public String toString() {
-		return MoreObjects.toStringHelper(this)
-				.add("key", key)
-				.add("value", value)
-				.add("timestamp", timestamp)
-				.toString();
+		return "KeyValuePair{" +
+				"key=" + key +
+				", value=" + value +
+				", timestamp=" + timestamp +
+				'}';
 	}
 }

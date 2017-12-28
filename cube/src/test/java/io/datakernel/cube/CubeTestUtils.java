@@ -19,17 +19,15 @@ package io.datakernel.cube;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 
-import javax.sql.DataSource;
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.Properties;
-
-import static com.google.common.base.Charsets.UTF_8;
 
 public final class CubeTestUtils {
 
 	public static HikariDataSource dataSource(String databasePropertiesPath) throws IOException {
 		Properties properties = new Properties();
-		properties.load(new InputStreamReader(new BufferedInputStream(new FileInputStream(new File(databasePropertiesPath))), UTF_8));
+		properties.load(new InputStreamReader(new BufferedInputStream(new FileInputStream(new File(databasePropertiesPath))), StandardCharsets.UTF_8));
 		return new HikariDataSource(new HikariConfig(properties));
 	}
 }

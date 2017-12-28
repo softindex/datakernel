@@ -18,6 +18,7 @@ package io.datakernel.remotefs;
 
 import com.google.gson.Gson;
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
@@ -39,6 +40,7 @@ import javax.net.ssl.SSLContext;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
@@ -110,7 +112,7 @@ public final class RemoteFsClient implements IRemoteFsClient {
 			});
 
 			StreamConsumerWithResult<ByteBuf, Void> consumerWithResult = StreamConsumers.withResult(consumer, ack);
-			consumerWithResult.getResult().whenComplete(($, throwable) -> {if (throwable != null) messaging.close();});
+			consumerWithResult.getResult().whenComplete(Stages.onError($ -> messaging.close()));
 			return consumerWithResult;
 		});
 	}
@@ -164,8 +166,7 @@ public final class RemoteFsClient implements IRemoteFsClient {
 				});
 			});
 
-			return stage
-					.whenComplete(($, throwable) -> {if (throwable != null) messaging.close();});
+			return stage.whenComplete(Stages.onError($ -> messaging.close()));
 		});
 	}
 
@@ -242,6 +243,51 @@ public final class RemoteFsClient implements IRemoteFsClient {
 							logger.warn("received unexpected end of stream");
 							messaging.close();
 							ack.setException(new RemoteFsException("Unexpected end of stream while trying to list files"));
+						}
+
+						@Override
+						public void onException(Exception e) {
+							messaging.close();
+							ack.setException(e);
+						}
+					});
+				} else {
+					messaging.close();
+					ack.setException(throwable);
+				}
+			});
+			return ack;
+		});
+	}
+
+	@Override
+	public CompletionStage<Void> move(Map<String, String> changes) {
+		return connect(address).thenCompose(messaging -> {
+			SettableStage<Void> ack = SettableStage.create();
+			messaging.send(new RemoteFsCommands.Move(changes)).whenComplete((aVoid, throwable) -> {
+				if (throwable == null) {
+					logger.trace("command move files send");
+					messaging.receive(new ReceiveMessageCallback<RemoteFsResponses.FsResponse>() {
+						@Override
+						public void onReceive(RemoteFsResponses.FsResponse msg) {
+							logger.trace("received {}", msg);
+							if (msg instanceof RemoteFsResponses.Ok) {
+								messaging.close();
+								ack.set(null);
+							} else if (msg instanceof RemoteFsResponses.Err) {
+								messaging.close();
+								ack.setException(new RemoteFsException(((RemoteFsResponses.Err) msg).msg));
+							} else {
+								messaging.close();
+								ack.setException(new RemoteFsException("Invalid message received: " + msg));
+							}
+						}
+
+						@Override
+						public void onReceiveEndOfStream() {
+							logger.warn("received unexpected end of stream");
+							messaging.close();
+							ack.setException(new RemoteFsException("Unexpected end of stream for: " + changes));
 						}
 
 						@Override

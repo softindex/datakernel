@@ -16,7 +16,6 @@
 
 package io.datakernel.aggregation;
 
-import com.google.common.base.Joiner;
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Expressions;
@@ -26,10 +25,8 @@ import io.datakernel.codegen.VarField;
 import java.util.*;
 import java.util.regex.Pattern;
 
-import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.collect.Lists.newArrayList;
-import static com.google.common.collect.Sets.newLinkedHashSet;
 import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.util.Preconditions.checkState;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 
@@ -79,12 +76,7 @@ public class AggregationPredicates {
 		if (!rightType.equals(leftType)) {
 			PredicateSimplifierKey keyRightLeft = new PredicateSimplifierKey<>(rightType, leftType);
 			checkState(!simplifiers.containsKey(keyRightLeft));
-			simplifiers.put(keyRightLeft, new PredicateSimplifier<R, L>() {
-				@Override
-				public AggregationPredicate simplifyAnd(R right, L left) {
-					return operation.simplifyAnd(left, right);
-				}
-			});
+			simplifiers.put(keyRightLeft, (PredicateSimplifier<R, L>) (right, left) -> operation.simplifyAnd(left, right));
 		}
 	}
 
@@ -499,7 +491,7 @@ public class AggregationPredicates {
 				return null;
 			}
 		});
-		register( PredicateLt.class, PredicateIn.class, new PredicateSimplifier<PredicateLt, PredicateIn>() {
+		register(PredicateLt.class, PredicateIn.class, new PredicateSimplifier<PredicateLt, PredicateIn>() {
 			@Override
 			public AggregationPredicate simplifyAnd(PredicateLt left, PredicateIn right) {
 				if (!left.key.equals(right.key))
@@ -536,7 +528,7 @@ public class AggregationPredicates {
 		});
 		register(PredicateGt.class, PredicateIn.class, new PredicateSimplifier<PredicateGt, PredicateIn>() {
 			@Override
-			public AggregationPredicate simplifyAnd(PredicateGt left,  PredicateIn  right) {
+			public AggregationPredicate simplifyAnd(PredicateGt left, PredicateIn right) {
 				if (!left.key.equals(right.key))
 					return null;
 				if (left.value.compareTo(right.values.first()) < 0)
@@ -559,7 +551,7 @@ public class AggregationPredicates {
 				return between(left.key, from, to).simplify();
 			}
 		});
-		register(PredicateBetween.class, PredicateIn.class,  new PredicateSimplifier<PredicateBetween, PredicateIn>() {
+		register(PredicateBetween.class, PredicateIn.class, new PredicateSimplifier<PredicateBetween, PredicateIn>() {
 			@Override
 			public AggregationPredicate simplifyAnd(PredicateBetween left, PredicateIn right) {
 				if (!left.key.equals(right.key))
@@ -1234,7 +1226,6 @@ public class AggregationPredicates {
 	}
 
 	public static final class PredicateIn implements AggregationPredicate {
-		static final Joiner JOINER = Joiner.on(", ");
 		final String key;
 		final SortedSet values;
 
@@ -1293,7 +1284,9 @@ public class AggregationPredicates {
 
 		@Override
 		public String toString() {
-			return "" + key + " IN " + JOINER.join(values);
+			final StringJoiner joiner = new StringJoiner(", ");
+			for (Object value : values) joiner.add(value.toString());
+			return "" + key + " IN " + joiner.toString();
 		}
 	}
 
@@ -1371,7 +1364,6 @@ public class AggregationPredicates {
 	}
 
 	public static final class PredicateAnd implements AggregationPredicate {
-		static final Joiner JOINER = Joiner.on(" AND ");
 		final List<AggregationPredicate> predicates;
 
 		private PredicateAnd(List<AggregationPredicate> predicates) {
@@ -1384,7 +1376,7 @@ public class AggregationPredicates {
 
 		@Override
 		public AggregationPredicate simplify() {
-			Set<AggregationPredicate> simplifiedPredicates = newLinkedHashSet();
+			Set<AggregationPredicate> simplifiedPredicates = new LinkedHashSet<>();
 			for (AggregationPredicate predicate : predicates) {
 				AggregationPredicate simplified = predicate.simplify();
 				if (simplified instanceof PredicateAnd) {
@@ -1413,7 +1405,11 @@ public class AggregationPredicates {
 				simplifiedPredicates = newPredicates;
 			} while (simplified);
 
-			return simplifiedPredicates.isEmpty() ? alwaysTrue() : simplifiedPredicates.size() == 1 ? simplifiedPredicates.iterator().next() : and(newArrayList(simplifiedPredicates));
+			return simplifiedPredicates.isEmpty()
+					? alwaysTrue()
+					: simplifiedPredicates.size() == 1
+					? simplifiedPredicates.iterator().next()
+					: and(new ArrayList<>(simplifiedPredicates));
 		}
 
 		@Override
@@ -1461,12 +1457,14 @@ public class AggregationPredicates {
 
 		@Override
 		public String toString() {
-			return "(" + JOINER.join(predicates) + ")";
+			final StringJoiner joiner = new StringJoiner(" AND ");
+			for (AggregationPredicate predicate : predicates) joiner.add(predicate.toString());
+
+			return "(" + joiner.toString() + ")";
 		}
 	}
 
 	public static final class PredicateOr implements AggregationPredicate {
-		static final Joiner JOINER = Joiner.on(" OR ");
 		final List<AggregationPredicate> predicates;
 
 		PredicateOr(List<AggregationPredicate> predicates) {
@@ -1479,7 +1477,7 @@ public class AggregationPredicates {
 
 		@Override
 		public AggregationPredicate simplify() {
-			Set<AggregationPredicate> simplifiedPredicates = newLinkedHashSet();
+			Set<AggregationPredicate> simplifiedPredicates = new LinkedHashSet<>();
 			for (AggregationPredicate predicate : predicates) {
 				AggregationPredicate simplified = predicate.simplify();
 				if (simplified instanceof PredicateOr) {
@@ -1488,7 +1486,11 @@ public class AggregationPredicates {
 					simplifiedPredicates.add(simplified);
 				}
 			}
-			return simplifiedPredicates.isEmpty() ? alwaysTrue() : simplifiedPredicates.size() == 1 ? simplifiedPredicates.iterator().next() : or(newArrayList(simplifiedPredicates));
+			return simplifiedPredicates.isEmpty()
+					? alwaysTrue()
+					: simplifiedPredicates.size() == 1
+					? simplifiedPredicates.iterator().next()
+					: or(new ArrayList<>(simplifiedPredicates));
 		}
 
 		@Override
@@ -1532,7 +1534,9 @@ public class AggregationPredicates {
 
 		@Override
 		public String toString() {
-			return "(" + JOINER.join(predicates) + ")";
+			final StringJoiner joiner = new StringJoiner(" OR ");
+			for (AggregationPredicate predicate : predicates) joiner.add(predicate.toString());
+			return "(" + joiner.toString() + ")";
 		}
 	}
 

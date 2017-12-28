@@ -16,10 +16,6 @@
 
 package io.datakernel.datagraph.stream;
 
-import com.google.common.base.Function;
-import com.google.common.base.Predicate;
-import com.google.common.collect.Ordering;
-import com.google.common.net.InetAddresses;
 import io.datakernel.datagraph.dataset.Dataset;
 import io.datakernel.datagraph.dataset.LocallySortedDataset;
 import io.datakernel.datagraph.dataset.SortedDataset;
@@ -36,7 +32,11 @@ import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.StreamSorterStorage;
 import org.junit.Test;
 
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.util.Comparator;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 import static io.datakernel.async.Stages.assertComplete;
 import static io.datakernel.datagraph.dataset.Datasets.*;
@@ -86,8 +86,8 @@ public class DatagraphServerTest {
 	@Test
 	public void testForward() throws Exception {
 		DatagraphSerialization serialization = new DatagraphSerialization();
-		InetSocketAddress address1 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1511);
-		InetSocketAddress address2 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1512);
+		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1511);
+		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1512);
 
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		StreamConsumerToList<TestItem> result1 = new StreamConsumerToList<>(eventloop);
@@ -138,8 +138,8 @@ public class DatagraphServerTest {
 	@Test
 	public void testRepartitionAndSort() throws Exception {
 		DatagraphSerialization serialization = new DatagraphSerialization();
-		InetSocketAddress address1 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1511);
-		InetSocketAddress address2 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1512);
+		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1511);
+		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1512);
 
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		StreamConsumerToList<TestItem> result1 = new StreamConsumerToList<>(eventloop);
@@ -167,7 +167,12 @@ public class DatagraphServerTest {
 				asList(partition1, partition2));
 
 		SortedDataset<Long, TestItem> items = repartition_Sort(sortedDatasetOfList("items",
-				TestItem.class, Long.class, new TestItem.KeyFunction(), Ordering.<Long>natural()));
+				TestItem.class, Long.class, new TestItem.KeyFunction(), new Comparator<Long>() {
+					@Override
+					public int compare(Long o1, Long o2) {
+						return o1.compareTo(o2);
+					}
+				}));
 
 		DatasetListConsumer<?> consumerNode = listConsumer(items, "result");
 		consumerNode.compileInto(graph);
@@ -192,8 +197,8 @@ public class DatagraphServerTest {
 	@Test
 	public void testFilter() throws Exception {
 		DatagraphSerialization serialization = new DatagraphSerialization();
-		InetSocketAddress address1 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1511);
-		InetSocketAddress address2 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1512);
+		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1511);
+		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1512);
 
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		DatagraphClient client = new DatagraphClient(eventloop, serialization);
@@ -225,13 +230,18 @@ public class DatagraphServerTest {
 		Dataset<TestItem> filterDataset = filter(datasetOfList("items", TestItem.class),
 				new Predicate<TestItem>() {
 					@Override
-					public boolean apply(TestItem input) {
+					public boolean test(TestItem input) {
 						return input.value % 2 == 0;
 					}
 				});
 
 		LocallySortedDataset<Long, TestItem> sortedDataset =
-				localSort(filterDataset, long.class, new TestItem.KeyFunction(), Ordering.<Long>natural());
+				localSort(filterDataset, long.class, new TestItem.KeyFunction(), new Comparator<Long>() {
+					@Override
+					public int compare(Long o1, Long o2) {
+						return o1.compareTo(o2);
+					}
+				});
 
 		DatasetListConsumer<?> consumerNode = listConsumer(sortedDataset, "result");
 
@@ -258,8 +268,8 @@ public class DatagraphServerTest {
 	@Test
 	public void testCollector() throws Exception {
 		DatagraphSerialization serialization = new DatagraphSerialization();
-		InetSocketAddress address1 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1511);
-		InetSocketAddress address2 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1512);
+		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1511);
+		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1512);
 
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		DatagraphClient client = new DatagraphClient(eventloop, serialization);
@@ -288,13 +298,18 @@ public class DatagraphServerTest {
 		Dataset<TestItem> filterDataset = filter(datasetOfList("items", TestItem.class),
 				new Predicate<TestItem>() {
 					@Override
-					public boolean apply(TestItem input) {
+					public boolean test(TestItem input) {
 						return input.value % 2 == 0;
 					}
 				});
 
 		LocallySortedDataset<Long, TestItem> sortedDataset =
-				localSort(filterDataset, long.class, new TestItem.KeyFunction(), Ordering.<Long>natural());
+				localSort(filterDataset, long.class, new TestItem.KeyFunction(), new Comparator<Long>() {
+					@Override
+					public int compare(Long o1, Long o2) {
+						return o1.compareTo(o2);
+					}
+				});
 
 		System.out.println("Graph: ");
 		System.out.println(graph);

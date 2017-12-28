@@ -16,7 +16,6 @@
 
 package io.datakernel.stream.processor;
 
-import com.google.common.base.Functions;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
@@ -26,6 +25,7 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
@@ -96,7 +96,7 @@ public class StreamProducerDecoratorTest {
 		final StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
 		StreamProducerDecorator<Integer, Void> producerDecorator = new StreamProducerDecorator<Integer, Void>() {};
 		producerDecorator.setActualProducer(producer);
-		StreamFunction<Integer, Integer> function = StreamFunction.create(eventloop, Functions.<Integer>identity());
+		StreamFunction<Integer, Integer> function = StreamFunction.create(eventloop, Function.<Integer>identity());
 
 		producerDecorator.streamTo(function.getInput());
 		eventloop.run();

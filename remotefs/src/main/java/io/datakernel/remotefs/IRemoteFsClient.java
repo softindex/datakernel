@@ -23,6 +23,7 @@ import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.StreamProducers;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletionStage;
 
 public interface IRemoteFsClient {
@@ -37,6 +38,8 @@ public interface IRemoteFsClient {
 	default StreamProducerWithResult<ByteBuf, Void> downloadStream(String fileName, long startPosition) {
 		return StreamProducers.ofStageWithResult(download(fileName, startPosition));
 	}
+
+	CompletionStage<Void> move(Map<String, String> changes);
 
 	CompletionStage<Void> delete(String fileName);
 

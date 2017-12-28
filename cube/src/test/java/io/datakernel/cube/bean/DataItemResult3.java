@@ -16,11 +16,11 @@
 
 package io.datakernel.cube.bean;
 
-import com.google.common.base.MoreObjects;
-import com.google.common.collect.ImmutableMap;
+import io.datakernel.aggregation.AggregationUtils;
 import io.datakernel.aggregation.measure.Measure;
 
 import java.util.Map;
+import java.util.stream.Stream;
 
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.sum;
@@ -50,19 +50,11 @@ public class DataItemResult3 {
 		this.metric3 = metric3;
 	}
 
-	public static final Map<String, Class<?>> DIMENSIONS = ImmutableMap.<String, Class<?>>builder()
-			.put("key1", int.class)
-			.put("key2", int.class)
-			.put("key3", int.class)
-			.put("key4", int.class)
-			.put("key5", int.class)
-			.build();
+	public static final Map<String, Class<?>> DIMENSIONS = AggregationUtils
+			.streamToLinkedMap(Stream.of("key1", "key2", "key3", "key4", "key5"), o -> int.class);
 
-	public static final Map<String, Measure> METRICS = ImmutableMap.<String, Measure>builder()
-			.put("metric1", sum(ofLong()))
-			.put("metric2", sum(ofLong()))
-			.put("metric3", sum(ofLong()))
-			.build();
+	public static final Map<String, Measure> METRICS = AggregationUtils
+			.streamToLinkedMap(Stream.of("metric1", "metric2", "metric3"), o -> sum(ofLong()));
 
 	@Override
 	public boolean equals(Object o) {
@@ -82,15 +74,15 @@ public class DataItemResult3 {
 
 	@Override
 	public String toString() {
-		return MoreObjects.toStringHelper(this)
-				.add("key1", key1)
-				.add("key2", key2)
-				.add("key3", key3)
-				.add("key4", key4)
-				.add("key5", key5)
-				.add("metric1", metric1)
-				.add("metric2", metric2)
-				.add("metric3", metric3)
-				.toString();
+		return "DataItemResult3{" +
+				"key1=" + key1 +
+				", key2=" + key2 +
+				", key3=" + key3 +
+				", key4=" + key4 +
+				", key5=" + key5 +
+				", metric1=" + metric1 +
+				", metric2=" + metric2 +
+				", metric3=" + metric3 +
+				'}';
 	}
 }

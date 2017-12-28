@@ -24,4 +24,19 @@ public class TestAdd implements TestOp {
 	public int apply(int value) {
 		return value + delta;
 	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		TestAdd testAdd = (TestAdd) o;
+
+		return delta == testAdd.delta;
+	}
+
+	@Override
+	public int hashCode() {
+		return delta;
+	}
 }

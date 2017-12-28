@@ -16,8 +16,6 @@
 
 package io.datakernel.jmx;
 
-import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.ListMultimap;
 import com.google.inject.Injector;
 import com.google.inject.Key;
 import com.google.inject.name.Names;
@@ -27,9 +25,7 @@ import io.datakernel.worker.WorkerPools;
 
 import javax.management.DynamicMBean;
 import java.lang.reflect.Type;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public final class JmxRegistrator {
 	private final Injector injector;
@@ -77,7 +73,7 @@ public final class JmxRegistrator {
 		jmxRegistry.registerSingleton(
 				callbackRegistryKey, new CallbackRegistry.CallbackRegistryStats(), MBeanSettings.defaultSettings());
 
-		ListMultimap<Type, Object> globalMBeanObjects = ArrayListMultimap.create();
+		Map<Type, List<Object>> globalMBeanObjects = new HashMap<>();
 
 		// register singletons
 		for (Key<?> key : singletonKeys) {
@@ -86,7 +82,7 @@ public final class JmxRegistrator {
 
 			Type type = key.getTypeLiteral().getType();
 			if (globalMBeans.containsKey(type)) {
-				globalMBeanObjects.put(type, instance);
+				globalMBeanObjects.computeIfAbsent(type, type1 -> new ArrayList<>()).add(instance);
 			}
 		}
 
@@ -100,7 +96,7 @@ public final class JmxRegistrator {
 				Type type = key.getTypeLiteral().getType();
 				if (globalMBeans.containsKey(type)) {
 					for (Object workerObject : objects) {
-						globalMBeanObjects.put(type, workerObject);
+						globalMBeanObjects.computeIfAbsent(type, type1 -> new ArrayList<>()).add(workerObject);
 					}
 				}
 			}

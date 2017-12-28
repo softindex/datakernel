@@ -12,7 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.utils.GsonAdapters.oneline;
 
 public final class LogDiffJson<D> extends TypeAdapter<LogDiff<D>> {
