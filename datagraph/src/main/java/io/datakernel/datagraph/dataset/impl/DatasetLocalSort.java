@@ -16,7 +16,6 @@
 
 package io.datakernel.datagraph.dataset.impl;
 
-import com.google.common.base.Function;
 import io.datakernel.datagraph.dataset.Dataset;
 import io.datakernel.datagraph.dataset.LocallySortedDataset;
 import io.datakernel.datagraph.graph.DataGraph;
@@ -26,6 +25,7 @@ import io.datakernel.datagraph.node.NodeSort;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.Function;
 
 public final class DatasetLocalSort<K, T> extends LocallySortedDataset<K, T> {
 	private final Dataset<T> input;

@@ -33,4 +33,22 @@ public class TestSet implements TestOp {
 		checkState(prev == this.prev);
 		return next;
 	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		TestSet testSet = (TestSet) o;
+
+		if (prev != testSet.prev) return false;
+		return next == testSet.next;
+	}
+
+	@Override
+	public int hashCode() {
+		int result = prev;
+		result = 31 * result + next;
+		return result;
+	}
 }

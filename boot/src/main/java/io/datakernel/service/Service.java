@@ -16,13 +16,13 @@
 
 package io.datakernel.service;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * A service which provides non-blocking start and stop operations.
  */
 public interface Service {
-	ListenableFuture<?> start();
+	CompletableFuture<Void> start();
 
-	ListenableFuture<?> stop();
+	CompletableFuture<Void> stop();
 }

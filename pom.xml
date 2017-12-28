@@ -6,7 +6,7 @@
 
     <groupId>io.datakernel</groupId>
     <artifactId>datakernel</artifactId>
-    <version>2.5.6-SNAPSHOT</version>
+    <version>2.5.7-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>DataKernel</name>

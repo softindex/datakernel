@@ -16,7 +16,6 @@
 
 package io.datakernel.rpc;
 
-import com.google.common.net.InetAddresses;
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
@@ -30,6 +29,7 @@ import io.datakernel.util.Stopwatch;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -98,7 +98,7 @@ public class RpcHelloWorldTest {
 			this.eventloop = eventloop;
 			this.rpcClient = RpcClient.create(eventloop)
 					.withMessageTypes(HelloRequest.class, HelloResponse.class)
-					.withStrategy(server(new InetSocketAddress(InetAddresses.forString("127.0.0.1"), PORT)));
+					.withStrategy(server(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT)));
 
 			rpcClient.startFuture().get();
 		}

@@ -16,7 +16,6 @@
 
 package io.datakernel.rpc.client.sender;
 
-import com.google.common.net.InetAddresses;
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
@@ -30,6 +29,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
@@ -93,9 +93,9 @@ public class RpcBlockingTest {
 
 	@Test
 	public void testBlockingCall() throws Exception {
-		InetSocketAddress address1 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), PORT_1);
-		InetSocketAddress address2 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), PORT_2);
-		InetSocketAddress address3 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), PORT_3);
+		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT_1);
+		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT_2);
+		InetSocketAddress address3 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT_3);
 
 		ShardingFunction<HelloRequest> shardingFunction = new ShardingFunction<HelloRequest>() {
 			@Override

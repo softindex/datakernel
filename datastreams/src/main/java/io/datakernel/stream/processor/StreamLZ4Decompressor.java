@@ -152,8 +152,9 @@ public final class StreamLZ4Decompressor implements StreamTransformer<ByteBuf, B
 		protected void produce() {
 			try {
 				while (isReceiverReady()) {
-					if (!queue.hasRemainingBytes(headerBuf.writeRemaining()))
+					if (!queue.hasRemainingBytes(headerBuf.writeRemaining())) {
 						break;
+					}
 
 					if (headerBuf.canWrite()) {
 						queue.drainTo(headerBuf);
@@ -164,13 +165,13 @@ public final class StreamLZ4Decompressor implements StreamTransformer<ByteBuf, B
 						if (!queue.isEmpty()) {
 							throw new ParseException(format("Unexpected byteBuf after LZ4 EOS packet %s : %s", this, queue));
 						}
-						if (inspector != null)
-							inspector.onBlock(StreamLZ4Decompressor.this, header, ByteBuf.empty(), ByteBuf.empty());
+						if (inspector != null) {inspector.onBlock(StreamLZ4Decompressor.this, header, ByteBuf.empty(), ByteBuf.empty());}
 						break;
 					}
 
-					if (!queue.hasRemainingBytes(header.compressedLen))
+					if (!queue.hasRemainingBytes(header.compressedLen)) {
 						break;
+					}
 
 					ByteBuf inputBuf = queue.takeExactSize(header.compressedLen);
 					ByteBuf outputBuf = readBody(decompressor, checksum, header, inputBuf.array(), inputBuf.readPosition());
@@ -182,10 +183,14 @@ public final class StreamLZ4Decompressor implements StreamTransformer<ByteBuf, B
 
 				if (isReceiverReady()) {
 					input.getProducer().produce(this);
-				}
 
-				if (queue.isEmpty() && input.getStatus() == END_OF_STREAM) {
-					output.sendEndOfStream();
+					if (input.getStatus() == END_OF_STREAM) {
+						if (queue.isEmpty()) {
+							output.sendEndOfStream();
+						} else {
+							throw new ParseException(format("Truncated LZ4 data stream, %s : %s", this, queue));
+						}
+					}
 				}
 			} catch (ParseException e) {
 				closeWithError(e);

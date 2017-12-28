@@ -16,12 +16,6 @@
 
 package io.datakernel.service;
 
-import com.google.common.base.Throwables;
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.SetMultimap;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
 import com.google.inject.*;
 import com.google.inject.matcher.AbstractMatcher;
 import com.google.inject.spi.*;
@@ -43,10 +37,11 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.collect.Sets.*;
-import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
+import static io.datakernel.service.ServiceAdapters.*;
+import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.checkState;
+import static java.util.Collections.emptySet;
+import static java.util.concurrent.CompletableFuture.completedFuture;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
@@ -84,12 +79,12 @@ public final class ServiceGraphModule extends AbstractModule {
 	private final Set<Key<?>> excludedKeys = new LinkedHashSet<>();
 	private final Map<Key<?>, ServiceAdapter<?>> keys = new LinkedHashMap<>();
 
-	private final SetMultimap<Key<?>, Key<?>> addedDependencies = HashMultimap.create();
-	private final SetMultimap<Key<?>, Key<?>> removedDependencies = HashMultimap.create();
+	private final Map<Key<?>, Set<Key<?>>> addedDependencies = new HashMap<>();
+	private final Map<Key<?>, Set<Key<?>>> removedDependencies = new HashMap<>();
 
 	private final Set<Key<?>> singletonKeys = new HashSet<>();
 	private final Set<Key<?>> workerKeys = new HashSet<>();
-	private final SetMultimap<Key<?>, Key<?>> workerDependencies = HashMultimap.create();
+	private final Map<Key<?>, Set<Key<?>>> workerDependencies = new HashMap<>();
 
 	private final IdentityHashMap<Object, CachedService> services = new IdentityHashMap<>();
 
@@ -102,7 +97,7 @@ public final class ServiceGraphModule extends AbstractModule {
 	private ServiceGraphModule() {
 		this.executor = new ThreadPoolExecutor(0, Integer.MAX_VALUE,
 				10, TimeUnit.MILLISECONDS,
-				new SynchronousQueue<Runnable>());
+				new SynchronousQueue<>());
 	}
 
 	/**
@@ -115,16 +110,17 @@ public final class ServiceGraphModule extends AbstractModule {
 	 */
 	public static ServiceGraphModule defaultInstance() {
 		return newInstance()
-				.register(Service.class, ServiceAdapters.forService())
-				.register(BlockingService.class, ServiceAdapters.forBlockingService())
-				.register(BlockingSocketServer.class, ServiceAdapters.forBlockingSocketServer())
-				.register(Closeable.class, ServiceAdapters.forCloseable())
-				.register(ExecutorService.class, ServiceAdapters.forExecutorService())
-				.register(Timer.class, ServiceAdapters.forTimer())
-				.register(DataSource.class, ServiceAdapters.forDataSource())
-				.register(EventloopService.class, ServiceAdapters.forEventloopService())
-				.register(EventloopServer.class, ServiceAdapters.forEventloopServer())
-				.register(Eventloop.class, ServiceAdapters.forEventloop());
+				.register(Service.class, forService())
+				.register(BlockingService.class, forBlockingService())
+				.register(BlockingSocketServer.class, forBlockingSocketServer())
+				.register(Closeable.class, forCloseable())
+				.register(ExecutorService.class, forExecutorService())
+				.register(Timer.class, forTimer())
+				.register(DataSource.class, forDataSource())
+				.register(EventloopService.class, forEventloopService())
+				.register(EventloopServer.class, forEventloopServer())
+				.register(Eventloop.class, forEventloop())
+				.register(RetryEventloopService.class, forRetryEventloopService(() -> Boolean.TRUE, () -> 1000L));
 	}
 
 	public static ServiceGraphModule newInstance() {
@@ -221,7 +217,7 @@ public final class ServiceGraphModule extends AbstractModule {
 	 * @return ServiceGraphModule with change
 	 */
 	public ServiceGraphModule addDependency(Key<?> key, Key<?> keyDependency) {
-		addedDependencies.put(key, keyDependency);
+		addedDependencies.computeIfAbsent(key, key1 -> new HashSet<>()).add(keyDependency);
 		return this;
 	}
 
@@ -233,7 +229,7 @@ public final class ServiceGraphModule extends AbstractModule {
 	 * @return ServiceGraphModule with change
 	 */
 	public ServiceGraphModule removeDependency(Key<?> key, Key<?> keyDependency) {
-		removedDependencies.put(key, keyDependency);
+		removedDependencies.computeIfAbsent(key, key1 -> new HashSet<>()).add(keyDependency);
 		return this;
 	}
 
@@ -251,44 +247,46 @@ public final class ServiceGraphModule extends AbstractModule {
 			return null;
 		return new Service() {
 			@Override
-			public ListenableFuture<?> start() {
-				List<ListenableFuture<?>> futures = new ArrayList<>();
+			public CompletableFuture<Void> start() {
+				List<CompletableFuture<Void>> futures = new ArrayList<>();
 				for (Service service : services) {
 					futures.add(service != null ? service.start() : null);
 				}
-				return combineFutures(futures, directExecutor());
+				return combineFutures(futures, Runnable::run);
 			}
 
 			@Override
-			public ListenableFuture<?> stop() {
-				List<ListenableFuture<?>> futures = new ArrayList<>();
+			public CompletableFuture<Void> stop() {
+				List<CompletableFuture<Void>> futures = new ArrayList<>();
 				for (Service service : services) {
 					futures.add(service != null ? service.stop() : null);
 				}
-				return combineFutures(futures, directExecutor());
+				return combineFutures(futures, Runnable::run);
 			}
 		};
 	}
 
-	private static ListenableFuture<?> combineFutures(List<ListenableFuture<?>> futures, final Executor executor) {
-		final SettableFuture<?> resultFuture = SettableFuture.create();
+	private static Throwable getRootCause(Throwable throwable) {
+		Throwable cause;
+		while ((cause = throwable.getCause()) != null) throwable = cause;
+		return throwable;
+	}
+
+	private static CompletableFuture<Void> combineFutures(List<CompletableFuture<Void>> futures, final Executor executor) {
+		final CompletableFuture<Void> resultFuture = new CompletableFuture<>();
 		final AtomicInteger count = new AtomicInteger(futures.size());
 		final AtomicReference<Throwable> exception = new AtomicReference<>();
-		for (ListenableFuture<?> future : futures) {
-			final ListenableFuture<?> finalFuture = future != null ? future : Futures.immediateFuture(null);
-			finalFuture.addListener(new Runnable() {
-				@Override
-				public void run() {
-					try {
-						finalFuture.get();
-					} catch (InterruptedException | ExecutionException e) {
-						exception.set(Throwables.getRootCause(e));
-					}
-					if (count.decrementAndGet() == 0) {
-						if (exception.get() != null)
-							resultFuture.setException(exception.get());
-						else
-							resultFuture.set(null);
+		for (CompletableFuture<Void> future : futures) {
+			final CompletableFuture<Void> finalFuture = future != null ? future : completedFuture(null);
+			finalFuture.whenCompleteAsync((o, throwable) -> {
+				if (throwable != null) {
+					exception.set(getRootCause(throwable));
+				}
+				if (count.decrementAndGet() == 0) {
+					if (exception.get() != null) {
+						resultFuture.completeExceptionally(exception.get());
+					} else {
+						resultFuture.complete(null);
 					}
 				}
 			}, executor);
@@ -337,12 +335,12 @@ public final class ServiceGraphModule extends AbstractModule {
 			final ServiceAdapter finalServiceAdapter = serviceAdapter;
 			Service asyncService = new Service() {
 				@Override
-				public ListenableFuture<?> start() {
+				public CompletableFuture<Void> start() {
 					return finalServiceAdapter.start(instance, executor);
 				}
 
 				@Override
-				public ListenableFuture<?> stop() {
+				public CompletableFuture<Void> stop() {
 					return finalServiceAdapter.stop(instance, executor);
 				}
 			};
@@ -385,18 +383,38 @@ public final class ServiceGraphModule extends AbstractModule {
 			dependencies.add(dependency.getKey());
 		}
 
-		if (!difference(removedDependencies.get(key), dependencies).isEmpty()) {
-			logger.warn("Unused removed dependencies for {} : {}", key, difference(removedDependencies.get(key), dependencies));
+		if (!difference(removedDependencies.getOrDefault(key, emptySet()), dependencies).isEmpty()) {
+			logger.warn("Unused removed dependencies for {} : {}", key, difference(removedDependencies.getOrDefault(key, emptySet()), dependencies));
 		}
 
-		if (!intersection(dependencies, addedDependencies.get(key)).isEmpty()) {
-			logger.warn("Unused added dependencies for {} : {}", key, intersection(dependencies, addedDependencies.get(key)));
+		if (!intersection(dependencies, addedDependencies.getOrDefault(key, emptySet())).isEmpty()) {
+			logger.warn("Unused added dependencies for {} : {}", key, intersection(dependencies, addedDependencies.getOrDefault(key, emptySet())));
 		}
 
-		for (Key<?> dependencyKey : difference(union(union(dependencies, workerDependencies.get(key)),
-				addedDependencies.get(key)), removedDependencies.get(key))) {
+		for (Key<?> dependencyKey : difference(union(union(dependencies, workerDependencies.getOrDefault(key, emptySet())),
+				addedDependencies.getOrDefault(key, emptySet())), removedDependencies.getOrDefault(key, emptySet()))) {
 			graph.add(key, dependencyKey);
 		}
+	}
+
+	public static <T> Set<T> union(Set<T> a, Set<T> b) {
+		Set<T> set = new HashSet<>(a);
+		set.addAll(b);
+		return set;
+	}
+
+	public static <T> Set<T> intersection(Set<T> a, Set<T> b) {
+		Set<T> set = new HashSet<>();
+		for (T x : a) {
+			if (b.contains(x)) set.add(x);
+		}
+		return set;
+	}
+
+	public static <T> Set<T> difference(Set<T> a, Set<T> b) {
+		Set<T> set = new HashSet<>(a);
+		set.removeAll(b);
+		return set;
 	}
 
 	@Override
@@ -424,7 +442,7 @@ public final class ServiceGraphModule extends AbstractModule {
 						Key<?> key = chain.get(chain.size() - 2).getDependency().getKey();
 						Key<T> dependencyKey = provision.getBinding().getKey();
 						if (key.getTypeLiteral().getRawType() != ServiceGraph.class) {
-							workerDependencies.put(key, dependencyKey);
+							workerDependencies.computeIfAbsent(key, key1 -> new HashSet<>()).add(dependencyKey);
 						}
 					}
 				}
@@ -463,8 +481,7 @@ public final class ServiceGraphModule extends AbstractModule {
 		if (serviceGraph == null) {
 			serviceGraph = new ServiceGraph() {
 				@Override
-				protected String nodeToString(Object node) {
-					Key<?> key = (Key<?>) node;
+				protected String nodeToString(Key<?> key) {
 					Annotation annotation = key.getAnnotation();
 					WorkerPoolObjects poolObjects = workerPoolModule.getPoolObjects(key);
 					return key.getTypeLiteral() +
@@ -481,15 +498,15 @@ public final class ServiceGraphModule extends AbstractModule {
 
 	private class CachedService implements Service {
 		private final Service service;
-		private ListenableFuture<?> startFuture;
-		private ListenableFuture<?> stopFuture;
+		private CompletableFuture<Void> startFuture;
+		private CompletableFuture<Void> stopFuture;
 
 		private CachedService(Service service) {
 			this.service = service;
 		}
 
 		@Override
-		synchronized public ListenableFuture<?> start() {
+		synchronized public CompletableFuture<Void> start() {
 			checkState(stopFuture == null);
 			if (startFuture == null) {
 				startFuture = service.start();
@@ -498,7 +515,7 @@ public final class ServiceGraphModule extends AbstractModule {
 		}
 
 		@Override
-		synchronized public ListenableFuture<?> stop() {
+		synchronized public CompletableFuture<Void> stop() {
 			checkState(startFuture != null);
 			if (stopFuture == null) {
 				stopFuture = service.stop();

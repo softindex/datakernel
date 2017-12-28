@@ -20,10 +20,9 @@ import io.datakernel.aggregation.annotation.Key;
 import io.datakernel.aggregation.annotation.Measure;
 import io.datakernel.serializer.annotations.Serialize;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-
-import static com.google.common.collect.Lists.newArrayList;
 
 /**
  * Represents a log item (or fact).
@@ -101,7 +100,7 @@ public class LogItem {
 	}
 
 	public static List<LogItem> getListOfRandomLogItems(int numberOfItems) {
-		List<LogItem> logItems = newArrayList();
+		List<LogItem> logItems = new ArrayList<>();
 
 		for (int i = 0; i < numberOfItems; ++i) {
 			int type = randomInt(0, 2);

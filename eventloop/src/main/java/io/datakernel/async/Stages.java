@@ -4,14 +4,16 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
+
+import static java.util.Arrays.asList;
 
 public final class Stages {
 
@@ -53,6 +55,45 @@ public final class Stages {
 		return resultStage;
 	}
 
+	public static <T> BiConsumer<T, Throwable> onError(Consumer<Throwable> consumer) {
+		return (t, throwable) -> {
+			if (throwable != null) consumer.accept(throwable);
+		};
+	}
+
+	public static <T> BiConsumer<T, Throwable> onResult(Consumer<T> consumer) {
+		return (t, throwable) -> {
+			if (throwable == null) consumer.accept(t);
+		};
+	}
+
+	public static <T> CompletionStage<T> ofFuture(CompletableFuture<T> completableFuture) {
+		return ofFuture(Eventloop.getCurrentEventloop(), completableFuture);
+	}
+
+	public static <T> CompletionStage<T> ofFuture(Eventloop eventloop, CompletableFuture<T> completableFuture) {
+		final SettableStage<T> stage = SettableStage.create();
+		completableFuture.whenComplete((t, throwable) -> eventloop.execute(() -> stage.set(t, throwable)));
+		return stage;
+	}
+
+	public static <T> CompletionStage<T> ofFuture(Future<T> future, Executor executor) {
+		return ofFuture(Eventloop.getCurrentEventloop(), future, executor);
+	}
+
+	public static <T> CompletionStage<T> ofFuture(Eventloop eventloop, Future<T> future, Executor executor) {
+		final SettableStage<T> stage = SettableStage.create();
+		executor.execute(() -> {
+			try {
+				final T value = future.get();
+				eventloop.execute(() -> stage.set(value));
+			} catch (InterruptedException | ExecutionException e) {
+				eventloop.execute(() -> stage.setException(e));
+			}
+		});
+		return stage;
+	}
+
 	private static final class Counter {
 		int counter;
 
@@ -61,28 +102,66 @@ public final class Stages {
 		}
 	}
 
+	public static <T> AsyncCallable<T> callable(Supplier<CompletionStage<T>> function) {
+		return function::get;
+	}
+
+	public static <T, A> Function<A, AsyncCallable<T>> callable(Function<A, CompletionStage<T>> function) {
+		return a -> () -> function.apply(a);
+	}
+
+	public static CompletionStage<Void> run(AsyncCallable<?>... stages) {
+		return runCallable(asList(stages));
+	}
+
 	public static CompletionStage<Void> run(CompletionStage<?>... stages) {
-		return run(Arrays.asList(stages));
+		return run(asList(stages));
+	}
+
+	public static CompletionStage<Void> runCallable(List<? extends AsyncCallable<?>> stages) {
+		return reduceCallable(null, (accumulator, value, index) -> {
+		}, stages);
 	}
 
 	public static CompletionStage<Void> run(List<? extends CompletionStage<?>> stages) {
-		return reduce(null, (accumulator, value, index) -> {}, stages);
+		return reduce(null, (accumulator, value, index) -> {
+		}, stages);
+	}
+
+	@SafeVarargs
+	public static <T> CompletionStage<List<T>> collect(AsyncCallable<? extends T>... stages) {
+		return collectCallable(asList(stages));
 	}
 
 	@SafeVarargs
 	public static <T> CompletionStage<List<T>> collect(CompletionStage<? extends T>... stages) {
-		return collect(Arrays.asList(stages));
+		return collect(asList(stages));
+	}
+
+	@SuppressWarnings("unchecked")
+	public static <T> CompletionStage<List<T>> collectCallable(List<? extends AsyncCallable<? extends T>> stages) {
+		return reduceCallable(asList((T[]) new Object[stages.size()]), (accumulator, value, index) -> accumulator.set(index, value), stages);
 	}
 
 	@SuppressWarnings("unchecked")
 	public static <T> CompletionStage<List<T>> collect(List<? extends CompletionStage<? extends T>> stages) {
-		return reduce(Arrays.asList((T[]) new Object[stages.size()]), (accumulator, value, index) -> accumulator.set(index, value), stages);
+		return reduce(asList((T[]) new Object[stages.size()]), (accumulator, value, index) -> accumulator.set(index, value), stages);
+	}
+
+	public static <A, T> CompletionStage<A> reduceCallable(A accumulator, IndexedReducer<A, T> reducer,
+	                                                       AsyncCallable<? extends T>... stages) {
+		return reduceCallable(accumulator, reducer, asList(stages));
 	}
 
 	@SafeVarargs
 	public static <A, T> CompletionStage<A> reduce(A accumulator, IndexedReducer<A, T> reducer,
 	                                               CompletionStage<? extends T>... stages) {
-		return reduce(accumulator, reducer, Arrays.asList(stages));
+		return reduce(accumulator, reducer, asList(stages));
+	}
+
+	public static <A, T> CompletionStage<A> reduceCallable(A accumulator, IndexedReducer<A, T> reducer,
+	                                                       List<? extends AsyncCallable<? extends T>> stages) {
+		return reduce(accumulator, reducer, stages.stream().map(AsyncCallable::call).collect(Collectors.toList()));
 	}
 
 	public static <A, T> CompletionStage<A> reduce(A accumulator, IndexedReducer<A, T> reducer,
@@ -117,20 +196,22 @@ public final class Stages {
 	}
 
 	public static CompletionStage<Void> runSequence(AsyncCallable<?>... stages) {
-		return runSequence(Arrays.asList(stages));
+		return runSequence(asList(stages));
 	}
 
 	public static CompletionStage<Void> runSequence(Iterable<? extends AsyncCallable<?>> stages) {
-		return reduceSequence(null, (accumulator, value, index) -> {}, stages.iterator());
+		return reduceSequence(null, (accumulator, value, index) -> {
+		}, stages.iterator());
 	}
 
 	public static CompletionStage<Void> runSequence(Iterator<? extends AsyncCallable<?>> stages) {
-		return reduceSequence(null, (accumulator, value, index) -> {}, stages);
+		return reduceSequence(null, (accumulator, value, index) -> {
+		}, stages);
 	}
 
 	@SafeVarargs
 	public static <T> CompletionStage<List<T>> collectSequence(AsyncCallable<? extends T>... stages) {
-		return collectSequence(Arrays.asList(stages));
+		return collectSequence(asList(stages));
 	}
 
 	public static <T> CompletionStage<List<T>> collectSequence(Iterable<? extends AsyncCallable<? extends T>> stages) {
@@ -144,7 +225,7 @@ public final class Stages {
 	@SafeVarargs
 	public static <T, A> CompletionStage<A> reduceSequence(A accumulator, IndexedReducer<A, T> reducer,
 	                                                       AsyncCallable<? extends T>... stages) {
-		return reduceSequence(accumulator, reducer, Arrays.asList(stages));
+		return reduceSequence(accumulator, reducer, asList(stages));
 	}
 
 	public static <T, A> CompletionStage<A> reduceSequence(A accumulator, IndexedReducer<A, T> reducer,
@@ -162,7 +243,7 @@ public final class Stages {
 		if (!stages.hasNext()) {
 			return of(accumulator);
 		}
-		return stages.next().call().thenCompose(value -> {
+		return stages.next().call().thenComposeAsync(value -> {
 			reducer.accumulate(accumulator, value, index);
 			return reduceSequenceImpl(accumulator, reducer, index + 1, stages);
 		});

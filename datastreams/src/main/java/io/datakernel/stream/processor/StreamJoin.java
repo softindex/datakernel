@@ -16,16 +16,16 @@
 
 package io.datakernel.stream.processor;
 
-import com.google.common.base.Function;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 
 import java.util.ArrayDeque;
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.Function;
 
-import static com.google.common.base.Preconditions.checkNotNull;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Arrays.asList;
 
 /**

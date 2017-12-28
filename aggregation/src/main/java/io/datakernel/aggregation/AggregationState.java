@@ -16,10 +16,6 @@
 
 package io.datakernel.aggregation;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Function;
-import com.google.common.base.Predicate;
-import com.google.common.collect.Iterables;
 import io.datakernel.aggregation.AggregationPredicates.RangeScan;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
@@ -28,13 +24,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.collect.Iterables.transform;
-import static com.google.common.collect.Lists.newArrayList;
-import static com.google.common.collect.Sets.intersection;
-import static com.google.common.collect.Sets.newHashSet;
 import static io.datakernel.aggregation.AggregationPredicates.toRangeScan;
+import static io.datakernel.util.Preconditions.checkArgument;
 
 /**
  * Represents aggregation metadata. Stores chunks in an index (represented by an array of {@link RangeTree}) for efficient search.
@@ -243,7 +237,7 @@ public final class AggregationState implements OTState<AggregationDiff> {
 		}
 	}
 
-	@VisibleForTesting
+	// visibleForTest
 	SortedMap<PrimaryKey, RangeTree<PrimaryKey, AggregationChunk>> groupByPartition(int partitioningKeyLength) {
 		SortedMap<PrimaryKey, RangeTree<PrimaryKey, AggregationChunk>> partitioningKeyToTree = new TreeMap<>();
 
@@ -336,13 +330,13 @@ public final class AggregationState implements OTState<AggregationDiff> {
 	}
 
 	private static void logChunksAndStrategy(Collection<AggregationChunk> chunks, PickingStrategy strategy) {
-		logger.info("Chunks for consolidation {}: {}. Strategy: {}", chunks.size(),
-				Iterables.toString(transform(chunks, new Function<AggregationChunk, Object>() {
-					@Override
-					public Object apply(AggregationChunk input) {
-						return input.getChunkId();
-					}
-				})), strategy);
+		if (logger.isInfoEnabled()) {
+			final String chunkIds = chunks.stream()
+					.map(AggregationChunk::getChunkId)
+					.map(Object::toString)
+					.collect(Collectors.joining(",", "[", "]"));
+			logger.info("Chunks for consolidation {}: {}. Strategy: {}", chunks.size(), chunkIds, strategy);
+		}
 	}
 
 	private static List<AggregationChunk> trimChunks(List<AggregationChunk> chunks, int maxChunks) {
@@ -392,7 +386,7 @@ public final class AggregationState implements OTState<AggregationDiff> {
 	}
 
 	public List<ConsolidationDebugInfo> getConsolidationDebugInfo() {
-		List<ConsolidationDebugInfo> infos = newArrayList();
+		List<ConsolidationDebugInfo> infos = new ArrayList<>();
 		RangeTree<PrimaryKey, AggregationChunk> tree = prefixRanges[aggregation.getKeys().size()];
 
 		for (Map.Entry<PrimaryKey, RangeTree.Segment<AggregationChunk>> segmentEntry : tree.getSegments().entrySet()) {
@@ -422,7 +416,7 @@ public final class AggregationState implements OTState<AggregationDiff> {
 		}
 	}
 
-	@VisibleForTesting
+	// visibleForTesting
 	public static boolean chunkMightContainQueryValues(PrimaryKey minQueryKey, PrimaryKey maxQueryKey,
 	                                                   PrimaryKey minChunkKey, PrimaryKey maxChunkKey) {
 		return chunkMightContainQueryValues(minQueryKey.values(), maxQueryKey.values(),
@@ -431,16 +425,13 @@ public final class AggregationState implements OTState<AggregationDiff> {
 
 	private Predicate<AggregationChunk> chunkMightContainQueryValuesPredicate(final PrimaryKey minQueryKey,
 	                                                                          final PrimaryKey maxQueryKey) {
-		return new Predicate<AggregationChunk>() {
-			@Override
-			public boolean apply(AggregationChunk chunk) {
-				List<Object> queryMinValues = minQueryKey.values();
-				List<Object> queryMaxValues = maxQueryKey.values();
-				List<Object> chunkMinValues = chunk.getMinPrimaryKey().values();
-				List<Object> chunkMaxValues = chunk.getMaxPrimaryKey().values();
+		return chunk -> {
+			List<Object> queryMinValues = minQueryKey.values();
+			List<Object> queryMaxValues = maxQueryKey.values();
+			List<Object> chunkMinValues = chunk.getMinPrimaryKey().values();
+			List<Object> chunkMaxValues = chunk.getMaxPrimaryKey().values();
 
-				return chunkMightContainQueryValues(queryMinValues, queryMaxValues, chunkMinValues, chunkMaxValues);
-			}
+			return chunkMightContainQueryValues(queryMinValues, queryMaxValues, chunkMinValues, chunkMaxValues);
 		};
 	}
 
@@ -470,19 +461,27 @@ public final class AggregationState implements OTState<AggregationDiff> {
 
 	@SuppressWarnings("unchecked")
 	public List<AggregationChunk> findChunks(AggregationPredicate predicate, List<String> fields) {
-		final Set<String> requestedFields = newHashSet(fields);
+		final Set<String> requestedFields = new HashSet<>(fields);
 
 		RangeScan rangeScan = toRangeScan(predicate, aggregation.getKeys(), aggregation.getKeyTypes());
 
 		List<AggregationChunk> chunks = new ArrayList<>();
 		for (AggregationChunk chunk : rangeQuery(rangeScan.getFrom(), rangeScan.getTo())) {
-			if (intersection(newHashSet(chunk.getMeasures()), requestedFields).isEmpty())
+			if (intersection(new HashSet<>(chunk.getMeasures()), requestedFields).isEmpty())
 				continue;
 
 			chunks.add(chunk);
 		}
 
 		return chunks;
+	}
+
+	public static <T> Set<T> intersection(Set<T> a, Set<T> b) {
+		final Set<T> set = new HashSet<>();
+		for (T x : a) {
+			if (b.contains(x)) set.add(x);
+		}
+		return set;
 	}
 
 	private List<AggregationChunk> rangeQuery(PrimaryKey minPrimaryKey, PrimaryKey maxPrimaryKey) {

@@ -16,16 +16,11 @@
 
 package io.datakernel.datagraph.graph;
 
-import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.ListMultimap;
 import com.google.common.reflect.TypeToken;
 import io.datakernel.datagraph.node.Node;
 import io.datakernel.datagraph.server.DatagraphSerialization;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Represents a graph of partitions, nodes and streams in datagraph system.
@@ -54,10 +49,10 @@ public class DataGraph {
 		return getPartition(streams.get(streamId));
 	}
 
-	private ListMultimap<Partition, Node> getNodesByPartition() {
-		ListMultimap<Partition, Node> listMultimap = ArrayListMultimap.create();
+	private Map<Partition, List<Node>> getNodesByPartition() {
+		Map<Partition, List<Node>> listMultimap = new HashMap<>();
 		for (Map.Entry<Node, Partition> entry : nodePartitions.entrySet()) {
-			listMultimap.put(entry.getValue(), entry.getKey());
+			listMultimap.computeIfAbsent(entry.getValue(), partition -> new ArrayList<>()).add(entry.getKey());
 		}
 		return listMultimap;
 	}
@@ -66,7 +61,7 @@ public class DataGraph {
 	 * Executes the defined operations on all partitions.
 	 */
 	public void execute() {
-		ListMultimap<Partition, Node> map = getNodesByPartition();
+		Map<Partition, List<Node>> map = getNodesByPartition();
 		for (Partition partition : map.keySet()) {
 			List<Node> nodes = map.get(partition);
 			partition.execute(nodes);
@@ -76,9 +71,9 @@ public class DataGraph {
 	@Override
 	public String toString() {
 		StringBuilder sb = new StringBuilder();
-		ListMultimap<Partition, Node> map = getNodesByPartition();
+		Map<Partition, List<Node>> map = getNodesByPartition();
 		for (Partition partition : map.keySet()) {
-			sb.append("--- " + partition + "\n\n");
+			sb.append("--- ").append(partition).append("\n\n");
 			List<Node> nodes = map.get(partition);
 			String str = serialization.gson.toJson(nodes, new TypeToken<List<Node>>() {
 			}.getType());

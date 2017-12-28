@@ -16,16 +16,18 @@
 
 package io.datakernel.config;
 
-import com.google.common.collect.ImmutableSet;
 import io.datakernel.config.impl.TreeConfig;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.util.NoSuchElementException;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static io.datakernel.config.ConfigConverters.ofByte;
 import static io.datakernel.config.ConfigConverters.ofInteger;
 import static io.datakernel.config.ConfigTestUtils.testBaseConfig;
+import static java.util.Collections.singleton;
 import static org.junit.Assert.*;
 
 public class TreeConfigTest {
@@ -64,8 +66,8 @@ public class TreeConfigTest {
 		assertTrue(config.hasChild("key2.key3"));
 		Config child = config.getChild("key2.key3");
 		assertNotNull(child);
-		assertEquals(ImmutableSet.of("key4"), child.getChildren());
-		assertEquals(ImmutableSet.of("key1", "key2", "key5"), config.getChildren());
+		assertEquals(singleton("key4"), child.getChildren());
+		assertEquals(Stream.of("key1", "key2", "key5").collect(Collectors.toSet()), config.getChildren());
 
 		assertEquals(
 				config.getChild("key2.key3.key4"),

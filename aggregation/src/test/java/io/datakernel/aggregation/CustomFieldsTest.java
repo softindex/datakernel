@@ -16,7 +16,6 @@
 
 package io.datakernel.aggregation;
 
-import com.google.common.base.MoreObjects;
 import io.datakernel.aggregation.annotation.Key;
 import io.datakernel.aggregation.annotation.Measures;
 import io.datakernel.aggregation.fieldtype.FieldTypes;
@@ -33,13 +32,14 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
-import static com.google.common.collect.Sets.newHashSet;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofDouble;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.*;
@@ -83,15 +83,15 @@ public class CustomFieldsTest {
 
 		@Override
 		public String toString() {
-			return MoreObjects.toStringHelper(this)
-					.add("siteId", siteId)
-					.add("eventCount", eventCount)
-					.add("sumRevenue", sumRevenue)
-					.add("minRevenue", minRevenue)
-					.add("maxRevenue", maxRevenue)
-					.add("uniqueUserIds", uniqueUserIds)
-					.add("estimatedUniqueUserIdCount", estimatedUniqueUserIdCount)
-					.toString();
+			return "QueryResult{" +
+					"siteId=" + siteId +
+					", eventCount=" + eventCount +
+					", sumRevenue=" + sumRevenue +
+					", minRevenue=" + minRevenue +
+					", maxRevenue=" + maxRevenue +
+					", uniqueUserIds=" + uniqueUserIds +
+					", estimatedUniqueUserIdCount=" + estimatedUniqueUserIdCount +
+					'}';
 		}
 	}
 
@@ -123,6 +123,7 @@ public class CustomFieldsTest {
 
 		CompletableFuture<AggregationDiff> future = aggregation.consume(producer, EventRecord.class).toCompletableFuture();
 		eventloop.run();
+		aggregationChunkStorage.finish(future.get().getAddedChunks().stream().map(AggregationChunk::getChunkId).collect(Collectors.toSet()));
 		aggregation.getState().apply(future.get());
 
 		producer = StreamProducers.ofIterable(eventloop, asList(
@@ -131,6 +132,7 @@ public class CustomFieldsTest {
 				new EventRecord(2, 0.91, 33)));
 		future = aggregation.consume(producer, EventRecord.class).toCompletableFuture();
 		eventloop.run();
+		aggregationChunkStorage.finish(future.get().getAddedChunks().stream().map(AggregationChunk::getChunkId).collect(Collectors.toSet()));
 		aggregation.getState().apply(future.get());
 
 		producer = StreamProducers.ofIterable(eventloop, asList(
@@ -139,6 +141,7 @@ public class CustomFieldsTest {
 				new EventRecord(3, 1.01, 21)));
 		future = aggregation.consume(producer, EventRecord.class).toCompletableFuture();
 		eventloop.run();
+		aggregationChunkStorage.finish(future.get().getAddedChunks().stream().map(AggregationChunk::getChunkId).collect(Collectors.toSet()));
 		aggregation.getState().apply(future.get());
 
 		producer = StreamProducers.ofIterable(eventloop, asList(
@@ -147,6 +150,7 @@ public class CustomFieldsTest {
 				new EventRecord(2, 0.85, 50)));
 		future = aggregation.consume(producer, EventRecord.class).toCompletableFuture();
 		eventloop.run();
+		aggregationChunkStorage.finish(future.get().getAddedChunks().stream().map(AggregationChunk::getChunkId).collect(Collectors.toSet()));
 		aggregation.getState().apply(future.get());
 
 		AggregationQuery query = AggregationQuery.create()
@@ -166,7 +170,7 @@ public class CustomFieldsTest {
 		assertEquals(1.51, s1.sumRevenue, delta);
 		assertEquals(0.01, s1.minRevenue, delta);
 		assertEquals(0.59, s1.maxRevenue, delta);
-		assertEquals(newHashSet(1L, 17L, 500L, 1000L), s1.uniqueUserIds);
+		assertEquals(set(1L, 17L, 500L, 1000L), s1.uniqueUserIds);
 		assertEquals(4, s1.estimatedUniqueUserIdCount.estimate());
 
 		QueryResult s2 = queryResults.get(1);
@@ -175,7 +179,7 @@ public class CustomFieldsTest {
 		assertEquals(2.48, s2.sumRevenue, delta);
 		assertEquals(0.30, s2.minRevenue, delta);
 		assertEquals(0.91, s2.maxRevenue, delta);
-		assertEquals(newHashSet(3L, 20L, 33L, 50L), s2.uniqueUserIds);
+		assertEquals(set(3L, 20L, 33L, 50L), s2.uniqueUserIds);
 		assertEquals(4, s2.estimatedUniqueUserIdCount.estimate());
 
 		QueryResult s3 = queryResults.get(2);
@@ -184,8 +188,11 @@ public class CustomFieldsTest {
 		assertEquals(2.02, s3.sumRevenue, delta);
 		assertEquals(0.13, s3.minRevenue, delta);
 		assertEquals(1.01, s3.maxRevenue, delta);
-		assertEquals(newHashSet(20L, 21L), s3.uniqueUserIds);
+		assertEquals(set(20L, 21L), s3.uniqueUserIds);
 		assertEquals(2, s3.estimatedUniqueUserIdCount.estimate());
 	}
 
+	private static <T> Set<T> set(T... values) {
+		return Arrays.stream(values).collect(Collectors.toSet());
+	}
 }

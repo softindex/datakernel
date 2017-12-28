@@ -22,10 +22,13 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
+import java.util.function.BiConsumer;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.checkState;
 
 public final class StreamProducers {
 	private StreamProducers() {
@@ -140,6 +143,12 @@ public final class StreamProducers {
 			}
 		});
 		return decorator;
+	}
+
+	public static <T> StreamProducer<T> onEndOfStream(StreamProducer<T> producer, BiConsumer<Void, Throwable> consumer) {
+		final StreamProducerWithResult<T, Void> withEndOfStream = withEndOfStream(producer);
+		withEndOfStream.getResult().whenComplete(consumer);
+		return withEndOfStream;
 	}
 
 	public static <T> StreamProducerWithResult<T, Void> withEndOfStream(StreamProducer<T> producer) {
@@ -454,6 +463,40 @@ public final class StreamProducers {
 		protected void cleanup() {
 			producer = null;
 		}
+	}
+
+	public static <T> StreamProducer<T> errorDecorator(StreamProducer<T> producer, Predicate<T> errorPredicate, Supplier<Throwable> error) {
+		final StreamProducerDecorator<T, Void> streamProducerDecorator = new StreamProducerDecorator<T, Void>() {
+			@Override
+			protected StreamDataReceiver<T> onProduce(StreamDataReceiver<T> dataReceiver) {
+				return super.onProduce(item -> {
+					if (errorPredicate.test(item)) {
+						this.closeWithError(error.get());
+					} else {
+						dataReceiver.onData(item);
+					}
+				});
+			}
+		};
+		streamProducerDecorator.setActualProducer(producer);
+		return streamProducerDecorator;
+	}
+
+	public static <T, R> StreamProducerWithResult<T, R> errorDecorator(StreamProducerWithResult<T, R> producer, Predicate<T> errorPredicate, Supplier<Throwable> error) {
+		final StreamProducerDecorator<T, R> streamProducerDecorator = new StreamProducerDecorator<T, R>() {
+			@Override
+			protected StreamDataReceiver<T> onProduce(StreamDataReceiver<T> dataReceiver) {
+				return super.onProduce(item -> {
+					if (errorPredicate.test(item)) {
+						this.closeWithError(error.get());
+					} else {
+						dataReceiver.onData(item);
+					}
+				});
+			}
+		};
+		streamProducerDecorator.setActualProducer(producer, producer.getResult());
+		return streamProducerDecorator;
 	}
 
 }

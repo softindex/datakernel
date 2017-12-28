@@ -16,6 +16,7 @@
 
 package io.datakernel.cube.http;
 
+import io.datakernel.aggregation.AggregationUtils;
 import io.datakernel.aggregation.measure.Measure;
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
@@ -25,10 +26,9 @@ import io.datakernel.cube.ComputedMeasures;
 import org.junit.Test;
 
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-import static com.google.common.base.Functions.constant;
-import static com.google.common.collect.Maps.asMap;
-import static com.google.common.collect.Sets.newHashSet;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofDouble;
 import static io.datakernel.aggregation.measure.Measures.sum;
 import static io.datakernel.codegen.Expressions.*;
@@ -49,7 +49,8 @@ public class ComputedMeasuresTest {
 		Object getResult();
 	}
 
-	private static final Map<String, Measure> MEASURES = asMap(newHashSet("a", "b", "c", "d"), constant(sum(ofDouble())));
+	private static final Map<String, Measure> MEASURES = AggregationUtils
+			.streamToLinkedMap(Stream.of("a", "b", "c", "d"), o -> sum(ofDouble()));
 
 	@Test
 	public void test() throws Exception {
@@ -71,7 +72,7 @@ public class ComputedMeasuresTest {
 		resultPlaceholder.computeMeasures();
 
 		assertEquals(0.2, resultPlaceholder.getResult());
-		assertEquals(newHashSet("a", "b", "c"), d.getMeasureDependencies());
+		assertEquals(Stream.of("a", "b", "c").collect(Collectors.toSet()), d.getMeasureDependencies());
 	}
 
 	@Test

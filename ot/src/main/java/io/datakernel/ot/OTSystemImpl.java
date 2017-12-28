@@ -2,10 +2,9 @@ package io.datakernel.ot;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.ot.TransformResult.ConflictResolution;
+import io.datakernel.ot.exceptions.OTTransformException;
 
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toList;
@@ -13,7 +12,7 @@ import static java.util.stream.Stream.concat;
 
 public final class OTSystemImpl<D> implements OTSystem<D> {
 	public interface TransformFunction<OP, L extends OP, R extends OP> {
-		TransformResult<? extends OP> transform(L left, R right);
+		TransformResult<? extends OP> transform(L left, R right) throws OTTransformException;
 	}
 
 	public interface SquashFunction<OP, OP1 extends OP, OP2 extends OP> {
@@ -120,7 +119,7 @@ public final class OTSystemImpl<D> implements OTSystem<D> {
 	}
 
 	@Override
-	public TransformResult<D> transform(List<? extends D> leftDiffs, List<? extends D> rightDiffs) {
+	public TransformResult<D> transform(List<? extends D> leftDiffs, List<? extends D> rightDiffs) throws OTTransformException {
 		TransformResult<D> transform = doTransform(leftDiffs, rightDiffs);
 		if (!transform.hasConflict())
 			return transform;
@@ -142,7 +141,7 @@ public final class OTSystemImpl<D> implements OTSystem<D> {
 	}
 
 	@SuppressWarnings("unchecked")
-	public TransformResult<D> doTransform(List<? extends D> leftDiffs, List<? extends D> rightDiffs) {
+	public TransformResult<D> doTransform(List<? extends D> leftDiffs, List<? extends D> rightDiffs) throws OTTransformException {
 		if (leftDiffs.isEmpty() && rightDiffs.isEmpty())
 			return TransformResult.empty();
 		if (leftDiffs.isEmpty()) {

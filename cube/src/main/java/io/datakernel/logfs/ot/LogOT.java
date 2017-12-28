@@ -8,10 +8,9 @@ import io.datakernel.ot.TransformResult.ConflictResolution;
 import io.datakernel.util.Preconditions;
 
 import java.util.*;
+import java.util.Map.Entry;
 
-import static com.google.common.collect.Iterables.all;
-import static com.google.common.collect.Maps.transformValues;
-import static com.google.common.collect.Sets.intersection;
+import static io.datakernel.aggregation.AggregationUtils.transformValuesToLinkedMap;
 import static io.datakernel.util.Preconditions.checkState;
 import static java.util.Collections.singletonList;
 
@@ -40,10 +39,10 @@ public class LogOT {
 
 					return TransformResult.conflict(comparison > 0 ? ConflictResolution.LEFT : ConflictResolution.RIGHT);
 				})
-				.withEmptyPredicate(LogDiff.class, commit -> commit.positions.isEmpty() && all(commit.diffs, otSystem::isEmpty))
+				.withEmptyPredicate(LogDiff.class, commit -> commit.positions.isEmpty() && commit.diffs.stream().allMatch(otSystem::isEmpty))
 				.withSquashFunction(LogDiff.class, LogDiff.class, (commit1, commit2) -> {
 					Map<String, LogPositionDiff> positions = new HashMap<>(commit1.positions);
-					for (Map.Entry<String, LogPositionDiff> entry : commit2.positions.entrySet()) {
+					for (Entry<String, LogPositionDiff> entry : commit2.positions.entrySet()) {
 						String log = entry.getKey();
 						LogPositionDiff positionDiff1 = positions.get(log);
 						LogPositionDiff positionDiff2 = entry.getValue();
@@ -63,15 +62,17 @@ public class LogOT {
 					return LogDiff.of(positions, otSystem.squash(ops));
 				})
 				.withInvertFunction(LogDiff.class, commit -> singletonList(LogDiff.of(
-						transformValues(commit.positions, LogPositionDiff::inverse),
+						transformValuesToLinkedMap(commit.positions.entrySet().stream(), LogPositionDiff::inverse),
 						otSystem.invert(commit.diffs))))
 				;
 
 	}
 
-	private static <T> LogDiff<T> inverse(OTSystem<T> otSystem, LogDiff<T> commit) {
-		return LogDiff.of(
-				transformValues(commit.positions, LogPositionDiff::inverse),
-				otSystem.invert(commit.diffs));
+	private static <T> Set<T> intersection(Set<T> a, Set<T> b) {
+		final Set<T> set = new HashSet<>();
+		for (T x : a) {
+			if (b.contains(x)) set.add(x);
+		}
+		return set;
 	}
 }

@@ -5,9 +5,7 @@ import io.datakernel.aggregation.measure.Measure;
 
 import java.util.*;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.collect.Lists.newArrayList;
-import static com.google.common.collect.Sets.intersection;
+import static io.datakernel.util.Preconditions.checkArgument;
 
 public final class AggregationStructure {
 
@@ -17,11 +15,11 @@ public final class AggregationStructure {
 	private final Map<String, Measure> measures = new LinkedHashMap<>();
 
 	public List<String> getKeys() {
-		return newArrayList(keyTypes.keySet());
+		return new ArrayList<>(keyTypes.keySet());
 	}
 
 	public List<String> getMeasures() {
-		return newArrayList(measures.keySet());
+		return new ArrayList<>(measures.keySet());
 	}
 
 	public Map<String, FieldType> getKeyTypes() {
@@ -83,6 +81,16 @@ public final class AggregationStructure {
 		checkArgument(intersection(this.measureTypes.keySet(), measureTypes.keySet()).isEmpty());
 		this.measureTypes.putAll(measureTypes);
 		return this;
+	}
+
+	private static <T> Set<T> intersection(Set<T> a, Set<T> b) {
+		final Set<T> set = new HashSet<>();
+		for (T x : a) {
+			if (b.contains(x)) {
+				set.add(x);
+			}
+		}
+		return set;
 	}
 
 	public AggregationStructure withPartitioningKey(List<String> partitioningKey) {

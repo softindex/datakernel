@@ -34,10 +34,11 @@ import io.datakernel.utils.GsonAdapters.TypeAdapterRegistryImpl;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.net.URI;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
+import java.util.stream.Collectors;
 
-import static com.google.common.collect.Maps.newLinkedHashMap;
 import static io.datakernel.cube.http.Utils.*;
 
 public final class CubeHttpClient implements ICube {
@@ -47,8 +48,8 @@ public final class CubeHttpClient implements ICube {
 	private final TypeAdapterRegistryImpl registry;
 	private TypeAdapter<QueryResult> queryResultJson;
 	private TypeAdapter<AggregationPredicate> aggregationPredicateJson;
-	private final Map<String, Type> attributeTypes = newLinkedHashMap();
-	private final Map<String, Type> measureTypes = newLinkedHashMap();
+	private final Map<String, Type> attributeTypes = new LinkedHashMap<>();
+	private final Map<String, Type> measureTypes = new LinkedHashMap<>();
 
 	private CubeHttpClient(Eventloop eventloop, IAsyncHttpClient httpClient, String url, TypeAdapterRegistryImpl registry) {
 		this.eventloop = eventloop;
@@ -125,10 +126,10 @@ public final class CubeHttpClient implements ICube {
 	}
 
 	private HttpRequest buildRequest(CubeQuery query) {
-		Map<String, String> urlParams = newLinkedHashMap();
+		Map<String, String> urlParams = new LinkedHashMap<>();
 
-		urlParams.put(ATTRIBUTES_PARAM, JOINER.join(query.getAttributes()));
-		urlParams.put(MEASURES_PARAM, JOINER.join(query.getMeasures()));
+		urlParams.put(ATTRIBUTES_PARAM, query.getAttributes().stream().collect(Collectors.joining(",")));
+		urlParams.put(MEASURES_PARAM, query.getMeasures().stream().collect(Collectors.joining(",")));
 		urlParams.put(WHERE_PARAM, getAggregationPredicateJson().toJson(query.getWhere()));
 		urlParams.put(SORT_PARAM, formatOrderings(query.getOrderings()));
 		urlParams.put(HAVING_PARAM, getAggregationPredicateJson().toJson(query.getHaving()));

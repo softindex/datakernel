@@ -16,13 +16,13 @@
 
 package io.datakernel.stream.processor;
 
-import com.google.common.base.Function;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
 
 import java.util.Comparator;
+import java.util.function.Function;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 /**
  * Perform a reduction on the elements of input streams using the  key function.

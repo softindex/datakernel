@@ -16,8 +16,6 @@
 
 package io.datakernel.datagraph.dataset;
 
-import com.google.common.base.Function;
-import com.google.common.base.Predicate;
 import io.datakernel.datagraph.dataset.impl.*;
 import io.datakernel.datagraph.graph.DataGraph;
 import io.datakernel.datagraph.graph.Partition;
@@ -28,6 +26,8 @@ import io.datakernel.stream.processor.StreamReducers;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 public final class Datasets {
 	private Datasets() {

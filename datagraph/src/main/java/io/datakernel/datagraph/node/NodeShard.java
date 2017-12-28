@@ -16,7 +16,6 @@
 
 package io.datakernel.datagraph.node;
 
-import com.google.common.base.Function;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.graph.TaskContext;
 import io.datakernel.stream.StreamProducer;
@@ -25,6 +24,7 @@ import io.datakernel.stream.processor.StreamSharder;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
 /**
  * Represents a node, which splits (duplicates) data items from a single input to many outputs.

@@ -16,7 +16,6 @@
 
 package io.datakernel.cube;
 
-import com.google.common.collect.ImmutableMap;
 import io.datakernel.aggregation.Aggregation;
 import io.datakernel.aggregation.AggregationPredicate;
 import io.datakernel.aggregation.AggregationPredicates;
@@ -26,76 +25,68 @@ import org.joda.time.LocalDate;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
-import static com.google.common.collect.Lists.newArrayList;
 import static io.datakernel.aggregation.AggregationPredicates.*;
+import static io.datakernel.aggregation.AggregationUtils.valuesToLinkedMap;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.*;
 import static io.datakernel.aggregation.measure.Measures.*;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
 import static java.util.Arrays.asList;
+import static java.util.stream.Stream.of;
 import static org.junit.Assert.*;
 
 public class TestCompatibleAggregations {
-	private static final Map<String, String> DATA_ITEM_DIMENSIONS = ImmutableMap.<String, String>builder()
-			.put("date", "date")
-			.put("advertiser", "advertiser")
-			.put("campaign", "campaign")
-			.put("banner", "banner")
-			.put("affiliate", "affiliate")
-			.put("site", "site")
-			.put("placement", "placement")
-			.build();
+	private static final Map<String, String> DATA_ITEM_DIMENSIONS = valuesToLinkedMap(of(
+			new AbstractMap.SimpleEntry<>("date", "date"),
+			new AbstractMap.SimpleEntry<>("advertiser", "advertiser"),
+			new AbstractMap.SimpleEntry<>("campaign", "campaign"),
+			new AbstractMap.SimpleEntry<>("banner", "banner"),
+			new AbstractMap.SimpleEntry<>("affiliate", "affiliate"),
+			new AbstractMap.SimpleEntry<>("site", "site"),
+			new AbstractMap.SimpleEntry<>("placement", "placement")));
 
-	private static final Map<String, String> DATA_ITEM_MEASURES = ImmutableMap.<String, String>builder()
-			.put("eventCount", "null")
-			.put("minRevenue", "revenue")
-			.put("maxRevenue", "revenue")
-			.put("revenue", "revenue")
-			.put("impressions", "impressions")
-			.put("clicks", "clicks")
-			.put("conversions", "conversions")
-			.put("uniqueUserIdsCount", "userId")
-			.put("errors", "errors")
-			.build();
+	private static final Map<String, String> DATA_ITEM_MEASURES = valuesToLinkedMap(of(
+			new AbstractMap.SimpleEntry<>("eventCount", "null"),
+			new AbstractMap.SimpleEntry<>("minRevenue", "revenue"),
+			new AbstractMap.SimpleEntry<>("maxRevenue", "revenue"),
+			new AbstractMap.SimpleEntry<>("revenue", "revenue"),
+			new AbstractMap.SimpleEntry<>("impressions", "impressions"),
+			new AbstractMap.SimpleEntry<>("clicks", "clicks"),
+			new AbstractMap.SimpleEntry<>("conversions", "conversions"),
+			new AbstractMap.SimpleEntry<>("uniqueUserIdsCount", "userId"),
+			new AbstractMap.SimpleEntry<>("errors", "errors")));
 
-	private static final Map<String, FieldType> DIMENSIONS_DAILY_AGGREGATION = ImmutableMap.<String, FieldType>builder()
-			.put("date", ofLocalDate(LocalDate.parse("2000-01-01")))
-			.build();
+	private static final Map<String, FieldType> DIMENSIONS_DAILY_AGGREGATION = valuesToLinkedMap(of(
+			new AbstractMap.SimpleEntry<>("date", ofLocalDate(LocalDate.parse("2000-01-01")))));
 
-	private static final Map<String, FieldType> DIMENSIONS_ADVERTISERS_AGGREGATION = ImmutableMap.<String, FieldType>builder()
-			.put("date", ofLocalDate(LocalDate.parse("2000-01-01")))
-			.put("advertiser", ofInt())
-			.put("campaign", ofInt())
-			.put("banner", ofInt())
-			.build();
+	private static final Map<String, FieldType> DIMENSIONS_ADVERTISERS_AGGREGATION = valuesToLinkedMap(of(
+			new AbstractMap.SimpleEntry<>("date", ofLocalDate(LocalDate.parse("2000-01-01"))),
+			new AbstractMap.SimpleEntry<>("advertiser", ofInt()),
+			new AbstractMap.SimpleEntry<>("campaign", ofInt()),
+			new AbstractMap.SimpleEntry<>("banner", ofInt())));
 
-	private static final Map<String, FieldType> DIMENSIONS_AFFILIATES_AGGREGATION = ImmutableMap.<String, FieldType>builder()
-			.put("date", ofLocalDate(LocalDate.parse("2000-01-01")))
-			.put("affiliate", ofInt())
-			.put("site", ofString())
-			.build();
+	private static final Map<String, FieldType> DIMENSIONS_AFFILIATES_AGGREGATION = valuesToLinkedMap(of(
+			new AbstractMap.SimpleEntry<>("date", ofLocalDate(LocalDate.parse("2000-01-01"))),
+			new AbstractMap.SimpleEntry<>("affiliate", ofInt()),
+			new AbstractMap.SimpleEntry<>("site", ofString())));
 
-	private static final Map<String, FieldType> DIMENSIONS_DETAILED_AFFILIATES_AGGREGATION = ImmutableMap.<String, FieldType>builder()
-			.put("date", ofLocalDate(LocalDate.parse("2000-01-01")))
-			.put("affiliate", ofInt())
-			.put("site", ofString())
-			.put("placement", ofInt())
-			.build();
+	private static final Map<String, FieldType> DIMENSIONS_DETAILED_AFFILIATES_AGGREGATION = valuesToLinkedMap(of(
+			new AbstractMap.SimpleEntry<>("date", ofLocalDate(LocalDate.parse("2000-01-01"))),
+			new AbstractMap.SimpleEntry<>("affiliate", ofInt()),
+			new AbstractMap.SimpleEntry<>("site", ofString()),
+			new AbstractMap.SimpleEntry<>("placement", ofInt())));
 
-	private static final Map<String, Measure> MEASURES = ImmutableMap.<String, Measure>builder()
-			.put("impressions", sum(ofLong()))
-			.put("clicks", sum(ofLong()))
-			.put("conversions", sum(ofLong()))
-			.put("revenue", sum(ofDouble()))
-			.put("eventCount", count(ofInt()))
-			.put("minRevenue", min(ofDouble()))
-			.put("maxRevenue", max(ofDouble()))
-			.put("uniqueUserIdsCount", hyperLogLog(1024))
-			.put("errors", sum(ofLong()))
-			.build();
+	private static final Map<String, Measure> MEASURES = valuesToLinkedMap(of(
+			new AbstractMap.SimpleEntry<>("impressions", sum(ofLong())),
+			new AbstractMap.SimpleEntry<>("clicks", sum(ofLong())),
+			new AbstractMap.SimpleEntry<>("conversions", sum(ofLong())),
+			new AbstractMap.SimpleEntry<>("revenue", sum(ofDouble())),
+			new AbstractMap.SimpleEntry<>("eventCount", count(ofInt())),
+			new AbstractMap.SimpleEntry<>("minRevenue", min(ofDouble())),
+			new AbstractMap.SimpleEntry<>("maxRevenue", max(ofDouble())),
+			new AbstractMap.SimpleEntry<>("uniqueUserIdsCount", hyperLogLog(1024)),
+			new AbstractMap.SimpleEntry<>("errors", sum(ofLong()))));
 
 	private static final AggregationPredicate DAILY_AGGREGATION_PREDICATE = alwaysTrue();
 	private static final Cube.AggregationConfig DAILY_AGGREGATION = id("daily")
@@ -241,7 +232,7 @@ public class TestCompatibleAggregations {
 		final AggregationPredicate whereQueryPredicate = alwaysTrue();
 
 		List<Cube.AggregationContainer> actualAggregations = cube.getCompatibleAggregationsForQuery(
-				asList("date"), newArrayList(MEASURES.keySet()), whereQueryPredicate);
+				asList("date"), new ArrayList<>(MEASURES.keySet()), whereQueryPredicate);
 
 		Aggregation expected = cube.getAggregation(DAILY_AGGREGATION.getId());
 
@@ -257,7 +248,7 @@ public class TestCompatibleAggregations {
 				not(eq("banner", EXCLUDE_BANNER)));
 
 		List<Cube.AggregationContainer> actualAggregations = cube.getCompatibleAggregationsForQuery(
-				asList("advertiser", "campaign", "banner"), newArrayList(MEASURES.keySet()), whereQueryPredicate);
+				asList("advertiser", "campaign", "banner"), new ArrayList<>(MEASURES.keySet()), whereQueryPredicate);
 
 		Aggregation expected = cube.getAggregation(ADVERTISERS_AGGREGATION.getId());
 
@@ -270,7 +261,7 @@ public class TestCompatibleAggregations {
 		final AggregationPredicate whereQueryPredicate = and(not(eq("affiliate", EXCLUDE_AFFILIATE)), not(eq("site", EXCLUDE_SITE)));
 
 		List<Cube.AggregationContainer> actualAggregations = cube.getCompatibleAggregationsForQuery(
-				asList("affiliate", "site"), newArrayList(MEASURES.keySet()), whereQueryPredicate);
+				asList("affiliate", "site"), new ArrayList<>(MEASURES.keySet()), whereQueryPredicate);
 
 		Aggregation expected = cube.getAggregation(AFFILIATES_AGGREGATION.getId());
 
@@ -287,7 +278,7 @@ public class TestCompatibleAggregations {
 
 		List<Cube.AggregationContainer> actualAggregations =
 				cubeWithDetailedAggregation.getCompatibleAggregationsForQuery(
-						asList("affiliate", "site", "placement"), newArrayList(MEASURES.keySet()), whereQueryPredicate);
+						asList("affiliate", "site", "placement"), new ArrayList<>(MEASURES.keySet()), whereQueryPredicate);
 
 		Aggregation expected = cubeWithDetailedAggregation.getAggregation(DETAILED_AFFILIATES_AGGREGATION.getId());
 
@@ -301,7 +292,7 @@ public class TestCompatibleAggregations {
 
 		List<Cube.AggregationContainer> actualAggregations =
 				cubeWithDetailedAggregation.getCompatibleAggregationsForQuery(
-						asList("affiliate", "site", "placement"), newArrayList(MEASURES.keySet()), whereQueryPredicate);
+						asList("affiliate", "site", "placement"), new ArrayList<>(MEASURES.keySet()), whereQueryPredicate);
 
 		Aggregation expected = cubeWithDetailedAggregation.getAggregation(DETAILED_AFFILIATES_AGGREGATION.getId());
 
@@ -315,7 +306,7 @@ public class TestCompatibleAggregations {
 
 		List<Cube.AggregationContainer> actualAggregations =
 				cubeWithDetailedAggregation.getCompatibleAggregationsForQuery(
-						asList("date"), newArrayList(MEASURES.keySet()), whereQueryPredicate);
+						asList("date"), new ArrayList<>(MEASURES.keySet()), whereQueryPredicate);
 
 		Aggregation expected = cubeWithDetailedAggregation.getAggregation(DAILY_AGGREGATION.getId());
 		Aggregation expected2 = cubeWithDetailedAggregation.getAggregation(LIMITED_DATES_AGGREGATION.getId());
@@ -333,7 +324,7 @@ public class TestCompatibleAggregations {
 
 		List<Cube.AggregationContainer> actualAggregations =
 				cubeWithDetailedAggregation.getCompatibleAggregationsForQuery(
-						asList("date"), newArrayList(MEASURES.keySet()), whereQueryPredicate);
+						asList("date"), new ArrayList<>(MEASURES.keySet()), whereQueryPredicate);
 
 		Aggregation expected = cubeWithDetailedAggregation.getAggregation(ADVERTISERS_AGGREGATION.getId());
 
@@ -347,7 +338,7 @@ public class TestCompatibleAggregations {
 
 		List<Cube.AggregationContainer> actualAggregations =
 				cubeWithDetailedAggregation.getCompatibleAggregationsForQuery(
-						asList("date"), newArrayList(MEASURES.keySet()), whereQueryPredicate);
+						asList("date"), new ArrayList<>(MEASURES.keySet()), whereQueryPredicate);
 
 		Aggregation expected = cubeWithDetailedAggregation.getAggregation(DAILY_AGGREGATION.getId());
 		Aggregation expected2 = cubeWithDetailedAggregation.getAggregation(LIMITED_DATES_AGGREGATION.getId());

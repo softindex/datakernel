@@ -16,9 +16,6 @@
 
 package io.datakernel.datagraph.server;
 
-import com.google.common.base.Functions;
-import com.google.common.collect.Ordering;
-import com.google.common.net.InetAddresses;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.node.*;
 import io.datakernel.datagraph.server.command.DatagraphCommand;
@@ -28,22 +25,31 @@ import io.datakernel.stream.processor.StreamMap;
 import io.datakernel.stream.processor.StreamReducers;
 import org.junit.Test;
 
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
+import java.util.function.Function;
 
 public class DatagraphSerializationTest {
 
 	@Test
-	public void test2() {
+	public void test2() throws UnknownHostException {
 		DatagraphSerialization serialization = new DatagraphSerialization();
 
 		String str;
 
 		DatagraphCommand command;
 
-		NodeReduce<Integer, Integer, Integer> reducer = new NodeReduce<>(Ordering.<Integer>natural());
-		reducer.addInput(new StreamId(), Functions.<Integer>identity(), new StreamReducers.Reducer<Integer, Integer, Integer, Integer>() {
+		NodeReduce<Integer, Integer, Integer> reducer = new NodeReduce<>(new Comparator<Integer>() {
+			@Override
+			public int compare(Integer o1, Integer o2) {
+				return o1.compareTo(o2);
+			}
+		});
+		reducer.addInput(new StreamId(), Function.identity(), new StreamReducers.Reducer<Integer, Integer, Integer, Integer>() {
 			@Override
 			public Integer onFirstItem(StreamDataReceiver<Integer> stream, Integer key, Integer firstValue) {
 				return null;
@@ -68,7 +74,7 @@ public class DatagraphSerializationTest {
 					}
 				}, new StreamId(1)),
 				new NodeUpload<>(Integer.class, new StreamId(Long.MAX_VALUE)),
-				new NodeDownload<>(Integer.class, new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1571), new StreamId(Long.MAX_VALUE))
+				new NodeDownload<>(Integer.class, new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1571), new StreamId(Long.MAX_VALUE))
 		);
 		str = serialization.gson.toJson(new DatagraphCommandExecute(nodes), DatagraphCommand.class);
 		System.out.println(str);

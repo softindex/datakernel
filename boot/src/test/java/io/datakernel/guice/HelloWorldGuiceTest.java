@@ -16,7 +16,6 @@
 
 package io.datakernel.guice;
 
-import com.google.common.io.Closeables;
 import com.google.inject.*;
 import com.google.inject.name.Named;
 import io.datakernel.async.Stages;
@@ -45,7 +44,6 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.List;
 
-import static com.google.common.io.ByteStreams.readFully;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
@@ -137,8 +135,8 @@ public class HelloWorldGuiceTest {
 			}
 		} finally {
 			serviceGraph.stopFuture().get();
-			Closeables.close(socket0, true);
-			Closeables.close(socket1, true);
+			socket0.close();
+			socket1.close();
 		}
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
@@ -146,7 +144,17 @@ public class HelloWorldGuiceTest {
 
 	public static void readAndAssert(InputStream is, String expected) throws IOException {
 		byte[] bytes = new byte[expected.length()];
-		readFully(is, bytes);
+
+		final int length = bytes.length;
+		int total = 0;
+		while (total < length) {
+			int result = is.read(bytes, total, length - total);
+			if (result == -1) {
+				break;
+			}
+			total += result;
+		}
+
 		assertEquals(expected, decodeAscii(bytes));
 	}
 

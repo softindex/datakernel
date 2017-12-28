@@ -18,6 +18,7 @@ package io.datakernel.config.impl;
 
 import io.datakernel.config.AbstractConfig;
 import io.datakernel.config.Config;
+import io.datakernel.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,8 +29,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static io.datakernel.config.Configs.EMPTY_CONFIG;
+import static io.datakernel.util.Preconditions.checkArgument;
 
 public final class PropertiesConfig extends AbstractConfig {
 	private static final Logger logger = LoggerFactory.getLogger(PropertiesConfig.class);
@@ -40,7 +41,11 @@ public final class PropertiesConfig extends AbstractConfig {
 		static TrieNode ofProperties(Properties properties) {
 			TrieNode node = new TrieNode();
 			for (String propertyName : properties.stringPropertyNames()) {
-				node.add(PATH_SPLITTER.split(propertyName).iterator());
+				node.add(StringUtils.splitToList(DELIMITER, propertyName).stream()
+						.filter(Objects::nonNull)
+						.filter(s -> !s.isEmpty())
+						.map(String::trim)
+						.iterator());
 			}
 			return node;
 		}

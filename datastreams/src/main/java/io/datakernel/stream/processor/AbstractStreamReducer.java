@@ -16,13 +16,13 @@
 
 package io.datakernel.stream.processor;
 
-import com.google.common.base.Function;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 
 import java.util.*;
+import java.util.function.Function;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static io.datakernel.util.Preconditions.checkArgument;
 
 /**
  * Perform aggregative functions on the elements from input streams. Searches key of item

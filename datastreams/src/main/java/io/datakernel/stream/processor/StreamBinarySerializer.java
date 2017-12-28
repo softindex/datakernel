@@ -25,7 +25,7 @@ import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static java.lang.Math.max;
 

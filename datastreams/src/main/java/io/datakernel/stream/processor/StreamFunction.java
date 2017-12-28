@@ -16,10 +16,10 @@
 
 package io.datakernel.stream.processor;
 
-import com.google.common.base.Function;
-import com.google.common.base.Functions;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
+
+import java.util.function.Function;
 
 /**
  * Provides you apply function before sending data to the destination. It is a {@link StreamFunction}
@@ -43,7 +43,7 @@ public final class StreamFunction<I, O> implements StreamTransformer<I, O> {
 	}
 
 	public static <I, O> StreamFunction<I, O> create(Eventloop eventloop, Function<I, O> function) {
-		return new StreamFunction<I, O>(eventloop, function);
+		return new StreamFunction<>(eventloop, function);
 	}
 
 	@Override
@@ -92,7 +92,7 @@ public final class StreamFunction<I, O> implements StreamTransformer<I, O> {
 		@Override
 		protected void onProduce(StreamDataReceiver<O> dataReceiver) {
 			input.getProducer().produce(
-					function == Functions.identity() ?
+					function == Function.identity() ?
 							(StreamDataReceiver<I>) dataReceiver :
 							item -> dataReceiver.onData(function.apply(item)));
 		}

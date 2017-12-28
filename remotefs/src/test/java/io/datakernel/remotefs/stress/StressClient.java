@@ -16,7 +16,6 @@
 
 package io.datakernel.remotefs.stress;
 
-import com.google.common.base.Charsets;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
@@ -37,6 +36,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -191,7 +191,7 @@ class StressClient {
 				text.append("\r\n");
 		}
 
-		Files.write(file, text.toString().getBytes(Charsets.UTF_8));
+		Files.write(file, text.toString().getBytes(StandardCharsets.UTF_8));
 
 		return name.toString();
 	}

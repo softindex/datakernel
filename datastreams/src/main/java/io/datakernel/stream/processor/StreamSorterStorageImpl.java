@@ -38,7 +38,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.String.format;
 import static java.nio.file.StandardOpenOption.READ;
 

@@ -16,9 +16,8 @@
 
 package io.datakernel.datagraph.dataset;
 
-import com.google.common.base.Function;
-
 import java.util.Comparator;
+import java.util.function.Function;
 
 /**
  * Represents repartitioned and sorted dataset.

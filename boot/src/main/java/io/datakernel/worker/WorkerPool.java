@@ -23,8 +23,8 @@ import com.google.inject.TypeLiteral;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkState;
+import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.util.Preconditions.checkState;
 
 public final class WorkerPool {
 	final int workers;

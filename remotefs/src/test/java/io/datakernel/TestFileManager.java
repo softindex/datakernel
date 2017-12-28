@@ -16,7 +16,6 @@
 
 package io.datakernel;
 
-import com.google.common.base.Charsets;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.remotefs.FileManager;
@@ -31,6 +30,7 @@ import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.Collections;
 import java.util.List;
@@ -73,30 +73,30 @@ public class TestFileManager {
 		createDirectories(client);
 
 		Path f = client.resolve("f.txt");
-		write(f, ("some text1\n\nmore text1\t\n\n\r").getBytes(Charsets.UTF_8));
+		write(f, ("some text1\n\nmore text1\t\n\n\r").getBytes(StandardCharsets.UTF_8));
 
 		Path c = client.resolve("c.txt");
-		write(c, ("some text2\n\nmore text2\t\n\n\r").getBytes(Charsets.UTF_8));
+		write(c, ("some text2\n\nmore text2\t\n\n\r").getBytes(StandardCharsets.UTF_8));
 
 		createDirectories(storage.resolve("1"));
 		createDirectories(storage.resolve("2/3"));
 		createDirectories(storage.resolve("2/b"));
 
 		Path a1 = storage.resolve("1/a.txt");
-		write(a1, ("1\n2\n3\n4\n5\n6\n").getBytes(Charsets.UTF_8));
+		write(a1, ("1\n2\n3\n4\n5\n6\n").getBytes(StandardCharsets.UTF_8));
 
 		Path b = storage.resolve("1/b.txt");
-		write(b, ("7\n8\n9\n10\n11\n12\n").getBytes(Charsets.UTF_8));
+		write(b, ("7\n8\n9\n10\n11\n12\n").getBytes(StandardCharsets.UTF_8));
 
 		Path a2 = storage.resolve("2/3/a.txt");
-		write(a2, ("6\n5\n4\n3\n2\n1\n").getBytes(Charsets.UTF_8));
+		write(a2, ("6\n5\n4\n3\n2\n1\n").getBytes(StandardCharsets.UTF_8));
 
 		Path d = storage.resolve("2/b/d.txt");
 		StringBuilder sb = new StringBuilder();
 		for (int i = 0; i < 1_000_000; i++) {
 			sb.append(i).append("\n");
 		}
-		write(d, sb.toString().getBytes(Charsets.UTF_8));
+		write(d, sb.toString().getBytes(StandardCharsets.UTF_8));
 
 		Path e = storage.resolve("2/b/e.txt");
 		createFile(e);

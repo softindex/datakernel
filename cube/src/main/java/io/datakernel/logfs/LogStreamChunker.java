@@ -16,10 +16,13 @@
 
 package io.datakernel.logfs;
 
+import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 import org.joda.time.format.DateTimeFormatter;
+
+import java.util.concurrent.CompletionStage;
 
 public final class LogStreamChunker extends StreamConsumerDecorator<ByteBuf, Void> implements StreamDataReceiver<ByteBuf> {
 	private final Eventloop eventloop;
@@ -52,17 +55,15 @@ public final class LogStreamChunker extends StreamConsumerDecorator<ByteBuf, Voi
 				.thenCompose(aVoid -> chunker.currentConsumer.getResult()));
 		long timestamp = eventloop.currentTimeMillis();
 		String chunkName = datetimeFormat.print(timestamp);
-		chunker.startNewChunk(chunkName);
+		chunker.startNewChunk(chunkName, Stages.of(null));
 		return chunker;
 	}
 
 	@Override
 	public void onData(ByteBuf item) {
-		long timestamp = eventloop.currentTimeMillis();
-
-		String chunkName = datetimeFormat.print(timestamp);
+		final String chunkName = datetimeFormat.print(eventloop.currentTimeMillis());
 		if (!chunkName.equals(currentChunkName)) {
-			startNewChunk(chunkName);
+			startNewChunk(chunkName, currentConsumer.getResult());
 		}
 
 		dataReceiver.onData(item);
@@ -74,11 +75,12 @@ public final class LogStreamChunker extends StreamConsumerDecorator<ByteBuf, Voi
 		return this;
 	}
 
-	private void startNewChunk(String newChunkName) {
+	private void startNewChunk(String newChunkName, CompletionStage<Void> previousFile) {
 		currentChunkName = newChunkName;
-		currentConsumer = StreamConsumers.ofStageWithResult(fileSystem
-				.makeUniqueLogFile(logPartition, newChunkName)
+		currentConsumer = StreamConsumers.ofStageWithResult(previousFile
+				.thenCompose($ -> fileSystem.makeUniqueLogFile(logPartition, newChunkName))
 				.thenCompose(logFile -> fileSystem.write(logPartition, logFile)));
+
 		switcher.switchTo(currentConsumer);
 	}
 

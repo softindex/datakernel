@@ -1,28 +1,38 @@
 package io.datakernel.ot;
 
-import com.google.common.base.Predicate;
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.ot.OTUtils.FindResult;
+import io.datakernel.ot.exceptions.OTTransformException;
+import io.datakernel.util.Stopwatch;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.CompletionStage;
+import java.util.function.Predicate;
 
-import static java.util.Collections.singleton;
+import static java.lang.String.format;
 import static java.util.Collections.singletonList;
 
 public final class OTStateManager<K, D> implements EventloopService {
+	private final Logger logger = LoggerFactory.getLogger(OTStateManager.class);
 
 	private final Eventloop eventloop;
 	private final OTSystem<D> otSystem;
 	private final OTRemote<K, D> source;
 	private final Comparator<K> comparator;
 
-	private K head;
+	private K fetchedRevision;
+	private List<D> fetchedDiffs = Collections.emptyList();
+	private SettableStage<K> fetchProgress;
+
+	private K revision;
 	private List<D> workingDiffs = new ArrayList<>();
-	private LinkedHashMap<K, List<D>> pendingCommits = new LinkedHashMap<>();
+	private LinkedHashMap<K, OTCommit<K, D>> pendingCommits = new LinkedHashMap<>();
 	private OTState<D> state;
 
 	public OTStateManager(Eventloop eventloop, OTSystem<D> otSystem, OTRemote<K, D> source, Comparator<K> comparator, OTState<D> state) {
@@ -31,6 +41,13 @@ public final class OTStateManager<K, D> implements EventloopService {
 		this.source = source;
 		this.comparator = comparator;
 		this.state = state;
+	}
+
+	private static <D> List<D> concatLists(List<D> a, List<D> b) {
+		final List<D> diffs = new ArrayList<>(a.size() + b.size());
+		diffs.addAll(a);
+		diffs.addAll(b);
+		return diffs;
 	}
 
 	public OTState<D> getState() {
@@ -44,7 +61,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 
 	@Override
 	public CompletionStage<Void> start() {
-		return checkout().thenCompose($ -> pull());
+		return checkout().thenApply(k -> null);
 	}
 
 	@Override
@@ -53,64 +70,136 @@ public final class OTStateManager<K, D> implements EventloopService {
 		return Stages.of(null);
 	}
 
-	public CompletionStage<Void> checkout() {
-		head = null;
-		workingDiffs.clear();
-		pendingCommits.clear();
-		state.init();
-		return source.getCheckpoint().thenCompose(checkpointId ->
-				source.loadCommit(checkpointId).thenAccept(commit -> {
-					head = checkpointId;
-					apply(commit.getCheckpoint());
-				}));
+	public CompletionStage<K> checkout() {
+		logger.info("Start checkout");
+		return source.getHeads().thenComposeAsync(ks -> {
+			logger.info("Start checkout heads: {}", ks);
+			return checkout(ks.iterator().next());
+		}).thenCompose($ -> pull());
 	}
 
-	public CompletionStage<Void> checkout(K commitId) {
-		head = null;
+	public CompletionStage<K> checkout(K commitId) {
+		logger.info("Start checkout to commit: {}", commitId);
+		fetchedRevision = revision = null;
 		workingDiffs.clear();
 		pendingCommits.clear();
 		state.init();
-		return findCheckpoint(singleton(commitId), null).thenCompose(findResult -> {
-			if (!findResult.isFound()) {
-				return Stages.ofException(new IllegalStateException("Could not find path to original head"));
-			}
-			List<D> pathToNewHead = findResult.getParentToChild();
-			apply(findResult.getParentCommit().getCheckpoint());
-			apply(pathToNewHead);
-			head = findResult.getChild();
-			return Stages.of((Void) null);
+		fetchedDiffs.clear();
+		return OTUtils.loadAllChanges(source, comparator, otSystem, commitId).thenApply(diffs -> {
+			apply(diffs);
+			fetchedRevision = revision = commitId;
+			logger.info("Finish checkout, current revision: {}", revision);
+			return revision;
 		});
 	}
 
-	public CompletionStage<Void> pull() {
-		if (!pendingCommits.isEmpty()) {
+	public CompletionStage<K> fetch() {
+		if (fetchProgress != null) {
+			logger.info("Reuse fetch in progress");
+			return fetchProgress;
+		}
+		fetchProgress = SettableStage.of(doFetch());
+
+		return fetchProgress.whenComplete((aVoid, throwable) -> fetchProgress = null);
+	}
+
+	private CompletionStage<K> doFetch() {
+		logger.info("Start fetch with fetched revision and current revision: {}, {}", fetchedRevision, revision);
+		final K fetchedRevisionCopy = this.fetchedRevision;
+
+		if (pendingCommits.containsKey(fetchedRevisionCopy)) {
+			logger.info("Try do fetch before current revision was pushed");
 			return Stages.of(null);
 		}
-		return source.getHeads().thenCompose(newHeads -> {
-			Predicate<OTCommit<K, D>> isHead = input -> input.getId().equals(head);
-			return findParent(newHeads, head, isHead).thenCompose(findResult -> {
-				if (!findResult.isFound()) {
-					return Stages.ofException(new IllegalStateException("Could not find path to original head"));
-				}
-				if (!pendingCommits.isEmpty()) {
-					return Stages.of(null);
-				}
-				List<D> pathToNewHead = findResult.getParentToChild();
-				TransformResult<D> transformed = otSystem.transform(otSystem.squash(workingDiffs), otSystem.squash(pathToNewHead));
-				apply(transformed.left);
-				workingDiffs = new ArrayList<>(transformed.right);
-				head = findResult.getChild();
-				return Stages.of((Void) null);
-			});
+
+		return source.getHeads()
+				.thenCompose(heads -> findParentCommits(heads, null, input -> input.getId().equals(fetchedRevisionCopy))
+						.thenCompose(findResult -> {
+							if (fetchedRevisionCopy != this.fetchedRevision) {
+								logger.info("Concurrent fetched revisions changes, old {}, new {}",
+										fetchedRevisionCopy, this.fetchedRevision);
+								return Stages.of(this.fetchedRevision);
+							}
+
+							if (!findResult.isFound()) {
+								return Stages.ofException(new IllegalStateException(format(
+										"Could not find path from heads to fetched revision and current " +
+												"revision: %s, %s, heads: %s", fetchedRevisionCopy, revision, heads)));
+							}
+
+							final List<D> diffs = concatLists(fetchedDiffs, findResult.getAccumulator());
+							fetchedDiffs = otSystem.squash(diffs);
+							fetchedRevision = findResult.getChild();
+
+							logger.info("Finish fetch with fetched revision and current revision: {}, {}",
+									fetchedRevision, revision);
+							return Stages.of(fetchedRevision);
+						}));
+
+	}
+
+	public CompletionStage<K> pull() {
+		if (!pendingCommits.isEmpty()) {
+			logger.info("Pending commits is not empty, ignore pull");
+			return Stages.of(revision);
+		}
+
+		return fetch().thenCompose($ -> {
+			try {
+				return Stages.of(rebase());
+			} catch (OTTransformException e) {
+				return Stages.ofException(e);
+			}
 		});
+	}
+
+	public CompletionStage<Boolean> pull(K pullRevision) {
+		if (!pendingCommits.isEmpty()) {
+			logger.info("Pending commits is not empty, ignore pull");
+			return Stages.of(false);
+		}
+		final K revisionCopy = getRevision();
+		return findParentCommits(pullRevision, revisionCopy, commit -> commit.getId().equals(revisionCopy))
+				.thenCompose(find -> {
+					if (!find.isFound()) {
+						logger.info("Can`t pull to commit {} from {}", pullRevision, revisionCopy);
+						return Stages.of(false);
+					}
+					if (revisionCopy != this.revision) {
+						logger.info("Concurrent revisions changes, old {}, new {}", revisionCopy, this.revision);
+						return Stages.of(false);
+					}
+
+					fetchedDiffs = otSystem.squash(find.getAccumulator());
+					fetchedRevision = pullRevision;
+
+					try {
+						return Stages.of(rebase());
+					} catch (OTTransformException e) {
+						return Stages.ofException(e);
+					}
+				}).thenApply(o -> true);
+
+	}
+
+	public K rebase() throws OTTransformException {
+		if (!pendingCommits.isEmpty()) {
+			logger.info("Pending commits is not empty, ignore pull and fetch");
+			return revision;
+		}
+
+		TransformResult<D> transformed = otSystem.transform(otSystem.squash(workingDiffs), otSystem.squash(fetchedDiffs));
+		apply(transformed.left);
+		workingDiffs = new ArrayList<>(transformed.right);
+		revision = fetchedRevision;
+		fetchedDiffs = Collections.emptyList();
+		logger.info("Finish rebase, current revision: {}", revision);
+
+		return revision;
 	}
 
 	public void reset() {
-		List<D> diffs = new ArrayList<>();
-		for (List<D> ds : pendingCommits.values()) {
-			diffs.addAll(ds);
-		}
-		diffs.addAll(workingDiffs);
+		List<D> diffs = new ArrayList<>(workingDiffs);
 		diffs = otSystem.invert(diffs);
 		apply(diffs);
 		pendingCommits = new LinkedHashMap<>();
@@ -125,31 +214,30 @@ public final class OTStateManager<K, D> implements EventloopService {
 		if (workingDiffs.isEmpty()) {
 			return Stages.of(null);
 		}
-		return source.createId().whenComplete((newId, throwable) -> {
-			if (throwable == null) {
-				pendingCommits.put(newId, otSystem.squash(workingDiffs));
-				workingDiffs = new ArrayList<>();
-			}
+		return source.createId().thenApply(newId -> {
+			pendingCommits.put(newId, OTCommit.ofCommit(newId, revision, otSystem.squash(workingDiffs)));
+			fetchedRevision = revision = newId;
+			fetchedDiffs = Collections.emptyList();
+			workingDiffs = new ArrayList<>();
+			return newId;
 		});
 	}
 
 	public CompletionStage<Void> push() {
 		if (pendingCommits.isEmpty()) {
+			logger.info("Pending commit is not empty, ignore push");
 			return Stages.of(null);
 		}
-		K parent = head;
-		List<OTCommit<K, D>> list = new ArrayList<>();
-		for (Map.Entry<K, List<D>> pendingCommitEntry : pendingCommits.entrySet()) {
-			K key = pendingCommitEntry.getKey();
-			List<D> diffs = pendingCommitEntry.getValue();
-			OTCommit<K, D> commit = OTCommit.ofCommit(key, parent, diffs);
-			list.add(commit);
-			parent = key;
-		}
+		final List<OTCommit<K, D>> list = new ArrayList<>(pendingCommits.values());
+		logger.info("Push commits, fetched and current revision: {}, {}", fetchedRevision, revision);
 		return source.push(list).thenAccept($ -> {
 			list.forEach(commit -> pendingCommits.remove(commit.getId()));
-			head = list.get(list.size() - 1).getId();
+			logger.info("Finish push commits, fetched and current revision: {}, {}", fetchedRevision, revision);
 		});
+	}
+
+	public K getRevision() {
+		return revision;
 	}
 
 	public void add(D diff) {
@@ -182,64 +270,75 @@ public final class OTStateManager<K, D> implements EventloopService {
 	}
 
 	private void invalidateInternalState() {
-		head = null;
-		workingDiffs = null;
+		fetchedRevision = revision = null;
+		fetchedDiffs = workingDiffs = null;
 		pendingCommits = null;
 		state = null;
 	}
 
-	private boolean isInternalStateValid() {
-		return head != null;
+	// visible for test
+	List<D> getWorkingDiffs() {
+		return workingDiffs;
 	}
 
-	public CompletionStage<Void> makeCheckpoint() {
-		return makeCheckpointForNode(head).thenCompose(k -> pull());
+	private boolean isInternalStateValid() {
+		return revision != null;
 	}
 
 // Helper OT methods
 
-	public CompletionStage<FindResult<K, D>> findCheckpoint() {
-		return OTUtils.findCheckpoint(source, comparator);
+	public CompletionStage<FindResult<K, D, List<D>>> findParentCommits(K startNode, @Nullable K lastNode,
+	                                                                    Predicate<OTCommit<K, D>> matchPredicate) {
+		return OTUtils.findParentCommits(source, comparator, startNode, lastNode,
+				commit -> Stages.of(matchPredicate.test(commit)));
 	}
 
-	public CompletionStage<FindResult<K, D>> findCheckpoint(Set<K> startNodes, @Nullable K lastNode) {
-		return OTUtils.findCheckpoint(source, comparator, startNodes, lastNode);
-	}
-
-	public CompletionStage<FindResult<K, D>> findParent(K startNode, @Nullable K lastNode,
-	                                                    Predicate<OTCommit<K, D>> matchPredicate) {
-		return OTUtils.findParent(source, comparator, startNode, lastNode, matchPredicate);
-	}
-
-	public CompletionStage<FindResult<K, D>> findParent(Set<K> startNodes, @Nullable K lastNode,
-	                                                    Predicate<OTCommit<K, D>> matchPredicate) {
-		return OTUtils.findParent(source, comparator, startNodes, lastNode, matchPredicate);
-	}
-
-	public CompletionStage<K> makeCheckpointForHeads() {
-		return OTUtils.makeCheckpointForHeads(otSystem, source, comparator);
-	}
-
-	public CompletionStage<K> makeCheckpointForNode(K node) {
-		return OTUtils.makeCheckpointForNode(otSystem, source, comparator, node);
+	public CompletionStage<FindResult<K, D, List<D>>> findParentCommits(Set<K> startNodes, @Nullable K lastNode,
+	                                                                    Predicate<OTCommit<K, D>> matchPredicate) {
+		return OTUtils.findParentCommits(source, comparator, startNodes, lastNode,
+				commit -> Stages.of(matchPredicate.test(commit)));
 	}
 
 	public CompletionStage<K> mergeHeadsAndPush() {
 		return OTUtils.mergeHeadsAndPush(otSystem, source, comparator);
 	}
 
-//	public void merge( Set<K> nodes,
-//	                   ResultCallback<OTCommit<K, D>> callback) {
-//		OTUtils.merge(eventloop, otSystem, source, comparator, nodes, callback);
-//	}
+	public CompletionStage<K> tryMergeHeadsAndPush() {
+		logger.trace("tryMergeHeadsAndPush, revision: {}, fetched revision: {}", revision, fetchedRevision);
+
+		final Stopwatch sw = Stopwatch.createStarted();
+		return OTUtils.tryMergeHeadsAndPush(otSystem, source, comparator)
+				.whenComplete((k, throwable) -> {
+					if (throwable == null) {
+						logger.trace("Finish tryMergeHeadsAndPush in {}, revision: {}, fetched revision: {}",
+								sw, revision, fetchedRevision);
+					} else {
+						logger.trace("Error tryMergeHeadsAndPush in {}, revision: {}, fetched revision: {}",
+								sw, revision, fetchedRevision, throwable);
+					}
+				});
+	}
+
+	public CompletionStage<FindResult<K, D, List<D>>> findMerge(K lastNode) {
+		return OTUtils.findMerge(source, comparator, lastNode);
+	}
+
+	public CompletionStage<FindResult<K, D, List<D>>> findMerge() {
+		return OTUtils.findMerge(source, comparator, null);
+	}
 
 	@Override
 	public String toString() {
-		return "{" +
-				"state=" + state +
-				", head=" + head +
-				", workingDiffs=" + workingDiffs +
-				", pendingCommits=" + pendingCommits +
+		return "OTStateManager{" +
+				"eventloop=" + eventloop +
+				", comparator=" + comparator +
+				", fetchedRevision=" + fetchedRevision +
+				", fetchedDiffs=" + fetchedDiffs.size() +
+				", fetchProgress=" + fetchProgress +
+				", revision=" + revision +
+				", workingDiffs=" + workingDiffs.size() +
+				", pendingCommits=" + pendingCommits.size() +
+				", state=" + state +
 				'}';
 	}
 }

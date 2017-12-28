@@ -16,13 +16,13 @@
 
 package io.datakernel.datagraph.node;
 
-import com.google.common.base.Function;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.graph.TaskContext;
 import io.datakernel.stream.processor.StreamJoin;
 
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.function.Function;
 
 import static java.util.Collections.singletonList;
 
@@ -66,7 +66,7 @@ public final class NodeJoin<K, L, R, V> implements Node {
 	@Override
 	public void createAndBind(TaskContext taskContext) {
 		StreamJoin<K, L, R, V> join =
-				StreamJoin.create(taskContext.getEventloop(), keyComparator, leftKeyFunction, rightKeyFunction, joiner);
+				StreamJoin.create(taskContext.getEventloop(), keyComparator, leftKeyFunction::apply, rightKeyFunction::apply, joiner);
 		taskContext.export(result, join.getOutput());
 		taskContext.bindChannel(left, join.getLeft());
 		taskContext.bindChannel(right, join.getRight());

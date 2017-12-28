@@ -30,12 +30,11 @@ import io.datakernel.utils.GsonAdapters.TypeAdapterRegistry;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.google.common.base.MoreObjects.firstNonNull;
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.collect.Maps.newLinkedHashMap;
+import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.utils.GsonAdapters.asNullable;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
@@ -66,10 +65,10 @@ final class QueryResultGsonAdapter extends TypeAdapter<QueryResult> {
 	}
 
 	public static QueryResultGsonAdapter create(TypeAdapterRegistry typeAdapterRegistry, Map<String, Type> attributeTypes, Map<String, Type> measureTypes) {
-		Map<String, TypeAdapter<?>> attributeAdapters = newLinkedHashMap();
-		Map<String, TypeAdapter<?>> measureAdapters = newLinkedHashMap();
-		Map<String, Class<?>> attributeRawTypes = newLinkedHashMap();
-		Map<String, Class<?>> measureRawTypes = newLinkedHashMap();
+		Map<String, TypeAdapter<?>> attributeAdapters = new LinkedHashMap<>();
+		Map<String, TypeAdapter<?>> measureAdapters = new LinkedHashMap<>();
+		Map<String, Class<?>> attributeRawTypes = new LinkedHashMap<>();
+		Map<String, Class<?>> measureRawTypes = new LinkedHashMap<>();
 		for (String attribute : attributeTypes.keySet()) {
 			Type type = attributeTypes.get(attribute);
 			attributeAdapters.put(attribute, asNullable(typeAdapterRegistry.getAdapter(type)));
@@ -171,7 +170,7 @@ final class QueryResultGsonAdapter extends TypeAdapter<QueryResult> {
 
 	private Map<String, Object> readFilterAttributes(JsonReader reader) throws JsonParseException, IOException {
 		reader.beginObject();
-		Map<String, Object> result = newLinkedHashMap();
+		Map<String, Object> result = new LinkedHashMap<>();
 		while (reader.hasNext()) {
 			String attribute = reader.nextName();
 			Object value = attributeAdapters.get(attribute).read(reader);
@@ -279,6 +278,10 @@ final class QueryResultGsonAdapter extends TypeAdapter<QueryResult> {
 			fieldTypeAdapters[i] = firstNonNull(attributeAdapters.get(field), measureAdapters.get(field));
 		}
 		return fieldTypeAdapters;
+	}
+
+	private static <T> T firstNonNull(T a, T b) {
+		return a != null ? a : b;
 	}
 
 }

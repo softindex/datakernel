@@ -16,7 +16,6 @@
 
 package io.datakernel.datagraph.node;
 
-import com.google.common.base.MoreObjects;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.graph.TaskContext;
 import io.datakernel.stream.processor.StreamUnion;
@@ -54,9 +53,9 @@ public final class NodeUnion<T> implements Node {
 
 	@Override
 	public String toString() {
-		return MoreObjects.toStringHelper(this)
-				.add("inputs", inputs)
-				.add("output", output)
-				.toString();
+		return "NodeUnion{" +
+				"inputs=" + inputs +
+				", output=" + output +
+				'}';
 	}
 }

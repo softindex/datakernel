@@ -16,8 +16,6 @@
 
 package io.datakernel.serializer;
 
-import com.google.common.collect.BiMap;
-import com.google.common.collect.HashBiMap;
 import com.google.gson.*;
 
 import java.lang.reflect.Constructor;
@@ -26,41 +24,52 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
+
+import static java.util.stream.Collectors.toMap;
 
 public final class GsonSubclassesAdapter<T> implements JsonSerializer<T>, JsonDeserializer<T> {
-	private final BiMap<String, Class<? extends T>> classTags;
+	private final Map<String, Class<? extends T>> classTags;
+	private final Map<Class<? extends T>, String> classTagsInverse;
 	private final Map<String, InstanceCreator<T>> classCreators;
-	private final BiMap<String, Class<? extends T>> subclassNames;
+	private final Map<String, Class<? extends T>> subclassNames;
+	private final Map<Class<? extends T>, String> subclassNamesInverse;
 	private final String subclassField;
 
 	// region builders
-	private GsonSubclassesAdapter(BiMap<String, Class<? extends T>> classTags,
+	private GsonSubclassesAdapter(Map<String, Class<? extends T>> classTags,
 	                              Map<String, InstanceCreator<T>> classCreators,
-	                              String subclassField, BiMap<String, Class<? extends T>> subclassNames) {
+	                              String subclassField, Map<String, Class<? extends T>> subclassNames) {
 		this.classTags = classTags;
+		this.classTagsInverse = classTags.entrySet().stream().collect(toMap(Entry::getValue, Entry::getKey));
 		this.classCreators = classCreators;
 		this.subclassField = subclassField;
 		this.subclassNames = subclassNames;
+		this.subclassNamesInverse = subclassNames.entrySet().stream().collect(toMap(Entry::getValue, Entry::getKey));
+	}
+
+	private static <K, V> void add(Map<K, V> forward, Map<V, K> backward, K key, V value) {
+		forward.put(key, value);
+		backward.put(value, key);
 	}
 
 	public static <T> GsonSubclassesAdapter<T> create() {
 		return new GsonSubclassesAdapter<>(
-				HashBiMap.<String, Class<? extends T>>create(),
+				new HashMap<>(),
 				new HashMap<String, InstanceCreator<T>>(),
 				"_type",
-				HashBiMap.<String, Class<? extends T>>create()
-		);
+				new HashMap<>());
 	}
 
 	public GsonSubclassesAdapter<T> withClassTag(String classTag, Class<? extends T> type,
 	                                             InstanceCreator<T> instanceCreator) {
-		this.classTags.put(classTag, type);
+		add(this.classTags, this.classTagsInverse, classTag, type);
 		this.classCreators.put(classTag, instanceCreator);
 		return this;
 	}
 
 	public GsonSubclassesAdapter<T> withClassTag(String classTag, Class<? extends T> type) {
-		this.classTags.put(classTag, type);
+		add(this.classTags, this.classTagsInverse, classTag, type);
 		return this;
 	}
 
@@ -69,7 +78,7 @@ public final class GsonSubclassesAdapter<T> implements JsonSerializer<T>, JsonDe
 	}
 
 	public GsonSubclassesAdapter<T> withSubclass(String subclassName, Class<? extends T> subclass) {
-		this.subclassNames.put(subclassName, subclass);
+		add(this.subclassNames, this.subclassNamesInverse, subclassName, subclass);
 		return this;
 	}
 	// endregion
@@ -92,16 +101,16 @@ public final class GsonSubclassesAdapter<T> implements JsonSerializer<T>, JsonDe
 	@Override
 	public JsonElement serialize(T src, Type typeOfSrc, JsonSerializationContext context) {
 		Class<? extends T> aClass = (Class<? extends T>) src.getClass();
-		String classTag = classTags.inverse().get(aClass);
+		String classTag = classTagsInverse.get(aClass);
 		if (classTag != null) {
 			return new JsonPrimitive(classTag);
 		}
-		String subclassName = subclassNames.inverse().get(aClass);
+		String subclassName = subclassNamesInverse.get(aClass);
 		if (subclassName != null) {
 			JsonObject result = new JsonObject();
 			result.addProperty(subclassField, subclassName);
 			JsonObject element = (JsonObject) context.serialize(src, src.getClass());
-			for (Map.Entry<String, JsonElement> entry : element.entrySet()) {
+			for (Entry<String, JsonElement> entry : element.entrySet()) {
 				result.add(entry.getKey(), entry.getValue());
 			}
 			return result;

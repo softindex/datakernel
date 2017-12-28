@@ -24,7 +24,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class TreeConfig extends AbstractConfig {
 	private static final Logger logger = LoggerFactory.getLogger(TreeConfig.class);
@@ -133,7 +133,7 @@ public final class TreeConfig extends AbstractConfig {
 		}
 		TreeConfig child = this.children.get(path);
 		if (child == null) {
-			child = new TreeConfig(this, new LinkedHashMap<String, TreeConfig>(), null);
+			child = new TreeConfig(this, new LinkedHashMap<>(), null);
 			this.children.put(path, child);
 		} else {
 			if (child.hasValue()) {

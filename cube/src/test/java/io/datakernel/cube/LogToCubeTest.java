@@ -32,6 +32,7 @@ import io.datakernel.logfs.ot.*;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTRemoteSql;
 import io.datakernel.ot.OTStateManager;
+import io.datakernel.ot.OTSystem;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducers;
@@ -55,12 +56,20 @@ import static io.datakernel.cube.Cube.AggregationConfig.id;
 import static io.datakernel.cube.CubeTestUtils.dataSource;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
+import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.assertEquals;
 
 @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
 public class LogToCubeTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+	private static <K, D> java.util.function.Function<D, OTStateManager<K, D>> addFunction(OTStateManager<K, D> stateManager) {
+		return value -> {
+			stateManager.add(value);
+			return stateManager;
+		};
+	}
 
 	@Test
 	// TODO: remove ignore later
@@ -83,32 +92,34 @@ public class LogToCubeTest {
 				.withAggregation(id("adv").withDimensions("adv").withMeasures("advRequests"));
 
 		DataSource dataSource = dataSource("test.properties");
-		OTRemoteSql<LogDiff<CubeDiff>> otSourceSql = OTRemoteSql.create(executor, dataSource, LogDiffJson.create(CubeDiffJson.create(cube)));
+		final OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
+		OTRemoteSql<LogDiff<CubeDiff>> otSourceSql = OTRemoteSql.create(executor, dataSource, otSystem, LogDiffJson.create(CubeDiffJson.create(cube)));
 		otSourceSql.truncateTables();
-		otSourceSql.push(OTCommit.<Integer, LogDiff<CubeDiff>>ofRoot(1));
+		otSourceSql.push(OTCommit.ofRoot(1));
 
+		final LogOTState<CubeDiff> cubeDiffLogOTState = new LogOTState<>(cube);
 		OTStateManager<Integer, LogDiff<CubeDiff>> logCubeStateManager = new OTStateManager<>(eventloop,
-				LogOT.createLogOT(CubeOT.createCubeOT()),
+				otSystem,
 				otSourceSql,
-				(o1, o2) -> Integer.compare(o1, o2),
-				new LogOTState<>(cube));
+				Integer::compare,
+				cubeDiffLogOTState);
 
 		LogManager<TestPubRequest> logManager = LogManagerImpl.create(eventloop,
 				LocalFsLogFileSystem.create(executor, logsDir),
 				SerializerBuilder.create(classLoader).build(TestPubRequest.class));
 
-		LogOTProcessor<Integer, TestPubRequest, CubeDiff> logOTProcessor = LogOTProcessor.create(eventloop,
+		LogOTProcessor<TestPubRequest, CubeDiff> logOTProcessor = LogOTProcessor.create(eventloop,
 				logManager,
 				new TestAggregatorSplitter(eventloop, cube), // TestAggregatorSplitter.create(eventloop, cube),
 				"testlog",
 				asList("partitionA"),
-				logCubeStateManager);
+				cubeDiffLogOTState);
 
 		StreamProducers.ofIterator(eventloop, asList(
 				new TestPubRequest(1000, 1, asList(new TestPubRequest.TestAdvRequest(10))),
 				new TestPubRequest(1001, 2, asList(new TestPubRequest.TestAdvRequest(10), new TestPubRequest.TestAdvRequest(20))),
 				new TestPubRequest(1002, 1, asList(new TestPubRequest.TestAdvRequest(30))),
-				new TestPubRequest(1002, 2, Arrays.<TestPubRequest.TestAdvRequest>asList())).iterator())
+				new TestPubRequest(1002, 2, Arrays.asList())).iterator())
 				.streamTo(logManager.consumerStream("partitionA"));
 		eventloop.run();
 
@@ -118,7 +129,12 @@ public class LogToCubeTest {
 		eventloop.run();
 		future.get();
 
-		future = logOTProcessor.processLog().toCompletableFuture();
+		future = logOTProcessor.processLog()
+				.thenCompose(logDiff -> aggregationChunkStorage
+						.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).collect(toSet()))
+						.thenApply($ -> logDiff))
+				.thenApply(addFunction(logCubeStateManager))
+				.thenCompose(OTStateManager::commitAndPush).toCompletableFuture();
 		eventloop.run();
 		future.get();
 

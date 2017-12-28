@@ -24,6 +24,7 @@ import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.*;
 
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
+import static java.lang.String.format;
 
 /**
  * Represent deserializer which deserializes data from ByteBuffer to some type. Is a {@link AbstractStreamTransformer_1_1}
@@ -146,10 +147,14 @@ public final class StreamBinaryDeserializer<T> implements StreamTransformer<Byte
 
 				if (isReceiverReady()) {
 					input.getProducer().produce(this);
-				}
 
-				if (queue.isEmpty() && input.getStatus() == END_OF_STREAM) {
-					output.sendEndOfStream();
+					if (input.getStatus() == END_OF_STREAM) {
+						if (queue.isEmpty()) {
+							output.sendEndOfStream();
+						} else {
+							throw new ParseException(format("Truncated serialized data stream, %s : %s", this, queue));
+						}
+					}
 				}
 			} catch (ParseException e) {
 				closeWithError(e);

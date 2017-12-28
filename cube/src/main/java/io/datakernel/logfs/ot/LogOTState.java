@@ -30,4 +30,12 @@ public class LogOTState<D> implements OTState<LogDiff<D>> {
 			dataState.apply(d);
 		}
 	}
+
+	@Override
+	public String toString() {
+		return "LogOTState{" +
+				"positions=" + positions +
+				", dataState=" + dataState +
+				'}';
+	}
 }

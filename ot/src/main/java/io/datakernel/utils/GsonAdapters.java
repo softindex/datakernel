@@ -1,12 +1,10 @@
 package io.datakernel.utils;
 
-import com.google.common.primitives.Primitives;
 import com.google.gson.TypeAdapter;
 import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
-import io.datakernel.util.Function;
 import org.joda.time.LocalDate;
 
 import java.io.IOException;
@@ -16,6 +14,7 @@ import java.io.Writer;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.*;
+import java.util.function.Function;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
@@ -150,9 +149,29 @@ public class GsonAdapters {
 
 	private static final Map<Class<?>, TypeAdapter<?>> typeAdapters = new HashMap<>();
 
+	private static Map<Class<?>, Class<?>> PRIMITIVES = new HashMap<Class<?>, Class<?>>() {{
+		put(byte.class, Byte.class);
+		put(short.class, Short.class);
+		put(int.class, Integer.class);
+		put(long.class, Long.class);
+		put(float.class, Float.class);
+		put(double.class, Double.class);
+		put(char.class, Character.class);
+	}};
+
+	private static Map<Class<?>, Class<?>> WRAPPERS = new HashMap<Class<?>, Class<?>>() {{
+		put(Byte.class, byte.class);
+		put(Short.class, short.class);
+		put(Integer.class, int.class);
+		put(Long.class, long.class);
+		put(Float.class, float.class);
+		put(Double.class, double.class);
+		put(Character.class, char.class);
+	}};
+
 	private static <T> void registerPrimitive(Class<T> type, TypeAdapter<T> typeAdapter) {
-		typeAdapters.put(Primitives.wrap(type), typeAdapter);
-		typeAdapters.put(Primitives.unwrap(type), typeAdapter);
+		typeAdapters.put(PRIMITIVES.getOrDefault(type, type), typeAdapter);
+		typeAdapters.put(WRAPPERS.getOrDefault(type, type), typeAdapter);
 	}
 
 	@SuppressWarnings("unchecked")

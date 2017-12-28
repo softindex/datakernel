@@ -16,14 +16,17 @@
 
 package io.datakernel.datagraph.node;
 
-import com.google.common.base.Function;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.graph.TaskContext;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.processor.StreamReducer;
 import io.datakernel.stream.processor.StreamReducers;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.function.Function;
 
 import static java.util.Collections.singletonList;
 
@@ -74,7 +77,7 @@ public final class NodeReduce<K, O, A> implements Node {
 		for (StreamId streamId : inputs.keySet()) {
 			Input<K, O, A> koaInput = inputs.get(streamId);
 			StreamConsumer<Object> input = streamReducer.newInput(
-					(Function<Object, K>) koaInput.keyFunction,
+					((Function<Object, K>) koaInput.keyFunction)::apply,
 					(StreamReducers.Reducer<K, Object, O, A>) koaInput.reducer);
 			taskContext.bindChannel(streamId, input);
 		}

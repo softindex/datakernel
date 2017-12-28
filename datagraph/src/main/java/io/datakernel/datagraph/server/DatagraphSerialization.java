@@ -16,14 +16,8 @@
 
 package io.datakernel.datagraph.server;
 
-import com.google.common.base.Function;
-import com.google.common.base.Functions;
-import com.google.common.base.Predicate;
-import com.google.common.base.Throwables;
-import com.google.common.collect.Ordering;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.InstanceCreator;
 import com.google.gson.JsonSyntaxException;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.datagraph.graph.StreamId;
@@ -38,9 +32,10 @@ import io.datakernel.stream.processor.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.Type;
 import java.net.InetSocketAddress;
 import java.util.*;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
  * Responsible for setting up serialization operations for datagraph.
@@ -55,21 +50,21 @@ public final class DatagraphSerialization {
 	private final Map<Class<?>, BufferSerializer<?>> serializers = new HashMap<>();
 
 	public DatagraphSerialization() {
-		this(Collections.<NodeSubclass>emptyList());
+		this(Collections.emptyList());
 	}
 
 	/**
 	 * Constructs a new datagraph serialization object, initializes Gson object with used classes.
 	 */
 	public DatagraphSerialization(List<NodeSubclass> nodeSubclasses) {
-		Class<?> naturalOrderingClass;
-		Class<?> identityFunctionClass;
-		try {
-			naturalOrderingClass = Class.forName("com.google.common.collect.NaturalOrdering");
-			identityFunctionClass = Class.forName("com.google.common.base.Functions$IdentityFunction");
-		} catch (ClassNotFoundException e) {
-			throw Throwables.propagate(e);
-		}
+//		Class<?> naturalOrderingClass;
+//		Class<?> identityFunctionClass;
+//		try {
+//			naturalOrderingClass = Class.forName("com.google.common.collect.NaturalOrdering");
+//			identityFunctionClass = Class.forName("com.google.common.base.Functions$IdentityFunction");
+//		} catch (ClassNotFoundException e) {
+//			throw new RuntimeException(e);
+//		}
 
 		GsonSubclassesAdapter<Object> gsonSubclassesAdapter = GsonSubclassesAdapter.create()
 				.withSubclassField("nodeType")
@@ -105,20 +100,12 @@ public final class DatagraphSerialization {
 						.withSubclassField("predicateType"))
 				.registerTypeAdapter(Function.class, GsonSubclassesAdapter.create()
 						.withSubclassField("functionType")
-						.withClassTag(identityFunctionClass.getName(), identityFunctionClass, new InstanceCreator<Object>() {
-							@Override
-							public Object createInstance(Type type) {
-								return Functions.identity();
-							}
-						}))
+//						.withClassTag(identityFunctionClass.getName(), identityFunctionClass, (InstanceCreator<Object>) type -> Functions.identity()))
+						.withClassTag(Function.identity().getClass().getName(), Function.identity().getClass(), type -> Function.identity()))
 				.registerTypeAdapter(Comparator.class, GsonSubclassesAdapter.create()
 						.withSubclassField("comparatorType")
-						.withClassTag(naturalOrderingClass.getName(), naturalOrderingClass, new InstanceCreator<Object>() {
-							@Override
-							public Object createInstance(Type type) {
-								return Ordering.natural();
-							}
-						}))
+//						.withClassTag(naturalOrderingClass.getName(), naturalOrderingClass, type -> Ordering.natural()))
+						.withClassTag(Comparator.class.getName(), Comparator.class, type -> Comparator.naturalOrder()))
 				.registerTypeAdapter(StreamMap.Mapper.class, GsonSubclassesAdapter.create()
 						.withSubclassField("mapperType"))
 				.registerTypeAdapter(StreamReducers.Reducer.class, GsonSubclassesAdapter.create()

@@ -16,7 +16,6 @@
 
 package io.datakernel.aggregation;
 
-import com.google.common.base.MoreObjects;
 import io.datakernel.aggregation.annotation.Key;
 import io.datakernel.aggregation.annotation.Measure;
 
@@ -63,10 +62,10 @@ public class InvertedIndexRecord {
 
 	@Override
 	public String toString() {
-		return MoreObjects.toStringHelper(this)
-				.add("word", word)
-				.add("documentId", documentId)
-				.toString();
+		return "InvertedIndexRecord{" +
+				"word='" + word + '\'' +
+				", documentId=" + documentId +
+				'}';
 	}
 }
 

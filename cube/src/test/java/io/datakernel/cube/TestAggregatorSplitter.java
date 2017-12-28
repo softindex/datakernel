@@ -16,20 +16,19 @@
 
 package io.datakernel.cube;
 
-import com.google.common.base.Functions;
-import io.datakernel.async.StagesAccumulator;
+import io.datakernel.aggregation.AggregationUtils;
 import io.datakernel.cube.bean.TestPubRequest;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.logfs.ot.LogDataConsumerSplitter;
 import io.datakernel.stream.StreamDataReceiver;
 
-import java.util.List;
+import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Stream;
 
-import static com.google.common.collect.Maps.asMap;
-import static com.google.common.collect.Sets.newHashSet;
-import static com.google.common.collect.Sets.union;
+import static java.util.Collections.singleton;
+import static java.util.stream.Collectors.toSet;
 
 @SuppressWarnings("unchecked")
 public class TestAggregatorSplitter extends LogDataConsumerSplitter<TestPubRequest, CubeDiff> {
@@ -58,10 +57,16 @@ public class TestAggregatorSplitter extends LogDataConsumerSplitter<TestPubReque
 		}
 	}
 
-	private static final Set<String> PUB_DIMENSIONS = newHashSet("date", "hourOfDay", "pub");
-	private static final Set<String> PUB_METRICS = newHashSet("pubRequests");
-	private static final Set<String> ADV_DIMENSIONS = newHashSet(union(PUB_DIMENSIONS, newHashSet("adv")));
-	private static final Set<String> ADV_METRICS = newHashSet("advRequests");
+	private static final Set<String> PUB_DIMENSIONS = Stream.of("date", "hourOfDay", "pub").collect(toSet());
+	private static final Set<String> PUB_METRICS = singleton("pubRequests");
+	private static final Set<String> ADV_DIMENSIONS = union(PUB_DIMENSIONS, singleton("adv"));
+	private static final Set<String> ADV_METRICS = singleton("advRequests");
+
+	private static <T> Set<T> union(Set<T> a, Set<T> b) {
+		Set<T> set = new HashSet<>(a);
+		set.addAll(b);
+		return set;
+	}
 
 	@Override
 	protected StreamDataReceiver<TestPubRequest> createSplitter() {
@@ -70,13 +75,13 @@ public class TestAggregatorSplitter extends LogDataConsumerSplitter<TestPubReque
 
 			private final StreamDataReceiver<AggregationItem> pubAggregator = addOutput(
 					cube.logStreamConsumer(AggregationItem.class,
-							asMap(PUB_DIMENSIONS, Functions.<String>identity()),
-							asMap(PUB_METRICS, Functions.<String>identity())));
+							AggregationUtils.streamToLinkedMap(PUB_DIMENSIONS.stream(), o -> o),
+							AggregationUtils.streamToLinkedMap(PUB_METRICS.stream(), o -> o)));
 
 			private final StreamDataReceiver<AggregationItem> advAggregator = addOutput(
 					cube.logStreamConsumer(AggregationItem.class,
-							asMap(ADV_DIMENSIONS, Functions.<String>identity()),
-							asMap(ADV_METRICS, Functions.<String>identity())));
+							AggregationUtils.streamToLinkedMap(ADV_DIMENSIONS.stream(), o -> o),
+							AggregationUtils.streamToLinkedMap(ADV_METRICS.stream(), o -> o)));
 
 			@Override
 			public void onData(TestPubRequest pubRequest) {

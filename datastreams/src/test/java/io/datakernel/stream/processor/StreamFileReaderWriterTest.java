@@ -143,7 +143,8 @@ public class StreamFileReaderWriterTest {
 		producer.streamTo(writer);
 		eventloop.run();
 
-		byte[] fileBytes = com.google.common.io.Files.toByteArray(tempFile);
+
+		byte[] fileBytes = Files.readAllBytes(tempFile.toPath());
 		assertArrayEquals(bytes, fileBytes);
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}

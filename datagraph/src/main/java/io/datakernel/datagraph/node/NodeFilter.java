@@ -16,13 +16,12 @@
 
 package io.datakernel.datagraph.node;
 
-import com.google.common.base.MoreObjects;
-import com.google.common.base.Predicate;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.graph.TaskContext;
 import io.datakernel.stream.processor.StreamFilter;
 
 import java.util.Collection;
+import java.util.function.Predicate;
 
 import static java.util.Collections.singletonList;
 
@@ -59,10 +58,10 @@ public final class NodeFilter<T> implements Node {
 
 	@Override
 	public String toString() {
-		return MoreObjects.toStringHelper(this)
-				.add("predicate", predicate)
-				.add("input", input)
-				.add("output", output)
-				.toString();
+		return "NodeFilter{" +
+				"predicate=" + predicate +
+				", input=" + input +
+				", output=" + output +
+				'}';
 	}
 }

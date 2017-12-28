@@ -5,15 +5,13 @@ import io.datakernel.aggregation.ot.AggregationOT;
 import io.datakernel.ot.OTSystem;
 import io.datakernel.ot.OTSystemImpl;
 import io.datakernel.ot.TransformResult;
-import io.datakernel.ot.TransformResult.ConflictResolution;
+import io.datakernel.ot.exceptions.OTTransformException;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Stream;
 
-import static com.google.common.collect.Sets.union;
 import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toSet;
 
 public class CubeOT {
 	public static OTSystem<CubeDiff> createCubeOT() {
@@ -34,9 +32,9 @@ public class CubeOT {
 							return TransformResult.conflict(transformed.resolution);
 
 						if (transformed.left.size() > 1)
-							throw new AssertionError();
+							throw new OTTransformException();
 						if (transformed.right.size() > 1)
-							throw new AssertionError();
+							throw new OTTransformException();
 
 						if (!transformed.left.isEmpty())
 							newOpsLeft.put(aggregation, transformed.left.get(0));
@@ -69,8 +67,10 @@ public class CubeOT {
 						}
 					}
 					return CubeDiff.of(newOps);
-				})
-				;
+				});
+	}
 
+	private static <T> Set<T> union(Set<T> a, Set<T> b) {
+		return Stream.concat(a.stream(), b.stream()).collect(toSet());
 	}
 }

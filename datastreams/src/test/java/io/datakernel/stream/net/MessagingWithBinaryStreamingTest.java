@@ -16,8 +16,6 @@
 
 package io.datakernel.stream.net;
 
-import com.google.common.collect.Lists;
-import com.google.common.net.InetAddresses;
 import com.google.gson.Gson;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
@@ -35,8 +33,11 @@ import io.datakernel.stream.processor.StreamBinarySerializer;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
 import java.nio.channels.SocketChannel;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
 
@@ -50,7 +51,14 @@ import static org.junit.Assert.assertTrue;
 @SuppressWarnings("unchecked")
 public class MessagingWithBinaryStreamingTest {
 	private static final int LISTEN_PORT = 4821;
-	private static final InetSocketAddress address = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), LISTEN_PORT);
+	private static final InetSocketAddress address;
+	static {
+		try {
+			address = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), LISTEN_PORT);
+		} catch (UnknownHostException e) {
+			throw new RuntimeException(e);
+		}
+	}
 
 	@Before
 	public void setUp() throws Exception {
@@ -147,7 +155,7 @@ public class MessagingWithBinaryStreamingTest {
 
 	@Test
 	public void testMessagingDownload() throws Exception {
-		final List<Long> source = Lists.newArrayList();
+		final List<Long> source = new ArrayList<>();
 //		for (long i = 0; i < 100; i++) {
 //			source.add(i);
 //		}
@@ -217,7 +225,7 @@ public class MessagingWithBinaryStreamingTest {
 
 	@Test
 	public void testBinaryMessagingUpload() throws Exception {
-		final List<Long> source = Lists.newArrayList();
+		final List<Long> source = new ArrayList<>();
 		for (long i = 0; i < 100; i++) {
 			source.add(i);
 		}
@@ -290,7 +298,7 @@ public class MessagingWithBinaryStreamingTest {
 
 	@Test
 	public void testBinaryMessagingUploadAck() throws Exception {
-		final List<Long> source = Lists.newArrayList();
+		final List<Long> source = new ArrayList<>();
 		for (long i = 0; i < 100; i++) {
 			source.add(i);
 		}
@@ -388,7 +396,7 @@ public class MessagingWithBinaryStreamingTest {
 
 	@Test
 	public void testGsonMessagingUpload() throws Exception {
-		final List<Long> source = Lists.newArrayList();
+		final List<Long> source = new ArrayList<>();
 		for (long i = 0; i < 100; i++) {
 			source.add(i);
 		}

@@ -16,7 +16,6 @@
 
 package io.datakernel.cube.http;
 
-import com.google.common.base.Charsets;
 import com.google.gson.TypeAdapter;
 import io.datakernel.aggregation.AggregationPredicate;
 import io.datakernel.aggregation.QueryException;
@@ -28,6 +27,8 @@ import io.datakernel.utils.GsonAdapters.TypeAdapterRegistryImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
@@ -99,7 +100,7 @@ public final class ReportingServiceServlet implements AsyncServlet {
 
 	private static HttpResponse createResponse(String body) {
 		HttpResponse response = HttpResponse.ok200();
-		response.setContentType(ContentType.of(MediaTypes.JSON, Charsets.UTF_8));
+		response.setContentType(ContentType.of(MediaTypes.JSON, StandardCharsets.UTF_8));
 		response.setBody(wrapUtf8(body));
 		response.addHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
 		return response;
@@ -107,7 +108,7 @@ public final class ReportingServiceServlet implements AsyncServlet {
 
 	private static HttpResponse createErrorResponse(String body) {
 		HttpResponse response = HttpResponse.ofCode(400);
-		response.setContentType(ContentType.of(MediaTypes.PLAIN_TEXT, Charsets.UTF_8));
+		response.setContentType(ContentType.of(MediaTypes.PLAIN_TEXT, StandardCharsets.UTF_8));
 		response.setBody(wrapUtf8(body));
 		response.addHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
 		return response;

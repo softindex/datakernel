@@ -33,11 +33,16 @@ import io.datakernel.stream.processor.StreamLZ4Decompressor;
 
 import java.net.InetSocketAddress;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletionStage;
+import java.util.stream.Collectors;
 
 import static io.datakernel.aggregation.AggregationUtils.createBufferSerializer;
 
 public class RemoteFsChunkStorage implements AggregationChunkStorage {
+	public static final String LOG = ".log";
+	public static final String TEMP_LOG = ".temp";
+
 	private final Eventloop eventloop;
 	private final IRemoteFsClient client;
 	private final IdGenerator<Long> idGenerator;
@@ -70,11 +75,15 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage {
 		});
 	}
 
+	private String path(long chunkId) {
+		return chunkId + LOG;
+	}
+
 	@Override
 	public <T> CompletionStage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields,
 	                                                                    Class<T> recordClass, long chunkId,
 	                                                                    DefiningClassLoader classLoader) {
-		return client.upload(path(chunkId)).thenApply(consumer -> {
+		return client.upload(tempPath(chunkId)).thenApply(consumer -> {
 			StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
 			BufferSerializer<T> bufferSerializer = createBufferSerializer(aggregation, recordClass,
 					aggregation.getKeys(), fields, classLoader);
@@ -89,8 +98,13 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage {
 		});
 	}
 
-	private String path(long id) {
-		return id + ".log";
+	private String tempPath(long chunkId) {
+		return chunkId + TEMP_LOG;
+	}
+
+	@Override
+	public CompletionStage<Void> finish(Set<Long> chunkIds) {
+		return client.move(chunkIds.stream().collect(Collectors.toMap(this::tempPath, this::path)));
 	}
 
 	@Override

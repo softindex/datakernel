@@ -16,8 +16,6 @@
 
 package io.datakernel.aggregation;
 
-import com.google.common.base.Function;
-import com.google.common.collect.ImmutableMap;
 import io.datakernel.aggregation.fieldtype.FieldTypes;
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.async.Stages;
@@ -31,15 +29,18 @@ import org.junit.rules.TemporaryFolder;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Function;
 
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
 import static io.datakernel.aggregation.measure.Measures.union;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.TestUtils.assertStatus;
 import static java.util.Arrays.asList;
+import static java.util.Collections.singletonMap;
 import static org.junit.Assert.assertEquals;
 
 @SuppressWarnings({"Duplicates", "unchecked", "ArraysAsListWithZeroOrOneArgument"})
@@ -77,6 +78,11 @@ public class AggregationGroupReducerTest {
 			public CompletionStage<Long> createId() {
 				return Stages.of(++chunkId);
 			}
+
+			@Override
+			public CompletionStage<Void> finish(Set<Long> chunkIds) {
+				return Stages.of(null);
+			}
 		};
 
 		Class<InvertedIndexRecord> inputClass = InvertedIndexRecord.class;
@@ -87,7 +93,7 @@ public class AggregationGroupReducerTest {
 				asList("word"), classLoader);
 
 		Aggregate aggregate = AggregationUtils.createPreaggregator(structure, inputClass, aggregationClass,
-				ImmutableMap.of("word", "word"), ImmutableMap.of("documents", "documentId"), classLoader);
+				singletonMap("word", "word"), singletonMap("documents", "documentId"), classLoader);
 
 		int aggregationChunkSize = 2;
 

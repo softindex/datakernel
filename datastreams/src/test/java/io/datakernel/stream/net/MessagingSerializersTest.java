@@ -16,12 +16,13 @@
 
 package io.datakernel.stream.net;
 
-import com.google.common.base.Objects;
 import com.google.gson.Gson;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.exception.ParseException;
 import org.junit.Test;
+
+import java.util.Objects;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static org.junit.Assert.assertEquals;
@@ -46,12 +47,12 @@ public class MessagingSerializersTest {
 			Req req = (Req) o;
 			return num == req.num &&
 					Double.compare(req.val, val) == 0 &&
-					Objects.equal(text, req.text);
+					Objects.equals(text, req.text);
 		}
 
 		@Override
 		public int hashCode() {
-			return Objects.hashCode(text, num, val);
+			return Objects.hash(text, num, val);
 		}
 
 		@Override

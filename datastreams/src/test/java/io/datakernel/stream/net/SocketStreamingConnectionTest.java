@@ -16,8 +16,6 @@
 
 package io.datakernel.stream.net;
 
-import com.google.common.collect.Lists;
-import com.google.common.net.InetAddresses;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
@@ -29,7 +27,10 @@ import io.datakernel.stream.processor.StreamBinarySerializer;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -41,7 +42,14 @@ import static org.junit.Assert.assertEquals;
 @SuppressWarnings("unchecked")
 public final class SocketStreamingConnectionTest {
 	private static final int LISTEN_PORT = 1234;
-	private static final InetSocketAddress address = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), LISTEN_PORT);
+	private static final InetSocketAddress address;
+	static {
+		try {
+			address = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), LISTEN_PORT);
+		} catch (UnknownHostException e) {
+			throw new RuntimeException(e);
+		}
+	}
 
 	@Before
 	public void setUp() throws Exception {
@@ -52,7 +60,7 @@ public final class SocketStreamingConnectionTest {
 	@Test
 	public void test() throws Exception {
 		CompletableFuture<?> future;
-		final List<Integer> list = Lists.newArrayList();
+		final List<Integer> list = new ArrayList<>();
 		for (int i = 0; i < 5; i++) {
 			list.add(i);
 		}
@@ -97,7 +105,7 @@ public final class SocketStreamingConnectionTest {
 	@Test
 	public void testLoopback() throws Exception {
 		CompletableFuture<?> future;
-		List<Integer> source = Lists.newArrayList();
+		List<Integer> source = new ArrayList<>();
 		for (int i = 0; i < 100; i++) {
 			source.add(i);
 		}

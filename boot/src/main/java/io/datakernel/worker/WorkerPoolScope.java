@@ -24,8 +24,8 @@ import io.datakernel.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkState;
+import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.util.Preconditions.checkState;
 
 public final class WorkerPoolScope implements WorkerPools, Scope {
 	final Map<Key<?>, WorkerPoolObjects> pool = new HashMap<>();

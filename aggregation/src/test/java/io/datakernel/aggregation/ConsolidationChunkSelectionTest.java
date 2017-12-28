@@ -21,13 +21,10 @@ import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
-import static com.google.common.collect.Iterables.concat;
-import static com.google.common.collect.Sets.newHashSet;
+import static java.util.stream.Collectors.toSet;
+import static java.util.stream.Stream.concat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
@@ -37,7 +34,7 @@ public class ConsolidationChunkSelectionTest {
 		AggregationStructure structure = new AggregationStructure().withKey("key", FieldTypes.ofInt());
 		AggregationState state = new AggregationState(structure);
 
-		Set<AggregationChunk> chunks = newHashSet();
+		Set<AggregationChunk> chunks = new HashSet<>();
 		chunks.add(createTestChunk(1, 1, 2));
 		chunks.add(createTestChunk(2, 1, 2));
 		chunks.add(createTestChunk(3, 1, 4));
@@ -50,7 +47,7 @@ public class ConsolidationChunkSelectionTest {
 		state.apply(AggregationDiff.of(chunks));
 
 		List<AggregationChunk> selectedChunks = state.findChunksForConsolidationHotSegment(100);
-		assertEquals(chunks, newHashSet(selectedChunks));
+		assertEquals(chunks, new HashSet<>(selectedChunks));
 
 		selectedChunks = state.findChunksForConsolidationHotSegment(5);
 		assertEquals(5, selectedChunks.size());
@@ -62,7 +59,7 @@ public class ConsolidationChunkSelectionTest {
 		chunks.add(createTestChunk(6, 5, 6));
 		chunks.add(createTestChunk(7, 5, 8));
 
-		assertEquals(chunks, newHashSet(selectedChunks));
+		assertEquals(chunks, new HashSet<>(selectedChunks));
 	}
 
 	@Test
@@ -70,23 +67,23 @@ public class ConsolidationChunkSelectionTest {
 		AggregationStructure structure = new AggregationStructure().withKey("key", FieldTypes.ofInt());
 		AggregationState state = new AggregationState(structure);
 
-		Set<AggregationChunk> chunks1 = newHashSet();
+		Set<AggregationChunk> chunks1 = new HashSet<>();
 		chunks1.add(createTestChunk(1, 1, 2));
 		chunks1.add(createTestChunk(2, 1, 2));
 		chunks1.add(createTestChunk(3, 1, 4));
 		chunks1.add(createTestChunk(4, 3, 4));
 
-		Set<AggregationChunk> chunks2 = newHashSet();
+		Set<AggregationChunk> chunks2 = new HashSet<>();
 		chunks2.add(createTestChunk(9, 9, 10));
 		chunks2.add(createTestChunk(10, 9, 10));
 		chunks2.add(createTestChunk(11, 10, 11));
 		chunks2.add(createTestChunk(12, 10, 13));
 		chunks2.add(createTestChunk(13, 12, 13));
 
-		state.apply(AggregationDiff.of(newHashSet(concat(chunks1, chunks2))));
+		state.apply(AggregationDiff.of(concat(chunks1.stream(), chunks2.stream()).collect(toSet())));
 
 		List<AggregationChunk> selectedChunks = state.findChunksForConsolidationMinKey(100, 4000);
-		assertEquals(chunks1, newHashSet(selectedChunks));
+		assertEquals(chunks1, new HashSet<>(selectedChunks));
 	}
 
 	@Test
@@ -97,25 +94,25 @@ public class ConsolidationChunkSelectionTest {
 		int optimalChunkSize = 5;
 		int maxChunks = 5;
 
-		Set<AggregationChunk> chunks1 = newHashSet();
+		Set<AggregationChunk> chunks1 = new HashSet<>();
 		chunks1.add(createTestChunk(1, 1, 2, optimalChunkSize));
 		chunks1.add(createTestChunk(2, 3, 4, optimalChunkSize));
 
-		Set<AggregationChunk> chunks2 = newHashSet();
+		Set<AggregationChunk> chunks2 = new HashSet<>();
 		chunks2.add(createTestChunk(3, 5, 6, 4));
 		chunks2.add(createTestChunk(4, 7, 8, 1));
 		chunks2.add(createTestChunk(5, 9, 13, optimalChunkSize));
 		chunks2.add(createTestChunk(6, 10, 11, optimalChunkSize));
 		chunks2.add(createTestChunk(7, 10, 12, optimalChunkSize));
 
-		Set<AggregationChunk> chunks3 = newHashSet();
+		Set<AggregationChunk> chunks3 = new HashSet<>();
 		chunks3.add(createTestChunk(8, 14, 15, 3));
 		chunks3.add(createTestChunk(9, 14, 15, 6));
 
-		state.apply(AggregationDiff.of(newHashSet(concat(chunks1, chunks2, chunks3))));
+		state.apply(AggregationDiff.of(concat(chunks1.stream(), concat(chunks2.stream(), chunks3.stream())).collect(toSet())));
 
 		List<AggregationChunk> selectedChunks = state.findChunksForConsolidationMinKey(maxChunks, optimalChunkSize);
-		assertEquals(chunks2, newHashSet(selectedChunks));
+		assertEquals(chunks2, new HashSet<>(selectedChunks));
 	}
 
 	@Test
@@ -123,20 +120,20 @@ public class ConsolidationChunkSelectionTest {
 		AggregationStructure structure = new AggregationStructure().withKey("key", FieldTypes.ofInt());
 		AggregationState state = new AggregationState(structure);
 
-		Set<AggregationChunk> chunks1 = newHashSet();
+		Set<AggregationChunk> chunks1 = new HashSet<>();
 		chunks1.add(createTestChunk(2, 1, 1, 1, 1, 1, 5));
 		chunks1.add(createTestChunk(1, 1, 1, 1, 1, 1, 1));
 
-		Set<AggregationChunk> chunks2 = newHashSet();
+		Set<AggregationChunk> chunks2 = new HashSet<>();
 		chunks2.add(createTestChunk(3, 2, 2, 1, 1, 1, 1));
 		chunks2.add(createTestChunk(4, 2, 2, 1, 1, 2, 2));
 
-		Set<AggregationChunk> chunks3 = newHashSet();
+		Set<AggregationChunk> chunks3 = new HashSet<>();
 		chunks3.add(createTestChunk(5, 2, 2, 2, 2, 3, 3));
 		chunks3.add(createTestChunk(6, 2, 2, 2, 2, 1, 1));
 		chunks3.add(createTestChunk(7, 2, 2, 2, 2, 1, 10));
 
-		state.apply(AggregationDiff.of(newHashSet(concat(chunks1, chunks2, chunks3))));
+		state.apply(AggregationDiff.of(concat(chunks1.stream(), concat(chunks2.stream(), chunks3.stream())).collect(toSet())));
 
 		Map<PrimaryKey, RangeTree<PrimaryKey, AggregationChunk>> partitioningKeyToTree = state.groupByPartition(2);
 

@@ -124,7 +124,7 @@ public final class AsyncFile {
 	 * @param options   options specifying how the move should be done
 	 */
 	public static CompletionStage<Void> move(Eventloop eventloop, ExecutorService executor,
-	                                         final Path source, final Path target, final CopyOption[] options) {
+	                                         final Path source, final Path target, final CopyOption... options) {
 		return eventloop.callConcurrently(executor, () -> {
 			Files.move(source, target, options);
 			return null;

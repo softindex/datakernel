@@ -16,27 +16,18 @@
 
 package io.datakernel.cube.http;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.TypeAdapter;
-import com.google.gson.TypeAdapterFactory;
-import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
-import io.datakernel.aggregation.AggregationPredicate;
 import io.datakernel.cube.CubeQuery;
-import io.datakernel.cube.QueryResult;
 import io.datakernel.exception.ParseException;
 import io.datakernel.utils.GsonAdapters;
 import org.joda.time.LocalDate;
 
 import java.io.IOException;
-import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 class Utils {
 	static final String MEASURES_PARAM = "measures";
@@ -49,7 +40,6 @@ class Utils {
 	static final String REPORT_TYPE_PARAM = "reportType";
 
 	static final Splitter SPLITTER = Splitter.on(',').omitEmptyStrings();
-	static final Joiner JOINER = Joiner.on(',');
 
 	static String formatOrderings(List<CubeQuery.Ordering> orderings) {
 		StringBuilder sb = new StringBuilder();

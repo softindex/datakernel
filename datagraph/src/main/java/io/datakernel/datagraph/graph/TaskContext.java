@@ -24,8 +24,8 @@ import io.datakernel.stream.StreamProducer;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
+import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.checkState;
 
 /**
  * Represents a context of a datagraph system: environment, producers and consumers.

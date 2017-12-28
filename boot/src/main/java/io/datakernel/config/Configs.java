@@ -16,9 +16,6 @@
 
 package io.datakernel.config;
 
-import com.google.common.base.Predicate;
-import com.google.common.collect.Iterables;
-
 import java.util.*;
 
 public final class Configs {
@@ -30,25 +27,12 @@ public final class Configs {
 	private Configs() {
 	}
 
-	public static final ConflictResolver RETURN_FIRST_FOUND = new ConflictResolver() {
-		@Override
-		public Config resolve(List<? extends Config> configs) {
-			return configs.get(0);
-		}
-	};
+	public static final ConflictResolver RETURN_FIRST_FOUND = configs -> configs.get(0);
 
-	public static final ConflictResolver RETURN_LAST_FOUND = new ConflictResolver() {
-		@Override
-		public Config resolve(List<? extends Config> configs) {
-			return configs.get(configs.size() - 1);
-		}
-	};
+	public static final ConflictResolver RETURN_LAST_FOUND = configs -> configs.get(configs.size() - 1);
 
-	public static final ConflictResolver PROHIBIT_COLLISIONS = new ConflictResolver() {
-		@Override
-		public Config resolve(List<? extends Config> configs) {
-			throw new IllegalStateException("many config values for the same path: " + configs);
-		}
+	public static final ConflictResolver PROHIBIT_COLLISIONS = configs -> {
+		throw new IllegalStateException("many config values for the same path: " + configs);
 	};
 
 	public static final Config EMPTY_CONFIG = new AbstractConfig() {
@@ -149,22 +133,12 @@ public final class Configs {
 
 			@Override
 			public boolean hasValue() {
-				return Iterables.any(allConfigs, new Predicate<Config>() {
-					@Override
-					public boolean apply(Config input) {
-						return input.hasValue();
-					}
-				});
+				return allConfigs.stream().anyMatch(Config::hasValue);
 			}
 
 			@Override
 			protected boolean doHasChild(final String key) {
-				return Iterables.any(allConfigs, new Predicate<Config>() {
-					@Override
-					public boolean apply(Config input) {
-						return input.hasChild(key);
-					}
-				});
+				return allConfigs.stream().anyMatch(input -> input.hasChild(key));
 			}
 
 			@Override
