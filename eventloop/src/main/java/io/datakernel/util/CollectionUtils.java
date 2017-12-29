@@ -90,4 +90,14 @@ public class CollectionUtils {
 	public static <T> Iterator<T> nullToEmpty(@Nullable Iterator<T> iterator) {
 		return iterator != null ? iterator : emptyIterator();
 	}
+
+	public static <T> List<T> list() {
+		return emptyList();
+	}
+
+	@SuppressWarnings("unchecked")
+	public static <T> List<T> list(T... items) {
+		return asList(items);
+	}
+
 }

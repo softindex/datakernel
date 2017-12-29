@@ -143,28 +143,37 @@ public class OTMergeAlgorithm {
 			if (!visited.add(node)) continue;
 			remote.loadCommit(node)
 					.thenAcceptAsync(commit -> {
+						if (commit.isRoot()) {
+							cb.setException(new OTException("Trying to load past root"));
+							return;
+						}
+						Map<K, List<D>> parents = commit.getParents();
+
 						Set<K> affectedHeads = root2heads.remove(node);
 						for (K affectedHead : affectedHeads) {
 							head2roots.get(affectedHead).remove(node);
 						}
-						for (K parent : commit.getParents().keySet()) {
+						Set<K> affectedRoots = new HashSet<>();
+						for (K parent : parents.keySet()) {
 							Set<K> parentRoots = findRoots(graph, parent);
 							for (K affectedHead : affectedHeads) {
 								head2roots.computeIfAbsent(affectedHead, $::newHashSet).addAll(parentRoots);
 							}
 							for (K parentRoot : parentRoots) {
 								root2heads.computeIfAbsent(parentRoot, $::newHashSet).addAll(affectedHeads);
+								affectedRoots.add(parentRoot);
 							}
 						}
 
-						for (K parent : commit.getParents().keySet()) {
-							graph.add(parent, node, commit.getParents().get(parent));
+						for (K parent : parents.keySet()) {
+							graph.add(parent, node, parents.get(parent));
 							if (graph.getParents(parent) == null) {
 								queue.add(parent);
 							}
 						}
 
-						boolean found = affectedHeads.stream()
+						boolean found = affectedRoots.stream()
+								.flatMap(affectedRoot -> root2heads.get(affectedRoot).stream()).distinct()
 								.anyMatch(affectedHead -> head2roots.get(affectedHead).equals(root2heads.keySet()));
 						if (found) {
 							cb.set(null);
@@ -212,25 +221,12 @@ public class OTMergeAlgorithm {
 				.collect(toMap(Map.Entry::getKey, ops -> otSystem.squash(ops.getValue())));
 	}
 
-	private final static class RootNodes<K> {
-		final K node;
-		final int rootNodes;
-
-		RootNodes(K node, int rootNodes) {
-			this.node = node;
-			this.rootNodes = rootNodes;
-		}
-	}
-
 	@SuppressWarnings({"unchecked", "ConstantConditions"})
 	private static <K, D> K doMerge(OTSystem<D> otSystem, Comparator<K> nodeComparator, OTLoadedGraph<K, D> graph,
 	                                Set<K> nodes) throws OTException {
 		if (nodes.size() == 1) return first(nodes);
 
-		K pivotNode = nodes.stream()
-				.map(node -> new RootNodes<>(node, findRoots(graph, node).size()))
-				.min(comparingInt(v -> v.rootNodes))
-				.get().node;
+		K pivotNode = nodes.stream().min(comparingInt((K node) -> findRoots(graph, node).size())).get();
 
 		Map<K, List<D>> pivotNodeParents = graph.getParents(pivotNode);
 		Set<K> recursiveMergeNodes = union(pivotNodeParents.keySet(), difference(nodes, singleton(pivotNode)));

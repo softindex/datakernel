@@ -1141,4 +1141,9 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			return backgroundTasks.size();
 		}
 	}
+
+	@Override
+	public String toString() {
+		return threadName != null ? threadName : super.toString();
+	}
 }

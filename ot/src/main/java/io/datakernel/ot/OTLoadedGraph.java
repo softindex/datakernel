@@ -8,7 +8,7 @@ import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toSet;
 
 final class OTLoadedGraph<K, D> {
-	private static final AtomicLong MERGE_ID = new AtomicLong();
+	static final AtomicLong MERGE_ID = new AtomicLong();
 
 	static final class MergeNode {
 		final long n = MERGE_ID.incrementAndGet();
