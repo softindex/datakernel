@@ -61,7 +61,7 @@ public class CubeCleaner {
 		logger.info("Parent candidates: {}", parentCandidates);
 
 		return findMergeNodes(parentCandidates).thenCompose(mergeNodesOpt -> mergeNodesOpt
-				.map(mergeNodes -> findCommonParentIncludingCandidates(otRemote, comparator, mergeNodes)
+				.map(mergeNodes -> findFirstCommonParent(otRemote, comparator, mergeNodes)
 						.thenCompose(checkpointNode -> checkpointNode
 								.map(this::trySaveSnapshotAndCleanupChunks)
 								.orElse(Stages.of(null))))
@@ -69,7 +69,7 @@ public class CubeCleaner {
 	}
 
 	private CompletionStage<Optional<Set<Integer>>> findMergeNodes(Set<Integer> parentCandidates) {
-		return findCommonParentsIncludingCandidates(otRemote, comparator, parentCandidates)
+		return findCommonParents(otRemote, comparator, parentCandidates)
 				.whenComplete(Stages.onResult(rootNodes -> logger.info("Root nodes: {}", rootNodes)))
 				.thenApply(rootNodes -> rootNodes.isEmpty() ? Optional.empty() : Optional.of(rootNodes));
 	}
@@ -102,8 +102,8 @@ public class CubeCleaner {
 				(a, ds) -> Collections.emptyList())
 				.thenComposeAsync(result -> {
 					if (!result.isFound()) return Stages.of(Optional.empty());
-					if (skipSnapshots <= 0) return Stages.of(Optional.of(result.getParent()));
-					return findSnapshot(result.getParentCommit().getParentIds(), skipSnapshots - 1);
+					if (skipSnapshots <= 0) return Stages.of(Optional.of(result.getCommit()));
+					return findSnapshot(result.getCommitParents(), skipSnapshots - 1);
 				});
 	}
 

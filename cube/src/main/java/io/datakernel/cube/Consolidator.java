@@ -62,7 +62,7 @@ public final class Consolidator {
 	public CompletionStage<Void> consolidate() {
 		sw.reset().start();
 		return stateManager.pull()
-				.thenCompose($ -> stateManager.tryMergeHeadsAndPush())
+				.thenCompose($ -> stateManager.mergeHeadsAndPush())
 				.thenCompose(stateManager::pull)
 				.thenCompose($ -> stateManager.pull())
 				.thenCompose($ -> cube.consolidate(strategy.next()))
@@ -77,7 +77,7 @@ public final class Consolidator {
 
 		stateManager.add(LogDiff.forCurrentPosition(cubeDiff));
 		return stateManager.pull()
-				.thenCompose($ -> stateManager.tryMergeHeadsAndPush())
+				.thenCompose($ -> stateManager.mergeHeadsAndPush())
 				.thenCompose(stateManager::pull)
 				.thenCompose($ -> stateManager.pull())
 				.thenCompose($ -> stateManager.commit())

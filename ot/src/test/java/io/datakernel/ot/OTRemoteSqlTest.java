@@ -22,7 +22,6 @@ import java.util.stream.Collectors;
 
 import static io.datakernel.ot.OTCommit.ofCommit;
 import static io.datakernel.ot.OTCommit.ofRoot;
-import static io.datakernel.ot.OTUtils.saveSnapshot;
 import static io.datakernel.ot.utils.GraphBuilder.edge;
 import static io.datakernel.ot.utils.Utils.add;
 import static java.util.Arrays.asList;
@@ -261,11 +260,11 @@ public class OTRemoteSqlTest {
 		graphFuture.get();
 
 		final CompletableFuture<Set<Integer>> rootNodes1Future = OTUtils
-				.findCommonParentsIncludingCandidates(otRemote, Integer::compareTo, set(6, 7))
+				.findCommonParents(otRemote, Integer::compareTo, set(6, 7))
 				.toCompletableFuture();
 
 		final CompletableFuture<Set<Integer>> rootNodes2Future = OTUtils
-				.findCommonParentsIncludingCandidates(otRemote, Integer::compareTo, set(6))
+				.findCommonParents(otRemote, Integer::compareTo, set(6))
 				.toCompletableFuture();
 
 		eventloop.run();
@@ -289,40 +288,12 @@ public class OTRemoteSqlTest {
 		graphFuture.get();
 
 		final CompletableFuture<Set<Integer>> rootNodesFuture = OTUtils
-				.findCommonParentsIncludingCandidates(otRemote, Integer::compareTo, set(4, 5, 6))
+				.findCommonParents(otRemote, Integer::compareTo, set(4, 5, 6))
 				.toCompletableFuture();
 
 		eventloop.run();
 
 		assertEquals(set(4), rootNodesFuture.get());
-	}
-
-	@Test
-	public void testFindParentCandidates() throws ExecutionException, InterruptedException {
-		final GraphBuilder<Integer, TestOp> graphBuilder = new GraphBuilder<>(otRemote);
-		final CompletableFuture<Map<Integer, Integer>> graphFuture = graphBuilder.buildGraph(asList(
-				edge(1, 2, add(1)),
-				edge(1, 3, add(1)),
-				edge(2, 4, add(1)),
-				edge(3, 4, add(1)),
-				edge(2, 5, add(1)),
-				edge(3, 5, add(1)),
-				edge(4, 6, add(1)),
-				edge(5, 7, add(1))))
-				.toCompletableFuture();
-
-		eventloop.run();
-		graphFuture.get();
-
-		final CompletableFuture<Set<Integer>> rootNodesFuture = OTUtils
-				.findParentCandidates(otRemote, Integer::compareTo, set(6, 7),
-						id -> true,
-						commit -> commit.getId() < 4)
-				.toCompletableFuture();
-
-		eventloop.run();
-
-		assertEquals(set(2, 3), rootNodesFuture.get());
 	}
 
 	@Test
@@ -344,7 +315,7 @@ public class OTRemoteSqlTest {
 
 		final Set<Integer> searchSurface = set(2, 3);
 		final CompletableFuture<Set<Integer>> rootNodesFuture = OTUtils
-				.findParentCandidatesSurface(otRemote, Integer::compareTo, set(6, 7), integers -> Stages.of(searchSurface.equals(integers)))
+				.findSurface(otRemote, Integer::compareTo, set(6, 7), integers -> Stages.of(searchSurface.equals(integers)))
 				.toCompletableFuture();
 
 		eventloop.run();
@@ -367,7 +338,9 @@ public class OTRemoteSqlTest {
 		eventloop.run();
 		graphFuture.get();
 
-		final CompletableFuture<?> mergeSnapshotFuture = saveSnapshot(otRemote, keyComparator, otSystem, 5)
+		final CompletableFuture<?> mergeSnapshotFuture = OTUtils
+				.loadAllChanges(otRemote, keyComparator, otSystem, 5)
+				.thenCompose(ds -> otRemote.saveSnapshot(5, ds))
 				.thenCompose(aVoid -> otRemote.cleanup(5))
 				.toCompletableFuture();
 

@@ -287,33 +287,29 @@ public final class OTStateManager<K, D> implements EventloopService {
 
 // Helper OT methods
 
-	public CompletionStage<FindResult<K, D, List<D>>> findParentCommits(K startNode, @Nullable K lastNode,
+	public CompletionStage<FindResult<K, List<D>>> findParentCommits(K startNode, @Nullable K lastNode,
 	                                                                    Predicate<OTCommit<K, D>> matchPredicate) {
 		return OTUtils.findParentCommits(source, comparator, startNode, lastNode,
 				commit -> Stages.of(matchPredicate.test(commit)));
 	}
 
-	public CompletionStage<FindResult<K, D, List<D>>> findParentCommits(Set<K> startNodes, @Nullable K lastNode,
+	public CompletionStage<FindResult<K, List<D>>> findParentCommits(Set<K> startNodes, @Nullable K lastNode,
 	                                                                    Predicate<OTCommit<K, D>> matchPredicate) {
 		return OTUtils.findParentCommits(source, comparator, startNodes, lastNode,
 				commit -> Stages.of(matchPredicate.test(commit)));
 	}
 
 	public CompletionStage<K> mergeHeadsAndPush() {
-		return OTUtils.mergeHeadsAndPush(otSystem, source, comparator);
-	}
-
-	public CompletionStage<K> tryMergeHeadsAndPush() {
-		logger.trace("tryMergeHeadsAndPush, revision: {}, fetched revision: {}", revision, fetchedRevision);
+		logger.trace("mergeHeadsAndPush, revision: {}, fetched revision: {}", revision, fetchedRevision);
 
 		final Stopwatch sw = Stopwatch.createStarted();
-		return OTUtils.tryMergeHeadsAndPush(otSystem, source, comparator)
+		return OTUtils.mergeHeadsAndPush(otSystem, source, comparator)
 				.whenComplete((k, throwable) -> {
 					if (throwable == null) {
-						logger.trace("Finish tryMergeHeadsAndPush in {}, revision: {}, fetched revision: {}",
+						logger.trace("Finish mergeHeadsAndPush in {}, revision: {}, fetched revision: {}",
 								sw, revision, fetchedRevision);
 					} else {
-						logger.trace("Error tryMergeHeadsAndPush in {}, revision: {}, fetched revision: {}",
+						logger.trace("Error mergeHeadsAndPush in {}, revision: {}, fetched revision: {}",
 								sw, revision, fetchedRevision, throwable);
 					}
 				});

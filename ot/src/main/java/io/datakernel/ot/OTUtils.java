@@ -3,6 +3,7 @@ package io.datakernel.ot;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncPredicate;
 import io.datakernel.async.Stages;
+import io.datakernel.ot.exceptions.OTException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,6 +15,7 @@ import java.util.function.Predicate;
 
 import static io.datakernel.util.CollectionUtils.$;
 import static io.datakernel.util.CollectionUtils.concat;
+import static io.datakernel.util.Preconditions.check;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.String.format;
 import static java.util.Collections.*;
@@ -25,42 +27,45 @@ public class OTUtils {
 	private OTUtils() {
 	}
 
-	public static final class FindResult<K, D, A> {
+	public static final class FindResult<K, A> {
 		@Nullable
-		private final OTCommit<K, D> parentCommit;
+		private final K commit;
+		@Nullable
+		private final Set<K> parents;
 		@Nullable
 		private final K child;
 		@Nullable
 		private final A accumulator;
 
-		private FindResult(OTCommit<K, D> parentCommit, K child, A accumulator) {
+		private FindResult(K commit, K child, Set<K> parents, A accumulator) {
 			this.child = child;
-			this.parentCommit = parentCommit;
+			this.commit = commit;
+			this.parents = parents;
 			this.accumulator = accumulator;
 		}
 
-		public static <K, D, A> FindResult<K, D, A> of(OTCommit<K, D> parent, K child, A accumulator) {
-			return new FindResult<>(parent, child, accumulator);
+		public static <K, A> FindResult<K, A> of(K commit, K child, Set<K> parents, A accumulator) {
+			return new FindResult<>(commit, child, parents, accumulator);
 		}
 
-		public static <K, D, A> FindResult<K, D, A> notFound() {
-			return new FindResult<>(null, null, null);
+		public static <K, A> FindResult<K, A> notFound() {
+			return new FindResult<>(null, null, null, null);
 		}
 
 		public boolean isFound() {
-			return parentCommit != null;
+			return commit != null;
 		}
 
-		public OTCommit<K, D> getParentCommit() {
-			return checkNotNull(parentCommit);
+		public K getCommit() {
+			return checkNotNull(commit);
 		}
 
 		public K getChild() {
 			return checkNotNull(child);
 		}
 
-		public K getParent() {
-			return parentCommit.getId();
+		public Set<K> getCommitParents() {
+			return checkNotNull(parents);
 		}
 
 		public A getAccumulator() {
@@ -70,7 +75,8 @@ public class OTUtils {
 		@Override
 		public String toString() {
 			return "FindResult{" +
-					"parentCommit=" + parentCommit +
+					"commit=" + commit +
+					", parents=" + parents +
 					", child=" + child +
 					", accumulator=" + accumulator +
 					'}';
@@ -98,30 +104,37 @@ public class OTUtils {
 		}
 	}
 
-	public static <K, D> CompletionStage<FindResult<K, D, List<D>>> findParentCommits(OTRemote<K, D> source, Comparator<K> keyComparator,
-	                                                                                  K startNode, @Nullable K lastNode,
-	                                                                                  AsyncPredicate<OTCommit<K, D>> matchPredicate) {
+	public static <K, D> CompletionStage<FindResult<K, List<D>>> findParentCommits(OTRemote<K, D> source, Comparator<K> keyComparator,
+	                                                                               K startNode, @Nullable K lastNode,
+	                                                                               AsyncPredicate<OTCommit<K, D>> matchPredicate) {
 		return findParent(source, keyComparator, startNode, new ArrayList<>(), lastNode, matchPredicate, (ds, ds2) -> concat(ds2, ds));
 	}
 
-	public static <K, D, A> CompletionStage<FindResult<K, D, A>> findParent(OTRemote<K, D> source, Comparator<K> keyComparator,
-	                                                                        K startNode, A accumulator, @Nullable K lastNode,
-	                                                                        AsyncPredicate<OTCommit<K, D>> matchPredicate,
-	                                                                        DiffReducer<A, D> reducer) {
-		return findParent(source, keyComparator, singletonMap(startNode, accumulator), lastNode, matchPredicate, reducer);
-	}
-
-	public static <K, D> CompletionStage<FindResult<K, D, List<D>>> findParentCommits(OTRemote<K, D> source, Comparator<K> keyComparator,
-	                                                                                  Set<K> startNodes, @Nullable K lastNode,
-	                                                                                  AsyncPredicate<OTCommit<K, D>> matchPredicate) {
+	public static <K, D> CompletionStage<FindResult<K, List<D>>> findParentCommits(OTRemote<K, D> source, Comparator<K> keyComparator,
+	                                                                               Set<K> startNodes, @Nullable K lastNode,
+	                                                                               AsyncPredicate<OTCommit<K, D>> matchPredicate) {
 		final Map<K, List<D>> startMap = startNodes.stream().collect(toMap(Function.identity(), $::newArrayList));
 		return findParent(source, keyComparator, startMap, lastNode, matchPredicate, (ds, ds2) -> concat(ds2, ds));
 	}
 
-	public static <K, D, A> CompletionStage<FindResult<K, D, A>> findParent(OTRemote<K, D> source, Comparator<K> keyComparator,
-	                                                                        Map<K, A> startNodes, @Nullable K lastNode,
-	                                                                        AsyncPredicate<OTCommit<K, D>> matchPredicate,
-	                                                                        DiffReducer<A, D> reducer) {
+	public static <K, D> CompletionStage<FindResult<K, List<D>>> findParentCommits(OTRemote<K, D> source, Comparator<K> keyComparator,
+	                                                                               Set<K> startNodes, Predicate<K> loadPredicate,
+	                                                                               AsyncPredicate<OTCommit<K, D>> matchPredicate) {
+		final Map<K, List<D>> startMap = startNodes.stream().collect(toMap(Function.identity(), k -> new ArrayList<>()));
+		return findParent(source, keyComparator, startMap, loadPredicate, matchPredicate, (ds, ds2) -> concat(ds2, ds));
+	}
+
+	public static <K, D, A> CompletionStage<FindResult<K, A>> findParent(OTRemote<K, D> source, Comparator<K> keyComparator,
+	                                                                     K startNode, A accumulator, @Nullable K lastNode,
+	                                                                     AsyncPredicate<OTCommit<K, D>> matchPredicate,
+	                                                                     DiffReducer<A, D> reducer) {
+		return findParent(source, keyComparator, singletonMap(startNode, accumulator), lastNode, matchPredicate, reducer);
+	}
+
+	public static <K, D, A> CompletionStage<FindResult<K, A>> findParent(OTRemote<K, D> source, Comparator<K> keyComparator,
+	                                                                     Map<K, A> startNodes, @Nullable K lastNode,
+	                                                                     AsyncPredicate<OTCommit<K, D>> matchPredicate,
+	                                                                     DiffReducer<A, D> reducer) {
 		final Predicate<K> predicate = lastNode == null
 				? k -> true
 				: key -> keyComparator.compare(key, lastNode) >= 0;
@@ -129,17 +142,10 @@ public class OTUtils {
 		return findParent(source, keyComparator, startNodes, predicate, matchPredicate, reducer);
 	}
 
-	public static <K, D> CompletionStage<FindResult<K, D, List<D>>> findParentCommits(OTRemote<K, D> source, Comparator<K> keyComparator,
-	                                                                                  Set<K> startNodes, Predicate<K> loadPredicate,
-	                                                                                  AsyncPredicate<OTCommit<K, D>> matchPredicate) {
-		final Map<K, List<D>> startMap = startNodes.stream().collect(toMap(Function.identity(), k -> new ArrayList<>()));
-		return findParent(source, keyComparator, startMap, loadPredicate, matchPredicate, (ds, ds2) -> concat(ds2, ds));
-	}
-
-	public static <K, D, A> CompletionStage<FindResult<K, D, A>> findParent(OTRemote<K, D> source, Comparator<K> keyComparator,
-	                                                                        Map<K, A> startNodes, Predicate<K> loadPredicate,
-	                                                                        AsyncPredicate<OTCommit<K, D>> matchPredicate,
-	                                                                        DiffReducer<A, D> reducer) {
+	public static <K, D, A> CompletionStage<FindResult<K, A>> findParent(OTRemote<K, D> source, Comparator<K> keyComparator,
+	                                                                     Map<K, A> startNodes, Predicate<K> loadPredicate,
+	                                                                     AsyncPredicate<OTCommit<K, D>> matchPredicate,
+	                                                                     DiffReducer<A, D> reducer) {
 		final PriorityQueue<Entry<K, A>> queue = new PriorityQueue<>(11,
 				(o1, o2) -> keyComparator.compare(o2.parent, o1.parent));
 
@@ -148,12 +154,12 @@ public class OTUtils {
 		return findParent(source, queue, new HashSet<>(), loadPredicate, matchPredicate, reducer);
 	}
 
-	private static <K, D, A> CompletionStage<FindResult<K, D, A>> findParent(OTRemote<K, D> source,
-	                                                                         PriorityQueue<Entry<K, A>> queue,
-	                                                                         Set<K> visited,
-	                                                                         Predicate<K> loadPredicate,
-	                                                                         AsyncPredicate<OTCommit<K, D>> matcher,
-	                                                                         DiffReducer<A, D> reducer) {
+	private static <K, D, A> CompletionStage<FindResult<K, A>> findParent(OTRemote<K, D> source,
+	                                                                      PriorityQueue<Entry<K, A>> queue,
+	                                                                      Set<K> visited,
+	                                                                      Predicate<K> loadPredicate,
+	                                                                      AsyncPredicate<OTCommit<K, D>> matcher,
+	                                                                      DiffReducer<A, D> reducer) {
 		while (!queue.isEmpty()) {
 			final Entry<K, A> nodeWithPath = queue.poll();
 			final K node = nodeWithPath.parent;
@@ -163,7 +169,11 @@ public class OTUtils {
 
 			return source.loadCommit(node).thenComposeAsync(commit ->
 					matcher.apply(commit).thenComposeAsync(match -> {
-						if (match) return Stages.of(FindResult.of(commit, child, nodeAccumulator));
+						if (match) {
+							final K id = commit.getId();
+							final Set<K> parentIds = commit.getParentIds();
+							return Stages.of(FindResult.of(id, child, parentIds, nodeAccumulator));
+						}
 
 						for (Map.Entry<K, List<D>> parentEntry : commit.getParents().entrySet()) {
 							if (parentEntry.getValue() == null) continue;
@@ -182,141 +192,81 @@ public class OTUtils {
 		return Stages.of(FindResult.notFound());
 	}
 
-	public static <K, D> CompletionStage<K> mergeHeadsAndPush(OTSystem<D> otSystem, OTRemote<K, D> source, Comparator<K> keyComparator) {
-		return source.getHeads().thenCompose(heads -> mergeHeadsAndPush(otSystem, source, keyComparator, heads));
-	}
+	public static <K, D> CompletionStage<K> mergeHeadsAndPush(OTSystem<D> otSystem, OTRemote<K, D> source,
+	                                                          Comparator<K> keyComparator) {
+		return source.getHeads().thenCompose(heads -> {
+			check(!heads.isEmpty(), "Empty heads");
 
-	public static <K, D> CompletionStage<K> tryMergeHeadsAndPush(OTSystem<D> otSystem, OTRemote<K, D> source, Comparator<K> keyComparator) {
-		return source.getHeads().thenCompose(heads -> heads.size() != 1 ?
-				mergeHeadsAndPush(otSystem, source, keyComparator, heads) :
-				Stages.of(heads.iterator().next()));
-	}
+			if (heads.size() == 1) return Stages.of(heads.iterator().next()); // nothing to merge
 
-	private static <K, D> CompletionStage<K> mergeHeadsAndPush(OTSystem<D> otSystem, OTRemote<K, D> source, Comparator<K> keyComparator, Set<K> heads) {
-		return OTMergeAlgorithm.loadAndMerge(otSystem, source, keyComparator, heads).thenCompose(merge ->
-				source.createId().thenCompose(mergeCommitId ->
-						source.push(singletonList(OTCommit.ofMerge(mergeCommitId, merge)))
-								.thenApply($ -> mergeCommitId)));
-	}
-
-	public static <K, D> CompletionStage<FindResult<K, D, List<D>>> findSnapshotOrRoot(OTRemote<K, D> source, Comparator<K> keyComparator, Set<K> startNode, @Nullable K lastNode) {
-		return findParentCommits(source, keyComparator, startNode, lastNode, commit -> {
-			if (commit.isRoot()) return Stages.of(true);
-			return source.isSnapshot(commit.getId());
+			return OTMergeAlgorithm.loadAndMerge(otSystem, source, keyComparator, heads).thenCompose(merge ->
+					source.createId().thenCompose(mergeCommitId ->
+							source.push(singletonList(OTCommit.ofMerge(mergeCommitId, merge)))
+									.thenApply($ -> mergeCommitId)));
 		});
 	}
 
-	public static <K, D> CompletionStage<FindResult<K, D, List<D>>> findChildPath(OTRemote<K, D> source, Comparator<K> keyComparator, K startNode, K headNode) {
-		return findParentCommits(source, keyComparator, headNode, startNode, commit -> Stages.of(startNode.equals(commit.getId())));
-	}
-
-	public static <K, D> CompletionStage<Set<K>> findParentCandidates(OTRemote<K, D> source, Comparator<K> keyComparator,
-	                                                                  Set<K> startNodes, Predicate<K> loadPredicate,
-	                                                                  Predicate<OTCommit<K, D>> matchPredicate) {
-		final PriorityQueue<Entry<K, List<D>>> queue = new PriorityQueue<>((o1, o2) ->
-				keyComparator.compare(o2.parent, o1.parent));
-
-		for (K startNode : startNodes) {
-			queue.add(new Entry<>(startNode, startNode, emptyList()));
-		}
-
-		return findParentCandidates(source, new HashSet<>(), new HashSet<>(), queue, loadPredicate, matchPredicate);
-	}
-
-	private static <K, D> CompletionStage<Set<K>> findParentCandidates(OTRemote<K, D> source, Set<K> visited,
-	                                                                   Set<K> candidates, PriorityQueue<Entry<K, List<D>>> queue,
-	                                                                   Predicate<K> loadPredicate,
-	                                                                   Predicate<OTCommit<K, D>> matchPredicate) {
-		while (!queue.isEmpty()) {
-			final Entry<K, List<D>> nodeWithPath = queue.poll();
-			K node = nodeWithPath.parent;
-			if (!visited.add(node)) continue;
-
-			return source.loadCommit(node).thenComposeAsync(commit -> {
-				if (matchPredicate.test(commit)) {
-					candidates.add(node);
-				} else {
-					for (Map.Entry<K, List<D>> parentEntry : commit.getParents().entrySet()) {
-						final K parent = parentEntry.getKey();
-						if (parentEntry.getValue() == null) continue;
-
-						if (loadPredicate.test(parent)) {
-							List<D> parentDiffs = new ArrayList<>();
-							parentDiffs.addAll(parentEntry.getValue());
-							parentDiffs.addAll(nodeWithPath.accumulator);
-							queue.add(new Entry<>(parent, nodeWithPath.child, parentDiffs));
-						}
-					}
-				}
-				return findParentCandidates(source, visited, candidates, queue, loadPredicate, matchPredicate);
-			});
-		}
-		return Stages.of(candidates);
-	}
-
-	public static <K, D> CompletionStage<Set<K>> findParentCandidatesSurface(OTRemote<K, D> source, Comparator<K> keyComparator,
-	                                                                         Set<K> startNodes, AsyncPredicate<Set<K>> matchPredicate) {
+	public static <K, D> CompletionStage<Set<K>> findSurface(OTRemote<K, D> source, Comparator<K> keyComparator,
+	                                                         Set<K> startNodes, AsyncPredicate<Set<K>> matchPredicate) {
 		final PriorityQueue<K> queue = new PriorityQueue<>((o1, o2) -> keyComparator.compare(o2, o1));
 		final Set<K> surface = new HashSet<>();
 
 		queue.addAll(startNodes);
 		surface.addAll(startNodes);
 
-		return findParentCandidatesSurface(source, new HashSet<>(), surface, queue, matchPredicate);
+		return findSurface(source, surface, queue, matchPredicate);
 	}
 
-	private static <K, D> CompletionStage<Set<K>> findParentCandidatesSurface(OTRemote<K, D> source, Set<K> visited,
-	                                                                          Set<K> surface, PriorityQueue<K> queue,
-	                                                                          AsyncPredicate<Set<K>> matchPredicate) {
-		while (!queue.isEmpty()) {
+	private static <K, D> CompletionStage<Set<K>> findSurface(OTRemote<K, D> source,
+	                                                          Set<K> surface, PriorityQueue<K> queue,
+	                                                          AsyncPredicate<Set<K>> matchPredicate) {
+		return matchPredicate.apply(surface).thenCompose(apply -> {
+			if (apply) return Stages.of(surface);
+			if (queue.isEmpty()) return Stages.of(Collections.emptySet());
+
 			final K node = queue.poll();
 			surface.remove(node);
-			if (!visited.add(node)) continue;
 
-			return source.loadCommit(node).thenComposeAsync(commit -> {
-				surface.addAll(commit.getParentIds());
-				queue.addAll(commit.getParentIds());
-
-				return matchPredicate.apply(surface).thenCompose(result -> result ? Stages.of(surface)
-						: findParentCandidatesSurface(source, visited, surface, queue, matchPredicate));
-			});
-		}
-		return Stages.of(surface);
+			return source.loadCommit(node)
+					.thenApply(OTCommit::getParentIds)
+					.whenComplete(Stages.onResult(surface::addAll))
+					.whenComplete(Stages.onResult(queue::addAll))
+					.thenCompose($ -> findSurface(source, surface, queue, matchPredicate));
+		});
 	}
 
-	public static <K, D> CompletionStage<Optional<K>> findCommonParentIncludingCandidates(OTRemote<K, D> source,
-	                                                                                      Comparator<K> keyComparator,
-	                                                                                      Set<K> parentCandidates) {
+	public static <K, D> CompletionStage<Optional<K>> findFirstCommonParent(OTRemote<K, D> source,
+	                                                                        Comparator<K> keyComparator,
+	                                                                        Set<K> parentCandidates) {
 		final Predicate<Map<K, Set<K>>> matcher = paths -> paths.values().stream()
 				.anyMatch(v -> v.size() == parentCandidates.size());
 
-		return findCommonParents(source, keyComparator, parentCandidates, matcher)
-				.thenApply(paths -> paths.entrySet().stream()
-						.filter(e -> e.getValue().containsAll(parentCandidates))
-						.map(Map.Entry::getKey)
-						.findAny());
-	}
-
-	public static <K, D> CompletionStage<Set<K>> findCommonParentsIncludingCandidates(OTRemote<K, D> source,
-	                                                                                  Comparator<K> keyComparator,
-	                                                                                  Set<K> parentCandidates) {
-		final Predicate<Map<K, Set<K>>> matcher = paths -> paths.values().stream()
-				.noneMatch(v -> v.size() != parentCandidates.size());
-
-		return findCommonParents(source, keyComparator, parentCandidates, matcher).thenApply(Map::keySet);
-	}
-
-	private static <K, D> CompletionStage<Map<K, Set<K>>> findCommonParents(OTRemote<K, D> source,
-	                                                                        Comparator<K> keyComparator,
-	                                                                        Set<K> parentCandidates,
-	                                                                        Predicate<Map<K, Set<K>>> matcher) {
 		final Map<K, Set<K>> childrenMap = new HashMap<>();
 		final PriorityQueue<K> queue = new PriorityQueue<>((o1, o2) -> keyComparator.compare(o2, o1));
 
 		queue.addAll(parentCandidates);
 		parentCandidates.forEach(node -> childrenMap.put(node, new HashSet<>(singleton(node))));
 
-		return findCommonParents(source, parentCandidates, queue, childrenMap, matcher);
+		return findCommonParents(source, parentCandidates, queue, childrenMap, matcher)
+				.thenApply(paths -> paths.entrySet().stream()
+						.filter(e -> e.getValue().size() == parentCandidates.size())
+						.map(Map.Entry::getKey)
+						.findAny());
+	}
+
+	public static <K, D> CompletionStage<Set<K>> findCommonParents(OTRemote<K, D> source,
+	                                                               Comparator<K> keyComparator,
+	                                                               Set<K> parentCandidates) {
+		final Predicate<Map<K, Set<K>>> matcher = paths -> paths.values().stream()
+				.noneMatch(v -> v.size() != parentCandidates.size());
+
+		final Map<K, Set<K>> childrenMap = new HashMap<>();
+		final PriorityQueue<K> queue = new PriorityQueue<>((o1, o2) -> keyComparator.compare(o2, o1));
+
+		queue.addAll(parentCandidates);
+		parentCandidates.forEach(node -> childrenMap.put(node, new HashSet<>(singleton(node))));
+
+		return findCommonParents(source, parentCandidates, queue, childrenMap, matcher).thenApply(Map::keySet);
 	}
 
 	private static <K, D> CompletionStage<Map<K, Set<K>>> findCommonParents(OTRemote<K, D> source,
@@ -375,12 +325,9 @@ public class OTUtils {
 		return reduceEdges(source, queue, commonNode, loadPredicate, reducer, reduceAccumulator)
 				.handle((value, throwable) -> (throwable == null && value.keySet().equals(heads.keySet()))
 						? Stages.of(value)
-						: Stages.<Map<K, A>>ofException(new IllegalArgumentException(noPathMessage(heads, commonNode))))
+						: Stages.<Map<K, A>>ofException(new IllegalArgumentException(
+						format("No path from heads `%s` to common node: `%s`", heads.keySet(), commonNode))))
 				.thenCompose(Function.identity());
-	}
-
-	private static <K, A> String noPathMessage(Map<K, A> heads, K commonNode) {
-		return format("No path from heads `%s` to common node: `%s`", heads.keySet(), commonNode);
 	}
 
 	private static <K, D, A> CompletionStage<Map<K, A>> reduceEdges(OTRemote<K, D> source,
@@ -422,28 +369,24 @@ public class OTUtils {
 
 	public static <K, D> CompletionStage<List<D>> loadAllChanges(OTRemote<K, D> source, Comparator<K> comparator,
 	                                                             OTSystem<D> otSystem, K head) {
-		return findSnapshotOrRoot(source, comparator, singleton(head), null).thenCompose(result -> {
-			final List<D> parentToChild = result.getAccumulator();
-			final OTCommit<K, D> parentCommit = result.getParentCommit();
+		final AsyncPredicate<OTCommit<K, D>> snapshotOrRootPredicate = commit -> commit.isRoot()
+				? Stages.of(true)
+				: source.isSnapshot(commit.getId());
 
-			// root can also be snapshot
-			return source.isSnapshot(result.getParent()).thenCompose(snapshot -> {
-				if (!snapshot) return Stages.of(otSystem.squash(parentToChild));
+		return findParentCommits(source, comparator, head, null, snapshotOrRootPredicate).thenCompose(result -> {
+			if (!result.isFound()) return Stages.ofException(new OTException("No snapshot or root from id:" + head));
 
-				return source.loadSnapshot(parentCommit.getId()).thenApply(diffs -> {
-					final List<D> changes = new ArrayList<>(diffs.size() + parentToChild.size());
+			return source.isSnapshot(result.getCommit()).thenCompose(snapshot -> {
+				if (!snapshot) return Stages.of(otSystem.squash(result.getAccumulator()));
+
+				return source.loadSnapshot(result.getCommit()).thenApply(diffs -> {
+					final List<D> changes = new ArrayList<>(diffs.size() + result.getAccumulator().size());
 					changes.addAll(diffs);
-					changes.addAll(parentToChild);
+					changes.addAll(result.getAccumulator());
 					return otSystem.squash(changes);
 				});
 
 			});
 		});
-	}
-
-	public static <K, D> CompletionStage<Void> saveSnapshot(OTRemote<K, D> source, Comparator<K> comparator,
-	                                                        OTSystem<D> otSystem, K head) {
-		return loadAllChanges(source, comparator, otSystem, head)
-				.thenCompose(ds -> source.saveSnapshot(head, ds));
 	}
 }
