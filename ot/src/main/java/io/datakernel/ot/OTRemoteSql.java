@@ -81,7 +81,6 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 			Statement statement = connection.createStatement();
 			statement.execute(sql("TRUNCATE TABLE ot_diffs"));
 			statement.execute(sql("TRUNCATE TABLE ot_revisions"));
-			statement.execute(sql("TRUNCATE TABLE ot_merges"));
 		}
 	}
 
@@ -332,12 +331,6 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 
 				try (PreparedStatement ps = connection.prepareStatement(
 						sql("DELETE FROM ot_diffs WHERE revision_id < ?"))) {
-					ps.setInt(1, minId);
-					ps.executeUpdate();
-				}
-
-				try (PreparedStatement ps = connection.prepareStatement(
-						sql("DELETE FROM ot_merges WHERE max_parent_id < ?"))) {
 					ps.setInt(1, minId);
 					ps.executeUpdate();
 				}

@@ -271,7 +271,7 @@ public class OTRemoteSqlTest {
 		eventloop.run();
 
 		assertEquals(set(2, 3), rootNodes1Future.get());
-		assertEquals(set(4), rootNodes2Future.get());
+		assertEquals(set(6), rootNodes2Future.get());
 	}
 
 	@Test
@@ -294,7 +294,7 @@ public class OTRemoteSqlTest {
 
 		eventloop.run();
 
-		assertEquals(set(3), rootNodesFuture.get());
+		assertEquals(set(4), rootNodesFuture.get());
 	}
 
 	@Test
