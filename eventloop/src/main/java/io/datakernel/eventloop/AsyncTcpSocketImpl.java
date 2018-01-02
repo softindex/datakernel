@@ -30,6 +30,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayDeque;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
 
@@ -37,11 +38,13 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEventHandler {
 	public static final int DEFAULT_READ_BUF_SIZE = 16 * 1024;
 	public static final int OP_POSTPONED = 1 << 7;  // SelectionKey constant
-	private static final int MAX_MERGE_SIZE = 16 * 1024;
 
 	@SuppressWarnings("ThrowableInstanceNeverThrown")
 	public static final AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException("timed out");
 	public static final int NO_TIMEOUT = -1;
+
+	private static final int MAX_MERGE_SIZE = 16 * 1024;
+	private static final AtomicInteger connectionCount = new AtomicInteger(0);
 
 	private final Eventloop eventloop;
 	private final SocketChannel channel;
@@ -210,17 +213,19 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		this.socketEventHandler = eventHandler;
 	}
 
+	public static int getConnectionCount() {
+		return connectionCount.get();
+	}
+
 	public final void register() {
 		socketEventHandler.onRegistered();
 		try {
 			key = channel.register(eventloop.ensureSelector(), ops, this);
+			connectionCount.incrementAndGet();
 		} catch (final IOException e) {
-			eventloop.post(new Runnable() {
-				@Override
-				public void run() {
-					closeChannel();
-					socketEventHandler.onClosedWithError(e);
-				}
+			eventloop.post(() -> {
+				closeChannel();
+				socketEventHandler.onClosedWithError(e);
 			});
 		}
 		if ((this.ops & SelectionKey.OP_READ) != 0) {
@@ -441,6 +446,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		if (key == null) return;
 		closeChannel();
 		key = null;
+		connectionCount.decrementAndGet();
 		for (ByteBuf buf : writeQueue) {
 			buf.recycle();
 		}
