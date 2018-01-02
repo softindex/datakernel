@@ -38,6 +38,7 @@ import org.slf4j.Logger;
 import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.FileTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletionStage;
@@ -183,6 +184,8 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, BlockingSer
 		return eventloop.callConcurrently(executorService, () -> {
 			logger.trace("Cleanup before timestamp, save chunks size: {}, timestamp {}", saveChunks.size(), timestamp);
 			try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
+				final List<Path> files = new ArrayList<>();
+
 				for (Path file : stream) {
 					if (!file.toString().endsWith(LOG)) {
 						continue;
@@ -198,9 +201,17 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, BlockingSer
 					if (saveChunks.contains(id)) continue;
 					FileTime lastModifiedTime = Files.getLastModifiedTime(file);
 					if (timestamp != -1 && lastModifiedTime.toMillis() > timestamp) continue;
+
+					files.add(file);
+				}
+
+				for (final Path file : files) {
 					try {
-						logger.trace("Delete file: {} with last modifiedTime: {}({} millis)", file,
-								lastModifiedTime, lastModifiedTime.toMillis());
+						if (logger.isTraceEnabled()) {
+							final FileTime lastModifiedTime = Files.getLastModifiedTime(file);
+							logger.trace("Delete file: {} with last modifiedTime: {}({} millis)", file,
+									lastModifiedTime, lastModifiedTime.toMillis());
+						}
 						Files.delete(file);
 					} catch (IOException e) {
 						logger.warn("Could not delete file: " + file);
