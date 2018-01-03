@@ -72,7 +72,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 			try {
 				mbean = mbeanFactory.createFor(asList(singletonInstance), settings, true);
 			} catch (Exception e) {
-				String msg = format("Instance with key %s implemetns ConcurrentJmxMBean or EventloopJmxMBean" +
+				String msg = format("Instance with key %s implements ConcurrentJmxMBean or EventloopJmxMBean " +
 						"but exception was thrown during attempt to create DynamicMBean", key.toString());
 				logger.error(msg, e);
 				return;

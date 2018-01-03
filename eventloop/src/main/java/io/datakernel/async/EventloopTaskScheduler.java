@@ -15,6 +15,7 @@ public final class EventloopTaskScheduler implements EventloopService, Eventloop
 
 	private final Eventloop eventloop;
 	private final AsyncCallable<?> task;
+	private final StageWatcher watcher;
 
 	private long initialDelay;
 	private long period;
@@ -66,13 +67,14 @@ public final class EventloopTaskScheduler implements EventloopService, Eventloop
 
 	private ScheduledRunnable scheduledTask;
 
-	private EventloopTaskScheduler(Eventloop eventloop, AsyncCallable<?> task) {
+	private EventloopTaskScheduler(Eventloop eventloop, AsyncCallable<?> task, StageWatcher watcher) {
 		this.eventloop = eventloop;
 		this.task = task;
+		this.watcher = watcher;
 	}
 
 	public static EventloopTaskScheduler create(Eventloop eventloop, AsyncCallable<?> task) {
-		return new EventloopTaskScheduler(eventloop, task);
+		return new EventloopTaskScheduler(eventloop, task, new StageWatcher(eventloop));
 	}
 
 	public EventloopTaskScheduler withInitialDelay(long initialDelayMillis) {
@@ -117,7 +119,7 @@ public final class EventloopTaskScheduler implements EventloopService, Eventloop
 				timestamp,
 				() -> {
 					long startTime = eventloop.currentTimeMillis();
-					task.call().whenComplete((result, throwable) -> {
+					watcher.watch(task.call()).whenComplete((result, throwable) -> {
 						if (throwable == null) {
 							lastStartTime = startTime;
 							lastCompleteTime = eventloop.currentTimeMillis();
@@ -200,28 +202,8 @@ public final class EventloopTaskScheduler implements EventloopService, Eventloop
 	}
 
 	@JmxAttribute
-	public long getLastStartTime() {
-		return lastStartTime;
-	}
-
-	@JmxAttribute
-	public long getLastCompleteTime() {
-		return lastCompleteTime;
-	}
-
-	@JmxAttribute
-	public Object getLastResult() {
-		return lastResult;
-	}
-
-	@JmxAttribute
-	public Throwable getLastError() {
-		return lastError;
-	}
-
-	@JmxAttribute
-	public int getLastErrorsCount() {
-		return lastErrorsCount;
+	public StageWatcher getStats() {
+		return watcher;
 	}
 
 	@JmxAttribute
