@@ -16,23 +16,22 @@
 
 package io.datakernel.aggregation.fieldtype;
 
-import com.google.common.reflect.TypeParameter;
-import com.google.common.reflect.TypeToken;
 import com.google.gson.TypeAdapter;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.utils.Primitives;
+import io.datakernel.serializer.SimpleType;
 import io.datakernel.serializer.StringFormat;
 import io.datakernel.serializer.asm.*;
 import io.datakernel.utils.GsonAdapters;
-import org.joda.time.Days;
-import org.joda.time.LocalDate;
 
 import java.lang.reflect.Type;
+import java.time.LocalDate;
 import java.util.Set;
 
 import static io.datakernel.codegen.Expressions.call;
 import static io.datakernel.codegen.Expressions.value;
 import static io.datakernel.utils.GsonAdapters.*;
+import static java.time.temporal.ChronoUnit.DAYS;
 
 public final class FieldTypes {
 	private FieldTypes() {
@@ -67,13 +66,10 @@ public final class FieldTypes {
 		Type wrappedNestedType = fieldType.getDataType() instanceof Class ?
 				Primitives.wrap((Class) fieldType.getDataType()) :
 				fieldType.getDataType();
-		Type dataType = new TypeToken<Set<T>>() {}
-				.where(new TypeParameter<T>() {}, (TypeToken<T>) TypeToken.of(wrappedNestedType))
-				.getType();
+		Type dataType = SimpleType.of(Set.class, SimpleType.ofType(wrappedNestedType)).getType();
 		TypeAdapter<Set<T>> json = GsonAdapters.ofSet(fieldType.getJson());
 		return new FieldType<>(Set.class, dataType, serializer, json, json);
 	}
-
 
 	public static <E extends Enum<E>> FieldType<E> ofEnum(Class<E> enumClass) {
 		return new FieldType<>(enumClass, new SerializerGenEnum(enumClass), GsonAdapters.ofEnum(enumClass));
@@ -114,7 +110,7 @@ public final class FieldTypes {
 
 		@Override
 		public Object toInternalValue(LocalDate value) {
-			return Days.daysBetween(startDate, value).getDays();
+			return DAYS.between(startDate, value);
 		}
 
 	}

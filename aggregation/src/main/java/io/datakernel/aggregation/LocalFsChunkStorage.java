@@ -17,11 +17,12 @@
 package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.ot.AggregationStructure;
+import io.datakernel.async.Stages;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.EventloopService;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.service.BlockingService;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducerWithResult;
@@ -52,7 +53,7 @@ import static org.slf4j.LoggerFactory.getLogger;
 /**
  * Stores aggregation chunks in local file system.
  */
-public class LocalFsChunkStorage implements AggregationChunkStorage, BlockingService {
+public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopService {
 	public static final String DEFAULT_BACKUP_FOLDER_NAME = "backups";
 	public static final String LOG = ".log";
 	public static final String TEMP_LOG = ".temp";
@@ -233,12 +234,18 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, BlockingSer
 	}
 
 	@Override
-	public void start() throws Exception {
-		Files.createDirectories(dir);
+	public Eventloop getEventloop() {
+		return eventloop;
 	}
 
 	@Override
-	public void stop() throws Exception {
+	public CompletionStage<Void> start() {
+		return eventloop.callConcurrently(executorService, () -> Files.createDirectories(dir))
+				.thenApply(t -> null);
+	}
 
+	@Override
+	public CompletionStage<Void> stop() {
+		return Stages.of(null);
 	}
 }

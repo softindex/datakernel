@@ -16,9 +16,9 @@
 
 package io.datakernel.datagraph.graph;
 
-import com.google.common.reflect.TypeToken;
 import io.datakernel.datagraph.node.Node;
 import io.datakernel.datagraph.server.DatagraphSerialization;
+import io.datakernel.serializer.SimpleType;
 
 import java.util.*;
 
@@ -75,8 +75,7 @@ public class DataGraph {
 		for (Partition partition : map.keySet()) {
 			sb.append("--- ").append(partition).append("\n\n");
 			List<Node> nodes = map.get(partition);
-			String str = serialization.gson.toJson(nodes, new TypeToken<List<Node>>() {
-			}.getType());
+			String str = serialization.gson.toJson(nodes, SimpleType.ofClass(List.class, Node.class).getType());
 			sb.append(str).append("\n\n");
 		}
 		return sb.toString();

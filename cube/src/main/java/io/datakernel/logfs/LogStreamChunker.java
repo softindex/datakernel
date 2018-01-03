@@ -20,8 +20,9 @@ import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
-import org.joda.time.format.DateTimeFormatter;
 
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
 import java.util.concurrent.CompletionStage;
 
 public final class LogStreamChunker extends StreamConsumerDecorator<ByteBuf, Void> implements StreamDataReceiver<ByteBuf> {
@@ -54,14 +55,14 @@ public final class LogStreamChunker extends StreamConsumerDecorator<ByteBuf, Voi
 		chunker.setActualConsumer(switcher, chunker.getEndOfStream()
 				.thenCompose(aVoid -> chunker.currentConsumer.getResult()));
 		long timestamp = eventloop.currentTimeMillis();
-		String chunkName = datetimeFormat.print(timestamp);
+		String chunkName = datetimeFormat.format(Instant.ofEpochMilli(timestamp));
 		chunker.startNewChunk(chunkName, Stages.of(null));
 		return chunker;
 	}
 
 	@Override
 	public void onData(ByteBuf item) {
-		final String chunkName = datetimeFormat.print(eventloop.currentTimeMillis());
+		final String chunkName = datetimeFormat.format(Instant.ofEpochMilli(eventloop.currentTimeMillis()));
 		if (!chunkName.equals(currentChunkName)) {
 			startNewChunk(chunkName, currentConsumer.getResult());
 		}

@@ -20,7 +20,6 @@ import io.datakernel.async.Stages;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
-import io.datakernel.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,12 +32,14 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
+import java.util.regex.Pattern;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpUtils.inetAddress;
 import static io.datakernel.http.MediaTypes.*;
 import static java.util.concurrent.Executors.newCachedThreadPool;
+import static java.util.stream.Collectors.toList;
 
 public class ClientStressTest {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
@@ -89,8 +90,13 @@ public class ClientStressTest {
 		}
 	}
 
+	private static final Pattern separator = Pattern.compile("\n");
+
 	private List<String> getUrls() throws IOException {
-		return StringUtils.splitToList('\n', new String(Files.readAllBytes(Paths.get(PATH_TO_URLS))));
+		return separator.splitAsStream(new String(Files.readAllBytes(Paths.get(PATH_TO_URLS))))
+				.map(String::trim)
+				.filter(s -> !s.isEmpty())
+				.collect(toList());
 	}
 
 	private HttpRequest formRequest(String url, boolean keepAlive) {

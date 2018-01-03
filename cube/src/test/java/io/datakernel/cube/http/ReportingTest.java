@@ -44,7 +44,6 @@ import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
-import org.joda.time.LocalDate;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -53,6 +52,7 @@ import org.junit.rules.TemporaryFolder;
 
 import java.net.InetSocketAddress;
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
