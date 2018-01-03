@@ -1,10 +1,13 @@
-package io.datakernel.cube;
+package io.datakernel.cube.service;
 
 import io.datakernel.aggregation.AggregationChunk;
 import io.datakernel.aggregation.LocalFsChunkStorage;
 import io.datakernel.async.Stages;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.EventloopJmxMBean;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxOperation;
 import io.datakernel.logfs.ot.LogDiff;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTRemoteSql;
@@ -22,7 +25,7 @@ import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.*;
 import static java.util.stream.Stream.concat;
 
-public class CubeCleaner {
+public class CubeCleaner implements EventloopJmxMBean {
 	public static final int DEFAULT_SNAPSHOT_COUNT = 1;
 
 	private final Logger logger = LoggerFactory.getLogger(CubeCleaner.class);
@@ -33,6 +36,8 @@ public class CubeCleaner {
 	private final LocalFsChunkStorage storage;
 	private final long chunksCleanupDelay;
 	private final int extraSnapshotCount;
+
+	private long lastChunksCounter = 0;
 
 	public CubeCleaner(Eventloop eventloop, OTRemoteSql<LogDiff<CubeDiff>> otRemote, Comparator<Integer> comparator,
 	                   OTSystem<LogDiff<CubeDiff>> otSystem, LocalFsChunkStorage storage, long chunksCleanupDelay,
@@ -59,7 +64,6 @@ public class CubeCleaner {
 
 	public CompletionStage<Void> cleanup(Set<Integer> parentCandidates) {
 		logger.info("Parent candidates: {}", parentCandidates);
-
 		return findMergeNodes(parentCandidates).thenCompose(mergeNodesOpt -> mergeNodesOpt
 				.map(mergeNodes -> findFirstCommonParent(otRemote, comparator, mergeNodes)
 						.thenCompose(checkpointNode -> checkpointNode
@@ -135,10 +139,25 @@ public class CubeCleaner {
 
 	private CompletionStage<Void> compareChunks(Set<Long> cubeChunks) {
 		return storage.list(s -> true, timestamp -> true)
+				.whenComplete(Stages.onResult(chunks -> lastChunksCounter = chunks.size()))
 				.thenCompose(storageChunks -> storageChunks.containsAll(cubeChunks)
 						? Stages.of(null)
 						: Stages.<Void>ofException(new IllegalStateException("Missed chunks from storage: " +
 						cubeChunks.stream().filter(v -> !storageChunks.contains(v)).collect(toList()))));
 	}
 
+	@JmxAttribute
+	public long getLastChunksCounter() {
+		return lastChunksCounter;
+	}
+
+	@JmxOperation
+	public void resetStats() {
+		lastChunksCounter = 0;
+	}
+
+	@Override
+	public Eventloop getEventloop() {
+		return eventloop;
+	}
 }
