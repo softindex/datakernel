@@ -19,6 +19,7 @@ package io.datakernel.config;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
+import io.datakernel.config.impl.ConfigWithPrefix;
 import io.datakernel.service.BlockingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,7 +39,7 @@ public final class ConfigsModule extends AbstractModule {
 	}
 
 	public static ConfigsModule create(Config config) {
-		return new ConfigsModule(config);
+		return new ConfigsModule(ConfigWithPrefix.createRoot(config));
 	}
 
 	public ConfigsModule saveEffectiveConfigTo(String file) {
