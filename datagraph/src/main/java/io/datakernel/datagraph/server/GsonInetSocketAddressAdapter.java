@@ -20,16 +20,18 @@ import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
-import io.datakernel.util.StringUtils;
 
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.Iterator;
+import java.util.regex.Pattern;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 
 public final class GsonInetSocketAddressAdapter extends TypeAdapter<InetSocketAddress> {
+	private static final Pattern splitter = Pattern.compile(":");
+
 	@Override
 	public InetSocketAddress read(JsonReader reader) throws IOException {
 		if (reader.peek() == JsonToken.NULL) {
@@ -37,7 +39,11 @@ public final class GsonInetSocketAddressAdapter extends TypeAdapter<InetSocketAd
 			return null;
 		}
 		try {
-			Iterator<String> split = StringUtils.splitToList(":", reader.nextString()).iterator();
+			Iterator<String> split = splitter.splitAsStream(reader.nextString())
+					.map(String::trim)
+					.filter(s -> !s.isEmpty())
+					.iterator();
+
 			InetAddress hostname = InetAddress.getByName(split.next());
 			int port = Integer.parseInt(split.next());
 			checkArgument(!split.hasNext());

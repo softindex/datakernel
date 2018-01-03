@@ -16,20 +16,24 @@
 
 package io.datakernel.cube.http;
 
-import com.google.common.base.Splitter;
 import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 import io.datakernel.cube.CubeQuery;
 import io.datakernel.exception.ParseException;
 import io.datakernel.utils.GsonAdapters;
-import org.joda.time.LocalDate;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
+
+import static java.util.stream.Collectors.toList;
 
 class Utils {
+	private static final Pattern splitter = Pattern.compile(",");
+
 	static final String MEASURES_PARAM = "measures";
 	static final String ATTRIBUTES_PARAM = "attributes";
 	static final String WHERE_PARAM = "where";
@@ -38,8 +42,6 @@ class Utils {
 	static final String LIMIT_PARAM = "limit";
 	static final String OFFSET_PARAM = "offset";
 	static final String REPORT_TYPE_PARAM = "reportType";
-
-	static final Splitter SPLITTER = Splitter.on(',').omitEmptyStrings();
 
 	static String formatOrderings(List<CubeQuery.Ordering> orderings) {
 		StringBuilder sb = new StringBuilder();
@@ -54,7 +56,11 @@ class Utils {
 
 	static List<CubeQuery.Ordering> parseOrderings(String string) throws ParseException {
 		List<CubeQuery.Ordering> result = new ArrayList<>();
-		for (String s : SPLITTER.split(string)) {
+		final List<String> tokens = splitter.splitAsStream(string)
+				.map(String::trim)
+				.filter(s -> !s.isEmpty())
+				.collect(toList());
+		for (String s : tokens) {
 			int i = s.indexOf(':');
 			if (i == -1) {
 				throw new ParseException();

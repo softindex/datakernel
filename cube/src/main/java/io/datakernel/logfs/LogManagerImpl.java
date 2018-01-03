@@ -30,12 +30,11 @@ import io.datakernel.stream.processor.StreamLZ4Decompressor;
 import io.datakernel.util.MemSize;
 import io.datakernel.util.Preconditions;
 import io.datakernel.util.Stopwatch;
-import org.joda.time.DateTimeZone;
-import org.joda.time.format.DateTimeFormat;
-import org.joda.time.format.DateTimeFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -47,7 +46,7 @@ import static io.datakernel.stream.StreamProducers.onEndOfStream;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 public final class LogManagerImpl<T> implements LogManager<T> {
-	public static final DateTimeFormatter DEFAULT_DATE_TIME_FORMATTER = DateTimeFormat.forPattern("yyyy-MM-dd_HH").withZone(DateTimeZone.UTC);
+	public static final DateTimeFormatter DEFAULT_DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH").withZone(ZoneOffset.UTC);
 	public static final int DEFAULT_BUFFER_SIZE = 256 * 1024;
 	public static final int DEFAULT_AUTO_FLUSH_INTERVAL = -1;
 

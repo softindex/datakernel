@@ -21,10 +21,10 @@ import io.datakernel.aggregation.AggregationPredicate;
 import io.datakernel.aggregation.AggregationPredicates;
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.measure.Measure;
-import org.joda.time.LocalDate;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.time.LocalDate;
 import java.util.*;
 
 import static io.datakernel.aggregation.AggregationPredicates.*;

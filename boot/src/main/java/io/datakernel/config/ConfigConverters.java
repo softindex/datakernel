@@ -23,22 +23,22 @@ import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.util.MemSize;
 import io.datakernel.util.Preconditions;
-import io.datakernel.util.StringUtils;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import static io.datakernel.net.ServerSocketSettings.DEFAULT_BACKLOG;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.Integer.parseInt;
-import static java.util.Collections.emptyList;
+import static java.util.regex.Pattern.compile;
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toList;
 
 @SuppressWarnings({"unused", "WeakerAccess"})
 public final class ConfigConverters {
@@ -243,33 +243,25 @@ public final class ConfigConverters {
 	}
 
 	public static <T> AbstractConfigConverter<List<T>> ofList(AbstractConfigConverter<T> elementConverter, CharSequence separators) {
-		final AbstractConfigConverter<T> elementConverter1 = elementConverter;
-		final CharSequence separators1 = separators;
 		return new AbstractConfigConverter<List<T>>() {
-			private final AbstractConfigConverter<T> elementConverter = elementConverter1;
-			private final CharSequence separators = separators1;
-			private final char joinSeparator = separators1.charAt(0);
+			private final Pattern pattern = compile(separators.chars()
+					.mapToObj(c -> "\\" + ((char) c))
+					.collect(joining("", "[", "]")));
 
 			@Override
 			public List<T> fromString(String string) {
-				string = string.trim();
-				if (string.isEmpty())
-					return emptyList();
-				List<T> list = new ArrayList<>();
-				for (String elementString : StringUtils.splitToList(separators, string)) {
-					T element = elementConverter.fromString(elementString.trim());
-					list.add(element);
-				}
-				return Collections.unmodifiableList(list);
+				return pattern.splitAsStream(string)
+						.map(String::trim)
+						.filter(s -> !s.isEmpty())
+						.map(elementConverter::fromString)
+						.collect(toList());
 			}
 
 			@Override
 			public String toString(List<T> item) {
-				List<String> strings = new ArrayList<>(item.size());
-				for (T e : item) {
-					strings.add(elementConverter.toString(e));
-				}
-				return StringUtils.join(joinSeparator, strings);
+				return item.stream()
+						.map(elementConverter::toString)
+						.collect(joining(String.valueOf(separators.charAt(0))));
 			}
 		};
 	}

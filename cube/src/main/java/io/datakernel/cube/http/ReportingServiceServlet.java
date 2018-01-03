@@ -30,10 +30,12 @@ import org.slf4j.LoggerFactory;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
+import java.util.regex.Pattern;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.cube.http.Utils.*;
 import static io.datakernel.http.HttpMethod.GET;
+import static java.util.stream.Collectors.toList;
 
 public final class ReportingServiceServlet implements AsyncServlet {
 	protected final Logger logger = LoggerFactory.getLogger(ReportingServiceServlet.class);
@@ -114,6 +116,15 @@ public final class ReportingServiceServlet implements AsyncServlet {
 		return response;
 	}
 
+	private static Pattern splitter = Pattern.compile(",");
+
+	private static List<String> split(String input) {
+		return splitter.splitAsStream(input)
+				.map(String::trim)
+				.filter(s -> !s.isEmpty())
+				.collect(toList());
+	}
+
 	@SuppressWarnings("unchecked")
 	public CubeQuery parseQuery(HttpRequest request) throws Exception {
 		CubeQuery query = CubeQuery.create();
@@ -121,11 +132,11 @@ public final class ReportingServiceServlet implements AsyncServlet {
 		String parameter;
 		parameter = request.getQueryParameter(ATTRIBUTES_PARAM);
 		if (parameter != null)
-			query = query.withAttributes(SPLITTER.splitToList(parameter));
+			query = query.withAttributes(split(parameter));
 
 		parameter = request.getQueryParameter(MEASURES_PARAM);
 		if (parameter != null)
-			query = query.withMeasures(SPLITTER.splitToList(parameter));
+			query = query.withMeasures(split(parameter));
 
 		parameter = request.getQueryParameter(WHERE_PARAM);
 		if (parameter != null)
