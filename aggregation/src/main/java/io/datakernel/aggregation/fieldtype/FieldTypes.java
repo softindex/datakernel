@@ -99,7 +99,7 @@ public final class FieldTypes {
 		}
 
 		FieldTypeDate(LocalDate startDate) {
-			super(int.class, LocalDate.class, new SerializerGenInt(true), LOCAL_DATE_JSON, GsonAdapters.INTEGER_JSON);
+			super(long.class, LocalDate.class, new SerializerGenLong(true), LOCAL_DATE_JSON, GsonAdapters.LONG_JSON);
 			this.startDate = startDate;
 		}
 
