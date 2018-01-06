@@ -61,7 +61,7 @@ public final class NodeConsumerToList<T> implements Node {
 		}
 		StreamConsumer<T> consumer;
 		if (object instanceof List) {
-			consumer = new StreamConsumerToList<>(taskContext.getEventloop(), (List<T>) object);
+			consumer = new StreamConsumerToList<>((List<T>) object);
 		} else if (object instanceof StreamConsumer) {
 			consumer = (StreamConsumer<T>) object;
 		} else {

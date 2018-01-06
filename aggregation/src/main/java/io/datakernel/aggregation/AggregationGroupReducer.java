@@ -20,7 +20,6 @@ import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.aggregation.util.PartitionPredicate;
 import io.datakernel.async.StagesAccumulator;
 import io.datakernel.codegen.DefiningClassLoader;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamConsumer;
 import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamProducer;
@@ -34,6 +33,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
+
+import static io.datakernel.stream.DataStreams.stream;
 
 public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
@@ -51,12 +52,11 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 
 	private final HashMap<Comparable<?>, Object> map = new HashMap<>();
 
-	public AggregationGroupReducer(Eventloop eventloop, AggregationChunkStorage storage,
+	public AggregationGroupReducer(AggregationChunkStorage storage,
 	                               AggregationStructure aggregation, List<String> measures,
 	                               Class<?> recordClass, PartitionPredicate<T> partitionPredicate,
 	                               Function<T, Comparable<?>> keyFunction, Aggregate aggregate,
 	                               int chunkSize, DefiningClassLoader classLoader) {
-		super(eventloop);
 		this.storage = storage;
 		this.measures = measures;
 		this.partitionPredicate = partitionPredicate;
@@ -117,10 +117,10 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 			list.add(entry.getValue());
 		}
 
-		StreamProducer producer = StreamProducers.ofIterable(eventloop, list);
-		AggregationChunker<T> chunker = AggregationChunker.create(eventloop, aggregation, measures, recordClass,
+		StreamProducer producer = StreamProducers.ofIterable(list);
+		AggregationChunker<T> chunker = AggregationChunker.create(aggregation, measures, recordClass,
 				partitionPredicate, storage, classLoader, chunkSize);
-		producer.streamTo(chunker);
+		stream(producer, chunker);
 
 		resultsTracker.addStage(chunker.getResult(), List::addAll)
 				.thenAccept(aggregationChunks -> suspendOrResume());

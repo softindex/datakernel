@@ -26,7 +26,6 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -38,6 +37,7 @@ import java.util.function.Function;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
 import static io.datakernel.aggregation.measure.Measures.union;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.TestUtils.assertStatus;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonMap;
@@ -50,7 +50,7 @@ public class AggregationGroupReducerTest {
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
 	@Test
-	public void test() throws IOException, ExecutionException, InterruptedException {
+	public void test() throws ExecutionException, InterruptedException {
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		AggregationStructure structure = new AggregationStructure()
@@ -64,14 +64,14 @@ public class AggregationGroupReducerTest {
 
 			@Override
 			public <T> CompletionStage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
-				return Stages.of(StreamProducers.withEndOfStream(StreamProducers.ofIterator(eventloop, items.iterator())));
+				return Stages.of(StreamProducers.withEndOfStreamAsResult(StreamProducers.ofIterator(items.iterator())));
 			}
 
 			@Override
 			public <T> CompletionStage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
-				StreamConsumerToList consumer = new StreamConsumerToList<>(eventloop, items);
+				StreamConsumerToList consumer = new StreamConsumerToList<>(items);
 				listConsumers.add(consumer);
-				return Stages.of(StreamConsumers.withEndOfStream(consumer));
+				return Stages.of(StreamConsumers.withEndOfStreamAsResult(consumer));
 			}
 
 			@Override
@@ -97,17 +97,17 @@ public class AggregationGroupReducerTest {
 
 		int aggregationChunkSize = 2;
 
-		StreamProducer<InvertedIndexRecord> producer = StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("fox", 1),
+		StreamProducer<InvertedIndexRecord> producer = StreamProducers.of(new InvertedIndexRecord("fox", 1),
 				new InvertedIndexRecord("brown", 2), new InvertedIndexRecord("fox", 3),
 				new InvertedIndexRecord("brown", 3), new InvertedIndexRecord("lazy", 4),
 				new InvertedIndexRecord("dog", 1), new InvertedIndexRecord("quick", 1),
-				new InvertedIndexRecord("fox", 4), new InvertedIndexRecord("brown", 10)));
+				new InvertedIndexRecord("fox", 4), new InvertedIndexRecord("brown", 10));
 
-		AggregationGroupReducer<InvertedIndexRecord> groupReducer = new AggregationGroupReducer<>(eventloop, aggregationChunkStorage,
+		AggregationGroupReducer<InvertedIndexRecord> groupReducer = new AggregationGroupReducer<>(aggregationChunkStorage,
 				structure, asList("documents"),
 				aggregationClass, AggregationUtils.singlePartition(), keyFunction, aggregate, aggregationChunkSize, classLoader);
 
-		producer.streamTo(groupReducer);
+		stream(producer, groupReducer);
 		CompletableFuture<List<AggregationChunk>> future = groupReducer.getResult().toCompletableFuture();
 
 		eventloop.run();

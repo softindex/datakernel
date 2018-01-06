@@ -34,16 +34,16 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		assert !isComplete();
 		if (next != null) {
 			next.onComplete(value);
-			next = COMPLETED_STAGE;
 		}
+		next = COMPLETED_STAGE;
 	}
 
 	protected void completeExceptionally(Throwable error) {
 		assert !isComplete();
 		if (next != null) {
 			next.onCompleteExceptionally(error);
-			next = COMPLETED_STAGE;
 		}
+		next = COMPLETED_STAGE;
 	}
 
 	private static final class SplittingStage<T> extends NextCompletionStage<T, T> {
@@ -76,7 +76,7 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 			this.next = next;
 		} else {
 			if (this.next == COMPLETED_STAGE)
-				throw new IllegalStateException();
+				throw new IllegalStateException("Stage has already been completed");
 			if (this.next instanceof SplittingStage) {
 				((SplittingStage<T>) this.next).list.add(next);
 			} else {

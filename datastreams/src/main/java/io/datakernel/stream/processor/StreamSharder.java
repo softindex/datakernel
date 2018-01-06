@@ -16,7 +16,6 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 
 import java.util.ArrayList;
@@ -31,7 +30,6 @@ import java.util.List;
  */
 @SuppressWarnings("unchecked")
 public final class StreamSharder<T> implements HasInput<T>, HasOutputs, StreamDataReceiver<T> {
-	private final Eventloop eventloop;
 	private final Sharder<T> sharder;
 
 	private final InputConsumer input;
@@ -40,19 +38,18 @@ public final class StreamSharder<T> implements HasInput<T>, HasOutputs, StreamDa
 	private StreamDataReceiver<T>[] dataReceivers = new StreamDataReceiver[0];
 	private int suspended = 0;
 
-	private StreamSharder(Eventloop eventloop, Sharder<T> sharder) {
-		this.eventloop = eventloop;
+	private StreamSharder(Sharder<T> sharder) {
 		this.sharder = sharder;
-		this.input = new InputConsumer(eventloop);
+		this.input = new InputConsumer();
 	}
 
-	public static <T> StreamSharder<T> create(Eventloop eventloop, Sharder<T> sharder) {
-		return new StreamSharder<T>(eventloop, sharder);
+	public static <T> StreamSharder<T> create(Sharder<T> sharder) {
+		return new StreamSharder<T>(sharder);
 	}
 	// endregion
 
 	public StreamProducer<T> newOutput() {
-		Output output = new Output(eventloop, outputs.size());
+		Output output = new Output(outputs.size());
 		dataReceivers = Arrays.copyOf(dataReceivers, dataReceivers.length + 1);
 		suspended++;
 		outputs.add(output);
@@ -76,10 +73,6 @@ public final class StreamSharder<T> implements HasInput<T>, HasOutputs, StreamDa
 	}
 
 	protected final class InputConsumer extends AbstractStreamConsumer<T> {
-		public InputConsumer(Eventloop eventloop) {
-			super(eventloop);
-		}
-
 		@Override
 		protected void onEndOfStream() {
 			outputs.forEach(Output::sendEndOfStream);
@@ -94,8 +87,7 @@ public final class StreamSharder<T> implements HasInput<T>, HasOutputs, StreamDa
 	protected final class Output extends AbstractStreamProducer<T> {
 		private final int index;
 
-		protected Output(Eventloop eventloop, int index) {
-			super(eventloop);
+		protected Output(int index) {
 			this.index = index;
 		}
 

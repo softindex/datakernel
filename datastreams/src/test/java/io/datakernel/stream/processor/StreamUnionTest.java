@@ -29,6 +29,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.TestUtils.*;
@@ -39,29 +40,29 @@ import static org.junit.Assert.*;
 @SuppressWarnings("unchecked")
 public class StreamUnionTest {
 	@Test
-	public void test1() throws Exception {
+	public void test1() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		StreamUnion<Integer> streamUnion = StreamUnion.create(eventloop);
+		StreamUnion<Integer> streamUnion = StreamUnion.create();
 
 		StreamProducer<Integer> source0 = StreamProducers.closing();
-		StreamProducer<Integer> source1 = StreamProducers.ofValue(eventloop, 1);
-		StreamProducer<Integer> source2 = StreamProducers.ofIterable(eventloop, asList(2, 3));
-		StreamProducer<Integer> source3 = StreamProducers.ofIterable(eventloop, EMPTY_LIST);
-		StreamProducer<Integer> source4 = StreamProducers.ofIterable(eventloop, asList(4, 5));
-		StreamProducer<Integer> source5 = StreamProducers.ofIterable(eventloop, asList(6));
-		StreamProducer<Integer> source6 = StreamProducers.ofIterable(eventloop, EMPTY_LIST);
+		StreamProducer<Integer> source1 = StreamProducers.of(1);
+		StreamProducer<Integer> source2 = StreamProducers.of(2, 3);
+		StreamProducer<Integer> source3 = StreamProducers.ofIterable(EMPTY_LIST);
+		StreamProducer<Integer> source4 = StreamProducers.of(4, 5);
+		StreamProducer<Integer> source5 = StreamProducers.of(6);
+		StreamProducer<Integer> source6 = StreamProducers.ofIterable(EMPTY_LIST);
 
-		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending(eventloop);
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending();
 
-		source0.streamTo(streamUnion.newInput());
-		source1.streamTo(streamUnion.newInput());
-		source2.streamTo(streamUnion.newInput());
-		source3.streamTo(streamUnion.newInput());
-		source4.streamTo(streamUnion.newInput());
-		source5.streamTo(streamUnion.newInput());
-		source6.streamTo(streamUnion.newInput());
-		streamUnion.getOutput().streamTo(consumer);
+		stream(source0, streamUnion.newInput());
+		stream(source1, streamUnion.newInput());
+		stream(source2, streamUnion.newInput());
+		stream(source3, streamUnion.newInput());
+		stream(source4, streamUnion.newInput());
+		stream(source5, streamUnion.newInput());
+		stream(source6, streamUnion.newInput());
+		stream(streamUnion.getOutput(), consumer);
 		eventloop.run();
 
 		List<Integer> result = consumer.getList();
@@ -81,17 +82,17 @@ public class StreamUnionTest {
 	}
 
 	@Test
-	public void testWithError() throws Exception {
+	public void testWithError() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		StreamUnion<Integer> streamUnion = StreamUnion.create(eventloop);
+		StreamUnion<Integer> streamUnion = StreamUnion.create();
 
-		StreamProducer<Integer> source0 = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
-		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(4, 5));
-		StreamProducer<Integer> source2 = StreamProducers.ofIterable(eventloop, asList(6, 7));
+		StreamProducer<Integer> source0 = StreamProducers.of(1, 2, 3);
+		StreamProducer<Integer> source1 = StreamProducers.of(4, 5);
+		StreamProducer<Integer> source2 = StreamProducers.of(6, 7);
 
 		List<Integer> list = new ArrayList<>();
-		StreamConsumerToList<Integer> consumer = new StreamConsumerToList<Integer>(eventloop, list) {
+		StreamConsumerToList<Integer> consumer = new StreamConsumerToList<Integer>(list) {
 			@Override
 			public void onData(Integer item) {
 				list.add(item);
@@ -104,11 +105,11 @@ public class StreamUnionTest {
 			}
 		};
 
-		source0.streamTo(streamUnion.newInput());
-		source1.streamTo(streamUnion.newInput());
-		source2.streamTo(streamUnion.newInput());
+		stream(source0, streamUnion.newInput());
+		stream(source1, streamUnion.newInput());
+		stream(source2, streamUnion.newInput());
 
-		streamUnion.getOutput().streamTo(consumer);
+		stream(streamUnion.getOutput(), consumer);
 		eventloop.run();
 
 		assertEquals(Arrays.asList(6, 7, 4, 5, 1), list);
@@ -125,24 +126,24 @@ public class StreamUnionTest {
 	public void testProducerWithError() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		StreamUnion<Integer> streamUnion = StreamUnion.create(eventloop);
+		StreamUnion<Integer> streamUnion = StreamUnion.create();
 
-		StreamProducer<Integer> source0 = StreamProducers.concat(eventloop,
-				StreamProducers.ofIterable(eventloop, Arrays.asList(1, 2)),
+		StreamProducer<Integer> source0 = StreamProducers.concat(
+				StreamProducers.ofIterable(Arrays.asList(1, 2)),
 				StreamProducers.closingWithError(new ExpectedException("Test Exception"))
 		);
-		StreamProducer<Integer> source1 = StreamProducers.concat(eventloop,
-				StreamProducers.ofIterable(eventloop, Arrays.asList(7, 8, 9)),
+		StreamProducer<Integer> source1 = StreamProducers.concat(
+				StreamProducers.ofIterable(Arrays.asList(7, 8, 9)),
 				StreamProducers.closingWithError(new ExpectedException("Test Exception"))
 		);
 
 		List<Integer> list = new ArrayList<>();
-		StreamConsumer<Integer> consumer = StreamConsumerToList.oneByOne(eventloop, list);
+		StreamConsumer<Integer> consumer = StreamConsumerToList.oneByOne(list);
 
-		source0.streamTo(streamUnion.newInput());
-		source1.streamTo(streamUnion.newInput());
+		stream(source0, streamUnion.newInput());
+		stream(source1, streamUnion.newInput());
 
-		streamUnion.getOutput().streamTo(consumer);
+		stream(streamUnion.getOutput(), consumer);
 		eventloop.run();
 
 		assertTrue(list.size() == 3);
@@ -154,9 +155,9 @@ public class StreamUnionTest {
 	public void testWithoutProducer() throws ExecutionException, InterruptedException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		StreamUnion<Integer> streamUnion = StreamUnion.create(eventloop);
-		StreamConsumerToList<Integer> toList = StreamConsumerToList.create(eventloop);
-		streamUnion.getOutput().streamTo(toList);
+		StreamUnion<Integer> streamUnion = StreamUnion.create();
+		StreamConsumerToList<Integer> toList = StreamConsumerToList.create();
+		stream(streamUnion.getOutput(), toList);
 		CompletableFuture<Void> future = toList.getEndOfStream().toCompletableFuture();
 		eventloop.run();
 		future.get();

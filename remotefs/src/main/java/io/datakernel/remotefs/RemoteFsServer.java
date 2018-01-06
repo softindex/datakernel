@@ -38,6 +38,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
+import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.net.MessagingSerializers.ofGson;
 
 public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
@@ -61,7 +62,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 	// set up connection
 	@Override
 	protected final EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
-		final MessagingWithBinaryStreaming<RemoteFsCommands.FsCommand, RemoteFsResponses.FsResponse> messaging = MessagingWithBinaryStreaming.create(eventloop, asyncTcpSocket, serializer);
+		final MessagingWithBinaryStreaming<RemoteFsCommands.FsCommand, RemoteFsResponses.FsResponse> messaging = MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
 		messaging.receive(new ReceiveMessageCallback<RemoteFsCommands.FsCommand>() {
 			@Override
 			public void onReceive(RemoteFsCommands.FsCommand msg) {
@@ -124,7 +125,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 			logger.trace("uploading {}", item.filePath);
 			fileManager.save(item.filePath).whenComplete((fileWriter, throwable) -> {
 				if (throwable == null) {
-					messaging.receiveBinaryStream().streamTo(fileWriter);
+					stream(messaging.receiveBinaryStream(), fileWriter);
 					fileWriter.getFlushStage().whenComplete(($, throwable1) -> {
 						if (throwable1 == null) {
 							logger.trace("read all bytes for {}", item.filePath);
@@ -165,11 +166,11 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 		public void onMessage(final Messaging<RemoteFsCommands.Download, RemoteFsResponses.FsResponse> messaging, final RemoteFsCommands.Download item) {
 			fileManager.size(item.filePath).whenComplete(errorHandlingConsumer(messaging, (size, throwable) -> {
 				if (size >= 0) {
-					messaging.send(new RemoteFsResponses.Ready(size)).whenComplete(errorHandlingConsumer(messaging, ($, throwable1) ->
+					messaging.send(new RemoteFsResponses.Ready(size)).whenComplete(errorHandlingConsumer(messaging, ($1, throwable1) ->
 							fileManager.get(item.filePath, item.startPosition).whenComplete(errorHandlingConsumer(messaging, (fileReader, throwable2) -> {
 								StreamConsumerWithResult<ByteBuf, Void> consumer = messaging.sendBinaryStream();
-								fileReader.streamTo(consumer);
-								consumer.getResult().whenComplete(($_, throwable3) -> messaging.close());
+								stream(fileReader, consumer)
+										.whenComplete(($3, throwable3) -> messaging.close());
 							}))));
 				} else {
 					onException(messaging, new Throwable("File not found"));

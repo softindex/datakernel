@@ -16,7 +16,6 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 
 import java.util.ArrayList;
@@ -25,25 +24,22 @@ import java.util.List;
 
 @SuppressWarnings("unchecked")
 public final class StreamSplitter<T> implements HasInput<T>, HasOutputs, StreamDataReceiver<T> {
-	private final Eventloop eventloop;
-
 	private final Input input;
 	private final List<Output> outputs = new ArrayList<>();
 
 	private StreamDataReceiver<T>[] dataReceivers = new StreamDataReceiver[0];
 	private int suspended = 0;
 
-	private StreamSplitter(Eventloop eventloop) {
-		this.eventloop = eventloop;
-		this.input = new Input(eventloop);
+	private StreamSplitter() {
+		this.input = new Input();
 	}
 
-	public static <T> StreamSplitter<T> create(Eventloop eventloop) {
-		return new StreamSplitter<>(eventloop);
+	public static <T> StreamSplitter<T> create() {
+		return new StreamSplitter<>();
 	}
 
 	public StreamProducer<T> newOutput() {
-		Output output = new Output(eventloop, outputs.size());
+		Output output = new Output(outputs.size());
 		dataReceivers = Arrays.copyOf(dataReceivers, dataReceivers.length + 1);
 		suspended++;
 		outputs.add(output);
@@ -68,10 +64,6 @@ public final class StreamSplitter<T> implements HasInput<T>, HasOutputs, StreamD
 	}
 
 	protected final class Input extends AbstractStreamConsumer<T> {
-		protected Input(Eventloop eventloop) {
-			super(eventloop);
-		}
-
 		@Override
 		protected void onStarted() {
 			if (outputs.isEmpty()) throw new IllegalStateException("Empty outputs");
@@ -91,8 +83,7 @@ public final class StreamSplitter<T> implements HasInput<T>, HasOutputs, StreamD
 	protected final class Output extends AbstractStreamProducer<T> {
 		private final int index;
 
-		protected Output(Eventloop eventloop, int index) {
-			super(eventloop);
+		protected Output(int index) {
 			this.index = index;
 		}
 

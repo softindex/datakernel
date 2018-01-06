@@ -33,6 +33,7 @@ import java.util.concurrent.CompletableFuture;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.stream.DataStreams.stream;
 import static org.junit.Assert.*;
 
 public class StreamByteChunkerTest {
@@ -83,13 +84,13 @@ public class StreamByteChunkerTest {
 
 		int bufSize = 128;
 
-		StreamProducer<ByteBuf> source = StreamProducers.ofIterable(eventloop, buffers);
-		StreamByteChunker resizer = StreamByteChunker.create(eventloop, bufSize / 2, bufSize);
-		StreamConsumerWithResult<ByteBuf, List<ByteBuf>> streamFixedSizeConsumer = new StreamConsumerToList<>(eventloop);
+		StreamProducer<ByteBuf> source = StreamProducers.ofIterable(buffers);
+		StreamByteChunker resizer = StreamByteChunker.create(bufSize / 2, bufSize);
+		StreamConsumerWithResult<ByteBuf, List<ByteBuf>> streamFixedSizeConsumer = new StreamConsumerToList<>();
 		CompletableFuture<List<ByteBuf>> listFuture = streamFixedSizeConsumer.getResult().toCompletableFuture();
 
-		source.streamTo(resizer.getInput());
-		resizer.getOutput().streamTo(streamFixedSizeConsumer);
+		stream(source, resizer.getInput());
+		stream(resizer.getOutput(), streamFixedSizeConsumer);
 
 		eventloop.run();
 

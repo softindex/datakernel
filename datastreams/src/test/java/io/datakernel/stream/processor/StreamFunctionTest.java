@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.StreamProducers.concat;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
@@ -40,13 +41,13 @@ public class StreamFunctionTest {
 	public void testFunction() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		StreamFunction<Integer, Integer> streamFunction = StreamFunction.create(eventloop, input -> input * input);
+		StreamFunction<Integer, Integer> streamFunction = StreamFunction.create(input -> input * input);
 
-		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
-		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending(eventloop);
+		StreamProducer<Integer> source1 = StreamProducers.of(1, 2, 3);
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending();
 
-		source1.streamTo(streamFunction.getInput());
-		streamFunction.getOutput().streamTo(consumer);
+		stream(source1, streamFunction.getInput());
+		stream(streamFunction.getOutput(), consumer);
 		eventloop.run();
 
 		assertEquals(asList(1, 4, 9), consumer.getList());
@@ -61,11 +62,11 @@ public class StreamFunctionTest {
 	public void testFunctionConsumerError() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		StreamFunction<Integer, Integer> streamFunction = StreamFunction.create(eventloop, input -> input * input);
+		StreamFunction<Integer, Integer> streamFunction = StreamFunction.create(input -> input * input);
 
 		List<Integer> list = new ArrayList<>();
-		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
-		StreamConsumerToList<Integer> consumer = new StreamConsumerToList<Integer>(eventloop, list) {
+		StreamProducer<Integer> source1 = StreamProducers.of(1, 2, 3);
+		StreamConsumerToList<Integer> consumer = new StreamConsumerToList<Integer>(list) {
 			@Override
 			public void onData(Integer item) {
 				list.add(item);
@@ -78,8 +79,8 @@ public class StreamFunctionTest {
 			}
 		};
 
-		source1.streamTo(streamFunction.getInput());
-		streamFunction.getOutput().streamTo(consumer);
+		stream(source1, streamFunction.getInput());
+		stream(streamFunction.getOutput(), consumer);
 		eventloop.run();
 
 		assertEquals(asList(1, 4), list);
@@ -91,20 +92,20 @@ public class StreamFunctionTest {
 	}
 
 	@Test
-	public void testFunctionProducerError() throws Exception {
+	public void testFunctionProducerError() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		StreamFunction<Integer, Integer> streamFunction = StreamFunction.create(eventloop, input -> input * input);
+		StreamFunction<Integer, Integer> streamFunction = StreamFunction.create(input -> input * input);
 
-		StreamProducer<Integer> source1 = concat(eventloop,
-				StreamProducers.ofIterable(eventloop, asList(1, 2, 3)),
-				StreamProducers.ofIterable(eventloop, asList(4, 5, 6)),
+		StreamProducer<Integer> source1 = concat(
+				StreamProducers.of(1, 2, 3),
+				StreamProducers.of(4, 5, 6),
 				StreamProducers.closingWithError(new ExpectedException("Test Exception")));
 
-		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(eventloop);
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
-		source1.streamTo(streamFunction.getInput());
-		streamFunction.getOutput().streamTo(consumer);
+		stream(source1, streamFunction.getInput());
+		stream(streamFunction.getOutput(), consumer);
 		eventloop.run();
 
 		assertEquals(asList(1, 4, 9, 16, 25, 36), consumer.getList());
@@ -118,15 +119,15 @@ public class StreamFunctionTest {
 	public void testWithoutConsumer() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		StreamFunction<Integer, Integer> streamFunction = StreamFunction.create(eventloop, input -> input * input);
+		StreamFunction<Integer, Integer> streamFunction = StreamFunction.create(input -> input * input);
 
-		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
-		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending(eventloop);
+		StreamProducer<Integer> source1 = StreamProducers.of(1, 2, 3);
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending();
 
-		source1.streamTo(streamFunction.getInput());
+		stream(source1, streamFunction.getInput());
 		eventloop.run();
 
-		streamFunction.getOutput().streamTo(consumer);
+		stream(streamFunction.getOutput(), consumer);
 		eventloop.run();
 
 		assertEquals(asList(1, 4, 9), consumer.getList());

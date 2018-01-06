@@ -35,6 +35,7 @@ import java.util.concurrent.Executors;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.file.AsyncFile.open;
+import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.file.StreamFileWriter.CREATE_OPTIONS;
 import static io.datakernel.stream.file.StreamFileWriter.create;
 
@@ -67,9 +68,9 @@ public class StressDownload {
 			client.download(file, 0).whenComplete((producer, throwable) -> {
 				if (throwable == null) {
 					try {
-						final AsyncFile open = open(eventloop, executor, CLIENT_STORAGE.resolve(file), CREATE_OPTIONS);
-						StreamConsumer<ByteBuf> consumer = create(eventloop, open);
-						producer.streamTo(consumer);
+						final AsyncFile open = open(executor, CLIENT_STORAGE.resolve(file), CREATE_OPTIONS);
+						StreamConsumer<ByteBuf> consumer = create(open);
+						stream(producer, consumer);
 					} catch (IOException e) {
 						failures[0]++;
 					}

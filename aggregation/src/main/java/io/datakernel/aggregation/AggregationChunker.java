@@ -18,18 +18,21 @@ package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.aggregation.util.PartitionPredicate;
+import io.datakernel.async.SettableStage;
 import io.datakernel.async.StagesAccumulator;
 import io.datakernel.codegen.DefiningClassLoader;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
 
-public final class AggregationChunker<T> extends StreamConsumerDecorator<T, List<AggregationChunk>> {
-	private final Eventloop eventloop;
+import static io.datakernel.async.SettableStage.mirrorOf;
+import static io.datakernel.async.Stages.onError;
+
+public final class AggregationChunker<T> extends StreamConsumerDecorator<T> implements StreamConsumerWithResult<T, List<AggregationChunk>> {
 	private final StreamConsumerSwitcher<T> switcher;
+	private final SettableStage<List<AggregationChunk>> result;
 
 	private final AggregationStructure aggregation;
 	private final List<String> fields;
@@ -41,13 +44,12 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T, List
 
 	private final int chunkSize;
 
-	private AggregationChunker(Eventloop eventloop, StreamConsumerSwitcher<T> switcher,
+	private AggregationChunker(StreamConsumerSwitcher<T> switcher,
 	                           AggregationStructure aggregation, List<String> fields,
 	                           Class<T> recordClass, PartitionPredicate<T> partitionPredicate,
 	                           AggregationChunkStorage storage,
 	                           DefiningClassLoader classLoader,
 	                           int chunkSize) {
-		this.eventloop = eventloop;
 		this.switcher = switcher;
 		this.aggregation = aggregation;
 		this.fields = fields;
@@ -58,23 +60,29 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T, List
 		this.chunksAccumulator = StagesAccumulator.<List<AggregationChunk>>create(new ArrayList<>())
 				.withStage(switcher.getEndOfStream(), (accumulator, $) -> {});
 		this.chunkSize = chunkSize;
+		this.result = mirrorOf(chunksAccumulator.get());
+		getEndOfStream().whenComplete(onError(result::trySetException));
 	}
 
-	public static <T> AggregationChunker<T> create(Eventloop eventloop,
-	                                               AggregationStructure aggregation, List<String> fields,
+	public static <T> AggregationChunker<T> create(AggregationStructure aggregation, List<String> fields,
 	                                               Class<T> recordClass, PartitionPredicate<T> partitionPredicate,
 	                                               AggregationChunkStorage storage,
 	                                               DefiningClassLoader classLoader,
 	                                               int chunkSize) {
-		StreamConsumerSwitcher<T> switcher = StreamConsumerSwitcher.create(eventloop);
-		AggregationChunker<T> chunker = new AggregationChunker<>(eventloop, switcher, aggregation, fields, recordClass, partitionPredicate, storage, classLoader, chunkSize);
-		chunker.setActualConsumer(switcher, chunker.chunksAccumulator.get());
+		StreamConsumerSwitcher<T> switcher = StreamConsumerSwitcher.create();
+		AggregationChunker<T> chunker = new AggregationChunker<>(switcher, aggregation, fields, recordClass, partitionPredicate, storage, classLoader, chunkSize);
+		chunker.setActualConsumer(switcher);
 		chunker.startNewChunk();
 		return chunker;
 	}
 
-	private class ChunkWriter extends StreamConsumerDecorator<T, AggregationChunk> implements StreamDataReceiver<T> {
-		private final CompletionStage<AggregationChunk> result;
+	@Override
+	public CompletionStage<List<AggregationChunk>> getResult() {
+		return result;
+	}
+
+	private class ChunkWriter extends StreamConsumerDecorator<T> implements StreamConsumerWithResult<T, AggregationChunk>, StreamDataReceiver<T> {
+		private final SettableStage<AggregationChunk> result;
 		private final long chunkId;
 		private final int chunkSize;
 		private final PartitionPredicate<T> partitionPredicate;
@@ -86,17 +94,20 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T, List
 
 		boolean switched;
 
-		public ChunkWriter(StreamConsumerWithResult<T, ?> actualConsumer,
+		public ChunkWriter(StreamConsumerWithResult<T, Void> actualConsumer,
 		                   long chunkId, int chunkSize, PartitionPredicate<T> partitionPredicate) {
+			super(actualConsumer);
 			this.chunkId = chunkId;
 			this.chunkSize = chunkSize;
 			this.partitionPredicate = partitionPredicate;
-			this.result = actualConsumer.getResult().thenApply($ -> count == 0 ? null :
-					AggregationChunk.create(chunkId,
-							fields,
-							PrimaryKey.ofObject(first, aggregation.getKeys()),
-							PrimaryKey.ofObject(last, aggregation.getKeys()),
-							count));
+			this.result = mirrorOf(actualConsumer.getResult()
+					.thenApply($ -> count == 0 ? null :
+							AggregationChunk.create(chunkId,
+									fields,
+									PrimaryKey.ofObject(first, aggregation.getKeys()),
+									PrimaryKey.ofObject(last, aggregation.getKeys()),
+									count)));
+			getEndOfStream().whenComplete(onError(result::trySetException));
 		}
 
 		@Override
@@ -119,16 +130,18 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T, List
 				}
 			}
 		}
+
+		@Override
+		public CompletionStage<AggregationChunk> getResult() {
+			return result;
+		}
 	}
 
 	private void startNewChunk() {
 		StreamConsumerWithResult<T, AggregationChunk> consumer = StreamConsumers.ofStageWithResult(
-				storage.createId().thenCompose(chunkId ->
-						storage.write(aggregation, fields, recordClass, chunkId, classLoader).thenApply(streamConsumer -> {
-							ChunkWriter chunkWriter = new ChunkWriter(streamConsumer, chunkId, chunkSize, partitionPredicate);
-							chunkWriter.setActualConsumer(streamConsumer, chunkWriter.result);
-							return chunkWriter;
-						})));
+				storage.createId()
+						.thenCompose(chunkId -> storage.write(aggregation, fields, recordClass, chunkId, classLoader)
+								.thenApply(streamConsumer -> new ChunkWriter(streamConsumer, chunkId, chunkSize, partitionPredicate))));
 
 		switcher.switchTo(consumer);
 

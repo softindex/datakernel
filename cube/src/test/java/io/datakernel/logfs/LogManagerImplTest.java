@@ -19,6 +19,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 
+import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.StreamConsumers.ofStageWithResult;
 import static io.datakernel.stream.StreamProducers.ofIterable;
 import static java.util.Arrays.asList;
@@ -43,12 +44,12 @@ public class LogManagerImplTest {
 
 		final List<String> values = asList("test1", "test2", "test3");
 
-		ofIterable(eventloop, values).streamTo(ofStageWithResult(logManager.consumer(testPartition)));
+		stream(ofIterable(values), ofStageWithResult(logManager.consumer(testPartition)));
 
 		eventloop.run();
 
-		final StreamConsumerWithResult<String, List<String>> listConsumer = StreamConsumers.toList(eventloop);
-		logManager.producerStream(testPartition, new LogFile("", 0), 0, null).streamTo(listConsumer);
+		final StreamConsumerWithResult<String, List<String>> listConsumer = StreamConsumers.toList();
+		stream(logManager.producerStream(testPartition, new LogFile("", 0), 0, null), listConsumer);
 
 		final CompletableFuture<List<String>> listFuture = listConsumer.getResult().toCompletableFuture();
 		eventloop.run();
@@ -86,8 +87,8 @@ public class LogManagerImplTest {
 		@Override
 		public CompletionStage<StreamProducerWithResult<ByteBuf, Void>> read(String logPartition, LogFile logFile, long startPosition) {
 			final List<ByteBuf> byteBufs = getOffset(partitions.get(logPartition).get(logFile), startPosition);
-			final StreamProducer<ByteBuf> producer = ofIterable(eventloop, byteBufs);
-			return Stages.of(StreamProducers.withEndOfStream(producer));
+			final StreamProducer<ByteBuf> producer = ofIterable(byteBufs);
+			return Stages.of(StreamProducers.withEndOfStreamAsResult(producer));
 		}
 
 		private static List<ByteBuf> getOffset(List<ByteBuf> byteBufs, long startPosition) {
@@ -111,9 +112,9 @@ public class LogManagerImplTest {
 
 		@Override
 		public CompletionStage<StreamConsumerWithResult<ByteBuf, Void>> write(String logPartition, LogFile logFile) {
-			final StreamConsumerWithResult<ByteBuf, List<ByteBuf>> listConsumer = StreamConsumers.toList(eventloop);
+			final StreamConsumerWithResult<ByteBuf, List<ByteBuf>> listConsumer = StreamConsumers.toList();
 			listConsumer.getResult().thenAccept(byteBufs -> partitions.get(logPartition).get(logFile).addAll(byteBufs));
-			return Stages.of(StreamConsumers.withEndOfStream(listConsumer));
+			return Stages.of(StreamConsumers.withEndOfStreamAsResult(listConsumer));
 		}
 	}
 

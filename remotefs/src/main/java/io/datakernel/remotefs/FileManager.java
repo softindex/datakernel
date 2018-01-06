@@ -68,9 +68,9 @@ public final class FileManager {
 
 	public CompletionStage<StreamFileReader> get(String fileName, final long startPosition) {
 		logger.trace("downloading file: {}, position: {}", fileName, startPosition);
-		return AsyncFile.openAsync(eventloop, executor, storagePath.resolve(fileName), new OpenOption[]{READ}).thenApply(result -> {
+		return AsyncFile.openAsync(executor, storagePath.resolve(fileName), new OpenOption[]{READ}).thenApply(result -> {
 			logger.trace("{} opened", result);
-			return readFileFrom(eventloop, result, readerBufferSize, startPosition);
+			return readFileFrom(result, readerBufferSize, startPosition);
 		});
 	}
 
@@ -78,21 +78,21 @@ public final class FileManager {
 		logger.trace("uploading file: {}", fileName);
 		return ensureDirectoryAsync(storagePath, fileName).thenCompose(path -> {
 			logger.trace("ensured directory: {}", storagePath);
-			return AsyncFile.openAsync(eventloop, executor, path, CREATE_OPTIONS).thenApply(result -> {
+			return AsyncFile.openAsync(executor, path, CREATE_OPTIONS).thenApply(result -> {
 				logger.trace("{} opened", result);
-				return StreamFileWriter.create(eventloop, result, true);
+				return StreamFileWriter.create(result, true);
 			});
 		});
 	}
 
 	public CompletionStage<Void> delete(String fileName) {
 		logger.trace("deleting file: {}", fileName);
-		return AsyncFile.delete(eventloop, executor, storagePath.resolve(fileName));
+		return AsyncFile.delete(executor, storagePath.resolve(fileName));
 	}
 
 	public CompletionStage<Long> size(String fileName) {
 		logger.trace("calculating file size: {}", fileName);
-		return AsyncFile.length(eventloop, executor, storagePath.resolve(fileName));
+		return AsyncFile.length(executor, storagePath.resolve(fileName));
 	}
 
 	public CompletionStage<List<String>> scanAsync() {

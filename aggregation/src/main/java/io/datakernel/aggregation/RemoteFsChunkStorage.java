@@ -39,6 +39,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 
 import static io.datakernel.aggregation.AggregationUtils.createBufferSerializer;
+import static io.datakernel.stream.DataStreams.stream;
 
 public class RemoteFsChunkStorage implements AggregationChunkStorage {
 	public static final String LOG = ".log";
@@ -68,16 +69,16 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage {
 				() -> client.download(tempPath(chunkId), 0),
 				() -> client.download(path(chunkId), 0))
 				.thenApply(producer -> {
-					StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create(eventloop);
+					StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create();
 
 					BufferSerializer<T> bufferSerializer = createBufferSerializer(aggregation, recordClass,
 							aggregation.getKeys(), fields, classLoader);
-					StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(eventloop, bufferSerializer);
+					StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(bufferSerializer);
 
-					producer.streamTo(decompressor.getInput());
-					decompressor.getOutput().streamTo(deserializer.getInput());
+					stream(producer, decompressor.getInput());
+					stream(decompressor.getOutput(), deserializer.getInput());
 
-					return StreamProducers.withEndOfStream(deserializer.getOutput());
+					return StreamProducers.withEndOfStreamAsResult(deserializer.getOutput());
 				});
 	}
 
@@ -90,15 +91,15 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage {
 	                                                                    Class<T> recordClass, long chunkId,
 	                                                                    DefiningClassLoader classLoader) {
 		return client.upload(tempPath(chunkId)).thenApply(consumer -> {
-			StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
+			StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor();
 			BufferSerializer<T> bufferSerializer = createBufferSerializer(aggregation, recordClass,
 					aggregation.getKeys(), fields, classLoader);
 
-			StreamBinarySerializer<T> serializer = StreamBinarySerializer.create(eventloop, bufferSerializer)
+			StreamBinarySerializer<T> serializer = StreamBinarySerializer.create(bufferSerializer)
 					.withDefaultBufferSize(StreamBinarySerializer.MAX_SIZE_2);
 
-			serializer.getOutput().streamTo(compressor.getInput());
-			compressor.getOutput().streamTo(consumer);
+			stream(serializer.getOutput(), compressor.getInput());
+			stream(compressor.getOutput(), consumer);
 
 			return StreamConsumers.withResult(serializer.getInput(), consumer.getResult());
 		});

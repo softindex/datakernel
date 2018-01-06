@@ -46,7 +46,7 @@ import static java.util.Arrays.asList;
  * An abstract representation of file. Actions with this file are non-blocking
  */
 public final class AsyncFile {
-	private final Eventloop eventloop;
+	private final Eventloop eventloop = Eventloop.getCurrentEventloop();
 	private final ExecutorService executor;
 	private final AsynchronousFileChannel channel;
 
@@ -55,13 +55,11 @@ public final class AsyncFile {
 	/**
 	 * Creates a new instance of AsyncFile
 	 *
-	 * @param eventloop event loop in which a file will be used
-	 * @param executor  executor for running tasks in other thread
-	 * @param channel   an asynchronous channel for reading, writing, and manipulating a file.
-	 * @param path      path of the file
+	 * @param executor executor for running tasks in other thread
+	 * @param channel  an asynchronous channel for reading, writing, and manipulating a file.
+	 * @param path     path of the file
 	 */
-	private AsyncFile(Eventloop eventloop, ExecutorService executor, AsynchronousFileChannel channel, Path path) {
-		this.eventloop = checkNotNull(eventloop);
+	private AsyncFile(ExecutorService executor, AsynchronousFileChannel channel, Path path) {
 		this.executor = checkNotNull(executor);
 		this.channel = checkNotNull(channel);
 		this.path = checkNotNull(path);
@@ -70,45 +68,52 @@ public final class AsyncFile {
 	/**
 	 * Opens file in a blocking manner
 	 *
-	 * @param eventloop   event loop in which a file will be used
 	 * @param executor    executor for running tasks in other thread
 	 * @param path        the  path of the file to open or create
 	 * @param openOptions options specifying how the file is opened
 	 */
-	public static AsyncFile open(final Eventloop eventloop, final ExecutorService executor,
+	public static AsyncFile open(final ExecutorService executor,
 	                             final Path path, final OpenOption[] openOptions) throws IOException {
-		AsynchronousFileChannel channel = AsynchronousFileChannel.open(path, new HashSet<>(asList(openOptions)), executor);
-		return new AsyncFile(eventloop, executor, channel, path);
+		AsynchronousFileChannel channel = doOpenChannel(executor, path, openOptions);
+		return new AsyncFile(executor, channel, path);
 	}
 
 	/**
 	 * Asynchronous opens file
 	 *
-	 * @param eventloop   event loop in which a file will be used
 	 * @param executor    executor for running tasks in other thread
 	 * @param path        the  path of the file to open or create
 	 * @param openOptions options specifying how the file is opened
 	 */
-	public static CompletionStage<AsyncFile> openAsync(final Eventloop eventloop, final ExecutorService executor,
+	public static CompletionStage<AsyncFile> openAsync(final ExecutorService executor,
 	                                                   final Path path, final OpenOption[] openOptions) {
-		return eventloop.callConcurrently(executor, () -> open(eventloop, executor, path, openOptions));
+
+		Eventloop eventloop = Eventloop.getCurrentEventloop();
+		return eventloop.callConcurrently(executor,
+				() -> doOpenChannel(executor, path, openOptions))
+				.thenApply(channel -> new AsyncFile(executor, channel, path));
+	}
+
+	private static AsynchronousFileChannel doOpenChannel(ExecutorService executor, Path path, OpenOption[] openOptions) throws IOException {
+		return AsynchronousFileChannel.open(path, new HashSet<>(asList(openOptions)), executor);
 	}
 
 	/**
 	 * Deletes the file in new thread
 	 *
-	 * @param eventloop event loop in which a file will be used
-	 * @param executor  @param path     the  path of the file to open or create
+	 * @param executor @param path     the  path of the file to open or create
 	 */
-	public static CompletionStage<Void> delete(Eventloop eventloop, ExecutorService executor,
+	public static CompletionStage<Void> delete(ExecutorService executor,
 	                                           final Path path) {
+		Eventloop eventloop = Eventloop.getCurrentEventloop();
 		return eventloop.callConcurrently(executor, () -> {
 			Files.delete(path);
 			return null;
 		});
 	}
 
-	public static CompletionStage<Long> length(Eventloop eventloop, ExecutorService executor, final Path path) {
+	public static CompletionStage<Long> length(ExecutorService executor, final Path path) {
+		Eventloop eventloop = Eventloop.getCurrentEventloop();
 		return eventloop.callConcurrently(executor, () -> {
 			final File file = path.toFile();
 			return !file.exists() || file.isDirectory() ? -1L : file.length();
@@ -164,11 +169,10 @@ public final class AsyncFile {
 	/**
 	 * Reads all sequence of bytes from this channel into the given buffer.
 	 *
-	 * @param eventloop event loop in which a file will be used
-	 * @param executor  @param path     the  path of the file to read
+	 * @param executor @param path     the  path of the file to read
 	 */
-	public static CompletionStage<ByteBuf> readFile(Eventloop eventloop, ExecutorService executor, Path path) {
-		return openAsync(eventloop, executor, path, new OpenOption[]{READ}).thenCompose(
+	public static CompletionStage<ByteBuf> readFile(ExecutorService executor, Path path) {
+		return openAsync(executor, path, new OpenOption[]{READ}).thenCompose(
 				file -> file.readFully().whenComplete((byteBuf, throwable) -> file.close()));
 	}
 
@@ -176,13 +180,12 @@ public final class AsyncFile {
 	 * Creates new file and writes a sequence of bytes to this file from the given buffer, starting at the given file
 	 * position
 	 *
-	 * @param eventloop event loop in which a file will be used
-	 * @param executor  @param path     the  path of the file to create and write
-	 * @param buf       the  buffer from which bytes are to be transferred byteBuffer
+	 * @param executor @param path     the  path of the file to create and write
+	 * @param buf      the  buffer from which bytes are to be transferred byteBuffer
 	 */
-	public static CompletionStage<Void> createNewAndWriteFile(Eventloop eventloop, ExecutorService executor,
+	public static CompletionStage<Void> createNewAndWriteFile(ExecutorService executor,
 	                                                          Path path, final ByteBuf buf) {
-		return openAsync(eventloop, executor, path, new OpenOption[]{WRITE, CREATE_NEW}).thenCompose(
+		return openAsync(executor, path, new OpenOption[]{WRITE, CREATE_NEW}).thenCompose(
 				file -> file.writeFully(buf, 0L).whenComplete(($, throwable) -> buf.recycle()));
 	}
 
@@ -443,10 +446,6 @@ public final class AsyncFile {
 			channel.force(metaData);
 			return null;
 		});
-	}
-
-	public Eventloop getEventloop() {
-		return eventloop;
 	}
 
 	public ExecutorService getExecutor() {

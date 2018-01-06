@@ -16,7 +16,6 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 
 import java.util.*;
@@ -38,7 +37,6 @@ import static io.datakernel.util.Preconditions.checkArgument;
 public abstract class AbstractStreamReducer<K, O, A> implements HasOutput<O>, HasInputs {
 	public static final int DEFAULT_BUFFER_SIZE = 256;
 
-	private final Eventloop eventloop;
 	private final List<Input> inputs = new ArrayList<>();
 	private final Output output;
 
@@ -55,12 +53,10 @@ public abstract class AbstractStreamReducer<K, O, A> implements HasOutput<O>, Ha
 	/**
 	 * Creates a new instance of AbstractStreamReducer
 	 *
-	 * @param eventloop     eventloop in which runs reducer
 	 * @param keyComparator comparator for compare keys
 	 */
-	public AbstractStreamReducer(Eventloop eventloop, final Comparator<K> keyComparator) {
-		this.eventloop = eventloop;
-		this.output = new Output(eventloop);
+	public AbstractStreamReducer(final Comparator<K> keyComparator) {
+		this.output = new Output();
 		this.priorityQueue = new PriorityQueue<>(1, (o1, o2) -> {
 			int compare = ((Comparator) keyComparator).compare(o1.headKey, o2.headKey);
 			if (compare != 0)
@@ -76,7 +72,7 @@ public abstract class AbstractStreamReducer<K, O, A> implements HasOutput<O>, Ha
 	}
 
 	protected <I> StreamConsumer<I> newInput(Function<I, K> keyFunction, StreamReducers.Reducer<K, I, O, A> reducer) {
-		Input input = new Input<>(eventloop, inputs.size(), priorityQueue, keyFunction, reducer);
+		Input input = new Input<>(inputs.size(), priorityQueue, keyFunction, reducer);
 		inputs.add(input);
 		streamsAwaiting++;
 		streamsOpen++;
@@ -104,9 +100,8 @@ public abstract class AbstractStreamReducer<K, O, A> implements HasOutput<O>, Ha
 		private K headKey;
 		private I headItem;
 
-		private Input(Eventloop eventloop, int index,
+		private Input(int index,
 		              PriorityQueue<Input> priorityQueue, Function<I, K> keyFunction, StreamReducers.Reducer<K, I, O, A> reducer) {
-			super(eventloop);
 			this.index = index;
 			this.priorityQueue = priorityQueue;
 			this.keyFunction = keyFunction;
@@ -162,10 +157,6 @@ public abstract class AbstractStreamReducer<K, O, A> implements HasOutput<O>, Ha
 	}
 
 	private final class Output extends AbstractStreamProducer<O> {
-		protected Output(Eventloop eventloop) {
-			super(eventloop);
-		}
-
 		@Override
 		protected void onError(Throwable t) {
 			inputs.forEach(input -> input.closeWithError(t));
@@ -218,6 +209,5 @@ public abstract class AbstractStreamReducer<K, O, A> implements HasOutput<O>, Ha
 			output.sendEndOfStream();
 		}
 	}
-
 
 }

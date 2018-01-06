@@ -76,7 +76,7 @@ public final class NodeShard<K, T> implements Node {
 	@Override
 	public void createAndBind(TaskContext taskContext) {
 		Sharders.HashSharder<K> hashSharder = new Sharders.HashSharder<>(outputs.size());
-		StreamSharder<T> streamSharder = StreamSharder.create(taskContext.getEventloop(),
+		StreamSharder<T> streamSharder = StreamSharder.create(
 				object -> hashSharder.shard(keyFunction.apply(object)));
 		taskContext.bindChannel(input, streamSharder.getInput());
 		for (StreamId streamId : outputs) {

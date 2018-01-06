@@ -10,6 +10,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
 
+import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.StreamProducers.*;
 import static java.util.stream.Collectors.toList;
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
@@ -28,14 +29,14 @@ public class StreamProducersTest {
 	@Test
 	public void testErrorDecorator() {
 		final List<Integer> values = IntStream.range(1, 10).boxed().collect(toList());
-		final StreamProducer<Integer> readProducer = ofIterable(eventloop, values);
+		final StreamProducer<Integer> readProducer = ofIterable(values);
 		final StreamProducer<Integer> errorProducer = errorDecorator(
 				readProducer,
 				k -> k.equals(5),
 				IllegalArgumentException::new);
 
-		final StreamConsumerToList<Integer> consumer = new StreamConsumerToList<>(eventloop);
-		errorProducer.streamTo(consumer);
+		final StreamConsumerToList<Integer> consumer = new StreamConsumerToList<>();
+		stream(errorProducer, consumer);
 		eventloop.run();
 
 		assertEquals(((AbstractStreamProducer<Integer>) readProducer).getStatus(), StreamStatus.CLOSED_WITH_ERROR);
@@ -46,14 +47,14 @@ public class StreamProducersTest {
 	@Test
 	public void testErrorDecoratorWithResult() throws ExecutionException, InterruptedException {
 		final List<Integer> values = IntStream.range(1, 10).boxed().collect(toList());
-		final StreamProducerWithResult<Integer, Void> readProducer = withEndOfStream(ofIterable(eventloop, values));
+		final StreamProducerWithResult<Integer, Void> readProducer = withEndOfStreamAsResult(ofIterable(values));
 		final StreamProducerWithResult<Integer, Void> errorProducer = errorDecorator(
 				readProducer,
 				k -> k.equals(5),
 				IllegalArgumentException::new);
 
-		final StreamConsumerToList<Integer> consumer = new StreamConsumerToList<>(eventloop);
-		errorProducer.streamTo(consumer);
+		final StreamConsumerToList<Integer> consumer = new StreamConsumerToList<>();
+		stream(errorProducer, consumer);
 		final CompletableFuture<Void> producerFuture = readProducer
 				.getResult()
 				.whenComplete((aVoid, throwable) -> assertThat(throwable, instanceOf(IllegalArgumentException.class)))

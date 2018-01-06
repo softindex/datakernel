@@ -15,6 +15,7 @@ import java.util.*;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Predicate;
 
+import static io.datakernel.async.SettableStage.mirrorOf;
 import static java.lang.String.format;
 import static java.util.Collections.singletonList;
 
@@ -98,7 +99,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 			logger.info("Reuse fetch in progress");
 			return fetchProgress;
 		}
-		fetchProgress = SettableStage.of(doFetch());
+		fetchProgress = mirrorOf(doFetch());
 
 		return fetchProgress.whenComplete((aVoid, throwable) -> fetchProgress = null);
 	}

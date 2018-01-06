@@ -38,7 +38,7 @@ class SimpleStaticLoaderAsync implements StaticLoader {
 
         SettableStage<ByteBuf> stage = SettableStage.create();
 
-        AsyncFile.openAsync(eventloop, executorService, file, READ_OPTIONS)
+        AsyncFile.openAsync(executorService, file, READ_OPTIONS)
                 .thenCompose(AsyncFile::readFully)
                 .whenComplete((result, throwable) ->
                         stage.set(result, throwable instanceof NoSuchFileException

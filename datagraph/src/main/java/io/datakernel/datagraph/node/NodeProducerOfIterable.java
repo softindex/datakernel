@@ -50,9 +50,9 @@ public final class NodeProducerOfIterable<T> implements Node {
 		StreamProducer<T> producer;
 		Object object = taskContext.environment().get(iterableId);
 		if (object instanceof Iterator) {
-			producer = StreamProducers.ofIterator(taskContext.getEventloop(), ((Iterable<T>) object).iterator());
+			producer = StreamProducers.ofIterator(((Iterable<T>) object).iterator());
 		} else if (object instanceof Iterable) {
-			producer = StreamProducers.ofIterator(taskContext.getEventloop(), ((Iterable<T>) object).iterator());
+			producer = StreamProducers.ofIterator(((Iterable<T>) object).iterator());
 		} else
 			throw new IllegalArgumentException();
 		taskContext.export(output, producer);

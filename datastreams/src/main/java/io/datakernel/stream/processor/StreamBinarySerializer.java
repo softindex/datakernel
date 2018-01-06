@@ -18,15 +18,14 @@ package io.datakernel.stream.processor;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.*;
 import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.Math.max;
 
 /**
@@ -46,7 +45,6 @@ public final class StreamBinarySerializer<T> implements StreamTransformer<T, Byt
 	public static final MemSize MAX_SIZE_3 = MemSize.megabytes(2); // (1 << (3 * 7))
 	public static final MemSize MAX_SIZE = MAX_SIZE_3;
 
-	private final Eventloop eventloop;
 	private final BufferSerializer<T> serializer;
 	private int defaultBufferSize = (int) DEFAULT_BUFFER_SIZE.get();
 	private int maxMessageSize = (int) (MAX_SIZE.get());
@@ -57,26 +55,24 @@ public final class StreamBinarySerializer<T> implements StreamTransformer<T, Byt
 	private Output output;
 
 	// region creators
-	private StreamBinarySerializer(Eventloop eventloop, BufferSerializer<T> serializer) {
-		this.eventloop = eventloop;
+	private StreamBinarySerializer(BufferSerializer<T> serializer) {
 		this.serializer = serializer;
 		rebuild();
 	}
 
 	private void rebuild() {
 		if (output != null && output.outputBuf != null) output.outputBuf.recycle();
-		input = new Input(eventloop);
-		output = new Output(eventloop, serializer, defaultBufferSize, maxMessageSize, autoFlushIntervalMillis, skipSerializationErrors);
+		input = new Input();
+		output = new Output(serializer, defaultBufferSize, maxMessageSize, autoFlushIntervalMillis, skipSerializationErrors);
 	}
 
 	/**
 	 * Creates a new instance of this class
 	 *
-	 * @param eventloop  event loop in which serializer will run
 	 * @param serializer specified BufferSerializer for this type
 	 */
-	public static <T> StreamBinarySerializer<T> create(Eventloop eventloop, BufferSerializer<T> serializer) {
-		return new StreamBinarySerializer<>(eventloop, serializer);
+	public static <T> StreamBinarySerializer<T> create(BufferSerializer<T> serializer) {
+		return new StreamBinarySerializer<>(serializer);
 	}
 
 	public StreamBinarySerializer<T> withDefaultBufferSize(int bufferSize) {
@@ -128,10 +124,6 @@ public final class StreamBinarySerializer<T> implements StreamTransformer<T, Byt
 	// endregion
 
 	private final class Input extends AbstractStreamConsumer<T> {
-		protected Input(Eventloop eventloop) {
-			super(eventloop);
-		}
-
 		@Override
 		protected void onEndOfStream() {
 			output.flushAndClose();
@@ -157,8 +149,7 @@ public final class StreamBinarySerializer<T> implements StreamTransformer<T, Byt
 		private boolean flushPosted;
 		private final boolean skipSerializationErrors;
 
-		public Output(Eventloop eventloop, BufferSerializer<T> serializer, int defaultBufferSize, int maxMessageSize, int autoFlushIntervalMillis, boolean skipSerializationErrors) {
-			super(eventloop);
+		public Output(BufferSerializer<T> serializer, int defaultBufferSize, int maxMessageSize, int autoFlushIntervalMillis, boolean skipSerializationErrors) {
 			this.skipSerializationErrors = skipSerializationErrors;
 			this.serializer = checkNotNull(serializer);
 			this.maxMessageSize = maxMessageSize;

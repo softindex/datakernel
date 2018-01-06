@@ -17,7 +17,6 @@
 package io.datakernel.rpc.protocol;
 
 import io.datakernel.eventloop.AsyncTcpSocket;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.AbstractStreamConsumer;
 import io.datakernel.stream.AbstractStreamProducer;
@@ -28,6 +27,8 @@ import io.datakernel.stream.processor.StreamBinarySerializer;
 import io.datakernel.stream.processor.StreamLZ4Compressor;
 import io.datakernel.stream.processor.StreamLZ4Decompressor;
 
+import static io.datakernel.stream.DataStreams.stream;
+
 @SuppressWarnings("unchecked")
 public final class RpcStream {
 	public interface Listener extends StreamDataReceiver<RpcMessage> {
@@ -36,7 +37,6 @@ public final class RpcStream {
 		void onReadEndOfStream();
 	}
 
-	private final Eventloop eventloop;
 	private Listener listener;
 	private final AbstractStreamProducer<RpcMessage> sender;
 	private final AbstractStreamConsumer<RpcMessage> receiver;
@@ -50,17 +50,16 @@ public final class RpcStream {
 	private boolean ready;
 	private StreamDataReceiver<RpcMessage> downstreamDataReceiver;
 
-	public RpcStream(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
+	public RpcStream(AsyncTcpSocket asyncTcpSocket,
 	                 BufferSerializer<RpcMessage> messageSerializer,
 	                 int defaultPacketSize, int maxPacketSize,
 	                 int autoFlushIntervalMillis, boolean compression, boolean server) {
-		this.eventloop = eventloop;
 		this.compression = compression;
 
-		connection = SocketStreamingConnection.create(eventloop, asyncTcpSocket);
+		connection = SocketStreamingConnection.create(asyncTcpSocket);
 
 		if (server) {
-			sender = new AbstractStreamProducer<RpcMessage>(eventloop) {
+			sender = new AbstractStreamProducer<RpcMessage>() {
 				@Override
 				protected void onProduce(StreamDataReceiver<RpcMessage> dataReceiver) {
 					RpcStream.this.downstreamDataReceiver = dataReceiver;
@@ -81,7 +80,7 @@ public final class RpcStream {
 				}
 			};
 		} else {
-			sender = new AbstractStreamProducer<RpcMessage>(eventloop) {
+			sender = new AbstractStreamProducer<RpcMessage>() {
 				@Override
 				protected void onProduce(StreamDataReceiver<RpcMessage> dataReceiver) {
 					RpcStream.this.downstreamDataReceiver = dataReceiver;
@@ -101,7 +100,7 @@ public final class RpcStream {
 			};
 		}
 
-		receiver = new AbstractStreamConsumer<RpcMessage>(eventloop) {
+		receiver = new AbstractStreamConsumer<RpcMessage>() {
 			@Override
 			protected void onStarted() {
 				getProducer().produce(RpcStream.this.listener);
@@ -117,32 +116,32 @@ public final class RpcStream {
 			}
 		};
 
-		serializer = StreamBinarySerializer.create(eventloop, messageSerializer)
+		serializer = StreamBinarySerializer.create(messageSerializer)
 				.withDefaultBufferSize(defaultPacketSize)
 				.withMaxMessageSize(maxPacketSize)
 				.withAutoFlush(autoFlushIntervalMillis)
 				.withSkipSerializationErrors()
 //				.withInspector(serializerInspector)
 		;
-		deserializer = StreamBinaryDeserializer.create(eventloop, messageSerializer);
+		deserializer = StreamBinaryDeserializer.create(messageSerializer);
 
 		if (compression) {
-			compressor = StreamLZ4Compressor.fastCompressor(eventloop);
-			decompressor = StreamLZ4Decompressor.create(eventloop);
-			connection.getSocketReader().streamTo(decompressor.getInput());
-			decompressor.getOutput().streamTo(deserializer.getInput());
+			compressor = StreamLZ4Compressor.fastCompressor();
+			decompressor = StreamLZ4Decompressor.create();
+			stream(connection.getSocketReader(), decompressor.getInput());
+			stream(decompressor.getOutput(), deserializer.getInput());
 
-			serializer.getOutput().streamTo(compressor.getInput());
-			compressor.getOutput().streamTo(connection.getSocketWriter());
+			stream(serializer.getOutput(), compressor.getInput());
+			stream(compressor.getOutput(), connection.getSocketWriter());
 		} else {
 			compressor = null;
 			decompressor = null;
-			connection.getSocketReader().streamTo(deserializer.getInput());
-			serializer.getOutput().streamTo(connection.getSocketWriter());
+			stream(connection.getSocketReader(), deserializer.getInput());
+			stream(serializer.getOutput(), connection.getSocketWriter());
 		}
 
-		deserializer.getOutput().streamTo(receiver);
-		sender.streamTo(serializer.getInput());
+		stream(deserializer.getOutput(), receiver);
+		stream(sender, serializer.getInput());
 	}
 
 	public void setListener(Listener listener) {

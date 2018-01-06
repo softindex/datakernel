@@ -18,6 +18,7 @@ package io.datakernel.stream;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
 import org.slf4j.Logger;
@@ -34,10 +35,10 @@ import static io.datakernel.util.Preconditions.checkState;
  *
  * @param <T> type of received item
  */
-public abstract class AbstractStreamProducer<T> implements StreamProducer<T>, HasEndOfStream {
+public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-	protected final Eventloop eventloop;
+	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
 
 	private StreamConsumer<T> consumer;
 
@@ -53,10 +54,6 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T>, Ha
 
 	private Object tag;
 
-	protected AbstractStreamProducer(Eventloop eventloop) {
-		this.eventloop = checkNotNull(eventloop);
-	}
-
 	/**
 	 * Sets consumer for this producer. At the moment of calling this method producer shouldn't have consumer,
 	 * as well as consumer shouldn't have producer, otherwise there will be error
@@ -69,6 +66,10 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T>, Ha
 		checkState(this.consumer == null);
 		this.consumer = consumer;
 		onWired();
+		consumer.getEndOfStream()
+//				.whenComplete(Stages.onResult(this::endOfStream))
+				.whenComplete(Stages.onError(this::closeWithError));
+
 	}
 
 	protected void onWired() {
@@ -156,12 +157,10 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T>, Ha
 		currentDataReceiver = null;
 		lastDataReceiver = item -> {
 		};
-		consumer.endOfStream();
 		eventloop.post(this::cleanup);
 		endOfStream.set(null);
 	}
 
-	@Override
 	public final void closeWithError(Throwable e) {
 		if (status.isClosed())
 			return;
@@ -175,7 +174,6 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T>, Ha
 				logger.warn("StreamProducer {} closed with error {}", this, exception.toString());
 			}
 		}
-		consumer.closeWithError(e);
 		onError(e);
 		eventloop.post(this::cleanup);
 		endOfStream.setException(e);

@@ -17,25 +17,19 @@
 package io.datakernel.logfs.ot;
 
 import io.datakernel.async.StagesAccumulator;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.util.Preconditions.checkState;
 
 @SuppressWarnings("unchecked")
 public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T, D> {
-	protected final Eventloop eventloop;
-
 	private final List<LogDataConsumer<?, D>> logDataConsumers = new ArrayList<>();
 	private Iterator<? extends StreamDataReceiver<?>> receivers;
-
-	protected LogDataConsumerSplitter(Eventloop eventloop) {
-		this.eventloop = eventloop;
-	}
 
 	@Override
 	public StreamConsumerWithResult<T, List<D>> consume() {
@@ -44,13 +38,13 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 			checkState(!logDataConsumers.isEmpty(), "addOutput() should be called at least once");
 		}
 		StagesAccumulator<List<D>> resultsReducer = StagesAccumulator.create(new ArrayList<>());
-		Splitter splitter = new Splitter(eventloop);
+		Splitter splitter = new Splitter();
 		for (LogDataConsumer<?, D> logDataConsumer : logDataConsumers) {
 			StreamConsumerWithResult<?, List<D>> consumer = logDataConsumer.consume();
 			resultsReducer.addStage(consumer.getResult(), List::addAll);
-			Splitter.Output<?> output = splitter.new Output<>(eventloop);
+			Splitter.Output<?> output = splitter.new Output<>();
 			splitter.outputs.add(output);
-			output.streamTo((StreamConsumer) consumer);
+			stream(output, (StreamConsumer) consumer);
 		}
 		return StreamConsumers.withResult(splitter.getInput(), resultsReducer.get());
 	}
@@ -75,8 +69,8 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 
 		private int ready = 0;
 
-		protected Splitter(Eventloop eventloop) {
-			this.input = new Input(eventloop);
+		protected Splitter() {
+			this.input = new Input();
 		}
 
 		@Override
@@ -90,13 +84,9 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 		}
 
 		final class Input extends AbstractStreamConsumer<T> {
-			Input(Eventloop eventloop) {
-				super(eventloop);
-			}
-
 			@Override
 			protected void onEndOfStream() {
-				outputs.forEach(output -> output.getConsumer().endOfStream());
+				outputs.forEach(Output::sendEndOfStream);
 			}
 
 			@Override
@@ -107,10 +97,6 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 
 		final class Output<X> extends AbstractStreamProducer<X> {
 			private StreamDataReceiver<?> dataReceiver;
-
-			Output(Eventloop eventloop) {
-				super(eventloop);
-			}
 
 			@Override
 			protected void onProduce(StreamDataReceiver<X> dataReceiver) {

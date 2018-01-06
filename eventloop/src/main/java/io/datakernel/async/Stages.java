@@ -56,9 +56,21 @@ public final class Stages {
 		};
 	}
 
+	public static <T> BiConsumer<T, Throwable> onError(Runnable runnable) {
+		return (t, throwable) -> {
+			if (throwable != null) runnable.run();
+		};
+	}
+
 	public static <T> BiConsumer<T, Throwable> onResult(Consumer<T> consumer) {
 		return (t, throwable) -> {
 			if (throwable == null) consumer.accept(t);
+		};
+	}
+
+	public static <T> BiConsumer<T, Throwable> onResult(Runnable runnable) {
+		return (t, throwable) -> {
+			if (throwable == null) runnable.run();
 		};
 	}
 

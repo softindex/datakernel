@@ -40,6 +40,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.CompletionStage;
 
+import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.net.MessagingSerializers.ofGson;
 
 /**
@@ -70,7 +71,7 @@ public final class DatagraphClient {
 	public <T> CompletionStage<StreamProducer<T>> download(InetSocketAddress address, StreamId streamId, Class<T> type) {
 		return eventloop.connect(address).thenCompose(socketChannel -> {
 			AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel, socketSettings);
-			MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = MessagingWithBinaryStreaming.create(eventloop, asyncTcpSocket, serializer);
+			MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
 			DatagraphCommandDownload commandDownload = new DatagraphCommandDownload(streamId);
 
 			asyncTcpSocket.setEventHandler(messaging);
@@ -80,10 +81,10 @@ public final class DatagraphClient {
 					.thenApply($ -> {
 						StreamProducerWithResult<ByteBuf, Void> producer = messaging.receiveBinaryStream();
 						BufferSerializer<T> serializer = serialization.getSerializer(type);
-						StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(eventloop, serializer);
+						StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(serializer);
 
-						producer.streamTo(deserializer.getInput());
-						producer.getResult().thenAccept($_ -> messaging.close());
+						stream(producer, deserializer.getInput())
+								.thenAccept($_ -> messaging.close());
 						return deserializer.getOutput();
 					});
 		});
@@ -92,7 +93,7 @@ public final class DatagraphClient {
 	public CompletionStage<Void> execute(InetSocketAddress address, Collection<Node> nodes) {
 		return eventloop.connect(address).thenCompose(socketChannel -> {
 			AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel, socketSettings);
-			MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = MessagingWithBinaryStreaming.create(eventloop, asyncTcpSocket, serializer);
+			MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
 
 			asyncTcpSocket.setEventHandler(messaging);
 			asyncTcpSocket.register();

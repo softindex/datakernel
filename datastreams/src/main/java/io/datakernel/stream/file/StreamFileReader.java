@@ -20,7 +20,6 @@ import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.stream.AbstractStreamProducer;
 import io.datakernel.stream.StreamDataReceiver;
@@ -53,40 +52,39 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 	private SettableStage<Long> positionStage;
 
 	// region creators
-	private StreamFileReader(Eventloop eventloop, AsyncFile asyncFile,
+	private StreamFileReader(AsyncFile asyncFile,
 	                         int bufferSize, long position, long length) {
-		super(eventloop);
 		this.asyncFile = asyncFile;
 		this.bufferSize = bufferSize;
 		this.position = position;
 		this.length = length;
 	}
 
-	public static StreamFileReader readFileSegment(Eventloop eventloop, AsyncFile asyncFile,
+	public static StreamFileReader readFileSegment(AsyncFile asyncFile,
 	                                               int bufferSize, long position, long length) {
-		return new StreamFileReader(eventloop, asyncFile, bufferSize, position, length);
+		return new StreamFileReader(asyncFile, bufferSize, position, length);
 	}
 
-	public static StreamFileReader readFileFrom(final Eventloop eventloop, ExecutorService executor,
+	public static StreamFileReader readFileFrom(ExecutorService executor,
 	                                            final int bufferSize, Path path,
 	                                            final long startPosition) throws IOException {
-		AsyncFile asyncFile = getAsyncFile(eventloop, executor, path);
-		return readFileFrom(eventloop, asyncFile, bufferSize, startPosition);
+		AsyncFile asyncFile = getAsyncFile(executor, path);
+		return readFileFrom(asyncFile, bufferSize, startPosition);
 	}
 
-	public static StreamFileReader readFileFrom(Eventloop eventloop, AsyncFile asyncFile,
+	public static StreamFileReader readFileFrom(AsyncFile asyncFile,
 	                                            int bufferSize, long position) {
-		return new StreamFileReader(eventloop, asyncFile, bufferSize, position, Long.MAX_VALUE);
+		return new StreamFileReader(asyncFile, bufferSize, position, Long.MAX_VALUE);
 	}
 
-	public static StreamFileReader readFileFully(final Eventloop eventloop, ExecutorService executor,
+	public static StreamFileReader readFileFully(ExecutorService executor,
 	                                             final int bufferSize, Path path) throws IOException {
-		AsyncFile asyncFile = getAsyncFile(eventloop, executor, path);
-		return readFileFully(eventloop, asyncFile, bufferSize);
+		AsyncFile asyncFile = getAsyncFile(executor, path);
+		return readFileFully(asyncFile, bufferSize);
 	}
 
-	public static StreamFileReader readFileFully(Eventloop eventloop, AsyncFile asyncFile, int bufferSize) {
-		return new StreamFileReader(eventloop, asyncFile, bufferSize, 0, Long.MAX_VALUE);
+	public static StreamFileReader readFileFully(AsyncFile asyncFile, int bufferSize) {
+		return new StreamFileReader(asyncFile, bufferSize, 0, Long.MAX_VALUE);
 	}
 	// endregion
 
@@ -181,8 +179,8 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 		});
 	}
 
-	private static AsyncFile getAsyncFile(Eventloop eventloop, ExecutorService executor, Path path) throws IOException {
-		return AsyncFile.open(eventloop, executor, path, new OpenOption[]{StandardOpenOption.READ});
+	private static AsyncFile getAsyncFile(ExecutorService executor, Path path) throws IOException {
+		return AsyncFile.open(executor, path, new OpenOption[]{StandardOpenOption.READ});
 	}
 
 	@Override

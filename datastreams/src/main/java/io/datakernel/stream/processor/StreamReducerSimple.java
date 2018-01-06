@@ -16,7 +16,6 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
 
 import java.util.Comparator;
@@ -39,8 +38,8 @@ public final class StreamReducerSimple<K, I, O, A> extends AbstractStreamReducer
 	private final StreamReducers.Reducer<K, I, O, A> reducer;
 
 	// region creators
-	private StreamReducerSimple(Eventloop eventloop, Function<I, K> keyFunction, Comparator<K> keyComparator, StreamReducers.Reducer<K, I, O, A> reducer) {
-		super(eventloop, keyComparator);
+	private StreamReducerSimple(Function<I, K> keyFunction, Comparator<K> keyComparator, StreamReducers.Reducer<K, I, O, A> reducer) {
+		super(keyComparator);
 		this.reducer = checkNotNull(reducer);
 		this.keyFunction = checkNotNull(keyFunction);
 	}
@@ -48,14 +47,13 @@ public final class StreamReducerSimple<K, I, O, A> extends AbstractStreamReducer
 	/**
 	 * Creates a new instance of  StreamReducerSimple
 	 *
-	 * @param eventloop     eventloop in which runs reducer
 	 * @param keyComparator comparator for compare keys
 	 * @param keyFunction   function for counting key
 	 */
-	public static <K, I, O, A> StreamReducerSimple<K, I, O, A> create(Eventloop eventloop, Function<I, K> keyFunction,
+	public static <K, I, O, A> StreamReducerSimple<K, I, O, A> create(Function<I, K> keyFunction,
 	                                                                  Comparator<K> keyComparator,
 	                                                                  StreamReducers.Reducer<K, I, O, A> reducer) {
-		return new StreamReducerSimple<K, I, O, A>(eventloop, keyFunction, keyComparator, reducer);
+		return new StreamReducerSimple<>(keyFunction, keyComparator, reducer);
 	}
 
 	public StreamReducerSimple<K, I, O, A> withBufferSize(int bufferSize) {

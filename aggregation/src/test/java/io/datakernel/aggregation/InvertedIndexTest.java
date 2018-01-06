@@ -28,7 +28,6 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -40,6 +39,8 @@ import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofString;
 import static io.datakernel.aggregation.measure.Measures.union;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.stream.DataStreams.stream;
+import static io.datakernel.util.CollectionUtils.set;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
@@ -102,7 +103,7 @@ public class InvertedIndexTest {
 		Aggregation aggregation = Aggregation.create(eventloop, executorService, classLoader, aggregationChunkStorage, structure)
 				.withTemporarySortDir(temporaryFolder.newFolder().toPath());
 
-		StreamProducer<InvertedIndexRecord> producer = StreamProducers.ofIterable(eventloop,
+		StreamProducer<InvertedIndexRecord> producer = StreamProducers.ofIterable(
 				asList(
 						new InvertedIndexRecord("fox", 1),
 						new InvertedIndexRecord("brown", 2),
@@ -114,7 +115,7 @@ public class InvertedIndexTest {
 		aggregationChunkStorage.finish(getAddedChunks(future.get()));
 		eventloop.run();
 
-		producer = StreamProducers.ofIterable(eventloop,
+		producer = StreamProducers.ofIterable(
 				asList(
 						new InvertedIndexRecord("brown", 3),
 						new InvertedIndexRecord("lazy", 4),
@@ -126,10 +127,10 @@ public class InvertedIndexTest {
 		aggregationChunkStorage.finish(getAddedChunks(future.get()));
 		eventloop.run();
 
-		producer = StreamProducers.ofIterable(eventloop, asList(
+		producer = StreamProducers.of(
 				new InvertedIndexRecord("quick", 1),
 				new InvertedIndexRecord("fox", 4),
-				new InvertedIndexRecord("brown", 10)));
+				new InvertedIndexRecord("brown", 10));
 		future = aggregation.consume(producer, InvertedIndexRecord.class).toCompletableFuture();
 		eventloop.run();
 		aggregation.getState().apply(future.get());
@@ -140,8 +141,8 @@ public class InvertedIndexTest {
 		AggregationQuery query = AggregationQuery.create()
 				.withKeys("word")
 				.withMeasures("documents");
-		StreamConsumerToList<InvertedIndexQueryResult> consumerToList = new StreamConsumerToList<>(eventloop);
-		aggregation.query(query, InvertedIndexQueryResult.class, DefiningClassLoader.create(classLoader)).streamTo(consumerToList);
+		StreamConsumerToList<InvertedIndexQueryResult> consumerToList = new StreamConsumerToList<>();
+		stream(aggregation.query(query, InvertedIndexQueryResult.class, DefiningClassLoader.create(classLoader)), consumerToList);
 		eventloop.run();
 
 		System.out.println(consumerToList.getList());
@@ -154,11 +155,8 @@ public class InvertedIndexTest {
 		assertEquals(expectedResult, actualResult);
 	}
 
-	private Set<Long> getAddedChunks(AggregationDiff aggregationDiff) throws InterruptedException, java.util.concurrent.ExecutionException {
+	private Set<Long> getAddedChunks(AggregationDiff aggregationDiff) {
 		return aggregationDiff.getAddedChunks().stream().map(AggregationChunk::getChunkId).collect(Collectors.toSet());
 	}
 
-	private static <T> Set<T> set(T... values) {
-		return Arrays.stream(values).collect(Collectors.toSet());
-	}
 }

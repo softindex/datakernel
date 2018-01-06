@@ -44,7 +44,7 @@ public final class NodeUnion<T> implements Node {
 
 	@Override
 	public void createAndBind(TaskContext taskContext) {
-		StreamUnion<T> streamUnion = StreamUnion.create(taskContext.getEventloop());
+		StreamUnion<T> streamUnion = StreamUnion.create();
 		for (StreamId input : inputs) {
 			taskContext.bindChannel(input, streamUnion.newInput());
 		}

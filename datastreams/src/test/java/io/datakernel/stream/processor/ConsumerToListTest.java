@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.TestUtils.assertStatus;
 import static java.util.Arrays.asList;
@@ -36,7 +37,7 @@ public class ConsumerToListTest {
 	@Test
 	public void emptyListTest() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
-		StreamConsumerToList<String> consumer = StreamConsumerToList.create(eventloop, new ArrayList<String>());
+		StreamConsumerToList<String> consumer = StreamConsumerToList.create(new ArrayList<String>());
 
 		List<String> testList2 = new ArrayList<>();
 		testList2.add("a");
@@ -44,8 +45,8 @@ public class ConsumerToListTest {
 		testList2.add("c");
 		testList2.add("d");
 
-		StreamProducer<String> producer = StreamProducers.ofIterable(eventloop, testList2);
-		producer.streamTo(consumer);
+		StreamProducer<String> producer = StreamProducers.ofIterable(testList2);
+		stream(producer, consumer);
 		eventloop.run();
 
 		assertEquals(testList2, consumer.getList());
@@ -59,15 +60,15 @@ public class ConsumerToListTest {
 		testList1.add(1);
 		testList1.add(2);
 		testList1.add(3);
-		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(eventloop, testList1);
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(testList1);
 
 		List<Integer> testList2 = new ArrayList<>();
 		testList2.add(4);
 		testList2.add(5);
 		testList2.add(6);
 
-		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, testList2);
-		producer.streamTo(consumer);
+		StreamProducer<Integer> producer = StreamProducers.ofIterable(testList2);
+		stream(producer, consumer);
 		eventloop.run();
 
 		assertEquals(asList(1, 2, 3, 4, 5, 6), consumer.getList());

@@ -16,19 +16,20 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.eventloop.Eventloop;
+import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
-import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
+import static io.datakernel.async.SettableStage.mirrorOf;
+import static io.datakernel.async.Stages.onError;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.util.Preconditions.checkNotNull;
-import static io.datakernel.util.Preconditions.checkState;
+import static java.util.Arrays.asList;
 
 public final class StreamProducers {
 	private StreamProducers() {
@@ -55,16 +56,16 @@ public final class StreamProducers {
 	}
 
 	public static <T> StreamProducer<T> endOfStreamOnError(StreamProducer<T> producer) {
-		return new StreamProducerDecorator<T, Void>(producer) {
+		return new StreamProducerDecorator<T>(producer) {
 			@Override
 			protected void onCloseWithError(Throwable t) {
-				getConsumer().endOfStream();
+				sendEndOfStream();
 			}
 		};
 	}
 
 	public static <T> StreamProducer<T> noEndOfStream(StreamProducer<T> producer) {
-		return new StreamProducerDecorator<T, Void>(producer) {
+		return new StreamProducerDecorator<T>(producer) {
 			@Override
 			protected void onEndOfStream() {
 				// do nothing
@@ -75,141 +76,151 @@ public final class StreamProducers {
 	/**
 	 * Creates producer which sends value and closes itself
 	 *
-	 * @param eventloop event loop in which will run it
-	 * @param value     value for sending
-	 * @param <T>       type of value
+	 * @param value value for sending
+	 * @param <T>   type of value
 	 */
-	public static <T> StreamProducer<T> ofValue(Eventloop eventloop, final T value) {
-		return new OfValueImpl<>(eventloop, value);
+	public static <T> StreamProducer<T> of(T value) {
+		return new OfValueImpl<>(value);
 	}
 
-	/**
-	 * Creates producer which sends value and closes itself
-	 *
-	 * @param eventloop event loop in which will run it
-	 * @param value     value for sending
-	 * @param close     if producer is closed
-	 * @param <T>       type of value
-	 */
-	public static <T> StreamProducer<T> ofValue(Eventloop eventloop, final T value, boolean close) {
-		return new OfValueImpl<>(eventloop, value, close);
+	public static <T> StreamProducer<T> of(T... values) {
+		return ofIterable(asList(values));
 	}
 
 	/**
 	 * Returns new {@link OfIteratorImpl} which sends items from iterator
 	 *
-	 * @param eventloop event loop in which will run it
-	 * @param iterator  iterator with items for sending
-	 * @param <T>       type of item
+	 * @param iterator iterator with items for sending
+	 * @param <T>      type of item
 	 */
-	public static <T> StreamProducer<T> ofIterator(Eventloop eventloop, Iterator<T> iterator) {
-		return new OfIteratorImpl<>(eventloop, iterator);
+	public static <T> StreamProducer<T> ofIterator(Iterator<T> iterator) {
+		return new OfIteratorImpl<>(iterator);
 	}
 
 	/**
 	 * Returns new {@link OfIteratorImpl} which sends items from {@code iterable}
 	 *
-	 * @param eventloop event loop in which will run it
-	 * @param iterable  iterable with items for sending
-	 * @param <T>       type of item
+	 * @param iterable iterable with items for sending
+	 * @param <T>      type of item
 	 */
-	public static <T> StreamProducer<T> ofIterable(Eventloop eventloop, Iterable<T> iterable) {
-		return new OfIteratorImpl<>(eventloop, iterable.iterator());
+	public static <T> StreamProducer<T> ofIterable(Iterable<T> iterable) {
+		return new OfIteratorImpl<>(iterable.iterator());
 	}
 
 	public static <T> StreamProducer<T> ofStage(CompletionStage<StreamProducer<T>> producerStage) {
-		StreamProducerDecorator<T, Void> decorator = new StreamProducerDecorator<T, Void>() {};
-		producerStage.whenCompleteAsync((producer, throwable) -> {
-			if (throwable == null) {
-				decorator.setActualProducer(producer);
-			} else {
-				decorator.setActualProducer(StreamProducers.closingWithError(throwable));
+		return new StreamProducerDecorator<T>() {
+			{
+				producerStage.whenCompleteAsync((producer, throwable) -> {
+					if (throwable == null) {
+						setActualProducer(producer);
+					} else {
+						setActualProducer(StreamProducers.closingWithError(throwable));
+					}
+				});
 			}
-		});
-		return decorator;
+		};
 	}
 
 	public static <T, X> StreamProducerWithResult<T, X> ofStageWithResult(CompletionStage<StreamProducerWithResult<T, X>> producerStage) {
-		StreamProducerDecorator<T, X> decorator = new StreamProducerDecorator<T, X>() {};
-		producerStage.whenCompleteAsync((producer, throwable) -> {
-			if (throwable == null) {
-				decorator.setActualProducer(producer, producer.getResult());
-			} else {
-				decorator.setActualProducer(StreamProducers.closingWithError(throwable));
+		SettableStage<X> result = SettableStage.create();
+		return withResult(new StreamProducerDecorator<T>() {
+			{
+				producerStage.whenCompleteAsync((producer, throwable) -> {
+					if (throwable == null) {
+						setActualProducer(producer);
+						producer.getResult().whenComplete(result::set);
+					} else {
+						setActualProducer(StreamProducers.closingWithError(throwable));
+						result.setException(throwable);
+					}
+				});
 			}
-		});
-		return decorator;
+		}, result);
 	}
 
-	public static <T> StreamProducer<T> onEndOfStream(StreamProducer<T> producer, BiConsumer<Void, Throwable> consumer) {
-		final StreamProducerWithResult<T, Void> withEndOfStream = withEndOfStream(producer);
-		withEndOfStream.getResult().whenComplete(consumer);
-		return withEndOfStream;
-	}
+	public static <T> StreamProducerWithResult<T, Void> withEndOfStreamAsResult(StreamProducer<T> producer) {
+		return new StreamProducerWithResult<T, Void>() {
+			@Override
+			public void setConsumer(StreamConsumer<T> consumer) {
+				producer.setConsumer(consumer);
+			}
 
-	public static <T> StreamProducerWithResult<T, Void> withEndOfStream(StreamProducer<T> producer) {
-		if (producer instanceof HasEndOfStream) {
-			return new StreamProducerWithResult<T, Void>() {
-				@Override
-				public void setConsumer(StreamConsumer<T> consumer) {
-					producer.setConsumer(consumer);
-				}
+			@Override
+			public void produce(StreamDataReceiver<T> dataReceiver) {
+				producer.produce(dataReceiver);
+			}
 
-				@Override
-				public void produce(StreamDataReceiver<T> dataReceiver) {
-					producer.produce(dataReceiver);
-				}
+			@Override
+			public void suspend() {
+				producer.suspend();
+			}
 
-				@Override
-				public void suspend() {
-					producer.suspend();
-				}
+			@Override
+			public CompletionStage<Void> getEndOfStream() {
+				return producer.getEndOfStream();
+			}
 
-				@Override
-				public void closeWithError(Throwable t) {
-					producer.closeWithError(t);
-				}
-
-				@Override
-				public CompletionStage<Void> getResult() {
-					return ((HasEndOfStream) producer).getEndOfStream();
-				}
-			};
-		}
-		StreamProducerDecorator<T, Void> decorator = new StreamProducerDecorator<T, Void>() {};
-		decorator.setActualProducer(producer, decorator.getEndOfStream());
-		return decorator;
+			@Override
+			public CompletionStage<Void> getResult() {
+				return producer.getEndOfStream();
+			}
+		};
 	}
 
 	public static <T, X> StreamProducerWithResult<T, X> withResult(StreamProducer<T> producer, CompletionStage<X> result) {
-		return new StreamProducerDecorator<T, X>(producer, result) {};
+		SettableStage<X> safeResult = mirrorOf(result);
+		producer.getEndOfStream().whenComplete(onError(safeResult::trySetException));
+		return new StreamProducerWithResult<T, X>() {
+			@Override
+			public void setConsumer(StreamConsumer<T> consumer) {
+				producer.setConsumer(consumer);
+			}
+
+			@Override
+			public void produce(StreamDataReceiver<T> dataReceiver) {
+				producer.produce(dataReceiver);
+			}
+
+			@Override
+			public void suspend() {
+				producer.suspend();
+			}
+
+			@Override
+			public CompletionStage<Void> getEndOfStream() {
+				return producer.getEndOfStream();
+			}
+
+			@Override
+			public CompletionStage<X> getResult() {
+				return safeResult;
+			}
+		};
 	}
 
 	/**
-	 * Returns  {@link StreamProducerConcatImpl} with producers from Iterator  which will stream to this
+	 * Returns  {@link StreamProducerConcat} with producers from Iterator  which will stream to this
 	 *
-	 * @param eventloop event loop in which will run it
-	 * @param iterator  iterator with producers
-	 * @param <T>       type of output data
+	 * @param iterator iterator with producers
+	 * @param <T>      type of output data
 	 */
-	public static <T> StreamProducer<T> concat(Eventloop eventloop, Iterator<StreamProducer<T>> iterator) {
-		return new StreamProducerConcatImpl<>(eventloop, iterator);
+	public static <T> StreamProducer<T> concat(Iterator<StreamProducer<T>> iterator) {
+		return new StreamProducerConcat<>(iterator);
 	}
 
 	/**
-	 * Returns  {@link StreamProducerConcatImpl} with producers from Iterable which will stream to this
+	 * Returns  {@link StreamProducerConcat} with producers from Iterable which will stream to this
 	 *
-	 * @param eventloop event loop in which will run it
 	 * @param producers list of producers
 	 * @param <T>       type of output data
 	 */
-	public static <T> StreamProducer<T> concat(Eventloop eventloop, List<StreamProducer<T>> producers) {
-		return concat(eventloop, producers.iterator());
+	public static <T> StreamProducer<T> concat(List<StreamProducer<T>> producers) {
+		return concat(producers.iterator());
 	}
 
 	@SafeVarargs
-	public static <T> StreamProducer<T> concat(Eventloop eventloop, StreamProducer<T>... producers) {
-		return concat(eventloop, Arrays.asList(producers));
+	public static <T> StreamProducer<T> concat(StreamProducer<T>... producers) {
+		return concat(asList(producers));
 	}
 
 	/**
@@ -218,12 +229,14 @@ public final class StreamProducers {
 	 * @param <T>
 	 */
 	static class EndOfStreamImpl<T> implements StreamProducer<T> {
+		private final SettableStage<Void> endOfStream = SettableStage.create();
+
 		EndOfStreamImpl() {
 		}
 
 		@Override
 		public void setConsumer(StreamConsumer<T> consumer) {
-			getCurrentEventloop().post(consumer::endOfStream);
+			getCurrentEventloop().post(() -> endOfStream.trySet(null));
 		}
 
 		@Override
@@ -237,7 +250,8 @@ public final class StreamProducers {
 		}
 
 		@Override
-		public void closeWithError(Throwable t) {
+		public CompletionStage<Void> getEndOfStream() {
+			return endOfStream;
 		}
 	}
 
@@ -247,6 +261,8 @@ public final class StreamProducers {
 	 * @param <T>
 	 */
 	static class ClosingWithErrorImpl<T> implements StreamProducer<T> {
+		private final SettableStage<Void> endOfStream = SettableStage.create();
+
 		private final Throwable exception;
 
 		ClosingWithErrorImpl(Throwable exception) {
@@ -255,9 +271,7 @@ public final class StreamProducers {
 
 		@Override
 		public void setConsumer(StreamConsumer<T> consumer) {
-			getCurrentEventloop().post(() -> {
-				consumer.closeWithError(exception);
-			});
+			getCurrentEventloop().post(() -> endOfStream.trySetException(exception));
 		}
 
 		@Override
@@ -271,45 +285,31 @@ public final class StreamProducers {
 		}
 
 		@Override
-		public void closeWithError(Throwable t) {
-			// do nothing
+		public CompletionStage<Void> getEndOfStream() {
+			return endOfStream;
 		}
 	}
 
 	static final class IdleImpl<T> implements StreamProducer<T> {
-		private StreamConsumer<T> consumer;
-		private StreamDataReceiver<T> dataReceiver;
+		private final SettableStage<Void> endOfStream = SettableStage.create();
 
 		@Override
 		public void setConsumer(StreamConsumer<T> consumer) {
-			checkNotNull(consumer);
-			if (this.consumer == consumer) return;
-			checkState(this.consumer == null);
-
-			this.consumer = consumer;
+			consumer.getEndOfStream()
+					.whenComplete(Stages.onError(endOfStream::trySetException));
 		}
 
 		@Override
 		public void produce(StreamDataReceiver<T> dataReceiver) {
-			this.dataReceiver = dataReceiver;
 		}
 
 		@Override
 		public void suspend() {
-			this.dataReceiver = null;
 		}
 
 		@Override
-		public void closeWithError(Throwable t) {
-			consumer.closeWithError(t);
-		}
-
-		public StreamConsumer<T> getConsumer() {
-			return consumer;
-		}
-
-		public StreamDataReceiver<T> getDataReceiver() {
-			return dataReceiver;
+		public CompletionStage<Void> getEndOfStream() {
+			return endOfStream;
 		}
 	}
 
@@ -324,11 +324,9 @@ public final class StreamProducers {
 		/**
 		 * Creates a new instance of  StreamProducerOfIterator
 		 *
-		 * @param eventloop event loop where producer will run
-		 * @param iterator  iterator with object which need to send
+		 * @param iterator iterator with object which need to send
 		 */
-		public OfIteratorImpl(Eventloop eventloop, Iterator<T> iterator) {
-			super(eventloop);
+		public OfIteratorImpl(Iterator<T> iterator) {
 			this.iterator = checkNotNull(iterator);
 		}
 
@@ -358,109 +356,29 @@ public final class StreamProducers {
 	 */
 	static class OfValueImpl<T> extends AbstractStreamProducer<T> {
 		private final T value;
-		private final boolean sendEndOfStream;
 
 		/**
 		 * Creates producer which sends value and closes itself
 		 *
-		 * @param eventloop event loop  in which this producer will run
-		 * @param value     value for sending
+		 * @param value value for sending
 		 */
-		public OfValueImpl(Eventloop eventloop, T value) {
-			this(eventloop, value, true);
-		}
-
-		/**
-		 * Creates producer which sends value and optionally closes itself
-		 *
-		 * @param eventloop       event loop  in which this producer will run
-		 * @param value           value for sending
-		 * @param sendEndOfStream if producer is closed
-		 */
-		public OfValueImpl(Eventloop eventloop, T value, boolean sendEndOfStream) {
-			super(eventloop);
+		public OfValueImpl(T value) {
 			this.value = value;
-			this.sendEndOfStream = sendEndOfStream;
 		}
 
 		@Override
 		protected void produce() {
 			send(value);
-			if (sendEndOfStream)
-				sendEndOfStream();
+			sendEndOfStream();
 		}
 
 		@Override
 		protected void onError(Throwable t) {
-		}
-	}
-
-	/**
-	 * Represents {@link AbstractStreamTransformer_1_1}, which created with iterator with {@link AbstractStreamProducer}
-	 * which will stream to this
-	 *
-	 * @param <T> type of received data
-	 */
-	static class StreamProducerConcatImpl<T> extends AbstractStreamProducer<T> {
-		private final Iterator<StreamProducer<T>> iterator;
-		private StreamProducer<T> producer;
-
-		StreamProducerConcatImpl(Eventloop eventloop, Iterator<StreamProducer<T>> iterator) {
-			super(eventloop);
-			this.iterator = iterator;
-		}
-
-		@Override
-		protected void onProduce(StreamDataReceiver<T> dataReceiver) {
-			assert dataReceiver != null;
-			if (producer == null) {
-				if (!iterator.hasNext()) {
-					eventloop.post(this::sendEndOfStream);
-					return;
-				}
-				producer = iterator.next();
-				producer.streamTo(new AbstractStreamConsumer<T>(eventloop) {
-					@Override
-					protected void onEndOfStream() {
-						eventloop.post(() -> {
-							producer = null;
-							if (isReceiverReady()) {
-								onProduce(getCurrentDataReceiver());
-							}
-						});
-					}
-
-					@Override
-					protected void onError(Throwable t) {
-						StreamProducerConcatImpl.this.closeWithError(t);
-					}
-				});
-			}
-			producer.produce(dataReceiver);
-		}
-
-		@Override
-		protected void onSuspended() {
-			if (producer != null) {
-				producer.suspend();
-			}
-		}
-
-		@Override
-		protected void onError(Throwable t) {
-			if (producer != null) {
-				producer.closeWithError(t);
-			}
-		}
-
-		@Override
-		protected void cleanup() {
-			producer = null;
 		}
 	}
 
 	public static <T> StreamProducer<T> errorDecorator(StreamProducer<T> producer, Predicate<T> errorPredicate, Supplier<Throwable> error) {
-		return new StreamProducerDecorator<T, Void>(producer) {
+		return new StreamProducerDecorator<T>(producer) {
 			@Override
 			protected StreamDataReceiver<T> onProduce(StreamDataReceiver<T> dataReceiver) {
 				return super.onProduce(item -> {
@@ -475,18 +393,7 @@ public final class StreamProducers {
 	}
 
 	public static <T, R> StreamProducerWithResult<T, R> errorDecorator(StreamProducerWithResult<T, R> producer, Predicate<T> errorPredicate, Supplier<Throwable> error) {
-		return new StreamProducerDecorator<T, R>(producer, producer.getResult()) {
-			@Override
-			protected StreamDataReceiver<T> onProduce(StreamDataReceiver<T> dataReceiver) {
-				return super.onProduce(item -> {
-					if (errorPredicate.test(item)) {
-						this.closeWithError(error.get());
-					} else {
-						dataReceiver.onData(item);
-					}
-				});
-			}
-		};
+		return withResult(errorDecorator((StreamProducer<T>) producer, errorPredicate, error), producer.getResult());
 	}
 
 }

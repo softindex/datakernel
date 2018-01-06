@@ -48,6 +48,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import static io.datakernel.stream.DataStreams.stream;
 import static java.nio.file.StandardOpenOption.READ;
 import static org.slf4j.LoggerFactory.getLogger;
 
@@ -110,21 +111,21 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 	public <T> CompletionStage<StreamProducerWithResult<T, Void>> read(final AggregationStructure aggregation, final List<String> fields,
 	                                                                   final Class<T> recordClass, long id, final DefiningClassLoader classLoader) {
 		return Stages.firstComplete(
-				() -> AsyncFile.openAsync(eventloop, executorService, dir.resolve(id + LOG), new OpenOption[]{READ}),
-				() -> AsyncFile.openAsync(eventloop, executorService, dir.resolve(id + TEMP_LOG), new OpenOption[]{READ}),
-				() -> AsyncFile.openAsync(eventloop, executorService, dir.resolve(id + LOG), new OpenOption[]{READ}))
+				() -> AsyncFile.openAsync(executorService, dir.resolve(id + LOG), new OpenOption[]{READ}),
+				() -> AsyncFile.openAsync(executorService, dir.resolve(id + TEMP_LOG), new OpenOption[]{READ}),
+				() -> AsyncFile.openAsync(executorService, dir.resolve(id + LOG), new OpenOption[]{READ}))
 				.thenApply(file -> {
-					StreamFileReader fileReader = StreamFileReader.readFileFrom(eventloop, file, bufferSize, 0L);
+					StreamFileReader fileReader = StreamFileReader.readFileFrom(file, bufferSize, 0L);
 
-					StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create(eventloop);
-					fileReader.streamTo(decompressor.getInput());
+					StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create();
+					stream(fileReader, decompressor.getInput());
 
 					BufferSerializer<T> bufferSerializer = AggregationUtils.createBufferSerializer(aggregation, recordClass,
 							aggregation.getKeys(), fields, classLoader);
-					StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(eventloop, bufferSerializer);
+					StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(bufferSerializer);
 
-					decompressor.getOutput().streamTo(deserializer.getInput());
-					return StreamProducers.withEndOfStream(deserializer.getOutput());
+					stream(decompressor.getOutput(), deserializer.getInput());
+					return StreamProducers.withEndOfStreamAsResult(deserializer.getOutput());
 				});
 	}
 
@@ -134,14 +135,14 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 	                                                                    DefiningClassLoader classLoader) {
 		BufferSerializer<T> bufferSerializer = AggregationUtils.createBufferSerializer(aggregation, recordClass,
 				aggregation.getKeys(), fields, classLoader);
-		return AsyncFile.openAsync(eventloop, executorService, dir.resolve(id + TEMP_LOG), StreamFileWriter.CREATE_OPTIONS).thenApply(file -> {
-			StreamBinarySerializer<T> serializer = StreamBinarySerializer.create(eventloop, bufferSerializer)
+		return AsyncFile.openAsync(executorService, dir.resolve(id + TEMP_LOG), StreamFileWriter.CREATE_OPTIONS).thenApply(file -> {
+			StreamBinarySerializer<T> serializer = StreamBinarySerializer.create(bufferSerializer)
 					.withDefaultBufferSize(StreamBinarySerializer.MAX_SIZE_2);
-			StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
-			StreamFileWriter writer = StreamFileWriter.create(eventloop, file, true);
+			StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor();
+			StreamFileWriter writer = StreamFileWriter.create(file, true);
 
-			serializer.getOutput().streamTo(compressor.getInput());
-			compressor.getOutput().streamTo(writer);
+			stream(serializer.getOutput(), compressor.getInput());
+			stream(compressor.getOutput(), writer);
 
 			return StreamConsumers.withResult(serializer.getInput(), writer.getFlushStage());
 		});

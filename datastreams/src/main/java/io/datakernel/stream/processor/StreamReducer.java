@@ -16,7 +16,6 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
 
 import java.util.Comparator;
@@ -34,18 +33,17 @@ import java.util.function.Function;
 @SuppressWarnings({"rawtypes", "unchecked"})
 public final class StreamReducer<K, O, A> extends AbstractStreamReducer<K, O, A> {
 	// region creators
-	private StreamReducer(Eventloop eventloop, Comparator<K> keyComparator) {
-		super(eventloop, keyComparator);
+	private StreamReducer(Comparator<K> keyComparator) {
+		super(keyComparator);
 	}
 
 	/**
 	 * Creates a new instance of StreamReducer
 	 *
-	 * @param eventloop     eventloop in which runs reducer
 	 * @param keyComparator comparator for compare keys
 	 */
-	public static <K, O, A> StreamReducer<K, O, A> create(Eventloop eventloop, Comparator<K> keyComparator) {
-		return new StreamReducer<>(eventloop, keyComparator);
+	public static <K, O, A> StreamReducer<K, O, A> create(Comparator<K> keyComparator) {
+		return new StreamReducer<>(keyComparator);
 	}
 
 	public StreamReducer<K, O, A> withBufferSize(int bufferSize) {

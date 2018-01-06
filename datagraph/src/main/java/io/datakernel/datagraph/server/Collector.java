@@ -53,6 +53,6 @@ public final class Collector<T> {
 			producers.add(producer);
 		}
 
-		return StreamProducers.concat(eventloop, producers);
+		return StreamProducers.concat(producers);
 	}
 }

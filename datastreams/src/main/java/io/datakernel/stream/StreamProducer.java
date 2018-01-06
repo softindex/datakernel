@@ -27,17 +27,6 @@ import java.util.concurrent.CompletionStage;
  * @param <T> type of output data
  */
 public interface StreamProducer<T> {
-	default void streamTo(StreamConsumer<T> consumer) {
-		this.setConsumer(consumer);
-		consumer.setProducer(this);
-	}
-
-	default <X> CompletionStage<X> streamTo(StreamConsumerWithResult<T, X> consumer) {
-		this.setConsumer(consumer);
-		consumer.setProducer(this);
-		return consumer.getResult();
-	}
-
 	/**
 	 * Changes consumer for this producer, removes itself from previous consumer and removes
 	 * previous producer for new consumer. Begins to stream to consumer.
@@ -56,10 +45,5 @@ public interface StreamProducer<T> {
 	 */
 	void suspend();
 
-	/**
-	 * This method is called for close with error
-	 *
-	 * @param t exception which was found
-	 */
-	void closeWithError(Throwable t);
+	CompletionStage<Void> getEndOfStream();
 }

@@ -59,7 +59,7 @@ public final class NodeSort<K, T> implements Node {
 	@SuppressWarnings("unchecked")
 	@Override
 	public void createAndBind(TaskContext taskContext) {
-		StreamSorter<K, T> streamSorter = StreamSorter.create(taskContext.getEventloop(),
+		StreamSorter<K, T> streamSorter = StreamSorter.create(
 				taskContext.environment().getInstance(StreamSorterStorage.class),
 				keyFunction, keyComparator, deduplicate, itemsInMemorySize);
 		taskContext.bindChannel(input, streamSorter.getInput());

@@ -85,7 +85,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 				logger.info("onDownload: transferring {}, pending downloads: {}", streamId, pendingStreams.size());
 			} else {
 				logger.info("onDownload: waiting {}, pending downloads: {}", streamId, pendingStreams.size());
-				forwarder = StreamForwarder.create(eventloop);
+				forwarder = StreamForwarder.create();
 				pendingStreams.put(streamId, forwarder);
 			}
 			StreamConsumerWithResult<ByteBuf, Void> consumer = messaging.sendBinaryStream();
@@ -114,7 +114,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 	public <T> StreamConsumer<T> upload(final StreamId streamId, Class<T> type) {
 		BufferSerializer<T> serializer = environment.getInstance(DatagraphSerialization.class).getSerializer(type);
 
-		StreamBinarySerializer<T> streamSerializer = StreamBinarySerializer.create(eventloop, serializer)
+		StreamBinarySerializer<T> streamSerializer = StreamBinarySerializer.create(serializer)
 				.withDefaultBufferSize(256 * 1024)
 				.withAutoFlush(1000);
 
@@ -123,7 +123,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 			logger.info("onUpload: transferring {}, pending downloads: {}", streamId, pendingStreams.size());
 		} else {
 			logger.info("onUpload: waiting {}, pending downloads: {}", streamId, pendingStreams.size());
-			forwarder = StreamForwarder.create(eventloop);
+			forwarder = StreamForwarder.create();
 			pendingStreams.put(streamId, forwarder);
 		}
 		forwarder.setProducer(streamSerializer.getOutput());
@@ -132,7 +132,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 
 	@Override
 	protected final AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
-		final MessagingWithBinaryStreaming<DatagraphCommand, DatagraphResponse> messaging = MessagingWithBinaryStreaming.create(eventloop, asyncTcpSocket, serializer);
+		final MessagingWithBinaryStreaming<DatagraphCommand, DatagraphResponse> messaging = MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
 		messaging.receive(new Messaging.ReceiveMessageCallback<DatagraphCommand>() {
 			@Override
 			public void onReceive(DatagraphCommand msg) {

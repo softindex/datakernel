@@ -19,7 +19,6 @@ package io.datakernel.stream.file;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.stream.AbstractStreamConsumer;
 import io.datakernel.stream.StreamDataReceiver;
@@ -54,27 +53,26 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	private SettableStage<Void> flushStage;
 
 	// region creators
-	private StreamFileWriter(Eventloop eventloop, AsyncFile asyncFile, boolean forceOnClose) {
-		super(eventloop);
+	private StreamFileWriter(AsyncFile asyncFile, boolean forceOnClose) {
 		this.asyncFile = asyncFile;
 		this.forceOnClose = forceOnClose;
 	}
 
-	public static StreamFileWriter create(final Eventloop eventloop, ExecutorService executor, Path path) throws IOException {
-		return create(eventloop, executor, path, false);
+	public static StreamFileWriter create(ExecutorService executor, Path path) throws IOException {
+		return create(executor, path, false);
 	}
 
-	public static StreamFileWriter create(final Eventloop eventloop, ExecutorService executor, Path path, boolean forceOnClose) throws IOException {
-		AsyncFile asyncFile = AsyncFile.open(eventloop, executor, path, CREATE_OPTIONS);
-		return create(eventloop, asyncFile, forceOnClose);
+	public static StreamFileWriter create(ExecutorService executor, Path path, boolean forceOnClose) throws IOException {
+		AsyncFile asyncFile = AsyncFile.open(executor, path, CREATE_OPTIONS);
+		return create(asyncFile, forceOnClose);
 	}
 
-	public static StreamFileWriter create(Eventloop eventloop, AsyncFile asyncFile) {
-		return create(eventloop, asyncFile, false);
+	public static StreamFileWriter create(AsyncFile asyncFile) {
+		return create(asyncFile, false);
 	}
 
-	public static StreamFileWriter create(Eventloop eventloop, AsyncFile asyncFile, boolean forceOnClose) {
-		return new StreamFileWriter(eventloop, asyncFile, forceOnClose);
+	public static StreamFileWriter create(AsyncFile asyncFile, boolean forceOnClose) {
+		return new StreamFileWriter(asyncFile, forceOnClose);
 	}
 	// endregion
 

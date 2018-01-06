@@ -58,6 +58,7 @@ import static io.datakernel.aggregation.measure.Measures.sum;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
 import static io.datakernel.cube.CubeTestUtils.dataSource;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.stream.DataStreams.stream;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
@@ -136,8 +137,8 @@ public class CubeIntegrationTest {
 
 		// Save and aggregate logs
 		List<LogItem> listOfRandomLogItems = LogItem.getListOfRandomLogItems(100);
-		StreamProducer<LogItem> producerOfRandomLogItems = StreamProducers.ofIterator(eventloop, listOfRandomLogItems.iterator());
-		producerOfRandomLogItems.streamTo(logManager.consumerStream("partitionA"));
+		StreamProducer<LogItem> producerOfRandomLogItems = StreamProducers.ofIterator(listOfRandomLogItems.iterator());
+		stream(producerOfRandomLogItems, logManager.consumerStream("partitionA"));
 		eventloop.run();
 		Files.list(logsDir).forEach(System.out::println);
 
@@ -168,8 +169,8 @@ public class CubeIntegrationTest {
 		future.get();
 
 		List<LogItem> listOfRandomLogItems2 = LogItem.getListOfRandomLogItems(300);
-		producerOfRandomLogItems = StreamProducers.ofIterator(eventloop, listOfRandomLogItems2.iterator());
-		producerOfRandomLogItems.streamTo(logManager.consumerStream("partitionA"));
+		producerOfRandomLogItems = StreamProducers.ofIterator(listOfRandomLogItems2.iterator());
+		stream(producerOfRandomLogItems, logManager.consumerStream("partitionA"));
 		eventloop.run();
 		Files.list(logsDir).forEach(System.out::println);
 
@@ -184,8 +185,8 @@ public class CubeIntegrationTest {
 		future.get();
 
 		List<LogItem> listOfRandomLogItems3 = LogItem.getListOfRandomLogItems(50);
-		producerOfRandomLogItems = StreamProducers.ofIterator(eventloop, listOfRandomLogItems3.iterator());
-		producerOfRandomLogItems.streamTo(logManager.consumerStream("partitionA"));
+		producerOfRandomLogItems = StreamProducers.ofIterator(listOfRandomLogItems3.iterator());
+		stream(producerOfRandomLogItems, logManager.consumerStream("partitionA"));
 		eventloop.run();
 		Files.list(logsDir).forEach(System.out::println);
 
@@ -203,7 +204,7 @@ public class CubeIntegrationTest {
 		eventloop.run();
 		future.get();
 
-		Future<List<LogItem>> futureResult = StreamConsumers.toList(eventloop,
+		Future<List<LogItem>> futureResult = StreamConsumers.toList(
 				cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(),
 						LogItem.class, DefiningClassLoader.create(classLoader))).toCompletableFuture();
 		eventloop.run();
@@ -253,7 +254,7 @@ public class CubeIntegrationTest {
 		future.get();
 
 		// Query
-		futureResult = StreamConsumers.toList(eventloop,
+		futureResult = StreamConsumers.toList(
 				cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(),
 						LogItem.class, DefiningClassLoader.create(classLoader))).toCompletableFuture();
 		eventloop.run();

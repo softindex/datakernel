@@ -16,7 +16,6 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
 
 import java.util.Comparator;
@@ -38,9 +37,9 @@ public final class StreamMerger<K, T> extends AbstractStreamReducer<K, T, Void> 
 	private final StreamReducers.Reducer<K, T, T, Void> reducer;
 
 	// region creators
-	private StreamMerger(Eventloop eventloop, Function<T, K> keyFunction, Comparator<K> keyComparator,
+	private StreamMerger(Function<T, K> keyFunction, Comparator<K> keyComparator,
 	                     boolean deduplicate) {
-		super(eventloop, keyComparator);
+		super(keyComparator);
 		this.keyFunction = checkNotNull(keyFunction);
 		this.reducer = deduplicate ? StreamReducers.<K, T>mergeDeduplicateReducer() : StreamReducers.<K, T>mergeSortReducer();
 	}
@@ -48,17 +47,16 @@ public final class StreamMerger<K, T> extends AbstractStreamReducer<K, T, Void> 
 	/**
 	 * Returns new instance of StreamMerger
 	 *
-	 * @param eventloop     eventloop in which runs reducer
 	 * @param keyComparator comparator for compare keys
 	 * @param keyFunction   function for counting key
 	 * @param deduplicate   if it is true it means that in result will be not objects with same key
 	 * @param <K>           type of key for mapping
 	 * @param <T>           type of output data
 	 */
-	public static <K, T> StreamMerger<K, T> create(Eventloop eventloop, Function<T, K> keyFunction,
+	public static <K, T> StreamMerger<K, T> create(Function<T, K> keyFunction,
 	                                               Comparator<K> keyComparator,
 	                                               boolean deduplicate) {
-		return new StreamMerger<>(eventloop, keyFunction, keyComparator, deduplicate);
+		return new StreamMerger<>(keyFunction, keyComparator, deduplicate);
 	}
 
 	public StreamMerger<K, T> withBufferSize(int bufferSize) {

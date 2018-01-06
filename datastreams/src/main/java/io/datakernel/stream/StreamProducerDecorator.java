@@ -17,9 +17,11 @@
 package io.datakernel.stream;
 
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 
 import java.util.concurrent.CompletionStage;
 
+import static io.datakernel.stream.DataStreams.bind;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
 
@@ -29,85 +31,70 @@ import static io.datakernel.util.Preconditions.checkState;
  *
  * @param <T> item type
  */
-public abstract class StreamProducerDecorator<T, X> implements StreamProducerWithResult<T, X>, HasEndOfStream {
-	private final SettableStage<Void> endOfStream = SettableStage.create();
-	private final SettableStage<X> result = SettableStage.create();
-	private StreamProducer<T> actualProducer;
+public abstract class StreamProducerDecorator<T> implements StreamProducer<T> {
 	private StreamConsumer<T> consumer;
+	private final SettableStage<Void> endOfStream = SettableStage.create();
+
+	private StreamProducer<T> actualProducer;
+	private final SettableStage<Void> internalEndOfStream = SettableStage.create();
 
 	private StreamDataReceiver<T> pendingDataReceiver;
-	private Throwable pendingException;
 
 	public StreamProducerDecorator() {
-	}
-
-	public StreamProducerDecorator(StreamProducer<T> producer, CompletionStage<X> producerResult) {
-		setActualProducer(producer, producerResult);
 	}
 
 	public StreamProducerDecorator(StreamProducer<T> producer) {
 		setActualProducer(producer);
 	}
 
-	public final void setActualProducer(StreamProducer<T> producer, CompletionStage<X> producerResult) {
-		setActualProducer(producer);
-		setResult(producer, producerResult);
-	}
-
 	public final void setActualProducer(StreamProducer<T> producer) {
 		checkState(this.actualProducer == null, "Decorator is already wired");
 		actualProducer = producer;
-		actualProducer.setConsumer(new StreamConsumer<T>() {
+		bind(actualProducer, new StreamConsumer<T>() {
 			@Override
 			public void setProducer(StreamProducer<T> producer) {
 				assert producer == actualProducer;
+				producer.getEndOfStream()
+						.whenComplete(Stages.onResult(this::onEndOfStream))
+						.whenComplete(Stages.onError(this::onCloseWithError));
+			}
+
+			private void onEndOfStream() {
+				internalEndOfStream.trySet(null);
+				StreamProducerDecorator.this.onEndOfStream();
+			}
+
+			private void onCloseWithError(Throwable t) {
+				internalEndOfStream.trySetException(t);
+				StreamProducerDecorator.this.onCloseWithError(t);
 			}
 
 			@Override
-			public void endOfStream() {
-				onEndOfStream();
-			}
-
-			@Override
-			public void closeWithError(Throwable t) {
-				onCloseWithError(t);
+			public CompletionStage<Void> getEndOfStream() {
+				return internalEndOfStream;
 			}
 		});
-		if (pendingException != null) {
-			actualProducer.closeWithError(pendingException);
-			endOfStream.trySetException(pendingException);
-			result.trySetException(pendingException);
-		} else if (pendingDataReceiver != null) {
+		if (pendingDataReceiver != null) {
 			actualProducer.produce(pendingDataReceiver);
 		}
-	}
-
-	public final void setResult(StreamProducer<T> producer, CompletionStage<X> producerResult) {
-		producerResult.whenCompleteAsync((x, throwable) -> {
-			if (throwable == null) {
-				result.trySet(x);
-			} else {
-				producer.closeWithError(throwable);
-				result.trySetException(throwable);
-			}
-		});
 	}
 
 	public final StreamProducer<T> getActualProducer() {
 		return actualProducer;
 	}
 
-	public final StreamConsumer<T> getConsumer() {
-		return consumer;
-	}
-
 	@Override
 	public final void setConsumer(StreamConsumer<T> consumer) {
 		checkNotNull(consumer);
-		if (this.consumer == consumer) return;
 		checkState(this.consumer == null);
-
 		this.consumer = consumer;
+		consumer.getEndOfStream()
+				.whenComplete(Stages.onResult(this::sendEndOfStream))
+				.whenComplete(Stages.onError(this::closeWithError));
+	}
+
+	public final StreamConsumer<T> getConsumer() {
+		return consumer;
 	}
 
 	@Override
@@ -130,24 +117,18 @@ public abstract class StreamProducerDecorator<T, X> implements StreamProducerWit
 	}
 
 	@Override
-	public final void closeWithError(Throwable t) {
-		if (actualProducer != null) {
-			actualProducer.closeWithError(t);
-			endOfStream.trySetException(t);
-			result.trySetException(t);
-		} else {
-			pendingException = t;
-		}
-	}
-
-	@Override
 	public final CompletionStage<Void> getEndOfStream() {
 		return endOfStream;
 	}
 
-	@Override
-	public final CompletionStage<X> getResult() {
-		return result;
+	protected final void sendEndOfStream() {
+		internalEndOfStream.trySet(null);
+		endOfStream.trySet(null);
+	}
+
+	protected final void closeWithError(Throwable t) {
+		internalEndOfStream.trySetException(t);
+		endOfStream.trySetException(t);
 	}
 
 	protected StreamDataReceiver<T> onProduce(StreamDataReceiver<T> dataReceiver) {
@@ -155,13 +136,11 @@ public abstract class StreamProducerDecorator<T, X> implements StreamProducerWit
 	}
 
 	protected void onEndOfStream() {
-		consumer.endOfStream();
-		endOfStream.trySet(null);
+		sendEndOfStream();
 	}
 
 	protected void onCloseWithError(Throwable t) {
-		consumer.closeWithError(t);
-		endOfStream.trySetException(t);
+		closeWithError(t);
 	}
 
 }

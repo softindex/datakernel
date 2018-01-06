@@ -61,6 +61,7 @@ import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.utils.Primitives.isWrapperType;
 import static io.datakernel.cube.Utils.createResultClass;
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_10_MINUTES;
+import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkState;
 import static java.lang.String.format;
@@ -509,7 +510,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 	                                                         AggregationPredicate dataPredicate) {
 		logger.info("Started consuming data. Dimensions: {}. Measures: {}", dimensionFields.keySet(), measureFields.keySet());
 
-		StreamSplitter<T> streamSplitter = StreamSplitter.create(eventloop);
+		StreamSplitter<T> streamSplitter = StreamSplitter.create();
 
 		StagesAccumulator<Map<String, AggregationDiff>> tracker = StagesAccumulator.create(new HashMap<>());
 		Map<String, AggregationPredicate> compatibleAggregations = getCompatibleAggregationsForDataInput(dimensionFields, measureFields, dataPredicate);
@@ -531,8 +532,8 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 			StreamProducer<T> output = streamSplitter.newOutput();
 			if (!dataInputFilterPredicate.equals(AggregationPredicates.alwaysTrue())) {
 				Predicate<T> filterPredicate = createFilterPredicate(inputClass, dataInputFilterPredicate, getClassLoader(), fieldTypes);
-				StreamFilter<T> filter = StreamFilter.create(eventloop, filterPredicate);
-				output.streamTo(filter.getInput());
+				StreamFilter<T> filter = StreamFilter.create(filterPredicate);
+				stream(output, filter.getInput());
 				output = filter.getOutput();
 			}
 			CompletionStage<AggregationDiff> consume = aggregation.consume(output, inputClass, aggregationKeyFields, aggregationMeasureFields);
@@ -614,7 +615,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 
 		Class resultKeyClass = createKeyClass(projectKeys(dimensionTypes, dimensions), queryClassLoader);
 
-		StreamReducer<Comparable, T, Object> streamReducer = StreamReducer.create(eventloop, Comparable::compareTo);
+		StreamReducer<Comparable, T, Object> streamReducer = StreamReducer.create(Comparable::compareTo);
 		StreamProducer<T> queryResultProducer = streamReducer.getOutput();
 
 		storedMeasures = new ArrayList<>(storedMeasures);
@@ -638,8 +639,8 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 				 */
 				StreamMap.MapperProjection mapper = AggregationUtils.createMapper(aggregationClass, resultClass, dimensions,
 						compatibleMeasures, queryClassLoader);
-				StreamMap streamMap = StreamMap.create(eventloop, mapper);
-				aggregationProducer.streamTo(streamMap.getInput());
+				StreamMap streamMap = StreamMap.create(mapper);
+				stream(aggregationProducer, streamMap.getInput());
 				queryResultProducer = streamMap.getOutput();
 				break;
 			}
@@ -651,7 +652,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 
 			StreamConsumer streamReducerInput = streamReducer.newInput(keyFunction, reducer);
 
-			aggregationProducer.streamTo(streamReducerInput);
+			stream(aggregationProducer, streamReducerInput);
 		}
 
 		return queryResultProducer;
@@ -847,12 +848,11 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 			havingPredicate = createHavingPredicate();
 			recordFunction = createRecordFunction();
 
-			StreamConsumerToList<Object> consumer = new StreamConsumerToList<>(eventloop);
-			StreamProducer queryResultProducer = queryRawStream(new ArrayList<>(resultDimensions), new ArrayList<>(resultStoredMeasures),
+			StreamConsumerToList<Object> consumer = new StreamConsumerToList<>();
+			StreamProducer<Object> queryResultProducer = (StreamProducer<Object>) queryRawStream(new ArrayList<>(resultDimensions), new ArrayList<>(resultStoredMeasures),
 					queryPredicate, resultClass, queryClassLoader, compatibleAggregations);
-			queryResultProducer.streamTo(consumer);
-
-			return consumer.getResult().thenCompose(this::processResults);
+			return stream(queryResultProducer, consumer)
+					.thenCompose(this::processResults);
 		}
 
 		void prepareDimensions() throws QueryException {

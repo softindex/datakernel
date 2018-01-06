@@ -17,7 +17,6 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.async.StagesAccumulator;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 
 import java.util.ArrayList;
@@ -26,6 +25,8 @@ import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
+import static io.datakernel.stream.DataStreams.bind;
+import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
@@ -37,8 +38,6 @@ import static io.datakernel.util.Preconditions.checkNotNull;
  * @param <T> type of objects
  */
 public final class StreamSorter<K, T> implements HasInput<T>, HasOutput<T> {
-	private final Eventloop eventloop;
-
 	private final StagesAccumulator<List<Integer>> temporaryStreams = StagesAccumulator.create(new ArrayList<>());
 	private final StreamSorterStorage<T> storage;
 	private final Comparator<T> itemComparator;
@@ -48,15 +47,13 @@ public final class StreamSorter<K, T> implements HasInput<T>, HasOutput<T> {
 	private StreamProducer<T> output;
 
 	// region creators
-	private StreamSorter(Eventloop eventloop, StreamSorterStorage<T> storage,
+	private StreamSorter(StreamSorterStorage<T> storage,
 	                     final Function<T, K> keyFunction, final Comparator<K> keyComparator, boolean deduplicate,
 	                     int itemsInMemory) {
 		checkArgument(itemsInMemory > 0, "itemsInMemorySize must be positive value, got %s", itemsInMemory);
 		checkNotNull(keyComparator);
 		checkNotNull(keyFunction);
 		checkNotNull(storage);
-
-		this.eventloop = eventloop;
 
 		this.itemsInMemory = itemsInMemory;
 		this.itemComparator = (item1, item2) -> {
@@ -66,21 +63,19 @@ public final class StreamSorter<K, T> implements HasInput<T>, HasOutput<T> {
 		};
 		this.storage = storage;
 
-		this.input = new Input(eventloop);
+		this.input = new Input();
 
 		this.temporaryStreams.addStage(input.getEndOfStream(), (accumulator, $) -> {});
 		CompletionStage<StreamProducer<T>> outputStreamStage = this.temporaryStreams.get()
 				.thenApply(streamIds -> {
 					input.list.sort(itemComparator);
-					StreamProducer<T> listProducer = StreamProducers.ofIterable(eventloop, input.list);
+					StreamProducer<T> listProducer = StreamProducers.ofIterable(input.list);
 					if (streamIds.isEmpty()) {
 						return listProducer;
 					} else {
-						StreamMerger<K, T> streamMerger = StreamMerger.create(eventloop, keyFunction, keyComparator, deduplicate);
-						listProducer.streamTo(streamMerger.newInput());
-						streamIds.forEach(streamId ->
-								StreamProducers.ofStageWithResult(storage.read(streamId))
-										.streamTo(streamMerger.newInput()));
+						StreamMerger<K, T> streamMerger = StreamMerger.create(keyFunction, keyComparator, deduplicate);
+						bind(listProducer, streamMerger.newInput());
+						streamIds.forEach(streamId -> bind(StreamProducers.ofStageWithResult(storage.read(streamId)), streamMerger.newInput()));
 						return streamMerger.getOutput();
 					}
 				});
@@ -90,26 +85,21 @@ public final class StreamSorter<K, T> implements HasInput<T>, HasOutput<T> {
 	/**
 	 * Creates a new instance of StreamSorter
 	 *
-	 * @param eventloop         event loop in which StreamSorter will run
 	 * @param storage           storage for storing elements which was no placed to RAM
 	 * @param keyFunction       function for searching key
 	 * @param keyComparator     comparator for comparing key
 	 * @param deduplicate       if it is true it means that in result will be not objects with same key
 	 * @param itemsInMemorySize size of elements which can be saved in RAM before sorting
 	 */
-	public static <K, T> StreamSorter<K, T> create(Eventloop eventloop, StreamSorterStorage<T> storage,
+	public static <K, T> StreamSorter<K, T> create(StreamSorterStorage<T> storage,
 	                                               final Function<T, K> keyFunction, final Comparator<K> keyComparator, boolean deduplicate,
 	                                               int itemsInMemorySize) {
-		return new StreamSorter<>(eventloop, storage, keyFunction, keyComparator, deduplicate, itemsInMemorySize);
+		return new StreamSorter<>(storage, keyFunction, keyComparator, deduplicate, itemsInMemorySize);
 	}
 	// endregion
 
 	private final class Input extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
 		private ArrayList<T> list = new ArrayList<>();
-
-		protected Input(Eventloop eventloop) {
-			super(eventloop);
-		}
 
 		@Override
 		protected void onStarted() {
@@ -130,11 +120,7 @@ public final class StreamSorter<K, T> implements HasInput<T>, HasOutput<T> {
 		private CompletionStage<Integer> writeToTemporaryStorage(List<T> sortedList) {
 			return temporaryStreams.addStage(
 					storage.write()
-							.thenCompose(consumer -> {
-								StreamProducer<T> producer = StreamProducers.ofIterable(eventloop, sortedList);
-								producer.streamTo(consumer);
-								return consumer.getResult();
-							}),
+							.thenCompose(consumer -> stream(StreamProducers.ofIterable(sortedList), consumer)),
 					List::add);
 		}
 

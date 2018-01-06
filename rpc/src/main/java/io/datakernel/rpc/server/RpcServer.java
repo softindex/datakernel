@@ -203,7 +203,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 
 	@Override
 	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
-		RpcStream stream = new RpcStream(eventloop, asyncTcpSocket, serializer, defaultPacketSize, maxPacketSize,
+		RpcStream stream = new RpcStream(asyncTcpSocket, serializer, defaultPacketSize, maxPacketSize,
 				flushDelayMillis, compression, true); // , statsSerializer, statsDeserializer, statsCompressor, statsDecompressor);
 		RpcServerConnection connection = new RpcServerConnection(eventloop, this,
 				asyncTcpSocket.getRemoteSocketAddress(), handlers, stream);

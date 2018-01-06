@@ -37,6 +37,7 @@ import java.util.concurrent.CompletableFuture;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.serializer.asm.BufferSerializers.intSerializer;
+import static io.datakernel.stream.DataStreams.stream;
 import static org.junit.Assert.assertEquals;
 
 @SuppressWarnings("unchecked")
@@ -52,7 +53,7 @@ public final class SocketStreamingConnectionTest {
 	}
 
 	@Before
-	public void setUp() throws Exception {
+	public void setUp() {
 		ByteBufPool.clear();
 		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 	}
@@ -67,15 +68,15 @@ public final class SocketStreamingConnectionTest {
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		StreamConsumerToList<Integer> consumerToList = StreamConsumerToList.create(eventloop);
+		StreamConsumerToList<Integer> consumerToList = StreamConsumerToList.create();
 
 		SimpleServer server = SimpleServer.create(eventloop,
 				asyncTcpSocket -> {
-					SocketStreamingConnection connection = SocketStreamingConnection.create(eventloop, asyncTcpSocket);
+					SocketStreamingConnection connection = SocketStreamingConnection.create(asyncTcpSocket);
 
-					StreamBinaryDeserializer<Integer> streamDeserializer = StreamBinaryDeserializer.create(eventloop, intSerializer());
-					streamDeserializer.getOutput().streamTo(consumerToList);
-					connection.getSocketReader().streamTo(streamDeserializer.getInput());
+					StreamBinaryDeserializer<Integer> streamDeserializer = StreamBinaryDeserializer.create(intSerializer());
+					stream(streamDeserializer.getOutput(), consumerToList);
+					stream(connection.getSocketReader(), streamDeserializer.getInput());
 
 					return connection;
 				})
@@ -84,13 +85,13 @@ public final class SocketStreamingConnectionTest {
 		server.listen();
 
 		future = eventloop.connect(address).thenAccept(socketChannel -> {
-			StreamBinarySerializer<Integer> streamSerializer = StreamBinarySerializer.create(eventloop, intSerializer())
+			StreamBinarySerializer<Integer> streamSerializer = StreamBinarySerializer.create(intSerializer())
 					.withDefaultBufferSize(1);
 
 			AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
-			SocketStreamingConnection connection = SocketStreamingConnection.create(eventloop, asyncTcpSocket);
-			StreamProducers.ofIterable(eventloop, list).streamTo(streamSerializer.getInput());
-			streamSerializer.getOutput().streamTo(connection.getSocketWriter());
+			SocketStreamingConnection connection = SocketStreamingConnection.create(asyncTcpSocket);
+			stream(StreamProducers.ofIterable(list), streamSerializer.getInput());
+			stream(streamSerializer.getOutput(), connection.getSocketWriter());
 			asyncTcpSocket.setEventHandler(connection);
 			asyncTcpSocket.register();
 		}).toCompletableFuture();
@@ -112,12 +113,12 @@ public final class SocketStreamingConnectionTest {
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		StreamConsumerToList<Integer> consumerToList = StreamConsumerToList.create(eventloop);
+		StreamConsumerToList<Integer> consumerToList = StreamConsumerToList.create();
 
 		SimpleServer server = SimpleServer.create(eventloop,
 				asyncTcpSocket -> {
-					SocketStreamingConnection connection = SocketStreamingConnection.create(eventloop, asyncTcpSocket);
-					connection.getSocketReader().streamTo(connection.getSocketWriter());
+					SocketStreamingConnection connection = SocketStreamingConnection.create(asyncTcpSocket);
+					stream(connection.getSocketReader(), connection.getSocketWriter());
 					return connection;
 				})
 				.withListenAddress(address)
@@ -125,17 +126,17 @@ public final class SocketStreamingConnectionTest {
 		server.listen();
 
 		future = eventloop.connect(address).thenAccept(socketChannel -> {
-			StreamBinarySerializer<Integer> streamSerializer = StreamBinarySerializer.create(eventloop, intSerializer())
+			StreamBinarySerializer<Integer> streamSerializer = StreamBinarySerializer.create(intSerializer())
 					.withDefaultBufferSize(1);
-			StreamBinaryDeserializer<Integer> streamDeserializer = StreamBinaryDeserializer.create(eventloop, intSerializer());
+			StreamBinaryDeserializer<Integer> streamDeserializer = StreamBinaryDeserializer.create(intSerializer());
 
 			AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
-			SocketStreamingConnection connection = SocketStreamingConnection.create(eventloop, asyncTcpSocket);
-			streamSerializer.getOutput().streamTo(connection.getSocketWriter());
-			connection.getSocketReader().streamTo(streamDeserializer.getInput());
+			SocketStreamingConnection connection = SocketStreamingConnection.create(asyncTcpSocket);
+			stream(streamSerializer.getOutput(), connection.getSocketWriter());
+			stream(connection.getSocketReader(), streamDeserializer.getInput());
 
-			StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
-			streamDeserializer.getOutput().streamTo(consumerToList);
+			stream(StreamProducers.ofIterable(source), streamSerializer.getInput());
+			stream(streamDeserializer.getOutput(), consumerToList);
 
 			asyncTcpSocket.setEventHandler(connection);
 			asyncTcpSocket.register();

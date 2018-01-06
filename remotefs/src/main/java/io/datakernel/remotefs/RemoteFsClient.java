@@ -18,7 +18,6 @@ package io.datakernel.remotefs;
 
 import com.google.gson.Gson;
 import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
@@ -44,8 +43,10 @@ import java.util.Map;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
+import static io.datakernel.async.Stages.onError;
 import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
 import static io.datakernel.eventloop.AsyncTcpSocketImpl.wrapChannel;
+import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.net.MessagingSerializers.ofGson;
 
 public final class RemoteFsClient implements IRemoteFsClient {
@@ -112,7 +113,7 @@ public final class RemoteFsClient implements IRemoteFsClient {
 			});
 
 			StreamConsumerWithResult<ByteBuf, Void> consumerWithResult = StreamConsumers.withResult(consumer, ack);
-			consumerWithResult.getResult().whenComplete(Stages.onError($ -> messaging.close()));
+			consumerWithResult.getResult().whenComplete(onError($ -> messaging.close()));
 			return consumerWithResult;
 		});
 	}
@@ -130,19 +131,19 @@ public final class RemoteFsClient implements IRemoteFsClient {
 							long size = ((RemoteFsResponses.Ready) msg).size;
 
 							StreamProducerWithResult<ByteBuf, Void> producer = messaging.receiveBinaryStream();
-							CountingStreamForwarder<ByteBuf> sizeCounter = CountingStreamForwarder.forByteBufs(eventloop);
-							producer.streamTo(sizeCounter.getInput());
+							CountingStreamForwarder<ByteBuf> sizeCounter = CountingStreamForwarder.forByteBufs();
 
 							SettableStage<Void> ack = SettableStage.create();
-							producer.getResult().thenAccept($ -> {
-								messaging.close();
-								if (sizeCounter.getSize() == size - startPosition) {
-									ack.set(null);
-								} else {
-									ack.setException(new IOException("Invalid stream size for '" + fileName + "' starting from " + startPosition +
-											", expected: " + (size - startPosition) + " actual: " + sizeCounter.getSize()));
-								}
-							});
+							stream(producer, sizeCounter.getInput())
+									.thenAccept($ -> {
+										messaging.close();
+										if (sizeCounter.getSize() == size - startPosition) {
+											ack.set(null);
+										} else {
+											ack.setException(new IOException("Invalid stream size for '" + fileName + "' starting from " + startPosition +
+													", expected: " + (size - startPosition) + " actual: " + sizeCounter.getSize()));
+										}
+									});
 
 							StreamProducerWithResult<ByteBuf, Void> producerWithResult = StreamProducers.withResult(sizeCounter.getOutput(), ack);
 							stage.set(producerWithResult);
@@ -166,7 +167,7 @@ public final class RemoteFsClient implements IRemoteFsClient {
 				});
 			});
 
-			return stage.whenComplete(Stages.onError($ -> messaging.close()));
+			return stage.whenComplete(onError($ -> messaging.close()));
 		});
 	}
 
@@ -312,7 +313,7 @@ public final class RemoteFsClient implements IRemoteFsClient {
 					? wrapClientSocket(eventloop, asyncTcpSocketImpl, sslContext, sslExecutor)
 					: asyncTcpSocketImpl;
 			MessagingWithBinaryStreaming<RemoteFsResponses.FsResponse, RemoteFsCommands.FsCommand> messaging =
-					MessagingWithBinaryStreaming.create(eventloop, asyncTcpSocket, serializer);
+					MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
 			asyncTcpSocket.setEventHandler(messaging);
 			asyncTcpSocketImpl.register();
 			return messaging;

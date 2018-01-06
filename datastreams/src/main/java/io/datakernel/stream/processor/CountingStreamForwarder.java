@@ -2,13 +2,11 @@ package io.datakernel.stream.processor;
 
 import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 
 import java.util.Collection;
 
 public class CountingStreamForwarder<T> implements StreamTransformer<T, T>, StreamDataReceiver<T> {
-	private final Eventloop eventloop;
 	private final SizeCounter<T> sizeCounter;
 
 	private final Input input;
@@ -29,27 +27,26 @@ public class CountingStreamForwarder<T> implements StreamTransformer<T, T>, Stre
 		}
 	}
 
-	private CountingStreamForwarder(Eventloop eventloop, SizeCounter<T> sizeCounter) {
-		this.eventloop = eventloop;
+	private CountingStreamForwarder(SizeCounter<T> sizeCounter) {
 		this.sizeCounter = sizeCounter;
-		this.input = new Input(eventloop);
-		this.output = new Output(eventloop);
+		this.input = new Input();
+		this.output = new Output();
 	}
 
-	public static <T> CountingStreamForwarder<T> create(Eventloop eventloop, SizeCounter<T> sizeCounter) {
-		return new CountingStreamForwarder<T>(eventloop, sizeCounter);
+	public static <T> CountingStreamForwarder<T> create(SizeCounter<T> sizeCounter) {
+		return new CountingStreamForwarder<>(sizeCounter);
 	}
 
-	public static CountingStreamForwarder<ByteBuf> forByteBufs(Eventloop eventloop) {
-		return create(eventloop, ByteBuf::readRemaining);
+	public static CountingStreamForwarder<ByteBuf> forByteBufs() {
+		return create(ByteBuf::readRemaining);
 	}
 
-	public static <T extends Collection<?>> CountingStreamForwarder<T> forCollections(Eventloop eventloop) {
-		return create(eventloop, Collection::size);
+	public static <T extends Collection<?>> CountingStreamForwarder<T> forCollections() {
+		return create(Collection::size);
 	}
 
-	public static <T> CountingStreamForwarder<T> create(Eventloop eventloop) {
-		return new CountingStreamForwarder<T>(eventloop, null);
+	public static <T> CountingStreamForwarder<T> create() {
+		return new CountingStreamForwarder<>(null);
 	}
 
 	@Override
@@ -76,28 +73,20 @@ public class CountingStreamForwarder<T> implements StreamTransformer<T, T>, Stre
 	}
 
 	private class Input extends AbstractStreamConsumer<T> {
-		protected Input(Eventloop eventloop) {
-			super(eventloop);
-		}
-
 		@Override
 		protected void onEndOfStream() {
-			output.getConsumer().endOfStream();
+			output.sendEndOfStream();
 			resultStage.set(new Counter(count, size));
 		}
 
 		@Override
 		protected void onError(Throwable t) {
-			output.getConsumer().closeWithError(t);
+			output.closeWithError(t);
 			resultStage.setException(t);
 		}
 	}
 
 	private class Output extends AbstractStreamProducer<T> {
-		protected Output(Eventloop eventloop) {
-			super(eventloop);
-		}
-
 		@Override
 		protected void onProduce(StreamDataReceiver<T> dataReceiver) {
 			CountingStreamForwarder.this.lastDataReceiver = dataReceiver;
@@ -111,7 +100,7 @@ public class CountingStreamForwarder<T> implements StreamTransformer<T, T>, Stre
 
 		@Override
 		protected void onError(Throwable t) {
-			input.getProducer().closeWithError(t);
+			input.closeWithError(t);
 		}
 	}
 

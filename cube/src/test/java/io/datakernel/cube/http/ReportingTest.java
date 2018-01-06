@@ -70,6 +70,7 @@ import static io.datakernel.cube.ReportType.DATA;
 import static io.datakernel.cube.ReportType.DATA_WITH_TOTALS;
 import static io.datakernel.cube.http.ReportingTest.LogItem.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.stream.DataStreams.stream;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
@@ -243,8 +244,7 @@ public class ReportingTest {
 	public static class LogItemSplitter extends LogDataConsumerSplitter<LogItem, CubeDiff> {
 		private final Cube cube;
 
-		public LogItemSplitter(Eventloop eventloop, Cube cube) {
-			super(eventloop);
+		public LogItemSplitter(Cube cube) {
 			this.cube = cube;
 		}
 
@@ -326,7 +326,7 @@ public class ReportingTest {
 
 		LogOTProcessor<LogItem, CubeDiff> logOTProcessor = LogOTProcessor.create(eventloop,
 				logManager,
-				new LogItemSplitter(eventloop, cube),
+				new LogItemSplitter(cube),
 				"testlog",
 				asList("partitionA"),
 				cubeDiffLogOTState);
@@ -356,10 +356,10 @@ public class ReportingTest {
 				new LogItem(2, EXCLUDE_ADVERTISER, EXCLUDE_CAMPAIGN, EXCLUDE_BANNER, 30, 2, 13, 0.9, 0, 2, 4, "site1.com"),
 				new LogItem(3, EXCLUDE_ADVERTISER, EXCLUDE_CAMPAIGN, EXCLUDE_BANNER, 40, 3, 2, 1.0, 0, 1, 4, "site1.com"));
 
-		StreamProducer<LogItem> producer = StreamProducers.ofIterator(eventloop,
+		StreamProducer<LogItem> producer = StreamProducers.ofIterator(
 				Stream.concat(logItemsForAdvertisersAggregations.stream(), logItemsForAffiliatesAggregation.stream()).iterator());
 
-		producer.streamTo(logManager.consumerStream("partitionA"));
+		stream(producer, logManager.consumerStream("partitionA"));
 		eventloop.run();
 
 		future = logOTProcessor.processLog()

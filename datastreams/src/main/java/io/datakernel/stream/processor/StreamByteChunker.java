@@ -18,7 +18,6 @@ package io.datakernel.stream.processor;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
@@ -26,19 +25,17 @@ import static java.lang.Math.max;
 import static java.lang.Math.min;
 
 public final class StreamByteChunker implements StreamTransformer<ByteBuf, ByteBuf> {
-	private final Eventloop eventloop;
 	private final Input input;
 	private final Output output;
 
 	// region creators
-	private StreamByteChunker(Eventloop eventloop, int minChunkSize, int maxChunkSize) {
-		this.eventloop = eventloop;
-		this.input = new Input(eventloop);
-		this.output = new Output(eventloop, minChunkSize, maxChunkSize);
+	private StreamByteChunker(int minChunkSize, int maxChunkSize) {
+		this.input = new Input();
+		this.output = new Output(minChunkSize, maxChunkSize);
 	}
 
-	public static StreamByteChunker create(Eventloop eventloop, int minChunkSize, int maxChunkSize) {
-		return new StreamByteChunker(eventloop, minChunkSize, maxChunkSize);
+	public static StreamByteChunker create(int minChunkSize, int maxChunkSize) {
+		return new StreamByteChunker(minChunkSize, maxChunkSize);
 	}
 	// endregion
 
@@ -53,10 +50,6 @@ public final class StreamByteChunker implements StreamTransformer<ByteBuf, ByteB
 	}
 
 	protected final class Input extends AbstractStreamConsumer<ByteBuf> {
-		protected Input(Eventloop eventloop) {
-			super(eventloop);
-		}
-
 		@Override
 		protected void onEndOfStream() {
 			output.tryFlushAndClose();
@@ -73,8 +66,7 @@ public final class StreamByteChunker implements StreamTransformer<ByteBuf, ByteB
 		private final int maxChunkSize;
 		private ByteBuf internalBuf = ByteBuf.empty();
 
-		public Output(Eventloop eventloop, int minChunkSize, int maxChunkSize) {
-			super(eventloop);
+		public Output(int minChunkSize, int maxChunkSize) {
 			this.minChunkSize = minChunkSize;
 			this.maxChunkSize = maxChunkSize;
 		}

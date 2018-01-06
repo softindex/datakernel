@@ -19,7 +19,6 @@ package io.datakernel.cube;
 import io.datakernel.aggregation.AggregationUtils;
 import io.datakernel.cube.bean.TestPubRequest;
 import io.datakernel.cube.ot.CubeDiff;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.logfs.ot.LogDataConsumerSplitter;
 import io.datakernel.stream.StreamDataReceiver;
 
@@ -34,8 +33,7 @@ import static java.util.stream.Collectors.toSet;
 public class TestAggregatorSplitter extends LogDataConsumerSplitter<TestPubRequest, CubeDiff> {
 	private final Cube cube;
 
-	public TestAggregatorSplitter(Eventloop eventloop, Cube cube) {
-		super(eventloop);
+	public TestAggregatorSplitter(Cube cube) {
 		this.cube = cube;
 	}
 

@@ -38,6 +38,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.String.format;
 import static java.nio.file.StandardOpenOption.READ;
@@ -57,7 +58,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 
 	private static final AtomicInteger PARTITION = new AtomicInteger();
 
-	private final Eventloop eventloop;
+	private final Eventloop eventloop = Eventloop.getCurrentEventloop();
 	private final ExecutorService executorService;
 	private final BufferSerializer<T> serializer;
 	private final Path path;
@@ -68,9 +69,8 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	private int highCompressorLevel = 0;
 
 	// region creators
-	private StreamSorterStorageImpl(Eventloop eventloop, ExecutorService executorService, BufferSerializer<T> serializer,
+	private StreamSorterStorageImpl(ExecutorService executorService, BufferSerializer<T> serializer,
 	                                Path path) {
-		this.eventloop = eventloop;
 		this.executorService = executorService;
 		this.serializer = serializer;
 		this.path = path;
@@ -79,12 +79,11 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	/**
 	 * Creates a new storage
 	 *
-	 * @param eventloop       event loop in which storage will run
 	 * @param executorService executor service for running tasks in new thread
 	 * @param serializer      for serialization to bytes
 	 * @param path            path in which will store received data
 	 */
-	public static <T> StreamSorterStorageImpl<T> create(Eventloop eventloop, ExecutorService executorService,
+	public static <T> StreamSorterStorageImpl<T> create(ExecutorService executorService,
 	                                                    BufferSerializer<T> serializer, Path path) {
 		checkArgument(!path.getFileName().toString().contains("%d"));
 		try {
@@ -92,7 +91,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}
-		return new StreamSorterStorageImpl<>(eventloop, executorService, serializer, path);
+		return new StreamSorterStorageImpl<>(executorService, serializer, path);
 	}
 
 	public StreamSorterStorageImpl<T> withFilePattern(String filePattern) {
@@ -126,19 +125,19 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	public CompletionStage<StreamConsumerWithResult<T, Integer>> write() {
 		int partition = PARTITION.incrementAndGet();
 		Path path = partitionPath(partition);
-		return AsyncFile.openAsync(eventloop, executorService, path, StreamFileWriter.CREATE_OPTIONS).thenApply(file -> {
-			StreamBinarySerializer<T> streamSerializer = StreamBinarySerializer.create(eventloop, serializer);
-			StreamByteChunker streamByteChunkerBefore = StreamByteChunker.create(eventloop, writeBlockSize / 2, writeBlockSize);
+		return AsyncFile.openAsync(executorService, path, StreamFileWriter.CREATE_OPTIONS).thenApply(file -> {
+			StreamBinarySerializer<T> streamSerializer = StreamBinarySerializer.create(serializer);
+			StreamByteChunker streamByteChunkerBefore = StreamByteChunker.create(writeBlockSize / 2, writeBlockSize);
 			StreamLZ4Compressor streamCompressor = highCompressorLevel == 0 ?
-					StreamLZ4Compressor.fastCompressor(eventloop) :
-					StreamLZ4Compressor.highCompressor(eventloop, highCompressorLevel);
-			StreamByteChunker streamByteChunkerAfter = StreamByteChunker.create(eventloop, writeBlockSize / 2, writeBlockSize);
-			StreamFileWriter streamWriter = StreamFileWriter.create(eventloop, file);
+					StreamLZ4Compressor.fastCompressor() :
+					StreamLZ4Compressor.highCompressor(highCompressorLevel);
+			StreamByteChunker streamByteChunkerAfter = StreamByteChunker.create(writeBlockSize / 2, writeBlockSize);
+			StreamFileWriter streamWriter = StreamFileWriter.create(file);
 
-			streamSerializer.getOutput().streamTo(streamByteChunkerBefore.getInput());
-			streamByteChunkerBefore.getOutput().streamTo(streamCompressor.getInput());
-			streamCompressor.getOutput().streamTo(streamByteChunkerAfter.getInput());
-			streamByteChunkerAfter.getOutput().streamTo(streamWriter);
+			stream(streamSerializer.getOutput(), streamByteChunkerBefore.getInput());
+			stream(streamByteChunkerBefore.getOutput(), streamCompressor.getInput());
+			stream(streamCompressor.getOutput(), streamByteChunkerAfter.getInput());
+			stream(streamByteChunkerAfter.getOutput(), streamWriter);
 
 			return StreamConsumers.withResult(streamSerializer.getInput(), streamWriter.getFlushStage().thenApply($ -> partition));
 		});
@@ -153,16 +152,16 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	@Override
 	public CompletionStage<StreamProducerWithResult<T, Void>> read(int partition) {
 		Path path = partitionPath(partition);
-		return AsyncFile.openAsync(eventloop, executorService, path, new OpenOption[]{READ})
+		return AsyncFile.openAsync(executorService, path, new OpenOption[]{READ})
 				.thenApply(file -> {
-					StreamFileReader fileReader = StreamFileReader.readFileFrom(eventloop, file, readBlockSize, 0L);
-					StreamLZ4Decompressor streamDecompressor = StreamLZ4Decompressor.create(eventloop);
-					StreamBinaryDeserializer<T> streamDeserializer = StreamBinaryDeserializer.create(eventloop, serializer);
+					StreamFileReader fileReader = StreamFileReader.readFileFrom(file, readBlockSize, 0L);
+					StreamLZ4Decompressor streamDecompressor = StreamLZ4Decompressor.create();
+					StreamBinaryDeserializer<T> streamDeserializer = StreamBinaryDeserializer.create(serializer);
 
-					fileReader.streamTo(streamDecompressor.getInput());
-					streamDecompressor.getOutput().streamTo(streamDeserializer.getInput());
+					stream(fileReader, streamDecompressor.getInput());
+					stream(streamDecompressor.getOutput(), streamDeserializer.getInput());
 
-					return StreamProducers.withEndOfStream(streamDeserializer.getOutput());
+					return StreamProducers.withEndOfStreamAsResult(streamDeserializer.getOutput());
 				});
 	}
 

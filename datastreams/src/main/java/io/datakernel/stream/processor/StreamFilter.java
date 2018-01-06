@@ -16,7 +16,6 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 
 import java.util.function.Predicate;
@@ -31,17 +30,15 @@ import java.util.function.Predicate;
 public final class StreamFilter<T> implements StreamTransformer<T, T> {
 	public static final Predicate<Object> ALWAYS_TRUE = t -> true;
 
-	private final Eventloop eventloop;
 	private final Input input;
 	private final Output output;
 	private final Predicate<T> predicate;
 
 	// region creators
-	private StreamFilter(Eventloop eventloop, Predicate<T> predicate) {
-		this.eventloop = eventloop;
+	private StreamFilter(Predicate<T> predicate) {
 		this.predicate = predicate;
-		this.input = new Input(eventloop);
-		this.output = new Output(eventloop);
+		this.input = new Input();
+		this.output = new Output();
 	}
 
 	@Override
@@ -57,19 +54,14 @@ public final class StreamFilter<T> implements StreamTransformer<T, T> {
 	/**
 	 * Creates a new instance of this class
 	 *
-	 * @param eventloop eventloop in which filter will be running
 	 * @param predicate predicate for filtering data
 	 */
-	public static <T> StreamFilter<T> create(Eventloop eventloop, Predicate<T> predicate) {
-		return new StreamFilter<>(eventloop, predicate);
+	public static <T> StreamFilter<T> create(Predicate<T> predicate) {
+		return new StreamFilter<>(predicate);
 	}
 	// endregion
 
 	protected final class Input extends AbstractStreamConsumer<T> {
-		protected Input(Eventloop eventloop) {
-			super(eventloop);
-		}
-
 		@Override
 		protected void onEndOfStream() {
 			output.sendEndOfStream();
@@ -83,10 +75,6 @@ public final class StreamFilter<T> implements StreamTransformer<T, T> {
 	}
 
 	protected final class Output extends AbstractStreamProducer<T> {
-		protected Output(Eventloop eventloop) {
-			super(eventloop);
-		}
-
 		@Override
 		protected void onSuspended() {
 			input.getProducer().suspend();

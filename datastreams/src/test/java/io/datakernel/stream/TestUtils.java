@@ -16,7 +16,6 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.processor.StreamTransformer;
 
 import java.util.Arrays;
@@ -88,9 +87,9 @@ public class TestUtils {
 		private int suspended = 0;
 		private int resumed = 0;
 
-		public CountTransformer(Eventloop eventloop) {
-			this.input = new Input(eventloop);
-			this.output = new Output(eventloop);
+		public CountTransformer() {
+			this.input = new Input();
+			this.output = new Output();
 		}
 
 		@Override
@@ -116,10 +115,6 @@ public class TestUtils {
 		}
 
 		protected final class Input extends AbstractStreamConsumer<T> {
-			protected Input(Eventloop eventloop) {
-				super(eventloop);
-			}
-
 			@Override
 			protected void onEndOfStream() {
 				isEndOfStream = true;
@@ -134,10 +129,6 @@ public class TestUtils {
 		}
 
 		protected final class Output extends AbstractStreamProducer<T> {
-			protected Output(Eventloop eventloop) {
-				super(eventloop);
-			}
-
 			@Override
 			protected void onSuspended() {
 				suspended++;

@@ -16,7 +16,6 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 
 import java.util.ArrayList;
@@ -31,18 +30,16 @@ import static io.datakernel.util.Preconditions.checkState;
  * @param <T> type of output data
  */
 public final class StreamUnion<T> implements HasOutput<T>, HasInputs {
-	private final Eventloop eventloop;
 	private final List<Input> inputs = new ArrayList<>();
 	private final Output output;
 
 	// region creators
-	private StreamUnion(Eventloop eventloop) {
-		this.eventloop = eventloop;
-		this.output = new Output(eventloop);
+	private StreamUnion() {
+		this.output = new Output();
 	}
 
-	public static <T> StreamUnion<T> create(Eventloop eventloop) {
-		return new StreamUnion<T>(eventloop);
+	public static <T> StreamUnion<T> create() {
+		return new StreamUnion<T>();
 	}
 
 	@Override
@@ -57,7 +54,7 @@ public final class StreamUnion<T> implements HasOutput<T>, HasInputs {
 
 	public StreamConsumer<T> newInput() {
 		checkState(output.getStatus().isOpen());
-		Input input = new Input(eventloop);
+		Input input = new Input();
 		inputs.add(input);
 		return input;
 	}
@@ -65,10 +62,6 @@ public final class StreamUnion<T> implements HasOutput<T>, HasInputs {
 	// endregion
 
 	private final class Input extends AbstractStreamConsumer<T> {
-		protected Input(Eventloop eventloop) {
-			super(eventloop);
-		}
-
 		@Override
 		protected void onEndOfStream() {
 			if (inputs.stream().allMatch(input -> input.getStatus() == StreamStatus.END_OF_STREAM)) {
@@ -83,10 +76,6 @@ public final class StreamUnion<T> implements HasOutput<T>, HasInputs {
 	}
 
 	private final class Output extends AbstractStreamProducer<T> {
-		protected Output(Eventloop eventloop) {
-			super(eventloop);
-		}
-
 		@Override
 		protected void onSuspended() {
 			for (int i = 0; i < inputs.size(); i++) {

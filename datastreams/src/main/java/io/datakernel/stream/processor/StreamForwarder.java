@@ -1,48 +1,44 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.async.SettableStage;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 
 import java.util.concurrent.CompletionStage;
 
-public class StreamForwarder<T> {
-	private final Eventloop eventloop;
+import static io.datakernel.async.SettableStage.mirrorOf;
+import static io.datakernel.stream.DataStreams.bind;
 
+public class StreamForwarder<T> {
 	private final SettableStage<StreamProducer<T>> producerStage;
 	private final SettableStage<StreamConsumer<T>> consumerStage;
 
 	private final Input input;
 	private final Output output;
 
-	private StreamForwarder(Eventloop eventloop,
-	                        SettableStage<StreamProducer<T>> producerStage,
+	private StreamForwarder(SettableStage<StreamProducer<T>> producerStage,
 	                        SettableStage<StreamConsumer<T>> consumerStage) {
-		this.eventloop = eventloop;
 		this.producerStage = producerStage;
 		this.consumerStage = consumerStage;
-		this.input = new Input(eventloop);
-		this.output = new Output(eventloop);
+		this.input = new Input();
+		this.output = new Output();
 		StreamProducer<T> producer = StreamProducers.ofStage(this.producerStage);
 		StreamConsumer<T> consumer = StreamConsumers.ofStage(this.consumerStage);
-		producer.streamTo(input);
-		output.streamTo(consumer);
+		bind(producer, input);
+		bind(output, consumer);
 	}
 
-	public static <T> StreamForwarder<T> create(Eventloop eventloop) {
-		return new StreamForwarder<>(eventloop, SettableStage.create(), SettableStage.create());
+	public static <T> StreamForwarder<T> create() {
+		return new StreamForwarder<>(SettableStage.create(), SettableStage.create());
 	}
 
-	public static <T> StreamForwarder<T> create(Eventloop eventloop,
-	                                             SettableStage<StreamProducer<T>> producerStage,
-	                                             SettableStage<StreamConsumer<T>> consumerStage) {
-		return new StreamForwarder<>(eventloop, producerStage, consumerStage);
+	public static <T> StreamForwarder<T> create(SettableStage<StreamProducer<T>> producerStage,
+	                                            SettableStage<StreamConsumer<T>> consumerStage) {
+		return new StreamForwarder<>(producerStage, consumerStage);
 	}
 
-	public static <T> StreamForwarder<T> create(Eventloop eventloop,
-	                                             CompletionStage<StreamProducer<T>> producerStage,
-	                                             CompletionStage<StreamConsumer<T>> consumerStage) {
-		return new StreamForwarder<>(eventloop, SettableStage.of(producerStage), SettableStage.of(consumerStage));
+	public static <T> StreamForwarder<T> create(CompletionStage<StreamProducer<T>> producerStage,
+	                                            CompletionStage<StreamConsumer<T>> consumerStage) {
+		return new StreamForwarder<>(mirrorOf(producerStage), mirrorOf(consumerStage));
 	}
 
 	public void setProducer(StreamProducer<T> producer) {
@@ -54,10 +50,6 @@ public class StreamForwarder<T> {
 	}
 
 	protected final class Input extends AbstractStreamConsumer<T> {
-		protected Input(Eventloop eventloop) {
-			super(eventloop);
-		}
-
 		@Override
 		protected void onEndOfStream() {
 			output.sendEndOfStream();
@@ -70,10 +62,6 @@ public class StreamForwarder<T> {
 	}
 
 	protected final class Output extends AbstractStreamProducer<T> {
-		protected Output(Eventloop eventloop) {
-			super(eventloop);
-		}
-
 		@Override
 		protected void onSuspended() {
 			input.getProducer().suspend();

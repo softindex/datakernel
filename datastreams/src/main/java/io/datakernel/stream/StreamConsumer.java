@@ -16,6 +16,8 @@
 
 package io.datakernel.stream;
 
+import java.util.concurrent.CompletionStage;
+
 /**
  * It represents an object which can asynchronous receive streams of data.
  * Implementors of this interface are strongly encouraged to extend one of the abstract classes
@@ -32,15 +34,5 @@ public interface StreamConsumer<T> {
 	 */
 	void setProducer(StreamProducer<T> producer);
 
-	/**
-	 * This method is called when consumer has finished with sending information
-	 */
-	void endOfStream();
-
-	/**
-	 * This method is called when consumer has error
-	 *
-	 * @param t exception which was found
-	 */
-	void closeWithError(Throwable t);
+	CompletionStage<Void> getEndOfStream();
 }

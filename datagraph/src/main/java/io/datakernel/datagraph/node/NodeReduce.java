@@ -73,7 +73,7 @@ public final class NodeReduce<K, O, A> implements Node {
 	@SuppressWarnings("unchecked")
 	@Override
 	public void createAndBind(TaskContext taskContext) {
-		StreamReducer<K, O, A> streamReducer = StreamReducer.create(taskContext.getEventloop(), keyComparator);
+		StreamReducer<K, O, A> streamReducer = StreamReducer.create(keyComparator);
 		for (StreamId streamId : inputs.keySet()) {
 			Input<K, O, A> koaInput = inputs.get(streamId);
 			StreamConsumer<Object> input = streamReducer.newInput(

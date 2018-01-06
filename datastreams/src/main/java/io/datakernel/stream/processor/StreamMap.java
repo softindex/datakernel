@@ -16,7 +16,6 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 
 /**
@@ -33,14 +32,14 @@ public final class StreamMap<I, O> implements StreamTransformer<I, O> {
 	private final Mapper<I, O> mapper;
 
 	// region creators
-	private StreamMap(Eventloop eventloop, Mapper<I, O> mapper) {
+	private StreamMap(Mapper<I, O> mapper) {
 		this.mapper = mapper;
-		this.input = new Input(eventloop);
-		this.output = new Output(eventloop);
+		this.input = new Input();
+		this.output = new Output();
 	}
 
-	public static <I, O> StreamMap<I, O> create(Eventloop eventloop, Mapper<I, O> mapper) {
-		return new StreamMap<I, O>(eventloop, mapper);
+	public static <I, O> StreamMap<I, O> create(Mapper<I, O> mapper) {
+		return new StreamMap<I, O>(mapper);
 	}
 
 	@Override
@@ -129,10 +128,6 @@ public final class StreamMap<I, O> implements StreamTransformer<I, O> {
 	}
 
 	protected final class Input extends AbstractStreamConsumer<I> {
-		protected Input(Eventloop eventloop) {
-			super(eventloop);
-		}
-
 		@Override
 		protected void onEndOfStream() {
 			output.sendEndOfStream();
@@ -145,10 +140,6 @@ public final class StreamMap<I, O> implements StreamTransformer<I, O> {
 	}
 
 	protected final class Output extends AbstractStreamProducer<O> {
-		protected Output(Eventloop eventloop) {
-			super(eventloop);
-		}
-
 		@Override
 		protected void onSuspended() {
 			input.getProducer().suspend();

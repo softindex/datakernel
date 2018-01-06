@@ -19,7 +19,6 @@ package io.datakernel.stream.net;
 import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamConsumer;
 import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamStatus;
@@ -35,15 +34,14 @@ final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> impleme
 	private boolean sent;
 
 	// region creators
-	private SocketStreamConsumer(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
+	private SocketStreamConsumer(AsyncTcpSocket asyncTcpSocket,
 	                             SettableStage<Void> sentStage) {
-		super(eventloop);
 		this.asyncTcpSocket = asyncTcpSocket;
 		this.sentStage = sentStage;
 	}
 
-	public static SocketStreamConsumer create(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket) {
-		return new SocketStreamConsumer(eventloop, asyncTcpSocket, SettableStage.create());
+	public static SocketStreamConsumer create(AsyncTcpSocket asyncTcpSocket) {
+		return new SocketStreamConsumer(asyncTcpSocket, SettableStage.create());
 	}
 	// endregion
 

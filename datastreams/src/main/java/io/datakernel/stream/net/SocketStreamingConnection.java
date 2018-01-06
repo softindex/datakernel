@@ -18,7 +18,6 @@ package io.datakernel.stream.net;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 
@@ -27,24 +26,22 @@ import io.datakernel.stream.StreamProducer;
  * which organized by binary protocol. It is created with socketChannel and sides exchange ByteBufs.
  */
 public final class SocketStreamingConnection implements AsyncTcpSocket.EventHandler, SocketStreaming {
-	private final Eventloop eventloop;
 	private final AsyncTcpSocket asyncTcpSocket;
 
 	private final SocketStreamProducer socketReader;
 	private final SocketStreamConsumer socketWriter;
 
 	// region creators
-	private SocketStreamingConnection(Eventloop eventloop, final AsyncTcpSocket asyncTcpSocket) {
-		this.eventloop = eventloop;
+	private SocketStreamingConnection(final AsyncTcpSocket asyncTcpSocket) {
 		this.asyncTcpSocket = asyncTcpSocket;
-		this.socketWriter = SocketStreamConsumer.create(eventloop, asyncTcpSocket);
+		this.socketWriter = SocketStreamConsumer.create(asyncTcpSocket);
 		this.socketWriter.getSentStage().whenComplete(($, throwable) -> {
 			if (throwable != null) {
 				SocketStreamingConnection.this.socketReader.closeWithError(throwable);
 				asyncTcpSocket.close();
 			}
 		});
-		this.socketReader = SocketStreamProducer.create(eventloop, asyncTcpSocket);
+		this.socketReader = SocketStreamProducer.create(asyncTcpSocket);
 		this.socketReader.getEndOfStream().whenComplete(($, throwable) -> {
 			if (throwable != null) {
 				socketWriter.closeWithError(throwable);
@@ -53,9 +50,8 @@ public final class SocketStreamingConnection implements AsyncTcpSocket.EventHand
 		});
 	}
 
-	public static SocketStreamingConnection create(Eventloop eventloop,
-	                                               AsyncTcpSocket asyncTcpSocket) {
-		return new SocketStreamingConnection(eventloop, asyncTcpSocket);
+	public static SocketStreamingConnection create(AsyncTcpSocket asyncTcpSocket) {
+		return new SocketStreamingConnection(asyncTcpSocket);
 	}
 	// endregion
 
@@ -84,7 +80,6 @@ public final class SocketStreamingConnection implements AsyncTcpSocket.EventHand
 	 */
 	@Override
 	public void onRead(ByteBuf buf) {
-		assert eventloop.inEventloopThread();
 		socketReader.onRead(buf);
 		closeIfDone();
 	}

@@ -16,45 +16,53 @@
 
 package io.datakernel.logfs;
 
+import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
+import io.datakernel.time.CurrentTimeProvider;
 
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.concurrent.CompletionStage;
 
-public final class LogStreamChunker extends StreamConsumerDecorator<ByteBuf, Void> implements StreamDataReceiver<ByteBuf> {
-	private final Eventloop eventloop;
-	private final StreamConsumerSwitcher<ByteBuf> switcher;
+import static io.datakernel.async.SettableStage.mirrorOf;
 
+public final class LogStreamChunker extends StreamConsumerDecorator<ByteBuf> implements StreamConsumerWithResult<ByteBuf, Void>, StreamDataReceiver<ByteBuf> {
+	private final CurrentTimeProvider currentTimeProvider;
 	private final DateTimeFormatter datetimeFormat;
 	private final LogFileSystem fileSystem;
 	private final String logPartition;
+
+	private final StreamConsumerSwitcher<ByteBuf> switcher;
+	private final SettableStage<Void> result;
 
 	private String currentChunkName;
 	private StreamDataReceiver<ByteBuf> dataReceiver;
 	private StreamConsumerWithResult<ByteBuf, Void> currentConsumer;
 
-	private LogStreamChunker(Eventloop eventloop, StreamConsumerSwitcher<ByteBuf> switcher,
-	                         LogFileSystem fileSystem, DateTimeFormatter datetimeFormat,
-	                         String logPartition) {
-		this.eventloop = eventloop;
-		this.switcher = switcher;
+	private LogStreamChunker(CurrentTimeProvider currentTimeProvider, LogFileSystem fileSystem, DateTimeFormatter datetimeFormat, String logPartition,
+	                         StreamConsumerSwitcher<ByteBuf> switcher) {
+		super(switcher);
+		this.currentTimeProvider = currentTimeProvider;
 		this.datetimeFormat = datetimeFormat;
 		this.fileSystem = fileSystem;
 		this.logPartition = logPartition;
+		this.switcher = switcher;
+		this.result = mirrorOf(getEndOfStream().thenCompose($ -> currentConsumer.getResult()));
 	}
 
-	public static LogStreamChunker create(Eventloop eventloop,
-	                                      LogFileSystem fileSystem, DateTimeFormatter datetimeFormat,
+	public static LogStreamChunker create(LogFileSystem fileSystem, DateTimeFormatter datetimeFormat,
 	                                      String logPartition) {
-		StreamConsumerSwitcher<ByteBuf> switcher = StreamConsumerSwitcher.create(eventloop);
-		LogStreamChunker chunker = new LogStreamChunker(eventloop, switcher, fileSystem, datetimeFormat, logPartition);
-		chunker.setActualConsumer(switcher, chunker.getEndOfStream()
-				.thenCompose(aVoid -> chunker.currentConsumer.getResult()));
-		long timestamp = eventloop.currentTimeMillis();
+		return create(Eventloop.getCurrentEventloop(), fileSystem, datetimeFormat, logPartition);
+	}
+
+	static LogStreamChunker create(CurrentTimeProvider currentTimeProvider, LogFileSystem fileSystem, DateTimeFormatter datetimeFormat,
+	                               String logPartition) {
+		StreamConsumerSwitcher<ByteBuf> switcher = StreamConsumerSwitcher.create();
+		LogStreamChunker chunker = new LogStreamChunker(currentTimeProvider, fileSystem, datetimeFormat, logPartition, switcher);
+		long timestamp = currentTimeProvider.currentTimeMillis();
 		String chunkName = datetimeFormat.format(Instant.ofEpochMilli(timestamp));
 		chunker.startNewChunk(chunkName, Stages.of(null));
 		return chunker;
@@ -62,7 +70,7 @@ public final class LogStreamChunker extends StreamConsumerDecorator<ByteBuf, Voi
 
 	@Override
 	public void onData(ByteBuf item) {
-		final String chunkName = datetimeFormat.format(Instant.ofEpochMilli(eventloop.currentTimeMillis()));
+		final String chunkName = datetimeFormat.format(Instant.ofEpochMilli(currentTimeProvider.currentTimeMillis()));
 		if (!chunkName.equals(currentChunkName)) {
 			startNewChunk(chunkName, currentConsumer.getResult());
 		}
@@ -85,4 +93,8 @@ public final class LogStreamChunker extends StreamConsumerDecorator<ByteBuf, Voi
 		switcher.switchTo(currentConsumer);
 	}
 
+	@Override
+	public CompletionStage<Void> getResult() {
+		return result;
+	}
 }

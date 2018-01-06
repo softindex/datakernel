@@ -18,7 +18,6 @@ package io.datakernel.stream.processor;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.TruncatedDataException;
 import io.datakernel.serializer.BufferSerializer;
@@ -37,28 +36,25 @@ public final class StreamBinaryDeserializer<T> implements StreamTransformer<Byte
 	public static final ParseException HEADER_SIZE_EXCEPTION = new ParseException("Header size is too large");
 	public static final ParseException DESERIALIZED_SIZE_EXCEPTION = new ParseException("Deserialized size != parsed data size");
 
-	private final Eventloop eventloop;
 	private final BufferSerializer<T> valueSerializer;
 
 	private Input input;
 	private Output output;
 
 	// region creators
-	private StreamBinaryDeserializer(Eventloop eventloop, BufferSerializer<T> valueSerializer) {
-		this.eventloop = eventloop;
+	private StreamBinaryDeserializer(BufferSerializer<T> valueSerializer) {
 		this.valueSerializer = valueSerializer;
-		this.input = new Input(eventloop);
-		this.output = new Output(eventloop, valueSerializer);
+		this.input = new Input();
+		this.output = new Output(valueSerializer);
 	}
 
 	/**
 	 * Creates a new instance of this class with default size of byte buffer pool - 16
 	 *
-	 * @param eventloop       event loop in which serializer will run
 	 * @param valueSerializer specified BufferSerializer for this type
 	 */
-	public static <T> StreamBinaryDeserializer<T> create(Eventloop eventloop, BufferSerializer<T> valueSerializer) {
-		return new StreamBinaryDeserializer<>(eventloop, valueSerializer);
+	public static <T> StreamBinaryDeserializer<T> create(BufferSerializer<T> valueSerializer) {
+		return new StreamBinaryDeserializer<>(valueSerializer);
 	}
 
 	@Override
@@ -74,10 +70,6 @@ public final class StreamBinaryDeserializer<T> implements StreamTransformer<Byte
 	// endregion
 
 	private final class Input extends AbstractStreamConsumer<ByteBuf> {
-		protected Input(Eventloop eventloop) {
-			super(eventloop);
-		}
-
 		@Override
 		protected void onEndOfStream() {
 			output.produce();
@@ -94,8 +86,7 @@ public final class StreamBinaryDeserializer<T> implements StreamTransformer<Byte
 
 		private final BufferSerializer<T> valueSerializer;
 
-		private Output(Eventloop eventloop, BufferSerializer<T> valueSerializer) {
-			super(eventloop);
+		private Output(BufferSerializer<T> valueSerializer) {
 			this.valueSerializer = valueSerializer;
 		}
 

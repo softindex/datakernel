@@ -41,7 +41,7 @@ import static io.datakernel.util.Preconditions.checkState;
 public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.EventHandler, Messaging<I, O> {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-	private final Eventloop eventloop;
+	private final Eventloop eventloop = Eventloop.getCurrentEventloop();
 	private final AsyncTcpSocket asyncTcpSocket;
 	private final MessagingSerializer<I, O> serializer;
 
@@ -59,16 +59,14 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 	private boolean writeDone;
 
 	// region creators
-	private MessagingWithBinaryStreaming(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, MessagingSerializer<I, O> serializer) {
-		this.eventloop = eventloop;
+	private MessagingWithBinaryStreaming(AsyncTcpSocket asyncTcpSocket, MessagingSerializer<I, O> serializer) {
 		this.asyncTcpSocket = asyncTcpSocket;
 		this.serializer = serializer;
 	}
 
-	public static <I, O> MessagingWithBinaryStreaming<I, O> create(Eventloop eventloop,
-	                                                               AsyncTcpSocket asyncTcpSocket,
+	public static <I, O> MessagingWithBinaryStreaming<I, O> create(AsyncTcpSocket asyncTcpSocket,
 	                                                               MessagingSerializer<I, O> serializer) {
-		return new MessagingWithBinaryStreaming<>(eventloop, asyncTcpSocket, serializer);
+		return new MessagingWithBinaryStreaming<>(asyncTcpSocket, serializer);
 	}
 	// endregion
 
@@ -164,10 +162,10 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 
 		writeCallbacks.clear();
 		if (closedException != null) {
-			return StreamConsumers.withEndOfStream(closingWithError(closedException));
+			return StreamConsumers.withEndOfStreamAsResult(closingWithError(closedException));
 		}
 
-		socketWriter = SocketStreamConsumer.create(eventloop, asyncTcpSocket);
+		socketWriter = SocketStreamConsumer.create(asyncTcpSocket);
 		return StreamConsumers.withResult(socketWriter, socketWriter.getSentStage());
 	}
 
@@ -177,10 +175,10 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 
 		if (closedException != null) {
 			StreamProducer<ByteBuf> producer = StreamProducers.closingWithError(closedException);
-			return StreamProducers.withEndOfStream(producer);
+			return StreamProducers.withEndOfStreamAsResult(producer);
 		}
 
-		socketReader = SocketStreamProducer.create(eventloop, asyncTcpSocket);
+		socketReader = SocketStreamProducer.create(asyncTcpSocket);
 		if (readBuf != null || readEndOfStream) {
 			eventloop.post(() -> {
 				if (readBuf != null) {
@@ -191,7 +189,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 				}
 			});
 		}
-		return StreamProducers.withEndOfStream(socketReader);
+		return StreamProducers.withEndOfStreamAsResult(socketReader);
 	}
 
 	@Override

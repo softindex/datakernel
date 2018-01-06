@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 
+import static io.datakernel.stream.DataStreams.stream;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 public final class LogManagerImpl<T> implements LogManager<T> {
@@ -99,17 +100,17 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 	public CompletionStage<StreamConsumerWithResult<T, Void>> consumer(String logPartition) {
 		validateLogPartition(logPartition);
 		return Stages.ofSupplier(() -> {
-			StreamBinarySerializer<T> streamBinarySerializer = StreamBinarySerializer.create(eventloop, serializer)
+			StreamBinarySerializer<T> streamBinarySerializer = StreamBinarySerializer.create(serializer)
 					.withAutoFlush(autoFlushIntervalMillis)
 					.withDefaultBufferSize(bufferSize)
 					.withSkipSerializationErrors();
 
-			StreamLZ4Compressor streamCompressor = StreamLZ4Compressor.fastCompressor(eventloop);
+			StreamLZ4Compressor streamCompressor = StreamLZ4Compressor.fastCompressor();
 
-			LogStreamChunker writer = LogStreamChunker.create(eventloop, fileSystem, dateTimeFormatter, logPartition);
+			LogStreamChunker writer = LogStreamChunker.create(fileSystem, dateTimeFormatter, logPartition);
 
-			streamBinarySerializer.getOutput().streamTo(streamCompressor.getInput());
-			streamCompressor.getOutput().streamTo(writer);
+			stream(streamBinarySerializer.getOutput(), streamCompressor.getInput());
+			stream(streamCompressor.getOutput(), writer);
 
 			return StreamConsumers.withResult(streamBinarySerializer.getInput(), writer.getResult());
 		});
@@ -128,7 +129,7 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 			Iterator<LogFile> it = logFilesToRead.iterator();
 			SettableStage<LogPosition> positionStage = SettableStage.create();
 
-			return StreamProducers.withResult(StreamProducers.concat(eventloop, new Iterator<StreamProducer<T>>() {
+			return StreamProducers.withResult(StreamProducers.concat(new Iterator<StreamProducer<T>>() {
 				private int n;
 
 				private LogFile currentLogFile;
@@ -165,7 +166,7 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 								inputStreamPosition = 0L;
 
 								sw.reset().start();
-								StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create(eventloop)
+								StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create()
 										.withInspector(new StreamLZ4Decompressor.Inspector() {
 											@Override
 											public void onInputBuf(StreamLZ4Decompressor self, ByteBuf buf) {
@@ -177,27 +178,28 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 											}
 										});
 
-								producer.streamTo(decompressor.getInput());
-								StreamProducer<ByteBuf> endOfStreamOnTruncatedFile = new StreamProducerDecorator<ByteBuf, Void>(decompressor.getOutput()) {
+								stream(producer, decompressor.getInput());
+								StreamProducer<ByteBuf> endOfStreamOnTruncatedFile = new StreamProducerDecorator<ByteBuf>(decompressor.getOutput()) {
 									@Override
 									protected void onCloseWithError(Throwable t) {
 										if (t instanceof TruncatedDataException) {
-											getConsumer().endOfStream();
+											sendEndOfStream();
 										} else {
 											super.onCloseWithError(t);
 										}
 									}
 								};
 
-								StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(eventloop, serializer);
-								endOfStreamOnTruncatedFile.streamTo(deserializer.getInput());
-								return StreamProducers.onEndOfStream(deserializer.getOutput(), this::log);
+								StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(serializer);
+								stream(endOfStreamOnTruncatedFile, deserializer.getInput());
+								deserializer.getOutput().getEndOfStream().whenComplete(this::log);
+								return deserializer.getOutput();
 							});
 
 					return StreamProducers.ofStage(stage);
 				}
 
-				private void log(Void aVoid, Throwable throwable) {
+				private void log(Void $, Throwable throwable) {
 					if (throwable == null && logger.isTraceEnabled()) {
 						logger.trace("Finish log file `{}` in {}, compressed bytes: {} ({} bytes/ses)", currentLogFile,
 								sw, inputStreamPosition, inputStreamPosition / Math.max(sw.elapsed(SECONDS), 1));

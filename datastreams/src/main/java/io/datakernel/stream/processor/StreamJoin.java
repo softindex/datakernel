@@ -16,7 +16,6 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 
 import java.util.ArrayDeque;
@@ -140,7 +139,6 @@ public final class StreamJoin<K, L, R, V> implements HasOutput<V>, HasInputs {
 		}
 	}
 
-	private final Eventloop eventloop;
 	private final Comparator<K> keyComparator;
 	private final Input<L> left;
 	private final Input<R> right;
@@ -155,40 +153,37 @@ public final class StreamJoin<K, L, R, V> implements HasOutput<V>, HasInputs {
 	private final Joiner<K, L, R, V> joiner;
 
 	// region creators
-	private StreamJoin(Eventloop eventloop, Comparator<K> keyComparator,
+	private StreamJoin(Comparator<K> keyComparator,
 	                   Function<L, K> leftKeyFunction, Function<R, K> rightKeyFunction,
 	                   Joiner<K, L, R, V> joiner) {
-		this.eventloop = eventloop;
 		this.keyComparator = checkNotNull(keyComparator);
 		this.joiner = checkNotNull(joiner);
-		this.left = new Input<>(eventloop, leftDeque);
-		this.right = new Input<>(eventloop, rightDeque);
+		this.left = new Input<>(leftDeque);
+		this.right = new Input<>(rightDeque);
 		this.leftKeyFunction = checkNotNull(leftKeyFunction);
 		this.rightKeyFunction = checkNotNull(rightKeyFunction);
-		this.output = new Output(eventloop);
+		this.output = new Output();
 	}
 
 	/**
 	 * Creates a new instance of StreamJoin
 	 *
-	 * @param eventloop        eventloop in which runs reducer
 	 * @param keyComparator    comparator for compare keys
 	 * @param leftKeyFunction  function for counting keys of left stream
 	 * @param rightKeyFunction function for counting keys of right stream
 	 * @param joiner           joiner which will join streams
 	 */
-	public static <K, L, R, V> StreamJoin<K, L, R, V> create(Eventloop eventloop, Comparator<K> keyComparator,
+	public static <K, L, R, V> StreamJoin<K, L, R, V> create(Comparator<K> keyComparator,
 	                                                         Function<L, K> leftKeyFunction, Function<R, K> rightKeyFunction,
 	                                                         Joiner<K, L, R, V> joiner) {
-		return new StreamJoin<>(eventloop, keyComparator, leftKeyFunction, rightKeyFunction, joiner);
+		return new StreamJoin<>(keyComparator, leftKeyFunction, rightKeyFunction, joiner);
 	}
 	// endregion
 
 	protected final class Input<I> extends AbstractStreamConsumer<I> implements StreamDataReceiver<I> {
 		private final ArrayDeque<I> deque;
 
-		public Input(Eventloop eventloop, ArrayDeque<I> deque) {
-			super(eventloop);
+		public Input(ArrayDeque<I> deque) {
 			this.deque = deque;
 		}
 
@@ -215,10 +210,6 @@ public final class StreamJoin<K, L, R, V> implements HasOutput<V>, HasInputs {
 	}
 
 	protected final class Output extends AbstractStreamProducer<V> {
-		protected Output(Eventloop eventloop) {
-			super(eventloop);
-		}
-
 		@Override
 		protected void onSuspended() {
 			left.getProducer().suspend();

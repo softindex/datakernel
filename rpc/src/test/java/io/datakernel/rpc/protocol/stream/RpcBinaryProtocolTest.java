@@ -43,6 +43,7 @@ import java.util.List;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
+import static io.datakernel.stream.DataStreams.stream;
 import static java.lang.ClassLoader.getSystemClassLoader;
 import static org.junit.Assert.assertEquals;
 
@@ -148,36 +149,36 @@ public class RpcBinaryProtocolTest {
 		for (int i = 0; i < countRequests; i++) {
 			sourceList.add(RpcMessage.of(i, testMessage));
 		}
-		StreamProducer<RpcMessage> client = StreamProducers.ofIterable(eventloop, sourceList);
+		StreamProducer<RpcMessage> client = StreamProducers.ofIterable(sourceList);
 
-		StreamLZ4Compressor compressorClient = StreamLZ4Compressor.fastCompressor(eventloop);
-		StreamLZ4Decompressor decompressorClient = StreamLZ4Decompressor.create(eventloop);
-		StreamBinarySerializer<RpcMessage> serializerClient = StreamBinarySerializer.create(eventloop, serializer)
+		StreamLZ4Compressor compressorClient = StreamLZ4Compressor.fastCompressor();
+		StreamLZ4Decompressor decompressorClient = StreamLZ4Decompressor.create();
+		StreamBinarySerializer<RpcMessage> serializerClient = StreamBinarySerializer.create(serializer)
 				.withDefaultBufferSize(defaultPacketSize)
 				.withMaxMessageSize(maxPacketSize);
-		StreamBinaryDeserializer<RpcMessage> deserializerClient = StreamBinaryDeserializer.create(eventloop, serializer);
+		StreamBinaryDeserializer<RpcMessage> deserializerClient = StreamBinaryDeserializer.create(serializer);
 
 		// server side
-		StreamLZ4Compressor compressorServer = StreamLZ4Compressor.fastCompressor(eventloop);
-		StreamLZ4Decompressor decompressorServer = StreamLZ4Decompressor.create(eventloop);
-		StreamBinarySerializer<RpcMessage> serializerServer = StreamBinarySerializer.create(eventloop, serializer)
+		StreamLZ4Compressor compressorServer = StreamLZ4Compressor.fastCompressor();
+		StreamLZ4Decompressor decompressorServer = StreamLZ4Decompressor.create();
+		StreamBinarySerializer<RpcMessage> serializerServer = StreamBinarySerializer.create(serializer)
 				.withDefaultBufferSize(defaultPacketSize)
 				.withMaxMessageSize(maxPacketSize);
-		StreamBinaryDeserializer<RpcMessage> deserializerServer = StreamBinaryDeserializer.create(eventloop, serializer);
+		StreamBinaryDeserializer<RpcMessage> deserializerServer = StreamBinaryDeserializer.create(serializer);
 
-		StreamConsumerToList<RpcMessage> results = new StreamConsumerToList<>(eventloop);
+		StreamConsumerToList<RpcMessage> results = new StreamConsumerToList<>();
 
-		client.streamTo(serializerClient.getInput());
-		serializerClient.getOutput().streamTo(compressorClient.getInput());
-		compressorClient.getOutput().streamTo(decompressorServer.getInput());
-		decompressorServer.getOutput().streamTo(deserializerServer.getInput());
+		stream(client, serializerClient.getInput());
+		stream(serializerClient.getOutput(), compressorClient.getInput());
+		stream(compressorClient.getOutput(), decompressorServer.getInput());
+		stream(decompressorServer.getOutput(), deserializerServer.getInput());
 
-		deserializerServer.getOutput().streamTo(serializerServer.getInput());
+		stream(deserializerServer.getOutput(), serializerServer.getInput());
 
-		serializerServer.getOutput().streamTo(compressorServer.getInput());
-		compressorServer.getOutput().streamTo(decompressorClient.getInput());
-		decompressorClient.getOutput().streamTo(deserializerClient.getInput());
-		deserializerClient.getOutput().streamTo(results);
+		stream(serializerServer.getOutput(), compressorServer.getInput());
+		stream(compressorServer.getOutput(), decompressorClient.getInput());
+		stream(decompressorClient.getOutput(), deserializerClient.getInput());
+		stream(deserializerClient.getOutput(), results);
 
 		eventloop.run();
 

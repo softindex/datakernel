@@ -16,7 +16,6 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 
 import java.util.function.Function;
@@ -29,21 +28,19 @@ import java.util.function.Function;
  * @param <O> type of output data
  */
 public final class StreamFunction<I, O> implements StreamTransformer<I, O> {
-	private final Eventloop eventloop;
 	private final Function<I, O> function;
 	private final Input input;
 	private final Output output;
 
 	// region creators
-	private StreamFunction(Eventloop eventloop, Function<I, O> function) {
-		this.eventloop = eventloop;
+	private StreamFunction(Function<I, O> function) {
 		this.function = function;
-		this.input = new Input(eventloop);
-		this.output = new Output(eventloop);
+		this.input = new Input();
+		this.output = new Output();
 	}
 
-	public static <I, O> StreamFunction<I, O> create(Eventloop eventloop, Function<I, O> function) {
-		return new StreamFunction<>(eventloop, function);
+	public static <I, O> StreamFunction<I, O> create(Function<I, O> function) {
+		return new StreamFunction<>(function);
 	}
 
 	@Override
@@ -58,10 +55,6 @@ public final class StreamFunction<I, O> implements StreamTransformer<I, O> {
 	// endregion
 
 	protected final class Input extends AbstractStreamConsumer<I> {
-		protected Input(Eventloop eventloop) {
-			super(eventloop);
-		}
-
 		@Override
 		protected void onEndOfStream() {
 			output.sendEndOfStream();
@@ -74,10 +67,6 @@ public final class StreamFunction<I, O> implements StreamTransformer<I, O> {
 	}
 
 	protected final class Output extends AbstractStreamProducer<O> {
-		protected Output(Eventloop eventloop) {
-			super(eventloop);
-		}
-
 		@Override
 		protected void onSuspended() {
 			input.getProducer().suspend();

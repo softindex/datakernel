@@ -64,6 +64,7 @@ import static io.datakernel.aggregation.measure.Measures.sum;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
 import static io.datakernel.cube.CubeTestUtils.dataSource;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.stream.DataStreams.stream;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.*;
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
@@ -162,8 +163,8 @@ public class CubeMeasureRemovalTest {
 
 		// Save and aggregate logs
 		List<LogItem> listOfRandomLogItems1 = LogItem.getListOfRandomLogItems(100);
-		StreamProducer<LogItem> producerOfRandomLogItems1 = StreamProducers.ofIterator(eventloop, listOfRandomLogItems1.iterator());
-		producerOfRandomLogItems1.streamTo(logManager.consumerStream("partitionA"));
+		StreamProducer<LogItem> producerOfRandomLogItems1 = StreamProducers.ofIterator(listOfRandomLogItems1.iterator());
+		stream(producerOfRandomLogItems1, logManager.consumerStream("partitionA"));
 		eventloop.run();
 
 		OTStateManager<Integer, LogDiff<CubeDiff>> finalLogCubeStateManager1 = logCubeStateManager;
@@ -216,8 +217,8 @@ public class CubeMeasureRemovalTest {
 
 		// Save and aggregate logs
 		List<LogItem> listOfRandomLogItems2 = LogItem.getListOfRandomLogItems(100);
-		StreamProducer<LogItem> producerOfRandomLogItems2 = StreamProducers.ofIterator(eventloop, listOfRandomLogItems2.iterator());
-		producerOfRandomLogItems2.streamTo(logManager.consumerStream("partitionA"));
+		StreamProducer<LogItem> producerOfRandomLogItems2 = StreamProducers.ofIterator(listOfRandomLogItems2.iterator());
+		stream(producerOfRandomLogItems2, logManager.consumerStream("partitionA"));
 		eventloop.run();
 
 		OTStateManager<Integer, LogDiff<CubeDiff>> finalLogCubeStateManager = logCubeStateManager;
@@ -247,9 +248,8 @@ public class CubeMeasureRemovalTest {
 		final Map<Integer, Long> map = Stream.concat(listOfRandomLogItems1.stream(), listOfRandomLogItems2.stream())
 				.collect(groupingBy(o -> o.date, reducing(0L, o -> o.clicks, (v, v2) -> v + v2)));
 
-		StreamConsumerToList<LogItem> queryResultConsumer2 = new StreamConsumerToList<>(eventloop);
-		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(), LogItem.class, classLoader)
-				.streamTo(queryResultConsumer2);
+		StreamConsumerToList<LogItem> queryResultConsumer2 = new StreamConsumerToList<>();
+		stream(cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(), LogItem.class, classLoader), queryResultConsumer2);
 		eventloop.run();
 
 		// Check query results
@@ -282,9 +282,9 @@ public class CubeMeasureRemovalTest {
 		assertTrue(chunks.get(0).getMeasures().contains("revenue"));
 
 		// Query
-		StreamConsumerToList<LogItem> queryResultConsumer3 = new StreamConsumerToList<>(eventloop);
-		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(),
-				LogItem.class, DefiningClassLoader.create(classLoader)).streamTo(queryResultConsumer3);
+		StreamConsumerToList<LogItem> queryResultConsumer3 = new StreamConsumerToList<>();
+		stream(cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(),
+				LogItem.class, DefiningClassLoader.create(classLoader)), queryResultConsumer3);
 		eventloop.run();
 		List<LogItem> queryResult3 = queryResultConsumer3.getList();
 
@@ -330,7 +330,7 @@ public class CubeMeasureRemovalTest {
 			eventloop.run();
 
 			final List<LogItem> listOfRandomLogItems = LogItem.getListOfRandomLogItems(100);
-			StreamProducers.ofIterable(eventloop, listOfRandomLogItems).streamTo(logManager.consumerStream("partitionA"));
+			stream(StreamProducers.ofIterable(listOfRandomLogItems), logManager.consumerStream("partitionA"));
 			eventloop.run();
 
 			logOTProcessor1.processLog()
@@ -406,7 +406,7 @@ public class CubeMeasureRemovalTest {
 			eventloop.run();
 
 			final List<LogItem> listOfRandomLogItems = LogItem.getListOfRandomLogItems(100);
-			StreamProducers.ofIterable(eventloop, listOfRandomLogItems).streamTo(logManager.consumerStream("partitionA"));
+			stream(StreamProducers.ofIterable(listOfRandomLogItems), logManager.consumerStream("partitionA"));
 			eventloop.run();
 
 			logOTProcessor1.processLog()

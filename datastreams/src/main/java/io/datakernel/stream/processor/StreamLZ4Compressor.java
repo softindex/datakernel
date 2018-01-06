@@ -18,7 +18,6 @@ package io.datakernel.stream.processor;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.ValueStats;
 import io.datakernel.stream.*;
 import net.jpountz.lz4.LZ4Compressor;
@@ -48,7 +47,6 @@ public final class StreamLZ4Compressor implements StreamTransformer<ByteBuf, Byt
 
 	private static final int MIN_BLOCK_SIZE = 64;
 
-	private final Eventloop eventloop;
 	private final LZ4Compressor compressor;
 
 	private Input input;
@@ -72,10 +70,6 @@ public final class StreamLZ4Compressor implements StreamTransformer<ByteBuf, Byt
 	}
 
 	private final class Input extends AbstractStreamConsumer<ByteBuf> {
-		protected Input(Eventloop eventloop) {
-			super(eventloop);
-		}
-
 		@Override
 		protected void onEndOfStream() {
 			output.flushAndClose();
@@ -91,8 +85,7 @@ public final class StreamLZ4Compressor implements StreamTransformer<ByteBuf, Byt
 		private final LZ4Compressor compressor;
 		private final StreamingXXHash32 checksum = XXHashFactory.fastestInstance().newStreamingHash32(DEFAULT_SEED);
 
-		private Output(Eventloop eventloop, LZ4Compressor compressor) {
-			super(eventloop);
+		private Output(LZ4Compressor compressor) {
 			this.compressor = compressor;
 		}
 
@@ -133,31 +126,30 @@ public final class StreamLZ4Compressor implements StreamTransformer<ByteBuf, Byt
 	}
 
 	// region creators
-	private StreamLZ4Compressor(Eventloop eventloop, LZ4Compressor compressor) {
-		this.eventloop = eventloop;
+	private StreamLZ4Compressor(LZ4Compressor compressor) {
 		this.compressor = compressor;
 		rebuild();
 	}
 
 	protected void rebuild() {
-		this.input = new Input(eventloop);
-		this.output = new Output(eventloop, compressor);
+		this.input = new Input();
+		this.output = new Output(compressor);
 	}
 
-	public static StreamLZ4Compressor rawCompressor(Eventloop eventloop) {
-		return new StreamLZ4Compressor(eventloop, null);
+	public static StreamLZ4Compressor rawCompressor() {
+		return new StreamLZ4Compressor(null);
 	}
 
-	public static StreamLZ4Compressor fastCompressor(Eventloop eventloop) {
-		return new StreamLZ4Compressor(eventloop, LZ4Factory.fastestInstance().fastCompressor());
+	public static StreamLZ4Compressor fastCompressor() {
+		return new StreamLZ4Compressor(LZ4Factory.fastestInstance().fastCompressor());
 	}
 
-	public static StreamLZ4Compressor highCompressor(Eventloop eventloop) {
-		return new StreamLZ4Compressor(eventloop, LZ4Factory.fastestInstance().highCompressor());
+	public static StreamLZ4Compressor highCompressor() {
+		return new StreamLZ4Compressor(LZ4Factory.fastestInstance().highCompressor());
 	}
 
-	public static StreamLZ4Compressor highCompressor(Eventloop eventloop, int compressionLevel) {
-		return new StreamLZ4Compressor(eventloop, LZ4Factory.fastestInstance().highCompressor(compressionLevel));
+	public static StreamLZ4Compressor highCompressor(int compressionLevel) {
+		return new StreamLZ4Compressor(LZ4Factory.fastestInstance().highCompressor(compressionLevel));
 	}
 
 	@Override

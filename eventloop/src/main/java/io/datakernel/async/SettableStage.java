@@ -19,9 +19,9 @@ public final class SettableStage<T> extends AbstractCompletionStage<T> {
 		return new SettableStage<>();
 	}
 
-	public static <T> SettableStage<T> of(CompletionStage<T> stage) {
+	public static <T> SettableStage<T> mirrorOf(CompletionStage<T> stage) {
 		SettableStage<T> settableStage = new SettableStage<>();
-		settableStage.setStage(stage);
+		stage.whenComplete(settableStage::trySet);
 		return settableStage;
 	}
 
@@ -69,31 +69,11 @@ public final class SettableStage<T> extends AbstractCompletionStage<T> {
 	public boolean trySet(T result, Throwable throwable) {
 		if (isSet()) return false;
 		if (throwable == null) {
-			set(result);
+			trySet(result);
 		} else {
-			setException(throwable);
+			trySetException(throwable);
 		}
 		return true;
-	}
-
-	public void setStage(CompletionStage<T> stage) {
-		stage.whenComplete((t, throwable) -> {
-			if (throwable == null) {
-				set(t);
-			} else {
-				setException(throwable);
-			}
-		});
-	}
-
-	public void trySetStage(CompletionStage<T> stage) {
-		stage.whenComplete((t, throwable) -> {
-			if (throwable == null) {
-				trySet(t);
-			} else {
-				trySetException(throwable);
-			}
-		});
 	}
 
 	@Override

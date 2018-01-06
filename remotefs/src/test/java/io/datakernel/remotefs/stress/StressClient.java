@@ -48,6 +48,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.stream.DataStreams.stream;
 
 class StressClient {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
@@ -80,17 +81,17 @@ class StressClient {
 
 					Path file = clientStorage.resolve(fileName);
 					StreamFileReader producer =
-							StreamFileReader.readFileFully(eventloop, executor, 16 * 1024, file);
+							StreamFileReader.readFileFully(executor, 16 * 1024, file);
 
 					StreamConsumerWithResult<ByteBuf, Void> consumer = client.uploadStream(fileName);
-					producer.streamTo(consumer);
-					consumer.getResult().whenComplete(($, throwable) -> {
-						if (throwable == null) {
-							logger.info("Uploaded: " + fileName);
-						} else {
-							logger.info("Failed to upload: {}", throwable.getMessage());
-						}
-					});
+					stream(producer, consumer)
+							.whenComplete(($, throwable) -> {
+								if (throwable == null) {
+									logger.info("Uploaded: " + fileName);
+								} else {
+									logger.info("Failed to upload: {}", throwable.getMessage());
+								}
+							});
 				} catch (IOException e) {
 					logger.info(e.getMessage());
 				}
@@ -109,7 +110,7 @@ class StressClient {
 				if (fileName == null) return;
 
 				try {
-					final StreamFileWriter consumer = StreamFileWriter.create(eventloop, executor, downloads.resolve(fileName));
+					final StreamFileWriter consumer = StreamFileWriter.create(executor, downloads.resolve(fileName));
 					consumer.getFlushStage().whenComplete(($, throwable) -> {
 						if (throwable == null) logger.info("Downloaded: " + fileName);
 						else logger.info("Failed to download: {}", throwable.getMessage());
@@ -117,7 +118,7 @@ class StressClient {
 
 					client.download(fileName, 0).whenComplete((producer, throwable) -> {
 						if (throwable == null) {
-							producer.streamTo(consumer);
+							stream(producer, consumer);
 						} else {
 							logger.info("can't download: {}", throwable.getMessage());
 						}
@@ -206,12 +207,12 @@ class StressClient {
 		obj.name = "someName";
 		obj.ip = InetAddress.getLocalHost();
 
-		StreamProducer<TestObject> producer = StreamProducers.ofIterable(eventloop, Collections.singletonList(obj));
-		StreamBinarySerializer<TestObject> serializer = StreamBinarySerializer.create(eventloop, bufferSerializer)
+		StreamProducer<TestObject> producer = StreamProducers.ofIterable(Collections.singletonList(obj));
+		StreamBinarySerializer<TestObject> serializer = StreamBinarySerializer.create(bufferSerializer)
 				.withDefaultBufferSize(StreamBinarySerializer.MAX_SIZE);
 
-		producer.streamTo(serializer.getInput());
-		serializer.getOutput().streamTo(client.uploadStream("someName" + i));
+		stream(producer, serializer.getInput());
+		stream(serializer.getOutput(), client.uploadStream("someName" + i));
 		eventloop.run();
 	}
 
@@ -222,8 +223,8 @@ class StressClient {
 				logger.error("can't download", throwable);
 			} else {
 				try {
-					StreamFileWriter writer = StreamFileWriter.create(eventloop, executor, downloads.resolve(name));
-					producer.streamTo(writer);
+					StreamFileWriter writer = StreamFileWriter.create(executor, downloads.resolve(name));
+					stream(producer, writer);
 				} catch (IOException e) {
 					logger.error("can't download", e);
 				}

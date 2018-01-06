@@ -55,6 +55,7 @@ import static io.datakernel.aggregation.measure.Measures.sum;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
 import static io.datakernel.cube.CubeTestUtils.dataSource;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.stream.DataStreams.stream;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.assertEquals;
@@ -110,17 +111,16 @@ public class LogToCubeTest {
 
 		LogOTProcessor<TestPubRequest, CubeDiff> logOTProcessor = LogOTProcessor.create(eventloop,
 				logManager,
-				new TestAggregatorSplitter(eventloop, cube), // TestAggregatorSplitter.create(eventloop, cube),
+				new TestAggregatorSplitter(cube), // TestAggregatorSplitter.create(eventloop, cube),
 				"testlog",
 				asList("partitionA"),
 				cubeDiffLogOTState);
 
-		StreamProducers.ofIterator(eventloop, asList(
+		stream(StreamProducers.ofIterator(asList(
 				new TestPubRequest(1000, 1, asList(new TestPubRequest.TestAdvRequest(10))),
 				new TestPubRequest(1001, 2, asList(new TestPubRequest.TestAdvRequest(10), new TestPubRequest.TestAdvRequest(20))),
 				new TestPubRequest(1002, 1, asList(new TestPubRequest.TestAdvRequest(30))),
-				new TestPubRequest(1002, 2, Arrays.asList())).iterator())
-				.streamTo(logManager.consumerStream("partitionA"));
+				new TestPubRequest(1002, 2, Arrays.asList())).iterator()), logManager.consumerStream("partitionA"));
 		eventloop.run();
 
 		CompletableFuture<?> future;
@@ -138,10 +138,10 @@ public class LogToCubeTest {
 		eventloop.run();
 		future.get();
 
-		StreamConsumerToList<TestAdvResult> consumerToList = new StreamConsumerToList<>(eventloop);
-		cube.queryRawStream(asList("adv"), asList("advRequests"), alwaysTrue(),
+		StreamConsumerToList<TestAdvResult> consumerToList = new StreamConsumerToList<>();
+		stream(cube.queryRawStream(asList("adv"), asList("advRequests"), alwaysTrue(),
 				TestAdvResult.class, DefiningClassLoader.create(classLoader)
-		).streamTo(consumerToList);
+		), consumerToList);
 		eventloop.run();
 
 		List<TestAdvResult> expected = asList(new TestAdvResult(10, 2), new TestAdvResult(20, 1), new TestAdvResult(30, 1));

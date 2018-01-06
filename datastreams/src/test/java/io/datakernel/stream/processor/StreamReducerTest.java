@@ -29,6 +29,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.TestUtils.*;
@@ -40,19 +41,19 @@ import static org.junit.Assert.*;
 @SuppressWarnings("unchecked")
 public class StreamReducerTest {
 	@Test
-	public void testEmpty() throws Exception {
+	public void testEmpty() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, EMPTY_LIST);
+		StreamProducer<Integer> source = StreamProducers.ofIterable(EMPTY_LIST);
 
-		StreamReducer<Integer, Integer, Void> streamReducer = StreamReducer.<Integer, Integer, Void>create(eventloop, Integer::compareTo)
+		StreamReducer<Integer, Integer, Void> streamReducer = StreamReducer.<Integer, Integer, Void>create(Integer::compareTo)
 				.withBufferSize(1);
 		StreamReducers.Reducer<Integer, Integer, Integer, Void> reducer = mergeDeduplicateReducer();
 
-		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending(eventloop);
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending();
 
-		source.streamTo(streamReducer.newInput(Function.identity(), reducer));
-		streamReducer.getOutput().streamTo(consumer);
+		stream(source, streamReducer.newInput(Function.identity(), reducer));
+		stream(streamReducer.getOutput(), consumer);
 
 		eventloop.run();
 		assertEquals(EMPTY_LIST, consumer.getList());
@@ -62,34 +63,34 @@ public class StreamReducerTest {
 	}
 
 	@Test
-	public void testDeduplicate() throws Exception {
+	public void testDeduplicate() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		StreamProducer<Integer> source0 = StreamProducers.ofIterable(eventloop, EMPTY_LIST);
-		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(7));
-		StreamProducer<Integer> source2 = StreamProducers.ofIterable(eventloop, asList(3, 4, 6));
-		StreamProducer<Integer> source3 = StreamProducers.ofIterable(eventloop, EMPTY_LIST);
-		StreamProducer<Integer> source4 = StreamProducers.ofIterable(eventloop, asList(2, 3, 5));
-		StreamProducer<Integer> source5 = StreamProducers.ofIterable(eventloop, asList(1, 3));
-		StreamProducer<Integer> source6 = StreamProducers.ofIterable(eventloop, asList(1, 3));
-		StreamProducer<Integer> source7 = StreamProducers.ofIterable(eventloop, EMPTY_LIST);
+		StreamProducer<Integer> source0 = StreamProducers.ofIterable(EMPTY_LIST);
+		StreamProducer<Integer> source1 = StreamProducers.of(7);
+		StreamProducer<Integer> source2 = StreamProducers.of(3, 4, 6);
+		StreamProducer<Integer> source3 = StreamProducers.ofIterable(EMPTY_LIST);
+		StreamProducer<Integer> source4 = StreamProducers.of(2, 3, 5);
+		StreamProducer<Integer> source5 = StreamProducers.of(1, 3);
+		StreamProducer<Integer> source6 = StreamProducers.of(1, 3);
+		StreamProducer<Integer> source7 = StreamProducers.ofIterable(EMPTY_LIST);
 
-		StreamReducer<Integer, Integer, Void> streamReducer = StreamReducer.<Integer, Integer, Void>create(eventloop, Integer::compareTo)
+		StreamReducer<Integer, Integer, Void> streamReducer = StreamReducer.<Integer, Integer, Void>create(Integer::compareTo)
 				.withBufferSize(1);
 		Function<Integer, Integer> keyFunction = Function.identity();
 		StreamReducers.Reducer<Integer, Integer, Integer, Void> reducer = mergeDeduplicateReducer();
 
-		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending(eventloop);
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending();
 
-		source0.streamTo(streamReducer.newInput(keyFunction, reducer));
-		source1.streamTo(streamReducer.newInput(keyFunction, reducer));
-		source2.streamTo(streamReducer.newInput(keyFunction, reducer));
-		source3.streamTo(streamReducer.newInput(keyFunction, reducer));
-		source4.streamTo(streamReducer.newInput(keyFunction, reducer));
-		source5.streamTo(streamReducer.newInput(keyFunction, reducer));
-		source6.streamTo(streamReducer.newInput(keyFunction, reducer));
-		source7.streamTo(streamReducer.newInput(keyFunction, reducer));
-		streamReducer.getOutput().streamTo(consumer);
+		stream(source0, streamReducer.newInput(keyFunction, reducer));
+		stream(source1, streamReducer.newInput(keyFunction, reducer));
+		stream(source2, streamReducer.newInput(keyFunction, reducer));
+		stream(source3, streamReducer.newInput(keyFunction, reducer));
+		stream(source4, streamReducer.newInput(keyFunction, reducer));
+		stream(source5, streamReducer.newInput(keyFunction, reducer));
+		stream(source6, streamReducer.newInput(keyFunction, reducer));
+		stream(source7, streamReducer.newInput(keyFunction, reducer));
+		stream(streamReducer.getOutput(), consumer);
 
 		eventloop.run();
 		assertEquals(asList(1, 2, 3, 4, 5, 6, 7), consumer.getList());
@@ -110,21 +111,21 @@ public class StreamReducerTest {
 	public void testWithError() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		StreamProducer<KeyValue1> source1 = StreamProducers.ofIterable(eventloop, asList(
+		StreamProducer<KeyValue1> source1 = StreamProducers.of(
 				new KeyValue1(1, 10.0),
-				new KeyValue1(3, 30.0)));
-		StreamProducer<KeyValue2> source2 = StreamProducers.ofIterable(eventloop, asList(
+				new KeyValue1(3, 30.0));
+		StreamProducer<KeyValue2> source2 = StreamProducers.of(
 				new KeyValue2(1, 10.0),
-				new KeyValue2(3, 30.0)));
-		StreamProducer<KeyValue3> source3 = StreamProducers.ofIterable(eventloop, asList(
+				new KeyValue2(3, 30.0));
+		StreamProducer<KeyValue3> source3 = StreamProducers.of(
 				new KeyValue3(2, 10.0, 20.0),
-				new KeyValue3(3, 10.0, 20.0)));
+				new KeyValue3(3, 10.0, 20.0));
 
-		StreamReducer<Integer, KeyValueResult, KeyValueResult> streamReducer = StreamReducer.<Integer, KeyValueResult, KeyValueResult>create(eventloop, Integer::compareTo)
+		StreamReducer<Integer, KeyValueResult, KeyValueResult> streamReducer = StreamReducer.<Integer, KeyValueResult, KeyValueResult>create(Integer::compareTo)
 				.withBufferSize(1);
 
 		final List<KeyValueResult> list = new ArrayList<>();
-		StreamConsumerToList<KeyValueResult> consumer = new StreamConsumerToList<KeyValueResult>(eventloop, list) {
+		StreamConsumerToList<KeyValueResult> consumer = new StreamConsumerToList<KeyValueResult>(list) {
 			@Override
 			public void onData(KeyValueResult item) {
 				list.add(item);
@@ -138,15 +139,15 @@ public class StreamReducerTest {
 		};
 
 		StreamConsumer<KeyValue1> streamConsumer1 = streamReducer.newInput(input -> input.key, KeyValue1.REDUCER);
-		source1.streamTo(streamConsumer1);
+		stream(source1, streamConsumer1);
 
 		StreamConsumer<KeyValue2> streamConsumer2 = streamReducer.newInput(input -> input.key, KeyValue2.REDUCER);
-		source2.streamTo(streamConsumer2);
+		stream(source2, streamConsumer2);
 
 		StreamConsumer<KeyValue3> streamConsumer3 = streamReducer.newInput(input -> input.key, KeyValue3.REDUCER);
-		source3.streamTo(streamConsumer3);
+		stream(source3, streamConsumer3);
 
-		streamReducer.getOutput().streamTo(consumer);
+		stream(streamReducer.getOutput(), consumer);
 
 		eventloop.run();
 
@@ -165,30 +166,30 @@ public class StreamReducerTest {
 	public void testProducerDisconnectWithError() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		StreamProducer<KeyValue1> source1 = StreamProducers.ofIterable(eventloop,
+		StreamProducer<KeyValue1> source1 = StreamProducers.ofIterable(
 				asList(new KeyValue1(1, 10.0), new KeyValue1(3, 30.0)));
 
 		StreamProducer<KeyValue2> source2 = StreamProducers.closingWithError(new Exception("Test Exception"));
 
-		StreamProducer<KeyValue3> source3 = StreamProducers.ofIterable(eventloop,
+		StreamProducer<KeyValue3> source3 = StreamProducers.ofIterable(
 				asList(new KeyValue3(2, 10.0, 20.0), new KeyValue3(3, 10.0, 20.0)));
 
-		StreamReducer<Integer, KeyValueResult, KeyValueResult> streamReducer = StreamReducer.<Integer, KeyValueResult, KeyValueResult>create(eventloop, Integer::compareTo)
+		StreamReducer<Integer, KeyValueResult, KeyValueResult> streamReducer = StreamReducer.<Integer, KeyValueResult, KeyValueResult>create(Integer::compareTo)
 				.withBufferSize(1);
 
 		List<KeyValueResult> list = new ArrayList<>();
-		StreamConsumerToList<KeyValueResult> consumer = StreamConsumerToList.create(eventloop, list);
+		StreamConsumerToList<KeyValueResult> consumer = StreamConsumerToList.create(list);
 
 		StreamConsumer<KeyValue1> streamConsumer1 = streamReducer.newInput(input -> input.key, KeyValue1.REDUCER);
-		source1.streamTo(streamConsumer1);
+		stream(source1, streamConsumer1);
 
 		StreamConsumer<KeyValue2> streamConsumer2 = streamReducer.newInput(input -> input.key, KeyValue2.REDUCER);
-		source2.streamTo(streamConsumer2);
+		stream(source2, streamConsumer2);
 
 		StreamConsumer<KeyValue3> streamConsumer3 = streamReducer.newInput(input -> input.key, KeyValue3.REDUCER);
-		source3.streamTo(streamConsumer3);
+		stream(source3, streamConsumer3);
 
-		streamReducer.getOutput().streamTo(consumer);
+		stream(streamReducer.getOutput(), consumer);
 
 		eventloop.run();
 		assertTrue(list.size() == 0);
@@ -362,28 +363,28 @@ public class StreamReducerTest {
 	}
 
 	@Test
-	public void test2() throws Exception {
+	public void test2() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		StreamProducer<KeyValue1> source1 = StreamProducers.ofIterable(eventloop, asList(new KeyValue1(1, 10.0), new KeyValue1(3, 30.0)));
-		StreamProducer<KeyValue2> source2 = StreamProducers.ofIterable(eventloop, asList(new KeyValue2(1, 10.0), new KeyValue2(3, 30.0)));
-		StreamProducer<KeyValue3> source3 = StreamProducers.ofIterable(eventloop, asList(new KeyValue3(2, 10.0, 20.0), new KeyValue3(3, 10.0, 20.0)));
+		StreamProducer<KeyValue1> source1 = StreamProducers.of(new KeyValue1(1, 10.0), new KeyValue1(3, 30.0));
+		StreamProducer<KeyValue2> source2 = StreamProducers.of(new KeyValue2(1, 10.0), new KeyValue2(3, 30.0));
+		StreamProducer<KeyValue3> source3 = StreamProducers.of(new KeyValue3(2, 10.0, 20.0), new KeyValue3(3, 10.0, 20.0));
 
-		StreamReducer<Integer, KeyValueResult, KeyValueResult> streamReducer = StreamReducer.<Integer, KeyValueResult, KeyValueResult>create(eventloop, Integer::compareTo)
+		StreamReducer<Integer, KeyValueResult, KeyValueResult> streamReducer = StreamReducer.<Integer, KeyValueResult, KeyValueResult>create(Integer::compareTo)
 				.withBufferSize(1);
 
-		StreamConsumerToList<KeyValueResult> consumer = StreamConsumerToList.randomlySuspending(eventloop, new ArrayList<>(), new Random(1));
+		StreamConsumerToList<KeyValueResult> consumer = StreamConsumerToList.randomlySuspending(new ArrayList<>(), new Random(1));
 
 		StreamConsumer<KeyValue1> streamConsumer1 = streamReducer.newInput(input -> input.key, KeyValue1.REDUCER_TO_ACCUMULATOR.inputToOutput());
-		source1.streamTo(streamConsumer1);
+		stream(source1, streamConsumer1);
 
 		StreamConsumer<KeyValue2> streamConsumer2 = streamReducer.newInput(input -> input.key, KeyValue2.REDUCER_TO_ACCUMULATOR.inputToOutput());
-		source2.streamTo(streamConsumer2);
+		stream(source2, streamConsumer2);
 
 		StreamConsumer<KeyValue3> streamConsumer3 = streamReducer.newInput(input -> input.key, KeyValue3.REDUCER_TO_ACCUMULATOR.inputToOutput());
-		source3.streamTo(streamConsumer3);
+		stream(source3, streamConsumer3);
 
-		streamReducer.getOutput().streamTo(consumer);
+		stream(streamReducer.getOutput(), consumer);
 
 		eventloop.run();
 		assertEquals(asList(
@@ -400,25 +401,25 @@ public class StreamReducerTest {
 	public void test3() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		StreamProducer<KeyValue1> source1 = StreamProducers.ofIterable(eventloop, asList(new KeyValue1(1, 10.0), new KeyValue1(3, 30.0)));
-		StreamProducer<KeyValue2> source2 = StreamProducers.ofIterable(eventloop, asList(new KeyValue2(1, 10.0), new KeyValue2(3, 30.0)));
-		StreamProducer<KeyValue3> source3 = StreamProducers.ofIterable(eventloop, asList(new KeyValue3(2, 10.0, 20.0), new KeyValue3(3, 10.0, 20.0)));
+		StreamProducer<KeyValue1> source1 = StreamProducers.of(new KeyValue1(1, 10.0), new KeyValue1(3, 30.0));
+		StreamProducer<KeyValue2> source2 = StreamProducers.of(new KeyValue2(1, 10.0), new KeyValue2(3, 30.0));
+		StreamProducer<KeyValue3> source3 = StreamProducers.of(new KeyValue3(2, 10.0, 20.0), new KeyValue3(3, 10.0, 20.0));
 
-		StreamReducer<Integer, KeyValueResult, KeyValueResult> streamReducer = StreamReducer.<Integer, KeyValueResult, KeyValueResult>create(eventloop, Integer::compareTo)
+		StreamReducer<Integer, KeyValueResult, KeyValueResult> streamReducer = StreamReducer.<Integer, KeyValueResult, KeyValueResult>create(Integer::compareTo)
 				.withBufferSize(1);
 
-		StreamConsumerToList<KeyValueResult> consumer = StreamConsumerToList.randomlySuspending(eventloop);
+		StreamConsumerToList<KeyValueResult> consumer = StreamConsumerToList.randomlySuspending();
 
 		StreamConsumer<KeyValue1> streamConsumer1 = streamReducer.newInput(input -> input.key, KeyValue1.REDUCER);
-		source1.streamTo(streamConsumer1);
+		stream(source1, streamConsumer1);
 
 		StreamConsumer<KeyValue2> streamConsumer2 = streamReducer.newInput(input -> input.key, KeyValue2.REDUCER);
-		source2.streamTo(streamConsumer2);
+		stream(source2, streamConsumer2);
 
 		StreamConsumer<KeyValue3> streamConsumer3 = streamReducer.newInput(input -> input.key, KeyValue3.REDUCER);
-		source3.streamTo(streamConsumer3);
+		stream(source3, streamConsumer3);
 
-		streamReducer.getOutput().streamTo(consumer);
+		stream(streamReducer.getOutput(), consumer);
 
 		eventloop.run();
 		assertEquals(asList(
@@ -435,33 +436,33 @@ public class StreamReducerTest {
 	public void testWithoutConsumer() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		StreamProducer<Integer> source0 = StreamProducers.ofIterable(eventloop, EMPTY_LIST);
-		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(7));
-		StreamProducer<Integer> source2 = StreamProducers.ofIterable(eventloop, asList(3, 4, 6));
-		StreamProducer<Integer> source3 = StreamProducers.ofIterable(eventloop, EMPTY_LIST);
-		StreamProducer<Integer> source4 = StreamProducers.ofIterable(eventloop, asList(2, 3, 5));
-		StreamProducer<Integer> source5 = StreamProducers.ofIterable(eventloop, asList(1, 3));
-		StreamProducer<Integer> source6 = StreamProducers.ofIterable(eventloop, asList(1, 3));
-		StreamProducer<Integer> source7 = StreamProducers.ofIterable(eventloop, EMPTY_LIST);
+		StreamProducer<Integer> source0 = StreamProducers.ofIterable(EMPTY_LIST);
+		StreamProducer<Integer> source1 = StreamProducers.of(7);
+		StreamProducer<Integer> source2 = StreamProducers.of(3, 4, 6);
+		StreamProducer<Integer> source3 = StreamProducers.ofIterable(EMPTY_LIST);
+		StreamProducer<Integer> source4 = StreamProducers.of(2, 3, 5);
+		StreamProducer<Integer> source5 = StreamProducers.of(1, 3);
+		StreamProducer<Integer> source6 = StreamProducers.of(1, 3);
+		StreamProducer<Integer> source7 = StreamProducers.ofIterable(EMPTY_LIST);
 
-		StreamReducer<Integer, Integer, Void> streamReducer = StreamReducer.<Integer, Integer, Void>create(eventloop, Integer::compareTo)
+		StreamReducer<Integer, Integer, Void> streamReducer = StreamReducer.<Integer, Integer, Void>create(Integer::compareTo)
 				.withBufferSize(1);
 		Function<Integer, Integer> keyFunction = Function.identity();
 		StreamReducers.Reducer<Integer, Integer, Integer, Void> reducer = mergeDeduplicateReducer();
 
-		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending(eventloop);
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending();
 
-		source0.streamTo(streamReducer.newInput(keyFunction, reducer));
-		source1.streamTo(streamReducer.newInput(keyFunction, reducer));
-		source2.streamTo(streamReducer.newInput(keyFunction, reducer));
-		source3.streamTo(streamReducer.newInput(keyFunction, reducer));
-		source4.streamTo(streamReducer.newInput(keyFunction, reducer));
-		source5.streamTo(streamReducer.newInput(keyFunction, reducer));
-		source6.streamTo(streamReducer.newInput(keyFunction, reducer));
-		source7.streamTo(streamReducer.newInput(keyFunction, reducer));
+		stream(source0, streamReducer.newInput(keyFunction, reducer));
+		stream(source1, streamReducer.newInput(keyFunction, reducer));
+		stream(source2, streamReducer.newInput(keyFunction, reducer));
+		stream(source3, streamReducer.newInput(keyFunction, reducer));
+		stream(source4, streamReducer.newInput(keyFunction, reducer));
+		stream(source5, streamReducer.newInput(keyFunction, reducer));
+		stream(source6, streamReducer.newInput(keyFunction, reducer));
+		stream(source7, streamReducer.newInput(keyFunction, reducer));
 		eventloop.run();
 
-		streamReducer.getOutput().streamTo(consumer);
+		stream(streamReducer.getOutput(), consumer);
 		eventloop.run();
 
 		assertEquals(asList(1, 2, 3, 4, 5, 6, 7), consumer.getList());
@@ -482,9 +483,9 @@ public class StreamReducerTest {
 	public void testWithoutProducer() throws ExecutionException, InterruptedException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		StreamReducer<Integer, Integer, Void> streamReducer = StreamReducer.<Integer, Integer, Void>create(eventloop, Integer::compareTo).withBufferSize(1);
-		StreamConsumerToList<Integer> toList = StreamConsumerToList.create(eventloop);
-		streamReducer.getOutput().streamTo(toList);
+		StreamReducer<Integer, Integer, Void> streamReducer = StreamReducer.<Integer, Integer, Void>create(Integer::compareTo).withBufferSize(1);
+		StreamConsumerToList<Integer> toList = StreamConsumerToList.create();
+		stream(streamReducer.getOutput(), toList);
 		CompletableFuture<Void> future = toList.getEndOfStream().toCompletableFuture();
 		eventloop.run();
 		future.get();

@@ -63,7 +63,7 @@ public final class NodeMerge<K, T> implements Node {
 
 	@Override
 	public void createAndBind(TaskContext taskContext) {
-		StreamMerger<K, T> streamMerger = StreamMerger.create(taskContext.getEventloop(), keyFunction, keyComparator, deduplicate);
+		StreamMerger<K, T> streamMerger = StreamMerger.create(keyFunction, keyComparator, deduplicate);
 		for (StreamId input : inputs) {
 			taskContext.bindChannel(input, streamMerger.newInput());
 		}

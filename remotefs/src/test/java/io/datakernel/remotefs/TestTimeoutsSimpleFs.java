@@ -44,6 +44,7 @@ import java.util.concurrent.Executors;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.remotefs.FsIntegrationTest.createBigByteArray;
+import static io.datakernel.stream.DataStreams.stream;
 
 public class TestTimeoutsSimpleFs {
 	@Rule
@@ -78,9 +79,9 @@ public class TestTimeoutsSimpleFs {
 
 		server.listen();
 
-		StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrapForReading(BIG_FILE));
+		StreamProducer<ByteBuf> producer = StreamProducers.of(ByteBuf.wrapForReading(BIG_FILE));
 		StreamConsumerWithResult<ByteBuf, Void> consumer = client.uploadStream("fileName.txt");
-		producer.streamTo(consumer);
+		stream(producer, consumer);
 		CompletableFuture<Void> future = consumer.getResult().toCompletableFuture();
 
 		eventloop.run();

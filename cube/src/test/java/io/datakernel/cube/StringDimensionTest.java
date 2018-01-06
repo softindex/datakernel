@@ -46,6 +46,7 @@ import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.sum;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.stream.DataStreams.stream;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
@@ -69,15 +70,15 @@ public class StringDimensionTest {
 				.withMeasure("metric3", sum(ofLong()))
 				.withAggregation(id("detailedAggregation").withDimensions("key1", "key2").withMeasures("metric1", "metric2", "metric3"));
 
-		StreamProducer<DataItemString1> producer1 = StreamProducers.ofIterable(eventloop, asList(
+		StreamProducer<DataItemString1> producer1 = StreamProducers.of(
 				new DataItemString1("str1", 2, 10, 20),
-				new DataItemString1("str2", 3, 10, 20)));
+				new DataItemString1("str2", 3, 10, 20));
 		StreamConsumerWithResult<DataItemString1, CubeDiff> consumer1 = cube.consume(DataItemString1.class);
-		producer1.streamTo(consumer1);
+		stream(producer1, consumer1);
 		CompletableFuture<CubeDiff> future1 = consumer1.getResult().toCompletableFuture();
-		StreamProducer<DataItemString2> producer2 = StreamProducers.ofIterable(eventloop, asList(new DataItemString2("str2", 3, 10, 20), new DataItemString2("str1", 4, 10, 20)));
+		StreamProducer<DataItemString2> producer2 = StreamProducers.of(new DataItemString2("str2", 3, 10, 20), new DataItemString2("str1", 4, 10, 20));
 		StreamConsumerWithResult<DataItemString2, CubeDiff> consumer2 = cube.consume(DataItemString2.class);
-		producer2.streamTo(consumer2);
+		stream(producer2, consumer2);
 		CompletableFuture<CubeDiff> future2 = consumer2.getResult().toCompletableFuture();
 		eventloop.run();
 
@@ -88,11 +89,11 @@ public class StringDimensionTest {
 		cube.apply(future1.get());
 		cube.apply(future2.get());
 
-		StreamConsumerToList<DataItemResultString> consumerToList = new StreamConsumerToList<>(eventloop);
-		cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"),
+		StreamConsumerToList<DataItemResultString> consumerToList = new StreamConsumerToList<>();
+		stream(cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"),
 				and(eq("key1", "str2"), eq("key2", 3)),
 				DataItemResultString.class, DefiningClassLoader.create(classLoader)
-		).streamTo(consumerToList);
+		), consumerToList);
 		eventloop.run();
 
 		List<DataItemResultString> actual = consumerToList.getList();

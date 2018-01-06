@@ -66,7 +66,7 @@ public final class NodeJoin<K, L, R, V> implements Node {
 	@Override
 	public void createAndBind(TaskContext taskContext) {
 		StreamJoin<K, L, R, V> join =
-				StreamJoin.create(taskContext.getEventloop(), keyComparator, leftKeyFunction::apply, rightKeyFunction::apply, joiner);
+				StreamJoin.create(keyComparator, leftKeyFunction::apply, rightKeyFunction::apply, joiner);
 		taskContext.export(result, join.getOutput());
 		taskContext.bindChannel(left, join.getLeft());
 		taskContext.bindChannel(right, join.getRight());

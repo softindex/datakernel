@@ -41,6 +41,7 @@ import java.util.function.Predicate;
 import static io.datakernel.async.Stages.assertComplete;
 import static io.datakernel.datagraph.dataset.Datasets.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.stream.DataStreams.stream;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
@@ -90,8 +91,8 @@ public class DatagraphServerTest {
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1512);
 
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
-		StreamConsumerToList<TestItem> result1 = new StreamConsumerToList<>(eventloop);
-		StreamConsumerToList<TestItem> result2 = new StreamConsumerToList<>(eventloop);
+		StreamConsumerToList<TestItem> result1 = new StreamConsumerToList<>();
+		StreamConsumerToList<TestItem> result2 = new StreamConsumerToList<>();
 
 		DatagraphEnvironment environment = DatagraphEnvironment.create()
 				.setInstance(DatagraphSerialization.class, serialization);
@@ -142,8 +143,8 @@ public class DatagraphServerTest {
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1512);
 
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
-		StreamConsumerToList<TestItem> result1 = new StreamConsumerToList<>(eventloop);
-		StreamConsumerToList<TestItem> result2 = new StreamConsumerToList<>(eventloop);
+		StreamConsumerToList<TestItem> result1 = new StreamConsumerToList<>();
+		StreamConsumerToList<TestItem> result2 = new StreamConsumerToList<>();
 
 		DatagraphClient client = new DatagraphClient(eventloop, serialization);
 
@@ -202,8 +203,8 @@ public class DatagraphServerTest {
 
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		DatagraphClient client = new DatagraphClient(eventloop, serialization);
-		StreamConsumerToList<TestItem> result1 = new StreamConsumerToList<>(eventloop);
-		StreamConsumerToList<TestItem> result2 = new StreamConsumerToList<>(eventloop);
+		StreamConsumerToList<TestItem> result1 = new StreamConsumerToList<>();
+		StreamConsumerToList<TestItem> result2 = new StreamConsumerToList<>();
 
 		DatagraphEnvironment environment = DatagraphEnvironment.create()
 				.setInstance(DatagraphSerialization.class, serialization)
@@ -273,7 +274,7 @@ public class DatagraphServerTest {
 
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		DatagraphClient client = new DatagraphClient(eventloop, serialization);
-		final StreamConsumerToList<TestItem> resultConsumer = new StreamConsumerToList<>(eventloop);
+		final StreamConsumerToList<TestItem> resultConsumer = new StreamConsumerToList<>();
 
 		DatagraphEnvironment environment = DatagraphEnvironment.create()
 				.setInstance(DatagraphSerialization.class, serialization)
@@ -319,12 +320,11 @@ public class DatagraphServerTest {
 
 		Collector<TestItem> collector = new Collector<>(sortedDataset, TestItem.class, client, eventloop);
 		StreamProducer<TestItem> resultProducer = collector.compile(graph);
-		resultProducer.streamTo(resultConsumer);
-
-		resultConsumer.getResult().whenComplete(assertComplete($ -> {
-			server1.close();
-			server2.close();
-		}));
+		stream(resultProducer, resultConsumer)
+				.whenComplete(assertComplete($ -> {
+					server1.close();
+					server2.close();
+				}));
 
 		graph.execute();
 

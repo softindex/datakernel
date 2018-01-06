@@ -19,7 +19,6 @@ package io.datakernel.stream.processor;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.TruncatedDataException;
 import io.datakernel.stream.*;
@@ -37,7 +36,6 @@ import static java.lang.String.format;
 public final class StreamLZ4Decompressor implements StreamTransformer<ByteBuf, ByteBuf> {
 	public static final int HEADER_LENGTH = StreamLZ4Compressor.HEADER_LENGTH;
 
-	private final Eventloop eventloop;
 	private final LZ4FastDecompressor decompressor;
 	private final StreamingXXHash32 checksum;
 
@@ -53,16 +51,15 @@ public final class StreamLZ4Decompressor implements StreamTransformer<ByteBuf, B
 	}
 
 	// region creators
-	private StreamLZ4Decompressor(Eventloop eventloop, LZ4FastDecompressor decompressor, StreamingXXHash32 checksum) {
-		this.eventloop = eventloop;
+	private StreamLZ4Decompressor(LZ4FastDecompressor decompressor, StreamingXXHash32 checksum) {
 		this.decompressor = decompressor;
 		this.checksum = checksum;
 		recreate();
 	}
 
 	private void recreate() {
-		this.output = new Output(eventloop, decompressor, checksum);
-		this.input = new Input(eventloop);
+		this.output = new Output(decompressor, checksum);
+		this.input = new Input();
 	}
 
 	@Override
@@ -75,13 +72,13 @@ public final class StreamLZ4Decompressor implements StreamTransformer<ByteBuf, B
 		return output;
 	}
 
-	public static StreamLZ4Decompressor create(Eventloop eventloop, LZ4FastDecompressor decompressor,
+	public static StreamLZ4Decompressor create(LZ4FastDecompressor decompressor,
 	                                           StreamingXXHash32 checksum) {
-		return new StreamLZ4Decompressor(eventloop, decompressor, checksum);
+		return new StreamLZ4Decompressor(decompressor, checksum);
 	}
 
-	public static StreamLZ4Decompressor create(Eventloop eventloop) {
-		return new StreamLZ4Decompressor(eventloop, LZ4Factory.fastestInstance().fastDecompressor(),
+	public static StreamLZ4Decompressor create() {
+		return new StreamLZ4Decompressor(LZ4Factory.fastestInstance().fastDecompressor(),
 				XXHashFactory.fastestInstance().newStreamingHash32(DEFAULT_SEED));
 	}
 
@@ -93,10 +90,6 @@ public final class StreamLZ4Decompressor implements StreamTransformer<ByteBuf, B
 	// endregion
 
 	private final class Input extends AbstractStreamConsumer<ByteBuf> {
-		protected Input(Eventloop eventloop) {
-			super(eventloop);
-		}
-
 		@Override
 		protected void onEndOfStream() {
 			output.produce();
@@ -119,8 +112,7 @@ public final class StreamLZ4Decompressor implements StreamTransformer<ByteBuf, B
 
 		private final Inspector inspector = (Inspector) StreamLZ4Decompressor.this.inspector;
 
-		private Output(Eventloop eventloop, LZ4FastDecompressor decompressor, StreamingXXHash32 checksum) {
-			super(eventloop);
+		private Output(LZ4FastDecompressor decompressor, StreamingXXHash32 checksum) {
 			this.decompressor = decompressor;
 			this.checksum = checksum;
 		}

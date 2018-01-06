@@ -16,26 +16,29 @@
 
 package io.datakernel.stream;
 
+import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
 
 import java.util.ArrayList;
+import java.util.concurrent.CompletionStage;
 
+import static io.datakernel.stream.DataStreams.bind;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 
 public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
 	private InternalProducer currentInternalProducer;
 
-	private StreamConsumerSwitcher(Eventloop eventloop) {
-		super(eventloop);
+	private StreamConsumerSwitcher() {
 	}
 
-	public static <T> StreamConsumerSwitcher<T> create(Eventloop eventloop) {
-		return create(eventloop, StreamConsumers.idle());
+	public static <T> StreamConsumerSwitcher<T> create() {
+		return create(StreamConsumers.idle());
 	}
 
-	public static <T> StreamConsumerSwitcher<T> create(Eventloop eventloop, StreamConsumer<T> consumer) {
-		StreamConsumerSwitcher<T> switcher = new StreamConsumerSwitcher<>(eventloop);
+	public static <T> StreamConsumerSwitcher<T> create(StreamConsumer<T> consumer) {
+		StreamConsumerSwitcher<T> switcher = new StreamConsumerSwitcher<>();
 		switcher.switchTo(consumer);
 		return switcher;
 	}
@@ -61,25 +64,26 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 				currentInternalProducer.sendError(getException());
 			}
 			currentInternalProducer = new InternalProducer(eventloop, StreamConsumers.idle());
-			StreamProducers.<T>closingWithError(getException()).streamTo(newConsumer);
+			bind(StreamProducers.closingWithError(getException()), newConsumer);
 		} else if (getStatus() == END_OF_STREAM) {
 			if (currentInternalProducer != null) {
 				currentInternalProducer.sendEndOfStream();
 			}
 			currentInternalProducer = new InternalProducer(eventloop, StreamConsumers.idle());
-			StreamProducers.<T>closing().streamTo(newConsumer);
+			bind(StreamProducers.closing(), newConsumer);
 		} else {
 			if (currentInternalProducer != null) {
 				currentInternalProducer.sendEndOfStream();
 			}
 			currentInternalProducer = new InternalProducer(eventloop, newConsumer);
-			currentInternalProducer.streamTo(newConsumer);
+			bind(currentInternalProducer, newConsumer);
 		}
 	}
 
 	private class InternalProducer implements StreamProducer<T> {
 		private final Eventloop eventloop;
 		private final StreamConsumer<T> consumer;
+		private final SettableStage<Void> endOfStream = SettableStage.create();
 		private StreamDataReceiver<T> lastDataReceiver;
 		private boolean suspended;
 		private ArrayList<T> pendingItems;
@@ -93,6 +97,9 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 		@Override
 		public void setConsumer(StreamConsumer<T> consumer) {
 			assert consumer == this.consumer;
+			consumer.getEndOfStream()
+//					.whenComplete(Stages.onResult(this::onEndOfStream))
+					.whenComplete(Stages.onError(this::closeWithError));
 		}
 
 		@Override
@@ -110,7 +117,7 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 					pendingItems = null;
 
 					if (pendingEndOfStream) {
-						consumer.endOfStream();
+						endOfStream.trySet(null);
 					}
 
 					if (StreamConsumerSwitcher.this.currentInternalProducer == this) {
@@ -136,9 +143,13 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 			}
 		}
 
-		@Override
 		public void closeWithError(Throwable t) {
 			StreamConsumerSwitcher.this.closeWithError(t);
+		}
+
+		@Override
+		public CompletionStage<Void> getEndOfStream() {
+			return endOfStream;
 		}
 
 		public void onData(T item) {
@@ -155,12 +166,12 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 
 		public void sendError(Throwable exception) {
 			lastDataReceiver = item -> {};
-			consumer.closeWithError(exception);
+			endOfStream.trySetException(exception);
 		}
 
 		public void sendEndOfStream() {
 			if (pendingItems == null) {
-				consumer.endOfStream();
+				endOfStream.trySet(null);
 			} else {
 				pendingEndOfStream = true;
 			}

@@ -49,12 +49,12 @@ public class AsyncFileTest {
 		final File tempFile = temporaryFolder.newFile("hello-2.html");
 		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		final Path srcPath = Paths.get("test_data/hello.html");
-		AsyncFile.openAsync(eventloop, Executors.newCachedThreadPool(), srcPath, new OpenOption[]{READ}).whenComplete(assertComplete(asyncFile -> {
+		AsyncFile.openAsync(Executors.newCachedThreadPool(), srcPath, new OpenOption[]{READ}).whenComplete(assertComplete(asyncFile -> {
 			logger.info("Opened file.");
 			asyncFile.readFully().whenComplete(assertComplete(byteBuf -> {
 				final Path destPath = Paths.get(tempFile.getAbsolutePath());
 
-				AsyncFile.openAsync(eventloop, Executors.newCachedThreadPool(), destPath, new OpenOption[]{WRITE}).whenComplete(assertComplete(file -> {
+				AsyncFile.openAsync(Executors.newCachedThreadPool(), destPath, new OpenOption[]{WRITE}).whenComplete(assertComplete(file -> {
 					logger.info("Finished reading file.");
 
 					file.writeFully(byteBuf, 0).whenComplete(assertComplete($ -> {

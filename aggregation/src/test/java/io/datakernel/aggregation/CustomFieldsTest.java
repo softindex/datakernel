@@ -32,7 +32,6 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -44,7 +43,8 @@ import static io.datakernel.aggregation.fieldtype.FieldTypes.ofDouble;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static java.util.Arrays.asList;
+import static io.datakernel.stream.DataStreams.stream;
+import static io.datakernel.util.CollectionUtils.set;
 import static junit.framework.TestCase.assertEquals;
 
 public class CustomFieldsTest {
@@ -116,38 +116,38 @@ public class CustomFieldsTest {
 		Aggregation aggregation = Aggregation.create(eventloop, executorService, classLoader, aggregationChunkStorage, structure)
 				.withTemporarySortDir(temporaryFolder.newFolder().toPath());
 
-		StreamProducer<EventRecord> producer = StreamProducers.ofIterable(eventloop, asList(
+		StreamProducer<EventRecord> producer = StreamProducers.of(
 				new EventRecord(1, 0.34, 1),
 				new EventRecord(2, 0.42, 3),
-				new EventRecord(3, 0.13, 20)));
+				new EventRecord(3, 0.13, 20));
 
 		CompletableFuture<AggregationDiff> future = aggregation.consume(producer, EventRecord.class).toCompletableFuture();
 		eventloop.run();
 		aggregationChunkStorage.finish(future.get().getAddedChunks().stream().map(AggregationChunk::getChunkId).collect(Collectors.toSet()));
 		aggregation.getState().apply(future.get());
 
-		producer = StreamProducers.ofIterable(eventloop, asList(
+		producer = StreamProducers.of(
 				new EventRecord(2, 0.30, 20),
 				new EventRecord(1, 0.22, 1000),
-				new EventRecord(2, 0.91, 33)));
+				new EventRecord(2, 0.91, 33));
 		future = aggregation.consume(producer, EventRecord.class).toCompletableFuture();
 		eventloop.run();
 		aggregationChunkStorage.finish(future.get().getAddedChunks().stream().map(AggregationChunk::getChunkId).collect(Collectors.toSet()));
 		aggregation.getState().apply(future.get());
 
-		producer = StreamProducers.ofIterable(eventloop, asList(
+		producer = StreamProducers.of(
 				new EventRecord(1, 0.01, 1),
 				new EventRecord(3, 0.88, 20),
-				new EventRecord(3, 1.01, 21)));
+				new EventRecord(3, 1.01, 21));
 		future = aggregation.consume(producer, EventRecord.class).toCompletableFuture();
 		eventloop.run();
 		aggregationChunkStorage.finish(future.get().getAddedChunks().stream().map(AggregationChunk::getChunkId).collect(Collectors.toSet()));
 		aggregation.getState().apply(future.get());
 
-		producer = StreamProducers.ofIterable(eventloop, asList(
+		producer = StreamProducers.of(
 				new EventRecord(1, 0.35, 500),
 				new EventRecord(1, 0.59, 17),
-				new EventRecord(2, 0.85, 50)));
+				new EventRecord(2, 0.85, 50));
 		future = aggregation.consume(producer, EventRecord.class).toCompletableFuture();
 		eventloop.run();
 		aggregationChunkStorage.finish(future.get().getAddedChunks().stream().map(AggregationChunk::getChunkId).collect(Collectors.toSet()));
@@ -156,8 +156,8 @@ public class CustomFieldsTest {
 		AggregationQuery query = AggregationQuery.create()
 				.withKeys("siteId")
 				.withMeasures("eventCount", "sumRevenue", "minRevenue", "maxRevenue", "uniqueUserIds", "estimatedUniqueUserIdCount");
-		StreamConsumerToList<QueryResult> listConsumer = new StreamConsumerToList<>(eventloop);
-		aggregation.query(query, QueryResult.class, DefiningClassLoader.create(classLoader)).streamTo(listConsumer);
+		StreamConsumerToList<QueryResult> listConsumer = new StreamConsumerToList<>();
+		stream(aggregation.query(query, QueryResult.class, DefiningClassLoader.create(classLoader)), listConsumer);
 		eventloop.run();
 
 		double delta = 1E-3;
@@ -192,7 +192,4 @@ public class CustomFieldsTest {
 		assertEquals(2, s3.estimatedUniqueUserIdCount.estimate());
 	}
 
-	private static <T> Set<T> set(T... values) {
-		return Arrays.stream(values).collect(Collectors.toSet());
-	}
 }

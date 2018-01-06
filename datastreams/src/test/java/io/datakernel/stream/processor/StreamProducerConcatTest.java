@@ -30,6 +30,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.TestUtils.assertStatus;
@@ -39,15 +40,15 @@ import static org.junit.Assert.assertEquals;
 public class StreamProducerConcatTest {
 
 	@Test
-	public void testSequence() throws Exception {
+	public void testSequence() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		StreamProducer<Integer> producer = StreamProducers.concat(eventloop,
-				StreamProducers.ofIterable(eventloop, asList(1, 2, 3)),
-				StreamProducers.ofIterable(eventloop, asList(4, 5, 6)));
-		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending(eventloop);
+		StreamProducer<Integer> producer = StreamProducers.concat(
+				StreamProducers.of(1, 2, 3),
+				StreamProducers.of(4, 5, 6));
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending();
 
-		producer.streamTo(consumer);
+		stream(producer, consumer);
 		eventloop.run();
 
 		assertEquals(asList(1, 2, 3, 4, 5, 6), consumer.getList());
@@ -55,18 +56,18 @@ public class StreamProducerConcatTest {
 	}
 
 	@Test
-	public void testSequenceException() throws Exception {
+	public void testSequenceException() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		List<Integer> list = new ArrayList<>();
 
-		StreamProducer<Integer> producer = StreamProducers.concat(eventloop,
-				StreamProducers.ofIterable(eventloop, asList(1, 2, 3)),
-				StreamProducers.ofIterable(eventloop, asList(4, 5, 6)),
+		StreamProducer<Integer> producer = StreamProducers.concat(
+				StreamProducers.of(1, 2, 3),
+				StreamProducers.of(4, 5, 6),
 				StreamProducers.closingWithError(new ExpectedException("Test Exception")),
-				StreamProducers.ofIterable(eventloop, asList(1, 2, 3)));
-		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending(eventloop, list);
+				StreamProducers.of(1, 2, 3));
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending(list);
 
-		producer.streamTo(consumer);
+		stream(producer, consumer);
 		eventloop.run();
 
 		assertEquals(asList(1, 2, 3, 4, 5, 6), list);
@@ -77,15 +78,15 @@ public class StreamProducerConcatTest {
 	public void testConcat() throws Exception {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		StreamProducer<Integer> producer = StreamProducers.concat(eventloop,
-				StreamProducers.ofIterable(eventloop, asList(1, 2, 3)),
-				StreamProducers.ofIterable(eventloop, asList(4, 5, 6)),
+		StreamProducer<Integer> producer = StreamProducers.concat(
+				StreamProducers.of(1, 2, 3),
+				StreamProducers.of(4, 5, 6),
 				StreamProducers.closing());
 
-		StreamConsumerWithResult<Integer, List<Integer>> consumer = new StreamConsumerToList<>(eventloop);
+		StreamConsumerWithResult<Integer, List<Integer>> consumer = new StreamConsumerToList<>();
 		CompletableFuture<List<Integer>> listFuture = consumer.getResult().toCompletableFuture();
 
-		producer.streamTo(consumer);
+		stream(producer, consumer);
 		eventloop.run();
 
 		assertEquals(asList(1, 2, 3, 4, 5, 6), listFuture.get());
@@ -96,14 +97,14 @@ public class StreamProducerConcatTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		List<Integer> list = new ArrayList<>();
 
-		StreamProducer<Integer> producer = StreamProducers.concat(eventloop,
-				StreamProducers.ofIterable(eventloop, asList(1, 2, 3)),
-				StreamProducers.ofIterable(eventloop, asList(4, 5, 6)),
+		StreamProducer<Integer> producer = StreamProducers.concat(
+				StreamProducers.of(1, 2, 3),
+				StreamProducers.of(4, 5, 6),
 				StreamProducers.closingWithError(new ExpectedException("Test Exception")));
 
-		StreamConsumerToList<Integer> consumer = StreamConsumerToList.oneByOne(eventloop, list);
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.oneByOne(list);
 
-		producer.streamTo(consumer);
+		stream(producer, consumer);
 		eventloop.run();
 
 		assertEquals(asList(1, 2, 3, 4, 5, 6), list);
@@ -114,18 +115,18 @@ public class StreamProducerConcatTest {
 	public void testWithoutConsumer() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		StreamProducer<Integer> producer = StreamProducers.concat(eventloop,
-				StreamProducers.ofIterable(eventloop, asList(1, 2, 3)),
-				StreamProducers.ofIterable(eventloop, asList(4, 5, 6)),
+		StreamProducer<Integer> producer = StreamProducers.concat(
+				StreamProducers.of(1, 2, 3),
+				StreamProducers.of(4, 5, 6),
 				StreamProducers.closing());
 
-		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(eventloop);
-		StreamFunction<Integer, Integer> function = StreamFunction.create(eventloop, Function.<Integer>identity());
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
+		StreamFunction<Integer, Integer> function = StreamFunction.create(Function.<Integer>identity());
 
-		producer.streamTo(function.getInput());
+		stream(producer, function.getInput());
 		eventloop.run();
 
-		function.getOutput().streamTo(consumer);
+		stream(function.getOutput(), consumer);
 		eventloop.run();
 
 		assertEquals(asList(1, 2, 3, 4, 5, 6), consumer.getList());

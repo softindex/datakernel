@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.async.Stages.onResult;
+import static io.datakernel.stream.DataStreams.stream;
 
 /**
  * Processes logs. Creates new aggregation chunks and persists them using logic defined in supplied {@code AggregatorSplitter}.
@@ -90,17 +91,15 @@ public final class LogOTProcessor<T, D> implements EventloopService {
 
 		StreamProducerWithResult<T, Map<String, LogPositionDiff>> producer = getProducer();
 		StreamConsumerWithResult<T, List<D>> consumer = logStreamConsumer.consume();
-		producer.streamTo(consumer);
-
-		return Stages.pair(producer.getResult(), consumer.getResult())
-				.thenApply(pair -> LogDiff.of(pair.getLeft(), pair.getRight()))
+		return stream(producer, consumer)
+				.thenApply(result -> LogDiff.of(result.getProducerResult(), result.getConsumerResult()))
 				.whenComplete(onResult(logDiff ->
 						logger.info("Log '{}' processing complete. Positions: {}", log, logDiff.positions)));
 	}
 
 	private StreamProducerWithResult<T, Map<String, LogPositionDiff>> getProducer() {
 		StagesAccumulator<Map<String, LogPositionDiff>> result = StagesAccumulator.create(new HashMap<>());
-		StreamUnion<T> streamUnion = StreamUnion.create(eventloop);
+		StreamUnion<T> streamUnion = StreamUnion.create();
 		for (String partition : this.partitions) {
 			String logName = logName(partition);
 			LogPosition logPosition = state.positions.get(logName);
@@ -111,7 +110,7 @@ public final class LogOTProcessor<T, D> implements EventloopService {
 
 			LogPosition logPositionFrom = logPosition;
 			StreamProducerWithResult<T, LogPosition> producer = logManager.producerStream(partition, logPosition.getLogFile(), logPosition.getPosition(), null);
-			producer.streamTo(streamUnion.newInput());
+			stream(producer, streamUnion.newInput());
 			result.addStage(producer.getResult(), (accumulator, logPositionTo) -> {
 				if (!logPositionTo.equals(logPositionFrom)) {
 					accumulator.put(logName, new LogPositionDiff(logPositionFrom, logPositionTo));

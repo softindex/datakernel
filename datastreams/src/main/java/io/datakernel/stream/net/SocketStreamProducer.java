@@ -19,7 +19,6 @@ package io.datakernel.stream.net;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.AsyncTcpSocket;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamProducer;
 
 final class SocketStreamProducer extends AbstractStreamProducer<ByteBuf> {
@@ -28,13 +27,12 @@ final class SocketStreamProducer extends AbstractStreamProducer<ByteBuf> {
 	private boolean readEndOfStream;
 
 	// region creators
-	private SocketStreamProducer(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket) {
-		super(eventloop);
+	private SocketStreamProducer(AsyncTcpSocket asyncTcpSocket) {
 		this.asyncTcpSocket = asyncTcpSocket;
 	}
 
-	public static SocketStreamProducer create(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket) {
-		return new SocketStreamProducer(eventloop, asyncTcpSocket);
+	public static SocketStreamProducer create(AsyncTcpSocket asyncTcpSocket) {
+		return new SocketStreamProducer(asyncTcpSocket);
 	}
 	// endregion
 
