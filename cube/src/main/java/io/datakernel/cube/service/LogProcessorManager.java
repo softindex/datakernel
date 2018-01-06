@@ -9,7 +9,9 @@ import io.datakernel.async.Stages;
 import io.datakernel.cube.Cube;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.*;
+import io.datakernel.jmx.EventloopJmxMBean;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxOperation;
 import io.datakernel.logfs.ot.LogDiff;
 import io.datakernel.logfs.ot.LogOTProcessor;
 import io.datakernel.logfs.ot.LogOTState;
@@ -25,7 +27,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletionStage;
 
-import static io.datakernel.async.Stages.callable;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
@@ -99,7 +100,7 @@ public class LogProcessorManager implements EventloopJmxMBean {
 			logger.info("Pull to commit: {}, start log processing", stateManager.getRevision());
 
 			final List<AsyncCallable<LogDiff<CubeDiff>>> tasks = processors.stream()
-					.map(logProcessor -> callable(logProcessor::processLog))
+					.map(logProcessor -> AsyncCallable.of(logProcessor::processLog))
 					.collect(toList());
 
 			return runner.apply(tasks)

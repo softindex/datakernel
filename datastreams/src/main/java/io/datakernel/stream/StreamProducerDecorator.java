@@ -38,6 +38,17 @@ public abstract class StreamProducerDecorator<T, X> implements StreamProducerWit
 	private StreamDataReceiver<T> pendingDataReceiver;
 	private Throwable pendingException;
 
+	public StreamProducerDecorator() {
+	}
+
+	public StreamProducerDecorator(StreamProducer<T> producer, CompletionStage<X> producerResult) {
+		setActualProducer(producer, producerResult);
+	}
+
+	public StreamProducerDecorator(StreamProducer<T> producer) {
+		setActualProducer(producer);
+	}
+
 	public final void setActualProducer(StreamProducer<T> producer, CompletionStage<X> producerResult) {
 		setActualProducer(producer);
 		setResult(producer, producerResult);

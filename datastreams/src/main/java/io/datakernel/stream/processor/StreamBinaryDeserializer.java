@@ -20,6 +20,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
+import io.datakernel.exception.TruncatedDataException;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.*;
 
@@ -152,7 +153,7 @@ public final class StreamBinaryDeserializer<T> implements StreamTransformer<Byte
 						if (queue.isEmpty()) {
 							output.sendEndOfStream();
 						} else {
-							throw new ParseException(format("Truncated serialized data stream, %s : %s", this, queue));
+							throw new TruncatedDataException(format("Truncated serialized data stream, %s : %s", this, queue));
 						}
 					}
 				}

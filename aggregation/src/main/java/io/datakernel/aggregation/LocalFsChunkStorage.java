@@ -109,19 +109,23 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 	@Override
 	public <T> CompletionStage<StreamProducerWithResult<T, Void>> read(final AggregationStructure aggregation, final List<String> fields,
 	                                                                   final Class<T> recordClass, long id, final DefiningClassLoader classLoader) {
-		return AsyncFile.openAsync(eventloop, executorService, dir.resolve(id + LOG), new OpenOption[]{READ}).thenApply(file -> {
-			StreamFileReader fileReader = StreamFileReader.readFileFrom(eventloop, file, bufferSize, 0L);
+		return Stages.firstComplete(
+				() -> AsyncFile.openAsync(eventloop, executorService, dir.resolve(id + LOG), new OpenOption[]{READ}),
+				() -> AsyncFile.openAsync(eventloop, executorService, dir.resolve(id + TEMP_LOG), new OpenOption[]{READ}),
+				() -> AsyncFile.openAsync(eventloop, executorService, dir.resolve(id + LOG), new OpenOption[]{READ}))
+				.thenApply(file -> {
+					StreamFileReader fileReader = StreamFileReader.readFileFrom(eventloop, file, bufferSize, 0L);
 
-			StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create(eventloop);
-			fileReader.streamTo(decompressor.getInput());
+					StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create(eventloop);
+					fileReader.streamTo(decompressor.getInput());
 
-			BufferSerializer<T> bufferSerializer = AggregationUtils.createBufferSerializer(aggregation, recordClass,
-					aggregation.getKeys(), fields, classLoader);
-			StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(eventloop, bufferSerializer);
+					BufferSerializer<T> bufferSerializer = AggregationUtils.createBufferSerializer(aggregation, recordClass,
+							aggregation.getKeys(), fields, classLoader);
+					StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(eventloop, bufferSerializer);
 
-			decompressor.getOutput().streamTo(deserializer.getInput());
-			return StreamProducers.withEndOfStream(deserializer.getOutput());
-		});
+					decompressor.getOutput().streamTo(deserializer.getInput());
+					return StreamProducers.withEndOfStream(deserializer.getOutput());
+				});
 	}
 
 	@Override
@@ -185,7 +189,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 		return eventloop.callConcurrently(executorService, () -> {
 			logger.trace("Cleanup before timestamp, save chunks size: {}, timestamp {}", saveChunks.size(), timestamp);
 			try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
-				final List<Path> files = new ArrayList<>();
+				final List<Path> filesToDelete = new ArrayList<>();
 
 				for (Path file : stream) {
 					if (!file.toString().endsWith(LOG)) {
@@ -201,12 +205,16 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 					}
 					if (saveChunks.contains(id)) continue;
 					FileTime lastModifiedTime = Files.getLastModifiedTime(file);
-					if (timestamp != -1 && lastModifiedTime.toMillis() > timestamp) continue;
+					if (timestamp != -1 && lastModifiedTime.toMillis() > timestamp) {
+						logger.warn("File {} timestamp {} > {}",
+								file, lastModifiedTime.toMillis(), timestamp);
+						continue;
+					}
 
-					files.add(file);
+					filesToDelete.add(file);
 				}
 
-				for (final Path file : files) {
+				for (final Path file : filesToDelete) {
 					try {
 						if (logger.isTraceEnabled()) {
 							final FileTime lastModifiedTime = Files.getLastModifiedTime(file);

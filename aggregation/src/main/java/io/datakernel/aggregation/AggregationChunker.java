@@ -39,13 +39,14 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T, List
 	private final StagesAccumulator<List<AggregationChunk>> chunksAccumulator;
 	private final DefiningClassLoader classLoader;
 
-	private int chunkSize = Aggregation.DEFAULT_CHUNK_SIZE;
+	private final int chunkSize;
 
 	private AggregationChunker(Eventloop eventloop, StreamConsumerSwitcher<T> switcher,
 	                           AggregationStructure aggregation, List<String> fields,
 	                           Class<T> recordClass, PartitionPredicate<T> partitionPredicate,
 	                           AggregationChunkStorage storage,
-	                           DefiningClassLoader classLoader) {
+	                           DefiningClassLoader classLoader,
+	                           int chunkSize) {
 		this.eventloop = eventloop;
 		this.switcher = switcher;
 		this.aggregation = aggregation;
@@ -56,27 +57,20 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T, List
 		this.classLoader = classLoader;
 		this.chunksAccumulator = StagesAccumulator.<List<AggregationChunk>>create(new ArrayList<>())
 				.withStage(switcher.getEndOfStream(), (accumulator, $) -> {});
+		this.chunkSize = chunkSize;
 	}
 
 	public static <T> AggregationChunker<T> create(Eventloop eventloop,
 	                                               AggregationStructure aggregation, List<String> fields,
 	                                               Class<T> recordClass, PartitionPredicate<T> partitionPredicate,
 	                                               AggregationChunkStorage storage,
-	                                               DefiningClassLoader classLoader) {
+	                                               DefiningClassLoader classLoader,
+	                                               int chunkSize) {
 		StreamConsumerSwitcher<T> switcher = StreamConsumerSwitcher.create(eventloop);
-		AggregationChunker<T> chunker = new AggregationChunker<>(eventloop, switcher, aggregation, fields, recordClass, partitionPredicate, storage, classLoader);
+		AggregationChunker<T> chunker = new AggregationChunker<>(eventloop, switcher, aggregation, fields, recordClass, partitionPredicate, storage, classLoader, chunkSize);
 		chunker.setActualConsumer(switcher, chunker.chunksAccumulator.get());
 		chunker.startNewChunk();
 		return chunker;
-	}
-
-	public AggregationChunker<T> withChunkSize(int chunkSize) {
-		setChunkSize(chunkSize);
-		return this;
-	}
-
-	public void setChunkSize(int chunkSize) {
-		this.chunkSize = chunkSize;
 	}
 
 	private class ChunkWriter extends StreamConsumerDecorator<T, AggregationChunk> implements StreamDataReceiver<T> {

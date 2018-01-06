@@ -25,7 +25,6 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxOperation;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
@@ -86,8 +85,6 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 	private int maxChunksToConsolidate = DEFAULT_MAX_CHUNKS_TO_CONSOLIDATE;
 
 	// jmx
-	private final List<AggregationGroupReducer> activeGroupReducers = new ArrayList<>();
-	private final List<AggregationChunker> activeChunkers = new ArrayList<>();
 	private long consolidationStarted;
 	private long consolidationLastTimeMillis;
 	private int consolidations;
@@ -100,7 +97,6 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 		this.executorService = executorService;
 		this.classLoader = classLoader;
 		this.aggregationChunkStorage = aggregationChunkStorage;
-		this.temporarySortDir = temporarySortDir;
 		this.structure = structure;
 		this.state = state;
 	}
@@ -322,7 +318,7 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 		AggregationChunker<Object> chunker = AggregationChunker.create(eventloop,
 				structure, measures, resultClass,
 				createPartitionPredicate(resultClass, getPartitioningKey(), classLoader),
-				aggregationChunkStorage, classLoader);
+				aggregationChunkStorage, classLoader, chunkSize);
 		consolidatedProducer.streamTo(chunker);
 
 		return chunker.getResult();
@@ -545,12 +541,6 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 	@JmxAttribute
 	public void setChunkSize(int chunkSize) {
 		this.chunkSize = chunkSize;
-		for (AggregationChunker chunker : activeChunkers) {
-			chunker.setChunkSize(chunkSize);
-		}
-		for (AggregationGroupReducer groupReducer : activeGroupReducers) {
-			groupReducer.setChunkSize(chunkSize);
-		}
 	}
 
 	@JmxAttribute
@@ -591,22 +581,6 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 	@JmxAttribute
 	public void setMaxChunksToConsolidate(int maxChunksToConsolidate) {
 		this.maxChunksToConsolidate = maxChunksToConsolidate;
-	}
-
-	@JmxOperation
-	public void flushActiveReducersBuffers() {
-		for (AggregationGroupReducer groupReducer : activeGroupReducers) {
-			groupReducer.flush();
-		}
-	}
-
-	@JmxAttribute
-	public int getActiveReducersBuffersSize() {
-		int size = 0;
-		for (AggregationGroupReducer groupReducer : activeGroupReducers) {
-			size += groupReducer.getBufferSize();
-		}
-		return size;
 	}
 
 	@JmxAttribute

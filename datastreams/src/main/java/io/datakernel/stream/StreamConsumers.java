@@ -110,6 +110,12 @@ public final class StreamConsumers {
 		return new StreamConsumerToList<>(eventloop);
 	}
 
+	public static <T> CompletionStage<List<T>> toList(Eventloop eventloop, StreamProducer<T> streamProducer) {
+		StreamConsumerToList<T> consumer = new StreamConsumerToList<>(eventloop);
+		streamProducer.streamTo(consumer);
+		return consumer.getResult();
+	}
+
 	static final class ClosingWithErrorImpl<T> implements StreamConsumer<T> {
 		private final SettableStage<Void> completionStage = SettableStage.create();
 		private final Throwable exception;

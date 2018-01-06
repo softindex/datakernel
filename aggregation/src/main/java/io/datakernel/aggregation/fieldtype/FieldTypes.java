@@ -28,8 +28,7 @@ import java.lang.reflect.Type;
 import java.time.LocalDate;
 import java.util.Set;
 
-import static io.datakernel.codegen.Expressions.call;
-import static io.datakernel.codegen.Expressions.value;
+import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.utils.GsonAdapters.*;
 import static java.time.temporal.ChronoUnit.DAYS;
 
@@ -105,12 +104,12 @@ public final class FieldTypes {
 
 		@Override
 		public Expression toValue(Expression internalValue) {
-			return call(value(startDate), "plusDays", internalValue);
+			return call(value(startDate), "plusDays", cast(internalValue, long.class));
 		}
 
 		@Override
 		public Object toInternalValue(LocalDate value) {
-			return DAYS.between(startDate, value);
+			return (int) DAYS.between(startDate, value);
 		}
 
 	}

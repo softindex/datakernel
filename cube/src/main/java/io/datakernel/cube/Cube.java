@@ -34,7 +34,6 @@ import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.ValueStats;
 import io.datakernel.logfs.ot.LogDataConsumer;
 import io.datakernel.ot.OTState;
@@ -716,7 +715,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 		return excessive;
 	}
 
-	public CompletionStage<CubeDiff> consolidate(java.util.function.Function<Aggregation, CompletionStage<AggregationDiff>> consolidator) {
+	public CompletionStage<CubeDiff> consolidate(Function<Aggregation, CompletionStage<AggregationDiff>> consolidator) {
 		logger.info("Launching consolidation");
 
 		final Map<String, AggregationDiff> map = new HashMap<>();
@@ -1305,22 +1304,6 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 	public Cube withMaxIncrementalReloadPeriodMillis(long maxIncrementalReloadPeriodMillis) {
 		this.maxIncrementalReloadPeriodMillis = maxIncrementalReloadPeriodMillis;
 		return this;
-	}
-
-	@JmxAttribute
-	public int getActiveReducersBuffersSize() {
-		int size = 0;
-		for (AggregationContainer aggregationContainer : aggregations.values()) {
-			size += aggregationContainer.aggregation.getActiveReducersBuffersSize();
-		}
-		return size;
-	}
-
-	@JmxOperation
-	public void flushActiveReducersBuffers() {
-		for (AggregationContainer aggregationContainer : aggregations.values()) {
-			aggregationContainer.aggregation.flushActiveReducersBuffers();
-		}
 	}
 
 	@JmxAttribute

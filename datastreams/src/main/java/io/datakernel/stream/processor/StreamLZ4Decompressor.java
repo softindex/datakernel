@@ -21,6 +21,7 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
+import io.datakernel.exception.TruncatedDataException;
 import io.datakernel.stream.*;
 import net.jpountz.lz4.LZ4Exception;
 import net.jpountz.lz4.LZ4Factory;
@@ -165,7 +166,9 @@ public final class StreamLZ4Decompressor implements StreamTransformer<ByteBuf, B
 						if (!queue.isEmpty()) {
 							throw new ParseException(format("Unexpected byteBuf after LZ4 EOS packet %s : %s", this, queue));
 						}
-						if (inspector != null) {inspector.onBlock(StreamLZ4Decompressor.this, header, ByteBuf.empty(), ByteBuf.empty());}
+						if (inspector != null) {
+							inspector.onBlock(StreamLZ4Decompressor.this, header, ByteBuf.empty(), ByteBuf.empty());
+						}
 						break;
 					}
 
@@ -188,7 +191,7 @@ public final class StreamLZ4Decompressor implements StreamTransformer<ByteBuf, B
 						if (queue.isEmpty()) {
 							output.sendEndOfStream();
 						} else {
-							throw new ParseException(format("Truncated LZ4 data stream, %s : %s", this, queue));
+							throw new TruncatedDataException(format("Truncated LZ4 data stream, %s : %s", this, queue));
 						}
 					}
 				}

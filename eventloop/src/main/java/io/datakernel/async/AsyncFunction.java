@@ -16,7 +16,9 @@
 
 package io.datakernel.async;
 
+import java.util.Objects;
 import java.util.concurrent.CompletionStage;
+import java.util.function.Function;
 
 /**
  * Asynchronous determines an output value based on an input value.
@@ -27,7 +29,33 @@ import java.util.concurrent.CompletionStage;
 public interface AsyncFunction<I, O> {
 	/**
 	 * Returns the result of applying this function to input.
-	 *
 	 */
 	CompletionStage<O> apply(I input);
+
+	default <T> AsyncFunction<T, O> compose(Function<? super T, ? extends I> before) {
+		return (T t) -> this.apply(before.apply(t));
+	}
+
+	default <T> AsyncFunction<T, O> compose(AsyncFunction<? super T, ? extends I> before) {
+		return input -> before.apply(input).thenCompose(this::apply);
+	}
+
+	default <T> AsyncFunction<I, T> andThen(Function<? super O, ? extends T> after) {
+		Objects.requireNonNull(after);
+		return (I i) -> apply(i).thenApply(after);
+	}
+
+	default <T> AsyncFunction<I, T> andThen(AsyncFunction<? super O, ? extends T> after) {
+		Objects.requireNonNull(after);
+		return (I i) -> apply(i).thenCompose((O input) -> (CompletionStage<T>) after.apply(input));
+	}
+
+	static <I, O> AsyncFunction<I, O> of(Function<I, O> function) {
+		return input -> Stages.of(function.apply(input));
+	}
+
+	static <T> AsyncFunction<T, T> identity() {
+		return Stages::of;
+	}
+
 }

@@ -8,7 +8,9 @@ import io.datakernel.async.Stages;
 import io.datakernel.cube.Cube;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.*;
+import io.datakernel.jmx.EventloopJmxMBean;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxOperation;
 import io.datakernel.logfs.ot.LogDiff;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.util.Stopwatch;
@@ -119,8 +121,9 @@ public final class Consolidator implements EventloopJmxMBean {
 				.thenCompose(stateManager::pull)
 				.thenCompose($ -> stateManager.pull())
 				.thenCompose($ -> stateManager.commit())
+				.thenCompose($ -> stateManager.push())
 				.thenCompose($ -> aggregationChunkStorage.finish(addedChunks(cubeDiff)))
-				.thenCompose($ -> stateManager.push());
+				;
 
 	}
 
@@ -138,7 +141,6 @@ public final class Consolidator implements EventloopJmxMBean {
 		if (throwable == null) logger.info("Consolidator finish in {}", sw.stop());
 		else logger.error("Consolidator error in {}", sw.stop(), throwable);
 	}
-
 
 	@JmxAttribute
 	public long getLastRemovedChunks() {

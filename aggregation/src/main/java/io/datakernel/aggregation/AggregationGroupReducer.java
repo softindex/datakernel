@@ -47,7 +47,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 	private final Aggregate aggregate;
 	private final StagesAccumulator<List<AggregationChunk>> resultsTracker;
 	private final DefiningClassLoader classLoader;
-	private int chunkSize;
+	private final int chunkSize;
 
 	private final HashMap<Comparable<?>, Object> map = new HashMap<>();
 
@@ -119,7 +119,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 
 		StreamProducer producer = StreamProducers.ofIterable(eventloop, list);
 		AggregationChunker<T> chunker = AggregationChunker.create(eventloop, aggregation, measures, recordClass,
-				partitionPredicate, storage, classLoader);
+				partitionPredicate, storage, classLoader, chunkSize);
 		producer.streamTo(chunker);
 
 		resultsTracker.addStage(chunker.getResult(), List::addAll)
@@ -152,10 +152,6 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 
 	public int getBufferSize() {
 		return map.size();
-	}
-
-	public void setChunkSize(int chunkSize) {
-		this.chunkSize = chunkSize;
 	}
 
 	@Override

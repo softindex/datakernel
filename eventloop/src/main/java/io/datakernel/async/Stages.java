@@ -3,14 +3,9 @@ package io.datakernel.async;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.*;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Supplier;
+import java.util.function.*;
 import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
@@ -100,14 +95,6 @@ public final class Stages {
 		public Counter(int counter) {
 			this.counter = counter;
 		}
-	}
-
-	public static <T> AsyncCallable<T> callable(Supplier<CompletionStage<T>> function) {
-		return function::get;
-	}
-
-	public static <T, A> Function<A, AsyncCallable<T>> callable(Function<A, CompletionStage<T>> function) {
-		return a -> () -> function.apply(a);
 	}
 
 	public static CompletionStage<Void> run(AsyncCallable<?>... stages) {
@@ -246,6 +233,62 @@ public final class Stages {
 		return stages.next().call().thenComposeAsync(value -> {
 			reducer.accumulate(accumulator, value, index);
 			return reduceSequenceImpl(accumulator, reducer, index + 1, stages);
+		});
+	}
+
+	@SuppressWarnings("unchecked")
+	public static <T> CompletionStage<T> firstComplete(AsyncCallable<? extends T>... stages) {
+		return firstComplete(Arrays.asList(stages));
+	}
+
+	public static <T> CompletionStage<T> firstComplete(Iterable<? extends AsyncCallable<? extends T>> stages) {
+		return firstComplete(stages.iterator());
+	}
+
+	public static <T> CompletionStage<T> firstComplete(Iterator<? extends AsyncCallable<? extends T>> stages) {
+		return first(stages, (t, throwable) -> throwable == null);
+	}
+
+	public static <T> CompletionStage<T> first(Iterable<? extends AsyncCallable<? extends T>> stages,
+	                                           Predicate<? super T> predicate) {
+		return first(stages, (result, throwable) -> (throwable != null) || predicate.test(result));
+	}
+
+	public static <T> CompletionStage<T> first(Iterator<? extends AsyncCallable<? extends T>> stages,
+	                                           Predicate<? super T> predicate) {
+		return first(stages, (result, throwable) -> (throwable != null) || predicate.test(result));
+	}
+
+	public static <T> CompletionStage<T> first(Iterable<? extends AsyncCallable<? extends T>> stages,
+	                                           BiPredicate<? super T, ? super Throwable> predicate) {
+		return first(stages.iterator(), predicate);
+	}
+
+	public static <T> CompletionStage<T> first(Iterator<? extends AsyncCallable<? extends T>> stages,
+	                                           BiPredicate<? super T, ? super Throwable> predicate) {
+		SettableStage<T> cb = SettableStage.create();
+		firstImpl(stages, predicate, cb);
+		return cb;
+	}
+
+	private static <T> void firstImpl(Iterator<? extends AsyncCallable<? extends T>> stages,
+	                                  BiPredicate<? super T, ? super Throwable> predicate,
+	                                  SettableStage<T> cb) {
+		if (!stages.hasNext()) {
+			cb.setException(new NoSuchElementException());
+			return;
+		}
+		AsyncCallable<? extends T> callable = stages.next();
+		callable.call().whenCompleteAsync((result, throwable) -> {
+			if (predicate.test(result, throwable)) {
+				if (throwable == null) {
+					cb.set(result);
+				} else {
+					cb.setException(throwable);
+				}
+				return;
+			}
+			firstImpl(stages, predicate, cb);
 		});
 	}
 

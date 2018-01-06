@@ -17,6 +17,7 @@
 package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.ot.AggregationStructure;
+import io.datakernel.async.Stages;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.IRemoteFsClient;
@@ -57,22 +58,27 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage {
 		return new RemoteFsChunkStorage(eventloop, idGenerator, serverAddress);
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public <T> CompletionStage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields,
 	                                                                   Class<T> recordClass, long chunkId,
 	                                                                   DefiningClassLoader classLoader) {
-		return client.download(path(chunkId), 0).thenApply(producer -> {
-			StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create(eventloop);
+		return Stages.firstComplete(
+				() -> client.download(path(chunkId), 0),
+				() -> client.download(tempPath(chunkId), 0),
+				() -> client.download(path(chunkId), 0))
+				.thenApply(producer -> {
+					StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create(eventloop);
 
-			BufferSerializer<T> bufferSerializer = createBufferSerializer(aggregation, recordClass,
-					aggregation.getKeys(), fields, classLoader);
-			StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(eventloop, bufferSerializer);
+					BufferSerializer<T> bufferSerializer = createBufferSerializer(aggregation, recordClass,
+							aggregation.getKeys(), fields, classLoader);
+					StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(eventloop, bufferSerializer);
 
-			producer.streamTo(decompressor.getInput());
-			decompressor.getOutput().streamTo(deserializer.getInput());
+					producer.streamTo(decompressor.getInput());
+					decompressor.getOutput().streamTo(deserializer.getInput());
 
-			return StreamProducers.withEndOfStream(deserializer.getOutput());
-		});
+					return StreamProducers.withEndOfStream(deserializer.getOutput());
+				});
 	}
 
 	private String path(long chunkId) {

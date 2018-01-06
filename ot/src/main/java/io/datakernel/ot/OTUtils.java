@@ -168,7 +168,7 @@ public class OTUtils {
 			if (!visited.add(node)) continue;
 
 			return source.loadCommit(node).thenComposeAsync(commit ->
-					matcher.apply(commit).thenComposeAsync(match -> {
+					matcher.test(commit).thenComposeAsync(match -> {
 						if (match) {
 							final K id = commit.getId();
 							final Set<K> parentIds = commit.getParentIds();
@@ -220,7 +220,7 @@ public class OTUtils {
 	private static <K, D> CompletionStage<Set<K>> findSurface(OTRemote<K, D> source,
 	                                                          Set<K> surface, PriorityQueue<K> queue,
 	                                                          AsyncPredicate<Set<K>> matchPredicate) {
-		return matchPredicate.apply(surface).thenCompose(apply -> {
+		return matchPredicate.test(surface).thenCompose(apply -> {
 			if (apply) return Stages.of(surface);
 			if (queue.isEmpty()) return Stages.of(Collections.emptySet());
 

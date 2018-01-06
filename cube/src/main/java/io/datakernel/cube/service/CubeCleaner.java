@@ -21,6 +21,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.stream.Stream;
 
 import static io.datakernel.ot.OTUtils.*;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.*;
 import static java.util.stream.Stream.concat;
@@ -85,25 +86,25 @@ public class CubeCleaner implements EventloopJmxMBean {
 
 			return otRemote.saveSnapshot(checkpointNode, changes)
 					.thenCompose($ -> findSnapshot(singleton(checkpointNode), extraSnapshotCount))
-					.thenCompose(lastSnapshotOpt -> lastSnapshotOpt
-							.map(lastSnapshot -> otRemote.loadCommit(checkpointNode)
-									.thenCompose(commit -> extractChunks(checkpointNode)
-											.thenApply(pathChunks -> Stream.of(
-													chunks(commitToDiffs(commit)),
-													chunks(changes.stream()),
-													pathChunks.stream())
-													.flatMap(longStream -> longStream)
-													.collect(toSet())))
+						.thenCompose(lastSnapshotOpt -> lastSnapshotOpt
+								.map(lastSnapshot -> otRemote.loadCommit(checkpointNode)
+										.thenCompose(commit -> extractChunks(checkpointNode)
+												.thenApply(pathChunks -> Stream.of(
+														chunks(commitToDiffs(commit)),
+														chunks(changes.stream()),
+														pathChunks.stream())
+														.flatMap(longStream -> longStream)
+														.collect(toSet())))
 									.thenCompose(chunks -> cleanup(lastSnapshot, chunks, cleanupTimestamp)))
 							.orElse(notEnoughSnapshots()));
 		});
 	}
 
 	private CompletionStage<Optional<Integer>> findSnapshot(Set<Integer> heads, int skipSnapshots) {
-		final Map<Integer, List<Object>> nodes = heads.stream().collect(toMap(o -> o, o -> Collections.emptyList()));
+		final Map<Integer, List<Object>> nodes = heads.stream().collect(toMap(k -> k, k -> emptyList()));
 		return findParent(otRemote, comparator, nodes, (Integer) null,
 				commit -> otRemote.isSnapshot(commit.getId()),
-				(a, ds) -> Collections.emptyList())
+				(a, ds) -> emptyList())
 				.thenComposeAsync(result -> {
 					if (!result.isFound()) return Stages.of(Optional.empty());
 					if (skipSnapshots <= 0) return Stages.of(Optional.of(result.getCommit()));
@@ -122,7 +123,9 @@ public class CubeCleaner implements EventloopJmxMBean {
 
 	private CompletionStage<Set<Long>> addedChunksOnPath(Integer parent, Collection<Integer> heads) {
 		final Map<Integer, Set<Long>> headsMap = heads.stream().collect(toMap(k -> k, k -> new HashSet<Long>()));
-		return OTUtils.reduceEdges(otRemote, comparator, headsMap, parent,
+		return OTUtils.reduceEdges(otRemote, comparator,
+				headsMap,
+				parent,
 				k -> k >= parent,
 				(a, ds) -> concat(a.stream(), chunks(ds.stream())).collect(toSet()),
 				(longs, longs2) -> concat(longs.stream(), longs2.stream()).collect(toSet()))

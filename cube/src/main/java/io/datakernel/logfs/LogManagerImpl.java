@@ -21,6 +21,7 @@ import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.TruncatedDataException;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.*;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
@@ -41,8 +42,6 @@ import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 
-import static io.datakernel.stream.StreamProducers.endOfStreamOnError;
-import static io.datakernel.stream.StreamProducers.onEndOfStream;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 public final class LogManagerImpl<T> implements LogManager<T> {
@@ -177,12 +176,22 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 												inputStreamPosition += StreamLZ4Decompressor.HEADER_LENGTH + header.compressedLen;
 											}
 										});
-								StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(eventloop, serializer);
 
 								producer.streamTo(decompressor.getInput());
-								decompressor.getOutput().streamTo(deserializer.getInput());
+								StreamProducer<ByteBuf> endOfStreamOnTruncatedFile = new StreamProducerDecorator<ByteBuf, Void>(decompressor.getOutput()) {
+									@Override
+									protected void onCloseWithError(Throwable t) {
+										if (t instanceof TruncatedDataException) {
+											getConsumer().endOfStream();
+										} else {
+											super.onCloseWithError(t);
+										}
+									}
+								};
 
-								return onEndOfStream(endOfStreamOnError(deserializer.getOutput()), this::log);
+								StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(eventloop, serializer);
+								endOfStreamOnTruncatedFile.streamTo(deserializer.getInput());
+								return StreamProducers.onEndOfStream(deserializer.getOutput(), this::log);
 							});
 
 					return StreamProducers.ofStage(stage);
@@ -192,8 +201,8 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 					if (throwable == null && logger.isTraceEnabled()) {
 						logger.trace("Finish log file `{}` in {}, compressed bytes: {} ({} bytes/ses)", currentLogFile,
 								sw, inputStreamPosition, inputStreamPosition / Math.max(sw.elapsed(SECONDS), 1));
-					} else if (throwable != null && logger.isWarnEnabled()) {
-						logger.warn("Error on log file `{}` in {}, compressed bytes: {} ({} bytes/ses)", currentLogFile,
+					} else if (throwable != null && logger.isErrorEnabled()) {
+						logger.error("Error on log file `{}` in {}, compressed bytes: {} ({} bytes/ses)", currentLogFile,
 								sw, inputStreamPosition, inputStreamPosition / Math.max(sw.elapsed(SECONDS), 1), throwable);
 					}
 				}

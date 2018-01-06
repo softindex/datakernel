@@ -109,7 +109,7 @@ public class AggregationChunkerTest {
 				new KeyValuePair(1, 2, 1)));
 		AggregationChunker<KeyValuePair> chunker = AggregationChunker.create(eventloop,
 				structure, structure.getMeasures(), recordClass, (PartitionPredicate) AggregationUtils.singlePartition(),
-				aggregationChunkStorage, classLoader).withChunkSize(1);
+				aggregationChunkStorage, classLoader, 1);
 		producer.streamTo(chunker);
 
 		CompletableFuture<List<AggregationChunk>> future = chunker.getResult().toCompletableFuture();
@@ -193,7 +193,7 @@ public class AggregationChunkerTest {
 		);
 		AggregationChunker<KeyValuePair> chunker = AggregationChunker.create(eventloop,
 				structure, structure.getMeasures(), recordClass, (PartitionPredicate) AggregationUtils.singlePartition(),
-				aggregationChunkStorage, classLoader).withChunkSize(1);
+				aggregationChunkStorage, classLoader, 1);
 		producer.streamTo(chunker);
 
 		CompletableFuture<List<AggregationChunk>> future = chunker.getResult().toCompletableFuture();
@@ -274,7 +274,7 @@ public class AggregationChunkerTest {
 		);
 		AggregationChunker<KeyValuePair> chunker = AggregationChunker.create(eventloop,
 				structure, structure.getMeasures(), recordClass, (PartitionPredicate) AggregationUtils.singlePartition(),
-				aggregationChunkStorage, classLoader).withChunkSize(1);
+				aggregationChunkStorage, classLoader, 1);
 		producer.streamTo(chunker);
 
 		CompletableFuture<List<AggregationChunk>> future = chunker.getResult().toCompletableFuture();

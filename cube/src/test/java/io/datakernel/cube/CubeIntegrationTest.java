@@ -33,20 +33,22 @@ import io.datakernel.ot.OTRemoteSql;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.ot.OTSystem;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.stream.StreamConsumerToList;
+import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
-import org.junit.Ignore;
 import org.junit.Rule;
+import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import javax.sql.DataSource;
 import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.stream.Stream;
 
 import static io.datakernel.aggregation.AggregationPredicates.alwaysTrue;
@@ -57,7 +59,9 @@ import static io.datakernel.cube.Cube.AggregationConfig.id;
 import static io.datakernel.cube.CubeTestUtils.dataSource;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
+import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
+import static java.util.stream.Stream.concat;
 import static org.junit.Assert.assertEquals;
 
 @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
@@ -66,7 +70,7 @@ public class CubeIntegrationTest {
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
 	@SuppressWarnings({"ConstantConditions", "unchecked"})
-	@Ignore // TODO fix test
+	@Test
 	public void test() throws Exception {
 		Path aggregationsDir = temporaryFolder.newFolder().toPath();
 		Path logsDir = temporaryFolder.newFolder().toPath();
@@ -135,6 +139,13 @@ public class CubeIntegrationTest {
 		StreamProducer<LogItem> producerOfRandomLogItems = StreamProducers.ofIterator(eventloop, listOfRandomLogItems.iterator());
 		producerOfRandomLogItems.streamTo(logManager.consumerStream("partitionA"));
 		eventloop.run();
+		Files.list(logsDir).forEach(System.out::println);
+
+//		AsynchronousFileChannel channel = AsynchronousFileChannel.open(Files.list(logsDir).findFirst().get(),
+//				EnumSet.of(StandardOpenOption.WRITE), executor);
+//		channel.truncate(13);
+//		channel.write(ByteBuffer.wrap(new byte[]{123}), 0).get();
+//		channel.close();
 
 		future = logOTProcessor.processLog()
 				.thenCompose(logDiff -> aggregationChunkStorage
@@ -160,6 +171,7 @@ public class CubeIntegrationTest {
 		producerOfRandomLogItems = StreamProducers.ofIterator(eventloop, listOfRandomLogItems2.iterator());
 		producerOfRandomLogItems.streamTo(logManager.consumerStream("partitionA"));
 		eventloop.run();
+		Files.list(logsDir).forEach(System.out::println);
 
 		future = logOTProcessor.processLog()
 				.thenCompose(logDiff -> aggregationChunkStorage
@@ -175,6 +187,7 @@ public class CubeIntegrationTest {
 		producerOfRandomLogItems = StreamProducers.ofIterator(eventloop, listOfRandomLogItems3.iterator());
 		producerOfRandomLogItems.streamTo(logManager.consumerStream("partitionA"));
 		eventloop.run();
+		Files.list(logsDir).forEach(System.out::println);
 
 		future = logOTProcessor.processLog()
 				.thenCompose(logDiff -> aggregationChunkStorage
@@ -190,9 +203,9 @@ public class CubeIntegrationTest {
 		eventloop.run();
 		future.get();
 
-		StreamConsumerToList<LogItem> queryResultConsumer = new StreamConsumerToList<>(eventloop);
-		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(),
-				LogItem.class, DefiningClassLoader.create(classLoader)).streamTo(queryResultConsumer);
+		Future<List<LogItem>> futureResult = StreamConsumers.toList(eventloop,
+				cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(),
+						LogItem.class, DefiningClassLoader.create(classLoader))).toCompletableFuture();
 		eventloop.run();
 
 		// Aggregate manually
@@ -202,9 +215,7 @@ public class CubeIntegrationTest {
 		aggregateToMap(map, listOfRandomLogItems3);
 
 		// Check query results
-		for (LogItem logItem : queryResultConsumer.getList()) {
-			assertEquals(logItem.clicks, map.get(logItem.date).longValue());
-		}
+		assertEquals(map, futureResult.get().stream().collect(toMap(r -> r.date, r -> r.clicks)));
 
 		// checkout revision 3 and consolidate it:
 		future = logCubeStateManager.checkout(3).toCompletableFuture();
@@ -221,6 +232,10 @@ public class CubeIntegrationTest {
 		eventloop.run();
 		future.get();
 
+		future = aggregationChunkStorage.finish(consolidatingCubeDiff.addedChunks().collect(toSet())).toCompletableFuture();
+		eventloop.run();
+		future.get();
+
 		// merge heads: revision 4, and revision 5 (which is a consolidation of 3)
 
 		future = logCubeStateManager.mergeHeadsAndPush().toCompletableFuture();
@@ -229,11 +244,7 @@ public class CubeIntegrationTest {
 
 		// make a checkpoint and checkout it
 
-//		future = logCubeStateManager.makeCheckpointForNode(6).toCompletableFuture();
-//		eventloop.run();
-//		future.get();
-
-		future = logCubeStateManager.checkout(7).toCompletableFuture();
+		future = logCubeStateManager.checkout(6).toCompletableFuture();
 		eventloop.run();
 		future.get();
 
@@ -242,26 +253,20 @@ public class CubeIntegrationTest {
 		future.get();
 
 		// Query
-		queryResultConsumer = new StreamConsumerToList<>(eventloop);
-		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(),
-				LogItem.class, DefiningClassLoader.create(classLoader)).streamTo(queryResultConsumer);
+		futureResult = StreamConsumers.toList(eventloop,
+				cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(),
+						LogItem.class, DefiningClassLoader.create(classLoader))).toCompletableFuture();
 		eventloop.run();
 
-		// Check query results
-		assertEquals(map.size(), queryResultConsumer.getList().size());
-		for (LogItem logItem : queryResultConsumer.getList()) {
-			assertEquals(map.get(logItem.date).longValue(), logItem.clicks);
-		}
+		assertEquals(map, futureResult.get().stream().collect(toMap(r -> r.date, r -> r.clicks)));
 
 		// Check files in aggregations directory
 		Set<String> actualChunkFileNames = new TreeSet<>();
 		for (File file : aggregationsDir.toFile().listFiles()) {
 			actualChunkFileNames.add(file.getName());
 		}
-		Set<String> expectedChunkFileNames = new TreeSet<>();
-		Stream.of(7, 8, 9, 10, 11, 12).map(n -> n + ".log").forEach(expectedChunkFileNames::add);
-		expectedChunkFileNames.add("backups");
-		assertEquals(expectedChunkFileNames, actualChunkFileNames);
+		assertEquals(concat(Stream.of("backups"), Stream.of(7, 8, 9, 10, 11, 12).map(n -> n + ".log")).collect(toSet()),
+				actualChunkFileNames);
 	}
 
 	private void aggregateToMap(Map<Integer, Long> map, List<LogItem> logItems) {

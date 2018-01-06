@@ -33,7 +33,6 @@ import java.nio.file.Files;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
@@ -41,6 +40,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.nio.file.StandardOpenOption.*;
+import static java.util.Arrays.asList;
 
 /**
  * An abstract representation of file. Actions with this file are non-blocking
@@ -77,7 +77,7 @@ public final class AsyncFile {
 	 */
 	public static AsyncFile open(final Eventloop eventloop, final ExecutorService executor,
 	                             final Path path, final OpenOption[] openOptions) throws IOException {
-		AsynchronousFileChannel channel = AsynchronousFileChannel.open(path, new HashSet<>(Arrays.asList(openOptions)), executor);
+		AsynchronousFileChannel channel = AsynchronousFileChannel.open(path, new HashSet<>(asList(openOptions)), executor);
 		return new AsyncFile(eventloop, executor, channel, path);
 	}
 

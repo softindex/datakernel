@@ -16,6 +16,8 @@
 
 package io.datakernel.stream;
 
+import java.util.concurrent.CompletionStage;
+
 /**
  * It represents object for asynchronous sending streams of data.
  * Implementors of this interface are strongly encouraged to extend one of the abstract classes
@@ -28,6 +30,12 @@ public interface StreamProducer<T> {
 	default void streamTo(StreamConsumer<T> consumer) {
 		this.setConsumer(consumer);
 		consumer.setProducer(this);
+	}
+
+	default <X> CompletionStage<X> streamTo(StreamConsumerWithResult<T, X> consumer) {
+		this.setConsumer(consumer);
+		consumer.setProducer(this);
+		return consumer.getResult();
 	}
 
 	/**
