@@ -22,7 +22,6 @@ import io.datakernel.file.AsyncFile;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducerWithResult;
-import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import io.datakernel.util.MemSize;
@@ -38,6 +37,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+import static io.datakernel.stream.StreamProducers.withEndOfStreamAsResult;
 import static java.nio.file.StandardOpenOption.READ;
 
 /**
@@ -133,7 +133,7 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem {
 	@Override
 	public CompletionStage<StreamProducerWithResult<ByteBuf, Void>> read(String logPartition, LogFile logFile, long startPosition) {
 		return AsyncFile.openAsync(executorService, path(logPartition, logFile), new OpenOption[]{READ})
-				.thenApply(file -> StreamProducers.withEndOfStreamAsResult(
+				.thenApply(file -> withEndOfStreamAsResult(
 						StreamFileReader.readFileFrom(file, readBlockSize, startPosition)));
 	}
 

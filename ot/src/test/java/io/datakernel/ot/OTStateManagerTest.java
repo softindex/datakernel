@@ -45,7 +45,7 @@ public class OTStateManagerTest {
 
 	private <K, D> void createRootAndStartManager(OTRemote<K, D> otRemote, OTStateManager<K, D> stateManager) {
 		otRemote.createId().thenCompose(id -> otRemote.push(asList(ofRoot(id))))
-				.thenCompose(aVoid -> stateManager.start());
+				.thenCompose($ -> stateManager.start());
 		eventloop.run();
 	}
 
@@ -54,7 +54,7 @@ public class OTStateManagerTest {
 		OTRemote<Integer, TestOp> otSource = new OTRemoteDecorator<Integer, TestOp>(create(of(1, 2, 3), comparator)) {
 			@Override
 			public CompletionStage<Void> push(List<OTCommit<Integer, TestOp>> otCommits) {
-				return super.push(otCommits).thenCompose(aVoid -> scheduledResult(eventloop, 100, aVoid));
+				return super.push(otCommits).thenCompose($ -> scheduledResult(eventloop, 100, null));
 			}
 		};
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, system, otSource,
@@ -166,8 +166,8 @@ public class OTStateManagerTest {
 		commitIdSequence.subList(0, commitIdSequence.size() - 1).forEach(prevId -> {
 			otRemote.createId()
 					.thenCompose(id -> otRemote.push(asList(ofCommit(id, prevId, asList(add(1))))))
-					.thenCompose(aVoid -> asList(5, 15).contains(prevId) ? stateManager.fetch() : Stages.of(null))
-					.thenCompose(aVoid -> asList(10, 19).contains(prevId) ? stateManager.pull() : Stages.of(null));
+					.thenCompose($ -> asList(5, 15).contains(prevId) ? stateManager.fetch() : Stages.of(null))
+					.thenCompose($ -> asList(10, 19).contains(prevId) ? stateManager.pull() : Stages.of(null));
 			eventloop.run();
 		});
 

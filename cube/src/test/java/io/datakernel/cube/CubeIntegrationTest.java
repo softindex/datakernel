@@ -153,7 +153,7 @@ public class CubeIntegrationTest {
 						.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).collect(toSet()))
 						.thenApply($ -> logDiff))
 				.thenAccept(logCubeStateManager::add)
-				.thenApply(aVoid -> logCubeStateManager)
+				.thenApply($ -> logCubeStateManager)
 				.thenCompose(OTStateManager::commitAndPush).toCompletableFuture();
 		eventloop.run();
 		future.get();
@@ -163,7 +163,7 @@ public class CubeIntegrationTest {
 						.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).collect(toSet()))
 						.thenApply($ -> logDiff))
 				.thenAccept(logCubeStateManager::add)
-				.thenApply(aVoid -> logCubeStateManager)
+				.thenApply($ -> logCubeStateManager)
 				.thenCompose(OTStateManager::commitAndPush).toCompletableFuture();
 		eventloop.run();
 		future.get();
@@ -179,7 +179,7 @@ public class CubeIntegrationTest {
 						.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).collect(toSet()))
 						.thenApply($ -> logDiff))
 				.thenAccept(logCubeStateManager::add)
-				.thenApply(aVoid -> logCubeStateManager)
+				.thenApply($ -> logCubeStateManager)
 				.thenCompose(OTStateManager::commitAndPush).toCompletableFuture();
 		eventloop.run();
 		future.get();
@@ -195,7 +195,7 @@ public class CubeIntegrationTest {
 						.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).collect(toSet()))
 						.thenApply($ -> logDiff))
 				.thenAccept(logCubeStateManager::add)
-				.thenApply(aVoid -> logCubeStateManager)
+				.thenApply($ -> logCubeStateManager)
 				.thenCompose(OTStateManager::commitAndPush).toCompletableFuture();
 		eventloop.run();
 		future.get();

@@ -91,7 +91,7 @@ public class LogProcessorManager implements EventloopJmxMBean {
 	}
 
 	private CompletionStage<Boolean> process() {
-		return stateManager.pull().thenCompose(aVoid -> {
+		return stateManager.pull().thenCompose($0 -> {
 			if (cube.containsExcessiveNumberOfOverlappingChunks()) {
 				logger.info("Cube contains excessive number of overlapping chunks");
 				return Stages.of(false);

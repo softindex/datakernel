@@ -173,7 +173,7 @@ public class CubeMeasureRemovalTest {
 						.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).collect(toSet()))
 						.thenApply($ -> logDiff))
 				.thenAccept(logCubeStateManager::add)
-				.thenApply(aVoid -> finalLogCubeStateManager1)
+				.thenApply($ -> finalLogCubeStateManager1)
 				.thenCompose(OTStateManager::commitAndPush).toCompletableFuture();
 		eventloop.run();
 		future.get();
@@ -229,7 +229,7 @@ public class CubeMeasureRemovalTest {
 						.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).collect(toSet()))
 						.thenApply($ -> logDiff))
 				.thenAccept(logCubeStateManager::add)
-				.thenApply(aVoid -> finalLogCubeStateManager)
+				.thenApply($ -> finalLogCubeStateManager)
 				.thenCompose(OTStateManager::commitAndPush).toCompletableFuture();
 		eventloop.run();
 		future.get();
@@ -262,7 +262,7 @@ public class CubeMeasureRemovalTest {
 		// Consolidate
 		CompletableFuture<CubeDiff> future1 = cube.consolidate(Aggregation::consolidateHotSegment)
 				.thenCompose(cubeDiff -> aggregationChunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
-						.thenApply(aVoid -> cubeDiff))
+						.thenApply($ -> cubeDiff))
 				.toCompletableFuture();
 		eventloop.run();
 		CubeDiff consolidatingCubeDiff = future1.get();
@@ -338,7 +338,7 @@ public class CubeMeasureRemovalTest {
 							.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).collect(toSet()))
 							.thenApply($ -> logDiff))
 					.thenAccept(logCubeStateManager1::add)
-					.thenApply(aVoid -> logCubeStateManager1)
+					.thenApply($ -> logCubeStateManager1)
 					.thenCompose(OTStateManager::commitAndPush);
 			eventloop.run();
 		}
@@ -414,7 +414,7 @@ public class CubeMeasureRemovalTest {
 							.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).collect(toSet()))
 							.thenApply($ -> logDiff))
 					.thenAccept(logCubeStateManager1::add)
-					.thenApply(aVoid -> logCubeStateManager1)
+					.thenApply($ -> logCubeStateManager1)
 					.thenCompose(OTStateManager::commitAndPush);
 			eventloop.run();
 		}

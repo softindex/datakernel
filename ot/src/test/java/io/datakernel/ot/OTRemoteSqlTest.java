@@ -88,7 +88,7 @@ public class OTRemoteSqlTest {
 	public void testRootHeads() throws ExecutionException, InterruptedException {
 		final CompletableFuture<Set<Integer>> headsFuture = otRemote.createId()
 				.thenCompose(id -> otRemote.push(singletonList(ofRoot(id))))
-				.thenCompose(aVoid -> otRemote.getHeads())
+				.thenCompose($ -> otRemote.getHeads())
 				.toCompletableFuture();
 		eventloop.run();
 
@@ -101,9 +101,9 @@ public class OTRemoteSqlTest {
 	public void testReplaceHead() throws ExecutionException, InterruptedException {
 		final CompletableFuture<Set<Integer>> headsFuture = otRemote.createId()
 				.thenCompose(rootId -> otRemote.push(singletonList(ofRoot(rootId)))
-						.thenCompose(aVoid -> otRemote.createId())
+						.thenCompose($ -> otRemote.createId())
 						.thenCompose(id -> otRemote.push(singletonList(ofCommit(id, rootId, singletonList(new TestSet(0, 5)))))))
-				.thenCompose(aVoid -> otRemote.getHeads())
+				.thenCompose($ -> otRemote.getHeads())
 				.toCompletableFuture();
 		eventloop.run();
 
@@ -341,7 +341,7 @@ public class OTRemoteSqlTest {
 		final CompletableFuture<?> mergeSnapshotFuture = OTUtils
 				.loadAllChanges(otRemote, keyComparator, otSystem, 5)
 				.thenCompose(ds -> otRemote.saveSnapshot(5, ds))
-				.thenCompose(aVoid -> otRemote.cleanup(5))
+				.thenCompose($ -> otRemote.cleanup(5))
 				.toCompletableFuture();
 
 		eventloop.run();

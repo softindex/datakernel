@@ -170,7 +170,7 @@ public class CubeTest {
 			stream(producer, consumer);
 			tasks.add(consumer.getResult()
 					.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
-							.thenApply(aVoid -> cubeDiff))
+							.thenApply($ -> cubeDiff))
 					.thenAccept(cube::apply));
 		}
 		{
@@ -181,7 +181,7 @@ public class CubeTest {
 			stream(producer, consumer);
 			tasks.add(consumer.getResult()
 					.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
-							.thenApply(aVoid -> cubeDiff))
+							.thenApply($ -> cubeDiff))
 					.thenAccept(cube::apply));
 		}
 		Stages.run(tasks).whenComplete(assertComplete($ -> stop(remoteFsServer1)));
@@ -222,7 +222,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem1, CubeDiff> consumer1 = cube.consume(DataItem1.class);
 		stream(producer1, consumer1)
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
-						.thenApply(aVoid -> cubeDiff))
+						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
 		StreamProducer<DataItem2> producer2 = StreamProducers.of(
 				new DataItem2(1, 3, 15, 5),
@@ -232,7 +232,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer2 = cube.consume(DataItem2.class);
 		stream(producer2, consumer2)
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
-						.thenApply(aVoid -> cubeDiff))
+						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
 		eventloop.run();
 
@@ -268,7 +268,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem1, CubeDiff> consumer1 = cube.consume(DataItem1.class);
 		stream(producer1, consumer1)
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
-						.thenApply(aVoid -> cubeDiff))
+						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
 		StreamProducer<DataItem2> producer2 = StreamProducers.of(
 				new DataItem2(1, 7, 15, 5),
@@ -278,7 +278,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer2 = cube.consume(DataItem2.class);
 		stream(producer2, consumer2)
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
-						.thenApply(aVoid -> cubeDiff))
+						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
 		eventloop.run();
 
@@ -323,7 +323,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem1, CubeDiff> consumer1 = cube.consume(DataItem1.class);
 		stream(producer1, consumer1)
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
-						.thenApply(aVoid -> cubeDiff))
+						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
 		StreamProducer<DataItem2> producer2 = StreamProducers.of(
 				new DataItem2(9, 3, 15, 5),
@@ -337,7 +337,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer2 = cube.consume(DataItem2.class);
 		stream(producer2, consumer2)
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
-						.thenApply(aVoid -> cubeDiff))
+						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
 		eventloop.run();
 
@@ -378,7 +378,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem3, CubeDiff> consumer3 = cube.consume(DataItem3.class);
 		stream(producer3, consumer3)
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
-						.thenApply(aVoid -> cubeDiff))
+						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
 		StreamProducer<DataItem4> producer4 = StreamProducers.of(
 				new DataItem4(9, 3, 41, 11, 65, 15, 5),
@@ -392,7 +392,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem4, CubeDiff> consumer4 = cube.consume(DataItem4.class);
 		stream(producer4, consumer4)
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
-						.thenApply(aVoid -> cubeDiff))
+						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
 		eventloop.run();
 
@@ -428,7 +428,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem1, CubeDiff> consumer1 = cube.consume(DataItem1.class);
 		stream(producer1, consumer1)
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
-						.thenApply(aVoid -> cubeDiff))
+						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
 		StreamProducer<DataItem2> producer2 = StreamProducers.of(
 				new DataItem2(1, 3, 20, 10),
@@ -437,7 +437,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer2 = cube.consume(DataItem2.class);
 		stream(producer2, consumer2)
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
-						.thenApply(aVoid -> cubeDiff))
+						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
 		eventloop.run();
 
@@ -474,7 +474,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem1, CubeDiff> consumer1 = cube.consume(DataItem1.class);
 		stream(producer1, consumer1)
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
-						.thenApply(aVoid -> cubeDiff))
+						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
 		StreamProducer<DataItem2> producer2 = StreamProducers.of(
 				new DataItem2(1, 3, 10, 20),
@@ -482,7 +482,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer2 = cube.consume(DataItem2.class);
 		stream(producer2, consumer2)
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
-						.thenApply(aVoid -> cubeDiff))
+						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
 		StreamProducer<DataItem2> producer3 = StreamProducers.of(
 				new DataItem2(1, 2, 10, 20),
@@ -490,7 +490,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer3 = cube.consume(DataItem2.class);
 		stream(producer3, consumer3)
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
-						.thenApply(aVoid -> cubeDiff))
+						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
 		StreamProducer<DataItem2> producer4 = StreamProducers.of(
 				new DataItem2(1, 4, 10, 20),
@@ -498,7 +498,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer4 = cube.consume(DataItem2.class);
 		stream(producer4, consumer4)
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
-						.thenApply(aVoid -> cubeDiff))
+						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
 		eventloop.run();
 
@@ -530,7 +530,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem1, CubeDiff> consumer1 = cube.consume(DataItem1.class);
 		stream(producer1, consumer1)
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
-						.thenApply(aVoid -> cubeDiff))
+						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
 		StreamProducer<DataItem2> producer2 = StreamProducers.of(
 				new DataItem2(1, 3, 10, 20),
@@ -538,7 +538,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer2 = cube.consume(DataItem2.class);
 		stream(producer2, consumer2)
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
-						.thenApply(aVoid -> cubeDiff))
+						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
 		StreamProducer<DataItem2> producer3 = StreamProducers.of(
 				new DataItem2(1, 2, 10, 20),
@@ -546,7 +546,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer3 = cube.consume(DataItem2.class);
 		stream(producer3, consumer3)
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
-						.thenApply(aVoid -> cubeDiff))
+						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
 		StreamProducer<DataItem2> producer4 = StreamProducers.of(
 				new DataItem2(1, 4, 10, 20),
@@ -554,7 +554,7 @@ public class CubeTest {
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer4 = cube.consume(DataItem2.class);
 		stream(producer4, consumer4)
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
-						.thenApply(aVoid -> cubeDiff))
+						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
 		eventloop.run();
 
