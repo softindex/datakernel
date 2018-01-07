@@ -50,7 +50,7 @@ public final class WorkerPoolModule extends AbstractModule {
 	protected void configure() {
 		workerPoolScope = new WorkerPoolScope();
 
-		final Provider<Injector> injectorProvider = getProvider(Injector.class);
+		Provider<Injector> injectorProvider = getProvider(Injector.class);
 		bindListener(new AbstractMatcher<Binding<?>>() {
 			@Override
 			public boolean matches(Binding<?> binding) {

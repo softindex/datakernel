@@ -97,8 +97,8 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 		if (getStatus() == CLOSED_WITH_ERROR)
 			return;
 
-		final ByteBuf buf = queue.poll();
-		final int length = buf.readRemaining();
+		ByteBuf buf = queue.poll();
+		int length = buf.readRemaining();
 		asyncFile.writeFully(buf, position).whenComplete(($, throwable) -> {
 			if (throwable != null) {
 				doWriterCleanup(false).whenComplete((aVoid1, throwable1) -> {
@@ -165,7 +165,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	}
 
 	@Override
-	protected void onError(final Throwable t) {
+	protected void onError(Throwable t) {
 		pendingAsyncOperation = true;
 
 		doWriterCleanup(false).whenComplete(($, throwable) -> {

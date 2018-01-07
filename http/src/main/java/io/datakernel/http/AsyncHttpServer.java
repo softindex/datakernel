@@ -231,7 +231,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	}
 
 	@Override
-	protected void onClose(final SettableStage<Void> stage) {
+	protected void onClose(SettableStage<Void> stage) {
 		poolKeepAlive.closeAllConnections();
 		keepAliveTimeoutMillis = 0;
 		if (connectionsCount == 0) {

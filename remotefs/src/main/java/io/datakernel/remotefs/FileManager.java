@@ -66,7 +66,7 @@ public final class FileManager {
 		return new FileManager(eventloop, executor, storagePath);
 	}
 
-	public CompletionStage<StreamFileReader> get(String fileName, final long startPosition) {
+	public CompletionStage<StreamFileReader> get(String fileName, long startPosition) {
 		logger.trace("downloading file: {}, position: {}", fileName, startPosition);
 		return AsyncFile.openAsync(executor, storagePath.resolve(fileName), new OpenOption[]{READ}).thenApply(result -> {
 			logger.trace("{} opened", result);
@@ -107,15 +107,15 @@ public final class FileManager {
 	public CompletionStage<Void> move(String fileName, String targetName, CopyOption... options) {
 		logger.trace("move {} to {}", fileName, targetName);
 
-		final String targetAbsolutePath = storagePath.resolve(targetName).toFile().getAbsolutePath();
-		final String storageAbsolutePath = storagePath.toFile().getAbsolutePath();
+		String targetAbsolutePath = storagePath.resolve(targetName).toFile().getAbsolutePath();
+		String storageAbsolutePath = storagePath.toFile().getAbsolutePath();
 		if (!targetAbsolutePath.startsWith(storageAbsolutePath)) {
 			return Stages.ofException(new IllegalArgumentException(targetName));
 		}
 
 		return ensureDirectoryAsync(storagePath, targetName).thenCompose(target -> {
 			try {
-				final Path source = storagePath.resolve(fileName);
+				Path source = storagePath.resolve(fileName);
 				Files.setLastModifiedTime(source, FileTime.fromMillis(eventloop.currentTimeMillis()));
 				return AsyncFile.move(eventloop, executor, source, target, options);
 			} catch (IOException e) {
@@ -142,7 +142,7 @@ public final class FileManager {
 		}
 	}
 
-	private CompletionStage<Path> ensureDirectoryAsync(final Path container, final String path) {
+	private CompletionStage<Path> ensureDirectoryAsync(Path container, String path) {
 		return eventloop.callConcurrently(executor, () -> ensureDirectory(container, path));
 	}
 

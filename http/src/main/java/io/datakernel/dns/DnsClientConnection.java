@@ -65,17 +65,17 @@ final class DnsClientConnection implements AsyncUdpSocket.EventHandler {
 		return resolve(domainName, dnsServerAddress, timeout, true);
 	}
 
-	private CompletionStage<DnsQueryResult> resolve(final String domainName, InetSocketAddress dnsServerAddress, final long timeout, boolean ipv6) {
-		final SettableStage<DnsQueryResult> innerStage = SettableStage.create();
+	private CompletionStage<DnsQueryResult> resolve(String domainName, InetSocketAddress dnsServerAddress, long timeout, boolean ipv6) {
+		SettableStage<DnsQueryResult> innerStage = SettableStage.create();
 
-		final ScheduledRunnable schedule = eventloop.schedule(eventloop.currentTimeMillis() + timeout, () -> {
-			final Set<SettableStage<DnsQueryResult>> stages = resultHandlers.get(domainName);
+		ScheduledRunnable schedule = eventloop.schedule(eventloop.currentTimeMillis() + timeout, () -> {
+			Set<SettableStage<DnsQueryResult>> stages = resultHandlers.get(domainName);
 			stages.remove(innerStage);
 			if (stages.isEmpty()) resultHandlers.remove(domainName);
 			innerStage.setException(TIMEOUT_EXCEPTION);
 		});
 
-		final SettableStage<DnsQueryResult> stage = SettableStage.create();
+		SettableStage<DnsQueryResult> stage = SettableStage.create();
 		resultHandlers.computeIfAbsent(domainName, k -> new HashSet<>()).add(innerStage);
 		innerStage.whenComplete((dnsQueryResult, throwable) -> {
 			if (!schedule.isCancelled() && !schedule.isComplete()) {
@@ -134,7 +134,7 @@ final class DnsClientConnection implements AsyncUdpSocket.EventHandler {
 
 			String domainName = dnsQueryResult.getDomainName();
 
-			final Set<SettableStage<DnsQueryResult>> stages = resultHandlers.remove(domainName);
+			Set<SettableStage<DnsQueryResult>> stages = resultHandlers.remove(domainName);
 
 			if (stages != null) {
 				if (dnsQueryResult.isSuccessful()) {
@@ -142,7 +142,7 @@ final class DnsClientConnection implements AsyncUdpSocket.EventHandler {
 						stage.set(dnsQueryResult);
 					}
 				} else {
-					final DnsException exception = dnsQueryResult.getException();
+					DnsException exception = dnsQueryResult.getException();
 					for (SettableStage<DnsQueryResult> stage : stages) {
 						stage.setException(exception);
 					}

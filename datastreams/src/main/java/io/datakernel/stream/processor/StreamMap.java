@@ -123,7 +123,7 @@ public final class StreamMap<I, O> implements StreamTransformer<I, O> {
 	 * @param <O> type of output data of second filter
 	 * @return new mapper which is composition from two mappers from arguments
 	 */
-	public static <I, T, O> Mapper<I, O> combine(final Mapper<I, T> mapper1, final Mapper<T, O> mapper2) {
+	public static <I, T, O> Mapper<I, O> combine(Mapper<I, T> mapper1, Mapper<T, O> mapper2) {
 		return (input, output) -> mapper1.map(input, item -> mapper2.map(item, output));
 	}
 

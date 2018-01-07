@@ -10,7 +10,7 @@ public class ConfigWithPrefix implements Config {
 	private final String prefix;
 	private final Config config;
 
-	private ConfigWithPrefix(final String prefix, final Config config) {
+	private ConfigWithPrefix(String prefix, Config config) {
 		this.prefix = prefix;
 		this.config = config;
 	}
@@ -29,7 +29,7 @@ public class ConfigWithPrefix implements Config {
 	}
 
 	@Override
-	public String get(final String path) {
+	public String get(String path) {
 		try {
 			return config.get(path);
 		} catch (NoSuchElementException e) {
@@ -37,17 +37,17 @@ public class ConfigWithPrefix implements Config {
 		}
 	}
 
-	private String getFullPath(final String path) {
+	private String getFullPath(String path) {
 		return (prefix.isEmpty() ? "" : prefix + ".") + path;
 	}
 
 	@Override
-	public String get(final String path, final String defaultValue) {
+	public String get(String path, String defaultValue) {
 		return config.get(path, defaultValue);
 	}
 
 	@Override
-	public <T> T get(final ConfigConverter<T> converter, final String path) {
+	public <T> T get(ConfigConverter<T> converter, String path) {
 		try {
 			return config.get(converter, path);
 		} catch (NoSuchElementException e) {
@@ -56,17 +56,17 @@ public class ConfigWithPrefix implements Config {
 	}
 
 	@Override
-	public <T> T get(final ConfigConverter<T> converter, final String path, final T defaultValue) {
+	public <T> T get(ConfigConverter<T> converter, String path, T defaultValue) {
 		return config.get(converter, path, defaultValue);
 	}
 
 	@Override
-	public boolean hasChild(final String path) {
+	public boolean hasChild(String path) {
 		return config.hasChild(path);
 	}
 
 	@Override
-	public Config getChild(final String path) {
+	public Config getChild(String path) {
 		return create(getFullPath(path), config.getChild(path));
 	}
 

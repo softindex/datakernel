@@ -99,7 +99,7 @@ final class TypedModsMap {
 		return result == null ? empty() : result;
 	}
 
-	public SerializerGen rewrite(final Class<?> type, final SerializerGenBuilder.SerializerForType[] generics, final SerializerGen serializer) {
+	public SerializerGen rewrite(Class<?> type, SerializerGenBuilder.SerializerForType[] generics, SerializerGen serializer) {
 		SerializerGen result = serializer;
 		for (SerializerGenBuilder mod : mods) {
 			result = mod.serializer(type, generics, result);

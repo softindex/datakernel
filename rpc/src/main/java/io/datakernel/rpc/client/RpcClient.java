@@ -193,7 +193,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 	}
 
 	@SuppressWarnings("ConstantConditions")
-	public static RpcClient create(final Eventloop eventloop) {
+	public static RpcClient create(Eventloop eventloop) {
 		return new RpcClient(eventloop);
 	}
 
@@ -335,7 +335,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		checkState(messageTypes != null, "Message types must be specified");
 		checkState(!running);
 
-		final SettableStage<Void> stage = SettableStage.create();
+		SettableStage<Void> stage = SettableStage.create();
 		running = true;
 		startStage = stage;
 		serializer = serializerBuilder.withSubclasses(RpcMessage.MESSAGE_TYPES, messageTypes).build(RpcMessage.class);
@@ -375,7 +375,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		checkState(eventloop.inEventloopThread());
 		checkState(running);
 
-		final SettableStage<Void> stage = SettableStage.create();
+		SettableStage<Void> stage = SettableStage.create();
 
 		running = false;
 		if (startStage != null) {
@@ -399,7 +399,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		return eventloop.submit(this::stop);
 	}
 
-	private void connect(final InetSocketAddress address) {
+	private void connect(InetSocketAddress address) {
 		if (!running) {
 			return;
 		}
@@ -460,7 +460,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		requestSender = sender != null ? sender : new NoSenderAvailable();
 	}
 
-	void removeConnection(final InetSocketAddress address) {
+	void removeConnection(InetSocketAddress address) {
 		if (!connections.containsKey(address)) {
 			return;
 		}
@@ -505,19 +505,19 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		return requestSender.sendRequest(request, timeout);
 	}
 
-	public IRpcClient adaptToAnotherEventloop(final Eventloop anotherEventloop) {
+	public IRpcClient adaptToAnotherEventloop(Eventloop anotherEventloop) {
 		if (anotherEventloop == this.eventloop) {
 			return this;
 		}
 
 		return new IRpcClient() {
 			@Override
-			public <I, O> CompletionStage<O> sendRequest(final I request, final int timeout) {
+			public <I, O> CompletionStage<O> sendRequest(I request, int timeout) {
 				return sendConcurrently(request, timeout);
 			}
 
-			private <I, O> CompletionStage<O> sendConcurrently(final I request, final int timeout) {
-				final SettableStage<O> stage = SettableStage.create();
+			private <I, O> CompletionStage<O> sendConcurrently(I request, int timeout) {
+				SettableStage<O> stage = SettableStage.create();
 				RpcClient.this.eventloop.execute(() -> RpcClient.this.requestSender.<I, O>sendRequest(request, timeout).whenComplete((o, throwable) -> {
 					if (throwable != null) {
 						anotherEventloop.execute(() -> stage.setException(throwable));
@@ -543,7 +543,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 
 		@Override
 		public <I, O> CompletionStage<O> sendRequest(I request, int timeout) {
-			final SettableStage<O> stage = SettableStage.create();
+			SettableStage<O> stage = SettableStage.create();
 			stage.setException(NO_SENDER_AVAILABLE_EXCEPTION);
 			return stage;
 		}

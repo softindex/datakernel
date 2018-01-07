@@ -70,7 +70,7 @@ public class MessagingWithBinaryStreamingTest {
 
 	@Test
 	public void testPing() throws Exception {
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		SocketHandlerProvider socketHandlerProvider = new SocketHandlerProvider() {
 			@Override
@@ -81,7 +81,7 @@ public class MessagingWithBinaryStreamingTest {
 				return messaging;
 			}
 
-			void pong(final Messaging<Integer, Integer> messaging) {
+			void pong(Messaging<Integer, Integer> messaging) {
 				messaging.receive(new ReceiveMessageCallback<Integer>() {
 					@Override
 					public void onReceive(Integer msg) {
@@ -110,7 +110,7 @@ public class MessagingWithBinaryStreamingTest {
 		server.listen();
 
 		eventloop.connect(address).whenComplete(new BiConsumer<SocketChannel, Throwable>() {
-			void ping(int n, final Messaging<Integer, Integer> messaging) {
+			void ping(int n, Messaging<Integer, Integer> messaging) {
 				messaging.send(n);
 
 				messaging.receive(new ReceiveMessageCallback<Integer>() {
@@ -157,17 +157,17 @@ public class MessagingWithBinaryStreamingTest {
 
 	@Test
 	public void testMessagingDownload() throws Exception {
-		final List<Long> source = new ArrayList<>();
+		List<Long> source = new ArrayList<>();
 //		for (long i = 0; i < 100; i++) {
 //			source.add(i);
 //		}
 
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamConsumerToList<Long> consumerToList = StreamConsumerToList.create();
 
 		SocketHandlerProvider socketHandlerProvider = asyncTcpSocket -> {
-			final MessagingWithBinaryStreaming<String, String> messaging = MessagingWithBinaryStreaming.create(asyncTcpSocket,
+			MessagingWithBinaryStreaming<String, String> messaging = MessagingWithBinaryStreaming.create(asyncTcpSocket,
 					MessagingSerializers.ofGson(new Gson(), String.class, new Gson(), String.class));
 
 			messaging.receive(new ReceiveMessageCallback<String>() {
@@ -227,17 +227,17 @@ public class MessagingWithBinaryStreamingTest {
 
 	@Test
 	public void testBinaryMessagingUpload() throws Exception {
-		final List<Long> source = new ArrayList<>();
+		List<Long> source = new ArrayList<>();
 		for (long i = 0; i < 100; i++) {
 			source.add(i);
 		}
 
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamConsumerToList<Long> consumerToList = StreamConsumerToList.create();
 
 		SocketHandlerProvider socketHandlerProvider = asyncTcpSocket -> {
-			final MessagingWithBinaryStreaming<String, String> messaging = MessagingWithBinaryStreaming.create(asyncTcpSocket,
+			MessagingWithBinaryStreaming<String, String> messaging = MessagingWithBinaryStreaming.create(asyncTcpSocket,
 					MessagingSerializers.ofGson(new Gson(), String.class, new Gson(), String.class));
 
 			messaging.receive(new ReceiveMessageCallback<String>() {
@@ -300,19 +300,19 @@ public class MessagingWithBinaryStreamingTest {
 
 	@Test
 	public void testBinaryMessagingUploadAck() throws Exception {
-		final List<Long> source = new ArrayList<>();
+		List<Long> source = new ArrayList<>();
 		for (long i = 0; i < 100; i++) {
 			source.add(i);
 		}
 
-		final boolean[] ack = new boolean[]{false};
+		boolean[] ack = new boolean[]{false};
 
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		final StreamConsumerToList<Long> consumerToList = StreamConsumerToList.create();
+		StreamConsumerToList<Long> consumerToList = StreamConsumerToList.create();
 
 		SocketHandlerProvider socketHandlerProvider = asyncTcpSocket -> {
-			final MessagingWithBinaryStreaming<String, String> messaging = MessagingWithBinaryStreaming.create(asyncTcpSocket,
+			MessagingWithBinaryStreaming<String, String> messaging = MessagingWithBinaryStreaming.create(asyncTcpSocket,
 					MessagingSerializers.ofGson(new Gson(), String.class, new Gson(), String.class));
 
 			messaging.receive(new ReceiveMessageCallback<String>() {
@@ -352,7 +352,7 @@ public class MessagingWithBinaryStreamingTest {
 		eventloop.connect(address).whenComplete((socketChannel, throwable) -> {
 			if (throwable == null) {
 				AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
-				final MessagingWithBinaryStreaming<String, String> messaging = MessagingWithBinaryStreaming.create(asyncTcpSocket,
+				MessagingWithBinaryStreaming<String, String> messaging = MessagingWithBinaryStreaming.create(asyncTcpSocket,
 						MessagingSerializers.ofGson(new Gson(), String.class, new Gson(), String.class));
 
 				messaging.send("start");
@@ -398,17 +398,17 @@ public class MessagingWithBinaryStreamingTest {
 
 	@Test
 	public void testGsonMessagingUpload() throws Exception {
-		final List<Long> source = new ArrayList<>();
+		List<Long> source = new ArrayList<>();
 		for (long i = 0; i < 100; i++) {
 			source.add(i);
 		}
 
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		final StreamConsumerToList<Long> consumerToList = StreamConsumerToList.create();
+		StreamConsumerToList<Long> consumerToList = StreamConsumerToList.create();
 
 		SocketHandlerProvider socketHandlerProvider = asyncTcpSocket -> {
-			final MessagingWithBinaryStreaming<String, String> messaging = MessagingWithBinaryStreaming.create(asyncTcpSocket,
+			MessagingWithBinaryStreaming<String, String> messaging = MessagingWithBinaryStreaming.create(asyncTcpSocket,
 					MessagingSerializers.ofGson(new Gson(), String.class, new Gson(), String.class));
 
 			messaging.receive(new ReceiveMessageCallback<String>() {

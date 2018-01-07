@@ -78,7 +78,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 
 	private class DownloadCommandHandler implements CommandHandler<DatagraphCommandDownload, DatagraphResponse> {
 		@Override
-		public void onCommand(final MessagingWithBinaryStreaming<DatagraphCommandDownload, DatagraphResponse> messaging, DatagraphCommandDownload command) {
+		public void onCommand(MessagingWithBinaryStreaming<DatagraphCommandDownload, DatagraphResponse> messaging, DatagraphCommandDownload command) {
 			StreamId streamId = command.streamId;
 			StreamForwarder<ByteBuf> forwarder = pendingStreams.remove(streamId);
 			if (forwarder != null) {
@@ -111,7 +111,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 		}
 	}
 
-	public <T> StreamConsumer<T> upload(final StreamId streamId, Class<T> type) {
+	public <T> StreamConsumer<T> upload(StreamId streamId, Class<T> type) {
 		BufferSerializer<T> serializer = environment.getInstance(DatagraphSerialization.class).getSerializer(type);
 
 		StreamBinarySerializer<T> streamSerializer = StreamBinarySerializer.create(serializer)
@@ -132,7 +132,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 
 	@Override
 	protected final AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
-		final MessagingWithBinaryStreaming<DatagraphCommand, DatagraphResponse> messaging = MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
+		MessagingWithBinaryStreaming<DatagraphCommand, DatagraphResponse> messaging = MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
 		messaging.receive(new Messaging.ReceiveMessageCallback<DatagraphCommand>() {
 			@Override
 			public void onReceive(DatagraphCommand msg) {

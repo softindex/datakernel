@@ -230,7 +230,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 			stage.set(null);
 		} else {
 			logger.info("RpcServer is closing. Active connections count: " + connections.size());
-			for (final RpcServerConnection connection : new ArrayList<>(connections)) {
+			for (RpcServerConnection connection : new ArrayList<>(connections)) {
 				connection.close();
 			}
 			closeStage = stage;

@@ -191,7 +191,7 @@ public final class StreamConsumers {
 		return new StreamConsumerDecorator<T>(consumer) {
 			@Override
 			protected StreamDataReceiver<T> onProduce(StreamDataReceiver<T> dataReceiver) {
-				final StreamProducer<T> producer = this.getProducer();
+				StreamProducer<T> producer = this.getProducer();
 				return super.onProduce(new StreamDataReceiver<T>() {
 					@Override
 					public void onData(T item) {

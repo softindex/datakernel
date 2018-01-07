@@ -35,7 +35,7 @@ public class GzipServletTest {
 
 	@Test
 	public void testGzipServletBase() throws Exception {
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
 		GzipServlet gzipServlet = GzipServlet.create(5, helloWorldServlet);
 		HttpRequest request = HttpRequest.get("http://example.com")
 				.withBody(wrapAscii("Hello, world!"));
@@ -61,7 +61,7 @@ public class GzipServletTest {
 
 	@Test
 	public void testDoesNotServeSmallBodies() throws Exception {
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
 		AsyncServlet asyncServlet = request -> {
 			HttpResponse response = HttpResponse.ok200();
 			String requestNum = decodeAscii(request.getBody());
@@ -91,10 +91,10 @@ public class GzipServletTest {
 
 	@Test
 	public void testClientServerIntegration() throws Exception {
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
-		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, GzipServlet.create(5, helloWorldServlet))
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+		AsyncHttpServer server = AsyncHttpServer.create(eventloop, GzipServlet.create(5, helloWorldServlet))
 				.withListenPort(1239);
-		final AsyncHttpClient client = AsyncHttpClient.create(eventloop);
+		AsyncHttpClient client = AsyncHttpClient.create(eventloop);
 
 		server.listen();
 		CompletableFuture<Void> future = Stages.run(

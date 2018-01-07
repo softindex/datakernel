@@ -206,7 +206,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	 * @param value  value of received header
 	 */
 	@Override
-	protected void onHeader(HttpHeader header, final ByteBuf value) throws ParseException {
+	protected void onHeader(HttpHeader header, ByteBuf value) throws ParseException {
 		super.onHeader(header, value);
 		if (header == HttpHeaders.EXPECT) {
 			if (equalsLowerCaseAscii(EXPECT_100_CONTINUE, value.array(), value.readPosition(), value.readRemaining())) {

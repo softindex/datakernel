@@ -21,8 +21,8 @@ import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.loader.FileNamesLoadingService;
 import io.datakernel.loader.ResourcesNameLoadingService;
-import io.datakernel.loader.StaticLoaders;
 import io.datakernel.loader.StaticLoader;
+import io.datakernel.loader.StaticLoaders;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Rule;
@@ -35,7 +35,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
@@ -80,7 +83,7 @@ public class StaticServletsTest {
         HttpRequest request = get("http://test.com:8080/index.html");
         CompletableFuture<String> future = servlet.serve(request)
                 .thenApply(httpResponse -> {
-                    final String body = decodeAscii(httpResponse.getBody());
+                    String body = decodeAscii(httpResponse.getBody());
                     httpResponse.recycleBufs();
                     return body;
                 })
@@ -124,7 +127,7 @@ public class StaticServletsTest {
         HttpRequest request = get("http://test.com:8080/index.html");
         CompletableFuture<String> future = servlet.serve(request)
                 .thenApply(httpResponse -> {
-                    final String body = decodeAscii(httpResponse.getBody());
+                    String body = decodeAscii(httpResponse.getBody());
                     httpResponse.recycleBufs();
                     return body;
                 })
@@ -168,7 +171,7 @@ public class StaticServletsTest {
         HttpRequest request = get("http://test.com:8080/testFile.txt");
         CompletableFuture<String> future = servlet.serve(request)
                 .thenApply(httpResponse -> {
-                    final String body = decodeAscii(httpResponse.getBody());
+                    String body = decodeAscii(httpResponse.getBody());
                     httpResponse.recycleBufs();
                     return body;
                 })
@@ -211,7 +214,7 @@ public class StaticServletsTest {
         HttpRequest request = get("http://test.com:8080/testFile.txt");
         CompletableFuture<String> future = servlet.serve(request)
                 .thenApply(httpResponse -> {
-                    final String body = decodeAscii(httpResponse.getBody());
+                    String body = decodeAscii(httpResponse.getBody());
                     httpResponse.recycleBufs();
                     return body;
                 })
@@ -265,7 +268,7 @@ public class StaticServletsTest {
         HttpRequest request = get("http://test.com:8080/dir2/testFile.txt");
         CompletableFuture<String> future = servlet.serve(request)
                 .thenApply(httpResponse -> {
-                    final String body = decodeAscii(httpResponse.getBody());
+                    String body = decodeAscii(httpResponse.getBody());
                     httpResponse.recycleBufs();
                     return body;
                 })
@@ -295,7 +298,7 @@ public class StaticServletsTest {
 
         CompletableFuture<String> future = servlet.serve(get("http://test.com:8080/index.html"))
                 .thenApply(httpResponse -> {
-                    final String body = decodeAscii(httpResponse.getBody());
+                    String body = decodeAscii(httpResponse.getBody());
                     httpResponse.recycleBufs();
                     return body;
                 })

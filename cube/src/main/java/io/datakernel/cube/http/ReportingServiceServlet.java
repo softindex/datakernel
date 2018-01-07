@@ -78,11 +78,11 @@ public final class ReportingServiceServlet implements AsyncServlet {
 	}
 
 	@Override
-	public CompletionStage<HttpResponse> serve(final HttpRequest httpRequest) {
+	public CompletionStage<HttpResponse> serve(HttpRequest httpRequest) {
 		logger.info("Received request: {}", httpRequest);
 		try {
-			final Stopwatch totalTimeStopwatch = Stopwatch.createStarted();
-			final CubeQuery cubeQuery = parseQuery(httpRequest);
+			Stopwatch totalTimeStopwatch = Stopwatch.createStarted();
+			CubeQuery cubeQuery = parseQuery(httpRequest);
 			return cube.query(cubeQuery).thenApply(queryResult -> {
 				Stopwatch resultProcessingStopwatch = Stopwatch.createStarted();
 				String json = getQueryResultJson().toJson(queryResult);

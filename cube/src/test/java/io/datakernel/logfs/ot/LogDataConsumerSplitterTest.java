@@ -38,18 +38,18 @@ public class LogDataConsumerSplitterTest {
 			throws ExecutionException, InterruptedException {
 
 		stream(StreamProducers.ofIterable(values), consume);
-		final CompletableFuture<List<T>> future = result.toCompletableFuture();
+		CompletableFuture<List<T>> future = result.toCompletableFuture();
 		eventloop.run();
 		assertEquals(values, future.get());
 	}
 
 	@Test
 	public void testConsumes() throws ExecutionException, InterruptedException {
-		final List<StreamConsumerWithResult<Integer, List<Integer>>> consumers =
+		List<StreamConsumerWithResult<Integer, List<Integer>>> consumers =
 				asList(toList(), toList());
 
-		final Iterator<StreamConsumerWithResult<Integer, List<Integer>>> iterator = consumers.iterator();
-		final LogDataConsumerSplitter<Integer, Integer> splitter =
+		Iterator<StreamConsumerWithResult<Integer, List<Integer>>> iterator = consumers.iterator();
+		LogDataConsumerSplitter<Integer, Integer> splitter =
 				new LogDataConsumerSplitterStub<>(iterator::next);
 
 		assertStreamResult(VALUES_1, splitter.consume(), consumers.get(0).getResult());
@@ -58,11 +58,11 @@ public class LogDataConsumerSplitterTest {
 
 	@Test
 	public void testConsumersWithSuspend() throws ExecutionException, InterruptedException {
-		final List<StreamConsumerWithResult<Integer, List<Integer>>> consumers =
+		List<StreamConsumerWithResult<Integer, List<Integer>>> consumers =
 				asList(oneByOne(), oneByOne());
 
-		final Iterator<StreamConsumerWithResult<Integer, List<Integer>>> iterator = consumers.iterator();
-		final LogDataConsumerSplitter<Integer, Integer> splitter =
+		Iterator<StreamConsumerWithResult<Integer, List<Integer>>> iterator = consumers.iterator();
+		LogDataConsumerSplitter<Integer, Integer> splitter =
 				new LogDataConsumerSplitterStub<>(iterator::next);
 
 		assertStreamResult(VALUES_1, splitter.consume(), consumers.get(0).getResult());
@@ -71,7 +71,7 @@ public class LogDataConsumerSplitterTest {
 
 	@Test(expected = IllegalStateException.class)
 	public void testIncorrectImplementation() {
-		final LogDataConsumerSplitter<Integer, Integer> splitter = new LogDataConsumerSplitter<Integer, Integer>() {
+		LogDataConsumerSplitter<Integer, Integer> splitter = new LogDataConsumerSplitter<Integer, Integer>() {
 			@Override
 			protected StreamDataReceiver<Integer> createSplitter() {
 				return item -> {};

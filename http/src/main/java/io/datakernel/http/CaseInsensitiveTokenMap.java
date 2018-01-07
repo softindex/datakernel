@@ -31,8 +31,7 @@ abstract class CaseInsensitiveTokenMap<T extends CaseInsensitiveTokenMap.Token> 
 
 	protected CaseInsensitiveTokenMap(int slotsNumber, int maxProbings, Class<T> elementsType) {
 		this.maxProbings = maxProbings;
-		@SuppressWarnings("unchecked")
-		final T[] ts = (T[]) Array.newInstance(elementsType, slotsNumber);
+		@SuppressWarnings("unchecked") T[] ts = (T[]) Array.newInstance(elementsType, slotsNumber);
 		TOKENS = ts;
 	}
 

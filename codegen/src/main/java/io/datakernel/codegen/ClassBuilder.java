@@ -311,7 +311,7 @@ public final class ClassBuilder<T> {
 
 		Type classType = getType('L' + actualClassName.replace('.', '/') + ';');
 
-		final String[] internalNames = new String[1 + otherClasses.size()];
+		String[] internalNames = new String[1 + otherClasses.size()];
 		internalNames[0] = getInternalName(mainClass);
 		for (int i = 0; i < otherClasses.size(); i++) {
 			internalNames[1 + i] = getInternalName(otherClasses.get(i));

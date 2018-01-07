@@ -41,7 +41,7 @@ public class DynamicMBeanRegistrationTest {
 
 	@Test
 	public void itShouldRegisterDynamicMBeans() throws Exception {
-		final DynamicMBeanStub service = new DynamicMBeanStub();
+		DynamicMBeanStub service = new DynamicMBeanStub();
 
 		context.checking(new Expectations() {{
 			oneOf(mBeanServer).registerMBean(with(service),
@@ -97,7 +97,7 @@ public class DynamicMBeanRegistrationTest {
 		String value() default "";
 	}
 
-	public static CustomAnnotation createCustomAnnotation(final String value) {
+	public static CustomAnnotation createCustomAnnotation(String value) {
 		return new CustomAnnotation() {
 
 			@Override

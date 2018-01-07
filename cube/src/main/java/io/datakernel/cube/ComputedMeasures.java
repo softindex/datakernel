@@ -68,7 +68,7 @@ public final class ComputedMeasures {
 		}
 	}
 
-	public static ComputedMeasure value(final Object value) {
+	public static ComputedMeasure value(Object value) {
 		return new ComputedMeasure() {
 			@Override
 			public Class<?> getType(Map<String, Measure> storedMeasures) {
@@ -87,7 +87,7 @@ public final class ComputedMeasures {
 		};
 	}
 
-	public static ComputedMeasure measure(final String measureId) {
+	public static ComputedMeasure measure(String measureId) {
 		return new ComputedMeasure() {
 			@Override
 			public Class<?> getType(Map<String, Measure> storedMeasures) {
@@ -106,7 +106,7 @@ public final class ComputedMeasures {
 		};
 	}
 
-	public static ComputedMeasure add(final ComputedMeasure measure1, final ComputedMeasure measure2) {
+	public static ComputedMeasure add(ComputedMeasure measure1, ComputedMeasure measure2) {
 		return new AbstractArithmeticMeasure(measure1, measure2) {
 			@Override
 			public Expression getExpression(Expression record, Map<String, Measure> storedMeasures) {
@@ -115,7 +115,7 @@ public final class ComputedMeasures {
 		};
 	}
 
-	public static ComputedMeasure sub(final ComputedMeasure measure1, final ComputedMeasure measure2) {
+	public static ComputedMeasure sub(ComputedMeasure measure1, ComputedMeasure measure2) {
 		return new AbstractArithmeticMeasure(measure1, measure2) {
 			@Override
 			public Expression getExpression(Expression record, Map<String, Measure> storedMeasures) {
@@ -124,7 +124,7 @@ public final class ComputedMeasures {
 		};
 	}
 
-	public static ComputedMeasure div(final ComputedMeasure measure1, final ComputedMeasure measure2) {
+	public static ComputedMeasure div(ComputedMeasure measure1, ComputedMeasure measure2) {
 		return new AbstractComputedMeasure(measure1, measure2) {
 			@Override
 			public Class<?> getType(Map<String, Measure> storedMeasures) {
@@ -141,7 +141,7 @@ public final class ComputedMeasures {
 		};
 	}
 
-	public static ComputedMeasure mul(final ComputedMeasure measure1, final ComputedMeasure measure2) {
+	public static ComputedMeasure mul(ComputedMeasure measure1, ComputedMeasure measure2) {
 		return new AbstractArithmeticMeasure(measure1, measure2) {
 			@Override
 			public Expression getExpression(Expression record, Map<String, Measure> storedMeasures) {
@@ -150,7 +150,7 @@ public final class ComputedMeasures {
 		};
 	}
 
-	public static ComputedMeasure sqrt(final ComputedMeasure measure) {
+	public static ComputedMeasure sqrt(ComputedMeasure measure) {
 		return new AbstractComputedMeasure(measure) {
 			@Override
 			public Class<?> getType(Map<String, Measure> storedMeasures) {
@@ -167,7 +167,7 @@ public final class ComputedMeasures {
 		};
 	}
 
-	public static ComputedMeasure sqr(final ComputedMeasure measure) {
+	public static ComputedMeasure sqr(ComputedMeasure measure) {
 		return new AbstractComputedMeasure(measure) {
 			@Override
 			public Class<?> getType(Map<String, Measure> storedMeasures) {

@@ -72,7 +72,7 @@ public class ClientStressTest {
 
 	private void test() {
 		int delay = random.nextInt(10000);
-		final String url = urls.next();
+		String url = urls.next();
 		if (url != null) {
 			eventloop.schedule(eventloop.currentTimeMillis() + delay, () -> {
 				logger.info("sending request to: {}", url);

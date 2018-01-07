@@ -52,7 +52,7 @@ public class CubeDiffJson extends TypeAdapter<CubeDiff> {
 			AggregationDiffJson aggregationDiffJson = aggregationDiffJsons.get(aggregation);
 			if (aggregationDiffJson == null) {
 				in.skipValue();
-				final StringJoiner joiner = new StringJoiner(", ", "[", "]");
+				StringJoiner joiner = new StringJoiner(", ", "[", "]");
 				joiner.add(aggregation);
 				getUnknownAggregations(in).forEach(joiner::add);
 				throw new IOException("Unknown aggregations: " + joiner.toString());
@@ -66,9 +66,9 @@ public class CubeDiffJson extends TypeAdapter<CubeDiff> {
 	}
 
 	private List<String> getUnknownAggregations(JsonReader in) throws IOException {
-		final ArrayList<String> list = new ArrayList<>();
+		ArrayList<String> list = new ArrayList<>();
 		while (in.hasNext()) {
-			final String aggregation = in.nextName();
+			String aggregation = in.nextName();
 			in.skipValue();
 			if (!aggregationDiffJsons.containsKey(aggregation)) {
 				list.add(aggregation);

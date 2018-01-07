@@ -15,7 +15,7 @@ import static io.datakernel.util.Preconditions.checkState;
 import static java.util.Collections.singletonList;
 
 public class LogOT {
-	public static <T> OTSystem<LogDiff<T>> createLogOT(final OTSystem<T> otSystem) {
+	public static <T> OTSystem<LogDiff<T>> createLogOT(OTSystem<T> otSystem) {
 		return OTSystemImpl.<LogDiff<T>>create()
 				.withTransformFunction(LogDiff.class, LogDiff.class, (left, right) -> {
 					Set<String> intersection = intersection(left.positions.keySet(), right.positions.keySet());
@@ -69,7 +69,7 @@ public class LogOT {
 	}
 
 	private static <T> Set<T> intersection(Set<T> a, Set<T> b) {
-		final Set<T> set = new HashSet<>();
+		Set<T> set = new HashSet<>();
 		for (T x : a) {
 			if (b.contains(x)) set.add(x);
 		}

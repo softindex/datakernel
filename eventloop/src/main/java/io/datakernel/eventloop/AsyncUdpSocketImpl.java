@@ -144,7 +144,7 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 	public void register() {
 		try {
 			key = channel.register(eventloop.ensureSelector(), ops, this);
-		} catch (final IOException e) {
+		} catch (IOException e) {
 			eventloop.post(new Runnable() {
 				@Override
 				public void run() {

@@ -103,13 +103,13 @@ public class CubeIntegrationTest {
 						.withMeasures("impressions", "clicks", "conversions", "revenue"));
 
 		DataSource dataSource = dataSource("test.properties");
-		final OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
+		OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
 		OTRemoteSql<LogDiff<CubeDiff>> otSourceSql = OTRemoteSql.create(executor, dataSource, otSystem, LogDiffJson.create(CubeDiffJson.create(cube)));
 		otSourceSql.truncateTables();
 		otSourceSql.createId().thenCompose(integer -> otSourceSql.push(OTCommit.ofRoot(integer)));
 		eventloop.run();
 
-		final LogOTState<CubeDiff> cubeDiffLogOTState = new LogOTState<>(cube);
+		LogOTState<CubeDiff> cubeDiffLogOTState = new LogOTState<>(cube);
 		OTStateManager<Integer, LogDiff<CubeDiff>> logCubeStateManager = new OTStateManager<>(eventloop,
 				otSystem,
 				otSourceSql,

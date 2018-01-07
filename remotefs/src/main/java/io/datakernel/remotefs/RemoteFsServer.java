@@ -62,7 +62,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 	// set up connection
 	@Override
 	protected final EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
-		final MessagingWithBinaryStreaming<RemoteFsCommands.FsCommand, RemoteFsResponses.FsResponse> messaging = MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
+		MessagingWithBinaryStreaming<RemoteFsCommands.FsCommand, RemoteFsResponses.FsResponse> messaging = MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
 		messaging.receive(new ReceiveMessageCallback<RemoteFsCommands.FsCommand>() {
 			@Override
 			public void onReceive(RemoteFsCommands.FsCommand msg) {
@@ -121,7 +121,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 	// handler classes
 	private class UploadMessagingHandler implements MessagingHandler<RemoteFsCommands.Upload, RemoteFsResponses.FsResponse> {
 		@Override
-		public void onMessage(final Messaging<RemoteFsCommands.Upload, RemoteFsResponses.FsResponse> messaging, final RemoteFsCommands.Upload item) {
+		public void onMessage(Messaging<RemoteFsCommands.Upload, RemoteFsResponses.FsResponse> messaging, RemoteFsCommands.Upload item) {
 			logger.trace("uploading {}", item.filePath);
 			fileManager.save(item.filePath).whenComplete((fileWriter, throwable) -> {
 				if (throwable == null) {
@@ -145,7 +145,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 	private class DownloadMessagingHandler implements MessagingHandler<RemoteFsCommands.Download, RemoteFsResponses.FsResponse> {
 
 		private <T, U extends Throwable> BiConsumer<T, U> errorHandlingConsumer(
-				final Messaging<RemoteFsCommands.Download, RemoteFsResponses.FsResponse> messaging,
+				Messaging<RemoteFsCommands.Download, RemoteFsResponses.FsResponse> messaging,
 				BiConsumer<T, U> resultConsumer) {
 
 			return (t, u) -> {
@@ -157,13 +157,13 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 			};
 		}
 
-		public void onException(final Messaging<RemoteFsCommands.Download, RemoteFsResponses.FsResponse> messaging, Throwable throwable) {
+		public void onException(Messaging<RemoteFsCommands.Download, RemoteFsResponses.FsResponse> messaging, Throwable throwable) {
 			messaging.send(new RemoteFsResponses.Err(throwable.getMessage()));
 			messaging.sendEndOfStream();
 		}
 
 		@Override
-		public void onMessage(final Messaging<RemoteFsCommands.Download, RemoteFsResponses.FsResponse> messaging, final RemoteFsCommands.Download item) {
+		public void onMessage(Messaging<RemoteFsCommands.Download, RemoteFsResponses.FsResponse> messaging, RemoteFsCommands.Download item) {
 			fileManager.size(item.filePath).whenComplete(errorHandlingConsumer(messaging, (size, throwable) -> {
 				if (size >= 0) {
 					messaging.send(new RemoteFsResponses.Ready(size)).whenComplete(errorHandlingConsumer(messaging, ($1, throwable1) ->
@@ -181,7 +181,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 
 	private class DeleteMessagingHandler implements MessagingHandler<RemoteFsCommands.Delete, RemoteFsResponses.FsResponse> {
 		@Override
-		public void onMessage(final Messaging<RemoteFsCommands.Delete, RemoteFsResponses.FsResponse> messaging, final RemoteFsCommands.Delete item) {
+		public void onMessage(Messaging<RemoteFsCommands.Delete, RemoteFsResponses.FsResponse> messaging, RemoteFsCommands.Delete item) {
 			fileManager.delete(item.filePath).whenComplete(($, throwable) -> {
 				messaging.send(throwable == null
 						? new RemoteFsResponses.Ok()
@@ -193,7 +193,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 
 	private class ListFilesMessagingHandler implements MessagingHandler<RemoteFsCommands.ListFiles, RemoteFsResponses.FsResponse> {
 		@Override
-		public void onMessage(final Messaging<RemoteFsCommands.ListFiles, RemoteFsResponses.FsResponse> messaging, RemoteFsCommands.ListFiles item) {
+		public void onMessage(Messaging<RemoteFsCommands.ListFiles, RemoteFsResponses.FsResponse> messaging, RemoteFsCommands.ListFiles item) {
 			fileManager.scanAsync().whenComplete((strings, throwable) -> {
 				messaging.send(throwable == null
 						? new RemoteFsResponses.ListOfFiles(strings)
@@ -206,7 +206,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 	private class MoveMessagingHandler implements MessagingHandler<RemoteFsCommands.Move, RemoteFsResponses.FsResponse> {
 		@Override
 		public void onMessage(Messaging<RemoteFsCommands.Move, RemoteFsResponses.FsResponse> messaging, RemoteFsCommands.Move item) {
-			final List<CompletionStage<Void>> tasks = item.changes.entrySet().stream()
+			List<CompletionStage<Void>> tasks = item.changes.entrySet().stream()
 					.map(e -> fileManager.move(e.getKey(), e.getValue()))
 					.collect(Collectors.toList());
 

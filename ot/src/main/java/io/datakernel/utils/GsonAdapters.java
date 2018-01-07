@@ -277,7 +277,7 @@ public class GsonAdapters {
 		typeAdapters.put(String.class, STRING_JSON);
 	}
 
-	public static <E extends Enum<E>> TypeAdapter<E> ofEnum(final Class<E> enumType) {
+	public static <E extends Enum<E>> TypeAdapter<E> ofEnum(Class<E> enumType) {
 		return new TypeAdapter<E>() {
 			@Override
 			public void write(JsonWriter out, E value) throws IOException {
@@ -308,7 +308,7 @@ public class GsonAdapters {
 	}
 */
 
-	public static <I, O> TypeAdapter<O> transform(final TypeAdapter<I> adapter, final Function<I, O> from, final Function<O, I> to) {
+	public static <I, O> TypeAdapter<O> transform(TypeAdapter<I> adapter, Function<I, O> from, Function<O, I> to) {
 		return new TypeAdapter<O>() {
 			@Override
 			public void write(JsonWriter out, O value) throws IOException {
@@ -388,7 +388,7 @@ public class GsonAdapters {
 				});
 	}
 
-	public static <T> TypeAdapter<T> asNullable(final TypeAdapter<T> adapter) {
+	public static <T> TypeAdapter<T> asNullable(TypeAdapter<T> adapter) {
 		return new TypeAdapter<T>() {
 			@Override
 			public void write(JsonWriter out, T value) throws IOException {
@@ -410,7 +410,7 @@ public class GsonAdapters {
 		};
 	}
 
-	public static <V> TypeAdapter<Map<String, V>> ofMap(final TypeAdapter<V> valueAdapter) {
+	public static <V> TypeAdapter<Map<String, V>> ofMap(TypeAdapter<V> valueAdapter) {
 		return new TypeAdapter<Map<String, V>>() {
 			@Override
 			public void write(JsonWriter out, Map<String, V> map) throws IOException {
@@ -437,7 +437,7 @@ public class GsonAdapters {
 		};
 	}
 
-	public static TypeAdapter<Map<String, ?>> ofHeterogeneousMap(final Map<String, ? extends TypeAdapter<?>> valueAdapters) {
+	public static TypeAdapter<Map<String, ?>> ofHeterogeneousMap(Map<String, ? extends TypeAdapter<?>> valueAdapters) {
 		return new TypeAdapter<Map<String, ?>>() {
 			@SuppressWarnings("unchecked")
 			@Override
@@ -468,7 +468,7 @@ public class GsonAdapters {
 		};
 	}
 
-	public static TypeAdapter<Object[]> ofHeterogeneousArray(final TypeAdapter<?>[] valueAdapters) {
+	public static TypeAdapter<Object[]> ofHeterogeneousArray(TypeAdapter<?>[] valueAdapters) {
 		return new TypeAdapter<Object[]>() {
 			@SuppressWarnings("unchecked")
 			@Override
@@ -495,11 +495,11 @@ public class GsonAdapters {
 		};
 	}
 
-	public static <T> TypeAdapter<T> oneline(final TypeAdapter<T> adapter) {
+	public static <T> TypeAdapter<T> oneline(TypeAdapter<T> adapter) {
 		return indent(adapter, "");
 	}
 
-	public static <T> TypeAdapter<T> indent(final TypeAdapter<T> adapter, final String indent) {
+	public static <T> TypeAdapter<T> indent(TypeAdapter<T> adapter, String indent) {
 		return new TypeAdapter<T>() {
 			@Override
 			public void write(JsonWriter out, T value) throws IOException {
@@ -520,11 +520,11 @@ public class GsonAdapters {
 		};
 	}
 
-	public static TypeAdapter<Object[]> ofHeterogeneousArray(final List<? extends TypeAdapter<?>> valueAdapters) {
+	public static TypeAdapter<Object[]> ofHeterogeneousArray(List<? extends TypeAdapter<?>> valueAdapters) {
 		return ofHeterogeneousArray(valueAdapters.toArray(new TypeAdapter<?>[valueAdapters.size()]));
 	}
 
-	public static TypeAdapter<List<?>> ofHeterogeneousList(final TypeAdapter<?>[] valueAdapters) {
+	public static TypeAdapter<List<?>> ofHeterogeneousList(TypeAdapter<?>[] valueAdapters) {
 		return transform(ofHeterogeneousArray(valueAdapters),
 				new Function<Object[], List<?>>() {
 					@Override
@@ -540,7 +540,7 @@ public class GsonAdapters {
 				});
 	}
 
-	public static TypeAdapter<List<?>> ofHeterogeneousList(final List<? extends TypeAdapter<?>> valueAdapters) {
+	public static TypeAdapter<List<?>> ofHeterogeneousList(List<? extends TypeAdapter<?>> valueAdapters) {
 		return ofHeterogeneousList(valueAdapters.toArray(new TypeAdapter<?>[valueAdapters.size()]));
 	}
 

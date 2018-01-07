@@ -75,7 +75,7 @@ public class AggregationChunkJson extends TypeAdapter<AggregationChunk> {
 		checkArgument(MEASURES.equals(reader.nextName()));
 		List<String> measures = stringListAdapter.read(reader);
 
-		final List<String> invalidMeasures = getInvalidMeasures(measures);
+		List<String> invalidMeasures = getInvalidMeasures(measures);
 		if (!invalidMeasures.isEmpty()) throw new IOException("Unknown fields: " + invalidMeasures);
 
 		reader.endObject();
@@ -84,7 +84,7 @@ public class AggregationChunkJson extends TypeAdapter<AggregationChunk> {
 	}
 
 	private List<String> getInvalidMeasures(List<String> measures) {
-		final List<String> invalidMeasures = new ArrayList<>();
+		List<String> invalidMeasures = new ArrayList<>();
 		for (String measure : measures) {
 			if (!allowedMeasures.contains(measure)) {
 				invalidMeasures.add(measure);

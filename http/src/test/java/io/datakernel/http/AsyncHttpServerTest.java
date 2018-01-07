@@ -58,10 +58,10 @@ public class AsyncHttpServerTest {
 		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", port));
 	}
 
-	public static AsyncHttpServer asyncHttpServer(final Eventloop primaryEventloop, int port) {
+	public static AsyncHttpServer asyncHttpServer(Eventloop primaryEventloop, int port) {
 		AsyncServlet servlet = request -> {
-			final SettableStage<HttpResponse> stage = SettableStage.create();
-			final HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
+			SettableStage<HttpResponse> stage = SettableStage.create();
+			HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
 			stage.set(content);
 			return stage;
 		};
@@ -69,11 +69,11 @@ public class AsyncHttpServerTest {
 		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", port));
 	}
 
-	public static AsyncHttpServer delayedHttpServer(final Eventloop primaryEventloop, int port) {
-		final Random random = new Random();
+	public static AsyncHttpServer delayedHttpServer(Eventloop primaryEventloop, int port) {
+		Random random = new Random();
 		AsyncServlet servlet = (request) -> {
-			final SettableStage<HttpResponse> stage = SettableStage.create();
-			final HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
+			SettableStage<HttpResponse> stage = SettableStage.create();
+			HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
 			primaryEventloop.schedule(primaryEventloop.currentTimeMillis() + random.nextInt(3), () -> stage.set(content));
 			return stage;
 		};
@@ -342,20 +342,20 @@ public class AsyncHttpServerTest {
 	@Test
 	public void testBigHttpMessage() throws Exception {
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
-		final ByteBuf buf =
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		ByteBuf buf =
 				HttpRequest.post("http://127.0.0.1:" + port)
 						.withBody(ByteBuf.wrapForReading(encodeAscii("Test big HTTP message body")))
 						.toByteBuf();
 
 		AsyncServlet servlet = request -> {
-			final SettableStage<HttpResponse> stage = SettableStage.create();
-			final HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
+			SettableStage<HttpResponse> stage = SettableStage.create();
+			HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
 			stage.set(content);
 			return stage;
 		};
 
-		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
+		AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
 				.withMaxHttpMessageSize(25)
 				.withListenAddress(new InetSocketAddress("localhost", port));
 		server.listen();

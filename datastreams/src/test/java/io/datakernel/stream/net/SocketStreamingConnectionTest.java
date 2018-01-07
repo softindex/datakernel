@@ -61,7 +61,7 @@ public final class SocketStreamingConnectionTest {
 	@Test
 	public void test() throws Exception {
 		CompletableFuture<?> future;
-		final List<Integer> list = new ArrayList<>();
+		List<Integer> list = new ArrayList<>();
 		for (int i = 0; i < 5; i++) {
 			list.add(i);
 		}

@@ -50,9 +50,9 @@ public class SimpleProxyServerTest {
 		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 	}
 
-	public static AsyncHttpServer proxyHttpServer(final Eventloop primaryEventloop, final AsyncHttpClient httpClient) {
+	public static AsyncHttpServer proxyHttpServer(Eventloop primaryEventloop, AsyncHttpClient httpClient) {
 		AsyncServlet servlet = request -> {
-			final String path = ECHO_SERVER_PORT + request.getUrl().getPath();
+			String path = ECHO_SERVER_PORT + request.getUrl().getPath();
 			return httpClient.send(HttpRequest.get("http://127.0.0.1:" + path)).thenApply(result -> {
 				int code = result.getCode();
 				byte[] body = encodeAscii("FORWARDED: " + decodeAscii(result.getBody()));
@@ -87,7 +87,7 @@ public class SimpleProxyServerTest {
 		AsyncDnsClient dnsClient = AsyncDnsClient.create(eventloop2)
 				.withDatagramSocketSetting(DatagramSocketSettings.create())
 				.withDnsServerAddress(HttpUtils.inetAddress("8.8.8.8"));
-		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop2).withDnsClient(dnsClient);
+		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop2).withDnsClient(dnsClient);
 
 		AsyncHttpServer proxyServer = proxyHttpServer(eventloop2, httpClient);
 		proxyServer.listen();

@@ -27,8 +27,8 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 
 public final class GzipCompressingBehaviourExample {
 	public static void main(String[] args) throws IOException {
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
-		final MiddlewareServlet dispatcher = MiddlewareServlet.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		MiddlewareServlet dispatcher = MiddlewareServlet.create();
 
 		// always responds in gzip
 		dispatcher.with(HttpMethod.GET, "/gzip/", request -> Stages.of(HttpResponse.ok200().withBodyGzipCompression().withBody(encodeAscii("Hello!"))));
@@ -36,17 +36,17 @@ public final class GzipCompressingBehaviourExample {
 		// never responds in gzip
 		dispatcher.with(HttpMethod.GET, "/nogzip/", reques -> Stages.of(HttpResponse.ok200().withBody(encodeAscii("Hello!"))));
 
-		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, dispatcher).withListenPort(1234);
+		AsyncHttpServer server = AsyncHttpServer.create(eventloop, dispatcher).withListenPort(1234);
 
 		server.listen();
 		eventloop.run();
 
 		// this is how you should send an http request with gzipped body.
 		// if the content of the response is gzipped - it would be decompressed automatically
-		final AsyncHttpClient client = AsyncHttpClient.create(eventloop);
+		AsyncHttpClient client = AsyncHttpClient.create(eventloop);
 
 		// !sic, you should call withAcceptEncodingGzip for your request if you want to get the response gzipped
-		final HttpRequest request = HttpRequest.post("http://example.com")
+		HttpRequest request = HttpRequest.post("http://example.com")
 				.withBody(encodeAscii("Hello, world!"))
 				.withBodyGzipCompression()
 				.withAcceptEncodingGzip();

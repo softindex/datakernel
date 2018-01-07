@@ -4,15 +4,15 @@ public class OTException extends Exception {
 	public OTException() {
 	}
 
-	public OTException(final String message) {
+	public OTException(String message) {
 		super(message);
 	}
 
-	public OTException(final String message, final Throwable cause) {
+	public OTException(String message, Throwable cause) {
 		super(message, cause);
 	}
 
-	public OTException(final Throwable cause) {
+	public OTException(Throwable cause) {
 		super(cause);
 	}
 }

@@ -56,7 +56,7 @@ public class OTSystemTest {
 
 	@Test
 	public void testOtSource2() throws Exception {
-		final OTSystem<TestOp> system = createTestOp();
+		OTSystem<TestOp> system = createTestOp();
 		Comparator<String> comparator = (o1, o2) -> reverse(o1).compareTo(reverse(o2));
 		OTRemoteStub<String, TestOp> otSource = OTRemoteStub.create(TestSequence.of("m", "x", "y", "m2"), comparator);
 
@@ -142,7 +142,7 @@ public class OTSystemTest {
 
 	@Test
 	public void testOtSource3() throws Exception {
-		final OTSystem<TestOp> system = createTestOp();
+		OTSystem<TestOp> system = createTestOp();
 		Comparator<String> comparator = (o1, o2) -> reverse(o1).compareTo(reverse(o2));
 		OTRemoteStub<String, TestOp> otSource = OTRemoteStub.create(TestSequence.of("m"), comparator);
 
@@ -177,7 +177,7 @@ public class OTSystemTest {
 
 	@Test
 	public void testOtSource4() throws Exception {
-		final OTSystem<TestOp> system = createTestOp();
+		OTSystem<TestOp> system = createTestOp();
 		Comparator<String> comparator = (o1, o2) -> reverse(o1).compareTo(reverse(o2));
 		OTRemoteStub<String, TestOp> otSource = OTRemoteStub.create(TestSequence.of("m"), comparator);
 

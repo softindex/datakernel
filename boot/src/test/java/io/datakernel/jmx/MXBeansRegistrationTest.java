@@ -37,7 +37,7 @@ public class MXBeansRegistrationTest {
 
 	@Test
 	public void itShouldRegisterStandardMBeans() throws Exception {
-		final ServiceStub service = new ServiceStub();
+		ServiceStub service = new ServiceStub();
 
 		context.checking(new Expectations() {{
 			oneOf(mBeanServer).registerMBean(with(service), with(objectname(domain + ":type=ServiceStub")));
@@ -63,7 +63,7 @@ public class MXBeansRegistrationTest {
 	@Test
 	public void itShouldRegisterClassWhichImplementsMXBeanInterfaceTransivelyThroughAnotherInterface()
 			throws NotCompliantMBeanException, InstanceAlreadyExistsException, MBeanRegistrationException {
-		final ServiceTransitiveInterface service = new ServiceTransitiveInterface();
+		ServiceTransitiveInterface service = new ServiceTransitiveInterface();
 
 		context.checking(new Expectations() {{
 			oneOf(mBeanServer).registerMBean(
@@ -96,7 +96,7 @@ public class MXBeansRegistrationTest {
 	@Test
 	public void itShouldRegisterClassWhichImplementsMXBeanInterfaceTransivelyThroughAbstractClass()
 			throws NotCompliantMBeanException, InstanceAlreadyExistsException, MBeanRegistrationException {
-		final ServiceTransitiveClass service = new ServiceTransitiveClass();
+		ServiceTransitiveClass service = new ServiceTransitiveClass();
 
 		context.checking(new Expectations() {{
 			oneOf(mBeanServer).registerMBean(
@@ -125,7 +125,7 @@ public class MXBeansRegistrationTest {
 	@Test
 	public void itShouldRegisterClassWhichImplementsInterfaceAnnotatedWithMXBean()
 			throws NotCompliantMBeanException, InstanceAlreadyExistsException, MBeanRegistrationException {
-		final ServiceWithMXBeanInterfaceAnnotation service = new ServiceWithMXBeanInterfaceAnnotation();
+		ServiceWithMXBeanInterfaceAnnotation service = new ServiceWithMXBeanInterfaceAnnotation();
 
 		context.checking(new Expectations() {{
 			oneOf(mBeanServer).registerMBean(

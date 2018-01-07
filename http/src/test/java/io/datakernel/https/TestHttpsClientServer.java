@@ -73,13 +73,13 @@ public class TestHttpsClientServer {
 
 	@Test
 	public void testClientServerInteraction() throws Exception {
-		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, bobServlet)
+		AsyncHttpServer server = AsyncHttpServer.create(eventloop, bobServlet)
 				.withSslListenPort(createSslContext("TLSv1.2", keyManagers, trustManagers, new SecureRandom()), executor, SSL_PORT);
 
-		final AsyncDnsClient dnsClient = AsyncDnsClient.create(eventloop)
+		AsyncDnsClient dnsClient = AsyncDnsClient.create(eventloop)
 				.withTimeout(500)
 				.withDnsServerAddress(GOOGLE_PUBLIC_DNS);
-		final AsyncHttpClient client = AsyncHttpClient.create(eventloop)
+		AsyncHttpClient client = AsyncHttpClient.create(eventloop)
 				.withConnectTimeout(500)
 				.withDnsClient(dnsClient)
 				.withSslEnabled(createSslContext("TLSv1.2", keyManagers, trustManagers, new SecureRandom()), executor);
@@ -88,7 +88,7 @@ public class TestHttpsClientServer {
 
 		server.listen();
 
-		final CompletableFuture<String> future = client.send(request).thenApply(httpResponse -> {
+		CompletableFuture<String> future = client.send(request).thenApply(httpResponse -> {
 			server.close();
 			client.stop();
 			return decodeAscii(httpResponse.getBody());
@@ -103,29 +103,29 @@ public class TestHttpsClientServer {
 
 	@Test
 	public void testServesTwoPortsSimultaneously() throws Exception {
-		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, bobServlet)
+		AsyncHttpServer server = AsyncHttpServer.create(eventloop, bobServlet)
 				.withSslListenPort(context, executor, SSL_PORT)
 				.withListenAddress(new InetSocketAddress("localhost", PORT));
 
-		final AsyncDnsClient dnsClient = AsyncDnsClient.create(eventloop)
+		AsyncDnsClient dnsClient = AsyncDnsClient.create(eventloop)
 				.withTimeout(500)
 				.withDnsServerAddress(GOOGLE_PUBLIC_DNS);
 
-		final AsyncHttpClient client = AsyncHttpClient.create(eventloop)
+		AsyncHttpClient client = AsyncHttpClient.create(eventloop)
 				.withDnsClient(dnsClient)
 				.withConnectTimeout(500)
 				.withSslEnabled(context, executor);
 
-		final HttpRequest httpsRequest = post("https://127.0.0.1:" + SSL_PORT).withBody(wrapAscii("Hello, I am Alice!"));
-		final HttpRequest httpRequest = post("http://127.0.0.1:" + PORT).withBody(wrapAscii("Hello, I am Alice!"));
+		HttpRequest httpsRequest = post("https://127.0.0.1:" + SSL_PORT).withBody(wrapAscii("Hello, I am Alice!"));
+		HttpRequest httpRequest = post("http://127.0.0.1:" + PORT).withBody(wrapAscii("Hello, I am Alice!"));
 
 		server.listen();
 
-		final CompletableFuture<String> httpsFuture = client.send(httpsRequest)
+		CompletableFuture<String> httpsFuture = client.send(httpsRequest)
 				.thenApply(response -> decodeAscii(response.getBody()))
 				.toCompletableFuture();
 
-		final CompletableFuture<String> httpFuture = client.send(httpRequest)
+		CompletableFuture<String> httpFuture = client.send(httpRequest)
 				.thenApply(response -> decodeAscii(response.getBody()))
 				.toCompletableFuture();
 

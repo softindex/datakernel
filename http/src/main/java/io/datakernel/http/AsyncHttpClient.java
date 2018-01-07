@@ -334,10 +334,10 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	 * @param request request for server
 	 */
 	@Override
-	public CompletionStage<HttpResponse> send(final HttpRequest request) {
+	public CompletionStage<HttpResponse> send(HttpRequest request) {
 		assert eventloop.inEventloopThread();
 		if (inspector != null) inspector.onRequest(request);
-		final String host = request.getUrl().getHost();
+		String host = request.getUrl().getHost();
 
 		return asyncDnsClient.resolve4(host).whenComplete((inetAddresses, throwable) -> {
 			if (throwable != null) {
@@ -351,9 +351,9 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		});
 	}
 
-	private CompletionStage<HttpResponse> doSend(final HttpRequest request, final InetAddress[] inetAddresses) {
-		final InetAddress inetAddress = inetAddresses[((inetAddressIdx++) & Integer.MAX_VALUE) % inetAddresses.length];
-		final InetSocketAddress address = new InetSocketAddress(inetAddress, request.getUrl().getPort());
+	private CompletionStage<HttpResponse> doSend(HttpRequest request, InetAddress[] inetAddresses) {
+		InetAddress inetAddress = inetAddresses[((inetAddressIdx++) & Integer.MAX_VALUE) % inetAddresses.length];
+		InetSocketAddress address = new InetSocketAddress(inetAddress, request.getUrl().getPort());
 
 		HttpClientConnection connection = takeKeepAliveConnection(address);
 		if (connection != null) return connection.send(request);
@@ -423,7 +423,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	@Override
 	public CompletionStage<Void> stop() {
 		checkState(eventloop.inEventloopThread());
-		final SettableStage<Void> stage = SettableStage.create();
+		SettableStage<Void> stage = SettableStage.create();
 
 		poolKeepAlive.closeAllConnections();
 		assert addresses.isEmpty();

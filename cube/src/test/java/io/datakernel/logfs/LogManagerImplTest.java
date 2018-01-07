@@ -39,19 +39,19 @@ public class LogManagerImplTest {
 
 	@Test
 	public void testConsumer() throws ExecutionException, InterruptedException {
-		final LogManager<String> logManager = LogManagerImpl.create(eventloop, logFileSystem, serializer);
-		final String testPartition = "testPartition";
+		LogManager<String> logManager = LogManagerImpl.create(eventloop, logFileSystem, serializer);
+		String testPartition = "testPartition";
 
-		final List<String> values = asList("test1", "test2", "test3");
+		List<String> values = asList("test1", "test2", "test3");
 
 		stream(ofIterable(values), ofStageWithResult(logManager.consumer(testPartition)));
 
 		eventloop.run();
 
-		final StreamConsumerWithResult<String, List<String>> listConsumer = StreamConsumers.toList();
+		StreamConsumerWithResult<String, List<String>> listConsumer = StreamConsumers.toList();
 		stream(logManager.producerStream(testPartition, new LogFile("", 0), 0, null), listConsumer);
 
-		final CompletableFuture<List<String>> listFuture = listConsumer.getResult().toCompletableFuture();
+		CompletableFuture<List<String>> listFuture = listConsumer.getResult().toCompletableFuture();
 		eventloop.run();
 		assertEquals(values, listFuture.get());
 	}
@@ -67,11 +67,11 @@ public class LogManagerImplTest {
 
 		@Override
 		public CompletionStage<LogFile> makeUniqueLogFile(String logPartition, String logName) {
-			final Map<LogFile, List<ByteBuf>> partition = partitions.computeIfAbsent(logPartition, s -> new HashMap<>());
-			final SettableStage<LogFile> stage = SettableStage.create();
+			Map<LogFile, List<ByteBuf>> partition = partitions.computeIfAbsent(logPartition, s -> new HashMap<>());
+			SettableStage<LogFile> stage = SettableStage.create();
 
 			eventloop.schedule(eventloop.currentTimeMillis() + 100, () -> {
-				final LogFile value = new LogFile(logName, partition.size());
+				LogFile value = new LogFile(logName, partition.size());
 				partition.put(value, new ArrayList<>());
 				stage.set(value);
 			});
@@ -86,15 +86,15 @@ public class LogManagerImplTest {
 
 		@Override
 		public CompletionStage<StreamProducerWithResult<ByteBuf, Void>> read(String logPartition, LogFile logFile, long startPosition) {
-			final List<ByteBuf> byteBufs = getOffset(partitions.get(logPartition).get(logFile), startPosition);
-			final StreamProducer<ByteBuf> producer = ofIterable(byteBufs);
+			List<ByteBuf> byteBufs = getOffset(partitions.get(logPartition).get(logFile), startPosition);
+			StreamProducer<ByteBuf> producer = ofIterable(byteBufs);
 			return Stages.of(StreamProducers.withEndOfStreamAsResult(producer));
 		}
 
 		private static List<ByteBuf> getOffset(List<ByteBuf> byteBufs, long startPosition) {
 			if (startPosition == 0) return byteBufs;
 
-			final ArrayList<ByteBuf> offset = new ArrayList<>();
+			ArrayList<ByteBuf> offset = new ArrayList<>();
 			for (ByteBuf byteBuf : byteBufs) {
 				if (startPosition == 0) {
 					offset.add(byteBuf);
@@ -112,7 +112,7 @@ public class LogManagerImplTest {
 
 		@Override
 		public CompletionStage<StreamConsumerWithResult<ByteBuf, Void>> write(String logPartition, LogFile logFile) {
-			final StreamConsumerWithResult<ByteBuf, List<ByteBuf>> listConsumer = StreamConsumers.toList();
+			StreamConsumerWithResult<ByteBuf, List<ByteBuf>> listConsumer = StreamConsumers.toList();
 			listConsumer.getResult().thenAccept(byteBufs -> partitions.get(logPartition).get(logFile).addAll(byteBufs));
 			return Stages.of(StreamConsumers.withEndOfStreamAsResult(listConsumer));
 		}

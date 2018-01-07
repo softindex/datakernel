@@ -273,7 +273,7 @@ public class MiddlewareServletTest {
 					+ " " + request.getPathParameter("uid")
 					+ " " + request.getPathParameter("eid");
 			ByteBuf bodyByteBuf = ByteBufStrings.wrapUtf8(body);
-			final HttpResponse httpResponse = HttpResponse.ofCode(200).withBody(bodyByteBuf);
+			HttpResponse httpResponse = HttpResponse.ofCode(200).withBody(bodyByteBuf);
 			request.recycleBufs();
 			return Stages.of(httpResponse);
 		};
@@ -285,7 +285,7 @@ public class MiddlewareServletTest {
 		System.out.println("Parameter test " + DELIM);
 		main.serve(HttpRequest.get("http://www.coursera.org/123/a/456/b/789")).whenComplete(assertResult("123 456 789", 200));
 		main.serve(HttpRequest.get("http://www.coursera.org/555/a/777")).whenComplete(assertResult("555 777 null", 200));
-		final HttpRequest request = HttpRequest.get("http://www.coursera.org");
+		HttpRequest request = HttpRequest.get("http://www.coursera.org");
 		main.serve(request).whenComplete(assertResult("", 404));
 		System.out.println();
 		eventloop.run();
@@ -357,7 +357,7 @@ public class MiddlewareServletTest {
 	@Test
 	public void testDefault() throws ParseException {
 		AsyncServlet def = request -> {
-			final ByteBuf body = ByteBufStrings.wrapUtf8("Stopped at admin: " + request.getPartialPath());
+			ByteBuf body = ByteBufStrings.wrapUtf8("Stopped at admin: " + request.getPartialPath());
 			request.recycleBufs();
 			return Stages.of(HttpResponse.ofCode(200).withBody(body));
 		};
@@ -392,7 +392,7 @@ public class MiddlewareServletTest {
 				.with("/a/:id/b/d", servlet);
 
 		System.out.println("404 " + DELIM);
-		final HttpRequest request = HttpRequest.get(TEMPLATE + "/a/123/b/c");
+		HttpRequest request = HttpRequest.get(TEMPLATE + "/a/123/b/c");
 		main.serve(request).whenComplete(assertResult("", 404));
 		System.out.println();
 		eventloop.run();
@@ -409,7 +409,7 @@ public class MiddlewareServletTest {
 		MiddlewareServlet main = MiddlewareServlet.create()
 				.with(GET, "/a/:id/b/d", servlet);
 
-		final HttpRequest request = HttpRequest.post(TEMPLATE + "/a/123/b/d");
+		HttpRequest request = HttpRequest.post(TEMPLATE + "/a/123/b/d");
 		main.serve(request).whenComplete(assertResult("", 405));
 		eventloop.run();
 		request.recycleBufs();

@@ -51,7 +51,7 @@ final class Utils {
 		}
 	}
 
-	public static <T> Iterable<T> concat(final Iterable<? extends Iterable<T>> iterables) {
+	public static <T> Iterable<T> concat(Iterable<? extends Iterable<T>> iterables) {
 		return new Iterable<T>() {
 			@Override
 			public Iterator<T> iterator() {

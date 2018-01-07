@@ -245,7 +245,7 @@ public final class EventloopStats {
 		private final ScheduledTaskStats scheduled;
 		private final ScheduledTaskStats background;
 
-		public Tasks(double smoothingWindow, final Eventloop.ExtraStatsExtractor extraStatsExtractor) {
+		public Tasks(double smoothingWindow, Eventloop.ExtraStatsExtractor extraStatsExtractor) {
 			local = new TaskStats(smoothingWindow, new Count() {
 				@Override
 				public int getCount() {

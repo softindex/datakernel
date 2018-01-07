@@ -4,15 +4,15 @@ public class OTTransformException extends OTException {
 	public OTTransformException() {
 	}
 
-	public OTTransformException(final String message) {
+	public OTTransformException(String message) {
 		super(message);
 	}
 
-	public OTTransformException(final String message, final Throwable cause) {
+	public OTTransformException(String message, Throwable cause) {
 		super(message, cause);
 	}
 
-	public OTTransformException(final Throwable cause) {
+	public OTTransformException(Throwable cause) {
 		super(cause);
 	}
 }

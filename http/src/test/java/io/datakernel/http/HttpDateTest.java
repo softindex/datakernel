@@ -64,10 +64,10 @@ public class HttpDateTest {
 
 	@Test
 	public void testDateWithShortYear() throws ParseException {
-		final String date = "Thu, 01 Jan 15 00:00:00 GMT";
+		String date = "Thu, 01 Jan 15 00:00:00 GMT";
 		long actual = HttpDate.parse(date.getBytes(Charset.forName("ISO-8859-1")), 0);
 
-		final GregorianCalendar calendar = new GregorianCalendar(2015, 0, 1);
+		GregorianCalendar calendar = new GregorianCalendar(2015, 0, 1);
 		calendar.setTimeZone(TimeZone.getTimeZone("GMT"));
 
 		assertEquals(calendar.getTime().getTime(), actual);

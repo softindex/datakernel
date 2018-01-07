@@ -159,7 +159,7 @@ public class RpcBlockingTest {
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
-	private static String blockingRequest(final RpcClient rpcClient, final String name) throws Exception {
+	private static String blockingRequest(RpcClient rpcClient, String name) throws Exception {
 		try {
 			return rpcClient.getEventloop()
 					.submit(() -> rpcClient.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT))
@@ -222,7 +222,7 @@ public class RpcBlockingTest {
 		}
 	}
 
-	private static RpcRequestHandler<HelloRequest, HelloResponse> helloServiceRequestHandler(final HelloService helloService) {
+	private static RpcRequestHandler<HelloRequest, HelloResponse> helloServiceRequestHandler(HelloService helloService) {
 		return new RpcRequestHandler<HelloRequest, HelloResponse>() {
 			@Override
 			public CompletionStage<HelloResponse> run(HelloRequest request) {

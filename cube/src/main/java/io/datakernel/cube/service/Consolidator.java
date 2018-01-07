@@ -93,15 +93,15 @@ public final class Consolidator implements EventloopJmxMBean {
 		long curRemovedChunks = 0;
 		long curRemovedChunksRecords = 0;
 
-		for (final String key : cubeDiff.keySet()) {
-			final AggregationDiff aggregationDiff = cubeDiff.get(key);
+		for (String key : cubeDiff.keySet()) {
+			AggregationDiff aggregationDiff = cubeDiff.get(key);
 			curAddedChunks += aggregationDiff.getAddedChunks().size();
-			for (final AggregationChunk aggregationChunk : aggregationDiff.getAddedChunks()) {
+			for (AggregationChunk aggregationChunk : aggregationDiff.getAddedChunks()) {
 				curAddedChunksRecords += aggregationChunk.getCount();
 			}
 
 			curRemovedChunks += aggregationDiff.getRemovedChunks().size();
-			for (final AggregationChunk aggregationChunk : aggregationDiff.getRemovedChunks()) {
+			for (AggregationChunk aggregationChunk : aggregationDiff.getRemovedChunks()) {
 				curRemovedChunksRecords += aggregationChunk.getCount();
 			}
 		}

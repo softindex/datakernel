@@ -107,7 +107,7 @@ public class WorkerNameTest {
 
 		@Provides
 		@Worker
-		Element3 workerHttpServer(Element1 eventloop, @WorkerId final int workerId,
+		Element3 workerHttpServer(Element1 eventloop, @WorkerId int workerId,
 		                          @Named("Second") Element4 unusedString) {
 			return new Element3();
 		}

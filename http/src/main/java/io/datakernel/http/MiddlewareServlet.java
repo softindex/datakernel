@@ -141,7 +141,7 @@ public class MiddlewareServlet implements AsyncServlet {
 			}
 		}
 
-		final SettableStage<HttpResponse> stage = SettableStage.create();
+		SettableStage<HttpResponse> stage = SettableStage.create();
 		ProcessResultStage processed = new ProcessResultStage(stage, ProcessResult.NOT_FOUND);
 
 		MiddlewareServlet transit = routes.get(urlPart);

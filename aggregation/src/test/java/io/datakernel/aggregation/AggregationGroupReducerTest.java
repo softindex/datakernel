@@ -51,14 +51,14 @@ public class AggregationGroupReducerTest {
 
 	@Test
 	public void test() throws ExecutionException, InterruptedException {
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		AggregationStructure structure = new AggregationStructure()
 				.withKey("word", FieldTypes.ofString())
 				.withMeasure("documents", union(ofInt()));
 
-		final List<StreamConsumer> listConsumers = new ArrayList<>();
-		final List items = new ArrayList();
+		List<StreamConsumer> listConsumers = new ArrayList<>();
+		List items = new ArrayList();
 		AggregationChunkStorage aggregationChunkStorage = new AggregationChunkStorage() {
 			long chunkId;
 

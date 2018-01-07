@@ -87,7 +87,7 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 		@SuppressWarnings("unchecked")
 		@Override
 		public <I, O> CompletionStage<O> sendRequest(I request, int timeout) {
-			final SettableStage<O> stage = SettableStage.create();
+			SettableStage<O> stage = SettableStage.create();
 			FirstResultHandler<O> resultHandler = new FirstResultHandler<>(stage,
 					(ResultValidator<O>) resultValidator, subSenders.length, noValidResultException);
 			for (RpcSender sender : subSenders) {

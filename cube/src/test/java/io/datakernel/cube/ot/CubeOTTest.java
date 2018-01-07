@@ -65,22 +65,22 @@ public class CubeOTTest {
 
 	@Test
 	public void test() throws OTTransformException {
-		final LogFile logFile = new LogFile("file", 1);
-		final List<String> fields = asList("field1", "field2");
-		final LogDiff<CubeDiff> changesLeft = LogDiff.of(
+		LogFile logFile = new LogFile("file", 1);
+		List<String> fields = asList("field1", "field2");
+		LogDiff<CubeDiff> changesLeft = LogDiff.of(
 				singletonMap("clicks", positionDiff(logFile, 0, 10)),
 				cubeDiff("key", chunk(1, fields, ofArray("str", 10), ofArray("str", 20), 15)));
 
-		final LogDiff<CubeDiff> changesRight = LogDiff.of(
+		LogDiff<CubeDiff> changesRight = LogDiff.of(
 				singletonMap("clicks", positionDiff(logFile, 0, 20)),
 				cubeDiff("key", chunk(1, fields, ofArray("str", 10), ofArray("str", 25), 30)));
-		final TransformResult<LogDiff<CubeDiff>> transform = logSystem.transform(changesLeft, changesRight);
+		TransformResult<LogDiff<CubeDiff>> transform = logSystem.transform(changesLeft, changesRight);
 
 		assertTrue(transform.hasConflict());
 		assertEquals(ConflictResolution.RIGHT, transform.resolution);
 		assertThat(transform.right, IsEmptyCollection.empty());
 
-		final LogDiff<CubeDiff> result = LogDiff.of(
+		LogDiff<CubeDiff> result = LogDiff.of(
 				singletonMap("clicks", positionDiff(logFile, 10, 20)),
 				cubeDiff("key", addedChunks(changesRight.diffs), addedChunks(changesLeft.diffs)));
 

@@ -98,7 +98,7 @@ public final class MeasureHyperLogLog extends Measure {
 		return add(accumulator, nextValue);
 	}
 
-	private static Expression add(final Expression accumulator, final Expression value) {
+	private static Expression add(Expression accumulator, Expression value) {
 		return new Expression() {
 			@Override
 			public Type type(Context ctx) {

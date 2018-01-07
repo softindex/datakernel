@@ -33,7 +33,7 @@ public final class Datasets {
 	private Datasets() {
 	}
 
-	public static <K, T> SortedDataset<K, T> castToSorted(final Dataset<T> dataset, Class<K> keyType,
+	public static <K, T> SortedDataset<K, T> castToSorted(Dataset<T> dataset, Class<K> keyType,
 	                                                      Function<T, K> keyFunction, Comparator<K> keyComparator) {
 		return new SortedDataset<K, T>(dataset.valueType(), keyComparator, keyType, keyFunction) {
 			@Override
@@ -43,7 +43,7 @@ public final class Datasets {
 		};
 	}
 
-	public static <K, T> SortedDataset<K, T> castToSorted(final LocallySortedDataset<K, T> dataset) {
+	public static <K, T> SortedDataset<K, T> castToSorted(LocallySortedDataset<K, T> dataset) {
 		return new SortedDataset<K, T>(dataset.valueType(), dataset.keyComparator(), dataset.keyType(),
 				dataset.keyFunction()) {
 			@Override
@@ -63,7 +63,7 @@ public final class Datasets {
 		return new DatasetMap<>(dataset, mapper, resultType);
 	}
 
-	public static <I, O> Dataset<O> map(Dataset<I> dataset, final Function<I, O> function, Class<O> resultType) {
+	public static <I, O> Dataset<O> map(Dataset<I> dataset, Function<I, O> function, Class<O> resultType) {
 		return map(dataset,
 				new StreamMap.MapperProjection<I, O>() {
 					@Override

@@ -55,7 +55,7 @@ public abstract class AbstractStreamReducer<K, O, A> implements HasOutput<O>, Ha
 	 *
 	 * @param keyComparator comparator for compare keys
 	 */
-	public AbstractStreamReducer(final Comparator<K> keyComparator) {
+	public AbstractStreamReducer(Comparator<K> keyComparator) {
 		this.output = new Output();
 		this.priorityQueue = new PriorityQueue<>(1, (o1, o2) -> {
 			int compare = ((Comparator) keyComparator).compare(o1.headKey, o2.headKey);

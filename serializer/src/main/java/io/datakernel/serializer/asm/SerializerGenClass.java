@@ -329,7 +329,7 @@ public class SerializerGenClass implements SerializerGen {
 		}
 
 		List<Expression> list = new ArrayList<>();
-		final Map<String, Expression> map = new HashMap<>();
+		Map<String, Expression> map = new HashMap<>();
 		for (String fieldName : fields.keySet()) {
 			FieldGen fieldGen = fields.get(fieldName);
 
@@ -400,7 +400,7 @@ public class SerializerGenClass implements SerializerGen {
 		Expression[] param = new Expression[factoryParams.size()];
 		int i = 0;
 		for (String fieldName : factoryParams) {
-			final FieldGen fieldGen = fields.get(fieldName);
+			FieldGen fieldGen = fields.get(fieldName);
 			checkNotNull(fieldGen, "Field '%s' is not found in '%s'", fieldName, factory);
 			if (fieldGen.hasVersion(version)) {
 				param[i++] = map.get(fieldName);
@@ -411,7 +411,7 @@ public class SerializerGenClass implements SerializerGen {
 		return callStatic(factory.getDeclaringClass(), factory.getName(), param);
 	}
 
-	private Expression callConstructor(Class<?> targetType, final Map<String, Expression> map, int version) {
+	private Expression callConstructor(Class<?> targetType, Map<String, Expression> map, int version) {
 		Expression[] param;
 		if (constructorParams == null) {
 			param = new Expression[0];
@@ -434,7 +434,7 @@ public class SerializerGenClass implements SerializerGen {
 	}
 
 	private Expression deserializeInterface(Class<?> targetType,
-	                                        final int version,
+	                                        int version,
 	                                        SerializerBuilder.StaticMethods staticMethods,
 	                                        CompatibilityLevel compatibilityLevel) {
 		ClassBuilder<?> asmFactory = ClassBuilder.create(staticMethods.getDefiningClassLoader(), targetType);
@@ -470,7 +470,7 @@ public class SerializerGenClass implements SerializerGen {
 		return sequence(list);
 	}
 
-	private Expression deserializeClassSimple(final int version,
+	private Expression deserializeClassSimple(int version,
 	                                          SerializerBuilder.StaticMethods staticMethods,
 	                                          CompatibilityLevel compatibilityLevel) {
 		Expression local = let(constructor(this.getRawType()));

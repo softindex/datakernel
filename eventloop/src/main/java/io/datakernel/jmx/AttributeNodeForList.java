@@ -140,12 +140,12 @@ final class AttributeNodeForList extends AttributeNodeForLeafAbstract {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public List<JmxRefreshable> getAllRefreshables(final Object source) {
+	public List<JmxRefreshable> getAllRefreshables(Object source) {
 		if (!isListOfJmxRefreshables) {
 			return emptyList();
 		}
 
-		final List<JmxRefreshable> listRef = (List<JmxRefreshable>) fetcher.fetchFrom(source);
+		List<JmxRefreshable> listRef = (List<JmxRefreshable>) fetcher.fetchFrom(source);
 		return Collections.<JmxRefreshable>singletonList(new JmxRefreshable() {
 			@Override
 			public void refresh(long timestamp) {

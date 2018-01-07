@@ -45,7 +45,7 @@ public class StreamConsumerToList<T> extends AbstractStreamConsumer<T> implement
 		return oneByOne(new ArrayList<T>());
 	}
 
-	public static <T> StreamConsumerToList<T> randomlySuspending(List<T> list, final Random random) {
+	public static <T> StreamConsumerToList<T> randomlySuspending(List<T> list, Random random) {
 		return new StreamConsumerToList<T>(list) {
 			@Override
 			public void onData(T item) {

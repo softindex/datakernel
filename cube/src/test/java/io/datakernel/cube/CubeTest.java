@@ -139,7 +139,7 @@ public class CubeTest {
 	private static final int LISTEN_PORT = 45578;
 
 	private RemoteFsServer prepareServer(Eventloop eventloop, Path serverStorage) throws IOException {
-		final ExecutorService executor = newCachedThreadPool();
+		ExecutorService executor = newCachedThreadPool();
 		RemoteFsServer fileServer = RemoteFsServer.create(eventloop, executor, serverStorage)
 				.withListenAddress(new InetSocketAddress("localhost", LISTEN_PORT));
 		fileServer.listen();
@@ -153,13 +153,13 @@ public class CubeTest {
 	@Test
 	public void testRemoteFsAggregationStorage() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		Path serverStorage = temporaryFolder.newFolder("storage").toPath();
-		final RemoteFsServer remoteFsServer1 = prepareServer(eventloop, serverStorage);
+		RemoteFsServer remoteFsServer1 = prepareServer(eventloop, serverStorage);
 
 		AggregationChunkStorage chunkStorage = RemoteFsChunkStorage.create(eventloop, new IdGeneratorStub(), new InetSocketAddress("localhost", LISTEN_PORT));
-		final Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
+		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
 		List<CompletionStage<Void>> tasks = new ArrayList<>();
 		{
@@ -188,7 +188,7 @@ public class CubeTest {
 
 		eventloop.run();
 
-		final RemoteFsServer remoteFsServer2 = prepareServer(eventloop, serverStorage);
+		RemoteFsServer remoteFsServer2 = prepareServer(eventloop, serverStorage);
 		Future<List<DataItemResult>> future = stream(
 				cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"),
 						and(eq("key1", 1), eq("key2", 3)),
@@ -663,11 +663,11 @@ public class CubeTest {
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testUnknownDimensions() throws IOException {
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
-		final AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(),
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(),
 				new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 
-		final Cube cube = newCube(eventloop, newCachedThreadPool(), DefiningClassLoader.create(), chunkStorage);
+		Cube cube = newCube(eventloop, newCachedThreadPool(), DefiningClassLoader.create(), chunkStorage);
 
 		cube.consume(DataItem1.class,
 				AggregationUtils.streamToLinkedMap(Stream.of("unknownKey"), o -> o),
@@ -677,11 +677,11 @@ public class CubeTest {
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testUnknownMeasure() throws IOException {
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
-		final AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(),
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(),
 				new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 
-		final Cube cube = newCube(eventloop, newCachedThreadPool(), DefiningClassLoader.create(), chunkStorage);
+		Cube cube = newCube(eventloop, newCachedThreadPool(), DefiningClassLoader.create(), chunkStorage);
 
 		cube.consume(DataItem1.class,
 				AggregationUtils.streamToLinkedMap(Stream.of("key1", "key2"), o -> o),

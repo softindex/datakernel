@@ -84,7 +84,7 @@ public class StreamFileReaderWriterTest {
 		StreamFileReader reader = StreamFileReader.readFileFully(executor,
 				1, Paths.get("test_data/in.dat"));
 
-		final List<ByteBuf> list = new ArrayList<>();
+		List<ByteBuf> list = new ArrayList<>();
 
 		class MockConsumer extends AbstractStreamConsumer<ByteBuf> implements StreamDataReceiver<ByteBuf> {
 			@Override

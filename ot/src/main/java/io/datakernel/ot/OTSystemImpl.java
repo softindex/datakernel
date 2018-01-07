@@ -70,7 +70,7 @@ public final class OTSystemImpl<D> implements OTSystem<D> {
 
 	@SuppressWarnings("unchecked")
 	public <L extends D, R extends D> OTSystemImpl<D> withTransformFunction(Class<? super L> leftType, Class<? super R> rightType,
-	                                                                        final TransformFunction<D, L, R> transformer) {
+	                                                                        TransformFunction<D, L, R> transformer) {
 		this.transformers.put(new KeyPair(leftType, rightType), transformer);
 		if (leftType != rightType) {
 			this.transformers.put(new KeyPair(rightType, leftType), (TransformFunction<D, R, L>) (left, right) -> {

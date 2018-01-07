@@ -112,8 +112,8 @@ public class AggregationUtils {
 				.buildClassAndCreateNewInstance();
 	}
 
-	public static StreamMap.MapperProjection createMapper(final Class<?> recordClass, final Class<?> resultClass,
-	                                                      final List<String> keys, final List<String> fields,
+	public static StreamMap.MapperProjection createMapper(Class<?> recordClass, Class<?> resultClass,
+	                                                      List<String> keys, List<String> fields,
 	                                                      DefiningClassLoader classLoader) {
 		return ClassBuilder.create(classLoader, StreamMap.MapperProjection.class)
 				.withMethod("apply", ((WithValue<Expression>) () -> {
@@ -129,8 +129,8 @@ public class AggregationUtils {
 				.buildClassAndCreateNewInstance();
 	}
 
-	public static Function createKeyFunction(final Class<?> recordClass, final Class<?> keyClass,
-	                                         final List<String> keys,
+	public static Function createKeyFunction(Class<?> recordClass, Class<?> keyClass,
+	                                         List<String> keys,
 	                                         DefiningClassLoader classLoader) {
 		return ClassBuilder.create(classLoader, Function.class)
 				.withMethod("apply", ((WithValue<Expression>) () -> {
@@ -157,7 +157,7 @@ public class AggregationUtils {
 
 	public static Class<?> createRecordClass(Map<String, FieldType> keys, Map<String, FieldType> fields,
 	                                         DefiningClassLoader classLoader) {
-		final ArrayList list = new ArrayList<>();
+		ArrayList list = new ArrayList<>();
 		list.addAll(keys.keySet());
 		list.addAll(fields.keySet());
 
@@ -367,19 +367,19 @@ public class AggregationUtils {
 	}
 
 	public static <K, V> Map<K, V> streamToLinkedMap(Stream<K> collection, Function<K, V> function) {
-		final LinkedHashMap<K, V> map = new LinkedHashMap<>();
+		LinkedHashMap<K, V> map = new LinkedHashMap<>();
 		collection.forEach(k -> map.put(k, function.apply(k)));
 		return map;
 	}
 
 	public static <K, V, T> Map<K, V> transformValuesToLinkedMap(Stream<Entry<K, T>> stream, Function<T, V> function) {
-		final LinkedHashMap<K, V> map = new LinkedHashMap<>();
+		LinkedHashMap<K, V> map = new LinkedHashMap<>();
 		stream.forEach(entry -> map.put(entry.getKey(), function.apply(entry.getValue())));
 		return map;
 	}
 
 	public static <K, V> Map<K, V> valuesToLinkedMap(Stream<Entry<K, V>> stream) {
-		final LinkedHashMap<K, V> map = new LinkedHashMap<>();
+		LinkedHashMap<K, V> map = new LinkedHashMap<>();
 		stream.forEach(entry -> map.put(entry.getKey(), entry.getValue()));
 		return map;
 	}

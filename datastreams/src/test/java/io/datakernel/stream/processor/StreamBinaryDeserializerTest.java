@@ -129,19 +129,19 @@ public class StreamBinaryDeserializerTest {
 
 	@Test(expected = ParseException.class)
 	public void deserializeTruncatedMessageOnEndOfStream() throws Throwable {
-		final Data data = new Data("a");
-		final StreamConsumerToList<ByteBuf> bufferConsumer = StreamConsumerToList.create();
+		Data data = new Data("a");
+		StreamConsumerToList<ByteBuf> bufferConsumer = StreamConsumerToList.create();
 
 		stream(StreamProducers.of(data), serializer.getInput());
 		stream(serializer.getOutput(), bufferConsumer);
 		eventloop.run();
 
-		final List<ByteBuf> buffers = bufferConsumer.getList();
+		List<ByteBuf> buffers = bufferConsumer.getList();
 		System.out.println(buffers);
 		assertEquals(1, buffers.size());
 
-		final StreamConsumerToList<Data> consumer = StreamConsumerToList.create();
-		final CompletableFuture<List<Data>> future = consumer.getResult().toCompletableFuture();
+		StreamConsumerToList<Data> consumer = StreamConsumerToList.create();
+		CompletableFuture<List<Data>> future = consumer.getResult().toCompletableFuture();
 		stream(StreamProducers.of(buffers.get(0).slice(3)), deserializer.getInput());
 		stream(deserializer.getOutput(), consumer);
 		eventloop.run();

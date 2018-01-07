@@ -311,7 +311,7 @@ public class ByteBuf {
 	}
 
 	public byte[] getRemainingArray() {
-		final byte[] bytes = new byte[readRemaining()];
+		byte[] bytes = new byte[readRemaining()];
 		System.arraycopy(array, readPosition, bytes, 0, bytes.length);
 		return bytes;
 	}

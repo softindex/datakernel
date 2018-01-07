@@ -46,7 +46,7 @@ public class UiKernelServlets {
 				.with(GET, "/:" + ID_PARAMETER_NAME, get(model, gson));
 	}
 
-	public static <K, R extends AbstractRecord<K>> AsyncServlet read(final GridModel<K, R> model, final Gson gson) {
+	public static <K, R extends AbstractRecord<K>> AsyncServlet read(GridModel<K, R> model, Gson gson) {
 		return request -> {
 			try {
 
@@ -61,7 +61,7 @@ public class UiKernelServlets {
 		};
 	}
 
-	public static <K, R extends AbstractRecord<K>> AsyncServlet get(final GridModel<K, R> model, final Gson gson) {
+	public static <K, R extends AbstractRecord<K>> AsyncServlet get(GridModel<K, R> model, Gson gson) {
 		return request -> {
 			try {
 
@@ -77,7 +77,7 @@ public class UiKernelServlets {
 		};
 	}
 
-	public static <K, R extends AbstractRecord<K>> AsyncServlet create(final GridModel<K, R> model, final Gson gson) {
+	public static <K, R extends AbstractRecord<K>> AsyncServlet create(GridModel<K, R> model, Gson gson) {
 		return request -> {
 			try {
 				String json = ByteBufStrings.decodeUtf8(request.getBody());
@@ -90,7 +90,7 @@ public class UiKernelServlets {
 		};
 	}
 
-	public static <K, R extends AbstractRecord<K>> AsyncServlet update(final GridModel<K, R> model, final Gson gson) {
+	public static <K, R extends AbstractRecord<K>> AsyncServlet update(GridModel<K, R> model, Gson gson) {
 		return request -> {
 			try {
 				String json = ByteBufStrings.decodeUtf8(request.getBody());
@@ -103,7 +103,7 @@ public class UiKernelServlets {
 		};
 	}
 
-	public static <K, R extends AbstractRecord<K>> AsyncServlet delete(final GridModel<K, R> model, final Gson gson) {
+	public static <K, R extends AbstractRecord<K>> AsyncServlet delete(GridModel<K, R> model, Gson gson) {
 		return request -> {
 			try {
 				K id = fromJson(gson, request.getPathParameter("id"), model.getIdType());

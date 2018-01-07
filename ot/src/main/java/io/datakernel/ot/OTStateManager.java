@@ -45,7 +45,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 	}
 
 	private static <D> List<D> concatLists(List<D> a, List<D> b) {
-		final List<D> diffs = new ArrayList<>(a.size() + b.size());
+		List<D> diffs = new ArrayList<>(a.size() + b.size());
 		diffs.addAll(a);
 		diffs.addAll(b);
 		return diffs;
@@ -106,7 +106,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 
 	private CompletionStage<K> doFetch() {
 		logger.info("Start fetch with fetched revision and current revision: {}, {}", fetchedRevision, revision);
-		final K fetchedRevisionCopy = this.fetchedRevision;
+		K fetchedRevisionCopy = this.fetchedRevision;
 
 		if (pendingCommits.containsKey(fetchedRevisionCopy)) {
 			logger.info("Try do fetch before current revision was pushed");
@@ -128,7 +128,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 												"revision: %s, %s, heads: %s", fetchedRevisionCopy, revision, heads)));
 							}
 
-							final List<D> diffs = concatLists(fetchedDiffs, findResult.getAccumulator());
+							List<D> diffs = concatLists(fetchedDiffs, findResult.getAccumulator());
 							fetchedDiffs = otSystem.squash(diffs);
 							fetchedRevision = findResult.getChild();
 
@@ -159,7 +159,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 			logger.info("Pending commits is not empty, ignore pull");
 			return Stages.of(false);
 		}
-		final K revisionCopy = getRevision();
+		K revisionCopy = getRevision();
 		return findParentCommits(pullRevision, revisionCopy, commit -> commit.getId().equals(revisionCopy))
 				.thenCompose(find -> {
 					if (!find.isFound()) {
@@ -229,7 +229,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 			logger.info("Pending commit is not empty, ignore push");
 			return Stages.of(null);
 		}
-		final List<OTCommit<K, D>> list = new ArrayList<>(pendingCommits.values());
+		List<OTCommit<K, D>> list = new ArrayList<>(pendingCommits.values());
 		logger.info("Push commits, fetched and current revision: {}, {}", fetchedRevision, revision);
 		return source.push(list).thenAccept($ -> {
 			list.forEach(commit -> pendingCommits.remove(commit.getId()));
@@ -303,7 +303,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 	public CompletionStage<K> mergeHeadsAndPush() {
 		logger.trace("mergeHeadsAndPush, revision: {}, fetched revision: {}", revision, fetchedRevision);
 
-		final Stopwatch sw = Stopwatch.createStarted();
+		Stopwatch sw = Stopwatch.createStarted();
 		return OTUtils.mergeHeadsAndPush(otSystem, source, comparator)
 				.whenComplete((k, throwable) -> {
 					if (throwable == null) {

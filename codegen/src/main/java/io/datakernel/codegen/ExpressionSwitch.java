@@ -79,7 +79,7 @@ final class ExpressionSwitch implements Expression {
 		if (defaultExp != null) {
 			defaultExp.load(ctx);
 		} else {
-			final Variable sb = let(constructor(StringBuilder.class));
+			Variable sb = let(constructor(StringBuilder.class));
 			call(sb, "append", value("Key '")).load(ctx);
 			call(sb, "append", cast(varReadedSubClass, getType(int.class))).load(ctx);
 			call(sb, "append", value(String.format("' not in range [0-%d)", list.size()))).load(ctx);

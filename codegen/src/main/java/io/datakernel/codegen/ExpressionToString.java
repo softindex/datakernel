@@ -81,7 +81,7 @@ public final class ExpressionToString implements Expression {
 
 	@Override
 	public Type load(Context ctx) {
-		final GeneratorAdapter g = ctx.getGeneratorAdapter();
+		GeneratorAdapter g = ctx.getGeneratorAdapter();
 
 		g.newInstance(getType(StringBuilder.class));
 		g.dup();
@@ -103,13 +103,13 @@ public final class ExpressionToString implements Expression {
 			}
 
 			g.dup();
-			final Expression expression = arguments.get(key);
-			final Type type = expression.load(ctx);
+			Expression expression = arguments.get(key);
+			Type type = expression.load(ctx);
 			if (isPrimitiveType(type)) {
 				g.invokeStatic(wrap(type), new Method("toString", getType(String.class), new Type[]{type}));
 			} else {
-				final Label nullLabel = new Label();
-				final Label afterToString = new Label();
+				Label nullLabel = new Label();
+				Label afterToString = new Label();
 				g.dup();
 				g.ifNull(nullLabel);
 				g.invokeVirtual(type, getMethod("String toString()"));

@@ -93,16 +93,16 @@ public class HttpCookieTest {
 
 	@Test
 	public void testParse() throws ParseException {
-		final String cookieName = "HMECOMDIC";
-		final String cookieValue = "{\"osVersion\":\"x86_64\",\"deviceOs\":\"Linux\",\"deviceType\":\"DESKTOP\"}";
-		final byte[] bytes = ByteBufStrings.encodeAscii(cookieName + "=" + cookieValue);
+		String cookieName = "HMECOMDIC";
+		String cookieValue = "{\"osVersion\":\"x86_64\",\"deviceOs\":\"Linux\",\"deviceType\":\"DESKTOP\"}";
+		byte[] bytes = ByteBufStrings.encodeAscii(cookieName + "=" + cookieValue);
 
-		final ArrayList<HttpCookie> cookies = new ArrayList<>();
+		ArrayList<HttpCookie> cookies = new ArrayList<>();
 		HttpCookie.parse(bytes, 0, bytes.length, cookies);
 
 		assertEquals(1, cookies.size());
 
-		final HttpCookie cookie = cookies.iterator().next();
+		HttpCookie cookie = cookies.iterator().next();
 
 		assertEquals(cookieName, cookie.getName());
 		assertEquals(cookieValue, cookie.getValue());

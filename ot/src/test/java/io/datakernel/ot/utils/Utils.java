@@ -54,7 +54,7 @@ public class Utils {
 				jsonWriter.value(((TestAdd) testOp).getDelta());
 			} else {
 				jsonWriter.name("set");
-				final TestSet testSet = (TestSet) testOp;
+				TestSet testSet = (TestSet) testOp;
 				jsonWriter.beginArray();
 				jsonWriter.value(testSet.getPrev());
 				jsonWriter.value(testSet.getNext());
@@ -67,13 +67,13 @@ public class Utils {
 		public TestOp read(JsonReader jsonReader) throws IOException {
 			jsonReader.beginObject();
 			TestOp testOp;
-			final String name = jsonReader.nextName();
+			String name = jsonReader.nextName();
 			if (name.equals("add")) {
 				testOp = new TestAdd(jsonReader.nextInt());
 			} else {
 				jsonReader.beginArray();
-				final int prev = jsonReader.nextInt();
-				final int next = jsonReader.nextInt();
+				int prev = jsonReader.nextInt();
+				int next = jsonReader.nextInt();
 				jsonReader.endArray();
 				testOp = new TestSet(prev, next);
 			}

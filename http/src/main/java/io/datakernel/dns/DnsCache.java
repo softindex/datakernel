@@ -134,12 +134,12 @@ final class DnsCache {
 			case SOFT_TTL_EXPIRED: {
 				if (logger.isDebugEnabled())
 					logger.debug("Soft TTL expired for host: {}", domainName);
-				final CompletionStage<InetAddress[]> stage = returnResultThroughStage(domainName, cachedResult);
+				CompletionStage<InetAddress[]> stage = returnResultThroughStage(domainName, cachedResult);
 				return new DnsCacheResultStage<>(stage, DnsCacheQueryResult.RESOLVED_NEEDS_REFRESHING);
 			}
 
 			default: {
-				final CompletionStage<InetAddress[]> stage = returnResultThroughStage(domainName, cachedResult);
+				CompletionStage<InetAddress[]> stage = returnResultThroughStage(domainName, cachedResult);
 				return new DnsCacheResultStage<>(stage, DnsCacheQueryResult.RESOLVED);
 			}
 		}

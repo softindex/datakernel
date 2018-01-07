@@ -20,7 +20,10 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Predicate;
 
 import static io.datakernel.utils.GraphUtils.*;
@@ -36,16 +39,16 @@ public class CubeGraphExample {
 	}
 
 	public static void main(String[] args) throws IOException, ExecutionException, InterruptedException {
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
-		final DataSource dataSource = dataSource("cube/test.properties");
-		final ExecutorService executor = Executors.newFixedThreadPool(4);
-		final TypeAdapter<LogDiff<CubeDiff>> diffAdapter = skipReadAdapter(() -> LogDiff.of(emptyMap(), emptyList()));
-		final OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
-		final OTRemoteSql<LogDiff<CubeDiff>> otRemoteSql = OTRemoteSql.create(executor, dataSource, otSystem, diffAdapter);
-		final AsyncFunction<Integer, OTCommit<Integer, LogDiff<CubeDiff>>> loader = createLoader(otRemoteSql);
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+		DataSource dataSource = dataSource("cube/test.properties");
+		ExecutorService executor = Executors.newFixedThreadPool(4);
+		TypeAdapter<LogDiff<CubeDiff>> diffAdapter = skipReadAdapter(() -> LogDiff.of(emptyMap(), emptyList()));
+		OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
+		OTRemoteSql<LogDiff<CubeDiff>> otRemoteSql = OTRemoteSql.create(executor, dataSource, otSystem, diffAdapter);
+		AsyncFunction<Integer, OTCommit<Integer, LogDiff<CubeDiff>>> loader = createLoader(otRemoteSql);
 
-		final StringBuilder sb = new StringBuilder();
-		final CompletableFuture<Void> future = otRemoteSql.getHeads()
+		StringBuilder sb = new StringBuilder();
+		CompletableFuture<Void> future = otRemoteSql.getHeads()
 				.thenCompose(heads -> visitNodes(loader, dotSqlProcessor(otRemoteSql, sb),
 						CubeGraphExample::getParents, visitOnceTill(1), heads))
 				.thenCompose($ -> appendMerges(otRemoteSql, sb))
@@ -63,7 +66,7 @@ public class CubeGraphExample {
 	}
 
 	private static Predicate<Integer> visitOnceTill(int n) {
-		final Predicate<Integer> visitOnceFilter = visitOnceFilter();
+		Predicate<Integer> visitOnceFilter = visitOnceFilter();
 		return integer -> integer >= n && visitOnceFilter.test(integer);
 	}
 

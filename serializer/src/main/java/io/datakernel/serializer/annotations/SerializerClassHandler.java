@@ -26,7 +26,7 @@ import java.lang.reflect.InvocationTargetException;
 
 public final class SerializerClassHandler implements AnnotationHandler<SerializerClass, SerializerClassEx> {
 	@Override
-	public SerializerGenBuilder createBuilder(SerializerBuilder.Helper serializerBuilder, final SerializerClass annotation, CompatibilityLevel compatibilityLevel) {
+	public SerializerGenBuilder createBuilder(SerializerBuilder.Helper serializerBuilder, SerializerClass annotation, CompatibilityLevel compatibilityLevel) {
 		try {
 			SerializerGen serializer = annotation.value().newInstance();
 			return new SerializerGenBuilderConst(serializer);

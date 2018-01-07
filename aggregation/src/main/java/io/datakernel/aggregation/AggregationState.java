@@ -331,7 +331,7 @@ public final class AggregationState implements OTState<AggregationDiff> {
 
 	private static void logChunksAndStrategy(Collection<AggregationChunk> chunks, PickingStrategy strategy) {
 		if (logger.isInfoEnabled()) {
-			final String chunkIds = chunks.stream()
+			String chunkIds = chunks.stream()
 					.map(AggregationChunk::getChunkId)
 					.map(Object::toString)
 					.collect(Collectors.joining(",", "[", "]"));
@@ -423,8 +423,8 @@ public final class AggregationState implements OTState<AggregationDiff> {
 				minChunkKey.values(), maxChunkKey.values());
 	}
 
-	private Predicate<AggregationChunk> chunkMightContainQueryValuesPredicate(final PrimaryKey minQueryKey,
-	                                                                          final PrimaryKey maxQueryKey) {
+	private Predicate<AggregationChunk> chunkMightContainQueryValuesPredicate(PrimaryKey minQueryKey,
+	                                                                          PrimaryKey maxQueryKey) {
 		return chunk -> {
 			List<Object> queryMinValues = minQueryKey.values();
 			List<Object> queryMaxValues = maxQueryKey.values();
@@ -461,7 +461,7 @@ public final class AggregationState implements OTState<AggregationDiff> {
 
 	@SuppressWarnings("unchecked")
 	public List<AggregationChunk> findChunks(AggregationPredicate predicate, List<String> fields) {
-		final Set<String> requestedFields = new HashSet<>(fields);
+		Set<String> requestedFields = new HashSet<>(fields);
 
 		RangeScan rangeScan = toRangeScan(predicate, aggregation.getKeys(), aggregation.getKeyTypes());
 
@@ -477,7 +477,7 @@ public final class AggregationState implements OTState<AggregationDiff> {
 	}
 
 	public static <T> Set<T> intersection(Set<T> a, Set<T> b) {
-		final Set<T> set = new HashSet<>();
+		Set<T> set = new HashSet<>();
 		for (T x : a) {
 			if (b.contains(x)) set.add(x);
 		}

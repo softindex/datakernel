@@ -64,7 +64,7 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 	private void doReload() {
 		reloads++;
 		scheduledRunnable.cancel();
-		final long reloadTimestamp = getEventloop().currentTimeMillis();
+		long reloadTimestamp = getEventloop().currentTimeMillis();
 		CompletionStage<Map<K, A>> reload = reload(timestamp).whenComplete((result, throwable) -> {
 			if (throwable == null) {
 				reloadTime.recordValue((int) (getEventloop().currentTimeMillis() - reloadTimestamp));

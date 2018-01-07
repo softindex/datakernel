@@ -49,7 +49,7 @@ public class RpcStrategyShardingTest {
 		RpcSenderStub connection1 = new RpcSenderStub();
 		RpcSenderStub connection2 = new RpcSenderStub();
 		RpcSenderStub connection3 = new RpcSenderStub();
-		final int shardsAmount = 3;
+		int shardsAmount = 3;
 		ShardingFunction<Integer> shardingFunction = item -> item % shardsAmount;
 		RpcStrategy shardingStrategy = sharding(shardingFunction,
 				servers(ADDRESS_1, ADDRESS_2, ADDRESS_3));
@@ -77,11 +77,11 @@ public class RpcStrategyShardingTest {
 
 	@Test(expected = Exception.class)
 	public void itShouldCallOnExceptionOfCallbackWhenChosenServerIsNotActive() throws ExecutionException, InterruptedException {
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
 		RpcSenderStub connection2 = new RpcSenderStub();
 		RpcSenderStub connection3 = new RpcSenderStub();
-		final int shardsAmount = 3;
+		int shardsAmount = 3;
 		ShardingFunction<Integer> shardingFunction = item -> item % shardsAmount;
 		RpcStrategy shardingStrategy = sharding(shardingFunction,
 				servers(ADDRESS_1, ADDRESS_2, ADDRESS_3));
@@ -91,7 +91,7 @@ public class RpcStrategyShardingTest {
 		pool.put(ADDRESS_3, connection3);
 		RpcSender sender = shardingStrategy.createSender(pool);
 
-		final CompletableFuture<Object> future1 = sender.sendRequest(0, 50).toCompletableFuture();
+		CompletableFuture<Object> future1 = sender.sendRequest(0, 50).toCompletableFuture();
 		sender.sendRequest(1, 50);
 		sender.sendRequest(2, 50);
 

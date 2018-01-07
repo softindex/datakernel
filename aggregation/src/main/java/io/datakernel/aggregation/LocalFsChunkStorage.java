@@ -108,8 +108,8 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 	}
 
 	@Override
-	public <T> CompletionStage<StreamProducerWithResult<T, Void>> read(final AggregationStructure aggregation, final List<String> fields,
-	                                                                   final Class<T> recordClass, long id, final DefiningClassLoader classLoader) {
+	public <T> CompletionStage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields,
+	                                                                   Class<T> recordClass, long id, DefiningClassLoader classLoader) {
 		return Stages.firstComplete(
 				() -> AsyncFile.openAsync(executorService, dir.resolve(id + LOG), new OpenOption[]{READ}),
 				() -> AsyncFile.openAsync(executorService, dir.resolve(id + TEMP_LOG), new OpenOption[]{READ}),
@@ -157,8 +157,8 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 	public CompletionStage<Void> finish(Set<Long> chunkIds) {
 		return eventloop.callConcurrently(executorService, () -> {
 			for (Long chunkId : chunkIds) {
-				final Path tempLog = dir.resolve(chunkId + TEMP_LOG);
-				final Path log = dir.resolve(chunkId + LOG);
+				Path tempLog = dir.resolve(chunkId + TEMP_LOG);
+				Path log = dir.resolve(chunkId + LOG);
 				Files.setLastModifiedTime(tempLog, FileTime.fromMillis(System.currentTimeMillis()));
 				Files.move(tempLog, log, StandardCopyOption.ATOMIC_MOVE);
 			}
@@ -166,9 +166,9 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 		});
 	}
 
-	public CompletionStage<Void> backup(final String backupId, final Set<Long> chunkIds) {
+	public CompletionStage<Void> backup(String backupId, Set<Long> chunkIds) {
 		return eventloop.callConcurrently(executorService, () -> {
-			final Path tempBackupDir = backupPath.resolve(backupId + "_tmp/");
+			Path tempBackupDir = backupPath.resolve(backupId + "_tmp/");
 			Files.createDirectories(tempBackupDir);
 			for (long chunkId : chunkIds) {
 				Path target = dir.resolve(chunkId + LOG).toAbsolutePath();
@@ -176,21 +176,21 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 				Files.createLink(link, target);
 			}
 
-			final Path backupDir = backupPath.resolve(backupId + "/");
+			Path backupDir = backupPath.resolve(backupId + "/");
 			Files.move(tempBackupDir, backupDir, StandardCopyOption.ATOMIC_MOVE);
 			return null;
 		});
 	}
 
-	public CompletionStage<Void> cleanup(final Set<Long> saveChunks) {
+	public CompletionStage<Void> cleanup(Set<Long> saveChunks) {
 		return cleanupBeforeTimestamp(saveChunks, -1);
 	}
 
-	public CompletionStage<Void> cleanupBeforeTimestamp(final Set<Long> saveChunks, long timestamp) {
+	public CompletionStage<Void> cleanupBeforeTimestamp(Set<Long> saveChunks, long timestamp) {
 		return eventloop.callConcurrently(executorService, () -> {
 			logger.trace("Cleanup before timestamp, save chunks size: {}, timestamp {}", saveChunks.size(), timestamp);
 			try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
-				final List<Path> filesToDelete = new ArrayList<>();
+				List<Path> filesToDelete = new ArrayList<>();
 
 				for (Path file : stream) {
 					if (!file.toString().endsWith(LOG)) {
@@ -215,10 +215,10 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 					filesToDelete.add(file);
 				}
 
-				for (final Path file : filesToDelete) {
+				for (Path file : filesToDelete) {
 					try {
 						if (logger.isTraceEnabled()) {
-							final FileTime lastModifiedTime = Files.getLastModifiedTime(file);
+							FileTime lastModifiedTime = Files.getLastModifiedTime(file);
 							logger.trace("Delete file: {} with last modifiedTime: {}({} millis)", file,
 									lastModifiedTime, lastModifiedTime.toMillis());
 						}

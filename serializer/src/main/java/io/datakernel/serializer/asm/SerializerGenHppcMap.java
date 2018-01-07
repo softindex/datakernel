@@ -51,12 +51,12 @@ public final class SerializerGenHppcMap implements SerializerGen, NullableOptimi
 		return sb.toString();
 	}
 
-	public static SerializerGenBuilder serializerGenBuilder(final Class<?> mapType, final Class<?> keyType, final Class<?> valueType) {
+	public static SerializerGenBuilder serializerGenBuilder(Class<?> mapType, Class<?> keyType, Class<?> valueType) {
 		String prefix = toUpperCamel(keyType.getSimpleName()) + toUpperCamel(valueType.getSimpleName());
 		check(mapType.getSimpleName().startsWith(prefix), "Expected mapType '%s', but was begin '%s'", mapType.getSimpleName(), prefix);
 		return new SerializerGenBuilder() {
 			@Override
-			public SerializerGen serializer(Class<?> type, final SerializerForType[] generics, SerializerGen fallback) {
+			public SerializerGen serializer(Class<?> type, SerializerForType[] generics, SerializerGen fallback) {
 				SerializerGen keySerializer;
 				SerializerGen valueSerializer;
 				if (generics.length == 2) {
@@ -132,7 +132,7 @@ public final class SerializerGenHppcMap implements SerializerGen, NullableOptimi
 	}
 
 	@Override
-	public Expression serialize(final Expression byteArray, final Variable off, Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods, final CompatibilityLevel compatibilityLevel) {
+	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		Expression size = call(value, "size");
 		Expression length = set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, (!nullable ? size : inc(size))));
 		Expression hppcMapForEach = hppcMapForEach(iteratorType, value,
@@ -164,11 +164,11 @@ public final class SerializerGenHppcMap implements SerializerGen, NullableOptimi
 	}
 
 	@Override
-	public Expression deserialize(Class<?> targetType, final int version, final SerializerBuilder.StaticMethods staticMethods, final CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		Expression length = let(call(arg(0), "readVarInt"));
-		final Expression map = let(constructor(hashMapType));
-		final Class<?> valueType = valueSerializer.getRawType();
-		final Class<?> keyType = keySerializer.getRawType();
+		Expression map = let(constructor(hashMapType));
+		Class<?> valueType = valueSerializer.getRawType();
+		Class<?> keyType = keySerializer.getRawType();
 		Expression expressionFor = expressionFor((!nullable ? length : dec(length)), new ForVar() {
 			@Override
 			public Expression forVar(Expression it) {

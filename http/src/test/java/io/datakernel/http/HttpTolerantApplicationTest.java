@@ -47,9 +47,9 @@ public class HttpTolerantApplicationTest {
 		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 	}
 
-	public static AsyncHttpServer asyncHttpServer(final Eventloop primaryEventloop, int port) {
+	public static AsyncHttpServer asyncHttpServer(Eventloop primaryEventloop, int port) {
 		AsyncServlet servlet = request -> {
-			final SettableStage<HttpResponse> stage = SettableStage.create();
+			SettableStage<HttpResponse> stage = SettableStage.create();
 			primaryEventloop.post(() -> stage.set(HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()))));
 			return stage;
 		};
@@ -96,8 +96,8 @@ public class HttpTolerantApplicationTest {
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
-	private static ServerSocket socketServer(int port, final String testResponse) throws IOException {
-		final ServerSocket listener = new ServerSocket(port);
+	private static ServerSocket socketServer(int port, String testResponse) throws IOException {
+		ServerSocket listener = new ServerSocket(port);
 		new Thread(new Runnable() {
 			@Override
 			public void run() {
@@ -137,9 +137,9 @@ public class HttpTolerantApplicationTest {
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		try (ServerSocket ignored = socketServer(port, "HTTP/1.1 200 OK\nContent-Type:  \t  text/html; charset=UTF-8\nContent-Length:  4\n\n/abc")) {
-			final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop);
+			AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop);
 
-			final CompletableFuture<String> future = httpClient.send(HttpRequest.get("http://127.0.0.1:" + port)).thenApply(response -> {
+			CompletableFuture<String> future = httpClient.send(HttpRequest.get("http://127.0.0.1:" + port)).thenApply(response -> {
 				httpClient.stop();
 				return response.getHeader(HttpHeaders.CONTENT_TYPE);
 			}).toCompletableFuture();

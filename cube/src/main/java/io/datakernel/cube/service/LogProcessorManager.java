@@ -99,7 +99,7 @@ public class LogProcessorManager implements EventloopJmxMBean {
 
 			logger.info("Pull to commit: {}, start log processing", stateManager.getRevision());
 
-			final List<AsyncCallable<LogDiff<CubeDiff>>> tasks = processors.stream()
+			List<AsyncCallable<LogDiff<CubeDiff>>> tasks = processors.stream()
 					.map(logProcessor -> AsyncCallable.of(logProcessor::processLog))
 					.collect(toList());
 
@@ -126,17 +126,17 @@ public class LogProcessorManager implements EventloopJmxMBean {
 		long curRemovedChunks = 0;
 		long curRemovedChunksRecords = 0;
 
-		for (final LogDiff<CubeDiff> logDiff : logDiffs) {
-			for (final CubeDiff cubeDiff : logDiff.diffs) {
-				for (final String key : cubeDiff.keySet()) {
-					final AggregationDiff aggregationDiff = cubeDiff.get(key);
+		for (LogDiff<CubeDiff> logDiff : logDiffs) {
+			for (CubeDiff cubeDiff : logDiff.diffs) {
+				for (String key : cubeDiff.keySet()) {
+					AggregationDiff aggregationDiff = cubeDiff.get(key);
 					curAddedChunks += aggregationDiff.getAddedChunks().size();
-					for (final AggregationChunk aggregationChunk : aggregationDiff.getAddedChunks()) {
+					for (AggregationChunk aggregationChunk : aggregationDiff.getAddedChunks()) {
 						curAddedChunksRecords += aggregationChunk.getCount();
 					}
 
 					curRemovedChunks += aggregationDiff.getRemovedChunks().size();
-					for (final AggregationChunk aggregationChunk : aggregationDiff.getRemovedChunks()) {
+					for (AggregationChunk aggregationChunk : aggregationDiff.getRemovedChunks()) {
 						curRemovedChunksRecords += aggregationChunk.getCount();
 					}
 				}

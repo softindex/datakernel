@@ -74,20 +74,20 @@ public class OTStateManagerTest {
 		stateManager.push();
 		eventloop.run();
 
-		final CompletableFuture<Set<Integer>> headsFuture = otSource.getHeads().toCompletableFuture();
+		CompletableFuture<Set<Integer>> headsFuture = otSource.getHeads().toCompletableFuture();
 		eventloop.run();
 
-		final Set<Integer> heads = headsFuture.get();
+		Set<Integer> heads = headsFuture.get();
 		assertEquals(1, heads.size());
 		assertEquals(3, heads.iterator().next().intValue());
 	}
 
 	@Test
 	public void testPullFullHistory() throws ExecutionException, InterruptedException {
-		final List<Integer> commitIdSequence = IntStream.rangeClosed(0, 5).boxed().collect(toList());
-		final OTRemote<Integer, TestOp> otRemote = create(of(commitIdSequence), comparator);
-		final TestOpState testOpState = new TestOpState();
-		final OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, system, otRemote,
+		List<Integer> commitIdSequence = IntStream.rangeClosed(0, 5).boxed().collect(toList());
+		OTRemote<Integer, TestOp> otRemote = create(of(commitIdSequence), comparator);
+		TestOpState testOpState = new TestOpState();
+		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, system, otRemote,
 				comparator, testOpState);
 
 		createRootAndStartManager(otRemote, stateManager);
@@ -106,10 +106,10 @@ public class OTStateManagerTest {
 
 	@Test
 	public void testPullAfterFetch() throws ExecutionException, InterruptedException {
-		final List<Integer> commitIdSequence = IntStream.rangeClosed(0, 10).boxed().collect(toList());
-		final OTRemote<Integer, TestOp> otRemote = create(of(commitIdSequence), comparator);
-		final TestOpState testOpState = new TestOpState();
-		final OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, system, otRemote,
+		List<Integer> commitIdSequence = IntStream.rangeClosed(0, 10).boxed().collect(toList());
+		OTRemote<Integer, TestOp> otRemote = create(of(commitIdSequence), comparator);
+		TestOpState testOpState = new TestOpState();
+		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, system, otRemote,
 				comparator, testOpState);
 
 		createRootAndStartManager(otRemote, stateManager);
@@ -130,10 +130,10 @@ public class OTStateManagerTest {
 
 	@Test
 	public void testApplyDiffBeforePull() throws ExecutionException, InterruptedException {
-		final List<Integer> commitIdSequence = IntStream.rangeClosed(0, 10).boxed().collect(toList());
-		final OTRemote<Integer, TestOp> otRemote = create(of(commitIdSequence), comparator);
-		final TestOpState testOpState = new TestOpState();
-		final OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, system, otRemote,
+		List<Integer> commitIdSequence = IntStream.rangeClosed(0, 10).boxed().collect(toList());
+		OTRemote<Integer, TestOp> otRemote = create(of(commitIdSequence), comparator);
+		TestOpState testOpState = new TestOpState();
+		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, system, otRemote,
 				comparator, testOpState);
 
 		createRootAndStartManager(otRemote, stateManager);
@@ -155,10 +155,10 @@ public class OTStateManagerTest {
 
 	@Test
 	public void testTwoFetchAndTwoPullOneAfterAnother() throws ExecutionException, InterruptedException {
-		final List<Integer> commitIdSequence = IntStream.rangeClosed(0, 20).boxed().collect(toList());
-		final OTRemote<Integer, TestOp> otRemote = create(of(commitIdSequence), comparator);
-		final TestOpState testOpState = new TestOpState();
-		final OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, system, otRemote,
+		List<Integer> commitIdSequence = IntStream.rangeClosed(0, 20).boxed().collect(toList());
+		OTRemote<Integer, TestOp> otRemote = create(of(commitIdSequence), comparator);
+		TestOpState testOpState = new TestOpState();
+		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, system, otRemote,
 				comparator, testOpState);
 
 		createRootAndStartManager(otRemote, stateManager);
@@ -176,10 +176,10 @@ public class OTStateManagerTest {
 
 	@Test
 	public void testRebaseConflictResolving() throws OTTransformException {
-		final List<Integer> commitIdSequence = IntStream.rangeClosed(0, 2).boxed().collect(toList());
-		final OTRemote<Integer, TestOp> otRemote = create(of(commitIdSequence), comparator);
-		final TestOpState testOpState = new TestOpState();
-		final OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, system, otRemote,
+		List<Integer> commitIdSequence = IntStream.rangeClosed(0, 2).boxed().collect(toList());
+		OTRemote<Integer, TestOp> otRemote = create(of(commitIdSequence), comparator);
+		TestOpState testOpState = new TestOpState();
+		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, system, otRemote,
 				comparator, testOpState);
 
 		createRootAndStartManager(otRemote, stateManager);
@@ -201,10 +201,10 @@ public class OTStateManagerTest {
 
 	@Test
 	public void testRebaseConflictResolving2() throws OTTransformException {
-		final List<Integer> commitIdSequence = IntStream.rangeClosed(0, 2).boxed().collect(toList());
-		final OTRemote<Integer, TestOp> otRemote = create(of(commitIdSequence), comparator);
-		final TestOpState testOpState = new TestOpState();
-		final OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, system, otRemote,
+		List<Integer> commitIdSequence = IntStream.rangeClosed(0, 2).boxed().collect(toList());
+		OTRemote<Integer, TestOp> otRemote = create(of(commitIdSequence), comparator);
+		TestOpState testOpState = new TestOpState();
+		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, system, otRemote,
 				comparator, testOpState);
 
 		createRootAndStartManager(otRemote, stateManager);
@@ -226,10 +226,10 @@ public class OTStateManagerTest {
 
 	@Test
 	public void testRebaseConflictResolving3() throws OTTransformException {
-		final List<Integer> commitIdSequence = IntStream.rangeClosed(0, 2).boxed().collect(toList());
-		final OTRemote<Integer, TestOp> otRemote = create(of(commitIdSequence), comparator);
-		final TestOpState testOpState = new TestOpState();
-		final OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, system, otRemote,
+		List<Integer> commitIdSequence = IntStream.rangeClosed(0, 2).boxed().collect(toList());
+		OTRemote<Integer, TestOp> otRemote = create(of(commitIdSequence), comparator);
+		TestOpState testOpState = new TestOpState();
+		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, system, otRemote,
 				comparator, testOpState);
 
 		createRootAndStartManager(otRemote, stateManager);
@@ -251,10 +251,10 @@ public class OTStateManagerTest {
 
 	@Test
 	public void testRebaseConflictResolving4() throws OTTransformException {
-		final List<Integer> commitIdSequence = IntStream.rangeClosed(0, 2).boxed().collect(toList());
-		final OTRemote<Integer, TestOp> otRemote = create(of(commitIdSequence), comparator);
-		final TestOpState testOpState = new TestOpState();
-		final OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, system, otRemote,
+		List<Integer> commitIdSequence = IntStream.rangeClosed(0, 2).boxed().collect(toList());
+		OTRemote<Integer, TestOp> otRemote = create(of(commitIdSequence), comparator);
+		TestOpState testOpState = new TestOpState();
+		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, system, otRemote,
 				comparator, testOpState);
 
 		createRootAndStartManager(otRemote, stateManager);
@@ -276,10 +276,10 @@ public class OTStateManagerTest {
 
 	@Test
 	public void testRebaseConflictResolving5() throws OTTransformException {
-		final List<Integer> commitIdSequence = IntStream.rangeClosed(0, 2).boxed().collect(toList());
-		final OTRemote<Integer, TestOp> otRemote = create(of(commitIdSequence), comparator);
-		final TestOpState testOpState = new TestOpState();
-		final OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, system, otRemote,
+		List<Integer> commitIdSequence = IntStream.rangeClosed(0, 2).boxed().collect(toList());
+		OTRemote<Integer, TestOp> otRemote = create(of(commitIdSequence), comparator);
+		TestOpState testOpState = new TestOpState();
+		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, system, otRemote,
 				comparator, testOpState);
 
 		createRootAndStartManager(otRemote, stateManager);
@@ -348,7 +348,7 @@ public class OTStateManagerTest {
 	}
 
 	private static <T> CompletionStage<T> scheduledResult(Eventloop eventloop, long delta, T result) {
-		final SettableStage<T> stage = SettableStage.create();
+		SettableStage<T> stage = SettableStage.create();
 		eventloop.schedule(eventloop.currentTimeMillis() + delta, () -> stage.set(result));
 		return stage;
 	}

@@ -253,7 +253,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 	 * @param eventloop eventloop in which DnsClient will be ran
 	 * @return DNS client which will run in other eventloop
 	 */
-	public IAsyncDnsClient adaptToAnotherEventloop(final Eventloop eventloop) {
+	public IAsyncDnsClient adaptToAnotherEventloop(Eventloop eventloop) {
 		if (eventloop == this.eventloop)
 			return this;
 
@@ -269,7 +269,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 				return resolve(domainName, true);
 			}
 
-			private CompletionStage<InetAddress[]> resolve(final String domainName, final boolean ipv6) {
+			private CompletionStage<InetAddress[]> resolve(String domainName, boolean ipv6) {
 				checkArgument(domainName != null && !domainName.isEmpty(), "Domain name cannot be null or empty");
 
 				if (HttpUtils.isInetAddress(domainName)) {
@@ -285,7 +285,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 					return cacheQueryResult.getStage();
 				}
 
-				final SettableStage<InetAddress[]> stage = SettableStage.create();
+				SettableStage<InetAddress[]> stage = SettableStage.create();
 				if (cacheQueryResult.getDnsCacheResult() == NOT_RESOLVED) {
 					AsyncDnsClient.this.eventloop.execute(() ->
 							AsyncDnsClient.this.resolve(domainName, ipv6).whenComplete((inetAddresses, throwable) ->
@@ -303,7 +303,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 	 * @param domainName domain name for searching IP
 	 */
 	@Override
-	public CompletionStage<InetAddress[]> resolve4(final String domainName) {
+	public CompletionStage<InetAddress[]> resolve4(String domainName) {
 		return resolve(domainName, false);
 	}
 
@@ -324,7 +324,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 		}
 	}
 
-	private CompletionStage<InetAddress[]> resolve(final String domainName, final boolean ipv6) {
+	private CompletionStage<InetAddress[]> resolve(String domainName, boolean ipv6) {
 		checkArgument(domainName != null && !domainName.isEmpty(), "Domain name cannot be null or empty");
 
 		if (HttpUtils.isInetAddress(domainName)) {
@@ -338,12 +338,12 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean 
 			return cacheQueryResult.getStage();
 		}
 
-		final boolean resolvedFromCache = cacheQueryResult.getDnsCacheResult() == RESOLVED_NEEDS_REFRESHING;
+		boolean resolvedFromCache = cacheQueryResult.getDnsCacheResult() == RESOLVED_NEEDS_REFRESHING;
 
 		logger.trace("Resolving {} with DNS server.", domainName);
 
-		final SettableStage<InetAddress[]> stage = SettableStage.create();
-		final BiConsumer<DnsQueryResult, Throwable> queryConsumer = (dnsQueryResult, throwable) -> {
+		SettableStage<InetAddress[]> stage = SettableStage.create();
+		BiConsumer<DnsQueryResult, Throwable> queryConsumer = (dnsQueryResult, throwable) -> {
 			if (throwable == null) {
 				if (!resolvedFromCache) stage.set(dnsQueryResult.getIps());
 				cache.add(dnsQueryResult);

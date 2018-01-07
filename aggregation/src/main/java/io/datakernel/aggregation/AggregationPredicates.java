@@ -69,7 +69,7 @@ public class AggregationPredicates {
 
 	private final static Map<PredicateSimplifierKey<?, ?>, PredicateSimplifier<?, ?>> simplifiers = new HashMap<>();
 
-	private static <L extends AggregationPredicate, R extends AggregationPredicate> void register(Class<L> leftType, Class<R> rightType, final PredicateSimplifier<L, R> operation) {
+	private static <L extends AggregationPredicate, R extends AggregationPredicate> void register(Class<L> leftType, Class<R> rightType, PredicateSimplifier<L, R> operation) {
 		PredicateSimplifierKey keyLeftRight = new PredicateSimplifierKey<>(leftType, rightType);
 		checkState(!simplifiers.containsKey(keyLeftRight));
 		simplifiers.put(keyLeftRight, operation);
@@ -81,7 +81,7 @@ public class AggregationPredicates {
 	}
 
 	static {
-		final PredicateSimplifier simplifierAlwaysFalse = new PredicateSimplifier<PredicateAlwaysFalse, AggregationPredicate>() {
+		PredicateSimplifier simplifierAlwaysFalse = new PredicateSimplifier<PredicateAlwaysFalse, AggregationPredicate>() {
 			@Override
 			public AggregationPredicate simplifyAnd(PredicateAlwaysFalse left, AggregationPredicate right) {
 				return left;
@@ -751,7 +751,7 @@ public class AggregationPredicates {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		public PredicateDef createPredicateDef(final Expression record, final Map<String, FieldType> fields) {
+		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
 			return (fields.get(key) == null)
 					? Expressions.isNull(field(record, key.replace('.', '$')))
 					: Expressions.and(isNotNull(field(record, key.replace('.', '$')), fields.get(key)),
@@ -816,7 +816,7 @@ public class AggregationPredicates {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		public PredicateDef createPredicateDef(final Expression record, final Map<String, FieldType> fields) {
+		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
 			return (fields.get(key) == null)
 					? Expressions.isNotNull(field(record, key.replace('.', '$')))
 					: Expressions.or(isNull(field(record, key.replace('.', '$')), fields.get(key)),
@@ -881,7 +881,7 @@ public class AggregationPredicates {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		public PredicateDef createPredicateDef(final Expression record, final Map<String, FieldType> fields) {
+		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
 			VarField field = field(record, key.replace('.', '$'));
 			return Expressions.and(isNotNull(field, fields.get(key)),
 					cmpLe(field, value(toInternalValue(fields, key, value))));
@@ -945,7 +945,7 @@ public class AggregationPredicates {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		public PredicateDef createPredicateDef(final Expression record, final Map<String, FieldType> fields) {
+		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
 			VarField field = field(record, key.replace('.', '$'));
 			return Expressions.and(isNotNull(field, fields.get(key)),
 					cmpLt(field, value(toInternalValue(fields, key, value))));
@@ -1009,7 +1009,7 @@ public class AggregationPredicates {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		public PredicateDef createPredicateDef(final Expression record, final Map<String, FieldType> fields) {
+		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
 			VarField field = field(record, key.replace('.', '$'));
 			return Expressions.and(isNotNull(field, fields.get(key)),
 					cmpGe(field, value(toInternalValue(fields, key, value))));
@@ -1073,7 +1073,7 @@ public class AggregationPredicates {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		public PredicateDef createPredicateDef(final Expression record, final Map<String, FieldType> fields) {
+		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
 			VarField field = field(record, key.replace('.', '$'));
 			return Expressions.and(isNotNull(field, fields.get(key)),
 					cmpGt(field, value(toInternalValue(fields, key, value))));
@@ -1284,7 +1284,7 @@ public class AggregationPredicates {
 
 		@Override
 		public String toString() {
-			final StringJoiner joiner = new StringJoiner(", ");
+			StringJoiner joiner = new StringJoiner(", ");
 			for (Object value : values) joiner.add(value.toString());
 			return "" + key + " IN " + joiner.toString();
 		}
@@ -1457,7 +1457,7 @@ public class AggregationPredicates {
 
 		@Override
 		public String toString() {
-			final StringJoiner joiner = new StringJoiner(" AND ");
+			StringJoiner joiner = new StringJoiner(" AND ");
 			for (AggregationPredicate predicate : predicates) joiner.add(predicate.toString());
 
 			return "(" + joiner.toString() + ")";
@@ -1534,7 +1534,7 @@ public class AggregationPredicates {
 
 		@Override
 		public String toString() {
-			final StringJoiner joiner = new StringJoiner(" OR ");
+			StringJoiner joiner = new StringJoiner(" OR ");
 			for (AggregationPredicate predicate : predicates) joiner.add(predicate.toString());
 			return "(" + joiner.toString() + ")";
 		}

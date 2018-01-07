@@ -144,7 +144,7 @@ public class StreamSplitterTest {
 
 	@Test(expected = IllegalStateException.class)
 	public void testNoOutputs() throws ExecutionException, InterruptedException {
-		final StreamSplitter<Integer> splitter = StreamSplitter.create();
+		StreamSplitter<Integer> splitter = StreamSplitter.create();
 
 		Future<Void> future = stream(StreamProducers.of(1, 2, 3, 4), splitter.getInput())
 				.toCompletableFuture();

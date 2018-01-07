@@ -52,10 +52,10 @@ public class StressDownload {
 
 		Files.createDirectories(CLIENT_STORAGE);
 
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
-		final ExecutorService executor = Executors.newCachedThreadPool();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		ExecutorService executor = Executors.newCachedThreadPool();
 
-		final int[] failures = new int[1];
+		int[] failures = new int[1];
 
 		RemoteFsClient client = RemoteFsClient.create(eventloop, new InetSocketAddress("localhost", 5560));
 
@@ -64,11 +64,11 @@ public class StressDownload {
 		}
 
 		for (int i = 0; i < OPERATIONS_QUANTITY; i++) {
-			final String file = FILES.get(rand.nextInt(OPERATIONS_QUANTITY));
+			String file = FILES.get(rand.nextInt(OPERATIONS_QUANTITY));
 			client.download(file, 0).whenComplete((producer, throwable) -> {
 				if (throwable == null) {
 					try {
-						final AsyncFile open = open(executor, CLIENT_STORAGE.resolve(file), CREATE_OPTIONS);
+						AsyncFile open = open(executor, CLIENT_STORAGE.resolve(file), CREATE_OPTIONS);
 						StreamConsumer<ByteBuf> consumer = create(open);
 						stream(producer, consumer);
 					} catch (IOException e) {

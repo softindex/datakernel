@@ -70,7 +70,7 @@ public final class LogStreamChunker extends StreamConsumerDecorator<ByteBuf> imp
 
 	@Override
 	public void onData(ByteBuf item) {
-		final String chunkName = datetimeFormat.format(Instant.ofEpochMilli(currentTimeProvider.currentTimeMillis()));
+		String chunkName = datetimeFormat.format(Instant.ofEpochMilli(currentTimeProvider.currentTimeMillis()));
 		if (!chunkName.equals(currentChunkName)) {
 			startNewChunk(chunkName, currentConsumer.getResult());
 		}

@@ -92,7 +92,7 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem {
 	public CompletionStage<List<LogFile>> list(String logPartition) {
 		Eventloop eventloop = getCurrentEventloop();
 		return eventloop.callConcurrently(executorService, () -> {
-			final List<LogFile> entries = new ArrayList<>();
+			List<LogFile> entries = new ArrayList<>();
 
 			Files.createDirectories(dir);
 			Files.walkFileTree(dir, new FileVisitor<Path>() {

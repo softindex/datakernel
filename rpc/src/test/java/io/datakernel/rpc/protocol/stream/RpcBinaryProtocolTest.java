@@ -66,22 +66,22 @@ public class RpcBinaryProtocolTest {
 
 	@Test
 	public void test() throws Exception {
-		final String testMessage = "Test";
+		String testMessage = "Test";
 
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		final RpcClient client = RpcClient.create(eventloop)
+		RpcClient client = RpcClient.create(eventloop)
 				.withMessageTypes(String.class)
 				.withStrategy(server(address));
 
-		final RpcServer server = RpcServer.create(eventloop)
+		RpcServer server = RpcServer.create(eventloop)
 				.withMessageTypes(String.class)
 				.withHandler(String.class, String.class, request -> Stages.of("Hello, " + request + "!"))
 				.withListenAddress(address);
 		server.listen();
 
-		final int countRequests = 10;
-		final List<String> results = new ArrayList<>();
+		int countRequests = 10;
+		List<String> results = new ArrayList<>();
 		class ResultObserver {
 
 			public void setException(Throwable exception) {
@@ -106,7 +106,7 @@ public class RpcBinaryProtocolTest {
 		}
 
 		client.start().whenComplete(($, throwable) -> {
-			final ResultObserver resultObserver = new ResultObserver();
+			ResultObserver resultObserver = new ResultObserver();
 			if (throwable != null) {
 				resultObserver.setException(throwable);
 			} else {

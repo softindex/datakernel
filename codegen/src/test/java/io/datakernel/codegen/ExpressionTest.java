@@ -866,8 +866,8 @@ public class ExpressionTest {
 
 	@org.junit.Test
 	public void testMultipleInterfacesWithAbstract() {
-		final DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
-		final A instance = ClassBuilder.create(definingClassLoader, A.class, asList(B.class, C.class))
+		DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
+		A instance = ClassBuilder.create(definingClassLoader, A.class, asList(B.class, C.class))
 				.withMethod("a", value(42))
 				.withMethod("b", value(43))
 				.withMethod("c", value("44"))
@@ -881,8 +881,8 @@ public class ExpressionTest {
 
 	@org.junit.Test
 	public void testMultipleInterfaces() {
-		final DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
-		final B instance = ClassBuilder.create(definingClassLoader, B.class, Collections.<Class<?>>singletonList(C.class))
+		DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
+		B instance = ClassBuilder.create(definingClassLoader, B.class, Collections.<Class<?>>singletonList(C.class))
 				.withMethod("b", value(43))
 				.withMethod("c", value("44"))
 				.buildClassAndCreateNewInstance();
@@ -894,8 +894,8 @@ public class ExpressionTest {
 
 	@org.junit.Test
 	public void testNullableToString() {
-		final DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
-		final B instance = ClassBuilder.create(definingClassLoader, B.class)
+		DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
+		B instance = ClassBuilder.create(definingClassLoader, B.class)
 				.withMethod("b", nullRef(Integer.class))
 				.withMethod("toString",
 						asString()
@@ -909,9 +909,9 @@ public class ExpressionTest {
 
 	@org.junit.Test
 	public void testSetSaveBytecode() throws IOException {
-		final File folder = tempFolder.newFolder();
-		final DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
-		final B instance = ClassBuilder.create(definingClassLoader, B.class)
+		File folder = tempFolder.newFolder();
+		DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
+		B instance = ClassBuilder.create(definingClassLoader, B.class)
 				.withBytecodeSaveDir(folder.toPath())
 				.withMethod("b", nullRef(Integer.class))
 				.withMethod("toString",
@@ -930,8 +930,8 @@ public class ExpressionTest {
 
 	@org.junit.Test
 	public void testArraySet() {
-		final DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
-		final TestArraySet instance = ClassBuilder.create(definingClassLoader, TestArraySet.class)
+		DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
+		TestArraySet instance = ClassBuilder.create(definingClassLoader, TestArraySet.class)
 				.withMethod("ints", sequence(setArrayItem(arg(0), value(0), cast(value(42), Integer.class)), arg(0)))
 				.buildClassAndCreateNewInstance();
 		Integer[] ints = new Integer[]{1, 2, 3, 4};
@@ -945,8 +945,8 @@ public class ExpressionTest {
 
 	@org.junit.Test
 	public void testCallStatic() {
-		final DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
-		final TestCallStatic instance = ClassBuilder.create(definingClassLoader, TestCallStatic.class)
+		DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
+		TestCallStatic instance = ClassBuilder.create(definingClassLoader, TestCallStatic.class)
 				.withMethod("method", callStatic(Math.class, "min", arg(0), arg(1)))
 				.buildClassAndCreateNewInstance();
 		assertEquals(instance.method(5, 0), 0);
@@ -959,8 +959,8 @@ public class ExpressionTest {
 
 	@org.junit.Test
 	public void testIsNull() {
-		final DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
-		final TestIsNull instance = ClassBuilder.create(definingClassLoader, TestIsNull.class)
+		DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
+		TestIsNull instance = ClassBuilder.create(definingClassLoader, TestIsNull.class)
 				.withMethod("method", isNull(arg(0)))
 				.buildClassAndCreateNewInstance();
 		assertEquals(instance.method("42"), false);
@@ -973,8 +973,8 @@ public class ExpressionTest {
 
 	@org.junit.Test
 	public void testIsNotNull() {
-		final DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
-		final TestIsNotNull instance = ClassBuilder.create(definingClassLoader, TestIsNotNull.class)
+		DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
+		TestIsNotNull instance = ClassBuilder.create(definingClassLoader, TestIsNotNull.class)
 				.withMethod("method", isNotNull(arg(0)))
 				.buildClassAndCreateNewInstance();
 		assertEquals(instance.method("42"), true);
@@ -990,8 +990,8 @@ public class ExpressionTest {
 
 	@org.junit.Test
 	public void testNewArray() {
-		final DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
-		final TestNewArray instance = ClassBuilder.create(definingClassLoader, TestNewArray.class)
+		DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
+		TestNewArray instance = ClassBuilder.create(definingClassLoader, TestNewArray.class)
 				.withMethod("ints", newArray(int[].class, arg(0)))
 				.withMethod("integers", newArray(String[].class, arg(0)))
 				.buildClassAndCreateNewInstance();
@@ -1001,9 +1001,9 @@ public class ExpressionTest {
 
 	@org.junit.Test
 	public void testStaticConstants() {
-		final DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
+		DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
 		Object testObject = new Object();
-		final Getter instance = ClassBuilder.create(definingClassLoader, Getter.class)
+		Getter instance = ClassBuilder.create(definingClassLoader, Getter.class)
 				.withMethod("get", value(testObject))
 				.buildClassAndCreateNewInstance();
 		assertTrue(testObject == instance.get(null));

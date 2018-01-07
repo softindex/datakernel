@@ -51,7 +51,7 @@ public abstract class AbstractAttributeResolver<K, A> implements AttributeResolv
 	}
 
 	@Override
-	public final CompletionStage<Void> resolveAttributes(final List<Object> results, final KeyFunction keyFunction, final AttributesFunction attributesFunction) {
+	public final CompletionStage<Void> resolveAttributes(List<Object> results, KeyFunction keyFunction, AttributesFunction attributesFunction) {
 		return prepareToResolveAttributes(results, keyFunction, attributesFunction).thenCompose($ ->
 				doResolveAttributes(results, keyFunction, attributesFunction));
 	}

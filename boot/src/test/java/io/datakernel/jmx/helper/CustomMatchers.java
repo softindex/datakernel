@@ -27,7 +27,7 @@ public final class CustomMatchers {
 
 	private CustomMatchers() {}
 
-	public static Matcher<ObjectName> objectname(final String name) {
+	public static Matcher<ObjectName> objectname(String name) {
 		return new BaseMatcher<ObjectName>() {
 			@Override
 			public boolean matches(Object item) {

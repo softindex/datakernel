@@ -99,7 +99,7 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 
 	@Override
 	public <U> CompletionStage<U> thenApplyAsync(Function<? super T, ? extends U> fn) {
-        final Eventloop eventloop = getCurrentEventloop();
+        Eventloop eventloop = getCurrentEventloop();
 		return subscribe(new NextCompletionStage<T, U>() {
             @Override
             protected void onComplete(T value) {
@@ -118,13 +118,13 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 
 	@Override
 	public <U> CompletionStage<U> thenApplyAsync(Function<? super T, ? extends U> fn, Executor executor) {
-		final Eventloop eventloop = getCurrentEventloop();
+		Eventloop eventloop = getCurrentEventloop();
 		return subscribe(new NextCompletionStage<T, U>() {
 			@Override
 			protected void onComplete(T result) {
 				eventloop.startConcurrentOperation();
 				executor.execute(() -> {
-					final U apply = fn.apply(result);
+					U apply = fn.apply(result);
 					eventloop.execute(() -> {
 						complete(apply);
 						eventloop.completeConcurrentOperation();
@@ -152,7 +152,7 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 
 	@Override
 	public CompletionStage<Void> thenAcceptAsync(Consumer<? super T> action) {
-        final Eventloop eventloop = getCurrentEventloop();
+        Eventloop eventloop = getCurrentEventloop();
 		return subscribe(new NextCompletionStage<T, Void>() {
             @Override
             protected void onComplete(T value) {
@@ -171,7 +171,7 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 
 	@Override
 	public CompletionStage<Void> thenAcceptAsync(Consumer<? super T> action, Executor executor) {
-		final Eventloop eventloop = getCurrentEventloop();
+		Eventloop eventloop = getCurrentEventloop();
 		return subscribe(new NextCompletionStage<T, Void>() {
 			@Override
 			protected void onComplete(T result) {
@@ -205,7 +205,7 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 
 	@Override
 	public CompletionStage<Void> thenRunAsync(Runnable action) {
-	    final Eventloop eventloop = getCurrentEventloop();
+	    Eventloop eventloop = getCurrentEventloop();
         return subscribe(new NextCompletionStage<T, Void>() {
             @Override
             protected void onComplete(T value) {
@@ -224,7 +224,7 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 
 	@Override
 	public CompletionStage<Void> thenRunAsync(Runnable action, Executor executor) {
-		final Eventloop eventloop = getCurrentEventloop();
+		Eventloop eventloop = getCurrentEventloop();
 		return subscribe(new NextCompletionStage<T, Void>() {
 			@Override
 			protected void onComplete(T result) {
@@ -365,7 +365,7 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 			if (--countdown == 0) {
 				eventloop.startConcurrentOperation();
 				executor.execute(() -> {
-					final V apply = fn.apply(thisResult, otherResult);
+					V apply = fn.apply(thisResult, otherResult);
 					eventloop.execute(() -> {
 						thisResult = null;
 						otherResult = null;
@@ -740,7 +740,7 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 
 	@Override
 	public <U> CompletionStage<U> applyToEitherAsync(CompletionStage<? extends T> other, Function<? super T, U> fn) {
-	    final Eventloop eventloop = getCurrentEventloop();
+	    Eventloop eventloop = getCurrentEventloop();
         NextCompletionStage<T, U> resultingStage = new NextCompletionStage<T, U>() {
             @Override
             protected void onComplete(T value) {
@@ -780,14 +780,14 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 
 	@Override
 	public <U> CompletionStage<U> applyToEitherAsync(CompletionStage<? extends T> other, Function<? super T, U> fn, Executor executor) {
-		final Eventloop eventloop = getCurrentEventloop();
+		Eventloop eventloop = getCurrentEventloop();
 		NextCompletionStage<T, U> resultingStage = new NextCompletionStage<T, U>() {
 			@Override
 			protected void onComplete(T result) {
 				if (!isComplete()) {
 					eventloop.startConcurrentOperation();
 					executor.execute(() -> {
-						final U apply = fn.apply(result);
+						U apply = fn.apply(result);
 						eventloop.execute(() -> {
 							if (!isComplete()) complete(apply);
 							eventloop.completeConcurrentOperation();
@@ -809,7 +809,7 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 				if (!resultingStage.isComplete()) {
 					eventloop.startConcurrentOperation();
 					executor.execute(() -> {
-						final U apply = fn.apply(o);
+						U apply = fn.apply(o);
 						eventloop.execute(() -> {
 							if (!resultingStage.isComplete()) resultingStage.complete(apply);
 							eventloop.completeConcurrentOperation();
@@ -863,7 +863,7 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 
 	@Override
 	public CompletionStage<Void> acceptEitherAsync(CompletionStage<? extends T> other, Consumer<? super T> action) {
-	    final Eventloop eventloop = getCurrentEventloop();
+	    Eventloop eventloop = getCurrentEventloop();
         NextCompletionStage<T, Void> resultingStage = new NextCompletionStage<T, Void>() {
             @Override
             protected void onComplete(T value) {
@@ -905,7 +905,7 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 
 	@Override
 	public CompletionStage<Void> acceptEitherAsync(CompletionStage<? extends T> other, Consumer<? super T> action, Executor executor) {
-		final Eventloop eventloop = getCurrentEventloop();
+		Eventloop eventloop = getCurrentEventloop();
 		NextCompletionStage<T, Void> resultingStage = new NextCompletionStage<T, Void>() {
 			@Override
 			protected void onComplete(T result) {
@@ -988,7 +988,7 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 
 	@Override
 	public CompletionStage<Void> runAfterEitherAsync(CompletionStage<?> other, Runnable action) {
-	    final Eventloop eventloop = getCurrentEventloop();
+	    Eventloop eventloop = getCurrentEventloop();
         NextCompletionStage<T, Void> resultingStage = new NextCompletionStage<T, Void>() {
             @Override
             protected void onComplete(T value) {
@@ -1030,7 +1030,7 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 
 	@Override
 	public CompletionStage<Void> runAfterEitherAsync(CompletionStage<?> other, Runnable action, Executor executor) {
-		final Eventloop eventloop = getCurrentEventloop();
+		Eventloop eventloop = getCurrentEventloop();
 		NextCompletionStage<T, Void> resultingStage = new NextCompletionStage<T, Void>() {
 			@Override
 			protected void onComplete(T result) {
@@ -1095,7 +1095,7 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 
 	@Override
 	public <U> CompletionStage<U> thenComposeAsync(Function<? super T, ? extends CompletionStage<U>> fn) {
-		final Eventloop eventloop = getCurrentEventloop();
+		Eventloop eventloop = getCurrentEventloop();
 	    return subscribe(new NextCompletionStage<T, U>() {
             @Override
             protected void onComplete(T value) {
@@ -1119,13 +1119,13 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 
 	@Override
 	public <U> CompletionStage<U> thenComposeAsync(Function<? super T, ? extends CompletionStage<U>> fn, Executor executor) {
-		final Eventloop eventloop = getCurrentEventloop();
+		Eventloop eventloop = getCurrentEventloop();
 		return subscribe(new NextCompletionStage<T, U>() {
 			@Override
 			protected void onComplete(T result) {
 				eventloop.startConcurrentOperation();
 				executor.execute(() -> {
-					final CompletionStage<U> apply = fn.apply(result);
+					CompletionStage<U> apply = fn.apply(result);
 					eventloop.execute(() -> apply.whenComplete((u, throwable) -> {
 						if (throwable != null) {
 							completeExceptionally(throwable);
@@ -1178,7 +1178,7 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 
 	@Override
 	public CompletionStage<T> whenCompleteAsync(BiConsumer<? super T, ? super Throwable> action) {
-		final Eventloop eventloop = getCurrentEventloop();
+		Eventloop eventloop = getCurrentEventloop();
 	    return subscribe(new NextCompletionStage<T, T>() {
             @Override
             protected void onComplete(T value) {
@@ -1200,7 +1200,7 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 
 	@Override
 	public CompletionStage<T> whenCompleteAsync(BiConsumer<? super T, ? super Throwable> action, Executor executor) {
-		final Eventloop eventloop = getCurrentEventloop();
+		Eventloop eventloop = getCurrentEventloop();
 		return subscribe(new NextCompletionStage<T, T>() {
 			@Override
 			protected void onComplete(T result) {
@@ -1247,7 +1247,7 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 
 	@Override
 	public <U> CompletionStage<U> handleAsync(BiFunction<? super T, Throwable, ? extends U> fn) {
-		final Eventloop eventloop = getCurrentEventloop();
+		Eventloop eventloop = getCurrentEventloop();
 	    return subscribe(new NextCompletionStage<T, U>() {
             @Override
             protected void onComplete(T value) {
@@ -1269,7 +1269,7 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 
 	@Override
 	public <U> CompletionStage<U> handleAsync(BiFunction<? super T, Throwable, ? extends U> fn, Executor executor) {
-		final Eventloop eventloop = getCurrentEventloop();
+		Eventloop eventloop = getCurrentEventloop();
 		return subscribe(new NextCompletionStage<T, U>() {
 			@Override
 			protected void onComplete(T result) {

@@ -119,7 +119,7 @@ public final class RemoteFsClient implements IRemoteFsClient {
 	}
 
 	@Override
-	public CompletionStage<StreamProducerWithResult<ByteBuf, Void>> download(final String fileName, final long startPosition) {
+	public CompletionStage<StreamProducerWithResult<ByteBuf, Void>> download(String fileName, long startPosition) {
 		return connect(address).thenCompose(messaging -> {
 			SettableStage<StreamProducerWithResult<ByteBuf, Void>> stage = SettableStage.create();
 
@@ -172,9 +172,9 @@ public final class RemoteFsClient implements IRemoteFsClient {
 	}
 
 	@Override
-	public CompletionStage<Void> delete(final String fileName) {
+	public CompletionStage<Void> delete(String fileName) {
 		return connect(address).thenCompose(messaging -> {
-			final SettableStage<Void> ack = SettableStage.create();
+			SettableStage<Void> ack = SettableStage.create();
 			messaging.send(new RemoteFsCommands.Delete(fileName)).whenComplete(($, throwable) -> {
 				if (throwable == null) {
 					logger.trace("command to delete {} send", fileName);

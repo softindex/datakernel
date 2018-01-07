@@ -94,7 +94,7 @@ public class StreamProducerDecoratorTest {
 
 		List<Integer> list = new ArrayList<>();
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.oneByOne(list);
-		final StreamProducer<Integer> producer = StreamProducers.of(1, 2, 3, 4, 5);
+		StreamProducer<Integer> producer = StreamProducers.of(1, 2, 3, 4, 5);
 		StreamProducerDecorator<Integer> producerDecorator = new StreamProducerDecorator<Integer>() {};
 		producerDecorator.setActualProducer(producer);
 		StreamFunction<Integer, Integer> function = StreamFunction.create(Function.<Integer>identity());

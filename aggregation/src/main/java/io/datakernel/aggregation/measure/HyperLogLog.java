@@ -93,8 +93,8 @@ public final class HyperLogLog implements Comparable<HyperLogLog> {
 	private static final double NLOG2 = -log(2.0);
 
 	public int estimate() {
-		final int m = registers.length;
-		final double alpha;
+		int m = registers.length;
+		double alpha;
 		if (m == 16) {
 			alpha = ALPHA_16;
 		} else if (m == 32) {

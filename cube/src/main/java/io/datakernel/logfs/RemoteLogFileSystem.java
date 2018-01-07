@@ -55,7 +55,7 @@ public final class RemoteLogFileSystem extends AbstractLogFileSystem {
 
 	@Override
 	public CompletionStage<StreamConsumerWithResult<ByteBuf, Void>> write(String logPartition, LogFile logFile) {
-		final String fileName = path(logPartition, logFile);
+		String fileName = path(logPartition, logFile);
 		return client.upload(fileName);
 	}
 

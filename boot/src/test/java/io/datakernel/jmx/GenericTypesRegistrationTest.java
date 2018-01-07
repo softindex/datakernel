@@ -38,7 +38,7 @@ public class GenericTypesRegistrationTest {
 
 	@Test
 	public void itShouldFormProperNameForTypeWithSingleGenericParameter() throws Exception {
-		final ServiceStubOne service = new ServiceStubOne();
+		ServiceStubOne service = new ServiceStubOne();
 
 		context.checking(new Expectations() {{
 			oneOf(mBeanServer).registerMBean(with(service),
@@ -52,7 +52,7 @@ public class GenericTypesRegistrationTest {
 
 	@Test
 	public void itShouldFormProperNameForTypeWithSeveralGenericParameter() throws Exception {
-		final ServiceStubThree<String, Integer, Long> service = new ServiceStubThree<>();
+		ServiceStubThree<String, Integer, Long> service = new ServiceStubThree<>();
 
 		context.checking(new Expectations() {{
 			oneOf(mBeanServer).registerMBean(with(service),

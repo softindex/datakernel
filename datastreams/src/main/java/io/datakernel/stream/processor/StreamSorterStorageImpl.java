@@ -169,7 +169,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	 * Method which removes all creating files
 	 */
 	@Override
-	public CompletionStage<Void> cleanup(final List<Integer> partitionsToDelete) {
+	public CompletionStage<Void> cleanup(List<Integer> partitionsToDelete) {
 		return eventloop.runConcurrently(executorService, () -> {
 			for (Integer partitionToDelete : partitionsToDelete) {
 				Path path = partitionPath(partitionToDelete);

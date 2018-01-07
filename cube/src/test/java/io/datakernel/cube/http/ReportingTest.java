@@ -307,13 +307,13 @@ public class ReportingTest {
 						.withMeasures(MEASURES.keySet()));
 
 		dataSource = dataSource("test.properties");
-		final OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
+		OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
 		OTRemoteSql<LogDiff<CubeDiff>> otSourceSql = OTRemoteSql.create(executor, dataSource, otSystem, LogDiffJson.create(CubeDiffJson.create(cube)));
 		otSourceSql.truncateTables();
 		otSourceSql.createId().thenCompose(integer -> otSourceSql.push(OTCommit.ofRoot(integer)));
 		eventloop.run();
 
-		final LogOTState<CubeDiff> cubeDiffLogOTState = new LogOTState<>(cube);
+		LogOTState<CubeDiff> cubeDiffLogOTState = new LogOTState<>(cube);
 		OTStateManager<Integer, LogDiff<CubeDiff>> logCubeStateManager = new OTStateManager<>(eventloop,
 				otSystem,
 				otSourceSql,
@@ -418,7 +418,7 @@ public class ReportingTest {
 				.withWhere(and(between("date", LocalDate.parse("2000-01-02"), LocalDate.parse("2000-01-03"))))
 				.withReportType(DATA_WITH_TOTALS);
 
-		final QueryResult queryResult = getQueryResult(query);
+		QueryResult queryResult = getQueryResult(query);
 
 		List<Record> records = queryResult.getRecords();
 		assertEquals(2, records.size());
@@ -457,7 +457,7 @@ public class ReportingTest {
 				.withWhere(and(le("date", LocalDate.parse("2000-01-03"))))
 				.withReportType(DATA_WITH_TOTALS);
 
-		final QueryResult queryResult = getQueryResult(query);
+		QueryResult queryResult = getQueryResult(query);
 
 		List<Record> records = queryResult.getRecords();
 		assertEquals(2, records.size());
@@ -491,7 +491,7 @@ public class ReportingTest {
 				.withOrderings(asc("ctr"))
 				.withReportType(DATA_WITH_TOTALS);
 
-		final QueryResult queryResult = getQueryResult(query);
+		QueryResult queryResult = getQueryResult(query);
 
 		List<Record> records = queryResult.getRecords();
 		assertEquals(2, records.size());
@@ -520,7 +520,7 @@ public class ReportingTest {
 				.withMeasures("impressions")
 				.withReportType(DATA);
 
-		final QueryResult queryResult = getQueryResult(query);
+		QueryResult queryResult = getQueryResult(query);
 
 		List<Record> records = queryResult.getRecords();
 		assertEquals(3, records.size());
@@ -552,7 +552,7 @@ public class ReportingTest {
 						between("date", LocalDate.parse("2000-01-01"), LocalDate.parse("2000-01-03"))))
 				.withReportType(DATA_WITH_TOTALS);
 
-		final QueryResult queryResult = getQueryResult(query);
+		QueryResult queryResult = getQueryResult(query);
 
 		List<Record> records = queryResult.getRecords();
 		assertEquals(3, records.size());
@@ -589,7 +589,7 @@ public class ReportingTest {
 				.withHaving(or(between("advertiser.name", "a", "z"), eq("advertiser.name", null)))
 				.withReportType(DATA);
 
-		final QueryResult queryResult = getQueryResult(query);
+		QueryResult queryResult = getQueryResult(query);
 
 		List<Record> records = queryResult.getRecords();
 		assertEquals(3, records.size());
@@ -607,7 +607,7 @@ public class ReportingTest {
 				.withOrderings(asc("advertiser.name"))
 				.withHaving(eq("advertiser.name", null));
 
-		final QueryResult queryResult = getQueryResult(query);
+		QueryResult queryResult = getQueryResult(query);
 
 		Map<String, Object> filterAttributes = queryResult.getFilterAttributes();
 		assertEquals(1, filterAttributes.size());
@@ -622,7 +622,7 @@ public class ReportingTest {
 				.withMeasures("impressions")
 				.withWhere(and(eq("advertiser", 1), notEq("campaign", EXCLUDE_CAMPAIGN), notEq("banner", EXCLUDE_BANNER)));
 
-		final QueryResult queryResult = getQueryResult(query);
+		QueryResult queryResult = getQueryResult(query);
 
 		assertEquals(3, queryResult.getRecords().size());
 		assertEquals("first", queryResult.getRecords().get(0).get("advertiser.name"));
@@ -639,7 +639,7 @@ public class ReportingTest {
 				.withHaving(or(regexp("advertiser.name", ".*s.*"), eq("advertiser.name", null)))
 				.withReportType(DATA);
 
-		final QueryResult queryResult = getQueryResult(query);
+		QueryResult queryResult = getQueryResult(query);
 
 		List<Record> records = queryResult.getRecords();
 		assertEquals(2, records.size());
@@ -658,7 +658,7 @@ public class ReportingTest {
 				.withOrderings(asc("date"), asc("uniqueUserIdsCount"))
 				.withReportType(DATA_WITH_TOTALS);
 
-		final QueryResult queryResult = getQueryResult(query);
+		QueryResult queryResult = getQueryResult(query);
 
 		List<Record> records = queryResult.getRecords();
 		assertEquals(set("eventCount", "minRevenue", "maxRevenue", "uniqueUserIdsCount", "uniqueUserPercent", "clicks"),
@@ -712,7 +712,7 @@ public class ReportingTest {
 				.withOrderingAsc("advertiser.name")
 				.withReportType(ReportType.METADATA);
 
-		final QueryResult metadata = getQueryResult(onlyMetaQuery);
+		QueryResult metadata = getQueryResult(onlyMetaQuery);
 
 		assertEquals(6, metadata.getRecordScheme().getFields().size());
 		assertEquals(0, metadata.getTotalCount());
@@ -732,7 +732,7 @@ public class ReportingTest {
 				.withReportType(DATA_WITH_TOTALS)
 				.withHaving(in("advertiser", asList(1, 2)));
 
-		final QueryResult in = getQueryResult(queryWithPredicateIn);
+		QueryResult in = getQueryResult(queryWithPredicateIn);
 
 		List<String> expectedRecordFields = asList("advertiser", "clicks", "ctr", "conversions");
 		assertEquals(expectedRecordFields.size(), in.getRecordScheme().getFields().size());
@@ -749,7 +749,7 @@ public class ReportingTest {
 				.withMeasures("errors", "errorsPercent")
 				.withReportType(ReportType.METADATA);
 
-		final QueryResult metadata = getQueryResult(queryAffectingNonCompatibleAggregations);
+		QueryResult metadata = getQueryResult(queryAffectingNonCompatibleAggregations);
 		assertEquals(0, metadata.getMeasures().size());
 	}
 
@@ -764,7 +764,7 @@ public class ReportingTest {
 						notEq("banner", EXCLUDE_BANNER)))
 				.withReportType(ReportType.METADATA);
 
-		final QueryResult metadata = getQueryResult(queryAffectingNonCompatibleAggregations);
+		QueryResult metadata = getQueryResult(queryAffectingNonCompatibleAggregations);
 		List<String> expectedMeasures = asList("impressions", "clicks");
 		assertEquals(expectedMeasures, metadata.getMeasures());
 	}
@@ -793,7 +793,7 @@ public class ReportingTest {
 						between("date", LocalDate.parse("2000-01-02"), LocalDate.parse("2000-01-02"))))
 				.withReportType(DATA_WITH_TOTALS);
 
-		final QueryResult resultByAdvertisers = getQueryResult(queryAdvertisers);
+		QueryResult resultByAdvertisers = getQueryResult(queryAdvertisers);
 
 		Record advertisersTotals = resultByAdvertisers.getTotals();
 		long advertisersImpressions = (long) advertisersTotals.get("impressions");
@@ -815,7 +815,7 @@ public class ReportingTest {
 						between("date", LocalDate.parse("2000-01-02"), LocalDate.parse("2000-01-02"))))
 				.withReportType(DATA_WITH_TOTALS);
 
-		final QueryResult resultByAffiliates = getQueryResult(queryAffiliates);
+		QueryResult resultByAffiliates = getQueryResult(queryAffiliates);
 
 		Record affiliatesTotals = resultByAffiliates.getTotals();
 		long affiliatesImpressions = (long) affiliatesTotals.get("impressions");
@@ -836,7 +836,7 @@ public class ReportingTest {
 				.withWhere(between("date", LocalDate.parse("2000-01-02"), LocalDate.parse("2000-01-02")))
 				.withReportType(DATA_WITH_TOTALS);
 
-		final QueryResult resultByDate = getQueryResult(queryDate);
+		QueryResult resultByDate = getQueryResult(queryDate);
 
 		Record dailyTotals = resultByDate.getTotals();
 		long dailyImpressions = (long) dailyTotals.get("impressions");
@@ -861,7 +861,7 @@ public class ReportingTest {
 				.withWhere(between("date", LocalDate.parse("2000-01-02"), LocalDate.parse("2000-01-02")))
 				.withReportType(DATA_WITH_TOTALS);
 
-		final QueryResult resultByDate = getQueryResult(queryDate);
+		QueryResult resultByDate = getQueryResult(queryDate);
 
 		assertEquals(dateDimension, resultByDate.getAttributes());
 		assertEquals(measures, resultByDate.getMeasures());
@@ -888,7 +888,7 @@ public class ReportingTest {
 				.withWhere(between("date", LocalDate.parse("2000-01-02"), LocalDate.parse("2000-01-02")))
 				.withReportType(DATA_WITH_TOTALS);
 
-		final QueryResult resultByDate = getQueryResult(queryDate);
+		QueryResult resultByDate = getQueryResult(queryDate);
 
 		assertTrue(resultByDate.getAttributes().size() == 1);
 		assertEquals("date", resultByDate.getAttributes().get(0));

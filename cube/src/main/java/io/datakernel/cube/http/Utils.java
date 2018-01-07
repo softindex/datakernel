@@ -56,7 +56,7 @@ class Utils {
 
 	static List<CubeQuery.Ordering> parseOrderings(String string) throws ParseException {
 		List<CubeQuery.Ordering> result = new ArrayList<>();
-		final List<String> tokens = splitter.splitAsStream(string)
+		List<String> tokens = splitter.splitAsStream(string)
 				.map(String::trim)
 				.filter(s -> !s.isEmpty())
 				.collect(toList());

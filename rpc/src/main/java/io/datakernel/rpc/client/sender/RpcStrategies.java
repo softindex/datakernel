@@ -87,27 +87,27 @@ public final class RpcStrategies {
 		return RpcStrategyRoundRobin.create(list);
 	}
 
-	public static RpcStrategySharding sharding(final ShardingFunction<?> hashFunction,
+	public static RpcStrategySharding sharding(ShardingFunction<?> hashFunction,
 	                                           RpcStrategy... senders) {
 		return sharding(hashFunction, asList(senders));
 	}
 
-	public static RpcStrategySharding sharding(final ShardingFunction<?> hashFunction,
-	                                           final List<RpcStrategy> senders) {
+	public static RpcStrategySharding sharding(ShardingFunction<?> hashFunction,
+	                                           List<RpcStrategy> senders) {
 		checkNotNull(senders);
 		checkArgument(senders.size() > 0, "at least one sender must be present");
 		checkNotNull(hashFunction);
 		return RpcStrategySharding.create(hashFunction, RpcStrategyList.ofStrategies(senders));
 	}
 
-	public static RpcStrategySharding sharding(final ShardingFunction<?> hashFunction,
+	public static RpcStrategySharding sharding(ShardingFunction<?> hashFunction,
 	                                           RpcStrategyList list) {
 		checkNotNull(list);
 		checkNotNull(hashFunction);
 		return RpcStrategySharding.create(hashFunction, list);
 	}
 
-	public static RpcStrategyRendezvousHashing rendezvousHashing(final HashFunction<?> hashFunction) {
+	public static RpcStrategyRendezvousHashing rendezvousHashing(HashFunction<?> hashFunction) {
 		checkNotNull(hashFunction);
 		return RpcStrategyRendezvousHashing.create(hashFunction);
 	}

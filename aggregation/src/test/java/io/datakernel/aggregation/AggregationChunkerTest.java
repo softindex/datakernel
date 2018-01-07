@@ -51,7 +51,7 @@ public class AggregationChunkerTest {
 
 	@Test
 	public void test() throws ExecutionException, InterruptedException {
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		AggregationStructure structure = new AggregationStructure()
 				.withKey("key", ofInt())
@@ -59,9 +59,9 @@ public class AggregationChunkerTest {
 				.withMeasure("timestamp", sum(ofLong()));
 		AggregationState state = new AggregationState(structure);
 
-		final List<StreamConsumer> listConsumers = new ArrayList<>();
+		List<StreamConsumer> listConsumers = new ArrayList<>();
 
-		final List items = new ArrayList();
+		List items = new ArrayList();
 		AggregationChunkStorage aggregationChunkStorage = new AggregationChunkStorage() {
 			long chunkId;
 
@@ -89,7 +89,7 @@ public class AggregationChunkerTest {
 			}
 		};
 
-		final List<AggregationChunk> chunksToConsolidate = state.findChunksGroupWithMostOverlaps();
+		List<AggregationChunk> chunksToConsolidate = state.findChunksGroupWithMostOverlaps();
 
 		List<String> fields = new ArrayList<>();
 		for (AggregationChunk chunk : chunksToConsolidate) {
@@ -131,14 +131,14 @@ public class AggregationChunkerTest {
 
 	@Test
 	public void testProducerWithError() {
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withFatalErrorHandler(rethrowOnAnyError());
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		AggregationStructure structure = new AggregationStructure()
 				.withKey("key", ofInt())
 				.withMeasure("value", sum(ofInt()))
 				.withMeasure("timestamp", sum(ofLong()));
 		AggregationState state = new AggregationState(structure);
-		final List<StreamConsumer> listConsumers = new ArrayList<>();
+		List<StreamConsumer> listConsumers = new ArrayList<>();
 		AggregationChunkStorage aggregationChunkStorage = new AggregationChunkStorage() {
 			long chunkId;
 			final List items = new ArrayList();
@@ -166,7 +166,7 @@ public class AggregationChunkerTest {
 			}
 		};
 
-		final List<AggregationChunk> chunksToConsolidate = state.findChunksGroupWithMostOverlaps();
+		List<AggregationChunk> chunksToConsolidate = state.findChunksGroupWithMostOverlaps();
 
 		List<String> fields = new ArrayList<>();
 		for (AggregationChunk chunk : chunksToConsolidate) {
@@ -214,14 +214,14 @@ public class AggregationChunkerTest {
 
 	@Test
 	public void testStorageConsumerWithError() {
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withFatalErrorHandler(rethrowOnAnyError());
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		AggregationStructure structure = new AggregationStructure()
 				.withKey("key", ofInt())
 				.withMeasure("value", sum(ofInt()))
 				.withMeasure("timestamp", sum(ofLong()));
 		AggregationState metadata = new AggregationState(structure);
-		final List<StreamConsumer> listConsumers = new ArrayList<>();
+		List<StreamConsumer> listConsumers = new ArrayList<>();
 		AggregationChunkStorage aggregationChunkStorage = new AggregationChunkStorage() {
 			long chunkId;
 			final List items = new ArrayList();
@@ -255,7 +255,7 @@ public class AggregationChunkerTest {
 			}
 		};
 
-		final List<AggregationChunk> chunksToConsolidate = metadata.findChunksGroupWithMostOverlaps();
+		List<AggregationChunk> chunksToConsolidate = metadata.findChunksGroupWithMostOverlaps();
 
 		List<String> fields = new ArrayList<>();
 		for (AggregationChunk chunk : chunksToConsolidate) {

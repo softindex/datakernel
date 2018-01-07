@@ -160,7 +160,7 @@ public class TestCompatibleAggregations {
 	// region test getCompatibleAggregationsForQuery for data input
 	@Test
 	public void withAlwaysTrueDataPredicate_MatchesAllAggregations() {
-		final AggregationPredicate dataPredicate = alwaysTrue();
+		AggregationPredicate dataPredicate = alwaysTrue();
 		Set<String> compatibleAggregations = cube.getCompatibleAggregationsForDataInput(
 				DATA_ITEM_DIMENSIONS, DATA_ITEM_MEASURES, dataPredicate).keySet();
 
@@ -172,7 +172,7 @@ public class TestCompatibleAggregations {
 
 	@Test
 	public void withCompatibleDataPredicate_MatchesAggregationWithPredicateThatSubsetOfDataPredicate2() {
-		final AggregationPredicate dataPredicate = and(notEq("affiliate", EXCLUDE_AFFILIATE), notEq("site", EXCLUDE_SITE));
+		AggregationPredicate dataPredicate = and(notEq("affiliate", EXCLUDE_AFFILIATE), notEq("site", EXCLUDE_SITE));
 		Map<String, AggregationPredicate> compatibleAggregationsWithFilterPredicate = cube.getCompatibleAggregationsForDataInput(
 				DATA_ITEM_DIMENSIONS, DATA_ITEM_MEASURES, dataPredicate);
 
@@ -192,7 +192,7 @@ public class TestCompatibleAggregations {
 
 	@Test
 	public void withIncompatibleDataPredicate_DoesNotMatchAggregationWithLimitedDateRange() {
-		final AggregationPredicate dataPredicate = and(not(eq("affiliate", EXCLUDE_AFFILIATE)), not(eq("site", EXCLUDE_SITE)),
+		AggregationPredicate dataPredicate = and(not(eq("affiliate", EXCLUDE_AFFILIATE)), not(eq("site", EXCLUDE_SITE)),
 				between("date", LocalDate.parse("2012-01-01"), LocalDate.parse("2016-01-01")));
 		Set<String> compatibleAggregations = cubeWithDetailedAggregation.getCompatibleAggregationsForDataInput(
 				DATA_ITEM_DIMENSIONS, DATA_ITEM_MEASURES, dataPredicate).keySet();
@@ -202,7 +202,7 @@ public class TestCompatibleAggregations {
 
 	@Test
 	public void withSubsetBetweenDataPredicate_MatchesAggregation() {
-		final AggregationPredicate dataPredicate = and(notEq("date", LocalDate.parse("2001-01-04")),
+		AggregationPredicate dataPredicate = and(notEq("date", LocalDate.parse("2001-01-04")),
 				between("date", LocalDate.parse("2001-01-01"), LocalDate.parse("2004-01-01")));
 
 		Map<String, AggregationPredicate> compatibleAggregations = cubeWithDetailedAggregation.getCompatibleAggregationsForDataInput(
@@ -229,7 +229,7 @@ public class TestCompatibleAggregations {
 	// region test getCompatibleAggregationsForQuery for query
 	@Test
 	public void withWherePredicateAlwaysTrue_MatchesDailyAggregation() {
-		final AggregationPredicate whereQueryPredicate = alwaysTrue();
+		AggregationPredicate whereQueryPredicate = alwaysTrue();
 
 		List<Cube.AggregationContainer> actualAggregations = cube.getCompatibleAggregationsForQuery(
 				asList("date"), new ArrayList<>(MEASURES.keySet()), whereQueryPredicate);
@@ -242,7 +242,7 @@ public class TestCompatibleAggregations {
 
 	@Test
 	public void withWherePredicateForAdvertisersAggregation_MatchesAdvertisersAggregation() {
-		final AggregationPredicate whereQueryPredicate = and(
+		AggregationPredicate whereQueryPredicate = and(
 				not(eq("advertiser", EXCLUDE_AFFILIATE)),
 				not(eq("campaign", EXCLUDE_CAMPAIGN)),
 				not(eq("banner", EXCLUDE_BANNER)));
@@ -258,7 +258,7 @@ public class TestCompatibleAggregations {
 
 	@Test
 	public void withWherePredicateForAffiliatesAggregation_MatchesAffiliatesAggregation() {
-		final AggregationPredicate whereQueryPredicate = and(not(eq("affiliate", EXCLUDE_AFFILIATE)), not(eq("site", EXCLUDE_SITE)));
+		AggregationPredicate whereQueryPredicate = and(not(eq("affiliate", EXCLUDE_AFFILIATE)), not(eq("site", EXCLUDE_SITE)));
 
 		List<Cube.AggregationContainer> actualAggregations = cube.getCompatibleAggregationsForQuery(
 				asList("affiliate", "site"), new ArrayList<>(MEASURES.keySet()), whereQueryPredicate);
@@ -271,7 +271,7 @@ public class TestCompatibleAggregations {
 
 	@Test
 	public void withWherePredicateForBothAffiliatesAggregations_MatchesAffiliatesAggregation() {
-		final AggregationPredicate whereQueryPredicate = and(
+		AggregationPredicate whereQueryPredicate = and(
 				not(eq("affiliate", EXCLUDE_AFFILIATE)),
 				not(eq("site", EXCLUDE_SITE)),
 				not(eq("placement", EXCLUDE_PLACEMENT)));
@@ -288,7 +288,7 @@ public class TestCompatibleAggregations {
 
 	@Test
 	public void withWherePredicateForDetailedAffiliatesAggregations_MatchesDetailedAffiliatesAggregation() {
-		final AggregationPredicate whereQueryPredicate = and(not(eq("affiliate", EXCLUDE_AFFILIATE)), not(eq("site", EXCLUDE_SITE)), not(eq("placement", EXCLUDE_PLACEMENT)));
+		AggregationPredicate whereQueryPredicate = and(not(eq("affiliate", EXCLUDE_AFFILIATE)), not(eq("site", EXCLUDE_SITE)), not(eq("placement", EXCLUDE_PLACEMENT)));
 
 		List<Cube.AggregationContainer> actualAggregations =
 				cubeWithDetailedAggregation.getCompatibleAggregationsForQuery(
@@ -302,7 +302,7 @@ public class TestCompatibleAggregations {
 
 	@Test
 	public void withWherePredicateForDailyAggregation_MatchesOnlyDailyAggregations() {
-		final AggregationPredicate whereQueryPredicate = between("date", LocalDate.parse("2001-01-01"), LocalDate.parse("2004-01-01"));
+		AggregationPredicate whereQueryPredicate = between("date", LocalDate.parse("2001-01-01"), LocalDate.parse("2004-01-01"));
 
 		List<Cube.AggregationContainer> actualAggregations =
 				cubeWithDetailedAggregation.getCompatibleAggregationsForQuery(
@@ -318,7 +318,7 @@ public class TestCompatibleAggregations {
 
 	@Test
 	public void withWherePredicateForAdvertisersAggregation_MatchesOneAggregation() {
-		final AggregationPredicate whereQueryPredicate = and(
+		AggregationPredicate whereQueryPredicate = and(
 				not(eq("advertiser", EXCLUDE_ADVERTISER)), not(eq("campaign", EXCLUDE_CAMPAIGN)), not(eq("banner", EXCLUDE_BANNER)),
 				between("date", LocalDate.parse("2001-01-01"), LocalDate.parse("2004-01-01")));
 
@@ -334,7 +334,7 @@ public class TestCompatibleAggregations {
 
 	@Test
 	public void withWherePredicateForDailyAggregation_MatchesTwoAggregations() {
-		final AggregationPredicate whereQueryPredicate = eq("date", LocalDate.parse("2001-01-01"));
+		AggregationPredicate whereQueryPredicate = eq("date", LocalDate.parse("2001-01-01"));
 
 		List<Cube.AggregationContainer> actualAggregations =
 				cubeWithDetailedAggregation.getCompatibleAggregationsForQuery(

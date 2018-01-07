@@ -90,7 +90,7 @@ public class DatagraphServerTest {
 		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1511);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1512);
 
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		StreamConsumerToList<TestItem> result1 = new StreamConsumerToList<>();
 		StreamConsumerToList<TestItem> result2 = new StreamConsumerToList<>();
 
@@ -103,15 +103,15 @@ public class DatagraphServerTest {
 				.set("items", asList(new TestItem(2), new TestItem(4), new TestItem(6)))
 				.set("result", result2);
 
-		final DatagraphServer server1 = new DatagraphServer(eventloop, environment1)
+		DatagraphServer server1 = new DatagraphServer(eventloop, environment1)
 				.withListenAddress(address1);
-		final DatagraphServer server2 = new DatagraphServer(eventloop, environment2)
+		DatagraphServer server2 = new DatagraphServer(eventloop, environment2)
 				.withListenAddress(address2);
 
 		DatagraphClient client = new DatagraphClient(eventloop, serialization);
 		Partition partition1 = new Partition(client, address1);
 		Partition partition2 = new Partition(client, address2);
-		final DataGraph graph = new DataGraph(serialization,
+		DataGraph graph = new DataGraph(serialization,
 				asList(partition1, partition2));
 
 		Dataset<TestItem> items = datasetOfList("items", TestItem.class);
@@ -142,7 +142,7 @@ public class DatagraphServerTest {
 		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1511);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1512);
 
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		StreamConsumerToList<TestItem> result1 = new StreamConsumerToList<>();
 		StreamConsumerToList<TestItem> result2 = new StreamConsumerToList<>();
 
@@ -157,14 +157,14 @@ public class DatagraphServerTest {
 		DatagraphEnvironment environment2 = environment.extend()
 				.set("items", asList(new TestItem(1), new TestItem(6)))
 				.set("result", result2);
-		final DatagraphServer server1 = new DatagraphServer(eventloop, environment1)
+		DatagraphServer server1 = new DatagraphServer(eventloop, environment1)
 				.withListenAddress(address1);
-		final DatagraphServer server2 = new DatagraphServer(eventloop, environment2)
+		DatagraphServer server2 = new DatagraphServer(eventloop, environment2)
 				.withListenAddress(address2);
 
 		Partition partition1 = new Partition(client, address1);
 		Partition partition2 = new Partition(client, address2);
-		final DataGraph graph = new DataGraph(serialization,
+		DataGraph graph = new DataGraph(serialization,
 				asList(partition1, partition2));
 
 		SortedDataset<Long, TestItem> items = repartition_Sort(sortedDatasetOfList("items",
@@ -201,7 +201,7 @@ public class DatagraphServerTest {
 		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1511);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1512);
 
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		DatagraphClient client = new DatagraphClient(eventloop, serialization);
 		StreamConsumerToList<TestItem> result1 = new StreamConsumerToList<>();
 		StreamConsumerToList<TestItem> result2 = new StreamConsumerToList<>();
@@ -219,14 +219,14 @@ public class DatagraphServerTest {
 						new TestItem(2), new TestItem(5)))
 				.set("result", result2);
 
-		final DatagraphServer server1 = new DatagraphServer(eventloop, environment1)
+		DatagraphServer server1 = new DatagraphServer(eventloop, environment1)
 				.withListenAddress(address1);
-		final DatagraphServer server2 = new DatagraphServer(eventloop, environment2)
+		DatagraphServer server2 = new DatagraphServer(eventloop, environment2)
 				.withListenAddress(address2);
 
 		Partition partition1 = new Partition(client, address1);
 		Partition partition2 = new Partition(client, address2);
-		final DataGraph graph = new DataGraph(serialization, asList(partition1, partition2));
+		DataGraph graph = new DataGraph(serialization, asList(partition1, partition2));
 
 		Dataset<TestItem> filterDataset = filter(datasetOfList("items", TestItem.class),
 				new Predicate<TestItem>() {
@@ -272,9 +272,9 @@ public class DatagraphServerTest {
 		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1511);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1512);
 
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		DatagraphClient client = new DatagraphClient(eventloop, serialization);
-		final StreamConsumerToList<TestItem> resultConsumer = new StreamConsumerToList<>();
+		StreamConsumerToList<TestItem> resultConsumer = new StreamConsumerToList<>();
 
 		DatagraphEnvironment environment = DatagraphEnvironment.create()
 				.setInstance(DatagraphSerialization.class, serialization)
@@ -287,14 +287,14 @@ public class DatagraphServerTest {
 				.set("items", asList(new TestItem(6), new TestItem(7), new TestItem(8),
 						new TestItem(9), new TestItem(10)));
 
-		final DatagraphServer server1 = new DatagraphServer(eventloop, environment1)
+		DatagraphServer server1 = new DatagraphServer(eventloop, environment1)
 				.withListenAddress(address1);
-		final DatagraphServer server2 = new DatagraphServer(eventloop, environment2)
+		DatagraphServer server2 = new DatagraphServer(eventloop, environment2)
 				.withListenAddress(address2);
 
 		Partition partition1 = new Partition(client, address1);
 		Partition partition2 = new Partition(client, address2);
-		final DataGraph graph = new DataGraph(serialization, asList(partition1, partition2));
+		DataGraph graph = new DataGraph(serialization, asList(partition1, partition2));
 
 		Dataset<TestItem> filterDataset = filter(datasetOfList("items", TestItem.class),
 				new Predicate<TestItem>() {

@@ -45,7 +45,7 @@ public class JmxRegistryTest {
 
 	@Test
 	public void registerSingletonInstanceWithout_Annotation_AndComposeAppropriateObjectName() throws Exception {
-		final ServiceStub service = new ServiceStub();
+		ServiceStub service = new ServiceStub();
 
 		context.checking(new Expectations() {{
 			allowing(mbeanFactory).createFor(with(asList(service)), with(any(MBeanSettings.class)), with(true));
@@ -61,7 +61,7 @@ public class JmxRegistryTest {
 	@Test
 	public void registerSingletonInstanceWith_AnnotationWithoutParameters_AndComposeAppropriateObjectName()
 			throws Exception {
-		final ServiceStub service = new ServiceStub();
+		ServiceStub service = new ServiceStub();
 
 		context.checking(new Expectations() {{
 			allowing(mbeanFactory).createFor(with(asList(service)), with(any(MBeanSettings.class)), with(true));
@@ -79,7 +79,7 @@ public class JmxRegistryTest {
 	@Test
 	public void registerSingletonInstanceWith_AnnotationWithOneDefaultParameter_AndComposeAppropriateObjectName()
 			throws Exception {
-		final ServiceStub service = new ServiceStub();
+		ServiceStub service = new ServiceStub();
 
 		context.checking(new Expectations() {{
 			allowing(mbeanFactory).createFor(with(asList(service)), with(any(MBeanSettings.class)), with(true));
@@ -96,7 +96,7 @@ public class JmxRegistryTest {
 	@Test
 	public void registerSingletonInstanceWith_AnnotationWithSeveralParameters_AndComposeAppropriateObjectName()
 			throws Exception {
-		final ServiceStub service = new ServiceStub();
+		ServiceStub service = new ServiceStub();
 
 		context.checking(new Expectations() {{
 			allowing(mbeanFactory).createFor(with(asList(service)), with(any(MBeanSettings.class)), with(true));
@@ -114,7 +114,7 @@ public class JmxRegistryTest {
 
 	@Test
 	public void unregisterSingletonInstance() throws Exception {
-		final ServiceStub service = new ServiceStub();
+		ServiceStub service = new ServiceStub();
 
 		context.checking(new Expectations() {{
 			oneOf(mBeanServer).unregisterMBean(with(objectname(domain + ":type=ServiceStub,annotation=BasicService")));
@@ -127,9 +127,9 @@ public class JmxRegistryTest {
 
 	@Test
 	public void registerWorkers_andComposeAppropriateObjectNames() throws Exception {
-		final ServiceStub worker_1 = new ServiceStub();
-		final ServiceStub worker_2 = new ServiceStub();
-		final ServiceStub worker_3 = new ServiceStub();
+		ServiceStub worker_1 = new ServiceStub();
+		ServiceStub worker_2 = new ServiceStub();
+		ServiceStub worker_3 = new ServiceStub();
 
 		context.checking(new Expectations() {{
 			// creating DynamicMBeans for each worker separately
@@ -172,9 +172,9 @@ public class JmxRegistryTest {
 
 	@Test
 	public void unregisterWorkers() throws Exception {
-		final ServiceStub worker_1 = new ServiceStub();
-		final ServiceStub worker_2 = new ServiceStub();
-		final ServiceStub worker_3 = new ServiceStub();
+		ServiceStub worker_1 = new ServiceStub();
+		ServiceStub worker_2 = new ServiceStub();
+		ServiceStub worker_3 = new ServiceStub();
 
 		context.checking(new Expectations() {{
 			// checking calls and names for each worker separately
@@ -226,7 +226,7 @@ public class JmxRegistryTest {
 		};
 	}
 
-	public static Group createGroupAnnotation(final String value) {
+	public static Group createGroupAnnotation(String value) {
 		return new Group() {
 
 			@Override
@@ -241,7 +241,7 @@ public class JmxRegistryTest {
 		};
 	}
 
-	public static ComplexAnnotation createComplexAnnotation(final int threadId, final String threadName) {
+	public static ComplexAnnotation createComplexAnnotation(int threadId, String threadName) {
 		return new ComplexAnnotation() {
 
 			@Override

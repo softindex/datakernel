@@ -82,7 +82,7 @@ public class CubeCleaner implements EventloopJmxMBean {
 	private CompletionStage<Void> trySaveSnapshotAndCleanupChunks(Integer checkpointNode) {
 		logger.info("Checkpoint node: {}", checkpointNode);
 		return loadAllChanges(otRemote, comparator, otSystem, checkpointNode).thenCompose(changes -> {
-			final long cleanupTimestamp = eventloop.currentTimeMillis() - chunksCleanupDelay;
+			long cleanupTimestamp = eventloop.currentTimeMillis() - chunksCleanupDelay;
 
 			return otRemote.saveSnapshot(checkpointNode, changes)
 					.thenCompose($ -> findSnapshot(singleton(checkpointNode), extraSnapshotCount))
@@ -101,7 +101,7 @@ public class CubeCleaner implements EventloopJmxMBean {
 	}
 
 	private CompletionStage<Optional<Integer>> findSnapshot(Set<Integer> heads, int skipSnapshots) {
-		final Map<Integer, List<Object>> nodes = heads.stream().collect(toMap(k -> k, k -> emptyList()));
+		Map<Integer, List<Object>> nodes = heads.stream().collect(toMap(k -> k, k -> emptyList()));
 		return findParent(otRemote, comparator, nodes, (Integer) null,
 				commit -> otRemote.isSnapshot(commit.getId()),
 				(a, ds) -> emptyList())
@@ -122,7 +122,7 @@ public class CubeCleaner implements EventloopJmxMBean {
 	}
 
 	private CompletionStage<Set<Long>> addedChunksOnPath(Integer parent, Collection<Integer> heads) {
-		final Map<Integer, Set<Long>> headsMap = heads.stream().collect(toMap(k -> k, k -> new HashSet<Long>()));
+		Map<Integer, Set<Long>> headsMap = heads.stream().collect(toMap(k -> k, k -> new HashSet<Long>()));
 		return OTUtils.reduceEdges(otRemote, comparator,
 				headsMap,
 				parent,

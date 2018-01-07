@@ -166,12 +166,12 @@ final class AttributeNodeForMap extends AttributeNodeForLeafAbstract {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public List<JmxRefreshable> getAllRefreshables(final Object source) {
+	public List<JmxRefreshable> getAllRefreshables(Object source) {
 		if (!isMapOfJmxRefreshable) {
 			return emptyList();
 		}
 
-		final Map<?, JmxRefreshable> mapRef = ((Map<?, JmxRefreshable>) fetcher.fetchFrom(source));
+		Map<?, JmxRefreshable> mapRef = ((Map<?, JmxRefreshable>) fetcher.fetchFrom(source));
 		return Collections.<JmxRefreshable>singletonList(new JmxRefreshable() {
 			@Override
 			public void refresh(long timestamp) {

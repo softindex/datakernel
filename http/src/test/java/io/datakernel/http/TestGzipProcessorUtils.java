@@ -92,7 +92,7 @@ public class TestGzipProcessorUtils {
 
 	@Test
 	public void recycleByteBufInCaseOfBadInput() {
-		final ByteBuf badBuf = ByteBufPool.allocate(100);
+		ByteBuf badBuf = ByteBufPool.allocate(100);
 		badBuf.put(new byte[]{-1, -1, -1, -1, -1, -1});
 
 		try {
@@ -116,10 +116,10 @@ public class TestGzipProcessorUtils {
 			return Stages.of(HttpResponse.ok200().withBodyGzipCompression().withBody(ByteBufStrings.wrapAscii(receivedData)));
 		};
 
-		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
+		AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
 				.withListenAddress(new InetSocketAddress("localhost", PORT));
 
-		final AsyncHttpClient client = AsyncHttpClient.create(eventloop);
+		AsyncHttpClient client = AsyncHttpClient.create(eventloop);
 
 		HttpRequest request = HttpRequest.get("http://127.0.0.1:" + PORT)
 				.withHeader(ACCEPT_ENCODING, "gzip")
@@ -127,7 +127,7 @@ public class TestGzipProcessorUtils {
 				.withBody(wrapAscii(text));
 
 		server.listen();
-		final CompletableFuture<String> future = client.send(request).thenApply(result -> {
+		CompletableFuture<String> future = client.send(request).thenApply(result -> {
 			assertEquals("gzip", result.getHeader(HttpHeaders.CONTENT_ENCODING));
 			server.close();
 			client.stop();

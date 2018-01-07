@@ -76,7 +76,7 @@ public final class Configs {
 		return EMPTY_CONFIG;
 	}
 
-	public static Config ofValue(final String value) {
+	public static Config ofValue(String value) {
 		return new AbstractConfig() {
 			@Override
 			protected String doGet() {
@@ -115,11 +115,11 @@ public final class Configs {
 		};
 	}
 
-	public static Config union(final ConflictResolver resolver, final Config... configs) {
+	public static Config union(ConflictResolver resolver, Config... configs) {
 		return union(resolver, Arrays.asList(configs));
 	}
 
-	public static Config union(final ConflictResolver resolver, final List<? extends Config> allConfigs) {
+	public static Config union(ConflictResolver resolver, List<? extends Config> allConfigs) {
 		return new AbstractConfig() {
 			@Override
 			protected String doGet() {
@@ -137,7 +137,7 @@ public final class Configs {
 			}
 
 			@Override
-			protected boolean doHasChild(final String key) {
+			protected boolean doHasChild(String key) {
 				return allConfigs.stream().anyMatch(input -> input.hasChild(key));
 			}
 
@@ -181,7 +181,7 @@ public final class Configs {
 		};
 	}
 
-	public static Config ofMap(final Map<String, ? extends Config> map) {
+	public static Config ofMap(Map<String, ? extends Config> map) {
 		return new AbstractConfig() {
 			@Override
 			protected String doGet() throws NoSuchElementException {

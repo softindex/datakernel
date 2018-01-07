@@ -135,7 +135,7 @@ public class StreamSharderTest {
 
 	@Test
 	public void testProducerWithError() {
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		StreamSharder<Integer> streamSharder = StreamSharder.create(SHARDER);
 

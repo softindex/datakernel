@@ -15,7 +15,7 @@ import static java.util.stream.Collectors.toSet;
 
 public class CubeOT {
 	public static OTSystem<CubeDiff> createCubeOT() {
-		final OTSystem<AggregationDiff> aggregationOTSystem = AggregationOT.createAggregationOT();
+		OTSystem<AggregationDiff> aggregationOTSystem = AggregationOT.createAggregationOT();
 		return OTSystemImpl.<CubeDiff>create()
 				.withTransformFunction(CubeDiff.class, CubeDiff.class, (left, right) -> {
 					Map<String, AggregationDiff> newOpsLeft = new LinkedHashMap<>();

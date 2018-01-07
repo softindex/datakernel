@@ -32,8 +32,8 @@ public final class MessagingSerializers {
 	private MessagingSerializers() {
 	}
 
-	public static <I, O> MessagingSerializer<I, O> ofGson(final Gson in, final Class<I> inputClass,
-	                                                      final Gson out, final Class<O> outputClass) {
+	public static <I, O> MessagingSerializer<I, O> ofGson(Gson in, Class<I> inputClass,
+	                                                      Gson out, Class<O> outputClass) {
 		return new MessagingSerializer<I, O>() {
 			@Override
 			public I tryDeserialize(ByteBuf buf) throws ParseException {

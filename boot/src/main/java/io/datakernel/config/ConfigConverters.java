@@ -131,7 +131,7 @@ public final class ConfigConverters {
 	}
 
 	public static <E extends Enum<E>> AbstractConfigConverter<E> ofEnum(Class<E> enumClass) {
-		final Class<E> enumClass1 = enumClass;
+		Class<E> enumClass1 = enumClass;
 		return new AbstractConfigConverter<E>() {
 			private final Class<E> enumClass = enumClass1;
 

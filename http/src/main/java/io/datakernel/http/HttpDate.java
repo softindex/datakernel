@@ -79,7 +79,7 @@ final class HttpDate {
 				}
 			}
 
-			final int yearLength = '0' <=  bytes[start + 12 + 2] && bytes[start + 12 + 2] <= '9' ? 4 : 2;
+			int yearLength = '0' <=  bytes[start + 12 + 2] && bytes[start + 12 + 2] <= '9' ? 4 : 2;
 
 			int year = (yearLength == 2 ? 2000 : 0) + decodeDecimal(bytes, start + 12, yearLength);
 			int hour = decodeDecimal(bytes, start + 13 + yearLength, 2);

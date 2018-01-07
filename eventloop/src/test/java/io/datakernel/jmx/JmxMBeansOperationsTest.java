@@ -178,7 +178,7 @@ public class JmxMBeansOperationsTest {
 	}
 
 	// custom matchers
-	public static <T> Matcher<Map<T, ?>> hasKey(final T key) {
+	public static <T> Matcher<Map<T, ?>> hasKey(T key) {
 		return new BaseMatcher<Map<T, ?>>() {
 
 			@Override
@@ -197,7 +197,7 @@ public class JmxMBeansOperationsTest {
 		};
 	}
 
-	public static Matcher<MBeanOperationInfo> hasParameter(final String name, final String type) {
+	public static Matcher<MBeanOperationInfo> hasParameter(String name, String type) {
 		return new BaseMatcher<MBeanOperationInfo>() {
 			@Override
 			public boolean matches(Object item) {
@@ -220,7 +220,7 @@ public class JmxMBeansOperationsTest {
 		};
 	}
 
-	public static Matcher<MBeanOperationInfo> hasReturnType(final String type) {
+	public static Matcher<MBeanOperationInfo> hasReturnType(String type) {
 		return new BaseMatcher<MBeanOperationInfo>() {
 			@Override
 			public boolean matches(Object item) {

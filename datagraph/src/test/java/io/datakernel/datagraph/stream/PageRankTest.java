@@ -204,9 +204,9 @@ public class PageRankTest {
 		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1571);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1572);
 
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
-		final StreamConsumerToList<Rank> result1 = new StreamConsumerToList<>();
-		final StreamConsumerToList<Rank> result2 = new StreamConsumerToList<>();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		StreamConsumerToList<Rank> result1 = new StreamConsumerToList<>();
+		StreamConsumerToList<Rank> result2 = new StreamConsumerToList<>();
 
 		DatagraphClient client = new DatagraphClient(eventloop, serialization);
 		DatagraphEnvironment environment = DatagraphEnvironment.create()
@@ -220,13 +220,13 @@ public class PageRankTest {
 				.set("items", asList(new Page(2, new long[]{1})))
 				.set("result", result2);
 
-		final DatagraphServer server1 = new DatagraphServer(eventloop, environment1).withListenAddress(address1);
-		final DatagraphServer server2 = new DatagraphServer(eventloop, environment2).withListenAddress(address2);
+		DatagraphServer server1 = new DatagraphServer(eventloop, environment1).withListenAddress(address1);
+		DatagraphServer server2 = new DatagraphServer(eventloop, environment2).withListenAddress(address2);
 
 		Partition partition1 = new Partition(client, address1);
 		Partition partition2 = new Partition(client, address2);
 
-		final DataGraph graph = new DataGraph(serialization,
+		DataGraph graph = new DataGraph(serialization,
 				asList(partition1, partition2));
 
 		SortedDataset<Long, Page> pages = repartition_Sort(sortedDatasetOfList("items",

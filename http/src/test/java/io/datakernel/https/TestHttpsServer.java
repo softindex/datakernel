@@ -55,7 +55,7 @@ public class TestHttpsServer {
 		KeyManager[] keyManagers = createKeyManagers(new File("./src/test/resources/keystore.jks"), "testtest", "testtest");
 		TrustManager[] trustManagers = createTrustManagers(new File("./src/test/resources/truststore.jks"), "testtest");
 
-		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, bobServlet)
+		AsyncHttpServer server = AsyncHttpServer.create(eventloop, bobServlet)
 				.withSslListenPort(createSslContext("TLSv1", keyManagers, trustManagers, new SecureRandom()), executor, PORT)
 				.withListenAddress(new InetSocketAddress("localhost", 5569));
 

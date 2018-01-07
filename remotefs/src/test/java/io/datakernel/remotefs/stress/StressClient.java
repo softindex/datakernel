@@ -76,7 +76,7 @@ class StressClient {
 			@Override
 			public void go() {
 				try {
-					final String fileName = createFile();
+					String fileName = createFile();
 					existingClientFiles.add(fileName);
 
 					Path file = clientStorage.resolve(fileName);
@@ -105,12 +105,12 @@ class StressClient {
 				if (existingClientFiles.isEmpty()) return;
 
 				int index = rand.nextInt(existingClientFiles.size());
-				final String fileName = existingClientFiles.get(index);
+				String fileName = existingClientFiles.get(index);
 
 				if (fileName == null) return;
 
 				try {
-					final StreamFileWriter consumer = StreamFileWriter.create(executor, downloads.resolve(fileName));
+					StreamFileWriter consumer = StreamFileWriter.create(executor, downloads.resolve(fileName));
 					consumer.getFlushStage().whenComplete(($, throwable) -> {
 						if (throwable == null) logger.info("Downloaded: " + fileName);
 						else logger.info("Failed to download: {}", throwable.getMessage());
@@ -137,7 +137,7 @@ class StressClient {
 				if (existingClientFiles.isEmpty()) return;
 
 				int index = rand.nextInt(existingClientFiles.size());
-				final String fileName = existingClientFiles.get(index);
+				String fileName = existingClientFiles.get(index);
 
 				client.delete(fileName).whenComplete(($, throwable) -> {
 					if (throwable == null) {
@@ -217,7 +217,7 @@ class StressClient {
 	}
 
 	void downloadSmallObjects(int i) {
-		final String name = "someName" + i;
+		String name = "someName" + i;
 		client.download(name, 0).whenComplete((producer, throwable) -> {
 			if (throwable != null) {
 				logger.error("can't download", throwable);

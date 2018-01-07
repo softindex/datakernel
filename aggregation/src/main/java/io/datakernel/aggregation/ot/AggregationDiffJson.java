@@ -27,8 +27,8 @@ public class AggregationDiffJson extends TypeAdapter<AggregationDiff> {
 	}
 
 	public static AggregationDiffJson create(AggregationStructure structure) {
-		final Set<String> allowedMeasures = structure.getMeasureTypes().keySet();
-		final TypeAdapter<PrimaryKey> primaryKeyJson = getPrimaryKeyJson(structure);
+		Set<String> allowedMeasures = structure.getMeasureTypes().keySet();
+		TypeAdapter<PrimaryKey> primaryKeyJson = getPrimaryKeyJson(structure);
 		return new AggregationDiffJson(AggregationChunkJson.create(primaryKeyJson, allowedMeasures));
 	}
 

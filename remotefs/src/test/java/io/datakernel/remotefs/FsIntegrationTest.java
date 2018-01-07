@@ -98,8 +98,8 @@ public class FsIntegrationTest {
 		int files = 10;
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = newCachedThreadPool();
-		final RemoteFsServer server = createServer(eventloop, executor);
-		final RemoteFsClient client = createClient(eventloop);
+		RemoteFsServer server = createServer(eventloop, executor);
+		RemoteFsClient client = createClient(eventloop);
 
 		server.listen();
 		List<CompletionStage<Void>> tasks = new ArrayList<>();
@@ -148,7 +148,7 @@ public class FsIntegrationTest {
 	public void testUploadExistingFile() throws IOException {
 		String resultFile = "this/is/not/empty/directory/2/file2_uploaded.txt";
 
-		final Throwable es[] = new Throwable[1];
+		Throwable es[] = new Throwable[1];
 
 		upload(resultFile, CONTENT);
 		upload(resultFile, CONTENT).whenComplete(($, throwable) -> {
@@ -166,7 +166,7 @@ public class FsIntegrationTest {
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = newCachedThreadPool();
-		final RemoteFsServer server = createServer(eventloop, executor);
+		RemoteFsServer server = createServer(eventloop, executor);
 		RemoteFsClient client = createClient(eventloop);
 
 		server.listen();
@@ -263,8 +263,8 @@ public class FsIntegrationTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = newCachedThreadPool();
 		RemoteFsClient client = createClient(eventloop);
-		final RemoteFsServer server = createServer(eventloop, executor);
-		final List<Throwable> expected = new ArrayList<>();
+		RemoteFsServer server = createServer(eventloop, executor);
+		List<Throwable> expected = new ArrayList<>();
 
 		server.listen();
 		StreamProducerWithResult<ByteBuf, Void> producer = client.downloadStream(file, 0);
@@ -284,12 +284,12 @@ public class FsIntegrationTest {
 
 	@Test
 	public void testManySimultaneousDownloads() throws IOException {
-		final String file = "some_file.txt";
+		String file = "some_file.txt";
 		Files.write(storage.resolve(file), CONTENT);
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
-		final ExecutorService executor = newCachedThreadPool();
-		final RemoteFsClient client = createClient(eventloop);
-		final RemoteFsServer server = createServer(eventloop, executor);
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		ExecutorService executor = newCachedThreadPool();
+		RemoteFsClient client = createClient(eventloop);
+		RemoteFsServer server = createServer(eventloop, executor);
 		int files = 10;
 
 		server.listen();
@@ -332,14 +332,14 @@ public class FsIntegrationTest {
 
 	@Test
 	public void testDeleteMissingFile() throws Exception {
-		final String file = "no_file.txt";
+		String file = "no_file.txt";
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = newCachedThreadPool();
 		RemoteFsClient client = createClient(eventloop);
-		final RemoteFsServer server = createServer(eventloop, executor);
+		RemoteFsServer server = createServer(eventloop, executor);
 		server.listen();
 
-		final CompletableFuture<Void> future = client.delete(file)
+		CompletableFuture<Void> future = client.delete(file)
 				.whenComplete(($, throwable) -> server.close()).toCompletableFuture();
 
 		eventloop.run();
@@ -368,8 +368,8 @@ public class FsIntegrationTest {
 		ExecutorService executor = newCachedThreadPool();
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		final List<String> actual = new ArrayList<>();
-		final List<String> expected = asList("this/is/not/empty/directory/file1.txt", "file1.txt", "first file.txt");
+		List<String> actual = new ArrayList<>();
+		List<String> expected = asList("this/is/not/empty/directory/file1.txt", "file1.txt", "first file.txt");
 
 		Files.createDirectories(storage.resolve("this/is/not/empty/directory/"));
 		Files.write(storage.resolve("this/is/not/empty/directory/file1.txt"), CONTENT);
@@ -377,8 +377,8 @@ public class FsIntegrationTest {
 		Files.write(storage.resolve("file1.txt"), CONTENT);
 		Files.write(storage.resolve("first file.txt"), CONTENT);
 
-		final RemoteFsServer server = createServer(eventloop, executor);
-		final RemoteFsClient client = createClient(eventloop);
+		RemoteFsServer server = createServer(eventloop, executor);
+		RemoteFsClient client = createClient(eventloop);
 
 		server.listen();
 
@@ -417,11 +417,11 @@ public class FsIntegrationTest {
 	}
 
 	private List<ByteBuf> download(String file, long startPosition) throws IOException {
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = newCachedThreadPool();
 		RemoteFsClient client = createClient(eventloop);
-		final RemoteFsServer server = createServer(eventloop, executor);
-		final List<ByteBuf> expected = new ArrayList<>();
+		RemoteFsServer server = createServer(eventloop, executor);
+		List<ByteBuf> expected = new ArrayList<>();
 
 		server.listen();
 

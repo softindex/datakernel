@@ -38,7 +38,7 @@ public class TestClientMultilineHeaders {
 	@Test
 	public void testMultilineHeaders() throws ExecutionException, InterruptedException, IOException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
-		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop);
+		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop);
 
 		AsyncServlet servlet = request -> {
 			HttpResponse response = HttpResponse.ok200();
@@ -46,10 +46,10 @@ public class TestClientMultilineHeaders {
 			return Stages.of(response);
 		};
 
-		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet).withListenAddress(new InetSocketAddress("localhost", PORT));
+		AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet).withListenAddress(new InetSocketAddress("localhost", PORT));
 		server.listen();
 
-		final CompletableFuture<String> future = httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT))
+		CompletableFuture<String> future = httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT))
 				.thenApply(response -> {
 					httpClient.stop();
 					server.close();

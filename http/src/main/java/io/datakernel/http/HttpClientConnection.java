@@ -130,8 +130,8 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	@Override
 	protected void onHttpMessage(ByteBuf bodyBuf) {
 		assert !isClosed();
-		final SettableStage<HttpResponse> stage = this.stage;
-		final HttpResponse response = this.response;
+		SettableStage<HttpResponse> stage = this.stage;
+		HttpResponse response = this.response;
 		this.response = null;
 		this.stage = null;
 		response.setBody(bodyBuf);

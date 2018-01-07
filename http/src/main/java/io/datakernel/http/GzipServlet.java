@@ -42,7 +42,7 @@ public final class GzipServlet implements AsyncServlet {
 
 	@Override
 	public CompletionStage<HttpResponse> serve(HttpRequest request) {
-		final CompletionStage<HttpResponse> serve = asyncServlet.serve(request);
+		CompletionStage<HttpResponse> serve = asyncServlet.serve(request);
 		if (!test(request)) return serve;
 
 		return serve.thenApply(response ->

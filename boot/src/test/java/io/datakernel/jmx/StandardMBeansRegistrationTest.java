@@ -37,7 +37,7 @@ public class StandardMBeansRegistrationTest {
 
 	@Test
 	public void itShouldRegisterStandardMBeans() throws Exception {
-		final ServiceStub service = new ServiceStub();
+		ServiceStub service = new ServiceStub();
 
 		context.checking(new Expectations() {{
 			oneOf(mBeanServer).registerMBean(with(service), with(objectname(domain + ":type=ServiceStub")));
@@ -49,7 +49,7 @@ public class StandardMBeansRegistrationTest {
 
 	@Test
 	public void itShouldNotRegisterClassesThatAreNotMBeans() {
-		final NonMBeanServiceImpl nonMBean = new NonMBeanServiceImpl();
+		NonMBeanServiceImpl nonMBean = new NonMBeanServiceImpl();
 
 		context.checking(new Expectations() {{
 			// we do not expect any calls

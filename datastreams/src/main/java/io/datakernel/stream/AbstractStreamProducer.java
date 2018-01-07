@@ -61,7 +61,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	 * @param consumer consumer for streaming
 	 */
 	@Override
-	public final void setConsumer(final StreamConsumer<T> consumer) {
+	public final void setConsumer(StreamConsumer<T> consumer) {
 		checkNotNull(consumer);
 		checkState(this.consumer == null);
 		this.consumer = consumer;

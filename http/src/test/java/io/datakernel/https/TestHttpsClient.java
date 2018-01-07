@@ -54,16 +54,16 @@ public class TestHttpsClient {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		ExecutorService executor = newCachedThreadPool();
 
-		final AsyncDnsClient dnsClient = AsyncDnsClient.create(eventloop)
+		AsyncDnsClient dnsClient = AsyncDnsClient.create(eventloop)
 				.withTimeout(500)
 				.withDnsServerAddress(inetAddress("8.8.8.8"));
 
-		final AsyncHttpClient client = AsyncHttpClient.create(eventloop)
+		AsyncHttpClient client = AsyncHttpClient.create(eventloop)
 				.withDnsClient(dnsClient)
 				.withSslEnabled(SSLContext.getDefault(), executor);
 
 		String url = "https://en.wikipedia.org/wiki/Wikipedia";
-		final CompletableFuture<Integer> future = client.send(get(url)).thenApply(response -> {
+		CompletableFuture<Integer> future = client.send(get(url)).thenApply(response -> {
 			client.stop();
 			return response.getCode();
 		}).toCompletableFuture();

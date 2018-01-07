@@ -50,12 +50,12 @@ public class SerializerGenHppcSet implements SerializerGen, NullableOptimization
 		return sb.toString();
 	}
 
-	public static SerializerGenBuilder serializerGenBuilder(final Class<?> setType, final Class<?> valueType) {
+	public static SerializerGenBuilder serializerGenBuilder(Class<?> setType, Class<?> valueType) {
 		String prefix = toUpperCamel(valueType.getSimpleName());
 		check(setType.getSimpleName().startsWith(prefix), "Expected setType '%s', but was begin '%s'", setType.getSimpleName(), prefix);
 		return new SerializerGenBuilder() {
 			@Override
-			public SerializerGen serializer(Class<?> type, final SerializerForType[] generics, SerializerGen fallback) {
+			public SerializerGen serializer(Class<?> type, SerializerForType[] generics, SerializerGen fallback) {
 				SerializerGen valueSerializer;
 				if (generics.length == 1) {
 					check(valueType == Object.class, "valueType must be Object.class");
@@ -114,7 +114,7 @@ public class SerializerGenHppcSet implements SerializerGen, NullableOptimization
 	}
 
 	@Override
-	public Expression serialize(final Expression byteArray, final Variable off, Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods, final CompatibilityLevel compatibilityLevel) {
+	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		Expression length = call(value, "size");
 		Expression writeLength = set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, (!nullable ? length : inc(length))));
 		Expression hppcSetForEach = hppcSetForEach(iteratorType, value, new ForVar() {
@@ -138,10 +138,10 @@ public class SerializerGenHppcSet implements SerializerGen, NullableOptimization
 	}
 
 	@Override
-	public Expression deserialize(Class<?> targetType, final int version, final SerializerBuilder.StaticMethods staticMethods, final CompatibilityLevel compatibilityLevel) {
-		final Class<?> valueType = valueSerializer.getRawType();
+	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+		Class<?> valueType = valueSerializer.getRawType();
 		Expression length = let(call(arg(0), "readVarInt"));
-		final Expression set = let(constructor(hashSetType));
+		Expression set = let(constructor(hashSetType));
 		Expression expressionFor = expressionFor((!nullable ? length : dec(length)), new ForVar() {
 			@Override
 			public Expression forVar(Expression it) {

@@ -222,7 +222,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		try {
 			key = channel.register(eventloop.ensureSelector(), ops, this);
 			connectionCount.incrementAndGet();
-		} catch (final IOException e) {
+		} catch (IOException e) {
 			eventloop.post(() -> {
 				closeChannel();
 				socketEventHandler.onClosedWithError(e);
@@ -469,7 +469,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		}
 	}
 
-	private void closeWithError(final Exception e, boolean fireAsync) {
+	private void closeWithError(Exception e, boolean fireAsync) {
 		if (isOpen()) {
 			close();
 			if (fireAsync)

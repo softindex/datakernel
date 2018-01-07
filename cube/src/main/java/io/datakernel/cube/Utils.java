@@ -60,18 +60,18 @@ class Utils {
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <R> CompletionStage<Void> resolveAttributes(final List<R> results, final AttributeResolver attributeResolver,
-	                                                          final List<String> recordDimensions, final List<String> recordAttributes,
-	                                                          final Map<String, Object> fullySpecifiedDimensions,
-	                                                          final Class<R> recordClass, DefiningClassLoader classLoader) {
-		final Object[] fullySpecifiedDimensionsArray = new Object[recordDimensions.size()];
+	public static <R> CompletionStage<Void> resolveAttributes(List<R> results, AttributeResolver attributeResolver,
+	                                                          List<String> recordDimensions, List<String> recordAttributes,
+	                                                          Map<String, Object> fullySpecifiedDimensions,
+	                                                          Class<R> recordClass, DefiningClassLoader classLoader) {
+		Object[] fullySpecifiedDimensionsArray = new Object[recordDimensions.size()];
 		for (int i = 0; i < recordDimensions.size(); i++) {
 			String dimension = recordDimensions.get(i);
 			if (fullySpecifiedDimensions.containsKey(dimension)) {
 				fullySpecifiedDimensionsArray[i] = fullySpecifiedDimensions.get(dimension);
 			}
 		}
-		final AttributeResolver.KeyFunction keyFunction = ClassBuilder.create(classLoader, AttributeResolver.KeyFunction.class)
+		AttributeResolver.KeyFunction keyFunction = ClassBuilder.create(classLoader, AttributeResolver.KeyFunction.class)
 				.withMethod("extractKey", ((WithValue<Expression>) () -> {
 					ExpressionSequence extractKey = ExpressionSequence.create();
 					Expression key = let(newArray(Object.class, value(recordDimensions.size())));
@@ -86,8 +86,8 @@ class Utils {
 				}).get())
 				.buildClassAndCreateNewInstance();
 
-		final ArrayList<String> resolverAttributes = new ArrayList<>(attributeResolver.getAttributeTypes().keySet());
-		final AttributeResolver.AttributesFunction attributesFunction = ClassBuilder.create(classLoader, AttributeResolver.AttributesFunction.class)
+		ArrayList<String> resolverAttributes = new ArrayList<>(attributeResolver.getAttributeTypes().keySet());
+		AttributeResolver.AttributesFunction attributesFunction = ClassBuilder.create(classLoader, AttributeResolver.AttributesFunction.class)
 				.withMethod("applyAttributes", ((WithValue<Expression>) () -> {
 					ExpressionSequence applyAttributes = ExpressionSequence.create();
 					for (String attribute : recordAttributes) {

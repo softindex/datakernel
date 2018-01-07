@@ -48,7 +48,7 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 		return limit;
 	}
 
-	private void post(final Runnable runnable) throws InterruptedException {
+	private void post(Runnable runnable) throws InterruptedException {
 		lock.lock();
 		try {
 			while (tasks.get() > limit) {
@@ -61,7 +61,7 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 		}
 	}
 
-	private void post(final Runnable runnable, CompletableFuture<?> future) {
+	private void post(Runnable runnable, CompletableFuture<?> future) {
 		try {
 			post(runnable);
 		} catch (InterruptedException e) {
@@ -80,7 +80,7 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 	}
 
 	@Override
-	public void execute(final Runnable runnable) {
+	public void execute(Runnable runnable) {
 		try {
 			post(new Runnable() {
 				@Override
@@ -97,8 +97,8 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 	}
 
 	@Override
-	public CompletableFuture<Void> submit(final Runnable runnable) {
-		final CompletableFuture<Void> future = new CompletableFuture<>();
+	public CompletableFuture<Void> submit(Runnable runnable) {
+		CompletableFuture<Void> future = new CompletableFuture<>();
 		post(() -> {
 			Exception exception = null;
 			try {
@@ -117,8 +117,8 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 	}
 
 	@Override
-	public <T> CompletableFuture<T> submit(final Callable<T> callable) {
-		final CompletableFuture<T> future = new CompletableFuture<>();
+	public <T> CompletableFuture<T> submit(Callable<T> callable) {
+		CompletableFuture<T> future = new CompletableFuture<>();
 		post(() -> {
 			T result = null;
 			Exception exception = null;
@@ -138,8 +138,8 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 	}
 
 	@Override
-	public <T> CompletableFuture<T> submit(final AsyncCallable<T> asyncCallable) {
-		final CompletableFuture<T> future = new CompletableFuture<>();
+	public <T> CompletableFuture<T> submit(AsyncCallable<T> asyncCallable) {
+		CompletableFuture<T> future = new CompletableFuture<>();
 		post(() -> asyncCallable.call().whenComplete((t, throwable) -> complete()).whenComplete((t, throwable) -> {
 			if (throwable == null) {
 				future.complete(t);

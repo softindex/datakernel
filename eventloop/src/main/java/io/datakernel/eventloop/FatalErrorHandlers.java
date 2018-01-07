@@ -44,7 +44,7 @@ public final class FatalErrorHandlers {
 		};
 	}
 
-	public static FatalErrorHandler exitOnMatchedError(final List<Class> whiteList, final List<Class> blackList) {
+	public static FatalErrorHandler exitOnMatchedError(List<Class> whiteList, List<Class> blackList) {
 		return new FatalErrorHandler() {
 			@Override
 			public void handle(Throwable error, Object context) {
@@ -76,7 +76,7 @@ public final class FatalErrorHandlers {
 		};
 	}
 
-	public static FatalErrorHandler rethrowOnMatchedError(final List<Class> whiteList, final List<Class> blackList) {
+	public static FatalErrorHandler rethrowOnMatchedError(List<Class> whiteList, List<Class> blackList) {
 		return new FatalErrorHandler() {
 			@Override
 			public void handle(Throwable error, Object context) {

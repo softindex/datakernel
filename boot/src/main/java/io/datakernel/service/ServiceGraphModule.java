@@ -233,8 +233,8 @@ public final class ServiceGraphModule extends AbstractModule {
 		return this;
 	}
 
-	private Service getWorkersServiceOrNull(final Key<?> key, final List<?> instances) {
-		final List<Service> services = new ArrayList<>();
+	private Service getWorkersServiceOrNull(Key<?> key, List<?> instances) {
+		List<Service> services = new ArrayList<>();
 		boolean found = false;
 		for (Object instance : instances) {
 			Service service = getServiceOrNull(key, instance);
@@ -272,12 +272,12 @@ public final class ServiceGraphModule extends AbstractModule {
 		return throwable;
 	}
 
-	private static CompletableFuture<Void> combineFutures(List<CompletableFuture<Void>> futures, final Executor executor) {
-		final CompletableFuture<Void> resultFuture = new CompletableFuture<>();
-		final AtomicInteger count = new AtomicInteger(futures.size());
-		final AtomicReference<Throwable> exception = new AtomicReference<>();
+	private static CompletableFuture<Void> combineFutures(List<CompletableFuture<Void>> futures, Executor executor) {
+		CompletableFuture<Void> resultFuture = new CompletableFuture<>();
+		AtomicInteger count = new AtomicInteger(futures.size());
+		AtomicReference<Throwable> exception = new AtomicReference<>();
 		for (CompletableFuture<Void> future : futures) {
-			final CompletableFuture<Void> finalFuture = future != null ? future : completedFuture(null);
+			CompletableFuture<Void> finalFuture = future != null ? future : completedFuture(null);
 			finalFuture.whenCompleteAsync((o, throwable) -> {
 				if (throwable != null) {
 					exception.set(getRootCause(throwable));
@@ -295,7 +295,7 @@ public final class ServiceGraphModule extends AbstractModule {
 	}
 
 	@SuppressWarnings("unchecked")
-	private Service getServiceOrNull(Key<?> key, final Object instance) {
+	private Service getServiceOrNull(Key<?> key, Object instance) {
 		checkNotNull(instance);
 		CachedService service = services.get(instance);
 		if (service != null) {
@@ -332,7 +332,7 @@ public final class ServiceGraphModule extends AbstractModule {
 			}
 		}
 		if (serviceAdapter != null) {
-			final ServiceAdapter finalServiceAdapter = serviceAdapter;
+			ServiceAdapter finalServiceAdapter = serviceAdapter;
 			Service asyncService = new Service() {
 				@Override
 				public CompletableFuture<Void> start() {
@@ -351,7 +351,7 @@ public final class ServiceGraphModule extends AbstractModule {
 		return null;
 	}
 
-	private void createGuiceGraph(final Injector injector, final ServiceGraph graph) {
+	private void createGuiceGraph(Injector injector, ServiceGraph graph) {
 		if (!difference(keys.keySet(), injector.getAllBindings().keySet()).isEmpty()) {
 			logger.warn("Unused services : {}", difference(keys.keySet(), injector.getAllBindings().keySet()));
 		}
@@ -477,7 +477,7 @@ public final class ServiceGraphModule extends AbstractModule {
 	 * @return created ServiceGraph
 	 */
 	@Provides
-	synchronized ServiceGraph serviceGraph(final Injector injector) {
+	synchronized ServiceGraph serviceGraph(Injector injector) {
 		if (serviceGraph == null) {
 			serviceGraph = new ServiceGraph() {
 				@Override

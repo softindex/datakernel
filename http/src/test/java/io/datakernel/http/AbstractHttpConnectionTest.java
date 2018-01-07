@@ -47,12 +47,12 @@ public class AbstractHttpConnectionTest {
 	@Test
 	public void testMultiLineHeader() throws Exception {
 		AsyncServlet servlet = request -> Stages.of(createMultiLineHeaderWithInitialBodySpacesResponse());
-		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
+		AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
 				.withListenAddress(new InetSocketAddress("localhost", PORT));
 		server.listen();
 
-		final Map<String, String> data = new HashMap<>();
-		final CompletableFuture<Void> future = client.send(HttpRequest.get(url)).thenCompose(result -> {
+		Map<String, String> data = new HashMap<>();
+		CompletableFuture<Void> future = client.send(HttpRequest.get(url)).thenCompose(result -> {
 			data.put("body", decodeAscii(result.getBody()));
 			data.put("header", result.getHeader(CONTENT_TYPE));
 			return stopClientAndServer(client, server);
@@ -90,12 +90,12 @@ public class AbstractHttpConnectionTest {
 				}
 			}
 		};
-		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
+		AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
 				.withListenAddress(new InetSocketAddress("localhost", PORT));
 		server.listen();
 
-		final HttpRequest request = HttpRequest.get(url).withHeader(ACCEPT_ENCODING, "gzip");
-		final CompletableFuture<Void> future = client.send(request).thenCompose(response -> {
+		HttpRequest request = HttpRequest.get(url).withHeader(ACCEPT_ENCODING, "gzip");
+		CompletableFuture<Void> future = client.send(request).thenCompose(response -> {
 			assertNotNull(response.getHeaderValue(CONTENT_ENCODING));
 			return client.send(HttpRequest.get(url)).thenCompose(innerResponse -> {
 				assertNull(innerResponse.getHeaderValue(CONTENT_ENCODING));
@@ -109,7 +109,7 @@ public class AbstractHttpConnectionTest {
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
-	private CompletionStage<Void> stopClientAndServer(final AsyncHttpClient client, final AsyncHttpServer server) {
+	private CompletionStage<Void> stopClientAndServer(AsyncHttpClient client, AsyncHttpServer server) {
 		return client.stop().runAfterBoth(server.close(), () -> {
 		});
 	}

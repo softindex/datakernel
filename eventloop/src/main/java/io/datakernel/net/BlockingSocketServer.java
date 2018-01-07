@@ -81,7 +81,7 @@ public final class BlockingSocketServer {
 		return this;
 	}
 
-	private void serveClient(final Socket socket) throws IOException {
+	private void serveClient(Socket socket) throws IOException {
 		socketSettings.applySettings(socket.getChannel());
 		executor.execute(new Runnable() {
 			@Override
@@ -96,8 +96,8 @@ public final class BlockingSocketServer {
 	}
 
 	public void start() throws Exception {
-		for (final InetSocketAddress address : listenAddresses) {
-			final ServerSocket serverSocket = new ServerSocket(address.getPort(), serverSocketSettings.getBacklog(), address.getAddress());
+		for (InetSocketAddress address : listenAddresses) {
+			ServerSocket serverSocket = new ServerSocket(address.getPort(), serverSocketSettings.getBacklog(), address.getAddress());
 			serverSocketSettings.applySettings(serverSocket.getChannel());
 			serverSockets.add(serverSocket);
 			Runnable runnable = new Runnable() {

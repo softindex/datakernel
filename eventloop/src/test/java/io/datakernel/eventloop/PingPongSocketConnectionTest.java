@@ -42,16 +42,16 @@ public class PingPongSocketConnectionTest {
 
 	@Test
 	public void test() throws IOException {
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		SocketHandlerProvider socketHandlerProvider = new SocketHandlerProvider() {
 			@Override
-			public AsyncTcpSocket.EventHandler createSocketHandler(final AsyncTcpSocket asyncTcpSocket) {
+			public AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 				return new ServerConnection(asyncTcpSocket);
 			}
 		};
 
-		final SimpleServer ppServer = SimpleServer.create(eventloop, socketHandlerProvider).withListenAddress(ADDRESS);
+		SimpleServer ppServer = SimpleServer.create(eventloop, socketHandlerProvider).withListenAddress(ADDRESS);
 
 		ppServer.listen();
 

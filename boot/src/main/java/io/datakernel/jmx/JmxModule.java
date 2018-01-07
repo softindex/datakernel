@@ -84,7 +84,7 @@ public final class JmxModule extends AbstractModule {
 		return this;
 	}
 
-	public JmxModule withHistogram(Key<?> key, String attrName, final int[] histogramLevels) {
+	public JmxModule withHistogram(Key<?> key, String attrName, int[] histogramLevels) {
 		return this
 				.withOptional(key, attrName + "_histogram")
 				.withModifier(key, attrName, new AttributeModifier<ValueStats>() {
@@ -95,7 +95,7 @@ public final class JmxModule extends AbstractModule {
 				});
 	}
 
-	public JmxModule withHistogram(Class<?> clazz, String attrName, final int[] histogramLevels) {
+	public JmxModule withHistogram(Class<?> clazz, String attrName, int[] histogramLevels) {
 		return withHistogram(Key.get(clazz), attrName, histogramLevels);
 	}
 

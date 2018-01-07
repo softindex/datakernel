@@ -66,8 +66,8 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 	}
 
 	public static StreamFileReader readFileFrom(ExecutorService executor,
-	                                            final int bufferSize, Path path,
-	                                            final long startPosition) throws IOException {
+	                                            int bufferSize, Path path,
+	                                            long startPosition) throws IOException {
 		AsyncFile asyncFile = getAsyncFile(executor, path);
 		return readFileFrom(asyncFile, bufferSize, startPosition);
 	}
@@ -78,7 +78,7 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 	}
 
 	public static StreamFileReader readFileFully(ExecutorService executor,
-	                                             final int bufferSize, Path path) throws IOException {
+	                                             int bufferSize, Path path) throws IOException {
 		AsyncFile asyncFile = getAsyncFile(executor, path);
 		return readFileFully(asyncFile, bufferSize);
 	}
@@ -117,7 +117,7 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 			return;
 		}
 
-		final ByteBuf buf = ByteBufPool.allocate((int) min(bufferSize, length));
+		ByteBuf buf = ByteBufPool.allocate((int) min(bufferSize, length));
 
 		asyncFile.read(buf, position).whenComplete((bytesRead, throwable) -> {
 			pendingAsyncOperation = false;

@@ -64,7 +64,7 @@ public final class SerializerGenList implements SerializerGen, NullableOptimizat
 	}
 
 	@Override
-	public Expression serialize(final Expression byteArray, final Variable off, final Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods, final CompatibilityLevel compatibilityLevel) {
+	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		Expression length = length(value);
 		Expression writeLength = set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, (!nullable ? length : inc(length))));
 		Expression forEach = forEach(value, valueSerializer.getRawType(), new ForVar() {
@@ -88,9 +88,9 @@ public final class SerializerGenList implements SerializerGen, NullableOptimizat
 	}
 
 	@Override
-	public Expression deserialize(Class<?> targetType, final int version, final SerializerBuilder.StaticMethods staticMethods, final CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		Expression len = let(call(arg(0), "readVarInt"));
-		final Expression array = let(Expressions.newArray(Object[].class, (!nullable ? len : dec(len))));
+		Expression array = let(Expressions.newArray(Object[].class, (!nullable ? len : dec(len))));
 		Expression forEach = expressionFor((!nullable ? len : dec(len)), new ForVar() {
 			@Override
 			public Expression forVar(Expression it) {

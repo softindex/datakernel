@@ -24,7 +24,7 @@ public class GraphBuilder<K, D> {
 
 	public CompletionStage<Map<K, K>> buildGraph(List<Entry<K, D>> edges) {
 		for (Entry<K, D> keyDiff : edges) {
-			final K left = keyDiff.left;
+			K left = keyDiff.left;
 			edgesMap.computeIfAbsent(left, k -> new HashSet<>());
 			edgesMap.computeIfAbsent(keyDiff.right, k -> new HashSet<>()).add(new KeyDiff<>(left, keyDiff.diffs));
 		}

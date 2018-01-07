@@ -74,7 +74,7 @@ public class EventStatsTest {
 	@Test
 	public void counterShouldProperlyAggregateEvents() {
 		int iterations = 1000;
-		final int period = 100;
+		int period = 100;
 		long currentTimestamp = 0;
 
 		double smoothingWindow = 10.0;
@@ -109,7 +109,7 @@ public class EventStatsTest {
 		EventStats stats = EventStats.create(smoothingWindow);
 		int iterations = 1000;
 		long currentTimestamp = 0;
-		final int period = 200;
+		int period = 200;
 		for (int i = 0; i < iterations; i++) {
 			// event occurs only once per two refreshes
 			int eventsPerRefresh = i % 2;
@@ -129,7 +129,7 @@ public class EventStatsTest {
 		EventStats stats = EventStats.create(smoothingWindow);
 		int iterations = 1000;
 		long currentTimestamp = 0;
-		final int period = 200;
+		int period = 200;
 		for (int i = 0; i < iterations; i++) {
 			stats.recordEvents(1);
 			int currentPeriod = period + uniformRandom(-50, 50);
@@ -148,7 +148,7 @@ public class EventStatsTest {
 		EventStats stats = EventStats.create(smoothingWindow);
 		int iterations = 10000;
 		long currentTimestamp = 0;
-		final int period = 200;
+		int period = 200;
 		for (int i = 0; i < iterations; i++) {
 			stats.recordEvents(uniformRandom(0, 10));
 			currentTimestamp += period;

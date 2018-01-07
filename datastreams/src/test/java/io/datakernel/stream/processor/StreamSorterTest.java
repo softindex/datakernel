@@ -123,7 +123,7 @@ public class StreamSorterTest {
 		StreamSorter<Integer, Integer> sorter = StreamSorter.create(
 				storage, Function.identity(), Integer::compareTo, true, 2);
 
-		final List<Integer> list = new ArrayList<>();
+		List<Integer> list = new ArrayList<>();
 		StreamConsumerToList<Integer> consumerToList = new StreamConsumerToList<Integer>(list) {
 			@Override
 			public void onData(Integer item) {

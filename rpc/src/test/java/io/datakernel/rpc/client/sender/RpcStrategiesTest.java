@@ -114,7 +114,7 @@ public class RpcStrategiesTest {
 		pool.put(ADDRESS_3, connection3);
 		pool.put(ADDRESS_4, connection4);
 		pool.put(ADDRESS_5, connection5);
-		final int shardsCount = 2;
+		int shardsCount = 2;
 		ShardingFunction<Integer> shardingFunction = item -> item % shardsCount;
 		BiConsumerStub consumer = new BiConsumerStub();
 		RpcStrategy strategy = sharding(shardingFunction,

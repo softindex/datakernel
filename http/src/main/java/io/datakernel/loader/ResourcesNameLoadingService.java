@@ -1,11 +1,13 @@
 package io.datakernel.loader;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.Set;
@@ -46,8 +48,8 @@ public class ResourcesNameLoadingService implements EventloopService {
     @Override
     public CompletionStage<Void> start() {
         return eventloop.callConcurrently(executorService, () -> {
-            final Set<String> fileNames = new HashSet<>();
-            final InputStream in = loader.getResourceAsStream(resourcePath);
+            Set<String> fileNames = new HashSet<>();
+            InputStream in = loader.getResourceAsStream(resourcePath);
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(in))) {
                 String line;
                 while ((line = reader.readLine()) != null) {

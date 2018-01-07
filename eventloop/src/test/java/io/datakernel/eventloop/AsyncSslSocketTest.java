@@ -133,7 +133,7 @@ public class AsyncSslSocketTest {
 
 	@Test
 	public void sendsLargeAmountOfDataFromClientToServer() {
-		final StringBuilder sentData = new StringBuilder();
+		StringBuilder sentData = new StringBuilder();
 		EventHandlerDataAccumulator serverDataAccumulator = new EventHandlerDataAccumulator(serverSslSocket);
 		serverSslSocket.setEventHandler(serverDataAccumulator);
 
@@ -173,7 +173,7 @@ public class AsyncSslSocketTest {
 
 	@Test
 	public void sendsLargeAmountOfDataFromServerToClient() {
-		final StringBuilder sentData = new StringBuilder();
+		StringBuilder sentData = new StringBuilder();
 		EventHandlerDataAccumulator clientDataAccumulator = new EventHandlerDataAccumulator(clientSslSocket);
 		clientSslSocket.setEventHandler(clientDataAccumulator);
 
@@ -334,7 +334,7 @@ public class AsyncSslSocketTest {
 		}
 
 		@Override
-		public void write(final ByteBuf buf) {
+		public void write(ByteBuf buf) {
 			assert !writeEndOfStream;
 
 			if (otherSide == null) {
@@ -342,7 +342,7 @@ public class AsyncSslSocketTest {
 				return;
 			}
 
-			final AsyncTcpSocketStub cached = otherSide;
+			AsyncTcpSocketStub cached = otherSide;
 
 			eventloop.postLater(new Runnable() {
 				@Override
@@ -357,7 +357,7 @@ public class AsyncSslSocketTest {
 		public void writeEndOfStream() {
 			assert !writeEndOfStream;
 
-			final AsyncTcpSocketStub cached = otherSide;
+			AsyncTcpSocketStub cached = otherSide;
 			writeEndOfStream = true;
 			eventloop.postLater(new Runnable() {
 				@Override
@@ -491,7 +491,7 @@ public class AsyncSslSocketTest {
 	// </editor-fold>
 
 	// <editor-fold desc="custom matchers">
-	public static Matcher<ByteBuf> bytebufOfMessage(final String message) {
+	public static Matcher<ByteBuf> bytebufOfMessage(String message) {
 		return new BaseMatcher<ByteBuf>() {
 			@Override
 			public boolean matches(Object item) {

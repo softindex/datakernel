@@ -84,7 +84,7 @@ public final class AggregationStructure {
 	}
 
 	private static <T> Set<T> intersection(Set<T> a, Set<T> b) {
-		final Set<T> set = new HashSet<>();
+		Set<T> set = new HashSet<>();
 		for (T x : a) {
 			if (b.contains(x)) {
 				set.add(x);

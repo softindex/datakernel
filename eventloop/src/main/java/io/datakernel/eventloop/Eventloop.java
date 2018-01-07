@@ -299,11 +299,11 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			}
 			updateSelectorSelectStats();
 
-			final int keys = processSelectedKeys(selector.selectedKeys());
-			final int concurrentTasks = executeConcurrentTasks();
-			final int scheduledTasks = executeScheduledTasks();
-			final int backgroundTasks = executeBackgroundTasks();
-			final int localTasks = executeLocalTasks();
+			int keys = processSelectedKeys(selector.selectedKeys());
+			int concurrentTasks = executeConcurrentTasks();
+			int scheduledTasks = executeScheduledTasks();
+			int backgroundTasks = executeBackgroundTasks();
+			int localTasks = executeLocalTasks();
 
 			stats.updateProcessedTasksAndKeys(keys + concurrentTasks + scheduledTasks + backgroundTasks + localTasks);
 
@@ -727,7 +727,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	public CompletionStage<SocketChannel> connect(SocketAddress address, int timeout) {
 		assert inEventloopThread();
 		SocketChannel socketChannel = null;
-		final SettableStage<SocketChannel> stage = SettableStage.create();
+		SettableStage<SocketChannel> stage = SettableStage.create();
 		try {
 			socketChannel = SocketChannel.open();
 			socketChannel.configureBlocking(false);
@@ -752,15 +752,15 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 * Otherwise schedules special task that will close SocketChannel and call onException method in case of timeout.
 	 * If there is no timeout before connection - onConnect method will be called
 	 */
-	private SettableStage<SocketChannel> timeoutConnectStage(final SocketChannel socketChannel, final long connectionTime, SettableStage<SocketChannel> stage) {
+	private SettableStage<SocketChannel> timeoutConnectStage(SocketChannel socketChannel, long connectionTime, SettableStage<SocketChannel> stage) {
 		if (connectionTime == 0) return stage;
 
-		final ScheduledRunnable scheduledTimeout = schedule(currentTimeMillis() + connectionTime, () -> {
+		ScheduledRunnable scheduledTimeout = schedule(currentTimeMillis() + connectionTime, () -> {
 			closeQuietly(socketChannel);
 			stage.setException(CONNECT_TIMEOUT);
 		});
 
-		final SettableStage<SocketChannel> timeoutStage = SettableStage.create();
+		SettableStage<SocketChannel> timeoutStage = SettableStage.create();
 		timeoutStage.whenComplete((socketChannel1, throwable) -> {
 			assert !scheduledTimeout.isComplete();
 			scheduledTimeout.cancel();
@@ -884,8 +884,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	@Override
-	public CompletableFuture<Void> submit(final Runnable runnable) {
-		final CompletableFuture<Void> future = new CompletableFuture<>();
+	public CompletableFuture<Void> submit(Runnable runnable) {
+		CompletableFuture<Void> future = new CompletableFuture<>();
 		execute(() -> {
 			Exception exception = null;
 			try {
@@ -903,8 +903,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	@Override
-	public <T> CompletableFuture<T> submit(final Callable<T> callable) {
-		final CompletableFuture<T> future = new CompletableFuture<>();
+	public <T> CompletableFuture<T> submit(Callable<T> callable) {
+		CompletableFuture<T> future = new CompletableFuture<>();
 		execute(() -> {
 			T result = null;
 			Exception exception = null;
@@ -923,8 +923,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	@Override
-	public <T> CompletableFuture<T> submit(final AsyncCallable<T> asyncCallable) {
-		final CompletableFuture<T> future = new CompletableFuture<>();
+	public <T> CompletableFuture<T> submit(AsyncCallable<T> asyncCallable) {
+		CompletableFuture<T> future = new CompletableFuture<>();
 		execute(() -> asyncCallable.call().whenComplete((t, throwable) -> {
 			if (throwable == null) {
 				future.complete(t);
@@ -935,7 +935,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		return future;
 	}
 
-	public CompletionStage<Void> runConcurrently(ExecutorService executor, final Runnable runnable) {
+	public CompletionStage<Void> runConcurrently(ExecutorService executor, Runnable runnable) {
 		return callConcurrently(executor, () -> {
 			runnable.run();
 			return null;
@@ -1021,7 +1021,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		logger.warn("IO Error in {}: {}", context, e.toString());
 	}
 
-	public void recordFatalError(final Throwable e, final Object context) {
+	public void recordFatalError(Throwable e, Object context) {
 		if (e instanceof RethrowedError) {
 			propagate(e.getCause());
 		}
@@ -1043,13 +1043,13 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		}
 	}
 
-	private void handleFatalError(final FatalErrorHandler handler, final Throwable e, final Object context) {
+	private void handleFatalError(FatalErrorHandler handler, Throwable e, Object context) {
 		if (inEventloopThread()) {
 			handler.handle(e, context);
 		} else {
 			try {
 				handler.handle(e, context);
-			} catch (final Throwable handlerError) {
+			} catch (Throwable handlerError) {
 				execute(new Runnable() {
 					@Override
 					public void run() {

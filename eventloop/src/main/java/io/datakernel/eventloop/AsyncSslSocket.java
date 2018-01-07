@@ -202,7 +202,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		return upstream.getRemoteSocketAddress();
 	}
 
-	private void handleSSLException(final SSLException e, boolean post) {
+	private void handleSSLException(SSLException e, boolean post) {
 		upstream.close();
 		recycleByteBufs();
 		if (!closed) {
@@ -280,7 +280,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 
 	private void executeTasks() {
 		while (true) {
-			final Runnable task = engine.getDelegatedTask();
+			Runnable task = engine.getDelegatedTask();
 			if (task == null) break;
 			executor.execute(new Runnable() {
 				@Override

@@ -78,14 +78,14 @@ public class RpcStrategyFirstValidResultTest {
 
 	@Test
 	public void itShouldCallOnResultWithNullIfAllSendersReturnedNullAndValidatorAndExceptionAreNotSpecified() throws ExecutionException, InterruptedException {
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
 		RpcStrategy strategy1 = new RequestSenderOnResultWithNullStrategy();
 		RpcStrategy strategy2 = new RequestSenderOnResultWithNullStrategy();
 		RpcStrategy strategy3 = new RequestSenderOnResultWithNullStrategy();
 		RpcStrategyFirstValidResult firstValidResult = firstValidResult(strategy1, strategy2, strategy3);
 		RpcSender sender = firstValidResult.createSender(new RpcClientConnectionPoolStub());
 
-		final CompletableFuture<Object> future = sender.sendRequest(new Object(), 50).toCompletableFuture();
+		CompletableFuture<Object> future = sender.sendRequest(new Object(), 50).toCompletableFuture();
 
 		// despite there are several sender, sendResult should be called only once after all senders returned null
 
@@ -95,7 +95,7 @@ public class RpcStrategyFirstValidResultTest {
 
 	@Test(expected = Exception.class)
 	public void itShouldCallOnExceptionIfAllSendersReturnsNullAndValidatorIsDefaultButExceptionIsSpecified() throws ExecutionException, InterruptedException {
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
 		// default validator should check whether result is not null
 		RpcStrategy strategy1 = new RequestSenderOnResultWithNullStrategy();
 		RpcStrategy strategy2 = new RequestSenderOnResultWithNullStrategy();
@@ -104,7 +104,7 @@ public class RpcStrategyFirstValidResultTest {
 				.withNoValidResultException(new Exception());
 		RpcSender sender = firstValidResult.createSender(new RpcClientConnectionPoolStub());
 
-		final CompletableFuture<Object> future = sender.sendRequest(new Object(), 50).toCompletableFuture();
+		CompletableFuture<Object> future = sender.sendRequest(new Object(), 50).toCompletableFuture();
 
 		eventloop.run();
 		future.get();
@@ -112,10 +112,10 @@ public class RpcStrategyFirstValidResultTest {
 
 	@Test
 	public void itShouldUseCustomValidatorIfItIsSpecified() throws ExecutionException, InterruptedException {
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
 
-		final int invalidKey = 1;
-		final int validKey = 2;
+		int invalidKey = 1;
+		int validKey = 2;
 		RpcStrategy strategy1 = new RequestSenderOnResultWithValueStrategy(invalidKey);
 		RpcStrategy strategy2 = new RequestSenderOnResultWithValueStrategy(validKey);
 		RpcStrategy strategy3 = new RequestSenderOnResultWithValueStrategy(invalidKey);
@@ -129,7 +129,7 @@ public class RpcStrategyFirstValidResultTest {
 				.withNoValidResultException(new Exception());
 		RpcSender sender = firstValidResult.createSender(new RpcClientConnectionPoolStub());
 
-		final CompletableFuture<Object> future = sender.sendRequest(new Object(), 50).toCompletableFuture();
+		CompletableFuture<Object> future = sender.sendRequest(new Object(), 50).toCompletableFuture();
 
 		eventloop.run();
 		assertEquals(validKey, future.get());
@@ -137,9 +137,9 @@ public class RpcStrategyFirstValidResultTest {
 
 	@Test(expected = Exception.class)
 	public void itShouldCallOnExceptionIfNoSenderReturnsValidResultButExceptionWasSpecified() throws ExecutionException, InterruptedException {
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
-		final int invalidKey = 1;
-		final int validKey = 2;
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+		int invalidKey = 1;
+		int validKey = 2;
 		RpcStrategy strategy1 = new RequestSenderOnResultWithValueStrategy(invalidKey);
 		RpcStrategy strategy2 = new RequestSenderOnResultWithValueStrategy(invalidKey);
 		RpcStrategy strategy3 = new RequestSenderOnResultWithValueStrategy(invalidKey);
@@ -152,7 +152,7 @@ public class RpcStrategyFirstValidResultTest {
 				})
 				.withNoValidResultException(new Exception());
 		RpcSender sender = firstValidResult.createSender(new RpcClientConnectionPoolStub());
-		final CompletableFuture<Object> future = sender.sendRequest(new Object(), 50).toCompletableFuture();
+		CompletableFuture<Object> future = sender.sendRequest(new Object(), 50).toCompletableFuture();
 		eventloop.run();
 		future.get();
 	}

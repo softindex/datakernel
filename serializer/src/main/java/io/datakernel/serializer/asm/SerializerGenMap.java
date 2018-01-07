@@ -70,7 +70,7 @@ public final class SerializerGenMap implements SerializerGen, NullableOptimizati
 	}
 
 	@Override
-	public Expression serialize(final Expression byteArray, final Variable off, Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods, final CompatibilityLevel compatibilityLevel) {
+	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		Expression length = length(value);
 		Expression writeLength = set(off, callStatic(SerializationUtils.class, "writeVarInt", byteArray, off, (!nullable ? length : inc(length))));
 		Expression mapSerializer = mapForEach(value,
@@ -99,7 +99,7 @@ public final class SerializerGenMap implements SerializerGen, NullableOptimizati
 	}
 
 	@Override
-	public Expression deserialize(Class<?> targetType, final int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		boolean isEnum = keySerializer.getRawType().isEnum();
 
 		if (!isEnum) {
@@ -109,9 +109,9 @@ public final class SerializerGenMap implements SerializerGen, NullableOptimizati
 		}
 	}
 
-	public Expression deserializeSimple(final int version, final SerializerBuilder.StaticMethods staticMethods, final CompatibilityLevel compatibilityLevel) {
+	public Expression deserializeSimple(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		Expression length = let(call(arg(0), "readVarInt"));
-		final Expression local = let(constructor(LinkedHashMap.class, (!nullable ? length : dec(length))));
+		Expression local = let(constructor(LinkedHashMap.class, (!nullable ? length : dec(length))));
 		Expression forEach = expressionFor((!nullable ? length : dec(length)), new ForVar() {
 			@Override
 			public Expression forVar(Expression it) {
@@ -132,10 +132,10 @@ public final class SerializerGenMap implements SerializerGen, NullableOptimizati
 
 	}
 
-	public Expression deserializeEnum(final int version, final SerializerBuilder.StaticMethods staticMethods, final CompatibilityLevel compatibilityLevel) {
+	public Expression deserializeEnum(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		Expression length = let(call(arg(0), "readVarInt"));
 
-		final Expression local = let(constructor(EnumMap.class, cast(value(getType(keySerializer.getRawType())), Class.class)));
+		Expression local = let(constructor(EnumMap.class, cast(value(getType(keySerializer.getRawType())), Class.class)));
 		Expression forEach = expressionFor((!nullable ? length : dec(length)), new ForVar() {
 			@Override
 			public Expression forVar(Expression it) {

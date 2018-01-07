@@ -87,7 +87,7 @@ public class HttpThrottlingServer {
 		this.server = buildHttpServer(eventloop, options.getLoadBusinessLogic());
 	}
 
-	private static AsyncHttpServer buildHttpServer(Eventloop eventloop, final int loadBusinessLogic) {
+	private static AsyncHttpServer buildHttpServer(Eventloop eventloop, int loadBusinessLogic) {
 //		final ByteBufPool byteBufferPool = new ByteBufPool(16, 65536);
 		AsyncServlet servlet = request -> Stages.of(longBusinessLogic(TEST_RESPONSE, loadBusinessLogic));
 		return AsyncHttpServer.create(eventloop, servlet).withListenAddress(new InetSocketAddress("localhost", SERVER_PORT));
@@ -126,9 +126,9 @@ public class HttpThrottlingServer {
 		info(options);
 
 		ThrottlingController throttlingController = ThrottlingController.create();
-		final Eventloop eventloop = Eventloop.create().withThrottlingController(throttlingController).withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withThrottlingController(throttlingController).withFatalErrorHandler(rethrowOnAnyError());
 
-		final HttpThrottlingServer server = new HttpThrottlingServer(eventloop, options);
+		HttpThrottlingServer server = new HttpThrottlingServer(eventloop, options);
 
 		MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
 		DynamicMBeanFactory mBeanFactory = JmxMBeans.factory();

@@ -13,7 +13,7 @@ public class StageWatcher implements EventloopJmxMBean {
 	private long lastResultTimestamp = 0;
 	private ExceptionStats exceptionStats = ExceptionStats.create();
 
-	public StageWatcher(final Eventloop eventloop) {
+	public StageWatcher(Eventloop eventloop) {
 		this.eventloop = eventloop;
 	}
 

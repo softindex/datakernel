@@ -106,11 +106,11 @@ public class TestFileManager {
 	@Test
 	public void testDoUpload() throws IOException {
 		FileManager fs = FileManager.create(eventloop, executor, storage);
-		final Path inputFile = client.resolve("c.txt");
+		Path inputFile = client.resolve("c.txt");
 
 		fs.save("1/c.txt").thenAccept(fileWriter -> {
 			try {
-				final AsyncFile open = open(executor, inputFile, READ_OPTIONS);
+				AsyncFile open = open(executor, inputFile, READ_OPTIONS);
 				stream(readFileFully(open, bufferSize), fileWriter);
 			} catch (IOException ignore) {
 			}
@@ -126,11 +126,11 @@ public class TestFileManager {
 	@Test
 	public void testDoDownload() throws IOException {
 		FileManager fs = FileManager.create(eventloop, executor, storage);
-		final Path outputFile = client.resolve("d.txt");
+		Path outputFile = client.resolve("d.txt");
 
 		fs.get("2/b/d.txt", 0).thenAccept(fileReader -> {
 			try {
-				final AsyncFile open = open(executor, outputFile, CREATE_OPTIONS);
+				AsyncFile open = open(executor, outputFile, CREATE_OPTIONS);
 				stream(fileReader, StreamFileWriter.create(open));
 			} catch (IOException ignored) {
 			}
@@ -147,7 +147,7 @@ public class TestFileManager {
 	public void testDoDownloadFailed() throws Exception {
 		FileManager fs = FileManager.create(eventloop, executor, storage);
 
-		final CompletableFuture<StreamFileReader> future = fs.get("no_file.txt", 0).toCompletableFuture();
+		CompletableFuture<StreamFileReader> future = fs.get("no_file.txt", 0).toCompletableFuture();
 		eventloop.run();
 		executor.shutdown();
 
@@ -184,7 +184,7 @@ public class TestFileManager {
 	public void testDeleteFailed() throws Exception {
 		FileManager fs = FileManager.create(eventloop, executor, storage);
 
-		final CompletableFuture<Void> future = fs.delete("no_file.txt").toCompletableFuture();
+		CompletableFuture<Void> future = fs.delete("no_file.txt").toCompletableFuture();
 		eventloop.run();
 		executor.shutdown();
 
@@ -211,7 +211,7 @@ public class TestFileManager {
 		List<String> expected = asList("1/a.txt", "1/b.txt", "2/3/a.txt", "2/b/d.txt", "2/b/e.txt");
 		List<String> actual;
 
-		final CompletableFuture<List<String>> future = fs.scanAsync().toCompletableFuture();
+		CompletableFuture<List<String>> future = fs.scanAsync().toCompletableFuture();
 		eventloop.run();
 		executor.shutdown();
 		actual = future.get();

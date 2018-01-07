@@ -79,7 +79,7 @@ public final class Stages {
 	}
 
 	public static <T> CompletionStage<T> ofFuture(Eventloop eventloop, CompletableFuture<T> completableFuture) {
-		final SettableStage<T> stage = SettableStage.create();
+		SettableStage<T> stage = SettableStage.create();
 		completableFuture.whenComplete((t, throwable) -> eventloop.execute(() -> stage.set(t, throwable)));
 		return stage;
 	}
@@ -89,10 +89,10 @@ public final class Stages {
 	}
 
 	public static <T> CompletionStage<T> ofFuture(Eventloop eventloop, Future<T> future, Executor executor) {
-		final SettableStage<T> stage = SettableStage.create();
+		SettableStage<T> stage = SettableStage.create();
 		executor.execute(() -> {
 			try {
-				final T value = future.get();
+				T value = future.get();
 				eventloop.execute(() -> stage.set(value));
 			} catch (InterruptedException | ExecutionException e) {
 				eventloop.execute(() -> stage.setException(e));

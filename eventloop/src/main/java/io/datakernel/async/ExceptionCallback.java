@@ -39,11 +39,11 @@ public abstract class ExceptionCallback {
 		onException(e);
 	}
 
-	public final void postException(final Exception e) {
+	public final void postException(Exception e) {
 		postException(getCurrentEventloop(), e);
 	}
 
-	public final void postException(Eventloop eventloop, final Exception e) {
+	public final void postException(Eventloop eventloop, Exception e) {
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {

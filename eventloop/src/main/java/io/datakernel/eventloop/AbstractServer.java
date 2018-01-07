@@ -195,8 +195,8 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		}
 	}
 
-	private void listenAddresses(List<InetSocketAddress> addresses, final boolean ssl) throws IOException {
-		for (final InetSocketAddress address : addresses) {
+	private void listenAddresses(List<InetSocketAddress> addresses, boolean ssl) throws IOException {
+		for (InetSocketAddress address : addresses) {
 			try {
 				ServerSocketChannel serverSocketChannel = eventloop.listen(address, serverSocketSettings, new AcceptCallback() {
 					@Override
@@ -281,10 +281,10 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		filteredAccepts.recordEvent();
 	}
 
-	private void doAccept(final SocketChannel socketChannel, final InetSocketAddress localAddress, final boolean ssl) {
+	private void doAccept(SocketChannel socketChannel, InetSocketAddress localAddress, boolean ssl) {
 		assert eventloop.inEventloopThread();
 
-		final InetAddress remoteAddress;
+		InetAddress remoteAddress;
 		try {
 			remoteAddress = ((InetSocketAddress) socketChannel.getRemoteAddress()).getAddress();
 		} catch (IOException e) {
@@ -297,8 +297,8 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 			return;
 		}
 
-		final WorkerServer workerServer = getWorkerServer();
-		final Eventloop workerServerEventloop = workerServer.getEventloop();
+		WorkerServer workerServer = getWorkerServer();
+		Eventloop workerServerEventloop = workerServer.getEventloop();
 
 		if (workerServerEventloop == this.eventloop) {
 			workerServer.doAccept(socketChannel, localAddress, remoteAddress, ssl, socketSettings);
@@ -319,12 +319,12 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 
 	@Override
 	public void doAccept(SocketChannel socketChannel, InetSocketAddress localAddress, InetAddress remoteAddress,
-	                     final boolean ssl, SocketSettings socketSettings) {
+	                     boolean ssl, SocketSettings socketSettings) {
 		assert eventloop.inEventloopThread();
 		onAccept(socketChannel, localAddress, remoteAddress, ssl);
-		final AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings)
+		AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings)
 				.withInspector(getSocketInspector(remoteAddress, localAddress, ssl));
-		final AsyncTcpSocket asyncTcpSocket = ssl ? wrapServerSocket(eventloop, asyncTcpSocketImpl, sslContext, sslExecutor) : asyncTcpSocketImpl;
+		AsyncTcpSocket asyncTcpSocket = ssl ? wrapServerSocket(eventloop, asyncTcpSocketImpl, sslContext, sslExecutor) : asyncTcpSocketImpl;
 		asyncTcpSocket.setEventHandler(createSocketHandler(asyncTcpSocket));
 		asyncTcpSocketImpl.register();
 	}

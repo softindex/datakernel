@@ -124,7 +124,7 @@ public class StreamReducerTest {
 		StreamReducer<Integer, KeyValueResult, KeyValueResult> streamReducer = StreamReducer.<Integer, KeyValueResult, KeyValueResult>create(Integer::compareTo)
 				.withBufferSize(1);
 
-		final List<KeyValueResult> list = new ArrayList<>();
+		List<KeyValueResult> list = new ArrayList<>();
 		StreamConsumerToList<KeyValueResult> consumer = new StreamConsumerToList<KeyValueResult>(list) {
 			@Override
 			public void onData(KeyValueResult item) {

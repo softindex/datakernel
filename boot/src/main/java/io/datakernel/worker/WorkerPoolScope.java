@@ -37,7 +37,7 @@ public final class WorkerPoolScope implements WorkerPools, Scope {
 	Integer currentWorkerId;
 
 	@Override
-	public <T> Provider<T> scope(final Key<T> key, final Provider<T> unscoped) {
+	public <T> Provider<T> scope(Key<T> key, Provider<T> unscoped) {
 		return new Provider<T>() {
 			@SuppressWarnings("unchecked")
 			@Override

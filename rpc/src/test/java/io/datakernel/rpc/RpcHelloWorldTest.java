@@ -66,7 +66,7 @@ public class RpcHelloWorldTest {
 		}
 	}
 
-	private static RpcRequestHandler<HelloRequest, HelloResponse> helloServiceRequestHandler(final HelloService helloService) {
+	private static RpcRequestHandler<HelloRequest, HelloResponse> helloServiceRequestHandler(HelloService helloService) {
 		return request -> {
 			String result;
 			try {
@@ -104,7 +104,7 @@ public class RpcHelloWorldTest {
 		}
 
 		@Override
-		public String hello(final String name) throws Exception {
+		public String hello(String name) throws Exception {
 			try {
 				return rpcClient.getEventloop().submit(() -> rpcClient
 						.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT))
@@ -152,11 +152,11 @@ public class RpcHelloWorldTest {
 	@Test
 	public void testAsyncCall() throws Exception {
 		int count = 1; // amount requests
-		final AtomicInteger success = new AtomicInteger();
+		AtomicInteger success = new AtomicInteger();
 		try (BlockingHelloClient client = new BlockingHelloClient(eventloop)) {
-			final CountDownLatch latch = new CountDownLatch(count);
+			CountDownLatch latch = new CountDownLatch(count);
 			for (int i = 0; i < count; i++) {
-				final String name = "World" + i;
+				String name = "World" + i;
 				client.eventloop.execute(() -> client.rpcClient.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT)
 						.whenComplete((helloResponse, throwable) -> {
 							if (throwable != null) {
@@ -207,11 +207,11 @@ public class RpcHelloWorldTest {
 
 		try (BlockingHelloClient client1 = new BlockingHelloClient(eventloop);
 		     BlockingHelloClient client2 = new BlockingHelloClient(eventloop)) {
-			final CountDownLatch latch1 = new CountDownLatch(count);
-			final CountDownLatch latch2 = new CountDownLatch(count);
+			CountDownLatch latch1 = new CountDownLatch(count);
+			CountDownLatch latch2 = new CountDownLatch(count);
 
 			for (int i = 0; i < count; i++) {
-				final String name = "world" + i;
+				String name = "world" + i;
 				client1.eventloop.execute(() -> client1.rpcClient.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT)
 						.whenComplete((helloResponse, throwable) -> {
 							latch1.countDown();
@@ -245,9 +245,9 @@ public class RpcHelloWorldTest {
 
 		try (BlockingHelloClient client = new BlockingHelloClient(eventloop)) {
 			for (int t = 0; t < 10; t++) {
-				final AtomicInteger success = new AtomicInteger(0);
-				final AtomicInteger error = new AtomicInteger(0);
-				final CountDownLatch latch = new CountDownLatch(count);
+				AtomicInteger success = new AtomicInteger(0);
+				AtomicInteger error = new AtomicInteger(0);
+				CountDownLatch latch = new CountDownLatch(count);
 				Stopwatch stopwatch = Stopwatch.createUnstarted();
 				stopwatch.start();
 				for (int i = 0; i < count; i++) {

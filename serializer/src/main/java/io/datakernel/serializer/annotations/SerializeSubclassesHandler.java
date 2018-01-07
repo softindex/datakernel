@@ -24,7 +24,7 @@ import io.datakernel.serializer.asm.SerializerGenBuilder;
 
 public final class SerializeSubclassesHandler implements AnnotationHandler<SerializeSubclasses, SerializeSubclassesEx> {
 	@Override
-	public SerializerGenBuilder createBuilder(final SerializerBuilder.Helper serializerBuilder, final SerializeSubclasses annotation, CompatibilityLevel compatibilityLevel) {
+	public SerializerGenBuilder createBuilder(SerializerBuilder.Helper serializerBuilder, SerializeSubclasses annotation, CompatibilityLevel compatibilityLevel) {
 		return new SerializerGenBuilder() {
 			@Override
 			public SerializerGen serializer(Class<?> superclass, SerializerForType[] superclassGenerics, SerializerGen fallback) {

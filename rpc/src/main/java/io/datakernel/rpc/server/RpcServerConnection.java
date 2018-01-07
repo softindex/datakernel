@@ -72,13 +72,13 @@ public final class RpcServerConnection implements RpcStream.Listener, JmxRefresh
 	}
 
 	@Override
-	public void onData(final RpcMessage message) {
+	public void onData(RpcMessage message) {
 		incrementActiveRequests();
 
-		final int cookie = message.getCookie();
-		final long startTime = monitoring ? System.currentTimeMillis() : 0;
+		int cookie = message.getCookie();
+		long startTime = monitoring ? System.currentTimeMillis() : 0;
 
-		final Object messageData = message.getData();
+		Object messageData = message.getData();
 		apply(messageData).whenComplete(new BiConsumer<Object, Throwable>() {
 			@Override
 			public void accept(Object result, Throwable throwable) {

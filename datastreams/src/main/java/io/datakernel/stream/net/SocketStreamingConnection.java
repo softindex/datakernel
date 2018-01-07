@@ -32,7 +32,7 @@ public final class SocketStreamingConnection implements AsyncTcpSocket.EventHand
 	private final SocketStreamConsumer socketWriter;
 
 	// region creators
-	private SocketStreamingConnection(final AsyncTcpSocket asyncTcpSocket) {
+	private SocketStreamingConnection(AsyncTcpSocket asyncTcpSocket) {
 		this.asyncTcpSocket = asyncTcpSocket;
 		this.socketWriter = SocketStreamConsumer.create(asyncTcpSocket);
 		this.socketWriter.getSentStage().whenComplete(($, throwable) -> {

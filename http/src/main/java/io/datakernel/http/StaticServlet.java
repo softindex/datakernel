@@ -69,7 +69,7 @@ public final class StaticServlet implements AsyncServlet {
 	}
 
 	@Override
-	public final CompletionStage<HttpResponse> serve(final HttpRequest request) {
+	public final CompletionStage<HttpResponse> serve(HttpRequest request) {
 		assert eventloop.inEventloopThread();
 
 		String path = request.getPartialPath();
@@ -82,7 +82,7 @@ public final class StaticServlet implements AsyncServlet {
 		} else {
 			path = path.substring(1); // removing initial '/'
 		}
-		final String finalPath = path;
+		String finalPath = path;
 
 		return resourceLoader.getResource(path).thenApply(byteBuf -> createHttpResponse(byteBuf, finalPath));
 	}

@@ -113,7 +113,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 
 	abstract protected void onClosed();
 
-	protected final void closeWithError(final Exception e) {
+	protected final void closeWithError(Exception e) {
 		if (isClosed()) return;
 		asyncTcpSocket.close();
 		onClosedWithError(e);
@@ -210,7 +210,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 	 */
 	protected abstract void onFirstLine(ByteBuf line) throws ParseException;
 
-	protected void onHeader(HttpHeader header, final ByteBuf value) throws ParseException {
+	protected void onHeader(HttpHeader header, ByteBuf value) throws ParseException {
 		assert !isClosed();
 		assert eventloop.inEventloopThread();
 

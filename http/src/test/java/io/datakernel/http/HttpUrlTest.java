@@ -325,14 +325,14 @@ public class HttpUrlTest {
 
 	@Test
 	public void testLastEmptyValue() {
-		final Map<String, String> map = map(
+		Map<String, String> map = map(
 				entry("key1", "value"),
 				entry("key2", ""),
 				entry("key3", "value2"),
 				entry("key4", "another_value"),
 				entry("k5", ""));
 
-		final UrlParser url = UrlParser.of("http://abc.com/?key1=value&key2&key3=value2&key4=another_value&k5");
+		UrlParser url = UrlParser.of("http://abc.com/?key1=value&key2&key3=value2&key4=another_value&k5");
 		assertEquals(map, url.getQueryParameters());
 		for (String key : map.keySet()) {
 			assertEquals(map.get(key), url.getQueryParameter(key));
@@ -341,13 +341,13 @@ public class HttpUrlTest {
 
 	@Test
 	public void testAmpersandLastCharacter() {
-		final Map<String, String> map = map(
+		Map<String, String> map = map(
 				entry("key1", "value"),
 				entry("key2", ""),
 				entry("key3", "value2"),
 				entry("key4", "another_value"));
 
-		final UrlParser url = UrlParser.of("http://abc.com/?key1=value&key2&key3=value2&key4=another_value&");
+		UrlParser url = UrlParser.of("http://abc.com/?key1=value&key2&key3=value2&key4=another_value&");
 		assertEquals(map, url.getQueryParameters());
 		for (String key : map.keySet()) {
 			assertEquals(map.get(key), url.getQueryParameter(key));
@@ -356,15 +356,15 @@ public class HttpUrlTest {
 
 	@Test
 	public void testEmptyQuery() {
-		final UrlParser url = UrlParser.of("http://127.0.0.1/?&&");
-		final Set<String> actual = url.getQueryParameters().keySet();
+		UrlParser url = UrlParser.of("http://127.0.0.1/?&&");
+		Set<String> actual = url.getQueryParameters().keySet();
 		assertThat(actual, IsEmptyCollection.empty());
 	}
 
 	@Test
 	public void testEmptyValueBeforeAmpersandWithSeparator() {
-		final Map<String, String> map = singletonMap("key", "");
-		final UrlParser url = UrlParser.of("http://abc.com/?key=&");
+		Map<String, String> map = singletonMap("key", "");
+		UrlParser url = UrlParser.of("http://abc.com/?key=&");
 		assertEquals(map, url.getQueryParameters());
 		for (String key : map.keySet()) {
 			assertEquals(map.get(key), url.getQueryParameter(key));

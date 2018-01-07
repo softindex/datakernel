@@ -157,7 +157,7 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 				@Override
 				public StreamProducer<T> next() {
 					currentLogFile = it.next();
-					final long position = n++ == 0 ? startPosition.getPosition() : 0L;
+					long position = n++ == 0 ? startPosition.getPosition() : 0L;
 
 					if (logger.isTraceEnabled()) logger.trace("Read log file `{}` from: {}", currentLogFile, position);
 

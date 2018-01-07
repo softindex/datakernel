@@ -66,7 +66,7 @@ final class ExpressionSwitchForKey implements Expression {
 		Label labelExit = new Label();
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 
-		final boolean keyPrimitiveType = Utils.isPrimitiveType(key.type(ctx));
+		boolean keyPrimitiveType = Utils.isPrimitiveType(key.type(ctx));
 		for (int i = 0; i < listKey.size(); i++) {
 			Label labelNext = new Label();
 			if (keyPrimitiveType) {
@@ -88,14 +88,14 @@ final class ExpressionSwitchForKey implements Expression {
 		if (defaultExp != null) {
 			defaultExp.load(ctx);
 		} else {
-			final Variable sb = let(constructor(StringBuilder.class));
+			Variable sb = let(constructor(StringBuilder.class));
 			call(sb, "append", value("Key '")).load(ctx);
 			call(sb, "append", keyPrimitiveType ? varKey : call(key, "toString")).load(ctx);
 			call(sb, "append", value("' not in keyList: [")).load(ctx);
-			final Iterator<Expression> iterator = listKey.iterator();
+			Iterator<Expression> iterator = listKey.iterator();
 			while (iterator.hasNext()) {
-				final Expression expression = iterator.next();
-				final boolean primitiveType = Utils.isPrimitiveType(expression.type(ctx));
+				Expression expression = iterator.next();
+				boolean primitiveType = Utils.isPrimitiveType(expression.type(ctx));
 				call(sb, "append", primitiveType ? expression : call(expression, "toString")).load(ctx);
 				if (iterator.hasNext()) {
 					call(sb, "append", value(", ")).load(ctx);

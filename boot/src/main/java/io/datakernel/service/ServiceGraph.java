@@ -104,8 +104,8 @@ public class ServiceGraph {
 		return this;
 	}
 
-	private CompletableFuture<LongestPath> processNode(final Key<?> node, final boolean start,
-	                                                   Map<Key<?>, CompletableFuture<LongestPath>> futures, final Executor executor) {
+	private CompletableFuture<LongestPath> processNode(Key<?> node, boolean start,
+	                                                   Map<Key<?>, CompletableFuture<LongestPath>> futures, Executor executor) {
 		List<CompletableFuture<LongestPath>> dependencyFutures = new ArrayList<>();
 		for (Key<?> dependencyNode : (start ? forwards : backwards).getOrDefault(node, emptySet())) {
 			CompletableFuture<LongestPath> dependencyFuture = processNode(dependencyNode, start, futures, executor);
@@ -116,7 +116,7 @@ public class ServiceGraph {
 			return futures.get(node);
 		}
 
-		final CompletableFuture<LongestPath> future = new CompletableFuture<>();
+		CompletableFuture<LongestPath> future = new CompletableFuture<>();
 		futures.put(node, future);
 
 		combineDependenciesFutures(dependencyFutures, executor).whenCompleteAsync((longestPath, combineThrowable) -> {
@@ -134,8 +134,8 @@ public class ServiceGraph {
 					return;
 				}
 
-				final Stopwatch sw = Stopwatch.createStarted();
-				final CompletableFuture<Void> serviceFuture = (start ? service.start() : service.stop());
+				Stopwatch sw = Stopwatch.createStarted();
+				CompletableFuture<Void> serviceFuture = (start ? service.start() : service.stop());
 				logger.info((start ? "Starting" : "Stopping") + " node: " + nodeToString(node));
 				serviceFuture.whenCompleteAsync((o, throwable) -> {
 					if (throwable == null) {
@@ -170,11 +170,11 @@ public class ServiceGraph {
 			return futures.get(0);
 		}
 
-		final CompletableFuture<LongestPath> settableFuture = new CompletableFuture<>();
-		final AtomicInteger atomicInteger = new AtomicInteger(futures.size());
-		final AtomicReference<LongestPath> bestPath = new AtomicReference<>();
-		final AtomicReference<Throwable> exception = new AtomicReference<>();
-		for (final CompletableFuture<LongestPath> future : futures) {
+		CompletableFuture<LongestPath> settableFuture = new CompletableFuture<>();
+		AtomicInteger atomicInteger = new AtomicInteger(futures.size());
+		AtomicReference<LongestPath> bestPath = new AtomicReference<>();
+		AtomicReference<Throwable> exception = new AtomicReference<>();
+		for (CompletableFuture<LongestPath> future : futures) {
 			future.whenCompleteAsync((path, throwable) -> {
 				if (throwable == null) {
 					if (bestPath.get() == null || (path != null && path.totalTime > bestPath.get().totalTime)) {
@@ -232,16 +232,16 @@ public class ServiceGraph {
 		return actionInThread(false, leafNodes);
 	}
 
-	private CompletableFuture<?> actionInThread(final boolean start, final Collection<Key<?>> rootNodes) {
-		final CompletableFuture<?> resultFuture = new CompletableFuture<>();
-		final ExecutorService executor = newSingleThreadExecutor();
+	private CompletableFuture<?> actionInThread(boolean start, Collection<Key<?>> rootNodes) {
+		CompletableFuture<?> resultFuture = new CompletableFuture<>();
+		ExecutorService executor = newSingleThreadExecutor();
 		executor.execute(() -> {
 			Map<Key<?>, CompletableFuture<LongestPath>> futures = new HashMap<>();
 			List<CompletableFuture<LongestPath>> rootFutures = new ArrayList<>();
 			for (Key<?> rootNode : rootNodes) {
 				rootFutures.add(processNode(rootNode, start, futures, executor));
 			}
-			final CompletableFuture<LongestPath> rootFuture = combineDependenciesFutures(rootFutures, executor);
+			CompletableFuture<LongestPath> rootFuture = combineDependenciesFutures(rootFutures, executor);
 			rootFuture.whenCompleteAsync((longestPath, throwable) -> {
 				if (throwable == null) {
 					StringBuilder sb = new StringBuilder();
@@ -298,13 +298,13 @@ public class ServiceGraph {
 	}
 
 	private static String repeat(String str, int count) {
-		final StringBuilder sb = new StringBuilder();
+		StringBuilder sb = new StringBuilder();
 		for (int i = 0; i < count; i++) sb.append(str);
 		return sb.toString();
 	}
 
 	private static void removeValue(Map<Key<?>, Set<Key<?>>> map, Key<?> key, Key<?> value) {
-		final Set<Key<?>> objects = map.get(key);
+		Set<Key<?>> objects = map.get(key);
 		objects.remove(value);
 		if (objects.isEmpty()) map.remove(key);
 	}

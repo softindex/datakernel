@@ -101,7 +101,7 @@ public class HelloWorldGuiceTest {
 
 		@Provides
 		@Worker
-		AsyncServlet servlet(@WorkerId final int workerId) {
+		AsyncServlet servlet(@WorkerId int workerId) {
 			return request -> {
 				byte[] body = ByteBufStrings.encodeAscii("Hello world: worker server #" + workerId);
 				return Stages.of(ok200().withBody(ByteBuf.wrapForReading(body)));
@@ -145,7 +145,7 @@ public class HelloWorldGuiceTest {
 	public static void readAndAssert(InputStream is, String expected) throws IOException {
 		byte[] bytes = new byte[expected.length()];
 
-		final int length = bytes.length;
+		int length = bytes.length;
 		int total = 0;
 		while (total < length) {
 			int result = is.read(bytes, total, length - total);

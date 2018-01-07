@@ -39,7 +39,7 @@ public class UdpSocketHandlerTest {
 	private final byte[] bytesToSend = new byte[]{-127, 100, 0, 5, 11, 13, 17, 99};
 
 	private AsyncUdpSocketImpl getEchoServerUdpSocket(DatagramChannel serverChannel) {
-		final AsyncUdpSocketImpl socket = AsyncUdpSocketImpl.create(eventloop, serverChannel);
+		AsyncUdpSocketImpl socket = AsyncUdpSocketImpl.create(eventloop, serverChannel);
 		socket.setEventHandler(new AsyncUdpSocket.EventHandler() {
 			@Override
 			public void onRegistered() {
@@ -65,7 +65,7 @@ public class UdpSocketHandlerTest {
 	}
 
 	private AsyncUdpSocketImpl getClientUdpSocket(DatagramChannel clientChannel) {
-		final AsyncUdpSocketImpl socket = AsyncUdpSocketImpl.create(eventloop, clientChannel);
+		AsyncUdpSocketImpl socket = AsyncUdpSocketImpl.create(eventloop, clientChannel);
 		socket.setEventHandler(new AsyncUdpSocket.EventHandler() {
 			@Override
 			public void onRegistered() {

@@ -33,14 +33,14 @@ import static org.junit.Assert.fail;
 public class AbstractServerTest {
 	@Test
 	public void testTimeouts() throws IOException {
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		InetSocketAddress address = new InetSocketAddress("localhost", 5588);
-		final SocketSettings settings = SocketSettings.create().withImplReadTimeout(100000L).withImplWriteTimeout(100000L);
+		SocketSettings settings = SocketSettings.create().withImplReadTimeout(100000L).withImplWriteTimeout(100000L);
 
 		SimpleServer.SocketHandlerProvider socketHandlerProvider = new SimpleServer.SocketHandlerProvider() {
 			@Override
-			public EventHandler createSocketHandler(final AsyncTcpSocket asyncTcpSocket) {
+			public EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 				return new EventHandler() {
 					@Override
 					public void onRegistered() {
@@ -48,7 +48,7 @@ public class AbstractServerTest {
 					}
 
 					@Override
-					public void onRead(final ByteBuf buf) {
+					public void onRead(ByteBuf buf) {
 						eventloop.schedule(eventloop.currentTimeMillis() + 5, new Runnable() {
 							@Override
 							public void run() {
@@ -75,7 +75,7 @@ public class AbstractServerTest {
 			}
 		};
 
-		final SimpleServer server = SimpleServer.create(eventloop, socketHandlerProvider)
+		SimpleServer server = SimpleServer.create(eventloop, socketHandlerProvider)
 				.withSocketSettings(settings)
 				.withListenAddress(address);
 
@@ -83,7 +83,7 @@ public class AbstractServerTest {
 
 		eventloop.connect(address).whenComplete((socketChannel, throwable) -> {
 			if (throwable == null) {
-				final AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel, settings);
+				AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel, settings);
 				asyncTcpSocket.setEventHandler(new EventHandler() {
 					@Override
 					public void onRegistered() {

@@ -54,9 +54,9 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 	}
 
 	public static <D> OTRemoteSql<D> create(ExecutorService executor, DataSource dataSource, OTSystem<D> otSystem, TypeAdapter<D> diffAdapter) {
-		final TypeAdapter<List<D>> listAdapter = indent(ofList(diffAdapter), "\t");
+		TypeAdapter<List<D>> listAdapter = indent(ofList(diffAdapter), "\t");
 
-		final TypeAdapter<Map<Integer, List<D>>> mapDiffsAdapter = GsonAdapters.transform(GsonAdapters.ofMap(listAdapter),
+		TypeAdapter<Map<Integer, List<D>>> mapDiffsAdapter = GsonAdapters.transform(GsonAdapters.ofMap(listAdapter),
 				value -> value.entrySet().stream().collect(Collectors.toMap(entry -> Integer.parseInt(entry.getKey()), Map.Entry::getValue)),
 				value -> value.entrySet().stream().collect(Collectors.toMap(entry -> String.valueOf(entry.getKey()), Map.Entry::getValue)));
 		return new OTRemoteSql<>(executor, otSystem, listAdapter, mapDiffsAdapter, dataSource, TABLE_REVISION, TABLE_DIFFS, null);
@@ -98,7 +98,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 					statement.executeUpdate();
 					ResultSet generatedKeys = statement.getGeneratedKeys();
 					generatedKeys.next();
-					final int id = generatedKeys.getInt(1);
+					int id = generatedKeys.getInt(1);
 					logger.trace("Id created: {}", id);
 					return id;
 				}
@@ -151,8 +151,8 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 					}
 				}
 
-				final Set<Integer> parents = commits.get(0).getParents().keySet();
-				final String args = nCopies(parents.size(), "?").stream().collect(Collectors.joining(","));
+				Set<Integer> parents = commits.get(0).getParents().keySet();
+				String args = nCopies(parents.size(), "?").stream().collect(Collectors.joining(","));
 
 				if (!parents.isEmpty()) {
 					try (PreparedStatement ps = connection.prepareStatement(
@@ -204,11 +204,11 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 						"WHERE id = ? " +
 						"AND snapshot is not null "))) {
 					ps.setInt(1, revisionId);
-					final ResultSet resultSet = ps.executeQuery();
+					ResultSet resultSet = ps.executeQuery();
 
 					if (!resultSet.next()) throw new IllegalArgumentException("No snapshot for id: " + revisionId);
 
-					final List<D> snapshot = fromJson(resultSet.getString(1));
+					List<D> snapshot = fromJson(resultSet.getString(1));
 					logger.trace("Snapshot loaded: {}", revisionId);
 					return otSystem.squash(snapshot);
 				}
@@ -230,7 +230,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 					ResultSet resultSet = ps.executeQuery();
 
 					resultSet.next();
-					final boolean result = resultSet.getInt(1) == 1;
+					boolean result = resultSet.getInt(1) == 1;
 					logger.trace("is Snapshot finished: {}, {}", revisionId, result);
 					return result;
 				}
@@ -243,7 +243,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 		return getCurrentEventloop().callConcurrently(executor, () -> {
 			logger.trace("Start load commit: {}", revisionId);
 			try (Connection connection = dataSource.getConnection()) {
-				final Map<Integer, List<D>> parentDiffs = new HashMap<>();
+				Map<Integer, List<D>> parentDiffs = new HashMap<>();
 
 				try (PreparedStatement ps = connection.prepareStatement(
 						sql("SELECT parent_id, diff FROM ot_diffs WHERE revision_id=?"))) {
@@ -279,7 +279,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 	public CompletionStage<Void> saveSnapshot(Integer revisionId, List<D> diffs) {
 		return getCurrentEventloop().callConcurrently(executor, () -> {
 			logger.trace("Start save snapshot: {}, diffs: {}", revisionId, diffs.size());
-			final String snapshot = toJson(otSystem.squash(diffs));
+			String snapshot = toJson(otSystem.squash(diffs));
 			try (Connection connection = dataSource.getConnection()) {
 				try (PreparedStatement ps = connection.prepareStatement(sql("" +
 						"UPDATE ot_revisions " +
@@ -304,12 +304,12 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 						"FROM ot_revisions " +
 						"WHERE id = ?"))) {
 					ps.setInt(1, revisionId);
-					final ResultSet resultSet = ps.executeQuery();
+					ResultSet resultSet = ps.executeQuery();
 
 					if (!resultSet.next()) {
 						throw new IllegalArgumentException("No revision with id: " + revisionId);
 					}
-					final Timestamp timestamp = Timestamp.valueOf(resultSet.getString(1));
+					Timestamp timestamp = Timestamp.valueOf(resultSet.getString(1));
 					logger.trace("Finish timestamp, revision id: {}, timestamp: {}", revisionId, timestamp);
 					return timestamp;
 				}
@@ -354,9 +354,9 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 					ResultSet resultSet = ps.executeQuery();
 					if (!resultSet.next()) throw new IllegalArgumentException();
 
-					final String type = resultSet.getString(1);
-					final String timestamp = resultSet.getString(2);
-					final String createdBy = resultSet.getString(3);
+					String type = resultSet.getString(1);
+					String timestamp = resultSet.getString(2);
+					String createdBy = resultSet.getString(3);
 
 					return new Revision(revisionId, type, timestamp, createdBy);
 				}
@@ -400,11 +400,11 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 				try (PreparedStatement ps = connection.prepareStatement(
 						sql("SELECT parent_id FROM ot_diffs WHERE revision_id=?"))) {
 					ps.setInt(1, revisionId);
-					final ResultSet resultSet = ps.executeQuery();
+					ResultSet resultSet = ps.executeQuery();
 
-					final List<Diff> diffs = new ArrayList<>();
+					List<Diff> diffs = new ArrayList<>();
 					while (resultSet.next()) {
-						final int parentId = resultSet.getInt(1);
+						int parentId = resultSet.getInt(1);
 						diffs.add(new Diff(revisionId, parentId));
 					}
 					return diffs;
@@ -434,26 +434,26 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 	public CompletionStage<List<Merge>> loadMerges(boolean loadDiff) {
 		return getCurrentEventloop().callConcurrently(executor, () -> {
 			try (Connection connection = dataSource.getConnection()) {
-				final List<String> columns = asList("parent_ids", "min_parent_id", "max_parent_id", "timestamp", "created_by");
+				List<String> columns = asList("parent_ids", "min_parent_id", "max_parent_id", "timestamp", "created_by");
 				if (loadDiff) columns.add("diff");
 
-				final String selectedColumns = columns.stream().map(Object::toString).collect(joining(", "));
+				String selectedColumns = columns.stream().map(Object::toString).collect(joining(", "));
 				try (PreparedStatement ps = connection.prepareStatement(
 						sql("SELECT " + selectedColumns + " FROM ot_merges"))) {
 
-					final ResultSet resultSet = ps.executeQuery();
-					final List<Merge> list = new ArrayList<>();
+					ResultSet resultSet = ps.executeQuery();
+					List<Merge> list = new ArrayList<>();
 					while (resultSet.next()) {
-						final List<Integer> parentIds = Arrays.stream(resultSet.getString(1).split(" "))
+						List<Integer> parentIds = Arrays.stream(resultSet.getString(1).split(" "))
 								.map(String::trim)
 								.filter(s -> !s.isEmpty())
 								.map(Integer::parseInt)
 								.collect(toList());
-						final int minParentId = resultSet.getInt(2);
-						final int maxParentId = resultSet.getInt(3);
-						final Timestamp timestamp = Timestamp.valueOf(resultSet.getString(4));
-						final String createdBy = resultSet.getString(5);
-						final String diff = loadDiff ? resultSet.getString(6) : null;
+						int minParentId = resultSet.getInt(2);
+						int maxParentId = resultSet.getInt(3);
+						Timestamp timestamp = Timestamp.valueOf(resultSet.getString(4));
+						String createdBy = resultSet.getString(5);
+						String diff = loadDiff ? resultSet.getString(6) : null;
 						list.add(new Merge(parentIds, diff, minParentId, maxParentId, timestamp, createdBy));
 					}
 					return list;

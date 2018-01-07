@@ -16,7 +16,7 @@ public class AggregationOT {
 	public static OTSystem<AggregationDiff> createAggregationOT() {
 		return OTSystemImpl.<AggregationDiff>create()
 				.withTransformFunction(AggregationDiff.class, AggregationDiff.class, (left, right) -> {
-					final Set<AggregationChunk> intersection = intersection(left.getAddedChunks(), right.getAddedChunks());
+					Set<AggregationChunk> intersection = intersection(left.getAddedChunks(), right.getAddedChunks());
 
 					if (!intersection.isEmpty()) {
 						throw new OTTransformException(String.format("Added chunks intersection is not empty." +

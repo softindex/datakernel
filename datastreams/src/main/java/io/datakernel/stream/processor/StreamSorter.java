@@ -48,7 +48,7 @@ public final class StreamSorter<K, T> implements HasInput<T>, HasOutput<T> {
 
 	// region creators
 	private StreamSorter(StreamSorterStorage<T> storage,
-	                     final Function<T, K> keyFunction, final Comparator<K> keyComparator, boolean deduplicate,
+	                     Function<T, K> keyFunction, Comparator<K> keyComparator, boolean deduplicate,
 	                     int itemsInMemory) {
 		checkArgument(itemsInMemory > 0, "itemsInMemorySize must be positive value, got %s", itemsInMemory);
 		checkNotNull(keyComparator);
@@ -92,7 +92,7 @@ public final class StreamSorter<K, T> implements HasInput<T>, HasOutput<T> {
 	 * @param itemsInMemorySize size of elements which can be saved in RAM before sorting
 	 */
 	public static <K, T> StreamSorter<K, T> create(StreamSorterStorage<T> storage,
-	                                               final Function<T, K> keyFunction, final Comparator<K> keyComparator, boolean deduplicate,
+	                                               Function<T, K> keyFunction, Comparator<K> keyComparator, boolean deduplicate,
 	                                               int itemsInMemorySize) {
 		return new StreamSorter<>(storage, keyFunction, keyComparator, deduplicate, itemsInMemorySize);
 	}

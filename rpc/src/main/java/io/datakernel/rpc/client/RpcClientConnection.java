@@ -130,7 +130,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 	private CompletionStage<?> sendMessageData(Object request, int timeout) {
 		cookie++;
 
-		final SettableStage<?> stage = SettableStage.create();
+		SettableStage<?> stage = SettableStage.create();
 
 		TimeoutCookie timeoutCookie = new TimeoutCookie(cookie, timeout);
 		addTimeoutCookie(timeoutCookie);
@@ -142,7 +142,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 		if (isMonitoring()) {
 			RpcRequestStats requestStatsPerClass = rpcClient.ensureRequestStatsPerClass(request.getClass());
 			requestStatsPerClass.getTotalRequests().recordEvent();
-			final JmxConnectionMonitor<Object> jmxMonitor = new JmxConnectionMonitor<>(requestStatsPerClass, timeout);
+			JmxConnectionMonitor<Object> jmxMonitor = new JmxConnectionMonitor<>(requestStatsPerClass, timeout);
 			return stage.whenComplete((BiConsumer<Object, Throwable>) (o, throwable) -> {
 				if (throwable == null) {
 					jmxMonitor.setResult(o);

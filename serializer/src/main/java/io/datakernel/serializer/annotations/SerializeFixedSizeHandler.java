@@ -25,7 +25,7 @@ import io.datakernel.serializer.asm.SerializerGenList;
 
 public final class SerializeFixedSizeHandler implements AnnotationHandler<SerializeFixedSize, SerializeFixedSizeEx> {
 	@Override
-	public SerializerGenBuilder createBuilder(SerializerBuilder.Helper serializerBuilder, final SerializeFixedSize annotation, CompatibilityLevel compatibilityLevel) {
+	public SerializerGenBuilder createBuilder(SerializerBuilder.Helper serializerBuilder, SerializeFixedSize annotation, CompatibilityLevel compatibilityLevel) {
 		return new SerializerGenBuilder() {
 			@Override
 			public SerializerGen serializer(Class<?> type, SerializerForType[] generics, SerializerGen fallback) {

@@ -40,9 +40,9 @@ public final class HelloWorldPostServer {
 	}
 
 	public static void main(String[] args) throws Exception {
-		final Eventloop primaryEventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop primaryEventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		final AsyncHttpServer httpServerListener = helloWorldServer(primaryEventloop, PORT);
+		AsyncHttpServer httpServerListener = helloWorldServer(primaryEventloop, PORT);
 
 		System.out.println("Start HelloWorld HTTP Server on :" + PORT);
 		httpServerListener.listen();

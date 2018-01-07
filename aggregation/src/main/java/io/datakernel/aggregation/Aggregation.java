@@ -221,7 +221,7 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 		logger.info("Started consuming data in aggregation {}. Keys: {} Measures: {}", this, keyFields.keySet(), measureFields.keySet());
 
 		Class<?> keyClass = createKeyClass(structure, getKeys(), classLoader);
-		final Set<String> measureFieldKeys = measureFields.keySet();
+		Set<String> measureFieldKeys = measureFields.keySet();
 		List<String> measures = this.getMeasureTypes().keySet().stream().filter(measureFieldKeys::contains).collect(toList());
 
 		Class<?> accumulatorClass = createRecordClass(structure, getKeys(), measures, classLoader);
@@ -247,7 +247,7 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 	}
 
 	public double estimateCost(AggregationQuery query) {
-		final List<String> measures = getMeasures();
+		List<String> measures = getMeasures();
 		List<String> aggregationFields = query.getMeasures().stream().filter(measures::contains).collect(toList());
 		return state.findChunks(query.getPredicate(), aggregationFields).size();
 	}
@@ -273,7 +273,7 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 				break;
 		}
 		checkArgument(cl != null, "Unrelated queryClassLoader");
-		final List<String> measures = query.getMeasures();
+		List<String> measures = query.getMeasures();
 		List<String> fields = getMeasures().stream().filter(measures::contains).collect(toList());
 
 		List<AggregationChunk> allChunks = state.findChunks(query.getPredicate(), fields);
@@ -312,8 +312,8 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 			}
 		}
 
-		final List<String> measures = getMeasures().stream().filter(chunkFields::contains).collect(toList());
-		final Class resultClass = createRecordClass(structure, getKeys(), measures, classLoader);
+		List<String> measures = getMeasures().stream().filter(chunkFields::contains).collect(toList());
+		Class resultClass = createRecordClass(structure, getKeys(), measures, classLoader);
 
 		StreamProducer<Object> consolidatedProducer = consolidatedProducer(getKeys(), measures, resultClass, AggregationPredicates.alwaysTrue(), chunksToConsolidate, classLoader);
 		AggregationChunker<Object> chunker = AggregationChunker.create(
@@ -411,7 +411,7 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 			from record class to result class.
 			 */
 			SequenceStream sequence = sequences.get(0);
-			final List<String> collect = measures.stream().filter(sequence.fields::contains).collect(toList());
+			List<String> collect = measures.stream().filter(sequence.fields::contains).collect(toList());
 			StreamMap.MapperProjection mapper = createMapper(sequence.type, resultClass, queryKeys, collect, classLoader);
 			StreamMap<Object, T> streamMap = StreamMap.create(mapper);
 			stream(sequence.stream, streamMap.getInput());
@@ -425,7 +425,7 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 		for (SequenceStream sequence : sequences) {
 			Function extractKeyFunction = createKeyFunction(sequence.type, keyClass, queryKeys, this.classLoader);
 
-			final List<String> collect = measures.stream().filter(sequence.fields::contains).collect(toList());
+			List<String> collect = measures.stream().filter(sequence.fields::contains).collect(toList());
 			StreamReducers.Reducer reducer = AggregationUtils.aggregationReducer(structure, sequence.type, resultClass,
 					queryKeys, collect, classLoader);
 
@@ -453,8 +453,8 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 		});
 	}
 
-	private <T> StreamProducer<T> chunkReaderWithFilter(final AggregationPredicate where, AggregationChunk chunk,
-	                                                    final Class<T> chunkRecordClass, final DefiningClassLoader queryClassLoader) {
+	private <T> StreamProducer<T> chunkReaderWithFilter(AggregationPredicate where, AggregationChunk chunk,
+	                                                    Class<T> chunkRecordClass, DefiningClassLoader queryClassLoader) {
 		StreamProducer<T> producer = aggregationChunkStorage.readStream(structure, chunk.getMeasures(), chunkRecordClass, chunk.getChunkId(), classLoader);
 		if (where != AggregationPredicates.alwaysTrue()) {
 			StreamFilter<T> streamFilter = StreamFilter.create(
@@ -487,7 +487,7 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 	}
 
 	private CompletionStage<AggregationDiff> doConsolidate(boolean hotSegment) {
-		final List<AggregationChunk> chunks = hotSegment ?
+		List<AggregationChunk> chunks = hotSegment ?
 				state.findChunksForConsolidationHotSegment(maxChunksToConsolidate) :
 				state.findChunksForConsolidationMinKey(maxChunksToConsolidate, chunkSize);
 

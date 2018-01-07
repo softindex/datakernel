@@ -114,7 +114,7 @@ public class RpcStrategyTypeDispatchingTest {
 
 	@Test(expected = ExecutionException.class)
 	public void itShouldRaiseExceptionWhenStrategyForDataIsNotSpecifiedAndDefaultSenderIsNull() throws ExecutionException, InterruptedException {
-		final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
 		RpcSenderStub connection1 = new RpcSenderStub();
 		RpcSenderStub connection2 = new RpcSenderStub();
@@ -132,7 +132,7 @@ public class RpcStrategyTypeDispatchingTest {
 
 		RpcSender sender = typeDispatchingStrategy.createSender(pool);
 		// sender is not specified for RpcMessageDataStub, default sender is null
-		final CompletableFuture<Object> future = sender.sendRequest(new RpcMessageDataStub(), 50).toCompletableFuture();
+		CompletableFuture<Object> future = sender.sendRequest(new RpcMessageDataStub(), 50).toCompletableFuture();
 
 		eventloop.run();
 		future.get();

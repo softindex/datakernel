@@ -347,7 +347,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	}
 
 	@SuppressWarnings("unchecked")
-	private static JmxReducer<?> createReducerForJmxStats(final Class<?> jmxStatsClass) {
+	private static JmxReducer<?> createReducerForJmxStats(Class<?> jmxStatsClass) {
 		return new JmxReducer<Object>() {
 			@Override
 			public Object reduce(List<?> sources) {
@@ -547,9 +547,9 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		}
 	}
 
-	private Runnable createRefreshTask(final Eventloop eventloop,
-	                                   final List<JmxRefreshable> previousList,
-	                                   final int previousRefreshes) {
+	private Runnable createRefreshTask(Eventloop eventloop,
+	                                   List<JmxRefreshable> previousList,
+	                                   int previousRefreshes) {
 		return new Runnable() {
 			@Override
 			public void run() {
@@ -864,16 +864,16 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		}
 
 		@Override
-		public void setAttribute(final Attribute attribute)
+		public void setAttribute(Attribute attribute)
 				throws AttributeNotFoundException, InvalidAttributeValueException, MBeanException, ReflectionException {
-			final String attrName = attribute.getName();
-			final Object attrValue = attribute.getValue();
+			String attrName = attribute.getName();
+			Object attrValue = attribute.getValue();
 
-			final CountDownLatch latch = new CountDownLatch(mbeanWrappers.size());
-			final AtomicReference<Exception> exceptionReference = new AtomicReference<>();
+			CountDownLatch latch = new CountDownLatch(mbeanWrappers.size());
+			AtomicReference<Exception> exceptionReference = new AtomicReference<>();
 
 			for (MBeanWrapper mbeanWrapper : mbeanWrappers) {
-				final Object mbean = mbeanWrapper.getMBean();
+				Object mbean = mbeanWrapper.getMBean();
 				mbeanWrapper.execute((new Runnable() {
 					@Override
 					public void run() {
@@ -942,25 +942,25 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		}
 
 		@Override
-		public Object invoke(final String actionName, final Object[] params, final String[] signature)
+		public Object invoke(String actionName, Object[] params, String[] signature)
 				throws MBeanException, ReflectionException {
 
 			String[] argTypes = signature != null ? signature : new String[0];
-			final Object[] args = params != null ? params : new Object[0];
+			Object[] args = params != null ? params : new Object[0];
 			OperationKey opkey = new OperationKey(actionName, argTypes);
-			final Method opMethod = opkeyToMethod.get(opkey);
+			Method opMethod = opkeyToMethod.get(opkey);
 			if (opMethod == null) {
 				String operationName = prettyOperationName(actionName, argTypes);
 				String errorMsg = "There is no operation \"" + operationName + "\"";
 				throw new RuntimeOperationsException(new IllegalArgumentException("Operation not found"), errorMsg);
 			}
 
-			final CountDownLatch latch = new CountDownLatch(mbeanWrappers.size());
-			final AtomicReference<Exception> exceptionReference = new AtomicReference<>();
+			CountDownLatch latch = new CountDownLatch(mbeanWrappers.size());
+			AtomicReference<Exception> exceptionReference = new AtomicReference<>();
 
-			final AtomicReference lastValue = new AtomicReference();
+			AtomicReference lastValue = new AtomicReference();
 			for (MBeanWrapper mbeanWrapper : mbeanWrappers) {
-				final Object mbean = mbeanWrapper.getMBean();
+				Object mbean = mbeanWrapper.getMBean();
 				mbeanWrapper.execute((new Runnable() {
 					@Override
 					public void run() {

@@ -26,10 +26,10 @@ public class OTAlgorithmsTest {
 
 	@Test
 	public void testLoadAllChangesFromRootWithSnapshot() throws ExecutionException, InterruptedException {
-		final Eventloop eventloop = Eventloop.create();
-		final TestOpState opState = new TestOpState();
-		final List<Integer> commitIds = IntStream.rangeClosed(0, 5).boxed().collect(Collectors.toList());
-		final OTRemote<Integer, TestOp> otRemote = OTRemoteStub.create(of(commitIds), Integer::compareTo);
+		Eventloop eventloop = Eventloop.create();
+		TestOpState opState = new TestOpState();
+		List<Integer> commitIds = IntStream.rangeClosed(0, 5).boxed().collect(Collectors.toList());
+		OTRemote<Integer, TestOp> otRemote = OTRemoteStub.create(of(commitIds), Integer::compareTo);
 
 		otRemote.createId().thenCompose(id -> otRemote.push(asList(OTCommit.ofRoot(id))));
 		eventloop.run();
@@ -41,7 +41,7 @@ public class OTAlgorithmsTest {
 			eventloop.run();
 		});
 
-		final CompletableFuture<List<TestOp>> changes = otRemote.getHeads().thenCompose(heads ->
+		CompletableFuture<List<TestOp>> changes = otRemote.getHeads().thenCompose(heads ->
 				loadAllChanges(otRemote, Integer::compareTo, TEST_OP, getLast(heads)))
 				.toCompletableFuture();
 		eventloop.run();
@@ -52,12 +52,12 @@ public class OTAlgorithmsTest {
 
 	@Test
 	public void testReduceEdges() throws ExecutionException, InterruptedException {
-		final Eventloop eventloop = Eventloop.create();
-		final Comparator<Integer> comparator = Integer::compareTo;
-		final List<Integer> commitIds = IntStream.rangeClosed(0, 8).boxed().collect(Collectors.toList());
-		final OTRemote<Integer, TestOp> otRemote = OTRemoteStub.create(of(commitIds), Integer::compareTo);
-		final GraphBuilder<Integer, TestOp> graphBuilder = new GraphBuilder<>(otRemote);
-		final CompletableFuture<Map<Integer, Integer>> graphFuture = graphBuilder.buildGraph(asList(
+		Eventloop eventloop = Eventloop.create();
+		Comparator<Integer> comparator = Integer::compareTo;
+		List<Integer> commitIds = IntStream.rangeClosed(0, 8).boxed().collect(Collectors.toList());
+		OTRemote<Integer, TestOp> otRemote = OTRemoteStub.create(of(commitIds), Integer::compareTo);
+		GraphBuilder<Integer, TestOp> graphBuilder = new GraphBuilder<>(otRemote);
+		CompletableFuture<Map<Integer, Integer>> graphFuture = graphBuilder.buildGraph(asList(
 				edge(0, 1, add(1)),
 				edge(1, 2, add(1)),
 				edge(2, 3, add(1)),
@@ -70,15 +70,15 @@ public class OTAlgorithmsTest {
 		eventloop.run();
 		graphFuture.get();
 
-		final Map<Integer, List<TestOp>> heads = Stream.of(5, 7).collect(toMap(k -> k, k -> new ArrayList<>()));
-		final CompletableFuture<Map<Integer, List<TestOp>>> future = OTUtils
+		Map<Integer, List<TestOp>> heads = Stream.of(5, 7).collect(toMap(k -> k, k -> new ArrayList<>()));
+		CompletableFuture<Map<Integer, List<TestOp>>> future = OTUtils
 				.reduceEdges(otRemote, comparator, heads, 0, k -> k >= 0,
 						(ints, testOps) -> Stream.concat(ints.stream(), testOps.stream()).collect(toList()),
 						(testOps, testOps2) -> Stream.concat(testOps.stream(), testOps2.stream()).collect(toList()))
 				.toCompletableFuture();
 
 		eventloop.run();
-		final Map<Integer, List<TestOp>> result = future.get();
+		Map<Integer, List<TestOp>> result = future.get();
 
 		assertEquals(1, applyToState(result.get(5)));
 		assertEquals(5, applyToState(result.get(7)));
@@ -86,12 +86,12 @@ public class OTAlgorithmsTest {
 
 	@Test
 	public void testReduceEdges2() throws ExecutionException, InterruptedException {
-		final Eventloop eventloop = Eventloop.create();
-		final Comparator<Integer> comparator = Integer::compareTo;
-		final List<Integer> commitIds = IntStream.rangeClosed(0, 8).boxed().collect(Collectors.toList());
-		final OTRemote<Integer, TestOp> otRemote = OTRemoteStub.create(of(commitIds), Integer::compareTo);
-		final GraphBuilder<Integer, TestOp> graphBuilder = new GraphBuilder<>(otRemote);
-		final CompletableFuture<Map<Integer, Integer>> graphFuture = graphBuilder.buildGraph(asList(
+		Eventloop eventloop = Eventloop.create();
+		Comparator<Integer> comparator = Integer::compareTo;
+		List<Integer> commitIds = IntStream.rangeClosed(0, 8).boxed().collect(Collectors.toList());
+		OTRemote<Integer, TestOp> otRemote = OTRemoteStub.create(of(commitIds), Integer::compareTo);
+		GraphBuilder<Integer, TestOp> graphBuilder = new GraphBuilder<>(otRemote);
+		CompletableFuture<Map<Integer, Integer>> graphFuture = graphBuilder.buildGraph(asList(
 				edge(0, 1, add(1)),
 				edge(0, 2, add(-1)),
 				edge(1, 3, add(1)),
@@ -103,15 +103,15 @@ public class OTAlgorithmsTest {
 		eventloop.run();
 		graphFuture.get();
 
-		final Map<Integer, List<TestOp>> heads = Stream.of(3, 4, 5).collect(toMap(k -> k, k -> new ArrayList<>()));
-		final CompletableFuture<Map<Integer, List<TestOp>>> future = OTUtils
+		Map<Integer, List<TestOp>> heads = Stream.of(3, 4, 5).collect(toMap(k -> k, k -> new ArrayList<>()));
+		CompletableFuture<Map<Integer, List<TestOp>>> future = OTUtils
 				.reduceEdges(otRemote, comparator, heads, 0, k -> true,
 						(ints, testOps) -> Stream.concat(ints.stream(), testOps.stream()).collect(toList()),
 						(testOps, testOps2) -> Stream.concat(testOps.stream(), testOps2.stream()).collect(toList()))
 				.toCompletableFuture();
 
 		eventloop.run();
-		final Map<Integer, List<TestOp>> result = future.get();
+		Map<Integer, List<TestOp>> result = future.get();
 
 		assertEquals(2, applyToState(result.get(3)));
 		assertEquals(0, applyToState(result.get(4)));
@@ -119,15 +119,15 @@ public class OTAlgorithmsTest {
 	}
 
 	private static int applyToState(List<TestOp> diffs) {
-		final TestOpState opState = new TestOpState();
+		TestOpState opState = new TestOpState();
 		diffs.forEach(opState::apply);
 		return opState.getValue();
 	}
 
 	private static <T> T getLast(Iterable<T> iterable) {
-		final Iterator<T> iterator = iterable.iterator();
+		Iterator<T> iterator = iterable.iterator();
 		while (iterator.hasNext()) {
-			final T next = iterator.next();
+			T next = iterator.next();
 			if (!iterator.hasNext()) return next;
 		}
 		throw new IllegalArgumentException("Empty iterable");

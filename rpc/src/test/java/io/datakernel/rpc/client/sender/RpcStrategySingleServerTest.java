@@ -63,7 +63,7 @@ public class RpcStrategySingleServerTest {
 		pool.put(ADDRESS, connection);
 		RpcStrategySingleServer strategySingleServer = RpcStrategySingleServer.create(ADDRESS);
 		RpcSender sender = strategySingleServer.createSender(pool);
-		final int calls = 100;
+		int calls = 100;
 		int timeout = 50;
 		RpcMessageDataStub data = new RpcMessageDataStub();
 		BiConsumerStub consumer = new BiConsumerStub();

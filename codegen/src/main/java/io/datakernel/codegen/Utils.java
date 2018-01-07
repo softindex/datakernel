@@ -181,7 +181,7 @@ final class Utils {
 			if (type.equals(getType(Object[].class))) {
 				result = Object[].class;
 			} else {
-				final String className = type.getDescriptor().replace('/', '.');
+				String className = type.getDescriptor().replace('/', '.');
 				try {
 					result = Class.forName(className);
 				} catch (ClassNotFoundException e) {
@@ -233,7 +233,7 @@ final class Utils {
 			if (type.equals(getType(Object[].class))) {
 				result = Object[].class;
 			} else {
-				final String className = type.getDescriptor().replace('/', '.');
+				String className = type.getDescriptor().replace('/', '.');
 				try {
 					result = Class.forName(className);
 				} catch (ClassNotFoundException e) {
@@ -292,7 +292,7 @@ final class Utils {
 		}
 
 		if (type.equals(ctx.getThisType())) {
-			final Class<?> javaType = getJavaType(ctx.getClassLoader(), targetType);
+			Class<?> javaType = getJavaType(ctx.getClassLoader(), targetType);
 			if (javaType.isAssignableFrom(ctx.getMainClass())) {
 				return;
 			}

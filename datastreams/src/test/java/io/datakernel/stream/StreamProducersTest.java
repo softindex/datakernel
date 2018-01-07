@@ -28,14 +28,14 @@ public class StreamProducersTest {
 
 	@Test
 	public void testErrorDecorator() {
-		final List<Integer> values = IntStream.range(1, 10).boxed().collect(toList());
-		final StreamProducer<Integer> readProducer = ofIterable(values);
-		final StreamProducer<Integer> errorProducer = errorDecorator(
+		List<Integer> values = IntStream.range(1, 10).boxed().collect(toList());
+		StreamProducer<Integer> readProducer = ofIterable(values);
+		StreamProducer<Integer> errorProducer = errorDecorator(
 				readProducer,
 				k -> k.equals(5),
 				IllegalArgumentException::new);
 
-		final StreamConsumerToList<Integer> consumer = new StreamConsumerToList<>();
+		StreamConsumerToList<Integer> consumer = new StreamConsumerToList<>();
 		stream(errorProducer, consumer);
 		eventloop.run();
 
@@ -46,16 +46,16 @@ public class StreamProducersTest {
 
 	@Test
 	public void testErrorDecoratorWithResult() throws ExecutionException, InterruptedException {
-		final List<Integer> values = IntStream.range(1, 10).boxed().collect(toList());
-		final StreamProducerWithResult<Integer, Void> readProducer = withEndOfStreamAsResult(ofIterable(values));
-		final StreamProducerWithResult<Integer, Void> errorProducer = errorDecorator(
+		List<Integer> values = IntStream.range(1, 10).boxed().collect(toList());
+		StreamProducerWithResult<Integer, Void> readProducer = withEndOfStreamAsResult(ofIterable(values));
+		StreamProducerWithResult<Integer, Void> errorProducer = errorDecorator(
 				readProducer,
 				k -> k.equals(5),
 				IllegalArgumentException::new);
 
-		final StreamConsumerToList<Integer> consumer = new StreamConsumerToList<>();
+		StreamConsumerToList<Integer> consumer = new StreamConsumerToList<>();
 		stream(errorProducer, consumer);
-		final CompletableFuture<Void> producerFuture = readProducer
+		CompletableFuture<Void> producerFuture = readProducer
 				.getResult()
 				.whenComplete((aVoid, throwable) -> assertThat(throwable, instanceOf(IllegalArgumentException.class)))
 				.exceptionally(throwable -> null)
