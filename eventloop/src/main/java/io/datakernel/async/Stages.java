@@ -5,7 +5,10 @@ import io.datakernel.eventloop.ScheduledRunnable;
 
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.function.*;
+import java.util.function.BiConsumer;
+import java.util.function.BiPredicate;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
@@ -17,19 +20,13 @@ public final class Stages {
 
 	public static <T> CompletionStage<T> of(T value) {
 		SettableStage<T> stage = new SettableStage<>();
-		stage.supplier = () -> value;
-		return stage;
-	}
-
-	public static <T> CompletionStage<T> ofSupplier(Supplier<T> supplier) {
-		SettableStage<T> stage = new SettableStage<>();
-		stage.supplier = supplier;
+		stage.result = value;
 		return stage;
 	}
 
 	public static <T> CompletionStage<T> ofException(Throwable throwable) {
 		SettableStage<T> stage = new SettableStage<>();
-		stage.supplier = null;
+		stage.result = null;
 		stage.exception = throwable;
 		return stage;
 	}

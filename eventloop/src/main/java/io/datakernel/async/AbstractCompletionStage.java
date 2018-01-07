@@ -30,20 +30,24 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		return next == COMPLETED_STAGE;
 	}
 
+	@SuppressWarnings({"AssertWithSideEffects", "ConstantConditions", "unchecked"})
 	protected final void complete(T value) {
 		assert !isComplete();
 		if (next != null) {
 			next.onComplete(value);
+			next = COMPLETED_STAGE;
 		}
-		next = COMPLETED_STAGE;
+		assert (next = COMPLETED_STAGE) != null;
 	}
 
+	@SuppressWarnings({"AssertWithSideEffects", "ConstantConditions", "unchecked"})
 	protected void completeExceptionally(Throwable error) {
 		assert !isComplete();
 		if (next != null) {
 			next.onCompleteExceptionally(error);
+			next = COMPLETED_STAGE;
 		}
-		next = COMPLETED_STAGE;
+		assert (next = COMPLETED_STAGE) != null;
 	}
 
 	private static final class SplittingStage<T> extends NextCompletionStage<T, T> {

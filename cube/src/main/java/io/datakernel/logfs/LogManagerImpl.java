@@ -43,6 +43,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 
 import static io.datakernel.stream.DataStreams.stream;
+import static io.datakernel.stream.StreamConsumers.withResult;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 public final class LogManagerImpl<T> implements LogManager<T> {
@@ -99,21 +100,20 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 	@Override
 	public CompletionStage<StreamConsumerWithResult<T, Void>> consumer(String logPartition) {
 		validateLogPartition(logPartition);
-		return Stages.ofSupplier(() -> {
-			StreamBinarySerializer<T> streamBinarySerializer = StreamBinarySerializer.create(serializer)
-					.withAutoFlush(autoFlushIntervalMillis)
-					.withDefaultBufferSize(bufferSize)
-					.withSkipSerializationErrors();
 
-			StreamLZ4Compressor streamCompressor = StreamLZ4Compressor.fastCompressor();
+		StreamBinarySerializer<T> streamBinarySerializer = StreamBinarySerializer.create(serializer)
+				.withAutoFlush(autoFlushIntervalMillis)
+				.withDefaultBufferSize(bufferSize)
+				.withSkipSerializationErrors();
 
-			LogStreamChunker writer = LogStreamChunker.create(fileSystem, dateTimeFormatter, logPartition);
+		StreamLZ4Compressor streamCompressor = StreamLZ4Compressor.fastCompressor();
 
-			stream(streamBinarySerializer.getOutput(), streamCompressor.getInput());
-			stream(streamCompressor.getOutput(), writer);
+		LogStreamChunker writer = LogStreamChunker.create(fileSystem, dateTimeFormatter, logPartition);
 
-			return StreamConsumers.withResult(streamBinarySerializer.getInput(), writer.getResult());
-		});
+		stream(streamBinarySerializer.getOutput(), streamCompressor.getInput());
+		stream(streamCompressor.getOutput(), writer);
+
+		return Stages.of(withResult(streamBinarySerializer.getInput(), writer.getResult()));
 	}
 
 	@Override

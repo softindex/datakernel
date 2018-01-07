@@ -1,15 +1,14 @@
 package io.datakernel.async;
 
 import java.util.concurrent.CompletionStage;
-import java.util.function.Supplier;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
 public final class SettableStage<T> extends AbstractCompletionStage<T> {
-	private static final Supplier NO_RESULT = () -> {throw new UnsupportedOperationException();};
+	private static final Object NO_RESULT = new Object();
 
 	@SuppressWarnings("unchecked")
-	protected Supplier<T> supplier = (Supplier<T>) NO_RESULT;
+	protected T result = (T) NO_RESULT;
 	protected Throwable exception;
 
 	protected SettableStage() {
@@ -28,9 +27,9 @@ public final class SettableStage<T> extends AbstractCompletionStage<T> {
 	public void set(T result) {
 		assert !isSet();
 		if (next == null) {
-			this.supplier = () -> result;
+			this.result = result;
 		} else {
-			this.supplier = null;
+			this.result = null;
 			complete(result);
 		}
 	}
@@ -38,10 +37,10 @@ public final class SettableStage<T> extends AbstractCompletionStage<T> {
 	public void setException(Throwable t) {
 		assert !isSet();
 		if (next == null) {
-			this.supplier = null;
+			this.result = null;
 			this.exception = t;
 		} else {
-			this.supplier = null;
+			this.result = null;
 			completeExceptionally(t);
 		}
 	}
@@ -82,12 +81,12 @@ public final class SettableStage<T> extends AbstractCompletionStage<T> {
 			if (this.next == null) {
 				getCurrentEventloop().post(() -> {
 					if (exception == null) {
-						complete(supplier.get());
+						complete(result);
 					} else {
 						completeExceptionally(exception);
 					}
 
-					supplier = null;
+					result = null;
 					exception = null;
 				});
 			}
@@ -96,7 +95,7 @@ public final class SettableStage<T> extends AbstractCompletionStage<T> {
 	}
 
 	public boolean isSet() {
-		return supplier != NO_RESULT;
+		return result != NO_RESULT;
 	}
 
 	@Override
@@ -106,6 +105,6 @@ public final class SettableStage<T> extends AbstractCompletionStage<T> {
 
 	@Override
 	public String toString() {
-		return "{" + (isSet() ? (exception == null ? supplier : exception.getMessage()) : "") + "}";
+		return "{" + (isSet() ? (exception == null ? result : exception.getMessage()) : "") + "}";
 	}
 }
