@@ -20,6 +20,7 @@ import com.google.gson.*;
 import io.datakernel.aggregation.PrimaryKey;
 import io.datakernel.async.Stages;
 import io.datakernel.cube.Cube;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
 
 import java.lang.reflect.Type;
@@ -27,17 +28,18 @@ import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 
-public final class ConsolidationDebugServlet implements AsyncServlet {
+public final class ConsolidationDebugServlet extends AsyncServletWithStats {
 	private final Gson gson;
 	private final Cube cube;
 
-	private ConsolidationDebugServlet(Cube cube) {
+	private ConsolidationDebugServlet(Eventloop eventloop, Cube cube) {
+		super(eventloop);
 		this.cube = cube;
 		this.gson = new GsonBuilder().registerTypeAdapter(PrimaryKey.class, new PrimaryKeySerializer()).create();
 	}
 
-	public static ConsolidationDebugServlet create(Cube cube) {
-		return new ConsolidationDebugServlet(cube);
+	public static ConsolidationDebugServlet create(Eventloop eventloop, Cube cube) {
+		return new ConsolidationDebugServlet(eventloop, cube);
 	}
 
 	public static class PrimaryKeySerializer implements JsonSerializer<PrimaryKey> {
@@ -54,7 +56,7 @@ public final class ConsolidationDebugServlet implements AsyncServlet {
 	}
 
 	@Override
-	public CompletionStage<HttpResponse> serve(HttpRequest request) {
+	public CompletionStage<HttpResponse> doServe(HttpRequest request) {
 		return Stages.of(HttpResponse.ok200()
 				.withContentType(ContentType.of(MediaTypes.JSON))
 				.withBody(wrapUtf8(gson.toJson(cube.getConsolidationDebugInfo()))));

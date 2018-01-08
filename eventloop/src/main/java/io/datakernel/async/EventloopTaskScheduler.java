@@ -5,6 +5,8 @@ import io.datakernel.eventloop.EventloopService;
 import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxOperation;
+import io.datakernel.jmx.StageStats;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,7 +17,7 @@ public final class EventloopTaskScheduler implements EventloopService, Eventloop
 
 	private final Eventloop eventloop;
 	private final AsyncCallable<?> task;
-	private final StageWatcher watcher;
+	private final StageStats stats;
 
 	private long initialDelay;
 	private long period;
@@ -29,13 +31,6 @@ public final class EventloopTaskScheduler implements EventloopService, Eventloop
 	private Object lastResult;
 	private Throwable lastError;
 	private int lastErrorsCount;
-
-	// JMX
-
-	private int totalCount;
-	private long totalDuration;
-	private int totalErrorsCount;
-	private long totalErrorsDuration;
 
 	public interface ScheduleFunction<T> {
 		long nextTimestamp(long now, long lastStartTime, long lastCompleteTime, T lastResult, Throwable lastError, int lastErrorsCount);
@@ -67,38 +62,49 @@ public final class EventloopTaskScheduler implements EventloopService, Eventloop
 
 	private ScheduledRunnable scheduledTask;
 
-	private EventloopTaskScheduler(Eventloop eventloop, AsyncCallable<?> task, StageWatcher watcher) {
+	private EventloopTaskScheduler(Eventloop eventloop, AsyncCallable<?> task, StageStats stats) {
 		this.eventloop = eventloop;
 		this.task = task;
-		this.watcher = watcher;
+		this.stats = stats;
 	}
 
 	public static EventloopTaskScheduler create(Eventloop eventloop, AsyncCallable<?> task) {
-		return new EventloopTaskScheduler(eventloop, task, new StageWatcher(eventloop));
+		StageStats stats = StageStats.create();
+		return new EventloopTaskScheduler(eventloop, task, stats);
 	}
 
 	public EventloopTaskScheduler withInitialDelay(long initialDelayMillis) {
-		this.initialDelay = initialDelayMillis;
+		initialDelay = initialDelayMillis;
 		return this;
 	}
 
 	public EventloopTaskScheduler withPeriod(long refreshPeriodMillis) {
-		this.period = refreshPeriodMillis;
+		period = refreshPeriodMillis;
 		return this;
 	}
 
 	public EventloopTaskScheduler withInterval(long intervalMillis) {
-		this.interval = intervalMillis;
+		interval = intervalMillis;
 		return this;
 	}
 
 	public EventloopTaskScheduler withScheduleFunction(ScheduleFunction<?> scheduleFunction) {
-		this.scheduleFunction = (ScheduleFunction<Object>) scheduleFunction;
+		scheduleFunction = (ScheduleFunction<Object>) scheduleFunction;
 		return this;
 	}
 
 	public EventloopTaskScheduler withAbortOnError(boolean abortOnError) {
-		this.abortOnError = abortOnError;
+		abortOnError = abortOnError;
+		return this;
+	}
+
+	public EventloopTaskScheduler withStatsSmoothingWindow(double smoothingWindowSeconds) {
+		stats.setSmoothingWindow(smoothingWindowSeconds);
+		return this;
+	}
+
+	public EventloopTaskScheduler withStatsHistogramLevels(int[] levels) {
+		stats.setHistogramLevels(levels);
 		return this;
 	}
 
@@ -119,15 +125,13 @@ public final class EventloopTaskScheduler implements EventloopService, Eventloop
 				timestamp,
 				() -> {
 					long startTime = eventloop.currentTimeMillis();
-					watcher.watch(task.call()).whenComplete((result, throwable) -> {
+					stats.monitor(task.call()).whenComplete((result, throwable) -> {
 						if (throwable == null) {
 							lastStartTime = startTime;
 							lastCompleteTime = eventloop.currentTimeMillis();
 							lastResult = result;
 							lastError = null;
 							lastErrorsCount = 0;
-							totalCount++;
-							totalDuration += lastCompleteTime - lastStartTime;
 							scheduleTask();
 						} else {
 							lastStartTime = startTime;
@@ -135,8 +139,6 @@ public final class EventloopTaskScheduler implements EventloopService, Eventloop
 							lastResult = null;
 							lastError = throwable;
 							lastErrorsCount++;
-							totalErrorsCount++;
-							totalErrorsDuration += lastCompleteTime - lastStartTime;
 							logger.error("Task failures: " + lastErrorsCount, throwable);
 							if (abortOnError) {
 								scheduledTask.cancel();
@@ -202,38 +204,23 @@ public final class EventloopTaskScheduler implements EventloopService, Eventloop
 	}
 
 	@JmxAttribute
-	public StageWatcher getStats() {
-		return watcher;
+	public StageStats getStats() {
+		return stats;
 	}
 
 	@JmxAttribute
-	public int getTotalCount() {
-		return totalCount;
+	public double getStatsSmoothingWindow() {
+		return stats.getSmoothingWindow();
 	}
 
 	@JmxAttribute
-	public long getTotalDuration() {
-		return totalDuration;
+	public void setStatsSmoothingWindow(double smoothingWindowSeconds) {
+		stats.setSmoothingWindow(smoothingWindowSeconds);
 	}
 
-	@JmxAttribute
-	public double getAverageDuration() {
-		return totalCount == 0 ? 0 : (totalDuration / totalCount);
-	}
-
-	@JmxAttribute
-	public int getTotalErrorsCount() {
-		return totalErrorsCount;
-	}
-
-	@JmxAttribute
-	public long getTotalErrorsDuration() {
-		return totalErrorsDuration;
-	}
-
-	@JmxAttribute
-	public double getAverageErrorsDuration() {
-		return totalErrorsCount == 0 ? 0 : (totalErrorsDuration / totalErrorsCount);
+	@JmxOperation
+	public void resetStats() {
+		stats.resetStats();
 	}
 
 }

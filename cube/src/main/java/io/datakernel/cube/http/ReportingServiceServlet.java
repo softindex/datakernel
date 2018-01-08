@@ -19,8 +19,10 @@ package io.datakernel.cube.http;
 import com.google.gson.TypeAdapter;
 import io.datakernel.aggregation.AggregationPredicate;
 import io.datakernel.aggregation.QueryException;
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Stages;
 import io.datakernel.cube.*;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
 import io.datakernel.util.Stopwatch;
 import io.datakernel.utils.GsonAdapters.TypeAdapterRegistryImpl;
@@ -37,7 +39,7 @@ import static io.datakernel.cube.http.Utils.*;
 import static io.datakernel.http.HttpMethod.GET;
 import static java.util.stream.Collectors.toList;
 
-public final class ReportingServiceServlet implements AsyncServlet {
+public final class ReportingServiceServlet extends AsyncServletWithStats {
 	protected final Logger logger = LoggerFactory.getLogger(ReportingServiceServlet.class);
 
 	private final ICube cube;
@@ -45,22 +47,30 @@ public final class ReportingServiceServlet implements AsyncServlet {
 	private TypeAdapter<QueryResult> queryResultJson;
 	private TypeAdapter<AggregationPredicate> aggregationPredicateJson;
 
-	private ReportingServiceServlet(ICube cube, TypeAdapterRegistryImpl registry) {
+	private ReportingServiceServlet(Eventloop eventloop, ICube cube, TypeAdapterRegistryImpl registry) {
+		super(eventloop);
 		this.cube = cube;
 		this.registry = registry;
 	}
 
-	public static ReportingServiceServlet create(ICube cube) {
-		return new ReportingServiceServlet(cube, createCubeTypeAdaptersRegistry());
+	public static ReportingServiceServlet create(Eventloop eventloop, ICube cube) {
+		return new ReportingServiceServlet(eventloop, cube, createCubeTypeAdaptersRegistry());
 	}
 
-	public static MiddlewareServlet createRootServlet(ICube cube) {
-		MiddlewareServlet middlewareServlet = MiddlewareServlet.create().with(GET, "/", create(cube));
-		if (cube instanceof Cube) {
-			middlewareServlet = middlewareServlet
-					.with(GET, "/consolidation-debug", ConsolidationDebugServlet.create((Cube) cube));
-		}
-		return middlewareServlet;
+	public static MiddlewareServlet createRootServlet(Eventloop eventloop, ICube cube) {
+		return createRootServlet(eventloop,
+				ReportingServiceServlet.create(eventloop, cube),
+				(cube instanceof Cube) ? ConsolidationDebugServlet.create(eventloop, (Cube) cube) : null);
+	}
+
+	public static MiddlewareServlet createRootServlet(Eventloop eventloop,
+	                                                  ReportingServiceServlet reportingServiceServlet,
+	                                                  @Nullable ConsolidationDebugServlet consolidationDebugServlet) {
+		return MiddlewareServlet.create()
+				.with(GET, "/", reportingServiceServlet)
+				.with(GET, "/consolidation-debug", consolidationDebugServlet != null ?
+						consolidationDebugServlet :
+						request -> Stages.of(HttpResponse.ofCode(404)));
 	}
 
 	private TypeAdapter<AggregationPredicate> getAggregationPredicateJson() {
@@ -78,7 +88,7 @@ public final class ReportingServiceServlet implements AsyncServlet {
 	}
 
 	@Override
-	public CompletionStage<HttpResponse> serve(HttpRequest httpRequest) {
+	public CompletionStage<HttpResponse> doServe(HttpRequest httpRequest) {
 		logger.info("Received request: {}", httpRequest);
 		try {
 			Stopwatch totalTimeStopwatch = Stopwatch.createStarted();

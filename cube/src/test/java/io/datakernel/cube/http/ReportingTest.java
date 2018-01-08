@@ -373,7 +373,7 @@ public class ReportingTest {
 		eventloop.run();
 		future.get();
 
-		cubeHttpServer = AsyncHttpServer.create(eventloop, ReportingServiceServlet.createRootServlet(cube))
+		cubeHttpServer = AsyncHttpServer.create(eventloop, ReportingServiceServlet.createRootServlet(eventloop, cube))
 				.withListenAddress(new InetSocketAddress("localhost", SERVER_PORT))
 				.withAcceptOnce();
 		cubeHttpServer.listen();

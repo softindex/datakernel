@@ -49,7 +49,7 @@ public final class EventloopStats {
 		businessLogicTime = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
 		tasks = new Tasks(smoothingWindow, extraStatsExtractor);
 		keys = new Keys(smoothingWindow);
-		fatalErrors = ExceptionStats.create().withStoreStackTrace(true);
+		fatalErrors = ExceptionStats.create();
 		fatalErrorsMap = new HashMap<>();
 		idleLoops = EventStats.create(smoothingWindow);
 		selectOverdues = EventStats.create(smoothingWindow);
@@ -166,7 +166,7 @@ public final class EventloopStats {
 
 		ExceptionStats stats = fatalErrorsMap.get(stackTrace);
 		if (stats == null) {
-			stats = ExceptionStats.create().withStoreStackTrace(true);
+			stats = ExceptionStats.create();
 			fatalErrorsMap.put(stackTrace, stats);
 		}
 		stats.recordException(throwable, causedObject);
