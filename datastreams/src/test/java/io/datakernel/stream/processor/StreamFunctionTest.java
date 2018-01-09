@@ -39,7 +39,7 @@ public class StreamFunctionTest {
 
 	@Test
 	public void testFunction() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamFunction<Integer, Integer> streamFunction = StreamFunction.create(input -> input * input);
 
@@ -60,7 +60,7 @@ public class StreamFunctionTest {
 
 	@Test
 	public void testFunctionConsumerError() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamFunction<Integer, Integer> streamFunction = StreamFunction.create(input -> input * input);
 
@@ -93,7 +93,7 @@ public class StreamFunctionTest {
 
 	@Test
 	public void testFunctionProducerError() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamFunction<Integer, Integer> streamFunction = StreamFunction.create(input -> input * input);
 
@@ -117,7 +117,7 @@ public class StreamFunctionTest {
 
 	@Test
 	public void testWithoutConsumer() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamFunction<Integer, Integer> streamFunction = StreamFunction.create(input -> input * input);
 

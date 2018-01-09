@@ -103,7 +103,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 */
 	private Selector selector;
 
-	private final SelectorProvider selectorProvider;
+	private SelectorProvider selectorProvider;
 
 	/**
 	 * The thread where eventloop is running
@@ -114,10 +114,10 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	/**
 	 * The desired name of the thread
 	 */
-	private final String threadName;
-	private final int threadPriority;
+	private String threadName;
+	private int threadPriority;
 
-	private final FatalErrorHandler fatalErrorHandler;
+	private FatalErrorHandler fatalErrorHandler;
 
 	private volatile boolean keepAlive;
 	private volatile boolean breakEventloop;
@@ -148,50 +148,94 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	private boolean monitoring = false;
 
 	// region builders
-	private Eventloop(CurrentTimeProvider timeProvider, String threadName, int threadPriority,
-	                  ThrottlingController throttlingController, FatalErrorHandler fatalErrorHandler, SelectorProvider selectorProvider) {
+	private Eventloop(CurrentTimeProvider timeProvider) {
 		this.timeProvider = timeProvider;
-		this.threadName = threadName;
-		this.threadPriority = threadPriority;
-		this.fatalErrorHandler = fatalErrorHandler;
-		this.throttlingController = throttlingController;
-		this.selectorProvider = selectorProvider;
-		if (throttlingController != null) {
-			throttlingController.setEventloop(this);
-		}
 		refreshTimestamp();
-		CURRENT_EVENTLOOP.set(this);
 	}
 
 	public static Eventloop create() {
-		return new Eventloop(CurrentTimeProviderSystem.instance(), null, 0, null, null, null);
+		return create(CurrentTimeProviderSystem.instance());
 	}
 
-	public Eventloop withCurrentTimeProvider(CurrentTimeProvider timeProvider) {
-		return new Eventloop(timeProvider, threadName, threadPriority, throttlingController, fatalErrorHandler, selectorProvider);
+	public static Eventloop create(CurrentTimeProvider currentTimeProvider) {
+		return new Eventloop(currentTimeProvider);
 	}
 
 	public Eventloop withThreadName(String threadName) {
-		return new Eventloop(timeProvider, threadName, threadPriority, throttlingController, fatalErrorHandler, selectorProvider);
+		this.threadName = threadName;
+		return this;
 	}
 
 	public Eventloop withThreadPriority(int threadPriority) {
-		return new Eventloop(timeProvider, threadName, threadPriority, throttlingController, fatalErrorHandler, selectorProvider);
+		this.threadPriority = threadPriority;
+		return this;
 	}
 
 	public Eventloop withThrottlingController(ThrottlingController throttlingController) {
-		return new Eventloop(timeProvider, threadName, threadPriority, throttlingController, fatalErrorHandler, selectorProvider);
+		this.throttlingController = throttlingController;
+		if (throttlingController != null) {
+			throttlingController.setEventloop(this);
+		}
+		return this;
 	}
 
 	public Eventloop withFatalErrorHandler(FatalErrorHandler fatalErrorHandler) {
-		return new Eventloop(timeProvider, threadName, threadPriority, throttlingController, fatalErrorHandler, selectorProvider);
+		this.fatalErrorHandler = fatalErrorHandler;
+		return this;
 	}
 
 	public Eventloop withSelectorProvider(SelectorProvider selectorProvider) {
-		return new Eventloop(timeProvider, threadName, threadPriority, throttlingController, fatalErrorHandler, selectorProvider);
+		this.selectorProvider = selectorProvider;
+		return this;
+	}
+
+	public Eventloop withCurrentThread() {
+		CURRENT_EVENTLOOP.set(this);
+		return this;
 	}
 
 	// endregion
+
+	public final class Scope implements AutoCloseable {
+		private final Eventloop previousEventloop;
+		private boolean closed;
+
+		public Scope(Eventloop previousEventloop) {
+			this.previousEventloop = previousEventloop;
+		}
+
+		@Override
+		public void close() {
+			if (closed) return;
+			closed = true;
+			if (previousEventloop == null) {
+				CURRENT_EVENTLOOP.remove();
+			} else {
+				CURRENT_EVENTLOOP.set(previousEventloop);
+			}
+		}
+	}
+
+	public Scope useCurrentThread() {
+		Eventloop previousEventloop = CURRENT_EVENTLOOP.get();
+		CURRENT_EVENTLOOP.set(this);
+		return new Scope(previousEventloop);
+	}
+
+	private static final String NO_CURRENT_EVENTLOOP_ERROR = "Trying to start async operations prior eventloop.run(), or from outside of eventloop.run() \n" +
+			"Possible solutions: " +
+			"1) Eventloop.create().withCurrentThread() ... {your code block} ... eventloop.run() \n" +
+			"2) try_with_resources Eventloop.useCurrentThread() ... {your code block} \n" +
+			"3) refactor application so it starts async operations within eventloop.run(), \n" +
+			"   i.e. by implementing EventloopService::start() {your code block} and using ServiceGraphModule";
+
+	public static Eventloop getCurrentEventloop() {
+		Eventloop eventloop = CURRENT_EVENTLOOP.get();
+		if (eventloop != null) {
+			return eventloop;
+		}
+		throw new IllegalStateException(NO_CURRENT_EVENTLOOP_ERROR);
+	}
 
 	public ThrottlingController getThrottlingController() {
 		return throttlingController;
@@ -253,10 +297,6 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		return !localTasks.isEmpty() || !scheduledTasks.isEmpty() || !concurrentTasks.isEmpty()
 				|| concurrentOperationsCount.get() > 0
 				|| keepAlive || !selector.keys().isEmpty();
-	}
-
-	public static Eventloop getCurrentEventloop() {
-		return checkNotNull(CURRENT_EVENTLOOP.get());
 	}
 
 	public Thread getEventloopThread() {

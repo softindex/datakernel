@@ -45,7 +45,7 @@ public class StreamMapTest {
 
 	@Test
 	public void test1() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamProducer<Integer> source = StreamProducers.of(1, 2, 3);
 		StreamMap<Integer, Integer> projection = StreamMap.create(FUNCTION);
@@ -63,7 +63,7 @@ public class StreamMapTest {
 
 	@Test
 	public void testWithError() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		List<Integer> list = new ArrayList<>();
 
 		StreamProducer<Integer> source = StreamProducers.of(1, 2, 3);
@@ -95,7 +95,7 @@ public class StreamMapTest {
 
 	@Test
 	public void testProducerWithError() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamProducer<Integer> source = StreamProducers.concat(
 				StreamProducers.of(1),
@@ -117,7 +117,7 @@ public class StreamMapTest {
 
 	@Test
 	public void testWithoutConsumer() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamProducer<Integer> source = StreamProducers.of(1, 2, 3);
 		StreamMap<Integer, Integer> projection = StreamMap.create(FUNCTION);

@@ -50,7 +50,7 @@ public class StreamFileReaderWriterTest {
 
 	@Test
 	public void testStreamFileReader() throws IOException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		byte[] fileBytes = Files.readAllBytes(Paths.get("test_data/in.dat"));
@@ -77,7 +77,7 @@ public class StreamFileReaderWriterTest {
 
 	@Test
 	public void testStreamFileReaderWithSuspends() throws IOException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		byte[] fileBytes = Files.readAllBytes(Paths.get("test_data/in.dat"));
@@ -128,7 +128,7 @@ public class StreamFileReaderWriterTest {
 
 	@Test
 	public void testStreamFileWriter() throws IOException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = Executors.newCachedThreadPool();
 		File tempFile = tempFolder.newFile("out.dat");
 		byte[] bytes = new byte[]{'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
@@ -148,7 +148,7 @@ public class StreamFileReaderWriterTest {
 
 	@Test
 	public void testStreamFileWriterRecycle() throws IOException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = Executors.newCachedThreadPool();
 		File tempFile = tempFolder.newFile("out.dat");
 		byte[] bytes = new byte[]{'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};

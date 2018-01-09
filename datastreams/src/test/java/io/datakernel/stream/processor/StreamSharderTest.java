@@ -43,7 +43,7 @@ public class StreamSharderTest {
 
 	@Test
 	public void test1() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamSharder<Integer> streamSharder = StreamSharder.create(SHARDER);
 
@@ -68,7 +68,7 @@ public class StreamSharderTest {
 
 	@Test
 	public void test2() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamSharder<Integer> streamSharder = StreamSharder.create(SHARDER);
 
@@ -94,7 +94,7 @@ public class StreamSharderTest {
 
 	@Test
 	public void testWithError() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamSharder<Integer> streamSharder = StreamSharder.create(SHARDER);
 
@@ -135,7 +135,7 @@ public class StreamSharderTest {
 
 	@Test
 	public void testProducerWithError() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamSharder<Integer> streamSharder = StreamSharder.create(SHARDER);
 

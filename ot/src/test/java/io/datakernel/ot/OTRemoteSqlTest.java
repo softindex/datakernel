@@ -5,7 +5,6 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.FatalErrorHandlers;
 import io.datakernel.ot.utils.*;
 import org.junit.Before;
 import org.junit.Test;
@@ -20,6 +19,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.ot.OTCommit.ofCommit;
 import static io.datakernel.ot.OTCommit.ofRoot;
 import static io.datakernel.ot.utils.GraphBuilder.edge;
@@ -42,7 +42,7 @@ public class OTRemoteSqlTest {
 
 	@Before
 	public void before() throws IOException, SQLException {
-		eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		otSystem = Utils.createTestOp();
 		otRemote = OTRemoteSql.create(Executors.newFixedThreadPool(4), dataSource("test.properties"), otSystem, Utils.OP_ADAPTER);
 		keyComparator = Integer::compareTo;

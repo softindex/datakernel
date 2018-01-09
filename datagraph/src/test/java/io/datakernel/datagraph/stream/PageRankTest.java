@@ -204,7 +204,7 @@ public class PageRankTest {
 		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1571);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1572);
 
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		StreamConsumerToList<Rank> result1 = new StreamConsumerToList<>();
 		StreamConsumerToList<Rank> result2 = new StreamConsumerToList<>();
 

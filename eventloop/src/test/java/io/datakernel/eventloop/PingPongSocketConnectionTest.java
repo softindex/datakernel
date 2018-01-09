@@ -42,7 +42,7 @@ public class PingPongSocketConnectionTest {
 
 	@Test
 	public void test() throws IOException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		SocketHandlerProvider socketHandlerProvider = new SocketHandlerProvider() {
 			@Override

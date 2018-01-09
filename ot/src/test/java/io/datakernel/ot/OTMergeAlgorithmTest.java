@@ -29,7 +29,7 @@ public class OTMergeAlgorithmTest {
 
 	@Before
 	public void before() {
-		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 	}
 
 	public interface OTGraphAdapter<K, D> {

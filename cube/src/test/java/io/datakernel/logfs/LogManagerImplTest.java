@@ -4,7 +4,6 @@ import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.FatalErrorHandlers;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.asm.BufferSerializers;
 import io.datakernel.stream.*;
@@ -19,6 +18,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.StreamConsumers.ofStageWithResult;
 import static io.datakernel.stream.StreamProducers.ofIterable;
@@ -32,7 +32,7 @@ public class LogManagerImplTest {
 
 	@Before
 	public void before() {
-		eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		logFileSystem = new LogFileSystemStub(eventloop);
 		serializer = BufferSerializers.utf16Serializer();
 	}

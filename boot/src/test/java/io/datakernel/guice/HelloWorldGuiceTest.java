@@ -47,7 +47,6 @@ import java.util.List;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.HttpResponse.ok200;
 import static org.junit.Assert.assertEquals;
 
@@ -77,7 +76,7 @@ public class HelloWorldGuiceTest {
 		@Singleton
 		@Named("PrimaryEventloop")
 		Eventloop primaryEventloop() {
-			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+			return Eventloop.create();
 		}
 
 		@Provides
@@ -90,7 +89,7 @@ public class HelloWorldGuiceTest {
 		@Provides
 		@Worker
 		Eventloop workerEventloop() {
-			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+			return Eventloop.create();
 		}
 
 		@Provides

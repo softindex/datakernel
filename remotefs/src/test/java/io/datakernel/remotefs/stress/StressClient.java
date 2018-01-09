@@ -53,7 +53,7 @@ import static io.datakernel.stream.DataStreams.stream;
 class StressClient {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	private InetSocketAddress address = new InetSocketAddress("localhost", 5560);
-	private Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+	private Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 	private ExecutorService executor = Executors.newCachedThreadPool();
 
 	private RemoteFsClient client = RemoteFsClient.create(eventloop, address);

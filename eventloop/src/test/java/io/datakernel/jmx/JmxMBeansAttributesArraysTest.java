@@ -21,12 +21,13 @@ import org.junit.Test;
 
 import javax.management.DynamicMBean;
 
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.jmx.MBeanSettings.defaultSettings;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertArrayEquals;
 
 public class JmxMBeansAttributesArraysTest {
-	private static final Eventloop eventloop = Eventloop.create();
+	private static final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 	@Test
 	public void properlyGetsArrayOfInts() throws Exception {

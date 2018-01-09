@@ -52,7 +52,7 @@ public class StressDownload {
 
 		Files.createDirectories(CLIENT_STORAGE);
 
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		int[] failures = new int[1];

@@ -3,7 +3,6 @@ package io.datakernel.ot;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.FatalErrorHandlers;
 import io.datakernel.ot.exceptions.OTTransformException;
 import io.datakernel.ot.utils.OTRemoteStub;
 import io.datakernel.ot.utils.TestOp;
@@ -20,6 +19,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
 
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.ot.OTCommit.ofCommit;
 import static io.datakernel.ot.OTCommit.ofRoot;
 import static io.datakernel.ot.utils.OTRemoteStub.TestSequence.of;
@@ -38,7 +38,7 @@ public class OTStateManagerTest {
 
 	@Before
 	public void before() {
-		eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		comparator = Integer::compareTo;
 		system = createTestOp();
 	}

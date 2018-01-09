@@ -51,7 +51,7 @@ public class AggregationChunkerTest {
 
 	@Test
 	public void test() throws ExecutionException, InterruptedException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		AggregationStructure structure = new AggregationStructure()
 				.withKey("key", ofInt())
@@ -131,7 +131,7 @@ public class AggregationChunkerTest {
 
 	@Test
 	public void testProducerWithError() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		AggregationStructure structure = new AggregationStructure()
 				.withKey("key", ofInt())
@@ -214,7 +214,7 @@ public class AggregationChunkerTest {
 
 	@Test
 	public void testStorageConsumerWithError() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		AggregationStructure structure = new AggregationStructure()
 				.withKey("key", ofInt())

@@ -68,7 +68,7 @@ public class TestTimeoutsSimpleFs {
 		((Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME)).setLevel(Level.TRACE);
 
 		InetSocketAddress address = new InetSocketAddress("localhost", 7010);
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		RemoteFsClient client = RemoteFsClient.create(eventloop, address);
 
 		ExecutorService serverExecutor = Executors.newFixedThreadPool(2);

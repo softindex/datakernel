@@ -90,7 +90,7 @@ public class DatagraphServerTest {
 		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1511);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1512);
 
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		StreamConsumerToList<TestItem> result1 = new StreamConsumerToList<>();
 		StreamConsumerToList<TestItem> result2 = new StreamConsumerToList<>();
 
@@ -142,7 +142,7 @@ public class DatagraphServerTest {
 		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1511);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1512);
 
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		StreamConsumerToList<TestItem> result1 = new StreamConsumerToList<>();
 		StreamConsumerToList<TestItem> result2 = new StreamConsumerToList<>();
 
@@ -201,7 +201,7 @@ public class DatagraphServerTest {
 		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1511);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1512);
 
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		DatagraphClient client = new DatagraphClient(eventloop, serialization);
 		StreamConsumerToList<TestItem> result1 = new StreamConsumerToList<>();
 		StreamConsumerToList<TestItem> result2 = new StreamConsumerToList<>();
@@ -272,7 +272,7 @@ public class DatagraphServerTest {
 		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1511);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1512);
 
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		DatagraphClient client = new DatagraphClient(eventloop, serialization);
 		StreamConsumerToList<TestItem> resultConsumer = new StreamConsumerToList<>();
 

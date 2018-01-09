@@ -41,7 +41,7 @@ public class StreamProducerConcatTest {
 
 	@Test
 	public void testSequence() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamProducer<Integer> producer = StreamProducers.concat(
 				StreamProducers.of(1, 2, 3),
@@ -57,7 +57,7 @@ public class StreamProducerConcatTest {
 
 	@Test
 	public void testSequenceException() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		List<Integer> list = new ArrayList<>();
 
 		StreamProducer<Integer> producer = StreamProducers.concat(
@@ -76,7 +76,7 @@ public class StreamProducerConcatTest {
 
 	@Test
 	public void testConcat() throws Exception {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamProducer<Integer> producer = StreamProducers.concat(
 				StreamProducers.of(1, 2, 3),
@@ -94,7 +94,7 @@ public class StreamProducerConcatTest {
 
 	@Test
 	public void testConcatException() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		List<Integer> list = new ArrayList<>();
 
 		StreamProducer<Integer> producer = StreamProducers.concat(
@@ -113,7 +113,7 @@ public class StreamProducerConcatTest {
 
 	@Test
 	public void testWithoutConsumer() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamProducer<Integer> producer = StreamProducers.concat(
 				StreamProducers.of(1, 2, 3),

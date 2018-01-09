@@ -32,7 +32,7 @@ public class ProducerOfIteratorTest {
 
 	@Test
 	public void test1() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		List<Integer> list = Arrays.asList(1, 2, 3);
 

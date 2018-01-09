@@ -50,7 +50,7 @@ public class StreamSerializerTest {
 
 	@Test
 	public void test1() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamProducer<Integer> source = StreamProducers.of(10, 20, 30, 40);
 		StreamBinarySerializer<Integer> serializerStream = StreamBinarySerializer.create(intSerializer())
@@ -81,7 +81,7 @@ public class StreamSerializerTest {
 
 	@Test
 	public void test2() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		List<Integer> list = new ArrayList<>();
 		StreamProducer<Integer> source = StreamProducers.of(1, 2, 3);
@@ -109,7 +109,7 @@ public class StreamSerializerTest {
 
 	@Test
 	public void testWithoutConsumer() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		List<Integer> list = new ArrayList<>();
 		StreamProducer<Integer> source = StreamProducers.of(1, 2, 3);
@@ -141,7 +141,7 @@ public class StreamSerializerTest {
 
 	@Test
 	public void testProducerWithError() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		List<Integer> list = new ArrayList<>();
 		StreamProducer<Integer> source = StreamProducers.closingWithError(new ExpectedException("Test Exception"));

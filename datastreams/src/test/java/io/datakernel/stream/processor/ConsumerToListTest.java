@@ -36,7 +36,7 @@ public class ConsumerToListTest {
 
 	@Test
 	public void emptyListTest() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		StreamConsumerToList<String> consumer = StreamConsumerToList.create(new ArrayList<String>());
 
 		List<String> testList2 = new ArrayList<>();
@@ -55,7 +55,7 @@ public class ConsumerToListTest {
 
 	@Test
 	public void fullListTest() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		List<Integer> testList1 = new ArrayList<>();
 		testList1.add(1);
 		testList1.add(2);

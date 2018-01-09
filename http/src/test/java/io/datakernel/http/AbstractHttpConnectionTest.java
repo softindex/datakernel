@@ -41,7 +41,7 @@ public class AbstractHttpConnectionTest {
 	private static final int PORT = 5050;
 	private static final String url = "http://127.0.0.1:" + PORT;
 
-	private Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+	private Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 	private AsyncHttpClient client = AsyncHttpClient.create(eventloop);
 
 	@Test

@@ -130,7 +130,7 @@ public class RpcHelloWorldTest {
 		ByteBufPool.clear();
 		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 
-		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		server = createServer(eventloop);
 		server.listen();
 		defaultEventloopThreadFactory().newThread(eventloop).start();

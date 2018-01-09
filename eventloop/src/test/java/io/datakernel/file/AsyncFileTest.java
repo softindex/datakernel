@@ -47,7 +47,7 @@ public class AsyncFileTest {
 	@Test
 	public void testReadFully() throws Exception {
 		File tempFile = temporaryFolder.newFile("hello-2.html");
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		Path srcPath = Paths.get("test_data/hello.html");
 		AsyncFile.openAsync(Executors.newCachedThreadPool(), srcPath, new OpenOption[]{READ}).whenComplete(assertComplete(asyncFile -> {
 			logger.info("Opened file.");

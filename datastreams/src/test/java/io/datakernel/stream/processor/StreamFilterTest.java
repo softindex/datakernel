@@ -39,7 +39,7 @@ import static org.junit.Assert.assertTrue;
 public class StreamFilterTest {
 	@Test
 	public void test1() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamProducer<Integer> source = StreamProducers.of(1, 2, 3);
 
@@ -59,7 +59,7 @@ public class StreamFilterTest {
 
 	@Test
 	public void testWithError() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		List<Integer> list = new ArrayList<>();
 
 		StreamProducer<Integer> source = StreamProducers.of(1, 2, 3, 4, 5);
@@ -94,7 +94,7 @@ public class StreamFilterTest {
 	@SuppressWarnings("unchecked")
 	@Test
 	public void testProducerDisconnectWithError() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamProducer<Integer> source = StreamProducers.concat(
 				StreamProducers.ofIterable(Arrays.asList(1, 2, 3)),

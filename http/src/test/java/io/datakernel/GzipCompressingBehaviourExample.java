@@ -27,7 +27,7 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 
 public final class GzipCompressingBehaviourExample {
 	public static void main(String[] args) throws IOException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		MiddlewareServlet dispatcher = MiddlewareServlet.create();
 
 		// always responds in gzip

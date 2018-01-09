@@ -51,7 +51,7 @@ public class AggregationGroupReducerTest {
 
 	@Test
 	public void test() throws ExecutionException, InterruptedException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		AggregationStructure structure = new AggregationStructure()
 				.withKey("word", FieldTypes.ofString())

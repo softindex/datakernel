@@ -28,7 +28,7 @@ import static org.junit.Assert.assertEquals;
 
 public class JmxMBeansAttributeReducersTest {
 
-	public static final Eventloop EVENTLOOP = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+	public static final Eventloop EVENTLOOP = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 	// region simple type reducers
 	@Test

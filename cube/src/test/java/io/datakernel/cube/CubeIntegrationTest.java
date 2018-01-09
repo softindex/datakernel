@@ -76,7 +76,7 @@ public class CubeIntegrationTest {
 		Path aggregationsDir = temporaryFolder.newFolder().toPath();
 		Path logsDir = temporaryFolder.newFolder().toPath();
 
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = Executors.newCachedThreadPool();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 

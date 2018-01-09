@@ -34,7 +34,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class JmxMBeansSettingsTest {
-	public static final Eventloop EVENTLOOP = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+	public static final Eventloop EVENTLOOP = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 	private static final Map<String, AttributeModifier<?>> NO_MODIFIERS = Collections.emptyMap();
 	private static final List<String> EMPTY_LIST = Collections.emptyList();
 

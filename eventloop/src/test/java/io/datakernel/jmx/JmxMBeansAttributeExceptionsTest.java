@@ -103,7 +103,7 @@ public class JmxMBeansAttributeExceptionsTest {
 
 		@Override
 		public Eventloop getEventloop() {
-			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		}
 	}
 
@@ -119,7 +119,7 @@ public class JmxMBeansAttributeExceptionsTest {
 
 		@Override
 		public Eventloop getEventloop() {
-			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		}
 	}
 
@@ -136,7 +136,7 @@ public class JmxMBeansAttributeExceptionsTest {
 
 		@Override
 		public Eventloop getEventloop() {
-			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		}
 	}
 

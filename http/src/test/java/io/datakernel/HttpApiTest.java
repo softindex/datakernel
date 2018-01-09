@@ -70,7 +70,7 @@ public class HttpApiTest {
 
 	@Before
 	public void setUp() {
-		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		AsyncServlet servlet = request -> {
 			try {
 				testRequest(request);

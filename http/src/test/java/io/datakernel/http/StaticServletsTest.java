@@ -74,7 +74,7 @@ public class StaticServletsTest {
 
     @Test
     public void testPathLoader() throws ExecutionException, InterruptedException {
-        Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+        Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
         ExecutorService executor = Executors.newCachedThreadPool();
 
         StaticLoader resourceLoader = StaticLoaders.ofPath(eventloop, executor, resourcesPath);
@@ -97,7 +97,7 @@ public class StaticServletsTest {
 
     @Test
     public void testFileNotFoundPathLoader() throws Throwable {
-        Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+        Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
         ExecutorService executor = Executors.newCachedThreadPool();
 
         StaticLoader resourceLoader = StaticLoaders.ofPath(eventloop, executor, resourcesPath);
@@ -118,7 +118,7 @@ public class StaticServletsTest {
 
     @Test
     public void testFileLoader() throws ExecutionException, InterruptedException {
-        Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+        Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
         ExecutorService executor = Executors.newCachedThreadPool();
 
         StaticLoader resourceLoader = StaticLoaders.ofFile(eventloop, executor, resourcesFile);
@@ -141,7 +141,7 @@ public class StaticServletsTest {
 
     @Test
     public void testFileNotFoundCachedFileLoader() throws Throwable {
-        Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+        Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
         ExecutorService executor = Executors.newCachedThreadPool();
 
         StaticLoader resourceLoader = StaticLoaders.ofFile(eventloop, executor, resourcesFile);
@@ -162,7 +162,7 @@ public class StaticServletsTest {
 
     @Test
     public void testClassPath() throws ExecutionException, InterruptedException {
-        Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+        Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
         ExecutorService executor = Executors.newCachedThreadPool();
 
         StaticLoader resourceLoader = StaticLoaders.ofClassPath(eventloop, executor);
@@ -185,7 +185,7 @@ public class StaticServletsTest {
 
     @Test
     public void testFileNotFoundClassPath() throws Throwable {
-        Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+        Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
         ExecutorService executor = Executors.newCachedThreadPool();
 
         StaticLoader resourceLoader = StaticLoaders.ofClassPath(eventloop, executor);
@@ -205,7 +205,7 @@ public class StaticServletsTest {
 
     @Test
     public void testRelativeClassPath() throws ExecutionException, InterruptedException {
-        Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+        Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
         ExecutorService executor = Executors.newCachedThreadPool();
 
         StaticLoader resourceLoader = StaticLoaders.ofClassPath(eventloop, executor, this.getClass());
@@ -228,7 +228,7 @@ public class StaticServletsTest {
 
     @Test
     public void testFileNotFoundRelativeClassPath() throws Throwable {
-        Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+        Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
         ExecutorService executor = Executors.newCachedThreadPool();
 
         StaticLoader resourceLoader = StaticLoaders.ofClassPath(eventloop, executor, StaticServlet.class);
@@ -248,7 +248,7 @@ public class StaticServletsTest {
 
     @Test
     public void testResourcesNameLoadingService() throws InterruptedException, ExecutionException {
-        Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+        Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
         ExecutorService executor = Executors.newCachedThreadPool();
 
         ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
@@ -282,7 +282,7 @@ public class StaticServletsTest {
 
     @Test
     public void testFileNamesLoadingService() throws InterruptedException, ExecutionException {
-        Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+        Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
         ExecutorService executor = Executors.newCachedThreadPool();
 
         FileNamesLoadingService fileService = FileNamesLoadingService.create(eventloop, executor, resourcesPath);

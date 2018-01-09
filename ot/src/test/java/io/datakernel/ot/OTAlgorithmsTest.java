@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.ot.OTUtils.loadAllChanges;
 import static io.datakernel.ot.utils.GraphBuilder.edge;
 import static io.datakernel.ot.utils.OTRemoteStub.TestSequence.of;
@@ -26,7 +27,7 @@ public class OTAlgorithmsTest {
 
 	@Test
 	public void testLoadAllChangesFromRootWithSnapshot() throws ExecutionException, InterruptedException {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		TestOpState opState = new TestOpState();
 		List<Integer> commitIds = IntStream.rangeClosed(0, 5).boxed().collect(Collectors.toList());
 		OTRemote<Integer, TestOp> otRemote = OTRemoteStub.create(of(commitIds), Integer::compareTo);
@@ -52,7 +53,7 @@ public class OTAlgorithmsTest {
 
 	@Test
 	public void testReduceEdges() throws ExecutionException, InterruptedException {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		Comparator<Integer> comparator = Integer::compareTo;
 		List<Integer> commitIds = IntStream.rangeClosed(0, 8).boxed().collect(Collectors.toList());
 		OTRemote<Integer, TestOp> otRemote = OTRemoteStub.create(of(commitIds), Integer::compareTo);
@@ -86,7 +87,7 @@ public class OTAlgorithmsTest {
 
 	@Test
 	public void testReduceEdges2() throws ExecutionException, InterruptedException {
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		Comparator<Integer> comparator = Integer::compareTo;
 		List<Integer> commitIds = IntStream.rangeClosed(0, 8).boxed().collect(Collectors.toList());
 		OTRemote<Integer, TestOp> otRemote = OTRemoteStub.create(of(commitIds), Integer::compareTo);

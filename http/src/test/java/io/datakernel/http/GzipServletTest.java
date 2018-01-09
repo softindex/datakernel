@@ -19,7 +19,6 @@ package io.datakernel.http;
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.FatalErrorHandlers;
 import org.junit.Test;
 
 import java.util.concurrent.CompletableFuture;
@@ -27,6 +26,7 @@ import java.util.concurrent.CompletableFuture;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.*;
 
@@ -35,7 +35,7 @@ public class GzipServletTest {
 
 	@Test
 	public void testGzipServletBase() throws Exception {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		GzipServlet gzipServlet = GzipServlet.create(5, helloWorldServlet);
 		HttpRequest request = HttpRequest.get("http://example.com")
 				.withBody(wrapAscii("Hello, world!"));
@@ -61,7 +61,7 @@ public class GzipServletTest {
 
 	@Test
 	public void testDoesNotServeSmallBodies() throws Exception {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		AsyncServlet asyncServlet = request -> {
 			HttpResponse response = HttpResponse.ok200();
 			String requestNum = decodeAscii(request.getBody());
@@ -91,7 +91,7 @@ public class GzipServletTest {
 
 	@Test
 	public void testClientServerIntegration() throws Exception {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop, GzipServlet.create(5, helloWorldServlet))
 				.withListenPort(1239);
 		AsyncHttpClient client = AsyncHttpClient.create(eventloop);

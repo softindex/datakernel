@@ -39,7 +39,7 @@ import static org.junit.Assert.*;
 public class JmxMBeansAttributesTest {
 	@Rule
 	public ExpectedException expectedException = ExpectedException.none();
-	public static final Eventloop eventloop = Eventloop.create();
+	public static final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 	@Test
 	public void retreivesProperMBeanInfo() throws Exception {
@@ -354,7 +354,7 @@ public class JmxMBeansAttributesTest {
 
 		@Override
 		public Eventloop getEventloop() {
-			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		}
 	}
 
@@ -372,7 +372,7 @@ public class JmxMBeansAttributesTest {
 
 		@Override
 		public Eventloop getEventloop() {
-			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		}
 	}
 
@@ -390,7 +390,7 @@ public class JmxMBeansAttributesTest {
 
 		@Override
 		public Eventloop getEventloop() {
-			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		}
 	}
 
@@ -408,7 +408,7 @@ public class JmxMBeansAttributesTest {
 
 		@Override
 		public Eventloop getEventloop() {
-			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		}
 	}
 

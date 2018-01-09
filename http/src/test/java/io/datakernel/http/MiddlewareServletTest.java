@@ -20,7 +20,6 @@ import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.FatalErrorHandlers;
 import io.datakernel.exception.ParseException;
 import org.junit.Before;
 import org.junit.Rule;
@@ -30,6 +29,7 @@ import org.junit.rules.ExpectedException;
 import java.util.function.BiConsumer;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.HttpMethod.*;
 import static org.junit.Assert.assertEquals;
 
@@ -41,7 +41,7 @@ public class MiddlewareServletTest {
 
 	@Before
 	public void before() {
-		eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 	}
 
 	@Rule

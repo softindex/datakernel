@@ -41,7 +41,7 @@ import static org.junit.Assert.*;
 public class StreamUnionTest {
 	@Test
 	public void test1() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamUnion<Integer> streamUnion = StreamUnion.create();
 
@@ -83,7 +83,7 @@ public class StreamUnionTest {
 
 	@Test
 	public void testWithError() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamUnion<Integer> streamUnion = StreamUnion.create();
 
@@ -124,7 +124,7 @@ public class StreamUnionTest {
 
 	@Test
 	public void testProducerWithError() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamUnion<Integer> streamUnion = StreamUnion.create();
 
@@ -153,7 +153,7 @@ public class StreamUnionTest {
 
 	@Test
 	public void testWithoutProducer() throws ExecutionException, InterruptedException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamUnion<Integer> streamUnion = StreamUnion.create();
 		StreamConsumerToList<Integer> toList = StreamConsumerToList.create();

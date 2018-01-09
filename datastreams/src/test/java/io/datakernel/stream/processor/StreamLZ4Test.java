@@ -71,7 +71,7 @@ public class StreamLZ4Test {
 
 	@Test
 	public void test() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		List<ByteBuf> buffers = new ArrayList<>();
 		Random random = new Random(123456);
@@ -125,7 +125,7 @@ public class StreamLZ4Test {
 
 	@Test
 	public void testWithoutConsumer() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		List<ByteBuf> buffers = new ArrayList<>();
 		Random random = new Random(123456);
@@ -182,7 +182,7 @@ public class StreamLZ4Test {
 
 	@Test
 	public void testRaw() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.rawCompressor();
 
 		doTest(eventloop, compressor);
@@ -190,7 +190,7 @@ public class StreamLZ4Test {
 
 	@Test
 	public void testLz4Fast() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor();
 
 		doTest(eventloop, compressor);
@@ -198,7 +198,7 @@ public class StreamLZ4Test {
 
 	@Test
 	public void testLz4High() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.highCompressor();
 
 		doTest(eventloop, compressor);
@@ -206,7 +206,7 @@ public class StreamLZ4Test {
 
 	@Test
 	public void testLz4High10() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.highCompressor(10);
 
 		doTest(eventloop, compressor);

@@ -35,7 +35,7 @@ public final class HelloWorldServer {
 	}
 
 	public static void main(String[] args) throws Exception {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		AsyncHttpServer server = helloWorldServer(eventloop, PORT);
 

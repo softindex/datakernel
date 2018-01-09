@@ -1,7 +1,6 @@
 package io.datakernel.stream;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.FatalErrorHandlers;
 import io.datakernel.stream.TestUtils.CountTransformer;
 import org.junit.Before;
 import org.junit.Test;
@@ -11,6 +10,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
 
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.StreamProducers.ofIterable;
 import static io.datakernel.stream.StreamProducers.withEndOfStreamAsResult;
@@ -25,7 +25,7 @@ public class StreamConsumersTest {
 
 	@Before
 	public void before() {
-		eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 	}
 
 	@Test

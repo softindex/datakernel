@@ -77,13 +77,13 @@ public class SimpleProxyServerTest {
 
 	@Test
 	public void testSimpleProxyServer() throws Exception {
-		Eventloop eventloop1 = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop1 = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		AsyncHttpServer echoServer = echoServer(eventloop1);
 		echoServer.listen();
 		Thread echoServerThread = new Thread(eventloop1);
 		echoServerThread.start();
 
-		Eventloop eventloop2 = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop2 = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		AsyncDnsClient dnsClient = AsyncDnsClient.create(eventloop2)
 				.withDatagramSocketSetting(DatagramSocketSettings.create())
 				.withDnsServerAddress(HttpUtils.inetAddress("8.8.8.8"));

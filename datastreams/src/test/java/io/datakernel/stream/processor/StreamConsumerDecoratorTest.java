@@ -35,7 +35,7 @@ import static org.junit.Assert.assertEquals;
 public class StreamConsumerDecoratorTest {
 	@Test
 	public void test2() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		List<Integer> list = new ArrayList<>();
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.oneByOne(list);
@@ -56,7 +56,7 @@ public class StreamConsumerDecoratorTest {
 
 	@Test
 	public void test1() throws Exception {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamConsumerWithResult<Integer, List<Integer>> consumer = new StreamConsumerToList<>();
 		CompletableFuture<List<Integer>> listFuture = consumer.getResult().toCompletableFuture();

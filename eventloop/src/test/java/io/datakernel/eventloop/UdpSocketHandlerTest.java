@@ -34,7 +34,7 @@ import static org.junit.Assert.*;
 public class UdpSocketHandlerTest {
 	private static final int SERVER_PORT = 45555;
 	private static final InetSocketAddress SERVER_ADDRESS = new InetSocketAddress("127.0.0.1", SERVER_PORT);
-	private Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+	private Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 	private final byte[] bytesToSend = new byte[]{-127, 100, 0, 5, 11, 13, 17, 99};
 

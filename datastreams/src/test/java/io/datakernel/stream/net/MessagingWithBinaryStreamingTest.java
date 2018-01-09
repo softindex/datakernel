@@ -70,7 +70,7 @@ public class MessagingWithBinaryStreamingTest {
 
 	@Test
 	public void testPing() throws Exception {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		SocketHandlerProvider socketHandlerProvider = new SocketHandlerProvider() {
 			@Override
@@ -162,7 +162,7 @@ public class MessagingWithBinaryStreamingTest {
 //			source.add(i);
 //		}
 
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamConsumerToList<Long> consumerToList = StreamConsumerToList.create();
 
@@ -232,7 +232,7 @@ public class MessagingWithBinaryStreamingTest {
 			source.add(i);
 		}
 
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamConsumerToList<Long> consumerToList = StreamConsumerToList.create();
 
@@ -307,7 +307,7 @@ public class MessagingWithBinaryStreamingTest {
 
 		boolean[] ack = new boolean[]{false};
 
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamConsumerToList<Long> consumerToList = StreamConsumerToList.create();
 
@@ -403,7 +403,7 @@ public class MessagingWithBinaryStreamingTest {
 			source.add(i);
 		}
 
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamConsumerToList<Long> consumerToList = StreamConsumerToList.create();
 

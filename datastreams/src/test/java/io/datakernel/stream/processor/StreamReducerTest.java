@@ -42,7 +42,7 @@ import static org.junit.Assert.*;
 public class StreamReducerTest {
 	@Test
 	public void testEmpty() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(EMPTY_LIST);
 
@@ -64,7 +64,7 @@ public class StreamReducerTest {
 
 	@Test
 	public void testDeduplicate() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamProducer<Integer> source0 = StreamProducers.ofIterable(EMPTY_LIST);
 		StreamProducer<Integer> source1 = StreamProducers.of(7);
@@ -109,7 +109,7 @@ public class StreamReducerTest {
 
 	@Test
 	public void testWithError() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamProducer<KeyValue1> source1 = StreamProducers.of(
 				new KeyValue1(1, 10.0),
@@ -164,7 +164,7 @@ public class StreamReducerTest {
 
 	@Test
 	public void testProducerDisconnectWithError() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamProducer<KeyValue1> source1 = StreamProducers.ofIterable(
 				asList(new KeyValue1(1, 10.0), new KeyValue1(3, 30.0)));
@@ -364,7 +364,7 @@ public class StreamReducerTest {
 
 	@Test
 	public void test2() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamProducer<KeyValue1> source1 = StreamProducers.of(new KeyValue1(1, 10.0), new KeyValue1(3, 30.0));
 		StreamProducer<KeyValue2> source2 = StreamProducers.of(new KeyValue2(1, 10.0), new KeyValue2(3, 30.0));
@@ -399,7 +399,7 @@ public class StreamReducerTest {
 
 	@Test
 	public void test3() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamProducer<KeyValue1> source1 = StreamProducers.of(new KeyValue1(1, 10.0), new KeyValue1(3, 30.0));
 		StreamProducer<KeyValue2> source2 = StreamProducers.of(new KeyValue2(1, 10.0), new KeyValue2(3, 30.0));
@@ -434,7 +434,7 @@ public class StreamReducerTest {
 
 	@Test
 	public void testWithoutConsumer() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamProducer<Integer> source0 = StreamProducers.ofIterable(EMPTY_LIST);
 		StreamProducer<Integer> source1 = StreamProducers.of(7);
@@ -481,7 +481,7 @@ public class StreamReducerTest {
 
 	@Test
 	public void testWithoutProducer() throws ExecutionException, InterruptedException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamReducer<Integer, Integer, Void> streamReducer = StreamReducer.<Integer, Integer, Void>create(Integer::compareTo).withBufferSize(1);
 		StreamConsumerToList<Integer> toList = StreamConsumerToList.create();

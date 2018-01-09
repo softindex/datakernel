@@ -96,7 +96,7 @@ public class FsIntegrationTest {
 	@Test
 	public void testUploadMultiple() throws IOException {
 		int files = 10;
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = newCachedThreadPool();
 		RemoteFsServer server = createServer(eventloop, executor);
 		RemoteFsClient client = createClient(eventloop);
@@ -164,7 +164,7 @@ public class FsIntegrationTest {
 	public void testOnClientExceptionWhileUploading() throws IOException, ExecutionException, InterruptedException {
 		String resultFile = "upload_with_exceptions.txt";
 
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = newCachedThreadPool();
 		RemoteFsServer server = createServer(eventloop, executor);
 		RemoteFsClient client = createClient(eventloop);
@@ -260,7 +260,7 @@ public class FsIntegrationTest {
 	@Test
 	public void testDownloadNotExist() throws Exception {
 		String file = "file_not_exist_downloaded.txt";
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = newCachedThreadPool();
 		RemoteFsClient client = createClient(eventloop);
 		RemoteFsServer server = createServer(eventloop, executor);
@@ -286,7 +286,7 @@ public class FsIntegrationTest {
 	public void testManySimultaneousDownloads() throws IOException {
 		String file = "some_file.txt";
 		Files.write(storage.resolve(file), CONTENT);
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = newCachedThreadPool();
 		RemoteFsClient client = createClient(eventloop);
 		RemoteFsServer server = createServer(eventloop, executor);
@@ -315,7 +315,7 @@ public class FsIntegrationTest {
 	public void testDeleteFile() throws Exception {
 		String file = "file.txt";
 		Files.write(storage.resolve(file), CONTENT);
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = newCachedThreadPool();
 		RemoteFsClient client = createClient(eventloop);
 		RemoteFsServer server = createServer(eventloop, executor);
@@ -333,7 +333,7 @@ public class FsIntegrationTest {
 	@Test
 	public void testDeleteMissingFile() throws Exception {
 		String file = "no_file.txt";
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = newCachedThreadPool();
 		RemoteFsClient client = createClient(eventloop);
 		RemoteFsServer server = createServer(eventloop, executor);
@@ -366,7 +366,7 @@ public class FsIntegrationTest {
 	@Test
 	public void testFileList() throws Exception {
 		ExecutorService executor = newCachedThreadPool();
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		List<String> actual = new ArrayList<>();
 		List<String> expected = asList("this/is/not/empty/directory/file1.txt", "file1.txt", "first file.txt");
@@ -397,7 +397,7 @@ public class FsIntegrationTest {
 	}
 
 	private CompletionStage<Void> upload(String resultFile, byte[] bytes) throws IOException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = newCachedThreadPool();
 		RemoteFsServer server = createServer(eventloop, executor);
 		RemoteFsClient client = createClient(eventloop);
@@ -417,7 +417,7 @@ public class FsIntegrationTest {
 	}
 
 	private List<ByteBuf> download(String file, long startPosition) throws IOException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = newCachedThreadPool();
 		RemoteFsClient client = createClient(eventloop);
 		RemoteFsServer server = createServer(eventloop, executor);

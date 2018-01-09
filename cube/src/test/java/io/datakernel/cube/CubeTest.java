@@ -25,7 +25,6 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.bean.*;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.FatalErrorHandlers;
 import io.datakernel.remotefs.RemoteFsServer;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamConsumerWithResult;
@@ -98,7 +97,7 @@ public class CubeTest {
 	@Test
 	public void testQuery1() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
@@ -153,7 +152,7 @@ public class CubeTest {
 	@Test
 	public void testRemoteFsAggregationStorage() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		Path serverStorage = temporaryFolder.newFolder("storage").toPath();
 		RemoteFsServer remoteFsServer1 = prepareServer(eventloop, serverStorage);
@@ -210,7 +209,7 @@ public class CubeTest {
 	@Test
 	public void testOrdering() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
@@ -256,7 +255,7 @@ public class CubeTest {
 	@Test
 	public void testMultipleOrdering() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
@@ -307,7 +306,7 @@ public class CubeTest {
 	@Test
 	public void testBetweenPredicate() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
@@ -362,7 +361,7 @@ public class CubeTest {
 	@Test
 	public void testBetweenTransformation() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 		Cube cube = newSophisticatedCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
@@ -414,7 +413,7 @@ public class CubeTest {
 	@Test
 	public void testGrouping() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
@@ -464,7 +463,7 @@ public class CubeTest {
 	@Test
 	public void testQuery2() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
@@ -520,7 +519,7 @@ public class CubeTest {
 	@Test
 	public void testConsolidate() throws Exception {
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
@@ -663,7 +662,7 @@ public class CubeTest {
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testUnknownDimensions() throws IOException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(),
 				new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 
@@ -677,7 +676,7 @@ public class CubeTest {
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testUnknownMeasure() throws IOException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(),
 				new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 

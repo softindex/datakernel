@@ -12,6 +12,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.ot.utils.Utils.*;
 import static java.util.Arrays.asList;
 
@@ -67,7 +68,7 @@ public class OTSystemTest {
 		otSource.add("*", "b1", asList(add(10)));
 		otSource.add("b1", "b2", asList(add(100)));
 
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		TestOpState state = new TestOpState();
 		OTStateManager<String, TestOp> stateManager = new OTStateManager<>(eventloop, system,
 				otSource,
@@ -152,7 +153,7 @@ public class OTSystemTest {
 		otSource.add("a2", "a3", asList(add(4)));
 		otSource.add("a2", "b1", asList(add(10)));
 
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		TestOpState state = new TestOpState();
 		OTStateManager<String, TestOp> stateManager = new OTStateManager<>(eventloop, system,
 				otSource,
@@ -189,7 +190,7 @@ public class OTSystemTest {
 		otSource.add("a1", "b2", asList(add(10)));
 		otSource.add("b1", "b2", asList(add(1)));
 
-		Eventloop eventloop = Eventloop.create();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		TestOpState state = new TestOpState();
 		OTStateManager<String, TestOp> stateManager = new OTStateManager<>(eventloop, system,
 				otSource,

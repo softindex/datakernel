@@ -59,7 +59,7 @@ public class RpcBlockingTest {
 		ByteBufPool.clear();
 		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 
-		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		serverOne = RpcServer.create(eventloop)
 				.withMessageTypes(HelloRequest.class, HelloResponse.class)

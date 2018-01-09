@@ -275,7 +275,7 @@ public class ReportingTest {
 		Path aggregationsDir = temporaryFolder.newFolder().toPath();
 		Path logsDir = temporaryFolder.newFolder().toPath();
 
-		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = Executors.newCachedThreadPool();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 

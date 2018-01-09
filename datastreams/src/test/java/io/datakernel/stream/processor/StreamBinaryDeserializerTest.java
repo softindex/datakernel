@@ -48,7 +48,7 @@ public class StreamBinaryDeserializerTest {
 
 	@Before
 	public void before() {
-		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		deserializer = StreamBinaryDeserializer.create(createSerializer());
 		serializer = StreamBinarySerializer.create(createSerializer()).withDefaultBufferSize(1);
 	}

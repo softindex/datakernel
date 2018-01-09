@@ -62,7 +62,7 @@ public class TestHttpsClientServer {
 	private KeyManager[] keyManagers = createKeyManagers(new File("./src/test/resources/keystore.jks"), "testtest", "testtest");
 	private TrustManager[] trustManagers = createTrustManagers(new File("./src/test/resources/truststore.jks"), "testtest");
 	private AsyncServlet bobServlet = request -> Stages.of(ok200().withBody(wrapAscii("Hello, I am Bob!")));
-	private Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+	private Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 	private ExecutorService executor = newCachedThreadPool();
 	private SSLContext context = createSslContext("TLSv1.2", keyManagers, trustManagers, new SecureRandom());
 

@@ -111,7 +111,7 @@ public class StreamJoinTest {
 
 	@Test
 	public void test1() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamProducer<DataItemMaster> source1 = StreamProducers.of(
 				new DataItemMaster(10, 10, "masterA"),
@@ -164,7 +164,7 @@ public class StreamJoinTest {
 
 	@Test
 	public void testWithError() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		List<DataItemMasterDetail> list = new ArrayList<>();
 
 		StreamProducer<DataItemMaster> source1 = StreamProducers.of(
@@ -221,7 +221,7 @@ public class StreamJoinTest {
 
 	@Test
 	public void testProducerWithError() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		StreamProducer<DataItemMaster> source1 = StreamProducers.concat(
 				StreamProducers.of(new DataItemMaster(10, 10, "masterA")),
 				StreamProducers.closingWithError(new ExpectedException("Test Exception")),

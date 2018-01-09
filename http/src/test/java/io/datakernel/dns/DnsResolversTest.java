@@ -62,7 +62,7 @@ public class DnsResolversTest {
 		ByteBufPool.clear();
 		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 
-		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		nativeDnsResolver = AsyncDnsClient.create(eventloop).withTimeout(3_000L).withDnsServerAddress(LOCAL_DNS);
 	}

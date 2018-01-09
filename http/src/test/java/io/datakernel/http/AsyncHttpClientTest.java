@@ -54,7 +54,7 @@ public class AsyncHttpClientTest {
 
 	@Test
 	public void testAsyncClient() throws Exception {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		AsyncHttpServer httpServer = HelloWorldServer.helloWorldServer(eventloop, PORT);
 		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop);
@@ -82,7 +82,7 @@ public class AsyncHttpClientTest {
 	@Test(expected = AsyncTimeoutException.class)
 	public void testClientTimeoutConnect() throws Throwable {
 		int TIMEOUT = 1;
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop).withConnectTimeout(TIMEOUT);
 
@@ -108,7 +108,7 @@ public class AsyncHttpClientTest {
 
 	@Test(expected = ParseException.class)
 	public void testBigHttpMessage() throws Throwable {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		AsyncHttpServer httpServer = HelloWorldServer.helloWorldServer(eventloop, PORT);
 		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop).withMaxHttpMessageSize(12);
@@ -138,7 +138,7 @@ public class AsyncHttpClientTest {
 
 	@Test(expected = ParseException.class)
 	public void testEmptyLineResponse() throws Throwable {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		SocketHandlerProvider socketHandlerProvider = asyncTcpSocket -> new AsyncTcpSocket.EventHandler() {
 			@Override

@@ -66,7 +66,7 @@ public final class SocketStreamingConnectionTest {
 			list.add(i);
 		}
 
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamConsumerToList<Integer> consumerToList = StreamConsumerToList.create();
 
@@ -111,7 +111,7 @@ public final class SocketStreamingConnectionTest {
 			source.add(i);
 		}
 
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamConsumerToList<Integer> consumerToList = StreamConsumerToList.create();
 

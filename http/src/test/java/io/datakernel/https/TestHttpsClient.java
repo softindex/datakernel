@@ -51,7 +51,7 @@ public class TestHttpsClient {
 	@Ignore("requires internet connection")
 	@Test
 	public void testClient() throws NoSuchAlgorithmException, ExecutionException, InterruptedException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = newCachedThreadPool();
 
 		AsyncDnsClient dnsClient = AsyncDnsClient.create(eventloop)

@@ -33,7 +33,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class JmxMBeansAttributesHidingTest {
-	private static final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+	private static final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 	// region pojos
 	@Test

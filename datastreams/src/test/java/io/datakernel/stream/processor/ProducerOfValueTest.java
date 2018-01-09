@@ -32,7 +32,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class ProducerOfValueTest {
-	Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+	Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 	String TEST_STRING = "Hello consumer";
 	Integer TEST_INT = 777;

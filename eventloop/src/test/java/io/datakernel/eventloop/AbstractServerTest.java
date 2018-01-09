@@ -33,7 +33,7 @@ import static org.junit.Assert.fail;
 public class AbstractServerTest {
 	@Test
 	public void testTimeouts() throws IOException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		InetSocketAddress address = new InetSocketAddress("localhost", 5588);
 		SocketSettings settings = SocketSettings.create().withImplReadTimeout(100000L).withImplWriteTimeout(100000L);

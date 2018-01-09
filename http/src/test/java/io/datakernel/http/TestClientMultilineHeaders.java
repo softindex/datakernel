@@ -37,7 +37,7 @@ public class TestClientMultilineHeaders {
 
 	@Test
 	public void testMultilineHeaders() throws ExecutionException, InterruptedException, IOException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop);
 
 		AsyncServlet servlet = request -> {

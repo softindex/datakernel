@@ -46,7 +46,7 @@ public class ClientStressTest {
 
 	private static final String PATH_TO_URLS = "./src/test/resources/urls.txt";
 
-	private Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+	private Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 	private ExecutorService executor = newCachedThreadPool();
 	private Random random = new Random();
 	private Iterator<String> urls = getUrls().iterator();

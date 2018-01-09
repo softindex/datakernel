@@ -45,7 +45,7 @@ public class StreamSplitterTest {
 
 	@Before
 	public void before() {
-		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 	}
 
 	@Test
@@ -68,7 +68,7 @@ public class StreamSplitterTest {
 
 	@Test
 	public void testConsumerDisconnectWithError() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamProducer<Integer> source = StreamProducers.of(1, 2, 3, 4, 5);
 		StreamSplitter<Integer> streamConcat = StreamSplitter.create();

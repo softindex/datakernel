@@ -42,7 +42,7 @@ public class StressServer {
 	private static final int PORT = 5560;
 
 	private static final ExecutorService executor = newCachedThreadPool();
-	private static final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+	private static final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 	public static RemoteFsServer server = RemoteFsServer.create(eventloop, executor, STORAGE_PATH)
 			.withListenAddress(new InetSocketAddress("localhost", PORT));

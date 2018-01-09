@@ -57,7 +57,7 @@ public class StringDimensionTest {
 	@Test
 	public void testQuery() throws Exception {
 		Path aggregationsDir = temporaryFolder.newFolder().toPath();
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = Executors.newCachedThreadPool();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 

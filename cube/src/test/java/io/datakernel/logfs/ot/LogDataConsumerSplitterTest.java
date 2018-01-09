@@ -31,7 +31,7 @@ public class LogDataConsumerSplitterTest {
 
 	@Before
 	public void before() {
-		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 	}
 
 	private <T> void assertStreamResult(List<T> values, StreamConsumer<T> consume, CompletionStage<List<T>> result)

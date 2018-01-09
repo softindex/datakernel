@@ -18,7 +18,6 @@ package io.datakernel.rpc.client.sender;
 
 import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.FatalErrorHandlers;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionPoolStub;
 import io.datakernel.rpc.client.sender.helper.RpcSenderStub;
@@ -30,6 +29,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.firstValidResult;
 import static io.datakernel.rpc.client.sender.RpcStrategies.servers;
 import static org.junit.Assert.assertEquals;
@@ -78,7 +78,7 @@ public class RpcStrategyFirstValidResultTest {
 
 	@Test
 	public void itShouldCallOnResultWithNullIfAllSendersReturnedNullAndValidatorAndExceptionAreNotSpecified() throws ExecutionException, InterruptedException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		RpcStrategy strategy1 = new RequestSenderOnResultWithNullStrategy();
 		RpcStrategy strategy2 = new RequestSenderOnResultWithNullStrategy();
 		RpcStrategy strategy3 = new RequestSenderOnResultWithNullStrategy();
@@ -95,7 +95,7 @@ public class RpcStrategyFirstValidResultTest {
 
 	@Test(expected = Exception.class)
 	public void itShouldCallOnExceptionIfAllSendersReturnsNullAndValidatorIsDefaultButExceptionIsSpecified() throws ExecutionException, InterruptedException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		// default validator should check whether result is not null
 		RpcStrategy strategy1 = new RequestSenderOnResultWithNullStrategy();
 		RpcStrategy strategy2 = new RequestSenderOnResultWithNullStrategy();
@@ -112,7 +112,7 @@ public class RpcStrategyFirstValidResultTest {
 
 	@Test
 	public void itShouldUseCustomValidatorIfItIsSpecified() throws ExecutionException, InterruptedException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		int invalidKey = 1;
 		int validKey = 2;
@@ -137,7 +137,7 @@ public class RpcStrategyFirstValidResultTest {
 
 	@Test(expected = Exception.class)
 	public void itShouldCallOnExceptionIfNoSenderReturnsValidResultButExceptionWasSpecified() throws ExecutionException, InterruptedException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		int invalidKey = 1;
 		int validKey = 2;
 		RpcStrategy strategy1 = new RequestSenderOnResultWithValueStrategy(invalidKey);

@@ -46,7 +46,7 @@ public class AsyncDnsClientConnectionTest {
 		ByteBufPool.clear();
 		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 
-		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 	}
 
 	private void print(DnsQueryResult result) {

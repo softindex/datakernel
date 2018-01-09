@@ -107,7 +107,7 @@ public class TestGzipProcessorUtils {
 
 	@Test
 	public void testGzippedCommunicationBetweenClientServer() throws IOException, ParseException, ExecutionException, InterruptedException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		AsyncServlet servlet = request -> {
 			String receivedData = ByteBufStrings.decodeAscii(request.getBody());
 			assertEquals("gzip", request.getHeader(HttpHeaders.CONTENT_ENCODING));

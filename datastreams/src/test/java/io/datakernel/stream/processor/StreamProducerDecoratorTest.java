@@ -39,7 +39,7 @@ public class StreamProducerDecoratorTest {
 	@SuppressWarnings("unchecked")
 	@Test
 	public void test2() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		List<Integer> list = new ArrayList<>();
 
 		StreamConsumerToList consumer = new StreamConsumerToList<Integer>(list) {
@@ -71,7 +71,7 @@ public class StreamProducerDecoratorTest {
 	@SuppressWarnings("unchecked")
 	@Test
 	public void test1() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		List<Integer> list = new ArrayList<>();
 		StreamConsumerToList consumer = StreamConsumerToList.oneByOne(list);
@@ -90,7 +90,7 @@ public class StreamProducerDecoratorTest {
 
 	@Test
 	public void testWithoutConsumer() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		List<Integer> list = new ArrayList<>();
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.oneByOne(list);

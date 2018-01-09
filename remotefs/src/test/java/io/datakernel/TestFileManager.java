@@ -58,7 +58,7 @@ public class TestFileManager {
 	@Rule
 	public final ExpectedException thrown = ExpectedException.none();
 
-	private Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+	private Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 	private ExecutorService executor = newCachedThreadPool();
 	private Path storage;
 	private Path client;

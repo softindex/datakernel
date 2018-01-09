@@ -98,7 +98,7 @@ public class CustomFieldsTest {
 	@Test
 	public void test() throws Exception {
 		ExecutorService executorService = Executors.newCachedThreadPool();
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 
 		Path path = temporaryFolder.newFolder().toPath();

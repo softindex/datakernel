@@ -1,13 +1,13 @@
 package io.datakernel.async;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.FatalErrorHandlers;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
@@ -18,7 +18,7 @@ public class CompletionStageTest {
 
 	@Before
 	public void before() {
-		eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		executor = Executors.newCachedThreadPool();
 	}
 

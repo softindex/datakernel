@@ -55,7 +55,7 @@ public class AsyncSslSocketTest {
 	private static final String TRUSTSTORE_PATH = "./src/test/resources/truststore.jks";
 	private static final String TRUSTSTORE_PASS = "testtest";
 
-	private Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+	private Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 	private AsyncSslSocket serverSslSocket;
 	private AsyncSslSocket clientSslSocket;
 

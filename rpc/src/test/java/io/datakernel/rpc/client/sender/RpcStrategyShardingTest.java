@@ -17,7 +17,6 @@
 package io.datakernel.rpc.client.sender;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.FatalErrorHandlers;
 import io.datakernel.rpc.client.sender.helper.BiConsumerStub;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionPoolStub;
 import io.datakernel.rpc.client.sender.helper.RpcMessageDataStub;
@@ -29,6 +28,7 @@ import java.net.InetSocketAddress;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.servers;
 import static io.datakernel.rpc.client.sender.RpcStrategies.sharding;
 import static org.junit.Assert.assertEquals;
@@ -77,7 +77,7 @@ public class RpcStrategyShardingTest {
 
 	@Test(expected = Exception.class)
 	public void itShouldCallOnExceptionOfCallbackWhenChosenServerIsNotActive() throws ExecutionException, InterruptedException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
 		RpcSenderStub connection2 = new RpcSenderStub();
 		RpcSenderStub connection3 = new RpcSenderStub();

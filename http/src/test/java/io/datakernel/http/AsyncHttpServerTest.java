@@ -99,7 +99,7 @@ public class AsyncHttpServerTest {
 
 	@Test
 	public void testKeepAlive_Http_1_0() throws Exception {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 
@@ -137,7 +137,7 @@ public class AsyncHttpServerTest {
 
 	@Test
 	public void testKeepAlive_Http_1_1() throws Exception {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 
@@ -175,7 +175,7 @@ public class AsyncHttpServerTest {
 
 	@Test
 	public void testClosed() throws Exception {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 		AsyncHttpServer server = blockingHttpServer(eventloop, port);
@@ -197,7 +197,7 @@ public class AsyncHttpServerTest {
 
 	@Test
 	public void testNoKeepAlive_Http_1_0() throws Exception {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 		AsyncHttpServer server = blockingHttpServer(eventloop, port);
@@ -222,7 +222,7 @@ public class AsyncHttpServerTest {
 
 	@Test
 	public void testNoKeepAlive_Http_1_1() throws Exception {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 		AsyncHttpServer server = blockingHttpServer(eventloop, port);
@@ -247,7 +247,7 @@ public class AsyncHttpServerTest {
 
 	@Test
 	public void testPipelining() throws Exception {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 //		doTestPipelining(eventloop, blockingHttpServer(eventloop));
 //		doTestPipelining(eventloop, asyncHttpServer(eventloop));
@@ -294,7 +294,7 @@ public class AsyncHttpServerTest {
 
 	//	@Test
 	public void testPipelining2() throws Exception {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 //		doTestPipelining(eventloop, blockingHttpServer(eventloop));
 //		doTestPipelining(eventloop, asyncHttpServer(eventloop));
@@ -342,7 +342,7 @@ public class AsyncHttpServerTest {
 	@Test
 	public void testBigHttpMessage() throws Exception {
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ByteBuf buf =
 				HttpRequest.post("http://127.0.0.1:" + port)
 						.withBody(ByteBuf.wrapForReading(encodeAscii("Test big HTTP message body")))
@@ -379,7 +379,7 @@ public class AsyncHttpServerTest {
 
 	@Test
 	public void testExpectContinue() throws Exception {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop, request -> Stages.of(HttpResponse.ok200().withBody(request.detachBody())))
 				.withListenAddress(new InetSocketAddress("localhost", port));
@@ -408,7 +408,7 @@ public class AsyncHttpServerTest {
 	}
 
 	public static void main(String[] args) throws Exception {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		AsyncHttpServer server = blockingHttpServer(eventloop, 8888);
 		server.listen();
 		eventloop.run();

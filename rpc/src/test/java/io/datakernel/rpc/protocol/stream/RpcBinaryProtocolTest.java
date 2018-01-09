@@ -68,7 +68,7 @@ public class RpcBinaryProtocolTest {
 	public void test() throws Exception {
 		String testMessage = "Test";
 
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		RpcClient client = RpcClient.create(eventloop)
 				.withMessageTypes(String.class)
@@ -139,7 +139,7 @@ public class RpcBinaryProtocolTest {
 				.build(RpcMessage.class);
 
 		int countRequests = 10;
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		int defaultPacketSize = 1 << 10;
 		int maxPacketSize = 1 << 16;
 

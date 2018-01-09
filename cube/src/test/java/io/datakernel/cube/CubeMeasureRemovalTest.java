@@ -93,7 +93,7 @@ public class CubeMeasureRemovalTest {
 		Path aggregationsDir = temporaryFolder.newFolder().toPath();
 		Path logsDir = temporaryFolder.newFolder().toPath();
 
-		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		executor = Executors.newCachedThreadPool();
 		classLoader = DefiningClassLoader.create();
 		dataSource = dataSource("test.properties");
@@ -109,7 +109,7 @@ public class CubeMeasureRemovalTest {
 		Path aggregationsDir = temporaryFolder.newFolder().toPath();
 		Path logsDir = temporaryFolder.newFolder().toPath();
 
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = Executors.newCachedThreadPool();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 

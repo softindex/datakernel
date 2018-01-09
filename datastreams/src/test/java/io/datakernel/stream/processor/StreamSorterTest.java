@@ -52,7 +52,7 @@ public class StreamSorterTest {
 
 	@Test
 	public void testStreamStorage() throws Exception {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		StreamProducer<Integer> source1 = StreamProducers.of(1, 2, 3, 4, 5, 6, 7);
@@ -90,7 +90,7 @@ public class StreamSorterTest {
 
 	@Test
 	public void test() throws Exception {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		StreamProducer<Integer> source = StreamProducers.of(3, 1, 3, 2, 5, 1, 4, 3, 2);
@@ -114,7 +114,7 @@ public class StreamSorterTest {
 
 	@Test
 	public void testErrorOnConsumer() throws IOException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		StreamProducer<Integer> source = StreamProducers.of(3, 1, 3, 2, 5, 1, 4, 3, 2);
@@ -148,7 +148,7 @@ public class StreamSorterTest {
 
 	@Test
 	public void testErrorOnProducer() throws IOException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		StreamProducer<Integer> source = StreamProducers.concat(

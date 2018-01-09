@@ -47,7 +47,7 @@ public class TestHttpsServer {
 	}
 
 	public static void main(String[] args) throws Exception {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = newCachedThreadPool();
 
 		AsyncServlet bobServlet = request -> Stages.of(HttpResponse.ok200().withBody(wrapAscii("Hello, I am Bob!")));

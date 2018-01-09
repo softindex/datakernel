@@ -7,7 +7,6 @@ import io.datakernel.async.AsyncFunction;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.cube.ot.CubeOT;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.FatalErrorHandlers;
 import io.datakernel.logfs.ot.LogDiff;
 import io.datakernel.logfs.ot.LogOT;
 import io.datakernel.ot.OTCommit;
@@ -26,6 +25,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Predicate;
 
+import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.utils.GraphUtils.*;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
@@ -39,7 +39,7 @@ public class CubeGraphExample {
 	}
 
 	public static void main(String[] args) throws IOException, ExecutionException, InterruptedException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(FatalErrorHandlers.rethrowOnAnyError());
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		DataSource dataSource = dataSource("cube/test.properties");
 		ExecutorService executor = Executors.newFixedThreadPool(4);
 		TypeAdapter<LogDiff<CubeDiff>> diffAdapter = skipReadAdapter(() -> LogDiff.of(emptyMap(), emptyList()));
