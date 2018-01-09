@@ -1,7 +1,10 @@
 package io.datakernel.http;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.*;
+import io.datakernel.jmx.EventloopJmxMBean;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxOperation;
+import io.datakernel.jmx.StageStats;
 
 import java.util.concurrent.CompletionStage;
 
@@ -9,7 +12,6 @@ public abstract class AsyncServletWithStats implements AsyncServlet, EventloopJm
 	protected final Eventloop eventloop;
 
 	private final StageStats stats = StageStats.create();
-	private final ExceptionStats fatalErrors = ExceptionStats.create();
 
 	protected AsyncServletWithStats(Eventloop eventloop) {
 		this.eventloop = eventloop;
@@ -19,13 +21,7 @@ public abstract class AsyncServletWithStats implements AsyncServlet, EventloopJm
 
 	@Override
 	public final CompletionStage<HttpResponse> serve(HttpRequest request) {
-		try {
-			CompletionStage<HttpResponse> stage = doServe(request);
-			return stats.monitor(stage);
-		} catch (Throwable throwable) {
-			fatalErrors.recordException(throwable, request);
-			throw throwable;
-		}
+		return stats.monitor(this::doServe, request);
 	}
 
 	@Override

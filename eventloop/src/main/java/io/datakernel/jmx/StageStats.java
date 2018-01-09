@@ -1,5 +1,7 @@
 package io.datakernel.jmx;
 
+import io.datakernel.async.AsyncCallable;
+import io.datakernel.async.AsyncFunction;
 import io.datakernel.eventloop.Eventloop;
 
 import java.util.concurrent.CompletionStage;
@@ -23,6 +25,7 @@ public class StageStats implements EventloopJmxMBean {
 			.create(SMOOTHING_WINDOW)
 			.withHistogram(ValueStats.POWERS_OF_TEN_SEMI_LINEAR);
 	private final ExceptionStats exceptions = ExceptionStats.create();
+	private final ExceptionStats fatalErrors = ExceptionStats.create();
 
 	private StageStats(Eventloop eventloop) {
 		this.eventloop = eventloop;
@@ -60,6 +63,28 @@ public class StageStats implements EventloopJmxMBean {
 			eventloop = getCurrentEventloop();
 		}
 		return eventloop.currentTimeMillis();
+	}
+
+	public <T> CompletionStage<T> monitor(AsyncCallable<T> callable) {
+		try {
+			CompletionStage<T> stage = callable.call();
+			return monitor(stage);
+		} catch (Throwable throwable) {
+			fatalErrors.recordException(throwable);
+			exceptions.recordException(throwable);
+			throw throwable;
+		}
+	}
+
+	public <I, O> CompletionStage<O> monitor(AsyncFunction<I, O> function, I argument) {
+		try {
+			CompletionStage<O> stage = function.apply(argument);
+			return monitor(stage);
+		} catch (Throwable throwable) {
+			fatalErrors.recordException(throwable, argument);
+			exceptions.recordException(throwable, argument);
+			throw throwable;
+		}
 	}
 
 	public <T> CompletionStage<T> monitor(CompletionStage<T> stage) {
@@ -137,6 +162,11 @@ public class StageStats implements EventloopJmxMBean {
 		return exceptions;
 	}
 
+	@JmxAttribute
+	public ExceptionStats getFatalErrors() {
+		return fatalErrors;
+	}
+
 	@JmxAttribute(optional = true)
 	public double getSmoothingWindow() {
 		return duration.getSmoothingWindow();
@@ -151,6 +181,7 @@ public class StageStats implements EventloopJmxMBean {
 	public void resetStats() {
 		duration.resetStats();
 		exceptions.resetStats();
+		fatalErrors.resetStats();
 	}
 
 	@JmxAttribute(optional = true)

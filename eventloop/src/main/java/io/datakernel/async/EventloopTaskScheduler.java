@@ -74,37 +74,38 @@ public final class EventloopTaskScheduler implements EventloopService, Eventloop
 	}
 
 	public EventloopTaskScheduler withInitialDelay(long initialDelayMillis) {
-		initialDelay = initialDelayMillis;
+		this.initialDelay = initialDelayMillis;
 		return this;
 	}
 
 	public EventloopTaskScheduler withPeriod(long refreshPeriodMillis) {
-		period = refreshPeriodMillis;
+		this.period = refreshPeriodMillis;
 		return this;
 	}
 
 	public EventloopTaskScheduler withInterval(long intervalMillis) {
-		interval = intervalMillis;
+		this.interval = intervalMillis;
 		return this;
 	}
 
+	@SuppressWarnings("unchecked")
 	public EventloopTaskScheduler withScheduleFunction(ScheduleFunction<?> scheduleFunction) {
-		scheduleFunction = (ScheduleFunction<Object>) scheduleFunction;
+		this.scheduleFunction = (ScheduleFunction<Object>) scheduleFunction;
 		return this;
 	}
 
 	public EventloopTaskScheduler withAbortOnError(boolean abortOnError) {
-		abortOnError = abortOnError;
+		this.abortOnError = abortOnError;
 		return this;
 	}
 
 	public EventloopTaskScheduler withStatsSmoothingWindow(double smoothingWindowSeconds) {
-		stats.setSmoothingWindow(smoothingWindowSeconds);
+		this.stats.setSmoothingWindow(smoothingWindowSeconds);
 		return this;
 	}
 
 	public EventloopTaskScheduler withStatsHistogramLevels(int[] levels) {
-		stats.setHistogramLevels(levels);
+		this.stats.setHistogramLevels(levels);
 		return this;
 	}
 
@@ -125,7 +126,7 @@ public final class EventloopTaskScheduler implements EventloopService, Eventloop
 				timestamp,
 				() -> {
 					long startTime = eventloop.currentTimeMillis();
-					stats.monitor(task.call()).whenComplete((result, throwable) -> {
+					stats.monitor(task).whenComplete((result, throwable) -> {
 						if (throwable == null) {
 							lastStartTime = startTime;
 							lastCompleteTime = eventloop.currentTimeMillis();
