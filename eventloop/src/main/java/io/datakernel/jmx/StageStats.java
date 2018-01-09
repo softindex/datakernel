@@ -128,6 +128,11 @@ public class StageStats implements EventloopJmxMBean {
 	}
 
 	@JmxAttribute
+	public ValueStats getDuration() {
+		return duration;
+	}
+
+	@JmxAttribute
 	public ExceptionStats getExceptions() {
 		return exceptions;
 	}
