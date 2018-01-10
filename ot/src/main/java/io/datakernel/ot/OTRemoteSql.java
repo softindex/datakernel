@@ -1,13 +1,13 @@
 package io.datakernel.ot;
 
 import com.google.gson.TypeAdapter;
-import io.datakernel.annotation.Nullable;
 import io.datakernel.utils.GsonAdapters;
 import io.datakernel.utils.JsonException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
+import java.io.IOException;
 import java.sql.*;
 import java.util.*;
 import java.util.concurrent.CompletionStage;
@@ -19,7 +19,6 @@ import static io.datakernel.util.CollectionUtils.difference;
 import static io.datakernel.util.CollectionUtils.union;
 import static io.datakernel.utils.GsonAdapters.indent;
 import static io.datakernel.utils.GsonAdapters.ofList;
-import static java.util.Arrays.asList;
 import static java.util.Collections.nCopies;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.*;
@@ -210,11 +209,11 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 						"SELECT snapshot " +
 						"FROM ot_revisions " +
 						"WHERE id = ? " +
-						"AND snapshot is not null "))) {
+						"AND snapshot IS NOT NULL "))) {
 					ps.setInt(1, revisionId);
 					ResultSet resultSet = ps.executeQuery();
 
-					if (!resultSet.next()) throw new IllegalArgumentException("No snapshot for id: " + revisionId);
+					if (!resultSet.next()) throw new IOException("No snapshot for id: " + revisionId);
 
 					List<D> snapshot = fromJson(resultSet.getString(1));
 					logger.trace("Snapshot loaded: {}", revisionId);
@@ -233,7 +232,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 						"SELECT COUNT(*) " +
 						"FROM ot_revisions " +
 						"WHERE id = ? " +
-						"AND snapshot is not null"))) {
+						"AND snapshot IS NOT NULL"))) {
 					ps.setInt(1, revisionId);
 					ResultSet resultSet = ps.executeQuery();
 
@@ -254,7 +253,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 				Map<Integer, List<D>> parentDiffs = new HashMap<>();
 
 				try (PreparedStatement ps = connection.prepareStatement(
-						sql("SELECT parent_id, diff FROM ot_diffs WHERE revision_id=?"))) {
+						sql("SELECT parent_id, diff FROM ot_diffs WHERE revision_id = ?"))) {
 					ps.setInt(1, revisionId);
 					ResultSet resultSet = ps.executeQuery();
 					while (resultSet.next()) {
@@ -267,7 +266,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 
 				if (parentDiffs.isEmpty()) {
 					try (PreparedStatement ps = connection.prepareStatement(
-							sql("SELECT COUNT(*) FROM ot_revisions WHERE id=?"))) {
+							sql("SELECT COUNT(*) FROM ot_revisions WHERE id = ?"))) {
 						ps.setInt(1, revisionId);
 						ResultSet resultSet = ps.executeQuery();
 						resultSet.next();
@@ -287,8 +286,8 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 	public CompletionStage<Void> saveSnapshot(Integer revisionId, List<D> diffs) {
 		return getCurrentEventloop().callConcurrently(executor, () -> {
 			logger.trace("Start save snapshot: {}, diffs: {}", revisionId, diffs.size());
-			String snapshot = toJson(otSystem.squash(diffs));
 			try (Connection connection = dataSource.getConnection()) {
+				String snapshot = toJson(otSystem.squash(diffs));
 				try (PreparedStatement ps = connection.prepareStatement(sql("" +
 						"UPDATE ot_revisions " +
 						"SET snapshot = ? " +
@@ -298,28 +297,6 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 					ps.executeUpdate();
 					logger.trace("Finish save snapshot: {}, diffs: {}", revisionId, diffs.size());
 					return null;
-				}
-			}
-		});
-	}
-
-	public CompletionStage<Timestamp> timestamp(Integer revisionId) {
-		return getCurrentEventloop().callConcurrently(executor, () -> {
-			logger.trace("Start timestamp, revision id :{}", revisionId);
-			try (Connection connection = dataSource.getConnection()) {
-				try (PreparedStatement ps = connection.prepareStatement(sql("" +
-						"SELECT timestamp " +
-						"FROM ot_revisions " +
-						"WHERE id = ?"))) {
-					ps.setInt(1, revisionId);
-					ResultSet resultSet = ps.executeQuery();
-
-					if (!resultSet.next()) {
-						throw new IllegalArgumentException("No revision with id: " + revisionId);
-					}
-					Timestamp timestamp = Timestamp.valueOf(resultSet.getString(1));
-					logger.trace("Finish timestamp, revision id: {}, timestamp: {}", revisionId, timestamp);
-					return timestamp;
 				}
 			}
 		});
@@ -349,169 +326,6 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 
 			return null;
 		});
-	}
-
-	// minimal db requests
-
-	public CompletionStage<Revision> loadRevision(Integer revisionId) {
-		return getCurrentEventloop().callConcurrently(executor, () -> {
-			try (Connection connection = dataSource.getConnection()) {
-				try (PreparedStatement ps = connection.prepareStatement(
-						sql("SELECT type, timestamp, created_by FROM ot_revisions WHERE id=?"))) {
-					ps.setInt(1, revisionId);
-					ResultSet resultSet = ps.executeQuery();
-					if (!resultSet.next()) throw new IllegalArgumentException();
-
-					String type = resultSet.getString(1);
-					String timestamp = resultSet.getString(2);
-					String createdBy = resultSet.getString(3);
-
-					return new Revision(revisionId, type, timestamp, createdBy);
-				}
-			}
-		});
-	}
-
-	public static class Revision {
-		private final int id;
-		private final String type;
-		private final String timestamp;
-		private final String createdBy;
-
-		public Revision(int id, String type, String timestamp, String createdBy) {
-			this.id = id;
-			this.type = type;
-			this.timestamp = timestamp;
-			this.createdBy = createdBy;
-		}
-
-		public int getId() {
-			return id;
-		}
-
-		public String getType() {
-			return type;
-		}
-
-		public String getTimestamp() {
-			return timestamp;
-		}
-
-		public String getCreatedBy() {
-			return createdBy;
-		}
-	}
-
-	public CompletionStage<List<Diff>> loadDiff(Integer revisionId) {
-		return getCurrentEventloop().callConcurrently(executor, () -> {
-			try (Connection connection = dataSource.getConnection()) {
-				try (PreparedStatement ps = connection.prepareStatement(
-						sql("SELECT parent_id FROM ot_diffs WHERE revision_id=?"))) {
-					ps.setInt(1, revisionId);
-					ResultSet resultSet = ps.executeQuery();
-
-					List<Diff> diffs = new ArrayList<>();
-					while (resultSet.next()) {
-						int parentId = resultSet.getInt(1);
-						diffs.add(new Diff(revisionId, parentId));
-					}
-					return diffs;
-				}
-			}
-		});
-	}
-
-	public static class Diff {
-		private final int revisionId;
-		private final int parentId;
-
-		public Diff(int revisionId, int parentId) {
-			this.revisionId = revisionId;
-			this.parentId = parentId;
-		}
-
-		public int getRevisionId() {
-			return revisionId;
-		}
-
-		public int getParentId() {
-			return parentId;
-		}
-	}
-
-	public CompletionStage<List<Merge>> loadMerges(boolean loadDiff) {
-		return getCurrentEventloop().callConcurrently(executor, () -> {
-			try (Connection connection = dataSource.getConnection()) {
-				List<String> columns = asList("parent_ids", "min_parent_id", "max_parent_id", "timestamp", "created_by");
-				if (loadDiff) columns.add("diff");
-
-				String selectedColumns = columns.stream().map(Object::toString).collect(joining(", "));
-				try (PreparedStatement ps = connection.prepareStatement(
-						sql("SELECT " + selectedColumns + " FROM ot_merges"))) {
-
-					ResultSet resultSet = ps.executeQuery();
-					List<Merge> list = new ArrayList<>();
-					while (resultSet.next()) {
-						List<Integer> parentIds = Arrays.stream(resultSet.getString(1).split(" "))
-								.map(String::trim)
-								.filter(s -> !s.isEmpty())
-								.map(Integer::parseInt)
-								.collect(toList());
-						int minParentId = resultSet.getInt(2);
-						int maxParentId = resultSet.getInt(3);
-						Timestamp timestamp = Timestamp.valueOf(resultSet.getString(4));
-						String createdBy = resultSet.getString(5);
-						String diff = loadDiff ? resultSet.getString(6) : null;
-						list.add(new Merge(parentIds, diff, minParentId, maxParentId, timestamp, createdBy));
-					}
-					return list;
-				}
-			}
-		});
-	}
-
-	public static class Merge {
-		private final List<Integer> parentIds;
-		@Nullable
-		private final String diff;
-		private final int minParentId;
-		private final int maxParentId;
-		private final Timestamp timestamp;
-		private final String createBy;
-
-		public Merge(List<Integer> parentIds, @Nullable String diff, int minParentId, int maxParentId, Timestamp timestamp, String createBy) {
-			this.parentIds = parentIds;
-			this.diff = diff;
-			this.minParentId = minParentId;
-			this.maxParentId = maxParentId;
-			this.timestamp = timestamp;
-			this.createBy = createBy;
-		}
-
-		public List<Integer> getParentIds() {
-			return parentIds;
-		}
-
-		@Nullable
-		public String getDiff() {
-			return diff;
-		}
-
-		public int getMinParentId() {
-			return minParentId;
-		}
-
-		public int getMaxParentId() {
-			return maxParentId;
-		}
-
-		public Timestamp getTimestamp() {
-			return timestamp;
-		}
-
-		public String getCreateBy() {
-			return createBy;
-		}
 	}
 
 }
