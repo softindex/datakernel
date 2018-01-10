@@ -1,5 +1,6 @@
 package io.datakernel.ot;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletionStage;
@@ -8,8 +9,7 @@ import java.util.concurrent.CompletionStage;
 public interface OTRemote<K, D> {
 	CompletionStage<K> createId();
 
-	// TODO: List -> unordered Collection
-	CompletionStage<Void> push(List<OTCommit<K, D>> commits);
+	CompletionStage<Void> push(Collection<OTCommit<K, D>> commits);
 
 	CompletionStage<Set<K>> getHeads();
 

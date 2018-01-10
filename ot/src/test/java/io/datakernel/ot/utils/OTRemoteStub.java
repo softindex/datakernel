@@ -77,7 +77,7 @@ public final class OTRemoteStub<K, D> implements OTRemote<K, D> {
 	}
 
 	@Override
-	public CompletionStage<Void> push(List<OTCommit<K, D>> commits) {
+	public CompletionStage<Void> push(Collection<OTCommit<K, D>> commits) {
 		for (OTCommit<K, D> commit : commits) {
 			K to = commit.getId();
 			if (commit.isRoot()) nodes.add(commit.getId());

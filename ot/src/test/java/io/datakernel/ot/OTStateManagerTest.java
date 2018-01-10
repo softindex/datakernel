@@ -11,6 +11,7 @@ import org.hamcrest.collection.IsEmptyCollection;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
@@ -53,7 +54,7 @@ public class OTStateManagerTest {
 	public void testCommitBeforePushFinished() throws ExecutionException, InterruptedException {
 		OTRemote<Integer, TestOp> otSource = new OTRemoteDecorator<Integer, TestOp>(create(of(1, 2, 3), comparator)) {
 			@Override
-			public CompletionStage<Void> push(List<OTCommit<Integer, TestOp>> otCommits) {
+			public CompletionStage<Void> push(Collection<OTCommit<Integer, TestOp>> otCommits) {
 				return super.push(otCommits).thenCompose($ -> scheduledResult(eventloop, 100, null));
 			}
 		};
@@ -312,7 +313,7 @@ public class OTStateManagerTest {
 		}
 
 		@Override
-		public CompletionStage<Void> push(List<OTCommit<K, D>> otCommits) {
+		public CompletionStage<Void> push(Collection<OTCommit<K, D>> otCommits) {
 			return remote.push(otCommits);
 		}
 

@@ -15,13 +15,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+import static io.datakernel.util.CollectionUtils.difference;
+import static io.datakernel.util.CollectionUtils.union;
 import static io.datakernel.utils.GsonAdapters.indent;
 import static io.datakernel.utils.GsonAdapters.ofList;
 import static java.util.Arrays.asList;
 import static java.util.Collections.nCopies;
 import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.*;
 
 public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 	private final Logger logger = LoggerFactory.getLogger(getClass());
@@ -115,12 +116,16 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 		return GsonAdapters.fromJson(diffsAdapter, json);
 	}
 
+	private static String in(int n) {
+		return nCopies(n, "?").stream().collect(joining(", ", "(", ")"));
+	}
+
 	public CompletionStage<Void> push(OTCommit<Integer, D> commit) {
 		return push(singletonList(commit));
 	}
 
 	@Override
-	public CompletionStage<Void> push(List<OTCommit<Integer, D>> commits) {
+	public CompletionStage<Void> push(Collection<OTCommit<Integer, D>> commits) {
 		return getCurrentEventloop().callConcurrently(executor, () -> {
 			logger.trace("Push {} commits: {}", commits.size(),
 					commits.stream().map(OTCommit::idsToString).collect(toList()));
@@ -128,19 +133,9 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 			try (Connection connection = dataSource.getConnection()) {
 				connection.setAutoCommit(false);
 
-				for (int i = 0; i < commits.size(); i++) {
-					OTCommit<Integer, D> commit = commits.get(i);
-					try (PreparedStatement ps = connection.prepareStatement(sql(
-							"UPDATE ot_revisions SET `type`=? WHERE `id`=?"))) {
-						ps.setString(1, (i == commits.size() - 1) ? "HEAD" : "INNER");
-						ps.setInt(2, commit.getId());
-						ps.executeUpdate();
-					}
-
-					for (Map.Entry<Integer, List<D>> entry : commit.getParents().entrySet()) {
-						Integer parentId = entry.getKey();
-						List<D> diff = entry.getValue();
-
+				for (OTCommit<Integer, D> commit : commits) {
+					for (Integer parentId : commit.getParents().keySet()) {
+						List<D> diff = commit.getParents().get(parentId);
 						try (PreparedStatement ps = connection.prepareStatement(
 								sql("INSERT INTO ot_diffs(revision_id, parent_id, diff) VALUES (?, ?, ?)"))) {
 							ps.setInt(1, commit.getId());
@@ -151,15 +146,28 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 					}
 				}
 
-				Set<Integer> parents = commits.get(0).getParents().keySet();
-				String args = nCopies(parents.size(), "?").stream().collect(Collectors.joining(","));
+				Set<Integer> commitIds = commits.stream().map(OTCommit::getId).collect(toSet());
+				Set<Integer> commitsParentIds = commits.stream().flatMap(commit -> commit.getParents().keySet().stream()).collect(toSet());
+				Set<Integer> headCommitIds = difference(commitIds, commitsParentIds);
+				Set<Integer> innerCommitIds = union(commitsParentIds, difference(commitIds, headCommitIds));
 
-				if (!parents.isEmpty()) {
+				if (!headCommitIds.isEmpty()) {
 					try (PreparedStatement ps = connection.prepareStatement(
-							sql("UPDATE ot_revisions SET type='INNER' WHERE  id IN (" + args + ")"))) {
+							sql("UPDATE ot_revisions SET type='HEAD' WHERE type='NEW' AND id IN " + in(headCommitIds.size())))) {
 						int pos = 1;
-						for (Integer parent : parents) {
-							ps.setInt(pos++, parent);
+						for (Integer id : headCommitIds) {
+							ps.setInt(pos++, id);
+						}
+						ps.executeUpdate();
+					}
+				}
+
+				if (!innerCommitIds.isEmpty()) {
+					try (PreparedStatement ps = connection.prepareStatement(
+							sql("UPDATE ot_revisions SET type='INNER' WHERE id IN " + in(innerCommitIds.size())))) {
+						int pos = 1;
+						for (Integer id : innerCommitIds) {
+							ps.setInt(pos++, id);
 						}
 						ps.executeUpdate();
 					}
