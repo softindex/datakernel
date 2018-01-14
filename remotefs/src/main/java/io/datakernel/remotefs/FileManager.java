@@ -96,7 +96,7 @@ public final class FileManager {
 	}
 
 	public CompletionStage<List<String>> scanAsync() {
-		return eventloop.callConcurrently(executor, () -> {
+		return eventloop.callExecutor(executor, () -> {
 			logger.trace("listing files");
 			List<String> result = new ArrayList<>();
 			doScan(storagePath, result, "");
@@ -143,7 +143,7 @@ public final class FileManager {
 	}
 
 	private CompletionStage<Path> ensureDirectoryAsync(Path container, String path) {
-		return eventloop.callConcurrently(executor, () -> ensureDirectory(container, path));
+		return eventloop.callExecutor(executor, () -> ensureDirectory(container, path));
 	}
 
 	private Path ensureDirectory(Path container, String path) throws IOException {

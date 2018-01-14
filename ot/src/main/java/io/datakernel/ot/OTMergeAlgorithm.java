@@ -17,8 +17,20 @@ import static java.util.Collections.*;
 import static java.util.Comparator.comparingInt;
 import static java.util.stream.Collectors.toMap;
 
-public class OTMergeAlgorithm {
+final class OTMergeAlgorithm<K, D> {
 	private static final Logger logger = LoggerFactory.getLogger(OTMergeAlgorithm.class);
+
+	private final OTSystem<D> otSystem;
+	private final OTRemote<K, D> remote;
+	private final Comparator<K> keyComparator;
+	private final Comparator<K> nodeComparator;
+
+	public OTMergeAlgorithm(OTSystem<D> otSystem, OTRemote<K, D> remote, Comparator<K> keyComparator) {
+		this.otSystem = otSystem;
+		this.remote = remote;
+		this.keyComparator = keyComparator;
+		this.nodeComparator = (node1, node2) -> -OTLoadedGraph.compareNodes(node1, node2, keyComparator);
+	}
 
 	private static <K> Set<K> findRoots(OTLoadedGraph<K, ?> graph, K node) {
 		Set<K> result = new HashSet<>();
@@ -37,7 +49,7 @@ public class OTMergeAlgorithm {
 		return result;
 	}
 
-	private static <K, D> Set<K> removeParents(OTLoadedGraph<K, D> graph, Set<K> nodes) {
+	private static <K, D> Set<K> withoutParents(OTLoadedGraph<K, D> graph, Set<K> nodes) {
 		Set<K> result = new LinkedHashSet<>(nodes);
 		if (result.size() <= 1) return result;
 		Set<K> visited = new HashSet<>();
@@ -55,8 +67,7 @@ public class OTMergeAlgorithm {
 		return result;
 	}
 
-	private static <K, D> List<D> findParent(OTLoadedGraph<K, D> graph, Comparator<K> nodeComparator,
-	                                         K parent, K child) {
+	private List<D> findParent(OTLoadedGraph<K, D> graph, K parent, K child) {
 		if (child.equals(parent)) return emptyList();
 		Set<K> visited = new HashSet<>();
 		PriorityQueue<K> queue = new PriorityQueue<>(nodeComparator);
@@ -81,15 +92,14 @@ public class OTMergeAlgorithm {
 		throw new AssertionError();
 	}
 
-	public static <K, D> CompletionStage<Map<K, List<D>>> loadAndMerge(OTSystem<D> otSystem, OTRemote<K, D> remote, Comparator<K> keyComparator,
-	                                                                   Set<K> heads) {
+	public CompletionStage<Map<K, List<D>>> loadAndMerge(Set<K> heads) {
 		if (heads.size() == 0) return Stages.of(emptyMap());
 		if (heads.size() == 1) return Stages.of(singletonMap(first(heads), emptyList()));
 		logger.info("Merging " + heads);
-		return loadGraph(remote, keyComparator, heads)
+		return loadGraph(heads)
 				.thenCompose(graph -> {
 					try {
-						Map<K, List<D>> mergeResult = merge(otSystem, keyComparator, graph, heads);
+						Map<K, List<D>> mergeResult = merge(graph, heads);
 						if (logger.isTraceEnabled()) {
 							logger.info("Merge result " + mergeResult + "\n" + graph.toGraphViz() + "\n");
 						} else {
@@ -107,8 +117,7 @@ public class OTMergeAlgorithm {
 				});
 	}
 
-	static <K, D> CompletionStage<OTLoadedGraph<K, D>> loadGraph(OTRemote<K, D> remote, Comparator<K> keyComparator,
-	                                                             Set<K> heads) {
+	CompletionStage<OTLoadedGraph<K, D>> loadGraph(Set<K> heads) {
 		checkArgument(heads.size() >= 2);
 
 		OTLoadedGraph<K, D> graph = new OTLoadedGraph<>();
@@ -123,7 +132,7 @@ public class OTMergeAlgorithm {
 		}
 
 		SettableStage<Void> cb = SettableStage.create();
-		doLoadGraph(remote, graph, queue, new HashSet<>(), head2roots, root2heads, cb);
+		doLoadGraph(graph, queue, new HashSet<>(), head2roots, root2heads, cb);
 
 		return cb.thenApply($ -> graph)
 				.whenComplete(onError(throwable -> {
@@ -135,9 +144,9 @@ public class OTMergeAlgorithm {
 				}));
 	}
 
-	private static <K, D> void doLoadGraph(OTRemote<K, D> remote, OTLoadedGraph<K, D> graph, PriorityQueue<K> queue,
-	                                       Set<K> visited, Map<K, Set<K>> head2roots, Map<K, Set<K>> root2heads,
-	                                       SettableStage<Void> cb) {
+	private void doLoadGraph(OTLoadedGraph<K, D> graph, PriorityQueue<K> queue,
+	                         Set<K> visited, Map<K, Set<K>> head2roots, Map<K, Set<K>> root2heads,
+	                         SettableStage<Void> cb) {
 		while (!queue.isEmpty()) {
 			K node = queue.poll();
 			if (!visited.add(node)) continue;
@@ -178,7 +187,7 @@ public class OTMergeAlgorithm {
 						if (found) {
 							cb.set(null);
 						} else {
-							doLoadGraph(remote, graph, queue, visited, head2roots, root2heads, cb);
+							doLoadGraph(graph, queue, visited, head2roots, root2heads, cb);
 						}
 					})
 					.whenComplete(onError(cb::setException));
@@ -187,11 +196,9 @@ public class OTMergeAlgorithm {
 		cb.setException(new OTException("Incomplete graph"));
 	}
 
-	static <K, D> Map<K, List<D>> merge(OTSystem<D> otSystem, Comparator<K> keyComparator,
-	                                    OTLoadedGraph<K, D> graph, Set<K> nodes) throws OTException {
+	Map<K, List<D>> merge(OTLoadedGraph<K, D> graph, Set<K> nodes) throws OTException {
 		checkArgument(nodes.size() >= 2);
-		Comparator<K> nodeComparator = (node1, node2) -> -OTLoadedGraph.compareNodes(node1, node2, keyComparator);
-		K mergeNode = doMerge(otSystem, nodeComparator, graph, removeParents(graph, nodes));
+		K mergeNode = doMerge(graph, withoutParents(graph, nodes));
 		assert mergeNode != null;
 		PriorityQueue<K> queue = new PriorityQueue<>(nodeComparator);
 		queue.add(mergeNode);
@@ -222,18 +229,18 @@ public class OTMergeAlgorithm {
 	}
 
 	@SuppressWarnings({"unchecked", "ConstantConditions"})
-	private static <K, D> K doMerge(OTSystem<D> otSystem, Comparator<K> nodeComparator, OTLoadedGraph<K, D> graph,
-	                                Set<K> nodes) throws OTException {
+	private K doMerge(OTLoadedGraph<K, D> graph,
+	                  Set<K> nodes) throws OTException {
 		if (nodes.size() == 1) return first(nodes);
 
 		K pivotNode = nodes.stream().min(comparingInt((K node) -> findRoots(graph, node).size())).get();
 
 		Map<K, List<D>> pivotNodeParents = graph.getParents(pivotNode);
 		Set<K> recursiveMergeNodes = union(pivotNodeParents.keySet(), difference(nodes, singleton(pivotNode)));
-		K mergeNode = doMerge(otSystem, nodeComparator, graph, removeParents(graph, recursiveMergeNodes));
+		K mergeNode = doMerge(graph, withoutParents(graph, recursiveMergeNodes));
 		K parentNode = first(pivotNodeParents.keySet());
 		List<D> parentToPivotNode = pivotNodeParents.get(parentNode);
-		List<D> parentToMergeNode = findParent(graph, nodeComparator, parentNode, mergeNode);
+		List<D> parentToMergeNode = findParent(graph, parentNode, mergeNode);
 
 		if (pivotNodeParents.size() > 1) {
 			K resultNode = (K) new MergeNode();

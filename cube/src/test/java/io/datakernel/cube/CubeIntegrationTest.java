@@ -28,10 +28,7 @@ import io.datakernel.logfs.LocalFsLogFileSystem;
 import io.datakernel.logfs.LogManager;
 import io.datakernel.logfs.LogManagerImpl;
 import io.datakernel.logfs.ot.*;
-import io.datakernel.ot.OTCommit;
-import io.datakernel.ot.OTRemoteSql;
-import io.datakernel.ot.OTStateManager;
-import io.datakernel.ot.OTSystem;
+import io.datakernel.ot.*;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
@@ -104,17 +101,14 @@ public class CubeIntegrationTest {
 
 		DataSource dataSource = dataSource("test.properties");
 		OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
-		OTRemoteSql<LogDiff<CubeDiff>> otSourceSql = OTRemoteSql.create(executor, dataSource, otSystem, LogDiffJson.create(CubeDiffJson.create(cube)));
+		OTRemoteSql<LogDiff<CubeDiff>> otSourceSql = OTRemoteSql.create(eventloop, executor, dataSource, otSystem, LogDiffJson.create(CubeDiffJson.create(cube)));
 		otSourceSql.truncateTables();
-		otSourceSql.createId().thenCompose(integer -> otSourceSql.push(OTCommit.ofRoot(integer)));
+		otSourceSql.createCommitId().thenCompose(integer -> otSourceSql.push(OTCommit.ofRoot(integer)));
 		eventloop.run();
 
-		LogOTState<CubeDiff> cubeDiffLogOTState = new LogOTState<>(cube);
-		OTStateManager<Integer, LogDiff<CubeDiff>> logCubeStateManager = new OTStateManager<>(eventloop,
-				otSystem,
-				otSourceSql,
-				Integer::compare,
-				cubeDiffLogOTState);
+		LogOTState<CubeDiff> cubeDiffLogOTState = LogOTState.create(cube);
+		OTAlgorithms<Integer, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(otSystem, otSourceSql, Integer::compare);
+		OTStateManager<Integer, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState);
 
 		LogManager<LogItem> logManager = LogManagerImpl.create(eventloop,
 				LocalFsLogFileSystem.create(executor, logsDir),
@@ -239,7 +233,7 @@ public class CubeIntegrationTest {
 
 		// merge heads: revision 4, and revision 5 (which is a consolidation of 3)
 
-		future = logCubeStateManager.mergeHeadsAndPush().toCompletableFuture();
+		future = algorithms.mergeHeadsAndPush().toCompletableFuture();
 		eventloop.run();
 		future.get();
 

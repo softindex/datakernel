@@ -89,7 +89,7 @@ public final class AsyncFile {
 	                                                   Path path, OpenOption[] openOptions) {
 
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
-		return eventloop.callConcurrently(executor,
+		return eventloop.callExecutor(executor,
 				() -> doOpenChannel(executor, path, openOptions))
 				.thenApply(channel -> new AsyncFile(executor, channel, path));
 	}
@@ -106,7 +106,7 @@ public final class AsyncFile {
 	public static CompletionStage<Void> delete(ExecutorService executor,
 	                                           Path path) {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
-		return eventloop.callConcurrently(executor, () -> {
+		return eventloop.callExecutor(executor, () -> {
 			Files.delete(path);
 			return null;
 		});
@@ -114,7 +114,7 @@ public final class AsyncFile {
 
 	public static CompletionStage<Long> length(ExecutorService executor, Path path) {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
-		return eventloop.callConcurrently(executor, () -> {
+		return eventloop.callExecutor(executor, () -> {
 			File file = path.toFile();
 			return !file.exists() || file.isDirectory() ? -1L : file.length();
 		});
@@ -130,7 +130,7 @@ public final class AsyncFile {
 	 */
 	public static CompletionStage<Void> move(Eventloop eventloop, ExecutorService executor,
 	                                         Path source, Path target, CopyOption... options) {
-		return eventloop.callConcurrently(executor, () -> {
+		return eventloop.callExecutor(executor, () -> {
 			Files.move(source, target, options);
 			return null;
 		});
@@ -145,7 +145,7 @@ public final class AsyncFile {
 	 */
 	public static CompletionStage<Void> createDirectory(Eventloop eventloop, ExecutorService executor,
 	                                                    Path dir, @Nullable FileAttribute<?>[] attrs) {
-		return eventloop.callConcurrently(executor, () -> {
+		return eventloop.callExecutor(executor, () -> {
 			Files.createDirectory(dir, attrs == null ? new FileAttribute<?>[0] : attrs);
 			return null;
 		});
@@ -160,7 +160,7 @@ public final class AsyncFile {
 	 */
 	public static CompletionStage<Void> createDirectories(Eventloop eventloop, ExecutorService executor,
 	                                                      Path dir, @Nullable FileAttribute<?>[] attrs) {
-		return eventloop.callConcurrently(executor, () -> {
+		return eventloop.callExecutor(executor, () -> {
 			Files.createDirectories(dir, attrs == null ? new FileAttribute<?>[0] : attrs);
 			return null;
 		});
@@ -406,7 +406,7 @@ public final class AsyncFile {
 	}
 
 	public CompletionStage<Void> forceAndClose() {
-		return eventloop.callConcurrently(executor, () -> {
+		return eventloop.callExecutor(executor, () -> {
 			channel.force(true);
 			channel.close();
 			return null;
@@ -417,7 +417,7 @@ public final class AsyncFile {
 	 * Closes the channel
 	 */
 	public CompletionStage<Void> close() {
-		return eventloop.callConcurrently(executor, () -> {
+		return eventloop.callExecutor(executor, () -> {
 			channel.close();
 			return null;
 		});
@@ -429,7 +429,7 @@ public final class AsyncFile {
 	 * @param size the new size, a non-negative byte count
 	 */
 	public CompletionStage<Void> truncate(long size) {
-		return eventloop.callConcurrently(executor, () -> {
+		return eventloop.callExecutor(executor, () -> {
 			channel.truncate(size);
 			return null;
 		});
@@ -442,7 +442,7 @@ public final class AsyncFile {
 	 *                 content and metadata to be written to storage; otherwise, it need only force content changes to be written
 	 */
 	public CompletionStage<Void> force(boolean metaData) {
-		return eventloop.callConcurrently(executor, () -> {
+		return eventloop.callExecutor(executor, () -> {
 			channel.force(metaData);
 			return null;
 		});

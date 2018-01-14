@@ -9,9 +9,10 @@ import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static java.util.Arrays.asList;
+import static java.util.stream.Collectors.toList;
 
 public final class Stages {
 
@@ -106,27 +107,16 @@ public final class Stages {
 		}
 	}
 
-	public static CompletionStage<Void> run(AsyncCallable<?>... stages) {
-		return runCallable(asList(stages));
-	}
-
-	public static CompletionStage<Void> run(CompletionStage<?>... stages) {
+	public static CompletionStage<Void> run(CompletionStage<Void>... stages) {
 		return run(asList(stages));
 	}
 
-	public static CompletionStage<Void> runCallable(List<? extends AsyncCallable<?>> stages) {
-		return reduceCallable(null, (accumulator, value, index) -> {
-		}, stages);
+	public static CompletionStage<Void> run(Stream<? extends CompletionStage<Void>> stages) {
+		return run(stages.collect(toList()));
 	}
 
-	public static CompletionStage<Void> run(List<? extends CompletionStage<?>> stages) {
-		return reduce(null, (accumulator, value, index) -> {
-		}, stages);
-	}
-
-	@SafeVarargs
-	public static <T> CompletionStage<List<T>> collect(AsyncCallable<? extends T>... stages) {
-		return collectCallable(asList(stages));
+	public static CompletionStage<Void> run(List<? extends CompletionStage<Void>> stages) {
+		return reduce(null, (accumulator, value, index) -> {}, stages);
 	}
 
 	@SafeVarargs
@@ -134,19 +124,14 @@ public final class Stages {
 		return collect(asList(stages));
 	}
 
-	@SuppressWarnings("unchecked")
-	public static <T> CompletionStage<List<T>> collectCallable(List<? extends AsyncCallable<? extends T>> stages) {
-		return reduceCallable(asList((T[]) new Object[stages.size()]), (accumulator, value, index) -> accumulator.set(index, value), stages);
+	public static <T> CompletionStage<List<T>> collect(Stream<? extends CompletionStage<? extends T>> stages) {
+		List<? extends CompletionStage<? extends T>> list = stages.collect(toList());
+		return collect(list);
 	}
 
 	@SuppressWarnings("unchecked")
 	public static <T> CompletionStage<List<T>> collect(List<? extends CompletionStage<? extends T>> stages) {
 		return reduce(asList((T[]) new Object[stages.size()]), (accumulator, value, index) -> accumulator.set(index, value), stages);
-	}
-
-	public static <A, T> CompletionStage<A> reduceCallable(A accumulator, IndexedReducer<A, T> reducer,
-	                                                       AsyncCallable<? extends T>... stages) {
-		return reduceCallable(accumulator, reducer, asList(stages));
 	}
 
 	@SafeVarargs
@@ -155,9 +140,9 @@ public final class Stages {
 		return reduce(accumulator, reducer, asList(stages));
 	}
 
-	public static <A, T> CompletionStage<A> reduceCallable(A accumulator, IndexedReducer<A, T> reducer,
-	                                                       List<? extends AsyncCallable<? extends T>> stages) {
-		return reduce(accumulator, reducer, stages.stream().map(AsyncCallable::call).collect(Collectors.toList()));
+	public static <A, T> CompletionStage<A> reduce(A accumulator, IndexedReducer<A, T> reducer,
+	                                               Stream<? extends CompletionStage<? extends T>> stages) {
+		return reduce(accumulator, reducer, stages.collect(toList()));
 	}
 
 	public static <A, T> CompletionStage<A> reduce(A accumulator, IndexedReducer<A, T> reducer,
@@ -191,23 +176,31 @@ public final class Stages {
 		return resultStage;
 	}
 
-	public static CompletionStage<Void> runSequence(AsyncCallable<?>... stages) {
+	@SuppressWarnings("unchecked")
+	public static CompletionStage<Void> runSequence(AsyncCallable<Void>... stages) {
 		return runSequence(asList(stages));
 	}
 
-	public static CompletionStage<Void> runSequence(Iterable<? extends AsyncCallable<?>> stages) {
-		return reduceSequence(null, (accumulator, value, index) -> {
-		}, stages.iterator());
+	public static CompletionStage<Void> runSequence(Stream<? extends AsyncCallable<Void>> stages) {
+		return runSequence(stages.collect(toList()));
 	}
 
-	public static CompletionStage<Void> runSequence(Iterator<? extends AsyncCallable<?>> stages) {
-		return reduceSequence(null, (accumulator, value, index) -> {
-		}, stages);
+	public static CompletionStage<Void> runSequence(Iterable<? extends AsyncCallable<Void>> stages) {
+		return reduceSequence(null, (accumulator, value, index) -> {}, stages.iterator());
+	}
+
+	public static CompletionStage<Void> runSequence(Iterator<? extends AsyncCallable<Void>> stages) {
+		return reduceSequence(null, (accumulator, value, index) -> {}, stages);
 	}
 
 	@SafeVarargs
 	public static <T> CompletionStage<List<T>> collectSequence(AsyncCallable<? extends T>... stages) {
 		return collectSequence(asList(stages));
+	}
+
+	public static <T> CompletionStage<List<T>> collectSequence(Stream<? extends AsyncCallable<? extends T>> stages) {
+		List<? extends AsyncCallable<? extends T>> list = stages.collect(toList());
+		return collectSequence(list);
 	}
 
 	public static <T> CompletionStage<List<T>> collectSequence(Iterable<? extends AsyncCallable<? extends T>> stages) {
@@ -222,6 +215,11 @@ public final class Stages {
 	public static <T, A> CompletionStage<A> reduceSequence(A accumulator, IndexedReducer<A, T> reducer,
 	                                                       AsyncCallable<? extends T>... stages) {
 		return reduceSequence(accumulator, reducer, asList(stages));
+	}
+
+	public static <T, A> CompletionStage<A> reduceSequence(A accumulator, IndexedReducer<A, T> reducer,
+	                                                       Stream<? extends AsyncCallable<? extends T>> stages) {
+		return reduceSequence(accumulator, reducer, stages.collect(toList()));
 	}
 
 	public static <T, A> CompletionStage<A> reduceSequence(A accumulator, IndexedReducer<A, T> reducer,

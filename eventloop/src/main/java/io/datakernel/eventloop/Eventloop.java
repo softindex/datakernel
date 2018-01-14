@@ -975,14 +975,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		return future;
 	}
 
-	public CompletionStage<Void> runConcurrently(ExecutorService executor, Runnable runnable) {
-		return callConcurrently(executor, () -> {
-			runnable.run();
-			return null;
-		});
-	}
-
-	public <T> CompletionStage<T> callConcurrently(ExecutorService executor, Callable<T> callable) {
+	public <T> CompletionStage<T> callExecutor(ExecutorService executor, Callable<T> callable) {
 		assert inEventloopThread();
 		SettableStage<T> stage = SettableStage.create();
 		startConcurrentOperation();

@@ -8,10 +8,14 @@ import io.datakernel.jmx.StageStats;
 
 import java.util.concurrent.CompletionStage;
 
+import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
+
 public abstract class AsyncServletWithStats implements AsyncServlet, EventloopJmxMBean {
+	public static final double DEFAULT_SMOOTHING_WINDOW = SMOOTHING_WINDOW_5_MINUTES;
+
 	protected final Eventloop eventloop;
 
-	private final StageStats stats = StageStats.create();
+	private final StageStats stats = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 
 	protected AsyncServletWithStats(Eventloop eventloop) {
 		this.eventloop = eventloop;

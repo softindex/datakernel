@@ -1,6 +1,10 @@
 package io.datakernel.aggregation;
 
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.EventloopJmxMBean;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxOperation;
+import io.datakernel.jmx.StageStats;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -9,22 +13,28 @@ import java.sql.Statement;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 
-public class IdGeneratorSql<K> implements IdGenerator<K> {
+public class IdGeneratorSql<K> implements IdGenerator<K>, EventloopJmxMBean {
+	public static final double DEFAULT_SMOOTHING_WINDOW = SMOOTHING_WINDOW_5_MINUTES;
+
+	private final Eventloop eventloop;
 	private final ExecutorService executor;
 	private final DataSource dataSource;
 
 	private String insertSQL;
 	private String extraSQL;
 
-	private IdGeneratorSql(ExecutorService executor, DataSource dataSource) {
+	private final StageStats stageCreateId = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+
+	private IdGeneratorSql(Eventloop eventloop, ExecutorService executor, DataSource dataSource) {
+		this.eventloop = eventloop;
 		this.executor = executor;
 		this.dataSource = dataSource;
 	}
 
 	public static <K> IdGeneratorSql<K> create(Eventloop eventloop, ExecutorService executor, DataSource dataSource) {
-		return new IdGeneratorSql<K>(executor, dataSource);
+		return new IdGeneratorSql<K>(eventloop, executor, dataSource);
 	}
 
 	public IdGeneratorSql<K> withInsertSQL(String insertSQL) {
@@ -37,10 +47,14 @@ public class IdGeneratorSql<K> implements IdGenerator<K> {
 		return this;
 	}
 
+	public void withStatsSmoothingWindow(double smoothingWindowSeconds) {
+		stageCreateId.setSmoothingWindow(smoothingWindowSeconds);
+	}
+
 	@Override
 	@SuppressWarnings("unchecked")
 	public CompletionStage<K> createId() {
-		return getCurrentEventloop().callConcurrently(executor, () -> {
+		return stageCreateId.monitor(eventloop.callExecutor(executor, () -> {
 			try (Connection connection = dataSource.getConnection()) {
 				connection.setAutoCommit(true);
 				K result;
@@ -55,7 +69,21 @@ public class IdGeneratorSql<K> implements IdGenerator<K> {
 				}
 				return result;
 			}
-		});
+		}));
 	}
 
+	@Override
+	public Eventloop getEventloop() {
+		return eventloop;
+	}
+
+	@JmxAttribute
+	public StageStats getStageCreateId() {
+		return stageCreateId;
+	}
+
+	@JmxOperation
+	public void resetStats() {
+		stageCreateId.resetStats();
+	}
 }

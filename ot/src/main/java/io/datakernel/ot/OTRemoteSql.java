@@ -1,6 +1,13 @@
 package io.datakernel.ot;
 
 import com.google.gson.TypeAdapter;
+import io.datakernel.annotation.Nullable;
+import io.datakernel.async.Stages;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.EventloopJmxMBean;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxOperation;
+import io.datakernel.jmx.StageStats;
 import io.datakernel.utils.GsonAdapters;
 import io.datakernel.utils.JsonException;
 import org.slf4j.Logger;
@@ -12,67 +19,84 @@ import java.sql.*;
 import java.util.*;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
-import java.util.stream.Collectors;
 
-import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static io.datakernel.util.CollectionUtils.difference;
 import static io.datakernel.util.CollectionUtils.union;
+import static io.datakernel.util.Preconditions.checkState;
 import static io.datakernel.utils.GsonAdapters.indent;
 import static io.datakernel.utils.GsonAdapters.ofList;
 import static java.util.Collections.nCopies;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.*;
 
-public class OTRemoteSql<D> implements OTRemote<Integer, D> {
+public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBean {
 	private final Logger logger = LoggerFactory.getLogger(getClass());
+	public static final double DEFAULT_SMOOTHING_WINDOW = SMOOTHING_WINDOW_5_MINUTES;
+	public static final String DEFAULT_REVISION_TABLE = "ot_revision";
+	public static final String DEFAULT_DIFFS_TABLE = "ot_diffs";
+	public static final String DEFAULT_BACKUP_TABLE = "ot_revisions_backup";
 
-	public static final String TABLE_REVISION = "ot_revision";
-	public static final String TABLE_DIFFS = "ot_diffs";
-
+	private final Eventloop eventloop;
 	private final ExecutorService executor;
 	private final OTSystem<D> otSystem;
 
 	private final DataSource dataSource;
 	private final TypeAdapter<List<D>> diffsAdapter;
-	private final TypeAdapter<Map<Integer, List<D>>> mapAdapter;
 
-	private final String tableRevision;
-	private final String tableDiffs;
-	private final String createdBy;
+	private String tableRevision = DEFAULT_REVISION_TABLE;
+	private String tableDiffs = DEFAULT_DIFFS_TABLE;
+	private String tableBackup = DEFAULT_BACKUP_TABLE;
 
-	private OTRemoteSql(ExecutorService executor, OTSystem<D> otSystem, TypeAdapter<List<D>> diffsAdapter,
-	                    TypeAdapter<Map<Integer, List<D>>> mapAdapter, DataSource dataSource,
-	                    String tableRevision, String tableDiffs, String createdBy) {
+	private String createdBy = null;
+
+	private final StageStats statsCreateCommitId = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final StageStats statsPush = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final StageStats statsGetHeads = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final StageStats statsLoadCommit = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final StageStats statsIsSnapshot = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final StageStats statsLoadSnapshot = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final StageStats statsSaveSnapshot = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+
+	private OTRemoteSql(Eventloop eventloop, ExecutorService executor, OTSystem<D> otSystem, TypeAdapter<List<D>> diffsAdapter,
+	                    DataSource dataSource) {
+		this.eventloop = eventloop;
 		this.executor = executor;
 		this.otSystem = otSystem;
 		this.dataSource = dataSource;
 		this.diffsAdapter = diffsAdapter;
-		this.mapAdapter = mapAdapter;
-		this.tableRevision = tableRevision;
-		this.tableDiffs = tableDiffs;
-		this.createdBy = createdBy;
 	}
 
-	public static <D> OTRemoteSql<D> create(ExecutorService executor, DataSource dataSource, OTSystem<D> otSystem, TypeAdapter<D> diffAdapter) {
+	public static <D> OTRemoteSql<D> create(Eventloop eventloop, ExecutorService executor, DataSource dataSource, OTSystem<D> otSystem, TypeAdapter<D> diffAdapter) {
 		TypeAdapter<List<D>> listAdapter = indent(ofList(diffAdapter), "\t");
-
-		TypeAdapter<Map<Integer, List<D>>> mapDiffsAdapter = GsonAdapters.transform(GsonAdapters.ofMap(listAdapter),
-				value -> value.entrySet().stream().collect(Collectors.toMap(entry -> Integer.parseInt(entry.getKey()), Map.Entry::getValue)),
-				value -> value.entrySet().stream().collect(Collectors.toMap(entry -> String.valueOf(entry.getKey()), Map.Entry::getValue)));
-		return new OTRemoteSql<>(executor, otSystem, listAdapter, mapDiffsAdapter, dataSource, TABLE_REVISION, TABLE_DIFFS, null);
+		return new OTRemoteSql<>(eventloop, executor, otSystem, listAdapter, dataSource);
 	}
 
 	public OTRemoteSql<D> withCreatedBy(String createdBy) {
-		return new OTRemoteSql<>(executor, otSystem, diffsAdapter, mapAdapter, dataSource, tableRevision, tableDiffs, createdBy);
+		this.createdBy = createdBy;
+		return this;
 	}
 
-	public OTRemoteSql<D> withCustomTableNames(String tableRevision, String tableDiffs, String tableMerges) {
-		return new OTRemoteSql<>(executor, otSystem, diffsAdapter, mapAdapter, dataSource, tableRevision, tableDiffs, createdBy);
+	public OTRemoteSql<D> withCustomTableNames(String tableRevision, String tableDiffs, @Nullable String tableBackup) {
+		this.tableRevision = tableRevision;
+		this.tableDiffs = tableDiffs;
+		this.tableBackup = tableBackup;
+		return this;
+	}
+
+	public DataSource getDataSource() {
+		return dataSource;
+	}
+
+	public TypeAdapter<List<D>> getDiffsAdapter() {
+		return diffsAdapter;
 	}
 
 	private String sql(String sql) {
-		return sql.replace(TABLE_REVISION, tableRevision)
-				.replace(TABLE_DIFFS, tableDiffs);
+		return sql
+				.replace(DEFAULT_REVISION_TABLE, tableRevision)
+				.replace(DEFAULT_DIFFS_TABLE, tableDiffs)
+				.replace(DEFAULT_BACKUP_TABLE, Objects.toString(tableBackup, ""));
 	}
 
 	public void truncateTables() throws SQLException {
@@ -85,8 +109,8 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 	}
 
 	@Override
-	public CompletionStage<Integer> createId() {
-		return getCurrentEventloop().callConcurrently(executor, () -> {
+	public CompletionStage<Integer> createCommitId() {
+		return statsCreateCommitId.monitor(eventloop.callExecutor(executor, () -> {
 			logger.trace("Start Create id");
 			try (Connection connection = dataSource.getConnection()) {
 				connection.setAutoCommit(true);
@@ -103,7 +127,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 					return id;
 				}
 			}
-		});
+		}));
 	}
 
 	private String toJson(List<D> diffs) throws JsonException {
@@ -125,7 +149,8 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 
 	@Override
 	public CompletionStage<Void> push(Collection<OTCommit<Integer, D>> commits) {
-		return getCurrentEventloop().callConcurrently(executor, () -> {
+		if (commits.isEmpty()) return Stages.of(null);
+		return statsPush.monitor(eventloop.callExecutor(executor, () -> {
 			logger.trace("Push {} commits: {}", commits.size(),
 					commits.stream().map(OTCommit::idsToString).collect(toList()));
 
@@ -177,12 +202,12 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 						commits.stream().map(OTCommit::idsToString).collect(toList()));
 			}
 			return null;
-		});
+		}));
 	}
 
 	@Override
 	public CompletionStage<Set<Integer>> getHeads() {
-		return getCurrentEventloop().callConcurrently(executor, () -> {
+		return statsGetHeads.monitor(eventloop.callExecutor(executor, () -> {
 			logger.trace("Get Heads");
 			try (Connection connection = dataSource.getConnection()) {
 				try (PreparedStatement ps = connection.prepareStatement(
@@ -197,94 +222,73 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 					return result;
 				}
 			}
-		});
+		}));
 	}
 
 	@Override
 	public CompletionStage<List<D>> loadSnapshot(Integer revisionId) {
 		logger.trace("Load snapshot: {}", revisionId);
-		return getCurrentEventloop().callConcurrently(executor, () -> {
+		return statsLoadSnapshot.monitor(eventloop.callExecutor(executor, () -> {
 			try (Connection connection = dataSource.getConnection()) {
-				try (PreparedStatement ps = connection.prepareStatement(sql("" +
-						"SELECT snapshot " +
-						"FROM ot_revisions " +
-						"WHERE id = ? " +
-						"AND snapshot IS NOT NULL "))) {
+				try (PreparedStatement ps = connection.prepareStatement(
+						sql("SELECT snapshot FROM ot_revisions WHERE id=?"))) {
 					ps.setInt(1, revisionId);
 					ResultSet resultSet = ps.executeQuery();
 
 					if (!resultSet.next()) throw new IOException("No snapshot for id: " + revisionId);
 
-					List<D> snapshot = fromJson(resultSet.getString(1));
+					String str = resultSet.getString(1);
+					List<D> snapshot = str == null ? Collections.emptyList() : fromJson(str);
 					logger.trace("Snapshot loaded: {}", revisionId);
 					return otSystem.squash(snapshot);
 				}
 			}
-		});
-	}
-
-	@Override
-	public CompletionStage<Boolean> isSnapshot(Integer revisionId) {
-		return getCurrentEventloop().callConcurrently(executor, () -> {
-			logger.trace("Start is snapshot: {}", revisionId);
-			try (Connection connection = dataSource.getConnection()) {
-				try (PreparedStatement ps = connection.prepareStatement(sql("" +
-						"SELECT COUNT(*) " +
-						"FROM ot_revisions " +
-						"WHERE id = ? " +
-						"AND snapshot IS NOT NULL"))) {
-					ps.setInt(1, revisionId);
-					ResultSet resultSet = ps.executeQuery();
-
-					resultSet.next();
-					boolean result = resultSet.getInt(1) == 1;
-					logger.trace("is Snapshot finished: {}, {}", revisionId, result);
-					return result;
-				}
-			}
-		});
+		}));
 	}
 
 	@Override
 	public CompletionStage<OTCommit<Integer, D>> loadCommit(Integer revisionId) {
-		return getCurrentEventloop().callConcurrently(executor, () -> {
+		return statsLoadCommit.monitor(eventloop.callExecutor(executor, () -> {
 			logger.trace("Start load commit: {}", revisionId);
 			try (Connection connection = dataSource.getConnection()) {
 				Map<Integer, List<D>> parentDiffs = new HashMap<>();
 
+				long timestamp = 0;
+				boolean snapshot = false;
+
 				try (PreparedStatement ps = connection.prepareStatement(
-						sql("SELECT parent_id, diff FROM ot_diffs WHERE revision_id = ?"))) {
+						sql("SELECT UNIX_TIMESTAMP(ot_revisions.timestamp) AS timestamp, ot_revisions.snapshot IS NOT NULL AS snapshot, ot_diffs.parent_id, ot_diffs.diff " +
+								"FROM ot_revisions " +
+								"LEFT JOIN ot_diffs ON ot_diffs.revision_id=ot_revisions.id " +
+								"WHERE ot_revisions.id=?"))) {
 					ps.setInt(1, revisionId);
 					ResultSet resultSet = ps.executeQuery();
-					while (resultSet.next()) {
-						int parentId = resultSet.getInt(1);
-						String diffString = resultSet.getString(2);
-						List<D> diff = fromJson(diffString);
-						parentDiffs.put(parentId, diff);
-					}
-				}
 
-				if (parentDiffs.isEmpty()) {
-					try (PreparedStatement ps = connection.prepareStatement(
-							sql("SELECT COUNT(*) FROM ot_revisions WHERE id = ?"))) {
-						ps.setInt(1, revisionId);
-						ResultSet resultSet = ps.executeQuery();
-						resultSet.next();
-						if (resultSet.getInt(1) == 0) {
-							throw new IllegalArgumentException("No commit with id: " + revisionId);
+					while (resultSet.next()) {
+						timestamp = resultSet.getLong(1) * 1000L;
+						snapshot = resultSet.getBoolean(2);
+						int parentId = resultSet.getInt(3);
+						String diffString = resultSet.getString(4);
+						if (diffString != null) {
+							List<D> diff = fromJson(diffString);
+							parentDiffs.put(parentId, diff);
 						}
 					}
 				}
 
+				if (timestamp == 0) {
+					throw new IOException("No commit with id: " + revisionId);
+				}
+
 				logger.trace("Finish load commit: {}, parentIds: {}", revisionId, parentDiffs.keySet());
-				return OTCommit.of(revisionId, parentDiffs);
+				return OTCommit.of(revisionId, parentDiffs).withCommitMetadata(timestamp, snapshot);
 			}
-		});
+		}));
 	}
 
 	@Override
 	public CompletionStage<Void> saveSnapshot(Integer revisionId, List<D> diffs) {
-		return getCurrentEventloop().callConcurrently(executor, () -> {
+		return statsSaveSnapshot.monitor(eventloop.callExecutor(executor, () -> {
 			logger.trace("Start save snapshot: {}, diffs: {}", revisionId, diffs.size());
 			try (Connection connection = dataSource.getConnection()) {
 				String snapshot = toJson(otSystem.squash(diffs));
@@ -299,11 +303,12 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 					return null;
 				}
 			}
-		});
+		}));
 	}
 
+	@Override
 	public CompletionStage<Void> cleanup(Integer minId) {
-		return getCurrentEventloop().callConcurrently(executor, () -> {
+		return eventloop.callExecutor(executor, () -> {
 			logger.trace("Start cleanup: {}", minId);
 			try (Connection connection = dataSource.getConnection()) {
 				connection.setAutoCommit(false);
@@ -326,6 +331,73 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D> {
 
 			return null;
 		});
+	}
+
+	@Override
+	public CompletionStage<Void> backup(Integer checkpointId, List<D> diffs) {
+		checkState(this.tableBackup != null);
+		return eventloop.callExecutor(executor, () -> {
+			try (Connection connection = dataSource.getConnection()) {
+				try (PreparedStatement statement = connection.prepareStatement(
+						sql("INSERT INTO ot_revisions_backup(id, snapshot) VALUES (?, ?)"))) {
+					statement.setInt(1, checkpointId);
+					statement.setString(2, toJson(diffs));
+					statement.executeUpdate();
+					return null;
+				}
+			}
+		});
+	}
+
+	@Override
+	public Eventloop getEventloop() {
+		return eventloop;
+	}
+
+	@JmxAttribute
+	public StageStats getStatsCreateCommitId() {
+		return statsCreateCommitId;
+	}
+
+	@JmxAttribute
+	public StageStats getStatsPush() {
+		return statsPush;
+	}
+
+	@JmxAttribute
+	public StageStats getStatsGetHeads() {
+		return statsGetHeads;
+	}
+
+	@JmxAttribute
+	public StageStats getStatsLoadCommit() {
+		return statsLoadCommit;
+	}
+
+	@JmxAttribute
+	public StageStats getStatsIsSnapshot() {
+		return statsIsSnapshot;
+	}
+
+	@JmxAttribute
+	public StageStats getStatsLoadSnapshot() {
+		return statsLoadSnapshot;
+	}
+
+	@JmxAttribute
+	public StageStats getStatsSaveSnapshot() {
+		return statsSaveSnapshot;
+	}
+
+	@JmxOperation
+	public void resetStats() {
+		statsCreateCommitId.resetStats();
+		statsPush.resetStats();
+		statsGetHeads.resetStats();
+		statsLoadCommit.resetStats();
+		statsIsSnapshot.resetStats();
+		statsLoadSnapshot.resetStats();
+		statsSaveSnapshot.resetStats();
 	}
 
 }

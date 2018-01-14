@@ -37,7 +37,7 @@ public class FileNamesLoadingService implements EventloopService {
 
     @Override
     public CompletionStage<Void> start() {
-        return eventloop.callConcurrently(executorService, () -> {
+        return eventloop.callExecutor(executorService, () -> {
             Set<String> names = new HashSet<>();
             try (Stream<Path> pathStream = Files.walk(path)) {
                 pathStream

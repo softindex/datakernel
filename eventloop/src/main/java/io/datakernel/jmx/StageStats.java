@@ -5,6 +5,7 @@ import io.datakernel.async.AsyncFunction;
 import io.datakernel.eventloop.Eventloop;
 
 import java.util.concurrent.CompletionStage;
+import java.util.function.Function;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.jmx.JmxReducers.JmxReducerMax;
@@ -12,8 +13,6 @@ import static io.datakernel.jmx.JmxReducers.JmxReducerSum;
 import static io.datakernel.jmx.MBeanFormat.formatPeriodAgo;
 
 public class StageStats implements EventloopJmxMBean {
-	public static final double SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_5_MINUTES;
-
 	private Eventloop eventloop;
 
 	private boolean monitoring = true;
@@ -21,27 +20,21 @@ public class StageStats implements EventloopJmxMBean {
 	private long lastStartTimestamp = 0;
 	private long lastCompleteTimestamp = 0;
 	private long lastExceptionTimestamp = 0;
-	private final ValueStats duration = ValueStats
-			.create(SMOOTHING_WINDOW)
-			.withHistogram(ValueStats.POWERS_OF_TEN_SEMI_LINEAR);
+	private final ValueStats duration;
 	private final ExceptionStats exceptions = ExceptionStats.create();
 	private final ExceptionStats fatalErrors = ExceptionStats.create();
 
-	private StageStats(Eventloop eventloop) {
+	StageStats(Eventloop eventloop, ValueStats duration) {
 		this.eventloop = eventloop;
+		this.duration = duration;
 	}
 
-	public static StageStats createMBean(Eventloop eventloop) {
-		return new StageStats(eventloop);
+	public static StageStats createMBean(Eventloop eventloop, double smoothingWindowSeconds) {
+		return new StageStats(eventloop, ValueStats.create(smoothingWindowSeconds));
 	}
 
-	public static StageStats create() {
-		return new StageStats(null);
-	}
-
-	public StageStats withSmoothingWindow(double smoothingWindowSeconds) {
-		setSmoothingWindow(smoothingWindowSeconds);
-		return this;
+	public static StageStats create(double smoothingWindowSeconds) {
+		return new StageStats(null, ValueStats.create(smoothingWindowSeconds));
 	}
 
 	public StageStats withHistogram(int[] levels) {
@@ -85,6 +78,19 @@ public class StageStats implements EventloopJmxMBean {
 			exceptions.recordException(throwable, argument);
 			throw throwable;
 		}
+	}
+
+	public <I, O> Function<I, CompletionStage<O>> monitor(Function<? super I, ? extends CompletionStage<O>> function) {
+		return argument -> {
+			try {
+				CompletionStage<O> stage = function.apply(argument);
+				return monitor(stage);
+			} catch (Throwable throwable) {
+				fatalErrors.recordException(throwable, argument);
+				exceptions.recordException(throwable, argument);
+				throw throwable;
+			}
+		};
 	}
 
 	public <T> CompletionStage<T> monitor(CompletionStage<T> stage) {

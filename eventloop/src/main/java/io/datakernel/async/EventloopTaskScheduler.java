@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.CompletionStage;
 
+import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
+
 public final class EventloopTaskScheduler implements EventloopService, EventloopJmxMBean {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
@@ -69,7 +71,7 @@ public final class EventloopTaskScheduler implements EventloopService, Eventloop
 	}
 
 	public static EventloopTaskScheduler create(Eventloop eventloop, AsyncCallable<?> task) {
-		StageStats stats = StageStats.create();
+		StageStats stats = StageStats.create(SMOOTHING_WINDOW_5_MINUTES);
 		return new EventloopTaskScheduler(eventloop, task, stats);
 	}
 

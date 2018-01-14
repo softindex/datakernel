@@ -35,7 +35,7 @@ import static io.datakernel.util.Preconditions.checkArgument;
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
 public abstract class AbstractStreamReducer<K, O, A> implements HasOutput<O>, HasInputs {
-	public static final int DEFAULT_BUFFER_SIZE = 256;
+	public static final int DEFAULT_BUFFER_SIZE = 2000;
 
 	private final List<Input> inputs = new ArrayList<>();
 	private final Output output;

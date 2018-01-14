@@ -7,7 +7,7 @@ import java.util.concurrent.CompletionStage;
 
 // TODO: rename OTRemote -> OTRepository
 public interface OTRemote<K, D> {
-	CompletionStage<K> createId();
+	CompletionStage<K> createCommitId();
 
 	CompletionStage<Void> push(Collection<OTCommit<K, D>> commits);
 
@@ -19,5 +19,7 @@ public interface OTRemote<K, D> {
 
 	CompletionStage<Void> saveSnapshot(K revisionId, List<D> diffs);
 
-	CompletionStage<Boolean> isSnapshot(K revisionId);
+	CompletionStage<Void> cleanup(K revisionId);
+
+	CompletionStage<Void> backup(K revisionId, List<D> diffs);
 }

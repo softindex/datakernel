@@ -59,6 +59,7 @@ public final class StreamMerger<K, T> extends AbstractStreamReducer<K, T, Void> 
 		return new StreamMerger<>(keyFunction, keyComparator, deduplicate);
 	}
 
+	@Override
 	public StreamMerger<K, T> withBufferSize(int bufferSize) {
 		return (StreamMerger<K, T>) super.withBufferSize(bufferSize);
 	}

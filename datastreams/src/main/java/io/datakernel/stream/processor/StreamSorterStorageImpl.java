@@ -170,7 +170,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	 */
 	@Override
 	public CompletionStage<Void> cleanup(List<Integer> partitionsToDelete) {
-		return eventloop.runConcurrently(executorService, () -> {
+		return eventloop.callExecutor(executorService, () -> {
 			for (Integer partitionToDelete : partitionsToDelete) {
 				Path path = partitionPath(partitionToDelete);
 				try {
@@ -179,6 +179,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 					logger.warn("Could not delete {} : {}", path, e.toString());
 				}
 			}
+			return null;
 		});
 	}
 }

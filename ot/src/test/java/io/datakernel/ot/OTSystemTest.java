@@ -70,10 +70,8 @@ public class OTSystemTest {
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		TestOpState state = new TestOpState();
-		OTStateManager<String, TestOp> stateManager = new OTStateManager<>(eventloop, system,
-				otSource,
-				comparator,
-				state);
+		OTAlgorithms<String, TestOp> otAlgorithms = new OTAlgorithms<>(system, otSource, comparator);
+		OTStateManager<String, TestOp> stateManager = new OTStateManager<>(eventloop, otAlgorithms, state);
 
 		stateManager.start().thenCompose($ -> stateManager.pull()).exceptionally(throwable -> {
 			throw new AssertionError("Fatal error on start", throwable);
@@ -92,7 +90,7 @@ public class OTSystemTest {
 
 		CompletableFuture<?> future;
 
-		future = OTUtils.mergeHeadsAndPush(system, otSource, comparator).toCompletableFuture();
+		future = otAlgorithms.mergeHeadsAndPush().toCompletableFuture();
 		eventloop.run();
 		future.get();
 		System.out.println(otSource.loadCommit("m"));
@@ -133,7 +131,7 @@ public class OTSystemTest {
 		System.out.println();
 
 		System.out.println(otSource);
-		future = OTUtils.mergeHeadsAndPush(system, otSource, comparator).toCompletableFuture();
+		future = otAlgorithms.mergeHeadsAndPush().toCompletableFuture();
 		eventloop.run();
 		future.get();
 		System.out.println(stateManager);
@@ -155,10 +153,8 @@ public class OTSystemTest {
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		TestOpState state = new TestOpState();
-		OTStateManager<String, TestOp> stateManager = new OTStateManager<>(eventloop, system,
-				otSource,
-				comparator,
-				state);
+		OTAlgorithms<String, TestOp> otAlgorithms = new OTAlgorithms<>(system, otSource, comparator);
+		OTStateManager<String, TestOp> stateManager = new OTStateManager<>(eventloop, otAlgorithms, state);
 
 		stateManager.start().thenCompose($ -> stateManager.pull()).exceptionally(throwable -> {
 			throw new AssertionError("Fatal error on start", throwable);
@@ -169,7 +165,7 @@ public class OTSystemTest {
 
 		CompletableFuture<?> future;
 
-		future = OTUtils.mergeHeadsAndPush(system, otSource, comparator).toCompletableFuture();
+		future = otAlgorithms.mergeHeadsAndPush().toCompletableFuture();
 		eventloop.run();
 		future.get();
 		System.out.println(otSource);
@@ -192,10 +188,8 @@ public class OTSystemTest {
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		TestOpState state = new TestOpState();
-		OTStateManager<String, TestOp> stateManager = new OTStateManager<>(eventloop, system,
-				otSource,
-				comparator,
-				state);
+		OTAlgorithms<String, TestOp> otAlgorithms = new OTAlgorithms<>(system, otSource, comparator);
+		OTStateManager<String, TestOp> stateManager = new OTStateManager<>(eventloop, otAlgorithms, state);
 
 		stateManager.start().thenCompose($ -> stateManager.pull()).exceptionally(throwable -> {
 			throw new AssertionError("Fatal error on start", throwable);
@@ -206,7 +200,7 @@ public class OTSystemTest {
 
 		CompletableFuture<?> future;
 
-		future = OTUtils.mergeHeadsAndPush(system, otSource, comparator).toCompletableFuture();
+		future = otAlgorithms.mergeHeadsAndPush().toCompletableFuture();
 		eventloop.run();
 		future.get();
 		System.out.println(otSource);

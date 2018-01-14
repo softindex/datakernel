@@ -29,12 +29,28 @@ public interface AsyncCallable<T> {
 		return supplier::get;
 	}
 
-	static <A, T> AsyncCallable<T> of(Function<? super A, CompletionStage<T>> function, A a) {
+	static <A, T> AsyncCallable<T> of(AsyncFunction<? super A, T> function, A a) {
 		return () -> function.apply(a);
 	}
 
 	static <A, B, T> AsyncCallable<T> of(BiFunction<? super A, ? super B, CompletionStage<T>> biFunction, A a, B b) {
 		return () -> biFunction.apply(a, b);
+	}
+
+	static <A, T> AsyncCallable<T> singleCallOf(AsyncCallable<T> cachedCallable) {
+		return new AsyncCallable<T>() {
+			SettableStage<T> runningStage;
+
+			@Override
+			public CompletionStage<T> call() {
+				if (runningStage == null) {
+					runningStage = SettableStage.create();
+					runningStage.whenComplete((result, throwable) -> runningStage = null);
+				}
+				cachedCallable.call().whenComplete(runningStage::set);
+				return runningStage;
+			}
+		};
 	}
 
 	default <V> AsyncCallable<V> thenApply(Function<? super T, ? extends V> function) {

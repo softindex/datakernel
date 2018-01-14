@@ -9,12 +9,16 @@ import static java.util.Collections.singletonMap;
 
 public final class OTCommit<K, D> {
 	private final K id;
-
 	private final Map<K, List<D>> parents;
+
+	private boolean snapshot;
+	private long timestamp;
 
 	private OTCommit(K id, Map<K, List<D>> parents) {
 		this.id = id;
 		this.parents = parents;
+		this.snapshot = snapshot;
+		this.timestamp = timestamp;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -33,6 +37,16 @@ public final class OTCommit<K, D> {
 
 	public static <K, D> OTCommit<K, D> ofMerge(K id, Map<K, ? extends List<? extends D>> parents) {
 		return of(id, parents);
+	}
+
+	public OTCommit<K, D> withCommitMetadata(long timestamp, boolean snapshot) {
+		setCommitMetadata(timestamp, snapshot);
+		return this;
+	}
+
+	public void setCommitMetadata(long timestamp, boolean snapshot) {
+		this.timestamp = timestamp;
+		this.snapshot = snapshot;
 	}
 
 	public boolean isRoot() {
@@ -57,6 +71,14 @@ public final class OTCommit<K, D> {
 
 	public Set<K> getParentIds() {
 		return parents.keySet();
+	}
+
+	public boolean isSnapshot() {
+		return snapshot;
+	}
+
+	public long getTimestamp() {
+		return timestamp;
 	}
 
 	@Override

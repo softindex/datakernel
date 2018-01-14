@@ -111,6 +111,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 
 	// settings
 	private int aggregationsChunkSize = Aggregation.DEFAULT_CHUNK_SIZE;
+	private int aggregationsReducerBufferSize = Aggregation.DEFAULT_REDUCER_BUFFER_SIZE;
 	private int aggregationsSorterItemsInMemory = Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY;
 	private int aggregationsSorterBlockSize = Aggregation.DEFAULT_SORTER_BLOCK_SIZE;
 	private int aggregationsMaxChunksToConsolidate = Aggregation.DEFAULT_MAX_CHUNKS_TO_CONSOLIDATE;
@@ -280,6 +281,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 		private AggregationPredicate predicate = AggregationPredicates.alwaysTrue();
 		private List<String> partitioningKey = new ArrayList<>();
 		private int chunkSize;
+		private int reducerBufferSize;
 		private int sorterItemsInMemory;
 		private int sorterBlockSize;
 		private int maxChunksToConsolidate;
@@ -334,6 +336,11 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 			return this;
 		}
 
+		public AggregationConfig withReducerBufferSize(int reducerBufferSize) {
+			this.reducerBufferSize = reducerBufferSize;
+			return this;
+		}
+
 		public AggregationConfig withSorterItemsInMemory(int sorterItemsInMemory) {
 			this.sorterItemsInMemory = sorterItemsInMemory;
 			return this;
@@ -372,6 +379,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 		Aggregation aggregation = Aggregation.create(eventloop, executorService, classLoader, aggregationChunkStorage, structure)
 				.withTemporarySortDir(temporarySortDir)
 				.withChunkSize(config.chunkSize != 0 ? config.chunkSize : aggregationsChunkSize)
+				.withReducerBufferSize(config.reducerBufferSize != 0 ? config.reducerBufferSize : aggregationsReducerBufferSize)
 				.withSorterItemsInMemory(config.sorterItemsInMemory != 0 ? config.sorterItemsInMemory : aggregationsSorterItemsInMemory)
 				.withSorterBlockSize(config.sorterBlockSize != 0 ? config.sorterBlockSize : aggregationsSorterBlockSize)
 				.withMaxChunksToConsolidate(config.maxChunksToConsolidate != 0 ? config.maxChunksToConsolidate : aggregationsMaxChunksToConsolidate)
@@ -1201,6 +1209,11 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 
 	public Cube withAggregationsChunkSize(int aggregationsChunkSize) {
 		this.aggregationsChunkSize = aggregationsChunkSize;
+		return this;
+	}
+
+	public Cube withAggregationsReducerBufferSize(int aggregationsReducerBufferSize) {
+		this.aggregationsReducerBufferSize = aggregationsReducerBufferSize;
 		return this;
 	}
 

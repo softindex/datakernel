@@ -23,9 +23,9 @@ import static org.junit.Assert.assertEquals;
 
 @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
 public class OTMergeAlgorithmTest {
-	private Eventloop eventloop;
-	private final OTSystem<TestOp> system = createTestOp();
-	private final Comparator<String> comparator = String::compareTo;
+	Eventloop eventloop;
+	OTSystem<TestOp> system = createTestOp();
+	Comparator<String> keyComparator = String::compareTo;
 
 	@Before
 	public void before() {
@@ -72,31 +72,33 @@ public class OTMergeAlgorithmTest {
 	}
 
 	private void doTest(Set<String> heads, OTGraphBuilder<String, TestOp> graphBuilder, TestAcceptor testAcceptor) throws Exception {
-		doTestMerge(heads, graphBuilder, testAcceptor, comparator);
-		doTestMerge(heads, graphBuilder, testAcceptor, comparator.reversed());
-		doTestLoadAndMerge(heads, graphBuilder, testAcceptor, comparator);
+		doTestMerge(heads, graphBuilder, testAcceptor, keyComparator);
+		doTestMerge(heads, graphBuilder, testAcceptor, keyComparator.reversed());
+		doTestLoadAndMerge(heads, graphBuilder, testAcceptor, keyComparator);
 	}
 
-	private void doTestMerge(Set<String> heads, OTGraphBuilder<String, TestOp> graphBuilder, TestAcceptor testAcceptor, Comparator<String> comparator) throws Exception {
+	private void doTestMerge(Set<String> heads, OTGraphBuilder<String, TestOp> graphBuilder, TestAcceptor testAcceptor, Comparator<String> keyComparator) throws Exception {
 		OTLoadedGraph<String, TestOp> graph = buildGraph(graphBuilder);
+		OTMergeAlgorithm<String, TestOp> mergeAlgorithm = new OTMergeAlgorithm<>(system, null, keyComparator);
 		Map<String, List<TestOp>> merge;
 		try {
-			merge = OTMergeAlgorithm.merge(system, comparator, graph, heads);
+			merge = mergeAlgorithm.merge(graph, heads);
 		} finally {
 			System.out.println(graph.toGraphViz());
 		}
 		testAcceptor.accept(graph, merge);
 	}
 
-	private void doTestLoadAndMerge(Set<String> heads, OTGraphBuilder<String, TestOp> graphBuilder, TestAcceptor testAcceptor, Comparator<String> comparator) throws Exception {
-		OTRemote<String, TestOp> otRemote = buildRemote(graphBuilder, comparator);
+	private void doTestLoadAndMerge(Set<String> heads, OTGraphBuilder<String, TestOp> graphBuilder, TestAcceptor testAcceptor, Comparator<String> keyComparator) throws Exception {
+		OTRemote<String, TestOp> otRemote = buildRemote(graphBuilder, keyComparator);
+		OTMergeAlgorithm<String, TestOp> mergeAlgorithm = new OTMergeAlgorithm<>(system, otRemote, keyComparator);
 		CompletableFuture<OTLoadedGraph<String, TestOp>> future =
-				OTMergeAlgorithm.loadGraph(otRemote, comparator, heads).toCompletableFuture();
+				mergeAlgorithm.loadGraph(heads).toCompletableFuture();
 		eventloop.run();
 		OTLoadedGraph<String, TestOp> graph = future.get();
 		Map<String, List<TestOp>> merge;
 		try {
-			merge = OTMergeAlgorithm.merge(system, comparator, graph, heads);
+			merge = mergeAlgorithm.merge(graph, heads);
 		} finally {
 			System.out.println(graph.toGraphViz());
 		}

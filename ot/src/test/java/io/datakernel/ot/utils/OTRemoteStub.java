@@ -53,7 +53,7 @@ public final class OTRemoteStub<K, D> implements OTRemote<K, D> {
 	public final Map<K, Map<K, List<? extends D>>> backward = new LinkedHashMap<>();
 	public final Map<K, List<D>> snapshots = new LinkedHashMap<>();
 
-	private OTRemoteStub(Sequence<K> sequence, Comparator<K> comparator, TreeSet<K> nodes) {
+	OTRemoteStub(Sequence<K> sequence, Comparator<K> comparator, TreeSet<K> nodes) {
 		this.sequence = sequence;
 		this.comparator = comparator;
 		this.nodes = nodes;
@@ -71,7 +71,7 @@ public final class OTRemoteStub<K, D> implements OTRemote<K, D> {
 	}
 
 	@Override
-	public CompletionStage<K> createId() {
+	public CompletionStage<K> createCommitId() {
 		revisionId = sequence.next(revisionId);
 		return Stages.of(revisionId);
 	}
@@ -134,13 +134,18 @@ public final class OTRemoteStub<K, D> implements OTRemote<K, D> {
 	public CompletionStage<List<D>> loadSnapshot(K revisionId) {
 		return snapshots.containsKey(revisionId)
 				? Stages.of(snapshots.get(revisionId))
-				: Stages.ofException(new IllegalArgumentException());
+				: Stages.of(Collections.emptyList());
 
 	}
 
 	@Override
-	public CompletionStage<Boolean> isSnapshot(K revisionId) {
-		return Stages.of(snapshots.containsKey(revisionId));
+	public CompletionStage<Void> cleanup(K revisionId) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public CompletionStage<Void> backup(K revisionId, List<D> diffs) {
+		throw new UnsupportedOperationException();
 	}
 
 	@Override

@@ -40,7 +40,7 @@ class StaticLoaderClassPath implements StaticLoader {
         }
 
         SettableStage<ByteBuf> stage = SettableStage.create();
-        eventloop.callConcurrently(executorService, () -> wrapForReading(loadResource(file)))
+        eventloop.callExecutor(executorService, () -> wrapForReading(loadResource(file)))
                 .whenComplete((result, throwable) ->
                         stage.set(result, throwable instanceof NoSuchFileException
                                 ? HttpException.notFound404()

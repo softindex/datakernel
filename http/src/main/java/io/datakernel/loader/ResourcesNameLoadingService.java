@@ -47,7 +47,7 @@ public class ResourcesNameLoadingService implements EventloopService {
 
     @Override
     public CompletionStage<Void> start() {
-        return eventloop.callConcurrently(executorService, () -> {
+        return eventloop.callExecutor(executorService, () -> {
             Set<String> fileNames = new HashSet<>();
             InputStream in = loader.getResourceAsStream(resourcePath);
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(in))) {

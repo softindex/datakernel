@@ -5,6 +5,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.stream.*;
 
 import java.util.Collection;
+import java.util.concurrent.CompletionStage;
 
 public class CountingStreamForwarder<T> implements StreamTransformer<T, T>, StreamDataReceiver<T> {
 	private final SizeCounter<T> sizeCounter;
@@ -24,6 +25,14 @@ public class CountingStreamForwarder<T> implements StreamTransformer<T, T>, Stre
 		private Counter(long count, long size) {
 			this.count = count;
 			this.size = size;
+		}
+
+		public long getCount() {
+			return count;
+		}
+
+		public long getSize() {
+			return size;
 		}
 	}
 
@@ -70,6 +79,10 @@ public class CountingStreamForwarder<T> implements StreamTransformer<T, T>, Stre
 	@Override
 	public StreamProducer<T> getOutput() {
 		return output;
+	}
+
+	public CompletionStage<Counter> getResult() {
+		return resultStage;
 	}
 
 	private class Input extends AbstractStreamConsumer<T> {

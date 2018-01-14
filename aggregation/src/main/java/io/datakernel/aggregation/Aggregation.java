@@ -63,6 +63,7 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	public static final int DEFAULT_CHUNK_SIZE = 1_000_000;
+	public static final int DEFAULT_REDUCER_BUFFER_SIZE = StreamReducer.DEFAULT_BUFFER_SIZE;
 	public static final int DEFAULT_SORTER_ITEMS_IN_MEMORY = 1_000_000;
 	public static final int DEFAULT_SORTER_BLOCK_SIZE = 256 * 1024;
 	public static final long DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS = 10 * 60 * 1000; // 10 minutes
@@ -79,6 +80,7 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 
 	// settings
 	private int chunkSize = DEFAULT_CHUNK_SIZE;
+	private int reducerBufferSize = DEFAULT_REDUCER_BUFFER_SIZE;
 	private int sorterItemsInMemory = DEFAULT_SORTER_ITEMS_IN_MEMORY;
 	private int sorterBlockSize = DEFAULT_SORTER_BLOCK_SIZE;
 	private long maxIncrementalReloadPeriodMillis = DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS;
@@ -121,6 +123,11 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 
 	public Aggregation withChunkSize(int chunkSize) {
 		this.chunkSize = chunkSize;
+		return this;
+	}
+
+	public Aggregation withReducerBufferSize(int reducerBufferSize) {
+		this.reducerBufferSize = reducerBufferSize;
 		return this;
 	}
 
@@ -419,6 +426,9 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 		}
 
 		StreamReducer<Comparable, T, Object> streamReducer = StreamReducer.create(Comparable::compareTo);
+		if (reducerBufferSize != 0 && reducerBufferSize != DEFAULT_REDUCER_BUFFER_SIZE) {
+			streamReducer = streamReducer.withBufferSize(reducerBufferSize);
+		}
 
 		Class<?> keyClass = createKeyClass(structure, queryKeys, this.classLoader);
 

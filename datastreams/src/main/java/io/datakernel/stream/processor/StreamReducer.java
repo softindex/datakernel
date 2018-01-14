@@ -46,6 +46,7 @@ public final class StreamReducer<K, O, A> extends AbstractStreamReducer<K, O, A>
 		return new StreamReducer<>(keyComparator);
 	}
 
+	@Override
 	public StreamReducer<K, O, A> withBufferSize(int bufferSize) {
 		return (StreamReducer<K, O, A>) super.withBufferSize(bufferSize);
 	}

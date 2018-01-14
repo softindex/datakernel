@@ -69,7 +69,6 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		consumer.getEndOfStream()
 //				.whenComplete(Stages.onResult(this::endOfStream))
 				.whenComplete(Stages.onError(this::closeWithError));
-
 	}
 
 	protected void onWired() {

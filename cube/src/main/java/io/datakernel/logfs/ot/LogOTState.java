@@ -6,12 +6,26 @@ import io.datakernel.ot.OTState;
 import java.util.HashMap;
 import java.util.Map;
 
-public class LogOTState<D> implements OTState<LogDiff<D>> {
-	public final Map<String, LogPosition> positions = new HashMap<>();
-	public final OTState<D> dataState;
+import static java.util.Collections.unmodifiableMap;
 
-	public LogOTState(OTState<D> dataState) {
+public final class LogOTState<D> implements OTState<LogDiff<D>> {
+	private final Map<String, LogPosition> positions = new HashMap<>();
+	private final OTState<D> dataState;
+
+	private LogOTState(OTState<D> dataState) {
 		this.dataState = dataState;
+	}
+
+	public static <D> LogOTState<D> create(OTState<D> dataState) {
+		return new LogOTState<D>(dataState);
+	}
+
+	public Map<String, LogPosition> getPositions() {
+		return unmodifiableMap(positions);
+	}
+
+	public OTState<D> getDataState() {
+		return dataState;
 	}
 
 	@Override

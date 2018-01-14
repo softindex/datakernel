@@ -87,7 +87,7 @@ public final class LogOTProcessor<T, D> implements EventloopService {
 
 	@SuppressWarnings("unchecked")
 	public CompletionStage<LogDiff<D>> processLog() {
-		logger.trace("processLog_gotPositions called. Positions: {}", state.positions);
+		logger.trace("processLog_gotPositions called. Positions: {}", state.getPositions());
 
 		StreamProducerWithResult<T, Map<String, LogPositionDiff>> producer = getProducer();
 		StreamConsumerWithResult<T, List<D>> consumer = logStreamConsumer.consume();
@@ -102,7 +102,7 @@ public final class LogOTProcessor<T, D> implements EventloopService {
 		StreamUnion<T> streamUnion = StreamUnion.create();
 		for (String partition : this.partitions) {
 			String logName = logName(partition);
-			LogPosition logPosition = state.positions.get(logName);
+			LogPosition logPosition = state.getPositions().get(logName);
 			if (logPosition == null) {
 				logPosition = LogPosition.create(new LogFile("", 0), 0L);
 			}

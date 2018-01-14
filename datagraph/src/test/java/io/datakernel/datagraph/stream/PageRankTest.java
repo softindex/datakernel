@@ -240,7 +240,7 @@ public class PageRankTest {
 		server1.listen();
 		server2.listen();
 
-		Stages.run(result1.getResult(), result2.getResult())
+		Stages.run(result1.getResult().thenApply($ -> null), result2.getResult().thenApply($ -> null))
 				.whenComplete(assertComplete($ -> {
 					server1.close();
 					server2.close();

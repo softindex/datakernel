@@ -7,6 +7,7 @@ import java.util.stream.Stream;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
+import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toSet;
 
 public class CollectionUtils {
@@ -98,6 +99,11 @@ public class CollectionUtils {
 	@SuppressWarnings("unchecked")
 	public static <T> List<T> list(T... items) {
 		return asList(items);
+	}
+
+	public static <T> String toLimitedString(Collection<T> collection, int limit) {
+		return collection.stream().limit(limit).map(Object::toString)
+				.collect(joining(",", "[", collection.size() <= limit ? "]" : "...]"));
 	}
 
 }
