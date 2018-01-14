@@ -96,7 +96,7 @@ public class LogToCubeTest {
 		otSourceSql.push(OTCommit.ofRoot(1));
 
 		LogOTState<CubeDiff> cubeDiffLogOTState = LogOTState.create(cube);
-		OTAlgorithms<Integer, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(otSystem, otSourceSql, Integer::compare);
+		OTAlgorithms<Integer, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, otSourceSql, Integer::compare);
 		OTStateManager<Integer, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState);
 
 		LogManager<TestPubRequest> logManager = LogManagerImpl.create(eventloop,

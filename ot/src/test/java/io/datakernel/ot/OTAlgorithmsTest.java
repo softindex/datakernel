@@ -32,7 +32,7 @@ public class OTAlgorithmsTest {
 		TestOpState opState = new TestOpState();
 		List<Integer> commitIds = IntStream.rangeClosed(0, 5).boxed().collect(Collectors.toList());
 		OTRemote<Integer, TestOp> otRemote = OTRemoteStub.create(of(commitIds), keyComparator);
-		OTAlgorithms<Integer, TestOp> otAlgorithms = new OTAlgorithms<>(TEST_OP, otRemote, keyComparator);
+		OTAlgorithms<Integer, TestOp> otAlgorithms = new OTAlgorithms<>(eventloop, TEST_OP, otRemote, keyComparator);
 
 		otRemote.createCommitId().thenCompose(id -> otRemote.push(asList(OTCommit.ofRoot(id))));
 		eventloop.run();
@@ -59,7 +59,7 @@ public class OTAlgorithmsTest {
 		Comparator<Integer> keyComparator = Integer::compareTo;
 		List<Integer> commitIds = IntStream.rangeClosed(0, 8).boxed().collect(Collectors.toList());
 		OTRemote<Integer, TestOp> otRemote = OTRemoteStub.create(of(commitIds), keyComparator);
-		OTAlgorithms<Integer, TestOp> otAlgorithms = new OTAlgorithms<>(TEST_OP, otRemote, keyComparator);
+		OTAlgorithms<Integer, TestOp> otAlgorithms = new OTAlgorithms<>(eventloop, TEST_OP, otRemote, keyComparator);
 
 		GraphBuilder<Integer, TestOp> graphBuilder = new GraphBuilder<>(otRemote);
 		CompletableFuture<Map<Integer, Integer>> graphFuture = graphBuilder.buildGraph(asList(
@@ -94,7 +94,7 @@ public class OTAlgorithmsTest {
 		Comparator<Integer> keyComparator = Integer::compareTo;
 		List<Integer> commitIds = IntStream.rangeClosed(0, 8).boxed().collect(Collectors.toList());
 		OTRemote<Integer, TestOp> otRemote = OTRemoteStub.create(of(commitIds), keyComparator);
-		OTAlgorithms<Integer, TestOp> otAlgorithms = new OTAlgorithms<>(TEST_OP, otRemote, keyComparator);
+		OTAlgorithms<Integer, TestOp> otAlgorithms = new OTAlgorithms<>(eventloop, TEST_OP, otRemote, keyComparator);
 
 		GraphBuilder<Integer, TestOp> graphBuilder = new GraphBuilder<>(otRemote);
 		CompletableFuture<Map<Integer, Integer>> graphFuture = graphBuilder.buildGraph(asList(

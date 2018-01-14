@@ -58,7 +58,7 @@ public class OTStateManagerTest {
 				return super.push(otCommits).thenCompose($ -> scheduledResult(eventloop, 100, null));
 			}
 		};
-		OTAlgorithms<Integer, TestOp> otAlgorithms = new OTAlgorithms<>(system, remote, comparator);
+		OTAlgorithms<Integer, TestOp> otAlgorithms = new OTAlgorithms<>(eventloop, system, remote, comparator);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, otAlgorithms, new TestOpState());
 
 		createRootAndStartManager(remote, stateManager);
@@ -88,7 +88,7 @@ public class OTStateManagerTest {
 		List<Integer> commitIdSequence = IntStream.rangeClosed(0, 5).boxed().collect(toList());
 		OTRemote<Integer, TestOp> remote = create(of(commitIdSequence), comparator);
 		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(system, remote, comparator);
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote, comparator);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
 		createRootAndStartManager(remote, stateManager);
@@ -110,7 +110,7 @@ public class OTStateManagerTest {
 		List<Integer> commitIdSequence = IntStream.rangeClosed(0, 10).boxed().collect(toList());
 		OTRemote<Integer, TestOp> remote = create(of(commitIdSequence), comparator);
 		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(system, remote, comparator);
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote, comparator);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
 		createRootAndStartManager(remote, stateManager);
@@ -134,7 +134,7 @@ public class OTStateManagerTest {
 		List<Integer> commitIdSequence = IntStream.rangeClosed(0, 10).boxed().collect(toList());
 		OTRemote<Integer, TestOp> remote = create(of(commitIdSequence), comparator);
 		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(system, remote, comparator);
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote, comparator);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
 		createRootAndStartManager(remote, stateManager);
@@ -159,7 +159,7 @@ public class OTStateManagerTest {
 		List<Integer> commitIdSequence = IntStream.rangeClosed(0, 20).boxed().collect(toList());
 		OTRemote<Integer, TestOp> remote = create(of(commitIdSequence), comparator);
 		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(system, remote, comparator);
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote, comparator);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
 		createRootAndStartManager(remote, stateManager);
@@ -180,7 +180,7 @@ public class OTStateManagerTest {
 		List<Integer> commitIdSequence = IntStream.rangeClosed(0, 2).boxed().collect(toList());
 		OTRemote<Integer, TestOp> remote = create(of(commitIdSequence), comparator);
 		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(system, remote, comparator);
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote, comparator);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
 		createRootAndStartManager(remote, stateManager);
@@ -205,7 +205,7 @@ public class OTStateManagerTest {
 		List<Integer> commitIdSequence = IntStream.rangeClosed(0, 2).boxed().collect(toList());
 		OTRemote<Integer, TestOp> otRemote = create(of(commitIdSequence), comparator);
 		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(system, otRemote, comparator);
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, otRemote, comparator);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
 		createRootAndStartManager(otRemote, stateManager);
@@ -230,7 +230,7 @@ public class OTStateManagerTest {
 		List<Integer> commitIdSequence = IntStream.rangeClosed(0, 2).boxed().collect(toList());
 		OTRemote<Integer, TestOp> otRemote = create(of(commitIdSequence), comparator);
 		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(system, otRemote, comparator);
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, otRemote, comparator);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
 		createRootAndStartManager(otRemote, stateManager);
@@ -255,7 +255,7 @@ public class OTStateManagerTest {
 		List<Integer> commitIdSequence = IntStream.rangeClosed(0, 2).boxed().collect(toList());
 		OTRemote<Integer, TestOp> otRemote = create(of(commitIdSequence), comparator);
 		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(system, otRemote, comparator);
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, otRemote, comparator);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
 		createRootAndStartManager(otRemote, stateManager);
@@ -280,7 +280,7 @@ public class OTStateManagerTest {
 		List<Integer> commitIdSequence = IntStream.rangeClosed(0, 2).boxed().collect(toList());
 		OTRemote<Integer, TestOp> remote = create(of(commitIdSequence), comparator);
 		TestOpState testOpState = new TestOpState();
-		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(system, remote, comparator);
+		OTAlgorithms<Integer, TestOp> algorithms = new OTAlgorithms<>(eventloop, system, remote, comparator);
 		OTStateManager<Integer, TestOp> stateManager = new OTStateManager<>(eventloop, algorithms, testOpState);
 
 		createRootAndStartManager(remote, stateManager);

@@ -24,6 +24,8 @@ import org.junit.Rule;
 import org.junit.Test;
 
 import javax.management.MBeanServer;
+import java.util.List;
+import java.util.Map;
 
 import static io.datakernel.jmx.helper.CustomMatchers.objectname;
 
@@ -62,6 +64,22 @@ public class GenericTypesRegistrationTest {
 
 		TypeLiteral<ServiceStubThree<String, Integer, Long>> gType =
 				new TypeLiteral<ServiceStubThree<String, Integer, Long>>() {};
+		Key<?> key = Key.get(gType);
+		jmxRegistry.registerSingleton(key, service, null);
+	}
+
+	@Test
+	public void itShouldFormProperNameForTypeWithNestedGenerics() throws Exception {
+		ServiceStubThree<String, List<Integer>, Map<Long, List<String>>> service = new ServiceStubThree<>();
+
+		context.checking(new Expectations() {{
+			oneOf(mBeanServer).registerMBean(with(service),
+					with(objectname(domain + ":type=ServiceStubThree,T1=String,T2=List<Integer>,T3=Map<Long;List<String>>"))
+			);
+		}});
+
+		TypeLiteral<ServiceStubThree<String, List<Integer>, Map<Long, List<String>>>> gType =
+				new TypeLiteral<ServiceStubThree<String, List<Integer>, Map<Long, List<String>>>>() {};
 		Key<?> key = Key.get(gType);
 		jmxRegistry.registerSingleton(key, service, null);
 	}

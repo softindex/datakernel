@@ -1,6 +1,5 @@
 package io.datakernel.cube.service;
 
-import io.datakernel.aggregation.AggregationChunkStorageWithBackup;
 import io.datakernel.aggregation.LocalFsChunkStorage;
 import io.datakernel.async.AsyncCallable;
 import io.datakernel.async.Stages;
@@ -31,7 +30,7 @@ public final class CubeBackupController implements EventloopJmxMBean {
 
 	private final Eventloop eventloop;
 	private final OTAlgorithms<Integer, LogDiff<CubeDiff>> algorithms;
-	private final AggregationChunkStorageWithBackup storage;
+	private final LocalFsChunkStorage storage;
 
 	private final StageStats stageBackup = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final StageStats stageBackupDb = StageStats.create(DEFAULT_SMOOTHING_WINDOW);

@@ -70,7 +70,7 @@ public class OTSystemTest {
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		TestOpState state = new TestOpState();
-		OTAlgorithms<String, TestOp> otAlgorithms = new OTAlgorithms<>(system, otSource, comparator);
+		OTAlgorithms<String, TestOp> otAlgorithms = new OTAlgorithms<>(eventloop, system, otSource, comparator);
 		OTStateManager<String, TestOp> stateManager = new OTStateManager<>(eventloop, otAlgorithms, state);
 
 		stateManager.start().thenCompose($ -> stateManager.pull()).exceptionally(throwable -> {
@@ -153,7 +153,7 @@ public class OTSystemTest {
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		TestOpState state = new TestOpState();
-		OTAlgorithms<String, TestOp> otAlgorithms = new OTAlgorithms<>(system, otSource, comparator);
+		OTAlgorithms<String, TestOp> otAlgorithms = new OTAlgorithms<>(eventloop, system, otSource, comparator);
 		OTStateManager<String, TestOp> stateManager = new OTStateManager<>(eventloop, otAlgorithms, state);
 
 		stateManager.start().thenCompose($ -> stateManager.pull()).exceptionally(throwable -> {
@@ -188,7 +188,7 @@ public class OTSystemTest {
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		TestOpState state = new TestOpState();
-		OTAlgorithms<String, TestOp> otAlgorithms = new OTAlgorithms<>(system, otSource, comparator);
+		OTAlgorithms<String, TestOp> otAlgorithms = new OTAlgorithms<>(eventloop, system, otSource, comparator);
 		OTStateManager<String, TestOp> stateManager = new OTStateManager<>(eventloop, otAlgorithms, state);
 
 		stateManager.start().thenCompose($ -> stateManager.pull()).exceptionally(throwable -> {

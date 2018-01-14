@@ -26,12 +26,14 @@ import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
+import static java.util.stream.Collectors.joining;
 
 public final class JmxRegistry implements JmxRegistryMXBean {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
@@ -351,12 +353,23 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 			Type[] genericArgs = pType.getActualTypeArguments();
 			for (int i = 0; i < genericArgs.length; i++) {
 				Type genericArg = genericArgs[i];
-				String argClassName = ((Class<?>) genericArg).getSimpleName();
+				String argClassName = formatSimpleGenericName(genericArg);
 				int argId = i + 1;
 				resultName += "," + format(GENERIC_PARAM_NAME_FORMAT, argId, argClassName);
 			}
 		}
 		return resultName;
+	}
+
+	private static String formatSimpleGenericName(Type type) {
+		if (type instanceof Class) {
+			return ((Class<?>) type).getSimpleName();
+		}
+		ParameterizedType genericType = (ParameterizedType) type;
+		return ((Class<?>) genericType.getRawType()).getSimpleName() +
+				Arrays.stream(genericType.getActualTypeArguments())
+						.map(JmxRegistry::formatSimpleGenericName)
+						.collect(joining(";", "<", ">"));
 	}
 
 	/**

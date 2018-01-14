@@ -16,6 +16,9 @@
 
 package io.datakernel.stream;
 
+import io.datakernel.stream.processor.StreamStats;
+import io.datakernel.stream.processor.StreamStatsForwarder;
+
 import java.util.concurrent.CompletionStage;
 
 /**
@@ -46,4 +49,10 @@ public interface StreamProducer<T> {
 	void suspend();
 
 	CompletionStage<Void> getEndOfStream();
+
+	default StreamProducer<T> withStats(StreamStats stats) {
+		StreamStatsForwarder<T> statsForwarder = StreamStatsForwarder.create(stats);
+		DataStreams.stream(this, statsForwarder.getInput());
+		return statsForwarder.getOutput();
+	}
 }

@@ -33,10 +33,7 @@ import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
-import io.datakernel.stream.processor.StreamBinaryDeserializer;
-import io.datakernel.stream.processor.StreamBinarySerializer;
-import io.datakernel.stream.processor.StreamLZ4Compressor;
-import io.datakernel.stream.processor.StreamLZ4Decompressor;
+import io.datakernel.stream.processor.*;
 import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 
@@ -54,19 +51,20 @@ import java.util.stream.StreamSupport;
 
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static io.datakernel.stream.DataStreams.stream;
+import static io.datakernel.stream.processor.StreamStatsSizeCounter.forByteBufs;
 import static java.nio.file.StandardOpenOption.READ;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
  * Stores aggregation chunks in local file system.
  */
-public class LocalFsChunkStorage implements AggregationChunkStorageWithBackup, EventloopService, EventloopJmxMBean {
+public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopService, EventloopJmxMBean {
+	private final Logger logger = getLogger(this.getClass());
+
 	public static final double DEFAULT_SMOOTHING_WINDOW = SMOOTHING_WINDOW_5_MINUTES;
 	public static final String DEFAULT_BACKUP_FOLDER_NAME = "backups";
 	public static final String LOG = ".log";
 	public static final String TEMP_LOG = ".temp";
-
-	private final Logger logger = getLogger(this.getClass());
 
 	private final Eventloop eventloop;
 	private final ExecutorService executorService;
@@ -81,6 +79,14 @@ public class LocalFsChunkStorage implements AggregationChunkStorageWithBackup, E
 	private final StageStats stageList = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final StageStats stageBackup = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final StageStats stageCleanup = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+
+	private final StreamStatsDetailedEx readFile = StreamStatsDetailedEx.create(forByteBufs());
+	private final StreamStatsDetailedEx readDecompress = StreamStatsDetailedEx.create(forByteBufs());
+	private final StreamStatsBasic readDeserialize = new StreamStatsBasic();
+
+	private final StreamStatsBasic writeSerialize = new StreamStatsBasic();
+	private final StreamStatsDetailedEx writeCompress = StreamStatsDetailedEx.create(forByteBufs());
+	private final StreamStatsDetailedEx writeFile = StreamStatsDetailedEx.create(forByteBufs());
 
 	private final Path dir;
 
@@ -134,14 +140,15 @@ public class LocalFsChunkStorage implements AggregationChunkStorageWithBackup, E
 					StreamFileReader fileReader = StreamFileReader.readFileFrom(file, bufferSize, 0L);
 
 					StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create();
-					stream(fileReader, decompressor.getInput());
+					stream(fileReader.withStats(readFile), decompressor.getInput());
 
 					BufferSerializer<T> bufferSerializer = AggregationUtils.createBufferSerializer(aggregation, recordClass,
 							aggregation.getKeys(), fields, classLoader);
 					StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(bufferSerializer);
+					stream(decompressor.getOutput().withStats(readDecompress), deserializer.getInput());
 
-					stream(decompressor.getOutput(), deserializer.getInput());
-					return StreamProducers.withEndOfStreamAsResult(deserializer.getOutput());
+					return StreamProducers.withEndOfStreamAsResult(
+							deserializer.getOutput().withStats(readDeserialize));
 				});
 	}
 
@@ -158,10 +165,10 @@ public class LocalFsChunkStorage implements AggregationChunkStorageWithBackup, E
 					StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor();
 					StreamFileWriter writer = StreamFileWriter.create(file, true);
 
-					stream(serializer.getOutput(), compressor.getInput());
-					stream(compressor.getOutput(), writer);
+					stream(serializer.getOutput(), compressor.getInput().withStats(writeCompress));
+					stream(compressor.getOutput(), writer.withStats(writeFile));
 
-					return StreamConsumers.withResult(serializer.getInput(), writer.getFlushStage());
+					return StreamConsumers.withResult(serializer.getInput().withStats(writeSerialize), writer.getFlushStage());
 				});
 	}
 
@@ -331,6 +338,36 @@ public class LocalFsChunkStorage implements AggregationChunkStorageWithBackup, E
 		return stageOpenW;
 	}
 
+	@JmxAttribute
+	public StreamStatsDetailedEx getReadFile() {
+		return readFile;
+	}
+
+	@JmxAttribute
+	public StreamStatsDetailedEx getReadDecompress() {
+		return readDecompress;
+	}
+
+	@JmxAttribute
+	public StreamStatsBasic getReadDeserialize() {
+		return readDeserialize;
+	}
+
+	@JmxAttribute
+	public StreamStatsBasic getWriteSerialize() {
+		return writeSerialize;
+	}
+
+	@JmxAttribute
+	public StreamStatsDetailedEx getWriteCompress() {
+		return writeCompress;
+	}
+
+	@JmxAttribute
+	public StreamStatsDetailedEx getWriteFile() {
+		return writeFile;
+	}
+
 	@JmxOperation
 	public void resetStats() {
 		stageIdGenerator.resetStats();
@@ -342,5 +379,13 @@ public class LocalFsChunkStorage implements AggregationChunkStorageWithBackup, E
 		stageList.resetStats();
 		stageBackup.resetStats();
 		stageCleanup.resetStats();
+
+		readFile.resetStats();
+		readDecompress.resetStats();
+		readDeserialize.resetStats();
+
+		writeSerialize.resetStats();
+		writeCompress.resetStats();
+		writeFile.resetStats();
 	}
 }

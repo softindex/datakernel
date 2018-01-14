@@ -88,6 +88,8 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 	private int maxChunksToConsolidate = DEFAULT_MAX_CHUNKS_TO_CONSOLIDATE;
 
 	// jmx
+
+	private AggregationStats stats = new AggregationStats();
 	private long consolidationStarted;
 	private long consolidationLastTimeMillis;
 	private int consolidations;
@@ -158,6 +160,11 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 
 	public Aggregation withTemporarySortDir(Path temporarySortDir) {
 		this.temporarySortDir = temporarySortDir;
+		return this;
+	}
+
+	public Aggregation withStats(AggregationStats stats) {
+		this.stats = stats;
 		return this;
 	}
 
@@ -421,8 +428,8 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 			List<String> collect = measures.stream().filter(sequence.fields::contains).collect(toList());
 			StreamMap.MapperProjection mapper = createMapper(sequence.type, resultClass, queryKeys, collect, classLoader);
 			StreamMap<Object, T> streamMap = StreamMap.create(mapper);
-			stream(sequence.stream, streamMap.getInput());
-			return streamMap.getOutput();
+			stream(sequence.stream, streamMap.getInput().withStats(stats.mergeMapInput));
+			return streamMap.getOutput().withStats(stats.mergeMapOutput);
 		}
 
 		StreamReducer<Comparable, T, Object> streamReducer = StreamReducer.create(Comparable::compareTo);
@@ -439,10 +446,10 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 			StreamReducers.Reducer reducer = AggregationUtils.aggregationReducer(structure, sequence.type, resultClass,
 					queryKeys, collect, classLoader);
 
-			stream(sequence.stream, streamReducer.newInput(extractKeyFunction, reducer));
+			stream(sequence.stream, streamReducer.newInput(extractKeyFunction, reducer).withStats(stats.mergeReducerInput));
 		}
 
-		return streamReducer.getOutput();
+		return streamReducer.getOutput().withStats(stats.mergeReducerOutput);
 	}
 
 	private <T> StreamProducer<T> sequenceStream(AggregationPredicate where,
@@ -615,6 +622,11 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 	@JmxAttribute
 	public int getChunks() {
 		return state.getChunks().size();
+	}
+
+	@JmxAttribute
+	public AggregationStats getStats() {
+		return stats;
 	}
 
 	@Override

@@ -31,7 +31,8 @@ import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.net.Messaging.ReceiveMessageCallback;
 import io.datakernel.stream.net.MessagingSerializer;
 import io.datakernel.stream.net.MessagingWithBinaryStreaming;
-import io.datakernel.stream.processor.CountingStreamForwarder;
+import io.datakernel.stream.processor.StreamStatsDetailed;
+import io.datakernel.stream.processor.StreamStatsForwarder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,6 +49,7 @@ import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
 import static io.datakernel.eventloop.AsyncTcpSocketImpl.wrapChannel;
 import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.net.MessagingSerializers.ofGson;
+import static io.datakernel.stream.processor.StreamStatsSizeCounter.forByteBufs;
 
 public final class RemoteFsClient implements IRemoteFsClient {
 	protected final Logger logger = LoggerFactory.getLogger(getClass());
@@ -131,21 +133,22 @@ public final class RemoteFsClient implements IRemoteFsClient {
 							long size = ((RemoteFsResponses.Ready) msg).size;
 
 							StreamProducerWithResult<ByteBuf, Void> producer = messaging.receiveBinaryStream();
-							CountingStreamForwarder<ByteBuf> sizeCounter = CountingStreamForwarder.forByteBufs();
+							StreamStatsDetailed stats = StreamStatsDetailed.create(forByteBufs());
+							StreamStatsForwarder<ByteBuf> sizeForwarder = StreamStatsForwarder.create(stats);
 
 							SettableStage<Void> ack = SettableStage.create();
-							stream(producer, sizeCounter.getInput())
+							stream(producer, sizeForwarder.getInput())
 									.thenAccept($ -> {
 										messaging.close();
-										if (sizeCounter.getSize() == size - startPosition) {
+										if (stats.getTotalSize() == size - startPosition) {
 											ack.set(null);
 										} else {
 											ack.setException(new IOException("Invalid stream size for '" + fileName + "' starting from " + startPosition +
-													", expected: " + (size - startPosition) + " actual: " + sizeCounter.getSize()));
+													", expected: " + (size - startPosition) + " actual: " + stats.getTotalSize()));
 										}
 									});
 
-							StreamProducerWithResult<ByteBuf, Void> producerWithResult = StreamProducers.withResult(sizeCounter.getOutput(), ack);
+							StreamProducerWithResult<ByteBuf, Void> producerWithResult = StreamProducers.withResult(sizeForwarder.getOutput(), ack);
 							stage.set(producerWithResult);
 						} else if (msg instanceof RemoteFsResponses.Err) {
 							stage.setException(new RemoteFsException(((RemoteFsResponses.Err) msg).msg));

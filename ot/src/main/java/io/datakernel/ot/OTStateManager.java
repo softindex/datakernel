@@ -76,10 +76,12 @@ public final class OTStateManager<K, D> implements EventloopService {
 
 	public CompletionStage<K> checkout() {
 		logger.info("Start checkout");
-		return remote.getHeads().thenComposeAsync(ks -> {
-			logger.info("Start checkout heads: {}", ks);
-			return checkout(ks.iterator().next());
-		}).thenCompose($ -> pull());
+		return remote.getHeads()
+				.thenComposeAsync(ks -> {
+					logger.info("Start checkout heads: {}", ks);
+					return checkout(ks.iterator().next());
+				})
+				.thenCompose($ -> pull());
 	}
 
 	public CompletionStage<K> checkout(K commitId) {
@@ -89,12 +91,13 @@ public final class OTStateManager<K, D> implements EventloopService {
 		pendingCommits.clear();
 		state.init();
 		fetchedDiffs.clear();
-		return algorithms.loadAllChanges(commitId).thenApply(diffs -> {
-			apply(diffs);
-			fetchedRevision = revision = commitId;
-			logger.info("Finish checkout, current revision: {}", revision);
-			return revision;
-		});
+		return algorithms.loadAllChanges(commitId)
+				.thenApply(diffs -> {
+					apply(diffs);
+					fetchedRevision = revision = commitId;
+					logger.info("Finish checkout, current revision: {}", revision);
+					return revision;
+				});
 	}
 
 	private final AsyncCallable<K> fetch = AsyncCallable.singleCallOf(this::doFetch);
@@ -137,7 +140,6 @@ public final class OTStateManager<K, D> implements EventloopService {
 							fetchedRevision, revision);
 					return Stages.of(fetchedRevision);
 				}));
-
 	}
 
 	public CompletionStage<K> pull() {
@@ -178,7 +180,6 @@ public final class OTStateManager<K, D> implements EventloopService {
 					}
 				})
 				.thenApply(o -> true);
-
 	}
 
 	public K rebase() throws OTTransformException {

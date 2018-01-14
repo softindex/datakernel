@@ -88,7 +88,12 @@ public final class ExceptionStats implements JmxStats<ExceptionStats> {
 	}
 
 	@JmxAttribute(optional = true)
-	public String getLastTimestamp() {
+	public long getLastTimestamp() {
+		return lastExceptionTimestamp;
+	}
+
+	@JmxAttribute(optional = true)
+	public String getLastTime() {
 		return lastExceptionTimestamp != 0 ? TIMESTAMP_FORMAT.format(new Date(lastExceptionTimestamp)) : null;
 	}
 

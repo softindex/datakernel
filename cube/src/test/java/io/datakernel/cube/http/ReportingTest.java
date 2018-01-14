@@ -311,7 +311,7 @@ public class ReportingTest {
 		eventloop.run();
 
 		LogOTState<CubeDiff> cubeDiffLogOTState = LogOTState.create(cube);
-		OTAlgorithms<Integer, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(otSystem, otSourceSql, Integer::compare);
+		OTAlgorithms<Integer, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, otSourceSql, Integer::compare);
 		OTStateManager<Integer, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState);
 
 		LogManager<LogItem> logManager = LogManagerImpl.create(eventloop,

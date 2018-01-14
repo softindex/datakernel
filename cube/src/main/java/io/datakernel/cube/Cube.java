@@ -23,6 +23,7 @@ import io.datakernel.aggregation.measure.Measure;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.async.AsyncCallable;
+import io.datakernel.async.AsyncFunction;
 import io.datakernel.async.Stages;
 import io.datakernel.async.StagesAccumulator;
 import io.datakernel.codegen.*;
@@ -143,6 +144,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 	private CubeClassLoaderCache classLoaderCache;
 
 	// JMX
+	private final AggregationStats aggregationStats = new AggregationStats();
 	private final ValueStats queryTimes = ValueStats.create(SMOOTHING_WINDOW_10_MINUTES);
 	private long queryErrors;
 	private Throwable queryLastError;
@@ -383,7 +385,8 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 				.withSorterItemsInMemory(config.sorterItemsInMemory != 0 ? config.sorterItemsInMemory : aggregationsSorterItemsInMemory)
 				.withSorterBlockSize(config.sorterBlockSize != 0 ? config.sorterBlockSize : aggregationsSorterBlockSize)
 				.withMaxChunksToConsolidate(config.maxChunksToConsolidate != 0 ? config.maxChunksToConsolidate : aggregationsMaxChunksToConsolidate)
-				.withIgnoreChunkReadingExceptions(aggregationsIgnoreChunkReadingExceptions);
+				.withIgnoreChunkReadingExceptions(aggregationsIgnoreChunkReadingExceptions)
+				.withStats(aggregationStats);
 
 		aggregations.put(config.id, new AggregationContainer(aggregation, config.measures, config.predicate));
 		logger.info("Added aggregation {} for id '{}'", aggregation, config.id);
@@ -724,7 +727,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 		return excessive;
 	}
 
-	public CompletionStage<CubeDiff> consolidate(Function<Aggregation, CompletionStage<AggregationDiff>> consolidator) {
+	public CompletionStage<CubeDiff> consolidate(AsyncFunction<Aggregation, AggregationDiff> strategy) {
 		logger.info("Launching consolidation");
 
 		Map<String, AggregationDiff> map = new HashMap<>();
@@ -733,7 +736,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 		aggregations.forEach((aggregationId, aggregationContainer) -> {
 			Aggregation aggregation = aggregationContainer.aggregation;
 
-			runnables.add(() -> consolidator.apply(aggregation).thenAccept(aggregationDiff -> {
+			runnables.add(() -> strategy.apply(aggregation).thenAccept(aggregationDiff -> {
 				if (!aggregationDiff.isEmpty()) {
 					map.put(aggregationId, aggregationDiff);
 				}
@@ -1332,6 +1335,11 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 	@JmxAttribute
 	public Throwable getQueryLastError() {
 		return queryLastError;
+	}
+
+	@JmxAttribute
+	public AggregationStats getAggregationStats() {
+		return aggregationStats;
 	}
 
 	@Override

@@ -37,17 +37,17 @@ public interface AsyncCallable<T> {
 		return () -> biFunction.apply(a, b);
 	}
 
-	static <A, T> AsyncCallable<T> singleCallOf(AsyncCallable<T> cachedCallable) {
+	static <A, T> AsyncCallable<T> singleCallOf(AsyncCallable<T> actualCallable) {
 		return new AsyncCallable<T>() {
 			SettableStage<T> runningStage;
 
 			@Override
 			public CompletionStage<T> call() {
-				if (runningStage == null) {
-					runningStage = SettableStage.create();
-					runningStage.whenComplete((result, throwable) -> runningStage = null);
-				}
-				cachedCallable.call().whenComplete(runningStage::set);
+				if (runningStage != null)
+					return runningStage;
+				runningStage = SettableStage.create();
+				runningStage.whenComplete((result, throwable) -> runningStage = null);
+				actualCallable.call().whenComplete(runningStage::set);
 				return runningStage;
 			}
 		};

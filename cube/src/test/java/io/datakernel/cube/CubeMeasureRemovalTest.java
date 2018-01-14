@@ -144,7 +144,7 @@ public class CubeMeasureRemovalTest {
 				SerializerBuilder.create(classLoader).build(LogItem.class));
 
 		LogOTState<CubeDiff> cubeDiffLogOTState = LogOTState.create(cube);
-		OTAlgorithms<Integer, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(otSystem, otSourceSql, Integer::compare);
+		OTAlgorithms<Integer, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, otSourceSql, Integer::compare);
 		OTStateManager<Integer, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState);
 
 		LogOTProcessor<LogItem, CubeDiff> logOTProcessor = LogOTProcessor.create(eventloop, logManager,
@@ -313,7 +313,7 @@ public class CubeMeasureRemovalTest {
 			eventloop.run();
 
 			LogOTState<CubeDiff> cubeDiffLogOTState = LogOTState.create(cube1);
-			OTAlgorithms<Integer, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(otSystem, otSourceSql1, Integer::compare);
+			OTAlgorithms<Integer, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, otSourceSql1, Integer::compare);
 			OTStateManager<Integer, LogDiff<CubeDiff>> logCubeStateManager1 = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState);
 
 			LogManager<LogItem> logManager = LogManagerImpl.create(eventloop, fileSystem, serializer);
@@ -389,7 +389,7 @@ public class CubeMeasureRemovalTest {
 			eventloop.run();
 
 			LogOTState<CubeDiff> cubeDiffLogOTState = LogOTState.create(cube1);
-			OTAlgorithms<Integer, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(otSystem, otSourceSql1, Integer::compare);
+			OTAlgorithms<Integer, LogDiff<CubeDiff>> algorithms = OTAlgorithms.create(eventloop, otSystem, otSourceSql1, Integer::compare);
 			OTStateManager<Integer, LogDiff<CubeDiff>> logCubeStateManager1 = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState);
 
 			LogManager<LogItem> logManager = LogManagerImpl.create(eventloop, fileSystem, serializer);

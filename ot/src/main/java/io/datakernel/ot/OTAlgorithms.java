@@ -4,7 +4,10 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBean;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.StageStats;
 import io.datakernel.ot.exceptions.OTException;
+import io.datakernel.util.CollectionUtils.$;
 import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +17,7 @@ import java.util.*;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Predicate;
 
+import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static io.datakernel.util.Preconditions.check;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.String.format;
@@ -24,26 +28,35 @@ import static java.util.stream.Collectors.toList;
 
 public final class OTAlgorithms<K, D> implements EventloopJmxMBean {
 	private static final Logger logger = LoggerFactory.getLogger(OTAlgorithms.class);
+	public static final double DEFAULT_SMOOTHING_WINDOW = SMOOTHING_WINDOW_5_MINUTES;
 
+	private final Eventloop eventloop;
 	private final OTRemote<K, D> remote;
 	private final Comparator<K> keyComparator;
 	private final OTSystem<D> otSystem;
 	private final OTMergeAlgorithm<K, D> mergeAlgorithm;
 
-	OTAlgorithms(OTSystem<D> otSystem, OTRemote<K, D> source, Comparator<K> keyComparator) {
+	private final StageStats findParent = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final StageStats findParentRecursive = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final StageStats findCut = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final StageStats findCutRecursive = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+
+	OTAlgorithms(Eventloop eventloop, OTSystem<D> otSystem, OTRemote<K, D> source, Comparator<K> keyComparator) {
+		this.eventloop = eventloop;
 		this.otSystem = otSystem;
 		this.remote = source;
 		this.keyComparator = keyComparator;
 		this.mergeAlgorithm = new OTMergeAlgorithm<>(otSystem, source, keyComparator);
 	}
 
-	public static <K, D> OTAlgorithms<K, D> create(OTSystem<D> otSystem, OTRemote<K, D> source, Comparator<K> keyComparator) {
-		return new OTAlgorithms<>(otSystem, source, keyComparator);
+	public static <K, D> OTAlgorithms<K, D> create(Eventloop eventloop,
+	                                               OTSystem<D> otSystem, OTRemote<K, D> source, Comparator<K> keyComparator) {
+		return new OTAlgorithms<>(eventloop, otSystem, source, keyComparator);
 	}
 
 	@Override
 	public Eventloop getEventloop() {
-		return null;
+		return eventloop;
 	}
 
 	public OTRemote<K, D> getRemote() {
@@ -145,7 +158,8 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBean {
 
 		Predicate<K> loadPredicate = loadPredicate(lastNode);
 
-		return findParent(queue, new HashSet<>(), loadPredicate, matchPredicate, diffAccumulator);
+		return findParent.monitor(
+				findParent(queue, new HashSet<>(), loadPredicate, matchPredicate, diffAccumulator));
 	}
 
 	private <A> CompletionStage<FindResult<K, A>> findParent(PriorityQueue<FindEntry<K, A>> queue,
@@ -177,7 +191,8 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBean {
 						}
 					}
 
-					return findParent(queue, visited, loadPredicate, matchPredicate, diffsAccumulator);
+					return findParentRecursive.monitor(
+							findParent(queue, visited, loadPredicate, matchPredicate, diffsAccumulator));
 				}
 			});
 		}
@@ -214,7 +229,8 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBean {
 	                                       Predicate<Set<OTCommit<K, D>>> matchPredicate) {
 		PriorityQueue<K> queue = new PriorityQueue<>((o1, o2) -> keyComparator.compare(o2, o1));
 		queue.addAll(startNodes);
-		return findCut(queue, new HashMap<>(), matchPredicate);
+		return findCut.monitor(
+				findCut(queue, new HashMap<>(), matchPredicate));
 	}
 
 	private CompletionStage<Set<K>> findCut(PriorityQueue<K> queue, Map<K, OTCommit<K, D>> queueMap,
@@ -241,42 +257,43 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBean {
 						queue.add(parentId);
 					}
 				}
-				return findCut(queue, queueMap, matchPredicate);
+				return findCutRecursive.monitor(
+						findCut(queue, queueMap, matchPredicate));
 			}
 		});
 	}
 
-	public CompletionStage<Optional<K>> findFirstCommonParent(Set<K> parentCandidates) {
+	public CompletionStage<Optional<K>> findFirstCommonParent(Set<K> startCut) {
 		Predicate<Map<K, Set<K>>> matcher = paths -> paths.values().stream()
-				.anyMatch(v -> v.size() == parentCandidates.size());
+				.anyMatch(v -> v.size() == startCut.size());
 
 		Map<K, Set<K>> childrenMap = new HashMap<>();
 		PriorityQueue<K> queue = new PriorityQueue<>((o1, o2) -> keyComparator.compare(o2, o1));
 
-		queue.addAll(parentCandidates);
-		parentCandidates.forEach(node -> childrenMap.put(node, new HashSet<>(singleton(node))));
+		queue.addAll(startCut);
+		startCut.forEach(node -> childrenMap.put(node, new HashSet<>(singleton(node))));
 
-		return findCommonParents(parentCandidates, queue, childrenMap, matcher)
+		return findCommonParents(startCut, queue, childrenMap, matcher)
 				.thenApply(paths -> paths.entrySet().stream()
-						.filter(e -> e.getValue().size() == parentCandidates.size())
+						.filter(e -> e.getValue().size() == startCut.size())
 						.map(Map.Entry::getKey)
 						.findAny());
 	}
 
-	public CompletionStage<Set<K>> findCommonParents(Set<K> parentCandidates) {
+	public CompletionStage<Set<K>> findCommonParents(Set<K> startCut) {
 		Predicate<Map<K, Set<K>>> matcher = paths -> paths.values().stream()
-				.noneMatch(v -> v.size() != parentCandidates.size());
+				.noneMatch(v -> v.size() != startCut.size());
 
 		Map<K, Set<K>> childrenMap = new HashMap<>();
 		PriorityQueue<K> queue = new PriorityQueue<>((o1, o2) -> keyComparator.compare(o2, o1));
 
-		queue.addAll(parentCandidates);
-		parentCandidates.forEach(node -> childrenMap.put(node, new HashSet<>(singleton(node))));
+		queue.addAll(startCut);
+		startCut.forEach(node -> childrenMap.put(node, new HashSet<>(singleton(node))));
 
-		return findCommonParents(parentCandidates, queue, childrenMap, matcher).thenApply(Map::keySet);
+		return findCommonParents(startCut, queue, childrenMap, matcher).thenApply(Map::keySet);
 	}
 
-	private CompletionStage<Map<K, Set<K>>> findCommonParents(Set<K> parentCandidates,
+	private CompletionStage<Map<K, Set<K>>> findCommonParents(Set<K> cut,
 	                                                          PriorityQueue<K> queue,
 	                                                          Map<K, Set<K>> childrenMap,
 	                                                          Predicate<Map<K, Set<K>>> matcher) {
@@ -292,14 +309,14 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBean {
 			logger.debug("Commit: {}, parents: {}", node, parents);
 			for (K parent : parents) {
 				if (!childrenMap.containsKey(parent)) queue.add(parent);
-				Set<K> children = childrenMap.computeIfAbsent(parent, k -> new HashSet<>(nodeChildren.size() + 2));
+				Set<K> children = childrenMap.computeIfAbsent(parent, $::newHashSet);
 
-				if (parentCandidates.contains(parent)) children.add(parent);
-				if (parentCandidates.contains(node)) children.add(node);
+				if (cut.contains(parent)) children.add(parent);
+				if (cut.contains(node)) children.add(node);
 				children.addAll(nodeChildren);
 			}
 
-			return findCommonParents(parentCandidates, queue, childrenMap, matcher);
+			return findCommonParents(cut, queue, childrenMap, matcher);
 		});
 	}
 
@@ -382,4 +399,25 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBean {
 					});
 				});
 	}
+
+	@JmxAttribute
+	public StageStats getFindParent() {
+		return findParent;
+	}
+
+	@JmxAttribute
+	public StageStats getFindParentRecursive() {
+		return findParentRecursive;
+	}
+
+	@JmxAttribute
+	public StageStats getFindCut() {
+		return findCut;
+	}
+
+	@JmxAttribute
+	public StageStats getFindCutRecursive() {
+		return findCutRecursive;
+	}
+
 }

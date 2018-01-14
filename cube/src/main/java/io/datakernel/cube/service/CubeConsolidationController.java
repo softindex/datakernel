@@ -5,6 +5,7 @@ import io.datakernel.aggregation.AggregationChunk;
 import io.datakernel.aggregation.AggregationChunkStorage;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.async.AsyncCallable;
+import io.datakernel.async.AsyncFunction;
 import io.datakernel.async.Stages;
 import io.datakernel.cube.Cube;
 import io.datakernel.cube.ot.CubeDiff;
@@ -19,18 +20,17 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Set;
 import java.util.concurrent.CompletionStage;
-import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static java.util.stream.Collectors.toSet;
 
 public final class CubeConsolidationController implements EventloopJmxMBean {
-	public static final Supplier<Function<Aggregation, CompletionStage<AggregationDiff>>> DEFAULT_STRATEGY = new Supplier<Function<Aggregation, CompletionStage<AggregationDiff>>>() {
+	public static final Supplier<AsyncFunction<Aggregation, AggregationDiff>> DEFAULT_STRATEGY = new Supplier<AsyncFunction<Aggregation, AggregationDiff>>() {
 		private boolean hotSegment = false;
 
 		@Override
-		public Function<Aggregation, CompletionStage<AggregationDiff>> get() {
+		public AsyncFunction<Aggregation, AggregationDiff> get() {
 			return (hotSegment = !hotSegment) ? Aggregation::consolidateHotSegment : Aggregation::consolidateMinKey;
 		}
 	};
@@ -43,7 +43,7 @@ public final class CubeConsolidationController implements EventloopJmxMBean {
 	private final AggregationChunkStorage aggregationChunkStorage;
 	private final Stopwatch sw = Stopwatch.createUnstarted();
 
-	private final Supplier<Function<Aggregation, CompletionStage<AggregationDiff>>> strategy;
+	private final Supplier<AsyncFunction<Aggregation, AggregationDiff>> strategy;
 
 	private final StageStats stageConsolidate = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final StageStats stageConsolidateTask = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
@@ -55,7 +55,7 @@ public final class CubeConsolidationController implements EventloopJmxMBean {
 
 	CubeConsolidationController(Eventloop eventloop, Cube cube, OTStateManager<Integer, LogDiff<CubeDiff>> stateManager,
 	                            AggregationChunkStorage aggregationChunkStorage,
-	                            Supplier<Function<Aggregation, CompletionStage<AggregationDiff>>> strategy) {
+	                            Supplier<AsyncFunction<Aggregation, AggregationDiff>> strategy) {
 		this.eventloop = eventloop;
 		this.cube = cube;
 		this.stateManager = stateManager;
@@ -71,7 +71,7 @@ public final class CubeConsolidationController implements EventloopJmxMBean {
 		return new CubeConsolidationController(eventloop, cube, stateManager, aggregationChunkStorage, DEFAULT_STRATEGY);
 	}
 
-	public CubeConsolidationController withStrategy(Supplier<Function<Aggregation, CompletionStage<AggregationDiff>>> strategy) {
+	public CubeConsolidationController withStrategy(Supplier<AsyncFunction<Aggregation, AggregationDiff>> strategy) {
 		return new CubeConsolidationController(eventloop, cube, stateManager, aggregationChunkStorage, strategy);
 	}
 

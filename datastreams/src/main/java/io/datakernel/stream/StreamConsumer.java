@@ -16,7 +16,12 @@
 
 package io.datakernel.stream;
 
+import io.datakernel.stream.processor.StreamStats;
+import io.datakernel.stream.processor.StreamStatsForwarder;
+
 import java.util.concurrent.CompletionStage;
+
+import static io.datakernel.stream.DataStreams.stream;
 
 /**
  * It represents an object which can asynchronous receive streams of data.
@@ -35,4 +40,12 @@ public interface StreamConsumer<T> {
 	void setProducer(StreamProducer<T> producer);
 
 	CompletionStage<Void> getEndOfStream();
+
+
+	default StreamConsumer<T> withStats(StreamStats stats) {
+		StreamStatsForwarder<T> statsForwarder = StreamStatsForwarder.create(stats);
+		stream(statsForwarder.getOutput(), this);
+		return statsForwarder.getInput();
+	}
+
 }

@@ -139,7 +139,7 @@ public class OTRemoteSqlTest {
 		assertEquals(3, heads.size());
 		assertEquals(set(2, 3, 4), heads);
 
-		OTAlgorithms<Integer, TestOp> otAlgorithms = new OTAlgorithms<>(otSystem, otRemote, keyComparator);
+		OTAlgorithms<Integer, TestOp> otAlgorithms = new OTAlgorithms<>(eventloop, otSystem, otRemote, keyComparator);
 		CompletableFuture<Integer> mergeFuture = otAlgorithms.mergeHeadsAndPush().toCompletableFuture();
 
 		eventloop.run();
@@ -232,7 +232,7 @@ public class OTRemoteSqlTest {
 		eventloop.run();
 		graphFuture.get();
 
-		OTAlgorithms<Integer, TestOp> otAlgorithms = new OTAlgorithms<>(otSystem, otRemote, keyComparator);
+		OTAlgorithms<Integer, TestOp> otAlgorithms = new OTAlgorithms<>(eventloop, otSystem, otRemote, keyComparator);
 		CompletableFuture<Integer> merge = otAlgorithms.mergeHeadsAndPush()
 				.toCompletableFuture();
 
@@ -259,7 +259,7 @@ public class OTRemoteSqlTest {
 		eventloop.run();
 		graphFuture.get();
 
-		OTAlgorithms<Integer, TestOp> otAlgorithms = new OTAlgorithms<>(otSystem, otRemote, keyComparator);
+		OTAlgorithms<Integer, TestOp> otAlgorithms = new OTAlgorithms<>(eventloop, otSystem, otRemote, keyComparator);
 		CompletableFuture<Set<Integer>> rootNodes1Future = otAlgorithms.findCommonParents(set(6, 7))
 				.toCompletableFuture();
 
@@ -286,7 +286,7 @@ public class OTRemoteSqlTest {
 		eventloop.run();
 		graphFuture.get();
 
-		OTAlgorithms<Integer, TestOp> otAlgorithms = new OTAlgorithms<>(otSystem, otRemote, keyComparator);
+		OTAlgorithms<Integer, TestOp> otAlgorithms = new OTAlgorithms<>(eventloop, otSystem, otRemote, keyComparator);
 		CompletableFuture<Set<Integer>> rootNodesFuture = otAlgorithms.findCommonParents(set(4, 5, 6))
 				.toCompletableFuture();
 
@@ -313,7 +313,7 @@ public class OTRemoteSqlTest {
 		graphFuture.get();
 
 		Set<Integer> searchSurface = set(2, 3);
-		OTAlgorithms<Integer, TestOp> otAlgorithms = new OTAlgorithms<>(otSystem, otRemote, keyComparator);
+		OTAlgorithms<Integer, TestOp> otAlgorithms = new OTAlgorithms<>(eventloop, otSystem, otRemote, keyComparator);
 		CompletableFuture<Set<Integer>> rootNodesFuture = otAlgorithms.findCut(set(6, 7),
 				commits -> searchSurface.equals(commits.stream().map(OTCommit::getId).collect(toSet())))
 				.toCompletableFuture();
@@ -338,7 +338,7 @@ public class OTRemoteSqlTest {
 		eventloop.run();
 		graphFuture.get();
 
-		OTAlgorithms<Integer, TestOp> otAlgorithms = new OTAlgorithms<>(otSystem, otRemote, keyComparator);
+		OTAlgorithms<Integer, TestOp> otAlgorithms = new OTAlgorithms<>(eventloop, otSystem, otRemote, keyComparator);
 		CompletableFuture<?> mergeSnapshotFuture = otAlgorithms.loadAllChanges(5)
 				.thenCompose(ds -> otRemote.saveSnapshot(5, ds))
 				.thenCompose($ -> otRemote.cleanup(5))
