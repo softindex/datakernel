@@ -47,9 +47,8 @@ public final class ExceptionStats implements JmxStats<ExceptionStats> {
 			this.exceptionClass = throwable != null ? throwable.getClass() : null;
 			this.throwable = throwable;
 			this.context = context;
+			this.lastExceptionTimestamp = now;
 		}
-
-		this.lastExceptionTimestamp = now;
 	}
 
 	public void recordException(Throwable throwable) {
@@ -77,7 +76,7 @@ public final class ExceptionStats implements JmxStats<ExceptionStats> {
 		}
 	}
 
-	@JmxAttribute
+	@JmxAttribute(optional = true)
 	public int getTotal() {
 		return count;
 	}
@@ -106,12 +105,12 @@ public final class ExceptionStats implements JmxStats<ExceptionStats> {
 		return throwable != null ? throwable.getMessage() : null;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(optional = true)
 	public Object getLastContext() {
 		return context;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(optional = true)
 	public List<String> getLastStackTrace() {
 		if (throwable != null) {
 			return asList(MBeanFormat.formatException(throwable));
@@ -124,7 +123,8 @@ public final class ExceptionStats implements JmxStats<ExceptionStats> {
 	public String getSummary() {
 		if (count == 0) return "";
 
-		StringBuilder summary = new StringBuilder("Total: " + count);
+		StringBuilder summary = new StringBuilder("Count: " + count +
+				" " + MBeanFormat.formatPeriodAgo(lastExceptionTimestamp));
 
 		if (throwable != null) {
 			summary.append("\n\nStack Trace: ");

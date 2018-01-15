@@ -143,7 +143,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	private static final double DEFAULT_SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_1_MINUTE;
 	private double smoothingWindow = DEFAULT_SMOOTHING_WINDOW;
 	private final EventloopStats stats = EventloopStats.create(DEFAULT_SMOOTHING_WINDOW, new ExtraStatsExtractor());
-	private final ConcurrentCallsStats concurrentCallsStats = ConcurrentCallsStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final ExecutorCallsStats executorCallsStats = ExecutorCallsStats.create(DEFAULT_SMOOTHING_WINDOW);
 
 	private boolean monitoring = false;
 
@@ -981,7 +981,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		startConcurrentOperation();
 		// jmx
 		String taskName = callable.getClass().getName();
-		concurrentCallsStats.recordCall(taskName);
+		executorCallsStats.recordCall(taskName);
 		long submissionStart = currentTimeMillis();
 		try {
 			executor.submit(() -> {
@@ -1012,7 +1012,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			});
 		} catch (RejectedExecutionException e) {
 			// jmx
-			concurrentCallsStats.recordRejectedCall(taskName);
+			executorCallsStats.recordRejectedCall(taskName);
 			completeConcurrentOperation();
 			stage.setException(e);
 		}
@@ -1111,11 +1111,11 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 	private void updateConcurrentCallsStatsTimings(String taskName,
 	                                               long submissionStart, long executingStart, long executingFinish) {
-		concurrentCallsStats.recordAwaitingStartDuration(
+		executorCallsStats.recordAwaitingStartDuration(
 				taskName,
 				(int) (executingStart - submissionStart)
 		);
-		concurrentCallsStats.recordCallDuration(
+		executorCallsStats.recordCallDuration(
 				taskName,
 				(int) (executingFinish - executingStart)
 		);
@@ -1140,8 +1140,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	@JmxAttribute
-	public ConcurrentCallsStats getConcurrentCallsStats() {
-		return concurrentCallsStats;
+	public ExecutorCallsStats getExecutorCallsStats() {
+		return executorCallsStats;
 	}
 
 	@JmxAttribute
@@ -1154,7 +1154,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		this.smoothingWindow = smoothingWindow;
 
 		stats.setSmoothingWindow(smoothingWindow);
-		concurrentCallsStats.setSmoothingWindow(smoothingWindow);
+		executorCallsStats.setSmoothingWindow(smoothingWindow);
 	}
 
 	final class ExtraStatsExtractor {

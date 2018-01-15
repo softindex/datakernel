@@ -46,27 +46,12 @@ public class StreamStatsForwarder<T> implements StreamTransformer<T, T> {
 		}
 	}
 
-	private class Output extends AbstractStreamProducer<T> implements StreamDataReceiver<T> {
-		private StreamStats.Receiver<T> statsDataReceiver;
-		private StreamDataReceiver<T> lastDataReceiver;
-
+	private class Output extends AbstractStreamProducer<T> {
 		@SuppressWarnings("unchecked")
 		@Override
 		protected void onProduce(StreamDataReceiver<T> dataReceiver) {
 			stats.onProduce();
-			if (stats instanceof StreamStats.Receiver) {
-				statsDataReceiver = (StreamStats.Receiver<T>) stats;
-				lastDataReceiver = dataReceiver;
-				input.getProducer().produce(this);
-			} else {
-				input.getProducer().produce(dataReceiver);
-			}
-		}
-
-		@Override
-		public void onData(T item) {
-			statsDataReceiver.onData(item);
-			lastDataReceiver.onData(item);
+			input.getProducer().produce(stats.createDataReceiver(dataReceiver));
 		}
 
 		@Override

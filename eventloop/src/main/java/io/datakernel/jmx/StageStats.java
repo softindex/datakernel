@@ -19,7 +19,6 @@ public class StageStats implements EventloopJmxMBean {
 	private int activeStages = 0;
 	private long lastStartTimestamp = 0;
 	private long lastCompleteTimestamp = 0;
-	private long lastExceptionTimestamp = 0;
 	private final ValueStats duration;
 	private final ExceptionStats exceptions = ExceptionStats.create();
 	private final ExceptionStats fatalErrors = ExceptionStats.create();
@@ -108,7 +107,6 @@ public class StageStats implements EventloopJmxMBean {
 
 					if (throwable != null) {
 						exceptions.recordException(throwable);
-						lastExceptionTimestamp = now;
 					}
 				});
 	}
@@ -123,7 +121,7 @@ public class StageStats implements EventloopJmxMBean {
 		return activeStages;
 	}
 
-	@JmxAttribute(reducer = JmxReducerMax.class)
+	@JmxAttribute(reducer = JmxReducerMax.class, optional = true)
 	public long getLastStartTimestamp() {
 		return lastStartTimestamp;
 	}
@@ -133,7 +131,7 @@ public class StageStats implements EventloopJmxMBean {
 		return lastStartTimestamp != 0 ? formatPeriodAgo(lastStartTimestamp) : "";
 	}
 
-	@JmxAttribute(reducer = JmxReducerMax.class)
+	@JmxAttribute(reducer = JmxReducerMax.class, optional = true)
 	public long getLastCompleteTimestamp() {
 		return lastCompleteTimestamp;
 	}
@@ -141,16 +139,6 @@ public class StageStats implements EventloopJmxMBean {
 	@JmxAttribute
 	public String getLastCompleteTime() {
 		return lastCompleteTimestamp != 0 ? formatPeriodAgo(lastCompleteTimestamp) : "";
-	}
-
-	@JmxAttribute(reducer = JmxReducerMax.class)
-	public long getLastExceptionTimestamp() {
-		return lastExceptionTimestamp;
-	}
-
-	@JmxAttribute
-	public String getLastExceptionTime() {
-		return lastExceptionTimestamp != 0 ? formatPeriodAgo(lastExceptionTimestamp) : "";
 	}
 
 	@JmxAttribute(reducer = JmxReducerMax.class)
@@ -168,7 +156,7 @@ public class StageStats implements EventloopJmxMBean {
 		return exceptions;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(optional = true)
 	public ExceptionStats getFatalErrors() {
 		return fatalErrors;
 	}

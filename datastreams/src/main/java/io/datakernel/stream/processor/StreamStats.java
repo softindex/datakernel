@@ -1,9 +1,9 @@
 package io.datakernel.stream.processor;
 
+import io.datakernel.stream.StreamDataReceiver;
+
 public interface StreamStats {
-	interface Receiver<T> {
-		void onData(T item);
-	}
+	<T> StreamDataReceiver<T> createDataReceiver(StreamDataReceiver<T> actualDataReceiver);
 
 	void onStarted();
 

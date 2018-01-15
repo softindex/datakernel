@@ -72,7 +72,7 @@ public class StreamByteChunkerTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		List<ByteBuf> buffers = new ArrayList<>();
-		Random random = new Random(123456);
+		Random random = new Random();
 		int buffersCount = 1000;
 		int totalLen = 0;
 		for (int i = 0; i < buffersCount; i++) {

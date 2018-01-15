@@ -86,6 +86,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 
 	private final StreamStatsBasic writeSerialize = new StreamStatsBasic();
 	private final StreamStatsDetailedEx writeCompress = StreamStatsDetailedEx.create(forByteBufs());
+	private final StreamStatsDetailedEx writeChunker = StreamStatsDetailedEx.create(forByteBufs());
 	private final StreamStatsDetailedEx writeFile = StreamStatsDetailedEx.create(forByteBufs());
 
 	private final Path dir;
@@ -161,12 +162,14 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 		return stageOpenW.monitor(AsyncFile.openAsync(executorService, dir.resolve(id + TEMP_LOG), StreamFileWriter.CREATE_OPTIONS))
 				.thenApply(file -> {
 					StreamBinarySerializer<T> serializer = StreamBinarySerializer.create(bufferSerializer)
-							.withDefaultBufferSize(StreamBinarySerializer.MAX_SIZE_2);
+							.withDefaultBufferSize(bufferSize);
 					StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor();
+					StreamByteChunker chunker = StreamByteChunker.create(bufferSize / 2, bufferSize * 2);
 					StreamFileWriter writer = StreamFileWriter.create(file, true);
 
 					stream(serializer.getOutput(), compressor.getInput().withStats(writeCompress));
-					stream(compressor.getOutput(), writer.withStats(writeFile));
+					stream(compressor.getOutput(), chunker.getInput().withStats(writeChunker));
+					stream(chunker.getOutput(), writer.withStats(writeFile));
 
 					return StreamConsumers.withResult(serializer.getInput().withStats(writeSerialize), writer.getFlushStage());
 				});
@@ -364,6 +367,11 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 	}
 
 	@JmxAttribute
+	public StreamStatsDetailedEx getWriteChunker() {
+		return writeChunker;
+	}
+
+	@JmxAttribute
 	public StreamStatsDetailedEx getWriteFile() {
 		return writeFile;
 	}
@@ -386,6 +394,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 
 		writeSerialize.resetStats();
 		writeCompress.resetStats();
+		writeChunker.resetStats();
 		writeFile.resetStats();
 	}
 }

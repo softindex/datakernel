@@ -1,19 +1,23 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.jmx.*;
+import io.datakernel.jmx.EventStats;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxOperation;
+import io.datakernel.jmx.ValueStats;
+import io.datakernel.stream.StreamDataReceiver;
 
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_1_MINUTE;
 
-public final class StreamStatsDetailedEx extends StreamStatsBasic implements StreamStats.Receiver<Object> {
+public final class StreamStatsDetailedEx extends StreamStatsBasic {
 	public static final double DEFAULT_DETAILED_SMOOTHING_WINDOW = SMOOTHING_WINDOW_1_MINUTE;
 
 	@Nullable
 	private final StreamStatsSizeCounter<Object> sizeCounter;
 
 	private final EventStats count = EventStats.create(DEFAULT_DETAILED_SMOOTHING_WINDOW);
-	private final ValueStats sizeStats = ValueStats.create(DEFAULT_DETAILED_SMOOTHING_WINDOW);
-	private long totalSize;
+	private final ValueStats itemSize = ValueStats.create(DEFAULT_DETAILED_SMOOTHING_WINDOW);
+	private final EventStats totalSize = EventStats.create(DEFAULT_DETAILED_SMOOTHING_WINDOW);
 
 	@SuppressWarnings("unchecked")
 	private StreamStatsDetailedEx(StreamStatsSizeCounter<?> sizeCounter) {
@@ -34,40 +38,57 @@ public final class StreamStatsDetailedEx extends StreamStatsBasic implements Str
 		return (StreamStatsDetailedEx) super.withBasicSmoothingWindow(smoothingWindowSeconds);
 	}
 
+	@Override
+	public <T> StreamDataReceiver<T> createDataReceiver(StreamDataReceiver<T> actualDataReceiver) {
+		return sizeCounter == null ?
+				new StreamDataReceiver<T>() {
+					final EventStats count = StreamStatsDetailedEx.this.count;
+
+					@Override
+					public void onData(T item) {
+						count.recordEvent();
+						actualDataReceiver.onData(item);
+					}
+				} :
+				new StreamDataReceiver<T>() {
+					final EventStats count = StreamStatsDetailedEx.this.count;
+					final ValueStats itemSize = StreamStatsDetailedEx.this.itemSize;
+
+					@Override
+					public void onData(T item) {
+						count.recordEvent();
+						int size = sizeCounter.size(item);
+						itemSize.recordValue(size);
+						totalSize.recordEvents(size);
+						actualDataReceiver.onData(item);
+					}
+				};
+	}
+
 	public StreamStatsDetailedEx withDetailedSmoothingWindow(double smoothingWindowSeconds) {
 		count.setSmoothingWindow(smoothingWindowSeconds);
-		sizeStats.setSmoothingWindow(smoothingWindowSeconds);
+		itemSize.setSmoothingWindow(smoothingWindowSeconds);
 		return this;
 	}
 
 	public StreamStatsDetailedEx withSizeHistogram(int[] levels) {
-		sizeStats.setHistogramLevels(levels);
+		itemSize.setHistogramLevels(levels);
 		return this;
 	}
 
-	@Override
-	public void onData(Object item) {
-		count.recordEvent();
-		if (sizeCounter != null) {
-			int size = sizeCounter.size(item);
-			totalSize += size;
-			sizeStats.recordValue(size);
-		}
-	}
-
-	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
+	@JmxAttribute
 	public EventStats getCount() {
 		return count;
 	}
 
-	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
-	public long getTotalSize() {
-		return totalSize;
+	@JmxAttribute
+	public ValueStats getItemSize() {
+		return itemSize;
 	}
 
 	@JmxAttribute
-	public ValueStats getSizeStats() {
-		return sizeStats;
+	public EventStats getTotalSize() {
+		return totalSize;
 	}
 
 	@Override
@@ -75,7 +96,7 @@ public final class StreamStatsDetailedEx extends StreamStatsBasic implements Str
 	public void resetStats() {
 		super.resetStats();
 		count.resetStats();
-		totalSize = 0;
-		sizeStats.resetStats();
+		itemSize.resetStats();
+		totalSize.resetStats();
 	}
 }

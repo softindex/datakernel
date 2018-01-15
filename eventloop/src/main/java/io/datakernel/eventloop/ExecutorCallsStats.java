@@ -23,7 +23,7 @@ import io.datakernel.jmx.ValueStats;
 import java.util.HashMap;
 import java.util.Map;
 
-public final class ConcurrentCallsStats {
+public final class ExecutorCallsStats {
 	private final EventStats totalCalls;
 	private final EventStats rejectedCalls;
 	private final ValueStats executionDuration;
@@ -34,7 +34,7 @@ public final class ConcurrentCallsStats {
 	private final Map<String, DistributedStats> taskNameToStats = new HashMap<>();
 
 	// region builders
-	private ConcurrentCallsStats(double smoothingWindow) {
+	private ExecutorCallsStats(double smoothingWindow) {
 		this.smoothingWindow = smoothingWindow;
 
 		totalCalls = EventStats.create(smoothingWindow);
@@ -43,8 +43,8 @@ public final class ConcurrentCallsStats {
 		awaitingStartDuration = ValueStats.create(smoothingWindow);
 	}
 
-	public static ConcurrentCallsStats create(double smoothingWindow) {
-		return new ConcurrentCallsStats(smoothingWindow);
+	public static ExecutorCallsStats create(double smoothingWindow) {
+		return new ExecutorCallsStats(smoothingWindow);
 	}
 	// region builders
 

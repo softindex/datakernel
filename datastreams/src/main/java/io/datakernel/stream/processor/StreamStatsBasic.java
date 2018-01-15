@@ -1,6 +1,7 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.jmx.*;
+import io.datakernel.stream.StreamDataReceiver;
 
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 
@@ -19,6 +20,11 @@ public class StreamStatsBasic implements StreamStats {
 		suspend.setSmoothingWindow(smoothingWindowSeconds);
 		endOfStream.setSmoothingWindow(smoothingWindowSeconds);
 		return this;
+	}
+
+	@Override
+	public <T> StreamDataReceiver<T> createDataReceiver(StreamDataReceiver<T> actualDataReceiver) {
+		return actualDataReceiver;
 	}
 
 	@Override

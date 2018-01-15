@@ -46,7 +46,7 @@ public final class CubeConsolidationController implements EventloopJmxMBean {
 	private final Supplier<AsyncFunction<Aggregation, AggregationDiff>> strategy;
 
 	private final StageStats stageConsolidate = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats stageConsolidateTask = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final StageStats stageConsolidateImpl = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 
 	private final ValueStats removedChunks = ValueStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final ValueStats removedChunksRecords = ValueStats.create(DEFAULT_SMOOTHING_WINDOW);
@@ -87,7 +87,7 @@ public final class CubeConsolidationController implements EventloopJmxMBean {
 				.thenCompose($ -> stateManager.getAlgorithms().mergeHeadsAndPush())
 				.thenCompose(mergeId -> stateManager.pull(mergeId))
 				.thenCompose($ -> stateManager.pull())
-				.thenCompose(stageConsolidateTask.monitor($ -> cube.consolidate(strategy.get())))
+				.thenCompose(stageConsolidateImpl.monitor($ -> cube.consolidate(strategy.get())))
 				.whenComplete(Stages.onResult(this::cubeDiffJmx))
 				.whenComplete(this::logCubeDiff)
 				.thenCompose(this::tryPushConsolidation)
@@ -175,8 +175,8 @@ public final class CubeConsolidationController implements EventloopJmxMBean {
 	}
 
 	@JmxAttribute
-	public StageStats getStageConsolidateTask() {
-		return stageConsolidateTask;
+	public StageStats getStageConsolidateImpl() {
+		return stageConsolidateImpl;
 	}
 
 	@JmxOperation
@@ -186,7 +186,12 @@ public final class CubeConsolidationController implements EventloopJmxMBean {
 		addedChunks.resetStats();
 		addedChunksRecords.resetStats();
 		stageConsolidate.resetStats();
-		stageConsolidateTask.resetStats();
+		stageConsolidateImpl.resetStats();
+	}
+
+	@JmxOperation
+	public void consolidateNow() {
+		consolidate();
 	}
 
 	@Override

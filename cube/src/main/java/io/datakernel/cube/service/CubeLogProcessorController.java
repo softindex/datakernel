@@ -46,7 +46,7 @@ public class CubeLogProcessorController implements EventloopJmxMBean {
 
 	private final Stopwatch sw = Stopwatch.createUnstarted();
 	private StageStats stageProcessLogs = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private StageStats stageProcessLogsTask = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private StageStats stageProcessLogsImpl = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private ValueStats removedChunks = ValueStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private ValueStats removedChunksRecords = ValueStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private ValueStats addedChunks = ValueStats.create(DEFAULT_SMOOTHING_WINDOW);
@@ -108,7 +108,7 @@ public class CubeLogProcessorController implements EventloopJmxMBean {
 							.map(logProcessor -> AsyncCallable.of(logProcessor::processLog))
 							.collect(toList());
 
-					return stageProcessLogsTask.monitor(
+					return stageProcessLogsImpl.monitor(
 							parallelRunner ?
 									Stages.collect(tasks.stream().map(AsyncCallable::call)) :
 									Stages.collectSequence(tasks))
@@ -200,8 +200,13 @@ public class CubeLogProcessorController implements EventloopJmxMBean {
 	}
 
 	@JmxAttribute
-	public StageStats getStageProcessLogsTask() {
-		return stageProcessLogsTask;
+	public StageStats getStageProcessLogsImpl() {
+		return stageProcessLogsImpl;
+	}
+
+	@JmxOperation
+	public void processLogsNow() {
+		processLogs();
 	}
 
 	@JmxOperation
@@ -211,6 +216,6 @@ public class CubeLogProcessorController implements EventloopJmxMBean {
 		addedChunks.resetStats();
 		addedChunksRecords.resetStats();
 		stageProcessLogs.resetStats();
-		stageProcessLogsTask.resetStats();
+		stageProcessLogsImpl.resetStats();
 	}
 }

@@ -4,8 +4,9 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.JmxReducers;
+import io.datakernel.stream.StreamDataReceiver;
 
-public final class StreamStatsDetailed extends StreamStatsBasic implements StreamStats.Receiver<Object> {
+public final class StreamStatsDetailed extends StreamStatsBasic {
 	@Nullable
 	private final StreamStatsSizeCounter<Object> sizeCounter;
 
@@ -32,12 +33,18 @@ public final class StreamStatsDetailed extends StreamStatsBasic implements Strea
 	}
 
 	@Override
-	public void onData(Object item) {
-		count++;
-		if (sizeCounter != null) {
-			int size = sizeCounter.size(item);
-			totalSize += size;
-		}
+	public <T> StreamDataReceiver<T> createDataReceiver(StreamDataReceiver<T> actualDataReceiver) {
+		return sizeCounter == null ?
+				item -> {
+					count++;
+					actualDataReceiver.onData(item);
+				} :
+				item -> {
+					count++;
+					int size = sizeCounter.size(item);
+					totalSize += size;
+					actualDataReceiver.onData(item);
+				};
 	}
 
 	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
