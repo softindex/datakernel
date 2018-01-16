@@ -42,9 +42,9 @@ public class StreamConsumerDecoratorTest {
 		StreamConsumerDecorator<Integer> consumerDecorator = new StreamConsumerDecorator<Integer>() {};
 		consumerDecorator.setActualConsumer(consumer);
 
-		StreamProducer<Integer> producer = StreamProducers.concat(
-				StreamProducers.of(1, 2, 3),
-				StreamProducers.closingWithError(new Exception("Test Exception")));
+		StreamProducer<Integer> producer = StreamProducer.concat(
+				StreamProducer.of(1, 2, 3),
+				StreamProducer.closingWithError(new Exception("Test Exception")));
 
 		stream(producer, consumerDecorator);
 		eventloop.run();
@@ -62,7 +62,7 @@ public class StreamConsumerDecoratorTest {
 		CompletableFuture<List<Integer>> listFuture = consumer.getResult().toCompletableFuture();
 		StreamConsumerDecorator<Integer> decorator = new StreamConsumerDecorator<Integer>() {};
 		decorator.setActualConsumer(consumer);
-		StreamProducer<Integer> producer = StreamProducers.of(1, 2, 3, 4, 5);
+		StreamProducer<Integer> producer = StreamProducer.of(1, 2, 3, 4, 5);
 
 		stream(producer, decorator);
 

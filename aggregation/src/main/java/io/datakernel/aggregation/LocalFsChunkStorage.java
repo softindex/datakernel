@@ -27,9 +27,7 @@ import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.StageStats;
 import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducerWithResult;
-import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import io.datakernel.stream.processor.*;
@@ -146,11 +144,10 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 							AggregationUtils.createBufferSerializer(aggregation, recordClass,
 									aggregation.getKeys(), fields, classLoader));
 
-					stream(fileReader.withStats(readFile), decompressor.getInput());
-					stream(decompressor.getOutput().withStats(readDecompress), deserializer.getInput());
+					stream(fileReader.with(readFile::wrap), decompressor.getInput());
+					stream(decompressor.getOutput().with(readDecompress::wrap), deserializer.getInput());
 
-					return StreamProducers.withEndOfStreamAsResult(
-							deserializer.getOutput().withStats(readDeserialize));
+					return deserializer.getOutput().with(readDeserialize::wrap).withEndOfStreamAsResult();
 				});
 	}
 
@@ -168,11 +165,11 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 					StreamByteChunker chunker = StreamByteChunker.create(bufferSize / 2, bufferSize * 2);
 					StreamFileWriter writer = StreamFileWriter.create(file, true);
 
-					stream(serializer.getOutput(), compressor.getInput().withStats(writeCompress));
-					stream(compressor.getOutput(), chunker.getInput().withStats(writeChunker));
-					stream(chunker.getOutput(), writer.withStats(writeFile));
+					stream(serializer.getOutput(), compressor.getInput().with(writeCompress::wrap));
+					stream(compressor.getOutput(), chunker.getInput().with(writeChunker::wrap));
+					stream(chunker.getOutput(), writer.with(writeFile::wrap));
 
-					return StreamConsumers.withResult(serializer.getInput().withStats(writeSerialize), writer.getFlushStage());
+					return serializer.getInput().with(writeSerialize::wrap).withResult(writer.getFlushStage());
 				});
 	}
 

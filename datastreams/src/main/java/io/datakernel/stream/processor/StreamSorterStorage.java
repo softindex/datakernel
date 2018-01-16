@@ -17,9 +17,7 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducerWithResult;
-import io.datakernel.stream.StreamProducers;
 
 import java.util.List;
 import java.util.concurrent.CompletionStage;
@@ -40,7 +38,7 @@ public interface StreamSorterStorage<T> {
 	CompletionStage<StreamConsumerWithResult<T, Integer>> write();
 
 	default StreamConsumerWithResult<T, Integer> writeStream() {
-		return StreamConsumers.ofStageWithResult(write());
+		return StreamConsumerWithResult.ofStage(write());
 	}
 
 	/**
@@ -52,7 +50,7 @@ public interface StreamSorterStorage<T> {
 	CompletionStage<StreamProducerWithResult<T, Void>> read(int partition);
 
 	default StreamProducerWithResult<T, Void> readStream(int partition) {
-		return StreamProducers.ofStageWithResult(read(partition));
+		return StreamProducerWithResult.ofStage(read(partition));
 	}
 
 	/**

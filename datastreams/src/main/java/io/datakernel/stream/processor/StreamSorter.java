@@ -69,17 +69,17 @@ public final class StreamSorter<K, T> implements HasInput<T>, HasOutput<T> {
 		CompletionStage<StreamProducer<T>> outputStreamStage = this.temporaryStreams.get()
 				.thenApply(streamIds -> {
 					input.list.sort(itemComparator);
-					StreamProducer<T> listProducer = StreamProducers.ofIterable(input.list);
+					StreamProducer<T> listProducer = StreamProducer.ofIterable(input.list);
 					if (streamIds.isEmpty()) {
 						return listProducer;
 					} else {
 						StreamMerger<K, T> streamMerger = StreamMerger.create(keyFunction, keyComparator, deduplicate);
 						bind(listProducer, streamMerger.newInput());
-						streamIds.forEach(streamId -> bind(StreamProducers.ofStageWithResult(storage.read(streamId)), streamMerger.newInput()));
+						streamIds.forEach(streamId -> bind(StreamProducerWithResult.ofStage(storage.read(streamId)), streamMerger.newInput()));
 						return streamMerger.getOutput();
 					}
 				});
-		this.output = StreamProducers.ofStage(outputStreamStage);
+		this.output = StreamProducer.ofStage(outputStreamStage);
 	}
 
 	/**
@@ -120,7 +120,7 @@ public final class StreamSorter<K, T> implements HasInput<T>, HasOutput<T> {
 		private CompletionStage<Integer> writeToTemporaryStorage(List<T> sortedList) {
 			return temporaryStreams.addStage(
 					storage.write()
-							.thenCompose(consumer -> stream(StreamProducers.ofIterable(sortedList), consumer)),
+							.thenCompose(consumer -> stream(StreamProducer.ofIterable(sortedList), consumer)),
 					List::add);
 		}
 

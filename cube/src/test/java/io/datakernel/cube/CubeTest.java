@@ -29,7 +29,6 @@ import io.datakernel.remotefs.RemoteFsServer;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -101,13 +100,13 @@ public class CubeTest {
 		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
-		StreamProducer<DataItem1> producer1 = StreamProducers.of(
+		StreamProducer<DataItem1> producer1 = StreamProducer.of(
 				new DataItem1(1, 2, 10, 20),
 				new DataItem1(1, 3, 10, 20));
 		StreamConsumerWithResult<DataItem1, CubeDiff> consumer1 = cube.consume(DataItem1.class);
 		stream(producer1, consumer1);
 		CompletableFuture<CubeDiff> future1 = consumer1.getResult().toCompletableFuture();
-		StreamProducer<DataItem2> producer2 = StreamProducers.ofIterable(
+		StreamProducer<DataItem2> producer2 = StreamProducer.ofIterable(
 				asList(new DataItem2(1, 3, 10, 20),
 						new DataItem2(1, 4, 10, 20)));
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer2 = cube.consume(DataItem2.class);
@@ -162,7 +161,7 @@ public class CubeTest {
 
 		List<CompletionStage<Void>> tasks = new ArrayList<>();
 		{
-			StreamProducer<DataItem1> producer = StreamProducers.of(
+			StreamProducer<DataItem1> producer = StreamProducer.of(
 					new DataItem1(1, 2, 10, 20),
 					new DataItem1(1, 3, 10, 20));
 			StreamConsumerWithResult<DataItem1, CubeDiff> consumer = cube.consume(DataItem1.class);
@@ -173,7 +172,7 @@ public class CubeTest {
 					.thenAccept(cube::apply));
 		}
 		{
-			StreamProducer<DataItem2> producer = StreamProducers.of(
+			StreamProducer<DataItem2> producer = StreamProducer.of(
 					new DataItem2(1, 3, 10, 20),
 					new DataItem2(1, 4, 10, 20));
 			StreamConsumerWithResult<DataItem2, CubeDiff> consumer = cube.consume(DataItem2.class);
@@ -213,7 +212,7 @@ public class CubeTest {
 		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
-		StreamProducer<DataItem1> producer1 = StreamProducers.of(
+		StreamProducer<DataItem1> producer1 = StreamProducer.of(
 				new DataItem1(1, 2, 30, 25),
 				new DataItem1(1, 3, 40, 10),
 				new DataItem1(1, 4, 23, 48),
@@ -223,7 +222,7 @@ public class CubeTest {
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
-		StreamProducer<DataItem2> producer2 = StreamProducers.of(
+		StreamProducer<DataItem2> producer2 = StreamProducer.of(
 				new DataItem2(1, 3, 15, 5),
 				new DataItem2(1, 4, 55, 20),
 				new DataItem2(1, 2, 12, 42),
@@ -259,7 +258,7 @@ public class CubeTest {
 		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
-		StreamProducer<DataItem1> producer1 = StreamProducers.of(
+		StreamProducer<DataItem1> producer1 = StreamProducer.of(
 				new DataItem1(1, 3, 30, 25),
 				new DataItem1(1, 4, 40, 10),
 				new DataItem1(1, 5, 23, 48),
@@ -269,7 +268,7 @@ public class CubeTest {
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
-		StreamProducer<DataItem2> producer2 = StreamProducers.of(
+		StreamProducer<DataItem2> producer2 = StreamProducer.of(
 				new DataItem2(1, 7, 15, 5),
 				new DataItem2(1, 8, 55, 20),
 				new DataItem2(1, 9, 12, 42),
@@ -310,7 +309,7 @@ public class CubeTest {
 		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
-		StreamProducer<DataItem1> producer1 = StreamProducers.of(
+		StreamProducer<DataItem1> producer1 = StreamProducer.of(
 				new DataItem1(14, 1, 30, 25),
 				new DataItem1(13, 3, 40, 10),
 				new DataItem1(9, 4, 23, 48),
@@ -324,7 +323,7 @@ public class CubeTest {
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
-		StreamProducer<DataItem2> producer2 = StreamProducers.of(
+		StreamProducer<DataItem2> producer2 = StreamProducer.of(
 				new DataItem2(9, 3, 15, 5),
 				new DataItem2(11, 4, 55, 20),
 				new DataItem2(17, 2, 12, 42),
@@ -365,7 +364,7 @@ public class CubeTest {
 		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 		Cube cube = newSophisticatedCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
-		StreamProducer<DataItem3> producer3 = StreamProducers.of(
+		StreamProducer<DataItem3> producer3 = StreamProducer.of(
 				new DataItem3(14, 1, 42, 25, 53, 30, 25),
 				new DataItem3(13, 3, 49, 13, 50, 40, 10),
 				new DataItem3(9, 4, 59, 17, 79, 23, 48),
@@ -379,7 +378,7 @@ public class CubeTest {
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
-		StreamProducer<DataItem4> producer4 = StreamProducers.of(
+		StreamProducer<DataItem4> producer4 = StreamProducer.of(
 				new DataItem4(9, 3, 41, 11, 65, 15, 5),
 				new DataItem4(11, 4, 38, 10, 68, 55, 20),
 				new DataItem4(17, 2, 40, 15, 52, 12, 42),
@@ -417,7 +416,7 @@ public class CubeTest {
 		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
-		StreamProducer<DataItem1> producer1 = StreamProducers.of(
+		StreamProducer<DataItem1> producer1 = StreamProducer.of(
 				new DataItem1(1, 2, 10, 20),
 				new DataItem1(1, 3, 10, 20),
 				new DataItem1(1, 2, 15, 25),
@@ -429,7 +428,7 @@ public class CubeTest {
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
-		StreamProducer<DataItem2> producer2 = StreamProducers.of(
+		StreamProducer<DataItem2> producer2 = StreamProducer.of(
 				new DataItem2(1, 3, 20, 10),
 				new DataItem2(1, 4, 10, 20),
 				new DataItem2(1, 1, 80, 75));
@@ -467,7 +466,7 @@ public class CubeTest {
 		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
-		StreamProducer<DataItem1> producer1 = StreamProducers.of(
+		StreamProducer<DataItem1> producer1 = StreamProducer.of(
 				new DataItem1(1, 2, 10, 20),
 				new DataItem1(1, 3, 10, 20));
 		StreamConsumerWithResult<DataItem1, CubeDiff> consumer1 = cube.consume(DataItem1.class);
@@ -475,7 +474,7 @@ public class CubeTest {
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
-		StreamProducer<DataItem2> producer2 = StreamProducers.of(
+		StreamProducer<DataItem2> producer2 = StreamProducer.of(
 				new DataItem2(1, 3, 10, 20),
 				new DataItem2(1, 4, 10, 20));
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer2 = cube.consume(DataItem2.class);
@@ -483,7 +482,7 @@ public class CubeTest {
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
-		StreamProducer<DataItem2> producer3 = StreamProducers.of(
+		StreamProducer<DataItem2> producer3 = StreamProducer.of(
 				new DataItem2(1, 2, 10, 20),
 				new DataItem2(1, 4, 10, 20));
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer3 = cube.consume(DataItem2.class);
@@ -491,7 +490,7 @@ public class CubeTest {
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
-		StreamProducer<DataItem2> producer4 = StreamProducers.of(
+		StreamProducer<DataItem2> producer4 = StreamProducer.of(
 				new DataItem2(1, 4, 10, 20),
 				new DataItem2(1, 5, 100, 200));
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer4 = cube.consume(DataItem2.class);
@@ -523,7 +522,7 @@ public class CubeTest {
 		AggregationChunkStorage chunkStorage = LocalFsChunkStorage.create(eventloop, newCachedThreadPool(), new IdGeneratorStub(), temporaryFolder.newFolder().toPath());
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
-		StreamProducer<DataItem1> producer1 = StreamProducers.of(
+		StreamProducer<DataItem1> producer1 = StreamProducer.of(
 				new DataItem1(1, 2, 10, 20),
 				new DataItem1(1, 3, 10, 20));
 		StreamConsumerWithResult<DataItem1, CubeDiff> consumer1 = cube.consume(DataItem1.class);
@@ -531,7 +530,7 @@ public class CubeTest {
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
-		StreamProducer<DataItem2> producer2 = StreamProducers.of(
+		StreamProducer<DataItem2> producer2 = StreamProducer.of(
 				new DataItem2(1, 3, 10, 20),
 				new DataItem2(1, 4, 10, 20));
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer2 = cube.consume(DataItem2.class);
@@ -539,7 +538,7 @@ public class CubeTest {
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
-		StreamProducer<DataItem2> producer3 = StreamProducers.of(
+		StreamProducer<DataItem2> producer3 = StreamProducer.of(
 				new DataItem2(1, 2, 10, 20),
 				new DataItem2(1, 4, 10, 20));
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer3 = cube.consume(DataItem2.class);
@@ -547,7 +546,7 @@ public class CubeTest {
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
-		StreamProducer<DataItem2> producer4 = StreamProducers.of(
+		StreamProducer<DataItem2> producer4 = StreamProducer.of(
 				new DataItem2(1, 4, 10, 20),
 				new DataItem2(1, 5, 100, 200));
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer4 = cube.consume(DataItem2.class);

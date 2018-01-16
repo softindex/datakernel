@@ -104,7 +104,7 @@ public class FsIntegrationTest {
 		server.listen();
 		List<CompletionStage<Void>> tasks = new ArrayList<>();
 		for (int i = 0; i < files; i++) {
-			StreamProducer<ByteBuf> producer = StreamProducers.of(ByteBuf.wrapForReading(CONTENT));
+			StreamProducer<ByteBuf> producer = StreamProducer.of(ByteBuf.wrapForReading(CONTENT));
 			StreamConsumerWithResult<ByteBuf, Void> consumer = client.uploadStream("file" + i);
 			stream(producer, consumer);
 			tasks.add(consumer.getResult());
@@ -171,14 +171,14 @@ public class FsIntegrationTest {
 
 		server.listen();
 		StreamProducer<ByteBuf> producer =
-				StreamProducers.concat(
-						StreamProducers.of(
+				StreamProducer.concat(
+						StreamProducer.of(
 								ByteBufStrings.wrapUtf8("Test1"),
 								ByteBufStrings.wrapUtf8(" Test2"),
 								ByteBufStrings.wrapUtf8(" Test3")),
-						StreamProducers.of(ByteBuf.wrapForReading(BIG_FILE)),
-						StreamProducers.closingWithError(new SimpleException("Test exception")),
-						StreamProducers.of(ByteBufStrings.wrapUtf8("Test4")));
+						StreamProducer.of(ByteBuf.wrapForReading(BIG_FILE)),
+						StreamProducer.closingWithError(new SimpleException("Test exception")),
+						StreamProducer.of(ByteBufStrings.wrapUtf8("Test4")));
 
 		StreamConsumerWithResult<ByteBuf, Void> consumer = client.uploadStream(resultFile);
 		stream(producer, consumer);
@@ -268,7 +268,7 @@ public class FsIntegrationTest {
 
 		server.listen();
 		StreamProducerWithResult<ByteBuf, Void> producer = client.downloadStream(file, 0);
-		stream(producer, StreamConsumers.idle())
+		stream(producer, StreamConsumer.idle())
 				.whenComplete(($, throwable) -> {
 					if (throwable != null) expected.add(throwable);
 					server.close();
@@ -403,7 +403,7 @@ public class FsIntegrationTest {
 		RemoteFsClient client = createClient(eventloop);
 
 		server.listen();
-		StreamProducer<ByteBuf> producer = StreamProducers.of(ByteBuf.wrapForReading(bytes));
+		StreamProducer<ByteBuf> producer = StreamProducer.of(ByteBuf.wrapForReading(bytes));
 
 		StreamConsumerWithResult<ByteBuf, Void> consumer = client.uploadStream(resultFile);
 		stream(producer, consumer);

@@ -16,7 +16,8 @@
 
 package io.datakernel.logfs;
 
-import io.datakernel.stream.*;
+import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.stream.StreamProducerWithResult;
 
 import java.util.concurrent.CompletionStage;
 
@@ -33,7 +34,7 @@ public interface LogManager<T> {
 	CompletionStage<StreamConsumerWithResult<T, Void>> consumer(String logPartition);
 
 	default StreamConsumerWithResult<T, Void> consumerStream(String logPartition) {
-		return StreamConsumers.ofStageWithResult(consumer(logPartition));
+		return StreamConsumerWithResult.ofStage(consumer(logPartition));
 	}
 
 	/**
@@ -51,7 +52,7 @@ public interface LogManager<T> {
 	default StreamProducerWithResult<T, LogPosition> producerStream(String logPartition,
 	                                                                LogFile startLogFile, long startPosition,
 	                                                                LogFile endLogFile) {
-		return StreamProducers.ofStageWithResult(producer(logPartition, startLogFile, startPosition, endLogFile));
+		return StreamProducerWithResult.ofStage(producer(logPartition, startLogFile, startPosition, endLogFile));
 	}
 
 }

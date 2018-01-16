@@ -20,7 +20,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -28,7 +27,7 @@ import java.util.List;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.DataStreams.stream;
-import static io.datakernel.stream.StreamProducers.concat;
+import static io.datakernel.stream.StreamProducer.concat;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.TestUtils.assertStatus;
@@ -43,7 +42,7 @@ public class StreamFunctionTest {
 
 		StreamFunction<Integer, Integer> streamFunction = StreamFunction.create(input -> input * input);
 
-		StreamProducer<Integer> source1 = StreamProducers.of(1, 2, 3);
+		StreamProducer<Integer> source1 = StreamProducer.of(1, 2, 3);
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending();
 
 		stream(source1, streamFunction.getInput());
@@ -65,7 +64,7 @@ public class StreamFunctionTest {
 		StreamFunction<Integer, Integer> streamFunction = StreamFunction.create(input -> input * input);
 
 		List<Integer> list = new ArrayList<>();
-		StreamProducer<Integer> source1 = StreamProducers.of(1, 2, 3);
+		StreamProducer<Integer> source1 = StreamProducer.of(1, 2, 3);
 		StreamConsumerToList<Integer> consumer = new StreamConsumerToList<Integer>(list) {
 			@Override
 			public void onData(Integer item) {
@@ -98,9 +97,9 @@ public class StreamFunctionTest {
 		StreamFunction<Integer, Integer> streamFunction = StreamFunction.create(input -> input * input);
 
 		StreamProducer<Integer> source1 = concat(
-				StreamProducers.of(1, 2, 3),
-				StreamProducers.of(4, 5, 6),
-				StreamProducers.closingWithError(new ExpectedException("Test Exception")));
+				StreamProducer.of(1, 2, 3),
+				StreamProducer.of(4, 5, 6),
+				StreamProducer.closingWithError(new ExpectedException("Test Exception")));
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
@@ -121,7 +120,7 @@ public class StreamFunctionTest {
 
 		StreamFunction<Integer, Integer> streamFunction = StreamFunction.create(input -> input * input);
 
-		StreamProducer<Integer> source1 = StreamProducers.of(1, 2, 3);
+		StreamProducer<Integer> source1 = StreamProducer.of(1, 2, 3);
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending();
 
 		stream(source1, streamFunction.getInput());

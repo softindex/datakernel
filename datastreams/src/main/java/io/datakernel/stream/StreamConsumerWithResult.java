@@ -16,8 +16,37 @@
 
 package io.datakernel.stream;
 
+import io.datakernel.async.SettableStage;
+
+import java.util.List;
 import java.util.concurrent.CompletionStage;
 
 public interface StreamConsumerWithResult<T, X> extends StreamConsumer<T> {
 	CompletionStage<X> getResult();
+
+	static <T, X> StreamConsumerWithResult<T, X> ofStage(CompletionStage<StreamConsumerWithResult<T, X>> stage) {
+		SettableStage<X> result = SettableStage.create();
+		return new StreamConsumerDecorator<T>() {
+			{
+				stage.whenComplete((consumer1, throwable) -> {
+					if (throwable == null) {
+						setActualConsumer(consumer1);
+						consumer1.getResult().whenComplete(result::set);
+					} else {
+						setActualConsumer(StreamConsumer.closingWithError(throwable));
+						result.setException(throwable);
+					}
+				});
+			}
+		}.withResult(result);
+	}
+
+	/**
+	 * Returns {@link StreamConsumerToList} which saves received items in empty list
+	 *
+	 * @param <T> type of item
+	 */
+	static <T> StreamConsumerWithResult<T, List<T>> toList() {
+		return new StreamConsumerToList<>();
+	}
 }

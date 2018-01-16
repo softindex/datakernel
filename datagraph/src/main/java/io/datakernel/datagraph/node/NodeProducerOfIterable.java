@@ -19,7 +19,6 @@ package io.datakernel.datagraph.node;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.graph.TaskContext;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
 
 import java.util.Collection;
 import java.util.Iterator;
@@ -50,9 +49,9 @@ public final class NodeProducerOfIterable<T> implements Node {
 		StreamProducer<T> producer;
 		Object object = taskContext.environment().get(iterableId);
 		if (object instanceof Iterator) {
-			producer = StreamProducers.ofIterator(((Iterable<T>) object).iterator());
+			producer = StreamProducer.ofIterator((Iterator<T>) object);
 		} else if (object instanceof Iterable) {
-			producer = StreamProducers.ofIterator(((Iterable<T>) object).iterator());
+			producer = StreamProducer.ofIterable(((Iterable<T>) object));
 		} else
 			throw new IllegalArgumentException();
 		taskContext.export(output, producer);

@@ -26,7 +26,6 @@ import io.datakernel.logfs.LogPosition;
 import io.datakernel.logfs.ot.LogDiff.LogPositionDiff;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducerWithResult;
-import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.processor.StreamUnion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -117,7 +116,7 @@ public final class LogOTProcessor<T, D> implements EventloopService {
 				}
 			});
 		}
-		return StreamProducers.withResult(streamUnion.getOutput(), result.get());
+		return streamUnion.getOutput().withResult(result.get());
 	}
 
 	private String logName(String partition) {

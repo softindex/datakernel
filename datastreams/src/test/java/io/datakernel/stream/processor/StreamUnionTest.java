@@ -44,13 +44,13 @@ public class StreamUnionTest {
 
 		StreamUnion<Integer> streamUnion = StreamUnion.create();
 
-		StreamProducer<Integer> source0 = StreamProducers.closing();
-		StreamProducer<Integer> source1 = StreamProducers.of(1);
-		StreamProducer<Integer> source2 = StreamProducers.of(2, 3);
-		StreamProducer<Integer> source3 = StreamProducers.of();
-		StreamProducer<Integer> source4 = StreamProducers.of(4, 5);
-		StreamProducer<Integer> source5 = StreamProducers.of(6);
-		StreamProducer<Integer> source6 = StreamProducers.of();
+		StreamProducer<Integer> source0 = StreamProducer.of();
+		StreamProducer<Integer> source1 = StreamProducer.of(1);
+		StreamProducer<Integer> source2 = StreamProducer.of(2, 3);
+		StreamProducer<Integer> source3 = StreamProducer.of();
+		StreamProducer<Integer> source4 = StreamProducer.of(4, 5);
+		StreamProducer<Integer> source5 = StreamProducer.of(6);
+		StreamProducer<Integer> source6 = StreamProducer.of();
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending();
 
@@ -86,9 +86,9 @@ public class StreamUnionTest {
 
 		StreamUnion<Integer> streamUnion = StreamUnion.create();
 
-		StreamProducer<Integer> source0 = StreamProducers.of(1, 2, 3);
-		StreamProducer<Integer> source1 = StreamProducers.of(4, 5);
-		StreamProducer<Integer> source2 = StreamProducers.of(6, 7);
+		StreamProducer<Integer> source0 = StreamProducer.of(1, 2, 3);
+		StreamProducer<Integer> source1 = StreamProducer.of(4, 5);
+		StreamProducer<Integer> source2 = StreamProducer.of(6, 7);
 
 		List<Integer> list = new ArrayList<>();
 		StreamConsumerToList<Integer> consumer = new StreamConsumerToList<Integer>(list) {
@@ -127,13 +127,13 @@ public class StreamUnionTest {
 
 		StreamUnion<Integer> streamUnion = StreamUnion.create();
 
-		StreamProducer<Integer> source0 = StreamProducers.concat(
-				StreamProducers.ofIterable(Arrays.asList(1, 2)),
-				StreamProducers.closingWithError(new ExpectedException("Test Exception"))
+		StreamProducer<Integer> source0 = StreamProducer.concat(
+				StreamProducer.ofIterable(Arrays.asList(1, 2)),
+				StreamProducer.closingWithError(new ExpectedException("Test Exception"))
 		);
-		StreamProducer<Integer> source1 = StreamProducers.concat(
-				StreamProducers.ofIterable(Arrays.asList(7, 8, 9)),
-				StreamProducers.closingWithError(new ExpectedException("Test Exception"))
+		StreamProducer<Integer> source1 = StreamProducer.concat(
+				StreamProducer.ofIterable(Arrays.asList(7, 8, 9)),
+				StreamProducer.closingWithError(new ExpectedException("Test Exception"))
 		);
 
 		List<Integer> list = new ArrayList<>();

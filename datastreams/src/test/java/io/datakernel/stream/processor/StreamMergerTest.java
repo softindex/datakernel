@@ -19,7 +19,6 @@ package io.datakernel.stream.processor;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.StreamStatus;
 import org.junit.Test;
 
@@ -41,9 +40,9 @@ public class StreamMergerTest {
 	@Test
 	public void testDeduplicate() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		StreamProducer<Integer> source0 = StreamProducers.ofIterable(Collections.<Integer>emptyList());
-		StreamProducer<Integer> source1 = StreamProducers.of(3, 7);
-		StreamProducer<Integer> source2 = StreamProducers.of(3, 4, 6);
+		StreamProducer<Integer> source0 = StreamProducer.ofIterable(Collections.<Integer>emptyList());
+		StreamProducer<Integer> source1 = StreamProducer.of(3, 7);
+		StreamProducer<Integer> source2 = StreamProducer.of(3, 4, 6);
 
 		StreamMerger<Integer, Integer> merger = StreamMerger.create(Function.identity(), Integer::compareTo, true);
 
@@ -69,9 +68,9 @@ public class StreamMergerTest {
 	@Test
 	public void testDuplicate() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		StreamProducer<Integer> source0 = StreamProducers.ofIterable(Collections.<Integer>emptyList());
-		StreamProducer<Integer> source1 = StreamProducers.of(3, 7);
-		StreamProducer<Integer> source2 = StreamProducers.of(3, 4, 6);
+		StreamProducer<Integer> source0 = StreamProducer.ofIterable(Collections.<Integer>emptyList());
+		StreamProducer<Integer> source1 = StreamProducer.of(3, 7);
+		StreamProducer<Integer> source2 = StreamProducer.of(3, 4, 6);
 
 		StreamMerger<Integer, Integer> merger = StreamMerger.create(Function.identity(), Integer::compareTo, false);
 
@@ -103,12 +102,12 @@ public class StreamMergerTest {
 		DataItem1 d3 = new DataItem1(1, 1, 1, 4);
 		DataItem1 d4 = new DataItem1(1, 5, 1, 5);
 
-		StreamProducer<DataItem1> source1 = StreamProducers.ofIterable(
+		StreamProducer<DataItem1> source1 = StreamProducer.ofIterable(
 				asList(d0, //DataItem1(0,1,1,1)
 						d1, //DataItem1(0,2,1,2)
 						d2  //DataItem1(0,6,1,3)
 				));
-		StreamProducer<DataItem1> source2 = StreamProducers.ofIterable(
+		StreamProducer<DataItem1> source2 = StreamProducer.ofIterable(
 				asList(d3,//DataItem1(1,1,1,4)
 						d4 //DataItem1(1,5,1,5)
 				));
@@ -142,8 +141,8 @@ public class StreamMergerTest {
 	@Test
 	public void testDeduplicateWithError() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		StreamProducer<Integer> source1 = StreamProducers.of(7, 8, 3);
-		StreamProducer<Integer> source2 = StreamProducers.of(3, 4, 6);
+		StreamProducer<Integer> source1 = StreamProducer.of(7, 8, 3);
+		StreamProducer<Integer> source2 = StreamProducer.of(3, 4, 6);
 
 		StreamMerger<Integer, Integer> merger = StreamMerger.create(Function.identity(), Integer::compareTo, true);
 
@@ -181,18 +180,18 @@ public class StreamMergerTest {
 	@Test
 	public void testProducerDeduplicateWithError() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		StreamProducer<Integer> source1 = StreamProducers.concat(
-				StreamProducers.of(7),
-				StreamProducers.of(8),
-				StreamProducers.closingWithError(new Exception("Test Exception")),
-				StreamProducers.of(3),
-				StreamProducers.of(9)
+		StreamProducer<Integer> source1 = StreamProducer.concat(
+				StreamProducer.of(7),
+				StreamProducer.of(8),
+				StreamProducer.closingWithError(new Exception("Test Exception")),
+				StreamProducer.of(3),
+				StreamProducer.of(9)
 		);
-		StreamProducer<Integer> source2 = StreamProducers.concat(
-				StreamProducers.of(3),
-				StreamProducers.of(4),
-				StreamProducers.of(6),
-				StreamProducers.of(9)
+		StreamProducer<Integer> source2 = StreamProducer.concat(
+				StreamProducer.of(3),
+				StreamProducer.of(4),
+				StreamProducer.of(6),
+				StreamProducer.of(9)
 		);
 
 		StreamMerger<Integer, Integer> merger = StreamMerger.create(Function.identity(), Integer::compareTo, true);
@@ -218,9 +217,9 @@ public class StreamMergerTest {
 	@Test
 	public void testWithoutConsumer() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		StreamProducer<Integer> source0 = StreamProducers.ofIterable(Collections.<Integer>emptyList());
-		StreamProducer<Integer> source1 = StreamProducers.of(3, 7);
-		StreamProducer<Integer> source2 = StreamProducers.of(3, 4, 6);
+		StreamProducer<Integer> source0 = StreamProducer.ofIterable(Collections.<Integer>emptyList());
+		StreamProducer<Integer> source1 = StreamProducer.of(3, 7);
+		StreamProducer<Integer> source2 = StreamProducer.of(3, 4, 6);
 
 		StreamMerger<Integer, Integer> merger = StreamMerger.create(Function.identity(), Integer::compareTo, true);
 

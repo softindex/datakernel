@@ -34,7 +34,7 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 	}
 
 	public static <T> StreamConsumerSwitcher<T> create() {
-		return create(StreamConsumers.idle());
+		return create(StreamConsumer.idle());
 	}
 
 	public static <T> StreamConsumerSwitcher<T> create(StreamConsumer<T> consumer) {
@@ -50,12 +50,12 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 
 	@Override
 	protected final void onEndOfStream() {
-		switchTo(StreamConsumers.idle());
+		switchTo(StreamConsumer.idle());
 	}
 
 	@Override
 	protected final void onError(Throwable t) {
-		switchTo(StreamConsumers.idle());
+		switchTo(StreamConsumer.idle());
 	}
 
 	public void switchTo(StreamConsumer<T> newConsumer) {
@@ -63,14 +63,14 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 			if (currentInternalProducer != null) {
 				currentInternalProducer.sendError(getException());
 			}
-			currentInternalProducer = new InternalProducer(eventloop, StreamConsumers.idle());
-			bind(StreamProducers.closingWithError(getException()), newConsumer);
+			currentInternalProducer = new InternalProducer(eventloop, StreamConsumer.idle());
+			bind(StreamProducer.closingWithError(getException()), newConsumer);
 		} else if (getStatus() == END_OF_STREAM) {
 			if (currentInternalProducer != null) {
 				currentInternalProducer.sendEndOfStream();
 			}
-			currentInternalProducer = new InternalProducer(eventloop, StreamConsumers.idle());
-			bind(StreamProducers.closing(), newConsumer);
+			currentInternalProducer = new InternalProducer(eventloop, StreamConsumer.idle());
+			bind(StreamProducer.of(), newConsumer);
 		} else {
 			if (currentInternalProducer != null) {
 				currentInternalProducer.sendEndOfStream();

@@ -35,7 +35,6 @@ import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -160,7 +159,7 @@ public class CubeMeasureRemovalTest {
 
 		// Save and aggregate logs
 		List<LogItem> listOfRandomLogItems1 = LogItem.getListOfRandomLogItems(100);
-		StreamProducer<LogItem> producerOfRandomLogItems1 = StreamProducers.ofIterator(listOfRandomLogItems1.iterator());
+		StreamProducer<LogItem> producerOfRandomLogItems1 = StreamProducer.ofIterable(listOfRandomLogItems1);
 		stream(producerOfRandomLogItems1, logManager.consumerStream("partitionA"));
 		eventloop.run();
 
@@ -213,7 +212,7 @@ public class CubeMeasureRemovalTest {
 
 		// Save and aggregate logs
 		List<LogItem> listOfRandomLogItems2 = LogItem.getListOfRandomLogItems(100);
-		StreamProducer<LogItem> producerOfRandomLogItems2 = StreamProducers.ofIterator(listOfRandomLogItems2.iterator());
+		StreamProducer<LogItem> producerOfRandomLogItems2 = StreamProducer.ofIterable(listOfRandomLogItems2);
 		stream(producerOfRandomLogItems2, logManager.consumerStream("partitionA"));
 		eventloop.run();
 
@@ -326,7 +325,7 @@ public class CubeMeasureRemovalTest {
 			eventloop.run();
 
 			List<LogItem> listOfRandomLogItems = LogItem.getListOfRandomLogItems(100);
-			stream(StreamProducers.ofIterable(listOfRandomLogItems), logManager.consumerStream("partitionA"));
+			stream(StreamProducer.ofIterable(listOfRandomLogItems), logManager.consumerStream("partitionA"));
 			eventloop.run();
 
 			logOTProcessor1.processLog()
@@ -402,7 +401,7 @@ public class CubeMeasureRemovalTest {
 			eventloop.run();
 
 			List<LogItem> listOfRandomLogItems = LogItem.getListOfRandomLogItems(100);
-			stream(StreamProducers.ofIterable(listOfRandomLogItems), logManager.consumerStream("partitionA"));
+			stream(StreamProducer.ofIterable(listOfRandomLogItems), logManager.consumerStream("partitionA"));
 			eventloop.run();
 
 			logOTProcessor1.processLog()

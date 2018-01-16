@@ -26,7 +26,6 @@ import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
 import io.datakernel.stream.processor.StreamLZ4Compressor;
@@ -149,7 +148,7 @@ public class RpcBinaryProtocolTest {
 		for (int i = 0; i < countRequests; i++) {
 			sourceList.add(RpcMessage.of(i, testMessage));
 		}
-		StreamProducer<RpcMessage> client = StreamProducers.ofIterable(sourceList);
+		StreamProducer<RpcMessage> client = StreamProducer.ofIterable(sourceList);
 
 		StreamLZ4Compressor compressorClient = StreamLZ4Compressor.fastCompressor();
 		StreamLZ4Decompressor decompressorClient = StreamLZ4Decompressor.create();

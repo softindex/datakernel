@@ -22,7 +22,6 @@ import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -81,7 +80,7 @@ public class StreamLZ4Test {
 		}
 		byte[] expected = byteBufsToByteArray(buffers);
 
-		StreamProducer<ByteBuf> source = StreamProducers.ofIterable(buffers);
+		StreamProducer<ByteBuf> source = StreamProducer.ofIterable(buffers);
 		StreamByteChunker preBuf = StreamByteChunker.create(64, 128);
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor();
 		StreamByteChunker postBuf = StreamByteChunker.create(64, 128);
@@ -136,7 +135,7 @@ public class StreamLZ4Test {
 		}
 		byte[] expected = byteBufsToByteArray(buffers);
 
-		StreamProducer<ByteBuf> source = StreamProducers.ofIterable(buffers);
+		StreamProducer<ByteBuf> source = StreamProducer.ofIterable(buffers);
 		StreamByteChunker preBuf = StreamByteChunker.create(64, 128);
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor();
 		StreamByteChunker postBuf = StreamByteChunker.create(64, 128);
@@ -218,7 +217,7 @@ public class StreamLZ4Test {
 		List<ByteBuf> buffers = new ArrayList<>();
 		buffers.add(buf);
 
-		StreamProducer<ByteBuf> source = StreamProducers.ofIterable(buffers);
+		StreamProducer<ByteBuf> source = StreamProducer.ofIterable(buffers);
 		StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create();
 		StreamConsumerToList<ByteBuf> consumer = StreamConsumerToList.create();
 

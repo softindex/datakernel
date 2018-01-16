@@ -22,7 +22,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -52,7 +51,7 @@ public class StreamSerializerTest {
 	public void test1() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		StreamProducer<Integer> source = StreamProducers.of(10, 20, 30, 40);
+		StreamProducer<Integer> source = StreamProducer.of(10, 20, 30, 40);
 		StreamBinarySerializer<Integer> serializerStream = StreamBinarySerializer.create(intSerializer())
 				.withDefaultBufferSize(14)
 				.withMaxMessageSize(14);
@@ -84,7 +83,7 @@ public class StreamSerializerTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		List<Integer> list = new ArrayList<>();
-		StreamProducer<Integer> source = StreamProducers.of(1, 2, 3);
+		StreamProducer<Integer> source = StreamProducer.of(1, 2, 3);
 		StreamBinarySerializer<Integer> serializerStream = StreamBinarySerializer.create(intSerializer())
 				.withDefaultBufferSize(1);
 		StreamBinaryDeserializer<Integer> deserializerStream = StreamBinaryDeserializer.create(intSerializer());
@@ -112,7 +111,7 @@ public class StreamSerializerTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		List<Integer> list = new ArrayList<>();
-		StreamProducer<Integer> source = StreamProducers.of(1, 2, 3);
+		StreamProducer<Integer> source = StreamProducer.of(1, 2, 3);
 		StreamBinarySerializer<Integer> serializerStream = StreamBinarySerializer.create(intSerializer())
 				.withDefaultBufferSize(1);
 		StreamBinaryDeserializer<Integer> deserializerStream = StreamBinaryDeserializer.create(intSerializer());
@@ -144,7 +143,7 @@ public class StreamSerializerTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		List<Integer> list = new ArrayList<>();
-		StreamProducer<Integer> source = StreamProducers.closingWithError(new ExpectedException("Test Exception"));
+		StreamProducer<Integer> source = StreamProducer.closingWithError(new ExpectedException("Test Exception"));
 		StreamBinarySerializer<Integer> serializerStream = StreamBinarySerializer.create(intSerializer())
 				.withDefaultBufferSize(1);
 		StreamBinaryDeserializer<Integer> deserializerStream = StreamBinaryDeserializer.create(intSerializer());

@@ -21,8 +21,8 @@ public class StreamForwarder<T> {
 		this.consumerStage = consumerStage;
 		this.input = new Input();
 		this.output = new Output();
-		StreamProducer<T> producer = StreamProducers.ofStage(this.producerStage);
-		StreamConsumer<T> consumer = StreamConsumers.ofStage(this.consumerStage);
+		StreamProducer<T> producer = StreamProducer.ofStage(this.producerStage);
+		StreamConsumer<T> consumer = StreamConsumer.ofStage(this.consumerStage);
 		bind(producer, input);
 		bind(output, consumer);
 	}

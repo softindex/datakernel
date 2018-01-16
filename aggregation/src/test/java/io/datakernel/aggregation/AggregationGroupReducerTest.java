@@ -64,14 +64,14 @@ public class AggregationGroupReducerTest {
 
 			@Override
 			public <T> CompletionStage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
-				return Stages.of(StreamProducers.withEndOfStreamAsResult(StreamProducers.ofIterator(items.iterator())));
+				return Stages.of(StreamProducer.ofIterable(items).withEndOfStreamAsResult());
 			}
 
 			@Override
 			public <T> CompletionStage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
 				StreamConsumerToList consumer = new StreamConsumerToList<>(items);
 				listConsumers.add(consumer);
-				return Stages.of(StreamConsumers.withEndOfStreamAsResult(consumer));
+				return Stages.of(consumer.withEndOfStreamAsResult());
 			}
 
 			@Override
@@ -97,7 +97,7 @@ public class AggregationGroupReducerTest {
 
 		int aggregationChunkSize = 2;
 
-		StreamProducer<InvertedIndexRecord> producer = StreamProducers.of(new InvertedIndexRecord("fox", 1),
+		StreamProducer<InvertedIndexRecord> producer = StreamProducer.of(new InvertedIndexRecord("fox", 1),
 				new InvertedIndexRecord("brown", 2), new InvertedIndexRecord("fox", 3),
 				new InvertedIndexRecord("brown", 3), new InvertedIndexRecord("lazy", 4),
 				new InvertedIndexRecord("dog", 1), new InvertedIndexRecord("quick", 1),

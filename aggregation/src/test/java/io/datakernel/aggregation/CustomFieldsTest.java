@@ -26,7 +26,6 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -116,7 +115,7 @@ public class CustomFieldsTest {
 		Aggregation aggregation = Aggregation.create(eventloop, executorService, classLoader, aggregationChunkStorage, structure)
 				.withTemporarySortDir(temporaryFolder.newFolder().toPath());
 
-		StreamProducer<EventRecord> producer = StreamProducers.of(
+		StreamProducer<EventRecord> producer = StreamProducer.of(
 				new EventRecord(1, 0.34, 1),
 				new EventRecord(2, 0.42, 3),
 				new EventRecord(3, 0.13, 20));
@@ -126,7 +125,7 @@ public class CustomFieldsTest {
 		aggregationChunkStorage.finish(future.get().getAddedChunks().stream().map(AggregationChunk::getChunkId).collect(Collectors.toSet()));
 		aggregation.getState().apply(future.get());
 
-		producer = StreamProducers.of(
+		producer = StreamProducer.of(
 				new EventRecord(2, 0.30, 20),
 				new EventRecord(1, 0.22, 1000),
 				new EventRecord(2, 0.91, 33));
@@ -135,7 +134,7 @@ public class CustomFieldsTest {
 		aggregationChunkStorage.finish(future.get().getAddedChunks().stream().map(AggregationChunk::getChunkId).collect(Collectors.toSet()));
 		aggregation.getState().apply(future.get());
 
-		producer = StreamProducers.of(
+		producer = StreamProducer.of(
 				new EventRecord(1, 0.01, 1),
 				new EventRecord(3, 0.88, 20),
 				new EventRecord(3, 1.01, 21));
@@ -144,7 +143,7 @@ public class CustomFieldsTest {
 		aggregationChunkStorage.finish(future.get().getAddedChunks().stream().map(AggregationChunk::getChunkId).collect(Collectors.toSet()));
 		aggregation.getState().apply(future.get());
 
-		producer = StreamProducers.of(
+		producer = StreamProducer.of(
 				new EventRecord(1, 0.35, 500),
 				new EventRecord(1, 0.59, 17),
 				new EventRecord(2, 0.85, 50));

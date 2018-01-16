@@ -20,7 +20,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducerDecorator;
-import io.datakernel.stream.StreamProducers;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -55,7 +54,7 @@ public class StreamProducerDecoratorTest {
 			}
 		};
 
-		StreamProducer<Integer> producer = StreamProducers.of(1, 2, 3, 4, 5);
+		StreamProducer<Integer> producer = StreamProducer.of(1, 2, 3, 4, 5);
 		StreamProducerDecorator<Integer> producerDecorator = new StreamProducerDecorator<Integer>() {};
 		producerDecorator.setActualProducer(producer);
 
@@ -75,7 +74,7 @@ public class StreamProducerDecoratorTest {
 
 		List<Integer> list = new ArrayList<>();
 		StreamConsumerToList consumer = StreamConsumerToList.oneByOne(list);
-		StreamProducer<Integer> producer = StreamProducers.of(1, 2, 3, 4, 5);
+		StreamProducer<Integer> producer = StreamProducer.of(1, 2, 3, 4, 5);
 		StreamProducerDecorator<Integer> producerDecorator = new StreamProducerDecorator<Integer>() {};
 		producerDecorator.setActualProducer(producer);
 
@@ -94,7 +93,7 @@ public class StreamProducerDecoratorTest {
 
 		List<Integer> list = new ArrayList<>();
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.oneByOne(list);
-		StreamProducer<Integer> producer = StreamProducers.of(1, 2, 3, 4, 5);
+		StreamProducer<Integer> producer = StreamProducer.of(1, 2, 3, 4, 5);
 		StreamProducerDecorator<Integer> producerDecorator = new StreamProducerDecorator<Integer>() {};
 		producerDecorator.setActualProducer(producer);
 		StreamFunction<Integer, Integer> function = StreamFunction.create(Function.<Integer>identity());

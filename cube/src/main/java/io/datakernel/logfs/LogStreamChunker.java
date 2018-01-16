@@ -20,7 +20,10 @@ import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.*;
+import io.datakernel.stream.StreamConsumerDecorator;
+import io.datakernel.stream.StreamConsumerSwitcher;
+import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.time.CurrentTimeProvider;
 
 import java.time.Instant;
@@ -86,7 +89,7 @@ public final class LogStreamChunker extends StreamConsumerDecorator<ByteBuf> imp
 
 	private void startNewChunk(String newChunkName, CompletionStage<Void> previousFile) {
 		currentChunkName = newChunkName;
-		currentConsumer = StreamConsumers.ofStageWithResult(previousFile
+		currentConsumer = StreamConsumerWithResult.ofStage(previousFile
 				.thenCompose($ -> fileSystem.makeUniqueLogFile(logPartition, newChunkName))
 				.thenCompose(logFile -> fileSystem.write(logPartition, logFile)));
 

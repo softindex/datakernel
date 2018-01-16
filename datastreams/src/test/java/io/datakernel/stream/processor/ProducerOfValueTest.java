@@ -19,7 +19,6 @@ package io.datakernel.stream.processor;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
 import org.junit.Test;
 
 import java.util.LinkedList;
@@ -42,7 +41,7 @@ public class ProducerOfValueTest {
 	@Test
 	public void test1() {
 		StreamConsumerToList<Integer> consumer1 = new StreamConsumerToList<>(new LinkedList<Integer>());
-		StreamProducer<Integer> producer1 = StreamProducers.of(TEST_INT);
+		StreamProducer<Integer> producer1 = StreamProducer.of(TEST_INT);
 		stream(producer1, consumer1);
 
 		eventloop.run();
@@ -51,7 +50,7 @@ public class ProducerOfValueTest {
 		assertStatus(END_OF_STREAM, producer1);
 
 		StreamConsumerToList<String> consumer2 = new StreamConsumerToList<>(new LinkedList<String>());
-		StreamProducer<String> producer2 = StreamProducers.of(TEST_STRING);
+		StreamProducer<String> producer2 = StreamProducer.of(TEST_STRING);
 		stream(producer2, consumer2);
 		eventloop.run();
 
@@ -59,7 +58,7 @@ public class ProducerOfValueTest {
 		assertStatus(END_OF_STREAM, producer2);
 
 		StreamConsumerToList<DataItem1> consumer3 = new StreamConsumerToList<>(new LinkedList<DataItem1>());
-		StreamProducer<DataItem1> producer3 = StreamProducers.of(TEST_OBJECT);
+		StreamProducer<DataItem1> producer3 = StreamProducer.of(TEST_OBJECT);
 		stream(producer3, consumer3);
 		eventloop.run();
 
@@ -70,7 +69,7 @@ public class ProducerOfValueTest {
 	@Test
 	public void testNull() {
 		StreamConsumerToList<Object> consumer3 = new StreamConsumerToList<>(new LinkedList<>());
-		StreamProducer<Object> producer3 = StreamProducers.of(TEST_NULL);
+		StreamProducer<Object> producer3 = StreamProducer.of(TEST_NULL);
 		stream(producer3, consumer3);
 		eventloop.run();
 

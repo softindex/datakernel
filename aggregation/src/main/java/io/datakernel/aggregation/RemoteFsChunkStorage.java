@@ -27,9 +27,7 @@ import io.datakernel.jmx.StageStats;
 import io.datakernel.remotefs.IRemoteFsClient;
 import io.datakernel.remotefs.RemoteFsClient;
 import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducerWithResult;
-import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.processor.*;
 import io.datakernel.util.MemSize;
 
@@ -107,10 +105,10 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage, EventloopJ
 							createBufferSerializer(aggregation, recordClass,
 									aggregation.getKeys(), fields, classLoader));
 
-					stream(producer.withStats(readRemoteFS), decompressor.getInput());
-					stream(decompressor.getOutput().withStats(readDecompress), deserializer.getInput());
+					stream(producer.with(readRemoteFS::wrap), decompressor.getInput());
+					stream(decompressor.getOutput().with(readDecompress::wrap), deserializer.getInput());
 
-					return StreamProducers.withEndOfStreamAsResult(deserializer.getOutput().withStats(readDeserialize));
+					return deserializer.getOutput().with(readDeserialize::wrap).withEndOfStreamAsResult();
 				});
 	}
 
@@ -131,11 +129,11 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage, EventloopJ
 					StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor();
 					StreamByteChunker chunker = StreamByteChunker.create(bufferSize / 2, bufferSize * 2);
 
-					stream(serializer.getOutput(), compressor.getInput().withStats(writeCompress));
-					stream(compressor.getOutput(), chunker.getInput().withStats(writeChunker));
-					stream(chunker.getOutput(), consumer.withStats(writeRemoteFS));
+					stream(serializer.getOutput(), compressor.getInput().with(writeCompress::wrap));
+					stream(compressor.getOutput(), chunker.getInput().with(writeChunker::wrap));
+					stream(chunker.getOutput(), consumer.with(writeRemoteFS::wrap));
 
-					return StreamConsumers.withResult(serializer.getInput().withStats(writeSerialize), consumer.getResult());
+					return serializer.getInput().with(writeSerialize::wrap).withResult(consumer.getResult());
 				});
 	}
 

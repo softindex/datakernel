@@ -4,7 +4,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamDataReceiver;
-import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.StreamProducer;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -19,7 +19,7 @@ import java.util.stream.IntStream;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.StreamConsumerToList.oneByOne;
-import static io.datakernel.stream.StreamConsumers.toList;
+import static io.datakernel.stream.StreamConsumerWithResult.toList;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
@@ -37,7 +37,7 @@ public class LogDataConsumerSplitterTest {
 	private <T> void assertStreamResult(List<T> values, StreamConsumer<T> consume, CompletionStage<List<T>> result)
 			throws ExecutionException, InterruptedException {
 
-		stream(StreamProducers.ofIterable(values), consume);
+		stream(StreamProducer.ofIterable(values), consume);
 		CompletableFuture<List<T>> future = result.toCompletableFuture();
 		eventloop.run();
 		assertEquals(values, future.get());
@@ -78,7 +78,7 @@ public class LogDataConsumerSplitterTest {
 			}
 		};
 
-		stream(StreamProducers.ofIterable(VALUES_1), splitter.consume());
+		stream(StreamProducer.ofIterable(VALUES_1), splitter.consume());
 	}
 
 	private static class LogDataConsumerSplitterStub<T, D> extends LogDataConsumerSplitter<T, D> {

@@ -11,7 +11,6 @@ import java.util.stream.IntStream;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.DataStreams.stream;
-import static io.datakernel.stream.StreamProducers.*;
 import static java.util.stream.Collectors.toList;
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
 import static org.junit.Assert.assertEquals;
@@ -29,11 +28,8 @@ public class StreamProducersTest {
 	@Test
 	public void testErrorDecorator() {
 		List<Integer> values = IntStream.range(1, 10).boxed().collect(toList());
-		StreamProducer<Integer> readProducer = ofIterable(values);
-		StreamProducer<Integer> errorProducer = errorDecorator(
-				readProducer,
-				k -> k.equals(5),
-				IllegalArgumentException::new);
+		StreamProducer<Integer> readProducer = StreamProducer.ofIterable(values);
+		StreamProducer<Integer> errorProducer = StreamProducers.errorDecorator(readProducer, k -> k.equals(5), IllegalArgumentException::new);
 
 		StreamConsumerToList<Integer> consumer = new StreamConsumerToList<>();
 		stream(errorProducer, consumer);
@@ -47,11 +43,9 @@ public class StreamProducersTest {
 	@Test
 	public void testErrorDecoratorWithResult() throws ExecutionException, InterruptedException {
 		List<Integer> values = IntStream.range(1, 10).boxed().collect(toList());
-		StreamProducerWithResult<Integer, Void> readProducer = withEndOfStreamAsResult(ofIterable(values));
-		StreamProducerWithResult<Integer, Void> errorProducer = errorDecorator(
-				readProducer,
-				k -> k.equals(5),
-				IllegalArgumentException::new);
+		StreamProducerWithResult<Integer, Void> readProducer = StreamProducer.ofIterable(values).withEndOfStreamAsResult();
+		StreamProducerWithResult<Integer, Void> errorProducer = StreamProducers.errorDecorator(readProducer, k -> k.equals(5), IllegalArgumentException::new)
+				.withResult(readProducer.getResult());
 
 		StreamConsumerToList<Integer> consumer = new StreamConsumerToList<>();
 		stream(errorProducer, consumer);

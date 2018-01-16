@@ -17,14 +17,10 @@
 package io.datakernel.async;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.StageStats;
 
 import java.util.ArrayDeque;
 import java.util.concurrent.CompletionStage;
-import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
-import java.util.function.Function;
-import java.util.function.Supplier;
+import java.util.function.*;
 
 public interface AsyncCallable<T> {
 	CompletionStage<T> call();
@@ -194,8 +190,8 @@ public interface AsyncCallable<T> {
 		return () -> call().handle(fn);
 	}
 
-	default AsyncCallable<T> withStats(StageStats stats) {
-		return () -> stats.monitor(this.call());
+	default AsyncCallable<T> with(UnaryOperator<AsyncCallable<T>> wrapper) {
+		return wrapper.apply(this);
 	}
 
 }

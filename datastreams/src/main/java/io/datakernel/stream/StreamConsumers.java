@@ -19,111 +19,16 @@ package io.datakernel.stream;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stages;
 
-import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
-import static io.datakernel.async.SettableStage.mirrorOf;
 import static io.datakernel.async.Stages.onError;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
-import static io.datakernel.stream.DataStreams.stream;
 
 public final class StreamConsumers {
 	private StreamConsumers() {
-	}
-
-	public static <T> IdleImpl<T> idle() {
-		return new IdleImpl<>();
-	}
-
-	public static <T> StreamConsumer<T> closingWithError(Throwable exception) {
-		return new ClosingWithErrorImpl<>(exception);
-	}
-
-	public static <T> StreamConsumer<T> ofStage(CompletionStage<StreamConsumer<T>> consumerStage) {
-		return new StreamConsumerDecorator<T>() {
-			{
-				consumerStage.whenComplete((consumer, throwable) -> {
-					if (throwable == null) {
-						setActualConsumer(consumer);
-					} else {
-						setActualConsumer(closingWithError(throwable));
-					}
-				});
-			}
-		};
-	}
-
-	public static <T, X> StreamConsumerWithResult<T, X> ofStageWithResult(CompletionStage<StreamConsumerWithResult<T, X>> stage) {
-		SettableStage<X> result = SettableStage.create();
-		return withResult(new StreamConsumerDecorator<T>() {
-			{
-				stage.whenComplete((consumer, throwable) -> {
-					if (throwable == null) {
-						setActualConsumer(consumer);
-						consumer.getResult().whenComplete(result::set);
-					} else {
-						setActualConsumer(closingWithError(throwable));
-						result.setException(throwable);
-					}
-				});
-			}
-		}, result);
-	}
-
-	public static <T> StreamConsumerWithResult<T, Void> withEndOfStreamAsResult(StreamConsumer<T> consumer) {
-		return new StreamConsumerWithResult<T, Void>() {
-			@Override
-			public void setProducer(StreamProducer<T> producer) {
-				consumer.setProducer(producer);
-			}
-
-			@Override
-			public CompletionStage<Void> getEndOfStream() {
-				return consumer.getEndOfStream();
-			}
-
-			@Override
-			public CompletionStage<Void> getResult() {
-				return consumer.getEndOfStream();
-			}
-		};
-	}
-
-	public static <T, X> StreamConsumerWithResult<T, X> withResult(StreamConsumer<T> consumer, CompletionStage<X> result) {
-		SettableStage<X> safeResult = mirrorOf(result);
-		consumer.getEndOfStream().whenComplete(onError(safeResult::trySetException));
-		return new StreamConsumerWithResult<T, X>() {
-			@Override
-			public void setProducer(StreamProducer<T> producer) {
-				consumer.setProducer(producer);
-			}
-
-			@Override
-			public CompletionStage<Void> getEndOfStream() {
-				return consumer.getEndOfStream();
-			}
-
-			@Override
-			public CompletionStage<X> getResult() {
-				return safeResult;
-			}
-		};
-	}
-
-	/**
-	 * Returns {@link StreamConsumerToList} which saves received items in empty list
-	 *
-	 * @param <T> type of item
-	 */
-	public static <T> StreamConsumerWithResult<T, List<T>> toList() {
-		return new StreamConsumerToList<>();
-	}
-
-	public static <T> CompletionStage<List<T>> toList(StreamProducer<T> streamProducer) {
-		return stream(streamProducer, new StreamConsumerToList<>());
 	}
 
 	static final class ClosingWithErrorImpl<T> implements StreamConsumer<T> {
@@ -182,7 +87,7 @@ public final class StreamConsumers {
 	}
 
 	public static <T, R> StreamConsumerWithResult<T, R> errorDecorator(StreamConsumerWithResult<T, R> consumer, Predicate<T> predicate, Supplier<Throwable> error) {
-		return withResult(errorDecorator((StreamConsumer<T>) consumer, predicate, error), consumer.getResult());
+		return errorDecorator((StreamConsumer<T>) consumer, predicate, error).withResult(consumer.getResult());
 	}
 
 	public static <T> StreamConsumer<T> suspendDecorator(StreamConsumer<T> consumer,
@@ -210,7 +115,7 @@ public final class StreamConsumers {
 	public static <T, R> StreamConsumerWithResult<T, R> suspendDecorator(StreamConsumerWithResult<T, R> consumer,
 	                                                                     Predicate<T> predicate,
 	                                                                     BiConsumer<StreamProducer<T>, StreamDataReceiver<T>> resumer) {
-		return withResult(suspendDecorator((StreamConsumer<T>) consumer, predicate, resumer), consumer.getResult());
+		return suspendDecorator((StreamConsumer<T>) consumer, predicate, resumer).withResult(consumer.getResult());
 	}
 
 }

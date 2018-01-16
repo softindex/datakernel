@@ -50,6 +50,10 @@ public class StageStats implements EventloopJmxMBean {
 		return eventloop.currentTimeMillis();
 	}
 
+	public <T> AsyncCallable<T> wrap(AsyncCallable<T> callable) {
+		return () -> monitor(callable.call());
+	}
+
 	public <T> CompletionStage<T> monitor(AsyncCallable<T> callable) {
 		return monitor(callable.call());
 	}

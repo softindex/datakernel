@@ -23,7 +23,10 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
-import io.datakernel.stream.*;
+import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducerWithResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,7 +34,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
 
-import static io.datakernel.stream.StreamConsumers.closingWithError;
 import static io.datakernel.util.Preconditions.checkState;
 
 /**
@@ -162,11 +164,11 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 
 		writeCallbacks.clear();
 		if (closedException != null) {
-			return StreamConsumers.withEndOfStreamAsResult(closingWithError(closedException));
+			return StreamConsumer.<ByteBuf>closingWithError(closedException).withEndOfStreamAsResult();
 		}
 
 		socketWriter = SocketStreamConsumer.create(asyncTcpSocket);
-		return StreamConsumers.withResult(socketWriter, socketWriter.getSentStage());
+		return socketWriter.withResult(socketWriter.getSentStage());
 	}
 
 	@Override
@@ -174,8 +176,8 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 		checkState(this.socketReader == null && this.receiveMessageCallback == null);
 
 		if (closedException != null) {
-			StreamProducer<ByteBuf> producer = StreamProducers.closingWithError(closedException);
-			return StreamProducers.withEndOfStreamAsResult(producer);
+			StreamProducer<ByteBuf> producer = StreamProducer.closingWithError(closedException);
+			return producer.withEndOfStreamAsResult();
 		}
 
 		socketReader = SocketStreamProducer.create(asyncTcpSocket);
@@ -189,7 +191,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 				}
 			});
 		}
-		return StreamProducers.withEndOfStreamAsResult(socketReader);
+		return socketReader.withEndOfStreamAsResult();
 	}
 
 	@Override

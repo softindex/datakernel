@@ -21,7 +21,6 @@ import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -50,7 +49,7 @@ public class StreamSplitterTest {
 
 	@Test
 	public void test1() {
-		StreamProducer<Integer> source = StreamProducers.of(1, 2, 3);
+		StreamProducer<Integer> source = StreamProducer.of(1, 2, 3);
 		StreamSplitter<Integer> streamConcat = StreamSplitter.create();
 		StreamConsumerToList<Integer> consumerToList1 = StreamConsumerToList.randomlySuspending();
 		StreamConsumerToList<Integer> consumerToList2 = StreamConsumerToList.randomlySuspending();
@@ -70,7 +69,7 @@ public class StreamSplitterTest {
 	public void testConsumerDisconnectWithError() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		StreamProducer<Integer> source = StreamProducers.of(1, 2, 3, 4, 5);
+		StreamProducer<Integer> source = StreamProducer.of(1, 2, 3, 4, 5);
 		StreamSplitter<Integer> streamConcat = StreamSplitter.create();
 
 		List<Integer> toList1 = new ArrayList<>();
@@ -111,11 +110,11 @@ public class StreamSplitterTest {
 
 	@Test
 	public void testProducerDisconnectWithError() {
-		StreamProducer<Integer> source = StreamProducers.concat(
-				StreamProducers.of(1),
-				StreamProducers.of(2),
-				StreamProducers.of(3),
-				StreamProducers.closingWithError(new ExpectedException("Test Exception"))
+		StreamProducer<Integer> source = StreamProducer.concat(
+				StreamProducer.of(1),
+				StreamProducer.of(2),
+				StreamProducer.of(3),
+				StreamProducer.closingWithError(new ExpectedException("Test Exception"))
 		);
 
 		StreamSplitter<Integer> splitter = StreamSplitter.create();
@@ -146,7 +145,7 @@ public class StreamSplitterTest {
 	public void testNoOutputs() throws ExecutionException, InterruptedException {
 		StreamSplitter<Integer> splitter = StreamSplitter.create();
 
-		Future<Void> future = stream(StreamProducers.of(1, 2, 3, 4), splitter.getInput())
+		Future<Void> future = stream(StreamProducer.of(1, 2, 3, 4), splitter.getInput())
 				.toCompletableFuture();
 
 		eventloop.run();

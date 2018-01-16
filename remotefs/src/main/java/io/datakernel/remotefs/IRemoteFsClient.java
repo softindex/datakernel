@@ -18,9 +18,7 @@ package io.datakernel.remotefs;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducerWithResult;
-import io.datakernel.stream.StreamProducers;
 
 import java.util.List;
 import java.util.Map;
@@ -30,13 +28,13 @@ public interface IRemoteFsClient {
 	CompletionStage<StreamConsumerWithResult<ByteBuf, Void>> upload(String fileName);
 
 	default StreamConsumerWithResult<ByteBuf, Void> uploadStream(String fileName) {
-		return StreamConsumers.ofStageWithResult(upload(fileName));
+		return StreamConsumerWithResult.ofStage(upload(fileName));
 	}
 
 	CompletionStage<StreamProducerWithResult<ByteBuf, Void>> download(String fileName, long startPosition);
 
 	default StreamProducerWithResult<ByteBuf, Void> downloadStream(String fileName, long startPosition) {
-		return StreamProducers.ofStageWithResult(download(fileName, startPosition));
+		return StreamProducerWithResult.ofStage(download(fileName, startPosition));
 	}
 
 	CompletionStage<Void> move(Map<String, String> changes);

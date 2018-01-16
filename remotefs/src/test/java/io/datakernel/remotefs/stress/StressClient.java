@@ -25,7 +25,6 @@ import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import io.datakernel.stream.processor.StreamBinarySerializer;
@@ -207,7 +206,7 @@ class StressClient {
 		obj.name = "someName";
 		obj.ip = InetAddress.getLocalHost();
 
-		StreamProducer<TestObject> producer = StreamProducers.ofIterable(Collections.singletonList(obj));
+		StreamProducer<TestObject> producer = StreamProducer.ofIterable(Collections.singletonList(obj));
 		StreamBinarySerializer<TestObject> serializer = StreamBinarySerializer.create(bufferSerializer)
 				.withDefaultBufferSize(StreamBinarySerializer.MAX_SIZE);
 

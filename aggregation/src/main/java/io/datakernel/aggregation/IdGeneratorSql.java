@@ -18,7 +18,6 @@ import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 
 public class IdGeneratorSql<K> implements IdGenerator<K>, EventloopJmxMBean {
 	public static final double DEFAULT_SMOOTHING_WINDOW = SMOOTHING_WINDOW_5_MINUTES;
-	public static final int PREFETCH_COUNT = 10;
 
 	private final Eventloop eventloop;
 	private final ExecutorService executor;
@@ -28,7 +27,6 @@ public class IdGeneratorSql<K> implements IdGenerator<K>, EventloopJmxMBean {
 	private String extraSQL;
 
 	private final StageStats stageCreateId = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats stageCreateIdImpl = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 
 	private IdGeneratorSql(Eventloop eventloop, ExecutorService executor, DataSource dataSource) {
 		this.eventloop = eventloop;
@@ -54,17 +52,13 @@ public class IdGeneratorSql<K> implements IdGenerator<K>, EventloopJmxMBean {
 		stageCreateId.setSmoothingWindow(smoothingWindowSeconds);
 	}
 
+	private final AsyncCallable<K> createId = AsyncCallable.of(this::doCreateId).with(stageCreateId::wrap);
+
 	@Override
 	@SuppressWarnings("unchecked")
 	public CompletionStage<K> createId() {
 		return createId.call();
 	}
-
-	private final AsyncCallable<K> createId = AsyncCallable.of(this::doCreateId)
-			.withStats(stageCreateIdImpl)
-			.singleCall()
-			.prefetch(PREFETCH_COUNT)
-			.withStats(stageCreateId);
 
 	private CompletionStage<K> doCreateId() {
 		return eventloop.callExecutor(executor, () -> {
@@ -95,14 +89,8 @@ public class IdGeneratorSql<K> implements IdGenerator<K>, EventloopJmxMBean {
 		return stageCreateId;
 	}
 
-	@JmxAttribute
-	public StageStats getStageCreateIdImpl() {
-		return stageCreateIdImpl;
-	}
-
 	@JmxOperation
 	public void resetStats() {
 		stageCreateId.resetStats();
-		stageCreateIdImpl.resetStats();
 	}
 }

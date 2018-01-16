@@ -22,7 +22,6 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -103,7 +102,7 @@ public class InvertedIndexTest {
 		Aggregation aggregation = Aggregation.create(eventloop, executorService, classLoader, aggregationChunkStorage, structure)
 				.withTemporarySortDir(temporaryFolder.newFolder().toPath());
 
-		StreamProducer<InvertedIndexRecord> producer = StreamProducers.ofIterable(
+		StreamProducer<InvertedIndexRecord> producer = StreamProducer.ofIterable(
 				asList(
 						new InvertedIndexRecord("fox", 1),
 						new InvertedIndexRecord("brown", 2),
@@ -115,7 +114,7 @@ public class InvertedIndexTest {
 		aggregationChunkStorage.finish(getAddedChunks(future.get()));
 		eventloop.run();
 
-		producer = StreamProducers.ofIterable(
+		producer = StreamProducer.ofIterable(
 				asList(
 						new InvertedIndexRecord("brown", 3),
 						new InvertedIndexRecord("lazy", 4),
@@ -127,7 +126,7 @@ public class InvertedIndexTest {
 		aggregationChunkStorage.finish(getAddedChunks(future.get()));
 		eventloop.run();
 
-		producer = StreamProducers.of(
+		producer = StreamProducer.of(
 				new InvertedIndexRecord("quick", 1),
 				new InvertedIndexRecord("fox", 4),
 				new InvertedIndexRecord("brown", 10));

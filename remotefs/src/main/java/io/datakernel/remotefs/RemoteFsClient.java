@@ -25,9 +25,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.remotefs.RemoteFsCommands.Download;
 import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducerWithResult;
-import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.net.Messaging.ReceiveMessageCallback;
 import io.datakernel.stream.net.MessagingSerializer;
 import io.datakernel.stream.net.MessagingWithBinaryStreaming;
@@ -114,7 +112,7 @@ public final class RemoteFsClient implements IRemoteFsClient {
 				}
 			});
 
-			StreamConsumerWithResult<ByteBuf, Void> consumerWithResult = StreamConsumers.withResult(consumer, ack);
+			StreamConsumerWithResult<ByteBuf, Void> consumerWithResult = consumer.withResult(ack);
 			consumerWithResult.getResult().whenComplete(onError($ -> messaging.close()));
 			return consumerWithResult;
 		});
@@ -148,7 +146,7 @@ public final class RemoteFsClient implements IRemoteFsClient {
 										}
 									});
 
-							StreamProducerWithResult<ByteBuf, Void> producerWithResult = StreamProducers.withResult(sizeForwarder.getOutput(), ack);
+							StreamProducerWithResult<ByteBuf, Void> producerWithResult = sizeForwarder.getOutput().withResult(ack);
 							stage.set(producerWithResult);
 						} else if (msg instanceof RemoteFsResponses.Err) {
 							stage.setException(new RemoteFsException(((RemoteFsResponses.Err) msg).msg));

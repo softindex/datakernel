@@ -16,12 +16,13 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.stream.processor.StreamStats;
-import io.datakernel.stream.processor.StreamStatsForwarder;
+import io.datakernel.async.SettableStage;
 
 import java.util.concurrent.CompletionStage;
+import java.util.function.UnaryOperator;
 
-import static io.datakernel.stream.DataStreams.stream;
+import static io.datakernel.async.SettableStage.mirrorOf;
+import static io.datakernel.async.Stages.onError;
 
 /**
  * It represents an object which can asynchronous receive streams of data.
@@ -41,11 +42,70 @@ public interface StreamConsumer<T> {
 
 	CompletionStage<Void> getEndOfStream();
 
+	static <T> StreamConsumer<T> idle() {
+		return new StreamConsumers.IdleImpl<>();
+	}
 
-	default StreamConsumer<T> withStats(StreamStats stats) {
-		StreamStatsForwarder<T> statsForwarder = StreamStatsForwarder.create(stats);
-		stream(statsForwarder.getOutput(), this);
-		return statsForwarder.getInput();
+	static <T> StreamConsumer<T> closingWithError(Throwable exception) {
+		return new StreamConsumers.ClosingWithErrorImpl<>(exception);
+	}
+
+	static <T> StreamConsumer<T> ofStage(CompletionStage<StreamConsumer<T>> consumerStage) {
+		return new StreamConsumerDecorator<T>() {
+			{
+				consumerStage.whenComplete((consumer, throwable) -> {
+					if (throwable == null) {
+						setActualConsumer(consumer);
+					} else {
+						setActualConsumer(closingWithError(throwable));
+					}
+				});
+			}
+		};
+	}
+
+	default <X> StreamConsumerWithResult<T, X> withResult(CompletionStage<X> result) {
+		SettableStage<X> safeResult = mirrorOf(result);
+		getEndOfStream().whenComplete(onError(safeResult::trySetException));
+		return new StreamConsumerWithResult<T, X>() {
+			@Override
+			public void setProducer(StreamProducer<T> producer) {
+				StreamConsumer.this.setProducer(producer);
+			}
+
+			@Override
+			public CompletionStage<Void> getEndOfStream() {
+				return StreamConsumer.this.getEndOfStream();
+			}
+
+			@Override
+			public CompletionStage<X> getResult() {
+				return safeResult;
+			}
+		};
+	}
+
+	default StreamConsumerWithResult<T, Void> withEndOfStreamAsResult() {
+		return new StreamConsumerWithResult<T, Void>() {
+			@Override
+			public void setProducer(StreamProducer<T> producer) {
+				StreamConsumer.this.setProducer(producer);
+			}
+
+			@Override
+			public CompletionStage<Void> getEndOfStream() {
+				return StreamConsumer.this.getEndOfStream();
+			}
+
+			@Override
+			public CompletionStage<Void> getResult() {
+				return StreamConsumer.this.getEndOfStream();
+			}
+		};
+	}
+
+	default StreamConsumer<T> with(UnaryOperator<StreamConsumer<T>> wrapper) {
+		return wrapper.apply(this);
 	}
 
 }

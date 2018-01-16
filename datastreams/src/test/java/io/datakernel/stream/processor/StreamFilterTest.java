@@ -20,7 +20,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -41,7 +40,7 @@ public class StreamFilterTest {
 	public void test1() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		StreamProducer<Integer> source = StreamProducers.of(1, 2, 3);
+		StreamProducer<Integer> source = StreamProducer.of(1, 2, 3);
 
 		StreamFilter<Integer> filter = StreamFilter.create(input -> input % 2 == 1);
 
@@ -62,7 +61,7 @@ public class StreamFilterTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		List<Integer> list = new ArrayList<>();
 
-		StreamProducer<Integer> source = StreamProducers.of(1, 2, 3, 4, 5);
+		StreamProducer<Integer> source = StreamProducer.of(1, 2, 3, 4, 5);
 
 		StreamFilter<Integer> streamFilter = StreamFilter.create(input -> input % 2 != 2);
 
@@ -96,9 +95,9 @@ public class StreamFilterTest {
 	public void testProducerDisconnectWithError() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		StreamProducer<Integer> source = StreamProducers.concat(
-				StreamProducers.ofIterable(Arrays.asList(1, 2, 3)),
-				StreamProducers.closingWithError(new ExpectedException("Test Exception")));
+		StreamProducer<Integer> source = StreamProducer.concat(
+				StreamProducer.ofIterable(Arrays.asList(1, 2, 3)),
+				StreamProducer.closingWithError(new ExpectedException("Test Exception")));
 
 		StreamFilter<Integer> streamFilter = StreamFilter.create(input -> input % 2 != 2);
 

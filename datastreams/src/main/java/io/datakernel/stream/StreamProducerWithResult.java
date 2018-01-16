@@ -16,8 +16,28 @@
 
 package io.datakernel.stream;
 
+import io.datakernel.async.SettableStage;
+
 import java.util.concurrent.CompletionStage;
 
 public interface StreamProducerWithResult<T, X> extends StreamProducer<T> {
 	CompletionStage<X> getResult();
+
+	static <T, X> StreamProducerWithResult<T, X> ofStage(CompletionStage<StreamProducerWithResult<T, X>> producerStage) {
+		SettableStage<X> result = SettableStage.create();
+		return new StreamProducerDecorator<T>() {
+			{
+				producerStage.whenCompleteAsync((producer1, throwable) -> {
+					if (throwable == null) {
+						setActualProducer(producer1);
+						producer1.getResult().whenComplete(result::set);
+					} else {
+						setActualProducer(StreamProducer.closingWithError(throwable));
+						result.setException(throwable);
+					}
+				});
+			}
+		}.withResult(result);
+	}
+
 }

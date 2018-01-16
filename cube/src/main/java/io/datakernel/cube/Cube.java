@@ -38,7 +38,10 @@ import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.ValueStats;
 import io.datakernel.logfs.ot.LogDataConsumer;
 import io.datakernel.ot.OTState;
-import io.datakernel.stream.*;
+import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamConsumerToList;
+import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -497,7 +500,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 	                                                          AggregationPredicate predicate) {
 		return () -> {
 			StreamConsumerWithResult<T, CubeDiff> consumer = Cube.this.consume(inputClass, dimensionFields, measureFields, predicate);
-			return StreamConsumers.withResult(consumer, consumer.getResult().thenApply(Collections::singletonList));
+			return consumer.withResult(consumer.getResult().thenApply(Collections::singletonList));
 		};
 	}
 
@@ -550,7 +553,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 			CompletionStage<AggregationDiff> consume = aggregation.consume(output, inputClass, aggregationKeyFields, aggregationMeasureFields);
 			tracker.addStage(consume, (accumulator, diff) -> accumulator.put(aggregationId, diff));
 		}
-		return StreamConsumers.withResult(streamSplitter.getInput(), tracker.get().thenApply(CubeDiff::of));
+		return streamSplitter.getInput().withResult(tracker.get().thenApply(CubeDiff::of));
 	}
 
 	Map<String, AggregationPredicate> getCompatibleAggregationsForDataInput(Map<String, String> dimensionFields,

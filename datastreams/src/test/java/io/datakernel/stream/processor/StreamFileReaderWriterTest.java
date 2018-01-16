@@ -133,7 +133,7 @@ public class StreamFileReaderWriterTest {
 		File tempFile = tempFolder.newFile("out.dat");
 		byte[] bytes = new byte[]{'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
 
-		StreamProducer<ByteBuf> producer = StreamProducers.of(ByteBuf.wrapForReading(bytes));
+		StreamProducer<ByteBuf> producer = StreamProducer.of(ByteBuf.wrapForReading(bytes));
 
 		StreamFileWriter writer = StreamFileWriter.create(executor, Paths.get(tempFile.getAbsolutePath()));
 
@@ -153,9 +153,9 @@ public class StreamFileReaderWriterTest {
 		File tempFile = tempFolder.newFile("out.dat");
 		byte[] bytes = new byte[]{'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
 
-		StreamProducer<ByteBuf> producer = StreamProducers.concat(
-				StreamProducers.of(ByteBuf.wrapForReading(bytes)),
-				StreamProducers.closingWithError(new Exception("Test Exception")));
+		StreamProducer<ByteBuf> producer = StreamProducer.concat(
+				StreamProducer.of(ByteBuf.wrapForReading(bytes)),
+				StreamProducer.closingWithError(new Exception("Test Exception")));
 
 		StreamFileWriter writer = StreamFileWriter.create(executor, Paths.get(tempFile.getAbsolutePath()));
 

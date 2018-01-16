@@ -12,8 +12,6 @@ import java.util.stream.IntStream;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.DataStreams.stream;
-import static io.datakernel.stream.StreamProducers.ofIterable;
-import static io.datakernel.stream.StreamProducers.withEndOfStreamAsResult;
 import static java.util.stream.Collectors.toList;
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
 import static org.junit.Assert.assertEquals;
@@ -31,7 +29,7 @@ public class StreamConsumersTest {
 	@Test
 	public void testErrorDecorator() {
 		List<Integer> values = IntStream.range(1, 10).boxed().collect(toList());
-		StreamProducer<Integer> producer = ofIterable(values);
+		StreamProducer<Integer> producer = StreamProducer.ofIterable(values);
 
 		StreamConsumerToList<Integer> consumer = new StreamConsumerToList<>();
 		StreamConsumer<Integer> errorConsumer = StreamConsumers.errorDecorator(
@@ -50,7 +48,7 @@ public class StreamConsumersTest {
 	@Test
 	public void testErrorDecoratorWithResult() throws ExecutionException, InterruptedException {
 		List<Integer> values = IntStream.range(1, 10).boxed().collect(toList());
-		StreamProducerWithResult<Integer, Void> producer = withEndOfStreamAsResult(ofIterable(values));
+		StreamProducerWithResult<Integer, Void> producer = StreamProducer.ofIterable(values).withEndOfStreamAsResult();
 
 		StreamConsumerToList<Integer> consumer = new StreamConsumerToList<>();
 		StreamConsumerWithResult<Integer, List<Integer>> errorConsumer = StreamConsumers.errorDecorator(
@@ -74,7 +72,7 @@ public class StreamConsumersTest {
 	@Test
 	public void testSuspendDecorator() {
 		List<Integer> values = IntStream.range(1, 6).boxed().collect(toList());
-		StreamProducer<Integer> producer = ofIterable(values);
+		StreamProducer<Integer> producer = StreamProducer.ofIterable(values);
 
 		CountTransformer<Integer> transformer = new CountTransformer<>();
 
@@ -101,7 +99,7 @@ public class StreamConsumersTest {
 	@Test
 	public void testSuspendDecoratorWithResult() throws ExecutionException, InterruptedException {
 		List<Integer> values = IntStream.range(1, 6).boxed().collect(toList());
-		StreamProducer<Integer> producer = StreamProducers.ofIterable(values);
+		StreamProducer<Integer> producer = StreamProducer.ofIterable(values);
 
 		CountTransformer<Integer> transformer = new CountTransformer<>();
 

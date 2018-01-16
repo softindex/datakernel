@@ -18,7 +18,10 @@ package io.datakernel.datagraph.helper;
 
 import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.*;
+import io.datakernel.stream.StreamConsumerToList;
+import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.processor.StreamSorterStorage;
 
 import java.util.ArrayList;
@@ -42,14 +45,14 @@ public class StreamMergeSorterStorageStub<T> implements StreamSorterStorage<T> {
 		int newPartition = partition++;
 		storage.put(newPartition, list);
 		StreamConsumerToList<T> consumer = new StreamConsumerToList<>(list);
-		return Stages.of(StreamConsumers.withResult(consumer, Stages.of(newPartition)));
+		return Stages.of(consumer.withResult(Stages.of(newPartition)));
 	}
 
 	@Override
 	public CompletionStage<StreamProducerWithResult<T, Void>> read(int partition) {
 		List<T> iterable = storage.get(partition);
-		StreamProducer<T> producer = StreamProducers.ofIterable(iterable);
-		return Stages.of(StreamProducers.withEndOfStreamAsResult(producer));
+		StreamProducer<T> producer = StreamProducer.ofIterable(iterable);
+		return Stages.of(producer.withEndOfStreamAsResult());
 	}
 
 	@Override

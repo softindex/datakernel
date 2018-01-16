@@ -22,7 +22,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -84,7 +83,7 @@ public class StreamByteChunkerTest {
 
 		int bufSize = 128;
 
-		StreamProducer<ByteBuf> source = StreamProducers.ofIterable(buffers);
+		StreamProducer<ByteBuf> source = StreamProducer.ofIterable(buffers);
 		StreamByteChunker resizer = StreamByteChunker.create(bufSize / 2, bufSize);
 		StreamConsumerWithResult<ByteBuf, List<ByteBuf>> streamFixedSizeConsumer = new StreamConsumerToList<>();
 		CompletableFuture<List<ByteBuf>> listFuture = streamFixedSizeConsumer.getResult().toCompletableFuture();

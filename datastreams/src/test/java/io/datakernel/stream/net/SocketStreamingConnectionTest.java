@@ -21,7 +21,7 @@ import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SimpleServer;
 import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
 import org.junit.Before;
@@ -90,7 +90,7 @@ public final class SocketStreamingConnectionTest {
 
 			AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
 			SocketStreamingConnection connection = SocketStreamingConnection.create(asyncTcpSocket);
-			stream(StreamProducers.ofIterable(list), streamSerializer.getInput());
+			stream(StreamProducer.ofIterable(list), streamSerializer.getInput());
 			stream(streamSerializer.getOutput(), connection.getSocketWriter());
 			asyncTcpSocket.setEventHandler(connection);
 			asyncTcpSocket.register();
@@ -135,7 +135,7 @@ public final class SocketStreamingConnectionTest {
 			stream(streamSerializer.getOutput(), connection.getSocketWriter());
 			stream(connection.getSocketReader(), streamDeserializer.getInput());
 
-			stream(StreamProducers.ofIterable(source), streamSerializer.getInput());
+			stream(StreamProducer.ofIterable(source), streamSerializer.getInput());
 			stream(streamDeserializer.getOutput(), consumerToList);
 
 			asyncTcpSocket.setEventHandler(connection);

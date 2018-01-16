@@ -62,8 +62,6 @@ public class TestUtils {
 			assertStatus(expectedStatus, ((StreamProducerDecorator) streamProducer).getActualProducer());
 			return;
 		}
-		if (expectedStatus == StreamStatus.END_OF_STREAM && streamProducer instanceof StreamProducers.EndOfStreamImpl)
-			return;
 		if (expectedStatus == StreamStatus.CLOSED_WITH_ERROR && streamProducer instanceof StreamProducers.ClosingWithErrorImpl)
 			return;
 		assertEquals(expectedStatus, ((AbstractStreamProducer<?>) streamProducer).getStatus());

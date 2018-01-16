@@ -28,7 +28,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -70,13 +69,13 @@ public class StringDimensionTest {
 				.withMeasure("metric3", sum(ofLong()))
 				.withAggregation(id("detailedAggregation").withDimensions("key1", "key2").withMeasures("metric1", "metric2", "metric3"));
 
-		StreamProducer<DataItemString1> producer1 = StreamProducers.of(
+		StreamProducer<DataItemString1> producer1 = StreamProducer.of(
 				new DataItemString1("str1", 2, 10, 20),
 				new DataItemString1("str2", 3, 10, 20));
 		StreamConsumerWithResult<DataItemString1, CubeDiff> consumer1 = cube.consume(DataItemString1.class);
 		stream(producer1, consumer1);
 		CompletableFuture<CubeDiff> future1 = consumer1.getResult().toCompletableFuture();
-		StreamProducer<DataItemString2> producer2 = StreamProducers.of(new DataItemString2("str2", 3, 10, 20), new DataItemString2("str1", 4, 10, 20));
+		StreamProducer<DataItemString2> producer2 = StreamProducer.of(new DataItemString2("str2", 3, 10, 20), new DataItemString2("str1", 4, 10, 20));
 		StreamConsumerWithResult<DataItemString2, CubeDiff> consumer2 = cube.consume(DataItemString2.class);
 		stream(producer2, consumer2);
 		CompletableFuture<CubeDiff> future2 = consumer2.getResult().toCompletableFuture();

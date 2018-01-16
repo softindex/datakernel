@@ -46,7 +46,7 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 			splitter.outputs.add(output);
 			stream(output, (StreamConsumer) consumer);
 		}
-		return StreamConsumers.withResult(splitter.getInput(), resultsReducer.get());
+		return splitter.getInput().withResult(resultsReducer.get());
 	}
 
 	protected abstract StreamDataReceiver<T> createSplitter();

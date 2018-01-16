@@ -21,7 +21,6 @@ import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -43,9 +42,9 @@ public class StreamProducerConcatTest {
 	public void testSequence() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		StreamProducer<Integer> producer = StreamProducers.concat(
-				StreamProducers.of(1, 2, 3),
-				StreamProducers.of(4, 5, 6));
+		StreamProducer<Integer> producer = StreamProducer.concat(
+				StreamProducer.of(1, 2, 3),
+				StreamProducer.of(4, 5, 6));
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending();
 
 		stream(producer, consumer);
@@ -60,11 +59,11 @@ public class StreamProducerConcatTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		List<Integer> list = new ArrayList<>();
 
-		StreamProducer<Integer> producer = StreamProducers.concat(
-				StreamProducers.of(1, 2, 3),
-				StreamProducers.of(4, 5, 6),
-				StreamProducers.closingWithError(new ExpectedException("Test Exception")),
-				StreamProducers.of(1, 2, 3));
+		StreamProducer<Integer> producer = StreamProducer.concat(
+				StreamProducer.of(1, 2, 3),
+				StreamProducer.of(4, 5, 6),
+				StreamProducer.closingWithError(new ExpectedException("Test Exception")),
+				StreamProducer.of(1, 2, 3));
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending(list);
 
 		stream(producer, consumer);
@@ -78,10 +77,10 @@ public class StreamProducerConcatTest {
 	public void testConcat() throws Exception {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		StreamProducer<Integer> producer = StreamProducers.concat(
-				StreamProducers.of(1, 2, 3),
-				StreamProducers.of(4, 5, 6),
-				StreamProducers.closing());
+		StreamProducer<Integer> producer = StreamProducer.concat(
+				StreamProducer.of(1, 2, 3),
+				StreamProducer.of(4, 5, 6),
+				StreamProducer.of());
 
 		StreamConsumerWithResult<Integer, List<Integer>> consumer = new StreamConsumerToList<>();
 		CompletableFuture<List<Integer>> listFuture = consumer.getResult().toCompletableFuture();
@@ -97,10 +96,10 @@ public class StreamProducerConcatTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		List<Integer> list = new ArrayList<>();
 
-		StreamProducer<Integer> producer = StreamProducers.concat(
-				StreamProducers.of(1, 2, 3),
-				StreamProducers.of(4, 5, 6),
-				StreamProducers.closingWithError(new ExpectedException("Test Exception")));
+		StreamProducer<Integer> producer = StreamProducer.concat(
+				StreamProducer.of(1, 2, 3),
+				StreamProducer.of(4, 5, 6),
+				StreamProducer.closingWithError(new ExpectedException("Test Exception")));
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.oneByOne(list);
 
@@ -115,10 +114,10 @@ public class StreamProducerConcatTest {
 	public void testWithoutConsumer() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		StreamProducer<Integer> producer = StreamProducers.concat(
-				StreamProducers.of(1, 2, 3),
-				StreamProducers.of(4, 5, 6),
-				StreamProducers.closing());
+		StreamProducer<Integer> producer = StreamProducer.concat(
+				StreamProducer.of(1, 2, 3),
+				StreamProducer.of(4, 5, 6),
+				StreamProducer.of());
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 		StreamFunction<Integer, Integer> function = StreamFunction.create(Function.<Integer>identity());

@@ -25,7 +25,6 @@ import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -60,7 +59,7 @@ public class StreamBinaryDeserializerTest {
 	@Test
 	public void deserializesSingleMessage() {
 		Data data = new Data("a");
-		StreamProducer<Data> producer = StreamProducers.of(data);
+		StreamProducer<Data> producer = StreamProducer.of(data);
 		StreamConsumerToList<Data> consumer = StreamConsumerToList.create();
 
 		stream(producer, serializer.getInput());
@@ -76,7 +75,7 @@ public class StreamBinaryDeserializerTest {
 	@Test
 	public void deserializesMultipleMessages() {
 		List<Data> inputData = asList(new Data("a"), new Data("b"), new Data("c"));
-		StreamProducer<Data> producer = StreamProducers.ofIterable(inputData);
+		StreamProducer<Data> producer = StreamProducer.ofIterable(inputData);
 		StreamConsumerToList<Data> consumer = StreamConsumerToList.create();
 
 		stream(producer, serializer.getInput());
@@ -92,7 +91,7 @@ public class StreamBinaryDeserializerTest {
 	@Test
 	public void deserializesMultipleMessages_SplittedIntoDifferentBytebufs() {
 		List<Data> inputData = asList(new Data("a"), new Data("b"), new Data("c"));
-		StreamProducer<Data> producer = StreamProducers.ofIterable(inputData);
+		StreamProducer<Data> producer = StreamProducer.ofIterable(inputData);
 		StreamConsumerToList<Data> consumer = StreamConsumerToList.create();
 
 		StreamByteChunker bufSplitter = StreamByteChunker.create(4, 4);
@@ -112,7 +111,7 @@ public class StreamBinaryDeserializerTest {
 	public void deserializesMultipleMessages_SplittedIntoSingleByte_ByteBufs_withMaxHeaderSizeInMessage() {
 		List<Data> inputData =
 				asList(new Data("1"), new Data("8282"), new Data("80982"), new Data("3634921"), new Data("7162"));
-		StreamProducer<Data> producer = StreamProducers.ofIterable(inputData);
+		StreamProducer<Data> producer = StreamProducer.ofIterable(inputData);
 		StreamConsumerToList<Data> consumer = StreamConsumerToList.create();
 		StreamByteChunker bufSplitter = StreamByteChunker.create(1, 1);
 
@@ -132,7 +131,7 @@ public class StreamBinaryDeserializerTest {
 		Data data = new Data("a");
 		StreamConsumerToList<ByteBuf> bufferConsumer = StreamConsumerToList.create();
 
-		stream(StreamProducers.of(data), serializer.getInput());
+		stream(StreamProducer.of(data), serializer.getInput());
 		stream(serializer.getOutput(), bufferConsumer);
 		eventloop.run();
 
@@ -142,7 +141,7 @@ public class StreamBinaryDeserializerTest {
 
 		StreamConsumerToList<Data> consumer = StreamConsumerToList.create();
 		CompletableFuture<List<Data>> future = consumer.getResult().toCompletableFuture();
-		stream(StreamProducers.of(buffers.get(0).slice(3)), deserializer.getInput());
+		stream(StreamProducer.of(buffers.get(0).slice(3)), deserializer.getInput());
 		stream(deserializer.getOutput(), consumer);
 		eventloop.run();
 

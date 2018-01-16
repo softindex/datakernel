@@ -20,7 +20,6 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
@@ -37,7 +36,6 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
-import static io.datakernel.stream.StreamProducers.withEndOfStreamAsResult;
 import static java.nio.file.StandardOpenOption.READ;
 
 /**
@@ -133,15 +131,14 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem {
 	@Override
 	public CompletionStage<StreamProducerWithResult<ByteBuf, Void>> read(String logPartition, LogFile logFile, long startPosition) {
 		return AsyncFile.openAsync(executorService, path(logPartition, logFile), new OpenOption[]{READ})
-				.thenApply(file -> withEndOfStreamAsResult(
-						StreamFileReader.readFileFrom(file, readBlockSize, startPosition)));
+				.thenApply(file -> StreamFileReader.readFileFrom(file, readBlockSize, startPosition).withEndOfStreamAsResult());
 	}
 
 	@Override
 	public CompletionStage<StreamConsumerWithResult<ByteBuf, Void>> write(String logPartition, LogFile logFile) {
 		return AsyncFile.openAsync(executorService, path(logPartition, logFile), StreamFileWriter.CREATE_OPTIONS).thenApply(file -> {
 			StreamFileWriter writer = StreamFileWriter.create(file, true);
-			return StreamConsumers.withResult(writer, writer.getFlushStage());
+			return writer.withResult(writer.getFlushStage());
 		});
 	}
 }

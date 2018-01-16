@@ -32,7 +32,7 @@ import io.datakernel.logfs.ot.*;
 import io.datakernel.ot.*;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.StreamProducer;
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
@@ -110,11 +110,12 @@ public class LogToCubeTest {
 				asList("partitionA"),
 				cubeDiffLogOTState);
 
-		stream(StreamProducers.ofIterator(asList(
+		stream(StreamProducer.of(
 				new TestPubRequest(1000, 1, asList(new TestPubRequest.TestAdvRequest(10))),
 				new TestPubRequest(1001, 2, asList(new TestPubRequest.TestAdvRequest(10), new TestPubRequest.TestAdvRequest(20))),
 				new TestPubRequest(1002, 1, asList(new TestPubRequest.TestAdvRequest(30))),
-				new TestPubRequest(1002, 2, Arrays.asList())).iterator()), logManager.consumerStream("partitionA"));
+				new TestPubRequest(1002, 2, Arrays.asList())),
+				logManager.consumerStream("partitionA"));
 		eventloop.run();
 
 		CompletableFuture<?> future;

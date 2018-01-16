@@ -23,7 +23,10 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.TruncatedDataException;
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.stream.*;
+import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducerDecorator;
+import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
 import io.datakernel.stream.processor.StreamLZ4Compressor;
@@ -43,7 +46,6 @@ import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 
 import static io.datakernel.stream.DataStreams.stream;
-import static io.datakernel.stream.StreamConsumers.withResult;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 public final class LogManagerImpl<T> implements LogManager<T> {
@@ -113,7 +115,7 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 		stream(streamBinarySerializer.getOutput(), streamCompressor.getInput());
 		stream(streamCompressor.getOutput(), writer);
 
-		return Stages.of(withResult(streamBinarySerializer.getInput(), writer.getResult()));
+		return Stages.of(streamBinarySerializer.getInput().withResult(writer.getResult()));
 	}
 
 	@Override
@@ -129,7 +131,7 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 			Iterator<LogFile> it = logFilesToRead.iterator();
 			SettableStage<LogPosition> positionStage = SettableStage.create();
 
-			return StreamProducers.withResult(StreamProducers.concat(new Iterator<StreamProducer<T>>() {
+			Iterator<StreamProducer<T>> producers = new Iterator<StreamProducer<T>>() {
 				private int n;
 
 				private LogFile currentLogFile;
@@ -196,7 +198,7 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 								return deserializer.getOutput();
 							});
 
-					return StreamProducers.ofStage(stage);
+					return StreamProducer.ofStage(stage);
 				}
 
 				private void log(Void $, Throwable throwable) {
@@ -208,7 +210,9 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 								sw, inputStreamPosition, inputStreamPosition / Math.max(sw.elapsed(SECONDS), 1), throwable);
 					}
 				}
-			}), positionStage);
+			};
+
+			return StreamProducer.concat(producers).withResult(positionStage);
 		});
 	}
 

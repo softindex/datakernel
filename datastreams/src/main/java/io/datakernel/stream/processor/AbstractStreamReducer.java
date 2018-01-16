@@ -200,7 +200,7 @@ public abstract class AbstractStreamReducer<K, O, A> implements HasOutput<O>, Ha
 		}
 
 		for (Input input : inputs) {
-			if (input.deque.size() < bufferSize) {
+			if (input.deque.size() <= bufferSize / 2) {
 				input.getProducer().produce(input);
 			}
 		}

@@ -24,7 +24,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Rule;
@@ -79,7 +78,7 @@ public class TestTimeoutsSimpleFs {
 
 		server.listen();
 
-		StreamProducer<ByteBuf> producer = StreamProducers.of(ByteBuf.wrapForReading(BIG_FILE));
+		StreamProducer<ByteBuf> producer = StreamProducer.of(ByteBuf.wrapForReading(BIG_FILE));
 		StreamConsumerWithResult<ByteBuf, Void> consumer = client.uploadStream("fileName.txt");
 		stream(producer, consumer);
 		CompletableFuture<Void> future = consumer.getResult().toCompletableFuture();

@@ -23,7 +23,6 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.stream.AbstractStreamConsumer;
 import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -117,7 +116,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 			list.add(entry.getValue());
 		}
 
-		StreamProducer producer = StreamProducers.ofIterable(list);
+		StreamProducer producer = StreamProducer.ofIterable(list);
 		AggregationChunker<T> chunker = AggregationChunker.create(aggregation, measures, recordClass,
 				partitionPredicate, storage, classLoader, chunkSize);
 		stream(producer, chunker);

@@ -25,8 +25,8 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SimpleServer;
 import io.datakernel.eventloop.SimpleServer.SocketHandlerProvider;
 import io.datakernel.stream.StreamConsumerToList;
+import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducerWithResult;
-import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.net.Messaging.ReceiveMessageCallback;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
@@ -176,7 +176,7 @@ public class MessagingWithBinaryStreamingTest {
 					assertEquals("start", msg);
 					StreamBinarySerializer<Long> streamSerializer = StreamBinarySerializer.create(longSerializer())
 							.withDefaultBufferSize(1);
-					stream(StreamProducers.ofIterable(source), streamSerializer.getInput());
+					stream(StreamProducer.ofIterable(source), streamSerializer.getInput());
 					stream(streamSerializer.getOutput(), messaging.sendBinaryStream());
 				}
 
@@ -281,7 +281,7 @@ public class MessagingWithBinaryStreamingTest {
 
 				StreamBinarySerializer<Long> streamSerializer = StreamBinarySerializer.create(longSerializer())
 						.withDefaultBufferSize(1);
-				stream(StreamProducers.ofIterable(source), streamSerializer.getInput());
+				stream(StreamProducer.ofIterable(source), streamSerializer.getInput());
 				stream(streamSerializer.getOutput(), messaging.sendBinaryStream());
 
 				asyncTcpSocket.setEventHandler(messaging);
@@ -359,7 +359,7 @@ public class MessagingWithBinaryStreamingTest {
 
 				StreamBinarySerializer<Long> streamSerializer = StreamBinarySerializer.create(longSerializer())
 						.withDefaultBufferSize(1);
-				stream(StreamProducers.ofIterable(source), streamSerializer.getInput());
+				stream(StreamProducer.ofIterable(source), streamSerializer.getInput());
 				stream(streamSerializer.getOutput(), messaging.sendBinaryStream());
 
 				messaging.receive(new ReceiveMessageCallback<String>() {
@@ -454,7 +454,7 @@ public class MessagingWithBinaryStreamingTest {
 
 				StreamBinarySerializer<Long> streamSerializer = StreamBinarySerializer.create(longSerializer())
 						.withDefaultBufferSize(1);
-				stream(StreamProducers.ofIterable(source), streamSerializer.getInput());
+				stream(StreamProducer.ofIterable(source), streamSerializer.getInput());
 				stream(streamSerializer.getOutput(), messaging.sendBinaryStream());
 				asyncTcpSocket.setEventHandler(messaging);
 				asyncTcpSocket.register();

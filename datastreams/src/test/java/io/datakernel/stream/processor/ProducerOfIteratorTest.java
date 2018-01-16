@@ -36,7 +36,7 @@ public class ProducerOfIteratorTest {
 
 		List<Integer> list = Arrays.asList(1, 2, 3);
 
-		StreamProducer<Integer> producer = StreamProducers.ofIterable(list);
+		StreamProducer<Integer> producer = StreamProducer.ofIterable(list);
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 		stream(producer, consumer);
 

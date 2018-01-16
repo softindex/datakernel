@@ -21,7 +21,10 @@ import io.datakernel.aggregation.util.PartitionPredicate;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.StagesAccumulator;
 import io.datakernel.codegen.DefiningClassLoader;
-import io.datakernel.stream.*;
+import io.datakernel.stream.StreamConsumerDecorator;
+import io.datakernel.stream.StreamConsumerSwitcher;
+import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.stream.StreamDataReceiver;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -138,7 +141,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> impl
 	}
 
 	private void startNewChunk() {
-		StreamConsumerWithResult<T, AggregationChunk> consumer = StreamConsumers.ofStageWithResult(
+		StreamConsumerWithResult<T, AggregationChunk> consumer = StreamConsumerWithResult.ofStage(
 				storage.createId()
 						.thenCompose(chunkId -> storage.write(aggregation, fields, recordClass, chunkId, classLoader)
 								.thenApply(streamConsumer -> new ChunkWriter(streamConsumer, chunkId, chunkSize, partitionPredicate))));

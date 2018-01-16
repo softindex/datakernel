@@ -21,7 +21,6 @@ import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -47,7 +46,7 @@ public class StreamSharderTest {
 
 		StreamSharder<Integer> streamSharder = StreamSharder.create(SHARDER);
 
-		StreamProducer<Integer> source = StreamProducers.of(1, 2, 3, 4);
+		StreamProducer<Integer> source = StreamProducer.of(1, 2, 3, 4);
 		StreamConsumerToList<Integer> consumer1 = StreamConsumerToList.randomlySuspending();
 		StreamConsumerToList<Integer> consumer2 = StreamConsumerToList.randomlySuspending();
 
@@ -72,7 +71,7 @@ public class StreamSharderTest {
 
 		StreamSharder<Integer> streamSharder = StreamSharder.create(SHARDER);
 
-		StreamProducer<Integer> source = StreamProducers.of(1, 2, 3, 4);
+		StreamProducer<Integer> source = StreamProducer.of(1, 2, 3, 4);
 		StreamConsumerToList<Integer> consumer1 = StreamConsumerToList.randomlySuspending();
 		StreamConsumerToList<Integer> consumer2 = StreamConsumerToList.randomlySuspending();
 
@@ -98,7 +97,7 @@ public class StreamSharderTest {
 
 		StreamSharder<Integer> streamSharder = StreamSharder.create(SHARDER);
 
-		StreamProducer<Integer> source = StreamProducers.of(1, 2, 3, 4);
+		StreamProducer<Integer> source = StreamProducer.of(1, 2, 3, 4);
 
 		List<Integer> list1 = new ArrayList<>();
 		StreamConsumerToList<Integer> consumer1 = StreamConsumerToList.create(list1);
@@ -139,11 +138,11 @@ public class StreamSharderTest {
 
 		StreamSharder<Integer> streamSharder = StreamSharder.create(SHARDER);
 
-		StreamProducer<Integer> source = StreamProducers.concat(
-				StreamProducers.of(1),
-				StreamProducers.of(2),
-				StreamProducers.of(3),
-				StreamProducers.closingWithError(new ExpectedException("Test Exception"))
+		StreamProducer<Integer> source = StreamProducer.concat(
+				StreamProducer.of(1),
+				StreamProducer.of(2),
+				StreamProducer.of(3),
+				StreamProducer.closingWithError(new ExpectedException("Test Exception"))
 		);
 
 		List<Integer> list1 = new ArrayList<>();

@@ -28,7 +28,6 @@ import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.processor.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -428,8 +427,8 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 			List<String> collect = measures.stream().filter(sequence.fields::contains).collect(toList());
 			StreamMap.MapperProjection mapper = createMapper(sequence.type, resultClass, queryKeys, collect, classLoader);
 			StreamMap<Object, T> streamMap = StreamMap.create(mapper);
-			stream(sequence.stream, streamMap.getInput().withStats(stats.mergeMapInput));
-			return streamMap.getOutput().withStats(stats.mergeMapOutput);
+			stream(sequence.stream, streamMap.getInput().with(stats.mergeMapInput::wrap));
+			return streamMap.getOutput().with(stats.mergeMapOutput::wrap);
 		}
 
 		StreamReducer<Comparable, T, Object> streamReducer = StreamReducer.create(Comparable::compareTo);
@@ -446,17 +445,18 @@ public class Aggregation implements IAggregation, EventloopJmxMBean {
 			StreamReducers.Reducer reducer = AggregationUtils.aggregationReducer(structure, sequence.type, resultClass,
 					queryKeys, collect, classLoader);
 
-			stream(sequence.stream, streamReducer.newInput(extractKeyFunction, reducer).withStats(stats.mergeReducerInput));
+			stream(sequence.stream, ((StreamConsumer<?>) streamReducer.newInput(extractKeyFunction, reducer))
+					.with(stats.mergeReducerInput::wrap));
 		}
 
-		return streamReducer.getOutput().withStats(stats.mergeReducerOutput);
+		return streamReducer.getOutput().with(stats.mergeReducerOutput::wrap);
 	}
 
 	private <T> StreamProducer<T> sequenceStream(AggregationPredicate where,
 	                                             List<AggregationChunk> individualChunks, Class<T> sequenceClass,
 	                                             DefiningClassLoader queryClassLoader) {
 		Iterator<AggregationChunk> chunkIterator = individualChunks.iterator();
-		return StreamProducers.concat(new Iterator<StreamProducer<T>>() {
+		return StreamProducer.concat(new Iterator<StreamProducer<T>>() {
 			@Override
 			public boolean hasNext() {
 				return chunkIterator.hasNext();
