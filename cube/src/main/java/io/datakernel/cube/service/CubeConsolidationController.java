@@ -22,6 +22,7 @@ import java.util.Set;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Supplier;
 
+import static io.datakernel.async.AsyncCallable.sharedCall;
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static java.util.stream.Collectors.toSet;
 
@@ -75,7 +76,7 @@ public final class CubeConsolidationController implements EventloopJmxMBean {
 		return new CubeConsolidationController(eventloop, cube, stateManager, aggregationChunkStorage, strategy);
 	}
 
-	private final AsyncCallable<Void> consolidate = AsyncCallable.singleCallOf(this::doConsolidate);
+	private final AsyncCallable<Void> consolidate = sharedCall(this::doConsolidate);
 
 	public CompletionStage<Void> consolidate() {
 		return consolidate.call();

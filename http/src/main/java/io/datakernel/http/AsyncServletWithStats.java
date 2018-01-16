@@ -52,16 +52,6 @@ public abstract class AsyncServletWithStats implements AsyncServlet, EventloopJm
 		stats.setSmoothingWindow(smoothingWindowSeconds);
 	}
 
-	@JmxAttribute
-	public boolean isStatsMonitoring() {
-		return stats.isMonitoring();
-	}
-
-	@JmxAttribute
-	public void setStatsMonitoring(boolean monitoring) {
-		stats.setMonitoring(monitoring);
-	}
-
 	@JmxOperation
 	public void resetStats() {
 		stats.resetStats();

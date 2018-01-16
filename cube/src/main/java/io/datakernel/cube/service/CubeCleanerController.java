@@ -16,6 +16,7 @@ import java.util.*;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Stream;
 
+import static io.datakernel.async.AsyncCallable.sharedCall;
 import static io.datakernel.async.Stages.onResult;
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static io.datakernel.util.CollectionUtils.*;
@@ -91,7 +92,7 @@ public final class CubeCleanerController implements EventloopJmxMBean {
 		return commit.getParents().values().stream().flatMap(Collection::stream);
 	}
 
-	AsyncCallable<Void> cleanup = AsyncCallable.singleCallOf(this::doCleanup);
+	AsyncCallable<Void> cleanup = sharedCall(this::doCleanup);
 
 	public CompletionStage<Void> cleanup() {
 		return cleanup.call();

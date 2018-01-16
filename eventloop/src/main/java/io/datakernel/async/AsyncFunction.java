@@ -50,6 +50,10 @@ public interface AsyncFunction<I, O> {
 		return (I i) -> apply(i).thenCompose((O input) -> (CompletionStage<T>) after.apply(input));
 	}
 
+	default AsyncCallable<O> asAsyncCallable(I argument) {
+		return AsyncCallable.of(this, argument);
+	}
+
 	static <I, O> AsyncFunction<I, O> of(Function<I, O> function) {
 		return input -> Stages.of(function.apply(input));
 	}

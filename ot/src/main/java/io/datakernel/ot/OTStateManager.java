@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 import java.util.concurrent.CompletionStage;
 
+import static io.datakernel.async.AsyncCallable.sharedCall;
 import static io.datakernel.util.Preconditions.checkState;
 import static java.lang.String.format;
 import static java.util.Collections.singleton;
@@ -100,7 +101,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 				});
 	}
 
-	private final AsyncCallable<K> fetch = AsyncCallable.singleCallOf(this::doFetch);
+	private final AsyncCallable<K> fetch = sharedCall(this::doFetch);
 
 	public CompletionStage<K> fetch() {
 		return fetch.call();
@@ -205,7 +206,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 		return commit().thenCompose(id -> push().thenApply($ -> id));
 	}
 
-	private final AsyncCallable<K> commit = AsyncCallable.singleCallOf(this::doCommit);
+	private final AsyncCallable<K> commit = sharedCall(this::doCommit);
 
 	public CompletionStage<K> commit() {
 		return commit.call();
@@ -224,7 +225,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 		});
 	}
 
-	private final AsyncCallable<Void> push = AsyncCallable.singleCallOf(this::doPush);
+	private final AsyncCallable<Void> push = sharedCall(this::doPush);
 
 	public CompletionStage<Void> push() {
 		return push.call();

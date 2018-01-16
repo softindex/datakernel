@@ -72,7 +72,7 @@ public abstract class AbstractStreamReducer<K, O, A> implements HasOutput<O>, Ha
 	}
 
 	protected <I> StreamConsumer<I> newInput(Function<I, K> keyFunction, StreamReducers.Reducer<K, I, O, A> reducer) {
-		Input input = new Input<>(inputs.size(), priorityQueue, keyFunction, reducer);
+		Input input = new Input<>(inputs.size(), priorityQueue, keyFunction, reducer, bufferSize);
 		inputs.add(input);
 		streamsAwaiting++;
 		streamsOpen++;
@@ -90,22 +90,23 @@ public abstract class AbstractStreamReducer<K, O, A> implements HasOutput<O>, Ha
 	}
 
 	private final class Input<I> extends AbstractStreamConsumer<I> implements StreamDataReceiver<I> {
+		private I headItem;
+		private K headKey;
 		private final int index;
-
 		private final PriorityQueue<Input> priorityQueue;
-
 		private final ArrayDeque<I> deque = new ArrayDeque<>();
+		private final int bufferSize;
+
 		private final Function<I, K> keyFunction;
 		private final StreamReducers.Reducer<K, I, O, A> reducer;
-		private K headKey;
-		private I headItem;
 
 		private Input(int index,
-		              PriorityQueue<Input> priorityQueue, Function<I, K> keyFunction, StreamReducers.Reducer<K, I, O, A> reducer) {
+		              PriorityQueue<Input> priorityQueue, Function<I, K> keyFunction, StreamReducers.Reducer<K, I, O, A> reducer, int bufferSize) {
 			this.index = index;
 			this.priorityQueue = priorityQueue;
 			this.keyFunction = keyFunction;
 			this.reducer = reducer;
+			this.bufferSize = bufferSize;
 		}
 
 		@Override
@@ -134,10 +135,10 @@ public abstract class AbstractStreamReducer<K, O, A> implements HasOutput<O>, Ha
 				streamsAwaiting--;
 			} else {
 				deque.offer(item);
-			}
-			if (deque.size() >= bufferSize) {
-				getProducer().suspend();
-				produce();
+				if (deque.size() == bufferSize) {
+					getProducer().suspend();
+					produce();
+				}
 			}
 		}
 
@@ -192,10 +193,15 @@ public abstract class AbstractStreamReducer<K, O, A> implements HasOutput<O>, Ha
 				priorityQueue.offer(input);
 			} else {
 				if (input.getStatus().isOpen()) {
-					input.getProducer().produce(input);
 					streamsAwaiting++;
 					break;
 				}
+			}
+		}
+
+		for (Input input : inputs) {
+			if (input.deque.size() < bufferSize) {
+				input.getProducer().produce(input);
 			}
 		}
 

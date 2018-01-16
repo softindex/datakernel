@@ -26,7 +26,6 @@ import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.StageStats;
-import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducerWithResult;
@@ -60,6 +59,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  */
 public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopService, EventloopJmxMBean {
 	private final Logger logger = getLogger(this.getClass());
+	public static final int DEFAULT_BUFFER_SIZE = 256 * 1024;
 
 	public static final double DEFAULT_SMOOTHING_WINDOW = SMOOTHING_WINDOW_5_MINUTES;
 	public static final String DEFAULT_BACKUP_FOLDER_NAME = "backups";
@@ -69,6 +69,11 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 	private final Eventloop eventloop;
 	private final ExecutorService executorService;
 	private final IdGenerator<Long> idGenerator;
+
+	private final Path dir;
+	private Path backupPath;
+
+	private int bufferSize = DEFAULT_BUFFER_SIZE;
 
 	private final StageStats stageIdGenerator = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final StageStats stageOpenR1 = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
@@ -88,11 +93,6 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 	private final StreamStatsDetailedEx writeCompress = StreamStatsDetailedEx.create(forByteBufs());
 	private final StreamStatsDetailedEx writeChunker = StreamStatsDetailedEx.create(forByteBufs());
 	private final StreamStatsDetailedEx writeFile = StreamStatsDetailedEx.create(forByteBufs());
-
-	private final Path dir;
-
-	private Path backupPath;
-	private int bufferSize = 1024 * 1024;
 
 	/**
 	 * Constructs an aggregation storage, that runs in the specified event loop, performs blocking IO in the given executor,
@@ -130,22 +130,23 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 		return this;
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public <T> CompletionStage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields,
-	                                                                   Class<T> recordClass, long id, DefiningClassLoader classLoader) {
+	                                                                   Class<T> recordClass, long chunkId,
+	                                                                   DefiningClassLoader classLoader) {
 		return Stages.firstComplete(
-				() -> stageOpenR1.monitor(AsyncFile.openAsync(executorService, dir.resolve(id + LOG), new OpenOption[]{READ})),
-				() -> stageOpenR2.monitor(AsyncFile.openAsync(executorService, dir.resolve(id + TEMP_LOG), new OpenOption[]{READ})),
-				() -> stageOpenR3.monitor(AsyncFile.openAsync(executorService, dir.resolve(id + LOG), new OpenOption[]{READ})))
+				() -> stageOpenR1.monitor(AsyncFile.openAsync(executorService, dir.resolve(chunkId + LOG), new OpenOption[]{READ})),
+				() -> stageOpenR2.monitor(AsyncFile.openAsync(executorService, dir.resolve(chunkId + TEMP_LOG), new OpenOption[]{READ})),
+				() -> stageOpenR3.monitor(AsyncFile.openAsync(executorService, dir.resolve(chunkId + LOG), new OpenOption[]{READ})))
 				.thenApply(file -> {
 					StreamFileReader fileReader = StreamFileReader.readFileFrom(file, bufferSize, 0L);
-
 					StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create();
-					stream(fileReader.withStats(readFile), decompressor.getInput());
+					StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(
+							AggregationUtils.createBufferSerializer(aggregation, recordClass,
+									aggregation.getKeys(), fields, classLoader));
 
-					BufferSerializer<T> bufferSerializer = AggregationUtils.createBufferSerializer(aggregation, recordClass,
-							aggregation.getKeys(), fields, classLoader);
-					StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(bufferSerializer);
+					stream(fileReader.withStats(readFile), decompressor.getInput());
 					stream(decompressor.getOutput().withStats(readDecompress), deserializer.getInput());
 
 					return StreamProducers.withEndOfStreamAsResult(
@@ -157,11 +158,11 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 	public <T> CompletionStage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields,
 	                                                                    Class<T> recordClass, long id,
 	                                                                    DefiningClassLoader classLoader) {
-		BufferSerializer<T> bufferSerializer = AggregationUtils.createBufferSerializer(aggregation, recordClass,
-				aggregation.getKeys(), fields, classLoader);
 		return stageOpenW.monitor(AsyncFile.openAsync(executorService, dir.resolve(id + TEMP_LOG), StreamFileWriter.CREATE_OPTIONS))
 				.thenApply(file -> {
-					StreamBinarySerializer<T> serializer = StreamBinarySerializer.create(bufferSerializer)
+					StreamBinarySerializer<T> serializer = StreamBinarySerializer.create(
+							AggregationUtils.createBufferSerializer(aggregation, recordClass,
+									aggregation.getKeys(), fields, classLoader))
 							.withDefaultBufferSize(bufferSize);
 					StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor();
 					StreamByteChunker chunker = StreamByteChunker.create(bufferSize / 2, bufferSize * 2);

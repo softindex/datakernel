@@ -26,12 +26,12 @@ import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.StageStats;
 import io.datakernel.remotefs.IRemoteFsClient;
 import io.datakernel.remotefs.RemoteFsClient;
-import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.processor.*;
+import io.datakernel.util.MemSize;
 
 import java.net.InetSocketAddress;
 import java.util.List;
@@ -45,6 +45,7 @@ import static io.datakernel.stream.processor.StreamStatsSizeCounter.forByteBufs;
 import static java.util.stream.Collectors.toMap;
 
 public class RemoteFsChunkStorage implements AggregationChunkStorage, EventloopJmxMBean {
+	public static final int DEFAULT_BUFFER_SIZE = 256 * 1024;
 	public static final String LOG = ".log";
 	public static final String TEMP_LOG = ".temp";
 	public static final double DEFAULT_SMOOTHING_WINDOW = SMOOTHING_WINDOW_5_MINUTES;
@@ -52,6 +53,8 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage, EventloopJ
 	private final Eventloop eventloop;
 	private final IRemoteFsClient client;
 	private final IdGenerator<Long> idGenerator;
+
+	private int bufferSize = DEFAULT_BUFFER_SIZE;
 
 	private final StageStats stageIdGenerator = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final StageStats stageOpenR1 = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
@@ -66,6 +69,7 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage, EventloopJ
 
 	private final StreamStatsBasic writeSerialize = new StreamStatsBasic();
 	private final StreamStatsDetailedEx writeCompress = StreamStatsDetailedEx.create(forByteBufs());
+	private final StreamStatsDetailedEx writeChunker = StreamStatsDetailedEx.create(forByteBufs());
 	private final StreamStatsDetailedEx writeRemoteFS = StreamStatsDetailedEx.create(forByteBufs());
 
 	private RemoteFsChunkStorage(Eventloop eventloop, IdGenerator<Long> idGenerator, InetSocketAddress serverAddress) {
@@ -76,6 +80,16 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage, EventloopJ
 
 	public static RemoteFsChunkStorage create(Eventloop eventloop, IdGenerator<Long> idGenerator, InetSocketAddress serverAddress) {
 		return new RemoteFsChunkStorage(eventloop, idGenerator, serverAddress);
+	}
+
+	public RemoteFsChunkStorage withBufferSize(int bufferSize) {
+		this.bufferSize = bufferSize;
+		return this;
+	}
+
+	public RemoteFsChunkStorage withBufferSize(MemSize bufferSize) {
+		this.bufferSize = (int) bufferSize.get();
+		return this;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -89,10 +103,9 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage, EventloopJ
 				() -> stageOpenR3.monitor(client.download(path(chunkId), 0)))
 				.thenApply(producer -> {
 					StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create();
-
-					BufferSerializer<T> bufferSerializer = createBufferSerializer(aggregation, recordClass,
-							aggregation.getKeys(), fields, classLoader);
-					StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(bufferSerializer);
+					StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(
+							createBufferSerializer(aggregation, recordClass,
+									aggregation.getKeys(), fields, classLoader));
 
 					stream(producer.withStats(readRemoteFS), decompressor.getInput());
 					stream(decompressor.getOutput().withStats(readDecompress), deserializer.getInput());
@@ -109,18 +122,18 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage, EventloopJ
 	public <T> CompletionStage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields,
 	                                                                    Class<T> recordClass, long chunkId,
 	                                                                    DefiningClassLoader classLoader) {
-		return stageOpenW.monitor(
-				client.upload(tempPath(chunkId)))
+		return stageOpenW.monitor(client.upload(tempPath(chunkId)))
 				.thenApply(consumer -> {
+					StreamBinarySerializer<T> serializer = StreamBinarySerializer.create(
+							createBufferSerializer(aggregation, recordClass,
+									aggregation.getKeys(), fields, classLoader))
+							.withDefaultBufferSize(bufferSize);
 					StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor();
-					BufferSerializer<T> bufferSerializer = createBufferSerializer(aggregation, recordClass,
-							aggregation.getKeys(), fields, classLoader);
+					StreamByteChunker chunker = StreamByteChunker.create(bufferSize / 2, bufferSize * 2);
 
-					StreamBinarySerializer<T> serializer = StreamBinarySerializer.create(bufferSerializer)
-							.withDefaultBufferSize(StreamBinarySerializer.MAX_SIZE_2);
-
-					stream(compressor.getOutput(), consumer.withStats(writeRemoteFS));
 					stream(serializer.getOutput(), compressor.getInput().withStats(writeCompress));
+					stream(compressor.getOutput(), chunker.getInput().withStats(writeChunker));
+					stream(chunker.getOutput(), consumer.withStats(writeRemoteFS));
 
 					return StreamConsumers.withResult(serializer.getInput().withStats(writeSerialize), consumer.getResult());
 				});
@@ -202,6 +215,11 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage, EventloopJ
 	}
 
 	@JmxAttribute
+	public StreamStatsDetailedEx getWriteChunker() {
+		return writeChunker;
+	}
+
+	@JmxAttribute
 	public StreamStatsDetailedEx getWriteRemoteFS() {
 		return writeRemoteFS;
 	}
@@ -221,6 +239,7 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage, EventloopJ
 
 		writeSerialize.resetStats();
 		writeCompress.resetStats();
+		writeChunker.resetStats();
 		writeRemoteFS.resetStats();
 	}
 

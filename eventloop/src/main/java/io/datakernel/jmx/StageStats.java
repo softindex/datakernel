@@ -15,13 +15,11 @@ import static io.datakernel.jmx.MBeanFormat.formatPeriodAgo;
 public class StageStats implements EventloopJmxMBean {
 	private Eventloop eventloop;
 
-	private boolean monitoring = true;
 	private int activeStages = 0;
 	private long lastStartTimestamp = 0;
 	private long lastCompleteTimestamp = 0;
 	private final ValueStats duration;
 	private final ExceptionStats exceptions = ExceptionStats.create();
-	private final ExceptionStats fatalErrors = ExceptionStats.create();
 
 	StageStats(Eventloop eventloop, ValueStats duration) {
 		this.eventloop = eventloop;
@@ -41,11 +39,6 @@ public class StageStats implements EventloopJmxMBean {
 		return this;
 	}
 
-	public StageStats withMonitoring(boolean monitoring) {
-		setMonitoring(monitoring);
-		return this;
-	}
-
 	public void setHistogramLevels(int[] levels) {
 		duration.setHistogramLevels(levels);
 	}
@@ -58,57 +51,32 @@ public class StageStats implements EventloopJmxMBean {
 	}
 
 	public <T> CompletionStage<T> monitor(AsyncCallable<T> callable) {
-		try {
-			CompletionStage<T> stage = callable.call();
-			return monitor(stage);
-		} catch (Throwable throwable) {
-			fatalErrors.recordException(throwable);
-			exceptions.recordException(throwable);
-			throw throwable;
-		}
+		return monitor(callable.call());
 	}
 
-	public <I, O> CompletionStage<O> monitor(AsyncFunction<I, O> function, I argument) {
-		try {
-			CompletionStage<O> stage = function.apply(argument);
-			return monitor(stage);
-		} catch (Throwable throwable) {
-			fatalErrors.recordException(throwable, argument);
-			exceptions.recordException(throwable, argument);
-			throw throwable;
-		}
+	public <I, O> CompletionStage<O> monitor(AsyncFunction<? super I, O> function, I argument) {
+		return monitor(function.apply(argument));
 	}
 
 	public <I, O> Function<I, CompletionStage<O>> monitor(Function<? super I, ? extends CompletionStage<O>> function) {
-		return argument -> {
-			try {
-				CompletionStage<O> stage = function.apply(argument);
-				return monitor(stage);
-			} catch (Throwable throwable) {
-				fatalErrors.recordException(throwable, argument);
-				exceptions.recordException(throwable, argument);
-				throw throwable;
-			}
-		};
+		return argument -> monitor(function.apply(argument));
 	}
 
 	public <T> CompletionStage<T> monitor(CompletionStage<T> stage) {
-		if (!monitoring) return stage;
 		this.activeStages++;
 		long before = currentTimeMillis();
 		this.lastStartTimestamp = before;
-		return stage
-				.whenComplete((t, throwable) -> {
-					this.activeStages--;
-					long now = currentTimeMillis();
-					long durationMillis = now - before;
-					this.lastCompleteTimestamp = now;
-					duration.recordValue(durationMillis);
+		return stage.whenComplete((value, throwable) -> {
+			this.activeStages--;
+			long now = currentTimeMillis();
+			long durationMillis = now - before;
+			this.lastCompleteTimestamp = now;
+			duration.recordValue(durationMillis);
 
-					if (throwable != null) {
-						exceptions.recordException(throwable);
-					}
-				});
+			if (throwable != null) {
+				exceptions.recordException(throwable);
+			}
+		});
 	}
 
 	@Override
@@ -157,11 +125,6 @@ public class StageStats implements EventloopJmxMBean {
 	}
 
 	@JmxAttribute(optional = true)
-	public ExceptionStats getFatalErrors() {
-		return fatalErrors;
-	}
-
-	@JmxAttribute(optional = true)
 	public double getSmoothingWindow() {
 		return duration.getSmoothingWindow();
 	}
@@ -175,16 +138,5 @@ public class StageStats implements EventloopJmxMBean {
 	public void resetStats() {
 		duration.resetStats();
 		exceptions.resetStats();
-		fatalErrors.resetStats();
-	}
-
-	@JmxAttribute(optional = true)
-	public boolean isMonitoring() {
-		return monitoring;
-	}
-
-	@JmxAttribute(optional = true)
-	public void setMonitoring(boolean monitoring) {
-		this.monitoring = monitoring;
 	}
 }

@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletionStage;
 
+import static io.datakernel.async.AsyncCallable.sharedCall;
 import static io.datakernel.async.Stages.onResult;
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static java.util.stream.Collectors.toList;
@@ -79,7 +80,7 @@ public class CubeLogProcessorController implements EventloopJmxMBean {
 		return this;
 	}
 
-	private final AsyncCallable<Boolean> processLogs = AsyncCallable.singleCallOf(this::doProcessLogs);
+	private final AsyncCallable<Boolean> processLogs = sharedCall(this::doProcessLogs);
 
 	public CompletionStage<Boolean> processLogs() {
 		return processLogs.call();

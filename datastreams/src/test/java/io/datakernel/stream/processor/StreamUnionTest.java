@@ -34,7 +34,6 @@ import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.TestUtils.*;
 import static java.util.Arrays.asList;
-import static java.util.Collections.EMPTY_LIST;
 import static org.junit.Assert.*;
 
 @SuppressWarnings("unchecked")
@@ -48,10 +47,10 @@ public class StreamUnionTest {
 		StreamProducer<Integer> source0 = StreamProducers.closing();
 		StreamProducer<Integer> source1 = StreamProducers.of(1);
 		StreamProducer<Integer> source2 = StreamProducers.of(2, 3);
-		StreamProducer<Integer> source3 = StreamProducers.ofIterable(EMPTY_LIST);
+		StreamProducer<Integer> source3 = StreamProducers.of();
 		StreamProducer<Integer> source4 = StreamProducers.of(4, 5);
 		StreamProducer<Integer> source5 = StreamProducers.of(6);
-		StreamProducer<Integer> source6 = StreamProducers.ofIterable(EMPTY_LIST);
+		StreamProducer<Integer> source6 = StreamProducers.of();
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending();
 

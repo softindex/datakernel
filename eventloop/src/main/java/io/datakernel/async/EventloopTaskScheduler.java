@@ -22,45 +22,36 @@ public final class EventloopTaskScheduler implements EventloopService, Eventloop
 	private final StageStats stats;
 
 	private long initialDelay;
-	private long period;
-	private long interval;
-	private double backoffFactor = 1.0;
-	private double backoffFactorMax = 1.0;
+	private Schedule schedule;
+	private RetryPolicy retryPolicy;
+
 	private boolean abortOnError = false;
 
 	private long lastStartTime;
 	private long lastCompleteTime;
-	private Object lastResult;
 	private Throwable lastError;
-	private int lastErrorsCount;
+	private long firstRetryTime;
+	private int errorCount;
 
-	public interface ScheduleFunction<T> {
-		long nextTimestamp(long now, long lastStartTime, long lastCompleteTime, T lastResult, Throwable lastError, int lastErrorsCount);
+	public interface Schedule {
+		long nextTimestamp(long now, long lastStartTime, long lastCompleteTime);
+
+		static Schedule immediate() {
+			return (now, lastStartTime, lastCompleteTime) -> now;
+		}
+
+		static Schedule ofDelay(long delay) {
+			return (now, lastStartTime, lastCompleteTime) -> now + delay;
+		}
+
+		static Schedule ofInterval(long interval) {
+			return (now, lastStartTime, lastCompleteTime) -> lastCompleteTime + interval;
+		}
+
+		static Schedule ofPeriod(long period) {
+			return (now, lastStartTime, lastCompleteTime) -> lastStartTime + period;
+		}
 	}
-
-	private ScheduleFunction<Object> scheduleFunction = (now, lastStartTime, lastCompleteTime, lastResult, lastError, lastErrorsCount) -> {
-		long from;
-		long delay;
-		if (period != 0) {
-			from = lastStartTime;
-			delay = period;
-		} else {
-			from = lastCompleteTime;
-			delay = interval;
-		}
-		if (lastErrorsCount != 0 && backoffFactor != 1.0) {
-			double backoff = Math.pow(backoffFactor, lastErrorsCount);
-			if (backoff > backoffFactorMax) {
-				backoff = backoffFactorMax;
-			}
-			delay *= backoff;
-		}
-		long timestamp = from + delay;
-		if (timestamp < now) {
-			timestamp = now;
-		}
-		return timestamp;
-	};
 
 	private ScheduledRunnable scheduledTask;
 
@@ -80,19 +71,23 @@ public final class EventloopTaskScheduler implements EventloopService, Eventloop
 		return this;
 	}
 
-	public EventloopTaskScheduler withPeriod(long refreshPeriodMillis) {
-		this.period = refreshPeriodMillis;
+	public EventloopTaskScheduler withSchedule(Schedule schedule) {
+		this.schedule = schedule;
+		return this;
+	}
+
+	public EventloopTaskScheduler withPeriod(long periodMillis) {
+		this.schedule = Schedule.ofPeriod(periodMillis);
 		return this;
 	}
 
 	public EventloopTaskScheduler withInterval(long intervalMillis) {
-		this.interval = intervalMillis;
+		this.schedule = Schedule.ofInterval(intervalMillis);
 		return this;
 	}
 
-	@SuppressWarnings("unchecked")
-	public EventloopTaskScheduler withScheduleFunction(ScheduleFunction<?> scheduleFunction) {
-		this.scheduleFunction = (ScheduleFunction<Object>) scheduleFunction;
+	public EventloopTaskScheduler withRetryPolicy(RetryPolicy retryPolicy) {
+		this.retryPolicy = retryPolicy;
 		return this;
 	}
 
@@ -120,29 +115,35 @@ public final class EventloopTaskScheduler implements EventloopService, Eventloop
 		if (scheduledTask != null && scheduledTask.isCancelled())
 			return;
 
-		long timestamp = (lastStartTime == 0) ?
-				eventloop.currentTimeMillis() + initialDelay :
-				scheduleFunction.nextTimestamp(eventloop.currentTimeMillis(), lastStartTime, lastCompleteTime, lastResult, lastError, lastErrorsCount);
+		long now = eventloop.currentTimeMillis();
+		long timestamp;
+		if (lastStartTime == 0) {
+			timestamp = now + initialDelay;
+		} else if (lastError == null || retryPolicy == null) {
+			timestamp = schedule.nextTimestamp(now, lastStartTime, lastCompleteTime);
+		} else {
+			assert errorCount != 0;
+			if (firstRetryTime == 0) firstRetryTime = now;
+			timestamp = retryPolicy.nextRetryTimestamp(now, lastError, errorCount - 1, firstRetryTime);
+			if (timestamp == 0) {
+				timestamp = schedule.nextTimestamp(now, lastStartTime, lastCompleteTime);
+			}
+		}
 
-		scheduledTask = eventloop.scheduleBackground(
-				timestamp,
+		scheduledTask = eventloop.scheduleBackground(timestamp,
 				() -> {
-					long startTime = eventloop.currentTimeMillis();
+					lastStartTime = eventloop.currentTimeMillis();
 					stats.monitor(task).whenComplete((result, throwable) -> {
+						lastCompleteTime = eventloop.currentTimeMillis();
 						if (throwable == null) {
-							lastStartTime = startTime;
-							lastCompleteTime = eventloop.currentTimeMillis();
-							lastResult = result;
+							firstRetryTime = 0;
 							lastError = null;
-							lastErrorsCount = 0;
+							errorCount = 0;
 							scheduleTask();
 						} else {
-							lastStartTime = startTime;
-							lastCompleteTime = eventloop.currentTimeMillis();
-							lastResult = null;
 							lastError = throwable;
-							lastErrorsCount++;
-							logger.error("Task failures: " + lastErrorsCount, throwable);
+							errorCount++;
+							logger.error("Retry attempt " + errorCount, throwable);
 							if (abortOnError) {
 								scheduledTask.cancel();
 								throw new RuntimeException(throwable);
@@ -164,46 +165,6 @@ public final class EventloopTaskScheduler implements EventloopService, Eventloop
 	public CompletionStage<Void> stop() {
 		scheduledTask.cancel();
 		return Stages.of(null);
-	}
-
-	@JmxAttribute
-	public long getPeriod() {
-		return period;
-	}
-
-	@JmxAttribute
-	public void setPeriod(long refreshPeriodMillis) {
-		this.period = refreshPeriodMillis;
-	}
-
-	@JmxAttribute
-	public long getInterval() {
-		return interval;
-	}
-
-	@JmxAttribute
-	public void setInterval(long interval) {
-		this.interval = interval;
-	}
-
-	@JmxAttribute
-	public double getBackoffFactor() {
-		return backoffFactor;
-	}
-
-	@JmxAttribute
-	public void setBackoffFactor(double backoffFactor) {
-		this.backoffFactor = backoffFactor;
-	}
-
-	@JmxAttribute
-	public double getBackoffFactorMax() {
-		return backoffFactorMax;
-	}
-
-	@JmxAttribute
-	public void setBackoffFactorMax(double backoffFactorMax) {
-		this.backoffFactorMax = backoffFactorMax;
 	}
 
 	@JmxAttribute

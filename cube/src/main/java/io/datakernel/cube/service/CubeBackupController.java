@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletionStage;
 
+import static io.datakernel.async.AsyncCallable.sharedCall;
 import static io.datakernel.async.Stages.runSequence;
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static java.util.Collections.max;
@@ -46,7 +47,7 @@ public final class CubeBackupController implements EventloopJmxMBean {
 		return new CubeBackupController(eventloop, algorithms, storage);
 	}
 
-	private final AsyncCallable<Void> backup = AsyncCallable.singleCallOf(this::backupHead);
+	private final AsyncCallable<Void> backup = sharedCall(this::backupHead);
 
 	public CompletionStage<Void> backup() {
 		return backup.call();
