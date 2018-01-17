@@ -17,9 +17,9 @@
 package io.datakernel.stream;
 
 import io.datakernel.async.SettableStage;
+import io.datakernel.util.Builder;
 
 import java.util.concurrent.CompletionStage;
-import java.util.function.UnaryOperator;
 
 import static io.datakernel.async.SettableStage.mirrorOf;
 import static io.datakernel.async.Stages.onError;
@@ -32,7 +32,7 @@ import static io.datakernel.async.Stages.onError;
  *
  * @param <T> type of input data
  */
-public interface StreamConsumer<T> {
+public interface StreamConsumer<T> extends Builder<StreamConsumer<T>> {
 	/**
 	 * Sets wired producer. It will sent data to this consumer
 	 *
@@ -102,10 +102,6 @@ public interface StreamConsumer<T> {
 				return StreamConsumer.this.getEndOfStream();
 			}
 		};
-	}
-
-	default StreamConsumer<T> with(UnaryOperator<StreamConsumer<T>> wrapper) {
-		return wrapper.apply(this);
 	}
 
 }

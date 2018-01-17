@@ -14,6 +14,7 @@ import io.datakernel.jmx.*;
 import io.datakernel.logfs.ot.LogDiff;
 import io.datakernel.logfs.ot.LogOTState;
 import io.datakernel.ot.OTStateManager;
+import io.datakernel.util.MutableBuilder;
 import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,7 +27,7 @@ import static io.datakernel.async.AsyncCallable.sharedCall;
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static java.util.stream.Collectors.toSet;
 
-public final class CubeConsolidationController implements EventloopJmxMBean {
+public final class CubeConsolidationController implements MutableBuilder<CubeConsolidationController>, EventloopJmxMBean {
 	public static final Supplier<AsyncFunction<Aggregation, AggregationDiff>> DEFAULT_STRATEGY = new Supplier<AsyncFunction<Aggregation, AggregationDiff>>() {
 		private boolean hotSegment = false;
 

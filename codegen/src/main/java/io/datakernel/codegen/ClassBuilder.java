@@ -17,6 +17,7 @@
 package io.datakernel.codegen;
 
 import io.datakernel.codegen.utils.DefiningClassWriter;
+import io.datakernel.util.MutableBuilder;
 import io.datakernel.util.Preconditions;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
@@ -45,7 +46,7 @@ import static org.objectweb.asm.commons.Method.getMethod;
  * @param <T> type of item
  */
 @SuppressWarnings("unchecked")
-public final class ClassBuilder<T> {
+public final class ClassBuilder<T> implements MutableBuilder<ClassBuilder<T>> {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	public static final String DEFAULT_CLASS_NAME = ClassBuilder.class.getPackage().getName() + ".Class";

@@ -9,6 +9,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.*;
 import io.datakernel.logfs.ot.LogDiff;
 import io.datakernel.ot.*;
+import io.datakernel.util.MutableBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,7 +25,7 @@ import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toSet;
 import static java.util.stream.Stream.concat;
 
-public final class CubeCleanerController implements EventloopJmxMBean {
+public final class CubeCleanerController implements MutableBuilder<CubeCleanerController>, EventloopJmxMBean {
 	private final Logger logger = LoggerFactory.getLogger(CubeCleanerController.class);
 
 	public static final long DEFAULT_CHUNKS_CLEANUP_DELAY = 60 * 1000L;

@@ -60,10 +60,14 @@ import static io.datakernel.util.gson.GsonAdapters.*;
 public final class DatagraphSerialization {
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 
-	/** Store StreamIds as longs */
+	/**
+	 * Store StreamIds as longs
+	 */
 	public static final TypeAdapter<StreamId> STREAM_ID_JSON = transform(LONG_JSON, StreamId::new, StreamId::getId).nullSafe();
 
-	/** Store addresses as strings */
+	/**
+	 * Store addresses as strings
+	 */
 	public static final TypeAdapter<InetSocketAddress> ADDRESS_JSON = transform(STRING_JSON, str -> {
 		String[] split = str.split(":");
 		checkArgument(split.length == 2);
@@ -78,9 +82,9 @@ public final class DatagraphSerialization {
 	public static final TypeAdapter<Comparator<Object>> COMPARATOR_JSON = stateless();
 
 	public static final TypeAdapterObjectSubtype<Sharder> SHARDER_JSON = TypeAdapterObjectSubtype.<Sharder>create()
-		.withSubtype(HashSharder.class, "HashSharder", TypeAdapterObject.create(HashSharder::new)
-			.with("partitions", INTEGER_JSON, HashSharder::getPartitions, HashSharder::setPartitions))
-		.allOtherAreStateless();
+			.withSubtype(HashSharder.class, "HashSharder", TypeAdapterObject.create(HashSharder::new)
+					.with("partitions", INTEGER_JSON, HashSharder::getPartitions, HashSharder::setPartitions))
+			.allOtherAreStateless();
 
 	public static final TypeAdapter<StreamMap.Mapper<Object, Object>> MAPPER_JSON = stateless();
 	public static final TypeAdapter<StreamJoin.Joiner<Object, Object, Object, Object>> JOINER_JSON = stateless();
@@ -88,116 +92,115 @@ public final class DatagraphSerialization {
 	public static final TypeAdapter<StreamReducers.ReducerToResult> REDUCER_TO_RESULT_JSON = stateless();
 
 	public static final TypeAdapterObjectSubtype<Reducer> REDUCER_JSON = TypeAdapterObjectSubtype.<Reducer>create()
-		.withSubtype(InputToAccumulator.class, "InputToAccumulator", TypeAdapterObject.create(InputToAccumulator::new)
-			.with("reducerToResult", REDUCER_TO_RESULT_JSON, InputToAccumulator::getReducerToResult, InputToAccumulator::setReducerToResult))
-		.withSubtype(InputToOutput.class, "InputToOutput", TypeAdapterObject.create(InputToOutput::new)
-			.with("reducerToResult", REDUCER_TO_RESULT_JSON, InputToOutput::getReducerToResult, InputToOutput::setReducerToResult))
-		.withSubtype(AccumulatorToAccumulator.class, "AccumulatorToAccumulator", TypeAdapterObject.create(AccumulatorToAccumulator::new)
-			.with("reducerToResult", REDUCER_TO_RESULT_JSON, AccumulatorToAccumulator::getReducerToResult, AccumulatorToAccumulator::setReducerToResult))
-		.withSubtype(AccumulatorToOutput.class, "AccumulatorToOutput", TypeAdapterObject.create(AccumulatorToOutput::new)
-			.with("reducerToResult", REDUCER_TO_RESULT_JSON, AccumulatorToOutput::getReducerToResult, AccumulatorToOutput::setReducerToResult))
-		.withStatelessSubtype(MergeDeduplicateReducer::new, "MergeDeduplicateReducer")
-		.withStatelessSubtype(MergeSortReducer::new, "MergeSortReducer")
-		.allOtherAreStateless();
+			.withSubtype(InputToAccumulator.class, "InputToAccumulator", TypeAdapterObject.create(InputToAccumulator::new)
+					.with("reducerToResult", REDUCER_TO_RESULT_JSON, InputToAccumulator::getReducerToResult, InputToAccumulator::setReducerToResult))
+			.withSubtype(InputToOutput.class, "InputToOutput", TypeAdapterObject.create(InputToOutput::new)
+					.with("reducerToResult", REDUCER_TO_RESULT_JSON, InputToOutput::getReducerToResult, InputToOutput::setReducerToResult))
+			.withSubtype(AccumulatorToAccumulator.class, "AccumulatorToAccumulator", TypeAdapterObject.create(AccumulatorToAccumulator::new)
+					.with("reducerToResult", REDUCER_TO_RESULT_JSON, AccumulatorToAccumulator::getReducerToResult, AccumulatorToAccumulator::setReducerToResult))
+			.withSubtype(AccumulatorToOutput.class, "AccumulatorToOutput", TypeAdapterObject.create(AccumulatorToOutput::new)
+					.with("reducerToResult", REDUCER_TO_RESULT_JSON, AccumulatorToOutput::getReducerToResult, AccumulatorToOutput::setReducerToResult))
+			.withStatelessSubtype(MergeDeduplicateReducer::new, "MergeDeduplicateReducer")
+			.withStatelessSubtype(MergeSortReducer::new, "MergeSortReducer")
+			.allOtherAreStateless();
 
 	@SuppressWarnings("unchecked")
 	public static final TypeAdapterObjectSubtype<Node> NODE_JSON = TypeAdapterObjectSubtype.<Node>create()
-		.withSubtype(NodeDownload.class, "Download", TypeAdapterObject.create(NodeDownload::new)
-			.with("type", CLASS_JSON, NodeDownload::getType, NodeDownload::setType)
-			.with("address", ADDRESS_JSON, NodeDownload::getAddress, NodeDownload::setAddress)
-			.with("streamId", STREAM_ID_JSON, NodeDownload::getStreamId, NodeDownload::setStreamId)
-			.with("output", STREAM_ID_JSON, NodeDownload::getOutput, NodeDownload::setOutput))
+			.withSubtype(NodeDownload.class, "Download", TypeAdapterObject.create(NodeDownload::new)
+					.with("type", CLASS_JSON, NodeDownload::getType, NodeDownload::setType)
+					.with("address", ADDRESS_JSON, NodeDownload::getAddress, NodeDownload::setAddress)
+					.with("streamId", STREAM_ID_JSON, NodeDownload::getStreamId, NodeDownload::setStreamId)
+					.with("output", STREAM_ID_JSON, NodeDownload::getOutput, NodeDownload::setOutput))
 
-		.withSubtype(NodeUpload.class, "Upload", TypeAdapterObject.create(NodeUpload::new)
-			.with("type", CLASS_JSON, NodeUpload::getType, NodeUpload::setType)
-			.with("streamId", STREAM_ID_JSON, NodeUpload::getStreamId, NodeUpload::setStreamId))
+			.withSubtype(NodeUpload.class, "Upload", TypeAdapterObject.create(NodeUpload::new)
+					.with("type", CLASS_JSON, NodeUpload::getType, NodeUpload::setType)
+					.with("streamId", STREAM_ID_JSON, NodeUpload::getStreamId, NodeUpload::setStreamId))
 
-		.withSubtype(NodeMap.class, "Map", TypeAdapterObject.create(NodeMap::new)
-			.with("mapper", MAPPER_JSON, NodeMap::getMapper, NodeMap::setMapper)
-			.with("input", STREAM_ID_JSON, NodeMap::getInput, NodeMap::setInput)
-			.with("output", STREAM_ID_JSON, NodeMap::getOutput, NodeMap::setOutput))
+			.withSubtype(NodeMap.class, "Map", TypeAdapterObject.create(NodeMap::new)
+					.with("mapper", MAPPER_JSON, NodeMap::getMapper, NodeMap::setMapper)
+					.with("input", STREAM_ID_JSON, NodeMap::getInput, NodeMap::setInput)
+					.with("output", STREAM_ID_JSON, NodeMap::getOutput, NodeMap::setOutput))
 
-		.withSubtype(NodeFilter.class, "Filter", TypeAdapterObject.create(NodeFilter::new)
-			.with("predicate", PREDICATE_JSON, NodeFilter::getPredicate, NodeFilter::setPredicate)
-			.with("input", STREAM_ID_JSON, NodeFilter::getInput, NodeFilter::setInput)
-			.with("output", STREAM_ID_JSON, NodeFilter::getOutput, NodeFilter::setOutput))
+			.withSubtype(NodeFilter.class, "Filter", TypeAdapterObject.create(NodeFilter::new)
+					.with("predicate", PREDICATE_JSON, NodeFilter::getPredicate, NodeFilter::setPredicate)
+					.with("input", STREAM_ID_JSON, NodeFilter::getInput, NodeFilter::setInput)
+					.with("output", STREAM_ID_JSON, NodeFilter::getOutput, NodeFilter::setOutput))
 
-		.withSubtype(NodeSort.class, "Sort", TypeAdapterObject.create(NodeSort::new)
-			.with("keyFunction", FUNCTION_JSON, NodeSort::getKeyFunction, NodeSort::setKeyFunction)
-			.with("keyComparator", COMPARATOR_JSON, NodeSort::getKeyComparator, NodeSort::setKeyComparator)
-			.with("deduplicate", BOOLEAN_JSON, NodeSort::isDeduplicate, NodeSort::setDeduplicate)
-			.with("itemsInMemorySize", INTEGER_JSON, NodeSort::getItemsInMemorySize, NodeSort::setItemsInMemorySize)
-			.with("input", STREAM_ID_JSON, NodeSort::getInput, NodeSort::setInput)
-			.with("output", STREAM_ID_JSON, NodeSort::getOutput, NodeSort::setOutput))
+			.withSubtype(NodeSort.class, "Sort", TypeAdapterObject.create(NodeSort::new)
+					.with("keyFunction", FUNCTION_JSON, NodeSort::getKeyFunction, NodeSort::setKeyFunction)
+					.with("keyComparator", COMPARATOR_JSON, NodeSort::getKeyComparator, NodeSort::setKeyComparator)
+					.with("deduplicate", BOOLEAN_JSON, NodeSort::isDeduplicate, NodeSort::setDeduplicate)
+					.with("itemsInMemorySize", INTEGER_JSON, NodeSort::getItemsInMemorySize, NodeSort::setItemsInMemorySize)
+					.with("input", STREAM_ID_JSON, NodeSort::getInput, NodeSort::setInput)
+					.with("output", STREAM_ID_JSON, NodeSort::getOutput, NodeSort::setOutput))
 
-		.withSubtype(NodeShard.class, "Shard", TypeAdapterObject.create(NodeShard::new)
-			.with("keyFunction", FUNCTION_JSON, NodeShard::getKeyFunction, NodeShard::setKeyFunction)
-			.with("input", STREAM_ID_JSON, NodeShard::getInput, NodeShard::setInput)
-			.with("outputs", ofList(STREAM_ID_JSON), NodeShard::getOutputs, NodeShard::setOutputs))
+			.withSubtype(NodeShard.class, "Shard", TypeAdapterObject.create(NodeShard::new)
+					.with("keyFunction", FUNCTION_JSON, NodeShard::getKeyFunction, NodeShard::setKeyFunction)
+					.with("input", STREAM_ID_JSON, NodeShard::getInput, NodeShard::setInput)
+					.with("outputs", ofList(STREAM_ID_JSON), NodeShard::getOutputs, NodeShard::setOutputs))
 
-		.withSubtype(NodeMerge.class, "Merge", TypeAdapterObject.create(NodeMerge::new)
-			.with("keyFunction", FUNCTION_JSON, NodeMerge::getKeyFunction, NodeMerge::setKeyFunction)
-			.with("keyComparator", COMPARATOR_JSON, NodeMerge::getKeyComparator, NodeMerge::setKeyComparator)
-			.with("deduplicate", BOOLEAN_JSON, NodeMerge::isDeduplicate, NodeMerge::setDeduplicate)
-			.with("inputs", ofList(STREAM_ID_JSON), NodeMerge::getInputs, NodeMerge::setInputs)
-			.with("output", STREAM_ID_JSON, NodeMerge::getOutput, NodeMerge::setOutput))
+			.withSubtype(NodeMerge.class, "Merge", TypeAdapterObject.create(NodeMerge::new)
+					.with("keyFunction", FUNCTION_JSON, NodeMerge::getKeyFunction, NodeMerge::setKeyFunction)
+					.with("keyComparator", COMPARATOR_JSON, NodeMerge::getKeyComparator, NodeMerge::setKeyComparator)
+					.with("deduplicate", BOOLEAN_JSON, NodeMerge::isDeduplicate, NodeMerge::setDeduplicate)
+					.with("inputs", ofList(STREAM_ID_JSON), NodeMerge::getInputs, NodeMerge::setInputs)
+					.with("output", STREAM_ID_JSON, NodeMerge::getOutput, NodeMerge::setOutput))
 
-		.withSubtype(NodeReduce.class, "Reduce", TypeAdapterObject.create(NodeReduce::new)
-			.with("keyComparator", COMPARATOR_JSON, NodeReduce::getKeyComparator, NodeReduce::setKeyComparator)
-			.with("inputs", ofMap(
-				s -> Long.toString(s.getId()),
-				s -> new StreamId(Long.parseLong(s)),
-				TypeAdapterObject.create(Input::new)
-					.with("reducer", REDUCER_JSON,
-						Input::getReducer,
-						(obj, reducer) -> obj.setReducer((Reducer<Object, ?, Object, Object>) reducer))
-					.with("keyFunction", FUNCTION_JSON,
-							obj -> (Function) obj.getKeyFunction(),
-							Input::setKeyFunction)
-			), NodeReduce::getInputs, NodeReduce::setInputs)
-				// here intellij shows an error but there is no error, huh
-			.with("output", STREAM_ID_JSON, NodeReduce::getOutput, NodeReduce::setOutput))
+			.withSubtype(NodeReduce.class, "Reduce", TypeAdapterObject.create(NodeReduce::new)
+					.with("keyComparator", COMPARATOR_JSON, NodeReduce::getKeyComparator, NodeReduce::setKeyComparator)
+					.with("output", STREAM_ID_JSON, NodeReduce::getOutput, NodeReduce::setOutput)
+					.with("inputs", ofMap(
+							s -> Long.toString(s.getId()),
+							s -> new StreamId(Long.parseLong(s)),
+							TypeAdapterObject.create(Input::new)
+									.with("reducer", REDUCER_JSON,
+											Input::getReducer,
+											(obj, reducer) -> obj.setReducer((Reducer<Object, ?, Object, Object>) reducer))
+									.with("keyFunction", FUNCTION_JSON,
+											obj -> (Function) obj.getKeyFunction(),
+											Input::setKeyFunction)
+					), NodeReduce::getInputs, NodeReduce::setInputs))
 
-		.withSubtype(NodeReduceSimple.class, "ReduceSimple", TypeAdapterObject.create(NodeReduceSimple::new)
-			.with("keyFunction", FUNCTION_JSON, NodeReduceSimple::getKeyFunction, NodeReduceSimple::setKeyFunction)
-			.with("keyComparator", COMPARATOR_JSON, NodeReduceSimple::getKeyComparator, NodeReduceSimple::setKeyComparator)
-			.with("reducer", REDUCER_JSON, NodeReduceSimple::getReducer,
-				(obj, reducer) -> obj.setReducer((Reducer<Object, Object, Object, Object>) reducer))
-			.with("inputs", ofList(STREAM_ID_JSON), NodeReduceSimple::getInputs, NodeReduceSimple::setInputs)
-			.with("output", STREAM_ID_JSON, NodeReduceSimple::getOutput, NodeReduceSimple::setOutput))
+			.withSubtype(NodeReduceSimple.class, "ReduceSimple", TypeAdapterObject.create(NodeReduceSimple::new)
+					.with("keyFunction", FUNCTION_JSON, NodeReduceSimple::getKeyFunction, NodeReduceSimple::setKeyFunction)
+					.with("keyComparator", COMPARATOR_JSON, NodeReduceSimple::getKeyComparator, NodeReduceSimple::setKeyComparator)
+					.with("reducer", REDUCER_JSON, NodeReduceSimple::getReducer,
+							(obj, reducer) -> obj.setReducer((Reducer<Object, Object, Object, Object>) reducer))
+					.with("inputs", ofList(STREAM_ID_JSON), NodeReduceSimple::getInputs, NodeReduceSimple::setInputs)
+					.with("output", STREAM_ID_JSON, NodeReduceSimple::getOutput, NodeReduceSimple::setOutput))
 
-		.withSubtype(NodeJoin.class, "Join", TypeAdapterObject.create(NodeJoin::new)
-			.with("left", STREAM_ID_JSON, NodeJoin::getLeft, NodeJoin::setLeft)
-			.with("right", STREAM_ID_JSON, NodeJoin::getRight, NodeJoin::setRight)
-			.with("output", STREAM_ID_JSON, NodeJoin::getOutput, NodeJoin::setOutput)
-			.with("keyComparator", COMPARATOR_JSON, NodeJoin::getKeyComparator, NodeJoin::setKeyComparator)
-			.with("leftKeyFunction", FUNCTION_JSON, NodeJoin::getLeftKeyFunction, NodeJoin::setLeftKeyFunction)
-			.with("rightKeyFunction", FUNCTION_JSON, NodeJoin::getRightKeyFunction, NodeJoin::setRightKeyFunction)
-			.with("joiner", JOINER_JSON, NodeJoin::getJoiner, NodeJoin::setJoiner))
+			.withSubtype(NodeJoin.class, "Join", TypeAdapterObject.create(NodeJoin::new)
+					.with("left", STREAM_ID_JSON, NodeJoin::getLeft, NodeJoin::setLeft)
+					.with("right", STREAM_ID_JSON, NodeJoin::getRight, NodeJoin::setRight)
+					.with("output", STREAM_ID_JSON, NodeJoin::getOutput, NodeJoin::setOutput)
+					.with("keyComparator", COMPARATOR_JSON, NodeJoin::getKeyComparator, NodeJoin::setKeyComparator)
+					.with("leftKeyFunction", FUNCTION_JSON, NodeJoin::getLeftKeyFunction, NodeJoin::setLeftKeyFunction)
+					.with("rightKeyFunction", FUNCTION_JSON, NodeJoin::getRightKeyFunction, NodeJoin::setRightKeyFunction)
+					.with("joiner", JOINER_JSON, NodeJoin::getJoiner, NodeJoin::setJoiner))
 
-		.withSubtype(NodeUnion.class, "Union", TypeAdapterObject.create(NodeUnion::new)
-			.with("inputs", ofList(STREAM_ID_JSON), NodeUnion::getInputs, NodeUnion::setInputs)
-			.with("output", STREAM_ID_JSON, NodeUnion::getOutput, NodeUnion::setOutput))
+			.withSubtype(NodeUnion.class, "Union", TypeAdapterObject.create(NodeUnion::new)
+					.with("inputs", ofList(STREAM_ID_JSON), NodeUnion::getInputs, NodeUnion::setInputs)
+					.with("output", STREAM_ID_JSON, NodeUnion::getOutput, NodeUnion::setOutput))
 
-		.withSubtype(NodeProducerOfIterable.class, "ProducerOfIterable", TypeAdapterObject.create(NodeProducerOfIterable::new)
-			.with("iterableId", STRING_JSON, t1 -> (String) t1.getIterableId(), NodeProducerOfIterable::setIterableId)
-			.with("output", STREAM_ID_JSON, NodeProducerOfIterable::getOutput, NodeProducerOfIterable::setOutput))
+			.withSubtype(NodeProducerOfIterable.class, "ProducerOfIterable", TypeAdapterObject.create(NodeProducerOfIterable::new)
+					.with("iterableId", STRING_JSON, t1 -> (String) t1.getIterableId(), NodeProducerOfIterable::setIterableId)
+					.with("output", STREAM_ID_JSON, NodeProducerOfIterable::getOutput, NodeProducerOfIterable::setOutput))
 
-		.withSubtype(NodeConsumerToList.class, "ConsumerToList", TypeAdapterObject.create(NodeConsumerToList::new)
-			.with("iterableId", STRING_JSON, t -> (String) t.getListId(), NodeConsumerToList::setListId)
-			.with("input", STREAM_ID_JSON, NodeConsumerToList::getInput, NodeConsumerToList::setInput));
+			.withSubtype(NodeConsumerToList.class, "ConsumerToList", TypeAdapterObject.create(NodeConsumerToList::new)
+					.with("iterableId", STRING_JSON, t -> (String) t.getListId(), NodeConsumerToList::setListId)
+					.with("input", STREAM_ID_JSON, NodeConsumerToList::getInput, NodeConsumerToList::setInput));
 
 	public static final TypeAdapterObjectSubtype<DatagraphCommand> COMMAND_JSON = TypeAdapterObjectSubtype.<DatagraphCommand>create()
-		.withSubtype(DatagraphCommandDownload.class, "Download", TypeAdapterObject.create(DatagraphCommandDownload::new)
-			.with("streamId", STREAM_ID_JSON, DatagraphCommandDownload::getStreamId, DatagraphCommandDownload::setStreamId))
-		.withSubtype(DatagraphCommandExecute.class, "Execute", TypeAdapterObject.create(DatagraphCommandExecute::new)
-			.with("nodes", ofList(NODE_JSON), DatagraphCommandExecute::getNodes, DatagraphCommandExecute::setNodes));
+			.withSubtype(DatagraphCommandDownload.class, "Download", TypeAdapterObject.create(DatagraphCommandDownload::new)
+					.with("streamId", STREAM_ID_JSON, DatagraphCommandDownload::getStreamId, DatagraphCommandDownload::setStreamId))
+			.withSubtype(DatagraphCommandExecute.class, "Execute", TypeAdapterObject.create(DatagraphCommandExecute::new)
+					.with("nodes", ofList(NODE_JSON), DatagraphCommandExecute::getNodes, DatagraphCommandExecute::setNodes));
 
 	public static final TypeAdapterObjectSubtype<DatagraphResponse> RESONSE_JSON = TypeAdapterObjectSubtype.<DatagraphResponse>create()
-		.withStatelessSubtype(DatagraphResponseAck::new, "Ack")
-		.withStatelessSubtype(DatagraphResponseDisconnect::new, "Disconnect")
-		.withSubtype(DatagraphResponseExecute.class, "Execute", TypeAdapterObject.create(DatagraphResponseExecute::new)
-			.with("nodeIds", ofList(INTEGER_JSON), DatagraphResponseExecute::getNodeIds, DatagraphResponseExecute::setNodeIds));
+			.withStatelessSubtype(DatagraphResponseAck::new, "Ack")
+			.withStatelessSubtype(DatagraphResponseDisconnect::new, "Disconnect")
+			.withSubtype(DatagraphResponseExecute.class, "Execute", TypeAdapterObject.create(DatagraphResponseExecute::new)
+					.with("nodeIds", ofList(INTEGER_JSON), DatagraphResponseExecute::getNodeIds, DatagraphResponseExecute::setNodeIds));
 
 	public final TypeAdapter<DatagraphCommand> commandAdapter;
 	public final TypeAdapter<DatagraphResponse> responseAdapter;

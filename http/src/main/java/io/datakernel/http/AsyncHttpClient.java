@@ -28,6 +28,7 @@ import io.datakernel.eventloop.EventloopService;
 import io.datakernel.jmx.*;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.util.MemSize;
+import io.datakernel.util.MutableBuilder;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLException;
@@ -46,7 +47,7 @@ import static io.datakernel.http.AbstractHttpConnection.*;
 import static io.datakernel.util.Preconditions.checkState;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
-public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService, EventloopJmxMBean {
+public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService, MutableBuilder<AsyncHttpClient>, EventloopJmxMBean {
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create();
 	public static final long DEFAULT_KEEP_ALIVE_MILLIS = 30 * 1000L;
 

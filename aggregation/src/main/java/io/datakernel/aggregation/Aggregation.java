@@ -29,6 +29,7 @@ import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.*;
+import io.datakernel.util.MutableBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,7 +59,7 @@ import static java.util.stream.Collectors.toList;
  * Provides methods for loading and querying data.
  */
 @SuppressWarnings("unchecked")
-public class Aggregation implements IAggregation, EventloopJmxMBean {
+public class Aggregation implements IAggregation, MutableBuilder<Aggregation>, EventloopJmxMBean {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	public static final int DEFAULT_CHUNK_SIZE = 1_000_000;

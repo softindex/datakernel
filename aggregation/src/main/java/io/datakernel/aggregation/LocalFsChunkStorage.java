@@ -32,6 +32,7 @@ import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import io.datakernel.stream.processor.*;
 import io.datakernel.util.MemSize;
+import io.datakernel.util.MutableBuilder;
 import org.slf4j.Logger;
 
 import java.io.IOException;
@@ -55,7 +56,7 @@ import static org.slf4j.LoggerFactory.getLogger;
 /**
  * Stores aggregation chunks in local file system.
  */
-public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopService, EventloopJmxMBean {
+public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopService, MutableBuilder<LocalFsChunkStorage>, EventloopJmxMBean {
 	private final Logger logger = getLogger(this.getClass());
 	public static final int DEFAULT_BUFFER_SIZE = 256 * 1024;
 

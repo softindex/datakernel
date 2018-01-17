@@ -15,6 +15,7 @@ import io.datakernel.logfs.ot.LogOTState;
 import io.datakernel.ot.OTAlgorithms;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.ot.OTSystem;
+import io.datakernel.util.MutableBuilder;
 import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,7 +30,7 @@ import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
-public class CubeLogProcessorController implements EventloopJmxMBean {
+public class CubeLogProcessorController implements MutableBuilder<CubeLogProcessorController>, EventloopJmxMBean {
 	private final Logger logger = LoggerFactory.getLogger(CubeLogProcessorController.class);
 
 	public static final double DEFAULT_SMOOTHING_WINDOW = SMOOTHING_WINDOW_5_MINUTES;

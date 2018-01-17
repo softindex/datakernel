@@ -25,6 +25,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.HttpUtils;
 import io.datakernel.jmx.*;
 import io.datakernel.net.DatagramSocketSettings;
+import io.datakernel.util.MutableBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,7 +49,7 @@ import static java.lang.String.format;
  * Instance of this class is capable to cache resolved addresses and able to
  * resolve IPv6 and IPv4 addresses.
  */
-public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean {
+public final class AsyncDnsClient implements IAsyncDnsClient, MutableBuilder<AsyncDnsClient>, EventloopJmxMBean {
 	private final Logger logger = LoggerFactory.getLogger(AsyncDnsClient.class);
 
 	private static final int DNS_SERVER_PORT = 53;

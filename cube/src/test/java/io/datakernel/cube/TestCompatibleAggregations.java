@@ -136,23 +136,26 @@ public class TestCompatibleAggregations {
 	@Before
 	public void setUp() {
 		cube = Cube.createUninitialized()
-				.withMeasures(MEASURES)
+				.initialize(cube -> {
+					MEASURES.forEach(cube::addMeasure);
 
-				.withDimensions(DIMENSIONS_DAILY_AGGREGATION)
-				.withDimensions(DIMENSIONS_ADVERTISERS_AGGREGATION)
-				.withDimensions(DIMENSIONS_AFFILIATES_AGGREGATION)
+					DIMENSIONS_DAILY_AGGREGATION.forEach(cube::addDimension);
+					DIMENSIONS_ADVERTISERS_AGGREGATION.forEach(cube::addDimension);
+					DIMENSIONS_AFFILIATES_AGGREGATION.forEach(cube::addDimension);
 
-				.withAggregations(asList(DAILY_AGGREGATION, ADVERTISERS_AGGREGATION, AFFILIATES_AGGREGATION));
+					asList(DAILY_AGGREGATION, ADVERTISERS_AGGREGATION, AFFILIATES_AGGREGATION).forEach(cube::addAggregation);
+				});
 
 		cubeWithDetailedAggregation = Cube.createUninitialized()
-				.withMeasures(MEASURES)
+				.initialize(cube -> {
+					MEASURES.forEach(cube::addMeasure);
+					DIMENSIONS_DAILY_AGGREGATION.forEach(cube::addDimension);
+					DIMENSIONS_ADVERTISERS_AGGREGATION.forEach(cube::addDimension);
+					DIMENSIONS_AFFILIATES_AGGREGATION.forEach(cube::addDimension);
+					DIMENSIONS_DETAILED_AFFILIATES_AGGREGATION.forEach(cube::addDimension);
 
-				.withDimensions(DIMENSIONS_DAILY_AGGREGATION)
-				.withDimensions(DIMENSIONS_ADVERTISERS_AGGREGATION)
-				.withDimensions(DIMENSIONS_AFFILIATES_AGGREGATION)
-				.withDimensions(DIMENSIONS_DETAILED_AFFILIATES_AGGREGATION)
-
-				.withAggregations(asList(DAILY_AGGREGATION, ADVERTISERS_AGGREGATION, AFFILIATES_AGGREGATION))
+					asList(DAILY_AGGREGATION, ADVERTISERS_AGGREGATION, AFFILIATES_AGGREGATION).forEach(cube::addAggregation);
+				})
 				.withAggregation(DETAILED_AFFILIATES_AGGREGATION)
 				.withAggregation(LIMITED_DATES_AGGREGATION.withPredicate(LIMITED_DATES_AGGREGATION_PREDICATE));
 	}

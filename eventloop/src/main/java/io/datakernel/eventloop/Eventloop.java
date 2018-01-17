@@ -29,6 +29,7 @@ import io.datakernel.net.DatagramSocketSettings;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.time.CurrentTimeProviderSystem;
+import io.datakernel.util.MutableBuilder;
 import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,7 +60,7 @@ import static io.datakernel.util.Preconditions.checkNotNull;
  * eventloop will be ended, when it has not selected keys and its queues with
  * tasks are empty.
  */
-public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, CurrentTimeProvider, EventloopJmxMBean {
+public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, CurrentTimeProvider, MutableBuilder<Eventloop>, EventloopJmxMBean {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	public static final AsyncTimeoutException CONNECT_TIMEOUT = new AsyncTimeoutException("Connection timed out");

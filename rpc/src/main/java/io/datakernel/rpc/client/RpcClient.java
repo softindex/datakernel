@@ -37,6 +37,7 @@ import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.processor.StreamBinarySerializer;
 import io.datakernel.util.MemSize;
+import io.datakernel.util.MutableBuilder;
 import org.slf4j.Logger;
 
 import javax.net.ssl.SSLContext;
@@ -131,7 +132,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  * @see RpcStrategies
  * @see RpcServer
  */
-public final class RpcClient implements IRpcClient, EventloopService, EventloopJmxMBean {
+public final class RpcClient implements IRpcClient, EventloopService, MutableBuilder<RpcClient>, EventloopJmxMBean {
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create().withTcpNoDelay(true);
 	public static final long DEFAULT_CONNECT_TIMEOUT = 10 * 1000L;
 	public static final long DEFAULT_RECONNECT_INTERVAL = 1 * 1000L;

@@ -20,6 +20,7 @@ import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.JmxReducers.JmxReducerSum;
+import io.datakernel.util.MutableBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,7 +29,7 @@ import java.util.Random;
 import static io.datakernel.util.Preconditions.check;
 import static java.lang.Math.pow;
 
-public final class ThrottlingController implements EventloopJmxMBean {
+public final class ThrottlingController implements MutableBuilder<ThrottlingController>, EventloopJmxMBean {
 	private static int staticInstanceCounter = 0;
 
 	private final Logger logger = LoggerFactory.getLogger(ThrottlingController.class.getName() + "." + staticInstanceCounter++);

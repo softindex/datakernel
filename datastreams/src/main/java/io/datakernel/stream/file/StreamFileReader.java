@@ -16,14 +16,12 @@
 
 package io.datakernel.stream.file;
 
-import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.stream.AbstractStreamProducer;
 import io.datakernel.stream.StreamDataReceiver;
-import io.datakernel.stream.StreamStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,7 +29,6 @@ import java.io.IOException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
 import static java.lang.Math.min;
@@ -49,7 +46,6 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 	private long position;
 	private long length;
 	private boolean pendingAsyncOperation;
-	private SettableStage<Long> positionStage;
 
 	// region creators
 	private StreamFileReader(AsyncFile asyncFile,
@@ -89,18 +85,6 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 	// endregion
 
 	// region api
-	public CompletionStage<Long> getPositionStage() {
-		if (getStatus().isOpen()) {
-			return this.positionStage = SettableStage.create();
-		} else {
-			if (getStatus() == StreamStatus.END_OF_STREAM) {
-				return Stages.of(position);
-			} else {
-				return Stages.ofException(getException());
-			}
-		}
-	}
-
 	public long getPosition() {
 		return position;
 	}
@@ -129,11 +113,6 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 				if (bytesRead == -1) {
 					buf.recycle();
 					sendEndOfStream();
-
-					if (positionStage != null) {
-						positionStage.set(position);
-					}
-
 					return;
 				} else {
 					position += bytesRead;
@@ -148,10 +127,6 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 			} else {
 				buf.recycle();
 				closeWithError(throwable);
-
-				if (positionStage != null) {
-					positionStage.setException(throwable);
-				}
 			}
 		});
 	}
@@ -174,9 +149,8 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 
 	@Override
 	protected void cleanup() {
-		asyncFile.close().whenComplete(($, throwable) -> {
-			if (throwable != null) logger.error("{}: failed to close file", this, throwable);
-		});
+		asyncFile.close().whenComplete(Stages.onError(throwable ->
+				logger.error("{}: failed to close file", this, throwable)));
 	}
 
 	private static AsyncFile getAsyncFile(ExecutorService executor, Path path) throws IOException {

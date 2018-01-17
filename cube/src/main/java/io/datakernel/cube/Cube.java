@@ -43,6 +43,7 @@ import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.*;
+import io.datakernel.util.MutableBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -79,7 +80,7 @@ import static java.util.stream.Collectors.toList;
  * Also provides functionality for managing aggregations.
  */
 @SuppressWarnings("unchecked")
-public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
+public final class Cube implements ICube, OTState<CubeDiff>, MutableBuilder<Cube>, EventloopJmxMBean {
 	private static final Logger logger = LoggerFactory.getLogger(Cube.class);
 
 	public static final int DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD = 300;
@@ -202,75 +203,33 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 		return this;
 	}
 
-	public Cube withAttributes(Map<String, AttributeResolver> attributes) {
-		Cube cube = this;
-		for (String attribute : attributes.keySet()) {
-			AttributeResolver resolver = attributes.get(attribute);
-			cube = cube.withAttribute(attribute, resolver);
-		}
-		return cube;
-	}
-
 	public Cube withClassLoaderCache(CubeClassLoaderCache classLoaderCache) {
 		this.classLoaderCache = classLoaderCache;
 		return this;
 	}
 
 	public Cube withDimension(String dimensionId, FieldType type) {
-		checkState(aggregations.isEmpty());
-		dimensionTypes.put(dimensionId, type);
-		fieldTypes.put(dimensionId, type);
+		addDimension(dimensionId, type);
 		return this;
 	}
 
 	public Cube withDimension(String dimensionId, FieldType type, Object nullValue) {
-		checkState(aggregations.isEmpty());
-		dimensionTypes.put(dimensionId, type);
-		fieldTypes.put(dimensionId, type);
-		dimensionEmptyElements.put(dimensionId, nullValue);
+		addDimension(dimensionId, type, nullValue);
 		return this;
-	}
-
-	public Cube withDimensions(Map<String, FieldType> dimensions) {
-		Cube self = this;
-		for (String dimension : dimensions.keySet()) {
-			self = self.withDimension(dimension, dimensions.get(dimension));
-		}
-		return self;
 	}
 
 	public Cube withMeasure(String measureId, Measure measure) {
-		checkState(aggregations.isEmpty());
-		measures.put(measureId, measure);
-		fieldTypes.put(measureId, measure.getFieldType());
+		addMeasure(measureId, measure);
 		return this;
-	}
-
-	public Cube withMeasures(Map<String, Measure> measures) {
-		Cube self = this;
-		for (String measure : measures.keySet()) {
-			self = self.withMeasure(measure, measures.get(measure));
-		}
-		return self;
 	}
 
 	public Cube withComputedMeasure(String measureId, ComputedMeasure computedMeasure) {
-		this.computedMeasures.put(measureId, computedMeasure);
-		return this;
-	}
-
-	public Cube withComputedMeasures(Map<String, ComputedMeasure> computedMeasures) {
-		this.computedMeasures.putAll(computedMeasures);
+		addComputedMeasure(measureId, computedMeasure);
 		return this;
 	}
 
 	public Cube withRelation(String child, String parent) {
-		this.childParentRelations.put(child, parent);
-		return this;
-	}
-
-	public Cube withRelations(Map<String, String> childParentRelations) {
-		this.childParentRelations.putAll(childParentRelations);
+		addRelation(child, parent);
 		return this;
 	}
 
@@ -371,7 +330,35 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 		return stream.filter(kvEntry -> predicate.test(kvEntry.getKey()));
 	}
 
-	private Cube addAggregation(AggregationConfig config) {
+	public void addMeasure(String measureId, Measure measure) {
+		checkState(aggregations.isEmpty());
+		measures.put(measureId, measure);
+		fieldTypes.put(measureId, measure.getFieldType());
+	}
+
+	public void addComputedMeasure(String measureId, ComputedMeasure computedMeasure) {
+		checkState(aggregations.isEmpty());
+		this.computedMeasures.put(measureId, computedMeasure);
+	}
+
+	public void addRelation(String child, String parent) {
+		this.childParentRelations.put(child, parent);
+	}
+
+	public void addDimension(String dimensionId, FieldType type) {
+		addDimension(dimensionId, type, null);
+	}
+
+	public void addDimension(String dimensionId, FieldType type, Object nullValue) {
+		checkState(aggregations.isEmpty());
+		dimensionTypes.put(dimensionId, type);
+		fieldTypes.put(dimensionId, type);
+		if (nullValue != null) {
+			dimensionEmptyElements.put(dimensionId, nullValue);
+		}
+	}
+
+	public Cube addAggregation(AggregationConfig config) {
 		checkArgument(!aggregations.containsKey(config.id), "Aggregation '%s' is already defined", config.id);
 
 		Stream<Entry<String, FieldType>> measuresAsFields = measuresAsFields(Cube.this.measures).entrySet().stream();
@@ -393,13 +380,6 @@ public final class Cube implements ICube, OTState<CubeDiff>, EventloopJmxMBean {
 
 		aggregations.put(config.id, new AggregationContainer(aggregation, config.measures, config.predicate));
 		logger.info("Added aggregation {} for id '{}'", aggregation, config.id);
-		return this;
-	}
-
-	public Cube withAggregations(Collection<AggregationConfig> aggregations) {
-		for (AggregationConfig aggregation : aggregations) {
-			addAggregation(aggregation);
-		}
 		return this;
 	}
 

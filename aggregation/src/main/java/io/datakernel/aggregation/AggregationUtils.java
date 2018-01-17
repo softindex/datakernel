@@ -29,7 +29,6 @@ import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.asm.SerializerGenClass;
 import io.datakernel.stream.processor.StreamMap;
 import io.datakernel.stream.processor.StreamReducers;
-import io.datakernel.util.WithValue;
 import io.datakernel.util.gson.GsonAdapters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +39,7 @@ import java.lang.reflect.Method;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static io.datakernel.codegen.Expressions.*;
@@ -116,7 +116,7 @@ public class AggregationUtils {
 	                                                      List<String> keys, List<String> fields,
 	                                                      DefiningClassLoader classLoader) {
 		return ClassBuilder.create(classLoader, StreamMap.MapperProjection.class)
-				.withMethod("apply", ((WithValue<Expression>) () -> {
+				.withMethod("apply", ((Supplier<Expression>) () -> {
 					Expression result1 = let(constructor(resultClass));
 					ExpressionSequence sequence = ExpressionSequence.create();
 					for (String fieldName : (Iterable<String>) Stream.concat(keys.stream(), fields.stream())::iterator) {
@@ -133,7 +133,7 @@ public class AggregationUtils {
 	                                         List<String> keys,
 	                                         DefiningClassLoader classLoader) {
 		return ClassBuilder.create(classLoader, Function.class)
-				.withMethod("apply", ((WithValue<Expression>) () -> {
+				.withMethod("apply", ((Supplier<Expression>) () -> {
 					Expression key = let(constructor(keyClass));
 					ExpressionSequence sequence = ExpressionSequence.create();
 					for (String keyString : keys) {

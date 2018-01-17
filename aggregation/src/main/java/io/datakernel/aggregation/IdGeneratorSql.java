@@ -6,6 +6,7 @@ import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.StageStats;
+import io.datakernel.util.MutableBuilder;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -16,7 +17,7 @@ import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 
-public class IdGeneratorSql<K> implements IdGenerator<K>, EventloopJmxMBean {
+public class IdGeneratorSql<K> implements IdGenerator<K>, MutableBuilder<IdGeneratorSql<K>>, EventloopJmxMBean {
 	public static final double DEFAULT_SMOOTHING_WINDOW = SMOOTHING_WINDOW_5_MINUTES;
 
 	private final Eventloop eventloop;

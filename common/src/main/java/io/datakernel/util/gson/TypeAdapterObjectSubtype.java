@@ -3,6 +3,7 @@ package io.datakernel.util.gson;
 import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
+import io.datakernel.util.MutableBuilder;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -11,7 +12,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-public class TypeAdapterObjectSubtype<T> extends TypeAdapter<T> {
+public class TypeAdapterObjectSubtype<T> extends TypeAdapter<T> implements MutableBuilder<TypeAdapterObjectSubtype<T>> {
 
 	private final Map<Type, TypeAdapter<? extends T>> classesToAdapters = new HashMap<>();
 
@@ -53,13 +54,13 @@ public class TypeAdapterObjectSubtype<T> extends TypeAdapter<T> {
 	@Override
 	public void write(JsonWriter out, T value) throws IOException {
 		String stateless = statelessSubtypesToNames.get(value.getClass());
-		if(stateless != null) {
+		if (stateless != null) {
 			out.value(stateless);
 			return;
 		}
 		Class<?> cls = value.getClass();
 		String name = subtypesToNames.get(cls);
-		if(name == null && allOtherAreStateless) {
+		if (name == null && allOtherAreStateless) {
 			out.value(cls.getName());
 			return;
 		}
@@ -72,7 +73,7 @@ public class TypeAdapterObjectSubtype<T> extends TypeAdapter<T> {
 	@SuppressWarnings("unchecked")
 	@Override
 	public T read(JsonReader in) throws IOException {
-		switch(in.peek()) {
+		switch (in.peek()) {
 			case BEGIN_OBJECT:
 				in.beginObject();
 				T value = namesToAdapters.get(in.nextName()).read(in);
@@ -80,7 +81,7 @@ public class TypeAdapterObjectSubtype<T> extends TypeAdapter<T> {
 				return value;
 			case STRING:
 				String key = in.nextString();
-				if(allOtherAreStateless) {
+				if (allOtherAreStateless) {
 					return namesToStatelessSubtypes.getOrDefault(key, () -> GsonAdapters.newInstance(key)).get();
 				}
 				return namesToStatelessSubtypes.get(key).get();

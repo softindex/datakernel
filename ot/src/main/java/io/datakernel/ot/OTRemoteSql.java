@@ -8,6 +8,7 @@ import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.StageStats;
+import io.datakernel.util.MutableBuilder;
 import io.datakernel.util.gson.GsonAdapters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,7 +30,7 @@ import static java.util.Collections.nCopies;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.*;
 
-public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBean {
+public class OTRemoteSql<D> implements OTRemote<Integer, D>, MutableBuilder<OTRemoteSql<D>>, EventloopJmxMBean {
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 	public static final double DEFAULT_SMOOTHING_WINDOW = SMOOTHING_WINDOW_5_MINUTES;
 	public static final String DEFAULT_REVISION_TABLE = "ot_revision";

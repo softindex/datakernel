@@ -17,11 +17,11 @@
 package io.datakernel.stream;
 
 import io.datakernel.async.SettableStage;
+import io.datakernel.util.Builder;
 
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
-import java.util.function.UnaryOperator;
 
 import static io.datakernel.async.SettableStage.mirrorOf;
 import static io.datakernel.async.Stages.onError;
@@ -36,7 +36,7 @@ import static java.util.Arrays.asList;
  *
  * @param <T> type of output data
  */
-public interface StreamProducer<T> {
+public interface StreamProducer<T> extends Builder<StreamProducer<T>> {
 	/**
 	 * Changes consumer for this producer, removes itself from previous consumer and removes
 	 * previous producer for new consumer. Begins to stream to consumer.
@@ -213,10 +213,6 @@ public interface StreamProducer<T> {
 				// do nothing
 			}
 		};
-	}
-
-	default StreamProducer<T> with(UnaryOperator<StreamProducer<T>> wrapper) {
-		return wrapper.apply(this);
 	}
 
 	default CompletionStage<List<T>> getList() {

@@ -31,6 +31,7 @@ import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.processor.StreamBinarySerializer;
 import io.datakernel.util.MemSize;
+import io.datakernel.util.MutableBuilder;
 
 import java.net.InetAddress;
 import java.util.*;
@@ -58,38 +59,38 @@ import static java.util.Arrays.asList;
  * Example. Here are the steps, intended to supplement the example, listed in
  * {@link RpcClient}:
  * <ul>
- *     <li>Create a {@code RequestHandler} for {@code RequestClass} and
- *     {@code ResponseClass}</li>
- *     <li>Create an {@code RpcServer}</li>
- *     <li>Run the server</li>
+ * <li>Create a {@code RequestHandler} for {@code RequestClass} and
+ * {@code ResponseClass}</li>
+ * <li>Create an {@code RpcServer}</li>
+ * <li>Run the server</li>
  * </ul>
  * The implementation, which matches an example, listed in {@link RpcClient}
  * could be as follows:
  * <pre><code>
  * //create a request handler for RequestClass and ResponseClass
  * public class SimpleRequestHandler implements RpcRequestHandler&lt;RequestClass, ResponseClass&gt; {
- *	public void run(RequestClass requestClass, ResultCallback&lt;ResponseClass&gt; resultCallback) {
- *		int count = compute(requestClass.getInfo());
- *		resultCallback.setResult(new ResponseClass(count));
- *	}
+ * 	public void run(RequestClass requestClass, ResultCallback&lt;ResponseClass&gt; resultCallback) {
+ * 		int count = compute(requestClass.getInfo());
+ * 		resultCallback.setResult(new ResponseClass(count));
+ *    }
  *
- *	private int compute(String info) {
- *		return info.length();
- *	}
- *}</code></pre>
+ * 	private int compute(String info) {
+ * 		return info.length();
+ *    }
+ * }</code></pre>
  * Next, instantiate an {@code RpcServer} capable for handling aforementioned
  * message types and run it:
  * <pre><code>
  * RpcServer server = RpcServer.create(eventloop)
- *	.withHandler(RequestClass.class, ResponseClass.class, new SimpleRequestHandler())
- *	.withMessageTypes(RequestClass.class, ResponseClass.class)
- *	.withListenPort(40000);
+ * 	.withHandler(RequestClass.class, ResponseClass.class, new SimpleRequestHandler())
+ * 	.withMessageTypes(RequestClass.class, ResponseClass.class)
+ * 	.withListenPort(40000);
  * </code></pre>
  *
  * @see RpcRequestHandler
  * @see RpcClient
  */
-public final class RpcServer extends AbstractServer<RpcServer> {
+public final class RpcServer extends AbstractServer<RpcServer> implements MutableBuilder<RpcServer> {
 	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS = ServerSocketSettings.create(16384);
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create().withTcpNoDelay(true);
 

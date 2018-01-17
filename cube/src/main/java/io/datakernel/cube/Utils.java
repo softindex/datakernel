@@ -21,13 +21,13 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.ExpressionSequence;
 import io.datakernel.cube.attributes.AttributeResolver;
-import io.datakernel.util.WithValue;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
+import java.util.function.Supplier;
 
 import static io.datakernel.codegen.Expressions.*;
 
@@ -72,7 +72,7 @@ class Utils {
 			}
 		}
 		AttributeResolver.KeyFunction keyFunction = ClassBuilder.create(classLoader, AttributeResolver.KeyFunction.class)
-				.withMethod("extractKey", ((WithValue<Expression>) () -> {
+				.withMethod("extractKey", ((Supplier<Expression>) () -> {
 					ExpressionSequence extractKey = ExpressionSequence.create();
 					Expression key = let(newArray(Object.class, value(recordDimensions.size())));
 					for (int i = 0; i < recordDimensions.size(); i++) {
@@ -88,7 +88,7 @@ class Utils {
 
 		ArrayList<String> resolverAttributes = new ArrayList<>(attributeResolver.getAttributeTypes().keySet());
 		AttributeResolver.AttributesFunction attributesFunction = ClassBuilder.create(classLoader, AttributeResolver.AttributesFunction.class)
-				.withMethod("applyAttributes", ((WithValue<Expression>) () -> {
+				.withMethod("applyAttributes", ((Supplier<Expression>) () -> {
 					ExpressionSequence applyAttributes = ExpressionSequence.create();
 					for (String attribute : recordAttributes) {
 						String attributeName = attribute.substring(attribute.indexOf('.') + 1);

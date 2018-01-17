@@ -65,7 +65,6 @@ import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.*;
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
 import static org.junit.Assert.*;
-import static org.junit.internal.matchers.ThrowableCauseMatcher.hasCause;
 
 @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
 public class CubeMeasureRemovalTest {
@@ -350,7 +349,7 @@ public class CubeMeasureRemovalTest {
 		OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
 		OTRemoteSql<LogDiff<CubeDiff>> otSourceSql2 = OTRemoteSql.create(eventloop, executor, dataSource, otSystem, diffAdapter2);
 
-		exception.expectCause(hasCause(instanceOf(IOException.class)));
+		exception.expectCause(instanceOf(IOException.class));
 		exception.expectMessage("Unknown fields: [clicks, conversions]");
 
 		CompletableFuture<OTCommit<Integer, LogDiff<CubeDiff>>> future = otSourceSql2.getHeads()
@@ -427,7 +426,7 @@ public class CubeMeasureRemovalTest {
 		OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
 		OTRemoteSql<LogDiff<CubeDiff>> otSourceSql2 = OTRemoteSql.create(eventloop, executor, dataSource, otSystem, diffAdapter2);
 
-		exception.expectCause(hasCause(instanceOf(IOException.class)));
+		exception.expectCause(instanceOf(IOException.class));
 		exception.expectMessage("Unknown aggregations: [impressionsAggregation, otherAggregation]");
 
 		CompletableFuture<OTCommit<Integer, LogDiff<CubeDiff>>> future = otSourceSql2.getHeads()

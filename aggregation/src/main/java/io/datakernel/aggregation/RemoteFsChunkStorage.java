@@ -30,6 +30,7 @@ import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.processor.*;
 import io.datakernel.util.MemSize;
+import io.datakernel.util.MutableBuilder;
 
 import java.net.InetSocketAddress;
 import java.util.List;
@@ -42,7 +43,7 @@ import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.processor.StreamStatsSizeCounter.forByteBufs;
 import static java.util.stream.Collectors.toMap;
 
-public class RemoteFsChunkStorage implements AggregationChunkStorage, EventloopJmxMBean {
+public class RemoteFsChunkStorage implements AggregationChunkStorage, MutableBuilder<RemoteFsChunkStorage>, EventloopJmxMBean {
 	public static final int DEFAULT_BUFFER_SIZE = 256 * 1024;
 	public static final String LOG = ".log";
 	public static final String TEMP_LOG = ".temp";

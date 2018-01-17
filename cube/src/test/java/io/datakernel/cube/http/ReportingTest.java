@@ -278,8 +278,8 @@ public class ReportingTest {
 		AggregationChunkStorage aggregationChunkStorage = LocalFsChunkStorage.create(eventloop, executor, new IdGeneratorStub(), aggregationsDir);
 		cube = Cube.create(eventloop, executor, classLoader, aggregationChunkStorage)
 				.withClassLoaderCache(CubeClassLoaderCache.create(classLoader, 5))
-				.withDimensions(DIMENSIONS_CUBE)
-				.withMeasures(MEASURES)
+				.initialize(cube -> DIMENSIONS_CUBE.forEach(cube::addDimension))
+				.initialize(cube -> MEASURES.forEach(cube::addMeasure))
 				.withRelation("campaign", "advertiser")
 				.withRelation("banner", "campaign")
 				.withRelation("site", "affiliate")
