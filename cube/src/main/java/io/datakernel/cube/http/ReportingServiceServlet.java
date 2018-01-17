@@ -25,7 +25,7 @@ import io.datakernel.cube.*;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
 import io.datakernel.util.Stopwatch;
-import io.datakernel.utils.GsonAdapters.TypeAdapterMapping;
+import io.datakernel.util.gson.GsonAdapters.TypeAdapterMapping;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

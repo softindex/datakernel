@@ -23,7 +23,6 @@ import io.datakernel.stream.StreamDataReceiver;
  * Contains primary ready for use reducers.
  */
 public final class StreamReducers {
-
 	private StreamReducers() {
 	}
 
@@ -56,7 +55,6 @@ public final class StreamReducers {
 	 * @param <A> type of accumulator
 	 */
 	public interface Reducer<K, I, O, A> {
-
 		/**
 		 * Run when reducer received first element with key from argument.
 		 *
@@ -175,10 +173,10 @@ public final class StreamReducers {
 		 * @param <A> type of accumulator
 		 */
 		public static final class InputToOutput<K, I, O, A> implements Reducer<K, I, O, A> {
-
 			private ReducerToResult<K, I, O, A> reducerToResult;
 
-			public InputToOutput() {}
+			public InputToOutput() {
+			}
 
 			/**
 			 * Creates a new instance of InputToOutput with  ReducerToResult from arguments
@@ -246,10 +244,10 @@ public final class StreamReducers {
 		 * @param <A> type of accumulator
 		 */
 		public static final class InputToAccumulator<K, I, O, A> implements Reducer<K, I, A, A> {
-
 			private ReducerToResult<K, I, O, A> reducerToResult;
 
-			public InputToAccumulator() {}
+			public InputToAccumulator() {
+			}
 
 			public ReducerToResult<K, I, O, A> getReducerToResult() {
 				return reducerToResult;
@@ -319,10 +317,10 @@ public final class StreamReducers {
 		 * @param <A> type of accumulator
 		 */
 		public static final class AccumulatorToOutput<K, I, O, A> implements Reducer<K, A, O, A> {
-
 			private ReducerToResult<K, I, O, A> reducerToResult;
 
-			public AccumulatorToOutput() {}
+			public AccumulatorToOutput() {
+			}
 
 			/**
 			 * Creates a new instance of InputToAccumulator with ReducerToResult from argument
@@ -390,10 +388,10 @@ public final class StreamReducers {
 		 * @param <A> type of accumulator
 		 */
 		public static final class AccumulatorToAccumulator<K, I, O, A> implements Reducer<K, A, A, A> {
-
 			private ReducerToResult<K, I, O, A> reducerToResult;
 
-			public AccumulatorToAccumulator() {}
+			public AccumulatorToAccumulator() {
+			}
 
 			public AccumulatorToAccumulator(ReducerToResult<K, I, O, A> reducerToResult) {
 				this.reducerToResult = reducerToResult;
@@ -456,7 +454,6 @@ public final class StreamReducers {
 	 * @param <A> type of accumulator and type of output data
 	 */
 	public abstract static class ReducerToAccumulator<K, I, A> extends ReducerToResult<K, I, A, A> {
-
 		@Override
 		public final A produceResult(A accumulator) {
 			return accumulator;
@@ -471,7 +468,6 @@ public final class StreamReducers {
 	 * @param <T> type of input and output data
 	 */
 	public static class MergeDeduplicateReducer<K, T> implements Reducer<K, T, T, Void> {
-
 		/**
 		 * On first item with new key it streams it
 		 *
@@ -502,7 +498,6 @@ public final class StreamReducers {
 	 * @param <T> type of input and output data
 	 */
 	public static class MergeSortReducer<K, T> implements Reducer<K, T, T, Void> {
-
 		@Override
 		public Void onFirstItem(StreamDataReceiver<T> stream, K key, T firstValue) {
 			stream.onData(firstValue);

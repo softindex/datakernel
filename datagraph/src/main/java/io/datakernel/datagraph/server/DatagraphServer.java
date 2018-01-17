@@ -45,7 +45,6 @@ import static io.datakernel.stream.net.MessagingSerializers.ofJson;
  * Server for processing JSON commands.
  */
 public final class DatagraphServer extends AbstractServer<DatagraphServer> {
-
 	private final DatagraphEnvironment environment;
 	private final Map<StreamId, StreamForwarder<ByteBuf>> pendingStreams = new HashMap<>();
 	private final MessagingSerializer<DatagraphCommand, DatagraphResponse> serializer;
@@ -57,7 +56,6 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 	}
 
 	protected interface CommandHandler<I, O> {
-
 		void onCommand(MessagingWithBinaryStreaming<I, O> messaging, I command);
 	}
 
@@ -74,12 +72,11 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 		this.environment = DatagraphEnvironment.extend(environment)
 				.set(DatagraphServer.class, this);
 		DatagraphSerialization serialization = environment.getInstance(DatagraphSerialization.class);
-		this.serializer = ofJson(serialization.commandSerializer, serialization.responseSerializer);
+		this.serializer = ofJson(serialization.commandAdapter, serialization.responseAdapter);
 	}
 	// endregion
 
 	private class DownloadCommandHandler implements CommandHandler<DatagraphCommandDownload, DatagraphResponse> {
-
 		@Override
 		public void onCommand(MessagingWithBinaryStreaming<DatagraphCommandDownload, DatagraphResponse> messaging, DatagraphCommandDownload command) {
 			StreamId streamId = command.getStreamId();
@@ -103,7 +100,6 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 	}
 
 	private class ExecuteCommandHandler implements CommandHandler<DatagraphCommandExecute, DatagraphResponse> {
-
 		@Override
 		public void onCommand(MessagingWithBinaryStreaming<DatagraphCommandExecute, DatagraphResponse> messaging, DatagraphCommandExecute command) {
 			messaging.close();

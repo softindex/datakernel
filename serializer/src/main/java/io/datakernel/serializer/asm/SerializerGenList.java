@@ -26,7 +26,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 @SuppressWarnings("PointlessArithmeticExpression")
 public final class SerializerGenList implements SerializerGen, NullableOptimization {

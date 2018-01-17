@@ -19,10 +19,10 @@ package io.datakernel.serializer.asm;
 import io.datakernel.bytebuf.SerializationUtils;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
-import io.datakernel.codegen.utils.Preconditions;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.StringFormat;
+import io.datakernel.util.Preconditions;
 
 import java.util.ArrayList;
 import java.util.List;

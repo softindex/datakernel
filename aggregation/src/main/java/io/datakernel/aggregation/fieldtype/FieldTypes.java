@@ -19,17 +19,17 @@ package io.datakernel.aggregation.fieldtype;
 import com.google.gson.TypeAdapter;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.utils.Primitives;
-import io.datakernel.serializer.SimpleType;
 import io.datakernel.serializer.StringFormat;
 import io.datakernel.serializer.asm.*;
-import io.datakernel.utils.GsonAdapters;
+import io.datakernel.util.SimpleType;
+import io.datakernel.util.gson.GsonAdapters;
 
 import java.lang.reflect.Type;
 import java.time.LocalDate;
 import java.util.Set;
 
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.utils.GsonAdapters.*;
+import static io.datakernel.util.gson.GsonAdapters.*;
 import static java.time.temporal.ChronoUnit.DAYS;
 
 public final class FieldTypes {
@@ -63,7 +63,7 @@ public final class FieldTypes {
 	public static <T> FieldType<Set<T>> ofSet(FieldType<T> fieldType) {
 		SerializerGenSet serializer = new SerializerGenSet(fieldType.getSerializer());
 		Type wrappedNestedType = fieldType.getDataType() instanceof Class ?
-				Primitives.wrap((Class) fieldType.getDataType()) :
+				Primitives.wrap((Class<?>) fieldType.getDataType()) :
 				fieldType.getDataType();
 		Type dataType = SimpleType.of(Set.class, SimpleType.ofType(wrappedNestedType)).getType();
 		TypeAdapter<Set<T>> json = GsonAdapters.ofSet(fieldType.getJson());

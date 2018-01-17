@@ -18,13 +18,13 @@ package io.datakernel.datagraph.server;
 
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.node.*;
-import io.datakernel.datagraph.server.command.DatagraphCommand;
 import io.datakernel.datagraph.server.command.DatagraphCommandExecute;
 import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.processor.StreamMap;
 import io.datakernel.stream.processor.StreamReducers;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
@@ -37,7 +37,7 @@ public class DatagraphSerializationTest {
 
 	@Test
 	public void test2() throws UnknownHostException {
-		DatagraphSerialization serialization = new DatagraphSerialization();
+		DatagraphSerialization serialization = DatagraphSerialization.create();
 
 		NodeReduce<Integer, Integer, Integer> reducer = new NodeReduce<>(new Comparator<Integer>() {
 			@Override
@@ -71,11 +71,14 @@ public class DatagraphSerializationTest {
 				new NodeDownload<>(Integer.class, new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1571), new StreamId(Long.MAX_VALUE))
 		);
 
-		String str = serialization.commandSerializer.toJson(new DatagraphCommandExecute(nodes));
+		String str = serialization.commandAdapter.toJson(new DatagraphCommandExecute(nodes));
 		System.out.println(str);
 
-		DatagraphCommand command = serialization.commandSerializer.fromJson(str);
-		System.out.println(command);
+		try {
+			System.out.println(serialization.commandAdapter.fromJson(str));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 }

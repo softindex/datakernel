@@ -20,17 +20,17 @@ package io.datakernel.stream.processor;
  * Static utility methods pertaining to Sharders
  */
 public final class Sharders {
-
-	private Sharders() {}
+	private Sharders() {
+	}
 
 	/**
 	 * Instance of this class shares objects by hashcode to shards
 	 */
 	public static final class HashSharder<K> implements Sharder<K> {
-
 		private int partitions;
 
-		public HashSharder() {}
+		public HashSharder() {
+		}
 
 		/**
 		 * Creates the sharder which contains specified number of parts

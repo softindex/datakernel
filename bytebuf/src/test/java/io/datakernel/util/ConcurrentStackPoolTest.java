@@ -16,25 +16,23 @@
 
 package io.datakernel.util;
 
-import io.datakernel.util.ConcurrentStackPool.Supplier;
 import org.junit.Test;
+
+import java.util.function.Supplier;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 public final class ConcurrentStackPoolTest {
-	private interface StringSupplier {
-		String get();
-	}
 
 	@Test
 	public void testBase() {
-		ConcurrentStackPool<StringSupplier> pool = new ConcurrentStackPool<>(new Supplier<StringSupplier>() {
+		ConcurrentStackPool<Supplier<String>> pool = new ConcurrentStackPool<>(new Supplier<Supplier<String>>() {
 			private int i = 1;
 
 			@Override
-			public StringSupplier get() {
-				return new StringSupplier() {
+			public Supplier<String> get() {
+				return new Supplier<String>() {
 					String value = i++ + "";
 
 					@Override
@@ -45,14 +43,14 @@ public final class ConcurrentStackPoolTest {
 			}
 		});
 
-		StringSupplier supplier1 = pool.get();
-		StringSupplier supplier2 = pool.get();
+		Supplier<String> supplier1 = pool.get();
+		Supplier<String> supplier2 = pool.get();
 
 		assertEquals("1", supplier1.get());
 		assertEquals("2", supplier2.get());
 
 		pool.put(supplier1);
-		StringSupplier supplier3 = pool.get();
+		Supplier<String> supplier3 = pool.get();
 		assertEquals("1", supplier3.get());
 	}
 

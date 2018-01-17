@@ -21,9 +21,7 @@ import org.junit.Test;
 import java.util.Date;
 import java.util.Map;
 
-import static io.datakernel.bytebuf.ByteBufPool.getCreatedItems;
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItems;
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.http.ContentTypes.JSON_UTF_8;
 import static io.datakernel.http.MediaTypes.ANY_IMAGE;
 import static java.nio.charset.StandardCharsets.ISO_8859_1;

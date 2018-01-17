@@ -24,9 +24,8 @@ import io.datakernel.cube.QueryResult;
 import io.datakernel.cube.Record;
 import io.datakernel.cube.RecordScheme;
 import io.datakernel.cube.ReportType;
-import io.datakernel.serializer.SimpleType;
-import io.datakernel.utils.GsonAdapters;
-import io.datakernel.utils.GsonAdapters.TypeAdapterMapping;
+import io.datakernel.util.SimpleType;
+import io.datakernel.util.gson.GsonAdapters.TypeAdapterMapping;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -36,6 +35,8 @@ import java.util.List;
 import java.util.Map;
 
 import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.util.gson.GsonAdapters.STRING_JSON;
+import static io.datakernel.util.gson.GsonAdapters.ofList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 
@@ -55,7 +56,7 @@ final class QueryResultGsonAdapter extends TypeAdapter<QueryResult> {
 	private final Map<String, Class<?>> attributeTypes;
 	private final Map<String, Class<?>> measureTypes;
 
-	private final TypeAdapter<List<String>> stringListAdapter = GsonAdapters.ofList(GsonAdapters.STRING_JSON);
+	private final TypeAdapter<List<String>> stringListAdapter = ofList(STRING_JSON);
 
 	public QueryResultGsonAdapter(Map<String, TypeAdapter<?>> attributeAdapters, Map<String, TypeAdapter<?>> measureAdapters, Map<String, Class<?>> attributeTypes, Map<String, Class<?>> measureTypes) {
 		this.attributeAdapters = attributeAdapters;

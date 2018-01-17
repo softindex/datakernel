@@ -21,10 +21,10 @@ import io.datakernel.datagraph.node.Node;
 import java.util.List;
 
 public final class DatagraphCommandExecute extends DatagraphCommand {
-
 	private List<Node> nodes;
 
-	public DatagraphCommandExecute() {}
+	public DatagraphCommandExecute() {
+	}
 
 	public DatagraphCommandExecute(List<Node> nodes) {
 		this.nodes = nodes;

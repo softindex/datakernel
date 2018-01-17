@@ -3,7 +3,7 @@ package io.datakernel.loader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.loader.cache.Cache;
 
-import java.io.*;
+import java.io.File;
 import java.nio.file.Path;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Predicate;

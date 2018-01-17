@@ -88,7 +88,7 @@ public class DatagraphServerTest {
 
 	@Test
 	public void testForward() throws Exception {
-		DatagraphSerialization serialization = new DatagraphSerialization();
+		DatagraphSerialization serialization = DatagraphSerialization.create();
 		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
 
@@ -140,7 +140,7 @@ public class DatagraphServerTest {
 
 	@Test
 	public void testRepartitionAndSort() throws Exception {
-		DatagraphSerialization serialization = new DatagraphSerialization();
+		DatagraphSerialization serialization = DatagraphSerialization.create();
 		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
 
@@ -199,7 +199,7 @@ public class DatagraphServerTest {
 
 	@Test
 	public void testFilter() throws Exception {
-		DatagraphSerialization serialization = new DatagraphSerialization();
+		DatagraphSerialization serialization = DatagraphSerialization.create();
 		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
 
@@ -270,7 +270,7 @@ public class DatagraphServerTest {
 
 	@Test
 	public void testCollector() throws Exception {
-		DatagraphSerialization serialization = new DatagraphSerialization();
+		DatagraphSerialization serialization = DatagraphSerialization.create();
 		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
 

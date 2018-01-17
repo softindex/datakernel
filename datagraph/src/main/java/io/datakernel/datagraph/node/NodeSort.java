@@ -34,7 +34,6 @@ import static java.util.Collections.singletonList;
  * @param <T> data items type
  */
 public final class NodeSort<K, T> implements Node {
-
 	private Function<T, K> keyFunction;
 	private Comparator<K> keyComparator;
 	private boolean deduplicate;
@@ -43,7 +42,8 @@ public final class NodeSort<K, T> implements Node {
 	private StreamId input;
 	private StreamId output;
 
-	public NodeSort() {}
+	public NodeSort() {
+	}
 
 	public NodeSort(Function<T, K> keyFunction, Comparator<K> keyComparator, boolean deduplicate, int itemsInMemorySize, StreamId input) {
 		this.keyFunction = keyFunction;

@@ -1,12 +1,12 @@
 package io.datakernel.aggregation.fieldtype;
 
-import io.datakernel.serializer.SimpleType;
+import io.datakernel.util.SimpleType;
 import org.junit.Test;
 
 import java.util.List;
 
-import static io.datakernel.serializer.SimpleType.of;
-import static io.datakernel.serializer.SimpleType.ofClass;
+import static io.datakernel.util.SimpleType.of;
+import static io.datakernel.util.SimpleType.ofClass;
 import static org.junit.Assert.assertEquals;
 
 public class SimpleTypeTest {

@@ -38,7 +38,6 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.nio.file.StandardOpenOption.*;
 
 public final class FileManager {
-
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private static final OpenOption[] CREATE_OPTIONS = new OpenOption[]{WRITE, CREATE_NEW};
@@ -47,7 +46,7 @@ public final class FileManager {
 	private final ExecutorService executor;
 	private final Path storagePath;
 
-	private final int readerBufferSize = 256 * (1 << 10);     // 256kb
+	private int readerBufferSize = 256 * (1 << 10);     // 256kb
 
 	private FileManager(Eventloop eventloop, ExecutorService executor, Path storagePath) {
 		this.eventloop = checkNotNull(eventloop);

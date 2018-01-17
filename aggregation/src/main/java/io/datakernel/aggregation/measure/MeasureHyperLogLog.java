@@ -24,7 +24,7 @@ import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.asm.SerializerGenArray;
 import io.datakernel.serializer.asm.SerializerGenByte;
 import io.datakernel.serializer.asm.SerializerGenClass;
-import io.datakernel.utils.GsonAdapters;
+import io.datakernel.util.gson.GsonAdapters;
 import org.objectweb.asm.Type;
 
 import static io.datakernel.codegen.Expressions.*;

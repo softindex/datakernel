@@ -31,11 +31,11 @@ import static java.util.Collections.singletonList;
  * @param <T> data items type
  */
 public final class NodeProducerOfIterable<T> implements Node {
-
 	private Object iterableId;
 	private StreamId output;
 
-	public NodeProducerOfIterable() {}
+	public NodeProducerOfIterable() {
+	}
 
 	public NodeProducerOfIterable(Object iterableId) {
 		this.iterableId = iterableId;

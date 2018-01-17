@@ -5,7 +5,7 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 import io.datakernel.logfs.LogFile;
 import io.datakernel.logfs.LogPosition;
-import io.datakernel.utils.GsonAdapters;
+import io.datakernel.util.gson.GsonAdapters;
 
 import java.io.IOException;
 import java.util.LinkedHashMap;
@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.utils.GsonAdapters.oneline;
+import static io.datakernel.util.gson.GsonAdapters.oneline;
 
 public final class LogDiffJson<D> extends TypeAdapter<LogDiff<D>> {
 	public static final String POSITIONS = "positions";

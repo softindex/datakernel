@@ -32,11 +32,11 @@ import java.util.List;
  * @param <T> data items type
  */
 public final class NodeConsumerToList<T> implements Node {
-
 	private Object listId;
 	private StreamId input;
 
-	public NodeConsumerToList() {}
+	public NodeConsumerToList() {
+	}
 
 	/**
 	 * Constructs a new node consumer, which saves data items from the given input stream to the specified list.

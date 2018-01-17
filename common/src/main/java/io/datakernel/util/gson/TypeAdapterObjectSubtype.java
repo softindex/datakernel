@@ -1,4 +1,4 @@
-package io.datakernel.utils;
+package io.datakernel.util.gson;
 
 import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
@@ -23,7 +23,8 @@ public class TypeAdapterObjectSubtype<T> extends TypeAdapter<T> {
 
 	private boolean allOtherAreStateless = false;
 
-	private TypeAdapterObjectSubtype() {}
+	private TypeAdapterObjectSubtype() {
+	}
 
 	public static <T> TypeAdapterObjectSubtype<T> create() {
 		return new TypeAdapterObjectSubtype<>();

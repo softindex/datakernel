@@ -31,12 +31,12 @@ import static java.util.Collections.singletonList;
  * @param <T> data items type
  */
 public final class NodeFilter<T> implements Node {
-
 	private Predicate<T> predicate;
 	private StreamId input;
 	private StreamId output = new StreamId();
 
-	public NodeFilter() {}
+	public NodeFilter() {
+	}
 
 	public NodeFilter(Predicate<T> predicate, StreamId input) {
 		this.predicate = predicate;

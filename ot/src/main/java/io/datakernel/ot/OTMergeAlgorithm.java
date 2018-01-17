@@ -166,10 +166,10 @@ final class OTMergeAlgorithm<K, D> {
 						for (K parent : parents.keySet()) {
 							Set<K> parentRoots = findRoots(graph, parent);
 							for (K affectedHead : affectedHeads) {
-								head2roots.computeIfAbsent(affectedHead, $::newHashSet).addAll(parentRoots);
+								head2roots.computeIfAbsent(affectedHead, $ -> new HashSet<>()).addAll(parentRoots);
 							}
 							for (K parentRoot : parentRoots) {
-								root2heads.computeIfAbsent(parentRoot, $::newHashSet).addAll(affectedHeads);
+								root2heads.computeIfAbsent(parentRoot, $ -> new HashSet<>()).addAll(affectedHeads);
 								affectedRoots.add(parentRoot);
 							}
 						}

@@ -65,7 +65,7 @@ public final class DatagraphClient {
 	public DatagraphClient(Eventloop eventloop, DatagraphSerialization serialization) {
 		this.eventloop = eventloop;
 		this.serialization = serialization;
-		this.serializer = ofJson(serialization.responseSerializer, serialization.commandSerializer);
+		this.serializer = ofJson(serialization.responseAdapter, serialization.commandAdapter);
 	}
 
 	public <T> CompletionStage<StreamProducer<T>> download(InetSocketAddress address, StreamId streamId, Class<T> type) {

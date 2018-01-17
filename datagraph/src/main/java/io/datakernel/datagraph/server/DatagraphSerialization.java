@@ -36,9 +36,8 @@ import io.datakernel.stream.processor.StreamReducers.ReducerToResult.Accumulator
 import io.datakernel.stream.processor.StreamReducers.ReducerToResult.AccumulatorToOutput;
 import io.datakernel.stream.processor.StreamReducers.ReducerToResult.InputToAccumulator;
 import io.datakernel.stream.processor.StreamReducers.ReducerToResult.InputToOutput;
-import io.datakernel.utils.JsonSerializer;
-import io.datakernel.utils.TypeAdapterObject;
-import io.datakernel.utils.TypeAdapterObjectSubtype;
+import io.datakernel.util.gson.TypeAdapterObject;
+import io.datakernel.util.gson.TypeAdapterObjectSubtype;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,7 +50,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.utils.GsonAdapters.*;
+import static io.datakernel.util.gson.GsonAdapters.*;
 
 /**
  * Responsible for setting up serialization operations for datagraph.
@@ -59,7 +58,6 @@ import static io.datakernel.utils.GsonAdapters.*;
  * Maintains the cache of BufferSerializer's.
  */
 public final class DatagraphSerialization {
-
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 
 	/** Store StreamIds as longs */
@@ -201,11 +199,29 @@ public final class DatagraphSerialization {
 		.withSubtype(DatagraphResponseExecute.class, "Execute", TypeAdapterObject.create(DatagraphResponseExecute::new)
 			.with("nodeIds", ofList(INTEGER_JSON), DatagraphResponseExecute::getNodeIds, DatagraphResponseExecute::setNodeIds));
 
-	public final JsonSerializer<DatagraphCommand> commandSerializer = new JsonSerializer<>(COMMAND_JSON);
-	public final JsonSerializer<DatagraphResponse> responseSerializer = new JsonSerializer<>(RESONSE_JSON);
-	public final JsonSerializer<Node> nodeSerializer = new JsonSerializer<>(NODE_JSON);
+	public final TypeAdapter<DatagraphCommand> commandAdapter;
+	public final TypeAdapter<DatagraphResponse> responseAdapter;
+	public final TypeAdapter<Node> nodeAdapter;
 
 	private final Map<Class<?>, BufferSerializer<?>> serializers = new HashMap<>();
+
+	private DatagraphSerialization(TypeAdapter<DatagraphCommand> commandAdapter, TypeAdapter<DatagraphResponse> responseAdapter, TypeAdapter<Node> nodeAdapter) {
+		this.commandAdapter = commandAdapter;
+		this.responseAdapter = responseAdapter;
+		this.nodeAdapter = nodeAdapter;
+	}
+
+	public static DatagraphSerialization create() {
+		return new DatagraphSerialization(COMMAND_JSON, RESONSE_JSON, NODE_JSON);
+	}
+
+	public DatagraphSerialization withNodeAdapter(TypeAdapter<Node> nodeAdapter) {
+		return new DatagraphSerialization(commandAdapter, responseAdapter, nodeAdapter);
+	}
+
+	public DatagraphSerialization withMessagingAdapters(TypeAdapter<DatagraphCommand> commandAdapter, TypeAdapter<DatagraphResponse> responseAdapter) {
+		return new DatagraphSerialization(commandAdapter, responseAdapter, nodeAdapter);
+	}
 
 	@SuppressWarnings("unchecked")
 	public synchronized <T> BufferSerializer<T> getSerializer(Class<T> type) {

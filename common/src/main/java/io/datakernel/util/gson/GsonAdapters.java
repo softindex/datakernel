@@ -1,6 +1,7 @@
-package io.datakernel.utils;
+package io.datakernel.util.gson;
 
 import com.google.gson.TypeAdapter;
+import com.google.gson.internal.Streams;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 
@@ -542,23 +543,13 @@ public final class GsonAdapters {
 		return ofHeterogeneousList(valueAdapters.toArray(new TypeAdapter<?>[valueAdapters.size()]));
 	}
 
-	public static <T> T fromJson(TypeAdapter<T> typeAdapter, String string) throws JsonException {
+	public static <T> T fromJson(TypeAdapter<T> typeAdapter, String string) throws IOException {
 		StringReader reader = new StringReader(string);
 		JsonReader jsonReader = new JsonReader(reader);
-		return fromJson(typeAdapter, jsonReader);
-	}
+        return typeAdapter.read(jsonReader);
+    }
 
-	@SuppressWarnings("TryWithIdenticalCatches")
-	public static <T> T fromJson(TypeAdapter<T> typeAdapter, JsonReader reader) throws JsonException {
-		try {
-			reader.peek();
-			return typeAdapter.read(reader);
-		} catch (Exception e) {
-			throw new JsonException(e);
-		}
-	}
-
-	private static final class JsonWriterEx extends JsonWriter {
+    private static final class JsonWriterEx extends JsonWriter {
 		final Writer out;
 
 		public JsonWriterEx(Writer out) {
@@ -583,23 +574,22 @@ public final class GsonAdapters {
 		}
 	}
 
-	public static <T> String toJson(TypeAdapter<T> typeAdapter, T value) throws JsonException {
-		StringWriter writer = new StringWriter();
+	private static <T> void toJson(TypeAdapter<T> adapter, T value, Writer writer) throws IOException {
 		JsonWriterEx jsonWriter = new JsonWriterEx(writer);
 		jsonWriter.setLenient(true);
 		jsonWriter.setIndentEx("");
 		jsonWriter.setHtmlSafe(false);
 		jsonWriter.setSerializeNulls(false);
-		toJson(typeAdapter, jsonWriter, value);
-		return writer.toString();
+		adapter.write(jsonWriter, value);
 	}
 
-	public static <T> void toJson(TypeAdapter<T> typeAdapter, JsonWriter writer, T value) throws JsonException {
-		try {
-			typeAdapter.write(writer, value);
-		} catch (Exception e) {
-			throw new JsonException(e);
-		}
+	public static <T> String toJson(TypeAdapter<T> adapter, T value) throws IOException {
+		StringWriter writer = new StringWriter();
+		toJson(adapter, value, writer);
+        return writer.toString();
 	}
 
+	public static <T> void toJson(TypeAdapter<T> adapter, T obj, Appendable appendable) throws IOException {
+		toJson(adapter, obj, Streams.writerForAppendable(appendable));
+	}
 }

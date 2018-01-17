@@ -18,7 +18,10 @@ package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
-import io.datakernel.stream.*;
+import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamConsumerToList;
+import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamStatus;
 import org.junit.Test;
 
 import java.util.ArrayList;

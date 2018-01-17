@@ -16,18 +16,17 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.utils.JsonSerializer;
-import io.datakernel.utils.TypeAdapterObject;
-import io.datakernel.utils.TypeAdapterObjectSubtype;
+import com.google.gson.TypeAdapter;
+import io.datakernel.util.gson.TypeAdapterObject;
+import io.datakernel.util.gson.TypeAdapterObjectSubtype;
 
 import java.util.Map;
 
-import static io.datakernel.utils.GsonAdapters.*;
+import static io.datakernel.util.gson.GsonAdapters.*;
 
 @SuppressWarnings("WeakerAccess")
 public final class RemoteFsCommands {
-
-	static JsonSerializer<FsCommand> serializer = new JsonSerializer<>(TypeAdapterObjectSubtype.<FsCommand>create()
+	static TypeAdapter<FsCommand> adapter = TypeAdapterObjectSubtype.<FsCommand>create()
 		.withSubtype(Upload.class, "Upload", TypeAdapterObject.create(Upload::new)
 			.with("filePath", STRING_JSON, Upload::getFilePath, Upload::setFilePath))
 		.withSubtype(Download.class, "Download", TypeAdapterObject.create(Download::new)
@@ -37,15 +36,17 @@ public final class RemoteFsCommands {
 			.with("filePath", STRING_JSON, Delete::getFilePath, Delete::setFilePath))
 		.withStatelessSubtype(ListFiles::new, "List")
 		.withSubtype(Move.class, "Move", TypeAdapterObject.create(Move::new)
-			.with("changes", ofMap(STRING_JSON), Move::getChanges, Move::setChanges)));
+			.with("changes", ofMap(STRING_JSON), Move::getChanges, Move::setChanges));
 
-	public static abstract class FsCommand {}
+	public static abstract class FsCommand {
+
+	}
 
 	public static final class Upload extends FsCommand {
-
 		private String filePath;
 
-		public Upload() {}
+		public Upload() {
+		}
 
 		public Upload(String filePath) {
 			this.filePath = filePath;
@@ -66,10 +67,10 @@ public final class RemoteFsCommands {
 	}
 
 	public static final class Delete extends FsCommand {
-
 		private String filePath;
 
-		public Delete() {}
+		public Delete() {
+		}
 
 		public Delete(String filePath) {
 			this.filePath = filePath;
@@ -90,11 +91,11 @@ public final class RemoteFsCommands {
 	}
 
 	public static final class Download extends FsCommand {
-
 		private String filePath;
 		private long startPosition;
 
-		public Download() {}
+		public Download() {
+		}
 
 		public Download(String filePath, long startPosition) {
 			this.filePath = filePath;
@@ -124,10 +125,10 @@ public final class RemoteFsCommands {
 	}
 
 	public static final class Move extends FsCommand {
-
 		private Map<String, String> changes;
 
-		public Move() {}
+		public Move() {
+		}
 
 		public Move(Map<String, String> changes) {
 			this.changes = changes;
@@ -148,7 +149,6 @@ public final class RemoteFsCommands {
 	}
 
 	public static final class ListFiles extends FsCommand {
-
 		@Override
 		public String toString() {
 			return "List{all files}";

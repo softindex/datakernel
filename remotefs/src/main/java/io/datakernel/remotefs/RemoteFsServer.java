@@ -43,10 +43,8 @@ import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.net.MessagingSerializers.ofJson;
 
 public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
-
 	protected final FileManager fileManager;
-	private final MessagingSerializer<FsCommand, FsResponse> serializer =
-			ofJson(RemoteFsCommands.serializer, RemoteFsResponses.serializer);
+	private final MessagingSerializer<FsCommand, FsResponse> serializer = ofJson(RemoteFsCommands.adapter, RemoteFsResponses.adapter);
 
 	private final Map<Class, MessagingHandler> handlers;
 
@@ -101,7 +99,6 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 	}
 
 	protected interface MessagingHandler<I, O> {
-
 		void onMessage(Messaging<I, O> messaging, I item);
 	}
 
@@ -117,7 +114,6 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 
 	// handler classes
 	private class UploadMessagingHandler implements MessagingHandler<Upload, FsResponse> {
-
 		@Override
 		public void onMessage(Messaging<Upload, FsResponse> messaging, Upload item) {
 			logger.trace("uploading {}", item.getFilePath());
@@ -143,9 +139,9 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 	private class DownloadMessagingHandler implements MessagingHandler<Download, FsResponse> {
 
 		private <T, U extends Throwable> BiConsumer<T, U> errorHandlingConsumer(
-				 Messaging<Download, FsResponse> messaging,
-				BiConsumer<T, U> resultConsumer
-) {
+				Messaging<Download, FsResponse> messaging,
+				BiConsumer<T, U> resultConsumer) {
+
 			return (t, u) -> {
 				if(u == null) {
 					resultConsumer.accept(t, null);
@@ -178,7 +174,6 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 	}
 
 	private class DeleteMessagingHandler implements MessagingHandler<Delete, FsResponse> {
-
 		@Override
 		public void onMessage(Messaging<Delete, FsResponse> messaging, Delete item) {
 			fileManager.delete(item.getFilePath()).whenComplete(($, throwable) -> {
@@ -189,7 +184,6 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 	}
 
 	private class ListFilesMessagingHandler implements MessagingHandler<ListFiles, FsResponse> {
-
 		@Override
 		public void onMessage(Messaging<ListFiles, FsResponse> messaging, ListFiles item) {
 			fileManager.scanAsync().whenComplete((strings, throwable) -> {
@@ -200,7 +194,6 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 	}
 
 	private class MoveMessagingHandler implements MessagingHandler<Move, FsResponse> {
-
 		@Override
 		public void onMessage(Messaging<Move, FsResponse> messaging, Move item) {
 			List<CompletionStage<Void>> tasks = item.getChanges().entrySet().stream()

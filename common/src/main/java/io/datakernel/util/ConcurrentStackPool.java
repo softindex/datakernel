@@ -16,12 +16,9 @@
 
 package io.datakernel.util;
 
-@SuppressWarnings("WeakerAccess")
-public final class ConcurrentStackPool<V> {
-	public interface Supplier<V> {
-		V get();
-	}
+import java.util.function.Supplier;
 
+public final class ConcurrentStackPool<V> {
 	private final ConcurrentStack<V> stack = new ConcurrentStack<>();
 	private final Supplier<V> valueSupplier;
 

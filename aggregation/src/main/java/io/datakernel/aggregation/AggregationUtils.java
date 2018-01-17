@@ -30,7 +30,7 @@ import io.datakernel.serializer.asm.SerializerGenClass;
 import io.datakernel.stream.processor.StreamMap;
 import io.datakernel.stream.processor.StreamReducers;
 import io.datakernel.util.WithValue;
-import io.datakernel.utils.GsonAdapters;
+import io.datakernel.util.gson.GsonAdapters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

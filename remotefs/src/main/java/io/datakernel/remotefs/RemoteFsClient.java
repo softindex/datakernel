@@ -51,7 +51,6 @@ import static io.datakernel.stream.net.MessagingSerializers.ofJson;
 import static io.datakernel.stream.processor.StreamStatsSizeCounter.forByteBufs;
 
 public final class RemoteFsClient implements IRemoteFsClient {
-
 	protected final Logger logger = LoggerFactory.getLogger(getClass());
 
 	protected final Eventloop eventloop;
@@ -64,11 +63,11 @@ public final class RemoteFsClient implements IRemoteFsClient {
 	private final InetSocketAddress address;
 
 	private final MessagingSerializer<FsResponse, FsCommand> serializer =
-		ofJson(RemoteFsResponses.serializer, RemoteFsCommands.serializer);
+		ofJson(RemoteFsResponses.adapter, RemoteFsCommands.adapter);
 
 	// creators & builders
 	protected RemoteFsClient(Eventloop eventloop, InetSocketAddress address,
-							 SSLContext sslContext, ExecutorService sslExecutor) {
+	                         SSLContext sslContext, ExecutorService sslExecutor) {
 		this.eventloop = eventloop;
 		this.address = address;
 		this.sslContext = sslContext;

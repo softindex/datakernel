@@ -19,10 +19,10 @@ package io.datakernel.datagraph.server.command;
 import java.util.List;
 
 public final class DatagraphResponseExecute extends DatagraphResponse {
-
 	private List<Integer> nodeIds;
 
-	public DatagraphResponseExecute() {}
+	public DatagraphResponseExecute() {
+	}
 
 	public DatagraphResponseExecute(List<Integer> nodeIds) {
 		this.nodeIds = nodeIds;

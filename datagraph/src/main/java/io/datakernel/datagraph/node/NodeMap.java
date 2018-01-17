@@ -31,12 +31,12 @@ import static java.util.Collections.singletonList;
  * @param <O> output items data type
  */
 public final class NodeMap<I, O> implements Node {
-
 	private StreamMap.Mapper<I, O> mapper;
 	private StreamId input;
 	private StreamId output;
 
-	public NodeMap() {}
+	public NodeMap() {
+	}
 
 	public NodeMap(StreamMap.Mapper<I, O> mapper, StreamId input) {
 		this.mapper = mapper;

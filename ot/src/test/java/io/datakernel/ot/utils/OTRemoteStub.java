@@ -4,7 +4,6 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Stages;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTRemote;
-import io.datakernel.util.CollectionUtils;
 
 import java.util.*;
 import java.util.concurrent.CompletionStage;
@@ -94,8 +93,8 @@ public final class OTRemoteStub<K, D> implements OTRemote<K, D> {
 	public void add(K from, K to, List<? extends D> diffs) {
 		nodes.add(from);
 		nodes.add(to);
-		forward.computeIfAbsent(from, CollectionUtils.$::newHashMap).put(to, diffs);
-		backward.computeIfAbsent(to, CollectionUtils.$::newHashMap).put(from, diffs);
+		forward.computeIfAbsent(from, $ -> new HashMap<>()).put(to, diffs);
+		backward.computeIfAbsent(to, $ -> new HashMap<>()).put(from, diffs);
 	}
 
 	public void push(OTCommit<K, D> commit) {

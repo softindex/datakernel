@@ -1,6 +1,4 @@
-package io.datakernel.serializer;
-
-import io.datakernel.codegen.utils.Preconditions;
+package io.datakernel.util;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;

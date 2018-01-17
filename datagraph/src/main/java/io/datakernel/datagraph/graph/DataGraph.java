@@ -16,31 +16,30 @@
 
 package io.datakernel.datagraph.graph;
 
+import com.google.gson.TypeAdapter;
 import io.datakernel.datagraph.node.Node;
 import io.datakernel.datagraph.server.DatagraphSerialization;
-import io.datakernel.utils.JsonSerializer;
 
 import java.util.*;
 
-import static io.datakernel.utils.GsonAdapters.ofList;
+import static io.datakernel.util.gson.GsonAdapters.ofList;
 
 /**
  * Represents a graph of partitions, nodes and streams in datagraph system.
  */
 @SuppressWarnings("unchecked")
 public class DataGraph {
-
 	private final DatagraphSerialization serialization;
 	private final List<Partition> availablePartitions;
 	private final Map<Node, Partition> nodePartitions = new LinkedHashMap<>();
 	private final Map<StreamId, Node> streams = new LinkedHashMap<>();
 
-	private final JsonSerializer<List<Node>> listNodeSerializer;
+	private final TypeAdapter<List<Node>> listNodeAdapter;
 
 	public DataGraph(DatagraphSerialization serialization, List<Partition> availablePartitions) {
 		this.serialization = serialization;
 		this.availablePartitions = availablePartitions;
-		this.listNodeSerializer = new JsonSerializer<>(ofList(serialization.nodeSerializer.getAdapter()));
+		this.listNodeAdapter = ofList(serialization.nodeAdapter);
 	}
 
 	public List<Partition> getAvailablePartitions() {
@@ -81,7 +80,7 @@ public class DataGraph {
 		for (Partition partition : map.keySet()) {
 			List<Node> nodes = map.get(partition);
 			sb.append("--- ").append(partition).append("\n\n");
-			sb.append(listNodeSerializer.toJson(nodes));
+			sb.append(listNodeAdapter.toJson(nodes));
 			sb.append("\n\n");
 		}
 		return sb.toString();

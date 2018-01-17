@@ -24,9 +24,7 @@ import org.junit.Test;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 
-import static io.datakernel.bytebuf.ByteBufPool.getCreatedItems;
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItems;
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.http.HttpHeaders.of;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;

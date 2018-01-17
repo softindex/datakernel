@@ -10,8 +10,8 @@ import java.util.List;
 import java.util.Set;
 
 import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.utils.GsonAdapters.STRING_JSON;
-import static io.datakernel.utils.GsonAdapters.ofList;
+import static io.datakernel.util.gson.GsonAdapters.STRING_JSON;
+import static io.datakernel.util.gson.GsonAdapters.ofList;
 
 public class AggregationChunkJson extends TypeAdapter<AggregationChunk> {
 	public static final String ID = "id";

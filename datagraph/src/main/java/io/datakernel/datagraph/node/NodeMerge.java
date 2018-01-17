@@ -35,14 +35,14 @@ import static java.util.Collections.singletonList;
  * @param <T> data items type
  */
 public final class NodeMerge<K, T> implements Node {
-
 	private Function<T, K> keyFunction;
 	private Comparator<K> keyComparator;
 	private boolean deduplicate;
 	private List<StreamId> inputs;
 	private StreamId output;
 
-	public NodeMerge() {}
+	public NodeMerge() {
+	}
 
 	public NodeMerge(Function<T, K> keyFunction, Comparator<K> keyComparator, boolean deduplicate) {
 		this.keyFunction = keyFunction;

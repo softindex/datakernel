@@ -38,14 +38,14 @@ import static java.util.Collections.singletonList;
  * @param <A> accumulator type
  */
 public final class NodeReduceSimple<K, I, O, A> implements Node {
-
 	private Function<I, K> keyFunction;
 	private Comparator<K> keyComparator;
 	private StreamReducers.Reducer<K, I, O, A> reducer;
 	private List<StreamId> inputs;
 	private StreamId output;
 
-	public NodeReduceSimple() {}
+	public NodeReduceSimple() {
+	}
 
 	public NodeReduceSimple(Function<I, K> keyFunction, Comparator<K> keyComparator, StreamReducers.Reducer<K, I, O, A> reducer) {
 		this.keyFunction = keyFunction;

@@ -1,4 +1,4 @@
-package io.datakernel.utils;
+package io.datakernel.util.gson;
 
 import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
@@ -14,7 +14,6 @@ import java.util.function.Supplier;
 public final class TypeAdapterObject<T> extends TypeAdapter<T> {
 
 	private static class Field<T, F> {
-
 		private final TypeAdapter<F> typeAdapter;
 		private final Function<T, F> getter;
 		private final BiConsumer<T, F> setter;

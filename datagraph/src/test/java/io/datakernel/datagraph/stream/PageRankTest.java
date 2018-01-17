@@ -200,7 +200,7 @@ public class PageRankTest {
 	@Ignore // TODO(vmykhalko)
 	@Test
 	public void test2() throws Exception {
-		DatagraphSerialization serialization = new DatagraphSerialization();
+		DatagraphSerialization serialization = DatagraphSerialization.create();
 		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1571);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1572);
 

@@ -16,30 +16,29 @@
 
 package io.datakernel.stream.net;
 
+import com.google.gson.TypeAdapter;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.exception.ParseException;
-import io.datakernel.utils.JsonSerializer;
-import io.datakernel.utils.TypeAdapterObject;
+import io.datakernel.util.gson.TypeAdapterObject;
 import org.junit.Test;
 
 import java.util.Objects;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.stream.net.MessagingSerializers.ofJson;
-import static io.datakernel.utils.GsonAdapters.*;
+import static io.datakernel.util.gson.GsonAdapters.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 public class MessagingSerializersTest {
-
 	private class Req {
+		String text;
+		int num;
+		double val;
 
-		private String text;
-		private int num;
-		private double val;
-
-		Req() {}
+		Req() {
+		}
 
 		Req(String text, int num, double val) {
 			this.text = text;
@@ -95,10 +94,10 @@ public class MessagingSerializersTest {
 	}
 
 	private class Res {
+		boolean bool;
 
-		private boolean bool;
-
-		Res() {}
+		Res() {
+		}
 
 		Res(boolean bool) {
 			this.bool = bool;
@@ -133,27 +132,23 @@ public class MessagingSerializersTest {
 		}
 	}
 
-	private final JsonSerializer<Req> reqSerializer = new JsonSerializer<>(TypeAdapterObject.create(Req::new)
+	private final TypeAdapter<Req> reqAdapter = TypeAdapterObject.create(Req::new)
 		.with("text", STRING_JSON, Req::getText, Req::setText)
 		.with("num", INTEGER_JSON, Req::getNum, Req::setNum)
-		.with("val", DOUBLE_JSON, Req::getVal, Req::setVal));
+		.with("val", DOUBLE_JSON, Req::getVal, Req::setVal);
 
-	private final JsonSerializer<Res> resSerializer = new JsonSerializer<>(TypeAdapterObject.create(Res::new)
-		.with("bool", BOOLEAN_JSON, Res::isBool, Res::setBool));
+	private final TypeAdapter<Res> resAdapter = TypeAdapterObject.create(Res::new)
+		.with("bool", BOOLEAN_JSON, Res::isBool, Res::setBool);
 
-	private final MessagingSerializer<Req, Res> serializer = ofJson(reqSerializer, resSerializer);
-	private final MessagingSerializer<Res, Req> deserializer = ofJson(resSerializer, reqSerializer);
+	private final MessagingSerializer<Req, Res> serializer = ofJson(reqAdapter, resAdapter);
+	private final MessagingSerializer<Res, Req> deserializer = ofJson(resAdapter, reqAdapter);
 
 	@Test
 	public void simpleTestOfJson() throws ParseException {
 		Req req = new Req("Hello", 1, 6.24);
 
 		ByteBuf buf = deserializer.serialize(req);
-		assertEquals("{\n" +
-				"  \"text\": \"Hello\",\n" +
-				"  \"num\": 1,\n" +
-				"  \"val\": 6.24\n" +
-				"}\0", ByteBufStrings.decodeUtf8(buf));
+		assertEquals("{\"text\":\"Hello\",\"num\":1,\"val\":6.24}\0", ByteBufStrings.decodeUtf8(buf));
 
 		Req newReq = serializer.tryDeserialize(buf);
 		assertEquals(req, newReq);
@@ -162,9 +157,7 @@ public class MessagingSerializersTest {
 		Res res = new Res(true);
 
 		buf = serializer.serialize(res);
-		assertEquals("{\n" +
-				"  \"bool\": true\n" +
-				"}\0", ByteBufStrings.decodeUtf8(buf));
+		assertEquals("{\"bool\":true}\0", ByteBufStrings.decodeUtf8(buf));
 
 		Res newRes = deserializer.tryDeserialize(buf);
 		assertEquals(res, newRes);

@@ -8,8 +8,7 @@ import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.StageStats;
-import io.datakernel.utils.GsonAdapters;
-import io.datakernel.utils.JsonException;
+import io.datakernel.util.gson.GsonAdapters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,8 +23,8 @@ import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static io.datakernel.util.CollectionUtils.difference;
 import static io.datakernel.util.CollectionUtils.union;
 import static io.datakernel.util.Preconditions.checkState;
-import static io.datakernel.utils.GsonAdapters.indent;
-import static io.datakernel.utils.GsonAdapters.ofList;
+import static io.datakernel.util.gson.GsonAdapters.indent;
+import static io.datakernel.util.gson.GsonAdapters.ofList;
 import static java.util.Collections.nCopies;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.*;
@@ -130,12 +129,12 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBean {
 		}));
 	}
 
-	private String toJson(List<D> diffs) throws JsonException {
+	private String toJson(List<D> diffs) throws IOException {
 		return GsonAdapters.toJson(diffsAdapter, diffs);
 	}
 
 	@SuppressWarnings("unchecked")
-	private List<D> fromJson(String json) throws JsonException {
+	private List<D> fromJson(String json) throws IOException {
 		return GsonAdapters.fromJson(diffsAdapter, json);
 	}
 

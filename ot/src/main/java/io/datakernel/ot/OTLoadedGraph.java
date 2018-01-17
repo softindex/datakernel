@@ -3,7 +3,8 @@ package io.datakernel.ot;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static io.datakernel.util.CollectionUtils.*;
+import static io.datakernel.util.CollectionUtils.difference;
+import static io.datakernel.util.CollectionUtils.nullToEmpty;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toSet;
 
@@ -39,8 +40,8 @@ final class OTLoadedGraph<K, D> {
 	private final Map<K, Map<K, List<D>>> parent2child = new HashMap<>();
 
 	void add(K parent, K child, List<D> diff) {
-		child2parent.computeIfAbsent(child, $::newHashMap).put(parent, diff);
-		parent2child.computeIfAbsent(parent, $::newHashMap).put(child, diff);
+		child2parent.computeIfAbsent(child, $ -> new HashMap<>()).put(parent, diff);
+		parent2child.computeIfAbsent(parent, $ -> new HashMap<>()).put(child, diff);
 	}
 
 	Map<K, List<D>> getParents(K child) {

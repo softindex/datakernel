@@ -29,7 +29,6 @@ import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.net.Messaging.ReceiveMessageCallback;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
-import io.datakernel.utils.JsonSerializer;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -46,14 +45,13 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.serializer.asm.BufferSerializers.longSerializer;
 import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.net.MessagingSerializers.ofJson;
-import static io.datakernel.utils.GsonAdapters.INTEGER_JSON;
-import static io.datakernel.utils.GsonAdapters.STRING_JSON;
+import static io.datakernel.util.gson.GsonAdapters.INTEGER_JSON;
+import static io.datakernel.util.gson.GsonAdapters.STRING_JSON;
 import static junit.framework.TestCase.fail;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class MessagingWithBinaryStreamingTest {
-
 	private static final int LISTEN_PORT = 4821;
 	private static final InetSocketAddress address;
 
@@ -76,7 +74,7 @@ public class MessagingWithBinaryStreamingTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		MessagingSerializer<Integer, Integer> serializer =
-			ofJson(new JsonSerializer<>(INTEGER_JSON), new JsonSerializer<>(INTEGER_JSON));
+			ofJson(INTEGER_JSON, INTEGER_JSON);
 
 		SocketHandlerProvider socketHandlerProvider = new SocketHandlerProvider() {
 
@@ -117,7 +115,6 @@ public class MessagingWithBinaryStreamingTest {
 		server.listen();
 
 		eventloop.connect(address).whenComplete(new BiConsumer<SocketChannel, Throwable>() {
-
 			void ping(int n, Messaging<Integer, Integer> messaging) {
 				messaging.send(n);
 
@@ -173,7 +170,7 @@ public class MessagingWithBinaryStreamingTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		StreamConsumerToList<Long> consumerToList = StreamConsumerToList.create();
 		MessagingSerializer<String, String> serializer =
-			ofJson(new JsonSerializer<>(STRING_JSON), new JsonSerializer<>(STRING_JSON));
+			ofJson(STRING_JSON, STRING_JSON);
 
 		SocketHandlerProvider socketHandlerProvider = asyncTcpSocket -> {
 			MessagingWithBinaryStreaming<String, String> messaging =
@@ -246,7 +243,7 @@ public class MessagingWithBinaryStreamingTest {
 		StreamConsumerToList<Long> consumerToList = StreamConsumerToList.create();
 
 		MessagingSerializer<String, String> serializer =
-			ofJson(new JsonSerializer<>(STRING_JSON), new JsonSerializer<>(STRING_JSON));
+			ofJson(STRING_JSON, STRING_JSON);
 
 		SocketHandlerProvider socketHandlerProvider = asyncTcpSocket -> {
 			MessagingWithBinaryStreaming<String, String> messaging =
@@ -324,7 +321,7 @@ public class MessagingWithBinaryStreamingTest {
 		StreamConsumerToList<Long> consumerToList = StreamConsumerToList.create();
 
 		MessagingSerializer<String, String> serializer =
-			ofJson(new JsonSerializer<>(STRING_JSON), new JsonSerializer<>(STRING_JSON));
+			ofJson(STRING_JSON, STRING_JSON);
 
 		SocketHandlerProvider socketHandlerProvider = (AsyncTcpSocket asyncTcpSocket) -> {
 			MessagingWithBinaryStreaming<String, String> messaging =
@@ -423,7 +420,7 @@ public class MessagingWithBinaryStreamingTest {
 		StreamConsumerToList<Long> consumerToList = StreamConsumerToList.create();
 
 		MessagingSerializer<String, String> serializer =
-			ofJson(new JsonSerializer<>(STRING_JSON), new JsonSerializer<>(STRING_JSON));
+			ofJson(STRING_JSON, STRING_JSON);
 
 		SocketHandlerProvider socketHandlerProvider = asyncTcpSocket -> {
 			MessagingWithBinaryStreaming<String, String> messaging =

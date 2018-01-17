@@ -7,7 +7,6 @@ import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.StageStats;
 import io.datakernel.ot.exceptions.OTException;
-import io.datakernel.util.CollectionUtils.$;
 import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -309,7 +308,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBean {
 			logger.debug("Commit: {}, parents: {}", node, parents);
 			for (K parent : parents) {
 				if (!childrenMap.containsKey(parent)) queue.add(parent);
-				Set<K> children = childrenMap.computeIfAbsent(parent, $::newHashSet);
+				Set<K> children = childrenMap.computeIfAbsent(parent, $ -> new HashSet<>());
 
 				if (cut.contains(parent)) children.add(parent);
 				if (cut.contains(node)) children.add(node);

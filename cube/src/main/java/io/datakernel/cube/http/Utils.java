@@ -18,16 +18,16 @@ package io.datakernel.cube.http;
 
 import io.datakernel.cube.CubeQuery;
 import io.datakernel.exception.ParseException;
-import io.datakernel.utils.GsonAdapters.TypeAdapterMapping;
-import io.datakernel.utils.GsonAdapters.TypeAdapterMappingImpl;
+import io.datakernel.util.gson.GsonAdapters.TypeAdapterMapping;
+import io.datakernel.util.gson.GsonAdapters.TypeAdapterMappingImpl;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
-import static io.datakernel.utils.GsonAdapters.LOCAL_DATE_JSON;
-import static io.datakernel.utils.GsonAdapters.PRIMITIVES_MAP;
+import static io.datakernel.util.gson.GsonAdapters.LOCAL_DATE_JSON;
+import static io.datakernel.util.gson.GsonAdapters.PRIMITIVES_MAP;
 import static java.util.stream.Collectors.toList;
 
 class Utils {

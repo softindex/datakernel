@@ -27,63 +27,35 @@ public final class FatalErrorHandlers {
 	private FatalErrorHandlers() {}
 
 	public static FatalErrorHandler ignoreAllErrors() {
-		return new FatalErrorHandler() {
-			@Override
-			public void handle(Throwable error, Object context) {
-
-			}
-		};
+		return (error, context) -> {};
 	}
 
 	public static FatalErrorHandler exitOnAnyError() {
-		return new FatalErrorHandler() {
-			@Override
-			public void handle(Throwable error, Object context) {
-				shutdownForcibly();
-			}
-		};
+		return (error, context) -> shutdownForcibly();
 	}
 
 	public static FatalErrorHandler exitOnMatchedError(List<Class> whiteList, List<Class> blackList) {
-		return new FatalErrorHandler() {
-			@Override
-			public void handle(Throwable error, Object context) {
-				if (matchesAny(error.getClass(), whiteList) && !matchesAny(error.getClass(), blackList))
-					shutdownForcibly();
-			}
-
-			@SuppressWarnings("unchecked")
-			private boolean matchesAny(Class c, List<Class> list) {
-				for (Class cl : list) {
-					if (cl.isAssignableFrom(c)) return true;
-				}
-				return false;
-			}
-		};
+		return (error, context) -> {
+            if(matchesAny(error.getClass(), whiteList) && !matchesAny(error.getClass(), blackList)) {
+                shutdownForcibly();
+            }
+        };
 	}
 
 	public static FatalErrorHandler exitOnJvmError() {
-		return exitOnMatchedError(singletonList((Class) Error.class),
-				asList((Class) AssertionError.class, StackOverflowError.class, IOError.class, ZipError.class));
+		return exitOnMatchedError(singletonList(Error.class), asList(AssertionError.class, StackOverflowError.class, IOError.class, ZipError.class));
 	}
 
 	public static FatalErrorHandler rethrowOnAnyError() {
-		return new FatalErrorHandler() {
-			@Override
-			public void handle(Throwable error, Object context) {
-				propagate(error);
-			}
-		};
+		return (error, context) -> propagate(error);
 	}
 
 	public static FatalErrorHandler rethrowOnMatchedError(List<Class> whiteList, List<Class> blackList) {
-		return new FatalErrorHandler() {
-			@Override
-			public void handle(Throwable error, Object context) {
-				if (matchesAny(error.getClass(), whiteList) && !matchesAny(error.getClass(), blackList))
-					propagate(error);
+		return (error, context) -> {
+            if(matchesAny(error.getClass(), whiteList) && !matchesAny(error.getClass(), blackList)) {
+				propagate(error);
 			}
-		};
+        };
 	}
 
 	private static void propagate(Throwable error) {
@@ -102,9 +74,6 @@ public final class FatalErrorHandlers {
 
 	@SuppressWarnings("unchecked")
 	private static boolean matchesAny(Class c, List<Class> list) {
-		for (Class cl : list) {
-			if (cl.isAssignableFrom(c)) return true;
-		}
-		return false;
+		return list.stream().anyMatch(cl -> cl.isAssignableFrom(c));
 	}
 }

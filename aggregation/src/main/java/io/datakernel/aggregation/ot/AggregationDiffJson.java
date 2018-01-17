@@ -13,8 +13,8 @@ import java.util.Set;
 
 import static io.datakernel.aggregation.AggregationUtils.getPrimaryKeyJson;
 import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.utils.GsonAdapters.ofSet;
-import static io.datakernel.utils.GsonAdapters.oneline;
+import static io.datakernel.util.gson.GsonAdapters.ofSet;
+import static io.datakernel.util.gson.GsonAdapters.oneline;
 
 public class AggregationDiffJson extends TypeAdapter<AggregationDiff> {
 	public static final String ADDED = "added";

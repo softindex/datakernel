@@ -33,8 +33,8 @@ import java.util.function.Function;
  * @param <T> data items type
  */
 public final class NodeShard<K, T> implements Node {
-
 	private Function<T, K> keyFunction;
+
 	private StreamId input;
 	private List<StreamId> outputs;
 
@@ -48,7 +48,8 @@ public final class NodeShard<K, T> implements Node {
 		return outputs.get(partition);
 	}
 
-	public NodeShard() {}
+	public NodeShard() {
+	}
 
 	public NodeShard(Function<T, K> keyFunction, StreamId input) {
 		this.keyFunction = keyFunction;

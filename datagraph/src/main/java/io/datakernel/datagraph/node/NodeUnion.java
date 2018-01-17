@@ -26,11 +26,11 @@ import java.util.List;
 import static java.util.Collections.singletonList;
 
 public final class NodeUnion<T> implements Node {
-
 	private List<StreamId> inputs;
 	private StreamId output;
 
-	public NodeUnion() {}
+	public NodeUnion() {
+	}
 
 	public NodeUnion(List<StreamId> inputs) {
 		this.inputs = inputs;

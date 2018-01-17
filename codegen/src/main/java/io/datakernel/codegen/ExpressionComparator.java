@@ -28,7 +28,7 @@ import static io.datakernel.codegen.ExpressionCast.THIS_TYPE;
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.Expressions.cast;
 import static io.datakernel.codegen.Utils.*;
-import static io.datakernel.codegen.utils.Preconditions.check;
+import static io.datakernel.util.Preconditions.check;
 import static org.objectweb.asm.Type.INT_TYPE;
 import static org.objectweb.asm.commons.GeneratorAdapter.NE;
 

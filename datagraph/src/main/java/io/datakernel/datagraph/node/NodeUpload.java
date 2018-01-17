@@ -29,11 +29,11 @@ import java.util.Collections;
  * @param <T> data items type
  */
 public final class NodeUpload<T> implements Node {
-
 	private Class<T> type;
 	private StreamId streamId;
 
-	public NodeUpload() {}
+	public NodeUpload() {
+	}
 
 	public NodeUpload(Class<T> type, StreamId streamId) {
 		this.type = type;

@@ -16,6 +16,7 @@
 
 package io.datakernel.eventloop;
 
+@FunctionalInterface
 public interface FatalErrorHandler {
 	void handle(Throwable error, Object context);
 }

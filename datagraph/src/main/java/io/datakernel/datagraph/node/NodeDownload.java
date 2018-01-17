@@ -32,13 +32,13 @@ import static java.util.Collections.singletonList;
  * @param <T> data items type
  */
 public final class NodeDownload<T> implements Node {
-
 	private Class<T> type;
 	private InetSocketAddress address;
 	private StreamId streamId;
 	private StreamId output;
 
-	public NodeDownload() {}
+	public NodeDownload() {
+	}
 
 	public NodeDownload(Class<T> type, InetSocketAddress address, StreamId streamId) {
 		this.type = type;

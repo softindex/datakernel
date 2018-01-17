@@ -28,8 +28,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.codegen.utils.Preconditions.check;
-import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.check;
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 public class SerializerGenHppcSet implements SerializerGen, NullableOptimization {
 

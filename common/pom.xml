@@ -10,19 +10,18 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>datakernel-bytebuf</artifactId>
+    <artifactId>datakernel-common</artifactId>
 
-    <name>DataKernel: ByteBuf</name>
+    <name>DataKernel: Common</name>
     <description>
-        Memory-efficient, recyclable byte buffers
+        Module containing various general utilities for DataKernel project.
     </description>
 
     <dependencies>
         <dependency>
-            <groupId>io.datakernel</groupId>
-            <artifactId>datakernel-common</artifactId>
-            <version>${project.version}</version>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <optional>true</optional>
         </dependency>
     </dependencies>
-
 </project>

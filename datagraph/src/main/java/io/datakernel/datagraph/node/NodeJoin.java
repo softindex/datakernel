@@ -35,7 +35,6 @@ import static java.util.Collections.singletonList;
  * @param <V> output stream data type
  */
 public final class NodeJoin<K, L, R, V> implements Node {
-
 	private StreamId left;
 	private StreamId right;
 	private StreamId output;
@@ -44,7 +43,8 @@ public final class NodeJoin<K, L, R, V> implements Node {
 	private Function<R, K> rightKeyFunction;
 	private StreamJoin.Joiner<K, L, R, V> joiner;
 
-	public NodeJoin() {}
+	public NodeJoin() {
+	}
 
 	public NodeJoin(StreamId left, StreamId right,
 					Comparator<K> keyComparator, Function<L, K> leftKeyFunction, Function<R, K> rightKeyFunction,

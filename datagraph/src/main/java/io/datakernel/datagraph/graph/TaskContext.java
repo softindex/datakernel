@@ -24,8 +24,8 @@ import io.datakernel.stream.StreamProducer;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
 import static io.datakernel.stream.DataStreams.stream;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
 
 /**

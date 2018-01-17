@@ -20,6 +20,12 @@
 
     <dependencies>
         <dependency>
+            <groupId>io.datakernel</groupId>
+            <artifactId>datakernel-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.ow2.asm</groupId>
             <artifactId>asm</artifactId>
         </dependency>

@@ -16,7 +16,6 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxReducers.JmxReducerSum;

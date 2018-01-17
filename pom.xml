@@ -35,6 +35,7 @@
         <module>serializer</module>
         <module>uikernel</module>
         <module>ot</module>
+        <module>common</module>
     </modules>
 
     <licenses>

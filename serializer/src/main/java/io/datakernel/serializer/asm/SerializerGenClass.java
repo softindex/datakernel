@@ -19,9 +19,9 @@ package io.datakernel.serializer.asm;
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
-import io.datakernel.codegen.utils.Preconditions;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.util.Preconditions;
 import org.objectweb.asm.Type;
 
 import java.lang.reflect.Constructor;
@@ -30,8 +30,8 @@ import java.lang.reflect.Method;
 import java.util.*;
 
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.codegen.utils.Preconditions.check;
-import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.check;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.reflect.Modifier.*;
 import static java.util.Arrays.asList;
 import static org.objectweb.asm.Type.*;

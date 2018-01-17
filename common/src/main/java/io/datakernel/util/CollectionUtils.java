@@ -14,32 +14,6 @@ public class CollectionUtils {
 	private CollectionUtils() {
 	}
 
-	public static final class $ {
-		public static <K, V> Map<K, V> newHashMap(Object $) {
-			return new HashMap<>();
-		}
-
-		public static <K, V> Map<K, V> newLinkedHashMap(Object $) {
-			return new LinkedHashMap<>();
-		}
-
-		public static <K, V> Map<K, V> newTreeMap(Object $) {
-			return new TreeMap<>();
-		}
-
-		public static <V> Set<V> newHashSet(Object $) {
-			return new HashSet<>();
-		}
-
-		public static <V> Set<V> newLinkedHashSet(Object $) {
-			return new LinkedHashSet<>();
-		}
-
-		public static <V> List<V> newArrayList(Object $) {
-			return new ArrayList<>();
-		}
-	}
-
 	public static <D> List<D> concat(List<D> list1, List<D> list2) {
 		List<D> result = new ArrayList<>(list1.size() + list2.size());
 		result.addAll(list1);

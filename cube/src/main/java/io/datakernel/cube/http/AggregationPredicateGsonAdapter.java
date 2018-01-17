@@ -22,7 +22,7 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 import io.datakernel.aggregation.AggregationPredicate;
-import io.datakernel.utils.GsonAdapters.TypeAdapterMapping;
+import io.datakernel.util.gson.GsonAdapters.TypeAdapterMapping;
 
 import java.io.IOException;
 import java.lang.reflect.Type;

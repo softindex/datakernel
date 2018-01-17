@@ -16,19 +16,18 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.utils.JsonSerializer;
-import io.datakernel.utils.TypeAdapterObject;
-import io.datakernel.utils.TypeAdapterObjectSubtype;
+import com.google.gson.TypeAdapter;
+import io.datakernel.util.gson.TypeAdapterObject;
+import io.datakernel.util.gson.TypeAdapterObjectSubtype;
 
 import java.util.Collections;
 import java.util.List;
 
-import static io.datakernel.utils.GsonAdapters.*;
+import static io.datakernel.util.gson.GsonAdapters.*;
 
 @SuppressWarnings("WeakerAccess")
 public final class RemoteFsResponses {
-
-	static JsonSerializer<FsResponse> serializer = new JsonSerializer<>(TypeAdapterObjectSubtype.<FsResponse>create()
+	static TypeAdapter<FsResponse> adapter = TypeAdapterObjectSubtype.<FsResponse>create()
 		.withSubtype(Err.class, "Error", TypeAdapterObject.create(Err::new)
 			.with("msg", STRING_JSON, Err::getMsg, Err::setMsg))
 		.withSubtype(ListOfFiles.class, "FileList", TypeAdapterObject.create(ListOfFiles::new)
@@ -36,12 +35,13 @@ public final class RemoteFsResponses {
 		.withSubtype(Ready.class, "ReadyBytes", TypeAdapterObject.create(Ready::new)
 			.with("size", LONG_JSON, Ready::getSize, Ready::setSize))
 		.withStatelessSubtype(Ok::new, "ResponseOk")
-		.withStatelessSubtype(Acknowledge::new, "Acknowledge"));
+		.withStatelessSubtype(Acknowledge::new, "Acknowledge");
 
-	public static abstract class FsResponse {}
+	public static abstract class FsResponse {
+
+	}
 
 	public static class Acknowledge extends FsResponse {
-
 		@Override
 		public String toString() {
 			return "Done{OK}";
@@ -49,10 +49,10 @@ public final class RemoteFsResponses {
 	}
 
 	public static class Ready extends FsResponse {
-
 		private long size;
 
-		public Ready() {}
+		public Ready() {
+		}
 
 		public Ready(long size) {
 			this.size = size;
@@ -73,7 +73,6 @@ public final class RemoteFsResponses {
 	}
 
 	public static class Ok extends FsResponse {
-
 		@Override
 		public String toString() {
 			return "Operation{OK}";
@@ -81,10 +80,10 @@ public final class RemoteFsResponses {
 	}
 
 	public static class Err extends FsResponse {
-
 		private String msg;
 
-		public Err() {}
+		public Err() {
+		}
 
 		public Err(String msg) {
 			this.msg = msg;
@@ -105,10 +104,10 @@ public final class RemoteFsResponses {
 	}
 
 	public static class ListOfFiles extends FsResponse {
-
 		private List<String> files;
 
-		public ListOfFiles() {}
+		public ListOfFiles() {
+		}
 
 		public ListOfFiles(List<String> files) {
 			this.files = Collections.unmodifiableList(files);

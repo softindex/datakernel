@@ -16,9 +16,9 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.codegen.utils.Preconditions;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.util.Preconditions;
 
 import static io.datakernel.codegen.utils.Primitives.wrap;
 

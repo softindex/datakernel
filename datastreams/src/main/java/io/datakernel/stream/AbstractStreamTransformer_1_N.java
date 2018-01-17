@@ -16,14 +16,6 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.eventloop.Eventloop;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static java.lang.System.arraycopy;
-import static java.util.Collections.unmodifiableList;
-
 /**
  * Represents a {@link AbstractStreamConsumer} with several {@link AbstractStreamProducer} .
  *

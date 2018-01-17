@@ -39,10 +39,5 @@
             <artifactId>lz4</artifactId>
             <optional>true</optional>
         </dependency>
-        <dependency>
-            <groupId>io.datakernel</groupId>
-            <artifactId>datakernel-ot</artifactId>
-            <version>${project.version}</version>
-        </dependency>
     </dependencies>
 </project>
