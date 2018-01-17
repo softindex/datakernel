@@ -39,10 +39,6 @@ public class DatagraphSerializationTest {
 	public void test2() throws UnknownHostException {
 		DatagraphSerialization serialization = new DatagraphSerialization();
 
-		String str;
-
-		DatagraphCommand command;
-
 		NodeReduce<Integer, Integer, Integer> reducer = new NodeReduce<>(new Comparator<Integer>() {
 			@Override
 			public int compare(Integer o1, Integer o2) {
@@ -61,9 +57,7 @@ public class DatagraphSerializationTest {
 			}
 
 			@Override
-			public void onComplete(StreamDataReceiver<Integer> stream, Integer key, Integer accumulator) {
-
-			}
+			public void onComplete(StreamDataReceiver<Integer> stream, Integer key, Integer accumulator) {}
 		});
 		List<Node> nodes = Arrays.asList(
 				reducer,
@@ -76,10 +70,11 @@ public class DatagraphSerializationTest {
 				new NodeUpload<>(Integer.class, new StreamId(Long.MAX_VALUE)),
 				new NodeDownload<>(Integer.class, new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1571), new StreamId(Long.MAX_VALUE))
 		);
-		str = serialization.gson.toJson(new DatagraphCommandExecute(nodes), DatagraphCommand.class);
+
+		String str = serialization.commandSerializer.toJson(new DatagraphCommandExecute(nodes));
 		System.out.println(str);
 
-		command = serialization.gson.fromJson(str, DatagraphCommand.class);
+		DatagraphCommand command = serialization.commandSerializer.fromJson(str);
 		System.out.println(command);
 	}
 

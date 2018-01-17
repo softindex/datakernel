@@ -38,26 +38,25 @@ import static java.util.Collections.singletonList;
  * @param <A> accumulator type
  */
 public final class NodeReduceSimple<K, I, O, A> implements Node {
-	private final Function<I, K> keyFunction;
-	private final Comparator<K> keyComparator;
-	private final StreamReducers.Reducer<K, I, O, A> reducer;
 
-	private final List<StreamId> inputs = new ArrayList<>();
-	private final StreamId output = new StreamId();
+	private Function<I, K> keyFunction;
+	private Comparator<K> keyComparator;
+	private StreamReducers.Reducer<K, I, O, A> reducer;
+	private List<StreamId> inputs;
+	private StreamId output;
 
-	public NodeReduceSimple(Function<I, K> keyFunction, Comparator<K> keyComparator,
-	                        StreamReducers.Reducer<K, I, O, A> reducer) {
+	public NodeReduceSimple() {}
+
+	public NodeReduceSimple(Function<I, K> keyFunction, Comparator<K> keyComparator, StreamReducers.Reducer<K, I, O, A> reducer) {
 		this.keyFunction = keyFunction;
 		this.keyComparator = keyComparator;
 		this.reducer = reducer;
+		this.inputs = new ArrayList<>();
+		this.output = new StreamId();
 	}
 
 	public void addInput(StreamId input) {
 		inputs.add(input);
-	}
-
-	public StreamId getOutput() {
-		return output;
 	}
 
 	@Override
@@ -73,6 +72,46 @@ public final class NodeReduceSimple<K, I, O, A> implements Node {
 			taskContext.bindChannel(input, streamReducerSimple.newInput());
 		}
 		taskContext.export(output, streamReducerSimple.getOutput());
+	}
+
+	public Function<I, K> getKeyFunction() {
+		return keyFunction;
+	}
+
+	public void setKeyFunction(Function<I, K> keyFunction) {
+		this.keyFunction = keyFunction;
+	}
+
+	public Comparator<K> getKeyComparator() {
+		return keyComparator;
+	}
+
+	public void setKeyComparator(Comparator<K> keyComparator) {
+		this.keyComparator = keyComparator;
+	}
+
+	public StreamReducers.Reducer<K, I, O, A> getReducer() {
+		return reducer;
+	}
+
+	public void setReducer(StreamReducers.Reducer<K, I, O, A> reducer) {
+		this.reducer = reducer;
+	}
+
+	public List<StreamId> getInputs() {
+		return inputs;
+	}
+
+	public void setInputs(List<StreamId> inputs) {
+		this.inputs = inputs;
+	}
+
+	public StreamId getOutput() {
+		return output;
+	}
+
+	public void setOutput(StreamId output) {
+		this.output = output;
 	}
 }
 

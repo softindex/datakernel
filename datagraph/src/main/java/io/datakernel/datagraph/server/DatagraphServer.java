@@ -30,7 +30,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.net.Messaging;
+import io.datakernel.stream.net.Messaging.ReceiveMessageCallback;
 import io.datakernel.stream.net.MessagingSerializer;
 import io.datakernel.stream.net.MessagingWithBinaryStreaming;
 import io.datakernel.stream.processor.StreamBinarySerializer;
@@ -39,12 +39,13 @@ import io.datakernel.stream.processor.StreamForwarder;
 import java.util.HashMap;
 import java.util.Map;
 
-import static io.datakernel.stream.net.MessagingSerializers.ofGson;
+import static io.datakernel.stream.net.MessagingSerializers.ofJson;
 
 /**
  * Server for processing JSON commands.
  */
 public final class DatagraphServer extends AbstractServer<DatagraphServer> {
+
 	private final DatagraphEnvironment environment;
 	private final Map<StreamId, StreamForwarder<ByteBuf>> pendingStreams = new HashMap<>();
 	private final MessagingSerializer<DatagraphCommand, DatagraphResponse> serializer;
@@ -56,6 +57,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 	}
 
 	protected interface CommandHandler<I, O> {
+
 		void onCommand(MessagingWithBinaryStreaming<I, O> messaging, I command);
 	}
 
@@ -72,16 +74,17 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 		this.environment = DatagraphEnvironment.extend(environment)
 				.set(DatagraphServer.class, this);
 		DatagraphSerialization serialization = environment.getInstance(DatagraphSerialization.class);
-		this.serializer = ofGson(serialization.gson, DatagraphCommand.class, serialization.gson, DatagraphResponse.class);
+		this.serializer = ofJson(serialization.commandSerializer, serialization.responseSerializer);
 	}
 	// endregion
 
 	private class DownloadCommandHandler implements CommandHandler<DatagraphCommandDownload, DatagraphResponse> {
+
 		@Override
 		public void onCommand(MessagingWithBinaryStreaming<DatagraphCommandDownload, DatagraphResponse> messaging, DatagraphCommandDownload command) {
-			StreamId streamId = command.streamId;
+			StreamId streamId = command.getStreamId();
 			StreamForwarder<ByteBuf> forwarder = pendingStreams.remove(streamId);
-			if (forwarder != null) {
+			if(forwarder != null) {
 				logger.info("onDownload: transferring {}, pending downloads: {}", streamId, pendingStreams.size());
 			} else {
 				logger.info("onDownload: waiting {}, pending downloads: {}", streamId, pendingStreams.size());
@@ -91,7 +94,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 			StreamConsumerWithResult<ByteBuf, Void> consumer = messaging.sendBinaryStream();
 			forwarder.setConsumer(consumer);
 			consumer.getResult().whenComplete(($, throwable) -> {
-				if (throwable != null) {
+				if(throwable != null) {
 					logger.warn("Exception occurred while trying to send data");
 				}
 				messaging.close();
@@ -100,11 +103,12 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 	}
 
 	private class ExecuteCommandHandler implements CommandHandler<DatagraphCommandExecute, DatagraphResponse> {
+
 		@Override
 		public void onCommand(MessagingWithBinaryStreaming<DatagraphCommandExecute, DatagraphResponse> messaging, DatagraphCommandExecute command) {
 			messaging.close();
 			TaskContext taskContext = new TaskContext(eventloop, DatagraphEnvironment.extend(environment));
-			for (Node node : command.getNodes()) {
+			for(Node node : command.getNodes()) {
 				node.createAndBind(taskContext);
 			}
 			taskContext.wireAll();
@@ -119,12 +123,12 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 				.withAutoFlush(1000);
 
 		StreamForwarder<ByteBuf> forwarder = pendingStreams.remove(streamId);
-		if (forwarder != null) {
-			logger.info("onUpload: transferring {}, pending downloads: {}", streamId, pendingStreams.size());
-		} else {
+		if(forwarder == null) {
 			logger.info("onUpload: waiting {}, pending downloads: {}", streamId, pendingStreams.size());
 			forwarder = StreamForwarder.create();
 			pendingStreams.put(streamId, forwarder);
+		} else {
+			logger.info("onUpload: transferring {}, pending downloads: {}", streamId, pendingStreams.size());
 		}
 		forwarder.setProducer(streamSerializer.getOutput());
 		return streamSerializer.getInput();
@@ -133,7 +137,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 	@Override
 	protected final AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 		MessagingWithBinaryStreaming<DatagraphCommand, DatagraphResponse> messaging = MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
-		messaging.receive(new Messaging.ReceiveMessageCallback<DatagraphCommand>() {
+		messaging.receive(new ReceiveMessageCallback<DatagraphCommand>() {
 			@Override
 			public void onReceive(DatagraphCommand msg) {
 				doRead(messaging, msg);
@@ -156,7 +160,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 
 	private void doRead(MessagingWithBinaryStreaming<DatagraphCommand, DatagraphResponse> messaging, DatagraphCommand command) {
 		CommandHandler handler = handlers.get(command.getClass());
-		if (handler == null) {
+		if(handler == null) {
 			messaging.close();
 			logger.error("missing handler for " + command);
 		} else {

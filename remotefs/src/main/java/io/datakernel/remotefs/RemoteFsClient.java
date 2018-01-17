@@ -16,7 +16,6 @@
 
 package io.datakernel.remotefs;
 
-import com.google.gson.Gson;
 import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
@@ -24,6 +23,8 @@ import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.remotefs.RemoteFsCommands.Download;
+import io.datakernel.remotefs.RemoteFsCommands.FsCommand;
+import io.datakernel.remotefs.RemoteFsResponses.FsResponse;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.net.Messaging.ReceiveMessageCallback;
@@ -46,10 +47,11 @@ import static io.datakernel.async.Stages.onError;
 import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
 import static io.datakernel.eventloop.AsyncTcpSocketImpl.wrapChannel;
 import static io.datakernel.stream.DataStreams.stream;
-import static io.datakernel.stream.net.MessagingSerializers.ofGson;
+import static io.datakernel.stream.net.MessagingSerializers.ofJson;
 import static io.datakernel.stream.processor.StreamStatsSizeCounter.forByteBufs;
 
 public final class RemoteFsClient implements IRemoteFsClient {
+
 	protected final Logger logger = LoggerFactory.getLogger(getClass());
 
 	protected final Eventloop eventloop;
@@ -61,11 +63,12 @@ public final class RemoteFsClient implements IRemoteFsClient {
 
 	private final InetSocketAddress address;
 
-	private MessagingSerializer<RemoteFsResponses.FsResponse, RemoteFsCommands.FsCommand> serializer = ofGson(getResponseGson(), RemoteFsResponses.FsResponse.class, getCommandGSON(), RemoteFsCommands.FsCommand.class);
+	private final MessagingSerializer<FsResponse, FsCommand> serializer =
+		ofJson(RemoteFsResponses.serializer, RemoteFsCommands.serializer);
 
 	// creators & builders
 	protected RemoteFsClient(Eventloop eventloop, InetSocketAddress address,
-	                         SSLContext sslContext, ExecutorService sslExecutor) {
+							 SSLContext sslContext, ExecutorService sslExecutor) {
 		this.eventloop = eventloop;
 		this.address = address;
 		this.sslContext = sslContext;
@@ -88,14 +91,14 @@ public final class RemoteFsClient implements IRemoteFsClient {
 			StreamConsumerWithResult<ByteBuf, Void> consumer = messaging.sendBinaryStream();
 			SettableStage<Void> ack = SettableStage.create();
 
-			messaging.receive(new ReceiveMessageCallback<RemoteFsResponses.FsResponse>() {
+			messaging.receive(new ReceiveMessageCallback<FsResponse>() {
 				@Override
-				public void onReceive(RemoteFsResponses.FsResponse msg) {
-					if (msg instanceof RemoteFsResponses.Acknowledge) {
+				public void onReceive(FsResponse msg) {
+					if(msg instanceof RemoteFsResponses.Acknowledge) {
 						messaging.close();
 						ack.set(null);
-					} else if (msg instanceof RemoteFsResponses.Err) {
-						ack.setException(new RemoteFsException(((RemoteFsResponses.Err) msg).msg));
+					} else if(msg instanceof RemoteFsResponses.Err) {
+						ack.setException(new RemoteFsException(((RemoteFsResponses.Err) msg).getMsg()));
 					} else {
 						ack.setException(new RemoteFsException("Invalid message received: " + msg));
 					}
@@ -123,12 +126,12 @@ public final class RemoteFsClient implements IRemoteFsClient {
 		return connect(address).thenCompose(messaging -> {
 			SettableStage<StreamProducerWithResult<ByteBuf, Void>> stage = SettableStage.create();
 
-			messaging.send(new Download(fileName, startPosition)).thenAccept($ -> {
-				messaging.receive(new ReceiveMessageCallback<RemoteFsResponses.FsResponse>() {
+			messaging.send(new Download(fileName, startPosition)).thenAccept($ ->
+				messaging.receive(new ReceiveMessageCallback<FsResponse>() {
 					@Override
-					public void onReceive(RemoteFsResponses.FsResponse msg) {
-						if (msg instanceof RemoteFsResponses.Ready) {
-							long size = ((RemoteFsResponses.Ready) msg).size;
+					public void onReceive(FsResponse msg) {
+						if(msg instanceof RemoteFsResponses.Ready) {
+							long size = ((RemoteFsResponses.Ready) msg).getSize();
 
 							StreamProducerWithResult<ByteBuf, Void> producer = messaging.receiveBinaryStream();
 							StreamStatsDetailed stats = StreamStatsDetailed.create(forByteBufs());
@@ -138,7 +141,7 @@ public final class RemoteFsClient implements IRemoteFsClient {
 							stream(producer, sizeForwarder.getInput())
 									.thenAccept($ -> {
 										messaging.close();
-										if (stats.getTotalSize() == size - startPosition) {
+										if(stats.getTotalSize() == size - startPosition) {
 											ack.set(null);
 										} else {
 											ack.setException(new IOException("Invalid stream size for '" + fileName + "' starting from " + startPosition +
@@ -148,8 +151,8 @@ public final class RemoteFsClient implements IRemoteFsClient {
 
 							StreamProducerWithResult<ByteBuf, Void> producerWithResult = sizeForwarder.getOutput().withResult(ack);
 							stage.set(producerWithResult);
-						} else if (msg instanceof RemoteFsResponses.Err) {
-							stage.setException(new RemoteFsException(((RemoteFsResponses.Err) msg).msg));
+						} else if(msg instanceof RemoteFsResponses.Err) {
+							stage.setException(new RemoteFsException(((RemoteFsResponses.Err) msg).getMsg()));
 						} else {
 							stage.setException(new RemoteFsException("Invalid message received: " + msg));
 						}
@@ -165,8 +168,8 @@ public final class RemoteFsClient implements IRemoteFsClient {
 					public void onException(Exception e) {
 						stage.setException(new RemoteFsException(e));
 					}
-				});
-			});
+				})
+			);
 
 			return stage.whenComplete(onError($ -> messaging.close()));
 		});
@@ -177,18 +180,18 @@ public final class RemoteFsClient implements IRemoteFsClient {
 		return connect(address).thenCompose(messaging -> {
 			SettableStage<Void> ack = SettableStage.create();
 			messaging.send(new RemoteFsCommands.Delete(fileName)).whenComplete(($, throwable) -> {
-				if (throwable == null) {
+				if(throwable == null) {
 					logger.trace("command to delete {} send", fileName);
-					messaging.receive(new ReceiveMessageCallback<RemoteFsResponses.FsResponse>() {
+					messaging.receive(new ReceiveMessageCallback<FsResponse>() {
 						@Override
-						public void onReceive(RemoteFsResponses.FsResponse msg) {
+						public void onReceive(FsResponse msg) {
 							logger.trace("received {}", msg);
-							if (msg instanceof RemoteFsResponses.Ok) {
+							if(msg instanceof RemoteFsResponses.Ok) {
 								messaging.close();
 								ack.set(null);
-							} else if (msg instanceof RemoteFsResponses.Err) {
+							} else if(msg instanceof RemoteFsResponses.Err) {
 								messaging.close();
-								ack.setException(new RemoteFsException(((RemoteFsResponses.Err) msg).msg));
+								ack.setException(new RemoteFsException(((RemoteFsResponses.Err) msg).getMsg()));
 							} else {
 								messaging.close();
 								ack.setException(new RemoteFsException("Invalid message received: " + msg));
@@ -222,18 +225,18 @@ public final class RemoteFsClient implements IRemoteFsClient {
 		return connect(address).thenCompose(messaging -> {
 			SettableStage<List<String>> ack = SettableStage.create();
 			messaging.send(new RemoteFsCommands.ListFiles()).whenComplete(($, throwable) -> {
-				if (throwable == null) {
+				if(throwable == null) {
 					logger.trace("command to list files send");
-					messaging.receive(new ReceiveMessageCallback<RemoteFsResponses.FsResponse>() {
+					messaging.receive(new ReceiveMessageCallback<FsResponse>() {
 						@Override
-						public void onReceive(RemoteFsResponses.FsResponse msg) {
+						public void onReceive(FsResponse msg) {
 							logger.trace("received {}", msg);
-							if (msg instanceof RemoteFsResponses.ListOfFiles) {
+							if(msg instanceof RemoteFsResponses.ListOfFiles) {
 								messaging.close();
-								ack.set(((RemoteFsResponses.ListOfFiles) msg).files);
-							} else if (msg instanceof RemoteFsResponses.Err) {
+								ack.set(((RemoteFsResponses.ListOfFiles) msg).getFiles());
+							} else if(msg instanceof RemoteFsResponses.Err) {
 								messaging.close();
-								ack.setException(new RemoteFsException(((RemoteFsResponses.Err) msg).msg));
+								ack.setException(new RemoteFsException(((RemoteFsResponses.Err) msg).getMsg()));
 							} else {
 								messaging.close();
 								ack.setException(new RemoteFsException("Invalid message received: " + msg));
@@ -267,18 +270,18 @@ public final class RemoteFsClient implements IRemoteFsClient {
 		return connect(address).thenCompose(messaging -> {
 			SettableStage<Void> ack = SettableStage.create();
 			messaging.send(new RemoteFsCommands.Move(changes)).whenComplete((aVoid, throwable) -> {
-				if (throwable == null) {
+				if(throwable == null) {
 					logger.trace("command move files send");
-					messaging.receive(new ReceiveMessageCallback<RemoteFsResponses.FsResponse>() {
+					messaging.receive(new ReceiveMessageCallback<FsResponse>() {
 						@Override
-						public void onReceive(RemoteFsResponses.FsResponse msg) {
+						public void onReceive(FsResponse msg) {
 							logger.trace("received {}", msg);
-							if (msg instanceof RemoteFsResponses.Ok) {
+							if(msg instanceof RemoteFsResponses.Ok) {
 								messaging.close();
 								ack.set(null);
-							} else if (msg instanceof RemoteFsResponses.Err) {
+							} else if(msg instanceof RemoteFsResponses.Err) {
 								messaging.close();
-								ack.setException(new RemoteFsException(((RemoteFsResponses.Err) msg).msg));
+								ack.setException(new RemoteFsException(((RemoteFsResponses.Err) msg).getMsg()));
 							} else {
 								messaging.close();
 								ack.setException(new RemoteFsException("Invalid message received: " + msg));
@@ -307,26 +310,17 @@ public final class RemoteFsClient implements IRemoteFsClient {
 		});
 	}
 
-	private CompletionStage<MessagingWithBinaryStreaming<RemoteFsResponses.FsResponse, RemoteFsCommands.FsCommand>> connect(InetSocketAddress address) {
+	private CompletionStage<MessagingWithBinaryStreaming<FsResponse, FsCommand>> connect(InetSocketAddress address) {
 		return eventloop.connect(address).thenApply(socketChannel -> {
 			AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings);
 			AsyncTcpSocket asyncTcpSocket = sslContext != null
 					? wrapClientSocket(eventloop, asyncTcpSocketImpl, sslContext, sslExecutor)
 					: asyncTcpSocketImpl;
-			MessagingWithBinaryStreaming<RemoteFsResponses.FsResponse, RemoteFsCommands.FsCommand> messaging =
+			MessagingWithBinaryStreaming<FsResponse, FsCommand> messaging =
 					MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
 			asyncTcpSocket.setEventHandler(messaging);
 			asyncTcpSocketImpl.register();
 			return messaging;
 		});
 	}
-
-	protected Gson getCommandGSON() {
-		return RemoteFsCommands.commandGSON;
-	}
-
-	protected Gson getResponseGson() {
-		return RemoteFsResponses.responseGson;
-	}
-
 }

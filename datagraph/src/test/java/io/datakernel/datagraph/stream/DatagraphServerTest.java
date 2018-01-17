@@ -84,11 +84,13 @@ public class DatagraphServerTest {
 		}
 	}
 
+	private static int testPort = 1511;
+
 	@Test
 	public void testForward() throws Exception {
 		DatagraphSerialization serialization = new DatagraphSerialization();
-		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1511);
-		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1512);
+		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
+		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		StreamConsumerToList<TestItem> result1 = new StreamConsumerToList<>();
@@ -139,8 +141,8 @@ public class DatagraphServerTest {
 	@Test
 	public void testRepartitionAndSort() throws Exception {
 		DatagraphSerialization serialization = new DatagraphSerialization();
-		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1511);
-		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1512);
+		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
+		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		StreamConsumerToList<TestItem> result1 = new StreamConsumerToList<>();
@@ -198,8 +200,8 @@ public class DatagraphServerTest {
 	@Test
 	public void testFilter() throws Exception {
 		DatagraphSerialization serialization = new DatagraphSerialization();
-		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1511);
-		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1512);
+		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
+		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		DatagraphClient client = new DatagraphClient(eventloop, serialization);
@@ -269,8 +271,8 @@ public class DatagraphServerTest {
 	@Test
 	public void testCollector() throws Exception {
 		DatagraphSerialization serialization = new DatagraphSerialization();
-		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1511);
-		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1512);
+		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
+		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		DatagraphClient client = new DatagraphClient(eventloop, serialization);
@@ -312,14 +314,15 @@ public class DatagraphServerTest {
 					}
 				});
 
-		System.out.println("Graph: ");
-		System.out.println(graph);
-
 		server1.listen();
 		server2.listen();
 
 		Collector<TestItem> collector = new Collector<>(sortedDataset, TestItem.class, client, eventloop);
 		StreamProducer<TestItem> resultProducer = collector.compile(graph);
+
+		System.out.println("Graph: ");
+		System.out.println(graph);
+
 		stream(resultProducer, resultConsumer)
 				.whenComplete(assertComplete($ -> {
 					server1.close();

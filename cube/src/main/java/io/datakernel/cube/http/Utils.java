@@ -16,19 +16,18 @@
 
 package io.datakernel.cube.http;
 
-import com.google.gson.TypeAdapter;
-import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonWriter;
 import io.datakernel.cube.CubeQuery;
 import io.datakernel.exception.ParseException;
-import io.datakernel.utils.GsonAdapters;
+import io.datakernel.utils.GsonAdapters.TypeAdapterMapping;
+import io.datakernel.utils.GsonAdapters.TypeAdapterMappingImpl;
 
-import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
+import static io.datakernel.utils.GsonAdapters.LOCAL_DATE_JSON;
+import static io.datakernel.utils.GsonAdapters.PRIMITIVES_MAP;
 import static java.util.stream.Collectors.toList;
 
 class Utils {
@@ -47,8 +46,7 @@ class Utils {
 		StringBuilder sb = new StringBuilder();
 		boolean first = true;
 		for (CubeQuery.Ordering ordering : orderings) {
-			sb.append((first ? "" : ",") +
-					ordering.getField() + ":" + (ordering.isAsc() ? "ASC" : "DESC"));
+			sb.append(first ? "" : ",").append(ordering.getField()).append(":").append(ordering.isAsc() ? "ASC" : "DESC");
 			first = false;
 		}
 		return sb.toString();
@@ -77,18 +75,6 @@ class Utils {
 		return result;
 	}
 
-	public static GsonAdapters.TypeAdapterRegistryImpl createCubeTypeAdaptersRegistry() {
-		return GsonAdapters.TypeAdapterRegistryImpl.create()
-				.with(LocalDate.class, new TypeAdapter<LocalDate>() {
-					@Override
-					public void write(JsonWriter out, LocalDate value) throws IOException {
-						out.value(value.toString());
-					}
-
-					@Override
-					public LocalDate read(JsonReader in) throws IOException {
-						return LocalDate.parse(in.nextString());
-					}
-				});
-	}
+	public static TypeAdapterMapping CUBE_TYPES = TypeAdapterMappingImpl.from(PRIMITIVES_MAP)
+		.withAdapter(LocalDate.class, LOCAL_DATE_JSON);
 }

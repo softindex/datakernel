@@ -20,14 +20,17 @@ package io.datakernel.stream.processor;
  * Static utility methods pertaining to Sharders
  */
 public final class Sharders {
-	private Sharders() {
-	}
+
+	private Sharders() {}
 
 	/**
 	 * Instance of this class shares objects by hashcode to shards
 	 */
 	public static final class HashSharder<K> implements Sharder<K> {
-		private final int partitions;
+
+		private int partitions;
+
+		public HashSharder() {}
 
 		/**
 		 * Creates the sharder which contains specified number of parts
@@ -49,6 +52,14 @@ public final class Sharders {
 			int hash = object.hashCode();
 			int hashAbs = hash < 0 ? (hash == Integer.MIN_VALUE ? Integer.MAX_VALUE : -hash) : hash;
 			return hashAbs % partitions;
+		}
+
+		public int getPartitions() {
+			return partitions;
+		}
+
+		public void setPartitions(int partitions) {
+			this.partitions = partitions;
 		}
 	}
 }

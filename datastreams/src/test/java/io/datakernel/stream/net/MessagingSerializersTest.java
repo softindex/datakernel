@@ -16,23 +16,30 @@
 
 package io.datakernel.stream.net;
 
-import com.google.gson.Gson;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.exception.ParseException;
+import io.datakernel.utils.JsonSerializer;
+import io.datakernel.utils.TypeAdapterObject;
 import org.junit.Test;
 
 import java.util.Objects;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
+import static io.datakernel.stream.net.MessagingSerializers.ofJson;
+import static io.datakernel.utils.GsonAdapters.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 public class MessagingSerializersTest {
+
 	private class Req {
-		String text;
-		int num;
-		double val;
+
+		private String text;
+		private int num;
+		private double val;
+
+		Req() {}
 
 		Req(String text, int num, double val) {
 			this.text = text;
@@ -40,14 +47,36 @@ public class MessagingSerializersTest {
 			this.val = val;
 		}
 
+		public String getText() {
+			return text;
+		}
+
+		public void setText(String text) {
+			this.text = text;
+		}
+
+		public int getNum() {
+			return num;
+		}
+
+		public void setNum(int num) {
+			this.num = num;
+		}
+
+		public double getVal() {
+			return val;
+		}
+
+		public void setVal(double val) {
+			this.val = val;
+		}
+
 		@Override
 		public boolean equals(Object o) {
-			if (this == o) return true;
-			if (o == null || getClass() != o.getClass()) return false;
+			if(this == o) return true;
+			if(o == null || getClass() != o.getClass()) return false;
 			Req req = (Req) o;
-			return num == req.num &&
-					Double.compare(req.val, val) == 0 &&
-					Objects.equals(text, req.text);
+			return num == req.num && Double.compare(req.val, val) == 0 && Objects.equals(text, req.text);
 		}
 
 		@Override
@@ -66,16 +95,27 @@ public class MessagingSerializersTest {
 	}
 
 	private class Res {
-		boolean bool;
+
+		private boolean bool;
+
+		Res() {}
 
 		Res(boolean bool) {
 			this.bool = bool;
 		}
 
+		public boolean isBool() {
+			return bool;
+		}
+
+		public void setBool(boolean bool) {
+			this.bool = bool;
+		}
+
 		@Override
 		public boolean equals(Object o) {
-			if (this == o) return true;
-			if (o == null || getClass() != o.getClass()) return false;
+			if(this == o) return true;
+			if(o == null || getClass() != o.getClass()) return false;
 			Res res = (Res) o;
 			return bool == res.bool;
 		}
@@ -93,15 +133,27 @@ public class MessagingSerializersTest {
 		}
 	}
 
-	private MessagingSerializer<Req, Res> serializer = MessagingSerializers.ofGson(new Gson(), Req.class, new Gson(), Res.class);
-	private MessagingSerializer<Res, Req> deserializer = MessagingSerializers.ofGson(new Gson(), Res.class, new Gson(), Req.class);
+	private final JsonSerializer<Req> reqSerializer = new JsonSerializer<>(TypeAdapterObject.create(Req::new)
+		.with("text", STRING_JSON, Req::getText, Req::setText)
+		.with("num", INTEGER_JSON, Req::getNum, Req::setNum)
+		.with("val", DOUBLE_JSON, Req::getVal, Req::setVal));
+
+	private final JsonSerializer<Res> resSerializer = new JsonSerializer<>(TypeAdapterObject.create(Res::new)
+		.with("bool", BOOLEAN_JSON, Res::isBool, Res::setBool));
+
+	private final MessagingSerializer<Req, Res> serializer = ofJson(reqSerializer, resSerializer);
+	private final MessagingSerializer<Res, Req> deserializer = ofJson(resSerializer, reqSerializer);
 
 	@Test
-	public void simpleTestOfGson() throws ParseException {
+	public void simpleTestOfJson() throws ParseException {
 		Req req = new Req("Hello", 1, 6.24);
 
 		ByteBuf buf = deserializer.serialize(req);
-		assertEquals("{\"text\":\"Hello\",\"num\":1,\"val\":6.24}\0", ByteBufStrings.decodeUtf8(buf));
+		assertEquals("{\n" +
+				"  \"text\": \"Hello\",\n" +
+				"  \"num\": 1,\n" +
+				"  \"val\": 6.24\n" +
+				"}\0", ByteBufStrings.decodeUtf8(buf));
 
 		Req newReq = serializer.tryDeserialize(buf);
 		assertEquals(req, newReq);
@@ -110,7 +162,9 @@ public class MessagingSerializersTest {
 		Res res = new Res(true);
 
 		buf = serializer.serialize(res);
-		assertEquals("{\"bool\":true}\0", ByteBufStrings.decodeUtf8(buf));
+		assertEquals("{\n" +
+				"  \"bool\": true\n" +
+				"}\0", ByteBufStrings.decodeUtf8(buf));
 
 		Res newRes = deserializer.tryDeserialize(buf);
 		assertEquals(res, newRes);
@@ -155,7 +209,7 @@ public class MessagingSerializersTest {
 
 		try {
 			serializer.tryDeserialize(badInput);
-		} catch (ParseException e) {
+		} catch(ParseException e) {
 			assert e == MessagingSerializers.DESERIALIZE_ERR;
 		}
 

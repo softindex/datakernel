@@ -29,8 +29,11 @@ import java.util.Collections;
  * @param <T> data items type
  */
 public final class NodeUpload<T> implements Node {
-	private final Class type;
-	private final StreamId streamId;
+
+	private Class<T> type;
+	private StreamId streamId;
+
+	public NodeUpload() {}
 
 	public NodeUpload(Class<T> type, StreamId streamId) {
 		this.type = type;
@@ -42,14 +45,27 @@ public final class NodeUpload<T> implements Node {
 		return Collections.emptyList();
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public void createAndBind(TaskContext taskContext) {
 		DatagraphServer server = taskContext.environment().getInstance(DatagraphServer.class);
 		taskContext.bindChannel(streamId, server.upload(streamId, type));
 	}
 
+	public Class<T> getType() {
+		return type;
+	}
+
+	public void setType(Class<T> type) {
+		this.type = type;
+	}
+
 	public StreamId getStreamId() {
 		return streamId;
+	}
+
+	public void setStreamId(StreamId streamId) {
+		this.streamId = streamId;
 	}
 
 	@Override

@@ -50,6 +50,7 @@ public final class TypeAdapterObjectArray<T> extends TypeAdapter<T> {
 		return this;
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public void write(JsonWriter out, T object) throws IOException {
 		out.beginArray();

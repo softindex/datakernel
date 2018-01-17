@@ -23,10 +23,11 @@ import java.util.concurrent.atomic.AtomicLong;
  * Represents a unique id of the stream.
  */
 public final class StreamId {
+
 	//	private static final AtomicLong seed = new AtomicLong(1000);
 	private static final AtomicLong seed = new AtomicLong(new Random().nextInt() & (Integer.MAX_VALUE >>> 1));
 
-	public final long id;
+	private final long id;
 
 	public StreamId() {
 		id = seed.getAndIncrement();
@@ -36,16 +37,18 @@ public final class StreamId {
 		this.id = id;
 	}
 
+	public long getId() {
+		return id;
+	}
+
 	@Override
 	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
+		if(this == o) return true;
+		if(o == null || getClass() != o.getClass()) return false;
 
 		StreamId streamId = (StreamId) o;
 
-		if (id != streamId.id) return false;
-
-		return true;
+		return id == streamId.id;
 	}
 
 	@Override

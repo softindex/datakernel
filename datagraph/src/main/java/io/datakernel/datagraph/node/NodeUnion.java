@@ -26,11 +26,15 @@ import java.util.List;
 import static java.util.Collections.singletonList;
 
 public final class NodeUnion<T> implements Node {
-	private final List<StreamId> inputs;
-	private final StreamId output = new StreamId();
+
+	private List<StreamId> inputs;
+	private StreamId output;
+
+	public NodeUnion() {}
 
 	public NodeUnion(List<StreamId> inputs) {
 		this.inputs = inputs;
+		this.output = new StreamId();
 	}
 
 	@Override
@@ -38,17 +42,29 @@ public final class NodeUnion<T> implements Node {
 		return singletonList(output);
 	}
 
+	@Override
+	public void createAndBind(TaskContext taskContext) {
+		StreamUnion<T> streamUnion = StreamUnion.create();
+		for(StreamId input : inputs) {
+			taskContext.bindChannel(input, streamUnion.newInput());
+		}
+		taskContext.export(output, streamUnion.getOutput());
+	}
+
+	public List<StreamId> getInputs() {
+		return inputs;
+	}
+
+	public void setInputs(List<StreamId> inputs) {
+		this.inputs = inputs;
+	}
+
 	public StreamId getOutput() {
 		return output;
 	}
 
-	@Override
-	public void createAndBind(TaskContext taskContext) {
-		StreamUnion<T> streamUnion = StreamUnion.create();
-		for (StreamId input : inputs) {
-			taskContext.bindChannel(input, streamUnion.newInput());
-		}
-		taskContext.export(output, streamUnion.getOutput());
+	public void setOutput(StreamId output) {
+		this.output = output;
 	}
 
 	@Override

@@ -32,15 +32,19 @@ import static java.util.Collections.singletonList;
  * @param <T> data items type
  */
 public final class NodeDownload<T> implements Node {
-	private final Class type;
-	private final InetSocketAddress address;
-	private final StreamId streamId;
-	private final StreamId output = new StreamId();
+
+	private Class<T> type;
+	private InetSocketAddress address;
+	private StreamId streamId;
+	private StreamId output;
+
+	public NodeDownload() {}
 
 	public NodeDownload(Class<T> type, InetSocketAddress address, StreamId streamId) {
 		this.type = type;
 		this.address = address;
 		this.streamId = streamId;
+		this.output = new StreamId();
 	}
 
 	@Override
@@ -56,8 +60,36 @@ public final class NodeDownload<T> implements Node {
 		taskContext.export(output, stream);
 	}
 
+	public Class<T> getType() {
+		return type;
+	}
+
+	public void setType(Class<T> type) {
+		this.type = type;
+	}
+
+	public InetSocketAddress getAddress() {
+		return address;
+	}
+
+	public void setAddress(InetSocketAddress address) {
+		this.address = address;
+	}
+
+	public StreamId getStreamId() {
+		return streamId;
+	}
+
+	public void setStreamId(StreamId streamId) {
+		this.streamId = streamId;
+	}
+
 	public StreamId getOutput() {
 		return output;
+	}
+
+	public void setOutput(StreamId output) {
+		this.output = output;
 	}
 
 	@Override

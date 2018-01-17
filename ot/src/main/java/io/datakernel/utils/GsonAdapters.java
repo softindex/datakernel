@@ -1,15 +1,15 @@
 package io.datakernel.utils;
 
 import com.google.gson.TypeAdapter;
-import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.time.LocalDate;
@@ -17,9 +17,35 @@ import java.util.*;
 import java.util.function.Function;
 
 import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Preconditions.checkNotNull;
 
-public class GsonAdapters {
+@SuppressWarnings("unchecked")
+public final class GsonAdapters {
+
+	public static final TypeAdapter<Boolean> BOOLEAN_JSON = new TypeAdapter<Boolean>() {
+		@Override
+		public void write(JsonWriter out, Boolean value) throws IOException {
+			out.value(value);
+		}
+
+		@Override
+		public Boolean read(JsonReader in) throws IOException {
+			return in.nextBoolean();
+		}
+	};
+
+	public static final TypeAdapter<Character> CHARACTER_JSON = new TypeAdapter<Character>() {
+		@Override
+		public void write(JsonWriter out, Character value) throws IOException {
+			out.value(value);
+		}
+
+		@Override
+		public Character read(JsonReader in) throws IOException {
+			String v = in.nextString();
+			checkArgument(v.length() == 1);
+			return v.charAt(0);
+		}
+	};
 
 	public static final TypeAdapter<Byte> BYTE_JSON = new TypeAdapter<Byte>() {
 		@Override
@@ -73,18 +99,6 @@ public class GsonAdapters {
 		}
 	};
 
-	public static final TypeAdapter<Boolean> BOOLEAN_JSON = new TypeAdapter<Boolean>() {
-		@Override
-		public void write(JsonWriter out, Boolean value) throws IOException {
-			out.value(value);
-		}
-
-		@Override
-		public Boolean read(JsonReader in) throws IOException {
-			return in.nextBoolean();
-		}
-	};
-
 	public static final TypeAdapter<Float> FLOAT_JSON = new TypeAdapter<Float>() {
 		@Override
 		public void write(JsonWriter out, Float value) throws IOException {
@@ -106,20 +120,6 @@ public class GsonAdapters {
 		@Override
 		public Double read(JsonReader in) throws IOException {
 			return in.nextDouble();
-		}
-	};
-
-	public static final TypeAdapter<Character> CHARACTER_JSON = new TypeAdapter<Character>() {
-		@Override
-		public void write(JsonWriter out, Character value) throws IOException {
-			out.value(value);
-		}
-
-		@Override
-		public Character read(JsonReader in) throws IOException {
-			String v = in.nextString();
-			checkArgument(v.length() == 1);
-			return v.charAt(0);
 		}
 	};
 
@@ -147,134 +147,149 @@ public class GsonAdapters {
 		}
 	};
 
-	private static final Map<Class<?>, TypeAdapter<?>> typeAdapters = new HashMap<>();
+	public static final TypeAdapter<Class<Object>> CLASS_JSON = new TypeAdapter<Class<Object>>() {
+		@Override
+		public void write(JsonWriter out, Class<Object> value) throws IOException {
+			out.value(value.getName());
+		}
 
-	private static Map<Class<?>, Class<?>> PRIMITIVES = new HashMap<Class<?>, Class<?>>() {{
-		put(byte.class, Byte.class);
-		put(short.class, Short.class);
-		put(int.class, Integer.class);
-		put(long.class, Long.class);
-		put(float.class, Float.class);
-		put(double.class, Double.class);
-		put(char.class, Character.class);
-	}};
+		@Override
+		public Class<Object> read(JsonReader in) throws IOException {
+			try {
+				return (Class<Object>) Class.forName(in.nextString());
+			} catch (ClassNotFoundException e) {
+				throw new IOException(e);
+			}
+		}
+	};
 
-	private static Map<Class<?>, Class<?>> WRAPPERS = new HashMap<Class<?>, Class<?>>() {{
-		put(Byte.class, byte.class);
-		put(Short.class, short.class);
-		put(Integer.class, int.class);
-		put(Long.class, long.class);
-		put(Float.class, float.class);
-		put(Double.class, double.class);
-		put(Character.class, char.class);
-	}};
+	public interface TypeAdapterMapping {
 
-	private static <T> void registerPrimitive(Class<T> type, TypeAdapter<T> typeAdapter) {
-		typeAdapters.put(PRIMITIVES.getOrDefault(type, type), typeAdapter);
-		typeAdapters.put(WRAPPERS.getOrDefault(type, type), typeAdapter);
-	}
-
-	@SuppressWarnings("unchecked")
-	public static <T> TypeAdapter<T> ofPrimitive(Class<T> type) {
-		checkArgument(typeAdapters.containsKey(type));
-		return (TypeAdapter<T>) typeAdapters.get(type);
-	}
-
-	public static final TypeAdapterRegistry REGISTRY = new TypeAdapterRegistryImpl();
-
-	public interface TypeAdapterRegistry {
 		TypeAdapter<?> getAdapter(Type type);
 	}
 
-	public static final class TypeAdapterRegistryImpl implements TypeAdapterRegistry {
-		private TypeAdapterRegistry fallback;
-		private final Map<Class<?>, TypeAdapter<?>> registeredClasses = new HashMap<>();
-		private final Map<Type, TypeAdapter<?>> registeredTypes = new HashMap<>();
+	public static class TypeAdapterMappingImpl implements TypeAdapterMapping {
 
-		private TypeAdapterRegistryImpl() {
+		private final Map<Class<?>, Function<TypeAdapter<?>[], TypeAdapter<?>>> mapping = new HashMap<>();
+
+		private TypeAdapterMappingImpl() {}
+
+		public static TypeAdapterMappingImpl create() {
+			return new TypeAdapterMappingImpl();
 		}
 
-		public static TypeAdapterRegistryImpl create() {
-			return new TypeAdapterRegistryImpl();
-		}
-
-		public <T> TypeAdapterRegistryImpl withFallback(TypeAdapterRegistry fallback) {
-			this.fallback = fallback;
-			return this;
-		}
-
-		public <T> TypeAdapterRegistryImpl with(Class<T> type, TypeAdapter<T> adapter) {
-			register(type, adapter);
-			return this;
-		}
-
-		public TypeAdapterRegistryImpl with(Type type, TypeAdapter<?> adapter) {
-			register(type, adapter);
-			return this;
-		}
-
-		public <T> TypeAdapterRegistryImpl with(TypeToken<T> type, TypeAdapter<T> adapter) {
-			register(type, adapter);
-			return this;
-		}
-
-		public <T> void register(Class<T> type, TypeAdapter<T> adapter) {
-			registeredClasses.put(type, adapter);
-		}
-
-		public void register(Type type, TypeAdapter<?> adapter) {
-			registeredTypes.put(type, adapter);
-		}
-
-		public <T> void register(TypeToken<T> type, TypeAdapter<T> adapter) {
-			registeredTypes.put(type.getType(), adapter);
+		public static TypeAdapterMappingImpl from(TypeAdapterMappingImpl fallback) {
+			TypeAdapterMappingImpl tam = new TypeAdapterMappingImpl();
+			tam.mapping.putAll(fallback.mapping);
+			return tam;
 		}
 
 		@Override
 		public TypeAdapter<?> getAdapter(Type type) {
-			checkNotNull(type);
-			if (registeredTypes.containsKey(type))
-				return registeredTypes.get(type);
-			if (registeredClasses.containsKey(type))
-				return registeredClasses.get(type);
-			if (type instanceof Class<?>) {
-				Class<?> clazz = (Class<?>) type;
-				if (clazz.isEnum()) {
-					return (TypeAdapter) ofEnum((Class) clazz);
+			Class<?> cls;
+			TypeAdapter<?>[] paramAdapters;
+			if(type instanceof ParameterizedType) {
+				ParameterizedType parameterized = (ParameterizedType) type;
+				Type[] typeArgs = parameterized.getActualTypeArguments();
+				cls = (Class<?>) parameterized.getRawType();
+				paramAdapters = new TypeAdapter<?>[typeArgs.length];
+				for(int i = 0; i < typeArgs.length; i++) {
+					paramAdapters[i] = getAdapter(typeArgs[i]);
 				}
-				return ofPrimitive(clazz);
+			}else {
+				cls = (Class<?>) type;
+				paramAdapters = new TypeAdapter[0];
 			}
-			if (type instanceof ParameterizedType) {
-				ParameterizedType parameterizedType = (ParameterizedType) type;
-				checkArgument(parameterizedType.getRawType() == Class.class);
-				Class<?> rawType = (Class) parameterizedType.getRawType();
-				if (List.class.isAssignableFrom(rawType)) {
-					checkArgument(parameterizedType.getActualTypeArguments().length == 1, "Unsupported list type " + type);
-					return ofList(getAdapter(parameterizedType.getActualTypeArguments()[0]));
-				}
-				if (Map.class.isAssignableFrom(rawType)) {
-					checkArgument(parameterizedType.getActualTypeArguments().length == 2, "Unsupported map type " + type);
-					checkArgument(parameterizedType.getActualTypeArguments()[0] == String.class);
-					return ofMap(getAdapter(parameterizedType.getActualTypeArguments()[1]));
-				}
-			}
-			if (fallback == null) {
-				throw new IllegalArgumentException("Unsupported type " + type);
-			}
-			return fallback.getAdapter(type);
+			return mapping.get(cls).apply(paramAdapters);
+		}
+
+		public TypeAdapterMappingImpl withAdapter(Class<?> type, TypeAdapter<?> adapter) {
+			mapping.put(type, ps -> adapter);
+			return this;
+		}
+
+		public TypeAdapterMappingImpl withAdapter(Class<?> type, Function<TypeAdapter<?>[], TypeAdapter<?>> supplier) {
+			mapping.put(type, supplier);
+			return this;
 		}
 	}
 
-	static {
-		registerPrimitive(Byte.class, BYTE_JSON);
-		registerPrimitive(Short.class, SHORT_JSON);
-		registerPrimitive(Integer.class, INTEGER_JSON);
-		registerPrimitive(Long.class, LONG_JSON);
-		registerPrimitive(Boolean.class, BOOLEAN_JSON);
-		registerPrimitive(Float.class, FLOAT_JSON);
-		registerPrimitive(Double.class, DOUBLE_JSON);
-		registerPrimitive(Character.class, CHARACTER_JSON);
-		typeAdapters.put(String.class, STRING_JSON);
+	public static final TypeAdapterMappingImpl PRIMITIVES_MAP = TypeAdapterMappingImpl.create()
+		.withAdapter(boolean.class, BOOLEAN_JSON).withAdapter(Boolean.class, BOOLEAN_JSON)
+		.withAdapter(char.class, CHARACTER_JSON).withAdapter(Character.class, CHARACTER_JSON)
+		.withAdapter(byte.class, BYTE_JSON).withAdapter(Byte.class, BYTE_JSON)
+		.withAdapter(short.class, SHORT_JSON).withAdapter(Short.class, SHORT_JSON)
+		.withAdapter(int.class, INTEGER_JSON).withAdapter(Integer.class, INTEGER_JSON)
+		.withAdapter(long.class, LONG_JSON).withAdapter(Long.class, LONG_JSON)
+		.withAdapter(float.class, FLOAT_JSON).withAdapter(Float.class, FLOAT_JSON)
+		.withAdapter(double.class, DOUBLE_JSON).withAdapter(Double.class, DOUBLE_JSON)
+		.withAdapter(String.class, STRING_JSON)
+		.withAdapter(List.class, typeArgAdapters -> {
+			checkArgument(typeArgAdapters.length == 1);
+			return ofList(typeArgAdapters[0]);
+		})
+		.withAdapter(Map.class, typeArgAdapters -> {
+			checkArgument(typeArgAdapters.length == 2);
+			checkArgument(typeArgAdapters[0] == STRING_JSON, "Map key type should be string!");
+			return ofMap(typeArgAdapters[1]);
+		});
+
+	// copied from GsonSubclassesAdapter
+	// makes instantiation of stateless anonymous classes possible
+	// yet still is a pretty bad thing to do
+	static <T> T newInstance(String className) {
+		try {
+			Class<?> cls = Class.forName(className);
+			boolean isStatic = (cls.getModifiers() & Modifier.STATIC) != 0;
+			Class<?> enclosingClass = cls.getEnclosingClass();
+			if (isStatic || enclosingClass == null) {
+				Constructor<?> ctor = cls.getDeclaredConstructor();
+				ctor.setAccessible(true);
+				return (T) ctor.newInstance();
+			}
+			Constructor<?> ctor = cls.getDeclaredConstructor(enclosingClass);
+			ctor.setAccessible(true);
+			return (T) ctor.newInstance((Object) null);
+		}catch(Exception e) {
+			throw new AssertionError(e);
+		}
+	}
+
+	public static <T> TypeAdapter<T> stateless() {
+		return new TypeAdapter<T>() {
+			@Override
+			public void write(JsonWriter out, T value) throws IOException {
+				out.value(value.getClass().getName());
+			}
+
+			@Override
+			public T read(JsonReader in) throws IOException {
+				return newInstance(in.nextString());
+			}
+		};
+	}
+
+	public static <T> TypeAdapter<T> stateless(T... singletons) {
+		Map<String, T> mapped = new HashMap<>();
+		for(T singleton : singletons) {
+			mapped.put(singleton.getClass().getName(), singleton);
+		}
+		return new TypeAdapter<T>() {
+			@Override
+			public void write(JsonWriter out, T value) throws IOException {
+				out.value(value.getClass().getName());
+			}
+
+			@Override
+			public T read(JsonReader in) throws IOException {
+				String name = in.nextString();
+				T singleton = mapped.get(name);
+				if (singleton != null) {
+					return singleton;
+				}
+				return newInstance(name);
+			}
+		};
 	}
 
 	public static <E extends Enum<E>> TypeAdapter<E> ofEnum(Class<E> enumType) {
@@ -308,16 +323,21 @@ public class GsonAdapters {
 	}
 */
 
-	public static <I, O> TypeAdapter<O> transform(TypeAdapter<I> adapter, Function<I, O> from, Function<O, I> to) {
+	public interface FunctionIO<I, O> {
+
+		O convert(I in) throws IOException;
+	}
+
+	public static <I, O> TypeAdapter<O> transform(TypeAdapter<I> adapter, FunctionIO<I, O> from, FunctionIO<O, I> to) {
 		return new TypeAdapter<O>() {
 			@Override
 			public void write(JsonWriter out, O value) throws IOException {
-				adapter.write(out, to.apply(value));
+				adapter.write(out, to.convert(value));
 			}
 
 			@Override
 			public O read(JsonReader in) throws IOException {
-				return from.apply(adapter.read(in));
+				return from.convert(adapter.read(in));
 			}
 		};
 	}
@@ -372,42 +392,7 @@ public class GsonAdapters {
 	}
 
 	public static <T> TypeAdapter<T[]> ofArray(TypeAdapter<T> elementAdapter) {
-		return transform(ofList(elementAdapter),
-				new Function<List<T>, T[]>() {
-					@SuppressWarnings("unchecked")
-					@Override
-					public T[] apply(List<T> value) {
-						return (T[]) value.toArray();
-					}
-				},
-				new Function<T[], List<T>>() {
-					@Override
-					public List<T> apply(T[] value) {
-						return Arrays.asList(value);
-					}
-				});
-	}
-
-	public static <T> TypeAdapter<T> asNullable(TypeAdapter<T> adapter) {
-		return new TypeAdapter<T>() {
-			@Override
-			public void write(JsonWriter out, T value) throws IOException {
-				if (value == null) {
-					out.nullValue();
-				} else {
-					adapter.write(out, value);
-				}
-			}
-
-			@Override
-			public T read(JsonReader in) throws IOException {
-				if (in.peek() == JsonToken.NULL) {
-					in.nextNull();
-					return null;
-				}
-				return adapter.read(in);
-			}
-		};
+		return transform(ofList(elementAdapter), value -> (T[]) value.toArray(), Arrays::asList);
 	}
 
 	public static <V> TypeAdapter<Map<String, V>> ofMap(TypeAdapter<V> valueAdapter) {
@@ -437,9 +422,35 @@ public class GsonAdapters {
 		};
 	}
 
+	public static <K, V> TypeAdapter<Map<K, V>> ofMap(Function<K, String> to, Function<String, K> from, TypeAdapter<V> valueAdapter) {
+		return new TypeAdapter<Map<K, V>>() {
+			@Override
+			public void write(JsonWriter out, Map<K, V> map) throws IOException {
+				out.beginObject();
+				for (Map.Entry<K, V> entry : map.entrySet()) {
+					out.name(to.apply(entry.getKey()));
+					valueAdapter.write(out, entry.getValue());
+				}
+				out.endObject();
+			}
+
+			@Override
+			public Map<K, V> read(JsonReader in) throws IOException {
+				Map<K, V> map = new LinkedHashMap<>();
+				in.beginObject();
+				while (in.hasNext()) {
+					String key = in.nextName();
+					V value = valueAdapter.read(in);
+					map.put(from.apply(key), value);
+				}
+				in.endObject();
+				return map;
+			}
+		};
+	}
+
 	public static TypeAdapter<Map<String, ?>> ofHeterogeneousMap(Map<String, ? extends TypeAdapter<?>> valueAdapters) {
 		return new TypeAdapter<Map<String, ?>>() {
-			@SuppressWarnings("unchecked")
 			@Override
 			public void write(JsonWriter out, Map<String, ?> map) throws IOException {
 				out.beginObject();
@@ -470,7 +481,6 @@ public class GsonAdapters {
 
 	public static TypeAdapter<Object[]> ofHeterogeneousArray(TypeAdapter<?>[] valueAdapters) {
 		return new TypeAdapter<Object[]>() {
-			@SuppressWarnings("unchecked")
 			@Override
 			public void write(JsonWriter writer, Object[] value) throws IOException {
 				writer.beginArray();
@@ -525,19 +535,7 @@ public class GsonAdapters {
 	}
 
 	public static TypeAdapter<List<?>> ofHeterogeneousList(TypeAdapter<?>[] valueAdapters) {
-		return transform(ofHeterogeneousArray(valueAdapters),
-				new Function<Object[], List<?>>() {
-					@Override
-					public List<?> apply(Object[] value) {
-						return Arrays.asList(value);
-					}
-				},
-				new Function<List<?>, Object[]>() {
-					@Override
-					public Object[] apply(List<?> value) {
-						return value.toArray();
-					}
-				});
+		return transform(ofHeterogeneousArray(valueAdapters), Arrays::asList, List::toArray);
 	}
 
 	public static TypeAdapter<List<?>> ofHeterogeneousList(List<? extends TypeAdapter<?>> valueAdapters) {

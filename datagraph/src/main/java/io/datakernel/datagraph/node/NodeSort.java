@@ -34,21 +34,24 @@ import static java.util.Collections.singletonList;
  * @param <T> data items type
  */
 public final class NodeSort<K, T> implements Node {
-	private final Function<T, K> keyFunction;
-	private final Comparator<K> keyComparator;
-	private final boolean deduplicate;
-	private final int itemsInMemorySize;
 
-	private final StreamId input;
-	private final StreamId output = new StreamId();
+	private Function<T, K> keyFunction;
+	private Comparator<K> keyComparator;
+	private boolean deduplicate;
+	private int itemsInMemorySize;
 
-	public NodeSort(Function<T, K> keyFunction, Comparator<K> keyComparator, boolean deduplicate, int itemsInMemorySize,
-	                StreamId input) {
+	private StreamId input;
+	private StreamId output;
+
+	public NodeSort() {}
+
+	public NodeSort(Function<T, K> keyFunction, Comparator<K> keyComparator, boolean deduplicate, int itemsInMemorySize, StreamId input) {
 		this.keyFunction = keyFunction;
 		this.keyComparator = keyComparator;
 		this.deduplicate = deduplicate;
 		this.itemsInMemorySize = itemsInMemorySize;
 		this.input = input;
+		this.output = new StreamId();
 	}
 
 	@Override
@@ -59,14 +62,58 @@ public final class NodeSort<K, T> implements Node {
 	@SuppressWarnings("unchecked")
 	@Override
 	public void createAndBind(TaskContext taskContext) {
-		StreamSorter<K, T> streamSorter = StreamSorter.create(
+		final StreamSorter<K, T> streamSorter = StreamSorter.create(
 				taskContext.environment().getInstance(StreamSorterStorage.class),
 				keyFunction, keyComparator, deduplicate, itemsInMemorySize);
 		taskContext.bindChannel(input, streamSorter.getInput());
 		taskContext.export(output, streamSorter.getOutput());
 	}
 
+	public Function<T, K> getKeyFunction() {
+		return keyFunction;
+	}
+
+	public void setKeyFunction(Function<T, K> keyFunction) {
+		this.keyFunction = keyFunction;
+	}
+
+	public Comparator<K> getKeyComparator() {
+		return keyComparator;
+	}
+
+	public void setKeyComparator(Comparator<K> keyComparator) {
+		this.keyComparator = keyComparator;
+	}
+
+	public boolean isDeduplicate() {
+		return deduplicate;
+	}
+
+	public void setDeduplicate(boolean deduplicate) {
+		this.deduplicate = deduplicate;
+	}
+
+	public int getItemsInMemorySize() {
+		return itemsInMemorySize;
+	}
+
+	public void setItemsInMemorySize(int itemsInMemorySize) {
+		this.itemsInMemorySize = itemsInMemorySize;
+	}
+
+	public StreamId getInput() {
+		return input;
+	}
+
+	public void setInput(StreamId input) {
+		this.input = input;
+	}
+
 	public StreamId getOutput() {
 		return output;
+	}
+
+	public void setOutput(StreamId output) {
+		this.output = output;
 	}
 }

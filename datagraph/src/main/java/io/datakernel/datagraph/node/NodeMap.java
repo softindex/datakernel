@@ -31,13 +31,17 @@ import static java.util.Collections.singletonList;
  * @param <O> output items data type
  */
 public final class NodeMap<I, O> implements Node {
-	private final StreamMap.Mapper<I, O> mapper;
-	private final StreamId input;
-	private final StreamId output = new StreamId();
+
+	private StreamMap.Mapper<I, O> mapper;
+	private StreamId input;
+	private StreamId output;
+
+	public NodeMap() {}
 
 	public NodeMap(StreamMap.Mapper<I, O> mapper, StreamId input) {
 		this.mapper = mapper;
 		this.input = input;
+		this.output = new StreamId();
 	}
 
 	@Override
@@ -52,8 +56,28 @@ public final class NodeMap<I, O> implements Node {
 		taskContext.export(output, streamMap.getOutput());
 	}
 
+	public StreamMap.Mapper<I, O> getMapper() {
+		return mapper;
+	}
+
+	public void setMapper(StreamMap.Mapper<I, O> mapper) {
+		this.mapper = mapper;
+	}
+
+	public StreamId getInput() {
+		return input;
+	}
+
+	public void setInput(StreamId input) {
+		this.input = input;
+	}
+
 	public StreamId getOutput() {
 		return output;
+	}
+
+	public void setOutput(StreamId output) {
+		this.output = output;
 	}
 
 	@Override

@@ -33,10 +33,10 @@ import java.util.function.Function;
  * @param <T> data items type
  */
 public final class NodeShard<K, T> implements Node {
-	private final Function<T, K> keyFunction;
 
-	private final StreamId input;
-	private final List<StreamId> outputs;
+	private Function<T, K> keyFunction;
+	private StreamId input;
+	private List<StreamId> outputs;
 
 	public StreamId newPartition() {
 		StreamId newOutput = new StreamId();
@@ -47,6 +47,8 @@ public final class NodeShard<K, T> implements Node {
 	public StreamId getOutput(int partition) {
 		return outputs.get(partition);
 	}
+
+	public NodeShard() {}
 
 	public NodeShard(Function<T, K> keyFunction, StreamId input) {
 		this.keyFunction = keyFunction;
@@ -64,13 +66,25 @@ public final class NodeShard<K, T> implements Node {
 		return keyFunction;
 	}
 
+	public void setKeyFunction(Function<T, K> keyFunction) {
+		this.keyFunction = keyFunction;
+	}
+
 	public StreamId getInput() {
 		return input;
+	}
+
+	public void setInput(StreamId input) {
+		this.input = input;
 	}
 
 	@Override
 	public List<StreamId> getOutputs() {
 		return outputs;
+	}
+
+	public void setOutputs(List<StreamId> outputs) {
+		this.outputs = outputs;
 	}
 
 	@Override
@@ -79,7 +93,7 @@ public final class NodeShard<K, T> implements Node {
 		StreamSharder<T> streamSharder = StreamSharder.create(
 				object -> hashSharder.shard(keyFunction.apply(object)));
 		taskContext.bindChannel(input, streamSharder.getInput());
-		for (StreamId streamId : outputs) {
+		for(StreamId streamId : outputs) {
 			StreamProducer<T> producer = streamSharder.newOutput();
 			taskContext.export(streamId, producer);
 		}

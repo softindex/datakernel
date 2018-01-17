@@ -39,7 +39,7 @@ public final class StreamMap<I, O> implements StreamTransformer<I, O> {
 	}
 
 	public static <I, O> StreamMap<I, O> create(Mapper<I, O> mapper) {
-		return new StreamMap<I, O>(mapper);
+		return new StreamMap<>(mapper);
 	}
 
 	@Override

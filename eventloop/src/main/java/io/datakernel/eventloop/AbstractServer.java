@@ -198,12 +198,8 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	private void listenAddresses(List<InetSocketAddress> addresses, boolean ssl) throws IOException {
 		for (InetSocketAddress address : addresses) {
 			try {
-				ServerSocketChannel serverSocketChannel = eventloop.listen(address, serverSocketSettings, new AcceptCallback() {
-					@Override
-					public void onAccept(SocketChannel socketChannel) {
-						AbstractServer.this.doAccept(socketChannel, address, ssl);
-					}
-				});
+				ServerSocketChannel serverSocketChannel = eventloop.listen(address, serverSocketSettings,
+					chan -> AbstractServer.this.doAccept(chan, address, ssl));
 				serverSocketChannels.add(serverSocketChannel);
 			} catch (IOException e) {
 				logger.error("Can't listen on {}", this, address);

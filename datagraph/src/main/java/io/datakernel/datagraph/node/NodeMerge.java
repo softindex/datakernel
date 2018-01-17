@@ -35,25 +35,25 @@ import static java.util.Collections.singletonList;
  * @param <T> data items type
  */
 public final class NodeMerge<K, T> implements Node {
-	private final Function<T, K> keyFunction;
-	private final Comparator<K> keyComparator;
-	private final boolean deduplicate;
 
-	private final List<StreamId> inputs = new ArrayList<>();
-	private final StreamId output = new StreamId();
+	private Function<T, K> keyFunction;
+	private Comparator<K> keyComparator;
+	private boolean deduplicate;
+	private List<StreamId> inputs;
+	private StreamId output;
+
+	public NodeMerge() {}
 
 	public NodeMerge(Function<T, K> keyFunction, Comparator<K> keyComparator, boolean deduplicate) {
 		this.keyFunction = keyFunction;
 		this.keyComparator = keyComparator;
 		this.deduplicate = deduplicate;
+		this.inputs = new ArrayList<>();
+		this.output = new StreamId();
 	}
 
 	public void addInput(StreamId input) {
 		inputs.add(input);
-	}
-
-	public StreamId getOutput() {
-		return output;
 	}
 
 	@Override
@@ -64,9 +64,49 @@ public final class NodeMerge<K, T> implements Node {
 	@Override
 	public void createAndBind(TaskContext taskContext) {
 		StreamMerger<K, T> streamMerger = StreamMerger.create(keyFunction, keyComparator, deduplicate);
-		for (StreamId input : inputs) {
+		for(StreamId input : inputs) {
 			taskContext.bindChannel(input, streamMerger.newInput());
 		}
 		taskContext.export(output, streamMerger.getOutput());
+	}
+
+	public Function<T, K> getKeyFunction() {
+		return keyFunction;
+	}
+
+	public void setKeyFunction(Function<T, K> keyFunction) {
+		this.keyFunction = keyFunction;
+	}
+
+	public Comparator<K> getKeyComparator() {
+		return keyComparator;
+	}
+
+	public void setKeyComparator(Comparator<K> keyComparator) {
+		this.keyComparator = keyComparator;
+	}
+
+	public boolean isDeduplicate() {
+		return deduplicate;
+	}
+
+	public void setDeduplicate(boolean deduplicate) {
+		this.deduplicate = deduplicate;
+	}
+
+	public List<StreamId> getInputs() {
+		return inputs;
+	}
+
+	public void setInputs(List<StreamId> inputs) {
+		this.inputs = inputs;
+	}
+
+	public StreamId getOutput() {
+		return output;
+	}
+
+	public void setOutput(StreamId output) {
+		this.output = output;
 	}
 }

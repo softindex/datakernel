@@ -38,31 +38,50 @@ import static java.util.Collections.singletonList;
  * @param <A> accumulator type
  */
 public final class NodeReduce<K, O, A> implements Node {
-	private final Comparator<K> keyComparator;
 
 	public static class Input<K, O, A> {
-		private final StreamReducers.Reducer<K, ?, O, A> reducer;
-		private final Function<?, K> keyFunction;
+
+		private StreamReducers.Reducer<K, ?, O, A> reducer;
+		private Function<?, K> keyFunction;
+
+		public Input() {}
 
 		public Input(StreamReducers.Reducer<K, ?, O, A> reducer, Function<?, K> keyFunction) {
 			this.reducer = reducer;
 			this.keyFunction = keyFunction;
 		}
+
+		public StreamReducers.Reducer<K, ?, O, A> getReducer() {
+			return reducer;
+		}
+
+		public void setReducer(StreamReducers.Reducer<K, ?, O, A> reducer) {
+			this.reducer = reducer;
+		}
+
+		public Function<?, K> getKeyFunction() {
+			return keyFunction;
+		}
+
+		public void setKeyFunction(Function<?, K> keyFunction) {
+			this.keyFunction = keyFunction;
+		}
 	}
 
-	private final Map<StreamId, Input<K, O, A>> inputs = new LinkedHashMap<>();
-	private final StreamId output = new StreamId();
+	private Comparator<K> keyComparator;
+	private Map<StreamId, Input<K, O, A>> inputs;
+	private StreamId output;
+
+	public NodeReduce() {}
 
 	public NodeReduce(Comparator<K> keyComparator) {
 		this.keyComparator = keyComparator;
+		this.inputs = new LinkedHashMap<>();
+		this.output = new StreamId();
 	}
 
 	public <I> void addInput(StreamId streamId, Function<I, K> keyFunction, StreamReducers.Reducer<K, I, O, A> reducer) {
 		inputs.put(streamId, new Input<>(reducer, keyFunction));
-	}
-
-	public StreamId getOutput() {
-		return output;
 	}
 
 	@Override
@@ -74,7 +93,7 @@ public final class NodeReduce<K, O, A> implements Node {
 	@Override
 	public void createAndBind(TaskContext taskContext) {
 		StreamReducer<K, O, A> streamReducer = StreamReducer.create(keyComparator);
-		for (StreamId streamId : inputs.keySet()) {
+		for(StreamId streamId : inputs.keySet()) {
 			Input<K, O, A> koaInput = inputs.get(streamId);
 			StreamConsumer<Object> input = streamReducer.newInput(
 					((Function<Object, K>) koaInput.keyFunction)::apply,
@@ -82,6 +101,30 @@ public final class NodeReduce<K, O, A> implements Node {
 			taskContext.bindChannel(streamId, input);
 		}
 		taskContext.export(output, streamReducer.getOutput());
+	}
+
+	public Comparator<K> getKeyComparator() {
+		return keyComparator;
+	}
+
+	public void setKeyComparator(Comparator<K> keyComparator) {
+		this.keyComparator = keyComparator;
+	}
+
+	public Map<StreamId, Input<K, O, A>> getInputs() {
+		return inputs;
+	}
+
+	public void setInputs(Map<StreamId, Input<K, O, A>> inputs) {
+		this.inputs = inputs;
+	}
+
+	public StreamId getOutput() {
+		return output;
+	}
+
+	public void setOutput(StreamId output) {
+		this.output = output;
 	}
 }
 

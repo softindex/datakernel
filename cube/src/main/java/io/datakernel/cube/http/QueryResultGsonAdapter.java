@@ -24,8 +24,9 @@ import io.datakernel.cube.QueryResult;
 import io.datakernel.cube.Record;
 import io.datakernel.cube.RecordScheme;
 import io.datakernel.cube.ReportType;
+import io.datakernel.serializer.SimpleType;
 import io.datakernel.utils.GsonAdapters;
-import io.datakernel.utils.GsonAdapters.TypeAdapterRegistry;
+import io.datakernel.utils.GsonAdapters.TypeAdapterMapping;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -35,7 +36,6 @@ import java.util.List;
 import java.util.Map;
 
 import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.utils.GsonAdapters.asNullable;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 
@@ -64,20 +64,20 @@ final class QueryResultGsonAdapter extends TypeAdapter<QueryResult> {
 		this.measureTypes = measureTypes;
 	}
 
-	public static QueryResultGsonAdapter create(TypeAdapterRegistry typeAdapterRegistry, Map<String, Type> attributeTypes, Map<String, Type> measureTypes) {
+	public static QueryResultGsonAdapter create(TypeAdapterMapping mapping, Map<String, Type> attributeTypes, Map<String, Type> measureTypes) {
 		Map<String, TypeAdapter<?>> attributeAdapters = new LinkedHashMap<>();
 		Map<String, TypeAdapter<?>> measureAdapters = new LinkedHashMap<>();
 		Map<String, Class<?>> attributeRawTypes = new LinkedHashMap<>();
 		Map<String, Class<?>> measureRawTypes = new LinkedHashMap<>();
-		for (String attribute : attributeTypes.keySet()) {
-			Type type = attributeTypes.get(attribute);
-			attributeAdapters.put(attribute, asNullable(typeAdapterRegistry.getAdapter(type)));
-			attributeRawTypes.put(attribute, (Class<?>) type);
+		for(String attribute : attributeTypes.keySet()) {
+			SimpleType token = SimpleType.ofType(attributeTypes.get(attribute));
+			attributeAdapters.put(attribute, mapping.getAdapter(token.getType()).nullSafe());
+			attributeRawTypes.put(attribute, token.getClazz());
 		}
-		for (String measure : measureTypes.keySet()) {
-			Type type = measureTypes.get(measure);
-			measureAdapters.put(measure, typeAdapterRegistry.getAdapter(type));
-			measureRawTypes.put(measure, (Class<?>) type);
+		for(String measure : measureTypes.keySet()) {
+			SimpleType token = SimpleType.ofType(measureTypes.get(measure));
+			measureAdapters.put(measure, mapping.getAdapter(token.getType()));
+			measureRawTypes.put(measure, token.getClazz());
 		}
 		return new QueryResultGsonAdapter(attributeAdapters, measureAdapters, attributeRawTypes, measureRawTypes);
 	}
@@ -283,5 +283,4 @@ final class QueryResultGsonAdapter extends TypeAdapter<QueryResult> {
 	private static <T> T firstNonNull(T a, T b) {
 		return a != null ? a : b;
 	}
-
 }

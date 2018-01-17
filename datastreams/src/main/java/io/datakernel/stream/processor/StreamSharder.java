@@ -44,7 +44,7 @@ public final class StreamSharder<T> implements HasInput<T>, HasOutputs, StreamDa
 	}
 
 	public static <T> StreamSharder<T> create(Sharder<T> sharder) {
-		return new StreamSharder<T>(sharder);
+		return new StreamSharder<>(sharder);
 	}
 	// endregion
 

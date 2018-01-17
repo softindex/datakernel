@@ -22,14 +22,13 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 import io.datakernel.aggregation.AggregationPredicate;
-import io.datakernel.utils.GsonAdapters.TypeAdapterRegistry;
+import io.datakernel.utils.GsonAdapters.TypeAdapterMapping;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.*;
 
 import static io.datakernel.aggregation.AggregationPredicates.*;
-import static io.datakernel.utils.GsonAdapters.asNullable;
 
 final class AggregationPredicateGsonAdapter extends TypeAdapter<AggregationPredicate> {
 	public static final String EMPTY_STRING = "";
@@ -62,14 +61,14 @@ final class AggregationPredicateGsonAdapter extends TypeAdapter<AggregationPredi
 		this.attributeAdapters = attributeAdapters;
 	}
 
-	public static AggregationPredicateGsonAdapter create(TypeAdapterRegistry registry,
+	public static AggregationPredicateGsonAdapter create(TypeAdapterMapping mapping,
 	                                                     Map<String, Type> attributeTypes, Map<String, Type> measureTypes) {
 		Map<String, TypeAdapter<?>> attributeAdapters = new LinkedHashMap<>();
 		for (String attribute : attributeTypes.keySet()) {
-			attributeAdapters.put(attribute, asNullable(registry.getAdapter(attributeTypes.get(attribute))));
+			attributeAdapters.put(attribute, mapping.getAdapter(attributeTypes.get(attribute)).nullSafe());
 		}
 		for (String measure : measureTypes.keySet()) {
-			attributeAdapters.put(measure, registry.getAdapter(measureTypes.get(measure)));
+			attributeAdapters.put(measure, mapping.getAdapter(measureTypes.get(measure)));
 		}
 		return new AggregationPredicateGsonAdapter(attributeAdapters);
 	}
@@ -294,6 +293,7 @@ final class AggregationPredicateGsonAdapter extends TypeAdapter<AggregationPredi
 		return lt(field, value);
 	}
 
+	@SuppressWarnings("unchecked")
 	private AggregationPredicate readIn(JsonReader reader) throws IOException {
 		String field = reader.nextString();
 		TypeAdapter typeAdapter = attributeAdapters.get(field);

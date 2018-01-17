@@ -19,12 +19,20 @@ package io.datakernel.datagraph.server.command;
 import io.datakernel.datagraph.graph.StreamId;
 
 public final class DatagraphCommandDownload extends DatagraphCommand {
-	public StreamId streamId;
 
-	public DatagraphCommandDownload() {
-	}
+	private StreamId streamId;
+
+	public DatagraphCommandDownload() {}
 
 	public DatagraphCommandDownload(StreamId streamId) {
+		this.setStreamId(streamId);
+	}
+
+	public StreamId getStreamId() {
+		return streamId;
+	}
+
+	public void setStreamId(StreamId streamId) {
 		this.streamId = streamId;
 	}
 

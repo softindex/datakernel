@@ -29,7 +29,7 @@ import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpUtils;
 import io.datakernel.http.IAsyncHttpClient;
-import io.datakernel.utils.GsonAdapters.TypeAdapterRegistryImpl;
+import io.datakernel.utils.GsonAdapters.TypeAdapterMapping;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -45,21 +45,21 @@ public final class CubeHttpClient implements ICube {
 	private final Eventloop eventloop;
 	private final String url;
 	private final IAsyncHttpClient httpClient;
-	private final TypeAdapterRegistryImpl registry;
+	private final TypeAdapterMapping mapping;
 	private TypeAdapter<QueryResult> queryResultJson;
 	private TypeAdapter<AggregationPredicate> aggregationPredicateJson;
 	private final Map<String, Type> attributeTypes = new LinkedHashMap<>();
 	private final Map<String, Type> measureTypes = new LinkedHashMap<>();
 
-	private CubeHttpClient(Eventloop eventloop, IAsyncHttpClient httpClient, String url, TypeAdapterRegistryImpl registry) {
+	private CubeHttpClient(Eventloop eventloop, IAsyncHttpClient httpClient, String url, TypeAdapterMapping mapping) {
 		this.eventloop = eventloop;
 		this.url = url.replaceAll("/$", "");
 		this.httpClient = httpClient;
-		this.registry = registry;
+		this.mapping = mapping;
 	}
 
 	public static CubeHttpClient create(Eventloop eventloop, AsyncHttpClient httpClient, String cubeServletUrl) {
-		return new CubeHttpClient(eventloop, httpClient, cubeServletUrl, createCubeTypeAdaptersRegistry());
+		return new CubeHttpClient(eventloop, httpClient, cubeServletUrl, CUBE_TYPES);
 	}
 
 	public static CubeHttpClient create(Eventloop eventloop, AsyncHttpClient httpClient, URI cubeServletUrl) {
@@ -78,14 +78,14 @@ public final class CubeHttpClient implements ICube {
 
 	private TypeAdapter<AggregationPredicate> getAggregationPredicateJson() {
 		if (aggregationPredicateJson == null) {
-			aggregationPredicateJson = AggregationPredicateGsonAdapter.create(registry, attributeTypes, measureTypes);
+			aggregationPredicateJson = AggregationPredicateGsonAdapter.create(mapping, attributeTypes, measureTypes);
 		}
 		return aggregationPredicateJson;
 	}
 
 	private TypeAdapter<QueryResult> getQueryResultJson() {
 		if (queryResultJson == null) {
-			queryResultJson = QueryResultGsonAdapter.create(registry, attributeTypes, measureTypes);
+			queryResultJson = QueryResultGsonAdapter.create(mapping, attributeTypes, measureTypes);
 		}
 		return queryResultJson;
 	}

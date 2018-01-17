@@ -25,7 +25,7 @@ import io.datakernel.cube.*;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
 import io.datakernel.util.Stopwatch;
-import io.datakernel.utils.GsonAdapters.TypeAdapterRegistryImpl;
+import io.datakernel.utils.GsonAdapters.TypeAdapterMapping;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,18 +43,18 @@ public final class ReportingServiceServlet extends AsyncServletWithStats {
 	protected final Logger logger = LoggerFactory.getLogger(ReportingServiceServlet.class);
 
 	private final ICube cube;
-	private final TypeAdapterRegistryImpl registry;
+	private final TypeAdapterMapping mapping;
 	private TypeAdapter<QueryResult> queryResultJson;
 	private TypeAdapter<AggregationPredicate> aggregationPredicateJson;
 
-	private ReportingServiceServlet(Eventloop eventloop, ICube cube, TypeAdapterRegistryImpl registry) {
+	private ReportingServiceServlet(Eventloop eventloop, ICube cube, TypeAdapterMapping mapping) {
 		super(eventloop);
 		this.cube = cube;
-		this.registry = registry;
+		this.mapping = mapping;
 	}
 
 	public static ReportingServiceServlet create(Eventloop eventloop, ICube cube) {
-		return new ReportingServiceServlet(eventloop, cube, createCubeTypeAdaptersRegistry());
+		return new ReportingServiceServlet(eventloop, cube, CUBE_TYPES);
 	}
 
 	public static MiddlewareServlet createRootServlet(Eventloop eventloop, ICube cube) {
@@ -75,14 +75,14 @@ public final class ReportingServiceServlet extends AsyncServletWithStats {
 
 	private TypeAdapter<AggregationPredicate> getAggregationPredicateJson() {
 		if (aggregationPredicateJson == null) {
-			aggregationPredicateJson = AggregationPredicateGsonAdapter.create(registry, cube.getAttributeTypes(), cube.getMeasureTypes());
+			aggregationPredicateJson = AggregationPredicateGsonAdapter.create(mapping, cube.getAttributeTypes(), cube.getMeasureTypes());
 		}
 		return aggregationPredicateJson;
 	}
 
 	private TypeAdapter<QueryResult> getQueryResultJson() {
 		if (queryResultJson == null) {
-			queryResultJson = QueryResultGsonAdapter.create(registry, cube.getAttributeTypes(), cube.getMeasureTypes());
+			queryResultJson = QueryResultGsonAdapter.create(mapping, cube.getAttributeTypes(), cube.getMeasureTypes());
 		}
 		return queryResultJson;
 	}

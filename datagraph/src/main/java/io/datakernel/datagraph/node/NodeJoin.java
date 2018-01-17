@@ -35,40 +35,96 @@ import static java.util.Collections.singletonList;
  * @param <V> output stream data type
  */
 public final class NodeJoin<K, L, R, V> implements Node {
-	private final StreamId left;
-	private final StreamId right;
-	private final StreamId result = new StreamId();
-	private final Comparator<K> keyComparator;
-	private final Function<L, K> leftKeyFunction;
-	private final Function<R, K> rightKeyFunction;
-	private final StreamJoin.Joiner<K, L, R, V> joiner;
+
+	private StreamId left;
+	private StreamId right;
+	private StreamId output;
+	private Comparator<K> keyComparator;
+	private Function<L, K> leftKeyFunction;
+	private Function<R, K> rightKeyFunction;
+	private StreamJoin.Joiner<K, L, R, V> joiner;
+
+	public NodeJoin() {}
 
 	public NodeJoin(StreamId left, StreamId right,
-	                Comparator<K> keyComparator, Function<L, K> leftKeyFunction, Function<R, K> rightKeyFunction,
-	                StreamJoin.Joiner<K, L, R, V> joiner) {
+					Comparator<K> keyComparator, Function<L, K> leftKeyFunction, Function<R, K> rightKeyFunction,
+					StreamJoin.Joiner<K, L, R, V> joiner) {
 		this.left = left;
 		this.right = right;
+		this.output = new StreamId();
 		this.keyComparator = keyComparator;
 		this.leftKeyFunction = leftKeyFunction;
 		this.rightKeyFunction = rightKeyFunction;
 		this.joiner = joiner;
 	}
 
-	public StreamId getOutput() {
-		return result;
-	}
-
 	@Override
 	public Collection<StreamId> getOutputs() {
-		return singletonList(result);
+		return singletonList(output);
 	}
 
 	@Override
 	public void createAndBind(TaskContext taskContext) {
 		StreamJoin<K, L, R, V> join =
-				StreamJoin.create(keyComparator, leftKeyFunction::apply, rightKeyFunction::apply, joiner);
-		taskContext.export(result, join.getOutput());
+				StreamJoin.create(keyComparator, leftKeyFunction, rightKeyFunction, joiner);
+		taskContext.export(output, join.getOutput());
 		taskContext.bindChannel(left, join.getLeft());
 		taskContext.bindChannel(right, join.getRight());
+	}
+
+	public StreamId getLeft() {
+		return left;
+	}
+
+	public void setLeft(StreamId left) {
+		this.left = left;
+	}
+
+	public StreamId getRight() {
+		return right;
+	}
+
+	public void setRight(StreamId right) {
+		this.right = right;
+	}
+
+	public StreamId getOutput() {
+		return output;
+	}
+
+	public void setOutput(StreamId output) {
+		this.output = output;
+	}
+
+	public Comparator<K> getKeyComparator() {
+		return keyComparator;
+	}
+
+	public void setKeyComparator(Comparator<K> keyComparator) {
+		this.keyComparator = keyComparator;
+	}
+
+	public Function<L, K> getLeftKeyFunction() {
+		return leftKeyFunction;
+	}
+
+	public void setLeftKeyFunction(Function<L, K> leftKeyFunction) {
+		this.leftKeyFunction = leftKeyFunction;
+	}
+
+	public Function<R, K> getRightKeyFunction() {
+		return rightKeyFunction;
+	}
+
+	public void setRightKeyFunction(Function<R, K> rightKeyFunction) {
+		this.rightKeyFunction = rightKeyFunction;
+	}
+
+	public StreamJoin.Joiner<K, L, R, V> getJoiner() {
+		return joiner;
+	}
+
+	public void setJoiner(StreamJoin.Joiner<K, L, R, V> joiner) {
+		this.joiner = joiner;
 	}
 }

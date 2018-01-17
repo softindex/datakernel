@@ -16,32 +16,32 @@
 
 package io.datakernel.remotefs;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import io.datakernel.serializer.GsonSubclassesAdapter;
+import io.datakernel.utils.JsonSerializer;
+import io.datakernel.utils.TypeAdapterObject;
+import io.datakernel.utils.TypeAdapterObjectSubtype;
 
 import java.util.Collections;
 import java.util.List;
 
+import static io.datakernel.utils.GsonAdapters.*;
+
 @SuppressWarnings("WeakerAccess")
 public final class RemoteFsResponses {
-	static Gson responseGson = new GsonBuilder()
-			.registerTypeAdapter(FsResponse.class, GsonSubclassesAdapter.create()
-					.withSubclassField("commandType")
-					.withSubclass("Error", Err.class)
-					.withSubclass("FileList", ListOfFiles.class)
-					.withSubclass("ResponseOk", Ok.class)
-					.withSubclass("Acknowledge", Acknowledge.class)
-					.withSubclass("ReadyBytes", Ready.class))
-			.setPrettyPrinting()
-			.enableComplexMapKeySerialization()
-			.create();
 
-	public static abstract class FsResponse {
+	static JsonSerializer<FsResponse> serializer = new JsonSerializer<>(TypeAdapterObjectSubtype.<FsResponse>create()
+		.withSubtype(Err.class, "Error", TypeAdapterObject.create(Err::new)
+			.with("msg", STRING_JSON, Err::getMsg, Err::setMsg))
+		.withSubtype(ListOfFiles.class, "FileList", TypeAdapterObject.create(ListOfFiles::new)
+			.with("files", ofList(STRING_JSON), ListOfFiles::getFiles, ListOfFiles::setFiles))
+		.withSubtype(Ready.class, "ReadyBytes", TypeAdapterObject.create(Ready::new)
+			.with("size", LONG_JSON, Ready::getSize, Ready::setSize))
+		.withStatelessSubtype(Ok::new, "ResponseOk")
+		.withStatelessSubtype(Acknowledge::new, "Acknowledge"));
 
-	}
+	public static abstract class FsResponse {}
 
 	public static class Acknowledge extends FsResponse {
+
 		@Override
 		public String toString() {
 			return "Done{OK}";
@@ -49,9 +49,20 @@ public final class RemoteFsResponses {
 	}
 
 	public static class Ready extends FsResponse {
-		public final long size;
+
+		private long size;
+
+		public Ready() {}
 
 		public Ready(long size) {
+			this.size = size;
+		}
+
+		public long getSize() {
+			return size;
+		}
+
+		public void setSize(long size) {
 			this.size = size;
 		}
 
@@ -62,6 +73,7 @@ public final class RemoteFsResponses {
 	}
 
 	public static class Ok extends FsResponse {
+
 		@Override
 		public String toString() {
 			return "Operation{OK}";
@@ -69,9 +81,20 @@ public final class RemoteFsResponses {
 	}
 
 	public static class Err extends FsResponse {
-		public final String msg;
+
+		private String msg;
+
+		public Err() {}
 
 		public Err(String msg) {
+			this.msg = msg;
+		}
+
+		public String getMsg() {
+			return msg;
+		}
+
+		public void setMsg(String msg) {
 			this.msg = msg;
 		}
 
@@ -82,10 +105,21 @@ public final class RemoteFsResponses {
 	}
 
 	public static class ListOfFiles extends FsResponse {
-		public final List<String> files;
+
+		private List<String> files;
+
+		public ListOfFiles() {}
 
 		public ListOfFiles(List<String> files) {
 			this.files = Collections.unmodifiableList(files);
+		}
+
+		public List<String> getFiles() {
+			return files;
+		}
+
+		public void setFiles(List<String> files) {
+			this.files = files;
 		}
 
 		@Override

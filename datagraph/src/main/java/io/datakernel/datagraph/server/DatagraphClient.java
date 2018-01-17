@@ -41,7 +41,7 @@ import java.util.Collection;
 import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.stream.DataStreams.stream;
-import static io.datakernel.stream.net.MessagingSerializers.ofGson;
+import static io.datakernel.stream.net.MessagingSerializers.ofJson;
 
 /**
  * Client for datagraph server.
@@ -54,7 +54,7 @@ public final class DatagraphClient {
 	private final DatagraphSerialization serialization;
 	private final MessagingSerializer<DatagraphResponse, DatagraphCommand> serializer;
 
-	private SocketSettings socketSettings = SocketSettings.create();
+	private final SocketSettings socketSettings = SocketSettings.create();
 
 	/**
 	 * Constructs a datagraph client that runs in a given event loop and uses the specified DatagraphSerialization object for various serialization purposes.
@@ -65,7 +65,7 @@ public final class DatagraphClient {
 	public DatagraphClient(Eventloop eventloop, DatagraphSerialization serialization) {
 		this.eventloop = eventloop;
 		this.serialization = serialization;
-		this.serializer = ofGson(serialization.gson, DatagraphResponse.class, serialization.gson, DatagraphCommand.class);
+		this.serializer = ofJson(serialization.responseSerializer, serialization.commandSerializer);
 	}
 
 	public <T> CompletionStage<StreamProducer<T>> download(InetSocketAddress address, StreamId streamId, Class<T> type) {

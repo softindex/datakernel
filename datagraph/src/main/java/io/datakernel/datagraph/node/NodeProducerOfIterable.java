@@ -31,11 +31,15 @@ import static java.util.Collections.singletonList;
  * @param <T> data items type
  */
 public final class NodeProducerOfIterable<T> implements Node {
-	private final Object iterableId;
-	private final StreamId output = new StreamId();
+
+	private Object iterableId;
+	private StreamId output;
+
+	public NodeProducerOfIterable() {}
 
 	public NodeProducerOfIterable(Object iterableId) {
 		this.iterableId = iterableId;
+		this.output = new StreamId();
 	}
 
 	@Override
@@ -48,16 +52,28 @@ public final class NodeProducerOfIterable<T> implements Node {
 	public void createAndBind(TaskContext taskContext) {
 		StreamProducer<T> producer;
 		Object object = taskContext.environment().get(iterableId);
-		if (object instanceof Iterator) {
+		if(object instanceof Iterator) {
 			producer = StreamProducer.ofIterator((Iterator<T>) object);
-		} else if (object instanceof Iterable) {
+		} else if(object instanceof Iterable) {
 			producer = StreamProducer.ofIterable(((Iterable<T>) object));
 		} else
 			throw new IllegalArgumentException();
 		taskContext.export(output, producer);
 	}
 
+	public Object getIterableId() {
+		return iterableId;
+	}
+
+	public void setIterableId(Object iterableId) {
+		this.iterableId = iterableId;
+	}
+
 	public StreamId getOutput() {
 		return output;
+	}
+
+	public void setOutput(StreamId output) {
+		this.output = output;
 	}
 }
