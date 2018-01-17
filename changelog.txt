@@ -1,0 +1,33 @@
+
+v2.5.8:
+
+* Now current eventloop is stored in a thread-local variable which greatly reduces code complexity
+  when dealing with runtime components such as streams or stages.
+  In top-level Guice components such as servers, clients and services eventloop works as before.
+
+* Established clean and consisent policy with thread-local eventloops, now developer is forced to bind it to current
+  thread explicitly instead of it being bound when created as before.
+
+* DataStreams internal organization got simpler and cleaner.
+  Now they use asynchronous notifications about their state instead of hardcoded methods.
+  Stream binding got more functional as it consistently returns asynchronous streaming results when possible.
+
+* Added StreamStats and StageStats - universal component for monitoring DataStreams statistics,
+  stage timings and exceptions respectively.
+  It allows to monitor and show any of the asynchronous stages or streams in JMX.
+  Also it greatly simplifies creation of servlets with JMX monitoring.
+
+* ExceptionStats got simpler and now always stores stacktraces.
+
+* Release candidate of OT Cube with additional JMX metrics.
+
+* Completely removed Guava and Joda Time libraries in favor of their Java 8 analogues.
+
+* Added functional methods for AsyncFunction, AsyncPredicate, AsyncCallable etc. like ones added in Java 8.
+
+* Replaced usages of Gson class with custom type adapters being created with new explicit builder-like structure.
+
+* Created datakernel-common project for various generic utils (such as Preconditions) which are moved into it.
+  Every module depends on it and it has no dependencies except optional gson (for those type adapter builders).
+
+* Code Style: removed final from local variables everywhere.
