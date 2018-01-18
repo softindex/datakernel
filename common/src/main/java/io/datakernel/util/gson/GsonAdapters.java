@@ -18,6 +18,7 @@ import java.util.*;
 import java.util.function.Function;
 
 import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.util.Preconditions.checkState;
 
 @SuppressWarnings("unchecked")
 public final class GsonAdapters {
@@ -171,7 +172,13 @@ public final class GsonAdapters {
 
 	public static class TypeAdapterMappingImpl implements TypeAdapterMapping {
 
-		private final Map<Class<?>, Function<TypeAdapter<?>[], TypeAdapter<?>>> mapping = new HashMap<>();
+		@FunctionalInterface
+		public interface AdapterSupplier {
+
+			TypeAdapter<?> get(Class<?> cls, TypeAdapter<?>[] paramAdapters);
+		}
+
+		private final Map<Class<?>, AdapterSupplier> mapping = new HashMap<>();
 
 		private TypeAdapterMappingImpl() {}
 
@@ -195,21 +202,32 @@ public final class GsonAdapters {
 				cls = (Class<?>) parameterized.getRawType();
 				paramAdapters = new TypeAdapter<?>[typeArgs.length];
 				for(int i = 0; i < typeArgs.length; i++) {
-					paramAdapters[i] = getAdapter(typeArgs[i]);
+					Type arg = typeArgs[i];
+					checkState(arg != type, "Mapping does not support recurring generics!");
+					paramAdapters[i] = getAdapter(arg);
 				}
 			}else {
 				cls = (Class<?>) type;
 				paramAdapters = new TypeAdapter[0];
 			}
-			return mapping.get(cls).apply(paramAdapters);
+			AdapterSupplier func = mapping.get(cls);
+			if (func != null) {
+				return func.get(cls, paramAdapters);
+			}
+			for (Map.Entry<Class<?>, AdapterSupplier> entry : mapping.entrySet()) {
+				if (entry.getKey().isAssignableFrom(cls)) {
+					return entry.getValue().get(cls, paramAdapters);
+				}
+			}
+			throw new IllegalArgumentException("Type " + cls + " is not registered for this mapping!");
 		}
 
 		public TypeAdapterMappingImpl withAdapter(Class<?> type, TypeAdapter<?> adapter) {
-			mapping.put(type, ps -> adapter);
+			mapping.put(type, ($1, $2) -> adapter);
 			return this;
 		}
 
-		public TypeAdapterMappingImpl withAdapter(Class<?> type, Function<TypeAdapter<?>[], TypeAdapter<?>> supplier) {
+		public TypeAdapterMappingImpl withAdapter(Class<?> type, AdapterSupplier supplier) {
 			mapping.put(type, supplier);
 			return this;
 		}
@@ -225,14 +243,15 @@ public final class GsonAdapters {
 		.withAdapter(float.class, FLOAT_JSON).withAdapter(Float.class, FLOAT_JSON)
 		.withAdapter(double.class, DOUBLE_JSON).withAdapter(Double.class, DOUBLE_JSON)
 		.withAdapter(String.class, STRING_JSON)
-		.withAdapter(List.class, typeArgAdapters -> {
-			checkArgument(typeArgAdapters.length == 1);
-			return ofList(typeArgAdapters[0]);
+		.withAdapter(Enum.class, (cls, $) -> ofEnum((Class) cls))
+		.withAdapter(List.class, ($, paramAdapters) -> {
+			checkArgument(paramAdapters.length == 1);
+			return ofList(paramAdapters[0]);
 		})
-		.withAdapter(Map.class, typeArgAdapters -> {
-			checkArgument(typeArgAdapters.length == 2);
-			checkArgument(typeArgAdapters[0] == STRING_JSON, "Map key type should be string!");
-			return ofMap(typeArgAdapters[1]);
+		.withAdapter(Map.class, ($, paramAdapters) -> {
+			checkArgument(paramAdapters.length == 2);
+			checkArgument(paramAdapters[0] == STRING_JSON, "Map key type should be string!");
+			return ofMap(paramAdapters[1]);
 		});
 
 	// copied from GsonSubclassesAdapter
@@ -546,10 +565,10 @@ public final class GsonAdapters {
 	public static <T> T fromJson(TypeAdapter<T> typeAdapter, String string) throws IOException {
 		StringReader reader = new StringReader(string);
 		JsonReader jsonReader = new JsonReader(reader);
-        return typeAdapter.read(jsonReader);
-    }
+		return typeAdapter.read(jsonReader);
+	}
 
-    private static final class JsonWriterEx extends JsonWriter {
+	private static final class JsonWriterEx extends JsonWriter {
 		final Writer out;
 
 		public JsonWriterEx(Writer out) {
@@ -586,7 +605,7 @@ public final class GsonAdapters {
 	public static <T> String toJson(TypeAdapter<T> adapter, T value) throws IOException {
 		StringWriter writer = new StringWriter();
 		toJson(adapter, value, writer);
-        return writer.toString();
+		return writer.toString();
 	}
 
 	public static <T> void toJson(TypeAdapter<T> adapter, T obj, Appendable appendable) throws IOException {
