@@ -126,12 +126,12 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		return subscribe(new NextCompletionStage<T, U>() {
 			@Override
 			protected void onComplete(T result) {
-				eventloop.startConcurrentOperation();
+				eventloop.startExternalTask();
 				executor.execute(() -> {
 					U apply = fn.apply(result);
 					eventloop.execute(() -> {
 						complete(apply);
-						eventloop.completeConcurrentOperation();
+						eventloop.completeExternalTask();
 					});
 				});
 			}
@@ -179,12 +179,12 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		return subscribe(new NextCompletionStage<T, Void>() {
 			@Override
 			protected void onComplete(T result) {
-				eventloop.startConcurrentOperation();
+				eventloop.startExternalTask();
 				executor.execute(() -> {
 					action.accept(result);
 					eventloop.execute(() -> {
 						complete(null);
-						eventloop.completeConcurrentOperation();
+						eventloop.completeExternalTask();
 					});
 				});
 			}
@@ -232,12 +232,12 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		return subscribe(new NextCompletionStage<T, Void>() {
 			@Override
 			protected void onComplete(T result) {
-				eventloop.startConcurrentOperation();
+				eventloop.startExternalTask();
 				executor.execute(() -> {
 					action.run();
 					eventloop.execute(() -> {
 						complete(null);
-						eventloop.completeConcurrentOperation();
+						eventloop.completeExternalTask();
 					});
 				});
 			}
@@ -367,14 +367,14 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 
 		private void tryComplete() {
 			if (--countdown == 0) {
-				eventloop.startConcurrentOperation();
+				eventloop.startExternalTask();
 				executor.execute(() -> {
 					V apply = fn.apply(thisResult, otherResult);
 					eventloop.execute(() -> {
 						thisResult = null;
 						otherResult = null;
 						complete(apply);
-						eventloop.completeConcurrentOperation();
+						eventloop.completeExternalTask();
 					});
 				});
 			}
@@ -531,14 +531,14 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 
 		private void tryComplete() {
 			if (--countdown == 0) {
-				eventloop.startConcurrentOperation();
+				eventloop.startExternalTask();
 				executor.execute(() -> {
 					consumer.accept(thisResult, otherResult);
 					eventloop.execute(() -> {
 						thisResult = null;
 						otherResult = null;
 						complete(null);
-						eventloop.completeConcurrentOperation();
+						eventloop.completeExternalTask();
 					});
 				});
 			}
@@ -674,12 +674,12 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		@Override
 		protected void onComplete(T result) {
 			if (--countdown == 0) {
-				eventloop.startConcurrentOperation();
+				eventloop.startExternalTask();
 				executor.execute(() -> {
 					action.run();
 					eventloop.execute(() -> {
 						complete(null);
-						eventloop.completeConcurrentOperation();
+						eventloop.completeExternalTask();
 					});
 				});
 			}
@@ -789,12 +789,12 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 			@Override
 			protected void onComplete(T result) {
 				if (!isComplete()) {
-					eventloop.startConcurrentOperation();
+					eventloop.startExternalTask();
 					executor.execute(() -> {
 						U apply = fn.apply(result);
 						eventloop.execute(() -> {
 							if (!isComplete()) complete(apply);
-							eventloop.completeConcurrentOperation();
+							eventloop.completeExternalTask();
 						});
 					});
 				}
@@ -811,12 +811,12 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		other.whenComplete((o, throwable) -> {
 			if (throwable == null) {
 				if (!resultingStage.isComplete()) {
-					eventloop.startConcurrentOperation();
+					eventloop.startExternalTask();
 					executor.execute(() -> {
 						U apply = fn.apply(o);
 						eventloop.execute(() -> {
 							if (!resultingStage.isComplete()) resultingStage.complete(apply);
-							eventloop.completeConcurrentOperation();
+							eventloop.completeExternalTask();
 						});
 					});
 				}
@@ -914,12 +914,12 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 			@Override
 			protected void onComplete(T result) {
 				if (!isComplete()) {
-					eventloop.startConcurrentOperation();
+					eventloop.startExternalTask();
 					executor.execute(() -> {
 						action.accept(result);
 						eventloop.execute(() -> {
 							if (!isComplete()) complete(null);
-							eventloop.completeConcurrentOperation();
+							eventloop.completeExternalTask();
 						});
 					});
 				}
@@ -936,12 +936,12 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		other.whenComplete((o, throwable) -> {
 			if (throwable == null) {
 				if (!resultingStage.isComplete()) {
-					eventloop.startConcurrentOperation();
+					eventloop.startExternalTask();
 					executor.execute(() -> {
 						action.accept(o);
 						eventloop.execute(() -> {
 							if (!resultingStage.isComplete()) resultingStage.complete(null);
-							eventloop.completeConcurrentOperation();
+							eventloop.completeExternalTask();
 						});
 					});
 				}
@@ -1039,12 +1039,12 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 			@Override
 			protected void onComplete(T result) {
 				if (!isComplete()) {
-					eventloop.startConcurrentOperation();
+					eventloop.startExternalTask();
 					executor.execute(() -> {
 						action.run();
 						eventloop.execute(() -> {
 							if (!isComplete()) complete(null);
-							eventloop.completeConcurrentOperation();
+							eventloop.completeExternalTask();
 						});
 					});
 				}
@@ -1061,12 +1061,12 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		other.whenComplete((o, throwable) -> {
 			if (throwable == null) {
 				if (!resultingStage.isComplete()) {
-					eventloop.startConcurrentOperation();
+					eventloop.startExternalTask();
 					executor.execute(() -> {
 						action.run();
 						eventloop.execute(() -> {
 							if (!resultingStage.isComplete()) resultingStage.complete(null);
-							eventloop.completeConcurrentOperation();
+							eventloop.completeExternalTask();
 						});
 					});
 				}
@@ -1127,7 +1127,7 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		return subscribe(new NextCompletionStage<T, U>() {
 			@Override
 			protected void onComplete(T result) {
-				eventloop.startConcurrentOperation();
+				eventloop.startExternalTask();
 				executor.execute(() -> {
 					CompletionStage<U> apply = fn.apply(result);
 					eventloop.execute(() -> apply.whenComplete((u, throwable) -> {
@@ -1136,7 +1136,7 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 						} else {
 							complete(u);
 						}
-						eventloop.completeConcurrentOperation();
+						eventloop.completeExternalTask();
 					}));
 				});
 			}
@@ -1208,24 +1208,24 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		return subscribe(new NextCompletionStage<T, T>() {
 			@Override
 			protected void onComplete(T result) {
-				eventloop.startConcurrentOperation();
+				eventloop.startExternalTask();
 				executor.execute(() -> {
 					action.accept(result, null);
 					eventloop.execute(() -> {
 						complete(result);
-						eventloop.completeConcurrentOperation();
+						eventloop.completeExternalTask();
 					});
 				});
 			}
 
 			@Override
 			protected void onCompleteExceptionally(Throwable error) {
-				eventloop.startConcurrentOperation();
+				eventloop.startExternalTask();
 				executor.execute(() -> {
 					action.accept(null, error);
 					eventloop.execute(() -> {
 						completeExceptionally(error);
-						eventloop.completeConcurrentOperation();
+						eventloop.completeExternalTask();
 					});
 				});
 			}
@@ -1277,24 +1277,24 @@ abstract class AbstractCompletionStage<T> implements CompletionStage<T> {
 		return subscribe(new NextCompletionStage<T, U>() {
 			@Override
 			protected void onComplete(T result) {
-				eventloop.startConcurrentOperation();
+				eventloop.startExternalTask();
 				executor.execute(() -> {
 					U u = fn.apply(result, null);
 					eventloop.execute(() -> {
 						complete(u);
-						eventloop.completeConcurrentOperation();
+						eventloop.completeExternalTask();
 					});
 				});
 			}
 
 			@Override
 			protected void onCompleteExceptionally(Throwable error) {
-				eventloop.startConcurrentOperation();
+				eventloop.startExternalTask();
 				executor.execute(() -> {
 					U u = fn.apply(null, error);
 					eventloop.execute(() -> {
 						complete(u);
-						eventloop.completeConcurrentOperation();
+						eventloop.completeExternalTask();
 					});
 				});
 			}

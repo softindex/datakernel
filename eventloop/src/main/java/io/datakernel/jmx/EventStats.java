@@ -182,6 +182,7 @@ public final class EventStats implements JmxRefreshableStats<EventStats> {
 
 	@Override
 	public String toString() {
+		if (getTotalCount() == 0) return null;
 		return String.format("%d @ %.3f/s", getTotalCount(), getSmoothedRate());
 	}
 }

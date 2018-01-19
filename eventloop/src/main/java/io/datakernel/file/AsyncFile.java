@@ -197,7 +197,7 @@ public final class AsyncFile {
 	 * @param position the  file position at which the transfer is to begin; must be non-negative
 	 */
 	public CompletionStage<Integer> write(ByteBuf buf, long position) {
-		eventloop.startConcurrentOperation();
+		eventloop.startExternalTask();
 		ByteBuffer byteBuffer = buf.toReadByteBuffer();
 		SettableStage<Integer> stage = SettableStage.create();
 		channel.write(byteBuffer, position, null, new CompletionHandler<Integer, Object>() {
@@ -205,7 +205,7 @@ public final class AsyncFile {
 			public void completed(Integer result, Object attachment) {
 				buf.ofReadByteBuffer(byteBuffer);
 				eventloop.execute(() -> {
-					eventloop.completeConcurrentOperation();
+					eventloop.completeExternalTask();
 					stage.set(result);
 				});
 			}
@@ -213,7 +213,7 @@ public final class AsyncFile {
 			@Override
 			public void failed(Throwable exc, Object attachment) {
 				eventloop.execute(() -> {
-					eventloop.completeConcurrentOperation();
+					eventloop.completeExternalTask();
 					stage.setException(exc instanceof Exception ? (Exception) exc : new Exception(exc));
 				});
 			}
@@ -228,7 +228,7 @@ public final class AsyncFile {
 	 * @param position the file position at which the transfer is to begin; must be non-negative
 	 */
 	public CompletionStage<Integer> read(ByteBuf buf, long position) {
-		eventloop.startConcurrentOperation();
+		eventloop.startExternalTask();
 		ByteBuffer byteBuffer = buf.toWriteByteBuffer();
 		SettableStage<Integer> stage = SettableStage.create();
 		channel.read(byteBuffer, position, null, new CompletionHandler<Integer, Object>() {
@@ -236,7 +236,7 @@ public final class AsyncFile {
 			public void completed(Integer bytesRead, Object attachment) {
 				buf.ofWriteByteBuffer(byteBuffer);
 				eventloop.execute(() -> {
-					eventloop.completeConcurrentOperation();
+					eventloop.completeExternalTask();
 					stage.set(bytesRead);
 				});
 			}
@@ -244,7 +244,7 @@ public final class AsyncFile {
 			@Override
 			public void failed(Throwable exc, Object attachment) {
 				eventloop.execute(() -> {
-					eventloop.completeConcurrentOperation();
+					eventloop.completeExternalTask();
 					stage.setException(exc instanceof Exception ? (Exception) exc : new Exception(exc));
 				});
 			}
@@ -263,12 +263,12 @@ public final class AsyncFile {
 				if (buf.readRemaining() == 0) {
 					eventloop.execute(() -> {
 						buf.recycle();
-						eventloop.completeConcurrentOperation();
+						eventloop.completeExternalTask();
 						stage.set(null);
 					});
 				} else {
 					if (cancelled.get()) {
-						eventloop.completeConcurrentOperation();
+						eventloop.completeExternalTask();
 						return;
 					}
 					writeFully(buf, position + result, cancelled).whenComplete(($, throwable) -> {
@@ -286,7 +286,7 @@ public final class AsyncFile {
 			public void failed(Throwable exc, Object attachment) {
 				eventloop.execute(() -> {
 					buf.recycle();
-					eventloop.completeConcurrentOperation();
+					eventloop.completeExternalTask();
 					stage.setException(exc instanceof Exception ? (Exception) exc : new Exception(exc));
 				});
 			}
@@ -303,7 +303,7 @@ public final class AsyncFile {
 	 * @param position the  file position at which the transfer is to begin; must be non-negative
 	 */
 	public CompletionStage<Void> writeFully(ByteBuf byteBuf, long position) {
-		eventloop.startConcurrentOperation();
+		eventloop.startExternalTask();
 		AtomicBoolean cancelled = new AtomicBoolean();
 		// TODO: add cancel logic
 		return writeFully(byteBuf, position, cancelled);
@@ -321,10 +321,10 @@ public final class AsyncFile {
 					eventloop.execute(() -> {
 						try {
 							channel.close();
-							eventloop.completeConcurrentOperation();
+							eventloop.completeExternalTask();
 							stage.set(null);
 						} catch (IOException e) {
-							eventloop.completeConcurrentOperation();
+							eventloop.completeExternalTask();
 							stage.setException(e);
 						}
 
@@ -335,7 +335,7 @@ public final class AsyncFile {
 							channel.close();
 						} catch (IOException ignore) {
 						}
-						eventloop.completeConcurrentOperation();
+						eventloop.completeExternalTask();
 						return;
 					}
 					readFully(buf, position, size, cancelled).whenComplete(($, throwable) -> {
@@ -356,7 +356,7 @@ public final class AsyncFile {
 						channel.close();
 					} catch (IOException ignore) {
 					}
-					eventloop.completeConcurrentOperation();
+					eventloop.completeExternalTask();
 					stage.setException(exc instanceof Exception ? (Exception) exc : new Exception(exc));
 				});
 			}
@@ -381,7 +381,7 @@ public final class AsyncFile {
 			return Stages.ofException(e);
 		}
 
-		eventloop.startConcurrentOperation();
+		eventloop.startExternalTask();
 		AtomicBoolean cancelled = new AtomicBoolean();
 		// TODO: add cancel logic
 		return readFully(buf, position, size, cancelled);

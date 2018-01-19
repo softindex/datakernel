@@ -659,7 +659,8 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 
 	@Override
 	public String toString() {
-		String rawTemplate = "{format1}±{format2} [{format1}...{format1}]  last: {format1}  values: %d @ {format2}/s";
+		if (getCount() == 0) return null;
+		String rawTemplate = "{format1}±{format2} [{format1}...{format1}]  last: {format1}  calls: %d @ {format2}/s";
 		String template;
 		switch (formatting) {
 			case AUTO:

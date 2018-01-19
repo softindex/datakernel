@@ -39,6 +39,7 @@ public final class EventloopStats {
 	private final ExceptionStats fatalErrors;
 	private final Map<StackTrace, ExceptionStats> fatalErrorsMap;
 	private final EventStats idleLoops;
+	private final EventStats idleLoopsWaitingExternalTask;
 	private final EventStats selectOverdues;
 
 	private EventloopStats(double smoothingWindow, Eventloop.ExtraStatsExtractor extraStatsExtractor) {
@@ -52,6 +53,7 @@ public final class EventloopStats {
 		fatalErrors = ExceptionStats.create();
 		fatalErrorsMap = new HashMap<>();
 		idleLoops = EventStats.create(smoothingWindow);
+		idleLoopsWaitingExternalTask = EventStats.create(smoothingWindow);
 		selectOverdues = EventStats.create(smoothingWindow);
 	}
 
@@ -78,13 +80,22 @@ public final class EventloopStats {
 		fatalErrors.resetStats();
 		fatalErrorsMap.clear();
 		idleLoops.resetStats();
+		idleLoopsWaitingExternalTask.resetStats();
 		selectOverdues.resetStats();
 	}
 
 	// region updating
-	public void updateBusinessLogicTime(long businessLogicTime) {
+	public void updateBusinessLogicTime(int tasksAndKeys, int externalTasksCount, long businessLogicTime) {
 		loops.recordEvent();
-		this.businessLogicTime.recordValue((int) businessLogicTime);
+		if (tasksAndKeys != 0) {
+			this.businessLogicTime.recordValue((int) businessLogicTime);
+		} else {
+			if (externalTasksCount == 0) {
+				idleLoops.recordEvent();
+			} else {
+				idleLoopsWaitingExternalTask.recordEvent();
+			}
+		}
 	}
 
 	public void updateSelectorSelectTime(long selectorSelectTime) {
@@ -93,7 +104,7 @@ public final class EventloopStats {
 
 	public void updateSelectorSelectTimeout(long selectorSelectTimeout) {
 		this.selectorSelectTimeout.recordValue((int) selectorSelectTimeout);
-		if(selectorSelectTimeout < 0) this.selectOverdues.recordEvent();
+		if (selectorSelectTimeout < 0) this.selectOverdues.recordEvent();
 	}
 
 	public void updateSelectedKeyDuration(Stopwatch sw) {
@@ -110,7 +121,7 @@ public final class EventloopStats {
 		keys.connectPerLoop.recordValue(connectKeys);
 		keys.readPerLoop.recordValue(readKeys);
 		keys.writePerLoop.recordValue(writeKeys);
-		keys.loopTime.recordValue((int) loopTime);
+		if (lastSelectedKeys != 0) keys.loopTime.recordValue((int) loopTime);
 	}
 
 	private void updateTaskDuration(ValueStats counter, DurationRunnable longestCounter, Runnable runnable, @Nullable Stopwatch sw) {
@@ -128,7 +139,7 @@ public final class EventloopStats {
 	}
 
 	public void updateLocalTasksStats(int newTasks, long loopTime) {
-		tasks.local.loopTime.recordValue((int) loopTime);
+		if (newTasks != 0) tasks.local.loopTime.recordValue((int) loopTime);
 		tasks.local.tasksPerLoop.recordValue(newTasks);
 	}
 
@@ -137,7 +148,7 @@ public final class EventloopStats {
 	}
 
 	public void updateConcurrentTasksStats(int newTasks, long loopTime) {
-		tasks.concurrent.loopTime.recordValue((int) loopTime);
+		if (newTasks != 0) tasks.concurrent.loopTime.recordValue((int) loopTime);
 		tasks.concurrent.tasksPerLoop.recordValue(newTasks);
 	}
 
@@ -151,10 +162,10 @@ public final class EventloopStats {
 
 	public void updateScheduledTasksStats(int newTasks, long loopTime, boolean background) {
 		if (background) {
-			tasks.background.getLoopTime().recordValue((int) loopTime);
+			if (newTasks != 0) tasks.background.getLoopTime().recordValue((int) loopTime);
 			tasks.background.getTasksPerLoop().recordValue(newTasks);
 		} else {
-			tasks.scheduled.getLoopTime().recordValue((int) loopTime);
+			if (newTasks != 0) tasks.scheduled.getLoopTime().recordValue((int) loopTime);
 			tasks.scheduled.getTasksPerLoop().recordValue(newTasks);
 		}
 	}
@@ -180,9 +191,6 @@ public final class EventloopStats {
 		}
 	}
 
-	public void updateProcessedTasksAndKeys(int tasksAndKeys) {
-		if (tasksAndKeys == 0) idleLoops.recordEvent();
-	}
 	// endregion
 
 	// region root attributes
@@ -229,6 +237,11 @@ public final class EventloopStats {
 	@JmxAttribute
 	public EventStats getIdleLoops() {
 		return idleLoops;
+	}
+
+	@JmxAttribute
+	public EventStats getIdleLoopsWaitingExternalTask() {
+		return idleLoopsWaitingExternalTask;
 	}
 
 	@JmxAttribute

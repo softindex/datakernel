@@ -64,7 +64,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	public static final AsyncTimeoutException CONNECT_TIMEOUT = new AsyncTimeoutException("Connection timed out");
-	private static final long DEFAULT_EVENT_TIMEOUT = 20L;
+	private static final long DEFAULT_IDLE_INTERVAL = 1000L;
 
 	private static volatile FatalErrorHandler globalFatalErrorHandler = FatalErrorHandlers.ignoreAllErrors();
 
@@ -92,7 +92,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	/**
 	 * Count of concurrent operations in other threads, non-zero value prevents event loop from termination.
 	 */
-	private final AtomicInteger concurrentOperationsCount = new AtomicInteger(0);
+	private final AtomicInteger externalTasksCount = new AtomicInteger(0);
 
 	private final CurrentTimeProvider timeProvider;
 
@@ -131,6 +131,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 */
 	private long timestamp;
 
+	private long idleInterval = DEFAULT_IDLE_INTERVAL;
+
 	private ThrottlingController throttlingController;
 	private int throttlingKeys;
 
@@ -138,13 +140,14 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 * Count of selected keys for last Selector.select()
 	 */
 	private int lastSelectedKeys;
+	private int lastExternalTasksCount;
 
 	// JMX
 
 	private static final double DEFAULT_SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_1_MINUTE;
 	private double smoothingWindow = DEFAULT_SMOOTHING_WINDOW;
 	private final EventloopStats stats = EventloopStats.create(DEFAULT_SMOOTHING_WINDOW, new ExtraStatsExtractor());
-	private final ExecutorCallsStats executorCallsStats = ExecutorCallsStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final ExecutorCallsStats executorsCallsStats = ExecutorCallsStats.create(DEFAULT_SMOOTHING_WINDOW);
 
 	private boolean monitoring = false;
 
@@ -187,6 +190,11 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 	public Eventloop withSelectorProvider(SelectorProvider selectorProvider) {
 		this.selectorProvider = selectorProvider;
+		return this;
+	}
+
+	public Eventloop withIdleInterval(long idleIntervalMillis) {
+		this.idleInterval = idleIntervalMillis;
 		return this;
 	}
 
@@ -292,11 +300,12 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		this.breakEventloop = true;
 	}
 
-	private boolean isKeepAlive() {
+	private boolean isAlive() {
 		if (breakEventloop)
 			return false;
+		lastExternalTasksCount = externalTasksCount.get();
 		return !localTasks.isEmpty() || !scheduledTasks.isEmpty() || !concurrentTasks.isEmpty()
-				|| concurrentOperationsCount.get() > 0
+				|| lastExternalTasksCount > 0
 				|| keepAlive || !selector.keys().isEmpty();
 	}
 
@@ -320,7 +329,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 		timeAfterBusinessLogic = timeAfterSelectorSelect = 0;
 		while (true) {
-			if (!isKeepAlive()) {
+			if (!isAlive()) {
 				logger.info("Eventloop {} is complete, exiting...", this);
 				break;
 			}
@@ -346,9 +355,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			int backgroundTasks = executeBackgroundTasks();
 			int localTasks = executeLocalTasks();
 
-			stats.updateProcessedTasksAndKeys(keys + concurrentTasks + scheduledTasks + backgroundTasks + localTasks);
+			updateBusinessLogicStats(keys + concurrentTasks + scheduledTasks + backgroundTasks + localTasks);
 
-			updateBusinessLogicStats();
 			tick = (tick + (1L << 32)) & ~0xFFFFFFFFL;
 		}
 		logger.info("Eventloop {} finished", this);
@@ -372,10 +380,10 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		}
 	}
 
-	private void updateBusinessLogicStats() {
+	private void updateBusinessLogicStats(int tasksAndKeys) {
 		timeAfterBusinessLogic = timestamp; //refreshTimestampAndGet();
 		long businessLogicTime = timeAfterBusinessLogic - timeAfterSelectorSelect;
-		stats.updateBusinessLogicTime(businessLogicTime);
+		stats.updateBusinessLogicTime(tasksAndKeys, lastExternalTasksCount, businessLogicTime);
 		if (throttlingController != null) {
 			throttlingController.updateInternalStats(throttlingKeys, (int) businessLogicTime);
 		}
@@ -385,7 +393,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		if (!concurrentTasks.isEmpty() || !localTasks.isEmpty())
 			return 0L;
 		if (scheduledTasks.isEmpty() && backgroundTasks.isEmpty())
-			return DEFAULT_EVENT_TIMEOUT;
+			return idleInterval;
 		return Math.min(getTimeBeforeExecution(scheduledTasks), getTimeBeforeExecution(backgroundTasks));
 	}
 
@@ -399,7 +407,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			}
 			return first.getTimestamp() - currentTimeMillis();
 		}
-		return DEFAULT_EVENT_TIMEOUT;
+		return idleInterval;
 	}
 
 	/**
@@ -508,7 +516,6 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 		int newRunnables = 0;
 
-		Stopwatch swTotal = monitoring ? Stopwatch.createStarted() : null;
 		Stopwatch sw = monitoring ? Stopwatch.createUnstarted() : null;
 
 		while (true) {
@@ -894,12 +901,12 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 * called after completing concurrent operation.
 	 * Failure to call complete() method will prevent the event loop from exiting.
 	 */
-	public void startConcurrentOperation() {
-		concurrentOperationsCount.incrementAndGet();
+	public void startExternalTask() {
+		externalTasksCount.incrementAndGet();
 	}
 
-	public void completeConcurrentOperation() {
-		concurrentOperationsCount.decrementAndGet();
+	public void completeExternalTask() {
+		externalTasksCount.decrementAndGet();
 	}
 
 	public long refreshTimestampAndGet() {
@@ -979,10 +986,10 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	public <T> CompletionStage<T> callExecutor(ExecutorService executor, Callable<T> callable) {
 		assert inEventloopThread();
 		SettableStage<T> stage = SettableStage.create();
-		startConcurrentOperation();
+		startExternalTask();
 		// jmx
 		String taskName = callable.getClass().getName();
-		executorCallsStats.recordCall(taskName);
+		executorsCallsStats.recordCall(taskName);
 		long submissionStart = currentTimeMillis();
 		try {
 			executor.submit(() -> {
@@ -995,7 +1002,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 					this.execute(() -> {
 						// jmx
 						updateConcurrentCallsStatsTimings(taskName, submissionStart, executingStart, executingFinish);
-						completeConcurrentOperation();
+						completeExternalTask();
 						stage.set(result);
 					});
 				} catch (Exception e) {
@@ -1004,7 +1011,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 					this.execute(() -> {
 						// jmx
 						updateConcurrentCallsStatsTimings(taskName, submissionStart, executingStart, executingFinish);
-						completeConcurrentOperation();
+						completeExternalTask();
 						stage.setException(e);
 					});
 				} catch (Throwable throwable) {
@@ -1013,8 +1020,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			});
 		} catch (RejectedExecutionException e) {
 			// jmx
-			executorCallsStats.recordRejectedCall(taskName);
-			completeConcurrentOperation();
+			executorsCallsStats.recordRejectedCall(taskName);
+			completeExternalTask();
 			stage.setException(e);
 		}
 		return stage;
@@ -1112,14 +1119,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 	private void updateConcurrentCallsStatsTimings(String taskName,
 	                                               long submissionStart, long executingStart, long executingFinish) {
-		executorCallsStats.recordAwaitingStartDuration(
-				taskName,
-				(int) (executingStart - submissionStart)
-		);
-		executorCallsStats.recordCallDuration(
-				taskName,
-				(int) (executingFinish - executingStart)
-		);
+		executorsCallsStats.recordAwaitingStartDuration(taskName, (int) (executingStart - submissionStart));
+		executorsCallsStats.recordCallDuration(taskName, (int) (executingFinish - executingStart));
 	}
 
 	public int getTick() {
@@ -1141,8 +1142,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	@JmxAttribute
-	public ExecutorCallsStats getExecutorCallsStats() {
-		return executorCallsStats;
+	public ExecutorCallsStats getExecutorsCallsStats() {
+		return executorsCallsStats;
 	}
 
 	@JmxAttribute
@@ -1155,7 +1156,17 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		this.smoothingWindow = smoothingWindow;
 
 		stats.setSmoothingWindow(smoothingWindow);
-		executorCallsStats.setSmoothingWindow(smoothingWindow);
+		executorsCallsStats.setSmoothingWindow(smoothingWindow);
+	}
+
+	@JmxAttribute
+	public long getIdleInterval() {
+		return idleInterval;
+	}
+
+	@JmxAttribute
+	public void setIdleInterval(long idleInterval) {
+		this.idleInterval = idleInterval;
 	}
 
 	final class ExtraStatsExtractor {
