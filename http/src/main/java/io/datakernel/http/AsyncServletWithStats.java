@@ -25,7 +25,7 @@ public abstract class AsyncServletWithStats implements AsyncServlet, EventloopJm
 
 	@Override
 	public final CompletionStage<HttpResponse> serve(HttpRequest request) {
-		return stats.monitor(this::doServe, request);
+		return doServe(request).whenComplete(stats.recordStats());
 	}
 
 	@Override

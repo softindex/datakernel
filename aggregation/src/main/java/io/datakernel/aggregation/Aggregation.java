@@ -29,7 +29,7 @@ import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.*;
-import io.datakernel.util.MutableBuilder;
+import io.datakernel.util.Initializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,7 +59,7 @@ import static java.util.stream.Collectors.toList;
  * Provides methods for loading and querying data.
  */
 @SuppressWarnings("unchecked")
-public class Aggregation implements IAggregation, MutableBuilder<Aggregation>, EventloopJmxMBean {
+public class Aggregation implements IAggregation, Initializer<Aggregation>, EventloopJmxMBean {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	public static final int DEFAULT_CHUNK_SIZE = 1_000_000;
@@ -428,8 +428,8 @@ public class Aggregation implements IAggregation, MutableBuilder<Aggregation>, E
 			List<String> collect = measures.stream().filter(sequence.fields::contains).collect(toList());
 			StreamMap.MapperProjection mapper = createMapper(sequence.type, resultClass, queryKeys, collect, classLoader);
 			StreamMap<Object, T> streamMap = StreamMap.create(mapper);
-			stream(sequence.stream, streamMap.getInput().with(stats.mergeMapInput::wrap));
-			return streamMap.getOutput().with(stats.mergeMapOutput::wrap);
+			stream(sequence.stream, streamMap.getInput().with(stats.mergeMapInput::wrapper));
+			return streamMap.getOutput().with(stats.mergeMapOutput::wrapper);
 		}
 
 		StreamReducer<Comparable, T, Object> streamReducer = StreamReducer.create(Comparable::compareTo);
@@ -447,10 +447,10 @@ public class Aggregation implements IAggregation, MutableBuilder<Aggregation>, E
 					queryKeys, collect, classLoader);
 
 			stream(sequence.stream, ((StreamConsumer<?>) streamReducer.newInput(extractKeyFunction, reducer))
-					.with(stats.mergeReducerInput::wrap));
+					.with(stats.mergeReducerInput::wrapper));
 		}
 
-		return streamReducer.getOutput().with(stats.mergeReducerOutput::wrap);
+		return streamReducer.getOutput().with(stats.mergeReducerOutput::wrapper);
 	}
 
 	private <T> StreamProducer<T> sequenceStream(AggregationPredicate where,

@@ -157,8 +157,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBean {
 
 		Predicate<K> loadPredicate = loadPredicate(lastNode);
 
-		return findParent.monitor(
-				findParent(queue, new HashSet<>(), loadPredicate, matchPredicate, diffAccumulator));
+		return findParent(queue, new HashSet<>(), loadPredicate, matchPredicate, diffAccumulator).whenComplete(findParent.recordStats());
 	}
 
 	private <A> CompletionStage<FindResult<K, A>> findParent(PriorityQueue<FindEntry<K, A>> queue,
@@ -190,8 +189,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBean {
 						}
 					}
 
-					return findParentRecursive.monitor(
-							findParent(queue, visited, loadPredicate, matchPredicate, diffsAccumulator));
+					return findParent(queue, visited, loadPredicate, matchPredicate, diffsAccumulator).whenComplete(findParentRecursive.recordStats());
 				}
 			});
 		}
@@ -228,8 +226,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBean {
 	                                       Predicate<Set<OTCommit<K, D>>> matchPredicate) {
 		PriorityQueue<K> queue = new PriorityQueue<>((o1, o2) -> keyComparator.compare(o2, o1));
 		queue.addAll(startNodes);
-		return findCut.monitor(
-				findCut(queue, new HashMap<>(), matchPredicate));
+		return findCut(queue, new HashMap<>(), matchPredicate).whenComplete(findCut.recordStats());
 	}
 
 	private CompletionStage<Set<K>> findCut(PriorityQueue<K> queue, Map<K, OTCommit<K, D>> queueMap,
@@ -256,8 +253,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBean {
 						queue.add(parentId);
 					}
 				}
-				return findCutRecursive.monitor(
-						findCut(queue, queueMap, matchPredicate));
+				return findCut(queue, queueMap, matchPredicate).whenComplete(findCutRecursive.recordStats());
 			}
 		});
 	}

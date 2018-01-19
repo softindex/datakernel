@@ -30,6 +30,7 @@ import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.net.Messaging.ReceiveMessageCallback;
 import io.datakernel.stream.net.MessagingSerializer;
 import io.datakernel.stream.net.MessagingWithBinaryStreaming;
+import io.datakernel.stream.processor.StreamStats;
 import io.datakernel.stream.processor.StreamStatsDetailed;
 import io.datakernel.stream.processor.StreamStatsForwarder;
 import org.slf4j.Logger;
@@ -133,7 +134,7 @@ public final class RemoteFsClient implements IRemoteFsClient {
 							long size = ((RemoteFsResponses.Ready) msg).getSize();
 
 							StreamProducerWithResult<ByteBuf, Void> producer = messaging.receiveBinaryStream();
-							StreamStatsDetailed stats = StreamStatsDetailed.create(forByteBufs());
+							StreamStatsDetailed stats = StreamStats.detailed(forByteBufs());
 							StreamStatsForwarder<ByteBuf> sizeForwarder = StreamStatsForwarder.create(stats);
 
 							SettableStage<Void> ack = SettableStage.create();

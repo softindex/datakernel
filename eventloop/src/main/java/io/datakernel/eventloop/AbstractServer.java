@@ -16,7 +16,6 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stages;
 import io.datakernel.jmx.EventStats;
@@ -25,7 +24,7 @@ import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.ValueStats;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
-import io.datakernel.util.MutableBuilder;
+import io.datakernel.util.Initializer;
 import org.slf4j.Logger;
 
 import javax.net.ssl.SSLContext;
@@ -58,7 +57,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  * @param <S> type of AbstractNioServer which extends from it
  */
 @SuppressWarnings("WeakerAccess, unused")
-public abstract class AbstractServer<S extends AbstractServer<S>> implements EventloopServer, WorkerServer, MutableBuilder<S>, EventloopJmxMBean {
+public abstract class AbstractServer<S extends AbstractServer<S>> implements EventloopServer, WorkerServer, Initializer<S>, EventloopJmxMBean {
 	protected Logger logger = getLogger(this.getClass());
 
 	protected final Eventloop eventloop;
@@ -200,7 +199,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		for (InetSocketAddress address : addresses) {
 			try {
 				ServerSocketChannel serverSocketChannel = eventloop.listen(address, serverSocketSettings,
-					chan -> AbstractServer.this.doAccept(chan, address, ssl));
+						chan -> AbstractServer.this.doAccept(chan, address, ssl));
 				serverSocketChannels.add(serverSocketChannel);
 			} catch (IOException e) {
 				logger.error("Can't listen on {}", this, address);
@@ -245,17 +244,8 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 			if (serverSocketChannel == null) {
 				continue;
 			}
-			closeQuietly(serverSocketChannel);
+			eventloop.closeChannel(serverSocketChannel);
 			it.remove();
-		}
-	}
-
-	private void closeQuietly(@Nullable AutoCloseable closeable) {
-		if (closeable == null)
-			return;
-		try {
-			closeable.close();
-		} catch (Exception e) {
 		}
 	}
 
@@ -285,7 +275,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		try {
 			remoteAddress = ((InetSocketAddress) socketChannel.getRemoteAddress()).getAddress();
 		} catch (IOException e) {
-			closeQuietly(socketChannel);
+			eventloop.closeChannel(socketChannel);
 			return;
 		}
 
@@ -301,12 +291,8 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 			workerServer.doAccept(socketChannel, localAddress, remoteAddress, ssl, socketSettings);
 		} else {
 			onAccept(socketChannel, localAddress, remoteAddress, ssl);
-			workerServerEventloop.execute(new Runnable() {
-				@Override
-				public void run() {
-					workerServer.doAccept(socketChannel, localAddress, remoteAddress, ssl, socketSettings);
-				}
-			});
+			workerServerEventloop.execute(() ->
+					workerServer.doAccept(socketChannel, localAddress, remoteAddress, ssl, socketSettings));
 		}
 
 		if (acceptOnce) {

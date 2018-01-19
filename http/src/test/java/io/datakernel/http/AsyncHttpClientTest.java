@@ -86,15 +86,18 @@ public class AsyncHttpClientTest {
 
 		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop).withConnectTimeout(TIMEOUT);
 
-		CompletableFuture<String> future = httpClient.send(HttpRequest.get("http://google.com")).thenCompose(response -> {
-			try {
-				return Stages.of(decodeUtf8(response.getBody()));
-			} catch (ParseException e) {
-				return Stages.ofException(e);
-			} finally {
-				httpClient.stop();
-			}
-		}).toCompletableFuture();
+		CompletableFuture<String> future = httpClient.send(HttpRequest.get("http://google.com"))
+				.thenCompose(response -> {
+					try {
+						return Stages.of(decodeUtf8(response.getBody()));
+					} catch (ParseException e) {
+						return Stages.ofException(e);
+					}
+				})
+				.whenComplete((s, throwable) -> {
+					httpClient.stop();
+				})
+				.toCompletableFuture();
 
 		eventloop.run();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());

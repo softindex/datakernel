@@ -7,7 +7,6 @@ import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.StageStats;
-import io.datakernel.util.MutableBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,7 +14,7 @@ import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 
-public final class EventloopTaskScheduler implements EventloopService, MutableBuilder<EventloopTaskScheduler>, EventloopJmxMBean {
+public final class EventloopTaskScheduler implements EventloopService, EventloopJmxMBean {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final Eventloop eventloop;
@@ -33,6 +32,9 @@ public final class EventloopTaskScheduler implements EventloopService, MutableBu
 	private Throwable lastError;
 	private long firstRetryTime;
 	private int errorCount;
+
+	private Long period;
+	private Long interval;
 
 	public interface Schedule {
 		long nextTimestamp(long now, long lastStartTime, long lastCompleteTime);
@@ -74,16 +76,19 @@ public final class EventloopTaskScheduler implements EventloopService, MutableBu
 
 	public EventloopTaskScheduler withSchedule(Schedule schedule) {
 		this.schedule = schedule;
+		// for JMX:
+		this.period = null;
+		this.interval = null;
 		return this;
 	}
 
 	public EventloopTaskScheduler withPeriod(long periodMillis) {
-		this.schedule = Schedule.ofPeriod(periodMillis);
+		setPeriod(periodMillis);
 		return this;
 	}
 
 	public EventloopTaskScheduler withInterval(long intervalMillis) {
-		this.schedule = Schedule.ofInterval(intervalMillis);
+		setInterval(intervalMillis);
 		return this;
 	}
 
@@ -134,25 +139,27 @@ public final class EventloopTaskScheduler implements EventloopService, MutableBu
 		scheduledTask = eventloop.scheduleBackground(timestamp,
 				() -> {
 					lastStartTime = eventloop.currentTimeMillis();
-					stats.monitor(task).whenComplete((result, throwable) -> {
-						lastCompleteTime = eventloop.currentTimeMillis();
-						if (throwable == null) {
-							firstRetryTime = 0;
-							lastError = null;
-							errorCount = 0;
-							scheduleTask();
-						} else {
-							lastError = throwable;
-							errorCount++;
-							logger.error("Retry attempt " + errorCount, throwable);
-							if (abortOnError) {
-								scheduledTask.cancel();
-								throw new RuntimeException(throwable);
-							} else {
-								scheduleTask();
-							}
-						}
-					});
+					task.call()
+							.whenComplete(stats.recordStats())
+							.whenComplete((result, throwable) -> {
+								lastCompleteTime = eventloop.currentTimeMillis();
+								if (throwable == null) {
+									firstRetryTime = 0;
+									lastError = null;
+									errorCount = 0;
+									scheduleTask();
+								} else {
+									lastError = throwable;
+									errorCount++;
+									logger.error("Retry attempt " + errorCount, throwable);
+									if (abortOnError) {
+										scheduledTask.cancel();
+										throw new RuntimeException(throwable);
+									} else {
+										scheduleTask();
+									}
+								}
+							});
 				});
 	}
 
@@ -168,7 +175,7 @@ public final class EventloopTaskScheduler implements EventloopService, MutableBu
 		return Stages.of(null);
 	}
 
-	@JmxAttribute
+	@JmxAttribute(name = "")
 	public StageStats getStats() {
 		return stats;
 	}
@@ -181,6 +188,32 @@ public final class EventloopTaskScheduler implements EventloopService, MutableBu
 	@JmxAttribute
 	public void setStatsSmoothingWindow(double smoothingWindowSeconds) {
 		stats.setSmoothingWindow(smoothingWindowSeconds);
+	}
+
+	@JmxAttribute
+	public Long getPeriod() {
+		return period;
+	}
+
+	@JmxAttribute
+	public void setPeriod(long periodMillis) {
+		this.schedule = Schedule.ofPeriod(periodMillis);
+		// for JMX:
+		this.period = periodMillis;
+		this.interval = null;
+	}
+
+	@JmxAttribute
+	public Long getInterval() {
+		return interval;
+	}
+
+	@JmxAttribute
+	public void setInterval(long intervalMillis) {
+		this.schedule = Schedule.ofInterval(intervalMillis);
+		// for JMX:
+		this.period = null;
+		this.interval = intervalMillis;
 	}
 
 	@JmxOperation

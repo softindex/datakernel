@@ -43,7 +43,7 @@ import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.*;
-import io.datakernel.util.MutableBuilder;
+import io.datakernel.util.Initializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,7 +80,7 @@ import static java.util.stream.Collectors.toList;
  * Also provides functionality for managing aggregations.
  */
 @SuppressWarnings("unchecked")
-public final class Cube implements ICube, OTState<CubeDiff>, MutableBuilder<Cube>, EventloopJmxMBean {
+public final class Cube implements ICube, OTState<CubeDiff>, Initializer<Cube>, EventloopJmxMBean {
 	private static final Logger logger = LoggerFactory.getLogger(Cube.class);
 
 	public static final int DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD = 300;
@@ -238,7 +238,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, MutableBuilder<Cube
 		return this;
 	}
 
-	public static final class AggregationConfig {
+	public static final class AggregationConfig implements Initializer<AggregationConfig> {
 		private final String id;
 		private List<String> dimensions = new ArrayList<>();
 		private List<String> measures = new ArrayList<>();

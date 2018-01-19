@@ -54,13 +54,13 @@ public final class CubeBackupController implements EventloopJmxMBean {
 	}
 
 	public CompletionStage<Void> backupHead() {
-		return stageBackup.monitor(
-				algorithms.getRemote().getHeads()
-						.thenCompose(heads -> {
-							if (heads.isEmpty())
-								return Stages.ofException(new IllegalArgumentException("heads is empty"));
-							return backup(max(heads));
-						}));
+		return algorithms.getRemote().getHeads()
+				.thenCompose(heads -> {
+					if (heads.isEmpty())
+						return Stages.ofException(new IllegalArgumentException("heads is empty"));
+					return backup(max(heads));
+				})
+				.whenComplete(stageBackup.recordStats());
 	}
 
 	@SuppressWarnings("unchecked")
@@ -76,13 +76,13 @@ public final class CubeBackupController implements EventloopJmxMBean {
 	}
 
 	private CompletionStage<Void> backupChunks(Integer commitId, Set<Long> chunkIds) {
-		return stageBackupChunks.monitor(
-				storage.backup(String.valueOf(commitId), chunkIds));
+		return storage.backup(String.valueOf(commitId), chunkIds)
+				.whenComplete(stageBackupChunks.recordStats());
 	}
 
 	private CompletionStage<Void> backupDb(Integer commitId, List<LogDiff<CubeDiff>> diffs) {
-		return stageBackupDb.monitor(
-				algorithms.getRemote().backup(commitId, diffs));
+		return algorithms.getRemote().backup(commitId, diffs)
+				.whenComplete(stageBackupDb.recordStats());
 	}
 
 	@Override

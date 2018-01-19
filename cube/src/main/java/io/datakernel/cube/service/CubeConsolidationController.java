@@ -14,7 +14,6 @@ import io.datakernel.jmx.*;
 import io.datakernel.logfs.ot.LogDiff;
 import io.datakernel.logfs.ot.LogOTState;
 import io.datakernel.ot.OTStateManager;
-import io.datakernel.util.MutableBuilder;
 import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,10 +23,11 @@ import java.util.concurrent.CompletionStage;
 import java.util.function.Supplier;
 
 import static io.datakernel.async.AsyncCallable.sharedCall;
+import static io.datakernel.async.Stages.onResult;
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static java.util.stream.Collectors.toSet;
 
-public final class CubeConsolidationController implements MutableBuilder<CubeConsolidationController>, EventloopJmxMBean {
+public final class CubeConsolidationController implements EventloopJmxMBean {
 	public static final Supplier<AsyncFunction<Aggregation, AggregationDiff>> DEFAULT_STRATEGY = new Supplier<AsyncFunction<Aggregation, AggregationDiff>>() {
 		private boolean hotSegment = false;
 
@@ -85,16 +85,17 @@ public final class CubeConsolidationController implements MutableBuilder<CubeCon
 
 	CompletionStage<Void> doConsolidate() {
 		sw.reset().start();
-		return stageConsolidate.monitor(stateManager.pull()
+		return stateManager.pull()
 				.thenCompose($ -> stateManager.getAlgorithms().mergeHeadsAndPush())
 				.thenCompose(mergeId -> stateManager.pull(mergeId))
 				.thenCompose($ -> stateManager.pull())
-				.thenCompose(stageConsolidateImpl.monitor($ -> cube.consolidate(strategy.get())))
-				.whenComplete(Stages.onResult(this::cubeDiffJmx))
+				.thenCompose($ -> cube.consolidate(strategy.get()).whenComplete(stageConsolidateImpl.recordStats()))
+				.whenComplete(onResult(this::cubeDiffJmx))
 				.whenComplete(this::logCubeDiff)
 				.thenCompose(this::tryPushConsolidation)
 				.whenComplete(this::logResult)
-				.thenApply($ -> null));
+				.thenAccept($ -> {})
+				.whenComplete(stageConsolidate.recordStats());
 
 	}
 

@@ -28,7 +28,6 @@ import io.datakernel.eventloop.EventloopService;
 import io.datakernel.jmx.*;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.util.MemSize;
-import io.datakernel.util.MutableBuilder;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLException;
@@ -47,7 +46,7 @@ import static io.datakernel.http.AbstractHttpConnection.*;
 import static io.datakernel.util.Preconditions.checkState;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
-public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService, MutableBuilder<AsyncHttpClient>, EventloopJmxMBean {
+public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService, EventloopJmxMBean {
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create();
 	public static final long DEFAULT_KEEP_ALIVE_MILLIS = 30 * 1000L;
 
@@ -359,45 +358,47 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		HttpClientConnection connection = takeKeepAliveConnection(address);
 		if (connection != null) return connection.send(request);
 
-		return eventloop.connect(address, connectTimeoutMillis).whenComplete((response, throwable) -> {
-			if (throwable != null) {
-				if (inspector != null) inspector.onConnectError(request, address, throwable);
-				request.recycleBufs();
-			}
-		}).thenCompose(socketChannel -> {
-			boolean https = request.isHttps();
-			AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings)
-					.withInspector(inspector == null ? null : inspector.socketInspector(request, address, https));
+		return eventloop.connect(address, connectTimeoutMillis)
+				.whenComplete((response, throwable) -> {
+					if (throwable != null) {
+						if (inspector != null) inspector.onConnectError(request, address, throwable);
+						request.recycleBufs();
+					}
+				})
+				.thenCompose(socketChannel -> {
+					boolean https = request.isHttps();
+					AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings)
+							.withInspector(inspector == null ? null : inspector.socketInspector(request, address, https));
 
-			if (https && sslContext == null) {
-				throw new IllegalArgumentException("Cannot send HTTPS Request without SSL enabled");
-			}
+					if (https && sslContext == null) {
+						throw new IllegalArgumentException("Cannot send HTTPS Request without SSL enabled");
+					}
 
-			AsyncTcpSocket asyncTcpSocket = https ?
-					wrapClientSocket(eventloop, asyncTcpSocketImpl,
-							request.getUrl().getHost(), request.getUrl().getPort(),
-							sslContext, sslExecutor) :
-					asyncTcpSocketImpl;
+					AsyncTcpSocket asyncTcpSocket = https ?
+							wrapClientSocket(eventloop, asyncTcpSocketImpl,
+									request.getUrl().getHost(), request.getUrl().getPort(),
+									sslContext, sslExecutor) :
+							asyncTcpSocketImpl;
 
-			HttpClientConnection connection1 = new HttpClientConnection(eventloop, address, asyncTcpSocket,
-					AsyncHttpClient.this, headerChars, maxHttpMessageSize);
+					HttpClientConnection connection1 = new HttpClientConnection(eventloop, address, asyncTcpSocket,
+							AsyncHttpClient.this, headerChars, maxHttpMessageSize);
 
-			asyncTcpSocket.setEventHandler(connection1);
-			asyncTcpSocketImpl.register();
+					asyncTcpSocket.setEventHandler(connection1);
+					asyncTcpSocketImpl.register();
 
-			if (inspector != null) inspector.onConnect(request, connection1);
+					if (inspector != null) inspector.onConnect(request, connection1);
 
-			connectionsCount++;
-			if (expiredConnectionsCheck == null)
-				scheduleExpiredConnectionsCheck();
+					connectionsCount++;
+					if (expiredConnectionsCheck == null)
+						scheduleExpiredConnectionsCheck();
 
-			// connection was unexpectedly closed by the peer
-			if (connection1.getCloseError() != null) {
-				return Stages.ofException(connection1.getCloseError());
-			}
+					// connection was unexpectedly closed by the peer
+					if (connection1.getCloseError() != null) {
+						return Stages.ofException(connection1.getCloseError());
+					}
 
-			return connection1.send(request);
-		});
+					return connection1.send(request);
+				});
 	}
 
 	@Override

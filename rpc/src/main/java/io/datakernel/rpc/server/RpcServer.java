@@ -31,7 +31,6 @@ import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.processor.StreamBinarySerializer;
 import io.datakernel.util.MemSize;
-import io.datakernel.util.MutableBuilder;
 
 import java.net.InetAddress;
 import java.util.*;
@@ -90,7 +89,7 @@ import static java.util.Arrays.asList;
  * @see RpcRequestHandler
  * @see RpcClient
  */
-public final class RpcServer extends AbstractServer<RpcServer> implements MutableBuilder<RpcServer> {
+public final class RpcServer extends AbstractServer<RpcServer> {
 	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS = ServerSocketSettings.create(16384);
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create().withTcpNoDelay(true);
 

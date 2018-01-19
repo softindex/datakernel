@@ -17,7 +17,7 @@
 package io.datakernel.async;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.util.Builder;
+import io.datakernel.util.Modifier;
 
 import java.util.ArrayDeque;
 import java.util.concurrent.CompletionStage;
@@ -26,7 +26,7 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-public interface AsyncCallable<T> extends Builder<AsyncCallable<T>> {
+public interface AsyncCallable<T> extends Modifier<AsyncCallable<T>> {
 	CompletionStage<T> call();
 
 	static <T> AsyncCallable<T> of(Supplier<CompletionStage<T>> supplier) {

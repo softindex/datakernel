@@ -224,7 +224,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			connectionCount.incrementAndGet();
 		} catch (IOException e) {
 			eventloop.post(() -> {
-				closeChannel();
+				eventloop.closeChannel(channel);
 				socketEventHandler.onClosedWithError(e);
 			});
 		}
@@ -236,31 +236,21 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	// timeouts management
 	void scheduleReadTimeOut() {
 		if (checkReadTimeout == null) {
-			checkReadTimeout = eventloop.scheduleBackground(
-					eventloop.currentTimeMillis() + readTimeout,
-					new Runnable() {
-						@Override
-						public void run() {
-							if (inspector != null) inspector.onReadTimeout();
-							checkReadTimeout = null;
-							closeWithError(TIMEOUT_EXCEPTION, false);
-						}
-					});
+			checkReadTimeout = eventloop.scheduleBackground(eventloop.currentTimeMillis() + readTimeout, () -> {
+				if (inspector != null) inspector.onReadTimeout();
+				checkReadTimeout = null;
+				closeWithError(TIMEOUT_EXCEPTION, false);
+			});
 		}
 	}
 
 	void scheduleWriteTimeOut() {
 		if (checkWriteTimeout == null) {
-			checkWriteTimeout = eventloop.scheduleBackground(
-					eventloop.currentTimeMillis() + writeTimeout,
-					new Runnable() {
-						@Override
-						public void run() {
-							if (inspector != null) inspector.onWriteTimeout();
-							checkWriteTimeout = null;
-							closeWithError(TIMEOUT_EXCEPTION, false);
-						}
-					});
+			checkWriteTimeout = eventloop.scheduleBackground(eventloop.currentTimeMillis() + writeTimeout, () -> {
+				if (inspector != null) inspector.onWriteTimeout();
+				checkWriteTimeout = null;
+				closeWithError(TIMEOUT_EXCEPTION, false);
+			});
 		}
 	}
 
@@ -444,7 +434,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	public void close() {
 		assert eventloop.inEventloopThread();
 		if (key == null) return;
-		closeChannel();
+		eventloop.closeChannel(key);
 		key = null;
 		connectionCount.decrementAndGet();
 		for (ByteBuf buf : writeQueue) {
@@ -461,24 +451,11 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		}
 	}
 
-	private void closeChannel() {
-		if (channel == null) return;
-		try {
-			channel.close();
-		} catch (IOException e) {
-		}
-	}
-
 	private void closeWithError(Exception e, boolean fireAsync) {
 		if (isOpen()) {
 			close();
 			if (fireAsync)
-				eventloop.post(new Runnable() {
-					@Override
-					public void run() {
-						socketEventHandler.onClosedWithError(e);
-					}
-				});
+				eventloop.post(() -> socketEventHandler.onClosedWithError(e));
 			else {
 				socketEventHandler.onClosedWithError(e);
 			}

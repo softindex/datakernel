@@ -14,16 +14,8 @@ public final class StreamStatsDetailed extends StreamStatsBasic {
 	private long totalSize;
 
 	@SuppressWarnings("unchecked")
-	private StreamStatsDetailed(StreamStatsSizeCounter<?> sizeCounter) {
+	StreamStatsDetailed(StreamStatsSizeCounter<?> sizeCounter) {
 		this.sizeCounter = (StreamStatsSizeCounter<Object>) sizeCounter;
-	}
-
-	public static StreamStatsDetailed create(StreamStatsSizeCounter<?> sizeCounter) {
-		return new StreamStatsDetailed(sizeCounter);
-	}
-
-	public static StreamStatsDetailed create() {
-		return new StreamStatsDetailed(null);
 	}
 
 	@Override

@@ -20,12 +20,19 @@ import io.datakernel.async.Stages;
 import io.datakernel.async.StagesAccumulator;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
+import io.datakernel.jmx.EventloopJmxMBean;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxOperation;
+import io.datakernel.jmx.StageStats;
 import io.datakernel.logfs.LogFile;
 import io.datakernel.logfs.LogManager;
 import io.datakernel.logfs.LogPosition;
 import io.datakernel.logfs.ot.LogDiff.LogPositionDiff;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducerWithResult;
+import io.datakernel.stream.processor.StreamStats;
+import io.datakernel.stream.processor.StreamStatsBasic;
+import io.datakernel.stream.processor.StreamStatsDetailed;
 import io.datakernel.stream.processor.StreamUnion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,12 +43,13 @@ import java.util.Map;
 import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.async.Stages.onResult;
+import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static io.datakernel.stream.DataStreams.stream;
 
 /**
  * Processes logs. Creates new aggregation chunks and persists them using logic defined in supplied {@code AggregatorSplitter}.
  */
-public final class LogOTProcessor<T, D> implements EventloopService {
+public final class LogOTProcessor<T, D> implements EventloopService, EventloopJmxMBean {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final Eventloop eventloop;
@@ -52,6 +60,12 @@ public final class LogOTProcessor<T, D> implements EventloopService {
 	private final List<String> partitions;
 
 	private final LogOTState<D> state;
+
+	// JMX
+	private boolean detailed;
+	private final StreamStatsBasic streamStatsBasic = StreamStats.basic();
+	private final StreamStatsDetailed streamStatsDetailed = StreamStats.detailed();
+	private final StageStats stageProcessLog = StageStats.create(SMOOTHING_WINDOW_5_MINUTES);
 
 	private LogOTProcessor(Eventloop eventloop, LogManager<T> logManager, LogDataConsumer<T, D> logStreamConsumer,
 	                       String log, List<String> partitions, LogOTState<D> state) {
@@ -91,6 +105,7 @@ public final class LogOTProcessor<T, D> implements EventloopService {
 		StreamProducerWithResult<T, Map<String, LogPositionDiff>> producer = getProducer();
 		StreamConsumerWithResult<T, List<D>> consumer = logStreamConsumer.consume();
 		return stream(producer, consumer)
+				.whenComplete(stageProcessLog.recordStats())
 				.thenApply(result -> LogDiff.of(result.getProducerResult(), result.getConsumerResult()))
 				.whenComplete(onResult(logDiff ->
 						logger.info("Log '{}' processing complete. Positions: {}", log, logDiff.positions)));
@@ -116,11 +131,44 @@ public final class LogOTProcessor<T, D> implements EventloopService {
 				}
 			});
 		}
-		return streamUnion.getOutput().withResult(result.get());
+		return streamUnion.getOutput()
+				.with(detailed ? streamStatsDetailed::wrapper : streamStatsBasic::wrapper)
+				.withResult(result.get());
 	}
 
 	private String logName(String partition) {
 		return log != null && !log.isEmpty() ? log + "." + partition : partition;
 	}
 
+	@JmxAttribute
+	public StreamStatsBasic getStreamStatsBasic() {
+		return streamStatsBasic;
+	}
+
+	@JmxAttribute
+	public StreamStatsDetailed getStreamStatsDetailed() {
+		return streamStatsDetailed;
+	}
+
+	@JmxAttribute
+	public StageStats getStageProcessLog() {
+		return stageProcessLog;
+	}
+
+	@JmxOperation
+	public void resetStats() {
+		streamStatsBasic.resetStats();
+		streamStatsDetailed.resetStats();
+		stageProcessLog.resetStats();
+	}
+
+	@JmxOperation
+	public void startDetailedMonitoring() {
+		detailed = true;
+	}
+
+	@JmxOperation
+	public void stopDetailedMonitoring() {
+		detailed = false;
+	}
 }

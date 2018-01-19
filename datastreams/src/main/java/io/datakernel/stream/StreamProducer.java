@@ -17,7 +17,7 @@
 package io.datakernel.stream;
 
 import io.datakernel.async.SettableStage;
-import io.datakernel.util.Builder;
+import io.datakernel.util.Modifier;
 
 import java.util.Iterator;
 import java.util.List;
@@ -36,7 +36,7 @@ import static java.util.Arrays.asList;
  *
  * @param <T> type of output data
  */
-public interface StreamProducer<T> extends Builder<StreamProducer<T>> {
+public interface StreamProducer<T> extends Modifier<StreamProducer<T>> {
 	/**
 	 * Changes consumer for this producer, removes itself from previous consumer and removes
 	 * previous producer for new consumer. Begins to stream to consumer.

@@ -31,8 +31,8 @@ import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import io.datakernel.stream.processor.*;
+import io.datakernel.util.Initializer;
 import io.datakernel.util.MemSize;
-import io.datakernel.util.MutableBuilder;
 import org.slf4j.Logger;
 
 import java.io.IOException;
@@ -56,7 +56,7 @@ import static org.slf4j.LoggerFactory.getLogger;
 /**
  * Stores aggregation chunks in local file system.
  */
-public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopService, MutableBuilder<LocalFsChunkStorage>, EventloopJmxMBean {
+public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopService, Initializer<LocalFsChunkStorage>, EventloopJmxMBean {
 	private final Logger logger = getLogger(this.getClass());
 	public static final int DEFAULT_BUFFER_SIZE = 256 * 1024;
 
@@ -84,14 +84,14 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 	private final StageStats stageBackup = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final StageStats stageCleanup = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 
-	private final StreamStatsDetailedEx readFile = StreamStatsDetailedEx.create(forByteBufs());
-	private final StreamStatsDetailedEx readDecompress = StreamStatsDetailedEx.create(forByteBufs());
-	private final StreamStatsBasic readDeserialize = new StreamStatsBasic();
+	private final StreamStatsDetailedEx readFile = StreamStats.detailedEx(forByteBufs());
+	private final StreamStatsDetailedEx readDecompress = StreamStats.detailedEx(forByteBufs());
+	private final StreamStatsBasic readDeserialize = StreamStats.basic();
 
-	private final StreamStatsBasic writeSerialize = new StreamStatsBasic();
-	private final StreamStatsDetailedEx writeCompress = StreamStatsDetailedEx.create(forByteBufs());
-	private final StreamStatsDetailedEx writeChunker = StreamStatsDetailedEx.create(forByteBufs());
-	private final StreamStatsDetailedEx writeFile = StreamStatsDetailedEx.create(forByteBufs());
+	private final StreamStatsBasic writeSerialize = StreamStats.basic();
+	private final StreamStatsDetailedEx writeCompress = StreamStats.detailedEx(forByteBufs());
+	private final StreamStatsDetailedEx writeChunker = StreamStats.detailedEx(forByteBufs());
+	private final StreamStatsDetailedEx writeFile = StreamStats.detailedEx(forByteBufs());
 
 	/**
 	 * Constructs an aggregation storage, that runs in the specified event loop, performs blocking IO in the given executor,
@@ -135,9 +135,9 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 	                                                                   Class<T> recordClass, long chunkId,
 	                                                                   DefiningClassLoader classLoader) {
 		return Stages.firstComplete(
-				() -> stageOpenR1.monitor(AsyncFile.openAsync(executorService, dir.resolve(chunkId + LOG), new OpenOption[]{READ})),
-				() -> stageOpenR2.monitor(AsyncFile.openAsync(executorService, dir.resolve(chunkId + TEMP_LOG), new OpenOption[]{READ})),
-				() -> stageOpenR3.monitor(AsyncFile.openAsync(executorService, dir.resolve(chunkId + LOG), new OpenOption[]{READ})))
+				() -> AsyncFile.openAsync(executorService, dir.resolve(chunkId + LOG), new OpenOption[]{READ}).whenComplete(stageOpenR1.recordStats()),
+				() -> AsyncFile.openAsync(executorService, dir.resolve(chunkId + TEMP_LOG), new OpenOption[]{READ}).whenComplete(stageOpenR2.recordStats()),
+				() -> AsyncFile.openAsync(executorService, dir.resolve(chunkId + LOG), new OpenOption[]{READ}).whenComplete(stageOpenR3.recordStats()))
 				.thenApply(file -> {
 					StreamFileReader fileReader = StreamFileReader.readFileFrom(file, bufferSize, 0L);
 					StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create();
@@ -145,10 +145,10 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 							AggregationUtils.createBufferSerializer(aggregation, recordClass,
 									aggregation.getKeys(), fields, classLoader));
 
-					stream(fileReader.with(readFile::wrap), decompressor.getInput());
-					stream(decompressor.getOutput().with(readDecompress::wrap), deserializer.getInput());
+					stream(fileReader.with(readFile::wrapper), decompressor.getInput());
+					stream(decompressor.getOutput().with(readDecompress::wrapper), deserializer.getInput());
 
-					return deserializer.getOutput().with(readDeserialize::wrap).withEndOfStreamAsResult();
+					return deserializer.getOutput().with(readDeserialize::wrapper).withEndOfStreamAsResult();
 				});
 	}
 
@@ -156,7 +156,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 	public <T> CompletionStage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields,
 	                                                                    Class<T> recordClass, long id,
 	                                                                    DefiningClassLoader classLoader) {
-		return stageOpenW.monitor(AsyncFile.openAsync(executorService, dir.resolve(id + TEMP_LOG), StreamFileWriter.CREATE_OPTIONS))
+		return AsyncFile.openAsync(executorService, dir.resolve(id + TEMP_LOG), StreamFileWriter.CREATE_OPTIONS).whenComplete(stageOpenW.recordStats())
 				.thenApply(file -> {
 					StreamBinarySerializer<T> serializer = StreamBinarySerializer.create(
 							AggregationUtils.createBufferSerializer(aggregation, recordClass,
@@ -166,34 +166,34 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 					StreamByteChunker chunker = StreamByteChunker.create(bufferSize / 2, bufferSize * 2);
 					StreamFileWriter writer = StreamFileWriter.create(file, true);
 
-					stream(serializer.getOutput(), compressor.getInput().with(writeCompress::wrap));
-					stream(compressor.getOutput(), chunker.getInput().with(writeChunker::wrap));
-					stream(chunker.getOutput(), writer.with(writeFile::wrap));
+					stream(serializer.getOutput(), compressor.getInput().with(writeCompress::wrapper));
+					stream(compressor.getOutput(), chunker.getInput().with(writeChunker::wrapper));
+					stream(chunker.getOutput(), writer.with(writeFile::wrapper));
 
-					return serializer.getInput().with(writeSerialize::wrap).withResult(writer.getFlushStage());
+					return serializer.getInput().with(writeSerialize::wrapper).withResult(writer.getFlushStage());
 				});
 	}
 
 	@Override
 	public CompletionStage<Long> createId() {
-		return stageIdGenerator.monitor(idGenerator.createId());
+		return idGenerator.createId().whenComplete(stageIdGenerator.recordStats());
 	}
 
 	@Override
 	public CompletionStage<Void> finish(Set<Long> chunkIds) {
-		return stageFinishChunks.monitor(eventloop.callExecutor(executorService, () -> {
+		return eventloop.callExecutor(executorService, () -> {
 			for (Long chunkId : chunkIds) {
 				Path tempLog = dir.resolve(chunkId + TEMP_LOG);
 				Path log = dir.resolve(chunkId + LOG);
 				Files.setLastModifiedTime(tempLog, FileTime.fromMillis(System.currentTimeMillis()));
 				Files.move(tempLog, log, StandardCopyOption.ATOMIC_MOVE);
 			}
-			return null;
-		}));
+			return (Void) null;
+		}).whenComplete(stageFinishChunks.recordStats());
 	}
 
 	public CompletionStage<Void> backup(String backupId, Set<Long> chunkIds) {
-		return stageBackup.monitor(eventloop.callExecutor(executorService, () -> {
+		return eventloop.callExecutor(executorService, () -> {
 			Path tempBackupDir = backupPath.resolve(backupId + "_tmp/");
 			Files.createDirectories(tempBackupDir);
 			for (long chunkId : chunkIds) {
@@ -204,8 +204,8 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 
 			Path backupDir = backupPath.resolve(backupId + "/");
 			Files.move(tempBackupDir, backupDir, StandardCopyOption.ATOMIC_MOVE);
-			return null;
-		}));
+			return (Void) null;
+		}).whenComplete(stageBackup.recordStats());
 	}
 
 	public CompletionStage<Void> cleanup(Set<Long> saveChunks) {
@@ -213,7 +213,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 	}
 
 	public CompletionStage<Void> cleanupBeforeTimestamp(Set<Long> saveChunks, long timestamp) {
-		return stageCleanup.monitor(eventloop.callExecutor(executorService, () -> {
+		return eventloop.callExecutor(executorService, () -> {
 			logger.trace("Cleanup before timestamp, save chunks size: {}, timestamp {}", saveChunks.size(), timestamp);
 			try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
 				List<Path> filesToDelete = new ArrayList<>();
@@ -254,12 +254,12 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 					}
 				}
 			}
-			return null;
-		}));
+			return (Void) null;
+		}).whenComplete(stageCleanup.recordStats());
 	}
 
 	public CompletionStage<Set<Long>> list(Predicate<String> filter, Predicate<Long> lastModified) {
-		return stageList.monitor(eventloop.callExecutor(executorService, () -> {
+		return eventloop.callExecutor(executorService, () -> {
 			try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
 				return StreamSupport.stream(stream.spliterator(), false)
 						.filter(file -> lastModifiedFilter(lastModified, file))
@@ -268,7 +268,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 						.map(name -> Long.parseLong(name.substring(0, name.length() - LOG.length())))
 						.collect(Collectors.toSet());
 			}
-		}));
+		}).whenComplete(stageList.recordStats());
 	}
 
 	private boolean lastModifiedFilter(Predicate<Long> lastModified, Path file) {

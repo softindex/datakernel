@@ -2,13 +2,14 @@ package io.datakernel.aggregation;
 
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
+import io.datakernel.stream.processor.StreamStats;
 import io.datakernel.stream.processor.StreamStatsBasic;
 
 public class AggregationStats {
-	final StreamStatsBasic mergeMapInput = new StreamStatsBasic();
-	final StreamStatsBasic mergeMapOutput = new StreamStatsBasic();
-	final StreamStatsBasic mergeReducerInput = new StreamStatsBasic();
-	final StreamStatsBasic mergeReducerOutput = new StreamStatsBasic();
+	final StreamStatsBasic mergeMapInput = StreamStats.basic();
+	final StreamStatsBasic mergeMapOutput = StreamStats.basic();
+	final StreamStatsBasic mergeReducerInput = StreamStats.basic();
+	final StreamStatsBasic mergeReducerOutput = StreamStats.basic();
 
 	@JmxAttribute
 	public StreamStatsBasic getMergeReducerInput() {

@@ -30,7 +30,6 @@ import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.processor.*;
 import io.datakernel.util.MemSize;
-import io.datakernel.util.MutableBuilder;
 
 import java.net.InetSocketAddress;
 import java.util.List;
@@ -43,7 +42,7 @@ import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.processor.StreamStatsSizeCounter.forByteBufs;
 import static java.util.stream.Collectors.toMap;
 
-public class RemoteFsChunkStorage implements AggregationChunkStorage, MutableBuilder<RemoteFsChunkStorage>, EventloopJmxMBean {
+public class RemoteFsChunkStorage implements AggregationChunkStorage, EventloopJmxMBean {
 	public static final int DEFAULT_BUFFER_SIZE = 256 * 1024;
 	public static final String LOG = ".log";
 	public static final String TEMP_LOG = ".temp";
@@ -62,14 +61,14 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage, MutableBui
 	private final StageStats stageOpenW = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final StageStats stageFinishChunks = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 
-	private final StreamStatsDetailedEx readRemoteFS = StreamStatsDetailedEx.create(forByteBufs());
-	private final StreamStatsDetailedEx readDecompress = StreamStatsDetailedEx.create(forByteBufs());
-	private final StreamStatsBasic readDeserialize = new StreamStatsBasic();
+	private final StreamStatsDetailedEx readRemoteFS = StreamStats.detailedEx(forByteBufs());
+	private final StreamStatsDetailedEx readDecompress = StreamStats.detailedEx(forByteBufs());
+	private final StreamStatsBasic readDeserialize = StreamStats.basic();
 
-	private final StreamStatsBasic writeSerialize = new StreamStatsBasic();
-	private final StreamStatsDetailedEx writeCompress = StreamStatsDetailedEx.create(forByteBufs());
-	private final StreamStatsDetailedEx writeChunker = StreamStatsDetailedEx.create(forByteBufs());
-	private final StreamStatsDetailedEx writeRemoteFS = StreamStatsDetailedEx.create(forByteBufs());
+	private final StreamStatsBasic writeSerialize = StreamStats.basic();
+	private final StreamStatsDetailedEx writeCompress = StreamStats.detailedEx(forByteBufs());
+	private final StreamStatsDetailedEx writeChunker = StreamStats.detailedEx(forByteBufs());
+	private final StreamStatsDetailedEx writeRemoteFS = StreamStats.detailedEx(forByteBufs());
 
 	private RemoteFsChunkStorage(Eventloop eventloop, IdGenerator<Long> idGenerator, InetSocketAddress serverAddress) {
 		this.eventloop = eventloop;
@@ -97,19 +96,19 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage, MutableBui
 	                                                                   Class<T> recordClass, long chunkId,
 	                                                                   DefiningClassLoader classLoader) {
 		return Stages.firstComplete(
-				() -> stageOpenR1.monitor(client.download(path(chunkId), 0)),
-				() -> stageOpenR2.monitor(client.download(tempPath(chunkId), 0)),
-				() -> stageOpenR3.monitor(client.download(path(chunkId), 0)))
+				() -> client.download(path(chunkId), 0).whenComplete(stageOpenR1.recordStats()),
+				() -> client.download(tempPath(chunkId), 0).whenComplete(stageOpenR2.recordStats()),
+				() -> client.download(path(chunkId), 0).whenComplete(stageOpenR3.recordStats()))
 				.thenApply(producer -> {
 					StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create();
 					StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(
 							createBufferSerializer(aggregation, recordClass,
 									aggregation.getKeys(), fields, classLoader));
 
-					stream(producer.with(readRemoteFS::wrap), decompressor.getInput());
-					stream(decompressor.getOutput().with(readDecompress::wrap), deserializer.getInput());
+					stream(producer.with(readRemoteFS::wrapper), decompressor.getInput());
+					stream(decompressor.getOutput().with(readDecompress::wrapper), deserializer.getInput());
 
-					return deserializer.getOutput().with(readDeserialize::wrap).withEndOfStreamAsResult();
+					return deserializer.getOutput().with(readDeserialize::wrapper).withEndOfStreamAsResult();
 				});
 	}
 
@@ -121,7 +120,7 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage, MutableBui
 	public <T> CompletionStage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields,
 	                                                                    Class<T> recordClass, long chunkId,
 	                                                                    DefiningClassLoader classLoader) {
-		return stageOpenW.monitor(client.upload(tempPath(chunkId)))
+		return client.upload(tempPath(chunkId)).whenComplete(stageOpenW.recordStats())
 				.thenApply(consumer -> {
 					StreamBinarySerializer<T> serializer = StreamBinarySerializer.create(
 							createBufferSerializer(aggregation, recordClass,
@@ -130,11 +129,11 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage, MutableBui
 					StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor();
 					StreamByteChunker chunker = StreamByteChunker.create(bufferSize / 2, bufferSize * 2);
 
-					stream(serializer.getOutput(), compressor.getInput().with(writeCompress::wrap));
-					stream(compressor.getOutput(), chunker.getInput().with(writeChunker::wrap));
-					stream(chunker.getOutput(), consumer.with(writeRemoteFS::wrap));
+					stream(serializer.getOutput(), compressor.getInput().with(writeCompress::wrapper));
+					stream(compressor.getOutput(), chunker.getInput().with(writeChunker::wrapper));
+					stream(chunker.getOutput(), consumer.with(writeRemoteFS::wrapper));
 
-					return serializer.getInput().with(writeSerialize::wrap).withResult(consumer.getResult());
+					return serializer.getInput().with(writeSerialize::wrapper).withResult(consumer.getResult());
 				});
 	}
 
@@ -144,13 +143,12 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage, MutableBui
 
 	@Override
 	public CompletionStage<Void> finish(Set<Long> chunkIds) {
-		return stageFinishChunks.monitor(
-				client.move(chunkIds.stream().collect(toMap(this::tempPath, this::path))));
+		return client.move(chunkIds.stream().collect(toMap(this::tempPath, this::path))).whenComplete(stageFinishChunks.recordStats());
 	}
 
 	@Override
 	public CompletionStage<Long> createId() {
-		return stageIdGenerator.monitor(idGenerator.createId());
+		return idGenerator.createId().whenComplete(stageIdGenerator.recordStats());
 	}
 
 	@Override

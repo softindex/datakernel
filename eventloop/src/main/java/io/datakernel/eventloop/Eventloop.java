@@ -29,7 +29,7 @@ import io.datakernel.net.DatagramSocketSettings;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.time.CurrentTimeProviderSystem;
-import io.datakernel.util.MutableBuilder;
+import io.datakernel.util.Initializer;
 import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,11 +39,15 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.channels.*;
 import java.nio.channels.spi.SelectorProvider;
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.Iterator;
+import java.util.PriorityQueue;
+import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
+import static java.util.Collections.emptyIterator;
 
 /**
  * It is internal class for asynchronous programming. In asynchronous
@@ -60,7 +64,7 @@ import static io.datakernel.util.Preconditions.checkNotNull;
  * eventloop will be ended, when it has not selected keys and its queues with
  * tasks are empty.
  */
-public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, CurrentTimeProvider, MutableBuilder<Eventloop>, EventloopJmxMBean {
+public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, CurrentTimeProvider, Initializer<Eventloop>, EventloopJmxMBean {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	public static final AsyncTimeoutException CONNECT_TIMEOUT = new AsyncTimeoutException("Connection timed out");
@@ -140,6 +144,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 * Count of selected keys for last Selector.select()
 	 */
 	private int lastSelectedKeys;
+	private int cancelledKeys;
 	private int lastExternalTasksCount;
 
 	// JMX
@@ -282,6 +287,28 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		return selector;
 	}
 
+	public void closeChannel(SelectionKey channelKey) {
+		if (channelKey.isValid()) {
+			cancelledKeys++;
+		}
+		try {
+			channelKey.channel().close();
+		} catch (IOException e) {
+		}
+	}
+
+	public void closeChannel(SelectableChannel channel) {
+		if (!channel.isOpen()) return;
+		SelectionKey key = channel.keyFor(selector);
+		if (key != null && key.isValid()) {
+			cancelledKeys++;
+		}
+		try {
+			channel.close();
+		} catch (IOException e) {
+		}
+	}
+
 	public boolean inEventloopThread() {
 		return eventloopThread == null || eventloopThread == Thread.currentThread();
 	}
@@ -294,10 +321,16 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 */
 	public void keepAlive(boolean keepAlive) {
 		this.keepAlive = keepAlive;
+		if (!keepAlive && selector != null) {
+			selector.wakeup();
+		}
 	}
 
 	public void breakEventloop() {
 		this.breakEventloop = true;
+		if (breakEventloop && selector != null) {
+			selector.wakeup();
+		}
 	}
 
 	private boolean isAlive() {
@@ -306,7 +339,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		lastExternalTasksCount = externalTasksCount.get();
 		return !localTasks.isEmpty() || !scheduledTasks.isEmpty() || !concurrentTasks.isEmpty()
 				|| lastExternalTasksCount > 0
-				|| keepAlive || !selector.keys().isEmpty();
+				|| keepAlive || (selector.keys().size() - cancelledKeys > 0);
 	}
 
 	public Thread getEventloopThread() {
@@ -341,6 +374,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 				} else {
 					lastSelectedKeys = selector.select(selectTimeout);
 				}
+				cancelledKeys = 0;
 			} catch (ClosedChannelException e) {
 				logger.error("Selector is closed, exiting...", e);
 				break;
@@ -421,8 +455,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 		int invalidKeys = 0, acceptKeys = 0, connectKeys = 0, readKeys = 0, writeKeys = 0;
 
-		Iterator<SelectionKey> iterator = lastSelectedKeys != 0 ? selectedKeys.iterator()
-				: Collections.<SelectionKey>emptyIterator();
+		Iterator<SelectionKey> iterator = lastSelectedKeys != 0 ? selectedKeys.iterator() : emptyIterator();
 		while (iterator.hasNext()) {
 			SelectionKey key = iterator.next();
 			iterator.remove();
@@ -437,33 +470,29 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 				sw.start();
 			}
 
-			try {
-				if (key.isAcceptable()) {
-					onAccept(key);
-					acceptKeys++;
-				} else if (key.isConnectable()) {
-					onConnect(key);
-					connectKeys++;
-				} else {
-					if (key.isReadable()) {
-						onRead(key);
-						readKeys++;
-					}
-					if (key.isValid()) {
-						if (key.isWritable()) {
-							onWrite(key);
-							writeKeys++;
-						}
-					} else {
-						invalidKeys++;
-					}
+			if (key.isAcceptable()) {
+				onAccept(key);
+				acceptKeys++;
+			} else if (key.isConnectable()) {
+				onConnect(key);
+				connectKeys++;
+			} else {
+				if (key.isReadable()) {
+					onRead(key);
+					readKeys++;
 				}
-				if (sw != null) stats.updateSelectedKeyDuration(sw);
-			} catch (Throwable e) {
-				recordFatalError(e, key.attachment());
-				closeQuietly(key.channel());
+				if (key.isValid()) {
+					if (key.isWritable()) {
+						onWrite(key);
+						writeKeys++;
+					}
+				} else {
+					invalidKeys++;
+				}
 			}
+			if (sw != null) stats.updateSelectedKeyDuration(sw);
 		}
+
 		long loopTime = refreshTimestampAndGet() - startTimestamp;
 		stats.updateSelectedKeysStats(lastSelectedKeys,
 				invalidKeys, acceptKeys, connectKeys, readKeys, writeKeys, loopTime);
@@ -614,8 +643,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	private void onAccept(SelectionKey key) {
 		assert inEventloopThread();
 
-		ServerSocketChannel channel = (ServerSocketChannel) key.channel();
-		if (!channel.isOpen()) { // TODO - remove?
+		ServerSocketChannel serverSocketChannel = (ServerSocketChannel) key.channel();
+		if (!serverSocketChannel.isOpen()) { // TODO - remove?
 			key.cancel();
 			return;
 		}
@@ -624,14 +653,14 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		for (; ; ) {
 			SocketChannel socketChannel;
 			try {
-				socketChannel = channel.accept();
+				socketChannel = serverSocketChannel.accept();
 				if (socketChannel == null)
 					break;
 				socketChannel.configureBlocking(false);
 			} catch (ClosedChannelException e) {
 				break;
 			} catch (IOException e) {
-				recordIoError(e, channel);
+				recordIoError(e, serverSocketChannel);
 				break;
 			}
 
@@ -639,7 +668,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 				acceptCallback.onAccept(socketChannel);
 			} catch (Throwable e) {
 				recordFatalError(e, acceptCallback);
-				closeQuietly(socketChannel);
+				closeChannel(socketChannel);
 			}
 		}
 	}
@@ -652,20 +681,25 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	private void onConnect(SelectionKey key) {
 		assert inEventloopThread();
 		SettableStage<SocketChannel> connectStage = (SettableStage<SocketChannel>) key.attachment();
-		SocketChannel channel = (SocketChannel) key.channel();
+		SocketChannel socketChannel = (SocketChannel) key.channel();
 		boolean connected;
 		try {
-			connected = channel.finishConnect();
+			connected = socketChannel.finishConnect();
 		} catch (IOException e) {
-			closeQuietly(channel);
+			closeChannel(socketChannel);
 			connectStage.setException(e);
 			return;
 		}
 
-		if (connected) {
-			connectStage.set(channel);
-		} else {
-			connectStage.setException(new SimpleException("Not connected"));
+		try {
+			if (connected) {
+				connectStage.set(socketChannel);
+			} else {
+				connectStage.setException(new SimpleException("Not connected"));
+			}
+		} catch (Throwable e) {
+			recordFatalError(e, socketChannel);
+			closeChannel(socketChannel);
 		}
 	}
 
@@ -677,7 +711,12 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	private void onRead(SelectionKey key) {
 		assert inEventloopThread();
 		NioChannelEventHandler handler = (NioChannelEventHandler) key.attachment();
-		handler.onReadReady();
+		try {
+			handler.onReadReady();
+		} catch (Throwable e) {
+			recordFatalError(e, handler);
+			closeChannel(key);
+		}
 	}
 
 	/**
@@ -688,15 +727,11 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	private void onWrite(SelectionKey key) {
 		assert inEventloopThread();
 		NioChannelEventHandler handler = (NioChannelEventHandler) key.attachment();
-		handler.onWriteReady();
-	}
-
-	private static void closeQuietly(AutoCloseable closeable) {
-		if (closeable == null)
-			return;
 		try {
-			closeable.close();
-		} catch (Exception ignored) {
+			handler.onWriteReady();
+		} catch (Throwable e) {
+			recordFatalError(e, handler);
+			closeChannel(key);
 		}
 	}
 
@@ -720,7 +755,9 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			serverChannel.register(ensureSelector(), SelectionKey.OP_ACCEPT, acceptCallback);
 			return serverChannel;
 		} catch (IOException e) {
-			closeQuietly(serverChannel);
+			if (serverChannel != null) {
+				closeChannel(serverChannel);
+			}
 			throw e;
 		}
 	}
@@ -780,11 +817,21 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			socketChannel = SocketChannel.open();
 			socketChannel.configureBlocking(false);
 			socketChannel.connect(address);
-			socketChannel.register(ensureSelector(), SelectionKey.OP_CONNECT,
-					timeoutConnectStage(socketChannel, timeout, stage));
 
+			SelectionKey key = socketChannel.register(ensureSelector(), SelectionKey.OP_CONNECT, stage);
+
+			if (timeout != 0) {
+				ScheduledRunnable scheduledTimeout = schedule(currentTimeMillis() + timeout, () -> {
+					closeChannel(key);
+					stage.setException(CONNECT_TIMEOUT);
+				});
+
+				stage.whenComplete(($, throwable) -> scheduledTimeout.cancel());
+			}
 		} catch (IOException e) {
-			closeQuietly(socketChannel);
+			if (socketChannel != null) {
+				closeChannel(socketChannel);
+			}
 			try {
 				stage.setException(e);
 			} catch (Throwable e1) {
@@ -792,30 +839,6 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			}
 		}
 		return stage;
-	}
-
-	/**
-	 * Returns modified connect stage to enable timeout.
-	 * If connectionTime is zero, method returns input connect stage.
-	 * Otherwise schedules special task that will close SocketChannel and call onException method in case of timeout.
-	 * If there is no timeout before connection - onConnect method will be called
-	 */
-	private SettableStage<SocketChannel> timeoutConnectStage(SocketChannel socketChannel, long connectionTime, SettableStage<SocketChannel> stage) {
-		if (connectionTime == 0) return stage;
-
-		ScheduledRunnable scheduledTimeout = schedule(currentTimeMillis() + connectionTime, () -> {
-			closeQuietly(socketChannel);
-			stage.setException(CONNECT_TIMEOUT);
-		});
-
-		SettableStage<SocketChannel> timeoutStage = SettableStage.create();
-		timeoutStage.whenComplete((socketChannel1, throwable) -> {
-			assert !scheduledTimeout.isComplete();
-			scheduledTimeout.cancel();
-			stage.set(socketChannel1, throwable);
-		});
-
-		return timeoutStage;
 	}
 
 	public long tick() {

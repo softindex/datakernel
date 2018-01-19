@@ -1,11 +1,10 @@
 package io.datakernel.jmx;
 
 import io.datakernel.async.AsyncCallable;
-import io.datakernel.async.AsyncFunction;
 import io.datakernel.eventloop.Eventloop;
 
 import java.util.concurrent.CompletionStage;
-import java.util.function.Function;
+import java.util.function.BiConsumer;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.jmx.JmxReducers.JmxReducerMax;
@@ -50,27 +49,19 @@ public class StageStats implements EventloopJmxMBean {
 		return eventloop.currentTimeMillis();
 	}
 
-	public <T> AsyncCallable<T> wrap(AsyncCallable<T> callable) {
+	public <T> AsyncCallable<T> wrapper(AsyncCallable<T> callable) {
 		return () -> monitor(callable.call());
 	}
 
-	public <T> CompletionStage<T> monitor(AsyncCallable<T> callable) {
-		return monitor(callable.call());
-	}
-
-	public <I, O> CompletionStage<O> monitor(AsyncFunction<? super I, O> function, I argument) {
-		return monitor(function.apply(argument));
-	}
-
-	public <I, O> Function<I, CompletionStage<O>> monitor(Function<? super I, ? extends CompletionStage<O>> function) {
-		return argument -> monitor(function.apply(argument));
-	}
-
 	public <T> CompletionStage<T> monitor(CompletionStage<T> stage) {
+		return stage.whenComplete(recordStats());
+	}
+
+	public <T> BiConsumer<T, Throwable> recordStats() {
 		this.activeStages++;
 		long before = currentTimeMillis();
 		this.lastStartTimestamp = before;
-		return stage.whenComplete((value, throwable) -> {
+		return (value, throwable) -> {
 			this.activeStages--;
 			long now = currentTimeMillis();
 			long durationMillis = now - before;
@@ -80,7 +71,7 @@ public class StageStats implements EventloopJmxMBean {
 			if (throwable != null) {
 				exceptions.recordException(throwable);
 			}
-		});
+		};
 	}
 
 	@Override

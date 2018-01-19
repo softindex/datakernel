@@ -20,16 +20,8 @@ public final class StreamStatsDetailedEx extends StreamStatsBasic {
 	private final EventStats totalSize = EventStats.create(DEFAULT_DETAILED_SMOOTHING_WINDOW);
 
 	@SuppressWarnings("unchecked")
-	private StreamStatsDetailedEx(StreamStatsSizeCounter<?> sizeCounter) {
+	StreamStatsDetailedEx(StreamStatsSizeCounter<?> sizeCounter) {
 		this.sizeCounter = (StreamStatsSizeCounter<Object>) sizeCounter;
-	}
-
-	public static StreamStatsDetailedEx create() {
-		return new StreamStatsDetailedEx(null);
-	}
-
-	public static StreamStatsDetailedEx create(StreamStatsSizeCounter<?> sizeCounter) {
-		return new StreamStatsDetailedEx(sizeCounter);
 	}
 
 	@SuppressWarnings("unchecked")

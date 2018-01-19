@@ -8,7 +8,6 @@ import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.StageStats;
-import io.datakernel.util.MutableBuilder;
 import io.datakernel.util.gson.GsonAdapters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +29,7 @@ import static java.util.Collections.nCopies;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.*;
 
-public class OTRemoteSql<D> implements OTRemote<Integer, D>, MutableBuilder<OTRemoteSql<D>>, EventloopJmxMBean {
+public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBean {
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 	public static final double DEFAULT_SMOOTHING_WINDOW = SMOOTHING_WINDOW_5_MINUTES;
 	public static final String DEFAULT_REVISION_TABLE = "ot_revision";
@@ -110,7 +109,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, MutableBuilder<OTRe
 
 	@Override
 	public CompletionStage<Integer> createCommitId() {
-		return statsCreateCommitId.monitor(eventloop.callExecutor(executor, () -> {
+		return eventloop.callExecutor(executor, () -> {
 			logger.trace("Start Create id");
 			try (Connection connection = dataSource.getConnection()) {
 				connection.setAutoCommit(true);
@@ -127,7 +126,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, MutableBuilder<OTRe
 					return id;
 				}
 			}
-		}));
+		}).whenComplete(statsCreateCommitId.recordStats());
 	}
 
 	private String toJson(List<D> diffs) throws IOException {
@@ -150,7 +149,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, MutableBuilder<OTRe
 	@Override
 	public CompletionStage<Void> push(Collection<OTCommit<Integer, D>> commits) {
 		if (commits.isEmpty()) return Stages.of(null);
-		return statsPush.monitor(eventloop.callExecutor(executor, () -> {
+		return eventloop.callExecutor(executor, () -> {
 			logger.trace("Push {} commits: {}", commits.size(),
 					commits.stream().map(OTCommit::idsToString).collect(toList()));
 
@@ -201,13 +200,13 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, MutableBuilder<OTRe
 				logger.trace("{} commits pushed: {}", commits.size(),
 						commits.stream().map(OTCommit::idsToString).collect(toList()));
 			}
-			return null;
-		}));
+			return (Void) null;
+		}).whenComplete(statsPush.recordStats());
 	}
 
 	@Override
 	public CompletionStage<Set<Integer>> getHeads() {
-		return statsGetHeads.monitor(eventloop.callExecutor(executor, () -> {
+		return eventloop.callExecutor(executor, () -> {
 			logger.trace("Get Heads");
 			try (Connection connection = dataSource.getConnection()) {
 				try (PreparedStatement ps = connection.prepareStatement(
@@ -222,13 +221,13 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, MutableBuilder<OTRe
 					return result;
 				}
 			}
-		}));
+		}).whenComplete(statsGetHeads.recordStats());
 	}
 
 	@Override
 	public CompletionStage<List<D>> loadSnapshot(Integer revisionId) {
 		logger.trace("Load snapshot: {}", revisionId);
-		return statsLoadSnapshot.monitor(eventloop.callExecutor(executor, () -> {
+		return eventloop.callExecutor(executor, () -> {
 			try (Connection connection = dataSource.getConnection()) {
 				try (PreparedStatement ps = connection.prepareStatement(
 						sql("SELECT snapshot FROM ot_revisions WHERE id=?"))) {
@@ -243,12 +242,12 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, MutableBuilder<OTRe
 					return otSystem.squash(snapshot);
 				}
 			}
-		}));
+		}).whenComplete(statsLoadSnapshot.recordStats());
 	}
 
 	@Override
 	public CompletionStage<OTCommit<Integer, D>> loadCommit(Integer revisionId) {
-		return statsLoadCommit.monitor(eventloop.callExecutor(executor, () -> {
+		return eventloop.callExecutor(executor, () -> {
 			logger.trace("Start load commit: {}", revisionId);
 			try (Connection connection = dataSource.getConnection()) {
 				Map<Integer, List<D>> parentDiffs = new HashMap<>();
@@ -283,12 +282,12 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, MutableBuilder<OTRe
 				logger.trace("Finish load commit: {}, parentIds: {}", revisionId, parentDiffs.keySet());
 				return OTCommit.of(revisionId, parentDiffs).withCommitMetadata(timestamp, snapshot);
 			}
-		}));
+		}).whenComplete(statsLoadCommit.recordStats());
 	}
 
 	@Override
 	public CompletionStage<Void> saveSnapshot(Integer revisionId, List<D> diffs) {
-		return statsSaveSnapshot.monitor(eventloop.callExecutor(executor, () -> {
+		return eventloop.callExecutor(executor, () -> {
 			logger.trace("Start save snapshot: {}, diffs: {}", revisionId, diffs.size());
 			try (Connection connection = dataSource.getConnection()) {
 				String snapshot = toJson(otSystem.squash(diffs));
@@ -300,10 +299,10 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, MutableBuilder<OTRe
 					ps.setInt(2, revisionId);
 					ps.executeUpdate();
 					logger.trace("Finish save snapshot: {}, diffs: {}", revisionId, diffs.size());
-					return null;
+					return (Void) null;
 				}
 			}
-		}));
+		}).whenComplete(statsSaveSnapshot.recordStats());
 	}
 
 	@Override

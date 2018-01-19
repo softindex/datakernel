@@ -9,7 +9,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.*;
 import io.datakernel.logfs.ot.LogDiff;
 import io.datakernel.ot.*;
-import io.datakernel.util.MutableBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,7 +24,7 @@ import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toSet;
 import static java.util.stream.Stream.concat;
 
-public final class CubeCleanerController implements MutableBuilder<CubeCleanerController>, EventloopJmxMBean {
+public final class CubeCleanerController implements EventloopJmxMBean {
 	private final Logger logger = LoggerFactory.getLogger(CubeCleanerController.class);
 
 	public static final long DEFAULT_CHUNKS_CLEANUP_DELAY = 60 * 1000L;
@@ -100,10 +99,10 @@ public final class CubeCleanerController implements MutableBuilder<CubeCleanerCo
 	}
 
 	CompletionStage<Void> doCleanup() {
-		return stageCleanup.monitor(
-				remote.getHeads()
-						.thenCompose(heads -> findFrozenCut(heads, eventloop.currentTimeMillis() - freezeTimeout))
-						.thenCompose(this::cleanupFrozenCut));
+		return remote.getHeads()
+				.thenCompose(heads -> findFrozenCut(heads, eventloop.currentTimeMillis() - freezeTimeout))
+				.thenCompose(this::cleanupFrozenCut)
+				.whenComplete(stageCleanup.recordStats());
 	}
 
 	CompletionStage<Set<Integer>> findFrozenCut(Set<Integer> heads, long freezeTimestamp) {
@@ -165,31 +164,30 @@ public final class CubeCleanerController implements MutableBuilder<CubeCleanerCo
 
 	private CompletionStage<Set<Long>> collectRequiredChunks(Integer checkpointNode) {
 		return remote.getHeads()
-				.thenCompose(heads -> stageCleanupCollectRequiredChunks.monitor(
-						algorithms.reduceEdges(heads,
-								checkpointNode,
-								DiffsReducer.of(new HashSet<>(),
-										(Set<Long> accumulatedChunks, List<LogDiff<CubeDiff>> diffs) ->
-												union(accumulatedChunks, chunks(diffs))))))
+				.thenCompose(heads -> algorithms.reduceEdges(heads,
+						checkpointNode,
+						DiffsReducer.of(new HashSet<>(),
+								(Set<Long> accumulatedChunks, List<LogDiff<CubeDiff>> diffs) ->
+										union(accumulatedChunks, chunks(diffs)))).whenComplete(stageCleanupCollectRequiredChunks.recordStats()))
 				.thenApply(accumulators -> accumulators.values().stream().flatMap(Collection::stream).collect(toSet()));
 	}
 
 	private CompletionStage<Void> cleanup(Integer checkpointNode, Set<Long> requiredChunks, long chunksCleanupTimestamp) {
 		return checkRequiredChunks(requiredChunks)
-				.thenCompose(stageCleanupRemote.monitor($ ->
-						remote.cleanup(checkpointNode)))
-				.thenCompose(stageCleanupChunks.monitor($ ->
-						chunksStorage.cleanupBeforeTimestamp(requiredChunks, chunksCleanupTimestamp)));
+				.thenCompose($ -> remote.cleanup(checkpointNode)
+						.whenComplete(stageCleanupRemote.recordStats()))
+				.thenCompose($ -> chunksStorage.cleanupBeforeTimestamp(requiredChunks, chunksCleanupTimestamp)
+						.whenComplete(stageCleanupChunks.recordStats()));
 	}
 
 	private CompletionStage<Void> checkRequiredChunks(Set<Long> requiredChunks) {
-		return stageCleanupCheckRequiredChunks.monitor(
-				chunksStorage.list(s -> true, timestamp -> true)
-						.whenComplete(onResult(chunks -> chunksCount.recordValue(chunks.size())))
-						.thenCompose(actualChunks -> actualChunks.containsAll(requiredChunks) ?
-								Stages.of(null) :
-								Stages.ofException(new IllegalStateException("Missed chunks from storage: " +
-										toLimitedString(difference(requiredChunks, actualChunks), 100)))));
+		return chunksStorage.list(s -> true, timestamp -> true)
+				.whenComplete(onResult(chunks -> chunksCount.recordValue(chunks.size())))
+				.thenCompose(actualChunks -> actualChunks.containsAll(requiredChunks) ?
+						Stages.of((Void) null) :
+						Stages.ofException(new IllegalStateException("Missed chunks from storage: " +
+								toLimitedString(difference(requiredChunks, actualChunks), 100))))
+				.whenComplete(stageCleanupCheckRequiredChunks.recordStats());
 	}
 
 	@JmxAttribute

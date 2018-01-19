@@ -4,6 +4,7 @@ import io.datakernel.aggregation.AggregationChunk;
 import io.datakernel.aggregation.AggregationChunkStorage;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.async.AsyncCallable;
+import io.datakernel.async.AsyncPredicate;
 import io.datakernel.async.Stages;
 import io.datakernel.cube.Cube;
 import io.datakernel.cube.ot.CubeDiff;
@@ -15,7 +16,6 @@ import io.datakernel.logfs.ot.LogOTState;
 import io.datakernel.ot.OTAlgorithms;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.ot.OTSystem;
-import io.datakernel.util.MutableBuilder;
 import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,39 +30,33 @@ import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
-public class CubeLogProcessorController implements MutableBuilder<CubeLogProcessorController>, EventloopJmxMBean {
-	private final Logger logger = LoggerFactory.getLogger(CubeLogProcessorController.class);
+public final class CubeLogProcessorController implements EventloopJmxMBean {
+	private static final Logger logger = LoggerFactory.getLogger(CubeLogProcessorController.class);
 
 	public static final double DEFAULT_SMOOTHING_WINDOW = SMOOTHING_WINDOW_5_MINUTES;
 
 	private final Eventloop eventloop;
 	private final List<LogOTProcessor<?, CubeDiff>> logProcessors;
-	private final OTAlgorithms<Integer, LogDiff<CubeDiff>> algorithms;
 	private final OTSystem<LogDiff<CubeDiff>> otSystem;
 	private final AggregationChunkStorage chunkStorage;
 	private final OTStateManager<Integer, LogDiff<CubeDiff>> stateManager;
-	private final LogOTState<CubeDiff> logOTState;
-	private final Cube cube;
+	private final AsyncPredicate<Integer> predicate;
 
 	private boolean parallelRunner;
 
 	private final Stopwatch sw = Stopwatch.createUnstarted();
 	private StageStats stageProcessLogs = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private StageStats stageProcessLogsImpl = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private ValueStats removedChunks = ValueStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private ValueStats removedChunksRecords = ValueStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private ValueStats addedChunks = ValueStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private ValueStats addedChunksRecords = ValueStats.create(DEFAULT_SMOOTHING_WINDOW);
 
-	CubeLogProcessorController(Eventloop eventloop, List<LogOTProcessor<?, CubeDiff>> logProcessors, OTAlgorithms<Integer, LogDiff<CubeDiff>> algorithms, OTSystem<LogDiff<CubeDiff>> otSystem, AggregationChunkStorage chunkStorage, OTStateManager<Integer, LogDiff<CubeDiff>> stateManager, LogOTState<CubeDiff> logOTState, Cube cube) {
+	CubeLogProcessorController(Eventloop eventloop, List<LogOTProcessor<?, CubeDiff>> logProcessors, OTSystem<LogDiff<CubeDiff>> otSystem, AggregationChunkStorage chunkStorage, OTStateManager<Integer, LogDiff<CubeDiff>> stateManager, AsyncPredicate<Integer> predicate) {
 		this.eventloop = eventloop;
 		this.logProcessors = logProcessors;
-		this.algorithms = algorithms;
 		this.otSystem = otSystem;
 		this.chunkStorage = chunkStorage;
 		this.stateManager = stateManager;
-		this.logOTState = logOTState;
-		this.cube = cube;
+		this.predicate = predicate;
 	}
 
 	public static CubeLogProcessorController create(Eventloop eventloop,
@@ -73,7 +67,14 @@ public class CubeLogProcessorController implements MutableBuilder<CubeLogProcess
 		OTSystem<LogDiff<CubeDiff>> system = algorithms.getOtSystem();
 		LogOTState<CubeDiff> logState = (LogOTState<CubeDiff>) stateManager.getState();
 		Cube cube = (Cube) logState.getDataState();
-		return new CubeLogProcessorController(eventloop, logProcessors, algorithms, system, chunkStorage, stateManager, logState, cube);
+		AsyncPredicate<Integer> predicate = AsyncPredicate.of(commitId -> {
+			if (cube.containsExcessiveNumberOfOverlappingChunks()) {
+				logger.info("Cube contains excessive number of overlapping chunks");
+				return false;
+			}
+			return true;
+		});
+		return new CubeLogProcessorController(eventloop, logProcessors, system, chunkStorage, stateManager, predicate);
 	}
 
 	public CubeLogProcessorController withParallelRunner(boolean parallelRunner) {
@@ -91,18 +92,17 @@ public class CubeLogProcessorController implements MutableBuilder<CubeLogProcess
 		sw.reset().start();
 		logger.info("Start log processing from head: {}", stateManager.getRevision());
 		logger.trace("Start state: {}", stateManager);
-		return stageProcessLogs.monitor(this::process)
+		return process()
+				.whenComplete(stageProcessLogs.recordStats())
 				.whenComplete(this::logResult)
 				.whenComplete(($, throwable) -> logger.trace("Finish state: {}", stateManager));
 	}
 
 	CompletionStage<Boolean> process() {
 		return stateManager.pull()
-				.thenCompose($_ -> {
-					if (cube.containsExcessiveNumberOfOverlappingChunks()) {
-						logger.info("Cube contains excessive number of overlapping chunks");
-						return Stages.of(false);
-					}
+				.thenCompose(predicate::test)
+				.thenCompose(ok -> {
+					if (!ok) return Stages.of(false);
 
 					logger.info("Pull to commit: {}, start log processing", stateManager.getRevision());
 
@@ -110,10 +110,12 @@ public class CubeLogProcessorController implements MutableBuilder<CubeLogProcess
 							.map(logProcessor -> AsyncCallable.of(logProcessor::processLog))
 							.collect(toList());
 
-					return stageProcessLogsImpl.monitor(
-							parallelRunner ?
-									Stages.collect(tasks.stream().map(AsyncCallable::call)) :
-									Stages.collectSequence(tasks))
+					CompletionStage<List<LogDiff<CubeDiff>>> stage = parallelRunner ?
+							Stages.collect(tasks.stream().map(AsyncCallable::call)) :
+							Stages.collectSequence(tasks);
+
+					return stage
+							.whenComplete(stageProcessLogsImpl.recordStats())
 							.whenComplete(onResult(this::cubeDiffJmx))
 							.thenCompose(diffs -> {
 								stateManager.add(otSystem.squash(diffs));
@@ -133,8 +135,6 @@ public class CubeLogProcessorController implements MutableBuilder<CubeLogProcess
 	private void cubeDiffJmx(List<LogDiff<CubeDiff>> logDiffs) {
 		long curAddedChunks = 0;
 		long curAddedChunksRecords = 0;
-		long curRemovedChunks = 0;
-		long curRemovedChunksRecords = 0;
 
 		for (LogDiff<CubeDiff> logDiff : logDiffs) {
 			for (CubeDiff cubeDiff : logDiff.diffs) {
@@ -144,19 +144,12 @@ public class CubeLogProcessorController implements MutableBuilder<CubeLogProcess
 					for (AggregationChunk aggregationChunk : aggregationDiff.getAddedChunks()) {
 						curAddedChunksRecords += aggregationChunk.getCount();
 					}
-
-					curRemovedChunks += aggregationDiff.getRemovedChunks().size();
-					for (AggregationChunk aggregationChunk : aggregationDiff.getRemovedChunks()) {
-						curRemovedChunksRecords += aggregationChunk.getCount();
-					}
 				}
 			}
 		}
 
 		addedChunks.recordValue(curAddedChunks);
 		addedChunksRecords.recordValue(curAddedChunksRecords);
-		removedChunks.recordValue(curRemovedChunks);
-		removedChunksRecords.recordValue(curRemovedChunksRecords);
 	}
 
 	private Set<Long> addedChunks(List<LogDiff<CubeDiff>> diffs) {
@@ -177,18 +170,8 @@ public class CubeLogProcessorController implements MutableBuilder<CubeLogProcess
 	}
 
 	@JmxAttribute
-	public ValueStats getLastRemovedChunks() {
-		return removedChunks;
-	}
-
-	@JmxAttribute
 	public ValueStats getLastAddedChunks() {
 		return addedChunks;
-	}
-
-	@JmxAttribute
-	public ValueStats getLastRemovedChunksRecords() {
-		return removedChunksRecords;
 	}
 
 	@JmxAttribute
@@ -213,8 +196,6 @@ public class CubeLogProcessorController implements MutableBuilder<CubeLogProcess
 
 	@JmxOperation
 	public void resetStats() {
-		removedChunks.resetStats();
-		removedChunksRecords.resetStats();
 		addedChunks.resetStats();
 		addedChunksRecords.resetStats();
 		stageProcessLogs.resetStats();

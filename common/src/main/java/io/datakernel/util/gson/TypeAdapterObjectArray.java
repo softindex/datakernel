@@ -3,7 +3,7 @@ package io.datakernel.util.gson;
 import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
-import io.datakernel.util.MutableBuilder;
+import io.datakernel.util.Initializer;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -12,7 +12,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-public final class TypeAdapterObjectArray<T> extends TypeAdapter<T> implements MutableBuilder<TypeAdapterObjectArray<T>> {
+public final class TypeAdapterObjectArray<T> extends TypeAdapter<T> implements Initializer<TypeAdapterObjectArray<T>> {
 
 	private static class Field<T, F> {
 		private final TypeAdapter<F> typeAdapter;

@@ -17,7 +17,7 @@
 package io.datakernel.stream;
 
 import io.datakernel.async.SettableStage;
-import io.datakernel.util.Builder;
+import io.datakernel.util.Modifier;
 
 import java.util.concurrent.CompletionStage;
 
@@ -32,7 +32,7 @@ import static io.datakernel.async.Stages.onError;
  *
  * @param <T> type of input data
  */
-public interface StreamConsumer<T> extends Builder<StreamConsumer<T>> {
+public interface StreamConsumer<T> extends Modifier<StreamConsumer<T>> {
 	/**
 	 * Sets wired producer. It will sent data to this consumer
 	 *
