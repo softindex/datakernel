@@ -26,10 +26,12 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import static io.datakernel.eventloop.Eventloop.DEFAULT_SMOOTHING_WINDOW;
 import static io.datakernel.jmx.ValueStats.POWERS_OF_TWO;
 
 @SuppressWarnings("unused")
 public final class EventloopStats {
+
 	private final EventStats loops;
 	private final ValueStats selectorSelectTimeout;
 	private final ValueStats selectorSelectTime;
@@ -42,46 +44,19 @@ public final class EventloopStats {
 	private final EventStats idleLoopsWaitingExternalTask;
 	private final EventStats selectOverdues;
 
-	private EventloopStats(double smoothingWindow, Eventloop.ExtraStatsExtractor extraStatsExtractor) {
-		loops = EventStats.create(smoothingWindow);
-		selectorSelectTimeout = ValueStats.create(smoothingWindow).withHistogram(new int[]{
-				-256, -128, -64, -32, -16, -8, -4, -2, -1, 0, 1, 2, 4, 8, 16, 32});
-		selectorSelectTime = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
-		businessLogicTime = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
-		tasks = new Tasks(smoothingWindow, extraStatsExtractor);
-		keys = new Keys(smoothingWindow);
+	EventloopStats(Eventloop.ExtraStatsExtractor extraStatsExtractor) {
+		loops = EventStats.create(DEFAULT_SMOOTHING_WINDOW);
+		selectorSelectTimeout = ValueStats.create(DEFAULT_SMOOTHING_WINDOW)
+				.withHistogram(new int[]{-256, -128, -64, -32, -16, -8, -4, -2, -1, 0, 1, 2, 4, 8, 16, 32});
+		selectorSelectTime = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO);
+		businessLogicTime = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO);
+		tasks = new Tasks(extraStatsExtractor);
+		keys = new Keys();
 		fatalErrors = ExceptionStats.create();
 		fatalErrorsMap = new HashMap<>();
-		idleLoops = EventStats.create(smoothingWindow);
-		idleLoopsWaitingExternalTask = EventStats.create(smoothingWindow);
-		selectOverdues = EventStats.create(smoothingWindow);
-	}
-
-	public static EventloopStats create(double smoothingWindow, Eventloop.ExtraStatsExtractor extraStatsExtractor) {
-		return new EventloopStats(smoothingWindow, extraStatsExtractor);
-	}
-
-	public void setSmoothingWindow(double smoothingWindow) {
-		loops.setSmoothingWindow(smoothingWindow);
-		selectorSelectTimeout.setSmoothingWindow(smoothingWindow);
-		selectorSelectTime.setSmoothingWindow(smoothingWindow);
-		businessLogicTime.setSmoothingWindow(smoothingWindow);
-		tasks.setSmoothingWindow(smoothingWindow);
-		keys.setSmoothingWindow(smoothingWindow);
-	}
-
-	public void reset() {
-		loops.resetStats();
-		selectorSelectTimeout.resetStats();
-		selectorSelectTime.resetStats();
-		businessLogicTime.resetStats();
-		tasks.reset();
-		keys.reset();
-		fatalErrors.resetStats();
-		fatalErrorsMap.clear();
-		idleLoops.resetStats();
-		idleLoopsWaitingExternalTask.resetStats();
-		selectOverdues.resetStats();
+		idleLoops = EventStats.create(DEFAULT_SMOOTHING_WINDOW);
+		idleLoopsWaitingExternalTask = EventStats.create(DEFAULT_SMOOTHING_WINDOW);
+		selectOverdues = EventStats.create(DEFAULT_SMOOTHING_WINDOW);
 	}
 
 	// region updating
@@ -258,48 +233,11 @@ public final class EventloopStats {
 		private final ScheduledTaskStats scheduled;
 		private final ScheduledTaskStats background;
 
-		public Tasks(double smoothingWindow, Eventloop.ExtraStatsExtractor extraStatsExtractor) {
-			local = new TaskStats(smoothingWindow, new Count() {
-				@Override
-				public int getCount() {
-					return extraStatsExtractor.getLocalTasksCount();
-				}
-			});
-
-			concurrent = new TaskStats(smoothingWindow, new Count() {
-				@Override
-				public int getCount() {
-					return extraStatsExtractor.getConcurrentTasksCount();
-				}
-			});
-
-			scheduled = new ScheduledTaskStats(smoothingWindow, new Count() {
-				@Override
-				public int getCount() {
-					return extraStatsExtractor.getScheduledTasksCount();
-				}
-			});
-
-			background = new ScheduledTaskStats(smoothingWindow, new Count() {
-				@Override
-				public int getCount() {
-					return extraStatsExtractor.getBackgroundTasksCount();
-				}
-			});
-		}
-
-		public void setSmoothingWindow(double smoothingWindow) {
-			local.setSmoothingWindow(smoothingWindow);
-			concurrent.setSmoothingWindow(smoothingWindow);
-			scheduled.setSmoothingWindow(smoothingWindow);
-			background.setSmoothingWindow(smoothingWindow);
-		}
-
-		public void reset() {
-			local.reset();
-			concurrent.reset();
-			scheduled.reset();
-			background.reset();
+		public Tasks(Eventloop.ExtraStatsExtractor extraStatsExtractor) {
+			local = new TaskStats(extraStatsExtractor::getLocalTasksCount);
+			concurrent = new TaskStats(extraStatsExtractor::getConcurrentTasksCount);
+			scheduled = new ScheduledTaskStats(extraStatsExtractor::getScheduledTasksCount);
+			background = new ScheduledTaskStats(extraStatsExtractor::getBackgroundTasksCount);
 		}
 
 		@JmxAttribute
@@ -330,24 +268,12 @@ public final class EventloopStats {
 		private final DurationRunnable longestTask;
 		private final Count count;
 
-		public TaskStats(double smoothingWindow, Count count) {
-			this.tasksPerLoop = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
-			this.loopTime = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
-			this.oneTaskTime = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
+		public TaskStats(Count count) {
+			this.tasksPerLoop = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO);
+			this.loopTime = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO);
+			this.oneTaskTime = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO);
 			this.longestTask = new DurationRunnable();
 			this.count = count;
-		}
-
-		public void setSmoothingWindow(double smoothingWindow) {
-			tasksPerLoop.setSmoothingWindow(smoothingWindow);
-			loopTime.setSmoothingWindow(smoothingWindow);
-			oneTaskTime.setSmoothingWindow(smoothingWindow);
-		}
-
-		public void reset() {
-			tasksPerLoop.resetStats();
-			loopTime.resetStats();
-			oneTaskTime.resetStats();
 		}
 
 		@JmxAttribute(name = "perLoop", extraSubAttributes = "histogram")
@@ -379,19 +305,9 @@ public final class EventloopStats {
 	public static final class ScheduledTaskStats extends TaskStats {
 		private final ValueStats overdues;
 
-		public ScheduledTaskStats(double smoothingWindow, Count count) {
-			super(smoothingWindow, count);
-			overdues = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
-		}
-
-		public void setSmoothingWindow(double smoothingWindow) {
-			super.setSmoothingWindow(smoothingWindow);
-			overdues.setSmoothingWindow(smoothingWindow);
-		}
-
-		public void reset() {
-			super.reset();
-			overdues.resetStats();
+		public ScheduledTaskStats(Count count) {
+			super(count);
+			overdues = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO);
 		}
 
 		@JmxAttribute(extraSubAttributes = "histogram")
@@ -410,37 +326,15 @@ public final class EventloopStats {
 		private final ValueStats loopTime;
 		private final ValueStats oneKeyTime;
 
-		public Keys(double smoothingWindow) {
-			all = EventStats.create(smoothingWindow);
-			invalid = EventStats.create(smoothingWindow);
-			acceptPerLoop = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
-			connectPerLoop = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
-			readPerLoop = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
-			writePerLoop = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
-			loopTime = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
-			oneKeyTime = ValueStats.create(smoothingWindow).withHistogram(POWERS_OF_TWO);
-		}
-
-		public void setSmoothingWindow(double smoothingWindow) {
-			all.setSmoothingWindow(smoothingWindow);
-			invalid.setSmoothingWindow(smoothingWindow);
-			acceptPerLoop.setSmoothingWindow(smoothingWindow);
-			connectPerLoop.setSmoothingWindow(smoothingWindow);
-			readPerLoop.setSmoothingWindow(smoothingWindow);
-			writePerLoop.setSmoothingWindow(smoothingWindow);
-			loopTime.setSmoothingWindow(smoothingWindow);
-			oneKeyTime.setSmoothingWindow(smoothingWindow);
-		}
-
-		public void reset() {
-			all.resetStats();
-			invalid.resetStats();
-			acceptPerLoop.resetStats();
-			connectPerLoop.resetStats();
-			readPerLoop.resetStats();
-			writePerLoop.resetStats();
-			loopTime.resetStats();
-			oneKeyTime.resetStats();
+		public Keys() {
+			all = EventStats.create(DEFAULT_SMOOTHING_WINDOW);
+			invalid = EventStats.create(DEFAULT_SMOOTHING_WINDOW);
+			acceptPerLoop = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO);
+			connectPerLoop = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO);
+			readPerLoop = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO);
+			writePerLoop = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO);
+			loopTime = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO);
+			oneKeyTime = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO);
 		}
 
 		@JmxAttribute
@@ -511,11 +405,12 @@ public final class EventloopStats {
 		}
 	}
 
-	public static final class DurationRunnable implements JmxStats<DurationRunnable> {
-		private Runnable runnable;
+	public static final class DurationRunnable implements JmxStats<DurationRunnable>, JmxStatsWithReset {
 		private long duration;
+		private Runnable runnable;
 
-		void reset() {
+		@Override
+		public void resetStats() {
 			duration = 0;
 			runnable = null;
 		}

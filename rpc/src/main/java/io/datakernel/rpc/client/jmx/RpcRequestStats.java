@@ -53,16 +53,6 @@ public final class RpcRequestStats implements JmxRefreshable {
 		overdues.refresh(timestamp);
 	}
 
-	public void resetStats() {
-		totalRequests.resetStats();
-		failedRequests.resetStats();
-		rejectedRequests.resetStats();
-		expiredRequests.resetStats();
-		responseTime.resetStats();
-		serverExceptions.resetStats();
-		overdues.resetStats();
-	}
-
 	@JmxAttribute(extraSubAttributes = "totalCount")
 	public EventStats getTotalRequests() {
 		return totalRequests;

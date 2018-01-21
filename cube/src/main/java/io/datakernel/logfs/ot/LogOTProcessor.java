@@ -20,7 +20,7 @@ import io.datakernel.async.Stages;
 import io.datakernel.async.StagesAccumulator;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
-import io.datakernel.jmx.EventloopJmxMBean;
+import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.StageStats;
@@ -49,7 +49,7 @@ import static io.datakernel.stream.DataStreams.stream;
 /**
  * Processes logs. Creates new aggregation chunks and persists them using logic defined in supplied {@code AggregatorSplitter}.
  */
-public final class LogOTProcessor<T, D> implements EventloopService, EventloopJmxMBean {
+public final class LogOTProcessor<T, D> implements EventloopService, EventloopJmxMBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final Eventloop eventloop;
@@ -153,13 +153,6 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 	@JmxAttribute
 	public StageStats getStageProcessLog() {
 		return stageProcessLog;
-	}
-
-	@JmxOperation
-	public void resetStats() {
-		streamStatsBasic.resetStats();
-		streamStatsDetailed.resetStats();
-		stageProcessLog.resetStats();
 	}
 
 	@JmxOperation

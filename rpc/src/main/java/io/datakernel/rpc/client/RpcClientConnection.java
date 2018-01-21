@@ -322,10 +322,6 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 		return monitoring;
 	}
 
-	public void resetStats() {
-		connectionStats.resetStats();
-	}
-
 	@JmxAttribute(name = "")
 	public RpcRequestStats getRequestStats() {
 		return connectionStats;

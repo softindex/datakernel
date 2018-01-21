@@ -132,7 +132,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  * @see RpcStrategies
  * @see RpcServer
  */
-public final class RpcClient implements IRpcClient, EventloopService, Initializer<RpcClient>, EventloopJmxMBean {
+public final class RpcClient implements IRpcClient, EventloopService, Initializer<RpcClient>, EventloopJmxMBeanEx {
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create().withTcpNoDelay(true);
 	public static final long DEFAULT_CONNECT_TIMEOUT = 10 * 1000L;
 	public static final long DEFAULT_RECONNECT_INTERVAL = 1 * 1000L;
@@ -551,7 +551,6 @@ public final class RpcClient implements IRpcClient, EventloopService, Initialize
 	}
 
 	private static final class NoServersStrategy implements RpcStrategy {
-
 		@Override
 		public Set<InetSocketAddress> getAddresses() {
 			return Collections.emptySet();
@@ -594,23 +593,6 @@ public final class RpcClient implements IRpcClient, EventloopService, Initialize
 			"(for example, responseTime and requestsStatsPerClass are collected only when monitoring is enabled)")
 	private boolean isMonitoring() {
 		return monitoring;
-	}
-
-	@JmxOperation
-	public void resetStats() {
-		generalRequestsStats.resetStats();
-		for (InetSocketAddress address : connectsStatsPerAddress.keySet()) {
-			connectsStatsPerAddress.get(address).reset();
-		}
-		for (Class<?> requestClass : requestStatsPerClass.keySet()) {
-			requestStatsPerClass.get(requestClass).resetStats();
-		}
-		for (InetSocketAddress address : addresses) {
-			RpcClientConnection connection = connections.get(address);
-			if (connection != null) {
-				connection.resetStats();
-			}
-		}
 	}
 
 	@JmxAttribute(name = "requests", extraSubAttributes = "totalRequests")

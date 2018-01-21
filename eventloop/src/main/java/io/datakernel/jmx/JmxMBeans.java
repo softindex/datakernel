@@ -593,9 +593,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 	private static AttributeNodeForPojo createAttributesTree(Class<?> clazz) {
 		List<AttributeNode> subNodes = createNodesFor(clazz, clazz, new String[0], null);
-		AttributeNodeForPojo root =
-				new AttributeNodeForPojo("", null, true, new ValueFetcherDirect(), null, subNodes);
-		return root;
+		return new AttributeNodeForPojo("", null, true, new ValueFetcherDirect(), null, subNodes);
 	}
 	// endregion
 

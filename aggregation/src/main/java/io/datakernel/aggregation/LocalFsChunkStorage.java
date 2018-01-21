@@ -22,9 +22,8 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.file.AsyncFile;
-import io.datakernel.jmx.EventloopJmxMBean;
+import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.StageStats;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducerWithResult;
@@ -56,7 +55,7 @@ import static org.slf4j.LoggerFactory.getLogger;
 /**
  * Stores aggregation chunks in local file system.
  */
-public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopService, Initializer<LocalFsChunkStorage>, EventloopJmxMBean {
+public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopService, Initializer<LocalFsChunkStorage>, EventloopJmxMBeanEx {
 	private final Logger logger = getLogger(this.getClass());
 	public static final int DEFAULT_BUFFER_SIZE = 256 * 1024;
 
@@ -375,25 +374,4 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 		return writeFile;
 	}
 
-	@JmxOperation
-	public void resetStats() {
-		stageIdGenerator.resetStats();
-		stageOpenR1.resetStats();
-		stageOpenR2.resetStats();
-		stageOpenR3.resetStats();
-		stageOpenW.resetStats();
-		stageFinishChunks.resetStats();
-		stageList.resetStats();
-		stageBackup.resetStats();
-		stageCleanup.resetStats();
-
-		readFile.resetStats();
-		readDecompress.resetStats();
-		readDeserialize.resetStats();
-
-		writeSerialize.resetStats();
-		writeCompress.resetStats();
-		writeChunker.resetStats();
-		writeFile.resetStats();
-	}
 }

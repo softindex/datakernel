@@ -19,7 +19,7 @@ package io.datakernel.eventloop;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stages;
 import io.datakernel.jmx.EventStats;
-import io.datakernel.jmx.EventloopJmxMBean;
+import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.ValueStats;
 import io.datakernel.net.ServerSocketSettings;
@@ -57,7 +57,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  * @param <S> type of AbstractNioServer which extends from it
  */
 @SuppressWarnings("WeakerAccess, unused")
-public abstract class AbstractServer<S extends AbstractServer<S>> implements EventloopServer, WorkerServer, Initializer<S>, EventloopJmxMBean {
+public abstract class AbstractServer<S extends AbstractServer<S>> implements EventloopServer, WorkerServer, Initializer<S>, EventloopJmxMBeanEx {
 	protected Logger logger = getLogger(this.getClass());
 
 	protected final Eventloop eventloop;

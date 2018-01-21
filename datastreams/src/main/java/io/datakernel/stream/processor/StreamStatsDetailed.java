@@ -2,11 +2,12 @@ package io.datakernel.stream.processor;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.JmxReducers;
+import io.datakernel.jmx.JmxStatsWithReset;
+import io.datakernel.jmx.ReflectionUtils;
 import io.datakernel.stream.StreamDataReceiver;
 
-public final class StreamStatsDetailed extends StreamStatsBasic {
+public final class StreamStatsDetailed extends StreamStatsBasic implements JmxStatsWithReset {
 	@Nullable
 	private final StreamStatsSizeCounter<Object> sizeCounter;
 
@@ -45,14 +46,13 @@ public final class StreamStatsDetailed extends StreamStatsBasic {
 	}
 
 	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
-	public long getTotalSize() {
-		return totalSize;
+	public Long getTotalSize() {
+		return sizeCounter != null ? totalSize : null;
 	}
 
 	@Override
-	@JmxOperation
 	public void resetStats() {
-		super.resetStats();
 		count = totalSize = 0;
+		ReflectionUtils.resetStats(this);
 	}
 }

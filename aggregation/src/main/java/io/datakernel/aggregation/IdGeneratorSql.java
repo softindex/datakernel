@@ -2,9 +2,8 @@ package io.datakernel.aggregation;
 
 import io.datakernel.async.AsyncCallable;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.EventloopJmxMBean;
+import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.StageStats;
 
 import javax.sql.DataSource;
@@ -16,8 +15,7 @@ import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 
-public class IdGeneratorSql<K> implements IdGenerator<K>, EventloopJmxMBean {
-	public static final double DEFAULT_SMOOTHING_WINDOW = SMOOTHING_WINDOW_5_MINUTES;
+public class IdGeneratorSql<K> implements IdGenerator<K>, EventloopJmxMBeanEx {
 
 	private final Eventloop eventloop;
 	private final ExecutorService executor;
@@ -26,7 +24,7 @@ public class IdGeneratorSql<K> implements IdGenerator<K>, EventloopJmxMBean {
 	private String insertSQL;
 	private String extraSQL;
 
-	private final StageStats stageCreateId = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final StageStats stageCreateId = StageStats.create(SMOOTHING_WINDOW_5_MINUTES);
 
 	private IdGeneratorSql(Eventloop eventloop, ExecutorService executor, DataSource dataSource) {
 		this.eventloop = eventloop;
@@ -46,10 +44,6 @@ public class IdGeneratorSql<K> implements IdGenerator<K>, EventloopJmxMBean {
 	public IdGeneratorSql<K> withExtraSQL(String extraSQL) {
 		this.extraSQL = extraSQL;
 		return this;
-	}
-
-	public void withStatsSmoothingWindow(double smoothingWindowSeconds) {
-		stageCreateId.setSmoothingWindow(smoothingWindowSeconds);
 	}
 
 	private final AsyncCallable<K> createId = AsyncCallable.of(this::doCreateId).with(stageCreateId::wrapper);
@@ -87,10 +81,5 @@ public class IdGeneratorSql<K> implements IdGenerator<K>, EventloopJmxMBean {
 	@JmxAttribute
 	public StageStats getStageCreateId() {
 		return stageCreateId;
-	}
-
-	@JmxOperation
-	public void resetStats() {
-		stageCreateId.resetStats();
 	}
 }

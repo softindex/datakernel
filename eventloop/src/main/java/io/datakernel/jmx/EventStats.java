@@ -24,7 +24,7 @@ import static java.lang.Math.log;
  * <p/>
  * Class is supposed to work in single thread
  */
-public final class EventStats implements JmxRefreshableStats<EventStats> {
+public final class EventStats implements JmxRefreshableStats<EventStats>, JmxStatsWithSmoothingWindow, JmxStatsWithReset {
 	private static final long TOO_LONG_TIME_PERIOD_BETWEEN_REFRESHES = 60 * 60 * 1000; // 1 hour
 	private static final double LN_2 = log(2);
 
@@ -75,6 +75,7 @@ public final class EventStats implements JmxRefreshableStats<EventStats> {
 	/**
 	 * Resets rate to zero
 	 */
+	@Override
 	public void resetStats() {
 		lastCount = 0;
 		totalCount = 0;
@@ -164,11 +165,13 @@ public final class EventStats implements JmxRefreshableStats<EventStats> {
 		return totalCount;
 	}
 
+	@Override
 	@JmxAttribute(optional = true)
 	public double getSmoothingWindow() {
 		return smoothingWindow;
 	}
 
+	@Override
 	@JmxAttribute(optional = true)
 	public void setSmoothingWindow(double smoothingWindow) {
 		this.smoothingWindow = smoothingWindow;

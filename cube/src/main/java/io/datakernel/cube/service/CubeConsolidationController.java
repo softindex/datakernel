@@ -27,7 +27,7 @@ import static io.datakernel.async.Stages.onResult;
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static java.util.stream.Collectors.toSet;
 
-public final class CubeConsolidationController implements EventloopJmxMBean {
+public final class CubeConsolidationController implements EventloopJmxMBeanEx {
 	public static final Supplier<AsyncFunction<Aggregation, AggregationDiff>> DEFAULT_STRATEGY = new Supplier<AsyncFunction<Aggregation, AggregationDiff>>() {
 		private boolean hotSegment = false;
 
@@ -180,16 +180,6 @@ public final class CubeConsolidationController implements EventloopJmxMBean {
 	@JmxAttribute
 	public StageStats getStageConsolidateImpl() {
 		return stageConsolidateImpl;
-	}
-
-	@JmxOperation
-	public void resetStats() {
-		removedChunks.resetStats();
-		removedChunksRecords.resetStats();
-		addedChunks.resetStats();
-		addedChunksRecords.resetStats();
-		stageConsolidate.resetStats();
-		stageConsolidateImpl.resetStats();
 	}
 
 	@JmxOperation

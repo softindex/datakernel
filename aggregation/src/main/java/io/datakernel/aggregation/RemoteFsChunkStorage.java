@@ -20,9 +20,8 @@ import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.async.Stages;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.EventloopJmxMBean;
+import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.StageStats;
 import io.datakernel.remotefs.IRemoteFsClient;
 import io.datakernel.remotefs.RemoteFsClient;
@@ -42,7 +41,7 @@ import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.processor.StreamStatsSizeCounter.forByteBufs;
 import static java.util.stream.Collectors.toMap;
 
-public class RemoteFsChunkStorage implements AggregationChunkStorage, EventloopJmxMBean {
+public class RemoteFsChunkStorage implements AggregationChunkStorage, EventloopJmxMBeanEx {
 	public static final int DEFAULT_BUFFER_SIZE = 256 * 1024;
 	public static final String LOG = ".log";
 	public static final String TEMP_LOG = ".temp";
@@ -219,25 +218,6 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage, EventloopJ
 	@JmxAttribute
 	public StreamStatsDetailedEx getWriteRemoteFS() {
 		return writeRemoteFS;
-	}
-
-	@JmxOperation
-	public void resetStats() {
-		stageIdGenerator.resetStats();
-		stageOpenR1.resetStats();
-		stageOpenR2.resetStats();
-		stageOpenR3.resetStats();
-		stageOpenW.resetStats();
-		stageFinishChunks.resetStats();
-
-		readRemoteFS.resetStats();
-		readDecompress.resetStats();
-		readDeserialize.resetStats();
-
-		writeSerialize.resetStats();
-		writeCompress.resetStats();
-		writeChunker.resetStats();
-		writeRemoteFS.resetStats();
 	}
 
 }

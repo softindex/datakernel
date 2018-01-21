@@ -3,7 +3,7 @@ package io.datakernel.ot;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.EventloopJmxMBean;
+import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.StageStats;
 import io.datakernel.ot.exceptions.OTException;
@@ -25,7 +25,7 @@ import static java.util.Collections.singletonMap;
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toList;
 
-public final class OTAlgorithms<K, D> implements EventloopJmxMBean {
+public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	private static final Logger logger = LoggerFactory.getLogger(OTAlgorithms.class);
 	public static final double DEFAULT_SMOOTHING_WINDOW = SMOOTHING_WINDOW_5_MINUTES;
 

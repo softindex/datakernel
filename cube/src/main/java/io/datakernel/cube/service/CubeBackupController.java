@@ -5,7 +5,7 @@ import io.datakernel.async.AsyncCallable;
 import io.datakernel.async.Stages;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.EventloopJmxMBean;
+import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.StageStats;
@@ -24,7 +24,7 @@ import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static java.util.Collections.max;
 import static java.util.stream.Collectors.toSet;
 
-public final class CubeBackupController implements EventloopJmxMBean {
+public final class CubeBackupController implements EventloopJmxMBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(CubeBackupController.class);
 
 	public static final double DEFAULT_SMOOTHING_WINDOW = SMOOTHING_WINDOW_5_MINUTES;
@@ -110,11 +110,5 @@ public final class CubeBackupController implements EventloopJmxMBean {
 		return stageBackupChunks;
 	}
 
-	@JmxOperation
-	public void resetStats() {
-		this.stageBackup.resetStats();
-		this.stageBackupDb.resetStats();
-		this.stageBackupChunks.resetStats();
-	}
 }
 

@@ -24,7 +24,7 @@ import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toSet;
 import static java.util.stream.Stream.concat;
 
-public final class CubeCleanerController implements EventloopJmxMBean {
+public final class CubeCleanerController implements EventloopJmxMBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(CubeCleanerController.class);
 
 	public static final long DEFAULT_CHUNKS_CLEANUP_DELAY = 60 * 1000L;
@@ -92,7 +92,7 @@ public final class CubeCleanerController implements EventloopJmxMBean {
 		return commit.getParents().values().stream().flatMap(Collection::stream);
 	}
 
-	AsyncCallable<Void> cleanup = sharedCall(this::doCleanup);
+	private final AsyncCallable<Void> cleanup = sharedCall(this::doCleanup);
 
 	public CompletionStage<Void> cleanup() {
 		return cleanup.call();
@@ -253,16 +253,6 @@ public final class CubeCleanerController implements EventloopJmxMBean {
 	@JmxOperation
 	public void cleanupNow() {
 		cleanup();
-	}
-
-	@JmxOperation
-	public void resetStats() {
-		chunksCount.resetStats();
-		stageCleanup.resetStats();
-		stageCleanupCollectRequiredChunks.resetStats();
-		stageCleanupCheckRequiredChunks.resetStats();
-		stageCleanupRemote.resetStats();
-		stageCleanupChunks.resetStats();
 	}
 
 	@Override

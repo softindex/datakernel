@@ -23,29 +23,24 @@ import io.datakernel.jmx.ValueStats;
 import java.util.HashMap;
 import java.util.Map;
 
+import static io.datakernel.eventloop.Eventloop.DEFAULT_SMOOTHING_WINDOW;
+
 public final class ExecutorCallsStats {
 	private final EventStats totalCalls;
 	private final EventStats rejectedCalls;
 	private final ValueStats executionDuration;
 	private final ValueStats awaitingStartDuration;
 
-	private double smoothingWindow;
-
 	private final Map<String, DistributedStats> taskNameToStats = new HashMap<>();
 
 	// region builders
-	private ExecutorCallsStats(double smoothingWindow) {
-		this.smoothingWindow = smoothingWindow;
-
-		totalCalls = EventStats.create(smoothingWindow);
-		rejectedCalls = EventStats.create(smoothingWindow);
-		executionDuration = ValueStats.create(smoothingWindow);
-		awaitingStartDuration = ValueStats.create(smoothingWindow);
+	ExecutorCallsStats() {
+		totalCalls = EventStats.create(DEFAULT_SMOOTHING_WINDOW);
+		rejectedCalls = EventStats.create(DEFAULT_SMOOTHING_WINDOW);
+		executionDuration = ValueStats.create(DEFAULT_SMOOTHING_WINDOW);
+		awaitingStartDuration = ValueStats.create(DEFAULT_SMOOTHING_WINDOW);
 	}
 
-	public static ExecutorCallsStats create(double smoothingWindow) {
-		return new ExecutorCallsStats(smoothingWindow);
-	}
 	// region builders
 
 	public void recordCall(String taskName) {
@@ -99,11 +94,11 @@ public final class ExecutorCallsStats {
 		private final ValueStats executionDuration;
 		private final ValueStats awaitingStartDuration;
 
-		public DistributedStats(double smoothingWindow) {
-			totalCalls = EventStats.create(smoothingWindow);
-			rejectedCalls = EventStats.create(smoothingWindow);
-			executionDuration = ValueStats.create(smoothingWindow);
-			awaitingStartDuration = ValueStats.create(smoothingWindow);
+		public DistributedStats() {
+			totalCalls = EventStats.create(DEFAULT_SMOOTHING_WINDOW);
+			rejectedCalls = EventStats.create(DEFAULT_SMOOTHING_WINDOW);
+			executionDuration = ValueStats.create(DEFAULT_SMOOTHING_WINDOW);
+			awaitingStartDuration = ValueStats.create(DEFAULT_SMOOTHING_WINDOW);
 		}
 
 		@JmxAttribute
@@ -125,33 +120,14 @@ public final class ExecutorCallsStats {
 		public ValueStats getAwaitingStartDuration() {
 			return awaitingStartDuration;
 		}
-
-		private void setSmoothingWindow(double smoothingWindow) {
-			totalCalls.setSmoothingWindow(smoothingWindow);
-			rejectedCalls.setSmoothingWindow(smoothingWindow);
-			executionDuration.setSmoothingWindow(smoothingWindow);
-			awaitingStartDuration.setSmoothingWindow(smoothingWindow);
-		}
 	}
 
 	private DistributedStats ensureConcurrentCallsStatsForTaskName(String taskName) {
 		if (!taskNameToStats.containsKey(taskName)) {
-			DistributedStats stats = new DistributedStats(smoothingWindow);
+			DistributedStats stats = new DistributedStats();
 			taskNameToStats.put(taskName, stats);
 		}
 		return taskNameToStats.get(taskName);
 	}
 
-	public void setSmoothingWindow(double smoothingWindow) {
-		this.smoothingWindow = smoothingWindow;
-
-		totalCalls.setSmoothingWindow(smoothingWindow);
-		rejectedCalls.setSmoothingWindow(smoothingWindow);
-		executionDuration.setSmoothingWindow(smoothingWindow);
-		awaitingStartDuration.setSmoothingWindow(smoothingWindow);
-
-		for (DistributedStats distributedStats : taskNameToStats.values()) {
-			distributedStats.setSmoothingWindow(smoothingWindow);
-		}
-	}
 }

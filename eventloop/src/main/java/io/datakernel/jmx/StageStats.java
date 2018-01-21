@@ -11,7 +11,7 @@ import static io.datakernel.jmx.JmxReducers.JmxReducerMax;
 import static io.datakernel.jmx.JmxReducers.JmxReducerSum;
 import static io.datakernel.jmx.MBeanFormat.formatPeriodAgo;
 
-public class StageStats implements EventloopJmxMBean {
+public class StageStats {
 	private Eventloop eventloop;
 
 	private int activeStages = 0;
@@ -74,11 +74,6 @@ public class StageStats implements EventloopJmxMBean {
 		};
 	}
 
-	@Override
-	public Eventloop getEventloop() {
-		return eventloop;
-	}
-
 	@JmxAttribute(reducer = JmxReducerSum.class)
 	public long getActiveStages() {
 		return activeStages;
@@ -117,21 +112,5 @@ public class StageStats implements EventloopJmxMBean {
 	@JmxAttribute
 	public ExceptionStats getExceptions() {
 		return exceptions;
-	}
-
-	@JmxAttribute(optional = true)
-	public double getSmoothingWindow() {
-		return duration.getSmoothingWindow();
-	}
-
-	@JmxAttribute(optional = true)
-	public void setSmoothingWindow(double smoothingWindowSeconds) {
-		duration.setSmoothingWindow(smoothingWindowSeconds);
-	}
-
-	@JmxOperation
-	public void resetStats() {
-		duration.resetStats();
-		exceptions.resetStats();
 	}
 }

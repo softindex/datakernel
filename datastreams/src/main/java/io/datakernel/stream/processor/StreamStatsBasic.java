@@ -1,6 +1,9 @@
 package io.datakernel.stream.processor;
 
-import io.datakernel.jmx.*;
+import io.datakernel.jmx.EventStats;
+import io.datakernel.jmx.ExceptionStats;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxReducers;
 import io.datakernel.stream.StreamDataReceiver;
 
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
@@ -82,12 +85,4 @@ public class StreamStatsBasic implements StreamStats {
 		return (int) (started.getTotalCount() - (endOfStream.getTotalCount() + error.getTotal()));
 	}
 
-	@JmxOperation
-	public void resetStats() {
-		started.resetStats();
-		produce.resetStats();
-		suspend.resetStats();
-		endOfStream.resetStats();
-		error.resetStats();
-	}
 }

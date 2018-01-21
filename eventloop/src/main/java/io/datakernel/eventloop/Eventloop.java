@@ -21,7 +21,7 @@ import io.datakernel.async.AsyncCallable;
 import io.datakernel.async.SettableStage;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.SimpleException;
-import io.datakernel.jmx.EventloopJmxMBean;
+import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.ValueStats;
@@ -64,8 +64,9 @@ import static java.util.Collections.emptyIterator;
  * eventloop will be ended, when it has not selected keys and its queues with
  * tasks are empty.
  */
-public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, CurrentTimeProvider, Initializer<Eventloop>, EventloopJmxMBean {
+public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, CurrentTimeProvider, Initializer<Eventloop>, EventloopJmxMBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+	static final double DEFAULT_SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_1_MINUTE;
 
 	public static final AsyncTimeoutException CONNECT_TIMEOUT = new AsyncTimeoutException("Connection timed out");
 	private static final long DEFAULT_IDLE_INTERVAL = 1000L;
@@ -149,10 +150,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 	// JMX
 
-	private static final double DEFAULT_SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_1_MINUTE;
-	private double smoothingWindow = DEFAULT_SMOOTHING_WINDOW;
-	private final EventloopStats stats = EventloopStats.create(DEFAULT_SMOOTHING_WINDOW, new ExtraStatsExtractor());
-	private final ExecutorCallsStats executorsCallsStats = ExecutorCallsStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final EventloopStats stats = new EventloopStats(new ExtraStatsExtractor());
+	private final ExecutorCallsStats executorsCallsStats = new ExecutorCallsStats();
 
 	private boolean monitoring = false;
 
@@ -1076,11 +1075,6 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		return monitoring;
 	}
 
-	@JmxOperation
-	public void resetStats() {
-		stats.reset();
-	}
-
 	private void recordIoError(Exception e, Object context) {
 		logger.warn("IO Error in {}: {}", context, e.toString());
 	}
@@ -1167,19 +1161,6 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	@JmxAttribute
 	public ExecutorCallsStats getExecutorsCallsStats() {
 		return executorsCallsStats;
-	}
-
-	@JmxAttribute
-	public double getSmoothingWindow() {
-		return smoothingWindow;
-	}
-
-	@JmxAttribute
-	public void setSmoothingWindow(double smoothingWindow) {
-		this.smoothingWindow = smoothingWindow;
-
-		stats.setSmoothingWindow(smoothingWindow);
-		executorsCallsStats.setSmoothingWindow(smoothingWindow);
 	}
 
 	@JmxAttribute

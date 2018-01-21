@@ -30,7 +30,7 @@ import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
-public final class CubeLogProcessorController implements EventloopJmxMBean {
+public final class CubeLogProcessorController implements EventloopJmxMBeanEx {
 	private static final Logger logger = LoggerFactory.getLogger(CubeLogProcessorController.class);
 
 	public static final double DEFAULT_SMOOTHING_WINDOW = SMOOTHING_WINDOW_5_MINUTES;
@@ -194,11 +194,4 @@ public final class CubeLogProcessorController implements EventloopJmxMBean {
 		processLogs();
 	}
 
-	@JmxOperation
-	public void resetStats() {
-		addedChunks.resetStats();
-		addedChunksRecords.resetStats();
-		stageProcessLogs.resetStats();
-		stageProcessLogsImpl.resetStats();
-	}
 }

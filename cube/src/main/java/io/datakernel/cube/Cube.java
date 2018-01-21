@@ -33,7 +33,7 @@ import io.datakernel.cube.asm.TotalsFunction;
 import io.datakernel.cube.attributes.AttributeResolver;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.EventloopJmxMBean;
+import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.ValueStats;
 import io.datakernel.logfs.ot.LogDataConsumer;
@@ -80,7 +80,7 @@ import static java.util.stream.Collectors.toList;
  * Also provides functionality for managing aggregations.
  */
 @SuppressWarnings("unchecked")
-public final class Cube implements ICube, OTState<CubeDiff>, Initializer<Cube>, EventloopJmxMBean {
+public final class Cube implements ICube, OTState<CubeDiff>, Initializer<Cube>, EventloopJmxMBeanEx {
 	private static final Logger logger = LoggerFactory.getLogger(Cube.class);
 
 	public static final int DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD = 300;

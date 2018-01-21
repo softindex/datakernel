@@ -3,10 +3,10 @@ package io.datakernel.async;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.eventloop.ScheduledRunnable;
-import io.datakernel.jmx.EventloopJmxMBean;
+import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.StageStats;
+import io.datakernel.util.Initializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,12 +14,12 @@ import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 
-public final class EventloopTaskScheduler implements EventloopService, EventloopJmxMBean {
+public final class EventloopTaskScheduler implements EventloopService, Initializer<EventloopTaskScheduler>, EventloopJmxMBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final Eventloop eventloop;
 	private final AsyncCallable<?> task;
-	private final StageStats stats;
+	private final StageStats stats = StageStats.create(SMOOTHING_WINDOW_5_MINUTES);
 
 	private long initialDelay;
 	private Schedule schedule;
@@ -58,15 +58,13 @@ public final class EventloopTaskScheduler implements EventloopService, Eventloop
 
 	private ScheduledRunnable scheduledTask;
 
-	private EventloopTaskScheduler(Eventloop eventloop, AsyncCallable<?> task, StageStats stats) {
+	private EventloopTaskScheduler(Eventloop eventloop, AsyncCallable<?> task) {
 		this.eventloop = eventloop;
 		this.task = task;
-		this.stats = stats;
 	}
 
 	public static EventloopTaskScheduler create(Eventloop eventloop, AsyncCallable<?> task) {
-		StageStats stats = StageStats.create(SMOOTHING_WINDOW_5_MINUTES);
-		return new EventloopTaskScheduler(eventloop, task, stats);
+		return new EventloopTaskScheduler(eventloop, task);
 	}
 
 	public EventloopTaskScheduler withInitialDelay(long initialDelayMillis) {
@@ -99,11 +97,6 @@ public final class EventloopTaskScheduler implements EventloopService, Eventloop
 
 	public EventloopTaskScheduler withAbortOnError(boolean abortOnError) {
 		this.abortOnError = abortOnError;
-		return this;
-	}
-
-	public EventloopTaskScheduler withStatsSmoothingWindow(double smoothingWindowSeconds) {
-		this.stats.setSmoothingWindow(smoothingWindowSeconds);
 		return this;
 	}
 
@@ -181,13 +174,8 @@ public final class EventloopTaskScheduler implements EventloopService, Eventloop
 	}
 
 	@JmxAttribute
-	public double getStatsSmoothingWindow() {
-		return stats.getSmoothingWindow();
-	}
-
-	@JmxAttribute
-	public void setStatsSmoothingWindow(double smoothingWindowSeconds) {
-		stats.setSmoothingWindow(smoothingWindowSeconds);
+	public long getInitialDelay() {
+		return initialDelay;
 	}
 
 	@JmxAttribute
@@ -196,7 +184,7 @@ public final class EventloopTaskScheduler implements EventloopService, Eventloop
 	}
 
 	@JmxAttribute
-	public void setPeriod(long periodMillis) {
+	public void setPeriod(Long periodMillis) {
 		this.schedule = Schedule.ofPeriod(periodMillis);
 		// for JMX:
 		this.period = periodMillis;
@@ -209,16 +197,11 @@ public final class EventloopTaskScheduler implements EventloopService, Eventloop
 	}
 
 	@JmxAttribute
-	public void setInterval(long intervalMillis) {
+	public void setInterval(Long intervalMillis) {
 		this.schedule = Schedule.ofInterval(intervalMillis);
 		// for JMX:
 		this.period = null;
 		this.interval = intervalMillis;
-	}
-
-	@JmxOperation
-	public void resetStats() {
-		stats.resetStats();
 	}
 
 }

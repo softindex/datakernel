@@ -4,9 +4,8 @@ import com.google.gson.TypeAdapter;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.EventloopJmxMBean;
+import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.StageStats;
 import io.datakernel.util.gson.GsonAdapters;
 import org.slf4j.Logger;
@@ -29,7 +28,7 @@ import static java.util.Collections.nCopies;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.*;
 
-public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBean {
+public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 	public static final double DEFAULT_SMOOTHING_WINDOW = SMOOTHING_WINDOW_5_MINUTES;
 	public static final String DEFAULT_REVISION_TABLE = "ot_revision";
@@ -386,17 +385,6 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBean {
 	@JmxAttribute
 	public StageStats getStatsSaveSnapshot() {
 		return statsSaveSnapshot;
-	}
-
-	@JmxOperation
-	public void resetStats() {
-		statsCreateCommitId.resetStats();
-		statsPush.resetStats();
-		statsGetHeads.resetStats();
-		statsLoadCommit.resetStats();
-		statsIsSnapshot.resetStats();
-		statsLoadSnapshot.resetStats();
-		statsSaveSnapshot.resetStats();
 	}
 
 }

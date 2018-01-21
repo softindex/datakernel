@@ -17,14 +17,18 @@
 package io.datakernel.jmx;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.*;
+import java.util.function.Function;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 
-final class ReflectionUtils {
+public final class ReflectionUtils {
 
-	private ReflectionUtils() {}
+	private ReflectionUtils() {
+	}
 
 	public static boolean isJmxStats(Class<?> clazz) {
 		return JmxStats.class.isAssignableFrom(clazz);
@@ -132,4 +136,74 @@ final class ReflectionUtils {
 				Modifier.isPublic(createMethod.getModifiers()) &&
 				createMethod.getReturnType().equals(clazz);
 	}
+
+	private static void visitFields(Object instance, Function<Object, Boolean> action) {
+		if (instance == null) return;
+		for (Method method : instance.getClass().getMethods()) {
+			if (method.getParameters().length != 0 || !Modifier.isPublic(method.getModifiers()))
+				continue;
+			Class<?> returnType = method.getReturnType();
+			if (returnType == void.class || returnType == String.class || isPrimitiveType(returnType) || isPrimitiveTypeWrapper(returnType))
+				continue;
+			if (Arrays.stream(method.getAnnotations()).noneMatch(a -> a.annotationType() == JmxAttribute.class))
+				continue;
+			Object fieldValue;
+			try {
+				fieldValue = method.invoke(instance);
+			} catch (IllegalAccessException | InvocationTargetException e) {
+				continue;
+			}
+			if (fieldValue == null)
+				continue;
+			if (action.apply(fieldValue)) continue;
+			if (Map.class.isAssignableFrom(returnType)) {
+				for (Object item : ((Map<?, ?>) fieldValue).values()) {
+					visitFields(item, action);
+				}
+			} else if (Collection.class.isAssignableFrom(returnType)) {
+				for (Object item : ((Collection<?>) fieldValue)) {
+					visitFields(item, action);
+				}
+			} else {
+				visitFields(fieldValue, action);
+			}
+		}
+	}
+
+	public static void resetStats(Object instance) {
+		visitFields(instance, item -> {
+			if (item instanceof JmxStatsWithReset) {
+				((JmxStatsWithReset) item).resetStats();
+				return true;
+			}
+			return false;
+		});
+	}
+
+	public static void setSmoothingWindow(Object instance, double smoothingWindowSeconds) {
+		visitFields(instance, item -> {
+			if (item instanceof JmxStatsWithSmoothingWindow) {
+				((JmxStatsWithSmoothingWindow) item).setSmoothingWindow(smoothingWindowSeconds);
+				return true;
+			}
+			return false;
+		});
+	}
+
+	public static Double getSmoothingWindow(Object instance) {
+		Set<Double> result = new HashSet<>();
+		visitFields(instance, item -> {
+			if (item instanceof JmxStatsWithSmoothingWindow) {
+				double smoothingWindow = ((JmxStatsWithSmoothingWindow) item).getSmoothingWindow();
+				result.add(smoothingWindow);
+				return true;
+			}
+			return false;
+		});
+		if (result.size() == 1) {
+			return result.iterator().next();
+		}
+		return null;
+	}
+
 }

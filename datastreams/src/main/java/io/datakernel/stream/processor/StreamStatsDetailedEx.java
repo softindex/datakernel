@@ -3,7 +3,6 @@ package io.datakernel.stream.processor;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.ValueStats;
 import io.datakernel.stream.StreamDataReceiver;
 
@@ -57,12 +56,6 @@ public final class StreamStatsDetailedEx extends StreamStatsBasic {
 				};
 	}
 
-	public StreamStatsDetailedEx withDetailedSmoothingWindow(double smoothingWindowSeconds) {
-		count.setSmoothingWindow(smoothingWindowSeconds);
-		itemSize.setSmoothingWindow(smoothingWindowSeconds);
-		return this;
-	}
-
 	public StreamStatsDetailedEx withSizeHistogram(int[] levels) {
 		itemSize.setHistogramLevels(levels);
 		return this;
@@ -75,20 +68,12 @@ public final class StreamStatsDetailedEx extends StreamStatsBasic {
 
 	@JmxAttribute
 	public ValueStats getItemSize() {
-		return itemSize;
+		return sizeCounter != null ? itemSize : null;
 	}
 
 	@JmxAttribute
 	public EventStats getTotalSize() {
-		return totalSize;
+		return sizeCounter != null ? totalSize : null;
 	}
 
-	@Override
-	@JmxOperation
-	public void resetStats() {
-		super.resetStats();
-		count.resetStats();
-		itemSize.resetStats();
-		totalSize.resetStats();
-	}
 }

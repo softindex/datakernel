@@ -23,7 +23,7 @@ import io.datakernel.async.Stages;
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.EventloopJmxMBean;
+import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumer;
@@ -59,7 +59,7 @@ import static java.util.stream.Collectors.toList;
  * Provides methods for loading and querying data.
  */
 @SuppressWarnings("unchecked")
-public class Aggregation implements IAggregation, Initializer<Aggregation>, EventloopJmxMBean {
+public class Aggregation implements IAggregation, Initializer<Aggregation>, EventloopJmxMBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	public static final int DEFAULT_CHUNK_SIZE = 1_000_000;

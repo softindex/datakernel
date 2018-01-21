@@ -22,7 +22,7 @@ import java.util.List;
 
 import static java.util.Arrays.asList;
 
-public final class ExceptionStats implements JmxStats<ExceptionStats> {
+public final class ExceptionStats implements JmxStats<ExceptionStats>, JmxStatsWithReset {
 	public static final SimpleDateFormat TIMESTAMP_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 	private static final long DETAILS_REFRESH_TIMEOUT = 1000L;
 
@@ -55,6 +55,7 @@ public final class ExceptionStats implements JmxStats<ExceptionStats> {
 		recordException(throwable, null);
 	}
 
+	@Override
 	public void resetStats() {
 		this.count = 0;
 		this.lastExceptionTimestamp = 0;
