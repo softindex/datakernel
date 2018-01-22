@@ -22,6 +22,7 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.StageStats;
 import io.datakernel.remotefs.IRemoteFsClient;
 import io.datakernel.remotefs.RemoteFsClient;
@@ -60,14 +61,18 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage, EventloopJ
 	private final StageStats stageOpenW = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final StageStats stageFinishChunks = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 
-	private final StreamStatsDetailedEx readRemoteFS = StreamStats.detailedEx(forByteBufs());
-	private final StreamStatsDetailedEx readDecompress = StreamStats.detailedEx(forByteBufs());
+	private boolean detailed;
+
+	private final StreamStatsDetailed readRemoteFS = StreamStats.detailed(forByteBufs());
+	private final StreamStatsDetailed readDecompress = StreamStats.detailed(forByteBufs());
 	private final StreamStatsBasic readDeserialize = StreamStats.basic();
+	private final StreamStatsDetailed readDeserializeDetailed = StreamStats.detailed();
 
 	private final StreamStatsBasic writeSerialize = StreamStats.basic();
-	private final StreamStatsDetailedEx writeCompress = StreamStats.detailedEx(forByteBufs());
-	private final StreamStatsDetailedEx writeChunker = StreamStats.detailedEx(forByteBufs());
-	private final StreamStatsDetailedEx writeRemoteFS = StreamStats.detailedEx(forByteBufs());
+	private final StreamStatsDetailed writeSerializeDetailed = StreamStats.detailed();
+	private final StreamStatsDetailed writeCompress = StreamStats.detailed(forByteBufs());
+	private final StreamStatsDetailed writeChunker = StreamStats.detailed(forByteBufs());
+	private final StreamStatsDetailed writeRemoteFS = StreamStats.detailed(forByteBufs());
 
 	private RemoteFsChunkStorage(Eventloop eventloop, IdGenerator<Long> idGenerator, InetSocketAddress serverAddress) {
 		this.eventloop = eventloop;
@@ -107,7 +112,9 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage, EventloopJ
 					stream(producer.with(readRemoteFS::wrapper), decompressor.getInput());
 					stream(decompressor.getOutput().with(readDecompress::wrapper), deserializer.getInput());
 
-					return deserializer.getOutput().with(readDeserialize::wrapper).withEndOfStreamAsResult();
+					return deserializer.getOutput()
+							.with(detailed ? readDeserializeDetailed::wrapper : readDeserialize::wrapper)
+							.withEndOfStreamAsResult();
 				});
 	}
 
@@ -132,7 +139,9 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage, EventloopJ
 					stream(compressor.getOutput(), chunker.getInput().with(writeChunker::wrapper));
 					stream(chunker.getOutput(), consumer.with(writeRemoteFS::wrapper));
 
-					return serializer.getInput().with(writeSerialize::wrapper).withResult(consumer.getResult());
+					return serializer.getInput()
+							.with(detailed ? writeSerializeDetailed::wrapper : writeSerialize::wrapper)
+							.withResult(consumer.getResult());
 				});
 	}
 
@@ -186,12 +195,12 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage, EventloopJ
 	}
 
 	@JmxAttribute
-	public StreamStatsDetailedEx getReadRemoteFS() {
+	public StreamStatsDetailed getReadRemoteFS() {
 		return readRemoteFS;
 	}
 
 	@JmxAttribute
-	public StreamStatsDetailedEx getReadDecompress() {
+	public StreamStatsDetailed getReadDecompress() {
 		return readDecompress;
 	}
 
@@ -201,23 +210,43 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage, EventloopJ
 	}
 
 	@JmxAttribute
+	public StreamStatsDetailed getReadDeserializeDetailed() {
+		return readDeserializeDetailed;
+	}
+
+	@JmxAttribute
 	public StreamStatsBasic getWriteSerialize() {
 		return writeSerialize;
 	}
 
 	@JmxAttribute
-	public StreamStatsDetailedEx getWriteCompress() {
+	public StreamStatsDetailed getWriteSerializeDetailed() {
+		return writeSerializeDetailed;
+	}
+
+	@JmxAttribute
+	public StreamStatsDetailed getWriteCompress() {
 		return writeCompress;
 	}
 
 	@JmxAttribute
-	public StreamStatsDetailedEx getWriteChunker() {
+	public StreamStatsDetailed getWriteChunker() {
 		return writeChunker;
 	}
 
 	@JmxAttribute
-	public StreamStatsDetailedEx getWriteRemoteFS() {
+	public StreamStatsDetailed getWriteRemoteFS() {
 		return writeRemoteFS;
+	}
+
+	@JmxOperation
+	public void startDetailedMonitoring() {
+		detailed = true;
+	}
+
+	@JmxOperation
+	public void stopDetailedMonitoring() {
+		detailed = false;
 	}
 
 }

@@ -189,6 +189,16 @@ public final class CubeLogProcessorController implements EventloopJmxMBeanEx {
 		return stageProcessLogsImpl;
 	}
 
+	@JmxAttribute
+	public boolean isParallelRunner() {
+		return parallelRunner;
+	}
+
+	@JmxAttribute
+	public void setParallelRunner(boolean parallelRunner) {
+		this.parallelRunner = parallelRunner;
+	}
+
 	@JmxOperation
 	public void processLogsNow() {
 		processLogs();

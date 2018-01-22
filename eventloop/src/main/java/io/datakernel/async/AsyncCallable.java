@@ -149,10 +149,10 @@ public interface AsyncCallable<T> extends Modifier<AsyncCallable<T>> {
 	}
 
 	default AsyncCallable<T> prefetch(int maxSize) {
-		return prefetch(this, maxSize);
+		return prefetch(this, this, maxSize);
 	}
 
-	static <T> AsyncCallable<T> prefetch(AsyncCallable<T> actualCallable, int maxSize) {
+	static <T> AsyncCallable<T> prefetch(AsyncCallable<T> actualCallable, AsyncCallable<T> prefetchCallable, int maxSize) {
 		return new AsyncCallable<T>() {
 			private int pendingCalls;
 			private final ArrayDeque<T> deque = new ArrayDeque<>();
@@ -160,7 +160,7 @@ public interface AsyncCallable<T> extends Modifier<AsyncCallable<T>> {
 			private void tryPrefetch() {
 				for (int i = 0; i < maxSize - (deque.size() + pendingCalls); i++) {
 					pendingCalls++;
-					actualCallable.call().whenCompleteAsync((value, throwable) -> {
+					prefetchCallable.call().whenCompleteAsync((value, throwable) -> {
 						pendingCalls--;
 						if (throwable == null) {
 							deque.addLast(value);

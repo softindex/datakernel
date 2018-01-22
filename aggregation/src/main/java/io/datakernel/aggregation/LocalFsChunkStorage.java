@@ -24,6 +24,7 @@ import io.datakernel.eventloop.EventloopService;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.StageStats;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducerWithResult;
@@ -83,14 +84,18 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 	private final StageStats stageBackup = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final StageStats stageCleanup = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 
-	private final StreamStatsDetailedEx readFile = StreamStats.detailedEx(forByteBufs());
-	private final StreamStatsDetailedEx readDecompress = StreamStats.detailedEx(forByteBufs());
+	private boolean detailed;
+
+	private final StreamStatsDetailed readFile = StreamStats.detailed(forByteBufs());
+	private final StreamStatsDetailed readDecompress = StreamStats.detailed(forByteBufs());
 	private final StreamStatsBasic readDeserialize = StreamStats.basic();
+	private final StreamStatsDetailed readDeserializeDetailed = StreamStats.detailed();
 
 	private final StreamStatsBasic writeSerialize = StreamStats.basic();
-	private final StreamStatsDetailedEx writeCompress = StreamStats.detailedEx(forByteBufs());
-	private final StreamStatsDetailedEx writeChunker = StreamStats.detailedEx(forByteBufs());
-	private final StreamStatsDetailedEx writeFile = StreamStats.detailedEx(forByteBufs());
+	private final StreamStatsDetailed writeSerializeDetailed = StreamStats.detailed();
+	private final StreamStatsDetailed writeCompress = StreamStats.detailed(forByteBufs());
+	private final StreamStatsDetailed writeChunker = StreamStats.detailed(forByteBufs());
+	private final StreamStatsDetailed writeFile = StreamStats.detailed(forByteBufs());
 
 	/**
 	 * Constructs an aggregation storage, that runs in the specified event loop, performs blocking IO in the given executor,
@@ -147,7 +152,9 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 					stream(fileReader.with(readFile::wrapper), decompressor.getInput());
 					stream(decompressor.getOutput().with(readDecompress::wrapper), deserializer.getInput());
 
-					return deserializer.getOutput().with(readDeserialize::wrapper).withEndOfStreamAsResult();
+					return deserializer.getOutput()
+							.with(detailed ? readDeserializeDetailed::wrapper : readDeserialize::wrapper)
+							.withEndOfStreamAsResult();
 				});
 	}
 
@@ -169,7 +176,9 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 					stream(compressor.getOutput(), chunker.getInput().with(writeChunker::wrapper));
 					stream(chunker.getOutput(), writer.with(writeFile::wrapper));
 
-					return serializer.getInput().with(writeSerialize::wrapper).withResult(writer.getFlushStage());
+					return serializer.getInput()
+							.with(detailed ? writeSerializeDetailed::wrapper : writeSerialize::wrapper)
+							.withResult(writer.getFlushStage());
 				});
 	}
 
@@ -340,12 +349,12 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 	}
 
 	@JmxAttribute
-	public StreamStatsDetailedEx getReadFile() {
+	public StreamStatsDetailed getReadFile() {
 		return readFile;
 	}
 
 	@JmxAttribute
-	public StreamStatsDetailedEx getReadDecompress() {
+	public StreamStatsDetailed getReadDecompress() {
 		return readDecompress;
 	}
 
@@ -355,23 +364,43 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 	}
 
 	@JmxAttribute
+	public StreamStatsDetailed getReadDeserializeDetailed() {
+		return readDeserializeDetailed;
+	}
+
+	@JmxAttribute
 	public StreamStatsBasic getWriteSerialize() {
 		return writeSerialize;
 	}
 
 	@JmxAttribute
-	public StreamStatsDetailedEx getWriteCompress() {
+	public StreamStatsDetailed getWriteSerializeDetailed() {
+		return writeSerializeDetailed;
+	}
+
+	@JmxAttribute
+	public StreamStatsDetailed getWriteCompress() {
 		return writeCompress;
 	}
 
 	@JmxAttribute
-	public StreamStatsDetailedEx getWriteChunker() {
+	public StreamStatsDetailed getWriteChunker() {
 		return writeChunker;
 	}
 
 	@JmxAttribute
-	public StreamStatsDetailedEx getWriteFile() {
+	public StreamStatsDetailed getWriteFile() {
 		return writeFile;
+	}
+
+	@JmxOperation
+	public void startDetailedMonitoring() {
+		detailed = true;
+	}
+
+	@JmxOperation
+	public void stopDetailedMonitoring() {
+		detailed = false;
 	}
 
 }

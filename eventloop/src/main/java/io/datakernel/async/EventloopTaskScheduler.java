@@ -5,6 +5,7 @@ import io.datakernel.eventloop.EventloopService;
 import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.StageStats;
 import io.datakernel.util.Initializer;
 import org.slf4j.Logger;
@@ -35,6 +36,7 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 
 	private Long period;
 	private Long interval;
+	private boolean enabled = true;
 
 	public interface Schedule {
 		long nextTimestamp(long now, long lastStartTime, long lastCompleteTime);
@@ -114,6 +116,8 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 		if (scheduledTask != null && scheduledTask.isCancelled())
 			return;
 
+		if (!enabled) return;
+
 		long now = eventloop.currentTimeMillis();
 		long timestamp;
 		if (lastStartTime == 0) {
@@ -129,31 +133,35 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 			}
 		}
 
-		scheduledTask = eventloop.scheduleBackground(timestamp,
-				() -> {
-					lastStartTime = eventloop.currentTimeMillis();
-					task.call()
-							.whenComplete(stats.recordStats())
-							.whenComplete((result, throwable) -> {
-								lastCompleteTime = eventloop.currentTimeMillis();
-								if (throwable == null) {
-									firstRetryTime = 0;
-									lastError = null;
-									errorCount = 0;
-									scheduleTask();
-								} else {
-									lastError = throwable;
-									errorCount++;
-									logger.error("Retry attempt " + errorCount, throwable);
-									if (abortOnError) {
-										scheduledTask.cancel();
-										throw new RuntimeException(throwable);
-									} else {
-										scheduleTask();
-									}
-								}
-							});
-				});
+		scheduledTask = eventloop.scheduleBackground(timestamp, doCall::call);
+	}
+
+	private final AsyncCallable<Void> doCall = AsyncCallable.sharedCall(this::doCall);
+
+	private CompletionStage<Void> doCall() {
+		lastStartTime = eventloop.currentTimeMillis();
+		return task.call()
+				.whenComplete(stats.recordStats())
+				.whenComplete((result, throwable) -> {
+					lastCompleteTime = eventloop.currentTimeMillis();
+					if (throwable == null) {
+						firstRetryTime = 0;
+						lastError = null;
+						errorCount = 0;
+						scheduleTask();
+					} else {
+						lastError = throwable;
+						errorCount++;
+						logger.error("Retry attempt " + errorCount, throwable);
+						if (abortOnError) {
+							scheduledTask.cancel();
+							throw new RuntimeException(throwable);
+						} else {
+							scheduleTask();
+						}
+					}
+				})
+				.thenApply($ -> null);
 	}
 
 	@Override
@@ -166,6 +174,45 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 	public CompletionStage<Void> stop() {
 		scheduledTask.cancel();
 		return Stages.of(null);
+	}
+
+	public void setSchedule(Schedule schedule) {
+		this.schedule = schedule;
+		if (stats.getActiveStages() != 0 && scheduledTask != null && !scheduledTask.isCancelled()) {
+			scheduledTask.cancel();
+			scheduledTask = null;
+			scheduleTask();
+		}
+	}
+
+	public void setRetryPolicy(RetryPolicy retryPolicy) {
+		this.retryPolicy = retryPolicy;
+		if (stats.getActiveStages() != 0 && scheduledTask != null && !scheduledTask.isCancelled() && lastError != null) {
+			scheduledTask.cancel();
+			scheduledTask = null;
+			scheduleTask();
+		}
+	}
+
+	@JmxAttribute
+	public boolean isEnabled() {
+		return enabled;
+	}
+
+	@JmxAttribute
+	public void setEnabled(boolean enabled) {
+		if (this.enabled == enabled) return;
+		this.enabled = enabled;
+		if (stats.getActiveStages() == 0) {
+			if (enabled) {
+				scheduleTask();
+			} else {
+				if (scheduledTask != null && !scheduledTask.isCancelled()) {
+					scheduledTask.cancel();
+					scheduledTask = null;
+				}
+			}
+		}
 	}
 
 	@JmxAttribute(name = "")
@@ -185,7 +232,8 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 
 	@JmxAttribute
 	public void setPeriod(Long periodMillis) {
-		this.schedule = Schedule.ofPeriod(periodMillis);
+		Schedule schedule = Schedule.ofPeriod(periodMillis);
+		setSchedule(schedule);
 		// for JMX:
 		this.period = periodMillis;
 		this.interval = null;
@@ -198,10 +246,15 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 
 	@JmxAttribute
 	public void setInterval(Long intervalMillis) {
-		this.schedule = Schedule.ofInterval(intervalMillis);
+		setSchedule(Schedule.ofInterval(intervalMillis));
 		// for JMX:
 		this.period = null;
 		this.interval = intervalMillis;
+	}
+
+	@JmxOperation
+	public void startNow() {
+		doCall.call();
 	}
 
 }

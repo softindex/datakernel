@@ -48,13 +48,13 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 
 	private String createdBy = null;
 
-	private final StageStats statsCreateCommitId = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats statsPush = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats statsGetHeads = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats statsLoadCommit = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats statsIsSnapshot = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats statsLoadSnapshot = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats statsSaveSnapshot = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final StageStats stageCreateCommitId = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final StageStats stagePush = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final StageStats stageGetHeads = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final StageStats stageLoadCommit = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final StageStats stageIsSnapshot = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final StageStats stageLoadSnapshot = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final StageStats stageSaveSnapshot = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 
 	private OTRemoteSql(Eventloop eventloop, ExecutorService executor, OTSystem<D> otSystem, TypeAdapter<List<D>> diffsAdapter,
 	                    DataSource dataSource) {
@@ -125,7 +125,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 					return id;
 				}
 			}
-		}).whenComplete(statsCreateCommitId.recordStats());
+		}).whenComplete(stageCreateCommitId.recordStats());
 	}
 
 	private String toJson(List<D> diffs) throws IOException {
@@ -200,7 +200,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 						commits.stream().map(OTCommit::idsToString).collect(toList()));
 			}
 			return (Void) null;
-		}).whenComplete(statsPush.recordStats());
+		}).whenComplete(stagePush.recordStats());
 	}
 
 	@Override
@@ -220,7 +220,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 					return result;
 				}
 			}
-		}).whenComplete(statsGetHeads.recordStats());
+		}).whenComplete(stageGetHeads.recordStats());
 	}
 
 	@Override
@@ -241,7 +241,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 					return otSystem.squash(snapshot);
 				}
 			}
-		}).whenComplete(statsLoadSnapshot.recordStats());
+		}).whenComplete(stageLoadSnapshot.recordStats());
 	}
 
 	@Override
@@ -281,7 +281,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 				logger.trace("Finish load commit: {}, parentIds: {}", revisionId, parentDiffs.keySet());
 				return OTCommit.of(revisionId, parentDiffs).withCommitMetadata(timestamp, snapshot);
 			}
-		}).whenComplete(statsLoadCommit.recordStats());
+		}).whenComplete(stageLoadCommit.recordStats());
 	}
 
 	@Override
@@ -301,7 +301,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 					return (Void) null;
 				}
 			}
-		}).whenComplete(statsSaveSnapshot.recordStats());
+		}).whenComplete(stageSaveSnapshot.recordStats());
 	}
 
 	@Override
@@ -353,38 +353,38 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 	}
 
 	@JmxAttribute
-	public StageStats getStatsCreateCommitId() {
-		return statsCreateCommitId;
+	public StageStats getStageCreateCommitId() {
+		return stageCreateCommitId;
 	}
 
 	@JmxAttribute
-	public StageStats getStatsPush() {
-		return statsPush;
+	public StageStats getStagePush() {
+		return stagePush;
 	}
 
 	@JmxAttribute
-	public StageStats getStatsGetHeads() {
-		return statsGetHeads;
+	public StageStats getStageGetHeads() {
+		return stageGetHeads;
 	}
 
 	@JmxAttribute
-	public StageStats getStatsLoadCommit() {
-		return statsLoadCommit;
+	public StageStats getStageLoadCommit() {
+		return stageLoadCommit;
 	}
 
 	@JmxAttribute
-	public StageStats getStatsIsSnapshot() {
-		return statsIsSnapshot;
+	public StageStats getStageIsSnapshot() {
+		return stageIsSnapshot;
 	}
 
 	@JmxAttribute
-	public StageStats getStatsLoadSnapshot() {
-		return statsLoadSnapshot;
+	public StageStats getStageLoadSnapshot() {
+		return stageLoadSnapshot;
 	}
 
 	@JmxAttribute
-	public StageStats getStatsSaveSnapshot() {
-		return statsSaveSnapshot;
+	public StageStats getStageSaveSnapshot() {
+		return stageSaveSnapshot;
 	}
 
 }

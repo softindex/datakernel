@@ -16,6 +16,7 @@
 
 package io.datakernel.logfs.ot;
 
+import io.datakernel.async.AsyncCallable;
 import io.datakernel.async.Stages;
 import io.datakernel.async.StagesAccumulator;
 import io.datakernel.eventloop.Eventloop;
@@ -42,9 +43,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
 
+import static io.datakernel.async.AsyncCallable.sharedCall;
 import static io.datakernel.async.Stages.onResult;
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static io.datakernel.stream.DataStreams.stream;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.emptyMap;
 
 /**
  * Processes logs. Creates new aggregation chunks and persists them using logic defined in supplied {@code AggregatorSplitter}.
@@ -62,10 +66,13 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 	private final LogOTState<D> state;
 
 	// JMX
+	private boolean enabled = true;
 	private boolean detailed;
 	private final StreamStatsBasic streamStatsBasic = StreamStats.basic();
 	private final StreamStatsDetailed streamStatsDetailed = StreamStats.detailed();
 	private final StageStats stageProcessLog = StageStats.create(SMOOTHING_WINDOW_5_MINUTES);
+	private final StageStats stageProducer = StageStats.create(SMOOTHING_WINDOW_5_MINUTES);
+	private final StageStats stageConsumer = StageStats.create(SMOOTHING_WINDOW_5_MINUTES);
 
 	private LogOTProcessor(Eventloop eventloop, LogManager<T> logManager, LogDataConsumer<T, D> logStreamConsumer,
 	                       String log, List<String> partitions, LogOTState<D> state) {
@@ -98,12 +105,20 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 		return Stages.of(null);
 	}
 
-	@SuppressWarnings("unchecked")
+	private final AsyncCallable<LogDiff<D>> processLog = sharedCall(this::doProcessLog);
+
 	public CompletionStage<LogDiff<D>> processLog() {
+		return processLog.call();
+	}
+
+	private CompletionStage<LogDiff<D>> doProcessLog() {
+		if (!enabled) return Stages.of(LogDiff.of(emptyMap(), emptyList()));
 		logger.trace("processLog_gotPositions called. Positions: {}", state.getPositions());
 
 		StreamProducerWithResult<T, Map<String, LogPositionDiff>> producer = getProducer();
 		StreamConsumerWithResult<T, List<D>> consumer = logStreamConsumer.consume();
+		producer.getResult().whenComplete(stageProducer.recordStats());
+		consumer.getResult().whenComplete(stageConsumer.recordStats());
 		return stream(producer, consumer)
 				.whenComplete(stageProcessLog.recordStats())
 				.thenApply(result -> LogDiff.of(result.getProducerResult(), result.getConsumerResult()))
@@ -141,6 +156,31 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 	}
 
 	@JmxAttribute
+	public boolean isEnabled() {
+		return enabled;
+	}
+
+	@JmxAttribute
+	public void setEnabled(boolean enabled) {
+		this.enabled = enabled;
+	}
+
+	@JmxAttribute
+	public StageStats getStageProcessLog() {
+		return stageProcessLog;
+	}
+
+	@JmxAttribute
+	public StageStats getStageProducer() {
+		return stageProducer;
+	}
+
+	@JmxAttribute
+	public StageStats getStageConsumer() {
+		return stageConsumer;
+	}
+
+	@JmxAttribute
 	public StreamStatsBasic getStreamStatsBasic() {
 		return streamStatsBasic;
 	}
@@ -148,11 +188,6 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 	@JmxAttribute
 	public StreamStatsDetailed getStreamStatsDetailed() {
 		return streamStatsDetailed;
-	}
-
-	@JmxAttribute
-	public StageStats getStageProcessLog() {
-		return stageProcessLog;
 	}
 
 	@JmxOperation
