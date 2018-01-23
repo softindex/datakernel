@@ -31,7 +31,7 @@ import static io.datakernel.http.HttpHeaders.DATE;
 public abstract class HttpMessage {
 	protected boolean recycled;
 
-	final ArrayList<HttpHeaders.Value> headers = new ArrayList<>();
+	protected ArrayList<HttpHeaders.Value> headers = new ArrayList<>();
 	private ArrayList<ByteBuf> headerBufs;
 	protected ByteBuf body;
 	protected boolean useGzip;
@@ -180,6 +180,7 @@ public abstract class HttpMessage {
 			body.recycle();
 			body = null;
 		}
+		headers = null;
 		if (headerBufs != null) {
 			for (ByteBuf headerBuf : headerBufs) {
 				headerBuf.recycle();
