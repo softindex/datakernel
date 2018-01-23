@@ -25,6 +25,13 @@
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
         </dependency>
+
+	    <dependency>
+		    <groupId>io.datakernel</groupId>
+		    <artifactId>datakernel-test</artifactId>
+		    <version>${project.version}</version>
+		    <scope>test</scope>
+	    </dependency>
         <dependency>
             <groupId>com.zaxxer</groupId>
             <artifactId>HikariCP</artifactId>

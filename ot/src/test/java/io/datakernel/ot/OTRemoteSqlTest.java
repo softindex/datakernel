@@ -1,16 +1,13 @@
 package io.datakernel.ot;
 
 import ch.qos.logback.classic.Level;
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.ot.utils.*;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
-import java.nio.charset.StandardCharsets;
+import java.io.IOException;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -22,6 +19,7 @@ import static io.datakernel.ot.OTCommit.ofCommit;
 import static io.datakernel.ot.OTCommit.ofRoot;
 import static io.datakernel.ot.utils.GraphBuilder.edge;
 import static io.datakernel.ot.utils.Utils.add;
+import static io.datakernel.test.TestUtils.dataSource;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toSet;
@@ -47,12 +45,6 @@ public class OTRemoteSqlTest {
 		keyComparator = Integer::compareTo;
 
 		otRemote.truncateTables();
-	}
-
-	static HikariDataSource dataSource(String databasePropertiesPath) throws IOException {
-		Properties properties = new Properties();
-		properties.load(new InputStreamReader(new BufferedInputStream(new FileInputStream(new File(databasePropertiesPath))), StandardCharsets.UTF_8));
-		return new HikariDataSource(new HikariConfig(properties));
 	}
 
 	static <T> Set<T> set(T... values) {

@@ -122,7 +122,7 @@ public final class CubeLogProcessorController implements EventloopJmxMBeanEx {
 
 								return stateManager.pull()
 										.thenCompose($ -> stateManager.getAlgorithms().mergeHeadsAndPush())
-										.thenCompose(stateManager::pull)
+										.thenCompose(mergeId -> stateManager.pull(mergeId))
 										.thenCompose($ -> stateManager.pull())
 										.thenCompose($ -> stateManager.commit())
 										.thenCompose($ -> chunkStorage.finish(addedChunks(diffs)))

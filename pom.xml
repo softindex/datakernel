@@ -36,6 +36,7 @@
         <module>uikernel</module>
         <module>ot</module>
         <module>common</module>
+        <module>test</module>
     </modules>
 
     <licenses>
