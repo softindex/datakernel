@@ -1,8 +1,8 @@
 package io.datakernel.aggregation;
 
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.stream.processor.StreamStats;
-import io.datakernel.stream.processor.StreamStatsBasic;
+import io.datakernel.stream.stats.StreamStats;
+import io.datakernel.stream.stats.StreamStatsBasic;
 
 public class AggregationStats {
 	final StreamStatsBasic mergeMapInput = StreamStats.basic();

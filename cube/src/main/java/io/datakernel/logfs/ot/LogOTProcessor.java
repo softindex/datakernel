@@ -31,10 +31,10 @@ import io.datakernel.logfs.LogPosition;
 import io.datakernel.logfs.ot.LogDiff.LogPositionDiff;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducerWithResult;
-import io.datakernel.stream.processor.StreamStats;
-import io.datakernel.stream.processor.StreamStatsBasic;
-import io.datakernel.stream.processor.StreamStatsDetailed;
 import io.datakernel.stream.processor.StreamUnion;
+import io.datakernel.stream.stats.StreamStats;
+import io.datakernel.stream.stats.StreamStatsBasic;
+import io.datakernel.stream.stats.StreamStatsDetailed;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

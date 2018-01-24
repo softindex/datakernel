@@ -22,6 +22,7 @@ import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.TruncatedDataException;
+import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducer;
@@ -48,7 +49,7 @@ import java.util.stream.Collectors;
 import static io.datakernel.stream.DataStreams.stream;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
-public final class LogManagerImpl<T> implements LogManager<T> {
+public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBeanEx {
 	public static final DateTimeFormatter DEFAULT_DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH").withZone(ZoneOffset.UTC);
 	public static final int DEFAULT_BUFFER_SIZE = 256 * 1024;
 	public static final int DEFAULT_AUTO_FLUSH_INTERVAL = -1;
@@ -232,5 +233,10 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 
 	public DateTimeFormatter getDateTimeFormatter() {
 		return dateTimeFormatter;
+	}
+
+	@Override
+	public Eventloop getEventloop() {
+		return eventloop;
 	}
 }

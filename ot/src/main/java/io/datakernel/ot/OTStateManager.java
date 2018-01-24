@@ -4,6 +4,8 @@ import io.datakernel.async.AsyncCallable;
 import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
+import io.datakernel.jmx.EventloopJmxMBeanEx;
+import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.ot.exceptions.OTTransformException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +21,7 @@ import static java.lang.String.format;
 import static java.util.Collections.singleton;
 import static java.util.Collections.singletonList;
 
-public final class OTStateManager<K, D> implements EventloopService {
+public final class OTStateManager<K, D> implements EventloopService, EventloopJmxMBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(OTStateManager.class);
 
 	private final Eventloop eventloop;
@@ -293,6 +295,31 @@ public final class OTStateManager<K, D> implements EventloopService {
 
 	public OTAlgorithms<K, D> getAlgorithms() {
 		return algorithms;
+	}
+
+	@JmxAttribute(name = "revision")
+	public Object getJmxRevision() {
+		return revision;
+	}
+
+	@JmxAttribute
+	public Object getFetchedRevision() {
+		return fetchedRevision;
+	}
+
+	@JmxAttribute
+	public int getFetchedDiffsSize() {
+		return fetchedDiffs.size();
+	}
+
+	@JmxAttribute
+	public int getPendingCommitsSize() {
+		return pendingCommits.size();
+	}
+
+	@JmxAttribute
+	public int getWorkingCommitsSize() {
+		return workingDiffs.size();
 	}
 
 	@Override

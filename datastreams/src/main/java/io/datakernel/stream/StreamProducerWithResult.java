@@ -19,9 +19,18 @@ package io.datakernel.stream;
 import io.datakernel.async.SettableStage;
 
 import java.util.concurrent.CompletionStage;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
 public interface StreamProducerWithResult<T, X> extends StreamProducer<T> {
 	CompletionStage<X> getResult();
+
+	@Override
+	default StreamProducerWithResult<T, X> with(UnaryOperator<StreamProducer<T>> modifier) {
+		return modifier.apply(this).withResult(this.getResult());
+	}
 
 	static <T, X> StreamProducerWithResult<T, X> ofStage(CompletionStage<StreamProducerWithResult<T, X>> producerStage) {
 		SettableStage<X> result = SettableStage.create();
@@ -38,6 +47,21 @@ public interface StreamProducerWithResult<T, X> extends StreamProducer<T> {
 				});
 			}
 		}.withResult(result);
+	}
+
+	default StreamProducerWithResult<T, X> whenComplete(BiConsumer<? super X, ? super Throwable> consumer) {
+		getResult().whenComplete(consumer);
+		return this;
+	}
+
+	default StreamProducerWithResult<T, X> thenAccept(Consumer<? super X> action) {
+		getResult().thenAccept(action);
+		return this;
+	}
+
+	default <U> StreamProducerWithResult<T, U> thenApply(Function<? super X, ? extends U> fn) {
+		CompletionStage<X> stage = this.getResult();
+		return withResult(stage.thenApply(fn));
 	}
 
 }

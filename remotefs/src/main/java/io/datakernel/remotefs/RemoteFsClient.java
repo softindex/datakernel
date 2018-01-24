@@ -30,9 +30,9 @@ import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.net.Messaging.ReceiveMessageCallback;
 import io.datakernel.stream.net.MessagingSerializer;
 import io.datakernel.stream.net.MessagingWithBinaryStreaming;
-import io.datakernel.stream.processor.StreamStats;
-import io.datakernel.stream.processor.StreamStatsDetailed;
-import io.datakernel.stream.processor.StreamStatsForwarder;
+import io.datakernel.stream.stats.StreamStats;
+import io.datakernel.stream.stats.StreamStatsDetailed;
+import io.datakernel.stream.stats.StreamStatsForwarder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,7 +49,7 @@ import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
 import static io.datakernel.eventloop.AsyncTcpSocketImpl.wrapChannel;
 import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.net.MessagingSerializers.ofJson;
-import static io.datakernel.stream.processor.StreamStatsSizeCounter.forByteBufs;
+import static io.datakernel.stream.stats.StreamStatsSizeCounter.forByteBufs;
 
 public final class RemoteFsClient implements IRemoteFsClient {
 	protected final Logger logger = LoggerFactory.getLogger(getClass());

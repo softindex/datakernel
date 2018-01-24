@@ -1,6 +1,7 @@
-package io.datakernel.stream.processor;
+package io.datakernel.stream.stats;
 
 import io.datakernel.stream.*;
+import io.datakernel.stream.processor.StreamTransformer;
 
 public class StreamStatsForwarder<T> implements StreamTransformer<T, T> {
 	private final Input input;

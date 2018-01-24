@@ -93,7 +93,6 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializer<Cube>, 
 
 	private final Map<String, FieldType> fieldTypes = new LinkedHashMap<>();
 	private final Map<String, FieldType> dimensionTypes = new LinkedHashMap<>();
-	private final Map<String, Object> dimensionEmptyElements = new LinkedHashMap<>();
 	private final Map<String, Measure> measures = new LinkedHashMap<>();
 	private final Map<String, ComputedMeasure> computedMeasures = new LinkedHashMap<>();
 
@@ -210,11 +209,6 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializer<Cube>, 
 
 	public Cube withDimension(String dimensionId, FieldType type) {
 		addDimension(dimensionId, type);
-		return this;
-	}
-
-	public Cube withDimension(String dimensionId, FieldType type, Object nullValue) {
-		addDimension(dimensionId, type, nullValue);
 		return this;
 	}
 
@@ -346,16 +340,9 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializer<Cube>, 
 	}
 
 	public void addDimension(String dimensionId, FieldType type) {
-		addDimension(dimensionId, type, null);
-	}
-
-	public void addDimension(String dimensionId, FieldType type, Object nullValue) {
 		checkState(aggregations.isEmpty());
 		dimensionTypes.put(dimensionId, type);
 		fieldTypes.put(dimensionId, type);
-		if (nullValue != null) {
-			dimensionEmptyElements.put(dimensionId, nullValue);
-		}
 	}
 
 	public Cube addAggregation(AggregationConfig config) {

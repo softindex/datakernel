@@ -109,7 +109,7 @@ public class CubeIntegrationTest {
 		OTStateManager<Integer, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState);
 
 		LogManager<LogItem> logManager = LogManagerImpl.create(eventloop,
-				LocalFsLogFileSystem.create(executor, logsDir),
+				LocalFsLogFileSystem.create(eventloop, executor, logsDir),
 				SerializerBuilder.create(classLoader).build(LogItem.class));
 
 		LogOTProcessor<LogItem, CubeDiff> logOTProcessor = LogOTProcessor.create(eventloop,

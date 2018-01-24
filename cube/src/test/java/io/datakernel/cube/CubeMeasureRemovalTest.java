@@ -93,7 +93,7 @@ public class CubeMeasureRemovalTest {
 		executor = Executors.newCachedThreadPool();
 		classLoader = DefiningClassLoader.create();
 		dataSource = dataSource("test.properties");
-		fileSystem = LocalFsLogFileSystem.create(executor, logsDir);
+		fileSystem = LocalFsLogFileSystem.create(eventloop, executor, logsDir);
 		aggregationChunkStorage = LocalFsChunkStorage.create(eventloop, executor, new IdGeneratorStub(), aggregationsDir);
 		serializer = SerializerBuilder.create(classLoader).build(LogItem.class);
 		logOTSystem = LogOT.createLogOT(CubeOT.createCubeOT());
@@ -139,7 +139,7 @@ public class CubeMeasureRemovalTest {
 		eventloop.run();
 
 		LogManager<LogItem> logManager = LogManagerImpl.create(eventloop,
-				LocalFsLogFileSystem.create(executor, logsDir),
+				LocalFsLogFileSystem.create(eventloop, executor, logsDir),
 				SerializerBuilder.create(classLoader).build(LogItem.class));
 
 		LogOTState<CubeDiff> cubeDiffLogOTState = LogOTState.create(cube);

@@ -1,4 +1,4 @@
-package io.datakernel.stream.processor;
+package io.datakernel.stream.stats;
 
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.ExceptionStats;

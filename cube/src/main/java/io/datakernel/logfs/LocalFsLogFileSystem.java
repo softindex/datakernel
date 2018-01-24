@@ -19,10 +19,16 @@ package io.datakernel.logfs;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
+import io.datakernel.jmx.EventloopJmxMBeanEx;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.StageStats;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
+import io.datakernel.stream.stats.StreamOps;
+import io.datakernel.stream.stats.StreamStats;
+import io.datakernel.stream.stats.StreamStatsDetailed;
 import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,41 +42,54 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
+import static io.datakernel.stream.stats.StreamStatsSizeCounter.forByteBufs;
 import static java.nio.file.StandardOpenOption.READ;
 
 /**
  * Represents a file system for persisting logs. Stores files in a local file system.
  */
-public final class LocalFsLogFileSystem extends AbstractLogFileSystem {
+public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements EventloopJmxMBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	public static final int DEFAULT_READ_BLOCK_SIZE = 256 * 1024;
 
+	private final Eventloop eventloop;
 	private final ExecutorService executorService;
 	private final Path dir;
 
 	private int readBlockSize = DEFAULT_READ_BLOCK_SIZE;
 
+	private final StageStats stageList = StageStats.create(SMOOTHING_WINDOW_5_MINUTES);
+	private final StageStats stageRead = StageStats.create(SMOOTHING_WINDOW_5_MINUTES);
+	private final StageStats stageWrite = StageStats.create(SMOOTHING_WINDOW_5_MINUTES);
+
+	private final StreamOps streamReads = StreamOps.create();
+	private final StreamOps streamWrites = StreamOps.create();
+
+	private final StreamStatsDetailed streamReadStats = StreamStats.detailed(forByteBufs());
+	private final StreamStatsDetailed streamWriteStats = StreamStats.detailed(forByteBufs());
+
 	/**
 	 * Constructs a log file system, that runs in the given event loop, runs blocking IO operations in the specified executor,
 	 * stores logs in the given directory.
 	 *
+	 * @param eventloop
 	 * @param executorService executor for blocking IO operations
 	 * @param dir             directory for storing log files
 	 */
-	private LocalFsLogFileSystem(ExecutorService executorService,
-	                             Path dir) {
+	private LocalFsLogFileSystem(Eventloop eventloop, ExecutorService executorService, Path dir) {
+		this.eventloop = eventloop;
 		this.executorService = executorService;
 		this.dir = dir;
 	}
 
-	public static LocalFsLogFileSystem create(ExecutorService executorService, Path dir) {
-		return new LocalFsLogFileSystem(executorService, dir);
+	public static LocalFsLogFileSystem create(Eventloop eventloop, ExecutorService executorService, Path dir) {
+		return new LocalFsLogFileSystem(eventloop, executorService, dir);
 	}
 
-	public static LocalFsLogFileSystem create(ExecutorService executorService,
-	                                          Path dir, String logName) {
-		return create(executorService, dir.resolve(logName));
+	public static LocalFsLogFileSystem create(Eventloop eventloop, ExecutorService executorService, Path dir, String logName) {
+		return create(eventloop, executorService, dir.resolve(logName));
 	}
 
 	public LocalFsLogFileSystem withReadBlockSize(int readBlockSize) {
@@ -125,20 +144,83 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem {
 				}
 			});
 			return entries;
-		});
+		}).whenComplete(stageList.recordStats());
 	}
 
 	@Override
 	public CompletionStage<StreamProducerWithResult<ByteBuf, Void>> read(String logPartition, LogFile logFile, long startPosition) {
 		return AsyncFile.openAsync(executorService, path(logPartition, logFile), new OpenOption[]{READ})
-				.thenApply(file -> StreamFileReader.readFileFrom(file, readBlockSize, startPosition).withEndOfStreamAsResult());
+				.thenApply(file -> StreamFileReader.readFileFrom(file, readBlockSize, startPosition)
+						.with(streamReads.newEntry(logPartition + ":" + logFile + "@" + startPosition))
+						.with(streamReadStats::wrapper)
+						.withEndOfStreamAsResult()
+				)
+				.whenComplete(stageRead.recordStats());
 	}
 
 	@Override
 	public CompletionStage<StreamConsumerWithResult<ByteBuf, Void>> write(String logPartition, LogFile logFile) {
-		return AsyncFile.openAsync(executorService, path(logPartition, logFile), StreamFileWriter.CREATE_OPTIONS).thenApply(file -> {
-			StreamFileWriter writer = StreamFileWriter.create(file, true);
-			return writer.withResult(writer.getFlushStage());
-		});
+		return AsyncFile.openAsync(executorService, path(logPartition, logFile), StreamFileWriter.CREATE_OPTIONS)
+				.thenApply(file -> StreamFileWriter.create(file, true)
+						.with(streamWrites.newEntry(logPartition + ":" + logFile))
+						.with(streamWriteStats::wrapper)
+						.withResult(StreamFileWriter.create(file, true).getFlushStage())
+				)
+				.whenComplete(stageWrite.recordStats());
+	}
+
+	@Override
+	public Eventloop getEventloop() {
+		return eventloop;
+	}
+
+	@JmxAttribute
+	public String getDir() {
+		return dir.toString();
+	}
+
+	@JmxAttribute
+	public int getReadBlockSize() {
+		return readBlockSize;
+	}
+
+	@JmxAttribute
+	public void setReadBlockSize(int readBlockSize) {
+		this.readBlockSize = readBlockSize;
+	}
+
+	@JmxAttribute
+	public StageStats getStageList() {
+		return stageList;
+	}
+
+	@JmxAttribute
+	public StageStats getStageRead() {
+		return stageRead;
+	}
+
+	@JmxAttribute
+	public StageStats getStageWrite() {
+		return stageWrite;
+	}
+
+	@JmxAttribute
+	public StreamOps getStreamReads() {
+		return streamReads;
+	}
+
+	@JmxAttribute
+	public StreamOps getStreamWrites() {
+		return streamWrites;
+	}
+
+	@JmxAttribute
+	public StreamStatsDetailed getStreamReadStats() {
+		return streamReadStats;
+	}
+
+	@JmxAttribute
+	public StreamStatsDetailed getStreamWriteStats() {
+		return streamWriteStats;
 	}
 }

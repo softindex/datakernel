@@ -18,20 +18,39 @@ package io.datakernel.logfs;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.EventloopJmxMBeanEx;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.StageStats;
 import io.datakernel.remotefs.RemoteFsClient;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducerWithResult;
+import io.datakernel.stream.stats.StreamOps;
+import io.datakernel.stream.stats.StreamStats;
+import io.datakernel.stream.stats.StreamStatsDetailed;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
 
-public final class RemoteLogFileSystem extends AbstractLogFileSystem {
+import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
+import static io.datakernel.stream.stats.StreamStatsSizeCounter.forByteBufs;
+
+public final class RemoteLogFileSystem extends AbstractLogFileSystem implements EventloopJmxMBeanEx {
 	private static final String LOG_NAME_DELIMITER = "/";
 
 	private final Eventloop eventloop;
 	private final String logName;
 	private final RemoteFsClient client;
+
+	private final StageStats stageList = StageStats.create(SMOOTHING_WINDOW_5_MINUTES);
+	private final StageStats stageRead = StageStats.create(SMOOTHING_WINDOW_5_MINUTES);
+	private final StageStats stageWrite = StageStats.create(SMOOTHING_WINDOW_5_MINUTES);
+
+	private final StreamOps streamReads = StreamOps.create();
+	private final StreamOps streamWrites = StreamOps.create();
+
+	private final StreamStatsDetailed streamReadStats = StreamStats.detailed(forByteBufs());
+	private final StreamStatsDetailed streamWriteStats = StreamStats.detailed(forByteBufs());
 
 	private RemoteLogFileSystem(Eventloop eventloop, String logName, RemoteFsClient client) {
 		this.eventloop = eventloop;
@@ -45,18 +64,26 @@ public final class RemoteLogFileSystem extends AbstractLogFileSystem {
 
 	@Override
 	public CompletionStage<List<LogFile>> list(String logPartition) {
-		return client.list().thenApply(files -> getLogFiles(files, logPartition));
+		return client.list().thenApply(files -> getLogFiles(files, logPartition)).whenComplete(stageList.recordStats());
 	}
 
 	@Override
 	public CompletionStage<StreamProducerWithResult<ByteBuf, Void>> read(String logPartition, LogFile logFile, long startPosition) {
-		return client.download(path(logPartition, logFile), startPosition);
+		return client.download(path(logPartition, logFile), startPosition)
+				.thenApply(stream -> stream
+						.with(streamReads.newEntry(logPartition + ":" + logFile + "@" + startPosition))
+						.with(streamReadStats::wrapper))
+				.whenComplete(stageRead.recordStats());
 	}
 
 	@Override
 	public CompletionStage<StreamConsumerWithResult<ByteBuf, Void>> write(String logPartition, LogFile logFile) {
 		String fileName = path(logPartition, logFile);
-		return client.upload(fileName);
+		return client.upload(fileName)
+				.thenApply(stream -> stream
+						.with(streamWrites.newEntry(logPartition + ":" + logFile))
+						.with(streamWriteStats::wrapper))
+				.whenComplete(stageWrite.recordStats());
 	}
 
 	private String path(String logPartition, LogFile logFile) {
@@ -79,4 +106,45 @@ public final class RemoteLogFileSystem extends AbstractLogFileSystem {
 		}
 		return entries;
 	}
+
+	@Override
+	public Eventloop getEventloop() {
+		return eventloop;
+	}
+
+	@JmxAttribute
+	public StageStats getStageList() {
+		return stageList;
+	}
+
+	@JmxAttribute
+	public StageStats getStageRead() {
+		return stageRead;
+	}
+
+	@JmxAttribute
+	public StageStats getStageWrite() {
+		return stageWrite;
+	}
+
+	@JmxAttribute
+	public StreamOps getStreamReads() {
+		return streamReads;
+	}
+
+	@JmxAttribute
+	public StreamOps getStreamWrites() {
+		return streamWrites;
+	}
+
+	@JmxAttribute
+	public StreamStatsDetailed getStreamReadStats() {
+		return streamReadStats;
+	}
+
+	@JmxAttribute
+	public StreamStatsDetailed getStreamWriteStats() {
+		return streamWriteStats;
+	}
+
 }

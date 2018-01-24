@@ -31,6 +31,9 @@ import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import io.datakernel.stream.processor.*;
+import io.datakernel.stream.stats.StreamStats;
+import io.datakernel.stream.stats.StreamStatsBasic;
+import io.datakernel.stream.stats.StreamStatsDetailed;
 import io.datakernel.util.Initializer;
 import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
@@ -49,7 +52,7 @@ import java.util.stream.StreamSupport;
 
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static io.datakernel.stream.DataStreams.stream;
-import static io.datakernel.stream.processor.StreamStatsSizeCounter.forByteBufs;
+import static io.datakernel.stream.stats.StreamStatsSizeCounter.forByteBufs;
 import static java.nio.file.StandardOpenOption.READ;
 import static org.slf4j.LoggerFactory.getLogger;
 

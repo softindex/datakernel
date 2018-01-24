@@ -29,6 +29,9 @@ import io.datakernel.remotefs.RemoteFsClient;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.processor.*;
+import io.datakernel.stream.stats.StreamStats;
+import io.datakernel.stream.stats.StreamStatsBasic;
+import io.datakernel.stream.stats.StreamStatsDetailed;
 import io.datakernel.util.MemSize;
 
 import java.net.InetSocketAddress;
@@ -39,7 +42,7 @@ import java.util.concurrent.CompletionStage;
 import static io.datakernel.aggregation.AggregationUtils.createBufferSerializer;
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static io.datakernel.stream.DataStreams.stream;
-import static io.datakernel.stream.processor.StreamStatsSizeCounter.forByteBufs;
+import static io.datakernel.stream.stats.StreamStatsSizeCounter.forByteBufs;
 import static java.util.stream.Collectors.toMap;
 
 public class RemoteFsChunkStorage implements AggregationChunkStorage, EventloopJmxMBeanEx {

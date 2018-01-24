@@ -100,7 +100,7 @@ public class LogToCubeTest {
 		OTStateManager<Integer, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, algorithms, cubeDiffLogOTState);
 
 		LogManager<TestPubRequest> logManager = LogManagerImpl.create(eventloop,
-				LocalFsLogFileSystem.create(executor, logsDir),
+				LocalFsLogFileSystem.create(eventloop, executor, logsDir),
 				SerializerBuilder.create(classLoader).build(TestPubRequest.class));
 
 		LogOTProcessor<TestPubRequest, CubeDiff> logOTProcessor = LogOTProcessor.create(eventloop,

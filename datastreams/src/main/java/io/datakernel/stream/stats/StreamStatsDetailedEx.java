@@ -1,8 +1,9 @@
-package io.datakernel.stream.processor;
+package io.datakernel.stream.stats;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxReducers;
 import io.datakernel.jmx.ValueStats;
 import io.datakernel.stream.StreamDataReceiver;
 
@@ -74,6 +75,13 @@ public final class StreamStatsDetailedEx extends StreamStatsBasic {
 	@JmxAttribute
 	public EventStats getTotalSize() {
 		return sizeCounter != null ? totalSize : null;
+	}
+
+	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
+	public Long getTotalSizeAvg() {
+		return sizeCounter != null && super.getStarted().getTotalCount() != 0 ?
+				totalSize.getTotalCount() / super.getStarted().getTotalCount() :
+				null;
 	}
 
 }

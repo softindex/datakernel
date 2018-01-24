@@ -63,6 +63,6 @@ public final class LogFile implements Comparable<LogFile> {
 
 	@Override
 	public String toString() {
-		return "{" + name + "_" + n + '}';
+		return name + (n == 0 ? "" : "_" + n);
 	}
 }
