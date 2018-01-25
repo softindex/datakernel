@@ -107,38 +107,6 @@ public class StreamSerializerTest {
 	}
 
 	@Test
-	public void testWithoutConsumer() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-
-		List<Integer> list = new ArrayList<>();
-		StreamProducer<Integer> source = StreamProducer.of(1, 2, 3);
-		StreamBinarySerializer<Integer> serializerStream = StreamBinarySerializer.create(intSerializer())
-				.withDefaultBufferSize(1);
-		StreamBinaryDeserializer<Integer> deserializerStream = StreamBinaryDeserializer.create(intSerializer());
-		StreamConsumerToList<Integer> consumer = StreamConsumerToList.oneByOne(list);
-
-		stream(source, serializerStream.getInput());
-		eventloop.run();
-
-		stream(serializerStream.getOutput(), deserializerStream.getInput());
-		eventloop.run();
-
-		stream(deserializerStream.getOutput(), consumer);
-		eventloop.run();
-
-		assertEquals(asList(1, 2, 3), consumer.getList());
-		assertStatus(END_OF_STREAM, source);
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-
-		assertStatus(END_OF_STREAM, serializerStream.getInput());
-		assertStatus(END_OF_STREAM, serializerStream.getOutput());
-
-		assertStatus(END_OF_STREAM, deserializerStream.getInput());
-		assertStatus(END_OF_STREAM, deserializerStream.getOutput());
-	}
-
-	@Test
 	public void testProducerWithError() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 

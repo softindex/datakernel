@@ -677,6 +677,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 *
 	 * @param key key of this action.
 	 */
+	@SuppressWarnings("unchecked")
 	private void onConnect(SelectionKey key) {
 		assert inEventloopThread();
 		SettableStage<SocketChannel> connectStage = (SettableStage<SocketChannel>) key.attachment();
@@ -1092,12 +1093,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		if (inEventloopThread()) {
 			stats.recordFatalError(e, context);
 		} else {
-			execute(new Runnable() {
-				@Override
-				public void run() {
-					stats.recordFatalError(e, context);
-				}
-			});
+			execute(() -> stats.recordFatalError(e, context));
 		}
 	}
 
@@ -1108,11 +1104,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			try {
 				handler.handle(e, context);
 			} catch (Throwable handlerError) {
-				execute(new Runnable() {
-					@Override
-					public void run() {
-						throw new RethrowedError(handlerError);
-					}
+				execute(() -> {
+					throw new RethrowedError(handlerError);
 				});
 			}
 		}
@@ -1140,11 +1133,11 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		executorsCallsStats.recordCallDuration(taskName, (int) (executingFinish - executingStart));
 	}
 
-	public int getTick() {
+	public int getLoop() {
 		return (int) (tick >>> 32);
 	}
 
-	public long getMicroTick() {
+	public long getTick() {
 		return tick;
 	}
 

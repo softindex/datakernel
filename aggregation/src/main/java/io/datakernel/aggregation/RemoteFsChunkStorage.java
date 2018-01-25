@@ -45,7 +45,7 @@ import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.stats.StreamStatsSizeCounter.forByteBufs;
 import static java.util.stream.Collectors.toMap;
 
-public class RemoteFsChunkStorage implements AggregationChunkStorage, EventloopJmxMBeanEx {
+public final class RemoteFsChunkStorage implements AggregationChunkStorage, EventloopJmxMBeanEx {
 	public static final int DEFAULT_BUFFER_SIZE = 256 * 1024;
 	public static final String LOG = ".log";
 	public static final String TEMP_LOG = ".temp";
@@ -117,7 +117,8 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage, EventloopJ
 
 					return deserializer.getOutput()
 							.with(detailed ? readDeserializeDetailed::wrapper : readDeserialize::wrapper)
-							.withEndOfStreamAsResult();
+							.withEndOfStreamAsResult()
+							.withLateBinding();
 				});
 	}
 
@@ -144,7 +145,8 @@ public class RemoteFsChunkStorage implements AggregationChunkStorage, EventloopJ
 
 					return serializer.getInput()
 							.with(detailed ? writeSerializeDetailed::wrapper : writeSerialize::wrapper)
-							.withResult(consumer.getResult());
+							.withResult(consumer.getResult())
+							.withLateBinding();
 				});
 	}
 

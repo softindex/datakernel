@@ -21,6 +21,7 @@ import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
 
 import java.util.ArrayList;
+import java.util.Set;
 import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.stream.DataStreams.bind;
@@ -150,6 +151,11 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 		@Override
 		public CompletionStage<Void> getEndOfStream() {
 			return endOfStream;
+		}
+
+		@Override
+		public Set<StreamCapability> getCapabilities() {
+			throw new UnsupportedOperationException();
 		}
 
 		public void onData(T item) {

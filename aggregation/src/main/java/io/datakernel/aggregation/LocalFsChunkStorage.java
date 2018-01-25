@@ -157,7 +157,8 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 
 					return deserializer.getOutput()
 							.with(detailed ? readDeserializeDetailed::wrapper : readDeserialize::wrapper)
-							.withEndOfStreamAsResult();
+							.withEndOfStreamAsResult()
+							.withLateBinding();
 				});
 	}
 
@@ -181,7 +182,8 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 
 					return serializer.getInput()
 							.with(detailed ? writeSerializeDetailed::wrapper : writeSerialize::wrapper)
-							.withResult(writer.getFlushStage());
+							.withResult(writer.getFlushStage())
+							.withLateBinding();
 				});
 	}
 

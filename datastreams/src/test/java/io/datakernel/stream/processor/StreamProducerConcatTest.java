@@ -26,7 +26,6 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Function;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.DataStreams.stream;
@@ -108,27 +107,6 @@ public class StreamProducerConcatTest {
 
 		assertEquals(asList(1, 2, 3, 4, 5, 6), list);
 
-	}
-
-	@Test
-	public void testWithoutConsumer() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-
-		StreamProducer<Integer> producer = StreamProducer.concat(
-				StreamProducer.of(1, 2, 3),
-				StreamProducer.of(4, 5, 6),
-				StreamProducer.of());
-
-		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
-		StreamFunction<Integer, Integer> function = StreamFunction.create(Function.<Integer>identity());
-
-		stream(producer, function.getInput());
-		eventloop.run();
-
-		stream(function.getOutput(), consumer);
-		eventloop.run();
-
-		assertEquals(asList(1, 2, 3, 4, 5, 6), consumer.getList());
 	}
 
 }

@@ -24,8 +24,6 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -420,65 +418,6 @@ public class StreamReducerTest {
 		assertStatus(END_OF_STREAM, source1);
 		assertStatus(END_OF_STREAM, source2);
 		assertStatus(END_OF_STREAM, source3);
-	}
-
-	@Test
-	public void testWithoutConsumer() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-
-		StreamProducer<Integer> source0 = StreamProducer.of();
-		StreamProducer<Integer> source1 = StreamProducer.of(7);
-		StreamProducer<Integer> source2 = StreamProducer.of(3, 4, 6);
-		StreamProducer<Integer> source3 = StreamProducer.of();
-		StreamProducer<Integer> source4 = StreamProducer.of(2, 3, 5);
-		StreamProducer<Integer> source5 = StreamProducer.of(1, 3);
-		StreamProducer<Integer> source6 = StreamProducer.of(1, 3);
-		StreamProducer<Integer> source7 = StreamProducer.of();
-
-		StreamReducer<Integer, Integer, Void> streamReducer = StreamReducer.<Integer, Integer, Void>create(Integer::compareTo)
-				.withBufferSize(1);
-		Function<Integer, Integer> keyFunction = Function.identity();
-		StreamReducers.Reducer<Integer, Integer, Integer, Void> reducer = mergeDeduplicateReducer();
-
-		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending();
-
-		stream(source0, streamReducer.newInput(keyFunction, reducer));
-		stream(source1, streamReducer.newInput(keyFunction, reducer));
-		stream(source2, streamReducer.newInput(keyFunction, reducer));
-		stream(source3, streamReducer.newInput(keyFunction, reducer));
-		stream(source4, streamReducer.newInput(keyFunction, reducer));
-		stream(source5, streamReducer.newInput(keyFunction, reducer));
-		stream(source6, streamReducer.newInput(keyFunction, reducer));
-		stream(source7, streamReducer.newInput(keyFunction, reducer));
-		eventloop.run();
-
-		stream(streamReducer.getOutput(), consumer);
-		eventloop.run();
-
-		assertEquals(asList(1, 2, 3, 4, 5, 6, 7), consumer.getList());
-		assertStatus(END_OF_STREAM, source0);
-		assertStatus(END_OF_STREAM, source1);
-		assertStatus(END_OF_STREAM, source2);
-		assertStatus(END_OF_STREAM, source3);
-		assertStatus(END_OF_STREAM, source4);
-		assertStatus(END_OF_STREAM, source5);
-		assertStatus(END_OF_STREAM, source6);
-		assertStatus(END_OF_STREAM, source7);
-
-		assertStatus(END_OF_STREAM, streamReducer.getOutput());
-		assertConsumerStatuses(END_OF_STREAM, streamReducer.getInputs());
-	}
-
-	@Test
-	public void testWithoutProducer() throws ExecutionException, InterruptedException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-
-		StreamReducer<Integer, Integer, Void> streamReducer = StreamReducer.<Integer, Integer, Void>create(Integer::compareTo).withBufferSize(1);
-		StreamConsumerToList<Integer> toList = StreamConsumerToList.create();
-		stream(streamReducer.getOutput(), toList);
-		CompletableFuture<Void> future = toList.getEndOfStream().toCompletableFuture();
-		eventloop.run();
-		future.get();
 	}
 
 }

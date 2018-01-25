@@ -17,16 +17,21 @@
 package io.datakernel.stream;
 
 import io.datakernel.async.SettableStage;
+import io.datakernel.stream.processor.StreamLateBinder;
 import io.datakernel.util.Modifier;
 
+import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletionStage;
 
-import static io.datakernel.async.SettableStage.mirrorOf;
-import static io.datakernel.async.Stages.onError;
+import static io.datakernel.stream.DataStreams.bind;
 import static io.datakernel.stream.DataStreams.stream;
+import static io.datakernel.stream.StreamCapability.LATE_BINDING;
+import static io.datakernel.util.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptySet;
 
 /**
  * It represents object for asynchronous sending streams of data.
@@ -56,6 +61,12 @@ public interface StreamProducer<T> extends Modifier<StreamProducer<T>> {
 	void suspend();
 
 	CompletionStage<Void> getEndOfStream();
+
+	Set<StreamCapability> getCapabilities();
+
+	default StreamProducer<T> withLateBinding() {
+		return getCapabilities().contains(LATE_BINDING) ? this : with(StreamLateBinder::wrapper);
+	}
 
 	/**
 	 * Returns producer which doing nothing - not sending any data and not closing itself.
@@ -98,18 +109,23 @@ public interface StreamProducer<T> extends Modifier<StreamProducer<T>> {
 		return new StreamProducers.OfIteratorImpl<>(iterable.iterator());
 	}
 
+	String LATE_BINDING_ERROR_MESSAGE = "" +
+			"StreamProducer %s does not have LATE_BINDING capabilities, " +
+			"it must be bound in the same tick when it is created. " +
+			"Alternatively, use .withLateBinding() modifier";
+
 	static <T> StreamProducer<T> ofStage(CompletionStage<StreamProducer<T>> producerStage) {
-		return new StreamProducerDecorator<T>() {
-			{
-				producerStage.whenCompleteAsync((producer, throwable) -> {
-					if (throwable == null) {
-						setActualProducer(producer);
-					} else {
-						setActualProducer(StreamProducer.closingWithError(throwable));
-					}
-				});
+		StreamLateBinder<T> binder = new StreamLateBinder<>();
+		producerStage.whenComplete((producer, throwable) -> {
+			if (throwable == null) {
+				checkArgument(producer.getCapabilities().contains(LATE_BINDING),
+						LATE_BINDING_ERROR_MESSAGE, producer);
+				bind(producer, binder.getInput());
+			} else {
+				bind(StreamProducer.closingWithError(throwable), binder.getInput());
 			}
-		};
+		});
+		return binder.getOutput();
 	}
 
 	/**
@@ -138,8 +154,15 @@ public interface StreamProducer<T> extends Modifier<StreamProducer<T>> {
 	}
 
 	default <X> StreamProducerWithResult<T, X> withResult(CompletionStage<X> result) {
-		SettableStage<X> safeResult = mirrorOf(result);
-		getEndOfStream().whenComplete(onError(safeResult::trySetException));
+		SettableStage<Void> safeEndOfStream = SettableStage.create();
+		SettableStage<X> safeResult = SettableStage.create();
+		this.getEndOfStream().whenComplete(($, throwable) -> {
+			safeEndOfStream.trySet($, throwable);
+			if (throwable != null) {
+				safeResult.trySetException(throwable);
+			}
+		});
+		result.whenComplete(safeResult::trySet);
 		return new StreamProducerWithResult<T, X>() {
 			@Override
 			public void setConsumer(StreamConsumer<T> consumer) {
@@ -158,17 +181,25 @@ public interface StreamProducer<T> extends Modifier<StreamProducer<T>> {
 
 			@Override
 			public CompletionStage<Void> getEndOfStream() {
-				return StreamProducer.this.getEndOfStream();
+				return safeEndOfStream;
 			}
 
 			@Override
 			public CompletionStage<X> getResult() {
 				return safeResult;
 			}
+
+			@Override
+			public Set<StreamCapability> getCapabilities() {
+				return StreamProducer.this.getCapabilities().contains(LATE_BINDING) ?
+						EnumSet.of(LATE_BINDING) : emptySet();
+			}
 		};
 	}
 
 	default StreamProducerWithResult<T, Void> withEndOfStreamAsResult() {
+		SettableStage<Void> safeEndOfStream = SettableStage.create();
+		getEndOfStream().whenComplete(safeEndOfStream::trySet);
 		return new StreamProducerWithResult<T, Void>() {
 			@Override
 			public void setConsumer(StreamConsumer<T> consumer) {
@@ -187,12 +218,18 @@ public interface StreamProducer<T> extends Modifier<StreamProducer<T>> {
 
 			@Override
 			public CompletionStage<Void> getEndOfStream() {
-				return StreamProducer.this.getEndOfStream();
+				return safeEndOfStream;
 			}
 
 			@Override
 			public CompletionStage<Void> getResult() {
-				return StreamProducer.this.getEndOfStream();
+				return safeEndOfStream;
+			}
+
+			@Override
+			public Set<StreamCapability> getCapabilities() {
+				return StreamProducer.this.getCapabilities().contains(LATE_BINDING) ?
+						EnumSet.of(LATE_BINDING) : emptySet();
 			}
 		};
 	}

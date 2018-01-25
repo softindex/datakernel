@@ -34,11 +34,12 @@ import io.datakernel.stream.net.Messaging.ReceiveMessageCallback;
 import io.datakernel.stream.net.MessagingSerializer;
 import io.datakernel.stream.net.MessagingWithBinaryStreaming;
 import io.datakernel.stream.processor.StreamBinarySerializer;
-import io.datakernel.stream.processor.StreamForwarder;
+import io.datakernel.stream.processor.StreamLateBinder;
 
 import java.util.HashMap;
 import java.util.Map;
 
+import static io.datakernel.stream.DataStreams.bind;
 import static io.datakernel.stream.net.MessagingSerializers.ofJson;
 
 /**
@@ -46,7 +47,7 @@ import static io.datakernel.stream.net.MessagingSerializers.ofJson;
  */
 public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 	private final DatagraphEnvironment environment;
-	private final Map<StreamId, StreamForwarder<ByteBuf>> pendingStreams = new HashMap<>();
+	private final Map<StreamId, StreamLateBinder<ByteBuf>> pendingStreams = new HashMap<>();
 	private final MessagingSerializer<DatagraphCommand, DatagraphResponse> serializer;
 	private final Map<Class, CommandHandler> handlers = new HashMap<>();
 
@@ -80,18 +81,18 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 		@Override
 		public void onCommand(MessagingWithBinaryStreaming<DatagraphCommandDownload, DatagraphResponse> messaging, DatagraphCommandDownload command) {
 			StreamId streamId = command.getStreamId();
-			StreamForwarder<ByteBuf> forwarder = pendingStreams.remove(streamId);
-			if(forwarder != null) {
+			StreamLateBinder<ByteBuf> forwarder = pendingStreams.remove(streamId);
+			if (forwarder != null) {
 				logger.info("onDownload: transferring {}, pending downloads: {}", streamId, pendingStreams.size());
 			} else {
 				logger.info("onDownload: waiting {}, pending downloads: {}", streamId, pendingStreams.size());
-				forwarder = StreamForwarder.create();
+				forwarder = new StreamLateBinder<>();
 				pendingStreams.put(streamId, forwarder);
 			}
 			StreamConsumerWithResult<ByteBuf, Void> consumer = messaging.sendBinaryStream();
-			forwarder.setConsumer(consumer);
+			bind(forwarder.getOutput(), consumer);
 			consumer.getResult().whenComplete(($, throwable) -> {
-				if(throwable != null) {
+				if (throwable != null) {
 					logger.warn("Exception occurred while trying to send data");
 				}
 				messaging.close();
@@ -104,7 +105,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 		public void onCommand(MessagingWithBinaryStreaming<DatagraphCommandExecute, DatagraphResponse> messaging, DatagraphCommandExecute command) {
 			messaging.close();
 			TaskContext taskContext = new TaskContext(eventloop, DatagraphEnvironment.extend(environment));
-			for(Node node : command.getNodes()) {
+			for (Node node : command.getNodes()) {
 				node.createAndBind(taskContext);
 			}
 			taskContext.wireAll();
@@ -118,15 +119,15 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 				.withDefaultBufferSize(256 * 1024)
 				.withAutoFlush(1000);
 
-		StreamForwarder<ByteBuf> forwarder = pendingStreams.remove(streamId);
-		if(forwarder == null) {
+		StreamLateBinder<ByteBuf> forwarder = pendingStreams.remove(streamId);
+		if (forwarder == null) {
 			logger.info("onUpload: waiting {}, pending downloads: {}", streamId, pendingStreams.size());
-			forwarder = StreamForwarder.create();
+			forwarder = new StreamLateBinder<>();
 			pendingStreams.put(streamId, forwarder);
 		} else {
 			logger.info("onUpload: transferring {}, pending downloads: {}", streamId, pendingStreams.size());
 		}
-		forwarder.setProducer(streamSerializer.getOutput());
+		bind(streamSerializer.getOutput(), forwarder.getInput());
 		return streamSerializer.getInput();
 	}
 
@@ -156,7 +157,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 
 	private void doRead(MessagingWithBinaryStreaming<DatagraphCommand, DatagraphResponse> messaging, DatagraphCommand command) {
 		CommandHandler handler = handlers.get(command.getClass());
-		if(handler == null) {
+		if (handler == null) {
 			messaging.close();
 			logger.error("missing handler for " + command);
 		} else {

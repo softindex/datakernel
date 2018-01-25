@@ -24,7 +24,6 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Function;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.DataStreams.stream;
@@ -87,25 +86,4 @@ public class StreamProducerDecoratorTest {
 		assertStatus(END_OF_STREAM, consumer);
 	}
 
-	@Test
-	public void testWithoutConsumer() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-
-		List<Integer> list = new ArrayList<>();
-		StreamConsumerToList<Integer> consumer = StreamConsumerToList.oneByOne(list);
-		StreamProducer<Integer> producer = StreamProducer.of(1, 2, 3, 4, 5);
-		StreamProducerDecorator<Integer> producerDecorator = new StreamProducerDecorator<Integer>() {};
-		producerDecorator.setActualProducer(producer);
-		StreamFunction<Integer, Integer> function = StreamFunction.create(Function.<Integer>identity());
-
-		stream(producerDecorator, function.getInput());
-		eventloop.run();
-
-		stream(function.getOutput(), consumer);
-		eventloop.run();
-
-		assertEquals(consumer.getList(), asList(1, 2, 3, 4, 5));
-		assertStatus(END_OF_STREAM, producer);
-		assertStatus(END_OF_STREAM, consumer);
-	}
 }

@@ -24,6 +24,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SimpleServer;
 import io.datakernel.eventloop.SimpleServer.SocketHandlerProvider;
 import io.datakernel.stream.StreamConsumerToList;
+import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.net.Messaging.ReceiveMessageCallback;
@@ -38,6 +39,7 @@ import java.net.UnknownHostException;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
@@ -240,7 +242,8 @@ public class MessagingWithBinaryStreamingTest {
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		StreamConsumerToList<Long> consumerToList = StreamConsumerToList.create();
+		StreamConsumerWithResult<Long, List<Long>> consumerToList = StreamConsumerToList.create();
+		CompletableFuture<List<Long>> future = consumerToList.getResult().toCompletableFuture();
 
 		MessagingSerializer<String, String> serializer =
 			ofJson(STRING_JSON, STRING_JSON);
@@ -302,7 +305,7 @@ public class MessagingWithBinaryStreamingTest {
 
 		eventloop.run();
 
-		assertEquals(source, consumerToList.getList());
+		assertEquals(source, future.get());
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
@@ -318,7 +321,8 @@ public class MessagingWithBinaryStreamingTest {
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		StreamConsumerToList<Long> consumerToList = StreamConsumerToList.create();
+		StreamConsumerWithResult<Long, List<Long>> consumerToList = StreamConsumerToList.create();
+		CompletableFuture<List<Long>> future = consumerToList.getResult().toCompletableFuture();
 
 		MessagingSerializer<String, String> serializer =
 			ofJson(STRING_JSON, STRING_JSON);
@@ -402,7 +406,7 @@ public class MessagingWithBinaryStreamingTest {
 
 		eventloop.run();
 
-		assertEquals(source, consumerToList.getList());
+		assertEquals(source, future.get());
 		assertTrue(ack[0]);
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
@@ -417,7 +421,8 @@ public class MessagingWithBinaryStreamingTest {
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		StreamConsumerToList<Long> consumerToList = StreamConsumerToList.create();
+		StreamConsumerWithResult<Long, List<Long>> consumerToList = StreamConsumerWithResult.toList();
+		CompletableFuture<List<Long>> future = consumerToList.getResult().toCompletableFuture();
 
 		MessagingSerializer<String, String> serializer =
 			ofJson(STRING_JSON, STRING_JSON);
@@ -480,7 +485,7 @@ public class MessagingWithBinaryStreamingTest {
 
 		eventloop.run();
 
-		assertEquals(source, consumerToList.getList());
+		assertEquals(source, future.get());
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}

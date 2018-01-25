@@ -24,11 +24,14 @@ import io.datakernel.exception.ExpectedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Set;
 import java.util.concurrent.CompletionStage;
 
+import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 import static io.datakernel.stream.StreamStatus.*;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
+import static java.util.Collections.emptySet;
 
 /**
  * It is basic implementation of {@link StreamConsumer}
@@ -39,6 +42,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
+	private final long createTick = eventloop.getTick();
 
 	private StreamProducer<T> producer;
 
@@ -59,6 +63,8 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	public final void setProducer(StreamProducer<T> producer) {
 		checkNotNull(producer);
 		checkState(this.producer == null);
+		checkState(getCapabilities().contains(LATE_BINDING) || eventloop.getTick() == createTick,
+				LATE_BINDING_ERROR_MESSAGE, this);
 		this.producer = producer;
 		onWired();
 		producer.getEndOfStream()
@@ -125,6 +131,11 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	@Override
 	public final CompletionStage<Void> getEndOfStream() {
 		return endOfStream;
+	}
+
+	@Override
+	public Set<StreamCapability> getCapabilities() {
+		return emptySet();
 	}
 
 	public final Object getTag() {

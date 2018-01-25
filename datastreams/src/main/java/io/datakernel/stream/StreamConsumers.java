@@ -19,6 +19,8 @@ package io.datakernel.stream;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stages;
 
+import java.util.EnumSet;
+import java.util.Set;
 import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
@@ -26,6 +28,8 @@ import java.util.function.Supplier;
 
 import static io.datakernel.async.Stages.onError;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+import static io.datakernel.stream.StreamCapability.LATE_BINDING;
+import static io.datakernel.stream.StreamCapability.TERMINAL;
 
 public final class StreamConsumers {
 	private StreamConsumers() {
@@ -48,6 +52,11 @@ public final class StreamConsumers {
 		public CompletionStage<Void> getEndOfStream() {
 			return endOfStream;
 		}
+
+		@Override
+		public Set<StreamCapability> getCapabilities() {
+			return EnumSet.of(LATE_BINDING, TERMINAL);
+		}
 	}
 
 	/**
@@ -68,6 +77,11 @@ public final class StreamConsumers {
 		@Override
 		public CompletionStage<Void> getEndOfStream() {
 			return endOfStream;
+		}
+
+		@Override
+		public Set<StreamCapability> getCapabilities() {
+			return EnumSet.of(LATE_BINDING, TERMINAL);
 		}
 	}
 

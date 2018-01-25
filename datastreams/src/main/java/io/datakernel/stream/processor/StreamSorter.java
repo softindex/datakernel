@@ -76,7 +76,7 @@ public final class StreamSorter<K, T> implements HasInput<T>, HasOutput<T> {
 						StreamMerger<K, T> streamMerger = StreamMerger.create(keyFunction, keyComparator, deduplicate);
 						bind(listProducer, streamMerger.newInput());
 						streamIds.forEach(streamId -> bind(StreamProducerWithResult.ofStage(storage.read(streamId)), streamMerger.newInput()));
-						return streamMerger.getOutput();
+						return streamMerger.getOutput().withLateBinding();
 					}
 				});
 		this.output = StreamProducer.ofStage(outputStreamStage);

@@ -28,8 +28,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.DataStreams.stream;
@@ -151,18 +149,6 @@ public class StreamUnionTest {
 		assertTrue(list.size() == 3);
 		assertStatus(CLOSED_WITH_ERROR, streamUnion.getOutput());
 		assertConsumerStatuses(CLOSED_WITH_ERROR, streamUnion.getInputs());
-	}
-
-	@Test
-	public void testWithoutProducer() throws ExecutionException, InterruptedException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-
-		StreamUnion<Integer> streamUnion = StreamUnion.create();
-		StreamConsumerToList<Integer> toList = StreamConsumerToList.create();
-		stream(streamUnion.getOutput(), toList);
-		CompletableFuture<Void> future = toList.getEndOfStream().toCompletableFuture();
-		eventloop.run();
-		future.get();
 	}
 
 }

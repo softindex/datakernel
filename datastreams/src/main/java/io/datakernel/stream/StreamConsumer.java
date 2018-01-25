@@ -17,12 +17,17 @@
 package io.datakernel.stream;
 
 import io.datakernel.async.SettableStage;
+import io.datakernel.stream.processor.StreamLateBinder;
 import io.datakernel.util.Modifier;
 
+import java.util.EnumSet;
+import java.util.Set;
 import java.util.concurrent.CompletionStage;
 
-import static io.datakernel.async.SettableStage.mirrorOf;
-import static io.datakernel.async.Stages.onError;
+import static io.datakernel.stream.DataStreams.bind;
+import static io.datakernel.stream.StreamCapability.LATE_BINDING;
+import static io.datakernel.util.Preconditions.checkArgument;
+import static java.util.Collections.emptySet;
 
 /**
  * It represents an object which can asynchronous receive streams of data.
@@ -42,6 +47,12 @@ public interface StreamConsumer<T> extends Modifier<StreamConsumer<T>> {
 
 	CompletionStage<Void> getEndOfStream();
 
+	Set<StreamCapability> getCapabilities();
+
+	default StreamConsumer<T> withLateBinding() {
+		return getCapabilities().contains(LATE_BINDING) ? this : with(StreamLateBinder::wrapper);
+	}
+
 	static <T> StreamConsumer<T> idle() {
 		return new StreamConsumers.IdleImpl<>();
 	}
@@ -50,23 +61,35 @@ public interface StreamConsumer<T> extends Modifier<StreamConsumer<T>> {
 		return new StreamConsumers.ClosingWithErrorImpl<>(exception);
 	}
 
+	String LATE_BINDING_ERROR_MESSAGE = "" +
+			"StreamConsumer %s does not have LATE_BINDING capabilities, " +
+			"it must be bound in the same tick when it is created. " +
+			"Alternatively, use .withLateBinding() modifier";
+
 	static <T> StreamConsumer<T> ofStage(CompletionStage<StreamConsumer<T>> consumerStage) {
-		return new StreamConsumerDecorator<T>() {
-			{
-				consumerStage.whenComplete((consumer, throwable) -> {
-					if (throwable == null) {
-						setActualConsumer(consumer);
-					} else {
-						setActualConsumer(closingWithError(throwable));
-					}
-				});
+		StreamLateBinder<T> lateBounder = new StreamLateBinder<>();
+		consumerStage.whenComplete((consumer, throwable) -> {
+			if (throwable == null) {
+				checkArgument(consumer.getCapabilities().contains(LATE_BINDING),
+						LATE_BINDING_ERROR_MESSAGE, consumer);
+				bind(lateBounder.getOutput(), consumer);
+			} else {
+				bind(lateBounder.getOutput(), closingWithError(throwable));
 			}
-		};
+		});
+		return lateBounder.getInput();
 	}
 
 	default <X> StreamConsumerWithResult<T, X> withResult(CompletionStage<X> result) {
-		SettableStage<X> safeResult = mirrorOf(result);
-		getEndOfStream().whenComplete(onError(safeResult::trySetException));
+		SettableStage<Void> safeEndOfStream = SettableStage.create();
+		SettableStage<X> safeResult = SettableStage.create();
+		this.getEndOfStream().whenComplete(($, throwable) -> {
+			safeEndOfStream.trySet($, throwable);
+			if (throwable != null) {
+				safeResult.trySetException(throwable);
+			}
+		});
+		result.whenComplete(safeResult::trySet);
 		return new StreamConsumerWithResult<T, X>() {
 			@Override
 			public void setProducer(StreamProducer<T> producer) {
@@ -75,17 +98,25 @@ public interface StreamConsumer<T> extends Modifier<StreamConsumer<T>> {
 
 			@Override
 			public CompletionStage<Void> getEndOfStream() {
-				return StreamConsumer.this.getEndOfStream();
+				return safeEndOfStream;
 			}
 
 			@Override
 			public CompletionStage<X> getResult() {
 				return safeResult;
 			}
+
+			@Override
+			public Set<StreamCapability> getCapabilities() {
+				return StreamConsumer.this.getCapabilities().contains(LATE_BINDING) ?
+						EnumSet.of(LATE_BINDING) : emptySet();
+			}
 		};
 	}
 
 	default StreamConsumerWithResult<T, Void> withEndOfStreamAsResult() {
+		SettableStage<Void> safeEndOfStream = SettableStage.create();
+		getEndOfStream().whenComplete(safeEndOfStream::trySet);
 		return new StreamConsumerWithResult<T, Void>() {
 			@Override
 			public void setProducer(StreamProducer<T> producer) {
@@ -94,12 +125,18 @@ public interface StreamConsumer<T> extends Modifier<StreamConsumer<T>> {
 
 			@Override
 			public CompletionStage<Void> getEndOfStream() {
-				return StreamConsumer.this.getEndOfStream();
+				return safeEndOfStream;
 			}
 
 			@Override
 			public CompletionStage<Void> getResult() {
-				return StreamConsumer.this.getEndOfStream();
+				return safeEndOfStream;
+			}
+
+			@Override
+			public Set<StreamCapability> getCapabilities() {
+				return StreamConsumer.this.getCapabilities().contains(LATE_BINDING) ?
+						EnumSet.of(LATE_BINDING) : emptySet();
 			}
 		};
 	}

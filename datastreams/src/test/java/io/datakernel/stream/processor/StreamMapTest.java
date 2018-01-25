@@ -114,23 +114,4 @@ public class StreamMapTest {
 		assertStatus(CLOSED_WITH_ERROR, consumer.getProducer());
 	}
 
-	@Test
-	public void testWithoutConsumer() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-
-		StreamProducer<Integer> source = StreamProducer.of(1, 2, 3);
-		StreamMap<Integer, Integer> projection = StreamMap.create(FUNCTION);
-		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending();
-
-		stream(source, projection.getInput());
-		eventloop.run();
-
-		stream(projection.getOutput(), consumer);
-		eventloop.run();
-
-		assertEquals(asList(11, 12, 13), consumer.getList());
-		assertStatus(END_OF_STREAM, source);
-		assertStatus(END_OF_STREAM, projection.getInput());
-		assertStatus(END_OF_STREAM, projection.getOutput());
-	}
 }

@@ -144,7 +144,9 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> impl
 		StreamConsumerWithResult<T, AggregationChunk> consumer = StreamConsumerWithResult.ofStage(
 				storage.createId()
 						.thenCompose(chunkId -> storage.write(aggregation, fields, recordClass, chunkId, classLoader)
-								.thenApply(streamConsumer -> new ChunkWriter(streamConsumer, chunkId, chunkSize, partitionPredicate))));
+								.thenApply(streamConsumer ->
+										new ChunkWriter(streamConsumer, chunkId, chunkSize, partitionPredicate)
+												.withLateBinding())));
 
 		switcher.switchTo(consumer);
 

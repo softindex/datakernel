@@ -2,11 +2,11 @@ package io.datakernel.stream;
 
 import io.datakernel.async.SettableStage;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.CompletionStage;
 
+import static io.datakernel.stream.StreamCapability.LATE_BINDING;
+import static io.datakernel.stream.StreamCapability.TERMINAL;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 public class StreamConsumerToList<T> extends AbstractStreamConsumer<T> implements StreamConsumerWithResult<T, List<T>>, StreamDataReceiver<T> {
@@ -97,5 +97,10 @@ public class StreamConsumerToList<T> extends AbstractStreamConsumer<T> implement
 
 	public final List<T> getList() {
 		return list;
+	}
+
+	@Override
+	public Set<StreamCapability> getCapabilities() {
+		return EnumSet.of(LATE_BINDING, TERMINAL);
 	}
 }

@@ -214,32 +214,4 @@ public class StreamMergerTest {
 				consumerStatuses(merger.getInputs()));
 	}
 
-	@Test
-	public void testWithoutConsumer() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		StreamProducer<Integer> source0 = StreamProducer.ofIterable(Collections.<Integer>emptyList());
-		StreamProducer<Integer> source1 = StreamProducer.of(3, 7);
-		StreamProducer<Integer> source2 = StreamProducer.of(3, 4, 6);
-
-		StreamMerger<Integer, Integer> merger = StreamMerger.create(Function.identity(), Integer::compareTo, true);
-
-		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending();
-
-		stream(source0, merger.newInput());
-		stream(source1, merger.newInput());
-		stream(source2, merger.newInput());
-		eventloop.run();
-
-		stream(merger.getOutput(), consumer);
-		eventloop.run();
-
-		assertEquals(asList(3, 4, 6, 7), consumer.getList());
-
-		assertStatus(END_OF_STREAM, source0);
-		assertStatus(END_OF_STREAM, source1);
-		assertStatus(END_OF_STREAM, source2);
-		assertStatus(END_OF_STREAM, consumer);
-		assertStatus(END_OF_STREAM, merger.getOutput());
-		assertConsumerStatuses(END_OF_STREAM, merger.getInputs());
-	}
 }

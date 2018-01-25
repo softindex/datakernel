@@ -139,6 +139,7 @@ public class StreamBinaryDeserializerTest {
 		System.out.println(buffers);
 		assertEquals(1, buffers.size());
 
+		deserializer = StreamBinaryDeserializer.create(createSerializer());
 		StreamConsumerToList<Data> consumer = StreamConsumerToList.create();
 		CompletableFuture<List<Data>> future = consumer.getResult().toCompletableFuture();
 		stream(StreamProducer.of(buffers.get(0).slice(3)), deserializer.getInput());

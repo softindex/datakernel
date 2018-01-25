@@ -19,12 +19,16 @@ package io.datakernel.stream;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stages;
 
+import java.util.EnumSet;
 import java.util.Iterator;
+import java.util.Set;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+import static io.datakernel.stream.StreamCapability.LATE_BINDING;
+import static io.datakernel.stream.StreamCapability.TERMINAL;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class StreamProducers {
@@ -64,6 +68,11 @@ public final class StreamProducers {
 		public CompletionStage<Void> getEndOfStream() {
 			return endOfStream;
 		}
+
+		@Override
+		public Set<StreamCapability> getCapabilities() {
+			return EnumSet.of(LATE_BINDING, TERMINAL);
+		}
 	}
 
 	static final class IdleImpl<T> implements StreamProducer<T> {
@@ -86,6 +95,11 @@ public final class StreamProducers {
 		@Override
 		public CompletionStage<Void> getEndOfStream() {
 			return endOfStream;
+		}
+
+		@Override
+		public Set<StreamCapability> getCapabilities() {
+			return EnumSet.of(LATE_BINDING, TERMINAL);
 		}
 	}
 
@@ -122,6 +136,11 @@ public final class StreamProducers {
 
 		@Override
 		protected void onError(Throwable t) {
+		}
+
+		@Override
+		public Set<StreamCapability> getCapabilities() {
+			return EnumSet.of(LATE_BINDING, TERMINAL);
 		}
 	}
 

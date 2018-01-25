@@ -114,26 +114,4 @@ public class StreamFunctionTest {
 		assertStatus(CLOSED_WITH_ERROR, streamFunction.getOutput());
 	}
 
-	@Test
-	public void testWithoutConsumer() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-
-		StreamFunction<Integer, Integer> streamFunction = StreamFunction.create(input -> input * input);
-
-		StreamProducer<Integer> source1 = StreamProducer.of(1, 2, 3);
-		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending();
-
-		stream(source1, streamFunction.getInput());
-		eventloop.run();
-
-		stream(streamFunction.getOutput(), consumer);
-		eventloop.run();
-
-		assertEquals(asList(1, 4, 9), consumer.getList());
-
-		assertStatus(END_OF_STREAM, source1);
-		assertStatus(END_OF_STREAM, streamFunction.getInput());
-		assertStatus(END_OF_STREAM, streamFunction.getOutput());
-		assertStatus(END_OF_STREAM, consumer);
-	}
 }

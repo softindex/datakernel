@@ -137,7 +137,9 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 			stream(streamCompressor.getOutput(), streamByteChunkerAfter.getInput());
 			stream(streamByteChunkerAfter.getOutput(), streamWriter);
 
-			return streamSerializer.getInput().withResult(streamWriter.getFlushStage().thenApply($ -> partition));
+			return streamSerializer.getInput()
+					.withResult(streamWriter.getFlushStage().thenApply($ -> partition))
+					.withLateBinding();
 		});
 	}
 
@@ -159,7 +161,9 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 					stream(fileReader, streamDecompressor.getInput());
 					stream(streamDecompressor.getOutput(), streamDeserializer.getInput());
 
-					return streamDeserializer.getOutput().withEndOfStreamAsResult();
+					return streamDeserializer.getOutput()
+							.withEndOfStreamAsResult()
+							.withLateBinding();
 				});
 	}
 

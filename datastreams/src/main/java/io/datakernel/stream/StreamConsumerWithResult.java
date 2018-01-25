@@ -17,6 +17,7 @@
 package io.datakernel.stream;
 
 import io.datakernel.async.SettableStage;
+import io.datakernel.stream.processor.StreamLateBinder;
 
 import java.util.List;
 import java.util.concurrent.CompletionStage;
@@ -24,6 +25,10 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
+
+import static io.datakernel.stream.DataStreams.bind;
+import static io.datakernel.stream.StreamCapability.LATE_BINDING;
+import static io.datakernel.util.Preconditions.checkArgument;
 
 public interface StreamConsumerWithResult<T, X> extends StreamConsumer<T> {
 	CompletionStage<X> getResult();
@@ -33,21 +38,26 @@ public interface StreamConsumerWithResult<T, X> extends StreamConsumer<T> {
 		return modifier.apply(this).withResult(this.getResult());
 	}
 
-	static <T, X> StreamConsumerWithResult<T, X> ofStage(CompletionStage<StreamConsumerWithResult<T, X>> stage) {
+	@Override
+	default StreamConsumerWithResult<T, X> withLateBinding() {
+		return getCapabilities().contains(LATE_BINDING) ? this : with(StreamLateBinder::wrapper);
+	}
+
+	static <T, X> StreamConsumerWithResult<T, X> ofStage(CompletionStage<StreamConsumerWithResult<T, X>> consumerStage) {
 		SettableStage<X> result = SettableStage.create();
-		return new StreamConsumerDecorator<T>() {
-			{
-				stage.whenComplete((consumer1, throwable) -> {
-					if (throwable == null) {
-						setActualConsumer(consumer1);
-						consumer1.getResult().whenComplete(result::set);
-					} else {
-						setActualConsumer(StreamConsumer.closingWithError(throwable));
-						result.setException(throwable);
-					}
-				});
+		StreamLateBinder<T> binder = new StreamLateBinder<>();
+		consumerStage.whenComplete((consumer, throwable) -> {
+			if (throwable == null) {
+				checkArgument(consumer.getCapabilities().contains(LATE_BINDING),
+						LATE_BINDING_ERROR_MESSAGE, consumer);
+				bind(binder.getOutput(), consumer);
+				consumer.getResult().whenComplete(result::set);
+			} else {
+				bind(binder.getOutput(), StreamConsumer.closingWithError(throwable));
+				result.setException(throwable);
 			}
-		}.withResult(result);
+		});
+		return binder.getInput().withResult(result);
 	}
 
 	default StreamConsumerWithResult<T, X> whenComplete(BiConsumer<? super X, ? super Throwable> consumer) {

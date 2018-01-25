@@ -123,63 +123,6 @@ public class StreamLZ4Test {
 	}
 
 	@Test
-	public void testWithoutConsumer() {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-
-		List<ByteBuf> buffers = new ArrayList<>();
-		Random random = new Random(123456);
-		int buffersCount = 1000;
-		for (int i = 0; i < buffersCount; i++) {
-			ByteBuf buffer = createRandomByteBuf(random);
-			buffers.add(buffer);
-		}
-		byte[] expected = byteBufsToByteArray(buffers);
-
-		StreamProducer<ByteBuf> source = StreamProducer.ofIterable(buffers);
-		StreamByteChunker preBuf = StreamByteChunker.create(64, 128);
-		StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor();
-		StreamByteChunker postBuf = StreamByteChunker.create(64, 128);
-		StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create();
-		StreamConsumerToList<ByteBuf> consumer = StreamConsumerToList.randomlySuspending();
-
-		stream(source, preBuf.getInput());
-		eventloop.run();
-
-		stream(preBuf.getOutput(), compressor.getInput());
-		eventloop.run();
-
-		stream(compressor.getOutput(), postBuf.getInput());
-		eventloop.run();
-
-		stream(postBuf.getOutput(), decompressor.getInput());
-		eventloop.run();
-
-		stream(decompressor.getOutput(), consumer);
-		eventloop.run();
-
-		byte[] actual = byteBufsToByteArray(consumer.getList());
-		for (ByteBuf buf : consumer.getList()) {
-			buf.recycle();
-		}
-
-		assertArrayEquals(expected, actual);
-		assertStatus(END_OF_STREAM, source);
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-
-		assertStatus(END_OF_STREAM, preBuf.getInput());
-		assertStatus(END_OF_STREAM, preBuf.getOutput());
-
-		assertStatus(END_OF_STREAM, compressor.getInput());
-		assertStatus(END_OF_STREAM, compressor.getOutput());
-
-		assertStatus(END_OF_STREAM, postBuf.getInput());
-		assertStatus(END_OF_STREAM, postBuf.getOutput());
-
-		assertStatus(END_OF_STREAM, decompressor.getInput());
-		assertStatus(END_OF_STREAM, decompressor.getOutput());
-	}
-
-	@Test
 	public void testRaw() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.rawCompressor();

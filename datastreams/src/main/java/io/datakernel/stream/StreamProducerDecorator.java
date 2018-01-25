@@ -19,11 +19,13 @@ package io.datakernel.stream;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stages;
 
+import java.util.Set;
 import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.stream.DataStreams.bind;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
+import static java.util.Collections.emptySet;
 
 /**
  * See also:
@@ -73,6 +75,11 @@ public abstract class StreamProducerDecorator<T> implements StreamProducer<T> {
 			public CompletionStage<Void> getEndOfStream() {
 				return internalEndOfStream;
 			}
+
+			@Override
+			public Set<StreamCapability> getCapabilities() {
+				throw new UnsupportedOperationException();
+			}
 		});
 		if (pendingDataReceiver != null) {
 			actualProducer.produce(pendingDataReceiver);
@@ -119,6 +126,11 @@ public abstract class StreamProducerDecorator<T> implements StreamProducer<T> {
 	@Override
 	public final CompletionStage<Void> getEndOfStream() {
 		return endOfStream;
+	}
+
+	@Override
+	public Set<StreamCapability> getCapabilities() {
+		return emptySet();
 	}
 
 	protected final void sendEndOfStream() {

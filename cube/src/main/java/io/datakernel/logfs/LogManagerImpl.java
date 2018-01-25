@@ -116,7 +116,7 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 		stream(streamBinarySerializer.getOutput(), streamCompressor.getInput());
 		stream(streamCompressor.getOutput(), writer);
 
-		return Stages.of(streamBinarySerializer.getInput().withResult(writer.getResult()));
+		return Stages.of(streamBinarySerializer.getInput().withResult(writer.getResult()).withLateBinding());
 	}
 
 	@Override
@@ -125,96 +125,100 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 	                                                                          LogFile endLogFile) {
 		validateLogPartition(logPartition);
 		LogPosition startPosition = LogPosition.create(startLogFile, startOffset);
-		return fileSystem.list(logPartition).thenApply(logFiles -> {
-			List<LogFile> logFilesToRead = logFiles.stream().filter(logFile -> isFileInRange(logFile, startPosition, endLogFile)).collect(Collectors.toList());
-			Collections.sort(logFilesToRead);
+		return fileSystem.list(logPartition)
+				.thenApply(logFiles -> {
+					List<LogFile> logFilesToRead = logFiles.stream().filter(logFile -> isFileInRange(logFile, startPosition, endLogFile)).collect(Collectors.toList());
+					Collections.sort(logFilesToRead);
 
-			Iterator<LogFile> it = logFilesToRead.iterator();
-			SettableStage<LogPosition> positionStage = SettableStage.create();
+					Iterator<LogFile> it = logFilesToRead.iterator();
+					SettableStage<LogPosition> positionStage = SettableStage.create();
 
-			Iterator<StreamProducer<T>> producers = new Iterator<StreamProducer<T>>() {
-				private int n;
+					Iterator<StreamProducer<T>> producers = new Iterator<StreamProducer<T>>() {
+						private int n;
 
-				private LogFile currentLogFile;
-				private long inputStreamPosition;
+						private LogFile currentLogFile;
+						private long inputStreamPosition;
 
-				final Stopwatch sw = Stopwatch.createUnstarted();
+						final Stopwatch sw = Stopwatch.createUnstarted();
 
-				@Override
-				public boolean hasNext() {
-					if (it.hasNext()) return true;
-					positionStage.set(getLogPosition());
-					return false;
-				}
+						@Override
+						public boolean hasNext() {
+							if (it.hasNext()) return true;
+							positionStage.set(getLogPosition());
+							return false;
+						}
 
-				public LogPosition getLogPosition() {
-					if (currentLogFile == null)
-						return startPosition;
+						public LogPosition getLogPosition() {
+							if (currentLogFile == null)
+								return startPosition;
 
-					if (currentLogFile.equals(startPosition.getLogFile()))
-						return LogPosition.create(currentLogFile, startPosition.getPosition() + inputStreamPosition);
+							if (currentLogFile.equals(startPosition.getLogFile()))
+								return LogPosition.create(currentLogFile, startPosition.getPosition() + inputStreamPosition);
 
-					return LogPosition.create(currentLogFile, inputStreamPosition);
-				}
+							return LogPosition.create(currentLogFile, inputStreamPosition);
+						}
 
-				@Override
-				public StreamProducer<T> next() {
-					currentLogFile = it.next();
-					long position = n++ == 0 ? startPosition.getPosition() : 0L;
+						@Override
+						public StreamProducer<T> next() {
+							currentLogFile = it.next();
+							long position = n++ == 0 ? startPosition.getPosition() : 0L;
 
-					if (logger.isTraceEnabled()) logger.trace("Read log file `{}` from: {}", currentLogFile, position);
+							if (logger.isTraceEnabled())
+								logger.trace("Read log file `{}` from: {}", currentLogFile, position);
 
-					CompletionStage<StreamProducer<T>> stage = fileSystem.read(logPartition, currentLogFile, position)
-							.thenApply(producer -> {
-								inputStreamPosition = 0L;
+							CompletionStage<StreamProducer<T>> stage = fileSystem.read(logPartition, currentLogFile, position)
+									.thenApply(producer -> {
+										inputStreamPosition = 0L;
 
-								sw.reset().start();
-								StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create()
-										.withInspector(new StreamLZ4Decompressor.Inspector() {
+										sw.reset().start();
+										StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create()
+												.withInspector(new StreamLZ4Decompressor.Inspector() {
+													@Override
+													public void onInputBuf(StreamLZ4Decompressor self, ByteBuf buf) {
+													}
+
+													@Override
+													public void onBlock(StreamLZ4Decompressor self, StreamLZ4Decompressor.Header header, ByteBuf inputBuf, ByteBuf outputBuf) {
+														inputStreamPosition += StreamLZ4Decompressor.HEADER_LENGTH + header.compressedLen;
+													}
+												});
+
+										stream(producer, decompressor.getInput());
+										StreamProducer<ByteBuf> endOfStreamOnTruncatedFile = new StreamProducerDecorator<ByteBuf>(decompressor.getOutput()) {
 											@Override
-											public void onInputBuf(StreamLZ4Decompressor self, ByteBuf buf) {
+											protected void onCloseWithError(Throwable t) {
+												if (t instanceof TruncatedDataException) {
+													sendEndOfStream();
+												} else {
+													super.onCloseWithError(t);
+												}
 											}
+										};
 
-											@Override
-											public void onBlock(StreamLZ4Decompressor self, StreamLZ4Decompressor.Header header, ByteBuf inputBuf, ByteBuf outputBuf) {
-												inputStreamPosition += StreamLZ4Decompressor.HEADER_LENGTH + header.compressedLen;
-											}
-										});
+										StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(serializer);
+										stream(endOfStreamOnTruncatedFile, deserializer.getInput());
+										deserializer.getOutput().getEndOfStream().whenComplete(this::log);
+										return deserializer.getOutput().withLateBinding();
+									});
 
-								stream(producer, decompressor.getInput());
-								StreamProducer<ByteBuf> endOfStreamOnTruncatedFile = new StreamProducerDecorator<ByteBuf>(decompressor.getOutput()) {
-									@Override
-									protected void onCloseWithError(Throwable t) {
-										if (t instanceof TruncatedDataException) {
-											sendEndOfStream();
-										} else {
-											super.onCloseWithError(t);
-										}
-									}
-								};
+							return StreamProducer.ofStage(stage);
+						}
 
-								StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(serializer);
-								stream(endOfStreamOnTruncatedFile, deserializer.getInput());
-								deserializer.getOutput().getEndOfStream().whenComplete(this::log);
-								return deserializer.getOutput();
-							});
+						private void log(Void $, Throwable throwable) {
+							if (throwable == null && logger.isTraceEnabled()) {
+								logger.trace("Finish log file `{}` in {}, compressed bytes: {} ({} bytes/ses)", currentLogFile,
+										sw, inputStreamPosition, inputStreamPosition / Math.max(sw.elapsed(SECONDS), 1));
+							} else if (throwable != null && logger.isErrorEnabled()) {
+								logger.error("Error on log file `{}` in {}, compressed bytes: {} ({} bytes/ses)", currentLogFile,
+										sw, inputStreamPosition, inputStreamPosition / Math.max(sw.elapsed(SECONDS), 1), throwable);
+							}
+						}
+					};
 
-					return StreamProducer.ofStage(stage);
-				}
-
-				private void log(Void $, Throwable throwable) {
-					if (throwable == null && logger.isTraceEnabled()) {
-						logger.trace("Finish log file `{}` in {}, compressed bytes: {} ({} bytes/ses)", currentLogFile,
-								sw, inputStreamPosition, inputStreamPosition / Math.max(sw.elapsed(SECONDS), 1));
-					} else if (throwable != null && logger.isErrorEnabled()) {
-						logger.error("Error on log file `{}` in {}, compressed bytes: {} ({} bytes/ses)", currentLogFile,
-								sw, inputStreamPosition, inputStreamPosition / Math.max(sw.elapsed(SECONDS), 1), throwable);
-					}
-				}
-			};
-
-			return StreamProducer.concat(producers).withResult(positionStage);
-		});
+					return StreamProducer.concat(producers)
+							.withResult(positionStage)
+							.withLateBinding();
+				});
 	}
 
 	private static void validateLogPartition(String logPartition) {

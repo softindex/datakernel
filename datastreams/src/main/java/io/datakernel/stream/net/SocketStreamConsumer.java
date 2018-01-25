@@ -29,7 +29,7 @@ final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> impleme
 	private final AsyncTcpSocket asyncTcpSocket;
 	private final SettableStage<Void> sentStage;
 
-	private int writeTick;
+	private int writeLoop;
 
 	private boolean sent;
 
@@ -63,21 +63,21 @@ final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> impleme
 	@Override
 	public void onData(ByteBuf buf) {
 		asyncTcpSocket.write(buf);
-		int tick = eventloop.getTick();
+		int loop = eventloop.getLoop();
 
-		if (writeTick == 0) {
-			writeTick = tick;
+		if (writeLoop == 0) {
+			writeLoop = loop;
 			return;
 		}
 
-		if (tick != writeTick) {
-			writeTick = tick;
+		if (loop != writeLoop) {
+			writeLoop = loop;
 			getProducer().suspend();
 		}
 	}
 
 	public void onWrite() {
-		writeTick = 0;
+		writeLoop = 0;
 		if (getStatus().isOpen()) {
 			getProducer().produce(this);
 		} else if (getStatus() == StreamStatus.END_OF_STREAM) {

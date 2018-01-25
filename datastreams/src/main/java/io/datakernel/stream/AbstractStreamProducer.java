@@ -24,11 +24,14 @@ import io.datakernel.exception.ExpectedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Set;
 import java.util.concurrent.CompletionStage;
 
+import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 import static io.datakernel.stream.StreamStatus.*;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
+import static java.util.Collections.emptySet;
 
 /**
  * It is basic implementation of {@link StreamProducer}
@@ -39,6 +42,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
+	private final long createTick = eventloop.getTick();
 
 	private StreamConsumer<T> consumer;
 
@@ -64,6 +68,8 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	public final void setConsumer(StreamConsumer<T> consumer) {
 		checkNotNull(consumer);
 		checkState(this.consumer == null);
+		checkState(getCapabilities().contains(LATE_BINDING) || eventloop.getTick() == createTick,
+				LATE_BINDING_ERROR_MESSAGE, this);
 		this.consumer = consumer;
 		onWired();
 		consumer.getEndOfStream()
@@ -154,8 +160,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 			return;
 		status = END_OF_STREAM;
 		currentDataReceiver = null;
-		lastDataReceiver = item -> {
-		};
+		lastDataReceiver = item -> {};
 		eventloop.post(this::cleanup);
 		endOfStream.set(null);
 	}
@@ -165,8 +170,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 			return;
 		status = CLOSED_WITH_ERROR;
 		currentDataReceiver = null;
-		lastDataReceiver = item -> {
-		};
+		lastDataReceiver = item -> {};
 		exception = e;
 		if (!(e instanceof ExpectedException)) {
 			if (logger.isWarnEnabled()) {
@@ -194,6 +198,11 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	@Override
 	public final CompletionStage<Void> getEndOfStream() {
 		return endOfStream;
+	}
+
+	@Override
+	public Set<StreamCapability> getCapabilities() {
+		return emptySet();
 	}
 
 	public final Object getTag() {

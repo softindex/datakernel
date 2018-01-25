@@ -72,7 +72,9 @@ public final class RemoteLogFileSystem extends AbstractLogFileSystem implements 
 		return client.download(path(logPartition, logFile), startPosition)
 				.thenApply(stream -> stream
 						.with(streamReads.newEntry(logPartition + ":" + logFile + "@" + startPosition))
-						.with(streamReadStats::wrapper))
+						.with(streamReadStats::wrapper)
+						.withLateBinding()
+				)
 				.whenComplete(stageRead.recordStats());
 	}
 
@@ -82,7 +84,9 @@ public final class RemoteLogFileSystem extends AbstractLogFileSystem implements 
 		return client.upload(fileName)
 				.thenApply(stream -> stream
 						.with(streamWrites.newEntry(logPartition + ":" + logFile))
-						.with(streamWriteStats::wrapper))
+						.with(streamWriteStats::wrapper)
+						.withLateBinding()
+				)
 				.whenComplete(stageWrite.recordStats());
 	}
 

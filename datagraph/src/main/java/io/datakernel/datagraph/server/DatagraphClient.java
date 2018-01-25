@@ -85,7 +85,7 @@ public final class DatagraphClient {
 
 						stream(producer, deserializer.getInput())
 								.thenAccept($_ -> messaging.close());
-						return deserializer.getOutput();
+						return deserializer.getOutput().withLateBinding();
 					});
 		});
 	}

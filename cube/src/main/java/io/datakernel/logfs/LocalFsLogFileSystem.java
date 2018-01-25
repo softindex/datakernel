@@ -154,6 +154,7 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements
 						.with(streamReads.newEntry(logPartition + ":" + logFile + "@" + startPosition))
 						.with(streamReadStats::wrapper)
 						.withEndOfStreamAsResult()
+						.withLateBinding()
 				)
 				.whenComplete(stageRead.recordStats());
 	}
@@ -165,6 +166,7 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements
 						.with(streamWrites.newEntry(logPartition + ":" + logFile))
 						.with(streamWriteStats::wrapper)
 						.withResult(StreamFileWriter.create(file, true).getFlushStage())
+						.withLateBinding()
 				)
 				.whenComplete(stageWrite.recordStats());
 	}

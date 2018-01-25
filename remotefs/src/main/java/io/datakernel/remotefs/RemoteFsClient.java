@@ -64,7 +64,7 @@ public final class RemoteFsClient implements IRemoteFsClient {
 	private final InetSocketAddress address;
 
 	private final MessagingSerializer<FsResponse, FsCommand> serializer =
-		ofJson(RemoteFsResponses.adapter, RemoteFsCommands.adapter);
+			ofJson(RemoteFsResponses.adapter, RemoteFsCommands.adapter);
 
 	// creators & builders
 	protected RemoteFsClient(Eventloop eventloop, InetSocketAddress address,
@@ -94,10 +94,10 @@ public final class RemoteFsClient implements IRemoteFsClient {
 			messaging.receive(new ReceiveMessageCallback<FsResponse>() {
 				@Override
 				public void onReceive(FsResponse msg) {
-					if(msg instanceof RemoteFsResponses.Acknowledge) {
+					if (msg instanceof RemoteFsResponses.Acknowledge) {
 						messaging.close();
 						ack.set(null);
-					} else if(msg instanceof RemoteFsResponses.Err) {
+					} else if (msg instanceof RemoteFsResponses.Err) {
 						ack.setException(new RemoteFsException(((RemoteFsResponses.Err) msg).getMsg()));
 					} else {
 						ack.setException(new RemoteFsException("Invalid message received: " + msg));
@@ -117,7 +117,7 @@ public final class RemoteFsClient implements IRemoteFsClient {
 
 			StreamConsumerWithResult<ByteBuf, Void> consumerWithResult = consumer.withResult(ack);
 			consumerWithResult.getResult().whenComplete(onError($ -> messaging.close()));
-			return consumerWithResult;
+			return consumerWithResult.withLateBinding();
 		});
 	}
 
@@ -127,48 +127,49 @@ public final class RemoteFsClient implements IRemoteFsClient {
 			SettableStage<StreamProducerWithResult<ByteBuf, Void>> stage = SettableStage.create();
 
 			messaging.send(new Download(fileName, startPosition)).thenAccept($ ->
-				messaging.receive(new ReceiveMessageCallback<FsResponse>() {
-					@Override
-					public void onReceive(FsResponse msg) {
-						if(msg instanceof RemoteFsResponses.Ready) {
-							long size = ((RemoteFsResponses.Ready) msg).getSize();
+					messaging.receive(new ReceiveMessageCallback<FsResponse>() {
+						@Override
+						public void onReceive(FsResponse msg) {
+							if (msg instanceof RemoteFsResponses.Ready) {
+								long size = ((RemoteFsResponses.Ready) msg).getSize();
 
-							StreamProducerWithResult<ByteBuf, Void> producer = messaging.receiveBinaryStream();
-							StreamStatsDetailed stats = StreamStats.detailed(forByteBufs());
-							StreamStatsForwarder<ByteBuf> sizeForwarder = StreamStatsForwarder.create(stats);
+								StreamProducerWithResult<ByteBuf, Void> producer = messaging.receiveBinaryStream();
+								StreamStatsDetailed stats = StreamStats.detailed(forByteBufs());
+								StreamStatsForwarder<ByteBuf> sizeForwarder = StreamStatsForwarder.create(stats);
 
-							SettableStage<Void> ack = SettableStage.create();
-							stream(producer, sizeForwarder.getInput())
-									.thenAccept($ -> {
-										messaging.close();
-										if(stats.getTotalSize() == size - startPosition) {
-											ack.set(null);
-										} else {
-											ack.setException(new IOException("Invalid stream size for '" + fileName + "' starting from " + startPosition +
-													", expected: " + (size - startPosition) + " actual: " + stats.getTotalSize()));
-										}
-									});
+								SettableStage<Void> ack = SettableStage.create();
+								stream(producer, sizeForwarder.getInput())
+										.thenAccept($ -> {
+											messaging.close();
+											if (stats.getTotalSize() == size - startPosition) {
+												ack.set(null);
+											} else {
+												ack.setException(new IOException("Invalid stream size for '" + fileName + "' starting from " + startPosition +
+														", expected: " + (size - startPosition) + " actual: " + stats.getTotalSize()));
+											}
+										});
 
-							StreamProducerWithResult<ByteBuf, Void> producerWithResult = sizeForwarder.getOutput().withResult(ack);
-							stage.set(producerWithResult);
-						} else if(msg instanceof RemoteFsResponses.Err) {
-							stage.setException(new RemoteFsException(((RemoteFsResponses.Err) msg).getMsg()));
-						} else {
-							stage.setException(new RemoteFsException("Invalid message received: " + msg));
+								stage.set(sizeForwarder.getOutput()
+										.withResult(ack)
+										.withLateBinding());
+							} else if (msg instanceof RemoteFsResponses.Err) {
+								stage.setException(new RemoteFsException(((RemoteFsResponses.Err) msg).getMsg()));
+							} else {
+								stage.setException(new RemoteFsException("Invalid message received: " + msg));
+							}
 						}
-					}
 
-					@Override
-					public void onReceiveEndOfStream() {
-						logger.warn("received unexpected end of stream");
-						stage.setException(new RemoteFsException("Unexpected end of stream for: " + fileName));
-					}
+						@Override
+						public void onReceiveEndOfStream() {
+							logger.warn("received unexpected end of stream");
+							stage.setException(new RemoteFsException("Unexpected end of stream for: " + fileName));
+						}
 
-					@Override
-					public void onException(Exception e) {
-						stage.setException(new RemoteFsException(e));
-					}
-				})
+						@Override
+						public void onException(Exception e) {
+							stage.setException(new RemoteFsException(e));
+						}
+					})
 			);
 
 			return stage.whenComplete(onError($ -> messaging.close()));
@@ -180,16 +181,16 @@ public final class RemoteFsClient implements IRemoteFsClient {
 		return connect(address).thenCompose(messaging -> {
 			SettableStage<Void> ack = SettableStage.create();
 			messaging.send(new RemoteFsCommands.Delete(fileName)).whenComplete(($, throwable) -> {
-				if(throwable == null) {
+				if (throwable == null) {
 					logger.trace("command to delete {} send", fileName);
 					messaging.receive(new ReceiveMessageCallback<FsResponse>() {
 						@Override
 						public void onReceive(FsResponse msg) {
 							logger.trace("received {}", msg);
-							if(msg instanceof RemoteFsResponses.Ok) {
+							if (msg instanceof RemoteFsResponses.Ok) {
 								messaging.close();
 								ack.set(null);
-							} else if(msg instanceof RemoteFsResponses.Err) {
+							} else if (msg instanceof RemoteFsResponses.Err) {
 								messaging.close();
 								ack.setException(new RemoteFsException(((RemoteFsResponses.Err) msg).getMsg()));
 							} else {
@@ -225,16 +226,16 @@ public final class RemoteFsClient implements IRemoteFsClient {
 		return connect(address).thenCompose(messaging -> {
 			SettableStage<List<String>> ack = SettableStage.create();
 			messaging.send(new RemoteFsCommands.ListFiles()).whenComplete(($, throwable) -> {
-				if(throwable == null) {
+				if (throwable == null) {
 					logger.trace("command to list files send");
 					messaging.receive(new ReceiveMessageCallback<FsResponse>() {
 						@Override
 						public void onReceive(FsResponse msg) {
 							logger.trace("received {}", msg);
-							if(msg instanceof RemoteFsResponses.ListOfFiles) {
+							if (msg instanceof RemoteFsResponses.ListOfFiles) {
 								messaging.close();
 								ack.set(((RemoteFsResponses.ListOfFiles) msg).getFiles());
-							} else if(msg instanceof RemoteFsResponses.Err) {
+							} else if (msg instanceof RemoteFsResponses.Err) {
 								messaging.close();
 								ack.setException(new RemoteFsException(((RemoteFsResponses.Err) msg).getMsg()));
 							} else {
@@ -270,16 +271,16 @@ public final class RemoteFsClient implements IRemoteFsClient {
 		return connect(address).thenCompose(messaging -> {
 			SettableStage<Void> ack = SettableStage.create();
 			messaging.send(new RemoteFsCommands.Move(changes)).whenComplete((aVoid, throwable) -> {
-				if(throwable == null) {
+				if (throwable == null) {
 					logger.trace("command move files send");
 					messaging.receive(new ReceiveMessageCallback<FsResponse>() {
 						@Override
 						public void onReceive(FsResponse msg) {
 							logger.trace("received {}", msg);
-							if(msg instanceof RemoteFsResponses.Ok) {
+							if (msg instanceof RemoteFsResponses.Ok) {
 								messaging.close();
 								ack.set(null);
-							} else if(msg instanceof RemoteFsResponses.Err) {
+							} else if (msg instanceof RemoteFsResponses.Err) {
 								messaging.close();
 								ack.setException(new RemoteFsException(((RemoteFsResponses.Err) msg).getMsg()));
 							} else {
