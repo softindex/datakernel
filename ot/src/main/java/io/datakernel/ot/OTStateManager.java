@@ -12,6 +12,8 @@ import java.util.*;
 import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.async.AsyncCallable.sharedCall;
+import static io.datakernel.util.CollectionUtils.concat;
+import static io.datakernel.util.CollectionUtils.first;
 import static io.datakernel.util.Preconditions.checkState;
 import static java.lang.String.format;
 import static java.util.Collections.singleton;
@@ -49,10 +51,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 	}
 
 	private static <D> List<D> concatLists(List<D> a, List<D> b) {
-		List<D> diffs = new ArrayList<>(a.size() + b.size());
-		diffs.addAll(a);
-		diffs.addAll(b);
-		return diffs;
+		return concat(a, b);
 	}
 
 	public OTState<D> getState() {
@@ -80,7 +79,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 		return remote.getHeads()
 				.thenComposeAsync(ks -> {
 					logger.info("Start checkout heads: {}", ks);
-					return checkout(ks.iterator().next());
+					return checkout(first(ks));
 				})
 				.thenCompose($ -> pull());
 	}
@@ -133,7 +132,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 										"revision: %s, %s, heads: %s", fetchedRevisionCopy, revision, heads)));
 					}
 
-					List<D> diffs = concatLists(fetchedDiffs, findResult.getAccumulatedDiffs());
+					List<D> diffs = concat(fetchedDiffs, findResult.getAccumulatedDiffs());
 					fetchedDiffs = otSystem.squash(diffs);
 					fetchedRevision = findResult.getChild();
 

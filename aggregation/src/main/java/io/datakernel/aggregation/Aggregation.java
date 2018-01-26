@@ -48,6 +48,7 @@ import static io.datakernel.aggregation.AggregationUtils.*;
 import static io.datakernel.codegen.Expressions.arg;
 import static io.datakernel.codegen.Expressions.cast;
 import static io.datakernel.stream.DataStreams.stream;
+import static io.datakernel.util.CollectionUtils.difference;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.Math.min;
 import static java.util.Collections.singletonList;
@@ -211,12 +212,6 @@ public class Aggregation implements IAggregation, Initializer<Aggregation>, Even
 	                                                 DefiningClassLoader classLoader) {
 		return AggregationUtils.aggregationReducer(structure, inputClass, outputClass,
 				keys, measures, classLoader);
-	}
-
-	private static <T> Set<T> difference(Set<T> a, Set<T> b) {
-		Set<T> set = new HashSet<>(a);
-		set.removeAll(b);
-		return set;
 	}
 
 	/**

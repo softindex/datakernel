@@ -19,6 +19,7 @@ package io.datakernel.jmx;
 import javax.management.openmbean.*;
 import java.util.*;
 
+import static io.datakernel.util.CollectionUtils.first;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.util.Collections.emptyList;
 
@@ -55,7 +56,7 @@ final class AttributeNodeForMap extends AttributeNodeForLeafAbstract {
 		Map<String, OpenType<?>> attrNameToType = new HashMap<>();
 		attrNameToType.put(KEY_COLUMN_NAME, SimpleType.STRING);
 		if (visibleAttrs.size() == 1) {
-			String attrName = visibleAttrs.iterator().next();
+			String attrName = first(visibleAttrs);
 			OpenType<?> attrType = attrTypes.get(attrName);
 			String adjustedAttrName = attrName.isEmpty() ? VALUE_COLUMN_NAME : attrName;
 			attrNameToType.put(adjustedAttrName, attrType);
@@ -126,7 +127,7 @@ final class AttributeNodeForMap extends AttributeNodeForLeafAbstract {
 	private CompositeData createTabularDataRow(String key, Map<String, Object> attributes) throws OpenDataException {
 		Map<String, Object> allAttributes = new HashMap<>(attributes.size() + 1);
 		if (attributes.size() == 1) {
-			String attrName = attributes.keySet().iterator().next();
+			String attrName = first(attributes.keySet());
 			Object attrValue = attributes.get(attrName);
 			String valueColumnName = attrName.isEmpty() ? VALUE_COLUMN_NAME : attrName;
 			allAttributes.put(valueColumnName, attrValue);

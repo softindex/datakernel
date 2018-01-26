@@ -20,6 +20,7 @@ import static io.datakernel.ot.OTCommit.ofRoot;
 import static io.datakernel.ot.utils.GraphBuilder.edge;
 import static io.datakernel.ot.utils.Utils.add;
 import static io.datakernel.test.TestUtils.dataSource;
+import static io.datakernel.util.CollectionUtils.first;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toSet;
@@ -85,7 +86,7 @@ public class OTRemoteSqlTest {
 
 		Set<Integer> heads = headsFuture.get();
 		assertEquals(1, heads.size());
-		assertEquals(1, heads.iterator().next().intValue());
+		assertEquals(1, first(heads).intValue());
 	}
 
 	@Test
@@ -100,7 +101,7 @@ public class OTRemoteSqlTest {
 
 		Set<Integer> heads = headsFuture.get();
 		assertEquals(1, heads.size());
-		assertEquals(2, heads.iterator().next().intValue());
+		assertEquals(2, first(heads).intValue());
 	}
 
 	@Test
@@ -141,7 +142,7 @@ public class OTRemoteSqlTest {
 		eventloop.run();
 		Set<Integer> headsAfterMerge = headAfterMergeFuture.get();
 		assertEquals(1, headsAfterMerge.size());
-		assertEquals(mergeId, headsAfterMerge.iterator().next());
+		assertEquals(mergeId, first(headsAfterMerge));
 	}
 
 //	@Test

@@ -7,11 +7,13 @@ import io.datakernel.ot.OTSystemImpl;
 import io.datakernel.ot.TransformResult;
 import io.datakernel.ot.exceptions.OTTransformException;
 
-import java.util.*;
-import java.util.stream.Stream;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
+import static io.datakernel.util.CollectionUtils.union;
 import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toSet;
 
 public class CubeOT {
 	public static OTSystem<CubeDiff> createCubeOT() {
@@ -70,7 +72,4 @@ public class CubeOT {
 				});
 	}
 
-	private static <T> Set<T> union(Set<T> a, Set<T> b) {
-		return Stream.concat(a.stream(), b.stream()).collect(toSet());
-	}
 }

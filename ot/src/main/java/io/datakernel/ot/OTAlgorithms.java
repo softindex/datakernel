@@ -17,6 +17,8 @@ import java.util.concurrent.CompletionStage;
 import java.util.function.Predicate;
 
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
+import static io.datakernel.util.CollectionUtils.concat;
+import static io.datakernel.util.CollectionUtils.first;
 import static io.datakernel.util.Preconditions.check;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.String.format;
@@ -204,7 +206,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 				.thenCompose(heads -> {
 					check(!heads.isEmpty(), "Empty heads");
 
-					if (heads.size() == 1) return Stages.of(heads.iterator().next()); // nothing to merge
+					if (heads.size() == 1) return Stages.of(first(heads)); // nothing to merge
 
 					return mergeAlgorithm.loadAndMerge(heads)
 							.thenCompose(merge ->
@@ -387,9 +389,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 						return Stages.ofException(new OTException("No snapshot or root from id:" + head));
 
 					return remote.loadSnapshot(findResult.getCommit()).thenApply(diffs -> {
-						List<D> changes = new ArrayList<>(diffs.size() + findResult.getAccumulatedDiffs().size());
-						changes.addAll(diffs);
-						changes.addAll(findResult.getAccumulatedDiffs());
+						List<D> changes = concat(diffs, findResult.getAccumulatedDiffs());
 						return otSystem.squash(changes);
 					});
 				});

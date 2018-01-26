@@ -23,6 +23,7 @@ import org.junit.Test;
 
 import java.util.*;
 
+import static io.datakernel.util.CollectionUtils.first;
 import static org.junit.Assert.*;
 
 public class HttpCookieTest {
@@ -102,7 +103,7 @@ public class HttpCookieTest {
 
 		assertEquals(1, cookies.size());
 
-		HttpCookie cookie = cookies.iterator().next();
+		HttpCookie cookie = first(cookies);
 
 		assertEquals(cookieName, cookie.getName());
 		assertEquals(cookieValue, cookie.getValue());

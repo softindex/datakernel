@@ -31,7 +31,15 @@ public class CollectionUtils {
 	}
 
 	public static <T> Set<T> intersection(Set<? extends T> a, Set<? extends T> b) {
-		return a.stream().filter(b::contains).collect(toSet());
+		return a.size() < b.size() ?
+				a.stream().filter(b::contains).collect(toSet()) :
+				b.stream().filter(a::contains).collect(toSet());
+	}
+
+	public static <T> boolean hasIntersection(Set<? extends T> a, Set<? extends T> b) {
+		return a.size() < b.size() ?
+				a.stream().anyMatch(b::contains) :
+				b.stream().anyMatch(a::contains);
 	}
 
 	public static <T> Set<T> union(Set<? extends T> a, Set<? extends T> b) {

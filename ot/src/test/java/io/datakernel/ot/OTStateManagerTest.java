@@ -26,6 +26,7 @@ import static io.datakernel.ot.OTCommit.ofRoot;
 import static io.datakernel.ot.utils.OTRemoteStub.TestSequence.of;
 import static io.datakernel.ot.utils.OTRemoteStub.create;
 import static io.datakernel.ot.utils.Utils.*;
+import static io.datakernel.util.CollectionUtils.first;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
@@ -80,7 +81,7 @@ public class OTStateManagerTest {
 
 		Set<Integer> heads = headsFuture.get();
 		assertEquals(1, heads.size());
-		assertEquals(3, heads.iterator().next().intValue());
+		assertEquals(3, first(heads).intValue());
 	}
 
 	@Test

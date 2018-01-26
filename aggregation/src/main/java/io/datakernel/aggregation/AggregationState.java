@@ -28,6 +28,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static io.datakernel.aggregation.AggregationPredicates.toRangeScan;
+import static io.datakernel.util.CollectionUtils.intersection;
 import static io.datakernel.util.Preconditions.checkArgument;
 
 /**
@@ -474,14 +475,6 @@ public final class AggregationState implements OTState<AggregationDiff> {
 		}
 
 		return chunks;
-	}
-
-	public static <T> Set<T> intersection(Set<T> a, Set<T> b) {
-		Set<T> set = new HashSet<>();
-		for (T x : a) {
-			if (b.contains(x)) set.add(x);
-		}
-		return set;
 	}
 
 	private List<AggregationChunk> rangeQuery(PrimaryKey minPrimaryKey, PrimaryKey maxPrimaryKey) {

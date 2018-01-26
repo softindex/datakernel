@@ -24,6 +24,7 @@ import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.CompletionStage;
 
+import static io.datakernel.util.CollectionUtils.first;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
@@ -107,7 +108,7 @@ public final class RpcStrategyRendezvousHashing implements RpcStrategy {
 		if (shardsSenders.size() < minShards)
 			return null;
 		if (shardsSenders.size() == 1) {
-			return shardsSenders.values().iterator().next();
+			return first(shardsSenders.values());
 		}
 
 		checkNotNull(hashBucketFunction);

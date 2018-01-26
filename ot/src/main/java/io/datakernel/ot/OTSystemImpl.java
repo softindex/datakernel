@@ -6,6 +6,7 @@ import io.datakernel.ot.exceptions.OTTransformException;
 
 import java.util.*;
 
+import static io.datakernel.util.CollectionUtils.concat;
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Stream.concat;
@@ -159,19 +160,13 @@ public final class OTSystemImpl<D> implements OTSystem<D> {
 			if (transform1.hasConflict()) return transform1;
 			TransformResult<D> transform2 = this.doTransform(transform1.right, rightDiffs.subList(1, rightDiffs.size()));
 			if (transform2.hasConflict()) return transform2;
-			ArrayList<D> transformedLeft = new ArrayList<>(transform1.left.size() + transform2.left.size());
-			transformedLeft.addAll(transform1.left);
-			transformedLeft.addAll(transform2.left);
-			return TransformResult.of(transformedLeft, transform2.right);
+			return TransformResult.of(concat(transform1.left, transform2.left), transform2.right);
 		}
 		TransformResult<D> transform1 = this.doTransform(leftDiffs.subList(0, 1), rightDiffs);
 		if (transform1.hasConflict()) return transform1;
 		TransformResult<D> transform2 = this.doTransform(leftDiffs.subList(1, leftDiffs.size()), transform1.left);
 		if (transform2.hasConflict()) return transform2;
-		ArrayList<D> transformedRight = new ArrayList<>(transform1.right.size() + transform2.right.size());
-		transformedRight.addAll(transform1.right);
-		transformedRight.addAll(transform2.right);
-		return TransformResult.of(transform2.left, transformedRight);
+		return TransformResult.of(transform2.left, concat(transform1.right, transform2.right));
 	}
 
 	@SuppressWarnings("unchecked")

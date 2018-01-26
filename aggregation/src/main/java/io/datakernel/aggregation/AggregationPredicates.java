@@ -26,6 +26,7 @@ import java.util.*;
 import java.util.regex.Pattern;
 
 import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.util.CollectionUtils.first;
 import static io.datakernel.util.Preconditions.checkState;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
@@ -1405,11 +1406,11 @@ public class AggregationPredicates {
 				simplifiedPredicates = newPredicates;
 			} while (simplified);
 
-			return simplifiedPredicates.isEmpty()
-					? alwaysTrue()
-					: simplifiedPredicates.size() == 1
-					? simplifiedPredicates.iterator().next()
-					: and(new ArrayList<>(simplifiedPredicates));
+			return simplifiedPredicates.isEmpty() ?
+					alwaysTrue() :
+					simplifiedPredicates.size() == 1 ?
+							first(simplifiedPredicates) :
+							and(new ArrayList<>(simplifiedPredicates));
 		}
 
 		@Override
@@ -1486,11 +1487,11 @@ public class AggregationPredicates {
 					simplifiedPredicates.add(simplified);
 				}
 			}
-			return simplifiedPredicates.isEmpty()
-					? alwaysTrue()
-					: simplifiedPredicates.size() == 1
-					? simplifiedPredicates.iterator().next()
-					: or(new ArrayList<>(simplifiedPredicates));
+			return simplifiedPredicates.isEmpty() ?
+					alwaysTrue() :
+					simplifiedPredicates.size() == 1 ?
+							first(simplifiedPredicates) :
+							or(new ArrayList<>(simplifiedPredicates));
 		}
 
 		@Override

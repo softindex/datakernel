@@ -38,6 +38,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static io.datakernel.service.ServiceAdapters.*;
+import static io.datakernel.util.CollectionUtils.*;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
 import static java.util.Collections.emptySet;
@@ -395,26 +396,6 @@ public final class ServiceGraphModule extends AbstractModule {
 				addedDependencies.getOrDefault(key, emptySet())), removedDependencies.getOrDefault(key, emptySet()))) {
 			graph.add(key, dependencyKey);
 		}
-	}
-
-	public static <T> Set<T> union(Set<T> a, Set<T> b) {
-		Set<T> set = new HashSet<>(a);
-		set.addAll(b);
-		return set;
-	}
-
-	public static <T> Set<T> intersection(Set<T> a, Set<T> b) {
-		Set<T> set = new HashSet<>();
-		for (T x : a) {
-			if (b.contains(x)) set.add(x);
-		}
-		return set;
-	}
-
-	public static <T> Set<T> difference(Set<T> a, Set<T> b) {
-		Set<T> set = new HashSet<>(a);
-		set.removeAll(b);
-		return set;
 	}
 
 	@Override

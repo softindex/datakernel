@@ -31,6 +31,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static io.datakernel.jmx.ReflectionUtils.*;
+import static io.datakernel.util.CollectionUtils.first;
 import static io.datakernel.util.Preconditions.*;
 import static java.lang.Math.ceil;
 import static java.lang.String.format;
@@ -202,7 +203,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			throw new RuntimeException(format("Error in \"extraSubAttributes\" parameter in @JmxAnnotation" +
 							" on %s.%s(). There is no field \"%s\" in %s.",
 					getter.getDeclaringClass().getName(), getter.getName(),
-					includedOptionals.iterator().next(), getter.getReturnType().getName()));
+					first(includedOptionals), getter.getReturnType().getName()));
 		}
 
 		return attrNodes;
@@ -639,7 +640,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 		if (!name.contains("_")) {
 			assert groupDescriptions.size() == 1;
-			return groupDescriptions.values().iterator().next();
+			return first(groupDescriptions.values());
 		}
 
 		String descriptionTemplate = "\"%s\": %s";

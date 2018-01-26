@@ -61,6 +61,7 @@ import static io.datakernel.cube.Cube.AggregationConfig.id;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.test.TestUtils.dataSource;
+import static io.datakernel.util.CollectionUtils.first;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.*;
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
@@ -355,7 +356,7 @@ public class CubeMeasureRemovalTest {
 		CompletableFuture<OTCommit<Integer, LogDiff<CubeDiff>>> future = otSourceSql2.getHeads()
 				.thenCompose(newHeads -> {
 					assertEquals(1, newHeads.size());
-					return otSourceSql2.loadCommit(newHeads.iterator().next());
+					return otSourceSql2.loadCommit(first(newHeads));
 				}).toCompletableFuture();
 
 		eventloop.run();
@@ -432,7 +433,7 @@ public class CubeMeasureRemovalTest {
 		CompletableFuture<OTCommit<Integer, LogDiff<CubeDiff>>> future = otSourceSql2.getHeads()
 				.thenCompose(newHeads -> {
 					assertEquals(1, newHeads.size());
-					return otSourceSql2.loadCommit(newHeads.iterator().next());
+					return otSourceSql2.loadCommit(first(newHeads));
 				}).toCompletableFuture();
 
 		eventloop.run();

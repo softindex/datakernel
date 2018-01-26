@@ -43,6 +43,7 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.util.CollectionUtils.difference;
 import static io.datakernel.util.Preconditions.checkArgument;
 
 /**
@@ -84,12 +85,6 @@ public class AggregationUtils {
 			}
 		}
 		return result;
-	}
-
-	private static <T> Set<T> difference(Set<T> a, Set<T> b) {
-		Set<T> set = new HashSet<>(a);
-		set.removeAll(b);
-		return set;
 	}
 
 	public static Class<?> createKeyClass(AggregationStructure aggregation, List<String> keys, DefiningClassLoader classLoader) {

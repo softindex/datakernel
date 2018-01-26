@@ -30,6 +30,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 
+import static io.datakernel.util.CollectionUtils.difference;
+import static io.datakernel.util.CollectionUtils.union;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkState;
 import static java.util.Arrays.asList;
@@ -209,18 +211,6 @@ public class ServiceGraph {
 		return actionInThread(true, rootNodes);
 	}
 
-
-	private static <T> Set<T> union(Set<T> a, Set<T> b) {
-		Set<T> set = new HashSet<>(a);
-		set.addAll(b);
-		return set;
-	}
-
-	private static <T> Set<T> difference(Set<T> a, Set<T> b) {
-		Set<T> set = new HashSet<>(a);
-		set.removeAll(b);
-		return set;
-	}
 
 	/**
 	 * Stops services from the service graph

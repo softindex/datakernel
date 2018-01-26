@@ -7,10 +7,15 @@ import io.datakernel.ot.TransformResult;
 import io.datakernel.ot.TransformResult.ConflictResolution;
 import io.datakernel.util.Preconditions;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import static io.datakernel.aggregation.AggregationUtils.transformValuesToLinkedMap;
+import static io.datakernel.util.CollectionUtils.concat;
+import static io.datakernel.util.CollectionUtils.intersection;
 import static io.datakernel.util.Preconditions.checkState;
 import static java.util.Collections.singletonList;
 
@@ -56,9 +61,7 @@ public class LogOT {
 							positions.remove(log);
 						}
 					}
-					List<T> ops = new ArrayList<>(commit1.diffs.size() + commit2.diffs.size());
-					ops.addAll(commit1.diffs);
-					ops.addAll(commit2.diffs);
+					List<T> ops = concat(commit1.diffs, commit2.diffs);
 					return LogDiff.of(positions, otSystem.squash(ops));
 				})
 				.withInvertFunction(LogDiff.class, commit -> singletonList(LogDiff.of(
@@ -68,11 +71,4 @@ public class LogOT {
 
 	}
 
-	private static <T> Set<T> intersection(Set<T> a, Set<T> b) {
-		Set<T> set = new HashSet<>();
-		for (T x : a) {
-			if (b.contains(x)) set.add(x);
-		}
-		return set;
-	}
 }

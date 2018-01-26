@@ -8,6 +8,8 @@ import io.datakernel.ot.OTRemote;
 import java.util.*;
 import java.util.concurrent.CompletionStage;
 
+import static io.datakernel.util.CollectionUtils.difference;
+
 public final class OTRemoteStub<K, D> implements OTRemote<K, D> {
 	public interface Sequence<K> {
 		K next(@Nullable K prev);
@@ -104,12 +106,6 @@ public final class OTRemoteStub<K, D> implements OTRemote<K, D> {
 	@Override
 	public CompletionStage<Set<K>> getHeads() {
 		return Stages.of(difference(nodes, forward.keySet()));
-	}
-
-	public static <T> Set<T> difference(Set<T> a, Set<T> b) {
-		Set<T> set = new HashSet<>(a);
-		set.removeAll(b);
-		return set;
 	}
 
 	@Override

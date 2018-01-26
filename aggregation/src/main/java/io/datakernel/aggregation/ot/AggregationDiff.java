@@ -3,9 +3,10 @@ package io.datakernel.aggregation.ot;
 import io.datakernel.aggregation.AggregationChunk;
 
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
+
+import static io.datakernel.util.CollectionUtils.union;
 
 public final class AggregationDiff {
 	private final Set<AggregationChunk> addedChunks;
@@ -49,17 +50,13 @@ public final class AggregationDiff {
 		addedChunks1.removeAll(commit2.removedChunks);
 		Set<AggregationChunk> addedChunks2 = new LinkedHashSet<>(commit2.addedChunks);
 		addedChunks2.removeAll(commit1.removedChunks);
-		Set<AggregationChunk> addedChunks = new HashSet<>();
-		addedChunks.addAll(addedChunks1);
-		addedChunks.addAll(addedChunks2);
+		Set<AggregationChunk> addedChunks = union(addedChunks1, addedChunks2);
 
 		Set<AggregationChunk> removedChunks1 = new LinkedHashSet<>(commit1.removedChunks);
 		removedChunks1.removeAll(commit2.addedChunks);
 		Set<AggregationChunk> removedChunks2 = new LinkedHashSet<>(commit2.removedChunks);
 		removedChunks2.removeAll(commit1.addedChunks);
-		Set<AggregationChunk> removedChunks = new HashSet<>();
-		removedChunks.addAll(removedChunks1);
-		removedChunks.addAll(removedChunks2);
+		Set<AggregationChunk> removedChunks = union(removedChunks1, removedChunks2);
 
 		return of(addedChunks, removedChunks);
 	}

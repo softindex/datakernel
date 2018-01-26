@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static io.datakernel.jmx.Utils.createDescriptionMap;
+import static io.datakernel.util.CollectionUtils.first;
 import static java.util.Collections.singleton;
 import static java.util.Collections.singletonMap;
 
@@ -61,7 +62,7 @@ abstract class AttributeNodeForLeafAbstract implements AttributeNode {
 	@Override
 	public final Map<String, Object> aggregateAttributes(Set<String> attrNames, List<?> sources) {
 		assert attrNames.size() == 1;
-		String attrName = attrNames.iterator().next();
+		String attrName = first(attrNames);
 		assert name.equals(attrName);
 		assert sources != null;
 

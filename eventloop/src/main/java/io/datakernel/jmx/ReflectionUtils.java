@@ -23,6 +23,7 @@ import java.lang.reflect.Modifier;
 import java.util.*;
 import java.util.function.Function;
 
+import static io.datakernel.util.CollectionUtils.first;
 import static io.datakernel.util.Preconditions.checkArgument;
 
 public final class ReflectionUtils {
@@ -201,7 +202,7 @@ public final class ReflectionUtils {
 			return false;
 		});
 		if (result.size() == 1) {
-			return result.iterator().next();
+			return first(result);
 		}
 		return null;
 	}

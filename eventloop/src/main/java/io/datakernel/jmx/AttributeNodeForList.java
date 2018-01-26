@@ -20,6 +20,7 @@ import javax.management.openmbean.*;
 import java.lang.reflect.Array;
 import java.util.*;
 
+import static io.datakernel.util.CollectionUtils.first;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.String.format;
 import static java.util.Collections.emptyList;
@@ -52,7 +53,7 @@ final class AttributeNodeForList extends AttributeNodeForLeafAbstract {
 		try {
 			OpenType<?> elementType;
 			if (visibleAttrs.size() == 1) {
-				String attr = visibleAttrs.iterator().next();
+				String attr = first(visibleAttrs);
 				OpenType<?> openType = attrTypes.get(attr);
 
 				// TODO(vmykhalko): check this case
@@ -129,7 +130,7 @@ final class AttributeNodeForList extends AttributeNodeForLeafAbstract {
 			throws OpenDataException {
 		if (openType instanceof SimpleType || openType instanceof TabularType) {
 			checkArgument(attributes.size() == 1);
-			return attributes.values().iterator().next();
+			return first(attributes.values());
 		} else if (openType instanceof CompositeType) {
 			CompositeType compositeType = (CompositeType) openType;
 			return new CompositeDataSupport(compositeType, attributes);

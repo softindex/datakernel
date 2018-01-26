@@ -6,6 +6,7 @@ import io.datakernel.util.Initializer;
 
 import java.util.*;
 
+import static io.datakernel.util.CollectionUtils.intersection;
 import static io.datakernel.util.Preconditions.checkArgument;
 
 public final class AggregationStructure implements Initializer<AggregationStructure> {
@@ -82,16 +83,6 @@ public final class AggregationStructure implements Initializer<AggregationStruct
 		checkArgument(intersection(this.measureTypes.keySet(), measureTypes.keySet()).isEmpty());
 		this.measureTypes.putAll(measureTypes);
 		return this;
-	}
-
-	private static <T> Set<T> intersection(Set<T> a, Set<T> b) {
-		Set<T> set = new HashSet<>();
-		for (T x : a) {
-			if (b.contains(x)) {
-				set.add(x);
-			}
-		}
-		return set;
 	}
 
 	public AggregationStructure withPartitioningKey(List<String> partitioningKey) {
