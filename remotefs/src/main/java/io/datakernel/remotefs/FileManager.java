@@ -68,20 +68,22 @@ public final class FileManager {
 
 	public CompletionStage<StreamFileReader> get(String fileName, long startPosition) {
 		logger.trace("downloading file: {}, position: {}", fileName, startPosition);
-		return AsyncFile.openAsync(executor, storagePath.resolve(fileName), new OpenOption[]{READ}).thenApply(result -> {
-			logger.trace("{} opened", result);
-			return readFileFrom(result, readerBufferSize, startPosition);
-		});
+		return AsyncFile.openAsync(executor, storagePath.resolve(fileName), new OpenOption[]{READ})
+				.thenApply(result -> {
+					logger.trace("{} opened", result);
+					return readFileFrom(result, readerBufferSize, startPosition);
+				});
 	}
 
 	public CompletionStage<StreamFileWriter> save(String fileName) {
 		logger.trace("uploading file: {}", fileName);
 		return ensureDirectoryAsync(storagePath, fileName).thenCompose(path -> {
 			logger.trace("ensured directory: {}", storagePath);
-			return AsyncFile.openAsync(executor, path, CREATE_OPTIONS).thenApply(result -> {
-				logger.trace("{} opened", result);
-				return StreamFileWriter.create(result, true);
-			});
+			return AsyncFile.openAsync(executor, path, CREATE_OPTIONS)
+					.thenApply(result -> {
+						logger.trace("{} opened", result);
+						return StreamFileWriter.create(result, true);
+					});
 		});
 	}
 

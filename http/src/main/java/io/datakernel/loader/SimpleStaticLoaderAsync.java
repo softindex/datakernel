@@ -16,34 +16,34 @@ import java.util.concurrent.ExecutorService;
 import static java.nio.file.StandardOpenOption.READ;
 
 class SimpleStaticLoaderAsync implements StaticLoader {
-    private static final OpenOption[] READ_OPTIONS = {READ};
+	private static final OpenOption[] READ_OPTIONS = {READ};
 
-    private final Eventloop eventloop;
-    private final ExecutorService executorService;
-    private final Path root;
+	private final Eventloop eventloop;
+	private final ExecutorService executorService;
+	private final Path root;
 
-    public SimpleStaticLoaderAsync(Eventloop eventloop, ExecutorService executorService, Path root) {
-        this.eventloop = eventloop;
-        this.executorService = executorService;
-        this.root = root;
-    }
+	public SimpleStaticLoaderAsync(Eventloop eventloop, ExecutorService executorService, Path root) {
+		this.eventloop = eventloop;
+		this.executorService = executorService;
+		this.root = root;
+	}
 
-    @Override
-    public CompletionStage<ByteBuf> getResource(String name) {
-        Path file = root.resolve(name).normalize();
+	@Override
+	public CompletionStage<ByteBuf> getResource(String name) {
+		Path file = root.resolve(name).normalize();
 
-        if (!file.startsWith(root)) {
-            return Stages.ofException(HttpException.notFound404());
-        }
+		if (!file.startsWith(root)) {
+			return Stages.ofException(HttpException.notFound404());
+		}
 
-        SettableStage<ByteBuf> stage = SettableStage.create();
+		SettableStage<ByteBuf> stage = SettableStage.create();
 
-        AsyncFile.openAsync(executorService, file, READ_OPTIONS)
-                .thenCompose(AsyncFile::readFully)
-                .whenComplete((result, throwable) ->
-                        stage.set(result, throwable instanceof NoSuchFileException
-                                ? HttpException.notFound404()
-                                : throwable));
-        return stage;
-    }
+		AsyncFile.openAsync(executorService, file, READ_OPTIONS)
+				.thenCompose(AsyncFile::readFully)
+				.whenComplete((result, throwable) ->
+						stage.set(result, throwable instanceof NoSuchFileException ?
+								HttpException.notFound404() :
+								throwable));
+		return stage;
+	}
 }

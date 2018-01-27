@@ -63,7 +63,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	private String filePattern = DEFAULT_FILE_PATTERN;
 	private int readBlockSize = DEFAULT_SORTER_BLOCK_SIZE;
 	private int writeBlockSize = DEFAULT_SORTER_BLOCK_SIZE;
-	private int highCompressorLevel = 0;
+	private int compressionLevel = 0;
 
 	// region creators
 	private StreamSorterStorageImpl(ExecutorService executorService, BufferSerializer<T> serializer,
@@ -107,8 +107,8 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 		return this;
 	}
 
-	public StreamSorterStorageImpl<T> withHighCompressor(int compressorLevel) {
-		this.highCompressorLevel = compressorLevel;
+	public StreamSorterStorageImpl<T> withCompressionLevel(int compressionLevel) {
+		this.compressionLevel = compressionLevel;
 		return this;
 	}
 
@@ -126,9 +126,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 				.thenApply(file -> StreamTransformer.<T>idenity()
 						.with(StreamBinarySerializer.create(serializer))
 						.with(StreamByteChunker.create(writeBlockSize / 2, writeBlockSize))
-						.with(highCompressorLevel == 0 ?
-								StreamLZ4Compressor.fastCompressor() :
-								StreamLZ4Compressor.highCompressor(highCompressorLevel))
+						.with(StreamLZ4Compressor.create(compressionLevel))
 						.with(StreamByteChunker.create(writeBlockSize / 2, writeBlockSize))
 						.apply(StreamFileWriter.createWithFlushAsResult(file, false))
 						.thenApply($ -> partition)

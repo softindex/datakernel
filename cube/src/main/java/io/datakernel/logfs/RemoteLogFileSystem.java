@@ -24,7 +24,7 @@ import io.datakernel.jmx.StageStats;
 import io.datakernel.remotefs.RemoteFsClient;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducerWithResult;
-import io.datakernel.stream.stats.StreamOps;
+import io.datakernel.stream.stats.StreamRegistry;
 import io.datakernel.stream.stats.StreamStats;
 import io.datakernel.stream.stats.StreamStatsDetailed;
 
@@ -46,8 +46,8 @@ public final class RemoteLogFileSystem extends AbstractLogFileSystem implements 
 	private final StageStats stageRead = StageStats.create(SMOOTHING_WINDOW_5_MINUTES);
 	private final StageStats stageWrite = StageStats.create(SMOOTHING_WINDOW_5_MINUTES);
 
-	private final StreamOps streamReads = StreamOps.create();
-	private final StreamOps streamWrites = StreamOps.create();
+	private final StreamRegistry<String> streamReads = StreamRegistry.create();
+	private final StreamRegistry<String> streamWrites = StreamRegistry.create();
 
 	private final StreamStatsDetailed<ByteBuf> streamReadStats = StreamStats.detailed(forByteBufs());
 	private final StreamStatsDetailed<ByteBuf> streamWriteStats = StreamStats.detailed(forByteBufs());
@@ -132,12 +132,12 @@ public final class RemoteLogFileSystem extends AbstractLogFileSystem implements 
 	}
 
 	@JmxAttribute
-	public StreamOps getStreamReads() {
+	public StreamRegistry getStreamReads() {
 		return streamReads;
 	}
 
 	@JmxAttribute
-	public StreamOps getStreamWrites() {
+	public StreamRegistry getStreamWrites() {
 		return streamWrites;
 	}
 

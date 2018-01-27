@@ -172,8 +172,9 @@ public final class AsyncFile {
 	 * @param executor @param path     the  path of the file to read
 	 */
 	public static CompletionStage<ByteBuf> readFile(ExecutorService executor, Path path) {
-		return openAsync(executor, path, new OpenOption[]{READ}).thenCompose(
-				file -> file.readFully().whenComplete((byteBuf, throwable) -> file.close()));
+		return openAsync(executor, path, new OpenOption[]{READ})
+				.thenCompose(file -> file.readFully()
+						.whenComplete((byteBuf, throwable) -> file.close()));
 	}
 
 	/**
@@ -185,8 +186,9 @@ public final class AsyncFile {
 	 */
 	public static CompletionStage<Void> createNewAndWriteFile(ExecutorService executor,
 	                                                          Path path, ByteBuf buf) {
-		return openAsync(executor, path, new OpenOption[]{WRITE, CREATE_NEW}).thenCompose(
-				file -> file.writeFully(buf, 0L).whenComplete(($, throwable) -> buf.recycle()));
+		return openAsync(executor, path, new OpenOption[]{WRITE, CREATE_NEW})
+				.thenCompose(file -> file.writeFully(buf, 0L)
+						.whenComplete(($, throwable) -> buf.recycle()));
 	}
 
 	/**

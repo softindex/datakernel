@@ -14,20 +14,20 @@
  * limitations under the License.
  */
 
-package io.datakernel.http;
+package io.datakernel.util;
 
-import io.datakernel.http.ExposedLinkedList.Node;
+import io.datakernel.util.IntrusiveLinkedList.Node;
 import org.junit.Before;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
 
-public class ExposedLinkedListTest {
-	private ExposedLinkedList<String> list;
+public class IntrusiveLinkedListTest {
+	private IntrusiveLinkedList<String> list;
 
 	@Before
 	public void before() {
-		list = ExposedLinkedList.create();
+		list = IntrusiveLinkedList.create();
 	}
 
 	@Test

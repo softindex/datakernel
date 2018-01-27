@@ -26,7 +26,7 @@ import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
-import io.datakernel.stream.stats.StreamOps;
+import io.datakernel.stream.stats.StreamRegistry;
 import io.datakernel.stream.stats.StreamStats;
 import io.datakernel.stream.stats.StreamStatsDetailed;
 import io.datakernel.util.MemSize;
@@ -64,8 +64,8 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements
 	private final StageStats stageRead = StageStats.create(SMOOTHING_WINDOW_5_MINUTES);
 	private final StageStats stageWrite = StageStats.create(SMOOTHING_WINDOW_5_MINUTES);
 
-	private final StreamOps streamReads = StreamOps.create();
-	private final StreamOps streamWrites = StreamOps.create();
+	private final StreamRegistry<String> streamReads = StreamRegistry.create();
+	private final StreamRegistry<String> streamWrites = StreamRegistry.create();
 
 	private final StreamStatsDetailed<ByteBuf> streamReadStats = StreamStats.detailed(forByteBufs());
 	private final StreamStatsDetailed<ByteBuf> streamWriteStats = StreamStats.detailed(forByteBufs());
@@ -150,24 +150,22 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements
 	@Override
 	public CompletionStage<StreamProducerWithResult<ByteBuf, Void>> read(String logPartition, LogFile logFile, long startPosition) {
 		return AsyncFile.openAsync(executorService, path(logPartition, logFile), new OpenOption[]{READ})
+				.whenComplete(stageRead.recordStats())
 				.thenApply(file -> StreamFileReader.readFileFrom(file, readBlockSize, startPosition)
 						.with(streamReads.newEntry(logPartition + ":" + logFile + "@" + startPosition))
 						.with(streamReadStats)
 						.withEndOfStreamAsResult()
-						.withLateBinding()
-				)
-				.whenComplete(stageRead.recordStats());
+						.withLateBinding());
 	}
 
 	@Override
 	public CompletionStage<StreamConsumerWithResult<ByteBuf, Void>> write(String logPartition, LogFile logFile) {
 		return AsyncFile.openAsync(executorService, path(logPartition, logFile), StreamFileWriter.CREATE_OPTIONS)
+				.whenComplete(stageWrite.recordStats())
 				.thenApply(file -> StreamFileWriter.createWithFlushAsResult(file, true)
 						.with(streamWrites.newEntry(logPartition + ":" + logFile))
 						.with(streamWriteStats)
-						.withLateBinding()
-				)
-				.whenComplete(stageWrite.recordStats());
+						.withLateBinding());
 	}
 
 	@Override
@@ -206,12 +204,12 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements
 	}
 
 	@JmxAttribute
-	public StreamOps getStreamReads() {
+	public StreamRegistry getStreamReads() {
 		return streamReads;
 	}
 
 	@JmxAttribute
-	public StreamOps getStreamWrites() {
+	public StreamRegistry getStreamWrites() {
 		return streamWrites;
 	}
 

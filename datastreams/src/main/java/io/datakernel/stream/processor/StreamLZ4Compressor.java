@@ -152,6 +152,10 @@ public final class StreamLZ4Compressor implements StreamTransformer<ByteBuf, Byt
 		return new StreamLZ4Compressor(LZ4Factory.fastestInstance().highCompressor(compressionLevel));
 	}
 
+	public static StreamLZ4Compressor create(int compressionLevel) {
+		return compressionLevel == 0 ? fastCompressor() : highCompressor(compressionLevel);
+	}
+
 	@Override
 	public StreamConsumer<ByteBuf> getInput() {
 		return input;

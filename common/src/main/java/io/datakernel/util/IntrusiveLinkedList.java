@@ -14,14 +14,40 @@
  * limitations under the License.
  */
 
-package io.datakernel.http;
+package io.datakernel.util;
 
 import io.datakernel.annotation.Nullable;
 
-public final class ExposedLinkedList<T> {
-	private ExposedLinkedList() {}
+import java.util.Iterator;
+import java.util.NoSuchElementException;
 
-	public static <T> ExposedLinkedList<T> create() {return new ExposedLinkedList<T>();}
+public final class IntrusiveLinkedList<T> implements Iterable<T> {
+	private IntrusiveLinkedList() {
+	}
+
+	public static <T> IntrusiveLinkedList<T> create() {
+		return new IntrusiveLinkedList<T>();
+	}
+
+	@Override
+	public Iterator<T> iterator() {
+		return new Iterator<T>() {
+			Node<T> node = getFirstNode();
+
+			@Override
+			public boolean hasNext() {
+				return node != null;
+			}
+
+			@Override
+			public T next() {
+				if (!hasNext()) throw new NoSuchElementException();
+				T result = node.value;
+				node = node.next;
+				return result;
+			}
+		};
+	}
 
 	public static final class Node<T> {
 		final T value;
