@@ -17,17 +17,17 @@
 package io.datakernel.async;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.util.Modifier;
 
 import java.util.ArrayDeque;
 import java.util.concurrent.CompletionStage;
-import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
-import java.util.function.Function;
-import java.util.function.Supplier;
+import java.util.function.*;
 
-public interface AsyncCallable<T> extends Modifier<AsyncCallable<T>> {
+public interface AsyncCallable<T> {
 	CompletionStage<T> call();
+
+	default AsyncCallable<T> with(UnaryOperator<AsyncCallable<T>> modifier) {
+		return modifier.apply(this);
+	}
 
 	static <T> AsyncCallable<T> of(Supplier<CompletionStage<T>> supplier) {
 		return supplier::get;
@@ -193,5 +193,4 @@ public interface AsyncCallable<T> extends Modifier<AsyncCallable<T>> {
 	default <U> AsyncCallable<U> handle(BiFunction<? super T, Throwable, ? extends U> fn) {
 		return () -> call().handle(fn);
 	}
-
 }

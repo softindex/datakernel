@@ -9,7 +9,7 @@ import io.datakernel.stream.StreamDataReceiver;
 
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_1_MINUTE;
 
-public final class StreamStatsDetailedEx extends StreamStatsBasic {
+public final class StreamStatsDetailedEx<T> extends StreamStatsBasic<T> {
 	public static final double DEFAULT_DETAILED_SMOOTHING_WINDOW = SMOOTHING_WINDOW_1_MINUTE;
 
 	@Nullable
@@ -31,7 +31,7 @@ public final class StreamStatsDetailedEx extends StreamStatsBasic {
 	}
 
 	@Override
-	public <T> StreamDataReceiver<T> createDataReceiver(StreamDataReceiver<T> actualDataReceiver) {
+	public StreamDataReceiver<T> createDataReceiver(StreamDataReceiver<T> actualDataReceiver) {
 		return sizeCounter == null ?
 				new StreamDataReceiver<T>() {
 					final EventStats count = StreamStatsDetailedEx.this.count;

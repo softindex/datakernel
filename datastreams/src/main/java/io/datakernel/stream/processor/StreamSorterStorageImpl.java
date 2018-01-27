@@ -36,7 +36,6 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.String.format;
 import static java.nio.file.StandardOpenOption.READ;
@@ -123,24 +122,17 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	public CompletionStage<StreamConsumerWithResult<T, Integer>> write() {
 		int partition = PARTITION.incrementAndGet();
 		Path path = partitionPath(partition);
-		return AsyncFile.openAsync(executorService, path, StreamFileWriter.CREATE_OPTIONS).thenApply(file -> {
-			StreamBinarySerializer<T> streamSerializer = StreamBinarySerializer.create(serializer);
-			StreamByteChunker streamByteChunkerBefore = StreamByteChunker.create(writeBlockSize / 2, writeBlockSize);
-			StreamLZ4Compressor streamCompressor = highCompressorLevel == 0 ?
-					StreamLZ4Compressor.fastCompressor() :
-					StreamLZ4Compressor.highCompressor(highCompressorLevel);
-			StreamByteChunker streamByteChunkerAfter = StreamByteChunker.create(writeBlockSize / 2, writeBlockSize);
-			StreamFileWriter streamWriter = StreamFileWriter.create(file);
-
-			stream(streamSerializer.getOutput(), streamByteChunkerBefore.getInput());
-			stream(streamByteChunkerBefore.getOutput(), streamCompressor.getInput());
-			stream(streamCompressor.getOutput(), streamByteChunkerAfter.getInput());
-			stream(streamByteChunkerAfter.getOutput(), streamWriter);
-
-			return streamSerializer.getInput()
-					.withResult(streamWriter.getFlushStage().thenApply($ -> partition))
-					.withLateBinding();
-		});
+		return AsyncFile.openAsync(executorService, path, StreamFileWriter.CREATE_OPTIONS)
+				.thenApply(file -> StreamTransformer.<T>idenity()
+						.with(StreamBinarySerializer.create(serializer))
+						.with(StreamByteChunker.create(writeBlockSize / 2, writeBlockSize))
+						.with(highCompressorLevel == 0 ?
+								StreamLZ4Compressor.fastCompressor() :
+								StreamLZ4Compressor.highCompressor(highCompressorLevel))
+						.with(StreamByteChunker.create(writeBlockSize / 2, writeBlockSize))
+						.apply(StreamFileWriter.createWithFlushAsResult(file, false))
+						.thenApply($ -> partition)
+						.withLateBinding());
 	}
 
 	/**
@@ -153,18 +145,11 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	public CompletionStage<StreamProducerWithResult<T, Void>> read(int partition) {
 		Path path = partitionPath(partition);
 		return AsyncFile.openAsync(executorService, path, new OpenOption[]{READ})
-				.thenApply(file -> {
-					StreamFileReader fileReader = StreamFileReader.readFileFrom(file, readBlockSize, 0L);
-					StreamLZ4Decompressor streamDecompressor = StreamLZ4Decompressor.create();
-					StreamBinaryDeserializer<T> streamDeserializer = StreamBinaryDeserializer.create(serializer);
-
-					stream(fileReader, streamDecompressor.getInput());
-					stream(streamDecompressor.getOutput(), streamDeserializer.getInput());
-
-					return streamDeserializer.getOutput()
-							.withEndOfStreamAsResult()
-							.withLateBinding();
-				});
+				.thenApply(file -> StreamFileReader.readFileFrom(file, readBlockSize, 0L)
+						.with(StreamLZ4Decompressor.create())
+						.with(StreamBinaryDeserializer.create(serializer))
+						.withEndOfStreamAsResult()
+						.withLateBinding());
 	}
 
 	/**

@@ -1,14 +1,9 @@
 package io.datakernel.stream.stats;
 
-import io.datakernel.stream.DataStreams;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamDataReceiver;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.*;
 
-import static io.datakernel.stream.DataStreams.stream;
-
-public interface StreamStats {
-	<T> StreamDataReceiver<T> createDataReceiver(StreamDataReceiver<T> actualDataReceiver);
+public interface StreamStats<T> extends StreamConsumerModifier<T, T>, StreamProducerModifier<T, T> {
+	StreamDataReceiver<T> createDataReceiver(StreamDataReceiver<T> actualDataReceiver);
 
 	void onStarted();
 
@@ -20,36 +15,34 @@ public interface StreamStats {
 
 	void onError(Throwable throwable);
 
-	default <T> StreamProducer<T> wrapper(StreamProducer<T> producer) {
-		StreamStatsForwarder<T> statsForwarder = StreamStatsForwarder.create(this);
-		DataStreams.stream(producer, statsForwarder.getInput());
-		return statsForwarder.getOutput();
+	@Override
+	default StreamConsumer<T> apply(StreamConsumer<T> consumer) {
+		return consumer.with(StreamStatsForwarder.create(this));
 	}
 
-	default <T> StreamConsumer<T> wrapper(StreamConsumer<T> consumer) {
-		StreamStatsForwarder<T> statsForwarder = StreamStatsForwarder.create(this);
-		stream(statsForwarder.getOutput(), consumer);
-		return statsForwarder.getInput();
+	@Override
+	default StreamProducer<T> apply(StreamProducer<T> producer) {
+		return producer.with(StreamStatsForwarder.create(this));
 	}
 
-	static StreamStatsBasic basic() {
-		return new StreamStatsBasic();
+	static <T> StreamStatsBasic<T> basic() {
+		return new StreamStatsBasic<>();
 	}
 
-	static StreamStatsDetailed detailed() {
-		return new StreamStatsDetailed(null);
+	static <T> StreamStatsDetailed<T> detailed() {
+		return new StreamStatsDetailed<>(null);
 	}
 
-	static StreamStatsDetailed detailed(StreamStatsSizeCounter<?> sizeCounter) {
-		return new StreamStatsDetailed(sizeCounter);
+	static <T> StreamStatsDetailed<T> detailed(StreamStatsSizeCounter<T> sizeCounter) {
+		return new StreamStatsDetailed<>(sizeCounter);
 	}
 
-	static StreamStatsDetailedEx detailedEx() {
-		return new StreamStatsDetailedEx(null);
+	static <T> StreamStatsDetailedEx<T> detailedEx() {
+		return new StreamStatsDetailedEx<>(null);
 	}
 
-	static StreamStatsDetailedEx detailedEx(StreamStatsSizeCounter<?> sizeCounter) {
-		return new StreamStatsDetailedEx(sizeCounter);
+	static <T> StreamStatsDetailedEx detailedEx(StreamStatsSizeCounter<T> sizeCounter) {
+		return new StreamStatsDetailedEx<>(sizeCounter);
 	}
 
 }

@@ -28,10 +28,7 @@ import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducerDecorator;
 import io.datakernel.stream.StreamProducerWithResult;
-import io.datakernel.stream.processor.StreamBinaryDeserializer;
-import io.datakernel.stream.processor.StreamBinarySerializer;
-import io.datakernel.stream.processor.StreamLZ4Compressor;
-import io.datakernel.stream.processor.StreamLZ4Decompressor;
+import io.datakernel.stream.processor.*;
 import io.datakernel.util.MemSize;
 import io.datakernel.util.Preconditions;
 import io.datakernel.util.Stopwatch;
@@ -46,7 +43,6 @@ import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 
-import static io.datakernel.stream.DataStreams.stream;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBeanEx {
@@ -104,19 +100,14 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 	public CompletionStage<StreamConsumerWithResult<T, Void>> consumer(String logPartition) {
 		validateLogPartition(logPartition);
 
-		StreamBinarySerializer<T> streamBinarySerializer = StreamBinarySerializer.create(serializer)
-				.withAutoFlush(autoFlushIntervalMillis)
-				.withDefaultBufferSize(bufferSize)
-				.withSkipSerializationErrors();
-
-		StreamLZ4Compressor streamCompressor = StreamLZ4Compressor.fastCompressor();
-
-		LogStreamChunker writer = LogStreamChunker.create(fileSystem, dateTimeFormatter, logPartition);
-
-		stream(streamBinarySerializer.getOutput(), streamCompressor.getInput());
-		stream(streamCompressor.getOutput(), writer);
-
-		return Stages.of(streamBinarySerializer.getInput().withResult(writer.getResult()).withLateBinding());
+		return Stages.of(StreamTransformer.<T>idenity()
+				.with(StreamBinarySerializer.create(serializer)
+						.withAutoFlush(autoFlushIntervalMillis)
+						.withDefaultBufferSize(bufferSize)
+						.withSkipSerializationErrors())
+				.with(StreamLZ4Compressor.fastCompressor())
+				.apply(LogStreamChunker.create(fileSystem, dateTimeFormatter, logPartition))
+				.withLateBinding());
 	}
 
 	@Override
@@ -166,12 +157,11 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 							if (logger.isTraceEnabled())
 								logger.trace("Read log file `{}` from: {}", currentLogFile, position);
 
-							CompletionStage<StreamProducer<T>> stage = fileSystem.read(logPartition, currentLogFile, position)
-									.thenApply(producer -> {
-										inputStreamPosition = 0L;
-
-										sw.reset().start();
-										StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create()
+							CompletionStage<StreamProducer<T>> stage = fileSystem.read(logPartition, currentLogFile, position).thenApply(fileStream -> {
+								inputStreamPosition = 0L;
+								sw.reset().start();
+								return fileStream
+										.with(StreamLZ4Decompressor.create()
 												.withInspector(new StreamLZ4Decompressor.Inspector() {
 													@Override
 													public void onInputBuf(StreamLZ4Decompressor self, ByteBuf buf) {
@@ -181,10 +171,8 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 													public void onBlock(StreamLZ4Decompressor self, StreamLZ4Decompressor.Header header, ByteBuf inputBuf, ByteBuf outputBuf) {
 														inputStreamPosition += StreamLZ4Decompressor.HEADER_LENGTH + header.compressedLen;
 													}
-												});
-
-										stream(producer, decompressor.getInput());
-										StreamProducer<ByteBuf> endOfStreamOnTruncatedFile = new StreamProducerDecorator<ByteBuf>(decompressor.getOutput()) {
+												}))
+										.with(producer -> new StreamProducerDecorator<ByteBuf>(producer) {
 											@Override
 											protected void onCloseWithError(Throwable t) {
 												if (t instanceof TruncatedDataException) {
@@ -193,13 +181,11 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 													super.onCloseWithError(t);
 												}
 											}
-										};
-
-										StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(serializer);
-										stream(endOfStreamOnTruncatedFile, deserializer.getInput());
-										deserializer.getOutput().getEndOfStream().whenComplete(this::log);
-										return deserializer.getOutput().withLateBinding();
-									});
+										})
+										.with(StreamBinaryDeserializer.create(serializer))
+										.whenComplete(this::log)
+										.withLateBinding();
+							});
 
 							return StreamProducer.ofStage(stage);
 						}

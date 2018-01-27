@@ -16,7 +16,6 @@
 
 package io.datakernel.datagraph.server;
 
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.node.Node;
 import io.datakernel.datagraph.server.command.DatagraphCommand;
@@ -26,9 +25,7 @@ import io.datakernel.datagraph.server.command.DatagraphResponse;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.SocketSettings;
-import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.net.MessagingSerializer;
 import io.datakernel.stream.net.MessagingWithBinaryStreaming;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
@@ -40,7 +37,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.CompletionStage;
 
-import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.net.MessagingSerializers.ofJson;
 
 /**
@@ -78,15 +74,10 @@ public final class DatagraphClient {
 			asyncTcpSocket.register();
 
 			return messaging.send(commandDownload)
-					.thenApply($ -> {
-						StreamProducerWithResult<ByteBuf, Void> producer = messaging.receiveBinaryStream();
-						BufferSerializer<T> serializer = serialization.getSerializer(type);
-						StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(serializer);
-
-						stream(producer, deserializer.getInput())
-								.thenAccept($_ -> messaging.close());
-						return deserializer.getOutput().withLateBinding();
-					});
+					.thenApply($ -> messaging.receiveBinaryStream()
+							.with(StreamBinaryDeserializer.create(serialization.getSerializer(type)))
+							.thenAccept($_ -> messaging.close())
+							.withLateBinding());
 		});
 	}
 

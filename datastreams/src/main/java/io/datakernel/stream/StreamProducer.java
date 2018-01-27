@@ -18,7 +18,6 @@ package io.datakernel.stream;
 
 import io.datakernel.async.SettableStage;
 import io.datakernel.stream.processor.StreamLateBinder;
-import io.datakernel.util.Modifier;
 
 import java.util.EnumSet;
 import java.util.Iterator;
@@ -41,7 +40,7 @@ import static java.util.Collections.emptySet;
  *
  * @param <T> type of output data
  */
-public interface StreamProducer<T> extends Modifier<StreamProducer<T>> {
+public interface StreamProducer<T> {
 	/**
 	 * Changes consumer for this producer, removes itself from previous consumer and removes
 	 * previous producer for new consumer. Begins to stream to consumer.
@@ -64,8 +63,12 @@ public interface StreamProducer<T> extends Modifier<StreamProducer<T>> {
 
 	Set<StreamCapability> getCapabilities();
 
+	default <R> StreamProducer<R> with(StreamProducerModifier<T, R> modifier) {
+		return modifier.apply(this);
+	}
+
 	default StreamProducer<T> withLateBinding() {
-		return getCapabilities().contains(LATE_BINDING) ? this : with(StreamLateBinder::wrapper);
+		return getCapabilities().contains(LATE_BINDING) ? this : with(StreamLateBinder.create());
 	}
 
 	/**
@@ -85,6 +88,7 @@ public interface StreamProducer<T> extends Modifier<StreamProducer<T>> {
 	 * @param values values for sending
 	 * @param <T>    type of value
 	 */
+	@SafeVarargs
 	static <T> StreamProducer<T> of(T... values) {
 		return ofIterable(asList(values));
 	}
@@ -115,7 +119,7 @@ public interface StreamProducer<T> extends Modifier<StreamProducer<T>> {
 			"Alternatively, use .withLateBinding() modifier";
 
 	static <T> StreamProducer<T> ofStage(CompletionStage<StreamProducer<T>> producerStage) {
-		StreamLateBinder<T> binder = new StreamLateBinder<>();
+		StreamLateBinder<T> binder = StreamLateBinder.create();
 		producerStage.whenComplete((producer, throwable) -> {
 			if (throwable == null) {
 				checkArgument(producer.getCapabilities().contains(LATE_BINDING),
@@ -230,24 +234,6 @@ public interface StreamProducer<T> extends Modifier<StreamProducer<T>> {
 			public Set<StreamCapability> getCapabilities() {
 				return StreamProducer.this.getCapabilities().contains(LATE_BINDING) ?
 						EnumSet.of(LATE_BINDING) : emptySet();
-			}
-		};
-	}
-
-	default StreamProducer<T> endOfStreamOnError() {
-		return new StreamProducerDecorator<T>(this) {
-			@Override
-			protected void onCloseWithError(Throwable t) {
-				sendEndOfStream();
-			}
-		};
-	}
-
-	default StreamProducer<T> noEndOfStream() {
-		return new StreamProducerDecorator<T>(this) {
-			@Override
-			protected void onEndOfStream() {
-				// do nothing
 			}
 		};
 	}

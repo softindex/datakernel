@@ -303,12 +303,10 @@ public class Aggregation implements IAggregation, Initializer<Aggregation>, Even
 				throw new UncheckedIOException(e);
 			}
 		}
-		StreamSorterStorage sorterStorage = StreamSorterStorageImpl.create(executorService,
-				bufferSerializer, temporarySortDir);
-		StreamSorter sorter = StreamSorter.create(sorterStorage, o -> o, keyComparator, false,
-				sorterItemsInMemory);
-		stream(unsortedStream, sorter.getInput());
-		return sorter.getOutput();
+		return unsortedStream
+				.with(StreamSorter.create(
+						StreamSorterStorageImpl.create(executorService, bufferSerializer, temporarySortDir),
+						Function.identity(), keyComparator, false, sorterItemsInMemory));
 	}
 
 	private CompletionStage<List<AggregationChunk>> doConsolidation(List<AggregationChunk> chunksToConsolidate) {
@@ -422,9 +420,7 @@ public class Aggregation implements IAggregation, Initializer<Aggregation>, Even
 			SequenceStream sequence = sequences.get(0);
 			List<String> collect = measures.stream().filter(sequence.fields::contains).collect(toList());
 			StreamMap.MapperProjection mapper = createMapper(sequence.type, resultClass, queryKeys, collect, classLoader);
-			StreamMap<Object, T> streamMap = StreamMap.create(mapper);
-			stream(sequence.stream, streamMap.getInput().with(stats.mergeMapInput::wrapper));
-			return streamMap.getOutput().with(stats.mergeMapOutput::wrapper);
+			return sequence.stream.with(StreamMap.create(mapper)).with(stats.mergeMapOutput);
 		}
 
 		StreamReducer<Comparable, T, Object> streamReducer = StreamReducer.create(Comparable::compareTo);
@@ -441,11 +437,10 @@ public class Aggregation implements IAggregation, Initializer<Aggregation>, Even
 			StreamReducers.Reducer reducer = AggregationUtils.aggregationReducer(structure, sequence.type, resultClass,
 					queryKeys, collect, classLoader);
 
-			stream(sequence.stream, ((StreamConsumer<?>) streamReducer.newInput(extractKeyFunction, reducer))
-					.with(stats.mergeReducerInput::wrapper));
+			stream(sequence.stream, streamReducer.newInput(extractKeyFunction, reducer).with(stats.mergeReducerInput));
 		}
 
-		return streamReducer.getOutput().with(stats.mergeReducerOutput::wrapper);
+		return streamReducer.getOutput().with(stats.mergeReducerOutput);
 	}
 
 	private <T> StreamProducer<T> sequenceStream(AggregationPredicate where,
@@ -472,8 +467,7 @@ public class Aggregation implements IAggregation, Initializer<Aggregation>, Even
 		if (where != AggregationPredicates.alwaysTrue()) {
 			StreamFilter<T> streamFilter = StreamFilter.create(
 					createPredicate(chunkRecordClass, where, queryClassLoader));
-			stream(producer, streamFilter.getInput());
-			return streamFilter.getOutput();
+			return producer.with(streamFilter);
 		}
 		return producer;
 	}

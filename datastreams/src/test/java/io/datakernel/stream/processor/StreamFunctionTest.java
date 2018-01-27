@@ -24,6 +24,7 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.DataStreams.stream;
@@ -33,6 +34,7 @@ import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.TestUtils.assertStatus;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class StreamFunctionTest {
 
@@ -40,20 +42,17 @@ public class StreamFunctionTest {
 	public void testFunction() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		StreamFunction<Integer, Integer> streamFunction = StreamFunction.create(input -> input * input);
-
 		StreamProducer<Integer> source1 = StreamProducer.of(1, 2, 3);
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending();
 
-		stream(source1, streamFunction.getInput());
-		stream(streamFunction.getOutput(), consumer);
+		stream(source1.with(StreamFunction.create(input -> input * input)), consumer);
 		eventloop.run();
 
 		assertEquals(asList(1, 4, 9), consumer.getList());
 
 		assertStatus(END_OF_STREAM, source1);
-		assertStatus(END_OF_STREAM, streamFunction.getInput());
-		assertStatus(END_OF_STREAM, streamFunction.getOutput());
+//		assertStatus(END_OF_STREAM, streamFunction.getInput());
+//		assertStatus(END_OF_STREAM, streamFunction.getOutput());
 		assertStatus(END_OF_STREAM, consumer);
 	}
 
@@ -112,6 +111,13 @@ public class StreamFunctionTest {
 		assertStatus(CLOSED_WITH_ERROR, consumer.getProducer());
 		assertStatus(CLOSED_WITH_ERROR, streamFunction.getInput());
 		assertStatus(CLOSED_WITH_ERROR, streamFunction.getOutput());
+	}
+
+	@Test
+	public void testIdentity() {
+		Function<String, String> function1 = Function.<String>identity();
+		Function<Integer, Integer> function2 = Function.<Integer>identity();
+		assertTrue((Function) function1 == (Function) function2);
 	}
 
 }

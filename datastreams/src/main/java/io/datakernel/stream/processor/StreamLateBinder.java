@@ -5,7 +5,6 @@ import io.datakernel.stream.*;
 import java.util.EnumSet;
 import java.util.Set;
 
-import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 import static io.datakernel.stream.StreamCapability.TERMINAL;
 
@@ -22,19 +21,11 @@ public final class StreamLateBinder<T> implements StreamTransformer<T, T> {
 
 	private StreamDataReceiver<T> waitingReceiver;
 
-	public StreamLateBinder() {
+	private StreamLateBinder() {
 	}
 
-	public static <T> StreamConsumer<T> wrapper(StreamConsumer<T> consumer) {
-		StreamLateBinder<T> transformer = new StreamLateBinder<>();
-		stream(transformer.output, consumer);
-		return transformer.input;
-	}
-
-	public static <T> StreamProducer<T> wrapper(StreamProducer<T> producer) {
-		StreamLateBinder<T> transformer = new StreamLateBinder<>();
-		stream(producer, transformer.input);
-		return transformer.output;
+	public static <T> StreamLateBinder<T> create() {
+		return new StreamLateBinder<T>();
 	}
 
 	private class Input extends AbstractStreamConsumer<T> {

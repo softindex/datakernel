@@ -24,7 +24,6 @@ import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.UnaryOperator;
 
 import static io.datakernel.stream.DataStreams.bind;
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
@@ -34,18 +33,18 @@ public interface StreamConsumerWithResult<T, X> extends StreamConsumer<T> {
 	CompletionStage<X> getResult();
 
 	@Override
-	default StreamConsumerWithResult<T, X> with(UnaryOperator<StreamConsumer<T>> modifier) {
+	default <R> StreamConsumerWithResult<R, X> with(StreamConsumerModifier<T, R> modifier) {
 		return modifier.apply(this).withResult(this.getResult());
 	}
 
 	@Override
 	default StreamConsumerWithResult<T, X> withLateBinding() {
-		return getCapabilities().contains(LATE_BINDING) ? this : with(StreamLateBinder::wrapper);
+		return getCapabilities().contains(LATE_BINDING) ? this : with(StreamLateBinder.create());
 	}
 
 	static <T, X> StreamConsumerWithResult<T, X> ofStage(CompletionStage<StreamConsumerWithResult<T, X>> consumerStage) {
 		SettableStage<X> result = SettableStage.create();
-		StreamLateBinder<T> binder = new StreamLateBinder<>();
+		StreamLateBinder<T> binder = StreamLateBinder.create();
 		consumerStage.whenComplete((consumer, throwable) -> {
 			if (throwable == null) {
 				checkArgument(consumer.getCapabilities().contains(LATE_BINDING),

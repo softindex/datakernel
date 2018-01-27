@@ -3,11 +3,11 @@ package io.datakernel.stream.stats;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.processor.StreamModifier;
 import io.datakernel.util.CollectionUtils;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.UnaryOperator;
 
 import static java.lang.System.currentTimeMillis;
 
@@ -34,13 +34,17 @@ public class StreamOps {
 	}
 
 	@SuppressWarnings("unchecked")
-	public <X> UnaryOperator<X> newEntry(Object operation) {
-		return object -> {
-			if (object instanceof StreamProducer)
-				return (X) this.newEntry((StreamProducer) object, operation);
-			if (object instanceof StreamConsumer)
-				return (X) this.newEntry((StreamConsumer) object, operation);
-			throw new IllegalArgumentException();
+	public <T> StreamModifier<T, T> newEntry(Object operation) {
+		return new StreamModifier<T, T>() {
+			@Override
+			public StreamConsumer<T> apply(StreamConsumer<T> consumer) {
+				return newEntry(consumer, operation);
+			}
+
+			@Override
+			public StreamProducer<T> apply(StreamProducer<T> producer) {
+				return newEntry(producer, operation);
+			}
 		};
 	}
 

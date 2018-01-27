@@ -18,6 +18,7 @@ package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.async.Stages;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
@@ -27,6 +28,7 @@ import io.datakernel.jmx.StageStats;
 import io.datakernel.remotefs.IRemoteFsClient;
 import io.datakernel.remotefs.RemoteFsClient;
 import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.stream.StreamProducerModifier;
 import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.processor.*;
 import io.datakernel.stream.stats.StreamStats;
@@ -41,7 +43,6 @@ import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.aggregation.AggregationUtils.createBufferSerializer;
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
-import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.stats.StreamStatsSizeCounter.forByteBufs;
 import static java.util.stream.Collectors.toMap;
 
@@ -66,16 +67,16 @@ public final class RemoteFsChunkStorage implements AggregationChunkStorage, Even
 
 	private boolean detailed;
 
-	private final StreamStatsDetailed readRemoteFS = StreamStats.detailed(forByteBufs());
-	private final StreamStatsDetailed readDecompress = StreamStats.detailed(forByteBufs());
-	private final StreamStatsBasic readDeserialize = StreamStats.basic();
-	private final StreamStatsDetailed readDeserializeDetailed = StreamStats.detailed();
+	private final StreamStatsDetailed<ByteBuf> readRemoteFS = StreamStats.detailed(forByteBufs());
+	private final StreamStatsDetailed<ByteBuf> readDecompress = StreamStats.detailed(forByteBufs());
+	private final StreamStatsBasic<?> readDeserialize = StreamStats.basic();
+	private final StreamStatsDetailed<?> readDeserializeDetailed = StreamStats.detailed();
 
-	private final StreamStatsBasic writeSerialize = StreamStats.basic();
-	private final StreamStatsDetailed writeSerializeDetailed = StreamStats.detailed();
-	private final StreamStatsDetailed writeCompress = StreamStats.detailed(forByteBufs());
-	private final StreamStatsDetailed writeChunker = StreamStats.detailed(forByteBufs());
-	private final StreamStatsDetailed writeRemoteFS = StreamStats.detailed(forByteBufs());
+	private final StreamStatsBasic<?> writeSerialize = StreamStats.basic();
+	private final StreamStatsDetailed<?> writeSerializeDetailed = StreamStats.detailed();
+	private final StreamStatsDetailed<ByteBuf> writeCompress = StreamStats.detailed(forByteBufs());
+	private final StreamStatsDetailed<ByteBuf> writeChunker = StreamStats.detailed(forByteBufs());
+	private final StreamStatsDetailed<ByteBuf> writeRemoteFS = StreamStats.detailed(forByteBufs());
 
 	private RemoteFsChunkStorage(Eventloop eventloop, IdGenerator<Long> idGenerator, InetSocketAddress serverAddress) {
 		this.eventloop = eventloop;
@@ -106,48 +107,39 @@ public final class RemoteFsChunkStorage implements AggregationChunkStorage, Even
 				() -> client.download(path(chunkId), 0).whenComplete(stageOpenR1.recordStats()),
 				() -> client.download(tempPath(chunkId), 0).whenComplete(stageOpenR2.recordStats()),
 				() -> client.download(path(chunkId), 0).whenComplete(stageOpenR3.recordStats()))
-				.thenApply(producer -> {
-					StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create();
-					StreamBinaryDeserializer<T> deserializer = StreamBinaryDeserializer.create(
-							createBufferSerializer(aggregation, recordClass,
-									aggregation.getKeys(), fields, classLoader));
-
-					stream(producer.with(readRemoteFS::wrapper), decompressor.getInput());
-					stream(decompressor.getOutput().with(readDecompress::wrapper), deserializer.getInput());
-
-					return deserializer.getOutput()
-							.with(detailed ? readDeserializeDetailed::wrapper : readDeserialize::wrapper)
-							.withEndOfStreamAsResult()
-							.withLateBinding();
-				});
+				.thenApply(producer -> producer
+						.with(readRemoteFS)
+						.with(StreamLZ4Decompressor.create())
+						.with(readDecompress)
+						.with(StreamBinaryDeserializer.create(
+								createBufferSerializer(aggregation, recordClass, aggregation.getKeys(), fields, classLoader)))
+						.with((StreamProducerModifier<T, T>) (detailed ? readDeserializeDetailed : readDeserialize))
+						.withEndOfStreamAsResult()
+						.withLateBinding());
 	}
 
 	private String path(long chunkId) {
 		return chunkId + LOG;
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public <T> CompletionStage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields,
 	                                                                    Class<T> recordClass, long chunkId,
 	                                                                    DefiningClassLoader classLoader) {
-		return client.upload(tempPath(chunkId)).whenComplete(stageOpenW.recordStats())
-				.thenApply(consumer -> {
-					StreamBinarySerializer<T> serializer = StreamBinarySerializer.create(
-							createBufferSerializer(aggregation, recordClass,
-									aggregation.getKeys(), fields, classLoader))
-							.withDefaultBufferSize(bufferSize);
-					StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor();
-					StreamByteChunker chunker = StreamByteChunker.create(bufferSize / 2, bufferSize * 2);
-
-					stream(serializer.getOutput(), compressor.getInput().with(writeCompress::wrapper));
-					stream(compressor.getOutput(), chunker.getInput().with(writeChunker::wrapper));
-					stream(chunker.getOutput(), consumer.with(writeRemoteFS::wrapper));
-
-					return serializer.getInput()
-							.with(detailed ? writeSerializeDetailed::wrapper : writeSerialize::wrapper)
-							.withResult(consumer.getResult())
-							.withLateBinding();
-				});
+		return client.upload(tempPath(chunkId))
+				.whenComplete(stageOpenW.recordStats())
+				.thenApply(consumer -> StreamTransformer.<T>idenity()
+						.with((StreamProducerModifier<T, T>) (detailed ? writeSerializeDetailed : writeSerialize))
+						.with(StreamBinarySerializer.create(
+								createBufferSerializer(aggregation, recordClass, aggregation.getKeys(), fields, classLoader))
+								.withDefaultBufferSize(bufferSize))
+						.with(writeCompress)
+						.with(StreamLZ4Compressor.fastCompressor())
+						.with(writeChunker)
+						.with(StreamByteChunker.create(bufferSize / 2, bufferSize * 2))
+						.with(writeRemoteFS)
+						.apply(consumer));
 	}
 
 	private String tempPath(long chunkId) {

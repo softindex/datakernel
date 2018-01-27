@@ -135,10 +135,6 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		this.response = null;
 		this.stage = null;
 		response.setBody(bodyBuf);
-		eventloop.post(() -> {
-			stage.set(response);
-			response.recycleBufs();
-		});
 
 		if (inspector != null) inspector.onHttpResponse(this, response);
 		if (keepAlive && client.keepAliveTimeoutMillis != 0) {
@@ -147,6 +143,9 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		} else {
 			close();
 		}
+
+		stage.set(response);
+		response.recycleBufs();
 	}
 
 	@Override

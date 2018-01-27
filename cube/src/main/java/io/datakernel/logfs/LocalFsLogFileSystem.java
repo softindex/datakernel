@@ -67,8 +67,8 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements
 	private final StreamOps streamReads = StreamOps.create();
 	private final StreamOps streamWrites = StreamOps.create();
 
-	private final StreamStatsDetailed streamReadStats = StreamStats.detailed(forByteBufs());
-	private final StreamStatsDetailed streamWriteStats = StreamStats.detailed(forByteBufs());
+	private final StreamStatsDetailed<ByteBuf> streamReadStats = StreamStats.detailed(forByteBufs());
+	private final StreamStatsDetailed<ByteBuf> streamWriteStats = StreamStats.detailed(forByteBufs());
 
 	/**
 	 * Constructs a log file system, that runs in the given event loop, runs blocking IO operations in the specified executor,
@@ -152,7 +152,7 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements
 		return AsyncFile.openAsync(executorService, path(logPartition, logFile), new OpenOption[]{READ})
 				.thenApply(file -> StreamFileReader.readFileFrom(file, readBlockSize, startPosition)
 						.with(streamReads.newEntry(logPartition + ":" + logFile + "@" + startPosition))
-						.with(streamReadStats::wrapper)
+						.with(streamReadStats)
 						.withEndOfStreamAsResult()
 						.withLateBinding()
 				)
@@ -162,10 +162,9 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements
 	@Override
 	public CompletionStage<StreamConsumerWithResult<ByteBuf, Void>> write(String logPartition, LogFile logFile) {
 		return AsyncFile.openAsync(executorService, path(logPartition, logFile), StreamFileWriter.CREATE_OPTIONS)
-				.thenApply(file -> StreamFileWriter.create(file, true)
+				.thenApply(file -> StreamFileWriter.createWithFlushAsResult(file, true)
 						.with(streamWrites.newEntry(logPartition + ":" + logFile))
-						.with(streamWriteStats::wrapper)
-						.withResult(StreamFileWriter.create(file, true).getFlushStage())
+						.with(streamWriteStats)
 						.withLateBinding()
 				)
 				.whenComplete(stageWrite.recordStats());

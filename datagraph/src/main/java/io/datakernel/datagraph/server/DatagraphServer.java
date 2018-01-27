@@ -86,7 +86,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 				logger.info("onDownload: transferring {}, pending downloads: {}", streamId, pendingStreams.size());
 			} else {
 				logger.info("onDownload: waiting {}, pending downloads: {}", streamId, pendingStreams.size());
-				forwarder = new StreamLateBinder<>();
+				forwarder = StreamLateBinder.create();
 				pendingStreams.put(streamId, forwarder);
 			}
 			StreamConsumerWithResult<ByteBuf, Void> consumer = messaging.sendBinaryStream();
@@ -122,7 +122,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 		StreamLateBinder<ByteBuf> forwarder = pendingStreams.remove(streamId);
 		if (forwarder == null) {
 			logger.info("onUpload: waiting {}, pending downloads: {}", streamId, pendingStreams.size());
-			forwarder = new StreamLateBinder<>();
+			forwarder = StreamLateBinder.create();
 			pendingStreams.put(streamId, forwarder);
 		} else {
 			logger.info("onUpload: transferring {}, pending downloads: {}", streamId, pendingStreams.size());

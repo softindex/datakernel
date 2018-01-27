@@ -21,6 +21,7 @@ import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.stream.AbstractStreamConsumer;
+import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamDataReceiver;
 
 import java.io.IOException;
@@ -73,6 +74,11 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 	public static StreamFileWriter create(AsyncFile asyncFile, boolean forceOnClose) {
 		return new StreamFileWriter(asyncFile, forceOnClose);
+	}
+
+	public static StreamConsumerWithResult<ByteBuf, Void> createWithFlushAsResult(AsyncFile asyncFile, boolean forceOnClose) {
+		StreamFileWriter streamFileWriter = new StreamFileWriter(asyncFile, forceOnClose);
+		return streamFileWriter.withResult(streamFileWriter.getFlushStage());
 	}
 	// endregion
 

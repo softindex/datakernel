@@ -49,8 +49,8 @@ public final class RemoteLogFileSystem extends AbstractLogFileSystem implements 
 	private final StreamOps streamReads = StreamOps.create();
 	private final StreamOps streamWrites = StreamOps.create();
 
-	private final StreamStatsDetailed streamReadStats = StreamStats.detailed(forByteBufs());
-	private final StreamStatsDetailed streamWriteStats = StreamStats.detailed(forByteBufs());
+	private final StreamStatsDetailed<ByteBuf> streamReadStats = StreamStats.detailed(forByteBufs());
+	private final StreamStatsDetailed<ByteBuf> streamWriteStats = StreamStats.detailed(forByteBufs());
 
 	private RemoteLogFileSystem(Eventloop eventloop, String logName, RemoteFsClient client) {
 		this.eventloop = eventloop;
@@ -72,7 +72,7 @@ public final class RemoteLogFileSystem extends AbstractLogFileSystem implements 
 		return client.download(path(logPartition, logFile), startPosition)
 				.thenApply(stream -> stream
 						.with(streamReads.newEntry(logPartition + ":" + logFile + "@" + startPosition))
-						.with(streamReadStats::wrapper)
+						.with(streamReadStats)
 						.withLateBinding()
 				)
 				.whenComplete(stageRead.recordStats());
@@ -84,7 +84,7 @@ public final class RemoteLogFileSystem extends AbstractLogFileSystem implements 
 		return client.upload(fileName)
 				.thenApply(stream -> stream
 						.with(streamWrites.newEntry(logPartition + ":" + logFile))
-						.with(streamWriteStats::wrapper)
+						.with(streamWriteStats)
 						.withLateBinding()
 				)
 				.whenComplete(stageWrite.recordStats());

@@ -16,8 +16,68 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.stream.HasInput;
-import io.datakernel.stream.HasOutput;
+import io.datakernel.stream.*;
 
-public interface StreamTransformer<I, O> extends HasInput<I>, HasOutput<O> {
+import java.util.function.Function;
+
+import static io.datakernel.stream.DataStreams.bind;
+
+public interface StreamTransformer<I, O> extends HasInput<I>, HasOutput<O>, StreamModifier<I, O> {
+
+	static <X> StreamTransformer<X, X> idenity() {
+		return StreamFunction.create(Function.identity());
+	}
+
+	default <T> StreamTransformer<T, O> with(StreamConsumerModifier<I, T> consumerModifier) {
+		return new StreamTransformer<T, O>() {
+			private final StreamConsumer<T> input = consumerModifier.apply(StreamTransformer.this.getInput());
+
+			@Override
+			public StreamConsumer<T> getInput() {
+				return input;
+			}
+
+			@Override
+			public StreamProducer<O> getOutput() {
+				return StreamTransformer.this.getOutput();
+			}
+		};
+	}
+
+	default <T> StreamTransformer<I, T> with(StreamProducerModifier<O, T> producerModifier) {
+		return new StreamTransformer<I, T>() {
+			private final StreamProducer<T> output = producerModifier.apply(StreamTransformer.this.getOutput());
+
+			@Override
+			public StreamConsumer<I> getInput() {
+				return StreamTransformer.this.getInput();
+			}
+
+			@Override
+			public StreamProducer<T> getOutput() {
+				return output;
+			}
+		};
+	}
+
+	default <X> StreamConsumerWithResult<I, X> apply(StreamConsumerWithResult<O, X> consumer) {
+		return apply((StreamConsumer<O>) consumer).withResult(consumer.getResult());
+	}
+
+	default <X> StreamProducerWithResult<O, X> apply(StreamProducerWithResult<I, X> producer) {
+		return apply((StreamProducer<I>) producer).withResult(producer.getResult());
+	}
+
+	@Override
+	default StreamConsumer<I> apply(StreamConsumer<O> consumer) {
+		bind(getOutput(), consumer);
+		return getInput();
+	}
+
+	@Override
+	default StreamProducer<O> apply(StreamProducer<I> producer) {
+		bind(producer, getInput());
+		return getOutput();
+	}
+
 }

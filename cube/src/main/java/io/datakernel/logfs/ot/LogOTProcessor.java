@@ -68,8 +68,8 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 	// JMX
 	private boolean enabled = true;
 	private boolean detailed;
-	private final StreamStatsBasic streamStatsBasic = StreamStats.basic();
-	private final StreamStatsDetailed streamStatsDetailed = StreamStats.detailed();
+	private final StreamStatsBasic<T> streamStatsBasic = StreamStats.basic();
+	private final StreamStatsDetailed<T> streamStatsDetailed = StreamStats.detailed();
 	private final StageStats stageProcessLog = StageStats.create(SMOOTHING_WINDOW_5_MINUTES);
 	private final StageStats stageProducer = StageStats.create(SMOOTHING_WINDOW_5_MINUTES);
 	private final StageStats stageConsumer = StageStats.create(SMOOTHING_WINDOW_5_MINUTES);
@@ -147,7 +147,7 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 			});
 		}
 		return streamUnion.getOutput()
-				.with(detailed ? streamStatsDetailed::wrapper : streamStatsBasic::wrapper)
+				.with(detailed ? streamStatsDetailed : streamStatsBasic)
 				.withResult(result.get());
 	}
 

@@ -7,7 +7,7 @@ import io.datakernel.jmx.JmxStatsWithReset;
 import io.datakernel.jmx.ReflectionUtils;
 import io.datakernel.stream.StreamDataReceiver;
 
-public final class StreamStatsDetailed extends StreamStatsBasic implements JmxStatsWithReset {
+public final class StreamStatsDetailed<T> extends StreamStatsBasic<T> implements JmxStatsWithReset {
 	@Nullable
 	private final StreamStatsSizeCounter<Object> sizeCounter;
 
@@ -26,7 +26,7 @@ public final class StreamStatsDetailed extends StreamStatsBasic implements JmxSt
 	}
 
 	@Override
-	public <T> StreamDataReceiver<T> createDataReceiver(StreamDataReceiver<T> actualDataReceiver) {
+	public StreamDataReceiver<T> createDataReceiver(StreamDataReceiver<T> actualDataReceiver) {
 		return sizeCounter == null ?
 				item -> {
 					count++;

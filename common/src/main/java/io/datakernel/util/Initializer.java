@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.function.Consumer;
 
 @SuppressWarnings("unchecked")
-public interface Initializer<T extends Initializer<T>> extends Modifier<T> {
+public interface Initializer<T extends Initializer<T>> {
 	default T initialize(Consumer<T> initializer) {
 		initializer.accept((T) this);
 		return (T) this;

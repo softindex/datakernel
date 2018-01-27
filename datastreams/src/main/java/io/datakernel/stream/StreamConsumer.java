@@ -18,7 +18,6 @@ package io.datakernel.stream;
 
 import io.datakernel.async.SettableStage;
 import io.datakernel.stream.processor.StreamLateBinder;
-import io.datakernel.util.Modifier;
 
 import java.util.EnumSet;
 import java.util.Set;
@@ -37,7 +36,7 @@ import static java.util.Collections.emptySet;
  *
  * @param <T> type of input data
  */
-public interface StreamConsumer<T> extends Modifier<StreamConsumer<T>> {
+public interface StreamConsumer<T> {
 	/**
 	 * Sets wired producer. It will sent data to this consumer
 	 *
@@ -49,8 +48,13 @@ public interface StreamConsumer<T> extends Modifier<StreamConsumer<T>> {
 
 	Set<StreamCapability> getCapabilities();
 
+	default <R> StreamConsumer<R> with(StreamConsumerModifier<T, R> modifier) {
+		StreamConsumer<T> consumer = this;
+		return modifier.apply(consumer);
+	}
+
 	default StreamConsumer<T> withLateBinding() {
-		return getCapabilities().contains(LATE_BINDING) ? this : with(StreamLateBinder::wrapper);
+		return getCapabilities().contains(LATE_BINDING) ? this : with(StreamLateBinder.create());
 	}
 
 	static <T> StreamConsumer<T> idle() {
@@ -67,7 +71,7 @@ public interface StreamConsumer<T> extends Modifier<StreamConsumer<T>> {
 			"Alternatively, use .withLateBinding() modifier";
 
 	static <T> StreamConsumer<T> ofStage(CompletionStage<StreamConsumer<T>> consumerStage) {
-		StreamLateBinder<T> lateBounder = new StreamLateBinder<>();
+		StreamLateBinder<T> lateBounder = StreamLateBinder.create();
 		consumerStage.whenComplete((consumer, throwable) -> {
 			if (throwable == null) {
 				checkArgument(consumer.getCapabilities().contains(LATE_BINDING),

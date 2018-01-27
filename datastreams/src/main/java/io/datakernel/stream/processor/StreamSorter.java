@@ -37,7 +37,7 @@ import static io.datakernel.util.Preconditions.checkNotNull;
  * @param <K> type of keys
  * @param <T> type of objects
  */
-public final class StreamSorter<K, T> implements HasInput<T>, HasOutput<T> {
+public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 	private final StagesAccumulator<List<Integer>> temporaryStreams = StagesAccumulator.create(new ArrayList<>());
 	private final StreamSorterStorage<T> storage;
 	private final Comparator<T> itemComparator;

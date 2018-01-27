@@ -144,8 +144,8 @@ public final class StreamProducers {
 		}
 	}
 
-	public static <T> StreamProducer<T> errorDecorator(StreamProducer<T> producer, Predicate<T> errorPredicate, Supplier<Throwable> error) {
-		return new StreamProducerDecorator<T>(producer) {
+	public static <T> StreamProducerModifier<T, T> errorsInjection(Predicate<T> errorPredicate, Supplier<Throwable> error) {
+		return producer -> new StreamProducerDecorator<T>(producer) {
 			@Override
 			protected StreamDataReceiver<T> onProduce(StreamDataReceiver<T> dataReceiver) {
 				return super.onProduce(item -> {
@@ -159,9 +159,22 @@ public final class StreamProducers {
 		};
 	}
 
-	public static <T, R> StreamProducerWithResult<T, R> errorDecorator(StreamProducerWithResult<T, R> producer, Predicate<T> errorPredicate, Supplier<Throwable> error) {
-		return errorDecorator((StreamProducer<T>) producer, errorPredicate, error).withResult(producer.getResult());
+	public static <T> StreamProducer<T> endOfStreamOnError(StreamProducer<T> producer) {
+		return new StreamProducerDecorator<T>(producer) {
+			@Override
+			protected void onCloseWithError(Throwable t) {
+				sendEndOfStream();
+			}
+		};
 	}
 
+	public static <T> StreamProducer<T> noEndOfStream(StreamProducer<T> producer) {
+		return new StreamProducerDecorator<T>(producer) {
+			@Override
+			protected void onEndOfStream() {
+				// do nothing
+			}
+		};
+	}
 
 }

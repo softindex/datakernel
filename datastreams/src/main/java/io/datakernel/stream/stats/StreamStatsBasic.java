@@ -8,7 +8,7 @@ import io.datakernel.stream.StreamDataReceiver;
 
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 
-public class StreamStatsBasic implements StreamStats {
+public class StreamStatsBasic<T> implements StreamStats<T> {
 	public static final double DEFAULT_BASIC_SMOOTHING_WINDOW = SMOOTHING_WINDOW_5_MINUTES;
 
 	private final EventStats started = EventStats.create(DEFAULT_BASIC_SMOOTHING_WINDOW);
@@ -26,7 +26,7 @@ public class StreamStatsBasic implements StreamStats {
 	}
 
 	@Override
-	public <T> StreamDataReceiver<T> createDataReceiver(StreamDataReceiver<T> actualDataReceiver) {
+	public StreamDataReceiver<T> createDataReceiver(StreamDataReceiver<T> actualDataReceiver) {
 		return actualDataReceiver;
 	}
 
