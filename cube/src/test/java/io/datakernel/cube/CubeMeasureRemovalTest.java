@@ -243,7 +243,7 @@ public class CubeMeasureRemovalTest {
 		Map<Integer, Long> map = Stream.concat(listOfRandomLogItems1.stream(), listOfRandomLogItems2.stream())
 				.collect(groupingBy(o -> o.date, reducing(0L, o -> o.clicks, (v, v2) -> v + v2)));
 
-		StreamConsumerToList<LogItem> queryResultConsumer2 = new StreamConsumerToList<>();
+		StreamConsumerToList<LogItem> queryResultConsumer2 = StreamConsumerToList.create();
 		stream(cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(), LogItem.class, classLoader), queryResultConsumer2);
 		eventloop.run();
 
@@ -277,7 +277,7 @@ public class CubeMeasureRemovalTest {
 		assertTrue(chunks.get(0).getMeasures().contains("revenue"));
 
 		// Query
-		StreamConsumerToList<LogItem> queryResultConsumer3 = new StreamConsumerToList<>();
+		StreamConsumerToList<LogItem> queryResultConsumer3 = StreamConsumerToList.create();
 		stream(cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(),
 				LogItem.class, DefiningClassLoader.create(classLoader)), queryResultConsumer3);
 		eventloop.run();

@@ -165,7 +165,7 @@ public class RpcBinaryProtocolTest {
 				.withMaxMessageSize(maxPacketSize);
 		StreamBinaryDeserializer<RpcMessage> deserializerServer = StreamBinaryDeserializer.create(serializer);
 
-		StreamConsumerToList<RpcMessage> results = new StreamConsumerToList<>();
+		StreamConsumerToList<RpcMessage> results = StreamConsumerToList.create();
 
 		stream(client, serializerClient.getInput());
 		stream(serializerClient.getOutput(), compressorClient.getInput());

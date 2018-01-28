@@ -40,7 +40,7 @@ public class ProducerOfValueTest {
 
 	@Test
 	public void test1() {
-		StreamConsumerToList<Integer> consumer1 = new StreamConsumerToList<>(new LinkedList<Integer>());
+		StreamConsumerToList<Integer> consumer1 = StreamConsumerToList.create(new LinkedList<Integer>());
 		StreamProducer<Integer> producer1 = StreamProducer.of(TEST_INT);
 		stream(producer1, consumer1);
 
@@ -49,7 +49,7 @@ public class ProducerOfValueTest {
 		assertEquals(TEST_INT, consumer1.getList().get(0));
 		assertStatus(END_OF_STREAM, producer1);
 
-		StreamConsumerToList<String> consumer2 = new StreamConsumerToList<>(new LinkedList<String>());
+		StreamConsumerToList<String> consumer2 = StreamConsumerToList.create(new LinkedList<String>());
 		StreamProducer<String> producer2 = StreamProducer.of(TEST_STRING);
 		stream(producer2, consumer2);
 		eventloop.run();
@@ -57,7 +57,7 @@ public class ProducerOfValueTest {
 		assertEquals(TEST_STRING, consumer2.getList().get(0));
 		assertStatus(END_OF_STREAM, producer2);
 
-		StreamConsumerToList<DataItem1> consumer3 = new StreamConsumerToList<>(new LinkedList<DataItem1>());
+		StreamConsumerToList<DataItem1> consumer3 = StreamConsumerToList.create(new LinkedList<DataItem1>());
 		StreamProducer<DataItem1> producer3 = StreamProducer.of(TEST_OBJECT);
 		stream(producer3, consumer3);
 		eventloop.run();
@@ -68,7 +68,7 @@ public class ProducerOfValueTest {
 
 	@Test
 	public void testNull() {
-		StreamConsumerToList<Object> consumer3 = new StreamConsumerToList<>(new LinkedList<>());
+		StreamConsumerToList<Object> consumer3 = StreamConsumerToList.create(new LinkedList<>());
 		StreamProducer<Object> producer3 = StreamProducer.of(TEST_NULL);
 		stream(producer3, consumer3);
 		eventloop.run();

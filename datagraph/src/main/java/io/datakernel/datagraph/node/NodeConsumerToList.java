@@ -64,7 +64,7 @@ public final class NodeConsumerToList<T> implements Node {
 		}
 		StreamConsumer<T> consumer;
 		if(object instanceof List) {
-			consumer = new StreamConsumerToList<>((List<T>) object);
+			consumer = StreamConsumerToList.create((List<T>) object);
 		} else if(object instanceof StreamConsumer) {
 			consumer = (StreamConsumer<T>) object;
 		} else {

@@ -33,6 +33,8 @@ import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.serializer.asm.BufferSerializers.intSerializer;
 import static io.datakernel.stream.DataStreams.stream;
+import static io.datakernel.stream.StreamConsumers.oneByOne;
+import static io.datakernel.stream.StreamConsumers.randomlySuspending;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.TestUtils.assertStatus;
@@ -55,10 +57,10 @@ public class StreamSerializerTest {
 		StreamBinarySerializer<Integer> serializerStream = StreamBinarySerializer.create(intSerializer())
 				.withDefaultBufferSize(14)
 				.withMaxMessageSize(14);
-		StreamConsumerToList<ByteBuf> consumer = StreamConsumerToList.randomlySuspending();
+		StreamConsumerToList<ByteBuf> consumer = StreamConsumerToList.create();
 
 		stream(source, serializerStream.getInput());
-		stream(serializerStream.getOutput(), consumer);
+		stream(serializerStream.getOutput(), consumer.with(randomlySuspending()));
 
 		eventloop.run();
 		List<ByteBuf> result = consumer.getList();
@@ -87,11 +89,11 @@ public class StreamSerializerTest {
 		StreamBinarySerializer<Integer> serializerStream = StreamBinarySerializer.create(intSerializer())
 				.withDefaultBufferSize(1);
 		StreamBinaryDeserializer<Integer> deserializerStream = StreamBinaryDeserializer.create(intSerializer());
-		StreamConsumerToList<Integer> consumer = StreamConsumerToList.oneByOne(list);
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
 		stream(source, serializerStream.getInput());
 		stream(serializerStream.getOutput(), deserializerStream.getInput());
-		stream(deserializerStream.getOutput(), consumer);
+		stream(deserializerStream.getOutput(), consumer.with(oneByOne()));
 
 		eventloop.run();
 		assertEquals(asList(1, 2, 3), consumer.getList());
@@ -115,11 +117,11 @@ public class StreamSerializerTest {
 		StreamBinarySerializer<Integer> serializerStream = StreamBinarySerializer.create(intSerializer())
 				.withDefaultBufferSize(1);
 		StreamBinaryDeserializer<Integer> deserializerStream = StreamBinaryDeserializer.create(intSerializer());
-		StreamConsumerToList<Integer> consumer = StreamConsumerToList.oneByOne(list);
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
 		stream(source, serializerStream.getInput());
 		stream(serializerStream.getOutput(), deserializerStream.getInput());
-		stream(deserializerStream.getOutput(), consumer);
+		stream(deserializerStream.getOutput(), consumer.with(oneByOne()));
 
 		eventloop.run();
 		assertStatus(CLOSED_WITH_ERROR, consumer);

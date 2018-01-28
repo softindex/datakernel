@@ -26,7 +26,6 @@ import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducerDecorator;
 import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.processor.*;
 import io.datakernel.util.MemSize;
@@ -43,6 +42,7 @@ import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 
+import static io.datakernel.stream.StreamProducers.endOfStreamOnError;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBeanEx {
@@ -172,16 +172,7 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 														inputStreamPosition += StreamLZ4Decompressor.HEADER_LENGTH + header.compressedLen;
 													}
 												}))
-										.with(producer -> new StreamProducerDecorator<ByteBuf>(producer) {
-											@Override
-											protected void onCloseWithError(Throwable t) {
-												if (t instanceof TruncatedDataException) {
-													sendEndOfStream();
-												} else {
-													super.onCloseWithError(t);
-												}
-											}
-										})
+										.with(endOfStreamOnError(throwable -> throwable instanceof TruncatedDataException))
 										.with(StreamBinaryDeserializer.create(serializer))
 										.whenComplete(this::log)
 										.withLateBinding();

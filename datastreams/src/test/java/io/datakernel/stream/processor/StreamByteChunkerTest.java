@@ -85,7 +85,7 @@ public class StreamByteChunkerTest {
 
 		StreamProducer<ByteBuf> source = StreamProducer.ofIterable(buffers);
 		StreamByteChunker resizer = StreamByteChunker.create(bufSize / 2, bufSize);
-		StreamConsumerWithResult<ByteBuf, List<ByteBuf>> streamFixedSizeConsumer = new StreamConsumerToList<>();
+		StreamConsumerWithResult<ByteBuf, List<ByteBuf>> streamFixedSizeConsumer = StreamConsumerToList.create();
 		CompletableFuture<List<ByteBuf>> listFuture = streamFixedSizeConsumer.getResult().toCompletableFuture();
 
 		stream(source, resizer.getInput());

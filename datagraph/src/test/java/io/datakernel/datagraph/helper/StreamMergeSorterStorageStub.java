@@ -44,7 +44,7 @@ public class StreamMergeSorterStorageStub<T> implements StreamSorterStorage<T> {
 		List<T> list = new ArrayList<>();
 		int newPartition = partition++;
 		storage.put(newPartition, list);
-		StreamConsumerToList<T> consumer = new StreamConsumerToList<>(list);
+		StreamConsumerToList<T> consumer = StreamConsumerToList.create(list);
 		return Stages.of(consumer.withResult(Stages.of(newPartition)).withLateBinding());
 	}
 

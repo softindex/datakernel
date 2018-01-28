@@ -29,6 +29,7 @@ import java.util.function.Function;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.DataStreams.stream;
+import static io.datakernel.stream.StreamConsumers.*;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.TestUtils.*;
@@ -46,13 +47,13 @@ public class StreamMergerTest {
 
 		StreamMerger<Integer, Integer> merger = StreamMerger.create(Function.identity(), Integer::compareTo, true);
 
-		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending();
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
 		stream(source0, merger.newInput());
 		stream(source1, merger.newInput());
 		stream(source2, merger.newInput());
 
-		stream(merger.getOutput(), consumer);
+		stream(merger.getOutput(), consumer.with(randomlySuspending()));
 
 		eventloop.run();
 		assertEquals(asList(3, 4, 6, 7), consumer.getList());
@@ -74,13 +75,13 @@ public class StreamMergerTest {
 
 		StreamMerger<Integer, Integer> merger = StreamMerger.create(Function.identity(), Integer::compareTo, false);
 
-		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending();
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
 		stream(source0, merger.newInput());
 		stream(source1, merger.newInput());
 		stream(source2, merger.newInput());
 
-		stream(merger.getOutput(), consumer);
+		stream(merger.getOutput(), consumer.with(randomlySuspending()));
 
 		eventloop.run();
 		assertEquals(asList(3, 3, 4, 6, 7), consumer.getList());
@@ -115,12 +116,12 @@ public class StreamMergerTest {
 		StreamMerger<Integer, DataItem1> merger = StreamMerger.create(
 				input -> input.key2, Integer::compareTo, false);
 
-		StreamConsumerToList<DataItem1> consumer = StreamConsumerToList.randomlySuspending();
+		StreamConsumerToList<DataItem1> consumer = StreamConsumerToList.create();
 
 		stream(source1, merger.newInput());
 		stream(source2, merger.newInput());
 
-		stream(merger.getOutput(), consumer);
+		stream(merger.getOutput(), consumer.with(randomlySuspending()));
 
 		eventloop.run();
 
@@ -147,23 +148,18 @@ public class StreamMergerTest {
 		StreamMerger<Integer, Integer> merger = StreamMerger.create(Function.identity(), Integer::compareTo, true);
 
 		List<Integer> list = new ArrayList<>();
-		StreamConsumerToList<Integer> consumer = new StreamConsumerToList<Integer>(list) {
-			@Override
-			public void onData(Integer item) {
-				list.add(item);
-				if (item == 8) {
-					closeWithError(new Exception("Test Exception"));
-					return;
-				}
-				getProducer().suspend();
-				eventloop.post(() -> getProducer().produce(this));
-			}
-		};
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
 		stream(source1, merger.newInput());
 		stream(source2, merger.newInput());
 
-		stream(merger.getOutput(), consumer);
+		stream(merger.getOutput(), consumer.with(decorator((context, dataReceiver) ->
+				item -> {
+					dataReceiver.onData(item);
+					if (item == 8) {
+						context.closeWithError(new Exception("Test Exception"));
+					}
+				})));
 
 		eventloop.run();
 
@@ -197,17 +193,16 @@ public class StreamMergerTest {
 		StreamMerger<Integer, Integer> merger = StreamMerger.create(Function.identity(), Integer::compareTo, true);
 
 		List<Integer> list = new ArrayList<>();
-		StreamConsumerToList consumer = StreamConsumerToList.oneByOne(list);
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
 		stream(source1, merger.newInput());
 		stream(source2, merger.newInput());
 
-		stream(merger.getOutput(), consumer);
+		stream(merger.getOutput(), consumer.with(oneByOne()));
 
 		eventloop.run();
 
 		assertTrue(list.size() == 0);
-		assertStatus(CLOSED_WITH_ERROR, consumer.getProducer());
 		assertStatus(CLOSED_WITH_ERROR, consumer);
 		assertStatus(CLOSED_WITH_ERROR, merger.getOutput());
 		assertArrayEquals(new StreamStatus[]{CLOSED_WITH_ERROR, END_OF_STREAM},

@@ -18,13 +18,16 @@ package io.datakernel.stream;
 
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stages;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.stream.StreamConsumers.Decorator.Context;
 
 import java.util.EnumSet;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CompletionStage;
-import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 
 import static io.datakernel.async.Stages.onError;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
@@ -85,51 +88,102 @@ public final class StreamConsumers {
 		}
 	}
 
-	public static <T> StreamConsumer<T> errorDecorator(StreamConsumer<T> consumer, Predicate<T> predicate, Supplier<Throwable> error) {
-		return new StreamConsumerDecorator<T>(consumer) {
-			@Override
-			protected StreamDataReceiver<T> onProduce(StreamDataReceiver<T> dataReceiver) {
-				return super.onProduce(item -> {
-					if (predicate.test(item)) {
-						this.closeWithError(error.get());
-					} else {
-						dataReceiver.onData(item);
-					}
-				});
-			}
-		};
+	public interface Decorator<T> {
+		interface Context {
+			void suspend();
+
+			void resume();
+
+			void closeWithError(Throwable error);
+		}
+
+		StreamDataReceiver<T> decorate(Context context, StreamDataReceiver<T> dataReceiver);
 	}
 
-	public static <T, R> StreamConsumerWithResult<T, R> errorDecorator(StreamConsumerWithResult<T, R> consumer, Predicate<T> predicate, Supplier<Throwable> error) {
-		return errorDecorator((StreamConsumer<T>) consumer, predicate, error).withResult(consumer.getResult());
-	}
+	public static <T> StreamConsumerModifier<T, T> decorator(Decorator<T> decorator) {
+		return consumer -> new ForwardingStreamConsumer<T>(consumer) {
+			private final SettableStage<Void> endOfStream = SettableStage.mirrorOf(consumer.getEndOfStream());
 
-	public static <T> StreamConsumer<T> suspendDecorator(StreamConsumer<T> consumer,
-	                                                     Predicate<T> predicate,
-	                                                     BiConsumer<StreamProducer<T>, StreamDataReceiver<T>> resumer) {
-		return new StreamConsumerDecorator<T>(consumer) {
 			@Override
-			protected StreamDataReceiver<T> onProduce(StreamDataReceiver<T> dataReceiver) {
-				StreamProducer<T> producer = this.getProducer();
-				return super.onProduce(new StreamDataReceiver<T>() {
+			public void setProducer(StreamProducer<T> producer) {
+				super.setProducer(new ForwardingStreamProducer<T>(producer) {
+					@SuppressWarnings("unchecked")
 					@Override
-					public void onData(T item) {
-						dataReceiver.onData(item);
+					public void produce(StreamDataReceiver<T> dataReceiver) {
+						StreamDataReceiver<T>[] dataReceiverHolder = new StreamDataReceiver[1];
+						Context context = new Context() {
+							final Eventloop eventloop = getCurrentEventloop();
 
-						if (predicate.test(item)) {
-							producer.suspend();
-							resumer.accept(producer, this);
-						}
+							@Override
+							public void suspend() {
+								producer.suspend();
+							}
+
+							@Override
+							public void resume() {
+								eventloop.post(() -> producer.produce(dataReceiverHolder[0]));
+							}
+
+							@Override
+							public void closeWithError(Throwable error) {
+								endOfStream.trySetException(error);
+							}
+						};
+						dataReceiverHolder[0] = decorator.decorate(context, dataReceiver);
+						super.produce(dataReceiverHolder[0]);
 					}
 				});
+			}
+
+			@Override
+			public CompletionStage<Void> getEndOfStream() {
+				return endOfStream;
 			}
 		};
 	}
 
-	public static <T, R> StreamConsumerWithResult<T, R> suspendDecorator(StreamConsumerWithResult<T, R> consumer,
-	                                                                     Predicate<T> predicate,
-	                                                                     BiConsumer<StreamProducer<T>, StreamDataReceiver<T>> resumer) {
-		return suspendDecorator((StreamConsumer<T>) consumer, predicate, resumer).withResult(consumer.getResult());
+	public static <T> StreamConsumerModifier<T, T> errorDecorator(Function<T, Throwable> errorFunction) {
+		return decorator((context, dataReceiver) ->
+				item -> {
+					Throwable error = errorFunction.apply(item);
+					if (error == null) {
+						dataReceiver.onData(item);
+					} else {
+						context.closeWithError(error);
+					}
+				});
+	}
+
+	public static <T> StreamConsumerModifier<T, T> suspendDecorator(Predicate<T> predicate, Consumer<Context> resumer) {
+		return decorator((context, dataReceiver) ->
+				item -> {
+					dataReceiver.onData(item);
+
+					if (predicate.test(item)) {
+						context.suspend();
+						resumer.accept(context);
+					}
+				});
+	}
+
+	public static <T> StreamConsumerModifier<T, T> suspendDecorator(Predicate<T> predicate) {
+		return suspendDecorator(predicate, Context::resume);
+	}
+
+	public static <T> StreamConsumerModifier<T, T> oneByOne() {
+		return suspendDecorator(item -> true);
+	}
+
+	public static <T> StreamConsumerModifier<T, T> randomlySuspending(Random random, double probability) {
+		return suspendDecorator(item -> random.nextDouble() < probability);
+	}
+
+	public static <T> StreamConsumerModifier<T, T> randomlySuspending(double probability) {
+		return randomlySuspending(new Random(), probability);
+	}
+
+	public static <T> StreamConsumerModifier<T, T> randomlySuspending() {
+		return randomlySuspending(0.5);
 	}
 
 }

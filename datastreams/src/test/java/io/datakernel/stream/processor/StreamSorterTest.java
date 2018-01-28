@@ -38,6 +38,7 @@ import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.serializer.asm.BufferSerializers.intSerializer;
 import static io.datakernel.stream.DataStreams.stream;
+import static io.datakernel.stream.StreamConsumers.*;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.TestUtils.assertStatus;
@@ -73,10 +74,10 @@ public class StreamSorterTest {
 		assertStatus(END_OF_STREAM, source1);
 		assertStatus(END_OF_STREAM, source2);
 
-		StreamConsumerToList<Integer> consumer1 = StreamConsumerToList.oneByOne();
-		StreamConsumerToList<Integer> consumer2 = StreamConsumerToList.randomlySuspending();
-		stream(storage.readStream(chunk1.get()), consumer1);
-		stream(storage.readStream(chunk2.get()), consumer2);
+		StreamConsumerToList<Integer> consumer1 = StreamConsumerToList.create();
+		StreamConsumerToList<Integer> consumer2 = StreamConsumerToList.create();
+		stream(storage.readStream(chunk1.get()), consumer1.with(oneByOne()));
+		stream(storage.readStream(chunk2.get()), consumer2.with(randomlySuspending()));
 		eventloop.run();
 		assertEquals(asList(1, 2, 3, 4, 5, 6, 7), consumer1.getList());
 		assertEquals(asList(111), consumer2.getList());
@@ -98,10 +99,10 @@ public class StreamSorterTest {
 		StreamSorter<Integer, Integer> sorter = StreamSorter.create(
 				storage, Function.identity(), Integer::compareTo, true, 2);
 
-		StreamConsumerToList<Integer> consumerToList = StreamConsumerToList.randomlySuspending();
+		StreamConsumerToList<Integer> consumerToList = StreamConsumerToList.create();
 
 		stream(source, sorter.getInput());
-		stream(sorter.getOutput(), consumerToList);
+		stream(sorter.getOutput(), consumerToList.with(randomlySuspending()));
 
 		eventloop.run();
 
@@ -123,18 +124,16 @@ public class StreamSorterTest {
 				storage, Function.identity(), Integer::compareTo, true, 2);
 
 		List<Integer> list = new ArrayList<>();
-		StreamConsumerToList<Integer> consumerToList = new StreamConsumerToList<Integer>(list) {
-			@Override
-			public void onData(Integer item) {
-				list.add(item);
-				if (list.size() == 2) {
-					closeWithError(new ExpectedException());
-				}
-			}
-		};
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
 		stream(source, sorter.getInput());
-		stream(sorter.getOutput(), consumerToList);
+		stream(sorter.getOutput(), consumer.with(decorator((context, dataReceiver) ->
+				item -> {
+					dataReceiver.onData(item);
+					if (list.size() == 2) {
+						context.closeWithError(new ExpectedException());
+					}
+				})));
 
 		eventloop.run();
 
@@ -142,7 +141,7 @@ public class StreamSorterTest {
 		assertStatus(END_OF_STREAM, source);
 //		assertStatus(CLOSED_WITH_ERROR, sorter.getOutput());
 		assertStatus(END_OF_STREAM, sorter.getInput());
-		assertStatus(CLOSED_WITH_ERROR, consumerToList);
+		assertStatus(CLOSED_WITH_ERROR, consumer);
 	}
 
 	@Test

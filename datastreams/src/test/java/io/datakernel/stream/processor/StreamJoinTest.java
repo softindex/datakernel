@@ -18,6 +18,7 @@ package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
+import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
 import org.junit.Test;
@@ -28,6 +29,7 @@ import java.util.Objects;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.DataStreams.stream;
+import static io.datakernel.stream.StreamConsumers.*;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.TestUtils.assertStatus;
@@ -140,12 +142,12 @@ public class StreamJoinTest {
 						}
 				);
 
-		StreamConsumerToList<DataItemMasterDetail> consumer = StreamConsumerToList.randomlySuspending();
+		StreamConsumerToList<DataItemMasterDetail> consumer = StreamConsumerToList.create();
 
 		stream(source1, streamJoin.getLeft());
 		stream(source2, streamJoin.getRight());
 
-		stream(streamJoin.getOutput(), consumer);
+		stream(streamJoin.getOutput(), consumer.with(randomlySuspending()));
 
 		eventloop.run();
 
@@ -194,23 +196,18 @@ public class StreamJoinTest {
 						}
 				);
 
-		StreamConsumerToList<DataItemMasterDetail> consumer = new StreamConsumerToList<DataItemMasterDetail>(list) {
-			@Override
-			public void onData(DataItemMasterDetail item) {
-				list.add(item);
-				if (list.size() == 1) {
-					closeWithError(new ExpectedException("Test Exception"));
-					return;
-				}
-				getProducer().suspend();
-				eventloop.post(() -> getProducer().produce(this));
-			}
-		};
+		StreamConsumerToList<DataItemMasterDetail> consumer = StreamConsumerToList.create(list);
 
 		stream(source1, streamJoin.getLeft());
 		stream(source2, streamJoin.getRight());
 
-		stream(streamJoin.getOutput(), consumer);
+		stream(streamJoin.getOutput(), consumer.with(decorator((context, dataReceiver) ->
+				item -> {
+					dataReceiver.onData(item);
+					if (list.size() == 1) {
+						context.closeWithError(new ExpectedException("Test Exception"));
+					}
+				})));
 
 		eventloop.run();
 		assertTrue(list.size() == 1);
@@ -254,12 +251,12 @@ public class StreamJoinTest {
 				);
 
 		List<DataItemMasterDetail> list = new ArrayList<>();
-		StreamConsumerToList<DataItemMasterDetail> consumer = StreamConsumerToList.oneByOne(list);
+		StreamConsumer<DataItemMasterDetail> consumer = StreamConsumerToList.create(list);
 
 		stream(source1, streamJoin.getLeft());
 		stream(source2, streamJoin.getRight());
 
-		stream(streamJoin.getOutput(), consumer);
+		stream(streamJoin.getOutput(), consumer.with(oneByOne()));
 
 		eventloop.run();
 		assertTrue(list.size() == 0);

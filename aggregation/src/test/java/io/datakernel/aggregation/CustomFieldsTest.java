@@ -155,7 +155,7 @@ public class CustomFieldsTest {
 		AggregationQuery query = AggregationQuery.create()
 				.withKeys("siteId")
 				.withMeasures("eventCount", "sumRevenue", "minRevenue", "maxRevenue", "uniqueUserIds", "estimatedUniqueUserIdCount");
-		StreamConsumerToList<QueryResult> listConsumer = new StreamConsumerToList<>();
+		StreamConsumerToList<QueryResult> listConsumer = StreamConsumerToList.create();
 		stream(aggregation.query(query, QueryResult.class, DefiningClassLoader.create(classLoader)), listConsumer);
 		eventloop.run();
 

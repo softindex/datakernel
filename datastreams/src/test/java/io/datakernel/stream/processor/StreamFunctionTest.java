@@ -28,6 +28,8 @@ import java.util.function.Function;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.DataStreams.stream;
+import static io.datakernel.stream.StreamConsumers.decorator;
+import static io.datakernel.stream.StreamConsumers.randomlySuspending;
 import static io.datakernel.stream.StreamProducer.concat;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
@@ -43,9 +45,9 @@ public class StreamFunctionTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		StreamProducer<Integer> source1 = StreamProducer.of(1, 2, 3);
-		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending();
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
-		stream(source1.with(StreamFunction.create(input -> input * input)), consumer);
+		stream(source1.with(StreamFunction.create(input -> input * input)), consumer.with(randomlySuspending()));
 		eventloop.run();
 
 		assertEquals(asList(1, 4, 9), consumer.getList());
@@ -64,21 +66,17 @@ public class StreamFunctionTest {
 
 		List<Integer> list = new ArrayList<>();
 		StreamProducer<Integer> source1 = StreamProducer.of(1, 2, 3);
-		StreamConsumerToList<Integer> consumer = new StreamConsumerToList<Integer>(list) {
-			@Override
-			public void onData(Integer item) {
-				list.add(item);
-				if (list.size() == 2) {
-					closeWithError(new ExpectedException("Test Exception"));
-					return;
-				}
-				getProducer().suspend();
-				eventloop.post(() -> getProducer().produce(this));
-			}
-		};
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
 		stream(source1, streamFunction.getInput());
-		stream(streamFunction.getOutput(), consumer);
+		stream(streamFunction.getOutput(),
+				consumer.with(decorator((context, dataReceiver) ->
+						item -> {
+							dataReceiver.onData(item);
+							if (list.size() == 2) {
+								context.closeWithError(new ExpectedException("Test Exception"));
+							}
+						})));
 		eventloop.run();
 
 		assertEquals(asList(1, 4), list);

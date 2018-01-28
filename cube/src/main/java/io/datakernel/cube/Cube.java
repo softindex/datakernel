@@ -825,7 +825,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializer<Cube>, 
 			havingPredicate = createHavingPredicate();
 			recordFunction = createRecordFunction();
 
-			StreamConsumerToList<Object> consumer = new StreamConsumerToList<>();
+			StreamConsumerToList<Object> consumer = StreamConsumerToList.create();
 			StreamProducer<Object> queryResultProducer = (StreamProducer<Object>) queryRawStream(new ArrayList<>(resultDimensions), new ArrayList<>(resultStoredMeasures),
 					queryPredicate, resultClass, queryClassLoader, compatibleAggregations);
 			return stream(queryResultProducer, consumer)

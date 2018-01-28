@@ -205,8 +205,8 @@ public class PageRankTest {
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1572);
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		StreamConsumerToList<Rank> result1 = new StreamConsumerToList<>();
-		StreamConsumerToList<Rank> result2 = new StreamConsumerToList<>();
+		StreamConsumerToList<Rank> result1 = StreamConsumerToList.create();
+		StreamConsumerToList<Rank> result2 = StreamConsumerToList.create();
 
 		DatagraphClient client = new DatagraphClient(eventloop, serialization);
 		DatagraphEnvironment environment = DatagraphEnvironment.create()

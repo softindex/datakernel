@@ -119,7 +119,7 @@ public class CubeTest {
 		cube.apply(future1.get());
 		cube.apply(future2.get());
 
-		StreamConsumerToList<DataItemResult> consumerToList = new StreamConsumerToList<>();
+		StreamConsumerToList<DataItemResult> consumerToList = StreamConsumerToList.create();
 		stream(cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"),
 				and(eq("key1", 1), eq("key2", 3)),
 				DataItemResult.class, DefiningClassLoader.create(classLoader)
@@ -191,7 +191,7 @@ public class CubeTest {
 				cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"),
 						and(eq("key1", 1), eq("key2", 3)),
 						DataItemResult.class, DefiningClassLoader.create(classLoader)),
-				new StreamConsumerToList<>())
+				StreamConsumerToList.create())
 				.whenComplete(assertComplete($ -> {
 					logger.info("Streaming query {} result from RemoteFS succeeded.");
 					stop(remoteFsServer2);
@@ -234,7 +234,7 @@ public class CubeTest {
 				.thenAccept(cube::apply);
 		eventloop.run();
 
-		StreamConsumerToList<DataItemResult> consumerToList = new StreamConsumerToList<>();
+		StreamConsumerToList<DataItemResult> consumerToList = StreamConsumerToList.create();
 		stream(cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"), alwaysTrue(),
 				DataItemResult.class, DefiningClassLoader.create(classLoader)
 		), consumerToList);
@@ -280,7 +280,7 @@ public class CubeTest {
 				.thenAccept(cube::apply);
 		eventloop.run();
 
-		StreamConsumerToList<DataItemResult> consumerToList = new StreamConsumerToList<>();
+		StreamConsumerToList<DataItemResult> consumerToList = StreamConsumerToList.create();
 		stream(cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"), alwaysTrue(),
 				DataItemResult.class, DefiningClassLoader.create(classLoader)
 		), consumerToList);
@@ -339,7 +339,7 @@ public class CubeTest {
 				.thenAccept(cube::apply);
 		eventloop.run();
 
-		StreamConsumerToList<DataItemResult> consumerToList = new StreamConsumerToList<>();
+		StreamConsumerToList<DataItemResult> consumerToList = StreamConsumerToList.create();
 		stream(cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"),
 				and(between("key1", 5, 10), between("key2", 40, 1000)),
 				DataItemResult.class, DefiningClassLoader.create(classLoader)
@@ -394,7 +394,7 @@ public class CubeTest {
 				.thenAccept(cube::apply);
 		eventloop.run();
 
-		StreamConsumerToList<DataItemResult3> consumerToList = new StreamConsumerToList<>();
+		StreamConsumerToList<DataItemResult3> consumerToList = StreamConsumerToList.create();
 		stream(cube.queryRawStream(asList("key1", "key2", "key3", "key4", "key5"), asList("metric1", "metric2", "metric3"),
 				and(eq("key1", 5), between("key2", 75, 99), between("key3", 35, 50), eq("key4", 20), eq("key5", 56)),
 				DataItemResult3.class, DefiningClassLoader.create(classLoader)
@@ -439,7 +439,7 @@ public class CubeTest {
 				.thenAccept(cube::apply);
 		eventloop.run();
 
-		StreamConsumerToList<DataItemResult2> consumerToList = new StreamConsumerToList<>();
+		StreamConsumerToList<DataItemResult2> consumerToList = StreamConsumerToList.create();
 		stream(cube.queryRawStream(asList("key2"), asList("metric1", "metric2", "metric3"),
 				alwaysTrue(),
 				DataItemResult2.class, DefiningClassLoader.create(classLoader)
@@ -500,7 +500,7 @@ public class CubeTest {
 				.thenAccept(cube::apply);
 		eventloop.run();
 
-		StreamConsumerToList<DataItemResult> consumerToList = new StreamConsumerToList<>();
+		StreamConsumerToList<DataItemResult> consumerToList = StreamConsumerToList.create();
 		stream(cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"),
 				and(eq("key1", 1), eq("key2", 3)),
 				DataItemResult.class, DefiningClassLoader.create(classLoader)
@@ -564,7 +564,7 @@ public class CubeTest {
 		eventloop.run();
 		assertTrue(!future2.get().isEmpty());
 
-		StreamConsumerToList<DataItemResult> consumerToList = new StreamConsumerToList<>();
+		StreamConsumerToList<DataItemResult> consumerToList = StreamConsumerToList.create();
 		stream(cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"),
 				and(eq("key1", 1), eq("key2", 4)),
 				DataItemResult.class, DefiningClassLoader.create(classLoader)

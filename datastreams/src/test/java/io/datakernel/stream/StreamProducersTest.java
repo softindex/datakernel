@@ -4,15 +4,13 @@ import io.datakernel.eventloop.Eventloop;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.DataStreams.stream;
-import static io.datakernel.stream.StreamProducers.errorsInjection;
-import static java.util.stream.Collectors.toList;
+import static io.datakernel.stream.StreamProducers.errorDecorator;
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
@@ -28,12 +26,10 @@ public class StreamProducersTest {
 
 	@Test
 	public void testErrorDecorator() {
-		List<Integer> values = IntStream.range(1, 10).boxed().collect(toList());
+		StreamProducer<Integer> producer = StreamProducer.ofStream(IntStream.range(1, 10).boxed())
+				.with(errorDecorator(k -> k.equals(5) ? new IllegalArgumentException() : null));
 
-		StreamProducer<Integer> producer = StreamProducer.ofIterable(values)
-				.with(errorsInjection(k -> k.equals(5), IllegalArgumentException::new));
-
-		StreamConsumerToList<Integer> consumer = new StreamConsumerToList<>();
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
 		stream(producer, consumer);
 
@@ -45,13 +41,11 @@ public class StreamProducersTest {
 
 	@Test
 	public void testErrorDecoratorWithResult() throws ExecutionException, InterruptedException {
-		List<Integer> values = IntStream.range(1, 10).boxed().collect(toList());
-
-		StreamProducerWithResult<Integer, Void> readProducer = StreamProducer.ofIterable(values)
+		StreamProducerWithResult<Integer, Void> readProducer = StreamProducer.ofStream(IntStream.range(1, 10).boxed())
 				.withEndOfStreamAsResult()
-				.with(errorsInjection(k -> k.equals(5), IllegalArgumentException::new));
+				.with(errorDecorator(k -> k.equals(5) ? new IllegalArgumentException() : null));
 
-		StreamConsumerToList<Integer> consumer = new StreamConsumerToList<>();
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
 		stream(readProducer, consumer);
 

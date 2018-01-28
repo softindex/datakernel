@@ -12,6 +12,8 @@ import java.util.stream.IntStream;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.DataStreams.stream;
+import static io.datakernel.stream.StreamConsumers.errorDecorator;
+import static io.datakernel.stream.StreamConsumers.suspendDecorator;
 import static java.util.stream.Collectors.toList;
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
 import static org.junit.Assert.assertEquals;
@@ -28,14 +30,11 @@ public class StreamConsumersTest {
 
 	@Test
 	public void testErrorDecorator() {
-		List<Integer> values = IntStream.range(1, 10).boxed().collect(toList());
-		StreamProducer<Integer> producer = StreamProducer.ofIterable(values);
+		StreamProducer<Integer> producer = StreamProducer.ofStream(IntStream.range(1, 10).boxed());
 
-		StreamConsumerToList<Integer> consumer = new StreamConsumerToList<>();
-		StreamConsumer<Integer> errorConsumer = StreamConsumers.errorDecorator(
-				((StreamConsumer<Integer>) consumer),
-				k -> k.equals(5),
-				IllegalArgumentException::new);
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
+		StreamConsumerWithResult<Integer, List<Integer>> errorConsumer =
+				consumer.with(errorDecorator(k -> k.equals(5) ? new IllegalArgumentException() : null));
 
 		stream(producer, errorConsumer);
 		eventloop.run();
@@ -47,14 +46,12 @@ public class StreamConsumersTest {
 
 	@Test
 	public void testErrorDecoratorWithResult() throws ExecutionException, InterruptedException {
-		List<Integer> values = IntStream.range(1, 10).boxed().collect(toList());
-		StreamProducerWithResult<Integer, Void> producer = StreamProducer.ofIterable(values).withEndOfStreamAsResult();
+		StreamProducerWithResult<Integer, Void> producer = StreamProducer.ofStream(IntStream.range(1, 10).boxed())
+				.withEndOfStreamAsResult();
 
-		StreamConsumerToList<Integer> consumer = new StreamConsumerToList<>();
-		StreamConsumerWithResult<Integer, List<Integer>> errorConsumer = StreamConsumers.errorDecorator(
-				consumer,
-				k -> k.equals(5),
-				IllegalArgumentException::new);
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
+		StreamConsumerWithResult<Integer, List<Integer>> errorConsumer =
+				consumer.with(errorDecorator(k -> k.equals(5) ? new IllegalArgumentException() : null));
 
 		stream(producer, errorConsumer);
 		CompletableFuture<Void> producerFuture = producer
@@ -76,22 +73,18 @@ public class StreamConsumersTest {
 
 		CountTransformer<Integer> transformer = new CountTransformer<>();
 
-		StreamConsumerToList<Integer> realConsumer = new StreamConsumerToList<>();
-		StreamConsumer<Integer> consumer = StreamConsumers.suspendDecorator(
-				((StreamConsumer<Integer>) realConsumer),
-				k -> true,
-				(innerProducer, integerStreamDataReceiver) -> eventloop.post(() -> {
-					if (!transformer.isEndOfStream()) {
-						eventloop.schedule(eventloop.currentTimeMillis() + 100, () ->
-								innerProducer.produce(integerStreamDataReceiver));
-					}
-				}));
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
+		StreamConsumer<Integer> errorConsumer = consumer
+				.with(suspendDecorator(
+						k -> true,
+						context -> eventloop.schedule(eventloop.currentTimeMillis() + 10, context::resume)
+				));
 
 		stream(producer, transformer.getInput());
-		stream(transformer.getOutput(), consumer);
+		stream(transformer.getOutput(), errorConsumer);
 		eventloop.run();
 
-		assertEquals(values, realConsumer.getList());
+		assertEquals(values, consumer.getList());
 		assertEquals(5, transformer.getResumed());
 		assertEquals(5, transformer.getSuspended());
 	}
@@ -99,22 +92,14 @@ public class StreamConsumersTest {
 	@Test
 	public void testSuspendDecoratorWithResult() throws ExecutionException, InterruptedException {
 		List<Integer> values = IntStream.range(1, 6).boxed().collect(toList());
+
 		StreamProducer<Integer> producer = StreamProducer.ofIterable(values);
-
 		CountTransformer<Integer> transformer = new CountTransformer<>();
+		StreamConsumerWithResult<Integer, List<Integer>> consumer = StreamConsumerToList.create();
 
-		StreamConsumerWithResult<Integer, List<Integer>> consumer = StreamConsumers.suspendDecorator(
-				new StreamConsumerToList<>(),
-				k -> true,
-				(innerProducer, integerStreamDataReceiver) -> eventloop.post(() -> {
-					if (!transformer.isEndOfStream()) {
-						eventloop.schedule(eventloop.currentTimeMillis() + 100, () ->
-								innerProducer.produce(integerStreamDataReceiver));
-					}
-				}));
+		stream(producer.with(transformer), consumer.with(suspendDecorator(k -> true,
+				context -> eventloop.schedule(eventloop.currentTimeMillis() + 10, context::resume))));
 
-		stream(producer, transformer.getInput());
-		stream(transformer.getOutput(), consumer);
 		CompletableFuture<List<Integer>> listFuture = consumer.getResult().toCompletableFuture();
 		eventloop.run();
 

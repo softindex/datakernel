@@ -426,7 +426,7 @@ public class FsIntegrationTest {
 		server.listen();
 
 		StreamProducerWithResult<ByteBuf, Void> producer = client.downloadStream(file, startPosition);
-		stream(producer, new StreamConsumerToList<>(expected))
+		stream(producer, StreamConsumerToList.create(expected))
 				.whenComplete(($, throwable) -> server.close());
 
 		eventloop.run();

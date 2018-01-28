@@ -32,6 +32,7 @@ import java.util.Random;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.DataStreams.stream;
+import static io.datakernel.stream.StreamConsumers.randomlySuspending;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.TestUtils.assertStatus;
 import static org.junit.Assert.assertArrayEquals;
@@ -85,7 +86,7 @@ public class StreamLZ4Test {
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor();
 		StreamByteChunker postBuf = StreamByteChunker.create(64, 128);
 		StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create();
-		StreamConsumerToList<ByteBuf> consumer = StreamConsumerToList.randomlySuspending();
+		StreamConsumerToList<ByteBuf> consumer = StreamConsumerToList.create();
 
 //		source.streamTo(compressor.getInput());
 		stream(source, preBuf.getInput());
@@ -95,7 +96,7 @@ public class StreamLZ4Test {
 		stream(compressor.getOutput(), postBuf.getInput());
 		stream(postBuf.getOutput(), decompressor.getInput());
 
-		stream(decompressor.getOutput(), consumer);
+		stream(decompressor.getOutput(), consumer.with(randomlySuspending()));
 
 		eventloop.run();
 

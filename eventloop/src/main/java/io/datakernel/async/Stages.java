@@ -243,6 +243,41 @@ public final class Stages {
 		});
 	}
 
+	public static <T> CompletionStage<T> first(List<? extends CompletionStage<? extends T>> stages) {
+		SettableStage<T> result = SettableStage.create();
+		for (CompletionStage<? extends T> stage : stages) {
+			stage.whenComplete(result::trySet);
+		}
+		return result;
+	}
+
+	@SafeVarargs
+	public static <T> CompletionStage<T> first(CompletionStage<? extends T>... stages) {
+		return first(Arrays.asList(stages));
+	}
+
+	public static <T> CompletionStage<T> firstComplete(List<? extends CompletionStage<? extends T>> stages) {
+		SettableStage<T> result = SettableStage.create();
+		int[] countdown = new int[]{stages.size()};
+		for (CompletionStage<? extends T> stage : stages) {
+			stage.whenComplete((value, throwable) -> {
+				if (throwable == null) {
+					result.trySet(value);
+				} else {
+					if (--countdown[0] == 0) {
+						result.setException(throwable);
+					}
+				}
+			});
+		}
+		return result;
+	}
+
+	@SafeVarargs
+	public static <T> CompletionStage<T> firstComplete(CompletionStage<? extends T>... stages) {
+		return firstComplete(Arrays.asList(stages));
+	}
+
 	@SuppressWarnings("unchecked")
 	public static <T> CompletionStage<T> firstComplete(AsyncCallable<? extends T>... stages) {
 		return firstComplete(Arrays.asList(stages));

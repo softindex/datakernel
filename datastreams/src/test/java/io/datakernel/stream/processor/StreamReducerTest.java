@@ -23,11 +23,12 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 import java.util.function.Function;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.DataStreams.stream;
+import static io.datakernel.stream.StreamConsumers.decorator;
+import static io.datakernel.stream.StreamConsumers.randomlySuspending;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.TestUtils.*;
@@ -48,10 +49,10 @@ public class StreamReducerTest {
 				.withBufferSize(1);
 		StreamReducers.Reducer<Integer, Integer, Integer, Void> reducer = mergeDeduplicateReducer();
 
-		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending();
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
 		stream(source, streamReducer.newInput(Function.identity(), reducer));
-		stream(streamReducer.getOutput(), consumer);
+		stream(streamReducer.getOutput(), consumer.with(randomlySuspending()));
 
 		eventloop.run();
 		assertEquals(EMPTY_LIST, consumer.getList());
@@ -78,7 +79,7 @@ public class StreamReducerTest {
 		Function<Integer, Integer> keyFunction = Function.identity();
 		StreamReducers.Reducer<Integer, Integer, Integer, Void> reducer = mergeDeduplicateReducer();
 
-		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending();
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
 		stream(source0, streamReducer.newInput(keyFunction, reducer));
 		stream(source1, streamReducer.newInput(keyFunction, reducer));
@@ -88,7 +89,7 @@ public class StreamReducerTest {
 		stream(source5, streamReducer.newInput(keyFunction, reducer));
 		stream(source6, streamReducer.newInput(keyFunction, reducer));
 		stream(source7, streamReducer.newInput(keyFunction, reducer));
-		stream(streamReducer.getOutput(), consumer);
+		stream(streamReducer.getOutput(), consumer.with(randomlySuspending()));
 
 		eventloop.run();
 		assertEquals(asList(1, 2, 3, 4, 5, 6, 7), consumer.getList());
@@ -123,24 +124,19 @@ public class StreamReducerTest {
 				.withBufferSize(1);
 
 		List<KeyValueResult> list = new ArrayList<>();
-		StreamConsumerToList<KeyValueResult> consumer = new StreamConsumerToList<KeyValueResult>(list) {
-			@Override
-			public void onData(KeyValueResult item) {
-				list.add(item);
-				if (list.size() == 1) {
-					closeWithError(new ExpectedException("Test Exception"));
-					return;
-				}
-				getProducer().suspend();
-				eventloop.post(() -> getProducer().produce(this));
-			}
-		};
+		StreamConsumerToList<KeyValueResult> consumer = StreamConsumerToList.create(list);
 
 		stream(source1, streamReducer.newInput(input -> input.key, KeyValue1.REDUCER));
 		stream(source2, streamReducer.newInput(input -> input.key, KeyValue2.REDUCER));
 		stream(source3, streamReducer.newInput(input -> input.key, KeyValue3.REDUCER));
 
-		stream(streamReducer.getOutput(), consumer);
+		stream(streamReducer.getOutput(), consumer.with(decorator((context, dataReceiver) ->
+				item -> {
+					list.add(item);
+					if (list.size() == 1) {
+						context.closeWithError(new ExpectedException("Test Exception"));
+					}
+				})));
 
 		eventloop.run();
 
@@ -361,7 +357,7 @@ public class StreamReducerTest {
 		StreamReducer<Integer, KeyValueResult, KeyValueResult> streamReducer = StreamReducer.<Integer, KeyValueResult, KeyValueResult>create(Integer::compareTo)
 				.withBufferSize(1);
 
-		StreamConsumerToList<KeyValueResult> consumer = StreamConsumerToList.randomlySuspending(new ArrayList<>(), new Random(1));
+		StreamConsumerToList<KeyValueResult> consumer = StreamConsumerToList.create();
 
 		StreamConsumer<KeyValue1> streamConsumer1 = streamReducer.newInput(input -> input.key, KeyValue1.REDUCER_TO_ACCUMULATOR.inputToOutput());
 		stream(source1, streamConsumer1);
@@ -372,7 +368,7 @@ public class StreamReducerTest {
 		StreamConsumer<KeyValue3> streamConsumer3 = streamReducer.newInput(input -> input.key, KeyValue3.REDUCER_TO_ACCUMULATOR.inputToOutput());
 		stream(source3, streamConsumer3);
 
-		stream(streamReducer.getOutput(), consumer);
+		stream(streamReducer.getOutput(), consumer.with(randomlySuspending()));
 
 		eventloop.run();
 		assertEquals(asList(
@@ -396,7 +392,7 @@ public class StreamReducerTest {
 		StreamReducer<Integer, KeyValueResult, KeyValueResult> streamReducer = StreamReducer.<Integer, KeyValueResult, KeyValueResult>create(Integer::compareTo)
 				.withBufferSize(1);
 
-		StreamConsumerToList<KeyValueResult> consumer = StreamConsumerToList.randomlySuspending();
+		StreamConsumerToList<KeyValueResult> consumer = StreamConsumerToList.create();
 
 		StreamConsumer<KeyValue1> streamConsumer1 = streamReducer.newInput(input -> input.key, KeyValue1.REDUCER);
 		stream(source1, streamConsumer1);
@@ -407,7 +403,7 @@ public class StreamReducerTest {
 		StreamConsumer<KeyValue3> streamConsumer3 = streamReducer.newInput(input -> input.key, KeyValue3.REDUCER);
 		stream(source3, streamConsumer3);
 
-		stream(streamReducer.getOutput(), consumer);
+		stream(streamReducer.getOutput(), consumer.with(randomlySuspending()));
 
 		eventloop.run();
 		assertEquals(asList(

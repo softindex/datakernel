@@ -133,7 +133,7 @@ public class LogToCubeTest {
 		eventloop.run();
 		future.get();
 
-		StreamConsumerToList<TestAdvResult> consumerToList = new StreamConsumerToList<>();
+		StreamConsumerToList<TestAdvResult> consumerToList = StreamConsumerToList.create();
 		stream(cube.queryRawStream(asList("adv"), asList("advRequests"), alwaysTrue(),
 				TestAdvResult.class, DefiningClassLoader.create(classLoader)
 		), consumerToList);

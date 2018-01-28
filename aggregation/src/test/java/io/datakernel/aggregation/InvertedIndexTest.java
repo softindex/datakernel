@@ -140,7 +140,7 @@ public class InvertedIndexTest {
 		AggregationQuery query = AggregationQuery.create()
 				.withKeys("word")
 				.withMeasures("documents");
-		StreamConsumerToList<InvertedIndexQueryResult> consumerToList = new StreamConsumerToList<>();
+		StreamConsumerToList<InvertedIndexQueryResult> consumerToList = StreamConsumerToList.create();
 		stream(aggregation.query(query, InvertedIndexQueryResult.class, DefiningClassLoader.create(classLoader)), consumerToList);
 		eventloop.run();
 

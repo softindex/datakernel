@@ -88,7 +88,7 @@ public class StringDimensionTest {
 		cube.apply(future1.get());
 		cube.apply(future2.get());
 
-		StreamConsumerToList<DataItemResultString> consumerToList = new StreamConsumerToList<>();
+		StreamConsumerToList<DataItemResultString> consumerToList = StreamConsumerToList.create();
 		stream(cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"),
 				and(eq("key1", "str2"), eq("key2", 3)),
 				DataItemResultString.class, DefiningClassLoader.create(classLoader)

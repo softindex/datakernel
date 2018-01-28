@@ -31,6 +31,7 @@ import java.util.List;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.DataStreams.stream;
+import static io.datakernel.stream.StreamConsumers.*;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.TestUtils.*;
@@ -53,7 +54,7 @@ public class StreamUnionTest {
 		StreamProducer<Integer> source5 = StreamProducer.of(6);
 		StreamProducer<Integer> source6 = StreamProducer.of();
 
-		StreamConsumerToList<Integer> consumer = StreamConsumerToList.randomlySuspending();
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
 		stream(source0, streamUnion.newInput());
 		stream(source1, streamUnion.newInput());
@@ -62,7 +63,7 @@ public class StreamUnionTest {
 		stream(source4, streamUnion.newInput());
 		stream(source5, streamUnion.newInput());
 		stream(source6, streamUnion.newInput());
-		stream(streamUnion.getOutput(), consumer);
+		stream(streamUnion.getOutput(), consumer.with(randomlySuspending()));
 		eventloop.run();
 
 		List<Integer> result = consumer.getList();
@@ -92,24 +93,20 @@ public class StreamUnionTest {
 		StreamProducer<Integer> source2 = StreamProducer.of(6, 7);
 
 		List<Integer> list = new ArrayList<>();
-		StreamConsumerToList<Integer> consumer = new StreamConsumerToList<Integer>(list) {
-			@Override
-			public void onData(Integer item) {
-				list.add(item);
-				if (item == 1) {
-					closeWithError(new ExpectedException("Test Exception"));
-					return;
-				}
-				getProducer().suspend();
-				eventloop.post(() -> getProducer().produce(this));
-			}
-		};
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
 		stream(source0, streamUnion.newInput());
 		stream(source1, streamUnion.newInput());
 		stream(source2, streamUnion.newInput());
 
-		stream(streamUnion.getOutput(), consumer);
+		stream(streamUnion.getOutput(), consumer.with(decorator((context, dataReceiver) ->
+				item -> {
+					dataReceiver.onData(item);
+					if (item == 1) {
+						context.closeWithError(new ExpectedException("Test Exception"));
+					}
+				})));
+
 		eventloop.run();
 
 		assertEquals(Arrays.asList(6, 7, 4, 5, 1), list);
@@ -138,12 +135,12 @@ public class StreamUnionTest {
 		);
 
 		List<Integer> list = new ArrayList<>();
-		StreamConsumer<Integer> consumer = StreamConsumerToList.oneByOne(list);
+		StreamConsumer<Integer> consumer = StreamConsumerToList.create(list);
 
 		stream(source0, streamUnion.newInput());
 		stream(source1, streamUnion.newInput());
 
-		stream(streamUnion.getOutput(), consumer);
+		stream(streamUnion.getOutput(), consumer.with(oneByOne()));
 		eventloop.run();
 
 		assertTrue(list.size() == 3);

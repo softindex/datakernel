@@ -23,14 +23,15 @@ import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.CompletionStage;
+import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 import static io.datakernel.stream.StreamCapability.TERMINAL;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
+@SuppressWarnings("StatementWithEmptyBody")
 public final class StreamProducers {
 	private StreamProducers() {
 	}
@@ -144,35 +145,115 @@ public final class StreamProducers {
 		}
 	}
 
-	public static <T> StreamProducerModifier<T, T> errorsInjection(Predicate<T> errorPredicate, Supplier<Throwable> error) {
-		return producer -> new StreamProducerDecorator<T>(producer) {
+	public static <T> StreamProducerModifier<T, T> suppliedEndOfStream(Function<CompletionStage<Void>, CompletionStage<Void>> endOfStreamSupplier) {
+		return producer -> new ForwardingStreamProducer<T>(producer) {
+			final CompletionStage<Void> endOfStream = endOfStreamSupplier.apply(producer.getEndOfStream());
+
 			@Override
-			protected StreamDataReceiver<T> onProduce(StreamDataReceiver<T> dataReceiver) {
-				return super.onProduce(item -> {
-					if (errorPredicate.test(item)) {
-						this.closeWithError(error.get());
-					} else {
+			public CompletionStage<Void> getEndOfStream() {
+				return endOfStream;
+			}
+		};
+	}
+
+	public static <T> StreamProducerModifier<T, T> suppliedEndOfStream(CompletionStage<Void> suppliedEndOfStream) {
+		return suppliedEndOfStream(actualEndOfStream -> Stages.first(actualEndOfStream, suppliedEndOfStream));
+	}
+
+	public interface Decorator<T> {
+		interface Context {
+			void endOfStream();
+
+			void closeWithError(Throwable error);
+		}
+
+		StreamDataReceiver<T> decorate(Context context, StreamDataReceiver<T> dataReceiver);
+	}
+
+	public static <T> StreamProducerModifier<T, T> decorator(Decorator<T> decorator) {
+		return producer -> new ForwardingStreamProducer<T>(producer) {
+			final SettableStage<Void> endOfStream = SettableStage.mirrorOf(producer.getEndOfStream());
+
+			@Override
+			public void produce(StreamDataReceiver<T> dataReceiver) {
+				producer.produce(decorator.decorate(new Decorator.Context() {
+					@Override
+					public void endOfStream() {
+						endOfStream.trySet(null);
+					}
+
+					@Override
+					public void closeWithError(Throwable error) {
+						endOfStream.trySetException(error);
+					}
+				}, dataReceiver));
+			}
+
+			@Override
+			public CompletionStage<Void> getEndOfStream() {
+				return endOfStream;
+			}
+		};
+	}
+
+	public static <T> StreamProducerModifier<T, T> errorDecorator(Function<T, Throwable> errorFunction) {
+		return decorator((context, dataReceiver) ->
+				item -> {
+					Throwable error = errorFunction.apply(item);
+					if (error == null) {
 						dataReceiver.onData(item);
+					} else {
+						context.closeWithError(error);
+					}
+				});
+	}
+
+	public static <T> StreamProducerModifier<T, T> endOfStreamOnError(Predicate<Throwable> endOfStreamPredicate) {
+		return producer -> new ForwardingStreamProducer<T>(producer) {
+			final SettableStage<Void> endOfStream = SettableStage.create();
+
+			{
+				producer.getEndOfStream().whenComplete(($, throwable) -> {
+					if (throwable == null) {
+						endOfStream.set(null);
+					} else {
+						if (endOfStreamPredicate.test(throwable)) {
+							endOfStream.set(null);
+						} else {
+							endOfStream.setException(throwable);
+						}
 					}
 				});
 			}
-		};
-	}
 
-	public static <T> StreamProducer<T> endOfStreamOnError(StreamProducer<T> producer) {
-		return new StreamProducerDecorator<T>(producer) {
 			@Override
-			protected void onCloseWithError(Throwable t) {
-				sendEndOfStream();
+			public CompletionStage<Void> getEndOfStream() {
+				return endOfStream;
 			}
 		};
 	}
 
-	public static <T> StreamProducer<T> noEndOfStream(StreamProducer<T> producer) {
-		return new StreamProducerDecorator<T>(producer) {
+	public static <T> StreamProducerModifier<T, T> endOfStreamOnError() {
+		return endOfStreamOnError(throwable -> true);
+	}
+
+	public static <T> StreamProducerModifier<T, T> noEndOfStream() {
+		return producer -> new ForwardingStreamProducer<T>(producer) {
+			final SettableStage<Void> endOfStream = SettableStage.create();
+
+			{
+				producer.getEndOfStream().whenComplete(($, throwable) -> {
+					if (throwable == null) {
+						// do nothing
+					} else {
+						endOfStream.trySet(null);
+					}
+				});
+			}
+
 			@Override
-			protected void onEndOfStream() {
-				// do nothing
+			public CompletionStage<Void> getEndOfStream() {
+				return endOfStream;
 			}
 		};
 	}

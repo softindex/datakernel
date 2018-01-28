@@ -21,20 +21,12 @@ import static org.junit.Assert.assertEquals;
 public class TestUtils {
 
 	public static void assertStatus(StreamStatus expectedStatus, StreamProducer<?> streamProducer) {
-		if (streamProducer instanceof StreamProducerDecorator) {
-			assertStatus(expectedStatus, ((StreamProducerDecorator) streamProducer).getActualProducer());
-			return;
-		}
 		if (expectedStatus == StreamStatus.CLOSED_WITH_ERROR && streamProducer instanceof StreamProducers.ClosingWithErrorImpl)
 			return;
 		assertEquals(expectedStatus, ((AbstractStreamProducer<?>) streamProducer).getStatus());
 	}
 
 	public static void assertStatus(StreamStatus expectedStatus, StreamConsumer<?> streamConsumer) {
-		if (streamConsumer instanceof StreamConsumerDecorator) {
-			assertStatus(expectedStatus, ((StreamConsumerDecorator) streamConsumer).getActualConsumer());
-			return;
-		}
 		if (expectedStatus == StreamStatus.CLOSED_WITH_ERROR && streamConsumer instanceof StreamConsumers.ClosingWithErrorImpl)
 			return;
 		assertEquals(expectedStatus, ((AbstractStreamConsumer<?>) streamConsumer).getStatus());

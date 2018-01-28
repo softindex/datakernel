@@ -24,6 +24,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletionStage;
+import java.util.stream.Collector;
+import java.util.stream.Stream;
 
 import static io.datakernel.stream.DataStreams.bind;
 import static io.datakernel.stream.DataStreams.stream;
@@ -31,6 +33,7 @@ import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptySet;
+import static java.util.stream.Collectors.toList;
 
 /**
  * It represents object for asynchronous sending streams of data.
@@ -111,6 +114,10 @@ public interface StreamProducer<T> {
 	 */
 	static <T> StreamProducer<T> ofIterable(Iterable<T> iterable) {
 		return new StreamProducers.OfIteratorImpl<>(iterable.iterator());
+	}
+
+	static <T> StreamProducer<T> ofStream(Stream<T> stream) {
+		return new StreamProducers.OfIteratorImpl<>(stream.iterator());
 	}
 
 	String LATE_BINDING_ERROR_MESSAGE = "" +
@@ -239,7 +246,11 @@ public interface StreamProducer<T> {
 	}
 
 	default CompletionStage<List<T>> getList() {
-		return stream(this, new StreamConsumerToList<>());
+		return toCollector(toList());
+	}
+
+	default <A, R> CompletionStage<R> toCollector(Collector<T, A, R> collector) {
+		return stream(this, StreamConsumerWithResult.toCollector(collector));
 	}
 
 }

@@ -18,8 +18,8 @@ import java.util.stream.IntStream;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.DataStreams.stream;
-import static io.datakernel.stream.StreamConsumerToList.oneByOne;
 import static io.datakernel.stream.StreamConsumerWithResult.toList;
+import static io.datakernel.stream.StreamConsumers.oneByOne;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
@@ -58,8 +58,9 @@ public class LogDataConsumerSplitterTest {
 
 	@Test
 	public void testConsumersWithSuspend() throws ExecutionException, InterruptedException {
-		List<StreamConsumerWithResult<Integer, List<Integer>>> consumers =
-				asList(oneByOne(), oneByOne());
+		List<StreamConsumerWithResult<Integer, List<Integer>>> consumers = asList(
+				StreamConsumerWithResult.<Integer>toList().with(oneByOne()),
+				StreamConsumerWithResult.<Integer>toList().with(oneByOne()));
 
 		Iterator<StreamConsumerWithResult<Integer, List<Integer>>> iterator = consumers.iterator();
 		LogDataConsumerSplitter<Integer, Integer> splitter =

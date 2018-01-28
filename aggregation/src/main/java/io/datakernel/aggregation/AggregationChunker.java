@@ -21,10 +21,7 @@ import io.datakernel.aggregation.util.PartitionPredicate;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.StagesAccumulator;
 import io.datakernel.codegen.DefiningClassLoader;
-import io.datakernel.stream.StreamConsumerDecorator;
-import io.datakernel.stream.StreamConsumerSwitcher;
-import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,7 +30,7 @@ import java.util.concurrent.CompletionStage;
 import static io.datakernel.async.SettableStage.mirrorOf;
 import static io.datakernel.async.Stages.onError;
 
-public final class AggregationChunker<T> extends StreamConsumerDecorator<T> implements StreamConsumerWithResult<T, List<AggregationChunk>> {
+public final class AggregationChunker<T> extends ForwardingStreamConsumer<T> implements StreamConsumerWithResult<T, List<AggregationChunk>> {
 	private final StreamConsumerSwitcher<T> switcher;
 	private final SettableStage<List<AggregationChunk>> result;
 
@@ -53,6 +50,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> impl
 	                           AggregationChunkStorage storage,
 	                           DefiningClassLoader classLoader,
 	                           int chunkSize) {
+		super(switcher);
 		this.switcher = switcher;
 		this.aggregation = aggregation;
 		this.fields = fields;
@@ -74,7 +72,6 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> impl
 	                                               int chunkSize) {
 		StreamConsumerSwitcher<T> switcher = StreamConsumerSwitcher.create();
 		AggregationChunker<T> chunker = new AggregationChunker<>(switcher, aggregation, fields, recordClass, partitionPredicate, storage, classLoader, chunkSize);
-		chunker.setActualConsumer(switcher);
 		chunker.startNewChunk();
 		return chunker;
 	}
@@ -84,7 +81,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> impl
 		return result;
 	}
 
-	private class ChunkWriter extends StreamConsumerDecorator<T> implements StreamConsumerWithResult<T, AggregationChunk>, StreamDataReceiver<T> {
+	private class ChunkWriter extends ForwardingStreamConsumer<T> implements StreamConsumerWithResult<T, AggregationChunk>, StreamDataReceiver<T> {
 		private final SettableStage<AggregationChunk> result;
 		private final long chunkId;
 		private final int chunkSize;
@@ -114,9 +111,14 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> impl
 		}
 
 		@Override
-		protected StreamDataReceiver<T> onProduce(StreamDataReceiver<T> dataReceiver) {
-			this.dataReceiver = dataReceiver;
-			return this;
+		public void setProducer(StreamProducer<T> producer) {
+			super.setProducer(new ForwardingStreamProducer<T>(producer) {
+				@Override
+				public void produce(StreamDataReceiver<T> dataReceiver) {
+					ChunkWriter.this.dataReceiver = dataReceiver;
+					super.produce(ChunkWriter.this);
+				}
+			});
 		}
 
 		@Override

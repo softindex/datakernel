@@ -24,6 +24,8 @@ import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 import static io.datakernel.stream.DataStreams.bind;
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
@@ -80,6 +82,10 @@ public interface StreamConsumerWithResult<T, X> extends StreamConsumer<T> {
 	 * @param <T> type of item
 	 */
 	static <T> StreamConsumerWithResult<T, List<T>> toList() {
-		return new StreamConsumerToList<>();
+		return toCollector(Collectors.toList());
+	}
+
+	static <T, A, R> StreamConsumerWithResult<T, R> toCollector(Collector<T, A, R> collector) {
+		return new StreamConsumerToCollector<>(collector);
 	}
 }

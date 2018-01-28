@@ -72,7 +72,7 @@ public class AggregationChunkerTest {
 
 			@Override
 			public <T> CompletionStage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
-				StreamConsumerToList<T> consumer = new StreamConsumerToList<>(items);
+				StreamConsumerToList<T> consumer = StreamConsumerToList.create(items);
 				listConsumers.add(consumer);
 				return Stages.of(consumer.withEndOfStreamAsResult());
 			}
@@ -149,7 +149,7 @@ public class AggregationChunkerTest {
 
 			@Override
 			public <T> CompletionStage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
-				StreamConsumerToList<T> consumer = new StreamConsumerToList<>(items);
+				StreamConsumerToList<T> consumer = StreamConsumerToList.create(items);
 				listConsumers.add(consumer);
 				return Stages.of(consumer.withEndOfStreamAsResult());
 			}
@@ -233,7 +233,7 @@ public class AggregationChunkerTest {
 			@Override
 			public <T> CompletionStage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
 				if (chunkId == 1) {
-					StreamConsumerToList<T> toList = new StreamConsumerToList<>(items);
+					StreamConsumerToList<T> toList = StreamConsumerToList.create(items);
 					listConsumers.add(toList);
 					return Stages.of(toList.withEndOfStreamAsResult());
 				} else {

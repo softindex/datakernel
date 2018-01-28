@@ -20,10 +20,7 @@ import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.StreamConsumerDecorator;
-import io.datakernel.stream.StreamConsumerSwitcher;
-import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.*;
 import io.datakernel.time.CurrentTimeProvider;
 
 import java.time.Instant;
@@ -32,7 +29,7 @@ import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.async.SettableStage.mirrorOf;
 
-public final class LogStreamChunker extends StreamConsumerDecorator<ByteBuf> implements StreamConsumerWithResult<ByteBuf, Void>, StreamDataReceiver<ByteBuf> {
+public final class LogStreamChunker extends ForwardingStreamConsumer<ByteBuf> implements StreamConsumerWithResult<ByteBuf, Void>, StreamDataReceiver<ByteBuf> {
 	private final CurrentTimeProvider currentTimeProvider;
 	private final DateTimeFormatter datetimeFormat;
 	private final LogFileSystem fileSystem;
@@ -82,9 +79,14 @@ public final class LogStreamChunker extends StreamConsumerDecorator<ByteBuf> imp
 	}
 
 	@Override
-	protected StreamDataReceiver<ByteBuf> onProduce(StreamDataReceiver<ByteBuf> dataReceiver) {
-		this.dataReceiver = dataReceiver;
-		return this;
+	public void setProducer(StreamProducer<ByteBuf> producer) {
+		super.setProducer(new ForwardingStreamProducer<ByteBuf>(producer) {
+			@Override
+			public void produce(StreamDataReceiver<ByteBuf> dataReceiver) {
+				LogStreamChunker.this.dataReceiver = dataReceiver;
+				super.produce(LogStreamChunker.this);
+			}
+		});
 	}
 
 	private void startNewChunk(String newChunkName, CompletionStage<Void> previousFile) {

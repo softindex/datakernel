@@ -93,8 +93,8 @@ public class DatagraphServerTest {
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		StreamConsumerToList<TestItem> result1 = new StreamConsumerToList<>();
-		StreamConsumerToList<TestItem> result2 = new StreamConsumerToList<>();
+		StreamConsumerToList<TestItem> result1 = StreamConsumerToList.create();
+		StreamConsumerToList<TestItem> result2 = StreamConsumerToList.create();
 
 		DatagraphEnvironment environment = DatagraphEnvironment.create()
 				.setInstance(DatagraphSerialization.class, serialization);
@@ -145,8 +145,8 @@ public class DatagraphServerTest {
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), testPort++);
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		StreamConsumerToList<TestItem> result1 = new StreamConsumerToList<>();
-		StreamConsumerToList<TestItem> result2 = new StreamConsumerToList<>();
+		StreamConsumerToList<TestItem> result1 = StreamConsumerToList.create();
+		StreamConsumerToList<TestItem> result2 = StreamConsumerToList.create();
 
 		DatagraphClient client = new DatagraphClient(eventloop, serialization);
 
@@ -205,8 +205,8 @@ public class DatagraphServerTest {
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		DatagraphClient client = new DatagraphClient(eventloop, serialization);
-		StreamConsumerToList<TestItem> result1 = new StreamConsumerToList<>();
-		StreamConsumerToList<TestItem> result2 = new StreamConsumerToList<>();
+		StreamConsumerToList<TestItem> result1 = StreamConsumerToList.create();
+		StreamConsumerToList<TestItem> result2 = StreamConsumerToList.create();
 
 		DatagraphEnvironment environment = DatagraphEnvironment.create()
 				.setInstance(DatagraphSerialization.class, serialization)
@@ -276,7 +276,7 @@ public class DatagraphServerTest {
 
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		DatagraphClient client = new DatagraphClient(eventloop, serialization);
-		StreamConsumerToList<TestItem> resultConsumer = new StreamConsumerToList<>();
+		StreamConsumerToList<TestItem> resultConsumer = StreamConsumerToList.create();
 
 		DatagraphEnvironment environment = DatagraphEnvironment.create()
 				.setInstance(DatagraphSerialization.class, serialization)
