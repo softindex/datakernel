@@ -22,7 +22,6 @@ import io.datakernel.async.CallbackRegistry;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.SocketSettings;
-import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducer;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -43,7 +42,6 @@ import java.util.concurrent.Executors;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.remotefs.FsIntegrationTest.createBigByteArray;
-import static io.datakernel.stream.DataStreams.stream;
 
 public class TestTimeoutsSimpleFs {
 	@Rule
@@ -78,10 +76,12 @@ public class TestTimeoutsSimpleFs {
 
 		server.listen();
 
-		StreamProducer<ByteBuf> producer = StreamProducer.of(ByteBuf.wrapForReading(BIG_FILE));
-		StreamConsumerWithResult<ByteBuf, Void> consumer = client.uploadStream("fileName.txt");
-		stream(producer, consumer);
-		CompletableFuture<Void> future = consumer.getResult().toCompletableFuture();
+		CompletableFuture<Void> future =
+				StreamProducer.of(ByteBuf.wrapForReading(BIG_FILE))
+						.streamTo(
+								client.uploadStream("fileName.txt"))
+						.getConsumerResult()
+						.toCompletableFuture();
 
 		eventloop.run();
 

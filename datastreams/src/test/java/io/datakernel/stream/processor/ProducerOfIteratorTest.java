@@ -27,7 +27,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static org.junit.Assert.assertEquals;
 
@@ -41,7 +40,8 @@ public class ProducerOfIteratorTest {
 
 		StreamProducer<Integer> producer = StreamProducer.ofIterable(list);
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
-		stream(producer, consumer);
+
+		producer.streamTo(consumer);
 
 		eventloop.run();
 

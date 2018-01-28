@@ -19,7 +19,6 @@ package io.datakernel.stream.processor;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import org.junit.Test;
@@ -29,7 +28,6 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.StreamConsumers.randomlySuspending;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
@@ -43,12 +41,14 @@ public class StreamProducerConcatTest {
 	public void testSequence() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		StreamProducer<Integer> producer = StreamProducer.concat(
-				StreamProducer.of(1, 2, 3),
-				StreamProducer.of(4, 5, 6));
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
-		stream(producer, consumer.with(randomlySuspending()));
+		StreamProducer.concat(
+				StreamProducer.of(1, 2, 3),
+				StreamProducer.of(4, 5, 6))
+				.streamTo(
+						consumer.with(randomlySuspending()));
+
 		eventloop.run();
 
 		assertEquals(asList(1, 2, 3, 4, 5, 6), consumer.getList());
@@ -60,14 +60,16 @@ public class StreamProducerConcatTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		List<Integer> list = new ArrayList<>();
 
-		StreamProducer<Integer> producer = StreamProducer.concat(
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
+
+		StreamProducer.concat(
 				StreamProducer.of(1, 2, 3),
 				StreamProducer.of(4, 5, 6),
 				StreamProducer.closingWithError(new ExpectedException("Test Exception")),
-				StreamProducer.of(1, 2, 3));
-		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
+				StreamProducer.of(1, 2, 3))
+				.streamTo(
+						consumer.with(randomlySuspending()));
 
-		stream(producer, consumer.with(randomlySuspending()));
 		eventloop.run();
 
 		assertEquals(asList(1, 2, 3, 4, 5, 6), list);
@@ -78,18 +80,16 @@ public class StreamProducerConcatTest {
 	public void testConcat() throws Exception {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		StreamProducer<Integer> producer = StreamProducer.concat(
+		CompletableFuture<List<Integer>> future = StreamProducer.concat(
 				StreamProducer.of(1, 2, 3),
 				StreamProducer.of(4, 5, 6),
-				StreamProducer.of());
+				StreamProducer.of())
+				.toList()
+				.toCompletableFuture();
 
-		StreamConsumerWithResult<Integer, List<Integer>> consumer = StreamConsumerToList.create();
-		CompletableFuture<List<Integer>> listFuture = consumer.getResult().toCompletableFuture();
-
-		stream(producer, consumer);
 		eventloop.run();
 
-		assertEquals(asList(1, 2, 3, 4, 5, 6), listFuture.get());
+		assertEquals(asList(1, 2, 3, 4, 5, 6), future.get());
 	}
 
 	@Test
@@ -97,14 +97,15 @@ public class StreamProducerConcatTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		List<Integer> list = new ArrayList<>();
 
-		StreamProducer<Integer> producer = StreamProducer.concat(
-				StreamProducer.of(1, 2, 3),
-				StreamProducer.of(4, 5, 6),
-				StreamProducer.closingWithError(new ExpectedException("Test Exception")));
-
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
-		stream(producer, consumer.with(StreamConsumers.oneByOne()));
+		StreamProducer.concat(
+				StreamProducer.of(1, 2, 3),
+				StreamProducer.of(4, 5, 6),
+				StreamProducer.closingWithError(new ExpectedException("Test Exception")))
+				.streamTo(
+						consumer.with(StreamConsumers.oneByOne()));
+
 		eventloop.run();
 
 		assertEquals(asList(1, 2, 3, 4, 5, 6), list);

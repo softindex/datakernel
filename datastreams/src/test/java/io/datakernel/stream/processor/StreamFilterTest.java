@@ -28,7 +28,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.StreamConsumers.decorator;
 import static io.datakernel.stream.StreamConsumers.randomlySuspending;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
@@ -43,18 +42,16 @@ public class StreamFilterTest {
 	public void test1() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		StreamProducer<Integer> source = StreamProducer.of(1, 2, 3);
-
+		StreamProducer<Integer> producer = StreamProducer.of(1, 2, 3);
 		StreamFilter<Integer> filter = StreamFilter.create(input -> input % 2 == 1);
-
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
-		stream(source, filter.getInput());
-		stream(filter.getOutput(), consumer.with(randomlySuspending()));
+		producer.with(filter).streamTo(
+				consumer.with(randomlySuspending()));
 
 		eventloop.run();
 		assertEquals(asList(1, 3), consumer.getList());
-		assertStatus(END_OF_STREAM, source);
+		assertStatus(END_OF_STREAM, producer);
 		assertStatus(END_OF_STREAM, filter.getInput());
 		assertStatus(END_OF_STREAM, filter.getOutput());
 	}
@@ -66,21 +63,22 @@ public class StreamFilterTest {
 
 		StreamProducer<Integer> source = StreamProducer.of(1, 2, 3, 4, 5);
 		StreamFilter<Integer> streamFilter = StreamFilter.create(input -> input % 2 != 2);
-		StreamConsumerToList<Integer> consumer1 = StreamConsumerToList.create(list);
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
-		stream(source.with(streamFilter), consumer1.with(decorator((context, dataReceiver) ->
-				item -> {
-					dataReceiver.onData(item);
-					if (item == 3) {
-						context.closeWithError(new ExpectedException("Test Exception"));
-					}
-				})));
+		source.with(streamFilter).streamTo(
+				consumer.with(decorator((context, dataReceiver) ->
+						item -> {
+							dataReceiver.onData(item);
+							if (item == 3) {
+								context.closeWithError(new ExpectedException("Test Exception"));
+							}
+						})));
 
 		eventloop.run();
 
 		assertEquals(asList(1, 2, 3), list);
 		assertStatus(CLOSED_WITH_ERROR, source);
-		assertStatus(CLOSED_WITH_ERROR, consumer1);
+		assertStatus(CLOSED_WITH_ERROR, consumer);
 		assertStatus(CLOSED_WITH_ERROR, streamFilter.getInput());
 		assertStatus(CLOSED_WITH_ERROR, streamFilter.getOutput());
 	}
@@ -99,8 +97,8 @@ public class StreamFilterTest {
 		List<Integer> list = new ArrayList<>();
 		StreamConsumerToList consumer = StreamConsumerToList.create(list);
 
-		stream(source, streamFilter.getInput());
-		stream(streamFilter.getOutput(), consumer.with(StreamConsumers.oneByOne()));
+		source.with(streamFilter).streamTo(
+				consumer.with(StreamConsumers.oneByOne()));
 
 		eventloop.run();
 

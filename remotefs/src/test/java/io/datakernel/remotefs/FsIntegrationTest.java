@@ -22,7 +22,10 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.SimpleException;
-import io.datakernel.stream.*;
+import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamConsumerToList;
+import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.file.StreamFileWriter;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
@@ -52,7 +55,6 @@ import static io.datakernel.async.Stages.assertComplete;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.equalsLowerCaseAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.DataStreams.stream;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.readAllBytes;
 import static java.util.Arrays.asList;
@@ -104,10 +106,11 @@ public class FsIntegrationTest {
 		server.listen();
 		List<CompletionStage<Void>> tasks = new ArrayList<>();
 		for (int i = 0; i < files; i++) {
-			StreamProducer<ByteBuf> producer = StreamProducer.of(ByteBuf.wrapForReading(CONTENT));
-			StreamConsumerWithResult<ByteBuf, Void> consumer = client.uploadStream("file" + i);
-			stream(producer, consumer);
-			tasks.add(consumer.getResult());
+			tasks.add(
+					StreamProducer.of(ByteBuf.wrapForReading(CONTENT))
+							.streamTo(
+									client.uploadStream("file" + i))
+							.getConsumerResult());
 		}
 		Stages.run(tasks).whenComplete(assertComplete($ -> server.close()));
 
@@ -170,21 +173,20 @@ public class FsIntegrationTest {
 		RemoteFsClient client = createClient(eventloop);
 
 		server.listen();
-		StreamProducer<ByteBuf> producer =
-				StreamProducer.concat(
-						StreamProducer.of(
-								ByteBufStrings.wrapUtf8("Test1"),
-								ByteBufStrings.wrapUtf8(" Test2"),
-								ByteBufStrings.wrapUtf8(" Test3")),
-						StreamProducer.of(ByteBuf.wrapForReading(BIG_FILE)),
-						StreamProducer.closingWithError(new SimpleException("Test exception")),
-						StreamProducer.of(ByteBufStrings.wrapUtf8("Test4")));
 
-		StreamConsumerWithResult<ByteBuf, Void> consumer = client.uploadStream(resultFile);
-		stream(producer, consumer);
-		CompletableFuture<Void> future = consumer.getResult().whenComplete(($, throwable) ->
-				server.close()
-		).toCompletableFuture();
+		CompletableFuture<Void> future = StreamProducer.concat(
+				StreamProducer.of(
+						ByteBufStrings.wrapUtf8("Test1"),
+						ByteBufStrings.wrapUtf8(" Test2"),
+						ByteBufStrings.wrapUtf8(" Test3")),
+				StreamProducer.of(ByteBuf.wrapForReading(BIG_FILE)),
+				StreamProducer.closingWithError(new SimpleException("Test exception")),
+				StreamProducer.of(ByteBufStrings.wrapUtf8("Test4")))
+				.streamTo(
+						client.uploadStream(resultFile))
+				.getConsumerResult()
+				.whenComplete(($, throwable) -> server.close())
+				.toCompletableFuture();
 
 		eventloop.run();
 		executor.shutdownNow();
@@ -267,8 +269,7 @@ public class FsIntegrationTest {
 		List<Throwable> expected = new ArrayList<>();
 
 		server.listen();
-		StreamProducerWithResult<ByteBuf, Void> producer = client.downloadStream(file, 0);
-		stream(producer, StreamConsumer.idle())
+		client.downloadStream(file, 0).streamTo(StreamConsumer.idle())
 				.getProducerResult()
 				.whenComplete(($, throwable) -> {
 					if (throwable != null) expected.add(throwable);
@@ -298,7 +299,8 @@ public class FsIntegrationTest {
 		List<CompletionStage<Void>> tasks = new ArrayList<>();
 		for (int i = 0; i < files; i++) {
 			tasks.add(client.downloadStream(file, 0)
-					.streamTo(StreamFileWriter.create(executor, storage.resolve("file" + i)))
+					.streamTo(
+							StreamFileWriter.create(executor, storage.resolve("file" + i)))
 					.getProducerResult());
 		}
 		Stages.run(tasks).whenComplete(assertComplete($ -> server.close()));
@@ -404,13 +406,14 @@ public class FsIntegrationTest {
 		RemoteFsClient client = createClient(eventloop);
 
 		server.listen();
-		StreamProducer<ByteBuf> producer = StreamProducer.of(ByteBuf.wrapForReading(bytes));
 
-		StreamConsumerWithResult<ByteBuf, Void> consumer = client.uploadStream(resultFile);
-		stream(producer, consumer);
-		CompletableFuture<Void> future = consumer.getResult()
-				.whenComplete(($, throwable) -> server.close())
-				.toCompletableFuture();
+		CompletableFuture<Void> future =
+				StreamProducer.of(ByteBuf.wrapForReading(bytes))
+						.streamTo(
+								client.uploadStream(resultFile))
+						.getConsumerResult()
+						.whenComplete(($, throwable) -> server.close())
+						.toCompletableFuture();
 
 		eventloop.run();
 		executor.shutdown();
@@ -427,7 +430,7 @@ public class FsIntegrationTest {
 		server.listen();
 
 		StreamProducerWithResult<ByteBuf, Void> producer = client.downloadStream(file, startPosition);
-		stream(producer, StreamConsumerToList.create(expected))
+		producer.streamTo(StreamConsumerToList.create(expected))
 				.getProducerResult()
 				.whenComplete(($, throwable) -> server.close());
 

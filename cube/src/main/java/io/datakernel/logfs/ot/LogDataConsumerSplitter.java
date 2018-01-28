@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.util.Preconditions.checkState;
 
 @SuppressWarnings("unchecked")
@@ -44,7 +43,7 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 			resultsReducer.addStage(consumer.getResult(), List::addAll);
 			Splitter.Output<?> output = splitter.new Output<>();
 			splitter.outputs.add(output);
-			stream(output, (StreamConsumer) consumer);
+			output.streamTo((StreamConsumer) consumer);
 		}
 		return splitter.getInput().withResult(resultsReducer.get());
 	}

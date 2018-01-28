@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Collector;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static io.datakernel.stream.DataStreams.bind;
@@ -36,7 +37,6 @@ import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptySet;
-import static java.util.stream.Collectors.toList;
 
 /**
  * It represents object for asynchronous sending streams of data.
@@ -304,8 +304,8 @@ public interface StreamProducer<T> {
 		};
 	}
 
-	default CompletionStage<List<T>> getList() {
-		return toCollector(toList());
+	default CompletionStage<List<T>> toList() {
+		return toCollector(Collectors.toList());
 	}
 
 	default <A, R> CompletionStage<R> toCollector(Collector<T, A, R> collector) {

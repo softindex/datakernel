@@ -26,7 +26,6 @@ import io.datakernel.cube.bean.DataItemString2;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducer;
 import org.junit.Rule;
 import org.junit.Test;
@@ -45,7 +44,6 @@ import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.sum;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.DataStreams.stream;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
@@ -69,16 +67,24 @@ public class StringDimensionTest {
 				.withMeasure("metric3", sum(ofLong()))
 				.withAggregation(id("detailedAggregation").withDimensions("key1", "key2").withMeasures("metric1", "metric2", "metric3"));
 
-		StreamProducer<DataItemString1> producer1 = StreamProducer.of(
-				new DataItemString1("str1", 2, 10, 20),
-				new DataItemString1("str2", 3, 10, 20));
-		StreamConsumerWithResult<DataItemString1, CubeDiff> consumer1 = cube.consume(DataItemString1.class);
-		stream(producer1, consumer1);
-		CompletableFuture<CubeDiff> future1 = consumer1.getResult().toCompletableFuture();
-		StreamProducer<DataItemString2> producer2 = StreamProducer.of(new DataItemString2("str2", 3, 10, 20), new DataItemString2("str1", 4, 10, 20));
-		StreamConsumerWithResult<DataItemString2, CubeDiff> consumer2 = cube.consume(DataItemString2.class);
-		stream(producer2, consumer2);
-		CompletableFuture<CubeDiff> future2 = consumer2.getResult().toCompletableFuture();
+		CompletableFuture<CubeDiff> future1 =
+				StreamProducer.of(
+						new DataItemString1("str1", 2, 10, 20),
+						new DataItemString1("str2", 3, 10, 20))
+						.streamTo(
+								cube.consume(DataItemString1.class))
+						.getConsumerResult()
+						.toCompletableFuture();
+
+		CompletableFuture<CubeDiff> future2 =
+				StreamProducer.of(
+						new DataItemString2("str2", 3, 10, 20),
+						new DataItemString2("str1", 4, 10, 20))
+						.streamTo(
+								cube.consume(DataItemString2.class))
+						.getConsumerResult()
+						.toCompletableFuture();
+
 		eventloop.run();
 
 		aggregationChunkStorage.finish(future1.get().addedChunks().collect(Collectors.toSet()));
@@ -89,16 +95,14 @@ public class StringDimensionTest {
 		cube.apply(future2.get());
 
 		StreamConsumerToList<DataItemResultString> consumerToList = StreamConsumerToList.create();
-		stream(cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"),
+		cube.queryRawStream(asList("key1", "key2"), asList("metric1", "metric2", "metric3"),
 				and(eq("key1", "str2"), eq("key2", 3)),
-				DataItemResultString.class, DefiningClassLoader.create(classLoader)
-		), consumerToList);
+				DataItemResultString.class, DefiningClassLoader.create(classLoader))
+				.streamTo(consumerToList);
 		eventloop.run();
 
 		List<DataItemResultString> actual = consumerToList.getList();
 		List<DataItemResultString> expected = asList(new DataItemResultString("str2", 3, 10, 30, 20));
-
-		System.out.println(consumerToList.getList());
 
 		assertEquals(expected, actual);
 	}

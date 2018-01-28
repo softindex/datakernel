@@ -31,12 +31,9 @@ public class StreamConsumersTest {
 	@Test
 	public void testErrorDecorator() {
 		StreamProducer<Integer> producer = StreamProducer.ofStream(IntStream.range(1, 10).boxed());
-
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
-		StreamConsumerWithResult<Integer, List<Integer>> errorConsumer =
-				consumer.with(errorDecorator(k -> k.equals(5) ? new IllegalArgumentException() : null));
 
-		stream(producer, errorConsumer);
+		producer.streamTo(consumer.with(errorDecorator(item -> item.equals(5) ? new IllegalArgumentException() : null)));
 		eventloop.run();
 
 		assertEquals(((AbstractStreamProducer<Integer>) producer).getStatus(), StreamStatus.CLOSED_WITH_ERROR);
@@ -53,9 +50,8 @@ public class StreamConsumersTest {
 		StreamConsumerWithResult<Integer, List<Integer>> errorConsumer =
 				consumer.with(errorDecorator(k -> k.equals(5) ? new IllegalArgumentException() : null));
 
-		stream(producer, errorConsumer);
-		CompletableFuture<Void> producerFuture = producer
-				.getResult()
+		CompletableFuture<Void> producerFuture = producer.streamTo(errorConsumer)
+				.getProducerResult()
 				.whenComplete((aVoid, throwable) -> assertThat(throwable, instanceOf(IllegalArgumentException.class)))
 				.exceptionally(throwable -> null)
 				.toCompletableFuture();
@@ -97,8 +93,10 @@ public class StreamConsumersTest {
 		CountTransformer<Integer> transformer = new CountTransformer<>();
 		StreamConsumerWithResult<Integer, List<Integer>> consumer = StreamConsumerToList.create();
 
-		stream(producer.with(transformer), consumer.with(suspendDecorator(k -> true,
-				context -> eventloop.schedule(eventloop.currentTimeMillis() + 10, context::resume))));
+		producer.with(transformer).streamTo(
+				consumer.with(suspendDecorator(
+						item -> true,
+						context -> eventloop.schedule(eventloop.currentTimeMillis() + 10, context::resume))));
 
 		CompletableFuture<List<Integer>> listFuture = consumer.getResult().toCompletableFuture();
 		eventloop.run();

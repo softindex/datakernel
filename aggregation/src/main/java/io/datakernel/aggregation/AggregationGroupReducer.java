@@ -21,6 +21,7 @@ import io.datakernel.aggregation.util.PartitionPredicate;
 import io.datakernel.async.StagesAccumulator;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.stream.AbstractStreamConsumer;
+import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamProducer;
 import org.slf4j.Logger;
@@ -33,9 +34,7 @@ import java.util.Map;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
-import static io.datakernel.stream.DataStreams.stream;
-
-public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
+public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> implements StreamConsumerWithResult<T, List<AggregationChunk>>, StreamDataReceiver<T> {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final AggregationChunkStorage storage;
@@ -70,6 +69,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 		this.classLoader = classLoader;
 	}
 
+	@Override
 	public CompletionStage<List<AggregationChunk>> getResult() {
 		return resultsTracker.get();
 	}
@@ -111,17 +111,16 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 			return key1.compareTo(key2);
 		});
 
-		List<Object> list = new ArrayList<>(entryList.size());
+		List<T> list = new ArrayList<>(entryList.size());
 		for (Map.Entry<Comparable<?>, Object> entry : entryList) {
-			list.add(entry.getValue());
+			list.add((T) entry.getValue());
 		}
 
-		StreamProducer producer = StreamProducer.ofIterable(list);
+		StreamProducer<T> producer = StreamProducer.ofIterable(list);
 		AggregationChunker<T> chunker = AggregationChunker.create(aggregation, measures, recordClass,
 				partitionPredicate, storage, classLoader, chunkSize);
-		stream(producer, chunker);
 
-		resultsTracker.addStage(chunker.getResult(), List::addAll)
+		resultsTracker.addStage(producer.streamTo(chunker).getConsumerResult(), List::addAll)
 				.thenAccept(aggregationChunks -> suspendOrResume());
 	}
 

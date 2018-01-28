@@ -58,9 +58,9 @@ public class StreamFileReaderWriterTest {
 				1, Paths.get("test_data/in.dat"));
 
 		List<ByteBuf> list = new ArrayList<>();
-		StreamConsumerToList<ByteBuf> consumer = StreamConsumerToList.create(list);
 
-		stream(reader, consumer);
+		reader.streamTo(
+				StreamConsumerToList.create(list));
 		eventloop.run();
 
 		ByteBufQueue byteQueue = ByteBufQueue.create();

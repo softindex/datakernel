@@ -9,7 +9,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.StreamProducers.errorDecorator;
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
 import static org.junit.Assert.assertEquals;
@@ -31,7 +30,7 @@ public class StreamProducersTest {
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
-		stream(producer, consumer);
+		producer.streamTo(consumer);
 
 		eventloop.run();
 
@@ -41,16 +40,14 @@ public class StreamProducersTest {
 
 	@Test
 	public void testErrorDecoratorWithResult() throws ExecutionException, InterruptedException {
-		StreamProducerWithResult<Integer, Void> readProducer = StreamProducer.ofStream(IntStream.range(1, 10).boxed())
+		StreamProducerWithResult<Integer, Void> producer = StreamProducer.ofStream(IntStream.range(1, 10).boxed())
 				.withEndOfStreamAsResult()
 				.with(errorDecorator(k -> k.equals(5) ? new IllegalArgumentException() : null));
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
-		stream(readProducer, consumer);
-
-		CompletableFuture<Void> future = readProducer
-				.getResult()
+		CompletableFuture<Void> future = producer.streamTo(consumer)
+				.getProducerResult()
 				.whenComplete((aVoid, throwable) -> assertThat(throwable, instanceOf(IllegalArgumentException.class)))
 				.exceptionally(throwable -> null)
 				.toCompletableFuture();

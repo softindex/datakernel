@@ -39,7 +39,6 @@ import io.datakernel.jmx.ValueStats;
 import io.datakernel.logfs.ot.LogDataConsumer;
 import io.datakernel.ot.OTState;
 import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.*;
@@ -66,7 +65,6 @@ import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.utils.Primitives.isWrapperType;
 import static io.datakernel.cube.Utils.createResultClass;
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_10_MINUTES;
-import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkState;
 import static java.lang.String.format;
@@ -629,7 +627,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializer<Cube>, 
 
 			StreamConsumer streamReducerInput = streamReducer.newInput(keyFunction, reducer);
 
-			stream(aggregationProducer, streamReducerInput);
+			aggregationProducer.streamTo(streamReducerInput);
 		}
 
 		return queryResultProducer;
@@ -825,11 +823,10 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializer<Cube>, 
 			havingPredicate = createHavingPredicate();
 			recordFunction = createRecordFunction();
 
-			StreamConsumerToList<Object> consumer = StreamConsumerToList.create();
 			StreamProducer<Object> queryResultProducer = (StreamProducer<Object>) queryRawStream(new ArrayList<>(resultDimensions), new ArrayList<>(resultStoredMeasures),
 					queryPredicate, resultClass, queryClassLoader, compatibleAggregations);
-			return stream(queryResultProducer, consumer)
-					.getConsumerResult()
+			return queryResultProducer
+					.toList()
 					.thenCompose(this::processResults);
 		}
 

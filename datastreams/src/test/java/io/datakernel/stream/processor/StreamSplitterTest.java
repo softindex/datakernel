@@ -85,13 +85,14 @@ public class StreamSplitterTest {
 		stream(source, streamConcat.getInput());
 
 		stream(streamConcat.newOutput(), consumerToList1.with(StreamConsumers.oneByOne()));
-		stream(streamConcat.newOutput(), badConsumer.with(decorator((context, dataReceiver) ->
-				item -> {
-					dataReceiver.onData(item);
-					if (item == 3) {
-						context.closeWithError(new ExpectedException("Test Exception"));
-					}
-				})));
+		stream(streamConcat.newOutput(),
+				badConsumer.with(decorator((context, dataReceiver) ->
+						item -> {
+							dataReceiver.onData(item);
+							if (item == 3) {
+								context.closeWithError(new ExpectedException("Test Exception"));
+							}
+						})));
 		stream(streamConcat.newOutput(), consumerToList2.with(StreamConsumers.oneByOne()));
 
 		eventloop.run();

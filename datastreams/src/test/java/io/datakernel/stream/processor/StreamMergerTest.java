@@ -53,7 +53,8 @@ public class StreamMergerTest {
 		stream(source1, merger.newInput());
 		stream(source2, merger.newInput());
 
-		stream(merger.getOutput(), consumer.with(randomlySuspending()));
+		stream(merger.getOutput(),
+				consumer.with(randomlySuspending()));
 
 		eventloop.run();
 		assertEquals(asList(3, 4, 6, 7), consumer.getList());
@@ -81,7 +82,8 @@ public class StreamMergerTest {
 		stream(source1, merger.newInput());
 		stream(source2, merger.newInput());
 
-		stream(merger.getOutput(), consumer.with(randomlySuspending()));
+		stream(merger.getOutput(),
+				consumer.with(randomlySuspending()));
 
 		eventloop.run();
 		assertEquals(asList(3, 3, 4, 6, 7), consumer.getList());
@@ -121,7 +123,8 @@ public class StreamMergerTest {
 		stream(source1, merger.newInput());
 		stream(source2, merger.newInput());
 
-		stream(merger.getOutput(), consumer.with(randomlySuspending()));
+		stream(merger.getOutput(),
+				consumer.with(randomlySuspending()));
 
 		eventloop.run();
 
@@ -153,13 +156,14 @@ public class StreamMergerTest {
 		stream(source1, merger.newInput());
 		stream(source2, merger.newInput());
 
-		stream(merger.getOutput(), consumer.with(decorator((context, dataReceiver) ->
-				item -> {
-					dataReceiver.onData(item);
-					if (item == 8) {
-						context.closeWithError(new Exception("Test Exception"));
-					}
-				})));
+		stream(merger.getOutput(),
+				consumer.with(decorator((context, dataReceiver) ->
+						item -> {
+							dataReceiver.onData(item);
+							if (item == 8) {
+								context.closeWithError(new Exception("Test Exception"));
+							}
+						})));
 
 		eventloop.run();
 
@@ -198,7 +202,8 @@ public class StreamMergerTest {
 		stream(source1, merger.newInput());
 		stream(source2, merger.newInput());
 
-		stream(merger.getOutput(), consumer.with(oneByOne()));
+		stream(merger.getOutput(),
+				consumer.with(oneByOne()));
 
 		eventloop.run();
 

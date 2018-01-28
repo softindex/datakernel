@@ -36,7 +36,7 @@ public class ConsumerToListTest {
 	@Test
 	public void emptyListTest() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		StreamConsumerToList<String> consumer = StreamConsumerToList.create(new ArrayList<String>());
+		StreamConsumerToList<String> consumer = StreamConsumerToList.create();
 
 		List<String> testList2 = new ArrayList<>();
 		testList2.add("a");
@@ -45,7 +45,7 @@ public class ConsumerToListTest {
 		testList2.add("d");
 
 		StreamProducer<String> producer = StreamProducer.ofIterable(testList2);
-		stream(producer, consumer);
+		producer.streamTo(consumer);
 		eventloop.run();
 
 		assertEquals(testList2, consumer.getList());

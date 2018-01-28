@@ -47,7 +47,6 @@ import java.util.concurrent.ExecutorService;
 import static io.datakernel.async.Stages.onError;
 import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
 import static io.datakernel.eventloop.AsyncTcpSocketImpl.wrapChannel;
-import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.net.MessagingSerializers.ofJson;
 import static io.datakernel.stream.stats.StreamStatsSizeCounter.forByteBufs;
 
@@ -138,7 +137,7 @@ public final class RemoteFsClient implements IRemoteFsClient {
 								StreamStatsForwarder<ByteBuf> sizeForwarder = StreamStatsForwarder.create(stats);
 
 								SettableStage<Void> ack = SettableStage.create();
-								stream(producer, sizeForwarder.getInput())
+								producer.streamTo(sizeForwarder.getInput())
 										.getProducerResult()
 										.thenAccept($ -> {
 											messaging.close();

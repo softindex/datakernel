@@ -19,8 +19,6 @@ package io.datakernel.stream.processor;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducer;
 import org.junit.Before;
 import org.junit.Test;
@@ -32,7 +30,6 @@ import java.util.concurrent.CompletableFuture;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.DataStreams.stream;
 import static org.junit.Assert.*;
 
 public class StreamByteChunkerTest {
@@ -84,12 +81,9 @@ public class StreamByteChunkerTest {
 		int bufSize = 128;
 
 		StreamProducer<ByteBuf> source = StreamProducer.ofIterable(buffers);
-		StreamByteChunker resizer = StreamByteChunker.create(bufSize / 2, bufSize);
-		StreamConsumerWithResult<ByteBuf, List<ByteBuf>> streamFixedSizeConsumer = StreamConsumerToList.create();
-		CompletableFuture<List<ByteBuf>> listFuture = streamFixedSizeConsumer.getResult().toCompletableFuture();
+		StreamByteChunker chunker = StreamByteChunker.create(bufSize / 2, bufSize);
 
-		stream(source, resizer.getInput());
-		stream(resizer.getOutput(), streamFixedSizeConsumer);
+		CompletableFuture<List<ByteBuf>> listFuture = source.with(chunker).toList().toCompletableFuture();
 
 		eventloop.run();
 

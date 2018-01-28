@@ -147,7 +147,8 @@ public class StreamJoinTest {
 		stream(source1, streamJoin.getLeft());
 		stream(source2, streamJoin.getRight());
 
-		stream(streamJoin.getOutput(), consumer.with(randomlySuspending()));
+		streamJoin.getOutput().streamTo(
+				consumer.with(randomlySuspending()));
 
 		eventloop.run();
 
@@ -201,13 +202,14 @@ public class StreamJoinTest {
 		stream(source1, streamJoin.getLeft());
 		stream(source2, streamJoin.getRight());
 
-		stream(streamJoin.getOutput(), consumer.with(decorator((context, dataReceiver) ->
-				item -> {
-					dataReceiver.onData(item);
-					if (list.size() == 1) {
-						context.closeWithError(new ExpectedException("Test Exception"));
-					}
-				})));
+		streamJoin.getOutput().streamTo(
+				consumer.with(decorator((context, dataReceiver) ->
+						item -> {
+							dataReceiver.onData(item);
+							if (list.size() == 1) {
+								context.closeWithError(new ExpectedException("Test Exception"));
+							}
+						})));
 
 		eventloop.run();
 		assertTrue(list.size() == 1);

@@ -99,13 +99,14 @@ public class StreamUnionTest {
 		stream(source1, streamUnion.newInput());
 		stream(source2, streamUnion.newInput());
 
-		stream(streamUnion.getOutput(), consumer.with(decorator((context, dataReceiver) ->
-				item -> {
-					dataReceiver.onData(item);
-					if (item == 1) {
-						context.closeWithError(new ExpectedException("Test Exception"));
-					}
-				})));
+		stream(streamUnion.getOutput(),
+				consumer.with(decorator((context, dataReceiver) ->
+						item -> {
+							dataReceiver.onData(item);
+							if (item == 1) {
+								context.closeWithError(new ExpectedException("Test Exception"));
+							}
+						})));
 
 		eventloop.run();
 

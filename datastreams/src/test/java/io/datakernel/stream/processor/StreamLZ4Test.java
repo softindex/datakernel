@@ -31,7 +31,6 @@ import java.util.Random;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.StreamConsumers.randomlySuspending;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.TestUtils.assertStatus;
@@ -81,22 +80,15 @@ public class StreamLZ4Test {
 		}
 		byte[] expected = byteBufsToByteArray(buffers);
 
-		StreamProducer<ByteBuf> source = StreamProducer.ofIterable(buffers);
+		StreamProducer<ByteBuf> producer = StreamProducer.ofIterable(buffers);
 		StreamByteChunker preBuf = StreamByteChunker.create(64, 128);
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor();
 		StreamByteChunker postBuf = StreamByteChunker.create(64, 128);
 		StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create();
 		StreamConsumerToList<ByteBuf> consumer = StreamConsumerToList.create();
 
-//		source.streamTo(compressor.getInput());
-		stream(source, preBuf.getInput());
-		stream(preBuf.getOutput(), compressor.getInput());
-
-//		compressor.getOutput().streamTo(decompressor.getInput());
-		stream(compressor.getOutput(), postBuf.getInput());
-		stream(postBuf.getOutput(), decompressor.getInput());
-
-		stream(decompressor.getOutput(), consumer.with(randomlySuspending()));
+		producer.with(preBuf).with(compressor).with(postBuf).with(decompressor).streamTo(
+				consumer.with(randomlySuspending()));
 
 		eventloop.run();
 
@@ -106,7 +98,7 @@ public class StreamLZ4Test {
 		}
 
 		assertArrayEquals(expected, actual);
-		assertStatus(END_OF_STREAM, source);
+		assertStatus(END_OF_STREAM, producer);
 
 //		assertStatus(END_OF_STREAM, preBuf.getInput());
 //		assertStatus(END_OF_STREAM, preBuf.getOutput());
@@ -161,13 +153,11 @@ public class StreamLZ4Test {
 		List<ByteBuf> buffers = new ArrayList<>();
 		buffers.add(buf);
 
-		StreamProducer<ByteBuf> source = StreamProducer.ofIterable(buffers);
+		StreamProducer<ByteBuf> producer = StreamProducer.ofIterable(buffers);
 		StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create();
 		StreamConsumerToList<ByteBuf> consumer = StreamConsumerToList.create();
 
-		stream(source, compressor.getInput());
-		stream(compressor.getOutput(), decompressor.getInput());
-		stream(decompressor.getOutput(), consumer);
+		producer.with(compressor).with(decompressor).streamTo(consumer);
 
 		eventloop.run();
 
@@ -178,7 +168,7 @@ public class StreamLZ4Test {
 		}
 		assertArrayEquals(actual, expected);
 
-		assertStatus(END_OF_STREAM, source);
+		assertStatus(END_OF_STREAM, producer);
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 

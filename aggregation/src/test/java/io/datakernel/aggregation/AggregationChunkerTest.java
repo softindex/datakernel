@@ -38,7 +38,6 @@ import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.sum;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.TestUtils.assertStatus;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -108,9 +107,8 @@ public class AggregationChunkerTest {
 		AggregationChunker<KeyValuePair> chunker = AggregationChunker.create(
 				structure, structure.getMeasures(), recordClass, (PartitionPredicate) AggregationUtils.singlePartition(),
 				aggregationChunkStorage, classLoader, 1);
-		stream(producer, chunker);
 
-		CompletableFuture<List<AggregationChunk>> future = chunker.getResult().toCompletableFuture();
+		CompletableFuture<List<AggregationChunk>> future = producer.streamTo(chunker).getConsumerResult().toCompletableFuture();
 
 		eventloop.run();
 
@@ -192,9 +190,8 @@ public class AggregationChunkerTest {
 		AggregationChunker<KeyValuePair> chunker = AggregationChunker.create(
 				structure, structure.getMeasures(), recordClass, (PartitionPredicate) AggregationUtils.singlePartition(),
 				aggregationChunkStorage, classLoader, 1);
-		stream(producer, chunker);
 
-		CompletableFuture<List<AggregationChunk>> future = chunker.getResult().toCompletableFuture();
+		CompletableFuture<List<AggregationChunk>> future = producer.streamTo(chunker).getConsumerResult().toCompletableFuture();
 
 		eventloop.run();
 
@@ -273,9 +270,8 @@ public class AggregationChunkerTest {
 		AggregationChunker<KeyValuePair> chunker = AggregationChunker.create(
 				structure, structure.getMeasures(), recordClass, (PartitionPredicate) AggregationUtils.singlePartition(),
 				aggregationChunkStorage, classLoader, 1);
-		stream(producer, chunker);
 
-		CompletableFuture<List<AggregationChunk>> future = chunker.getResult().toCompletableFuture();
+		CompletableFuture<List<AggregationChunk>> future = producer.streamTo(chunker).getConsumerResult().toCompletableFuture();
 		eventloop.run();
 
 		assertTrue(future.isCompletedExceptionally());

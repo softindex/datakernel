@@ -18,7 +18,10 @@ package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
-import io.datakernel.stream.*;
+import io.datakernel.stream.StreamConsumerToList;
+import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamStatus;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -130,13 +133,14 @@ public class StreamReducerTest {
 		stream(source2, streamReducer.newInput(input -> input.key, KeyValue2.REDUCER));
 		stream(source3, streamReducer.newInput(input -> input.key, KeyValue3.REDUCER));
 
-		stream(streamReducer.getOutput(), consumer.with(decorator((context, dataReceiver) ->
-				item -> {
-					list.add(item);
-					if (list.size() == 1) {
-						context.closeWithError(new ExpectedException("Test Exception"));
-					}
-				})));
+		stream(streamReducer.getOutput(),
+				consumer.with(decorator((context, dataReceiver) ->
+						item -> {
+							list.add(item);
+							if (list.size() == 1) {
+								context.closeWithError(new ExpectedException("Test Exception"));
+							}
+						})));
 
 		eventloop.run();
 
@@ -359,16 +363,17 @@ public class StreamReducerTest {
 
 		StreamConsumerToList<KeyValueResult> consumer = StreamConsumerToList.create();
 
-		StreamConsumer<KeyValue1> streamConsumer1 = streamReducer.newInput(input -> input.key, KeyValue1.REDUCER_TO_ACCUMULATOR.inputToOutput());
-		stream(source1, streamConsumer1);
+		source1.streamTo(
+				streamReducer.newInput(input -> input.key, KeyValue1.REDUCER_TO_ACCUMULATOR.inputToOutput()));
 
-		StreamConsumer<KeyValue2> streamConsumer2 = streamReducer.newInput(input -> input.key, KeyValue2.REDUCER_TO_ACCUMULATOR.inputToOutput());
-		stream(source2, streamConsumer2);
+		source2.streamTo(
+				streamReducer.newInput(input -> input.key, KeyValue2.REDUCER_TO_ACCUMULATOR.inputToOutput()));
 
-		StreamConsumer<KeyValue3> streamConsumer3 = streamReducer.newInput(input -> input.key, KeyValue3.REDUCER_TO_ACCUMULATOR.inputToOutput());
-		stream(source3, streamConsumer3);
+		source3.streamTo(
+				streamReducer.newInput(input -> input.key, KeyValue3.REDUCER_TO_ACCUMULATOR.inputToOutput()));
 
-		stream(streamReducer.getOutput(), consumer.with(randomlySuspending()));
+		streamReducer.getOutput().streamTo(
+				consumer.with(randomlySuspending()));
 
 		eventloop.run();
 		assertEquals(asList(
@@ -394,16 +399,17 @@ public class StreamReducerTest {
 
 		StreamConsumerToList<KeyValueResult> consumer = StreamConsumerToList.create();
 
-		StreamConsumer<KeyValue1> streamConsumer1 = streamReducer.newInput(input -> input.key, KeyValue1.REDUCER);
-		stream(source1, streamConsumer1);
+		source1.streamTo(
+				streamReducer.newInput(input -> input.key, KeyValue1.REDUCER));
 
-		StreamConsumer<KeyValue2> streamConsumer2 = streamReducer.newInput(input -> input.key, KeyValue2.REDUCER);
-		stream(source2, streamConsumer2);
+		source2.streamTo(
+				streamReducer.newInput(input -> input.key, KeyValue2.REDUCER));
 
-		StreamConsumer<KeyValue3> streamConsumer3 = streamReducer.newInput(input -> input.key, KeyValue3.REDUCER);
-		stream(source3, streamConsumer3);
+		source3.streamTo(
+				streamReducer.newInput(input -> input.key, KeyValue3.REDUCER));
 
-		stream(streamReducer.getOutput(), consumer.with(randomlySuspending()));
+		streamReducer.getOutput().streamTo(
+				consumer.with(randomlySuspending()));
 
 		eventloop.run();
 		assertEquals(asList(

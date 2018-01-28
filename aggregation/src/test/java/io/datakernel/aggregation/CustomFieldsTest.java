@@ -24,7 +24,6 @@ import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
 import org.junit.Rule;
 import org.junit.Test;
@@ -42,7 +41,6 @@ import static io.datakernel.aggregation.fieldtype.FieldTypes.ofDouble;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.util.CollectionUtils.set;
 import static junit.framework.TestCase.assertEquals;
 
@@ -155,12 +153,16 @@ public class CustomFieldsTest {
 		AggregationQuery query = AggregationQuery.create()
 				.withKeys("siteId")
 				.withMeasures("eventCount", "sumRevenue", "minRevenue", "maxRevenue", "uniqueUserIds", "estimatedUniqueUserIdCount");
-		StreamConsumerToList<QueryResult> listConsumer = StreamConsumerToList.create();
-		stream(aggregation.query(query, QueryResult.class, DefiningClassLoader.create(classLoader)), listConsumer);
+
+		CompletableFuture<List<QueryResult>> future1 =
+				aggregation.query(query, QueryResult.class, DefiningClassLoader.create(classLoader))
+						.toList()
+						.toCompletableFuture();
+
 		eventloop.run();
 
 		double delta = 1E-3;
-		List<QueryResult> queryResults = listConsumer.getList();
+		List<QueryResult> queryResults = future1.get();
 		assertEquals(3, queryResults.size());
 
 		QueryResult s1 = queryResults.get(0);

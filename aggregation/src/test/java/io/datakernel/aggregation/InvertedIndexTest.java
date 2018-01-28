@@ -20,7 +20,6 @@ import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
 import org.junit.Rule;
 import org.junit.Test;
@@ -38,7 +37,6 @@ import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofString;
 import static io.datakernel.aggregation.measure.Measures.union;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.util.CollectionUtils.set;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
@@ -140,16 +138,17 @@ public class InvertedIndexTest {
 		AggregationQuery query = AggregationQuery.create()
 				.withKeys("word")
 				.withMeasures("documents");
-		StreamConsumerToList<InvertedIndexQueryResult> consumerToList = StreamConsumerToList.create();
-		stream(aggregation.query(query, InvertedIndexQueryResult.class, DefiningClassLoader.create(classLoader)), consumerToList);
-		eventloop.run();
 
-		System.out.println(consumerToList.getList());
+		CompletableFuture<List<InvertedIndexQueryResult>> future1 =
+				aggregation.query(query, InvertedIndexQueryResult.class, DefiningClassLoader.create(classLoader))
+						.toList().toCompletableFuture();
+
+		eventloop.run();
 
 		List<InvertedIndexQueryResult> expectedResult = asList(new InvertedIndexQueryResult("brown", set(2, 3, 10)),
 				new InvertedIndexQueryResult("dog", set(1)), new InvertedIndexQueryResult("fox", set(1, 3, 4)),
 				new InvertedIndexQueryResult("lazy", set(4)), new InvertedIndexQueryResult("quick", set(1)));
-		List<InvertedIndexQueryResult> actualResult = consumerToList.getList();
+		List<InvertedIndexQueryResult> actualResult = future1.get();
 
 		assertEquals(expectedResult, actualResult);
 	}

@@ -59,7 +59,6 @@ import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.sum;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.test.TestUtils.dataSource;
 import static io.datakernel.util.CollectionUtils.first;
 import static java.util.Arrays.asList;
@@ -159,8 +158,8 @@ public class CubeMeasureRemovalTest {
 
 		// Save and aggregate logs
 		List<LogItem> listOfRandomLogItems1 = LogItem.getListOfRandomLogItems(100);
-		StreamProducer<LogItem> producerOfRandomLogItems1 = StreamProducer.ofIterable(listOfRandomLogItems1);
-		stream(producerOfRandomLogItems1, logManager.consumerStream("partitionA"));
+		StreamProducer.ofIterable(listOfRandomLogItems1).streamTo(
+				logManager.consumerStream("partitionA"));
 		eventloop.run();
 
 		OTStateManager<Integer, LogDiff<CubeDiff>> finalLogCubeStateManager1 = logCubeStateManager;
@@ -212,8 +211,8 @@ public class CubeMeasureRemovalTest {
 
 		// Save and aggregate logs
 		List<LogItem> listOfRandomLogItems2 = LogItem.getListOfRandomLogItems(100);
-		StreamProducer<LogItem> producerOfRandomLogItems2 = StreamProducer.ofIterable(listOfRandomLogItems2);
-		stream(producerOfRandomLogItems2, logManager.consumerStream("partitionA"));
+		StreamProducer.ofIterable(listOfRandomLogItems2).streamTo(
+				logManager.consumerStream("partitionA"));
 		eventloop.run();
 
 		OTStateManager<Integer, LogDiff<CubeDiff>> finalLogCubeStateManager = logCubeStateManager;
@@ -244,7 +243,8 @@ public class CubeMeasureRemovalTest {
 				.collect(groupingBy(o -> o.date, reducing(0L, o -> o.clicks, (v, v2) -> v + v2)));
 
 		StreamConsumerToList<LogItem> queryResultConsumer2 = StreamConsumerToList.create();
-		stream(cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(), LogItem.class, classLoader), queryResultConsumer2);
+		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(), LogItem.class, classLoader).streamTo(
+				queryResultConsumer2);
 		eventloop.run();
 
 		// Check query results
@@ -278,8 +278,8 @@ public class CubeMeasureRemovalTest {
 
 		// Query
 		StreamConsumerToList<LogItem> queryResultConsumer3 = StreamConsumerToList.create();
-		stream(cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(),
-				LogItem.class, DefiningClassLoader.create(classLoader)), queryResultConsumer3);
+		cube.queryRawStream(asList("date"), asList("clicks"), alwaysTrue(), LogItem.class, DefiningClassLoader.create(classLoader))
+				.streamTo(queryResultConsumer3);
 		eventloop.run();
 		List<LogItem> queryResult3 = queryResultConsumer3.getList();
 
@@ -324,8 +324,8 @@ public class CubeMeasureRemovalTest {
 			logCubeStateManager1.checkout();
 			eventloop.run();
 
-			List<LogItem> listOfRandomLogItems = LogItem.getListOfRandomLogItems(100);
-			stream(StreamProducer.ofIterable(listOfRandomLogItems), logManager.consumerStream("partitionA"));
+			StreamProducer.ofIterable(LogItem.getListOfRandomLogItems(100)).streamTo(
+					logManager.consumerStream("partitionA"));
 			eventloop.run();
 
 			logOTProcessor1.processLog()
@@ -400,8 +400,8 @@ public class CubeMeasureRemovalTest {
 			logCubeStateManager1.checkout();
 			eventloop.run();
 
-			List<LogItem> listOfRandomLogItems = LogItem.getListOfRandomLogItems(100);
-			stream(StreamProducer.ofIterable(listOfRandomLogItems), logManager.consumerStream("partitionA"));
+			StreamProducer.ofIterable(LogItem.getListOfRandomLogItems(100)).streamTo(
+					logManager.consumerStream("partitionA"));
 			eventloop.run();
 
 			logOTProcessor1.processLog()

@@ -16,14 +16,12 @@
 
 package io.datakernel.remotefs.stress;
 
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.RemoteFsClient;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Serialize;
-import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
@@ -79,11 +77,10 @@ class StressClient {
 					existingClientFiles.add(fileName);
 
 					Path file = clientStorage.resolve(fileName);
-					StreamFileReader producer =
-							StreamFileReader.readFileFully(executor, 16 * 1024, file);
 
-					StreamConsumerWithResult<ByteBuf, Void> consumer = client.uploadStream(fileName);
-					stream(producer, consumer)
+					StreamFileReader.readFileFully(executor, 16 * 1024, file)
+							.streamTo(
+									client.uploadStream(fileName))
 							.getConsumerResult()
 							.whenComplete(($, throwable) -> {
 								if (throwable == null) {
@@ -211,8 +208,8 @@ class StressClient {
 		StreamBinarySerializer<TestObject> serializer = StreamBinarySerializer.create(bufferSerializer)
 				.withDefaultBufferSize(StreamBinarySerializer.MAX_SIZE);
 
-		stream(producer, serializer.getInput());
-		stream(serializer.getOutput(), client.uploadStream("someName" + i));
+		producer.with(serializer).streamTo(
+				client.uploadStream("someName" + i));
 		eventloop.run();
 	}
 
@@ -223,8 +220,7 @@ class StressClient {
 				logger.error("can't download", throwable);
 			} else {
 				try {
-					StreamFileWriter writer = StreamFileWriter.create(executor, downloads.resolve(name));
-					stream(producer, writer);
+					producer.streamTo(StreamFileWriter.create(executor, downloads.resolve(name)));
 				} catch (IOException e) {
 					logger.error("can't download", e);
 				}

@@ -37,7 +37,6 @@ import java.util.function.Function;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
 import static io.datakernel.aggregation.measure.Measures.union;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.TestUtils.assertStatus;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonMap;
@@ -107,8 +106,9 @@ public class AggregationGroupReducerTest {
 				structure, asList("documents"),
 				aggregationClass, AggregationUtils.singlePartition(), keyFunction, aggregate, aggregationChunkSize, classLoader);
 
-		stream(producer, groupReducer);
-		CompletableFuture<List<AggregationChunk>> future = groupReducer.getResult().toCompletableFuture();
+		CompletableFuture<List<AggregationChunk>> future = producer.streamTo(groupReducer)
+				.getConsumerResult()
+				.toCompletableFuture();
 
 		eventloop.run();
 

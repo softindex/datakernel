@@ -46,7 +46,6 @@ import java.util.concurrent.CompletionStage;
 import static io.datakernel.async.AsyncCallable.sharedCall;
 import static io.datakernel.async.Stages.onResult;
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
-import static io.datakernel.stream.DataStreams.stream;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 
@@ -119,7 +118,7 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 		StreamConsumerWithResult<T, List<D>> consumer = logStreamConsumer.consume();
 		producer.getResult().whenComplete(stageProducer.recordStats());
 		consumer.getResult().whenComplete(stageConsumer.recordStats());
-		return stream(producer, consumer)
+		return producer.streamTo(consumer)
 				.getResult()
 				.whenComplete(stageProcessLog.recordStats())
 				.thenApply(result -> LogDiff.of(result.getProducerResult(), result.getConsumerResult()))
@@ -140,7 +139,7 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 
 			LogPosition logPositionFrom = logPosition;
 			StreamProducerWithResult<T, LogPosition> producer = logManager.producerStream(partition, logPosition.getLogFile(), logPosition.getPosition(), null);
-			stream(producer, streamUnion.newInput());
+			producer.streamTo(streamUnion.newInput());
 			result.addStage(producer.getResult(), (accumulator, logPositionTo) -> {
 				if (!logPositionTo.equals(logPositionFrom)) {
 					accumulator.put(logName, new LogPositionDiff(logPositionFrom, logPositionTo));

@@ -24,7 +24,6 @@ import io.datakernel.stream.StreamProducer;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
 
@@ -70,7 +69,7 @@ public final class TaskContext {
 			StreamConsumer<Object> consumer = (StreamConsumer<Object>) consumers.get(streamId);
 			checkNotNull(producer);
 			checkNotNull(consumer, "Consumer not found for %s , producer %s", streamId, producer);
-			stream(producer, consumer);
+			producer.streamTo(consumer);
 		}
 	}
 }

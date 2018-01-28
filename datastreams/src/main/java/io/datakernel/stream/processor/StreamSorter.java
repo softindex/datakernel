@@ -26,7 +26,6 @@ import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
 import static io.datakernel.stream.DataStreams.bind;
-import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
@@ -119,8 +118,9 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 
 		private CompletionStage<Integer> writeToTemporaryStorage(List<T> sortedList) {
 			return temporaryStreams.addStage(
-					storage.write().thenCompose(consumer ->
-							stream(StreamProducer.ofIterable(sortedList), consumer).getConsumerResult()),
+					storage.write().thenCompose(consumer -> StreamProducer.ofIterable(sortedList)
+							.streamTo(consumer)
+							.getConsumerResult()),
 					List::add);
 		}
 

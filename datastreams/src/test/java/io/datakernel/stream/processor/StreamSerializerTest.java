@@ -32,7 +32,6 @@ import java.util.List;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.serializer.asm.BufferSerializers.intSerializer;
-import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.StreamConsumers.oneByOne;
 import static io.datakernel.stream.StreamConsumers.randomlySuspending;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
@@ -53,14 +52,14 @@ public class StreamSerializerTest {
 	public void test1() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		StreamProducer<Integer> source = StreamProducer.of(10, 20, 30, 40);
+		StreamProducer<Integer> producer = StreamProducer.of(10, 20, 30, 40);
 		StreamBinarySerializer<Integer> serializerStream = StreamBinarySerializer.create(intSerializer())
 				.withDefaultBufferSize(14)
 				.withMaxMessageSize(14);
 		StreamConsumerToList<ByteBuf> consumer = StreamConsumerToList.create();
 
-		stream(source, serializerStream.getInput());
-		stream(serializerStream.getOutput(), consumer.with(randomlySuspending()));
+		producer.with(serializerStream).streamTo(
+				consumer.with(randomlySuspending()));
 
 		eventloop.run();
 		List<ByteBuf> result = consumer.getList();
@@ -85,19 +84,18 @@ public class StreamSerializerTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		List<Integer> list = new ArrayList<>();
-		StreamProducer<Integer> source = StreamProducer.of(1, 2, 3);
+		StreamProducer<Integer> producer = StreamProducer.of(1, 2, 3);
 		StreamBinarySerializer<Integer> serializerStream = StreamBinarySerializer.create(intSerializer())
 				.withDefaultBufferSize(1);
 		StreamBinaryDeserializer<Integer> deserializerStream = StreamBinaryDeserializer.create(intSerializer());
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
-		stream(source, serializerStream.getInput());
-		stream(serializerStream.getOutput(), deserializerStream.getInput());
-		stream(deserializerStream.getOutput(), consumer.with(oneByOne()));
+		producer.with(serializerStream).with(deserializerStream).streamTo(
+				consumer.with(oneByOne()));
 
 		eventloop.run();
 		assertEquals(asList(1, 2, 3), consumer.getList());
-		assertStatus(END_OF_STREAM, source);
+		assertStatus(END_OF_STREAM, producer);
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 
@@ -113,19 +111,18 @@ public class StreamSerializerTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		List<Integer> list = new ArrayList<>();
-		StreamProducer<Integer> source = StreamProducer.closingWithError(new ExpectedException("Test Exception"));
+		StreamProducer<Integer> producer = StreamProducer.closingWithError(new ExpectedException("Test Exception"));
 		StreamBinarySerializer<Integer> serializerStream = StreamBinarySerializer.create(intSerializer())
 				.withDefaultBufferSize(1);
 		StreamBinaryDeserializer<Integer> deserializerStream = StreamBinaryDeserializer.create(intSerializer());
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
-		stream(source, serializerStream.getInput());
-		stream(serializerStream.getOutput(), deserializerStream.getInput());
-		stream(deserializerStream.getOutput(), consumer.with(oneByOne()));
+		producer.with(serializerStream).with(deserializerStream).streamTo(
+				consumer.with(oneByOne()));
 
 		eventloop.run();
 		assertStatus(CLOSED_WITH_ERROR, consumer);
-//		assertStatus(CLOSED_WITH_ERROR, source);
+//		assertStatus(CLOSED_WITH_ERROR, producer);
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 

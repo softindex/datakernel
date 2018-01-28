@@ -17,14 +17,12 @@
 package io.datakernel.remotefs;
 
 import io.datakernel.async.Stages;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocket.EventHandler;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.RemoteFsCommands.*;
 import io.datakernel.remotefs.RemoteFsResponses.FsResponse;
-import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.net.Messaging;
 import io.datakernel.stream.net.Messaging.ReceiveMessageCallback;
 import io.datakernel.stream.net.MessagingSerializer;
@@ -64,7 +62,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 	@Override
 	protected final EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 		MessagingWithBinaryStreaming<FsCommand, FsResponse> messaging =
-			MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
+				MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
 		messaging.receive(new ReceiveMessageCallback<FsCommand>() {
 			@Override
 			public void onReceive(FsCommand msg) {
@@ -89,7 +87,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 
 	private void doRead(Messaging<FsCommand, FsResponse> messaging, FsCommand item) {
 		MessagingHandler handler = handlers.get(item.getClass());
-		if(handler == null) {
+		if (handler == null) {
 			messaging.close();
 			logger.error("missing handler for " + item);
 		} else {
@@ -118,10 +116,10 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 		public void onMessage(Messaging<Upload, FsResponse> messaging, Upload item) {
 			logger.trace("uploading {}", item.getFilePath());
 			fileManager.save(item.getFilePath()).whenComplete((fileWriter, throwable) -> {
-				if(throwable == null) {
+				if (throwable == null) {
 					stream(messaging.receiveBinaryStream(), fileWriter);
 					fileWriter.getFlushStage().whenComplete(($, throwable1) -> {
-						if(throwable1 == null) {
+						if (throwable1 == null) {
 							logger.trace("read all bytes for {}", item.getFilePath());
 							messaging.send(new RemoteFsResponses.Acknowledge());
 							messaging.sendEndOfStream();
@@ -143,7 +141,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 				BiConsumer<T, U> resultConsumer) {
 
 			return (t, u) -> {
-				if(u == null) {
+				if (u == null) {
 					resultConsumer.accept(t, null);
 				} else {
 					onException(messaging, u);
@@ -159,14 +157,15 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 		@Override
 		public void onMessage(Messaging<Download, FsResponse> messaging, Download item) {
 			fileManager.size(item.getFilePath()).whenComplete(errorHandlingConsumer(messaging, (size, throwable) -> {
-				if(size >= 0) {
+				if (size >= 0) {
 					messaging.send(new RemoteFsResponses.Ready(size)).whenComplete(errorHandlingConsumer(messaging, ($, throwable1) ->
-						fileManager.get(item.getFilePath(), item.getStartPosition()).whenComplete(errorHandlingConsumer(messaging, (fileReader, throwable2) -> {
-							StreamConsumerWithResult<ByteBuf, Void> consumer = messaging.sendBinaryStream();
-							stream(fileReader, consumer)
-									.getConsumerResult()
-									.whenComplete(($3, throwable3) -> messaging.close());
-						}))));
+							fileManager.get(item.getFilePath(), item.getStartPosition())
+									.whenComplete(errorHandlingConsumer(messaging,
+											(fileReader, throwable2) -> {
+												fileReader.streamTo(messaging.sendBinaryStream())
+														.getConsumerResult()
+														.whenComplete(($3, throwable3) -> messaging.close());
+											}))));
 				} else {
 					onException(messaging, new Throwable("File not found"));
 				}
@@ -198,8 +197,8 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 		@Override
 		public void onMessage(Messaging<Move, FsResponse> messaging, Move item) {
 			List<CompletionStage<Void>> tasks = item.getChanges().entrySet().stream()
-				.map(e -> fileManager.move(e.getKey(), e.getValue()))
-				.collect(Collectors.toList());
+					.map(e -> fileManager.move(e.getKey(), e.getValue()))
+					.collect(Collectors.toList());
 
 			Stages.run(tasks).whenComplete((aVoid, throwable) -> {
 				messaging.send(throwable == null ? new RemoteFsResponses.Ok() : new RemoteFsResponses.Err(throwable.getMessage()));

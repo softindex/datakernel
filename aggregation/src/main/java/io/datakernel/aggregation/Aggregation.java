@@ -246,9 +246,9 @@ public class Aggregation implements IAggregation, Initializer<Aggregation>, Even
 				createKeyFunction(inputClass, keyClass, getKeys(), classLoader),
 				aggregate, chunkSize, classLoader);
 
-		stream(producer, groupReducer);
-
-		return groupReducer.getResult().thenApply(chunks -> AggregationDiff.of(new HashSet<>(chunks)));
+		return producer.streamTo(groupReducer)
+				.getConsumerResult()
+				.thenApply(chunks -> AggregationDiff.of(new HashSet<>(chunks)));
 	}
 
 	public <T> CompletionStage<AggregationDiff> consume(StreamProducer<T> producer, Class<T> inputClass) {
@@ -327,7 +327,7 @@ public class Aggregation implements IAggregation, Initializer<Aggregation>, Even
 				structure, measures, resultClass,
 				createPartitionPredicate(resultClass, getPartitioningKey(), classLoader),
 				aggregationChunkStorage, classLoader, chunkSize);
-		return stream(consolidatedProducer, chunker).getConsumerResult();
+		return consolidatedProducer.streamTo(chunker).getConsumerResult();
 	}
 
 	private static void addChunkToPlan(Map<List<String>, TreeMap<PrimaryKey, List<QueryPlan.Sequence>>> planIndex,

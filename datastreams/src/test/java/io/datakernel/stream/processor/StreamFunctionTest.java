@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.function.Function;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.StreamConsumers.decorator;
 import static io.datakernel.stream.StreamConsumers.randomlySuspending;
 import static io.datakernel.stream.StreamProducer.concat;
@@ -44,15 +43,16 @@ public class StreamFunctionTest {
 	public void testFunction() {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		StreamProducer<Integer> source1 = StreamProducer.of(1, 2, 3);
+		StreamProducer<Integer> producer = StreamProducer.of(1, 2, 3);
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
-		stream(source1.with(StreamFunction.create(input -> input * input)), consumer.with(randomlySuspending()));
+		producer.with(StreamFunction.create(input -> input * input)).streamTo(
+				consumer.with(randomlySuspending()));
 		eventloop.run();
 
 		assertEquals(asList(1, 4, 9), consumer.getList());
 
-		assertStatus(END_OF_STREAM, source1);
+		assertStatus(END_OF_STREAM, producer);
 //		assertStatus(END_OF_STREAM, streamFunction.getInput());
 //		assertStatus(END_OF_STREAM, streamFunction.getOutput());
 		assertStatus(END_OF_STREAM, consumer);
@@ -68,8 +68,7 @@ public class StreamFunctionTest {
 		StreamProducer<Integer> source1 = StreamProducer.of(1, 2, 3);
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
-		stream(source1, streamFunction.getInput());
-		stream(streamFunction.getOutput(),
+		source1.with(streamFunction).streamTo(
 				consumer.with(decorator((context, dataReceiver) ->
 						item -> {
 							dataReceiver.onData(item);
@@ -93,15 +92,14 @@ public class StreamFunctionTest {
 
 		StreamFunction<Integer, Integer> streamFunction = StreamFunction.create(input -> input * input);
 
-		StreamProducer<Integer> source1 = concat(
+		StreamProducer<Integer> producer = concat(
 				StreamProducer.of(1, 2, 3),
 				StreamProducer.of(4, 5, 6),
 				StreamProducer.closingWithError(new ExpectedException("Test Exception")));
 
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
-		stream(source1, streamFunction.getInput());
-		stream(streamFunction.getOutput(), consumer);
+		producer.with(streamFunction).streamTo(consumer);
 		eventloop.run();
 
 		assertEquals(asList(1, 4, 9, 16, 25, 36), consumer.getList());

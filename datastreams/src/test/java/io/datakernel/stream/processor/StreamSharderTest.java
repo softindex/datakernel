@@ -52,6 +52,7 @@ public class StreamSharderTest {
 		StreamConsumerToList<Integer> consumer2 = StreamConsumerToList.create();
 
 		stream(source, streamSharder.getInput());
+
 		stream(streamSharder.newOutput(), consumer1.with(randomlySuspending()));
 		stream(streamSharder.newOutput(), consumer2.with(randomlySuspending()));
 
@@ -108,13 +109,14 @@ public class StreamSharderTest {
 
 		stream(source, streamSharder.getInput());
 		stream(streamSharder.newOutput(), consumer1);
-		stream(streamSharder.newOutput(), consumer2.with(decorator((context, dataReceiver) ->
-				item -> {
-					dataReceiver.onData(item);
-					if (item == 3) {
-						context.closeWithError(new ExpectedException("Test Exception"));
-					}
-				})));
+		stream(streamSharder.newOutput(),
+				consumer2.with(decorator((context, dataReceiver) ->
+						item -> {
+							dataReceiver.onData(item);
+							if (item == 3) {
+								context.closeWithError(new ExpectedException("Test Exception"));
+							}
+						})));
 
 		eventloop.run();
 

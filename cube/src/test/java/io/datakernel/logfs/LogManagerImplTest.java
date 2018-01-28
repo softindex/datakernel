@@ -21,8 +21,6 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.DataStreams.stream;
-import static io.datakernel.stream.StreamConsumerWithResult.ofStage;
 import static io.datakernel.stream.StreamProducer.ofIterable;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
@@ -46,12 +44,14 @@ public class LogManagerImplTest {
 
 		List<String> values = asList("test1", "test2", "test3");
 
-		stream(ofIterable(values), ofStage(logManager.consumer(testPartition)));
+		StreamProducer.ofIterable(values)
+				.streamTo(StreamConsumerWithResult.ofStage(logManager.consumer(testPartition)));
 
 		eventloop.run();
 
 		StreamConsumerWithResult<String, List<String>> listConsumer = StreamConsumerWithResult.toList();
-		stream(logManager.producerStream(testPartition, new LogFile("", 0), 0, null), listConsumer);
+		logManager.producerStream(testPartition, new LogFile("", 0), 0, null)
+				.streamTo(listConsumer);
 
 		CompletableFuture<List<String>> listFuture = listConsumer.getResult().toCompletableFuture();
 		eventloop.run();

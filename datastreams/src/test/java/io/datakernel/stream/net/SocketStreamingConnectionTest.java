@@ -44,6 +44,7 @@ import static org.junit.Assert.assertEquals;
 public final class SocketStreamingConnectionTest {
 	private static final int LISTEN_PORT = 1234;
 	private static final InetSocketAddress address;
+
 	static {
 		try {
 			address = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), LISTEN_PORT);
@@ -74,9 +75,9 @@ public final class SocketStreamingConnectionTest {
 				asyncTcpSocket -> {
 					SocketStreamingConnection connection = SocketStreamingConnection.create(asyncTcpSocket);
 
-					StreamBinaryDeserializer<Integer> streamDeserializer = StreamBinaryDeserializer.create(intSerializer());
-					stream(streamDeserializer.getOutput(), consumerToList);
-					stream(connection.getSocketReader(), streamDeserializer.getInput());
+					connection.getSocketReader()
+							.with(StreamBinaryDeserializer.create(intSerializer()))
+							.streamTo(consumerToList);
 
 					return connection;
 				})
@@ -85,13 +86,14 @@ public final class SocketStreamingConnectionTest {
 		server.listen();
 
 		future = eventloop.connect(address).thenAccept(socketChannel -> {
-			StreamBinarySerializer<Integer> streamSerializer = StreamBinarySerializer.create(intSerializer())
-					.withDefaultBufferSize(1);
-
 			AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
 			SocketStreamingConnection connection = SocketStreamingConnection.create(asyncTcpSocket);
-			stream(StreamProducer.ofIterable(list), streamSerializer.getInput());
-			stream(streamSerializer.getOutput(), connection.getSocketWriter());
+
+			StreamProducer.ofIterable(list)
+					.with(StreamBinarySerializer.create(intSerializer())
+							.withDefaultBufferSize(1))
+					.streamTo(connection.getSocketWriter());
+
 			asyncTcpSocket.setEventHandler(connection);
 			asyncTcpSocket.register();
 		}).toCompletableFuture();
@@ -118,7 +120,8 @@ public final class SocketStreamingConnectionTest {
 		SimpleServer server = SimpleServer.create(eventloop,
 				asyncTcpSocket -> {
 					SocketStreamingConnection connection = SocketStreamingConnection.create(asyncTcpSocket);
-					stream(connection.getSocketReader(), connection.getSocketWriter());
+					connection.getSocketReader()
+							.streamTo(connection.getSocketWriter());
 					return connection;
 				})
 				.withListenAddress(address)

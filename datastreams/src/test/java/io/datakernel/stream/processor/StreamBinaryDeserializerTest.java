@@ -35,7 +35,6 @@ import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.DataStreams.stream;
 import static java.lang.ClassLoader.getSystemClassLoader;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
@@ -57,18 +56,17 @@ public class StreamBinaryDeserializerTest {
 	}
 
 	@Test
-	public void deserializesSingleMessage() {
-		Data data = new Data("a");
-		StreamProducer<Data> producer = StreamProducer.of(data);
-		StreamConsumerToList<Data> consumer = StreamConsumerToList.create();
-
-		stream(producer, serializer.getInput());
-		stream(serializer.getOutput(), deserializer.getInput());
-		stream(deserializer.getOutput(), consumer);
+	public void deserializesSingleMessage() throws ExecutionException, InterruptedException {
+		CompletableFuture<List<Data>> future =
+				StreamProducer.of(new Data("a"))
+						.with(serializer)
+						.with(deserializer)
+						.toList()
+						.toCompletableFuture();
 
 		eventloop.run();
 
-		assertEquals(Collections.singletonList(data), consumer.getList());
+		assertEquals(Collections.singletonList(new Data("a")), future.get());
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
@@ -78,9 +76,7 @@ public class StreamBinaryDeserializerTest {
 		StreamProducer<Data> producer = StreamProducer.ofIterable(inputData);
 		StreamConsumerToList<Data> consumer = StreamConsumerToList.create();
 
-		stream(producer, serializer.getInput());
-		stream(serializer.getOutput(), deserializer.getInput());
-		stream(deserializer.getOutput(), consumer);
+		producer.with(serializer).with(deserializer).streamTo(consumer);
 
 		eventloop.run();
 
@@ -94,12 +90,11 @@ public class StreamBinaryDeserializerTest {
 		StreamProducer<Data> producer = StreamProducer.ofIterable(inputData);
 		StreamConsumerToList<Data> consumer = StreamConsumerToList.create();
 
-		StreamByteChunker bufSplitter = StreamByteChunker.create(4, 4);
-
-		stream(producer, serializer.getInput());
-		stream(serializer.getOutput(), bufSplitter.getInput());
-		stream(bufSplitter.getOutput(), deserializer.getInput());
-		stream(deserializer.getOutput(), consumer);
+		producer
+				.with(serializer)
+				.with(StreamByteChunker.create(4, 4))
+				.with(deserializer)
+				.streamTo(consumer);
 
 		eventloop.run();
 
@@ -108,31 +103,30 @@ public class StreamBinaryDeserializerTest {
 	}
 
 	@Test
-	public void deserializesMultipleMessages_SplittedIntoSingleByte_ByteBufs_withMaxHeaderSizeInMessage() {
+	public void deserializesMultipleMessages_SplittedIntoSingleByte_ByteBufs_withMaxHeaderSizeInMessage() throws ExecutionException, InterruptedException {
 		List<Data> inputData =
 				asList(new Data("1"), new Data("8282"), new Data("80982"), new Data("3634921"), new Data("7162"));
-		StreamProducer<Data> producer = StreamProducer.ofIterable(inputData);
-		StreamConsumerToList<Data> consumer = StreamConsumerToList.create();
-		StreamByteChunker bufSplitter = StreamByteChunker.create(1, 1);
 
-		stream(producer, serializer.getInput());
-		stream(serializer.getOutput(), bufSplitter.getInput());
-		stream(bufSplitter.getOutput(), deserializer.getInput());
-		stream(deserializer.getOutput(), consumer);
+		CompletableFuture<List<Data>> future =
+				StreamProducer.ofIterable(inputData)
+						.with(serializer)
+						.with(StreamByteChunker.create(1, 1))
+						.with(deserializer)
+						.toList()
+						.toCompletableFuture();
 
 		eventloop.run();
 
-		assertEquals(inputData, consumer.getList());
+		assertEquals(inputData, future.get());
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test(expected = ParseException.class)
 	public void deserializeTruncatedMessageOnEndOfStream() throws Throwable {
-		Data data = new Data("a");
 		StreamConsumerToList<ByteBuf> bufferConsumer = StreamConsumerToList.create();
 
-		stream(StreamProducer.of(data), serializer.getInput());
-		stream(serializer.getOutput(), bufferConsumer);
+		StreamProducer.of(new Data("a")).with(serializer).streamTo(bufferConsumer);
+
 		eventloop.run();
 
 		List<ByteBuf> buffers = bufferConsumer.getList();
@@ -140,10 +134,11 @@ public class StreamBinaryDeserializerTest {
 		assertEquals(1, buffers.size());
 
 		deserializer = StreamBinaryDeserializer.create(createSerializer());
-		StreamConsumerToList<Data> consumer = StreamConsumerToList.create();
-		CompletableFuture<List<Data>> future = consumer.getResult().toCompletableFuture();
-		stream(StreamProducer.of(buffers.get(0).slice(3)), deserializer.getInput());
-		stream(deserializer.getOutput(), consumer);
+		CompletableFuture<List<Data>> future =
+				StreamProducer.of(buffers.get(0).slice(3))
+						.with(deserializer)
+						.toList()
+						.toCompletableFuture();
 		eventloop.run();
 
 		buffers.forEach(ByteBuf::recycle);

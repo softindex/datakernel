@@ -127,13 +127,14 @@ public class StreamSorterTest {
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
 		stream(source, sorter.getInput());
-		stream(sorter.getOutput(), consumer.with(decorator((context, dataReceiver) ->
-				item -> {
-					dataReceiver.onData(item);
-					if (list.size() == 2) {
-						context.closeWithError(new ExpectedException());
-					}
-				})));
+		stream(sorter.getOutput(),
+				consumer.with(decorator((context, dataReceiver) ->
+						item -> {
+							dataReceiver.onData(item);
+							if (list.size() == 2) {
+								context.closeWithError(new ExpectedException());
+							}
+						})));
 
 		eventloop.run();
 

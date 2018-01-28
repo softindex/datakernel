@@ -41,7 +41,6 @@ import java.util.function.Predicate;
 import static io.datakernel.async.Stages.assertComplete;
 import static io.datakernel.datagraph.dataset.Datasets.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.stream.DataStreams.stream;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
@@ -323,7 +322,7 @@ public class DatagraphServerTest {
 		System.out.println("Graph: ");
 		System.out.println(graph);
 
-		stream(resultProducer, resultConsumer)
+		resultProducer.streamTo(resultConsumer)
 				.getConsumerResult()
 				.whenComplete(assertComplete($ -> {
 					server1.close();
