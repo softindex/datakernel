@@ -143,6 +143,7 @@ public class StreamSplitterTest {
 		StreamSplitter<Integer> splitter = StreamSplitter.create();
 
 		Future<Void> future = stream(StreamProducer.of(1, 2, 3, 4), splitter.getInput())
+				.getEndOfStream()
 				.toCompletableFuture();
 
 		eventloop.run();

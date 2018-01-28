@@ -164,6 +164,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 						fileManager.get(item.getFilePath(), item.getStartPosition()).whenComplete(errorHandlingConsumer(messaging, (fileReader, throwable2) -> {
 							StreamConsumerWithResult<ByteBuf, Void> consumer = messaging.sendBinaryStream();
 							stream(fileReader, consumer)
+									.getConsumerResult()
 									.whenComplete(($3, throwable3) -> messaging.close());
 						}))));
 				} else {

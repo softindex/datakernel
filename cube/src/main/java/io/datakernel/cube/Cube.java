@@ -829,6 +829,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializer<Cube>, 
 			StreamProducer<Object> queryResultProducer = (StreamProducer<Object>) queryRawStream(new ArrayList<>(resultDimensions), new ArrayList<>(resultStoredMeasures),
 					queryPredicate, resultClass, queryClassLoader, compatibleAggregations);
 			return stream(queryResultProducer, consumer)
+					.getConsumerResult()
 					.thenCompose(this::processResults);
 		}
 

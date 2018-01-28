@@ -120,6 +120,7 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 		producer.getResult().whenComplete(stageProducer.recordStats());
 		consumer.getResult().whenComplete(stageConsumer.recordStats());
 		return stream(producer, consumer)
+				.getResult()
 				.whenComplete(stageProcessLog.recordStats())
 				.thenApply(result -> LogDiff.of(result.getProducerResult(), result.getConsumerResult()))
 				.whenComplete(onResult(logDiff ->

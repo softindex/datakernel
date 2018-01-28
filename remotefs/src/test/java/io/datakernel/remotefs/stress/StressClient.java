@@ -84,6 +84,7 @@ class StressClient {
 
 					StreamConsumerWithResult<ByteBuf, Void> consumer = client.uploadStream(fileName);
 					stream(producer, consumer)
+							.getConsumerResult()
 							.whenComplete(($, throwable) -> {
 								if (throwable == null) {
 									logger.info("Uploaded: " + fileName);

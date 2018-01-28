@@ -119,8 +119,8 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 
 		private CompletionStage<Integer> writeToTemporaryStorage(List<T> sortedList) {
 			return temporaryStreams.addStage(
-					storage.write()
-							.thenCompose(consumer -> stream(StreamProducer.ofIterable(sortedList), consumer)),
+					storage.write().thenCompose(consumer ->
+							stream(StreamProducer.ofIterable(sortedList), consumer).getConsumerResult()),
 					List::add);
 		}
 

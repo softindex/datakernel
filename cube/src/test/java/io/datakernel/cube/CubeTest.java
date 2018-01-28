@@ -192,6 +192,7 @@ public class CubeTest {
 						and(eq("key1", 1), eq("key2", 3)),
 						DataItemResult.class, DefiningClassLoader.create(classLoader)),
 				StreamConsumerToList.create())
+				.getConsumerResult()
 				.whenComplete(assertComplete($ -> {
 					logger.info("Streaming query {} result from RemoteFS succeeded.");
 					stop(remoteFsServer2);
@@ -219,6 +220,7 @@ public class CubeTest {
 				new DataItem1(1, 3, 4, 18));
 		StreamConsumerWithResult<DataItem1, CubeDiff> consumer1 = cube.consume(DataItem1.class);
 		stream(producer1, consumer1)
+				.getConsumerResult()
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
@@ -229,6 +231,7 @@ public class CubeTest {
 				new DataItem2(1, 4, 58, 22));
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer2 = cube.consume(DataItem2.class);
 		stream(producer2, consumer2)
+				.getConsumerResult()
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
@@ -265,6 +268,7 @@ public class CubeTest {
 				new DataItem1(1, 6, 4, 18));
 		StreamConsumerWithResult<DataItem1, CubeDiff> consumer1 = cube.consume(DataItem1.class);
 		stream(producer1, consumer1)
+				.getConsumerResult()
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
@@ -275,6 +279,7 @@ public class CubeTest {
 				new DataItem2(1, 10, 58, 22));
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer2 = cube.consume(DataItem2.class);
 		stream(producer2, consumer2)
+				.getConsumerResult()
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
@@ -320,6 +325,7 @@ public class CubeTest {
 				new DataItem1(5, 99, 40, 36));
 		StreamConsumerWithResult<DataItem1, CubeDiff> consumer1 = cube.consume(DataItem1.class);
 		stream(producer1, consumer1)
+				.getConsumerResult()
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
@@ -334,6 +340,7 @@ public class CubeTest {
 				new DataItem2(5, 77, 88, 98));
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer2 = cube.consume(DataItem2.class);
 		stream(producer2, consumer2)
+				.getConsumerResult()
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
@@ -375,6 +382,7 @@ public class CubeTest {
 				new DataItem3(5, 99, 35, 27, 76, 40, 36));
 		StreamConsumerWithResult<DataItem3, CubeDiff> consumer3 = cube.consume(DataItem3.class);
 		stream(producer3, consumer3)
+				.getConsumerResult()
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
@@ -389,6 +397,7 @@ public class CubeTest {
 				new DataItem4(5, 77, 50, 20, 56, 88, 98));
 		StreamConsumerWithResult<DataItem4, CubeDiff> consumer4 = cube.consume(DataItem4.class);
 		stream(producer4, consumer4)
+				.getConsumerResult()
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
@@ -425,6 +434,7 @@ public class CubeTest {
 				new DataItem1(1, 4, 5, 35));
 		StreamConsumerWithResult<DataItem1, CubeDiff> consumer1 = cube.consume(DataItem1.class);
 		stream(producer1, consumer1)
+				.getConsumerResult()
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
@@ -434,6 +444,7 @@ public class CubeTest {
 				new DataItem2(1, 1, 80, 75));
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer2 = cube.consume(DataItem2.class);
 		stream(producer2, consumer2)
+				.getConsumerResult()
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
@@ -471,6 +482,7 @@ public class CubeTest {
 				new DataItem1(1, 3, 10, 20));
 		StreamConsumerWithResult<DataItem1, CubeDiff> consumer1 = cube.consume(DataItem1.class);
 		stream(producer1, consumer1)
+				.getConsumerResult()
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
@@ -479,6 +491,7 @@ public class CubeTest {
 				new DataItem2(1, 4, 10, 20));
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer2 = cube.consume(DataItem2.class);
 		stream(producer2, consumer2)
+				.getConsumerResult()
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
@@ -487,6 +500,7 @@ public class CubeTest {
 				new DataItem2(1, 4, 10, 20));
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer3 = cube.consume(DataItem2.class);
 		stream(producer3, consumer3)
+				.getConsumerResult()
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
@@ -495,6 +509,7 @@ public class CubeTest {
 				new DataItem2(1, 5, 100, 200));
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer4 = cube.consume(DataItem2.class);
 		stream(producer4, consumer4)
+				.getConsumerResult()
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
@@ -527,6 +542,7 @@ public class CubeTest {
 				new DataItem1(1, 3, 10, 20));
 		StreamConsumerWithResult<DataItem1, CubeDiff> consumer1 = cube.consume(DataItem1.class);
 		stream(producer1, consumer1)
+				.getConsumerResult()
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
@@ -535,6 +551,7 @@ public class CubeTest {
 				new DataItem2(1, 4, 10, 20));
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer2 = cube.consume(DataItem2.class);
 		stream(producer2, consumer2)
+				.getConsumerResult()
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
@@ -543,6 +560,7 @@ public class CubeTest {
 				new DataItem2(1, 4, 10, 20));
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer3 = cube.consume(DataItem2.class);
 		stream(producer3, consumer3)
+				.getConsumerResult()
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);
@@ -551,6 +569,7 @@ public class CubeTest {
 				new DataItem2(1, 5, 100, 200));
 		StreamConsumerWithResult<DataItem2, CubeDiff> consumer4 = cube.consume(DataItem2.class);
 		stream(producer4, consumer4)
+				.getConsumerResult()
 				.thenCompose(cubeDiff -> chunkStorage.finish(cubeDiff.addedChunks().collect(Collectors.toSet()))
 						.thenApply($ -> cubeDiff))
 				.thenAccept(cube::apply);

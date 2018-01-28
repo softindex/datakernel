@@ -139,6 +139,7 @@ public final class RemoteFsClient implements IRemoteFsClient {
 
 								SettableStage<Void> ack = SettableStage.create();
 								stream(producer, sizeForwarder.getInput())
+										.getProducerResult()
 										.thenAccept($ -> {
 											messaging.close();
 											if (stats.getTotalSize() == size - startPosition) {

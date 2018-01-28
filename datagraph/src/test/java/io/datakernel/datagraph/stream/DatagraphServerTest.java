@@ -324,6 +324,7 @@ public class DatagraphServerTest {
 		System.out.println(graph);
 
 		stream(resultProducer, resultConsumer)
+				.getConsumerResult()
 				.whenComplete(assertComplete($ -> {
 					server1.close();
 					server2.close();

@@ -17,6 +17,10 @@
 package io.datakernel.stream;
 
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
+import io.datakernel.stream.DataStreams.ProducerConsumerResult;
+import io.datakernel.stream.DataStreams.ProducerConsumerResult.Pair;
+import io.datakernel.stream.DataStreams.ProducerResult;
 import io.datakernel.stream.processor.StreamLateBinder;
 
 import java.util.concurrent.CompletionStage;
@@ -30,6 +34,85 @@ import static io.datakernel.util.Preconditions.checkArgument;
 
 public interface StreamProducerWithResult<T, X> extends StreamProducer<T> {
 	CompletionStage<X> getResult();
+
+	@SuppressWarnings("unchecked")
+	@Override
+	default ProducerResult<X> streamTo(StreamConsumer<T> consumer) {
+		StreamProducerWithResult<T, X> producer = this;
+		producer.setConsumer(consumer);
+		consumer.setProducer(producer);
+		CompletionStage<Void> producerEndOfStream = producer.getEndOfStream();
+		CompletionStage<Void> consumerEndOfStream = consumer.getEndOfStream();
+		CompletionStage<Void> endOfStream = Stages.run(producerEndOfStream, consumerEndOfStream);
+		CompletionStage<X> producerResult = producer.getResult();
+		return new DataStreams.ProducerResult<X>() {
+			@Override
+			public CompletionStage<X> getProducerResult() {
+				return producerResult;
+			}
+
+			@Override
+			public CompletionStage<Void> getProducerEndOfStream() {
+				return producerEndOfStream;
+			}
+
+			@Override
+			public CompletionStage<Void> getConsumerEndOfStream() {
+				return consumerEndOfStream;
+			}
+
+			@Override
+			public CompletionStage<Void> getEndOfStream() {
+				return endOfStream;
+			}
+		};
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	default <Y> ProducerConsumerResult<X, Y> streamTo(StreamConsumerWithResult<T, Y> consumer) {
+		StreamProducerWithResult<T, X> producer = this;
+		producer.setConsumer(consumer);
+		consumer.setProducer(producer);
+		CompletionStage<Void> producerEndOfStream = producer.getEndOfStream();
+		CompletionStage<Void> consumerEndOfStream = consumer.getEndOfStream();
+		CompletionStage<Void> endOfStream = Stages.run(producerEndOfStream, consumerEndOfStream);
+		CompletionStage<X> producerResult = producer.getResult();
+		CompletionStage<Y> consumerResult = consumer.getResult();
+		CompletionStage<Pair<X, Y>> result = Stages.pair(producerResult, consumerResult)
+				.thenApply(xyPair -> new ProducerConsumerResult.Pair<>(xyPair.getLeft(), xyPair.getRight()));
+		return new ProducerConsumerResult<X, Y>() {
+			@Override
+			public CompletionStage<Pair<X, Y>> getResult() {
+				return result;
+			}
+
+			@Override
+			public CompletionStage<X> getProducerResult() {
+				return producerResult;
+			}
+
+			@Override
+			public CompletionStage<Y> getConsumerResult() {
+				return consumerResult;
+			}
+
+			@Override
+			public CompletionStage<Void> getProducerEndOfStream() {
+				return producerEndOfStream;
+			}
+
+			@Override
+			public CompletionStage<Void> getConsumerEndOfStream() {
+				return consumerEndOfStream;
+			}
+
+			@Override
+			public CompletionStage<Void> getEndOfStream() {
+				return endOfStream;
+			}
+		};
+	}
 
 	@Override
 	default <R> StreamProducerWithResult<R, X> with(StreamProducerModifier<T, R> modifier) {

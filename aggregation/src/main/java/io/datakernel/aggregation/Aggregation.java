@@ -327,7 +327,7 @@ public class Aggregation implements IAggregation, Initializer<Aggregation>, Even
 				structure, measures, resultClass,
 				createPartitionPredicate(resultClass, getPartitioningKey(), classLoader),
 				aggregationChunkStorage, classLoader, chunkSize);
-		return stream(consolidatedProducer, chunker);
+		return stream(consolidatedProducer, chunker).getConsumerResult();
 	}
 
 	private static void addChunkToPlan(Map<List<String>, TreeMap<PrimaryKey, List<QueryPlan.Sequence>>> planIndex,

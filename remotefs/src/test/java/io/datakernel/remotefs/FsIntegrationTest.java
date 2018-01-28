@@ -269,6 +269,7 @@ public class FsIntegrationTest {
 		server.listen();
 		StreamProducerWithResult<ByteBuf, Void> producer = client.downloadStream(file, 0);
 		stream(producer, StreamConsumer.idle())
+				.getProducerResult()
 				.whenComplete(($, throwable) -> {
 					if (throwable != null) expected.add(throwable);
 					server.close();
@@ -296,9 +297,9 @@ public class FsIntegrationTest {
 
 		List<CompletionStage<Void>> tasks = new ArrayList<>();
 		for (int i = 0; i < files; i++) {
-			tasks.add(stream(
-					client.downloadStream(file, 0),
-					StreamFileWriter.create(executor, storage.resolve("file" + i))));
+			tasks.add(client.downloadStream(file, 0)
+					.streamTo(StreamFileWriter.create(executor, storage.resolve("file" + i)))
+					.getProducerResult());
 		}
 		Stages.run(tasks).whenComplete(assertComplete($ -> server.close()));
 
@@ -427,6 +428,7 @@ public class FsIntegrationTest {
 
 		StreamProducerWithResult<ByteBuf, Void> producer = client.downloadStream(file, startPosition);
 		stream(producer, StreamConsumerToList.create(expected))
+				.getProducerResult()
 				.whenComplete(($, throwable) -> server.close());
 
 		eventloop.run();
