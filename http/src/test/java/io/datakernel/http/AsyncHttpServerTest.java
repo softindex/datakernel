@@ -30,6 +30,7 @@ import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.Random;
+import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
@@ -50,20 +51,26 @@ public class AsyncHttpServerTest {
 	}
 
 	public static AsyncHttpServer blockingHttpServer(Eventloop primaryEventloop, int port) {
-		AsyncServlet servlet = request -> {
-			HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
-			return Stages.of(content);
+		AsyncServlet servlet = new AsyncServlet() {
+			@Override
+			public CompletionStage<HttpResponse> serve(HttpRequest request) {
+				HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
+				return Stages.of(content);
+			}
 		};
 
 		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", port));
 	}
 
 	public static AsyncHttpServer asyncHttpServer(Eventloop primaryEventloop, int port) {
-		AsyncServlet servlet = request -> {
-			SettableStage<HttpResponse> stage = SettableStage.create();
-			HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
-			stage.set(content);
-			return stage;
+		AsyncServlet servlet = new AsyncServlet() {
+			@Override
+			public CompletionStage<HttpResponse> serve(HttpRequest request) {
+				SettableStage<HttpResponse> stage = SettableStage.create();
+				HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
+				stage.set(content);
+				return stage;
+			}
 		};
 
 		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", port));
@@ -71,11 +78,14 @@ public class AsyncHttpServerTest {
 
 	public static AsyncHttpServer delayedHttpServer(Eventloop primaryEventloop, int port) {
 		Random random = new Random();
-		AsyncServlet servlet = (request) -> {
-			SettableStage<HttpResponse> stage = SettableStage.create();
-			HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
-			primaryEventloop.schedule(primaryEventloop.currentTimeMillis() + random.nextInt(3), () -> stage.set(content));
-			return stage;
+		AsyncServlet servlet = new AsyncServlet() {
+			@Override
+			public CompletionStage<HttpResponse> serve(HttpRequest request) {
+				SettableStage<HttpResponse> stage = SettableStage.create();
+				HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
+				primaryEventloop.schedule(primaryEventloop.currentTimeMillis() + random.nextInt(3), () -> stage.set(content));
+				return stage;
+			}
 		};
 
 		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", port));
@@ -348,11 +358,14 @@ public class AsyncHttpServerTest {
 						.withBody(ByteBuf.wrapForReading(encodeAscii("Test big HTTP message body")))
 						.toByteBuf();
 
-		AsyncServlet servlet = request -> {
-			SettableStage<HttpResponse> stage = SettableStage.create();
-			HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
-			stage.set(content);
-			return stage;
+		AsyncServlet servlet = new AsyncServlet() {
+			@Override
+			public CompletionStage<HttpResponse> serve(HttpRequest request) {
+				SettableStage<HttpResponse> stage = SettableStage.create();
+				HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
+				stage.set(content);
+				return stage;
+			}
 		};
 
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
@@ -381,7 +394,13 @@ public class AsyncHttpServerTest {
 	public void testExpectContinue() throws Exception {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
-		AsyncHttpServer server = AsyncHttpServer.create(eventloop, request -> Stages.of(HttpResponse.ok200().withBody(request.detachBody())))
+		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
+				new AsyncServlet() {
+					@Override
+					public CompletionStage<HttpResponse> serve(HttpRequest request) {
+						return Stages.of(HttpResponse.ok200().withBody(request.detachBody()));
+					}
+				})
 				.withListenAddress(new InetSocketAddress("localhost", port));
 
 		server.listen();

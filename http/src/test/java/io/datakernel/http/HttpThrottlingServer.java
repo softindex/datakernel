@@ -30,6 +30,7 @@ import javax.management.ObjectName;
 import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 import java.util.Random;
+import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.util.Preconditions.checkArgument;
@@ -89,7 +90,12 @@ public class HttpThrottlingServer {
 
 	private static AsyncHttpServer buildHttpServer(Eventloop eventloop, int loadBusinessLogic) {
 //		final ByteBufPool byteBufferPool = new ByteBufPool(16, 65536);
-		AsyncServlet servlet = request -> Stages.of(longBusinessLogic(TEST_RESPONSE, loadBusinessLogic));
+		AsyncServlet servlet = new AsyncServlet() {
+			@Override
+			public CompletionStage<HttpResponse> serve(HttpRequest request) {
+				return Stages.of(longBusinessLogic(TEST_RESPONSE, loadBusinessLogic));
+			}
+		};
 		return AsyncHttpServer.create(eventloop, servlet).withListenAddress(new InetSocketAddress("localhost", SERVER_PORT));
 	}
 

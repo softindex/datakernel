@@ -16,6 +16,7 @@
 
 package io.datakernel.dns;
 
+import io.datakernel.async.ResultCallback;
 import io.datakernel.async.SettableStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.dns.DnsMessage.ResponseErrorCode;
@@ -39,7 +40,7 @@ final class DnsClientConnection implements AsyncUdpSocket.EventHandler {
 	private static final AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException();
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-	private final Map<String, Set<SettableStage<DnsQueryResult>>> resultHandlers = new HashMap<>();
+	private final Map<String, Set<ResultCallback<DnsQueryResult>>> resultHandlers = new HashMap<>();
 	private final Eventloop eventloop;
 	private final AsyncUdpSocket socket;
 
@@ -57,50 +58,77 @@ final class DnsClientConnection implements AsyncUdpSocket.EventHandler {
 		return new DnsClientConnection(eventloop, udpSocket, inspector);
 	}
 
-	public CompletionStage<DnsQueryResult> resolve4(String domainName, InetSocketAddress dnsServerAddress, long timeout) {
-		return resolve(domainName, dnsServerAddress, timeout, false);
+	public void resolve4(String domainName, InetSocketAddress dnsServerAddress, long timeout, ResultCallback<DnsQueryResult> callback) {
+		resolve(domainName, dnsServerAddress, timeout, callback, false);
 	}
 
-	public CompletionStage<DnsQueryResult> resolve6(String domainName, InetSocketAddress dnsServerAddress, long timeout) {
-		return resolve(domainName, dnsServerAddress, timeout, true);
+	CompletionStage<DnsQueryResult> resolve4(String domainName, InetSocketAddress dnsServerAddress, long timeout) {
+		SettableStage<DnsQueryResult> result = SettableStage.create();
+		resolve(domainName, dnsServerAddress, timeout, result, false);
+		return result;
 	}
 
-	private CompletionStage<DnsQueryResult> resolve(String domainName, InetSocketAddress dnsServerAddress, long timeout, boolean ipv6) {
-		SettableStage<DnsQueryResult> innerStage = SettableStage.create();
+	public void resolve6(String domainName, InetSocketAddress dnsServerAddress, long timeout, ResultCallback<DnsQueryResult> callback) {
+		resolve(domainName, dnsServerAddress, timeout, callback, true);
+	}
 
-		ScheduledRunnable schedule = eventloop.schedule(eventloop.currentTimeMillis() + timeout, () -> {
-			Set<SettableStage<DnsQueryResult>> stages = resultHandlers.get(domainName);
-			stages.remove(innerStage);
-			if (stages.isEmpty()) resultHandlers.remove(domainName);
-			innerStage.setException(TIMEOUT_EXCEPTION);
-		});
+	CompletionStage<DnsQueryResult> resolve6(String domainName, InetSocketAddress dnsServerAddress, long timeout) {
+		SettableStage<DnsQueryResult> result = SettableStage.create();
+		resolve(domainName, dnsServerAddress, timeout, result, true);
+		return result;
+	}
 
-		SettableStage<DnsQueryResult> stage = SettableStage.create();
-		resultHandlers.computeIfAbsent(domainName, k -> new HashSet<>()).add(innerStage);
-		innerStage.whenComplete((dnsQueryResult, throwable) -> {
-			if (!schedule.isCancelled() && !schedule.isComplete()) {
-				schedule.cancel();
-				if (throwable instanceof AsyncTimeoutException) {
-					throwable = new DnsException(domainName, ResponseErrorCode.TIMED_OUT);
+	private void resolve(String domainName, InetSocketAddress dnsServerAddress, long timeout,
+	                     ResultCallback<DnsQueryResult> callback, boolean ipv6) {
+		ResultCallback<DnsQueryResult> callbackWithTimeout = new ResultCallback<DnsQueryResult>() {
+			private final ScheduledRunnable timeouter = eventloop.schedule(eventloop.currentTimeMillis() + timeout, new Runnable() {
+				@Override
+				public void run() {
+					Set<ResultCallback<DnsQueryResult>> callbacks = resultHandlers.get(domainName);
+					callbacks.remove(getThisCallback());
+					if (callbacks.isEmpty()) resultHandlers.remove(domainName);
+					setException(TIMEOUT_EXCEPTION);
 				}
-				if (inspector != null) {
-					if (throwable == null) {
-						inspector.onDnsQueryResult(domainName, dnsQueryResult);
-					} else {
-						inspector.onDnsQueryError(domainName, throwable);
-					}
-				}
-				stage.set(dnsQueryResult, throwable);
+			});
+
+			private ResultCallback<DnsQueryResult> getThisCallback() {
+				return this;
 			}
-		});
 
+			@Override
+			public void set(DnsQueryResult result) {
+				if (!timeouter.isCancelled() && !timeouter.isComplete()) {
+					timeouter.cancel();
+					if (inspector != null) inspector.onDnsQueryResult(domainName, result);
+					callback.set(result);
+				}
+			}
+
+			@Override
+			public void setException(Throwable e) {
+				if (!timeouter.isCancelled() && !timeouter.isComplete()) {
+					if (e instanceof AsyncTimeoutException) {
+						e = new DnsException(domainName, ResponseErrorCode.TIMED_OUT);
+					}
+					timeouter.cancel();
+					if (inspector != null) inspector.onDnsQueryError(domainName, e);
+					callback.setException(e);
+				}
+			}
+		};
+
+		Set<ResultCallback<DnsQueryResult>> callbacks = resultHandlers.get(domainName);
+		if (callbacks == null) {
+			callbacks = new HashSet<>();
+			resultHandlers.put(domainName, callbacks);
+		}
+		callbacks.add(callbackWithTimeout);
 		ByteBuf query = DnsMessage.newQuery(domainName, ipv6);
 		if (inspector != null) inspector.onDnsQuery(domainName, query);
 		UdpPacket queryPacket = UdpPacket.of(query, dnsServerAddress);
 		socket.send(queryPacket);
 
 		socket.receive();
-		return stage;
 	}
 
 	public void close() {
@@ -134,17 +162,17 @@ final class DnsClientConnection implements AsyncUdpSocket.EventHandler {
 
 			String domainName = dnsQueryResult.getDomainName();
 
-			Set<SettableStage<DnsQueryResult>> stages = resultHandlers.remove(domainName);
+			Set<ResultCallback<DnsQueryResult>> callbacks = resultHandlers.remove(domainName);
 
-			if (stages != null) {
+			if (callbacks != null) {
 				if (dnsQueryResult.isSuccessful()) {
-					for (SettableStage<DnsQueryResult> stage : stages) {
-						stage.set(dnsQueryResult);
+					for (ResultCallback<DnsQueryResult> callback : callbacks) {
+						callback.set(dnsQueryResult);
 					}
 				} else {
 					DnsException exception = dnsQueryResult.getException();
-					for (SettableStage<DnsQueryResult> stage : stages) {
-						stage.setException(exception);
+					for (ResultCallback<DnsQueryResult> callback : callbacks) {
+						callback.setException(exception);
 					}
 				}
 			}

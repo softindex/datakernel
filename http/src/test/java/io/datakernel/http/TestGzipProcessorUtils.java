@@ -36,6 +36,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Random;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
@@ -108,12 +109,15 @@ public class TestGzipProcessorUtils {
 	@Test
 	public void testGzippedCommunicationBetweenClientServer() throws IOException, ParseException, ExecutionException, InterruptedException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		AsyncServlet servlet = request -> {
-			String receivedData = ByteBufStrings.decodeAscii(request.getBody());
-			assertEquals("gzip", request.getHeader(HttpHeaders.CONTENT_ENCODING));
-			assertEquals("gzip", request.getHeader(HttpHeaders.ACCEPT_ENCODING));
-			assertEquals(text, receivedData);
-			return Stages.of(HttpResponse.ok200().withBodyGzipCompression().withBody(ByteBufStrings.wrapAscii(receivedData)));
+		AsyncServlet servlet = new AsyncServlet() {
+			@Override
+			public CompletionStage<HttpResponse> serve(HttpRequest request) {
+				String receivedData = ByteBufStrings.decodeAscii(request.getBody());
+				assertEquals("gzip", request.getHeader(HttpHeaders.CONTENT_ENCODING));
+				assertEquals("gzip", request.getHeader(HttpHeaders.ACCEPT_ENCODING));
+				assertEquals(text, receivedData);
+				return Stages.of(HttpResponse.ok200().withBodyGzipCompression().withBody(ByteBufStrings.wrapAscii(receivedData)));
+			}
 		};
 
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)

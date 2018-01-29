@@ -31,6 +31,7 @@ import java.nio.file.Paths;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.regex.Pattern;
 
@@ -51,9 +52,12 @@ public class ClientStressTest {
 	private Random random = new Random();
 	private Iterator<String> urls = getUrls().iterator();
 
-	private AsyncServlet servlet = request -> {
-		test();
-		return Stages.of(HttpResponse.ok200());
+	private AsyncServlet servlet = new AsyncServlet() {
+		@Override
+		public CompletionStage<HttpResponse> serve(HttpRequest request) {
+			test();
+			return Stages.of(HttpResponse.ok200());
+		}
 	};
 	private AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet).withListenAddress(new InetSocketAddress("localhost", 1234));
 
@@ -63,7 +67,8 @@ public class ClientStressTest {
 			.withDnsClient(AsyncDnsClient.create(eventloop).withDnsServerAddress(inetAddress("8.8.8.8")))
 			.withSslEnabled(context, executor);
 
-	private ClientStressTest() throws Exception {}
+	private ClientStressTest() throws Exception {
+	}
 
 	private void doTest() throws IOException {
 		server.listen();

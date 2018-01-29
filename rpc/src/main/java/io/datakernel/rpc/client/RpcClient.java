@@ -16,6 +16,7 @@
 
 package io.datakernel.rpc.client;
 
+import io.datakernel.async.ResultCallback;
 import io.datakernel.async.SettableStage;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
@@ -502,8 +503,8 @@ public final class RpcClient implements IRpcClient, EventloopService, Initialize
 	 * @param request request for server
 	 */
 	@Override
-	public <I, O> CompletionStage<O> sendRequest(I request, int timeout) {
-		return requestSender.sendRequest(request, timeout);
+	public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
+		requestSender.sendRequest(request, timeout, callback);
 	}
 
 	public IRpcClient adaptToAnotherEventloop(Eventloop anotherEventloop) {
@@ -513,22 +514,22 @@ public final class RpcClient implements IRpcClient, EventloopService, Initialize
 
 		return new IRpcClient() {
 			@Override
-			public <I, O> CompletionStage<O> sendRequest(I request, int timeout) {
-				return sendConcurrently(request, timeout);
+			public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> cb) {
+				RpcClient.this.eventloop.execute(() ->
+						RpcClient.this.requestSender.sendRequest(request, timeout,
+								new ResultCallback<O>() {
+									@Override
+									public void set(O result) {
+										anotherEventloop.execute(() -> cb.set(result));
+									}
+
+									@Override
+									public void setException(Throwable throwable) {
+										anotherEventloop.execute(() -> cb.setException(throwable));
+									}
+								}));
 			}
 
-			private <I, O> CompletionStage<O> sendConcurrently(I request, int timeout) {
-				SettableStage<O> stage = SettableStage.create();
-				RpcClient.this.eventloop.execute(() -> RpcClient.this.requestSender.<I, O>sendRequest(request, timeout).whenComplete((o, throwable) -> {
-					if (throwable != null) {
-						anotherEventloop.execute(() -> stage.setException(throwable));
-					} else {
-						anotherEventloop.execute(() -> stage.set(o));
-					}
-				}));
-
-				return stage;
-			}
 		};
 	}
 
@@ -543,10 +544,9 @@ public final class RpcClient implements IRpcClient, EventloopService, Initialize
 				= new RpcNoSenderException("No senders available");
 
 		@Override
-		public <I, O> CompletionStage<O> sendRequest(I request, int timeout) {
-			SettableStage<O> stage = SettableStage.create();
-			stage.setException(NO_SENDER_AVAILABLE_EXCEPTION);
-			return stage;
+		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> cb) {
+			eventloop.post(() ->
+					cb.setException(NO_SENDER_AVAILABLE_EXCEPTION));
 		}
 	}
 

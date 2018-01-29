@@ -273,6 +273,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			try {
 				selector.close();
 				selector = null;
+				cancelledKeys = 0;
 			} catch (IOException exception) {
 				logger.error("Could not close selector", exception);
 			}
@@ -394,7 +395,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		}
 		logger.info("Eventloop {} finished", this);
 		eventloopThread = null;
-		if (selector.keys().isEmpty()) {
+		if (selector.keys().stream().noneMatch(SelectionKey::isValid)) {
 			closeSelector();
 		} else {
 			logger.warn("Selector is still open, because event loop {} has {} keys", this, selector.keys());

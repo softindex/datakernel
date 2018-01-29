@@ -16,9 +16,8 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.rpc.client.sender.helper.BiConsumerStub;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionPoolStub;
-import io.datakernel.rpc.client.sender.helper.RpcMessageDataStub;
 import io.datakernel.rpc.client.sender.helper.RpcSenderStub;
 import org.junit.Test;
 
@@ -46,7 +45,6 @@ public class RpcStrategyFirstAvailableTest {
 		RpcSenderStub connection3 = new RpcSenderStub();
 		RpcStrategy firstAvailableStrategy = firstAvailable(servers(ADDRESS_1, ADDRESS_2, ADDRESS_3));
 		RpcSender sender;
-		BiConsumerStub consumer = new BiConsumerStub();
 		int callsToSender1 = 10;
 		int callsToSender2 = 25;
 		int callsToSender3 = 32;
@@ -56,19 +54,19 @@ public class RpcStrategyFirstAvailableTest {
 		pool.put(ADDRESS_3, connection3);
 		sender = firstAvailableStrategy.createSender(pool);
 		for (int i = 0; i < callsToSender1; i++) {
-			sender.<Object, RpcMessageDataStub>sendRequest(new Object(), 50).whenComplete(consumer);
+			sender.sendRequest(new Object(), 50, ResultCallback.assertNoCalls());
 		}
 		pool.remove(ADDRESS_1);
 		// we should recreate sender after changing in pool
 		sender = firstAvailableStrategy.createSender(pool);
 		for (int i = 0; i < callsToSender2; i++) {
-			sender.<Object, RpcMessageDataStub>sendRequest(new Object(), 50).whenComplete(consumer);
+			sender.sendRequest(new Object(), 50, ResultCallback.assertNoCalls());
 		}
 		pool.remove(ADDRESS_2);
 		// we should recreate sender after changing in pool
 		sender = firstAvailableStrategy.createSender(pool);
 		for (int i = 0; i < callsToSender3; i++) {
-			sender.<Object, RpcMessageDataStub>sendRequest(new Object(), 50).whenComplete(consumer);
+			sender.sendRequest(new Object(), 50, ResultCallback.assertNoCalls());
 		}
 
 		assertEquals(callsToSender1, connection1.getRequests());

@@ -16,7 +16,12 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SettableStage;
+
 import java.util.concurrent.CompletionStage;
+
+import static io.datakernel.async.ResultCallback.stageToCallback;
 
 /**
  * Servlet receives and responds to {@link HttpRequest} from clients across
@@ -24,5 +29,13 @@ import java.util.concurrent.CompletionStage;
  * it.
  */
 public interface AsyncServlet {
-	CompletionStage<HttpResponse> serve(HttpRequest request);
+	default CompletionStage<HttpResponse> serve(HttpRequest request) {
+		SettableStage<HttpResponse> result = SettableStage.create();
+		serve(request, result);
+		return result;
+	}
+
+	default void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
+		stageToCallback(serve(request), callback);
+	}
 }

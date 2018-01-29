@@ -26,6 +26,8 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.PrimaryServer;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
+import io.datakernel.http.HttpRequest;
+import io.datakernel.http.HttpResponse;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.jmx.JmxRegistrator;
 import io.datakernel.service.ServiceGraph;
@@ -43,6 +45,7 @@ import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.List;
+import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
@@ -101,9 +104,12 @@ public class HelloWorldGuiceTest {
 		@Provides
 		@Worker
 		AsyncServlet servlet(@WorkerId int workerId) {
-			return request -> {
-				byte[] body = ByteBufStrings.encodeAscii("Hello world: worker server #" + workerId);
-				return Stages.of(ok200().withBody(ByteBuf.wrapForReading(body)));
+			return new AsyncServlet() {
+				@Override
+				public CompletionStage<HttpResponse> serve(HttpRequest request) {
+					byte[] body = ByteBufStrings.encodeAscii("Hello world: worker server #" + workerId);
+					return Stages.of(ok200().withBody(ByteBuf.wrapForReading(body)));
+				}
 			};
 		}
 	}

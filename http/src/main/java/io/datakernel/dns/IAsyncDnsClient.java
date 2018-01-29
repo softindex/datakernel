@@ -16,6 +16,9 @@
 
 package io.datakernel.dns;
 
+import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SettableStage;
+
 import java.net.InetAddress;
 import java.util.concurrent.CompletionStage;
 
@@ -28,16 +31,28 @@ public interface IAsyncDnsClient {
 	/**
 	 * Resolves a IP for the IPv4 addresses and handles it with callback
 	 *
-	 * @param domainName	domain name for searching IP
+	 * @param domainName domain name for searching IP
 	 */
-	CompletionStage<InetAddress[]> resolve4(String domainName);
+	default CompletionStage<InetAddress[]> resolve4(String domainName) {
+		SettableStage<InetAddress[]> result = SettableStage.create();
+		resolve4(domainName, result);
+		return result;
+	}
+
+	void resolve4(String domainName, ResultCallback<InetAddress[]> callback);
 
 	/**
 	 * Resolves a IP for the IPv6 addresses and handles it with callback
 	 *
-	 * @param domainName	domain name for searching IP
+	 * @param domainName domain name for searching IP
 	 */
-	CompletionStage<InetAddress[]> resolve6(String domainName);
+	default CompletionStage<InetAddress[]> resolve6(String domainName) {
+		SettableStage<InetAddress[]> result = SettableStage.create();
+		resolve6(domainName, result);
+		return result;
+	}
+
+	void resolve6(String domainName, ResultCallback<InetAddress[]> callback);
 }
 
 

@@ -17,6 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.AsyncCancellable;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stages;
 import io.datakernel.dns.AsyncDnsClient;
@@ -334,71 +335,80 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	 * @param request request for server
 	 */
 	@Override
-	public CompletionStage<HttpResponse> send(HttpRequest request) {
+	public void send(HttpRequest request, ResultCallback<HttpResponse> callback) {
 		assert eventloop.inEventloopThread();
 		if (inspector != null) inspector.onRequest(request);
 		String host = request.getUrl().getHost();
 
-		return asyncDnsClient.resolve4(host).whenComplete((inetAddresses, throwable) -> {
-			if (throwable != null) {
-				if (inspector != null)
-					inspector.onResolveError(request, throwable);
-				request.recycleBufs();
+		asyncDnsClient.resolve4(host, new ResultCallback<InetAddress[]>() {
+			@Override
+			public void set(InetAddress[] inetAddresses) {
+				if (inspector != null) inspector.onResolve(request, inetAddresses);
+				doSend(request, inetAddresses, callback);
 			}
-		}).thenCompose(inetAddresses -> {
-			if (inspector != null) inspector.onResolve(request, inetAddresses);
-			return doSend(request, inetAddresses);
+
+			@Override
+			public void setException(Throwable e) {
+				if (inspector != null) inspector.onResolveError(request, e);
+				request.recycleBufs();
+				callback.setException(e);
+			}
 		});
 	}
 
-	private CompletionStage<HttpResponse> doSend(HttpRequest request, InetAddress[] inetAddresses) {
+	private void doSend(HttpRequest request, InetAddress[] inetAddresses,
+	                    ResultCallback<HttpResponse> callback) {
 		InetAddress inetAddress = inetAddresses[((inetAddressIdx++) & Integer.MAX_VALUE) % inetAddresses.length];
 		InetSocketAddress address = new InetSocketAddress(inetAddress, request.getUrl().getPort());
 
-		HttpClientConnection connection = takeKeepAliveConnection(address);
-		if (connection != null) return connection.send(request);
+		HttpClientConnection keepAliveConnection = takeKeepAliveConnection(address);
+		if (keepAliveConnection != null) {
+			keepAliveConnection.send(request, callback);
+			return;
+		}
 
-		return eventloop.connect(address, connectTimeoutMillis)
-				.whenComplete((response, throwable) -> {
-					if (throwable != null) {
-						if (inspector != null) inspector.onConnectError(request, address, throwable);
-						request.recycleBufs();
-					}
-				})
-				.thenCompose(socketChannel -> {
-					boolean https = request.isHttps();
-					AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings)
-							.withInspector(inspector == null ? null : inspector.socketInspector(request, address, https));
+		eventloop.connect(address, connectTimeoutMillis).whenComplete((socketChannel, throwable) -> {
+			if (throwable == null) {
+				boolean https = request.isHttps();
+				AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings)
+						.withInspector(inspector == null ? null : inspector.socketInspector(request, address, https));
 
-					if (https && sslContext == null) {
-						throw new IllegalArgumentException("Cannot send HTTPS Request without SSL enabled");
-					}
+				if (https && sslContext == null) {
+					throw new IllegalArgumentException("Cannot send HTTPS Request without SSL enabled");
+				}
 
-					AsyncTcpSocket asyncTcpSocket = https ?
-							wrapClientSocket(eventloop, asyncTcpSocketImpl,
-									request.getUrl().getHost(), request.getUrl().getPort(),
-									sslContext, sslExecutor) :
-							asyncTcpSocketImpl;
+				AsyncTcpSocket asyncTcpSocket = https ?
+						wrapClientSocket(eventloop, asyncTcpSocketImpl,
+								request.getUrl().getHost(), request.getUrl().getPort(),
+								sslContext, sslExecutor) :
+						asyncTcpSocketImpl;
 
-					HttpClientConnection connection1 = new HttpClientConnection(eventloop, address, asyncTcpSocket,
-							AsyncHttpClient.this, headerChars, maxHttpMessageSize);
+				HttpClientConnection connection = new HttpClientConnection(eventloop, address, asyncTcpSocket,
+						AsyncHttpClient.this, headerChars, maxHttpMessageSize);
 
-					asyncTcpSocket.setEventHandler(connection1);
-					asyncTcpSocketImpl.register();
+				asyncTcpSocket.setEventHandler(connection);
+				asyncTcpSocketImpl.register();
 
-					if (inspector != null) inspector.onConnect(request, connection1);
+				if (inspector != null) inspector.onConnect(request, connection);
 
-					connectionsCount++;
-					if (expiredConnectionsCheck == null)
-						scheduleExpiredConnectionsCheck();
+				connectionsCount++;
+				if (expiredConnectionsCheck == null)
+					scheduleExpiredConnectionsCheck();
 
-					// connection was unexpectedly closed by the peer
-					if (connection1.getCloseError() != null) {
-						return Stages.ofException(connection1.getCloseError());
-					}
+				// connection was unexpectedly closed by the peer
+				if (connection.getCloseError() != null) {
+					callback.setException(connection.getCloseError());
+					return;
+				}
 
-					return connection1.send(request);
-				});
+				connection.send(request, callback);
+			} else {
+				if (inspector != null) inspector.onConnectError(request, address, throwable);
+				request.recycleBufs();
+				callback.setException(throwable);
+				return;
+			}
+		});
 	}
 
 	@Override

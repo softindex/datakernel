@@ -53,7 +53,7 @@ public final class IdGeneratorSql implements IdGenerator<Long>, EventloopJmxMBea
 	}
 
 	private CompletionStage<Void> doReserveId() {
-		final int finalStride = stride;
+		int finalStride = stride;
 		return eventloop.callExecutor(executor, () -> getAndAdd(finalStride))
 				.thenAccept(next -> {
 					this.next = next;

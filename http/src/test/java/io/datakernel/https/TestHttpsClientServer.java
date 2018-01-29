@@ -21,10 +21,7 @@ import ch.qos.logback.classic.Logger;
 import io.datakernel.async.Stages;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.AsyncHttpClient;
-import io.datakernel.http.AsyncHttpServer;
-import io.datakernel.http.AsyncServlet;
-import io.datakernel.http.HttpRequest;
+import io.datakernel.http.*;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
 
@@ -36,6 +33,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.security.SecureRandom;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
@@ -61,7 +59,12 @@ public class TestHttpsClientServer {
 
 	private KeyManager[] keyManagers = createKeyManagers(new File("./src/test/resources/keystore.jks"), "testtest", "testtest");
 	private TrustManager[] trustManagers = createTrustManagers(new File("./src/test/resources/truststore.jks"), "testtest");
-	private AsyncServlet bobServlet = request -> Stages.of(ok200().withBody(wrapAscii("Hello, I am Bob!")));
+	private AsyncServlet bobServlet = new AsyncServlet() {
+		@Override
+		public CompletionStage<HttpResponse> serve(HttpRequest request) {
+			return Stages.of(ok200().withBody(wrapAscii("Hello, I am Bob!")));
+		}
+	};
 	private Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 	private ExecutorService executor = newCachedThreadPool();
 	private SSLContext context = createSslContext("TLSv1.2", keyManagers, trustManagers, new SecureRandom());

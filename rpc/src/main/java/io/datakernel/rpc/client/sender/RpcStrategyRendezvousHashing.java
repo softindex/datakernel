@@ -16,13 +16,13 @@
 
 package io.datakernel.rpc.client.sender;
 
+import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.hash.HashBucketFunction;
 import io.datakernel.rpc.hash.HashFunction;
 
 import java.net.InetSocketAddress;
 import java.util.*;
-import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.util.CollectionUtils.first;
 import static io.datakernel.util.Preconditions.checkArgument;
@@ -142,9 +142,9 @@ public final class RpcStrategyRendezvousHashing implements RpcStrategy {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		public <I, O> CompletionStage<O> sendRequest(I request, int timeout) {
+		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
 			RpcSender sender = chooseBucket(request);
-			return sender.sendRequest(request, timeout);
+			sender.sendRequest(request, timeout, callback);
 		}
 
 		@SuppressWarnings("unchecked")

@@ -16,7 +16,11 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.rpc.client.sender.helper.*;
+import io.datakernel.async.ResultCallback;
+import io.datakernel.rpc.client.sender.helper.RpcClientConnectionPoolStub;
+import io.datakernel.rpc.client.sender.helper.RpcMessageDataStubWithKey;
+import io.datakernel.rpc.client.sender.helper.RpcMessageDataStubWithKeyHashFunction;
+import io.datakernel.rpc.client.sender.helper.RpcSenderStub;
 import io.datakernel.rpc.hash.HashFunction;
 import org.junit.Test;
 
@@ -57,24 +61,23 @@ public class RpcStrategyRendezvousHashingTest {
 		RpcSender sender;
 		int callsPerLoop = 10000;
 		int timeout = 50;
-		BiConsumerStub consumer = new BiConsumerStub();
 
 		pool.put(ADDRESS_1, connection1);
 		pool.put(ADDRESS_2, connection2);
 		pool.put(ADDRESS_3, connection3);
 		sender = rendezvousHashing.createSender(pool);
 		for (int i = 0; i < callsPerLoop; i++) {
-			sender.<Object, RpcMessageDataStub>sendRequest(new RpcMessageDataStubWithKey(i), timeout).whenComplete(consumer);
+			sender.sendRequest(new RpcMessageDataStubWithKey(i), timeout, ResultCallback.assertNoCalls());
 		}
 		pool.remove(ADDRESS_1);
 		sender = rendezvousHashing.createSender(pool);
 		for (int i = 0; i < callsPerLoop; i++) {
-			sender.<Object, RpcMessageDataStub>sendRequest(new RpcMessageDataStubWithKey(i), timeout).whenComplete(consumer);
+			sender.sendRequest(new RpcMessageDataStubWithKey(i), timeout, ResultCallback.assertNoCalls());
 		}
 		pool.remove(ADDRESS_3);
 		sender = rendezvousHashing.createSender(pool);
 		for (int i = 0; i < callsPerLoop; i++) {
-			sender.<Object, RpcMessageDataStub>sendRequest(new RpcMessageDataStubWithKey(i), timeout).whenComplete(consumer);
+			sender.sendRequest(new RpcMessageDataStubWithKey(i), timeout, ResultCallback.assertNoCalls());
 		}
 
 		int expectedCallsOfConnection1 = callsPerLoop / 3;

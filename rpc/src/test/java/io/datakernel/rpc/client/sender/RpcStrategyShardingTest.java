@@ -16,10 +16,8 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.rpc.client.sender.helper.BiConsumerStub;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionPoolStub;
-import io.datakernel.rpc.client.sender.helper.RpcMessageDataStub;
 import io.datakernel.rpc.client.sender.helper.RpcSenderStub;
 import io.datakernel.rpc.hash.ShardingFunction;
 import org.junit.Test;
@@ -28,7 +26,7 @@ import java.net.InetSocketAddress;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.async.ResultCallback.assertNoCalls;
 import static io.datakernel.rpc.client.sender.RpcStrategies.servers;
 import static io.datakernel.rpc.client.sender.RpcStrategies.sharding;
 import static org.junit.Assert.assertEquals;
@@ -55,20 +53,19 @@ public class RpcStrategyShardingTest {
 				servers(ADDRESS_1, ADDRESS_2, ADDRESS_3));
 		RpcSender senderSharding;
 		int timeout = 50;
-		BiConsumerStub consumer = new BiConsumerStub();
 
 		pool.put(ADDRESS_1, connection1);
 		pool.put(ADDRESS_2, connection2);
 		pool.put(ADDRESS_3, connection3);
 		senderSharding = shardingStrategy.createSender(pool);
-		senderSharding.<Object, RpcMessageDataStub>sendRequest(0, timeout).whenComplete(consumer);
-		senderSharding.<Object, RpcMessageDataStub>sendRequest(0, timeout).whenComplete(consumer);
-		senderSharding.<Object, RpcMessageDataStub>sendRequest(1, timeout).whenComplete(consumer);
-		senderSharding.<Object, RpcMessageDataStub>sendRequest(0, timeout).whenComplete(consumer);
-		senderSharding.<Object, RpcMessageDataStub>sendRequest(2, timeout).whenComplete(consumer);
-		senderSharding.<Object, RpcMessageDataStub>sendRequest(0, timeout).whenComplete(consumer);
-		senderSharding.<Object, RpcMessageDataStub>sendRequest(0, timeout).whenComplete(consumer);
-		senderSharding.<Object, RpcMessageDataStub>sendRequest(2, timeout).whenComplete(consumer);
+		senderSharding.sendRequest(0, timeout, assertNoCalls());
+		senderSharding.sendRequest(0, timeout, assertNoCalls());
+		senderSharding.sendRequest(1, timeout, assertNoCalls());
+		senderSharding.sendRequest(0, timeout, assertNoCalls());
+		senderSharding.sendRequest(2, timeout, assertNoCalls());
+		senderSharding.sendRequest(0, timeout, assertNoCalls());
+		senderSharding.sendRequest(0, timeout, assertNoCalls());
+		senderSharding.sendRequest(2, timeout, assertNoCalls());
 
 		assertEquals(5, connection1.getRequests());
 		assertEquals(1, connection2.getRequests());
@@ -77,7 +74,6 @@ public class RpcStrategyShardingTest {
 
 	@Test(expected = Exception.class)
 	public void itShouldCallOnExceptionOfCallbackWhenChosenServerIsNotActive() throws ExecutionException, InterruptedException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
 		RpcSenderStub connection2 = new RpcSenderStub();
 		RpcSenderStub connection3 = new RpcSenderStub();
@@ -91,13 +87,16 @@ public class RpcStrategyShardingTest {
 		pool.put(ADDRESS_3, connection3);
 		RpcSender sender = shardingStrategy.createSender(pool);
 
-		CompletableFuture<Object> future1 = sender.sendRequest(0, 50).toCompletableFuture();
-		sender.sendRequest(1, 50);
-		sender.sendRequest(2, 50);
+		CompletableFuture<Object> future1 = new CompletableFuture<>();
+		CompletableFuture<Object> future2 = new CompletableFuture<>();
+		CompletableFuture<Object> future3 = new CompletableFuture<>();
+
+		sender.sendRequest(0, 50, ResultCallback.forFuture(future1));
+		sender.sendRequest(1, 50, ResultCallback.forFuture(future2));
+		sender.sendRequest(2, 50, ResultCallback.forFuture(future3));
 
 		assertEquals(1, connection2.getRequests());
 		assertEquals(1, connection3.getRequests());
-		eventloop.run();
 		future1.get();
 
 	}

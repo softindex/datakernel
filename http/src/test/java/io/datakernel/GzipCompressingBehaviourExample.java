@@ -21,6 +21,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
 
 import java.io.IOException;
+import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -31,10 +32,22 @@ public final class GzipCompressingBehaviourExample {
 		MiddlewareServlet dispatcher = MiddlewareServlet.create();
 
 		// always responds in gzip
-		dispatcher.with(HttpMethod.GET, "/gzip/", request -> Stages.of(HttpResponse.ok200().withBodyGzipCompression().withBody(encodeAscii("Hello!"))));
+		dispatcher.with(HttpMethod.GET, "/gzip/",
+				new AsyncServlet() {
+					@Override
+					public CompletionStage<HttpResponse> serve(HttpRequest request) {
+						return Stages.of(HttpResponse.ok200().withBodyGzipCompression().withBody(encodeAscii("Hello!")));
+					}
+				});
 
 		// never responds in gzip
-		dispatcher.with(HttpMethod.GET, "/nogzip/", reques -> Stages.of(HttpResponse.ok200().withBody(encodeAscii("Hello!"))));
+		dispatcher.with(HttpMethod.GET, "/nogzip/",
+				new AsyncServlet() {
+					@Override
+					public CompletionStage<HttpResponse> serve(HttpRequest request) {
+						return Stages.of(HttpResponse.ok200().withBody(encodeAscii("Hello!")));
+					}
+				});
 
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop, dispatcher).withListenPort(1234);
 

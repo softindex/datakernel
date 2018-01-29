@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
@@ -40,10 +41,13 @@ public class TestClientMultilineHeaders {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop);
 
-		AsyncServlet servlet = request -> {
-			HttpResponse response = HttpResponse.ok200();
-			response.addHeader(HttpHeaders.ALLOW, "GET,\r\n HEAD");
-			return Stages.of(response);
+		AsyncServlet servlet = new AsyncServlet() {
+			@Override
+			public CompletionStage<HttpResponse> serve(HttpRequest request) {
+				HttpResponse response = HttpResponse.ok200();
+				response.addHeader(HttpHeaders.ALLOW, "GET,\r\n HEAD");
+				return Stages.of(response);
+			}
 		};
 
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet).withListenAddress(new InetSocketAddress("localhost", PORT));

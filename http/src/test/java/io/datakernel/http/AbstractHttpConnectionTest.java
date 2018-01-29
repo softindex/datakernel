@@ -46,7 +46,12 @@ public class AbstractHttpConnectionTest {
 
 	@Test
 	public void testMultiLineHeader() throws Exception {
-		AsyncServlet servlet = request -> Stages.of(createMultiLineHeaderWithInitialBodySpacesResponse());
+		AsyncServlet servlet = new AsyncServlet() {
+			@Override
+			public CompletionStage<HttpResponse> serve(HttpRequest request) {
+				return Stages.of(createMultiLineHeaderWithInitialBodySpacesResponse());
+			}
+		};
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
 				.withListenAddress(new InetSocketAddress("localhost", PORT));
 		server.listen();

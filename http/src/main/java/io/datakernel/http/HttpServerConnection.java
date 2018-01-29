@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
@@ -246,18 +247,9 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		(pool = server.poolServing).addLastNode(this);
 		poolTimestamp = eventloop.currentTimeMillis();
 
-		servlet.serve(request).whenComplete((httpResponse, throwable) -> {
-			if (throwable != null) {
-				assert eventloop.inEventloopThread();
-				if (inspector != null) inspector.onServletException(request, throwable);
-				if (!isClosed()) {
-					pool.removeNode(HttpServerConnection.this);
-					(pool = server.poolWriting).addLastNode(HttpServerConnection.this);
-					poolTimestamp = eventloop.currentTimeMillis();
-					writeException(throwable);
-				}
-				recycleBufs();
-			} else {
+		servlet.serve(request, new ResultCallback<HttpResponse>() {
+			@Override
+			public void set(HttpResponse httpResponse) {
 				assert eventloop.inEventloopThread();
 				if (inspector != null) inspector.onHttpResponse(request, httpResponse);
 
@@ -273,6 +265,19 @@ final class HttpServerConnection extends AbstractHttpConnection {
 				} else {
 					//connection is closed, but bufs are not recycled, let 's recycle them now
 					httpResponse.recycleBufs();
+				}
+				recycleBufs();
+			}
+
+			@Override
+			public void setException(Throwable e) {
+				assert eventloop.inEventloopThread();
+				if (inspector != null) inspector.onServletException(request, e);
+				if (!isClosed()) {
+					pool.removeNode(HttpServerConnection.this);
+					(pool = server.poolWriting).addLastNode(HttpServerConnection.this);
+					poolTimestamp = eventloop.currentTimeMillis();
+					writeException(e);
 				}
 				recycleBufs();
 			}

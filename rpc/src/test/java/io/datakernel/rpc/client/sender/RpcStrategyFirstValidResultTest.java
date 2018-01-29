@@ -16,8 +16,7 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.Stages;
-import io.datakernel.eventloop.Eventloop;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionPoolStub;
 import io.datakernel.rpc.client.sender.helper.RpcSenderStub;
@@ -26,10 +25,8 @@ import org.junit.Test;
 import java.net.InetSocketAddress;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.firstValidResult;
 import static io.datakernel.rpc.client.sender.RpcStrategies.servers;
 import static org.junit.Assert.assertEquals;
@@ -62,13 +59,13 @@ public class RpcStrategyFirstValidResultTest {
 		pool.put(ADDRESS_3, connection3);
 		senderToAll = firstValidResult.createSender(pool);
 		for (int i = 0; i < callsAmountIterationOne; i++) {
-			senderToAll.sendRequest(new Object(), 50);
+			senderToAll.sendRequest(new Object(), 50, ResultCallback.ignore());
 		}
 		pool.remove(ADDRESS_1);
 		// we should recreate sender after changing in pool
 		senderToAll = firstValidResult.createSender(pool);
 		for (int i = 0; i < callsAmountIterationTwo; i++) {
-			senderToAll.sendRequest(new Object(), 50);
+			senderToAll.sendRequest(new Object(), 50, ResultCallback.ignore());
 		}
 
 		assertEquals(callsAmountIterationOne, connection1.getRequests());
@@ -78,24 +75,22 @@ public class RpcStrategyFirstValidResultTest {
 
 	@Test
 	public void itShouldCallOnResultWithNullIfAllSendersReturnedNullAndValidatorAndExceptionAreNotSpecified() throws ExecutionException, InterruptedException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		RpcStrategy strategy1 = new RequestSenderOnResultWithNullStrategy();
 		RpcStrategy strategy2 = new RequestSenderOnResultWithNullStrategy();
 		RpcStrategy strategy3 = new RequestSenderOnResultWithNullStrategy();
 		RpcStrategyFirstValidResult firstValidResult = firstValidResult(strategy1, strategy2, strategy3);
 		RpcSender sender = firstValidResult.createSender(new RpcClientConnectionPoolStub());
+		CompletableFuture<Object> future = new CompletableFuture<>();
 
-		CompletableFuture<Object> future = sender.sendRequest(new Object(), 50).toCompletableFuture();
+		sender.sendRequest(new Object(), 50, ResultCallback.forFuture(future));
 
 		// despite there are several sender, sendResult should be called only once after all senders returned null
 
-		eventloop.run();
 		assertEquals(null, future.get());
 	}
 
 	@Test(expected = Exception.class)
 	public void itShouldCallOnExceptionIfAllSendersReturnsNullAndValidatorIsDefaultButExceptionIsSpecified() throws ExecutionException, InterruptedException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		// default validator should check whether result is not null
 		RpcStrategy strategy1 = new RequestSenderOnResultWithNullStrategy();
 		RpcStrategy strategy2 = new RequestSenderOnResultWithNullStrategy();
@@ -104,16 +99,14 @@ public class RpcStrategyFirstValidResultTest {
 				.withNoValidResultException(new Exception());
 		RpcSender sender = firstValidResult.createSender(new RpcClientConnectionPoolStub());
 
-		CompletableFuture<Object> future = sender.sendRequest(new Object(), 50).toCompletableFuture();
+		CompletableFuture<Object> future = new CompletableFuture<>();
+		sender.sendRequest(new Object(), 50, ResultCallback.forFuture(future));
 
-		eventloop.run();
 		future.get();
 	}
 
 	@Test
 	public void itShouldUseCustomValidatorIfItIsSpecified() throws ExecutionException, InterruptedException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-
 		int invalidKey = 1;
 		int validKey = 2;
 		RpcStrategy strategy1 = new RequestSenderOnResultWithValueStrategy(invalidKey);
@@ -128,16 +121,15 @@ public class RpcStrategyFirstValidResultTest {
 				})
 				.withNoValidResultException(new Exception());
 		RpcSender sender = firstValidResult.createSender(new RpcClientConnectionPoolStub());
+		CompletableFuture<Object> future = new CompletableFuture<>();
 
-		CompletableFuture<Object> future = sender.sendRequest(new Object(), 50).toCompletableFuture();
+		sender.sendRequest(new Object(), 50, ResultCallback.forFuture(future));
 
-		eventloop.run();
 		assertEquals(validKey, future.get());
 	}
 
 	@Test(expected = Exception.class)
 	public void itShouldCallOnExceptionIfNoSenderReturnsValidResultButExceptionWasSpecified() throws ExecutionException, InterruptedException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		int invalidKey = 1;
 		int validKey = 2;
 		RpcStrategy strategy1 = new RequestSenderOnResultWithValueStrategy(invalidKey);
@@ -152,8 +144,8 @@ public class RpcStrategyFirstValidResultTest {
 				})
 				.withNoValidResultException(new Exception());
 		RpcSender sender = firstValidResult.createSender(new RpcClientConnectionPoolStub());
-		CompletableFuture<Object> future = sender.sendRequest(new Object(), 50).toCompletableFuture();
-		eventloop.run();
+		CompletableFuture<Object> future = new CompletableFuture<>();
+		sender.sendRequest(new Object(), 50, ResultCallback.forFuture(future));
 		future.get();
 	}
 
@@ -177,8 +169,8 @@ public class RpcStrategyFirstValidResultTest {
 
 	private static final class SenderOnResultWithNullCaller implements RpcSender {
 		@Override
-		public <I, O> CompletionStage<O> sendRequest(I request, int timeout) {
-			return Stages.of(null);
+		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
+			callback.set(null);
 		}
 	}
 
@@ -191,8 +183,8 @@ public class RpcStrategyFirstValidResultTest {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		public <I, O> CompletionStage<O> sendRequest(I request, int timeout) {
-			return Stages.of((O) data);
+		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
+			callback.set((O) data);
 		}
 	}
 

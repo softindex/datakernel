@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.rpc.client.sender.helper.BiConsumerStub;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionPoolStub;
 import io.datakernel.rpc.client.sender.helper.RpcMessageDataStub;
 import io.datakernel.rpc.client.sender.helper.RpcSenderStub;
@@ -66,10 +66,9 @@ public class RpcStrategySingleServerTest {
 		int calls = 100;
 		int timeout = 50;
 		RpcMessageDataStub data = new RpcMessageDataStub();
-		BiConsumerStub consumer = new BiConsumerStub();
 
 		for (int i = 0; i < calls; i++) {
-			sender.<Object, RpcMessageDataStub>sendRequest(data, timeout).whenComplete(consumer);
+			sender.sendRequest(data, timeout, ResultCallback.assertNoCalls());
 		}
 
 		assertEquals(calls, connection.getRequests());

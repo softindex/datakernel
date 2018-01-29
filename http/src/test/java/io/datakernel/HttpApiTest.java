@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.List;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
@@ -71,13 +72,16 @@ public class HttpApiTest {
 	@Before
 	public void setUp() {
 		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		AsyncServlet servlet = request -> {
-			try {
-				testRequest(request);
-				HttpResponse response = createResponse();
-				return Stages.of(response);
-			} catch (ParseException e) {
-				return Stages.ofException((Throwable) e);
+		AsyncServlet servlet = new AsyncServlet() {
+			@Override
+			public CompletionStage<HttpResponse> serve(HttpRequest request) {
+				try {
+					testRequest(request);
+					HttpResponse response = createResponse();
+					return Stages.of(response);
+				} catch (ParseException e) {
+					return Stages.ofException((Throwable) e);
+				}
 			}
 		};
 

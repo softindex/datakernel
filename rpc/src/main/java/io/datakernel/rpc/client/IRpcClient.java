@@ -16,6 +16,8 @@
 
 package io.datakernel.rpc.client;
 
+import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SettableStage;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.rpc.protocol.RpcOverloadException;
 
@@ -25,5 +27,11 @@ public interface IRpcClient {
 	AsyncTimeoutException RPC_TIMEOUT_EXCEPTION = new AsyncTimeoutException();
 	RpcOverloadException RPC_OVERLOAD_EXCEPTION = new RpcOverloadException();
 
-	<I, O> CompletionStage<O> sendRequest(I request, int timeout);
+	default <I, O> CompletionStage<O> sendRequest(I request, int timeout) {
+		SettableStage<O> result = SettableStage.create();
+		sendRequest(request, timeout, result);
+		return result;
+	}
+
+	<I, O> void sendRequest(I request, int timeout, ResultCallback<O> cb);
 }

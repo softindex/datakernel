@@ -70,7 +70,12 @@ public final class ReportingServiceServlet extends AsyncServletWithStats {
 				.with(GET, "/", reportingServiceServlet)
 				.with(GET, "/consolidation-debug", consolidationDebugServlet != null ?
 						consolidationDebugServlet :
-						request -> Stages.of(HttpResponse.ofCode(404)));
+						new AsyncServlet() {
+							@Override
+							public CompletionStage<HttpResponse> serve(HttpRequest request) {
+								return Stages.of(HttpResponse.ofCode(404));
+							}
+						});
 	}
 
 	private TypeAdapter<AggregationPredicate> getAggregationPredicateJson() {

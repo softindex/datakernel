@@ -30,6 +30,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
@@ -51,20 +52,28 @@ public class SimpleProxyServerTest {
 	}
 
 	public static AsyncHttpServer proxyHttpServer(Eventloop primaryEventloop, AsyncHttpClient httpClient) {
-		AsyncServlet servlet = request -> {
-			String path = ECHO_SERVER_PORT + request.getUrl().getPath();
-			return httpClient.send(HttpRequest.get("http://127.0.0.1:" + path)).thenApply(result -> {
-				int code = result.getCode();
-				byte[] body = encodeAscii("FORWARDED: " + decodeAscii(result.getBody()));
-				return HttpResponse.ofCode(code).withBody(body);
-			});
+		AsyncServlet servlet = new AsyncServlet() {
+			@Override
+			public CompletionStage<HttpResponse> serve(HttpRequest request) {
+				String path = ECHO_SERVER_PORT + request.getUrl().getPath();
+				return httpClient.send(HttpRequest.get("http://127.0.0.1:" + path)).thenApply(result -> {
+					int code = result.getCode();
+					byte[] body = encodeAscii("FORWARDED: " + decodeAscii(result.getBody()));
+					return HttpResponse.ofCode(code).withBody(body);
+				});
+			}
 		};
 
 		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", PROXY_SERVER_PORT));
 	}
 
 	public static AsyncHttpServer echoServer(Eventloop primaryEventloop) {
-		AsyncServlet servlet = request -> Stages.of(HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery())));
+		AsyncServlet servlet = new AsyncServlet() {
+			@Override
+			public CompletionStage<HttpResponse> serve(HttpRequest request) {
+				return Stages.of(HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery())));
+			}
+		};
 
 		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", ECHO_SERVER_PORT));
 	}

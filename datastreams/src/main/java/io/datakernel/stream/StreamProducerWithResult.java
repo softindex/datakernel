@@ -156,4 +156,16 @@ public interface StreamProducerWithResult<T, X> extends StreamProducer<T> {
 		return withResult(stage.thenApply(fn));
 	}
 
+	default <U> StreamProducerWithResult<T, U> thenCompose(Function<? super X, ? extends CompletionStage<U>> fn) {
+		SettableStage<U> resultStage = SettableStage.create();
+		this.getResult().whenComplete((x, throwable) -> {
+			if (throwable == null) {
+				fn.apply(x).whenComplete(resultStage::set);
+			} else {
+				resultStage.setException(throwable);
+			}
+		});
+		return withResult(resultStage);
+	}
+
 }

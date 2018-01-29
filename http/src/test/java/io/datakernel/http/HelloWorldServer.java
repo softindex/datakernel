@@ -20,6 +20,7 @@ import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
 
 import java.net.InetSocketAddress;
+import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -29,7 +30,12 @@ public final class HelloWorldServer {
 	public static final byte[] HELLO_WORLD = encodeAscii("Hello, World!");
 
 	public static AsyncHttpServer helloWorldServer(Eventloop primaryEventloop, int port) {
-		AsyncServlet servlet = request -> Stages.of(HttpResponse.ok200().withBody(HELLO_WORLD));
+		AsyncServlet servlet = new AsyncServlet() {
+			@Override
+			public CompletionStage<HttpResponse> serve(HttpRequest request) {
+				return Stages.of(HttpResponse.ok200().withBody(HELLO_WORLD));
+			}
+		};
 
 		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", port)).withAcceptOnce(false);
 	}

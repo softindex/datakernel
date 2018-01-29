@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.Stages;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 
 import java.net.InetSocketAddress;
@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
@@ -101,15 +100,15 @@ public final class RpcStrategyTypeDispatching implements RpcStrategy {
 		}
 
 		@Override
-		public <I, O> CompletionStage<O> sendRequest(I request, int timeout) {
+		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> cb) {
 			RpcSender sender = typeToSender.get(request.getClass());
 			if (sender == null) {
 				sender = defaultSender;
 			}
 			if (sender != null) {
-				return sender.sendRequest(request, timeout);
+				sender.sendRequest(request, timeout, cb);
 			} else {
-				return Stages.ofException(NO_SENDER_AVAILABLE_EXCEPTION);
+				cb.setException(NO_SENDER_AVAILABLE_EXCEPTION);
 			}
 		}
 	}

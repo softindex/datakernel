@@ -16,10 +16,9 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.dns.DnsCache.DnsCacheResultStage;
+import io.datakernel.dns.DnsCache.DnsCacheQueryResult;
 import io.datakernel.eventloop.AsyncUdpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.HttpUtils;
@@ -33,8 +32,6 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.channels.DatagramChannel;
 import java.util.Arrays;
-import java.util.concurrent.CompletionStage;
-import java.util.function.BiConsumer;
 
 import static io.datakernel.dns.DnsCache.DnsCacheQueryResult.*;
 import static io.datakernel.eventloop.Eventloop.createDatagramChannel;
@@ -260,39 +257,48 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 		return new IAsyncDnsClient() {
 
 			@Override
-			public CompletionStage<InetAddress[]> resolve4(String domainName) {
-				return resolve(domainName, false);
+			public void resolve4(String domainName, ResultCallback<InetAddress[]> callback) {
+				resolve(domainName, false, callback);
 			}
 
 			@Override
-			public CompletionStage<InetAddress[]> resolve6(String domainName) {
-				return resolve(domainName, true);
+			public void resolve6(String domainName, ResultCallback<InetAddress[]> callback) {
+				resolve(domainName, true, callback);
 			}
 
-			private CompletionStage<InetAddress[]> resolve(String domainName, boolean ipv6) {
+			private void resolve(String domainName, boolean ipv6, ResultCallback<InetAddress[]> callback) {
 				checkArgument(domainName != null && !domainName.isEmpty(), "Domain name cannot be null or empty");
 
 				if (HttpUtils.isInetAddress(domainName)) {
-					return Stages.of(new InetAddress[]{inetAddress(domainName)});
+					callback.set(new InetAddress[]{inetAddress(domainName)});
+					return;
 				}
 
-				DnsCacheResultStage<InetAddress[]> cacheQueryResult = cache.tryToResolve(domainName, ipv6);
+				DnsCacheQueryResult cacheQueryResult = cache.tryToResolve(domainName, ipv6, callback);
 
-				if (cacheQueryResult.getDnsCacheResult() == RESOLVED) return cacheQueryResult.getStage();
+				if (cacheQueryResult == RESOLVED)
+					return;
 
-				if (cacheQueryResult.getDnsCacheResult() == RESOLVED_NEEDS_REFRESHING) {
-					AsyncDnsClient.this.eventloop.execute(() -> AsyncDnsClient.this.resolve(domainName, ipv6));
-					return cacheQueryResult.getStage();
-				}
-
-				SettableStage<InetAddress[]> stage = SettableStage.create();
-				if (cacheQueryResult.getDnsCacheResult() == NOT_RESOLVED) {
+				if (cacheQueryResult == RESOLVED_NEEDS_REFRESHING) {
 					AsyncDnsClient.this.eventloop.execute(() ->
-							AsyncDnsClient.this.resolve(domainName, ipv6).whenComplete((inetAddresses, throwable) ->
-									eventloop.execute(() -> stage.set(inetAddresses, throwable))));
+							AsyncDnsClient.this.resolve(domainName, ipv6, ResultCallback.ignore()));
+					return;
 				}
 
-				return stage;
+				assert cacheQueryResult == NOT_RESOLVED;
+				AsyncDnsClient.this.eventloop.execute(() ->
+						AsyncDnsClient.this.resolve(domainName, ipv6, new ResultCallback<InetAddress[]>() {
+							@Override
+							public void set(InetAddress[] result) {
+								eventloop.execute(() -> callback.set(result));
+							}
+
+							@Override
+							public void setException(Throwable t) {
+								eventloop.execute(() -> callback.setException(t));
+							}
+						}));
+
 			}
 		};
 	}
@@ -301,60 +307,70 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 	 * Resolves the IP for the IPv4 addresses and handles it with callback
 	 *
 	 * @param domainName domain name for searching IP
+	 * @param callback   result callback
 	 */
 	@Override
-	public CompletionStage<InetAddress[]> resolve4(String domainName) {
-		return resolve(domainName, false);
+	public void resolve4(String domainName, ResultCallback<InetAddress[]> callback) {
+		resolve(domainName, false, callback);
 	}
 
 	/**
 	 * Resolves the IP for the IPv6 addresses and handles it with callback
 	 *
 	 * @param domainName domain name for searching IP
+	 * @param callback   result callback
 	 */
 	@Override
-	public CompletionStage<InetAddress[]> resolve6(String domainName) {
-		return resolve(domainName, true);
+	public void resolve6(String domainName, ResultCallback<InetAddress[]> callback) {
+		resolve(domainName, true, callback);
 	}
 
-	private void closeConnectionIfDone() {
-		if (connection != null && connection.allRequestsCompleted()) {
-			connection.close();
-			connection = null;
-		}
-	}
-
-	private CompletionStage<InetAddress[]> resolve(String domainName, boolean ipv6) {
+	private void resolve(String domainName, boolean ipv6, ResultCallback<InetAddress[]> callback) {
 		checkArgument(domainName != null && !domainName.isEmpty(), "Domain name cannot be null or empty");
 
 		if (HttpUtils.isInetAddress(domainName)) {
-			return Stages.of(new InetAddress[]{HttpUtils.inetAddress(domainName)});
+			callback.set(new InetAddress[]{HttpUtils.inetAddress(domainName)});
+			return;
 		}
 
-		DnsCacheResultStage<InetAddress[]> cacheQueryResult = cache.tryToResolve(domainName, ipv6);
+		DnsCacheQueryResult cacheQueryResult = cache.tryToResolve(domainName, ipv6, callback);
 
-		if (cacheQueryResult.getDnsCacheResult() == RESOLVED) {
+		if (cacheQueryResult == RESOLVED) {
 			cache.performCleanup();
-			return cacheQueryResult.getStage();
+			return;
 		}
 
-		boolean resolvedFromCache = cacheQueryResult.getDnsCacheResult() == RESOLVED_NEEDS_REFRESHING;
+		boolean resolvedFromCache = cacheQueryResult == RESOLVED_NEEDS_REFRESHING;
 
 		logger.trace("Resolving {} with DNS server.", domainName);
 
-		SettableStage<InetAddress[]> stage = SettableStage.create();
-		BiConsumer<DnsQueryResult, Throwable> queryConsumer = (dnsQueryResult, throwable) -> {
-			if (throwable == null) {
-				if (!resolvedFromCache) stage.set(dnsQueryResult.getIps());
-				cache.add(dnsQueryResult);
+		ResultCallback<DnsQueryResult> queryCachingCallback = new ResultCallback<DnsQueryResult>() {
+			@Override
+			public void set(DnsQueryResult result) {
+				if (callback != null && !resolvedFromCache) {
+					callback.set(result.getIps());
+				}
+				cache.add(result);
 				closeConnectionIfDone();
-			} else {
-				if (throwable instanceof DnsException) {
-					DnsException dnsException = (DnsException) throwable;
+			}
+
+			@Override
+			public void setException(Throwable exception) {
+				if (exception instanceof DnsException) {
+					DnsException dnsException = (DnsException) exception;
 					cache.add(dnsException);
 				}
-				if (!resolvedFromCache) stage.setException(throwable);
+				if (callback != null && !resolvedFromCache) {
+					callback.setException(exception);
+				}
 				closeConnectionIfDone();
+			}
+
+			private void closeConnectionIfDone() {
+				if (connection != null && connection.allRequestsCompleted()) {
+					connection.close();
+					connection = null;
+				}
 			}
 		};
 
@@ -364,20 +380,19 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 					registerConnection();
 				} catch (IOException e) {
 					if (logger.isErrorEnabled()) logger.error("DnsClientConnection registration failed.", e);
-					queryConsumer.accept(null, e);
+					queryCachingCallback.setException(e);
 					return;
 				}
 			}
 
 			if (ipv6) {
-				connection.resolve6(domainName, dnsServerAddress, timeout).whenComplete(queryConsumer);
+				connection.resolve6(domainName, dnsServerAddress, timeout, queryCachingCallback);
 			} else {
-				connection.resolve4(domainName, dnsServerAddress, timeout).whenComplete(queryConsumer);
+				connection.resolve4(domainName, dnsServerAddress, timeout, queryCachingCallback);
 			}
 		});
 
 		cache.performCleanup();
-		return stage;
 	}
 
 	private void registerConnection() throws IOException {

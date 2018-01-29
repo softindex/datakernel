@@ -203,7 +203,7 @@ public final class StreamReducers {
 			 */
 			@Override
 			public final A onFirstItem(StreamDataReceiver<O> stream, K key, I firstValue) {
-				final A accumulator = reducerToResult.createAccumulator(key);
+				A accumulator = reducerToResult.createAccumulator(key);
 				return reducerToResult.accumulate(accumulator, firstValue);
 			}
 
@@ -274,7 +274,7 @@ public final class StreamReducers {
 			 */
 			@Override
 			public A onFirstItem(StreamDataReceiver<A> stream, K key, I firstValue) {
-				final A accumulator = reducerToResult.createAccumulator(key);
+				A accumulator = reducerToResult.createAccumulator(key);
 				return reducerToResult.accumulate(accumulator, firstValue);
 			}
 

@@ -24,6 +24,7 @@ import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
+import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
@@ -31,6 +32,7 @@ import io.datakernel.service.ServiceGraphModule;
 
 import javax.inject.Singleton;
 import java.net.InetSocketAddress;
+import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 
@@ -56,7 +58,12 @@ public class HttpHelloWorldLauncher extends Launcher {
 		@Provides
 		@Singleton
 		AsyncServlet rootServlet() {
-			return request -> Stages.of(HttpResponse.ok200().withBody(encodeAscii("Hello, World!")));
+			return new AsyncServlet() {
+				@Override
+				public CompletionStage<HttpResponse> serve(HttpRequest request) {
+					return Stages.of(HttpResponse.ok200().withBody(encodeAscii("Hello, World!")));
+				}
+			};
 		}
 	}
 

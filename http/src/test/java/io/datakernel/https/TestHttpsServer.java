@@ -22,6 +22,7 @@ import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
+import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import org.slf4j.LoggerFactory;
 
@@ -30,6 +31,7 @@ import javax.net.ssl.TrustManager;
 import java.io.File;
 import java.net.InetSocketAddress;
 import java.security.SecureRandom;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
@@ -50,7 +52,12 @@ public class TestHttpsServer {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = newCachedThreadPool();
 
-		AsyncServlet bobServlet = request -> Stages.of(HttpResponse.ok200().withBody(wrapAscii("Hello, I am Bob!")));
+		AsyncServlet bobServlet = new AsyncServlet() {
+			@Override
+			public CompletionStage<HttpResponse> serve(HttpRequest request) {
+				return Stages.of(HttpResponse.ok200().withBody(wrapAscii("Hello, I am Bob!")));
+			}
+		};
 
 		KeyManager[] keyManagers = createKeyManagers(new File("./src/test/resources/keystore.jks"), "testtest", "testtest");
 		TrustManager[] trustManagers = createTrustManagers(new File("./src/test/resources/truststore.jks"), "testtest");

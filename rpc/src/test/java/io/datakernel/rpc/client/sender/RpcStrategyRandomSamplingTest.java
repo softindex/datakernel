@@ -56,7 +56,7 @@ public class RpcStrategyRandomSamplingTest {
 		RpcSender sender = randomSamplingStrategy.createSender(POOL);
 		int totalRequests = 10000;
 		for (int i = 0; i < totalRequests; i++) {
-			sender.sendRequest(new Object(), 0);
+			sender.sendRequest(new Object(), 0, null);
 		}
 
 		// check
@@ -102,7 +102,7 @@ public class RpcStrategyRandomSamplingTest {
 		RpcSender sender = randomSamplingStrategy.createSender(POOL);
 		int totalRequests = 10000;
 		for (int i = 0; i < totalRequests; i++) {
-			sender.sendRequest(null, 0);
+			sender.sendRequest(null, 0, null);
 		}
 
 		// check

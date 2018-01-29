@@ -76,6 +76,18 @@ public interface StreamConsumerWithResult<T, X> extends StreamConsumer<T> {
 		return withResult(stage.thenApply(fn));
 	}
 
+	default <U> StreamConsumerWithResult<T, U> thenCompose(Function<? super X, ? extends CompletionStage<U>> fn) {
+		SettableStage<U> resultStage = SettableStage.create();
+		this.getResult().whenComplete((x, throwable) -> {
+			if (throwable == null) {
+				fn.apply(x).whenComplete(resultStage::set);
+			} else {
+				resultStage.setException(throwable);
+			}
+		});
+		return withResult(resultStage);
+	}
+
 	/**
 	 * Returns {@link StreamConsumerToList} which saves received items in empty list
 	 *

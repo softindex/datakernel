@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.SettableStage;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
@@ -48,10 +48,14 @@ public class HttpTolerantApplicationTest {
 	}
 
 	public static AsyncHttpServer asyncHttpServer(Eventloop primaryEventloop, int port) {
-		AsyncServlet servlet = request -> {
-			SettableStage<HttpResponse> stage = SettableStage.create();
-			primaryEventloop.post(() -> stage.set(HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()))));
-			return stage;
+		AsyncServlet servlet = new AsyncServlet() {
+			@Override
+			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
+				primaryEventloop.post(() -> {
+					HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
+					callback.set(content);
+				});
+			}
 		};
 
 		return AsyncHttpServer.create(primaryEventloop, servlet).withListenAddress(new InetSocketAddress("localhost", port));
@@ -70,7 +74,7 @@ public class HttpTolerantApplicationTest {
 
 	@Test
 	public void testTolerantServer() throws Exception {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 		AsyncHttpServer server = asyncHttpServer(eventloop, port);
@@ -135,18 +139,28 @@ public class HttpTolerantApplicationTest {
 	@Test
 	public void testTolerantClient() throws Exception {
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
+		CompletableFuture<String> future = new CompletableFuture<>();
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 		try (ServerSocket ignored = socketServer(port, "HTTP/1.1 200 OK\nContent-Type:  \t  text/html; charset=UTF-8\nContent-Length:  4\n\n/abc")) {
 			AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop);
 
-			CompletableFuture<String> future = httpClient.send(HttpRequest.get("http://127.0.0.1:" + port)).thenApply(response -> {
-				httpClient.stop();
-				return response.getHeader(HttpHeaders.CONTENT_TYPE);
-			}).toCompletableFuture();
+			httpClient.send(HttpRequest.get("http://127.0.0.1:" + port), new ResultCallback<HttpResponse>() {
+				@Override
+				public void set(HttpResponse response) {
+					future.complete(response.getHeader(HttpHeaders.CONTENT_TYPE));
+					httpClient.stop();
+				}
+
+				@Override
+				public void setException(Throwable exception) {
+					future.completeExceptionally(exception);
+					httpClient.stop();
+				}
+			});
 
 			eventloop.run();
-			assertEquals("text/html; charset=UTF-8", future.get());
 		}
+		assertEquals("text/html; charset=UTF-8", future.get());
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}

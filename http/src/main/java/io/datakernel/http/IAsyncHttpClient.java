@@ -16,8 +16,17 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SettableStage;
+
 import java.util.concurrent.CompletionStage;
 
 public interface IAsyncHttpClient {
-	CompletionStage<HttpResponse> send(HttpRequest request);
+	default CompletionStage<HttpResponse> send(HttpRequest request) {
+		SettableStage<HttpResponse> result = SettableStage.create();
+		send(request, result);
+		return result;
+	}
+
+	void send(HttpRequest request, ResultCallback<HttpResponse> callback);
 }

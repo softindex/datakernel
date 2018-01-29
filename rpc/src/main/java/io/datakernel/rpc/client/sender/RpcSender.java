@@ -16,10 +16,8 @@
 
 package io.datakernel.rpc.client.sender;
 
-import java.util.concurrent.CompletionStage;
+import io.datakernel.async.ResultCallback;
 
 public interface RpcSender {
-
-	<I, O> CompletionStage<O> sendRequest(I request, int timeout);
-
+	<I, O> void sendRequest(I request, int timeout, ResultCallback<O> cb);
 }

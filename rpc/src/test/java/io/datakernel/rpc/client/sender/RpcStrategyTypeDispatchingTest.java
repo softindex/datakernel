@@ -16,8 +16,7 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.rpc.client.sender.helper.BiConsumerStub;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionPoolStub;
 import io.datakernel.rpc.client.sender.helper.RpcMessageDataStub;
 import io.datakernel.rpc.client.sender.helper.RpcSenderStub;
@@ -27,7 +26,6 @@ import java.net.InetSocketAddress;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -66,13 +64,13 @@ public class RpcStrategyTypeDispatchingTest {
 
 		RpcSender sender = typeDispatchingStrategy.createSender(pool);
 		for (int i = 0; i < dataTypeOneRequests; i++) {
-			sender.sendRequest(new RpcMessageDataTypeOne(), 50);
+			sender.sendRequest(new RpcMessageDataTypeOne(), 50, ResultCallback.ignore());
 		}
 		for (int i = 0; i < dataTypeTwoRequests; i++) {
-			sender.sendRequest(new RpcMessageDataTypeTwo(), 50);
+			sender.sendRequest(new RpcMessageDataTypeTwo(), 50, ResultCallback.ignore());
 		}
 		for (int i = 0; i < dataTypeThreeRequests; i++) {
-			sender.sendRequest(new RpcMessageDataTypeThree(), 50);
+			sender.sendRequest(new RpcMessageDataTypeThree(), 50, ResultCallback.ignore());
 		}
 
 		assertEquals(dataTypeOneRequests, connection1.getRequests());
@@ -100,10 +98,9 @@ public class RpcStrategyTypeDispatchingTest {
 				.on(RpcMessageDataTypeTwo.class, server2)
 				.on(RpcMessageDataTypeThree.class, server3)
 				.onDefault(defaultServer);
-		BiConsumerStub consumer = new BiConsumerStub();
 
 		RpcSender sender = typeDispatchingStrategy.createSender(pool);
-		sender.<Object, RpcMessageDataStub>sendRequest(new RpcMessageDataStub(), 50).whenComplete(consumer);
+		sender.sendRequest(new RpcMessageDataStub(), 50, ResultCallback.assertNoCalls());
 
 		assertEquals(0, connection1.getRequests());
 		assertEquals(0, connection2.getRequests());
@@ -114,7 +111,6 @@ public class RpcStrategyTypeDispatchingTest {
 
 	@Test(expected = ExecutionException.class)
 	public void itShouldRaiseExceptionWhenStrategyForDataIsNotSpecifiedAndDefaultSenderIsNull() throws ExecutionException, InterruptedException {
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
 		RpcSenderStub connection1 = new RpcSenderStub();
 		RpcSenderStub connection2 = new RpcSenderStub();
@@ -132,9 +128,9 @@ public class RpcStrategyTypeDispatchingTest {
 
 		RpcSender sender = typeDispatchingStrategy.createSender(pool);
 		// sender is not specified for RpcMessageDataStub, default sender is null
-		CompletableFuture<Object> future = sender.sendRequest(new RpcMessageDataStub(), 50).toCompletableFuture();
+		CompletableFuture<Object> future = new CompletableFuture<>();
+		sender.sendRequest(new RpcMessageDataStub(), 50, ResultCallback.forFuture(future));
 
-		eventloop.run();
 		future.get();
 	}
 

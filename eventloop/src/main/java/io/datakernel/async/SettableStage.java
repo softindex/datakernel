@@ -4,7 +4,7 @@ import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
-public final class SettableStage<T> extends AbstractCompletionStage<T> {
+public final class SettableStage<T> extends AbstractCompletionStage<T> implements ResultCallback<T> {
 	private static final Object NO_RESULT = new Object();
 
 	@SuppressWarnings("unchecked")
@@ -24,6 +24,7 @@ public final class SettableStage<T> extends AbstractCompletionStage<T> {
 		return settableStage;
 	}
 
+	@Override
 	public void set(T result) {
 		assert !isSet();
 		if (next == null) {
@@ -34,6 +35,7 @@ public final class SettableStage<T> extends AbstractCompletionStage<T> {
 		}
 	}
 
+	@Override
 	public void setException(Throwable t) {
 		assert !isSet();
 		if (next == null) {

@@ -16,13 +16,11 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.ResultCallback;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.CompletionStage;
 
 public class MiddlewareServlet implements AsyncServlet {
 	private enum ProcessResult {
@@ -39,9 +37,12 @@ public class MiddlewareServlet implements AsyncServlet {
 
 	protected final Map<String, MiddlewareServlet> parameters = new HashMap<>();
 
-	private MiddlewareServlet() {}
+	private MiddlewareServlet() {
+	}
 
-	public static MiddlewareServlet create() {return new MiddlewareServlet();}
+	public static MiddlewareServlet create() {
+		return new MiddlewareServlet();
+	}
 
 	public MiddlewareServlet with(String path, AsyncServlet servlet) {
 		return with(null, path, servlet);
@@ -103,29 +104,16 @@ public class MiddlewareServlet implements AsyncServlet {
 	}
 
 	@Override
-	public CompletionStage<HttpResponse> serve(HttpRequest request) {
-		ProcessResultStage resultStage = tryServeAsync(request);
-		if (resultStage.processResult == ProcessResult.NOT_FOUND) {
-			return Stages.ofException(HttpException.notFound404());
-		} else if (resultStage.processResult == ProcessResult.NOT_ALLOWED) {
-			return Stages.ofException(HttpException.notAllowed405());
-		} else {
-			return resultStage.stage;
+	public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
+		ProcessResult processed = tryServeAsync(request, callback);
+		if (processed == ProcessResult.NOT_FOUND) {
+			callback.setException(HttpException.notFound404());
+		} else if (processed == ProcessResult.NOT_ALLOWED) {
+			callback.setException(HttpException.notAllowed405());
 		}
 	}
 
-	// TODO: refactor
-	private static class ProcessResultStage {
-		public final CompletionStage<HttpResponse> stage;
-		public final ProcessResult processResult;
-
-		private ProcessResultStage(CompletionStage<HttpResponse> stage, ProcessResult processResult) {
-			this.stage = stage;
-			this.processResult = processResult;
-		}
-	}
-
-	protected ProcessResultStage tryServeAsync(HttpRequest request) {
+	protected ProcessResult tryServeAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
 		int introPosition = request.getPos();
 		String urlPart = request.pollUrlPart();
 		HttpMethod method = request.getMethod();
@@ -133,26 +121,26 @@ public class MiddlewareServlet implements AsyncServlet {
 		if (urlPart.isEmpty()) {
 			AsyncServlet servlet = getRootServletOrWildcard(method);
 			if (servlet != null) {
-				return new ProcessResultStage(servlet.serve(request), ProcessResult.PROCESSED);
+				servlet.serve(request, callback);
+				return ProcessResult.PROCESSED;
 			} else if (fallbackServlet == null) {
 				if (!rootServlets.isEmpty()) {
-					return new ProcessResultStage(null, ProcessResult.NOT_ALLOWED);
+					return ProcessResult.NOT_ALLOWED;
 				}
 			}
 		}
 
-		SettableStage<HttpResponse> stage = SettableStage.create();
-		ProcessResultStage processed = new ProcessResultStage(stage, ProcessResult.NOT_FOUND);
+		ProcessResult processed = ProcessResult.NOT_FOUND;
 
 		MiddlewareServlet transit = routes.get(urlPart);
 		if (transit != null) {
-			processed = transit.tryServeAsync(request);
+			processed = transit.tryServeAsync(request, callback);
 		} else {
 			int position = request.getPos();
 			for (Entry<String, MiddlewareServlet> entry : parameters.entrySet()) {
 				request.putPathParameter(entry.getKey(), urlPart);
-				processed = entry.getValue().tryServeAsync(request);
-				if (processed.processResult == ProcessResult.PROCESSED) {
+				processed = entry.getValue().tryServeAsync(request, callback);
+				if (processed == ProcessResult.PROCESSED) {
 					return processed;
 				} else {
 					request.removePathParameter(entry.getKey());
@@ -161,9 +149,10 @@ public class MiddlewareServlet implements AsyncServlet {
 			}
 		}
 
-		if (!(processed.processResult == ProcessResult.PROCESSED) && fallbackServlet != null) {
+		if (!(processed == ProcessResult.PROCESSED) && fallbackServlet != null) {
 			request.setPos(introPosition);
-			processed = new ProcessResultStage(fallbackServlet.serve(request), ProcessResult.PROCESSED);
+			fallbackServlet.serve(request, callback);
+			processed = ProcessResult.PROCESSED;
 		}
 		return processed;
 	}

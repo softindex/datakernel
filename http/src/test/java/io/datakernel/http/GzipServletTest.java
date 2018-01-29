@@ -22,6 +22,7 @@ import io.datakernel.eventloop.Eventloop;
 import org.junit.Test;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
@@ -31,7 +32,12 @@ import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.*;
 
 public class GzipServletTest {
-	private static final AsyncServlet helloWorldServlet = request -> Stages.of(HttpResponse.ok200().withBody(wrapAscii("Hello, World!")));
+	private static final AsyncServlet helloWorldServlet = new AsyncServlet() {
+		@Override
+		public CompletionStage<HttpResponse> serve(HttpRequest request) {
+			return Stages.of(HttpResponse.ok200().withBody(wrapAscii("Hello, World!")));
+		}
+	};
 
 	@Test
 	public void testGzipServletBase() throws Exception {
@@ -62,11 +68,14 @@ public class GzipServletTest {
 	@Test
 	public void testDoesNotServeSmallBodies() throws Exception {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		AsyncServlet asyncServlet = request -> {
-			HttpResponse response = HttpResponse.ok200();
-			String requestNum = decodeAscii(request.getBody());
-			ByteBuf body = "1".equals(requestNum) ? wrapAscii("0123456789012345678901") : wrapAscii("0");
-			return Stages.of(response.withBody(body));
+		AsyncServlet asyncServlet = new AsyncServlet() {
+			@Override
+			public CompletionStage<HttpResponse> serve(HttpRequest request) {
+				HttpResponse response = HttpResponse.ok200();
+				String requestNum = decodeAscii(request.getBody());
+				ByteBuf body = "1".equals(requestNum) ? wrapAscii("0123456789012345678901") : wrapAscii("0");
+				return Stages.of(response.withBody(body));
+			}
 		};
 		GzipServlet customGzipServlet = GzipServlet.create(20, asyncServlet);
 		HttpRequest requestWBody = HttpRequest.get("http://example.com").withAcceptEncodingGzip().withBody(wrapAscii("1"));

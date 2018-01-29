@@ -17,6 +17,7 @@
 package io.datakernel.remotefs;
 
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
@@ -32,7 +33,6 @@ import io.datakernel.stream.net.MessagingSerializer;
 import io.datakernel.stream.net.MessagingWithBinaryStreaming;
 import io.datakernel.stream.stats.StreamStats;
 import io.datakernel.stream.stats.StreamStatsDetailed;
-import io.datakernel.stream.stats.StreamStatsForwarder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -132,25 +132,19 @@ public final class RemoteFsClient implements IRemoteFsClient {
 							if (msg instanceof RemoteFsResponses.Ready) {
 								long size = ((RemoteFsResponses.Ready) msg).getSize();
 
-								StreamProducerWithResult<ByteBuf, Void> producer = messaging.receiveBinaryStream();
-								StreamStatsDetailed stats = StreamStats.detailed(forByteBufs());
-								StreamStatsForwarder<ByteBuf> sizeForwarder = StreamStatsForwarder.create(stats);
-
-								SettableStage<Void> ack = SettableStage.create();
-								producer.streamTo(sizeForwarder.getInput())
-										.getProducerResult()
-										.thenAccept($ -> {
+								StreamStatsDetailed<ByteBuf> stats = StreamStats.detailed(forByteBufs());
+								stage.set(messaging.receiveBinaryStream()
+										.with(stats)
+										.thenApply($ -> stats.getTotalSize())
+										.thenCompose(totalSize -> {
 											messaging.close();
-											if (stats.getTotalSize() == size - startPosition) {
-												ack.set(null);
+											if (totalSize == size - startPosition) {
+												return Stages.of((Void) null);
 											} else {
-												ack.setException(new IOException("Invalid stream size for '" + fileName + "' starting from " + startPosition +
+												return Stages.ofException(new IOException("Invalid stream size for '" + fileName + "' starting from " + startPosition +
 														", expected: " + (size - startPosition) + " actual: " + stats.getTotalSize()));
 											}
-										});
-
-								stage.set(sizeForwarder.getOutput()
-										.withResult(ack)
+										})
 										.withLateBinding());
 							} else if (msg instanceof RemoteFsResponses.Err) {
 								stage.setException(new RemoteFsException(((RemoteFsResponses.Err) msg).getMsg()));
