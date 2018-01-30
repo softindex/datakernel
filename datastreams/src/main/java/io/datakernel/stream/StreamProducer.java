@@ -18,8 +18,6 @@ package io.datakernel.stream;
 
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stages;
-import io.datakernel.stream.DataStreams.ConsumerResult;
-import io.datakernel.stream.DataStreams.StreamResult;
 import io.datakernel.stream.processor.StreamLateBinder;
 
 import java.util.EnumSet;
@@ -70,13 +68,13 @@ public interface StreamProducer<T> {
 	Set<StreamCapability> getCapabilities();
 
 	@SuppressWarnings("unchecked")
-	default StreamResult streamTo(StreamConsumer<T> consumer) {
+	default StreamingCompletion streamTo(StreamConsumer<T> consumer) {
 		StreamProducer<T> producer = this;
 		bind(producer, consumer);
 		CompletionStage<Void> producerEndOfStream = producer.getEndOfStream();
 		CompletionStage<Void> consumerEndOfStream = consumer.getEndOfStream();
 		CompletionStage<Void> endOfStream = Stages.run(producerEndOfStream, consumerEndOfStream);
-		return new StreamResult() {
+		return new StreamingCompletion() {
 			@Override
 			public CompletionStage<Void> getProducerEndOfStream() {
 				return producerEndOfStream;
@@ -95,14 +93,14 @@ public interface StreamProducer<T> {
 	}
 
 	@SuppressWarnings("unchecked")
-	default <Y> ConsumerResult<Y> streamTo(StreamConsumerWithResult<T, Y> consumer) {
+	default <Y> StreamingConsumerResult<Y> streamTo(StreamConsumerWithResult<T, Y> consumer) {
 		StreamProducer<T> producer = this;
 		bind(producer, consumer);
 		CompletionStage<Void> producerEndOfStream = producer.getEndOfStream();
 		CompletionStage<Void> consumerEndOfStream = consumer.getEndOfStream();
 		CompletionStage<Void> endOfStream = Stages.run(producerEndOfStream, consumerEndOfStream);
 		CompletionStage<Y> consumerResult = consumer.getResult();
-		return new ConsumerResult<Y>() {
+		return new StreamingConsumerResult<Y>() {
 			@Override
 			public CompletionStage<Y> getConsumerResult() {
 				return consumerResult;
