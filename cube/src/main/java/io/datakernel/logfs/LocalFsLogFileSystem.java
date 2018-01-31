@@ -16,6 +16,7 @@
 
 package io.datakernel.logfs;
 
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
@@ -38,7 +39,6 @@ import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
@@ -106,7 +106,7 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements
 	}
 
 	@Override
-	public CompletionStage<List<LogFile>> list(String logPartition) {
+	public Stage<List<LogFile>> list(String logPartition) {
 		Eventloop eventloop = getCurrentEventloop();
 		return eventloop.callExecutor(executorService, () -> {
 			List<LogFile> entries = new ArrayList<>();
@@ -148,7 +148,7 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements
 	}
 
 	@Override
-	public CompletionStage<StreamProducerWithResult<ByteBuf, Void>> read(String logPartition, LogFile logFile, long startPosition) {
+	public Stage<StreamProducerWithResult<ByteBuf, Void>> read(String logPartition, LogFile logFile, long startPosition) {
 		return AsyncFile.openAsync(executorService, path(logPartition, logFile), new OpenOption[]{READ})
 				.whenComplete(stageRead.recordStats())
 				.thenApply(file -> StreamFileReader.readFileFrom(file, readBlockSize, startPosition)
@@ -159,7 +159,7 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements
 	}
 
 	@Override
-	public CompletionStage<StreamConsumerWithResult<ByteBuf, Void>> write(String logPartition, LogFile logFile) {
+	public Stage<StreamConsumerWithResult<ByteBuf, Void>> write(String logPartition, LogFile logFile) {
 		return AsyncFile.openAsync(executorService, path(logPartition, logFile), StreamFileWriter.CREATE_OPTIONS)
 				.whenComplete(stageWrite.recordStats())
 				.thenApply(file -> StreamFileWriter.createWithFlushAsResult(file, true)

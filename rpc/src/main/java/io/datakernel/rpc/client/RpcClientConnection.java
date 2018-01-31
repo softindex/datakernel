@@ -17,7 +17,7 @@
 package io.datakernel.rpc.client;
 
 import io.datakernel.async.AsyncCancellable;
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.Callback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.jmx.EventStats;
@@ -73,7 +73,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 	private final RpcClient rpcClient;
 	private final RpcStream stream;
 	private final InetSocketAddress address;
-	private final Map<Integer, ResultCallback<?>> activeRequests = new HashMap<>();
+	private final Map<Integer, Callback<?>> activeRequests = new HashMap<>();
 	private final PriorityQueue<TimeoutCookie> timeoutCookies = new PriorityQueue<>();
 	private final Runnable expiredResponsesTask = createExpiredResponsesTask();
 
@@ -104,7 +104,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 	}
 
 	@Override
-	public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
+	public <I, O> void sendRequest(I request, int timeout, Callback<O> callback) {
 		assert eventloop.inEventloopThread();
 
 		// jmx
@@ -125,10 +125,10 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 		sendMessageData(request, timeout, callback);
 	}
 
-	private void sendMessageData(Object request, int timeout, ResultCallback<?> callback) {
+	private void sendMessageData(Object request, int timeout, Callback<?> callback) {
 		cookie++;
 
-		ResultCallback<?> requestCallback = callback;
+		Callback<?> requestCallback = callback;
 
 		// jmx
 		if (isMonitoring()) {
@@ -183,7 +183,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 	}
 
 	private void doTimeout(TimeoutCookie timeoutCookie) {
-		ResultCallback<?> callback = activeRequests.remove(timeoutCookie.getCookie());
+		Callback<?> callback = activeRequests.remove(timeoutCookie.getCookie());
 		if (callback == null)
 			return;
 
@@ -196,15 +196,15 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 		returnTimeout(callback, RPC_TIMEOUT_EXCEPTION);
 	}
 
-	private void returnTimeout(ResultCallback<?> callback, Exception exception) {
+	private void returnTimeout(Callback<?> callback, Exception exception) {
 		returnError(callback, exception);
 	}
 
-	private void returnProtocolError(ResultCallback<?> callback, Exception exception) {
+	private void returnProtocolError(Callback<?> callback, Exception exception) {
 		returnError(callback, exception);
 	}
 
-	private void returnError(ResultCallback<?> callback, Exception exception) {
+	private void returnError(Callback<?> callback, Exception exception) {
 		if (callback != null) {
 			callback.setException(exception);
 		}
@@ -245,7 +245,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 		connectionStats.getServerExceptions().recordException(remoteException, null);
 		rpcClient.getGeneralRequestsStats().getServerExceptions().recordException(remoteException, null);
 
-		ResultCallback<?> callback = activeRequests.remove(message.getCookie());
+		Callback<?> callback = activeRequests.remove(message.getCookie());
 		if (callback == null) return;
 
 		returnError(callback, remoteException);
@@ -253,7 +253,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 
 	private void processResponse(RpcMessage message) {
 		@SuppressWarnings("unchecked")
-		ResultCallback<Object> callback = (ResultCallback<Object>) activeRequests.remove(message.getCookie());
+		Callback<Object> callback = (Callback<Object>) activeRequests.remove(message.getCookie());
 		if (callback == null) return;
 
 		callback.set(message.getData());
@@ -326,13 +326,13 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 		connectionStats.refresh(timestamp);
 	}
 
-	private final class JmxConnectionMonitoringResultCallback<T> implements ResultCallback<T> {
+	private final class JmxConnectionMonitoringResultCallback<T> implements Callback<T> {
 		private final Stopwatch stopwatch;
-		private final ResultCallback<T> callback;
+		private final Callback<T> callback;
 		private final RpcRequestStats requestStatsPerClass;
 		private final long dueTimestamp;
 
-		public JmxConnectionMonitoringResultCallback(RpcRequestStats requestStatsPerClass, ResultCallback<T> callback,
+		public JmxConnectionMonitoringResultCallback(RpcRequestStats requestStatsPerClass, Callback<T> callback,
 		                                             long timeout) {
 			this.stopwatch = Stopwatch.createStarted();
 			this.callback = callback;

@@ -18,6 +18,7 @@ package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.aggregation.util.PartitionPredicate;
+import io.datakernel.async.Stage;
 import io.datakernel.async.StagesAccumulator;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.stream.AbstractStreamConsumer;
@@ -31,7 +32,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
 public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> implements StreamConsumerWithResult<T, List<AggregationChunk>>, StreamDataReceiver<T> {
@@ -69,7 +69,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 	}
 
 	@Override
-	public CompletionStage<List<AggregationChunk>> getResult() {
+	public Stage<List<AggregationChunk>> getResult() {
 		return resultsTracker.get();
 	}
 

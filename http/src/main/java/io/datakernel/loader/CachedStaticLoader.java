@@ -1,12 +1,10 @@
 package io.datakernel.loader;
 
 import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.http.HttpException;
 import io.datakernel.loader.cache.Cache;
-
-import java.util.concurrent.CompletionStage;
 
 class CachedStaticLoader implements StaticLoader {
     private static final byte[] BYTES_ERROR = new byte[]{};
@@ -20,7 +18,7 @@ class CachedStaticLoader implements StaticLoader {
     }
 
     @Override
-    public CompletionStage<ByteBuf> getResource(String name) {
+    public Stage<ByteBuf> getResource(String name) {
         byte[] bytes = cache.get(name);
 
         if (bytes == null) {
@@ -33,9 +31,9 @@ class CachedStaticLoader implements StaticLoader {
             return stage;
         } else {
             if (bytes == BYTES_ERROR) {
-                return Stages.ofException(HttpException.notFound404());
+                return Stage.ofException(HttpException.notFound404());
             } else {
-                return Stages.of(ByteBuf.wrapForReading(bytes));
+                return Stage.of(ByteBuf.wrapForReading(bytes));
             }
         }
     }

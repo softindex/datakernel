@@ -1,11 +1,10 @@
 package io.datakernel.http;
 
+import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.StageStats;
-
-import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 
@@ -18,10 +17,10 @@ public abstract class AsyncServletWithStats implements AsyncServlet, EventloopJm
 		this.eventloop = eventloop;
 	}
 
-	protected abstract CompletionStage<HttpResponse> doServe(HttpRequest request);
+	protected abstract Stage<HttpResponse> doServe(HttpRequest request);
 
 	@Override
-	public final CompletionStage<HttpResponse> serve(HttpRequest request) {
+	public final Stage<HttpResponse> serve(HttpRequest request) {
 		return doServe(request).whenComplete(stats.recordStats());
 	}
 

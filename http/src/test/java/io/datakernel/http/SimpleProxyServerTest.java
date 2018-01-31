@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
@@ -30,7 +30,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
@@ -54,7 +53,7 @@ public class SimpleProxyServerTest {
 	public static AsyncHttpServer proxyHttpServer(Eventloop primaryEventloop, AsyncHttpClient httpClient) {
 		AsyncServlet servlet = new AsyncServlet() {
 			@Override
-			public CompletionStage<HttpResponse> serve(HttpRequest request) {
+			public Stage<HttpResponse> serve(HttpRequest request) {
 				String path = ECHO_SERVER_PORT + request.getUrl().getPath();
 				return httpClient.send(HttpRequest.get("http://127.0.0.1:" + path)).thenApply(result -> {
 					int code = result.getCode();
@@ -70,8 +69,8 @@ public class SimpleProxyServerTest {
 	public static AsyncHttpServer echoServer(Eventloop primaryEventloop) {
 		AsyncServlet servlet = new AsyncServlet() {
 			@Override
-			public CompletionStage<HttpResponse> serve(HttpRequest request) {
-				return Stages.of(HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery())));
+			public Stage<HttpResponse> serve(HttpRequest request) {
+				return Stage.of(HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery())));
 			}
 		};
 

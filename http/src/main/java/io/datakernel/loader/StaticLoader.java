@@ -1,11 +1,10 @@
 package io.datakernel.loader;
 
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
-
-import java.util.concurrent.CompletionStage;
 
 public interface StaticLoader {
 
-    CompletionStage<ByteBuf> getResource(String name);
+    Stage<ByteBuf> getResource(String name);
 
 }

@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.Callback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 
 import java.net.InetSocketAddress;
@@ -85,7 +85,7 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
+		public <I, O> void sendRequest(I request, int timeout, Callback<O> callback) {
 			FirstResultCallback<O> resultCallback
 					= new FirstResultCallback<>(callback, (ResultValidator<O>) resultValidator, subSenders.length, noValidResultException);
 			for (RpcSender sender : subSenders) {
@@ -96,7 +96,7 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 	}
 
 	private static final class FirstResultCallback<T> {
-		private final ResultCallback<T> resultCallback;
+		private final Callback<T> resultCallback;
 		private final ResultValidator<T> resultValidator;
 		private final Exception noValidResultException;
 		private int expectedCalls;
@@ -105,7 +105,7 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 		private boolean hasResult;
 		private boolean complete;
 
-		public FirstResultCallback(ResultCallback<T> resultCallback, ResultValidator<T> resultValidator, int expectedCalls,
+		public FirstResultCallback(Callback<T> resultCallback, ResultValidator<T> resultValidator, int expectedCalls,
 		                           Exception noValidResultException) {
 			checkArgument(expectedCalls > 0);
 			this.expectedCalls = expectedCalls;
@@ -114,8 +114,8 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 			this.noValidResultException = noValidResultException;
 		}
 
-		public ResultCallback<T> getCallback() {
-			return new ResultCallback<T>() {
+		public Callback<T> getCallback() {
+			return new Callback<T>() {
 				@Override
 				public void set(T result) {
 					--expectedCalls;

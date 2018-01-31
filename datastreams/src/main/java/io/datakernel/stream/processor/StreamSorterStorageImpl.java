@@ -16,6 +16,7 @@
 
 package io.datakernel.stream.processor;
 
+import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.serializer.BufferSerializer;
@@ -32,7 +33,6 @@ import java.nio.file.Files;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -119,7 +119,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	}
 
 	@Override
-	public CompletionStage<StreamConsumerWithResult<T, Integer>> write() {
+	public Stage<StreamConsumerWithResult<T, Integer>> write() {
 		int partition = PARTITION.incrementAndGet();
 		Path path = partitionPath(partition);
 		return AsyncFile.openAsync(executorService, path, StreamFileWriter.CREATE_OPTIONS)
@@ -140,7 +140,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	 * @param partition index of partition to read
 	 */
 	@Override
-	public CompletionStage<StreamProducerWithResult<T, Void>> read(int partition) {
+	public Stage<StreamProducerWithResult<T, Void>> read(int partition) {
 		Path path = partitionPath(partition);
 		return AsyncFile.openAsync(executorService, path, new OpenOption[]{READ})
 				.thenApply(file -> StreamFileReader.readFileFrom(file, readBlockSize, 0L)
@@ -154,7 +154,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	 * Method which removes all creating files
 	 */
 	@Override
-	public CompletionStage<Void> cleanup(List<Integer> partitionsToDelete) {
+	public Stage<Void> cleanup(List<Integer> partitionsToDelete) {
 		return eventloop.callExecutor(executorService, () -> {
 			for (Integer partitionToDelete : partitionsToDelete) {
 				Path path = partitionPath(partitionToDelete);

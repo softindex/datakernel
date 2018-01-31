@@ -16,9 +16,8 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
-
-import java.util.concurrent.CompletionStage;
 
 @SuppressWarnings({"unused", "WeakerAccess"})
 public final class GzipServlet implements AsyncServlet {
@@ -41,8 +40,8 @@ public final class GzipServlet implements AsyncServlet {
 	}
 
 	@Override
-	public CompletionStage<HttpResponse> serve(HttpRequest request) {
-		CompletionStage<HttpResponse> serve = asyncServlet.serve(request);
+	public Stage<HttpResponse> serve(HttpRequest request) {
+		Stage<HttpResponse> serve = asyncServlet.serve(request);
 		if (!test(request)) return serve;
 
 		return serve.thenApply(response ->

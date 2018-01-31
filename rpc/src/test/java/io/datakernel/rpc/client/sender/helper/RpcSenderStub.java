@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.client.sender.helper;
 
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.Callback;
 import io.datakernel.rpc.client.sender.RpcSender;
 
 public final class RpcSenderStub implements RpcSender {
@@ -27,7 +27,7 @@ public final class RpcSenderStub implements RpcSender {
 	}
 
 	@Override
-	public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
+	public <I, O> void sendRequest(I request, int timeout, Callback<O> callback) {
 		requests++;
 	}
 }

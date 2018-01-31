@@ -17,7 +17,7 @@
 package io.datakernel.stream.file;
 
 import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.stream.AbstractStreamConsumer;
@@ -28,7 +28,6 @@ import java.io.IOException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
@@ -83,14 +82,14 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	// endregion
 
 	// region api
-	public CompletionStage<Void> getFlushStage() {
+	public Stage<Void> getFlushStage() {
 		if (queue.isEmpty() && !pendingAsyncOperation) {
 			if (getStatus() == END_OF_STREAM) {
-				return Stages.of(null);
+				return Stage.of(null);
 			}
 
 			if (getStatus() == CLOSED_WITH_ERROR) {
-				return Stages.ofException(getException());
+				return Stage.ofException(getException());
 			}
 		}
 
@@ -142,7 +141,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 		}
 	}
 
-	private CompletionStage<Void> doWriterCleanup(boolean forceOnClose) {
+	private Stage<Void> doWriterCleanup(boolean forceOnClose) {
 		for (ByteBuf buf : queue) {
 			buf.recycle();
 		}

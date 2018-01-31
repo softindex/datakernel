@@ -1,7 +1,7 @@
 package io.datakernel.ot;
 
 import io.datakernel.async.AsyncCallable;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
@@ -11,7 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.async.AsyncCallable.sharedCall;
 import static io.datakernel.util.CollectionUtils.concat;
@@ -66,17 +65,17 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 	}
 
 	@Override
-	public CompletionStage<Void> start() {
+	public Stage<Void> start() {
 		return checkout().thenApply(k -> null);
 	}
 
 	@Override
-	public CompletionStage<Void> stop() {
+	public Stage<Void> stop() {
 		invalidateInternalState();
-		return Stages.of(null);
+		return Stage.of(null);
 	}
 
-	public CompletionStage<K> checkout() {
+	public Stage<K> checkout() {
 		logger.info("Start checkout");
 		return remote.getHeads()
 				.thenComposeAsync(ks -> {
@@ -86,7 +85,7 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 				.thenCompose($ -> pull());
 	}
 
-	public CompletionStage<K> checkout(K commitId) {
+	public Stage<K> checkout(K commitId) {
 		logger.info("Start checkout to commit: {}", commitId);
 		fetchedRevision = revision = null;
 		workingDiffs.clear();
@@ -104,17 +103,17 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 
 	private final AsyncCallable<K> fetch = sharedCall(this::doFetch);
 
-	public CompletionStage<K> fetch() {
+	public Stage<K> fetch() {
 		return fetch.call();
 	}
 
-	private CompletionStage<K> doFetch() {
+	private Stage<K> doFetch() {
 		logger.info("Start fetch with fetched revision and current revision: {}, {}", fetchedRevision, revision);
 		K fetchedRevisionCopy = this.fetchedRevision;
 
 		if (pendingCommits.containsKey(fetchedRevisionCopy)) {
 			logger.info("Try do fetch before current revision was pushed");
-			return Stages.of(null);
+			return Stage.of(null);
 		}
 
 		return remote.getHeads().thenCompose(heads -> algorithms.findParent(heads,
@@ -125,11 +124,11 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 					if (fetchedRevisionCopy != this.fetchedRevision) {
 						logger.info("Concurrent fetched revisions changes, old {}, new {}",
 								fetchedRevisionCopy, this.fetchedRevision);
-						return Stages.of(this.fetchedRevision);
+						return Stage.of(this.fetchedRevision);
 					}
 
 					if (!findResult.isFound()) {
-						return Stages.ofException(new IllegalStateException(format(
+						return Stage.ofException(new IllegalStateException(format(
 								"Could not find path from heads to fetched revision and current " +
 										"revision: %s, %s, heads: %s", fetchedRevisionCopy, revision, heads)));
 					}
@@ -140,22 +139,22 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 
 					logger.info("Finish fetch with fetched revision and current revision: {}, {}",
 							fetchedRevision, revision);
-					return Stages.of(fetchedRevision);
+					return Stage.of(fetchedRevision);
 				}));
 	}
 
-	public CompletionStage<K> pull() {
+	public Stage<K> pull() {
 		return fetch().thenCompose($ -> {
 			try {
-				return Stages.of(rebase());
+				return Stage.of(rebase());
 			} catch (OTTransformException e) {
 				invalidateInternalState();
-				return Stages.ofException(e);
+				return Stage.ofException(e);
 			}
 		});
 	}
 
-	public CompletionStage<Boolean> pull(K pullRevision) {
+	public Stage<Boolean> pull(K pullRevision) {
 		K currentRevisionId = getRevision();
 		return algorithms.findParent(singleton(pullRevision),
 				DiffsReducer.toList(),
@@ -164,21 +163,21 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 				.thenCompose(find -> {
 					if (!find.isFound()) {
 						logger.info("Can`t pull to commit {} from {}", pullRevision, currentRevisionId);
-						return Stages.of(false);
+						return Stage.of(false);
 					}
 					if (currentRevisionId != this.revision) {
 						logger.info("Concurrent revisions changes, old {}, new {}", currentRevisionId, this.revision);
-						return Stages.of(false);
+						return Stage.of(false);
 					}
 
 					fetchedDiffs = otSystem.squash(find.getAccumulatedDiffs());
 					fetchedRevision = pullRevision;
 
 					try {
-						return Stages.of(rebase());
+						return Stage.of(rebase());
 					} catch (OTTransformException e) {
 						invalidateInternalState();
-						return Stages.ofException(e);
+						return Stage.ofException(e);
 					}
 				})
 				.thenApply(o -> true);
@@ -203,19 +202,19 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 		workingDiffs = new ArrayList<>();
 	}
 
-	public CompletionStage<K> commitAndPush() {
+	public Stage<K> commitAndPush() {
 		return commit().thenCompose(id -> push().thenApply($ -> id));
 	}
 
 	private final AsyncCallable<K> commit = sharedCall(this::doCommit);
 
-	public CompletionStage<K> commit() {
+	public Stage<K> commit() {
 		return commit.call();
 	}
 
-	CompletionStage<K> doCommit() {
+	Stage<K> doCommit() {
 		if (workingDiffs.isEmpty()) {
-			return Stages.of(null);
+			return Stage.of(null);
 		}
 		return remote.createCommitId().thenApply(newId -> {
 			pendingCommits.put(newId, OTCommit.ofCommit(newId, revision, otSystem.squash(workingDiffs)));
@@ -228,11 +227,11 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 
 	private final AsyncCallable<Void> push = sharedCall(this::doPush);
 
-	public CompletionStage<Void> push() {
+	public Stage<Void> push() {
 		return push.call();
 	}
 
-	CompletionStage<Void> doPush() {
+	Stage<Void> doPush() {
 		List<OTCommit<K, D>> list = new ArrayList<>(pendingCommits.values());
 		logger.info("Push commits, fetched and current revision: {}, {}", fetchedRevision, revision);
 		return remote.push(list).thenAccept($ -> {

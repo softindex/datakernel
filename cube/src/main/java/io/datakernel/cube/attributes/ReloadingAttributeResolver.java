@@ -17,7 +17,7 @@
 package io.datakernel.cube.attributes;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.eventloop.ScheduledRunnable;
@@ -27,7 +27,6 @@ import io.datakernel.jmx.ValueStats;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_1_HOUR;
 
@@ -59,13 +58,13 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 		return result;
 	}
 
-	protected abstract CompletionStage<Map<K, A>> reload(@Nullable long lastTimestamp);
+	protected abstract Stage<Map<K, A>> reload(@Nullable long lastTimestamp);
 
 	private void doReload() {
 		reloads++;
 		scheduledRunnable.cancel();
 		long reloadTimestamp = getEventloop().currentTimeMillis();
-		CompletionStage<Map<K, A>> reload = reload(timestamp).whenComplete((result, throwable) -> {
+		Stage<Map<K, A>> reload = reload(timestamp).whenComplete((result, throwable) -> {
 			if (throwable == null) {
 				reloadTime.recordValue((int) (getEventloop().currentTimeMillis() - reloadTimestamp));
 				cache.putAll(result);
@@ -94,8 +93,8 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 	}
 
 	@Override
-	public CompletionStage<Void> start() {
-		if (reloadPeriod == 0) return Stages.of(null);
+	public Stage<Void> start() {
+		if (reloadPeriod == 0) return Stage.of(null);
 		long reloadTimestamp = getEventloop().currentTimeMillis();
 		return reload(timestamp).thenAccept(result -> {
 			reloadTime.recordValue((int) (getEventloop().currentTimeMillis() - reloadTimestamp));
@@ -106,9 +105,9 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 	}
 
 	@Override
-	public CompletionStage<Void> stop() {
+	public Stage<Void> stop() {
 		if (scheduledRunnable != null) scheduledRunnable.cancel();
-		return Stages.of(null);
+		return Stage.of(null);
 	}
 
 	@JmxOperation

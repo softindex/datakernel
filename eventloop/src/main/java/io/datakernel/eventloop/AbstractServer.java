@@ -17,7 +17,7 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
@@ -36,7 +36,6 @@ import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
@@ -213,9 +212,9 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	}
 
 	@Override
-	public final CompletionStage<Void> close() {
+	public final Stage<Void> close() {
 		check(eventloop.inEventloopThread());
-		if (!running) return Stages.of(null);
+		if (!running) return Stage.of(null);
 		running = false;
 		closeServerSocketChannels();
 		SettableStage<Void> stage = SettableStage.create();

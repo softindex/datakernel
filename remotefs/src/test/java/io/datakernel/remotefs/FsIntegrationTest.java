@@ -17,6 +17,7 @@
 package io.datakernel.remotefs;
 
 import ch.qos.logback.classic.Level;
+import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
@@ -47,7 +48,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
@@ -104,7 +104,7 @@ public class FsIntegrationTest {
 		RemoteFsClient client = createClient(eventloop);
 
 		server.listen();
-		List<CompletionStage<Void>> tasks = new ArrayList<>();
+		List<Stage<Void>> tasks = new ArrayList<>();
 		for (int i = 0; i < files; i++) {
 			tasks.add(
 					StreamProducer.of(ByteBuf.wrapForReading(CONTENT))
@@ -296,7 +296,7 @@ public class FsIntegrationTest {
 
 		server.listen();
 
-		List<CompletionStage<Void>> tasks = new ArrayList<>();
+		List<Stage<Void>> tasks = new ArrayList<>();
 		for (int i = 0; i < files; i++) {
 			tasks.add(client.downloadStream(file, 0)
 					.streamTo(
@@ -399,7 +399,7 @@ public class FsIntegrationTest {
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
-	private CompletionStage<Void> upload(String resultFile, byte[] bytes) throws IOException {
+	private CompletableFuture<Void> upload(String resultFile, byte[] bytes) throws IOException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		ExecutorService executor = newCachedThreadPool();
 		RemoteFsServer server = createServer(eventloop, executor);

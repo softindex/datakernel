@@ -18,7 +18,7 @@ package io.datakernel.https;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
@@ -31,7 +31,6 @@ import javax.net.ssl.TrustManager;
 import java.io.File;
 import java.net.InetSocketAddress;
 import java.security.SecureRandom;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
@@ -54,8 +53,8 @@ public class TestHttpsServer {
 
 		AsyncServlet bobServlet = new AsyncServlet() {
 			@Override
-			public CompletionStage<HttpResponse> serve(HttpRequest request) {
-				return Stages.of(HttpResponse.ok200().withBody(wrapAscii("Hello, I am Bob!")));
+			public Stage<HttpResponse> serve(HttpRequest request) {
+				return Stage.of(HttpResponse.ok200().withBody(wrapAscii("Hello, I am Bob!")));
 			}
 		};
 

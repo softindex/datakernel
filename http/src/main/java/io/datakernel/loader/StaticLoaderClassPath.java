@@ -2,7 +2,7 @@ package io.datakernel.loader;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.HttpException;
@@ -12,7 +12,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.nio.file.NoSuchFileException;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.bytebuf.ByteBuf.wrapForReading;
@@ -32,11 +31,11 @@ class StaticLoaderClassPath implements StaticLoader {
     }
 
     @Override
-    public CompletionStage<ByteBuf> getResource(String name) {
+    public Stage<ByteBuf> getResource(String name) {
         URL file = classLoader.getResource(name);
 
         if (file == null) {
-            return Stages.ofException(HttpException.notFound404());
+            return Stage.ofException(HttpException.notFound404());
         }
 
         SettableStage<ByteBuf> stage = SettableStage.create();

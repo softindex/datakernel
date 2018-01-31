@@ -18,7 +18,7 @@ package io.datakernel.file;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
@@ -34,7 +34,6 @@ import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
 import java.util.HashSet;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -85,8 +84,8 @@ public final class AsyncFile {
 	 * @param path        the  path of the file to open or create
 	 * @param openOptions options specifying how the file is opened
 	 */
-	public static CompletionStage<AsyncFile> openAsync(ExecutorService executor,
-	                                                   Path path, OpenOption[] openOptions) {
+	public static Stage<AsyncFile> openAsync(ExecutorService executor,
+	                                         Path path, OpenOption[] openOptions) {
 
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
 		return eventloop.callExecutor(executor,
@@ -103,8 +102,8 @@ public final class AsyncFile {
 	 *
 	 * @param executor @param path     the  path of the file to open or create
 	 */
-	public static CompletionStage<Void> delete(ExecutorService executor,
-	                                           Path path) {
+	public static Stage<Void> delete(ExecutorService executor,
+	                                 Path path) {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
 		return eventloop.callExecutor(executor, () -> {
 			Files.delete(path);
@@ -112,7 +111,7 @@ public final class AsyncFile {
 		});
 	}
 
-	public static CompletionStage<Long> length(ExecutorService executor, Path path) {
+	public static Stage<Long> length(ExecutorService executor, Path path) {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
 		return eventloop.callExecutor(executor, () -> {
 			File file = path.toFile();
@@ -128,8 +127,8 @@ public final class AsyncFile {
 	 * @param target    the path to the target file (may be associated with a different provider to the source path)
 	 * @param options   options specifying how the move should be done
 	 */
-	public static CompletionStage<Void> move(Eventloop eventloop, ExecutorService executor,
-	                                         Path source, Path target, CopyOption... options) {
+	public static Stage<Void> move(Eventloop eventloop, ExecutorService executor,
+	                               Path source, Path target, CopyOption... options) {
 		return eventloop.callExecutor(executor, () -> {
 			Files.move(source, target, options);
 			return null;
@@ -143,8 +142,8 @@ public final class AsyncFile {
 	 * @param executor  @param dir      the directory to create
 	 * @param attrs     an optional list of file attributes to set atomically when creating the directory
 	 */
-	public static CompletionStage<Void> createDirectory(Eventloop eventloop, ExecutorService executor,
-	                                                    Path dir, @Nullable FileAttribute<?>[] attrs) {
+	public static Stage<Void> createDirectory(Eventloop eventloop, ExecutorService executor,
+	                                          Path dir, @Nullable FileAttribute<?>[] attrs) {
 		return eventloop.callExecutor(executor, () -> {
 			Files.createDirectory(dir, attrs == null ? new FileAttribute<?>[0] : attrs);
 			return null;
@@ -158,8 +157,8 @@ public final class AsyncFile {
 	 * @param executor  @param dir      the directory to create
 	 * @param attrs     an optional list of file attributes to set atomically when creating the directory
 	 */
-	public static CompletionStage<Void> createDirectories(Eventloop eventloop, ExecutorService executor,
-	                                                      Path dir, @Nullable FileAttribute<?>[] attrs) {
+	public static Stage<Void> createDirectories(Eventloop eventloop, ExecutorService executor,
+	                                            Path dir, @Nullable FileAttribute<?>[] attrs) {
 		return eventloop.callExecutor(executor, () -> {
 			Files.createDirectories(dir, attrs == null ? new FileAttribute<?>[0] : attrs);
 			return null;
@@ -171,7 +170,7 @@ public final class AsyncFile {
 	 *
 	 * @param executor @param path     the  path of the file to read
 	 */
-	public static CompletionStage<ByteBuf> readFile(ExecutorService executor, Path path) {
+	public static Stage<ByteBuf> readFile(ExecutorService executor, Path path) {
 		return openAsync(executor, path, new OpenOption[]{READ})
 				.thenCompose(file -> file.readFully()
 						.whenComplete((byteBuf, throwable) -> file.close()));
@@ -184,8 +183,8 @@ public final class AsyncFile {
 	 * @param executor @param path     the  path of the file to create and write
 	 * @param buf      the  buffer from which bytes are to be transferred byteBuffer
 	 */
-	public static CompletionStage<Void> createNewAndWriteFile(ExecutorService executor,
-	                                                          Path path, ByteBuf buf) {
+	public static Stage<Void> createNewAndWriteFile(ExecutorService executor,
+	                                                Path path, ByteBuf buf) {
 		return openAsync(executor, path, new OpenOption[]{WRITE, CREATE_NEW})
 				.thenCompose(file -> file.writeFully(buf, 0L)
 						.whenComplete(($, throwable) -> buf.recycle()));
@@ -198,7 +197,7 @@ public final class AsyncFile {
 	 * @param buf      the  buffer from which bytes are to be transferred
 	 * @param position the  file position at which the transfer is to begin; must be non-negative
 	 */
-	public CompletionStage<Integer> write(ByteBuf buf, long position) {
+	public Stage<Integer> write(ByteBuf buf, long position) {
 		eventloop.startExternalTask();
 		ByteBuffer byteBuffer = buf.toReadByteBuffer();
 		SettableStage<Integer> stage = SettableStage.create();
@@ -229,7 +228,7 @@ public final class AsyncFile {
 	 * @param buf      the  buffer into which bytes are to be transferred
 	 * @param position the file position at which the transfer is to begin; must be non-negative
 	 */
-	public CompletionStage<Integer> read(ByteBuf buf, long position) {
+	public Stage<Integer> read(ByteBuf buf, long position) {
 		eventloop.startExternalTask();
 		ByteBuffer byteBuffer = buf.toWriteByteBuffer();
 		SettableStage<Integer> stage = SettableStage.create();
@@ -254,8 +253,8 @@ public final class AsyncFile {
 		return stage;
 	}
 
-	private CompletionStage<Void> writeFully(ByteBuf buf, long position,
-	                                         AtomicBoolean cancelled) {
+	private Stage<Void> writeFully(ByteBuf buf, long position,
+	                               AtomicBoolean cancelled) {
 		ByteBuffer byteBuffer = buf.toReadByteBuffer();
 		SettableStage<Void> stage = SettableStage.create();
 		channel.write(byteBuffer, position, null, new CompletionHandler<Integer, Object>() {
@@ -304,15 +303,15 @@ public final class AsyncFile {
 	 * @param byteBuf  the  buffer from which bytes are to be transferred
 	 * @param position the  file position at which the transfer is to begin; must be non-negative
 	 */
-	public CompletionStage<Void> writeFully(ByteBuf byteBuf, long position) {
+	public Stage<Void> writeFully(ByteBuf byteBuf, long position) {
 		eventloop.startExternalTask();
 		AtomicBoolean cancelled = new AtomicBoolean();
 		// TODO: add cancel logic
 		return writeFully(byteBuf, position, cancelled);
 	}
 
-	private CompletionStage<Void> readFully(ByteBuf buf, long position, long size,
-	                                        AtomicBoolean cancelled) {
+	private Stage<Void> readFully(ByteBuf buf, long position, long size,
+	                              AtomicBoolean cancelled) {
 		SettableStage<Void> stage = SettableStage.create();
 		ByteBuffer byteBuffer = buf.toWriteByteBuffer();
 		channel.read(byteBuffer, position, null, new CompletionHandler<Integer, Object>() {
@@ -374,13 +373,13 @@ public final class AsyncFile {
 	 * @param buf      the  buffer into which bytes are to be transferred
 	 * @param position the file position at which the transfer is to begin; must be non-negative
 	 */
-	public CompletionStage<Void> readFully(ByteBuf buf, long position) {
+	public Stage<Void> readFully(ByteBuf buf, long position) {
 		long size;
 
 		try {
 			size = channel.size();
 		} catch (IOException e) {
-			return Stages.ofException(e);
+			return Stage.ofException(e);
 		}
 
 		eventloop.startExternalTask();
@@ -392,13 +391,13 @@ public final class AsyncFile {
 	/**
 	 * Reads all sequence of bytes from this channel into buffer and sends this buffer to {@code stage}
 	 */
-	public CompletionStage<ByteBuf> readFully() {
+	public Stage<ByteBuf> readFully() {
 		long size;
 
 		try {
 			size = channel.size();
 		} catch (IOException e) {
-			return Stages.ofException(e);
+			return Stage.ofException(e);
 		}
 
 		ByteBuf buf = ByteBufPool.allocate((int) size);
@@ -407,7 +406,7 @@ public final class AsyncFile {
 		}).thenApply($ -> buf);
 	}
 
-	public CompletionStage<Void> forceAndClose() {
+	public Stage<Void> forceAndClose() {
 		return eventloop.callExecutor(executor, () -> {
 			channel.force(true);
 			channel.close();
@@ -418,7 +417,7 @@ public final class AsyncFile {
 	/**
 	 * Closes the channel
 	 */
-	public CompletionStage<Void> close() {
+	public Stage<Void> close() {
 		return eventloop.callExecutor(executor, () -> {
 			channel.close();
 			return null;
@@ -430,7 +429,7 @@ public final class AsyncFile {
 	 *
 	 * @param size the new size, a non-negative byte count
 	 */
-	public CompletionStage<Void> truncate(long size) {
+	public Stage<Void> truncate(long size) {
 		return eventloop.callExecutor(executor, () -> {
 			channel.truncate(size);
 			return null;
@@ -443,7 +442,7 @@ public final class AsyncFile {
 	 * @param metaData if true then this method is required to force changes to both the file's
 	 *                 content and metadata to be written to storage; otherwise, it need only force content changes to be written
 	 */
-	public CompletionStage<Void> force(boolean metaData) {
+	public Stage<Void> force(boolean metaData) {
 		return eventloop.callExecutor(executor, () -> {
 			channel.force(metaData);
 			return null;

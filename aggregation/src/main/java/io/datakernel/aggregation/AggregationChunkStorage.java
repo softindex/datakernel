@@ -17,13 +17,13 @@
 package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.ot.AggregationStructure;
+import io.datakernel.async.Stage;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducerWithResult;
 
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CompletionStage;
 
 /**
  * Manages persistence of aggregations (chunks of data).
@@ -37,8 +37,8 @@ public interface AggregationChunkStorage extends IdGenerator<Long> {
 	 * @param chunkId     id of chunk
 	 * @return StreamProducer, which will stream read records to its wired consumer.
 	 */
-	<T> CompletionStage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields,
-	                                                            Class<T> recordClass, long chunkId, DefiningClassLoader classLoader);
+	<T> Stage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields,
+	                                                  Class<T> recordClass, long chunkId, DefiningClassLoader classLoader);
 
 	default <T> StreamProducerWithResult<T, Void> readStream(AggregationStructure aggregation, List<String> fields,
 	                                                         Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
@@ -53,15 +53,15 @@ public interface AggregationChunkStorage extends IdGenerator<Long> {
 	 * @param recordClass class of chunk record
 	 * @param chunkId     id of chunk
 	 */
-	<T> CompletionStage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields,
-	                                                             Class<T> recordClass, long chunkId, DefiningClassLoader classLoader);
+	<T> Stage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields,
+	                                                   Class<T> recordClass, long chunkId, DefiningClassLoader classLoader);
 
 	default <T> StreamConsumerWithResult<T, Void> writeStream(AggregationStructure aggregation, List<String> fields,
 	                                                          Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
 		return StreamConsumerWithResult.ofStage(write(aggregation, fields, recordClass, chunkId, classLoader));
 	}
 
-	CompletionStage<Void> finish(Set<Long> chunkIds);
+	Stage<Void> finish(Set<Long> chunkIds);
 
 }
 

@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.server;
 
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.jmx.*;
@@ -28,7 +28,6 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.util.Map;
-import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
 
 public final class RpcServerConnection implements RpcStream.Listener, JmxRefreshable {
@@ -63,10 +62,10 @@ public final class RpcServerConnection implements RpcStream.Listener, JmxRefresh
 	}
 
 	@SuppressWarnings("unchecked")
-	private CompletionStage<Object> apply(Object request) {
+	private Stage<Object> apply(Object request) {
 		RpcRequestHandler requestHandler = handlers.get(request.getClass());
 		if (requestHandler == null) {
-			return Stages.ofException(new ParseException("Failed to process request " + request));
+			return Stage.ofException(new ParseException("Failed to process request " + request));
 		}
 		return requestHandler.run(request);
 	}

@@ -1,7 +1,7 @@
 package io.datakernel.aggregation;
 
-import java.util.concurrent.CompletionStage;
+import io.datakernel.async.Stage;
 
 public interface IdGenerator<K> {
-	CompletionStage<K> createId();
+	Stage<K> createId();
 }

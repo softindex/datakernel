@@ -1,16 +1,15 @@
 package io.datakernel.ot;
 
+import io.datakernel.async.NextStage;
 import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.ot.OTLoadedGraph.MergeNode;
 import io.datakernel.ot.exceptions.OTException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.concurrent.CompletionStage;
 
-import static io.datakernel.async.Stages.onError;
 import static io.datakernel.util.CollectionUtils.*;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.util.Collections.*;
@@ -92,9 +91,9 @@ final class OTMergeAlgorithm<K, D> {
 		throw new AssertionError();
 	}
 
-	public CompletionStage<Map<K, List<D>>> loadAndMerge(Set<K> heads) {
-		if (heads.size() == 0) return Stages.of(emptyMap());
-		if (heads.size() == 1) return Stages.of(singletonMap(first(heads), emptyList()));
+	public Stage<Map<K, List<D>>> loadAndMerge(Set<K> heads) {
+		if (heads.size() == 0) return Stage.of(emptyMap());
+		if (heads.size() == 1) return Stage.of(singletonMap(first(heads), emptyList()));
 		logger.info("Merging " + heads);
 		return loadGraph(heads)
 				.thenCompose(graph -> {
@@ -105,19 +104,19 @@ final class OTMergeAlgorithm<K, D> {
 						} else {
 							logger.info("Merge result " + mergeResult);
 						}
-						return Stages.of(mergeResult);
+						return Stage.of(mergeResult);
 					} catch (OTException e) {
 						if (logger.isTraceEnabled()) {
 							logger.error("Merge error " + heads + "\n" + graph.toGraphViz() + "\n", e);
 						} else {
 							logger.error("Merge error " + heads);
 						}
-						return Stages.ofException(e);
+						return Stage.ofException(e);
 					}
 				});
 	}
 
-	CompletionStage<OTLoadedGraph<K, D>> loadGraph(Set<K> heads) {
+	Stage<OTLoadedGraph<K, D>> loadGraph(Set<K> heads) {
 		checkArgument(heads.size() >= 2);
 
 		OTLoadedGraph<K, D> graph = new OTLoadedGraph<>();
@@ -135,7 +134,7 @@ final class OTMergeAlgorithm<K, D> {
 		doLoadGraph(graph, queue, new HashSet<>(), head2roots, root2heads, cb);
 
 		return cb.thenApply($ -> graph)
-				.whenComplete(onError(throwable -> {
+				.then(NextStage.onError(throwable -> {
 					if (logger.isTraceEnabled()) {
 						logger.error("loading error " + heads + "\n" + graph.toGraphViz() + "\n", throwable);
 					} else {
@@ -190,7 +189,7 @@ final class OTMergeAlgorithm<K, D> {
 							doLoadGraph(graph, queue, visited, head2roots, root2heads, cb);
 						}
 					})
-					.whenComplete(onError(cb::setException));
+					.then(NextStage.onError(cb::setException));
 			return;
 		}
 		cb.setException(new OTException("Incomplete graph"));

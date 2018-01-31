@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufStrings;
@@ -36,7 +36,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Random;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
@@ -111,12 +110,12 @@ public class TestGzipProcessorUtils {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		AsyncServlet servlet = new AsyncServlet() {
 			@Override
-			public CompletionStage<HttpResponse> serve(HttpRequest request) {
+			public Stage<HttpResponse> serve(HttpRequest request) {
 				String receivedData = ByteBufStrings.decodeAscii(request.getBody());
 				assertEquals("gzip", request.getHeader(HttpHeaders.CONTENT_ENCODING));
 				assertEquals("gzip", request.getHeader(HttpHeaders.ACCEPT_ENCODING));
 				assertEquals(text, receivedData);
-				return Stages.of(HttpResponse.ok200().withBodyGzipCompression().withBody(ByteBufStrings.wrapAscii(receivedData)));
+				return Stage.of(HttpResponse.ok200().withBodyGzipCompression().withBody(ByteBufStrings.wrapAscii(receivedData)));
 			}
 		};
 

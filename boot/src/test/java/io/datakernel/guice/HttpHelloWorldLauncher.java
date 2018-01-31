@@ -19,8 +19,7 @@ package io.datakernel.guice;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
-import com.google.inject.Stage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
@@ -32,8 +31,8 @@ import io.datakernel.service.ServiceGraphModule;
 
 import javax.inject.Singleton;
 import java.net.InetSocketAddress;
-import java.util.concurrent.CompletionStage;
 
+import static com.google.inject.Stage.PRODUCTION;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 
 public class HttpHelloWorldLauncher extends Launcher {
@@ -60,8 +59,8 @@ public class HttpHelloWorldLauncher extends Launcher {
 		AsyncServlet rootServlet() {
 			return new AsyncServlet() {
 				@Override
-				public CompletionStage<HttpResponse> serve(HttpRequest request) {
-					return Stages.of(HttpResponse.ok200().withBody(encodeAscii("Hello, World!")));
+				public Stage<HttpResponse> serve(HttpRequest request) {
+					return Stage.of(HttpResponse.ok200().withBody(encodeAscii("Hello, World!")));
 				}
 			};
 		}
@@ -73,7 +72,7 @@ public class HttpHelloWorldLauncher extends Launcher {
 	AsyncHttpServer httpServer;
 
 	public HttpHelloWorldLauncher() {
-		super(Stage.PRODUCTION,
+		super(PRODUCTION,
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
 				new HttpHelloWorldModule());

@@ -2,7 +2,7 @@ package io.datakernel.cube.service;
 
 import io.datakernel.aggregation.LocalFsChunkStorage;
 import io.datakernel.async.AsyncCallable;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
@@ -16,7 +16,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.async.AsyncCallable.sharedCall;
 import static io.datakernel.async.Stages.runSequence;
@@ -49,22 +48,22 @@ public final class CubeBackupController implements EventloopJmxMBeanEx {
 
 	private final AsyncCallable<Void> backup = sharedCall(this::backupHead);
 
-	public CompletionStage<Void> backup() {
+	public Stage<Void> backup() {
 		return backup.call();
 	}
 
-	public CompletionStage<Void> backupHead() {
+	public Stage<Void> backupHead() {
 		return algorithms.getRemote().getHeads()
 				.thenCompose(heads -> {
 					if (heads.isEmpty())
-						return Stages.ofException(new IllegalArgumentException("heads is empty"));
+						return Stage.ofException(new IllegalArgumentException("heads is empty"));
 					return backup(max(heads));
 				})
 				.whenComplete(stageBackup.recordStats());
 	}
 
 	@SuppressWarnings("unchecked")
-	public CompletionStage<Void> backup(Integer commitId) {
+	public Stage<Void> backup(Integer commitId) {
 		return algorithms.loadAllChanges(commitId)
 				.thenCompose(logDiffs -> runSequence(
 						() -> backupChunks(commitId, collectChunkIds(logDiffs)),
@@ -75,12 +74,12 @@ public final class CubeBackupController implements EventloopJmxMBeanEx {
 		return logDiffs.stream().flatMap(LogDiff::diffs).flatMap(CubeDiff::addedChunks).collect(toSet());
 	}
 
-	private CompletionStage<Void> backupChunks(Integer commitId, Set<Long> chunkIds) {
+	private Stage<Void> backupChunks(Integer commitId, Set<Long> chunkIds) {
 		return storage.backup(String.valueOf(commitId), chunkIds)
 				.whenComplete(stageBackupChunks.recordStats());
 	}
 
-	private CompletionStage<Void> backupDb(Integer commitId, List<LogDiff<CubeDiff>> diffs) {
+	private Stage<Void> backupDb(Integer commitId, List<LogDiff<CubeDiff>> diffs) {
 		return algorithms.getRemote().backup(commitId, diffs)
 				.whenComplete(stageBackupDb.recordStats());
 	}

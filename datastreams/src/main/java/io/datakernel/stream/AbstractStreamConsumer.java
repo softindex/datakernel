@@ -17,15 +17,15 @@
 package io.datakernel.stream;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.NextStage;
 import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Set;
-import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 import static io.datakernel.stream.StreamStatus.*;
@@ -68,8 +68,8 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		this.producer = producer;
 		onWired();
 		producer.getEndOfStream()
-				.whenComplete(Stages.onResult(this::endOfStream))
-				.whenComplete(Stages.onError(this::closeWithError));
+				.then(NextStage.onResult(this::endOfStream))
+				.then(NextStage.onError(this::closeWithError));
 	}
 
 	protected void onWired() {
@@ -129,7 +129,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	}
 
 	@Override
-	public final CompletionStage<Void> getEndOfStream() {
+	public final Stage<Void> getEndOfStream() {
 		return endOfStream;
 	}
 

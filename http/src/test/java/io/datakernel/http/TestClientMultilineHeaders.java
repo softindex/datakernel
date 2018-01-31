@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 import org.junit.Test;
 
@@ -24,7 +24,6 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
@@ -43,10 +42,10 @@ public class TestClientMultilineHeaders {
 
 		AsyncServlet servlet = new AsyncServlet() {
 			@Override
-			public CompletionStage<HttpResponse> serve(HttpRequest request) {
+			public Stage<HttpResponse> serve(HttpRequest request) {
 				HttpResponse response = HttpResponse.ok200();
 				response.addHeader(HttpHeaders.ALLOW, "GET,\r\n HEAD");
-				return Stages.of(response);
+				return Stage.of(response);
 			}
 		};
 

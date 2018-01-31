@@ -2,7 +2,7 @@ package io.datakernel.ot;
 
 import com.google.gson.TypeAdapter;
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
@@ -15,7 +15,6 @@ import javax.sql.DataSource;
 import java.io.IOException;
 import java.sql.*;
 import java.util.*;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
@@ -107,7 +106,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 	}
 
 	@Override
-	public CompletionStage<Integer> createCommitId() {
+	public Stage<Integer> createCommitId() {
 		return eventloop.callExecutor(executor, () -> {
 			logger.trace("Start Create id");
 			try (Connection connection = dataSource.getConnection()) {
@@ -141,13 +140,13 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 		return nCopies(n, "?").stream().collect(joining(", ", "(", ")"));
 	}
 
-	public CompletionStage<Void> push(OTCommit<Integer, D> commit) {
+	public Stage<Void> push(OTCommit<Integer, D> commit) {
 		return push(singletonList(commit));
 	}
 
 	@Override
-	public CompletionStage<Void> push(Collection<OTCommit<Integer, D>> commits) {
-		if (commits.isEmpty()) return Stages.of(null);
+	public Stage<Void> push(Collection<OTCommit<Integer, D>> commits) {
+		if (commits.isEmpty()) return Stage.of(null);
 		return eventloop.callExecutor(executor, () -> {
 			logger.trace("Push {} commits: {}", commits.size(),
 					commits.stream().map(OTCommit::idsToString).collect(toList()));
@@ -204,7 +203,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 	}
 
 	@Override
-	public CompletionStage<Set<Integer>> getHeads() {
+	public Stage<Set<Integer>> getHeads() {
 		return eventloop.callExecutor(executor, () -> {
 			logger.trace("Get Heads");
 			try (Connection connection = dataSource.getConnection()) {
@@ -224,7 +223,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 	}
 
 	@Override
-	public CompletionStage<List<D>> loadSnapshot(Integer revisionId) {
+	public Stage<List<D>> loadSnapshot(Integer revisionId) {
 		logger.trace("Load snapshot: {}", revisionId);
 		return eventloop.callExecutor(executor, () -> {
 			try (Connection connection = dataSource.getConnection()) {
@@ -245,7 +244,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 	}
 
 	@Override
-	public CompletionStage<OTCommit<Integer, D>> loadCommit(Integer revisionId) {
+	public Stage<OTCommit<Integer, D>> loadCommit(Integer revisionId) {
 		return eventloop.callExecutor(executor, () -> {
 			logger.trace("Start load commit: {}", revisionId);
 			try (Connection connection = dataSource.getConnection()) {
@@ -285,7 +284,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 	}
 
 	@Override
-	public CompletionStage<Void> saveSnapshot(Integer revisionId, List<D> diffs) {
+	public Stage<Void> saveSnapshot(Integer revisionId, List<D> diffs) {
 		return eventloop.callExecutor(executor, () -> {
 			logger.trace("Start save snapshot: {}, diffs: {}", revisionId, diffs.size());
 			try (Connection connection = dataSource.getConnection()) {
@@ -305,7 +304,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 	}
 
 	@Override
-	public CompletionStage<Void> cleanup(Integer minId) {
+	public Stage<Void> cleanup(Integer minId) {
 		return eventloop.callExecutor(executor, () -> {
 			logger.trace("Start cleanup: {}", minId);
 			try (Connection connection = dataSource.getConnection()) {
@@ -332,7 +331,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 	}
 
 	@Override
-	public CompletionStage<Void> backup(Integer checkpointId, List<D> diffs) {
+	public Stage<Void> backup(Integer checkpointId, List<D> diffs) {
 		checkState(this.tableBackup != null);
 		return eventloop.callExecutor(executor, () -> {
 			try (Connection connection = dataSource.getConnection()) {

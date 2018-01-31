@@ -16,7 +16,7 @@
 
 package io.datakernel;
 
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
@@ -32,7 +32,6 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.List;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
@@ -74,13 +73,13 @@ public class HttpApiTest {
 		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		AsyncServlet servlet = new AsyncServlet() {
 			@Override
-			public CompletionStage<HttpResponse> serve(HttpRequest request) {
+			public Stage<HttpResponse> serve(HttpRequest request) {
 				try {
 					testRequest(request);
 					HttpResponse response = createResponse();
-					return Stages.of(response);
+					return Stage.of(response);
 				} catch (ParseException e) {
-					return Stages.ofException((Throwable) e);
+					return Stage.ofException((Throwable) e);
 				}
 			}
 		};

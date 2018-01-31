@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.Callback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
@@ -50,7 +50,7 @@ public class HttpTolerantApplicationTest {
 	public static AsyncHttpServer asyncHttpServer(Eventloop primaryEventloop, int port) {
 		AsyncServlet servlet = new AsyncServlet() {
 			@Override
-			public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
+			public void serve(HttpRequest request, Callback<HttpResponse> callback) {
 				primaryEventloop.post(() -> {
 					HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
 					callback.set(content);
@@ -144,7 +144,7 @@ public class HttpTolerantApplicationTest {
 		try (ServerSocket ignored = socketServer(port, "HTTP/1.1 200 OK\nContent-Type:  \t  text/html; charset=UTF-8\nContent-Length:  4\n\n/abc")) {
 			AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop);
 
-			httpClient.send(HttpRequest.get("http://127.0.0.1:" + port), new ResultCallback<HttpResponse>() {
+			httpClient.send(HttpRequest.get("http://127.0.0.1:" + port), new Callback<HttpResponse>() {
 				@Override
 				public void set(HttpResponse response) {
 					future.complete(response.getHeader(HttpHeaders.CONTENT_TYPE));

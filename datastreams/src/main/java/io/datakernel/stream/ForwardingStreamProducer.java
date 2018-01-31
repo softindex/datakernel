@@ -16,8 +16,9 @@
 
 package io.datakernel.stream;
 
+import io.datakernel.async.Stage;
+
 import java.util.Set;
-import java.util.concurrent.CompletionStage;
 
 public abstract class ForwardingStreamProducer<T> implements StreamProducer<T> {
 	protected final StreamProducer<T> producer;
@@ -42,7 +43,7 @@ public abstract class ForwardingStreamProducer<T> implements StreamProducer<T> {
 	}
 
 	@Override
-	public CompletionStage<Void> getEndOfStream() {
+	public Stage<Void> getEndOfStream() {
 		return producer.getEndOfStream();
 	}
 

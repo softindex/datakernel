@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.server;
 
-import java.util.concurrent.CompletionStage;
+import io.datakernel.async.Stage;
 
 /**
  * Implementations of this interface specifies the behavior according to
@@ -29,5 +29,5 @@ import java.util.concurrent.CompletionStage;
  * @param <O>	class of response
  */
 public interface RpcRequestHandler<I, O> {
-	CompletionStage<O> run(I request);
+	Stage<O> run(I request);
 }

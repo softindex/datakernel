@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.Callback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.hash.ShardingFunction;
 
@@ -87,7 +87,7 @@ public final class RpcStrategySharding implements RpcStrategy {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> cb) {
+		public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
 			int shardIndex = ((ShardingFunction<Object>) shardingFunction).getShard(request);
 			RpcSender sender = subSenders[shardIndex];
 			if (sender != null) {

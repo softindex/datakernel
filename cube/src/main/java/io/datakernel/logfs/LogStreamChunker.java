@@ -17,7 +17,7 @@
 package io.datakernel.logfs;
 
 import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
@@ -25,9 +25,6 @@ import io.datakernel.time.CurrentTimeProvider;
 
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
-import java.util.concurrent.CompletionStage;
-
-import static io.datakernel.async.SettableStage.mirrorOf;
 
 public final class LogStreamChunker extends ForwardingStreamConsumer<ByteBuf> implements StreamConsumerWithResult<ByteBuf, Void>, StreamDataReceiver<ByteBuf> {
 	private final CurrentTimeProvider currentTimeProvider;
@@ -36,7 +33,7 @@ public final class LogStreamChunker extends ForwardingStreamConsumer<ByteBuf> im
 	private final String logPartition;
 
 	private final StreamConsumerSwitcher<ByteBuf> switcher;
-	private final SettableStage<Void> result;
+	private final SettableStage<Void> result = SettableStage.create();
 
 	private String currentChunkName;
 	private StreamDataReceiver<ByteBuf> dataReceiver;
@@ -50,7 +47,7 @@ public final class LogStreamChunker extends ForwardingStreamConsumer<ByteBuf> im
 		this.fileSystem = fileSystem;
 		this.logPartition = logPartition;
 		this.switcher = switcher;
-		this.result = mirrorOf(getEndOfStream().thenCompose($ -> currentConsumer.getResult()));
+		getEndOfStream().thenCompose($ -> currentConsumer.getResult()).whenComplete(result::trySet);
 	}
 
 	public static LogStreamChunker create(LogFileSystem fileSystem, DateTimeFormatter datetimeFormat,
@@ -64,7 +61,7 @@ public final class LogStreamChunker extends ForwardingStreamConsumer<ByteBuf> im
 		LogStreamChunker chunker = new LogStreamChunker(currentTimeProvider, fileSystem, datetimeFormat, logPartition, switcher);
 		long timestamp = currentTimeProvider.currentTimeMillis();
 		String chunkName = datetimeFormat.format(Instant.ofEpochMilli(timestamp));
-		chunker.startNewChunk(chunkName, Stages.of(null));
+		chunker.startNewChunk(chunkName, Stage.of(null));
 		return chunker;
 	}
 
@@ -89,7 +86,7 @@ public final class LogStreamChunker extends ForwardingStreamConsumer<ByteBuf> im
 		});
 	}
 
-	private void startNewChunk(String newChunkName, CompletionStage<Void> previousFile) {
+	private void startNewChunk(String newChunkName, Stage<Void> previousFile) {
 		currentChunkName = newChunkName;
 		currentConsumer = StreamConsumerWithResult.ofStage(previousFile
 				.thenCompose($ -> fileSystem.makeUniqueLogFile(logPartition, newChunkName))
@@ -99,7 +96,7 @@ public final class LogStreamChunker extends ForwardingStreamConsumer<ByteBuf> im
 	}
 
 	@Override
-	public CompletionStage<Void> getResult() {
+	public Stage<Void> getResult() {
 		return result;
 	}
 }

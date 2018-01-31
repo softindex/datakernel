@@ -17,7 +17,6 @@
 package io.datakernel.async;
 
 import java.util.Objects;
-import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
 /**
@@ -30,7 +29,7 @@ public interface AsyncFunction<I, O> {
 	/**
 	 * Returns the result of applying this function to input.
 	 */
-	CompletionStage<O> apply(I input);
+	Stage<O> apply(I input);
 
 	default <T> AsyncFunction<T, O> compose(Function<? super T, ? extends I> before) {
 		return (T t) -> this.apply(before.apply(t));
@@ -47,7 +46,7 @@ public interface AsyncFunction<I, O> {
 
 	default <T> AsyncFunction<I, T> andThen(AsyncFunction<? super O, ? extends T> after) {
 		Objects.requireNonNull(after);
-		return (I i) -> apply(i).thenCompose((O input) -> (CompletionStage<T>) after.apply(input));
+		return (I i) -> apply(i).thenCompose((O input) -> (Stage<T>) after.apply(input));
 	}
 
 	default AsyncCallable<O> asAsyncCallable(I argument) {
@@ -55,11 +54,11 @@ public interface AsyncFunction<I, O> {
 	}
 
 	static <I, O> AsyncFunction<I, O> of(Function<I, O> function) {
-		return input -> Stages.of(function.apply(input));
+		return input -> Stage.of(function.apply(input));
 	}
 
 	static <T> AsyncFunction<T, T> identity() {
-		return Stages::of;
+		return Stage::of;
 	}
 
 }

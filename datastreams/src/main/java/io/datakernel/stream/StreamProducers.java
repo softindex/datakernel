@@ -16,13 +16,14 @@
 
 package io.datakernel.stream;
 
+import io.datakernel.async.NextStage;
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 
 import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.Set;
-import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -52,7 +53,7 @@ public final class StreamProducers {
 
 		@Override
 		public void setConsumer(StreamConsumer<T> consumer) {
-			getCurrentEventloop().post(() -> endOfStream.trySetException(exception));
+			getCurrentEventloop().post(() -> endOfStream.setException(exception));
 		}
 
 		@Override
@@ -66,7 +67,7 @@ public final class StreamProducers {
 		}
 
 		@Override
-		public CompletionStage<Void> getEndOfStream() {
+		public Stage<Void> getEndOfStream() {
 			return endOfStream;
 		}
 
@@ -82,7 +83,7 @@ public final class StreamProducers {
 		@Override
 		public void setConsumer(StreamConsumer<T> consumer) {
 			consumer.getEndOfStream()
-					.whenComplete(Stages.onError(endOfStream::trySetException));
+					.then(NextStage.onError(endOfStream::setException));
 		}
 
 		@Override
@@ -94,7 +95,7 @@ public final class StreamProducers {
 		}
 
 		@Override
-		public CompletionStage<Void> getEndOfStream() {
+		public Stage<Void> getEndOfStream() {
 			return endOfStream;
 		}
 
@@ -145,18 +146,18 @@ public final class StreamProducers {
 		}
 	}
 
-	public static <T> StreamProducerModifier<T, T> suppliedEndOfStream(Function<CompletionStage<Void>, CompletionStage<Void>> endOfStreamSupplier) {
+	public static <T> StreamProducerModifier<T, T> suppliedEndOfStream(Function<Stage<Void>, Stage<Void>> endOfStreamSupplier) {
 		return producer -> new ForwardingStreamProducer<T>(producer) {
-			final CompletionStage<Void> endOfStream = endOfStreamSupplier.apply(producer.getEndOfStream());
+			final Stage<Void> endOfStream = endOfStreamSupplier.apply(producer.getEndOfStream());
 
 			@Override
-			public CompletionStage<Void> getEndOfStream() {
+			public Stage<Void> getEndOfStream() {
 				return endOfStream;
 			}
 		};
 	}
 
-	public static <T> StreamProducerModifier<T, T> suppliedEndOfStream(CompletionStage<Void> suppliedEndOfStream) {
+	public static <T> StreamProducerModifier<T, T> suppliedEndOfStream(Stage<Void> suppliedEndOfStream) {
 		return suppliedEndOfStream(actualEndOfStream -> Stages.first(actualEndOfStream, suppliedEndOfStream));
 	}
 
@@ -172,7 +173,11 @@ public final class StreamProducers {
 
 	public static <T> StreamProducerModifier<T, T> decorator(Decorator<T> decorator) {
 		return producer -> new ForwardingStreamProducer<T>(producer) {
-			final SettableStage<Void> endOfStream = SettableStage.mirrorOf(producer.getEndOfStream());
+			final SettableStage<Void> endOfStream = SettableStage.create();
+
+			{
+				producer.getEndOfStream().whenComplete(endOfStream::trySet);
+			}
 
 			@Override
 			public void produce(StreamDataReceiver<T> dataReceiver) {
@@ -190,7 +195,7 @@ public final class StreamProducers {
 			}
 
 			@Override
-			public CompletionStage<Void> getEndOfStream() {
+			public Stage<Void> getEndOfStream() {
 				return endOfStream;
 			}
 		};
@@ -227,7 +232,7 @@ public final class StreamProducers {
 			}
 
 			@Override
-			public CompletionStage<Void> getEndOfStream() {
+			public Stage<Void> getEndOfStream() {
 				return endOfStream;
 			}
 		};
@@ -242,17 +247,12 @@ public final class StreamProducers {
 			final SettableStage<Void> endOfStream = SettableStage.create();
 
 			{
-				producer.getEndOfStream().whenComplete(($, throwable) -> {
-					if (throwable == null) {
-						// do nothing
-					} else {
-						endOfStream.trySet(null);
-					}
-				});
+				producer.getEndOfStream()
+						.then(NextStage.onError(endOfStream::setException));
 			}
 
 			@Override
-			public CompletionStage<Void> getEndOfStream() {
+			public Stage<Void> getEndOfStream() {
 				return endOfStream;
 			}
 		};

@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.protocol.stream;
 
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.rpc.client.RpcClient;
@@ -75,7 +75,7 @@ public class RpcBinaryProtocolTest {
 
 		RpcServer server = RpcServer.create(eventloop)
 				.withMessageTypes(String.class)
-				.withHandler(String.class, String.class, request -> Stages.of("Hello, " + request + "!"))
+				.withHandler(String.class, String.class, request -> Stage.of("Hello, " + request + "!"))
 				.withListenAddress(address);
 		server.listen();
 

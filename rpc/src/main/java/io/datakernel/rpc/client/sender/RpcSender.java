@@ -16,8 +16,8 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.Callback;
 
 public interface RpcSender {
-	<I, O> void sendRequest(I request, int timeout, ResultCallback<O> cb);
+	<I, O> void sendRequest(I request, int timeout, Callback<O> cb);
 }

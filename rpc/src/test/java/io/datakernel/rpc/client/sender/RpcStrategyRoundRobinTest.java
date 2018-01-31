@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.Callback;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionPoolStub;
 import io.datakernel.rpc.client.sender.helper.RpcMessageDataStub;
 import io.datakernel.rpc.client.sender.helper.RpcSenderStub;
@@ -62,7 +62,7 @@ public class RpcStrategyRoundRobinTest {
 		pool.put(ADDRESS_3, connection3);
 		senderRoundRobin = roundRobin.createSender(pool);
 		for (int i = 0; i < callsAmount; i++) {
-			senderRoundRobin.sendRequest(data, timeout, ResultCallback.assertNoCalls());
+			senderRoundRobin.sendRequest(data, timeout, Callback.assertNoCalls());
 		}
 
 		assertEquals(2, connection1.getRequests());
@@ -88,7 +88,7 @@ public class RpcStrategyRoundRobinTest {
 		// we don't add connections for ADDRESS_3 and ADDRESS_5
 		senderRoundRobin = roundRobinStrategy.createSender(pool);
 		for (int i = 0; i < callsAmount; i++) {
-			senderRoundRobin.sendRequest(data, timeout, ResultCallback.assertNoCalls());
+			senderRoundRobin.sendRequest(data, timeout, Callback.assertNoCalls());
 		}
 
 		assertEquals(4, connection1.getRequests());

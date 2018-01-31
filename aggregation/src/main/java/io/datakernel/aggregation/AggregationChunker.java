@@ -18,21 +18,19 @@ package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.aggregation.util.PartitionPredicate;
+import io.datakernel.async.NextStage;
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stage;
 import io.datakernel.async.StagesAccumulator;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.stream.*;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletionStage;
-
-import static io.datakernel.async.SettableStage.mirrorOf;
-import static io.datakernel.async.Stages.onError;
 
 public final class AggregationChunker<T> extends ForwardingStreamConsumer<T> implements StreamConsumerWithResult<T, List<AggregationChunk>> {
 	private final StreamConsumerSwitcher<T> switcher;
-	private final SettableStage<List<AggregationChunk>> result;
+	private final SettableStage<List<AggregationChunk>> result = SettableStage.create();
 
 	private final AggregationStructure aggregation;
 	private final List<String> fields;
@@ -61,8 +59,8 @@ public final class AggregationChunker<T> extends ForwardingStreamConsumer<T> imp
 		this.chunksAccumulator = StagesAccumulator.<List<AggregationChunk>>create(new ArrayList<>())
 				.withStage(switcher.getEndOfStream(), (accumulator, $) -> {});
 		this.chunkSize = chunkSize;
-		this.result = mirrorOf(chunksAccumulator.get());
-		getEndOfStream().whenComplete(onError(result::trySetException));
+		chunksAccumulator.get().whenComplete(result::trySet);
+		getEndOfStream().then(NextStage.onError(result::trySetException));
 	}
 
 	public static <T> AggregationChunker<T> create(AggregationStructure aggregation, List<String> fields,
@@ -77,12 +75,12 @@ public final class AggregationChunker<T> extends ForwardingStreamConsumer<T> imp
 	}
 
 	@Override
-	public CompletionStage<List<AggregationChunk>> getResult() {
+	public Stage<List<AggregationChunk>> getResult() {
 		return result;
 	}
 
 	private class ChunkWriter extends ForwardingStreamConsumer<T> implements StreamConsumerWithResult<T, AggregationChunk>, StreamDataReceiver<T> {
-		private final SettableStage<AggregationChunk> result;
+		private final SettableStage<AggregationChunk> result = SettableStage.create();
 		private final long chunkId;
 		private final int chunkSize;
 		private final PartitionPredicate<T> partitionPredicate;
@@ -100,14 +98,15 @@ public final class AggregationChunker<T> extends ForwardingStreamConsumer<T> imp
 			this.chunkId = chunkId;
 			this.chunkSize = chunkSize;
 			this.partitionPredicate = partitionPredicate;
-			this.result = mirrorOf(actualConsumer.getResult()
+			actualConsumer.getResult()
 					.thenApply($ -> count == 0 ? null :
 							AggregationChunk.create(chunkId,
 									fields,
 									PrimaryKey.ofObject(first, aggregation.getKeys()),
 									PrimaryKey.ofObject(last, aggregation.getKeys()),
-									count)));
-			getEndOfStream().whenComplete(onError(result::trySetException));
+									count))
+					.whenComplete(result::trySet);
+			getEndOfStream().then(NextStage.onError(result::trySetException));
 		}
 
 		@Override
@@ -137,7 +136,7 @@ public final class AggregationChunker<T> extends ForwardingStreamConsumer<T> imp
 		}
 
 		@Override
-		public CompletionStage<AggregationChunk> getResult() {
+		public Stage<AggregationChunk> getResult() {
 			return result;
 		}
 	}

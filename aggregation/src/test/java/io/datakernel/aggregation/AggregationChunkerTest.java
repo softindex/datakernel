@@ -18,7 +18,7 @@ package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.aggregation.util.PartitionPredicate;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
@@ -31,7 +31,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
@@ -65,25 +64,25 @@ public class AggregationChunkerTest {
 			long chunkId;
 
 			@Override
-			public <T> CompletionStage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
-				return Stages.of(StreamProducer.ofIterable(items).withEndOfStreamAsResult());
+			public <T> Stage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
+				return Stage.of(StreamProducer.ofIterable(items).withEndOfStreamAsResult());
 			}
 
 			@Override
-			public <T> CompletionStage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
+			public <T> Stage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
 				StreamConsumerToList<T> consumer = StreamConsumerToList.create(items);
 				listConsumers.add(consumer);
-				return Stages.of(consumer.withEndOfStreamAsResult());
+				return Stage.of(consumer.withEndOfStreamAsResult());
 			}
 
 			@Override
-			public CompletionStage<Long> createId() {
-				return Stages.of(++chunkId);
+			public Stage<Long> createId() {
+				return Stage.of(++chunkId);
 			}
 
 			@Override
-			public CompletionStage<Void> finish(Set<Long> chunkIds) {
-				return Stages.of(null);
+			public Stage<Void> finish(Set<Long> chunkIds) {
+				return Stage.of(null);
 			}
 		};
 
@@ -141,25 +140,25 @@ public class AggregationChunkerTest {
 			final List items = new ArrayList();
 
 			@Override
-			public <T> CompletionStage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
-				return Stages.of(StreamProducer.ofIterable(items).withEndOfStreamAsResult());
+			public <T> Stage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
+				return Stage.of(StreamProducer.ofIterable(items).withEndOfStreamAsResult());
 			}
 
 			@Override
-			public <T> CompletionStage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
+			public <T> Stage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
 				StreamConsumerToList<T> consumer = StreamConsumerToList.create(items);
 				listConsumers.add(consumer);
-				return Stages.of(consumer.withEndOfStreamAsResult());
+				return Stage.of(consumer.withEndOfStreamAsResult());
 			}
 
 			@Override
-			public CompletionStage<Long> createId() {
-				return Stages.of(++chunkId);
+			public Stage<Long> createId() {
+				return Stage.of(++chunkId);
 			}
 
 			@Override
-			public CompletionStage<Void> finish(Set<Long> chunkIds) {
-				return Stages.of(null);
+			public Stage<Void> finish(Set<Long> chunkIds) {
+				return Stage.of(null);
 			}
 		};
 
@@ -223,31 +222,31 @@ public class AggregationChunkerTest {
 			final List items = new ArrayList();
 
 			@Override
-			public <T> CompletionStage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
-				return Stages.of(StreamProducer.ofIterable(items).withEndOfStreamAsResult());
+			public <T> Stage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
+				return Stage.of(StreamProducer.ofIterable(items).withEndOfStreamAsResult());
 			}
 
 			@Override
-			public <T> CompletionStage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
+			public <T> Stage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields, Class<T> recordClass, long chunkId, DefiningClassLoader classLoader) {
 				if (chunkId == 1) {
 					StreamConsumerToList<T> toList = StreamConsumerToList.create(items);
 					listConsumers.add(toList);
-					return Stages.of(toList.withEndOfStreamAsResult());
+					return Stage.of(toList.withEndOfStreamAsResult());
 				} else {
 					StreamConsumer<T> consumer = StreamConsumer.closingWithError(new Exception("Test Exception"));
 					listConsumers.add(consumer);
-					return Stages.of(consumer.withEndOfStreamAsResult());
+					return Stage.of(consumer.withEndOfStreamAsResult());
 				}
 			}
 
 			@Override
-			public CompletionStage<Long> createId() {
-				return Stages.of(++chunkId);
+			public Stage<Long> createId() {
+				return Stage.of(++chunkId);
 			}
 
 			@Override
-			public CompletionStage<Void> finish(Set<Long> chunkIds) {
-				return Stages.of(null);
+			public Stage<Void> finish(Set<Long> chunkIds) {
+				return Stage.of(null);
 			}
 		};
 

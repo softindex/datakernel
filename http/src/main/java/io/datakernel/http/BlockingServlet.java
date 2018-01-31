@@ -1,12 +1,11 @@
 package io.datakernel.http;
 
-import io.datakernel.async.ResultCallback;
-
-import java.util.concurrent.CompletionStage;
+import io.datakernel.async.Callback;
+import io.datakernel.async.Stage;
 
 public abstract class BlockingServlet implements AsyncServlet {
 	@Override
-	public final void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
+	public final void serve(HttpRequest request, Callback<HttpResponse> callback) {
 		try {
 			HttpResponse httpResponse = serveBlocking(request);
 			callback.set(httpResponse);
@@ -16,7 +15,7 @@ public abstract class BlockingServlet implements AsyncServlet {
 	}
 
 	@Override
-	public final CompletionStage<HttpResponse> serve(HttpRequest request) {
+	public final Stage<HttpResponse> serve(HttpRequest request) {
 		throw new UnsupportedOperationException();
 	}
 

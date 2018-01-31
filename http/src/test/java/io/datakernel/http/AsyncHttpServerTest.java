@@ -17,7 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
@@ -30,7 +30,6 @@ import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.Random;
-import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
@@ -53,9 +52,9 @@ public class AsyncHttpServerTest {
 	public static AsyncHttpServer blockingHttpServer(Eventloop primaryEventloop, int port) {
 		AsyncServlet servlet = new AsyncServlet() {
 			@Override
-			public CompletionStage<HttpResponse> serve(HttpRequest request) {
+			public Stage<HttpResponse> serve(HttpRequest request) {
 				HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
-				return Stages.of(content);
+				return Stage.of(content);
 			}
 		};
 
@@ -65,7 +64,7 @@ public class AsyncHttpServerTest {
 	public static AsyncHttpServer asyncHttpServer(Eventloop primaryEventloop, int port) {
 		AsyncServlet servlet = new AsyncServlet() {
 			@Override
-			public CompletionStage<HttpResponse> serve(HttpRequest request) {
+			public Stage<HttpResponse> serve(HttpRequest request) {
 				SettableStage<HttpResponse> stage = SettableStage.create();
 				HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
 				stage.set(content);
@@ -80,7 +79,7 @@ public class AsyncHttpServerTest {
 		Random random = new Random();
 		AsyncServlet servlet = new AsyncServlet() {
 			@Override
-			public CompletionStage<HttpResponse> serve(HttpRequest request) {
+			public Stage<HttpResponse> serve(HttpRequest request) {
 				SettableStage<HttpResponse> stage = SettableStage.create();
 				HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
 				primaryEventloop.schedule(primaryEventloop.currentTimeMillis() + random.nextInt(3), () -> stage.set(content));
@@ -360,7 +359,7 @@ public class AsyncHttpServerTest {
 
 		AsyncServlet servlet = new AsyncServlet() {
 			@Override
-			public CompletionStage<HttpResponse> serve(HttpRequest request) {
+			public Stage<HttpResponse> serve(HttpRequest request) {
 				SettableStage<HttpResponse> stage = SettableStage.create();
 				HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
 				stage.set(content);
@@ -397,8 +396,8 @@ public class AsyncHttpServerTest {
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
 				new AsyncServlet() {
 					@Override
-					public CompletionStage<HttpResponse> serve(HttpRequest request) {
-						return Stages.of(HttpResponse.ok200().withBody(request.detachBody()));
+					public Stage<HttpResponse> serve(HttpRequest request) {
+						return Stage.of(HttpResponse.ok200().withBody(request.detachBody()));
 					}
 				})
 				.withListenAddress(new InetSocketAddress("localhost", port));

@@ -16,8 +16,6 @@
 
 package io.datakernel.service;
 
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopServer;
 import io.datakernel.eventloop.EventloopService;
@@ -30,8 +28,6 @@ import java.sql.Connection;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
-import java.util.function.Supplier;
 
 /**
  * Static utility methods pertaining to ConcurrentService. Creates
@@ -127,59 +123,6 @@ public final class ServiceAdapters {
 				return future;
 			}
 		};
-	}
-
-	public static ServiceAdapter<RetryEventloopService> forRetryEventloopService(Supplier<Boolean> predicate, Supplier<Long> delay) {
-		return forRetryEventloopService(predicate, delay, forEventloopService());
-	}
-
-	private static ServiceAdapter<RetryEventloopService> forRetryEventloopService(Supplier<Boolean> predicate, Supplier<Long> delay,
-	                                                                              ServiceAdapter<EventloopService> adapter) {
-		return new ServiceAdapter<RetryEventloopService>() {
-			@Override
-			public CompletableFuture<Void> start(RetryEventloopService instance, Executor executor) {
-				return adapter.start(instance, executor)
-						.<CompletionStage<Void>>handle((o, throwable) -> throwable != null
-								? scheduleRetry(instance, adapter, executor, predicate, delay, ServiceAdapter::start)
-								: Stages.of(null))
-						.thenCompose(Function.identity())
-						.toCompletableFuture();
-			}
-
-			@Override
-			public CompletableFuture<Void> stop(RetryEventloopService instance, Executor executor) {
-				return adapter.stop(instance, executor)
-						.<CompletionStage<Void>>handle((o, throwable) -> throwable != null
-								? scheduleRetry(instance, adapter, executor, predicate, delay, ServiceAdapter::stop)
-								: Stages.of(null))
-						.thenCompose(Function.identity())
-						.toCompletableFuture();
-			}
-		};
-	}
-
-	private static CompletionStage<Void> scheduleRetry(RetryEventloopService instance,
-	                                                   ServiceAdapter<EventloopService> adapter,
-	                                                   Executor executor, Supplier<Boolean> predicate,
-	                                                   Supplier<Long> delay, Action<RetryEventloopService> action) {
-		SettableStage<Void> stage = SettableStage.create();
-		scheduleRetry(instance, adapter, executor, predicate, delay, action, stage);
-		return stage;
-	}
-
-	private static void scheduleRetry(RetryEventloopService instance,
-	                                  ServiceAdapter<EventloopService> adapter,
-	                                  Executor executor, Supplier<Boolean> predicate, Supplier<Long> delay,
-	                                  Action<RetryEventloopService> action, SettableStage<Void> stage) {
-		if (!predicate.get()) {
-			stage.setException(new RuntimeException("Can`t start service: " + instance.toString()));
-			return;
-		}
-
-		Eventloop eventloop = instance.getEventloop();
-		eventloop.schedule(eventloop.currentTimeMillis() + delay.get(), () -> action
-				.doAction(forRetryEventloopService(predicate, delay, adapter), instance, executor)
-				.whenComplete(stage::set));
 	}
 
 	public static ServiceAdapter<EventloopServer> forEventloopServer() {

@@ -17,19 +17,17 @@
 package io.datakernel.stream;
 
 import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumers.Decorator.Context;
 
 import java.util.EnumSet;
 import java.util.Random;
 import java.util.Set;
-import java.util.concurrent.CompletionStage;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-import static io.datakernel.async.Stages.onError;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 import static io.datakernel.stream.StreamCapability.TERMINAL;
@@ -48,11 +46,11 @@ public final class StreamConsumers {
 
 		@Override
 		public void setProducer(StreamProducer<T> producer) {
-			getCurrentEventloop().post(() -> endOfStream.trySetException(exception));
+			getCurrentEventloop().post(() -> endOfStream.setException(exception));
 		}
 
 		@Override
-		public CompletionStage<Void> getEndOfStream() {
+		public Stage<Void> getEndOfStream() {
 			return endOfStream;
 		}
 
@@ -73,12 +71,11 @@ public final class StreamConsumers {
 		@Override
 		public void setProducer(StreamProducer<T> producer) {
 			producer.getEndOfStream()
-					.whenComplete(Stages.onResult(endOfStream::trySet))
-					.whenComplete(onError(endOfStream::trySetException));
+					.whenComplete(endOfStream::set);
 		}
 
 		@Override
-		public CompletionStage<Void> getEndOfStream() {
+		public Stage<Void> getEndOfStream() {
 			return endOfStream;
 		}
 
@@ -102,7 +99,11 @@ public final class StreamConsumers {
 
 	public static <T> StreamConsumerModifier<T, T> decorator(Decorator<T> decorator) {
 		return consumer -> new ForwardingStreamConsumer<T>(consumer) {
-			private final SettableStage<Void> endOfStream = SettableStage.mirrorOf(consumer.getEndOfStream());
+			final SettableStage<Void> endOfStream = SettableStage.create();
+
+			{
+				consumer.getEndOfStream().whenComplete(endOfStream::trySet);
+			}
 
 			@Override
 			public void setProducer(StreamProducer<T> producer) {
@@ -136,7 +137,7 @@ public final class StreamConsumers {
 			}
 
 			@Override
-			public CompletionStage<Void> getEndOfStream() {
+			public Stage<Void> getEndOfStream() {
 				return endOfStream;
 			}
 		};

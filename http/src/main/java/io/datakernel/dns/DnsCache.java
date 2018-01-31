@@ -16,7 +16,7 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.Callback;
 import io.datakernel.time.CurrentTimeProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -111,7 +111,7 @@ final class DnsCache {
 	 * @return DnsCacheQueryResult for this domain name
 	 */
 
-	public DnsCacheQueryResult tryToResolve(String domainName, boolean ipv6, ResultCallback<InetAddress[]> callback) {
+	public DnsCacheQueryResult tryToResolve(String domainName, boolean ipv6, Callback<InetAddress[]> callback) {
 		CachedDnsLookupResult cachedResult = cache.get(domainName);
 
 		if (cachedResult == null) {
@@ -149,7 +149,7 @@ final class DnsCache {
 		}
 	}
 
-	private void returnResultThroughCallback(String domainName, CachedDnsLookupResult result, ResultCallback<InetAddress[]> callback) {
+	private void returnResultThroughCallback(String domainName, CachedDnsLookupResult result, Callback<InetAddress[]> callback) {
 		if (result.isSuccessful()) {
 			InetAddress[] ipsFromCache = result.getIps();
 			if (inspector != null) inspector.onCacheHit(domainName, ipsFromCache);

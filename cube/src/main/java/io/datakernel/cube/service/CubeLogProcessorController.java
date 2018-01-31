@@ -3,9 +3,7 @@ package io.datakernel.cube.service;
 import io.datakernel.aggregation.AggregationChunk;
 import io.datakernel.aggregation.AggregationChunkStorage;
 import io.datakernel.aggregation.ot.AggregationDiff;
-import io.datakernel.async.AsyncCallable;
-import io.datakernel.async.AsyncPredicate;
-import io.datakernel.async.Stages;
+import io.datakernel.async.*;
 import io.datakernel.cube.Cube;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
@@ -22,10 +20,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.async.AsyncCallable.sharedCall;
-import static io.datakernel.async.Stages.onResult;
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
@@ -84,11 +80,11 @@ public final class CubeLogProcessorController implements EventloopJmxMBeanEx {
 
 	private final AsyncCallable<Boolean> processLogs = sharedCall(this::doProcessLogs);
 
-	public CompletionStage<Boolean> processLogs() {
+	public Stage<Boolean> processLogs() {
 		return processLogs.call();
 	}
 
-	CompletionStage<Boolean> doProcessLogs() {
+	Stage<Boolean> doProcessLogs() {
 		sw.reset().start();
 		logger.info("Start log processing from head: {}", stateManager.getRevision());
 		logger.trace("Start state: {}", stateManager);
@@ -98,11 +94,11 @@ public final class CubeLogProcessorController implements EventloopJmxMBeanEx {
 				.whenComplete(($, throwable) -> logger.trace("Finish state: {}", stateManager));
 	}
 
-	CompletionStage<Boolean> process() {
+	Stage<Boolean> process() {
 		return stateManager.pull()
 				.thenCompose(predicate::test)
 				.thenCompose(ok -> {
-					if (!ok) return Stages.of(false);
+					if (!ok) return Stage.of(false);
 
 					logger.info("Pull to commit: {}, start log processing", stateManager.getRevision());
 
@@ -110,13 +106,13 @@ public final class CubeLogProcessorController implements EventloopJmxMBeanEx {
 							.map(logProcessor -> AsyncCallable.of(logProcessor::processLog))
 							.collect(toList());
 
-					CompletionStage<List<LogDiff<CubeDiff>>> stage = parallelRunner ?
+					Stage<List<LogDiff<CubeDiff>>> stage = parallelRunner ?
 							Stages.collect(tasks.stream().map(AsyncCallable::call)) :
 							Stages.collectSequence(tasks);
 
 					return stage
 							.whenComplete(stageProcessLogsImpl.recordStats())
-							.whenComplete(onResult(this::cubeDiffJmx))
+							.then(NextStage.onResult(this::cubeDiffJmx))
 							.thenCompose(diffs -> {
 								stateManager.add(otSystem.squash(diffs));
 

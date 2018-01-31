@@ -19,6 +19,7 @@ package io.datakernel.eventloop;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncCallable;
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stage;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.SimpleException;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
@@ -799,7 +800,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 *
 	 * @param address socketChannel's address
 	 */
-	public CompletionStage<SocketChannel> connect(SocketAddress address) {
+	public Stage<SocketChannel> connect(SocketAddress address) {
 		return connect(address, 0);
 	}
 
@@ -810,7 +811,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 * @param address socketChannel's address
 	 * @param timeout the timeout value to be used in milliseconds, 0 as default system connection timeout
 	 */
-	public CompletionStage<SocketChannel> connect(SocketAddress address, int timeout) {
+	public Stage<SocketChannel> connect(SocketAddress address, int timeout) {
 		assert inEventloopThread();
 		SocketChannel socketChannel = null;
 		SettableStage<SocketChannel> stage = SettableStage.create();
@@ -1007,7 +1008,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		return future;
 	}
 
-	public <T> CompletionStage<T> callExecutor(ExecutorService executor, Callable<T> callable) {
+	public <T> Stage<T> callExecutor(ExecutorService executor, Callable<T> callable) {
 		assert inEventloopThread();
 		SettableStage<T> stage = SettableStage.create();
 		startExternalTask();

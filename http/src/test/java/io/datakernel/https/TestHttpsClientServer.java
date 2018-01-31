@@ -18,7 +18,7 @@ package io.datakernel.https;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
@@ -33,7 +33,6 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.security.SecureRandom;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
@@ -61,8 +60,8 @@ public class TestHttpsClientServer {
 	private TrustManager[] trustManagers = createTrustManagers(new File("./src/test/resources/truststore.jks"), "testtest");
 	private AsyncServlet bobServlet = new AsyncServlet() {
 		@Override
-		public CompletionStage<HttpResponse> serve(HttpRequest request) {
-			return Stages.of(ok200().withBody(wrapAscii("Hello, I am Bob!")));
+		public Stage<HttpResponse> serve(HttpRequest request) {
+			return Stage.of(ok200().withBody(wrapAscii("Hello, I am Bob!")));
 		}
 	};
 	private Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();

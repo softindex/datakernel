@@ -20,6 +20,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import io.datakernel.aggregation.*;
 import io.datakernel.aggregation.fieldtype.FieldTypes;
+import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.bean.*;
@@ -41,7 +42,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
@@ -159,7 +159,7 @@ public class CubeTest {
 		AggregationChunkStorage chunkStorage = RemoteFsChunkStorage.create(eventloop, new IdGeneratorStub(), new InetSocketAddress("localhost", LISTEN_PORT));
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
-		List<CompletionStage<Void>> tasks = new ArrayList<>();
+		List<Stage<Void>> tasks = new ArrayList<>();
 		{
 			StreamProducer<DataItem1> producer = StreamProducer.of(
 					new DataItem1(1, 2, 10, 20),

@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.loader.FileNamesLoadingService;
@@ -259,8 +259,8 @@ public class StaticServletsTest {
         eventloop.run();
 
         StaticLoader testLoader = name -> name.equals("dir2/testFile.txt")
-                ? Stages.of(ByteBufStrings.wrapAscii(EXPECTED_CONTENT))
-                : Stages.ofException(new NoSuchFileException(name));
+                ? Stage.of(ByteBufStrings.wrapAscii(EXPECTED_CONTENT))
+                : Stage.ofException(new NoSuchFileException(name));
 
         StaticLoader resourceLoader = StaticLoaders.ofPredicate(testLoader, preDownloadResources::contains);
         StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);
@@ -290,8 +290,8 @@ public class StaticServletsTest {
         eventloop.run();
 
         StaticLoader testLoader = name -> name.equals("index.html")
-                ? Stages.of(ByteBufStrings.wrapAscii(EXPECTED_CONTENT))
-                : Stages.ofException(new NoSuchFileException(name));
+                ? Stage.of(ByteBufStrings.wrapAscii(EXPECTED_CONTENT))
+                : Stage.ofException(new NoSuchFileException(name));
 
         StaticLoader resourceLoader = StaticLoaders.ofPredicate(testLoader, fileService::contains);
         StaticServlet servlet = StaticServlet.create(eventloop, resourceLoader);

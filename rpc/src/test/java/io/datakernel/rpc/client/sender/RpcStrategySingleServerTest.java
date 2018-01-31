@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.Callback;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionPoolStub;
 import io.datakernel.rpc.client.sender.helper.RpcMessageDataStub;
 import io.datakernel.rpc.client.sender.helper.RpcSenderStub;
@@ -68,7 +68,7 @@ public class RpcStrategySingleServerTest {
 		RpcMessageDataStub data = new RpcMessageDataStub();
 
 		for (int i = 0; i < calls; i++) {
-			sender.sendRequest(data, timeout, ResultCallback.assertNoCalls());
+			sender.sendRequest(data, timeout, Callback.assertNoCalls());
 		}
 
 		assertEquals(calls, connection.getRequests());

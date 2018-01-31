@@ -17,7 +17,7 @@
 package io.datakernel.stream.net;
 
 import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.AsyncTcpSocket;
@@ -32,7 +32,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.util.Preconditions.checkState;
 
@@ -127,11 +126,11 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 	}
 
 	@Override
-	public CompletionStage<Void> send(O msg) {
+	public Stage<Void> send(O msg) {
 		checkState(socketWriter == null && !writeEndOfStreamRequest);
 
 		if (closedException != null) {
-			return Stages.ofException(closedException);
+			return Stage.ofException(closedException);
 		}
 
 		SettableStage<Void> stage = SettableStage.create();
@@ -143,11 +142,11 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 	}
 
 	@Override
-	public CompletionStage<Void> sendEndOfStream() {
+	public Stage<Void> sendEndOfStream() {
 		checkState(socketWriter == null && !writeEndOfStreamRequest);
 
 		if (closedException != null) {
-			return Stages.ofException(closedException);
+			return Stage.ofException(closedException);
 		}
 
 		SettableStage<Void> stage = SettableStage.create();

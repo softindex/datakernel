@@ -16,8 +16,6 @@
 
 package io.datakernel.async;
 
-import java.util.concurrent.CompletionStage;
-
 public final class StagesAccumulator<A> {
 	private SettableStage<A> resultStage;
 
@@ -34,12 +32,12 @@ public final class StagesAccumulator<A> {
 		return new StagesAccumulator<>(initialAccumulator);
 	}
 
-	public <V> StagesAccumulator<A> withStage(CompletionStage<V> stage, Reducer<A, V> reducer) {
+	public <V> StagesAccumulator<A> withStage(Stage<V> stage, Reducer<A, V> reducer) {
 		addStage(stage, reducer);
 		return this;
 	}
 
-	public <V> CompletionStage<V> addStage(CompletionStage<V> stage, Reducer<A, V> reducer) {
+	public <V> Stage<V> addStage(Stage<V> stage, Reducer<A, V> reducer) {
 		activeStages++;
 		return stage.whenComplete((result, throwable) -> {
 			if (throwable == null) {
@@ -73,7 +71,7 @@ public final class StagesAccumulator<A> {
 		return resultStage;
 	}
 
-	public CompletionStage<A> get() {
+	public Stage<A> get() {
 		if (resultStage != null)
 			return resultStage;
 		resultStage = SettableStage.create();

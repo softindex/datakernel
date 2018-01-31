@@ -22,10 +22,7 @@ import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.measure.Measure;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
-import io.datakernel.async.AsyncCallable;
-import io.datakernel.async.AsyncFunction;
-import io.datakernel.async.Stages;
-import io.datakernel.async.StagesAccumulator;
+import io.datakernel.async.*;
 import io.datakernel.codegen.*;
 import io.datakernel.cube.asm.MeasuresFunction;
 import io.datakernel.cube.asm.RecordFunction;
@@ -51,7 +48,6 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.Map.Entry;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -513,7 +509,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializer<Cube>, 
 				Predicate<T> filterPredicate = createFilterPredicate(inputClass, dataInputFilterPredicate, getClassLoader(), fieldTypes);
 				output = output.with(StreamFilter.create(filterPredicate));
 			}
-			CompletionStage<AggregationDiff> consume = aggregation.consume(output, inputClass, aggregationKeyFields, aggregationMeasureFields);
+			Stage<AggregationDiff> consume = aggregation.consume(output, inputClass, aggregationKeyFields, aggregationMeasureFields);
 			tracker.addStage(consume, (accumulator, diff) -> accumulator.put(aggregationId, diff));
 		}
 		return streamSplitter.getInput().withResult(tracker.get().thenApply(CubeDiff::of));
@@ -691,7 +687,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializer<Cube>, 
 		return excessive;
 	}
 
-	public CompletionStage<CubeDiff> consolidate(AsyncFunction<Aggregation, AggregationDiff> strategy) {
+	public Stage<CubeDiff> consolidate(AsyncFunction<Aggregation, AggregationDiff> strategy) {
 		logger.info("Launching consolidation");
 
 		Map<String, AggregationDiff> map = new HashMap<>();
@@ -744,7 +740,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializer<Cube>, 
 
 	// region temp query() method
 	@Override
-	public CompletionStage<QueryResult> query(CubeQuery cubeQuery) throws QueryException {
+	public Stage<QueryResult> query(CubeQuery cubeQuery) throws QueryException {
 		DefiningClassLoader queryClassLoader = getQueryClassLoader(new CubeClassLoaderCache.Key(
 				new LinkedHashSet<>(cubeQuery.getAttributes()),
 				new LinkedHashSet<>(cubeQuery.getMeasures()),
@@ -801,7 +797,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializer<Cube>, 
 		RecordScheme recordScheme;
 		RecordFunction recordFunction;
 
-		CompletionStage<QueryResult> execute(DefiningClassLoader queryClassLoader, CubeQuery query) throws QueryException {
+		Stage<QueryResult> execute(DefiningClassLoader queryClassLoader, CubeQuery query) throws QueryException {
 			this.queryClassLoader = queryClassLoader;
 			this.query = query;
 
@@ -815,7 +811,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializer<Cube>, 
 			resultClass = createResultClass(resultAttributes, resultMeasures, Cube.this, queryClassLoader);
 			recordScheme = createRecordScheme();
 			if (query.getReportType() == ReportType.METADATA) {
-				return Stages.of(QueryResult.createForMetadata(recordScheme, recordAttributes, recordMeasures));
+				return Stage.of(QueryResult.createForMetadata(recordScheme, recordAttributes, recordMeasures));
 			}
 			measuresFunction = createMeasuresFunction();
 			totalsFunction = createTotalsFunction();
@@ -978,7 +974,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializer<Cube>, 
 		}
 
 		@SuppressWarnings("unchecked")
-		CompletionStage<QueryResult> processResults(List<Object> results) {
+		Stage<QueryResult> processResults(List<Object> results) {
 			Object totals;
 			try {
 				totals = resultClass.newInstance();
@@ -1004,7 +1000,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializer<Cube>, 
 			Record totalRecord = Record.create(recordScheme);
 			recordFunction.copyMeasures(totals, totalRecord);
 
-			List<CompletionStage<Void>> tasks = new ArrayList<>();
+			List<Stage<Void>> tasks = new ArrayList<>();
 			Map<String, Object> filterAttributes = new LinkedHashMap<>();
 			for (AttributeResolverContainer resolverContainer : attributeResolvers) {
 				List<String> attributes = new ArrayList<>(resolverContainer.attributes);
@@ -1065,8 +1061,8 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializer<Cube>, 
 			throw new AssertionError();
 		}
 
-		private CompletionStage<Void> resolveSpecifiedDimensions(AttributeResolverContainer resolverContainer,
-		                                                         Map<String, Object> result) {
+		private Stage<Void> resolveSpecifiedDimensions(AttributeResolverContainer resolverContainer,
+		                                               Map<String, Object> result) {
 			Object[] key = new Object[resolverContainer.dimensions.size()];
 			for (int i = 0; i < resolverContainer.dimensions.size(); i++) {
 				String dimension = resolverContainer.dimensions.get(i);

@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.Callback;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionPoolStub;
 import io.datakernel.rpc.client.sender.helper.RpcSenderStub;
 import org.junit.Test;
@@ -54,19 +54,19 @@ public class RpcStrategyFirstAvailableTest {
 		pool.put(ADDRESS_3, connection3);
 		sender = firstAvailableStrategy.createSender(pool);
 		for (int i = 0; i < callsToSender1; i++) {
-			sender.sendRequest(new Object(), 50, ResultCallback.assertNoCalls());
+			sender.sendRequest(new Object(), 50, Callback.assertNoCalls());
 		}
 		pool.remove(ADDRESS_1);
 		// we should recreate sender after changing in pool
 		sender = firstAvailableStrategy.createSender(pool);
 		for (int i = 0; i < callsToSender2; i++) {
-			sender.sendRequest(new Object(), 50, ResultCallback.assertNoCalls());
+			sender.sendRequest(new Object(), 50, Callback.assertNoCalls());
 		}
 		pool.remove(ADDRESS_2);
 		// we should recreate sender after changing in pool
 		sender = firstAvailableStrategy.createSender(pool);
 		for (int i = 0; i < callsToSender3; i++) {
-			sender.sendRequest(new Object(), 50, ResultCallback.assertNoCalls());
+			sender.sendRequest(new Object(), 50, Callback.assertNoCalls());
 		}
 
 		assertEquals(callsToSender1, connection1.getRequests());

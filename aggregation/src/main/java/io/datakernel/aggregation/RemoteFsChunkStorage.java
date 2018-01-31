@@ -17,6 +17,7 @@
 package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.ot.AggregationStructure;
+import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codegen.DefiningClassLoader;
@@ -39,7 +40,6 @@ import io.datakernel.util.MemSize;
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.aggregation.AggregationUtils.createBufferSerializer;
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
@@ -100,9 +100,9 @@ public final class RemoteFsChunkStorage implements AggregationChunkStorage, Even
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public <T> CompletionStage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields,
-	                                                                   Class<T> recordClass, long chunkId,
-	                                                                   DefiningClassLoader classLoader) {
+	public <T> Stage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields,
+	                                                         Class<T> recordClass, long chunkId,
+	                                                         DefiningClassLoader classLoader) {
 		return Stages.firstComplete(
 				() -> client.download(path(chunkId), 0).whenComplete(stageOpenR1.recordStats()),
 				() -> client.download(tempPath(chunkId), 0).whenComplete(stageOpenR2.recordStats()),
@@ -124,9 +124,9 @@ public final class RemoteFsChunkStorage implements AggregationChunkStorage, Even
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public <T> CompletionStage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields,
-	                                                                    Class<T> recordClass, long chunkId,
-	                                                                    DefiningClassLoader classLoader) {
+	public <T> Stage<StreamConsumerWithResult<T, Void>> write(AggregationStructure aggregation, List<String> fields,
+	                                                          Class<T> recordClass, long chunkId,
+	                                                          DefiningClassLoader classLoader) {
 		return client.upload(tempPath(chunkId))
 				.whenComplete(stageOpenW.recordStats())
 				.thenApply(consumer -> StreamTransformer.<T>idenity()
@@ -147,12 +147,12 @@ public final class RemoteFsChunkStorage implements AggregationChunkStorage, Even
 	}
 
 	@Override
-	public CompletionStage<Void> finish(Set<Long> chunkIds) {
+	public Stage<Void> finish(Set<Long> chunkIds) {
 		return client.move(chunkIds.stream().collect(toMap(this::tempPath, this::path))).whenComplete(stageFinishChunks.recordStats());
 	}
 
 	@Override
-	public CompletionStage<Long> createId() {
+	public Stage<Long> createId() {
 		return idGenerator.createId().whenComplete(stageIdGenerator.recordStats());
 	}
 

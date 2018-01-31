@@ -11,8 +11,6 @@ import io.datakernel.util.Initializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.CompletionStage;
-
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 
 public final class EventloopTaskScheduler implements EventloopService, Initializer<EventloopTaskScheduler>, EventloopJmxMBeanEx {
@@ -138,7 +136,7 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 
 	private final AsyncCallable<Void> doCall = AsyncCallable.sharedCall(this::doCall);
 
-	private CompletionStage<Void> doCall() {
+	private Stage<Void> doCall() {
 		lastStartTime = eventloop.currentTimeMillis();
 		return task.call()
 				.whenComplete(stats.recordStats())
@@ -165,15 +163,15 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 	}
 
 	@Override
-	public CompletionStage<Void> start() {
+	public Stage<Void> start() {
 		scheduleTask();
-		return Stages.of(null);
+		return Stage.of(null);
 	}
 
 	@Override
-	public CompletionStage<Void> stop() {
+	public Stage<Void> stop() {
 		scheduledTask.cancel();
-		return Stages.of(null);
+		return Stage.of(null);
 	}
 
 	public void setSchedule(Schedule schedule) {

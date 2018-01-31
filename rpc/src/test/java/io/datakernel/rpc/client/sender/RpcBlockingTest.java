@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.rpc.client.RpcClient;
@@ -31,7 +31,6 @@ import org.junit.Test;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
@@ -225,14 +224,14 @@ public class RpcBlockingTest {
 	private static RpcRequestHandler<HelloRequest, HelloResponse> helloServiceRequestHandler(HelloService helloService) {
 		return new RpcRequestHandler<HelloRequest, HelloResponse>() {
 			@Override
-			public CompletionStage<HelloResponse> run(HelloRequest request) {
+			public Stage<HelloResponse> run(HelloRequest request) {
 				String result;
 				try {
 					result = helloService.hello(request.name);
 				} catch (Exception e) {
-					return Stages.ofException(e);
+					return Stage.ofException(e);
 				}
-				return Stages.of(new HelloResponse(result));
+				return Stage.of(new HelloResponse(result));
 			}
 		};
 	}

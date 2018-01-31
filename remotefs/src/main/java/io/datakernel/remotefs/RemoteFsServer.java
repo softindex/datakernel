@@ -16,6 +16,7 @@
 
 package io.datakernel.remotefs;
 
+import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
@@ -32,7 +33,6 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
@@ -196,7 +196,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 	private class MoveMessagingHandler implements MessagingHandler<Move, FsResponse> {
 		@Override
 		public void onMessage(Messaging<Move, FsResponse> messaging, Move item) {
-			List<CompletionStage<Void>> tasks = item.getChanges().entrySet().stream()
+			List<Stage<Void>> tasks = item.getChanges().entrySet().stream()
 					.map(e -> fileManager.move(e.getKey(), e.getValue()))
 					.collect(Collectors.toList());
 

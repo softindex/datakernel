@@ -1,6 +1,7 @@
 package io.datakernel.ot;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
@@ -13,7 +14,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.CompletionStage;
 import java.util.function.Predicate;
 
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
@@ -24,7 +24,6 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.String.format;
 import static java.util.Collections.singleton;
 import static java.util.Collections.singletonMap;
-import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toList;
 
 public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
@@ -146,10 +145,10 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 				key -> keyComparator.compare(key, lastNode) >= 0;
 	}
 
-	public <A> CompletionStage<FindResult<K, A>> findParent(Set<K> startNodes,
-	                                                        DiffsReducer<A, D> diffAccumulator,
-	                                                        Predicate<OTCommit<K, D>> matchPredicate,
-	                                                        @Nullable K lastNode) {
+	public <A> Stage<FindResult<K, A>> findParent(Set<K> startNodes,
+	                                              DiffsReducer<A, D> diffAccumulator,
+	                                              Predicate<OTCommit<K, D>> matchPredicate,
+	                                              @Nullable K lastNode) {
 		PriorityQueue<FindEntry<K, A>> queue = new PriorityQueue<>(11,
 				(o1, o2) -> keyComparator.compare(o2.parent, o1.parent));
 
@@ -162,11 +161,11 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		return findParent(queue, new HashSet<>(), loadPredicate, matchPredicate, diffAccumulator).whenComplete(findParent.recordStats());
 	}
 
-	private <A> CompletionStage<FindResult<K, A>> findParent(PriorityQueue<FindEntry<K, A>> queue,
-	                                                         Set<K> visited,
-	                                                         Predicate<K> loadPredicate,
-	                                                         Predicate<OTCommit<K, D>> matchPredicate,
-	                                                         DiffsReducer<A, D> diffsAccumulator) {
+	private <A> Stage<FindResult<K, A>> findParent(PriorityQueue<FindEntry<K, A>> queue,
+	                                               Set<K> visited,
+	                                               Predicate<K> loadPredicate,
+	                                               Predicate<OTCommit<K, D>> matchPredicate,
+	                                               DiffsReducer<A, D> diffsAccumulator) {
 		while (!queue.isEmpty()) {
 			FindEntry<K, A> nodeWithPath = queue.poll();
 			K node = nodeWithPath.parent;
@@ -178,7 +177,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 				if (matchPredicate.test(commit)) {
 					K id = commit.getId();
 					Set<K> parentIds = commit.getParentIds();
-					return Stages.of(FindResult.of(id, child, parentIds, accumulatedDiffs));
+					return Stage.of(FindResult.of(id, child, parentIds, accumulatedDiffs));
 				} else {
 
 					for (Map.Entry<K, List<D>> parentEntry : commit.getParents().entrySet()) {
@@ -196,17 +195,17 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 			});
 		}
 
-		return Stages.of(FindResult.notFound());
+		return Stage.of(FindResult.notFound());
 	}
 
-	public CompletionStage<K> mergeHeadsAndPush() {
+	public Stage<K> mergeHeadsAndPush() {
 		logger.trace("mergeHeadsAndPush");
 		Stopwatch sw = Stopwatch.createStarted();
 		return remote.getHeads()
 				.thenCompose(heads -> {
 					check(!heads.isEmpty(), "Empty heads");
 
-					if (heads.size() == 1) return Stages.of(first(heads)); // nothing to merge
+					if (heads.size() == 1) return Stage.of(first(heads)); // nothing to merge
 
 					return mergeAlgorithm.loadAndMerge(heads)
 							.thenCompose(merge ->
@@ -224,18 +223,18 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 				});
 	}
 
-	public CompletionStage<Set<K>> findCut(Set<K> startNodes,
-	                                       Predicate<Set<OTCommit<K, D>>> matchPredicate) {
+	public Stage<Set<K>> findCut(Set<K> startNodes,
+	                             Predicate<Set<OTCommit<K, D>>> matchPredicate) {
 		PriorityQueue<K> queue = new PriorityQueue<>((o1, o2) -> keyComparator.compare(o2, o1));
 		queue.addAll(startNodes);
 		return findCut(queue, new HashMap<>(), matchPredicate).whenComplete(findCut.recordStats());
 	}
 
-	private CompletionStage<Set<K>> findCut(PriorityQueue<K> queue, Map<K, OTCommit<K, D>> queueMap,
-	                                        Predicate<Set<OTCommit<K, D>>> matchPredicate) {
-		if (queue.isEmpty()) return Stages.of(Collections.emptySet());
+	private Stage<Set<K>> findCut(PriorityQueue<K> queue, Map<K, OTCommit<K, D>> queueMap,
+	                              Predicate<Set<OTCommit<K, D>>> matchPredicate) {
+		if (queue.isEmpty()) return Stage.of(Collections.emptySet());
 
-		List<CompletionStage<OTCommit<K, D>>> loadStages = queue.stream()
+		List<Stage<OTCommit<K, D>>> loadStages = queue.stream()
 				.filter(k -> !queueMap.containsKey(k))
 				.map(remote::loadCommit)
 				.collect(toList());
@@ -246,7 +245,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 			}
 			assert queue.size() == queueMap.size();
 			if (matchPredicate.test(new HashSet<>(queueMap.values()))) {
-				return Stages.of(queueMap.keySet());
+				return Stage.of(queueMap.keySet());
 			} else {
 				K node = queue.poll();
 				OTCommit<K, D> commit = queueMap.remove(node);
@@ -260,7 +259,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		});
 	}
 
-	public CompletionStage<Optional<K>> findFirstCommonParent(Set<K> startCut) {
+	public Stage<Optional<K>> findFirstCommonParent(Set<K> startCut) {
 		Predicate<Map<K, Set<K>>> matcher = paths -> paths.values().stream()
 				.anyMatch(v -> v.size() == startCut.size());
 
@@ -277,7 +276,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 						.findAny());
 	}
 
-	public CompletionStage<Set<K>> findCommonParents(Set<K> startCut) {
+	public Stage<Set<K>> findCommonParents(Set<K> startCut) {
 		Predicate<Map<K, Set<K>>> matcher = paths -> paths.values().stream()
 				.noneMatch(v -> v.size() != startCut.size());
 
@@ -290,14 +289,14 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		return findCommonParents(startCut, queue, childrenMap, matcher).thenApply(Map::keySet);
 	}
 
-	private CompletionStage<Map<K, Set<K>>> findCommonParents(Set<K> cut,
-	                                                          PriorityQueue<K> queue,
-	                                                          Map<K, Set<K>> childrenMap,
-	                                                          Predicate<Map<K, Set<K>>> matcher) {
+	private Stage<Map<K, Set<K>>> findCommonParents(Set<K> cut,
+	                                                PriorityQueue<K> queue,
+	                                                Map<K, Set<K>> childrenMap,
+	                                                Predicate<Map<K, Set<K>>> matcher) {
 		logger.debug("search root nodes: queue {}, childrenMap {}", queue, childrenMap);
 
-		if (matcher.test(childrenMap)) return Stages.of(childrenMap);
-		if (queue.isEmpty()) return Stages.of(Collections.emptyMap());
+		if (matcher.test(childrenMap)) return Stage.of(childrenMap);
+		if (queue.isEmpty()) return Stage.of(Collections.emptyMap());
 
 		K node = queue.poll();
 		Set<K> nodeChildren = childrenMap.remove(node);
@@ -327,8 +326,8 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		}
 	}
 
-	public <A> CompletionStage<Map<K, A>> reduceEdges(Set<K> heads, K parentNode,
-	                                                  DiffsReducer<A, D> diffAccumulator) {
+	public <A> Stage<Map<K, A>> reduceEdges(Set<K> heads, K parentNode,
+	                                        DiffsReducer<A, D> diffAccumulator) {
 		PriorityQueue<ReduceEntry<K, A>> queue = new PriorityQueue<>(11,
 				(o1, o2) -> keyComparator.compare(o2.node, o1.node));
 		Map<K, ReduceEntry<K, A>> queueMap = new HashMap<>();
@@ -340,26 +339,28 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		}
 
 		return reduceEdges(queue, queueMap, parentNode, diffAccumulator)
-				.handle((value, throwable) ->
-						(throwable == null && value.keySet().equals(heads))
-								? Stages.of(value)
-								: Stages.<Map<K, A>>ofException(new IllegalArgumentException(
-								format("No path from heads `%s` to common node: `%s`", heads, parentNode))))
-				.thenCompose(identity());
+				.handle((value, throwable, cb) -> {
+					if (throwable == null && value.keySet().equals(heads)) {
+						cb.complete(value);
+					} else {
+						cb.completeExceptionally(new IllegalArgumentException(
+								format("No path from heads `%s` to common node: `%s`", heads, parentNode)));
+					}
+				});
 	}
 
-	private <A> CompletionStage<Map<K, A>> reduceEdges(PriorityQueue<ReduceEntry<K, A>> queue,
-	                                                   Map<K, ReduceEntry<K, A>> queueMap,
-	                                                   K commonNode,
-	                                                   DiffsReducer<A, D> diffAccumulator) {
+	private <A> Stage<Map<K, A>> reduceEdges(PriorityQueue<ReduceEntry<K, A>> queue,
+	                                         Map<K, ReduceEntry<K, A>> queueMap,
+	                                         K commonNode,
+	                                         DiffsReducer<A, D> diffAccumulator) {
 		if (queue.isEmpty()) {
-			return Stages.ofException(new IOException());
+			return Stage.ofException(new IOException());
 		}
 
 		ReduceEntry<K, A> polledEntry = queue.poll();
 		queueMap.remove(polledEntry.node);
 		if (commonNode.equals(polledEntry.node)) {
-			return Stages.of(polledEntry.toChildren);
+			return Stage.of(polledEntry.toChildren);
 		}
 		return remote.loadCommit(polledEntry.node).thenComposeAsync(commit -> {
 			for (K parent : commit.getParents().keySet()) {
@@ -380,13 +381,13 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 
 	}
 
-	public CompletionStage<List<D>> loadAllChanges(K head) {
+	public Stage<List<D>> loadAllChanges(K head) {
 		Predicate<OTCommit<K, D>> snapshotOrRootPredicate = commit -> commit.isRoot() || commit.isSnapshot();
 
 		return findParent(singleton(head), DiffsReducer.toList(), snapshotOrRootPredicate, null)
 				.thenCompose(findResult -> {
 					if (!findResult.isFound())
-						return Stages.ofException(new OTException("No snapshot or root from id:" + head));
+						return Stage.ofException(new OTException("No snapshot or root from id:" + head));
 
 					return remote.loadSnapshot(findResult.getCommit()).thenApply(diffs -> {
 						List<D> changes = concat(diffs, findResult.getAccumulatedDiffs());

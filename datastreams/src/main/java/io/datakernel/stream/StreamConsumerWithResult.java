@@ -17,10 +17,10 @@
 package io.datakernel.stream;
 
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stage;
 import io.datakernel.stream.processor.StreamLateBinder;
 
 import java.util.List;
-import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -32,7 +32,7 @@ import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 import static io.datakernel.util.Preconditions.checkArgument;
 
 public interface StreamConsumerWithResult<T, X> extends StreamConsumer<T> {
-	CompletionStage<X> getResult();
+	Stage<X> getResult();
 
 	@Override
 	default <R> StreamConsumerWithResult<R, X> with(StreamConsumerModifier<T, R> modifier) {
@@ -44,7 +44,7 @@ public interface StreamConsumerWithResult<T, X> extends StreamConsumer<T> {
 		return getCapabilities().contains(LATE_BINDING) ? this : with(StreamLateBinder.create());
 	}
 
-	static <T, X> StreamConsumerWithResult<T, X> ofStage(CompletionStage<StreamConsumerWithResult<T, X>> consumerStage) {
+	static <T, X> StreamConsumerWithResult<T, X> ofStage(Stage<StreamConsumerWithResult<T, X>> consumerStage) {
 		SettableStage<X> result = SettableStage.create();
 		StreamLateBinder<T> binder = StreamLateBinder.create();
 		consumerStage.whenComplete((consumer, throwable) -> {
@@ -61,9 +61,12 @@ public interface StreamConsumerWithResult<T, X> extends StreamConsumer<T> {
 		return binder.getInput().withResult(result);
 	}
 
-	default StreamConsumerWithResult<T, X> whenComplete(BiConsumer<? super X, ? super Throwable> consumer) {
-		getResult().whenComplete(consumer);
-		return this;
+	default <U> StreamConsumerWithResult<T, U> handle(Stage.Handler<? super X, U> handler) {
+		return withResult(getResult().handle(handler));
+	}
+
+	default <U> StreamConsumerWithResult<T, U> thenApply(Function<? super X, ? extends U> fn) {
+		return withResult(getResult().thenApply(fn));
 	}
 
 	default StreamConsumerWithResult<T, X> thenAccept(Consumer<? super X> action) {
@@ -71,21 +74,18 @@ public interface StreamConsumerWithResult<T, X> extends StreamConsumer<T> {
 		return this;
 	}
 
-	default <U> StreamConsumerWithResult<T, U> thenApply(Function<? super X, ? extends U> fn) {
-		CompletionStage<X> stage = this.getResult();
-		return withResult(stage.thenApply(fn));
+	default StreamConsumerWithResult<T, X> thenRun(Runnable action) {
+		getResult().thenRun(action);
+		return this;
 	}
 
-	default <U> StreamConsumerWithResult<T, U> thenCompose(Function<? super X, ? extends CompletionStage<U>> fn) {
-		SettableStage<U> resultStage = SettableStage.create();
-		this.getResult().whenComplete((x, throwable) -> {
-			if (throwable == null) {
-				fn.apply(x).whenComplete(resultStage::set);
-			} else {
-				resultStage.setException(throwable);
-			}
-		});
-		return withResult(resultStage);
+	default <U> StreamConsumerWithResult<T, U> thenCompose(Function<? super X, ? extends Stage<U>> fn) {
+		return withResult(getResult().thenCompose(fn));
+	}
+
+	default StreamConsumerWithResult<T, X> whenComplete(BiConsumer<? super X, ? super Throwable> consumer) {
+		getResult().whenComplete(consumer);
+		return this;
 	}
 
 	/**

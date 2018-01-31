@@ -16,12 +16,11 @@
 
 package io.datakernel;
 
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
 
 import java.io.IOException;
-import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -35,8 +34,8 @@ public final class GzipCompressingBehaviourExample {
 		dispatcher.with(HttpMethod.GET, "/gzip/",
 				new AsyncServlet() {
 					@Override
-					public CompletionStage<HttpResponse> serve(HttpRequest request) {
-						return Stages.of(HttpResponse.ok200().withBodyGzipCompression().withBody(encodeAscii("Hello!")));
+					public Stage<HttpResponse> serve(HttpRequest request) {
+						return Stage.of(HttpResponse.ok200().withBodyGzipCompression().withBody(encodeAscii("Hello!")));
 					}
 				});
 
@@ -44,8 +43,8 @@ public final class GzipCompressingBehaviourExample {
 		dispatcher.with(HttpMethod.GET, "/nogzip/",
 				new AsyncServlet() {
 					@Override
-					public CompletionStage<HttpResponse> serve(HttpRequest request) {
-						return Stages.of(HttpResponse.ok200().withBody(encodeAscii("Hello!")));
+					public Stage<HttpResponse> serve(HttpRequest request) {
+						return Stage.of(HttpResponse.ok200().withBody(encodeAscii("Hello!")));
 					}
 				});
 

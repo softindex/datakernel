@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.Callback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
@@ -247,7 +247,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		(pool = server.poolServing).addLastNode(this);
 		poolTimestamp = eventloop.currentTimeMillis();
 
-		servlet.serve(request, new ResultCallback<HttpResponse>() {
+		servlet.serve(request, new Callback<HttpResponse>() {
 			@Override
 			public void set(HttpResponse httpResponse) {
 				assert eventloop.inEventloopThread();

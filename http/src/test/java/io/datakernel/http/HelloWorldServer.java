@@ -16,11 +16,10 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 
 import java.net.InetSocketAddress;
-import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -32,8 +31,8 @@ public final class HelloWorldServer {
 	public static AsyncHttpServer helloWorldServer(Eventloop primaryEventloop, int port) {
 		AsyncServlet servlet = new AsyncServlet() {
 			@Override
-			public CompletionStage<HttpResponse> serve(HttpRequest request) {
-				return Stages.of(HttpResponse.ok200().withBody(HELLO_WORLD));
+			public Stage<HttpResponse> serve(HttpRequest request) {
+				return Stage.of(HttpResponse.ok200().withBody(HELLO_WORLD));
 			}
 		};
 

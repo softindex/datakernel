@@ -20,7 +20,7 @@ import com.google.gson.TypeAdapter;
 import io.datakernel.aggregation.AggregationPredicate;
 import io.datakernel.aggregation.QueryException;
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.cube.*;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
@@ -31,7 +31,6 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.concurrent.CompletionStage;
 import java.util.regex.Pattern;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
@@ -72,8 +71,8 @@ public final class ReportingServiceServlet extends AsyncServletWithStats {
 						consolidationDebugServlet :
 						new AsyncServlet() {
 							@Override
-							public CompletionStage<HttpResponse> serve(HttpRequest request) {
-								return Stages.of(HttpResponse.ofCode(404));
+							public Stage<HttpResponse> serve(HttpRequest request) {
+								return Stage.of(HttpResponse.ofCode(404));
 							}
 						});
 	}
@@ -93,7 +92,7 @@ public final class ReportingServiceServlet extends AsyncServletWithStats {
 	}
 
 	@Override
-	public CompletionStage<HttpResponse> doServe(HttpRequest httpRequest) {
+	public Stage<HttpResponse> doServe(HttpRequest httpRequest) {
 		logger.info("Received request: {}", httpRequest);
 		try {
 			Stopwatch totalTimeStopwatch = Stopwatch.createStarted();
@@ -108,10 +107,10 @@ public final class ReportingServiceServlet extends AsyncServletWithStats {
 			});
 		} catch (QueryException e) {
 			logger.error("Query exception: " + httpRequest, e);
-			return Stages.of(createErrorResponse(e.getMessage()));
+			return Stage.of(createErrorResponse(e.getMessage()));
 		} catch (Exception e) {
 			logger.error("Parse exception: " + httpRequest, e);
-			return Stages.of(createErrorResponse(e.getMessage()));
+			return Stage.of(createErrorResponse(e.getMessage()));
 		}
 	}
 

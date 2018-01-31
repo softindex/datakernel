@@ -16,7 +16,7 @@
 
 package io.datakernel;
 
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
@@ -31,7 +31,6 @@ import java.nio.file.Paths;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.regex.Pattern;
 
@@ -54,9 +53,9 @@ public class ClientStressTest {
 
 	private AsyncServlet servlet = new AsyncServlet() {
 		@Override
-		public CompletionStage<HttpResponse> serve(HttpRequest request) {
+		public Stage<HttpResponse> serve(HttpRequest request) {
 			test();
-			return Stages.of(HttpResponse.ok200());
+			return Stage.of(HttpResponse.ok200());
 		}
 	};
 	private AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet).withListenAddress(new InetSocketAddress("localhost", 1234));

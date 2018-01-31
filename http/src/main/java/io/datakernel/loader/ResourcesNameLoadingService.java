@@ -1,6 +1,6 @@
 package io.datakernel.loader;
 
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 
@@ -11,7 +11,6 @@ import java.io.InputStreamReader;
 import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
 public class ResourcesNameLoadingService implements EventloopService {
@@ -46,7 +45,7 @@ public class ResourcesNameLoadingService implements EventloopService {
     }
 
     @Override
-    public CompletionStage<Void> start() {
+    public Stage<Void> start() {
         return eventloop.callExecutor(executorService, () -> {
             Set<String> fileNames = new HashSet<>();
             InputStream in = loader.getResourceAsStream(resourcePath);
@@ -63,8 +62,8 @@ public class ResourcesNameLoadingService implements EventloopService {
     }
 
     @Override
-    public CompletionStage<Void> stop() {
-        return Stages.of(null);
+    public Stage<Void> stop() {
+        return Stage.of(null);
     }
 
     public Set<String> getNames() {

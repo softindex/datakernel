@@ -17,13 +17,12 @@
 package io.datakernel.stream.net;
 
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.stream.AbstractStreamConsumer;
 import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamStatus;
-
-import java.util.concurrent.CompletionStage;
 
 final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> implements StreamDataReceiver<ByteBuf> {
 	private final AsyncTcpSocket asyncTcpSocket;
@@ -90,7 +89,7 @@ final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> impleme
 		return !isWired() || sent || getStatus() == StreamStatus.CLOSED_WITH_ERROR;
 	}
 
-	public CompletionStage<Void> getSentStage() {
+	public Stage<Void> getSentStage() {
 		return sentStage;
 	}
 }

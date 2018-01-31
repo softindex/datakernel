@@ -1,9 +1,9 @@
 package io.datakernel.jmx;
 
 import io.datakernel.async.AsyncCallable;
+import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 
-import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
@@ -53,7 +53,7 @@ public class StageStats {
 		return () -> monitor(callable.call());
 	}
 
-	public <T> CompletionStage<T> monitor(CompletionStage<T> stage) {
+	public <T> Stage<T> monitor(Stage<T> stage) {
 		return stage.whenComplete(recordStats());
 	}
 

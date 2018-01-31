@@ -17,7 +17,8 @@
 package io.datakernel.logfs.ot;
 
 import io.datakernel.async.AsyncCallable;
-import io.datakernel.async.Stages;
+import io.datakernel.async.NextStage;
+import io.datakernel.async.Stage;
 import io.datakernel.async.StagesAccumulator;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
@@ -41,10 +42,8 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.async.AsyncCallable.sharedCall;
-import static io.datakernel.async.Stages.onResult;
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
@@ -95,23 +94,23 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 	}
 
 	@Override
-	public CompletionStage<Void> start() {
-		return Stages.of(null);
+	public Stage<Void> start() {
+		return Stage.of(null);
 	}
 
 	@Override
-	public CompletionStage<Void> stop() {
-		return Stages.of(null);
+	public Stage<Void> stop() {
+		return Stage.of(null);
 	}
 
 	private final AsyncCallable<LogDiff<D>> processLog = sharedCall(this::doProcessLog);
 
-	public CompletionStage<LogDiff<D>> processLog() {
+	public Stage<LogDiff<D>> processLog() {
 		return processLog.call();
 	}
 
-	private CompletionStage<LogDiff<D>> doProcessLog() {
-		if (!enabled) return Stages.of(LogDiff.of(emptyMap(), emptyList()));
+	private Stage<LogDiff<D>> doProcessLog() {
+		if (!enabled) return Stage.of(LogDiff.of(emptyMap(), emptyList()));
 		logger.trace("processLog_gotPositions called. Positions: {}", state.getPositions());
 
 		StreamProducerWithResult<T, Map<String, LogPositionDiff>> producer = getProducer();
@@ -122,7 +121,7 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 				.getResult()
 				.whenComplete(stageProcessLog.recordStats())
 				.thenApply(result -> LogDiff.of(result.getProducerResult(), result.getConsumerResult()))
-				.whenComplete(onResult(logDiff ->
+				.then(NextStage.onResult(logDiff ->
 						logger.info("Log '{}' processing complete. Positions: {}", log, logDiff.positions)));
 	}
 

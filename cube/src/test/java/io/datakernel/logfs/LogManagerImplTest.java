@@ -1,7 +1,7 @@
 package io.datakernel.logfs;
 
 import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
@@ -17,7 +17,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -68,7 +67,7 @@ public class LogManagerImplTest {
 		}
 
 		@Override
-		public CompletionStage<LogFile> makeUniqueLogFile(String logPartition, String logName) {
+		public Stage<LogFile> makeUniqueLogFile(String logPartition, String logName) {
 			Map<LogFile, List<ByteBuf>> partition = partitions.computeIfAbsent(logPartition, s -> new HashMap<>());
 			SettableStage<LogFile> stage = SettableStage.create();
 
@@ -82,15 +81,15 @@ public class LogManagerImplTest {
 		}
 
 		@Override
-		public CompletionStage<List<LogFile>> list(String logPartition) {
-			return Stages.of(new ArrayList<>(partitions.get(logPartition).keySet()));
+		public Stage<List<LogFile>> list(String logPartition) {
+			return Stage.of(new ArrayList<>(partitions.get(logPartition).keySet()));
 		}
 
 		@Override
-		public CompletionStage<StreamProducerWithResult<ByteBuf, Void>> read(String logPartition, LogFile logFile, long startPosition) {
+		public Stage<StreamProducerWithResult<ByteBuf, Void>> read(String logPartition, LogFile logFile, long startPosition) {
 			List<ByteBuf> byteBufs = getOffset(partitions.get(logPartition).get(logFile), startPosition);
 			StreamProducer<ByteBuf> producer = ofIterable(byteBufs);
-			return Stages.of(producer.withEndOfStreamAsResult());
+			return Stage.of(producer.withEndOfStreamAsResult());
 		}
 
 		private static List<ByteBuf> getOffset(List<ByteBuf> byteBufs, long startPosition) {
@@ -113,10 +112,10 @@ public class LogManagerImplTest {
 		}
 
 		@Override
-		public CompletionStage<StreamConsumerWithResult<ByteBuf, Void>> write(String logPartition, LogFile logFile) {
+		public Stage<StreamConsumerWithResult<ByteBuf, Void>> write(String logPartition, LogFile logFile) {
 			StreamConsumerWithResult<ByteBuf, List<ByteBuf>> listConsumer = StreamConsumerWithResult.toList();
 			listConsumer.getResult().thenAccept(byteBufs -> partitions.get(logPartition).get(logFile).addAll(byteBufs));
-			return Stages.of(listConsumer.withEndOfStreamAsResult());
+			return Stage.of(listConsumer.withEndOfStreamAsResult());
 		}
 	}
 

@@ -17,11 +17,11 @@
 package io.datakernel.stream;
 
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
-import io.datakernel.stream.StreamingResult.Pair;
+import io.datakernel.stream.StreamResult.Pair;
 import io.datakernel.stream.processor.StreamLateBinder;
 
-import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -31,35 +31,35 @@ import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 import static io.datakernel.util.Preconditions.checkArgument;
 
 public interface StreamProducerWithResult<T, X> extends StreamProducer<T> {
-	CompletionStage<X> getResult();
+	Stage<X> getResult();
 
 	@SuppressWarnings("unchecked")
 	@Override
-	default StreamingProducerResult<X> streamTo(StreamConsumer<T> consumer) {
+	default StreamProducerResult<X> streamTo(StreamConsumer<T> consumer) {
 		StreamProducerWithResult<T, X> producer = this;
 		bind(producer, consumer);
-		CompletionStage<Void> producerEndOfStream = producer.getEndOfStream();
-		CompletionStage<Void> consumerEndOfStream = consumer.getEndOfStream();
-		CompletionStage<Void> endOfStream = Stages.run(producerEndOfStream, consumerEndOfStream);
-		CompletionStage<X> producerResult = producer.getResult();
-		return new StreamingProducerResult<X>() {
+		Stage<Void> producerEndOfStream = producer.getEndOfStream();
+		Stage<Void> consumerEndOfStream = consumer.getEndOfStream();
+		Stage<Void> endOfStream = Stages.run(producerEndOfStream, consumerEndOfStream);
+		Stage<X> producerResult = producer.getResult();
+		return new StreamProducerResult<X>() {
 			@Override
-			public CompletionStage<X> getProducerResult() {
+			public Stage<X> getProducerResult() {
 				return producerResult;
 			}
 
 			@Override
-			public CompletionStage<Void> getProducerEndOfStream() {
+			public Stage<Void> getProducerEndOfStream() {
 				return producerEndOfStream;
 			}
 
 			@Override
-			public CompletionStage<Void> getConsumerEndOfStream() {
+			public Stage<Void> getConsumerEndOfStream() {
 				return consumerEndOfStream;
 			}
 
 			@Override
-			public CompletionStage<Void> getEndOfStream() {
+			public Stage<Void> getEndOfStream() {
 				return endOfStream;
 			}
 		};
@@ -67,32 +67,32 @@ public interface StreamProducerWithResult<T, X> extends StreamProducer<T> {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	default <Y> StreamingResult<X, Y> streamTo(StreamConsumerWithResult<T, Y> consumer) {
+	default <Y> StreamResult<X, Y> streamTo(StreamConsumerWithResult<T, Y> consumer) {
 		StreamProducerWithResult<T, X> producer = this;
 		bind(producer, consumer);
-		CompletionStage<Void> producerEndOfStream = producer.getEndOfStream();
-		CompletionStage<Void> consumerEndOfStream = consumer.getEndOfStream();
-		CompletionStage<Void> endOfStream = Stages.run(producerEndOfStream, consumerEndOfStream);
-		CompletionStage<Pair<X, Y>> result = Stages.pair(producer.getResult(), consumer.getResult())
-				.thenApply(xyPair -> new StreamingResult.Pair<>(xyPair.getLeft(), xyPair.getRight()));
-		return new StreamingResult<X, Y>() {
+		Stage<Void> producerEndOfStream = producer.getEndOfStream();
+		Stage<Void> consumerEndOfStream = consumer.getEndOfStream();
+		Stage<Void> endOfStream = Stages.run(producerEndOfStream, consumerEndOfStream);
+		Stage<Pair<X, Y>> result = Stages.pair(producer.getResult(), consumer.getResult())
+				.thenApply(xyPair -> new StreamResult.Pair<>(xyPair.getLeft(), xyPair.getRight()));
+		return new StreamResult<X, Y>() {
 			@Override
-			public CompletionStage<Pair<X, Y>> getResult() {
+			public Stage<Pair<X, Y>> getResult() {
 				return result;
 			}
 
 			@Override
-			public CompletionStage<Void> getProducerEndOfStream() {
+			public Stage<Void> getProducerEndOfStream() {
 				return producerEndOfStream;
 			}
 
 			@Override
-			public CompletionStage<Void> getConsumerEndOfStream() {
+			public Stage<Void> getConsumerEndOfStream() {
 				return consumerEndOfStream;
 			}
 
 			@Override
-			public CompletionStage<Void> getEndOfStream() {
+			public Stage<Void> getEndOfStream() {
 				return endOfStream;
 			}
 		};
@@ -108,7 +108,7 @@ public interface StreamProducerWithResult<T, X> extends StreamProducer<T> {
 		return getCapabilities().contains(LATE_BINDING) ? this : with(StreamLateBinder.create());
 	}
 
-	static <T, X> StreamProducerWithResult<T, X> ofStage(CompletionStage<StreamProducerWithResult<T, X>> producerStage) {
+	static <T, X> StreamProducerWithResult<T, X> ofStage(Stage<StreamProducerWithResult<T, X>> producerStage) {
 		SettableStage<X> result = SettableStage.create();
 		StreamLateBinder<T> binder = StreamLateBinder.create();
 		producerStage.whenComplete((producer, throwable) -> {
@@ -125,9 +125,12 @@ public interface StreamProducerWithResult<T, X> extends StreamProducer<T> {
 		return binder.getOutput().withResult(result);
 	}
 
-	default StreamProducerWithResult<T, X> whenComplete(BiConsumer<? super X, ? super Throwable> consumer) {
-		getResult().whenComplete(consumer);
-		return this;
+	default <U> StreamProducerWithResult<T, U> handle(Stage.Handler<? super X, U> handler) {
+		return withResult(getResult().handle(handler));
+	}
+
+	default <U> StreamProducerWithResult<T, U> thenApply(Function<? super X, ? extends U> fn) {
+		return withResult(getResult().thenApply(fn));
 	}
 
 	default StreamProducerWithResult<T, X> thenAccept(Consumer<? super X> action) {
@@ -135,21 +138,18 @@ public interface StreamProducerWithResult<T, X> extends StreamProducer<T> {
 		return this;
 	}
 
-	default <U> StreamProducerWithResult<T, U> thenApply(Function<? super X, ? extends U> fn) {
-		CompletionStage<X> stage = this.getResult();
-		return withResult(stage.thenApply(fn));
+	default StreamProducerWithResult<T, X> thenRun(Runnable action) {
+		getResult().thenRun(action);
+		return this;
 	}
 
-	default <U> StreamProducerWithResult<T, U> thenCompose(Function<? super X, ? extends CompletionStage<U>> fn) {
-		SettableStage<U> resultStage = SettableStage.create();
-		this.getResult().whenComplete((x, throwable) -> {
-			if (throwable == null) {
-				fn.apply(x).whenComplete(resultStage::set);
-			} else {
-				resultStage.setException(throwable);
-			}
-		});
-		return withResult(resultStage);
+	default <U> StreamProducerWithResult<T, U> thenCompose(Function<? super X, ? extends Stage<U>> fn) {
+		return withResult(getResult().thenCompose(fn));
+	}
+
+	default StreamProducerWithResult<T, X> whenComplete(BiConsumer<? super X, ? super Throwable> consumer) {
+		getResult().whenComplete(consumer);
+		return this;
 	}
 
 }

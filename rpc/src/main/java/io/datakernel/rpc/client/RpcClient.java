@@ -16,8 +16,9 @@
 
 package io.datakernel.rpc.client;
 
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.Callback;
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stage;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
@@ -44,7 +45,6 @@ import org.slf4j.Logger;
 import javax.net.ssl.SSLContext;
 import java.net.InetSocketAddress;
 import java.util.*;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
@@ -332,7 +332,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initialize
 	}
 
 	@Override
-	public CompletionStage<Void> start() {
+	public Stage<Void> start() {
 		checkState(eventloop.inEventloopThread());
 		checkState(messageTypes != null, "Message types must be specified");
 		checkState(!running);
@@ -373,7 +373,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initialize
 	}
 
 	@Override
-	public CompletionStage<Void> stop() {
+	public Stage<Void> stop() {
 		checkState(eventloop.inEventloopThread());
 		checkState(running);
 
@@ -503,7 +503,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initialize
 	 * @param request request for server
 	 */
 	@Override
-	public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
+	public <I, O> void sendRequest(I request, int timeout, Callback<O> callback) {
 		requestSender.sendRequest(request, timeout, callback);
 	}
 
@@ -514,10 +514,10 @@ public final class RpcClient implements IRpcClient, EventloopService, Initialize
 
 		return new IRpcClient() {
 			@Override
-			public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> cb) {
+			public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
 				RpcClient.this.eventloop.execute(() ->
 						RpcClient.this.requestSender.sendRequest(request, timeout,
-								new ResultCallback<O>() {
+								new Callback<O>() {
 									@Override
 									public void set(O result) {
 										anotherEventloop.execute(() -> cb.set(result));
@@ -544,7 +544,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initialize
 				= new RpcNoSenderException("No senders available");
 
 		@Override
-		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> cb) {
+		public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
 			eventloop.post(() ->
 					cb.setException(NO_SENDER_AVAILABLE_EXCEPTION));
 		}

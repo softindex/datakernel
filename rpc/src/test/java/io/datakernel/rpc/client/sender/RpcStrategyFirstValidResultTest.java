@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.Callback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionPoolStub;
 import io.datakernel.rpc.client.sender.helper.RpcSenderStub;
@@ -59,13 +59,13 @@ public class RpcStrategyFirstValidResultTest {
 		pool.put(ADDRESS_3, connection3);
 		senderToAll = firstValidResult.createSender(pool);
 		for (int i = 0; i < callsAmountIterationOne; i++) {
-			senderToAll.sendRequest(new Object(), 50, ResultCallback.ignore());
+			senderToAll.sendRequest(new Object(), 50, Callback.ignore());
 		}
 		pool.remove(ADDRESS_1);
 		// we should recreate sender after changing in pool
 		senderToAll = firstValidResult.createSender(pool);
 		for (int i = 0; i < callsAmountIterationTwo; i++) {
-			senderToAll.sendRequest(new Object(), 50, ResultCallback.ignore());
+			senderToAll.sendRequest(new Object(), 50, Callback.ignore());
 		}
 
 		assertEquals(callsAmountIterationOne, connection1.getRequests());
@@ -82,7 +82,7 @@ public class RpcStrategyFirstValidResultTest {
 		RpcSender sender = firstValidResult.createSender(new RpcClientConnectionPoolStub());
 		CompletableFuture<Object> future = new CompletableFuture<>();
 
-		sender.sendRequest(new Object(), 50, ResultCallback.forFuture(future));
+		sender.sendRequest(new Object(), 50, Callback.forFuture(future));
 
 		// despite there are several sender, sendResult should be called only once after all senders returned null
 
@@ -100,7 +100,7 @@ public class RpcStrategyFirstValidResultTest {
 		RpcSender sender = firstValidResult.createSender(new RpcClientConnectionPoolStub());
 
 		CompletableFuture<Object> future = new CompletableFuture<>();
-		sender.sendRequest(new Object(), 50, ResultCallback.forFuture(future));
+		sender.sendRequest(new Object(), 50, Callback.forFuture(future));
 
 		future.get();
 	}
@@ -123,7 +123,7 @@ public class RpcStrategyFirstValidResultTest {
 		RpcSender sender = firstValidResult.createSender(new RpcClientConnectionPoolStub());
 		CompletableFuture<Object> future = new CompletableFuture<>();
 
-		sender.sendRequest(new Object(), 50, ResultCallback.forFuture(future));
+		sender.sendRequest(new Object(), 50, Callback.forFuture(future));
 
 		assertEquals(validKey, future.get());
 	}
@@ -145,7 +145,7 @@ public class RpcStrategyFirstValidResultTest {
 				.withNoValidResultException(new Exception());
 		RpcSender sender = firstValidResult.createSender(new RpcClientConnectionPoolStub());
 		CompletableFuture<Object> future = new CompletableFuture<>();
-		sender.sendRequest(new Object(), 50, ResultCallback.forFuture(future));
+		sender.sendRequest(new Object(), 50, Callback.forFuture(future));
 		future.get();
 	}
 
@@ -169,7 +169,7 @@ public class RpcStrategyFirstValidResultTest {
 
 	private static final class SenderOnResultWithNullCaller implements RpcSender {
 		@Override
-		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
+		public <I, O> void sendRequest(I request, int timeout, Callback<O> callback) {
 			callback.set(null);
 		}
 	}
@@ -183,7 +183,7 @@ public class RpcStrategyFirstValidResultTest {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
+		public <I, O> void sendRequest(I request, int timeout, Callback<O> callback) {
 			callback.set((O) data);
 		}
 	}

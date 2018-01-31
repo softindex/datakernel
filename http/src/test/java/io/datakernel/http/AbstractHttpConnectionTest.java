@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
@@ -26,7 +27,6 @@ import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
@@ -48,8 +48,8 @@ public class AbstractHttpConnectionTest {
 	public void testMultiLineHeader() throws Exception {
 		AsyncServlet servlet = new AsyncServlet() {
 			@Override
-			public CompletionStage<HttpResponse> serve(HttpRequest request) {
-				return Stages.of(createMultiLineHeaderWithInitialBodySpacesResponse());
+			public Stage<HttpResponse> serve(HttpRequest request) {
+				return Stage.of(createMultiLineHeaderWithInitialBodySpacesResponse());
 			}
 		};
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
@@ -85,13 +85,13 @@ public class AbstractHttpConnectionTest {
 			boolean first = true;
 
 			@Override
-			public CompletionStage<HttpResponse> serve(HttpRequest request) {
+			public Stage<HttpResponse> serve(HttpRequest request) {
 				HttpResponse response = HttpResponse.ok200().withBodyGzipCompression();
 				if (!first) {
-					return Stages.of(response.withBody((ByteBuf) null));
+					return Stage.of(response.withBody((ByteBuf) null));
 				} else {
 					first = false;
-					return Stages.of(response.withBody(encodeAscii("Test message")));
+					return Stage.of(response.withBody(encodeAscii("Test message")));
 				}
 			}
 		};
@@ -114,8 +114,7 @@ public class AbstractHttpConnectionTest {
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
-	private CompletionStage<Void> stopClientAndServer(AsyncHttpClient client, AsyncHttpServer server) {
-		return client.stop().runAfterBoth(server.close(), () -> {
-		});
+	private Stage<Void> stopClientAndServer(AsyncHttpClient client, AsyncHttpServer server) {
+		return Stages.run(client.stop(), server.close());
 	}
 }

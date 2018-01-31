@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.Callback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.hash.HashBucketFunction;
 import io.datakernel.rpc.hash.HashFunction;
@@ -142,7 +142,7 @@ public final class RpcStrategyRendezvousHashing implements RpcStrategy {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
+		public <I, O> void sendRequest(I request, int timeout, Callback<O> callback) {
 			RpcSender sender = chooseBucket(request);
 			sender.sendRequest(request, timeout, callback);
 		}

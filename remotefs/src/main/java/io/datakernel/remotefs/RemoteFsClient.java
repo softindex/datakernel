@@ -16,8 +16,9 @@
 
 package io.datakernel.remotefs;
 
+import io.datakernel.async.NextStage;
 import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
@@ -41,10 +42,8 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.async.Stages.onError;
 import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
 import static io.datakernel.eventloop.AsyncTcpSocketImpl.wrapChannel;
 import static io.datakernel.stream.net.MessagingSerializers.ofJson;
@@ -84,7 +83,7 @@ public final class RemoteFsClient implements IRemoteFsClient {
 	// endregion
 
 	@Override
-	public CompletionStage<StreamConsumerWithResult<ByteBuf, Void>> upload(String fileName) {
+	public Stage<StreamConsumerWithResult<ByteBuf, Void>> upload(String fileName) {
 		return connect(address).thenApply(messaging -> {
 			messaging.send(new RemoteFsCommands.Upload(fileName));
 			StreamConsumerWithResult<ByteBuf, Void> consumer = messaging.sendBinaryStream();
@@ -115,13 +114,13 @@ public final class RemoteFsClient implements IRemoteFsClient {
 			});
 
 			StreamConsumerWithResult<ByteBuf, Void> consumerWithResult = consumer.withResult(ack);
-			consumerWithResult.getResult().whenComplete(onError($ -> messaging.close()));
+			consumerWithResult.getResult().then(NextStage.onError($ -> messaging.close()));
 			return consumerWithResult.withLateBinding();
 		});
 	}
 
 	@Override
-	public CompletionStage<StreamProducerWithResult<ByteBuf, Void>> download(String fileName, long startPosition) {
+	public Stage<StreamProducerWithResult<ByteBuf, Void>> download(String fileName, long startPosition) {
 		return connect(address).thenCompose(messaging -> {
 			SettableStage<StreamProducerWithResult<ByteBuf, Void>> stage = SettableStage.create();
 
@@ -139,9 +138,9 @@ public final class RemoteFsClient implements IRemoteFsClient {
 										.thenCompose(totalSize -> {
 											messaging.close();
 											if (totalSize == size - startPosition) {
-												return Stages.of((Void) null);
+												return Stage.of((Void) null);
 											} else {
-												return Stages.ofException(new IOException("Invalid stream size for '" + fileName + "' starting from " + startPosition +
+												return Stage.ofException(new IOException("Invalid stream size for '" + fileName + "' starting from " + startPosition +
 														", expected: " + (size - startPosition) + " actual: " + stats.getTotalSize()));
 											}
 										})
@@ -166,12 +165,12 @@ public final class RemoteFsClient implements IRemoteFsClient {
 					})
 			);
 
-			return stage.whenComplete(onError($ -> messaging.close()));
+			return stage.then(NextStage.onError($ -> messaging.close()));
 		});
 	}
 
 	@Override
-	public CompletionStage<Void> delete(String fileName) {
+	public Stage<Void> delete(String fileName) {
 		return connect(address).thenCompose(messaging -> {
 			SettableStage<Void> ack = SettableStage.create();
 			messaging.send(new RemoteFsCommands.Delete(fileName)).whenComplete(($, throwable) -> {
@@ -216,7 +215,7 @@ public final class RemoteFsClient implements IRemoteFsClient {
 	}
 
 	@Override
-	public CompletionStage<List<String>> list() {
+	public Stage<List<String>> list() {
 		return connect(address).thenCompose(messaging -> {
 			SettableStage<List<String>> ack = SettableStage.create();
 			messaging.send(new RemoteFsCommands.ListFiles()).whenComplete(($, throwable) -> {
@@ -261,7 +260,7 @@ public final class RemoteFsClient implements IRemoteFsClient {
 	}
 
 	@Override
-	public CompletionStage<Void> move(Map<String, String> changes) {
+	public Stage<Void> move(Map<String, String> changes) {
 		return connect(address).thenCompose(messaging -> {
 			SettableStage<Void> ack = SettableStage.create();
 			messaging.send(new RemoteFsCommands.Move(changes)).whenComplete((aVoid, throwable) -> {
@@ -305,7 +304,7 @@ public final class RemoteFsClient implements IRemoteFsClient {
 		});
 	}
 
-	private CompletionStage<MessagingWithBinaryStreaming<FsResponse, FsCommand>> connect(InetSocketAddress address) {
+	private Stage<MessagingWithBinaryStreaming<FsResponse, FsCommand>> connect(InetSocketAddress address) {
 		return eventloop.connect(address).thenApply(socketChannel -> {
 			AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings);
 			AsyncTcpSocket asyncTcpSocket = sslContext != null

@@ -16,13 +16,13 @@
 
 package io.datakernel.stream.processor;
 
+import io.datakernel.async.Stage;
 import io.datakernel.async.StagesAccumulator;
 import io.datakernel.stream.*;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
 import static io.datakernel.stream.DataStreams.bind;
@@ -65,7 +65,7 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 		this.input = new Input();
 
 		this.temporaryStreams.addStage(input.getEndOfStream(), (accumulator, $) -> {});
-		CompletionStage<StreamProducer<T>> outputStreamStage = this.temporaryStreams.get()
+		Stage<StreamProducer<T>> outputStreamStage = this.temporaryStreams.get()
 				.thenApply(streamIds -> {
 					input.list.sort(itemComparator);
 					StreamProducer<T> listProducer = StreamProducer.ofIterable(input.list);
@@ -116,7 +116,7 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 			}
 		}
 
-		private CompletionStage<Integer> writeToTemporaryStorage(List<T> sortedList) {
+		private Stage<Integer> writeToTemporaryStorage(List<T> sortedList) {
 			return temporaryStreams.addStage(
 					storage.write().thenCompose(consumer -> StreamProducer.ofIterable(sortedList)
 							.streamTo(consumer)

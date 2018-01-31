@@ -1,12 +1,12 @@
 package io.datakernel.stream;
 
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stage;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 import static io.datakernel.stream.StreamCapability.TERMINAL;
@@ -43,20 +43,16 @@ public final class StreamConsumerToList<T> extends AbstractStreamConsumer<T> imp
 
 	@Override
 	protected void onEndOfStream() {
-		if (resultStage != null) {
-			resultStage.set(list);
-		}
+		resultStage.set(list);
 	}
 
 	@Override
 	protected void onError(Throwable t) {
-		if (resultStage != null) {
-			resultStage.setException(t);
-		}
+		resultStage.setException(t);
 	}
 
 	@Override
-	public final CompletionStage<List<T>> getResult() {
+	public final Stage<List<T>> getResult() {
 		return resultStage;
 	}
 

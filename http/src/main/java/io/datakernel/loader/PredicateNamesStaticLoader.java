@@ -1,10 +1,9 @@
 package io.datakernel.loader;
 
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.http.HttpException;
 
-import java.util.concurrent.CompletionStage;
 import java.util.function.Predicate;
 
 class PredicateNamesStaticLoader implements StaticLoader {
@@ -17,10 +16,10 @@ class PredicateNamesStaticLoader implements StaticLoader {
     }
 
     @Override
-    public CompletionStage<ByteBuf> getResource(String name) {
+    public Stage<ByteBuf> getResource(String name) {
         return names.test(name)
                 ? loader.getResource(name)
-                : Stages.ofException(HttpException.notFound404());
+                : Stage.ofException(HttpException.notFound404());
 
     }
 }

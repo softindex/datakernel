@@ -16,7 +16,7 @@
 
 package io.datakernel.stream.file;
 
-import io.datakernel.async.Stages;
+import io.datakernel.async.NextStage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.file.AsyncFile;
@@ -149,8 +149,8 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 
 	@Override
 	protected void cleanup() {
-		asyncFile.close().whenComplete(Stages.onError(throwable ->
-				logger.error("{}: failed to close file", this, throwable)));
+		asyncFile.close()
+				.then(NextStage.onError(throwable -> logger.error("{}: failed to close file", this, throwable)));
 	}
 
 	private static AsyncFile getAsyncFile(ExecutorService executor, Path path) throws IOException {

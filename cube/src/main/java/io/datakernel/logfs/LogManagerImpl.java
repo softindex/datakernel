@@ -18,7 +18,7 @@ package io.datakernel.logfs;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.TruncatedDataException;
@@ -39,7 +39,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 
 import static io.datakernel.stream.StreamProducers.endOfStreamOnError;
@@ -97,10 +96,10 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 	}
 
 	@Override
-	public CompletionStage<StreamConsumerWithResult<T, Void>> consumer(String logPartition) {
+	public Stage<StreamConsumerWithResult<T, Void>> consumer(String logPartition) {
 		validateLogPartition(logPartition);
 
-		return Stages.of(StreamTransformer.<T>idenity()
+		return Stage.of(StreamTransformer.<T>idenity()
 				.with(StreamBinarySerializer.create(serializer)
 						.withAutoFlush(autoFlushIntervalMillis)
 						.withDefaultBufferSize(bufferSize)
@@ -111,9 +110,9 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 	}
 
 	@Override
-	public CompletionStage<StreamProducerWithResult<T, LogPosition>> producer(String logPartition,
-	                                                                          LogFile startLogFile, long startOffset,
-	                                                                          LogFile endLogFile) {
+	public Stage<StreamProducerWithResult<T, LogPosition>> producer(String logPartition,
+	                                                                LogFile startLogFile, long startOffset,
+	                                                                LogFile endLogFile) {
 		validateLogPartition(logPartition);
 		LogPosition startPosition = LogPosition.create(startLogFile, startOffset);
 		return fileSystem.list(logPartition)
@@ -157,7 +156,7 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 							if (logger.isTraceEnabled())
 								logger.trace("Read log file `{}` from: {}", currentLogFile, position);
 
-							CompletionStage<StreamProducer<T>> stage = fileSystem.read(logPartition, currentLogFile, position).thenApply(fileStream -> {
+							Stage<StreamProducer<T>> stage = fileSystem.read(logPartition, currentLogFile, position).thenApply(fileStream -> {
 								inputStreamPosition = 0L;
 								sw.reset().start();
 								return fileStream

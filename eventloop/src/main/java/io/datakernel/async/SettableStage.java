@@ -1,10 +1,8 @@
 package io.datakernel.async;
 
-import java.util.concurrent.CompletionStage;
-
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
-public final class SettableStage<T> extends AbstractCompletionStage<T> implements ResultCallback<T> {
+public final class SettableStage<T> extends AbstractStage<T> implements Callback<T> {
 	private static final Object NO_RESULT = new Object();
 
 	@SuppressWarnings("unchecked")
@@ -16,12 +14,6 @@ public final class SettableStage<T> extends AbstractCompletionStage<T> implement
 
 	public static <T> SettableStage<T> create() {
 		return new SettableStage<>();
-	}
-
-	public static <T> SettableStage<T> mirrorOf(CompletionStage<T> stage) {
-		SettableStage<T> settableStage = new SettableStage<>();
-		stage.whenComplete(settableStage::trySet);
-		return settableStage;
 	}
 
 	@Override
@@ -44,14 +36,6 @@ public final class SettableStage<T> extends AbstractCompletionStage<T> implement
 		} else {
 			this.result = null;
 			completeExceptionally(t);
-		}
-	}
-
-	public void set(T result, Throwable throwable) {
-		if (throwable == null) {
-			set(result);
-		} else {
-			setException(throwable);
 		}
 	}
 
@@ -78,7 +62,7 @@ public final class SettableStage<T> extends AbstractCompletionStage<T> implement
 	}
 
 	@Override
-	protected <X> CompletionStage<X> subscribe(NextCompletionStage<T, X> next) {
+	public <X> Stage<X> then(NextStage<? super T, ? extends X> next) {
 		if (isSet()) {
 			if (this.next == null) {
 				getCurrentEventloop().post(() -> {
@@ -93,7 +77,7 @@ public final class SettableStage<T> extends AbstractCompletionStage<T> implement
 				});
 			}
 		}
-		return super.subscribe(next);
+		return super.then(next);
 	}
 
 	public boolean isSet() {

@@ -1,7 +1,7 @@
 package io.datakernel.ot;
 
 import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.ot.exceptions.OTTransformException;
 import io.datakernel.ot.utils.OTRemoteStub;
@@ -16,7 +16,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
 
@@ -55,7 +54,7 @@ public class OTStateManagerTest {
 	public void testCommitBeforePushFinished() throws ExecutionException, InterruptedException {
 		OTRemote<Integer, TestOp> remote = new OTRemoteDecorator<Integer, TestOp>(create(of(1, 2, 3), comparator)) {
 			@Override
-			public CompletionStage<Void> push(Collection<OTCommit<Integer, TestOp>> otCommits) {
+			public Stage<Void> push(Collection<OTCommit<Integer, TestOp>> otCommits) {
 				return super.push(otCommits).thenCompose($ -> scheduledResult(eventloop, 100, null));
 			}
 		};
@@ -119,7 +118,7 @@ public class OTStateManagerTest {
 		commitIdSequence.subList(0, commitIdSequence.size() - 1).forEach(prevId -> {
 			remote.createCommitId()
 					.thenCompose(id -> remote.push(asList(ofCommit(id, prevId, asList(add(1))))))
-					.thenCompose($ -> asList(3, 5, 7).contains(prevId) ? stateManager.fetch() : Stages.of(null));
+					.thenCompose($ -> asList(3, 5, 7).contains(prevId) ? stateManager.fetch() : Stage.of(null));
 			eventloop.run();
 		});
 
@@ -168,8 +167,8 @@ public class OTStateManagerTest {
 		commitIdSequence.subList(0, commitIdSequence.size() - 1).forEach(prevId -> {
 			remote.createCommitId()
 					.thenCompose(id -> remote.push(asList(ofCommit(id, prevId, asList(add(1))))))
-					.thenCompose($ -> asList(5, 15).contains(prevId) ? stateManager.fetch() : Stages.of(null))
-					.thenCompose($ -> asList(10, 19).contains(prevId) ? stateManager.pull() : Stages.of(null));
+					.thenCompose($ -> asList(5, 15).contains(prevId) ? stateManager.fetch() : Stage.of(null))
+					.thenCompose($ -> asList(10, 19).contains(prevId) ? stateManager.pull() : Stage.of(null));
 			eventloop.run();
 		});
 
@@ -309,42 +308,42 @@ public class OTStateManagerTest {
 		}
 
 		@Override
-		public CompletionStage<K> createCommitId() {
+		public Stage<K> createCommitId() {
 			return remote.createCommitId();
 		}
 
 		@Override
-		public CompletionStage<Void> push(Collection<OTCommit<K, D>> otCommits) {
+		public Stage<Void> push(Collection<OTCommit<K, D>> otCommits) {
 			return remote.push(otCommits);
 		}
 
 		@Override
-		public CompletionStage<Set<K>> getHeads() {
+		public Stage<Set<K>> getHeads() {
 			return remote.getHeads();
 		}
 
 		@Override
-		public CompletionStage<List<D>> loadSnapshot(K revisionId) {
+		public Stage<List<D>> loadSnapshot(K revisionId) {
 			return remote.loadSnapshot(revisionId);
 		}
 
 		@Override
-		public CompletionStage<Void> cleanup(K revisionId) {
+		public Stage<Void> cleanup(K revisionId) {
 			return remote.cleanup(revisionId);
 		}
 
 		@Override
-		public CompletionStage<Void> backup(K revisionId, List<D> diffs) {
+		public Stage<Void> backup(K revisionId, List<D> diffs) {
 			return remote.backup(revisionId, diffs);
 		}
 
 		@Override
-		public CompletionStage<OTCommit<K, D>> loadCommit(K revisionId) {
+		public Stage<OTCommit<K, D>> loadCommit(K revisionId) {
 			return remote.loadCommit(revisionId);
 		}
 
 		@Override
-		public CompletionStage<Void> saveSnapshot(K revisionId, List<D> diffs) {
+		public Stage<Void> saveSnapshot(K revisionId, List<D> diffs) {
 			return remote.saveSnapshot(revisionId, diffs);
 		}
 
@@ -354,7 +353,7 @@ public class OTStateManagerTest {
 		}
 	}
 
-	private static <T> CompletionStage<T> scheduledResult(Eventloop eventloop, long delta, T result) {
+	private static <T> Stage<T> scheduledResult(Eventloop eventloop, long delta, T result) {
 		SettableStage<T> stage = SettableStage.create();
 		eventloop.schedule(eventloop.currentTimeMillis() + delta, () -> stage.set(result));
 		return stage;

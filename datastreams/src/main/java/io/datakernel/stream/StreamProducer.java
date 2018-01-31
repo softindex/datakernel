@@ -17,6 +17,7 @@
 package io.datakernel.stream;
 
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 import io.datakernel.stream.processor.StreamLateBinder;
 
@@ -24,7 +25,6 @@ import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CompletionStage;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -63,61 +63,61 @@ public interface StreamProducer<T> {
 	 */
 	void suspend();
 
-	CompletionStage<Void> getEndOfStream();
+	Stage<Void> getEndOfStream();
 
 	Set<StreamCapability> getCapabilities();
 
 	@SuppressWarnings("unchecked")
-	default StreamingCompletion streamTo(StreamConsumer<T> consumer) {
+	default StreamCompletion streamTo(StreamConsumer<T> consumer) {
 		StreamProducer<T> producer = this;
 		bind(producer, consumer);
-		CompletionStage<Void> producerEndOfStream = producer.getEndOfStream();
-		CompletionStage<Void> consumerEndOfStream = consumer.getEndOfStream();
-		CompletionStage<Void> endOfStream = Stages.run(producerEndOfStream, consumerEndOfStream);
-		return new StreamingCompletion() {
+		Stage<Void> producerEndOfStream = producer.getEndOfStream();
+		Stage<Void> consumerEndOfStream = consumer.getEndOfStream();
+		Stage<Void> endOfStream = Stages.run(producerEndOfStream, consumerEndOfStream);
+		return new StreamCompletion() {
 			@Override
-			public CompletionStage<Void> getProducerEndOfStream() {
+			public Stage<Void> getProducerEndOfStream() {
 				return producerEndOfStream;
 			}
 
 			@Override
-			public CompletionStage<Void> getConsumerEndOfStream() {
+			public Stage<Void> getConsumerEndOfStream() {
 				return consumerEndOfStream;
 			}
 
 			@Override
-			public CompletionStage<Void> getEndOfStream() {
+			public Stage<Void> getEndOfStream() {
 				return endOfStream;
 			}
 		};
 	}
 
 	@SuppressWarnings("unchecked")
-	default <Y> StreamingConsumerResult<Y> streamTo(StreamConsumerWithResult<T, Y> consumer) {
+	default <Y> StreamConsumerResult<Y> streamTo(StreamConsumerWithResult<T, Y> consumer) {
 		StreamProducer<T> producer = this;
 		bind(producer, consumer);
-		CompletionStage<Void> producerEndOfStream = producer.getEndOfStream();
-		CompletionStage<Void> consumerEndOfStream = consumer.getEndOfStream();
-		CompletionStage<Void> endOfStream = Stages.run(producerEndOfStream, consumerEndOfStream);
-		CompletionStage<Y> consumerResult = consumer.getResult();
-		return new StreamingConsumerResult<Y>() {
+		Stage<Void> producerEndOfStream = producer.getEndOfStream();
+		Stage<Void> consumerEndOfStream = consumer.getEndOfStream();
+		Stage<Void> endOfStream = Stages.run(producerEndOfStream, consumerEndOfStream);
+		Stage<Y> consumerResult = consumer.getResult();
+		return new StreamConsumerResult<Y>() {
 			@Override
-			public CompletionStage<Y> getConsumerResult() {
+			public Stage<Y> getConsumerResult() {
 				return consumerResult;
 			}
 
 			@Override
-			public CompletionStage<Void> getProducerEndOfStream() {
+			public Stage<Void> getProducerEndOfStream() {
 				return producerEndOfStream;
 			}
 
 			@Override
-			public CompletionStage<Void> getConsumerEndOfStream() {
+			public Stage<Void> getConsumerEndOfStream() {
 				return consumerEndOfStream;
 			}
 
 			@Override
-			public CompletionStage<Void> getEndOfStream() {
+			public Stage<Void> getEndOfStream() {
 				return endOfStream;
 			}
 		};
@@ -182,7 +182,7 @@ public interface StreamProducer<T> {
 			"it must be bound in the same tick when it is created. " +
 			"Alternatively, use .withLateBinding() modifier";
 
-	static <T> StreamProducer<T> ofStage(CompletionStage<StreamProducer<T>> producerStage) {
+	static <T> StreamProducer<T> ofStage(Stage<StreamProducer<T>> producerStage) {
 		StreamLateBinder<T> binder = StreamLateBinder.create();
 		producerStage.whenComplete((producer, throwable) -> {
 			if (throwable == null) {
@@ -221,7 +221,7 @@ public interface StreamProducer<T> {
 		return concat(asList(producers));
 	}
 
-	default <X> StreamProducerWithResult<T, X> withResult(CompletionStage<X> result) {
+	default <X> StreamProducerWithResult<T, X> withResult(Stage<X> result) {
 		SettableStage<Void> safeEndOfStream = SettableStage.create();
 		SettableStage<X> safeResult = SettableStage.create();
 		this.getEndOfStream().whenComplete(($, throwable) -> {
@@ -248,12 +248,12 @@ public interface StreamProducer<T> {
 			}
 
 			@Override
-			public CompletionStage<Void> getEndOfStream() {
+			public Stage<Void> getEndOfStream() {
 				return safeEndOfStream;
 			}
 
 			@Override
-			public CompletionStage<X> getResult() {
+			public Stage<X> getResult() {
 				return safeResult;
 			}
 
@@ -285,12 +285,12 @@ public interface StreamProducer<T> {
 			}
 
 			@Override
-			public CompletionStage<Void> getEndOfStream() {
+			public Stage<Void> getEndOfStream() {
 				return safeEndOfStream;
 			}
 
 			@Override
-			public CompletionStage<Void> getResult() {
+			public Stage<Void> getResult() {
 				return safeEndOfStream;
 			}
 
@@ -302,11 +302,11 @@ public interface StreamProducer<T> {
 		};
 	}
 
-	default CompletionStage<List<T>> toList() {
+	default Stage<List<T>> toList() {
 		return toCollector(Collectors.toList());
 	}
 
-	default <A, R> CompletionStage<R> toCollector(Collector<T, A, R> collector) {
+	default <A, R> Stage<R> toCollector(Collector<T, A, R> collector) {
 		return stream(this, StreamConsumerWithResult.toCollector(collector)).getConsumerResult();
 	}
 

@@ -1,10 +1,10 @@
 package io.datakernel.stream;
 
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stage;
 
 import java.util.EnumSet;
 import java.util.Set;
-import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
 import java.util.stream.Collector;
 
@@ -47,7 +47,7 @@ public final class StreamConsumerToCollector<T, A, R> extends AbstractStreamCons
 	}
 
 	@Override
-	public CompletionStage<R> getResult() {
+	public Stage<R> getResult() {
 		return resultStage;
 	}
 

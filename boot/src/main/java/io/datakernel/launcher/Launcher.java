@@ -17,6 +17,7 @@
 package io.datakernel.launcher;
 
 import com.google.inject.*;
+import io.datakernel.async.Stage;
 import io.datakernel.config.ConfigsModule;
 import io.datakernel.jmx.JmxRegistrator;
 import io.datakernel.service.ServiceGraph;
@@ -33,10 +34,10 @@ import static org.slf4j.LoggerFactory.getLogger;
  * Integrates all modules together and manages application lifecycle by
  * passing several steps:
  * <ul>
- *     <li>wiring modules</li>
- *     <li>starting services</li>
- *     <li>running</li>
- *     <li>stopping services</li>
+ * <li>wiring modules</li>
+ * <li>starting services</li>
+ * <li>running</li>
+ * <li>stopping services</li>
  * </ul>
  * <p>
  * Example.<br>
@@ -50,29 +51,23 @@ import static org.slf4j.LoggerFactory.getLogger;
  * 			new DaoTierModule(),
  * 			new ControllerTierModule(),
  * 			new ViewTierModule(),
- * 			{@link ConfigsModule}
- * 				.{@link ConfigsModule#ofFile(String) ofFile(dao.properties)}
- * 				.{@link ConfigsModule#addFile(String) addFile(controller.properties)}
- * 				.{@link ConfigsModule#addOptionalFile(String) addOptionalFile(view.properties)});
- * 	}
+ *            {@link ConfigsModule}
+ *    }
  *
- *	{@literal @}Override
+ *    {@literal @}Override
  * 	protected void run() throws Exception {
  * 		awaitShutdown();
- * 	}
+ *    }
  *
  * 	public static void main(String[] args) throws Exception {
  * 		main(ApplicationLauncher.class, args);
- * 	}
+ *    }
  * }
  * </code></pre>
  *
  * @see ServiceGraph
  * @see ServiceGraphModule
  * @see ConfigsModule
- * @see ConfigsModule#ofFile(String)
- * @see ConfigsModule#addFile(String)
- * @see ConfigsModule#addOptionalFile(String)
  */
 public abstract class Launcher {
 	protected final Logger logger = getLogger(this.getClass());
@@ -81,7 +76,7 @@ public abstract class Launcher {
 
 	private JmxRegistrator jmxRegistrator;
 
-	private Stage stage;
+	private com.google.inject.Stage stage;
 	private Module[] modules;
 
 	@Inject
@@ -97,7 +92,7 @@ public abstract class Launcher {
 		launcher.launch(args);
 	}
 
-	public Launcher(Stage stage, Module... modules) {
+	public Launcher(com.google.inject.Stage stage, Module... modules) {
 		this.stage = stage;
 		this.modules = modules;
 	}
@@ -121,7 +116,7 @@ public abstract class Launcher {
 				bind((Class<?>) Launcher.this.getClass());
 			}
 		});
-		return Guice.createInjector(Stage.TOOL, modules);
+		return Guice.createInjector(com.google.inject.Stage.TOOL, modules);
 	}
 
 	public void launch(String[] args) throws Exception {

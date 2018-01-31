@@ -2,7 +2,7 @@ package io.datakernel.aggregation.util;
 
 import io.datakernel.aggregation.IdGenerator;
 import io.datakernel.async.AsyncCallable;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
@@ -11,7 +11,6 @@ import io.datakernel.jmx.StageStats;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.async.AsyncCallable.sharedCall;
@@ -52,7 +51,7 @@ public final class IdGeneratorSql implements IdGenerator<Long>, EventloopJmxMBea
 		return this;
 	}
 
-	private CompletionStage<Void> doReserveId() {
+	private Stage<Void> doReserveId() {
 		int finalStride = stride;
 		return eventloop.callExecutor(executor, () -> getAndAdd(finalStride))
 				.thenAccept(next -> {
@@ -69,10 +68,10 @@ public final class IdGeneratorSql implements IdGenerator<Long>, EventloopJmxMBea
 	}
 
 	@Override
-	public CompletionStage<Long> createId() {
+	public Stage<Long> createId() {
 		checkState(next <= limit);
 		if (next < limit) {
-			return Stages.of(next++);
+			return Stage.of(next++);
 		}
 		return reserveId.call()
 				.thenComposeAsync($ -> createId());

@@ -16,6 +16,7 @@
 
 package io.datakernel.cube;
 
+import io.datakernel.async.Stage;
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
@@ -26,7 +27,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletionStage;
 import java.util.function.Supplier;
 
 import static io.datakernel.codegen.Expressions.*;
@@ -60,10 +60,10 @@ class Utils {
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <R> CompletionStage<Void> resolveAttributes(List<R> results, AttributeResolver attributeResolver,
-	                                                          List<String> recordDimensions, List<String> recordAttributes,
-	                                                          Map<String, Object> fullySpecifiedDimensions,
-	                                                          Class<R> recordClass, DefiningClassLoader classLoader) {
+	public static <R> Stage<Void> resolveAttributes(List<R> results, AttributeResolver attributeResolver,
+	                                                List<String> recordDimensions, List<String> recordAttributes,
+	                                                Map<String, Object> fullySpecifiedDimensions,
+	                                                Class<R> recordClass, DefiningClassLoader classLoader) {
 		Object[] fullySpecifiedDimensionsArray = new Object[recordDimensions.size()];
 		for (int i = 0; i < recordDimensions.size(); i++) {
 			String dimension = recordDimensions.get(i);

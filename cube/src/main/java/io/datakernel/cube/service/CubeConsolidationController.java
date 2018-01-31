@@ -6,7 +6,8 @@ import io.datakernel.aggregation.AggregationChunkStorage;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.async.AsyncCallable;
 import io.datakernel.async.AsyncFunction;
-import io.datakernel.async.Stages;
+import io.datakernel.async.NextStage;
+import io.datakernel.async.Stage;
 import io.datakernel.cube.Cube;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
@@ -19,11 +20,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Set;
-import java.util.concurrent.CompletionStage;
 import java.util.function.Supplier;
 
 import static io.datakernel.async.AsyncCallable.sharedCall;
-import static io.datakernel.async.Stages.onResult;
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static java.util.stream.Collectors.toSet;
 
@@ -79,18 +78,18 @@ public final class CubeConsolidationController implements EventloopJmxMBeanEx {
 
 	private final AsyncCallable<Void> consolidate = sharedCall(this::doConsolidate);
 
-	public CompletionStage<Void> consolidate() {
+	public Stage<Void> consolidate() {
 		return consolidate.call();
 	}
 
-	CompletionStage<Void> doConsolidate() {
+	Stage<Void> doConsolidate() {
 		sw.reset().start();
 		return stateManager.pull()
 				.thenCompose($ -> stateManager.getAlgorithms().mergeHeadsAndPush())
 				.thenCompose(mergeId -> stateManager.pull(mergeId))
 				.thenCompose($ -> stateManager.pull())
 				.thenCompose($ -> cube.consolidate(strategy.get()).whenComplete(stageConsolidateImpl.recordStats()))
-				.whenComplete(onResult(this::cubeDiffJmx))
+				.then(NextStage.onResult(this::cubeDiffJmx))
 				.whenComplete(this::logCubeDiff)
 				.thenCompose(this::tryPushConsolidation)
 				.whenComplete(this::logResult)
@@ -124,8 +123,8 @@ public final class CubeConsolidationController implements EventloopJmxMBeanEx {
 		removedChunksRecords.recordValue(curRemovedChunksRecords);
 	}
 
-	private CompletionStage<Void> tryPushConsolidation(CubeDiff cubeDiff) {
-		if (cubeDiff.isEmpty()) return Stages.of(null);
+	private Stage<Void> tryPushConsolidation(CubeDiff cubeDiff) {
+		if (cubeDiff.isEmpty()) return Stage.of(null);
 
 		stateManager.add(LogDiff.forCurrentPosition(cubeDiff));
 		return stateManager.pull()

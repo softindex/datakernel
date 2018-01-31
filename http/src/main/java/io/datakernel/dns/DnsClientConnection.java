@@ -16,8 +16,9 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.Callback;
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.dns.DnsMessage.ResponseErrorCode;
 import io.datakernel.eventloop.AsyncUdpSocket;
@@ -33,14 +34,13 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CompletionStage;
 
 final class DnsClientConnection implements AsyncUdpSocket.EventHandler {
 	@SuppressWarnings("ThrowableInstanceNeverThrown")
 	private static final AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException();
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-	private final Map<String, Set<ResultCallback<DnsQueryResult>>> resultHandlers = new HashMap<>();
+	private final Map<String, Set<Callback<DnsQueryResult>>> resultHandlers = new HashMap<>();
 	private final Eventloop eventloop;
 	private final AsyncUdpSocket socket;
 
@@ -58,40 +58,40 @@ final class DnsClientConnection implements AsyncUdpSocket.EventHandler {
 		return new DnsClientConnection(eventloop, udpSocket, inspector);
 	}
 
-	public void resolve4(String domainName, InetSocketAddress dnsServerAddress, long timeout, ResultCallback<DnsQueryResult> callback) {
+	public void resolve4(String domainName, InetSocketAddress dnsServerAddress, long timeout, Callback<DnsQueryResult> callback) {
 		resolve(domainName, dnsServerAddress, timeout, callback, false);
 	}
 
-	CompletionStage<DnsQueryResult> resolve4(String domainName, InetSocketAddress dnsServerAddress, long timeout) {
+	Stage<DnsQueryResult> resolve4(String domainName, InetSocketAddress dnsServerAddress, long timeout) {
 		SettableStage<DnsQueryResult> result = SettableStage.create();
 		resolve(domainName, dnsServerAddress, timeout, result, false);
 		return result;
 	}
 
-	public void resolve6(String domainName, InetSocketAddress dnsServerAddress, long timeout, ResultCallback<DnsQueryResult> callback) {
+	public void resolve6(String domainName, InetSocketAddress dnsServerAddress, long timeout, Callback<DnsQueryResult> callback) {
 		resolve(domainName, dnsServerAddress, timeout, callback, true);
 	}
 
-	CompletionStage<DnsQueryResult> resolve6(String domainName, InetSocketAddress dnsServerAddress, long timeout) {
+	Stage<DnsQueryResult> resolve6(String domainName, InetSocketAddress dnsServerAddress, long timeout) {
 		SettableStage<DnsQueryResult> result = SettableStage.create();
 		resolve(domainName, dnsServerAddress, timeout, result, true);
 		return result;
 	}
 
 	private void resolve(String domainName, InetSocketAddress dnsServerAddress, long timeout,
-	                     ResultCallback<DnsQueryResult> callback, boolean ipv6) {
-		ResultCallback<DnsQueryResult> callbackWithTimeout = new ResultCallback<DnsQueryResult>() {
+	                     Callback<DnsQueryResult> callback, boolean ipv6) {
+		Callback<DnsQueryResult> callbackWithTimeout = new Callback<DnsQueryResult>() {
 			private final ScheduledRunnable timeouter = eventloop.schedule(eventloop.currentTimeMillis() + timeout, new Runnable() {
 				@Override
 				public void run() {
-					Set<ResultCallback<DnsQueryResult>> callbacks = resultHandlers.get(domainName);
+					Set<Callback<DnsQueryResult>> callbacks = resultHandlers.get(domainName);
 					callbacks.remove(getThisCallback());
 					if (callbacks.isEmpty()) resultHandlers.remove(domainName);
 					setException(TIMEOUT_EXCEPTION);
 				}
 			});
 
-			private ResultCallback<DnsQueryResult> getThisCallback() {
+			private Callback<DnsQueryResult> getThisCallback() {
 				return this;
 			}
 
@@ -117,7 +117,7 @@ final class DnsClientConnection implements AsyncUdpSocket.EventHandler {
 			}
 		};
 
-		Set<ResultCallback<DnsQueryResult>> callbacks = resultHandlers.get(domainName);
+		Set<Callback<DnsQueryResult>> callbacks = resultHandlers.get(domainName);
 		if (callbacks == null) {
 			callbacks = new HashSet<>();
 			resultHandlers.put(domainName, callbacks);
@@ -162,16 +162,16 @@ final class DnsClientConnection implements AsyncUdpSocket.EventHandler {
 
 			String domainName = dnsQueryResult.getDomainName();
 
-			Set<ResultCallback<DnsQueryResult>> callbacks = resultHandlers.remove(domainName);
+			Set<Callback<DnsQueryResult>> callbacks = resultHandlers.remove(domainName);
 
 			if (callbacks != null) {
 				if (dnsQueryResult.isSuccessful()) {
-					for (ResultCallback<DnsQueryResult> callback : callbacks) {
+					for (Callback<DnsQueryResult> callback : callbacks) {
 						callback.set(dnsQueryResult);
 					}
 				} else {
 					DnsException exception = dnsQueryResult.getException();
-					for (ResultCallback<DnsQueryResult> callback : callbacks) {
+					for (Callback<DnsQueryResult> callback : callbacks) {
 						callback.setException(exception);
 					}
 				}

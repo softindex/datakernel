@@ -16,7 +16,7 @@
 
 package io.datakernel.eventloop;
 
-import java.util.concurrent.CompletionStage;
+import io.datakernel.async.Stage;
 
 public interface EventloopService {
 	Eventloop getEventloop();
@@ -26,13 +26,13 @@ public interface EventloopService {
 	 * Callback completes immediately if the component is already running.
 	 *
 	 */
-	CompletionStage<Void> start();
+	Stage<Void> start();
 
 	/**
 	 * Stops this component asynchronously.
 	 * Callback completes immediately if the component is not running / already stopped.
 	 *
 	 */
-	CompletionStage<Void> stop();
+	Stage<Void> stop();
 
 }

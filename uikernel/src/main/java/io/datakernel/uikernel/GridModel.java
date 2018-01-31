@@ -16,19 +16,20 @@
 
 package io.datakernel.uikernel;
 
+import io.datakernel.async.Stage;
+
 import java.util.List;
-import java.util.concurrent.CompletionStage;
 
 public interface GridModel<K, R extends AbstractRecord<K>> {
-	CompletionStage<CreateResponse<K>> create(R record);
+	Stage<CreateResponse<K>> create(R record);
 
-	CompletionStage<R> read(K id, ReadSettings<K> settings);
+	Stage<R> read(K id, ReadSettings<K> settings);
 
-	CompletionStage<ReadResponse<K, R>> read(ReadSettings<K> settings);
+	Stage<ReadResponse<K, R>> read(ReadSettings<K> settings);
 
-	CompletionStage<UpdateResponse<K, R>> update(List<R> changes);
+	Stage<UpdateResponse<K, R>> update(List<R> changes);
 
-	CompletionStage<DeleteResponse> delete(K id);
+	Stage<DeleteResponse> delete(K id);
 
 	Class<K> getIdType();
 

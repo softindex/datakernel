@@ -16,10 +16,9 @@
 
 package io.datakernel.logfs;
 
+import io.datakernel.async.Stage;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducerWithResult;
-
-import java.util.concurrent.CompletionStage;
 
 /**
  * Manages persistence of logs.
@@ -31,7 +30,7 @@ public interface LogManager<T> {
 	 * @param logPartition log partition name
 	 * @return StreamConsumer, which will write records, streamed from wired producer.
 	 */
-	CompletionStage<StreamConsumerWithResult<T, Void>> consumer(String logPartition);
+	Stage<StreamConsumerWithResult<T, Void>> consumer(String logPartition);
 
 	default StreamConsumerWithResult<T, Void> consumerStream(String logPartition) {
 		return StreamConsumerWithResult.ofStage(consumer(logPartition));
@@ -45,9 +44,9 @@ public interface LogManager<T> {
 	 * @param startPosition position
 	 * @return StreamProducer, which will stream read items to its wired consumer.
 	 */
-	CompletionStage<StreamProducerWithResult<T, LogPosition>> producer(String logPartition,
-	                                                                   LogFile startLogFile, long startPosition,
-	                                                                   LogFile endLogFile);
+	Stage<StreamProducerWithResult<T, LogPosition>> producer(String logPartition,
+	                                                         LogFile startLogFile, long startPosition,
+	                                                         LogFile endLogFile);
 
 	default StreamProducerWithResult<T, LogPosition> producerStream(String logPartition,
 	                                                                LogFile startLogFile, long startPosition,

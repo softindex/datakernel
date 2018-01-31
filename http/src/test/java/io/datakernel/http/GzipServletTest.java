@@ -16,13 +16,13 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import org.junit.Test;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
@@ -34,8 +34,8 @@ import static org.junit.Assert.*;
 public class GzipServletTest {
 	private static final AsyncServlet helloWorldServlet = new AsyncServlet() {
 		@Override
-		public CompletionStage<HttpResponse> serve(HttpRequest request) {
-			return Stages.of(HttpResponse.ok200().withBody(wrapAscii("Hello, World!")));
+		public Stage<HttpResponse> serve(HttpRequest request) {
+			return Stage.of(HttpResponse.ok200().withBody(wrapAscii("Hello, World!")));
 		}
 	};
 
@@ -70,11 +70,11 @@ public class GzipServletTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		AsyncServlet asyncServlet = new AsyncServlet() {
 			@Override
-			public CompletionStage<HttpResponse> serve(HttpRequest request) {
+			public Stage<HttpResponse> serve(HttpRequest request) {
 				HttpResponse response = HttpResponse.ok200();
 				String requestNum = decodeAscii(request.getBody());
 				ByteBuf body = "1".equals(requestNum) ? wrapAscii("0123456789012345678901") : wrapAscii("0");
-				return Stages.of(response.withBody(body));
+				return Stage.of(response.withBody(body));
 			}
 		};
 		GzipServlet customGzipServlet = GzipServlet.create(20, asyncServlet);

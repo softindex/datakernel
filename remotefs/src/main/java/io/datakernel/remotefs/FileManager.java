@@ -16,7 +16,7 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.stream.file.StreamFileReader;
@@ -30,7 +30,6 @@ import java.nio.file.*;
 import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.stream.file.StreamFileReader.readFileFrom;
@@ -66,7 +65,7 @@ public final class FileManager {
 		return new FileManager(eventloop, executor, storagePath);
 	}
 
-	public CompletionStage<StreamFileReader> get(String fileName, long startPosition) {
+	public Stage<StreamFileReader> get(String fileName, long startPosition) {
 		logger.trace("downloading file: {}, position: {}", fileName, startPosition);
 		return AsyncFile.openAsync(executor, storagePath.resolve(fileName), new OpenOption[]{READ})
 				.thenApply(result -> {
@@ -75,7 +74,7 @@ public final class FileManager {
 				});
 	}
 
-	public CompletionStage<StreamFileWriter> save(String fileName) {
+	public Stage<StreamFileWriter> save(String fileName) {
 		logger.trace("uploading file: {}", fileName);
 		return ensureDirectoryAsync(storagePath, fileName).thenCompose(path -> {
 			logger.trace("ensured directory: {}", storagePath);
@@ -87,17 +86,17 @@ public final class FileManager {
 		});
 	}
 
-	public CompletionStage<Void> delete(String fileName) {
+	public Stage<Void> delete(String fileName) {
 		logger.trace("deleting file: {}", fileName);
 		return AsyncFile.delete(executor, storagePath.resolve(fileName));
 	}
 
-	public CompletionStage<Long> size(String fileName) {
+	public Stage<Long> size(String fileName) {
 		logger.trace("calculating file size: {}", fileName);
 		return AsyncFile.length(executor, storagePath.resolve(fileName));
 	}
 
-	public CompletionStage<List<String>> scanAsync() {
+	public Stage<List<String>> scanAsync() {
 		return eventloop.callExecutor(executor, () -> {
 			logger.trace("listing files");
 			List<String> result = new ArrayList<>();
@@ -106,13 +105,13 @@ public final class FileManager {
 		});
 	}
 
-	public CompletionStage<Void> move(String fileName, String targetName, CopyOption... options) {
+	public Stage<Void> move(String fileName, String targetName, CopyOption... options) {
 		logger.trace("move {} to {}", fileName, targetName);
 
 		String targetAbsolutePath = storagePath.resolve(targetName).toFile().getAbsolutePath();
 		String storageAbsolutePath = storagePath.toFile().getAbsolutePath();
 		if (!targetAbsolutePath.startsWith(storageAbsolutePath)) {
-			return Stages.ofException(new IllegalArgumentException(targetName));
+			return Stage.ofException(new IllegalArgumentException(targetName));
 		}
 
 		return ensureDirectoryAsync(storagePath, targetName).thenCompose(target -> {
@@ -121,7 +120,7 @@ public final class FileManager {
 				Files.setLastModifiedTime(source, FileTime.fromMillis(eventloop.currentTimeMillis()));
 				return AsyncFile.move(eventloop, executor, source, target, options);
 			} catch (IOException e) {
-				return Stages.ofException(e);
+				return Stage.ofException(e);
 			}
 		});
 	}
@@ -144,7 +143,7 @@ public final class FileManager {
 		}
 	}
 
-	private CompletionStage<Path> ensureDirectoryAsync(Path container, String path) {
+	private Stage<Path> ensureDirectoryAsync(Path container, String path) {
 		return eventloop.callExecutor(executor, () -> ensureDirectory(container, path));
 	}
 

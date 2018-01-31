@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufStrings;
@@ -63,9 +63,9 @@ public class AsyncHttpClientTest {
 
 		CompletableFuture<String> future = httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT)).thenCompose(response -> {
 			try {
-				return Stages.of(decodeUtf8(response.getBody()));
+				return Stage.of(decodeUtf8(response.getBody()));
 			} catch (ParseException e) {
-				return Stages.ofException(e);
+				return Stage.ofException(e);
 			} finally {
 				httpClient.stop();
 				httpServer.close();
@@ -89,9 +89,9 @@ public class AsyncHttpClientTest {
 		CompletableFuture<String> future = httpClient.send(HttpRequest.get("http://google.com"))
 				.thenCompose(response -> {
 					try {
-						return Stages.of(decodeUtf8(response.getBody()));
+						return Stage.of(decodeUtf8(response.getBody()));
 					} catch (ParseException e) {
-						return Stages.ofException(e);
+						return Stage.ofException(e);
 					}
 				})
 				.whenComplete((s, throwable) -> {
@@ -120,9 +120,9 @@ public class AsyncHttpClientTest {
 
 		CompletableFuture<String> future = httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT)).thenCompose(response -> {
 			try {
-				return Stages.of(decodeUtf8(response.getBody()));
+				return Stage.of(decodeUtf8(response.getBody()));
 			} catch (ParseException e) {
-				return Stages.ofException(e);
+				return Stage.ofException(e);
 			}
 		}).whenComplete((s, throwable) -> {
 			httpClient.stop();
@@ -179,9 +179,9 @@ public class AsyncHttpClientTest {
 		HttpRequest request = HttpRequest.get("http://127.0.0.1:" + PORT);
 		CompletableFuture<String> future = httpClient.send(request).thenCompose(response -> {
 			try {
-				return Stages.of(decodeUtf8(response.getBody()));
+				return Stage.of(decodeUtf8(response.getBody()));
 			} catch (ParseException e) {
-				return Stages.ofException(e);
+				return Stage.ofException(e);
 			}
 		}).whenComplete((s, throwable) -> {
 			httpClient.stop();

@@ -16,6 +16,7 @@
 
 package io.datakernel.datagraph.server;
 
+import io.datakernel.async.Stage;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.node.Node;
 import io.datakernel.datagraph.server.command.DatagraphCommand;
@@ -35,7 +36,6 @@ import org.slf4j.LoggerFactory;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.stream.net.MessagingSerializers.ofJson;
 
@@ -64,7 +64,7 @@ public final class DatagraphClient {
 		this.serializer = ofJson(serialization.responseAdapter, serialization.commandAdapter);
 	}
 
-	public <T> CompletionStage<StreamProducer<T>> download(InetSocketAddress address, StreamId streamId, Class<T> type) {
+	public <T> Stage<StreamProducer<T>> download(InetSocketAddress address, StreamId streamId, Class<T> type) {
 		return eventloop.connect(address).thenCompose(socketChannel -> {
 			AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel, socketSettings);
 			MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
@@ -81,7 +81,7 @@ public final class DatagraphClient {
 		});
 	}
 
-	public CompletionStage<Void> execute(InetSocketAddress address, Collection<Node> nodes) {
+	public Stage<Void> execute(InetSocketAddress address, Collection<Node> nodes) {
 		return eventloop.connect(address).thenCompose(socketChannel -> {
 			AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel, socketSettings);
 			MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);

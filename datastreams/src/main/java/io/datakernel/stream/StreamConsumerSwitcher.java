@@ -16,13 +16,13 @@
 
 package io.datakernel.stream;
 
+import io.datakernel.async.NextStage;
 import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 
 import java.util.ArrayList;
 import java.util.Set;
-import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.stream.DataStreams.bind;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
@@ -99,8 +99,8 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 		public void setConsumer(StreamConsumer<T> consumer) {
 			assert consumer == this.consumer;
 			consumer.getEndOfStream()
-//					.whenComplete(Stages.onResult(this::onEndOfStream))
-					.whenComplete(Stages.onError(this::closeWithError));
+//					.then(NextStage.onResult(this::onEndOfStream))
+					.then(NextStage.onError(this::closeWithError));
 		}
 
 		@Override
@@ -149,7 +149,7 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 		}
 
 		@Override
-		public CompletionStage<Void> getEndOfStream() {
+		public Stage<Void> getEndOfStream() {
 			return endOfStream;
 		}
 

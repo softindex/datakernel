@@ -16,7 +16,7 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.Callback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.dns.DnsCache.DnsCacheQueryResult;
 import io.datakernel.eventloop.AsyncUdpSocketImpl;
@@ -257,16 +257,16 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 		return new IAsyncDnsClient() {
 
 			@Override
-			public void resolve4(String domainName, ResultCallback<InetAddress[]> callback) {
+			public void resolve4(String domainName, Callback<InetAddress[]> callback) {
 				resolve(domainName, false, callback);
 			}
 
 			@Override
-			public void resolve6(String domainName, ResultCallback<InetAddress[]> callback) {
+			public void resolve6(String domainName, Callback<InetAddress[]> callback) {
 				resolve(domainName, true, callback);
 			}
 
-			private void resolve(String domainName, boolean ipv6, ResultCallback<InetAddress[]> callback) {
+			private void resolve(String domainName, boolean ipv6, Callback<InetAddress[]> callback) {
 				checkArgument(domainName != null && !domainName.isEmpty(), "Domain name cannot be null or empty");
 
 				if (HttpUtils.isInetAddress(domainName)) {
@@ -281,13 +281,13 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 
 				if (cacheQueryResult == RESOLVED_NEEDS_REFRESHING) {
 					AsyncDnsClient.this.eventloop.execute(() ->
-							AsyncDnsClient.this.resolve(domainName, ipv6, ResultCallback.ignore()));
+							AsyncDnsClient.this.resolve(domainName, ipv6, Callback.ignore()));
 					return;
 				}
 
 				assert cacheQueryResult == NOT_RESOLVED;
 				AsyncDnsClient.this.eventloop.execute(() ->
-						AsyncDnsClient.this.resolve(domainName, ipv6, new ResultCallback<InetAddress[]>() {
+						AsyncDnsClient.this.resolve(domainName, ipv6, new Callback<InetAddress[]>() {
 							@Override
 							public void set(InetAddress[] result) {
 								eventloop.execute(() -> callback.set(result));
@@ -310,7 +310,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 	 * @param callback   result callback
 	 */
 	@Override
-	public void resolve4(String domainName, ResultCallback<InetAddress[]> callback) {
+	public void resolve4(String domainName, Callback<InetAddress[]> callback) {
 		resolve(domainName, false, callback);
 	}
 
@@ -321,11 +321,11 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 	 * @param callback   result callback
 	 */
 	@Override
-	public void resolve6(String domainName, ResultCallback<InetAddress[]> callback) {
+	public void resolve6(String domainName, Callback<InetAddress[]> callback) {
 		resolve(domainName, true, callback);
 	}
 
-	private void resolve(String domainName, boolean ipv6, ResultCallback<InetAddress[]> callback) {
+	private void resolve(String domainName, boolean ipv6, Callback<InetAddress[]> callback) {
 		checkArgument(domainName != null && !domainName.isEmpty(), "Domain name cannot be null or empty");
 
 		if (HttpUtils.isInetAddress(domainName)) {
@@ -344,7 +344,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 
 		logger.trace("Resolving {} with DNS server.", domainName);
 
-		ResultCallback<DnsQueryResult> queryCachingCallback = new ResultCallback<DnsQueryResult>() {
+		Callback<DnsQueryResult> queryCachingCallback = new Callback<DnsQueryResult>() {
 			@Override
 			public void set(DnsQueryResult result) {
 				if (callback != null && !resolvedFromCache) {

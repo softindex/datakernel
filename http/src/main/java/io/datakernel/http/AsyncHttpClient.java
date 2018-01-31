@@ -17,9 +17,9 @@
 package io.datakernel.http;
 
 import io.datakernel.async.AsyncCancellable;
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.Callback;
 import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.dns.IAsyncDnsClient;
 import io.datakernel.eventloop.AsyncTcpSocket;
@@ -38,7 +38,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
@@ -335,12 +334,12 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	 * @param request request for server
 	 */
 	@Override
-	public void send(HttpRequest request, ResultCallback<HttpResponse> callback) {
+	public void send(HttpRequest request, Callback<HttpResponse> callback) {
 		assert eventloop.inEventloopThread();
 		if (inspector != null) inspector.onRequest(request);
 		String host = request.getUrl().getHost();
 
-		asyncDnsClient.resolve4(host, new ResultCallback<InetAddress[]>() {
+		asyncDnsClient.resolve4(host, new Callback<InetAddress[]>() {
 			@Override
 			public void set(InetAddress[] inetAddresses) {
 				if (inspector != null) inspector.onResolve(request, inetAddresses);
@@ -357,7 +356,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	}
 
 	private void doSend(HttpRequest request, InetAddress[] inetAddresses,
-	                    ResultCallback<HttpResponse> callback) {
+	                    Callback<HttpResponse> callback) {
 		InetAddress inetAddress = inetAddresses[((inetAddressIdx++) & Integer.MAX_VALUE) % inetAddresses.length];
 		InetSocketAddress address = new InetSocketAddress(inetAddress, request.getUrl().getPort());
 
@@ -417,9 +416,9 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	}
 
 	@Override
-	public CompletionStage<Void> start() {
+	public Stage<Void> start() {
 		checkState(eventloop.inEventloopThread());
-		return Stages.of(null);
+		return Stage.of(null);
 	}
 
 	private SettableStage<Void> closeStage;
@@ -433,7 +432,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	}
 
 	@Override
-	public CompletionStage<Void> stop() {
+	public Stage<Void> stop() {
 		checkState(eventloop.inEventloopThread());
 		SettableStage<Void> stage = SettableStage.create();
 

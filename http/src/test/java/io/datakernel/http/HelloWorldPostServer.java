@@ -16,11 +16,10 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 
 import java.net.InetSocketAddress;
-import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
@@ -33,10 +32,10 @@ public final class HelloWorldPostServer {
 	public static AsyncHttpServer helloWorldServer(Eventloop primaryEventloop, int port) {
 		AsyncServlet servlet = new AsyncServlet() {
 			@Override
-			public CompletionStage<HttpResponse> serve(HttpRequest request) {
+			public Stage<HttpResponse> serve(HttpRequest request) {
 				String s = HELLO_WORLD + decodeAscii(request.getBody());
 				HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(s));
-				return Stages.of(content);
+				return Stage.of(content);
 			}
 		};
 

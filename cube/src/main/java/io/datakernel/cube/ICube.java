@@ -17,13 +17,13 @@
 package io.datakernel.cube;
 
 import io.datakernel.aggregation.QueryException;
+import io.datakernel.async.Stage;
 
 import java.lang.reflect.Type;
 import java.util.Map;
-import java.util.concurrent.CompletionStage;
 
 public interface ICube {
-	CompletionStage<QueryResult> query(CubeQuery cubeQuery) throws QueryException;
+	Stage<QueryResult> query(CubeQuery cubeQuery) throws QueryException;
 
 	Map<String, Type> getAttributeTypes();
 

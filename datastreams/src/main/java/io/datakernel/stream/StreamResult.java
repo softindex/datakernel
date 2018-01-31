@@ -1,8 +1,8 @@
 package io.datakernel.stream;
 
-import java.util.concurrent.CompletionStage;
+import io.datakernel.async.Stage;
 
-public interface StreamingResult<X, Y> extends StreamingProducerResult<X>, StreamingConsumerResult<Y>, StreamingCompletion {
+public interface StreamResult<X, Y> extends StreamProducerResult<X>, StreamConsumerResult<Y>, StreamCompletion {
 	final class Pair<X, Y> {
 		private final X producerResult;
 		private final Y consumerResult;
@@ -21,15 +21,15 @@ public interface StreamingResult<X, Y> extends StreamingProducerResult<X>, Strea
 		}
 	}
 
-	CompletionStage<Pair<X, Y>> getResult();
+	Stage<Pair<X, Y>> getResult();
 
 	@Override
-	default CompletionStage<X> getProducerResult() {
+	default Stage<X> getProducerResult() {
 		return getResult().thenApply(Pair::getProducerResult);
 	}
 
 	@Override
-	default CompletionStage<Y> getConsumerResult() {
+	default Stage<Y> getConsumerResult() {
 		return getResult().thenApply(Pair::getConsumerResult);
 	}
 

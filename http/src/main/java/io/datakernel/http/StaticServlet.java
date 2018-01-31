@@ -16,14 +16,13 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.loader.StaticLoader;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.CompletionStage;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown, WeakerAccess")
 public final class StaticServlet implements AsyncServlet {
@@ -69,13 +68,13 @@ public final class StaticServlet implements AsyncServlet {
 	}
 
 	@Override
-	public final CompletionStage<HttpResponse> serve(HttpRequest request) {
+	public final Stage<HttpResponse> serve(HttpRequest request) {
 		assert eventloop.inEventloopThread();
 
 		String path = request.getPartialPath();
 
-		if (request.getMethod() != HttpMethod.GET) return Stages.ofException(METHOD_NOT_ALLOWED);
-		if (path.isEmpty() || path.charAt(0) != '/') return Stages.ofException(BAD_PATH_ERROR);
+		if (request.getMethod() != HttpMethod.GET) return Stage.ofException(METHOD_NOT_ALLOWED);
+		if (path.isEmpty() || path.charAt(0) != '/') return Stage.ofException(BAD_PATH_ERROR);
 
 		if (path.equals("/")) {
 			path = DEFAULT_INDEX_FILE_NAME;

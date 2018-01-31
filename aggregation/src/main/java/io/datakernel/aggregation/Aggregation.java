@@ -19,7 +19,7 @@ package io.datakernel.aggregation;
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
@@ -38,7 +38,6 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -222,8 +221,8 @@ public class Aggregation implements IAggregation, Initializer<Aggregation>, Even
 	 * @return consumer for streaming data to aggregation
 	 */
 	@SuppressWarnings("unchecked")
-	public <T> CompletionStage<AggregationDiff> consume(StreamProducer<T> producer,
-	                                                    Class<T> inputClass, Map<String, String> keyFields, Map<String, String> measureFields) {
+	public <T> Stage<AggregationDiff> consume(StreamProducer<T> producer,
+	                                          Class<T> inputClass, Map<String, String> keyFields, Map<String, String> measureFields) {
 		checkArgument(new HashSet<>(getKeys()).equals(keyFields.keySet()), "Expected keys: %s, actual keyFields: %s", getKeys(), keyFields);
 		checkArgument(getMeasureTypes().keySet().containsAll(measureFields.keySet()), "Unknown measures: %s", difference(measureFields.keySet(), getMeasureTypes().keySet()));
 
@@ -251,7 +250,7 @@ public class Aggregation implements IAggregation, Initializer<Aggregation>, Even
 				.thenApply(chunks -> AggregationDiff.of(new HashSet<>(chunks)));
 	}
 
-	public <T> CompletionStage<AggregationDiff> consume(StreamProducer<T> producer, Class<T> inputClass) {
+	public <T> Stage<AggregationDiff> consume(StreamProducer<T> producer, Class<T> inputClass) {
 		return consume(producer, inputClass, scanKeyFields(inputClass), scanMeasureFields(inputClass));
 	}
 
@@ -309,7 +308,7 @@ public class Aggregation implements IAggregation, Initializer<Aggregation>, Even
 						Function.identity(), keyComparator, false, sorterItemsInMemory));
 	}
 
-	private CompletionStage<List<AggregationChunk>> doConsolidation(List<AggregationChunk> chunksToConsolidate) {
+	private Stage<List<AggregationChunk>> doConsolidation(List<AggregationChunk> chunksToConsolidate) {
 		Set<String> aggregationFields = new HashSet<>(getMeasures());
 		Set<String> chunkFields = new HashSet<>();
 		for (AggregationChunk chunk : chunksToConsolidate) {
@@ -485,22 +484,22 @@ public class Aggregation implements IAggregation, Initializer<Aggregation>, Even
 		return state.findOverlappingChunks().size();
 	}
 
-	public CompletionStage<AggregationDiff> consolidateMinKey() {
+	public Stage<AggregationDiff> consolidateMinKey() {
 		return doConsolidate(false);
 	}
 
-	public CompletionStage<AggregationDiff> consolidateHotSegment() {
+	public Stage<AggregationDiff> consolidateHotSegment() {
 		return doConsolidate(true);
 	}
 
-	private CompletionStage<AggregationDiff> doConsolidate(boolean hotSegment) {
+	private Stage<AggregationDiff> doConsolidate(boolean hotSegment) {
 		List<AggregationChunk> chunks = hotSegment ?
 				state.findChunksForConsolidationHotSegment(maxChunksToConsolidate) :
 				state.findChunksForConsolidationMinKey(maxChunksToConsolidate, chunkSize);
 
 		if (chunks.isEmpty()) {
 			logger.info("Nothing to consolidate in aggregation '{}", this);
-			return Stages.of(AggregationDiff.empty());
+			return Stage.of(AggregationDiff.empty());
 		}
 
 		logger.info("Starting consolidation of aggregation '{}'", this);

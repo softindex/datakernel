@@ -1,5 +1,6 @@
 package io.datakernel.logfs.ot;
 
+import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerWithResult;
@@ -11,7 +12,6 @@ import org.junit.Test;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -33,7 +33,7 @@ public class LogDataConsumerSplitterTest {
 		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 	}
 
-	private <T> void assertStreamResult(List<T> values, StreamConsumer<T> consumer, CompletionStage<List<T>> result)
+	private <T> void assertStreamResult(List<T> values, StreamConsumer<T> consumer, Stage<List<T>> result)
 			throws ExecutionException, InterruptedException {
 
 		StreamProducer.ofIterable(values).streamTo(consumer);

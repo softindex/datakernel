@@ -1,7 +1,7 @@
 package io.datakernel.loader;
 
 import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
@@ -10,7 +10,6 @@ import io.datakernel.http.HttpException;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
 import static java.nio.file.StandardOpenOption.READ;
@@ -29,11 +28,11 @@ class SimpleStaticLoaderAsync implements StaticLoader {
 	}
 
 	@Override
-	public CompletionStage<ByteBuf> getResource(String name) {
+	public Stage<ByteBuf> getResource(String name) {
 		Path file = root.resolve(name).normalize();
 
 		if (!file.startsWith(root)) {
-			return Stages.ofException(HttpException.notFound404());
+			return Stage.ofException(HttpException.notFound404());
 		}
 
 		SettableStage<ByteBuf> stage = SettableStage.create();

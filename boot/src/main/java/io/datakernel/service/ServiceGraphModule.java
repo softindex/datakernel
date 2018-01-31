@@ -120,8 +120,7 @@ public final class ServiceGraphModule extends AbstractModule {
 				.register(DataSource.class, forDataSource())
 				.register(EventloopService.class, forEventloopService())
 				.register(EventloopServer.class, forEventloopServer())
-				.register(Eventloop.class, forEventloop())
-				.register(RetryEventloopService.class, forRetryEventloopService(() -> Boolean.TRUE, () -> 1000L));
+				.register(Eventloop.class, forEventloop());
 	}
 
 	public static ServiceGraphModule newInstance() {

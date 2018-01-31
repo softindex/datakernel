@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
@@ -30,7 +30,6 @@ import javax.management.ObjectName;
 import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 import java.util.Random;
-import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.util.Preconditions.checkArgument;
@@ -92,8 +91,8 @@ public class HttpThrottlingServer {
 //		final ByteBufPool byteBufferPool = new ByteBufPool(16, 65536);
 		AsyncServlet servlet = new AsyncServlet() {
 			@Override
-			public CompletionStage<HttpResponse> serve(HttpRequest request) {
-				return Stages.of(longBusinessLogic(TEST_RESPONSE, loadBusinessLogic));
+			public Stage<HttpResponse> serve(HttpRequest request) {
+				return Stage.of(longBusinessLogic(TEST_RESPONSE, loadBusinessLogic));
 			}
 		};
 		return AsyncHttpServer.create(eventloop, servlet).withListenAddress(new InetSocketAddress("localhost", SERVER_PORT));

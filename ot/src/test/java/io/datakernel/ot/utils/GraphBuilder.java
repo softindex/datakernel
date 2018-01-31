@@ -1,11 +1,11 @@
 package io.datakernel.ot.utils;
 
-import io.datakernel.async.Stages;
+import io.datakernel.async.NextStage;
+import io.datakernel.async.Stage;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTRemote;
 
 import java.util.*;
-import java.util.concurrent.CompletionStage;
 import java.util.stream.Stream;
 
 import static java.util.Collections.singletonList;
@@ -22,7 +22,7 @@ public class GraphBuilder<K, D> {
 		this.otRemote = otRemote;
 	}
 
-	public CompletionStage<Map<K, K>> buildGraph(List<Entry<K, D>> edges) {
+	public Stage<Map<K, K>> buildGraph(List<Entry<K, D>> edges) {
 		for (Entry<K, D> keyDiff : edges) {
 			K left = keyDiff.left;
 			edgesMap.computeIfAbsent(left, k -> new HashSet<>());
@@ -33,19 +33,19 @@ public class GraphBuilder<K, D> {
 	}
 
 	// TODO: optimize
-	private static <K, D> CompletionStage<Void> build(OTRemote<K, D> otRemote, Map<K, Set<KeyDiff<K, D>>> edges,
-	                                                  Map<K, K> names, Set<K> finished) {
+	private static <K, D> Stage<Void> build(OTRemote<K, D> otRemote, Map<K, Set<KeyDiff<K, D>>> edges,
+	                                        Map<K, K> names, Set<K> finished) {
 		return edges.entrySet().stream()
 				.filter(entry -> !finished.contains(entry.getKey()))
 				.filter(entry -> finished.containsAll(toParents(entry).collect(toList())))
 				.findFirst()
 				.map(entry -> otRemote.createCommitId()
-						.whenComplete(Stages.onResult(id -> names.put(entry.getKey(), id)))
+						.then(NextStage.onResult(id -> names.put(entry.getKey(), id)))
 						.thenApply(id -> singletonList(OTCommit.of(id, toDiffs(entry))))
 						.thenCompose(otRemote::push)
 						.thenAccept($ -> finished.add(entry.getKey()))
 						.thenComposeAsync($ -> build(otRemote, edges, names, finished)))
-				.orElse(Stages.of(null));
+				.orElse(Stage.of(null));
 	}
 
 	private static <K, D> Stream<K> toParents(Map.Entry<K, Set<KeyDiff<K, D>>> entry) {

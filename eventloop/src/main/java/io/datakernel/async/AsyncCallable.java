@@ -19,17 +19,16 @@ package io.datakernel.async;
 import io.datakernel.eventloop.Eventloop;
 
 import java.util.ArrayDeque;
-import java.util.concurrent.CompletionStage;
 import java.util.function.*;
 
 public interface AsyncCallable<T> {
-	CompletionStage<T> call();
+	Stage<T> call();
 
 	default AsyncCallable<T> with(UnaryOperator<AsyncCallable<T>> modifier) {
 		return modifier.apply(this);
 	}
 
-	static <T> AsyncCallable<T> of(Supplier<CompletionStage<T>> supplier) {
+	static <T> AsyncCallable<T> of(Supplier<Stage<T>> supplier) {
 		return supplier::get;
 	}
 
@@ -37,7 +36,7 @@ public interface AsyncCallable<T> {
 		return () -> function.apply(a);
 	}
 
-	static <A, B, T> AsyncCallable<T> of(BiFunction<? super A, ? super B, CompletionStage<T>> biFunction, A a, B b) {
+	static <A, B, T> AsyncCallable<T> of(BiFunction<? super A, ? super B, Stage<T>> biFunction, A a, B b) {
 		return () -> biFunction.apply(a, b);
 	}
 
@@ -50,7 +49,7 @@ public interface AsyncCallable<T> {
 			SettableStage<T> runningStage;
 
 			@Override
-			public CompletionStage<T> call() {
+			public Stage<T> call() {
 				if (runningStage != null)
 					return runningStage;
 				runningStage = SettableStage.create();
@@ -95,7 +94,7 @@ public interface AsyncCallable<T> {
 			}
 
 			@Override
-			public CompletionStage<T> call() {
+			public Stage<T> call() {
 				if (pendingCalls <= maxParallelCalls) {
 					pendingCalls++;
 					return actualCallable.call().whenCompleteAsync((value, throwable) -> {
@@ -104,7 +103,7 @@ public interface AsyncCallable<T> {
 					});
 				}
 				if (deque.size() > maxQueueSize) {
-					return Stages.ofException(new IllegalStateException());
+					return Stage.ofException(new IllegalStateException());
 				}
 				SettableStage<T> result = SettableStage.create();
 				deque.addLast(result);
@@ -140,7 +139,7 @@ public interface AsyncCallable<T> {
 			}
 
 			@Override
-			public CompletionStage<T> call() {
+			public Stage<T> call() {
 				SettableStage<T> result = SettableStage.create();
 				doCall(0, 0, result);
 				return result;
@@ -170,27 +169,35 @@ public interface AsyncCallable<T> {
 			}
 
 			@Override
-			public CompletionStage<T> call() {
-				CompletionStage<T> result = deque.isEmpty() ? actualCallable.call() : Stages.of(deque.pollFirst());
+			public Stage<T> call() {
+				Stage<T> result = deque.isEmpty() ? actualCallable.call() : Stage.of(deque.pollFirst());
 				tryPrefetch();
 				return result;
 			}
 		};
 	}
 
+	default <U> AsyncCallable<U> handle(Stage.Handler<? super T, U> fn) {
+		return () -> call().handle(fn);
+	}
+
+	default <U> AsyncCallable<U> handleAsync(Stage.Handler<? super T, U> fn) {
+		return () -> call().handleAsync(fn);
+	}
+
 	default <V> AsyncCallable<V> thenApply(Function<? super T, ? extends V> function) {
 		return () -> call().thenApply(function);
+	}
+
+	default <V> AsyncCallable<V> thenApplyAsync(Function<? super T, ? extends V> function) {
+		return () -> call().thenApplyAsync(function);
 	}
 
 	default AsyncCallable<T> whenComplete(BiConsumer<? super T, ? super Throwable> action) {
 		return () -> call().whenComplete(action);
 	}
 
-	default AsyncCallable<T> exceptionally(Function<Throwable, ? extends T> fn) {
-		return () -> call().exceptionally(fn);
-	}
-
-	default <U> AsyncCallable<U> handle(BiFunction<? super T, Throwable, ? extends U> fn) {
-		return () -> call().handle(fn);
+	default AsyncCallable<T> whenCompleteAsync(BiConsumer<? super T, ? super Throwable> action) {
+		return () -> call().whenCompleteAsync(action);
 	}
 }

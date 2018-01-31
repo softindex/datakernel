@@ -12,6 +12,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+import static io.datakernel.async.Stages.assertComplete;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.ot.utils.Utils.*;
 import static java.util.Arrays.asList;
@@ -73,9 +74,7 @@ public class OTSystemTest {
 		OTAlgorithms<String, TestOp> otAlgorithms = new OTAlgorithms<>(eventloop, system, otSource, comparator);
 		OTStateManager<String, TestOp> stateManager = new OTStateManager<>(eventloop, otAlgorithms, state);
 
-		stateManager.start().thenCompose($ -> stateManager.pull()).exceptionally(throwable -> {
-			throw new AssertionError("Fatal error on start", throwable);
-		});
+		stateManager.start().thenCompose($ -> stateManager.pull()).whenComplete(assertComplete());
 		eventloop.run();
 		System.out.println(stateManager);
 		System.out.println();
@@ -156,9 +155,7 @@ public class OTSystemTest {
 		OTAlgorithms<String, TestOp> otAlgorithms = new OTAlgorithms<>(eventloop, system, otSource, comparator);
 		OTStateManager<String, TestOp> stateManager = new OTStateManager<>(eventloop, otAlgorithms, state);
 
-		stateManager.start().thenCompose($ -> stateManager.pull()).exceptionally(throwable -> {
-			throw new AssertionError("Fatal error on start", throwable);
-		});
+		stateManager.start().thenCompose($ -> stateManager.pull()).whenComplete(assertComplete());
 		eventloop.run();
 		System.out.println(stateManager);
 		System.out.println();
@@ -191,9 +188,7 @@ public class OTSystemTest {
 		OTAlgorithms<String, TestOp> otAlgorithms = new OTAlgorithms<>(eventloop, system, otSource, comparator);
 		OTStateManager<String, TestOp> stateManager = new OTStateManager<>(eventloop, otAlgorithms, state);
 
-		stateManager.start().thenCompose($ -> stateManager.pull()).exceptionally(throwable -> {
-			throw new AssertionError("Fatal error on start", throwable);
-		});
+		stateManager.start().thenCompose($ -> stateManager.pull()).whenComplete(assertComplete());
 		eventloop.run();
 		System.out.println(stateManager);
 		System.out.println();

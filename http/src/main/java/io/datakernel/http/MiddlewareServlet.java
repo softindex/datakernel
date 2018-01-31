@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.Callback;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -104,7 +104,7 @@ public class MiddlewareServlet implements AsyncServlet {
 	}
 
 	@Override
-	public void serve(HttpRequest request, ResultCallback<HttpResponse> callback) {
+	public void serve(HttpRequest request, Callback<HttpResponse> callback) {
 		ProcessResult processed = tryServeAsync(request, callback);
 		if (processed == ProcessResult.NOT_FOUND) {
 			callback.setException(HttpException.notFound404());
@@ -113,7 +113,7 @@ public class MiddlewareServlet implements AsyncServlet {
 		}
 	}
 
-	protected ProcessResult tryServeAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+	protected ProcessResult tryServeAsync(HttpRequest request, Callback<HttpResponse> callback) {
 		int introPosition = request.getPos();
 		String urlPart = request.pollUrlPart();
 		HttpMethod method = request.getMethod();

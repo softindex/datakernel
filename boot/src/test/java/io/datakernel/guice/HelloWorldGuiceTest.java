@@ -18,7 +18,7 @@ package io.datakernel.guice;
 
 import com.google.inject.*;
 import com.google.inject.name.Named;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufStrings;
@@ -45,8 +45,8 @@ import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.List;
-import java.util.concurrent.CompletionStage;
 
+import static com.google.inject.Stage.PRODUCTION;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
@@ -106,9 +106,9 @@ public class HelloWorldGuiceTest {
 		AsyncServlet servlet(@WorkerId int workerId) {
 			return new AsyncServlet() {
 				@Override
-				public CompletionStage<HttpResponse> serve(HttpRequest request) {
+				public Stage<HttpResponse> serve(HttpRequest request) {
 					byte[] body = ByteBufStrings.encodeAscii("Hello world: worker server #" + workerId);
-					return Stages.of(ok200().withBody(ByteBuf.wrapForReading(body)));
+					return Stage.of(ok200().withBody(ByteBuf.wrapForReading(body)));
 				}
 			};
 		}
@@ -116,7 +116,7 @@ public class HelloWorldGuiceTest {
 
 	@Test
 	public void test() throws Exception {
-		Injector injector = Guice.createInjector(Stage.PRODUCTION, new TestModule());
+		Injector injector = Guice.createInjector(PRODUCTION, new TestModule());
 		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
 		Socket socket0 = new Socket(), socket1 = new Socket();
 		try {
@@ -164,7 +164,7 @@ public class HelloWorldGuiceTest {
 	}
 
 	public static void main(String[] args) throws Exception {
-		Injector injector = Guice.createInjector(Stage.PRODUCTION, new TestModule(), JmxModule.create());
+		Injector injector = Guice.createInjector(PRODUCTION, new TestModule(), JmxModule.create());
 
 		// jmx
 		JmxRegistrator jmxRegistrator = injector.getInstance(JmxRegistrator.class);

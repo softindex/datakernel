@@ -16,11 +16,10 @@
 
 package io.datakernel.cube.attributes;
 
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletionStage;
 
 public abstract class AbstractAttributeResolver<K, A> implements AttributeResolver {
 	@Override
@@ -35,11 +34,11 @@ public abstract class AbstractAttributeResolver<K, A> implements AttributeResolv
 
 	protected abstract A resolveAttributes(K key);
 
-	protected CompletionStage<Void> prepareToResolveAttributes(List<Object> results, KeyFunction keyFunction, AttributesFunction attributesFunction) {
-		return Stages.of(null);
+	protected Stage<Void> prepareToResolveAttributes(List<Object> results, KeyFunction keyFunction, AttributesFunction attributesFunction) {
+		return Stage.of(null);
 	}
 
-	private CompletionStage<Void> doResolveAttributes(List<Object> results, KeyFunction keyFunction, AttributesFunction attributesFunction) {
+	private Stage<Void> doResolveAttributes(List<Object> results, KeyFunction keyFunction, AttributesFunction attributesFunction) {
 		for (Object result : results) {
 			K key = toKey(keyFunction.extractKey(result));
 			A attributes = resolveAttributes(key);
@@ -47,11 +46,11 @@ public abstract class AbstractAttributeResolver<K, A> implements AttributeResolv
 				attributesFunction.applyAttributes(result, toAttributes(attributes));
 			}
 		}
-		return Stages.of(null);
+		return Stage.of(null);
 	}
 
 	@Override
-	public final CompletionStage<Void> resolveAttributes(List<Object> results, KeyFunction keyFunction, AttributesFunction attributesFunction) {
+	public final Stage<Void> resolveAttributes(List<Object> results, KeyFunction keyFunction, AttributesFunction attributesFunction) {
 		return prepareToResolveAttributes(results, keyFunction, attributesFunction).thenCompose($ ->
 				doResolveAttributes(results, keyFunction, attributesFunction));
 	}

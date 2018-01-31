@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.Callback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
@@ -32,7 +32,7 @@ import static io.datakernel.http.HttpHeaders.CONNECTION;
 final class HttpClientConnection extends AbstractHttpConnection {
 	private static final HttpHeaders.Value CONNECTION_KEEP_ALIVE = HttpHeaders.asBytes(CONNECTION, "keep-alive");
 
-	private ResultCallback<HttpResponse> callback;
+	private Callback<HttpResponse> callback;
 	private HttpResponse response;
 	private final AsyncHttpClient client;
 	private final AsyncHttpClient.Inspector inspector;
@@ -61,7 +61,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		if (inspector != null && e != null) inspector.onHttpError(this, callback == null, e);
 		readQueue.clear();
 		if (callback != null) {
-			ResultCallback<HttpResponse> callback = this.callback;
+			Callback<HttpResponse> callback = this.callback;
 			eventloop.post(() -> callback.setException(e));
 			this.callback = null;
 		} else {
@@ -130,7 +130,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	@Override
 	protected void onHttpMessage(ByteBuf bodyBuf) {
 		assert !isClosed();
-		ResultCallback<HttpResponse> callback = this.callback;
+		Callback<HttpResponse> callback = this.callback;
 		HttpResponse response = this.response;
 		this.response = null;
 		this.callback = null;
@@ -173,7 +173,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 *
 	 * @param request request for sending
 	 */
-	public void send(HttpRequest request, ResultCallback<HttpResponse> callback) {
+	public void send(HttpRequest request, Callback<HttpResponse> callback) {
 		this.callback = callback;
 		assert pool == null;
 		(pool = client.poolWriting).addLastNode(this);

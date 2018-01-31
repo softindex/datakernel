@@ -1,37 +1,34 @@
 package io.datakernel.async;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
 
-public interface ResultCallback<T> {
+public interface Callback<T> {
 	void set(T result);
 
 	void setException(Throwable t);
 
-	static <T> void stageToCallback(CompletionStage<T> stage, ResultCallback<T> callback) {
+	default void set(T result, Throwable throwable) {
+		if (throwable == null) {
+			set(result);
+		} else {
+			setException(throwable);
+		}
+	}
+
+	static <T> void stageToCallback(Stage<T> stage, Callback<T> callback) {
 		if (stage instanceof SettableStage) {
 			SettableStage<T> settableStage = (SettableStage<T>) stage;
 			if (settableStage.isSet()) {
-				if (settableStage.exception == null) {
-					callback.set(settableStage.result);
-				} else {
-					callback.setException(settableStage.exception);
-				}
+				callback.set(settableStage.result, settableStage.exception);
 				return;
 			}
 		}
-		stage.whenComplete((value, throwable) -> {
-			if (throwable == null) {
-				callback.set(value);
-			} else {
-				callback.setException(throwable);
-			}
-		});
+		stage.whenComplete(callback::set);
 	}
 
-	static <T> ResultCallback<T> ignore() {
-		return new ResultCallback<T>() {
+	static <T> Callback<T> ignore() {
+		return new Callback<T>() {
 			@Override
 			public void set(T result) {
 			}
@@ -42,8 +39,8 @@ public interface ResultCallback<T> {
 		};
 	}
 
-	static <T> ResultCallback<T> forBiConsumer(BiConsumer<T, Throwable> biConsumer) {
-		return new ResultCallback<T>() {
+	static <T> Callback<T> forBiConsumer(BiConsumer<T, Throwable> biConsumer) {
+		return new Callback<T>() {
 			@Override
 			public void set(T result) {
 				biConsumer.accept(result, null);
@@ -56,8 +53,8 @@ public interface ResultCallback<T> {
 		};
 	}
 
-	static <T> ResultCallback<T> forFuture(CompletableFuture<T> future) {
-		return new ResultCallback<T>() {
+	static <T> Callback<T> forFuture(CompletableFuture<T> future) {
+		return new Callback<T>() {
 			@Override
 			public void set(T result) {
 				future.complete(result);
@@ -70,8 +67,8 @@ public interface ResultCallback<T> {
 		};
 	}
 
-	static <T> ResultCallback<T> assertNoExceptions() {
-		return new ResultCallback<T>() {
+	static <T> Callback<T> assertNoExceptions() {
+		return new Callback<T>() {
 			@Override
 			public void set(T result) {
 			}
@@ -83,8 +80,8 @@ public interface ResultCallback<T> {
 		};
 	}
 
-	static <T> ResultCallback<T> assertNoCalls() {
-		return new ResultCallback<T>() {
+	static <T> Callback<T> assertNoCalls() {
+		return new Callback<T>() {
 			@Override
 			public void set(T result) {
 				throw new AssertionError();

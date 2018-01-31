@@ -16,6 +16,7 @@
 
 package io.datakernel.logfs;
 
+import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
@@ -30,7 +31,6 @@ import io.datakernel.stream.stats.StreamStatsDetailed;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static io.datakernel.stream.stats.StreamStatsSizeCounter.forByteBufs;
@@ -63,12 +63,12 @@ public final class RemoteLogFileSystem extends AbstractLogFileSystem implements 
 	}
 
 	@Override
-	public CompletionStage<List<LogFile>> list(String logPartition) {
+	public Stage<List<LogFile>> list(String logPartition) {
 		return client.list().thenApply(files -> getLogFiles(files, logPartition)).whenComplete(stageList.recordStats());
 	}
 
 	@Override
-	public CompletionStage<StreamProducerWithResult<ByteBuf, Void>> read(String logPartition, LogFile logFile, long startPosition) {
+	public Stage<StreamProducerWithResult<ByteBuf, Void>> read(String logPartition, LogFile logFile, long startPosition) {
 		return client.download(path(logPartition, logFile), startPosition)
 				.thenApply(stream -> stream
 						.with(streamReads.newEntry(logPartition + ":" + logFile + "@" + startPosition))
@@ -79,7 +79,7 @@ public final class RemoteLogFileSystem extends AbstractLogFileSystem implements 
 	}
 
 	@Override
-	public CompletionStage<StreamConsumerWithResult<ByteBuf, Void>> write(String logPartition, LogFile logFile) {
+	public Stage<StreamConsumerWithResult<ByteBuf, Void>> write(String logPartition, LogFile logFile) {
 		String fileName = path(logPartition, logFile);
 		return client.upload(fileName)
 				.thenApply(stream -> stream

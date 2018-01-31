@@ -1,12 +1,11 @@
 package io.datakernel.ot.utils;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Stages;
+import io.datakernel.async.Stage;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTRemote;
 
 import java.util.*;
-import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.util.CollectionUtils.difference;
 
@@ -72,13 +71,13 @@ public final class OTRemoteStub<K, D> implements OTRemote<K, D> {
 	}
 
 	@Override
-	public CompletionStage<K> createCommitId() {
+	public Stage<K> createCommitId() {
 		revisionId = sequence.next(revisionId);
-		return Stages.of(revisionId);
+		return Stage.of(revisionId);
 	}
 
 	@Override
-	public CompletionStage<Void> push(Collection<OTCommit<K, D>> commits) {
+	public Stage<Void> push(Collection<OTCommit<K, D>> commits) {
 		for (OTCommit<K, D> commit : commits) {
 			K to = commit.getId();
 			if (commit.isRoot()) nodes.add(commit.getId());
@@ -89,7 +88,7 @@ public final class OTRemoteStub<K, D> implements OTRemote<K, D> {
 			}
 			if (commit.isRoot() && root == null) root = commit.getId();
 		}
-		return Stages.of(null);
+		return Stage.of(null);
 	}
 
 	public void add(K from, K to, List<? extends D> diffs) {
@@ -104,42 +103,42 @@ public final class OTRemoteStub<K, D> implements OTRemote<K, D> {
 	}
 
 	@Override
-	public CompletionStage<Set<K>> getHeads() {
-		return Stages.of(difference(nodes, forward.keySet()));
+	public Stage<Set<K>> getHeads() {
+		return Stage.of(difference(nodes, forward.keySet()));
 	}
 
 	@Override
-	public CompletionStage<OTCommit<K, D>> loadCommit(K revisionId) {
+	public Stage<OTCommit<K, D>> loadCommit(K revisionId) {
 		if (!nodes.contains(revisionId))
 			throw new IllegalArgumentException("id=" + revisionId);
 		Map<K, List<? extends D>> parentDiffs = backward.get(revisionId);
 		if (parentDiffs == null) {
 			parentDiffs = Collections.emptyMap();
 		}
-		return Stages.of(OTCommit.of(revisionId, parentDiffs));
+		return Stage.of(OTCommit.of(revisionId, parentDiffs));
 	}
 
 	@Override
-	public CompletionStage<Void> saveSnapshot(K revisionId, List<D> diffs) {
+	public Stage<Void> saveSnapshot(K revisionId, List<D> diffs) {
 		snapshots.put(revisionId, diffs);
-		return Stages.of(null);
+		return Stage.of(null);
 	}
 
 	@Override
-	public CompletionStage<List<D>> loadSnapshot(K revisionId) {
+	public Stage<List<D>> loadSnapshot(K revisionId) {
 		return snapshots.containsKey(revisionId)
-				? Stages.of(snapshots.get(revisionId))
-				: Stages.of(Collections.emptyList());
+				? Stage.of(snapshots.get(revisionId))
+				: Stage.of(Collections.emptyList());
 
 	}
 
 	@Override
-	public CompletionStage<Void> cleanup(K revisionId) {
+	public Stage<Void> cleanup(K revisionId) {
 		throw new UnsupportedOperationException();
 	}
 
 	@Override
-	public CompletionStage<Void> backup(K revisionId, List<D> diffs) {
+	public Stage<Void> backup(K revisionId, List<D> diffs) {
 		throw new UnsupportedOperationException();
 	}
 

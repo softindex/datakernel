@@ -17,11 +17,11 @@
 package io.datakernel.stream;
 
 import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stage;
 import io.datakernel.stream.processor.StreamLateBinder;
 
 import java.util.EnumSet;
 import java.util.Set;
-import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.stream.DataStreams.bind;
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
@@ -44,7 +44,7 @@ public interface StreamConsumer<T> {
 	 */
 	void setProducer(StreamProducer<T> producer);
 
-	CompletionStage<Void> getEndOfStream();
+	Stage<Void> getEndOfStream();
 
 	Set<StreamCapability> getCapabilities();
 
@@ -70,7 +70,7 @@ public interface StreamConsumer<T> {
 			"it must be bound in the same tick when it is created. " +
 			"Alternatively, use .withLateBinding() modifier";
 
-	static <T> StreamConsumer<T> ofStage(CompletionStage<StreamConsumer<T>> consumerStage) {
+	static <T> StreamConsumer<T> ofStage(Stage<StreamConsumer<T>> consumerStage) {
 		StreamLateBinder<T> lateBounder = StreamLateBinder.create();
 		consumerStage.whenComplete((consumer, throwable) -> {
 			if (throwable == null) {
@@ -84,7 +84,7 @@ public interface StreamConsumer<T> {
 		return lateBounder.getInput();
 	}
 
-	default <X> StreamConsumerWithResult<T, X> withResult(CompletionStage<X> result) {
+	default <X> StreamConsumerWithResult<T, X> withResult(Stage<X> result) {
 		SettableStage<Void> safeEndOfStream = SettableStage.create();
 		SettableStage<X> safeResult = SettableStage.create();
 		this.getEndOfStream().whenComplete(($, throwable) -> {
@@ -101,12 +101,12 @@ public interface StreamConsumer<T> {
 			}
 
 			@Override
-			public CompletionStage<Void> getEndOfStream() {
+			public Stage<Void> getEndOfStream() {
 				return safeEndOfStream;
 			}
 
 			@Override
-			public CompletionStage<X> getResult() {
+			public Stage<X> getResult() {
 				return safeResult;
 			}
 
@@ -128,12 +128,12 @@ public interface StreamConsumer<T> {
 			}
 
 			@Override
-			public CompletionStage<Void> getEndOfStream() {
+			public Stage<Void> getEndOfStream() {
 				return safeEndOfStream;
 			}
 
 			@Override
-			public CompletionStage<Void> getResult() {
+			public Stage<Void> getResult() {
 				return safeEndOfStream;
 			}
 

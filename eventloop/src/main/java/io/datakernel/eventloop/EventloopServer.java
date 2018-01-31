@@ -16,8 +16,9 @@
 
 package io.datakernel.eventloop;
 
+import io.datakernel.async.Stage;
+
 import java.io.IOException;
-import java.util.concurrent.CompletionStage;
 
 /**
  * Represents non-blocking server which listens new connection and accepts it asynchronous.
@@ -37,5 +38,5 @@ public interface EventloopServer {
 	 * Closes the server. Any open channels will be closed.
 	 *
 	 */
-	CompletionStage<Void> close();
+	Stage<Void> close();
 }
