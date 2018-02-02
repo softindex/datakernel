@@ -16,6 +16,7 @@
 
 package io.datakernel.stream.net;
 
+import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
@@ -25,7 +26,6 @@ import io.datakernel.eventloop.SimpleServer.SocketHandlerProvider;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.net.Messaging.ReceiveMessageCallback;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
 import org.junit.Before;
@@ -86,23 +86,16 @@ public class MessagingWithBinaryStreamingTest {
 			}
 
 			void pong(Messaging<Integer, Integer> messaging) {
-				messaging.receive(new ReceiveMessageCallback<Integer>() {
-					@Override
-					public void onReceive(Integer msg) {
-						messaging.send(msg);
-						pong(messaging);
-					}
-
-					@Override
-					public void onReceiveEndOfStream() {
-						messaging.close();
-					}
-
-					@Override
-					public void onException(Exception e) {
-						messaging.close();
-					}
-				});
+				messaging.receive()
+						.thenAccept(msg -> {
+							if (msg != null) {
+								messaging.send(msg);
+								pong(messaging);
+							} else {
+								messaging.close();
+							}
+						})
+						.whenComplete(Stages.onError(e -> messaging.close()));
 			}
 
 		};
@@ -117,26 +110,19 @@ public class MessagingWithBinaryStreamingTest {
 			void ping(int n, Messaging<Integer, Integer> messaging) {
 				messaging.send(n);
 
-				messaging.receive(new ReceiveMessageCallback<Integer>() {
-					@Override
-					public void onReceive(Integer msg) {
-						if (msg > 0) {
-							ping(msg - 1, messaging);
-						} else {
-							messaging.close();
-						}
-					}
-
-					@Override
-					public void onReceiveEndOfStream() {
-						// empty
-					}
-
-					@Override
-					public void onException(Exception e) {
-						messaging.close();
-					}
-				});
+				messaging.receive()
+						.thenAccept(msg -> {
+							if (msg != null) {
+								if (msg > 0) {
+									ping(msg - 1, messaging);
+								} else {
+									messaging.close();
+								}
+							} else {
+								// empty
+							}
+						})
+						.whenComplete(Stages.onError(e -> messaging.close()));
 			}
 
 			@Override
@@ -156,7 +142,9 @@ public class MessagingWithBinaryStreamingTest {
 
 		eventloop.run();
 
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(),
+
+				getPoolItems());
 	}
 
 	@Test
@@ -175,25 +163,16 @@ public class MessagingWithBinaryStreamingTest {
 			MessagingWithBinaryStreaming<String, String> messaging =
 					MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
 
-			messaging.receive(new ReceiveMessageCallback<String>() {
-				@Override
-				public void onReceive(String msg) {
-					assertEquals("start", msg);
-					StreamProducer.ofIterable(source)
-							.with(StreamBinarySerializer.create(longSerializer())
-									.withDefaultBufferSize(1))
-							.streamTo(messaging.sendBinaryStream());
-				}
-
-				@Override
-				public void onReceiveEndOfStream() {
-
-				}
-
-				@Override
-				public void onException(Exception e) {
-				}
-			});
+			messaging.receive()
+					.thenAccept(msg -> {
+						if (msg != null) {
+							assertEquals("start", msg);
+							StreamProducer.ofIterable(source)
+									.with(StreamBinarySerializer.create(longSerializer())
+											.withDefaultBufferSize(1))
+									.streamTo(messaging.sendBinaryStream());
+						}
+					});
 
 			return messaging;
 		};
@@ -249,27 +228,18 @@ public class MessagingWithBinaryStreamingTest {
 			MessagingWithBinaryStreaming<String, String> messaging =
 					MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
 
-			messaging.receive(new ReceiveMessageCallback<String>() {
-				@Override
-				public void onReceive(String message) {
-					assertEquals("start", message);
+			messaging.receive()
+					.thenAccept(msg -> {
+						if (msg != null) {
+							assertEquals("start", msg);
 
-					messaging.receiveBinaryStream()
-							.with(StreamBinaryDeserializer.create(longSerializer()))
-							.streamTo(consumerToList);
+							messaging.receiveBinaryStream()
+									.with(StreamBinaryDeserializer.create(longSerializer()))
+									.streamTo(consumerToList);
 
-					messaging.sendEndOfStream();
-				}
-
-				@Override
-				public void onReceiveEndOfStream() {
-
-				}
-
-				@Override
-				public void onException(Exception e) {
-				}
-			});
+							messaging.sendEndOfStream();
+						}
+					});
 
 			return messaging;
 		};
@@ -280,25 +250,26 @@ public class MessagingWithBinaryStreamingTest {
 
 		server.listen();
 
-		eventloop.connect(address).whenComplete((socketChannel, throwable) -> {
-			if (throwable == null) {
-				AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
-				MessagingWithBinaryStreaming<String, String> messaging =
-						MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
+		eventloop.connect(address)
+				.whenComplete((socketChannel, throwable) -> {
+					if (throwable == null) {
+						AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
+						MessagingWithBinaryStreaming<String, String> messaging =
+								MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
 
-				messaging.send("start");
+						messaging.send("start");
 
-				StreamProducer.ofIterable(source)
-						.with(StreamBinarySerializer.create(longSerializer())
-								.withDefaultBufferSize(1))
-						.streamTo(messaging.sendBinaryStream());
+						StreamProducer.ofIterable(source)
+								.with(StreamBinarySerializer.create(longSerializer())
+										.withDefaultBufferSize(1))
+								.streamTo(messaging.sendBinaryStream());
 
-				asyncTcpSocket.setEventHandler(messaging);
-				asyncTcpSocket.register();
-			} else {
-				fail("Test Exception: " + throwable);
-			}
-		});
+						asyncTcpSocket.setEventHandler(messaging);
+						asyncTcpSocket.register();
+					} else {
+						fail("Test Exception: " + throwable);
+					}
+				});
 
 		eventloop.run();
 
@@ -325,33 +296,23 @@ public class MessagingWithBinaryStreamingTest {
 				ofJson(STRING_JSON, STRING_JSON);
 
 		SocketHandlerProvider socketHandlerProvider = (AsyncTcpSocket asyncTcpSocket) -> {
-			MessagingWithBinaryStreaming<String, String> messaging =
-					MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
+			MessagingWithBinaryStreaming<String, String> messaging = MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
 
-			messaging.receive(new ReceiveMessageCallback<String>() {
-				@Override
-				public void onReceive(String msg) {
-					assertEquals("start", msg);
+			messaging.receive()
+					.thenAccept(msg -> {
+						if (msg != null) {
+							assertEquals("start", msg);
 
-					messaging.receiveBinaryStream()
-							.with(StreamBinaryDeserializer.create(longSerializer()))
-							.streamTo(consumerToList)
-							.getProducerResult()
-							.thenAccept($ -> {
-								messaging.send("ack");
-								messaging.sendEndOfStream();
-							});
-				}
-
-				@Override
-				public void onReceiveEndOfStream() {
-
-				}
-
-				@Override
-				public void onException(Exception exception) {
-				}
-			});
+							messaging.receiveBinaryStream()
+									.with(StreamBinaryDeserializer.create(longSerializer()))
+									.streamTo(consumerToList)
+									.getProducerResult()
+									.thenAccept($ -> {
+										messaging.send("ack");
+										messaging.sendEndOfStream();
+									});
+						}
+					});
 
 			return messaging;
 		};
@@ -375,24 +336,14 @@ public class MessagingWithBinaryStreamingTest {
 								.withDefaultBufferSize(1))
 						.streamTo(messaging.sendBinaryStream());
 
-				messaging.receive(new ReceiveMessageCallback<String>() {
-					@Override
-					public void onReceive(String msg) {
-						assertEquals("ack", msg);
-						messaging.close();
-						ack[0] = true;
-					}
-
-					@Override
-					public void onReceiveEndOfStream() {
-
-					}
-
-					@Override
-					public void onException(Exception exception) {
-
-					}
-				});
+				messaging.receive()
+						.thenAccept(msg -> {
+							if (msg != null) {
+								assertEquals("ack", msg);
+								messaging.close();
+								ack[0] = true;
+							}
+						});
 
 				asyncTcpSocket.setEventHandler(messaging);
 				asyncTcpSocket.register();
@@ -428,28 +379,18 @@ public class MessagingWithBinaryStreamingTest {
 			MessagingWithBinaryStreaming<String, String> messaging =
 					MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
 
-			messaging.receive(new ReceiveMessageCallback<String>() {
-				@Override
-				public void onReceive(String msg) {
-					assertEquals("start", msg);
+			messaging.receive()
+					.thenAccept(msg -> {
+						if (msg != null) {
+							assertEquals("start", msg);
 
-					messaging.sendEndOfStream();
+							messaging.sendEndOfStream();
 
-					messaging.receiveBinaryStream()
-							.with(StreamBinaryDeserializer.create(longSerializer()))
-							.streamTo(consumerToList);
-				}
-
-				@Override
-				public void onReceiveEndOfStream() {
-
-				}
-
-				@Override
-				public void onException(Exception exception) {
-
-				}
-			});
+							messaging.receiveBinaryStream()
+									.with(StreamBinaryDeserializer.create(longSerializer()))
+									.streamTo(consumerToList);
+						}
+					});
 
 			return messaging;
 		};

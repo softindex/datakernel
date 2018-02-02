@@ -18,9 +18,9 @@ package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.aggregation.util.PartitionPredicate;
-import io.datakernel.async.NextStage;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
+import io.datakernel.async.Stages;
 import io.datakernel.async.StagesAccumulator;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.stream.*;
@@ -60,7 +60,7 @@ public final class AggregationChunker<T> extends ForwardingStreamConsumer<T> imp
 				.withStage(switcher.getEndOfStream(), (accumulator, $) -> {});
 		this.chunkSize = chunkSize;
 		chunksAccumulator.get().whenComplete(result::trySet);
-		getEndOfStream().then(NextStage.onError(result::trySetException));
+		getEndOfStream().whenComplete(Stages.onError(result::trySetException));
 	}
 
 	public static <T> AggregationChunker<T> create(AggregationStructure aggregation, List<String> fields,
@@ -106,7 +106,7 @@ public final class AggregationChunker<T> extends ForwardingStreamConsumer<T> imp
 									PrimaryKey.ofObject(last, aggregation.getKeys()),
 									count))
 					.whenComplete(result::trySet);
-			getEndOfStream().then(NextStage.onError(result::trySetException));
+			getEndOfStream().whenComplete(Stages.onError(result::trySetException));
 		}
 
 		@Override

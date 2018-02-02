@@ -16,10 +16,11 @@
 
 package io.datakernel;
 
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.remotefs.FileManager;
-import io.datakernel.stream.file.StreamFileReader;
+import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.file.StreamFileWriter;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
@@ -147,7 +148,7 @@ public class TestFileManager {
 	public void testDoDownloadFailed() throws Exception {
 		FileManager fs = FileManager.create(eventloop, executor, storage);
 
-		CompletableFuture<StreamFileReader> future = fs.get("no_file.txt", 0).toCompletableFuture();
+		CompletableFuture<StreamProducerWithResult<ByteBuf, Void>> future = fs.get("no_file.txt", 0).toCompletableFuture();
 		eventloop.run();
 		executor.shutdown();
 

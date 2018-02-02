@@ -32,6 +32,30 @@ public final class Stages {
 		return resultStage;
 	}
 
+	public static <T> BiConsumer<T, Throwable> onError(Consumer<Throwable> consumer) {
+		return (t, throwable) -> {
+			if (throwable != null) consumer.accept(throwable);
+		};
+	}
+
+	public static <T> BiConsumer<T, Throwable> onError(Runnable runnable) {
+		return (t, throwable) -> {
+			if (throwable != null) runnable.run();
+		};
+	}
+
+	public static <T> BiConsumer<T, Throwable> onResult(Consumer<T> consumer) {
+		return (t, throwable) -> {
+			if (throwable == null) consumer.accept(t);
+		};
+	}
+
+	public static <T> BiConsumer<T, Throwable> onResult(Runnable runnable) {
+		return (t, throwable) -> {
+			if (throwable == null) runnable.run();
+		};
+	}
+
 	private static final class Counter {
 		int counter;
 
@@ -279,58 +303,6 @@ public final class Stages {
 
 	public static <T> Iterable<Stage<T>> iterable(Iterable<AsyncCallable<T>> callables) {
 		return () -> iterator(callables.iterator());
-	}
-
-	public static final class Pair<L, R> {
-		private int counter = 2;
-		private L left;
-		private R right;
-
-		private Pair() {
-		}
-
-		public L getLeft() {
-			return left;
-		}
-
-		public R getRight() {
-			return right;
-		}
-	}
-
-	@SuppressWarnings("unchecked")
-	public static <L, R> Stage<Pair<L, R>> pair(Stage<L> left, Stage<R> right) {
-		SettableStage<Pair<L, R>> resultStage = SettableStage.create();
-		Pair<L, R> results = new Pair<>();
-		left.whenComplete((result, throwable) -> {
-			if (throwable == null) {
-				if (!resultStage.isSet()) {
-					results.left = result;
-					if (--results.counter == 0) {
-						resultStage.set(results);
-					}
-				}
-			} else {
-				results.left = null;
-				results.right = null;
-				resultStage.trySetException(throwable);
-			}
-		});
-		right.whenComplete((result, throwable) -> {
-			if (throwable == null) {
-				if (!resultStage.isSet()) {
-					results.right = result;
-					if (--results.counter == 0) {
-						resultStage.set(results);
-					}
-				}
-			} else {
-				results.left = null;
-				results.right = null;
-				resultStage.trySetException(throwable);
-			}
-		});
-		return resultStage;
 	}
 
 	public static <T> BiConsumer<T, ? super Throwable> assertComplete(Consumer<T> consumer) {

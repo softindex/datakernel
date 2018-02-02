@@ -1,7 +1,7 @@
 package io.datakernel.ot.utils;
 
-import io.datakernel.async.NextStage;
 import io.datakernel.async.Stage;
+import io.datakernel.async.Stages;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTRemote;
 
@@ -40,7 +40,7 @@ public class GraphBuilder<K, D> {
 				.filter(entry -> finished.containsAll(toParents(entry).collect(toList())))
 				.findFirst()
 				.map(entry -> otRemote.createCommitId()
-						.then(NextStage.onResult(id -> names.put(entry.getKey(), id)))
+						.whenComplete(Stages.onResult(id -> names.put(entry.getKey(), id)))
 						.thenApply(id -> singletonList(OTCommit.of(id, toDiffs(entry))))
 						.thenCompose(otRemote::push)
 						.thenAccept($ -> finished.add(entry.getKey()))

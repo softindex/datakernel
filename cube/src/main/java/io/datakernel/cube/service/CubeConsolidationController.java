@@ -6,8 +6,8 @@ import io.datakernel.aggregation.AggregationChunkStorage;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.async.AsyncCallable;
 import io.datakernel.async.AsyncFunction;
-import io.datakernel.async.NextStage;
 import io.datakernel.async.Stage;
+import io.datakernel.async.Stages;
 import io.datakernel.cube.Cube;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
@@ -89,7 +89,7 @@ public final class CubeConsolidationController implements EventloopJmxMBeanEx {
 				.thenCompose(mergeId -> stateManager.pull(mergeId))
 				.thenCompose($ -> stateManager.pull())
 				.thenCompose($ -> cube.consolidate(strategy.get()).whenComplete(stageConsolidateImpl.recordStats()))
-				.then(NextStage.onResult(this::cubeDiffJmx))
+				.whenComplete(Stages.onResult(this::cubeDiffJmx))
 				.whenComplete(this::logCubeDiff)
 				.thenCompose(this::tryPushConsolidation)
 				.whenComplete(this::logResult)

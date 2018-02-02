@@ -1,8 +1,9 @@
 package io.datakernel.ot;
 
-import io.datakernel.async.NextStage;
+import io.datakernel.async.Callback;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
+import io.datakernel.async.Stages;
 import io.datakernel.ot.OTLoadedGraph.MergeNode;
 import io.datakernel.ot.exceptions.OTException;
 import org.slf4j.Logger;
@@ -134,7 +135,7 @@ final class OTMergeAlgorithm<K, D> {
 		doLoadGraph(graph, queue, new HashSet<>(), head2roots, root2heads, cb);
 
 		return cb.thenApply($ -> graph)
-				.then(NextStage.onError(throwable -> {
+				.whenComplete(Stages.onError(throwable -> {
 					if (logger.isTraceEnabled()) {
 						logger.error("loading error " + heads + "\n" + graph.toGraphViz() + "\n", throwable);
 					} else {
@@ -145,7 +146,7 @@ final class OTMergeAlgorithm<K, D> {
 
 	private void doLoadGraph(OTLoadedGraph<K, D> graph, PriorityQueue<K> queue,
 	                         Set<K> visited, Map<K, Set<K>> head2roots, Map<K, Set<K>> root2heads,
-	                         SettableStage<Void> cb) {
+	                         Callback<Void> cb) {
 		while (!queue.isEmpty()) {
 			K node = queue.poll();
 			if (!visited.add(node)) continue;
@@ -189,7 +190,7 @@ final class OTMergeAlgorithm<K, D> {
 							doLoadGraph(graph, queue, visited, head2roots, root2heads, cb);
 						}
 					})
-					.then(NextStage.onError(cb::setException));
+					.whenComplete(Stages.onError(cb::setException));
 			return;
 		}
 		cb.setException(new OTException("Incomplete graph"));

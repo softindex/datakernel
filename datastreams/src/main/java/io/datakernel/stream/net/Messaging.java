@@ -22,15 +22,7 @@ import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducerWithResult;
 
 public interface Messaging<I, O> {
-	interface ReceiveMessageCallback<I> {
-		void onReceive(I msg);
-
-		void onReceiveEndOfStream();
-
-		void onException(Exception e);
-	}
-
-	void receive(ReceiveMessageCallback<I> callback);
+	Stage<I> receive();
 
 	Stage<Void> send(O msg);
 

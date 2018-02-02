@@ -17,8 +17,8 @@
 package io.datakernel.logfs.ot;
 
 import io.datakernel.async.AsyncCallable;
-import io.datakernel.async.NextStage;
 import io.datakernel.async.Stage;
+import io.datakernel.async.Stages;
 import io.datakernel.async.StagesAccumulator;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
@@ -121,7 +121,7 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 				.getResult()
 				.whenComplete(stageProcessLog.recordStats())
 				.thenApply(result -> LogDiff.of(result.getProducerResult(), result.getConsumerResult()))
-				.then(NextStage.onResult(logDiff ->
+				.whenComplete(Stages.onResult(logDiff ->
 						logger.info("Log '{}' processing complete. Positions: {}", log, logDiff.positions)));
 	}
 

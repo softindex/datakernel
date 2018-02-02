@@ -23,7 +23,7 @@ abstract class AbstractStage<T> implements Stage<T> {
 	}
 
 	@SuppressWarnings({"AssertWithSideEffects", "ConstantConditions", "unchecked"})
-	public void complete(T value) {
+	protected void complete(T value) {
 		assert !isComplete();
 		if (next != null) {
 			next.onComplete(value);
@@ -33,7 +33,7 @@ abstract class AbstractStage<T> implements Stage<T> {
 	}
 
 	@SuppressWarnings({"AssertWithSideEffects", "ConstantConditions", "unchecked", "WeakerAccess"})
-	public void completeExceptionally(Throwable error) {
+	protected void completeExceptionally(Throwable error) {
 		assert !isComplete();
 		if (next != null) {
 			next.onCompleteExceptionally(error);
@@ -42,16 +42,30 @@ abstract class AbstractStage<T> implements Stage<T> {
 		assert (next = COMPLETED_STAGE) != null;
 	}
 
+	protected void complete(T value, Throwable error) {
+		assert !isComplete();
+		if (error == null) {
+			complete(value);
+		} else {
+			completeExceptionally(error);
+		}
+	}
 
-	public void tryComplete(T value) {
+	protected void tryComplete(T value) {
 		if (!isComplete()) {
 			complete(value);
 		}
 	}
 
-	public void tryCompleteExceptionally(Throwable error) {
+	protected void tryCompleteExceptionally(Throwable error) {
 		if (!isComplete()) {
 			completeExceptionally(error);
+		}
+	}
+
+	protected void tryComplete(T value, Throwable error) {
+		if (!isComplete()) {
+			complete(value, error);
 		}
 	}
 
@@ -113,7 +127,25 @@ abstract class AbstractStage<T> implements Stage<T> {
 		return (Stage<U>) stage;
 	}
 
-	static abstract class HandlerStage<F, T> extends NextStage<F, T> implements StageCallback<T> {
+	private static abstract class HandlerStage<F, T> extends NextStage<F, T> implements StageCallback<T> {
+		@Override
+		public void complete(T result) {
+			super.complete(result);
+		}
+
+		@Override
+		public void completeExceptionally(Throwable t) {
+			super.completeExceptionally(t);
+		}
+
+		@Override
+		public void accept(T value, Throwable throwable) {
+			if (throwable == null) {
+				complete(value);
+			} else {
+				completeExceptionally(throwable);
+			}
+		}
 	}
 
 	@Override
@@ -301,7 +333,11 @@ abstract class AbstractStage<T> implements Stage<T> {
 				if (stage instanceof SettableStage) {
 					SettableStage<U> settableStage = (SettableStage<U>) stage;
 					if (settableStage.isSet()) {
-						accept(settableStage.result, settableStage.exception);
+						if (settableStage.exception == null) {
+							complete(settableStage.result);
+						} else {
+							completeExceptionally(settableStage.exception);
+						}
 						return;
 					}
 				}

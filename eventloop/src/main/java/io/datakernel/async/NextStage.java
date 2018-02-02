@@ -1,25 +1,15 @@
 package io.datakernel.async;
 
-import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
-public abstract class NextStage<F, T> extends AbstractStage<T> implements BiConsumer<T, Throwable> {
+public abstract class NextStage<F, T> extends AbstractStage<T> {
 	protected abstract void onComplete(F result);
 
 	protected abstract void onCompleteExceptionally(Throwable throwable);
-
-	@Override
-	public final void accept(T result, Throwable throwable) {
-		if (throwable == null) {
-			complete(result);
-		} else {
-			completeExceptionally(throwable);
-		}
-	}
 
 	public static <T> NextStage<T, T> exceptionally(Function<? super Throwable, ? extends T> fn) {
 		return new NextStage<T, T>() {

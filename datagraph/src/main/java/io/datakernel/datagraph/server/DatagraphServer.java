@@ -16,6 +16,7 @@
 
 package io.datakernel.datagraph.server;
 
+import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.graph.TaskContext;
@@ -30,7 +31,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.net.Messaging.ReceiveMessageCallback;
 import io.datakernel.stream.net.MessagingSerializer;
 import io.datakernel.stream.net.MessagingWithBinaryStreaming;
 import io.datakernel.stream.processor.StreamBinarySerializer;
@@ -134,24 +134,19 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 	@Override
 	protected final AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 		MessagingWithBinaryStreaming<DatagraphCommand, DatagraphResponse> messaging = MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
-		messaging.receive(new ReceiveMessageCallback<DatagraphCommand>() {
-			@Override
-			public void onReceive(DatagraphCommand msg) {
-				doRead(messaging, msg);
-			}
-
-			@Override
-			public void onReceiveEndOfStream() {
-				logger.warn("unexpected end of stream");
-				messaging.close();
-			}
-
-			@Override
-			public void onException(Exception e) {
-				logger.error("received error while trying to read", e);
-				messaging.close();
-			}
-		});
+		messaging.receive()
+				.thenAccept(msg -> {
+					if (msg != null) {
+						doRead(messaging, msg);
+					} else {
+						logger.warn("unexpected end of stream");
+						messaging.close();
+					}
+				})
+				.whenComplete(Stages.onError(e -> {
+					logger.error("received error while trying to read", e);
+					messaging.close();
+				}));
 		return messaging;
 	}
 

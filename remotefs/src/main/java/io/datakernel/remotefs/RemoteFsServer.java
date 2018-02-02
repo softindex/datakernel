@@ -25,7 +25,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.RemoteFsCommands.*;
 import io.datakernel.remotefs.RemoteFsResponses.FsResponse;
 import io.datakernel.stream.net.Messaging;
-import io.datakernel.stream.net.Messaging.ReceiveMessageCallback;
 import io.datakernel.stream.net.MessagingSerializer;
 import io.datakernel.stream.net.MessagingWithBinaryStreaming;
 
@@ -34,10 +33,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
-import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import static io.datakernel.stream.DataStreams.stream;
 import static io.datakernel.stream.net.MessagingSerializers.ofJson;
 
 public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
@@ -63,25 +61,20 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 	protected final EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 		MessagingWithBinaryStreaming<FsCommand, FsResponse> messaging =
 				MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
-		messaging.receive(new ReceiveMessageCallback<FsCommand>() {
-			@Override
-			public void onReceive(FsCommand msg) {
-				logger.trace("received {}", msg);
-				doRead(messaging, msg);
-			}
-
-			@Override
-			public void onReceiveEndOfStream() {
-				logger.warn("unexpected end of stream");
-				messaging.close();
-			}
-
-			@Override
-			public void onException(Exception e) {
-				logger.error("received error while reading", e);
-				messaging.close();
-			}
-		});
+		messaging.receive()
+				.thenAccept(msg -> {
+					if (msg != null) {
+						logger.trace("received {}", msg);
+						doRead(messaging, msg);
+					} else {
+						logger.warn("unexpected end of stream");
+						messaging.close();
+					}
+				})
+				.whenComplete(Stages.onError(e -> {
+					logger.error("received error while reading", e);
+					messaging.close();
+				}));
 		return messaging;
 	}
 
@@ -115,61 +108,49 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 		@Override
 		public void onMessage(Messaging<Upload, FsResponse> messaging, Upload item) {
 			logger.trace("uploading {}", item.getFilePath());
-			fileManager.save(item.getFilePath()).whenComplete((fileWriter, throwable) -> {
-				if (throwable == null) {
-					stream(messaging.receiveBinaryStream(), fileWriter);
-					fileWriter.getFlushStage().whenComplete(($, throwable1) -> {
-						if (throwable1 == null) {
-							logger.trace("read all bytes for {}", item.getFilePath());
-							messaging.send(new RemoteFsResponses.Acknowledge());
-							messaging.sendEndOfStream();
-						} else {
-							messaging.close();
-						}
-					});
-				} else {
-					messaging.close();
-				}
-			});
+			fileManager.save(item.getFilePath())
+					.thenAccept(fileWriter -> messaging.receiveBinaryStream()
+							.streamTo(
+									fileWriter
+											.whenComplete(Stages.onResult(() -> {
+												logger.trace("read all bytes for {}", item.getFilePath());
+												messaging.send(new RemoteFsResponses.Acknowledge());
+												messaging.sendEndOfStream();
+											})))
+							.getResult()
+							.whenComplete(Stages.onError(messaging::close)))
+					.whenComplete(Stages.onError(messaging::close));
 		}
 	}
 
 	private class DownloadMessagingHandler implements MessagingHandler<Download, FsResponse> {
 
-		private <T, U extends Throwable> BiConsumer<T, U> errorHandlingConsumer(
-				Messaging<Download, FsResponse> messaging,
-				BiConsumer<T, U> resultConsumer) {
-
-			return (t, u) -> {
-				if (u == null) {
-					resultConsumer.accept(t, null);
-				} else {
-					onException(messaging, u);
-				}
+		private Consumer<Throwable> errorSender(Messaging<Download, FsResponse> messaging) {
+			return throwable -> {
+				messaging.send(new RemoteFsResponses.Err(throwable.getMessage()));
+				messaging.sendEndOfStream();
 			};
-		}
-
-		public void onException(Messaging<Download, FsResponse> messaging, Throwable throwable) {
-			messaging.send(new RemoteFsResponses.Err(throwable.getMessage()));
-			messaging.sendEndOfStream();
 		}
 
 		@Override
 		public void onMessage(Messaging<Download, FsResponse> messaging, Download item) {
-			fileManager.size(item.getFilePath()).whenComplete(errorHandlingConsumer(messaging, (size, throwable) -> {
-				if (size >= 0) {
-					messaging.send(new RemoteFsResponses.Ready(size)).whenComplete(errorHandlingConsumer(messaging, ($, throwable1) ->
-							fileManager.get(item.getFilePath(), item.getStartPosition())
-									.whenComplete(errorHandlingConsumer(messaging,
-											(fileReader, throwable2) -> {
-												fileReader.streamTo(messaging.sendBinaryStream())
-														.getConsumerResult()
-														.whenComplete(($3, throwable3) -> messaging.close());
-											}))));
-				} else {
-					onException(messaging, new Throwable("File not found"));
-				}
-			}));
+			fileManager.size(item.getFilePath())
+					.whenComplete(Stages.onError(errorSender(messaging)))
+					.thenAccept(size -> {
+						if (size >= 0) {
+							messaging.send(new RemoteFsResponses.Ready(size))
+									.whenComplete(Stages.onError(errorSender(messaging)))
+									.thenAccept($ ->
+											fileManager.get(item.getFilePath(), item.getStartPosition())
+													.whenComplete(Stages.onError(errorSender(messaging)))
+													.thenAccept(fileReader ->
+															fileReader.streamTo(messaging.sendBinaryStream())
+																	.getResult()
+																	.whenComplete(($_, throwable) -> messaging.close())));
+						} else {
+							errorSender(messaging).accept(new Throwable("File not found"));
+						}
+					});
 		}
 	}
 

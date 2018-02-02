@@ -17,8 +17,11 @@
 package io.datakernel.remotefs;
 
 import io.datakernel.async.Stage;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
+import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import org.slf4j.Logger;
@@ -32,7 +35,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.stream.file.StreamFileReader.readFileFrom;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.nio.file.StandardOpenOption.*;
 
@@ -65,23 +67,26 @@ public final class FileManager {
 		return new FileManager(eventloop, executor, storagePath);
 	}
 
-	public Stage<StreamFileReader> get(String fileName, long startPosition) {
+	public Stage<StreamProducerWithResult<ByteBuf, Void>> get(String fileName, long startPosition) {
 		logger.trace("downloading file: {}, position: {}", fileName, startPosition);
 		return AsyncFile.openAsync(executor, storagePath.resolve(fileName), new OpenOption[]{READ})
 				.thenApply(result -> {
 					logger.trace("{} opened", result);
-					return readFileFrom(result, readerBufferSize, startPosition);
+					return StreamFileReader.readFileFrom(result, readerBufferSize, startPosition)
+							.withEndOfStreamAsResult()
+							.withLateBinding();
 				});
 	}
 
-	public Stage<StreamFileWriter> save(String fileName) {
+	public Stage<StreamConsumerWithResult<ByteBuf, Void>> save(String fileName) {
 		logger.trace("uploading file: {}", fileName);
 		return ensureDirectoryAsync(storagePath, fileName).thenCompose(path -> {
 			logger.trace("ensured directory: {}", storagePath);
 			return AsyncFile.openAsync(executor, path, CREATE_OPTIONS)
 					.thenApply(result -> {
 						logger.trace("{} opened", result);
-						return StreamFileWriter.create(result, true);
+						return StreamFileWriter.createWithFlushAsResult(result, true)
+								.withLateBinding();
 					});
 		});
 	}

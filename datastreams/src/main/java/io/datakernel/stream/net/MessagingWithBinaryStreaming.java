@@ -16,6 +16,7 @@
 
 package io.datakernel.stream.net;
 
+import io.datakernel.async.Callback;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
@@ -48,7 +49,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 
 	private ByteBuf readBuf;
 	private boolean readEndOfStream;
-	private ReceiveMessageCallback<I> receiveMessageCallback;
+	private Callback<I> receiveMessageCallback;
 	private List<SettableStage<Void>> writeCallbacks = new ArrayList<>();
 	private boolean writeEndOfStreamRequest;
 	private SocketStreamProducer socketReader;
@@ -72,24 +73,25 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 	// endregion
 
 	@Override
-	public void receive(ReceiveMessageCallback<I> callback) {
+	public Stage<I> receive() {
 		checkState(socketReader == null && receiveMessageCallback == null);
 
 		if (closedException != null) {
-			callback.onException(closedException);
-			return;
+			return Stage.ofException(closedException);
 		}
 
-		receiveMessageCallback = callback;
+		SettableStage<I> result = SettableStage.create();
+		this.receiveMessageCallback = result;
 		if (readBuf != null || readEndOfStream) {
 			eventloop.post(() -> {
-				if (socketReader == null && receiveMessageCallback != null) {
+				if (socketReader == null && this.receiveMessageCallback != null) {
 					tryReadMessage();
 				}
 			});
 		} else {
 			asyncTcpSocket.read();
 		}
+		return result;
 	}
 
 	private void tryReadMessage() {
@@ -106,21 +108,21 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 							asyncTcpSocket.read();
 						}
 					}
-					takeReadCallback().onReceive(message);
+					takeReadCallback().set(message);
 				}
 			} catch (ParseException e) {
-				takeReadCallback().onException(e);
+				takeReadCallback().setException(e);
 			}
 		}
 		if (readBuf == null && readEndOfStream) {
 			if (receiveMessageCallback != null) {
-				takeReadCallback().onReceiveEndOfStream();
+				takeReadCallback().set(null);
 			}
 		}
 	}
 
-	private ReceiveMessageCallback<I> takeReadCallback() {
-		ReceiveMessageCallback<I> callback = this.receiveMessageCallback;
+	private Callback<I> takeReadCallback() {
+		Callback<I> callback = this.receiveMessageCallback;
 		receiveMessageCallback = null;
 		return callback;
 	}
@@ -291,7 +293,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 		}
 
 		if (receiveMessageCallback != null) {
-			receiveMessageCallback.onException(e);
+			receiveMessageCallback.setException(e);
 		} else if (!writeCallbacks.isEmpty()) {
 			for (SettableStage writeCallback : writeCallbacks) {
 				writeCallback.setException(e);
