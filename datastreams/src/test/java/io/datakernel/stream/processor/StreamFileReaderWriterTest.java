@@ -90,7 +90,7 @@ public class StreamFileReaderWriterTest {
 			@Override
 			protected void onStarted() {
 				getProducer().suspend();
-				eventloop.schedule(eventloop.currentTimeMillis() + 10, () -> getProducer().produce(this));
+				eventloop.delay(10, () -> getProducer().produce(this));
 			}
 
 			@Override
@@ -105,7 +105,7 @@ public class StreamFileReaderWriterTest {
 			public void onData(ByteBuf item) {
 				list.add(item);
 				getProducer().suspend();
-				eventloop.schedule(eventloop.currentTimeMillis() + 10, () -> getProducer().produce(this));
+				eventloop.delay(10, () -> getProducer().produce(this));
 			}
 		}
 

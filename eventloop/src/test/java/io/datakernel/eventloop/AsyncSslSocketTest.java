@@ -240,12 +240,9 @@ public class AsyncSslSocketTest {
 				clientSslSocket.write(createByteBufFromString("Hello"));
 				serverSslSocket.write(createByteBufFromString("World"));
 
-				eventloop.schedule(eventloop.currentTimeMillis() + 100, new Runnable() {
-					@Override
-					public void run() {
-						// write endOfStream directly to client stub socket
-						clientSocketStub.onReadEndOfStream();
-					}
+				eventloop.delay(100, () -> {
+					// write endOfStream directly to client stub socket
+					clientSocketStub.onReadEndOfStream();
 				});
 			}
 		});
@@ -281,12 +278,7 @@ public class AsyncSslSocketTest {
 
 				clientSslSocket.write(createByteBufFromString("Hello"));
 				serverSslSocket.write(createByteBufFromString("World"));
-				eventloop.schedule(eventloop.currentTimeMillis() + 100, new Runnable() {
-					@Override
-					public void run() {
-						clientSslSocket.close();
-					}
-				});
+				eventloop.delay(100, () -> clientSslSocket.close());
 			}
 		});
 

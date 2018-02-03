@@ -71,7 +71,7 @@ public class LogManagerImplTest {
 			Map<LogFile, List<ByteBuf>> partition = partitions.computeIfAbsent(logPartition, s -> new HashMap<>());
 			SettableStage<LogFile> stage = SettableStage.create();
 
-			eventloop.schedule(eventloop.currentTimeMillis() + 100, () -> {
+			eventloop.delay(100, () -> {
 				LogFile value = new LogFile(logName, partition.size());
 				partition.put(value, new ArrayList<>());
 				stage.set(value);

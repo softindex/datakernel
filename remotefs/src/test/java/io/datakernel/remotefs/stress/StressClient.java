@@ -161,7 +161,7 @@ class StressClient {
 	void start(int operationsQuantity, int maxDuration) throws IOException {
 		setup();
 		for (int i = 0; i < operationsQuantity; i++) {
-			eventloop.schedule(eventloop.currentTimeMillis() + rand.nextInt(maxDuration), () ->
+			eventloop.delay(rand.nextInt(maxDuration), () ->
 					operations.get(rand.nextInt(4)).go());
 		}
 		eventloop.run();

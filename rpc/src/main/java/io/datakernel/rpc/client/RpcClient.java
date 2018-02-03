@@ -349,7 +349,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initialize
 			startStage = null;
 		} else {
 			if (connectTimeoutMillis != 0) {
-				eventloop.scheduleBackground(eventloop.currentTimeMillis() + connectTimeoutMillis, () -> {
+				eventloop.delayBackground(connectTimeoutMillis, () -> {
 					if (running && this.startStage != null) {
 						String errorMsg = String.format("Some of the required servers did not respond within %.1f sec",
 								connectTimeoutMillis / 1000.0);
@@ -441,7 +441,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initialize
 					if (logger.isWarnEnabled()) {
 						logger.warn("Connection failed, reconnecting to {}: {}", address, throwable.toString());
 					}
-					eventloop.scheduleBackground(eventloop.currentTimeMillis() + reconnectIntervalMillis, () -> {
+					eventloop.delayBackground(reconnectIntervalMillis, () -> {
 						if (running) {
 							connect(address);
 						}
@@ -485,7 +485,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initialize
 		generalConnectsStats.closedConnects++;
 		connectsStatsPerAddress.get(address).closedConnects++;
 
-		eventloop.scheduleBackground(eventloop.currentTimeMillis() + reconnectIntervalMillis, new Runnable() {
+		eventloop.delayBackground(reconnectIntervalMillis, new Runnable() {
 			@Override
 			public void run() {
 				if (running) {

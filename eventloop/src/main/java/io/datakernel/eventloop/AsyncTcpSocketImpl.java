@@ -236,7 +236,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	// timeouts management
 	void scheduleReadTimeOut() {
 		if (checkReadTimeout == null) {
-			checkReadTimeout = eventloop.scheduleBackground(eventloop.currentTimeMillis() + readTimeout, () -> {
+			checkReadTimeout = eventloop.delayBackground(readTimeout, () -> {
 				if (inspector != null) inspector.onReadTimeout();
 				checkReadTimeout = null;
 				closeWithError(TIMEOUT_EXCEPTION, false);
@@ -246,7 +246,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	void scheduleWriteTimeOut() {
 		if (checkWriteTimeout == null) {
-			checkWriteTimeout = eventloop.scheduleBackground(eventloop.currentTimeMillis() + writeTimeout, () -> {
+			checkWriteTimeout = eventloop.delayBackground(writeTimeout, () -> {
 				if (inspector != null) inspector.onWriteTimeout();
 				checkWriteTimeout = null;
 				closeWithError(TIMEOUT_EXCEPTION, false);

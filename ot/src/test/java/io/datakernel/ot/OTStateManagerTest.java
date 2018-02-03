@@ -355,7 +355,7 @@ public class OTStateManagerTest {
 
 	private static <T> Stage<T> scheduledResult(Eventloop eventloop, long delta, T result) {
 		SettableStage<T> stage = SettableStage.create();
-		eventloop.schedule(eventloop.currentTimeMillis() + delta, () -> stage.set(result));
+		eventloop.delay(delta, () -> stage.set(result));
 		return stage;
 	}
 

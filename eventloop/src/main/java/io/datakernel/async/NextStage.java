@@ -25,6 +25,34 @@ public abstract class NextStage<T, R> extends AbstractStage<R> {
 		};
 	}
 
+	public static <T> NextStage<T, T> delay(long delay) {
+		return new NextStage<T, T>() {
+			@Override
+			protected void onComplete(T result) {
+				getCurrentEventloop().delay(delay, () -> complete(result));
+			}
+
+			@Override
+			protected void onCompleteExceptionally(Throwable throwable) {
+				completeExceptionally(throwable);
+			}
+		};
+	}
+
+		public static <T> NextStage<T, T> schedule(long timestamp) {
+		return new NextStage<T, T>() {
+			@Override
+			protected void onComplete(T result) {
+				getCurrentEventloop().schedule(timestamp, () -> complete(result));
+			}
+
+			@Override
+			protected void onCompleteExceptionally(Throwable throwable) {
+				completeExceptionally(throwable);
+			}
+		};
+	}
+
 	public static <T> NextStage<T, Void> toVoid() {
 		return new NextStage<T, Void>() {
 			@Override

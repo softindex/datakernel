@@ -74,7 +74,7 @@ public class StreamConsumersTest {
 		StreamConsumer<Integer> errorConsumer = consumer
 				.with(suspendDecorator(
 						k -> true,
-						context -> eventloop.schedule(eventloop.currentTimeMillis() + 10, context::resume)
+						context -> eventloop.delay(10, context::resume)
 				));
 
 		stream(producer, transformer.getInput());
@@ -97,7 +97,7 @@ public class StreamConsumersTest {
 		producer.with(transformer).streamTo(
 				consumer.with(suspendDecorator(
 						item -> true,
-						context -> eventloop.schedule(eventloop.currentTimeMillis() + 10, context::resume))));
+						context -> eventloop.delay(10, context::resume))));
 
 		CompletableFuture<List<Integer>> listFuture = consumer.getResult().toCompletableFuture();
 		eventloop.run();

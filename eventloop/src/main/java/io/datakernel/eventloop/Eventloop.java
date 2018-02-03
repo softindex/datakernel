@@ -823,7 +823,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			SelectionKey key = socketChannel.register(ensureSelector(), SelectionKey.OP_CONNECT, stage);
 
 			if (timeout != 0) {
-				ScheduledRunnable scheduledTimeout = schedule(currentTimeMillis() + timeout, () -> {
+				ScheduledRunnable scheduledTimeout = delay(timeout, () -> {
 					closeChannel(key);
 					stage.setException(CONNECT_TIMEOUT);
 				});
@@ -896,6 +896,10 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		return addScheduledTask(timestamp, runnable, false);
 	}
 
+	public ScheduledRunnable delay(long delayMillis, Runnable runnable) {
+		return schedule(timestamp + delayMillis, runnable);
+	}
+
 	/**
 	 * Schedules new background task. Returns {@link ScheduledRunnable} with this runnable.
 	 * <p/>
@@ -909,6 +913,10 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	public ScheduledRunnable scheduleBackground(long timestamp, Runnable runnable) {
 		assert inEventloopThread();
 		return addScheduledTask(timestamp, runnable, true);
+	}
+
+	public ScheduledRunnable delayBackground(long delayMillis, Runnable runnable) {
+		return scheduleBackground(timestamp + delayMillis, runnable);
 	}
 
 	private ScheduledRunnable addScheduledTask(long timestamp, Runnable runnable, boolean background) {

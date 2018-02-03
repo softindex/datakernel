@@ -298,7 +298,7 @@ public final class StreamBinarySerializer<T> implements StreamTransformer<T, Byt
 					flush();
 				});
 			} else {
-				eventloop.scheduleBackground(eventloop.currentTimeMillis() + autoFlushIntervalMillis,
+				eventloop.delayBackground(autoFlushIntervalMillis,
 						() -> {
 							flushPosted = false;
 							flush();

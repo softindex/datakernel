@@ -551,35 +551,32 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	private Runnable createRefreshTask(Eventloop eventloop,
 	                                   List<JmxRefreshable> previousList,
 	                                   int previousRefreshes) {
-		return new Runnable() {
-			@Override
-			public void run() {
-				long currentTime = eventloop.currentTimeMillis();
+		return () -> {
+			long currentTime = eventloop.currentTimeMillis();
 
-				List<JmxRefreshable> jmxRefreshableList = previousList;
-				if (jmxRefreshableList == null) {
-					// list might be updated in case of several mbeans in one eventloop
-					jmxRefreshableList = eventloopToJmxRefreshables.get(eventloop);
-					effectiveRefreshPeriods.put(eventloop, (int) computeEffectiveRefreshPeriod(jmxRefreshableList.size()));
-				}
+			List<JmxRefreshable> jmxRefreshableList = previousList;
+			if (jmxRefreshableList == null) {
+				// list might be updated in case of several mbeans in one eventloop
+				jmxRefreshableList = eventloopToJmxRefreshables.get(eventloop);
+				effectiveRefreshPeriods.put(eventloop, (int) computeEffectiveRefreshPeriod(jmxRefreshableList.size()));
+			}
 
-				int currentRefreshes = 0;
-				while (currentRefreshes < maxJmxRefreshesPerOneCycle) {
-					int index = currentRefreshes + previousRefreshes;
-					if (index == jmxRefreshableList.size()) {
-						break;
-					}
-					jmxRefreshableList.get(index).refresh(currentTime);
-					currentRefreshes++;
+			int currentRefreshes = 0;
+			while (currentRefreshes < maxJmxRefreshesPerOneCycle) {
+				int index = currentRefreshes + previousRefreshes;
+				if (index == jmxRefreshableList.size()) {
+					break;
 				}
+				jmxRefreshableList.get(index).refresh(currentTime);
+				currentRefreshes++;
+			}
 
-				long nextTimestamp = currentTime + computeEffectiveRefreshPeriod(jmxRefreshableList.size());
-				int totalRefreshes = currentRefreshes + previousRefreshes;
-				if (totalRefreshes == jmxRefreshableList.size()) {
-					eventloop.scheduleBackground(nextTimestamp, createRefreshTask(eventloop, null, 0));
-				} else {
-					eventloop.scheduleBackground(nextTimestamp, createRefreshTask(eventloop, jmxRefreshableList, totalRefreshes));
-				}
+			long nextTimestamp = currentTime + computeEffectiveRefreshPeriod(jmxRefreshableList.size());
+			int totalRefreshes = currentRefreshes + previousRefreshes;
+			if (totalRefreshes == jmxRefreshableList.size()) {
+				eventloop.scheduleBackground(nextTimestamp, createRefreshTask(eventloop, null, 0));
+			} else {
+				eventloop.scheduleBackground(nextTimestamp, createRefreshTask(eventloop, jmxRefreshableList, totalRefreshes));
 			}
 		};
 	}

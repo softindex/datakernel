@@ -82,7 +82,7 @@ public class AsyncHttpServerTest {
 			public Stage<HttpResponse> serve(HttpRequest request) {
 				SettableStage<HttpResponse> stage = SettableStage.create();
 				HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
-				primaryEventloop.schedule(primaryEventloop.currentTimeMillis() + random.nextInt(3), () -> stage.set(content));
+				primaryEventloop.delay(random.nextInt(3), () -> stage.set(content));
 				return stage;
 			}
 		};

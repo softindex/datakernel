@@ -49,7 +49,7 @@ public class AbstractServerTest {
 
 					@Override
 					public void onRead(ByteBuf buf) {
-						eventloop.schedule(eventloop.currentTimeMillis() + 5, new Runnable() {
+						eventloop.delay(5, new Runnable() {
 							@Override
 							public void run() {
 								asyncTcpSocket.write(buf);

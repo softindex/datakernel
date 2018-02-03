@@ -78,7 +78,7 @@ public class ClientStressTest {
 		int delay = random.nextInt(10000);
 		String url = urls.next();
 		if (url != null) {
-			eventloop.schedule(eventloop.currentTimeMillis() + delay, () -> {
+			eventloop.delay(delay, () -> {
 				logger.info("sending request to: {}", url);
 				client.send(formRequest(url, random.nextBoolean())).whenComplete((response, throwable) -> {
 					if (throwable != null) {

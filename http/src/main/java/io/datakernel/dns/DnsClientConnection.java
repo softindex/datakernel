@@ -81,14 +81,11 @@ final class DnsClientConnection implements AsyncUdpSocket.EventHandler {
 	private void resolve(String domainName, InetSocketAddress dnsServerAddress, long timeout,
 	                     Callback<DnsQueryResult> callback, boolean ipv6) {
 		Callback<DnsQueryResult> callbackWithTimeout = new Callback<DnsQueryResult>() {
-			private final ScheduledRunnable timeouter = eventloop.schedule(eventloop.currentTimeMillis() + timeout, new Runnable() {
-				@Override
-				public void run() {
-					Set<Callback<DnsQueryResult>> callbacks = resultHandlers.get(domainName);
-					callbacks.remove(getThisCallback());
-					if (callbacks.isEmpty()) resultHandlers.remove(domainName);
-					setException(TIMEOUT_EXCEPTION);
-				}
+			private final ScheduledRunnable timeouter = eventloop.delay(timeout, () -> {
+				Set<Callback<DnsQueryResult>> callbacks = resultHandlers.get(domainName);
+				callbacks.remove(getThisCallback());
+				if (callbacks.isEmpty()) resultHandlers.remove(domainName);
+				setException(TIMEOUT_EXCEPTION);
 			});
 
 			private Callback<DnsQueryResult> getThisCallback() {

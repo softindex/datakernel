@@ -280,18 +280,15 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 	private void scheduleExpiredConnectionsCheck() {
 		assert expiredConnectionsCheck == null;
-		expiredConnectionsCheck = eventloop.scheduleBackground(eventloop.currentTimeMillis() + 1000L, new Runnable() {
-			@Override
-			public void run() {
-				expiredConnectionsCheck = null;
-				poolKeepAliveExpired += poolKeepAlive.closeExpiredConnections(eventloop.currentTimeMillis() - keepAliveTimeoutMillis);
-				if (readTimeoutMillis != 0)
-					poolReadingExpired += poolReading.closeExpiredConnections(eventloop.currentTimeMillis() - readTimeoutMillis, READ_TIMEOUT_ERROR);
-				if (writeTimeoutMillis != 0)
-					poolWritingExpired += poolWriting.closeExpiredConnections(eventloop.currentTimeMillis() - writeTimeoutMillis, WRITE_TIMEOUT_ERROR);
-				if (connectionsCount != 0)
-					scheduleExpiredConnectionsCheck();
-			}
+		expiredConnectionsCheck = eventloop.delayBackground(1000L, () -> {
+			expiredConnectionsCheck = null;
+			poolKeepAliveExpired += poolKeepAlive.closeExpiredConnections(eventloop.currentTimeMillis() - keepAliveTimeoutMillis);
+			if (readTimeoutMillis != 0)
+				poolReadingExpired += poolReading.closeExpiredConnections(eventloop.currentTimeMillis() - readTimeoutMillis, READ_TIMEOUT_ERROR);
+			if (writeTimeoutMillis != 0)
+				poolWritingExpired += poolWriting.closeExpiredConnections(eventloop.currentTimeMillis() - writeTimeoutMillis, WRITE_TIMEOUT_ERROR);
+			if (connectionsCount != 0)
+				scheduleExpiredConnectionsCheck();
 		});
 	}
 
