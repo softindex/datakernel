@@ -36,7 +36,7 @@ public interface StreamConsumerWithResult<T, X> extends StreamConsumer<T> {
 
 	@Override
 	default <R> StreamConsumerWithResult<R, X> with(StreamConsumerModifier<T, R> modifier) {
-		return modifier.apply(this).withResult(this.getResult());
+		return modifier.applyTo(this).withResult(this.getResult());
 	}
 
 	@Override

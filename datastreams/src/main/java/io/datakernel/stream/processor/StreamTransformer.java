@@ -30,7 +30,7 @@ public interface StreamTransformer<I, O> extends HasInput<I>, HasOutput<O>, Stre
 
 	default <T> StreamTransformer<T, O> with(StreamConsumerModifier<I, T> consumerModifier) {
 		return new StreamTransformer<T, O>() {
-			private final StreamConsumer<T> input = consumerModifier.apply(StreamTransformer.this.getInput());
+			private final StreamConsumer<T> input = consumerModifier.applyTo(StreamTransformer.this.getInput());
 
 			@Override
 			public StreamConsumer<T> getInput() {
@@ -46,7 +46,7 @@ public interface StreamTransformer<I, O> extends HasInput<I>, HasOutput<O>, Stre
 
 	default <T> StreamTransformer<I, T> with(StreamProducerModifier<O, T> producerModifier) {
 		return new StreamTransformer<I, T>() {
-			private final StreamProducer<T> output = producerModifier.apply(StreamTransformer.this.getOutput());
+			private final StreamProducer<T> output = producerModifier.applyTo(StreamTransformer.this.getOutput());
 
 			@Override
 			public StreamConsumer<I> getInput() {
@@ -60,22 +60,14 @@ public interface StreamTransformer<I, O> extends HasInput<I>, HasOutput<O>, Stre
 		};
 	}
 
-	default <X> StreamConsumerWithResult<I, X> apply(StreamConsumerWithResult<O, X> consumer) {
-		return apply((StreamConsumer<O>) consumer).withResult(consumer.getResult());
-	}
-
-	default <X> StreamProducerWithResult<O, X> apply(StreamProducerWithResult<I, X> producer) {
-		return apply((StreamProducer<I>) producer).withResult(producer.getResult());
-	}
-
 	@Override
-	default StreamConsumer<I> apply(StreamConsumer<O> consumer) {
+	default StreamConsumer<I> applyTo(StreamConsumer<O> consumer) {
 		bind(getOutput(), consumer);
 		return getInput();
 	}
 
 	@Override
-	default StreamProducer<O> apply(StreamProducer<I> producer) {
+	default StreamProducer<O> applyTo(StreamProducer<I> producer) {
 		bind(producer, getInput());
 		return getOutput();
 	}

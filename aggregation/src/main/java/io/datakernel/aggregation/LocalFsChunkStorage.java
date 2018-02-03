@@ -183,7 +183,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 						.with(writeChunker)
 						.with(StreamByteChunker.create(bufferSize / 2, bufferSize * 2))
 						.with(writeFile)
-						.apply(StreamFileWriter.createWithFlushAsResult(file, true)));
+						.applyTo(StreamFileWriter.createWithFlushAsResult(file, true)));
 	}
 
 	@Override

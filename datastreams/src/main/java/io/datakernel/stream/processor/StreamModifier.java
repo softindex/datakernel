@@ -10,12 +10,12 @@ public interface StreamModifier<I, O> extends StreamProducerModifier<I, O>, Stre
 	static <T> StreamModifier<T, T> identity() {
 		return new StreamModifier<T, T>() {
 			@Override
-			public StreamConsumer<T> apply(StreamConsumer<T> consumer) {
+			public StreamConsumer<T> applyTo(StreamConsumer<T> consumer) {
 				return consumer;
 			}
 
 			@Override
-			public StreamProducer<T> apply(StreamProducer<T> producer) {
+			public StreamProducer<T> applyTo(StreamProducer<T> producer) {
 				return producer;
 			}
 		};

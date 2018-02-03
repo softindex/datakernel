@@ -16,12 +16,12 @@ public interface StreamStats<T> extends StreamConsumerModifier<T, T>, StreamProd
 	void onError(Throwable throwable);
 
 	@Override
-	default StreamConsumer<T> apply(StreamConsumer<T> consumer) {
+	default StreamConsumer<T> applyTo(StreamConsumer<T> consumer) {
 		return consumer.with(StreamStatsForwarder.create(this));
 	}
 
 	@Override
-	default StreamProducer<T> apply(StreamProducer<T> producer) {
+	default StreamProducer<T> applyTo(StreamProducer<T> producer) {
 		return producer.with(StreamStatsForwarder.create(this));
 	}
 

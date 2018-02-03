@@ -100,7 +100,7 @@ public interface StreamProducerWithResult<T, X> extends StreamProducer<T> {
 
 	@Override
 	default <R> StreamProducerWithResult<R, X> with(StreamProducerModifier<T, R> modifier) {
-		return modifier.apply(this).withResult(this.getResult());
+		return modifier.applyTo(this).withResult(this.getResult());
 	}
 
 	@Override

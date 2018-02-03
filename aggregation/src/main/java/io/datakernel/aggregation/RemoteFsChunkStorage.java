@@ -139,7 +139,7 @@ public final class RemoteFsChunkStorage implements AggregationChunkStorage, Even
 						.with(writeChunker)
 						.with(StreamByteChunker.create(bufferSize / 2, bufferSize * 2))
 						.with(writeRemoteFS)
-						.apply(consumer));
+						.applyTo(consumer));
 	}
 
 	private String tempPath(long chunkId) {

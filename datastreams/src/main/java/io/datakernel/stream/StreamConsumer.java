@@ -50,7 +50,7 @@ public interface StreamConsumer<T> {
 
 	default <R> StreamConsumer<R> with(StreamConsumerModifier<T, R> modifier) {
 		StreamConsumer<T> consumer = this;
-		return modifier.apply(consumer);
+		return modifier.applyTo(consumer);
 	}
 
 	default StreamConsumer<T> withLateBinding() {

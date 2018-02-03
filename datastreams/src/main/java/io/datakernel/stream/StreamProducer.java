@@ -124,7 +124,7 @@ public interface StreamProducer<T> {
 	}
 
 	default <R> StreamProducer<R> with(StreamProducerModifier<T, R> modifier) {
-		return modifier.apply(this);
+		return modifier.applyTo(this);
 	}
 
 	default StreamProducer<T> withLateBinding() {

@@ -45,12 +45,12 @@ public final class StreamRegistry<V> implements Iterable<V> {
 	public <T> StreamModifier<T, T> newEntry(V value) {
 		return new StreamModifier<T, T>() {
 			@Override
-			public StreamConsumer<T> apply(StreamConsumer<T> consumer) {
+			public StreamConsumer<T> applyTo(StreamConsumer<T> consumer) {
 				return newEntry(consumer, value);
 			}
 
 			@Override
-			public StreamProducer<T> apply(StreamProducer<T> producer) {
+			public StreamProducer<T> applyTo(StreamProducer<T> producer) {
 				return newEntry(producer, value);
 			}
 		};

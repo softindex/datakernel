@@ -22,38 +22,38 @@ import java.util.function.Function;
 /**
  * Asynchronous determines an output value based on an input value.
  *
- * @param <I> type of input object
- * @param <O> type of output object
+ * @param <T> type of input object
+ * @param <R> type of output object
  */
-public interface AsyncFunction<I, O> {
+public interface AsyncFunction<T, R> {
 	/**
 	 * Returns the result of applying this function to input.
 	 */
-	Stage<O> apply(I input);
+	Stage<R> apply(T input);
 
-	default <T> AsyncFunction<T, O> compose(Function<? super T, ? extends I> before) {
-		return (T t) -> this.apply(before.apply(t));
+	default <U> AsyncFunction<U, R> compose(Function<? super U, ? extends T> before) {
+		return (U t) -> this.apply(before.apply(t));
 	}
 
-	default <T> AsyncFunction<T, O> compose(AsyncFunction<? super T, ? extends I> before) {
+	default <U> AsyncFunction<U, R> compose(AsyncFunction<? super U, ? extends T> before) {
 		return input -> before.apply(input).thenCompose(this::apply);
 	}
 
-	default <T> AsyncFunction<I, T> andThen(Function<? super O, ? extends T> after) {
+	default <U> AsyncFunction<T, U> andThen(Function<? super R, ? extends U> after) {
 		Objects.requireNonNull(after);
-		return (I i) -> apply(i).thenApply(after);
+		return (T i) -> apply(i).thenApply(after);
 	}
 
-	default <T> AsyncFunction<I, T> andThen(AsyncFunction<? super O, ? extends T> after) {
+	default <U> AsyncFunction<T, U> andThen(AsyncFunction<? super R, ? extends U> after) {
 		Objects.requireNonNull(after);
-		return (I i) -> apply(i).thenCompose((O input) -> (Stage<T>) after.apply(input));
+		return (T i) -> apply(i).thenCompose((R input) -> (Stage<U>) after.apply(input));
 	}
 
-	default AsyncCallable<O> asAsyncCallable(I argument) {
+	default AsyncCallable<R> asAsyncCallable(T argument) {
 		return AsyncCallable.of(this, argument);
 	}
 
-	static <I, O> AsyncFunction<I, O> of(Function<I, O> function) {
+	static <T, R> AsyncFunction<T, R> of(Function<T, R> function) {
 		return input -> Stage.of(function.apply(input));
 	}
 

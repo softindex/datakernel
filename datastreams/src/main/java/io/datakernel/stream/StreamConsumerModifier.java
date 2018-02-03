@@ -2,11 +2,15 @@ package io.datakernel.stream;
 
 import java.util.List;
 
-public interface StreamConsumerModifier<I, O> {
-	StreamConsumer<O> apply(StreamConsumer<I> consumer);
+public interface StreamConsumerModifier<T, R> {
+	StreamConsumer<R> applyTo(StreamConsumer<T> consumer);
 
-	default <T> StreamConsumerModifier<I, T> then(StreamConsumerModifier<O, T> nextModifier) {
-		return consumer -> nextModifier.apply(this.apply(consumer));
+	default <X> StreamConsumerWithResult<R, X> applyTo(StreamConsumerWithResult<T, X> consumer) {
+		return applyTo((StreamConsumer<T>) consumer).withResult(consumer.getResult());
+	}
+
+	default <X> StreamConsumerModifier<T, X> then(StreamConsumerModifier<R, X> nextModifier) {
+		return consumer -> nextModifier.applyTo(this.applyTo(consumer));
 	}
 
 	static <T> StreamConsumerModifier<T, T> identity() {
@@ -16,7 +20,7 @@ public interface StreamConsumerModifier<I, O> {
 	static <T> StreamConsumerModifier<T, T> of(List<StreamConsumerModifier<T, T>> modifiers) {
 		return consumer -> {
 			for (StreamConsumerModifier<T, T> modifier : modifiers) {
-				consumer = modifier.apply(consumer);
+				consumer = modifier.applyTo(consumer);
 			}
 			return consumer;
 		};

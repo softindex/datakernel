@@ -19,6 +19,7 @@ package io.datakernel.async;
 import io.datakernel.eventloop.Eventloop;
 
 import java.util.ArrayDeque;
+import java.util.concurrent.Executor;
 import java.util.function.*;
 
 public interface AsyncCallable<T> {
@@ -183,6 +184,10 @@ public interface AsyncCallable<T> {
 
 	default <U> AsyncCallable<U> handleAsync(Stage.Handler<? super T, U> fn) {
 		return () -> call().handleAsync(fn);
+	}
+
+	default <U> AsyncCallable<U> handleAsync(Stage.Handler<? super T, U> fn, Executor executor) {
+		return () -> call().handleAsync(fn, executor);
 	}
 
 	default <V> AsyncCallable<V> thenApply(Function<? super T, ? extends V> function) {

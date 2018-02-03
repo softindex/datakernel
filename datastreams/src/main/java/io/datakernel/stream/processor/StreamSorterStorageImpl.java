@@ -128,7 +128,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 						.with(StreamByteChunker.create(writeBlockSize / 2, writeBlockSize))
 						.with(StreamLZ4Compressor.create(compressionLevel))
 						.with(StreamByteChunker.create(writeBlockSize / 2, writeBlockSize))
-						.apply(StreamFileWriter.createWithFlushAsResult(file, false))
+						.applyTo(StreamFileWriter.createWithFlushAsResult(file, false))
 						.thenApply($ -> partition)
 						.withLateBinding());
 	}
