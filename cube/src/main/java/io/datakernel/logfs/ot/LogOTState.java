@@ -36,11 +36,11 @@ public final class LogOTState<D> implements OTState<LogDiff<D>> {
 
 	@Override
 	public void apply(LogDiff<D> op) {
-		for (String log : op.positions.keySet()) {
-			LogDiff.LogPositionDiff positionDiff = op.positions.get(log);
+		for (String log : op.getPositions().keySet()) {
+			LogDiff.LogPositionDiff positionDiff = op.getPositions().get(log);
 			positions.put(log, positionDiff.to);
 		}
-		for (D d : op.diffs) {
+		for (D d : op.getDiffs()) {
 			dataState.apply(d);
 		}
 	}

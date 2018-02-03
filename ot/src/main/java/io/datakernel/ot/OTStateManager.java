@@ -92,7 +92,7 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 		pendingCommits.clear();
 		state.init();
 		fetchedDiffs.clear();
-		return algorithms.loadAllChanges(commitId)
+		return algorithms.checkout(commitId)
 				.thenApply(diffs -> {
 					apply(diffs);
 					fetchedRevision = revision = commitId;

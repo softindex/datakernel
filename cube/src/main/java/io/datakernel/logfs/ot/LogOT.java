@@ -23,31 +23,31 @@ public class LogOT {
 	public static <T> OTSystem<LogDiff<T>> createLogOT(OTSystem<T> otSystem) {
 		return OTSystemImpl.<LogDiff<T>>create()
 				.withTransformFunction(LogDiff.class, LogDiff.class, (left, right) -> {
-					Set<String> intersection = intersection(left.positions.keySet(), right.positions.keySet());
+					Set<String> intersection = intersection(left.getPositions().keySet(), right.getPositions().keySet());
 					if (intersection.isEmpty()) {
-						TransformResult<T> transformed = otSystem.transform(left.diffs, right.diffs);
+						TransformResult<T> transformed = otSystem.transform(left.getDiffs(), right.getDiffs());
 						if (transformed.hasConflict()) {
 							return TransformResult.conflict(transformed.resolution);
 						}
 						return TransformResult.of(
-								LogDiff.of(right.positions, transformed.left),
-								LogDiff.of(left.positions, transformed.right));
+								LogDiff.of(right.getPositions(), transformed.left),
+								LogDiff.of(left.getPositions(), transformed.right));
 					}
 
 					int comparison = 0;
 					for (String log : intersection) {
-						LogPositionDiff leftPosition = left.positions.get(log);
-						LogPositionDiff rightPosition = right.positions.get(log);
+						LogPositionDiff leftPosition = left.getPositions().get(log);
+						LogPositionDiff rightPosition = right.getPositions().get(log);
 						Preconditions.check(leftPosition.from.equals(rightPosition.from));
 						comparison += leftPosition.compareTo(rightPosition);
 					}
 
 					return TransformResult.conflict(comparison > 0 ? ConflictResolution.LEFT : ConflictResolution.RIGHT);
 				})
-				.withEmptyPredicate(LogDiff.class, commit -> commit.positions.isEmpty() && commit.diffs.stream().allMatch(otSystem::isEmpty))
+				.withEmptyPredicate(LogDiff.class, commit -> commit.getPositions().isEmpty() && commit.getDiffs().stream().allMatch(otSystem::isEmpty))
 				.withSquashFunction(LogDiff.class, LogDiff.class, (commit1, commit2) -> {
-					Map<String, LogPositionDiff> positions = new HashMap<>(commit1.positions);
-					for (Entry<String, LogPositionDiff> entry : commit2.positions.entrySet()) {
+					Map<String, LogPositionDiff> positions = new HashMap<>(commit1.getPositions());
+					for (Entry<String, LogPositionDiff> entry : commit2.getPositions().entrySet()) {
 						String log = entry.getKey();
 						LogPositionDiff positionDiff1 = positions.get(log);
 						LogPositionDiff positionDiff2 = entry.getValue();
@@ -61,12 +61,12 @@ public class LogOT {
 							positions.remove(log);
 						}
 					}
-					List<T> ops = concat(commit1.diffs, commit2.diffs);
+					List<T> ops = concat(commit1.getDiffs(), commit2.getDiffs());
 					return LogDiff.of(positions, otSystem.squash(ops));
 				})
 				.withInvertFunction(LogDiff.class, commit -> singletonList(LogDiff.of(
-						transformValuesToLinkedMap(commit.positions.entrySet().stream(), LogPositionDiff::inverse),
-						otSystem.invert(commit.diffs))))
+						transformValuesToLinkedMap(commit.getPositions().entrySet().stream(), LogPositionDiff::inverse),
+						otSystem.invert(commit.getDiffs()))))
 				;
 
 	}

@@ -64,7 +64,7 @@ public final class CubeBackupController implements EventloopJmxMBeanEx {
 
 	@SuppressWarnings("unchecked")
 	public Stage<Void> backup(Integer commitId) {
-		return algorithms.loadAllChanges(commitId)
+		return algorithms.checkout(commitId)
 				.thenCompose(logDiffs -> runSequence(
 						() -> backupChunks(commitId, collectChunkIds(logDiffs)),
 						() -> backupDb(commitId, logDiffs)));

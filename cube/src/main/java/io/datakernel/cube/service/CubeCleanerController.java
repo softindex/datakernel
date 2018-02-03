@@ -10,6 +10,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.*;
 import io.datakernel.logfs.ot.LogDiff;
 import io.datakernel.ot.*;
+import io.datakernel.util.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -128,7 +129,7 @@ public final class CubeCleanerController implements EventloopJmxMBeanEx {
 
 	Stage<Void> trySaveSnapshotAndCleanupChunks(Integer checkpointNode) {
 		logger.info("Checkpoint node: {}", checkpointNode);
-		return algorithms.loadAllChanges(checkpointNode).thenCompose(changes -> {
+		return algorithms.checkout(checkpointNode).thenCompose(changes -> {
 			long cleanupTimestamp = eventloop.currentTimeMillis() - chunksCleanupDelay;
 
 			return remote.saveSnapshot(checkpointNode, changes)
@@ -163,11 +164,13 @@ public final class CubeCleanerController implements EventloopJmxMBeanEx {
 
 	private Stage<Set<Long>> collectRequiredChunks(Integer checkpointNode) {
 		return remote.getHeads()
-				.thenCompose(heads -> algorithms.reduceEdges(heads,
-						checkpointNode,
-						DiffsReducer.of(new HashSet<>(),
+				.thenCompose(heads -> algorithms.reduceEdges(heads, checkpointNode,
+						DiffsReducer.of(
+								new HashSet<>(),
 								(Set<Long> accumulatedChunks, List<LogDiff<CubeDiff>> diffs) ->
-										union(accumulatedChunks, chunks(diffs)))).whenComplete(stageCleanupCollectRequiredChunks.recordStats()))
+										union(accumulatedChunks, chunks(diffs)),
+								CollectionUtils::union))
+						.whenComplete(stageCleanupCollectRequiredChunks.recordStats()))
 				.thenApply(accumulators -> accumulators.values().stream().flatMap(Collection::stream).collect(toSet()));
 	}
 

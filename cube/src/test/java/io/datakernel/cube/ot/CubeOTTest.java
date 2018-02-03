@@ -82,7 +82,7 @@ public class CubeOTTest {
 
 		LogDiff<CubeDiff> result = LogDiff.of(
 				singletonMap("clicks", positionDiff(logFile, 10, 20)),
-				cubeDiff("key", addedChunks(changesRight.diffs), addedChunks(changesLeft.diffs)));
+				cubeDiff("key", addedChunks(changesRight.getDiffs()), addedChunks(changesLeft.getDiffs())));
 
 		assertEquals(1, transform.left.size());
 		assertEquals(result, transform.left.get(0));

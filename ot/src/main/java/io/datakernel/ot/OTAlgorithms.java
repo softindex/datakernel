@@ -373,7 +373,10 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 				}
 				for (K child : polledEntry.toChildren.keySet()) {
 					A newAccumulatedDiffs = diffAccumulator.accumulate(polledEntry.toChildren.get(child), commit.getParents().get(parent));
-					parentEntry.toChildren.put(child, newAccumulatedDiffs);
+					A existingAccumulatedDiffs = parentEntry.toChildren.get(child);
+					A combinedAccumulatedDiffs = existingAccumulatedDiffs == null ? newAccumulatedDiffs :
+							diffAccumulator.combine(existingAccumulatedDiffs, newAccumulatedDiffs);
+					parentEntry.toChildren.put(child, combinedAccumulatedDiffs);
 				}
 			}
 			return reduceEdges(queue, queueMap, commonNode, diffAccumulator);
@@ -381,7 +384,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 
 	}
 
-	public Stage<List<D>> loadAllChanges(K head) {
+	public Stage<List<D>> checkout(K head) {
 		Predicate<OTCommit<K, D>> snapshotOrRootPredicate = commit -> commit.isRoot() || commit.isSnapshot();
 
 		return findParent(singleton(head), DiffsReducer.toList(), snapshotOrRootPredicate, null)

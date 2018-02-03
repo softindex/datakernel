@@ -45,7 +45,7 @@ public class OTAlgorithmsTest {
 		});
 
 		CompletableFuture<List<TestOp>> changes = otRemote.getHeads().thenCompose(heads ->
-				otAlgorithms.loadAllChanges(getLast(heads)))
+				otAlgorithms.checkout(getLast(heads)))
 				.toCompletableFuture();
 		eventloop.run();
 		changes.get().forEach(opState::apply);

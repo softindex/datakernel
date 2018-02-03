@@ -5,13 +5,20 @@ import io.datakernel.util.CollectionUtils;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiFunction;
+import java.util.function.BinaryOperator;
 
 public interface DiffsReducer<A, D> {
 	A initialValue();
 
 	A accumulate(A accumulatedDiffs, List<D> diffs);
 
+	A combine(A existing, A additional);
+
 	static <A, D> DiffsReducer<A, D> of(A initialValue, BiFunction<A, List<D>, A> reduceFunction) {
+		return of(initialValue, reduceFunction, (existing, additional) -> existing);
+	}
+
+	static <A, D> DiffsReducer<A, D> of(A initialValue, BiFunction<A, List<D>, A> reduceFunction, BinaryOperator<A> combiner) {
 		return new DiffsReducer<A, D>() {
 			@Override
 			public A initialValue() {
@@ -21,6 +28,11 @@ public interface DiffsReducer<A, D> {
 			@Override
 			public A accumulate(A accumulatedDiffs, List<D> diffs) {
 				return reduceFunction.apply(accumulatedDiffs, diffs);
+			}
+
+			@Override
+			public A combine(A existing, A additional) {
+				return combiner.apply(existing, additional);
 			}
 		};
 	}

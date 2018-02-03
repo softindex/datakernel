@@ -60,7 +60,7 @@ public final class LogDiffJson<D> extends TypeAdapter<LogDiff<D>> {
 		out.beginObject();
 		out.name(POSITIONS);
 		out.beginArray();
-		for (Map.Entry<String, LogDiff.LogPositionDiff> entry : multilogDiff.positions.entrySet()) {
+		for (Map.Entry<String, LogDiff.LogPositionDiff> entry : multilogDiff.getPositions().entrySet()) {
 			out.beginObject();
 			out.name(LOG);
 			out.value(entry.getKey());
@@ -72,7 +72,7 @@ public final class LogDiffJson<D> extends TypeAdapter<LogDiff<D>> {
 		}
 		out.endArray();
 		out.name(OPS);
-		opsAdapter.write(out, multilogDiff.diffs);
+		opsAdapter.write(out, multilogDiff.getDiffs());
 		out.endObject();
 	}
 

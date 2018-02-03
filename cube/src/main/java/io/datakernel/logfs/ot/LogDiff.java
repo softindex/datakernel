@@ -59,8 +59,8 @@ public class LogDiff<D> {
 		}
 	}
 
-	public final Map<String, LogPositionDiff> positions;
-	public final List<D> diffs;
+	private final Map<String, LogPositionDiff> positions;
+	private final List<D> diffs;
 
 	private LogDiff(Map<String, LogPositionDiff> positions, List<D> diffs) {
 		this.positions = positions;
@@ -83,9 +83,18 @@ public class LogDiff<D> {
 		return forCurrentPosition(singletonList(diff));
 	}
 
+	public Map<String, LogPositionDiff> getPositions() {
+		return positions;
+	}
+
+	public List<D> getDiffs() {
+		return diffs;
+	}
+
 	public Stream<D> diffs() {
 		return diffs.stream();
 	}
+
 
 	@Override
 	public String toString() {

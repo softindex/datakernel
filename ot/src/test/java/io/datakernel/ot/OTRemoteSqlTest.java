@@ -332,7 +332,7 @@ public class OTRemoteSqlTest {
 		graphFuture.get();
 
 		OTAlgorithms<Integer, TestOp> otAlgorithms = new OTAlgorithms<>(eventloop, otSystem, otRemote, keyComparator);
-		CompletableFuture<?> mergeSnapshotFuture = otAlgorithms.loadAllChanges(5)
+		CompletableFuture<?> mergeSnapshotFuture = otAlgorithms.checkout(5)
 				.thenCompose(ds -> otRemote.saveSnapshot(5, ds))
 				.thenCompose($ -> otRemote.cleanup(5))
 				.toCompletableFuture();
@@ -340,7 +340,7 @@ public class OTRemoteSqlTest {
 		eventloop.run();
 		mergeSnapshotFuture.get();
 
-		CompletableFuture<Integer> snapshotFuture = otAlgorithms.loadAllChanges(7)
+		CompletableFuture<Integer> snapshotFuture = otAlgorithms.checkout(7)
 				.thenApply(OTRemoteSqlTest::apply)
 				.toCompletableFuture();
 		eventloop.run();

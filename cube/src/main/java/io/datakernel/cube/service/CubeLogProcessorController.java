@@ -136,7 +136,7 @@ public final class CubeLogProcessorController implements EventloopJmxMBeanEx {
 		long curAddedChunksRecords = 0;
 
 		for (LogDiff<CubeDiff> logDiff : logDiffs) {
-			for (CubeDiff cubeDiff : logDiff.diffs) {
+			for (CubeDiff cubeDiff : logDiff.getDiffs()) {
 				for (String key : cubeDiff.keySet()) {
 					AggregationDiff aggregationDiff = cubeDiff.get(key);
 					curAddedChunks += aggregationDiff.getAddedChunks().size();

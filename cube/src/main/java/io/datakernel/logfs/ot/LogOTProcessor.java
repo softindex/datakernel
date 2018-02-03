@@ -122,7 +122,7 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 				.whenComplete(stageProcessLog.recordStats())
 				.thenApply(result -> LogDiff.of(result.getProducerResult(), result.getConsumerResult()))
 				.whenComplete(Stages.onResult(logDiff ->
-						logger.info("Log '{}' processing complete. Positions: {}", log, logDiff.positions)));
+						logger.info("Log '{}' processing complete. Positions: {}", log, logDiff.getPositions())));
 	}
 
 	private StreamProducerWithResult<T, Map<String, LogPositionDiff>> getProducer() {

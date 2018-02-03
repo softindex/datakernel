@@ -24,10 +24,7 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.file.AsyncFile;
-import io.datakernel.jmx.EventloopJmxMBeanEx;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxOperation;
-import io.datakernel.jmx.StageStats;
+import io.datakernel.jmx.*;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducerModifier;
 import io.datakernel.stream.StreamProducerWithResult;
@@ -101,6 +98,13 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 	private final StreamStatsDetailed<ByteBuf> writeCompress = StreamStats.detailed(forByteBufs());
 	private final StreamStatsDetailed<ByteBuf> writeChunker = StreamStats.detailed(forByteBufs());
 	private final StreamStatsDetailed<ByteBuf> writeFile = StreamStats.detailed(forByteBufs());
+
+	private final ExceptionStats cleanupWarnings = ExceptionStats.create();
+	private int cleanupPreservedFiles;
+	private int cleanupDeletedFiles;
+	private int cleanupSkippedNewFiles;
+
+	private int finishChunks;
 
 	/**
 	 * Constructs an aggregation storage, that runs in the specified event loop, performs blocking IO in the given executor,
@@ -185,6 +189,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 
 	@Override
 	public Stage<Void> finish(Set<Long> chunkIds) {
+		finishChunks = chunkIds.size();
 		return eventloop.callExecutor(executorService, () -> {
 			for (Long chunkId : chunkIds) {
 				Path tempLog = dir.resolve(chunkId + TEMP_LOG);
@@ -216,9 +221,10 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 		return cleanupBeforeTimestamp(saveChunks, -1);
 	}
 
-	public Stage<Void> cleanupBeforeTimestamp(Set<Long> saveChunks, long timestamp) {
+	public Stage<Void> cleanupBeforeTimestamp(Set<Long> preserveChunks, long timestamp) {
 		return eventloop.callExecutor(executorService, () -> {
-			logger.trace("Cleanup before timestamp, save chunks size: {}, timestamp {}", saveChunks.size(), timestamp);
+			logger.trace("Cleanup before timestamp, save chunks size: {}, timestamp {}", preserveChunks.size(), timestamp);
+			int skipped = 0;
 			try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
 				List<Path> filesToDelete = new ArrayList<>();
 
@@ -231,14 +237,16 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 						String filename = file.getFileName().toString();
 						id = Long.parseLong((filename.substring(0, filename.length() - LOG.length())));
 					} catch (NumberFormatException e) {
+						cleanupWarnings.recordException(e);
 						logger.warn("Invalid chunk filename: " + file);
 						continue;
 					}
-					if (saveChunks.contains(id)) continue;
+					if (preserveChunks.contains(id)) continue;
 					FileTime lastModifiedTime = Files.getLastModifiedTime(file);
 					if (timestamp != -1 && lastModifiedTime.toMillis() > timestamp) {
 						logger.warn("File {} timestamp {} > {}",
 								file, lastModifiedTime.toMillis(), timestamp);
+						skipped++;
 						continue;
 					}
 
@@ -254,9 +262,14 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 						}
 						Files.delete(file);
 					} catch (IOException e) {
+						cleanupWarnings.recordException(e);
 						logger.warn("Could not delete file: " + file);
 					}
 				}
+
+				cleanupPreservedFiles = preserveChunks.size();
+				cleanupDeletedFiles = filesToDelete.size();
+				cleanupSkippedNewFiles = skipped;
 			}
 			return (Void) null;
 		}).whenComplete(stageCleanup.recordStats());
@@ -387,6 +400,31 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 	@JmxAttribute
 	public StreamStatsDetailed getWriteFile() {
 		return writeFile;
+	}
+
+	@JmxAttribute
+	public int getFinishChunks() {
+		return finishChunks;
+	}
+
+	@JmxAttribute
+	public ExceptionStats getCleanupWarnings() {
+		return cleanupWarnings;
+	}
+
+	@JmxAttribute
+	public int getCleanupPreservedFiles() {
+		return cleanupPreservedFiles;
+	}
+
+	@JmxAttribute
+	public int getCleanupDeletedFiles() {
+		return cleanupDeletedFiles;
+	}
+
+	@JmxAttribute
+	public int getCleanupSkippedNewFiles() {
+		return cleanupSkippedNewFiles;
 	}
 
 	@JmxOperation
