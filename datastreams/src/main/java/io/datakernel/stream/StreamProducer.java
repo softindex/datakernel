@@ -73,7 +73,7 @@ public interface StreamProducer<T> {
 		bind(producer, consumer);
 		Stage<Void> producerEndOfStream = producer.getEndOfStream();
 		Stage<Void> consumerEndOfStream = consumer.getEndOfStream();
-		Stage<Void> endOfStream = Stages.run(producerEndOfStream, consumerEndOfStream);
+		Stage<Void> endOfStream = Stages.all(producerEndOfStream, consumerEndOfStream);
 		return new StreamCompletion() {
 			@Override
 			public Stage<Void> getProducerEndOfStream() {
@@ -98,7 +98,7 @@ public interface StreamProducer<T> {
 		bind(producer, consumer);
 		Stage<Void> producerEndOfStream = producer.getEndOfStream();
 		Stage<Void> consumerEndOfStream = consumer.getEndOfStream();
-		Stage<Void> endOfStream = Stages.run(producerEndOfStream, consumerEndOfStream);
+		Stage<Void> endOfStream = Stages.all(producerEndOfStream, consumerEndOfStream);
 		Stage<Y> consumerResult = consumer.getResult();
 		return new StreamConsumerResult<Y>() {
 			@Override

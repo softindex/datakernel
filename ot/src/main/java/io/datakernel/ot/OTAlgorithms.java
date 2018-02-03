@@ -239,7 +239,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 				.map(remote::loadCommit)
 				.collect(toList());
 
-		return Stages.collect(loadStages).thenComposeAsync(otCommits -> {
+		return Stages.reduceToList(loadStages).thenComposeAsync(otCommits -> {
 			for (OTCommit<K, D> otCommit : otCommits) {
 				queueMap.put(otCommit.getId(), otCommit);
 			}

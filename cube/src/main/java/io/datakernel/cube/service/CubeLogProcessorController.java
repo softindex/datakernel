@@ -110,8 +110,8 @@ public final class CubeLogProcessorController implements EventloopJmxMBeanEx {
 							.collect(toList());
 
 					Stage<List<LogDiff<CubeDiff>>> stage = parallelRunner ?
-							Stages.collect(tasks.stream().map(AsyncCallable::call)) :
-							Stages.collectSequence(tasks);
+							Stages.reduceToList(tasks.stream().map(AsyncCallable::call)) :
+							Stages.reduceSequence(tasks, toList());
 
 					return stage
 							.whenComplete(stageProcessLogsImpl.recordStats())

@@ -41,7 +41,7 @@ public interface StreamProducerWithResult<T, X> extends StreamProducer<T> {
 		bind(producer, consumer);
 		Stage<Void> producerEndOfStream = producer.getEndOfStream();
 		Stage<Void> consumerEndOfStream = consumer.getEndOfStream();
-		Stage<Void> endOfStream = Stages.run(producerEndOfStream, consumerEndOfStream);
+		Stage<Void> endOfStream = Stages.all(producerEndOfStream, consumerEndOfStream);
 		Stage<X> producerResult = producer.getResult();
 		return new StreamProducerResult<X>() {
 			@Override
@@ -73,7 +73,7 @@ public interface StreamProducerWithResult<T, X> extends StreamProducer<T> {
 		bind(producer, consumer);
 		Stage<Void> producerEndOfStream = producer.getEndOfStream();
 		Stage<Void> consumerEndOfStream = consumer.getEndOfStream();
-		Stage<Void> endOfStream = Stages.run(producerEndOfStream, consumerEndOfStream);
+		Stage<Void> endOfStream = Stages.all(producerEndOfStream, consumerEndOfStream);
 		Stage<Pair<X, Y>> result = producer.getResult().then(combine(consumer.getResult(), StreamResult.Pair::new));
 		return new StreamResult<X, Y>() {
 			@Override

@@ -158,7 +158,7 @@ public final class StreamProducers {
 	}
 
 	public static <T> StreamProducerModifier<T, T> suppliedEndOfStream(Stage<Void> suppliedEndOfStream) {
-		return suppliedEndOfStream(actualEndOfStream -> Stages.first(actualEndOfStream, suppliedEndOfStream));
+		return suppliedEndOfStream(actualEndOfStream -> Stages.any(actualEndOfStream, suppliedEndOfStream));
 	}
 
 	public interface Decorator<T> {

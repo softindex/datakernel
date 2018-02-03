@@ -115,6 +115,6 @@ public class AbstractHttpConnectionTest {
 	}
 
 	private Stage<Void> stopClientAndServer(AsyncHttpClient client, AsyncHttpServer server) {
-		return Stages.run(client.stop(), server.close());
+		return Stages.all(client.stop(), server.close());
 	}
 }

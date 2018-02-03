@@ -182,7 +182,7 @@ public class CubeTest {
 							.thenApply($ -> cubeDiff))
 					.thenAccept(cube::apply));
 		}
-		Stages.run(tasks).whenComplete(assertComplete($ -> stop(remoteFsServer1)));
+		Stages.all(tasks).whenComplete(assertComplete($ -> stop(remoteFsServer1)));
 
 		eventloop.run();
 

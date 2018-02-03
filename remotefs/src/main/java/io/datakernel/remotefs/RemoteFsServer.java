@@ -181,7 +181,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 					.map(e -> fileManager.move(e.getKey(), e.getValue()))
 					.collect(Collectors.toList());
 
-			Stages.run(tasks).whenComplete((aVoid, throwable) -> {
+			Stages.all(tasks).whenComplete((aVoid, throwable) -> {
 				messaging.send(throwable == null ? new RemoteFsResponses.Ok() : new RemoteFsResponses.Err(throwable.getMessage()));
 				messaging.sendEndOfStream();
 			});

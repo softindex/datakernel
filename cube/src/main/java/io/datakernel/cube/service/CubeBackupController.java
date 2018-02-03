@@ -3,6 +3,7 @@ package io.datakernel.cube.service;
 import io.datakernel.aggregation.LocalFsChunkStorage;
 import io.datakernel.async.AsyncCallable;
 import io.datakernel.async.Stage;
+import io.datakernel.async.Stages;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
@@ -18,7 +19,6 @@ import java.util.List;
 import java.util.Set;
 
 import static io.datakernel.async.AsyncCallable.sharedCall;
-import static io.datakernel.async.Stages.runSequence;
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static java.util.Collections.max;
 import static java.util.stream.Collectors.toSet;
@@ -62,10 +62,9 @@ public final class CubeBackupController implements EventloopJmxMBeanEx {
 				.whenComplete(stageBackup.recordStats());
 	}
 
-	@SuppressWarnings("unchecked")
 	public Stage<Void> backup(Integer commitId) {
 		return algorithms.checkout(commitId)
-				.thenCompose(logDiffs -> runSequence(
+				.thenCompose(logDiffs -> Stages.runSequence(
 						() -> backupChunks(commitId, collectChunkIds(logDiffs)),
 						() -> backupDb(commitId, logDiffs)));
 	}

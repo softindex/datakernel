@@ -71,7 +71,7 @@ public class AsyncDnsClientConnectionTest {
 		udpSocket.setEventHandler(dnsClientConnection);
 		udpSocket.register();
 
-		Stages.collect(
+		Stages.reduceToList(
 				Stream.of("www.github.com", "www.kpi.ua", "www.google.com")
 						.map(domain -> dnsClientConnection.resolve4(domain, DNS_SERVER_ADDRESS, TIMEOUT))
 						.collect(toList()))

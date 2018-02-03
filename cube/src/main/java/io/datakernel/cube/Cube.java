@@ -1017,7 +1017,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializer<Cube>, 
 					tasks.add(resolveSpecifiedDimensions(resolverContainer, filterAttributes));
 				}
 			}
-			return Stages.run(tasks)
+			return Stages.all(tasks)
 					.thenApply($ -> processResults2(results, totals, filterAttributes));
 		}
 

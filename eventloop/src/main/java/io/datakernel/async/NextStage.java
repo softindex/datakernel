@@ -6,10 +6,38 @@ import java.util.function.Function;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
-public abstract class NextStage<F, T> extends AbstractStage<T> {
-	protected abstract void onComplete(F result);
+public abstract class NextStage<T, R> extends AbstractStage<R> {
+	protected abstract void onComplete(T result);
 
 	protected abstract void onCompleteExceptionally(Throwable throwable);
+
+	public static <T> NextStage<T, T> async() {
+		return new NextStage<T, T>() {
+			@Override
+			protected void onComplete(T result) {
+				getCurrentEventloop().post(() -> complete(result));
+			}
+
+			@Override
+			protected void onCompleteExceptionally(Throwable throwable) {
+				getCurrentEventloop().post(() -> completeExceptionally(throwable));
+			}
+		};
+	}
+
+	public static <T> NextStage<T, Void> toVoid() {
+		return new NextStage<T, Void>() {
+			@Override
+			protected void onComplete(T result) {
+				complete(null);
+			}
+
+			@Override
+			protected void onCompleteExceptionally(Throwable throwable) {
+				completeExceptionally(throwable);
+			}
+		};
+	}
 
 	public static <T> NextStage<T, T> exceptionally(Function<? super Throwable, ? extends T> fn) {
 		return new NextStage<T, T>() {
@@ -116,7 +144,7 @@ public abstract class NextStage<F, T> extends AbstractStage<T> {
 
 		void onBothResults(T thisResult, U otherResult) {
 			if (!isComplete()) {
-				complete(fn.apply(thisResult, otherResult));
+				complete(fn != null ? fn.apply(thisResult, otherResult) : null);
 			}
 		}
 
@@ -147,35 +175,67 @@ public abstract class NextStage<F, T> extends AbstractStage<T> {
 		return resultStage;
 	}
 
-	public static <T, U, V> NextStage<T, V> combineAsync(Stage<? extends U> other,
-	                                                     BiFunction<? super T, ? super U, ? extends V> fn) {
-		CombineStage<T, V, U> resultStage = new CombineStage<T, V, U>(fn) {
-			@Override
-			void onBothResults(T thisResult, U otherResult) {
-				if (!isComplete()) {
-					getCurrentEventloop().post(() -> complete(fn.apply(thisResult, otherResult)));
-				}
-			}
+	public static <T> NextStage<T, Void> both(Stage<?> other) {
+		return combine(other, null);
+	}
 
+	public static <T> NextStage<T, T> either(Stage<? extends T> other) {
+		NextStage<T, T> resultStage = new NextStage<T, T>() {
 			@Override
-			void onAnyException(Throwable throwable) {
-				getCurrentEventloop().post(() -> tryCompleteExceptionally(throwable));
-			}
-		};
-		other.then(new NextStage<U, Object>() {
-			@Override
-			protected void onComplete(U result) {
-				resultStage.onOtherComplete(result);
+			protected void onComplete(T result) {
+				tryComplete(result);
 			}
 
 			@Override
 			protected void onCompleteExceptionally(Throwable throwable) {
-				resultStage.onAnyException(throwable);
+				tryCompleteExceptionally(throwable);
+			}
+		};
+		other.then(new NextStage<T, Object>() {
+			@Override
+			protected void onComplete(T result) {
+				resultStage.tryComplete(result);
+			}
+
+			@Override
+			protected void onCompleteExceptionally(Throwable throwable) {
+				resultStage.tryCompleteExceptionally(throwable);
 			}
 		});
 		return resultStage;
 	}
 
+	private static final class EitherCompleteStage<T> extends NextStage<T, T> {
+		int errors;
 
+		@Override
+		protected void onComplete(T result) {
+			tryComplete(result);
+		}
 
+		@Override
+		protected void onCompleteExceptionally(Throwable throwable) {
+			if (++errors == 2) {
+				completeExceptionally(throwable);
+			}
+		}
+	}
+
+	public static <T> NextStage<T, T> eitherComplete(Stage<? extends T> other) {
+		EitherCompleteStage<T> resultStage = new EitherCompleteStage<>();
+		other.then(new NextStage<T, Object>() {
+			@Override
+			protected void onComplete(T result) {
+				resultStage.tryComplete(result);
+			}
+
+			@Override
+			protected void onCompleteExceptionally(Throwable throwable) {
+				if (++resultStage.errors == 2) {
+					resultStage.completeExceptionally(throwable);
+				}
+			}
+		});
+		return resultStage;
+	}
 }

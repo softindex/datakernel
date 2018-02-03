@@ -106,7 +106,7 @@ public class GzipServletTest {
 		AsyncHttpClient client = AsyncHttpClient.create(eventloop);
 
 		server.listen();
-		CompletableFuture<Void> future = Stages.run(
+		CompletableFuture<Void> future = Stages.all(
 				client.send(HttpRequest.get("http://127.0.0.1:1239"))
 						.thenAccept(response -> assertNull(response.getHeader(HttpHeaders.CONTENT_ENCODING))),
 				client.send(HttpRequest.get("http://127.0.0.1:1239").withAcceptEncodingGzip())

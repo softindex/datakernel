@@ -112,7 +112,7 @@ public class FsIntegrationTest {
 									client.uploadStream("file" + i))
 							.getConsumerResult());
 		}
-		Stages.run(tasks).whenComplete(assertComplete($ -> server.close()));
+		Stages.all(tasks).whenComplete(assertComplete($ -> server.close()));
 
 		eventloop.run();
 		executor.shutdown();
@@ -303,7 +303,7 @@ public class FsIntegrationTest {
 							StreamFileWriter.create(executor, storage.resolve("file" + i)))
 					.getProducerResult());
 		}
-		Stages.run(tasks).whenComplete(assertComplete($ -> server.close()));
+		Stages.all(tasks).whenComplete(assertComplete($ -> server.close()));
 
 		eventloop.run();
 		executor.shutdown();
