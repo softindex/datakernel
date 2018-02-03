@@ -102,7 +102,11 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 	private final ExceptionStats cleanupWarnings = ExceptionStats.create();
 	private int cleanupPreservedFiles;
 	private int cleanupDeletedFiles;
-	private int cleanupSkippedNewFiles;
+	private int cleanupDeletedFilesTotal;
+	private long cleanupSkipTimeMin;
+	private long cleanupSkipTimeMax;
+	private int cleanupSkippedFiles;
+	private int cleanupSkippedFilesTotal;
 
 	private int finishChunks;
 
@@ -244,6 +248,14 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 					if (preserveChunks.contains(id)) continue;
 					FileTime lastModifiedTime = Files.getLastModifiedTime(file);
 					if (timestamp != -1 && lastModifiedTime.toMillis() > timestamp) {
+						long difference = lastModifiedTime.toMillis() - timestamp;
+						assert difference > 0;
+						if (cleanupSkipTimeMin == 0 || difference < cleanupSkipTimeMin) {
+							cleanupSkipTimeMin = difference;
+						}
+						if (cleanupSkipTimeMax == 0 || difference > cleanupSkipTimeMax) {
+							cleanupSkipTimeMax = difference;
+						}
 						logger.warn("File {} timestamp {} > {}",
 								file, lastModifiedTime.toMillis(), timestamp);
 						skipped++;
@@ -269,7 +281,9 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 
 				cleanupPreservedFiles = preserveChunks.size();
 				cleanupDeletedFiles = filesToDelete.size();
-				cleanupSkippedNewFiles = skipped;
+				cleanupDeletedFilesTotal += filesToDelete.size();
+				cleanupSkippedFiles = skipped;
+				cleanupSkippedFilesTotal += skipped;
 			}
 			return (Void) null;
 		}).whenComplete(stageCleanup.recordStats());
@@ -423,8 +437,28 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 	}
 
 	@JmxAttribute
-	public int getCleanupSkippedNewFiles() {
-		return cleanupSkippedNewFiles;
+	public int getCleanupDeletedFilesTotal() {
+		return cleanupDeletedFilesTotal;
+	}
+
+	@JmxAttribute
+	public int getCleanupSkippedFiles() {
+		return cleanupSkippedFiles;
+	}
+
+	@JmxAttribute
+	public int getCleanupSkippedFilesTotal() {
+		return cleanupSkippedFilesTotal;
+	}
+
+	@JmxAttribute
+	public long getCleanupSkipTimeMin() {
+		return cleanupSkipTimeMin;
+	}
+
+	@JmxAttribute
+	public long getCleanupSkipTimeMax() {
+		return cleanupSkipTimeMax;
 	}
 
 	@JmxOperation
@@ -437,4 +471,15 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 		detailed = false;
 	}
 
+	@Override
+	public void resetStats() {
+		cleanupPreservedFiles = 0;
+		cleanupDeletedFiles = 0;
+		cleanupDeletedFilesTotal = 0;
+		cleanupSkippedFiles = 0;
+		cleanupSkippedFilesTotal = 0;
+		cleanupSkipTimeMin = 0;
+		cleanupSkipTimeMax = 0;
+		ReflectionUtils.resetStats(this);
+	}
 }
