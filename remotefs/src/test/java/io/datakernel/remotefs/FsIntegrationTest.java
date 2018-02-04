@@ -22,7 +22,7 @@ import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.SimpleException;
+import io.datakernel.exception.StacklessException;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
@@ -180,7 +180,7 @@ public class FsIntegrationTest {
 						ByteBufStrings.wrapUtf8(" Test2"),
 						ByteBufStrings.wrapUtf8(" Test3")),
 				StreamProducer.of(ByteBuf.wrapForReading(BIG_FILE)),
-				StreamProducer.closingWithError(new SimpleException("Test exception")),
+				StreamProducer.closingWithError(new StacklessException("Test exception")),
 				StreamProducer.of(ByteBufStrings.wrapUtf8("Test4")))
 				.streamTo(
 						client.uploadStream(resultFile))
@@ -195,7 +195,7 @@ public class FsIntegrationTest {
 		thrown.expectCause(new BaseMatcher<Throwable>() {
 			@Override
 			public boolean matches(Object item) {
-				return item instanceof SimpleException && ((SimpleException) item).getMessage().equals("Test exception");
+				return item instanceof StacklessException && ((StacklessException) item).getMessage().equals("Test exception");
 			}
 
 			@Override

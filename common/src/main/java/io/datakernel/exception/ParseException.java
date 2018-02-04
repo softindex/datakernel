@@ -16,7 +16,7 @@
 
 package io.datakernel.exception;
 
-public class ParseException extends SimpleException {
+public class ParseException extends StacklessException {
 	public ParseException() {
 	}
 

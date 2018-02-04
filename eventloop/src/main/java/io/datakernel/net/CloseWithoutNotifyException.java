@@ -1,8 +1,8 @@
 package io.datakernel.net;
 
-import io.datakernel.exception.SimpleException;
+import io.datakernel.exception.StacklessException;
 
-public class CloseWithoutNotifyException extends SimpleException {
+public class CloseWithoutNotifyException extends StacklessException {
 
 	public CloseWithoutNotifyException() {
 	}

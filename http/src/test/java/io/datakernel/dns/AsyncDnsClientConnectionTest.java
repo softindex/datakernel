@@ -36,7 +36,7 @@ import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
 
 public class AsyncDnsClientConnectionTest {
-	private DnsClientConnection dnsClientConnection;
+	private DnsClientSocketHandler dnsClientConnection;
 	private Eventloop eventloop;
 	private static InetSocketAddress DNS_SERVER_ADDRESS = new InetSocketAddress("8.8.8.8", 53);
 	private static long TIMEOUT = 1000L;
@@ -67,7 +67,7 @@ public class AsyncDnsClientConnectionTest {
 	public void testResolve() throws Exception {
 		DatagramChannel datagramChannel = createDatagramChannel(DatagramSocketSettings.create(), null, null);
 		AsyncUdpSocketImpl udpSocket = AsyncUdpSocketImpl.create(eventloop, datagramChannel);
-		dnsClientConnection = DnsClientConnection.create(eventloop, udpSocket, null);
+		dnsClientConnection = DnsClientSocketHandler.create(eventloop, udpSocket, null);
 		udpSocket.setEventHandler(dnsClientConnection);
 		udpSocket.register();
 

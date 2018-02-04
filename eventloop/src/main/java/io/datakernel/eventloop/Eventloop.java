@@ -21,7 +21,7 @@ import io.datakernel.async.AsyncCallable;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.exception.AsyncTimeoutException;
-import io.datakernel.exception.SimpleException;
+import io.datakernel.exception.StacklessException;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
@@ -697,7 +697,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			if (connected) {
 				connectStage.set(socketChannel);
 			} else {
-				connectStage.setException(new SimpleException("Not connected"));
+				connectStage.setException(new StacklessException("Not connected"));
 			}
 		} catch (Throwable e) {
 			recordFatalError(e, socketChannel);

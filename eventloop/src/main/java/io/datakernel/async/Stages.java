@@ -2,12 +2,12 @@ package io.datakernel.async;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
+import io.datakernel.exception.AsyncTimeoutException;
 
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.concurrent.TimeoutException;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
@@ -20,13 +20,7 @@ import static io.datakernel.util.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
 
 public final class Stages {
-
-	public static final TimeoutException TIMEOUT_EXCEPTION = new TimeoutException() {
-		@Override
-		public final Throwable fillInStackTrace() {
-			return this;
-		}
-	};
+	public static final AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException();
 
 	private Stages() {
 	}

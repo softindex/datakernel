@@ -16,7 +16,7 @@
 
 package io.datakernel.exception;
 
-public class AsyncTimeoutException extends SimpleException {
+public class AsyncTimeoutException extends StacklessException {
 	public AsyncTimeoutException() {
 	}
 

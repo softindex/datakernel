@@ -58,15 +58,15 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 
 	private final Eventloop eventloop;
 
-	private DnsClientConnection connection;
-	private final DatagramSocketSettings datagramSocketSettings;
+	private DnsClientSocketHandler socketHandler;
+	private DatagramSocketSettings datagramSocketSettings = DEFAULT_DATAGRAM_SOCKET_SETTINGS;
 
-	private InetSocketAddress dnsServerAddress;
+	private InetSocketAddress dnsServerAddress = GOOGLE_PUBLIC_DNS;
 
-	private final DnsCache cache;
+	private DnsCache cache;
 
-	private final long timeout;
-	private final long timedOutExceptionTtl;
+	private long timeout = DEFAULT_TIMEOUT;
+	private long timedOutExceptionTtl = DEFAULT_TIMED_OUT_EXCEPTION_TTL_MILLIS;
 
 	// jmx
 	Inspector inspector;
@@ -167,13 +167,8 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 	}
 
 	// region builders
-	private AsyncDnsClient(Eventloop eventloop, DatagramSocketSettings datagramSocketSettings, long timeout,
-	                       long timedOutExceptionTtl, InetSocketAddress dnsServerAddress, DnsCache cache, Inspector inspector) {
+	private AsyncDnsClient(Eventloop eventloop, DnsCache cache, Inspector inspector) {
 		this.eventloop = eventloop;
-		this.datagramSocketSettings = datagramSocketSettings;
-		this.timeout = timeout;
-		this.timedOutExceptionTtl = timedOutExceptionTtl;
-		this.dnsServerAddress = dnsServerAddress;
 		this.cache = cache;
 		this.inspector = inspector;
 	}
@@ -181,13 +176,12 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 	public static AsyncDnsClient create(Eventloop eventloop) {
 		Inspector inspector = new JmxInspector();
 		DnsCache cache = DnsCache.create(eventloop, ONE_MINUTE_MILLIS, ONE_MINUTE_MILLIS, DEFAULT_TIMED_OUT_EXCEPTION_TTL_MILLIS, inspector);
-
-		return new AsyncDnsClient(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, DEFAULT_TIMEOUT,
-				DEFAULT_TIMED_OUT_EXCEPTION_TTL_MILLIS, GOOGLE_PUBLIC_DNS, cache, inspector);
+		return new AsyncDnsClient(eventloop, cache, inspector);
 	}
 
 	public AsyncDnsClient withDatagramSocketSetting(DatagramSocketSettings setting) {
-		return new AsyncDnsClient(eventloop, setting, timeout, timedOutExceptionTtl, dnsServerAddress, cache, inspector);
+		this.datagramSocketSettings = setting;
+		return this;
 	}
 
 	/**
@@ -197,12 +191,8 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 	 * @return a client, waiting for response for specified timeout
 	 */
 	public AsyncDnsClient withTimeout(long timeout) {
-		return new AsyncDnsClient(eventloop, datagramSocketSettings, timeout, timedOutExceptionTtl, dnsServerAddress, cache, inspector);
-	}
-
-	public AsyncDnsClient withTimedOutExceptionTtl(long timedOutExceptionTtl) {
-		DnsCache cache = DnsCache.create(eventloop, ONE_MINUTE_MILLIS, ONE_MINUTE_MILLIS, timedOutExceptionTtl, inspector);
-		return new AsyncDnsClient(eventloop, datagramSocketSettings, timeout, timedOutExceptionTtl, dnsServerAddress, cache, inspector);
+		this.timeout = timeout;
+		return this;
 	}
 
 	/**
@@ -213,7 +203,8 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 	 * @return a client with specified DNS server address
 	 */
 	public AsyncDnsClient withDnsServerAddress(InetSocketAddress address) {
-		return new AsyncDnsClient(eventloop, datagramSocketSettings, timeout, timedOutExceptionTtl, address, cache, inspector);
+		this.dnsServerAddress = address;
+		return this;
 	}
 
 	/**
@@ -224,8 +215,8 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 	 * @return a client with specified DNS server address
 	 */
 	public AsyncDnsClient withDnsServerAddress(InetAddress address) {
-		return new AsyncDnsClient(eventloop, datagramSocketSettings, timeout, timedOutExceptionTtl,
-				new InetSocketAddress(address, DNS_SERVER_PORT), cache, inspector);
+		this.dnsServerAddress = new InetSocketAddress(address, DNS_SERVER_PORT);
+		return this;
 	}
 
 	public AsyncDnsClient withExpiration(long errorCacheExpirationMillis, long hardExpirationDeltaMillis) {
@@ -233,8 +224,8 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 	}
 
 	public AsyncDnsClient withExpiration(long errorCacheExpirationMillis, long hardExpirationDeltaMillis, long timedOutExceptionTtl) {
-		DnsCache cache = DnsCache.create(eventloop, errorCacheExpirationMillis, hardExpirationDeltaMillis, timedOutExceptionTtl, inspector);
-		return new AsyncDnsClient(eventloop, datagramSocketSettings, timeout, timedOutExceptionTtl, dnsServerAddress, cache, inspector);
+		this.cache = DnsCache.create(eventloop, errorCacheExpirationMillis, hardExpirationDeltaMillis, timedOutExceptionTtl, inspector);
+		return this;
 	}
 
 	public AsyncDnsClient withInspector(AsyncDnsClient.Inspector inspector) {
@@ -351,7 +342,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 					callback.set(result.getIps());
 				}
 				cache.add(result);
-				closeConnectionIfDone();
+				closeSocketIfDone();
 			}
 
 			@Override
@@ -363,19 +354,19 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 				if (callback != null && !resolvedFromCache) {
 					callback.setException(exception);
 				}
-				closeConnectionIfDone();
+				closeSocketIfDone();
 			}
 
-			private void closeConnectionIfDone() {
-				if (connection != null && connection.allRequestsCompleted()) {
-					connection.close();
-					connection = null;
+			private void closeSocketIfDone() {
+				if (socketHandler != null && socketHandler.allRequestsCompleted()) {
+					socketHandler.close();
+					socketHandler = null;
 				}
 			}
 		};
 
 		eventloop.post(() -> {
-			if (connection == null) {
+			if (socketHandler == null) {
 				try {
 					registerConnection();
 				} catch (IOException e) {
@@ -386,9 +377,9 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 			}
 
 			if (ipv6) {
-				connection.resolve6(domainName, dnsServerAddress, timeout, queryCachingCallback);
+				socketHandler.resolve6(domainName, dnsServerAddress, timeout, queryCachingCallback);
 			} else {
-				connection.resolve4(domainName, dnsServerAddress, timeout, queryCachingCallback);
+				socketHandler.resolve4(domainName, dnsServerAddress, timeout, queryCachingCallback);
 			}
 		});
 
@@ -400,8 +391,8 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 		AsyncUdpSocketImpl udpSocket = AsyncUdpSocketImpl.create(eventloop, datagramChannel)
 				.withInspector(inspector != null ? inspector.socketInspector() : null);
 
-		connection = DnsClientConnection.create(eventloop, udpSocket, inspector);
-		udpSocket.setEventHandler(connection);
+		socketHandler = DnsClientSocketHandler.create(eventloop, udpSocket, inspector);
+		udpSocket.setEventHandler(socketHandler);
 		udpSocket.register();
 	}
 
@@ -427,10 +418,10 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 
 	@JmxAttribute
 	public int getQueriesInProgress() {
-		if (connection == null) {
+		if (socketHandler == null) {
 			return 0;
 		} else {
-			return connection.getNumberOfRequestsInProgress();
+			return socketHandler.getNumberOfRequestsInProgress();
 		}
 	}
 
@@ -459,10 +450,10 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 	@JmxOperation
 	public String[] getDomainNamesBeingResolved(@JmxParameter("offset") int offset,
 	                                            @JmxParameter("maxSize") int maxSize) {
-		if (connection == null) {
+		if (socketHandler == null) {
 			return new String[0];
 		} else {
-			String[] domainNames = connection.getDomainNamesBeingResolved();
+			String[] domainNames = socketHandler.getDomainNamesBeingResolved();
 			if (offset > domainNames.length) {
 				throw new IllegalArgumentException(format(
 						"There are only %d domain names being resolved. But requested offset was %d ",

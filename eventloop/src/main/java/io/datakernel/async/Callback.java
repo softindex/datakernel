@@ -27,16 +27,19 @@ public interface Callback<T> {
 		stage.whenComplete(callback::set);
 	}
 
-	static <T> Callback<T> ignore() {
-		return new Callback<T>() {
-			@Override
-			public void set(T result) {
-			}
+	Callback<Object> IGNORE_CALLBACK = new Callback<Object>() {
+		@Override
+		public void set(Object result) {
+		}
 
-			@Override
-			public void setException(Throwable t) {
-			}
-		};
+		@Override
+		public void setException(Throwable t) {
+		}
+	};
+
+	@SuppressWarnings("unchecked")
+	static <T> Callback<T> ignore() {
+		return (Callback<T>) IGNORE_CALLBACK;
 	}
 
 	static <T> Callback<T> forBiConsumer(BiConsumer<T, Throwable> biConsumer) {

@@ -16,9 +16,9 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.exception.SimpleException;
+import io.datakernel.exception.StacklessException;
 
-public class RemoteFsException extends SimpleException {
+public class RemoteFsException extends StacklessException {
 	public RemoteFsException() {
 	}
 

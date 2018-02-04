@@ -17,21 +17,21 @@
 package io.datakernel.exception;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
-public class SimpleException extends Exception {
+public class StacklessException extends Exception {
 
-	public SimpleException() {
+	public StacklessException() {
 		super();
 	}
 
-	public SimpleException(String message, Throwable cause) {
+	public StacklessException(String message, Throwable cause) {
 		super(message, cause);
 	}
 
-	public SimpleException(String s) {
+	public StacklessException(String s) {
 		super(s);
 	}
 
-	public SimpleException(Throwable cause) {
+	public StacklessException(Throwable cause) {
 		super(cause);
 	}
 

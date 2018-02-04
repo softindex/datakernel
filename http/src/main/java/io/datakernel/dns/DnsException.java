@@ -16,13 +16,13 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.exception.SimpleException;
+import io.datakernel.exception.StacklessException;
 
 /**
  * Represents an exception which stores name of domain with which error was created,
  * end error code.
  */
-public final class DnsException extends SimpleException {
+public final class DnsException extends StacklessException {
 	private final String domainName;
 	private final DnsMessage.ResponseErrorCode errorCode;
 

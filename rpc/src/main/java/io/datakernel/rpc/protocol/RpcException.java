@@ -16,9 +16,9 @@
 
 package io.datakernel.rpc.protocol;
 
-import io.datakernel.exception.SimpleException;
+import io.datakernel.exception.StacklessException;
 
-public class RpcException extends SimpleException {
+public class RpcException extends StacklessException {
 
 	public RpcException(String message) {
 		super(message);

@@ -16,9 +16,9 @@
 
 package io.datakernel.http;
 
-import io.datakernel.exception.SimpleException;
+import io.datakernel.exception.StacklessException;
 
-public class HttpException extends SimpleException {
+public class HttpException extends StacklessException {
 	private final int code;
 
 	protected HttpException(int code) {
