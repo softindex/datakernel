@@ -21,20 +21,33 @@ import static java.util.Arrays.asList;
 
 public final class Stages {
 
+	public static final TimeoutException TIMEOUT_EXCEPTION = new TimeoutException() {
+		@Override
+		public final Throwable fillInStackTrace() {
+			return this;
+		}
+	};
+
 	private Stages() {
 	}
 
-	public static <T> Stage<T> timeout(Stage<T> stage, long timestamp) {
-		SettableStage<T> resultStage = SettableStage.create();
-		ScheduledRunnable schedule = Eventloop.getCurrentEventloop()
-				.schedule(timestamp, () -> resultStage.setException(new TimeoutException()));
-		stage.whenComplete((result, throwable) -> {
-			schedule.cancel();
-			if (!resultStage.isComplete()) {
-				resultStage.set(result, throwable);
+	public static <T> Stage<T> timeout(Stage<T> stage, long timeout) {
+		return stage.then(new NextStage<T, T>() {
+			final ScheduledRunnable schedule = Eventloop.getCurrentEventloop().delay(timeout,
+					() -> tryCompleteExceptionally(TIMEOUT_EXCEPTION));
+
+			@Override
+			protected void onComplete(T result) {
+				schedule.cancel();
+				tryComplete(result);
+			}
+
+			@Override
+			protected void onCompleteExceptionally(Throwable throwable) {
+				schedule.cancel();
+				tryCompleteExceptionally(throwable);
 			}
 		});
-		return resultStage;
 	}
 
 	public static <T> BiConsumer<T, Throwable> onError(Consumer<Throwable> consumer) {
@@ -230,26 +243,19 @@ public final class Stages {
 		return (Stage<T>) stage;
 	}
 
-	private static final class Counter {
-		int counter;
-
-		public Counter(int counter) {
-			this.counter = counter;
-		}
-	}
-
 	private static final class ReduceStage<T, A, R> extends NextStage<T, R> {
-		final StagesCollector<T, A, R> reducer;
+		final IndexedCollector<T, A, R> reducer;
 		final A accumulator;
 		int stages;
 
-		private ReduceStage(StagesCollector<T, A, R> reducer, A accumulator, int stages) {
+		private ReduceStage(IndexedCollector<T, A, R> reducer, A accumulator, int stages) {
 			this.reducer = reducer;
 			this.accumulator = accumulator;
 			this.stages = stages;
 		}
 
 		void processComplete(T result, int i) {
+			if (isComplete()) return;
 			reducer.accumulate(accumulator, i, result);
 			if (--stages == 0) {
 				complete(reducer.finish(accumulator));
@@ -268,11 +274,11 @@ public final class Stages {
 	}
 
 	public static <A, T, R> Stage<R> reduce(List<? extends Stage<? extends T>> stages,
-	                                        StagesCollector<T, A, R> collector) {
+	                                        IndexedCollector<T, A, R> collector) {
 		int size = stages.size();
-		if (size == 0) return Stage.of(collector.of());
-		if (size == 1) return stages.get(0).thenApply(collector::of);
-		if (size == 2) return stages.get(0).then(NextStage.combine(stages.get(1), collector::of));
+		if (size == 0) return Stage.of(collector.resultOf());
+		if (size == 1) return stages.get(0).thenApply(collector::resultOf);
+		if (size == 2) return stages.get(0).then(NextStage.combine(stages.get(1), collector::resultOf));
 
 		A accumulator = collector.accumulator(size);
 		ReduceStage<T, A, R> resultStage = new ReduceStage<>(collector, accumulator, size);
@@ -295,8 +301,119 @@ public final class Stages {
 		return resultStage;
 	}
 
+	static final class ReduceTimeouter<T, A, R> implements Runnable, ReduceListener<T, A, R> {
+		ReduceCanceller canceller;
+		ScheduledRunnable scheduledRunnable;
+
+		@Override
+		public void onStart(ReduceCanceller canceller, A accumulator) {
+			this.canceller = canceller;
+		}
+
+		@Override
+		public void onFinish(R result) {
+			if (scheduledRunnable != null) {
+				scheduledRunnable.cancel();
+				scheduledRunnable = null;
+			}
+		}
+
+		@Override
+		public void onException(Throwable throwable) {
+			if (scheduledRunnable != null) {
+				scheduledRunnable.cancel();
+				scheduledRunnable = null;
+			}
+		}
+
+		@Override
+		public void run() {
+			canceller.cancel();
+		}
+	}
+
+	private static final class ReduceStageEx<T, A, R> extends NextStage<T, R> implements ReduceListener.ReduceCanceller {
+		final IndexedCollector<T, A, R> reducer;
+		final ReduceListener<T, A, R> listener;
+		final A accumulator;
+		int stages;
+
+		private ReduceStageEx(IndexedCollector<T, A, R> reducer, ReduceListener<T, A, R> listener, A accumulator, int stages) {
+			this.reducer = reducer;
+			this.listener = listener;
+			this.accumulator = accumulator;
+			this.stages = stages;
+		}
+
+		void processComplete(T result, int i) {
+			if (isComplete()) return;
+			reducer.accumulate(accumulator, i, result);
+			if (--stages == 0) {
+				R finish = reducer.finish(accumulator);
+				listener.onFinish(finish);
+				complete(finish);
+			}
+		}
+
+		@Override
+		protected void onComplete(T result) {
+			processComplete(result, 0);
+		}
+
+		@Override
+		protected void onCompleteExceptionally(Throwable throwable) {
+			if (isComplete()) return;
+			listener.onException(throwable);
+			completeExceptionally(throwable);
+		}
+
+		@Override
+		public void cancel() {
+			if (isComplete()) return;
+			R finish = reducer.finish(accumulator);
+			listener.onFinish(finish);
+			complete(finish);
+		}
+
+		@Override
+		public void cancel(Throwable throwable) {
+			tryCompleteExceptionally(throwable);
+		}
+	}
+
+	public static <A, T, R> Stage<R> reduce(List<? extends Stage<? extends T>> stages, ReduceListener<T, A, R> listener,
+	                                        IndexedCollector<T, A, R> collector) {
+		int size = stages.size();
+		if (size == 0) {
+			R finished = collector.resultOf();
+			listener.onFinish(finished);
+			return Stage.of(finished);
+		}
+
+		A accumulator = collector.accumulator(size);
+		ReduceStageEx<T, A, R> resultStage = new ReduceStageEx<>(collector, listener, accumulator, size);
+		listener.onStart(resultStage, accumulator);
+		stages.get(0).then(resultStage);
+
+		for (int i = 1; i < size; i++) {
+			int finalI = i;
+			stages.get(i).then(new NextStage<T, Object>() {
+				@Override
+				protected void onComplete(T result) {
+					resultStage.processComplete(result, finalI);
+				}
+
+				@Override
+				protected void onCompleteExceptionally(Throwable throwable) {
+					resultStage.onCompleteExceptionally(throwable);
+				}
+			});
+		}
+		return resultStage;
+	}
+
 	public static <T> Stage<List<T>> reduceToList(List<? extends Stage<? extends T>> stages) {
-		return reduce(stages, StagesCollector.toList());
+		return reduce(stages, IndexedCollector.toList());
 	}
 
 	public static <T> Stage<List<T>> reduceToList(Stream<? extends Stage<? extends T>> stages) {
@@ -318,7 +435,7 @@ public final class Stages {
 	}
 
 	public static <T> Stage<T[]> reduceToArray(List<? extends Stage<? extends T>> stages) {
-		return reduce(stages, StagesCollector.toArray());
+		return reduce(stages, IndexedCollector.toArray());
 	}
 
 	public static <T> Stage<T[]> reduceToArray(Stream<? extends Stage<? extends T>> stages) {
