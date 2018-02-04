@@ -146,11 +146,8 @@ public final class CubeCleanerController implements EventloopJmxMBeanEx {
 	}
 
 	Stage<Optional<Integer>> findSnapshot(Set<Integer> heads, int skipSnapshots) {
-		return algorithms.findParent(heads,
-				DiffsReducer.toVoid(),
-				OTCommit::isSnapshot,
-				null)
-				.thenComposeAsync(findResult -> {
+		return algorithms.findParent(heads, DiffsReducer.toVoid(), OTCommit::isSnapshot, null)
+				.thenCompose(findResult -> {
 					if (!findResult.isFound()) return Stage.of(Optional.empty());
 					if (skipSnapshots <= 0) return Stage.of(Optional.of(findResult.getCommit()));
 					return findSnapshot(findResult.getCommitParents(), skipSnapshots - 1);

@@ -113,6 +113,7 @@ abstract class AbstractStage<T> implements Stage<T> {
 	@SuppressWarnings("unchecked")
 	@Override
 	public <U> Stage<U> then(NextStage<? super T, ? extends U> stage) {
+		if (stage == null) return (Stage<U>) this;
 		if (this.next == null) {
 			this.next = stage;
 		} else {
@@ -235,25 +236,6 @@ abstract class AbstractStage<T> implements Stage<T> {
 	}
 
 	@Override
-	public <U> Stage<U> thenApplyAsync(Function<? super T, ? extends U> fn) {
-		Eventloop eventloop = getCurrentEventloop();
-		return then(new NextStage<T, U>() {
-			@Override
-			protected void onComplete(T value) {
-				eventloop.post(() -> {
-					U resultValue = fn.apply(value);
-					complete(resultValue);
-				});
-			}
-
-			@Override
-			protected void onCompleteExceptionally(Throwable error) {
-				eventloop.post(() -> completeExceptionally(error));
-			}
-		});
-	}
-
-	@Override
 	public Stage<Void> thenAccept(Consumer<? super T> action) {
 		return then(new NextStage<T, Void>() {
 			@Override
@@ -265,25 +247,6 @@ abstract class AbstractStage<T> implements Stage<T> {
 			@Override
 			protected void onCompleteExceptionally(Throwable throwable) {
 				completeExceptionally(throwable);
-			}
-		});
-	}
-
-	@Override
-	public Stage<Void> thenAcceptAsync(Consumer<? super T> action) {
-		Eventloop eventloop = getCurrentEventloop();
-		return then(new NextStage<T, Void>() {
-			@Override
-			protected void onComplete(T value) {
-				eventloop.post(() -> {
-					action.accept(value);
-					complete(null);
-				});
-			}
-
-			@Override
-			protected void onCompleteExceptionally(Throwable error) {
-				eventloop.post(() -> completeExceptionally(error));
 			}
 		});
 	}
@@ -302,25 +265,6 @@ abstract class AbstractStage<T> implements Stage<T> {
 				completeExceptionally(throwable);
 			}
 
-		});
-	}
-
-	@Override
-	public Stage<Void> thenRunAsync(Runnable action) {
-		Eventloop eventloop = getCurrentEventloop();
-		return then(new NextStage<T, Void>() {
-			@Override
-			protected void onComplete(T value) {
-				eventloop.post(() -> {
-					action.run();
-					complete(null);
-				});
-			}
-
-			@Override
-			protected void onCompleteExceptionally(Throwable error) {
-				eventloop.post(() -> completeExceptionally(error));
-			}
 		});
 	}
 
@@ -358,42 +302,6 @@ abstract class AbstractStage<T> implements Stage<T> {
 	}
 
 	@Override
-	public <U> Stage<U> thenComposeAsync(Function<? super T, ? extends Stage<U>> fn) {
-		Eventloop eventloop = getCurrentEventloop();
-		return then(new NextStage<T, U>() {
-			@Override
-			protected void onComplete(T value) {
-				eventloop.post(() -> {
-					Stage<U> stage = fn.apply(value);
-					if (stage instanceof SettableStage) {
-						SettableStage<U> settableStage = (SettableStage<U>) stage;
-						if (settableStage.isSet()) {
-							if (settableStage.exception == null) {
-								complete(settableStage.result);
-							} else {
-								completeExceptionally(settableStage.exception);
-							}
-							return;
-						}
-					}
-					stage.whenComplete((u, throwable) -> {
-						if (throwable == null) {
-							complete(u);
-						} else {
-							completeExceptionally(throwable);
-						}
-					});
-				});
-			}
-
-			@Override
-			protected void onCompleteExceptionally(Throwable error) {
-				eventloop.post(() -> completeExceptionally(error));
-			}
-		});
-	}
-
-	@Override
 	public Stage<T> whenComplete(BiConsumer<? super T, ? super Throwable> action) {
 		return then(new NextStage<T, T>() {
 			@Override
@@ -406,28 +314,6 @@ abstract class AbstractStage<T> implements Stage<T> {
 			protected void onCompleteExceptionally(Throwable throwable) {
 				action.accept(null, throwable);
 				completeExceptionally(throwable);
-			}
-		});
-	}
-
-	@Override
-	public Stage<T> whenCompleteAsync(BiConsumer<? super T, ? super Throwable> action) {
-		Eventloop eventloop = getCurrentEventloop();
-		return then(new NextStage<T, T>() {
-			@Override
-			protected void onComplete(T value) {
-				eventloop.post(() -> {
-					action.accept(value, null);
-					complete(value);
-				});
-			}
-
-			@Override
-			protected void onCompleteExceptionally(Throwable error) {
-				eventloop.post(() -> {
-					action.accept(null, error);
-					completeExceptionally(error);
-				});
 			}
 		});
 	}

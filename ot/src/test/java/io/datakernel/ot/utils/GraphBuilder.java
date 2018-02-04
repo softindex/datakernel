@@ -44,7 +44,7 @@ public class GraphBuilder<K, D> {
 						.thenApply(id -> singletonList(OTCommit.of(id, toDiffs(entry))))
 						.thenCompose(otRemote::push)
 						.thenAccept($ -> finished.add(entry.getKey()))
-						.thenComposeAsync($ -> build(otRemote, edges, names, finished)))
+						.thenCompose($ -> build(otRemote, edges, names, finished)))
 				.orElse(Stage.of(null));
 	}
 

@@ -67,23 +67,13 @@ public interface Stage<T> {
 
 	<U> Stage<U> thenApply(Function<? super T, ? extends U> fn);
 
-	<U> Stage<U> thenApplyAsync(Function<? super T, ? extends U> fn);
-
 	Stage<Void> thenAccept(Consumer<? super T> action);
-
-	Stage<Void> thenAcceptAsync(Consumer<? super T> action);
 
 	Stage<Void> thenRun(Runnable action);
 
-	Stage<Void> thenRunAsync(Runnable action);
-
 	<U> Stage<U> thenCompose(Function<? super T, ? extends Stage<U>> fn);
 
-	<U> Stage<U> thenComposeAsync(Function<? super T, ? extends Stage<U>> fn);
-
 	Stage<T> whenComplete(BiConsumer<? super T, ? super Throwable> action);
-
-	Stage<T> whenCompleteAsync(BiConsumer<? super T, ? super Throwable> action);
 
 	CompletableFuture<T> toCompletableFuture();
 

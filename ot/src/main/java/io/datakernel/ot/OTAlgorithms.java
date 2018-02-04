@@ -173,7 +173,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 			K child = nodeWithPath.child;
 			if (!visited.add(node)) continue;
 
-			return remote.loadCommit(node).thenComposeAsync(commit -> {
+			return remote.loadCommit(node).thenCompose(commit -> {
 				if (matchPredicate.test(commit)) {
 					K id = commit.getId();
 					Set<K> parentIds = commit.getParentIds();
@@ -239,7 +239,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 				.map(remote::loadCommit)
 				.collect(toList());
 
-		return Stages.reduceToList(loadStages).thenComposeAsync(otCommits -> {
+		return Stages.reduceToList(loadStages).thenCompose(otCommits -> {
 			for (OTCommit<K, D> otCommit : otCommits) {
 				queueMap.put(otCommit.getId(), otCommit);
 			}
@@ -300,7 +300,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 
 		K node = queue.poll();
 		Set<K> nodeChildren = childrenMap.remove(node);
-		return remote.loadCommit(node).thenComposeAsync(commit -> {
+		return remote.loadCommit(node).thenCompose(commit -> {
 			Set<K> parents = commit.getParentIds();
 			logger.debug("Commit: {}, parents: {}", node, parents);
 			for (K parent : parents) {
@@ -362,7 +362,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		if (commonNode.equals(polledEntry.node)) {
 			return Stage.of(polledEntry.toChildren);
 		}
-		return remote.loadCommit(polledEntry.node).thenComposeAsync(commit -> {
+		return remote.loadCommit(polledEntry.node).thenCompose(commit -> {
 			for (K parent : commit.getParents().keySet()) {
 				if (keyComparator.compare(parent, commonNode) < 0) continue;
 				ReduceEntry<K, A> parentEntry = queueMap.get(parent);

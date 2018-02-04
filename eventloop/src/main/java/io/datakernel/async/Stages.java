@@ -462,7 +462,7 @@ public final class Stages {
 		if (!stages.hasNext()) {
 			return Stage.of(null);
 		}
-		return stages.next().call().thenComposeAsync(value -> runSequence(stages));
+		return stages.next().call().thenCompose(value -> runSequence(stages));
 	}
 
 	public static Stage<Void> runSequence(Iterable<? extends AsyncCallable<?>> stages) {
@@ -498,7 +498,7 @@ public final class Stages {
 		if (!stages.hasNext()) {
 			return Stage.of(collector.finisher().apply(accumulator));
 		}
-		return stages.next().call().thenComposeAsync(value -> {
+		return stages.next().call().thenCompose(value -> {
 			collector.accumulator().accept(accumulator, value);
 			return reduceSequenceImpl(stages, accumulator, collector);
 		});
@@ -564,7 +564,7 @@ public final class Stages {
 			return;
 		}
 		AsyncCallable<? extends T> callable = stages.next();
-		callable.call().whenCompleteAsync((result, throwable) -> {
+		callable.call().whenComplete((result, throwable) -> {
 			if (predicate.test(result, throwable)) {
 				cb.set(result, throwable);
 				return;

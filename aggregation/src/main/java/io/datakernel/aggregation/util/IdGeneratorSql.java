@@ -74,7 +74,7 @@ public final class IdGeneratorSql implements IdGenerator<Long>, EventloopJmxMBea
 			return Stage.of(next++);
 		}
 		return reserveId.call()
-				.thenComposeAsync($ -> createId());
+				.thenCompose($ -> createId());
 	}
 
 	@Override

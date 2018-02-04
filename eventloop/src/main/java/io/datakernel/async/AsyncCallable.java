@@ -86,7 +86,7 @@ public interface AsyncCallable<T> {
 				while (pendingCalls < maxParallelCalls && !deque.isEmpty()) {
 					SettableStage<T> settableStage = deque.pollFirst();
 					pendingCalls++;
-					actualCallable.call().whenCompleteAsync((value, throwable) -> {
+					actualCallable.call().whenComplete((value, throwable) -> {
 						pendingCalls--;
 						processQueue();
 						settableStage.set(value, throwable);
@@ -98,7 +98,7 @@ public interface AsyncCallable<T> {
 			public Stage<T> call() {
 				if (pendingCalls <= maxParallelCalls) {
 					pendingCalls++;
-					return actualCallable.call().whenCompleteAsync((value, throwable) -> {
+					return actualCallable.call().whenComplete((value, throwable) -> {
 						pendingCalls--;
 						processQueue();
 					});
@@ -120,23 +120,22 @@ public interface AsyncCallable<T> {
 	static <T> AsyncCallable<T> retry(AsyncCallable<T> actualCallable, RetryPolicy retryPolicy) {
 		return new AsyncCallable<T>() {
 			void doCall(int retryCount, long _retryTimestamp, SettableStage<T> cb) {
-				actualCallable.call()
-						.whenCompleteAsync((value, throwable) -> {
-							if (throwable == null) {
-								cb.set(value);
-							} else {
-								Eventloop eventloop = Eventloop.getCurrentEventloop();
-								long now = eventloop.currentTimeMillis();
-								long retryTimestamp = _retryTimestamp != 0 ? _retryTimestamp : now;
-								long nextRetryTimestamp = retryPolicy.nextRetryTimestamp(now, throwable, retryCount, retryTimestamp);
-								if (nextRetryTimestamp == 0) {
-									cb.setException(throwable);
-								} else {
-									eventloop.schedule(nextRetryTimestamp,
-											() -> doCall(retryCount + 1, retryTimestamp, cb));
-								}
-							}
-						});
+				actualCallable.call().whenComplete((value, throwable) -> {
+					if (throwable == null) {
+						cb.set(value);
+					} else {
+						Eventloop eventloop = Eventloop.getCurrentEventloop();
+						long now = eventloop.currentTimeMillis();
+						long retryTimestamp = _retryTimestamp != 0 ? _retryTimestamp : now;
+						long nextRetryTimestamp = retryPolicy.nextRetryTimestamp(now, throwable, retryCount, retryTimestamp);
+						if (nextRetryTimestamp == 0) {
+							cb.setException(throwable);
+						} else {
+							eventloop.schedule(nextRetryTimestamp,
+									() -> doCall(retryCount + 1, retryTimestamp, cb));
+						}
+					}
+				});
 			}
 
 			@Override
@@ -160,7 +159,7 @@ public interface AsyncCallable<T> {
 			private void tryPrefetch() {
 				for (int i = 0; i < maxSize - (deque.size() + pendingCalls); i++) {
 					pendingCalls++;
-					prefetchCallable.call().whenCompleteAsync((value, throwable) -> {
+					prefetchCallable.call().whenComplete((value, throwable) -> {
 						pendingCalls--;
 						if (throwable == null) {
 							deque.addLast(value);
@@ -194,15 +193,7 @@ public interface AsyncCallable<T> {
 		return () -> call().thenApply(function);
 	}
 
-	default <V> AsyncCallable<V> thenApplyAsync(Function<? super T, ? extends V> function) {
-		return () -> call().thenApplyAsync(function);
-	}
-
 	default AsyncCallable<T> whenComplete(BiConsumer<? super T, ? super Throwable> action) {
 		return () -> call().whenComplete(action);
-	}
-
-	default AsyncCallable<T> whenCompleteAsync(BiConsumer<? super T, ? super Throwable> action) {
-		return () -> call().whenCompleteAsync(action);
 	}
 }

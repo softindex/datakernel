@@ -78,9 +78,9 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 	public Stage<K> checkout() {
 		logger.info("Start checkout");
 		return remote.getHeads()
-				.thenComposeAsync(ks -> {
-					logger.info("Start checkout heads: {}", ks);
-					return checkout(first(ks));
+				.thenCompose(heads -> {
+					logger.info("Start checkout heads: {}", heads);
+					return checkout(first(heads));
 				})
 				.thenCompose($ -> pull());
 	}
