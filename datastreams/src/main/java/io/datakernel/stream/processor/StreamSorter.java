@@ -110,7 +110,7 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 			list.add(item);
 			if (list.size() >= itemsInMemory) {
 				list.sort(itemComparator);
-				writeToTemporaryStorage(list).thenAccept($ -> suspendOrResume());
+				writeToTemporaryStorage(list).thenRun(this::suspendOrResume);
 				suspendOrResume();
 				list = new ArrayList<>(itemsInMemory);
 			}

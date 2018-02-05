@@ -103,7 +103,7 @@ public final class RemoteFsChunkStorage implements AggregationChunkStorage, Even
 	public <T> Stage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields,
 	                                                         Class<T> recordClass, long chunkId,
 	                                                         DefiningClassLoader classLoader) {
-		return Stages.firstComplete(
+		return Stages.first(
 				() -> client.download(path(chunkId), 0).whenComplete(stageOpenR1.recordStats()),
 				() -> client.download(tempPath(chunkId), 0).whenComplete(stageOpenR2.recordStats()),
 				() -> client.download(path(chunkId), 0).whenComplete(stageOpenR3.recordStats()))

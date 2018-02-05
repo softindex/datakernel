@@ -7,6 +7,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -74,6 +75,16 @@ public interface Stage<T> {
 	<U> Stage<U> thenCompose(Function<? super T, ? extends Stage<U>> fn);
 
 	Stage<T> whenComplete(BiConsumer<? super T, ? super Throwable> action);
+
+	Stage<T> exceptionally(Function<? super Throwable, ? extends T> fn);
+
+	<U, V> Stage<V> combine(Stage<? extends U> other, BiFunction<? super T, ? super U, ? extends V> fn);
+
+	default Stage<Void> both(Stage<?> other) {
+		return combine(other, (thisResult, otherResult) -> null);
+	}
+
+	Stage<T> either(Stage<? extends T> other);
 
 	CompletableFuture<T> toCompletableFuture();
 

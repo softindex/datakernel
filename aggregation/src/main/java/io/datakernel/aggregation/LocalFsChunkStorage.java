@@ -151,7 +151,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 	public <T> Stage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields,
 	                                                         Class<T> recordClass, long chunkId,
 	                                                         DefiningClassLoader classLoader) {
-		return Stages.firstComplete(
+		return Stages.first(
 				() -> AsyncFile.openAsync(executorService, dir.resolve(chunkId + LOG), new OpenOption[]{READ}).whenComplete(stageOpenR1.recordStats()),
 				() -> AsyncFile.openAsync(executorService, dir.resolve(chunkId + TEMP_LOG), new OpenOption[]{READ}).whenComplete(stageOpenR2.recordStats()),
 				() -> AsyncFile.openAsync(executorService, dir.resolve(chunkId + LOG), new OpenOption[]{READ}).whenComplete(stageOpenR3.recordStats()))

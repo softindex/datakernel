@@ -26,7 +26,6 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import static io.datakernel.async.NextStage.combine;
 import static io.datakernel.stream.DataStreams.bind;
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
 import static io.datakernel.util.Preconditions.checkArgument;
@@ -74,7 +73,7 @@ public interface StreamProducerWithResult<T, X> extends StreamProducer<T> {
 		Stage<Void> producerEndOfStream = producer.getEndOfStream();
 		Stage<Void> consumerEndOfStream = consumer.getEndOfStream();
 		Stage<Void> endOfStream = Stages.all(producerEndOfStream, consumerEndOfStream);
-		Stage<Pair<X, Y>> result = producer.getResult().then(combine(consumer.getResult(), StreamResult.Pair::new));
+		Stage<Pair<X, Y>> result = producer.getResult().combine(consumer.getResult(), StreamResult.Pair::new);
 		return new StreamResult<X, Y>() {
 			@Override
 			public Stage<Pair<X, Y>> getResult() {

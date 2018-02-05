@@ -91,7 +91,7 @@ public final class DatagraphClient {
 
 			DatagraphCommandExecute commandExecute = new DatagraphCommandExecute(new ArrayList<>(nodes));
 			return messaging.send(commandExecute)
-					.thenAccept($ -> messaging.sendEndOfStream());
+					.thenRun(messaging::sendEndOfStream);
 		});
 	}
 }

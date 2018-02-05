@@ -4,9 +4,9 @@ import io.datakernel.eventloop.Eventloop;
 
 public interface ReduceListener<T, A, R> {
 	interface ReduceCanceller {
-		void cancel();
+		void finish();
 
-		void cancel(Throwable throwable);
+		void finishExceptionally(Throwable throwable);
 	}
 
 	void onStart(ReduceCanceller canceller, A accumulator);
@@ -14,13 +14,16 @@ public interface ReduceListener<T, A, R> {
 	default void onResult(T result, int index) {
 	}
 
-	default void onFinish(R result) {
+	default void onException(Throwable throwable, int index) {
 	}
 
-	default void onException(Throwable throwable) {
+	default void onReducerResult(R result) {
 	}
 
-	default ReduceListener<T, A, R> and(ReduceListener<T, A, R> other) {
+	default void onReducerException(Throwable throwable) {
+	}
+
+	default ReduceListener<T, A, R> combine(ReduceListener<T, A, R> other) {
 		return new ReduceListener<T, A, R>() {
 			@Override
 			public void onStart(ReduceCanceller canceller, A accumulator) {
@@ -35,15 +38,21 @@ public interface ReduceListener<T, A, R> {
 			}
 
 			@Override
-			public void onFinish(R result) {
-				ReduceListener.this.onFinish(result);
-				other.onFinish(result);
+			public void onException(Throwable throwable, int index) {
+				ReduceListener.this.onException(throwable, index);
+				other.onException(throwable, index);
 			}
 
 			@Override
-			public void onException(Throwable throwable) {
-				ReduceListener.this.onException(throwable);
-				other.onException(throwable);
+			public void onReducerResult(R result) {
+				ReduceListener.this.onReducerResult(result);
+				other.onReducerResult(result);
+			}
+
+			@Override
+			public void onReducerException(Throwable throwable) {
+				ReduceListener.this.onReducerException(throwable);
+				other.onReducerException(throwable);
 			}
 		};
 	}
@@ -67,7 +76,7 @@ public interface ReduceListener<T, A, R> {
 			@Override
 			public void onResult(T result, int index) {
 				if (--counter == 0) {
-					canceller.cancel();
+					canceller.finish();
 				}
 			}
 		};

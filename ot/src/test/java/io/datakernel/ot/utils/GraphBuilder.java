@@ -43,7 +43,7 @@ public class GraphBuilder<K, D> {
 						.whenComplete(Stages.onResult(id -> names.put(entry.getKey(), id)))
 						.thenApply(id -> singletonList(OTCommit.of(id, toDiffs(entry))))
 						.thenCompose(otRemote::push)
-						.thenAccept($ -> finished.add(entry.getKey()))
+						.thenRun(() -> finished.add(entry.getKey()))
 						.thenCompose($ -> build(otRemote, edges, names, finished)))
 				.orElse(Stage.of(null));
 	}

@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -285,13 +286,7 @@ abstract class AbstractStage<T> implements Stage<T> {
 						return;
 					}
 				}
-				stage.whenComplete((u, throwable) -> {
-					if (throwable == null) {
-						complete(u);
-					} else {
-						completeExceptionally(throwable);
-					}
-				});
+				stage.whenComplete(this::complete);
 			}
 
 			@Override
@@ -316,6 +311,120 @@ abstract class AbstractStage<T> implements Stage<T> {
 				completeExceptionally(throwable);
 			}
 		});
+	}
+
+	@Override
+	public Stage<T> exceptionally(Function<? super Throwable, ? extends T> fn) {
+		return then(new NextStage<T, T>() {
+			@Override
+			protected void onComplete(T result) {
+				complete(result);
+			}
+
+			@Override
+			protected void onCompleteExceptionally(Throwable throwable) {
+				complete(fn.apply(throwable));
+			}
+		});
+	}
+
+	private static final Object NO_RESULT = new Object();
+
+	@SuppressWarnings("unchecked")
+	private static class CombineStage<T, V, U> extends NextStage<T, V> {
+		final BiFunction<? super T, ? super U, ? extends V> fn;
+		T thisResult = (T) NO_RESULT;
+		U otherResult = (U) NO_RESULT;
+
+		CombineStage(BiFunction<? super T, ? super U, ? extends V> fn) {
+			this.fn = fn;
+		}
+
+		@Override
+		protected void onComplete(T thisResult) {
+			if (otherResult != NO_RESULT) {
+				onBothResults(thisResult, otherResult);
+			} else {
+				this.thisResult = thisResult;
+			}
+		}
+
+		protected void onOtherComplete(U otherResult) {
+			if (thisResult != NO_RESULT) {
+				onBothResults(thisResult, otherResult);
+			} else {
+				this.otherResult = otherResult;
+			}
+		}
+
+		void onBothResults(T thisResult, U otherResult) {
+			this.thisResult = null;
+			this.otherResult = null;
+			if (!isComplete()) {
+				complete(fn.apply(thisResult, otherResult));
+			}
+		}
+
+		void onAnyException(Throwable throwable) {
+			tryCompleteExceptionally(throwable);
+		}
+
+		@Override
+		protected void onCompleteExceptionally(Throwable throwable) {
+			onAnyException(throwable);
+		}
+	}
+
+	@Override
+	public <U, V> Stage<V> combine(Stage<? extends U> other, BiFunction<? super T, ? super U, ? extends V> fn) {
+		CombineStage<T, V, U> resultStage = new CombineStage<>(fn);
+		other.then(new NextStage<U, Object>() {
+			@Override
+			protected void onComplete(U result) {
+				resultStage.onOtherComplete(result);
+			}
+
+			@Override
+			protected void onCompleteExceptionally(Throwable throwable) {
+				resultStage.onAnyException(throwable);
+			}
+		});
+		return then(resultStage);
+	}
+
+	private static final class EitherStage<T> extends NextStage<T, T> {
+		int errors;
+
+		@Override
+		protected void onComplete(T result) {
+			tryComplete(result);
+		}
+
+		@Override
+		protected void onCompleteExceptionally(Throwable throwable) {
+			if (++errors == 2) {
+				completeExceptionally(throwable);
+			}
+		}
+	}
+
+	@Override
+	public Stage<T> either(Stage<? extends T> other) {
+		EitherStage<T> resultStage = new EitherStage<>();
+		other.then(new NextStage<T, Object>() {
+			@Override
+			protected void onComplete(T result) {
+				resultStage.tryComplete(result);
+			}
+
+			@Override
+			protected void onCompleteExceptionally(Throwable throwable) {
+				if (++resultStage.errors == 2) {
+					resultStage.completeExceptionally(throwable);
+				}
+			}
+		});
+		return then(resultStage);
 	}
 
 	@Override

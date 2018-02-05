@@ -140,7 +140,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 						if (size >= 0) {
 							messaging.send(new RemoteFsResponses.Ready(size))
 									.whenComplete(Stages.onError(errorSender(messaging)))
-									.thenAccept($ ->
+									.thenRun(() ->
 											fileManager.get(item.getFilePath(), item.getStartPosition())
 													.whenComplete(Stages.onError(errorSender(messaging)))
 													.thenAccept(fileReader ->

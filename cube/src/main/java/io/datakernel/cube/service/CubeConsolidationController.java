@@ -93,7 +93,6 @@ public final class CubeConsolidationController implements EventloopJmxMBeanEx {
 				.whenComplete(this::logCubeDiff)
 				.thenCompose(this::tryPushConsolidation)
 				.whenComplete(this::logResult)
-				.thenAccept($ -> {})
 				.whenComplete(stageConsolidate.recordStats());
 
 	}

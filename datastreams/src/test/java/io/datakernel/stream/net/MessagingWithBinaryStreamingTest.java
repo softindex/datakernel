@@ -307,7 +307,7 @@ public class MessagingWithBinaryStreamingTest {
 									.with(StreamBinaryDeserializer.create(longSerializer()))
 									.streamTo(consumerToList)
 									.getProducerResult()
-									.thenAccept($ -> {
+									.thenRun(() -> {
 										messaging.send("ack");
 										messaging.sendEndOfStream();
 									});

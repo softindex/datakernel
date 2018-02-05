@@ -120,7 +120,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 				partitionPredicate, storage, classLoader, chunkSize);
 
 		resultsTracker.addStage(producer.streamTo(chunker).getConsumerResult(), List::addAll)
-				.thenAccept(aggregationChunks -> suspendOrResume());
+				.thenRun(this::suspendOrResume);
 	}
 
 	private void suspendOrResume() {
