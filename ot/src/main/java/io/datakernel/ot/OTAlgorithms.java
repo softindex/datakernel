@@ -1,6 +1,8 @@
 package io.datakernel.ot;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.Callback;
+import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 import io.datakernel.eventloop.Eventloop;
@@ -37,9 +39,9 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	private final OTMergeAlgorithm<K, D> mergeAlgorithm;
 
 	private final StageStats findParent = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats findParentRecursive = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final StageStats findParentLoadCommit = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final StageStats findCut = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private final StageStats findCutRecursive = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final StageStats findCutLoadCommit = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 
 	OTAlgorithms(Eventloop eventloop, OTSystem<D> otSystem, OTRemote<K, D> source, Comparator<K> keyComparator) {
 		this.eventloop = eventloop;
@@ -166,6 +168,17 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	                                               Predicate<K> loadPredicate,
 	                                               Predicate<OTCommit<K, D>> matchPredicate,
 	                                               DiffsReducer<A, D> diffsAccumulator) {
+		SettableStage<FindResult<K, A>> cb = SettableStage.create();
+		findParentImpl(queue, visited, loadPredicate, matchPredicate, diffsAccumulator, cb);
+		return cb;
+	}
+
+	private <A> void findParentImpl(PriorityQueue<FindEntry<K, A>> queue,
+	                                Set<K> visited,
+	                                Predicate<K> loadPredicate,
+	                                Predicate<OTCommit<K, D>> matchPredicate,
+	                                DiffsReducer<A, D> diffsAccumulator,
+	                                Callback<FindResult<K, A>> cb) {
 		while (!queue.isEmpty()) {
 			FindEntry<K, A> nodeWithPath = queue.poll();
 			K node = nodeWithPath.parent;
@@ -173,29 +186,33 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 			K child = nodeWithPath.child;
 			if (!visited.add(node)) continue;
 
-			return remote.loadCommit(node).thenCompose(commit -> {
-				if (matchPredicate.test(commit)) {
-					K id = commit.getId();
-					Set<K> parentIds = commit.getParentIds();
-					return Stage.of(FindResult.of(id, child, parentIds, accumulatedDiffs));
-				} else {
+			remote.loadCommit(node)
+					.thenAccept(commit -> {
+						if (matchPredicate.test(commit)) {
+							K id = commit.getId();
+							Set<K> parentIds = commit.getParentIds();
+							cb.set(FindResult.of(id, child, parentIds, accumulatedDiffs));
+						} else {
 
-					for (Map.Entry<K, List<D>> parentEntry : commit.getParents().entrySet()) {
-						if (parentEntry.getValue() == null) continue;
+							for (Map.Entry<K, List<D>> parentEntry : commit.getParents().entrySet()) {
+								if (parentEntry.getValue() == null) continue;
 
-						K parent = parentEntry.getKey();
-						if (loadPredicate.test(parent)) {
-							A newAccumulatedDiffs = diffsAccumulator.accumulate(accumulatedDiffs, parentEntry.getValue());
-							queue.add(new FindEntry<>(parent, child, newAccumulatedDiffs));
+								K parent = parentEntry.getKey();
+								if (loadPredicate.test(parent)) {
+									A newAccumulatedDiffs = diffsAccumulator.accumulate(accumulatedDiffs, parentEntry.getValue());
+									queue.add(new FindEntry<>(parent, child, newAccumulatedDiffs));
+								}
+							}
+
+							findParentImpl(queue, visited, loadPredicate, matchPredicate, diffsAccumulator, cb);
 						}
-					}
-
-					return findParent(queue, visited, loadPredicate, matchPredicate, diffsAccumulator).whenComplete(findParentRecursive.recordStats());
-				}
-			});
+					})
+					.whenComplete(Stages.onError(cb::setException))
+					.whenComplete(findParentLoadCommit.recordStats());
+			return;
 		}
 
-		return Stage.of(FindResult.notFound());
+		cb.set(FindResult.notFound());
 	}
 
 	public Stage<K> mergeHeadsAndPush() {
@@ -232,31 +249,45 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 
 	private Stage<Set<K>> findCut(PriorityQueue<K> queue, Map<K, OTCommit<K, D>> queueMap,
 	                              Predicate<Set<OTCommit<K, D>>> matchPredicate) {
-		if (queue.isEmpty()) return Stage.of(Collections.emptySet());
+		SettableStage<Set<K>> result = SettableStage.create();
+		findCutImpl(queue, queueMap, matchPredicate, result);
+		return result;
+	}
+
+	private void findCutImpl(PriorityQueue<K> queue, Map<K, OTCommit<K, D>> queueMap,
+	                         Predicate<Set<OTCommit<K, D>>> matchPredicate,
+	                         Callback<Set<K>> cb) {
+		if (queue.isEmpty()) {
+			cb.set(Collections.emptySet());
+			return;
+		}
 
 		List<Stage<OTCommit<K, D>>> loadStages = queue.stream()
-				.filter(k -> !queueMap.containsKey(k))
-				.map(remote::loadCommit)
+				.filter(revisionId -> !queueMap.containsKey(revisionId))
+				.map(revisionId -> remote.loadCommit(revisionId)
+						.whenComplete(findCutLoadCommit.recordStats()))
 				.collect(toList());
 
-		return Stages.reduceToList(loadStages).thenCompose(otCommits -> {
-			for (OTCommit<K, D> otCommit : otCommits) {
-				queueMap.put(otCommit.getId(), otCommit);
-			}
-			assert queue.size() == queueMap.size();
-			if (matchPredicate.test(new HashSet<>(queueMap.values()))) {
-				return Stage.of(queueMap.keySet());
-			} else {
-				K node = queue.poll();
-				OTCommit<K, D> commit = queueMap.remove(node);
-				for (K parentId : commit.getParents().keySet()) {
-					if (!queue.contains(parentId)) {
-						queue.add(parentId);
+		Stages.reduceToList(loadStages)
+				.thenAccept(otCommits -> {
+					for (OTCommit<K, D> otCommit : otCommits) {
+						queueMap.put(otCommit.getId(), otCommit);
 					}
-				}
-				return findCut(queue, queueMap, matchPredicate).whenComplete(findCutRecursive.recordStats());
-			}
-		});
+					assert queue.size() == queueMap.size();
+					if (matchPredicate.test(new HashSet<>(queueMap.values()))) {
+						cb.set(queueMap.keySet());
+					} else {
+						K node = queue.poll();
+						OTCommit<K, D> commit = queueMap.remove(node);
+						for (K parentId : commit.getParents().keySet()) {
+							if (!queue.contains(parentId)) {
+								queue.add(parentId);
+							}
+						}
+						findCutImpl(queue, queueMap, matchPredicate, cb);
+					}
+				})
+				.whenComplete(Stages.onError(cb::setException));
 	}
 
 	public Stage<Optional<K>> findFirstCommonParent(Set<K> startCut) {
@@ -293,27 +324,45 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	                                                PriorityQueue<K> queue,
 	                                                Map<K, Set<K>> childrenMap,
 	                                                Predicate<Map<K, Set<K>>> matcher) {
+		SettableStage<Map<K, Set<K>>> result = SettableStage.create();
+		findCommonParentsImpl(cut, queue, childrenMap, matcher, result);
+		return result;
+	}
+
+	private void findCommonParentsImpl(Set<K> cut,
+	                                   PriorityQueue<K> queue,
+	                                   Map<K, Set<K>> childrenMap,
+	                                   Predicate<Map<K, Set<K>>> matcher,
+	                                   Callback<Map<K, Set<K>>> cb) {
 		logger.debug("search root nodes: queue {}, childrenMap {}", queue, childrenMap);
 
-		if (matcher.test(childrenMap)) return Stage.of(childrenMap);
-		if (queue.isEmpty()) return Stage.of(Collections.emptyMap());
+		if (matcher.test(childrenMap)) {
+			cb.set(childrenMap);
+			return;
+		}
+		if (queue.isEmpty()) {
+			cb.set(Collections.emptyMap());
+			return;
+		}
 
 		K node = queue.poll();
 		Set<K> nodeChildren = childrenMap.remove(node);
-		return remote.loadCommit(node).thenCompose(commit -> {
-			Set<K> parents = commit.getParentIds();
-			logger.debug("Commit: {}, parents: {}", node, parents);
-			for (K parent : parents) {
-				if (!childrenMap.containsKey(parent)) queue.add(parent);
-				Set<K> children = childrenMap.computeIfAbsent(parent, $ -> new HashSet<>());
+		remote.loadCommit(node)
+				.thenAccept(commit -> {
+					Set<K> parents = commit.getParentIds();
+					logger.debug("Commit: {}, parents: {}", node, parents);
+					for (K parent : parents) {
+						if (!childrenMap.containsKey(parent)) queue.add(parent);
+						Set<K> children = childrenMap.computeIfAbsent(parent, $ -> new HashSet<>());
 
-				if (cut.contains(parent)) children.add(parent);
-				if (cut.contains(node)) children.add(node);
-				children.addAll(nodeChildren);
-			}
+						if (cut.contains(parent)) children.add(parent);
+						if (cut.contains(node)) children.add(node);
+						children.addAll(nodeChildren);
+					}
 
-			return findCommonParents(cut, queue, childrenMap, matcher);
-		});
+					findCommonParentsImpl(cut, queue, childrenMap, matcher, cb);
+				})
+				.whenComplete(Stages.onError(cb::setException));
 	}
 
 	private static class ReduceEntry<K, A> {
@@ -353,35 +402,48 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	                                         Map<K, ReduceEntry<K, A>> queueMap,
 	                                         K commonNode,
 	                                         DiffsReducer<A, D> diffAccumulator) {
+		SettableStage<Map<K, A>> result = SettableStage.create();
+		reduceEdgesImpl(queue, queueMap, commonNode, diffAccumulator, result);
+		return result;
+	}
+
+	private <A> void reduceEdgesImpl(PriorityQueue<ReduceEntry<K, A>> queue,
+	                                 Map<K, ReduceEntry<K, A>> queueMap,
+	                                 K commonNode,
+	                                 DiffsReducer<A, D> diffAccumulator,
+	                                 Callback<Map<K, A>> cb) {
 		if (queue.isEmpty()) {
-			return Stage.ofException(new IOException());
+			cb.setException(new IOException());
+			return;
 		}
 
 		ReduceEntry<K, A> polledEntry = queue.poll();
 		queueMap.remove(polledEntry.node);
 		if (commonNode.equals(polledEntry.node)) {
-			return Stage.of(polledEntry.toChildren);
+			cb.set(polledEntry.toChildren);
+			return;
 		}
-		return remote.loadCommit(polledEntry.node).thenCompose(commit -> {
-			for (K parent : commit.getParents().keySet()) {
-				if (keyComparator.compare(parent, commonNode) < 0) continue;
-				ReduceEntry<K, A> parentEntry = queueMap.get(parent);
-				if (parentEntry == null) {
-					parentEntry = new ReduceEntry<>(parent, new HashMap<>());
-					queueMap.put(parent, parentEntry);
-					queue.add(parentEntry);
-				}
-				for (K child : polledEntry.toChildren.keySet()) {
-					A newAccumulatedDiffs = diffAccumulator.accumulate(polledEntry.toChildren.get(child), commit.getParents().get(parent));
-					A existingAccumulatedDiffs = parentEntry.toChildren.get(child);
-					A combinedAccumulatedDiffs = existingAccumulatedDiffs == null ? newAccumulatedDiffs :
-							diffAccumulator.combine(existingAccumulatedDiffs, newAccumulatedDiffs);
-					parentEntry.toChildren.put(child, combinedAccumulatedDiffs);
-				}
-			}
-			return reduceEdges(queue, queueMap, commonNode, diffAccumulator);
-		});
-
+		remote.loadCommit(polledEntry.node)
+				.thenAccept(commit -> {
+					for (K parent : commit.getParents().keySet()) {
+						if (keyComparator.compare(parent, commonNode) < 0) continue;
+						ReduceEntry<K, A> parentEntry = queueMap.get(parent);
+						if (parentEntry == null) {
+							parentEntry = new ReduceEntry<>(parent, new HashMap<>());
+							queueMap.put(parent, parentEntry);
+							queue.add(parentEntry);
+						}
+						for (K child : polledEntry.toChildren.keySet()) {
+							A newAccumulatedDiffs = diffAccumulator.accumulate(polledEntry.toChildren.get(child), commit.getParents().get(parent));
+							A existingAccumulatedDiffs = parentEntry.toChildren.get(child);
+							A combinedAccumulatedDiffs = existingAccumulatedDiffs == null ? newAccumulatedDiffs :
+									diffAccumulator.combine(existingAccumulatedDiffs, newAccumulatedDiffs);
+							parentEntry.toChildren.put(child, combinedAccumulatedDiffs);
+						}
+					}
+					reduceEdgesImpl(queue, queueMap, commonNode, diffAccumulator, cb);
+				})
+				.whenComplete(Stages.onError(cb::setException));
 	}
 
 	public Stage<List<D>> checkout(K head) {
@@ -405,8 +467,8 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	}
 
 	@JmxAttribute
-	public StageStats getFindParentRecursive() {
-		return findParentRecursive;
+	public StageStats getFindParentLoadCommit() {
+		return findParentLoadCommit;
 	}
 
 	@JmxAttribute
@@ -415,8 +477,8 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	}
 
 	@JmxAttribute
-	public StageStats getFindCutRecursive() {
-		return findCutRecursive;
+	public StageStats getFindCutLoadCommit() {
+		return findCutLoadCommit;
 	}
 
 }

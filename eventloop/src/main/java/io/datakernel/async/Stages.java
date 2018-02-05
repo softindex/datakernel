@@ -410,10 +410,27 @@ public final class Stages {
 	}
 
 	public static Stage<Void> runSequence(Iterator<? extends AsyncCallable<?>> stages) {
+		SettableStage<Void> result = new SettableStage<>();
+		runSequenceImpl(stages, result);
+		return result;
+	}
+
+	private static void runSequenceImpl(Iterator<? extends AsyncCallable<?>> stages, SettableStage<Void> cb) {
 		if (!stages.hasNext()) {
-			return Stage.of(null);
+			cb.set(null);
+			return;
 		}
-		return stages.next().call().thenCompose(value -> runSequence(stages));
+		stages.next().call().then(new NextStage<Object, Object>() {
+			@Override
+			protected void onComplete(Object result) {
+				runSequenceImpl(stages, cb);
+			}
+
+			@Override
+			protected void onCompleteExceptionally(Throwable throwable) {
+				cb.setException(throwable);
+			}
+		});
 	}
 
 	public static Stage<Void> runSequence(Iterable<? extends AsyncCallable<?>> stages) {
@@ -446,12 +463,28 @@ public final class Stages {
 
 	private static <T, A, R> Stage<R> reduceSequenceImpl(Iterator<? extends AsyncCallable<? extends T>> stages, A accumulator,
 	                                                     Collector<T, A, R> collector) {
+		SettableStage<R> result = SettableStage.create();
+		reduceSequenceImpl(stages, accumulator, collector, result);
+		return result;
+	}
+
+	private static <T, A, R> void reduceSequenceImpl(Iterator<? extends AsyncCallable<? extends T>> stages, A accumulator,
+	                                                 Collector<T, A, R> collector, Callback<R> cb) {
 		if (!stages.hasNext()) {
-			return Stage.of(collector.finisher().apply(accumulator));
+			cb.set(collector.finisher().apply(accumulator));
+			return;
 		}
-		return stages.next().call().thenCompose(value -> {
-			collector.accumulator().accept(accumulator, value);
-			return reduceSequenceImpl(stages, accumulator, collector);
+		stages.next().call().then(new NextStage<T, Object>() {
+			@Override
+			protected void onComplete(T result) {
+				collector.accumulator().accept(accumulator, result);
+				reduceSequenceImpl(stages, accumulator, collector, cb);
+			}
+
+			@Override
+			protected void onCompleteExceptionally(Throwable throwable) {
+				cb.setException(throwable);
+			}
 		});
 	}
 

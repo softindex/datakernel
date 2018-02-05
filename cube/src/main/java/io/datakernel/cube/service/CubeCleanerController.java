@@ -2,9 +2,7 @@ package io.datakernel.cube.service;
 
 import io.datakernel.aggregation.AggregationChunk;
 import io.datakernel.aggregation.LocalFsChunkStorage;
-import io.datakernel.async.AsyncCallable;
-import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
+import io.datakernel.async.*;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.*;
@@ -133,7 +131,11 @@ public final class CubeCleanerController implements EventloopJmxMBeanEx {
 			long cleanupTimestamp = eventloop.currentTimeMillis() - chunksCleanupDelay;
 
 			return remote.saveSnapshot(checkpointNode, changes)
-					.thenCompose($ -> findSnapshot(singleton(checkpointNode), extraSnapshotsCount))
+					.thenCompose($ -> {
+						SettableStage<Optional<Integer>> result = SettableStage.create();
+						findSnapshot(singleton(checkpointNode), extraSnapshotsCount, result);
+						return result;
+					})
 					.thenCompose(lastSnapshot -> lastSnapshot.isPresent() ?
 							remote.loadCommit(checkpointNode)
 									.thenCompose(commit ->
@@ -145,13 +147,14 @@ public final class CubeCleanerController implements EventloopJmxMBeanEx {
 		});
 	}
 
-	Stage<Optional<Integer>> findSnapshot(Set<Integer> heads, int skipSnapshots) {
-		return algorithms.findParent(heads, DiffsReducer.toVoid(), OTCommit::isSnapshot, null)
-				.thenCompose(findResult -> {
-					if (!findResult.isFound()) return Stage.of(Optional.empty());
-					if (skipSnapshots <= 0) return Stage.of(Optional.of(findResult.getCommit()));
-					return findSnapshot(findResult.getCommitParents(), skipSnapshots - 1);
-				});
+	void findSnapshot(Set<Integer> heads, int skipSnapshots, Callback<Optional<Integer>> cb) {
+		algorithms.findParent(heads, DiffsReducer.toVoid(), OTCommit::isSnapshot, null)
+				.thenAccept(findResult -> {
+					if (!findResult.isFound()) cb.set(Optional.empty());
+					else if (skipSnapshots <= 0) cb.set(Optional.of(findResult.getCommit()));
+					else findSnapshot(findResult.getCommitParents(), skipSnapshots - 1, cb);
+				})
+				.whenComplete(Stages.onError(cb::setException));
 	}
 
 	private Stage<Void> notEnoughSnapshots() {
