@@ -148,7 +148,8 @@ public final class RemoteFsChunkStorage implements AggregationChunkStorage, Even
 
 	@Override
 	public Stage<Void> finish(Set<Long> chunkIds) {
-		return client.move(chunkIds.stream().collect(toMap(this::tempPath, this::path))).whenComplete(stageFinishChunks.recordStats());
+		return client.move(chunkIds.stream().collect(toMap(this::tempPath, this::path)))
+				.whenComplete(stageFinishChunks.recordStats());
 	}
 
 	@Override

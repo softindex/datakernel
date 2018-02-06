@@ -323,8 +323,9 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		} else {
 			Class<? extends Annotation> annotationType = annotation.annotationType();
 			Method[] annotationElements = filterNonEmptyElements(annotation);
+			name += "type=" + rawType.getSimpleName() + ",";
 			if (annotationElements.length == 0) { // annotation without elements
-				name += "type=" + rawType.getSimpleName() + ",annotation=" + annotationType.getSimpleName();
+				name += "annotation=" + annotationType.getSimpleName();
 			} else if (annotationElements.length == 1 && annotationElements[0].getName().equals("value")) {
 				// annotation with single element which has name "value"
 				Object value = fetchAnnotationElementValue(annotation, annotationElements[0]);

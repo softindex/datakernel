@@ -85,7 +85,7 @@ public class JmxRegistryTest {
 			allowing(mbeanFactory).createFor(with(asList(service)), with(any(MBeanSettings.class)), with(true));
 			will(returnValue(dynamicMBean));
 
-			oneOf(mBeanServer).registerMBean(with(dynamicMBean), with(objectname(domain + ":Group=major")));
+			oneOf(mBeanServer).registerMBean(with(dynamicMBean), with(objectname(domain + ":type=ServiceStub,Group=major")));
 		}});
 
 		Group groupAnnotation = createGroupAnnotation("major");
@@ -103,7 +103,7 @@ public class JmxRegistryTest {
 			will(returnValue(dynamicMBean));
 
 			oneOf(mBeanServer).registerMBean(
-					with(dynamicMBean), with(objectname(domain + ":threadId=1,threadName=thread-one")));
+					with(dynamicMBean), with(objectname(domain + ":type=ServiceStub,threadId=1,threadName=thread-one")));
 		}});
 
 		ComplexAnnotation complexAnnotation = createComplexAnnotation(1, "thread-one");

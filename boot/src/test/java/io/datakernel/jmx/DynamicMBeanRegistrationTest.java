@@ -45,7 +45,7 @@ public class DynamicMBeanRegistrationTest {
 
 		context.checking(new Expectations() {{
 			oneOf(mBeanServer).registerMBean(with(service),
-					with(objectname(domain + ":CustomAnnotation=Global"))
+					with(objectname(domain + ":type=CustomKeyClass,CustomAnnotation=Global"))
 			);
 		}});
 
