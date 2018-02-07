@@ -20,10 +20,13 @@ import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
+import java.util.function.Function;
 
 public final class MBeanFormat {
 	private static final char SPLITTER_LN = '\n';
@@ -82,17 +85,26 @@ public final class MBeanFormat {
 		return formatHours(period);
 	}
 
-	public static String formatPeriodAgo(long timestamp) {
-		if (timestamp == 0)
-			return "Never";
-		return formatHours(System.currentTimeMillis() - timestamp) + " ago";
+	private static Function<Long, String> dateTimeFormatter = timestamp ->
+			LocalDateTime.ofInstant(Instant.ofEpochMilli(timestamp), ZoneOffset.UTC)
+					.format(DateTimeFormatter.ISO_DATE_TIME)
+					.replace('T', ' ');
+
+	public static void setTimestampFormat(Function<Long, String> dateTimeFormatter) {
+		MBeanFormat.dateTimeFormatter = dateTimeFormatter;
 	}
 
-	public static String formatDateTime(long timestamp) {
+	public static String formatPeriodAgo(long timestamp) {
 		if (timestamp == 0)
-			return null;
-		SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-		return dateFormat.format(new Date(timestamp));
+			return "";
+		return dateTimeFormatter.apply(timestamp) +
+				" (" + formatHours(System.currentTimeMillis() - timestamp) + " ago)";
+	}
+
+	public static String formatTimestamp(long timestamp) {
+		if (timestamp == 0)
+			return "";
+		return dateTimeFormatter.apply(timestamp);
 	}
 
 	public static String[] formatMultilines(String s) {

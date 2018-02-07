@@ -18,6 +18,7 @@ package io.datakernel.jmx;
 
 import com.google.inject.*;
 import com.google.inject.matcher.AbstractMatcher;
+import com.google.inject.name.Names;
 import com.google.inject.spi.BindingScopingVisitor;
 import com.google.inject.spi.ProvisionListener;
 import io.datakernel.worker.WorkerPoolModule;
@@ -41,14 +42,18 @@ public final class JmxModule extends AbstractModule {
 
 	private final Map<Key<?>, MBeanSettings> keyToSettings = new HashMap<>();
 	private final Map<Type, MBeanSettings> typeToSettings = new HashMap<>();
+	private final Map<Key<?>, String> keyToObjectNames = new HashMap<>();
 
 	private double refreshPeriod = REFRESH_PERIOD_DEFAULT;
 	private int maxJmxRefreshesPerOneCycle = MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT;
-	private final Map<Type, String> globalMBeans = new HashMap<>();
+	private final Map<Type, Key<?>> globalMBeans = new HashMap<>();
 
-	private JmxModule() {}
+	private JmxModule() {
+	}
 
-	public static JmxModule create() {return new JmxModule();}
+	public static JmxModule create() {
+		return new JmxModule();
+	}
 
 	public JmxModule withRefreshPeriod(double refreshPeriod) {
 		checkArgument(refreshPeriod > 0.0);
@@ -99,11 +104,23 @@ public final class JmxModule extends AbstractModule {
 		return withHistogram(Key.get(clazz), attrName, histogramLevels);
 	}
 
-	public JmxModule withGlobalMBean(Type type, String name) {
-		checkArgument(!globalMBeans.containsKey(type), "GlobalMBean for \"%s\" was already specified", type);
+	public JmxModule withGlobalMBean(Type type, String named) {
+		return withGlobalMBean(type, Key.get(type, Names.named(named)));
+	}
 
-		globalMBeans.put(type, name);
+	public JmxModule withGlobalMBean(Type type, Key<?> key) {
+		checkArgument(!globalMBeans.containsKey(type), "GlobalMBean for \"%s\" was already specified", type);
+		globalMBeans.put(type, key);
 		return this;
+	}
+
+	public JmxModule withObjectName(Key<?> key, String objectName) {
+		this.keyToObjectNames.put(key, objectName);
+		return this;
+	}
+
+	public JmxModule withObjectName(Type type, String objectName) {
+		return withObjectName(Key.get(type), objectName);
 	}
 
 	private MBeanSettings ensureSettings(Key<?> key) {
@@ -196,9 +213,6 @@ public final class JmxModule extends AbstractModule {
 	@Provides
 	@Singleton
 	JmxRegistry jmxRegistry(DynamicMBeanFactory mbeanFactory) {
-		return JmxRegistry.create(
-				ManagementFactory.getPlatformMBeanServer(),
-				mbeanFactory
-		).withRefreshPeriod(refreshPeriod);
+		return JmxRegistry.create(ManagementFactory.getPlatformMBeanServer(), mbeanFactory, keyToObjectNames);
 	}
 }

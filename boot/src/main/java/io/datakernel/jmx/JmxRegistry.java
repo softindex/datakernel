@@ -25,10 +25,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.String.format;
@@ -42,26 +39,25 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 
 	private final MBeanServer mbs;
 	private final DynamicMBeanFactory mbeanFactory;
+	private final Map<Key<?>, String> keyToObjectNames;
 
 	// jmx
 	private int registeredSingletons;
 	private int registeredPools;
 	private int totallyRegisteredMBeans;
-	private double refreshPeriod;
 
-	private JmxRegistry(MBeanServer mbs, DynamicMBeanFactory mbeanFactory) {
+	private JmxRegistry(MBeanServer mbs, DynamicMBeanFactory mbeanFactory, Map<Key<?>, String> keyToObjectNames) {
 		this.mbs = checkNotNull(mbs);
 		this.mbeanFactory = checkNotNull(mbeanFactory);
-		this.refreshPeriod = 0.0;
+		this.keyToObjectNames = keyToObjectNames;
 	}
 
 	public static JmxRegistry create(MBeanServer mbs, DynamicMBeanFactory mbeanFactory) {
-		return new JmxRegistry(mbs, mbeanFactory);
+		return new JmxRegistry(mbs, mbeanFactory, Collections.emptyMap());
 	}
 
-	public JmxRegistry withRefreshPeriod(double refreshPeriod) {
-		this.refreshPeriod = refreshPeriod;
-		return this;
+	public static JmxRegistry create(MBeanServer mbs, DynamicMBeanFactory mbeanFactory, Map<Key<?>, String> keyToObjectNames) {
+		return new JmxRegistry(mbs, mbeanFactory, keyToObjectNames);
 	}
 
 	public void registerSingleton(Key<?> key, Object singletonInstance, MBeanSettings settings) {
@@ -288,7 +284,6 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		ObjectName objectName;
 		try {
 			objectName = new ObjectName(workerName);
-			;
 		} catch (MalformedObjectNameException e) {
 			String msg = format("Cannot create ObjectName for worker of pool of instances with key %s. " +
 					"Proposed String name was \"%s\".", key.toString(), workerName);
@@ -313,7 +308,9 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		return commonName + format(",workerId=worker-%d", workerId);
 	}
 
-	private static String createNameForKey(Key<?> key) throws ReflectiveOperationException {
+	private String createNameForKey(Key<?> key) throws ReflectiveOperationException {
+		if (keyToObjectNames.containsKey(key))
+			return keyToObjectNames.get(key);
 		Class<?> rawType = key.getTypeLiteral().getRawType();
 		Annotation annotation = key.getAnnotation();
 		String domain = rawType.getPackage().getName();
