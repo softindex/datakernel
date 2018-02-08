@@ -102,14 +102,14 @@ public final class ByteBufPool {
 	}
 
 	public static ByteBuf ensureTailRemaining(ByteBuf buf, int newTailRemaining) {
-		assert !(buf instanceof ByteBuf.ByteBufSlice);
-		if (buf.writeRemaining() >= newTailRemaining) {
-			return buf;
-		} else {
+		if (newTailRemaining == 0) return buf;
+		if (buf.writeRemaining() < newTailRemaining || buf instanceof ByteBuf.ByteBufSlice) {
 			ByteBuf newBuf = allocate(newTailRemaining + buf.readRemaining());
 			newBuf.put(buf);
 			buf.recycle();
 			return newBuf;
+		} else {
+			return buf;
 		}
 	}
 
