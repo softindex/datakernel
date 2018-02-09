@@ -159,7 +159,7 @@ public class CubeTest {
 		AggregationChunkStorage chunkStorage = RemoteFsChunkStorage.create(eventloop, new IdGeneratorStub(), new InetSocketAddress("localhost", LISTEN_PORT));
 		Cube cube = newCube(eventloop, newCachedThreadPool(), classLoader, chunkStorage);
 
-		List<Stage<Void>> tasks = new ArrayList<>();
+		List<Stage<?>> tasks = new ArrayList<>();
 		{
 			StreamProducer<DataItem1> producer = StreamProducer.of(
 					new DataItem1(1, 2, 10, 20),

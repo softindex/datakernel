@@ -71,10 +71,10 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 						messaging.close();
 					}
 				})
-				.whenComplete(Stages.onError(e -> {
+				.whenException(e -> {
 					logger.error("received error while reading", e);
 					messaging.close();
-				}));
+				});
 		return messaging;
 	}
 
@@ -112,14 +112,14 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 					.thenAccept(fileWriter -> messaging.receiveBinaryStream()
 							.streamTo(
 									fileWriter
-											.whenComplete(Stages.onResult(() -> {
+											.thenRun(() -> {
 												logger.trace("read all bytes for {}", item.getFilePath());
 												messaging.send(new RemoteFsResponses.Acknowledge());
 												messaging.sendEndOfStream();
-											})))
+											}))
 							.getResult()
-							.whenComplete(Stages.onError(messaging::close)))
-					.whenComplete(Stages.onError(messaging::close));
+							.whenException(throwable -> messaging.close()))
+					.whenException(throwable -> messaging.close());
 		}
 	}
 
@@ -135,14 +135,14 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 		@Override
 		public void onMessage(Messaging<Download, FsResponse> messaging, Download item) {
 			fileManager.size(item.getFilePath())
-					.whenComplete(Stages.onError(errorSender(messaging)))
+					.whenException(errorSender(messaging))
 					.thenAccept(size -> {
 						if (size >= 0) {
 							messaging.send(new RemoteFsResponses.Ready(size))
-									.whenComplete(Stages.onError(errorSender(messaging)))
+									.whenException(errorSender(messaging))
 									.thenRun(() ->
 											fileManager.get(item.getFilePath(), item.getStartPosition())
-													.whenComplete(Stages.onError(errorSender(messaging)))
+													.whenException(errorSender(messaging))
 													.thenAccept(fileReader ->
 															fileReader.streamTo(messaging.sendBinaryStream())
 																	.getResult()

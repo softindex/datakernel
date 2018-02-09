@@ -207,7 +207,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 							findParentImpl(queue, visited, loadPredicate, matchPredicate, diffsAccumulator, cb);
 						}
 					})
-					.whenComplete(Stages.onError(cb::setException))
+					.whenException(cb::setException)
 					.whenComplete(findParentLoadCommit.recordStats());
 			return;
 		}
@@ -287,7 +287,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 						findCutImpl(queue, queueMap, matchPredicate, cb);
 					}
 				})
-				.whenComplete(Stages.onError(cb::setException));
+				.whenException(cb::setException);
 	}
 
 	public Stage<Optional<K>> findFirstCommonParent(Set<K> startCut) {
@@ -362,7 +362,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 
 					findCommonParentsImpl(cut, queue, childrenMap, matcher, cb);
 				})
-				.whenComplete(Stages.onError(cb::setException));
+				.whenException(cb::setException);
 	}
 
 	private static class ReduceEntry<K, A> {
@@ -443,7 +443,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 					}
 					reduceEdgesImpl(queue, queueMap, commonNode, diffAccumulator, cb);
 				})
-				.whenComplete(Stages.onError(cb::setException));
+				.whenException(cb::setException);
 	}
 
 	public Stage<List<D>> checkout(K head) {

@@ -115,7 +115,7 @@ public final class CubeLogProcessorController implements EventloopJmxMBeanEx {
 
 					return stage
 							.whenComplete(stageProcessLogsImpl.recordStats())
-							.whenComplete(Stages.onResult(this::cubeDiffJmx))
+							.thenAccept(this::cubeDiffJmx)
 							.thenCompose(diffs -> {
 								stateManager.add(otSystem.squash(diffs));
 

@@ -16,7 +16,6 @@
 
 package io.datakernel.datagraph.server;
 
-import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.graph.TaskContext;
@@ -143,10 +142,10 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 						messaging.close();
 					}
 				})
-				.whenComplete(Stages.onError(e -> {
+				.whenException(e -> {
 					logger.error("received error while trying to read", e);
 					messaging.close();
-				}));
+				});
 		return messaging;
 	}
 

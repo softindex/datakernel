@@ -200,12 +200,12 @@ abstract class AbstractStage<T> implements Stage<T> {
 	}
 
 	@Override
-	public Stage<Void> thenAccept(Consumer<? super T> action) {
-		return then(new NextStage<T, Void>() {
+	public Stage<T> thenAccept(Consumer<? super T> action) {
+		return then(new NextStage<T, T>() {
 			@Override
-			protected void onComplete(T result1) {
-				action.accept(result1);
-				complete(null);
+			protected void onComplete(T result) {
+				action.accept(result);
+				complete(result);
 			}
 
 			@Override
@@ -216,12 +216,12 @@ abstract class AbstractStage<T> implements Stage<T> {
 	}
 
 	@Override
-	public Stage<Void> thenRun(Runnable action) {
-		return then(new NextStage<T, Void>() {
+	public Stage<T> thenRun(Runnable action) {
+		return then(new NextStage<T, T>() {
 			@Override
-			protected void onComplete(T result1) {
+			protected void onComplete(T result) {
 				action.run();
-				complete(null);
+				complete(result);
 			}
 
 			@Override

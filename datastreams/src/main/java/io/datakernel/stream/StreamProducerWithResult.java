@@ -151,4 +151,11 @@ public interface StreamProducerWithResult<T, X> extends StreamProducer<T> {
 		return this;
 	}
 
+	default StreamProducerWithResult<T, X> whenException(Consumer<? super Throwable> consumer) {
+		return whenComplete((x, throwable) -> {
+			if (throwable != null) consumer.accept(throwable);
+		});
+	}
+
+
 }

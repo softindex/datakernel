@@ -16,7 +16,6 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.NextStage;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
@@ -83,7 +82,7 @@ public final class StreamProducers {
 		@Override
 		public void setConsumer(StreamConsumer<T> consumer) {
 			consumer.getEndOfStream()
-					.then(NextStage.onError(endOfStream::setException));
+					.whenException(endOfStream::setException);
 		}
 
 		@Override
@@ -248,7 +247,7 @@ public final class StreamProducers {
 
 			{
 				producer.getEndOfStream()
-						.then(NextStage.onError(endOfStream::setException));
+						.whenException(endOfStream::setException);
 			}
 
 			@Override

@@ -88,6 +88,12 @@ public interface StreamConsumerWithResult<T, X> extends StreamConsumer<T> {
 		return this;
 	}
 
+	default StreamConsumerWithResult<T, X> whenException(Consumer<? super Throwable> consumer) {
+		return whenComplete((x, throwable) -> {
+			if (throwable != null) consumer.accept(throwable);
+		});
+	}
+
 	/**
 	 * Returns {@link StreamConsumerToList} which saves received items in empty list
 	 *

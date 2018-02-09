@@ -3,7 +3,6 @@ package io.datakernel.ot;
 import io.datakernel.async.Callback;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
 import io.datakernel.ot.OTLoadedGraph.MergeNode;
 import io.datakernel.ot.exceptions.OTException;
 import org.slf4j.Logger;
@@ -135,13 +134,13 @@ final class OTMergeAlgorithm<K, D> {
 		doLoadGraph(graph, queue, new HashSet<>(), head2roots, root2heads, cb);
 
 		return cb.thenApply($ -> graph)
-				.whenComplete(Stages.onError(throwable -> {
+				.whenException(throwable -> {
 					if (logger.isTraceEnabled()) {
 						logger.error("loading error " + heads + "\n" + graph.toGraphViz() + "\n", throwable);
 					} else {
 						logger.error("loading error " + heads, throwable);
 					}
-				}));
+				});
 	}
 
 	private void doLoadGraph(OTLoadedGraph<K, D> graph, PriorityQueue<K> queue,
@@ -190,7 +189,7 @@ final class OTMergeAlgorithm<K, D> {
 							doLoadGraph(graph, queue, visited, head2roots, root2heads, cb);
 						}
 					})
-					.whenComplete(Stages.onError(cb::setException));
+					.whenException(cb::setException);
 			return;
 		}
 		cb.setException(new OTException("Incomplete graph"));

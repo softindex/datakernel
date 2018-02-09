@@ -71,13 +71,27 @@ public interface Stage<T> {
 
 	<U> Stage<U> thenApply(Function<? super T, ? extends U> fn);
 
-	Stage<Void> thenAccept(Consumer<? super T> action);
+	default Stage<T> thenAccept(Consumer<? super T> action) {
+		return whenComplete((result, throwable) -> {
+			if (throwable == null) action.accept(result);
+		});
+	}
 
-	Stage<Void> thenRun(Runnable action);
+	default Stage<T> thenRun(Runnable action) {
+		return whenComplete((result, throwable) -> {
+			if (throwable == null) action.run();
+		});
+	}
 
 	<U> Stage<U> thenCompose(Function<? super T, ? extends Stage<U>> fn);
 
 	Stage<T> whenComplete(BiConsumer<? super T, ? super Throwable> action);
+
+	default Stage<T> whenException(Consumer<? super Throwable> action) {
+		return whenComplete((result, throwable) -> {
+			if (throwable != null) action.accept(throwable);
+		});
+	}
 
 	Stage<T> exceptionally(Function<? super Throwable, ? extends T> fn);
 

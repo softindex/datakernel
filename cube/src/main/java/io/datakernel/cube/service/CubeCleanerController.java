@@ -2,7 +2,10 @@ package io.datakernel.cube.service;
 
 import io.datakernel.aggregation.AggregationChunk;
 import io.datakernel.aggregation.LocalFsChunkStorage;
-import io.datakernel.async.*;
+import io.datakernel.async.AsyncCallable;
+import io.datakernel.async.Callback;
+import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stage;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.*;
@@ -121,7 +124,7 @@ public final class CubeCleanerController implements EventloopJmxMBeanEx {
 
 	Stage<Optional<Set<Integer>>> findBottomNodes(Set<Integer> parentCandidates) {
 		return algorithms.findCommonParents(parentCandidates)
-				.whenComplete(Stages.onResult(rootNodes -> logger.info("Root nodes: {}", rootNodes)))
+				.thenAccept(rootNodes -> logger.info("Root nodes: {}", rootNodes))
 				.thenApply(rootNodes -> rootNodes.isEmpty() ? Optional.empty() : Optional.of(rootNodes));
 	}
 
@@ -154,7 +157,7 @@ public final class CubeCleanerController implements EventloopJmxMBeanEx {
 					else if (skipSnapshots <= 0) cb.set(Optional.of(findResult.getCommit()));
 					else findSnapshot(findResult.getCommitParents(), skipSnapshots - 1, cb);
 				})
-				.whenComplete(Stages.onError(cb::setException));
+				.whenException(cb::setException);
 	}
 
 	private Stage<Void> notEnoughSnapshots() {
@@ -184,7 +187,7 @@ public final class CubeCleanerController implements EventloopJmxMBeanEx {
 
 	private Stage<Void> checkRequiredChunks(Set<Long> requiredChunks) {
 		return chunksStorage.list(s -> true, timestamp -> true)
-				.whenComplete(Stages.onResult(chunks -> chunksCount.recordValue(chunks.size())))
+				.thenAccept(actualChunks -> chunksCount.recordValue(actualChunks.size()))
 				.thenCompose(actualChunks -> actualChunks.containsAll(requiredChunks) ?
 						Stage.of((Void) null) :
 						Stage.ofException(new IllegalStateException("Missed chunks from storage: " +

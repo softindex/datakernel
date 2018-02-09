@@ -16,7 +16,6 @@
 
 package io.datakernel.stream.net;
 
-import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
@@ -95,7 +94,7 @@ public class MessagingWithBinaryStreamingTest {
 								messaging.close();
 							}
 						})
-						.whenComplete(Stages.onError(e -> messaging.close()));
+						.whenException(e -> messaging.close());
 			}
 
 		};
@@ -122,7 +121,7 @@ public class MessagingWithBinaryStreamingTest {
 								// empty
 							}
 						})
-						.whenComplete(Stages.onError(e -> messaging.close()));
+						.whenException(e -> messaging.close());
 			}
 
 			@Override

@@ -57,7 +57,8 @@ public final class IdGeneratorSql implements IdGenerator<Long>, EventloopJmxMBea
 				.thenAccept(next -> {
 					this.next = next;
 					this.limit = next + finalStride;
-				});
+				})
+				.thenApply($ -> null);
 	}
 
 	private long getAndAdd(int stride) throws SQLException {

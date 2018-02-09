@@ -17,7 +17,6 @@
 package io.datakernel.stream;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.NextStage;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
@@ -68,8 +67,8 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		this.producer = producer;
 		onWired();
 		producer.getEndOfStream()
-				.then(NextStage.onResult(this::endOfStream))
-				.then(NextStage.onError(this::closeWithError));
+				.thenRun(this::endOfStream)
+				.whenException(this::closeWithError);
 	}
 
 	protected void onWired() {

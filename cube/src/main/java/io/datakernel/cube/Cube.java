@@ -691,16 +691,18 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializer<Cube>, 
 		logger.info("Launching consolidation");
 
 		Map<String, AggregationDiff> map = new HashMap<>();
-		List<AsyncCallable<Void>> runnables = new ArrayList<>();
+		List<AsyncCallable<?>> runnables = new ArrayList<>();
 
 		aggregations.forEach((aggregationId, aggregationContainer) -> {
 			Aggregation aggregation = aggregationContainer.aggregation;
 
-			runnables.add(() -> strategy.apply(aggregation).thenAccept(aggregationDiff -> {
-				if (!aggregationDiff.isEmpty()) {
-					map.put(aggregationId, aggregationDiff);
-				}
-			}));
+			runnables.add((AsyncCallable<AggregationDiff>) () ->
+					strategy.apply(aggregation)
+							.thenAccept(aggregationDiff -> {
+								if (!aggregationDiff.isEmpty()) {
+									map.put(aggregationId, aggregationDiff);
+								}
+							}));
 		});
 
 		return Stages.runSequence(runnables).thenApply($ -> CubeDiff.of(map));

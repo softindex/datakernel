@@ -18,7 +18,6 @@ package io.datakernel.remotefs;
 
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
@@ -100,7 +99,7 @@ public final class RemoteFsClient implements IRemoteFsClient {
 						}
 						return Stage.ofException(new RemoteFsException("Unexpected end of stream for: " + fileName));
 					}))
-					.whenComplete(Stages.onError(messaging::close))
+					.whenException(throwable -> messaging.close())
 					.withLateBinding();
 		});
 	}
@@ -126,7 +125,7 @@ public final class RemoteFsClient implements IRemoteFsClient {
 														", expected: " + (size - startPosition) + " actual: " + stats.getTotalSize()));
 											}
 										})
-										.whenComplete(Stages.onError(messaging::close))
+										.whenException(throwable -> messaging.close())
 										.withLateBinding());
 							}
 							if (msg instanceof RemoteFsResponses.Err) {
@@ -138,7 +137,7 @@ public final class RemoteFsClient implements IRemoteFsClient {
 							logger.warn("received unexpected end of stream");
 							return Stage.ofException(new RemoteFsException("Unexpected end of stream for: " + fileName));
 						}))
-						.whenComplete(Stages.onError(messaging::close))
+						.whenException(throwable -> messaging.close())
 		);
 	}
 
@@ -169,11 +168,10 @@ public final class RemoteFsClient implements IRemoteFsClient {
 									ack.setException(new RemoteFsException("Unexpected end of stream for: " + fileName));
 								}
 							})
-							.whenComplete(Stages.onError(e -> {
-										messaging.close();
-										ack.setException(e);
-									}
-							));
+							.whenException(e -> {
+								messaging.close();
+								ack.setException(e);
+							});
 				} else {
 					messaging.close();
 					ack.setException(throwable);
@@ -210,10 +208,10 @@ public final class RemoteFsClient implements IRemoteFsClient {
 									ack.setException(new RemoteFsException("Unexpected end of stream while trying to list files"));
 								}
 							})
-							.whenComplete(Stages.onError(e -> {
+							.whenException(e -> {
 								messaging.close();
 								ack.setException(e);
-							}));
+							});
 				} else {
 					messaging.close();
 					ack.setException(throwable);
@@ -250,10 +248,10 @@ public final class RemoteFsClient implements IRemoteFsClient {
 									ack.setException(new RemoteFsException("Unexpected end of stream for: " + changes));
 								}
 							})
-							.whenComplete(Stages.onError(e -> {
+							.whenException(e -> {
 								messaging.close();
 								ack.setException(e);
-							}));
+							});
 				} else {
 					messaging.close();
 					ack.setException(throwable);
