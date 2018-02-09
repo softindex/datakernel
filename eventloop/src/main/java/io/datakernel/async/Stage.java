@@ -49,7 +49,7 @@ public interface Stage<T> {
 
 	@FunctionalInterface
 	interface Handler<T, U> {
-		interface StageCallback<T> extends BiConsumer<T, Throwable> {
+		interface StageCallback<T> {
 			void complete(T result);
 
 			void completeExceptionally(Throwable t);
@@ -64,7 +64,10 @@ public interface Stage<T> {
 
 	<U> Stage<U> handleAsync(Handler<? super T, U> handler, Executor executor);
 
-	<U> Stage<U> then(NextStage<? super T, ? extends U> stage);
+	default <U, S extends BiConsumer<? super T, ? super Throwable> & Stage<U>> Stage<U> then(S stage) {
+		whenComplete(stage);
+		return stage;
+	}
 
 	<U> Stage<U> thenApply(Function<? super T, ? extends U> fn);
 

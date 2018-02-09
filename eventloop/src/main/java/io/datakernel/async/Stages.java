@@ -67,10 +67,10 @@ public final class Stages {
 		};
 	}
 
-	private static final class AllStage<T> extends NextStage<T, Void> {
+	private static final class StageAll<T> extends NextStage<T, Void> {
 		int countdown;
 
-		public AllStage(int countdown) {
+		public StageAll(int countdown) {
 			this.countdown = countdown;
 		}
 
@@ -92,24 +92,20 @@ public final class Stages {
 		if (size == 0) return Stage.of(null);
 		if (size == 1) return stages.get(0).then(NextStage.toVoid());
 		if (size == 2) return stages.get(0).both(stages.get(1));
-		AllStage<Object> allStage = new AllStage<>(stages.size());
-		stages.get(0).then(allStage);
+		StageAll<Object> resultStage = new StageAll<>(stages.size());
+		stages.get(0).then(resultStage);
 		for (int i = 1; i < size; i++) {
-			stages.get(i).then(new NextStage<Object, Object>() {
-				@Override
-				protected void onComplete(Object result) {
-					if (--allStage.countdown == 0) {
-						allStage.complete(null);
+			stages.get(i).whenComplete((result, throwable) -> {
+				if (throwable == null) {
+					if (--resultStage.countdown == 0) {
+						resultStage.complete(null);
 					}
-				}
-
-				@Override
-				protected void onCompleteExceptionally(Throwable throwable) {
-					allStage.tryCompleteExceptionally(throwable);
+				} else {
+					resultStage.tryCompleteExceptionally(throwable);
 				}
 			});
 		}
-		return allStage;
+		return resultStage;
 	}
 
 	public static Stage<Void> all(Stream<? extends Stage<Void>> stages) {
@@ -128,10 +124,10 @@ public final class Stages {
 		return stage.then(NextStage.toVoid());
 	}
 
-	private static final class AnyStage<T> extends NextStage<T, T> {
+	private static final class StageAny<T> extends NextStage<T, T> {
 		int errors;
 
-		AnyStage(int errors) {
+		StageAny(int errors) {
 			this.errors = errors;
 		}
 
@@ -154,17 +150,13 @@ public final class Stages {
 		checkArgument(size != 0);
 		if (size == 1) return (Stage<T>) stages.get(0);
 		if (size == 2) return ((Stage<T>) stages.get(0)).either(stages.get(1));
-		AnyStage<T> resultStage = new AnyStage<>(size);
+		StageAny<T> resultStage = new StageAny<>(size);
 		stages.get(0).then(resultStage);
 		for (int i = 1; i < size; i++) {
-			stages.get(i).then(new NextStage<T, Object>() {
-				@Override
-				protected void onComplete(T value) {
-					resultStage.tryComplete(value);
-				}
-
-				@Override
-				protected void onCompleteExceptionally(Throwable throwable) {
+			stages.get(i).whenComplete((result, throwable) -> {
+				if (throwable == null) {
+					resultStage.tryComplete(result);
+				} else {
 					if (--resultStage.errors == 0) {
 						resultStage.completeExceptionally(throwable);
 					}
@@ -189,12 +181,12 @@ public final class Stages {
 		return (Stage<T>) stage;
 	}
 
-	private static final class ReduceStage<T, A, R> extends NextStage<T, R> {
+	private static final class StageReduce<T, A, R> extends NextStage<T, R> {
 		final IndexedCollector<T, A, R> reducer;
-		final A accumulator;
+		A accumulator;
 		int stages;
 
-		private ReduceStage(IndexedCollector<T, A, R> reducer, A accumulator, int stages) {
+		private StageReduce(IndexedCollector<T, A, R> reducer, A accumulator, int stages) {
 			this.reducer = reducer;
 			this.accumulator = accumulator;
 			this.stages = stages;
@@ -204,7 +196,9 @@ public final class Stages {
 			if (isComplete()) return;
 			reducer.accumulate(accumulator, i, result);
 			if (--stages == 0) {
-				complete(reducer.finish(accumulator));
+				R reducerResult = reducer.finish(accumulator);
+				accumulator = null;
+				complete(reducerResult);
 			}
 		}
 
@@ -227,19 +221,15 @@ public final class Stages {
 		if (size == 2) return stages.get(0).combine(stages.get(1), collector::resultOf);
 
 		A accumulator = collector.accumulator(size);
-		ReduceStage<T, A, R> resultStage = new ReduceStage<>(collector, accumulator, size);
+		StageReduce<T, A, R> resultStage = new StageReduce<>(collector, accumulator, size);
 		stages.get(0).then(resultStage);
 
 		for (int i = 1; i < size; i++) {
-			int finalI = i;
-			stages.get(i).then(new NextStage<T, Object>() {
-				@Override
-				protected void onComplete(T result) {
-					resultStage.processComplete(result, finalI);
-				}
-
-				@Override
-				protected void onCompleteExceptionally(Throwable throwable) {
+			int index = i;
+			stages.get(i).whenComplete((result, throwable) -> {
+				if (throwable == null) {
+					resultStage.processComplete(result, index);
+				} else {
 					resultStage.tryCompleteExceptionally(throwable);
 				}
 			});
@@ -276,13 +266,13 @@ public final class Stages {
 		}
 	}
 
-	private static final class ReduceStageEx<T, A, R> extends NextStage<T, R> implements ReduceListener.ReduceCanceller {
+	private static final class StageReduceEx<T, A, R> extends NextStage<T, R> implements ReduceListener.ReduceCanceller {
 		final IndexedCollector<T, A, R> reducer;
 		final ReduceListener<T, A, R> listener;
-		final A accumulator;
+		A accumulator;
 		int stages;
 
-		private ReduceStageEx(IndexedCollector<T, A, R> reducer, ReduceListener<T, A, R> listener, A accumulator, int stages) {
+		private StageReduceEx(IndexedCollector<T, A, R> reducer, ReduceListener<T, A, R> listener, A accumulator, int stages) {
 			this.reducer = reducer;
 			this.listener = listener;
 			this.accumulator = accumulator;
@@ -307,6 +297,7 @@ public final class Stages {
 		public void finish() {
 			if (isComplete()) return;
 			R finished = reducer.finish(accumulator);
+			accumulator = null;
 			listener.onReducerResult(finished);
 			if (isComplete()) return;
 			complete(finished);
@@ -342,20 +333,16 @@ public final class Stages {
 		}
 
 		A accumulator = collector.accumulator(size);
-		ReduceStageEx<T, A, R> resultStage = new ReduceStageEx<>(collector, listener, accumulator, size);
+		StageReduceEx<T, A, R> resultStage = new StageReduceEx<>(collector, listener, accumulator, size);
 		listener.onStart(resultStage, accumulator);
 		stages.get(0).then(resultStage);
 
 		for (int i = 1; i < size; i++) {
 			int index = i;
-			stages.get(i).then(new NextStage<T, Object>() {
-				@Override
-				protected void onComplete(T result) {
+			stages.get(i).whenComplete((result, throwable) -> {
+				if (throwable == null) {
 					resultStage.processComplete(result, index);
-				}
-
-				@Override
-				protected void onCompleteExceptionally(Throwable throwable) {
+				} else {
 					resultStage.processException(throwable, index);
 				}
 			});
@@ -420,14 +407,10 @@ public final class Stages {
 			cb.set(null);
 			return;
 		}
-		stages.next().call().then(new NextStage<Object, Object>() {
-			@Override
-			protected void onComplete(Object result) {
+		stages.next().call().whenComplete((result, throwable) -> {
+			if (throwable == null) {
 				runSequenceImpl(stages, cb);
-			}
-
-			@Override
-			protected void onCompleteExceptionally(Throwable throwable) {
+			} else {
 				cb.setException(throwable);
 			}
 		});
@@ -469,20 +452,16 @@ public final class Stages {
 	}
 
 	private static <T, A, R> void reduceSequenceImpl(Iterator<? extends AsyncCallable<? extends T>> stages, A accumulator,
-	                                                 Collector<T, A, R> collector, Callback<R> cb) {
+	                                                 Collector<T, A, R> collector, SettableStage<R> cb) {
 		if (!stages.hasNext()) {
 			cb.set(collector.finisher().apply(accumulator));
 			return;
 		}
-		stages.next().call().then(new NextStage<T, Object>() {
-			@Override
-			protected void onComplete(T result) {
+		stages.next().call().whenComplete((result, throwable) -> {
+			if (throwable == null) {
 				collector.accumulator().accept(accumulator, result);
 				reduceSequenceImpl(stages, accumulator, collector, cb);
-			}
-
-			@Override
-			protected void onCompleteExceptionally(Throwable throwable) {
+			} else {
 				cb.setException(throwable);
 			}
 		});

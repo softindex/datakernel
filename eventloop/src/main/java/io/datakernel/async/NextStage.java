@@ -1,13 +1,23 @@
 package io.datakernel.async;
 
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
-public abstract class NextStage<T, R> extends AbstractStage<R> {
+public abstract class NextStage<T, R> extends AbstractStage<R> implements BiConsumer<T, Throwable> {
 	protected abstract void onComplete(T result);
 
 	protected abstract void onCompleteExceptionally(Throwable throwable);
+
+	@Override
+	public final void accept(T t, Throwable throwable) {
+		if (throwable == null) {
+			onComplete(t);
+		} else {
+			onCompleteExceptionally(throwable);
+		}
+	}
 
 	public static <T> NextStage<T, T> async() {
 		return new NextStage<T, T>() {
@@ -37,7 +47,7 @@ public abstract class NextStage<T, R> extends AbstractStage<R> {
 		};
 	}
 
-		public static <T> NextStage<T, T> schedule(long timestamp) {
+	public static <T> NextStage<T, T> schedule(long timestamp) {
 		return new NextStage<T, T>() {
 			@Override
 			protected void onComplete(T result) {
@@ -124,6 +134,5 @@ public abstract class NextStage<T, R> extends AbstractStage<R> {
 			}
 		};
 	}
-
 
 }

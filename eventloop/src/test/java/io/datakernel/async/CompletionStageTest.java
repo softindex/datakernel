@@ -19,35 +19,6 @@ public class CompletionStageTest {
 		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 	}
 
-	static Stage<Integer> parseX(String param) {
-		SettableStage<Integer> asyncResult = SettableStage.create();
-		try {
-			Integer result = Integer.valueOf(param);
-			asyncResult.set(result);
-		} catch (NumberFormatException e) {
-			asyncResult.setException(e);
-		}
-		return asyncResult;
-	}
-
-	static Stage<String> multiplyX(String string) {
-		return parseX(string)
-				.thenApply(parsedInt -> parsedInt + "*2 = " + (parsedInt * 2));
-	}
-
-	static Stage<Void> multiplyAndPrintX(String string) {
-		return multiplyX(string)
-				.thenAccept(System.out::println);
-	}
-
-	@Test
-	public void testStage() throws Exception {
-		eventloop.post(() ->
-				multiplyAndPrintX("123")
-						.whenComplete(($, throwable) -> System.out.println(throwable == null ? "Done" : throwable.toString())));
-		eventloop.run();
-	}
-
 	@Test
 	public void testSimpleResult() throws ExecutionException, InterruptedException {
 		CompletableFuture<Integer> future = Stage.of(41)
@@ -76,7 +47,10 @@ public class CompletionStageTest {
 		SettableStage<Integer> startStage = SettableStage.create();
 		Stage<Integer> powerOfTwo = startStage;
 		for (int i = 0; i < 100_000; i++) {
-			powerOfTwo = powerOfTwo.then(i % 100 == 0 ? NextStage.async() : null).thenApply(integer -> (integer * 2) % 1000000007);
+			if (i % 100 == 0) {
+				powerOfTwo = powerOfTwo.then(NextStage.async());
+			}
+			powerOfTwo = powerOfTwo.thenApply(integer -> (integer * 2) % 1000000007);
 		}
 
 		CompletableFuture<Integer> future = powerOfTwo.toCompletableFuture();
