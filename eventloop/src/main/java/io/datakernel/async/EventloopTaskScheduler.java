@@ -159,7 +159,7 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 						}
 					}
 				})
-				.thenApply($ -> null);
+				.toVoid();
 	}
 
 	@Override

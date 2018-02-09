@@ -1,8 +1,6 @@
 package io.datakernel.async;
 
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
-import io.datakernel.exception.AsyncTimeoutException;
 
 import java.util.Collections;
 import java.util.Iterator;
@@ -19,28 +17,7 @@ import static io.datakernel.util.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
 
 public final class Stages {
-	public static final AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException();
-
 	private Stages() {
-	}
-
-	public static <T> Stage<T> timeout(Stage<T> stage, long timeout) {
-		return stage.then(new NextStage<T, T>() {
-			final ScheduledRunnable schedule = Eventloop.getCurrentEventloop().delay(timeout,
-					() -> tryCompleteExceptionally(TIMEOUT_EXCEPTION));
-
-			@Override
-			protected void onComplete(T result) {
-				schedule.cancel();
-				tryComplete(result);
-			}
-
-			@Override
-			protected void onCompleteExceptionally(Throwable throwable) {
-				schedule.cancel();
-				tryCompleteExceptionally(throwable);
-			}
-		});
 	}
 
 	private static final class StageAll<T> extends NextStage<T, Void> {
@@ -66,7 +43,7 @@ public final class Stages {
 	public static Stage<Void> all(List<? extends Stage<?>> stages) {
 		int size = stages.size();
 		if (size == 0) return Stage.of(null);
-		if (size == 1) return stages.get(0).then(NextStage.toVoid());
+		if (size == 1) return stages.get(0).toVoid();
 		if (size == 2) return stages.get(0).both(stages.get(1));
 		StageAll<Object> resultStage = new StageAll<>(stages.size());
 		stages.get(0).then(resultStage);
@@ -97,7 +74,7 @@ public final class Stages {
 	}
 
 	public static Stage<Void> all(Stage<?> stage) {
-		return stage.then(NextStage.toVoid());
+		return stage.toVoid();
 	}
 
 	private static final class StageAny<T> extends NextStage<T, T> {
@@ -407,7 +384,7 @@ public final class Stages {
 
 	@SuppressWarnings("unchecked")
 	public static Stage<Void> runSequence(AsyncCallable stage) {
-		return stage.call().then(NextStage.toVoid());
+		return stage.call().toVoid();
 	}
 
 	@SuppressWarnings("unchecked")

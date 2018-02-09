@@ -50,7 +50,7 @@ public class FileNamesLoadingService implements EventloopService {
 					}
 				})
 				.thenAccept(strings -> fileNames = strings)
-				.thenApply($ -> null);
+				.toVoid();
 	}
 
 	@Override

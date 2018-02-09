@@ -61,7 +61,7 @@ public class ResourcesNameLoadingService implements EventloopService {
 					}
 				})
 				.thenAccept(strings -> names = strings)
-				.thenApply($ -> null);
+				.toVoid();
 	}
 
 	@Override

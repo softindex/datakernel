@@ -48,7 +48,7 @@ public class CompletionStageTest {
 		Stage<Integer> powerOfTwo = startStage;
 		for (int i = 0; i < 100_000; i++) {
 			if (i % 100 == 0) {
-				powerOfTwo = powerOfTwo.then(NextStage.async());
+				powerOfTwo = powerOfTwo.post();
 			}
 			powerOfTwo = powerOfTwo.thenApply(integer -> (integer * 2) % 1000000007);
 		}
@@ -64,7 +64,10 @@ public class CompletionStageTest {
 		SettableStage<Integer> startStage = SettableStage.create();
 		Stage<Integer> powerOfTwo = startStage;
 		for (int i = 0; i < 100_000; i++) {
-			powerOfTwo = powerOfTwo.then(i % 100 == 0 ? NextStage.async() : null).thenApply(integer -> (integer * 2) % 1000000007);
+			if (i % 100 == 0) {
+				powerOfTwo = powerOfTwo.post();
+			}
+			powerOfTwo = powerOfTwo.thenApply(integer -> (integer * 2) % 1000000007);
 		}
 
 		CompletableFuture<Integer> future = powerOfTwo.toCompletableFuture();

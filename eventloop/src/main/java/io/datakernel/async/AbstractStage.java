@@ -1,7 +1,8 @@
 package io.datakernel.async;
 
-import io.datakernel.async.Stage.Handler.StageCallback;
+import io.datakernel.async.Stage.Handler.Completion;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.ScheduledRunnable;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -110,7 +111,7 @@ abstract class AbstractStage<T> implements Stage<T> {
 		return stage;
 	}
 
-	private static abstract class HandlerStage<F, T> extends NextStage<F, T> implements StageCallback<T> {
+	private static abstract class HandlerStage<F, T> extends NextStage<F, T> implements Completion<T> {
 		@Override
 		public void complete(T result) {
 			super.complete(result);
@@ -119,6 +120,11 @@ abstract class AbstractStage<T> implements Stage<T> {
 		@Override
 		public void completeExceptionally(Throwable t) {
 			super.completeExceptionally(t);
+		}
+
+		@Override
+		public void complete(T result, Throwable throwable) {
+			super.complete(result, throwable);
 		}
 	}
 
@@ -134,7 +140,6 @@ abstract class AbstractStage<T> implements Stage<T> {
 			protected void onCompleteExceptionally(Throwable error) {
 				handler.handle(null, error, this);
 			}
-
 		});
 	}
 
@@ -168,7 +173,7 @@ abstract class AbstractStage<T> implements Stage<T> {
 
 			private void doComplete(T value, Throwable error) {
 				Eventloop eventloop = getCurrentEventloop();
-				executor.execute(() -> handler.handle(value, error, new StageCallback<U>() {
+				executor.execute(() -> handler.handle(value, error, new Completion<U>() {
 					@Override
 					public void complete(U result) {
 						eventloop.execute(() -> complete(result));
@@ -201,34 +206,15 @@ abstract class AbstractStage<T> implements Stage<T> {
 
 	@Override
 	public Stage<T> thenAccept(Consumer<? super T> action) {
-		return then(new NextStage<T, T>() {
-			@Override
-			protected void onComplete(T result) {
-				action.accept(result);
-				complete(result);
-			}
-
-			@Override
-			protected void onCompleteExceptionally(Throwable throwable) {
-				completeExceptionally(throwable);
-			}
+		return whenComplete((result, throwable) -> {
+			if (throwable == null) action.accept(result);
 		});
 	}
 
 	@Override
 	public Stage<T> thenRun(Runnable action) {
-		return then(new NextStage<T, T>() {
-			@Override
-			protected void onComplete(T result) {
-				action.run();
-				complete(result);
-			}
-
-			@Override
-			protected void onCompleteExceptionally(Throwable throwable) {
-				completeExceptionally(throwable);
-			}
-
+		return whenComplete((result, throwable) -> {
+			if (throwable == null) action.run();
 		});
 	}
 
@@ -263,6 +249,13 @@ abstract class AbstractStage<T> implements Stage<T> {
 	public Stage<T> whenComplete(BiConsumer<? super T, ? super Throwable> action) {
 		subscribe(action);
 		return this;
+	}
+
+	@Override
+	public Stage<T> whenException(Consumer<? super Throwable> action) {
+		return whenComplete((result, throwable) -> {
+			if (throwable != null) action.accept(throwable);
+		});
 	}
 
 	@Override
@@ -401,6 +394,62 @@ abstract class AbstractStage<T> implements Stage<T> {
 			}
 		});
 		return then(resultStage);
+	}
+
+	@Override
+	public Stage<T> post() {
+		return then(new NextStage<T, T>() {
+			@Override
+			protected void onComplete(T result) {
+				getCurrentEventloop().post(() -> complete(result));
+			}
+
+			@Override
+			protected void onCompleteExceptionally(Throwable throwable) {
+				getCurrentEventloop().post(() -> completeExceptionally(throwable));
+			}
+		});
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public Stage<Void> toVoid() {
+		return thenApply($ -> null);
+	}
+
+	@Override
+	public Stage<T> timeout(long millis) {
+		return then(new NextStage<T, T>() {
+			final ScheduledRunnable schedule = getCurrentEventloop().delay(millis,
+					() -> tryCompleteExceptionally(TIMEOUT_EXCEPTION));
+
+			@Override
+			protected void onComplete(T result) {
+				schedule.cancel();
+				tryComplete(result);
+			}
+
+			@Override
+			protected void onCompleteExceptionally(Throwable throwable) {
+				schedule.cancel();
+				tryCompleteExceptionally(throwable);
+			}
+		});
+	}
+
+	@Override
+	public Stage<T> delay(long millis) {
+		return then(new NextStage<T, T>() {
+			@Override
+			protected void onComplete(T result) {
+				getCurrentEventloop().delay(millis, () -> complete(result));
+			}
+
+			@Override
+			protected void onCompleteExceptionally(Throwable throwable) {
+				completeExceptionally(throwable);
+			}
+		});
 	}
 
 	@Override

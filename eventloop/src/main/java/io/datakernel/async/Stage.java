@@ -1,6 +1,7 @@
 package io.datakernel.async;
 
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.AsyncTimeoutException;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -49,13 +50,21 @@ public interface Stage<T> {
 
 	@FunctionalInterface
 	interface Handler<T, U> {
-		interface StageCallback<T> {
+		interface Completion<T> {
 			void complete(T result);
 
-			void completeExceptionally(Throwable t);
+			void completeExceptionally(Throwable throwable);
+
+			default void complete(T result, Throwable throwable) {
+				if (throwable == null) {
+					complete(result);
+				} else {
+					completeExceptionally(throwable);
+				}
+			}
 		}
 
-		void handle(T result, Throwable throwable, StageCallback<U> stage);
+		void handle(T result, Throwable throwable, Completion<U> stage);
 	}
 
 	<U> Stage<U> handle(Handler<? super T, U> handler);
@@ -64,45 +73,37 @@ public interface Stage<T> {
 
 	<U> Stage<U> handleAsync(Handler<? super T, U> handler, Executor executor);
 
-	default <U, S extends BiConsumer<? super T, ? super Throwable> & Stage<U>> Stage<U> then(S stage) {
-		whenComplete(stage);
-		return stage;
-	}
+	<U, S extends BiConsumer<? super T, ? super Throwable> & Stage<U>> Stage<U> then(S stage);
 
 	<U> Stage<U> thenApply(Function<? super T, ? extends U> fn);
 
-	default Stage<T> thenAccept(Consumer<? super T> action) {
-		return whenComplete((result, throwable) -> {
-			if (throwable == null) action.accept(result);
-		});
-	}
+	Stage<T> thenAccept(Consumer<? super T> action);
 
-	default Stage<T> thenRun(Runnable action) {
-		return whenComplete((result, throwable) -> {
-			if (throwable == null) action.run();
-		});
-	}
+	Stage<T> thenRun(Runnable action);
 
 	<U> Stage<U> thenCompose(Function<? super T, ? extends Stage<U>> fn);
 
 	Stage<T> whenComplete(BiConsumer<? super T, ? super Throwable> action);
 
-	default Stage<T> whenException(Consumer<? super Throwable> action) {
-		return whenComplete((result, throwable) -> {
-			if (throwable != null) action.accept(throwable);
-		});
-	}
+	Stage<T> whenException(Consumer<? super Throwable> action);
 
 	Stage<T> exceptionally(Function<? super Throwable, ? extends T> fn);
 
 	<U, V> Stage<V> combine(Stage<? extends U> other, BiFunction<? super T, ? super U, ? extends V> fn);
 
-	default Stage<Void> both(Stage<?> other) {
-		return combine(other, (thisResult, otherResult) -> null);
-	}
+	Stage<Void> both(Stage<?> other);
 
 	Stage<T> either(Stage<? extends T> other);
 
-	CompletableFuture<T> toCompletableFuture();
+	Stage<Void> toVoid();
 
+	AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException();
+
+	Stage<T> timeout(long millis);
+
+	Stage<T> delay(long millis);
+
+	Stage<T> post();
+
+	CompletableFuture<T> toCompletableFuture();
 }

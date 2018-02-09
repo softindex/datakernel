@@ -1,6 +1,6 @@
 package io.datakernel.stream;
 
-import io.datakernel.async.Stage.Handler.StageCallback;
+import io.datakernel.async.Stage.Handler.Completion;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.TestUtils.CountTransformer;
 import org.junit.Before;
@@ -54,7 +54,7 @@ public class StreamConsumersTest {
 		CompletableFuture<Void> producerFuture = producer.streamTo(errorConsumer)
 				.getProducerResult()
 				.whenComplete(($, throwable) -> assertThat(throwable, instanceOf(IllegalArgumentException.class)))
-				.handle((Void result, Throwable throwable, StageCallback<Void> stage) -> stage.complete(null))
+				.handle((Void result, Throwable throwable, Completion<Void> stage) -> stage.complete(null))
 				.toCompletableFuture();
 		eventloop.run();
 

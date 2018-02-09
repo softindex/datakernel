@@ -98,7 +98,7 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 					timestamp = reloadTimestamp;
 					scheduleReload(reloadPeriod);
 				})
-				.thenApply($ -> null);
+				.toVoid();
 	}
 
 	@Override
