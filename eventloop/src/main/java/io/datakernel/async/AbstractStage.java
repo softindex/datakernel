@@ -25,6 +25,15 @@ abstract class AbstractStage<T> implements Stage<T> {
 		return next == COMPLETED_STAGE;
 	}
 
+	protected void complete(T value, Throwable error) {
+		assert !isComplete();
+		if (error == null) {
+			complete(value);
+		} else {
+			completeExceptionally(error);
+		}
+	}
+
 	@SuppressWarnings({"AssertWithSideEffects", "ConstantConditions", "unchecked"})
 	protected void complete(T value) {
 		assert !isComplete();
@@ -45,12 +54,9 @@ abstract class AbstractStage<T> implements Stage<T> {
 		assert (next = COMPLETED_STAGE) != null;
 	}
 
-	protected void complete(T value, Throwable error) {
-		assert !isComplete();
-		if (error == null) {
-			complete(value);
-		} else {
-			completeExceptionally(error);
+	protected void tryComplete(T value, Throwable error) {
+		if (!isComplete()) {
+			complete(value, error);
 		}
 	}
 
@@ -66,14 +72,9 @@ abstract class AbstractStage<T> implements Stage<T> {
 		}
 	}
 
-	protected void tryComplete(T value, Throwable error) {
-		if (!isComplete()) {
-			complete(value, error);
-		}
-	}
-
-	static final class StageForwarder<T> extends NextStage<T, T> {
+	static final class StageForwarder<T> implements BiConsumer<T, Throwable> {
 		final BiConsumer<? super T, ? super Throwable> prev;
+		final BiConsumer<? super T, ? super Throwable> next;
 
 		StageForwarder(BiConsumer<? super T, ? super Throwable> prev,
 		               BiConsumer<? super T, ? super Throwable> next) {
@@ -82,26 +83,9 @@ abstract class AbstractStage<T> implements Stage<T> {
 		}
 
 		@Override
-		protected void onComplete(T result) {
-			prev.accept(result, null);
-			complete(result);
-		}
-
-		@Override
-		protected void onCompleteExceptionally(Throwable throwable) {
-			prev.accept(null, throwable);
-			completeExceptionally(throwable);
-		}
-	}
-
-	@SuppressWarnings("unchecked")
-	protected void subscribe(BiConsumer<? super T, ? super Throwable> consumer) {
-		if (this.next == null) {
-			this.next = consumer;
-		} else {
-			if (this.next == COMPLETED_STAGE)
-				throw new IllegalStateException("Stage has already been completed");
-			this.next = new StageForwarder<>(this.next, consumer);
+		public void accept(T result, Throwable throwable) {
+			prev.accept(result, throwable);
+			next.accept(result, throwable);
 		}
 	}
 
@@ -109,6 +93,23 @@ abstract class AbstractStage<T> implements Stage<T> {
 	public <U, S extends BiConsumer<? super T, ? super Throwable> & Stage<U>> Stage<U> then(S stage) {
 		subscribe(stage);
 		return stage;
+	}
+
+	@SuppressWarnings("unchecked")
+	protected void subscribe(BiConsumer<? super T, ? super Throwable> consumer) {
+		if (this.next == null) {
+			this.next = consumer;
+		} else {
+			assert this.next != COMPLETED_STAGE : "Stage has already been completed";
+			if (consumer instanceof NextStage) {
+				NextStage nextStage = (NextStage) consumer;
+				assert nextStage.next == null;
+				nextStage.prev = this.next;
+				this.next = consumer;
+			} else {
+				this.next = new StageForwarder<>(this.next, consumer);
+			}
+		}
 	}
 
 	private static abstract class HandlerStage<F, T> extends NextStage<F, T> implements Completion<T> {
@@ -192,14 +193,9 @@ abstract class AbstractStage<T> implements Stage<T> {
 	public <U> Stage<U> thenApply(Function<? super T, ? extends U> fn) {
 		return then(new NextStage<T, U>() {
 			@Override
-			protected void onComplete(T result1) {
-				U newResult = fn.apply(result1);
+			protected void onComplete(T result) {
+				U newResult = fn.apply(result);
 				complete(newResult);
-			}
-
-			@Override
-			protected void onCompleteExceptionally(Throwable throwable) {
-				completeExceptionally(throwable);
 			}
 		});
 	}
@@ -236,11 +232,6 @@ abstract class AbstractStage<T> implements Stage<T> {
 					}
 				}
 				stage.whenComplete(this::complete);
-			}
-
-			@Override
-			protected void onCompleteExceptionally(Throwable error) {
-				this.completeExceptionally(error);
 			}
 		});
 	}
@@ -433,21 +424,6 @@ abstract class AbstractStage<T> implements Stage<T> {
 			protected void onCompleteExceptionally(Throwable throwable) {
 				schedule.cancel();
 				tryCompleteExceptionally(throwable);
-			}
-		});
-	}
-
-	@Override
-	public Stage<T> delay(long millis) {
-		return then(new NextStage<T, T>() {
-			@Override
-			protected void onComplete(T result) {
-				getCurrentEventloop().delay(millis, () -> complete(result));
-			}
-
-			@Override
-			protected void onCompleteExceptionally(Throwable throwable) {
-				completeExceptionally(throwable);
 			}
 		});
 	}

@@ -101,8 +101,6 @@ public interface Stage<T> {
 
 	Stage<T> timeout(long millis);
 
-	Stage<T> delay(long millis);
-
 	Stage<T> post();
 
 	CompletableFuture<T> toCompletableFuture();
