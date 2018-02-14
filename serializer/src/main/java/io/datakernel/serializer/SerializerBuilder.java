@@ -185,6 +185,7 @@ public final class SerializerBuilder {
 		builder.setSerializer(InetAddress.class, new SerializerGenSubclass(InetAddress.class, addressMap, 0));
 
 		builder.setSerializer(ByteBuffer.class, new SerializerGenByteBuffer());
+		builder.setSerializer(ByteBuf.class, new SerializerGenByteBuf(true, false));
 
 		builder.setAnnotationHandler(SerializerClass.class, SerializerClassEx.class, new SerializerClassHandler());
 		builder.setAnnotationHandler(SerializeFixedSize.class, SerializeFixedSizeEx.class, new SerializeFixedSizeHandler());

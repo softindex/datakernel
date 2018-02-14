@@ -135,7 +135,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 			RpcRequestStats requestStatsPerClass = rpcClient.ensureRequestStatsPerClass(request.getClass());
 			requestStatsPerClass.getTotalRequests().recordEvent();
 			requestCallback = new JmxConnectionMonitoringResultCallback<>(requestStatsPerClass, callback, timeout);
-				}
+		}
 		TimeoutCookie timeoutCookie = new TimeoutCookie(cookie, timeout);
 		addTimeoutCookie(timeoutCookie);
 		activeRequests.put(cookie, requestCallback);
