@@ -3,10 +3,7 @@ package io.datakernel.async;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.AsyncTimeoutException;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -27,10 +24,10 @@ public interface Stage<T> {
 		return stage;
 	}
 
-	static <T> Stage<T> ofFuture(CompletableFuture<T> completableFuture) {
+	static <T> Stage<T> ofFuture(CompletionStage<T> completableFuture) {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
 		SettableStage<T> stage = SettableStage.create();
-		completableFuture.whenComplete((value, throwable) -> eventloop.execute(() -> stage.set(value, throwable)));
+		completableFuture.whenCompleteAsync(stage::set, eventloop);
 		return stage;
 	}
 
