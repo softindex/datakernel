@@ -46,7 +46,7 @@ public class ResourcesNameLoadingService implements EventloopService {
 
 	@Override
 	public Stage<Void> start() {
-		return eventloop.callExecutor(executorService,
+		return Stage.ofCallable(executorService,
 				() -> {
 					Set<String> fileNames = new HashSet<>();
 					InputStream in = loader.getResourceAsStream(resourcePath);

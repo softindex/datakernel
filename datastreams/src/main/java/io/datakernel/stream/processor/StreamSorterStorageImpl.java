@@ -155,13 +155,13 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	 */
 	@Override
 	public Stage<Void> cleanup(List<Integer> partitionsToDelete) {
-		return eventloop.callExecutor(executorService, () -> {
+		return Stage.ofCallable(executorService, () -> {
 			for (Integer partitionToDelete : partitionsToDelete) {
-				Path path = partitionPath(partitionToDelete);
+				Path path1 = partitionPath(partitionToDelete);
 				try {
-					Files.delete(path);
+					Files.delete(path1);
 				} catch (IOException e) {
-					logger.warn("Could not delete {} : {}", path, e.toString());
+					logger.warn("Could not delete {} : {}", path1, e.toString());
 				}
 			}
 			return null;

@@ -44,7 +44,9 @@ import java.util.ArrayDeque;
 import java.util.Iterator;
 import java.util.PriorityQueue;
 import java.util.Set;
-import java.util.concurrent.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
@@ -152,7 +154,6 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	// JMX
 
 	private final EventloopStats stats = new EventloopStats(new ExtraStatsExtractor());
-	private final ExecutorCallsStats executorsCallsStats = new ExecutorCallsStats();
 
 	private boolean monitoring = false;
 
@@ -294,7 +295,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		}
 		try {
 			channelKey.channel().close();
-		} catch (IOException e) {
+		} catch (IOException ignored) {
 		}
 	}
 
@@ -306,7 +307,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		}
 		try {
 			channel.close();
-		} catch (IOException e) {
+		} catch (IOException ignored) {
 		}
 	}
 
@@ -927,17 +928,17 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	/**
-	 * Notifies the event loop of concurrent operation in another thread(s).
-	 * Eventloop will not exit until all concurrent operations are complete.
-	 *
-	 * @return {@link ConnectionPendingException}, that have method complete() which must be
-	 * called after completing concurrent operation.
-	 * Failure to call complete() method will prevent the event loop from exiting.
+	 * Notifies the event loop of concurrent operation in other threads.
+	 * Eventloop will not exit until all external tasks are complete.
 	 */
 	public void startExternalTask() {
 		externalTasksCount.incrementAndGet();
 	}
 
+	/**
+	 * Notifies the event loop about completion of corrensponding operation in other threads.
+	 * Failure to call this method will prevent the event loop from exiting.
+	 */
 	public void completeExternalTask() {
 		externalTasksCount.decrementAndGet();
 	}
@@ -1014,50 +1015,6 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			}
 		}));
 		return future;
-	}
-
-	public <T> Stage<T> callExecutor(ExecutorService executor, Callable<T> callable) {
-		assert inEventloopThread();
-		SettableStage<T> stage = SettableStage.create();
-		startExternalTask();
-		// jmx
-		String taskName = callable.getClass().getName();
-		executorsCallsStats.recordCall(taskName);
-		long submissionStart = currentTimeMillis();
-		try {
-			executor.submit(() -> {
-				// jmx
-				long executingStart = System.currentTimeMillis();
-				try {
-					T result = callable.call();
-					// jmx
-					long executingFinish = System.currentTimeMillis();
-					this.execute(() -> {
-						// jmx
-						updateConcurrentCallsStatsTimings(taskName, submissionStart, executingStart, executingFinish);
-						completeExternalTask();
-						stage.set(result);
-					});
-				} catch (Exception e) {
-					// jmx
-					long executingFinish = System.currentTimeMillis();
-					this.execute(() -> {
-						// jmx
-						updateConcurrentCallsStatsTimings(taskName, submissionStart, executingStart, executingFinish);
-						completeExternalTask();
-						stage.setException(e);
-					});
-				} catch (Throwable throwable) {
-					recordFatalError(throwable, callable);
-				}
-			});
-		} catch (RejectedExecutionException e) {
-			// jmx
-			executorsCallsStats.recordRejectedCall(taskName);
-			completeExternalTask();
-			stage.setException(e);
-		}
-		return stage;
 	}
 
 	public static void setGlobalFatalErrorHandler(FatalErrorHandler handler) {
@@ -1137,12 +1094,6 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		}
 	}
 
-	private void updateConcurrentCallsStatsTimings(String taskName,
-	                                               long submissionStart, long executingStart, long executingFinish) {
-		executorsCallsStats.recordAwaitingStartDuration(taskName, (int) (executingStart - submissionStart));
-		executorsCallsStats.recordCallDuration(taskName, (int) (executingFinish - executingStart));
-	}
-
 	public int getLoop() {
 		return (int) (tick >>> 32);
 	}
@@ -1159,11 +1110,6 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	@JmxAttribute(name = "")
 	public EventloopStats getStats() {
 		return stats;
-	}
-
-	@JmxAttribute
-	public ExecutorCallsStats getExecutorsCallsStats() {
-		return executorsCallsStats;
 	}
 
 	@JmxAttribute

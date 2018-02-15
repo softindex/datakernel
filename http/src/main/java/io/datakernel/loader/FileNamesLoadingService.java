@@ -36,7 +36,7 @@ public class FileNamesLoadingService implements EventloopService {
 
 	@Override
 	public Stage<Void> start() {
-		return eventloop.callExecutor(executorService,
+		return Stage.ofCallable(executorService,
 				() -> {
 					Set<String> names = new HashSet<>();
 					try (Stream<Path> pathStream = Files.walk(path)) {

@@ -194,7 +194,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 	@Override
 	public Stage<Void> finish(Set<Long> chunkIds) {
 		finishChunks = chunkIds.size();
-		return eventloop.callExecutor(executorService, () -> {
+		return Stage.ofCallable(executorService, () -> {
 			for (Long chunkId : chunkIds) {
 				Path tempLog = dir.resolve(chunkId + TEMP_LOG);
 				Path log = dir.resolve(chunkId + LOG);
@@ -206,7 +206,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 	}
 
 	public Stage<Void> backup(String backupId, Set<Long> chunkIds) {
-		return eventloop.callExecutor(executorService, () -> {
+		return Stage.ofCallable(executorService, () -> {
 			Path tempBackupDir = backupPath.resolve(backupId + "_tmp/");
 			Files.createDirectories(tempBackupDir);
 			for (long chunkId : chunkIds) {
@@ -226,7 +226,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 	}
 
 	public Stage<Void> cleanupBeforeTimestamp(Set<Long> preserveChunks, long timestamp) {
-		return eventloop.callExecutor(executorService, () -> {
+		return Stage.ofCallable(executorService, () -> {
 			logger.trace("Cleanup before timestamp, save chunks size: {}, timestamp {}", preserveChunks.size(), timestamp);
 			int skipped = 0;
 			try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
@@ -290,7 +290,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 	}
 
 	public Stage<Set<Long>> list(Predicate<String> filter, Predicate<Long> lastModified) {
-		return eventloop.callExecutor(executorService, () -> {
+		return Stage.ofCallable(executorService, () -> {
 			try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
 				return StreamSupport.stream(stream.spliterator(), false)
 						.filter(file -> lastModifiedFilter(lastModified, file))
@@ -317,8 +317,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 
 	@Override
 	public Stage<Void> start() {
-		return eventloop.callExecutor(executorService, () -> Files.createDirectories(dir))
-				.thenApply(t -> null);
+		return Stage.ofCallable(executorService, () -> Files.createDirectories(dir)).toVoid();
 	}
 
 	@Override

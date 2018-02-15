@@ -108,13 +108,13 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements
 	@Override
 	public Stage<List<LogFile>> list(String logPartition) {
 		Eventloop eventloop = getCurrentEventloop();
-		return eventloop.callExecutor(executorService, () -> {
+		return Stage.ofCallable(executorService, () -> {
 			List<LogFile> entries = new ArrayList<>();
 
 			Files.createDirectories(dir);
 			Files.walkFileTree(dir, new FileVisitor<Path>() {
 				@Override
-				public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+				public FileVisitResult preVisitDirectory(Path dir1, BasicFileAttributes attrs) throws IOException {
 					return FileVisitResult.CONTINUE;
 				}
 
@@ -136,7 +136,7 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements
 				}
 
 				@Override
-				public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+				public FileVisitResult postVisitDirectory(Path dir1, IOException exc) throws IOException {
 					if (exc != null) {
 						logger.error("postVisitDirectory error", exc);
 					}

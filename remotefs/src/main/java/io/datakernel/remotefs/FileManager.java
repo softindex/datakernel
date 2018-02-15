@@ -102,7 +102,7 @@ public final class FileManager {
 	}
 
 	public Stage<List<String>> scanAsync() {
-		return eventloop.callExecutor(executor, () -> {
+		return Stage.ofCallable(executor, () -> {
 			logger.trace("listing files");
 			List<String> result = new ArrayList<>();
 			doScan(storagePath, result, "");
@@ -149,7 +149,7 @@ public final class FileManager {
 	}
 
 	private Stage<Path> ensureDirectoryAsync(Path container, String path) {
-		return eventloop.callExecutor(executor, () -> ensureDirectory(container, path));
+		return Stage.ofCallable(executor, () -> ensureDirectory(container, path));
 	}
 
 	private Path ensureDirectory(Path container, String path) throws IOException {

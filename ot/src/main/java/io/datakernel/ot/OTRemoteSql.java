@@ -107,7 +107,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 
 	@Override
 	public Stage<Integer> createCommitId() {
-		return eventloop.callExecutor(executor, () -> {
+		return Stage.ofCallable(executor, () -> {
 			logger.trace("Start Create id");
 			try (Connection connection = dataSource.getConnection()) {
 				connection.setAutoCommit(true);
@@ -147,7 +147,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 	@Override
 	public Stage<Void> push(Collection<OTCommit<Integer, D>> commits) {
 		if (commits.isEmpty()) return Stage.of(null);
-		return eventloop.callExecutor(executor, () -> {
+		return Stage.ofCallable(executor, () -> {
 			logger.trace("Push {} commits: {}", commits.size(),
 					commits.stream().map(OTCommit::idsToString).collect(toList()));
 
@@ -204,7 +204,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 
 	@Override
 	public Stage<Set<Integer>> getHeads() {
-		return eventloop.callExecutor(executor, () -> {
+		return Stage.ofCallable(executor, () -> {
 			logger.trace("Get Heads");
 			try (Connection connection = dataSource.getConnection()) {
 				try (PreparedStatement ps = connection.prepareStatement(
@@ -225,7 +225,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 	@Override
 	public Stage<List<D>> loadSnapshot(Integer revisionId) {
 		logger.trace("Load snapshot: {}", revisionId);
-		return eventloop.callExecutor(executor, () -> {
+		return Stage.ofCallable(executor, () -> {
 			try (Connection connection = dataSource.getConnection()) {
 				try (PreparedStatement ps = connection.prepareStatement(
 						sql("SELECT snapshot FROM ot_revisions WHERE id=?"))) {
@@ -245,7 +245,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 
 	@Override
 	public Stage<OTCommit<Integer, D>> loadCommit(Integer revisionId) {
-		return eventloop.callExecutor(executor, () -> {
+		return Stage.ofCallable(executor, () -> {
 			logger.trace("Start load commit: {}", revisionId);
 			try (Connection connection = dataSource.getConnection()) {
 				Map<Integer, List<D>> parentDiffs = new HashMap<>();
@@ -285,7 +285,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 
 	@Override
 	public Stage<Void> saveSnapshot(Integer revisionId, List<D> diffs) {
-		return eventloop.callExecutor(executor, () -> {
+		return Stage.ofCallable(executor, () -> {
 			logger.trace("Start save snapshot: {}, diffs: {}", revisionId, diffs.size());
 			try (Connection connection = dataSource.getConnection()) {
 				String snapshot = toJson(otSystem.squash(diffs));
@@ -305,7 +305,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 
 	@Override
 	public Stage<Void> cleanup(Integer minId) {
-		return eventloop.callExecutor(executor, () -> {
+		return Stage.ofCallable(executor, () -> {
 			logger.trace("Start cleanup: {}", minId);
 			try (Connection connection = dataSource.getConnection()) {
 				connection.setAutoCommit(false);
@@ -333,7 +333,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 	@Override
 	public Stage<Void> backup(Integer checkpointId, List<D> diffs) {
 		checkState(this.tableBackup != null);
-		return eventloop.callExecutor(executor, () -> {
+		return Stage.ofCallable(executor, () -> {
 			try (Connection connection = dataSource.getConnection()) {
 				try (PreparedStatement statement = connection.prepareStatement(
 						sql("INSERT INTO ot_revisions_backup(id, snapshot) VALUES (?, ?)"))) {

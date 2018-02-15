@@ -24,24 +24,99 @@ public interface Stage<T> {
 		return stage;
 	}
 
-	static <T> Stage<T> ofFuture(CompletionStage<T> completableFuture) {
+	static <T> Stage<T> ofFuture(CompletableFuture<? extends T> future) {
+		return ofCompletionStage(future);
+	}
+
+	static <T> Stage<T> ofCompletionStage(CompletionStage<? extends T> completionStage) {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
+		eventloop.startExternalTask();
 		SettableStage<T> stage = SettableStage.create();
-		completableFuture.whenCompleteAsync(stage::set, eventloop);
+		completionStage.whenCompleteAsync((result, throwable) -> {
+			stage.set(result, throwable);
+			eventloop.completeExternalTask();
+		}, eventloop);
 		return stage;
 	}
 
-	static <T> Stage<T> ofFuture(Future<T> future, Executor executor) {
+	static <T> Stage<T> ofFuture(Executor executor, Future<? extends T> future) {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
+		eventloop.startExternalTask();
 		SettableStage<T> stage = SettableStage.create();
-		executor.execute(() -> {
-			try {
-				T value = future.get();
-				eventloop.execute(() -> stage.set(value));
-			} catch (InterruptedException | ExecutionException e) {
-				eventloop.execute(() -> stage.setException(e));
-			}
-		});
+		try {
+			executor.execute(() -> {
+				try {
+					T value = future.get();
+					eventloop.execute(() -> stage.set(value));
+				} catch (ExecutionException e) {
+					eventloop.execute(() -> stage.setException(e.getCause()));
+				} catch (InterruptedException e) {
+					eventloop.execute(() -> stage.setException(e));
+				} finally {
+					eventloop.completeExternalTask();
+				}
+			});
+		} catch (RejectedExecutionException e) {
+			eventloop.completeExternalTask();
+			stage.setException(e);
+		}
+		return stage;
+	}
+
+	static <T> Stage<T> ofCallable(Executor executor, Callable<? extends T> callable) {
+		Eventloop eventloop = Eventloop.getCurrentEventloop();
+		eventloop.startExternalTask();
+		SettableStage<T> stage = SettableStage.create();
+		try {
+			executor.execute(() -> {
+				try {
+					T result = callable.call();
+					eventloop.execute(() -> stage.set(result));
+				} catch (CompletionException e) {
+					eventloop.execute(() -> stage.setException(e));
+				} catch (RuntimeException e) {
+					eventloop.execute(() -> eventloop.recordFatalError(e, callable));
+				} catch (Exception e) {
+					eventloop.execute(() -> stage.setException(e));
+				} catch (Throwable e) {
+					eventloop.execute(() -> eventloop.recordFatalError(e, callable));
+				} finally {
+					eventloop.completeExternalTask();
+				}
+			});
+		} catch (RejectedExecutionException e) {
+			eventloop.completeExternalTask();
+			stage.setException(e);
+		}
+		return stage;
+	}
+
+	static Stage<Void> ofRunnable(Executor executor, Runnable runnable) {
+		Eventloop eventloop = Eventloop.getCurrentEventloop();
+		eventloop.startExternalTask();
+		SettableStage<Void> stage = SettableStage.create();
+		try {
+			executor.execute(() -> {
+				try {
+					runnable.run();
+					eventloop.execute(() -> stage.set(null));
+				} catch (CompletionException e) {
+					eventloop.execute(() -> stage.setException(e));
+				} catch (RuntimeException e) {
+					eventloop.execute(() -> eventloop.recordFatalError(e, runnable));
+				} catch (Exception e) {
+					// checked exception should never happen in Runnables, but added for consistency
+					eventloop.execute(() -> stage.setException(e));
+				} catch (Throwable e) {
+					eventloop.execute(() -> eventloop.recordFatalError(e, runnable));
+				} finally {
+					eventloop.completeExternalTask();
+				}
+			});
+		} catch (RejectedExecutionException e) {
+			eventloop.completeExternalTask();
+			stage.setException(e);
+		}
 		return stage;
 	}
 
