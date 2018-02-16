@@ -129,6 +129,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		net2engine.recycle();
 		engine2app.recycle();
 		app2engine.recycle();
+		net2engine = engine2app = app2engine = null;
 	}
 
 	@Override
@@ -169,12 +170,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 	private void postSync() {
 		if (!syncPosted) {
 			syncPosted = true;
-			eventloop.post(new Runnable() {
-				@Override
-				public void run() {
-					sync();
-				}
-			});
+			eventloop.post(this::sync);
 		}
 	}
 
@@ -207,12 +203,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		recycleByteBufs();
 		if (!closed) {
 			if (post) {
-				eventloop.post(new Runnable() {
-					@Override
-					public void run() {
-						downstreamEventHandler.onClosedWithError(e);
-					}
-				});
+				eventloop.post(() -> downstreamEventHandler.onClosedWithError(e));
 			} else {
 				downstreamEventHandler.onClosedWithError(e);
 			}
@@ -282,17 +273,12 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		while (true) {
 			Runnable task = engine.getDelegatedTask();
 			if (task == null) break;
-			executor.execute(new Runnable() {
-				@Override
-				public void run() {
-					task.run();
-					eventloop.execute(new Runnable() {
-						@Override
-						public void run() {
-							sync();
-						}
-					});
-				}
+			executor.execute(() -> {
+				task.run();
+				eventloop.execute(() -> {
+					if (net2engine == null) return;
+					sync();
+				});
 			});
 		}
 	}
@@ -306,18 +292,16 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		}
 	}
 
-	private void doClose() {
-		upstream.close();
-		recycleByteBufs();
-	}
-
 	@SuppressWarnings("UnusedAssignment")
 	private void doSync() throws SSLException {
 		HandshakeStatus handshakeStatus;
 		SSLEngineResult result = null;
 		while (true) {
 			if (result != null && result.getStatus() == CLOSED) {
-				doClose();
+				upstream.close();
+				net2engine.recycle();
+				app2engine.recycle();
+				net2engine = app2engine = null;
 				break;
 			}
 			handshakeStatus = engine.getHandshakeStatus();
