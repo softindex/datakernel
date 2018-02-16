@@ -18,12 +18,17 @@ package io.datakernel.bytebuf;
 
 import io.datakernel.util.ConcurrentStack;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.datakernel.bytebuf.ByteBufRegistry.ByteBufMetaInfo;
 import static io.datakernel.bytebuf.ByteBufRegistry.ByteBufWrapper;
 import static java.lang.Integer.numberOfLeadingZeros;
+import static java.util.Comparator.comparingLong;
 
 public final class ByteBufPool {
 	private static final int NUMBER_SLABS = 33;
@@ -31,10 +36,25 @@ public final class ByteBufPool {
 	private static int minSize = 32;
 	private static int maxSize = 1 << 30;
 
-	private static final ConcurrentStack<ByteBuf>[] slabs = createSlabs(NUMBER_SLABS);
-	private static final AtomicInteger[] created = createCounters(NUMBER_SLABS);
+	private static final ConcurrentStack<ByteBuf>[] slabs;
+	private static final AtomicInteger[] created;
 
-	private ByteBufPool() {}
+	private static final Object EMPTY_VALUE = new Object();
+	private static final ConcurrentHashMap<ByteBufWrapper, Object> byteBufs = new ConcurrentHashMap<>();
+
+	static {
+		//noinspection unchecked
+		slabs = new ConcurrentStack[NUMBER_SLABS];
+		//noinspection unchecked
+		created = new AtomicInteger[NUMBER_SLABS];
+		for (int i = 0; i < NUMBER_SLABS; i++) {
+			slabs[i] = new ConcurrentStack<>();
+			created[i] = new AtomicInteger();
+		}
+	}
+
+	private ByteBufPool() {
+	}
 
 	public static ByteBuf allocate(int size) {
 		if (size < minSize || size >= maxSize) {
@@ -46,6 +66,7 @@ public final class ByteBufPool {
 		ByteBuf buf = queue.pop();
 		if (buf != null) {
 			buf.reset();
+			assert byteBufs.remove(new ByteBufWrapper(buf)) != buf;
 		} else {
 			buf = ByteBuf.wrapForWriting(new byte[1 << index]);
 			buf.refs++;
@@ -60,7 +81,7 @@ public final class ByteBufPool {
 	public static void recycle(ByteBuf buf) {
 		assert buf.array.length >= minSize && buf.array.length <= maxSize;
 		ConcurrentStack<ByteBuf> queue = slabs[32 - numberOfLeadingZeros(buf.array.length - 1)];
-		assert !queue.contains(buf) : "duplicate recycle array";
+		assert byteBufs.put(new ByteBufWrapper(buf), EMPTY_VALUE) == null : "duplicate recycle array";
 		queue.push(buf);
 
 		assert ByteBufRegistry.recordRecycle(buf);
@@ -82,23 +103,7 @@ public final class ByteBufPool {
 			slabs[i].clear();
 			created[i].set(0);
 		}
-	}
-
-	private static ConcurrentStack<ByteBuf>[] createSlabs(int numberOfSlabs) {
-		//noinspection unchecked
-		ConcurrentStack<ByteBuf>[] slabs = new ConcurrentStack[numberOfSlabs];
-		for (int i = 0; i < slabs.length; i++) {
-			slabs[i] = new ConcurrentStack<>();
-		}
-		return slabs;
-	}
-
-	private static AtomicInteger[] createCounters(int amount) {
-		AtomicInteger[] counters = new AtomicInteger[amount];
-		for (int i = 0; i < counters.length; i++) {
-			counters[i] = new AtomicInteger(0);
-		}
-		return counters;
+		byteBufs.clear();
 	}
 
 	public static ByteBuf ensureTailRemaining(ByteBuf buf, int newTailRemaining) {
@@ -432,12 +437,7 @@ public final class ByteBufPool {
 				bufsInfo.add(byteBufJmxInfo);
 			}
 
-			Collections.sort(bufsInfo, new Comparator<ByteBufJmxInfo>() {
-				@Override
-				public int compare(ByteBufJmxInfo o1, ByteBufJmxInfo o2) {
-					return -(Long.compare(o1.duration, o2.duration));
-				}
-			});
+			bufsInfo.sort(comparingLong(item -> -item.duration));
 
 			return bufsInfo;
 		}
@@ -582,12 +582,7 @@ public final class ByteBufPool {
 				bufsInfo.add(byteBufJmxInfo);
 			}
 
-			Collections.sort(bufsInfo, new Comparator<ByteBufDetailedJmxInfo>() {
-				@Override
-				public int compare(ByteBufDetailedJmxInfo o1, ByteBufDetailedJmxInfo o2) {
-					return -(Long.compare(o1.duration, o2.duration));
-				}
-			});
+			bufsInfo.sort(comparingLong(item -> -item.duration));
 
 			return bufsInfo.get(indexInList);
 		}

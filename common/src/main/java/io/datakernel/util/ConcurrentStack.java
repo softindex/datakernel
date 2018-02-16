@@ -71,18 +71,6 @@ public final class ConcurrentStack<E> implements Iterable<E> {
 		return peek() == null;
 	}
 
-	public boolean contains(E item) {
-		if (item == null)
-			return false;
-		Node<E> node = head.get();
-		while (node != null) {
-			if (node.item == item)
-				return true;
-			node = node.next;
-		}
-		return false;
-	}
-
 	public int size() {
 		int result = 0;
 		Node<E> node = head.get();
