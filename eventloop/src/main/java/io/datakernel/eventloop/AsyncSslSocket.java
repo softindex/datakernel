@@ -138,7 +138,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 			recycleByteBufs();
 			return;
 		}
-		if (!app2engine.canRead() && engine.getHandshakeStatus() == NOT_HANDSHAKING && write) {
+		if (engine2app != null && !app2engine.canRead() && engine.getHandshakeStatus() == NOT_HANDSHAKING && write) {
 			write = false;
 			downstreamEventHandler.onWrite();
 		}
@@ -344,18 +344,14 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 				break;
 		}
 
-		if (engine2app == null)
-			return;
-
-		if (read && engine2app.canRead()) {
+		if (engine2app != null && read && engine2app.canRead()) {
 			read = false;
 			ByteBuf readBuf = engine2app;
 			engine2app = ByteBuf.empty();
-
 			downstreamEventHandler.onRead(readBuf);
 		}
 
-		if (result != null && result.getStatus() == CLOSED) {
+		if (engine2app != null && result != null && result.getStatus() == CLOSED) {
 			downstreamEventHandler.onReadEndOfStream();
 		}
 	}
