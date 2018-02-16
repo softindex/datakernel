@@ -51,8 +51,6 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 	private boolean read = false;
 	private boolean write = false;
 
-	private boolean closed = false;
-
 	// region builders
 	public static AsyncSslSocket wrapClientSocket(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
 	                                              String host, int port,
@@ -103,7 +101,13 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 			engine.beginHandshake();
 			doSync();
 		} catch (SSLException e) {
-			handleSSLException(e, true);
+			upstream.close();
+			eventloop.post(() -> {
+				if (engine2app != null) {
+					downstreamEventHandler.onClosedWithError(e);
+				}
+				recycleByteBufs();
+			});
 		}
 	}
 
@@ -119,17 +123,12 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		try {
 			engine.closeInbound();
 		} catch (SSLException e) {
-			downstreamEventHandler.onClosedWithError(new CloseWithoutNotifyException(e));
-			recycleByteBufs();
+			if (app2engine != null) {
+				downstreamEventHandler.onClosedWithError(new CloseWithoutNotifyException(e));
+			}
 			upstream.close();
+			recycleByteBufs();
 		}
-	}
-
-	private void recycleByteBufs() {
-		net2engine.recycle();
-		engine2app.recycle();
-		app2engine.recycle();
-		net2engine = engine2app = app2engine = null;
 	}
 
 	@Override
@@ -147,10 +146,10 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 
 	@Override
 	public void onClosedWithError(Exception e) {
-		recycleByteBufs();
-		if (!closed) {
+		if (engine2app != null) {
 			downstreamEventHandler.onClosedWithError(e);
 		}
+		recycleByteBufs();
 	}
 
 	@Override
@@ -167,13 +166,6 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		postSync();
 	}
 
-	private void postSync() {
-		if (!syncPosted) {
-			syncPosted = true;
-			eventloop.post(this::sync);
-		}
-	}
-
 	@Override
 	public void write(ByteBuf buf) {
 		write = true;
@@ -188,26 +180,25 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 
 	@Override
 	public void close() {
-		closed = true;
+		if (engine2app == null) return;
+		engine2app.recycle();
+		engine2app = null;
+		app2engine.recycle();
+		app2engine = ByteBuf.empty();
 		engine.closeOutbound();
 		postSync();
+	}
+
+	private void recycleByteBufs() {
+		if (net2engine != null) net2engine.recycle();
+		if (engine2app != null) engine2app.recycle();
+		if (app2engine != null) app2engine.recycle();
+		net2engine = engine2app = app2engine = null;
 	}
 
 	@Override
 	public InetSocketAddress getRemoteSocketAddress() {
 		return upstream.getRemoteSocketAddress();
-	}
-
-	private void handleSSLException(SSLException e, boolean post) {
-		upstream.close();
-		recycleByteBufs();
-		if (!closed) {
-			if (post) {
-				eventloop.post(() -> downstreamEventHandler.onClosedWithError(e));
-			} else {
-				downstreamEventHandler.onClosedWithError(e);
-			}
-		}
 	}
 
 	private SSLEngineResult tryToUnwrap() throws SSLException {
@@ -231,7 +222,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		net2engine = recycleIfEmpty(net2engine);
 
 		dstBuf.ofWriteByteBuffer(dstBuffer);
-		if (dstBuf.canRead()) {
+		if (engine2app != null && dstBuf.canRead()) {
 			engine2app = ByteBufPool.append(engine2app, dstBuf);
 		} else {
 			dstBuf.recycle();
@@ -283,12 +274,23 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		}
 	}
 
+	private void postSync() {
+		if (!syncPosted) {
+			syncPosted = true;
+			eventloop.post(this::sync);
+		}
+	}
+
 	private void sync() {
 		syncPosted = false;
 		try {
 			doSync();
 		} catch (SSLException e) {
-			handleSSLException(e, false);
+			upstream.close();
+			if (engine2app != null) {
+				downstreamEventHandler.onClosedWithError(e);
+			}
+			recycleByteBufs();
 		}
 	}
 
@@ -342,16 +344,15 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 				break;
 		}
 
+		if (engine2app == null)
+			return;
+
 		if (read && engine2app.canRead()) {
 			read = false;
 			ByteBuf readBuf = engine2app;
 			engine2app = ByteBuf.empty();
 
 			downstreamEventHandler.onRead(readBuf);
-		}
-
-		if (closed) { // socket was closed by its handler
-			return;
 		}
 
 		if (result != null && result.getStatus() == CLOSED) {
