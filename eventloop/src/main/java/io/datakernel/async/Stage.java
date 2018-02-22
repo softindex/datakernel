@@ -52,6 +52,8 @@ public interface Stage<T> {
 					eventloop.execute(() -> stage.setException(e.getCause()));
 				} catch (InterruptedException e) {
 					eventloop.execute(() -> stage.setException(e));
+				} catch (Throwable e) {
+					eventloop.execute(() -> eventloop.recordFatalError(e, future));
 				} finally {
 					eventloop.completeExternalTask();
 				}

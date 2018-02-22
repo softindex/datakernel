@@ -72,23 +72,6 @@ abstract class AbstractStage<T> implements Stage<T> {
 		}
 	}
 
-	static final class StageForwarder<T> implements BiConsumer<T, Throwable> {
-		final BiConsumer<? super T, ? super Throwable> prev;
-		final BiConsumer<? super T, ? super Throwable> next;
-
-		StageForwarder(BiConsumer<? super T, ? super Throwable> prev,
-		               BiConsumer<? super T, ? super Throwable> next) {
-			this.prev = prev;
-			this.next = next;
-		}
-
-		@Override
-		public void accept(T result, Throwable throwable) {
-			prev.accept(result, throwable);
-			next.accept(result, throwable);
-		}
-	}
-
 	@Override
 	public <U, S extends BiConsumer<? super T, ? super Throwable> & Stage<U>> Stage<U> then(S stage) {
 		subscribe(stage);
@@ -107,7 +90,7 @@ abstract class AbstractStage<T> implements Stage<T> {
 				nextStage.prev = this.next;
 				this.next = consumer;
 			} else {
-				this.next = new StageForwarder<>(this.next, consumer);
+				this.next = ((BiConsumer<T, Throwable>) this.next).andThen(consumer);
 			}
 		}
 	}
@@ -174,15 +157,18 @@ abstract class AbstractStage<T> implements Stage<T> {
 
 			private void doComplete(T value, Throwable error) {
 				Eventloop eventloop = getCurrentEventloop();
+				eventloop.startExternalTask();
 				executor.execute(() -> handler.handle(value, error, new Completion<U>() {
 					@Override
 					public void complete(U result) {
 						eventloop.execute(() -> complete(result));
+						eventloop.completeExternalTask();
 					}
 
 					@Override
 					public void completeExceptionally(Throwable t) {
 						eventloop.execute(() -> completeExceptionally(t));
+						eventloop.completeExternalTask();
 					}
 				}));
 			}
