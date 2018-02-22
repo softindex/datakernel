@@ -28,6 +28,8 @@ import io.datakernel.http.HttpResponse;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
+import io.datakernel.trigger.Severity;
+import io.datakernel.trigger.TriggersModule;
 
 import javax.inject.Singleton;
 import java.net.InetSocketAddress;
@@ -75,6 +77,15 @@ public class HttpHelloWorldLauncher extends Launcher {
 		super(PRODUCTION,
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
+				TriggersModule.create()
+						.with(Eventloop.class, Severity.HIGH,
+								eventloop -> eventloop.getStats().getFatalErrors().getTotal() != 0 ?
+										eventloop.getStats().getFatalErrors().toString() :
+										null)
+						.with(AsyncHttpServer.class, Severity.AVERAGE,
+								server -> server.getStats().getHttpErrors().getTotal() != 0 ?
+										server.getStats().getHttpErrors().toString() :
+										null),
 				new HttpHelloWorldModule());
 	}
 

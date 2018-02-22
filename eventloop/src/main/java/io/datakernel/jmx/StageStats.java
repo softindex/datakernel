@@ -9,7 +9,7 @@ import java.util.function.BiConsumer;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.jmx.JmxReducers.JmxReducerMax;
 import static io.datakernel.jmx.JmxReducers.JmxReducerSum;
-import static io.datakernel.jmx.MBeanFormat.formatPeriodAgo;
+import static io.datakernel.jmx.MBeanFormat.formatTimestamp;
 
 public class StageStats {
 	private Eventloop eventloop;
@@ -86,7 +86,7 @@ public class StageStats {
 
 	@JmxAttribute
 	public String getLastStartTime() {
-		return lastStartTimestamp != 0 ? formatPeriodAgo(lastStartTimestamp) : "";
+		return lastStartTimestamp != 0 ? formatTimestamp(lastStartTimestamp) : "";
 	}
 
 	@JmxAttribute(reducer = JmxReducerMax.class, optional = true)
@@ -96,7 +96,7 @@ public class StageStats {
 
 	@JmxAttribute
 	public String getLastCompleteTime() {
-		return lastCompleteTimestamp != 0 ? formatPeriodAgo(lastCompleteTimestamp) : "";
+		return lastCompleteTimestamp != 0 ? formatTimestamp(lastCompleteTimestamp) : "";
 	}
 
 	@JmxAttribute(reducer = JmxReducerMax.class)

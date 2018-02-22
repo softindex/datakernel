@@ -200,7 +200,7 @@ public class ServiceGraph {
 	}
 
 	/**
-	 * Stops services from the service graph
+	 * Start services in the service graph
 	 */
 	synchronized public CompletableFuture<?> startFuture() {
 		List<Key<?>> circularDependencies = findCircularDependencies();
@@ -213,7 +213,7 @@ public class ServiceGraph {
 
 
 	/**
-	 * Stops services from the service graph
+	 * Stop services from the service graph
 	 */
 	synchronized public CompletableFuture<?> stopFuture() {
 		Set<Key<?>> leafNodes = difference(union(services.keySet(), backwards.keySet()), forwards.keySet());

@@ -125,7 +125,7 @@ public final class ExceptionStats implements JmxStats<ExceptionStats>, JmxStatsW
 		if (count == 0) return "";
 
 		StringBuilder summary = new StringBuilder("Count: " + count +
-				" " + MBeanFormat.formatPeriodAgo(lastExceptionTimestamp));
+				" " + MBeanFormat.formatTimestamp(lastExceptionTimestamp));
 
 		if (throwable != null) {
 			summary.append("\n\nStack Trace: ");

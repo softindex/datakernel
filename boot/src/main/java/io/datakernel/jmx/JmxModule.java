@@ -19,11 +19,11 @@ package io.datakernel.jmx;
 import com.google.inject.*;
 import com.google.inject.matcher.AbstractMatcher;
 import com.google.inject.name.Names;
-import com.google.inject.spi.BindingScopingVisitor;
 import com.google.inject.spi.ProvisionListener;
+import io.datakernel.trigger.TriggersModule;
+import io.datakernel.util.Initializer;
 import io.datakernel.worker.WorkerPoolModule;
 
-import java.lang.annotation.Annotation;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.Type;
 import java.util.HashMap;
@@ -32,8 +32,9 @@ import java.util.Map;
 import java.util.Set;
 
 import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.util.guice.GuiceUtils.isSingleton;
 
-public final class JmxModule extends AbstractModule {
+public final class JmxModule extends AbstractModule implements Initializer<TriggersModule> {
 	public static final double REFRESH_PERIOD_DEFAULT = 1.0;
 	public static final int MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT = 50;
 
@@ -171,30 +172,6 @@ public final class JmxModule extends AbstractModule {
 						singletonKeys.add(provision.getBinding().getKey());
 					}
 				}
-			}
-		});
-	}
-
-	private static boolean isSingleton(Binding<?> binding) {
-		return binding.acceptScopingVisitor(new BindingScopingVisitor<Boolean>() {
-			@Override
-			public Boolean visitNoScoping() {
-				return false;
-			}
-
-			@Override
-			public Boolean visitScopeAnnotation(Class<? extends Annotation> visitedAnnotation) {
-				return visitedAnnotation.equals(Singleton.class);
-			}
-
-			@Override
-			public Boolean visitScope(Scope visitedScope) {
-				return visitedScope.equals(Scopes.SINGLETON);
-			}
-
-			@Override
-			public Boolean visitEagerSingleton() {
-				return true;
 			}
 		});
 	}

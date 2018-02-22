@@ -18,11 +18,17 @@ package io.datakernel.service;
 
 import com.google.inject.*;
 import com.google.inject.matcher.AbstractMatcher;
-import com.google.inject.spi.*;
+import com.google.inject.spi.Dependency;
+import com.google.inject.spi.DependencyAndSource;
+import com.google.inject.spi.HasDependencies;
+import com.google.inject.spi.ProvisionListener;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopServer;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.net.BlockingSocketServer;
+import io.datakernel.trigger.TriggersModule;
+import io.datakernel.util.Initializer;
+import io.datakernel.util.guice.GuiceUtils;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerPoolModule;
 import io.datakernel.worker.WorkerPoolObjects;
@@ -73,7 +79,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  * <p>
  * An application terminates if a circular dependency found.
  */
-public final class ServiceGraphModule extends AbstractModule {
+public final class ServiceGraphModule extends AbstractModule implements Initializer<TriggersModule> {
 	private final Logger logger = getLogger(this.getClass());
 
 	private final Map<Class<?>, ServiceAdapter<?>> registeredServiceAdapters = new LinkedHashMap<>();
@@ -125,30 +131,6 @@ public final class ServiceGraphModule extends AbstractModule {
 
 	public static ServiceGraphModule newInstance() {
 		return new ServiceGraphModule();
-	}
-
-	private static boolean isSingleton(Binding<?> binding) {
-		return binding.acceptScopingVisitor(new BindingScopingVisitor<Boolean>() {
-			@Override
-			public Boolean visitNoScoping() {
-				return false;
-			}
-
-			@Override
-			public Boolean visitScopeAnnotation(Class<? extends Annotation> visitedAnnotation) {
-				return visitedAnnotation.equals(Singleton.class);
-			}
-
-			@Override
-			public Boolean visitScope(Scope visitedScope) {
-				return visitedScope.equals(Scopes.SINGLETON);
-			}
-
-			@Override
-			public Boolean visitEagerSingleton() {
-				return true;
-			}
-		});
 	}
 
 	private static String prettyPrintAnnotation(Annotation annotation) {
@@ -431,7 +413,7 @@ public final class ServiceGraphModule extends AbstractModule {
 		bindListener(new AbstractMatcher<Binding<?>>() {
 			@Override
 			public boolean matches(Binding<?> binding) {
-				return isSingleton(binding);
+				return GuiceUtils.isSingleton(binding);
 			}
 		}, new ProvisionListener() {
 			@Override

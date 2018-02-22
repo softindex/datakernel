@@ -109,11 +109,22 @@ public final class SimpleType {
 		return result;
 	}
 
-	@Override
-	public String toString() {
+	public String getSimpleName() {
+		return clazz.getSimpleName() + (typeParams.length == 0 ? "" :
+				Arrays.stream(typeParams)
+						.map(SimpleType::getSimpleName)
+						.collect(Collectors.joining(",", "<", ">")));
+	}
+
+	public String getName() {
 		return clazz.getName() + (typeParams.length == 0 ? "" :
 				Arrays.stream(typeParams)
-						.map(Object::toString)
+						.map(SimpleType::getName)
 						.collect(Collectors.joining(",", "<", ">")));
+	}
+
+	@Override
+	public String toString() {
+		return getName();
 	}
 }

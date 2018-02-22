@@ -72,11 +72,10 @@ public final class MBeanFormat {
 	}
 
 	private static String formatHours(long period) {
-		long milliseconds = period % 1000;
 		long seconds = (period / 1000) % 60;
 		long minutes = (period / (60 * 1000)) % 60;
 		long hours = period / (60 * 60 * 1000);
-		return String.format("%02d", hours) + ":" + String.format("%02d", minutes) + ":" + String.format("%02d", seconds) + "." + String.format("%03d", milliseconds);
+		return String.format("%02d", hours) + ":" + String.format("%02d", minutes) + ":" + String.format("%02d", seconds);
 	}
 
 	public static String formatDuration(long period) {
@@ -94,17 +93,11 @@ public final class MBeanFormat {
 		MBeanFormat.dateTimeFormatter = dateTimeFormatter;
 	}
 
-	public static String formatPeriodAgo(long timestamp) {
+	public static String formatTimestamp(long timestamp) {
 		if (timestamp == 0)
 			return "";
 		return dateTimeFormatter.apply(timestamp) +
 				" (" + formatHours(System.currentTimeMillis() - timestamp) + " ago)";
-	}
-
-	public static String formatTimestamp(long timestamp) {
-		if (timestamp == 0)
-			return "";
-		return dateTimeFormatter.apply(timestamp);
 	}
 
 	public static String[] formatMultilines(String s) {

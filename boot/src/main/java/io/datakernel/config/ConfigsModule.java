@@ -21,13 +21,14 @@ import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import io.datakernel.config.impl.ConfigWithPrefix;
 import io.datakernel.service.BlockingService;
+import io.datakernel.util.Initializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-public final class ConfigsModule extends AbstractModule {
+public final class ConfigsModule extends AbstractModule implements Initializer<ConfigsModule> {
 	private static final Logger logger = LoggerFactory.getLogger(ConfigsModule.class);
 
 	private Config config;
