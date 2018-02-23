@@ -37,7 +37,6 @@ import org.slf4j.Logger;
 import javax.sql.DataSource;
 import java.io.Closeable;
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -47,6 +46,7 @@ import static io.datakernel.service.ServiceAdapters.*;
 import static io.datakernel.util.CollectionUtils.*;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
+import static io.datakernel.util.guice.GuiceUtils.prettyPrintAnnotation;
 import static java.util.Collections.emptySet;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static org.slf4j.LoggerFactory.getLogger;
@@ -131,33 +131,6 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 
 	public static ServiceGraphModule newInstance() {
 		return new ServiceGraphModule();
-	}
-
-	private static String prettyPrintAnnotation(Annotation annotation) {
-		StringBuilder sb = new StringBuilder();
-		Method[] methods = annotation.annotationType().getDeclaredMethods();
-		boolean first = true;
-		if (methods.length != 0) {
-			for (Method m : methods) {
-				try {
-					Object value = m.invoke(annotation);
-					if (value.equals(m.getDefaultValue()))
-						continue;
-					String valueStr = (value instanceof String ? "\"" + value + "\"" : value.toString());
-					String methodName = m.getName();
-					if ("value".equals(methodName) && first) {
-						sb.append(valueStr);
-						first = false;
-					} else {
-						sb.append(first ? "" : ",").append(methodName).append("=").append(valueStr);
-						first = false;
-					}
-				} catch (ReflectiveOperationException ignored) {
-				}
-			}
-		}
-		String simpleName = annotation.annotationType().getSimpleName();
-		return "@" + ("NamedImpl".equals(simpleName) ? "Named" : simpleName) + (first ? "" : "(" + sb + ")");
 	}
 
 	/**

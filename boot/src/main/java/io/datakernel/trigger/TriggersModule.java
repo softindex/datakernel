@@ -31,28 +31,29 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.function.BiPredicate;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
+import java.util.function.*;
+
+import static io.datakernel.util.guice.GuiceUtils.prettyPrintAnnotation;
 
 public final class TriggersModule extends AbstractModule implements Initializer<TriggersModule> {
-	public static final double REFRESH_PERIOD_DEFAULT = 1.0;
-	public static final int MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT = 50;
-
 	private final Set<Key<?>> singletonKeys = new HashSet<>();
 	private final Set<Key<?>> workerKeys = new HashSet<>();
+
+	private Function<Key<?>, String> keyToString = TriggersModule::name;
+	private BiFunction<Key<?>, Integer, String> workerKeyToString = TriggersModule::name;
 
 	private static final class MonitoringConfig<T> {
 		private final BiPredicate<Key<T>, T> matcher;
 		private final Severity severity;
-		private final Function<T, String> triggerFunction;
+		private final String name;
+		private final Function<T, TriggerResult> triggerFunction;
 
 		MonitoringConfig(BiPredicate<Key<T>, T> matcher,
-		                 Severity severity,
-		                 Function<T, String> triggerFunction) {
+		                 Severity severity, String name,
+		                 Function<T, TriggerResult> triggerFunction) {
 			this.matcher = matcher;
 			this.severity = severity;
+			this.name = name;
 			this.triggerFunction = triggerFunction;
 		}
 	}
@@ -66,25 +67,32 @@ public final class TriggersModule extends AbstractModule implements Initializer<
 		return new TriggersModule();
 	}
 
-	public <T> TriggersModule with(Class<T> type, Severity severity,
-	                               Predicate<T> predicate, String description) {
-		return with(type, severity, instance -> predicate.test(instance) ? description : null);
-	}
-
-	public <T> TriggersModule with(Class<T> type, Severity severity,
-	                               Function<T, String> triggerFunction) {
-		return with((k, instance) -> type.isAssignableFrom(instance.getClass()), severity, triggerFunction);
-	}
-
-	public <T> TriggersModule with(Key<T> key, Severity severity,
-	                               Function<T, String> triggerFunction) {
-		return with((k, instance) -> k.equals(key), severity, triggerFunction);
-	}
-
-	public <T> TriggersModule with(BiPredicate<Key<T>, T> matcher, Severity severity,
-	                               Function<T, String> triggerFunction) {
-		classSettings.add(new MonitoringConfig<>(matcher, severity, triggerFunction));
+	public TriggersModule withNaming(Function<Key<?>, String> keyToString,
+	                                 BiFunction<Key<?>, Integer, String> workerKeyToString) {
+		this.keyToString = keyToString;
+		this.workerKeyToString = workerKeyToString;
 		return this;
+	}
+
+	public <T> TriggersModule with(Class<T> type, Severity severity, String name,
+	                               Function<T, TriggerResult> triggerFunction) {
+		return with((k, instance) -> type.isAssignableFrom(instance.getClass()), severity, name, triggerFunction);
+	}
+
+	public <T> TriggersModule with(Key<T> key, Severity severity, String name,
+	                               Function<T, TriggerResult> triggerFunction) {
+		return with((k, instance) -> k.equals(key), severity, name, triggerFunction);
+	}
+
+	public <T> TriggersModule with(BiPredicate<Key<T>, T> matcher, Severity severity, String name,
+	                               Function<T, TriggerResult> triggerFunction) {
+		classSettings.add(new MonitoringConfig<>(matcher, severity, name, triggerFunction));
+		return this;
+	}
+
+	@Override
+	public TriggersModule initialize(Consumer<TriggersModule> initializer) {
+		return null;
 	}
 
 	@Override
@@ -142,7 +150,7 @@ public final class TriggersModule extends AbstractModule implements Initializer<
 			Key<Object> key = (Key<Object>) k;
 			Object instance = injector.getInstance(key);
 			Type type = key.getTypeLiteral().getType();
-			scanTriggers(triggers, key, instance, () -> name(key));
+			scanTriggers(triggers, key, instance, () -> keyToString.apply(key));
 		}
 
 		// register workers
@@ -155,34 +163,44 @@ public final class TriggersModule extends AbstractModule implements Initializer<
 				for (int i = 0; i < instances.size(); i++) {
 					Object instance = instances.get(i);
 					final int finalI = i;
-					scanTriggers(triggers, key, instance, () -> name(key, finalI));
+					scanTriggers(triggers, key, instance, () -> workerKeyToString.apply(key, finalI));
 				}
 			}
 		}
 	}
 
 	@SuppressWarnings("unchecked")
-	private <T> void scanTriggers(Triggers monitoring, Key<T> key, T instance, Supplier<String> naming) {
-		String name = null;
+	private <T> void scanTriggers(Triggers triggers, Key<T> key, T instance, Supplier<String> naming) {
+		String component = null;
+
+		if (instance instanceof HasTriggers) {
+			component = naming.get();
+			String finalComponent = component;
+			((HasTriggers) instance).registerTriggers((severity, name, triggerFunction) -> {
+				triggers.addTrigger(severity, finalComponent, name, triggerFunction);
+			});
+		}
+
 		for (Object entry : classSettings) {
 			MonitoringConfig<T> config = (MonitoringConfig<T>) entry;
 			if (config.matcher.test(key, instance)) {
-				if (name == null) name = naming.get();
-				monitoring.addTrigger(
-						config.severity, name, instance,
-						config.triggerFunction);
+				if (component == null) component = naming.get();
+				triggers.addTrigger(config.severity, component, config.name, () -> config.triggerFunction.apply(instance));
 			}
 		}
 	}
 
 	private static String name(Key<?> key) {
 		Type type = key.getTypeLiteral().getType();
-		return SimpleType.ofType(type).getSimpleName();
+		return (key.getAnnotation() != null ? prettyPrintAnnotation(key.getAnnotation()) + " " : "") +
+				SimpleType.ofType(type).getSimpleName();
 	}
 
 	private static String name(Key<?> key, int workerIndex) {
 		Type type = key.getTypeLiteral().getType();
-		return SimpleType.ofType(type).getSimpleName() + "[" + workerIndex + "]";
+		return (key.getAnnotation() != null ? prettyPrintAnnotation(key.getAnnotation()) + " " : "") +
+				SimpleType.ofType(type).getSimpleName() +
+				"[" + workerIndex + "]";
 	}
 
 }

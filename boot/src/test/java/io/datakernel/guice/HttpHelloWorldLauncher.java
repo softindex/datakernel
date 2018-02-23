@@ -29,6 +29,7 @@ import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.trigger.Severity;
+import io.datakernel.trigger.TriggerResult;
 import io.datakernel.trigger.TriggersModule;
 
 import javax.inject.Singleton;
@@ -78,14 +79,16 @@ public class HttpHelloWorldLauncher extends Launcher {
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
 				TriggersModule.create()
-						.with(Eventloop.class, Severity.HIGH,
-								eventloop -> eventloop.getStats().getFatalErrors().getTotal() != 0 ?
-										eventloop.getStats().getFatalErrors().toString() :
-										null)
-						.with(AsyncHttpServer.class, Severity.AVERAGE,
-								server -> server.getStats().getHttpErrors().getTotal() != 0 ?
-										server.getStats().getHttpErrors().toString() :
-										null),
+						.with(Eventloop.class, Severity.DEBUG, "Debug", eventloop ->
+								TriggerResult.create()
+										.when(eventloop.getLoop() % 3 != 0))
+						.with(Eventloop.class, Severity.WARNING, "Debug", eventloop ->
+								TriggerResult.create()
+										.when(eventloop.getLoop() % 4 != 0))
+						.with(Eventloop.class, Severity.HIGH, "FatalErrors", eventloop ->
+								TriggerResult.ofError(eventloop.getStats().getFatalErrors()))
+						.with(AsyncHttpServer.class, Severity.AVERAGE, "HttpErrors", server ->
+								TriggerResult.ofError(server.getStats().getHttpErrors())),
 				new HttpHelloWorldModule());
 	}
 

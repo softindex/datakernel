@@ -28,7 +28,7 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 
 	private long lastStartTime;
 	private long lastCompleteTime;
-	private Throwable lastError;
+	private Throwable lastException;
 	private long firstRetryTime;
 	private int errorCount;
 
@@ -120,12 +120,12 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 		long timestamp;
 		if (lastStartTime == 0) {
 			timestamp = now + initialDelay;
-		} else if (lastError == null || retryPolicy == null) {
+		} else if (lastException == null || retryPolicy == null) {
 			timestamp = schedule.nextTimestamp(now, lastStartTime, lastCompleteTime);
 		} else {
 			assert errorCount != 0;
 			if (firstRetryTime == 0) firstRetryTime = now;
-			timestamp = retryPolicy.nextRetryTimestamp(now, lastError, errorCount - 1, firstRetryTime);
+			timestamp = retryPolicy.nextRetryTimestamp(now, lastException, errorCount - 1, firstRetryTime);
 			if (timestamp == 0) {
 				timestamp = schedule.nextTimestamp(now, lastStartTime, lastCompleteTime);
 			}
@@ -144,11 +144,11 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 					lastCompleteTime = eventloop.currentTimeMillis();
 					if (throwable == null) {
 						firstRetryTime = 0;
-						lastError = null;
+						lastException = null;
 						errorCount = 0;
 						scheduleTask();
 					} else {
-						lastError = throwable;
+						lastException = throwable;
 						errorCount++;
 						logger.error("Retry attempt " + errorCount, throwable);
 						if (abortOnError) {
@@ -185,7 +185,7 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 
 	public void setRetryPolicy(RetryPolicy retryPolicy) {
 		this.retryPolicy = retryPolicy;
-		if (stats.getActiveStages() != 0 && scheduledTask != null && !scheduledTask.isCancelled() && lastError != null) {
+		if (stats.getActiveStages() != 0 && scheduledTask != null && !scheduledTask.isCancelled() && lastException != null) {
 			scheduledTask.cancel();
 			scheduledTask = null;
 			scheduleTask();
@@ -216,6 +216,11 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 	@JmxAttribute(name = "")
 	public StageStats getStats() {
 		return stats;
+	}
+
+	@JmxAttribute
+	public Throwable getLastException() {
+		return lastException;
 	}
 
 	@JmxAttribute

@@ -24,13 +24,9 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.function.Function;
 
 public final class MBeanFormat {
-	private static final char SPLITTER_LN = '\n';
-
 	private MBeanFormat() {
 	}
 
@@ -68,7 +64,7 @@ public final class MBeanFormat {
 	}
 
 	public static String[] formatException(Throwable exception) {
-		return formatMultilines(formatExceptionLine(exception));
+		return formatExceptionLine(exception).split("\n");
 	}
 
 	private static String formatHours(long period) {
@@ -100,32 +96,4 @@ public final class MBeanFormat {
 				" (" + formatHours(System.currentTimeMillis() - timestamp) + " ago)";
 	}
 
-	public static String[] formatMultilines(String s) {
-		if (s == null || s.isEmpty())
-			return null;
-
-		return split(s);
-	}
-
-	private static String[] split(String s) {
-		List<String> list = new ArrayList<>();
-		int position = 0;
-
-		int indexOfSplitter = s.indexOf(SPLITTER_LN, position);
-		while (s.indexOf(SPLITTER_LN, position) != -1) {
-
-			list.add(s.substring(position, indexOfSplitter));
-			position = indexOfSplitter + 1;
-
-			indexOfSplitter = s.indexOf(SPLITTER_LN, position);
-		}
-		if (position != s.length()) {
-			list.add(s.substring(position, s.length()));
-		}
-		if (s.charAt(s.length() - 1) == SPLITTER_LN) {
-			list.add("");
-		}
-
-		return list.toArray(new String[list.size()]);
-	}
 }
