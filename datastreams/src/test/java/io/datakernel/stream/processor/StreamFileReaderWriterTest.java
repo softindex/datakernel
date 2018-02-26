@@ -35,15 +35,16 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.DataStreams.stream;
 import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
 
 public class StreamFileReaderWriterTest {
 	Eventloop eventloop;
 	ExecutorService executor;
+
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Rule
 	public TemporaryFolder tempFolder = new TemporaryFolder();
@@ -72,7 +73,6 @@ public class StreamFileReaderWriterTest {
 		byteQueue.drainTo(buf);
 
 		assertArrayEquals(fileBytes, buf.array());
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -123,7 +123,6 @@ public class StreamFileReaderWriterTest {
 		byteQueue.drainTo(buf);
 
 		assertArrayEquals(fileBytes, buf.array());
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -140,10 +139,8 @@ public class StreamFileReaderWriterTest {
 		stream(producer, writer);
 		eventloop.run();
 
-
 		byte[] fileBytes = Files.readAllBytes(tempFile.toPath());
 		assertArrayEquals(bytes, fileBytes);
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -161,8 +158,6 @@ public class StreamFileReaderWriterTest {
 
 		stream(producer, writer);
 		eventloop.run();
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 }

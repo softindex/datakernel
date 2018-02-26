@@ -20,13 +20,17 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.exception.ParseException;
 import io.datakernel.stream.net.MessagingSerializers.ByteBufPoolAppendable;
+import io.datakernel.stream.processor.ByteBufRule;
+import org.junit.Rule;
 import org.junit.Test;
 
-import static io.datakernel.bytebuf.ByteBufPool.*;
 import static org.junit.Assert.assertEquals;
 
 public class ByteBufPoolAppendableTest {
 	private static final String HELLO_WORLD = "Hello, World!";
+
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Test
 	public void testAppendSimple() {
@@ -37,7 +41,6 @@ public class ByteBufPoolAppendableTest {
 		assertEquals(13, buf.writePosition());
 		assertEquals(ByteBufStrings.decodeAscii(buf), HELLO_WORLD);
 		buf.recycle();
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -49,6 +52,5 @@ public class ByteBufPoolAppendableTest {
 		assertEquals(13, buf.writePosition());
 		assertEquals(ByteBufStrings.decodeAscii(buf), HELLO_WORLD);
 		buf.recycle();
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 }

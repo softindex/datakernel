@@ -19,6 +19,8 @@ package io.datakernel.serializer;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
+import io.datakernel.stream.processor.ByteBufRule;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
@@ -28,12 +30,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.serializer.DataOutputStreamEx.*;
 import static io.datakernel.serializer.asm.BufferSerializers.*;
 import static org.junit.Assert.*;
 
 public class SerializeStreamTest {
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Test
 	public void test() throws IOException, SerializeException, DeserializeException {
@@ -58,8 +61,6 @@ public class SerializeStreamTest {
 			assertArrayEquals(strings, newStrings.toArray(new String[4]));
 			assertTrue(dataInputStream.isEndOfStream());
 		}
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -81,8 +82,6 @@ public class SerializeStreamTest {
 
 			assertTrue(dataInputStream.isEndOfStream());
 		}
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -103,8 +102,6 @@ public class SerializeStreamTest {
 			}
 			assertTrue(dataInputStream.isEndOfStream());
 		}
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -140,8 +137,6 @@ public class SerializeStreamTest {
 			assertTrue(dataInputStream1.isEndOfStream());
 			assertTrue(dataInputStream2.isEndOfStream());
 		}
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -177,8 +172,6 @@ public class SerializeStreamTest {
 
 			assertTrue(dataInputStream.isEndOfStream());
 		}
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -203,8 +196,6 @@ public class SerializeStreamTest {
 			assertArrayEquals(array2, dataInputStream.deserialize(bytesSerializer()));
 			assertTrue(dataInputStream.isEndOfStream());
 		}
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -230,8 +221,6 @@ public class SerializeStreamTest {
 			assertEquals(validObj2.str, dataInputStream.deserialize(serializer).str);
 			assertTrue(dataInputStream.isEndOfStream());
 		}
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -249,8 +238,6 @@ public class SerializeStreamTest {
 			assertEquals(validObj1, dataInputStream.deserialize(serializer));
 			assertTrue(dataInputStream.isEndOfStream());
 		}
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -269,12 +256,10 @@ public class SerializeStreamTest {
 			assertEquals(Integer.valueOf(42), dataInputStream.deserialize(intSerializer()));
 			assertTrue(dataInputStream.isEndOfStream());
 		}
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
-	public void testStandardWrite() throws IOException {
+	public void testStandardWrite() throws IOException, DeserializeException {
 		ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
 		try (final DataOutputStreamEx dataOutputStream = DataOutputStreamEx.create(byteOutputStream, 1)) {
 			dataOutputStream.writeInt(42);
@@ -319,8 +304,6 @@ public class SerializeStreamTest {
 			assertArrayEquals(new byte[]{0, 0, 0, 0, 0, 6, 7, 0, 0, 0}, read(dataInputStream, new byte[10], 5, 2));
 			assertTrue(dataInputStream.isEndOfStream());
 		}
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test(expected = IOException.class)

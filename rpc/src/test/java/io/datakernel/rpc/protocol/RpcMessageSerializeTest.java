@@ -17,20 +17,18 @@
 package io.datakernel.rpc.protocol;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
+import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.net.UnknownHostException;
 
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static java.lang.ClassLoader.getSystemClassLoader;
-import static org.junit.Assert.assertEquals;
 
 public class RpcMessageSerializeTest {
 
@@ -76,11 +74,8 @@ public class RpcMessageSerializeTest {
 		return deserializer.deserialize(buf);
 	}
 
-	@Before
-	public void before() {
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
-	}
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Test
 	public void testRpcMessage() throws UnknownHostException {
@@ -92,7 +87,6 @@ public class RpcMessageSerializeTest {
 		Assert.assertTrue(message2.getData() instanceof TestRpcMessageData);
 		TestRpcMessageData messageData2 = (TestRpcMessageData) message2.getData();
 		Assert.assertEquals(messageData1.getS(), messageData2.getS());
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 }

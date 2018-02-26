@@ -20,17 +20,20 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.AsyncTcpSocket.EventHandler;
 import io.datakernel.net.SocketSettings;
+import io.datakernel.stream.processor.ByteBufRule;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
-import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public class AbstractServerTest {
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
+
 	@Test
 	public void testTimeouts() throws IOException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
@@ -121,6 +124,5 @@ public class AbstractServerTest {
 		});
 
 		eventloop.run();
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 }

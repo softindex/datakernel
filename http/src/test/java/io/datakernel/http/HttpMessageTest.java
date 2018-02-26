@@ -19,12 +19,13 @@ package io.datakernel.http;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufStrings;
+import io.datakernel.stream.processor.ByteBufRule;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 
-import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.http.HttpHeaders.of;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
@@ -44,6 +45,9 @@ public class HttpMessageTest {
 		request.recycleBufs();
 	}
 
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
+
 	@Test
 	public void testHttpResponse() {
 		assertHttpResponseEquals("HTTP/1.1 100 OK\r\nContent-Length: 0\r\n\r\n", HttpResponse.ofCode(100));
@@ -59,7 +63,6 @@ public class HttpMessageTest {
 				HttpResponse.ofCode(200).withCookies(asList(HttpCookie.of("cookie1", "value1"), HttpCookie.of("cookie2", "value2"))));
 		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie1=value1, cookie2=value2\r\nContent-Length: 0\r\n\r\n",
 				HttpResponse.ofCode(200).withCookies(asList(HttpCookie.of("cookie1", "value1"), HttpCookie.of("cookie2", "value2"))));
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -80,7 +83,6 @@ public class HttpMessageTest {
 		buf.put("/abc".getBytes(), 0, 4);
 		request.setBody(buf);
 		assertHttpRequestEquals("POST /index.html HTTP/1.1\r\nHost: test.com\r\nContent-Length: 4\r\n\r\n/abc", request);
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	private static String getHeaderValue(HttpMessage message, HttpHeader header) {
@@ -115,6 +117,5 @@ public class HttpMessageTest {
 		assertEquals(asList("value1", "VALUE1"), response.getAllHeaders().get(header1));
 		assertEquals(asList("value1", "VALUE1"), response.getAllHeaders().get(HEADER1));
 		assertEquals(asList("value2"), response.getAllHeaders().get(header2));
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 }

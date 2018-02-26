@@ -16,6 +16,7 @@
 
 package io.datakernel.bytebuf;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -29,9 +30,13 @@ public class ByteBufTest {
 	private static final byte[] BYTES = new byte[]{'T', 'e', 's', 't', ' ', 'm', 'e', 's', 's', 'a', 'g', 'e'};
 
 	@Before
-	public void setUp() {
+	public void clearByteBufPool() {
 		ByteBufPool.clear();
-		ByteBufPool.setSizes(32, 1 << 30);
+	}
+
+	@After
+	public void checkByteBufPool() {
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -132,7 +137,6 @@ public class ByteBufTest {
 		assertArrayEquals(bytes, BYTES);
 
 		buf.recycle();
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -148,6 +152,7 @@ public class ByteBufTest {
 		slice0.recycle();
 		assertTrue(buf.canWrite());
 		slice01.recycle();
+		buf.recycle();
 	}
 
 	@Test
@@ -174,8 +179,6 @@ public class ByteBufTest {
 			consumer.consume(buf.slice());
 			buf.recycle();
 		}
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -201,7 +204,6 @@ public class ByteBufTest {
 
 		buf.recycle();
 		secondBuf.recycle();
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test

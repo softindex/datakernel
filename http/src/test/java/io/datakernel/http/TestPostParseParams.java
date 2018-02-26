@@ -18,17 +18,21 @@ package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.exception.ParseException;
+import io.datakernel.stream.processor.ByteBufRule;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.util.Map;
 
-import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static org.junit.Assert.assertEquals;
 
 public class TestPostParseParams {
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
+
 	@Test
 	public void testParameters() throws ParseException {
 		ByteBuf body = wrapAscii("hello=world&value=1234");
@@ -43,7 +47,5 @@ public class TestPostParseParams {
 		assertEquals("world", params.get("hello"));
 		assertEquals("1234", params.get("value"));
 		request.recycleBufs();
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 }

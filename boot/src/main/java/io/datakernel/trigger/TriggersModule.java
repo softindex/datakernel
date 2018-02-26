@@ -127,6 +127,12 @@ public final class TriggersModule extends AbstractModule implements Initializer<
 				}
 			}
 		});
+		bind(EagerTriggers.class).asEagerSingleton();
+	}
+
+	private static final class EagerTriggers {
+		@Inject
+		Triggers triggers;
 	}
 
 	@Provides

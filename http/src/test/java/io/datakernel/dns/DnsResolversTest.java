@@ -16,9 +16,10 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,7 +30,6 @@ import java.net.UnknownHostException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static org.junit.Assert.assertEquals;
 
@@ -57,11 +57,11 @@ public class DnsResolversTest {
 		System.out.println(".");
 	}
 
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
+
 	@Before
 	public void setUp() throws Exception {
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
-
 		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		nativeDnsResolver = AsyncDnsClient.create(eventloop).withTimeout(3_000L).withDnsServerAddress(LOCAL_DNS);
@@ -86,8 +86,6 @@ public class DnsResolversTest {
 
 		InetAddress[] inetAddresses = future.get();
 		print(inetAddresses);
-
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -102,8 +100,6 @@ public class DnsResolversTest {
 		} catch (ExecutionException e) {
 			assertEquals(DnsMessage.ResponseErrorCode.SERVER_FAILURE, ((DnsException) e.getCause()).getErrorCode());
 		}
-
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -120,6 +116,5 @@ public class DnsResolversTest {
 		} catch (ExecutionException e) {
 			assertEquals(DnsMessage.ResponseErrorCode.TIMED_OUT, ((DnsException) e.getCause()).getErrorCode());
 		}
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 }

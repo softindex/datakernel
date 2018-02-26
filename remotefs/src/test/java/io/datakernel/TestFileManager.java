@@ -22,6 +22,7 @@ import io.datakernel.file.AsyncFile;
 import io.datakernel.remotefs.FileManager;
 import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.file.StreamFileWriter;
+import io.datakernel.stream.processor.ByteBufRule;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.junit.Before;
@@ -39,7 +40,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.file.AsyncFile.open;
 import static io.datakernel.stream.DataStreams.stream;
@@ -52,6 +52,9 @@ import static org.junit.Assert.*;
 public class TestFileManager {
 	private static final OpenOption[] READ_OPTIONS = new OpenOption[]{StandardOpenOption.READ};
 	private static final OpenOption[] CREATE_OPTIONS = StreamFileWriter.CREATE_OPTIONS;
+
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Rule
 	public final TemporaryFolder tmpFolder = new TemporaryFolder();
@@ -121,7 +124,6 @@ public class TestFileManager {
 		executor.shutdown();
 
 		assertArrayEquals(readAllBytes(inputFile), readAllBytes(storage.resolve("1/c.txt")));
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -141,7 +143,6 @@ public class TestFileManager {
 		executor.shutdown();
 
 		assertArrayEquals(readAllBytes(storage.resolve("2/b/d.txt")), readAllBytes(outputFile));
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -165,7 +166,6 @@ public class TestFileManager {
 			}
 		});
 		future.get();
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -178,7 +178,6 @@ public class TestFileManager {
 		executor.shutdown();
 
 		assertFalse(exists(storage.resolve("2/3/a.txt")));
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -202,8 +201,6 @@ public class TestFileManager {
 			}
 		});
 		future.get();
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -220,6 +217,5 @@ public class TestFileManager {
 		Collections.sort(actual);
 
 		assertEquals(expected, actual);
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 }

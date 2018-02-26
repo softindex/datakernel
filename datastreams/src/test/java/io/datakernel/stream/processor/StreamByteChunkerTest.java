@@ -17,10 +17,9 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamProducer;
-import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -28,16 +27,13 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 
-import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static org.junit.Assert.*;
 
 public class StreamByteChunkerTest {
-	@Before
-	public void before() {
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
-	}
+
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	private static ByteBuf createRandomByteBuf(Random random) {
 		int len = random.nextInt(100);
@@ -103,8 +99,5 @@ public class StreamByteChunkerTest {
 		receivedBuffers.get(receivedBuffers.size() - 1).recycle();
 
 		assertEquals(totalLen, actualLen);
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
-
-
 }

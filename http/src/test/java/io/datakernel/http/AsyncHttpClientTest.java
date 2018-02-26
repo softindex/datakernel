@@ -18,7 +18,6 @@ package io.datakernel.http;
 
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
@@ -26,7 +25,8 @@ import io.datakernel.eventloop.SimpleServer;
 import io.datakernel.eventloop.SimpleServer.SocketHandlerProvider;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.ParseException;
-import org.junit.Before;
+import io.datakernel.stream.processor.ByteBufRule;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.net.InetAddress;
@@ -34,7 +34,6 @@ import java.net.InetSocketAddress;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
-import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeUtf8;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -46,11 +45,8 @@ public class AsyncHttpClientTest {
 
 	private static final InetAddress GOOGLE_PUBLIC_DNS = HttpUtils.inetAddress("8.8.8.8");
 
-	@Before
-	public void before() {
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
-	}
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Test
 	public void testAsyncClient() throws Exception {
@@ -75,8 +71,6 @@ public class AsyncHttpClientTest {
 		eventloop.run();
 
 		assertEquals(decodeUtf8(HelloWorldServer.HELLO_WORLD), future.get());
-
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test(expected = AsyncTimeoutException.class)
@@ -100,7 +94,6 @@ public class AsyncHttpClientTest {
 				.toCompletableFuture();
 
 		eventloop.run();
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 
 		try {
 			System.err.println("Result: " + future.get());
@@ -130,7 +123,6 @@ public class AsyncHttpClientTest {
 		}).toCompletableFuture();
 
 		eventloop.run();
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 
 		try {
 			System.err.println("Result: " + future.get());
@@ -189,7 +181,6 @@ public class AsyncHttpClientTest {
 		}).toCompletableFuture();
 
 		eventloop.run();
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 
 		try {
 			System.err.println("Result: " + future.get());

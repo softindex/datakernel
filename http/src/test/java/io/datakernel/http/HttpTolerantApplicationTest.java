@@ -18,9 +18,9 @@ package io.datakernel.http;
 
 import io.datakernel.async.Callback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
-import org.junit.Before;
+import io.datakernel.stream.processor.ByteBufRule;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.io.DataInputStream;
@@ -31,7 +31,6 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.CompletableFuture;
 
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.TestUtils.readFully;
@@ -41,11 +40,8 @@ import static org.junit.Assert.assertTrue;
 
 public class HttpTolerantApplicationTest {
 
-	@Before
-	public void before() {
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
-	}
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	public static AsyncHttpServer asyncHttpServer(Eventloop primaryEventloop, int port) {
 		AsyncServlet servlet = new AsyncServlet() {
@@ -96,8 +92,6 @@ public class HttpTolerantApplicationTest {
 
 		server.closeFuture().get();
 		thread.join();
-
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	private static ServerSocket socketServer(int port, String testResponse) throws IOException {
@@ -161,8 +155,6 @@ public class HttpTolerantApplicationTest {
 			eventloop.run();
 		}
 		assertEquals("text/html; charset=UTF-8", future.get());
-
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 }

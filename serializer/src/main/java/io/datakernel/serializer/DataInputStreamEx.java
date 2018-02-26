@@ -24,22 +24,29 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 
+import static java.lang.Math.max;
+
 public final class DataInputStreamEx implements Closeable {
-	public static final int DEFAULT_BUFFER_SIZE = 65536;
+	public static final int DEFAULT_BUFFER_SIZE = 16384;
 
 	private InputStream inputStream;
-	private ByteBuf buf;
+	private ByteBuf buf = ByteBuf.empty();
+	private final int defaultBufferSize;
 
 	private char[] charArray = new char[128];
 
-	private DataInputStreamEx(InputStream inputStream, int bufferSize) {
+	private DataInputStreamEx(InputStream inputStream, int defaultBufferSize) {
 		this.inputStream = inputStream;
-		this.buf = ByteBufPool.allocate(bufferSize);
+		this.defaultBufferSize = defaultBufferSize;
 	}
 
-	public static DataInputStreamEx create(InputStream inputStream) {return new DataInputStreamEx(inputStream, DEFAULT_BUFFER_SIZE);}
+	public static DataInputStreamEx create(InputStream inputStream) {
+		return new DataInputStreamEx(inputStream, DEFAULT_BUFFER_SIZE);
+	}
 
-	public static DataInputStreamEx create(InputStream inputStream, int bufferSize) {return new DataInputStreamEx(inputStream, bufferSize);}
+	public static DataInputStreamEx create(InputStream inputStream, int bufferSize) {
+		return new DataInputStreamEx(inputStream, bufferSize);
+	}
 
 	public void changeInputStream(InputStream inputStream) throws IOException {
 		if (this.inputStream != null) {
@@ -48,31 +55,18 @@ public final class DataInputStreamEx implements Closeable {
 		this.inputStream = inputStream;
 	}
 
-	private void ensureReadSize(int size) {
-		if (buf.readRemaining() + buf.writeRemaining() >= size) {
-			return;
-		}
-
-		int headPos = buf.readPosition();
-		int remainingToRead = buf.readRemaining();
-		ByteBuf newBuf = buf.limit() >= size ? buf : ByteBufPool.allocate(size + size / 2);
-		System.arraycopy(buf.array(), headPos, newBuf.array(), 0, remainingToRead);
-		newBuf.readPosition(0);
-		newBuf.writePosition(remainingToRead);
-
-		if (buf != newBuf) {
-			buf.recycle();
-			buf = newBuf;
-		}
-	}
-
 	private void doEnsureRead(int size) throws IOException {
-		while (buf.readRemaining() < size) {
-			ensureReadSize(size);
-			int bytesRead = inputStream.read(buf.array(), buf.writePosition(), buf.writeRemaining());
-			if (bytesRead == -1)
-				throw new IOException("Could not read message");
-			buf.moveWritePosition(bytesRead);
+		try {
+			while (buf.readRemaining() < size) {
+				buf = ByteBufPool.ensureWriteRemaining(buf, max(defaultBufferSize, buf.array().length), size);
+				int bytesRead = inputStream.read(buf.array(), buf.writePosition(), buf.writeRemaining());
+				if (bytesRead == -1)
+					throw new IOException("Could not read message");
+				buf.moveWritePosition(bytesRead);
+			}
+		} catch (IOException e) {
+			recycleInternalBuf();
+			throw e;
 		}
 	}
 
@@ -96,6 +90,7 @@ public final class DataInputStreamEx implements Closeable {
 				if ((b = readByte()) >= 0) {
 					result |= b << 14;
 				} else {
+					close();
 					throw new IOException();
 				}
 			}
@@ -105,20 +100,26 @@ public final class DataInputStreamEx implements Closeable {
 
 	@Override
 	public void close() throws IOException {
+		recycleInternalBuf();
 		inputStream.close();
+	}
+
+	public void recycleInternalBuf() {
 		buf.recycle();
+		buf = ByteBuf.empty();
 	}
 
 	public boolean isEndOfStream() throws IOException {
 		if (buf.canRead()) {
 			return false;
 		} else {
-			int bytesRead = inputStream.read(buf.array(), 0, buf.limit());
-			if (bytesRead == -1)
+			buf = ByteBufPool.ensureWriteRemaining(buf, max(defaultBufferSize, buf.array().length), 1);
+			int bytesRead = inputStream.read(buf.array(), buf.writePosition(), buf.writeRemaining());
+			if (bytesRead == -1) {
+				recycleInternalBuf();
 				return true;
-			assert buf.limit() != 0 && bytesRead != 0;
-			buf.readPosition(0);
-			buf.writePosition(bytesRead);
+			}
+			buf.moveWritePosition(bytesRead);
 			return false;
 		}
 	}
@@ -199,7 +200,7 @@ public final class DataInputStreamEx implements Closeable {
 		return result;
 	}
 
-	public int readVarInt() throws IOException {
+	public int readVarInt() throws IOException, DeserializeException {
 		int result;
 		byte b = readByte();
 		if (b >= 0) {
@@ -220,8 +221,10 @@ public final class DataInputStreamEx implements Closeable {
 						result |= (b & 0x7f) << 21;
 						if ((b = readByte()) >= 0) {
 							result |= b << 28;
-						} else
-							throw new IllegalArgumentException();
+						} else {
+							recycleInternalBuf();
+							throw new DeserializeException();
+						}
 					}
 				}
 			}
@@ -229,7 +232,7 @@ public final class DataInputStreamEx implements Closeable {
 		return result;
 	}
 
-	public long readVarLong() throws IOException {
+	public long readVarLong() throws IOException, DeserializeException {
 		long result = 0;
 		for (int offset = 0; offset < 64; offset += 7) {
 			byte b = readByte();
@@ -237,7 +240,8 @@ public final class DataInputStreamEx implements Closeable {
 			if ((b & 0x80) == 0)
 				return result;
 		}
-		throw new IllegalArgumentException();
+		recycleInternalBuf();
+		throw new DeserializeException();
 	}
 
 	public float readFloat() throws IOException {
@@ -255,7 +259,7 @@ public final class DataInputStreamEx implements Closeable {
 		return c;
 	}
 
-	public String readUTF8() throws IOException {
+	public String readUTF8() throws IOException, DeserializeException {
 		int length = readVarInt();
 		if (length == 0)
 			return "";
@@ -269,7 +273,7 @@ public final class DataInputStreamEx implements Closeable {
 		}
 	}
 
-	public String readIso88591() throws IOException {
+	public String readIso88591() throws IOException, DeserializeException {
 		int length = readVarInt();
 		if (length == 0)
 			return "";
@@ -283,7 +287,7 @@ public final class DataInputStreamEx implements Closeable {
 		return new String(chars, 0, length);
 	}
 
-	public String readUTF16() throws IOException {
+	public String readUTF16() throws IOException, DeserializeException {
 		int length = readVarInt();
 		if (length == 0)
 			return "";

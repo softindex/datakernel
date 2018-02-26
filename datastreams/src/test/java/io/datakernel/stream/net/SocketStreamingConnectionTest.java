@@ -16,15 +16,15 @@
 
 package io.datakernel.stream.net;
 
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SimpleServer;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.processor.ByteBufRule;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
-import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.net.InetAddress;
@@ -34,7 +34,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.serializer.asm.BufferSerializers.intSerializer;
 import static io.datakernel.stream.DataStreams.stream;
@@ -53,11 +52,8 @@ public final class SocketStreamingConnectionTest {
 		}
 	}
 
-	@Before
-	public void setUp() {
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
-	}
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Test
 	public void test() throws Exception {
@@ -102,7 +98,6 @@ public final class SocketStreamingConnectionTest {
 
 		future.get();
 		assertEquals(list, consumerToList.getList());
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -149,6 +144,5 @@ public final class SocketStreamingConnectionTest {
 
 		future.get();
 		assertEquals(source, consumerToList.getList());
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 }

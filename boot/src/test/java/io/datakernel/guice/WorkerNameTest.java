@@ -18,32 +18,27 @@ package io.datakernel.guice;
 
 import com.google.inject.*;
 import com.google.inject.name.Named;
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
+import io.datakernel.stream.processor.ByteBufRule;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerId;
 import io.datakernel.worker.WorkerPool;
-import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.util.List;
 
 import static com.google.inject.name.Names.named;
-import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.service.ServiceAdapters.combinedAdapter;
 import static io.datakernel.service.ServiceAdapters.immediateServiceAdapter;
-import static org.junit.Assert.assertEquals;
 
 public class WorkerNameTest {
 	public static final int PORT = 7583;
 	public static final int WORKERS = 4;
 
-	@Before
-	public void before() {
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
-	}
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	public static class Element1 {}
 
@@ -123,7 +118,5 @@ public class WorkerNameTest {
 		} finally {
 			serviceGraph.stopFuture().get();
 		}
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 }

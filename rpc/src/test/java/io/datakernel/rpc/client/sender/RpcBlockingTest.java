@@ -17,7 +17,6 @@
 package io.datakernel.rpc.client.sender;
 
 import io.datakernel.async.Stage;
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.hash.ShardingFunction;
@@ -25,15 +24,16 @@ import io.datakernel.rpc.server.RpcRequestHandler;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
+import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.concurrent.ExecutionException;
 
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.EventloopThreadFactory.defaultEventloopThreadFactory;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.*;
@@ -53,11 +53,11 @@ public class RpcBlockingTest {
 	private RpcServer serverTwo;
 	private RpcServer serverThree;
 
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
+
 	@Before
 	public void setUp() throws Exception {
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
-
 		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		serverOne = RpcServer.create(eventloop)
@@ -154,8 +154,6 @@ public class RpcBlockingTest {
 		serverOne.closeFuture().get();
 		serverTwo.closeFuture().get();
 		serverThree.closeFuture().get();
-
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	private static String blockingRequest(RpcClient rpcClient, String name) throws Exception {

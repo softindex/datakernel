@@ -16,12 +16,13 @@
 
 package io.datakernel.http;
 
+import io.datakernel.stream.processor.ByteBufRule;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.util.Date;
 import java.util.Map;
 
-import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.http.ContentTypes.JSON_UTF_8;
 import static io.datakernel.http.MediaTypes.ANY_IMAGE;
 import static java.nio.charset.StandardCharsets.ISO_8859_1;
@@ -29,6 +30,9 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 
 public class HttpHeadersTest {
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
+
 	@Test
 	public void testValuesToStrings() {
 		HttpRequest request = HttpRequest.post("http://example.com")
@@ -48,6 +52,5 @@ public class HttpHeadersTest {
 
 		headers = response.getHeaders();
 		assertEquals("Mon, 13 Feb 2017 00:00:00 GMT", headers.get(HttpHeaders.DATE));
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 }

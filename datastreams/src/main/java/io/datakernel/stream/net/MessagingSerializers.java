@@ -79,7 +79,7 @@ public final class MessagingSerializers {
 
 		@Override
 		public Appendable append(CharSequence csq) {
-			container = ByteBufPool.ensureTailRemaining(container, csq.length() * 3);
+			container = ByteBufPool.ensureWriteRemaining(container, csq.length() * 3);
 			for (int i = 0; i < csq.length(); i++) {
 				putUtf8(container, csq.charAt(i));
 			}
@@ -93,7 +93,7 @@ public final class MessagingSerializers {
 
 		@Override
 		public Appendable append(char c) {
-			container = ByteBufPool.ensureTailRemaining(container, 3);
+			container = ByteBufPool.ensureWriteRemaining(container, 3);
 			putUtf8(container, c);
 			return this;
 		}

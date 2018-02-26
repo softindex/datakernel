@@ -21,12 +21,15 @@ import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.serializer.annotations.SerializeNullable;
 import io.datakernel.serializer.asm.SerializerGenByteBuf;
+import io.datakernel.stream.processor.ByteBufRule;
+import org.junit.Rule;
 import org.junit.Test;
 
-import static io.datakernel.bytebuf.ByteBufPool.*;
 import static org.junit.Assert.*;
 
 public class CodeGenSerializerGenByteBufTest {
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	private static <T> T doTest(T testData1, BufferSerializer<T> serializer, BufferSerializer<T> deserializer) {
 		byte[] array = new byte[1000];
@@ -52,8 +55,6 @@ public class CodeGenSerializerGenByteBufTest {
 		assertEqualsBufs(testBuffer1, testBuffer2);
 
 		testBuffer2.recycle();
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -73,13 +74,10 @@ public class CodeGenSerializerGenByteBufTest {
 
 		assertNotNull(testBuffer2);
 		assertEqualsBufs(testBuffer1, testBuffer2);
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
 	public void test2() {
-
 		byte[] array = new byte[1024];
 		for (int i = 0; i < array.length; i++)
 			array[i] = (byte) i;
@@ -110,8 +108,6 @@ public class CodeGenSerializerGenByteBufTest {
 
 		testBuffer3.recycle();
 		testBuffer4.recycle();
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -145,8 +141,6 @@ public class CodeGenSerializerGenByteBufTest {
 		assertEquals(10, testBuffer3.peek(0));
 		buffer[testBuffer3.readPosition()] = 123;
 		assertEquals(123, testBuffer3.peek(0));
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	public static final class TestByteBufData {
@@ -169,7 +163,6 @@ public class CodeGenSerializerGenByteBufTest {
 
 	@Test
 	public void test3() {
-
 		byte[] array = new byte[1024];
 		for (int i = 0; i < array.length; i++)
 			array[i] = (byte) i;
@@ -200,13 +193,19 @@ public class CodeGenSerializerGenByteBufTest {
 		assertNull(testBuffer00.getBuffer());
 		assertNotNull(testBuffer4.getBuffer());
 		assertEqualsBufs(testBuffer2.getBuffer(), testBuffer4.getBuffer());
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		if (testBuffer3.buffer != null) {
+			testBuffer3.buffer.recycle();
+		}
+		if (testBuffer00.buffer != null) {
+			testBuffer00.buffer.recycle();
+		}
+		if (testBuffer4.buffer != null) {
+			testBuffer4.buffer.recycle();
+		}
 	}
 
 	@Test
 	public void testWrap3() {
-
 		byte[] array = new byte[1024];
 		for (int i = 0; i < array.length; i++)
 			array[i] = (byte) i;
@@ -238,8 +237,6 @@ public class CodeGenSerializerGenByteBufTest {
 		assertNull(testBuffer00.getBuffer());
 		assertNotNull(testBuffer4.getBuffer());
 		assertEqualsBufs(testBuffer2.getBuffer(), testBuffer4.getBuffer());
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	static void assertEqualsBufs(ByteBuf buf1, ByteBuf buf2) {

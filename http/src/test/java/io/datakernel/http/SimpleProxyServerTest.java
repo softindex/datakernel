@@ -17,12 +17,12 @@
 package io.datakernel.http;
 
 import io.datakernel.async.Stage;
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.DatagramSocketSettings;
+import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -31,24 +31,19 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.TestUtils.readFully;
 import static io.datakernel.http.TestUtils.toByteArray;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class SimpleProxyServerTest {
 	final static int ECHO_SERVER_PORT = 9707;
 	final static int PROXY_SERVER_PORT = 9444;
 
-	@Before
-	public void before() {
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
-	}
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	public static AsyncHttpServer proxyHttpServer(Eventloop primaryEventloop, AsyncHttpClient httpClient) {
 		AsyncServlet servlet = new AsyncServlet() {
@@ -122,8 +117,6 @@ public class SimpleProxyServerTest {
 
 		echoServerThread.join();
 		proxyServerThread.join();
-
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 }

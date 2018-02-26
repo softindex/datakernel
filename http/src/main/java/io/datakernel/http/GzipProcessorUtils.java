@@ -180,7 +180,7 @@ final class GzipProcessorUtils {
 			}
 			int processedDataSize = compressor.getTotalIn();
 			int newTailRemaining = estimateMaxCompressedSize(unprocessedDataSize - processedDataSize);
-			dst = ByteBufPool.ensureTailRemaining(dst, newTailRemaining);
+			dst = ByteBufPool.ensureWriteRemaining(dst, newTailRemaining);
 		}
 		src.moveReadPosition(compressor.getTotalIn());
 		return dst;

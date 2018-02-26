@@ -22,6 +22,7 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
+import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -40,7 +41,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
-import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -68,6 +68,9 @@ public class TestGzipProcessorUtils {
 	public String text;
 
 	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
+
+	@Rule
 	public ExpectedException expectedException = ExpectedException.none();
 
 	@Test
@@ -76,7 +79,6 @@ public class TestGzipProcessorUtils {
 		ByteBuf actual = fromGzip(raw, 11_000_000);
 		assertEquals(text, decodeAscii(actual));
 		actual.recycle();
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -87,7 +89,6 @@ public class TestGzipProcessorUtils {
 		raw.moveWritePosition(-4);
 		raw.writeInt(Integer.reverseBytes(2));
 		fromGzip(raw, 11_000_000);
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -101,8 +102,6 @@ public class TestGzipProcessorUtils {
 		} catch (ParseException ignored) {
 
 		}
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -139,7 +138,6 @@ public class TestGzipProcessorUtils {
 
 		eventloop.run();
 		assertEquals(text, future.get());
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -149,7 +147,6 @@ public class TestGzipProcessorUtils {
 		assertEquals(text, decodeAscii(decoded));
 		encodedData.recycle();
 		decoded.recycle();
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -158,7 +155,6 @@ public class TestGzipProcessorUtils {
 		ByteBuf decoded = fromGzip(encodedData, 11_000_000);
 		assertEquals(text, decodeAscii(decoded));
 		decoded.recycle();
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	private static ByteBuf encodeWithGzipOutputStream(ByteBuf raw) throws IOException {
@@ -181,7 +177,7 @@ public class TestGzipProcessorUtils {
 			ByteBuf data = ByteBufPool.allocate(256);
 			while ((nRead = gzip.read(data.array(), data.writePosition(), data.writeRemaining())) != -1) {
 				data.moveWritePosition(nRead);
-				data = ByteBufPool.ensureTailRemaining(data, data.readRemaining());
+				data = ByteBufPool.ensureWriteRemaining(data, data.readRemaining());
 			}
 			return data;
 		}

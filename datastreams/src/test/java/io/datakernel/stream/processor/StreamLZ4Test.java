@@ -17,25 +17,22 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
-import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.stream.StreamConsumers.randomlySuspending;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.TestUtils.assertStatus;
 import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
 
 public class StreamLZ4Test {
 	private static ByteBuf createRandomByteBuf(Random random) {
@@ -62,11 +59,8 @@ public class StreamLZ4Test {
 		return bytes;
 	}
 
-	@Before
-	public void before() {
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
-	}
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Test
 	public void test() {
@@ -111,8 +105,6 @@ public class StreamLZ4Test {
 
 		assertStatus(END_OF_STREAM, decompressor.getInput());
 		assertStatus(END_OF_STREAM, decompressor.getOutput());
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -169,7 +161,6 @@ public class StreamLZ4Test {
 		assertArrayEquals(actual, expected);
 
 		assertStatus(END_OF_STREAM, producer);
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 }

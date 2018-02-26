@@ -18,6 +18,7 @@ package io.datakernel.eventloop;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket.EventHandler;
+import io.datakernel.stream.processor.ByteBufRule;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
@@ -40,7 +41,8 @@ import java.security.SecureRandom;
 import java.util.Random;
 import java.util.concurrent.Executor;
 
-import static io.datakernel.bytebuf.ByteBufPool.*;
+import static io.datakernel.bytebuf.ByteBufPool.getCreatedItems;
+import static io.datakernel.bytebuf.ByteBufPool.getPoolItems;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.junit.Assert.*;
@@ -58,6 +60,9 @@ public class AsyncSslSocketTest {
 	private Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 	private AsyncSslSocket serverSslSocket;
 	private AsyncSslSocket clientSslSocket;
+
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Rule
 	public JUnitRuleMockery context = new JUnitRuleMockery();
@@ -128,7 +133,6 @@ public class AsyncSslSocketTest {
 
 		System.out.println("created: " + getCreatedItems());
 		System.out.println("in pool: " + getPoolItems());
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -167,8 +171,6 @@ public class AsyncSslSocketTest {
 
 		assertThat("received bytes amount", serverDataAccumulator.getAccumulatedData().length(), greaterThan(0));
 		assertEquals(sentData.toString(), serverDataAccumulator.getAccumulatedData());
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -207,8 +209,6 @@ public class AsyncSslSocketTest {
 
 		assertTrue(clientDataAccumulator.getAccumulatedData().length() > 0);
 		assertEquals(sentData.toString(), clientDataAccumulator.getAccumulatedData());
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -248,8 +248,6 @@ public class AsyncSslSocketTest {
 		});
 
 		eventloop.run();
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -283,7 +281,6 @@ public class AsyncSslSocketTest {
 		});
 
 		eventloop.run();
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 	// </editor-fold>
 

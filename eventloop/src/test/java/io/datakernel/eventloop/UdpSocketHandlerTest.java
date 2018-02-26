@@ -17,19 +17,19 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.net.DatagramSocketSettings;
-import org.junit.Before;
+import io.datakernel.stream.processor.ByteBufRule;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.DatagramChannel;
 
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.Eventloop.createDatagramChannel;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.fail;
 
 public class UdpSocketHandlerTest {
 	private static final int SERVER_PORT = 45555;
@@ -101,11 +101,8 @@ public class UdpSocketHandlerTest {
 		return socket;
 	}
 
-	@Before
-	public void setUp() throws Exception {
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
-	}
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Test
 	public void testEchoUdpServer() throws Exception {
@@ -131,7 +128,5 @@ public class UdpSocketHandlerTest {
 		});
 
 		eventloop.run();
-
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 }

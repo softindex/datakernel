@@ -23,7 +23,9 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AcceptMediaType;
 import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.HttpRequest;
+import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
 
@@ -33,7 +35,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpUtils.inetAddress;
@@ -47,6 +48,9 @@ public class TestHttpsClient {
 		root.setLevel(Level.TRACE);
 		//System.setProperty("javax.net.debug", "all");
 	}
+
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Ignore("requires internet connection")
 	@Test
@@ -72,7 +76,6 @@ public class TestHttpsClient {
 		executor.shutdown();
 
 		assertEquals(200, (int) future.get());
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	private HttpRequest get(String url) {

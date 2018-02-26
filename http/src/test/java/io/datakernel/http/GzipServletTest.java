@@ -20,15 +20,15 @@ import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.stream.processor.ByteBufRule;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.util.concurrent.CompletableFuture;
 
-import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.*;
 
 public class GzipServletTest {
@@ -38,6 +38,9 @@ public class GzipServletTest {
 			return Stage.of(HttpResponse.ok200().withBody(wrapAscii("Hello, World!")));
 		}
 	};
+
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Test
 	public void testGzipServletBase() throws Exception {
@@ -62,7 +65,6 @@ public class GzipServletTest {
 
 		request.recycleBufs();
 		requestGzip.recycleBufs();
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -95,7 +97,6 @@ public class GzipServletTest {
 
 		requestWBody.recycleBufs();
 		requestWOBody.recycleBufs();
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -118,7 +119,5 @@ public class GzipServletTest {
 				.toCompletableFuture();
 		eventloop.run();
 		future.get();
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 }

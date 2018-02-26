@@ -19,10 +19,10 @@ package io.datakernel.http;
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -31,23 +31,18 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.Random;
 
-import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.TestUtils.readFully;
 import static io.datakernel.http.TestUtils.toByteArray;
 import static java.lang.Math.min;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class AsyncHttpServerTest {
 
-	@Before
-	public void before() {
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
-	}
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	public static AsyncHttpServer blockingHttpServer(Eventloop primaryEventloop, int port) {
 		AsyncServlet servlet = new AsyncServlet() {
@@ -115,8 +110,6 @@ public class AsyncHttpServerTest {
 		doTestKeepAlive_Http_1_0(eventloop, blockingHttpServer(eventloop, port), port);
 		doTestKeepAlive_Http_1_0(eventloop, asyncHttpServer(eventloop, port), port);
 		doTestKeepAlive_Http_1_0(eventloop, delayedHttpServer(eventloop, port), port);
-
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	private void doTestKeepAlive_Http_1_0(Eventloop eventloop, AsyncHttpServer server, int port) throws Exception {
@@ -153,8 +146,6 @@ public class AsyncHttpServerTest {
 		doTestKeepAlive_Http_1_1(eventloop, blockingHttpServer(eventloop, port), port);
 		doTestKeepAlive_Http_1_1(eventloop, asyncHttpServer(eventloop, port), port);
 		doTestKeepAlive_Http_1_1(eventloop, delayedHttpServer(eventloop, port), port);
-
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	private void doTestKeepAlive_Http_1_1(Eventloop eventloop, AsyncHttpServer server, int port) throws Exception {
@@ -200,8 +191,6 @@ public class AsyncHttpServerTest {
 
 		server.closeFuture().get();
 		thread.join();
-
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -225,8 +214,6 @@ public class AsyncHttpServerTest {
 
 		server.closeFuture().get();
 		thread.join();
-
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -250,8 +237,6 @@ public class AsyncHttpServerTest {
 
 		server.closeFuture().get();
 		thread.join();
-
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -261,8 +246,6 @@ public class AsyncHttpServerTest {
 //		doTestPipelining(eventloop, blockingHttpServer(eventloop));
 //		doTestPipelining(eventloop, asyncHttpServer(eventloop));
 		doTestPipelining(eventloop, delayedHttpServer(eventloop, port), port);
-
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	private void doTestPipelining(Eventloop eventloop, AsyncHttpServer server, int port) throws Exception {
@@ -308,8 +291,6 @@ public class AsyncHttpServerTest {
 //		doTestPipelining(eventloop, blockingHttpServer(eventloop));
 //		doTestPipelining(eventloop, asyncHttpServer(eventloop));
 		doTestPipelining2(eventloop, delayedHttpServer(eventloop, port), port);
-
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	private void doTestPipelining2(Eventloop eventloop, AsyncHttpServer server, int port) throws Exception {
@@ -385,8 +366,6 @@ public class AsyncHttpServerTest {
 //		assertEquals(1, server.getStats().getHttpErrors().getTotal());
 //		assertEquals(AbstractHttpConnection.TOO_BIG_HTTP_MESSAGE,
 //				server.getStats().getHttpErrors().getLastException());
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -422,7 +401,6 @@ public class AsyncHttpServerTest {
 
 		server.closeFuture().get();
 		thread.join();
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	public static void main(String[] args) throws Exception {

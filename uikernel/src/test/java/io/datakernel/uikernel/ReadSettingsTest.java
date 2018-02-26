@@ -19,13 +19,17 @@ package io.datakernel.uikernel;
 import com.google.gson.Gson;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpRequest;
+import io.datakernel.stream.processor.ByteBufRule;
+import org.junit.Rule;
 import org.junit.Test;
 
-import static io.datakernel.bytebuf.ByteBufPool.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class ReadSettingsTest {
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
+
 	@Test
 	public void testParseEncoded() throws ParseException {
 		String query = "fields=%5B%22name%22%2C%22surname%22%2C%22phone%22%2C%22age%22%2C%22gender%22%5D" +
@@ -40,7 +44,6 @@ public class ReadSettingsTest {
 		assertEquals(10, settings.getLimit());
 		assertEquals("A", settings.getFilters().get("search"));
 		assertEquals(5, settings.getFields().size());
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -56,6 +59,5 @@ public class ReadSettingsTest {
 		Gson gson = new Gson();
 		ReadSettings settings = ReadSettings.from(gson, req);
 		assertEquals("Арт&уሴр", settings.getFilters().get("name"));
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 }

@@ -21,6 +21,8 @@ import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.stream.processor.ByteBufRule;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;
@@ -28,7 +30,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
-import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -43,6 +44,9 @@ public class AbstractHttpConnectionTest {
 
 	private Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 	private AsyncHttpClient client = AsyncHttpClient.create(eventloop);
+
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Test
 	public void testMultiLineHeader() throws Exception {
@@ -68,7 +72,6 @@ public class AbstractHttpConnectionTest {
 
 		assertEquals("text/           html", data.get("header"));
 		assertEquals("  <html>\n<body>\n<h1>Hello, World!</h1>\n</body>\n</html>", data.get("body"));
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	private HttpResponse createMultiLineHeaderWithInitialBodySpacesResponse() {
@@ -110,8 +113,6 @@ public class AbstractHttpConnectionTest {
 
 		eventloop.run();
 		future.get();
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	private Stage<Void> stopClientAndServer(AsyncHttpClient client, AsyncHttpServer server) {

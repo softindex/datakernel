@@ -20,13 +20,14 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.exception.ParseException;
+import io.datakernel.stream.processor.ByteBufRule;
 import org.hamcrest.collection.IsEmptyCollection;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static io.datakernel.bytebuf.ByteBufPool.*;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
@@ -34,6 +35,9 @@ import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.*;
 
 public class HttpUrlTest {
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
+
 	@Test
 	public void testSimple() {
 		UrlParser url = UrlParser.of("https://127.0.0.1:45678");
@@ -79,8 +83,6 @@ public class HttpUrlTest {
 		assertEquals("/?", url.getPathAndQuery());
 		assertEquals("/", url.getPath());
 		assertEquals("", url.getQuery());
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -111,8 +113,6 @@ public class HttpUrlTest {
 		assertEquals("/?", url.getPathAndQuery());
 		assertEquals("/", url.getPath());
 		assertEquals("", url.getQuery());
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -135,26 +135,21 @@ public class HttpUrlTest {
 		assertEquals("/", url.getPathAndQuery());
 		assertEquals("/", url.getPath());
 		assertEquals("", url.getQuery());
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test(expected = ParseException.class)
 	public void testInvalidScheme() throws ParseException {
 		UrlParser.parse("ftp://abc.com/");
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testInvalidPartialUrl() {
 		UrlParser.of("/path").isRelativePath();
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test(expected = ParseException.class)
 	public void testBadPort() throws ParseException {
 		UrlParser.parse("http://hello-world.com:80ab/path");
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -249,7 +244,6 @@ public class HttpUrlTest {
 		assertEquals(36, buf.writePosition());
 		assertEquals("/path1/path2/path3/?key1=value1&key2", ByteBufStrings.decodeAscii(buf));
 		buf.recycle();
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 
 		url = UrlParser.of("http://example.com:1234?key1=value1&key2#sec:2.2");
 		buf = ByteBufPool.allocate(64);
@@ -259,7 +253,6 @@ public class HttpUrlTest {
 		assertEquals(18, buf.writePosition());
 		assertEquals("/?key1=value1&key2", ByteBufStrings.decodeAscii(buf));
 		buf.recycle();
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test

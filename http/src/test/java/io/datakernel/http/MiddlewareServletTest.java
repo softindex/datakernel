@@ -19,11 +19,11 @@ package io.datakernel.http;
 import io.datakernel.async.Callback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
+import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
-import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.http.HttpMethod.*;
 import static org.junit.Assert.assertEquals;
 
@@ -31,6 +31,9 @@ public class MiddlewareServletTest {
 
 	private static final String TEMPLATE = "http://www.site.org";
 	private static final String DELIM = "*****************************************************************************";
+
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Rule
 	public ExpectedException expectedException = ExpectedException.none();
@@ -141,8 +144,6 @@ public class MiddlewareServletTest {
 
 		request5.recycleBufs();
 		request6.recycleBufs();
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -186,8 +187,6 @@ public class MiddlewareServletTest {
 
 		request5.recycleBufs();
 		request6.recycleBufs();
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -206,8 +205,6 @@ public class MiddlewareServletTest {
 					public void serve(HttpRequest request, Callback<HttpResponse> callback) {
 					}
 				});
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -248,7 +245,6 @@ public class MiddlewareServletTest {
 		main.serve(request6, callback("Executed: /a/e", 200));
 		main.serve(request7, callback("Executed: /a/c/f", 200));
 		System.out.println();
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -284,14 +280,11 @@ public class MiddlewareServletTest {
 		} catch (IllegalArgumentException e) {
 			assertEquals("Can't map. Servlet for this method already exists", e.getMessage());
 			request.recycleBufs();
-			assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 			return;
 		}
 
 		main.serve(request, callback("SHALL NOT BE EXECUTED", 500));
 		request.recycleBufs();
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -319,7 +312,6 @@ public class MiddlewareServletTest {
 		main.serve(request, callback("", 404));
 		System.out.println();
 		request.recycleBufs();
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -350,7 +342,6 @@ public class MiddlewareServletTest {
 		ms.serve(HttpRequest.get(TEMPLATE + "/serve/1/wash"), callback("served car: 1", 200));
 		ms.serve(HttpRequest.get(TEMPLATE + "/serve/2/feed"), callback("served man: 2", 200));
 		System.out.println();
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -393,7 +384,6 @@ public class MiddlewareServletTest {
 		servlet.serve(request2, callback("POST", 200));
 		servlet.serve(request3, callback("WILDCARD", 200));
 		System.out.println();
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -425,7 +415,6 @@ public class MiddlewareServletTest {
 		main.serve(request1, callback("Action executed", 200));
 		main.serve(request2, callback("Stopped at admin: /action/ban", 200));
 		System.out.println();
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -445,7 +434,6 @@ public class MiddlewareServletTest {
 		main.serve(request, callback("", 404));
 		System.out.println();
 		request.recycleBufs();
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -463,7 +451,6 @@ public class MiddlewareServletTest {
 		HttpRequest request = HttpRequest.post(TEMPLATE + "/a/123/b/d");
 		main.serve(request, callback("", 405));
 		request.recycleBufs();
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -486,6 +473,5 @@ public class MiddlewareServletTest {
 				.with(GET, "/a/:id/b/d", servlet)
 				.withFallback("/a/:id/b/d", fallback);
 		main.serve(HttpRequest.post(TEMPLATE + "/a/123/b/d"), callback("Fallback executed", 200));
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 }

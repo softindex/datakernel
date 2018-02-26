@@ -24,17 +24,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static io.datakernel.bytebuf.ByteBufRegistry.ByteBufMetaInfo;
 import static io.datakernel.bytebuf.ByteBufRegistry.ByteBufWrapper;
 import static java.lang.Integer.numberOfLeadingZeros;
+import static java.lang.Math.max;
 import static java.util.Comparator.comparingLong;
 
 public final class ByteBufPool {
 	private static final int NUMBER_SLABS = 33;
 
-	private static int minSize = 32;
-	private static int maxSize = 1 << 30;
+	private static final AtomicReference<ConcurrentStack.Node<ByteBuf>> cachedNodes = new AtomicReference<>();
 
 	private static final ConcurrentStack<ByteBuf>[] slabs;
 	private static final AtomicInteger[] created;
@@ -48,7 +49,7 @@ public final class ByteBufPool {
 		//noinspection unchecked
 		created = new AtomicInteger[NUMBER_SLABS];
 		for (int i = 0; i < NUMBER_SLABS; i++) {
-			slabs[i] = new ConcurrentStack<>();
+			slabs[i] = new ConcurrentStack<>(cachedNodes);
 			created[i] = new AtomicInteger();
 		}
 	}
@@ -57,33 +58,27 @@ public final class ByteBufPool {
 	}
 
 	public static ByteBuf allocate(int size) {
-		if (size < minSize || size >= maxSize) {
-			// not willing to register in pool
-			return ByteBuf.wrapForWriting(new byte[size]);
-		}
+		if (size == 0) return ByteBuf.empty();
 		int index = 32 - numberOfLeadingZeros(size - 1); // index==32 for size==0
-		ConcurrentStack<ByteBuf> queue = slabs[index];
-		ByteBuf buf = queue.pop();
+		ConcurrentStack<ByteBuf> stack = slabs[index];
+		ByteBuf buf = stack.pop();
 		if (buf != null) {
 			buf.reset();
 			assert byteBufs.remove(new ByteBufWrapper(buf)) != buf;
 		} else {
 			buf = ByteBuf.wrapForWriting(new byte[1 << index]);
 			buf.refs++;
-			created[index].incrementAndGet();
+			assert (long) created[index].incrementAndGet() != Long.MAX_VALUE;
 		}
-
 		assert ByteBufRegistry.recordAllocate(buf);
-
 		return buf;
 	}
 
 	public static void recycle(ByteBuf buf) {
-		assert buf.array.length >= minSize && buf.array.length <= maxSize;
-		ConcurrentStack<ByteBuf> queue = slabs[32 - numberOfLeadingZeros(buf.array.length - 1)];
+		if (buf.array.length == 0) return;
+		ConcurrentStack<ByteBuf> stack = slabs[32 - numberOfLeadingZeros(buf.array.length - 1)];
 		assert byteBufs.put(new ByteBufWrapper(buf), EMPTY_VALUE) == null : "duplicate recycle array";
-		queue.push(buf);
-
+		stack.push(buf);
 		assert ByteBufRegistry.recordRecycle(buf);
 	}
 
@@ -94,8 +89,8 @@ public final class ByteBufPool {
 		return ByteBuf.empty();
 	}
 
-	public static ConcurrentStack<ByteBuf>[] getPool() {
-		return slabs;
+	static ConcurrentStack<ByteBuf> getSlab(int index) {
+		return slabs[index];
 	}
 
 	public static void clear() {
@@ -106,10 +101,14 @@ public final class ByteBufPool {
 		byteBufs.clear();
 	}
 
-	public static ByteBuf ensureTailRemaining(ByteBuf buf, int newTailRemaining) {
-		if (newTailRemaining == 0) return buf;
-		if (buf.writeRemaining() < newTailRemaining || buf instanceof ByteBuf.ByteBufSlice) {
-			ByteBuf newBuf = allocate(newTailRemaining + buf.readRemaining());
+	public static ByteBuf ensureWriteRemaining(ByteBuf buf, int newWriteRemaining) {
+		return ensureWriteRemaining(buf, 0, newWriteRemaining);
+	}
+
+	public static ByteBuf ensureWriteRemaining(ByteBuf buf, int minSize, int newWriteRemaining) {
+		if (newWriteRemaining == 0) return buf;
+		if (buf.writeRemaining() < newWriteRemaining || buf instanceof ByteBuf.ByteBufSlice) {
+			ByteBuf newBuf = allocate(max(minSize, newWriteRemaining + buf.readRemaining()));
 			newBuf.put(buf);
 			buf.recycle();
 			return newBuf;
@@ -124,7 +123,7 @@ public final class ByteBufPool {
 			to.recycle();
 			return from;
 		}
-		to = ensureTailRemaining(to, from.readRemaining());
+		to = ensureWriteRemaining(to, from.readRemaining());
 		to.put(from);
 		from.recycle();
 		return to;
@@ -132,7 +131,7 @@ public final class ByteBufPool {
 
 	public static ByteBuf append(ByteBuf to, byte[] from, int offset, int length) {
 		assert !to.isRecycled();
-		to = ensureTailRemaining(to, length);
+		to = ensureWriteRemaining(to, length);
 		to.put(from, offset, length);
 		return to;
 	}
@@ -193,11 +192,6 @@ public final class ByteBufPool {
 			result += slotSize * slabs[i].size();
 		}
 		return result;
-	}
-
-	public static void setSizes(int minSize, int maxSize) {
-		ByteBufPool.minSize = minSize;
-		ByteBufPool.maxSize = maxSize;
 	}
 
 	public interface ByteBufPoolStatsMXBean {

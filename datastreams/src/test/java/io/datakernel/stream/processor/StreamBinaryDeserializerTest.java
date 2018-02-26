@@ -26,6 +26,7 @@ import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.util.Collections;
@@ -33,7 +34,6 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
-import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.lang.ClassLoader.getSystemClassLoader;
 import static java.util.Arrays.asList;
@@ -43,6 +43,9 @@ public class StreamBinaryDeserializerTest {
 	private Eventloop eventloop;
 	private StreamBinaryDeserializer<Data> deserializer;
 	private StreamBinarySerializer<Data> serializer;
+
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Before
 	public void before() {
@@ -67,7 +70,6 @@ public class StreamBinaryDeserializerTest {
 		eventloop.run();
 
 		assertEquals(Collections.singletonList(new Data("a")), future.get());
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -81,7 +83,6 @@ public class StreamBinaryDeserializerTest {
 		eventloop.run();
 
 		assertEquals(inputData, consumer.getList());
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -99,7 +100,6 @@ public class StreamBinaryDeserializerTest {
 		eventloop.run();
 
 		assertEquals(inputData, consumer.getList());
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -118,7 +118,6 @@ public class StreamBinaryDeserializerTest {
 		eventloop.run();
 
 		assertEquals(inputData, future.get());
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test(expected = ParseException.class)
@@ -142,7 +141,6 @@ public class StreamBinaryDeserializerTest {
 		eventloop.run();
 
 		buffers.forEach(ByteBuf::recycle);
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 
 		try {
 			future.get();

@@ -60,7 +60,6 @@ public class HelloWorldGuiceTest {
 	@Before
 	public void before() {
 		ByteBufPool.clear();
-		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 	}
 
 	public static class TestModule extends AbstractModule {

@@ -17,7 +17,6 @@
 package io.datakernel.rpc;
 
 import io.datakernel.async.Stage;
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.protocol.RpcRemoteException;
@@ -25,8 +24,10 @@ import io.datakernel.rpc.server.RpcRequestHandler;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
+import io.datakernel.stream.processor.ByteBufRule;
 import io.datakernel.util.Stopwatch;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.net.InetAddress;
@@ -35,7 +36,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.EventloopThreadFactory.defaultEventloopThreadFactory;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
@@ -125,11 +125,11 @@ public class RpcHelloWorldTest {
 	private Eventloop eventloop;
 	private RpcServer server;
 
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
+
 	@Before
 	public void setUp() throws Exception {
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
-
 		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		server = createServer(eventloop);
 		server.listen();
@@ -146,7 +146,6 @@ public class RpcHelloWorldTest {
 			server.closeFuture().get();
 
 		}
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -173,7 +172,6 @@ public class RpcHelloWorldTest {
 			server.closeFuture().get();
 		}
 		assertTrue(success.get() > 0);
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -185,7 +183,6 @@ public class RpcHelloWorldTest {
 		} finally {
 			server.closeFuture().get();
 		}
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -198,7 +195,6 @@ public class RpcHelloWorldTest {
 		} finally {
 			server.closeFuture().get();
 		}
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -236,7 +232,6 @@ public class RpcHelloWorldTest {
 		} finally {
 			server.closeFuture().get();
 		}
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	//	@Test

@@ -34,7 +34,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
 
-import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.serializer.asm.BufferSerializers.intSerializer;
 import static io.datakernel.stream.DataStreams.stream;
@@ -47,6 +46,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class StreamSorterTest {
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
+
 	@Rule
 	public TemporaryFolder tempFolder = new TemporaryFolder();
 
@@ -84,8 +86,6 @@ public class StreamSorterTest {
 
 		storage.cleanup(Arrays.asList(chunk1.get(), chunk2.get()));
 		eventloop.run();
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test

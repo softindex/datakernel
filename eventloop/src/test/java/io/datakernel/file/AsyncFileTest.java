@@ -17,6 +17,7 @@
 package io.datakernel.file;
 
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -32,15 +33,17 @@ import java.nio.file.Paths;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.async.Stages.assertComplete;
-import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.nio.file.StandardOpenOption.READ;
 import static java.nio.file.StandardOpenOption.WRITE;
 import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
 
 public class AsyncFileTest {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
+
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
@@ -71,6 +74,5 @@ public class AsyncFileTest {
 		}));
 
 		eventloop.run();
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 }

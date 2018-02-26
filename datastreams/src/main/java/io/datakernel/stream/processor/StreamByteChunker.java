@@ -96,7 +96,7 @@ public final class StreamByteChunker implements StreamTransformer<ByteBuf, ByteB
 			}
 
 			if (buf.canRead()) {
-				internalBuf = ByteBufPool.ensureTailRemaining(internalBuf,
+				internalBuf = ByteBufPool.ensureWriteRemaining(internalBuf,
 						max(maxChunkSize - internalBuf.writePosition(), buf.readRemaining()));
 				internalBuf.put(buf);
 			}

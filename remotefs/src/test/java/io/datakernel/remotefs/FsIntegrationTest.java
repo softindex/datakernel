@@ -20,7 +20,6 @@ import ch.qos.logback.classic.Level;
 import io.datakernel.async.Stage;
 import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.StacklessException;
 import io.datakernel.stream.StreamConsumer;
@@ -28,6 +27,7 @@ import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.file.StreamFileWriter;
+import io.datakernel.stream.processor.ByteBufRule;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.junit.Before;
@@ -52,8 +52,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.async.Stages.assertComplete;
-import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.equalsLowerCaseAscii;
+import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.readAllBytes;
@@ -66,6 +66,9 @@ public class FsIntegrationTest {
 		ch.qos.logback.classic.Logger logger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
 		logger.setLevel(Level.TRACE);
 	}
+
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Rule
 	public ExpectedException thrown = ExpectedException.none();
@@ -92,7 +95,6 @@ public class FsIntegrationTest {
 		upload(resultFile, bytes);
 
 		assertArrayEquals(readAllBytes(storage.resolve(resultFile)), bytes);
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -120,7 +122,6 @@ public class FsIntegrationTest {
 		for (int i = 0; i < files; i++) {
 			assertArrayEquals(CONTENT, readAllBytes(storage.resolve("file" + i)));
 		}
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -134,7 +135,6 @@ public class FsIntegrationTest {
 		upload(resultFile, BIG_FILE);
 
 		assertArrayEquals(readAllBytes(storage.resolve(resultFile)), BIG_FILE);
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -144,7 +144,6 @@ public class FsIntegrationTest {
 		upload(resultFile, CONTENT);
 
 		assertArrayEquals(readAllBytes(storage.resolve(resultFile)), CONTENT);
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -160,7 +159,6 @@ public class FsIntegrationTest {
 
 		assertNotNull(es[0]);
 		assertArrayEquals(readAllBytes(storage.resolve(resultFile)), CONTENT);
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -176,12 +174,12 @@ public class FsIntegrationTest {
 
 		CompletableFuture<Void> future = StreamProducer.concat(
 				StreamProducer.of(
-						ByteBufStrings.wrapUtf8("Test1"),
-						ByteBufStrings.wrapUtf8(" Test2"),
-						ByteBufStrings.wrapUtf8(" Test3")),
+						wrapUtf8("Test1"),
+						wrapUtf8(" Test2"),
+						wrapUtf8(" Test3")),
 				StreamProducer.of(ByteBuf.wrapForReading(BIG_FILE)),
 				StreamProducer.closingWithError(new StacklessException("Test exception")),
-				StreamProducer.of(ByteBufStrings.wrapUtf8("Test4")))
+				StreamProducer.of(wrapUtf8("Test4")))
 				.streamTo(
 						client.uploadStream(resultFile))
 				.getConsumerResult()
@@ -191,6 +189,7 @@ public class FsIntegrationTest {
 		eventloop.run();
 		executor.shutdownNow();
 
+		byteBufRule.enable(false);
 		thrown.expect(ExecutionException.class);
 		thrown.expectCause(new BaseMatcher<Throwable>() {
 			@Override
@@ -206,7 +205,6 @@ public class FsIntegrationTest {
 		future.get();
 
 		assertTrue(Files.exists(storage.resolve(resultFile)));
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -222,8 +220,6 @@ public class FsIntegrationTest {
 		for (ByteBuf buf : expected) {
 			buf.recycle();
 		}
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -239,7 +235,6 @@ public class FsIntegrationTest {
 		for (ByteBuf buf : expected) {
 			buf.recycle();
 		}
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -256,7 +251,6 @@ public class FsIntegrationTest {
 		for (ByteBuf buf : expected) {
 			buf.recycle();
 		}
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -281,7 +275,6 @@ public class FsIntegrationTest {
 		assertEquals(1, expected.size());
 		//noinspection ThrowableResultOfMethodCallIgnored
 		assertEquals(expected.get(0).getMessage(), "File not found");
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -311,7 +304,6 @@ public class FsIntegrationTest {
 		for (int i = 0; i < files; i++) {
 			assertArrayEquals(CONTENT, readAllBytes(storage.resolve("file" + i)));
 		}
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -330,7 +322,6 @@ public class FsIntegrationTest {
 		executor.shutdown();
 
 		assertFalse(Files.exists(storage.resolve(file)));
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -362,8 +353,6 @@ public class FsIntegrationTest {
 			}
 		});
 		future.get();
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -396,7 +385,6 @@ public class FsIntegrationTest {
 		Collections.sort(actual);
 		Collections.sort(expected);
 		assertEquals(expected, actual);
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	private CompletableFuture<Void> upload(String resultFile, byte[] bytes) throws IOException {

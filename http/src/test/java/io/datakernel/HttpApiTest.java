@@ -20,7 +20,9 @@ import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
+import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -34,7 +36,6 @@ import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
-import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -67,6 +68,9 @@ public class HttpApiTest {
 	private ContentType responseContentType = ContentType.of(responseMime, responseCharset);
 	private List<HttpCookie> responseCookies = new ArrayList<>();
 	private int age = 10_000;
+
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Before
 	public void setUp() {
@@ -131,7 +135,6 @@ public class HttpApiTest {
 				});
 
 		eventloop.run();
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	private HttpResponse createResponse() {

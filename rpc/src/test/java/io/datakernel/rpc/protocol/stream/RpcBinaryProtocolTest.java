@@ -17,7 +17,6 @@
 package io.datakernel.rpc.protocol.stream;
 
 import io.datakernel.async.Stage;
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.protocol.RpcMessage;
@@ -26,11 +25,8 @@ import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.processor.StreamBinaryDeserializer;
-import io.datakernel.stream.processor.StreamBinarySerializer;
-import io.datakernel.stream.processor.StreamLZ4Compressor;
-import io.datakernel.stream.processor.StreamLZ4Decompressor;
-import org.junit.Before;
+import io.datakernel.stream.processor.*;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.net.InetAddress;
@@ -39,7 +35,6 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
 import static io.datakernel.stream.DataStreams.stream;
@@ -57,11 +52,8 @@ public class RpcBinaryProtocolTest {
 		}
 	}
 
-	@Before
-	public void before() {
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
-	}
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Test
 	public void test() throws Exception {
@@ -127,8 +119,6 @@ public class RpcBinaryProtocolTest {
 		for (int i = 0; i < countRequests; i++) {
 			assertEquals("Hello, " + testMessage + "!", results.get(i));
 		}
-
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -188,7 +178,5 @@ public class RpcBinaryProtocolTest {
 			String data = (String) resultsData.get(i).getData();
 			assertEquals(testMessage, data);
 		}
-
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 }

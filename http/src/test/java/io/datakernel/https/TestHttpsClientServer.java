@@ -22,6 +22,8 @@ import io.datakernel.async.Stage;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
+import io.datakernel.stream.processor.ByteBufRule;
+import org.junit.Rule;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
 
@@ -35,7 +37,6 @@ import java.security.SecureRandom;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -73,6 +74,9 @@ public class TestHttpsClientServer {
 
 	public static final InetAddress GOOGLE_PUBLIC_DNS = inetAddress("8.8.8.8");
 
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
+
 	@Test
 	public void testClientServerInteraction() throws Exception {
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop, bobServlet)
@@ -100,7 +104,6 @@ public class TestHttpsClientServer {
 		executor.shutdown();
 
 		assertEquals("Hello, I am Bob!", future.get());
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -140,6 +143,5 @@ public class TestHttpsClientServer {
 		executor.shutdown();
 
 		assertEquals(httpFuture.get(), httpsFuture.get());
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 }

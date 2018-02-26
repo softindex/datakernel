@@ -20,18 +20,22 @@ import com.google.gson.TypeAdapter;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.exception.ParseException;
+import io.datakernel.stream.processor.ByteBufRule;
 import io.datakernel.util.gson.TypeAdapterObject;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.util.Objects;
 
-import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.stream.net.MessagingSerializers.ofJson;
 import static io.datakernel.util.gson.GsonAdapters.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 public class MessagingSerializersTest {
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
+
 	private class Req {
 		String text;
 		int num;
@@ -162,8 +166,6 @@ public class MessagingSerializersTest {
 		Res newRes = deserializer.tryDeserialize(buf);
 		assertEquals(res, newRes);
 		buf.recycle();
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -187,7 +189,6 @@ public class MessagingSerializersTest {
 		assertEquals(135, readBuf.writePosition());
 
 		readBuf.recycle();
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -207,6 +208,5 @@ public class MessagingSerializersTest {
 		}
 
 		badInput.recycle();
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 }

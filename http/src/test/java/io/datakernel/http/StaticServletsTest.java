@@ -23,6 +23,7 @@ import io.datakernel.loader.FileNamesLoadingService;
 import io.datakernel.loader.ResourcesNameLoadingService;
 import io.datakernel.loader.StaticLoader;
 import io.datakernel.loader.StaticLoaders;
+import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Rule;
@@ -40,7 +41,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -53,6 +53,9 @@ import static org.junit.Assert.assertEquals;
 @SuppressWarnings("ThrowableResultOfMethodCallIgnored")
 public class StaticServletsTest {
     public static final String EXPECTED_CONTENT = "Test";
+
+    @Rule
+    public ByteBufRule byteBufRule = new ByteBufRule();
 
     @Rule
     public ExpectedException exception = ExpectedException.none();
@@ -92,7 +95,6 @@ public class StaticServletsTest {
         eventloop.run();
 
         assertEquals(EXPECTED_CONTENT, future.get());
-        assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
     }
 
     @Test
@@ -107,8 +109,6 @@ public class StaticServletsTest {
         CompletableFuture<HttpResponse> future = servlet.serve(request).toCompletableFuture();
 
         eventloop.run();
-
-        assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 
         exception.expectCause(instanceOf(HttpException.class));
         exception.expectCause(hasProperty("code", is(404)));
@@ -136,7 +136,6 @@ public class StaticServletsTest {
         eventloop.run();
 
         assertEquals(EXPECTED_CONTENT, future.get());
-        assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
     }
 
     @Test
@@ -151,8 +150,6 @@ public class StaticServletsTest {
         CompletableFuture<HttpResponse> future = servlet.serve(request).toCompletableFuture();
 
         eventloop.run();
-
-        assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 
         exception.expectCause(instanceOf(HttpException.class));
         exception.expectCause(hasProperty("code", is(404)));
@@ -180,7 +177,6 @@ public class StaticServletsTest {
         eventloop.run();
 
         assertEquals(EXPECTED_CONTENT, future.get());
-        assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
     }
 
     @Test
@@ -195,7 +191,6 @@ public class StaticServletsTest {
         CompletableFuture<HttpResponse> future = servlet.serve(request).toCompletableFuture();
 
         eventloop.run();
-        assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 
         exception.expectCause(instanceOf(HttpException.class));
         exception.expectCause(hasProperty("code", is(404)));
@@ -223,7 +218,6 @@ public class StaticServletsTest {
         eventloop.run();
 
         assertEquals(EXPECTED_CONTENT, future.get());
-        assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
     }
 
     @Test
@@ -238,7 +232,6 @@ public class StaticServletsTest {
         CompletableFuture<HttpResponse> future = servlet.serve(request).toCompletableFuture();
 
         eventloop.run();
-        assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 
         exception.expectCause(instanceOf(HttpException.class));
         exception.expectCause(hasProperty("code", is(404)));
@@ -277,7 +270,6 @@ public class StaticServletsTest {
         eventloop.run();
 
         assertEquals(EXPECTED_CONTENT, future.get());
-        assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
     }
 
     @Test
@@ -306,6 +298,5 @@ public class StaticServletsTest {
 
         eventloop.run();
         assertEquals(EXPECTED_CONTENT, future.get());
-        assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
     }
 }

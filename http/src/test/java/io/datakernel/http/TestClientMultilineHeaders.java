@@ -18,6 +18,8 @@ package io.datakernel.http;
 
 import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.stream.processor.ByteBufRule;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -26,7 +28,6 @@ import java.net.InetSocketAddress;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
-import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static org.junit.Assert.assertEquals;
 
@@ -34,6 +35,9 @@ public class TestClientMultilineHeaders {
 
 	public static final int PORT = 9595;
 	public static final InetAddress GOOGLE_PUBLIC_DNS = HttpUtils.inetAddress("8.8.8.8");
+
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Test
 	public void testMultilineHeaders() throws ExecutionException, InterruptedException, IOException {
@@ -61,6 +65,5 @@ public class TestClientMultilineHeaders {
 
 		eventloop.run();
 		assertEquals("GET,   HEAD", future.get());
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 }

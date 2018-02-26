@@ -56,6 +56,8 @@ public class ByteBuf {
 
 	int refs;
 
+	private static final ByteBuf EMPTY = wrap(new byte[0], 0, 0);
+
 	// creators
 	private ByteBuf(byte[] array, int readPosition, int writePosition) {
 		assert readPosition >= 0 && readPosition <= writePosition && writePosition <= array.length;
@@ -65,7 +67,9 @@ public class ByteBuf {
 	}
 
 	public static ByteBuf empty() {
-		return wrapForWriting(new byte[0]);
+		assert EMPTY.readPosition == 0;
+		assert EMPTY.writePosition == 0;
+		return EMPTY;
 	}
 
 	public static ByteBuf wrapForWriting(byte[] bytes) {

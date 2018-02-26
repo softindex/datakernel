@@ -16,7 +16,6 @@
 
 package io.datakernel.stream.net;
 
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
@@ -25,9 +24,10 @@ import io.datakernel.eventloop.SimpleServer.SocketHandlerProvider;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.processor.ByteBufRule;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
-import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.net.InetAddress;
@@ -39,7 +39,6 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 
-import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.serializer.asm.BufferSerializers.longSerializer;
 import static io.datakernel.stream.net.MessagingSerializers.ofJson;
@@ -61,11 +60,8 @@ public class MessagingWithBinaryStreamingTest {
 		}
 	}
 
-	@Before
-	public void setup() {
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
-	}
+	@Rule
+	public ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Test
 	public void testPing() throws Exception {
@@ -140,10 +136,6 @@ public class MessagingWithBinaryStreamingTest {
 		});
 
 		eventloop.run();
-
-		assertEquals(getPoolItemsString(), getCreatedItems(),
-
-				getPoolItems());
 	}
 
 	@Test
@@ -204,8 +196,6 @@ public class MessagingWithBinaryStreamingTest {
 
 		eventloop.run();
 		assertEquals(source, consumerToList.getList());
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -273,8 +263,6 @@ public class MessagingWithBinaryStreamingTest {
 		eventloop.run();
 
 		assertEquals(source, future.get());
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -355,8 +343,6 @@ public class MessagingWithBinaryStreamingTest {
 
 		assertEquals(source, future.get());
 		assertTrue(ack[0]);
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -423,8 +409,6 @@ public class MessagingWithBinaryStreamingTest {
 		eventloop.run();
 
 		assertEquals(source, future.get());
-
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 }
