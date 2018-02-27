@@ -72,7 +72,7 @@ public final class FileManager {
 		return AsyncFile.openAsync(executor, storagePath.resolve(fileName), new OpenOption[]{READ})
 				.thenApply(result -> {
 					logger.trace("{} opened", result);
-					return StreamFileReader.readFileFrom(result, readerBufferSize, startPosition)
+					return StreamFileReader.readFile(result).withBufferSize(readerBufferSize).withStartingPosition(startPosition)
 							.withEndOfStreamAsResult()
 							.withLateBinding();
 				});
@@ -83,9 +83,11 @@ public final class FileManager {
 		return ensureDirectoryAsync(storagePath, fileName).thenCompose(path -> {
 			logger.trace("ensured directory: {}", storagePath);
 			return AsyncFile.openAsync(executor, path, CREATE_OPTIONS)
-					.thenApply(result -> {
-						logger.trace("{} opened", result);
-						return StreamFileWriter.createWithFlushAsResult(result, true)
+					.thenApply(file -> {
+						logger.trace("{} opened", file);
+						return StreamFileWriter.create(file)
+								.withForceOnClose(true)
+								.withFlushAsResult()
 								.withLateBinding();
 					});
 		});
@@ -98,7 +100,7 @@ public final class FileManager {
 
 	public Stage<Long> size(String fileName) {
 		logger.trace("calculating file size: {}", fileName);
-		return AsyncFile.length(executor, storagePath.resolve(fileName));
+		return AsyncFile.size(executor, storagePath.resolve(fileName));
 	}
 
 	public Stage<List<String>> scanAsync() {

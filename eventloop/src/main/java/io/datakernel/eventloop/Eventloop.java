@@ -928,7 +928,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	/**
-	 * Notifies the event loop of concurrent operation in other threads.
+	 * Notifies the event loop about concurrent operation in other threads.
 	 * Eventloop will not exit until all external tasks are complete.
 	 */
 	public void startExternalTask() {

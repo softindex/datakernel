@@ -30,116 +30,106 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.concurrent.ExecutorService;
 
+import static io.datakernel.util.Preconditions.checkState;
 import static java.lang.Math.min;
 
 /**
- * This class allows you to read data from file non-blocking. It represents a {@link AbstractStreamProducer}
- * which streams data from file.
+ * This producer allows you to read data from a file in a non-blocking fashion.
  */
 public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+	private static final Logger logger = LoggerFactory.getLogger(StreamFileReader.class);
+
+	public static final OpenOption[] READ_OPTIONS = new OpenOption[]{StandardOpenOption.READ};
+
+	public static final int DEFAULT_BUFFER_SIZE = 1 << 13; // 8 KB
 
 	private final AsyncFile asyncFile;
 
-	private final int bufferSize;
-	private long position;
-	private long length;
-	private boolean pendingAsyncOperation;
+	private boolean reading = false;
 
-	// region creators
-	private StreamFileReader(AsyncFile asyncFile,
-	                         int bufferSize, long position, long length) {
+	private int bufferSize = DEFAULT_BUFFER_SIZE;
+	private long position = 0;
+	private long length = Long.MAX_VALUE;
+
+	private StreamFileReader(AsyncFile asyncFile) {
 		this.asyncFile = asyncFile;
-		this.bufferSize = bufferSize;
-		this.position = position;
-		this.length = length;
 	}
 
-	public static StreamFileReader readFileSegment(AsyncFile asyncFile,
-	                                               int bufferSize, long position, long length) {
-		return new StreamFileReader(asyncFile, bufferSize, position, length);
+	public static StreamFileReader readFile(ExecutorService executor, Path path) throws IOException {
+		return new StreamFileReader(AsyncFile.open(executor, path, READ_OPTIONS));
 	}
 
-	public static StreamFileReader readFileFrom(ExecutorService executor,
-	                                            int bufferSize, Path path,
-	                                            long startPosition) throws IOException {
-		AsyncFile asyncFile = getAsyncFile(executor, path);
-		return readFileFrom(asyncFile, bufferSize, startPosition);
+	public static StreamFileReader readFile(AsyncFile asyncFile) {
+		return new StreamFileReader(asyncFile);
 	}
 
-	public static StreamFileReader readFileFrom(AsyncFile asyncFile,
-	                                            int bufferSize, long position) {
-		return new StreamFileReader(asyncFile, bufferSize, position, Long.MAX_VALUE);
+	public StreamFileReader withBufferSize(int size) {
+		bufferSize = size;
+		return this;
 	}
 
-	public static StreamFileReader readFileFully(ExecutorService executor,
-	                                             int bufferSize, Path path) throws IOException {
-		AsyncFile asyncFile = getAsyncFile(executor, path);
-		return readFileFully(asyncFile, bufferSize);
+	public StreamFileReader withStartingPosition(long pos) {
+		checkState(getConsumer() == null, "Cannot set position after binding the reader");
+		position = pos;
+		return this;
 	}
 
-	public static StreamFileReader readFileFully(AsyncFile asyncFile, int bufferSize) {
-		return new StreamFileReader(asyncFile, bufferSize, 0, Long.MAX_VALUE);
+	public StreamFileReader withReadingLength(long len) {
+		checkState(getConsumer() == null, "Cannot set reading length after binding the reader");
+		length = len;
+		return this;
 	}
-	// endregion
 
-	// region api
 	public long getPosition() {
 		return position;
 	}
-	// endregion
 
-	// region functional
-	protected void doFlush() {
-		if (getStatus().isClosed()) {
+	private void process() {
+		if (!isReceiverReady()) {
+			reading = false;
 			return;
 		}
-
-		if (length == 0L) {
-			sendEndOfStream();
-			return;
-		}
-
 		ByteBuf buf = ByteBufPool.allocate((int) min(bufferSize, length));
-
-		asyncFile.read(buf, position).whenComplete((bytesRead, throwable) -> {
-			pendingAsyncOperation = false;
-			if (throwable == null) {
-				if (getStatus().isClosed()) {
-					buf.recycle();
-					return;
-				}
-				if (bytesRead == -1) {
-					buf.recycle();
-					sendEndOfStream();
-					return;
-				} else {
-					position += bytesRead;
-					getLastDataReceiver().onData(buf);
-					if (length != Long.MAX_VALUE) {
-						length -= bytesRead;
+		asyncFile.read(buf, position)
+				.whenComplete((bytesRead, e) -> {
+					if (e != null) {
+						buf.recycle();
+						closeWithError(e);
+					} else if (bytesRead == -1) {
+						buf.recycle();
+						sendEndOfStream();
+					} else {
+						send(buf);
+						position += bytesRead;
+						if (length != Long.MAX_VALUE) {
+							length -= bytesRead;
+						}
+						if (length == 0L) {
+							sendEndOfStream();
+						}
 					}
-				}
-				if (isReceiverReady()) {
-					postFlush();
-				}
-			} else {
-				buf.recycle();
-				closeWithError(throwable);
-			}
-		});
+					process();
+				});
 	}
 
-	protected void postFlush() {
-		if (!pendingAsyncOperation) {
-			pendingAsyncOperation = true;
-			eventloop.post(this::doFlush);
+	@Override
+	protected void onProduce(StreamDataReceiver<ByteBuf> receiver) {
+		if (!reading) {
+			reading = true;
+			process();
 		}
 	}
 
 	@Override
-	protected void onProduce(StreamDataReceiver<ByteBuf> dataReceiver) {
-		postFlush();
+	protected void cleanup() {
+		asyncFile.close()
+				.whenComplete(($, e) -> {
+					if (e == null) {
+						logger.trace(this + ": closed file");
+					} else {
+						logger.error(this + ": failed to close file", e);
+					}
+				});
 	}
 
 	@Override
@@ -147,23 +137,11 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 	}
 
 	@Override
-	protected void cleanup() {
-		asyncFile.close()
-				.whenException(throwable -> logger.error("{}: failed to close file", this, throwable));
-	}
-
-	private static AsyncFile getAsyncFile(ExecutorService executor, Path path) throws IOException {
-		return AsyncFile.open(executor, path, new OpenOption[]{StandardOpenOption.READ});
-	}
-
-	@Override
 	public String toString() {
 		return "StreamFileReader{" + asyncFile +
 				", pos=" + position +
 				(length == Long.MAX_VALUE ? "" : ", len=" + length) +
-				(pendingAsyncOperation ? ", pendingAsyncOperation" : "") +
+				(reading ? ", reading" : "") +
 				'}';
 	}
-	// endregion
 }
-

@@ -128,7 +128,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 						.with(StreamByteChunker.create(writeBlockSize / 2, writeBlockSize))
 						.with(StreamLZ4Compressor.create(compressionLevel))
 						.with(StreamByteChunker.create(writeBlockSize / 2, writeBlockSize))
-						.applyTo(StreamFileWriter.createWithFlushAsResult(file, false))
+						.applyTo(StreamFileWriter.create(file).withFlushAsResult())
 						.thenApply($ -> partition)
 						.withLateBinding());
 	}
@@ -143,7 +143,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	public Stage<StreamProducerWithResult<T, Void>> read(int partition) {
 		Path path = partitionPath(partition);
 		return AsyncFile.openAsync(executorService, path, new OpenOption[]{READ})
-				.thenApply(file -> StreamFileReader.readFileFrom(file, readBlockSize, 0L)
+				.thenApply(file -> StreamFileReader.readFile(file).withBufferSize(readBlockSize)
 						.with(StreamLZ4Decompressor.create())
 						.with(StreamBinaryDeserializer.create(serializer))
 						.withEndOfStreamAsResult()

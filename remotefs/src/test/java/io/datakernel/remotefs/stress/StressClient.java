@@ -78,7 +78,7 @@ class StressClient {
 
 					Path file = clientStorage.resolve(fileName);
 
-					StreamFileReader.readFileFully(executor, 16 * 1024, file)
+					StreamFileReader.readFile(executor, file).withBufferSize(16 * 1024)
 							.streamTo(
 									client.uploadStream(fileName))
 							.getConsumerResult()

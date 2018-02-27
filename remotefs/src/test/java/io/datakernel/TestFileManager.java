@@ -43,7 +43,7 @@ import java.util.concurrent.ExecutorService;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.file.AsyncFile.open;
 import static io.datakernel.stream.DataStreams.stream;
-import static io.datakernel.stream.file.StreamFileReader.readFileFully;
+import static io.datakernel.stream.file.StreamFileReader.readFile;
 import static java.nio.file.Files.*;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.Executors.newCachedThreadPool;
@@ -115,7 +115,7 @@ public class TestFileManager {
 		fs.save("1/c.txt").thenAccept(fileWriter -> {
 			try {
 				AsyncFile open = open(executor, inputFile, READ_OPTIONS);
-				stream(readFileFully(open, bufferSize), fileWriter);
+				stream(readFile(open).withBufferSize(bufferSize), fileWriter);
 			} catch (IOException ignore) {
 			}
 		});

@@ -155,7 +155,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 				() -> AsyncFile.openAsync(executorService, dir.resolve(chunkId + LOG), new OpenOption[]{READ}).whenComplete(stageOpenR1.recordStats()),
 				() -> AsyncFile.openAsync(executorService, dir.resolve(chunkId + TEMP_LOG), new OpenOption[]{READ}).whenComplete(stageOpenR2.recordStats()),
 				() -> AsyncFile.openAsync(executorService, dir.resolve(chunkId + LOG), new OpenOption[]{READ}).whenComplete(stageOpenR3.recordStats()))
-				.thenApply(file -> StreamFileReader.readFileFrom(file, bufferSize, 0L)
+				.thenApply(file -> StreamFileReader.readFile(file).withBufferSize(bufferSize)
 						.with(readFile)
 						.with(StreamLZ4Decompressor.create())
 						.with(readDecompress)
@@ -183,7 +183,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 						.with(writeChunker)
 						.with(StreamByteChunker.create(bufferSize / 2, bufferSize * 2))
 						.with(writeFile)
-						.applyTo(StreamFileWriter.createWithFlushAsResult(file, true)));
+						.applyTo(StreamFileWriter.create(file).withForceOnClose(true).withFlushAsResult()));
 	}
 
 	@Override

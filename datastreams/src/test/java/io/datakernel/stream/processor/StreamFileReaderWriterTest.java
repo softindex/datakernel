@@ -40,8 +40,6 @@ import static io.datakernel.stream.DataStreams.stream;
 import static org.junit.Assert.assertArrayEquals;
 
 public class StreamFileReaderWriterTest {
-	Eventloop eventloop;
-	ExecutorService executor;
 
 	@Rule
 	public ByteBufRule byteBufRule = new ByteBufRule();
@@ -55,13 +53,12 @@ public class StreamFileReaderWriterTest {
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		byte[] fileBytes = Files.readAllBytes(Paths.get("test_data/in.dat"));
-		StreamFileReader reader = StreamFileReader.readFileFully(executor,
-				1, Paths.get("test_data/in.dat"));
+		StreamFileReader reader = StreamFileReader.readFile(executor, Paths.get("test_data/in.dat"))
+				.withBufferSize(1);
 
 		List<ByteBuf> list = new ArrayList<>();
 
-		reader.streamTo(
-				StreamConsumerToList.create(list));
+		reader.streamTo(StreamConsumerToList.create(list));
 		eventloop.run();
 
 		ByteBufQueue byteQueue = ByteBufQueue.create();
@@ -81,8 +78,8 @@ public class StreamFileReaderWriterTest {
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		byte[] fileBytes = Files.readAllBytes(Paths.get("test_data/in.dat"));
-		StreamFileReader reader = StreamFileReader.readFileFully(executor,
-				1, Paths.get("test_data/in.dat"));
+		StreamFileReader reader = StreamFileReader.readFile(executor, Paths.get("test_data/in.dat"))
+				.withBufferSize(1);
 
 		List<ByteBuf> list = new ArrayList<>();
 
