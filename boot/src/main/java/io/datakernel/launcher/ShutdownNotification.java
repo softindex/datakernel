@@ -24,9 +24,8 @@ import java.util.concurrent.CountDownLatch;
 public final class ShutdownNotification implements ShutdownNotificationMBean {
 	private final CountDownLatch latch = new CountDownLatch(1);
 
-	public ShutdownNotification() {}
-
-	public static ShutdownNotification create() {return new ShutdownNotification();}
+	public ShutdownNotification() {
+	}
 
 	public void await() throws InterruptedException {
 		latch.await();

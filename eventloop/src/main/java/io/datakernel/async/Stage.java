@@ -1,5 +1,6 @@
 package io.datakernel.async;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.AsyncTimeoutException;
 
@@ -138,7 +139,7 @@ public interface Stage<T> {
 			}
 		}
 
-		void handle(T result, Throwable throwable, Completion<U> stage);
+		void handle(@Nullable T result, @Nullable Throwable throwable, Completion<U> stage);
 	}
 
 	<U> Stage<U> handle(Handler<? super T, U> handler);

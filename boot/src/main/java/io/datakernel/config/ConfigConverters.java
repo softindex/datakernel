@@ -16,7 +16,10 @@
 
 package io.datakernel.config;
 
+import io.datakernel.eventloop.AbstractServer;
+import io.datakernel.eventloop.FatalErrorHandler;
 import io.datakernel.eventloop.InetAddressRange;
+import io.datakernel.eventloop.ThrottlingController;
 import io.datakernel.exception.ParseException;
 import io.datakernel.net.DatagramSocketSettings;
 import io.datakernel.net.ServerSocketSettings;
@@ -29,10 +32,14 @@ import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
+import static io.datakernel.eventloop.FatalErrorHandlers.*;
+import static io.datakernel.eventloop.ThrottlingController.INITIAL_KEYS_PER_SECOND;
+import static io.datakernel.eventloop.ThrottlingController.INITIAL_THROTTLING;
 import static io.datakernel.net.ServerSocketSettings.DEFAULT_BACKLOG;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.Integer.parseInt;
@@ -143,6 +150,24 @@ public final class ConfigConverters {
 			@Override
 			public String toString(E defaultValue) {
 				return defaultValue.name();
+			}
+		};
+	}
+
+	public static AbstractConfigConverter<Class> ofClass() {
+		return new AbstractConfigConverter<Class>() {
+			@Override
+			public Class fromString(String string) {
+				try {
+					return Class.forName(string);
+				} catch (ClassNotFoundException e) {
+					throw new IllegalArgumentException(e);
+				}
+			}
+
+			@Override
+			public String toString(Class defaultValue) {
+				return defaultValue.getName();
 			}
 		};
 	}
@@ -268,6 +293,25 @@ public final class ConfigConverters {
 
 	public static <T> AbstractConfigConverter<List<T>> ofList(AbstractConfigConverter<T> elementConverter) {
 		return ofList(elementConverter, ",;");
+	}
+
+	public static <T> ConfigConverter<T> constrain(ConfigConverter<T> converter, Predicate<T> predicate) {
+		return new ConfigConverter<T>() {
+
+			@Override
+			public T get(Config config, T defaultValue) {
+				T t = converter.get(config, defaultValue);
+				checkArgument(predicate.test(t), "Value " + t + " does not satisfy the constraint for " + config);
+				return t;
+			}
+
+			@Override
+			public T get(Config config) {
+				T t = converter.get(config);
+				checkArgument(predicate.test(t), "Value " + t + " does not satisfy the constraint for " + config);
+				return t;
+			}
+		};
 	}
 
 	// compound
@@ -407,6 +451,96 @@ public final class ConfigConverters {
 				}
 
 				return result;
+			}
+		};
+	}
+
+	private static final Map<String, FatalErrorHandler> simpleErrorHandlers = new HashMap<>();
+
+	static {
+		simpleErrorHandlers.put("rethrowOnAnyError", rethrowOnAnyError());
+		simpleErrorHandlers.put("ignoreAllErrors", ignoreAllErrors());
+		simpleErrorHandlers.put("exitOnAnyError", exitOnAnyError());
+		simpleErrorHandlers.put("exitOnJvmError", exitOnJvmError());
+	}
+
+	public static ConfigConverter<FatalErrorHandler> ofFatalErrorHandler() {
+		return new ConfigConverter<FatalErrorHandler>() {
+			@Override
+			public FatalErrorHandler get(Config config, FatalErrorHandler defaultValue) {
+				if (config.isEmpty()) {
+					return defaultValue;
+				}
+				return get(config);
+			}
+
+			@Override
+			public FatalErrorHandler get(Config config) {
+				String key = config.getValue();
+
+				ConfigConverter<List<Class>> classList = ofList(ofClass());
+				switch (key) {
+					case "rethrowOnMatchedError":
+						return rethrowOnMatchedError(
+								config.get(classList, "whitelist", Collections.emptyList()),
+								config.get(classList, "blacklist", Collections.emptyList()));
+					case "exitOnMatchedError":
+						return exitOnMatchedError(
+								config.get(classList, "whitelist", Collections.emptyList()),
+								config.get(classList, "blacklist", Collections.emptyList()));
+					default:
+						FatalErrorHandler fatalErrorHandler = simpleErrorHandlers.get(key);
+						if (fatalErrorHandler == null) {
+							throw new IllegalArgumentException("No fatal error handler named " + key + " exists!");
+						}
+						return fatalErrorHandler;
+				}
+			}
+		};
+	}
+
+	public static ConfigConverter<ThrottlingController> ofThrottlingController() {
+		return new ConfigConverter<ThrottlingController>() {
+			@Override
+			public ThrottlingController get(Config config) {
+				return get(config, ThrottlingController.create());
+			}
+
+			@Override
+			public ThrottlingController get(Config config, ThrottlingController defaultValue) {
+				return ThrottlingController.create()
+						.withTargetTimeMillis(config.get(ofInteger(), "targetTimeMillis", defaultValue.getTargetTimeMillis()))
+						.withGcTimeMillis(config.get(ofInteger(), "gcTimeMillis", defaultValue.getGcTimeMillis()))
+						.withSmoothingWindow(config.get(ofInteger(), "smoothingWindow", defaultValue.getSmoothingWindow()))
+						.withThrottlingDecrease(config.get(ofDouble(), "throttlingDecrease", defaultValue.getThrottlingDecrease()))
+						.withInitialKeysPerSecond(config.get(ofDouble(), "initialKeysPerSecond", INITIAL_KEYS_PER_SECOND))
+						.withInitialThrottling(config.get(ofDouble(), "initialThrottling", INITIAL_THROTTLING));
+			}
+		};
+	}
+
+	private static <T> void optionally(Config config, ConfigConverter<T> converter, String key, Consumer<T> applier) {
+		if (config.hasChild(key)) {
+			applier.accept(config.get(converter, key));
+		}
+	}
+
+	public static <T extends AbstractServer<T>> ConfigConverter<Consumer<T>> ofAbstractServerInitializer(int defaultPort) {
+		return new ConfigConverter<Consumer<T>>() {
+			@Override
+			public Consumer<T> get(Config config, Consumer<T> defaultValue) {
+				return defaultValue.andThen(get(config));
+			}
+
+			@Override
+			public Consumer<T> get(Config config) {
+				return s -> {
+					s.withListenPort(config.get(ofInteger(), "port", defaultPort));
+					optionally(config, ofBoolean(), "acceptOnce", s::withAcceptOnce);
+					optionally(config, ofList(ofInetSocketAddress()), "listenAddresses", s::withListenAddresses);
+					optionally(config, ofSocketSettings(), "socketSettings", s::withSocketSettings);
+					optionally(config, ofServerSocketSettings(), "serverSocketSettings", s::withServerSocketSettings);
+				};
 			}
 		};
 	}

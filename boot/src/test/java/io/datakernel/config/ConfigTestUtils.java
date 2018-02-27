@@ -22,17 +22,17 @@ import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static io.datakernel.config.Configs.EMPTY_CONFIG;
+import static io.datakernel.config.Config.EMPTY;
 import static org.junit.Assert.*;
 
 @SuppressWarnings("WeakerAccess")
 public class ConfigTestUtils {
 	/**
 	 * Config of the following form is required:
-	 * key: a.a.a, value: value1;
-	 * key: a.a.b, value: value2;
-	 * key: a.b  , value: value3;
-	 * key: b    , value: value4;
+	 * key: a.a.a, value: 1;
+	 * key: a.a.b, value: 2;
+	 * key: a.b  , value: 3;
+	 * key: b    , value: 4;
 	 */
 	public static void testBaseConfig(Config config) {
 		testHasChild(config);
@@ -69,9 +69,9 @@ public class ConfigTestUtils {
 		assertNotNull(config.getChild("a"));
 		assertNotNull(config.getChild("b"));
 
-		assertEquals(EMPTY_CONFIG, config.getChild("a.a.c"));
-		assertEquals(EMPTY_CONFIG, config.getChild("a.c"));
-		assertEquals(EMPTY_CONFIG, config.getChild("c"));
+		assertEquals(EMPTY, config.getChild("a.a.c"));
+		assertEquals(EMPTY, config.getChild("a.c"));
+		assertEquals(EMPTY, config.getChild("c"));
 
 		assertEquals(config.getChild(""), config);
 		assertEquals(config.getChild("a").getChild("a").getChild("a"), config.getChild("a.a.a"));

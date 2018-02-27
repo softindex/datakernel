@@ -16,9 +16,9 @@
 
 package io.datakernel.config.impl;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.config.AbstractConfig;
 import io.datakernel.config.Config;
-import io.datakernel.config.Configs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,14 +34,14 @@ public final class TreeConfig extends AbstractConfig {
 	private final String value;
 
 	// creators
-	private TreeConfig(TreeConfig root, Map<String, TreeConfig> children, String value) {
+	private TreeConfig(@Nullable TreeConfig root, Map<String, TreeConfig> children, @Nullable String value) {
 		this.root = root;
 		this.children = children;
 		this.value = value;
 	}
 
 	public static TreeConfig ofTree() {
-		return new TreeConfig(null, new LinkedHashMap<String, TreeConfig>(), null);
+		return new TreeConfig(null, new LinkedHashMap<>(), null);
 	}
 
 	public TreeConfig withValue(String path, String value) {
@@ -70,8 +70,8 @@ public final class TreeConfig extends AbstractConfig {
 
 	public void addLeaf(String key, String value) {
 		assert this.value == null;
-		assert !key.contains(".");
-		this.children.put(key, new TreeConfig(this, Collections.<String, TreeConfig>emptyMap(), checkNotNull(value)));
+		assert !key.contains(DELIMITER);
+		this.children.put(key, new TreeConfig(this, Collections.emptyMap(), checkNotNull(value)));
 	}
 
 	// api
@@ -111,7 +111,7 @@ public final class TreeConfig extends AbstractConfig {
 	protected Config doGetChild(String key) {
 		TreeConfig config = children.get(key);
 		if (config == null) {
-			return Configs.EMPTY_CONFIG;
+			return Config.EMPTY;
 		}
 		return config;
 	}
@@ -141,6 +141,11 @@ public final class TreeConfig extends AbstractConfig {
 			}
 		}
 		return child;
+	}
+
+	@Override
+	public boolean isEmpty() {
+		return value == null && children.isEmpty();
 	}
 
 	@Override

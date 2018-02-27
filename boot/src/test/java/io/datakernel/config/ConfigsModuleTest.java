@@ -23,6 +23,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.Properties;
 
+import static io.datakernel.config.Config.ConflictResolver.PROHIBIT_COLLISIONS;
 import static io.datakernel.config.ConfigConverters.*;
 
 public class ConfigsModuleTest {
@@ -78,8 +79,8 @@ public class ConfigsModuleTest {
 			}
 		};
 		Config config = ConfigsModule.create(
-				Configs.union(
-						Configs.PROHIBIT_COLLISIONS,
+				Config.union(
+						PROHIBIT_COLLISIONS,
 						PropertiesConfig.ofProperties(properties1),
 						PropertiesConfig.ofProperties(properties2),
 						PropertiesConfig.ofProperties("not-existing.properties", true)

@@ -32,22 +32,20 @@ import io.datakernel.util.MemSize;
 import java.net.InetAddress;
 
 import static io.datakernel.http.AbstractHttpConnection.*;
+import static io.datakernel.util.Preconditions.checkArgument;
 
 public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	public static final long DEFAULT_KEEP_ALIVE_MILLIS = 30 * 1000L;
 
-	private static final HttpExceptionFormatter DEFAULT_ERROR_FORMATTER = new HttpExceptionFormatter() {
-		@Override
-		public HttpResponse formatException(Throwable e) {
-			if (e instanceof HttpException) {
-				HttpException httpException = (HttpException) e;
-				return HttpResponse.ofCode(httpException.getCode()).withNoCache();
-			}
-			if (e instanceof ParseException) {
-				return HttpResponse.ofCode(400).withNoCache();
-			}
-			return HttpResponse.ofCode(500).withNoCache();
+	private static final HttpExceptionFormatter DEFAULT_ERROR_FORMATTER = e -> {
+		if (e instanceof HttpException) {
+			HttpException httpException = (HttpException) e;
+			return HttpResponse.ofCode(httpException.getCode()).withNoCache();
 		}
+		if (e instanceof ParseException) {
+			return HttpResponse.ofCode(400).withNoCache();
+		}
+		return HttpResponse.ofCode(500).withNoCache();
 	};
 
 	private final AsyncServlet servlet;
@@ -155,6 +153,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	}
 
 	public AsyncHttpServer withKeepAliveTimeout(long keepAliveTimeMillis) {
+		checkArgument(keepAliveTimeMillis >= 0, "Keep alive timeout should not be less than zero");
 		this.keepAliveTimeoutMillis = (int) keepAliveTimeMillis;
 		return self();
 	}
@@ -164,11 +163,13 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	}
 
 	public AsyncHttpServer withReadTimeout(long readTimeoutMillis) {
+		checkArgument(readTimeoutMillis >= 0, "Read timeout should not be less than zero");
 		this.readTimeoutMillis = (int) readTimeoutMillis;
 		return self();
 	}
 
 	public AsyncHttpServer withWriteTimeout(long writeTimeoutMillis) {
+		checkArgument(writeTimeoutMillis >= 0, "Write timeout should not be less than zero");
 		this.writeTimeoutMillis = (int) writeTimeoutMillis;
 		return self();
 	}

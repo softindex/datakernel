@@ -45,44 +45,44 @@ public class EffectiveConfigTest {
 	@Before
 	public void setUp() {
 		Map<String, Config> db = new LinkedHashMap<>();
-		db.put("jdbcUrl", Configs.ofValue("jdbc:mysql://localhost:3306/some_schema"));
-		db.put("username", Configs.ofValue("root"));
-		db.put("password", Configs.ofValue("root"));
-		Config dbConfig = Configs.ofMap(db);
+		db.put("jdbcUrl", Config.ofValue("jdbc:mysql://localhost:3306/some_schema"));
+		db.put("username", Config.ofValue("root"));
+		db.put("password", Config.ofValue("root"));
+		Config dbConfig = Config.ofMap(db);
 
 		Map<String, Config> server = new LinkedHashMap<>();
-		server.put("port", Configs.ofValue("8080"));
-		server.put("businessTimeout", Configs.ofValue("100ms"));
+		server.put("port", Config.ofValue("8080"));
+		server.put("businessTimeout", Config.ofValue("100ms"));
 		Map<String, Config> asyncClient = new LinkedHashMap<>();
-		asyncClient.put("clientTimeout", Configs.ofValue("1000"));
-		server.put("AsyncClient", Configs.ofMap(asyncClient));
-		Config serverConfig = Configs.ofMap(server);
+		asyncClient.put("clientTimeout", Config.ofValue("1000"));
+		server.put("AsyncClient", Config.ofMap(asyncClient));
+		Config serverConfig = Config.ofMap(server);
 		Map<String, Config> root = new LinkedHashMap<>();
 
 		root.put("DataBase", dbConfig);
 		root.put("Server", serverConfig);
 
-		config = EffectiveConfig.create(Configs.ofMap(root));
+		config = EffectiveConfig.create(Config.ofMap(root));
 	}
 
 	@Test
 	public void testBase() {
 		Map<String, Config> tier3 = new HashMap<>();
-		tier3.put("a", Configs.ofValue("1"));
-		tier3.put("b", Configs.ofValue("2"));
+		tier3.put("a", Config.ofValue("1"));
+		tier3.put("b", Config.ofValue("2"));
 		Map<String, Config> tier2 = new HashMap<>();
-		tier2.put("a", Configs.ofMap(tier3));
-		tier2.put("b", Configs.ofValue("3"));
+		tier2.put("a", Config.ofMap(tier3));
+		tier2.put("b", Config.ofValue("3"));
 		Map<String, Config> tier1 = new HashMap<>();
-		tier1.put("a", Configs.ofMap(tier2));
-		tier1.put("b", Configs.ofValue("4"));
-		Config config = Configs.ofMap(tier1);
+		tier1.put("a", Config.ofMap(tier2));
+		tier1.put("b", Config.ofValue("4"));
+		Config config = Config.ofMap(tier1);
 
 		testBaseConfig(config);
 	}
 
 	@Test
-	public void testCompoundConfigs() {
+	public void testCompoundConfig() {
 		config = EffectiveConfig.create(
 				TreeConfig.ofTree()
 						.withValue("Server.socketSettings.backlog", "10")

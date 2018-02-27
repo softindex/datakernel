@@ -44,6 +44,7 @@ public interface AsyncFunction<T, R> {
 		return (T i) -> apply(i).thenApply(after);
 	}
 
+	@SuppressWarnings("unchecked")
 	default <U> AsyncFunction<T, U> andThen(AsyncFunction<? super R, ? extends U> after) {
 		Objects.requireNonNull(after);
 		return (T i) -> apply(i).thenCompose((R input) -> (Stage<U>) after.apply(input));

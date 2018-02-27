@@ -29,7 +29,6 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.regex.Pattern;
 
-import static io.datakernel.config.Configs.EMPTY_CONFIG;
 import static io.datakernel.util.Preconditions.checkArgument;
 
 public final class PropertiesConfig extends AbstractConfig {
@@ -101,7 +100,7 @@ public final class PropertiesConfig extends AbstractConfig {
 	}
 
 	private PropertiesConfig withRootPathAndKey(String rootPath, String path) {
-		String newRootPath = rootPath.isEmpty() || path.isEmpty() ? rootPath + path : rootPath + "." + path;
+		String newRootPath = rootPath.isEmpty() || path.isEmpty() ? rootPath + path : rootPath + DELIMITER + path;
 		return new PropertiesConfig(newRootPath, properties, trie.nodes.get(path));
 	}
 
@@ -132,8 +131,8 @@ public final class PropertiesConfig extends AbstractConfig {
 
 	@Override
 	protected boolean doHasChild(String path) {
-		checkArgument(!path.contains("."));
-		String propertyName = rootPath.isEmpty() ? path : rootPath + "." + path;
+		checkArgument(!path.contains(DELIMITER));
+		String propertyName = rootPath.isEmpty() ? path : rootPath + DELIMITER + path;
 		Set<String> names = properties.stringPropertyNames();
 		for (String name : names) {
 			if (name.startsWith(propertyName))
@@ -144,9 +143,9 @@ public final class PropertiesConfig extends AbstractConfig {
 
 	@Override
 	protected Config doGetChild(String key) {
-		checkArgument(!key.contains("."));
+		checkArgument(!key.contains(DELIMITER));
 		if (!doHasChild(key)) {
-			return EMPTY_CONFIG;
+			return EMPTY;
 		}
 		return withRootPathAndKey(rootPath, key);
 	}
@@ -157,6 +156,11 @@ public final class PropertiesConfig extends AbstractConfig {
 			return Collections.emptySet();
 		}
 		return trie.nodes.keySet();
+	}
+
+	@Override
+	public boolean isEmpty() {
+		return properties.isEmpty();
 	}
 
 	@Override

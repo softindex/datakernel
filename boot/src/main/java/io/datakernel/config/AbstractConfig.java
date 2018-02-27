@@ -16,6 +16,8 @@
 
 package io.datakernel.config;
 
+import io.datakernel.annotation.Nullable;
+
 public abstract class AbstractConfig implements Config {
 
 	@Override
@@ -98,6 +100,7 @@ public abstract class AbstractConfig implements Config {
 
 	protected abstract boolean doHasChild(String key);
 
+	@Nullable
 	private String trimIfNotNull(String value) {
 		if (value != null) {
 			return value.trim();

@@ -66,12 +66,7 @@ public final class WorkerPoolModule extends AbstractModule {
 		});
 
 		bindScope(Worker.class, workerPoolScope);
-		bind(Integer.class).annotatedWith(WorkerId.class).toProvider(new Provider<Integer>() {
-			@Override
-			public Integer get() {
-				return workerPoolScope.currentWorkerId;
-			}
-		});
+		bind(Integer.class).annotatedWith(WorkerId.class).toProvider(() -> workerPoolScope.currentWorkerId);
 	}
 
 	public WorkerPoolObjects getPoolObjects(Key<?> key) {

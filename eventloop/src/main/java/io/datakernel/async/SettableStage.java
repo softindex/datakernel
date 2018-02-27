@@ -1,5 +1,7 @@
 package io.datakernel.async;
 
+import io.datakernel.annotation.Nullable;
+
 import java.util.function.BiConsumer;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
@@ -19,7 +21,7 @@ public final class SettableStage<T> extends AbstractStage<T> implements Callback
 	}
 
 	@Override
-	public void set(T result) {
+	public void set(@Nullable T result) {
 		assert !isSet();
 		if (next == null) {
 			this.result = result;
@@ -30,7 +32,7 @@ public final class SettableStage<T> extends AbstractStage<T> implements Callback
 	}
 
 	@Override
-	public void setException(Throwable t) {
+	public void setException(@Nullable Throwable t) {
 		assert !isSet();
 		if (next == null) {
 			this.result = null;
@@ -41,19 +43,19 @@ public final class SettableStage<T> extends AbstractStage<T> implements Callback
 		}
 	}
 
-	public boolean trySet(T result) {
+	public boolean trySet(@Nullable T result) {
 		if (isSet()) return false;
 		set(result);
 		return true;
 	}
 
-	public boolean trySetException(Throwable t) {
+	public boolean trySetException(@Nullable Throwable t) {
 		if (isSet()) return false;
 		setException(t);
 		return true;
 	}
 
-	public boolean trySet(T result, Throwable throwable) {
+	public boolean trySet(@Nullable T result, @Nullable Throwable throwable) {
 		if (isSet()) return false;
 		if (throwable == null) {
 			trySet(result);
@@ -84,11 +86,6 @@ public final class SettableStage<T> extends AbstractStage<T> implements Callback
 
 	public boolean isSet() {
 		return result != NO_RESULT;
-	}
-
-	@Override
-	public boolean isComplete() {
-		return super.isComplete();
 	}
 
 	@Override

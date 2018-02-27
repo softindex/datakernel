@@ -21,16 +21,15 @@ import org.junit.Test;
 import java.util.HashMap;
 import java.util.Map;
 
-import static io.datakernel.config.Configs.ofValue;
 import static junit.framework.TestCase.assertEquals;
 
 public class AbstractConfigTest {
 	@Test
 	public void testTrim() {
 		Map<String, Config> map = new HashMap<>();
-		map.put("a", ofValue(" value "));
-		map.put("b", ofValue("value "));
-		Config config = Configs.ofMap(map);
+		map.put("a", Config.ofValue(" value "));
+		map.put("b", Config.ofValue("value "));
+		Config config = Config.ofMap(map);
 		assertEquals("value", config.get("a"));
 		assertEquals("value", config.get("b"));
 	}

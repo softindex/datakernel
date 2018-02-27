@@ -72,17 +72,17 @@ final class EffectiveConfig implements Config {
 	}
 
 	private static void fetchAllConfigs(Config config, String prefix, Map<String, String> container) {
-		Set<String> children = config.getChildren();
-		// we assume that each config must be either `leaf`(value, no children) or `branch`(no value, children)
-		if (children.isEmpty()) {
-			assert config.hasValue();
+		if (config.isEmpty()) {
+			return;
+		}
+		if (config.hasValue()) {
 			container.put(prefix, config.get(THIS));
-		} else {
-			for (String childName : children) {
-				Config childConfig = config.getChild(childName);
-				String childPrefix = prefix.isEmpty() ? childName : prefix + "." + childName;
-				fetchAllConfigs(childConfig, childPrefix, container);
-			}
+			return;
+		}
+		for (String childName : config.getChildren()) {
+			Config childConfig = config.getChild(childName);
+			String childPrefix = prefix.isEmpty() ? childName : prefix + DELIMITER + childName;
+			fetchAllConfigs(childConfig, childPrefix, container);
 		}
 	}
 
@@ -129,6 +129,11 @@ final class EffectiveConfig implements Config {
 	@Override
 	public Set<String> getChildren() {
 		return config.getChildren();
+	}
+
+	@Override
+	public boolean isEmpty() {
+		return config.isEmpty();
 	}
 
 	@Override
@@ -259,6 +264,6 @@ final class EffectiveConfig implements Config {
 	}
 
 	private static String fullPath(String rootPath, String relativePath) {
-		return rootPath.isEmpty() || relativePath.isEmpty() ? rootPath + relativePath : rootPath + "." + relativePath;
+		return rootPath.isEmpty() || relativePath.isEmpty() ? rootPath + relativePath : rootPath + DELIMITER + relativePath;
 	}
 }

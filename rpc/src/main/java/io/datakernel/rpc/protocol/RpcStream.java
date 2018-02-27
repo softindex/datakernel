@@ -40,11 +40,6 @@ public final class RpcStream {
 	private Listener listener;
 	private final AbstractStreamProducer<RpcMessage> sender;
 	private final AbstractStreamConsumer<RpcMessage> receiver;
-	private final StreamBinarySerializer<RpcMessage> serializer;
-	private final StreamBinaryDeserializer<RpcMessage> deserializer;
-	private final boolean compression;
-	private final StreamLZ4Compressor compressor;
-	private final StreamLZ4Decompressor decompressor;
 	private final SocketStreamingConnection connection;
 
 	private boolean ready;
@@ -54,7 +49,6 @@ public final class RpcStream {
 	                 BufferSerializer<RpcMessage> messageSerializer,
 	                 int defaultPacketSize, int maxPacketSize,
 	                 int autoFlushIntervalMillis, boolean compression, boolean server) {
-		this.compression = compression;
 
 		connection = SocketStreamingConnection.create(asyncTcpSocket);
 
@@ -116,15 +110,15 @@ public final class RpcStream {
 			}
 		};
 
-		serializer = StreamBinarySerializer.create(messageSerializer)
+		StreamBinarySerializer<RpcMessage> serializer = StreamBinarySerializer.create(messageSerializer)
 				.withDefaultBufferSize(defaultPacketSize)
 				.withMaxMessageSize(maxPacketSize)
 				.withAutoFlush(autoFlushIntervalMillis)
-				.withSkipSerializationErrors()
-//				.withInspector(serializerInspector)
-		;
-		deserializer = StreamBinaryDeserializer.create(messageSerializer);
+				.withSkipSerializationErrors();
+		StreamBinaryDeserializer<RpcMessage> deserializer = StreamBinaryDeserializer.create(messageSerializer);
 
+		StreamLZ4Decompressor decompressor;
+		StreamLZ4Compressor compressor;
 		if (compression) {
 			compressor = StreamLZ4Compressor.fastCompressor();
 			decompressor = StreamLZ4Decompressor.create();
@@ -134,8 +128,6 @@ public final class RpcStream {
 			stream(serializer.getOutput(), compressor.getInput());
 			stream(compressor.getOutput(), connection.getSocketWriter());
 		} else {
-			compressor = null;
-			decompressor = null;
 			stream(connection.getSocketReader(), deserializer.getInput());
 			stream(serializer.getOutput(), connection.getSocketWriter());
 		}

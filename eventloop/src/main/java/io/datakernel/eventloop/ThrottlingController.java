@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Random;
 
-import static io.datakernel.util.Preconditions.check;
+import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.Math.pow;
 
 public final class ThrottlingController implements EventloopJmxMBean {
@@ -57,21 +57,24 @@ public final class ThrottlingController implements EventloopJmxMBean {
 
 	private Eventloop eventloop;
 
-	// settings
+	// region settings
 	private int targetTimeMillis;
 	private int gcTimeMillis;
 	private double throttlingDecrease;
 	private int smoothingWindow;
+	// endregion
 
-	// intermediate counters for current round
+	// region intermediate counters for current round
 	private int bufferedRequests;
 	private int bufferedRequestsThrottled;
+	// endregion
 
-	// exponentially smoothed values
+	// region exponentially smoothed values
 	private double smoothedThrottling;
 	private double smoothedTimePerKeyMillis;
+	// endregion
 
-	// JMX
+	// region JMX
 	private long infoTotalRequests;
 	private long infoTotalRequestsThrottled;
 	private long infoTotalTimeMillis;
@@ -79,13 +82,14 @@ public final class ThrottlingController implements EventloopJmxMBean {
 	private long infoRoundsZeroThrottling;
 	private long infoRoundsExceededTargetTime;
 	private long infoRoundsGc;
+	// endregion
 
 	private float throttling;
 
+	// region creators
 	private ThrottlingController() {
 	}
 
-	// region builders
 	public static ThrottlingController create() {
 		return new ThrottlingController()
 				.withTargetTimeMillis(TARGET_TIME_MILLIS)
@@ -117,11 +121,13 @@ public final class ThrottlingController implements EventloopJmxMBean {
 	}
 
 	public ThrottlingController withInitialKeysPerSecond(double initialKeysPerSecond) {
+		checkArgument(initialKeysPerSecond > 0, "Initial keys per second should not be zero or less");
 		this.smoothedTimePerKeyMillis = 1000.0 / initialKeysPerSecond;
 		return this;
 	}
 
 	public ThrottlingController withInitialThrottling(double initialThrottling) {
+		checkArgument(initialThrottling > 0, "Initial throttling should not be zero or less");
 		this.smoothedThrottling = initialThrottling;
 		return this;
 	}
@@ -212,7 +218,7 @@ public final class ThrottlingController implements EventloopJmxMBean {
 
 	@JmxAttribute
 	public void setTargetTimeMillis(int targetTimeMillis) {
-		check(targetTimeMillis > 0);
+		checkArgument(targetTimeMillis > 0, "Target time should not be zero or less");
 		this.targetTimeMillis = targetTimeMillis;
 	}
 
@@ -223,7 +229,7 @@ public final class ThrottlingController implements EventloopJmxMBean {
 
 	@JmxAttribute
 	public void setGcTimeMillis(int gcTimeMillis) {
-		check(gcTimeMillis > 0);
+		checkArgument(gcTimeMillis > 0, "GC time should not be zero or less");
 		this.gcTimeMillis = gcTimeMillis;
 	}
 
@@ -234,7 +240,7 @@ public final class ThrottlingController implements EventloopJmxMBean {
 
 	@JmxAttribute
 	public void setThrottlingDecrease(double throttlingDecrease) {
-		check(throttlingDecrease >= 0.0 && throttlingDecrease <= 1.0);
+		checkArgument(throttlingDecrease >= 0.0 && throttlingDecrease <= 1.0, "Throttling decrease should not fall out of [0;1] range");
 		this.throttlingDecrease = throttlingDecrease;
 	}
 
@@ -245,7 +251,7 @@ public final class ThrottlingController implements EventloopJmxMBean {
 
 	@JmxAttribute
 	public void setSmoothingWindow(int smoothingWindow) {
-		check(smoothingWindow > 0);
+		checkArgument(smoothingWindow > 0, "Smoothing window should not be zero or less");
 		this.smoothingWindow = smoothingWindow;
 	}
 

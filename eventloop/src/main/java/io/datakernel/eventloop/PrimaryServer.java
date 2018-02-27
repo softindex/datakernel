@@ -19,9 +19,9 @@ package io.datakernel.eventloop;
 import java.util.List;
 
 /**
- * It is the {@link AbstractServer} which only handles accepting to it. It contains collection of
- * other {@link EventloopServer}, and when takes place new accept to it, it forwards request to other server
- * from collection with round-robin algorithm.
+ * It is the {@link AbstractServer} which only handles connections. It contains a collection of
+ * {@link WorkerServer}s, and when an incoming connection takes place, it forwards the request
+ * to some server from the collection with round-robin algorithm.
  */
 public final class PrimaryServer extends AbstractServer<PrimaryServer> {
 

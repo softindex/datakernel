@@ -34,17 +34,16 @@ import java.util.Map;
 
 import static io.datakernel.config.Config.THIS;
 import static io.datakernel.config.ConfigConverters.*;
-import static io.datakernel.config.Configs.emptyConfig;
 import static org.junit.Assert.*;
 
 public class ConfigConvertersTest {
 	@Test
 	public void testBaseGet() {
 		Map<String, Config> map = new HashMap<>();
-		map.put("key1", Configs.ofValue("data1"));
-		map.put("key2", Configs.ofValue("data2"));
-		map.put("key3", Configs.ofValue("data3"));
-		Config root = Configs.ofMap(map);
+		map.put("key1", Config.ofValue("data1"));
+		map.put("key2", Config.ofValue("data2"));
+		map.put("key3", Config.ofValue("data3"));
+		Config root = Config.ofMap(map);
 
 		assertEquals("data1", root.get("key1"));
 		assertEquals("data2", root.get("key2"));
@@ -53,8 +52,8 @@ public class ConfigConvertersTest {
 
 	@Test
 	public void testBooleanConverter() {
-		Config config1 = Configs.ofValue("true");
-		Config config2 = Configs.ofValue("false");
+		Config config1 = Config.ofValue("true");
+		Config config2 = Config.ofValue("false");
 
 		assertTrue(config1.get(ofBoolean(), THIS));
 		assertFalse(config2.get(ofBoolean(), THIS));
@@ -63,10 +62,10 @@ public class ConfigConvertersTest {
 	@Test
 	public void testIntegerConverter() {
 		Map<String, Config> values = new HashMap<>();
-		values.put("key1", Configs.ofValue("1"));
-		values.put("key2", Configs.ofValue("-5"));
-		values.put("key3", Configs.ofValue("100"));
-		Config root = Configs.ofMap(values);
+		values.put("key1", Config.ofValue("1"));
+		values.put("key2", Config.ofValue("-5"));
+		values.put("key3", Config.ofValue("100"));
+		Config root = Config.ofMap(values);
 
 		assertEquals(1, (int) root.get(ofInteger(), "key1"));
 		assertEquals(-5, (int) root.get(ofInteger(), "key2"));
@@ -76,10 +75,10 @@ public class ConfigConvertersTest {
 	@Test
 	public void testLongConverter() {
 		Map<String, Config> values = new HashMap<>();
-		values.put("key1", Configs.ofValue("1"));
-		values.put("key2", Configs.ofValue("-5"));
-		values.put("key3", Configs.ofValue("100"));
-		Config root = Configs.ofMap(values);
+		values.put("key1", Config.ofValue("1"));
+		values.put("key2", Config.ofValue("-5"));
+		values.put("key3", Config.ofValue("100"));
+		Config root = Config.ofMap(values);
 
 		assertEquals(1L, (long) root.get(ofLong(), "key1"));
 		assertEquals(-5L, (long) root.get(ofLong(), "key2"));
@@ -94,10 +93,10 @@ public class ConfigConvertersTest {
 	public void testEnumConverter() {
 		ConfigConverter<Color> enumConverter = ConfigConverters.ofEnum(Color.class);
 		Map<String, Config> values = new HashMap<>();
-		values.put("key1", Configs.ofValue("RED"));
-		values.put("key2", Configs.ofValue("GREEN"));
-		values.put("key3", Configs.ofValue("BLUE"));
-		Config root = Configs.ofMap(values);
+		values.put("key1", Config.ofValue("RED"));
+		values.put("key2", Config.ofValue("GREEN"));
+		values.put("key3", Config.ofValue("BLUE"));
+		Config root = Config.ofMap(values);
 
 		assertEquals(Color.RED, root.get(enumConverter, "key1"));
 		assertEquals(Color.GREEN, root.get(enumConverter, "key2"));
@@ -108,10 +107,10 @@ public class ConfigConvertersTest {
 	public void testDoubleConverter() {
 		ConfigConverter<Double> doubleConverter = ConfigConverters.ofDouble();
 		Map<String, Config> map = new HashMap<>();
-		map.put("key1", Configs.ofValue("0.001"));
-		map.put("key2", Configs.ofValue("1e5"));
-		map.put("key3", Configs.ofValue("-23.1"));
-		Config root = Configs.ofMap(map);
+		map.put("key1", Config.ofValue("0.001"));
+		map.put("key2", Config.ofValue("1e5"));
+		map.put("key3", Config.ofValue("-23.1"));
+		Config root = Config.ofMap(map);
 
 		double acceptableError = 1e-10;
 		assertEquals(0.001, doubleConverter.get(root.getChild("key1")), acceptableError);
@@ -123,11 +122,11 @@ public class ConfigConvertersTest {
 	public void testInetAddressConverter() throws UnknownHostException {
 		ConfigConverter<InetSocketAddress> inetSocketAddressConverter = ConfigConverters.ofInetSocketAddress();
 		Map<String, Config> map = new HashMap<>();
-		map.put("key1", Configs.ofValue("192.168.1.1:80"));
-		map.put("key2", Configs.ofValue("250.200.100.50:10000"));
-		map.put("key3", Configs.ofValue("1.0.0.0:65000"));
+		map.put("key1", Config.ofValue("192.168.1.1:80"));
+		map.put("key2", Config.ofValue("250.200.100.50:10000"));
+		map.put("key3", Config.ofValue("1.0.0.0:65000"));
 
-		Config root = Configs.ofMap(map);
+		Config root = Config.ofMap(map);
 
 		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("192.168.1.1"), 80);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("250.200.100.50"), 10000);
@@ -140,7 +139,7 @@ public class ConfigConvertersTest {
 	@Test
 	public void testListConverter() {
 		ConfigConverter<List<Integer>> listConverter = ConfigConverters.ofList(ConfigConverters.ofInteger(), ",");
-		Config root = Configs.ofValue("1, 5,   10   ");
+		Config root = Config.ofValue("1, 5,   10   ");
 
 		List<Integer> expected = Arrays.asList(1, 5, 10);
 		assertEquals(expected, listConverter.get(root));
@@ -149,7 +148,7 @@ public class ConfigConvertersTest {
 	@Test
 	public void testInetAddressRange() throws Exception {
 		ConfigConverter<InetAddressRange> rangeConverter = ConfigConverters.ofInetAddressRange();
-		Config root = Configs.ofValue("192.168.0.0/16");
+		Config root = Config.ofValue("192.168.0.0/16");
 
 		InetAddressRange expected = InetAddressRange.fromRange(
 				(Inet4Address) InetAddress.getByName("192.168.0.0"),
@@ -159,14 +158,14 @@ public class ConfigConvertersTest {
 	}
 
 	@Test
-	public void testDefaultNullValues() throws UnknownHostException {
-		Integer value = ofInteger().get(emptyConfig(), null);
+	public void testDefaultNullValues() {
+		Integer value = ofInteger().get(Config.EMPTY, null);
 		assertNull(value);
 	}
 
 	@Test
-	public void testDatagraphSocketSettingsConverter() throws UnknownHostException {
-		Config emptyConfig = emptyConfig();
+	public void testDatagraphSocketSettingsConverter() {
+		Config emptyConfig = Config.EMPTY;
 		DatagramSocketSettings expected = DatagramSocketSettings.create()
 				.withReceiveBufferSize(MemSize.bytes(256))
 				.withSendBufferSize(1024)
@@ -183,7 +182,7 @@ public class ConfigConvertersTest {
 
 	@Test
 	public void testServerSocketSettings() {
-		Config emptyConfig = emptyConfig();
+		Config emptyConfig = Config.EMPTY;
 		ServerSocketSettings expected = ServerSocketSettings.create(1)
 				.withReceiveBufferSize(64)
 				.withReuseAddress(true);
@@ -196,7 +195,7 @@ public class ConfigConvertersTest {
 
 	@Test
 	public void testSocketSettings() {
-		Config emptyConfig = emptyConfig();
+		Config emptyConfig = Config.EMPTY;
 		SocketSettings expected = SocketSettings.create()
 				.withTcpNoDelay(true)
 				.withReuseAddress(false)

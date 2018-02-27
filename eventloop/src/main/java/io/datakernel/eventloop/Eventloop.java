@@ -72,7 +72,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	static final double DEFAULT_SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_1_MINUTE;
 
 	public static final AsyncTimeoutException CONNECT_TIMEOUT = new AsyncTimeoutException("Connection timed out");
-	private static final long DEFAULT_IDLE_INTERVAL = 1000L;
+	public static final long DEFAULT_IDLE_INTERVAL = 1000L;
 
 	private static volatile FatalErrorHandler globalFatalErrorHandler = FatalErrorHandlers.ignoreAllErrors();
 
@@ -181,7 +181,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		return this;
 	}
 
-	public Eventloop withThrottlingController(ThrottlingController throttlingController) {
+	public Eventloop withThrottlingController(@Nullable ThrottlingController throttlingController) {
 		this.throttlingController = throttlingController;
 		if (throttlingController != null) {
 			throttlingController.setEventloop(this);

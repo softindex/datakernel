@@ -18,17 +18,18 @@ package io.datakernel.config;
 
 import org.junit.Test;
 
+import static io.datakernel.config.Config.ConflictResolver.*;
 import static io.datakernel.config.Config.THIS;
-import static io.datakernel.config.Configs.*;
+import static io.datakernel.config.Config.union;
 import static junit.framework.TestCase.assertEquals;
 
 public class ConflictResolversTest {
 	@Test(expected = IllegalStateException.class)
 	public void testStrict() {
 		Config config = union(PROHIBIT_COLLISIONS,
-				ofValue("a"),
-				ofValue("b"),
-				ofValue("c")
+				Config.ofValue("a"),
+				Config.ofValue("b"),
+				Config.ofValue("c")
 		);
 		config.get(THIS);
 	}
@@ -36,9 +37,9 @@ public class ConflictResolversTest {
 	@Test
 	public void testReturnFirst() {
 		Config config = union(RETURN_FIRST_FOUND,
-				ofValue("a"),
-				ofValue("b"),
-				ofValue("c")
+				Config.ofValue("a"),
+				Config.ofValue("b"),
+				Config.ofValue("c")
 		);
 		assertEquals("a", config.get(THIS));
 	}
@@ -46,9 +47,9 @@ public class ConflictResolversTest {
 	@Test
 	public void testReturnLast() {
 		Config config = union(RETURN_LAST_FOUND,
-				ofValue("a"),
-				ofValue("b"),
-				ofValue("c")
+				Config.ofValue("a"),
+				Config.ofValue("b"),
+				Config.ofValue("c")
 		);
 		assertEquals("c", config.get(THIS));
 	}

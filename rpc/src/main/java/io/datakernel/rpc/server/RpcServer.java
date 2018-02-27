@@ -111,7 +111,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 
 	private SettableStage<Void> closeStage;
 
-	// jmx
+	// region JMX vars
 	static final double SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_1_MINUTE;
 	private EventStats totalConnects = EventStats.create(SMOOTHING_WINDOW);
 	private Map<InetAddress, EventStats> connectsPerAddress = new HashMap<>();
@@ -121,6 +121,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	private ExceptionStats lastRequestHandlingException = ExceptionStats.create();
 	private ExceptionStats lastProtocolError = ExceptionStats.create();
 	private boolean monitoring;
+	// endregion
 
 //	private final StreamBinarySerializer.JmxInspector statsSerializer = new StreamBinarySerializer.JmxInspector();
 //	private final StreamBinaryDeserializer.JmxInspector statsDeserializer = new StreamBinaryDeserializer.JmxInspector();
@@ -156,6 +157,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	 * @return server instance capable for handling provided message types
 	 */
 	public RpcServer withMessageTypes(List<Class<?>> messageTypes) {
+		checkNotNull(messageTypes, "Message types should not be null");
 		checkArgument(new HashSet<>(messageTypes).size() == messageTypes.size(), "Message types must be unique");
 		this.messageTypes = messageTypes;
 		return self();
@@ -178,6 +180,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	}
 
 	public RpcServer withFlushDelay(int flushDelayMillis) {
+		checkArgument(flushDelayMillis >= 0, "Flush delay should not be less than zero");
 		this.flushDelayMillis = flushDelayMillis;
 		return this;
 	}
@@ -205,8 +208,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 		RpcStream stream = new RpcStream(asyncTcpSocket, serializer, defaultPacketSize, maxPacketSize,
 				flushDelayMillis, compression, true); // , statsSerializer, statsDeserializer, statsCompressor, statsDecompressor);
-		RpcServerConnection connection = new RpcServerConnection(eventloop, this,
-				asyncTcpSocket.getRemoteSocketAddress(), handlers, stream);
+		RpcServerConnection connection = new RpcServerConnection(this, asyncTcpSocket.getRemoteSocketAddress(), handlers, stream);
 		stream.setListener(connection);
 		add(connection);
 

@@ -1,5 +1,6 @@
 package io.datakernel.async;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Stage.Handler.Completion;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
@@ -25,7 +26,7 @@ abstract class AbstractStage<T> implements Stage<T> {
 		return next == COMPLETED_STAGE;
 	}
 
-	protected void complete(T value, Throwable error) {
+	protected void complete(@Nullable T value, @Nullable Throwable error) {
 		assert !isComplete();
 		if (error == null) {
 			complete(value);
@@ -35,7 +36,7 @@ abstract class AbstractStage<T> implements Stage<T> {
 	}
 
 	@SuppressWarnings({"AssertWithSideEffects", "ConstantConditions", "unchecked"})
-	protected void complete(T value) {
+	protected void complete(@Nullable T value) {
 		assert !isComplete();
 		if (next != null) {
 			next.accept(value, null);
@@ -45,7 +46,7 @@ abstract class AbstractStage<T> implements Stage<T> {
 	}
 
 	@SuppressWarnings({"AssertWithSideEffects", "ConstantConditions", "unchecked", "WeakerAccess"})
-	protected void completeExceptionally(Throwable error) {
+	protected void completeExceptionally(@Nullable Throwable error) {
 		assert !isComplete();
 		if (next != null) {
 			next.accept(null, error);
@@ -54,7 +55,7 @@ abstract class AbstractStage<T> implements Stage<T> {
 		assert (next = COMPLETED_STAGE) != null;
 	}
 
-	protected void tryComplete(T value, Throwable error) {
+	protected void tryComplete(@Nullable T value, @Nullable Throwable error) {
 		if (!isComplete()) {
 			complete(value, error);
 		}
@@ -155,7 +156,7 @@ abstract class AbstractStage<T> implements Stage<T> {
 				doComplete(null, error);
 			}
 
-			private void doComplete(T value, Throwable error) {
+			private void doComplete(@Nullable T value, @Nullable Throwable error) {
 				Eventloop eventloop = getCurrentEventloop();
 				eventloop.startExternalTask();
 				executor.execute(() -> handler.handle(value, error, new Completion<U>() {

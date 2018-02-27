@@ -17,7 +17,7 @@
 package io.datakernel.launcher;
 
 import com.google.inject.*;
-import io.datakernel.async.Stage;
+import com.google.inject.util.Modules;
 import io.datakernel.config.ConfigsModule;
 import io.datakernel.jmx.JmxRegistrator;
 import io.datakernel.service.ServiceGraph;
@@ -25,9 +25,10 @@ import io.datakernel.service.ServiceGraphModule;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
+import static java.util.Arrays.asList;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
@@ -46,21 +47,18 @@ import static org.slf4j.LoggerFactory.getLogger;
  * <pre><code>
  * public class ApplicationLauncher extends Launcher {
  *
- * 	public ApplicationLauncher() {
- * 		super({@link Stage Stage.PRODUCTION}, {@link ServiceGraphModule}.defaultInstance(),
- * 			new DaoTierModule(),
- * 			new ControllerTierModule(),
- * 			new ViewTierModule(),
- *            {@link ConfigsModule}
+ *    public ApplicationLauncher() {
+ *        super({@link Stage Stage.PRODUCTION},
+ *            {@link ServiceGraphModule}.defaultInstance(),
+ *            new DaoTierModule(),
+ *            new ControllerTierModule(),
+ *            new ViewTierModule(),
+ *            {@link ConfigsModule}.create(PropertiesConfig.ofProperties("props.properties"))
  *    }
  *
- *    {@literal @}Override
- * 	protected void run() throws Exception {
- * 		awaitShutdown();
- *    }
- *
- * 	public static void main(String[] args) throws Exception {
- * 		main(ApplicationLauncher.class, args);
+ *    public static void main(String[] args) throws Exception {
+ *        ApplicationLauncher launcher = new ApplicationLauncher();
+ *        launcher.launch(args);
  *    }
  * }
  * </code></pre>
@@ -72,12 +70,12 @@ import static org.slf4j.LoggerFactory.getLogger;
 public abstract class Launcher {
 	protected final Logger logger = getLogger(this.getClass());
 
-	protected String[] args;
-
 	private JmxRegistrator jmxRegistrator;
 
-	private com.google.inject.Stage stage;
-	private Module[] modules;
+	private Stage stage;
+	private Module[] baseModules;
+	private List<Module> additionalModules = new ArrayList<>();
+	private List<Module> overrides = new ArrayList<>();
 
 	@Inject
 	protected Provider<ServiceGraph> serviceGraphProvider;
@@ -87,41 +85,56 @@ public abstract class Launcher {
 
 	private final Thread mainThread = Thread.currentThread();
 
-	public static <T extends Launcher> void main(Class<T> launcherClass, String[] args) throws Exception {
-		T launcher = launcherClass.newInstance();
-		launcher.launch(args);
-	}
-
-	public Launcher(com.google.inject.Stage stage, Module... modules) {
+	public Launcher(Stage stage, Module... baseModules) {
 		this.stage = stage;
-		this.modules = modules;
+		this.baseModules = baseModules;
 	}
 
-	public List<Module> getModules() {
-		List<Module> moduleList = new ArrayList<>(Arrays.asList(this.modules));
-		moduleList.add(new AbstractModule() {
-			@Override
-			protected void configure() {
-				bind(String[].class).annotatedWith(Args.class).toInstance(args != null ? args : new String[]{});
-			}
-		});
-		return moduleList;
+	// region addModules
+	public Launcher addModule(Module module) {
+		additionalModules.add(module);
+		return this;
 	}
 
-	public final Injector testInjector() {
-		List<Module> modules = getModules();
-		modules.add(new AbstractModule() {
-			@Override
-			protected void configure() {
-				bind((Class<?>) Launcher.this.getClass());
-			}
-		});
-		return Guice.createInjector(com.google.inject.Stage.TOOL, modules);
+	public Launcher addModules(Module... modules) {
+		return addModules(asList(modules));
+	}
+
+	public Launcher addModules(Collection<Module> modules) {
+		this.additionalModules.addAll(modules);
+		return this;
+	}
+	// endregion
+
+	// region addOverrides
+	public Launcher addOverride(Module override) {
+		overrides.add(override);
+		return this;
+	}
+
+	public Launcher addOverrides(Module... overrides) {
+		return addOverrides(asList(overrides));
+	}
+
+	public Launcher addOverrides(Collection<Module> overrides) {
+		this.overrides.addAll(overrides);
+		return this;
+	}
+	// endregion
+
+	/**
+	 * Creates a Guice injector with modules and overrides from this launcher and
+	 * a special module which creates a members injector for this launcher.
+	 * Both of those are unused on their own, but on creation they do all the binding checks
+	 * so calling this method causes an exception to be thrown on any incorrect bindings
+	 * which is highly for testing.
+	 */
+	public final void testInjector() {
+		Guice.createInjector(Stage.TOOL, createFinalModule(new String[0]), binder -> binder.getMembersInjector(Launcher.this.getClass()));
 	}
 
 	public void launch(String[] args) throws Exception {
-		this.args = args;
-		Injector injector = Guice.createInjector(stage, getModules());
+		Injector injector = Guice.createInjector(stage, createFinalModule(args));
 		logger.info("=== INJECTING DEPENDENCIES");
 		doInject(injector);
 		try {
@@ -143,7 +156,15 @@ public abstract class Launcher {
 		}
 	}
 
-	private void doInject(Injector injector) throws Exception {
+	private Module createFinalModule(String[] args) {
+		List<Module> modules = new ArrayList<>();
+		modules.add(Modules.override(baseModules).with(overrides));
+		modules.add(binder -> binder.bind(String[].class).annotatedWith(Args.class).toInstance(args));
+		modules.addAll(additionalModules);
+		return Modules.combine(modules);
+	}
+
+	private void doInject(Injector injector) {
 		injector.injectMembers(this);
 		Binding<JmxRegistrator> binding = injector.getExistingBinding(Key.get(JmxRegistrator.class));
 		if (binding != null) {
@@ -173,25 +194,18 @@ public abstract class Launcher {
 	}
 
 	protected final void awaitShutdown() throws InterruptedException {
-		addShutdownHook();
+		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+			try {
+				shutdownNotification.requestShutdown();
+				mainThread.join();
+			} catch (InterruptedException e) {
+				logger.error("Shutdown took too long", e);
+			}
+		}, "shutdownNotification"));
 		shutdownNotification.await();
 	}
 
 	protected final void requestShutdown() {
 		shutdownNotification.requestShutdown();
-	}
-
-	private void addShutdownHook() {
-		Runtime.getRuntime().addShutdownHook(new Thread("shutdownNotification") {
-			@Override
-			public void run() {
-				try {
-					shutdownNotification.requestShutdown();
-					mainThread.join();
-				} catch (InterruptedException e) {
-					logger.error("Failed shutdown", e);
-				}
-			}
-		});
 	}
 }

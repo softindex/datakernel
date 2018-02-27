@@ -16,21 +16,25 @@
 
 package io.datakernel.config;
 
+import io.datakernel.annotation.Nullable;
+
 public abstract class AbstractConfigConverter<T> implements ConfigConverter<T> {
 	@Override
+	@Nullable
 	public final T get(Config config) {
 		String value = config.get(Config.THIS);
 		return value == null ? null : fromString(value);
 	}
 
 	@Override
-	public final T get(Config config, T defaultValue) {
+	@Nullable
+	public final T get(Config config, @Nullable T defaultValue) {
 		String defaultString = defaultValue == null ? null : toString(defaultValue);
 		String value = config.get(Config.THIS, defaultString);
 		return value == null ? null : fromString(value);
 	}
 
-	protected abstract T fromString(String value);
+	protected abstract T fromString(@Nullable String value);
 
 	protected abstract String toString(T defaultValue);
 }

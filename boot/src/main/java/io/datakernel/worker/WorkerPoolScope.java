@@ -36,30 +36,27 @@ public final class WorkerPoolScope implements WorkerPools, Scope {
 	@Nullable
 	Integer currentWorkerId;
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public <T> Provider<T> scope(Key<T> key, Provider<T> unscoped) {
-		return new Provider<T>() {
-			@SuppressWarnings("unchecked")
-			@Override
-			public T get() {
-				checkState(currentWorkerPool != null && currentWorkerId != null,
-						"Use WorkerPool to get instances of %s", key);
+		return () -> {
+			checkState(currentWorkerPool != null && currentWorkerId != null,
+					"Use WorkerPool to get instances of %s", key);
 
-				WorkerPoolObjects workerPoolObjects = pool.get(key);
-				if (workerPoolObjects == null) {
-					workerPoolObjects = new WorkerPoolObjects(currentWorkerPool, new Object[currentWorkerPool.workers]);
-					pool.put(key, workerPoolObjects);
-				}
-				checkArgument(workerPoolObjects.workerPool == currentWorkerPool,
-						"%s has been created with different WorkerPool", key);
-				T[] instances = (T[]) workerPoolObjects.objects;
-				T instance = instances[currentWorkerId];
-				if (instance == null) {
-					instance = unscoped.get();
-					instances[currentWorkerId] = instance;
-				}
-				return instance;
+			WorkerPoolObjects workerPoolObjects = pool.get(key);
+			if (workerPoolObjects == null) {
+				workerPoolObjects = new WorkerPoolObjects(currentWorkerPool, new Object[currentWorkerPool.workers]);
+				pool.put(key, workerPoolObjects);
 			}
+			checkArgument(workerPoolObjects.workerPool == currentWorkerPool,
+					"%s has been created with different WorkerPool", key);
+			T[] instances = (T[]) workerPoolObjects.objects;
+			T instance = instances[currentWorkerId];
+			if (instance == null) {
+				instance = unscoped.get();
+				instances[currentWorkerId] = instance;
+			}
+			return instance;
 		};
 	}
 

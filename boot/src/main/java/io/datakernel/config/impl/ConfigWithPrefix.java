@@ -38,7 +38,7 @@ public class ConfigWithPrefix implements Config {
 	}
 
 	private String getFullPath(String path) {
-		return (prefix.isEmpty() ? "" : prefix + ".") + path;
+		return (prefix.isEmpty() ? "" : prefix + DELIMITER) + path;
 	}
 
 	@Override
@@ -51,7 +51,7 @@ public class ConfigWithPrefix implements Config {
 		try {
 			return config.get(converter, path);
 		} catch (NoSuchElementException e) {
-			throw new NoSuchElementException(path + "." + e.getMessage());
+			throw new NoSuchElementException(path + DELIMITER + e.getMessage());
 		}
 	}
 
@@ -73,5 +73,10 @@ public class ConfigWithPrefix implements Config {
 	@Override
 	public Set<String> getChildren() {
 		return config.getChildren();
+	}
+
+	@Override
+	public boolean isEmpty() {
+		return config.isEmpty();
 	}
 }
