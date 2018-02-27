@@ -127,7 +127,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 		}).whenComplete(stageCreateCommitId.recordStats());
 	}
 
-	private String toJson(List<D> diffs) throws IOException {
+	private String toJson(List<D> diffs) {
 		return GsonAdapters.toJson(diffsAdapter, diffs);
 	}
 

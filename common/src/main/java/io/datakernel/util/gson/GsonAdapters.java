@@ -167,7 +167,11 @@ public final class GsonAdapters {
 
 	public interface TypeAdapterMapping {
 
-		TypeAdapter<?> getAdapter(Type type);
+		<T> TypeAdapter<T> getAdapter(Type type);
+
+		default <T> String toJson(T obj) {
+			return GsonAdapters.toJson(getAdapter((Class<T>) obj.getClass()), obj);
+		}
 	}
 
 	public static class TypeAdapterMappingImpl implements TypeAdapterMapping {
@@ -193,33 +197,33 @@ public final class GsonAdapters {
 		}
 
 		@Override
-		public TypeAdapter<?> getAdapter(Type type) {
-			Class<?> cls;
+		public <T> TypeAdapter<T> getAdapter(Type type) {
+			Class<T> cls;
 			TypeAdapter<?>[] paramAdapters;
-			if(type instanceof ParameterizedType) {
+			if (type instanceof ParameterizedType) {
 				ParameterizedType parameterized = (ParameterizedType) type;
 				Type[] typeArgs = parameterized.getActualTypeArguments();
-				cls = (Class<?>) parameterized.getRawType();
+				cls = (Class<T>) parameterized.getRawType();
 				paramAdapters = new TypeAdapter<?>[typeArgs.length];
-				for(int i = 0; i < typeArgs.length; i++) {
+				for (int i = 0; i < typeArgs.length; i++) {
 					Type arg = typeArgs[i];
 					checkState(arg != type, "Mapping does not support recurring generics!");
 					paramAdapters[i] = getAdapter(arg);
 				}
-			}else {
-				cls = (Class<?>) type;
+			} else {
+				cls = (Class<T>) type;
 				paramAdapters = new TypeAdapter[0];
 			}
 			AdapterSupplier func = mapping.get(cls);
 			if (func != null) {
-				return func.get(cls, paramAdapters);
+				return (TypeAdapter<T>) func.get(cls, paramAdapters);
 			}
 			for (Map.Entry<Class<?>, AdapterSupplier> entry : mapping.entrySet()) {
 				if (entry.getKey().isAssignableFrom(cls)) {
-					return entry.getValue().get(cls, paramAdapters);
+					return (TypeAdapter<T>) entry.getValue().get(cls, paramAdapters);
 				}
 			}
-			throw new IllegalArgumentException("Type " + cls + " is not registered for this mapping!");
+			throw new IllegalArgumentException("Type " + type.getTypeName() + " is not registered for this mapping!");
 		}
 
 		public TypeAdapterMappingImpl withAdapter(Class<?> type, TypeAdapter<?> adapter) {
@@ -247,6 +251,10 @@ public final class GsonAdapters {
 		.withAdapter(List.class, ($, paramAdapters) -> {
 			checkArgument(paramAdapters.length == 1);
 			return ofList(paramAdapters[0]);
+		})
+		.withAdapter(Set.class, ($, paramAdapters) -> {
+			checkArgument(paramAdapters.length == 1);
+			return ofSet(paramAdapters[0]);
 		})
 		.withAdapter(Map.class, ($, paramAdapters) -> {
 			checkArgument(paramAdapters.length == 2);
@@ -602,10 +610,14 @@ public final class GsonAdapters {
 		adapter.write(jsonWriter, value);
 	}
 
-	public static <T> String toJson(TypeAdapter<T> adapter, T value) throws IOException {
-		StringWriter writer = new StringWriter();
-		toJson(adapter, value, writer);
-		return writer.toString();
+	public static <T> String toJson(TypeAdapter<T> adapter, T value) {
+		try {
+			StringWriter writer = new StringWriter();
+			toJson(adapter, value, writer);
+			return writer.toString();
+		} catch (IOException e) {
+			throw new AssertionError(e); // no I/O with StringWriter
+		}
 	}
 
 	public static <T> void toJson(TypeAdapter<T> adapter, T obj, Appendable appendable) throws IOException {

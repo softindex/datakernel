@@ -22,7 +22,7 @@ import io.datakernel.datagraph.server.DatagraphSerialization;
 
 import java.util.*;
 
-import static io.datakernel.util.gson.GsonAdapters.ofList;
+import static io.datakernel.util.gson.GsonAdapters.*;
 
 /**
  * Represents a graph of partitions, nodes and streams in datagraph system.
@@ -39,7 +39,7 @@ public class DataGraph {
 	public DataGraph(DatagraphSerialization serialization, List<Partition> availablePartitions) {
 		this.serialization = serialization;
 		this.availablePartitions = availablePartitions;
-		this.listNodeAdapter = ofList(serialization.nodeAdapter);
+		this.listNodeAdapter = indent(ofList(serialization.nodeAdapter), "  ");
 	}
 
 	public List<Partition> getAvailablePartitions() {
@@ -80,7 +80,7 @@ public class DataGraph {
 		for (Partition partition : map.keySet()) {
 			List<Node> nodes = map.get(partition);
 			sb.append("--- ").append(partition).append("\n\n");
-			sb.append(listNodeAdapter.toJson(nodes));
+			sb.append(toJson(listNodeAdapter, nodes));
 			sb.append("\n\n");
 		}
 		return sb.toString();

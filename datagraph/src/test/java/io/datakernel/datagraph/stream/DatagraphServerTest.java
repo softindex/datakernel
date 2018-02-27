@@ -112,8 +112,7 @@ public class DatagraphServerTest {
 		DatagraphClient client = new DatagraphClient(eventloop, serialization);
 		Partition partition1 = new Partition(client, address1);
 		Partition partition2 = new Partition(client, address2);
-		DataGraph graph = new DataGraph(serialization,
-				asList(partition1, partition2));
+		DataGraph graph = new DataGraph(serialization, asList(partition1, partition2));
 
 		Dataset<TestItem> items = datasetOfList("items", TestItem.class);
 
