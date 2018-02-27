@@ -1,4 +1,4 @@
-CREATE TABLE `ot_revisions_backup` (
+CREATE TABLE `ot_backup` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `snapshot` LONGTEXT,
   `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,

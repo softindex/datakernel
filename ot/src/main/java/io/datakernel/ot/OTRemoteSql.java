@@ -30,9 +30,9 @@ import static java.util.stream.Collectors.*;
 public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 	public static final double DEFAULT_SMOOTHING_WINDOW = SMOOTHING_WINDOW_5_MINUTES;
-	public static final String DEFAULT_REVISION_TABLE = "ot_revision";
+	public static final String DEFAULT_REVISION_TABLE = "ot_revisions";
 	public static final String DEFAULT_DIFFS_TABLE = "ot_diffs";
-	public static final String DEFAULT_BACKUP_TABLE = "ot_revisions_backup";
+	public static final String DEFAULT_BACKUP_TABLE = "ot_backup";
 
 	private final Eventloop eventloop;
 	private final ExecutorService executor;
