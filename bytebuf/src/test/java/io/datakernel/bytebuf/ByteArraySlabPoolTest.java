@@ -28,7 +28,7 @@ public class ByteArraySlabPoolTest {
 		ByteBufPool.clear();
 
 		ByteBuf bytes = ByteBufPool.allocate(size);
-		assertEquals(expectedSize, bytes.array().length);
+		assertEquals(expectedSize, bytes.limit());
 		for (int i = 0; i < poolSizes.length; i++) {
 			assertTrue(ByteBufPool.getSlab(i).isEmpty());
 		}
@@ -66,10 +66,10 @@ public class ByteArraySlabPoolTest {
 		ByteBufPool.clear();
 
 		ByteBuf bytes1 = ByteBufPool.allocate(size1);
-		assertTrue(size1 <= bytes1.array().length);
+		assertTrue(size1 <= bytes1.limit());
 
 		ByteBuf bytes2 = ByteBufPool.ensureWriteRemaining(bytes1, size2);
-		assertTrue(size2 <= bytes2.array().length);
+		assertTrue(size2 <= bytes2.limit());
 
 		assertEquals(equals, bytes1 == bytes2);
 	}

@@ -86,7 +86,7 @@ public final class ByteBufRegistry {
 
 	public static boolean recordAllocate(ByteBuf buf) {
 		totalAllocatedBufs.incrementAndGet();
-		totalAllocatedBytes.addAndGet(buf.array().length);
+		totalAllocatedBytes.addAndGet(buf.limit());
 		if (storeByteBufs) {
 			int current = counter.incrementAndGet();
 			if (current % CLEAR_EMPTY_WRAPPERS_PERIOD == 0) { // in case of negative values it also works properly
@@ -110,7 +110,7 @@ public final class ByteBufRegistry {
 
 	public static boolean recordRecycle(ByteBuf buf) {
 		totalRecycledBufs.incrementAndGet();
-		totalRecycledBytes.addAndGet(buf.array().length);
+		totalRecycledBytes.addAndGet(buf.limit());
 		if (storeByteBufs) {
 			activeByteBufs.remove(new ByteBufWrapper(buf));
 		}

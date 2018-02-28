@@ -142,7 +142,7 @@ public final class StreamBinarySerializer<T> implements StreamTransformer<T, Byt
 		private final int maxMessageSize;
 		private final int headerSize;
 
-		private ByteBuf outputBuf = allocateBuffer();
+		private ByteBuf outputBuf = ByteBuf.empty();
 		private int estimatedMessageSize;
 
 		private final int autoFlushIntervalMillis;
@@ -179,16 +179,58 @@ public final class StreamBinarySerializer<T> implements StreamTransformer<T, Byt
 		}
 
 		private ByteBuf allocateBuffer() {
-			return ByteBufPool.allocate(max(defaultBufferSize, headerSize + estimatedMessageSize));
+			return ByteBufPool.allocate(max(defaultBufferSize, headerSize + estimatedMessageSize + (estimatedMessageSize >>> 2)));
 		}
 
 		private void flush() {
 			if (outputBuf.canRead()) {
 				getLastDataReceiver().onData(outputBuf);
+				estimatedMessageSize -= estimatedMessageSize >>> 8;
 			} else {
 				outputBuf.recycle();
 			}
-			outputBuf = allocateBuffer();
+			outputBuf = ByteBuf.empty();
+		}
+
+		/**
+		 * After receiving data it serializes it to buffer and adds it to the outputBuffer,
+		 * and flushes bytes depending on the autoFlushDelay
+		 *
+		 * @param item receiving item
+		 */
+		@Override
+		public void onData(T item) {
+			int positionBegin;
+			int positionItem;
+			for (; ; ) {
+				if (outputBuf.writeRemaining() < headerSize + estimatedMessageSize + (estimatedMessageSize >>> 2)) {
+					onFullBuffer();
+				}
+				positionBegin = outputBuf.writePosition();
+				positionItem = positionBegin + headerSize;
+				outputBuf.writePosition(positionItem);
+				try {
+					serializer.serialize(outputBuf, item);
+				} catch (ArrayIndexOutOfBoundsException e) {
+					onUnderEstimate(item, positionBegin);
+					continue;
+				} catch (Exception e) {
+					onSerializationError(item, positionBegin, e);
+					return;
+				}
+				break;
+			}
+			int positionEnd = outputBuf.writePosition();
+			int messageSize = positionEnd - positionItem;
+			if (messageSize > estimatedMessageSize) {
+				if (messageSize < maxMessageSize) {
+					estimatedMessageSize = messageSize;
+				} else {
+					onMessageOverflow(item, positionBegin, messageSize);
+					return;
+				}
+			}
+			writeSize(outputBuf.array(), positionBegin, messageSize);
 		}
 
 		private void writeSize(byte[] buf, int pos, int size) {
@@ -210,53 +252,12 @@ public final class StreamBinarySerializer<T> implements StreamTransformer<T, Byt
 			buf[pos + 2] = (byte) size;
 		}
 
-		/**
-		 * After receiving data it serializes it to buffer and adds it to the outputBuffer,
-		 * and flushes bytes depending on the autoFlushDelay
-		 *
-		 * @param item receiving item
-		 */
-		@Override
-		public void onData(T item) {
-			int positionBegin;
-			int positionItem;
-			for (; ; ) {
-				if (outputBuf.writeRemaining() < headerSize + estimatedMessageSize) {
-					onFullBuffer();
-				}
-				positionBegin = outputBuf.writePosition();
-				positionItem = positionBegin + headerSize;
-				outputBuf.writePosition(positionItem);
-				try {
-					serializer.serialize(outputBuf, item);
-				} catch (ArrayIndexOutOfBoundsException e) {
-					onUnderEstimate(item, positionBegin, positionItem);
-					continue;
-				} catch (Exception e) {
-					onSerializationError(item, positionBegin, e);
-					return;
-				}
-				break;
-			}
-			int positionEnd = outputBuf.writePosition();
-			int messageSize = positionEnd - positionItem;
-			if (messageSize >= maxMessageSize) {
-				onMessageOverflow(item, positionBegin, messageSize);
-				return;
-			}
-			writeSize(outputBuf.array(), positionBegin, messageSize);
-			messageSize += messageSize >>> 2;
-			if (messageSize > estimatedMessageSize)
-				estimatedMessageSize = messageSize;
-			else
-				estimatedMessageSize -= estimatedMessageSize >>> 10;
+		private void onFullBuffer() {
+			flush();
+			outputBuf = allocateBuffer();
 			if (!flushPosted) {
 				postFlush();
 			}
-		}
-
-		private void onFullBuffer() {
-			flush();
 		}
 
 		private void onSerializationError(T value, int positionBegin, Exception e) {
@@ -269,10 +270,11 @@ public final class StreamBinarySerializer<T> implements StreamTransformer<T, Byt
 			handleSerializationError(OUT_OF_BOUNDS_EXCEPTION);
 		}
 
-		private void onUnderEstimate(T value, int positionBegin, int positionItem) {
+		private void onUnderEstimate(T value, int positionBegin) {
 			outputBuf.writePosition(positionBegin);
-			int messageSize = outputBuf.limit() - positionItem;
-			estimatedMessageSize = messageSize + 1 + (messageSize >>> 1);
+			int writeRemaining = outputBuf.writeRemaining();
+			flush();
+			outputBuf = ByteBufPool.allocate(max(defaultBufferSize, writeRemaining + (writeRemaining >>> 1) + 1));
 		}
 
 		private void handleSerializationError(Exception e) {
@@ -298,11 +300,10 @@ public final class StreamBinarySerializer<T> implements StreamTransformer<T, Byt
 					flush();
 				});
 			} else {
-				eventloop.delayBackground(autoFlushIntervalMillis,
-						() -> {
-							flushPosted = false;
-							flush();
-						});
+				eventloop.delayBackground(autoFlushIntervalMillis, () -> {
+					flushPosted = false;
+					flush();
+				});
 			}
 		}
 

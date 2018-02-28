@@ -381,7 +381,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 					break;
 
 				int bytesToCopy = nextBuf.readRemaining(); // bytes to append to bufToSend
-				if (bufToSend.readPosition() + bufToSend.readRemaining() + bytesToCopy > bufToSend.array().length)
+				if (bufToSend.readPosition() + bufToSend.readRemaining() + bytesToCopy > bufToSend.limit())
 					bytesToCopy += bufToSend.readRemaining(); // append will resize bufToSend
 				if (bytesToCopy < writeMaxSize) {
 					bufToSend = ByteBufPool.append(bufToSend, nextBuf);
