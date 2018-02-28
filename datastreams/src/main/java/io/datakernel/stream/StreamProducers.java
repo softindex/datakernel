@@ -28,7 +28,6 @@ import java.util.function.Predicate;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
-import static io.datakernel.stream.StreamCapability.TERMINAL;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 @SuppressWarnings("StatementWithEmptyBody")
@@ -72,7 +71,7 @@ public final class StreamProducers {
 
 		@Override
 		public Set<StreamCapability> getCapabilities() {
-			return EnumSet.of(LATE_BINDING, TERMINAL);
+			return EnumSet.of(LATE_BINDING);
 		}
 	}
 
@@ -100,7 +99,7 @@ public final class StreamProducers {
 
 		@Override
 		public Set<StreamCapability> getCapabilities() {
-			return EnumSet.of(LATE_BINDING, TERMINAL);
+			return EnumSet.of(LATE_BINDING);
 		}
 	}
 
@@ -141,7 +140,7 @@ public final class StreamProducers {
 
 		@Override
 		public Set<StreamCapability> getCapabilities() {
-			return EnumSet.of(LATE_BINDING, TERMINAL);
+			return EnumSet.of(LATE_BINDING);
 		}
 	}
 

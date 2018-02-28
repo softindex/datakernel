@@ -26,6 +26,7 @@ import java.util.Set;
 import static io.datakernel.stream.DataStreams.bind;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
+import static java.util.Collections.emptySet;
 
 public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
 	private InternalProducer currentInternalProducer;
@@ -56,6 +57,11 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 	@Override
 	protected final void onError(Throwable t) {
 		switchTo(StreamConsumer.idle());
+	}
+
+	@Override
+	public Set<StreamCapability> getCapabilities() {
+		return currentInternalProducer == null ? emptySet() : currentInternalProducer.consumer.getCapabilities();
 	}
 
 	public void switchTo(StreamConsumer<T> newConsumer) {
@@ -154,7 +160,7 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 
 		@Override
 		public Set<StreamCapability> getCapabilities() {
-			throw new UnsupportedOperationException();
+			return StreamConsumerSwitcher.this.getProducer().getCapabilities();
 		}
 
 		public void onData(T item) {

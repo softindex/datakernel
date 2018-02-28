@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Set;
 
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
-import static io.datakernel.stream.StreamCapability.TERMINAL;
 
 public final class StreamConsumerToList<T> extends AbstractStreamConsumer<T> implements StreamConsumerWithResult<T, List<T>>, StreamDataReceiver<T> {
 	protected final List<T> list;
@@ -62,6 +61,6 @@ public final class StreamConsumerToList<T> extends AbstractStreamConsumer<T> imp
 
 	@Override
 	public Set<StreamCapability> getCapabilities() {
-		return EnumSet.of(LATE_BINDING, TERMINAL);
+		return EnumSet.of(LATE_BINDING);
 	}
 }

@@ -30,7 +30,6 @@ import java.util.function.Predicate;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
-import static io.datakernel.stream.StreamCapability.TERMINAL;
 
 public final class StreamConsumers {
 	private StreamConsumers() {
@@ -56,7 +55,7 @@ public final class StreamConsumers {
 
 		@Override
 		public Set<StreamCapability> getCapabilities() {
-			return EnumSet.of(LATE_BINDING, TERMINAL);
+			return EnumSet.of(LATE_BINDING);
 		}
 	}
 
@@ -81,7 +80,7 @@ public final class StreamConsumers {
 
 		@Override
 		public Set<StreamCapability> getCapabilities() {
-			return EnumSet.of(LATE_BINDING, TERMINAL);
+			return EnumSet.of(LATE_BINDING);
 		}
 	}
 

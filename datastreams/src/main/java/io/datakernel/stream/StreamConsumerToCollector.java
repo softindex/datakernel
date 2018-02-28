@@ -9,7 +9,6 @@ import java.util.function.BiConsumer;
 import java.util.stream.Collector;
 
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
-import static io.datakernel.stream.StreamCapability.TERMINAL;
 
 public final class StreamConsumerToCollector<T, A, R> extends AbstractStreamConsumer<T> implements StreamConsumerWithResult<T, R> {
 	private final Collector<T, A, R> collector;
@@ -23,15 +22,8 @@ public final class StreamConsumerToCollector<T, A, R> extends AbstractStreamCons
 	@Override
 	protected void onStarted() {
 		accumulator = collector.supplier().get();
-		getProducer().produce(new StreamDataReceiver<T>() {
-			private final BiConsumer<A, T> consumer = collector.accumulator();
-			private final A accumulator = StreamConsumerToCollector.this.accumulator;
-
-			@Override
-			public void onData(T item) {
-				consumer.accept(accumulator, item);
-			}
-		});
+		BiConsumer<A, T> consumer = collector.accumulator();
+		getProducer().produce(item -> consumer.accept(accumulator, item));
 	}
 
 	@Override
@@ -57,6 +49,6 @@ public final class StreamConsumerToCollector<T, A, R> extends AbstractStreamCons
 
 	@Override
 	public Set<StreamCapability> getCapabilities() {
-		return EnumSet.of(LATE_BINDING, TERMINAL);
+		return EnumSet.of(LATE_BINDING);
 	}
 }

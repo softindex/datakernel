@@ -2,11 +2,9 @@ package io.datakernel.stream.processor;
 
 import io.datakernel.stream.*;
 
-import java.util.EnumSet;
 import java.util.Set;
 
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
-import static io.datakernel.stream.StreamCapability.TERMINAL;
 
 /**
  * If stream consumer is not immediately wired, on next eventloop cycle it will error out.
@@ -21,12 +19,14 @@ public final class StreamLateBinder<T> implements StreamTransformer<T, T> {
 
 	private StreamDataReceiver<T> waitingReceiver;
 
+	// region creators
 	private StreamLateBinder() {
 	}
 
 	public static <T> StreamLateBinder<T> create() {
-		return new StreamLateBinder<T>();
+		return new StreamLateBinder<>();
 	}
+	// endregion
 
 	private class Input extends AbstractStreamConsumer<T> {
 		@Override
@@ -49,7 +49,7 @@ public final class StreamLateBinder<T> implements StreamTransformer<T, T> {
 
 		@Override
 		public Set<StreamCapability> getCapabilities() {
-			return EnumSet.of(LATE_BINDING);
+			return withCap(output.getConsumer(), LATE_BINDING);
 		}
 	}
 
@@ -81,7 +81,7 @@ public final class StreamLateBinder<T> implements StreamTransformer<T, T> {
 
 		@Override
 		public Set<StreamCapability> getCapabilities() {
-			return EnumSet.of(LATE_BINDING, TERMINAL);
+			return withCap(input.getProducer(), LATE_BINDING);
 		}
 	}
 

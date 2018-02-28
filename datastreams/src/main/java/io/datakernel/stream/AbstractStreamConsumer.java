@@ -24,6 +24,7 @@ import io.datakernel.exception.ExpectedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.EnumSet;
 import java.util.Set;
 
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
@@ -130,6 +131,15 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	@Override
 	public final Stage<Void> getEndOfStream() {
 		return endOfStream;
+	}
+
+	/** This method is useful for stream transformers that might add some capability to the stream */
+	protected static Set<StreamCapability> withCap(@Nullable StreamConsumer<?> consumer, StreamCapability cap) {
+		EnumSet<StreamCapability> caps = EnumSet.of(cap);
+		if (consumer != null) {
+			caps.addAll(consumer.getCapabilities());
+		}
+		return caps;
 	}
 
 	@Override
