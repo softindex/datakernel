@@ -36,7 +36,6 @@ public class PrimaryEventloopModule extends SimpleModule {
 				.withFatalErrorHandler(config.get(ofFatalErrorHandler(), "eventloop.primary.fatalErrorHandler", rethrowOnAnyError()))
 				.withThrottlingController(config.getOrNull(ofThrottlingController(), "eventloop.primary.throttlingController"))
 				.withIdleInterval(idleInterval)
-				.withThreadPriority(threadPriority)
-				.withCurrentThread();
+				.withThreadPriority(threadPriority);
 	}
 }

@@ -39,7 +39,6 @@ public class WorkerEventloopModule extends SimpleModule {
 				.withFatalErrorHandler(conf.get(ofFatalErrorHandler(), "fatalErrorHandler", rethrowOnAnyError()))
 				.withThrottlingController(conf.getOrNull(ofThrottlingController(), "throttlingController"))
 				.withIdleInterval(idleInterval)
-				.withThreadPriority(threadPriority)
-				.withCurrentThread();
+				.withThreadPriority(threadPriority);
 	}
 }

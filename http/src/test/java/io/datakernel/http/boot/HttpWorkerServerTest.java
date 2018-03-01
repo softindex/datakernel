@@ -18,14 +18,24 @@ package io.datakernel.http.boot;
 
 import com.google.inject.Guice;
 import com.google.inject.Injector;
+import com.google.inject.Provides;
+import com.google.inject.Singleton;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigsModule;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.PrimaryServer;
+import io.datakernel.http.AsyncHttpServer;
+import io.datakernel.http.AsyncServlet;
 import io.datakernel.launcher.modules.PrimaryEventloopModule;
 import io.datakernel.launcher.modules.WorkerEventloopModule;
 import io.datakernel.launcher.modules.WorkerPoolModule;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
+import io.datakernel.util.guice.SimpleModule;
+import io.datakernel.worker.Primary;
+import io.datakernel.worker.Worker;
+import io.datakernel.worker.WorkerPool;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -33,11 +43,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.util.Collections;
+import java.util.List;
 
 import static com.google.inject.Stage.PRODUCTION;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
+import static io.datakernel.config.ConfigConverters.ofAbstractServerInitializer;
+import static io.datakernel.http.boot.HttpConfigUtils.getHttpServerInitializer;
 import static org.junit.Assert.assertEquals;
 
 public class HttpWorkerServerTest {
@@ -49,23 +63,31 @@ public class HttpWorkerServerTest {
 	}
 
 	@Test
-	public void testInjector() {
-		new HttpServerLauncher().addModule(HelloWorldServletModule.create()).testInjector();
-	}
-
-	@Test
 	public void test() throws Exception {
-
 		Injector injector = Guice.createInjector(PRODUCTION,
 				ServiceGraphModule.defaultInstance(),
 				ConfigsModule.create(Config.create().with("http.primary.server.port", Integer.toString(PORT))),
 				WorkerPoolModule.create(),
 				PrimaryEventloopModule.create(),
-				PrimaryHttpServerModule.create(),
 				WorkerEventloopModule.create(),
-				WorkerHttpServerModule.create(),
-				HelloWorldWorkerServletModule.create());
+				new SimpleModule(){
+					@Provides
+					@Singleton
+					public PrimaryServer providePrimaryServer(@Primary Eventloop primaryEventloop, WorkerPool workerPool, Config config) {
+						List<AsyncHttpServer> workerHttpServers = workerPool.getInstances(AsyncHttpServer.class);
+						return PrimaryServer.create(primaryEventloop, workerHttpServers)
+								.initialize(config.get(ofAbstractServerInitializer(8080), "http.primary.server"));
+					}
 
+					@Provides
+					@Worker
+					public AsyncHttpServer provide(Eventloop eventloop, AsyncServlet rootServlet, Config config) {
+						return AsyncHttpServer.create(eventloop, rootServlet)
+								.initialize(getHttpServerInitializer(config.getChild("http.worker")))
+								.withListenAddresses(Collections.emptyList()); // remove any listen adresses
+					}
+				},
+				HelloWorldWorkerServletModule.create());
 
 		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
 		try (Socket socket0 = new Socket(); Socket socket1 = new Socket()) {

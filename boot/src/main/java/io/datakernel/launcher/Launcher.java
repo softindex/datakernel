@@ -17,18 +17,15 @@
 package io.datakernel.launcher;
 
 import com.google.inject.*;
-import com.google.inject.util.Modules;
 import io.datakernel.config.ConfigsModule;
 import io.datakernel.jmx.JmxRegistrator;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
 import org.slf4j.Logger;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 
-import static java.util.Arrays.asList;
+import static com.google.inject.util.Modules.combine;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
@@ -73,9 +70,6 @@ public abstract class Launcher {
 	private JmxRegistrator jmxRegistrator;
 
 	private Stage stage;
-	private Module[] baseModules;
-	private List<Module> additionalModules = new ArrayList<>();
-	private List<Module> overrides = new ArrayList<>();
 
 	@Inject
 	protected Provider<ServiceGraph> serviceGraphProvider;
@@ -85,42 +79,7 @@ public abstract class Launcher {
 
 	private final Thread mainThread = Thread.currentThread();
 
-	public Launcher(Stage stage, Module... baseModules) {
-		this.stage = stage;
-		this.baseModules = baseModules;
-	}
-
-	// region addModules
-	public Launcher addModule(Module module) {
-		additionalModules.add(module);
-		return this;
-	}
-
-	public Launcher addModules(Module... modules) {
-		return addModules(asList(modules));
-	}
-
-	public Launcher addModules(Collection<Module> modules) {
-		this.additionalModules.addAll(modules);
-		return this;
-	}
-	// endregion
-
-	// region addOverrides
-	public Launcher addOverride(Module override) {
-		overrides.add(override);
-		return this;
-	}
-
-	public Launcher addOverrides(Module... overrides) {
-		return addOverrides(asList(overrides));
-	}
-
-	public Launcher addOverrides(Collection<Module> overrides) {
-		this.overrides.addAll(overrides);
-		return this;
-	}
-	// endregion
+	protected abstract Collection<Module> getModules();
 
 	/**
 	 * Creates a Guice injector with modules and overrides from this launcher and
@@ -130,11 +89,14 @@ public abstract class Launcher {
 	 * which is highly for testing.
 	 */
 	public final void testInjector() {
-		Guice.createInjector(Stage.TOOL, createFinalModule(new String[0]), binder -> binder.getMembersInjector(Launcher.this.getClass()));
+		Guice.createInjector(Stage.TOOL,
+				getCombinedModule(new String[0]),
+				binder -> binder.getMembersInjector(Launcher.this.getClass()));
 	}
 
-	public void launch(String[] args) throws Exception {
-		Injector injector = Guice.createInjector(stage, createFinalModule(args));
+	public void launch(boolean productionMode, String[] args) throws Exception {
+		Injector injector = Guice.createInjector(productionMode ? Stage.PRODUCTION : Stage.DEVELOPMENT,
+				getCombinedModule(args));
 		logger.info("=== INJECTING DEPENDENCIES");
 		doInject(injector);
 		try {
@@ -156,12 +118,10 @@ public abstract class Launcher {
 		}
 	}
 
-	private Module createFinalModule(String[] args) {
-		List<Module> modules = new ArrayList<>();
-		modules.add(Modules.override(baseModules).with(overrides));
-		modules.add(binder -> binder.bind(String[].class).annotatedWith(Args.class).toInstance(args));
-		modules.addAll(additionalModules);
-		return Modules.combine(modules);
+	private Module getCombinedModule(String[] args) {
+		return combine(
+				combine(getModules()),
+				binder -> binder.bind(String[].class).annotatedWith(Args.class).toInstance(args));
 	}
 
 	private void doInject(Injector injector) {
@@ -208,4 +168,5 @@ public abstract class Launcher {
 	protected final void requestShutdown() {
 		shutdownNotification.requestShutdown();
 	}
+
 }

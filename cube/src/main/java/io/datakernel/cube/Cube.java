@@ -821,9 +821,8 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializer<Cube>, 
 			havingPredicate = createHavingPredicate();
 			recordFunction = createRecordFunction();
 
-			StreamProducer<Object> queryResultProducer = (StreamProducer<Object>) queryRawStream(new ArrayList<>(resultDimensions), new ArrayList<>(resultStoredMeasures),
-					queryPredicate, resultClass, queryClassLoader, compatibleAggregations);
-			return queryResultProducer
+			return queryRawStream(new ArrayList<>(resultDimensions), new ArrayList<>(resultStoredMeasures),
+					queryPredicate, (Class<Object>) resultClass, queryClassLoader, compatibleAggregations)
 					.toList()
 					.thenCompose(this::processResults);
 		}

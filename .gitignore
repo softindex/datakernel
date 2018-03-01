@@ -11,3 +11,4 @@ logback.xml
 /buildSrc/.gradle
 /buildSrc/build
 /build
+*.effective.properties
