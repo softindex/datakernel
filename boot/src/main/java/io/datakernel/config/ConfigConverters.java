@@ -32,7 +32,10 @@ import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
@@ -43,6 +46,8 @@ import static io.datakernel.eventloop.ThrottlingController.INITIAL_THROTTLING;
 import static io.datakernel.net.ServerSocketSettings.DEFAULT_BACKLOG;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.Integer.parseInt;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
 import static java.util.regex.Pattern.compile;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
@@ -482,12 +487,12 @@ public final class ConfigConverters {
 				switch (key) {
 					case "rethrowOnMatchedError":
 						return rethrowOnMatchedError(
-								config.get(classList, "whitelist", Collections.emptyList()),
-								config.get(classList, "blacklist", Collections.emptyList()));
+								config.get(classList, "whitelist", emptyList()),
+								config.get(classList, "blacklist", emptyList()));
 					case "exitOnMatchedError":
 						return exitOnMatchedError(
-								config.get(classList, "whitelist", Collections.emptyList()),
-								config.get(classList, "blacklist", Collections.emptyList()));
+								config.get(classList, "whitelist", emptyList()),
+								config.get(classList, "blacklist", emptyList()));
 					default:
 						FatalErrorHandler fatalErrorHandler = simpleErrorHandlers.get(key);
 						if (fatalErrorHandler == null) {
@@ -508,6 +513,7 @@ public final class ConfigConverters {
 
 			@Override
 			public ThrottlingController get(Config config, ThrottlingController defaultValue) {
+				Preconditions.checkNotNull(defaultValue);
 				return ThrottlingController.create()
 						.withTargetTimeMillis(config.get(ofInteger(), "targetTimeMillis", defaultValue.getTargetTimeMillis()))
 						.withGcTimeMillis(config.get(ofInteger(), "gcTimeMillis", defaultValue.getGcTimeMillis()))
@@ -519,13 +525,7 @@ public final class ConfigConverters {
 		};
 	}
 
-	private static <T> void optionally(Config config, ConfigConverter<T> converter, String key, Consumer<T> applier) {
-		if (config.hasChild(key)) {
-			applier.accept(config.get(converter, key));
-		}
-	}
-
-	public static <T extends AbstractServer<T>> ConfigConverter<Consumer<T>> ofAbstractServerInitializer(int defaultPort) {
+	public static <T extends AbstractServer<T>> ConfigConverter<Consumer<T>> ofAbstractServerInitializer() {
 		return new ConfigConverter<Consumer<T>>() {
 			@Override
 			public Consumer<T> get(Config config, Consumer<T> defaultValue) {
@@ -535,11 +535,28 @@ public final class ConfigConverters {
 			@Override
 			public Consumer<T> get(Config config) {
 				return s -> {
-					s.withListenPort(config.get(ofInteger(), "port", defaultPort));
-					optionally(config, ofBoolean(), "acceptOnce", s::withAcceptOnce);
-					optionally(config, ofList(ofInetSocketAddress()), "listenAddresses", s::withListenAddresses);
-					optionally(config, ofSocketSettings(), "socketSettings", s::withSocketSettings);
-					optionally(config, ofServerSocketSettings(), "serverSocketSettings", s::withServerSocketSettings);
+					s.withAcceptOnce(config.get(ofBoolean(), "acceptOnce", false));
+					s.withSocketSettings(config.get(ofSocketSettings(), "socketSettings", s.getSocketSettings()));
+					s.withServerSocketSettings(config.get(ofServerSocketSettings(), "serverSocketSettings", s.getServerSocketSettings()));
+				};
+			}
+		};
+	}
+
+	public static <T extends AbstractServer<T>> ConfigConverter<Consumer<T>> ofAbstractServerInitializer(InetSocketAddress defaultAddress) {
+		return new ConfigConverter<Consumer<T>>() {
+			@Override
+			public Consumer<T> get(Config config, Consumer<T> defaultValue) {
+				return defaultValue.andThen(get(config));
+			}
+
+			@Override
+			public Consumer<T> get(Config config) {
+				return s -> {
+					s.withListenAddresses(config.get(ofList(ofInetSocketAddress()), "listenAddresses", singletonList(defaultAddress)));
+					s.withAcceptOnce(config.get(ofBoolean(), "acceptOnce", false));
+					s.withSocketSettings(config.get(ofSocketSettings(), "socketSettings", s.getSocketSettings()));
+					s.withServerSocketSettings(config.get(ofServerSocketSettings(), "serverSocketSettings", s.getServerSocketSettings()));
 				};
 			}
 		};

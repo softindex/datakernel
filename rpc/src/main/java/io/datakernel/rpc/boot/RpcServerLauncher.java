@@ -15,6 +15,7 @@ import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.util.guice.SimpleModule;
 
+import java.net.InetSocketAddress;
 import java.util.Collection;
 
 import static com.google.inject.util.Modules.combine;
@@ -52,20 +53,18 @@ public abstract class RpcServerLauncher extends Launcher {
 						.saveEffectiveConfigTo(PROPERTIES_FILE_EFFECTIVE),
 				EventloopModule.create(),
 				new SimpleModule() {
+
 					@Provides
 					@Singleton
 					RpcServer provideRpcServer(Config config, Eventloop eventloop, RpcServerBusinessLogic businessLogic) {
-						RpcServer server = RpcServer.create(eventloop)
-								.initialize(config.get(ofAbstractServerInitializer(8080), "rpc.server"))
-								.withMessageTypes(businessLogic.messageTypes)
+						return RpcServer.create(eventloop)
+								.initialize(config.get(ofAbstractServerInitializer(new InetSocketAddress(8080)), "rpc.server"))
 								.withStreamProtocol(
 										config.get(ofMemSize(), "rpc.streamProtocol.defaultPacketSize", DEFAULT_PACKET_SIZE),
 										config.get(ofMemSize(), "rpc.streamProtocol.maxPacketSize", MAX_PACKET_SIZE),
 										config.get(ofBoolean(), "rpc.streamProtocol.compression", false))
-								.withFlushDelay(config.get(ofInteger(), "rpc.flushDelay", 0));
-						//noinspection unchecked, ConstantConditions
-						businessLogic.handlers.forEach((cls, handler) -> server.withHandler((Class) cls, null, handler));
-						return server;
+								.withFlushDelay(config.get(ofInteger(), "rpc.flushDelay", 0))
+								.initialize(businessLogic);
 					}
 				}
 		);

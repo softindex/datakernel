@@ -7,6 +7,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.RemoteFsServer;
 import io.datakernel.util.guice.SimpleModule;
 
+import java.net.InetSocketAddress;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.ExecutorService;
@@ -30,6 +31,6 @@ public class RemoteFsServerModule extends SimpleModule {
 	@Singleton
 	RemoteFsServer provideServer(Eventloop eventloop, ExecutorService executor, Config config) {
 		return RemoteFsServer.create(eventloop, executor, config.get(ofPath(), "remotefs.server.storage", DEFAULT_STORAGE))
-				.initialize(config.get(ofAbstractServerInitializer(8080), "remotefs.server"));
+				.initialize(config.get(ofAbstractServerInitializer(new InetSocketAddress(8080)), "remotefs.server"));
 	}
 }

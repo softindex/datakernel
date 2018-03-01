@@ -16,6 +16,7 @@ import io.datakernel.launcher.modules.EventloopModule;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.util.guice.SimpleModule;
 
+import java.net.InetSocketAddress;
 import java.util.Collection;
 
 import static com.google.inject.util.Modules.combine;
@@ -54,7 +55,7 @@ public abstract class HttpServerLauncher extends Launcher {
 					@Singleton
 					public AsyncHttpServer provide(Eventloop eventloop, AsyncServlet rootServlet, Config config) {
 						return AsyncHttpServer.create(eventloop, rootServlet)
-								.initialize(getHttpServerInitializer(config.getChild("http")));
+								.initialize(getHttpServerInitializer(config.getChild("http"), new InetSocketAddress(8080)));
 					}
 				}
 		);

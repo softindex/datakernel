@@ -127,7 +127,7 @@ public final class ThrottlingController implements EventloopJmxMBean {
 	}
 
 	public ThrottlingController withInitialThrottling(double initialThrottling) {
-		checkArgument(initialThrottling > 0, "Initial throttling should not be zero or less");
+		checkArgument(initialThrottling >= 0, "Initial throttling should not be zero or less");
 		this.smoothedThrottling = initialThrottling;
 		return this;
 	}

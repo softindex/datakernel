@@ -43,7 +43,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.util.Collections;
 import java.util.List;
 
 import static com.google.inject.Stage.PRODUCTION;
@@ -66,7 +65,7 @@ public class HttpWorkerServerTest {
 	public void test() throws Exception {
 		Injector injector = Guice.createInjector(PRODUCTION,
 				ServiceGraphModule.defaultInstance(),
-				ConfigsModule.create(Config.create().with("http.primary.server.port", Integer.toString(PORT))),
+				ConfigsModule.create(Config.create().with("http.primary.server.listenAddresses", "0.0.0.0:" + PORT)),
 				WorkerPoolModule.create(),
 				PrimaryEventloopModule.create(),
 				WorkerEventloopModule.create(),
@@ -76,15 +75,14 @@ public class HttpWorkerServerTest {
 					public PrimaryServer providePrimaryServer(@Primary Eventloop primaryEventloop, WorkerPool workerPool, Config config) {
 						List<AsyncHttpServer> workerHttpServers = workerPool.getInstances(AsyncHttpServer.class);
 						return PrimaryServer.create(primaryEventloop, workerHttpServers)
-								.initialize(config.get(ofAbstractServerInitializer(8080), "http.primary.server"));
+								.initialize(config.get(ofAbstractServerInitializer(new InetSocketAddress(8080)), "http.primary.server"));
 					}
 
 					@Provides
 					@Worker
 					public AsyncHttpServer provide(Eventloop eventloop, AsyncServlet rootServlet, Config config) {
 						return AsyncHttpServer.create(eventloop, rootServlet)
-								.initialize(getHttpServerInitializer(config.getChild("http.worker")))
-								.withListenAddresses(Collections.emptyList()); // remove any listen adresses
+								.initialize(getHttpServerInitializer(config.getChild("http.worker")));
 					}
 				},
 				HelloWorldWorkerServletModule.create());

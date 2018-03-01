@@ -16,10 +16,10 @@ public class DemoRpcBusinessLogicModule extends SimpleModule {
 	// endregion
 
 	@Provides
-	protected RpcServerBusinessLogic provide() {
-		return RpcServerBusinessLogic.create()
+	protected RpcServerBusinessLogic provideRpcServerInitializer() {
+		return s -> s
 				.withMessageTypes(String.class)
-				.withHandler(String.class, String.class, req ->
-						Stage.of("Hello from demo DataKernel RPC server. Your request was: " + req));
+				.withHandler(String.class, String.class,
+						req -> Stage.of("Hello from demo DataKernel RPC server. Your request was: " + req));
 	}
 }

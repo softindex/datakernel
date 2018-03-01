@@ -170,7 +170,15 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	}
 	// endregion
 
-	// eventloop server api
+
+	public ServerSocketSettings getServerSocketSettings() {
+		return serverSocketSettings;
+	}
+
+	public SocketSettings getSocketSettings() {
+		return socketSettings;
+	}
+
 	@Override
 	public final Eventloop getEventloop() {
 		return eventloop;

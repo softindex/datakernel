@@ -22,6 +22,7 @@ import io.datakernel.worker.Primary;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerPool;
 
+import java.net.InetSocketAddress;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -66,14 +67,14 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 					public PrimaryServer providePrimaryServer(@Primary Eventloop primaryEventloop, WorkerPool workerPool, Config config) {
 						List<AsyncHttpServer> workerHttpServers = workerPool.getInstances(AsyncHttpServer.class);
 						return PrimaryServer.create(primaryEventloop, workerHttpServers)
-								.initialize(config.get(ofAbstractServerInitializer(8080), "http.primary.server"));
+								.initialize(config.get(ofAbstractServerInitializer(new InetSocketAddress(8080)), "http.primary.server"));
 					}
 
 					@Provides
 					@Worker
 					public AsyncHttpServer provide(Eventloop eventloop, AsyncServlet rootServlet, Config config) {
 						return AsyncHttpServer.create(eventloop, rootServlet)
-								.initialize(getHttpServerInitializer(config.getChild("http.worker")))
+								.initialize(getHttpServerInitializer(config.getChild("http.worker"), new InetSocketAddress(8080)))
 								.withListenAddresses(Collections.emptyList()); // remove any listen adresses
 					}
 				});

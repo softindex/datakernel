@@ -79,7 +79,9 @@ public interface Config {
 
 	@Nullable
 	default <T> T getOrNull(ConfigConverter<T> converter, String path) {
-		if (!hasChild(path)) {
+		Config child = getChild(path);
+		if (child.isEmpty()) {
+			converter.get(child); // still trigger the converter (e.g. for effective configs)
 			return null;
 		}
 		return get(converter, path);

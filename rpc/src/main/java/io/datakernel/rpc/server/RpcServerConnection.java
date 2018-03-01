@@ -94,7 +94,7 @@ public final class RpcServerConnection implements RpcStream.Listener, JmxRefresh
 
 				stream.sendMessage(RpcMessage.of(cookie, new RpcRemoteException(throwable)));
 				decrementActiveRequest();
-				logger.warn("Exception while process request ID {}", cookie, throwable);
+				logger.warn("Exception while processing request ID {}", cookie, throwable);
 			}
 		});
 	}
