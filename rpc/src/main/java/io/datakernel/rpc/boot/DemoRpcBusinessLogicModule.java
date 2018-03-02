@@ -17,9 +17,9 @@ public class DemoRpcBusinessLogicModule extends SimpleModule {
 
 	@Provides
 	protected RpcServerBusinessLogic provideRpcServerInitializer() {
-		return s -> s
+		return server -> server
 				.withMessageTypes(String.class)
 				.withHandler(String.class, String.class,
-						req -> Stage.of("Hello from demo DataKernel RPC server. Your request was: " + req));
+						req -> Stage.of("Request: " + req));
 	}
 }

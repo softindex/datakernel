@@ -16,7 +16,6 @@
 
 package io.datakernel.config;
 
-import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.FatalErrorHandler;
 import io.datakernel.eventloop.InetAddressRange;
 import io.datakernel.eventloop.ThrottlingController;
@@ -36,7 +35,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
@@ -47,7 +45,6 @@ import static io.datakernel.net.ServerSocketSettings.DEFAULT_BACKLOG;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.Integer.parseInt;
 import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
 import static java.util.regex.Pattern.compile;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
@@ -200,7 +197,9 @@ public final class ConfigConverters {
 			@Override
 			public InetSocketAddress fromString(String addressPort) {
 				int portPos = addressPort.lastIndexOf(':');
-				checkArgument(portPos != -1, "Invalid address. Port is not specified");
+				if (portPos == -1) {
+					return new InetSocketAddress(Integer.parseInt(addressPort));
+				}
 				String addressStr = addressPort.substring(0, portPos);
 				String portStr = addressPort.substring(portPos + 1);
 				int port = parseInt(portStr);
@@ -525,40 +524,4 @@ public final class ConfigConverters {
 		};
 	}
 
-	public static <T extends AbstractServer<T>> ConfigConverter<Consumer<T>> ofAbstractServerInitializer() {
-		return new ConfigConverter<Consumer<T>>() {
-			@Override
-			public Consumer<T> get(Config config, Consumer<T> defaultValue) {
-				return defaultValue.andThen(get(config));
-			}
-
-			@Override
-			public Consumer<T> get(Config config) {
-				return s -> {
-					s.withAcceptOnce(config.get(ofBoolean(), "acceptOnce", false));
-					s.withSocketSettings(config.get(ofSocketSettings(), "socketSettings", s.getSocketSettings()));
-					s.withServerSocketSettings(config.get(ofServerSocketSettings(), "serverSocketSettings", s.getServerSocketSettings()));
-				};
-			}
-		};
-	}
-
-	public static <T extends AbstractServer<T>> ConfigConverter<Consumer<T>> ofAbstractServerInitializer(InetSocketAddress defaultAddress) {
-		return new ConfigConverter<Consumer<T>>() {
-			@Override
-			public Consumer<T> get(Config config, Consumer<T> defaultValue) {
-				return defaultValue.andThen(get(config));
-			}
-
-			@Override
-			public Consumer<T> get(Config config) {
-				return s -> {
-					s.withListenAddresses(config.get(ofList(ofInetSocketAddress()), "listenAddresses", singletonList(defaultAddress)));
-					s.withAcceptOnce(config.get(ofBoolean(), "acceptOnce", false));
-					s.withSocketSettings(config.get(ofSocketSettings(), "socketSettings", s.getSocketSettings()));
-					s.withServerSocketSettings(config.get(ofServerSocketSettings(), "serverSocketSettings", s.getServerSocketSettings()));
-				};
-			}
-		};
-	}
 }

@@ -14,11 +14,9 @@
  * limitations under the License.
  */
 
-package io.datakernel.config.impl;
+package io.datakernel.config;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.config.AbstractConfig;
-import io.datakernel.config.Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,12 +24,12 @@ import java.util.*;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
 
-public final class TreeConfig extends AbstractConfig {
+final class TreeConfig extends AbstractConfig {
 	private static final Logger logger = LoggerFactory.getLogger(TreeConfig.class);
 
 	private final TreeConfig root;
 	private final Map<String, TreeConfig> children;
-	private final String value;
+	private String value;
 
 	// creators
 	private TreeConfig(@Nullable TreeConfig root, Map<String, TreeConfig> children, @Nullable String value) {
@@ -40,11 +38,15 @@ public final class TreeConfig extends AbstractConfig {
 		this.value = value;
 	}
 
-	public static TreeConfig ofTree() {
-		return new TreeConfig(null, new LinkedHashMap<>(), null);
+	public TreeConfig() {
+		this(null, new LinkedHashMap<>(), null);
 	}
 
-	public TreeConfig withValue(String path, String value) {
+	public void add(String path, String value) {
+		if (THIS.equals(path)) {
+			this.value = value;
+			return;
+		}
 		int dot = path.lastIndexOf(DELIMITER);
 		if (dot == -1) {
 			this.addLeaf(path, value);
@@ -53,7 +55,6 @@ public final class TreeConfig extends AbstractConfig {
 			String key = path.substring(dot + 1, path.length());
 			addBranch(pathToValue).addLeaf(key, value);
 		}
-		return this;
 	}
 
 	public TreeConfig addBranch(String path) {

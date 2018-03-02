@@ -25,6 +25,6 @@ public class HelloWorldWorkerServletModule extends SimpleModule {
 	@Worker
 	AsyncServlet provideServlet(@WorkerId int worker) {
 		return AsyncServlet.ofBlocking(req -> ok200()
-				.withBody(ByteBuf.wrapForReading(encodeAscii("\"Hello world!\", - says worker server #" + worker))));
+				.withBody(ByteBuf.wrapForReading(encodeAscii("Hello, world! #" + worker))));
 	}
 }

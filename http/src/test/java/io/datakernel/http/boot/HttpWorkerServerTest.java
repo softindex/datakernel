@@ -49,12 +49,13 @@ import static com.google.inject.Stage.PRODUCTION;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
-import static io.datakernel.config.ConfigConverters.ofAbstractServerInitializer;
-import static io.datakernel.http.boot.HttpConfigUtils.getHttpServerInitializer;
+import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
+import static io.datakernel.config.ConfigUtils.initializePrimaryServer;
+import static io.datakernel.http.boot.ConfigUtils.initializeHttpWorker;
 import static org.junit.Assert.assertEquals;
 
 public class HttpWorkerServerTest {
-	public static final int PORT = 5485;
+	public static final int PORT = 7124;
 
 	@Before
 	public void before() {
@@ -65,24 +66,25 @@ public class HttpWorkerServerTest {
 	public void test() throws Exception {
 		Injector injector = Guice.createInjector(PRODUCTION,
 				ServiceGraphModule.defaultInstance(),
-				ConfigsModule.create(Config.create().with("http.primary.server.listenAddresses", "0.0.0.0:" + PORT)),
+				ConfigsModule.create(Config.create()
+						.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(PORT)))),
 				WorkerPoolModule.create(),
 				PrimaryEventloopModule.create(),
 				WorkerEventloopModule.create(),
-				new SimpleModule(){
+				new SimpleModule() {
 					@Provides
 					@Singleton
 					public PrimaryServer providePrimaryServer(@Primary Eventloop primaryEventloop, WorkerPool workerPool, Config config) {
 						List<AsyncHttpServer> workerHttpServers = workerPool.getInstances(AsyncHttpServer.class);
 						return PrimaryServer.create(primaryEventloop, workerHttpServers)
-								.initialize(config.get(ofAbstractServerInitializer(new InetSocketAddress(8080)), "http.primary.server"));
+								.initialize(server -> initializePrimaryServer(server, config.getChild("http")));
 					}
 
 					@Provides
 					@Worker
 					public AsyncHttpServer provide(Eventloop eventloop, AsyncServlet rootServlet, Config config) {
 						return AsyncHttpServer.create(eventloop, rootServlet)
-								.initialize(getHttpServerInitializer(config.getChild("http.worker")));
+								.initialize(server -> initializeHttpWorker(server, config.getChild("http")));
 					}
 				},
 				HelloWorldWorkerServletModule.create());
@@ -97,16 +99,16 @@ public class HttpWorkerServerTest {
 
 			for (int i = 0; i < 10; i++) {
 				socket0.getOutputStream().write(encodeAscii("GET /abc HTTP1.1\r\nHost: localhost\r\nConnection: keep-alive\n\r\n"));
-				readAndAssert(socket0.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nContent-Length: 39\r\n\r\n\"Hello world!\", - says worker server #0");
+				readAndAssert(socket0.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nContent-Length: 16\r\n\r\nHello, world! #0");
 
 				socket0.getOutputStream().write(encodeAscii("GET /abc HTTP1.1\r\nHost: localhost\r\nConnection: keep-alive\n\r\n"));
-				readAndAssert(socket0.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nContent-Length: 39\r\n\r\n\"Hello world!\", - says worker server #0");
+				readAndAssert(socket0.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nContent-Length: 16\r\n\r\nHello, world! #0");
 
 				socket1.getOutputStream().write(encodeAscii("GET /abc HTTP1.1\r\nHost: localhost\r\nConnection: keep-alive\n\r\n"));
-				readAndAssert(socket1.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nContent-Length: 39\r\n\r\n\"Hello world!\", - says worker server #1");
+				readAndAssert(socket1.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nContent-Length: 16\r\n\r\nHello, world! #1");
 
 				socket1.getOutputStream().write(encodeAscii("GET /abc HTTP1.1\r\nHost: localhost\r\nConnection: keep-alive\n\r\n"));
-				readAndAssert(socket1.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nContent-Length: 39\r\n\r\n\"Hello world!\", - says worker server #1");
+				readAndAssert(socket1.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nContent-Length: 16\r\n\r\nHello, world! #1");
 			}
 		} finally {
 			serviceGraph.stopFuture().get();

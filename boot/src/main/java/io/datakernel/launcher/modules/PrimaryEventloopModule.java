@@ -7,9 +7,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.util.guice.SimpleModule;
 import io.datakernel.worker.Primary;
 
-import static io.datakernel.config.ConfigConverters.*;
-import static io.datakernel.eventloop.Eventloop.DEFAULT_IDLE_INTERVAL;
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.config.ConfigUtils.initializeEventloop;
 
 /**
  * This module provides a singleton primary {@link Eventloop eventloop} instance.
@@ -29,13 +27,7 @@ public class PrimaryEventloopModule extends SimpleModule {
 	@Primary
 	@Singleton
 	public Eventloop provide(Config config) {
-		Long idleInterval = config.get(ofLong(), "eventloop.primary.idleIntervalMillis", DEFAULT_IDLE_INTERVAL);
-		Integer threadPriority = config.get(ofInteger(), "eventloop.primary.threadPriority", 0);
-
 		return Eventloop.create()
-				.withFatalErrorHandler(config.get(ofFatalErrorHandler(), "eventloop.primary.fatalErrorHandler", rethrowOnAnyError()))
-				.withThrottlingController(config.getOrNull(ofThrottlingController(), "eventloop.primary.throttlingController"))
-				.withIdleInterval(idleInterval)
-				.withThreadPriority(threadPriority);
+				.initialize(eventloop -> initializeEventloop(eventloop, config.getChild("eventloop.primary")));
 	}
 }

@@ -192,6 +192,23 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		this.inspector = inspector;
 		return self();
 	}
+
+	public int getMaxHttpMessageSize() {
+		return maxHttpMessageSize;
+	}
+
+	public int getKeepAliveTimeoutMillis() {
+		return keepAliveTimeoutMillis;
+	}
+
+	public int getReadTimeoutMillis() {
+		return readTimeoutMillis;
+	}
+
+	public int getWriteTimeoutMillis() {
+		return writeTimeoutMillis;
+	}
+
 	// endregion
 
 	private void scheduleExpiredConnectionsCheck() {
@@ -287,4 +304,5 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	public JmxInspector getStats() {
 		return inspector instanceof JmxInspector ? (JmxInspector) inspector : null;
 	}
+
 }

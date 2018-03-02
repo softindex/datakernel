@@ -25,6 +25,7 @@ import static io.datakernel.config.Config.ConflictResolver.PROHIBIT_COLLISIONS;
 import static io.datakernel.config.Config.ConflictResolver.RETURN_LAST_FOUND;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptySet;
+import static java.util.Collections.singletonMap;
 import static java.util.stream.Collectors.toList;
 
 public interface Config {
@@ -50,9 +51,7 @@ public interface Config {
 	default Config with(String key, Config config) {
 		String[] keys = key.split(Pattern.quote(DELIMITER));
 		for (int i = keys.length - 1; i >= 0; i--) {
-			Map<String, Config> map = new HashMap<>();
-			map.put(keys[i], config);
-			config = ofMap(map);
+			config = ofChild(keys[i], config);
 		}
 		return override(config);
 	}
@@ -167,6 +166,13 @@ public interface Config {
 		};
 	}
 
+	static <T> Config ofValue(ConfigConverter<T> configConverter, T value) {
+		EffectiveConfig effectiveConfig = EffectiveConfig.create(Config.create());
+		configConverter.get(effectiveConfig, value);
+		Map<String, String> effectiveDefaults = effectiveConfig.getEffectiveDefaults();
+		return ofMap(effectiveDefaults);
+	}
+
 	@FunctionalInterface
 	interface ConflictResolver {
 
@@ -254,7 +260,11 @@ public interface Config {
 		};
 	}
 
-	static Config ofMap(Map<String, Config> map) {
+	static Config ofChild(String path, Config child) {
+		return ofChildren(singletonMap(path, child));
+	}
+
+	static Config ofChildren(Map<String, Config> map) {
 		return new AbstractConfig() {
 			@Override
 			protected String doGet() throws NoSuchElementException {
@@ -296,5 +306,18 @@ public interface Config {
 				return "MapConfig" + map;
 			}
 		};
+	}
+
+	static Config ofMap(Map<String, String> map) {
+		TreeConfig treeConfig = new TreeConfig();
+		for (String key : map.keySet()) {
+			String value = map.get(key);
+			if (value != null) {
+				treeConfig.add(key, value);
+			} else {
+				treeConfig.addBranch(key);
+			}
+		}
+		return treeConfig;
 	}
 }

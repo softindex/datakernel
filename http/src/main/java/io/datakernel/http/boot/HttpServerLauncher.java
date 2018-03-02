@@ -21,7 +21,8 @@ import java.util.Collection;
 
 import static com.google.inject.util.Modules.combine;
 import static com.google.inject.util.Modules.override;
-import static io.datakernel.http.boot.HttpConfigUtils.getHttpServerInitializer;
+import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
+import static io.datakernel.http.boot.ConfigUtils.initializeHttpServer;
 import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -47,7 +48,11 @@ public abstract class HttpServerLauncher extends Launcher {
 		return asList(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
-				ConfigsModule.create(PropertiesConfig.ofProperties(PROPERTIES_FILE, true))
+				ConfigsModule.create(
+						Config.create()
+								.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(8080)))
+								.override(PropertiesConfig.ofProperties(PROPERTIES_FILE, true))
+								.override(PropertiesConfig.ofProperties(System.getProperties()).getChild("config")))
 						.saveEffectiveConfigTo(PROPERTIES_FILE_EFFECTIVE),
 				EventloopModule.create(),
 				new SimpleModule() {
@@ -55,7 +60,7 @@ public abstract class HttpServerLauncher extends Launcher {
 					@Singleton
 					public AsyncHttpServer provide(Eventloop eventloop, AsyncServlet rootServlet, Config config) {
 						return AsyncHttpServer.create(eventloop, rootServlet)
-								.initialize(getHttpServerInitializer(config.getChild("http"), new InetSocketAddress(8080)));
+								.initialize(server -> initializeHttpServer(server, config.getChild("http")));
 					}
 				}
 		);

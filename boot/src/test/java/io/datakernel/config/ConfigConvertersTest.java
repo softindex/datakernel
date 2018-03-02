@@ -43,7 +43,7 @@ public class ConfigConvertersTest {
 		map.put("key1", Config.ofValue("data1"));
 		map.put("key2", Config.ofValue("data2"));
 		map.put("key3", Config.ofValue("data3"));
-		Config root = Config.ofMap(map);
+		Config root = Config.ofChildren(map);
 
 		assertEquals("data1", root.get("key1"));
 		assertEquals("data2", root.get("key2"));
@@ -65,7 +65,7 @@ public class ConfigConvertersTest {
 		values.put("key1", Config.ofValue("1"));
 		values.put("key2", Config.ofValue("-5"));
 		values.put("key3", Config.ofValue("100"));
-		Config root = Config.ofMap(values);
+		Config root = Config.ofChildren(values);
 
 		assertEquals(1, (int) root.get(ofInteger(), "key1"));
 		assertEquals(-5, (int) root.get(ofInteger(), "key2"));
@@ -78,7 +78,7 @@ public class ConfigConvertersTest {
 		values.put("key1", Config.ofValue("1"));
 		values.put("key2", Config.ofValue("-5"));
 		values.put("key3", Config.ofValue("100"));
-		Config root = Config.ofMap(values);
+		Config root = Config.ofChildren(values);
 
 		assertEquals(1L, (long) root.get(ofLong(), "key1"));
 		assertEquals(-5L, (long) root.get(ofLong(), "key2"));
@@ -96,7 +96,7 @@ public class ConfigConvertersTest {
 		values.put("key1", Config.ofValue("RED"));
 		values.put("key2", Config.ofValue("GREEN"));
 		values.put("key3", Config.ofValue("BLUE"));
-		Config root = Config.ofMap(values);
+		Config root = Config.ofChildren(values);
 
 		assertEquals(Color.RED, root.get(enumConverter, "key1"));
 		assertEquals(Color.GREEN, root.get(enumConverter, "key2"));
@@ -110,7 +110,7 @@ public class ConfigConvertersTest {
 		map.put("key1", Config.ofValue("0.001"));
 		map.put("key2", Config.ofValue("1e5"));
 		map.put("key3", Config.ofValue("-23.1"));
-		Config root = Config.ofMap(map);
+		Config root = Config.ofChildren(map);
 
 		double acceptableError = 1e-10;
 		assertEquals(0.001, doubleConverter.get(root.getChild("key1")), acceptableError);
@@ -126,7 +126,7 @@ public class ConfigConvertersTest {
 		map.put("key2", Config.ofValue("250.200.100.50:10000"));
 		map.put("key3", Config.ofValue("1.0.0.0:65000"));
 
-		Config root = Config.ofMap(map);
+		Config root = Config.ofChildren(map);
 
 		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("192.168.1.1"), 80);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("250.200.100.50"), 10000);

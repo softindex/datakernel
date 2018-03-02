@@ -1,17 +1,26 @@
 package io.datakernel.remotefs.boot;
 
 import com.google.inject.Module;
+import com.google.inject.Provides;
+import com.google.inject.Singleton;
+import io.datakernel.config.Config;
 import io.datakernel.config.ConfigsModule;
 import io.datakernel.config.impl.PropertiesConfig;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.modules.EventloopModule;
 import io.datakernel.launcher.modules.ExecutorServiceModule;
+import io.datakernel.remotefs.RemoteFsServer;
 import io.datakernel.service.ServiceGraphModule;
+import io.datakernel.util.guice.SimpleModule;
 
 import java.util.Collection;
+import java.util.concurrent.ExecutorService;
 
 import static com.google.inject.util.Modules.override;
+import static io.datakernel.config.ConfigConverters.ofPath;
+import static io.datakernel.remotefs.boot.ConfigUtils.initializeRemoteFsServer;
 import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -35,7 +44,14 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 						.saveEffectiveConfigTo(PROPERTIES_FILE_EFFECTIVE),
 				EventloopModule.create(),
 				ExecutorServiceModule.create(),
-				RemoteFsServerModule.create()
+				new SimpleModule() {
+					@Provides
+					@Singleton
+					RemoteFsServer provideServer(Eventloop eventloop, ExecutorService executor, Config config) {
+						return RemoteFsServer.create(eventloop, executor, config.get(ofPath(), "remotefs.server.storage"))
+								.initialize(server -> initializeRemoteFsServer(server, config.getChild("remotefs.server")));
+					}
+				}
 		);
 	}
 

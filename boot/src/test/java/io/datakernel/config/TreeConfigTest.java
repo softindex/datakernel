@@ -16,7 +16,6 @@
 
 package io.datakernel.config;
 
-import io.datakernel.config.impl.TreeConfig;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -35,29 +34,29 @@ public class TreeConfigTest {
 
 	@Before
 	public void setUp() {
-		config = TreeConfig.ofTree();
+		config = new TreeConfig();
 		config.addLeaf("key1", "value1");
 		config.addBranch("key2.key3").addLeaf("key4", "value4");
-		config.withValue("key5.key6", "6");
+		config.add("key5.key6", "6");
 	}
 
 	@Test(expected = IllegalStateException.class)
 	public void testLeafOnLeafAdding() {
-		config.withValue("key1.key2", "invalidValue");
+		config.add("key1.key2", "invalidValue");
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testCanNotAddBadPath() {
-		config.withValue("a..b.", "illegalValue");
+		config.add("a..b.", "illegalValue");
 	}
 
 	@Test
 	public void testBase() {
-		TreeConfig config = TreeConfig.ofTree()
-				.withValue("a.a.a", "1")
-				.withValue("a.a.b", "2")
-				.withValue("a.b", "3")
-				.withValue("b", "4");
+		Config config = Config.create()
+				.with("a.a.a", "1")
+				.with("a.a.b", "2")
+				.with("a.b", "3")
+				.with("b", "4");
 		testBaseConfig(config);
 	}
 
@@ -77,7 +76,7 @@ public class TreeConfigTest {
 
 	@Test
 	public void testWorksWithDefaultValues() {
-		TreeConfig root = TreeConfig.ofTree();
+		TreeConfig root = new TreeConfig();
 		Integer value = root.get(ofInteger(), "not.existing.branch", 8080);
 		assertEquals(8080, (int) value);
 	}

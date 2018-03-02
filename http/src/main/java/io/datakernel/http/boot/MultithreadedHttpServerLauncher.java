@@ -24,13 +24,13 @@ import io.datakernel.worker.WorkerPool;
 
 import java.net.InetSocketAddress;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 
 import static com.google.inject.util.Modules.combine;
 import static com.google.inject.util.Modules.override;
-import static io.datakernel.config.ConfigConverters.ofAbstractServerInitializer;
-import static io.datakernel.http.boot.HttpConfigUtils.getHttpServerInitializer;
+import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
+import static io.datakernel.config.ConfigUtils.initializePrimaryServer;
+import static io.datakernel.http.boot.ConfigUtils.initializeHttpWorker;
 import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -52,30 +52,33 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 				combine(getBusinessLogicModules()));
 	}
 
-	protected final Collection<Module> getBaseModules() {
+	private Collection<Module> getBaseModules() {
 		return asList(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
-				ConfigsModule.create(PropertiesConfig.ofProperties(PROPERTIES_FILE, true))
+				ConfigsModule.create(
+						Config.create()
+								.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(8080)))
+								.override(PropertiesConfig.ofProperties(PROPERTIES_FILE, true))
+								.override(PropertiesConfig.ofProperties(System.getProperties()).getChild("config")))
 						.saveEffectiveConfigTo(PROPERTIES_FILE_EFFECTIVE),
 				WorkerPoolModule.create(),
 				PrimaryEventloopModule.create(),
 				WorkerEventloopModule.create(),
-				new SimpleModule(){
+				new SimpleModule() {
 					@Provides
 					@Singleton
 					public PrimaryServer providePrimaryServer(@Primary Eventloop primaryEventloop, WorkerPool workerPool, Config config) {
 						List<AsyncHttpServer> workerHttpServers = workerPool.getInstances(AsyncHttpServer.class);
 						return PrimaryServer.create(primaryEventloop, workerHttpServers)
-								.initialize(config.get(ofAbstractServerInitializer(new InetSocketAddress(8080)), "http.primary.server"));
+								.initialize(server -> initializePrimaryServer(server, config.getChild("http")));
 					}
 
 					@Provides
 					@Worker
-					public AsyncHttpServer provide(Eventloop eventloop, AsyncServlet rootServlet, Config config) {
+					public AsyncHttpServer provideWorker(Eventloop eventloop, AsyncServlet rootServlet, Config config) {
 						return AsyncHttpServer.create(eventloop, rootServlet)
-								.initialize(getHttpServerInitializer(config.getChild("http.worker"), new InetSocketAddress(8080)))
-								.withListenAddresses(Collections.emptyList()); // remove any listen adresses
+								.initialize(server -> initializeHttpWorker(server, config.getChild("http")));
 					}
 				});
 	}

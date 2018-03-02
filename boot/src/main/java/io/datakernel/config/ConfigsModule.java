@@ -19,7 +19,7 @@ package io.datakernel.config;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
-import io.datakernel.config.impl.ConfigWithPrefix;
+import io.datakernel.config.impl.ConfigWithFullPath;
 import io.datakernel.service.BlockingService;
 import io.datakernel.util.Initializer;
 import org.slf4j.Logger;
@@ -40,7 +40,7 @@ public final class ConfigsModule extends AbstractModule implements Initializer<C
 	}
 
 	public static ConfigsModule create(Config config) {
-		return new ConfigsModule(ConfigWithPrefix.createRoot(config));
+		return new ConfigsModule(ConfigWithFullPath.wrap(config));
 	}
 
 	public ConfigsModule saveEffectiveConfigTo(String file) {

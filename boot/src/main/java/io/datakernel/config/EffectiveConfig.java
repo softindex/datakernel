@@ -263,6 +263,14 @@ final class EffectiveConfig implements Config {
 		return sb.toString();
 	}
 
+	public Map<String, String> getEffectiveDefaults() {
+		return callsRegistry.defaultCalls;
+	}
+
+	public Map<String, String> getEffectiveCalls() {
+		return callsRegistry.calls;
+	}
+
 	private static String fullPath(String rootPath, String relativePath) {
 		return rootPath.isEmpty() || relativePath.isEmpty() ? rootPath + relativePath : rootPath + DELIMITER + relativePath;
 	}

@@ -22,6 +22,6 @@ public class HelloWorldServletModule extends SimpleModule {
 	@Provides
 	public AsyncServlet provide() {
 		return AsyncServlet.ofBlocking(req -> ok200()
-				.withBody(ByteBuf.wrapForReading(encodeAscii("Hello from DataKernel async HTTP server!"))));
+				.withBody(ByteBuf.wrapForReading(encodeAscii("Hello, world!"))));
 	}
 }

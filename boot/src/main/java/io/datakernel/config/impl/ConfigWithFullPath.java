@@ -6,21 +6,17 @@ import io.datakernel.config.ConfigConverter;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
-public class ConfigWithPrefix implements Config {
+public class ConfigWithFullPath implements Config {
 	private final String prefix;
 	private final Config config;
 
-	private ConfigWithPrefix(String prefix, Config config) {
+	private ConfigWithFullPath(String prefix, Config config) {
 		this.prefix = prefix;
 		this.config = config;
 	}
 
-	public static ConfigWithPrefix create(String prefix, Config config) {
-		return new ConfigWithPrefix(prefix, config);
-	}
-
-	public static ConfigWithPrefix createRoot(Config config) {
-		return new ConfigWithPrefix("", config);
+	public static ConfigWithFullPath wrap(Config config) {
+		return new ConfigWithFullPath("", config);
 	}
 
 	@Override
@@ -33,11 +29,11 @@ public class ConfigWithPrefix implements Config {
 		try {
 			return config.get(path);
 		} catch (NoSuchElementException e) {
-			throw new NoSuchElementException(getFullPath(path));
+			throw new NoSuchElementException(resolveFullPath(path));
 		}
 	}
 
-	private String getFullPath(String path) {
+	public String resolveFullPath(String path) {
 		return (prefix.isEmpty() ? "" : prefix + DELIMITER) + path;
 	}
 
@@ -67,7 +63,7 @@ public class ConfigWithPrefix implements Config {
 
 	@Override
 	public Config getChild(String path) {
-		return create(getFullPath(path), config.getChild(path));
+		return new ConfigWithFullPath(resolveFullPath(path), config.getChild(path));
 	}
 
 	@Override
