@@ -35,7 +35,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.*;
@@ -297,25 +296,6 @@ public final class ConfigConverters {
 
 	public static <T> AbstractConfigConverter<List<T>> ofList(AbstractConfigConverter<T> elementConverter) {
 		return ofList(elementConverter, ",;");
-	}
-
-	public static <T> ConfigConverter<T> constrain(ConfigConverter<T> converter, Predicate<T> predicate) {
-		return new ConfigConverter<T>() {
-
-			@Override
-			public T get(Config config, T defaultValue) {
-				T t = converter.get(config, defaultValue);
-				checkArgument(predicate.test(t), "Value " + t + " does not satisfy the constraint for " + config);
-				return t;
-			}
-
-			@Override
-			public T get(Config config) {
-				T t = converter.get(config);
-				checkArgument(predicate.test(t), "Value " + t + " does not satisfy the constraint for " + config);
-				return t;
-			}
-		};
 	}
 
 	// compound

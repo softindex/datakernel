@@ -5,7 +5,6 @@ import io.datakernel.config.Config;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.util.guice.SimpleModule;
 import io.datakernel.worker.Worker;
-import io.datakernel.worker.WorkerId;
 
 import static io.datakernel.config.ConfigUtils.initializeEventloop;
 
@@ -25,8 +24,9 @@ public class WorkerEventloopModule extends SimpleModule {
 
 	@Provides
 	@Worker
-	public Eventloop provide(Config config, @WorkerId int workerId) {
+	public Eventloop provide(Config config, ThrottlingControllerInitializer throttlingControllerInitializer) {
 		return Eventloop.create()
-				.initialize(eventloop -> initializeEventloop(eventloop, config.getChild("eventloop.worker")));
+				.initialize(eventloop -> initializeEventloop(eventloop, config.getChild("eventloop.worker")))
+				.initialize(throttlingControllerInitializer);
 	}
 }

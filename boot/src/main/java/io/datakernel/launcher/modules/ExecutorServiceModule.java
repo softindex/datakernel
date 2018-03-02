@@ -10,7 +10,6 @@ import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-import static io.datakernel.config.ConfigConverters.constrain;
 import static io.datakernel.config.ConfigConverters.ofInteger;
 
 /**
@@ -19,7 +18,7 @@ import static io.datakernel.config.ConfigConverters.ofInteger;
 public class ExecutorServiceModule extends SimpleModule {
 
 	// region creators
-	private ExecutorServiceModule(){
+	private ExecutorServiceModule() {
 	}
 
 	public static ExecutorServiceModule create() {
@@ -30,12 +29,12 @@ public class ExecutorServiceModule extends SimpleModule {
 	@Provides
 	@Singleton
 	public ExecutorService provide(Config config) {
-		Integer keepAlive = config.get(constrain(ofInteger(), x -> x >= 0), "threadpool.keepAliveSeconds", 60);
-		Integer corePoolSize = config.get(constrain(ofInteger(), x -> x >= 0), "threadpool.corePoolSize", 0);
-		Integer maxPoolSize = config.get(constrain(ofInteger(), x -> x <= 0 || x < corePoolSize ), "threadpool.maxPoolSize", 0);
+		Integer keepAlive = config.get(ofInteger().withConstraint(x -> x >= 0), "threadpool.keepAliveSeconds", 60);
+		Integer corePoolSize = config.get(ofInteger().withConstraint(x -> x > 0), "threadpool.corePoolSize", 0);
+		Integer maxPoolSize = config.get(ofInteger().withConstraint(x -> x == 0 || x >= corePoolSize), "threadpool.maxPoolSize", 0);
 		return new ThreadPoolExecutor(
 				corePoolSize,
-				maxPoolSize <= 0 ? Integer.MAX_VALUE : maxPoolSize,
+				maxPoolSize == 0 ? Integer.MAX_VALUE : maxPoolSize,
 				keepAlive,
 				TimeUnit.SECONDS,
 				new SynchronousQueue<>());

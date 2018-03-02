@@ -16,8 +16,31 @@
 
 package io.datakernel.config;
 
+import java.util.function.Predicate;
+
+import static io.datakernel.util.Preconditions.checkArgument;
+
 public interface ConfigConverter<T> {
 	T get(Config config, T defaultValue);
 
 	T get(Config config);
+
+	default ConfigConverter<T> withConstraint(Predicate<T> predicate) {
+		ConfigConverter<T> thisConverter = this;
+		return new ConfigConverter<T>() {
+			@Override
+			public T get(Config config, T defaultValue) {
+				T value = thisConverter.get(config, defaultValue);
+				checkArgument(predicate.test(value));
+				return value;
+			}
+
+			@Override
+			public T get(Config config) {
+				T t = thisConverter.get(config);
+				checkArgument(predicate.test(t));
+				return t;
+			}
+		};
+	}
 }

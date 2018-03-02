@@ -42,7 +42,7 @@ public abstract class RpcServerLauncher extends Launcher {
 				combine(getBusinessLogicModules()));
 	}
 
-	protected final Collection<Module> getBaseModules() {
+	private Collection<Module> getBaseModules() {
 		return asList(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),

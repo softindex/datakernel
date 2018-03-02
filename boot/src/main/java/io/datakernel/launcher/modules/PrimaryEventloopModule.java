@@ -26,8 +26,9 @@ public class PrimaryEventloopModule extends SimpleModule {
 	@Provides
 	@Primary
 	@Singleton
-	public Eventloop provide(Config config) {
+	public Eventloop provide(Config config, ThrottlingControllerInitializer throttlingControllerInitializer) {
 		return Eventloop.create()
-				.initialize(eventloop -> initializeEventloop(eventloop, config.getChild("eventloop.primary")));
+				.initialize(eventloop -> initializeEventloop(eventloop, config.getChild("eventloop.primary")))
+				.initialize(throttlingControllerInitializer);
 	}
 }

@@ -25,7 +25,6 @@ public class ConfigUtils {
 
 	public static void initializeEventloop(Eventloop eventloop, Config config) {
 		eventloop.withFatalErrorHandler(config.get(ofFatalErrorHandler(), "fatalErrorHandler", rethrowOnAnyError()));
-		eventloop.withThrottlingController(config.getOrNull(ofThrottlingController(), "throttlingController"));
 		eventloop.withIdleInterval(config.get(ofLong(), "idleIntervalMillis", DEFAULT_IDLE_INTERVAL));
 		eventloop.withThreadPriority(config.get(ofInteger(), "threadPriority", 0));
 	}
