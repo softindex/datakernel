@@ -17,7 +17,7 @@
 package io.datakernel.launcher;
 
 import com.google.inject.*;
-import io.datakernel.config.ConfigsModule;
+import io.datakernel.config.ConfigModule;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
 import org.slf4j.Logger;
@@ -49,7 +49,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  *            new DaoTierModule(),
  *            new ControllerTierModule(),
  *            new ViewTierModule(),
- *            {@link ConfigsModule}.create(PropertiesConfig.ofProperties("props.properties"))
+ *            {@link ConfigModule}.create(PropertiesConfig.ofProperties("props.properties"))
  *    }
  *
  *    public static void main(String[] args) throws Exception {
@@ -61,7 +61,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  *
  * @see ServiceGraph
  * @see ServiceGraphModule
- * @see ConfigsModule
+ * @see ConfigModule
  */
 public abstract class Launcher {
 	protected final Logger logger = getLogger(this.getClass());

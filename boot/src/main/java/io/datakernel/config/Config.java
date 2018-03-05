@@ -166,7 +166,7 @@ public interface Config {
 	}
 
 	static <T> Config ofValue(ConfigConverter<T> configConverter, T value) {
-		EffectiveConfig effectiveConfig = EffectiveConfig.create(Config.create());
+		EffectiveConfig effectiveConfig = EffectiveConfig.wrap(Config.create());
 		configConverter.get(effectiveConfig, value);
 		Map<String, String> effectiveDefaults = effectiveConfig.getEffectiveDefaults();
 		return ofMap(effectiveDefaults);

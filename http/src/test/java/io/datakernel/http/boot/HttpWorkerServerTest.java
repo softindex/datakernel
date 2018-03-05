@@ -20,7 +20,7 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Module;
 import io.datakernel.config.Config;
-import io.datakernel.config.ConfigsModule;
+import io.datakernel.config.ConfigModule;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.stream.processor.ByteBufRule;
 import org.junit.Rule;
@@ -56,8 +56,9 @@ public class HttpWorkerServerTest {
 
 			@Override
 			protected Collection<Module> getOverrideModules() {
-				return singletonList(ConfigsModule.create(Config.create()
-						.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(PORT)))));
+				return singletonList(ConfigModule.create(
+						Config.create()
+								.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(PORT)))));
 			}
 		};
 		Injector injector = Guice.createInjector(DEVELOPMENT, launcher.getCombinedModule(new String[]{}));

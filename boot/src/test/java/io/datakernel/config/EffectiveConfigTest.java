@@ -61,7 +61,7 @@ public class EffectiveConfigTest {
 		root.put("DataBase", dbConfig);
 		root.put("Server", serverConfig);
 
-		config = EffectiveConfig.create(Config.ofChildren(root));
+		config = EffectiveConfig.wrap(Config.ofChildren(root));
 	}
 
 	@Test
@@ -82,7 +82,7 @@ public class EffectiveConfigTest {
 
 	@Test
 	public void testCompoundConfig() {
-		config = EffectiveConfig.create(
+		config = EffectiveConfig.wrap(
 				Config.create()
 						.with("Server.socketSettings.backlog", "10")
 						.with("Server.socketSettings.receiveBufferSize", "10")
@@ -107,7 +107,7 @@ public class EffectiveConfigTest {
 				+ "a.a.c = value2\n"
 				+ "## a.b.a = value3\n";
 
-		EffectiveConfig config = EffectiveConfig.create(
+		EffectiveConfig config = EffectiveConfig.wrap(
 				Config.create()
 						.with("a.a.b", "value1")
 						.with("a.a.c", "value2")
@@ -129,7 +129,7 @@ public class EffectiveConfigTest {
 
 		assertEquals(1000L, (long) config.get(ofLong(), "Server.AsyncClient.clientTimeout"));
 		Path outputPath = folder.newFile("./effective.properties").toPath();
-		config.saveEffectiveConfig(outputPath);
+		config.saveEffectiveConfigTo(outputPath);
 		assertTrue(Files.exists(outputPath));
 	}
 }

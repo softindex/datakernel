@@ -37,11 +37,11 @@ final class EffectiveConfig implements Config {
 			this.all = all;
 		}
 
-		synchronized void registerCall(String root, String relativePath, String value) {
+		void registerCall(String root, String relativePath, String value) {
 			calls.put(fullPath(root, relativePath), value);
 		}
 
-		synchronized void registerDefaultCall(String rootPath, String relativePath, String value, String defaultValue) {
+		void registerDefaultCall(String rootPath, String relativePath, String value, String defaultValue) {
 			String fullPath = fullPath(rootPath, relativePath);
 			calls.put(fullPath, value);
 			defaultCalls.put(fullPath, defaultValue);
@@ -59,7 +59,7 @@ final class EffectiveConfig implements Config {
 		this.callsRegistry = callsRegistry;
 	}
 
-	public static EffectiveConfig create(Config config) {
+	public static EffectiveConfig wrap(Config config) {
 		Map<String, String> allProperties = new LinkedHashMap<>(); // same order as inserted in config
 		fetchAllConfigs(config, THIS, allProperties);
 		CallsRegistry callsRegistry = new CallsRegistry(allProperties);
@@ -95,14 +95,18 @@ final class EffectiveConfig implements Config {
 	@Override
 	public String get(String path) {
 		String value = config.get(path);
-		callsRegistry.registerCall(rootPath, path, value);
+		synchronized (this) {
+			callsRegistry.registerCall(rootPath, path, value);
+		}
 		return value;
 	}
 
 	@Override
 	public String get(String path, String defaultValue) {
 		String value = config.get(path, defaultValue);
-		callsRegistry.registerDefaultCall(rootPath, path, value, defaultValue);
+		synchronized (this) {
+			callsRegistry.registerDefaultCall(rootPath, path, value, defaultValue);
+		}
 		return value;
 	}
 
@@ -153,19 +157,17 @@ final class EffectiveConfig implements Config {
 	}
 
 	// rendering
-	void saveEffectiveConfig(Path outputPath) {
+	public void saveEffectiveConfigTo(Path outputPath) {
 		try {
 			String renderedConfig;
-			synchronized (callsRegistry) {
-				renderedConfig = this.render();
-			}
+			renderedConfig = this.render();
 			Files.write(outputPath, renderedConfig.getBytes(UTF_8), new StandardOpenOption[]{CREATE, WRITE, TRUNCATE_EXISTING});
 		} catch (IOException e) {
 			throw new RuntimeException("Failed to serialize effective config as properties file", e);
 		}
 	}
 
-	String render() {
+	synchronized public String render() {
 		CallsRegistry register = this.callsRegistry;
 		StringBuilder sb = new StringBuilder();
 

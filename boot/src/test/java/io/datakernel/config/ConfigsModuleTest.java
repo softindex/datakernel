@@ -78,7 +78,7 @@ public class ConfigsModuleTest {
 				return testClass;
 			}
 		};
-		Config config = ConfigsModule.create(
+		Config config = ConfigModule.create(
 				Config.union(
 						PROHIBIT_COLLISIONS,
 						PropertiesConfig.ofProperties(properties1),

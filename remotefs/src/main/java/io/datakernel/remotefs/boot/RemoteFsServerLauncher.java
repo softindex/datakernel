@@ -5,7 +5,7 @@ import com.google.inject.Module;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import io.datakernel.config.Config;
-import io.datakernel.config.ConfigsModule;
+import io.datakernel.config.ConfigModule;
 import io.datakernel.config.impl.PropertiesConfig;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.JmxModule;
@@ -50,7 +50,7 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
 				TriggersModule.create(),
-				ConfigsModule.create(
+				ConfigModule.create(() ->
 						Config.create()
 								.with("remotefs.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(8080)))
 								.override(PropertiesConfig.ofProperties(PROPERTIES_FILE, true))
