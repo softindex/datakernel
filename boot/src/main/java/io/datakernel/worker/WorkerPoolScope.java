@@ -60,6 +60,10 @@ public final class WorkerPoolScope implements WorkerPools, Scope {
 		};
 	}
 
+	public Integer getCurrentWorkerId() {
+		return currentWorkerId;
+	}
+
 	public WorkerPoolObjects getWorkerPoolObjects(Key<?> key) {
 		return pool.get(key);
 	}

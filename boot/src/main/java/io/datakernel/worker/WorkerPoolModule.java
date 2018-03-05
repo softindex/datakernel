@@ -28,18 +28,22 @@ public final class WorkerPoolModule extends AbstractModule {
 
 	public static boolean isWorkerScope(Binding<?> binding) {
 		return binding.acceptScopingVisitor(new BindingScopingVisitor<Boolean>() {
+			@Override
 			public Boolean visitNoScoping() {
 				return false;
 			}
 
+			@Override
 			public Boolean visitScopeAnnotation(Class<? extends Annotation> visitedAnnotation) {
 				return visitedAnnotation == Worker.class;
 			}
 
+			@Override
 			public Boolean visitScope(Scope visitedScope) {
 				return visitedScope.getClass() == WorkerPoolScope.class;
 			}
 
+			@Override
 			public Boolean visitEagerSingleton() {
 				return false;
 			}

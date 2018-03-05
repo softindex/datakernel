@@ -1,13 +1,14 @@
 package io.datakernel.util.guice;
 
-import com.google.inject.Binding;
-import com.google.inject.Scope;
-import com.google.inject.Scopes;
-import com.google.inject.Singleton;
+import com.google.inject.*;
 import com.google.inject.spi.BindingScopingVisitor;
+import com.google.inject.spi.DefaultBindingScopingVisitor;
+import io.datakernel.util.SimpleType;
+import io.datakernel.worker.WorkerPoolScope;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.lang.reflect.Type;
 
 public final class GuiceUtils {
 	private GuiceUtils() {
@@ -62,5 +63,26 @@ public final class GuiceUtils {
 		}
 		String simpleName = annotation.annotationType().getSimpleName();
 		return "@" + ("NamedImpl".equals(simpleName) ? "Named" : simpleName) + (first ? "" : "(" + sb + ")");
+	}
+
+	public static String prettyPrintSimpleKeyName(Key<?> key) {
+		Type type = key.getTypeLiteral().getType();
+		return (key.getAnnotation() != null ? prettyPrintAnnotation(key.getAnnotation()) + " " : "") +
+				SimpleType.ofType(type).getSimpleName();
+	}
+
+	public static String prettyPrintKeyName(Key<?> key) {
+		Type type = key.getTypeLiteral().getType();
+		return (key.getAnnotation() != null ? prettyPrintAnnotation(key.getAnnotation()) + " " : "") +
+				SimpleType.ofType(type).getName();
+	}
+
+	public static Integer extractWorkerId(Binding<?> binding) {
+		return binding.acceptScopingVisitor(new DefaultBindingScopingVisitor<Integer>() {
+			@Override
+			public Integer visitScope(Scope scope) {
+				return scope instanceof WorkerPoolScope ? ((WorkerPoolScope) scope).getCurrentWorkerId() : null;
+			}
+		});
 	}
 }

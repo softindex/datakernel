@@ -365,8 +365,8 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 			@Override
 			public <T> void onProvision(ProvisionInvocation<T> provision) {
 				synchronized (ServiceGraphModule.this) {
-					if (serviceGraph != null) {
-						logger.warn("Service graph already started, ignoring {}", provision.getBinding().getKey());
+					if (serviceGraph != null && serviceGraph.isStarted()) {
+						logger.error("Service graph already started, ignoring {}", provision.getBinding().getKey());
 						return;
 					}
 					if (provision.provision() != null) {
@@ -392,8 +392,8 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 			@Override
 			public <T> void onProvision(ProvisionInvocation<T> provision) {
 				synchronized (ServiceGraphModule.this) {
-					if (serviceGraph != null) {
-						logger.warn("Service graph already started, ignoring {}", provision.getBinding().getKey());
+					if (serviceGraph != null && serviceGraph.isStarted()) {
+						logger.error("Service graph already started, ignoring {}", provision.getBinding().getKey());
 						return;
 					}
 					if (provision.provision() != null) {
@@ -414,19 +414,19 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 	@Provides
 	synchronized ServiceGraph serviceGraph(Injector injector) {
 		if (serviceGraph == null) {
-			serviceGraph = new ServiceGraph() {
-				@Override
-				protected String nodeToString(Key<?> key) {
-					Annotation annotation = key.getAnnotation();
-					WorkerPoolObjects poolObjects = workerPoolModule.getPoolObjects(key);
-					return key.getTypeLiteral() +
-							(annotation != null ? " " + prettyPrintAnnotation(annotation) : "") +
-							(poolObjects != null ? " [" + poolObjects.getWorkerPool().getWorkersCount() + "]" : "");
-				}
-			};
-			createGuiceGraph(injector, serviceGraph);
-			serviceGraph.removeIntermediateNodes();
-			logger.info("Services graph: \n" + serviceGraph);
+			serviceGraph = ServiceGraph.create()
+					.withStartCallback(() -> {
+						createGuiceGraph(injector, serviceGraph);
+						serviceGraph.removeIntermediateNodes();
+						logger.info("Services graph: \n" + serviceGraph);
+					})
+					.withNodeToString(key -> {
+						Annotation annotation = key.getAnnotation();
+						WorkerPoolObjects poolObjects = workerPoolModule.getPoolObjects(key);
+						return key.getTypeLiteral() +
+								(annotation != null ? " " + prettyPrintAnnotation(annotation) : "") +
+								(poolObjects != null ? " [" + poolObjects.getWorkerPool().getWorkersCount() + "]" : "");
+					});
 		}
 		return serviceGraph;
 	}

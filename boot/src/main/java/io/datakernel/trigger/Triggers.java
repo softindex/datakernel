@@ -6,7 +6,6 @@ import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.util.Initializer;
 
 import java.util.*;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -19,18 +18,12 @@ public final class Triggers implements ConcurrentJmxMBean, Initializer<Triggers>
 	public static final long CACHE_TIMEOUT = 1000L;
 
 	private final List<Trigger> triggers = new ArrayList<>();
-	private Consumer<Triggers> initializer;
 
 	private Triggers() {
 	}
 
 	public static Triggers create() {
 		return new Triggers();
-	}
-
-	public Triggers withInitializer(Consumer<Triggers> initializer) {
-		this.initializer = initializer;
-		return this;
 	}
 
 	private static final class TriggerKey {
@@ -79,11 +72,6 @@ public final class Triggers implements ConcurrentJmxMBean, Initializer<Triggers>
 	}
 
 	private void refresh() {
-		if (initializer != null) {
-			Consumer<Triggers> initializer = this.initializer;
-			this.initializer = null;
-			initializer.accept(this);
-		}
 		long now = System.currentTimeMillis();
 		if (cachedTimestamp + CACHE_TIMEOUT < now) {
 			cachedTimestamp = now;
@@ -101,12 +89,17 @@ public final class Triggers implements ConcurrentJmxMBean, Initializer<Triggers>
 				TriggerResult oldResult = cachedResults.get(trigger);
 				TriggerResult newResult = newResults.get(trigger);
 				if (!newResult.hasTimestamp() || oldResult != null) {
-					newResult = new TriggerResult(
+					newResult = TriggerResult.create(
 							oldResult == null ? now : oldResult.getTimestamp(),
 							newResult.getThrowable(),
 							newResult.getValue());
 				}
-				cachedResults.put(trigger, newResult);
+				cachedResults.put(trigger, newResult.withCount(0));
+			}
+			for (Trigger trigger : newResults.keySet()) {
+				TriggerResult oldResult = cachedResults.get(trigger);
+				TriggerResult newResult = newResults.get(trigger);
+				cachedResults.put(trigger, oldResult.withCount(oldResult.getCount() + newResult.getCount()));
 			}
 			maxSeverityResults = new HashMap<>(cachedResults.size());
 			for (Map.Entry<Trigger, TriggerResult> entry : cachedResults.entrySet()) {
@@ -115,8 +108,17 @@ public final class Triggers implements ConcurrentJmxMBean, Initializer<Triggers>
 
 				TriggerKey triggerKey = new TriggerKey(trigger.getComponent(), trigger.getName());
 				TriggerWithResult oldTriggerWithResult = maxSeverityResults.get(triggerKey);
-				if (oldTriggerWithResult == null || oldTriggerWithResult.getTrigger().getSeverity().ordinal() < trigger.getSeverity().ordinal()) {
-					maxSeverityResults.put(triggerKey, new TriggerWithResult(trigger, triggerResult));
+				if (oldTriggerWithResult == null ||
+						oldTriggerWithResult.getTrigger().getSeverity().ordinal() < trigger.getSeverity().ordinal() ||
+						(oldTriggerWithResult.getTrigger().getSeverity() == trigger.getSeverity() &&
+								oldTriggerWithResult.getTriggerResult().getTimestamp() > triggerResult.getTimestamp())) {
+					maxSeverityResults.put(triggerKey, new TriggerWithResult(trigger, triggerResult
+							.withCount(triggerResult.getCount() +
+									(oldTriggerWithResult != null ? oldTriggerWithResult.getTriggerResult().getCount() : 0))));
+				} else {
+					maxSeverityResults.put(triggerKey, new TriggerWithResult(trigger, oldTriggerWithResult.getTriggerResult()
+							.withCount(triggerResult.getCount() +
+									oldTriggerWithResult.getTriggerResult().getCount())));
 				}
 			}
 		}

@@ -14,11 +14,17 @@ public final class TriggerResult {
 	private final long timestamp;
 	private final Throwable throwable;
 	private final Object value;
+	private final int count;
 
-	TriggerResult(long timestamp, Throwable throwable, Object value) {
+	TriggerResult(long timestamp, Throwable throwable, Object value, int count) {
 		this.timestamp = timestamp;
 		this.throwable = throwable;
 		this.value = value;
+		this.count = count;
+	}
+
+	TriggerResult(long timestamp, Throwable throwable, Object value) {
+		this(timestamp, throwable, value, 1);
 	}
 
 	public static TriggerResult none() {
@@ -31,6 +37,10 @@ public final class TriggerResult {
 
 	public static TriggerResult create(long timestamp, Throwable throwable, Object context) {
 		return new TriggerResult(timestamp, throwable, context);
+	}
+
+	public static TriggerResult create(long timestamp, Throwable throwable, Object context, int count) {
+		return new TriggerResult(timestamp, throwable, context, count);
 	}
 
 	public static TriggerResult ofTimestamp(long timestamp) {
@@ -91,6 +101,14 @@ public final class TriggerResult {
 		return isPresent() ? new TriggerResult(timestamp, throwable, value.get()) : NONE;
 	}
 
+	public TriggerResult withCount(int count) {
+		return isPresent() ? new TriggerResult(timestamp, throwable, value, count) : NONE;
+	}
+
+	public TriggerResult withCount(Supplier<Integer> count) {
+		return isPresent() ? new TriggerResult(timestamp, throwable, value, count.get()) : NONE;
+	}
+
 	public TriggerResult when(boolean condition) {
 		return isPresent() && condition ? this : NONE;
 	}
@@ -139,9 +157,15 @@ public final class TriggerResult {
 		return value;
 	}
 
+	public int getCount() {
+		checkState(isPresent());
+		return count;
+	}
+
 	@Override
 	public String toString() {
 		return MBeanFormat.formatTimestamp(timestamp) +
+				(count != 1 ? " #" + count : "") +
 				(value != null ? " : " + value : "") +
 				(throwable != null ? "\n" + MBeanFormat.formatExceptionLine(throwable) : "");
 	}

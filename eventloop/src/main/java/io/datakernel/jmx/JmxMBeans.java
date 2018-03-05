@@ -532,11 +532,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			Eventloop eventloop = mbeanWrapper.getEventloop();
 			List<JmxRefreshable> currentRefreshables = rootNode.getAllRefreshables(mbeanWrapper.getMBean());
 			if (!eventloopToJmxRefreshables.containsKey(eventloop)) {
-				eventloopToJmxRefreshables.put(
-						eventloop,
-						currentRefreshables
-				);
-				eventloop.post(createRefreshTask(eventloop, null, 0));
+				eventloopToJmxRefreshables.put(eventloop, currentRefreshables);
+				eventloop.execute(createRefreshTask(eventloop, null, 0));
 			} else {
 				List<JmxRefreshable> previousRefreshables = eventloopToJmxRefreshables.get(eventloop);
 				List<JmxRefreshable> allRefreshables = new ArrayList<>(previousRefreshables);

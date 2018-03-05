@@ -14,6 +14,8 @@ import io.datakernel.launcher.modules.EventloopModule;
 import io.datakernel.launcher.modules.ExecutorServiceModule;
 import io.datakernel.remotefs.RemoteFsServer;
 import io.datakernel.service.ServiceGraphModule;
+import io.datakernel.trigger.TriggerRegistry;
+import io.datakernel.trigger.TriggersModule;
 import io.datakernel.util.guice.SimpleModule;
 
 import java.net.InetSocketAddress;
@@ -24,6 +26,7 @@ import static com.google.inject.util.Modules.override;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.remotefs.boot.ConfigUtils.initializeRemoteFsServer;
+import static io.datakernel.remotefs.boot.ConfigUtils.initializeRemoteFsServerTriggers;
 import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -46,6 +49,7 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 		return asList(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
+				TriggersModule.create(),
 				ConfigsModule.create(
 						Config.create()
 								.with("remotefs.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(8080)))
@@ -57,9 +61,11 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 				new SimpleModule() {
 					@Provides
 					@Singleton
-					RemoteFsServer provideServer(Eventloop eventloop, ExecutorService executor, Config config) {
+					RemoteFsServer provideServer(Eventloop eventloop, ExecutorService executor, TriggerRegistry triggerRegistry,
+					                             Config config) {
 						return RemoteFsServer.create(eventloop, executor, config.get(ofPath(), "remotefs.path"))
-								.initialize(server -> initializeRemoteFsServer(server, config.getChild("remotefs")));
+								.initialize(server -> initializeRemoteFsServer(server, config.getChild("remotefs")))
+								.initialize(server -> initializeRemoteFsServerTriggers(server, triggerRegistry, config.getChild("triggers.remotefs")));
 					}
 				}
 		);

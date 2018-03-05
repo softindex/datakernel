@@ -28,6 +28,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static io.datakernel.util.CollectionUtils.difference;
@@ -43,9 +44,14 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
  * Stores the dependency graph of services. Primarily used by
  * {@link ServiceGraphModule}.
  */
-public class ServiceGraph {
+public final class ServiceGraph {
 
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+
+	private Runnable startCallback;
+	private Function<Key<?>, String> nodeToString = Key::toString;
+
+	private boolean started;
 
 	/**
 	 * This set used to represent edges between vertices. If N1 and N2 - nodes
@@ -67,11 +73,21 @@ public class ServiceGraph {
 
 	private final Map<Key<?>, Service> services = new HashMap<>();
 
-	protected ServiceGraph() {
+	private ServiceGraph() {
 	}
 
 	public static ServiceGraph create() {
 		return new ServiceGraph();
+	}
+
+	public ServiceGraph withStartCallback(Runnable startCallback) {
+		this.startCallback = startCallback;
+		return this;
+	}
+
+	public ServiceGraph withNodeToString(Function<Key<?>, String> nodeToString) {
+		this.nodeToString = nodeToString;
+		return this;
 	}
 
 	private static Throwable getRootCause(Throwable throwable) {
@@ -199,10 +215,19 @@ public class ServiceGraph {
 		return settableFuture;
 	}
 
+	synchronized public boolean isStarted() {
+		return started;
+	}
+
 	/**
 	 * Start services in the service graph
 	 */
 	synchronized public CompletableFuture<?> startFuture() {
+		if (started) return CompletableFuture.completedFuture(false);
+		started = true;
+		if (startCallback != null) {
+			startCallback.run();
+		}
 		List<Key<?>> circularDependencies = findCircularDependencies();
 		checkState(circularDependencies == null, "Circular dependencies found: %s", circularDependencies);
 		Set<Key<?>> rootNodes = difference(union(services.keySet(), forwards.keySet()), backwards.keySet());
@@ -210,7 +235,6 @@ public class ServiceGraph {
 		logger.debug("Root nodes: {}", rootNodes);
 		return actionInThread(true, rootNodes);
 	}
-
 
 	/**
 	 * Stop services from the service graph
@@ -361,8 +385,8 @@ public class ServiceGraph {
 		return null;
 	}
 
-	protected String nodeToString(Key<?> node) {
-		return node.toString();
+	private String nodeToString(Key<?> node) {
+		return nodeToString.apply(node);
 	}
 
 	private String nodesToString(Iterable<Key<?>> newNodes) {

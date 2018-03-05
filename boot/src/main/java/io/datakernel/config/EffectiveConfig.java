@@ -251,9 +251,12 @@ final class EffectiveConfig implements Config {
 					break;
 				case '=':
 				case ':':
+					if (escapeKey) sb.append('\\');
+					sb.append(c);
+					break;
 				case '#':
 				case '!':
-					if (escapeKey) sb.append('\\');
+					if (escapeKey && i == 0) sb.append('\\');
 					sb.append(c);
 					break;
 				default:

@@ -13,6 +13,7 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.modules.EventloopModule;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.service.ServiceGraphModule;
+import io.datakernel.trigger.TriggersModule;
 import io.datakernel.util.guice.SimpleModule;
 
 import java.util.Collection;
@@ -46,6 +47,7 @@ public abstract class RpcServerLauncher extends Launcher {
 		return asList(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
+				TriggersModule.create(),
 				ConfigsModule.create(PropertiesConfig.ofProperties(PROPERTIES_FILE, true))
 						.saveEffectiveConfigTo(PROPERTIES_FILE_EFFECTIVE),
 				EventloopModule.create(),

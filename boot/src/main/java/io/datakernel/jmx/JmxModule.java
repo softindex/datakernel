@@ -20,8 +20,11 @@ import com.google.inject.*;
 import com.google.inject.matcher.AbstractMatcher;
 import com.google.inject.name.Names;
 import com.google.inject.spi.ProvisionListener;
+import io.datakernel.service.BlockingService;
+import io.datakernel.service.ServiceGraph;
 import io.datakernel.trigger.TriggersModule;
 import io.datakernel.util.Initializer;
+import io.datakernel.util.guice.RequiredDependency;
 import io.datakernel.worker.WorkerPoolModule;
 
 import java.lang.management.ManagementFactory;
@@ -48,6 +51,9 @@ public final class JmxModule extends AbstractModule implements Initializer<Trigg
 	private double refreshPeriod = REFRESH_PERIOD_DEFAULT;
 	private int maxJmxRefreshesPerOneCycle = MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT;
 	private final Map<Type, Key<?>> globalMBeans = new HashMap<>();
+
+	private interface JmxRegistratorService extends BlockingService {
+	}
 
 	private JmxModule() {
 	}
@@ -174,6 +180,23 @@ public final class JmxModule extends AbstractModule implements Initializer<Trigg
 				}
 			}
 		});
+		bind(new TypeLiteral<RequiredDependency<ServiceGraph>>() {}).asEagerSingleton();
+		bind(new TypeLiteral<RequiredDependency<JmxRegistratorService>>() {}).asEagerSingleton();
+	}
+
+	@Provides
+	@Singleton
+	JmxRegistratorService jmxRegistratorService(JmxRegistrator jmxRegistrator) {
+		return new JmxRegistratorService() {
+			@Override
+			public void start() throws Exception {
+				jmxRegistrator.registerJmxMBeans();
+			}
+
+			@Override
+			public void stop() throws Exception {
+			}
+		};
 	}
 
 	@Provides

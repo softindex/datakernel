@@ -9,7 +9,7 @@ public final class Trigger {
 	private final Supplier<TriggerResult> triggerFunction;
 
 	Trigger(Severity severity, String component, String name,
-	                Supplier<TriggerResult> triggerFunction) {
+	        Supplier<TriggerResult> triggerFunction) {
 		this.severity = severity;
 		this.component = component;
 		this.name = name;

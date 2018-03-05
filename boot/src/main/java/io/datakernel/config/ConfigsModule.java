@@ -19,9 +19,12 @@ package io.datakernel.config;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
+import com.google.inject.TypeLiteral;
 import io.datakernel.config.impl.ConfigWithFullPath;
 import io.datakernel.service.BlockingService;
+import io.datakernel.service.ServiceGraph;
 import io.datakernel.util.Initializer;
+import io.datakernel.util.guice.RequiredDependency;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,27 +55,34 @@ public final class ConfigsModule extends AbstractModule implements Initializer<C
 		return this;
 	}
 
-	// module specific
-	private class ConfigSaveService implements BlockingService {
-		@Override
-		public void start() throws Exception {
-			logger.info("Saving resulting config to {}", saveFile);
-			if (config instanceof EffectiveConfig) {
-				((EffectiveConfig) config).saveEffectiveConfig(saveFile);
-			}
-		}
-
-		@Override
-		public void stop() throws Exception {
-		}
-	}
-
 	@Override
 	protected void configure() {
 		if (saveFile != null) {
 			config = EffectiveConfig.create(config);
-			bind(ConfigSaveService.class).toInstance(new ConfigSaveService());
 		}
+		bind(new TypeLiteral<RequiredDependency<ServiceGraph>>() {}).asEagerSingleton();
+		bind(new TypeLiteral<RequiredDependency<ConfigSaveService>>() {}).asEagerSingleton();
+	}
+
+	private interface ConfigSaveService extends BlockingService {
+	}
+
+	@Provides
+	@Singleton
+	ConfigSaveService configSaveService() {
+		return new ConfigSaveService() {
+			@Override
+			public void start() throws Exception {
+				logger.info("Saving resulting config to {}", saveFile);
+				if (config instanceof EffectiveConfig) {
+					((EffectiveConfig) config).saveEffectiveConfig(saveFile);
+				}
+			}
+
+			@Override
+			public void stop() throws Exception {
+			}
+		};
 	}
 
 	@Provides

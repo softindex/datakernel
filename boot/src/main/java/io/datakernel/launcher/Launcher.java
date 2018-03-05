@@ -18,7 +18,6 @@ package io.datakernel.launcher;
 
 import com.google.inject.*;
 import io.datakernel.config.ConfigsModule;
-import io.datakernel.jmx.JmxRegistrator;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
 import org.slf4j.Logger;
@@ -67,12 +66,10 @@ import static org.slf4j.LoggerFactory.getLogger;
 public abstract class Launcher {
 	protected final Logger logger = getLogger(this.getClass());
 
-	private JmxRegistrator jmxRegistrator;
-
-	private Stage stage;
+	private String[] args = new String[]{};
 
 	@Inject
-	protected Provider<ServiceGraph> serviceGraphProvider;
+	protected ServiceGraph serviceGraph;
 
 	@Inject
 	protected ShutdownNotification shutdownNotification;
@@ -98,7 +95,6 @@ public abstract class Launcher {
 		Injector injector = Guice.createInjector(productionMode ? Stage.PRODUCTION : Stage.DEVELOPMENT,
 				getCombinedModule(args));
 		logger.info("=== INJECTING DEPENDENCIES");
-		doInject(injector);
 		try {
 			onStart();
 			try {
@@ -118,27 +114,16 @@ public abstract class Launcher {
 		}
 	}
 
-	private Module getCombinedModule(String[] args) {
+	public Module getCombinedModule(String[] args) {
+		this.args = args;
 		return combine(
 				combine(getModules()),
-				binder -> binder.bind(String[].class).annotatedWith(Args.class).toInstance(args));
-	}
-
-	private void doInject(Injector injector) {
-		injector.injectMembers(this);
-		Binding<JmxRegistrator> binding = injector.getExistingBinding(Key.get(JmxRegistrator.class));
-		if (binding != null) {
-			jmxRegistrator = binding.getProvider().get();
-		}
+				binder -> binder.bind(String[].class).annotatedWith(Args.class).toInstance(args),
+				binder -> binder.requestInjection(this));
 	}
 
 	private void doStart() throws Exception {
-		if (jmxRegistrator != null) {
-			jmxRegistrator.registerJmxMBeans();
-		} else {
-			logger.info("Jmx is disabled. Add JmxModule to enable.");
-		}
-		serviceGraphProvider.get().startFuture().get();
+		serviceGraph.startFuture().get();
 	}
 
 	protected void onStart() throws Exception {
@@ -150,7 +135,7 @@ public abstract class Launcher {
 	}
 
 	private void doStop() throws Exception {
-		serviceGraphProvider.get().stopFuture().get();
+		serviceGraph.stopFuture().get();
 	}
 
 	protected final void awaitShutdown() throws InterruptedException {
