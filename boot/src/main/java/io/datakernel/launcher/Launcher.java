@@ -66,7 +66,7 @@ import static org.slf4j.LoggerFactory.getLogger;
 public abstract class Launcher {
 	protected final Logger logger = getLogger(this.getClass());
 
-	private String[] args = new String[]{};
+	protected String[] args = new String[]{};
 
 	@Inject
 	protected ServiceGraph serviceGraph;

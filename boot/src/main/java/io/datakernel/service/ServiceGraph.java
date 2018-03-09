@@ -18,6 +18,7 @@ package io.datakernel.service;
 
 import com.google.inject.Key;
 import io.datakernel.annotation.Nullable;
+import io.datakernel.util.Initializer;
 import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +45,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
  * Stores the dependency graph of services. Primarily used by
  * {@link ServiceGraphModule}.
  */
-public final class ServiceGraph {
+public final class ServiceGraph implements Initializer<ServiceGraph> {
 
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 

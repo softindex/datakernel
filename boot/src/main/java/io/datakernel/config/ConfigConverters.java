@@ -16,6 +16,7 @@
 
 package io.datakernel.config;
 
+import com.zaxxer.hikari.HikariConfig;
 import io.datakernel.eventloop.FatalErrorHandler;
 import io.datakernel.eventloop.InetAddressRange;
 import io.datakernel.eventloop.ThrottlingController;
@@ -24,7 +25,6 @@ import io.datakernel.net.DatagramSocketSettings;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.util.MemSize;
-import io.datakernel.util.Preconditions;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -37,11 +37,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import static io.datakernel.config.Config.THIS;
+import static io.datakernel.config.Config.ifNotDefault;
 import static io.datakernel.eventloop.FatalErrorHandlers.*;
 import static io.datakernel.eventloop.ThrottlingController.INITIAL_KEYS_PER_SECOND;
 import static io.datakernel.eventloop.ThrottlingController.INITIAL_THROTTLING;
 import static io.datakernel.net.ServerSocketSettings.DEFAULT_BACKLOG;
 import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.Integer.parseInt;
 import static java.util.Collections.emptyList;
 import static java.util.regex.Pattern.compile;
@@ -53,7 +56,34 @@ public final class ConfigConverters {
 	private ConfigConverters() {
 	}
 
-	// simple
+	public static ConfigConverter<String> ofString() {
+		return new ConfigConverter<String>() {
+			@Override
+			public String get(Config config, String defaultValue) {
+				return config.get(THIS, defaultValue);
+			}
+
+			@Override
+			public String get(Config config) {
+				return get(config, "");
+			}
+		};
+	}
+
+	public static ConfigConverter<String> ofNullableString() {
+		return new AbstractConfigConverter<String>() {
+			@Override
+			protected String fromString(String value) {
+				return value;
+			}
+
+			@Override
+			protected String toString(String defaultValue) {
+				return defaultValue;
+			}
+		};
+	}
+
 	public static ConfigConverter<Byte> ofByte() {
 		return new AbstractConfigConverter<Byte>() {
 			@Override
@@ -68,7 +98,7 @@ public final class ConfigConverters {
 		};
 	}
 
-	public static AbstractConfigConverter<Integer> ofInteger() {
+	public static ConfigConverter<Integer> ofInteger() {
 		return new AbstractConfigConverter<Integer>() {
 			@Override
 			protected Integer fromString(String value) {
@@ -82,7 +112,7 @@ public final class ConfigConverters {
 		};
 	}
 
-	public static AbstractConfigConverter<Long> ofLong() {
+	public static ConfigConverter<Long> ofLong() {
 		return new AbstractConfigConverter<Long>() {
 			@Override
 			public Long fromString(String string) {
@@ -96,7 +126,7 @@ public final class ConfigConverters {
 		};
 	}
 
-	public static AbstractConfigConverter<Float> ofFloat() {
+	public static ConfigConverter<Float> ofFloat() {
 		return new AbstractConfigConverter<Float>() {
 			@Override
 			public Float fromString(String string) {
@@ -110,7 +140,7 @@ public final class ConfigConverters {
 		};
 	}
 
-	public static AbstractConfigConverter<Double> ofDouble() {
+	public static ConfigConverter<Double> ofDouble() {
 		return new AbstractConfigConverter<Double>() {
 			@Override
 			public Double fromString(String string) {
@@ -124,7 +154,7 @@ public final class ConfigConverters {
 		};
 	}
 
-	public static AbstractConfigConverter<Boolean> ofBoolean() {
+	public static ConfigConverter<Boolean> ofBoolean() {
 		return new AbstractConfigConverter<Boolean>() {
 			@Override
 			public Boolean fromString(String string) {
@@ -155,7 +185,7 @@ public final class ConfigConverters {
 		};
 	}
 
-	public static AbstractConfigConverter<Class> ofClass() {
+	public static ConfigConverter<Class> ofClass() {
 		return new AbstractConfigConverter<Class>() {
 			@Override
 			public Class fromString(String string) {
@@ -173,7 +203,7 @@ public final class ConfigConverters {
 		};
 	}
 
-	public static AbstractConfigConverter<InetAddress> ofInetAddress() {
+	public static ConfigConverter<InetAddress> ofInetAddress() {
 		return new AbstractConfigConverter<InetAddress>() {
 			@Override
 			public InetAddress fromString(String address) {
@@ -191,7 +221,7 @@ public final class ConfigConverters {
 		};
 	}
 
-	public static AbstractConfigConverter<InetSocketAddress> ofInetSocketAddress() {
+	public static ConfigConverter<InetSocketAddress> ofInetSocketAddress() {
 		return new AbstractConfigConverter<InetSocketAddress>() {
 			@Override
 			public InetSocketAddress fromString(String addressPort) {
@@ -224,7 +254,7 @@ public final class ConfigConverters {
 		};
 	}
 
-	public static AbstractConfigConverter<Path> ofPath() {
+	public static ConfigConverter<Path> ofPath() {
 		return new AbstractConfigConverter<Path>() {
 			@Override
 			protected Path fromString(String value) {
@@ -238,7 +268,7 @@ public final class ConfigConverters {
 		};
 	}
 
-	public static AbstractConfigConverter<MemSize> ofMemSize() {
+	public static ConfigConverter<MemSize> ofMemSize() {
 		return new AbstractConfigConverter<MemSize>() {
 			@Override
 			public MemSize fromString(String string) {
@@ -252,7 +282,7 @@ public final class ConfigConverters {
 		};
 	}
 
-	public static AbstractConfigConverter<InetAddressRange> ofInetAddressRange() {
+	public static ConfigConverter<InetAddressRange> ofInetAddressRange() {
 		return new AbstractConfigConverter<InetAddressRange>() {
 			@Override
 			public InetAddressRange fromString(String string) {
@@ -270,7 +300,7 @@ public final class ConfigConverters {
 		};
 	}
 
-	public static <T> AbstractConfigConverter<List<T>> ofList(AbstractConfigConverter<T> elementConverter, CharSequence separators) {
+	public static <T> ConfigConverter<List<T>> ofList(ConfigConverter<T> elementConverter, CharSequence separators) {
 		return new AbstractConfigConverter<List<T>>() {
 			private final Pattern pattern = compile(separators.chars()
 					.mapToObj(c -> "\\" + ((char) c))
@@ -281,20 +311,26 @@ public final class ConfigConverters {
 				return pattern.splitAsStream(string)
 						.map(String::trim)
 						.filter(s -> !s.isEmpty())
-						.map(elementConverter::fromString)
+						.map(s -> elementConverter.get(Config.ofValue(s)))
 						.collect(toList());
 			}
 
 			@Override
 			public String toString(List<T> item) {
 				return item.stream()
-						.map(elementConverter::toString)
+						.map(v -> {
+							Config config = Config.ofValue(elementConverter, v);
+							if (config.hasChildren()) {
+								throw new AssertionError("Unexpected child entries: " + config.toMap());
+							}
+							return config.get(THIS);
+						})
 						.collect(joining(String.valueOf(separators.charAt(0))));
 			}
 		};
 	}
 
-	public static <T> AbstractConfigConverter<List<T>> ofList(AbstractConfigConverter<T> elementConverter) {
+	public static <T> ConfigConverter<List<T>> ofList(ConfigConverter<T> elementConverter) {
 		return ofList(elementConverter, ",;");
 	}
 
@@ -308,18 +344,18 @@ public final class ConfigConverters {
 
 			@Override
 			public ServerSocketSettings get(Config config, ServerSocketSettings defaultValue) {
-				ServerSocketSettings result = Preconditions.checkNotNull(defaultValue);
+				ServerSocketSettings result = checkNotNull(defaultValue);
 
 				result = result.withBacklog(config.get(ofInteger(), "backlog", result.getBacklog()));
 
-				MemSize receiveBufferSize = config.get(ofMemSize(), "receiveBufferSize", result.hasReceiveBufferSize() ?
-						MemSize.of(result.getReceiveBufferSize()) : null);
+				MemSize receiveBufferSize = config.get(ofMemSize(), "receiveBufferSize",
+						result.hasReceiveBufferSize() ? MemSize.of(result.getReceiveBufferSize()) : null);
 				if (receiveBufferSize != null) {
 					result = result.withReceiveBufferSize(receiveBufferSize);
 				}
 
-				Boolean reuseAddress = config.get(ofBoolean(), "reuseAddress", result.hasReuseAddress() ?
-						result.getReuseAddress() : null);
+				Boolean reuseAddress = config.get(ofBoolean(), "reuseAddress",
+						result.hasReuseAddress() ? result.getReuseAddress() : null);
 				if (reuseAddress != null) {
 					result = result.withReuseAddress(reuseAddress);
 				}
@@ -338,58 +374,58 @@ public final class ConfigConverters {
 
 			@Override
 			public SocketSettings get(Config config, SocketSettings defaultValue) {
-				SocketSettings result = Preconditions.checkNotNull(defaultValue);
+				SocketSettings result = checkNotNull(defaultValue);
 
-				MemSize receiveBufferSize = config.get(ofMemSize(), "receiveBufferSize", result.hasReceiveBufferSize() ?
-						MemSize.of(result.getReceiveBufferSize()) : null);
+				MemSize receiveBufferSize = config.get(ofMemSize(), "receiveBufferSize",
+						result.hasReceiveBufferSize() ? MemSize.of(result.getReceiveBufferSize()) : null);
 				if (receiveBufferSize != null) {
 					result = result.withReceiveBufferSize(receiveBufferSize);
 				}
 
-				MemSize sendBufferSize = config.get(ofMemSize(), "sendBufferSize", result.hasSendBufferSize() ?
-						MemSize.of(result.getSendBufferSize()) : null);
+				MemSize sendBufferSize = config.get(ofMemSize(), "sendBufferSize",
+						result.hasSendBufferSize() ? MemSize.of(result.getSendBufferSize()) : null);
 				if (sendBufferSize != null) {
 					result = result.withSendBufferSize(sendBufferSize);
 				}
 
-				Boolean reuseAddress = config.get(ofBoolean(), "reuseAddress", result.hasReuseAddress() ?
-						result.getReuseAddress() : null);
+				Boolean reuseAddress = config.get(ofBoolean(), "reuseAddress",
+						result.hasReuseAddress() ? result.getReuseAddress() : null);
 				if (reuseAddress != null) {
 					result = result.withReuseAddress(reuseAddress);
 				}
 
-				Boolean keepAlive = config.get(ofBoolean(), "keepAlive", result.hasKeepAlive() ?
-						result.getKeepAlive() : null);
+				Boolean keepAlive = config.get(ofBoolean(), "keepAlive",
+						result.hasKeepAlive() ? result.getKeepAlive() : null);
 				if (keepAlive != null) {
 					result = result.withKeepAlive(keepAlive);
 				}
 
-				Boolean tcpNoDelay = config.get(ofBoolean(), "tcpNoDelay", result.hasTcpNoDelay() ?
-						result.getTcpNoDelay() : null);
+				Boolean tcpNoDelay = config.get(ofBoolean(), "tcpNoDelay",
+						result.hasTcpNoDelay() ? result.getTcpNoDelay() : null);
 				if (tcpNoDelay != null) {
 					result = result.withTcpNoDelay(tcpNoDelay);
 				}
 
-				Long implReadTimeout = config.get(ofLong(), "implReadTimeout", result.hasImplReadTimeout() ?
-						result.getImplReadTimeout() : null);
+				Long implReadTimeout = config.get(ofLong(), "implReadTimeout",
+						result.hasImplReadTimeout() ? result.getImplReadTimeout() : null);
 				if (implReadTimeout != null) {
 					result = result.withImplReadTimeout(implReadTimeout);
 				}
 
-				Long implWriteTimeout = config.get(ofLong(), "implWriteTimeout", result.hasImplWriteTimeout() ?
-						result.getImplWriteTimeout() : null);
+				Long implWriteTimeout = config.get(ofLong(), "implWriteTimeout",
+						result.hasImplWriteTimeout() ? result.getImplWriteTimeout() : null);
 				if (implWriteTimeout != null) {
 					result = result.withImplWriteTimeout(implWriteTimeout);
 				}
 
-				MemSize implReadSize = config.get(ofMemSize(), "implReadSize", result.hasImplReadSize() ?
-						MemSize.of(result.getImplReadSize()) : null);
+				MemSize implReadSize = config.get(ofMemSize(), "implReadSize",
+						result.hasImplReadSize() ? MemSize.of(result.getImplReadSize()) : null);
 				if (implReadSize != null) {
 					result = result.withImplReadSize(implReadSize);
 				}
 
-				MemSize implWriteSize = config.get(ofMemSize(), "implWriteSize", result.hasImplWriteSize() ?
-						MemSize.of(result.getImplWriteSize()) : null);
+				MemSize implWriteSize = config.get(ofMemSize(), "implWriteSize",
+						result.hasImplWriteSize() ? MemSize.of(result.getImplWriteSize()) : null);
 				if (implWriteSize != null) {
 					result = result.withImplWriteSize(implWriteSize);
 				}
@@ -408,7 +444,7 @@ public final class ConfigConverters {
 
 			@Override
 			public DatagramSocketSettings get(Config config, DatagramSocketSettings defaultValue) {
-				DatagramSocketSettings result = Preconditions.checkNotNull(defaultValue);
+				DatagramSocketSettings result = checkNotNull(defaultValue);
 
 				MemSize receiveBufferSize = config.get(ofMemSize(), "receiveBufferSize", result.hasReceiveBufferSize() ?
 						MemSize.of(result.getReceiveBufferSize()) : null);
@@ -460,7 +496,7 @@ public final class ConfigConverters {
 
 			@Override
 			public FatalErrorHandler get(Config config) {
-				String key = config.getValue();
+				String key = config.get(THIS);
 
 				ConfigConverter<List<Class>> classList = ofList(ofClass());
 				switch (key) {
@@ -492,14 +528,55 @@ public final class ConfigConverters {
 
 			@Override
 			public ThrottlingController get(Config config, ThrottlingController defaultValue) {
-				Preconditions.checkNotNull(defaultValue);
-				return ThrottlingController.create()
+				checkNotNull(defaultValue);
+				return defaultValue
 						.withTargetTimeMillis(config.get(ofInteger(), "targetTimeMillis", defaultValue.getTargetTimeMillis()))
 						.withGcTimeMillis(config.get(ofInteger(), "gcTimeMillis", defaultValue.getGcTimeMillis()))
 						.withSmoothingWindow(config.get(ofInteger(), "smoothingWindow", defaultValue.getSmoothingWindow()))
 						.withThrottlingDecrease(config.get(ofDouble(), "throttlingDecrease", defaultValue.getThrottlingDecrease()))
 						.withInitialKeysPerSecond(config.get(ofDouble(), "initialKeysPerSecond", INITIAL_KEYS_PER_SECOND))
 						.withInitialThrottling(config.get(ofDouble(), "initialThrottling", INITIAL_THROTTLING));
+			}
+		};
+	}
+
+	public static ConfigConverter<HikariConfig> ofHikariConfig() {
+		return new ConfigConverter<HikariConfig>() {
+			@Override
+			public HikariConfig get(Config config) {
+				return get(config, new HikariConfig());
+			}
+
+			@Override
+			public HikariConfig get(Config config, HikariConfig c) {
+				checkNotNull(c);
+				config.apply(ofBoolean(), "autoCommit", c.isAutoCommit(), c::setAutoCommit);
+				config.apply(ofString(), "catalog", c.getCatalog(), c::setCatalog);
+				config.apply(ofString(), "connectionInitSql", c.getConnectionInitSql(), c::setConnectionInitSql);
+				config.apply(ofString(), "connectionTestQuery", c.getConnectionTestQuery(), c::setConnectionTestQuery);
+				config.apply(ofLong(), "connectionTimeout", c.getConnectionTimeout(), c::setConnectionTimeout);
+				config.apply(ofString(), "dataSourceClassName", c.getDataSourceClassName(), c::setDataSourceClassName);
+				config.apply(ofString(), "driverClassName", c.getDriverClassName(), ifNotDefault(c::setDriverClassName));
+				config.apply(ofLong(), "idleTimeout", c.getIdleTimeout(), c::setIdleTimeout);
+				config.apply(ofBoolean(), "initializationFailFast", c.isInitializationFailFast(), c::setInitializationFailFast);
+				config.apply(ofBoolean(), "isolateInternalQueries", c.isIsolateInternalQueries(), c::setIsolateInternalQueries);
+				config.apply(ofString(), "jdbcUrl", c.getJdbcUrl(), c::setJdbcUrl);
+				config.apply(ofLong(), "leakDetectionThreshold", c.getLeakDetectionThreshold(), c::setLeakDetectionThreshold);
+				config.apply(ofInteger(), "maximumPoolSize", c.getMaximumPoolSize(), c::setMaximumPoolSize);
+				config.apply(ofLong(), "maxLifetime", c.getMaxLifetime(), c::setMaxLifetime);
+				config.apply(ofInteger(), "minimumIdle", c.getMinimumIdle(), ifNotDefault(c::setMinimumIdle));
+				config.apply(ofString(), "password", c.getPassword(), c::setPassword);
+				config.apply(ofString(), "poolName", c.getPoolName(), c::setPoolName);
+				config.apply(ofBoolean(), "readOnly", c.isReadOnly(), c::setReadOnly);
+				config.apply(ofBoolean(), "registerMbeans", c.isRegisterMbeans(), c::setRegisterMbeans);
+				config.apply(ofString(), "transactionIsolation", c.getTransactionIsolation(), c::setTransactionIsolation);
+				config.apply(ofString(), "username", c.getUsername(), c::setUsername);
+				Config propertiesConfig = config.getChild("extra");
+				for (String property : propertiesConfig.getChildren().keySet()) {
+					String value = propertiesConfig.get(property);
+					c.addDataSourceProperty(property, value);
+				}
+				return c;
 			}
 		};
 	}

@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static io.datakernel.config.Config.EMPTY;
 import static io.datakernel.config.Config.THIS;
 import static io.datakernel.config.ConfigConverters.*;
 import static org.junit.Assert.*;
@@ -43,7 +44,7 @@ public class ConfigConvertersTest {
 		map.put("key1", Config.ofValue("data1"));
 		map.put("key2", Config.ofValue("data2"));
 		map.put("key3", Config.ofValue("data3"));
-		Config root = Config.ofChildren(map);
+		Config root = Config.ofConfigs(map);
 
 		assertEquals("data1", root.get("key1"));
 		assertEquals("data2", root.get("key2"));
@@ -65,7 +66,7 @@ public class ConfigConvertersTest {
 		values.put("key1", Config.ofValue("1"));
 		values.put("key2", Config.ofValue("-5"));
 		values.put("key3", Config.ofValue("100"));
-		Config root = Config.ofChildren(values);
+		Config root = Config.ofConfigs(values);
 
 		assertEquals(1, (int) root.get(ofInteger(), "key1"));
 		assertEquals(-5, (int) root.get(ofInteger(), "key2"));
@@ -78,7 +79,7 @@ public class ConfigConvertersTest {
 		values.put("key1", Config.ofValue("1"));
 		values.put("key2", Config.ofValue("-5"));
 		values.put("key3", Config.ofValue("100"));
-		Config root = Config.ofChildren(values);
+		Config root = Config.ofConfigs(values);
 
 		assertEquals(1L, (long) root.get(ofLong(), "key1"));
 		assertEquals(-5L, (long) root.get(ofLong(), "key2"));
@@ -96,7 +97,7 @@ public class ConfigConvertersTest {
 		values.put("key1", Config.ofValue("RED"));
 		values.put("key2", Config.ofValue("GREEN"));
 		values.put("key3", Config.ofValue("BLUE"));
-		Config root = Config.ofChildren(values);
+		Config root = Config.ofConfigs(values);
 
 		assertEquals(Color.RED, root.get(enumConverter, "key1"));
 		assertEquals(Color.GREEN, root.get(enumConverter, "key2"));
@@ -110,7 +111,7 @@ public class ConfigConvertersTest {
 		map.put("key1", Config.ofValue("0.001"));
 		map.put("key2", Config.ofValue("1e5"));
 		map.put("key3", Config.ofValue("-23.1"));
-		Config root = Config.ofChildren(map);
+		Config root = Config.ofConfigs(map);
 
 		double acceptableError = 1e-10;
 		assertEquals(0.001, doubleConverter.get(root.getChild("key1")), acceptableError);
@@ -126,7 +127,7 @@ public class ConfigConvertersTest {
 		map.put("key2", Config.ofValue("250.200.100.50:10000"));
 		map.put("key3", Config.ofValue("1.0.0.0:65000"));
 
-		Config root = Config.ofChildren(map);
+		Config root = Config.ofConfigs(map);
 
 		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("192.168.1.1"), 80);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("250.200.100.50"), 10000);
@@ -159,20 +160,19 @@ public class ConfigConvertersTest {
 
 	@Test
 	public void testDefaultNullValues() {
-		Integer value = ofInteger().get(Config.EMPTY, null);
+		Integer value = ofInteger().get(EMPTY, null);
 		assertNull(value);
 	}
 
 	@Test
 	public void testDatagraphSocketSettingsConverter() {
-		Config emptyConfig = Config.EMPTY;
 		DatagramSocketSettings expected = DatagramSocketSettings.create()
 				.withReceiveBufferSize(MemSize.bytes(256))
 				.withSendBufferSize(1024)
 				.withReuseAddress(false)
 				.withBroadcast(true);
 
-		DatagramSocketSettings actual = emptyConfig.get(ofDatagramSocketSettings(), THIS, expected);
+		DatagramSocketSettings actual = EMPTY.get(ofDatagramSocketSettings(), THIS, expected);
 
 		assertEquals(expected.getBroadcast(), actual.getBroadcast());
 		assertEquals(expected.getReuseAddress(), actual.getReuseAddress());
@@ -182,12 +182,11 @@ public class ConfigConvertersTest {
 
 	@Test
 	public void testServerSocketSettings() {
-		Config emptyConfig = Config.EMPTY;
 		ServerSocketSettings expected = ServerSocketSettings.create(1)
 				.withReceiveBufferSize(64)
 				.withReuseAddress(true);
 
-		ServerSocketSettings actual = emptyConfig.get(ofServerSocketSettings(), THIS, expected);
+		ServerSocketSettings actual = EMPTY.get(ofServerSocketSettings(), THIS, expected);
 		assertEquals(expected.getBacklog(), actual.getBacklog());
 		assertEquals(expected.getReceiveBufferSize(), actual.getReceiveBufferSize());
 		assertEquals(expected.getReuseAddress(), actual.getReuseAddress());
@@ -195,7 +194,6 @@ public class ConfigConvertersTest {
 
 	@Test
 	public void testSocketSettings() {
-		Config emptyConfig = Config.EMPTY;
 		SocketSettings expected = SocketSettings.create()
 				.withTcpNoDelay(true)
 				.withReuseAddress(false)
@@ -203,7 +201,7 @@ public class ConfigConvertersTest {
 				.withSendBufferSize(512)
 				.withKeepAlive(true);
 
-		SocketSettings actual = emptyConfig.get(ofSocketSettings(), THIS, expected);
+		SocketSettings actual = EMPTY.get(ofSocketSettings(), THIS, expected);
 
 		assertFalse(actual.hasImplReadSize());
 		assertFalse(actual.hasImplWriteSize());

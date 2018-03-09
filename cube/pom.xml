@@ -44,7 +44,7 @@
         <dependency>
             <groupId>com.zaxxer</groupId>
             <artifactId>HikariCP</artifactId>
-            <scope>test</scope>
+            <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>mysql</groupId>

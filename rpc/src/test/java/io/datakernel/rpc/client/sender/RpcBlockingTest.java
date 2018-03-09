@@ -34,7 +34,6 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.concurrent.ExecutionException;
 
-import static io.datakernel.eventloop.EventloopThreadFactory.defaultEventloopThreadFactory;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.*;
 import static org.junit.Assert.assertEquals;
@@ -81,7 +80,7 @@ public class RpcBlockingTest {
 				.withListenAddress(new InetSocketAddress("localhost", PORT_3));
 		serverThree.listen();
 
-		thread = defaultEventloopThreadFactory().newThread(eventloop);
+		thread = new Thread(eventloop);
 		thread.start();
 	}
 

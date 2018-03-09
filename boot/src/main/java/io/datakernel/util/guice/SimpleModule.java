@@ -7,7 +7,6 @@ import com.google.inject.AbstractModule;
  * Also it can be just instantiated if an empty or a stub module is required.
  */
 public class SimpleModule extends AbstractModule {
-
 	@Override
 	protected void configure() {
 	}

@@ -20,9 +20,9 @@ public interface SqlAtomicSequence {
 
 	@SuppressWarnings("unchecked")
 	static SqlAtomicSequence ofLastInsertID(String table, String field, String where) {
-		String sql = "UPDATE table SET field = LAST_INSERT_ID(field) + :stride"
-				.replaceAll("table", table)
-				.replaceAll("field", field);
+		String sql = "UPDATE {table} SET {field} = LAST_INSERT_ID({table}.{field}) + :stride"
+				.replace("{table}", "`" + table + "`")
+				.replace("{field}", "`" + field + "`");
 		if (where != null) {
 			sql += " WHERE " + where;
 		}

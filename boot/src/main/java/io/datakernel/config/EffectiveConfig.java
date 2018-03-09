@@ -16,6 +16,8 @@
 
 package io.datakernel.config;
 
+import io.datakernel.annotation.Nullable;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -23,11 +25,13 @@ import java.nio.file.StandardOpenOption;
 import java.util.*;
 
 import static com.google.common.base.Strings.nullToEmpty;
+import static io.datakernel.config.Config.concatPath;
+import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.Math.min;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.*;
 
-final class EffectiveConfig implements Config {
+public final class EffectiveConfig implements Config {
 	private static final class CallsRegistry {
 		final Map<String, String> calls = new HashMap<>();
 		final Map<String, String> defaultCalls = new HashMap<>();
@@ -37,38 +41,38 @@ final class EffectiveConfig implements Config {
 			this.all = all;
 		}
 
-		void registerCall(String root, String relativePath, String value) {
-			calls.put(fullPath(root, relativePath), value);
+		void registerCall(String path, String value) {
+			calls.put(path, value);
 		}
 
-		void registerDefaultCall(String rootPath, String relativePath, String value, String defaultValue) {
-			String fullPath = fullPath(rootPath, relativePath);
-			calls.put(fullPath, value);
-			defaultCalls.put(fullPath, defaultValue);
+		void registerDefaultCall(String path, String value, String defaultValue) {
+			calls.put(path, value);
+			defaultCalls.put(path, defaultValue);
 		}
 	}
 
 	private final Config config;
+	private final Map<String, Config> children;
 	private final String rootPath;
 	private final CallsRegistry callsRegistry;
 
 	// creators
-	private EffectiveConfig(Config config, String rootPath, CallsRegistry callsRegistry) {
+	private EffectiveConfig(String rootPath, Config config, CallsRegistry callsRegistry) {
 		this.config = config;
 		this.rootPath = rootPath;
 		this.callsRegistry = callsRegistry;
+		this.children = new LinkedHashMap<>();
+		for (Map.Entry<String, Config> entry : config.getChildren().entrySet()) {
+			this.children.put(entry.getKey(),
+					new EffectiveConfig(concatPath(this.rootPath, entry.getKey()), entry.getValue(), this.callsRegistry));
+		}
 	}
 
 	public static EffectiveConfig wrap(Config config) {
 		Map<String, String> allProperties = new LinkedHashMap<>(); // same order as inserted in config
-		fetchAllConfigs(config, THIS, allProperties);
+		fetchAllConfigs(config, "", allProperties);
 		CallsRegistry callsRegistry = new CallsRegistry(allProperties);
-		return new EffectiveConfig(config, THIS, callsRegistry);
-	}
-
-	private EffectiveConfig wrap(String path, Config config) {
-		String newRootPath = fullPath(rootPath, path);
-		return new EffectiveConfig(config, newRootPath, callsRegistry);
+		return new EffectiveConfig("", config, callsRegistry);
 	}
 
 	private static void fetchAllConfigs(Config config, String prefix, Map<String, String> container) {
@@ -79,65 +83,32 @@ final class EffectiveConfig implements Config {
 			container.put(prefix, config.get(THIS));
 			return;
 		}
-		for (String childName : config.getChildren()) {
-			Config childConfig = config.getChild(childName);
-			String childPrefix = prefix.isEmpty() ? childName : prefix + DELIMITER + childName;
-			fetchAllConfigs(childConfig, childPrefix, container);
+		for (String childName : config.getChildren().keySet()) {
+			fetchAllConfigs(config.getChild(childName), concatPath(prefix, childName), container);
 		}
 	}
 
-	// api config
 	@Override
-	public boolean hasValue() {
-		return config.hasValue();
-	}
-
-	@Override
-	public String get(String path) {
-		String value = config.get(path);
+	public String getValue(@Nullable String defaultValue) {
+		String value = config.getValue(defaultValue);
 		synchronized (this) {
-			callsRegistry.registerCall(rootPath, path, value);
+			callsRegistry.registerCall(rootPath, value);
+			if (defaultValue != null) {
+				callsRegistry.registerDefaultCall(rootPath, value, defaultValue);
+			}
 		}
 		return value;
 	}
 
 	@Override
-	public String get(String path, String defaultValue) {
-		String value = config.get(path, defaultValue);
-		synchronized (this) {
-			callsRegistry.registerDefaultCall(rootPath, path, value, defaultValue);
-		}
-		return value;
+	public Map<String, Config> getChildren() {
+		return children;
 	}
 
 	@Override
-	public <T> T get(ConfigConverter<T> converter, String path) {
-		return converter.get(getChild(path));
-	}
-
-	@Override
-	public <T> T get(ConfigConverter<T> converter, String path, T defaultValue) {
-		return converter.get(getChild(path), defaultValue);
-	}
-
-	@Override
-	public Config getChild(String path) {
-		return wrap(path, config.getChild(path));
-	}
-
-	@Override
-	public boolean hasChild(String path) {
-		return config.hasChild(path);
-	}
-
-	@Override
-	public Set<String> getChildren() {
-		return config.getChildren();
-	}
-
-	@Override
-	public boolean isEmpty() {
-		return config.isEmpty();
+	public Config provideNoKeyChild(String key) {
+		checkArgument(!getChildren().containsKey(key));
+		return new EffectiveConfig(concatPath(rootPath, key), Config.EMPTY, callsRegistry);
 	}
 
 	@Override
@@ -276,7 +247,4 @@ final class EffectiveConfig implements Config {
 		return callsRegistry.calls;
 	}
 
-	private static String fullPath(String rootPath, String relativePath) {
-		return rootPath.isEmpty() || relativePath.isEmpty() ? rootPath + relativePath : rootPath + DELIMITER + relativePath;
-	}
 }

@@ -16,13 +16,10 @@
 
 package io.datakernel.config;
 
-
-import java.util.HashSet;
 import java.util.NoSuchElementException;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static io.datakernel.config.Config.EMPTY;
+import static io.datakernel.util.CollectionUtils.set;
 import static org.junit.Assert.*;
 
 @SuppressWarnings("WeakerAccess")
@@ -54,8 +51,7 @@ public class ConfigTestUtils {
 		assertTrue(config.hasChild("a.b"));
 		assertTrue(config.hasChild("b"));
 
-		assertFalse(config.hasChild(""));
-		assertFalse(config.hasChild("."));
+		assertTrue(config.hasChild(""));
 		assertFalse(config.hasChild("a.a.c"));
 		assertFalse(config.hasChild("a.c"));
 		assertFalse(config.hasChild("c"));
@@ -82,11 +78,11 @@ public class ConfigTestUtils {
 	}
 
 	private static void testGetChildren(Config config) {
-		assertEquals(Stream.of("a", "b").collect(Collectors.toSet()), config.getChildren());
-		assertEquals(Stream.of("a", "b").collect(Collectors.toSet()), config.getChild("a").getChildren());
-		assertEquals(Stream.of("a", "b").collect(Collectors.toSet()), config.getChild("a.a").getChildren());
+		assertEquals(set("a", "b"), config.getChildren().keySet());
+		assertEquals(set("a", "b"), config.getChild("a").getChildren().keySet());
+		assertEquals(set("a", "b"), config.getChild("a.a").getChildren().keySet());
 
-		assertEquals(new HashSet<>(), config.getChild("a.a.a").getChildren());
+		assertTrue(config.getChild("a.a.a").getChildren().isEmpty());
 	}
 
 	private static void testHasValue(Config config) {
@@ -122,9 +118,7 @@ public class ConfigTestUtils {
 		assertEquals("4", config.get("b", defaultValue));
 
 		assertEquals(defaultValue, config.get("", defaultValue));
-		assertEquals(defaultValue, config.get(".", defaultValue));
 		assertEquals(defaultValue, config.get("a", defaultValue));
-		assertEquals(defaultValue, config.get("b.a..", defaultValue));
 	}
 
 	private static void testGetWithConverter(Config config) {
@@ -148,9 +142,7 @@ public class ConfigTestUtils {
 		assertEquals(4, (byte) config.get(converter, "b", defaultValue));
 
 		assertEquals(defaultValue, (byte) config.get(converter, "", defaultValue));
-		assertEquals(defaultValue, (byte) config.get(converter, ".", defaultValue));
 		assertEquals(defaultValue, (byte) config.get(converter, "a", defaultValue));
-		assertEquals(defaultValue, (byte) config.get(converter, "b.a..", defaultValue));
 	}
 
 	private static void testBadPaths(Config config) {
@@ -163,7 +155,7 @@ public class ConfigTestUtils {
 		try {
 			config.get(".");
 			fail("should have no value for path: \".\"");
-		} catch (NoSuchElementException ignore) {
+		} catch (IllegalArgumentException ignore) {
 		}
 
 		try {
@@ -175,7 +167,7 @@ public class ConfigTestUtils {
 		try {
 			config.get("a.a..");
 			fail("should have no value for path \"a.a..\"");
-		} catch (NoSuchElementException ignore) {
+		} catch (IllegalArgumentException ignore) {
 		}
 	}
 }

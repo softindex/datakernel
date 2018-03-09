@@ -6,18 +6,17 @@ import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
-import io.datakernel.config.impl.PropertiesConfig;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.PrimaryServer;
+import io.datakernel.eventloop.ThrottlingController;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
-import io.datakernel.launcher.modules.PrimaryEventloopModule;
-import io.datakernel.launcher.modules.WorkerEventloopModule;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.trigger.TriggerRegistry;
 import io.datakernel.trigger.TriggersModule;
+import io.datakernel.util.guice.OptionalDependency;
 import io.datakernel.util.guice.SimpleModule;
 import io.datakernel.worker.Primary;
 import io.datakernel.worker.Worker;
@@ -31,7 +30,7 @@ import static com.google.inject.util.Modules.combine;
 import static com.google.inject.util.Modules.override;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.config.ConfigConverters.ofInteger;
-import static io.datakernel.config.ConfigUtils.initializePrimaryServer;
+import static io.datakernel.config.ConfigUtils.*;
 import static io.datakernel.http.boot.ConfigUtils.initializeHttpServerTriggers;
 import static io.datakernel.http.boot.ConfigUtils.initializeHttpWorker;
 import static java.lang.Boolean.parseBoolean;
@@ -63,12 +62,31 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 				ConfigModule.create(() ->
 						Config.create()
 								.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(8080)))
-								.override(PropertiesConfig.ofProperties(PROPERTIES_FILE, true))
-								.override(PropertiesConfig.ofProperties(System.getProperties()).getChild("config")))
+								.override(Config.ofProperties(PROPERTIES_FILE, true))
+								.override(Config.ofProperties(System.getProperties()).getChild("config")))
 						.saveEffectiveConfigTo(PROPERTIES_FILE_EFFECTIVE),
-				PrimaryEventloopModule.create(),
-				WorkerEventloopModule.create(),
 				new SimpleModule() {
+					@Provides
+					@Singleton
+					@Primary
+					public Eventloop provide(Config config,
+					                         TriggerRegistry triggerRegistry) {
+						return Eventloop.create()
+								.initialize(eventloop -> initializeEventloop(eventloop, config.getChild("eventloop.primary")))
+								.initialize(eventloop -> initializeEventloopTriggers(eventloop, triggerRegistry, config.getChild("triggers.eventloop")));
+					}
+
+					@Provides
+					@Worker
+					public Eventloop provide(Config config,
+					                         OptionalDependency<ThrottlingController> throttlingController,
+					                         TriggerRegistry triggerRegistry) {
+						return Eventloop.create()
+								.initialize(eventloop -> initializeEventloop(eventloop, config.getChild("eventloop.worker")))
+								.initialize(eventloop -> throttlingController.ifPresent(eventloop::withThrottlingController))
+								.initialize(eventloop -> initializeEventloopTriggers(eventloop, triggerRegistry, config.getChild("triggers.eventloop")));
+					}
+
 					@Provides
 					@Singleton
 					public WorkerPool provide(Config config) {

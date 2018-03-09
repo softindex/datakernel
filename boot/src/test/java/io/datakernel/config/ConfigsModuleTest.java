@@ -16,14 +16,12 @@
 
 package io.datakernel.config;
 
-import io.datakernel.config.impl.PropertiesConfig;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.util.Properties;
 
-import static io.datakernel.config.Config.ConflictResolver.PROHIBIT_COLLISIONS;
 import static io.datakernel.config.ConfigConverters.*;
 
 public class ConfigsModuleTest {
@@ -79,12 +77,10 @@ public class ConfigsModuleTest {
 			}
 		};
 		Config config = ConfigModule.create(
-				Config.union(
-						PROHIBIT_COLLISIONS,
-						PropertiesConfig.ofProperties(properties1),
-						PropertiesConfig.ofProperties(properties2),
-						PropertiesConfig.ofProperties("not-existing.properties", true)
-				))
+				Config.create()
+						.override(Config.ofProperties(properties1))
+						.override(Config.ofProperties(properties2))
+						.override(Config.ofProperties("not-existing.properties", true)))
 				.saveEffectiveConfigTo("resulting.properties")
 				.provideConfig();
 

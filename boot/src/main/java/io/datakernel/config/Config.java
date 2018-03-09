@@ -1,322 +1,290 @@
-/*
- * Copyright (C) 2015 SoftIndex LLC.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package io.datakernel.config;
 
 import io.datakernel.annotation.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
-import static io.datakernel.config.Config.ConflictResolver.PROHIBIT_COLLISIONS;
-import static io.datakernel.config.Config.ConflictResolver.RETURN_LAST_FOUND;
-import static java.util.Arrays.asList;
-import static java.util.Collections.emptySet;
-import static java.util.Collections.singletonMap;
-import static java.util.stream.Collectors.toList;
+import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.util.Preconditions.checkNotNull;
+import static java.util.Collections.*;
 
 public interface Config {
+	Logger logger = LoggerFactory.getLogger(Config.class);
+
+	Config EMPTY = new Config() {
+		@Override
+		public String getValue(@Nullable String defaultValue) {
+			return defaultValue;
+		}
+
+		@Override
+		public Map<String, Config> getChildren() {
+			return emptyMap();
+		}
+	};
+
 	String THIS = "";
 	String DELIMITER = ".";
+	Pattern DELIMITER_PATTERN = Pattern.compile(Pattern.quote(DELIMITER));
+	Pattern PATH_PATTERN = Pattern.compile("([0-9a-zA-Z_-]+(\\.[0-9a-zA-Z_-]+)*)?");
 
-	boolean hasValue();
+	static String concatPath(String prefix, String suffix) {
+		return prefix.isEmpty() || suffix.isEmpty() ? prefix + suffix : prefix + DELIMITER + suffix;
+	}
 
-	String get(String path);
+	static void checkPath(String path) {
+		checkArgument(PATH_PATTERN.matcher(path).matches(), "Invalid path %s", path);
+	}
 
-	String get(String path, @Nullable String defaultValue);
+	String getValue(@Nullable String defaultValue);
 
-	<T> T get(ConfigConverter<T> converter, String path);
+	Map<String, Config> getChildren();
 
-	<T> T get(ConfigConverter<T> converter, String path, @Nullable T defaultValue);
+	default boolean hasValue() {
+		return getValue(null) != null;
+	}
 
-	boolean hasChild(String path);
+	default boolean hasChildren() {
+		return !getChildren().isEmpty();
+	}
 
-	Config getChild(String path);
-
-	Set<String> getChildren();
-
-	default Config with(String key, Config config) {
-		String[] keys = key.split(Pattern.quote(DELIMITER));
-		for (int i = keys.length - 1; i >= 0; i--) {
-			config = ofChild(keys[i], config);
+	default boolean hasChild(String path) {
+		checkPath(path);
+		Config config = this;
+		for (String key : DELIMITER_PATTERN.split(path)) {
+			if (key.isEmpty()) continue;
+			Map<String, Config> children = config.getChildren();
+			if (!children.containsKey(key)) return false;
+			config = children.get(key);
 		}
-		return override(config);
-	}
-
-	default Config with(String key, String value) {
-		return with(key, ofValue(value));
-	}
-
-	default Config override(Config other) {
-		return union(RETURN_LAST_FOUND, this, other);
-	}
-
-	default Config combine(Config other) {
-		return union(PROHIBIT_COLLISIONS, this, other);
-	}
-
-	default String getValue() {
-		return get(THIS);
+		return true;
 	}
 
 	default boolean isEmpty() {
-		return this == EMPTY;
+		return !hasValue() && !hasChildren();
 	}
 
-	@Nullable
-	default <T> T getOrNull(ConfigConverter<T> converter, String path) {
-		Config child = getChild(path);
-		if (child.isEmpty()) {
-			return null;
-		}
-		return get(converter, path);
-	}
-
-	Config EMPTY = new AbstractConfig() {
-		@Override
-		protected String doGet() {
+	default String get(String path) throws NoSuchElementException {
+		checkPath(path);
+		String value = get(path, null);
+		if (value == null) {
 			throw new NoSuchElementException();
 		}
+		return value;
+	}
 
-		@Override
-		protected String doGet(String defaultString) {
-			return defaultString;
-		}
+	default String get(String path, @Nullable String defaultValue) {
+		return getChild(path).getValue(defaultValue);
+	}
 
-		@Override
-		public boolean hasValue() {
-			return false;
-		}
+	default <T> T get(ConfigConverter<T> converter, String path) throws NoSuchElementException {
+		return converter.get(getChild(path));
+	}
 
-		@Override
-		protected boolean doHasChild(String key) {
-			return false;
-		}
+	default <T> T get(ConfigConverter<T> converter, String path, @Nullable T defaultValue) {
+		return converter.get(getChild(path), defaultValue);
+	}
 
-		@Override
-		protected Config doGetChild(String key) {
-			return EMPTY;
+	default Config getChild(String path) {
+		checkPath(path);
+		Config config = this;
+		for (String key : path.split(Pattern.quote(DELIMITER))) {
+			if (key.isEmpty()) continue;
+			Map<String, Config> children = config.getChildren();
+			config = children.containsKey(key) ? children.get(key) : config.provideNoKeyChild(key);
 		}
+		return config;
+	}
 
-		@Override
-		public Set<String> getChildren() {
-			return emptySet();
-		}
+	default Config provideNoKeyChild(String key) {
+		checkArgument(!getChildren().containsKey(key));
+		return EMPTY;
+	}
 
-		@Override
-		public String toString() {
-			return "empty";
-		}
-	};
+	default <T> void apply(ConfigConverter<T> converter, String path, Consumer<T> setter) {
+		checkPath(path);
+		T value = get(converter, path);
+		setter.accept(value);
+	}
+
+	default <T> void apply(ConfigConverter<T> converter, String path, T defaultValue, Consumer<T> setter) {
+		apply(converter, path, defaultValue, (value, $) -> setter.accept(value));
+	}
+
+	default <T> void apply(ConfigConverter<T> converter, String path, T defaultValue, BiConsumer<T, T> setter) {
+		checkPath(path);
+		T value = get(converter, path, defaultValue);
+		setter.accept(value, defaultValue);
+	}
+
+	static <T> BiConsumer<T, T> ifNotDefault(Consumer<T> setter) {
+		return (value, defaultValue) -> {
+			if (!Objects.equals(value, defaultValue)) {
+				setter.accept(value);
+			}
+		};
+	}
+
+	static <T> Consumer<T> ifNotDefault(T defaultValue, Consumer<T> setter) {
+		return value -> {
+			if (!Objects.equals(value, defaultValue)) {
+				setter.accept(value);
+			}
+		};
+	}
 
 	static Config create() {
 		return EMPTY;
 	}
 
+	static Config ofProperties(Properties properties) {
+		return ofMap(properties.stringPropertyNames().stream()
+				.collect(Collectors.toMap(k -> k, properties::getProperty,
+						(u, v) -> {throw new AssertionError();}, LinkedHashMap::new)));
+	}
+
+	static Config ofProperties(String fileName) {
+		return ofProperties(fileName, false);
+	}
+
+	static Config ofProperties(String fileName, boolean optional) {
+		return ofProperties(Paths.get(fileName), optional);
+	}
+
+	static Config ofProperties(Path file, boolean optional) {
+		Properties props = new Properties();
+		try (InputStream is = Files.newInputStream(file)) {
+			props.load(is);
+		} catch (IOException e) {
+			if (optional) {
+				logger.warn("Can't load properties file: {}", file);
+			} else {
+				throw new IllegalArgumentException("Failed to load required properties: " + file.toString(), e);
+			}
+		}
+		return ofProperties(props);
+	}
+
+	static Config ofMap(Map<String, String> map) {
+		Config config = create();
+		for (String path : map.keySet()) {
+			String value = map.get(path);
+			config = config.with(path, value);
+		}
+		return config;
+	}
+
+	static Config ofConfigs(Map<String, Config> map) {
+		Config config = create();
+		for (String path : map.keySet()) {
+			Config childConfig = map.get(path);
+			config = config.with(path, childConfig);
+		}
+		return config;
+	}
+
 	static Config ofValue(String value) {
-		return new AbstractConfig() {
-			@Override
-			protected String doGet() {
-				return value;
-			}
-
-			@Override
-			protected String doGet(String defaultString) {
-				return value;
-			}
-
-			@Override
-			public boolean hasValue() {
-				return true;
-			}
-
-			@Override
-			protected boolean doHasChild(String key) {
-				return false;
-			}
-
-			@Override
-			protected Config doGetChild(String key) {
-				return EMPTY;
-			}
-
-			@Override
-			public Set<String> getChildren() {
-				return emptySet();
-			}
-
-			@Override
-			public String toString() {
-				return value;
-			}
-		};
+		return create().with(THIS, value);
 	}
 
 	static <T> Config ofValue(ConfigConverter<T> configConverter, T value) {
 		EffectiveConfig effectiveConfig = EffectiveConfig.wrap(Config.create());
 		configConverter.get(effectiveConfig, value);
-		Map<String, String> effectiveDefaults = effectiveConfig.getEffectiveDefaults();
-		return ofMap(effectiveDefaults);
+		return ofMap(effectiveConfig.getEffectiveDefaults());
 	}
 
-	@FunctionalInterface
-	interface ConflictResolver {
+	default Config with(String path, String value) {
+		checkPath(path);
+		checkNotNull(value);
+		return with(path, new Config() {
+			@Override
+			public String getValue(@Nullable String defaultValue) {
+				return value;
+			}
 
-		ConflictResolver RETURN_FIRST_FOUND = configs -> configs.get(0);
-
-		ConflictResolver RETURN_LAST_FOUND = configs -> configs.get(configs.size() - 1);
-
-		ConflictResolver PROHIBIT_COLLISIONS = configs -> {
-			throw new IllegalStateException("More than one config value for path " + configs);
-		};
-
-		Config resolve(List<? extends Config> configs);
+			@Override
+			public Map<String, Config> getChildren() {
+				return emptyMap();
+			}
+		});
 	}
 
-	static Config union(ConflictResolver resolver, Config... configs) {
-		return union(resolver, asList(configs));
-	}
+	default Config with(String path, Config config) {
+		checkPath(path);
+		checkNotNull(config);
+		String value = config.getValue(null);
+		String[] keys = path.split(Pattern.quote(DELIMITER));
+		for (int i = keys.length - 1; i >= 0; i--) {
+			String key = keys[i];
+			if (key.isEmpty()) continue;
+			Map<String, Config> map = singletonMap(key, config);
+			config = new Config() {
+				@Override
+				public String getValue(@Nullable String defaultValue) {
+					return defaultValue;
+				}
 
-	static Config union(ConflictResolver resolver, List<Config> configList) {
-		List<Config> configs = configList.stream().filter(c -> !c.isEmpty()).collect(toList());
-		if (configs.isEmpty()) {
-			return EMPTY;
+				@Override
+				public Map<String, Config> getChildren() {
+					return map;
+				}
+			};
 		}
-		if (configs.size() == 1) {
-			return configs.get(0);
+		return override(config);
+	}
+
+	default Config override(Config other) {
+		String otherValue = other.getValue(null);
+		Map<String, Config> otherChildren = other.getChildren();
+		if (otherValue == null && otherChildren.isEmpty()) {
+			return this;
 		}
-		return new AbstractConfig() {
-
+		String value = otherValue != null ? otherValue : getValue(null);
+		Map<String, Config> children = new LinkedHashMap<>(getChildren());
+		otherChildren.keySet().forEach(key -> children.merge(key, otherChildren.get(key), Config::override));
+		Map<String, Config> finalChildren = unmodifiableMap(children);
+		return new Config() {
 			@Override
-			protected String doGet() {
-				return findConfigValue(resolver, configs).get(THIS);
+			public String getValue(@Nullable String defaultValue) {
+				return value != null ? value : defaultValue;
 			}
 
 			@Override
-			protected String doGet(String defaultString) {
-				return findConfigValue(resolver, configs).get(THIS, defaultString);
-			}
-
-			@Override
-			public boolean hasValue() {
-				return configs.stream().anyMatch(Config::hasValue);
-			}
-
-			@Override
-			protected boolean doHasChild(String key) {
-				return configs.stream().anyMatch(input -> input.hasChild(key));
-			}
-
-			@Override
-			public Config doGetChild(String key) {
-				List<Config> childConfigs = new ArrayList<>();
-				for (Config config : configs) {
-					childConfigs.add(config.getChild(key));
-				}
-				if (childConfigs.stream().allMatch(c -> c.hasValue() && c.getChildren().isEmpty())) {
-					return resolver.resolve(childConfigs);
-				}
-				return Config.union(resolver, childConfigs);
-			}
-
-			@Override
-			public Set<String> getChildren() {
-				Set<String> children = new HashSet<>();
-				for (Config config : configs) {
-					children.addAll(config.getChildren());
-				}
-				return children;
-			}
-
-			@Override
-			public String toString() {
-				return "Union" + configs;
-			}
-
-			private Config findConfigValue(ConflictResolver resolver, List<? extends Config> configs) {
-				List<Config> appropriateConfigs = configs.stream()
-						.filter(Config::hasValue)
-						.collect(toList());
-				return appropriateConfigs.isEmpty() ?
-						EMPTY :
-						appropriateConfigs.size() == 1 ?
-								appropriateConfigs.get(0) :
-								resolver.resolve(appropriateConfigs);
+			public Map<String, Config> getChildren() {
+				return finalChildren;
 			}
 		};
 	}
 
-	static Config ofChild(String path, Config child) {
-		return ofChildren(singletonMap(path, child));
-	}
-
-	static Config ofChildren(Map<String, Config> map) {
-		return new AbstractConfig() {
-			@Override
-			protected String doGet() throws NoSuchElementException {
-				throw new NoSuchElementException();
-			}
-
-			@Override
-			protected String doGet(String defaultString) {
-				return defaultString;
-			}
-
-			@Override
-			public boolean hasValue() {
-				return false;
-			}
-
-			@Override
-			protected boolean doHasChild(String key) {
-				return map.containsKey(key);
-			}
-
-			@Override
-			public Config doGetChild(String key) {
-				return map.getOrDefault(key, EMPTY);
-			}
-
-			@Override
-			public Set<String> getChildren() {
-				return map.keySet();
-			}
-
-			@Override
-			public boolean isEmpty() {
-				return map.isEmpty();
-			}
-
-			@Override
-			public String toString() {
-				return "MapConfig" + map;
-			}
-		};
-	}
-
-	static Config ofMap(Map<String, String> map) {
-		TreeConfig treeConfig = new TreeConfig();
-		for (String key : map.keySet()) {
-			String value = map.get(key);
-			if (value != null) {
-				treeConfig.add(key, value);
-			} else {
-				treeConfig.addBranch(key);
-			}
+	default Map<String, String> toMap() {
+		Map<String, String> result = new LinkedHashMap<>();
+		if (hasValue()) {
+			result.put(THIS, get(THIS));
 		}
-		return treeConfig;
+		Map<String, Config> children = getChildren();
+		for (String key : children.keySet()) {
+			Map<String, String> childMap = children.get(key).toMap();
+			result.putAll(childMap.entrySet().stream()
+					.collect(Collectors.toMap(entry -> concatPath(key, entry.getKey()), Map.Entry::getValue)));
+		}
+		return result;
 	}
+
+	default Properties toProperties() {
+		Properties properties = new Properties();
+		toMap().forEach(properties::setProperty);
+		return properties;
+	}
+
 }

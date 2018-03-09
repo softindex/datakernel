@@ -16,7 +16,6 @@
 
 package io.datakernel.config;
 
-import io.datakernel.config.impl.PropertiesConfig;
 import org.junit.Test;
 
 import java.util.Properties;
@@ -32,7 +31,6 @@ public class PropertiesConfigTest {
 		properties.put("a.b", "3");
 		properties.put("b", "4");
 
-		PropertiesConfig config = PropertiesConfig.ofProperties(properties);
-		testBaseConfig(config);
+		testBaseConfig(Config.ofProperties(properties));
 	}
 }

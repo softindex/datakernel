@@ -36,7 +36,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static io.datakernel.eventloop.EventloopThreadFactory.defaultEventloopThreadFactory;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
@@ -133,7 +132,7 @@ public class RpcHelloWorldTest {
 		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		server = createServer(eventloop);
 		server.listen();
-		defaultEventloopThreadFactory().newThread(eventloop).start();
+		new Thread(eventloop).start();
 	}
 
 	@Test

@@ -47,21 +47,21 @@ public class EffectiveConfigTest {
 		db.put("jdbcUrl", Config.ofValue("jdbc:mysql://localhost:3306/some_schema"));
 		db.put("username", Config.ofValue("root"));
 		db.put("password", Config.ofValue("root"));
-		Config dbConfig = Config.ofChildren(db);
+		Config dbConfig = Config.ofConfigs(db);
 
 		Map<String, Config> server = new LinkedHashMap<>();
 		server.put("port", Config.ofValue("8080"));
 		server.put("businessTimeout", Config.ofValue("100ms"));
 		Map<String, Config> asyncClient = new LinkedHashMap<>();
 		asyncClient.put("clientTimeout", Config.ofValue("1000"));
-		server.put("AsyncClient", Config.ofChildren(asyncClient));
-		Config serverConfig = Config.ofChildren(server);
+		server.put("AsyncClient", Config.ofConfigs(asyncClient));
+		Config serverConfig = Config.ofConfigs(server);
 		Map<String, Config> root = new LinkedHashMap<>();
 
 		root.put("DataBase", dbConfig);
 		root.put("Server", serverConfig);
 
-		config = EffectiveConfig.wrap(Config.ofChildren(root));
+		config = EffectiveConfig.wrap(Config.ofConfigs(root));
 	}
 
 	@Test
@@ -70,12 +70,12 @@ public class EffectiveConfigTest {
 		tier3.put("a", Config.ofValue("1"));
 		tier3.put("b", Config.ofValue("2"));
 		Map<String, Config> tier2 = new HashMap<>();
-		tier2.put("a", Config.ofChildren(tier3));
+		tier2.put("a", Config.ofConfigs(tier3));
 		tier2.put("b", Config.ofValue("3"));
 		Map<String, Config> tier1 = new HashMap<>();
-		tier1.put("a", Config.ofChildren(tier2));
+		tier1.put("a", Config.ofConfigs(tier2));
 		tier1.put("b", Config.ofValue("4"));
-		Config config = Config.ofChildren(tier1);
+		Config config = Config.ofConfigs(tier1);
 
 		testBaseConfig(config);
 	}

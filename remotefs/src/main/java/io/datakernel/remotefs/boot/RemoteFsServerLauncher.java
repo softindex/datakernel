@@ -6,7 +6,6 @@ import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
-import io.datakernel.config.impl.PropertiesConfig;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
@@ -53,8 +52,8 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 				ConfigModule.create(() ->
 						Config.create()
 								.with("remotefs.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(8080)))
-								.override(PropertiesConfig.ofProperties(PROPERTIES_FILE, true))
-								.override(PropertiesConfig.ofProperties(System.getProperties()).getChild("config")))
+								.override(Config.ofProperties(PROPERTIES_FILE, true))
+								.override(Config.ofProperties(System.getProperties()).getChild("config")))
 						.saveEffectiveConfigTo(PROPERTIES_FILE_EFFECTIVE),
 				EventloopModule.create(),
 				ExecutorServiceModule.create(),

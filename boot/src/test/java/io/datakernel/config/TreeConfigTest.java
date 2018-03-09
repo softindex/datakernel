@@ -20,34 +20,27 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.NoSuchElementException;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static io.datakernel.config.ConfigConverters.ofByte;
 import static io.datakernel.config.ConfigConverters.ofInteger;
 import static io.datakernel.config.ConfigTestUtils.testBaseConfig;
-import static java.util.Collections.singleton;
+import static io.datakernel.util.CollectionUtils.set;
 import static org.junit.Assert.*;
 
 public class TreeConfigTest {
-	private TreeConfig config;
+	private Config config;
 
 	@Before
 	public void setUp() {
-		config = new TreeConfig();
-		config.addLeaf("key1", "value1");
-		config.addBranch("key2.key3").addLeaf("key4", "value4");
-		config.add("key5.key6", "6");
-	}
-
-	@Test(expected = IllegalStateException.class)
-	public void testLeafOnLeafAdding() {
-		config.add("key1.key2", "invalidValue");
+		config = Config.create()
+				.with("key1", "value1")
+				.with("key2.key3", Config.create().with("key4", "value4"))
+				.with("key5.key6", "6");
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testCanNotAddBadPath() {
-		config.add("a..b.", "illegalValue");
+		config.with("a..b.", "illegalValue");
 	}
 
 	@Test
@@ -65,8 +58,8 @@ public class TreeConfigTest {
 		assertTrue(config.hasChild("key2.key3"));
 		Config child = config.getChild("key2.key3");
 		assertNotNull(child);
-		assertEquals(singleton("key4"), child.getChildren());
-		assertEquals(Stream.of("key1", "key2", "key5").collect(Collectors.toSet()), config.getChildren());
+		assertEquals(set("key4"), child.getChildren().keySet());
+		assertEquals(set("key1", "key2", "key5"), config.getChildren().keySet());
 
 		assertEquals(
 				config.getChild("key2.key3.key4"),
@@ -76,7 +69,7 @@ public class TreeConfigTest {
 
 	@Test
 	public void testWorksWithDefaultValues() {
-		TreeConfig root = new TreeConfig();
+		Config root = Config.create();
 		Integer value = root.get(ofInteger(), "not.existing.branch", 8080);
 		assertEquals(8080, (int) value);
 	}

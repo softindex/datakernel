@@ -9,6 +9,10 @@ import io.datakernel.worker.WorkerPoolScope;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
 
 public final class GuiceUtils {
 	private GuiceUtils() {
@@ -84,5 +88,73 @@ public final class GuiceUtils {
 				return scope instanceof WorkerPoolScope ? ((WorkerPoolScope) scope).getCurrentWorkerId() : null;
 			}
 		});
+	}
+
+	public interface ModuleWithRemapping extends Module {
+		<T> ModuleWithRemapping remap(Key<T> key, Key<T> to);
+
+		<T> ModuleWithRemapping expose(Key<T> key);
+	}
+
+	public static ModuleWithRemapping remapModule(Module module) {
+		return new ModuleWithRemapping() {
+			Map<Key<?>, Key<?>> remappedKeys = new LinkedHashMap<>();
+			Set<Key<?>> exposedKeys = new LinkedHashSet<>();
+
+			@Override
+			public <T> ModuleWithRemapping remap(Key<T> from, Key<T> to) {
+				remappedKeys.put(from, to);
+				return this;
+			}
+
+			@Override
+			public <T> ModuleWithRemapping expose(Key<T> key) {
+				exposedKeys.add(key);
+				return this;
+			}
+
+			@Override
+			public void configure(Binder binder) {
+				final Map<Key<?>, Key<?>> finalRemappedKeys = remappedKeys;
+				Set<Key<?>> finalExposedKeys = this.exposedKeys;
+				this.remappedKeys = null;
+				this.exposedKeys = null;
+				binder.install(new PrivateModule() {
+					@Override
+					protected void configure() {
+						install(new PrivateModule() {
+							@SuppressWarnings("unchecked")
+							@Override
+							protected void configure() {
+								install(new PrivateModule() {
+									@Override
+									protected void configure() {
+										install(module);
+										for (Key<?> key : finalExposedKeys) {
+											expose(key);
+										}
+										for (Key<?> key : finalRemappedKeys.keySet()) {
+											expose(key);
+										}
+									}
+								});
+								for (Key<?> key : finalExposedKeys) {
+									expose(key);
+								}
+								for (Map.Entry<Key<?>, Key<?>> entry : finalRemappedKeys.entrySet()) {
+									bind((Key<Object>) entry.getValue()).to(entry.getKey());
+								}
+							}
+						});
+						for (Key<?> key : finalExposedKeys) {
+							expose(key);
+						}
+						for (Key<?> key : finalRemappedKeys.values()) {
+							expose(key);
+						}
+					}
+				});
+			}
+		};
 	}
 }

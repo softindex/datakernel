@@ -18,20 +18,23 @@ package io.datakernel.config;
 
 import io.datakernel.annotation.Nullable;
 
+import static io.datakernel.util.Preconditions.checkNotNull;
+
 public abstract class AbstractConfigConverter<T> implements ConfigConverter<T> {
 	@Override
 	@Nullable
 	public final T get(Config config) {
-		String value = config.get(Config.THIS);
-		return value == null ? null : fromString(value);
+		String string = config.get(Config.THIS);
+		checkNotNull(string);
+		return fromString(string);
 	}
 
 	@Override
 	@Nullable
 	public final T get(Config config, @Nullable T defaultValue) {
-		String defaultString = defaultValue == null ? null : toString(defaultValue);
+		String defaultString = defaultValue == null ? "" : toString(defaultValue);
 		String value = config.get(Config.THIS, defaultString);
-		return value == null ? null : fromString(value);
+		return value == null || value.isEmpty() ? null : fromString(value);
 	}
 
 	protected abstract T fromString(@Nullable String value);

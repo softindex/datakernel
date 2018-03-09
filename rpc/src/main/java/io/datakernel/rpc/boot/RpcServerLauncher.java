@@ -6,7 +6,6 @@ import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
-import io.datakernel.config.impl.PropertiesConfig;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
@@ -49,8 +48,8 @@ public abstract class RpcServerLauncher extends Launcher {
 				JmxModule.create(),
 				TriggersModule.create(),
 				ConfigModule.create(() ->
-						PropertiesConfig.ofProperties(PROPERTIES_FILE, true)
-								.override(PropertiesConfig.ofProperties(System.getProperties()).getChild("config")))
+						Config.ofProperties(PROPERTIES_FILE, true)
+								.override(Config.ofProperties(System.getProperties()).getChild("config")))
 						.saveEffectiveConfigTo(PROPERTIES_FILE_EFFECTIVE),
 				EventloopModule.create(),
 				new SimpleModule() {

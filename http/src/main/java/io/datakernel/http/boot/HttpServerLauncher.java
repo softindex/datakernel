@@ -6,16 +6,16 @@ import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
-import io.datakernel.config.impl.PropertiesConfig;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.ThrottlingController;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
-import io.datakernel.launcher.modules.EventloopModule;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.trigger.TriggerRegistry;
 import io.datakernel.trigger.TriggersModule;
+import io.datakernel.util.guice.OptionalDependency;
 import io.datakernel.util.guice.SimpleModule;
 
 import java.net.InetSocketAddress;
@@ -24,6 +24,8 @@ import java.util.Collection;
 import static com.google.inject.util.Modules.combine;
 import static com.google.inject.util.Modules.override;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
+import static io.datakernel.config.ConfigUtils.initializeEventloop;
+import static io.datakernel.config.ConfigUtils.initializeEventloopTriggers;
 import static io.datakernel.http.boot.ConfigUtils.initializeHttpServer;
 import static io.datakernel.http.boot.ConfigUtils.initializeHttpServerTriggers;
 import static java.lang.Boolean.parseBoolean;
@@ -55,11 +57,21 @@ public abstract class HttpServerLauncher extends Launcher {
 				ConfigModule.create(() ->
 						Config.create()
 								.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(8080)))
-								.override(PropertiesConfig.ofProperties(PROPERTIES_FILE, true))
-								.override(PropertiesConfig.ofProperties(System.getProperties()).getChild("config")))
+								.override(Config.ofProperties(PROPERTIES_FILE, true))
+								.override(Config.ofProperties(System.getProperties()).getChild("config")))
 						.saveEffectiveConfigTo(PROPERTIES_FILE_EFFECTIVE),
-				EventloopModule.create(),
 				new SimpleModule() {
+					@Provides
+					@Singleton
+					public Eventloop provide(Config config,
+					                         OptionalDependency<ThrottlingController> optionalThrottlingController,
+					                         TriggerRegistry triggerRegistry) {
+						return Eventloop.create()
+								.initialize(eventloop -> initializeEventloop(eventloop, config.getChild("eventloop")))
+								.initialize(eventloop -> optionalThrottlingController.ifPresent(eventloop::withThrottlingController))
+								.initialize(eventloop -> initializeEventloopTriggers(eventloop, triggerRegistry, config.getChild("triggers.eventloop")));
+					}
+
 					@Provides
 					@Singleton
 					public AsyncHttpServer provide(Eventloop eventloop, AsyncServlet rootServlet, TriggerRegistry triggerRegistry, Config config) {
