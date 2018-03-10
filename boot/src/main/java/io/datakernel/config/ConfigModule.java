@@ -22,7 +22,7 @@ import com.google.inject.Singleton;
 import com.google.inject.TypeLiteral;
 import io.datakernel.service.BlockingService;
 import io.datakernel.service.ServiceGraph;
-import io.datakernel.util.Initializer;
+import io.datakernel.util.Initializable;
 import io.datakernel.util.guice.RequiredDependency;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,7 +31,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.function.Supplier;
 
-public final class ConfigModule extends AbstractModule implements Initializer<ConfigModule> {
+public final class ConfigModule extends AbstractModule implements Initializable<ConfigModule> {
 	private static final Logger logger = LoggerFactory.getLogger(ConfigModule.class);
 
 	private Supplier<Config> configSupplier;

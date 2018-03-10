@@ -34,7 +34,7 @@ import io.datakernel.stream.processor.*;
 import io.datakernel.stream.stats.StreamStats;
 import io.datakernel.stream.stats.StreamStatsBasic;
 import io.datakernel.stream.stats.StreamStatsDetailed;
-import io.datakernel.util.Initializer;
+import io.datakernel.util.Initializable;
 import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 
@@ -58,7 +58,7 @@ import static org.slf4j.LoggerFactory.getLogger;
 /**
  * Stores aggregation chunks in local file system.
  */
-public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopService, Initializer<LocalFsChunkStorage>, EventloopJmxMBeanEx {
+public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopService, Initializable<LocalFsChunkStorage>, EventloopJmxMBeanEx {
 	private final Logger logger = getLogger(this.getClass());
 	public static final int DEFAULT_BUFFER_SIZE = 256 * 1024;
 

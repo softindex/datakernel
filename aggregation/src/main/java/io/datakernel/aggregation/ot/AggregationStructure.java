@@ -2,14 +2,14 @@ package io.datakernel.aggregation.ot;
 
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.measure.Measure;
-import io.datakernel.util.Initializer;
+import io.datakernel.util.Initializable;
 
 import java.util.*;
 
 import static io.datakernel.util.CollectionUtils.intersection;
 import static io.datakernel.util.Preconditions.checkArgument;
 
-public final class AggregationStructure implements Initializer<AggregationStructure> {
+public final class AggregationStructure implements Initializable<AggregationStructure> {
 
 	private final Map<String, FieldType> keyTypes = new LinkedHashMap<>();
 	private final Map<String, FieldType> measureTypes = new LinkedHashMap<>();

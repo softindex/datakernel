@@ -23,7 +23,7 @@ import com.google.inject.spi.ProvisionListener;
 import io.datakernel.service.BlockingService;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.trigger.TriggersModule;
-import io.datakernel.util.Initializer;
+import io.datakernel.util.Initializable;
 import io.datakernel.util.guice.RequiredDependency;
 import io.datakernel.worker.WorkerPoolModule;
 
@@ -37,7 +37,7 @@ import java.util.Set;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.guice.GuiceUtils.isSingleton;
 
-public final class JmxModule extends AbstractModule implements Initializer<TriggersModule> {
+public final class JmxModule extends AbstractModule implements Initializable<TriggersModule> {
 	public static final double REFRESH_PERIOD_DEFAULT = 1.0;
 	public static final int MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT = 50;
 

@@ -5,7 +5,7 @@ import org.junit.Test;
 
 import java.util.Collection;
 
-import static java.util.Collections.singleton;
+import static java.util.Collections.singletonList;
 
 public class RpcServerLauncherTest {
 	@Test
@@ -13,7 +13,7 @@ public class RpcServerLauncherTest {
 		RpcServerLauncher launcher = new RpcServerLauncher() {
 			@Override
 			protected Collection<Module> getBusinessLogicModules() {
-				return singleton(DemoRpcBusinessLogicModule.create());
+				return singletonList(new DemoRpcBusinessLogicModule());
 			}
 		};
 		launcher.testInjector();

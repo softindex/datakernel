@@ -3,7 +3,7 @@ package io.datakernel.trigger;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.jmx.ConcurrentJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.util.Initializer;
+import io.datakernel.util.Initializable;
 
 import java.util.*;
 import java.util.function.Supplier;
@@ -14,7 +14,7 @@ import static java.util.Comparator.comparing;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 
-public final class Triggers implements ConcurrentJmxMBean, Initializer<Triggers> {
+public final class Triggers implements ConcurrentJmxMBean, Initializable<Triggers> {
 	public static final long CACHE_TIMEOUT = 1000L;
 
 	private final List<Trigger> triggers = new ArrayList<>();

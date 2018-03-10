@@ -22,7 +22,7 @@ import com.google.inject.spi.ProvisionListener;
 import io.datakernel.jmx.JmxRegistry;
 import io.datakernel.service.BlockingService;
 import io.datakernel.service.ServiceGraph;
-import io.datakernel.util.Initializer;
+import io.datakernel.util.Initializable;
 import io.datakernel.util.guice.GuiceUtils;
 import io.datakernel.util.guice.RequiredDependency;
 import io.datakernel.worker.WorkerPoolModule;
@@ -37,7 +37,7 @@ import static com.google.common.collect.Iterators.getLast;
 import static io.datakernel.util.guice.GuiceUtils.*;
 import static java.util.Collections.emptyList;
 
-public final class TriggersModule extends AbstractModule implements Initializer<TriggersModule> {
+public final class TriggersModule extends AbstractModule implements Initializable<TriggersModule> {
 	private Function<Key<?>, String> keyToString = GuiceUtils::prettyPrintSimpleKeyName;
 
 	private final Set<Key<?>> singletonKeys = new HashSet<>();

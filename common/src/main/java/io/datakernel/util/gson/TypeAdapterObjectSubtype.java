@@ -3,7 +3,7 @@ package io.datakernel.util.gson;
 import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
-import io.datakernel.util.Initializer;
+import io.datakernel.util.Initializable;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-public class TypeAdapterObjectSubtype<T> extends TypeAdapter<T> implements Initializer<TypeAdapterObjectSubtype<T>> {
+public class TypeAdapterObjectSubtype<T> extends TypeAdapter<T> implements Initializable<TypeAdapterObjectSubtype<T>> {
 
 	private final Map<Type, TypeAdapter<? extends T>> classesToAdapters = new HashMap<>();
 

@@ -24,7 +24,7 @@ import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.ValueStats;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
-import io.datakernel.util.Initializer;
+import io.datakernel.util.Initializable;
 import org.slf4j.Logger;
 
 import javax.net.ssl.SSLContext;
@@ -56,7 +56,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  * @param <S> type of AbstractNioServer which extends from it
  */
 @SuppressWarnings("WeakerAccess, unused")
-public abstract class AbstractServer<S extends AbstractServer<S>> implements EventloopServer, WorkerServer, Initializer<S>, EventloopJmxMBeanEx {
+public abstract class AbstractServer<S extends AbstractServer<S>> implements EventloopServer, WorkerServer, Initializable<S>, EventloopJmxMBeanEx {
 	protected Logger logger = getLogger(this.getClass());
 
 	protected final Eventloop eventloop;

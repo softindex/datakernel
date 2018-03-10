@@ -27,7 +27,7 @@ import io.datakernel.eventloop.EventloopServer;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.net.BlockingSocketServer;
 import io.datakernel.trigger.TriggersModule;
-import io.datakernel.util.Initializer;
+import io.datakernel.util.Initializable;
 import io.datakernel.util.guice.GuiceUtils;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerPoolModule;
@@ -79,7 +79,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  * <p>
  * An application terminates if a circular dependency found.
  */
-public final class ServiceGraphModule extends AbstractModule implements Initializer<TriggersModule> {
+public final class ServiceGraphModule extends AbstractModule implements Initializable<TriggersModule> {
 	private final Logger logger = getLogger(this.getClass());
 
 	private final Map<Class<?>, ServiceAdapter<?>> registeredServiceAdapters = new LinkedHashMap<>();

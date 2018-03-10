@@ -13,6 +13,7 @@ import io.datakernel.launcher.modules.EventloopModule;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.trigger.TriggersModule;
+import io.datakernel.util.Initializer;
 import io.datakernel.util.guice.SimpleModule;
 
 import java.util.Collection;
@@ -55,10 +56,10 @@ public abstract class RpcServerLauncher extends Launcher {
 				new SimpleModule() {
 					@Provides
 					@Singleton
-					RpcServer provideRpcServer(Config config, Eventloop eventloop, RpcServerBusinessLogic businessLogic) {
+					RpcServer provideRpcServer(Config config, Eventloop eventloop, Initializer<RpcServer> rpcServerInitializer) {
 						return RpcServer.create(eventloop)
 								.initialize(server -> initializeRpcServer(server, config))
-								.initialize(businessLogic);
+								.initialize(rpcServerInitializer);
 					}
 				}
 		);
@@ -79,7 +80,7 @@ public abstract class RpcServerLauncher extends Launcher {
 		String businessLogicModuleName = System.getProperty(BUSINESS_MODULE_PROP);
 		Module businessLogicModule = businessLogicModuleName != null ?
 				(Module) Class.forName(businessLogicModuleName).newInstance() :
-				DemoRpcBusinessLogicModule.create();
+				new DemoRpcBusinessLogicModule();
 
 		Launcher launcher = new RpcServerLauncher() {
 			@Override
