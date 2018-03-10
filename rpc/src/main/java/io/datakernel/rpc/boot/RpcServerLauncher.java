@@ -46,8 +46,8 @@ public abstract class RpcServerLauncher extends Launcher {
 	private Collection<Module> getBaseModules() {
 		return asList(
 				ServiceGraphModule.defaultInstance(),
-				JmxModule.create(),
-				TriggersModule.create(),
+				JmxModule.defaultInstance(),
+				TriggersModule.defaultInstance(),
 				ConfigModule.create(() ->
 						Config.ofProperties(PROPERTIES_FILE, true)
 								.override(Config.ofProperties(System.getProperties()).getChild("config")))

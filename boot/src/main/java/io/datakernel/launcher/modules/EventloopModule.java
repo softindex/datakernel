@@ -29,11 +29,11 @@ public class EventloopModule extends SimpleModule {
 	@Provides
 	@Singleton
 	public Eventloop provide(Config config,
-	                         OptionalDependency<ThrottlingController> optionalThrottlingController,
+	                         OptionalDependency<ThrottlingController> maybeThrottlingController,
 	                         TriggerRegistry triggerRegistry) {
 		return Eventloop.create()
 				.initialize(eventloop -> initializeEventloop(eventloop, config.getChild("eventloop")))
-				.initialize(eventloop -> optionalThrottlingController.ifPresent(eventloop::withThrottlingController))
+				.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withThrottlingController))
 				.initialize(eventloop -> initializeEventloopTriggers(eventloop, triggerRegistry, config.getChild("triggers.eventloop")));
 	}
 

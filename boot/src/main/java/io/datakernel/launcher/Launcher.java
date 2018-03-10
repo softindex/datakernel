@@ -91,8 +91,8 @@ public abstract class Launcher {
 				binder -> binder.getMembersInjector(Launcher.this.getClass()));
 	}
 
-	public void launch(boolean productionMode, String[] args) throws Exception {
-		Injector injector = Guice.createInjector(productionMode ? Stage.PRODUCTION : Stage.DEVELOPMENT,
+	public void launch(boolean eagerSingletons, String[] args) throws Exception {
+		Injector injector = Guice.createInjector(eagerSingletons ? Stage.PRODUCTION : Stage.DEVELOPMENT,
 				getCombinedModule(args));
 		logger.info("=== INJECTING DEPENDENCIES");
 		try {

@@ -29,11 +29,11 @@ public class WorkerEventloopModule extends SimpleModule {
 	@Provides
 	@Worker
 	public Eventloop provide(Config config,
-	                         OptionalDependency<ThrottlingController> throttlingController,
+	                         OptionalDependency<ThrottlingController> maybeThrottlingController,
 	                         TriggerRegistry triggerRegistry) {
 		return Eventloop.create()
 				.initialize(eventloop -> initializeEventloop(eventloop, config.getChild("eventloop.worker")))
-				.initialize(eventloop -> throttlingController.ifPresent(eventloop::withThrottlingController))
+				.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withThrottlingController))
 				.initialize(eventloop -> initializeEventloopTriggers(eventloop, triggerRegistry, config.getChild("triggers.eventloop")));
 	}
 }

@@ -1,6 +1,4 @@
-package io.datakernel.config.impl;
-
-import io.datakernel.config.Config;
+package io.datakernel.config;
 
 import java.util.LinkedHashMap;
 import java.util.Map;

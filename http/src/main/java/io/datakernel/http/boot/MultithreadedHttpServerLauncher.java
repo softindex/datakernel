@@ -57,8 +57,8 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 	private Collection<Module> getBaseModules() {
 		return asList(
 				ServiceGraphModule.defaultInstance(),
-				JmxModule.create(),
-				TriggersModule.create(),
+				JmxModule.defaultInstance(),
+				TriggersModule.defaultInstance(),
 				ConfigModule.create(() ->
 						Config.create()
 								.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(8080)))
@@ -79,11 +79,11 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 					@Provides
 					@Worker
 					public Eventloop provide(Config config,
-					                         OptionalDependency<ThrottlingController> throttlingController,
+					                         OptionalDependency<ThrottlingController> maybeThrottlingController,
 					                         TriggerRegistry triggerRegistry) {
 						return Eventloop.create()
 								.initialize(eventloop -> initializeEventloop(eventloop, config.getChild("eventloop.worker")))
-								.initialize(eventloop -> throttlingController.ifPresent(eventloop::withThrottlingController))
+								.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withThrottlingController))
 								.initialize(eventloop -> initializeEventloopTriggers(eventloop, triggerRegistry, config.getChild("triggers.eventloop")));
 					}
 

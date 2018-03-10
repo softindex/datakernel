@@ -20,10 +20,13 @@ import com.google.inject.*;
 import com.google.inject.matcher.AbstractMatcher;
 import com.google.inject.name.Names;
 import com.google.inject.spi.ProvisionListener;
+import io.datakernel.async.EventloopTaskScheduler;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.service.BlockingService;
 import io.datakernel.service.ServiceGraph;
-import io.datakernel.trigger.TriggersModule;
 import io.datakernel.util.Initializable;
+import io.datakernel.util.Initializer;
+import io.datakernel.util.guice.OptionalDependency;
 import io.datakernel.util.guice.RequiredDependency;
 import io.datakernel.worker.WorkerPoolModule;
 
@@ -37,7 +40,7 @@ import java.util.Set;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.guice.GuiceUtils.isSingleton;
 
-public final class JmxModule extends AbstractModule implements Initializable<TriggersModule> {
+public final class JmxModule extends AbstractModule implements Initializable<JmxModule> {
 	public static final double REFRESH_PERIOD_DEFAULT = 1.0;
 	public static final int MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT = 50;
 
@@ -60,6 +63,24 @@ public final class JmxModule extends AbstractModule implements Initializable<Tri
 
 	public static JmxModule create() {
 		return new JmxModule();
+	}
+
+	public static final String GLOBAL_EVENTLOOP_NAME = "GlobalEventloopStats";
+	public static final Key<Eventloop> GLOBAL_EVENTLOOP_KEY = Key.get(Eventloop.class, Names.named(GLOBAL_EVENTLOOP_NAME));
+
+	public static JmxModule defaultInstance() {
+		return create()
+				.withGlobalMBean(Eventloop.class, GLOBAL_EVENTLOOP_KEY)
+				.withOptional(GLOBAL_EVENTLOOP_KEY, "fatalErrors_total")
+				.withOptional(GLOBAL_EVENTLOOP_KEY, "loops_totalCount")
+				.withOptional(GLOBAL_EVENTLOOP_KEY, "businessLogicTime_smoothedAverage")
+				.withOptional(GLOBAL_EVENTLOOP_KEY, "idleLoops_smoothedRate")
+				.withOptional(GLOBAL_EVENTLOOP_KEY, "idleLoops_totalCount")
+				.withOptional(GLOBAL_EVENTLOOP_KEY, "selectOverdues_smoothedRate")
+				.withOptional(GLOBAL_EVENTLOOP_KEY, "selectOverdues_totalCount")
+				.withOptional(EventloopTaskScheduler.class, "duration_lastValue")
+				.withOptional(EventloopTaskScheduler.class, "exceptions_total")
+				.withOptional(EventloopTaskScheduler.class, "exceptions_lastTime");
 	}
 
 	public JmxModule withRefreshPeriod(double refreshPeriod) {
@@ -186,7 +207,9 @@ public final class JmxModule extends AbstractModule implements Initializable<Tri
 
 	@Provides
 	@Singleton
-	JmxRegistratorService jmxRegistratorService(JmxRegistrator jmxRegistrator) {
+	JmxRegistratorService jmxRegistratorService(JmxRegistrator jmxRegistrator,
+	                                            OptionalDependency<Initializer<JmxModule>> maybeInitializer) {
+		maybeInitializer.ifPresent(initializer -> initializer.accept(this));
 		return new JmxRegistratorService() {
 			@Override
 			public void start() throws Exception {

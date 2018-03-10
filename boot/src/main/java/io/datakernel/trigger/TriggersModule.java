@@ -19,11 +19,16 @@ package io.datakernel.trigger;
 import com.google.inject.*;
 import com.google.inject.matcher.AbstractMatcher;
 import com.google.inject.spi.ProvisionListener;
+import io.datakernel.async.EventloopTaskScheduler;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.ThrottlingController;
 import io.datakernel.jmx.JmxRegistry;
 import io.datakernel.service.BlockingService;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.util.Initializable;
+import io.datakernel.util.Initializer;
 import io.datakernel.util.guice.GuiceUtils;
+import io.datakernel.util.guice.OptionalDependency;
 import io.datakernel.util.guice.RequiredDependency;
 import io.datakernel.worker.WorkerPoolModule;
 import io.datakernel.worker.WorkerPools;
@@ -34,6 +39,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static com.google.common.collect.Iterators.getLast;
+import static io.datakernel.trigger.Severity.*;
 import static io.datakernel.util.guice.GuiceUtils.*;
 import static java.util.Collections.emptyList;
 
@@ -139,6 +145,35 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 		return new TriggersModule();
 	}
 
+	public static TriggersModule defaultInstance() {
+		return create()
+				.with(Eventloop.class, HIGH, "fatalErrors", eventloop ->
+						TriggerResult.ofError(eventloop.getStats().getFatalErrors()))
+				.with(Eventloop.class, HIGH, "businessLogic", eventloop ->
+						TriggerResult.ofValue(eventloop.getStats().getBusinessLogicTime().getSmoothedAverage(),
+								businessLogicTime -> businessLogicTime > 100))
+				.with(ThrottlingController.class, INFORMATION, "throttling", throttlingController ->
+						TriggerResult.ofValue(throttlingController.getAvgThrottling(),
+								throttling -> throttling > 0.01))
+				.with(ThrottlingController.class, WARNING, "throttling", throttlingController ->
+						TriggerResult.ofValue(throttlingController.getAvgThrottling(),
+								throttling -> throttling > 0.1))
+				.with(ThrottlingController.class, AVERAGE, "throttling", throttlingController ->
+						TriggerResult.ofValue(throttlingController.getAvgThrottling(),
+								throttling -> throttling > 0.3))
+				.with(EventloopTaskScheduler.class, HIGH, "error", scheduler ->
+						TriggerResult.ofError(scheduler.getStats().getExceptions()))
+				.with(EventloopTaskScheduler.class, WARNING, "error", scheduler ->
+						TriggerResult.ofValue(scheduler.getStats().getExceptions().getTotal(), count -> count != 0))
+				.with(EventloopTaskScheduler.class, WARNING, "delay", scheduler ->
+						TriggerResult.ofTimestamp(scheduler.getStats().getLastStartTimestamp(),
+								scheduler.getPeriod() != null && scheduler.getStats().getCurrentDuration() > scheduler.getPeriod() * 3))
+				.with(EventloopTaskScheduler.class, AVERAGE, "delay", scheduler ->
+						TriggerResult.ofTimestamp(scheduler.getStats().getLastStartTimestamp(),
+								scheduler.getPeriod() != null && scheduler.getStats().getCurrentDuration() > scheduler.getPeriod() * 10))
+				;
+	}
+
 	public TriggersModule withNaming(Function<Key<?>, String> keyToString) {
 		this.keyToString = keyToString;
 		return this;
@@ -231,7 +266,9 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 
 	@Provides
 	@Singleton
-	TriggersInitializer triggersInitializer(Injector injector, Triggers triggers) {
+	TriggersInitializer triggersInitializer(Injector injector, Triggers triggers,
+	                                        OptionalDependency<Initializer<TriggersModule>> maybeInitializer) {
+		maybeInitializer.ifPresent(initializer -> initializer.accept(this));
 		return new TriggersInitializer() {
 			@Override
 			public void start() throws Exception {
