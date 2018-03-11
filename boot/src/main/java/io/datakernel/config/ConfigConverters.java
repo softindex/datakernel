@@ -41,7 +41,6 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
-import static io.datakernel.config.Config.THIS;
 import static io.datakernel.config.Config.ifNotDefault;
 import static io.datakernel.eventloop.FatalErrorHandlers.*;
 import static io.datakernel.eventloop.ThrottlingController.INITIAL_KEYS_PER_SECOND;
@@ -64,7 +63,7 @@ public final class ConfigConverters {
 		return new ConfigConverter<String>() {
 			@Override
 			public String get(Config config, String defaultValue) {
-				return config.get(THIS, defaultValue);
+				return config.getValue(defaultValue);
 			}
 
 			@Override
@@ -327,7 +326,7 @@ public final class ConfigConverters {
 							if (config.hasChildren()) {
 								throw new AssertionError("Unexpected child entries: " + config.toMap());
 							}
-							return config.get(THIS);
+							return config.getValue();
 						})
 						.collect(joining(String.valueOf(separators.charAt(0))));
 			}
@@ -500,7 +499,7 @@ public final class ConfigConverters {
 
 			@Override
 			public FatalErrorHandler get(Config config) {
-				String key = config.get(THIS);
+				String key = config.getValue();
 
 				ConfigConverter<List<Class>> classList = ofList(ofClass());
 				switch (key) {

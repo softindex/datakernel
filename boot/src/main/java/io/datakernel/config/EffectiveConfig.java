@@ -80,7 +80,7 @@ public final class EffectiveConfig implements Config {
 			return;
 		}
 		if (config.hasValue()) {
-			container.put(prefix, config.get(THIS));
+			container.put(prefix, config.getValue());
 			return;
 		}
 		for (String childName : config.getChildren().keySet()) {

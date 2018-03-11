@@ -24,7 +24,7 @@ public abstract class AbstractConfigConverter<T> implements ConfigConverter<T> {
 	@Override
 	@Nullable
 	public final T get(Config config) {
-		String string = config.get(Config.THIS);
+		String string = config.getValue();
 		checkNotNull(string);
 		return fromString(string);
 	}
@@ -33,7 +33,7 @@ public abstract class AbstractConfigConverter<T> implements ConfigConverter<T> {
 	@Nullable
 	public final T get(Config config, @Nullable T defaultValue) {
 		String defaultString = defaultValue == null ? "" : toString(defaultValue);
-		String value = config.get(Config.THIS, defaultString);
+		String value = config.getValue(defaultString);
 		return value == null || value.isEmpty() ? null : fromString(value);
 	}
 

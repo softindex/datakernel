@@ -31,6 +31,11 @@ public interface Config {
 		}
 
 		@Override
+		public String getValue() throws NoSuchElementException {
+			throw new NoSuchElementException();
+		}
+
+		@Override
 		public Map<String, Config> getChildren() {
 			return emptyMap();
 		}
@@ -49,14 +54,12 @@ public interface Config {
 		checkArgument(PATH_PATTERN.matcher(path).matches(), "Invalid path %s", path);
 	}
 
-	String getValue(@Nullable String defaultValue);
+	default String getValue(@Nullable String defaultValue) {
+		return get(THIS, defaultValue);
+	}
 
 	default String getValue() throws NoSuchElementException {
-		String value = getValue(null);
-		if (value == null) {
-			throw new NoSuchElementException();
-		}
-		return value;
+		return get(THIS);
 	}
 
 	Map<String, Config> getChildren();
@@ -221,6 +224,11 @@ public interface Config {
 			}
 
 			@Override
+			public String getValue() throws NoSuchElementException {
+				return value;
+			}
+
+			@Override
 			public Map<String, Config> getChildren() {
 				return emptyMap();
 			}
@@ -240,6 +248,11 @@ public interface Config {
 				@Override
 				public String getValue(@Nullable String defaultValue) {
 					return defaultValue;
+				}
+
+				@Override
+				public String getValue() throws NoSuchElementException {
+					throw new NoSuchElementException();
 				}
 
 				@Override
@@ -268,6 +281,12 @@ public interface Config {
 			}
 
 			@Override
+			public String getValue() throws NoSuchElementException {
+				if (value != null) return value;
+				throw new NoSuchElementException();
+			}
+
+			@Override
 			public Map<String, Config> getChildren() {
 				return finalChildren;
 			}
@@ -292,7 +311,7 @@ public interface Config {
 	default Map<String, String> toMap() {
 		Map<String, String> result = new LinkedHashMap<>();
 		if (hasValue()) {
-			result.put(THIS, get(THIS));
+			result.put(THIS, getValue());
 		}
 		Map<String, Config> children = getChildren();
 		for (String key : children.keySet()) {
