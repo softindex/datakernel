@@ -5,12 +5,12 @@ import com.google.inject.Module;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import io.datakernel.config.Config;
+import io.datakernel.config.ConfigConverters;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.modules.EventloopModule;
-import io.datakernel.launcher.modules.ExecutorServiceModule;
 import io.datakernel.remotefs.RemoteFsServer;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.trigger.TriggerRegistry;
@@ -32,7 +32,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
 public abstract class RemoteFsServerLauncher extends Launcher {
-	public static final String PRODUCTION_MODE = "production";
+	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
 	public static final String PROPERTIES_FILE = "remotefs-server.properties";
 	public static final String PROPERTIES_FILE_EFFECTIVE = "remotefs-server.effective.properties";
 
@@ -56,15 +56,20 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 								.override(Config.ofProperties(System.getProperties()).getChild("config")))
 						.saveEffectiveConfigTo(PROPERTIES_FILE_EFFECTIVE),
 				EventloopModule.create(),
-				ExecutorServiceModule.create(),
 				new SimpleModule() {
 					@Provides
 					@Singleton
-					RemoteFsServer provideServer(Eventloop eventloop, ExecutorService executor, TriggerRegistry triggerRegistry,
-					                             Config config) {
+					RemoteFsServer remoteFsServer(Eventloop eventloop, ExecutorService executor, TriggerRegistry triggerRegistry,
+					                              Config config) {
 						return RemoteFsServer.create(eventloop, executor, config.get(ofPath(), "remotefs.path"))
 								.initialize(server -> initializeRemoteFsServer(server, config.getChild("remotefs")))
 								.initialize(server -> initializeRemoteFsServerTriggers(server, triggerRegistry, config.getChild("triggers.remotefs")));
+					}
+
+					@Provides
+					@Singleton
+					public ExecutorService provide(Config config) {
+						return ConfigConverters.getExecutorService(config.getChild("remotefs.executor"));
 					}
 				}
 		);
@@ -81,6 +86,6 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 
 	public static void main(String[] args) throws Exception {
 		Launcher launcher = new RemoteFsServerLauncher() {};
-		launcher.launch(parseBoolean(System.getProperty(PRODUCTION_MODE)), args);
+		launcher.launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
 	}
 }

@@ -35,6 +35,10 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 import static io.datakernel.config.Config.THIS;
@@ -581,4 +585,15 @@ public final class ConfigConverters {
 		};
 	}
 
+	public static ExecutorService getExecutorService(Config config) {
+		int corePoolSize = config.get(ofInteger().withConstraint(x -> x >= 0), "corePoolSize", 0);
+		int maxPoolSize = config.get(ofInteger().withConstraint(x -> x == 0 || x >= corePoolSize), "maxPoolSize", 0);
+		int keepAlive = config.get(ofInteger().withConstraint(x -> x >= 0), "keepAliveSeconds", 60);
+		return new ThreadPoolExecutor(
+				corePoolSize,
+				maxPoolSize == 0 ? Integer.MAX_VALUE : maxPoolSize,
+				keepAlive,
+				TimeUnit.SECONDS,
+				new LinkedBlockingQueue<>());
+	}
 }

@@ -28,7 +28,7 @@ import static java.util.Collections.singletonList;
 
 @SuppressWarnings("SimplifiableConditionalExpression")
 public abstract class RpcServerLauncher extends Launcher {
-	public static final String PRODUCTION_MODE = "production";
+	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
 	public static final String PROPERTIES_FILE = "rpc-server.properties";
 	public static final String PROPERTIES_FILE_EFFECTIVE = "rpc-server.effective.properties";
 	public static final String BUSINESS_MODULE_PROP = "businessLogicModule";
@@ -88,6 +88,6 @@ public abstract class RpcServerLauncher extends Launcher {
 				return singletonList(businessLogicModule);
 			}
 		};
-		launcher.launch(parseBoolean(System.getProperty(PRODUCTION_MODE)), args);
+		launcher.launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
 	}
 }

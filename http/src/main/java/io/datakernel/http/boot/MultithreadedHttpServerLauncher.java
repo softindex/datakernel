@@ -39,7 +39,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
 public abstract class MultithreadedHttpServerLauncher extends Launcher {
-	public static final String PRODUCTION_MODE = "production";
+	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
 	public static final String PROPERTIES_FILE = "http-server.properties";
 	public static final String PROPERTIES_FILE_EFFECTIVE = "http-server.effective.properties";
 	public static final String BUSINESS_MODULE_PROP = "businessLogicModule";
@@ -134,6 +134,6 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 				return singletonList(businessLogicModule);
 			}
 		};
-		launcher.launch(parseBoolean(System.getProperty(PRODUCTION_MODE)), args);
+		launcher.launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
 	}
 }

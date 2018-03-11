@@ -27,6 +27,7 @@ import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
 
 public abstract class CubeHttpServerLauncher extends HttpServerLauncher {
+	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
 	public static final String CUBE_MODULE_PROP = "cubeModule";
 
 	@Override
@@ -78,6 +79,6 @@ public abstract class CubeHttpServerLauncher extends HttpServerLauncher {
 				return Collections.singletonList(cubeModule);
 			}
 		};
-		launcher.launch(parseBoolean(System.getProperty(PRODUCTION_MODE)), args);
+		launcher.launch(parseBoolean(System.getProperty(EAGER_SINGLETONS_MODE)), args);
 	}
 }

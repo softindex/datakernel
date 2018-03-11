@@ -15,6 +15,8 @@ import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static io.datakernel.util.CollectionUtils.hasIntersection;
+import static io.datakernel.util.CollectionUtils.intersection;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Collections.*;
@@ -257,7 +259,7 @@ public interface Config {
 		}
 		String value = otherValue != null ? otherValue : getValue(null);
 		Map<String, Config> children = new LinkedHashMap<>(getChildren());
-		otherChildren.keySet().forEach(key -> children.merge(key, otherChildren.get(key), Config::override));
+		otherChildren.forEach((key, otherChild) -> children.merge(key, otherChild, Config::override));
 		Map<String, Config> finalChildren = unmodifiableMap(children);
 		return new Config() {
 			@Override
@@ -270,6 +272,21 @@ public interface Config {
 				return finalChildren;
 			}
 		};
+	}
+
+	default Config combine(Config other) {
+		String thisValue = getValue(null);
+		Map<String, Config> thisChildren = getChildren();
+		String otherValue = other.getValue(null);
+		Map<String, Config> otherChildren = other.getChildren();
+		if (thisValue != null && otherValue != null) {
+			throw new IllegalArgumentException("Duplicate values\n" + this.toMap() + "\n" + other.toMap());
+		}
+		if (hasIntersection(thisChildren.keySet(), otherChildren.keySet())) {
+			throw new IllegalArgumentException("Duplicate keys: " + intersection(thisChildren.keySet(), otherChildren.keySet()) +
+					"\n" + this.toMap() + "\n" + other.toMap());
+		}
+		return override(other);
 	}
 
 	default Map<String, String> toMap() {
