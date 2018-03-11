@@ -30,7 +30,7 @@ import static java.util.stream.Collectors.*;
 public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 	public static final double DEFAULT_SMOOTHING_WINDOW = SMOOTHING_WINDOW_5_MINUTES;
-	public static final String DEFAULT_REVISION_TABLE = "ot_revision";
+	public static final String DEFAULT_REVISION_TABLE = "ot_revisions";
 	public static final String DEFAULT_DIFFS_TABLE = "ot_diffs";
 	public static final String DEFAULT_BACKUP_TABLE = "ot_revisions_backup";
 
@@ -91,17 +91,17 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 
 	private String sql(String sql) {
 		return sql
-				.replace(DEFAULT_REVISION_TABLE, tableRevision)
-				.replace(DEFAULT_DIFFS_TABLE, tableDiffs)
-				.replace(DEFAULT_BACKUP_TABLE, Objects.toString(tableBackup, ""));
+				.replace("{revisions}", tableRevision)
+				.replace("{diffs}", tableDiffs)
+				.replace("{backup}", Objects.toString(tableBackup, ""));
 	}
 
 	public void truncateTables() throws SQLException {
 		logger.trace("Truncate tables");
 		try (Connection connection = dataSource.getConnection()) {
 			Statement statement = connection.createStatement();
-			statement.execute(sql("TRUNCATE TABLE ot_diffs"));
-			statement.execute(sql("TRUNCATE TABLE ot_revisions"));
+			statement.execute(sql("TRUNCATE TABLE {diffs}"));
+			statement.execute(sql("TRUNCATE TABLE {revisions}"));
 		}
 	}
 
@@ -112,7 +112,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 			try (Connection connection = dataSource.getConnection()) {
 				connection.setAutoCommit(true);
 				try (PreparedStatement statement = connection.prepareStatement(
-						sql("INSERT INTO ot_revisions(type, created_by) VALUES (?, ?)"),
+						sql("INSERT INTO {revisions} (type, created_by) VALUES (?, ?)"),
 						Statement.RETURN_GENERATED_KEYS)) {
 					statement.setString(1, "NEW");
 					statement.setString(2, createdBy);
@@ -127,7 +127,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 		}).whenComplete(stageCreateCommitId.recordStats());
 	}
 
-	private String toJson(List<D> diffs) {
+	private String toJson(List<D> diffs) throws IOException {
 		return GsonAdapters.toJson(diffsAdapter, diffs);
 	}
 
@@ -158,7 +158,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 					for (Integer parentId : commit.getParents().keySet()) {
 						List<D> diff = commit.getParents().get(parentId);
 						try (PreparedStatement ps = connection.prepareStatement(
-								sql("INSERT INTO ot_diffs(revision_id, parent_id, diff) VALUES (?, ?, ?)"))) {
+								sql("INSERT INTO {diffs}(revision_id, parent_id, diff) VALUES (?, ?, ?)"))) {
 							ps.setInt(1, commit.getId());
 							ps.setInt(2, parentId);
 							ps.setString(3, toJson(diff));
@@ -174,7 +174,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 
 				if (!headCommitIds.isEmpty()) {
 					try (PreparedStatement ps = connection.prepareStatement(
-							sql("UPDATE ot_revisions SET type='HEAD' WHERE type='NEW' AND id IN " + in(headCommitIds.size())))) {
+							sql("UPDATE {revisions} SET type='HEAD' WHERE type='NEW' AND id IN " + in(headCommitIds.size())))) {
 						int pos = 1;
 						for (Integer id : headCommitIds) {
 							ps.setInt(pos++, id);
@@ -185,7 +185,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 
 				if (!innerCommitIds.isEmpty()) {
 					try (PreparedStatement ps = connection.prepareStatement(
-							sql("UPDATE ot_revisions SET type='INNER' WHERE id IN " + in(innerCommitIds.size())))) {
+							sql("UPDATE {revisions} SET type='INNER' WHERE id IN " + in(innerCommitIds.size())))) {
 						int pos = 1;
 						for (Integer id : innerCommitIds) {
 							ps.setInt(pos++, id);
@@ -208,7 +208,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 			logger.trace("Get Heads");
 			try (Connection connection = dataSource.getConnection()) {
 				try (PreparedStatement ps = connection.prepareStatement(
-						sql("SELECT id FROM ot_revisions WHERE type='HEAD'"))) {
+						sql("SELECT id FROM {revisions} WHERE type='HEAD'"))) {
 					ResultSet resultSet = ps.executeQuery();
 					Set<Integer> result = new HashSet<>();
 					while (resultSet.next()) {
@@ -228,7 +228,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 		return Stage.ofCallable(executor, () -> {
 			try (Connection connection = dataSource.getConnection()) {
 				try (PreparedStatement ps = connection.prepareStatement(
-						sql("SELECT snapshot FROM ot_revisions WHERE id=?"))) {
+						sql("SELECT snapshot FROM {revisions} WHERE id=?"))) {
 					ps.setInt(1, revisionId);
 					ResultSet resultSet = ps.executeQuery();
 
@@ -254,10 +254,10 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 				boolean snapshot = false;
 
 				try (PreparedStatement ps = connection.prepareStatement(
-						sql("SELECT UNIX_TIMESTAMP(ot_revisions.timestamp) AS timestamp, ot_revisions.snapshot IS NOT NULL AS snapshot, ot_diffs.parent_id, ot_diffs.diff " +
-								"FROM ot_revisions " +
-								"LEFT JOIN ot_diffs ON ot_diffs.revision_id=ot_revisions.id " +
-								"WHERE ot_revisions.id=?"))) {
+						sql("SELECT UNIX_TIMESTAMP({revisions}.timestamp) AS timestamp, {revisions}.snapshot IS NOT NULL AS snapshot, {diffs}.parent_id, {diffs}.diff " +
+								"FROM {revisions} " +
+								"LEFT JOIN {diffs} ON {diffs}.revision_id={revisions}.id " +
+								"WHERE {revisions}.id=?"))) {
 					ps.setInt(1, revisionId);
 					ResultSet resultSet = ps.executeQuery();
 
@@ -290,7 +290,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 			try (Connection connection = dataSource.getConnection()) {
 				String snapshot = toJson(otSystem.squash(diffs));
 				try (PreparedStatement ps = connection.prepareStatement(sql("" +
-						"UPDATE ot_revisions " +
+						"UPDATE {revisions} " +
 						"SET snapshot = ? " +
 						"WHERE id = ?"))) {
 					ps.setString(1, snapshot);
@@ -311,13 +311,13 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 				connection.setAutoCommit(false);
 
 				try (PreparedStatement ps = connection.prepareStatement(
-						sql("DELETE FROM ot_revisions WHERE id < ?"))) {
+						sql("DELETE FROM {revisions} WHERE id < ?"))) {
 					ps.setInt(1, minId);
 					ps.executeUpdate();
 				}
 
 				try (PreparedStatement ps = connection.prepareStatement(
-						sql("DELETE FROM ot_diffs WHERE revision_id < ?"))) {
+						sql("DELETE FROM {diffs} WHERE revision_id < ?"))) {
 					ps.setInt(1, minId);
 					ps.executeUpdate();
 				}
@@ -336,7 +336,7 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 		return Stage.ofCallable(executor, () -> {
 			try (Connection connection = dataSource.getConnection()) {
 				try (PreparedStatement statement = connection.prepareStatement(
-						sql("INSERT INTO ot_revisions_backup(id, snapshot) VALUES (?, ?)"))) {
+						sql("INSERT INTO {backup}(id, snapshot) VALUES (?, ?)"))) {
 					statement.setInt(1, checkpointId);
 					statement.setString(2, toJson(diffs));
 					statement.executeUpdate();
