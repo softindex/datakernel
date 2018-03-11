@@ -53,18 +53,18 @@ public final class EffectiveConfig implements Config {
 
 	private final Config config;
 	private final Map<String, Config> children;
-	private final String rootPath;
+	private final String path;
 	private final CallsRegistry callsRegistry;
 
 	// creators
-	private EffectiveConfig(String rootPath, Config config, CallsRegistry callsRegistry) {
+	private EffectiveConfig(String path, Config config, CallsRegistry callsRegistry) {
 		this.config = config;
-		this.rootPath = rootPath;
+		this.path = path;
 		this.callsRegistry = callsRegistry;
 		this.children = new LinkedHashMap<>();
 		for (Map.Entry<String, Config> entry : config.getChildren().entrySet()) {
 			this.children.put(entry.getKey(),
-					new EffectiveConfig(concatPath(this.rootPath, entry.getKey()), entry.getValue(), this.callsRegistry));
+					new EffectiveConfig(concatPath(this.path, entry.getKey()), entry.getValue(), this.callsRegistry));
 		}
 	}
 
@@ -92,10 +92,19 @@ public final class EffectiveConfig implements Config {
 	public String getValue(@Nullable String defaultValue) {
 		String value = config.getValue(defaultValue);
 		synchronized (this) {
-			callsRegistry.registerCall(rootPath, value);
+			callsRegistry.registerCall(path, value);
 			if (defaultValue != null) {
-				callsRegistry.registerDefaultCall(rootPath, value, defaultValue);
+				callsRegistry.registerDefaultCall(path, value, defaultValue);
 			}
+		}
+		return value;
+	}
+
+	@Override
+	public String getValue() {
+		String value = config.getValue();
+		synchronized (this) {
+			callsRegistry.registerCall(path, value);
 		}
 		return value;
 	}
@@ -108,7 +117,7 @@ public final class EffectiveConfig implements Config {
 	@Override
 	public Config provideNoKeyChild(String key) {
 		checkArgument(!getChildren().containsKey(key));
-		return new EffectiveConfig(concatPath(rootPath, key), Config.EMPTY, callsRegistry);
+		return new EffectiveConfig(concatPath(path, key), config.provideNoKeyChild(key), callsRegistry);
 	}
 
 	@Override
@@ -130,8 +139,7 @@ public final class EffectiveConfig implements Config {
 	// rendering
 	public void saveEffectiveConfigTo(Path outputPath) {
 		try {
-			String renderedConfig;
-			renderedConfig = this.render();
+			String renderedConfig = this.render();
 			Files.write(outputPath, renderedConfig.getBytes(UTF_8), new StandardOpenOption[]{CREATE, WRITE, TRUNCATE_EXISTING});
 		} catch (IOException e) {
 			throw new RuntimeException("Failed to serialize effective config as properties file", e);

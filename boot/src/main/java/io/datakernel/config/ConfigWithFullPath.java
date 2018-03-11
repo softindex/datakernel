@@ -8,17 +8,17 @@ import static io.datakernel.config.Config.concatPath;
 import static io.datakernel.util.Preconditions.checkArgument;
 
 public class ConfigWithFullPath implements Config {
-	private final String prefix;
+	private final String path;
 	private final Config config;
 	private final Map<String, Config> children;
 
-	private ConfigWithFullPath(String prefix, Config config) {
-		this.prefix = prefix;
+	private ConfigWithFullPath(String path, Config config) {
+		this.path = path;
 		this.config = config;
 		this.children = new LinkedHashMap<>();
 		for (Map.Entry<String, Config> entry : config.getChildren().entrySet()) {
 			this.children.put(entry.getKey(),
-					new ConfigWithFullPath(concatPath(this.prefix, entry.getKey()), entry.getValue()));
+					new ConfigWithFullPath(concatPath(this.path, entry.getKey()), entry.getValue()));
 		}
 	}
 
@@ -39,15 +39,16 @@ public class ConfigWithFullPath implements Config {
 	@Override
 	public Config provideNoKeyChild(String key) {
 		checkArgument(!children.keySet().contains(key));
-		return new ConfigWithFullPath(concatPath(this.prefix, key), EMPTY);
+		return new ConfigWithFullPath(concatPath(this.path, key), config.provideNoKeyChild(key));
 	}
 
 	@Override
-	public String get(String path) {
+	public String getValue() throws NoSuchElementException {
 		try {
-			return config.get(path);
+			return config.getValue();
 		} catch (NoSuchElementException e) {
-			throw new NoSuchElementException(concatPath(this.prefix, path));
+			throw new NoSuchElementException(this.path);
 		}
 	}
+
 }

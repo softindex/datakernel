@@ -30,7 +30,7 @@ public class ExecutorServiceModule extends SimpleModule {
 	@Singleton
 	public ExecutorService provide(Config config) {
 		Integer keepAlive = config.get(ofInteger().withConstraint(x -> x >= 0), "threadpool.keepAliveSeconds", 60);
-		Integer corePoolSize = config.get(ofInteger().withConstraint(x -> x > 0), "threadpool.corePoolSize", 0);
+		Integer corePoolSize = config.get(ofInteger().withConstraint(x -> x >= 0), "threadpool.corePoolSize", 0);
 		Integer maxPoolSize = config.get(ofInteger().withConstraint(x -> x == 0 || x >= corePoolSize), "threadpool.maxPoolSize", 0);
 		return new ThreadPoolExecutor(
 				corePoolSize,

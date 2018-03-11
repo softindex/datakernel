@@ -49,6 +49,14 @@ public interface Config {
 
 	String getValue(@Nullable String defaultValue);
 
+	default String getValue() throws NoSuchElementException {
+		String value = getValue(null);
+		if (value == null) {
+			throw new NoSuchElementException();
+		}
+		return value;
+	}
+
 	Map<String, Config> getChildren();
 
 	default boolean hasValue() {
@@ -77,14 +85,11 @@ public interface Config {
 
 	default String get(String path) throws NoSuchElementException {
 		checkPath(path);
-		String value = get(path, null);
-		if (value == null) {
-			throw new NoSuchElementException();
-		}
-		return value;
+		return getChild(path).getValue();
 	}
 
 	default String get(String path, @Nullable String defaultValue) {
+		checkPath(path);
 		return getChild(path).getValue(defaultValue);
 	}
 

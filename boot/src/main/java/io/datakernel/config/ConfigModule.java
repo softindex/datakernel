@@ -82,7 +82,7 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 	@Provides
 	@Singleton
 	Config provideConfig() {
-		Config config = configSupplier.get();
+		Config config = ConfigWithFullPath.wrap(configSupplier.get());
 		return effectiveConfigPath != null || finalConfigPath != null ? EffectiveConfig.wrap(config) : config;
 	}
 
