@@ -24,7 +24,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
 
-import static com.google.common.base.Strings.nullToEmpty;
 import static io.datakernel.config.Config.concatPath;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.Math.min;
@@ -171,7 +170,7 @@ public final class EffectiveConfig implements Config {
 				if (Objects.equals(used, defaultValue)) {
 					sb.append("# ");
 				}
-				writeProperty(sb, key, nullToEmpty(used));
+				writeProperty(sb, key, Objects.toString(used, ""));
 			}
 		}
 

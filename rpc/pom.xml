@@ -33,6 +33,7 @@
             <artifactId>datakernel-datastreams</artifactId>
             <version>${project.version}</version>
         </dependency>
+
         <dependency>
             <groupId>io.datakernel</groupId>
             <artifactId>datakernel-boot</artifactId>
@@ -43,11 +44,6 @@
         <dependency>
             <groupId>net.jpountz.lz4</groupId>
             <artifactId>lz4</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-classic</artifactId>
-            <optional>true</optional>
         </dependency>
     </dependencies>
 </project>

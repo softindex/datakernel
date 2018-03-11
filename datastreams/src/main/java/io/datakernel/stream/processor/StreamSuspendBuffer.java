@@ -52,7 +52,7 @@ public class StreamSuspendBuffer<T> implements StreamTransformer<T, T>, StreamDa
 	protected final class Input extends AbstractStreamConsumer<T> {
 		@Override
 		public Set<StreamCapability> getCapabilities() {
-			return withCap(output.getConsumer(), IMMEDIATE_SUSPEND);
+			return addCapabilities(output.getConsumer(), IMMEDIATE_SUSPEND);
 		}
 
 		@Override
@@ -101,7 +101,7 @@ public class StreamSuspendBuffer<T> implements StreamTransformer<T, T>, StreamDa
 
 		@Override
 		public Set<StreamCapability> getCapabilities() {
-			return withCap(input.getProducer(), IMMEDIATE_SUSPEND);
+			return addCapabilities(input.getProducer(), IMMEDIATE_SUSPEND);
 		}
 
 		@Override

@@ -134,12 +134,13 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	}
 
 	/** This method is useful for stream transformers that might add some capability to the stream */
-	protected static Set<StreamCapability> withCap(@Nullable StreamConsumer<?> consumer, StreamCapability cap) {
-		EnumSet<StreamCapability> caps = EnumSet.of(cap);
+	protected static Set<StreamCapability> addCapabilities(@Nullable StreamConsumer<?> consumer,
+	                                                       StreamCapability capability, StreamCapability... capabilities) {
+		EnumSet<StreamCapability> result = EnumSet.of(capability, capabilities);
 		if (consumer != null) {
-			caps.addAll(consumer.getCapabilities());
+			result.addAll(consumer.getCapabilities());
 		}
-		return caps;
+		return result;
 	}
 
 	@Override

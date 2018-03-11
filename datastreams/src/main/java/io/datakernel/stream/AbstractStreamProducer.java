@@ -201,12 +201,13 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	}
 
 	/** This method is useful for stream transformers that might add some capability to the stream */
-	protected static Set<StreamCapability> withCap(@Nullable StreamProducer<?> producer, StreamCapability cap) {
-		EnumSet<StreamCapability> caps = EnumSet.of(cap);
+	protected static Set<StreamCapability> addCapabilities(@Nullable StreamProducer<?> producer,
+	                                                       StreamCapability capability, StreamCapability... capabilities) {
+		EnumSet<StreamCapability> result = EnumSet.of(capability, capabilities);
 		if (producer != null) {
-			caps.addAll(producer.getCapabilities());
+			result.addAll(producer.getCapabilities());
 		}
-		return caps;
+		return result;
 	}
 
 	@Override

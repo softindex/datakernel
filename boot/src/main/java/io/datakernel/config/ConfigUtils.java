@@ -34,8 +34,8 @@ public class ConfigUtils {
 	}
 
 	public static void initializeEventloopTriggers(Eventloop eventloop, TriggerRegistry triggersRegistry, Config config) {
-		int businessLogicTimeWarning = config.get(ConfigConverters.ofInteger(), "businessLogicTime.warning", 10);
-		int businessLogicTimeHigh = config.get(ConfigConverters.ofInteger(), "businessLogicTime.high", 100);
+		int businessLogicTimeWarning = config.get(ofInteger(), "businessLogicTime.warning", 10);
+		int businessLogicTimeHigh = config.get(ofInteger(), "businessLogicTime.high", 100);
 		triggersRegistry.add(HIGH, "fatalErrors", () ->
 				TriggerResult.ofError(eventloop.getStats().getFatalErrors()));
 		triggersRegistry.add(WARNING, "businessLogic", () ->
@@ -45,5 +45,4 @@ public class ConfigUtils {
 				TriggerResult.ofValue(eventloop.getStats().getBusinessLogicTime().getSmoothedAverage(),
 						businessLogicTime -> businessLogicTime > businessLogicTimeHigh));
 	}
-
 }

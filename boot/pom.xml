@@ -24,20 +24,22 @@
             <artifactId>datakernel-eventloop</artifactId>
             <version>${project.version}</version>
         </dependency>
-	    <dependency>
-		    <groupId>io.datakernel</groupId>
-		    <artifactId>datakernel-test</artifactId>
-		    <version>${project.version}</version>
-	    </dependency>
-
         <dependency>
             <groupId>com.google.inject</groupId>
             <artifactId>guice</artifactId>
         </dependency>
+
         <dependency>
             <groupId>com.zaxxer</groupId>
             <artifactId>HikariCP</artifactId>
             <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>io.datakernel</groupId>
+            <artifactId>datakernel-test</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 

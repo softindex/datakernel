@@ -49,7 +49,7 @@ public final class StreamLateBinder<T> implements StreamTransformer<T, T> {
 
 		@Override
 		public Set<StreamCapability> getCapabilities() {
-			return withCap(output.getConsumer(), LATE_BINDING);
+			return addCapabilities(output.getConsumer(), LATE_BINDING);
 		}
 	}
 
@@ -81,7 +81,7 @@ public final class StreamLateBinder<T> implements StreamTransformer<T, T> {
 
 		@Override
 		public Set<StreamCapability> getCapabilities() {
-			return withCap(input.getProducer(), LATE_BINDING);
+			return addCapabilities(input.getProducer(), LATE_BINDING);
 		}
 	}
 

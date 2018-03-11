@@ -36,7 +36,7 @@ public class ConfigUtils {
 
 	public static void initializeHttpServerTriggers(AsyncHttpServer server, TriggerRegistry triggers, Config config) {
 		if (server.getStats() != null) {
-			int servletExceptionTtl = config.get(ConfigConverters.ofInteger(), "servletException.ttl", 5 * 60);
+			int servletExceptionTtl = config.get(ofInteger(), "servletException.ttl", 5 * 60);
 			double httpTimeoutsThreshold = config.get(ConfigConverters.ofDouble(), "httpTimeoutsThreshold", 1.0);
 			triggers.add(HIGH, "servletExceptions", () ->
 					TriggerResult.ofError(server.getStats().getServletExceptions())
