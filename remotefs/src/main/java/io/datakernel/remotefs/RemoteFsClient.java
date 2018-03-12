@@ -60,7 +60,7 @@ public final class RemoteFsClient implements IRemoteFsClient {
 	private final InetSocketAddress address;
 
 	private final MessagingSerializer<FsResponse, FsCommand> serializer =
-			ofJson(RemoteFsResponses.adapter, RemoteFsCommands.adapter);
+			ofJson(RemoteFsResponses.ADAPTER, RemoteFsCommands.ADAPTER);
 
 	// creators & builders
 	protected RemoteFsClient(Eventloop eventloop, InetSocketAddress address,

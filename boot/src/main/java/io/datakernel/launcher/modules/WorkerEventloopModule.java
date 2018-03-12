@@ -9,8 +9,8 @@ import io.datakernel.util.guice.OptionalDependency;
 import io.datakernel.util.guice.SimpleModule;
 import io.datakernel.worker.Worker;
 
-import static io.datakernel.config.ConfigInitializers.ofEventloop;
-import static io.datakernel.config.ConfigInitializers.ofEventloopTriggers;
+import static io.datakernel.config.Initializers.ofEventloop;
+import static io.datakernel.config.Initializers.ofEventloopTriggers;
 
 /**
  * This module provides an unnamed worker {@link Eventloop eventloop} instance.

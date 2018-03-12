@@ -26,7 +26,7 @@ import static io.datakernel.util.gson.GsonAdapters.*;
 
 @SuppressWarnings("WeakerAccess")
 public final class RemoteFsCommands {
-	static TypeAdapter<FsCommand> adapter = TypeAdapterObjectSubtype.<FsCommand>create()
+	static final TypeAdapter<FsCommand> ADAPTER = TypeAdapterObjectSubtype.<FsCommand>create()
 		.withSubtype(Upload.class, "Upload", TypeAdapterObject.create(Upload::new)
 			.with("filePath", STRING_JSON, Upload::getFilePath, Upload::setFilePath))
 		.withSubtype(Download.class, "Download", TypeAdapterObject.create(Download::new)

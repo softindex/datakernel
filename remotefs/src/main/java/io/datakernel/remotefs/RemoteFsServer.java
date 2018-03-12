@@ -40,7 +40,7 @@ import static io.datakernel.stream.net.MessagingSerializers.ofJson;
 
 public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 	protected final FileManager fileManager;
-	private final MessagingSerializer<FsCommand, FsResponse> serializer = ofJson(RemoteFsCommands.adapter, RemoteFsResponses.adapter);
+	private final MessagingSerializer<FsCommand, FsResponse> serializer = ofJson(RemoteFsCommands.ADAPTER, RemoteFsResponses.ADAPTER);
 
 	private final Map<Class, MessagingHandler> handlers;
 

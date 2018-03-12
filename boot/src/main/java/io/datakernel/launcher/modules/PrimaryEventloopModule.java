@@ -8,8 +8,8 @@ import io.datakernel.trigger.TriggerRegistry;
 import io.datakernel.util.guice.SimpleModule;
 import io.datakernel.worker.Primary;
 
-import static io.datakernel.config.ConfigInitializers.ofEventloop;
-import static io.datakernel.config.ConfigInitializers.ofEventloopTriggers;
+import static io.datakernel.config.Initializers.ofEventloop;
+import static io.datakernel.config.Initializers.ofEventloopTriggers;
 
 /**
  * This module provides a singleton primary {@link Eventloop eventloop} instance.

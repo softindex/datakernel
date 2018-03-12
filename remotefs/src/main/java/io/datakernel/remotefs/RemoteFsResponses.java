@@ -27,7 +27,7 @@ import static io.datakernel.util.gson.GsonAdapters.*;
 
 @SuppressWarnings("WeakerAccess")
 public final class RemoteFsResponses {
-	static TypeAdapter<FsResponse> adapter = TypeAdapterObjectSubtype.<FsResponse>create()
+	static final TypeAdapter<FsResponse> ADAPTER = TypeAdapterObjectSubtype.<FsResponse>create()
 		.withSubtype(Err.class, "Error", TypeAdapterObject.create(Err::new)
 			.with("msg", STRING_JSON, Err::getMsg, Err::setMsg))
 		.withSubtype(ListOfFiles.class, "FileList", TypeAdapterObject.create(ListOfFiles::new)

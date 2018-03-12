@@ -9,8 +9,8 @@ import io.datakernel.trigger.TriggerRegistry;
 import io.datakernel.util.guice.OptionalDependency;
 import io.datakernel.util.guice.SimpleModule;
 
-import static io.datakernel.config.ConfigInitializers.ofEventloop;
-import static io.datakernel.config.ConfigInitializers.ofEventloopTriggers;
+import static io.datakernel.config.Initializers.ofEventloop;
+import static io.datakernel.config.Initializers.ofEventloopTriggers;
 
 /**
  * This module provides an unnamed singleton {@link Eventloop eventloop} instance.
