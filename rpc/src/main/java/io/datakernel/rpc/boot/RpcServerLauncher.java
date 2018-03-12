@@ -20,7 +20,7 @@ import java.util.Collection;
 
 import static com.google.inject.util.Modules.combine;
 import static com.google.inject.util.Modules.override;
-import static io.datakernel.rpc.boot.ConfigUtils.initializeRpcServer;
+import static io.datakernel.rpc.boot.ConfigInitializers.ofRpcServer;
 import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -46,7 +46,7 @@ public abstract class RpcServerLauncher extends Launcher {
 	private Collection<Module> getBaseModules() {
 		return asList(
 				ServiceGraphModule.defaultInstance(),
-				JmxModule.defaultInstance(),
+				JmxModule.create(),
 				TriggersModule.defaultInstance(),
 				ConfigModule.create(() ->
 						Config.ofProperties(PROPERTIES_FILE, true)
@@ -58,7 +58,7 @@ public abstract class RpcServerLauncher extends Launcher {
 					@Singleton
 					RpcServer provideRpcServer(Config config, Eventloop eventloop, Initializer<RpcServer> rpcServerInitializer) {
 						return RpcServer.create(eventloop)
-								.initialize(server -> initializeRpcServer(server, config))
+								.initialize(ofRpcServer(config))
 								.initialize(rpcServerInitializer);
 					}
 				}

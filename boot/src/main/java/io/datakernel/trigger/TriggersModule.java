@@ -42,6 +42,7 @@ import static com.google.common.collect.Iterators.getLast;
 import static io.datakernel.trigger.Severity.*;
 import static io.datakernel.util.guice.GuiceUtils.*;
 import static java.util.Collections.emptyList;
+import static java.util.Collections.emptySet;
 
 public final class TriggersModule extends AbstractModule implements Initializable<TriggersModule> {
 	private Function<Key<?>, String> keyToString = GuiceUtils::prettyPrintSimpleKeyName;
@@ -55,8 +56,8 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 	private final Map<Key<?>, List<TriggerRegistryRecorder>> singletonRegistryRecords = new HashMap<>();
 	private final Map<KeyWithWorkerId, List<TriggerRegistryRecorder>> workerRegistryRecords = new HashMap<>();
 
-	private final Map<Class<?>, List<TriggerConfig<?>>> classSettings = new LinkedHashMap<>();
-	private final Map<Key<?>, List<TriggerConfig<?>>> keySettings = new LinkedHashMap<>();
+	private final Map<Class<?>, Set<TriggerConfig<?>>> classSettings = new LinkedHashMap<>();
+	private final Map<Key<?>, Set<TriggerConfig<?>>> keySettings = new LinkedHashMap<>();
 
 	private static final class TriggerConfig<T> {
 		private final Severity severity;
@@ -68,6 +69,20 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 			this.severity = severity;
 			this.name = name;
 			this.triggerFunction = triggerFunction;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) return true;
+			if (o == null || getClass() != o.getClass()) return false;
+			TriggerConfig<?> that = (TriggerConfig<?>) o;
+			return severity == that.severity &&
+					Objects.equals(name, that.name);
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash(severity, name);
 		}
 	}
 
@@ -181,13 +196,13 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 
 	public <T> TriggersModule with(Class<T> type, Severity severity, String name,
 	                               Function<T, TriggerResult> triggerFunction) {
-		classSettings.computeIfAbsent(type, $ -> new ArrayList<>()).add(new TriggerConfig<>(severity, name, triggerFunction));
+		classSettings.computeIfAbsent(type, $ -> new LinkedHashSet<>()).add(new TriggerConfig<>(severity, name, triggerFunction));
 		return this;
 	}
 
 	public <T> TriggersModule with(Key<T> key, Severity severity, String name,
 	                               Function<T, TriggerResult> triggerFunction) {
-		keySettings.computeIfAbsent(key, $ -> new ArrayList<>()).add(new TriggerConfig<>(severity, name, triggerFunction));
+		keySettings.computeIfAbsent(key, $ -> new LinkedHashSet<>()).add(new TriggerConfig<>(severity, name, triggerFunction));
 		return this;
 	}
 
@@ -382,7 +397,7 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 	@SuppressWarnings("unchecked")
 	private void scanKeySettings(Map<KeyWithWorkerId, List<TriggerRegistryRecord>> triggers, KeyWithWorkerId internalKey, Object instance) {
 		Key<Object> key = (Key<Object>) internalKey.key;
-		for (TriggerConfig<?> config : keySettings.getOrDefault(key, emptyList())) {
+		for (TriggerConfig<?> config : keySettings.getOrDefault(key, emptySet())) {
 			triggers.computeIfAbsent(internalKey, $ -> new ArrayList<>())
 					.add(new TriggerRegistryRecord(config.severity, config.name, () ->
 							((TriggerConfig<Object>) config).triggerFunction.apply(instance)));

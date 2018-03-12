@@ -28,11 +28,13 @@ import java.util.List;
 
 import static com.google.inject.util.Modules.combine;
 import static com.google.inject.util.Modules.override;
+import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.config.ConfigConverters.ofInteger;
-import static io.datakernel.config.ConfigUtils.*;
-import static io.datakernel.http.boot.ConfigUtils.initializeHttpServerTriggers;
-import static io.datakernel.http.boot.ConfigUtils.initializeHttpWorker;
+import static io.datakernel.config.ConfigInitializers.*;
+import static io.datakernel.http.boot.ConfigInitializers.ofHttpServerTriggers;
+import static io.datakernel.http.boot.ConfigInitializers.ofHttpWorker;
+import static io.datakernel.jmx.JmxInitializers.ofGlobalEventloopStats;
 import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -57,13 +59,14 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 	private Collection<Module> getBaseModules() {
 		return asList(
 				ServiceGraphModule.defaultInstance(),
-				JmxModule.defaultInstance(),
+				JmxModule.create()
+						.initialize(ofGlobalEventloopStats()),
 				TriggersModule.defaultInstance(),
 				ConfigModule.create(() ->
 						Config.create()
 								.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(8080)))
-								.override(Config.ofProperties(PROPERTIES_FILE, true))
-								.override(Config.ofProperties(System.getProperties()).getChild("config")))
+								.override(ofProperties(PROPERTIES_FILE, true))
+								.override(ofProperties(System.getProperties()).getChild("config")))
 						.saveEffectiveConfigTo(PROPERTIES_FILE_EFFECTIVE),
 				new SimpleModule() {
 					@Provides
@@ -72,8 +75,8 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 					public Eventloop provide(Config config,
 					                         TriggerRegistry triggerRegistry) {
 						return Eventloop.create()
-								.initialize(eventloop -> initializeEventloop(eventloop, config.getChild("eventloop.primary")))
-								.initialize(eventloop -> initializeEventloopTriggers(eventloop, triggerRegistry, config.getChild("triggers.eventloop")));
+								.initialize(ofEventloop(config.getChild("eventloop.primary")))
+								.initialize(ofEventloopTriggers(triggerRegistry, config.getChild("triggers.eventloop")));
 					}
 
 					@Provides
@@ -82,9 +85,9 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 					                         OptionalDependency<ThrottlingController> maybeThrottlingController,
 					                         TriggerRegistry triggerRegistry) {
 						return Eventloop.create()
-								.initialize(eventloop -> initializeEventloop(eventloop, config.getChild("eventloop.worker")))
-								.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withThrottlingController))
-								.initialize(eventloop -> initializeEventloopTriggers(eventloop, triggerRegistry, config.getChild("triggers.eventloop")));
+								.initialize(ofEventloop(config.getChild("eventloop.worker")))
+								.initialize(ofEventloopTriggers(triggerRegistry, config.getChild("triggers.eventloop")))
+								.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withThrottlingController));
 					}
 
 					@Provides
@@ -98,15 +101,15 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 					public PrimaryServer providePrimaryServer(@Primary Eventloop primaryEventloop, WorkerPool workerPool, Config config) {
 						List<AsyncHttpServer> workerHttpServers = workerPool.getInstances(AsyncHttpServer.class);
 						return PrimaryServer.create(primaryEventloop, workerHttpServers)
-								.initialize(server -> initializePrimaryServer(server, config.getChild("http")));
+								.initialize(ofPrimaryServer(config.getChild("http")));
 					}
 
 					@Provides
 					@Worker
 					public AsyncHttpServer provideWorker(Eventloop eventloop, AsyncServlet rootServlet, TriggerRegistry triggerRegistry, Config config) {
 						return AsyncHttpServer.create(eventloop, rootServlet)
-								.initialize(server -> initializeHttpWorker(server, config.getChild("http")))
-								.initialize(server -> initializeHttpServerTriggers(server, triggerRegistry, config.getChild("triggers.http")));
+								.initialize(ofHttpWorker(config.getChild("http")))
+								.initialize(ofHttpServerTriggers(triggerRegistry, config.getChild("triggers.http")));
 					}
 				});
 	}

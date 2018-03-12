@@ -8,8 +8,8 @@ import io.datakernel.trigger.TriggerRegistry;
 import io.datakernel.util.guice.SimpleModule;
 import io.datakernel.worker.Primary;
 
-import static io.datakernel.config.ConfigUtils.initializeEventloop;
-import static io.datakernel.config.ConfigUtils.initializeEventloopTriggers;
+import static io.datakernel.config.ConfigInitializers.ofEventloop;
+import static io.datakernel.config.ConfigInitializers.ofEventloopTriggers;
 
 /**
  * This module provides a singleton primary {@link Eventloop eventloop} instance.
@@ -31,7 +31,7 @@ public class PrimaryEventloopModule extends SimpleModule {
 	public Eventloop provide(Config config,
 	                         TriggerRegistry triggerRegistry) {
 		return Eventloop.create()
-				.initialize(eventloop -> initializeEventloop(eventloop, config.getChild("eventloop.primary")))
-				.initialize(eventloop -> initializeEventloopTriggers(eventloop, triggerRegistry, config.getChild("triggers.eventloop")));
+				.initialize(ofEventloop(config.getChild("eventloop.primary")))
+				.initialize(ofEventloopTriggers(triggerRegistry, config.getChild("triggers.eventloop")));
 	}
 }

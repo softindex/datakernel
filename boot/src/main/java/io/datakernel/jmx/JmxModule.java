@@ -20,8 +20,6 @@ import com.google.inject.*;
 import com.google.inject.matcher.AbstractMatcher;
 import com.google.inject.name.Names;
 import com.google.inject.spi.ProvisionListener;
-import io.datakernel.async.EventloopTaskScheduler;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.service.BlockingService;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.util.Initializable;
@@ -65,24 +63,6 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 		return new JmxModule();
 	}
 
-	public static final String GLOBAL_EVENTLOOP_NAME = "GlobalEventloopStats";
-	public static final Key<Eventloop> GLOBAL_EVENTLOOP_KEY = Key.get(Eventloop.class, Names.named(GLOBAL_EVENTLOOP_NAME));
-
-	public static JmxModule defaultInstance() {
-		return create()
-				.withGlobalMBean(Eventloop.class, GLOBAL_EVENTLOOP_KEY)
-				.withOptional(GLOBAL_EVENTLOOP_KEY, "fatalErrors_total")
-				.withOptional(GLOBAL_EVENTLOOP_KEY, "loops_totalCount")
-				.withOptional(GLOBAL_EVENTLOOP_KEY, "businessLogicTime_smoothedAverage")
-				.withOptional(GLOBAL_EVENTLOOP_KEY, "idleLoops_smoothedRate")
-				.withOptional(GLOBAL_EVENTLOOP_KEY, "idleLoops_totalCount")
-				.withOptional(GLOBAL_EVENTLOOP_KEY, "selectOverdues_smoothedRate")
-				.withOptional(GLOBAL_EVENTLOOP_KEY, "selectOverdues_totalCount")
-				.withOptional(EventloopTaskScheduler.class, "duration_lastValue")
-				.withOptional(EventloopTaskScheduler.class, "exceptions_total")
-				.withOptional(EventloopTaskScheduler.class, "exceptions_lastTime");
-	}
-
 	public JmxModule withRefreshPeriod(double refreshPeriod) {
 		checkArgument(refreshPeriod > 0.0);
 
@@ -98,34 +78,34 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 	}
 
 	public <T> JmxModule withModifier(Key<?> key, String attrName, AttributeModifier<T> modifier) {
-		ensureSettings(key).addModifier(attrName, modifier);
+		keyToSettings.computeIfAbsent(key, $ -> MBeanSettings.defaultSettings())
+				.addModifier(attrName, modifier);
 		return this;
 	}
 
 	public <T> JmxModule withModifier(Type type, String attrName, AttributeModifier<T> modifier) {
-		ensureSettings(type).addModifier(attrName, modifier);
+		typeToSettings.computeIfAbsent(type, $ -> MBeanSettings.defaultSettings())
+				.addModifier(attrName, modifier);
 		return this;
 	}
 
 	public JmxModule withOptional(Key<?> key, String attrName) {
-		ensureSettings(key).addIncludedOptional(attrName);
+		keyToSettings.computeIfAbsent(key, $ -> MBeanSettings.defaultSettings())
+				.addIncludedOptional(attrName);
 		return this;
 	}
 
 	public JmxModule withOptional(Type type, String attrName) {
-		ensureSettings(type).addIncludedOptional(attrName);
+		typeToSettings.computeIfAbsent(type, $ -> MBeanSettings.defaultSettings())
+				.addIncludedOptional(attrName);
 		return this;
 	}
 
 	public JmxModule withHistogram(Key<?> key, String attrName, int[] histogramLevels) {
 		return this
 				.withOptional(key, attrName + "_histogram")
-				.withModifier(key, attrName, new AttributeModifier<ValueStats>() {
-					@Override
-					public void apply(ValueStats attribute) {
-						attribute.setHistogramLevels(histogramLevels);
-					}
-				});
+				.withModifier(key, attrName, (ValueStats attribute) ->
+						attribute.setHistogramLevels(histogramLevels));
 	}
 
 	public JmxModule withHistogram(Class<?> clazz, String attrName, int[] histogramLevels) {
@@ -137,7 +117,6 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 	}
 
 	public JmxModule withGlobalMBean(Type type, Key<?> key) {
-		checkArgument(!globalMBeans.containsKey(type), "GlobalMBean for \"%s\" was already specified", type);
 		globalMBeans.put(type, key);
 		return this;
 	}
@@ -149,24 +128,6 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 
 	public JmxModule withObjectName(Type type, String objectName) {
 		return withObjectName(Key.get(type), objectName);
-	}
-
-	private MBeanSettings ensureSettings(Key<?> key) {
-		MBeanSettings settings = keyToSettings.get(key);
-		if (settings == null) {
-			settings = MBeanSettings.defaultSettings();
-			keyToSettings.put(key, settings);
-		}
-		return settings;
-	}
-
-	private MBeanSettings ensureSettings(Type key) {
-		MBeanSettings settings = typeToSettings.get(key);
-		if (settings == null) {
-			settings = MBeanSettings.defaultSettings();
-			typeToSettings.put(key, settings);
-		}
-		return settings;
 	}
 
 	@Override
@@ -212,12 +173,12 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 		maybeInitializer.ifPresent(initializer -> initializer.accept(this));
 		return new JmxRegistratorService() {
 			@Override
-			public void start() throws Exception {
+			public void start() {
 				jmxRegistrator.registerJmxMBeans();
 			}
 
 			@Override
-			public void stop() throws Exception {
+			public void stop() {
 			}
 		};
 	}

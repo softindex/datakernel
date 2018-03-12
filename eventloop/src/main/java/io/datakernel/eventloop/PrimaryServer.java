@@ -16,6 +16,8 @@
 
 package io.datakernel.eventloop;
 
+import io.datakernel.util.Initializable;
+
 import java.util.List;
 
 /**
@@ -23,7 +25,7 @@ import java.util.List;
  * {@link WorkerServer}s, and when an incoming connection takes place, it forwards the request
  * to some server from the collection with round-robin algorithm.
  */
-public final class PrimaryServer extends AbstractServer<PrimaryServer> {
+public final class PrimaryServer extends AbstractServer<PrimaryServer> implements Initializable<PrimaryServer> {
 
 	private final WorkerServer[] workerServers;
 

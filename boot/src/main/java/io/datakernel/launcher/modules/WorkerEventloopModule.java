@@ -9,8 +9,8 @@ import io.datakernel.util.guice.OptionalDependency;
 import io.datakernel.util.guice.SimpleModule;
 import io.datakernel.worker.Worker;
 
-import static io.datakernel.config.ConfigUtils.initializeEventloop;
-import static io.datakernel.config.ConfigUtils.initializeEventloopTriggers;
+import static io.datakernel.config.ConfigInitializers.ofEventloop;
+import static io.datakernel.config.ConfigInitializers.ofEventloopTriggers;
 
 /**
  * This module provides an unnamed worker {@link Eventloop eventloop} instance.
@@ -32,8 +32,8 @@ public class WorkerEventloopModule extends SimpleModule {
 	                         OptionalDependency<ThrottlingController> maybeThrottlingController,
 	                         TriggerRegistry triggerRegistry) {
 		return Eventloop.create()
-				.initialize(eventloop -> initializeEventloop(eventloop, config.getChild("eventloop.worker")))
-				.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withThrottlingController))
-				.initialize(eventloop -> initializeEventloopTriggers(eventloop, triggerRegistry, config.getChild("triggers.eventloop")));
+				.initialize(ofEventloop(config.getChild("eventloop.worker")))
+				.initialize(ofEventloopTriggers(triggerRegistry, config.getChild("triggers.eventloop")))
+				.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withThrottlingController));
 	}
 }

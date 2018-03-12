@@ -23,11 +23,12 @@ import java.util.Collection;
 
 import static com.google.inject.util.Modules.combine;
 import static com.google.inject.util.Modules.override;
+import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
-import static io.datakernel.config.ConfigUtils.initializeEventloop;
-import static io.datakernel.config.ConfigUtils.initializeEventloopTriggers;
-import static io.datakernel.http.boot.ConfigUtils.initializeHttpServer;
-import static io.datakernel.http.boot.ConfigUtils.initializeHttpServerTriggers;
+import static io.datakernel.config.ConfigInitializers.ofEventloop;
+import static io.datakernel.config.ConfigInitializers.ofEventloopTriggers;
+import static io.datakernel.http.boot.ConfigInitializers.ofHttpServer;
+import static io.datakernel.http.boot.ConfigInitializers.ofHttpServerTriggers;
 import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -52,13 +53,13 @@ public abstract class HttpServerLauncher extends Launcher {
 	private Collection<Module> getBaseModules() {
 		return asList(
 				ServiceGraphModule.defaultInstance(),
-				JmxModule.defaultInstance(),
+				JmxModule.create(),
 				TriggersModule.defaultInstance(),
 				ConfigModule.create(() ->
 						Config.create()
 								.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(8080)))
-								.override(Config.ofProperties(PROPERTIES_FILE, true))
-								.override(Config.ofProperties(System.getProperties()).getChild("config")))
+								.override(ofProperties(PROPERTIES_FILE, true))
+								.override(ofProperties(System.getProperties()).getChild("config")))
 						.saveEffectiveConfigTo(PROPERTIES_FILE_EFFECTIVE),
 				new SimpleModule() {
 					@Provides
@@ -67,17 +68,17 @@ public abstract class HttpServerLauncher extends Launcher {
 					                         OptionalDependency<ThrottlingController> maybeThrottlingController,
 					                         TriggerRegistry triggerRegistry) {
 						return Eventloop.create()
-								.initialize(eventloop -> initializeEventloop(eventloop, config.getChild("eventloop")))
-								.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withThrottlingController))
-								.initialize(eventloop -> initializeEventloopTriggers(eventloop, triggerRegistry, config.getChild("triggers.eventloop")));
+								.initialize(ofEventloop(config.getChild("eventloop")))
+								.initialize(ofEventloopTriggers(triggerRegistry, config.getChild("triggers.eventloop")))
+								.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withThrottlingController));
 					}
 
 					@Provides
 					@Singleton
 					public AsyncHttpServer provide(Eventloop eventloop, AsyncServlet rootServlet, TriggerRegistry triggerRegistry, Config config) {
 						return AsyncHttpServer.create(eventloop, rootServlet)
-								.initialize(server -> initializeHttpServer(server, config.getChild("http")))
-								.initialize(server -> initializeHttpServerTriggers(server, triggerRegistry, config.getChild("triggers.http")));
+								.initialize(ofHttpServer(config.getChild("http")))
+								.initialize(ofHttpServerTriggers(triggerRegistry, config.getChild("triggers.http")));
 					}
 				}
 		);
