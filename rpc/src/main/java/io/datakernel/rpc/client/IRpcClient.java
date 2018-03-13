@@ -23,7 +23,7 @@ import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.rpc.protocol.RpcOverloadException;
 
 public interface IRpcClient {
-	AsyncTimeoutException RPC_TIMEOUT_EXCEPTION = new AsyncTimeoutException();
+	AsyncTimeoutException RPC_TIMEOUT_EXCEPTION = new AsyncTimeoutException("RPC");
 	RpcOverloadException RPC_OVERLOAD_EXCEPTION = new RpcOverloadException();
 
 	default <I, O> Stage<O> sendRequest(I request, int timeout) {

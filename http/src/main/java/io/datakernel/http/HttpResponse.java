@@ -29,10 +29,8 @@ import static io.datakernel.bytebuf.ByteBufStrings.putDecimal;
 import static io.datakernel.http.HttpHeaders.*;
 
 /**
- * It represents the HTTP result with which server response in client
- * {@link HttpRequest}. It must ave only one owner in each  part of time. After
- * handling in client this HTTP result it will be recycled and you can not use
- * it later.
+ * Represents HTTP response for {@link HttpRequest}. After handling {@code HttpResponse} will be recycled so you cannot
+ * usi it afterwards.
  */
 public final class HttpResponse extends HttpMessage {
 	private static final Value CACHE_CONTROL__NO_STORE = HttpHeaders.asBytes(CACHE_CONTROL, "no-store");

@@ -557,6 +557,13 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		return requestSender;
 	}
 
+	@Override
+	public String toString() {
+		return "RpcClient{" +
+				"connections=" + connections +
+				'}';
+	}
+
 	private final class NoSenderAvailable implements RpcSender {
 		@SuppressWarnings("ThrowableInstanceNeverThrown")
 		private final RpcNoSenderException NO_SENDER_AVAILABLE_EXCEPTION

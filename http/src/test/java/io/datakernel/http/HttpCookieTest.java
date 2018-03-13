@@ -41,7 +41,7 @@ public class HttpCookieTest {
 		GregorianCalendar calendar = new GregorianCalendar(2015, 0, 1);
 		calendar.setTimeZone(TimeZone.getTimeZone("GMT"));
 		assertEquals(cookie1.getExpirationDate(), calendar.getTime());
-		assertEquals(0, cookie1.getMaxAge());
+		assertEquals(-1, cookie1.getMaxAge());
 		assertTrue(cookie1.isSecure());
 		assertFalse(cookie1.isHttpOnly());
 

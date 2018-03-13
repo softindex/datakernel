@@ -64,7 +64,7 @@ public final class HttpCookie {
 	private final String name;
 	private String value;
 	private Date expirationDate;
-	private int maxAge;
+	private int maxAge = -1;
 	private String domain;
 	private String path = "/";
 	private boolean secure;
@@ -343,7 +343,7 @@ public final class HttpCookie {
 			putAscii(buf, "=");
 			HttpDate.render(expirationDate.getTime(), buf);
 		}
-		if (maxAge > 0) {
+		if (maxAge >= 0) {
 			putAscii(buf, "; ");
 			buf.put(MAX_AGE);
 			putAscii(buf, "=");

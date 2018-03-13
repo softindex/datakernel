@@ -27,6 +27,7 @@ import io.datakernel.jmx.JmxRefreshable;
 import io.datakernel.rpc.client.jmx.RpcRequestStats;
 import io.datakernel.rpc.client.sender.RpcSender;
 import io.datakernel.rpc.protocol.*;
+import io.datakernel.util.Preconditions;
 import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 
@@ -39,6 +40,7 @@ import java.util.concurrent.TimeUnit;
 
 import static io.datakernel.rpc.client.IRpcClient.RPC_OVERLOAD_EXCEPTION;
 import static io.datakernel.rpc.client.IRpcClient.RPC_TIMEOUT_EXCEPTION;
+import static io.datakernel.util.Preconditions.checkArgument;
 import static org.slf4j.LoggerFactory.getLogger;
 
 public final class RpcClientConnection implements RpcStream.Listener, RpcSender, JmxRefreshable {
@@ -67,7 +69,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 		}
 	}
 
-	private final Logger logger = getLogger(this.getClass());
+	private final static Logger logger = getLogger(RpcClientConnection.class);
 	@SuppressWarnings("ThrowableInstanceNeverThrown")
 	private final Eventloop eventloop;
 	private final RpcClient rpcClient;
@@ -79,6 +81,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 
 	private AsyncCancellable scheduleExpiredResponsesTask;
 	private int cookie = 0;
+	private int timeoutPrecision = DEFAULT_TIMEOUT_PRECISION;
 	private boolean connectionClosing;
 	private boolean serverClosing;
 
@@ -89,8 +92,8 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 	private final EventStats connectionRequests;
 
 	protected RpcClientConnection(Eventloop eventloop, RpcClient rpcClient,
-	                              InetSocketAddress address,
-	                              RpcStream stream) {
+								  InetSocketAddress address,
+								  RpcStream stream) {
 		this.eventloop = eventloop;
 		this.rpcClient = rpcClient;
 		this.stream = stream;
@@ -101,6 +104,12 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 		this.connectionStats = RpcRequestStats.create(RpcClient.SMOOTHING_WINDOW);
 		this.connectionRequests = connectionStats.getTotalRequests();
 		this.totalRequests = rpcClient.getGeneralRequestsStats().getTotalRequests();
+	}
+
+	public RpcClientConnection withTimeoutPrecision(int timeoutPrecision) {
+		checkArgument(timeoutPrecision > 0, "Timeout precision cannot be zero or less");
+		this.timeoutPrecision = timeoutPrecision;
+		return this;
 	}
 
 	@Override
@@ -152,17 +161,14 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 	private void scheduleExpiredResponsesTask() {
 		if (connectionClosing)
 			return;
-		scheduleExpiredResponsesTask = eventloop.delay(DEFAULT_TIMEOUT_PRECISION, expiredResponsesTask);
+		scheduleExpiredResponsesTask = eventloop.delay(timeoutPrecision, expiredResponsesTask);
 	}
 
 	private Runnable createExpiredResponsesTask() {
-		return new Runnable() {
-			@Override
-			public void run() {
-				checkExpiredResponses();
-				if (!timeoutCookies.isEmpty())
-					scheduleExpiredResponsesTask();
-			}
+		return () -> {
+			checkExpiredResponses();
+			if (!timeoutCookies.isEmpty())
+				scheduleExpiredResponsesTask();
 		};
 	}
 
@@ -297,6 +303,11 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 		stream.sendEndOfStream();
 	}
 
+	@Override
+	public String toString() {
+		return "RpcClientConnection{address=" + address + '}';
+	}
+
 	// JMX
 
 	public void startMonitoring() {
@@ -333,7 +344,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 		private final long dueTimestamp;
 
 		public JmxConnectionMonitoringResultCallback(RpcRequestStats requestStatsPerClass, Callback<T> callback,
-		                                             long timeout) {
+													 long timeout) {
 			this.stopwatch = Stopwatch.createStarted();
 			this.callback = callback;
 			this.requestStatsPerClass = requestStatsPerClass;
