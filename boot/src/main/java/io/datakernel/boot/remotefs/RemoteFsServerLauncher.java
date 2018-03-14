@@ -69,7 +69,7 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 					@Provides
 					@Singleton
 					public ExecutorService provide(Config config) {
-						return ConfigConverters.getExecutorService(config.getChild("remotefs.executor"));
+						return ConfigConverters.getExecutor(config.getChild("remotefs.executor"));
 					}
 				}
 		);

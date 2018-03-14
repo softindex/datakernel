@@ -16,12 +16,14 @@
 
 package io.datakernel.config;
 
+import io.datakernel.annotation.Nullable;
+
 import java.util.function.Predicate;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 
 public interface ConfigConverter<T> {
-	T get(Config config, T defaultValue);
+	T get(Config config, @Nullable T defaultValue);
 
 	T get(Config config);
 

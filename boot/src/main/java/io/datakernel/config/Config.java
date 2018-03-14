@@ -146,6 +146,14 @@ public interface Config {
 		};
 	}
 
+	static <T> Consumer<T> ifNotNull(Consumer<T> setter) {
+		return (value) -> {
+			if (value != null) {
+				setter.accept(value);
+			}
+		};
+	}
+
 	static <T> Consumer<T> ifNotDefault(T defaultValue, Consumer<T> setter) {
 		return value -> {
 			if (!Objects.equals(value, defaultValue)) {

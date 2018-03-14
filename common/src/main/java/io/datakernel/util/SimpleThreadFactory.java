@@ -21,9 +21,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 
-public final class SimpleThreadFactory implements ThreadFactory {
+public final class SimpleThreadFactory implements ThreadFactory, Initializable<SimpleThreadFactory> {
 	public static final String NAME_PATTERN = "{}";
 
+	private ThreadGroup threadGroup;
 	private String name = "Thread-{}";
 	private int priority;
 	private boolean daemon;
@@ -37,12 +38,22 @@ public final class SimpleThreadFactory implements ThreadFactory {
 		this.name = name;
 	}
 
-	public static ThreadFactory create() {
+	public static SimpleThreadFactory create() {
 		return new SimpleThreadFactory();
 	}
 
-	public static ThreadFactory create(String name) {
+	public static SimpleThreadFactory create(String name) {
 		return new SimpleThreadFactory(name);
+	}
+
+	public SimpleThreadFactory withThreadGroup(ThreadGroup threadGroup) {
+		this.threadGroup = threadGroup;
+		return this;
+	}
+
+	public SimpleThreadFactory withName(String name) {
+		this.name = name;
+		return this;
 	}
 
 	public SimpleThreadFactory withPriority(int priority) {
@@ -60,11 +71,32 @@ public final class SimpleThreadFactory implements ThreadFactory {
 		return count.get();
 	}
 
+	public void setCount(int count) {
+		this.count.set(count);
+	}
+
+	public ThreadGroup getThreadGroup() {
+		return threadGroup;
+	}
+
+	public String getName() {
+
+		return name;
+	}
+
+	public int getPriority() {
+		return priority;
+	}
+
+	public boolean isDaemon() {
+		return daemon;
+	}
+
 	@Override
 	public Thread newThread(Runnable runnable) {
 		Thread thread = name == null ?
-				new Thread(runnable) :
-				new Thread(runnable, name.replace(NAME_PATTERN, "" + count.incrementAndGet()));
+				new Thread(threadGroup, runnable) :
+				new Thread(threadGroup, runnable, name.replace(NAME_PATTERN, "" + count.incrementAndGet()));
 		thread.setDaemon(daemon);
 		if (priority != 0) {
 			thread.setPriority(priority);
