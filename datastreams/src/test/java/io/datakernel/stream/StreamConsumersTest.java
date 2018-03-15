@@ -6,6 +6,7 @@ import io.datakernel.stream.TestUtils.CountTransformer;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -107,4 +108,14 @@ public class StreamConsumersTest {
 		assertEquals(5, transformer.getSuspended());
 	}
 
+	@Test
+	public void testConsumerWrapper() {
+		List<Integer> values = IntStream.range(1, 6).boxed().collect(toList());
+		List<Integer> actual = new ArrayList<>();
+		StreamProducer<Integer> producer = StreamProducer.ofIterable(values);
+		StreamConsumer<Integer> consumer = StreamConsumer.ofConsumer(actual::add);
+		stream(producer, consumer);
+		eventloop.run();
+		assertEquals(values, actual);
+	}
 }

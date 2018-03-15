@@ -22,6 +22,7 @@ import io.datakernel.stream.processor.StreamLateBinder;
 
 import java.util.EnumSet;
 import java.util.Set;
+import java.util.function.Consumer;
 
 import static io.datakernel.stream.DataStreams.bind;
 import static io.datakernel.stream.StreamCapability.LATE_BINDING;
@@ -65,6 +66,13 @@ public interface StreamConsumer<T> {
 		return new StreamConsumers.ClosingWithErrorImpl<>(exception);
 	}
 
+	/**
+	 * Creates a stream consumer which passes consumed items into a given lambda.
+	 */
+	static <T> StreamConsumer<T> ofConsumer(Consumer<T> consumer) {
+		return new StreamConsumers.OfConsumerImpl<>(consumer);
+	}
+
 	String LATE_BINDING_ERROR_MESSAGE = "" +
 			"StreamConsumer %s does not have LATE_BINDING capabilities, " +
 			"it must be bound in the same tick when it is created. " +
@@ -87,7 +95,7 @@ public interface StreamConsumer<T> {
 	default <X> StreamConsumerWithResult<T, X> withResult(Stage<X> result) {
 		SettableStage<Void> safeEndOfStream = SettableStage.create();
 		SettableStage<X> safeResult = SettableStage.create();
-		this.getEndOfStream().whenComplete(($, throwable) -> {
+		getEndOfStream().whenComplete(($, throwable) -> {
 			safeEndOfStream.trySet($, throwable);
 			if (throwable != null) {
 				safeResult.trySetException(throwable);

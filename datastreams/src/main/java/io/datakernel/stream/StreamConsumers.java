@@ -59,6 +59,35 @@ public final class StreamConsumers {
 		}
 	}
 
+	static final class OfConsumerImpl<T> extends AbstractStreamConsumer<T> {
+
+		private final Consumer<T> consumer;
+
+		OfConsumerImpl(Consumer<T> consumer) {
+			this.consumer = consumer;
+		}
+
+		@Override
+		protected void onStarted() {
+			getProducer().produce(consumer::accept);
+		}
+
+		@Override
+		protected void onEndOfStream() {
+
+		}
+
+		@Override
+		protected void onError(Throwable t) {
+
+		}
+
+		@Override
+		public Set<StreamCapability> getCapabilities() {
+			return EnumSet.of(LATE_BINDING);
+		}
+	}
+
 	/**
 	 * Represents a simple {@link AbstractStreamConsumer} which with changing producer sets its status as complete.
 	 *
@@ -69,8 +98,8 @@ public final class StreamConsumers {
 
 		@Override
 		public void setProducer(StreamProducer<T> producer) {
-			producer.getEndOfStream()
-					.whenComplete(endOfStream::set);
+			producer.getEndOfStream().whenComplete(endOfStream::set);
+			producer.produce($ -> {});
 		}
 
 		@Override

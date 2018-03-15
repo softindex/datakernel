@@ -34,7 +34,7 @@ final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> impleme
 
 	// region creators
 	private SocketStreamConsumer(AsyncTcpSocket asyncTcpSocket,
-	                             SettableStage<Void> sentStage) {
+								 SettableStage<Void> sentStage) {
 		this.asyncTcpSocket = asyncTcpSocket;
 		this.sentStage = sentStage;
 	}
@@ -61,6 +61,10 @@ final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> impleme
 
 	@Override
 	public void onData(ByteBuf buf) {
+		if (getStatus().isClosed()) {
+			buf.recycle();
+			return;
+		}
 		asyncTcpSocket.write(buf);
 		int loop = eventloop.getLoop();
 

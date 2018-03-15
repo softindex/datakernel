@@ -25,6 +25,7 @@ import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -138,6 +139,16 @@ public interface StreamProducer<T> {
 		return new StreamProducers.IdleImpl<>();
 	}
 
+	/**
+	 * Returns producer which only closes itself.
+	 */
+	static <T> StreamProducer<T> closing() {
+		return new StreamProducers.ClosingImpl<>();
+	}
+
+	/**
+	 * Returns producer which only closes itself with given error.
+	 */
 	static <T> StreamProducer<T> closingWithError(Throwable t) {
 		return new StreamProducers.ClosingWithErrorImpl<>(t);
 	}
@@ -150,7 +161,7 @@ public interface StreamProducer<T> {
 	 */
 	@SafeVarargs
 	static <T> StreamProducer<T> of(T... values) {
-		return ofIterable(asList(values));
+		return new StreamProducers.OfIteratorImpl<>(asList(values).iterator());
 	}
 
 	/**
@@ -175,6 +186,28 @@ public interface StreamProducer<T> {
 
 	static <T> StreamProducer<T> ofStream(Stream<T> stream) {
 		return new StreamProducers.OfIteratorImpl<>(stream.iterator());
+	}
+
+	/**
+	 * Creates a stream producer which produces items from a given lambda.
+	 * End of stream is marked as null, so no null values cannot be used.
+	 */
+	static <T> StreamProducer<T> ofSupplier(Supplier<T> supplier) {
+		return new StreamProducers.OfIteratorImpl<>(new Iterator<T>() {
+			private T next = supplier.get();
+
+			@Override
+			public boolean hasNext() {
+				return next != null;
+			}
+
+			@Override
+			public T next() {
+				T n = next;
+				next = supplier.get();
+				return n;
+			}
+		});
 	}
 
 	String LATE_BINDING_ERROR_MESSAGE = "" +
@@ -224,7 +257,7 @@ public interface StreamProducer<T> {
 	default <X> StreamProducerWithResult<T, X> withResult(Stage<X> result) {
 		SettableStage<Void> safeEndOfStream = SettableStage.create();
 		SettableStage<X> safeResult = SettableStage.create();
-		this.getEndOfStream().whenComplete(($, throwable) -> {
+		getEndOfStream().whenComplete(($, throwable) -> {
 			safeEndOfStream.trySet($, throwable);
 			if (throwable != null) {
 				safeResult.trySetException(throwable);

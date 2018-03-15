@@ -3,6 +3,7 @@ package io.datakernel.async;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.AsyncTimeoutException;
+import io.datakernel.functional.Try;
 
 import java.util.concurrent.*;
 import java.util.function.BiConsumer;
@@ -12,7 +13,7 @@ import java.util.function.Function;
 
 public interface Stage<T> {
 
-	static <T> Stage<T> of(T value) {
+	static <T> Stage<T> of(@Nullable T value) {
 		SettableStage<T> stage = new SettableStage<>();
 		stage.result = value;
 		return stage;
@@ -126,11 +127,11 @@ public interface Stage<T> {
 	@FunctionalInterface
 	interface Handler<T, U> {
 		interface Completion<T> {
-			void complete(T result);
+			void complete(@Nullable T result);
 
 			void completeExceptionally(Throwable throwable);
 
-			default void complete(T result, Throwable throwable) {
+			default void complete(@Nullable T result, Throwable throwable) {
 				if (throwable == null) {
 					complete(result);
 				} else {
@@ -164,6 +165,8 @@ public interface Stage<T> {
 
 	Stage<T> exceptionally(Function<? super Throwable, ? extends T> fn);
 
+	Stage<T> mapFailure(Function<Throwable, Throwable> fn);
+
 	<U, V> Stage<V> combine(Stage<? extends U> other, BiFunction<? super T, ? super U, ? extends V> fn);
 
 	Stage<Void> both(Stage<?> other);
@@ -174,9 +177,11 @@ public interface Stage<T> {
 
 	AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException();
 
-	Stage<T> timeout(long millis);
+	Stage<T> timeout(long timeout);
 
 	Stage<T> post();
+
+	Stage<Try<T>> toTry();
 
 	CompletableFuture<T> toCompletableFuture();
 }

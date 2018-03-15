@@ -129,9 +129,13 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	}
 
 	@Override
-	public void onData(ByteBuf data) {
-		bufs.offer(data);
-		bufferedBytes += data.readRemaining();
+	public void onData(ByteBuf buf) {
+		if (getStatus().isClosed()) {
+			buf.recycle();
+			return;
+		}
+		bufs.offer(buf);
+		bufferedBytes += buf.readRemaining();
 		if (!bufs.isEmpty() && (bufs.size() > maxBuffers || bufferedBytes > maxBufferedBytes)) {
 			getProducer().suspend();
 		}

@@ -75,6 +75,40 @@ public final class StreamProducers {
 		}
 	}
 
+	/**
+	 * Represent producer which sends specified exception to consumer.
+	 *
+	 * @param <T>
+	 */
+	static class ClosingImpl<T> implements StreamProducer<T> {
+		private final SettableStage<Void> endOfStream = SettableStage.create();
+
+		@Override
+		public void setConsumer(StreamConsumer<T> consumer) {
+			getCurrentEventloop().post(() -> endOfStream.set(null));
+		}
+
+		@Override
+		public void produce(StreamDataReceiver<T> dataReceiver) {
+			// do nothing
+		}
+
+		@Override
+		public void suspend() {
+			// do nothing
+		}
+
+		@Override
+		public Stage<Void> getEndOfStream() {
+			return endOfStream;
+		}
+
+		@Override
+		public Set<StreamCapability> getCapabilities() {
+			return EnumSet.of(LATE_BINDING);
+		}
+	}
+
 	static final class IdleImpl<T> implements StreamProducer<T> {
 		private final SettableStage<Void> endOfStream = SettableStage.create();
 
@@ -123,11 +157,13 @@ public final class StreamProducers {
 		@Override
 		protected void produce() {
 			for (; ; ) {
-				if (!iterator.hasNext())
+				if (!iterator.hasNext()) {
 					break;
+				}
 				StreamDataReceiver<T> dataReceiver = getCurrentDataReceiver();
-				if (dataReceiver == null)
+				if (dataReceiver == null) {
 					return;
+				}
 				T item = iterator.next();
 				dataReceiver.onData(item);
 			}

@@ -27,11 +27,12 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.concurrent.ExecutorService;
 
+import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkState;
 import static java.lang.Math.min;
+import static java.nio.file.StandardOpenOption.READ;
 
 /**
  * This producer allows you to read data from a file in a non-blocking fashion.
@@ -39,7 +40,7 @@ import static java.lang.Math.min;
 public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 	private static final Logger logger = LoggerFactory.getLogger(StreamFileReader.class);
 
-	public static final OpenOption[] READ_OPTIONS = new OpenOption[]{StandardOpenOption.READ};
+	public static final OpenOption[] READ_OPTIONS = new OpenOption[]{READ};
 
 	public static final int DEFAULT_BUFFER_SIZE = 1 << 13; // 8 KB
 
@@ -63,20 +64,23 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 		return new StreamFileReader(asyncFile);
 	}
 
-	public StreamFileReader withBufferSize(int size) {
-		bufferSize = size;
+	public StreamFileReader withBufferSize(int bufferSize) {
+		this.bufferSize = bufferSize;
+		checkArgument(bufferSize > 0, "Buffer size cannot be less than or equal to zero");
 		return this;
 	}
 
-	public StreamFileReader withStartingPosition(long pos) {
+	public StreamFileReader withStartingPosition(long position) {
 		checkState(getConsumer() == null, "Cannot set position after binding the reader");
-		position = pos;
+		checkArgument(position >= 0, "Position cannot be less than zero");
+		this.position = position;
 		return this;
 	}
 
-	public StreamFileReader withReadingLength(long len) {
+	public StreamFileReader withReadingLength(long length) {
 		checkState(getConsumer() == null, "Cannot set reading length after binding the reader");
-		length = len;
+		checkArgument(length >= -1, "Reading length cannot be less than -1");
+		this.length = length == -1 ? Long.MAX_VALUE : length;
 		return this;
 	}
 

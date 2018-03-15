@@ -36,7 +36,7 @@ public interface StreamConsumerWithResult<T, X> extends StreamConsumer<T> {
 
 	@Override
 	default <R> StreamConsumerWithResult<R, X> with(StreamConsumerModifier<T, R> modifier) {
-		return modifier.applyTo(this).withResult(this.getResult());
+		return modifier.applyTo(this).withResult(getResult());
 	}
 
 	@Override
@@ -90,8 +90,14 @@ public interface StreamConsumerWithResult<T, X> extends StreamConsumer<T> {
 
 	default StreamConsumerWithResult<T, X> whenException(Consumer<? super Throwable> consumer) {
 		return whenComplete((x, throwable) -> {
-			if (throwable != null) consumer.accept(throwable);
+			if (throwable != null) {
+				consumer.accept(throwable);
+			}
 		});
+	}
+
+	default StreamConsumerWithResult<T, X> mapFailure(Function<Throwable, Throwable> fn) {
+		return withResult(getResult().mapFailure(fn));
 	}
 
 	/**

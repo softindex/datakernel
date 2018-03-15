@@ -16,6 +16,7 @@
 
 package io.datakernel.rpc.client.sender;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Callback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.hash.HashBucketFunction;
@@ -40,8 +41,8 @@ public final class RpcStrategyRendezvousHashing implements RpcStrategy {
 	private final int buckets;
 
 	private RpcStrategyRendezvousHashing(HashFunction<?> hashFunction, int minShards,
-	                                     HashBucketFunction hashBucketFunction, int buckets,
-	                                     Map<Object, RpcStrategy> shards) {
+										 HashBucketFunction hashBucketFunction, int buckets,
+										 Map<Object, RpcStrategy> shards) {
 		this.hashFunction = checkNotNull(hashFunction);
 		this.minShards = minShards;
 		this.hashBucketFunction = hashBucketFunction;
@@ -51,7 +52,7 @@ public final class RpcStrategyRendezvousHashing implements RpcStrategy {
 
 	public static RpcStrategyRendezvousHashing create(HashFunction<?> hashFunction) {
 		return new RpcStrategyRendezvousHashing(hashFunction, MIN_SUB_STRATEGIES_FOR_CREATION_DEFAULT,
-				DEFAULT_BUCKET_HASH_FUNCTION, DEFAULT_BUCKET_CAPACITY, new HashMap<Object, RpcStrategy>());
+				DEFAULT_BUCKET_HASH_FUNCTION, DEFAULT_BUCKET_CAPACITY, new HashMap<>());
 	}
 
 	public RpcStrategyRendezvousHashing withMinActiveShards(int minShards) {
@@ -95,6 +96,7 @@ public final class RpcStrategyRendezvousHashing implements RpcStrategy {
 	}
 
 	@Override
+	@Nullable
 	public RpcSender createSender(RpcClientConnectionPool pool) {
 		Map<Object, RpcSender> shardsSenders = new HashMap<>();
 		for (Map.Entry<Object, RpcStrategy> entry : shards.entrySet()) {
@@ -105,8 +107,9 @@ public final class RpcStrategyRendezvousHashing implements RpcStrategy {
 				shardsSenders.put(shardId, sender);
 			}
 		}
-		if (shardsSenders.size() < minShards)
+		if (shardsSenders.size() < minShards) {
 			return null;
+		}
 		if (shardsSenders.size() == 1) {
 			return first(shardsSenders.values());
 		}

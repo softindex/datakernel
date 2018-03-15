@@ -99,7 +99,7 @@ public interface StreamProducerWithResult<T, X> extends StreamProducer<T> {
 
 	@Override
 	default <R> StreamProducerWithResult<R, X> with(StreamProducerModifier<T, R> modifier) {
-		return modifier.applyTo(this).withResult(this.getResult());
+		return modifier.applyTo(this).withResult(getResult());
 	}
 
 	@Override
@@ -153,9 +153,13 @@ public interface StreamProducerWithResult<T, X> extends StreamProducer<T> {
 
 	default StreamProducerWithResult<T, X> whenException(Consumer<? super Throwable> consumer) {
 		return whenComplete((x, throwable) -> {
-			if (throwable != null) consumer.accept(throwable);
+			if (throwable != null) {
+				consumer.accept(throwable);
+			}
 		});
 	}
 
-
+	default StreamProducerWithResult<T, X> mapFailure(Function<Throwable, Throwable> fn) {
+		return withResult(getResult().mapFailure(fn));
+	}
 }

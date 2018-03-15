@@ -4,6 +4,7 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.Stage.Handler.Completion;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
+import io.datakernel.functional.Try;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -13,6 +14,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+import static io.datakernel.util.Preconditions.checkArgument;
 
 abstract class AbstractStage<T> implements Stage<T> {
 
@@ -81,17 +83,17 @@ abstract class AbstractStage<T> implements Stage<T> {
 
 	@SuppressWarnings("unchecked")
 	protected void subscribe(BiConsumer<? super T, ? super Throwable> consumer) {
-		if (this.next == null) {
-			this.next = consumer;
+		if (next == null) {
+			next = consumer;
 		} else {
-			assert this.next != COMPLETED_STAGE : "Stage has already been completed";
+			assert next != COMPLETED_STAGE : "Stage has already been completed";
 			if (consumer instanceof NextStage) {
 				NextStage nextStage = (NextStage) consumer;
 				assert nextStage.next == null;
-				nextStage.prev = this.next;
-				this.next = consumer;
+				nextStage.prev = next;
+				next = consumer;
 			} else {
-				this.next = ((BiConsumer<T, Throwable>) this.next).andThen(consumer);
+				next = ((BiConsumer<T, Throwable>) next).andThen(consumer);
 			}
 		}
 	}
@@ -190,14 +192,18 @@ abstract class AbstractStage<T> implements Stage<T> {
 	@Override
 	public Stage<T> thenAccept(Consumer<? super T> action) {
 		return whenComplete((result, throwable) -> {
-			if (throwable == null) action.accept(result);
+			if (throwable == null) {
+				action.accept(result);
+			}
 		});
 	}
 
 	@Override
 	public Stage<T> thenRun(Runnable action) {
 		return whenComplete((result, throwable) -> {
-			if (throwable == null) action.run();
+			if (throwable == null) {
+				action.run();
+			}
 		});
 	}
 
@@ -232,7 +238,9 @@ abstract class AbstractStage<T> implements Stage<T> {
 	@Override
 	public Stage<T> whenException(Consumer<? super Throwable> action) {
 		return whenComplete((result, throwable) -> {
-			if (throwable != null) action.accept(throwable);
+			if (throwable != null) {
+				action.accept(throwable);
+			}
 		});
 	}
 
@@ -247,6 +255,21 @@ abstract class AbstractStage<T> implements Stage<T> {
 			@Override
 			protected void onCompleteExceptionally(Throwable throwable) {
 				complete(fn.apply(throwable));
+			}
+		});
+	}
+
+	@Override
+	public Stage<T> mapFailure(Function<Throwable, Throwable> fn) {
+		return then(new NextStage<T, T>() {
+			@Override
+			protected void onComplete(T result) {
+				complete(result);
+			}
+
+			@Override
+			protected void onCompleteExceptionally(Throwable throwable) {
+				completeExceptionally(fn.apply(throwable));
 			}
 		});
 	}
@@ -389,6 +412,21 @@ abstract class AbstractStage<T> implements Stage<T> {
 		});
 	}
 
+	@Override
+	public Stage<Try<T>> toTry() {
+		return then(new NextStage<T, Try<T>>() {
+			@Override
+			protected void onComplete(T result) {
+				complete(Try.of(result));
+			}
+
+			@Override
+			protected void onCompleteExceptionally(Throwable throwable) {
+				complete(Try.ofFailure(throwable));
+			}
+		});
+	}
+
 	@SuppressWarnings("unchecked")
 	@Override
 	public Stage<Void> toVoid() {
@@ -396,10 +434,13 @@ abstract class AbstractStage<T> implements Stage<T> {
 	}
 
 	@Override
-	public Stage<T> timeout(long millis) {
+	public Stage<T> timeout(long timeout) {
+		checkArgument(timeout >= 0, "Timeout cannot be less than zero");
+		if (timeout == 0) {
+			return this;
+		}
+		ScheduledRunnable schedule = getCurrentEventloop().delay(timeout, () -> tryCompleteExceptionally(TIMEOUT_EXCEPTION));
 		return then(new NextStage<T, T>() {
-			final ScheduledRunnable schedule = getCurrentEventloop().delay(millis,
-					() -> tryCompleteExceptionally(TIMEOUT_EXCEPTION));
 
 			@Override
 			protected void onComplete(T result) {

@@ -115,7 +115,9 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 
 			if (pendingItems != null) {
 				eventloop.post(() -> {
-					if (pendingItems.isEmpty()) return;
+					if (pendingItems.isEmpty()) {
+						return;
+					}
 
 					for (T item : pendingItems) {
 						lastDataReceiver.onData(item);
@@ -126,17 +128,20 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 						endOfStream.trySet(null);
 					}
 
-					if (StreamConsumerSwitcher.this.currentInternalProducer == this) {
+					if (currentInternalProducer == this) {
 						if (!suspended) {
-							StreamConsumerSwitcher.this.getProducer().produce(StreamConsumerSwitcher.this);
+							getProducer().produce(StreamConsumerSwitcher.this);
 						} else {
-							StreamConsumerSwitcher.this.getProducer().suspend();
+							getProducer().suspend();
 						}
 					}
 				});
 			} else {
-				if (StreamConsumerSwitcher.this.currentInternalProducer == this) {
-					StreamConsumerSwitcher.this.getProducer().produce(StreamConsumerSwitcher.this);
+				if (currentInternalProducer == this) {
+					StreamProducer<T> producer = getProducer();
+					if (producer != null) {
+						producer.produce(StreamConsumerSwitcher.this);
+					}
 				}
 			}
 		}
@@ -144,8 +149,8 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 		@Override
 		public void suspend() {
 			suspended = true;
-			if (StreamConsumerSwitcher.this.currentInternalProducer == this) {
-				StreamConsumerSwitcher.this.getProducer().suspend();
+			if (currentInternalProducer == this) {
+				getProducer().suspend();
 			}
 		}
 
@@ -160,7 +165,7 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 
 		@Override
 		public Set<StreamCapability> getCapabilities() {
-			return StreamConsumerSwitcher.this.getProducer().getCapabilities();
+			return getProducer().getCapabilities();
 		}
 
 		public void onData(T item) {
@@ -169,7 +174,7 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 			} else {
 				if (pendingItems == null) {
 					pendingItems = new ArrayList<>();
-					StreamConsumerSwitcher.this.getProducer().suspend();
+					getProducer().suspend();
 				}
 				pendingItems.add(item);
 			}
