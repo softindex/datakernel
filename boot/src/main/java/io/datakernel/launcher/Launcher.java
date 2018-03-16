@@ -91,6 +91,17 @@ public abstract class Launcher {
 				binder -> binder.getMembersInjector(Launcher.this.getClass()));
 	}
 
+	/**
+	 * Launch application following few simple steps:
+	 * <ul>
+	 *     <li>Inject dependencies</li>
+	 *     <li>Starts application, {@link Launcher#onStart()} is called in this stage</li>
+	 *     <li>Runs application, {@link Launcher#run()} is called in this stage</li>
+	 *     <li>Stops application, {@link Launcher#onStop()} is called in this stage</li>
+	 * </ul>
+	 * You can override methods mentioned above to execute your code in needed stage.
+	 * @param args program args that will be injected into @Args string array
+	 */
 	public void launch(boolean eagerSingletonsMode, String[] args) throws Exception {
 		Injector injector = Guice.createInjector(eagerSingletonsMode ? Stage.PRODUCTION : Stage.DEVELOPMENT,
 				getCombinedModule(args));
@@ -138,6 +149,12 @@ public abstract class Launcher {
 		serviceGraph.stopFuture().get();
 	}
 
+	/**
+	 * Blocks current thread until shutdown notification releases it.
+	 * <br>
+	 * Shutdown notification is released on JVM shutdown or by calling {@link Launcher#requestShutdown()}
+	 * @see ShutdownNotification
+	 */
 	protected final void awaitShutdown() throws InterruptedException {
 		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
 			try {
@@ -150,6 +167,10 @@ public abstract class Launcher {
 		shutdownNotification.await();
 	}
 
+	/**
+	 * Releases all threads waiting for shutdown.
+	 * @see Launcher#awaitShutdown()
+	 */
 	protected final void requestShutdown() {
 		shutdownNotification.requestShutdown();
 	}

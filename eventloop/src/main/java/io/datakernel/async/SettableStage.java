@@ -6,6 +6,11 @@ import java.util.function.BiConsumer;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
+/**
+ * Stage that can be completed or completedExceptionally manually.
+ * <p>Can be used as root stage to start execution of chain of stages or when you want wrap your actions in {@code Stage}</p>
+ * @param <T> Result type
+ */
 public final class SettableStage<T> extends AbstractStage<T> implements Callback<T> {
 	private static final Object NO_RESULT = new Object();
 
@@ -20,6 +25,11 @@ public final class SettableStage<T> extends AbstractStage<T> implements Callback
 		return new SettableStage<>();
 	}
 
+
+	/**
+	 * Sets the result of this {@code SettableStage} and completes it.
+	 * <p>AssertionError is thrown when you try to set result for  already completed stage.</p>
+	 */
 	@Override
 	public void set(@Nullable T result) {
 		assert !isSet();
@@ -31,6 +41,11 @@ public final class SettableStage<T> extends AbstractStage<T> implements Callback
 		}
 	}
 
+	/**
+	 * Sets exception and completes this {@code SettableStage} exceptionally.
+	 * <p>AssertionError is thrown when you try to set exception for  already completed stage.</p>
+	 * @param t exception
+	 */
 	@Override
 	public void setException(@Nullable Throwable t) {
 		assert !isSet();
@@ -43,18 +58,29 @@ public final class SettableStage<T> extends AbstractStage<T> implements Callback
 		}
 	}
 
+	/**
+	 * The same as {@link SettableStage#trySet(Object, Throwable)} )} but for result only.
+	 */
 	public boolean trySet(@Nullable T result) {
 		if (isSet()) return false;
 		set(result);
 		return true;
 	}
 
+	/**
+	 * The same as {@link SettableStage#trySet(Object, Throwable)} )} but for exception only.
+	 */
 	public boolean trySetException(@Nullable Throwable t) {
 		if (isSet()) return false;
 		setException(t);
 		return true;
 	}
 
+	/**
+	 * Tries to set result or exception for this {@code SettableStage} if it not yet set.
+	 * <p>Otherwise do nothing</p>
+	 * @return {@code true} if result or exception was set, {@code false} otherwise
+	 */
 	public boolean trySet(@Nullable T result, @Nullable Throwable throwable) {
 		if (isSet()) return false;
 		if (throwable == null) {
@@ -84,6 +110,9 @@ public final class SettableStage<T> extends AbstractStage<T> implements Callback
 		super.subscribe(next);
 	}
 
+	/**
+	 * @return {@code true} if this {@code SettableStage} result is not set, {@code false} otherwise.
+	 */
 	public boolean isSet() {
 		return result != NO_RESULT;
 	}

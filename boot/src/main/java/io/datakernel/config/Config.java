@@ -21,9 +21,15 @@ import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Collections.*;
 
+/**
+ * Interface for interaction with configs.
+ */
 public interface Config {
 	Logger logger = LoggerFactory.getLogger(Config.class);
 
+	/**
+	 * Empty config with no values, children, etc...
+	 */
 	Config EMPTY = new Config() {
 		@Override
 		public String getValue(@Nullable String defaultValue) {
@@ -54,10 +60,17 @@ public interface Config {
 		checkArgument(PATH_PATTERN.matcher(path).matches(), "Invalid path %s", path);
 	}
 
+	/**
+	 * @return value stored in root or defaultValue
+	 */
 	default String getValue(@Nullable String defaultValue) {
 		return get(THIS, defaultValue);
 	}
 
+	/**
+	 * @return value stored in root
+	 * @throws NoSuchElementException if there is nothing in root
+	 */
 	default String getValue() throws NoSuchElementException {
 		return get(THIS);
 	}
@@ -88,24 +101,48 @@ public interface Config {
 		return !hasValue() && !hasChildren();
 	}
 
+	/**
+	 * Throw {@code NoSuchElementException} if there is no value in path.
+	 * @return String value that lays in path
+	 * @see Config#get(ConfigConverter, String, Object)
+	 */
 	default String get(String path) throws NoSuchElementException {
 		checkPath(path);
 		return getChild(path).getValue();
 	}
 
+	/**
+	 * @return String value that lays in path
+	 * @see Config#get(ConfigConverter, String, Object)
+	 */
 	default String get(String path, @Nullable String defaultValue) {
 		checkPath(path);
 		return getChild(path).getValue(defaultValue);
 	}
 
+	/**
+	 * Throw {@code NoSuchElementException} if there is no value in path.
+	 * @return value converted to &lt;T&gt;
+	 * @see Config#get(ConfigConverter, String, Object)
+	 */
 	default <T> T get(ConfigConverter<T> converter, String path) throws NoSuchElementException {
 		return converter.get(getChild(path));
 	}
 
+	/**
+	 * @param converter specifies how to convert config string value into &lt;T&gt;
+	 * @param path path to config value. Example: "rpc.server.port" to get port for rpc server.
+	 * @param <T> return type
+	 * @return value from this {@code Config} in path or defaultValue if there is nothing on that path
+	 * @see ConfigConverters
+	 */
 	default <T> T get(ConfigConverter<T> converter, String path, @Nullable T defaultValue) {
 		return converter.get(getChild(path), defaultValue);
 	}
 
+	/**
+	 * @return child {@code Config} if it exists, {@link Config#EMPTY} config otherwise
+	 */
 	default Config getChild(String path) {
 		checkPath(path);
 		Config config = this;
@@ -122,16 +159,27 @@ public interface Config {
 		return EMPTY;
 	}
 
+	/**
+	 * Applies setter to value in path using converter to get it
+	 * @param <T> type of value
+	 */
 	default <T> void apply(ConfigConverter<T> converter, String path, Consumer<T> setter) {
 		checkPath(path);
 		T value = get(converter, path);
 		setter.accept(value);
 	}
 
+	/**
+	 * The same as {@link Config#apply(ConfigConverter, String, Consumer)} but with default value
+	 */
 	default <T> void apply(ConfigConverter<T> converter, String path, T defaultValue, Consumer<T> setter) {
 		apply(converter, path, defaultValue, (value, $) -> setter.accept(value));
 	}
 
+	/**
+	 * The same as {@link Config#apply(ConfigConverter, String, Consumer)} but with default value and BiConsumer
+	 * <p>Note that BiConsumer receives value and defaultValue as arguments</p>
+	 */
 	default <T> void apply(ConfigConverter<T> converter, String path, T defaultValue, BiConsumer<T, T> setter) {
 		checkPath(path);
 		T value = get(converter, path, defaultValue);
@@ -162,24 +210,44 @@ public interface Config {
 		};
 	}
 
+	/**
+	 * @return empty config
+	 */
 	static Config create() {
 		return EMPTY;
 	}
 
+	/**
+	 * Creates new config from properties
+	 * @return new {@code Config}
+	 */
 	static Config ofProperties(Properties properties) {
 		return ofMap(properties.stringPropertyNames().stream()
 				.collect(Collectors.toMap(k -> k, properties::getProperty,
 						(u, v) -> {throw new AssertionError();}, LinkedHashMap::new)));
 	}
 
+	/**
+	 * The same as {@link Config#ofProperties(String, boolean)} but with optional=false
+	 * @return new {@code Config}
+	 */
 	static Config ofProperties(String fileName) {
 		return ofProperties(fileName, false);
 	}
 
+	/**
+	 * @see Config#ofProperties(Path, boolean)
+	 */
 	static Config ofProperties(String fileName, boolean optional) {
 		return ofProperties(Paths.get(fileName), optional);
 	}
 
+	/**
+	 * Creates new config from file
+	 * @param file with properties
+	 * @param optional if true will log warning "Can't load..." else throws exception
+	 * @return new {@code Config}
+	 */
 	static Config ofProperties(Path file, boolean optional) {
 		Properties props = new Properties();
 		try (InputStream is = Files.newInputStream(file)) {
@@ -194,6 +262,11 @@ public interface Config {
 		return ofProperties(props);
 	}
 
+	/**
+	 * Creates config from Map
+	 * @param map of path, value pairs
+	 * @return new {@code Config}
+	 */
 	static Config ofMap(Map<String, String> map) {
 		Config config = create();
 		for (String path : map.keySet()) {
@@ -212,16 +285,28 @@ public interface Config {
 		return config;
 	}
 
+	/**
+	 * @return new {@code Config} with only one value
+	 */
 	static Config ofValue(String value) {
 		return create().with(THIS, value);
 	}
 
+	/**
+	 * @param configConverter specifies converter for &lt;T&gt;
+	 * @param value of type &lt;T&gt;
+	 * @return new {@code Config} with given value
+	 */
 	static <T> Config ofValue(ConfigConverter<T> configConverter, T value) {
 		EffectiveConfig effectiveConfig = EffectiveConfig.wrap(Config.create());
 		configConverter.get(effectiveConfig, value);
 		return ofMap(effectiveConfig.getEffectiveDefaults());
 	}
 
+	/**
+	 * @param path path
+	 * @return new {@code Config} with value in path
+	 */
 	default Config with(String path, String value) {
 		checkPath(path);
 		checkNotNull(value);
@@ -243,6 +328,12 @@ public interface Config {
 		});
 	}
 
+	/**
+	 * @param path path
+	 * @param config holds one value at root
+	 * @return new {@code Config} with overridden value in path
+	 * @implNote this method returns new config instead of changing the old one.
+	 */
 	default Config with(String path, Config config) {
 		checkPath(path);
 		checkNotNull(config);
@@ -272,6 +363,11 @@ public interface Config {
 		return override(config);
 	}
 
+	/**
+	 * @param other config with values
+	 * @return new {@code Config} with values from this config overridden by values from other
+	 * @implNote this method returns new config instead of changing the old one.
+	 */
 	default Config override(Config other) {
 		String otherValue = other.getValue(null);
 		Map<String, Config> otherChildren = other.getChildren();
@@ -301,6 +397,12 @@ public interface Config {
 		};
 	}
 
+	/**
+	 * Tries to merge two configs into one. Throws {@code IllegalArgumentException} if there are conflicts.
+	 * @param other config to merge with
+	 * @return new merged {@code Config}
+	 * @implNote this method returns new config instead of changing the old one.
+	 */
 	default Config combine(Config other) {
 		String thisValue = getValue(null);
 		Map<String, Config> thisChildren = getChildren();
@@ -316,6 +418,10 @@ public interface Config {
 		return override(other);
 	}
 
+	/**
+	 * Converts this config to {@code Map<String, String>}
+	 * @return new Map<path, value> where path and value are Strings
+	 */
 	default Map<String, String> toMap() {
 		Map<String, String> result = new LinkedHashMap<>();
 		if (hasValue()) {
@@ -330,6 +436,10 @@ public interface Config {
 		return result;
 	}
 
+	/**
+	 * Converts this config to {@code Properties}
+	 * @return Properties with config values
+	 */
 	default Properties toProperties() {
 		Properties properties = new Properties();
 		toMap().forEach(properties::setProperty);

@@ -1,3 +1,20 @@
+v2.5.9:
+
+* Introduced simple, clean and optimized Stage's which replaced native CompletionStage's.
+  Cleaned Stages api, now all common methods related directly to Stage is in Stage.
+  Stages now used as a controller element for Stage's(with methods like all, any, reduce, etc...).
+
+* Cleaned up and organised streaming completion stages.
+
+* Introduced ReduceListener and ReduceCanceller to track and break ongoing reduce operations.
+
+* ByteBuf's now can be serialized.
+
+* StreamFileReader and StreamFileWriter got a bit simpler and easier to use.
+
+* Many improvements on GC overhead and speed.
+
+* Minor cleaning and refactoring.
 
 v2.5.8:
 

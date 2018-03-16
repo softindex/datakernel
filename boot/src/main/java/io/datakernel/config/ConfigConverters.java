@@ -567,5 +567,4 @@ public final class ConfigConverters {
 			}
 		};
 	}
-
 }

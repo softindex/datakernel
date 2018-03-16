@@ -965,6 +965,12 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		return this;
 	}
 
+	/**
+	 * Submits {@code Runnable} to eventloop for execution
+	 * <p>{@code Runnable} is executed in the eventloop thread</p>
+	 * @param runnable to be executed
+	 * @return {@code CompletableFuture} that completes when runnable completes
+	 */
 	@Override
 	public CompletableFuture<Void> submit(Runnable runnable) {
 		CompletableFuture<Void> future = new CompletableFuture<>();
@@ -984,6 +990,9 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		return future;
 	}
 
+	/**
+	 * Works the same as {@link Eventloop#submit(Runnable)} except for {@code Callable}
+	 */
 	@Override
 	public <T> CompletableFuture<T> submit(Callable<T> callable) {
 		CompletableFuture<T> future = new CompletableFuture<>();
@@ -1004,6 +1013,9 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		return future;
 	}
 
+	/**
+	 * Works the same as {@link Eventloop#submit(Runnable)} except for {@code AsyncCallable}
+	 */
 	@Override
 	public <T> CompletableFuture<T> submit(AsyncCallable<T> asyncCallable) {
 		CompletableFuture<T> future = new CompletableFuture<>();
