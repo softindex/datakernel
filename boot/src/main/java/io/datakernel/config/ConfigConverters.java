@@ -32,13 +32,20 @@ import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.*;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.format.DateTimeParseException;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static io.datakernel.config.Config.ifNotDefault;
@@ -50,6 +57,8 @@ import static io.datakernel.net.ServerSocketSettings.DEFAULT_BACKLOG;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Utils.*;
 import static java.lang.Integer.parseInt;
+import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
+import static java.time.format.DateTimeFormatter.ISO_LOCAL_TIME;
 import static java.util.Collections.emptyList;
 import static java.util.regex.Pattern.compile;
 import static java.util.stream.Collectors.joining;
@@ -59,6 +68,259 @@ import static java.util.stream.Collectors.toList;
 public final class ConfigConverters {
 
 	private ConfigConverters() {
+	}
+
+	public static ConfigConverter<LocalDate> ofLocalDate() {
+		return new SimpleConfigConverter<LocalDate>() {
+			@Override
+			protected LocalDate fromString(String string) {
+				return LocalDate.parse(string);
+			}
+
+			@Override
+			protected String toString(LocalDate value) {
+				return value.toString();
+			}
+		};
+	}
+
+	public static ConfigConverter<LocalTime> ofLocalTime() {
+		return new SimpleConfigConverter<LocalTime>() {
+			@Override
+			protected LocalTime fromString(String string) {
+				return LocalTime.parse(string);
+			}
+
+			@Override
+			protected String toString(LocalTime value) {
+				return value.toString();
+			}
+		};
+	}
+
+	private static final DateTimeFormatter FORMATTER = new DateTimeFormatterBuilder()
+			.parseCaseInsensitive()
+			.append(ISO_LOCAL_DATE)
+			.appendLiteral(' ')
+			.append(ISO_LOCAL_TIME)
+			.toFormatter();
+
+	public static ConfigConverter<LocalDateTime> ofLocalDateTime() {
+		return new SimpleConfigConverter<LocalDateTime>() {
+			@Override
+			protected LocalDateTime fromString(String string) {
+				try {
+					return LocalDateTime.parse(string, FORMATTER);
+				} catch (DateTimeParseException e) {
+					return LocalDateTime.parse(string);
+				}
+			}
+
+			@Override
+			protected String toString(LocalDateTime value) {
+				value.format(FORMATTER);
+				return value.toString();
+			}
+		};
+	}
+
+
+	final static Pattern PERIOD_PATTERN = Pattern.compile("(?<str>((?<time>-?\\d+)\\s+(?<unit>years?|months?|days?))(\\s+|$))");
+
+	/**
+	 * Parses value to Period.
+	 * 1 year 2 months 3 days == Period.of(1, 2, 3)
+	 * Every value can be negative, but you can't make all Period negative by negating year.
+	 * In ISO format you can write -P1Y2M, which means -1 years -2 months in this format
+	 * There can't be any spaces between '-' and DIGIT:
+	 * -1  - Right
+	 * - 2 - Wrong
+	 */
+	private static Period parsePeriod(String string) {
+		int years = 0, months = 0, days = 0;
+		Set<String> units = new HashSet<>();
+
+		Matcher matcher = PERIOD_PATTERN.matcher(string.trim().toLowerCase());
+		int lastEnd = 0;
+		while (!matcher.hitEnd()) {
+			if (!matcher.find() || matcher.start() != lastEnd) {
+				throw new IllegalArgumentException("Invalid period: " + string);
+			}
+			lastEnd = matcher.end();
+			String unit = matcher.group("unit");
+			if (!unit.endsWith("s")) {
+				unit += "s";
+			}
+			if (!units.add(unit)) {
+				throw new IllegalArgumentException("Time unit: " + unit + " occurs more than once.");
+			}
+			int result = Integer.parseInt(matcher.group("time"));
+
+			switch (unit) {
+				case "years":
+					years = result;
+					break;
+				case "months":
+					months = result;
+					break;
+				case "days":
+					days = result;
+					break;
+			}
+		}
+		return Period.of(years,months,days);
+}
+
+	public static ConfigConverter<Period> ofPeriod() {
+		return new SimpleConfigConverter<Period>() {
+			@Override
+			protected Period fromString(String string) {
+				Period result;
+				string = string.trim();
+				if (string.startsWith("-P") || string.startsWith("P")) {
+					result = Period.parse(string);
+				} else {
+					result = parsePeriod(string);
+				}
+				return result;
+			}
+
+			@Override
+			protected String toString(Period value) {
+				if (value.isZero()) {
+					return "0 days";
+				}
+				String result = "";
+				int years = value.getYears(), months = value.getMonths(),
+						days = value.getDays();
+				if (years != 0) {
+					result += years + " years ";
+				}
+				if (months != 0) {
+					result += months + " months ";
+				}
+				if (days != 0) {
+					result += days + " days ";
+				}
+				return result.trim();
+			}
+		};
+	}
+
+	final static Pattern DURATION_PATTERN = Pattern.compile("(?<time>-?\\d+)\\s+(?<unit>days?|hours?|minutes?|seconds?|millis?|nanos?)(\\s+|$)");
+
+	private static Duration parseDuration(String string) {
+		Set<String> units = new HashSet<>();
+		int days = 0, hours = 0, minutes = 0, seconds = 0, millis = 0, nanos = 0;
+		int result;
+
+		Matcher matcher = DURATION_PATTERN.matcher(string.trim().toLowerCase());
+		int lastEnd = 0;
+		while (!matcher.hitEnd()) {
+			if (!matcher.find() || matcher.start() != lastEnd) {
+				throw new IllegalArgumentException("Invalid duration: " + string);
+			}
+			lastEnd = matcher.end();
+			String unit = matcher.group("unit");
+			if (!unit.endsWith("s")) {
+				unit += "s";
+			}
+			if (!units.add(unit)) {
+				throw new IllegalArgumentException("Time unit: " + unit + " occurs more than once in: " + string);
+			}
+			result = Integer.parseInt(matcher.group("time"));
+
+			switch (unit) {
+				case "days":
+					days = result;
+					break;
+				case "hours":
+					hours = result;
+					break;
+				case "minutes":
+					minutes = result;
+					break;
+				case "seconds":
+					seconds = result;
+					break;
+				case "millis":
+					millis = result;
+					break;
+				case "nanos":
+					nanos = result;
+					break;
+			}
+		}
+		return Duration.ofDays(days)
+				.plusHours(hours)
+				.plusMinutes(minutes)
+				.plusSeconds(seconds)
+				.plusMillis(millis)
+				.plusNanos(nanos);
+	}
+
+	public static ConfigConverter<Duration> ofDuration() {
+		return new SimpleConfigConverter<Duration>() {
+			@Override
+			protected Duration fromString(String string) {
+				string = string.trim();
+				if (string.startsWith("-P") || string.startsWith("P")) {
+					return Duration.parse(string);
+				} else {
+					return parseDuration(string);
+				}
+			}
+
+			@Override
+			protected String toString(Duration value) {
+				if (value.isZero()) {
+					return "0 seconds";
+				}
+				String result = "";
+				long days, hours, minutes, seconds, nano, milli;
+				days = value.toDays();
+				if (days != 0) {
+					result += days + " days ";
+				}
+				hours = value.toHours() - days * 24;
+				if (hours != 0) {
+					result += hours + " hours ";
+				}
+				minutes = value.toMinutes() - days * 1440 - hours * 60;
+				if (minutes != 0) {
+					result += minutes + " minutes ";
+				}
+				seconds = value.getSeconds() - days * 86400 - hours * 3600 - minutes * 60;
+				if (seconds != 0) {
+					result += seconds + " seconds ";
+				}
+				nano = value.getNano();
+				milli = (nano - nano % 1000000) / 1000000;
+				if (milli != 0) {
+					result += milli + " millis ";
+				}
+				nano = nano % 1000000;
+				if (nano != 0) {
+					result += nano + " nanos ";
+				}
+				return result.trim();
+			}
+		};
+	}
+
+	public static ConfigConverter<Instant> ofInstant() {
+		return new SimpleConfigConverter<Instant>() {
+			@Override
+			protected Instant fromString(String string) {
+				return Instant.parse(string.replace(' ', 'T') + "Z");
+			}
+
+			@Override
+			protected String toString(Instant value) {
+				String result = value.toString().replace('T', ' ');
+				return result.substring(0, result.length() - 1);
+			}
+		};
 	}
 
 	public static ConfigConverter<String> ofString() {
@@ -78,13 +340,13 @@ public final class ConfigConverters {
 	public static ConfigConverter<String> ofNullableString() {
 		return new SimpleConfigConverter<String>() {
 			@Override
-			protected String fromString(String value) {
-				return value;
+			protected String fromString(String string) {
+				return string;
 			}
 
 			@Override
-			protected String toString(String defaultValue) {
-				return defaultValue;
+			protected String toString(String value) {
+				return value;
 			}
 		};
 	}
@@ -92,13 +354,13 @@ public final class ConfigConverters {
 	public static ConfigConverter<Byte> ofByte() {
 		return new SimpleConfigConverter<Byte>() {
 			@Override
-			protected Byte fromString(String value) {
-				return Byte.valueOf(value);
+			protected Byte fromString(String string) {
+				return Byte.valueOf(string);
 			}
 
 			@Override
-			protected String toString(Byte defaultValue) {
-				return Byte.toString(defaultValue);
+			protected String toString(Byte value) {
+				return Byte.toString(value);
 			}
 		};
 	}
@@ -106,13 +368,13 @@ public final class ConfigConverters {
 	public static ConfigConverter<Integer> ofInteger() {
 		return new SimpleConfigConverter<Integer>() {
 			@Override
-			protected Integer fromString(String value) {
-				return Integer.valueOf(value);
+			protected Integer fromString(String string) {
+				return Integer.valueOf(string);
 			}
 
 			@Override
-			protected String toString(Integer defaultValue) {
-				return Integer.toString(defaultValue);
+			protected String toString(Integer value) {
+				return Integer.toString(value);
 			}
 		};
 	}
@@ -125,8 +387,8 @@ public final class ConfigConverters {
 			}
 
 			@Override
-			public String toString(Long defaultValue) {
-				return Long.toString(defaultValue);
+			public String toString(Long value) {
+				return Long.toString(value);
 			}
 		};
 	}
@@ -139,8 +401,8 @@ public final class ConfigConverters {
 			}
 
 			@Override
-			public String toString(Float defaultValue) {
-				return Float.toString(defaultValue);
+			public String toString(Float value) {
+				return Float.toString(value);
 			}
 		};
 	}
@@ -153,8 +415,8 @@ public final class ConfigConverters {
 			}
 
 			@Override
-			public String toString(Double defaultValue) {
-				return Double.toString(defaultValue);
+			public String toString(Double value) {
+				return Double.toString(value);
 			}
 		};
 	}
@@ -167,8 +429,8 @@ public final class ConfigConverters {
 			}
 
 			@Override
-			public String toString(Boolean defaultValue) {
-				return Boolean.toString(defaultValue);
+			public String toString(Boolean value) {
+				return Boolean.toString(value);
 			}
 		};
 	}
@@ -184,8 +446,8 @@ public final class ConfigConverters {
 			}
 
 			@Override
-			public String toString(E defaultValue) {
-				return defaultValue.name();
+			public String toString(E value) {
+				return value.name();
 			}
 		};
 	}
@@ -202,8 +464,8 @@ public final class ConfigConverters {
 			}
 
 			@Override
-			public String toString(Class defaultValue) {
-				return defaultValue.getName();
+			public String toString(Class value) {
+				return value.getName();
 			}
 		};
 	}
@@ -220,8 +482,8 @@ public final class ConfigConverters {
 			}
 
 			@Override
-			public String toString(InetAddress item) {
-				return Arrays.toString(item.getAddress());
+			public String toString(InetAddress value) {
+				return Arrays.toString(value.getAddress());
 			}
 		};
 	}
@@ -253,8 +515,8 @@ public final class ConfigConverters {
 			}
 
 			@Override
-			public String toString(InetSocketAddress item) {
-				return item.getAddress().getHostAddress() + ":" + item.getPort();
+			public String toString(InetSocketAddress value) {
+				return value.getAddress().getHostAddress() + ":" + value.getPort();
 			}
 		};
 	}
@@ -262,13 +524,13 @@ public final class ConfigConverters {
 	public static ConfigConverter<Path> ofPath() {
 		return new SimpleConfigConverter<Path>() {
 			@Override
-			protected Path fromString(String value) {
-				return Paths.get(value);
+			protected Path fromString(String string) {
+				return Paths.get(string);
 			}
 
 			@Override
-			protected String toString(Path defaultValue) {
-				return defaultValue.toAbsolutePath().normalize().toString();
+			protected String toString(Path value) {
+				return value.toAbsolutePath().normalize().toString();
 			}
 		};
 	}
@@ -281,8 +543,8 @@ public final class ConfigConverters {
 			}
 
 			@Override
-			public String toString(MemSize item) {
-				return item.format();
+			public String toString(MemSize value) {
+				return value.format();
 			}
 		};
 	}
@@ -299,8 +561,8 @@ public final class ConfigConverters {
 			}
 
 			@Override
-			public String toString(InetAddressRange item) {
-				return item.toString();
+			public String toString(InetAddressRange value) {
+				return value.toString();
 			}
 		};
 	}
@@ -321,8 +583,8 @@ public final class ConfigConverters {
 			}
 
 			@Override
-			public String toString(List<T> item) {
-				return item.stream()
+			public String toString(List<T> value) {
+				return value.stream()
 						.map(v -> {
 							Config config = Config.ofValue(elementConverter, v);
 							if (config.hasChildren()) {

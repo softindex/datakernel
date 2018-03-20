@@ -21,18 +21,19 @@ import io.datakernel.net.DatagramSocketSettings;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.util.MemSize;
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.time.*;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static io.datakernel.config.Config.EMPTY;
 import static io.datakernel.config.Config.THIS;
 import static io.datakernel.config.ConfigConverters.*;
 import static org.junit.Assert.*;
@@ -160,7 +161,7 @@ public class ConfigConvertersTest {
 
 	@Test
 	public void testDefaultNullValues() {
-		Integer value = ofInteger().get(EMPTY, null);
+		Integer value = ofInteger().get(Config.EMPTY, null);
 		assertNull(value);
 	}
 
@@ -172,7 +173,7 @@ public class ConfigConvertersTest {
 				.withReuseAddress(false)
 				.withBroadcast(true);
 
-		DatagramSocketSettings actual = EMPTY.get(ofDatagramSocketSettings(), THIS, expected);
+		DatagramSocketSettings actual = Config.EMPTY.get(ofDatagramSocketSettings(), THIS, expected);
 
 		assertEquals(expected.getBroadcast(), actual.getBroadcast());
 		assertEquals(expected.getReuseAddress(), actual.getReuseAddress());
@@ -186,7 +187,7 @@ public class ConfigConvertersTest {
 				.withReceiveBufferSize(64)
 				.withReuseAddress(true);
 
-		ServerSocketSettings actual = EMPTY.get(ofServerSocketSettings(), THIS, expected);
+		ServerSocketSettings actual = Config.EMPTY.get(ofServerSocketSettings(), THIS, expected);
 		assertEquals(expected.getBacklog(), actual.getBacklog());
 		assertEquals(expected.getReceiveBufferSize(), actual.getReceiveBufferSize());
 		assertEquals(expected.getReuseAddress(), actual.getReuseAddress());
@@ -201,7 +202,7 @@ public class ConfigConvertersTest {
 				.withSendBufferSize(512)
 				.withKeepAlive(true);
 
-		SocketSettings actual = EMPTY.get(ofSocketSettings(), THIS, expected);
+		SocketSettings actual = Config.EMPTY.get(ofSocketSettings(), THIS, expected);
 
 		assertFalse(actual.hasImplReadSize());
 		assertFalse(actual.hasImplWriteSize());
@@ -211,5 +212,94 @@ public class ConfigConvertersTest {
 		assertEquals(expected.getReceiveBufferSize(), actual.getReceiveBufferSize());
 		assertEquals(expected.getSendBufferSize(), actual.getSendBufferSize());
 		assertEquals(expected.getKeepAlive(), actual.getKeepAlive());
+	}
+
+	@Test
+	public void testLocalDate() {
+		LocalDate expected = LocalDate.of(1998, 12, 23);
+		LocalDate actual = Config.EMPTY.get(ofLocalDate(), THIS, expected);
+
+		assertEquals(expected, actual);
+	}
+
+	@Test
+	public void testLocalTime() {
+		LocalTime expected = LocalTime.of(6, 30, 28, 228);
+		LocalTime actual = Config.EMPTY.get(ofLocalTime(), THIS, expected);
+
+		assertEquals(expected, actual);
+	}
+
+	@Test
+	public void testLocalDateTime() {
+		LocalDateTime expected = LocalDateTime.of(LocalDate.of(1, 4, 28), LocalTime.of(2, 2, 8));
+		LocalDateTime actual = Config.EMPTY.get(ofLocalDateTime(), THIS, expected);
+
+		assertEquals(expected, actual);
+	}
+
+	@Test()
+	public void testPeriod() {
+		Period expected = Period.of(1998, -12, 23);
+
+		assertEquals(expected, Config.EMPTY.get(ofPeriod(), THIS, expected));
+		assertEquals("1998 years -12 months 23 days", Config.ofValue(ofPeriod(), expected).getValue());
+		assertEquals(Period.ZERO, Config.ofValue(ofPeriod(), Period.ZERO).get(ofPeriod(), THIS));
+		assertEquals(expected, Config.ofValue(" -12 months 1998 year 23 days").get(ofPeriod(), THIS));
+
+		try {
+			Config.ofValue(" 1 2 3 ").get(ofPeriod(), THIS);
+			Assert.fail();
+		} catch (IllegalArgumentException ignored) {
+		}
+
+		try {
+			Config.ofValue(" 1998 years 12 month 23 days 12 months").get(ofPeriod(), THIS);
+			Assert.fail();
+		} catch (IllegalArgumentException ignored) {
+		}
+
+		try {
+			Config.ofValue(" 1998 years12 month 23 days").get(ofPeriod(), THIS);
+			Assert.fail();
+		} catch (IllegalArgumentException ignored) {
+		}
+	}
+
+	@Test
+	public void testDuration() {
+		Duration expected = Duration.ofDays(-2).plusHours(2).plusMinutes(8).plusSeconds(-3).plusMillis(-322).plusNanos(228);
+
+		assertEquals(expected, Config.EMPTY.get(ofDuration(), THIS, expected));
+		assertEquals("-1 days -21 hours -52 minutes -4 seconds 678 millis 228 nanos", Config.ofValue(ofDuration(), expected).getValue());
+		assertEquals("0 seconds", Config.ofValue(ofDuration(), Duration.ZERO).getValue());
+		assertEquals(Duration.ZERO, Config.ofValue(ofDuration(), Duration.ZERO).get(ofDuration(), THIS));
+		assertEquals(expected, Config.ofValue("2 hour  -2 days 8 minutes 228 nanos -3 second -322 millis").get(ofDuration(), THIS));
+
+		try {
+			Config.ofValue(" 1 2 3 ").get(ofDuration(), THIS);
+			Assert.fail();
+		} catch (IllegalArgumentException ignored) {
+		}
+
+		try {
+			Config.ofValue("1 days2 hours").get(ofDuration(), THIS);
+			Assert.fail();
+		} catch (IllegalArgumentException ignored) {
+		}
+
+		try {
+			Config.ofValue("1 day 2 hours 2 hours").get(ofDuration(), THIS);
+			Assert.fail();
+		} catch (IllegalArgumentException ignored) {
+		}
+	}
+
+	@Test
+	public void testInstant() {
+		Instant expected = Instant.now();
+		Instant actual = Config.EMPTY.get(ofInstant(), THIS, expected);
+
+		assertEquals(expected, actual);
 	}
 }
