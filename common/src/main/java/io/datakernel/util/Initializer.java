@@ -16,5 +16,4 @@ public interface Initializer<T extends Initializable<T>> {
 	static <T extends Initializable<T>> Initializer<T> combine(Initializer<? super T>... initializers) {
 		return combine(asList(initializers));
 	}
-
 }

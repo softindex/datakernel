@@ -55,8 +55,9 @@ public final class CubeBackupController implements EventloopJmxMBeanEx {
 	public Stage<Void> backupHead() {
 		return algorithms.getRemote().getHeads()
 				.thenCompose(heads -> {
-					if (heads.isEmpty())
+					if (heads.isEmpty()) {
 						return Stage.ofException(new IllegalArgumentException("heads is empty"));
+					}
 					return backup(max(heads));
 				})
 				.whenComplete(stageBackup.recordStats());

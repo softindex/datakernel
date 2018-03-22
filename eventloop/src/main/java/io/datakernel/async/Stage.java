@@ -12,26 +12,29 @@ import java.util.function.Function;
 
 /**
  * Replacement of default java CompletionStage interface.
+ *
  * @see SettableStage
  */
 public interface Stage<T> {
 
 	/**
 	 * Creates successfully completed {@code Stage}
+	 *
 	 * @param value result of Stage
 	 */
 	static <T> Stage<T> of(@Nullable T value) {
-		SettableStage<T> stage = new SettableStage<>();
+		SettableStage<T> stage = new SettableStage<>(true);
 		stage.result = value;
 		return stage;
 	}
 
 	/**
-     * Creates exceptionally completed {@code Stage}
+	 * Creates exceptionally completed {@code Stage}
+	 *
 	 * @param throwable Exception
 	 */
 	static <T> Stage<T> ofException(Throwable throwable) {
-		SettableStage<T> stage = new SettableStage<>();
+		SettableStage<T> stage = new SettableStage<>(true);
 		stage.result = null;
 		stage.exception = throwable;
 		return stage;
@@ -39,6 +42,7 @@ public interface Stage<T> {
 
 	/**
 	 * Creates a {@code Stage} wrapper around default java {@code CompletableFuture} and runs it immediately.
+	 *
 	 * @return result of the given future wrapped in a {@code Stage}
 	 */
 	static <T> Stage<T> ofFuture(CompletableFuture<? extends T> future) {
@@ -47,6 +51,7 @@ public interface Stage<T> {
 
 	/**
 	 * Creates a {@code Stage} wrapper around default java {@code CompletionStage} and runs it immediately.
+	 *
 	 * @return result of the given completionStage wrapped in a {@code Stage}
 	 */
 	static <T> Stage<T> ofCompletionStage(CompletionStage<? extends T> completionStage) {
@@ -62,6 +67,7 @@ public interface Stage<T> {
 
 	/**
 	 * Creates a {@code Stage} wrapper around default java {@code Future} and runs it immediately.
+	 *
 	 * @return result of the given future wrapped in a {@code Stage}
 	 */
 	static <T> Stage<T> ofFuture(Executor executor, Future<? extends T> future) {
@@ -92,6 +98,7 @@ public interface Stage<T> {
 
 	/**
 	 * Creates a {@code Stage} wrapper around default java {@code Callable} and runs it immediately.
+	 *
 	 * @return result of the given callable wrapped in a {@code Stage}
 	 */
 	static <T> Stage<T> ofCallable(Executor executor, Callable<? extends T> callable) {
@@ -124,6 +131,7 @@ public interface Stage<T> {
 
 	/**
 	 * Creates a {@code Stage} wrapper around default java {@code Runnable} and runs it immediately.
+	 *
 	 * @return result of the given runnable wrapped in a {@code Stage}
 	 */
 	static Stage<Void> ofRunnable(Executor executor, Runnable runnable) {
@@ -181,10 +189,11 @@ public interface Stage<T> {
 	<U> Stage<U> handleAsync(Handler<? super T, U> handler, Executor executor);
 
 	/**
-     * Adds given stage to the chain of stages and returns it.
+	 * Adds given stage to the chain of stages and returns it.
+	 *
 	 * @param stage given stage
-	 * @param <U> type of result
-	 * @param <S> type of the next stage in the chain
+	 * @param <U>   type of result
+	 * @param <S>   type of the next stage in the chain
 	 * @return subscribed {@code Stage}
 	 * @see NextStage
 	 * @see io.datakernel.async.AbstractStage.HandlerStage
@@ -193,6 +202,7 @@ public interface Stage<T> {
 
 	/**
 	 * Applies fn to the result of current {@code Stage} when it completes.
+	 *
 	 * @param fn function to apply
 	 * @return {@code Stage} that will apply given function
 	 */
@@ -200,6 +210,7 @@ public interface Stage<T> {
 
 	/**
 	 * Adds new {@code Stage} to the chain. This stage will be executed only if current {@code Stage} completes successfully.
+	 *
 	 * @param action to be executed
 	 * @return this stage
 	 */
@@ -207,6 +218,7 @@ public interface Stage<T> {
 
 	/**
 	 * Adds new {@code Stage} to the chain. This stage will be executed only if current {@code Stage} completes successfully.
+	 *
 	 * @param action to be executed
 	 * @return this stage
 	 */
@@ -214,6 +226,7 @@ public interface Stage<T> {
 
 	/**
 	 * Apply function to the result of the given stage. This stage will be completed when function completes.
+	 *
 	 * @param fn to be applied
 	 * @return this stage
 	 */
@@ -221,6 +234,7 @@ public interface Stage<T> {
 
 	/**
 	 * Adds new {@code Stage} to the chain. Added {@code Stage} will be executed only if this {@code Stage} completes successfully.
+	 *
 	 * @param action to be executed
 	 * @return this {@code Stage}
 	 */
@@ -228,6 +242,7 @@ public interface Stage<T> {
 
 	/**
 	 * Adds new {@code Stage} to the chain. Added {@code Stage} will be executed only if this {@code Stage} completes exceptionally.
+	 *
 	 * @param action to be executed
 	 * @return this {@code Stage}
 	 */
@@ -235,6 +250,7 @@ public interface Stage<T> {
 
 	/**
 	 * Adds new {@code Stage} to the chain. Added {@code Stage} will apply fn to the {@code Throwable}.
+	 *
 	 * @param fn to be applied
 	 * @return result of fn application if this {@code Stage} completes exceptionally and result of this {@code Stage} otherwise
 	 */
@@ -244,20 +260,23 @@ public interface Stage<T> {
 
 	/**
 	 * Combines two {@code Stage} in one using fn.
+	 *
 	 * @param other {@code Stage} to combine
-	 * @param fn function to combine results of both stages into one
+	 * @param fn    function to combine results of both stages into one
 	 * @return {@code Stage} that completes when fn was applied on the result of both stages
 	 */
 	<U, V> Stage<V> combine(Stage<? extends U> other, BiFunction<? super T, ? super U, ? extends V> fn);
 
 	/**
 	 * Combines two {@code Stage} in one and completes when both have been completed.
+	 *
 	 * @param other {@code Stage} to combine
 	 */
 	Stage<Void> both(Stage<?> other);
 
 	/**
 	 * Combines two {@code Stage} in one.
+	 *
 	 * @param other {@code Stage} to combine
 	 * @return result of the first completed {@code Stage}
 	 */
@@ -268,10 +287,11 @@ public interface Stage<T> {
 	 */
 	Stage<Void> toVoid();
 
-	AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException();
+	AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException("Stage timeout");
 
 	/**
 	 * Wraps this {@code Stage} into a new one, that will complete exceptionally if this {@code Stage} is not completed after timeout.
+	 *
 	 * @param timeout timeout in milliseconds
 	 */
 	Stage<T> timeout(long timeout);

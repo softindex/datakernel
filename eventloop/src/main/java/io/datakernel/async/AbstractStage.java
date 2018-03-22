@@ -36,7 +36,7 @@ abstract class AbstractStage<T> implements Stage<T> {
 		}
 	}
 
-	@SuppressWarnings({"AssertWithSideEffects", "ConstantConditions", "unchecked"})
+	@SuppressWarnings({"AssertWithSideEffects", "ConstantConditions"})
 	protected void complete(@Nullable T value) {
 		assert !isComplete();
 		if (next != null) {
@@ -46,7 +46,7 @@ abstract class AbstractStage<T> implements Stage<T> {
 		assert (next = COMPLETED_STAGE) != null;
 	}
 
-	@SuppressWarnings({"AssertWithSideEffects", "ConstantConditions", "unchecked", "WeakerAccess"})
+	@SuppressWarnings({"AssertWithSideEffects", "ConstantConditions"})
 	protected void completeExceptionally(@Nullable Throwable error) {
 		assert !isComplete();
 		if (next != null) {
