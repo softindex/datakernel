@@ -1,6 +1,9 @@
 package io.datakernel.boot.http;
 
 import com.google.inject.Module;
+import com.google.inject.Provides;
+import io.datakernel.http.AsyncServlet;
+import io.datakernel.util.guice.SimpleModule;
 import org.junit.Test;
 
 import java.util.Collection;
@@ -13,7 +16,12 @@ public class HttpServerLauncherTest {
 		HttpServerLauncher launcher = new HttpServerLauncher() {
 			@Override
 			protected Collection<Module> getBusinessLogicModules() {
-				return singletonList(HelloWorldServletModule.create());
+				return singletonList(new SimpleModule() {
+					@Provides
+					public AsyncServlet provide() {
+						throw new UnsupportedOperationException();
+					}
+				});
 			}
 		};
 		launcher.testInjector();

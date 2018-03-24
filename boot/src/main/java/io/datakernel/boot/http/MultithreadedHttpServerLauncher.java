@@ -4,6 +4,7 @@ import com.google.inject.Inject;
 import com.google.inject.Module;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.eventloop.Eventloop;
@@ -20,6 +21,7 @@ import io.datakernel.util.guice.OptionalDependency;
 import io.datakernel.util.guice.SimpleModule;
 import io.datakernel.worker.Primary;
 import io.datakernel.worker.Worker;
+import io.datakernel.worker.WorkerId;
 import io.datakernel.worker.WorkerPool;
 
 import java.net.InetSocketAddress;
@@ -28,10 +30,12 @@ import java.util.List;
 
 import static com.google.inject.util.Modules.combine;
 import static com.google.inject.util.Modules.override;
+import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.config.ConfigConverters.ofInteger;
 import static io.datakernel.config.Initializers.*;
+import static io.datakernel.http.HttpResponse.ok200;
 import static io.datakernel.jmx.JmxModuleInitializers.ofGlobalEventloopStats;
 import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
@@ -41,7 +45,6 @@ import static java.util.Collections.singletonList;
 public abstract class MultithreadedHttpServerLauncher extends Launcher {
 	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
 	public static final String PROPERTIES_FILE = "http-server.properties";
-	public static final String PROPERTIES_FILE_EFFECTIVE = "http-server.effective.properties";
 	public static final String BUSINESS_MODULE_PROP = "businessLogicModule";
 
 	@Inject
@@ -65,7 +68,7 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 								.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(8080)))
 								.override(ofProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
-						.saveEffectiveConfigTo(PROPERTIES_FILE_EFFECTIVE),
+						.printEffectiveConfig(),
 				new SimpleModule() {
 					@Provides
 					@Singleton
@@ -127,7 +130,14 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 		String businessLogicModuleName = System.getProperty(BUSINESS_MODULE_PROP);
 		Module businessLogicModule = businessLogicModuleName != null ?
 				(Module) Class.forName(businessLogicModuleName).newInstance() :
-				HelloWorldWorkerServletModule.create();
+				new SimpleModule() {
+					@Provides
+					@Worker
+					AsyncServlet provideServlet(@WorkerId int worker) {
+						return AsyncServlet.ofBlocking(req -> ok200()
+								.withBody(ByteBuf.wrapForReading(encodeAscii("Hello, world! #" + worker))));
+					}
+				};
 
 		Launcher launcher = new MultithreadedHttpServerLauncher() {
 			@Override

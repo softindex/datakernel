@@ -81,7 +81,7 @@ public class ConfigsModuleTest {
 						.override(Config.ofProperties(properties1))
 						.override(Config.ofProperties(properties2))
 						.override(Config.ofProperties("not-existing.properties", true)))
-				.saveEffectiveConfigTo("resulting.properties")
+				.printEffectiveConfig()
 				.provideConfig();
 
 		Assert.assertEquals(1234, (int) config.get(ofInteger(), "port"));

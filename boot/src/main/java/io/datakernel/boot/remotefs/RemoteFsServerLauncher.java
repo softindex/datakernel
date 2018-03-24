@@ -34,7 +34,6 @@ import static java.util.Collections.singletonList;
 public abstract class RemoteFsServerLauncher extends Launcher {
 	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
 	public static final String PROPERTIES_FILE = "remotefs-server.properties";
-	public static final String PROPERTIES_FILE_EFFECTIVE = "remotefs-server.effective.properties";
 
 	@Inject
 	RemoteFsServer remoteFsServer;
@@ -54,7 +53,7 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 								.with("remotefs.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(8080)))
 								.override(Config.ofProperties(PROPERTIES_FILE, true))
 								.override(Config.ofProperties(System.getProperties()).getChild("config")))
-						.saveEffectiveConfigTo(PROPERTIES_FILE_EFFECTIVE),
+						.printEffectiveConfig(),
 				EventloopModule.create(),
 				new SimpleModule() {
 					@Provides

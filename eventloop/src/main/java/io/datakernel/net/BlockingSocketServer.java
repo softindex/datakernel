@@ -48,6 +48,10 @@ public final class BlockingSocketServer {
 		this.acceptHandler = acceptHandler;
 	}
 
+	private static BlockingSocketServer create(ExecutorService executor, AcceptHandler acceptHandler) {
+		return new BlockingSocketServer(executor, acceptHandler);
+	}
+
 	public BlockingSocketServer withAcceptThreadFactory(ThreadFactory acceptThreadFactory) {
 		this.acceptThreadFactory = acceptThreadFactory;
 		return this;

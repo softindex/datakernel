@@ -1,6 +1,11 @@
 package io.datakernel.boot.http;
 
 import com.google.inject.Module;
+import com.google.inject.Provides;
+import io.datakernel.http.AsyncServlet;
+import io.datakernel.util.guice.SimpleModule;
+import io.datakernel.worker.Worker;
+import io.datakernel.worker.WorkerId;
 import org.junit.Test;
 
 import java.util.Collection;
@@ -13,7 +18,13 @@ public class MultithreadedHttpServerLauncherTest {
 		MultithreadedHttpServerLauncher launcher = new MultithreadedHttpServerLauncher() {
 			@Override
 			protected Collection<Module> getBusinessLogicModules() {
-				return singletonList(HelloWorldWorkerServletModule.create());
+				return singletonList(new SimpleModule() {
+					@Provides
+					@Worker
+					AsyncServlet provideServlet(@WorkerId int worker) {
+						throw new UnsupportedOperationException();
+					}
+				});
 			}
 		};
 		launcher.testInjector();

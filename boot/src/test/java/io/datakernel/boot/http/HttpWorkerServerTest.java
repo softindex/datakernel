@@ -19,10 +19,16 @@ package io.datakernel.boot.http;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Module;
+import com.google.inject.Provides;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
+import io.datakernel.http.AsyncServlet;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.stream.processor.ByteBufRule;
+import io.datakernel.util.guice.SimpleModule;
+import io.datakernel.worker.Worker;
+import io.datakernel.worker.WorkerId;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -37,6 +43,7 @@ import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
+import static io.datakernel.http.HttpResponse.ok200;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 
@@ -51,7 +58,14 @@ public class HttpWorkerServerTest {
 		MultithreadedHttpServerLauncher launcher = new MultithreadedHttpServerLauncher() {
 			@Override
 			protected Collection<Module> getBusinessLogicModules() {
-				return singletonList(HelloWorldWorkerServletModule.create());
+				return singletonList(new SimpleModule() {
+					@Provides
+					@Worker
+					AsyncServlet provideServlet(@WorkerId int worker) {
+						return AsyncServlet.ofBlocking(req -> ok200()
+								.withBody(ByteBuf.wrapForReading(encodeAscii("Hello, world! #" + worker))));
+					}
+				});
 			}
 
 			@Override

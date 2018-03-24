@@ -117,7 +117,7 @@ public class EffectiveConfigTest {
 		assertNull(config.get("a.a.a", null));
 		assertNotNull(config.get("a.a.c", null));
 
-		String actual = config.render();
+		String actual = config.renderEffectiveConfig();
 		assertEquals(expected, actual);
 	}
 

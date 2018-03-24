@@ -29,16 +29,62 @@ import io.datakernel.util.guice.RequiredDependency;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.io.PrintStream;
+import java.io.Writer;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
+
+import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.util.Preconditions.checkState;
 
 public final class ConfigModule extends AbstractModule implements Initializable<ConfigModule> {
 	private static final Logger logger = LoggerFactory.getLogger(ConfigModule.class);
 
 	private Supplier<Config> configSupplier;
 	private Path effectiveConfigPath;
-	private Path finalConfigPath;
+	private Consumer<String> effectiveConfigConsumer;
+	private volatile boolean started;
+
+	private class ProtectedConfig implements Config {
+		private final Config config;
+		private final Map<String, Config> children;
+
+		private ProtectedConfig(Config config) {
+			this.config = config;
+			this.children = new LinkedHashMap<>();
+			config.getChildren().forEach((key, value) ->
+					this.children.put(key, new ProtectedConfig(value)));
+		}
+
+		@Override
+		public String getValue(String defaultValue) {
+			checkState(!started, "Config must be used during application start-up time only");
+			return config.getValue(defaultValue);
+		}
+
+		@Override
+		public String getValue() throws NoSuchElementException {
+			checkState(!started, "Config must be used during application start-up time only");
+			return config.getValue();
+		}
+
+		@Override
+		public Map<String, Config> getChildren() {
+			return children;
+		}
+
+		@Override
+		public Config provideNoKeyChild(String key) {
+			checkArgument(!children.keySet().contains(key));
+			return new ProtectedConfig(config.provideNoKeyChild(key));
+		}
+	}
 
 	private interface ConfigSaveService extends BlockingService {
 	}
@@ -64,12 +110,27 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 		return this;
 	}
 
-	public ConfigModule saveFinalConfigTo(String file) {
-		return saveFinalConfigTo(Paths.get(file));
+	public ConfigModule writeEffectiveConfigTo(Writer writer) {
+		this.effectiveConfigConsumer = effectiveConfig -> {
+			try {
+				writer.write(effectiveConfig);
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		};
+		return this;
 	}
 
-	public ConfigModule saveFinalConfigTo(Path file) {
-		this.finalConfigPath = file;
+	public ConfigModule writeEffectiveConfigTo(PrintStream writer) {
+		this.effectiveConfigConsumer = writer::print;
+		return this;
+	}
+
+	public ConfigModule printEffectiveConfig() {
+		this.effectiveConfigConsumer = effectiveConfig -> {
+			System.out.println("# Effective config:\n");
+			System.out.println(effectiveConfig);
+		};
 		return this;
 	}
 
@@ -77,35 +138,36 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 	protected void configure() {
 		bind(new TypeLiteral<RequiredDependency<ServiceGraph>>() {}).asEagerSingleton();
 		bind(new TypeLiteral<RequiredDependency<ConfigSaveService>>() {}).asEagerSingleton();
+		bind(Config.class).to(EffectiveConfig.class);
 	}
 
 	@Provides
 	@Singleton
-	Config provideConfig() {
-		Config config = ConfigWithFullPath.wrap(configSupplier.get());
-		return effectiveConfigPath != null || finalConfigPath != null ? EffectiveConfig.wrap(config) : config;
+	EffectiveConfig provideConfig() {
+		Config config = new ProtectedConfig(ConfigWithFullPath.wrap(configSupplier.get()));
+		return EffectiveConfig.wrap(config);
 	}
 
 	@Provides
 	@Singleton
-	ConfigSaveService configSaveService(Config config,
+	ConfigSaveService configSaveService(EffectiveConfig config,
 	                                    OptionalDependency<Initializer<ConfigModule>> maybeInitializer) {
 		maybeInitializer.ifPresent(initializer -> initializer.accept(this));
 		return new ConfigSaveService() {
 			@Override
-			public void start() throws Exception {
-				if (effectiveConfigPath != null && config instanceof EffectiveConfig) {
+			public void start() {
+				started = true;
+				if (effectiveConfigPath != null) {
 					logger.info("Saving effective config to {}", effectiveConfigPath);
-					((EffectiveConfig) config).saveEffectiveConfigTo(effectiveConfigPath);
+					config.saveEffectiveConfigTo(effectiveConfigPath);
+				}
+				if (effectiveConfigConsumer != null) {
+					effectiveConfigConsumer.accept(config.renderEffectiveConfig());
 				}
 			}
 
 			@Override
-			public void stop() throws Exception {
-				if (finalConfigPath != null && config instanceof EffectiveConfig) {
-					logger.info("Saving final config to {}", finalConfigPath);
-					((EffectiveConfig) config).saveEffectiveConfigTo(finalConfigPath);
-				}
+			public void stop() {
 			}
 		};
 	}

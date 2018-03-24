@@ -4,6 +4,7 @@ import com.google.inject.Inject;
 import com.google.inject.Module;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
+import io.datakernel.async.Stage;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.eventloop.Eventloop;
@@ -31,7 +32,6 @@ import static java.util.Collections.singletonList;
 public abstract class RpcServerLauncher extends Launcher {
 	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
 	public static final String PROPERTIES_FILE = "rpc-server.properties";
-	public static final String PROPERTIES_FILE_EFFECTIVE = "rpc-server.effective.properties";
 	public static final String BUSINESS_MODULE_PROP = "businessLogicModule";
 
 	@Inject
@@ -53,7 +53,7 @@ public abstract class RpcServerLauncher extends Launcher {
 						Config.create()
 								.override(ofProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
-						.saveEffectiveConfigTo(PROPERTIES_FILE_EFFECTIVE),
+						.printEffectiveConfig(),
 				EventloopModule.create(),
 				new SimpleModule() {
 					@Provides
@@ -82,7 +82,15 @@ public abstract class RpcServerLauncher extends Launcher {
 		String businessLogicModuleName = System.getProperty(BUSINESS_MODULE_PROP);
 		Module businessLogicModule = businessLogicModuleName != null ?
 				(Module) Class.forName(businessLogicModuleName).newInstance() :
-				new DemoRpcBusinessLogicModule();
+				new SimpleModule() {
+					@Provides
+					Initializer<RpcServer> rpcServerInitializer() {
+						return server -> server
+								.withMessageTypes(String.class)
+								.withHandler(String.class, String.class,
+										req -> Stage.of("Request: " + req));
+					}
+				};
 
 		Launcher launcher = new RpcServerLauncher() {
 			@Override

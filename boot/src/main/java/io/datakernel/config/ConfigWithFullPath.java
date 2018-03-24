@@ -16,10 +16,8 @@ public class ConfigWithFullPath implements Config {
 		this.path = path;
 		this.config = config;
 		this.children = new LinkedHashMap<>();
-		for (Map.Entry<String, Config> entry : config.getChildren().entrySet()) {
-			this.children.put(entry.getKey(),
-					new ConfigWithFullPath(concatPath(this.path, entry.getKey()), entry.getValue()));
-		}
+		config.getChildren().forEach((key, value) ->
+				this.children.put(key, new ConfigWithFullPath(concatPath(this.path, key), value)));
 	}
 
 	public static ConfigWithFullPath wrap(Config config) {
@@ -32,6 +30,15 @@ public class ConfigWithFullPath implements Config {
 	}
 
 	@Override
+	public String getValue() throws NoSuchElementException {
+		try {
+			return config.getValue();
+		} catch (NoSuchElementException e) {
+			throw new NoSuchElementException(this.path);
+		}
+	}
+
+	@Override
 	public Map<String, Config> getChildren() {
 		return children;
 	}
@@ -40,15 +47,6 @@ public class ConfigWithFullPath implements Config {
 	public Config provideNoKeyChild(String key) {
 		checkArgument(!children.keySet().contains(key));
 		return new ConfigWithFullPath(concatPath(this.path, key), config.provideNoKeyChild(key));
-	}
-
-	@Override
-	public String getValue() throws NoSuchElementException {
-		try {
-			return config.getValue();
-		} catch (NoSuchElementException e) {
-			throw new NoSuchElementException(this.path);
-		}
 	}
 
 }

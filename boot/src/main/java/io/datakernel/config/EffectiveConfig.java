@@ -138,14 +138,14 @@ public final class EffectiveConfig implements Config {
 	// rendering
 	public void saveEffectiveConfigTo(Path outputPath) {
 		try {
-			String renderedConfig = this.render();
+			String renderedConfig = this.renderEffectiveConfig();
 			Files.write(outputPath, renderedConfig.getBytes(UTF_8), new StandardOpenOption[]{CREATE, WRITE, TRUNCATE_EXISTING});
 		} catch (IOException e) {
 			throw new RuntimeException("Failed to serialize effective config as properties file", e);
 		}
 	}
 
-	synchronized public String render() {
+	synchronized public String renderEffectiveConfig() {
 		CallsRegistry register = this.callsRegistry;
 		StringBuilder sb = new StringBuilder();
 
