@@ -15,6 +15,7 @@ import io.datakernel.util.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -66,6 +67,10 @@ public final class CubeCleanerController implements EventloopJmxMBeanEx {
 		return new CubeCleanerController(eventloop, algorithms, (OTRemoteSql<LogDiff<CubeDiff>>) algorithms.getRemote(), storage);
 	}
 
+	public CubeCleanerController withChunksCleanupDelay(Duration chunksCleanupDelay) {
+		return withChunksCleanupDelay(chunksCleanupDelay.toMillis());
+	}
+
 	public CubeCleanerController withChunksCleanupDelay(long chunksCleanupDelay) {
 		this.chunksCleanupDelay = chunksCleanupDelay;
 		return this;
@@ -74,6 +79,10 @@ public final class CubeCleanerController implements EventloopJmxMBeanEx {
 	public CubeCleanerController withExtraSnapshotCount(int extraSnapshotCount) {
 		this.extraSnapshotsCount = extraSnapshotCount;
 		return this;
+	}
+
+	public CubeCleanerController withFreezeTimeout(Duration freezeTimeout) {
+		return withFreezeTimeout(freezeTimeout.toMillis());
 	}
 
 	public CubeCleanerController withFreezeTimeout(long freezeTimeout) {

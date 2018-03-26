@@ -33,10 +33,10 @@ import io.datakernel.stream.processor.StreamBinarySerializer;
 import io.datakernel.util.MemSize;
 
 import java.net.InetAddress;
+import java.time.Duration;
 import java.util.*;
 
 import static io.datakernel.util.Preconditions.*;
-import static java.lang.ClassLoader.getSystemClassLoader;
 import static java.util.Arrays.asList;
 
 /**
@@ -101,8 +101,9 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	private boolean compression = false;
 	private int flushDelayMillis = 0;
 
+	private ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
 	private Map<Class<?>, RpcRequestHandler<?, ?>> handlers = new LinkedHashMap<>();
-	private SerializerBuilder serializerBuilder = SerializerBuilder.create(getSystemClassLoader());
+	private SerializerBuilder serializerBuilder = SerializerBuilder.create(classLoader);
 	private List<Class<?>> messageTypes;
 
 	private final List<RpcServerConnection> connections = new ArrayList<>();
@@ -137,6 +138,12 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		return new RpcServer(eventloop)
 				.withServerSocketSettings(DEFAULT_SERVER_SOCKET_SETTINGS)
 				.withSocketSettings(DEFAULT_SOCKET_SETTINGS);
+	}
+
+	public RpcServer withClassLoader(ClassLoader classLoader) {
+		this.classLoader = classLoader;
+		this.serializerBuilder = SerializerBuilder.create(classLoader);
+		return this;
 	}
 
 	/**
@@ -177,6 +184,10 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 
 	public RpcServer withStreamProtocol(MemSize defaultPacketSize, MemSize maxPacketSize, boolean compression) {
 		return withStreamProtocol((int) defaultPacketSize.get(), (int) maxPacketSize.get(), compression);
+	}
+
+	public RpcServer withFlushDelay(Duration flushDelay) {
+		return withFlushDelay((int) flushDelay.toMillis());
 	}
 
 	public RpcServer withFlushDelay(int flushDelayMillis) {

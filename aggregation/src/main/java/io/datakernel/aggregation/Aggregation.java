@@ -30,6 +30,7 @@ import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.*;
 import io.datakernel.util.Initializable;
+import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,6 +38,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Function;
@@ -123,9 +125,17 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 		return new Aggregation(eventloop, executorService, classLoader, aggregationChunkStorage, structure, new AggregationState(structure));
 	}
 
+	public Aggregation withChunkSize(MemSize chunkSize) {
+		return withChunkSize((int) chunkSize.get());
+	}
+
 	public Aggregation withChunkSize(int chunkSize) {
 		this.chunkSize = chunkSize;
 		return this;
+	}
+
+	public Aggregation withReducerBufferSize(MemSize reducerBufferSize) {
+		return withReducerBufferSize((int) reducerBufferSize.get());
 	}
 
 	public Aggregation withReducerBufferSize(int reducerBufferSize) {
@@ -138,12 +148,20 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 		return this;
 	}
 
+	public Aggregation withSorterBlockSize(MemSize sorterBlockSize) {
+		return withSorterBlockSize((int) sorterBlockSize.get());
+	}
+
 	public Aggregation withSorterBlockSize(int sorterBlockSize) {
 		this.sorterBlockSize = sorterBlockSize;
 		return this;
 	}
 
-	public Aggregation withMaxIncrementalReloadPeriodMillis(int maxIncrementalReloadPeriodMillis) {
+	public Aggregation withMaxIncrementalReloadPeriod(Duration maxIncrementalReloadPeriod) {
+		return withMaxIncrementalReloadPeriod(maxIncrementalReloadPeriod.toMillis());
+	}
+
+	public Aggregation withMaxIncrementalReloadPeriod(long maxIncrementalReloadPeriodMillis) {
 		this.maxIncrementalReloadPeriodMillis = maxIncrementalReloadPeriodMillis;
 		return this;
 	}

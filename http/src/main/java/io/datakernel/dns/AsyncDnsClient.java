@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.channels.DatagramChannel;
+import java.time.Duration;
 import java.util.Arrays;
 
 import static io.datakernel.dns.DnsCache.DnsCacheQueryResult.*;
@@ -185,6 +186,13 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 	}
 
 	/**
+	 * @see AsyncDnsClient#withTimeout(long)
+	 */
+	public AsyncDnsClient withTimeout(Duration timeout) {
+		return withTimeout(timeout.toMillis());
+	}
+
+	/**
 	 * Creates a client which waits for result for specified timeout
 	 *
 	 * @param timeout time which this resolver will wait result
@@ -219,8 +227,16 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 		return this;
 	}
 
+	public AsyncDnsClient withExpiration(Duration errorCacheExpiration, Duration hardExpirationDelta) {
+		return withExpiration(errorCacheExpiration.toMillis(), hardExpirationDelta.toMillis());
+	}
+
 	public AsyncDnsClient withExpiration(long errorCacheExpirationMillis, long hardExpirationDeltaMillis) {
 		return withExpiration(errorCacheExpirationMillis, hardExpirationDeltaMillis, DEFAULT_TIMED_OUT_EXCEPTION_TTL_MILLIS);
+	}
+
+	public AsyncDnsClient withExpiration(Duration errorCacheExpiration, Duration hardExpirationDelta, Duration timedOutExceptionTtl) {
+		return withExpiration(errorCacheExpiration.toMillis(), hardExpirationDelta.toMillis(), timedOutExceptionTtl.toMillis());
 	}
 
 	public AsyncDnsClient withExpiration(long errorCacheExpirationMillis, long hardExpirationDeltaMillis, long timedOutExceptionTtl) {
@@ -432,7 +448,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 
 	@JmxAttribute
 	public void setMaxTtlSeconds(long maxTtlSeconds) {
-		cache.setMaxTtlSeconds(maxTtlSeconds);
+		cache.setMaxTtl(maxTtlSeconds);
 	}
 
 	@JmxAttribute
@@ -449,7 +465,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 
 	@JmxOperation
 	public String[] getDomainNamesBeingResolved(@JmxParameter("offset") int offset,
-	                                            @JmxParameter("maxSize") int maxSize) {
+												@JmxParameter("maxSize") int maxSize) {
 		if (socketHandler == null) {
 			return new String[0];
 		} else {
@@ -466,7 +482,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 
 	@JmxOperation
 	public String[] getAllCacheEntries(@JmxParameter("offset") int offset,
-	                                   @JmxParameter("maxSize") int maxSize) {
+									   @JmxParameter("maxSize") int maxSize) {
 		String[] cacheEntriesWithHeaderLine = cache.getAllCacheEntriesWithHeaderLine();
 
 		if (cacheEntriesWithHeaderLine.length == 0) {
@@ -494,7 +510,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 
 	@JmxOperation
 	public String[] getSuccessfullyResolvedDomainNames(@JmxParameter("offset") int offset,
-	                                                   @JmxParameter("maxSize") int maxSize) {
+													   @JmxParameter("maxSize") int maxSize) {
 		String[] domainNames = cache.getSuccessfullyResolvedDomainNames();
 		if (offset > domainNames.length) {
 			throw new IllegalArgumentException(format(
@@ -507,7 +523,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 
 	@JmxOperation
 	public String[] getDomainNamesOfFailedRequests(@JmxParameter("offset") int offset,
-	                                               @JmxParameter("maxSize") int maxSize) {
+												   @JmxParameter("maxSize") int maxSize) {
 		String[] domainNames = cache.getDomainNamesOfFailedRequests();
 		if (offset > domainNames.length) {
 			throw new IllegalArgumentException(format(

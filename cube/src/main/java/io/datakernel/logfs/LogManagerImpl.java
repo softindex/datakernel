@@ -34,6 +34,7 @@ import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
@@ -88,6 +89,10 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 	public LogManagerImpl<T> withBufferSize(MemSize bufferSize) {
 		this.bufferSize = (int) bufferSize.get();
 		return this;
+	}
+
+	public LogManagerImpl<T> withAutoDelay(Duration autoFlushInterval) {
+		return withAutoDelay((int) autoFlushInterval.toMillis());
 	}
 
 	public LogManagerImpl<T> withAutoDelay(int autoFlushIntervalMillis) {

@@ -34,6 +34,7 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -239,6 +240,10 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		return this;
 	}
 
+	public AsyncHttpClient withKeepAliveTimeout(Duration keepAliveTime) {
+		return withKeepAliveTimeout(keepAliveTime.toMillis());
+	}
+
 	public AsyncHttpClient withKeepAliveTimeout(long keepAliveTimeMillis) {
 		this.keepAliveTimeoutMillis = (int) keepAliveTimeMillis;
 		return this;
@@ -248,14 +253,26 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		return withKeepAliveTimeout(0);
 	}
 
+	public AsyncHttpClient withReadTimeout(Duration readTimeout) {
+		return withReadTimeout(readTimeout.toMillis());
+	}
+
 	public AsyncHttpClient withReadTimeout(long readTimeoutMillis) {
 		this.readTimeoutMillis = (int) readTimeoutMillis;
 		return this;
 	}
 
+	public AsyncHttpClient withWriteTimeout(Duration writeTimeout) {
+		return withWriteTimeout(writeTimeout.toMillis());
+	}
+
 	public AsyncHttpClient withWriteTimeout(long writeTimeoutMillis) {
 		this.writeTimeoutMillis = (int) writeTimeoutMillis;
 		return this;
+	}
+
+	public AsyncHttpClient withConnectTimeout(Duration connectTimeout) {
+		return withConnectTimeout(connectTimeout.toMillis());
 	}
 
 	public AsyncHttpClient withConnectTimeout(long connectTimeoutMillis) {

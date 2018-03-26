@@ -24,6 +24,8 @@ import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
+
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.Math.max;
@@ -93,6 +95,10 @@ public final class StreamBinarySerializer<T> implements StreamTransformer<T, Byt
 
 	public StreamBinarySerializer<T> withMaxMessageSize(MemSize maxMessageSize) {
 		return withMaxMessageSize((int) maxMessageSize.get());
+	}
+
+	public StreamBinarySerializer<T> withAutoFlush(Duration autoFlushInterval) {
+		return withAutoFlush((int) autoFlushInterval.toMillis());
 	}
 
 	public StreamBinarySerializer<T> withAutoFlush(int autoFlushIntervalMillis) {

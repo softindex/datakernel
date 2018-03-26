@@ -44,6 +44,7 @@ import org.slf4j.Logger;
 
 import javax.net.ssl.SSLContext;
 import java.net.InetSocketAddress;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -51,7 +52,6 @@ import java.util.concurrent.Future;
 import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
 import static io.datakernel.eventloop.AsyncTcpSocketImpl.wrapChannel;
 import static io.datakernel.util.Preconditions.*;
-import static java.lang.ClassLoader.getSystemClassLoader;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
@@ -163,7 +163,8 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	private long reconnectIntervalMillis = DEFAULT_RECONNECT_INTERVAL;
 	private boolean forceStart;
 
-	private SerializerBuilder serializerBuilder = SerializerBuilder.create(getSystemClassLoader());
+	private ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+	private SerializerBuilder serializerBuilder = SerializerBuilder.create(classLoader);
 	private BufferSerializer<RpcMessage> serializer;
 
 	private RpcSender requestSender;
@@ -197,6 +198,12 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	@SuppressWarnings("ConstantConditions")
 	public static RpcClient create(Eventloop eventloop) {
 		return new RpcClient(eventloop);
+	}
+
+	public RpcClient withClassLoader(ClassLoader classLoader) {
+		this.classLoader = classLoader;
+		this.serializerBuilder = SerializerBuilder.create(classLoader);
+		return this;
 	}
 
 	/**
@@ -278,9 +285,17 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		return withStreamProtocol((int) defaultPacketSize.get(), (int) maxPacketSize.get(), compression);
 	}
 
+	public RpcClient withFlushDelay(Duration flushDelay) {
+		return withFlushDelay((int)flushDelay.toMillis());
+	}
+
 	public RpcClient withFlushDelay(int flushDelayMillis) {
 		this.flushDelayMillis = flushDelayMillis;
 		return this;
+	}
+
+	public RpcClient withConnectTimeout(Duration connectTimeout) {
+		return withConnectTimeout(connectTimeout.toMillis());
 	}
 
 	/**
@@ -292,6 +307,10 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	public RpcClient withConnectTimeout(long connectTimeoutMillis) {
 		this.connectTimeoutMillis = connectTimeoutMillis;
 		return this;
+	}
+
+	public RpcClient withReconnectInterval(Duration reconnectInterval) {
+		return withReconnectInterval(reconnectInterval.toMillis());
 	}
 
 	public RpcClient withReconnectInterval(long reconnectIntervalMillis) {

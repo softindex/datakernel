@@ -40,12 +40,14 @@ import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.*;
 import io.datakernel.util.Initializable;
+import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Type;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ExecutorService;
@@ -283,8 +285,18 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 			return this;
 		}
 
+		public AggregationConfig withChunkSize(MemSize chunkSize) {
+			this.chunkSize = (int) chunkSize.get();
+			return this;
+		}
+
 		public AggregationConfig withChunkSize(int chunkSize) {
 			this.chunkSize = chunkSize;
+			return this;
+		}
+
+		public AggregationConfig withReducerBufferSize(MemSize reducerBufferSize) {
+			this.reducerBufferSize = (int) reducerBufferSize.get();
 			return this;
 		}
 
@@ -295,6 +307,11 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 
 		public AggregationConfig withSorterItemsInMemory(int sorterItemsInMemory) {
 			this.sorterItemsInMemory = sorterItemsInMemory;
+			return this;
+		}
+
+		public AggregationConfig withSorterBlockSize(MemSize sorterBlockSize) {
+			this.sorterBlockSize = (int) sorterBlockSize.get();
 			return this;
 		}
 
@@ -1171,9 +1188,17 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		}
 	}
 
+	public Cube withAggregationsChunkSize(MemSize aggregationsChunkSize) {
+		return withAggregationsChunkSize((int) aggregationsChunkSize.get());
+	}
+
 	public Cube withAggregationsChunkSize(int aggregationsChunkSize) {
 		this.aggregationsChunkSize = aggregationsChunkSize;
 		return this;
+	}
+
+	public Cube withAggregationsReducerBufferSize(MemSize aggregationsReducerBufferSize) {
+		return withAggregationsReducerBufferSize((int) aggregationsReducerBufferSize.get());
 	}
 
 	public Cube withAggregationsReducerBufferSize(int aggregationsReducerBufferSize) {
@@ -1210,6 +1235,10 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		for (AggregationContainer aggregationContainer : aggregations.values()) {
 			aggregationContainer.aggregation.setSorterBlockSize(aggregationsSorterBlockSize);
 		}
+	}
+
+	public Cube withAggregationsSorterBlockSize(MemSize aggregationsSorterBlockSize) {
+		return withAggregationsSorterBlockSize((int) aggregationsSorterBlockSize.get());
 	}
 
 	public Cube withAggregationsSorterBlockSize(int aggregationsSorterBlockSize) {
@@ -1278,7 +1307,11 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		this.maxIncrementalReloadPeriodMillis = maxIncrementalReloadPeriodMillis;
 	}
 
-	public Cube withMaxIncrementalReloadPeriodMillis(long maxIncrementalReloadPeriodMillis) {
+	public Cube withMaxIncrementalReloadPeriod(Duration maxIncrementalReloadPeriod) {
+		return withMaxIncrementalReloadPeriod(maxIncrementalReloadPeriod.toMillis());
+	}
+
+	public Cube withMaxIncrementalReloadPeriod(long maxIncrementalReloadPeriodMillis) {
 		this.maxIncrementalReloadPeriodMillis = maxIncrementalReloadPeriodMillis;
 		return this;
 	}

@@ -30,6 +30,7 @@ import io.datakernel.jmx.ValueStats;
 import io.datakernel.util.MemSize;
 
 import java.net.InetAddress;
+import java.time.Duration;
 
 import static io.datakernel.http.AbstractHttpConnection.*;
 import static io.datakernel.util.Preconditions.checkArgument;
@@ -152,6 +153,10 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		return new AsyncHttpServer(eventloop, servlet).withInspector(new JmxInspector());
 	}
 
+	public AsyncHttpServer withKeepAliveTimeout(Duration keepAliveTime) {
+		return withKeepAliveTimeout(keepAliveTime.toMillis());
+	}
+
 	public AsyncHttpServer withKeepAliveTimeout(long keepAliveTimeMillis) {
 		checkArgument(keepAliveTimeMillis >= 0, "Keep alive timeout should not be less than zero");
 		this.keepAliveTimeoutMillis = (int) keepAliveTimeMillis;
@@ -162,10 +167,18 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		return withKeepAliveTimeout(0);
 	}
 
+	public AsyncHttpServer withReadTimeout(Duration readTimeout) {
+		return withReadTimeout(readTimeout.toMillis());
+	}
+
 	public AsyncHttpServer withReadTimeout(long readTimeoutMillis) {
 		checkArgument(readTimeoutMillis >= 0, "Read timeout should not be less than zero");
 		this.readTimeoutMillis = (int) readTimeoutMillis;
 		return self();
+	}
+
+	public AsyncHttpServer withWriteTimeout(Duration writeTimeout) {
+		return withWriteTimeout(writeTimeout.toMillis());
 	}
 
 	public AsyncHttpServer withWriteTimeout(long writeTimeoutMillis) {

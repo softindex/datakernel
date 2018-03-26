@@ -17,6 +17,7 @@
 package io.datakernel.launcher;
 
 import com.google.inject.*;
+import io.datakernel.annotation.Nullable;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
@@ -68,7 +69,8 @@ public abstract class Launcher {
 
 	protected String[] args = new String[]{};
 
-	@Inject
+	@Inject(optional = true)
+	@Nullable
 	protected ServiceGraph serviceGraph;
 
 	@Inject
@@ -134,7 +136,9 @@ public abstract class Launcher {
 	}
 
 	private void doStart() throws Exception {
-		serviceGraph.startFuture().get();
+		if (serviceGraph != null) {
+			serviceGraph.startFuture().get();
+		}
 	}
 
 	protected void onStart() throws Exception {
@@ -146,7 +150,9 @@ public abstract class Launcher {
 	}
 
 	private void doStop() throws Exception {
-		serviceGraph.stopFuture().get();
+		if (serviceGraph != null) {
+			serviceGraph.stopFuture().get();
+		}
 	}
 
 	/**

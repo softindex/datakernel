@@ -20,6 +20,7 @@ import io.datakernel.util.MemSize;
 
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
+import java.time.Duration;
 
 import static io.datakernel.util.Preconditions.check;
 import static java.net.StandardSocketOptions.*;
@@ -89,8 +90,16 @@ public final class SocketSettings {
 		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay ? TRUE : FALSE, implReadTimeout, implWriteTimeout, implReadSize, implWriteSize);
 	}
 
+	public SocketSettings withImplReadTimeout(Duration implReadTimeout) {
+		return withImplReadTimeout(implReadTimeout.toMillis());
+	}
+
 	public SocketSettings withImplReadTimeout(long implReadTimeout) {
 		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay, implReadTimeout, implWriteTimeout, implReadSize, implWriteSize);
+	}
+
+	public SocketSettings withImplWriteTimeout(Duration implWriteTimeout) {
+		return withImplWriteTimeout(implWriteTimeout.toMillis());
 	}
 
 	public SocketSettings withImplWriteTimeout(long implWriteTimeout) {

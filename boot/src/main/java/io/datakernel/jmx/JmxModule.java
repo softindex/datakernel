@@ -30,6 +30,7 @@ import io.datakernel.worker.WorkerPoolModule;
 
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.Type;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -61,6 +62,10 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 
 	public static JmxModule create() {
 		return new JmxModule();
+	}
+
+	public JmxModule withRefreshPeriod(Duration refreshPeriod) {
+		return withRefreshPeriod(refreshPeriod.toMillis());
 	}
 
 	public JmxModule withRefreshPeriod(double refreshPeriod) {

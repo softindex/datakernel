@@ -16,6 +16,7 @@
 
 package io.datakernel.jmx;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -550,6 +551,10 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 	public void setSmoothingWindow(double smoothingWindow) {
 		this.smoothingWindow = smoothingWindow;
 		this.smoothingWindowCoef = calculateSmoothingWindowCoef(smoothingWindow);
+	}
+
+	public void setSmoothingWindow(Duration smoothingWindow) {
+		setSmoothingWindow(smoothingWindow.toMillis());
 	}
 
 	@JmxAttribute(optional = true)

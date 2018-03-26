@@ -23,6 +23,7 @@ import io.datakernel.jmx.JmxReducers.JmxReducerSum;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.Random;
 
 import static io.datakernel.util.Preconditions.checkArgument;
@@ -92,20 +93,28 @@ public final class ThrottlingController implements EventloopJmxMBean {
 
 	public static ThrottlingController create() {
 		return new ThrottlingController()
-				.withTargetTimeMillis(TARGET_TIME_MILLIS)
-				.withGcTimeMillis(GC_TIME_MILLIS)
+				.withTargetTime(TARGET_TIME_MILLIS)
+				.withGcTime(GC_TIME_MILLIS)
 				.withSmoothingWindow(SMOOTHING_WINDOW)
 				.withThrottlingDecrease(THROTTLING_DECREASE)
 				.withInitialKeysPerSecond(INITIAL_KEYS_PER_SECOND)
 				.withInitialThrottling(INITIAL_THROTTLING);
 	}
 
-	public ThrottlingController withTargetTimeMillis(long targetTimeMillis) {
+	public ThrottlingController withTargetTime(long targetTimeMillis) {
 		setTargetTimeMillis((int) targetTimeMillis);
 		return this;
 	}
 
-	public ThrottlingController withGcTimeMillis(long gcTimeMillis) {
+	public ThrottlingController withTargetTime(Duration targetTime) {
+		return withTargetTime(targetTime.toMillis());
+	}
+
+	public ThrottlingController withGcTime(Duration gcTime) {
+		return withGcTime(gcTime.toMillis());
+	}
+
+	public ThrottlingController withGcTime(long gcTimeMillis) {
 		setGcTimeMillis((int) gcTimeMillis);
 		return this;
 	}

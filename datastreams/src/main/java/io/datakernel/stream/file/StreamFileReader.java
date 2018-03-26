@@ -21,6 +21,7 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.stream.AbstractStreamProducer;
 import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,6 +63,10 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 
 	public static StreamFileReader readFile(AsyncFile asyncFile) {
 		return new StreamFileReader(asyncFile);
+	}
+
+	public StreamFileReader withBufferSize(MemSize bufferSize) {
+		return withBufferSize((int) bufferSize.get());
 	}
 
 	public StreamFileReader withBufferSize(int bufferSize) {

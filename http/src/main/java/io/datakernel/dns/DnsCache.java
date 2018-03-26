@@ -22,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -244,7 +245,11 @@ final class DnsCache {
 		return maxTtlSeconds;
 	}
 
-	public void setMaxTtlSeconds(long maxTtlSeconds) {
+	public void setMaxTtl(Duration maxTtl) {
+		this.maxTtlSeconds = maxTtl.toMillis() / 1000;
+	}
+
+	public void setMaxTtl(long maxTtlSeconds) {
 		this.maxTtlSeconds = maxTtlSeconds;
 	}
 

@@ -11,6 +11,8 @@ import io.datakernel.util.Initializable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
+
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 
 public final class EventloopTaskScheduler implements EventloopService, Initializable<EventloopTaskScheduler>, EventloopJmxMBeanEx {
@@ -65,6 +67,10 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 
 	public static EventloopTaskScheduler create(Eventloop eventloop, AsyncCallable<?> task) {
 		return new EventloopTaskScheduler(eventloop, task);
+	}
+
+	public EventloopTaskScheduler withInitialDelay(Duration initialDelay) {
+		return withInitialDelay(initialDelay.toMillis());
 	}
 
 	public EventloopTaskScheduler withInitialDelay(long initialDelayMillis) {

@@ -1,5 +1,7 @@
 package io.datakernel.async;
 
+import java.time.Duration;
+
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.Math.*;
 
@@ -34,6 +36,10 @@ public interface RetryPolicy {
 	default RetryPolicy withMaxTotalRetryCount(int maxRetryCount) {
 		return (now, lastError, retryCount, errorTimestamp) ->
 				retryCount < maxRetryCount ? nextRetryTimestamp(now, lastError, retryCount, errorTimestamp) : 0;
+	}
+
+	default RetryPolicy withMaxTotalRetryTimeout(Duration maxRetryTimeout) {
+		return withMaxTotalRetryTimeout(maxRetryTimeout.toMillis());
 	}
 
 	default RetryPolicy withMaxTotalRetryTimeout(long maxRetryTimeout) {

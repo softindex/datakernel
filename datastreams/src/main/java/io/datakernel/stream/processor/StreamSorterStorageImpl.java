@@ -24,6 +24,7 @@ import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
+import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -97,9 +98,17 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 		return this;
 	}
 
+	public StreamSorterStorageImpl<T> withReadBlockSize(MemSize readBlockSize) {
+		return withReadBlockSize((int) readBlockSize.get());
+	}
+
 	public StreamSorterStorageImpl<T> withReadBlockSize(int readBlockSize) {
 		this.readBlockSize = readBlockSize;
 		return this;
+	}
+
+	public StreamSorterStorageImpl<T> withWriteBlockSize(MemSize writeBlockSize) {
+		return withWriteBlockSize((int) writeBlockSize.get());
 	}
 
 	public StreamSorterStorageImpl<T> withWriteBlockSize(int writeBlockSize) {

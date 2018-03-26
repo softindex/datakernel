@@ -16,6 +16,8 @@
 
 package io.datakernel.jmx;
 
+import java.time.Duration;
+
 import static java.lang.Math.exp;
 import static java.lang.Math.log;
 
@@ -176,6 +178,10 @@ public final class EventStats implements JmxRefreshableStats<EventStats>, JmxSta
 	public void setSmoothingWindow(double smoothingWindow) {
 		this.smoothingWindow = smoothingWindow;
 		this.smoothingWindowCoef = calculateSmoothingWindowCoef(smoothingWindow);
+	}
+
+	public void setSmoothingWindow(Duration smoothingWindow) {
+		setSmoothingWindow(smoothingWindow.toMillis());
 	}
 
 	@JmxAttribute
