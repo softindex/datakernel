@@ -137,7 +137,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 	}
 
 	public LocalFsChunkStorage withBufferSize(MemSize bufferSize) {
-		this.bufferSize = (int) bufferSize.get();
+		this.bufferSize = bufferSize.toInt();
 		return this;
 	}
 

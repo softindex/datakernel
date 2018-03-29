@@ -99,7 +99,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	}
 
 	public StreamSorterStorageImpl<T> withReadBlockSize(MemSize readBlockSize) {
-		return withReadBlockSize((int) readBlockSize.get());
+		return withReadBlockSize(readBlockSize.toInt());
 	}
 
 	public StreamSorterStorageImpl<T> withReadBlockSize(int readBlockSize) {
@@ -108,7 +108,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	}
 
 	public StreamSorterStorageImpl<T> withWriteBlockSize(MemSize writeBlockSize) {
-		return withWriteBlockSize((int) writeBlockSize.get());
+		return withWriteBlockSize(writeBlockSize.toInt());
 	}
 
 	public StreamSorterStorageImpl<T> withWriteBlockSize(int writeBlockSize) {

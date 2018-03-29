@@ -98,7 +98,7 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements
 	}
 
 	public LocalFsLogFileSystem withReadBlockSize(MemSize readBlockSize) {
-		return withReadBlockSize((int) readBlockSize.get());
+		return withReadBlockSize(readBlockSize.toInt());
 	}
 
 	private Path path(String logPartition, LogFile logFile) {

@@ -286,7 +286,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		}
 
 		public AggregationConfig withChunkSize(MemSize chunkSize) {
-			this.chunkSize = (int) chunkSize.get();
+			this.chunkSize = chunkSize.toInt();
 			return this;
 		}
 
@@ -296,7 +296,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		}
 
 		public AggregationConfig withReducerBufferSize(MemSize reducerBufferSize) {
-			this.reducerBufferSize = (int) reducerBufferSize.get();
+			this.reducerBufferSize = reducerBufferSize.toInt();
 			return this;
 		}
 
@@ -311,7 +311,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		}
 
 		public AggregationConfig withSorterBlockSize(MemSize sorterBlockSize) {
-			this.sorterBlockSize = (int) sorterBlockSize.get();
+			this.sorterBlockSize = sorterBlockSize.toInt();
 			return this;
 		}
 
@@ -1189,7 +1189,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 	}
 
 	public Cube withAggregationsChunkSize(MemSize aggregationsChunkSize) {
-		return withAggregationsChunkSize((int) aggregationsChunkSize.get());
+		return withAggregationsChunkSize(aggregationsChunkSize.toInt());
 	}
 
 	public Cube withAggregationsChunkSize(int aggregationsChunkSize) {
@@ -1198,7 +1198,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 	}
 
 	public Cube withAggregationsReducerBufferSize(MemSize aggregationsReducerBufferSize) {
-		return withAggregationsReducerBufferSize((int) aggregationsReducerBufferSize.get());
+		return withAggregationsReducerBufferSize(aggregationsReducerBufferSize.toInt());
 	}
 
 	public Cube withAggregationsReducerBufferSize(int aggregationsReducerBufferSize) {
@@ -1238,7 +1238,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 	}
 
 	public Cube withAggregationsSorterBlockSize(MemSize aggregationsSorterBlockSize) {
-		return withAggregationsSorterBlockSize((int) aggregationsSorterBlockSize.get());
+		return withAggregationsSorterBlockSize(aggregationsSorterBlockSize.toInt());
 	}
 
 	public Cube withAggregationsSorterBlockSize(int aggregationsSorterBlockSize) {

@@ -153,8 +153,8 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	private List<InetSocketAddress> addresses = new ArrayList<>();
 	private Map<InetSocketAddress, RpcClientConnection> connections = new HashMap<>();
 
-	private int defaultPacketSize = (int) DEFAULT_PACKET_SIZE.get();
-	private int maxPacketSize = (int) MAX_PACKET_SIZE.get();
+	private int defaultPacketSize = DEFAULT_PACKET_SIZE.toInt();
+	private int maxPacketSize = MAX_PACKET_SIZE.toInt();
 	private boolean compression = false;
 	private int flushDelayMillis = 0;
 
@@ -282,11 +282,11 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	}
 
 	public RpcClient withStreamProtocol(MemSize defaultPacketSize, MemSize maxPacketSize, boolean compression) {
-		return withStreamProtocol((int) defaultPacketSize.get(), (int) maxPacketSize.get(), compression);
+		return withStreamProtocol(defaultPacketSize.toInt(), maxPacketSize.toInt(), compression);
 	}
 
 	public RpcClient withFlushDelay(Duration flushDelay) {
-		return withFlushDelay((int)flushDelay.toMillis());
+		return withFlushDelay((int) flushDelay.toMillis());
 	}
 
 	public RpcClient withFlushDelay(int flushDelayMillis) {

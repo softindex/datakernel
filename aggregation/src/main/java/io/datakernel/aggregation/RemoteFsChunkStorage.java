@@ -94,7 +94,7 @@ public final class RemoteFsChunkStorage implements AggregationChunkStorage, Even
 	}
 
 	public RemoteFsChunkStorage withBufferSize(MemSize bufferSize) {
-		this.bufferSize = (int) bufferSize.get();
+		this.bufferSize = bufferSize.toInt();
 		return this;
 	}
 

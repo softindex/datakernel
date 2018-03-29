@@ -193,7 +193,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	}
 
 	public AsyncHttpServer withMaxHttpMessageSize(MemSize size) {
-		return withMaxHttpMessageSize((int) size.get());
+		return withMaxHttpMessageSize(size.toInt());
 	}
 
 	public AsyncHttpServer withHttpErrorFormatter(HttpExceptionFormatter httpExceptionFormatter) {

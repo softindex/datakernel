@@ -67,7 +67,7 @@ public final class SocketSettings {
 	}
 
 	public SocketSettings withSendBufferSize(MemSize sendBufferSize) {
-		return withSendBufferSize((int) sendBufferSize.get());
+		return withSendBufferSize(sendBufferSize.toInt());
 	}
 
 	public SocketSettings withReceiveBufferSize(int receiveBufferSize) {
@@ -75,7 +75,7 @@ public final class SocketSettings {
 	}
 
 	public SocketSettings withReceiveBufferSize(MemSize receiveBufferSize) {
-		return withReceiveBufferSize((int) receiveBufferSize.get());
+		return withReceiveBufferSize(receiveBufferSize.toInt());
 	}
 
 	public SocketSettings withKeepAlive(boolean keepAlive) {
@@ -111,7 +111,7 @@ public final class SocketSettings {
 	}
 
 	public SocketSettings withImplReadSize(MemSize implReadSize) {
-		return withImplReadSize((int) implReadSize.get());
+		return withImplReadSize(implReadSize.toInt());
 	}
 
 	public SocketSettings withImplWriteSize(int implWriteSize) {
@@ -119,7 +119,7 @@ public final class SocketSettings {
 	}
 
 	public SocketSettings withImplWriteSize(MemSize implWriteSize) {
-		return withImplWriteSize((int) implWriteSize.get());
+		return withImplWriteSize(implWriteSize.toInt());
 	}
 	// endregion
 

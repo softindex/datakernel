@@ -58,7 +58,7 @@ public final class ServerSocketSettings {
 	}
 
 	public ServerSocketSettings withReceiveBufferSize(MemSize receiveBufferSize) {
-		return new ServerSocketSettings(backlog, (int) receiveBufferSize.get(), reuseAddress);
+		return new ServerSocketSettings(backlog, receiveBufferSize.toInt(), reuseAddress);
 	}
 
 	public ServerSocketSettings withReuseAddress(boolean reuseAddress) {

@@ -56,7 +56,7 @@ public final class DatagramSocketSettings {
 	}
 
 	public DatagramSocketSettings withReceiveBufferSize(MemSize receiveBufferSize) {
-		return withReceiveBufferSize((int) receiveBufferSize.get());
+		return withReceiveBufferSize(receiveBufferSize.toInt());
 	}
 
 	public DatagramSocketSettings withSendBufferSize(int sendBufferSize) {
@@ -64,7 +64,7 @@ public final class DatagramSocketSettings {
 	}
 
 	public DatagramSocketSettings withSendBufferSize(MemSize sendBufferSize) {
-		return withSendBufferSize((int) sendBufferSize.get());
+		return withSendBufferSize(sendBufferSize.toInt());
 	}
 
 	public DatagramSocketSettings withReuseAddress(boolean reuseAddress) {

@@ -66,7 +66,7 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 	}
 
 	public StreamFileReader withBufferSize(MemSize bufferSize) {
-		return withBufferSize((int) bufferSize.get());
+		return withBufferSize(bufferSize.toInt());
 	}
 
 	public StreamFileReader withBufferSize(int bufferSize) {

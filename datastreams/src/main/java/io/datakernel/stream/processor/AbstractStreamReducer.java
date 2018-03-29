@@ -67,7 +67,7 @@ public abstract class AbstractStreamReducer<K, O, A> implements HasOutput<O>, Ha
 	}
 
 	protected AbstractStreamReducer<K, O, A> withBufferSize(MemSize bufferSize) {
-		return withBufferSize((int) bufferSize.get());
+		return withBufferSize(bufferSize.toInt());
 	}
 
 	protected AbstractStreamReducer<K, O, A> withBufferSize(int bufferSize) {

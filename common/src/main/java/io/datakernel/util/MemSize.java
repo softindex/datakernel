@@ -57,8 +57,13 @@ public final class MemSize {
 		return of(terabytes * TB);
 	}
 
-	public long get() {
+	public long toLong() {
 		return bytes;
+	}
+
+	public int toInt() {
+		if (bytes > Integer.MAX_VALUE) throw new IllegalStateException("MemSize exceeds Integer.MAX_VALUE: " + bytes);
+		return (int) bytes;
 	}
 
 	public static MemSize valueOf(String string) {
@@ -97,7 +102,7 @@ public final class MemSize {
 	}
 
 	public String format() {
-		long bytes = get();
+		long bytes = toLong();
 		if (bytes == 0) {
 			return "0b";
 		}

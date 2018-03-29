@@ -48,8 +48,8 @@ public final class StreamBinarySerializer<T> implements StreamTransformer<T, Byt
 	public static final MemSize MAX_SIZE = MAX_SIZE_3;
 
 	private final BufferSerializer<T> serializer;
-	private int defaultBufferSize = (int) DEFAULT_BUFFER_SIZE.get();
-	private int maxMessageSize = (int) (MAX_SIZE.get());
+	private int defaultBufferSize = DEFAULT_BUFFER_SIZE.toInt();
+	private int maxMessageSize = MAX_SIZE.toInt();
 	private int autoFlushIntervalMillis = -1;
 	private boolean skipSerializationErrors = false;
 
@@ -84,7 +84,7 @@ public final class StreamBinarySerializer<T> implements StreamTransformer<T, Byt
 	}
 
 	public StreamBinarySerializer<T> withDefaultBufferSize(MemSize bufferSize) {
-		return withDefaultBufferSize((int) bufferSize.get());
+		return withDefaultBufferSize(bufferSize.toInt());
 	}
 
 	public StreamBinarySerializer<T> withMaxMessageSize(int maxMessageSize) {
@@ -94,7 +94,7 @@ public final class StreamBinarySerializer<T> implements StreamTransformer<T, Byt
 	}
 
 	public StreamBinarySerializer<T> withMaxMessageSize(MemSize maxMessageSize) {
-		return withMaxMessageSize((int) maxMessageSize.get());
+		return withMaxMessageSize(maxMessageSize.toInt());
 	}
 
 	public StreamBinarySerializer<T> withAutoFlush(Duration autoFlushInterval) {

@@ -286,7 +286,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	}
 
 	public AsyncHttpClient withMaxHttpMessageSize(MemSize maxHttpMessageSize) {
-		return withMaxHttpMessageSize((int) maxHttpMessageSize.get());
+		return withMaxHttpMessageSize(maxHttpMessageSize.toInt());
 	}
 
 	public AsyncHttpClient withInspector(Inspector inspector) {

@@ -96,8 +96,8 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	public static final MemSize DEFAULT_PACKET_SIZE = StreamBinarySerializer.DEFAULT_BUFFER_SIZE;
 	public static final MemSize MAX_PACKET_SIZE = StreamBinarySerializer.MAX_SIZE;
 
-	private int defaultPacketSize = (int) DEFAULT_PACKET_SIZE.get();
-	private int maxPacketSize = (int) MAX_PACKET_SIZE.get();
+	private int defaultPacketSize = DEFAULT_PACKET_SIZE.toInt();
+	private int maxPacketSize = MAX_PACKET_SIZE.toInt();
 	private boolean compression = false;
 	private int flushDelayMillis = 0;
 
@@ -183,7 +183,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	}
 
 	public RpcServer withStreamProtocol(MemSize defaultPacketSize, MemSize maxPacketSize, boolean compression) {
-		return withStreamProtocol((int) defaultPacketSize.get(), (int) maxPacketSize.get(), compression);
+		return withStreamProtocol(defaultPacketSize.toInt(), maxPacketSize.toInt(), compression);
 	}
 
 	public RpcServer withFlushDelay(Duration flushDelay) {

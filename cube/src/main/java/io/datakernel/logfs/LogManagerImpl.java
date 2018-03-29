@@ -87,7 +87,7 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 	}
 
 	public LogManagerImpl<T> withBufferSize(MemSize bufferSize) {
-		this.bufferSize = (int) bufferSize.get();
+		this.bufferSize = bufferSize.toInt();
 		return this;
 	}
 

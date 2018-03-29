@@ -126,7 +126,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 	}
 
 	public Aggregation withChunkSize(MemSize chunkSize) {
-		return withChunkSize((int) chunkSize.get());
+		return withChunkSize(chunkSize.toInt());
 	}
 
 	public Aggregation withChunkSize(int chunkSize) {
@@ -135,7 +135,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 	}
 
 	public Aggregation withReducerBufferSize(MemSize reducerBufferSize) {
-		return withReducerBufferSize((int) reducerBufferSize.get());
+		return withReducerBufferSize(reducerBufferSize.toInt());
 	}
 
 	public Aggregation withReducerBufferSize(int reducerBufferSize) {
@@ -149,7 +149,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 	}
 
 	public Aggregation withSorterBlockSize(MemSize sorterBlockSize) {
-		return withSorterBlockSize((int) sorterBlockSize.get());
+		return withSorterBlockSize(sorterBlockSize.toInt());
 	}
 
 	public Aggregation withSorterBlockSize(int sorterBlockSize) {
