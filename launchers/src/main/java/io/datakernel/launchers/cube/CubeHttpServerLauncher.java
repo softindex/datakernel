@@ -1,11 +1,10 @@
-package io.datakernel.boot.cube;
+package io.datakernel.launchers.cube;
 
 import com.google.inject.Module;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import io.datakernel.async.AsyncCallable;
 import io.datakernel.async.EventloopTaskScheduler;
-import io.datakernel.boot.http.HttpServerLauncher;
 import io.datakernel.config.Config;
 import io.datakernel.cube.Cube;
 import io.datakernel.cube.http.ReportingServiceServlet;
@@ -13,6 +12,7 @@ import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.launcher.Launcher;
+import io.datakernel.launchers.http.HttpServerLauncher;
 import io.datakernel.logfs.ot.LogDiff;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.util.guice.SimpleModule;

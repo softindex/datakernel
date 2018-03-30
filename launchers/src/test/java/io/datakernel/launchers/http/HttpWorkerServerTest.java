@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.boot.http;
+package io.datakernel.launchers.http;
 
 import com.google.inject.Guice;
 import com.google.inject.Injector;

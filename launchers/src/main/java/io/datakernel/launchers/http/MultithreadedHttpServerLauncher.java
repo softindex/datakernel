@@ -1,4 +1,4 @@
-package io.datakernel.boot.http;
+package io.datakernel.launchers.http;
 
 import com.google.inject.Inject;
 import com.google.inject.Module;
@@ -34,9 +34,9 @@ import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.config.ConfigConverters.ofInteger;
-import static io.datakernel.config.Initializers.*;
 import static io.datakernel.http.HttpResponse.ok200;
 import static io.datakernel.jmx.JmxModuleInitializers.ofGlobalEventloopStats;
+import static io.datakernel.launchers.Initializers.*;
 import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;

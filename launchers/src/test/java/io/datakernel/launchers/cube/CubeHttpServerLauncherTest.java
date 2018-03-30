@@ -1,4 +1,4 @@
-package io.datakernel.boot.cube;
+package io.datakernel.launchers.cube;
 
 import com.google.inject.Module;
 import org.junit.Test;

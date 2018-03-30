@@ -1,4 +1,4 @@
-package io.datakernel.boot.remotefs;
+package io.datakernel.launchers.remotefs;
 
 import org.junit.Test;
 
