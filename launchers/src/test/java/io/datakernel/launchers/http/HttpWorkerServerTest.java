@@ -16,7 +16,6 @@
 
 package io.datakernel.launchers.http;
 
-import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Module;
 import com.google.inject.Provides;
@@ -75,7 +74,7 @@ public class HttpWorkerServerTest {
 								.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(PORT)))));
 			}
 		};
-		Injector injector = Guice.createInjector(DEVELOPMENT, launcher.getCombinedModule(new String[]{}));
+		Injector injector = launcher.createInjector(DEVELOPMENT, new String[]{});
 
 		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
 		try (Socket socket0 = new Socket(); Socket socket1 = new Socket()) {

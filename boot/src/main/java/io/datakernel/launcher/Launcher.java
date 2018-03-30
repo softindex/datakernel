@@ -88,9 +88,7 @@ public abstract class Launcher {
 	 * which is highly for testing.
 	 */
 	public final void testInjector() {
-		Guice.createInjector(Stage.TOOL,
-				getCombinedModule(new String[0]),
-				binder -> binder.getMembersInjector(Launcher.this.getClass()));
+		createInjector(Stage.TOOL, new String[0]);
 	}
 
 	/**
@@ -105,18 +103,15 @@ public abstract class Launcher {
 	 * @param args program args that will be injected into @Args string array
 	 */
 	public void launch(boolean eagerSingletonsMode, String[] args) throws Exception {
-		Injector injector = Guice.createInjector(eagerSingletonsMode ? Stage.PRODUCTION : Stage.DEVELOPMENT,
-				getCombinedModule(args));
+		Injector injector = createInjector(eagerSingletonsMode ? Stage.PRODUCTION : Stage.DEVELOPMENT, args);
 		logger.info("=== INJECTING DEPENDENCIES");
 		try {
 			onStart();
 			try {
-				logger.info("=== STARTING APPLICATION");
 				doStart();
 				logger.info("=== RUNNING APPLICATION");
 				run();
 			} finally {
-				logger.info("=== STOPPING APPLICATION");
 				doStop();
 			}
 		} catch (Exception e) {
@@ -127,9 +122,9 @@ public abstract class Launcher {
 		}
 	}
 
-	public Module getCombinedModule(String[] args) {
+	synchronized public Injector createInjector(Stage stage, String[] args) {
 		this.args = args;
-		return combine(
+		return Guice.createInjector(stage,
 				combine(getModules()),
 				binder -> binder.bind(String[].class).annotatedWith(Args.class).toInstance(args),
 				binder -> binder.requestInjection(this));
@@ -137,6 +132,7 @@ public abstract class Launcher {
 
 	private void doStart() throws Exception {
 		if (serviceGraph != null) {
+			logger.info("=== STARTING APPLICATION");
 			serviceGraph.startFuture().get();
 		}
 	}
@@ -151,6 +147,7 @@ public abstract class Launcher {
 
 	private void doStop() throws Exception {
 		if (serviceGraph != null) {
+			logger.info("=== STOPPING APPLICATION");
 			serviceGraph.stopFuture().get();
 		}
 	}
@@ -175,6 +172,7 @@ public abstract class Launcher {
 
 	/**
 	 * Releases all threads waiting for shutdown.
+	 *
 	 * @see Launcher#awaitShutdown()
 	 */
 	protected final void requestShutdown() {
