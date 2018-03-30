@@ -8,13 +8,15 @@ import io.datakernel.async.Stage;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.ThrottlingController;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
-import io.datakernel.launcher.modules.EventloopModule;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.service.ServiceGraphModule;
+import io.datakernel.trigger.TriggerRegistry;
 import io.datakernel.trigger.TriggersModule;
 import io.datakernel.util.Initializer;
+import io.datakernel.util.guice.OptionalDependency;
 import io.datakernel.util.guice.SimpleModule;
 
 import java.util.Collection;
@@ -22,7 +24,7 @@ import java.util.Collection;
 import static com.google.inject.util.Modules.combine;
 import static com.google.inject.util.Modules.override;
 import static io.datakernel.config.Config.ofProperties;
-import static io.datakernel.config.Initializers.ofRpcServer;
+import static io.datakernel.config.Initializers.*;
 import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -54,8 +56,18 @@ public abstract class RpcServerLauncher extends Launcher {
 								.override(ofProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
-				EventloopModule.create(),
 				new SimpleModule() {
+					@Provides
+					@Singleton
+					public Eventloop provide(Config config,
+					                         OptionalDependency<ThrottlingController> maybeThrottlingController,
+					                         TriggerRegistry triggerRegistry) {
+						return Eventloop.create()
+								.initialize(ofEventloop(config.getChild("eventloop")))
+								.initialize(ofEventloopTriggers(triggerRegistry, config.getChild("triggers.eventloop")))
+								.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withThrottlingController));
+					}
+
 					@Provides
 					@Singleton
 					RpcServer provideRpcServer(Config config, Eventloop eventloop, Initializer<RpcServer> rpcServerInitializer) {

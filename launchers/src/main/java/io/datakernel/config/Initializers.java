@@ -27,10 +27,10 @@ public class Initializers {
 
 	public static <T extends AbstractServer<T>> Initializer<T> ofAbstractServer(Config config) {
 		return server -> server
-				.withListenAddresses(config.get(ConfigConverters.ofList(ConfigConverters.ofInetSocketAddress()), "listenAddresses"))
-				.withAcceptOnce(config.get(ConfigConverters.ofBoolean(), "acceptOnce", false))
-				.withSocketSettings(config.get(ConfigConverters.ofSocketSettings(), "socketSettings", server.getSocketSettings()))
-				.withServerSocketSettings(config.get(ConfigConverters.ofServerSocketSettings(), "serverSocketSettings", server.getServerSocketSettings()));
+				.withListenAddresses(config.get(ofList(ofInetSocketAddress()), "listenAddresses"))
+				.withAcceptOnce(config.get(ofBoolean(), "acceptOnce", false))
+				.withSocketSettings(config.get(ofSocketSettings(), "socketSettings", server.getSocketSettings()))
+				.withServerSocketSettings(config.get(ofServerSocketSettings(), "serverSocketSettings", server.getServerSocketSettings()));
 
 	}
 

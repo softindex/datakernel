@@ -37,6 +37,7 @@
         <module>ot</module>
         <module>common</module>
         <module>test</module>
+	    <module>launchers</module>
     </modules>
 
     <licenses>

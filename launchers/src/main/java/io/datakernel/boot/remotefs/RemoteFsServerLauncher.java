@@ -8,13 +8,14 @@ import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverters;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.ThrottlingController;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
-import io.datakernel.launcher.modules.EventloopModule;
 import io.datakernel.remotefs.RemoteFsServer;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.trigger.TriggerRegistry;
 import io.datakernel.trigger.TriggersModule;
+import io.datakernel.util.guice.OptionalDependency;
 import io.datakernel.util.guice.SimpleModule;
 
 import java.net.InetSocketAddress;
@@ -24,8 +25,7 @@ import java.util.concurrent.ExecutorService;
 import static com.google.inject.util.Modules.override;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.config.ConfigConverters.ofPath;
-import static io.datakernel.config.Initializers.ofRemoteFsServer;
-import static io.datakernel.config.Initializers.ofRemoteFsServerTriggers;
+import static io.datakernel.config.Initializers.*;
 import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -54,8 +54,18 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 								.override(Config.ofProperties(PROPERTIES_FILE, true))
 								.override(Config.ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
-				EventloopModule.create(),
 				new SimpleModule() {
+					@Provides
+					@Singleton
+					public Eventloop provide(Config config,
+					                         OptionalDependency<ThrottlingController> maybeThrottlingController,
+					                         TriggerRegistry triggerRegistry) {
+						return Eventloop.create()
+								.initialize(ofEventloop(config.getChild("eventloop")))
+								.initialize(ofEventloopTriggers(triggerRegistry, config.getChild("triggers.eventloop")))
+								.initialize(eventloop -> maybeThrottlingController.ifPresent(eventloop::withThrottlingController));
+					}
+
 					@Provides
 					@Singleton
 					RemoteFsServer remoteFsServer(Eventloop eventloop, ExecutorService executor, TriggerRegistry triggerRegistry,
