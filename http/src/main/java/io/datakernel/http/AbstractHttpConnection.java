@@ -23,6 +23,7 @@ import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.ParseException;
+import io.datakernel.util.MemSize;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.GzipProcessorUtils.fromGzip;
@@ -40,7 +41,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 	public static final ParseException TOO_MANY_HEADERS = new ParseException("Too many headers");
 	public static final ParseException UNEXPECTED_READ = new ParseException("Unexpected read data");
 
-	public static final int MAX_HEADER_LINE_SIZE = 8 * 1024; // http://stackoverflow.com/questions/686217/maximum-on-http-header-values
+	public static final MemSize MAX_HEADER_LINE_SIZE = MemSize.kilobytes(8); // http://stackoverflow.com/questions/686217/maximum-on-http-header-values
 	public static final int MAX_HEADERS = 100; // http://httpd.apache.org/docs/2.2/mod/core.html#limitrequestfields
 
 	protected static final HttpHeaders.Value CONNECTION_KEEP_ALIVE_HEADER = HttpHeaders.asBytes(CONNECTION, "keep-alive");
@@ -94,7 +95,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 	public AbstractHttpConnection(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, char[] headerChars, int maxHttpMessageSize) {
 		this.eventloop = eventloop;
 		this.headerChars = headerChars;
-		assert headerChars.length >= MAX_HEADER_LINE_SIZE;
+		assert headerChars.length >= MAX_HEADER_LINE_SIZE.toInt();
 		this.maxHttpMessageSize = maxHttpMessageSize;
 		this.asyncTcpSocket = asyncTcpSocket;
 		reset();
@@ -369,7 +370,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 				assert reading == FIRSTLINE || reading == HEADERS;
 				ByteBuf headerBuf = takeHeader();
 				if (headerBuf == null) { // states that more bytes are being required
-					check(!readQueue.hasRemainingBytes(MAX_HEADER_LINE_SIZE), TOO_LONG_HEADER);
+					check(!readQueue.hasRemainingBytes(MAX_HEADER_LINE_SIZE.toInt()), TOO_LONG_HEADER);
 					return;
 				}
 

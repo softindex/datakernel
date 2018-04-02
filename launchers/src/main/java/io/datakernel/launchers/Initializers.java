@@ -12,6 +12,8 @@ import io.datakernel.trigger.TriggerResult;
 import io.datakernel.util.Initializer;
 import io.datakernel.util.MemSize;
 
+import java.time.Duration;
+
 import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.eventloop.Eventloop.DEFAULT_IDLE_INTERVAL;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -42,7 +44,7 @@ public class Initializers {
 	public static Initializer<Eventloop> ofEventloop(Config config) {
 		return eventloop -> eventloop
 				.withFatalErrorHandler(config.get(ofFatalErrorHandler(), "fatalErrorHandler", rethrowOnAnyError()))
-				.withIdleInterval(config.get(ofLong(), "idleIntervalMillis", DEFAULT_IDLE_INTERVAL))
+				.withIdleInterval(config.get(ofLong().transform(Duration::ofMillis, Duration::toMillis), "idleIntervalMillis", DEFAULT_IDLE_INTERVAL))
 				.withThreadPriority(config.get(ofInteger(), "threadPriority", 0));
 	}
 

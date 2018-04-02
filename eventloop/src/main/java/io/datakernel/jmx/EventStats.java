@@ -27,7 +27,7 @@ import static java.lang.Math.log;
  * Class is supposed to work in single thread
  */
 public final class EventStats implements JmxRefreshableStats<EventStats>, JmxStatsWithSmoothingWindow, JmxStatsWithReset {
-	private static final long TOO_LONG_TIME_PERIOD_BETWEEN_REFRESHES = 60 * 60 * 1000; // 1 hour
+	private static final Duration TOO_LONG_TIME_PERIOD_BETWEEN_REFRESHES = Duration.ofHours(1);
 	private static final double LN_2 = log(2);
 
 	private long lastTimestampMillis;
@@ -60,13 +60,17 @@ public final class EventStats implements JmxRefreshableStats<EventStats>, JmxSta
 		return new EventStats();
 	}
 
+//	public static EventStats create(double smoothingWindow) {
+//		return new EventStats(smoothingWindow);
+//	}
+
 	/**
 	 * Creates new EventStats with specified smoothing window
 	 *
 	 * @param smoothingWindow in seconds
 	 */
-	public static EventStats create(double smoothingWindow) {
-		return new EventStats(smoothingWindow);
+	public static EventStats create(Duration smoothingWindow) {
+		return new EventStats(smoothingWindow.toMillis() / 1000.0);
 	}
 	// endregion
 
@@ -123,7 +127,7 @@ public final class EventStats implements JmxRefreshableStats<EventStats>, JmxSta
 	}
 
 	private static boolean isTimePeriodValid(long timePeriod) {
-		return timePeriod < TOO_LONG_TIME_PERIOD_BETWEEN_REFRESHES && timePeriod > 0;
+		return timePeriod < TOO_LONG_TIME_PERIOD_BETWEEN_REFRESHES.toMillis() && timePeriod > 0;
 	}
 
 	@Override

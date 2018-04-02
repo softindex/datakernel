@@ -14,10 +14,10 @@ import org.slf4j.LoggerFactory;
 import javax.sql.DataSource;
 import java.io.IOException;
 import java.sql.*;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static io.datakernel.util.CollectionUtils.difference;
 import static io.datakernel.util.CollectionUtils.union;
 import static io.datakernel.util.Preconditions.checkState;
@@ -29,7 +29,7 @@ import static java.util.stream.Collectors.*;
 
 public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(getClass());
-	public static final double DEFAULT_SMOOTHING_WINDOW = SMOOTHING_WINDOW_5_MINUTES;
+	public static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);
 	public static final String DEFAULT_REVISION_TABLE = "ot_revisions";
 	public static final String DEFAULT_DIFFS_TABLE = "ot_diffs";
 	public static final String DEFAULT_BACKUP_TABLE = "ot_revisions_backup";

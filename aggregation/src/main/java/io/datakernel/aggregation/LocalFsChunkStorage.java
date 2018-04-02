@@ -41,6 +41,7 @@ import org.slf4j.Logger;
 import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.FileTime;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -50,7 +51,6 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import static io.datakernel.aggregation.AggregationUtils.createBufferSerializer;
-import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static io.datakernel.stream.stats.StreamStatsSizeCounter.forByteBufs;
 import static java.nio.file.StandardOpenOption.READ;
 import static org.slf4j.LoggerFactory.getLogger;
@@ -60,9 +60,9 @@ import static org.slf4j.LoggerFactory.getLogger;
  */
 public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopService, Initializable<LocalFsChunkStorage>, EventloopJmxMBeanEx {
 	private final Logger logger = getLogger(this.getClass());
-	public static final int DEFAULT_BUFFER_SIZE = 256 * 1024;
+	public static final MemSize DEFAULT_BUFFER_SIZE = MemSize.kilobytes(256);
 
-	public static final double DEFAULT_SMOOTHING_WINDOW = SMOOTHING_WINDOW_5_MINUTES;
+	public static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);
 	public static final String DEFAULT_BACKUP_FOLDER_NAME = "backups";
 	public static final String LOG = ".log";
 	public static final String TEMP_LOG = ".temp";
@@ -74,7 +74,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 	private final Path dir;
 	private Path backupPath;
 
-	private int bufferSize = DEFAULT_BUFFER_SIZE;
+	private int bufferSize = DEFAULT_BUFFER_SIZE.toInt();
 
 	private final StageStats stageIdGenerator = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final StageStats stageOpenR1 = StageStats.create(DEFAULT_SMOOTHING_WINDOW);

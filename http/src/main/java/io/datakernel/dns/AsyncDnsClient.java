@@ -50,12 +50,13 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 	private final Logger logger = LoggerFactory.getLogger(AsyncDnsClient.class);
 
 	private static final int DNS_SERVER_PORT = 53;
-	private static final long ONE_MINUTE_MILLIS = 60 * 1000L;
 	public static final DatagramSocketSettings DEFAULT_DATAGRAM_SOCKET_SETTINGS = DatagramSocketSettings.create();
 	public static final InetSocketAddress GOOGLE_PUBLIC_DNS = new InetSocketAddress(inetAddress("8.8.8.8"), DNS_SERVER_PORT);
 	public static final InetSocketAddress LOCAL_DNS = new InetSocketAddress(inetAddress("192.168.0.1"), DNS_SERVER_PORT);
-	public static final long DEFAULT_TIMEOUT = 3_000L;
-	public static final long DEFAULT_TIMED_OUT_EXCEPTION_TTL_MILLIS = 1_000L;
+	public static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(3);
+	public static final Duration DEFAULT_TIMED_OUT_EXCEPTION_TTL_MILLIS = Duration.ofSeconds(1);
+	public static final Duration ERROR_CACHE_EXPIRATION = Duration.ofMinutes(1);
+	public static final Duration HARD_EXPIRATION_DELTA = Duration.ofMinutes(1);
 
 	private final Eventloop eventloop;
 
@@ -66,8 +67,8 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 
 	private DnsCache cache;
 
-	private long timeout = DEFAULT_TIMEOUT;
-	private long timedOutExceptionTtl = DEFAULT_TIMED_OUT_EXCEPTION_TTL_MILLIS;
+	private long timeout = DEFAULT_TIMEOUT.toMillis();
+	private long timedOutExceptionTtl = DEFAULT_TIMED_OUT_EXCEPTION_TTL_MILLIS.toMillis();
 
 	// jmx
 	Inspector inspector;
@@ -89,7 +90,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 	}
 
 	public static class JmxInspector implements Inspector {
-		private static final double SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_1_MINUTE;
+		private static final Duration SMOOTHING_WINDOW = Duration.ofMinutes(1);
 
 		private final AsyncUdpSocketImpl.JmxInspector socketInspector =
 				new AsyncUdpSocketImpl.JmxInspector(SMOOTHING_WINDOW);
@@ -176,7 +177,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 
 	public static AsyncDnsClient create(Eventloop eventloop) {
 		Inspector inspector = new JmxInspector();
-		DnsCache cache = DnsCache.create(eventloop, ONE_MINUTE_MILLIS, ONE_MINUTE_MILLIS, DEFAULT_TIMED_OUT_EXCEPTION_TTL_MILLIS, inspector);
+		DnsCache cache = DnsCache.create(eventloop, ERROR_CACHE_EXPIRATION, HARD_EXPIRATION_DELTA, DEFAULT_TIMED_OUT_EXCEPTION_TTL_MILLIS, inspector);
 		return new AsyncDnsClient(eventloop, cache, inspector);
 	}
 
@@ -232,7 +233,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 	}
 
 	public AsyncDnsClient withExpiration(long errorCacheExpirationMillis, long hardExpirationDeltaMillis) {
-		return withExpiration(errorCacheExpirationMillis, hardExpirationDeltaMillis, DEFAULT_TIMED_OUT_EXCEPTION_TTL_MILLIS);
+		return withExpiration(errorCacheExpirationMillis, hardExpirationDeltaMillis, DEFAULT_TIMED_OUT_EXCEPTION_TTL_MILLIS.toMillis());
 	}
 
 	public AsyncDnsClient withExpiration(Duration errorCacheExpiration, Duration hardExpirationDelta, Duration timedOutExceptionTtl) {

@@ -34,6 +34,7 @@ import io.datakernel.stream.net.MessagingSerializer;
 import io.datakernel.stream.net.MessagingWithBinaryStreaming;
 import io.datakernel.stream.processor.StreamBinarySerializer;
 import io.datakernel.stream.processor.StreamLateBinder;
+import io.datakernel.util.MemSize;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -115,7 +116,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 		BufferSerializer<T> serializer = environment.getInstance(DatagraphSerialization.class).getSerializer(type);
 
 		StreamBinarySerializer<T> streamSerializer = StreamBinarySerializer.create(serializer)
-				.withDefaultBufferSize(256 * 1024)
+				.withDefaultBufferSize(MemSize.kilobytes(256))
 				.withAutoFlush(1000);
 
 		StreamLateBinder<ByteBuf> forwarder = pendingStreams.remove(streamId);

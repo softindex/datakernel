@@ -25,7 +25,6 @@ import io.datakernel.exception.StacklessException;
 import io.datakernel.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
-import io.datakernel.jmx.ValueStats;
 import io.datakernel.net.DatagramSocketSettings;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.time.CurrentTimeProvider;
@@ -40,6 +39,7 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.channels.*;
 import java.nio.channels.spi.SelectorProvider;
+import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.Iterator;
 import java.util.PriorityQueue;
@@ -69,10 +69,10 @@ import static java.util.Collections.emptyIterator;
  */
 public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, CurrentTimeProvider, Initializable<Eventloop>, EventloopJmxMBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
-	static final double DEFAULT_SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_1_MINUTE;
+	static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(1);
 
 	public static final AsyncTimeoutException CONNECT_TIMEOUT = new AsyncTimeoutException("Connection timed out");
-	public static final long DEFAULT_IDLE_INTERVAL = 1000L;
+	public static final Duration DEFAULT_IDLE_INTERVAL = Duration.ofSeconds(1);
 
 	private static volatile FatalErrorHandler globalFatalErrorHandler = FatalErrorHandlers.ignoreAllErrors();
 
@@ -139,7 +139,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 */
 	private long timestamp;
 
-	private long idleInterval = DEFAULT_IDLE_INTERVAL;
+	private long idleInterval = DEFAULT_IDLE_INTERVAL.toMillis();
 
 	private ThrottlingController throttlingController;
 	private int throttlingKeys;
@@ -202,6 +202,10 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	public Eventloop withIdleInterval(long idleIntervalMillis) {
 		this.idleInterval = idleIntervalMillis;
 		return this;
+	}
+
+	public Eventloop withIdleInterval(Duration idleInterval) {
+		return withIdleInterval(idleInterval.toMillis());
 	}
 
 	public Eventloop withCurrentThread() {

@@ -52,7 +52,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	public static final String DEFAULT_FILE_PATTERN = "%d";
-	public static final int DEFAULT_SORTER_BLOCK_SIZE = 256 * 1024;
+	public static final MemSize DEFAULT_SORTER_BLOCK_SIZE = MemSize.kilobytes(256);
 
 	private static final AtomicInteger PARTITION = new AtomicInteger();
 
@@ -62,8 +62,8 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	private final Path path;
 
 	private String filePattern = DEFAULT_FILE_PATTERN;
-	private int readBlockSize = DEFAULT_SORTER_BLOCK_SIZE;
-	private int writeBlockSize = DEFAULT_SORTER_BLOCK_SIZE;
+	private int readBlockSize = DEFAULT_SORTER_BLOCK_SIZE.toInt();
+	private int writeBlockSize = DEFAULT_SORTER_BLOCK_SIZE.toInt();
 	private int compressionLevel = 0;
 
 	// region creators

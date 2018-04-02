@@ -23,12 +23,14 @@ import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.ValueStats;
 import io.datakernel.net.SocketSettings;
+import io.datakernel.util.MemSize;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
+import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -36,14 +38,14 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 
 @SuppressWarnings({"WeakerAccess", "AssertWithSideEffects"})
 public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEventHandler {
-	public static final int DEFAULT_READ_BUF_SIZE = 16 * 1024;
+	public static final MemSize DEFAULT_READ_BUF_SIZE = MemSize.kilobytes(16);
 	public static final int OP_POSTPONED = 1 << 7;  // SelectionKey constant
 
 	@SuppressWarnings("ThrowableInstanceNeverThrown")
 	public static final AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException("timed out");
 	public static final int NO_TIMEOUT = -1;
 
-	private static final int MAX_MERGE_SIZE = 16 * 1024;
+	private static final MemSize MAX_MERGE_SIZE = MemSize.kilobytes(16);
 	private static final AtomicInteger connectionCount = new AtomicInteger(0);
 
 	private final Eventloop eventloop;
@@ -59,8 +61,8 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	private long readTimeout = NO_TIMEOUT;
 	private long writeTimeout = NO_TIMEOUT;
-	protected int readMaxSize = DEFAULT_READ_BUF_SIZE;
-	protected int writeMaxSize = MAX_MERGE_SIZE;
+	protected int readMaxSize = DEFAULT_READ_BUF_SIZE.toInt();
+	protected int writeMaxSize = MAX_MERGE_SIZE.toInt();
 
 	private ScheduledRunnable checkReadTimeout;
 	private ScheduledRunnable checkWriteTimeout;
@@ -82,7 +84,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	}
 
 	public static class JmxInspector implements Inspector {
-		private static final double SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_1_MINUTE;
+		public static final Duration SMOOTHING_WINDOW = Duration.ofMinutes(1);
 
 		private final ValueStats reads = ValueStats.create(SMOOTHING_WINDOW);
 		private final EventStats readEndOfStreams = EventStats.create(SMOOTHING_WINDOW);

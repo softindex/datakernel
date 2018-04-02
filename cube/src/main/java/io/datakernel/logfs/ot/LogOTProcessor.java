@@ -38,12 +38,12 @@ import io.datakernel.stream.stats.StreamStatsDetailed;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import static io.datakernel.async.AsyncCallable.sharedCall;
-import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 
@@ -67,9 +67,9 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 	private boolean detailed;
 	private final StreamStatsBasic<T> streamStatsBasic = StreamStats.basic();
 	private final StreamStatsDetailed<T> streamStatsDetailed = StreamStats.detailed();
-	private final StageStats stageProcessLog = StageStats.create(SMOOTHING_WINDOW_5_MINUTES);
-	private final StageStats stageProducer = StageStats.create(SMOOTHING_WINDOW_5_MINUTES);
-	private final StageStats stageConsumer = StageStats.create(SMOOTHING_WINDOW_5_MINUTES);
+	private final StageStats stageProcessLog = StageStats.create(Duration.ofMinutes(5));
+	private final StageStats stageProducer = StageStats.create(Duration.ofMinutes(5));
+	private final StageStats stageConsumer = StageStats.create(Duration.ofMinutes(5));
 
 	private LogOTProcessor(Eventloop eventloop, LogManager<T> logManager, LogDataConsumer<T, D> logStreamConsumer,
 	                       String log, List<String> partitions, LogOTState<D> state) {

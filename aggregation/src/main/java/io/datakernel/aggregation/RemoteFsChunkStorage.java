@@ -38,25 +38,25 @@ import io.datakernel.stream.stats.StreamStatsDetailed;
 import io.datakernel.util.MemSize;
 
 import java.net.InetSocketAddress;
+import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 
 import static io.datakernel.aggregation.AggregationUtils.createBufferSerializer;
-import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static io.datakernel.stream.stats.StreamStatsSizeCounter.forByteBufs;
 import static java.util.stream.Collectors.toMap;
 
 public final class RemoteFsChunkStorage implements AggregationChunkStorage, EventloopJmxMBeanEx {
-	public static final int DEFAULT_BUFFER_SIZE = 256 * 1024;
+	public static final MemSize DEFAULT_BUFFER_SIZE = MemSize.kilobytes(256);
 	public static final String LOG = ".log";
 	public static final String TEMP_LOG = ".temp";
-	public static final double DEFAULT_SMOOTHING_WINDOW = SMOOTHING_WINDOW_5_MINUTES;
+	public static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);
 
 	private final Eventloop eventloop;
 	private final IRemoteFsClient client;
 	private final IdGenerator<Long> idGenerator;
 
-	private int bufferSize = DEFAULT_BUFFER_SIZE;
+	private int bufferSize = DEFAULT_BUFFER_SIZE.toInt();
 
 	private final StageStats stageIdGenerator = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final StageStats stageOpenR1 = StageStats.create(DEFAULT_SMOOTHING_WINDOW);

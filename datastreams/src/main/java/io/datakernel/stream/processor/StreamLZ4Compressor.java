@@ -25,6 +25,8 @@ import net.jpountz.lz4.LZ4Factory;
 import net.jpountz.xxhash.StreamingXXHash32;
 import net.jpountz.xxhash.XXHashFactory;
 
+import java.time.Duration;
+
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 
 public final class StreamLZ4Compressor implements StreamTransformer<ByteBuf, ByteBuf> {
@@ -57,7 +59,7 @@ public final class StreamLZ4Compressor implements StreamTransformer<ByteBuf, Byt
 	}
 
 	public static class JmxInspector extends AbstractStreamTransformer_1_1.JmxInspector implements Inspector {
-		private static final double SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_1_MINUTE;
+		public static final Duration SMOOTHING_WINDOW = Duration.ofMinutes(1);
 
 		private final ValueStats bytesIn = ValueStats.create(SMOOTHING_WINDOW);
 		private final ValueStats bytesOut = ValueStats.create(SMOOTHING_WINDOW);

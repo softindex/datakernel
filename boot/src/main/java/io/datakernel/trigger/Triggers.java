@@ -5,6 +5,7 @@ import io.datakernel.jmx.ConcurrentJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.util.Initializable;
 
+import java.time.Duration;
 import java.util.*;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -15,7 +16,7 @@ import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 
 public final class Triggers implements ConcurrentJmxMBean, Initializable<Triggers> {
-	public static final long CACHE_TIMEOUT = 1000L;
+	public static final Duration CACHE_TIMEOUT = Duration.ofSeconds(1);
 
 	private final List<Trigger> triggers = new ArrayList<>();
 
@@ -73,7 +74,7 @@ public final class Triggers implements ConcurrentJmxMBean, Initializable<Trigger
 
 	private void refresh() {
 		long now = System.currentTimeMillis();
-		if (cachedTimestamp + CACHE_TIMEOUT < now) {
+		if (cachedTimestamp + CACHE_TIMEOUT.toMillis() < now) {
 			cachedTimestamp = now;
 			Map<Trigger, TriggerResult> newResults = new HashMap<>();
 			for (Trigger trigger : triggers) {

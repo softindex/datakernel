@@ -27,11 +27,11 @@ import io.datakernel.jmx.JmxRefreshable;
 import io.datakernel.rpc.client.jmx.RpcRequestStats;
 import io.datakernel.rpc.client.sender.RpcSender;
 import io.datakernel.rpc.protocol.*;
-import io.datakernel.util.Preconditions;
 import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 
 import java.net.InetSocketAddress;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -44,7 +44,7 @@ import static io.datakernel.util.Preconditions.checkArgument;
 import static org.slf4j.LoggerFactory.getLogger;
 
 public final class RpcClientConnection implements RpcStream.Listener, RpcSender, JmxRefreshable {
-	public static final int DEFAULT_TIMEOUT_PRECISION = 10; //ms
+	public static final Duration DEFAULT_TIMEOUT_PRECISION = Duration.ofMillis(10);
 
 	private final class TimeoutCookie implements Comparable<TimeoutCookie> {
 		private final long timestamp;
@@ -81,7 +81,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 
 	private AsyncCancellable scheduleExpiredResponsesTask;
 	private int cookie = 0;
-	private int timeoutPrecision = DEFAULT_TIMEOUT_PRECISION;
+	private int timeoutPrecision = (int) DEFAULT_TIMEOUT_PRECISION.toMillis();
 	private boolean connectionClosing;
 	private boolean serverClosing;
 
@@ -110,6 +110,10 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 		checkArgument(timeoutPrecision > 0, "Timeout precision cannot be zero or less");
 		this.timeoutPrecision = timeoutPrecision;
 		return this;
+	}
+
+	public RpcClientConnection withTimeoutPrecision(Duration timeoutPrecision) {
+		return withTimeoutPrecision((int) timeoutPrecision.toMillis());
 	}
 
 	@Override

@@ -25,10 +25,9 @@ import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.ValueStats;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
-
-import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_1_HOUR;
 
 public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttributeResolver<K, A> implements EventloopService {
 	protected final Eventloop eventloop;
@@ -42,7 +41,7 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 	private int reloadErrors;
 	private int resolveErrors;
 	private K lastResolveErrorKey;
-	private final ValueStats reloadTime = ValueStats.create(SMOOTHING_WINDOW_1_HOUR);
+	private final ValueStats reloadTime = ValueStats.create(Duration.ofHours(1));
 
 	protected ReloadingAttributeResolver(Eventloop eventloop) {
 		this.eventloop = eventloop;

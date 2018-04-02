@@ -7,10 +7,10 @@ import io.datakernel.jmx.JmxReducers;
 import io.datakernel.jmx.ValueStats;
 import io.datakernel.stream.StreamDataReceiver;
 
-import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_1_MINUTE;
+import java.time.Duration;
 
 public final class StreamStatsDetailedEx<T> extends StreamStatsBasic<T> {
-	public static final double DEFAULT_DETAILED_SMOOTHING_WINDOW = SMOOTHING_WINDOW_1_MINUTE;
+	public static final Duration DEFAULT_DETAILED_SMOOTHING_WINDOW = Duration.ofMinutes(1);
 
 	@Nullable
 	private final StreamStatsSizeCounter<Object> sizeCounter;
@@ -24,10 +24,16 @@ public final class StreamStatsDetailedEx<T> extends StreamStatsBasic<T> {
 		this.sizeCounter = (StreamStatsSizeCounter<Object>) sizeCounter;
 	}
 
-	@SuppressWarnings("unchecked")
+//	@SuppressWarnings("unchecked")
+//	@Override
+//	public StreamStatsDetailedEx withBasicSmoothingWindow(double smoothingWindowSeconds) {
+//		return (StreamStatsDetailedEx) super.withBasicSmoothingWindow(smoothingWindowSeconds);
+//	}
+
 	@Override
-	public StreamStatsDetailedEx withBasicSmoothingWindow(double smoothingWindowSeconds) {
-		return (StreamStatsDetailedEx) super.withBasicSmoothingWindow(smoothingWindowSeconds);
+	@SuppressWarnings("unchecked")
+	public StreamStatsDetailedEx withBasicSmoothingWindow(Duration smoothingWindow) {
+		return (StreamStatsDetailedEx) super.withBasicSmoothingWindow(smoothingWindow);
 	}
 
 	@Override

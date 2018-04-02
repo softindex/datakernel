@@ -21,24 +21,26 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.ValueStats;
+import io.datakernel.util.MemSize;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.nio.channels.SelectionKey;
+import java.time.Duration;
 import java.util.ArrayDeque;
 
 import static io.datakernel.eventloop.AsyncTcpSocketImpl.OP_POSTPONED;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEventHandler {
-	private static final int DEFAULT_UDP_BUFFER_SIZE = 16 * 1024;
+	private static final MemSize DEFAULT_UDP_BUFFER_SIZE = MemSize.kilobytes(16);
 
 	private final Eventloop eventloop;
 	private SelectionKey key;
 
-	private int receiveBufferSize = DEFAULT_UDP_BUFFER_SIZE;
+	private int receiveBufferSize = DEFAULT_UDP_BUFFER_SIZE.toInt();
 
 	private final DatagramChannel channel;
 	private final ArrayDeque<UdpPacket> writeQueue = new ArrayDeque<>();
@@ -64,7 +66,14 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 		private final ValueStats sends;
 		private final EventStats sendErrors;
 
-		public JmxInspector(double smoothingWindow) {
+//		public JmxInspector(double smoothingWindow) {
+//			this.receives = ValueStats.create(smoothingWindow);
+//			this.receiveErrors = EventStats.create(smoothingWindow);
+//			this.sends = ValueStats.create(smoothingWindow);
+//			this.sendErrors = EventStats.create(smoothingWindow);
+//		}
+
+		public JmxInspector(Duration smoothingWindow) {
 			this.receives = ValueStats.create(smoothingWindow);
 			this.receiveErrors = EventStats.create(smoothingWindow);
 			this.sends = ValueStats.create(smoothingWindow);

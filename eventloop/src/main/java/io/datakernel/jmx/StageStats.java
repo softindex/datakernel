@@ -5,6 +5,8 @@ import io.datakernel.async.Stage;
 import io.datakernel.async.StageConsumer;
 import io.datakernel.eventloop.Eventloop;
 
+import java.time.Duration;
+
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.jmx.JmxReducers.JmxReducerMax;
 import static io.datakernel.jmx.JmxReducers.JmxReducerSum;
@@ -24,12 +26,16 @@ public class StageStats {
 		this.duration = duration;
 	}
 
-	public static StageStats createMBean(Eventloop eventloop, double smoothingWindowSeconds) {
+	public static StageStats createMBean(Eventloop eventloop, Duration smoothingWindowSeconds) {
 		return new StageStats(eventloop, ValueStats.create(smoothingWindowSeconds));
 	}
 
-	public static StageStats create(double smoothingWindowSeconds) {
-		return new StageStats(null, ValueStats.create(smoothingWindowSeconds));
+//	public static StageStats create(double smoothingWindowSeconds) {
+//		return new StageStats(null, ValueStats.create(smoothingWindowSeconds));
+//	}
+
+	public static StageStats create(Duration smoothingWindow) {
+		return new StageStats(null, ValueStats.create(smoothingWindow));
 	}
 
 	public StageStats withHistogram(int[] levels) {

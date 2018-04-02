@@ -16,8 +16,12 @@
 
 package io.datakernel.util;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static java.lang.Math.multiplyExact;
 
 public final class MemSize {
 	public static final long KB = 1024;
@@ -25,7 +29,7 @@ public final class MemSize {
 	public static final long GB = 1024 * MB;
 	public static final long TB = 1024 * GB;
 
-	private static final Pattern PATTERN = Pattern.compile("([0-9]+([\\.][0-9]+)?)\\s*(|K|M|G|T)B?", Pattern.CASE_INSENSITIVE);
+	private static final Pattern PATTERN = Pattern.compile("(?<size>\\d+)([\\.](?<floating>\\d+))?\\s*(?<unit>(|g|m|k|t)b)?(\\s+|$)", Pattern.CASE_INSENSITIVE);
 
 	private final long bytes;
 
@@ -67,37 +71,87 @@ public final class MemSize {
 	}
 
 	public static MemSize valueOf(String string) {
-		Matcher matcher = PATTERN.matcher(string);
-		if (!matcher.matches())
-			throw new IllegalArgumentException("Illegal format: \'" + string + "\'");
-		try {
-			double value = Double.valueOf(matcher.group(1));
-			String units = matcher.group(3).toLowerCase();
+		Set<String> units = new HashSet<>();
+		Matcher matcher = PATTERN.matcher(string.trim().toLowerCase());
+		long result = 0;
 
-			long unit;
-			switch (units) {
-				case "":
-					unit = 1;
-					break;
-				case "k":
-					unit = KB;
-					break;
-				case "m":
-					unit = MB;
-					break;
-				case "g":
-					unit = GB;
-					break;
-				case "t":
-					unit = TB;
-					break;
-				default:
-					throw new IllegalArgumentException("Illegal units: \'" + string + "\'");
+		int lastEnd = 0;
+		while (!matcher.hitEnd()) {
+			if (!matcher.find() || matcher.start() != lastEnd) {
+				throw new IllegalArgumentException("Invalid MemSize: " + string);
 			}
-			long bytes = (long) (value * unit);
-			return new MemSize(bytes);
-		} catch (NumberFormatException e) {
-			throw new IllegalArgumentException("Illegal number format: \'" + string + "\'", e);
+			lastEnd = matcher.end();
+			String unit = matcher.group("unit");
+
+			if (unit == null) {
+				unit = "";
+			}
+
+			if (!units.add(unit)) {
+				throw new IllegalArgumentException("Memory unit " + unit + " occurs more than once in: " + string);
+			}
+
+			long memsize = Long.parseLong(matcher.group("size"));
+			int floating = 0;
+			int denominator = 1;
+			String floatingPoint = matcher.group("floating");
+			if (floatingPoint != null) {
+				if (unit.equals("") || unit.equals("b")) {
+					throw new IllegalArgumentException("MemSize unit bytes cannot be fractional");
+				}
+				floating = Integer.parseInt(floatingPoint);
+				for (int i = 0; i < floatingPoint.length(); i++) {
+					denominator *= 10;
+				}
+			}
+
+			long temp;
+			switch (unit) {
+				case "tb":
+					result += memsize * TB;
+					temp = multiplyExact(floating, TB) / denominator;
+					result += temp;
+					break;
+				case "gb":
+					result += memsize * GB;
+					temp = multiplyExact(floating, GB) / denominator;
+					result += temp;
+					break;
+				case "mb":
+					result += memsize * MB;
+					temp = multiplyExact(floating, MB) / denominator;
+					result += temp;
+					break;
+				case "kb":
+					result += memsize * KB;
+					temp = multiplyExact(floating, KB) / denominator;
+					result += temp;
+					break;
+				case "b":
+				case "":
+					result += memsize;
+					break;
+			}
+		}
+		return MemSize.of(result);
+	}
+
+	private static String getUnit(long unit) {
+		if (unit == TB) {
+			return "Tb";
+		} else {
+			switch ((int) unit) {
+				case (int) GB:
+					return "Gb";
+				case (int) MB:
+					return "Mb";
+				case (int) KB:
+					return "Kb";
+				case 1:
+					return "b";
+				default:
+					throw new IllegalArgumentException("Wrong unit");
+			}
 		}
 	}
 
@@ -107,27 +161,26 @@ public final class MemSize {
 			return "0b";
 		}
 
-		if ((bytes % TB) == 0) {
-			return bytes / TB + "Tb";
-		}
+		StringBuilder result = new StringBuilder();
+		long divideResult, remainder, unit = TB;
+		do {
+			divideResult = bytes / unit;
+			remainder = bytes % unit;
 
-		if ((bytes % GB) == 0) {
-			return bytes / GB + "Gb";
-		}
+			if (divideResult != 0) {
+				result.append(divideResult).append(getUnit(unit)).append(remainder == 0 ? "" : " ");
+			}
 
-		if ((bytes % MB) == 0) {
-			return bytes / MB + "Mb";
-		}
+			bytes -= divideResult * unit;
+			unit /= 1024L;
+		} while (remainder != 0);
 
-		if ((bytes % KB) == 0) {
-			return bytes / KB + "Kb";
-		}
-
-		return bytes + "b";
+		System.out.println("");
+		return result.toString();
 	}
 
 	@Override
 	public String toString() {
-		return format();
+		return "" + toLong() + "b";
 	}
 }

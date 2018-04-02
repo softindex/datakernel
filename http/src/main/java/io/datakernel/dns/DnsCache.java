@@ -91,6 +91,12 @@ final class DnsCache {
 		return new DnsCache(timeProvider, errorCacheExpirationMillis, hardExpirationDeltaMillis, timedOutExceptionTtl, inspector);
 	}
 
+	public static DnsCache create(CurrentTimeProvider timeProvider, Duration errorCacheExpiration, Duration hardExpirationDelta,
+								  Duration timedOutExceptionTtl, AsyncDnsClient.Inspector inspector) {
+		return create(timeProvider, errorCacheExpiration.toMillis(), hardExpirationDelta.toMillis(),
+				timedOutExceptionTtl.toMillis(), inspector);
+	}
+
 	private boolean isRequestedType(CachedDnsLookupResult cachedResult, boolean requestedIpv6) {
 		Short cachedResultType = cachedResult.getType();
 

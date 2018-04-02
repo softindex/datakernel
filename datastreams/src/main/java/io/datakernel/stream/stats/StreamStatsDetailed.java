@@ -7,6 +7,8 @@ import io.datakernel.jmx.JmxStatsWithReset;
 import io.datakernel.jmx.ReflectionUtils;
 import io.datakernel.stream.StreamDataReceiver;
 
+import java.time.Duration;
+
 public final class StreamStatsDetailed<T> extends StreamStatsBasic<T> implements JmxStatsWithReset {
 	@Nullable
 	private final StreamStatsSizeCounter<Object> sizeCounter;
@@ -19,10 +21,16 @@ public final class StreamStatsDetailed<T> extends StreamStatsBasic<T> implements
 		this.sizeCounter = (StreamStatsSizeCounter<Object>) sizeCounter;
 	}
 
+//	@Override
+//	@SuppressWarnings("unchecked")
+//	public StreamStatsDetailed withBasicSmoothingWindow(double smoothingWindowSeconds) {
+//		return (StreamStatsDetailed) super.withBasicSmoothingWindow(smoothingWindowSeconds);
+//	}
+
 	@Override
 	@SuppressWarnings("unchecked")
-	public StreamStatsDetailed withBasicSmoothingWindow(double smoothingWindowSeconds) {
-		return (StreamStatsDetailed) super.withBasicSmoothingWindow(smoothingWindowSeconds);
+	public StreamStatsDetailed withBasicSmoothingWindow(Duration smoothingWindow) {
+		return (StreamStatsDetailed) super.withBasicSmoothingWindow(smoothingWindow);
 	}
 
 	@Override

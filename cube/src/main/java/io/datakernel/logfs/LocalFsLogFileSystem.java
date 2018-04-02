@@ -37,12 +37,12 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
-import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static io.datakernel.stream.stats.StreamStatsSizeCounter.forByteBufs;
 import static java.nio.file.StandardOpenOption.READ;
 
@@ -52,17 +52,18 @@ import static java.nio.file.StandardOpenOption.READ;
 public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements EventloopJmxMBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-	public static final int DEFAULT_READ_BLOCK_SIZE = 256 * 1024;
+	public static final MemSize DEFAULT_READ_BLOCK_SIZE = MemSize.kilobytes(256);
+	public static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);
 
 	private final Eventloop eventloop;
 	private final ExecutorService executorService;
 	private final Path dir;
 
-	private int readBlockSize = DEFAULT_READ_BLOCK_SIZE;
+	private int readBlockSize = DEFAULT_READ_BLOCK_SIZE.toInt();
 
-	private final StageStats stageList = StageStats.create(SMOOTHING_WINDOW_5_MINUTES);
-	private final StageStats stageRead = StageStats.create(SMOOTHING_WINDOW_5_MINUTES);
-	private final StageStats stageWrite = StageStats.create(SMOOTHING_WINDOW_5_MINUTES);
+	private final StageStats stageList = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final StageStats stageRead = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final StageStats stageWrite = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 
 	private final StreamRegistry<String> streamReads = StreamRegistry.create();
 	private final StreamRegistry<String> streamWrites = StreamRegistry.create();

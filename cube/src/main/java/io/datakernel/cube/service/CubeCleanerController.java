@@ -20,7 +20,6 @@ import java.util.*;
 import java.util.stream.Stream;
 
 import static io.datakernel.async.AsyncCallable.sharedCall;
-import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static io.datakernel.util.CollectionUtils.*;
 import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toSet;
@@ -29,9 +28,9 @@ import static java.util.stream.Stream.concat;
 public final class CubeCleanerController implements EventloopJmxMBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(CubeCleanerController.class);
 
-	public static final long DEFAULT_CHUNKS_CLEANUP_DELAY = 60 * 1000L;
+	public static final Duration DEFAULT_CHUNKS_CLEANUP_DELAY = Duration.ofMinutes(1);
 	public static final int DEFAULT_SNAPSHOTS_COUNT = 1;
-	public static final double DEFAULT_SMOOTHING_WINDOW = SMOOTHING_WINDOW_5_MINUTES;
+	public static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);
 
 	private final Eventloop eventloop;
 
@@ -41,7 +40,7 @@ public final class CubeCleanerController implements EventloopJmxMBeanEx {
 
 	private long freezeTimeout;
 
-	private long chunksCleanupDelay = DEFAULT_CHUNKS_CLEANUP_DELAY;
+	private long chunksCleanupDelay = DEFAULT_CHUNKS_CLEANUP_DELAY.toMillis();
 	private int extraSnapshotsCount = DEFAULT_SNAPSHOTS_COUNT;
 
 	private final ValueStats chunksCount = ValueStats.create(DEFAULT_SMOOTHING_WINDOW);

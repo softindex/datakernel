@@ -18,6 +18,8 @@ package io.datakernel.rpc.client.jmx;
 
 import io.datakernel.jmx.*;
 
+import java.time.Duration;
+
 import static io.datakernel.jmx.ValueStats.POWERS_OF_TWO;
 
 public final class RpcRequestStats implements JmxRefreshable {
@@ -29,7 +31,7 @@ public final class RpcRequestStats implements JmxRefreshable {
 	private final ValueStats overdues;
 	private final ExceptionStats serverExceptions;
 
-	private RpcRequestStats(double smoothingWindow) {
+	private RpcRequestStats(Duration smoothingWindow) {
 		totalRequests = EventStats.create(smoothingWindow);
 		failedRequests = EventStats.create(smoothingWindow);
 		rejectedRequests = EventStats.create(smoothingWindow);
@@ -39,7 +41,11 @@ public final class RpcRequestStats implements JmxRefreshable {
 		serverExceptions = ExceptionStats.create();
 	}
 
-	public static RpcRequestStats create(double smoothingWindow) {
+//	public static RpcRequestStats create(double smoothingWindow) {
+//		return new RpcRequestStats(smoothingWindow);
+//	}
+
+	public static RpcRequestStats create(Duration smoothingWindow) {
 		return new RpcRequestStats(smoothingWindow);
 	}
 

@@ -18,6 +18,7 @@ package io.datakernel.jmx;
 
 import org.junit.Test;
 
+import java.time.Duration;
 import java.util.Random;
 
 import static org.junit.Assert.assertEquals;
@@ -28,7 +29,7 @@ public class EventStatsTest {
 
 	@Test
 	public void ifRateIsConstantEventStatsShouldApproximateThatRateAfterEnoughTimePassed() {
-		double smoothingWindow = 1.0;
+		Duration smoothingWindow = Duration.ofSeconds(1);
 		EventStats eventStats = EventStats.create(smoothingWindow);
 		long currentTimestamp = 0;
 		int events = 1000;
@@ -48,7 +49,7 @@ public class EventStatsTest {
 
 	@Test
 	public void counterShouldResetRateAfterResetMethodCall() {
-		double smoothingWindow = 1.0;
+		Duration smoothingWindow = Duration.ofSeconds(1);
 		EventStats eventStats = EventStats.create(smoothingWindow);
 		long currentTimestamp = 0;
 		int events = 1000;
@@ -77,7 +78,7 @@ public class EventStatsTest {
 		int period = 100;
 		long currentTimestamp = 0;
 
-		double smoothingWindow = 10.0;
+		Duration smoothingWindow = Duration.ofSeconds(10);
 
 		EventStats stats_1 = EventStats.create(smoothingWindow);
 		EventStats stats_2 = EventStats.create(smoothingWindow);
@@ -105,7 +106,7 @@ public class EventStatsTest {
 
 	@Test
 	public void itShouldConvergeProperlyWhenNoEventsOccurredBetweenRefreshes() {
-		double smoothingWindow = 10.0;
+		Duration smoothingWindow = Duration.ofSeconds(10);
 		EventStats stats = EventStats.create(smoothingWindow);
 		int iterations = 1000;
 		long currentTimestamp = 0;
@@ -125,7 +126,7 @@ public class EventStatsTest {
 
 	@Test
 	public void itShouldConvergeProperlyWhenPeriodIsNotStableButPeriodExpectationIsStable() {
-		double smoothingWindow = 10.0;
+		Duration smoothingWindow = Duration.ofSeconds(10);
 		EventStats stats = EventStats.create(smoothingWindow);
 		int iterations = 1000;
 		long currentTimestamp = 0;
@@ -144,7 +145,7 @@ public class EventStatsTest {
 
 	@Test
 	public void itShouldConvergeProperlyWhenAmountOfEventsPerPeriodIsNotStableButExpectationOfAmountOfEventIsStable() {
-		double smoothingWindow = 50.0;
+		Duration smoothingWindow = Duration.ofSeconds(50);
 		EventStats stats = EventStats.create(smoothingWindow);
 		int iterations = 10000;
 		long currentTimestamp = 0;

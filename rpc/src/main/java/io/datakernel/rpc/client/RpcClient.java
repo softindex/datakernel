@@ -23,7 +23,10 @@ import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
-import io.datakernel.jmx.*;
+import io.datakernel.jmx.EventloopJmxMBeanEx;
+import io.datakernel.jmx.ExceptionStats;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxOperation;
 import io.datakernel.jmx.JmxReducers.JmxReducerSum;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.rpc.client.jmx.RpcConnectStats;
@@ -135,8 +138,8 @@ import static org.slf4j.LoggerFactory.getLogger;
  */
 public final class RpcClient implements IRpcClient, EventloopService, Initializable<RpcClient>, EventloopJmxMBeanEx {
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create().withTcpNoDelay(true);
-	public static final long DEFAULT_CONNECT_TIMEOUT = 10 * 1000L;
-	public static final long DEFAULT_RECONNECT_INTERVAL = 1 * 1000L;
+	public static final Duration DEFAULT_CONNECT_TIMEOUT = Duration.ofSeconds(10);
+	public static final Duration DEFAULT_RECONNECT_INTERVAL = Duration.ofSeconds(1);
 	public static final MemSize DEFAULT_PACKET_SIZE = StreamBinarySerializer.DEFAULT_BUFFER_SIZE;
 	public static final MemSize MAX_PACKET_SIZE = StreamBinarySerializer.MAX_SIZE;
 
@@ -159,8 +162,8 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	private int flushDelayMillis = 0;
 
 	private List<Class<?>> messageTypes;
-	private long connectTimeoutMillis = DEFAULT_CONNECT_TIMEOUT;
-	private long reconnectIntervalMillis = DEFAULT_RECONNECT_INTERVAL;
+	private long connectTimeoutMillis = DEFAULT_CONNECT_TIMEOUT.toMillis();
+	private long reconnectIntervalMillis = DEFAULT_RECONNECT_INTERVAL.toMillis();
 	private boolean forceStart;
 
 	private ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
@@ -176,7 +179,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	private final RpcClientConnectionPool pool = address -> connections.get(address);
 
 	// jmx
-	static final double SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_1_MINUTE;
+	static final Duration SMOOTHING_WINDOW = Duration.ofMinutes(1);
 	private boolean monitoring = false;
 	private final RpcRequestStats generalRequestsStats = RpcRequestStats.create(SMOOTHING_WINDOW);
 	private final RpcConnectStats generalConnectsStats = new RpcConnectStats();

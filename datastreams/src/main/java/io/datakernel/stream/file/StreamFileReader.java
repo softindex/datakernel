@@ -43,13 +43,13 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 
 	public static final OpenOption[] READ_OPTIONS = new OpenOption[]{READ};
 
-	public static final int DEFAULT_BUFFER_SIZE = 1 << 13; // 8 KB
+	public static final MemSize DEFAULT_BUFFER_SIZE = MemSize.kilobytes(8);
 
 	private final AsyncFile asyncFile;
 
 	private boolean reading = false;
 
-	private int bufferSize = DEFAULT_BUFFER_SIZE;
+	private int bufferSize = DEFAULT_BUFFER_SIZE.toInt();
 	private long position = 0;
 	private long length = Long.MAX_VALUE;
 

@@ -13,14 +13,12 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 
-import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
-
 public final class EventloopTaskScheduler implements EventloopService, Initializable<EventloopTaskScheduler>, EventloopJmxMBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final Eventloop eventloop;
 	private final AsyncCallable<?> task;
-	private final StageStats stats = StageStats.create(SMOOTHING_WINDOW_5_MINUTES);
+	private final StageStats stats = StageStats.create(Duration.ofMinutes(5));
 
 	private long initialDelay;
 	private Schedule schedule;
@@ -41,18 +39,51 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 	public interface Schedule {
 		long nextTimestamp(long now, long lastStartTime, long lastCompleteTime);
 
+		/**
+		 * Scheduling immediate execution
+		 */
 		static Schedule immediate() {
 			return (now, lastStartTime, lastCompleteTime) -> now;
 		}
 
+		/**
+		 * Scheduling task after delay
+		 */
+		static Schedule ofDelay(Duration delay) {
+			return ofDelay(delay.toMillis());
+		}
+
+		/**
+		 * @see Schedule#ofDelay(Duration)
+		 */
 		static Schedule ofDelay(long delay) {
 			return (now, lastStartTime, lastCompleteTime) -> now + delay;
 		}
 
+		/**
+		 * Scheduling task after last complete time and next task
+		 */
+		static Schedule ofInterval(Duration interval) {
+			return ofInterval(interval.toMillis());
+		}
+
+		/**
+		 * @see Schedule#ofInterval(Duration)
+		 */
 		static Schedule ofInterval(long interval) {
 			return (now, lastStartTime, lastCompleteTime) -> lastCompleteTime + interval;
 		}
 
+		/**
+		 * Scheduling task in period of current and next task
+		 */
+		static Schedule ofPeriod(Duration period) {
+			return ofPeriod(period.toMillis());
+		}
+
+		/**
+		 * @see Schedule#ofPeriod(Duration)
+		 */
 		static Schedule ofPeriod(long period) {
 			return (now, lastStartTime, lastCompleteTime) -> lastStartTime + period;
 		}
@@ -86,9 +117,17 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 		return this;
 	}
 
+	public EventloopTaskScheduler withPeriod(Duration period) {
+		return withPeriod(period.toMillis());
+	}
+
 	public EventloopTaskScheduler withPeriod(long periodMillis) {
 		setPeriod(periodMillis);
 		return this;
+	}
+
+	public EventloopTaskScheduler withInterval(Duration interval) {
+		return withInterval(interval.toMillis());
 	}
 
 	public EventloopTaskScheduler withInterval(long intervalMillis) {

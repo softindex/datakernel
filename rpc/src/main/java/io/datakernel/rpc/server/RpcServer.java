@@ -113,7 +113,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	private SettableStage<Void> closeStage;
 
 	// region JMX vars
-	static final double SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_1_MINUTE;
+	static final Duration SMOOTHING_WINDOW = Duration.ofMinutes(1);
 	private EventStats totalConnects = EventStats.create(SMOOTHING_WINDOW);
 	private Map<InetAddress, EventStats> connectsPerAddress = new HashMap<>();
 	private EventStats successfulRequests = EventStats.create(SMOOTHING_WINDOW);

@@ -14,11 +14,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.*;
 import java.util.function.Predicate;
 
 import static io.datakernel.async.Stages.collectToList;
-import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static io.datakernel.util.CollectionUtils.concat;
 import static io.datakernel.util.CollectionUtils.first;
 import static io.datakernel.util.Preconditions.check;
@@ -30,7 +30,7 @@ import static java.util.stream.Collectors.toList;
 
 public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 	private static final Logger logger = LoggerFactory.getLogger(OTAlgorithms.class);
-	public static final double DEFAULT_SMOOTHING_WINDOW = SMOOTHING_WINDOW_5_MINUTES;
+	public static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);
 
 	private final Eventloop eventloop;
 	private final OTRemote<K, D> remote;

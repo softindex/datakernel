@@ -17,6 +17,7 @@
 package io.datakernel.jmx;
 
 import java.text.SimpleDateFormat;
+import java.time.Duration;
 import java.util.Date;
 import java.util.List;
 
@@ -24,7 +25,7 @@ import static java.util.Arrays.asList;
 
 public final class ExceptionStats implements JmxStats<ExceptionStats>, JmxStatsWithReset {
 	public static final SimpleDateFormat TIMESTAMP_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
-	private static final long DETAILS_REFRESH_TIMEOUT = 1000L;
+	private static final Duration DETAILS_REFRESH_TIMEOUT = Duration.ofSeconds(1);
 
 	private Class<? extends Throwable> exceptionClass;
 	private int count;
@@ -43,7 +44,7 @@ public final class ExceptionStats implements JmxStats<ExceptionStats>, JmxStatsW
 		this.count++;
 		long now = System.currentTimeMillis();
 
-		if (now >= lastExceptionTimestamp + DETAILS_REFRESH_TIMEOUT) {
+		if (now >= lastExceptionTimestamp + DETAILS_REFRESH_TIMEOUT.toMillis()) {
 			this.exceptionClass = throwable != null ? throwable.getClass() : null;
 			this.throwable = throwable;
 			this.context = context;

@@ -18,6 +18,7 @@ package io.datakernel.serializer;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.util.MemSize;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -27,7 +28,7 @@ import java.io.UnsupportedEncodingException;
 import static java.lang.Math.max;
 
 public final class DataInputStreamEx implements Closeable {
-	public static final int DEFAULT_BUFFER_SIZE = 16384;
+	public static final MemSize DEFAULT_BUFFER_SIZE = MemSize.kilobytes(16);
 
 	private InputStream inputStream;
 	private ByteBuf buf = ByteBuf.empty();
@@ -41,11 +42,15 @@ public final class DataInputStreamEx implements Closeable {
 	}
 
 	public static DataInputStreamEx create(InputStream inputStream) {
-		return new DataInputStreamEx(inputStream, DEFAULT_BUFFER_SIZE);
+		return new DataInputStreamEx(inputStream, DEFAULT_BUFFER_SIZE.toInt());
 	}
 
 	public static DataInputStreamEx create(InputStream inputStream, int bufferSize) {
 		return new DataInputStreamEx(inputStream, bufferSize);
+	}
+
+	public static DataInputStreamEx create(InputStream inputStream, MemSize bufferSize) {
+		return create(inputStream, bufferSize.toInt());
 	}
 
 	public void changeInputStream(InputStream inputStream) throws IOException {

@@ -18,11 +18,11 @@ import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.Set;
 import java.util.function.Supplier;
 
 import static io.datakernel.async.AsyncCallable.sharedCall;
-import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static java.util.stream.Collectors.toSet;
 
 public final class CubeConsolidationController implements EventloopJmxMBeanEx {
@@ -34,7 +34,7 @@ public final class CubeConsolidationController implements EventloopJmxMBeanEx {
 			return (hotSegment = !hotSegment) ? Aggregation::consolidateHotSegment : Aggregation::consolidateMinKey;
 		}
 	};
-	public static final double DEFAULT_SMOOTHING_WINDOW = SMOOTHING_WINDOW_5_MINUTES;
+	public static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);
 
 	private final Logger logger = LoggerFactory.getLogger(CubeConsolidationController.class);
 	private final Eventloop eventloop;

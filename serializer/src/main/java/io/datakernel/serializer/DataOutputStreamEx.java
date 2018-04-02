@@ -19,6 +19,7 @@ package io.datakernel.serializer;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.SerializationUtils;
+import io.datakernel.util.MemSize;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -26,7 +27,7 @@ import java.io.OutputStream;
 
 public final class DataOutputStreamEx implements Closeable {
 	private static final SerializeException SIZE_EXCEPTION = new SerializeException("Message size of out range");
-	public static final int DEFAULT_BUFFER_SIZE = 65536;
+	public static final MemSize DEFAULT_BUFFER_SIZE = MemSize.kilobytes(64);
 
 	public static final int MAX_SIZE_127 = 1; // (1 << (1 * 7)) - 1
 	public static final int MAX_SIZE_16K = 2; // (1 << (2 * 7)) - 1
@@ -43,11 +44,15 @@ public final class DataOutputStreamEx implements Closeable {
 	}
 
 	public static DataOutputStreamEx create(OutputStream output) {
-		return new DataOutputStreamEx(output, DEFAULT_BUFFER_SIZE);
+		return new DataOutputStreamEx(output, DEFAULT_BUFFER_SIZE.toInt());
 	}
 
 	public static DataOutputStreamEx create(OutputStream outputStream, int bufferSize) {
 		return new DataOutputStreamEx(outputStream, bufferSize);
+	}
+
+	public static DataOutputStreamEx create(OutputStream outputStream, MemSize bufferSize) {
+		return create(outputStream, bufferSize.toInt());
 	}
 
 	public void changeOutputStream(OutputStream outputStream) throws IOException {

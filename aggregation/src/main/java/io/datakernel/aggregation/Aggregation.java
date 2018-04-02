@@ -67,8 +67,8 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 	public static final int DEFAULT_CHUNK_SIZE = 1_000_000;
 	public static final int DEFAULT_REDUCER_BUFFER_SIZE = StreamReducer.DEFAULT_BUFFER_SIZE;
 	public static final int DEFAULT_SORTER_ITEMS_IN_MEMORY = 1_000_000;
-	public static final int DEFAULT_SORTER_BLOCK_SIZE = 256 * 1024;
-	public static final long DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS = 10 * 60 * 1000; // 10 minutes
+	public static final MemSize DEFAULT_SORTER_BLOCK_SIZE = MemSize.kilobytes(256);
+	public static final Duration DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD = Duration.ofMinutes(10);
 	public static final int DEFAULT_MAX_CHUNKS_TO_CONSOLIDATE = 1000;
 
 	private final Eventloop eventloop;
@@ -84,8 +84,8 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 	private int chunkSize = DEFAULT_CHUNK_SIZE;
 	private int reducerBufferSize = DEFAULT_REDUCER_BUFFER_SIZE;
 	private int sorterItemsInMemory = DEFAULT_SORTER_ITEMS_IN_MEMORY;
-	private int sorterBlockSize = DEFAULT_SORTER_BLOCK_SIZE;
-	private long maxIncrementalReloadPeriodMillis = DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS;
+	private int sorterBlockSize = DEFAULT_SORTER_BLOCK_SIZE.toInt();
+	private long maxIncrementalReloadPeriodMillis = DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD.toMillis();
 	private boolean ignoreChunkReadingExceptions = false;
 	private int maxChunksToConsolidate = DEFAULT_MAX_CHUNKS_TO_CONSOLIDATE;
 

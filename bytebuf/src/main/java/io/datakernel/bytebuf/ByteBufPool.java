@@ -17,6 +17,7 @@
 package io.datakernel.bytebuf;
 
 import io.datakernel.util.ConcurrentStack;
+import io.datakernel.util.MemSize;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -72,6 +73,10 @@ public final class ByteBufPool {
 		}
 		assert ByteBufRegistry.recordAllocate(buf);
 		return buf;
+	}
+
+	public static ByteBuf allocate(MemSize size) {
+		return allocate(size.toInt());
 	}
 
 	public static void recycle(ByteBuf buf) {

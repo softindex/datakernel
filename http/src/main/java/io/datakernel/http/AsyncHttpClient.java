@@ -64,7 +64,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	private int poolReadingExpired;
 	private int poolWritingExpired;
 
-	private final char[] headerChars = new char[MAX_HEADER_LINE_SIZE];
+	private final char[] headerChars = new char[MAX_HEADER_LINE_SIZE.toInt()];
 
 	private AsyncCancellable expiredConnectionsCheck;
 	private int maxHttpMessageSize = Integer.MAX_VALUE;
@@ -100,7 +100,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	}
 
 	public static class JmxInspector implements Inspector {
-		private static final double SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_1_MINUTE;
+		private static final Duration SMOOTHING_WINDOW = Duration.ofMinutes(1);
 
 		protected final AsyncTcpSocketImpl.JmxInspector socketStats = new AsyncTcpSocketImpl.JmxInspector();
 		protected final AsyncTcpSocketImpl.JmxInspector socketStatsForSSL = new AsyncTcpSocketImpl.JmxInspector();

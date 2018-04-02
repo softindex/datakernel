@@ -47,7 +47,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBeanEx {
 	public static final DateTimeFormatter DEFAULT_DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH").withZone(ZoneOffset.UTC);
-	public static final int DEFAULT_BUFFER_SIZE = 256 * 1024;
+	public static final MemSize DEFAULT_BUFFER_SIZE = MemSize.kilobytes(256);
 	public static final int DEFAULT_AUTO_FLUSH_INTERVAL = -1;
 
 	private final Logger logger = LoggerFactory.getLogger(LogManagerImpl.class);
@@ -56,7 +56,7 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 	private final BufferSerializer<T> serializer;
 	private final DateTimeFormatter dateTimeFormatter;
 
-	private int bufferSize = DEFAULT_BUFFER_SIZE;
+	private int bufferSize = DEFAULT_BUFFER_SIZE.toInt();
 	private int autoFlushIntervalMillis = DEFAULT_AUTO_FLUSH_INTERVAL;
 
 	private LogManagerImpl(Eventloop eventloop, LogFileSystem fileSystem, BufferSerializer<T> serializer) {

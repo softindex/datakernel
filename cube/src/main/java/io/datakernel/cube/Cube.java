@@ -62,7 +62,6 @@ import static io.datakernel.codegen.ExpressionComparator.rightField;
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.utils.Primitives.isWrapperType;
 import static io.datakernel.cube.Utils.createResultClass;
-import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_10_MINUTES;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkState;
 import static java.lang.String.format;
@@ -113,12 +112,12 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 	private int aggregationsChunkSize = Aggregation.DEFAULT_CHUNK_SIZE;
 	private int aggregationsReducerBufferSize = Aggregation.DEFAULT_REDUCER_BUFFER_SIZE;
 	private int aggregationsSorterItemsInMemory = Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY;
-	private int aggregationsSorterBlockSize = Aggregation.DEFAULT_SORTER_BLOCK_SIZE;
+	private int aggregationsSorterBlockSize = Aggregation.DEFAULT_SORTER_BLOCK_SIZE.toInt();
 	private int aggregationsMaxChunksToConsolidate = Aggregation.DEFAULT_MAX_CHUNKS_TO_CONSOLIDATE;
 	private boolean aggregationsIgnoreChunkReadingExceptions = false;
 
 	private int maxOverlappingChunksToProcessLogs = Cube.DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD;
-	private long maxIncrementalReloadPeriodMillis = Aggregation.DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS;
+	private long maxIncrementalReloadPeriodMillis = Aggregation.DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD.toMillis();
 
 	static final class AggregationContainer {
 		private final Aggregation aggregation;
@@ -144,7 +143,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 
 	// JMX
 	private final AggregationStats aggregationStats = new AggregationStats();
-	private final ValueStats queryTimes = ValueStats.create(SMOOTHING_WINDOW_10_MINUTES);
+	private final ValueStats queryTimes = ValueStats.create(Duration.ofMinutes(10));
 	private long queryErrors;
 	private Throwable queryLastError;
 
@@ -292,11 +291,6 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 
 		public AggregationConfig withChunkSize(int chunkSize) {
 			this.chunkSize = chunkSize;
-			return this;
-		}
-
-		public AggregationConfig withReducerBufferSize(MemSize reducerBufferSize) {
-			this.reducerBufferSize = reducerBufferSize.toInt();
 			return this;
 		}
 

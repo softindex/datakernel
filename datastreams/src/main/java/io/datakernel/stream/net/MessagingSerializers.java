@@ -21,6 +21,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.exception.ParseException;
+import io.datakernel.util.MemSize;
 
 import java.io.IOException;
 
@@ -68,10 +69,14 @@ public final class MessagingSerializers {
 	}
 
 	static class ByteBufPoolAppendable implements Appendable {
-		static final int INITIAL_BUF_SIZE = 2 * 1024;
+		static final MemSize INITIAL_BUF_SIZE = MemSize.kilobytes(2);
 		ByteBuf container;
 
 		ByteBufPoolAppendable() {this(INITIAL_BUF_SIZE);}
+
+		ByteBufPoolAppendable(MemSize size) {
+			this.container = ByteBufPool.allocate(size);
+		}
 
 		ByteBufPoolAppendable(int size) {
 			this.container = ByteBufPool.allocate(size);

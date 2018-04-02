@@ -32,22 +32,8 @@ import static java.util.Arrays.asList;
  * Class is supposed to work in single thread
  */
 public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxStatsWithReset, JmxStatsWithSmoothingWindow {
-	private static final long TOO_LONG_TIME_PERIOD_BETWEEN_REFRESHES = 5 * 60 * 60 * 1000; // 5 hour
+	private static final Duration TOO_LONG_TIME_PERIOD_BETWEEN_REFRESHES = Duration.ofHours(5);
 	private static final double LN_2 = log(2);
-
-	// region smoothing window constants
-	public static final double SMOOTHING_WINDOW_1_SECOND = 1.0;
-	public static final double SMOOTHING_WINDOW_5_SECONDS = 5.0;
-	public static final double SMOOTHING_WINDOW_10_SECONDS = 10.0;
-	public static final double SMOOTHING_WINDOW_20_SECONDS = 20.0;
-	public static final double SMOOTHING_WINDOW_30_SECONDS = 30.0;
-	public static final double SMOOTHING_WINDOW_1_MINUTE = 60.0;
-	public static final double SMOOTHING_WINDOW_5_MINUTES = 5 * 60.0;
-	public static final double SMOOTHING_WINDOW_10_MINUTES = 10 * 60.0;
-	public static final double SMOOTHING_WINDOW_20_MINUTES = 20 * 60.0;
-	public static final double SMOOTHING_WINDOW_30_MINUTES = 30 * 60.0;
-	public static final double SMOOTHING_WINDOW_1_HOUR = 60 * 60.0;
-	// endregion
 
 	// region standard levels
 	public static final int[] POWERS_OF_TWO =
@@ -162,6 +148,13 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 	 */
 	public static ValueStats create(double smoothingWindow) {
 		return new ValueStats(smoothingWindow);
+	}
+
+	/**
+	 * @see ValueStats#create(double)
+	 */
+	public static ValueStats create(Duration smoothingWindow) {
+		return create(smoothingWindow.toMillis() / 1000.0);
 	}
 	// endregion
 
@@ -402,7 +395,7 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 	}
 
 	private static boolean isTimePeriodValid(long timePeriod) {
-		return timePeriod < TOO_LONG_TIME_PERIOD_BETWEEN_REFRESHES && timePeriod > 0;
+		return timePeriod < TOO_LONG_TIME_PERIOD_BETWEEN_REFRESHES.toMillis() && timePeriod > 0;
 	}
 
 	@Override

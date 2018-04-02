@@ -15,18 +15,18 @@ import io.datakernel.ot.OTAlgorithms;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 
 import static io.datakernel.async.AsyncCallable.sharedCall;
-import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static java.util.Collections.max;
 import static java.util.stream.Collectors.toSet;
 
 public final class CubeBackupController implements EventloopJmxMBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(CubeBackupController.class);
 
-	public static final double DEFAULT_SMOOTHING_WINDOW = SMOOTHING_WINDOW_5_MINUTES;
+	public static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);
 
 	private final Eventloop eventloop;
 	private final OTAlgorithms<Integer, LogDiff<CubeDiff>> algorithms;

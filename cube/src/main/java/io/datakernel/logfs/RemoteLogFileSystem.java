@@ -29,22 +29,23 @@ import io.datakernel.stream.stats.StreamRegistry;
 import io.datakernel.stream.stats.StreamStats;
 import io.datakernel.stream.stats.StreamStatsDetailed;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static io.datakernel.stream.stats.StreamStatsSizeCounter.forByteBufs;
 
 public final class RemoteLogFileSystem extends AbstractLogFileSystem implements EventloopJmxMBeanEx {
+	public static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);
 	private static final String LOG_NAME_DELIMITER = "/";
 
 	private final Eventloop eventloop;
 	private final String logName;
 	private final RemoteFsClient client;
 
-	private final StageStats stageList = StageStats.create(SMOOTHING_WINDOW_5_MINUTES);
-	private final StageStats stageRead = StageStats.create(SMOOTHING_WINDOW_5_MINUTES);
-	private final StageStats stageWrite = StageStats.create(SMOOTHING_WINDOW_5_MINUTES);
+	private final StageStats stageList = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final StageStats stageRead = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final StageStats stageWrite = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 
 	private final StreamRegistry<String> streamReads = StreamRegistry.create();
 	private final StreamRegistry<String> streamWrites = StreamRegistry.create();

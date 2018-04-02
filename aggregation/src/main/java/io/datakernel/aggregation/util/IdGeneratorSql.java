@@ -11,10 +11,10 @@ import io.datakernel.jmx.StageStats;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.async.AsyncCallable.sharedCall;
-import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static io.datakernel.util.Preconditions.checkState;
 
 public final class IdGeneratorSql implements IdGenerator<Long>, EventloopJmxMBeanEx {
@@ -30,7 +30,7 @@ public final class IdGeneratorSql implements IdGenerator<Long>, EventloopJmxMBea
 	private long next;
 	private long limit;
 
-	private final StageStats stageCreateId = StageStats.create(SMOOTHING_WINDOW_5_MINUTES);
+	private final StageStats stageCreateId = StageStats.create(Duration.ofMinutes(5));
 
 	private final AsyncCallable<Void> reserveId = sharedCall(this::doReserveId).with(stageCreateId::wrapper);
 

@@ -6,10 +6,10 @@ import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxReducers;
 import io.datakernel.stream.StreamDataReceiver;
 
-import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
+import java.time.Duration;
 
 public class StreamStatsBasic<T> implements StreamStats<T> {
-	public static final double DEFAULT_BASIC_SMOOTHING_WINDOW = SMOOTHING_WINDOW_5_MINUTES;
+	public static final Duration DEFAULT_BASIC_SMOOTHING_WINDOW = Duration.ofMinutes(5);
 
 	private final EventStats started = EventStats.create(DEFAULT_BASIC_SMOOTHING_WINDOW);
 	private final EventStats produce = EventStats.create(DEFAULT_BASIC_SMOOTHING_WINDOW);
@@ -17,11 +17,20 @@ public class StreamStatsBasic<T> implements StreamStats<T> {
 	private final EventStats endOfStream = EventStats.create(DEFAULT_BASIC_SMOOTHING_WINDOW);
 	private final ExceptionStats error = ExceptionStats.create();
 
-	public StreamStatsBasic withBasicSmoothingWindow(double smoothingWindowSeconds) {
-		started.setSmoothingWindow(smoothingWindowSeconds);
-		produce.setSmoothingWindow(smoothingWindowSeconds);
-		suspend.setSmoothingWindow(smoothingWindowSeconds);
-		endOfStream.setSmoothingWindow(smoothingWindowSeconds);
+//	public StreamStatsBasic withBasicSmoothingWindow(double smoothingWindowSeconds) {
+//		started.setSmoothingWindow(smoothingWindowSeconds);
+//		produce.setSmoothingWindow(smoothingWindowSeconds);
+//		suspend.setSmoothingWindow(smoothingWindowSeconds);
+//		endOfStream.setSmoothingWindow(smoothingWindowSeconds);
+//		return this;
+//	}
+
+	public StreamStatsBasic withBasicSmoothingWindow(Duration smoothingWindow) {
+		long seconds = smoothingWindow.getSeconds();
+		started.setSmoothingWindow(seconds);
+		produce.setSmoothingWindow(seconds);
+		suspend.setSmoothingWindow(seconds);
+		endOfStream.setSmoothingWindow(seconds);
 		return this;
 	}
 

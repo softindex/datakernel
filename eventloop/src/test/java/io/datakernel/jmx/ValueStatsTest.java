@@ -18,6 +18,7 @@ package io.datakernel.jmx;
 
 import org.junit.Test;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Random;
 
@@ -26,13 +27,13 @@ import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
 public class ValueStatsTest {
-	private static final double SMOOTHING_WINDOW = ValueStats.SMOOTHING_WINDOW_1_MINUTE;
+	private static final Duration SMOOTHING_WINDOW = Duration.ofMinutes(1);
 	private static final int ONE_SECOND_IN_MILLIS = 1000;
 	private static final Random RANDOM = new Random();
 
 	@Test
 	public void smoothedAverageAtLimitShouldBeSameAsInputInCaseOfConstantData() {
-		double smoothingWindow = 10.0;
+		Duration smoothingWindow = Duration.ofSeconds(10);
 		long currentTimestamp = 0;
 		ValueStats valueStats = ValueStats.create(smoothingWindow);
 		int inputValue = 5;
@@ -51,7 +52,7 @@ public class ValueStatsTest {
 
 	@Test
 	public void itShouldReturnProperStandardDeviationAtLimit() {
-		double smoothingWindow = 100.0;
+		Duration smoothingWindow = Duration.ofSeconds(10);
 		long currentTimestamp = 0;
 		ValueStats valueStats = ValueStats.create(smoothingWindow);
 		int iterations = 10000;
@@ -74,7 +75,7 @@ public class ValueStatsTest {
 
 	@Test
 	public void itShouldResetStatsAfterResetMethodCall() {
-		double smoothingWindow = 10.0;
+		Duration smoothingWindow = Duration.ofSeconds(10);
 		long currentTimestamp = 0;
 		ValueStats valueStats = ValueStats.create(smoothingWindow);
 		int inputValue = 5;
@@ -98,7 +99,7 @@ public class ValueStatsTest {
 
 	@Test
 	public void itShouldAccumulateProperly() {
-		double smoothingWindow = 10.0;
+		Duration smoothingWindow = Duration.ofSeconds(10);
 		long currentTimestamp = 0;
 		ValueStats valueStats_1 = ValueStats.create(smoothingWindow);
 		ValueStats valueStats_2 = ValueStats.create(smoothingWindow);
