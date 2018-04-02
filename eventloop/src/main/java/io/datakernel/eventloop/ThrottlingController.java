@@ -34,8 +34,8 @@ public final class ThrottlingController implements EventloopJmxMBean {
 
 	private final Logger logger = LoggerFactory.getLogger(ThrottlingController.class.getName() + "." + staticInstanceCounter++);
 
-	public static final int TARGET_TIME_MILLIS = 20;
-	public static final int GC_TIME_MILLIS = 20;
+	public static final Duration TARGET_TIME = Duration.ofMillis(20);
+	public static final Duration GC_TIME = Duration.ofMillis(20);
 	public static final int SMOOTHING_WINDOW = 10000;
 	public static final double THROTTLING_DECREASE = 0.1;
 	public static final double INITIAL_KEYS_PER_SECOND = 100;
@@ -93,8 +93,8 @@ public final class ThrottlingController implements EventloopJmxMBean {
 
 	public static ThrottlingController create() {
 		return new ThrottlingController()
-				.withTargetTime(TARGET_TIME_MILLIS)
-				.withGcTime(GC_TIME_MILLIS)
+				.withTargetTime(TARGET_TIME)
+				.withGcTime(GC_TIME)
 				.withSmoothingWindow(SMOOTHING_WINDOW)
 				.withThrottlingDecrease(THROTTLING_DECREASE)
 				.withInitialKeysPerSecond(INITIAL_KEYS_PER_SECOND)
@@ -230,6 +230,7 @@ public final class ThrottlingController implements EventloopJmxMBean {
 		checkArgument(targetTimeMillis > 0, "Target time should not be zero or less");
 		this.targetTimeMillis = targetTimeMillis;
 	}
+
 
 	@JmxAttribute
 	public int getGcTimeMillis() {

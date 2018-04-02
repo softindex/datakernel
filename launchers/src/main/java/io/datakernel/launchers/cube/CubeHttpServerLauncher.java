@@ -18,11 +18,12 @@ import io.datakernel.ot.OTStateManager;
 import io.datakernel.util.guice.SimpleModule;
 
 import javax.inject.Named;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 
 import static com.google.inject.util.Modules.combine;
-import static io.datakernel.config.ConfigConverters.ofLong;
+import static io.datakernel.config.ConfigConverters.ofDuration;
 import static java.lang.Boolean.parseBoolean;
 import static java.util.Arrays.asList;
 
@@ -41,7 +42,7 @@ public abstract class CubeHttpServerLauncher extends HttpServerLauncher {
 					EventloopTaskScheduler pullScheduler(Config config, Eventloop eventloop,
 					                                     OTStateManager<Integer, LogDiff<CubeDiff>> cubeStateManager) {
 						return EventloopTaskScheduler.create(eventloop, pullOrCheckoutTask(cubeStateManager))
-								.withPeriod(config.get(ofLong(), "CubeHttpServer.metadataRefreshPeriodMillis", 10_000L));
+								.withPeriod(config.get(ofDuration(), "CubeHttpServer.metadataRefreshPeriod", Duration.ofMillis(10_000)));
 					}
 
 					@Provides

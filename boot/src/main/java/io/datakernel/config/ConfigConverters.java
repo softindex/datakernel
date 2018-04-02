@@ -371,6 +371,10 @@ public final class ConfigConverters {
 		return ofDuration().transform(Duration::toMillis, Duration::ofMillis);
 	}
 
+	public static ConfigConverter<Integer> ofDurationAsMillisInt() {
+		return ofDuration().transform(duration -> (int) duration.toMillis(), (Function<Integer, Duration>) Duration::ofMillis);
+	}
+
 	public static ConfigConverter<Instant> ofInstant() {
 		return new SimpleConfigConverter<Instant>() {
 			@Override
@@ -630,7 +634,7 @@ public final class ConfigConverters {
 	 * @return config converter with bytes in memsize
 	 */
 	public static ConfigConverter<Integer> ofMemSizeAsBytesInt() {
-		return ofMemSize().transform(MemSize::toInt, value -> MemSize.of(value));
+		return ofMemSize().transform(MemSize::toInt, (Function<Integer, MemSize>) MemSize::of);
 	}
 
 	public static ConfigConverter<InetAddressRange> ofInetAddressRange() {
@@ -734,11 +738,11 @@ public final class ConfigConverters {
 										defaultValue.hasTcpNoDelay() ? defaultValue.getTcpNoDelay() : null)))
 						.andThen(applyNotNull(
 								SocketSettings::withImplReadTimeout,
-								config.get(ofLong(), "implReadTimeout",
+								config.get(ofDurationAsMillis(), "implReadTimeout",
 										defaultValue.hasImplReadTimeout() ? defaultValue.getImplReadTimeout() : null)))
 						.andThen(applyNotNull(
 								SocketSettings::withImplWriteTimeout,
-								config.get(ofLong(), "implWriteTimeout",
+								config.get(ofDurationAsMillis(), "implWriteTimeout",
 										defaultValue.hasImplWriteTimeout() ? defaultValue.getImplWriteTimeout() : null)))
 						.andThen(applyNotNull(
 								SocketSettings::withImplReadSize,
@@ -822,8 +826,8 @@ public final class ConfigConverters {
 			@Override
 			protected ThrottlingController provide(Config config, ThrottlingController defaultValue) {
 				return ThrottlingController.create()
-						.withTargetTime(config.get(ofInteger(), "targetTimeMillis", defaultValue.getTargetTimeMillis()))
-						.withGcTime(config.get(ofInteger(), "gcTimeMillis", defaultValue.getGcTimeMillis()))
+						.withTargetTime(config.get(ofDurationAsMillisInt(), "targetTime", defaultValue.getTargetTimeMillis()))
+						.withGcTime(config.get(ofDurationAsMillisInt(), "gcTime", defaultValue.getGcTimeMillis()))
 						.withSmoothingWindow(config.get(ofInteger(), "smoothingWindow", defaultValue.getSmoothingWindow()))
 						.withThrottlingDecrease(config.get(ofDouble(), "throttlingDecrease", defaultValue.getThrottlingDecrease()))
 						.withInitialKeysPerSecond(config.get(ofDouble(), "initialKeysPerSecond", INITIAL_KEYS_PER_SECOND))

@@ -54,7 +54,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 	public static final InetSocketAddress GOOGLE_PUBLIC_DNS = new InetSocketAddress(inetAddress("8.8.8.8"), DNS_SERVER_PORT);
 	public static final InetSocketAddress LOCAL_DNS = new InetSocketAddress(inetAddress("192.168.0.1"), DNS_SERVER_PORT);
 	public static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(3);
-	public static final Duration DEFAULT_TIMED_OUT_EXCEPTION_TTL_MILLIS = Duration.ofSeconds(1);
+	public static final Duration DEFAULT_TIMED_OUT_EXCEPTION_TTL = Duration.ofSeconds(1);
 	public static final Duration ERROR_CACHE_EXPIRATION = Duration.ofMinutes(1);
 	public static final Duration HARD_EXPIRATION_DELTA = Duration.ofMinutes(1);
 
@@ -68,7 +68,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 	private DnsCache cache;
 
 	private long timeout = DEFAULT_TIMEOUT.toMillis();
-	private long timedOutExceptionTtl = DEFAULT_TIMED_OUT_EXCEPTION_TTL_MILLIS.toMillis();
+	private long timedOutExceptionTtl = DEFAULT_TIMED_OUT_EXCEPTION_TTL.toMillis();
 
 	// jmx
 	Inspector inspector;
@@ -177,7 +177,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 
 	public static AsyncDnsClient create(Eventloop eventloop) {
 		Inspector inspector = new JmxInspector();
-		DnsCache cache = DnsCache.create(eventloop, ERROR_CACHE_EXPIRATION, HARD_EXPIRATION_DELTA, DEFAULT_TIMED_OUT_EXCEPTION_TTL_MILLIS, inspector);
+		DnsCache cache = DnsCache.create(eventloop, ERROR_CACHE_EXPIRATION, HARD_EXPIRATION_DELTA, DEFAULT_TIMED_OUT_EXCEPTION_TTL, inspector);
 		return new AsyncDnsClient(eventloop, cache, inspector);
 	}
 
@@ -233,7 +233,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 	}
 
 	public AsyncDnsClient withExpiration(long errorCacheExpirationMillis, long hardExpirationDeltaMillis) {
-		return withExpiration(errorCacheExpirationMillis, hardExpirationDeltaMillis, DEFAULT_TIMED_OUT_EXCEPTION_TTL_MILLIS.toMillis());
+		return withExpiration(errorCacheExpirationMillis, hardExpirationDeltaMillis, DEFAULT_TIMED_OUT_EXCEPTION_TTL.toMillis());
 	}
 
 	public AsyncDnsClient withExpiration(Duration errorCacheExpiration, Duration hardExpirationDelta, Duration timedOutExceptionTtl) {

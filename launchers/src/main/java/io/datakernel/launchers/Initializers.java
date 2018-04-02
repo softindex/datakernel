@@ -17,7 +17,7 @@ import java.time.Duration;
 import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.eventloop.Eventloop.DEFAULT_IDLE_INTERVAL;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.http.AsyncHttpServer.DEFAULT_KEEP_ALIVE_MILLIS;
+import static io.datakernel.http.AsyncHttpServer.DEFAULT_KEEP_ALIVE;
 import static io.datakernel.rpc.server.RpcServer.DEFAULT_PACKET_SIZE;
 import static io.datakernel.rpc.server.RpcServer.MAX_PACKET_SIZE;
 import static io.datakernel.trigger.Severity.HIGH;
@@ -44,7 +44,7 @@ public class Initializers {
 	public static Initializer<Eventloop> ofEventloop(Config config) {
 		return eventloop -> eventloop
 				.withFatalErrorHandler(config.get(ofFatalErrorHandler(), "fatalErrorHandler", rethrowOnAnyError()))
-				.withIdleInterval(config.get(ofLong().transform(Duration::ofMillis, Duration::toMillis), "idleIntervalMillis", DEFAULT_IDLE_INTERVAL))
+				.withIdleInterval(config.get(ofDuration(), "idleInterval", DEFAULT_IDLE_INTERVAL))
 				.withThreadPriority(config.get(ofInteger(), "threadPriority", 0));
 	}
 
@@ -67,17 +67,17 @@ public class Initializers {
 		return server -> server
 				.initialize(ofAbstractServer(config))
 				.withMaxHttpMessageSize(config.get(ofMemSize(), "maxMessageSize", MemSize.of(Integer.MAX_VALUE)))
-				.withKeepAliveTimeout(config.get(ofInteger(), "keepAliveTimeout", (int) DEFAULT_KEEP_ALIVE_MILLIS))
-				.withReadTimeout(config.get(ofInteger(), "readTimeout", 0))
-				.withWriteTimeout(config.get(ofInteger(), "writeTimeout", 0));
+				.withKeepAliveTimeout(config.get(ofDuration(), "keepAliveTimeout", DEFAULT_KEEP_ALIVE))
+				.withReadTimeout(config.get(ofDuration(), "readTimeout", Duration.ZERO))
+				.withWriteTimeout(config.get(ofDuration(), "writeTimeout", Duration.ZERO));
 	}
 
 	public static Initializer<AsyncHttpServer> ofHttpWorker(Config config) {
 		return worker -> worker
 				.withMaxHttpMessageSize(config.get(ofMemSize(), "maxMessageSize", MemSize.of(Integer.MAX_VALUE)))
-				.withKeepAliveTimeout(config.get(ofInteger(), "keepAliveTimeout", (int) DEFAULT_KEEP_ALIVE_MILLIS))
-				.withReadTimeout(config.get(ofInteger(), "readTimeout", 0))
-				.withWriteTimeout(config.get(ofInteger(), "writeTimeout", 0));
+				.withKeepAliveTimeout(config.get(ofDuration(), "keepAliveTimeout", DEFAULT_KEEP_ALIVE))
+				.withReadTimeout(config.get(ofDuration(), "readTimeout", Duration.ZERO))
+				.withWriteTimeout(config.get(ofDuration(), "writeTimeout", Duration.ZERO));
 	}
 
 	public static Initializer<AsyncHttpServer> ofHttpServerTriggers(TriggerRegistry triggers, Config config) {
@@ -109,6 +109,6 @@ public class Initializers {
 						config.get(ofMemSize(), "rpc.streamProtocol.defaultPacketSize", DEFAULT_PACKET_SIZE),
 						config.get(ofMemSize(), "rpc.streamProtocol.maxPacketSize", MAX_PACKET_SIZE),
 						config.get(ofBoolean(), "rpc.streamProtocol.compression", false))
-				.withFlushDelay(config.get(ofInteger(), "rpc.flushDelay", 0));
+				.withFlushDelay(config.get(ofDuration(), "rpc.flushDelay", Duration.ZERO));
 	}
 }

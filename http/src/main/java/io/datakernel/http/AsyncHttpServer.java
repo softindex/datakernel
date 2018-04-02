@@ -35,7 +35,7 @@ import static io.datakernel.http.AbstractHttpConnection.*;
 import static io.datakernel.util.Preconditions.checkArgument;
 
 public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
-	public static final long DEFAULT_KEEP_ALIVE_MILLIS = 30 * 1000L;
+	public static final Duration DEFAULT_KEEP_ALIVE = Duration.ofSeconds(30);
 
 	private static final HttpExceptionFormatter DEFAULT_ERROR_FORMATTER = e -> {
 		if (e instanceof HttpException) {
@@ -51,7 +51,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private final AsyncServlet servlet;
 	private HttpExceptionFormatter errorFormatter = DEFAULT_ERROR_FORMATTER;
 	private int maxHttpMessageSize = Integer.MAX_VALUE;
-	int keepAliveTimeoutMillis = (int) DEFAULT_KEEP_ALIVE_MILLIS;
+	int keepAliveTimeoutMillis = (int) DEFAULT_KEEP_ALIVE.toMillis();
 	private int readTimeoutMillis = 0;
 	private int writeTimeoutMillis = 0;
 
