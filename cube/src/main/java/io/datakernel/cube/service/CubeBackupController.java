@@ -65,8 +65,8 @@ public final class CubeBackupController implements EventloopJmxMBeanEx {
 	public Stage<Void> backup(Integer commitId) {
 		return algorithms.checkout(commitId)
 				.thenCompose(logDiffs -> Stages.runSequence(
-						() -> backupChunks(commitId, collectChunkIds(logDiffs)),
-						() -> backupDb(commitId, logDiffs)));
+						(AsyncCallable<Void>) () -> backupChunks(commitId, collectChunkIds(logDiffs)),
+						(AsyncCallable<Void>) () -> backupDb(commitId, logDiffs)));
 	}
 
 	private static Set<Long> collectChunkIds(List<LogDiff<CubeDiff>> logDiffs) {

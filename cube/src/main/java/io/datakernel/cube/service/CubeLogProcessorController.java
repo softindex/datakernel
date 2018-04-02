@@ -6,7 +6,6 @@ import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.async.AsyncCallable;
 import io.datakernel.async.AsyncPredicate;
 import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
 import io.datakernel.cube.Cube;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
@@ -25,6 +24,8 @@ import java.util.List;
 import java.util.Set;
 
 import static io.datakernel.async.AsyncCallable.sharedCall;
+import static io.datakernel.async.Stages.collectSequence;
+import static io.datakernel.async.Stages.collectToList;
 import static io.datakernel.jmx.ValueStats.SMOOTHING_WINDOW_5_MINUTES;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
@@ -110,8 +111,8 @@ public final class CubeLogProcessorController implements EventloopJmxMBeanEx {
 							.collect(toList());
 
 					Stage<List<LogDiff<CubeDiff>>> stage = parallelRunner ?
-							Stages.reduceToList(tasks.stream().map(AsyncCallable::call)) :
-							Stages.reduceSequence(tasks, toList());
+							collectToList(tasks.stream().map(AsyncCallable::call)) :
+							collectSequence(tasks, toList());
 
 					return stage
 							.whenComplete(stageProcessLogsImpl.recordStats())
