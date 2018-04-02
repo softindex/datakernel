@@ -29,10 +29,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.time.*;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static io.datakernel.config.Config.THIS;
 import static io.datakernel.config.ConfigConverters.*;
@@ -50,6 +47,74 @@ public class ConfigConvertersTest {
 		assertEquals("data1", root.get("key1"));
 		assertEquals("data2", root.get("key2"));
 		assertEquals("data3", root.get("key3"));
+	}
+
+	@Test
+	public void testTransform() {
+		class TestClass {
+			long durationToLong;
+			int periodToInt;
+			long booleanToInt;
+
+			public long getdurationToLong() {
+				return durationToLong;
+			}
+
+			public void setdurationToLong(long durationToLong) {
+				this.durationToLong = durationToLong;
+			}
+
+			public int getperiodToInt() {
+				return periodToInt;
+			}
+
+			public void setperiodToInt(int periodToInt) {
+				this.periodToInt = periodToInt;
+			}
+
+			public long getbooleanToInt() {
+				return booleanToInt;
+			}
+
+			public void setbooleanToInt(long booleanToInt) {
+				this.booleanToInt = booleanToInt;
+			}
+		}
+
+		Config test = Config.create()
+				.with("durationToLong", "228 millis")
+				.with("periodToInt", "1 days")
+				.with("booleanToInt", "true");
+		TestClass testObj = new TestClass();
+
+
+		// Basic test
+		assertEquals(228L, (long) test.get(ofDuration().transform(Duration::toMillis, Duration::ofMillis), "durationToLong"));
+		assertEquals(1, (int) test.get(ofPeriod().transform(Period::getDays, Period::ofDays), "periodToInt"));
+		assertEquals(322, (int) test.get(ofBoolean().transform(bool -> bool ? 322 : 1488, num -> num == 322), "booleanToInt"));
+
+		// Test of default value
+		assertEquals(Long.valueOf(228L), test.get(ofDuration().transform($ -> null, Duration::ofMillis), "durationToLong", 228L));
+
+		// Test null handling
+		assertNull(test.get(ofDuration().transform($ -> null, $ -> null), "durationToLong"));
+		assertNull(test.get(ofDuration().transform($ -> null, $ -> null), "durationToLong", null));
+
+		// Testing of config methods
+		test.apply(ofDuration().transform($ -> null, Duration::ofMillis), "durationToLong", 228L, testObj::setdurationToLong);
+		test.apply(ofPeriod().transform($ -> null, Period::ofDays), "periodToInt", 1, testObj::setperiodToInt);
+		test.apply(ofDuration().transform($ -> null, $ -> null), "durationToLong", 322L, testObj::setbooleanToInt);
+
+		assertEquals(228L, testObj.getdurationToLong());
+		assertEquals(1, testObj.getperiodToInt());
+		assertEquals(322L, testObj.getbooleanToInt());
+
+		try {
+			test.get(ofDuration().transform(Duration::toMillis, Duration::ofMillis), "nonExistingPath");
+			Assert.fail();
+		} catch (NoSuchElementException ignored) {
+		}
+
 	}
 
 	@Test
@@ -275,6 +340,8 @@ public class ConfigConvertersTest {
 		assertEquals("0 seconds", Config.ofValue(ofDuration(), Duration.ZERO).getValue());
 		assertEquals(Duration.ZERO, Config.ofValue(ofDuration(), Duration.ZERO).get(ofDuration(), THIS));
 		assertEquals(expected, Config.ofValue("2 hour  -2 days 8 minutes 228 nanos -3 second -322 millis").get(ofDuration(), THIS));
+		assertEquals(Duration.ofDays(2).plusHours(14).plusMinutes(1).plusSeconds(30), Config.ofValue("2.5 days 2 hour 1.5 minute").get(ofDuration(), THIS));
+		assertEquals(Duration.ofHours(12).plusMinutes(40).plusSeconds(1).plusMillis(500), Config.ofValue("12.5 hours 10 minutes 1.5 second").get(ofDuration(), THIS));
 
 		try {
 			Config.ofValue(" 1 2 3 ").get(ofDuration(), THIS);
@@ -293,6 +360,12 @@ public class ConfigConvertersTest {
 			Assert.fail();
 		} catch (IllegalArgumentException ignored) {
 		}
+
+		try {
+			Config.ofValue("2.2 nanos").get(ofDuration(), THIS);
+			Assert.fail();
+		} catch (IllegalArgumentException ignored) {
+		}
 	}
 
 	@Test
@@ -301,5 +374,23 @@ public class ConfigConvertersTest {
 		Instant actual = Config.EMPTY.get(ofInstant(), THIS, expected);
 
 		assertEquals(expected, actual);
+	}
+
+	/**
+	 * Testing *as* methods like ofDurationAsMillis, ofPeriodAsDays, etc...
+	 */
+	@Test
+	public void testXXXAsXXX() {
+		Instant now = Instant.now();
+		Config testConfig = Config.create()
+				.with("ofDurationAsMillis", "228 millis")
+				.with("ofPeriodAsDays", "3 days")
+				.with("ofMemSizeAsBytesLong", "2gb")
+				.with("ofInstantAsEpochMillis", Config.ofValue(ofInstant(), now));
+
+		assertEquals(228L, (long) testConfig.get(ofDurationAsMillis(), "ofDurationAsMillis"));
+		assertEquals(3, (int) testConfig.get(ofPeriodAsDays(), "ofPeriodAsDays"));
+		assertEquals(MemSize.gigabytes(2).toLong(), (long) testConfig.get(ofMemSizeAsBytesLong(), "ofMemSizeAsBytesLong"));
+		assertEquals(now.toEpochMilli(), (long) testConfig.get(ofInstantAsEpochMillis(), "ofInstantAsEpochMillis"));
 	}
 }

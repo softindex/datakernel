@@ -35,7 +35,7 @@ public abstract class ComplexConfigConverter<T> implements ConfigConverter<T> {
 	@Nullable
 	public final T get(Config config, @Nullable T defaultValue) {
 		boolean isNull = defaultValue == null;
-		if (defaultValue == null) {
+		if (isNull) {
 			defaultValue = this.defaultValue;
 		}
 		T result = provide(config, defaultValue);

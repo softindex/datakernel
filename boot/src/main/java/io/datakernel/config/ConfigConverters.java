@@ -26,6 +26,7 @@ import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.util.MemSize;
 import io.datakernel.util.SimpleThreadFactory;
+import io.datakernel.util.Utils;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -55,8 +56,10 @@ import static io.datakernel.eventloop.ThrottlingController.INITIAL_KEYS_PER_SECO
 import static io.datakernel.eventloop.ThrottlingController.INITIAL_THROTTLING;
 import static io.datakernel.net.ServerSocketSettings.DEFAULT_BACKLOG;
 import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Utils.*;
+import static io.datakernel.util.Utils.apply;
+import static io.datakernel.util.Utils.applyNotNull;
 import static java.lang.Integer.parseInt;
+import static java.lang.Math.multiplyExact;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_TIME;
 import static java.util.Collections.emptyList;
@@ -125,7 +128,7 @@ public final class ConfigConverters {
 	}
 
 
-	final static Pattern PERIOD_PATTERN = Pattern.compile("(?<str>((?<time>-?\\d+)\\s+(?<unit>years?|months?|days?))(\\s+|$))");
+	final static Pattern PERIOD_PATTERN = Pattern.compile("(?<str>((?<time>-?\\d+)([\\.](?<floating>\\d+))?\\s+(?<unit>years?|months?|days?))(\\s+|$))");
 
 	/**
 	 * Parses value to Period.
@@ -155,21 +158,54 @@ public final class ConfigConverters {
 				throw new IllegalArgumentException("Time unit: " + unit + " occurs more than once.");
 			}
 			int result = Integer.parseInt(matcher.group("time"));
+//			int floating = 0;
+//			int denominator = 1;
+//			String floatingPoint = matcher.group("floating");
+//			if (floatingPoint != null) {
+//				if (unit.equals("") || unit.equals("b")) {
+//					throw new IllegalArgumentException("MemSize unit bytes cannot be fractional");
+//				}
+//				floating = Integer.parseInt(floatingPoint);
+//				for (int i = 0; i < floatingPoint.length(); i++) {
+//					denominator *= 10;
+//				}
+//			}
 
 			switch (unit) {
 				case "years":
 					years = result;
+//					months += multiplyExact(floating, 12) / denominator;
 					break;
 				case "months":
 					months = result;
+//					days += multiplyExact(floating)
 					break;
 				case "days":
 					days = result;
 					break;
 			}
 		}
-		return Period.of(years,months,days);
-}
+		return Period.of(years, months, days);
+	}
+
+	private static String periodToString(Period value) {
+		if (value.isZero()) {
+			return "0 days";
+		}
+		String result = "";
+		int years = value.getYears(), months = value.getMonths(),
+				days = value.getDays();
+		if (years != 0) {
+			result += years + " years ";
+		}
+		if (months != 0) {
+			result += months + " months ";
+		}
+		if (days != 0) {
+			result += days + " days ";
+		}
+		return result.trim();
+	}
 
 	public static ConfigConverter<Period> ofPeriod() {
 		return new SimpleConfigConverter<Period>() {
@@ -187,32 +223,30 @@ public final class ConfigConverters {
 
 			@Override
 			protected String toString(Period value) {
-				if (value.isZero()) {
-					return "0 days";
-				}
-				String result = "";
-				int years = value.getYears(), months = value.getMonths(),
-						days = value.getDays();
-				if (years != 0) {
-					result += years + " years ";
-				}
-				if (months != 0) {
-					result += months + " months ";
-				}
-				if (days != 0) {
-					result += days + " days ";
-				}
-				return result.trim();
+				return periodToString(value);
 			}
 		};
 	}
 
-	final static Pattern DURATION_PATTERN = Pattern.compile("(?<time>-?\\d+)\\s+(?<unit>days?|hours?|minutes?|seconds?|millis?|nanos?)(\\s+|$)");
+	/**
+	 * @return config converter with days in period
+	 */
+	public static ConfigConverter<Integer> ofPeriodAsDays() {
+		return ofPeriod().transform(Period::getDays, Period::ofDays);
+	}
+
+	private final static Pattern DURATION_PATTERN = Pattern.compile("(?<time>-?\\d+)([\\.](?<floating>\\d+))?\\s+(?<unit>days?|hours?|minutes?|seconds?|millis?|nanos?)(\\s+|$)");
+	private final static int NANOS_IN_MILLI = 1000000;
+	private final static int MILLIS_IN_SECOND = 1000;
+	private final static int SECONDS_IN_MINUTE = 60;
+	private final static int MINUTES_IN_HOUR = 60;
+	private final static int HOURS_IN_DAY = 24;
 
 	private static Duration parseDuration(String string) {
 		Set<String> units = new HashSet<>();
-		int days = 0, hours = 0, minutes = 0, seconds = 0, millis = 0, nanos = 0;
-		int result;
+		int days = 0, hours = 0, minutes = 0, seconds = 0;
+		long millis = 0, nanos = 0;
+		long result;
 
 		Matcher matcher = DURATION_PATTERN.matcher(string.trim().toLowerCase());
 		int lastEnd = 0;
@@ -228,26 +262,44 @@ public final class ConfigConverters {
 			if (!units.add(unit)) {
 				throw new IllegalArgumentException("Time unit: " + unit + " occurs more than once in: " + string);
 			}
-			result = Integer.parseInt(matcher.group("time"));
+
+			result = Long.parseLong(matcher.group("time"));
+			int floating = 0;
+			int denominator = 1;
+			String floatingPoint = matcher.group("floating");
+			if (floatingPoint != null) {
+				if (unit.equals("nanos")) {
+					throw new IllegalArgumentException("Time unit: nanos cannot be fractional");
+				}
+				floating = Integer.parseInt(floatingPoint);
+				for (int i = 0; i < floatingPoint.length(); i++) {
+					denominator *= 10;
+				}
+			}
 
 			switch (unit) {
 				case "days":
-					days = result;
+					days = (int) result;
+					hours += multiplyExact(floating, HOURS_IN_DAY) / denominator;
 					break;
 				case "hours":
-					hours = result;
+					hours += (int) result;
+					minutes += multiplyExact(floating, MINUTES_IN_HOUR) / denominator;
 					break;
 				case "minutes":
-					minutes = result;
+					minutes += (int) result;
+					seconds += multiplyExact(floating, SECONDS_IN_MINUTE) / denominator;
 					break;
 				case "seconds":
-					seconds = result;
+					seconds += (int) result;
+					millis += multiplyExact(floating, MILLIS_IN_SECOND) / denominator;
 					break;
 				case "millis":
-					millis = result;
+					millis += result;
+					nanos += multiplyExact(floating, NANOS_IN_MILLI) / denominator;
 					break;
 				case "nanos":
-					nanos = result;
+					nanos += result;
 					break;
 			}
 		}
@@ -257,6 +309,40 @@ public final class ConfigConverters {
 				.plusSeconds(seconds)
 				.plusMillis(millis)
 				.plusNanos(nanos);
+	}
+
+	private static String durationToString(Duration value) {
+		if (value.isZero()) {
+			return "0 seconds";
+		}
+		String result = "";
+		long days, hours, minutes, seconds, nano, milli;
+		days = value.toDays();
+		if (days != 0) {
+			result += days + " days ";
+		}
+		hours = value.toHours() - days * 24;
+		if (hours != 0) {
+			result += hours + " hours ";
+		}
+		minutes = value.toMinutes() - days * 1440 - hours * 60;
+		if (minutes != 0) {
+			result += minutes + " minutes ";
+		}
+		seconds = value.getSeconds() - days * 86400 - hours * 3600 - minutes * 60;
+		if (seconds != 0) {
+			result += seconds + " seconds ";
+		}
+		nano = value.getNano();
+		milli = (nano - nano % 1000000) / 1000000;
+		if (milli != 0) {
+			result += milli + " millis ";
+		}
+		nano = nano % 1000000;
+		if (nano != 0) {
+			result += nano + " nanos ";
+		}
+		return result.trim();
 	}
 
 	public static ConfigConverter<Duration> ofDuration() {
@@ -273,39 +359,16 @@ public final class ConfigConverters {
 
 			@Override
 			protected String toString(Duration value) {
-				if (value.isZero()) {
-					return "0 seconds";
-				}
-				String result = "";
-				long days, hours, minutes, seconds, nano, milli;
-				days = value.toDays();
-				if (days != 0) {
-					result += days + " days ";
-				}
-				hours = value.toHours() - days * 24;
-				if (hours != 0) {
-					result += hours + " hours ";
-				}
-				minutes = value.toMinutes() - days * 1440 - hours * 60;
-				if (minutes != 0) {
-					result += minutes + " minutes ";
-				}
-				seconds = value.getSeconds() - days * 86400 - hours * 3600 - minutes * 60;
-				if (seconds != 0) {
-					result += seconds + " seconds ";
-				}
-				nano = value.getNano();
-				milli = (nano - nano % 1000000) / 1000000;
-				if (milli != 0) {
-					result += milli + " millis ";
-				}
-				nano = nano % 1000000;
-				if (nano != 0) {
-					result += nano + " nanos ";
-				}
-				return result.trim();
+				return durationToString(value);
 			}
 		};
+	}
+
+	/**
+	 * @return config converter with millis in duration
+	 */
+	public static ConfigConverter<Long> ofDurationAsMillis() {
+		return ofDuration().transform(Duration::toMillis, Duration::ofMillis);
 	}
 
 	public static ConfigConverter<Instant> ofInstant() {
@@ -321,6 +384,13 @@ public final class ConfigConverters {
 				return result.substring(0, result.length() - 1);
 			}
 		};
+	}
+
+	/**
+	 * @return config converter with epoch millis in instant
+	 */
+	public static ConfigConverter<Long> ofInstantAsEpochMillis() {
+		return ofInstant().transform(Instant::toEpochMilli, Instant::ofEpochMilli);
 	}
 
 	public static ConfigConverter<String> ofString() {
@@ -549,6 +619,20 @@ public final class ConfigConverters {
 		};
 	}
 
+	/**
+	 * @return config converter with bytes in memsize
+	 */
+	public static ConfigConverter<Long> ofMemSizeAsBytesLong() {
+		return ofMemSize().transform(MemSize::toLong, MemSize::of);
+	}
+
+	/**
+	 * @return config converter with bytes in memsize
+	 */
+	public static ConfigConverter<Integer> ofMemSizeAsBytesInt() {
+		return ofMemSize().transform(MemSize::toInt, value -> MemSize.of(value));
+	}
+
 	public static ConfigConverter<InetAddressRange> ofInetAddressRange() {
 		return new SimpleConfigConverter<InetAddressRange>() {
 			@Override
@@ -753,7 +837,7 @@ public final class ConfigConverters {
 			@Override
 			protected SimpleThreadFactory provide(Config config, SimpleThreadFactory defaultValue) {
 				SimpleThreadFactory result = SimpleThreadFactory.create();
-				String threadGroupName = config.get(ofNullableString(), "threadGroup", transform(defaultValue.getThreadGroup(), ThreadGroup::getName));
+				String threadGroupName = config.get(ofNullableString(), "threadGroup", Utils.transform(defaultValue.getThreadGroup(), ThreadGroup::getName));
 				if (threadGroupName != null) {
 					result = result.withThreadGroup(new ThreadGroup(threadGroupName));
 				}
@@ -776,16 +860,16 @@ public final class ConfigConverters {
 				c.apply(ofString(), "catalog", d.getCatalog(), r::setCatalog);
 				c.apply(ofString(), "connectionInitSql", d.getConnectionInitSql(), r::setConnectionInitSql);
 				c.apply(ofString(), "connectionTestQuery", d.getConnectionTestQuery(), r::setConnectionTestQuery);
-				c.apply(ofLong(), "connectionTimeout", d.getConnectionTimeout(), r::setConnectionTimeout);
+				c.apply(ofDurationAsMillis(), "connectionTimeout", d.getConnectionTimeout(), r::setConnectionTimeout);
 				c.apply(ofString(), "dataSourceClassName", d.getDataSourceClassName(), r::setDataSourceClassName);
 				c.apply(ofString(), "driverClassName", d.getDriverClassName(), ifNotDefault(r::setDriverClassName));
-				c.apply(ofLong(), "idleTimeout", d.getIdleTimeout(), r::setIdleTimeout);
+				c.apply(ofDurationAsMillis(), "idleTimeout", d.getIdleTimeout(), r::setIdleTimeout);
 				c.apply(ofBoolean(), "initializationFailFast", d.isInitializationFailFast(), r::setInitializationFailFast);
 				c.apply(ofBoolean(), "isolateInternalQueries", d.isIsolateInternalQueries(), r::setIsolateInternalQueries);
 				c.apply(ofString(), "jdbcUrl", d.getJdbcUrl(), r::setJdbcUrl);
 				c.apply(ofLong(), "leakDetectionThreshold", d.getLeakDetectionThreshold(), r::setLeakDetectionThreshold);
 				c.apply(ofInteger(), "maximumPoolSize", d.getMaximumPoolSize(), r::setMaximumPoolSize);
-				c.apply(ofLong(), "maxLifetime", d.getMaxLifetime(), r::setMaxLifetime);
+				c.apply(ofDurationAsMillis(), "maxLifetime", d.getMaxLifetime(), r::setMaxLifetime);
 				c.apply(ofInteger(), "minimumIdle", d.getMinimumIdle(), ifNotDefault(r::setMinimumIdle));
 				c.apply(ofString(), "password", d.getPassword(), r::setPassword);
 				c.apply(ofString(), "poolName", d.getPoolName(), r::setPoolName);

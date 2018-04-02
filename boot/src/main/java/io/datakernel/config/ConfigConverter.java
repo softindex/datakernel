@@ -18,6 +18,7 @@ package io.datakernel.config;
 
 import io.datakernel.annotation.Nullable;
 
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 import static io.datakernel.util.Preconditions.checkArgument;
@@ -26,6 +27,34 @@ public interface ConfigConverter<T> {
 	T get(Config config, @Nullable T defaultValue);
 
 	T get(Config config);
+
+	/**
+	 * Applies given converter function to the converted value
+	 *
+	 * @param to   converter from T to V
+	 * @param from converter from V to T
+	 * @param <V>  return type
+	 * @return converter that knows how to get V value from T value saved in config
+	 */
+	default <V> ConfigConverter<V> transform(Function<T, V> to, Function<V, T> from) {
+		ConfigConverter<T> thisConverter = this;
+		return new ConfigConverter<V>() {
+			@Override
+			@Nullable
+			public V get(Config config, @Nullable V defaultValue) {
+				T value = thisConverter.get(config, defaultValue == null ? null : from.apply(defaultValue));
+				V result = to.apply(value);
+
+				return result != null ? result : defaultValue;
+			}
+
+			@Override
+			@Nullable
+			public V get(Config config) {
+				return to.apply(thisConverter.get(config));
+			}
+		};
+	}
 
 	default ConfigConverter<T> withConstraint(Predicate<T> predicate) {
 		ConfigConverter<T> thisConverter = this;
