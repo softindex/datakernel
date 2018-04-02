@@ -2,9 +2,8 @@ package io.datakernel.jmx;
 
 import io.datakernel.async.AsyncCallable;
 import io.datakernel.async.Stage;
+import io.datakernel.async.StageConsumer;
 import io.datakernel.eventloop.Eventloop;
-
-import java.util.function.BiConsumer;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.jmx.JmxReducers.JmxReducerMax;
@@ -57,7 +56,7 @@ public class StageStats {
 		return stage.whenComplete(recordStats());
 	}
 
-	public <T> BiConsumer<T, Throwable> recordStats() {
+	public <T> StageConsumer<T> recordStats() {
 		this.activeStages++;
 		long before = currentTimeMillis();
 		this.lastStartTimestamp = before;

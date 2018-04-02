@@ -6,7 +6,6 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.stream.Collector;
@@ -627,15 +626,15 @@ public final class Stages {
 		return () -> iterator(callables.iterator());
 	}
 
-	public static <T> BiConsumer<T, ? super Throwable> assertComplete(Consumer<T> consumer) {
-		return (BiConsumer<T, Throwable>) (t, throwable) -> {
-			if (throwable != null)
-				throw new AssertionError(throwable);
+	public static <T> StageConsumer<T> assertComplete(Consumer<T> consumer) {
+		return (t, error) -> {
+			if (error != null)
+				throw new AssertionError(error);
 			consumer.accept(t);
 		};
 	}
 
-	public static <T> BiConsumer<T, ? super Throwable> assertComplete() {
+	public static <T> StageConsumer<T> assertComplete() {
 		return assertComplete($ -> {});
 	}
 

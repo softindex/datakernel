@@ -8,7 +8,6 @@ import io.datakernel.functional.Try;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
-import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -18,11 +17,11 @@ import static io.datakernel.util.Preconditions.checkArgument;
 
 abstract class AbstractStage<T> implements Stage<T> {
 
-	private static final BiConsumer<Object, Throwable> COMPLETED_STAGE = (t, throwable) -> {
+	private static final StageConsumer<Object> COMPLETED_STAGE = (t, throwable) -> {
 		throw new UnsupportedOperationException();
 	};
 
-	protected BiConsumer<? super T, ? super Throwable> next;
+	protected StageConsumer<? super T> next;
 
 	public boolean isComplete() {
 		return next == COMPLETED_STAGE;
@@ -76,13 +75,13 @@ abstract class AbstractStage<T> implements Stage<T> {
 	}
 
 	@Override
-	public <U, S extends BiConsumer<? super T, ? super Throwable> & Stage<U>> Stage<U> then(S stage) {
+	public <U, S extends StageConsumer<? super T> & Stage<U>> Stage<U> then(S stage) {
 		subscribe(stage);
 		return stage;
 	}
 
 	@SuppressWarnings("unchecked")
-	protected void subscribe(BiConsumer<? super T, ? super Throwable> consumer) {
+	protected void subscribe(StageConsumer<? super T> consumer) {
 		if (next == null) {
 			next = consumer;
 		} else {
@@ -93,7 +92,11 @@ abstract class AbstractStage<T> implements Stage<T> {
 				nextStage.prev = next;
 				next = consumer;
 			} else {
-				next = ((BiConsumer<T, Throwable>) next).andThen(consumer);
+				final StageConsumer<? super T> finalNext = this.next;
+				next = (StageConsumer<T>) (result, error) -> {
+					finalNext.accept(result, error);
+					consumer.accept(result, error);
+				};
 			}
 		}
 	}
@@ -230,7 +233,7 @@ abstract class AbstractStage<T> implements Stage<T> {
 	}
 
 	@Override
-	public Stage<T> whenComplete(BiConsumer<? super T, ? super Throwable> action) {
+	public Stage<T> whenComplete(StageConsumer<? super T> action) {
 		subscribe(action);
 		return this;
 	}

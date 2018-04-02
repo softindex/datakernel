@@ -16,6 +16,7 @@
 
 package io.datakernel.stream.net;
 
+import io.datakernel.async.StageConsumer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
@@ -37,7 +38,6 @@ import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.BiConsumer;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.serializer.asm.BufferSerializers.longSerializer;
@@ -101,7 +101,7 @@ public class MessagingWithBinaryStreamingTest {
 
 		server.listen();
 
-		eventloop.connect(address).whenComplete(new BiConsumer<SocketChannel, Throwable>() {
+		eventloop.connect(address).whenComplete(new StageConsumer<SocketChannel>() {
 			void ping(int n, Messaging<Integer, Integer> messaging) {
 				messaging.send(n);
 

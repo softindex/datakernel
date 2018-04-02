@@ -18,10 +18,10 @@ package io.datakernel.stream;
 
 import io.datakernel.async.SettableStage;
 import io.datakernel.async.Stage;
+import io.datakernel.async.StageConsumer;
 import io.datakernel.stream.processor.StreamLateBinder;
 
 import java.util.List;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collector;
@@ -83,7 +83,7 @@ public interface StreamConsumerWithResult<T, X> extends StreamConsumer<T> {
 		return withResult(getResult().thenCompose(fn));
 	}
 
-	default StreamConsumerWithResult<T, X> whenComplete(BiConsumer<? super X, ? super Throwable> consumer) {
+	default StreamConsumerWithResult<T, X> whenComplete(StageConsumer<? super X> consumer) {
 		getResult().whenComplete(consumer);
 		return this;
 	}

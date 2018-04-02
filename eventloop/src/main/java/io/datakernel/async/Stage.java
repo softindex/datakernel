@@ -6,7 +6,6 @@ import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.functional.Try;
 
 import java.util.concurrent.*;
-import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -190,7 +189,7 @@ public interface Stage<T> {
 	 * @see NextStage
 	 * @see io.datakernel.async.AbstractStage.HandlerStage
 	 */
-	<U, S extends BiConsumer<? super T, ? super Throwable> & Stage<U>> Stage<U> then(S stage);
+	<U, S extends StageConsumer<? super T> & Stage<U>> Stage<U> then(S stage);
 
 	/**
 	 * Applies fn to the result of current {@code Stage} when it completes.
@@ -225,7 +224,7 @@ public interface Stage<T> {
 	 * @param action to be executed
 	 * @return this {@code Stage}
 	 */
-	Stage<T> whenComplete(BiConsumer<? super T, ? super Throwable> action);
+	Stage<T> whenComplete(StageConsumer<? super T> action);
 
 	/**
 	 * Adds new {@code Stage} to the chain. Added {@code Stage} will be executed only if this {@code Stage} completes exceptionally.

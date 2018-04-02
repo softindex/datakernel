@@ -2,8 +2,6 @@ package io.datakernel.async;
 
 import io.datakernel.annotation.Nullable;
 
-import java.util.function.BiConsumer;
-
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
 /**
@@ -92,7 +90,7 @@ public final class SettableStage<T> extends AbstractStage<T> implements Callback
 	}
 
 	@Override
-	protected void subscribe(BiConsumer<? super T, ? super Throwable> next) {
+	protected void subscribe(StageConsumer<? super T> next) {
 		if (isSet()) {
 			if (this.next == null) { // to post only once
 				getCurrentEventloop().post(() -> {

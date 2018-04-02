@@ -16,6 +16,7 @@
 
 package io.datakernel.service;
 
+import io.datakernel.async.StageConsumer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopServer;
 import io.datakernel.eventloop.EventloopService;
@@ -27,7 +28,6 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.function.BiConsumer;
 
 /**
  * Static utility methods pertaining to ConcurrentService. Creates
@@ -37,7 +37,7 @@ public final class ServiceAdapters {
 	private ServiceAdapters() {
 	}
 
-	private static BiConsumer<Void, Throwable> completeFuture(CompletableFuture<?> future) {
+	private static StageConsumer<Void> completeFuture(CompletableFuture<?> future) {
 		return ($, throwable) -> {
 			if (throwable != null) {
 				future.completeExceptionally(throwable);
@@ -308,18 +308,20 @@ public final class ServiceAdapters {
 		return combinedAdapter(startOrder, stopOrder);
 	}
 
+	@FunctionalInterface
 	private interface Action<T> {
-		CompletableFuture<Void> doAction(ServiceAdapter<? super T> serviceAdapter, T instance, Executor executor);
+		CompletableFuture<Void> doAction(ServiceAdapter<T> serviceAdapter, T instance, Executor executor);
 	}
 
 	public static <T> ServiceAdapter<T> combinedAdapter(List<? extends ServiceAdapter<? super T>> startOrder,
 	                                                    List<? extends ServiceAdapter<? super T>> stopOrder) {
 		return new ServiceAdapter<T>() {
+			@SuppressWarnings("unchecked")
 			private void doAction(T instance, Executor executor,
 			                      Iterator<? extends ServiceAdapter<? super T>> iterator, CompletableFuture<Void> future,
 			                      Action<T> action) {
 				if (iterator.hasNext()) {
-					action.doAction(iterator.next(), instance, executor).whenCompleteAsync((o, throwable) -> {
+					action.doAction((ServiceAdapter<T>) iterator.next(), instance, executor).whenCompleteAsync((o, throwable) -> {
 						if (throwable == null) {
 							doAction(instance, executor, iterator, future, action);
 						} else if (throwable instanceof InterruptedException) {
@@ -336,14 +338,16 @@ public final class ServiceAdapters {
 			@Override
 			public CompletableFuture<Void> start(T instance, Executor executor) {
 				CompletableFuture<Void> future = new CompletableFuture<>();
-				doAction(instance, executor, startOrder.iterator(), future, ServiceAdapter::start);
+				doAction(instance, executor, startOrder.iterator(), future,
+						ServiceAdapter::start);
 				return future;
 			}
 
 			@Override
 			public CompletableFuture<Void> stop(T instance, Executor executor) {
 				CompletableFuture<Void> future = new CompletableFuture<>();
-				doAction(instance, executor, stopOrder.iterator(), future, ServiceAdapter::stop);
+				doAction(instance, executor, stopOrder.iterator(), future,
+						ServiceAdapter::stop);
 				return future;
 			}
 		};

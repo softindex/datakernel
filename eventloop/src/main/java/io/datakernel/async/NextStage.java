@@ -1,9 +1,7 @@
 package io.datakernel.async;
 
-import java.util.function.BiConsumer;
-
-public abstract class NextStage<T, R> extends AbstractStage<R> implements BiConsumer<T, Throwable> {
-	BiConsumer<? super T, ? super Throwable> prev; // optimization
+public abstract class NextStage<T, R> extends AbstractStage<R> implements StageConsumer<T> {
+	StageConsumer<? super T> prev; // optimization
 
 	protected abstract void onComplete(T result);
 
