@@ -163,31 +163,6 @@ public interface Stage<T> {
 		return stage;
 	}
 
-	@FunctionalInterface
-	interface Handler<T, U> {
-		interface Completion<T> {
-			void complete(@Nullable T result);
-
-			void completeExceptionally(Throwable throwable);
-
-			default void complete(@Nullable T result, Throwable throwable) {
-				if (throwable == null) {
-					complete(result);
-				} else {
-					completeExceptionally(throwable);
-				}
-			}
-		}
-
-		void handle(@Nullable T result, @Nullable Throwable throwable, Completion<U> stage);
-	}
-
-	<U> Stage<U> handle(Handler<? super T, U> handler);
-
-	<U> Stage<U> handleAsync(Handler<? super T, U> handler);
-
-	<U> Stage<U> handleAsync(Handler<? super T, U> handler, Executor executor);
-
 	/**
 	 * Adds given stage to the chain of stages and returns it.
 	 *
@@ -196,7 +171,6 @@ public interface Stage<T> {
 	 * @param <S>   type of the next stage in the chain
 	 * @return subscribed {@code Stage}
 	 * @see NextStage
-	 * @see io.datakernel.async.AbstractStage.HandlerStage
 	 */
 	<U, S extends StageConsumer<? super T> & Stage<U>> Stage<U> then(S stage);
 
@@ -208,13 +182,7 @@ public interface Stage<T> {
 	 */
 	<U> Stage<U> thenApply(Function<? super T, ? extends U> fn);
 
-	/**
-	 * Adds new {@code Stage} to the chain. This stage will be executed only if current {@code Stage} completes successfully.
-	 *
-	 * @param action to be executed
-	 * @return this stage
-	 */
-	Stage<T> thenAccept(Consumer<? super T> action);
+	<U> Stage<U> thenApplyEx(BiFunction<? super T, Throwable, ? extends U> fn);
 
 	/**
 	 * Adds new {@code Stage} to the chain. This stage will be executed only if current {@code Stage} completes successfully.
@@ -224,6 +192,8 @@ public interface Stage<T> {
 	 */
 	Stage<T> thenRun(Runnable action);
 
+	Stage<T> thenRunEx(Runnable action);
+
 	/**
 	 * Apply function to the result of the given stage. This stage will be completed when function completes.
 	 *
@@ -231,6 +201,8 @@ public interface Stage<T> {
 	 * @return this stage
 	 */
 	<U> Stage<U> thenCompose(Function<? super T, ? extends Stage<U>> fn);
+
+	<U> Stage<U> thenComposeEx(BiFunction<? super T, Throwable, ? extends Stage<U>> fn);
 
 	/**
 	 * Adds new {@code Stage} to the chain. Added {@code Stage} will be executed only if this {@code Stage} completes successfully.
@@ -241,22 +213,20 @@ public interface Stage<T> {
 	Stage<T> whenComplete(StageConsumer<? super T> action);
 
 	/**
+	 * Adds new {@code Stage} to the chain. This stage will be executed only if current {@code Stage} completes successfully.
+	 *
+	 * @param action to be executed
+	 * @return this stage
+	 */
+	Stage<T> whenResult(Consumer<? super T> action);
+
+	/**
 	 * Adds new {@code Stage} to the chain. Added {@code Stage} will be executed only if this {@code Stage} completes exceptionally.
 	 *
 	 * @param action to be executed
 	 * @return this {@code Stage}
 	 */
-	Stage<T> whenException(Consumer<? super Throwable> action);
-
-	/**
-	 * Adds new {@code Stage} to the chain. Added {@code Stage} will apply fn to the {@code Throwable}.
-	 *
-	 * @param fn to be applied
-	 * @return result of fn application if this {@code Stage} completes exceptionally and result of this {@code Stage} otherwise
-	 */
-	Stage<T> exceptionally(Function<? super Throwable, ? extends T> fn);
-
-	Stage<T> mapFailure(Function<Throwable, Throwable> fn);
+	Stage<T> whenException(Consumer<Throwable> action);
 
 	/**
 	 * Combines two {@code Stage} in one using fn.

@@ -74,7 +74,7 @@ public class AsyncDnsClientConnectionTest {
 				Stream.of("www.github.com", "www.kpi.ua", "www.google.com")
 						.map(domain -> dnsClientConnection.resolve4(domain, DNS_SERVER_ADDRESS, TIMEOUT))
 						.collect(toList()))
-				.thenAccept(dnsQueryResults -> dnsQueryResults.forEach(this::print))
+				.whenResult(dnsQueryResults -> dnsQueryResults.forEach(this::print))
 				.whenComplete(($, throwable) -> dnsClientConnection.close());
 
 		eventloop.run();

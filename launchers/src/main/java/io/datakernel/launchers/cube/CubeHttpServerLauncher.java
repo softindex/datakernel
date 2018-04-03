@@ -5,6 +5,7 @@ import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import io.datakernel.async.AsyncCallable;
 import io.datakernel.async.EventloopTaskScheduler;
+import io.datakernel.async.Stage;
 import io.datakernel.config.Config;
 import io.datakernel.cube.Cube;
 import io.datakernel.cube.http.ReportingServiceServlet;
@@ -55,15 +56,10 @@ public abstract class CubeHttpServerLauncher extends HttpServerLauncher {
 
 	private AsyncCallable<Void> pullOrCheckoutTask(OTStateManager<Integer, LogDiff<CubeDiff>> cubeStateManager) {
 		return () -> cubeStateManager.pull()
-				.handle((revisionId, throwable, next) -> {
-					if (throwable == null) {
-						next.complete(null);
-					} else {
-						cubeStateManager.checkout()
-								.toVoid()
-								.whenComplete(next::complete);
-					}
-				});
+				.thenComposeEx((revisionId, throwable) ->
+						throwable == null ?
+								Stage.of(null) :
+								cubeStateManager.checkout().toVoid());
 	}
 
 	protected abstract Collection<Module> getCubeModules();

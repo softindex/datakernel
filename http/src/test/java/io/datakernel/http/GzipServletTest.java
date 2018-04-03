@@ -109,9 +109,9 @@ public class GzipServletTest {
 		server.listen();
 		CompletableFuture<Void> future = Stages.all(
 				client.send(HttpRequest.get("http://127.0.0.1:1239"))
-						.thenAccept(response -> assertNull(response.getHeader(HttpHeaders.CONTENT_ENCODING))),
+						.whenResult(response -> assertNull(response.getHeader(HttpHeaders.CONTENT_ENCODING))),
 				client.send(HttpRequest.get("http://127.0.0.1:1239").withAcceptEncodingGzip())
-						.thenAccept(response -> assertNotNull(response.getHeader(HttpHeaders.CONTENT_ENCODING))))
+						.whenResult(response -> assertNotNull(response.getHeader(HttpHeaders.CONTENT_ENCODING))))
 				.whenComplete(($, throwable) -> {
 					server.close();
 					client.stop();

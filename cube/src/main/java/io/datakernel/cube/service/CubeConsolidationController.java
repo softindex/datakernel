@@ -88,7 +88,7 @@ public final class CubeConsolidationController implements EventloopJmxMBeanEx {
 				.thenCompose(mergeId -> stateManager.pull(mergeId))
 				.thenCompose($ -> stateManager.pull())
 				.thenCompose($ -> cube.consolidate(strategy.get()).whenComplete(stageConsolidateImpl.recordStats()))
-				.thenAccept(this::cubeDiffJmx)
+				.whenResult(this::cubeDiffJmx)
 				.whenComplete(this::logCubeDiff)
 				.thenCompose(this::tryPushConsolidation)
 				.whenComplete(this::logResult)

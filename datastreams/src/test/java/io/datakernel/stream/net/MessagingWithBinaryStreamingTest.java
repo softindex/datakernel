@@ -82,7 +82,7 @@ public class MessagingWithBinaryStreamingTest {
 
 			void pong(Messaging<Integer, Integer> messaging) {
 				messaging.receive()
-						.thenAccept(msg -> {
+						.whenResult(msg -> {
 							if (msg != null) {
 								messaging.send(msg);
 								pong(messaging);
@@ -106,7 +106,7 @@ public class MessagingWithBinaryStreamingTest {
 				messaging.send(n);
 
 				messaging.receive()
-						.thenAccept(msg -> {
+						.whenResult(msg -> {
 							if (msg != null) {
 								if (msg > 0) {
 									ping(msg - 1, messaging);
@@ -155,7 +155,7 @@ public class MessagingWithBinaryStreamingTest {
 					MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
 
 			messaging.receive()
-					.thenAccept(msg -> {
+					.whenResult(msg -> {
 						if (msg != null) {
 							assertEquals("start", msg);
 							StreamProducer.ofIterable(source)
@@ -218,7 +218,7 @@ public class MessagingWithBinaryStreamingTest {
 					MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
 
 			messaging.receive()
-					.thenAccept(msg -> {
+					.whenResult(msg -> {
 						if (msg != null) {
 							assertEquals("start", msg);
 
@@ -286,7 +286,7 @@ public class MessagingWithBinaryStreamingTest {
 			MessagingWithBinaryStreaming<String, String> messaging = MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
 
 			messaging.receive()
-					.thenAccept(msg -> {
+					.whenResult(msg -> {
 						if (msg != null) {
 							assertEquals("start", msg);
 
@@ -324,7 +324,7 @@ public class MessagingWithBinaryStreamingTest {
 						.streamTo(messaging.sendBinaryStream());
 
 				messaging.receive()
-						.thenAccept(msg -> {
+						.whenResult(msg -> {
 							if (msg != null) {
 								assertEquals("ack", msg);
 								messaging.close();
@@ -365,7 +365,7 @@ public class MessagingWithBinaryStreamingTest {
 					MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
 
 			messaging.receive()
-					.thenAccept(msg -> {
+					.whenResult(msg -> {
 						if (msg != null) {
 							assertEquals("start", msg);
 

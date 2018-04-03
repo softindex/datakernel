@@ -187,7 +187,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 			if (!visited.add(node)) continue;
 
 			remote.loadCommit(node)
-					.thenAccept(commit -> {
+					.whenResult(commit -> {
 						if (matchPredicate.test(commit)) {
 							K id = commit.getId();
 							Set<K> parentIds = commit.getParentIds();
@@ -269,7 +269,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 				.collect(toList());
 
 		collectToList(loadStages)
-				.thenAccept(otCommits -> {
+				.whenResult(otCommits -> {
 					for (OTCommit<K, D> otCommit : otCommits) {
 						queueMap.put(otCommit.getId(), otCommit);
 					}
@@ -348,7 +348,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		K node = queue.poll();
 		Set<K> nodeChildren = childrenMap.remove(node);
 		remote.loadCommit(node)
-				.thenAccept(commit -> {
+				.whenResult(commit -> {
 					Set<K> parents = commit.getParentIds();
 					logger.debug("Commit: {}, parents: {}", node, parents);
 					for (K parent : parents) {
@@ -388,11 +388,11 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 		}
 
 		return reduceEdges(queue, queueMap, parentNode, diffAccumulator)
-				.handle((value, throwable, cb) -> {
+				.thenComposeEx((value, throwable) -> {
 					if (throwable == null && value.keySet().equals(heads)) {
-						cb.complete(value);
+						return Stage.of(value);
 					} else {
-						cb.completeExceptionally(new IllegalArgumentException(
+						return Stage.ofException(new IllegalArgumentException(
 								format("No path from heads `%s` to common node: `%s`", heads, parentNode)));
 					}
 				});
@@ -424,7 +424,7 @@ public final class OTAlgorithms<K, D> implements EventloopJmxMBeanEx {
 			return;
 		}
 		remote.loadCommit(polledEntry.node)
-				.thenAccept(commit -> {
+				.whenResult(commit -> {
 					for (K parent : commit.getParents().keySet()) {
 						if (keyComparator.compare(parent, commonNode) < 0) continue;
 						ReduceEntry<K, A> parentEntry = queueMap.get(parent);

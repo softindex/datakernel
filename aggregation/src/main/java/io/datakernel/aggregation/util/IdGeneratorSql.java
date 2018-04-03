@@ -54,7 +54,7 @@ public final class IdGeneratorSql implements IdGenerator<Long>, EventloopJmxMBea
 	private Stage<Void> doReserveId() {
 		int finalStride = stride;
 		return Stage.ofCallable(executor, () -> getAndAdd(finalStride))
-				.thenAccept(next -> {
+				.whenResult(next -> {
 					this.next = next;
 					this.limit = next + finalStride;
 				})

@@ -60,7 +60,7 @@ public class ResourcesNameLoadingService implements EventloopService {
 						throw new RuntimeException(e);
 					}
 				})
-				.thenAccept(strings -> names = strings)
+				.whenResult(strings -> names = strings)
 				.toVoid();
 	}
 

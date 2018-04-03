@@ -149,7 +149,7 @@ public final class RemoteFsClient implements IRemoteFsClient {
 				if (throwable == null) {
 					logger.trace("command to delete {} send", fileName);
 					messaging.receive()
-							.thenAccept(msg -> {
+							.whenResult(msg -> {
 								if (msg != null) {
 									logger.trace("received {}", msg);
 									if (msg instanceof RemoteFsResponses.Ok) {
@@ -189,7 +189,7 @@ public final class RemoteFsClient implements IRemoteFsClient {
 				if (throwable == null) {
 					logger.trace("command to list files send");
 					messaging.receive()
-							.thenAccept(msg -> {
+							.whenResult(msg -> {
 								if (msg != null) {
 									logger.trace("received {}", msg);
 									if (msg instanceof RemoteFsResponses.ListOfFiles) {
@@ -229,7 +229,7 @@ public final class RemoteFsClient implements IRemoteFsClient {
 				if (throwable == null) {
 					logger.trace("command move files send");
 					messaging.receive()
-							.thenAccept(msg -> {
+							.whenResult(msg -> {
 								if (msg != null) {
 									logger.trace("received {}", msg);
 									if (msg instanceof RemoteFsResponses.Ok) {

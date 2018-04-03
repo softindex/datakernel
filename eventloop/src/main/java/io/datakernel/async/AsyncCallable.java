@@ -19,7 +19,6 @@ package io.datakernel.async;
 import io.datakernel.eventloop.Eventloop;
 
 import java.util.ArrayDeque;
-import java.util.concurrent.Executor;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -178,18 +177,6 @@ public interface AsyncCallable<T> {
 				return result;
 			}
 		};
-	}
-
-	default <U> AsyncCallable<U> handle(Stage.Handler<? super T, U> fn) {
-		return () -> call().handle(fn);
-	}
-
-	default <U> AsyncCallable<U> handleAsync(Stage.Handler<? super T, U> fn) {
-		return () -> call().handleAsync(fn);
-	}
-
-	default <U> AsyncCallable<U> handleAsync(Stage.Handler<? super T, U> fn, Executor executor) {
-		return () -> call().handleAsync(fn, executor);
 	}
 
 	default <V> AsyncCallable<V> thenApply(Function<? super T, ? extends V> function) {

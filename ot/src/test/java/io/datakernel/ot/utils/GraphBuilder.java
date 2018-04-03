@@ -39,7 +39,7 @@ public class GraphBuilder<K, D> {
 				.filter(entry -> finished.containsAll(toParents(entry).collect(toList())))
 				.findFirst()
 				.map(entry -> otRemote.createCommitId()
-						.thenAccept(id -> names.put(entry.getKey(), id))
+						.whenResult(id -> names.put(entry.getKey(), id))
 						.thenApply(id -> singletonList(OTCommit.of(id, toDiffs(entry))))
 						.thenCompose(otRemote::push)
 						.thenRun(() -> finished.add(entry.getKey()))

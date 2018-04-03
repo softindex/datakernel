@@ -111,7 +111,7 @@ public class TestFileManager {
 		FileManager fs = FileManager.create(eventloop, executor, storage);
 		Path inputFile = client.resolve("c.txt");
 
-		fs.save("1/c.txt").thenAccept(fileWriter -> {
+		fs.save("1/c.txt").whenResult(fileWriter -> {
 			try {
 				AsyncFile open = open(executor, inputFile, READ_OPTIONS);
 				stream(readFile(open).withBufferSize(bufferSize), fileWriter);
@@ -130,7 +130,7 @@ public class TestFileManager {
 		FileManager fs = FileManager.create(eventloop, executor, storage);
 		Path outputFile = client.resolve("d.txt");
 
-		fs.get("2/b/d.txt", 0).thenAccept(fileReader -> {
+		fs.get("2/b/d.txt", 0).whenResult(fileReader -> {
 			try {
 				AsyncFile open = open(executor, outputFile, CREATE_OPTIONS);
 				stream(fileReader, StreamFileWriter.create(open));

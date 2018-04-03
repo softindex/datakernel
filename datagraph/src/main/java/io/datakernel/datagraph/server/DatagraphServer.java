@@ -135,7 +135,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 	protected final AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 		MessagingWithBinaryStreaming<DatagraphCommand, DatagraphResponse> messaging = MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
 		messaging.receive()
-				.thenAccept(msg -> {
+				.whenResult(msg -> {
 					if (msg != null) {
 						doRead(messaging, msg);
 					} else {

@@ -357,7 +357,7 @@ public class ReportingTest {
 				.thenCompose(logDiff -> aggregationChunkStorage
 						.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).collect(toSet()))
 						.thenApply($ -> logDiff))
-				.thenAccept(logCubeStateManager::add)
+				.whenResult(logCubeStateManager::add)
 				.thenApply(u -> logCubeStateManager)
 				.thenCompose(OTStateManager::commitAndPush)
 				.toCompletableFuture();

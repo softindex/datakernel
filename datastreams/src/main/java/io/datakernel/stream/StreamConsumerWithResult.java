@@ -61,16 +61,12 @@ public interface StreamConsumerWithResult<T, X> extends StreamConsumer<T> {
 		return binder.getInput().withResult(result);
 	}
 
-	default <U> StreamConsumerWithResult<T, U> handle(Stage.Handler<? super X, U> handler) {
-		return withResult(getResult().handle(handler));
-	}
-
 	default <U> StreamConsumerWithResult<T, U> thenApply(Function<? super X, ? extends U> fn) {
 		return withResult(getResult().thenApply(fn));
 	}
 
 	default StreamConsumerWithResult<T, X> thenAccept(Consumer<? super X> action) {
-		getResult().thenAccept(action);
+		getResult().whenResult(action);
 		return this;
 	}
 
@@ -94,10 +90,6 @@ public interface StreamConsumerWithResult<T, X> extends StreamConsumer<T> {
 				consumer.accept(throwable);
 			}
 		});
-	}
-
-	default StreamConsumerWithResult<T, X> mapFailure(Function<Throwable, Throwable> fn) {
-		return withResult(getResult().mapFailure(fn));
 	}
 
 	/**

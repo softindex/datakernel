@@ -132,7 +132,7 @@ public final class CubeCleanerController implements EventloopJmxMBeanEx {
 
 	Stage<Optional<Set<Integer>>> findBottomNodes(Set<Integer> parentCandidates) {
 		return algorithms.findCommonParents(parentCandidates)
-				.thenAccept(rootNodes -> logger.info("Root nodes: {}", rootNodes))
+				.whenResult(rootNodes -> logger.info("Root nodes: {}", rootNodes))
 				.thenApply(rootNodes -> rootNodes.isEmpty() ? Optional.empty() : Optional.of(rootNodes));
 	}
 
@@ -160,7 +160,7 @@ public final class CubeCleanerController implements EventloopJmxMBeanEx {
 
 	void findSnapshot(Set<Integer> heads, int skipSnapshots, Callback<Optional<Integer>> cb) {
 		algorithms.findParent(heads, DiffsReducer.toVoid(), OTCommit::isSnapshot, null)
-				.thenAccept(findResult -> {
+				.whenResult(findResult -> {
 					if (!findResult.isFound()) cb.set(Optional.empty());
 					else if (skipSnapshots <= 0) cb.set(Optional.of(findResult.getCommit()));
 					else findSnapshot(findResult.getCommitParents(), skipSnapshots - 1, cb);
@@ -195,7 +195,7 @@ public final class CubeCleanerController implements EventloopJmxMBeanEx {
 
 	private Stage<Void> checkRequiredChunks(Set<Long> requiredChunks) {
 		return chunksStorage.list(s -> true, timestamp -> true)
-				.thenAccept(actualChunks -> chunksCount.recordValue(actualChunks.size()))
+				.whenResult(actualChunks -> chunksCount.recordValue(actualChunks.size()))
 				.thenCompose(actualChunks -> actualChunks.containsAll(requiredChunks) ?
 						Stage.of((Void) null) :
 						Stage.ofException(new IllegalStateException("Missed chunks from storage: " +

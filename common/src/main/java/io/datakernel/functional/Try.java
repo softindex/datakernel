@@ -5,7 +5,6 @@ import io.datakernel.annotation.Nullable;
 import java.util.function.Function;
 
 public final class Try<T> {
-
 	@Nullable
 	private final T result;
 	@Nullable
@@ -96,8 +95,7 @@ public final class Try<T> {
 	}
 
 	@FunctionalInterface
-	interface ThrowingSupplier<T> {
-
+	public interface ThrowingSupplier<T> {
 		@Nullable
 		T get() throws Throwable;
 	}

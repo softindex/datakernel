@@ -91,7 +91,7 @@ public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttribute
 		if (reloadPeriod == 0) return Stage.of(null);
 		long reloadTimestamp = getEventloop().currentTimeMillis();
 		return reload(timestamp)
-				.thenAccept(result -> {
+				.whenResult(result -> {
 					reloadTime.recordValue((int) (getEventloop().currentTimeMillis() - reloadTimestamp));
 					cache.putAll(result);
 					timestamp = reloadTimestamp;

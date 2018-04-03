@@ -81,7 +81,7 @@ public final class SocketStreamingConnectionTest {
 				.withAcceptOnce();
 		server.listen();
 
-		future = eventloop.connect(address).thenAccept(socketChannel -> {
+		future = eventloop.connect(address).whenResult(socketChannel -> {
 			AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
 			SocketStreamingConnection connection = SocketStreamingConnection.create(asyncTcpSocket);
 
@@ -123,7 +123,7 @@ public final class SocketStreamingConnectionTest {
 				.withAcceptOnce();
 		server.listen();
 
-		future = eventloop.connect(address).thenAccept(socketChannel -> {
+		future = eventloop.connect(address).whenResult(socketChannel -> {
 			StreamBinarySerializer<Integer> streamSerializer = StreamBinarySerializer.create(intSerializer())
 					.withDefaultBufferSize(1);
 			StreamBinaryDeserializer<Integer> streamDeserializer = StreamBinaryDeserializer.create(intSerializer());

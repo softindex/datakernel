@@ -709,7 +709,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 
 			runnables.add((AsyncCallable<AggregationDiff>) () ->
 					strategy.apply(aggregation)
-							.thenAccept(aggregationDiff -> {
+							.whenResult(aggregationDiff -> {
 								if (!aggregationDiff.isEmpty()) {
 									map.put(aggregationId, aggregationDiff);
 								}

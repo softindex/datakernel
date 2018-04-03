@@ -1,13 +1,10 @@
 package io.datakernel.async;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.Stage.Handler.Completion;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.functional.Try;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -101,86 +98,6 @@ abstract class AbstractStage<T> implements Stage<T> {
 		}
 	}
 
-	private static abstract class HandlerStage<F, T> extends NextStage<F, T> implements Completion<T> {
-		@Override
-		public void complete(T result) {
-			super.complete(result);
-		}
-
-		@Override
-		public void completeExceptionally(Throwable t) {
-			super.completeExceptionally(t);
-		}
-
-		@Override
-		public void complete(T result, Throwable throwable) {
-			super.complete(result, throwable);
-		}
-	}
-
-	@Override
-	public <U> Stage<U> handle(Handler<? super T, U> handler) {
-		return then(new HandlerStage<T, U>() {
-			@Override
-			protected void onComplete(T value) {
-				handler.handle(value, null, this);
-			}
-
-			@Override
-			protected void onCompleteExceptionally(Throwable error) {
-				handler.handle(null, error, this);
-			}
-		});
-	}
-
-	@Override
-	public <U> Stage<U> handleAsync(Handler<? super T, U> handler) {
-		return then(new HandlerStage<T, U>() {
-			@Override
-			protected void onComplete(T value) {
-				getCurrentEventloop().post(() -> handler.handle(value, null, this));
-			}
-
-			@Override
-			protected void onCompleteExceptionally(Throwable error) {
-				getCurrentEventloop().post(() -> handler.handle(null, error, this));
-			}
-		});
-	}
-
-	@Override
-	public <U> Stage<U> handleAsync(Handler<? super T, U> handler, Executor executor) {
-		return then(new HandlerStage<T, U>() {
-			@Override
-			protected void onComplete(T value) {
-				doComplete(value, null);
-			}
-
-			@Override
-			protected void onCompleteExceptionally(Throwable error) {
-				doComplete(null, error);
-			}
-
-			private void doComplete(@Nullable T value, @Nullable Throwable error) {
-				Eventloop eventloop = getCurrentEventloop();
-				eventloop.startExternalTask();
-				executor.execute(() -> handler.handle(value, error, new Completion<U>() {
-					@Override
-					public void complete(U result) {
-						eventloop.execute(() -> complete(result));
-						eventloop.completeExternalTask();
-					}
-
-					@Override
-					public void completeExceptionally(Throwable t) {
-						eventloop.execute(() -> completeExceptionally(t));
-						eventloop.completeExternalTask();
-					}
-				}));
-			}
-		});
-	}
-
 	@Override
 	public <U> Stage<U> thenApply(Function<? super T, ? extends U> fn) {
 		return then(new NextStage<T, U>() {
@@ -193,7 +110,24 @@ abstract class AbstractStage<T> implements Stage<T> {
 	}
 
 	@Override
-	public Stage<T> thenAccept(Consumer<? super T> action) {
+	public <U> Stage<U> thenApplyEx(BiFunction<? super T, Throwable, ? extends U> fn) {
+		return then(new NextStage<T, U>() {
+			@Override
+			protected void onComplete(T result) {
+				U newResult = fn.apply(result, null);
+				complete(newResult);
+			}
+
+			@Override
+			protected void onCompleteExceptionally(Throwable throwable) {
+				U newResult = fn.apply(null, throwable);
+				complete(newResult);
+			}
+		});
+	}
+
+	@Override
+	public Stage<T> whenResult(Consumer<? super T> action) {
 		return whenComplete((result, throwable) -> {
 			if (throwable == null) {
 				action.accept(result);
@@ -207,6 +141,13 @@ abstract class AbstractStage<T> implements Stage<T> {
 			if (throwable == null) {
 				action.run();
 			}
+		});
+	}
+
+	@Override
+	public Stage<T> thenRunEx(Runnable action) {
+		return whenComplete((result, throwable) -> {
+			action.run();
 		});
 	}
 
@@ -233,46 +174,47 @@ abstract class AbstractStage<T> implements Stage<T> {
 	}
 
 	@Override
+	public <U> Stage<U> thenComposeEx(BiFunction<? super T, Throwable, ? extends Stage<U>> fn) {
+		return then(new NextStage<T, U>() {
+			private void handleComplete(T value, Throwable throwable) {
+				Stage<U> stage = fn.apply(value, throwable);
+				if (stage instanceof SettableStage) {
+					SettableStage<U> settableStage = (SettableStage<U>) stage;
+					if (settableStage.isSet()) {
+						if (settableStage.exception == null) {
+							complete(settableStage.result);
+						} else {
+							completeExceptionally(settableStage.exception);
+						}
+						return;
+					}
+				}
+				stage.whenComplete(this::complete);
+			}
+
+			@Override
+			protected void onComplete(T result) {
+				handleComplete(result, null);
+			}
+
+			@Override
+			protected void onCompleteExceptionally(Throwable throwable) {
+				handleComplete(null, throwable);
+			}
+		});
+	}
+
+	@Override
 	public Stage<T> whenComplete(StageConsumer<? super T> action) {
 		subscribe(action);
 		return this;
 	}
 
 	@Override
-	public Stage<T> whenException(Consumer<? super Throwable> action) {
+	public Stage<T> whenException(Consumer<Throwable> action) {
 		return whenComplete((result, throwable) -> {
 			if (throwable != null) {
 				action.accept(throwable);
-			}
-		});
-	}
-
-	@Override
-	public Stage<T> exceptionally(Function<? super Throwable, ? extends T> fn) {
-		return then(new NextStage<T, T>() {
-			@Override
-			protected void onComplete(T result) {
-				complete(result);
-			}
-
-			@Override
-			protected void onCompleteExceptionally(Throwable throwable) {
-				complete(fn.apply(throwable));
-			}
-		});
-	}
-
-	@Override
-	public Stage<T> mapFailure(Function<Throwable, Throwable> fn) {
-		return then(new NextStage<T, T>() {
-			@Override
-			protected void onComplete(T result) {
-				complete(result);
-			}
-
-			@Override
-			protected void onCompleteExceptionally(Throwable throwable) {
-				completeExceptionally(fn.apply(throwable));
 			}
 		});
 	}
@@ -471,5 +413,4 @@ abstract class AbstractStage<T> implements Stage<T> {
 		});
 		return future;
 	}
-
 }

@@ -143,7 +143,7 @@ public class CubeIntegrationTest {
 				.thenCompose(logDiff -> aggregationChunkStorage
 						.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).collect(toSet()))
 						.thenApply($ -> logDiff))
-				.thenAccept(logCubeStateManager::add)
+				.whenResult(logCubeStateManager::add)
 				.thenApply($ -> logCubeStateManager)
 				.thenCompose(OTStateManager::commitAndPush).toCompletableFuture();
 		eventloop.run();
@@ -153,7 +153,7 @@ public class CubeIntegrationTest {
 				.thenCompose(logDiff -> aggregationChunkStorage
 						.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).collect(toSet()))
 						.thenApply($ -> logDiff))
-				.thenAccept(logCubeStateManager::add)
+				.whenResult(logCubeStateManager::add)
 				.thenApply($ -> logCubeStateManager)
 				.thenCompose(OTStateManager::commitAndPush).toCompletableFuture();
 		eventloop.run();
@@ -169,7 +169,7 @@ public class CubeIntegrationTest {
 				.thenCompose(logDiff -> aggregationChunkStorage
 						.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).collect(toSet()))
 						.thenApply($ -> logDiff))
-				.thenAccept(logCubeStateManager::add)
+				.whenResult(logCubeStateManager::add)
 				.thenApply($ -> logCubeStateManager)
 				.thenCompose(OTStateManager::commitAndPush).toCompletableFuture();
 		eventloop.run();
@@ -185,7 +185,7 @@ public class CubeIntegrationTest {
 				.thenCompose(logDiff -> aggregationChunkStorage
 						.finish(logDiff.diffs().flatMap(CubeDiff::addedChunks).collect(toSet()))
 						.thenApply($ -> logDiff))
-				.thenAccept(logCubeStateManager::add)
+				.whenResult(logCubeStateManager::add)
 				.thenApply($ -> logCubeStateManager)
 				.thenCompose(OTStateManager::commitAndPush).toCompletableFuture();
 		eventloop.run();

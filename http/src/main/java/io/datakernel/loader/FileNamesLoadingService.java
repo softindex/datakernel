@@ -49,7 +49,7 @@ public class FileNamesLoadingService implements EventloopService {
 						throw new RuntimeException(e);
 					}
 				})
-				.thenAccept(strings -> fileNames = strings)
+				.whenResult(strings -> fileNames = strings)
 				.toVoid();
 	}
 

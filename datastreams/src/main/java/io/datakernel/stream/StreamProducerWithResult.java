@@ -124,16 +124,12 @@ public interface StreamProducerWithResult<T, X> extends StreamProducer<T> {
 		return binder.getOutput().withResult(result);
 	}
 
-	default <U> StreamProducerWithResult<T, U> handle(Stage.Handler<? super X, U> handler) {
-		return withResult(getResult().handle(handler));
-	}
-
 	default <U> StreamProducerWithResult<T, U> thenApply(Function<? super X, ? extends U> fn) {
 		return withResult(getResult().thenApply(fn));
 	}
 
 	default StreamProducerWithResult<T, X> thenAccept(Consumer<? super X> action) {
-		getResult().thenAccept(action);
+		getResult().whenResult(action);
 		return this;
 	}
 
@@ -157,9 +153,5 @@ public interface StreamProducerWithResult<T, X> extends StreamProducer<T> {
 				consumer.accept(throwable);
 			}
 		});
-	}
-
-	default StreamProducerWithResult<T, X> mapFailure(Function<Throwable, Throwable> fn) {
-		return withResult(getResult().mapFailure(fn));
 	}
 }

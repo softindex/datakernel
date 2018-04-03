@@ -150,7 +150,7 @@ final class OTMergeAlgorithm<K, D> {
 			K node = queue.poll();
 			if (!visited.add(node)) continue;
 			remote.loadCommit(node)
-					.thenAccept(commit -> {
+					.whenResult(commit -> {
 						if (commit.isRoot()) {
 							cb.setException(new OTException("Trying to load past root"));
 							return;

@@ -62,7 +62,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 		MessagingWithBinaryStreaming<FsCommand, FsResponse> messaging =
 				MessagingWithBinaryStreaming.create(asyncTcpSocket, serializer);
 		messaging.receive()
-				.thenAccept(msg -> {
+				.whenResult(msg -> {
 					if (msg != null) {
 						logger.trace("received {}", msg);
 						doRead(messaging, msg);
@@ -109,7 +109,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 		public void onMessage(Messaging<Upload, FsResponse> messaging, Upload item) {
 			logger.trace("uploading {}", item.getFilePath());
 			fileManager.save(item.getFilePath())
-					.thenAccept(fileWriter -> messaging.receiveBinaryStream()
+					.whenResult(fileWriter -> messaging.receiveBinaryStream()
 							.streamTo(
 									fileWriter
 											.thenRun(() -> {
@@ -136,14 +136,14 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 		public void onMessage(Messaging<Download, FsResponse> messaging, Download item) {
 			fileManager.size(item.getFilePath())
 					.whenException(errorSender(messaging))
-					.thenAccept(size -> {
+					.whenResult(size -> {
 						if (size >= 0) {
 							messaging.send(new RemoteFsResponses.Ready(size))
 									.whenException(errorSender(messaging))
 									.thenRun(() ->
 											fileManager.get(item.getFilePath(), item.getStartPosition())
 													.whenException(errorSender(messaging))
-													.thenAccept(fileReader ->
+													.whenResult(fileReader ->
 															fileReader.streamTo(messaging.sendBinaryStream())
 																	.getResult()
 																	.whenComplete(($_, throwable) -> messaging.close())));

@@ -114,7 +114,7 @@ public class LogManagerImplTest {
 		@Override
 		public Stage<StreamConsumerWithResult<ByteBuf, Void>> write(String logPartition, LogFile logFile) {
 			StreamConsumerWithResult<ByteBuf, List<ByteBuf>> listConsumer = StreamConsumerWithResult.toList();
-			listConsumer.getResult().thenAccept(byteBufs -> partitions.get(logPartition).get(logFile).addAll(byteBufs));
+			listConsumer.getResult().whenResult(byteBufs -> partitions.get(logPartition).get(logFile).addAll(byteBufs));
 			return Stage.of(listConsumer.withEndOfStreamAsResult());
 		}
 	}
