@@ -16,6 +16,8 @@
 
 package io.datakernel.jmx;
 
+import java.time.Duration;
+
 public interface JmxRegistryMXBean {
 
 	int getRegisteredSingletons();
@@ -24,9 +26,9 @@ public interface JmxRegistryMXBean {
 
 	int getTotallyRegisteredMBeans();
 
-	double getRefreshPeriod();
+	Duration getRefreshPeriod();
 
-	void setRefreshPeriod(double refreshPeriod);
+	void setRefreshPeriod(Duration refreshPeriod);
 
 	int getMaxRefreshesPerOneCycle();
 

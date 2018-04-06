@@ -236,16 +236,17 @@ public final class ConfigConverters {
 	}
 
 	private final static Pattern DURATION_PATTERN = Pattern.compile("(?<time>-?\\d+)([\\.](?<floating>\\d+))?\\s+(?<unit>days?|hours?|minutes?|seconds?|millis?|nanos?)(\\s+|$)");
-	private final static int NANOS_IN_MILLI = 1000000;
+		private final static int NANOS_IN_MILLI = 1000000;
 	private final static int MILLIS_IN_SECOND = 1000;
-	private final static int SECONDS_IN_MINUTE = 60;
-	private final static int MINUTES_IN_HOUR = 60;
-	private final static int HOURS_IN_DAY = 24;
+	private final static int SECONDS_PER_MINUTE = 60;
+	private final static int SECONDS_PER_HOUR = SECONDS_PER_MINUTE * 60;
+	private final static int SECONDS_PER_DAY = SECONDS_PER_HOUR * 24;
 
 	private static Duration parseDuration(String string) {
 		Set<String> units = new HashSet<>();
-		int days = 0, hours = 0, minutes = 0, seconds = 0;
+		int days = 0, hours = 0, minutes = 0;
 		long millis = 0, nanos = 0;
+		double seconds = 0.0;
 		long result;
 
 		Matcher matcher = DURATION_PATTERN.matcher(string.trim().toLowerCase());
@@ -260,7 +261,7 @@ public final class ConfigConverters {
 				unit += "s";
 			}
 			if (!units.add(unit)) {
-				throw new IllegalArgumentException("Time unit: " + unit + " occurs more than once in: " + string);
+				throw new IllegalArgumentException("Time unit " + unit + " occurs more than once in: " + string);
 			}
 
 			result = Long.parseLong(matcher.group("time"));
@@ -269,7 +270,7 @@ public final class ConfigConverters {
 			String floatingPoint = matcher.group("floating");
 			if (floatingPoint != null) {
 				if (unit.equals("nanos")) {
-					throw new IllegalArgumentException("Time unit: nanos cannot be fractional");
+					throw new IllegalArgumentException("Time unit nanos cannot be fractional");
 				}
 				floating = Integer.parseInt(floatingPoint);
 				for (int i = 0; i < floatingPoint.length(); i++) {
@@ -280,15 +281,15 @@ public final class ConfigConverters {
 			switch (unit) {
 				case "days":
 					days = (int) result;
-					hours += multiplyExact(floating, HOURS_IN_DAY) / denominator;
+					seconds += (double) multiplyExact(floating, SECONDS_PER_DAY) / denominator;
 					break;
 				case "hours":
 					hours += (int) result;
-					minutes += multiplyExact(floating, MINUTES_IN_HOUR) / denominator;
+					seconds += multiplyExact(floating, SECONDS_PER_HOUR) / denominator;
 					break;
 				case "minutes":
 					minutes += (int) result;
-					seconds += multiplyExact(floating, SECONDS_IN_MINUTE) / denominator;
+					seconds += multiplyExact(floating, SECONDS_PER_MINUTE) / denominator;
 					break;
 				case "seconds":
 					seconds += (int) result;
@@ -303,10 +304,13 @@ public final class ConfigConverters {
 					break;
 			}
 		}
+
+		millis += (seconds - (long) seconds) * MILLIS_IN_SECOND;
+
 		return Duration.ofDays(days)
 				.plusHours(hours)
 				.plusMinutes(minutes)
-				.plusSeconds(seconds)
+				.plusSeconds((long) seconds)
 				.plusMillis(millis)
 				.plusNanos(nanos);
 	}

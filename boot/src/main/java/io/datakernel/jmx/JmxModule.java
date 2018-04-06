@@ -40,7 +40,7 @@ import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.guice.GuiceUtils.isSingleton;
 
 public final class JmxModule extends AbstractModule implements Initializable<JmxModule> {
-	public static final double REFRESH_PERIOD_DEFAULT = 1.0;
+	public static final Duration REFRESH_PERIOD_DEFAULT = Duration.ofSeconds(1);
 	public static final int MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT = 50;
 
 	private final Set<Key<?>> singletonKeys = new HashSet<>();
@@ -50,7 +50,7 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 	private final Map<Type, MBeanSettings> typeToSettings = new HashMap<>();
 	private final Map<Key<?>, String> keyToObjectNames = new HashMap<>();
 
-	private double refreshPeriod = REFRESH_PERIOD_DEFAULT;
+	private Duration refreshPeriod = REFRESH_PERIOD_DEFAULT;
 	private int maxJmxRefreshesPerOneCycle = MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT;
 	private final Map<Type, Key<?>> globalMBeans = new HashMap<>();
 
@@ -65,11 +65,7 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 	}
 
 	public JmxModule withRefreshPeriod(Duration refreshPeriod) {
-		return withRefreshPeriod(refreshPeriod.toMillis());
-	}
-
-	public JmxModule withRefreshPeriod(double refreshPeriod) {
-		checkArgument(refreshPeriod > 0.0);
+		checkArgument(refreshPeriod.toMillis() > 0);
 
 		this.refreshPeriod = refreshPeriod;
 		return this;

@@ -25,6 +25,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.time.Duration;
 import java.util.*;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
@@ -479,12 +480,12 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 	}
 
 	@Override
-	public double getRefreshPeriod() {
+	public Duration getRefreshPeriod() {
 		return ((JmxMBeans) mbeanFactory).getSpecifiedRefreshPeriod();
 	}
 
 	@Override
-	public void setRefreshPeriod(double refreshPeriod) {
+	public void setRefreshPeriod(Duration refreshPeriod) {
 		((JmxMBeans) mbeanFactory).setRefreshPeriod(refreshPeriod);
 	}
 

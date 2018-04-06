@@ -295,6 +295,8 @@ public class ConfigConvertersTest {
 		assertEquals(expected, Config.ofValue("2 hour  -2 days 8 minutes 228 nanos -3 second -322 millis").get(ofDuration(), THIS));
 		assertEquals(Duration.ofDays(2).plusHours(14).plusMinutes(1).plusSeconds(30), Config.ofValue("2.5 days 2 hour 1.5 minute").get(ofDuration(), THIS));
 		assertEquals(Duration.ofHours(12).plusMinutes(40).plusSeconds(1).plusMillis(500), Config.ofValue("12.5 hours 10 minutes 1.5 second").get(ofDuration(), THIS));
+		assertEquals(Duration.ofHours(2).plusSeconds(36), Config.ofValue("2.01 hours").get(ofDuration(), THIS));
+		assertEquals(Duration.ofDays(2).plusMinutes(1).plusSeconds(26).plusMillis(400), Config.ofValue("2.001 days").get(ofDuration(), THIS));
 
 		try {
 			Config.ofValue(" 1 2 3 ").get(ofDuration(), THIS);

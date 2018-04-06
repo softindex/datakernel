@@ -25,6 +25,7 @@ import javax.management.openmbean.OpenType;
 import javax.management.openmbean.SimpleType;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -43,7 +44,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	private static final Logger logger = LoggerFactory.getLogger(JmxMBeans.class);
 
 	// refreshing jmx
-	public static final double DEFAULT_REFRESH_PERIOD_IN_SECONDS = 1.0;  // one second
+	public static final Duration DEFAULT_REFRESH_PERIOD_IN_SECONDS = Duration.ofSeconds(1);
 	public static final int MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT = 500;
 	private int maxJmxRefreshesPerOneCycle;
 	private long specifiedRefreshPeriod;
@@ -61,8 +62,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			= new JmxMBeans(DEFAULT_REFRESH_PERIOD_IN_SECONDS, MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT);
 
 	// region constructor and factory methods
-	private JmxMBeans(double refreshPeriod, int maxJmxRefreshesPerOneCycle) {
-		this.specifiedRefreshPeriod = secondsToMillis(refreshPeriod);
+	private JmxMBeans(Duration refreshPeriod, int maxJmxRefreshesPerOneCycle) {
+		this.specifiedRefreshPeriod = refreshPeriod.toMillis();
 		this.maxJmxRefreshesPerOneCycle = maxJmxRefreshesPerOneCycle;
 	}
 
@@ -70,7 +71,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		return INSTANCE_WITH_DEFAULT_REFRESH_PERIOD;
 	}
 
-	public static JmxMBeans factory(double refreshPeriod, int maxJmxRefreshesPerOneCycle) {
+	public static JmxMBeans factory(Duration refreshPeriod, int maxJmxRefreshesPerOneCycle) {
 		return new JmxMBeans(refreshPeriod, maxJmxRefreshesPerOneCycle);
 	}
 	// endregion
@@ -84,12 +85,12 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		return effectiveRefreshPeriods;
 	}
 
-	public double getSpecifiedRefreshPeriod() {
-		return (specifiedRefreshPeriod / 1000.0);
+	public Duration getSpecifiedRefreshPeriod() {
+		return Duration.ofMillis(specifiedRefreshPeriod);
 	}
 
-	public void setRefreshPeriod(double refreshPeriod) {
-		this.specifiedRefreshPeriod = secondsToMillis(refreshPeriod);
+	public void setRefreshPeriod(Duration refreshPeriod) {
+		this.specifiedRefreshPeriod = refreshPeriod.toMillis();
 	}
 
 	public int getMaxJmxRefreshesPerOneCycle() {
