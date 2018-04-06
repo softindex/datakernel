@@ -23,6 +23,7 @@ import io.datakernel.async.Stages;
 import io.datakernel.stream.StreamResult.Pair;
 import io.datakernel.stream.processor.StreamLateBinder;
 
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -110,7 +111,7 @@ public interface StreamProducerWithResult<T, X> extends StreamProducer<T> {
 	static <T, X> StreamProducerWithResult<T, X> ofStage(Stage<StreamProducerWithResult<T, X>> producerStage) {
 		SettableStage<X> result = SettableStage.create();
 		StreamLateBinder<T> binder = StreamLateBinder.create();
-		producerStage.whenComplete((producer, throwable) -> {
+		producerStage.post().whenComplete((producer, throwable) -> {
 			if (throwable == null) {
 				checkArgument(producer.getCapabilities().contains(LATE_BINDING),
 						LATE_BINDING_ERROR_MESSAGE, producer);
@@ -128,30 +129,41 @@ public interface StreamProducerWithResult<T, X> extends StreamProducer<T> {
 		return withResult(getResult().thenApply(fn));
 	}
 
-	default StreamProducerWithResult<T, X> thenAccept(Consumer<? super X> action) {
-		getResult().whenResult(action);
-		return this;
+	default <U> StreamProducerWithResult<T, U> thenApplyEx(BiFunction<? super X, Throwable, ? extends U> fn) {
+		return withResult(getResult().thenApplyEx(fn));
 	}
 
 	default StreamProducerWithResult<T, X> thenRun(Runnable action) {
-		getResult().thenRun(action);
+		getResult().post().thenRun(action);
+		return this;
+	}
+
+	default StreamProducerWithResult<T, X> thenRunEx(Runnable action) {
+		getResult().post().thenRunEx(action);
 		return this;
 	}
 
 	default <U> StreamProducerWithResult<T, U> thenCompose(Function<? super X, ? extends Stage<U>> fn) {
-		return withResult(getResult().thenCompose(fn));
+		return withResult(getResult().post().thenCompose(fn));
+	}
+
+	default <U> StreamProducerWithResult<T, U> thenComposeEx(BiFunction<? super X, Throwable, ? extends Stage<U>> fn) {
+		return withResult(getResult().post().thenComposeEx(fn));
 	}
 
 	default StreamProducerWithResult<T, X> whenComplete(StageConsumer<? super X> consumer) {
-		getResult().whenComplete(consumer);
+		getResult().post().whenComplete(consumer);
 		return this;
 	}
 
-	default StreamProducerWithResult<T, X> whenException(Consumer<? super Throwable> consumer) {
-		return whenComplete((x, throwable) -> {
-			if (throwable != null) {
-				consumer.accept(throwable);
-			}
-		});
+	default StreamProducerWithResult<T, X> whenResult(Consumer<? super X> action) {
+		getResult().post().whenResult(action);
+		return this;
 	}
+
+	default StreamProducerWithResult<T, X> whenException(Consumer<Throwable> consumer) {
+		getResult().post().whenException(consumer);
+		return this;
+	}
+
 }

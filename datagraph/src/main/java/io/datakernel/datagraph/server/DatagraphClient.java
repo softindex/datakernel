@@ -76,7 +76,7 @@ public final class DatagraphClient {
 			return messaging.send(commandDownload)
 					.thenApply($ -> messaging.receiveBinaryStream()
 							.with(StreamBinaryDeserializer.create(serialization.getSerializer(type)))
-							.thenAccept($_ -> messaging.close())
+							.thenRunEx(messaging::close)
 							.withLateBinding());
 		});
 	}

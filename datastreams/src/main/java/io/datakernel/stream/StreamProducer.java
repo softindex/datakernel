@@ -263,7 +263,7 @@ public interface StreamProducer<T> {
 				safeResult.trySetException(throwable);
 			}
 		});
-		result.whenComplete(safeResult::trySet);
+		result.post().whenComplete(safeResult::trySet);
 		return new StreamProducerWithResult<T, X>() {
 			@Override
 			public void setConsumer(StreamConsumer<T> consumer) {
@@ -300,7 +300,7 @@ public interface StreamProducer<T> {
 
 	default StreamProducerWithResult<T, Void> withEndOfStreamAsResult() {
 		SettableStage<Void> safeEndOfStream = SettableStage.create();
-		getEndOfStream().whenComplete(safeEndOfStream::trySet);
+		getEndOfStream().post().whenComplete(safeEndOfStream::trySet);
 		return new StreamProducerWithResult<T, Void>() {
 			@Override
 			public void setConsumer(StreamConsumer<T> consumer) {
