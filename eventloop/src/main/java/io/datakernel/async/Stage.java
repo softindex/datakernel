@@ -5,6 +5,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.functional.Try;
 
+import java.time.Duration;
 import java.util.concurrent.*;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -164,48 +165,65 @@ public interface Stage<T> {
 	}
 
 	/**
-	 * Adds given stage to the chain of stages and returns it.
+	 * Executes given stage after execution of this stage completes
 	 *
 	 * @param stage given stage
 	 * @param <U>   type of result
-	 * @param <S>   type of the next stage in the chain
 	 * @return subscribed {@code Stage}
-	 * @see NextStage
 	 */
 	<U, S extends StageConsumer<? super T> & Stage<U>> Stage<U> then(S stage);
 
 	/**
-	 * Applies fn to the result of current {@code Stage} when it completes.
+	 * Applies fn to the result of this {@code Stage}
 	 *
 	 * @param fn function to apply
 	 * @return {@code Stage} that will apply given function
 	 */
 	<U> Stage<U> thenApply(Function<? super T, ? extends U> fn);
 
+	/**
+	 * Applies fn to the result or exception of this {@code Stage}
+	 *
+	 * @param fn function to apply
+	 * @return {@code Stage} that will apply given function
+	 */
 	<U> Stage<U> thenApplyEx(BiFunction<? super T, Throwable, ? extends U> fn);
 
 	/**
-	 * Adds new {@code Stage} to the chain. This stage will be executed only if current {@code Stage} completes successfully.
+	 * Runs action after successful completion of this stage
 	 *
 	 * @param action to be executed
 	 * @return this stage
 	 */
 	Stage<T> thenRun(Runnable action);
 
+	/**
+	 * Runs action after completion of this stage
+	 *
+	 * @param action to be executed
+	 * @return this stage
+	 */
 	Stage<T> thenRunEx(Runnable action);
 
 	/**
-	 * Apply function to the result of the given stage. This stage will be completed when function completes.
+	 * Applies function to the result of this stage if it completes successfully.
+	 * Returned stage will be completed when stage returned from function completes.
+	 *
+	 * @param fn to be applied
+	 */
+	<U> Stage<U> thenCompose(Function<? super T, ? extends Stage<U>> fn);
+
+	/**
+	 * Applies function to the result of this stage.
+	 * Returned stage will be completed when stage returned from function completes.
 	 *
 	 * @param fn to be applied
 	 * @return this stage
 	 */
-	<U> Stage<U> thenCompose(Function<? super T, ? extends Stage<U>> fn);
-
 	<U> Stage<U> thenComposeEx(BiFunction<? super T, Throwable, ? extends Stage<U>> fn);
 
 	/**
-	 * Adds new {@code Stage} to the chain. Added {@code Stage} will be executed only if this {@code Stage} completes successfully.
+	 * Subscribes given action to be executed after this stage completes
 	 *
 	 * @param action to be executed
 	 * @return this {@code Stage}
@@ -213,15 +231,15 @@ public interface Stage<T> {
 	Stage<T> whenComplete(StageConsumer<? super T> action);
 
 	/**
-	 * Adds new {@code Stage} to the chain. This stage will be executed only if current {@code Stage} completes successfully.
+	 * Subscribes given action to be executed after this stage completes successfully
 	 *
 	 * @param action to be executed
-	 * @return this stage
+	 * @return this {@code Stage}
 	 */
 	Stage<T> whenResult(Consumer<? super T> action);
 
 	/**
-	 * Adds new {@code Stage} to the chain. Added {@code Stage} will be executed only if this {@code Stage} completes exceptionally.
+	 * Subscribes given action to be executed after this stage completes exceptionally
 	 *
 	 * @param action to be executed
 	 * @return this {@code Stage}
@@ -253,14 +271,15 @@ public interface Stage<T> {
 	Stage<T> either(Stage<? extends T> other);
 
 	/**
-	 * Discards result of {@code Stage} that completes when this {@code Stage} completes.
+	 * Waits for result and discard it.
 	 */
 	Stage<Void> toVoid();
 
 	AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException("Stage timeout");
 
 	/**
-	 * Wraps this {@code Stage} into a new one, that will complete exceptionally if this {@code Stage} is not completed after timeout.
+	 * Returns stage that completes successfully if this stage completes before timeout.
+	 * Otherwise it completes with timeout exception.
 	 *
 	 * @param timeout timeout in milliseconds
 	 */
@@ -271,6 +290,10 @@ public interface Stage<T> {
 	 */
 	Stage<T> post();
 
+	/**
+	 * Returns stage that always completes successfully with result or exception wrapped in Try
+	 * @see Try
+	 */
 	Stage<Try<T>> toTry();
 
 	/**

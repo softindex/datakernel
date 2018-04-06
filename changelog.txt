@@ -1,6 +1,26 @@
+v 2.5.10
+
+* Public API now use Duration and MemSize for corresponding values.
+
+* ConfigConverters:
+  - Add combinator for ConfigConverter. Now you can combine converters to get more specific converter.
+  - Add new ConfigConverters for java.time classes
+
+* Reworked boot module:
+  - Simplification and customization of boot module launchers
+  - Default launchers for RemoteFs, RPC and HTTP
+  - Default Google Guice modules for providing basic components like Eventloop
+  - Migrate configs to Java 8 convention
+  - Config builders
+  - Refactor Config
+
+* Improved Stage API:
+  - Replaced Stage.Hadlers with *ex methods for precise control over Stage execution
+  - Introduced dedicated StageConsumer instead of standard BiConsumer
+
 v2.5.9:
 
-* Introduced simple, clean and optimized Stage's which replaced native CompletionStage's.
+* Introduced simple, clean and optimized Stage's which replaced java CompletionStage's.
   Cleaned Stages api, now all common methods related directly to Stage is in Stage.
   Stages now used as a controller element for Stage's(with methods like all, any, reduce, etc...).
 
