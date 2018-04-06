@@ -2,10 +2,7 @@ package io.datakernel.cube.service;
 
 import io.datakernel.aggregation.AggregationChunk;
 import io.datakernel.aggregation.LocalFsChunkStorage;
-import io.datakernel.async.AsyncCallable;
-import io.datakernel.async.Callback;
-import io.datakernel.async.SettableStage;
-import io.datakernel.async.Stage;
+import io.datakernel.async.*;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.*;
@@ -20,7 +17,11 @@ import java.util.*;
 import java.util.stream.Stream;
 
 import static io.datakernel.async.AsyncCallable.sharedCall;
+import static io.datakernel.async.StageConsumer.transform;
 import static io.datakernel.util.CollectionUtils.*;
+import static io.datakernel.util.LogUtils.Level.TRACE;
+import static io.datakernel.util.LogUtils.thisMethod;
+import static io.datakernel.util.LogUtils.toLogger;
 import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toSet;
 import static java.util.stream.Stream.concat;
@@ -103,12 +104,14 @@ public final class CubeCleanerController implements EventloopJmxMBeanEx {
 		return remote.getHeads()
 				.thenCompose(heads -> findFrozenCut(heads, eventloop.currentTimeMillis() - freezeTimeout.toMillis()))
 				.thenCompose(this::cleanupFrozenCut)
-				.whenComplete(stageCleanup.recordStats());
+				.whenComplete(stageCleanup.recordStats())
+				.whenComplete(toLogger(logger, thisMethod()));
 	}
 
 	Stage<Set<Integer>> findFrozenCut(Set<Integer> heads, long freezeTimestamp) {
 		return algorithms.findCut(heads,
-				commits -> commits.stream().allMatch(commit -> commit.getTimestamp() < freezeTimestamp));
+				commits -> commits.stream().allMatch(commit -> commit.getTimestamp() < freezeTimestamp))
+				.whenComplete(toLogger(logger, thisMethod(), heads, freezeTimestamp));
 	}
 
 	Stage<Void> cleanupFrozenCut(Set<Integer> frozenCut) {
@@ -119,35 +122,37 @@ public final class CubeCleanerController implements EventloopJmxMBeanEx {
 								.thenCompose(checkpointNode -> checkpointNode.isPresent() ?
 										trySaveSnapshotAndCleanupChunks(checkpointNode.get()) :
 										Stage.of(null)) :
-						Stage.of(null));
+						Stage.of(null))
+				.whenComplete(toLogger(logger, thisMethod(), frozenCut));
 	}
 
 	Stage<Optional<Set<Integer>>> findBottomNodes(Set<Integer> parentCandidates) {
 		return algorithms.findCommonParents(parentCandidates)
-				.whenResult(rootNodes -> logger.info("Root nodes: {}", rootNodes))
-				.thenApply(rootNodes -> rootNodes.isEmpty() ? Optional.empty() : Optional.of(rootNodes));
+				.thenApply(rootNodes -> rootNodes.isEmpty() ? Optional.<Set<Integer>>empty() : Optional.of(rootNodes))
+				.whenComplete(toLogger(logger, thisMethod(), parentCandidates));
 	}
 
 	Stage<Void> trySaveSnapshotAndCleanupChunks(Integer checkpointNode) {
-		logger.info("Checkpoint node: {}", checkpointNode);
-		return algorithms.checkout(checkpointNode).thenCompose(changes -> {
-			long cleanupTimestamp = eventloop.currentTimeMillis() - chunksCleanupDelay.toMillis();
+		return algorithms.checkout(checkpointNode)
+				.thenCompose(changes -> {
+					long cleanupTimestamp = eventloop.currentTimeMillis() - chunksCleanupDelay.toMillis();
 
-			return remote.saveSnapshot(checkpointNode, changes)
-					.thenCompose($ -> {
-						SettableStage<Optional<Integer>> result = SettableStage.create();
-						findSnapshot(singleton(checkpointNode), extraSnapshotsCount, result);
-						return result;
-					})
-					.thenCompose(lastSnapshot -> lastSnapshot.isPresent() ?
-							remote.loadCommit(checkpointNode)
-									.thenCompose(commit ->
-											collectRequiredChunks(checkpointNode)
-													.thenApply(extractedChunks -> union(chunks(changes), extractedChunks)))
-									.thenCompose(chunks ->
-											cleanup(lastSnapshot.get(), chunks, cleanupTimestamp)) :
-							notEnoughSnapshots());
-		});
+					return remote.saveSnapshot(checkpointNode, changes)
+							.thenCompose($ -> {
+								SettableStage<Optional<Integer>> result = SettableStage.create();
+								findSnapshot(singleton(checkpointNode), extraSnapshotsCount, result);
+								return result;
+							})
+							.thenCompose(lastSnapshot -> lastSnapshot.isPresent() ?
+									remote.loadCommit(checkpointNode)
+											.thenCompose(commit ->
+													collectRequiredChunks(checkpointNode)
+															.thenApply(extractedChunks -> union(chunks(changes), extractedChunks)))
+											.thenCompose(chunks ->
+													cleanup(lastSnapshot.get(), chunks, cleanupTimestamp)) :
+									notEnoughSnapshots());
+				})
+				.whenComplete(toLogger(logger, thisMethod(), checkpointNode));
 	}
 
 	void findSnapshot(Set<Integer> heads, int skipSnapshots, Callback<Optional<Integer>> cb) {
@@ -174,15 +179,22 @@ public final class CubeCleanerController implements EventloopJmxMBeanEx {
 										union(accumulatedChunks, chunks(diffs)),
 								CollectionUtils::union))
 						.whenComplete(stageCleanupCollectRequiredChunks.recordStats()))
-				.thenApply(accumulators -> accumulators.values().stream().flatMap(Collection::stream).collect(toSet()));
+				.thenApply(accumulators -> accumulators.values().stream().flatMap(Collection::stream).collect(toSet()))
+				.whenComplete(transform(Set::size,
+						toLogger(logger, thisMethod(), checkpointNode)));
 	}
 
 	private Stage<Void> cleanup(Integer checkpointNode, Set<Long> requiredChunks, long chunksCleanupTimestamp) {
-		return checkRequiredChunks(requiredChunks)
+		return Stages.first(
+				() -> checkRequiredChunks(requiredChunks),
+				() -> checkRequiredChunks(requiredChunks))
 				.thenCompose($ -> remote.cleanup(checkpointNode)
 						.whenComplete(stageCleanupRemote.recordStats()))
 				.thenCompose($ -> chunksStorage.cleanupBeforeTimestamp(requiredChunks, chunksCleanupTimestamp)
-						.whenComplete(stageCleanupChunks.recordStats()));
+						.whenComplete(stageCleanupChunks.recordStats()))
+				.whenComplete(logger.isTraceEnabled() ?
+						toLogger(logger, TRACE, thisMethod(), checkpointNode, chunksCleanupTimestamp, requiredChunks) :
+						toLogger(logger, thisMethod(), checkpointNode, chunksCleanupTimestamp, toLimitedString(requiredChunks, 6)));
 	}
 
 	private Stage<Void> checkRequiredChunks(Set<Long> requiredChunks) {
@@ -192,7 +204,8 @@ public final class CubeCleanerController implements EventloopJmxMBeanEx {
 						Stage.of((Void) null) :
 						Stage.ofException(new IllegalStateException("Missed chunks from storage: " +
 								toLimitedString(difference(requiredChunks, actualChunks), 100))))
-				.whenComplete(stageCleanupCheckRequiredChunks.recordStats());
+				.whenComplete(stageCleanupCheckRequiredChunks.recordStats())
+				.whenComplete(toLogger(logger, thisMethod(), toLimitedString(requiredChunks, 6)));
 	}
 
 	@JmxAttribute

@@ -11,6 +11,8 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 
 import static io.datakernel.util.CollectionUtils.*;
+import static io.datakernel.util.LogUtils.thisMethod;
+import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.util.Collections.*;
 import static java.util.Comparator.comparingInt;
@@ -94,26 +96,22 @@ final class OTMergeAlgorithm<K, D> {
 	public Stage<Map<K, List<D>>> loadAndMerge(Set<K> heads) {
 		if (heads.size() == 0) return Stage.of(emptyMap());
 		if (heads.size() == 1) return Stage.of(singletonMap(first(heads), emptyList()));
-		logger.info("Merging " + heads);
 		return loadGraph(heads)
 				.thenCompose(graph -> {
 					try {
 						Map<K, List<D>> mergeResult = merge(graph, heads);
 						if (logger.isTraceEnabled()) {
-							logger.info("Merge result " + mergeResult + "\n" + graph.toGraphViz() + "\n");
-						} else {
-							logger.info("Merge result " + mergeResult);
+							logger.info(graph.toGraphViz() + "\n");
 						}
 						return Stage.of(mergeResult);
 					} catch (OTException e) {
 						if (logger.isTraceEnabled()) {
-							logger.error("Merge error " + heads + "\n" + graph.toGraphViz() + "\n", e);
-						} else {
-							logger.error("Merge error " + heads);
+							logger.error(graph.toGraphViz() + "\n", e);
 						}
 						return Stage.ofException(e);
 					}
-				});
+				})
+				.whenComplete(toLogger(logger, thisMethod(), heads));
 	}
 
 	Stage<OTLoadedGraph<K, D>> loadGraph(Set<K> heads) {
@@ -136,11 +134,10 @@ final class OTMergeAlgorithm<K, D> {
 		return cb.thenApply($ -> graph)
 				.whenException(throwable -> {
 					if (logger.isTraceEnabled()) {
-						logger.error("loading error " + heads + "\n" + graph.toGraphViz() + "\n", throwable);
-					} else {
-						logger.error("loading error " + heads, throwable);
+						logger.error(graph.toGraphViz() + "\n", throwable);
 					}
-				});
+				})
+				.whenComplete(toLogger(logger, thisMethod(), heads));
 	}
 
 	private void doLoadGraph(OTLoadedGraph<K, D> graph, PriorityQueue<K> queue,

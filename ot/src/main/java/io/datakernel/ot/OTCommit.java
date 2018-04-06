@@ -83,10 +83,7 @@ public final class OTCommit<K, D> {
 
 	@Override
 	public String toString() {
-		return "{" + id + ": " + parents + '}';
+		return "{id=" + id + ", parents=" + getParentIds() + "}";
 	}
 
-	public String idsToString() {
-		return "{" + id + ": " + getParentIds() + '}';
-	}
 }

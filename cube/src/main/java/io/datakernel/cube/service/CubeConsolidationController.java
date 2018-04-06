@@ -14,7 +14,6 @@ import io.datakernel.jmx.*;
 import io.datakernel.logfs.ot.LogDiff;
 import io.datakernel.logfs.ot.LogOTState;
 import io.datakernel.ot.OTStateManager;
-import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,6 +22,8 @@ import java.util.Set;
 import java.util.function.Supplier;
 
 import static io.datakernel.async.AsyncCallable.sharedCall;
+import static io.datakernel.util.LogUtils.thisMethod;
+import static io.datakernel.util.LogUtils.toLogger;
 import static java.util.stream.Collectors.toSet;
 
 public final class CubeConsolidationController implements EventloopJmxMBeanEx {
@@ -41,7 +42,6 @@ public final class CubeConsolidationController implements EventloopJmxMBeanEx {
 	private final Cube cube;
 	private final OTStateManager<Integer, LogDiff<CubeDiff>> stateManager;
 	private final AggregationChunkStorage aggregationChunkStorage;
-	private final Stopwatch sw = Stopwatch.createUnstarted();
 
 	private final Supplier<AsyncFunction<Aggregation, AggregationDiff>> strategy;
 
@@ -82,18 +82,16 @@ public final class CubeConsolidationController implements EventloopJmxMBeanEx {
 	}
 
 	Stage<Void> doConsolidate() {
-		sw.reset().start();
 		return stateManager.pull()
 				.thenCompose($ -> stateManager.getAlgorithms().mergeHeadsAndPush())
-				.thenCompose(mergeId -> stateManager.pull(mergeId))
+				.thenCompose(stateManager::pull)
 				.thenCompose($ -> stateManager.pull())
 				.thenCompose($ -> cube.consolidate(strategy.get()).whenComplete(stageConsolidateImpl.recordStats()))
 				.whenResult(this::cubeDiffJmx)
 				.whenComplete(this::logCubeDiff)
 				.thenCompose(this::tryPushConsolidation)
-				.whenComplete(this::logResult)
-				.whenComplete(stageConsolidate.recordStats());
-
+				.whenComplete(stageConsolidate.recordStats())
+				.whenComplete(toLogger(logger, thisMethod(), stateManager));
 	}
 
 	private void cubeDiffJmx(CubeDiff cubeDiff) {
@@ -127,11 +125,12 @@ public final class CubeConsolidationController implements EventloopJmxMBeanEx {
 		stateManager.add(LogDiff.forCurrentPosition(cubeDiff));
 		return stateManager.pull()
 				.thenCompose($ -> stateManager.getAlgorithms().mergeHeadsAndPush())
-				.thenCompose(mergeId -> stateManager.pull(mergeId))
+				.thenCompose(stateManager::pull)
 				.thenCompose($ -> stateManager.pull())
 				.thenCompose($ -> stateManager.commit())
 				.thenCompose($ -> stateManager.push())
-				.thenCompose($ -> aggregationChunkStorage.finish(addedChunks(cubeDiff)));
+				.thenCompose($ -> aggregationChunkStorage.finish(addedChunks(cubeDiff)))
+				.whenComplete(toLogger(logger, thisMethod(), cubeDiff));
 	}
 
 	private static Set<Long> addedChunks(CubeDiff cubeDiff) {
@@ -142,11 +141,6 @@ public final class CubeConsolidationController implements EventloopJmxMBeanEx {
 		if (throwable != null) logger.warn("Consolidation failed", throwable);
 		else if (cubeDiff.isEmpty()) logger.info("Previous consolidation did not merge any chunks");
 		else logger.info("Consolidation finished. Launching consolidation task again.");
-	}
-
-	private <T> void logResult(T value, Throwable throwable) {
-		if (throwable == null) logger.info("Consolidator finish in {}", sw.stop());
-		else logger.error("Consolidator error in {}", sw.stop(), throwable);
 	}
 
 	@JmxAttribute

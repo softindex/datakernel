@@ -84,8 +84,10 @@ public class CollectionUtils {
 	}
 
 	public static <T> String toLimitedString(Collection<T> collection, int limit) {
-		return collection.stream().limit(limit).map(Object::toString)
-				.collect(joining(",", "[", collection.size() <= limit ? "]" : "...]"));
+		return collection.stream()
+				.limit(limit)
+				.map(Object::toString)
+				.collect(joining(",", "[", collection.size() <= limit ? "]" : ",..]"));
 	}
 
 }

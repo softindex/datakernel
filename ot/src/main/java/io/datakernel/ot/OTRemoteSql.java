@@ -20,6 +20,8 @@ import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.util.CollectionUtils.difference;
 import static io.datakernel.util.CollectionUtils.union;
+import static io.datakernel.util.LogUtils.thisMethod;
+import static io.datakernel.util.LogUtils.toLogger;
 import static io.datakernel.util.Preconditions.checkState;
 import static io.datakernel.util.gson.GsonAdapters.indent;
 import static io.datakernel.util.gson.GsonAdapters.ofList;
@@ -107,24 +109,24 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 
 	@Override
 	public Stage<Integer> createCommitId() {
-		return Stage.ofCallable(executor, () -> {
-			logger.trace("Start Create id");
-			try (Connection connection = dataSource.getConnection()) {
-				connection.setAutoCommit(true);
-				try (PreparedStatement statement = connection.prepareStatement(
-						sql("INSERT INTO {revisions} (type, created_by) VALUES (?, ?)"),
-						Statement.RETURN_GENERATED_KEYS)) {
-					statement.setString(1, "NEW");
-					statement.setString(2, createdBy);
-					statement.executeUpdate();
-					ResultSet generatedKeys = statement.getGeneratedKeys();
-					generatedKeys.next();
-					int id = generatedKeys.getInt(1);
-					logger.trace("Id created: {}", id);
-					return id;
-				}
-			}
-		}).whenComplete(stageCreateCommitId.recordStats());
+		return Stage.ofCallable(executor,
+				() -> {
+					try (Connection connection = dataSource.getConnection()) {
+						connection.setAutoCommit(true);
+						try (PreparedStatement statement = connection.prepareStatement(
+								sql("INSERT INTO {revisions} (type, created_by) VALUES (?, ?)"),
+								Statement.RETURN_GENERATED_KEYS)) {
+							statement.setString(1, "NEW");
+							statement.setString(2, createdBy);
+							statement.executeUpdate();
+							ResultSet generatedKeys = statement.getGeneratedKeys();
+							generatedKeys.next();
+							return generatedKeys.getInt(1);
+						}
+					}
+				})
+				.whenComplete(stageCreateCommitId.recordStats())
+				.whenComplete(toLogger(logger, thisMethod()));
 	}
 
 	private String toJson(List<D> diffs) throws IOException {
@@ -147,203 +149,207 @@ public class OTRemoteSql<D> implements OTRemote<Integer, D>, EventloopJmxMBeanEx
 	@Override
 	public Stage<Void> push(Collection<OTCommit<Integer, D>> commits) {
 		if (commits.isEmpty()) return Stage.of(null);
-		return Stage.ofCallable(executor, () -> {
-			logger.trace("Push {} commits: {}", commits.size(),
-					commits.stream().map(OTCommit::idsToString).collect(toList()));
+		return Stage.ofCallable(executor,
+				() -> {
+					try (Connection connection = dataSource.getConnection()) {
+						connection.setAutoCommit(false);
 
-			try (Connection connection = dataSource.getConnection()) {
-				connection.setAutoCommit(false);
-
-				for (OTCommit<Integer, D> commit : commits) {
-					for (Integer parentId : commit.getParents().keySet()) {
-						List<D> diff = commit.getParents().get(parentId);
-						try (PreparedStatement ps = connection.prepareStatement(
-								sql("INSERT INTO {diffs}(revision_id, parent_id, diff) VALUES (?, ?, ?)"))) {
-							ps.setInt(1, commit.getId());
-							ps.setInt(2, parentId);
-							ps.setString(3, toJson(diff));
-							ps.executeUpdate();
+						for (OTCommit<Integer, D> commit : commits) {
+							for (Integer parentId : commit.getParents().keySet()) {
+								List<D> diff = commit.getParents().get(parentId);
+								try (PreparedStatement ps = connection.prepareStatement(
+										sql("INSERT INTO {diffs}(revision_id, parent_id, diff) VALUES (?, ?, ?)"))) {
+									ps.setInt(1, commit.getId());
+									ps.setInt(2, parentId);
+									ps.setString(3, toJson(diff));
+									ps.executeUpdate();
+								}
+							}
 						}
-					}
-				}
 
-				Set<Integer> commitIds = commits.stream().map(OTCommit::getId).collect(toSet());
-				Set<Integer> commitsParentIds = commits.stream().flatMap(commit -> commit.getParents().keySet().stream()).collect(toSet());
-				Set<Integer> headCommitIds = difference(commitIds, commitsParentIds);
-				Set<Integer> innerCommitIds = union(commitsParentIds, difference(commitIds, headCommitIds));
+						Set<Integer> commitIds = commits.stream().map(OTCommit::getId).collect(toSet());
+						Set<Integer> commitsParentIds = commits.stream().flatMap(commit -> commit.getParents().keySet().stream()).collect(toSet());
+						Set<Integer> headCommitIds = difference(commitIds, commitsParentIds);
+						Set<Integer> innerCommitIds = union(commitsParentIds, difference(commitIds, headCommitIds));
 
-				if (!headCommitIds.isEmpty()) {
-					try (PreparedStatement ps = connection.prepareStatement(
-							sql("UPDATE {revisions} SET type='HEAD' WHERE type='NEW' AND id IN " + in(headCommitIds.size())))) {
-						int pos = 1;
-						for (Integer id : headCommitIds) {
-							ps.setInt(pos++, id);
+						if (!headCommitIds.isEmpty()) {
+							try (PreparedStatement ps = connection.prepareStatement(
+									sql("UPDATE {revisions} SET type='HEAD' WHERE type='NEW' AND id IN " + in(headCommitIds.size())))) {
+								int pos = 1;
+								for (Integer id : headCommitIds) {
+									ps.setInt(pos++, id);
+								}
+								ps.executeUpdate();
+							}
 						}
-						ps.executeUpdate();
-					}
-				}
 
-				if (!innerCommitIds.isEmpty()) {
-					try (PreparedStatement ps = connection.prepareStatement(
-							sql("UPDATE {revisions} SET type='INNER' WHERE id IN " + in(innerCommitIds.size())))) {
-						int pos = 1;
-						for (Integer id : innerCommitIds) {
-							ps.setInt(pos++, id);
+						if (!innerCommitIds.isEmpty()) {
+							try (PreparedStatement ps = connection.prepareStatement(
+									sql("UPDATE {revisions} SET type='INNER' WHERE id IN " + in(innerCommitIds.size())))) {
+								int pos = 1;
+								for (Integer id : innerCommitIds) {
+									ps.setInt(pos++, id);
+								}
+								ps.executeUpdate();
+							}
 						}
-						ps.executeUpdate();
-					}
-				}
 
-				connection.commit();
-				logger.trace("{} commits pushed: {}", commits.size(),
-						commits.stream().map(OTCommit::idsToString).collect(toList()));
-			}
-			return (Void) null;
-		}).whenComplete(stagePush.recordStats());
+						connection.commit();
+					}
+					return (Void) null;
+				})
+				.whenComplete(stagePush.recordStats())
+				.whenComplete(toLogger(logger, thisMethod(), commits.stream().map(OTCommit::toString).collect(toList())));
 	}
 
 	@Override
 	public Stage<Set<Integer>> getHeads() {
-		return Stage.ofCallable(executor, () -> {
-			logger.trace("Get Heads");
-			try (Connection connection = dataSource.getConnection()) {
-				try (PreparedStatement ps = connection.prepareStatement(
-						sql("SELECT id FROM {revisions} WHERE type='HEAD'"))) {
-					ResultSet resultSet = ps.executeQuery();
-					Set<Integer> result = new HashSet<>();
-					while (resultSet.next()) {
-						int id = resultSet.getInt(1);
-						result.add(id);
+		return Stage.ofCallable(executor,
+				() -> {
+					try (Connection connection = dataSource.getConnection()) {
+						try (PreparedStatement ps = connection.prepareStatement(
+								sql("SELECT id FROM {revisions} WHERE type='HEAD'"))) {
+							ResultSet resultSet = ps.executeQuery();
+							Set<Integer> result = new HashSet<>();
+							while (resultSet.next()) {
+								int id = resultSet.getInt(1);
+								result.add(id);
+							}
+							return result;
+						}
 					}
-					logger.trace("Current heads: {}", result);
-					return result;
-				}
-			}
-		}).whenComplete(stageGetHeads.recordStats());
+				})
+				.whenComplete(stageGetHeads.recordStats())
+				.whenComplete(toLogger(logger, thisMethod()));
 	}
 
 	@Override
 	public Stage<List<D>> loadSnapshot(Integer revisionId) {
-		logger.trace("Load snapshot: {}", revisionId);
-		return Stage.ofCallable(executor, () -> {
-			try (Connection connection = dataSource.getConnection()) {
-				try (PreparedStatement ps = connection.prepareStatement(
-						sql("SELECT snapshot FROM {revisions} WHERE id=?"))) {
-					ps.setInt(1, revisionId);
-					ResultSet resultSet = ps.executeQuery();
+		return Stage.ofCallable(executor,
+				() -> {
+					try (Connection connection = dataSource.getConnection()) {
+						try (PreparedStatement ps = connection.prepareStatement(
+								sql("SELECT snapshot FROM {revisions} WHERE id=?"))) {
+							ps.setInt(1, revisionId);
+							ResultSet resultSet = ps.executeQuery();
 
-					if (!resultSet.next()) throw new IOException("No snapshot for id: " + revisionId);
+							if (!resultSet.next()) throw new IOException("No snapshot for id: " + revisionId);
 
-					String str = resultSet.getString(1);
-					List<D> snapshot = str == null ? Collections.emptyList() : fromJson(str);
-					logger.trace("Snapshot loaded: {}", revisionId);
-					return otSystem.squash(snapshot);
-				}
-			}
-		}).whenComplete(stageLoadSnapshot.recordStats());
+							String str = resultSet.getString(1);
+							List<D> snapshot = str == null ? Collections.emptyList() : fromJson(str);
+							return otSystem.squash(snapshot);
+						}
+					}
+				})
+				.whenComplete(stageLoadSnapshot.recordStats())
+				.whenComplete(toLogger(logger, thisMethod(), revisionId));
 	}
 
 	@Override
 	public Stage<OTCommit<Integer, D>> loadCommit(Integer revisionId) {
-		return Stage.ofCallable(executor, () -> {
-			logger.trace("Start load commit: {}", revisionId);
-			try (Connection connection = dataSource.getConnection()) {
-				Map<Integer, List<D>> parentDiffs = new HashMap<>();
+		return Stage.ofCallable(executor,
+				() -> {
+					try (Connection connection = dataSource.getConnection()) {
+						Map<Integer, List<D>> parentDiffs = new HashMap<>();
 
-				long timestamp = 0;
-				boolean snapshot = false;
+						long timestamp = 0;
+						boolean snapshot = false;
 
-				try (PreparedStatement ps = connection.prepareStatement(
-						sql("SELECT UNIX_TIMESTAMP({revisions}.timestamp) AS timestamp, {revisions}.snapshot IS NOT NULL AS snapshot, {diffs}.parent_id, {diffs}.diff " +
-								"FROM {revisions} " +
-								"LEFT JOIN {diffs} ON {diffs}.revision_id={revisions}.id " +
-								"WHERE {revisions}.id=?"))) {
-					ps.setInt(1, revisionId);
-					ResultSet resultSet = ps.executeQuery();
+						try (PreparedStatement ps = connection.prepareStatement(
+								sql("SELECT UNIX_TIMESTAMP({revisions}.timestamp) AS timestamp, {revisions}.snapshot IS NOT NULL AS snapshot, {diffs}.parent_id, {diffs}.diff " +
+										"FROM {revisions} " +
+										"LEFT JOIN {diffs} ON {diffs}.revision_id={revisions}.id " +
+										"WHERE {revisions}.id=?"))) {
+							ps.setInt(1, revisionId);
+							ResultSet resultSet = ps.executeQuery();
 
-					while (resultSet.next()) {
-						timestamp = resultSet.getLong(1) * 1000L;
-						snapshot = resultSet.getBoolean(2);
-						int parentId = resultSet.getInt(3);
-						String diffString = resultSet.getString(4);
-						if (diffString != null) {
-							List<D> diff = fromJson(diffString);
-							parentDiffs.put(parentId, diff);
+							while (resultSet.next()) {
+								timestamp = resultSet.getLong(1) * 1000L;
+								snapshot = resultSet.getBoolean(2);
+								int parentId = resultSet.getInt(3);
+								String diffString = resultSet.getString(4);
+								if (diffString != null) {
+									List<D> diff = fromJson(diffString);
+									parentDiffs.put(parentId, diff);
+								}
+							}
 						}
+
+						if (timestamp == 0) {
+							throw new IOException("No commit with id: " + revisionId);
+						}
+
+						return OTCommit.of(revisionId, parentDiffs).withCommitMetadata(timestamp, snapshot);
 					}
-				}
-
-				if (timestamp == 0) {
-					throw new IOException("No commit with id: " + revisionId);
-				}
-
-				logger.trace("Finish load commit: {}, parentIds: {}", revisionId, parentDiffs.keySet());
-				return OTCommit.of(revisionId, parentDiffs).withCommitMetadata(timestamp, snapshot);
-			}
-		}).whenComplete(stageLoadCommit.recordStats());
+				})
+				.whenComplete(stageLoadCommit.recordStats())
+				.whenComplete(toLogger(logger, thisMethod(), revisionId));
 	}
 
 	@Override
 	public Stage<Void> saveSnapshot(Integer revisionId, List<D> diffs) {
-		return Stage.ofCallable(executor, () -> {
-			logger.trace("Start save snapshot: {}, diffs: {}", revisionId, diffs.size());
-			try (Connection connection = dataSource.getConnection()) {
-				String snapshot = toJson(otSystem.squash(diffs));
-				try (PreparedStatement ps = connection.prepareStatement(sql("" +
-						"UPDATE {revisions} " +
-						"SET snapshot = ? " +
-						"WHERE id = ?"))) {
-					ps.setString(1, snapshot);
-					ps.setInt(2, revisionId);
-					ps.executeUpdate();
-					logger.trace("Finish save snapshot: {}, diffs: {}", revisionId, diffs.size());
-					return (Void) null;
-				}
-			}
-		}).whenComplete(stageSaveSnapshot.recordStats());
+		return Stage.ofCallable(executor,
+				() -> {
+					try (Connection connection = dataSource.getConnection()) {
+						String snapshot = toJson(otSystem.squash(diffs));
+						try (PreparedStatement ps = connection.prepareStatement(sql("" +
+								"UPDATE {revisions} " +
+								"SET snapshot = ? " +
+								"WHERE id = ?"))) {
+							ps.setString(1, snapshot);
+							ps.setInt(2, revisionId);
+							ps.executeUpdate();
+							return (Void) null;
+						}
+					}
+				})
+				.whenComplete(stageSaveSnapshot.recordStats())
+				.whenComplete(toLogger(logger, thisMethod(), revisionId, diffs));
 	}
 
 	@Override
 	public Stage<Void> cleanup(Integer minId) {
-		return Stage.ofCallable(executor, () -> {
-			logger.trace("Start cleanup: {}", minId);
-			try (Connection connection = dataSource.getConnection()) {
-				connection.setAutoCommit(false);
+		return Stage.ofCallable(executor,
+				() -> {
+					try (Connection connection = dataSource.getConnection()) {
+						connection.setAutoCommit(false);
 
-				try (PreparedStatement ps = connection.prepareStatement(
-						sql("DELETE FROM {revisions} WHERE id < ?"))) {
-					ps.setInt(1, minId);
-					ps.executeUpdate();
-				}
+						try (PreparedStatement ps = connection.prepareStatement(
+								sql("DELETE FROM {revisions} WHERE id < ?"))) {
+							ps.setInt(1, minId);
+							ps.executeUpdate();
+						}
 
-				try (PreparedStatement ps = connection.prepareStatement(
-						sql("DELETE FROM {diffs} WHERE revision_id < ?"))) {
-					ps.setInt(1, minId);
-					ps.executeUpdate();
-				}
+						try (PreparedStatement ps = connection.prepareStatement(
+								sql("DELETE FROM {diffs} WHERE revision_id < ?"))) {
+							ps.setInt(1, minId);
+							ps.executeUpdate();
+						}
 
-				connection.commit();
-				logger.trace("Finish cleanup: {}", minId);
-			}
+						connection.commit();
+					}
 
-			return null;
-		});
+					return (Void) null;
+				})
+				.whenComplete(toLogger(logger, thisMethod(), minId));
 	}
 
 	@Override
 	public Stage<Void> backup(Integer checkpointId, List<D> diffs) {
 		checkState(this.tableBackup != null);
-		return Stage.ofCallable(executor, () -> {
-			try (Connection connection = dataSource.getConnection()) {
-				try (PreparedStatement statement = connection.prepareStatement(
-						sql("INSERT INTO {backup}(id, snapshot) VALUES (?, ?)"))) {
-					statement.setInt(1, checkpointId);
-					statement.setString(2, toJson(diffs));
-					statement.executeUpdate();
-					return null;
-				}
-			}
-		});
+		return Stage.ofCallable(executor,
+				() -> {
+					try (Connection connection = dataSource.getConnection()) {
+						try (PreparedStatement statement = connection.prepareStatement(
+								sql("INSERT INTO {backup}(id, snapshot) VALUES (?, ?)"))) {
+							statement.setInt(1, checkpointId);
+							statement.setString(2, toJson(diffs));
+							statement.executeUpdate();
+							return (Void) null;
+						}
+					}
+				})
+				.whenComplete(toLogger(logger, thisMethod(), checkpointId, diffs));
 	}
 
 	@Override

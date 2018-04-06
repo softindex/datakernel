@@ -98,17 +98,7 @@ public class LogDiff<D> {
 
 	@Override
 	public String toString() {
-		return "LogDiff{" +
-				"positions=" + positions +
-				", diffs=" + diffs.size() +
-				'}';
-	}
-
-	public String deepToString() {
-		return "LogDiff{" +
-				"positions=" + positions +
-				", diffs=" + diffs +
-				'}';
+		return "{positions:" + positions.keySet() + ", diffs:" + diffs.size() + '}';
 	}
 
 	@Override

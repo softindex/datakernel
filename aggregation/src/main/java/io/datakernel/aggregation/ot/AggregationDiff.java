@@ -63,10 +63,7 @@ public final class AggregationDiff {
 
 	@Override
 	public String toString() {
-		return "AggregationDiff{" +
-				"addedChunks=" + addedChunks +
-				", removedChunks=" + removedChunks +
-				'}';
+		return "{addedChunks:" + addedChunks.size() + ", removedChunks:" + removedChunks.size() + '}';
 	}
 
 	@Override

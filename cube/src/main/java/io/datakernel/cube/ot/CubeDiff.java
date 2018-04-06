@@ -63,9 +63,7 @@ public class CubeDiff {
 
 	@Override
 	public String toString() {
-		return "CubeDiff{" +
-				"diffs=" + diffs +
-				'}';
+		return "{diffs:" + diffs.size() + '}';
 	}
 
 	@Override

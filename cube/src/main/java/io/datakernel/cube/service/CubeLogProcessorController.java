@@ -16,7 +16,6 @@ import io.datakernel.logfs.ot.LogOTState;
 import io.datakernel.ot.OTAlgorithms;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.ot.OTSystem;
-import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,6 +26,8 @@ import java.util.Set;
 import static io.datakernel.async.AsyncCallable.sharedCall;
 import static io.datakernel.async.Stages.collectSequence;
 import static io.datakernel.async.Stages.collectToList;
+import static io.datakernel.util.LogUtils.thisMethod;
+import static io.datakernel.util.LogUtils.toLogger;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
@@ -44,7 +45,6 @@ public final class CubeLogProcessorController implements EventloopJmxMBeanEx {
 
 	private boolean parallelRunner;
 
-	private final Stopwatch sw = Stopwatch.createUnstarted();
 	private StageStats stageProcessLogs = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private StageStats stageProcessLogsImpl = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private ValueStats addedChunks = ValueStats.create(DEFAULT_SMOOTHING_WINDOW);
@@ -89,13 +89,9 @@ public final class CubeLogProcessorController implements EventloopJmxMBeanEx {
 	}
 
 	Stage<Boolean> doProcessLogs() {
-		sw.reset().start();
-		logger.info("Start log processing from head: {}", stateManager.getRevision());
-		logger.trace("Start state: {}", stateManager);
 		return process()
 				.whenComplete(stageProcessLogs.recordStats())
-				.whenComplete(this::logResult)
-				.whenComplete(($, throwable) -> logger.trace("Finish state: {}", stateManager));
+				.whenComplete(toLogger(logger, thisMethod(), stateManager));
 	}
 
 	Stage<Boolean> process() {
@@ -122,14 +118,15 @@ public final class CubeLogProcessorController implements EventloopJmxMBeanEx {
 
 								return stateManager.pull()
 										.thenCompose($ -> stateManager.getAlgorithms().mergeHeadsAndPush())
-										.thenCompose(mergeId -> stateManager.pull(mergeId))
+										.thenCompose(stateManager::pull)
 										.thenCompose($ -> stateManager.pull())
 										.thenCompose($ -> stateManager.commit())
 										.thenCompose($ -> chunkStorage.finish(addedChunks(diffs)))
 										.thenCompose($ -> stateManager.push())
 										.thenApply($ -> true);
 							});
-				});
+				})
+				.whenComplete(toLogger(logger, thisMethod(), stateManager));
 	}
 
 	private void cubeDiffJmx(List<LogDiff<CubeDiff>> logDiffs) {
@@ -157,11 +154,6 @@ public final class CubeLogProcessorController implements EventloopJmxMBeanEx {
 				.flatMap(LogDiff::diffs)
 				.flatMap(CubeDiff::addedChunks)
 				.collect(toSet());
-	}
-
-	private <T> void logResult(T value, Throwable throwable) {
-		if (throwable == null) logger.info("Processor finish in {}", sw.stop());
-		else logger.error("Processor error in {}", sw.stop(), throwable);
 	}
 
 	@Override

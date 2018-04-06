@@ -3,8 +3,7 @@ package io.datakernel.ot;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static io.datakernel.util.CollectionUtils.difference;
-import static io.datakernel.util.CollectionUtils.nullToEmpty;
+import static io.datakernel.util.CollectionUtils.*;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toSet;
 
@@ -94,4 +93,11 @@ final class OTLoadedGraph<K, D> {
 	private static <D> String diffsToGraphViz(List<D> diffs) {
 		return diffs.isEmpty() ? "∅" : diffs.size() == 1 ? diffs.get(0).toString() : diffs.toString();
 	}
+
+	@Override
+	public String toString() {
+		return "{nodes=" + union(child2parent.keySet(), parent2child.keySet()) +
+				", edges:" + parent2child.values().stream().mapToInt(Map::size).sum() + '}';
+	}
+
 }
