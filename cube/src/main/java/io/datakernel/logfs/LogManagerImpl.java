@@ -48,7 +48,6 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBeanEx {
 	public static final DateTimeFormatter DEFAULT_DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH").withZone(ZoneOffset.UTC);
 	public static final MemSize DEFAULT_BUFFER_SIZE = MemSize.kilobytes(256);
-	public static final int DEFAULT_AUTO_FLUSH_INTERVAL = -1;
 
 	private final Logger logger = LoggerFactory.getLogger(LogManagerImpl.class);
 	private final Eventloop eventloop;
@@ -56,8 +55,8 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 	private final BufferSerializer<T> serializer;
 	private final DateTimeFormatter dateTimeFormatter;
 
-	private int bufferSize = DEFAULT_BUFFER_SIZE.toInt();
-	private int autoFlushIntervalMillis = DEFAULT_AUTO_FLUSH_INTERVAL;
+	private MemSize bufferSize = DEFAULT_BUFFER_SIZE;
+	private Duration autoFlushInterval = null;
 
 	private LogManagerImpl(Eventloop eventloop, LogFileSystem fileSystem, BufferSerializer<T> serializer) {
 		this(eventloop, fileSystem, serializer, DEFAULT_DATE_TIME_FORMATTER);
@@ -82,21 +81,17 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 	}
 
 	public LogManagerImpl<T> withBufferSize(int bufferSize) {
-		this.bufferSize = bufferSize;
+		this.bufferSize = MemSize.of(bufferSize);
 		return this;
 	}
 
 	public LogManagerImpl<T> withBufferSize(MemSize bufferSize) {
-		this.bufferSize = bufferSize.toInt();
+		this.bufferSize = bufferSize;
 		return this;
 	}
 
-	public LogManagerImpl<T> withAutoDelay(Duration autoFlushInterval) {
-		return withAutoDelay((int) autoFlushInterval.toMillis());
-	}
-
-	public LogManagerImpl<T> withAutoDelay(int autoFlushIntervalMillis) {
-		this.autoFlushIntervalMillis = autoFlushIntervalMillis;
+	public LogManagerImpl<T> withAutoFlushInterval(Duration autoFlushInterval) {
+		this.autoFlushInterval = autoFlushInterval;
 		return this;
 	}
 
@@ -106,8 +101,8 @@ public final class LogManagerImpl<T> implements LogManager<T>, EventloopJmxMBean
 
 		return Stage.of(StreamTransformer.<T>idenity()
 				.with(StreamBinarySerializer.create(serializer)
-						.withAutoFlush(autoFlushIntervalMillis)
-						.withDefaultBufferSize(bufferSize)
+						.withAutoFlushInterval(autoFlushInterval)
+						.withInitialBufferSize(bufferSize)
 						.withSkipSerializationErrors())
 				.with(StreamLZ4Compressor.fastCompressor())
 				.applyTo(LogStreamChunker.create(fileSystem, dateTimeFormatter, logPartition))

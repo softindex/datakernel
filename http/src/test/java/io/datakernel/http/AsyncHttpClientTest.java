@@ -26,11 +26,13 @@ import io.datakernel.eventloop.SimpleServer.SocketHandlerProvider;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.exception.ParseException;
 import io.datakernel.stream.processor.ByteBufRule;
+import io.datakernel.util.MemSize;
 import org.junit.Rule;
 import org.junit.Test;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
@@ -75,7 +77,7 @@ public class AsyncHttpClientTest {
 
 	@Test(expected = AsyncTimeoutException.class)
 	public void testClientTimeoutConnect() throws Throwable {
-		int TIMEOUT = 1;
+		Duration TIMEOUT = Duration.ofMillis(1);
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop).withConnectTimeout(TIMEOUT);
@@ -107,7 +109,7 @@ public class AsyncHttpClientTest {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 		AsyncHttpServer httpServer = HelloWorldServer.helloWorldServer(eventloop, PORT);
-		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop).withMaxHttpMessageSize(12);
+		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop).withMaxHttpMessageSize(MemSize.of(12));
 
 		httpServer.listen();
 

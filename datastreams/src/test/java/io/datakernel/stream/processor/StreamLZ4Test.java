@@ -21,6 +21,7 @@ import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
+import io.datakernel.util.MemSize;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -75,9 +76,9 @@ public class StreamLZ4Test {
 		byte[] expected = byteBufsToByteArray(buffers);
 
 		StreamProducer<ByteBuf> producer = StreamProducer.ofIterable(buffers);
-		StreamByteChunker preBuf = StreamByteChunker.create(64, 128);
+		StreamByteChunker preBuf = StreamByteChunker.create(MemSize.of(64), MemSize.of(128));
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor();
-		StreamByteChunker postBuf = StreamByteChunker.create(64, 128);
+		StreamByteChunker postBuf = StreamByteChunker.create(MemSize.of(64), MemSize.of(128));
 		StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create();
 		StreamConsumerToList<ByteBuf> consumer = StreamConsumerToList.create();
 

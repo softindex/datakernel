@@ -62,8 +62,8 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	private final Path path;
 
 	private String filePattern = DEFAULT_FILE_PATTERN;
-	private int readBlockSize = DEFAULT_SORTER_BLOCK_SIZE.toInt();
-	private int writeBlockSize = DEFAULT_SORTER_BLOCK_SIZE.toInt();
+	private MemSize readBlockSize = DEFAULT_SORTER_BLOCK_SIZE;
+	private MemSize writeBlockSize = DEFAULT_SORTER_BLOCK_SIZE;
 	private int compressionLevel = 0;
 
 	// region creators
@@ -99,19 +99,11 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	}
 
 	public StreamSorterStorageImpl<T> withReadBlockSize(MemSize readBlockSize) {
-		return withReadBlockSize(readBlockSize.toInt());
-	}
-
-	public StreamSorterStorageImpl<T> withReadBlockSize(int readBlockSize) {
 		this.readBlockSize = readBlockSize;
 		return this;
 	}
 
 	public StreamSorterStorageImpl<T> withWriteBlockSize(MemSize writeBlockSize) {
-		return withWriteBlockSize(writeBlockSize.toInt());
-	}
-
-	public StreamSorterStorageImpl<T> withWriteBlockSize(int writeBlockSize) {
 		this.writeBlockSize = writeBlockSize;
 		return this;
 	}
@@ -134,9 +126,9 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 		return AsyncFile.openAsync(executorService, path, StreamFileWriter.CREATE_OPTIONS)
 				.thenApply(file -> StreamTransformer.<T>idenity()
 						.with(StreamBinarySerializer.create(serializer))
-						.with(StreamByteChunker.create(writeBlockSize / 2, writeBlockSize))
+						.with(StreamByteChunker.create(writeBlockSize.map(bytes -> bytes / 2), writeBlockSize))
 						.with(StreamLZ4Compressor.create(compressionLevel))
-						.with(StreamByteChunker.create(writeBlockSize / 2, writeBlockSize))
+						.with(StreamByteChunker.create(writeBlockSize.map(bytes -> bytes / 2), writeBlockSize))
 						.applyTo(StreamFileWriter.create(file).withFlushAsResult())
 						.thenApply($ -> partition)
 						.withLateBinding());

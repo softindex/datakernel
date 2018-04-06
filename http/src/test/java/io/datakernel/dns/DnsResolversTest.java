@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
@@ -64,7 +65,7 @@ public class DnsResolversTest {
 	public void setUp() throws Exception {
 		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		nativeDnsResolver = AsyncDnsClient.create(eventloop).withTimeout(3_000L).withDnsServerAddress(LOCAL_DNS);
+		nativeDnsResolver = AsyncDnsClient.create(eventloop).withTimeout(Duration.ofMillis(3_000)).withDnsServerAddress(LOCAL_DNS);
 	}
 
 	public void testCacheInitialize(AsyncDnsClient asyncDnsClient) throws UnknownHostException {
@@ -106,7 +107,7 @@ public class DnsResolversTest {
 	public void testTimeout() throws Exception {
 		String domainName = "www.google.com";
 		AsyncDnsClient asyncDnsClient = AsyncDnsClient.create(eventloop)
-				.withTimeout(1_000L)
+				.withTimeout(Duration.ofMillis(1_000))
 				.withDnsServerAddress(UNREACHABLE_DNS);
 
 		CompletableFuture<InetAddress[]> future = asyncDnsClient.resolve4(domainName).toCompletableFuture();

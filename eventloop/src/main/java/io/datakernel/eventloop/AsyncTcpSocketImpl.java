@@ -61,8 +61,8 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	private long readTimeout = NO_TIMEOUT;
 	private long writeTimeout = NO_TIMEOUT;
-	protected int readMaxSize = DEFAULT_READ_BUF_SIZE.toInt();
-	protected int writeMaxSize = MAX_MERGE_SIZE.toInt();
+	protected MemSize readMaxSize = DEFAULT_READ_BUF_SIZE;
+	protected MemSize writeMaxSize = MAX_MERGE_SIZE;
 
 	private ScheduledRunnable checkReadTimeout;
 	private ScheduledRunnable checkWriteTimeout;
@@ -185,9 +185,9 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		}
 		AsyncTcpSocketImpl asyncTcpSocket = new AsyncTcpSocketImpl(eventloop, socketChannel);
 		if (socketSettings.hasImplReadTimeout())
-			asyncTcpSocket.readTimeout = socketSettings.getImplReadTimeout();
+			asyncTcpSocket.readTimeout = socketSettings.getImplReadTimeout().toMillis();
 		if (socketSettings.hasImplWriteTimeout())
-			asyncTcpSocket.writeTimeout = socketSettings.getImplWriteTimeout();
+			asyncTcpSocket.writeTimeout = socketSettings.getImplWriteTimeout().toMillis();
 		if (socketSettings.hasImplReadSize())
 			asyncTcpSocket.readMaxSize = socketSettings.getImplReadSize();
 		if (socketSettings.hasImplWriteSize())
@@ -372,6 +372,8 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	}
 
 	private void doWrite() throws IOException {
+		int writeMaxSize = this.writeMaxSize.toInt();
+
 		while (true) {
 			ByteBuf bufToSend = writeQueue.poll();
 			if (bufToSend == null)

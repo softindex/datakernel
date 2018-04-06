@@ -66,12 +66,7 @@ public final class SerializerBuilder {
 		SerializerGen createSubclassesSerializer(Class<?> type, SerializeSubclasses serializeSubclasses);
 	}
 
-	private final Helper helper = new Helper() {
-		@Override
-		public SerializerGen createSubclassesSerializer(Class<?> type, SerializeSubclasses serializeSubclasses) {
-			return SerializerBuilder.this.createSubclassesSerializer(type, serializeSubclasses);
-		}
-	};
+	private final Helper helper = SerializerBuilder.this::createSubclassesSerializer;
 
 	private SerializerBuilder(DefiningClassLoader definingClassLoader) {
 		this.definingClassLoader = definingClassLoader;
@@ -92,71 +87,43 @@ public final class SerializerBuilder {
 	public static SerializerBuilder create(DefiningClassLoader definingClassLoader) {
 		SerializerBuilder builder = new SerializerBuilder(definingClassLoader);
 
-		builder.setSerializer(Object.class, new SerializerGenBuilder() {
-			@Override
-			public SerializerGen serializer(Class<?> type, SerializerForType[] generics, SerializerGen fallback) {
-				check(type.getTypeParameters().length == generics.length);
-				check(fallback == null);
-				SerializerGenClass serializer;
-				SerializeInterface annotation = Annotations.findAnnotation(SerializeInterface.class, type.getAnnotations());
-				if (annotation != null && annotation.impl() != void.class) {
-					serializer = new SerializerGenClass(type, generics, annotation.impl());
-				} else {
-					serializer = new SerializerGenClass(type, generics);
-				}
-				builder.initTasks.add(new Runnable() {
-					@Override
-					public void run() {
-						builder.scanAnnotations(type, generics, serializer);
-					}
-				});
+		builder.setSerializer(Object.class, (type, generics, fallback) -> {
+			check(type.getTypeParameters().length == generics.length);
+			check(fallback == null);
+			SerializerGenClass serializer;
+			SerializeInterface annotation = Annotations.findAnnotation(SerializeInterface.class, type.getAnnotations());
+			if (annotation != null && annotation.impl() != void.class) {
+				serializer = new SerializerGenClass(type, generics, annotation.impl());
+			} else {
+				serializer = new SerializerGenClass(type, generics);
+			}
+			builder.initTasks.add(() -> builder.scanAnnotations(type, generics, serializer));
+			return serializer;
+		});
+		builder.setSerializer(List.class, (type, generics, fallback) -> {
+			check(generics.length == 1);
+			return new SerializerGenList(generics[0].serializer);
+		});
+		builder.setSerializer(Collection.class, (type, generics, fallback) -> {
+			check(generics.length == 1);
+			return new SerializerGenList(generics[0].serializer);
+		});
+		builder.setSerializer(Set.class, (type, generics, fallback) -> {
+			check(generics.length == 1);
+			return new SerializerGenSet(generics[0].serializer);
+		});
+		builder.setSerializer(Map.class, (type, generics, fallback) -> {
+			check(generics.length == 2);
+			return new SerializerGenMap(generics[0].serializer, generics[1].serializer);
+		});
+		builder.setSerializer(Enum.class, (type, generics, fallback) -> {
+			List<FoundSerializer> foundSerializers = builder.scanSerializers(type, generics);
+			if (!foundSerializers.isEmpty()) {
+				SerializerGenClass serializer = new SerializerGenClass(type);
+				builder.initTasks.add(() -> builder.scanAnnotations(type, generics, serializer));
 				return serializer;
-			}
-		});
-		builder.setSerializer(List.class, new SerializerGenBuilder() {
-			@Override
-			public SerializerGen serializer(Class<?> type, SerializerForType[] generics, SerializerGen fallback) {
-				check(generics.length == 1);
-				return new SerializerGenList(generics[0].serializer);
-			}
-		});
-		builder.setSerializer(Collection.class, new SerializerGenBuilder() {
-			@Override
-			public SerializerGen serializer(Class<?> type, SerializerForType[] generics, SerializerGen fallback) {
-				check(generics.length == 1);
-				return new SerializerGenList(generics[0].serializer);
-			}
-		});
-		builder.setSerializer(Set.class, new SerializerGenBuilder() {
-			@Override
-			public SerializerGen serializer(Class<?> type, SerializerForType[] generics, SerializerGen fallback) {
-				check(generics.length == 1);
-				return new SerializerGenSet(generics[0].serializer);
-			}
-		});
-		builder.setSerializer(Map.class, new SerializerGenBuilder() {
-			@Override
-			public SerializerGen serializer(Class<?> type, SerializerForType[] generics, SerializerGen fallback) {
-				check(generics.length == 2);
-				return new SerializerGenMap(generics[0].serializer, generics[1].serializer);
-			}
-		});
-		builder.setSerializer(Enum.class, new SerializerGenBuilder() {
-			@Override
-			public SerializerGen serializer(Class<?> type, SerializerForType[] generics, SerializerGen fallback) {
-				List<FoundSerializer> foundSerializers = builder.scanSerializers(type, generics);
-				if (!foundSerializers.isEmpty()) {
-					SerializerGenClass serializer = new SerializerGenClass(type);
-					builder.initTasks.add(new Runnable() {
-						@Override
-						public void run() {
-							builder.scanAnnotations(type, generics, serializer);
-						}
-					});
-					return serializer;
-				} else {
-					return new SerializerGenEnum(type);
-				}
+			} else {
+				return new SerializerGenEnum(type);
 			}
 		});
 		builder.setSerializer(Boolean.TYPE, new SerializerGenBoolean());
@@ -349,7 +316,7 @@ public final class SerializerBuilder {
 	}
 
 	public <T> BufferSerializer<T> build(Class<?> type, SerializerGenBuilder.SerializerForType[] generics) {
-		return buildBufferSerializer(createSerializerGen(type, generics, Collections.<SerializerGenBuilder>emptyList()), version);
+		return buildBufferSerializer(createSerializerGen(type, generics, Collections.emptyList()), version);
 	}
 
 	private SerializerGen createSerializerGen(Class<?> type, SerializerGenBuilder.SerializerForType[] generics, List<SerializerGenBuilder> mods) {
@@ -417,7 +384,7 @@ public final class SerializerBuilder {
 			SerializerGen serializer = createSerializerGen(
 					subclass,
 					new SerializerGenBuilder.SerializerForType[]{},
-					Collections.<SerializerGenBuilder>emptyList()
+					Collections.emptyList()
 			);
 			subclasses.put(subclass, serializer);
 		}
@@ -813,6 +780,7 @@ public final class SerializerBuilder {
 		}
 	}
 
+	@SuppressWarnings("unchecked")
 	private <T> BufferSerializer<T> buildBufferSerializer(SerializerGen serializerGen, int serializeVersion) {
 		return (BufferSerializer<T>) createSerializer(serializerGen, serializeVersion);
 	}

@@ -32,7 +32,7 @@ import static java.util.Arrays.asList;
  * Class is supposed to work in single thread
  */
 public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxStatsWithReset, JmxStatsWithSmoothingWindow {
-	private static final Duration TOO_LONG_TIME_PERIOD_BETWEEN_REFRESHES = Duration.ofHours(5);
+	private static final long TOO_LONG_TIME_PERIOD_BETWEEN_REFRESHES = Duration.ofHours(5).toMillis();
 	private static final double LN_2 = log(2);
 
 	// region standard levels
@@ -146,15 +146,8 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 	 *
 	 * @param smoothingWindow in seconds
 	 */
-	public static ValueStats create(double smoothingWindow) {
-		return new ValueStats(smoothingWindow);
-	}
-
-	/**
-	 * @see ValueStats#create(double)
-	 */
 	public static ValueStats create(Duration smoothingWindow) {
-		return create(smoothingWindow.toMillis() / 1000.0);
+		return new ValueStats(smoothingWindow.toMillis() / 1000.0);
 	}
 	// endregion
 
@@ -395,7 +388,7 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 	}
 
 	private static boolean isTimePeriodValid(long timePeriod) {
-		return timePeriod < TOO_LONG_TIME_PERIOD_BETWEEN_REFRESHES.toMillis() && timePeriod > 0;
+		return timePeriod < TOO_LONG_TIME_PERIOD_BETWEEN_REFRESHES && timePeriod > 0;
 	}
 
 	@Override

@@ -59,7 +59,7 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements
 	private final ExecutorService executorService;
 	private final Path dir;
 
-	private int readBlockSize = DEFAULT_READ_BLOCK_SIZE.toInt();
+	private MemSize readBlockSize = DEFAULT_READ_BLOCK_SIZE;
 
 	private final StageStats stageList = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final StageStats stageRead = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
@@ -93,13 +93,9 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements
 		return create(eventloop, executorService, dir.resolve(logName));
 	}
 
-	public LocalFsLogFileSystem withReadBlockSize(int readBlockSize) {
+	public LocalFsLogFileSystem withReadBlockSize(MemSize readBlockSize) {
 		this.readBlockSize = readBlockSize;
 		return this;
-	}
-
-	public LocalFsLogFileSystem withReadBlockSize(MemSize readBlockSize) {
-		return withReadBlockSize(readBlockSize.toInt());
 	}
 
 	private Path path(String logPartition, LogFile logFile) {
@@ -181,12 +177,12 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements
 
 	@JmxAttribute
 	public int getReadBlockSize() {
-		return readBlockSize;
+		return readBlockSize.toInt();
 	}
 
 	@JmxAttribute
 	public void setReadBlockSize(int readBlockSize) {
-		this.readBlockSize = readBlockSize;
+		this.readBlockSize = MemSize.of(readBlockSize);
 	}
 
 	@JmxAttribute

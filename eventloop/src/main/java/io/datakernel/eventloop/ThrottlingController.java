@@ -101,21 +101,13 @@ public final class ThrottlingController implements EventloopJmxMBean {
 				.withInitialThrottling(INITIAL_THROTTLING);
 	}
 
-	public ThrottlingController withTargetTime(long targetTimeMillis) {
-		setTargetTimeMillis((int) targetTimeMillis);
+	public ThrottlingController withTargetTime(Duration targetTime) {
+		setTargetTimeMillis((int) targetTime.toMillis());
 		return this;
 	}
 
-	public ThrottlingController withTargetTime(Duration targetTime) {
-		return withTargetTime(targetTime.toMillis());
-	}
-
 	public ThrottlingController withGcTime(Duration gcTime) {
-		return withGcTime(gcTime.toMillis());
-	}
-
-	public ThrottlingController withGcTime(long gcTimeMillis) {
-		setGcTimeMillis((int) gcTimeMillis);
+		setGcTimeMillis((int) gcTime.toMillis());
 		return this;
 	}
 
@@ -230,7 +222,6 @@ public final class ThrottlingController implements EventloopJmxMBean {
 		checkArgument(targetTimeMillis > 0, "Target time should not be zero or less");
 		this.targetTimeMillis = targetTimeMillis;
 	}
-
 
 	@JmxAttribute
 	public int getGcTimeMillis() {

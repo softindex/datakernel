@@ -25,6 +25,7 @@ import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
+import io.datakernel.util.MemSize;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -51,7 +52,7 @@ public class StreamBinaryDeserializerTest {
 	public void before() {
 		eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		deserializer = StreamBinaryDeserializer.create(createSerializer());
-		serializer = StreamBinarySerializer.create(createSerializer()).withDefaultBufferSize(1);
+		serializer = StreamBinarySerializer.create(createSerializer()).withInitialBufferSize(MemSize.of(1));
 	}
 
 	private BufferSerializer<Data> createSerializer() {
@@ -93,7 +94,7 @@ public class StreamBinaryDeserializerTest {
 
 		producer
 				.with(serializer)
-				.with(StreamByteChunker.create(4, 4))
+				.with(StreamByteChunker.create(MemSize.of(4), MemSize.of(4)))
 				.with(deserializer)
 				.streamTo(consumer);
 
@@ -110,7 +111,7 @@ public class StreamBinaryDeserializerTest {
 		CompletableFuture<List<Data>> future =
 				StreamProducer.ofIterable(inputData)
 						.with(serializer)
-						.with(StreamByteChunker.create(1, 1))
+						.with(StreamByteChunker.create(MemSize.of(1), MemSize.of(1)))
 						.with(deserializer)
 						.toList()
 						.toCompletableFuture();

@@ -18,6 +18,8 @@ package io.datakernel.util;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.StringJoiner;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -70,6 +72,10 @@ public final class MemSize {
 		return (int) bytes;
 	}
 
+	public MemSize map(Function<Long, Long> fn) {
+		return MemSize.of(fn.apply(bytes));
+	}
+
 	public static MemSize valueOf(String string) {
 		Set<String> units = new HashSet<>();
 		Matcher matcher = PATTERN.matcher(string.trim().toLowerCase());
@@ -92,40 +98,35 @@ public final class MemSize {
 			}
 
 			long memsize = Long.parseLong(matcher.group("size"));
-			int floating = 0;
+			long floating = 0;
 			int denominator = 1;
 			String floatingPoint = matcher.group("floating");
 			if (floatingPoint != null) {
 				if (unit.equals("") || unit.equals("b")) {
 					throw new IllegalArgumentException("MemSize unit bytes cannot be fractional");
 				}
-				floating = Integer.parseInt(floatingPoint);
+				floating = Long.parseLong(floatingPoint);
 				for (int i = 0; i < floatingPoint.length(); i++) {
 					denominator *= 10;
 				}
 			}
 
-			long temp;
 			switch (unit) {
 				case "tb":
 					result += memsize * TB;
-					temp = multiplyExact(floating, TB) / denominator;
-					result += temp;
+					result += multiplyExact(floating, TB) / denominator;
 					break;
 				case "gb":
 					result += memsize * GB;
-					temp = multiplyExact(floating, GB) / denominator;
-					result += temp;
+					result += multiplyExact(floating, GB) / denominator;
 					break;
 				case "mb":
 					result += memsize * MB;
-					temp = multiplyExact(floating, MB) / denominator;
-					result += temp;
+					result += multiplyExact(floating, MB) / denominator;
 					break;
 				case "kb":
 					result += memsize * KB;
-					temp = multiplyExact(floating, KB) / denominator;
-					result += temp;
+					result += multiplyExact(floating, KB) / denominator;
 					break;
 				case "b":
 				case "":
@@ -161,22 +162,31 @@ public final class MemSize {
 			return "0b";
 		}
 
-		StringBuilder result = new StringBuilder();
+		StringJoiner joiner = new StringJoiner(" ");
 		long divideResult, remainder, unit = TB;
 		do {
 			divideResult = bytes / unit;
 			remainder = bytes % unit;
 
 			if (divideResult != 0) {
-				result.append(divideResult).append(getUnit(unit)).append(remainder == 0 ? "" : " ");
+				joiner.add(divideResult + getUnit(unit));
 			}
 
 			bytes -= divideResult * unit;
 			unit /= 1024L;
 		} while (remainder != 0);
 
-		System.out.println("");
-		return result.toString();
+		return joiner.toString();
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		MemSize memSize = (MemSize) o;
+
+		return bytes == memSize.bytes;
 	}
 
 	@Override

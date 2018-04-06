@@ -26,6 +26,7 @@ import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import io.datakernel.stream.processor.StreamBinarySerializer;
+import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,7 +79,7 @@ class StressClient {
 
 					Path file = clientStorage.resolve(fileName);
 
-					StreamFileReader.readFile(executor, file).withBufferSize(16 * 1024)
+					StreamFileReader.readFile(executor, file).withBufferSize(MemSize.kilobytes(16))
 							.streamTo(
 									client.uploadStream(fileName))
 							.getConsumerResult()
@@ -206,7 +207,7 @@ class StressClient {
 
 		StreamProducer<TestObject> producer = StreamProducer.ofIterable(Collections.singletonList(obj));
 		StreamBinarySerializer<TestObject> serializer = StreamBinarySerializer.create(bufferSerializer)
-				.withDefaultBufferSize(StreamBinarySerializer.MAX_SIZE);
+				.withInitialBufferSize(StreamBinarySerializer.MAX_SIZE);
 
 		producer.with(serializer).streamTo(
 				client.uploadStream("someName" + i));

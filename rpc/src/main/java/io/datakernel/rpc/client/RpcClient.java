@@ -140,7 +140,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create().withTcpNoDelay(true);
 	public static final Duration DEFAULT_CONNECT_TIMEOUT = Duration.ofSeconds(10);
 	public static final Duration DEFAULT_RECONNECT_INTERVAL = Duration.ofSeconds(1);
-	public static final MemSize DEFAULT_PACKET_SIZE = StreamBinarySerializer.DEFAULT_BUFFER_SIZE;
+	public static final MemSize DEFAULT_PACKET_SIZE = StreamBinarySerializer.DEFAULT_INITIAL_BUFFER_SIZE;
 	public static final MemSize MAX_PACKET_SIZE = StreamBinarySerializer.MAX_SIZE;
 
 	private Logger logger = getLogger(this.getClass());
@@ -156,10 +156,10 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	private List<InetSocketAddress> addresses = new ArrayList<>();
 	private Map<InetSocketAddress, RpcClientConnection> connections = new HashMap<>();
 
-	private int defaultPacketSize = DEFAULT_PACKET_SIZE.toInt();
-	private int maxPacketSize = MAX_PACKET_SIZE.toInt();
+	private MemSize defaultPacketSize = DEFAULT_PACKET_SIZE;
+	private MemSize maxPacketSize = MAX_PACKET_SIZE;
 	private boolean compression = false;
-	private int flushDelayMillis = 0;
+	private Duration autoFlushInterval = Duration.ZERO;
 
 	private List<Class<?>> messageTypes;
 	private long connectTimeoutMillis = DEFAULT_CONNECT_TIMEOUT.toMillis();
@@ -277,47 +277,31 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		return this;
 	}
 
-	public RpcClient withStreamProtocol(int defaultPacketSize, int maxPacketSize, boolean compression) {
+	public RpcClient withStreamProtocol(MemSize defaultPacketSize, MemSize maxPacketSize, boolean compression) {
 		this.defaultPacketSize = defaultPacketSize;
 		this.maxPacketSize = maxPacketSize;
 		this.compression = compression;
 		return this;
 	}
 
-	public RpcClient withStreamProtocol(MemSize defaultPacketSize, MemSize maxPacketSize, boolean compression) {
-		return withStreamProtocol(defaultPacketSize.toInt(), maxPacketSize.toInt(), compression);
-	}
-
-	public RpcClient withFlushDelay(Duration flushDelay) {
-		return withFlushDelay((int) flushDelay.toMillis());
-	}
-
-	public RpcClient withFlushDelay(int flushDelayMillis) {
-		this.flushDelayMillis = flushDelayMillis;
+	public RpcClient withAutoFlushInterval(Duration autoFlushInterval) {
+		this.autoFlushInterval = autoFlushInterval;
 		return this;
-	}
-
-	public RpcClient withConnectTimeout(Duration connectTimeout) {
-		return withConnectTimeout(connectTimeout.toMillis());
 	}
 
 	/**
 	 * Waits for a specified time before connecting.
 	 *
-	 * @param connectTimeoutMillis time before connecting
+	 * @param connectTimeout time before connecting
 	 * @return the RPC client with connect timeout settings
 	 */
-	public RpcClient withConnectTimeout(long connectTimeoutMillis) {
-		this.connectTimeoutMillis = connectTimeoutMillis;
+	public RpcClient withConnectTimeout(Duration connectTimeout) {
+		this.connectTimeoutMillis = connectTimeout.toMillis();
 		return this;
 	}
 
 	public RpcClient withReconnectInterval(Duration reconnectInterval) {
-		return withReconnectInterval(reconnectInterval.toMillis());
-	}
-
-	public RpcClient withReconnectInterval(long reconnectIntervalMillis) {
-		this.reconnectIntervalMillis = reconnectIntervalMillis;
+		this.reconnectIntervalMillis = reconnectInterval.toMillis();
 		return this;
 	}
 
@@ -436,7 +420,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 						.withInspector(statsSocket);
 				AsyncTcpSocket asyncTcpSocket = sslContext != null ? wrapClientSocket(eventloop, asyncTcpSocketImpl, sslContext, sslExecutor) : asyncTcpSocketImpl;
 				RpcStream stream = new RpcStream(asyncTcpSocket, serializer, defaultPacketSize, maxPacketSize,
-						flushDelayMillis, compression, false); // , statsSerializer, statsDeserializer, statsCompressor, statsDecompressor);
+						autoFlushInterval, compression, false); // , statsSerializer, statsDeserializer, statsCompressor, statsDecompressor);
 				RpcClientConnection connection = new RpcClientConnection(eventloop, RpcClient.this, address, stream);
 				stream.setListener(connection);
 				asyncTcpSocket.setEventHandler(stream.getSocketEventHandler());
@@ -507,12 +491,9 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		generalConnectsStats.closedConnects++;
 		connectsStatsPerAddress.get(address).closedConnects++;
 
-		eventloop.delayBackground(reconnectIntervalMillis, new Runnable() {
-			@Override
-			public void run() {
-				if (running) {
-					connect(address);
-				}
+		eventloop.delayBackground(reconnectIntervalMillis, () -> {
+			if (running) {
+				connect(address);
 			}
 		});
 	}

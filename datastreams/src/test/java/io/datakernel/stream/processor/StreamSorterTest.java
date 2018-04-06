@@ -21,6 +21,7 @@ import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducer;
+import io.datakernel.util.MemSize;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -61,7 +62,7 @@ public class StreamSorterTest {
 		StreamProducer<Integer> source2 = StreamProducer.of(111);
 
 		StreamSorterStorageImpl<Integer> storage = StreamSorterStorageImpl.create(executor, intSerializer(), tempFolder.getRoot().toPath())
-				.withWriteBlockSize(64);
+				.withWriteBlockSize(MemSize.of(64));
 
 		StreamConsumerWithResult<Integer, Integer> writer1 = storage.writeStream();
 		StreamConsumerWithResult<Integer, Integer> writer2 = storage.writeStream();

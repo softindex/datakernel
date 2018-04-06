@@ -16,6 +16,7 @@
 
 package io.datakernel.net;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.util.MemSize;
 
 import java.io.IOException;
@@ -29,24 +30,29 @@ import static java.net.StandardSocketOptions.*;
  * This class used to change settings for socket. It will be applying with creating new socket
  */
 public final class SocketSettings {
-	protected static final int DEF_INT = -1;
 	protected static final byte DEF_BOOL = -1;
 	protected static final byte TRUE = 1;
 	protected static final byte FALSE = 0;
 
-	private final int sendBufferSize;
-	private final int receiveBufferSize;
 	private final byte keepAlive;
 	private final byte reuseAddress;
 	private final byte tcpNoDelay;
 
-	private final long implReadTimeout;
-	private final long implWriteTimeout;
-	private final int implReadSize;
-	private final int implWriteSize;
+	@Nullable
+	private final MemSize sendBufferSize;
+	@Nullable
+	private final MemSize receiveBufferSize;
+	@Nullable
+	private final Duration implReadTimeout;
+	@Nullable
+	private final Duration implWriteTimeout;
+	@Nullable
+	private final MemSize implReadSize;
+	@Nullable
+	private final MemSize implWriteSize;
 
 	// region builders
-	private SocketSettings(int sendBufferSize, int receiveBufferSize, byte keepAlive, byte reuseAddress, byte tcpNoDelay, long implReadTimeout, long implWriteTimeout, int implReadSize, int implWriteSize) {
+	private SocketSettings(@Nullable MemSize sendBufferSize, @Nullable MemSize receiveBufferSize, byte keepAlive, byte reuseAddress, byte tcpNoDelay, @Nullable Duration implReadTimeout, @Nullable Duration implWriteTimeout, MemSize implReadSize, MemSize implWriteSize) {
 		this.sendBufferSize = sendBufferSize;
 		this.receiveBufferSize = receiveBufferSize;
 		this.keepAlive = keepAlive;
@@ -59,23 +65,15 @@ public final class SocketSettings {
 	}
 
 	public static SocketSettings create() {
-		return new SocketSettings(DEF_INT, DEF_INT, DEF_BOOL, DEF_BOOL, DEF_BOOL, DEF_INT, DEF_INT, DEF_INT, DEF_INT);
-	}
-
-	public SocketSettings withSendBufferSize(int sendBufferSize) {
-		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay, implReadTimeout, implWriteTimeout, implReadSize, implWriteSize);
+		return new SocketSettings(null, null, DEF_BOOL, DEF_BOOL, DEF_BOOL, null, null, null, null);
 	}
 
 	public SocketSettings withSendBufferSize(MemSize sendBufferSize) {
-		return withSendBufferSize(sendBufferSize.toInt());
-	}
-
-	public SocketSettings withReceiveBufferSize(int receiveBufferSize) {
 		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay, implReadTimeout, implWriteTimeout, implReadSize, implWriteSize);
 	}
 
 	public SocketSettings withReceiveBufferSize(MemSize receiveBufferSize) {
-		return withReceiveBufferSize(receiveBufferSize.toInt());
+		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay, implReadTimeout, implWriteTimeout, implReadSize, implWriteSize);
 	}
 
 	public SocketSettings withKeepAlive(boolean keepAlive) {
@@ -91,44 +89,28 @@ public final class SocketSettings {
 	}
 
 	public SocketSettings withImplReadTimeout(Duration implReadTimeout) {
-		return withImplReadTimeout(implReadTimeout.toMillis());
-	}
-
-	public SocketSettings withImplReadTimeout(long implReadTimeout) {
 		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay, implReadTimeout, implWriteTimeout, implReadSize, implWriteSize);
 	}
 
 	public SocketSettings withImplWriteTimeout(Duration implWriteTimeout) {
-		return withImplWriteTimeout(implWriteTimeout.toMillis());
-	}
-
-	public SocketSettings withImplWriteTimeout(long implWriteTimeout) {
-		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay, implReadTimeout, implWriteTimeout, implReadSize, implWriteSize);
-	}
-
-	public SocketSettings withImplReadSize(int implReadSize) {
 		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay, implReadTimeout, implWriteTimeout, implReadSize, implWriteSize);
 	}
 
 	public SocketSettings withImplReadSize(MemSize implReadSize) {
-		return withImplReadSize(implReadSize.toInt());
-	}
-
-	public SocketSettings withImplWriteSize(int implWriteSize) {
 		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay, implReadTimeout, implWriteTimeout, implReadSize, implWriteSize);
 	}
 
 	public SocketSettings withImplWriteSize(MemSize implWriteSize) {
-		return withImplWriteSize(implWriteSize.toInt());
+		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay, implReadTimeout, implWriteTimeout, implReadSize, implWriteSize);
 	}
 	// endregion
 
 	public void applySettings(SocketChannel channel) throws IOException {
-		if (sendBufferSize != DEF_INT) {
-			channel.setOption(SO_SNDBUF, sendBufferSize);
+		if (sendBufferSize != null) {
+			channel.setOption(SO_SNDBUF, sendBufferSize.toInt());
 		}
-		if (receiveBufferSize != DEF_INT) {
-			channel.setOption(SO_RCVBUF, receiveBufferSize);
+		if (receiveBufferSize != null) {
+			channel.setOption(SO_RCVBUF, receiveBufferSize.toInt());
 		}
 		if (keepAlive != DEF_BOOL) {
 			channel.setOption(SO_KEEPALIVE, keepAlive != FALSE);
@@ -142,19 +124,19 @@ public final class SocketSettings {
 	}
 
 	public boolean hasSendBufferSize() {
-		return sendBufferSize != DEF_INT;
+		return sendBufferSize != null;
 	}
 
-	public int getSendBufferSize() {
+	public MemSize getSendBufferSize() {
 		check(hasSendBufferSize());
 		return sendBufferSize;
 	}
 
 	public boolean hasReceiveBufferSize() {
-		return receiveBufferSize != DEF_INT;
+		return receiveBufferSize != null;
 	}
 
-	public int getReceiveBufferSize() {
+	public MemSize getReceiveBufferSize() {
 		check(hasReceiveBufferSize());
 		return receiveBufferSize;
 	}
@@ -187,37 +169,37 @@ public final class SocketSettings {
 	}
 
 	public boolean hasImplReadTimeout() {
-		return implReadTimeout != DEF_INT;
+		return implReadTimeout != null;
 	}
 
-	public long getImplReadTimeout() {
+	public Duration getImplReadTimeout() {
 		assert hasImplReadTimeout();
 		return implReadTimeout;
 	}
 
 	public boolean hasImplWriteTimeout() {
-		return implWriteTimeout != DEF_INT;
+		return implWriteTimeout != null;
 	}
 
-	public long getImplWriteTimeout() {
+	public Duration getImplWriteTimeout() {
 		assert hasImplWriteTimeout();
 		return implWriteTimeout;
 	}
 
 	public boolean hasImplReadSize() {
-		return implReadSize != DEF_INT;
+		return implReadSize != null;
 	}
 
-	public int getImplReadSize() {
+	public MemSize getImplReadSize() {
 		assert hasImplReadSize();
 		return implReadSize;
 	}
 
 	public boolean hasImplWriteSize() {
-		return implWriteSize != DEF_INT;
+		return implWriteSize != null;
 	}
 
-	public int getImplWriteSize() {
+	public MemSize getImplWriteSize() {
 		assert hasImplWriteSize();
 		return implWriteSize;
 	}

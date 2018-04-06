@@ -187,20 +187,13 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 	}
 
 	/**
-	 * @see AsyncDnsClient#withTimeout(long)
-	 */
-	public AsyncDnsClient withTimeout(Duration timeout) {
-		return withTimeout(timeout.toMillis());
-	}
-
-	/**
 	 * Creates a client which waits for result for specified timeout
 	 *
 	 * @param timeout time which this resolver will wait result
 	 * @return a client, waiting for response for specified timeout
 	 */
-	public AsyncDnsClient withTimeout(long timeout) {
-		this.timeout = timeout;
+	public AsyncDnsClient withTimeout(Duration timeout) {
+		this.timeout = timeout.toMillis();
 		return this;
 	}
 
@@ -228,20 +221,16 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 		return this;
 	}
 
+	/**
+	 * Creates DnsCache with DEFAULT_TIMED_OUT_EXCEPTION_TTL
+	 */
 	public AsyncDnsClient withExpiration(Duration errorCacheExpiration, Duration hardExpirationDelta) {
-		return withExpiration(errorCacheExpiration.toMillis(), hardExpirationDelta.toMillis());
-	}
-
-	public AsyncDnsClient withExpiration(long errorCacheExpirationMillis, long hardExpirationDeltaMillis) {
-		return withExpiration(errorCacheExpirationMillis, hardExpirationDeltaMillis, DEFAULT_TIMED_OUT_EXCEPTION_TTL.toMillis());
+		return withExpiration(errorCacheExpiration, hardExpirationDelta, DEFAULT_TIMED_OUT_EXCEPTION_TTL);
 	}
 
 	public AsyncDnsClient withExpiration(Duration errorCacheExpiration, Duration hardExpirationDelta, Duration timedOutExceptionTtl) {
-		return withExpiration(errorCacheExpiration.toMillis(), hardExpirationDelta.toMillis(), timedOutExceptionTtl.toMillis());
-	}
-
-	public AsyncDnsClient withExpiration(long errorCacheExpirationMillis, long hardExpirationDeltaMillis, long timedOutExceptionTtl) {
-		this.cache = DnsCache.create(eventloop, errorCacheExpirationMillis, hardExpirationDeltaMillis, timedOutExceptionTtl, inspector);
+		this.cache = DnsCache.create(eventloop, errorCacheExpiration,
+				hardExpirationDelta, timedOutExceptionTtl, inspector);
 		return this;
 	}
 
@@ -449,7 +438,7 @@ public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBeanE
 
 	@JmxAttribute
 	public void setMaxTtlSeconds(long maxTtlSeconds) {
-		cache.setMaxTtl(maxTtlSeconds);
+		cache.setMaxTtl(Duration.ofSeconds(maxTtlSeconds));
 	}
 
 	@JmxAttribute

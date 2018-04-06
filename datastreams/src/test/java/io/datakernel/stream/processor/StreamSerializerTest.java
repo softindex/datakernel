@@ -21,6 +21,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ExpectedException;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
+import io.datakernel.util.MemSize;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -48,8 +49,8 @@ public class StreamSerializerTest {
 
 		StreamProducer<Integer> producer = StreamProducer.of(10, 20, 30, 40);
 		StreamBinarySerializer<Integer> serializerStream = StreamBinarySerializer.create(intSerializer())
-				.withDefaultBufferSize(14)
-				.withMaxMessageSize(14);
+				.withInitialBufferSize(MemSize.of(14))
+				.withMaxMessageSize(MemSize.of(14));
 		StreamConsumerToList<ByteBuf> consumer = StreamConsumerToList.create();
 
 		producer.with(serializerStream).streamTo(
@@ -79,7 +80,7 @@ public class StreamSerializerTest {
 		List<Integer> list = new ArrayList<>();
 		StreamProducer<Integer> producer = StreamProducer.of(1, 2, 3);
 		StreamBinarySerializer<Integer> serializerStream = StreamBinarySerializer.create(intSerializer())
-				.withDefaultBufferSize(1);
+				.withInitialBufferSize(MemSize.of(1));
 		StreamBinaryDeserializer<Integer> deserializerStream = StreamBinaryDeserializer.create(intSerializer());
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 
@@ -104,7 +105,7 @@ public class StreamSerializerTest {
 		List<Integer> list = new ArrayList<>();
 		StreamProducer<Integer> producer = StreamProducer.closingWithError(new ExpectedException("Test Exception"));
 		StreamBinarySerializer<Integer> serializerStream = StreamBinarySerializer.create(intSerializer())
-				.withDefaultBufferSize(1);
+				.withInitialBufferSize(MemSize.of(1));
 		StreamBinaryDeserializer<Integer> deserializerStream = StreamBinaryDeserializer.create(intSerializer());
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
 

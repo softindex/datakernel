@@ -66,12 +66,10 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 	}
 
 	public StreamFileReader withBufferSize(MemSize bufferSize) {
-		return withBufferSize(bufferSize.toInt());
-	}
 
-	public StreamFileReader withBufferSize(int bufferSize) {
-		this.bufferSize = bufferSize;
-		checkArgument(bufferSize > 0, "Buffer size cannot be less than or equal to zero");
+		checkArgument(bufferSize.toInt() > 0, "Buffer size cannot be less than or equal to zero");
+
+		this.bufferSize = bufferSize.toInt();
 		return this;
 	}
 

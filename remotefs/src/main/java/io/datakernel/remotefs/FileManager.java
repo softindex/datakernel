@@ -24,6 +24,7 @@ import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
+import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,7 +48,7 @@ public final class FileManager {
 	private final ExecutorService executor;
 	private final Path storagePath;
 
-	private int readerBufferSize = 256 * (1 << 10);     // 256kb
+	private MemSize readerBufferSize = MemSize.kilobytes(256);
 
 	private FileManager(Eventloop eventloop, ExecutorService executor, Path storagePath) {
 		this.eventloop = checkNotNull(eventloop);

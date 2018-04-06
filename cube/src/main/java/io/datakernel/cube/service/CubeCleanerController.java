@@ -38,9 +38,9 @@ public final class CubeCleanerController implements EventloopJmxMBeanEx {
 	private final OTRemote<Integer, LogDiff<CubeDiff>> remote;
 	private final LocalFsChunkStorage chunksStorage;
 
-	private long freezeTimeout;
+	private Duration freezeTimeout;
 
-	private long chunksCleanupDelay = DEFAULT_CHUNKS_CLEANUP_DELAY.toMillis();
+	private Duration chunksCleanupDelay = DEFAULT_CHUNKS_CLEANUP_DELAY;
 	private int extraSnapshotsCount = DEFAULT_SNAPSHOTS_COUNT;
 
 	private final ValueStats chunksCount = ValueStats.create(DEFAULT_SMOOTHING_WINDOW);
@@ -67,10 +67,6 @@ public final class CubeCleanerController implements EventloopJmxMBeanEx {
 	}
 
 	public CubeCleanerController withChunksCleanupDelay(Duration chunksCleanupDelay) {
-		return withChunksCleanupDelay(chunksCleanupDelay.toMillis());
-	}
-
-	public CubeCleanerController withChunksCleanupDelay(long chunksCleanupDelay) {
 		this.chunksCleanupDelay = chunksCleanupDelay;
 		return this;
 	}
@@ -81,10 +77,6 @@ public final class CubeCleanerController implements EventloopJmxMBeanEx {
 	}
 
 	public CubeCleanerController withFreezeTimeout(Duration freezeTimeout) {
-		return withFreezeTimeout(freezeTimeout.toMillis());
-	}
-
-	public CubeCleanerController withFreezeTimeout(long freezeTimeout) {
 		this.freezeTimeout = freezeTimeout;
 		return this;
 	}
@@ -109,7 +101,7 @@ public final class CubeCleanerController implements EventloopJmxMBeanEx {
 
 	Stage<Void> doCleanup() {
 		return remote.getHeads()
-				.thenCompose(heads -> findFrozenCut(heads, eventloop.currentTimeMillis() - freezeTimeout))
+				.thenCompose(heads -> findFrozenCut(heads, eventloop.currentTimeMillis() - freezeTimeout.toMillis()))
 				.thenCompose(this::cleanupFrozenCut)
 				.whenComplete(stageCleanup.recordStats());
 	}
@@ -139,7 +131,7 @@ public final class CubeCleanerController implements EventloopJmxMBeanEx {
 	Stage<Void> trySaveSnapshotAndCleanupChunks(Integer checkpointNode) {
 		logger.info("Checkpoint node: {}", checkpointNode);
 		return algorithms.checkout(checkpointNode).thenCompose(changes -> {
-			long cleanupTimestamp = eventloop.currentTimeMillis() - chunksCleanupDelay;
+			long cleanupTimestamp = eventloop.currentTimeMillis() - chunksCleanupDelay.toMillis();
 
 			return remote.saveSnapshot(checkpointNode, changes)
 					.thenCompose($ -> {
@@ -205,12 +197,12 @@ public final class CubeCleanerController implements EventloopJmxMBeanEx {
 
 	@JmxAttribute
 	public long getChunksCleanupDelay() {
-		return chunksCleanupDelay;
+		return chunksCleanupDelay.toMillis();
 	}
 
 	@JmxAttribute
 	public void setChunksCleanupDelay(long chunksCleanupDelay) {
-		this.chunksCleanupDelay = chunksCleanupDelay;
+		this.chunksCleanupDelay = Duration.ofMillis(chunksCleanupDelay);
 	}
 
 	@JmxAttribute
@@ -225,12 +217,12 @@ public final class CubeCleanerController implements EventloopJmxMBeanEx {
 
 	@JmxAttribute
 	public long getFreezeTimeout() {
-		return freezeTimeout;
+		return freezeTimeout.toMillis();
 	}
 
 	@JmxAttribute
 	public void setFreezeTimeout(long freezeTimeout) {
-		this.freezeTimeout = freezeTimeout;
+		this.freezeTimeout = Duration.ofMillis(freezeTimeout);
 	}
 
 	@JmxAttribute

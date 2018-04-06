@@ -18,8 +18,8 @@ import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.eventloop.Eventloop.DEFAULT_IDLE_INTERVAL;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.AsyncHttpServer.DEFAULT_KEEP_ALIVE;
-import static io.datakernel.rpc.server.RpcServer.DEFAULT_PACKET_SIZE;
-import static io.datakernel.rpc.server.RpcServer.MAX_PACKET_SIZE;
+import static io.datakernel.rpc.server.RpcServer.DEFAULT_INITIAL_BUFFER_SIZE;
+import static io.datakernel.rpc.server.RpcServer.DEFAULT_MAX_MESSAGE_SIZE;
 import static io.datakernel.trigger.Severity.HIGH;
 import static io.datakernel.trigger.Severity.WARNING;
 import static java.lang.System.currentTimeMillis;
@@ -106,9 +106,9 @@ public class Initializers {
 		return server -> server
 				.initialize(ofAbstractServer(config.getChild("rpc.server")))
 				.withStreamProtocol(
-						config.get(ofMemSize(), "rpc.streamProtocol.defaultPacketSize", DEFAULT_PACKET_SIZE),
-						config.get(ofMemSize(), "rpc.streamProtocol.maxPacketSize", MAX_PACKET_SIZE),
+						config.get(ofMemSize(), "rpc.streamProtocol.defaultPacketSize", DEFAULT_INITIAL_BUFFER_SIZE),
+						config.get(ofMemSize(), "rpc.streamProtocol.maxPacketSize", DEFAULT_MAX_MESSAGE_SIZE),
 						config.get(ofBoolean(), "rpc.streamProtocol.compression", false))
-				.withFlushDelay(config.get(ofDuration(), "rpc.flushDelay", Duration.ZERO));
+				.withAutoFlushInterval(config.get(ofDuration(), "rpc.flushDelay", Duration.ZERO));
 	}
 }

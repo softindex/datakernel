@@ -72,29 +72,24 @@ final class DnsCache {
 	 * Creates a new DNS cache.
 	 *
 	 * @param timeProvider               time provider
-	 * @param errorCacheExpirationMillis expiration time for errors without time to live
-	 * @param hardExpirationDeltaMillis  delta between time at which entry is considered resolved, but needs
-	 * @param timedOutExceptionTtlMillis expiration time for timed out exception
+	 * @param errorCacheExpiration expiration time for errors without time to live
+	 * @param hardExpirationDelta  delta between time at which entry is considered resolved, but needs
+	 * @param timedOutExceptionTtl expiration time for timed out exception
 	 */
-	private DnsCache(CurrentTimeProvider timeProvider, long errorCacheExpirationMillis, long hardExpirationDeltaMillis,
-	                 long timedOutExceptionTtlMillis, AsyncDnsClient.Inspector inspector) {
-		this.errorCacheExpirationSeconds = errorCacheExpirationMillis / 1000;
-		this.hardExpirationDeltaSeconds = hardExpirationDeltaMillis / 1000;
+	private DnsCache(CurrentTimeProvider timeProvider, Duration errorCacheExpiration, Duration hardExpirationDelta,
+	                 Duration timedOutExceptionTtl, AsyncDnsClient.Inspector inspector) {
+		this.errorCacheExpirationSeconds = errorCacheExpiration.getSeconds();
+		this.hardExpirationDeltaSeconds = hardExpirationDelta.getSeconds();
 		this.timeProvider = timeProvider;
-		this.timedOutExceptionTtlSeconds = timedOutExceptionTtlMillis / 1000;
+		this.timedOutExceptionTtlSeconds = timedOutExceptionTtl.getSeconds();
 		this.lastCleanupSecond = getCurrentSecond();
 		this.inspector = inspector;
 	}
 
-	public static DnsCache create(CurrentTimeProvider timeProvider, long errorCacheExpirationMillis,
-	                              long hardExpirationDeltaMillis, long timedOutExceptionTtl, AsyncDnsClient.Inspector inspector) {
-		return new DnsCache(timeProvider, errorCacheExpirationMillis, hardExpirationDeltaMillis, timedOutExceptionTtl, inspector);
-	}
-
 	public static DnsCache create(CurrentTimeProvider timeProvider, Duration errorCacheExpiration, Duration hardExpirationDelta,
 								  Duration timedOutExceptionTtl, AsyncDnsClient.Inspector inspector) {
-		return create(timeProvider, errorCacheExpiration.toMillis(), hardExpirationDelta.toMillis(),
-				timedOutExceptionTtl.toMillis(), inspector);
+		return new DnsCache(timeProvider, errorCacheExpiration, hardExpirationDelta,
+				timedOutExceptionTtl, inspector);
 	}
 
 	private boolean isRequestedType(CachedDnsLookupResult cachedResult, boolean requestedIpv6) {
@@ -252,11 +247,7 @@ final class DnsCache {
 	}
 
 	public void setMaxTtl(Duration maxTtl) {
-		this.maxTtlSeconds = maxTtl.toMillis() / 1000;
-	}
-
-	public void setMaxTtl(long maxTtlSeconds) {
-		this.maxTtlSeconds = maxTtlSeconds;
+		this.maxTtlSeconds = maxTtl.getSeconds();
 	}
 
 	public long getTimedOutExceptionTtlSeconds() {
@@ -348,11 +339,7 @@ final class DnsCache {
 	}
 
 	private void setExpiration(Map<Long, Set<String>> expirations, long time, String domain) {
-		Set<String> sameTime = expirations.get(time);
-		if (sameTime == null) {
-			sameTime = new HashSet<>();
-			expirations.put(time, sameTime);
-		}
+		Set<String> sameTime = expirations.computeIfAbsent(time, k -> new HashSet<>());
 		sameTime.add(domain);
 	}
 

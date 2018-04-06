@@ -81,7 +81,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 
 	private AsyncCancellable scheduleExpiredResponsesTask;
 	private int cookie = 0;
-	private int timeoutPrecision = (int) DEFAULT_TIMEOUT_PRECISION.toMillis();
+	private Duration timeoutPrecision = DEFAULT_TIMEOUT_PRECISION;
 	private boolean connectionClosing;
 	private boolean serverClosing;
 
@@ -106,14 +106,10 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 		this.totalRequests = rpcClient.getGeneralRequestsStats().getTotalRequests();
 	}
 
-	public RpcClientConnection withTimeoutPrecision(int timeoutPrecision) {
-		checkArgument(timeoutPrecision > 0, "Timeout precision cannot be zero or less");
+	public RpcClientConnection withTimeoutPrecision(Duration timeoutPrecision) {
+		checkArgument(timeoutPrecision.toMillis() > 0, "Timeout precision cannot be zero or less");
 		this.timeoutPrecision = timeoutPrecision;
 		return this;
-	}
-
-	public RpcClientConnection withTimeoutPrecision(Duration timeoutPrecision) {
-		return withTimeoutPrecision((int) timeoutPrecision.toMillis());
 	}
 
 	@Override

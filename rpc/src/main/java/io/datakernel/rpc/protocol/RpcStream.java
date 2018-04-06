@@ -26,6 +26,9 @@ import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
 import io.datakernel.stream.processor.StreamLZ4Compressor;
 import io.datakernel.stream.processor.StreamLZ4Decompressor;
+import io.datakernel.util.MemSize;
+
+import java.time.Duration;
 
 import static io.datakernel.stream.DataStreams.stream;
 
@@ -47,8 +50,8 @@ public final class RpcStream {
 
 	public RpcStream(AsyncTcpSocket asyncTcpSocket,
 	                 BufferSerializer<RpcMessage> messageSerializer,
-	                 int defaultPacketSize, int maxPacketSize,
-	                 int autoFlushIntervalMillis, boolean compression, boolean server) {
+	                 MemSize initialBufferSize, MemSize maxMessageSize,
+	                 Duration autoFlushInterval, boolean compression, boolean server) {
 
 		connection = SocketStreamingConnection.create(asyncTcpSocket);
 
@@ -111,9 +114,9 @@ public final class RpcStream {
 		};
 
 		StreamBinarySerializer<RpcMessage> serializer = StreamBinarySerializer.create(messageSerializer)
-				.withDefaultBufferSize(defaultPacketSize)
-				.withMaxMessageSize(maxPacketSize)
-				.withAutoFlush(autoFlushIntervalMillis)
+				.withInitialBufferSize(initialBufferSize)
+				.withMaxMessageSize(maxMessageSize)
+				.withAutoFlushInterval(autoFlushInterval)
 				.withSkipSerializationErrors();
 		StreamBinaryDeserializer<RpcMessage> deserializer = StreamBinaryDeserializer.create(messageSerializer);
 

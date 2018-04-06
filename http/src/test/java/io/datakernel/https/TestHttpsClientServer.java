@@ -34,6 +34,7 @@ import java.io.File;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
@@ -83,10 +84,10 @@ public class TestHttpsClientServer {
 				.withSslListenPort(createSslContext("TLSv1.2", keyManagers, trustManagers, new SecureRandom()), executor, SSL_PORT);
 
 		AsyncDnsClient dnsClient = AsyncDnsClient.create(eventloop)
-				.withTimeout(500)
+				.withTimeout(Duration.ofMillis(500))
 				.withDnsServerAddress(GOOGLE_PUBLIC_DNS);
 		AsyncHttpClient client = AsyncHttpClient.create(eventloop)
-				.withConnectTimeout(500)
+				.withConnectTimeout(Duration.ofMillis(500))
 				.withDnsClient(dnsClient)
 				.withSslEnabled(createSslContext("TLSv1.2", keyManagers, trustManagers, new SecureRandom()), executor);
 
@@ -113,12 +114,12 @@ public class TestHttpsClientServer {
 				.withListenAddress(new InetSocketAddress("localhost", PORT));
 
 		AsyncDnsClient dnsClient = AsyncDnsClient.create(eventloop)
-				.withTimeout(500)
+				.withTimeout(Duration.ofMillis(500))
 				.withDnsServerAddress(GOOGLE_PUBLIC_DNS);
 
 		AsyncHttpClient client = AsyncHttpClient.create(eventloop)
 				.withDnsClient(dnsClient)
-				.withConnectTimeout(500)
+				.withConnectTimeout(Duration.ofMillis(500))
 				.withSslEnabled(context, executor);
 
 		HttpRequest httpsRequest = post("https://127.0.0.1:" + SSL_PORT).withBody(wrapAscii("Hello, I am Alice!"));

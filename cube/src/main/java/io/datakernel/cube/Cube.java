@@ -40,7 +40,6 @@ import io.datakernel.stream.StreamConsumerWithResult;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.*;
 import io.datakernel.util.Initializable;
-import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -112,12 +111,11 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 	private int aggregationsChunkSize = Aggregation.DEFAULT_CHUNK_SIZE;
 	private int aggregationsReducerBufferSize = Aggregation.DEFAULT_REDUCER_BUFFER_SIZE;
 	private int aggregationsSorterItemsInMemory = Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY;
-	private int aggregationsSorterBlockSize = Aggregation.DEFAULT_SORTER_BLOCK_SIZE.toInt();
 	private int aggregationsMaxChunksToConsolidate = Aggregation.DEFAULT_MAX_CHUNKS_TO_CONSOLIDATE;
 	private boolean aggregationsIgnoreChunkReadingExceptions = false;
 
 	private int maxOverlappingChunksToProcessLogs = Cube.DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD;
-	private long maxIncrementalReloadPeriodMillis = Aggregation.DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD.toMillis();
+	private Duration maxIncrementalReloadPeriod = Aggregation.DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD;
 
 	static final class AggregationContainer {
 		private final Aggregation aggregation;
@@ -236,7 +234,6 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		private int chunkSize;
 		private int reducerBufferSize;
 		private int sorterItemsInMemory;
-		private int sorterBlockSize;
 		private int maxChunksToConsolidate;
 
 		public AggregationConfig(String id) {
@@ -284,11 +281,6 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 			return this;
 		}
 
-		public AggregationConfig withChunkSize(MemSize chunkSize) {
-			this.chunkSize = chunkSize.toInt();
-			return this;
-		}
-
 		public AggregationConfig withChunkSize(int chunkSize) {
 			this.chunkSize = chunkSize;
 			return this;
@@ -301,16 +293,6 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 
 		public AggregationConfig withSorterItemsInMemory(int sorterItemsInMemory) {
 			this.sorterItemsInMemory = sorterItemsInMemory;
-			return this;
-		}
-
-		public AggregationConfig withSorterBlockSize(MemSize sorterBlockSize) {
-			this.sorterBlockSize = sorterBlockSize.toInt();
-			return this;
-		}
-
-		public AggregationConfig withSorterBlockSize(int sorterBlockSize) {
-			this.sorterBlockSize = sorterBlockSize;
 			return this;
 		}
 
@@ -365,7 +347,6 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 				.withChunkSize(config.chunkSize != 0 ? config.chunkSize : aggregationsChunkSize)
 				.withReducerBufferSize(config.reducerBufferSize != 0 ? config.reducerBufferSize : aggregationsReducerBufferSize)
 				.withSorterItemsInMemory(config.sorterItemsInMemory != 0 ? config.sorterItemsInMemory : aggregationsSorterItemsInMemory)
-				.withSorterBlockSize(config.sorterBlockSize != 0 ? config.sorterBlockSize : aggregationsSorterBlockSize)
 				.withMaxChunksToConsolidate(config.maxChunksToConsolidate != 0 ? config.maxChunksToConsolidate : aggregationsMaxChunksToConsolidate)
 				.withIgnoreChunkReadingExceptions(aggregationsIgnoreChunkReadingExceptions)
 				.withStats(aggregationStats);
@@ -1182,17 +1163,9 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		}
 	}
 
-	public Cube withAggregationsChunkSize(MemSize aggregationsChunkSize) {
-		return withAggregationsChunkSize(aggregationsChunkSize.toInt());
-	}
-
 	public Cube withAggregationsChunkSize(int aggregationsChunkSize) {
 		this.aggregationsChunkSize = aggregationsChunkSize;
 		return this;
-	}
-
-	public Cube withAggregationsReducerBufferSize(MemSize aggregationsReducerBufferSize) {
-		return withAggregationsReducerBufferSize(aggregationsReducerBufferSize.toInt());
 	}
 
 	public Cube withAggregationsReducerBufferSize(int aggregationsReducerBufferSize) {
@@ -1215,28 +1188,6 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 
 	public Cube withAggregationsSorterItemsInMemory(int aggregationsSorterItemsInMemory) {
 		this.aggregationsSorterItemsInMemory = aggregationsSorterItemsInMemory;
-		return this;
-	}
-
-	@JmxAttribute
-	public int getAggregationsSorterBlockSize() {
-		return aggregationsSorterBlockSize;
-	}
-
-	@JmxAttribute
-	public void setAggregationsSorterBlockSize(int aggregationsSorterBlockSize) {
-		this.aggregationsSorterBlockSize = aggregationsSorterBlockSize;
-		for (AggregationContainer aggregationContainer : aggregations.values()) {
-			aggregationContainer.aggregation.setSorterBlockSize(aggregationsSorterBlockSize);
-		}
-	}
-
-	public Cube withAggregationsSorterBlockSize(MemSize aggregationsSorterBlockSize) {
-		return withAggregationsSorterBlockSize(aggregationsSorterBlockSize.toInt());
-	}
-
-	public Cube withAggregationsSorterBlockSize(int aggregationsSorterBlockSize) {
-		this.aggregationsSorterBlockSize = aggregationsSorterBlockSize;
 		return this;
 	}
 
@@ -1292,21 +1243,17 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 	}
 
 	@JmxAttribute
-	public long getMaxIncrementalReloadPeriodMillis() {
-		return maxIncrementalReloadPeriodMillis;
+	public long getMaxIncrementalReloadPeriod() {
+		return maxIncrementalReloadPeriod.toMillis();
 	}
 
 	@JmxAttribute
-	public void setMaxIncrementalReloadPeriodMillis(long maxIncrementalReloadPeriodMillis) {
-		this.maxIncrementalReloadPeriodMillis = maxIncrementalReloadPeriodMillis;
+	public void setMaxIncrementalReloadPeriod(long maxIncrementalReloadPeriod) {
+		this.maxIncrementalReloadPeriod = Duration.ofMillis(maxIncrementalReloadPeriod);
 	}
 
 	public Cube withMaxIncrementalReloadPeriod(Duration maxIncrementalReloadPeriod) {
-		return withMaxIncrementalReloadPeriod(maxIncrementalReloadPeriod.toMillis());
-	}
-
-	public Cube withMaxIncrementalReloadPeriod(long maxIncrementalReloadPeriodMillis) {
-		this.maxIncrementalReloadPeriodMillis = maxIncrementalReloadPeriodMillis;
+		this.maxIncrementalReloadPeriod = maxIncrementalReloadPeriod;
 		return this;
 	}
 

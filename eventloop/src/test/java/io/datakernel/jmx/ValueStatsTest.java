@@ -52,7 +52,7 @@ public class ValueStatsTest {
 
 	@Test
 	public void itShouldReturnProperStandardDeviationAtLimit() {
-		Duration smoothingWindow = Duration.ofSeconds(10);
+		Duration smoothingWindow = Duration.ofSeconds(100);
 		long currentTimestamp = 0;
 		ValueStats valueStats = ValueStats.create(smoothingWindow);
 		int iterations = 10000;

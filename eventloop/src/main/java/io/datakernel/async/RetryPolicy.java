@@ -39,13 +39,9 @@ public interface RetryPolicy {
 	}
 
 	default RetryPolicy withMaxTotalRetryTimeout(Duration maxRetryTimeout) {
-		return withMaxTotalRetryTimeout(maxRetryTimeout.toMillis());
-	}
-
-	default RetryPolicy withMaxTotalRetryTimeout(long maxRetryTimeout) {
 		return (now, lastError, retryCount, retryTimestamp) -> {
 			long nextRetryTimestamp = nextRetryTimestamp(now, lastError, retryCount, retryTimestamp);
-			return nextRetryTimestamp - retryTimestamp < maxRetryTimeout ? nextRetryTimestamp : 0;
+			return nextRetryTimestamp - retryTimestamp < maxRetryTimeout.toMillis() ? nextRetryTimestamp : 0;
 		};
 	}
 

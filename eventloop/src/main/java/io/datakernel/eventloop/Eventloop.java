@@ -139,7 +139,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 */
 	private long timestamp;
 
-	private long idleInterval = DEFAULT_IDLE_INTERVAL.toMillis();
+	private Duration idleInterval = DEFAULT_IDLE_INTERVAL;
 
 	private ThrottlingController throttlingController;
 	private int throttlingKeys;
@@ -199,13 +199,9 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		return this;
 	}
 
-	public Eventloop withIdleInterval(long idleIntervalMillis) {
-		this.idleInterval = idleIntervalMillis;
-		return this;
-	}
-
 	public Eventloop withIdleInterval(Duration idleInterval) {
-		return withIdleInterval(idleInterval.toMillis());
+		this.idleInterval = idleInterval;
+		return this;
 	}
 
 	public Eventloop withCurrentThread() {
@@ -433,7 +429,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		if (!concurrentTasks.isEmpty() || !localTasks.isEmpty())
 			return 0L;
 		if (scheduledTasks.isEmpty() && backgroundTasks.isEmpty())
-			return idleInterval;
+			return idleInterval.toMillis();
 		return Math.min(getTimeBeforeExecution(scheduledTasks), getTimeBeforeExecution(backgroundTasks));
 	}
 
@@ -447,7 +443,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			}
 			return first.getTimestamp() - currentTimeMillis();
 		}
-		return idleInterval;
+		return idleInterval.toMillis();
 	}
 
 	/**
@@ -905,6 +901,10 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		return schedule(timestamp + delayMillis, runnable);
 	}
 
+	public ScheduledRunnable delay(Duration delay, Runnable runnable) {
+		return delay(delay.toMillis(), runnable);
+	}
+
 	/**
 	 * Schedules new background task. Returns {@link ScheduledRunnable} with this runnable.
 	 * <p/>
@@ -1130,12 +1130,12 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 	@JmxAttribute
 	public long getIdleInterval() {
-		return idleInterval;
+		return idleInterval.toMillis();
 	}
 
 	@JmxAttribute
 	public void setIdleInterval(long idleInterval) {
-		this.idleInterval = idleInterval;
+		this.idleInterval = Duration.ofMillis(idleInterval);
 	}
 
 	final class ExtraStatsExtractor {

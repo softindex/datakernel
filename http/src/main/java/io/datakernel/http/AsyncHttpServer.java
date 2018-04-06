@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.SettableStage;
 import io.datakernel.eventloop.AbstractServer;
@@ -153,72 +154,65 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	}
 
 	public AsyncHttpServer withKeepAliveTimeout(Duration keepAliveTime) {
-		return withKeepAliveTimeout(keepAliveTime.toMillis());
-	}
+		long keepAliveTimeMillis = keepAliveTime.toMillis();
 
-	public AsyncHttpServer withKeepAliveTimeout(long keepAliveTimeMillis) {
 		checkArgument(keepAliveTimeMillis >= 0, "Keep alive timeout should not be less than zero");
+
 		this.keepAliveTimeoutMillis = (int) keepAliveTimeMillis;
-		return self();
+		return this;
 	}
 
 	public AsyncHttpServer withNoKeepAlive() {
-		return withKeepAliveTimeout(0);
+		return withKeepAliveTimeout(Duration.ZERO);
 	}
 
 	public AsyncHttpServer withReadTimeout(Duration readTimeout) {
-		return withReadTimeout(readTimeout.toMillis());
-	}
+		long readTimeoutMillis = readTimeout.toMillis();
 
-	public AsyncHttpServer withReadTimeout(long readTimeoutMillis) {
 		checkArgument(readTimeoutMillis >= 0, "Read timeout should not be less than zero");
+
 		this.readTimeoutMillis = (int) readTimeoutMillis;
-		return self();
+		return this;
 	}
 
 	public AsyncHttpServer withWriteTimeout(Duration writeTimeout) {
-		return withWriteTimeout(writeTimeout.toMillis());
-	}
+		long writeTimeoutMillis = writeTimeout.toMillis();
 
-	public AsyncHttpServer withWriteTimeout(long writeTimeoutMillis) {
 		checkArgument(writeTimeoutMillis >= 0, "Write timeout should not be less than zero");
+
 		this.writeTimeoutMillis = (int) writeTimeoutMillis;
-		return self();
+		return this;
 	}
 
-	public AsyncHttpServer withMaxHttpMessageSize(int maxHttpMessageSize) {
-		this.maxHttpMessageSize = maxHttpMessageSize;
-		return self();
-	}
-
-	public AsyncHttpServer withMaxHttpMessageSize(MemSize size) {
-		return withMaxHttpMessageSize(size.toInt());
+	public AsyncHttpServer withMaxHttpMessageSize(@Nullable MemSize maxHttpMessageSize) {
+		this.maxHttpMessageSize = maxHttpMessageSize != null ? maxHttpMessageSize.toInt() : Integer.MAX_VALUE;
+		return this;
 	}
 
 	public AsyncHttpServer withHttpErrorFormatter(HttpExceptionFormatter httpExceptionFormatter) {
 		this.errorFormatter = httpExceptionFormatter;
-		return self();
+		return this;
 	}
 
 	public AsyncHttpServer withInspector(Inspector inspector) {
 		this.inspector = inspector;
-		return self();
+		return this;
 	}
 
-	public int getMaxHttpMessageSize() {
-		return maxHttpMessageSize;
+	public MemSize getMaxHttpMessageSize() {
+		return MemSize.of(maxHttpMessageSize);
 	}
 
-	public int getKeepAliveTimeoutMillis() {
-		return keepAliveTimeoutMillis;
+	public Duration getKeepAliveTimeoutMillis() {
+		return Duration.ofMillis(keepAliveTimeoutMillis);
 	}
 
-	public int getReadTimeoutMillis() {
-		return readTimeoutMillis;
+	public Duration getReadTimeoutMillis() {
+		return Duration.ofMillis(readTimeoutMillis);
 	}
 
-	public int getWriteTimeoutMillis() {
-		return writeTimeoutMillis;
+	public Duration getWriteTimeoutMillis() {
+		return Duration.ofMillis(writeTimeoutMillis);
 	}
 
 	// endregion

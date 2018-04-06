@@ -99,29 +99,24 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		this.eventloop = eventloop;
 	}
 
-	@SuppressWarnings("unchecked")
-	protected S self() {
-		return (S) this;
-	}
-
 	public final S withAcceptFilter(AcceptFilter acceptFilter) {
 		this.acceptFilter = acceptFilter;
-		return self();
+		return (S) this;
 	}
 
 	public final S withServerSocketSettings(ServerSocketSettings serverSocketSettings) {
 		this.serverSocketSettings = serverSocketSettings;
-		return self();
+		return (S) this;
 	}
 
 	public final S withSocketSettings(SocketSettings socketSettings) {
 		this.socketSettings = socketSettings;
-		return self();
+		return (S) this;
 	}
 
 	public final S withListenAddresses(List<InetSocketAddress> addresses) {
 		this.listenAddresses = addresses;
-		return self();
+		return (S) this;
 	}
 
 	public final S withListenAddresses(InetSocketAddress... addresses) {
@@ -140,7 +135,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		this.sslContext = sslContext;
 		this.sslExecutor = sslExecutor;
 		this.sslListenAddresses = addresses;
-		return self();
+		return (S) this;
 	}
 
 	public final S withSslListenAddresses(SSLContext sslContext, ExecutorService sslExecutor, InetSocketAddress... addresses) {
@@ -161,12 +156,12 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 
 	public final S withAcceptOnce(boolean acceptOnce) {
 		this.acceptOnce = acceptOnce;
-		return self();
+		return (S) this;
 	}
 
 	public final S withLogger(Logger logger) {
 		this.logger = logger;
-		return self();
+		return (S) this;
 	}
 	// endregion
 

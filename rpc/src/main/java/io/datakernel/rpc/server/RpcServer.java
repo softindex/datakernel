@@ -93,16 +93,16 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS = ServerSocketSettings.create(16384);
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create().withTcpNoDelay(true);
 
-	public static final MemSize DEFAULT_PACKET_SIZE = StreamBinarySerializer.DEFAULT_BUFFER_SIZE;
-	public static final MemSize MAX_PACKET_SIZE = StreamBinarySerializer.MAX_SIZE;
+	public static final MemSize DEFAULT_INITIAL_BUFFER_SIZE = StreamBinarySerializer.DEFAULT_INITIAL_BUFFER_SIZE;
+	public static final MemSize DEFAULT_MAX_MESSAGE_SIZE = StreamBinarySerializer.MAX_SIZE;
 
-	private int defaultPacketSize = DEFAULT_PACKET_SIZE.toInt();
-	private int maxPacketSize = MAX_PACKET_SIZE.toInt();
+	private MemSize initialBufferSize = DEFAULT_INITIAL_BUFFER_SIZE;
+	private MemSize maxMessageSize = DEFAULT_MAX_MESSAGE_SIZE;
 	private boolean compression = false;
-	private int flushDelayMillis = 0;
+	private Duration autoFlushInterval = Duration.ZERO;
 
-	private ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
 	private Map<Class<?>, RpcRequestHandler<?, ?>> handlers = new LinkedHashMap<>();
+	private ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
 	private SerializerBuilder serializerBuilder = SerializerBuilder.create(classLoader);
 	private List<Class<?>> messageTypes;
 
@@ -167,32 +167,23 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		checkNotNull(messageTypes, "Message types should not be null");
 		checkArgument(new HashSet<>(messageTypes).size() == messageTypes.size(), "Message types must be unique");
 		this.messageTypes = messageTypes;
-		return self();
+		return (io.datakernel.rpc.server.RpcServer) this;
 	}
 
 	public RpcServer withSerializerBuilder(SerializerBuilder serializerBuilder) {
 		this.serializerBuilder = serializerBuilder;
-		return self();
-	}
-
-	public RpcServer withStreamProtocol(int defaultPacketSize, int maxPacketSize, boolean compression) {
-		this.defaultPacketSize = defaultPacketSize;
-		this.maxPacketSize = maxPacketSize;
-		this.compression = compression;
-		return self();
+		return (io.datakernel.rpc.server.RpcServer) this;
 	}
 
 	public RpcServer withStreamProtocol(MemSize defaultPacketSize, MemSize maxPacketSize, boolean compression) {
-		return withStreamProtocol(defaultPacketSize.toInt(), maxPacketSize.toInt(), compression);
+		this.initialBufferSize = defaultPacketSize;
+		this.maxMessageSize = maxPacketSize;
+		this.compression = compression;
+		return (io.datakernel.rpc.server.RpcServer) this;
 	}
 
-	public RpcServer withFlushDelay(Duration flushDelay) {
-		return withFlushDelay((int) flushDelay.toMillis());
-	}
-
-	public RpcServer withFlushDelay(int flushDelayMillis) {
-		checkArgument(flushDelayMillis >= 0, "Flush delay should not be less than zero");
-		this.flushDelayMillis = flushDelayMillis;
+	public RpcServer withAutoFlushInterval(Duration autoFlushInterval) {
+		this.autoFlushInterval = autoFlushInterval;
 		return this;
 	}
 
@@ -217,8 +208,8 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 
 	@Override
 	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
-		RpcStream stream = new RpcStream(asyncTcpSocket, serializer, defaultPacketSize, maxPacketSize,
-				flushDelayMillis, compression, true); // , statsSerializer, statsDeserializer, statsCompressor, statsDecompressor);
+		RpcStream stream = new RpcStream(asyncTcpSocket, serializer, initialBufferSize, maxMessageSize,
+				autoFlushInterval, compression, true); // , statsSerializer, statsDeserializer, statsCompressor, statsDecompressor);
 		RpcServerConnection connection = new RpcServerConnection(this, asyncTcpSocket.getRemoteSocketAddress(), handlers, stream);
 		stream.setListener(connection);
 		add(connection);

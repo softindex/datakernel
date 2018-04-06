@@ -31,6 +31,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLContext;
 import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -59,7 +60,7 @@ public class TestHttpsClient {
 		ExecutorService executor = newCachedThreadPool();
 
 		AsyncDnsClient dnsClient = AsyncDnsClient.create(eventloop)
-				.withTimeout(500)
+				.withTimeout(Duration.ofMillis(500))
 				.withDnsServerAddress(inetAddress("8.8.8.8"));
 
 		AsyncHttpClient client = AsyncHttpClient.create(eventloop)

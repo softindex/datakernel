@@ -28,6 +28,7 @@ import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.ByteBufRule;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
+import io.datakernel.util.MemSize;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -160,7 +161,7 @@ public class MessagingWithBinaryStreamingTest {
 							assertEquals("start", msg);
 							StreamProducer.ofIterable(source)
 									.with(StreamBinarySerializer.create(longSerializer())
-											.withDefaultBufferSize(1))
+											.withInitialBufferSize(MemSize.of(1)))
 									.streamTo(messaging.sendBinaryStream());
 						}
 					});
@@ -250,7 +251,7 @@ public class MessagingWithBinaryStreamingTest {
 
 						StreamProducer.ofIterable(source)
 								.with(StreamBinarySerializer.create(longSerializer())
-										.withDefaultBufferSize(1))
+										.withInitialBufferSize(MemSize.of(1)))
 								.streamTo(messaging.sendBinaryStream());
 
 						asyncTcpSocket.setEventHandler(messaging);
@@ -320,7 +321,7 @@ public class MessagingWithBinaryStreamingTest {
 
 				StreamProducer.ofIterable(source)
 						.with(StreamBinarySerializer.create(longSerializer())
-								.withDefaultBufferSize(1))
+								.withInitialBufferSize(MemSize.of(1)))
 						.streamTo(messaging.sendBinaryStream());
 
 				messaging.receive()
@@ -396,7 +397,7 @@ public class MessagingWithBinaryStreamingTest {
 
 				StreamProducer.ofIterable(source)
 						.with(StreamBinarySerializer.create(longSerializer())
-								.withDefaultBufferSize(1))
+								.withInitialBufferSize(MemSize.of(1)))
 						.streamTo(messaging.sendBinaryStream());
 
 				asyncTcpSocket.setEventHandler(messaging);

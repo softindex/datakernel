@@ -22,6 +22,7 @@ import io.datakernel.file.AsyncFile;
 import io.datakernel.stream.StreamProducerWithResult;
 import io.datakernel.stream.file.StreamFileWriter;
 import io.datakernel.stream.processor.ByteBufRule;
+import io.datakernel.util.MemSize;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.junit.Before;
@@ -66,7 +67,7 @@ public class TestFileManager {
 	private Path storage;
 	private Path client;
 
-	private static final int bufferSize = 2;
+	private static final MemSize bufferSize = MemSize.of(2);
 
 	@Before
 	public void setup() throws IOException {

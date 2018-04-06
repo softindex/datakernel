@@ -56,7 +56,7 @@ public final class RemoteFsChunkStorage implements AggregationChunkStorage, Even
 	private final IRemoteFsClient client;
 	private final IdGenerator<Long> idGenerator;
 
-	private int bufferSize = DEFAULT_BUFFER_SIZE.toInt();
+	private MemSize bufferSize = DEFAULT_BUFFER_SIZE;
 
 	private final StageStats stageIdGenerator = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final StageStats stageOpenR1 = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
@@ -88,13 +88,8 @@ public final class RemoteFsChunkStorage implements AggregationChunkStorage, Even
 		return new RemoteFsChunkStorage(eventloop, idGenerator, serverAddress);
 	}
 
-	public RemoteFsChunkStorage withBufferSize(int bufferSize) {
-		this.bufferSize = bufferSize;
-		return this;
-	}
-
 	public RemoteFsChunkStorage withBufferSize(MemSize bufferSize) {
-		this.bufferSize = bufferSize.toInt();
+		this.bufferSize = bufferSize;
 		return this;
 	}
 
@@ -133,11 +128,13 @@ public final class RemoteFsChunkStorage implements AggregationChunkStorage, Even
 						.with((StreamProducerModifier<T, T>) (detailed ? writeSerializeDetailed : writeSerialize))
 						.with(StreamBinarySerializer.create(
 								createBufferSerializer(aggregation, recordClass, aggregation.getKeys(), fields, classLoader))
-								.withDefaultBufferSize(bufferSize))
+								.withInitialBufferSize(bufferSize))
 						.with(writeCompress)
 						.with(StreamLZ4Compressor.fastCompressor())
 						.with(writeChunker)
-						.with(StreamByteChunker.create(bufferSize / 2, bufferSize * 2))
+						.with(StreamByteChunker.create(
+								bufferSize.map(bytes -> bytes / 2),
+								bufferSize.map(bytes -> bytes * 2)))
 						.with(writeRemoteFS)
 						.applyTo(consumer));
 	}

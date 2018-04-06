@@ -17,7 +17,6 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.stream.*;
-import io.datakernel.util.MemSize;
 
 import java.util.*;
 import java.util.function.Function;
@@ -64,10 +63,6 @@ public abstract class AbstractStreamReducer<K, O, A> implements HasOutput<O>, Ha
 				return compare;
 			return o1.index - o2.index;
 		});
-	}
-
-	protected AbstractStreamReducer<K, O, A> withBufferSize(MemSize bufferSize) {
-		return withBufferSize(bufferSize.toInt());
 	}
 
 	protected AbstractStreamReducer<K, O, A> withBufferSize(int bufferSize) {

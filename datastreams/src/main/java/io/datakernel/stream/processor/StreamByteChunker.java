@@ -19,6 +19,7 @@ package io.datakernel.stream.processor;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.stream.*;
+import io.datakernel.util.MemSize;
 
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static java.lang.Math.max;
@@ -29,12 +30,12 @@ public final class StreamByteChunker implements StreamTransformer<ByteBuf, ByteB
 	private final Output output;
 
 	// region creators
-	private StreamByteChunker(int minChunkSize, int maxChunkSize) {
+	private StreamByteChunker(MemSize minChunkSize, MemSize maxChunkSize) {
 		this.input = new Input();
 		this.output = new Output(minChunkSize, maxChunkSize);
 	}
 
-	public static StreamByteChunker create(int minChunkSize, int maxChunkSize) {
+	public static StreamByteChunker create(MemSize minChunkSize, MemSize maxChunkSize) {
 		return new StreamByteChunker(minChunkSize, maxChunkSize);
 	}
 	// endregion
@@ -66,9 +67,9 @@ public final class StreamByteChunker implements StreamTransformer<ByteBuf, ByteB
 		private final int maxChunkSize;
 		private ByteBuf internalBuf = ByteBuf.empty();
 
-		public Output(int minChunkSize, int maxChunkSize) {
-			this.minChunkSize = minChunkSize;
-			this.maxChunkSize = maxChunkSize;
+		public Output(MemSize minChunkSize, MemSize maxChunkSize) {
+			this.minChunkSize = minChunkSize.toInt();
+			this.maxChunkSize = maxChunkSize.toInt();
 		}
 
 		@Override

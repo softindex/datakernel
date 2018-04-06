@@ -101,11 +101,7 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 	}
 
 	public EventloopTaskScheduler withInitialDelay(Duration initialDelay) {
-		return withInitialDelay(initialDelay.toMillis());
-	}
-
-	public EventloopTaskScheduler withInitialDelay(long initialDelayMillis) {
-		this.initialDelay = initialDelayMillis;
+		this.initialDelay = initialDelay.toMillis();
 		return this;
 	}
 
@@ -118,20 +114,12 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 	}
 
 	public EventloopTaskScheduler withPeriod(Duration period) {
-		return withPeriod(period.toMillis());
-	}
-
-	public EventloopTaskScheduler withPeriod(long periodMillis) {
-		setPeriod(periodMillis);
+		setPeriod(period.toMillis());
 		return this;
 	}
 
 	public EventloopTaskScheduler withInterval(Duration interval) {
-		return withInterval(interval.toMillis());
-	}
-
-	public EventloopTaskScheduler withInterval(long intervalMillis) {
-		setInterval(intervalMillis);
+		setInterval(interval.toMillis());
 		return this;
 	}
 

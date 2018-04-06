@@ -19,6 +19,7 @@ package io.datakernel.stream.processor;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamProducer;
+import io.datakernel.util.MemSize;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -77,7 +78,7 @@ public class StreamByteChunkerTest {
 		int bufSize = 128;
 
 		StreamProducer<ByteBuf> source = StreamProducer.ofIterable(buffers);
-		StreamByteChunker chunker = StreamByteChunker.create(bufSize / 2, bufSize);
+		StreamByteChunker chunker = StreamByteChunker.create(MemSize.of(bufSize / 2), MemSize.of(bufSize));
 
 		CompletableFuture<List<ByteBuf>> listFuture = source.with(chunker).toList().toCompletableFuture();
 

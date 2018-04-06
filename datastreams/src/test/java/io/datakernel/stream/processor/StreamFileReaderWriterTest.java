@@ -22,6 +22,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
+import io.datakernel.util.MemSize;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -54,7 +55,7 @@ public class StreamFileReaderWriterTest {
 
 		byte[] fileBytes = Files.readAllBytes(Paths.get("test_data/in.dat"));
 		StreamFileReader reader = StreamFileReader.readFile(executor, Paths.get("test_data/in.dat"))
-				.withBufferSize(1);
+				.withBufferSize(MemSize.of(1));
 
 		List<ByteBuf> list = new ArrayList<>();
 
@@ -79,7 +80,7 @@ public class StreamFileReaderWriterTest {
 
 		byte[] fileBytes = Files.readAllBytes(Paths.get("test_data/in.dat"));
 		StreamFileReader reader = StreamFileReader.readFile(executor, Paths.get("test_data/in.dat"))
-				.withBufferSize(1);
+				.withBufferSize(MemSize.of(1));
 
 		List<ByteBuf> list = new ArrayList<>();
 

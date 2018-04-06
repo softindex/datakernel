@@ -21,6 +21,7 @@ import io.datakernel.async.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.processor.ByteBufRule;
+import io.datakernel.util.MemSize;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -349,7 +350,7 @@ public class AsyncHttpServerTest {
 		};
 
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
-				.withMaxHttpMessageSize(25)
+				.withMaxHttpMessageSize(MemSize.kilobytes(25))
 				.withListenAddress(new InetSocketAddress("localhost", port));
 		server.listen();
 		Thread thread = new Thread(eventloop);

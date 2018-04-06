@@ -43,9 +43,7 @@ public interface ConfigConverter<T> {
 			@Nullable
 			public V get(Config config, @Nullable V defaultValue) {
 				T value = thisConverter.get(config, defaultValue == null ? null : from.apply(defaultValue));
-				V result = value != null ? to.apply(value) : null;
-
-				return result != null ? result : defaultValue;
+				return value != null ? to.apply(value) : null;
 			}
 
 			@Override

@@ -51,63 +51,16 @@ public class ConfigConvertersTest {
 
 	@Test
 	public void testTransform() {
-		class TestClass {
-			long durationToLong;
-			int periodToInt;
-			long booleanToInt;
-
-			public long getdurationToLong() {
-				return durationToLong;
-			}
-
-			public void setdurationToLong(long durationToLong) {
-				this.durationToLong = durationToLong;
-			}
-
-			public int getperiodToInt() {
-				return periodToInt;
-			}
-
-			public void setperiodToInt(int periodToInt) {
-				this.periodToInt = periodToInt;
-			}
-
-			public long getbooleanToInt() {
-				return booleanToInt;
-			}
-
-			public void setbooleanToInt(long booleanToInt) {
-				this.booleanToInt = booleanToInt;
-			}
-		}
-
 		Config test = Config.create()
 				.with("durationToLong", "228 millis")
-				.with("periodToInt", "1 days")
-				.with("booleanToInt", "true");
-		TestClass testObj = new TestClass();
-
+				.with("periodToInt", "1 days");
 
 		// Basic test
 		assertEquals(228L, (long) test.get(ofDuration().transform(Duration::toMillis, Duration::ofMillis), "durationToLong"));
 		assertEquals(1, (int) test.get(ofPeriod().transform(Period::getDays, Period::ofDays), "periodToInt"));
-		assertEquals(322, (int) test.get(ofBoolean().transform(bool -> bool ? 322 : 1488, num -> num == 322), "booleanToInt"));
 
 		// Test of default value
-		assertEquals(Long.valueOf(228L), test.get(ofDuration().transform($ -> null, Duration::ofMillis), "durationToLong", 228L));
-
-		// Test null handling
-		assertNull(test.get(ofDuration().transform($ -> null, $ -> null), "durationToLong"));
-		assertNull(test.get(ofDuration().transform($ -> null, $ -> null), "durationToLong", null));
-
-		// Testing of config methods
-		test.apply(ofDuration().transform($ -> null, Duration::ofMillis), "durationToLong", 228L, testObj::setdurationToLong);
-		test.apply(ofPeriod().transform($ -> null, Period::ofDays), "periodToInt", 1, testObj::setperiodToInt);
-		test.apply(ofDuration().transform($ -> null, $ -> null), "durationToLong", 322L, testObj::setbooleanToInt);
-
-		assertEquals(228L, testObj.getdurationToLong());
-		assertEquals(1, testObj.getperiodToInt());
-		assertEquals(322L, testObj.getbooleanToInt());
+		assertEquals((Long) 123L, test.get(ofDuration().transform(Duration::toMillis, Duration::ofMillis), "nonExistingPath", 123L));
 
 		try {
 			test.get(ofDuration().transform(Duration::toMillis, Duration::ofMillis), "nonExistingPath");
@@ -234,7 +187,7 @@ public class ConfigConvertersTest {
 	public void testDatagraphSocketSettingsConverter() {
 		DatagramSocketSettings expected = DatagramSocketSettings.create()
 				.withReceiveBufferSize(MemSize.bytes(256))
-				.withSendBufferSize(1024)
+				.withSendBufferSize(MemSize.kilobytes(1))
 				.withReuseAddress(false)
 				.withBroadcast(true);
 
@@ -263,8 +216,8 @@ public class ConfigConvertersTest {
 		SocketSettings expected = SocketSettings.create()
 				.withTcpNoDelay(true)
 				.withReuseAddress(false)
-				.withReceiveBufferSize(256)
-				.withSendBufferSize(512)
+				.withReceiveBufferSize(MemSize.of(256))
+				.withSendBufferSize(MemSize.of(512))
 				.withKeepAlive(true);
 
 		SocketSettings actual = Config.EMPTY.get(ofSocketSettings(), THIS, expected);
@@ -390,7 +343,7 @@ public class ConfigConvertersTest {
 
 		assertEquals(228L, (long) testConfig.get(ofDurationAsMillis(), "ofDurationAsMillis"));
 		assertEquals(3, (int) testConfig.get(ofPeriodAsDays(), "ofPeriodAsDays"));
-		assertEquals(MemSize.gigabytes(2).toLong(), (long) testConfig.get(ofMemSizeAsBytesLong(), "ofMemSizeAsBytesLong"));
+		assertEquals(MemSize.gigabytes(2).toLong(), (long) testConfig.get(ofMemSizeAsLong(), "ofMemSizeAsBytesLong"));
 		assertEquals(now.toEpochMilli(), (long) testConfig.get(ofInstantAsEpochMillis(), "ofInstantAsEpochMillis"));
 	}
 }

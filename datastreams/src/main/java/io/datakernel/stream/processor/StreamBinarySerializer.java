@@ -16,6 +16,7 @@
 
 package io.datakernel.stream.processor;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.serializer.BufferSerializer;
@@ -40,7 +41,7 @@ import static java.lang.Math.max;
 public final class StreamBinarySerializer<T> implements StreamTransformer<T, ByteBuf> {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	private static final ArrayIndexOutOfBoundsException OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException();
-	public static final MemSize DEFAULT_BUFFER_SIZE = MemSize.kilobytes(16);
+	public static final MemSize DEFAULT_INITIAL_BUFFER_SIZE = MemSize.kilobytes(16);
 
 	public static final MemSize MAX_SIZE_1 = MemSize.bytes(128); // (1 << (1 * 7))
 	public static final MemSize MAX_SIZE_2 = MemSize.kilobytes(16); // (1 << (2 * 7))
@@ -48,9 +49,9 @@ public final class StreamBinarySerializer<T> implements StreamTransformer<T, Byt
 	public static final MemSize MAX_SIZE = MAX_SIZE_3;
 
 	private final BufferSerializer<T> serializer;
-	private int defaultBufferSize = DEFAULT_BUFFER_SIZE.toInt();
-	private int maxMessageSize = MAX_SIZE.toInt();
-	private int autoFlushIntervalMillis = -1;
+	private MemSize initialBufferSize = DEFAULT_INITIAL_BUFFER_SIZE;
+	private MemSize maxMessageSize = MAX_SIZE;
+	private Duration autoFlushInterval;
 	private boolean skipSerializationErrors = false;
 
 	private Input input;
@@ -65,7 +66,7 @@ public final class StreamBinarySerializer<T> implements StreamTransformer<T, Byt
 	private void rebuild() {
 		if (output != null && output.outputBuf != null) output.outputBuf.recycle();
 		input = new Input();
-		output = new Output(serializer, defaultBufferSize, maxMessageSize, autoFlushIntervalMillis, skipSerializationErrors);
+		output = new Output(serializer, initialBufferSize.toInt(), maxMessageSize.toInt(), autoFlushInterval, skipSerializationErrors);
 	}
 
 	/**
@@ -77,32 +78,20 @@ public final class StreamBinarySerializer<T> implements StreamTransformer<T, Byt
 		return new StreamBinarySerializer<>(serializer);
 	}
 
-	public StreamBinarySerializer<T> withDefaultBufferSize(int bufferSize) {
-		this.defaultBufferSize = bufferSize;
-		rebuild();
-		return this;
-	}
-
-	public StreamBinarySerializer<T> withDefaultBufferSize(MemSize bufferSize) {
-		return withDefaultBufferSize(bufferSize.toInt());
-	}
-
-	public StreamBinarySerializer<T> withMaxMessageSize(int maxMessageSize) {
-		this.maxMessageSize = maxMessageSize;
+	public StreamBinarySerializer<T> withInitialBufferSize(MemSize bufferSize) {
+		this.initialBufferSize = bufferSize;
 		rebuild();
 		return this;
 	}
 
 	public StreamBinarySerializer<T> withMaxMessageSize(MemSize maxMessageSize) {
-		return withMaxMessageSize(maxMessageSize.toInt());
+		this.maxMessageSize = maxMessageSize;
+		rebuild();
+		return this;
 	}
 
-	public StreamBinarySerializer<T> withAutoFlush(Duration autoFlushInterval) {
-		return withAutoFlush((int) autoFlushInterval.toMillis());
-	}
-
-	public StreamBinarySerializer<T> withAutoFlush(int autoFlushIntervalMillis) {
-		this.autoFlushIntervalMillis = autoFlushIntervalMillis;
+	public StreamBinarySerializer<T> withAutoFlushInterval(@Nullable Duration autoFlushInterval) {
+		this.autoFlushInterval = autoFlushInterval;
 		rebuild();
 		return this;
 	}
@@ -144,7 +133,7 @@ public final class StreamBinarySerializer<T> implements StreamTransformer<T, Byt
 	private final class Output extends AbstractStreamProducer<ByteBuf> implements StreamDataReceiver<T> {
 		private final BufferSerializer<T> serializer;
 
-		private final int defaultBufferSize;
+		private final int initialBufferSize;
 		private final int maxMessageSize;
 		private final int headerSize;
 
@@ -155,14 +144,14 @@ public final class StreamBinarySerializer<T> implements StreamTransformer<T, Byt
 		private boolean flushPosted;
 		private final boolean skipSerializationErrors;
 
-		public Output(BufferSerializer<T> serializer, int defaultBufferSize, int maxMessageSize, int autoFlushIntervalMillis, boolean skipSerializationErrors) {
+		public Output(BufferSerializer<T> serializer, int initialBufferSize, int maxMessageSize, @Nullable Duration autoFlushInterval, boolean skipSerializationErrors) {
 			this.skipSerializationErrors = skipSerializationErrors;
 			this.serializer = checkNotNull(serializer);
 			this.maxMessageSize = maxMessageSize;
 			this.headerSize = varint32Size(maxMessageSize - 1);
 			this.estimatedMessageSize = 1;
-			this.defaultBufferSize = defaultBufferSize;
-			this.autoFlushIntervalMillis = autoFlushIntervalMillis;
+			this.initialBufferSize = initialBufferSize;
+			this.autoFlushIntervalMillis = autoFlushInterval == null ? -1 : (int) autoFlushInterval.toMillis();
 		}
 
 		@Override
@@ -185,7 +174,7 @@ public final class StreamBinarySerializer<T> implements StreamTransformer<T, Byt
 		}
 
 		private ByteBuf allocateBuffer() {
-			return ByteBufPool.allocate(max(defaultBufferSize, headerSize + estimatedMessageSize + (estimatedMessageSize >>> 2)));
+			return ByteBufPool.allocate(max(initialBufferSize, headerSize + estimatedMessageSize + (estimatedMessageSize >>> 2)));
 		}
 
 		private void flush() {
@@ -280,7 +269,7 @@ public final class StreamBinarySerializer<T> implements StreamTransformer<T, Byt
 			outputBuf.writePosition(positionBegin);
 			int writeRemaining = outputBuf.writeRemaining();
 			flush();
-			outputBuf = ByteBufPool.allocate(max(defaultBufferSize, writeRemaining + (writeRemaining >>> 1) + 1));
+			outputBuf = ByteBufPool.allocate(max(initialBufferSize, writeRemaining + (writeRemaining >>> 1) + 1));
 		}
 
 		private void handleSerializationError(Exception e) {

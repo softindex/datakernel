@@ -371,10 +371,6 @@ public final class ConfigConverters {
 		return ofDuration().transform(Duration::toMillis, Duration::ofMillis);
 	}
 
-	public static ConfigConverter<Integer> ofDurationAsMillisInt() {
-		return ofDuration().transform(duration -> (int) duration.toMillis(), (Function<Integer, Duration>) Duration::ofMillis);
-	}
-
 	public static ConfigConverter<Instant> ofInstant() {
 		return new SimpleConfigConverter<Instant>() {
 			@Override
@@ -626,14 +622,14 @@ public final class ConfigConverters {
 	/**
 	 * @return config converter with bytes in memsize
 	 */
-	public static ConfigConverter<Long> ofMemSizeAsBytesLong() {
+	public static ConfigConverter<Long> ofMemSizeAsLong() {
 		return ofMemSize().transform(MemSize::toLong, MemSize::of);
 	}
 
 	/**
 	 * @return config converter with bytes in memsize
 	 */
-	public static ConfigConverter<Integer> ofMemSizeAsBytesInt() {
+	public static ConfigConverter<Integer> ofMemSizeAsInt() {
 		return ofMemSize().transform(MemSize::toInt, (Function<Integer, MemSize>) MemSize::of);
 	}
 
@@ -719,11 +715,11 @@ public final class ConfigConverters {
 						.andThen(applyNotNull(
 								SocketSettings::withReceiveBufferSize,
 								config.get(ofMemSize(), "receiveBufferSize",
-										defaultValue.hasReceiveBufferSize() ? MemSize.of(defaultValue.getReceiveBufferSize()) : null)))
+										defaultValue.hasReceiveBufferSize() ? defaultValue.getReceiveBufferSize() : null)))
 						.andThen(applyNotNull(
 								SocketSettings::withSendBufferSize,
 								config.get(ofMemSize(), "sendBufferSize",
-										defaultValue.hasSendBufferSize() ? MemSize.of(defaultValue.getSendBufferSize()) : null)))
+										defaultValue.hasSendBufferSize() ? defaultValue.getSendBufferSize() : null)))
 						.andThen(applyNotNull(
 								SocketSettings::withReuseAddress,
 								config.get(ofBoolean(), "reuseAddress",
@@ -738,20 +734,20 @@ public final class ConfigConverters {
 										defaultValue.hasTcpNoDelay() ? defaultValue.getTcpNoDelay() : null)))
 						.andThen(applyNotNull(
 								SocketSettings::withImplReadTimeout,
-								config.get(ofDurationAsMillis(), "implReadTimeout",
+								config.get(ofDuration(), "implReadTimeout",
 										defaultValue.hasImplReadTimeout() ? defaultValue.getImplReadTimeout() : null)))
 						.andThen(applyNotNull(
 								SocketSettings::withImplWriteTimeout,
-								config.get(ofDurationAsMillis(), "implWriteTimeout",
+								config.get(ofDuration(), "implWriteTimeout",
 										defaultValue.hasImplWriteTimeout() ? defaultValue.getImplWriteTimeout() : null)))
 						.andThen(applyNotNull(
 								SocketSettings::withImplReadSize,
 								config.get(ofMemSize(), "implReadSize",
-										defaultValue.hasImplReadSize() ? MemSize.of(defaultValue.getImplReadSize()) : null)))
+										defaultValue.hasImplReadSize() ? defaultValue.getImplReadSize() : null)))
 						.andThen(applyNotNull(
 								SocketSettings::withImplWriteSize,
 								config.get(ofMemSize(), "implWriteSize",
-										defaultValue.hasImplWriteSize() ? MemSize.of(defaultValue.getImplWriteSize()) : null)))
+										defaultValue.hasImplWriteSize() ? defaultValue.getImplWriteSize() : null)))
 						.apply(SocketSettings.create());
 			}
 		};
@@ -765,11 +761,11 @@ public final class ConfigConverters {
 						.andThen(applyNotNull(
 								DatagramSocketSettings::withReceiveBufferSize,
 								config.get(ofMemSize(), "receiveBufferSize",
-										defaultValue.hasReceiveBufferSize() ? MemSize.of(defaultValue.getReceiveBufferSize()) : null)))
+										defaultValue.hasReceiveBufferSize() ? defaultValue.getReceiveBufferSize() : null)))
 						.andThen(applyNotNull(
 								DatagramSocketSettings::withSendBufferSize,
 								config.get(ofMemSize(), "sendBufferSize",
-										defaultValue.hasSendBufferSize() ? MemSize.of(defaultValue.getSendBufferSize()) : null)))
+										defaultValue.hasSendBufferSize() ? defaultValue.getSendBufferSize() : null)))
 						.andThen(applyNotNull(
 								DatagramSocketSettings::withReuseAddress,
 								config.get(ofBoolean(), "reuseAddress",
@@ -826,8 +822,8 @@ public final class ConfigConverters {
 			@Override
 			protected ThrottlingController provide(Config config, ThrottlingController defaultValue) {
 				return ThrottlingController.create()
-						.withTargetTime(config.get(ofDurationAsMillisInt(), "targetTime", defaultValue.getTargetTimeMillis()))
-						.withGcTime(config.get(ofDurationAsMillisInt(), "gcTime", defaultValue.getGcTimeMillis()))
+						.withTargetTime(config.get(ofDuration(), "targetTime", Duration.ofMillis(defaultValue.getTargetTimeMillis())))
+						.withGcTime(config.get(ofDuration(), "gcTime", Duration.ofMillis(defaultValue.getGcTimeMillis())))
 						.withSmoothingWindow(config.get(ofInteger(), "smoothingWindow", defaultValue.getSmoothingWindow()))
 						.withThrottlingDecrease(config.get(ofDouble(), "throttlingDecrease", defaultValue.getThrottlingDecrease()))
 						.withInitialKeysPerSecond(config.get(ofDouble(), "initialKeysPerSecond", INITIAL_KEYS_PER_SECOND))

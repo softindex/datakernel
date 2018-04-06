@@ -26,6 +26,7 @@ import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.StreamConsumerToList;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.*;
+import io.datakernel.util.MemSize;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -143,16 +144,16 @@ public class RpcBinaryProtocolTest {
 		StreamLZ4Compressor compressorClient = StreamLZ4Compressor.fastCompressor();
 		StreamLZ4Decompressor decompressorClient = StreamLZ4Decompressor.create();
 		StreamBinarySerializer<RpcMessage> serializerClient = StreamBinarySerializer.create(serializer)
-				.withDefaultBufferSize(defaultPacketSize)
-				.withMaxMessageSize(maxPacketSize);
+				.withInitialBufferSize(MemSize.of(defaultPacketSize))
+				.withMaxMessageSize(MemSize.of(maxPacketSize));
 		StreamBinaryDeserializer<RpcMessage> deserializerClient = StreamBinaryDeserializer.create(serializer);
 
 		// server side
 		StreamLZ4Compressor compressorServer = StreamLZ4Compressor.fastCompressor();
 		StreamLZ4Decompressor decompressorServer = StreamLZ4Decompressor.create();
 		StreamBinarySerializer<RpcMessage> serializerServer = StreamBinarySerializer.create(serializer)
-				.withDefaultBufferSize(defaultPacketSize)
-				.withMaxMessageSize(maxPacketSize);
+				.withInitialBufferSize(MemSize.of(defaultPacketSize))
+				.withMaxMessageSize(MemSize.of(maxPacketSize));
 		StreamBinaryDeserializer<RpcMessage> deserializerServer = StreamBinaryDeserializer.create(serializer);
 
 		StreamConsumerToList<RpcMessage> results = StreamConsumerToList.create();

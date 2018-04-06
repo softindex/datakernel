@@ -24,6 +24,7 @@ import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.ByteBufRule;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
+import io.datakernel.util.MemSize;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -87,7 +88,7 @@ public final class SocketStreamingConnectionTest {
 
 			StreamProducer.ofIterable(list)
 					.with(StreamBinarySerializer.create(intSerializer())
-							.withDefaultBufferSize(1))
+							.withInitialBufferSize(MemSize.of(1)))
 					.streamTo(connection.getSocketWriter());
 
 			asyncTcpSocket.setEventHandler(connection);
@@ -125,7 +126,7 @@ public final class SocketStreamingConnectionTest {
 
 		future = eventloop.connect(address).whenResult(socketChannel -> {
 			StreamBinarySerializer<Integer> streamSerializer = StreamBinarySerializer.create(intSerializer())
-					.withDefaultBufferSize(1);
+					.withInitialBufferSize(MemSize.of(1));
 			StreamBinaryDeserializer<Integer> streamDeserializer = StreamBinaryDeserializer.create(intSerializer());
 
 			AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);

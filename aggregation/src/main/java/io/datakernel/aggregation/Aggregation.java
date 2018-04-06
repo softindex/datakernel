@@ -30,7 +30,6 @@ import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.*;
 import io.datakernel.util.Initializable;
-import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,7 +66,6 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 	public static final int DEFAULT_CHUNK_SIZE = 1_000_000;
 	public static final int DEFAULT_REDUCER_BUFFER_SIZE = StreamReducer.DEFAULT_BUFFER_SIZE;
 	public static final int DEFAULT_SORTER_ITEMS_IN_MEMORY = 1_000_000;
-	public static final MemSize DEFAULT_SORTER_BLOCK_SIZE = MemSize.kilobytes(256);
 	public static final Duration DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD = Duration.ofMinutes(10);
 	public static final int DEFAULT_MAX_CHUNKS_TO_CONSOLIDATE = 1000;
 
@@ -84,8 +82,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 	private int chunkSize = DEFAULT_CHUNK_SIZE;
 	private int reducerBufferSize = DEFAULT_REDUCER_BUFFER_SIZE;
 	private int sorterItemsInMemory = DEFAULT_SORTER_ITEMS_IN_MEMORY;
-	private int sorterBlockSize = DEFAULT_SORTER_BLOCK_SIZE.toInt();
-	private long maxIncrementalReloadPeriodMillis = DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD.toMillis();
+	private Duration maxIncrementalReloadPeriod = DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD;
 	private boolean ignoreChunkReadingExceptions = false;
 	private int maxChunksToConsolidate = DEFAULT_MAX_CHUNKS_TO_CONSOLIDATE;
 
@@ -125,17 +122,9 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 		return new Aggregation(eventloop, executorService, classLoader, aggregationChunkStorage, structure, new AggregationState(structure));
 	}
 
-	public Aggregation withChunkSize(MemSize chunkSize) {
-		return withChunkSize(chunkSize.toInt());
-	}
-
 	public Aggregation withChunkSize(int chunkSize) {
 		this.chunkSize = chunkSize;
 		return this;
-	}
-
-	public Aggregation withReducerBufferSize(MemSize reducerBufferSize) {
-		return withReducerBufferSize(reducerBufferSize.toInt());
 	}
 
 	public Aggregation withReducerBufferSize(int reducerBufferSize) {
@@ -148,21 +137,8 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 		return this;
 	}
 
-	public Aggregation withSorterBlockSize(MemSize sorterBlockSize) {
-		return withSorterBlockSize(sorterBlockSize.toInt());
-	}
-
-	public Aggregation withSorterBlockSize(int sorterBlockSize) {
-		this.sorterBlockSize = sorterBlockSize;
-		return this;
-	}
-
 	public Aggregation withMaxIncrementalReloadPeriod(Duration maxIncrementalReloadPeriod) {
-		return withMaxIncrementalReloadPeriod(maxIncrementalReloadPeriod.toMillis());
-	}
-
-	public Aggregation withMaxIncrementalReloadPeriod(long maxIncrementalReloadPeriodMillis) {
-		this.maxIncrementalReloadPeriodMillis = maxIncrementalReloadPeriodMillis;
+		this.maxIncrementalReloadPeriod = maxIncrementalReloadPeriod;
 		return this;
 	}
 
@@ -547,13 +523,13 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 	// jmx
 
 	@JmxAttribute
-	public long getMaxIncrementalReloadPeriodMillis() {
-		return maxIncrementalReloadPeriodMillis;
+	public long getMaxIncrementalReloadPeriod() {
+		return maxIncrementalReloadPeriod.toMillis();
 	}
 
 	@JmxAttribute
-	public void setMaxIncrementalReloadPeriodMillis(long maxIncrementalReloadPeriodMillis) {
-		this.maxIncrementalReloadPeriodMillis = maxIncrementalReloadPeriodMillis;
+	public void setMaxIncrementalReloadPeriod(long maxIncrementalReloadPeriod) {
+		this.maxIncrementalReloadPeriod = Duration.ofMillis(maxIncrementalReloadPeriod);
 	}
 
 	@JmxAttribute
@@ -574,16 +550,6 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 	@JmxAttribute
 	public void setSorterItemsInMemory(int sorterItemsInMemory) {
 		this.sorterItemsInMemory = sorterItemsInMemory;
-	}
-
-	@JmxAttribute
-	public int getSorterBlockSize() {
-		return sorterBlockSize;
-	}
-
-	@JmxAttribute
-	public void setSorterBlockSize(int sorterBlockSize) {
-		this.sorterBlockSize = sorterBlockSize;
 	}
 
 	@JmxAttribute

@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -68,7 +69,7 @@ public class TestTimeoutsSimpleFs {
 
 		ExecutorService serverExecutor = Executors.newFixedThreadPool(2);
 		RemoteFsServer server = RemoteFsServer.create(eventloop, serverExecutor, storagePath)
-				.withSocketSettings(SocketSettings.create().withImplReadTimeout(1L))
+				.withSocketSettings(SocketSettings.create().withImplReadTimeout(Duration.ofMillis(1)))
 				.withAcceptOnce()
 				.withListenAddress(new InetSocketAddress("localhost", 7010));
 

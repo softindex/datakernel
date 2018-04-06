@@ -74,7 +74,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 	private final Path dir;
 	private Path backupPath;
 
-	private int bufferSize = DEFAULT_BUFFER_SIZE.toInt();
+	private MemSize bufferSize = DEFAULT_BUFFER_SIZE;
 
 	private final StageStats stageIdGenerator = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final StageStats stageOpenR1 = StageStats.create(DEFAULT_SMOOTHING_WINDOW);
@@ -131,13 +131,8 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 		return new LocalFsChunkStorage(eventloop, executorService, idGenerator, dir, dir.resolve(DEFAULT_BACKUP_FOLDER_NAME + "/"));
 	}
 
-	public LocalFsChunkStorage withBufferSize(int bufferSize) {
-		this.bufferSize = bufferSize;
-		return this;
-	}
-
 	public LocalFsChunkStorage withBufferSize(MemSize bufferSize) {
-		this.bufferSize = bufferSize.toInt();
+		this.bufferSize = bufferSize;
 		return this;
 	}
 
@@ -177,11 +172,13 @@ public class LocalFsChunkStorage implements AggregationChunkStorage, EventloopSe
 						.with((StreamProducerModifier<T, T>) (detailed ? writeSerializeDetailed : writeSerialize))
 						.with(StreamBinarySerializer.create(
 								createBufferSerializer(aggregation, recordClass, aggregation.getKeys(), fields, classLoader))
-								.withDefaultBufferSize(bufferSize))
+								.withInitialBufferSize(bufferSize))
 						.with(writeCompress)
 						.with(StreamLZ4Compressor.fastCompressor())
 						.with(writeChunker)
-						.with(StreamByteChunker.create(bufferSize / 2, bufferSize * 2))
+						.with(StreamByteChunker.create(
+								bufferSize.map(bytes -> bytes / 2),
+								bufferSize.map(bytes -> bytes * 2)))
 						.with(writeFile)
 						.applyTo(StreamFileWriter.create(file).withForceOnClose(true).withFlushAsResult()));
 	}

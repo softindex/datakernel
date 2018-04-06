@@ -24,12 +24,6 @@ public final class StreamStatsDetailedEx<T> extends StreamStatsBasic<T> {
 		this.sizeCounter = (StreamStatsSizeCounter<Object>) sizeCounter;
 	}
 
-//	@SuppressWarnings("unchecked")
-//	@Override
-//	public StreamStatsDetailedEx withBasicSmoothingWindow(double smoothingWindowSeconds) {
-//		return (StreamStatsDetailedEx) super.withBasicSmoothingWindow(smoothingWindowSeconds);
-//	}
-
 	@Override
 	@SuppressWarnings("unchecked")
 	public StreamStatsDetailedEx withBasicSmoothingWindow(Duration smoothingWindow) {

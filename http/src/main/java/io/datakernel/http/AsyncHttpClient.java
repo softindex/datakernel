@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.Callback;
 import io.datakernel.async.SettableStage;
@@ -49,7 +50,7 @@ import static io.datakernel.util.Preconditions.checkState;
 @SuppressWarnings("ThrowableInstanceNeverThrown")
 public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService, EventloopJmxMBeanEx {
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create();
-	public static final long DEFAULT_KEEP_ALIVE_MILLIS = 30 * 1000L;
+	public static final Duration DEFAULT_KEEP_ALIVE_MILLIS = Duration.ofSeconds(30);
 
 	private final Eventloop eventloop;
 	private IAsyncDnsClient asyncDnsClient;
@@ -71,7 +72,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 	// timeouts
 	private int connectTimeoutMillis = 0;
-	int keepAliveTimeoutMillis = (int) DEFAULT_KEEP_ALIVE_MILLIS;
+	int keepAliveTimeoutMillis = (int) DEFAULT_KEEP_ALIVE_MILLIS.getSeconds();
 	private int readTimeoutMillis = 0;
 	private int writeTimeoutMillis = 0;
 
@@ -241,52 +242,32 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	}
 
 	public AsyncHttpClient withKeepAliveTimeout(Duration keepAliveTime) {
-		return withKeepAliveTimeout(keepAliveTime.toMillis());
-	}
-
-	public AsyncHttpClient withKeepAliveTimeout(long keepAliveTimeMillis) {
-		this.keepAliveTimeoutMillis = (int) keepAliveTimeMillis;
+		this.keepAliveTimeoutMillis = (int) keepAliveTime.toMillis();
 		return this;
 	}
 
 	public AsyncHttpClient withNoKeepAlive() {
-		return withKeepAliveTimeout(0);
+		return withKeepAliveTimeout(Duration.ZERO);
 	}
 
 	public AsyncHttpClient withReadTimeout(Duration readTimeout) {
-		return withReadTimeout(readTimeout.toMillis());
-	}
-
-	public AsyncHttpClient withReadTimeout(long readTimeoutMillis) {
-		this.readTimeoutMillis = (int) readTimeoutMillis;
+		this.readTimeoutMillis = (int) readTimeout.toMillis();
 		return this;
 	}
 
 	public AsyncHttpClient withWriteTimeout(Duration writeTimeout) {
-		return withWriteTimeout(writeTimeout.toMillis());
-	}
-
-	public AsyncHttpClient withWriteTimeout(long writeTimeoutMillis) {
-		this.writeTimeoutMillis = (int) writeTimeoutMillis;
+		this.writeTimeoutMillis = (int) writeTimeout.toMillis();
 		return this;
 	}
 
 	public AsyncHttpClient withConnectTimeout(Duration connectTimeout) {
-		return withConnectTimeout(connectTimeout.toMillis());
-	}
-
-	public AsyncHttpClient withConnectTimeout(long connectTimeoutMillis) {
-		this.connectTimeoutMillis = (int) connectTimeoutMillis;
+		this.connectTimeoutMillis = (int) connectTimeout.toMillis();
 		return this;
 	}
 
-	public AsyncHttpClient withMaxHttpMessageSize(int maxHttpMessageSize) {
-		this.maxHttpMessageSize = maxHttpMessageSize;
+	public AsyncHttpClient withMaxHttpMessageSize(@Nullable MemSize maxHttpMessageSize) {
+		this.maxHttpMessageSize = maxHttpMessageSize != null ? maxHttpMessageSize.toInt() : Integer.MAX_VALUE;
 		return this;
-	}
-
-	public AsyncHttpClient withMaxHttpMessageSize(MemSize maxHttpMessageSize) {
-		return withMaxHttpMessageSize(maxHttpMessageSize.toInt());
 	}
 
 	public AsyncHttpClient withInspector(Inspector inspector) {
