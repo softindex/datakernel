@@ -29,10 +29,15 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.time.*;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
 
 import static io.datakernel.config.Config.THIS;
 import static io.datakernel.config.ConfigConverters.*;
+import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
 import static org.junit.Assert.*;
 
 public class ConfigConvertersTest {
@@ -159,10 +164,15 @@ public class ConfigConvertersTest {
 	@Test
 	public void testListConverter() {
 		ConfigConverter<List<Integer>> listConverter = ConfigConverters.ofList(ConfigConverters.ofInteger(), ",");
-		Config root = Config.ofValue("1, 5,   10   ");
 
-		List<Integer> expected = Arrays.asList(1, 5, 10);
-		assertEquals(expected, listConverter.get(root));
+		assertEquals(asList(1, 5, 10), listConverter.get(Config.ofValue("1, 5,   10   ")));
+		assertEquals(emptyList(), listConverter.get(Config.ofValue("")));
+		assertEquals(asList(1, 2, 3), listConverter.get(Config.EMPTY, asList(1, 2, 3)));
+		try {
+			assertEquals(emptyList(), listConverter.get(Config.EMPTY));
+			Assert.fail();
+		} catch (NoSuchElementException ignored) {
+		}
 	}
 
 	@Test

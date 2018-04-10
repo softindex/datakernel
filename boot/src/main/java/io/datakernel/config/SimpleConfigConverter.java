@@ -32,9 +32,8 @@ public abstract class SimpleConfigConverter<T> implements ConfigConverter<T> {
 	@Override
 	@Nullable
 	public final T get(Config config, @Nullable T defaultValue) {
-		String defaultString = defaultValue == null ? "" : toString(defaultValue);
-		String value = config.getValue(defaultString);
-		return value == null || value.isEmpty() ? null : fromString(value);
+		String value = config.getValue(defaultValue == null ? "" : toString(defaultValue));
+		return value == null || value.trim().isEmpty() ? defaultValue : fromString(value);
 	}
 
 	protected abstract T fromString(@Nullable String string);
