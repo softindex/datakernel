@@ -41,7 +41,7 @@ public class MemSizeTest {
 
 		bytes = 2048;
 		assertEquals("2Kb", MemSize.of(bytes).format());
-		assertEquals(bytes, MemSize.valueOf("1 kb 1024b").toLong());
+		assertEquals(bytes, MemSize.valueOf("1 k 1024b").toLong());
 
 		bytes = 1025;
 		assertEquals("1Kb 1b", MemSize.of(bytes).format());
@@ -53,7 +53,7 @@ public class MemSizeTest {
 
 		bytes = 1024L * 1024L + 15;
 		assertEquals("1Mb 15b", MemSize.of(bytes).format());
-		assertEquals(bytes, MemSize.valueOf("1 mb 15b").toLong());
+		assertEquals(bytes, MemSize.valueOf("1 m 15").toLong());
 
 		bytes = 1024L * 1024L * 10;
 		assertEquals("10Mb", MemSize.of(bytes).format());
@@ -61,7 +61,7 @@ public class MemSizeTest {
 
 		bytes = 1024L * 1024L * 10 - 1;
 		assertEquals("9Mb 1023Kb 1023b", MemSize.of(bytes).format());
-		assertEquals(bytes, MemSize.valueOf("9 mb 1023kb 1023b").toLong());
+		assertEquals(bytes, MemSize.valueOf("9 m 1023kb 1023b").toLong());
 
 		bytes = 1024L * 1024L * 1024L;
 		assertEquals("1Gb", MemSize.of(bytes).format());
@@ -69,7 +69,7 @@ public class MemSizeTest {
 
 		bytes = 1024L * 1024L * 1024L + 15;
 		assertEquals("1Gb 15b", MemSize.of(bytes).format());
-		assertEquals(bytes, MemSize.valueOf("1gb  15 b").toLong());
+		assertEquals(bytes, MemSize.valueOf("1g  15 b").toLong());
 
 		bytes = 1024L * 1024L * 1024L * 10;
 		assertEquals("10Gb", MemSize.of(bytes).format());
@@ -89,11 +89,11 @@ public class MemSizeTest {
 
 		bytes = 1024L * 1024L * 1024L * 1024L * 10;
 		assertEquals("10Tb", MemSize.of(bytes).format());
-		assertEquals(bytes, MemSize.valueOf("9tB 1024 Gb").toLong());
+		assertEquals(bytes, MemSize.valueOf("9tB 1024 G").toLong());
 
 		bytes = 1024L * 1024L * 1024L * 1024L * 10 - 1;
 		assertEquals("9Tb 1023Gb 1023Mb 1023Kb 1023b", MemSize.of(bytes).format());
-		assertEquals(bytes, MemSize.valueOf("9 tb 1023 Gb 1023 mB 1023KB 1023B").toLong());
+		assertEquals(bytes, MemSize.valueOf("9 tb 1023 G 1023 mB 1023KB 1023B").toLong());
 
 		assertEquals(228, MemSize.valueOf("228").toLong());
 		assertEquals(1024 + 228, MemSize.valueOf("228 1 kb").toLong());

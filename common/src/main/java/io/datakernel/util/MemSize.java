@@ -31,7 +31,7 @@ public final class MemSize {
 	public static final long GB = 1024 * MB;
 	public static final long TB = 1024 * GB;
 
-	private static final Pattern PATTERN = Pattern.compile("(?<size>\\d+)([\\.](?<floating>\\d+))?\\s*(?<unit>(|g|m|k|t)b)?(\\s+|$)", Pattern.CASE_INSENSITIVE);
+	private static final Pattern PATTERN = Pattern.compile("(?<size>\\d+)([\\.](?<floating>\\d+))?\\s*(?<unit>(|g|m|k|t)b?)?(\\s+|$)", Pattern.CASE_INSENSITIVE);
 
 	private final long bytes;
 
@@ -91,6 +91,10 @@ public final class MemSize {
 
 			if (unit == null) {
 				unit = "";
+			}
+
+			if (!unit.endsWith("b")) {
+				unit += "b";
 			}
 
 			if (!units.add(unit)) {
