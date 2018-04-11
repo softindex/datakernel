@@ -101,7 +101,7 @@ public final class BlockingSocketServer {
 
 	public void start() throws Exception {
 		for (InetSocketAddress address : listenAddresses) {
-			ServerSocket serverSocket = new ServerSocket(address.getPort(), serverSocketSettings.getBacklog(), address.getAddress());
+			ServerSocket serverSocket = new ServerSocket(address.getPort(), serverSocketSettings.getBacklog().toInt(), address.getAddress());
 			serverSocketSettings.applySettings(serverSocket.getChannel());
 			serverSockets.add(serverSocket);
 			Runnable runnable = new Runnable() {

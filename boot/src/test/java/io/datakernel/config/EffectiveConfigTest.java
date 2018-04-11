@@ -94,8 +94,8 @@ public class EffectiveConfigTest {
 		ServerSocketSettings settings = config.get(converter, "Server.socketSettings");
 		settings = config.get(converter, "Server.socketSettings", settings);
 
-		assertEquals(10, settings.getBacklog());
-		assertEquals(10, settings.getReceiveBufferSize());
+		assertEquals(10, settings.getBacklog().toInt());
+		assertEquals(10, settings.getReceiveBufferSize().toInt());
 		assertEquals(true, settings.getReuseAddress());
 	}
 

@@ -16,6 +16,7 @@
 
 package io.datakernel.net;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.util.MemSize;
 
 import java.io.IOException;
@@ -29,36 +30,33 @@ import static java.net.StandardSocketOptions.SO_REUSEADDR;
  * This class used to change settings for server socket. It will be applying with creating new server socket
  */
 public final class ServerSocketSettings {
-	public static final int DEFAULT_BACKLOG = 16384;
+	public static final MemSize DEFAULT_BACKLOG = MemSize.kilobytes(16);
 
-	protected static final int DEF_INT = -1;
 	protected static final byte DEF_BOOL = -1;
 	protected static final byte TRUE = 1;
 	protected static final byte FALSE = 0;
 
-	private final int backlog;
-	private final int receiveBufferSize;
+	@Nullable
+	private final MemSize backlog;
+	@Nullable
+	private final MemSize receiveBufferSize;
 	private final byte reuseAddress;
 
 	// region builders
-	private ServerSocketSettings(int backlog, int receiveBufferSize, byte reuseAddress) {
+	private ServerSocketSettings(MemSize backlog, MemSize receiveBufferSize, byte reuseAddress) {
 		this.backlog = backlog;
 		this.receiveBufferSize = receiveBufferSize;
 		this.reuseAddress = reuseAddress;
 	}
 
-	public static ServerSocketSettings create(int backlog) {return new ServerSocketSettings(backlog, DEF_INT, DEF_BOOL);}
+	public static ServerSocketSettings create(MemSize backlog) {return new ServerSocketSettings(backlog, null, DEF_BOOL);}
 
-	public ServerSocketSettings withBacklog(int backlog) {
-		return new ServerSocketSettings(backlog, receiveBufferSize, reuseAddress);
-	}
-
-	public ServerSocketSettings withReceiveBufferSize(int receiveBufferSize) {
+	public ServerSocketSettings withBacklog(MemSize backlog) {
 		return new ServerSocketSettings(backlog, receiveBufferSize, reuseAddress);
 	}
 
 	public ServerSocketSettings withReceiveBufferSize(MemSize receiveBufferSize) {
-		return new ServerSocketSettings(backlog, receiveBufferSize.toInt(), reuseAddress);
+		return new ServerSocketSettings(backlog, receiveBufferSize, reuseAddress);
 	}
 
 	public ServerSocketSettings withReuseAddress(boolean reuseAddress) {
@@ -67,23 +65,23 @@ public final class ServerSocketSettings {
 	// endregion
 
 	public void applySettings(ServerSocketChannel channel) throws IOException {
-		if (receiveBufferSize != DEF_INT) {
-			channel.setOption(SO_RCVBUF, receiveBufferSize);
+		if (receiveBufferSize != null) {
+			channel.setOption(SO_RCVBUF, receiveBufferSize.toInt());
 		}
 		if (reuseAddress != DEF_BOOL) {
 			channel.setOption(SO_REUSEADDR, reuseAddress != FALSE);
 		}
 	}
 
-	public int getBacklog() {
+	public MemSize getBacklog() {
 		return backlog;
 	}
 
 	public boolean hasReceiveBufferSize() {
-		return receiveBufferSize != DEF_INT;
+		return receiveBufferSize != null;
 	}
 
-	public int getReceiveBufferSize() {
+	public MemSize getReceiveBufferSize() {
 		check(hasReceiveBufferSize());
 		return receiveBufferSize;
 	}

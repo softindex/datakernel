@@ -66,7 +66,7 @@ public class Initializers {
 	public static Initializer<AsyncHttpServer> ofHttpServer(Config config) {
 		return server -> server
 				.initialize(ofAbstractServer(config))
-				.withMaxHttpMessageSize(config.get(ofMemSize(), "maxMessageSize", MemSize.of(Integer.MAX_VALUE)))
+				.withMaxHttpMessageSize(config.get(ofMemSize(), "maxMessageSize", MemSize.gigabytes(1)))
 				.withKeepAliveTimeout(config.get(ofDuration(), "keepAliveTimeout", DEFAULT_KEEP_ALIVE))
 				.withReadTimeout(config.get(ofDuration(), "readTimeout", Duration.ZERO))
 				.withWriteTimeout(config.get(ofDuration(), "writeTimeout", Duration.ZERO));
@@ -74,7 +74,7 @@ public class Initializers {
 
 	public static Initializer<AsyncHttpServer> ofHttpWorker(Config config) {
 		return worker -> worker
-				.withMaxHttpMessageSize(config.get(ofMemSize(), "maxMessageSize", MemSize.of(Integer.MAX_VALUE)))
+				.withMaxHttpMessageSize(config.get(ofMemSize(), "maxMessageSize", MemSize.gigabytes(1)))
 				.withKeepAliveTimeout(config.get(ofDuration(), "keepAliveTimeout", DEFAULT_KEEP_ALIVE))
 				.withReadTimeout(config.get(ofDuration(), "readTimeout", Duration.ZERO))
 				.withWriteTimeout(config.get(ofDuration(), "writeTimeout", Duration.ZERO));

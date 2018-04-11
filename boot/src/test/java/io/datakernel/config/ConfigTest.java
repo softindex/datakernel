@@ -17,6 +17,7 @@
 package io.datakernel.config;
 
 import io.datakernel.net.ServerSocketSettings;
+import io.datakernel.util.MemSize;
 import org.junit.Test;
 
 import java.util.HashMap;
@@ -39,8 +40,8 @@ public class ConfigTest {
 
 	@Test
 	public void testOfConverter1() {
-		Config config = Config.ofValue(ConfigConverters.ofServerSocketSettings(), ServerSocketSettings.create(16384));
-		assertEquals("16384", config.get("backlog"));
+		Config config = Config.ofValue(ConfigConverters.ofServerSocketSettings(), ServerSocketSettings.create(MemSize.kilobytes(16)));
+		assertEquals("16Kb", config.get("backlog"));
 		assertTrue(config.hasChild("receiveBufferSize"));
 		assertEquals("", config.get("receiveBufferSize", "X"));
 	}

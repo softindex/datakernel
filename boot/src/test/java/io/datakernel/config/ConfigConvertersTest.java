@@ -211,8 +211,8 @@ public class ConfigConvertersTest {
 
 	@Test
 	public void testServerSocketSettings() {
-		ServerSocketSettings expected = ServerSocketSettings.create(1)
-				.withReceiveBufferSize(64)
+		ServerSocketSettings expected = ServerSocketSettings.create(MemSize.of(1))
+				.withReceiveBufferSize(MemSize.of(64))
 				.withReuseAddress(true);
 
 		ServerSocketSettings actual = Config.EMPTY.get(ofServerSocketSettings(), THIS, expected);

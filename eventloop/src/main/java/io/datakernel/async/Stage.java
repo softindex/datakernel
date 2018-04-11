@@ -283,7 +283,7 @@ public interface Stage<T> {
 	 *
 	 * @param timeout timeout in milliseconds
 	 */
-	Stage<T> timeout(long timeout);
+	Stage<T> timeout(Duration timeout);
 
 	/**
 	 * When this stage is completed it's completion will be postponed to the next eventloop tick.

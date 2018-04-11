@@ -127,9 +127,7 @@ public final class ConfigConverters {
 		};
 	}
 
-
-	final static Pattern PERIOD_PATTERN = Pattern.compile("(?<str>((?<time>-?\\d+)([\\.](?<floating>\\d+))?\\s+(?<unit>years?|months?|days?))(\\s+|$))");
-
+	private final static Pattern PERIOD_PATTERN = Pattern.compile("(?<str>((?<time>-?\\d+)([\\.](?<floating>\\d+))?\\s+(?<unit>years?|months?|days?))(\\s+|$))");
 	/**
 	 * Parses value to Period.
 	 * 1 year 2 months 3 days == Period.of(1, 2, 3)
@@ -139,7 +137,7 @@ public final class ConfigConverters {
 	 * -1  - Right
 	 * - 2 - Wrong
 	 */
-	private static Period parsePeriod(String string) {
+	public static Period parsePeriod(String string) {
 		int years = 0, months = 0, days = 0;
 		Set<String> units = new HashSet<>();
 
@@ -158,27 +156,12 @@ public final class ConfigConverters {
 				throw new IllegalArgumentException("Time unit: " + unit + " occurs more than once.");
 			}
 			int result = Integer.parseInt(matcher.group("time"));
-//			int floating = 0;
-//			int denominator = 1;
-//			String floatingPoint = matcher.group("floating");
-//			if (floatingPoint != null) {
-//				if (unit.equals("") || unit.equals("b")) {
-//					throw new IllegalArgumentException("MemSize unit bytes cannot be fractional");
-//				}
-//				floating = Integer.parseInt(floatingPoint);
-//				for (int i = 0; i < floatingPoint.length(); i++) {
-//					denominator *= 10;
-//				}
-//			}
-
 			switch (unit) {
 				case "years":
 					years = result;
-//					months += multiplyExact(floating, 12) / denominator;
 					break;
 				case "months":
 					months = result;
-//					days += multiplyExact(floating)
 					break;
 				case "days":
 					days = result;
@@ -188,7 +171,7 @@ public final class ConfigConverters {
 		return Period.of(years, months, days);
 	}
 
-	private static String periodToString(Period value) {
+	public static String periodToString(Period value) {
 		if (value.isZero()) {
 			return "0 days";
 		}
@@ -236,13 +219,13 @@ public final class ConfigConverters {
 	}
 
 	private final static Pattern DURATION_PATTERN = Pattern.compile("(?<time>-?\\d+)([\\.](?<floating>\\d+))?\\s+(?<unit>days?|hours?|minutes?|seconds?|millis?|nanos?)(\\s+|$)");
-		private final static int NANOS_IN_MILLI = 1000000;
+	private final static int NANOS_IN_MILLI = 1000000;
 	private final static int MILLIS_IN_SECOND = 1000;
 	private final static int SECONDS_PER_MINUTE = 60;
 	private final static int SECONDS_PER_HOUR = SECONDS_PER_MINUTE * 60;
 	private final static int SECONDS_PER_DAY = SECONDS_PER_HOUR * 24;
 
-	private static Duration parseDuration(String string) {
+	public static Duration parseDuration(String string) {
 		Set<String> units = new HashSet<>();
 		int days = 0, hours = 0, minutes = 0;
 		long millis = 0, nanos = 0;
@@ -315,7 +298,7 @@ public final class ConfigConverters {
 				.plusNanos(nanos);
 	}
 
-	private static String durationToString(Duration value) {
+	public static String durationToString(Duration value) {
 		if (value.isZero()) {
 			return "0 seconds";
 		}
@@ -697,11 +680,11 @@ public final class ConfigConverters {
 				return Function.<ServerSocketSettings>identity()
 						.andThen(apply(
 								ServerSocketSettings::withBacklog,
-								config.get(ofInteger(), "backlog", defaultValue.getBacklog())))
+								config.get(ofMemSize(), "backlog", defaultValue.getBacklog())))
 						.andThen(applyNotNull(
 								ServerSocketSettings::withReceiveBufferSize,
 								config.get(ofMemSize(), "receiveBufferSize",
-										defaultValue.hasReceiveBufferSize() ? MemSize.of(defaultValue.getReceiveBufferSize()) : null)))
+										defaultValue.hasReceiveBufferSize() ? defaultValue.getReceiveBufferSize() : null)))
 						.andThen(applyNotNull(
 								ServerSocketSettings::withReuseAddress,
 								config.get(ofBoolean(), "reuseAddress",

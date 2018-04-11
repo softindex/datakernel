@@ -4,6 +4,7 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.functional.Try;
 
+import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -379,9 +380,9 @@ abstract class AbstractStage<T> implements Stage<T> {
 	}
 
 	@Override
-	public Stage<T> timeout(long timeout) {
-		checkArgument(timeout >= 0, "Timeout cannot be less than zero");
-		if (timeout == 0) {
+	public Stage<T> timeout(Duration timeout) {
+		checkArgument(timeout.toMillis() >= 0, "Timeout cannot be less than zero");
+		if (timeout.equals(Duration.ZERO)) {
 			return this;
 		}
 		ScheduledRunnable schedule = getCurrentEventloop().delay(timeout, () -> tryCompleteExceptionally(TIMEOUT_EXCEPTION));

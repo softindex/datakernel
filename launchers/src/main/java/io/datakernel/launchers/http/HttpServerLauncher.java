@@ -64,8 +64,8 @@ public abstract class HttpServerLauncher extends Launcher {
 					@Provides
 					@Singleton
 					public Eventloop provide(Config config,
-					                         OptionalDependency<ThrottlingController> maybeThrottlingController,
-					                         TriggerRegistry triggerRegistry) {
+											 OptionalDependency<ThrottlingController> maybeThrottlingController,
+											 TriggerRegistry triggerRegistry) {
 						return Eventloop.create()
 								.initialize(ofEventloop(config.getChild("eventloop")))
 								.initialize(ofEventloopTriggers(triggerRegistry, config.getChild("triggers.eventloop")))

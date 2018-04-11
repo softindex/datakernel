@@ -25,9 +25,10 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.time.Duration;
 import java.util.*;
 
+import static io.datakernel.config.ConfigConverters.durationToString;
+import static io.datakernel.config.ConfigConverters.parseDuration;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
@@ -480,13 +481,13 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 	}
 
 	@Override
-	public Duration getRefreshPeriod() {
-		return ((JmxMBeans) mbeanFactory).getSpecifiedRefreshPeriod();
+	public String getRefreshPeriod() {
+		return durationToString(((JmxMBeans) mbeanFactory).getSpecifiedRefreshPeriod());
 	}
 
 	@Override
-	public void setRefreshPeriod(Duration refreshPeriod) {
-		((JmxMBeans) mbeanFactory).setRefreshPeriod(refreshPeriod);
+	public void setRefreshPeriod(String refreshPeriod) {
+		((JmxMBeans) mbeanFactory).setRefreshPeriod(parseDuration(refreshPeriod));
 	}
 
 	@Override
