@@ -15,8 +15,6 @@ import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static io.datakernel.util.CollectionUtils.hasIntersection;
-import static io.datakernel.util.CollectionUtils.intersection;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Collections.*;
@@ -405,17 +403,16 @@ public interface Config {
 	 */
 	default Config combine(Config other) {
 		String thisValue = getValue(null);
-		Map<String, Config> thisChildren = getChildren();
 		String otherValue = other.getValue(null);
-		Map<String, Config> otherChildren = other.getChildren();
 		if (thisValue != null && otherValue != null) {
 			throw new IllegalArgumentException("Duplicate values\n" + this.toMap() + "\n" + other.toMap());
 		}
-		if (hasIntersection(thisChildren.keySet(), otherChildren.keySet())) {
-			throw new IllegalArgumentException("Duplicate keys: " + intersection(thisChildren.keySet(), otherChildren.keySet()) +
-					"\n" + this.toMap() + "\n" + other.toMap());
-		}
-		return override(other);
+		Map<String, Config> children = new LinkedHashMap<>(getChildren());
+		other.getChildren().forEach((key, otherChild) -> children.merge(key, otherChild, Config::combine));
+		return Config.EMPTY
+				.override(thisValue != null ? Config.ofValue(thisValue) : Config.EMPTY)
+				.override(otherValue != null ? Config.ofValue(otherValue) : Config.EMPTY)
+				.override(Config.ofConfigs(children));
 	}
 
 	/**

@@ -18,12 +18,14 @@ package io.datakernel.config;
 
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.util.MemSize;
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.HashMap;
 import java.util.Map;
 
 import static io.datakernel.config.Config.THIS;
+import static io.datakernel.util.CollectionUtils.set;
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertTrue;
 
@@ -50,5 +52,36 @@ public class ConfigTest {
 	public void testOfConverter2() {
 		Config config = Config.ofValue(ConfigConverters.ofLong(), 0L);
 		assertEquals("0", config.get(THIS));
+	}
+
+	@Test
+	public void testCombine() {
+		Config config1 = Config.EMPTY
+				.with("a", "a")
+				.with("a.a", "aa");
+		Config config2 = Config.EMPTY
+				.with("b", "b")
+				.with("a.b", "ab");
+		Config config = config1.combine(config2);
+		assertEquals(set("a", "b"), config.getChildren().keySet());
+		assertEquals(set("a", "b"), config.getChildren().get("a").getChildren().keySet());
+		assertEquals("a", config.get("a"));
+		assertEquals("b", config.get("b"));
+		assertEquals("aa", config.get("a.a"));
+		assertEquals("ab", config.get("a.b"));
+
+		try {
+			config1.combine(Config.EMPTY.with("a", "x"));
+			Assert.fail();
+		} catch (IllegalArgumentException ignored) {
+		}
+
+		try {
+			config1.combine(Config.EMPTY.with("a.a", "x"));
+			Assert.fail();
+		} catch (IllegalArgumentException ignored) {
+		}
+
+		config1.combine(Config.EMPTY.with("a.a.a", "x"));
 	}
 }
