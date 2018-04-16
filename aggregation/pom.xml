@@ -58,6 +58,11 @@
             <artifactId>mysql-connector-java</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>io.datakernel</groupId>
+            <artifactId>datakernel-eventloop</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
     <profiles>
         <profile>

@@ -36,6 +36,7 @@ import io.datakernel.stream.stats.StreamStatsBasic;
 import io.datakernel.stream.stats.StreamStatsDetailed;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.MemSize;
+import io.datakernel.util.ReflectionUtils;
 import org.slf4j.Logger;
 
 import java.io.IOException;

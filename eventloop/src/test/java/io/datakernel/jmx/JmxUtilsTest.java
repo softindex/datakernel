@@ -23,12 +23,12 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
-import static io.datakernel.jmx.Utils.concat;
+import static io.datakernel.util.JmxUtils.concat;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.*;
 
-public class UtilsTest {
+public class JmxUtilsTest {
 
 	@Test
 	public void concatMethodWorksProperlyWithNoIterables() {

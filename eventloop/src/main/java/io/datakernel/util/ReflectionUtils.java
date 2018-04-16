@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
-package io.datakernel.jmx;
+package io.datakernel.util;
+
+import io.datakernel.jmx.*;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;

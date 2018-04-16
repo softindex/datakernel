@@ -17,6 +17,7 @@
 package io.datakernel.jmx;
 
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.helper.Utils;
 import org.junit.Test;
 
 import javax.management.DynamicMBean;
@@ -25,7 +26,6 @@ import javax.management.MBeanInfo;
 import java.util.Map;
 
 import static io.datakernel.jmx.JmxMBeansAttributesTest.createDynamicMBeanFor;
-import static io.datakernel.jmx.helper.Utils.nameToAttribute;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -54,7 +54,7 @@ public class JmxMBeansAttributesSelectionTest {
 
 		MBeanAttributeInfo[] attributesInfoArr = mBeanInfo.getAttributes();
 
-		Map<String, MBeanAttributeInfo> nameToAttr = nameToAttribute(attributesInfoArr);
+		Map<String, MBeanAttributeInfo> nameToAttr = Utils.nameToAttribute(attributesInfoArr);
 
 		assertEquals(2, nameToAttr.size());
 		assertTrue(nameToAttr.containsKey("stats_sum"));

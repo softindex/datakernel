@@ -19,7 +19,7 @@ package io.datakernel.jmx;
 import javax.management.openmbean.OpenType;
 import java.util.*;
 
-import static io.datakernel.jmx.Utils.filterNulls;
+import static io.datakernel.util.JmxUtils.filterNulls;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Collections.singletonList;
 

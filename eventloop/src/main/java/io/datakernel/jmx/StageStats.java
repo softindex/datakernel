@@ -10,7 +10,6 @@ import java.time.Duration;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.jmx.JmxReducers.JmxReducerMax;
 import static io.datakernel.jmx.JmxReducers.JmxReducerSum;
-import static io.datakernel.jmx.MBeanFormat.formatTimestamp;
 
 public class StageStats {
 	private Eventloop eventloop;
@@ -91,7 +90,7 @@ public class StageStats {
 
 	@JmxAttribute
 	public String getLastStartTime() {
-		return lastStartTimestamp != 0 ? formatTimestamp(lastStartTimestamp) : "";
+		return lastStartTimestamp != 0 ? MBeanFormat.formatTimestamp(lastStartTimestamp) : "";
 	}
 
 	@JmxAttribute(reducer = JmxReducerMax.class, optional = true)
@@ -101,7 +100,7 @@ public class StageStats {
 
 	@JmxAttribute
 	public String getLastCompleteTime() {
-		return lastCompleteTimestamp != 0 ? formatTimestamp(lastCompleteTimestamp) : "";
+		return lastCompleteTimestamp != 0 ? MBeanFormat.formatTimestamp(lastCompleteTimestamp) : "";
 	}
 
 	@JmxAttribute(reducer = JmxReducerMax.class)

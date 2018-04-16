@@ -18,6 +18,7 @@ package io.datakernel.jmx;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.helper.JmxStatsStub;
+import io.datakernel.jmx.helper.Utils;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -32,7 +33,6 @@ import java.util.*;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.jmx.MBeanSettings.defaultSettings;
-import static io.datakernel.jmx.helper.Utils.nameToAttribute;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
@@ -49,7 +49,7 @@ public class JmxMBeansAttributesTest {
 		MBeanInfo mBeanInfo = mbean.getMBeanInfo();
 
 		MBeanAttributeInfo[] attributesInfoArr = mBeanInfo.getAttributes();
-		Map<String, MBeanAttributeInfo> nameToAttr = nameToAttribute(attributesInfoArr);
+		Map<String, MBeanAttributeInfo> nameToAttr = Utils.nameToAttribute(attributesInfoArr);
 
 		assertEquals(3, nameToAttr.size());
 
@@ -173,7 +173,7 @@ public class JmxMBeansAttributesTest {
 		DynamicMBean mbean = createDynamicMBeanFor(mBeanWithEmptyNames);
 
 		MBeanAttributeInfo[] attributesInfoArr = mbean.getMBeanInfo().getAttributes();
-		Map<String, MBeanAttributeInfo> nameToAttr = nameToAttribute(attributesInfoArr);
+		Map<String, MBeanAttributeInfo> nameToAttr = Utils.nameToAttribute(attributesInfoArr);
 
 		assertEquals(2, nameToAttr.size());
 
@@ -191,7 +191,7 @@ public class JmxMBeansAttributesTest {
 		DynamicMBean mbean = createDynamicMBeanFor(monitorable);
 
 		MBeanAttributeInfo[] attributesInfoArr = mbean.getMBeanInfo().getAttributes();
-		Map<String, MBeanAttributeInfo> nameToAttr = nameToAttribute(attributesInfoArr);
+		Map<String, MBeanAttributeInfo> nameToAttr = Utils.nameToAttribute(attributesInfoArr);
 
 		assertEquals(1, nameToAttr.size());
 		assertTrue(nameToAttr.containsKey("pojo"));
@@ -207,7 +207,7 @@ public class JmxMBeansAttributesTest {
 		MBeanInfo mBeanInfo = mbean.getMBeanInfo();
 
 		MBeanAttributeInfo[] attributesInfoArr = mBeanInfo.getAttributes();
-		Map<String, MBeanAttributeInfo> nameToAttr = nameToAttribute(attributesInfoArr);
+		Map<String, MBeanAttributeInfo> nameToAttr = Utils.nameToAttribute(attributesInfoArr);
 
 		assertEquals(3, nameToAttr.size());
 
@@ -281,7 +281,7 @@ public class JmxMBeansAttributesTest {
 	public void handlesProperlyDefaultGetter() throws Exception {
 		DynamicMBean mbean = createDynamicMBeanFor(new MBeanWithPojoWithDefaultGetter());
 
-		Map<String, MBeanAttributeInfo> attrs = nameToAttribute(mbean.getMBeanInfo().getAttributes());
+		Map<String, MBeanAttributeInfo> attrs = Utils.nameToAttribute(mbean.getMBeanInfo().getAttributes());
 
 		assertEquals(1, attrs.size());
 		assertTrue(attrs.containsKey("pojo"));

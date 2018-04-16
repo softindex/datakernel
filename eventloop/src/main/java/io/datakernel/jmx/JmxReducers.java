@@ -16,10 +16,10 @@
 
 package io.datakernel.jmx;
 
+import io.datakernel.util.JmxUtils;
+
 import java.util.List;
 import java.util.Objects;
-
-import static io.datakernel.jmx.Utils.filterNulls;
 
 public final class JmxReducers {
 	private JmxReducers() {}
@@ -46,7 +46,7 @@ public final class JmxReducers {
 
 		@Override
 		public Number reduce(List<? extends Number> input) {
-			List<? extends Number> inputListWithoutNulls = filterNulls(input);
+			List<? extends Number> inputListWithoutNulls = JmxUtils.filterNulls(input);
 
 			if (inputListWithoutNulls.size() == 0) {
 				return null;
@@ -80,7 +80,7 @@ public final class JmxReducers {
 
 		@Override
 		public Number reduce(List<? extends Number> input) {
-			List<? extends Number> inputListWithoutNulls = filterNulls(input);
+			List<? extends Number> inputListWithoutNulls = JmxUtils.filterNulls(input);
 
 			if (inputListWithoutNulls.size() == 0) {
 				return null;
@@ -117,7 +117,7 @@ public final class JmxReducers {
 
 		@Override
 		public Number reduce(List<? extends Number> input) {
-			List<? extends Number> inputListWithoutNulls = filterNulls(input);
+			List<? extends Number> inputListWithoutNulls = JmxUtils.filterNulls(input);
 
 			if (inputListWithoutNulls.size() == 0) {
 				return null;

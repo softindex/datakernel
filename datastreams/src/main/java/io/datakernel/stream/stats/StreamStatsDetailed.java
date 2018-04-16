@@ -4,8 +4,8 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxReducers;
 import io.datakernel.jmx.JmxStatsWithReset;
-import io.datakernel.jmx.ReflectionUtils;
 import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.util.ReflectionUtils;
 
 import java.time.Duration;
 

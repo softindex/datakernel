@@ -17,6 +17,7 @@
 package io.datakernel.jmx;
 
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.helper.Utils;
 import org.junit.Test;
 
 import javax.management.DynamicMBean;
@@ -26,7 +27,6 @@ import java.util.List;
 import java.util.Map;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.jmx.helper.Utils.nameToAttribute;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
@@ -42,7 +42,7 @@ public class JmxMBeansAttributesHidingTest {
 		DynamicMBean mbean = JmxMBeans.factory().createFor(singletonList(singletonWithNullPojo), MBeanSettings.defaultSettings(), false);
 
 		MBeanInfo mbeanInfo = mbean.getMBeanInfo();
-		Map<String, MBeanAttributeInfo> attrs = nameToAttribute(mbeanInfo.getAttributes());
+		Map<String, MBeanAttributeInfo> attrs = Utils.nameToAttribute(mbeanInfo.getAttributes());
 
 		assertEquals(0, attrs.size());
 	}
@@ -55,7 +55,7 @@ public class JmxMBeansAttributesHidingTest {
 		DynamicMBean mbean = JmxMBeans.factory().createFor(workersWithNullPojo, MBeanSettings.defaultSettings(), false);
 
 		MBeanInfo mbeanInfo = mbean.getMBeanInfo();
-		Map<String, MBeanAttributeInfo> attrs = nameToAttribute(mbeanInfo.getAttributes());
+		Map<String, MBeanAttributeInfo> attrs = Utils.nameToAttribute(mbeanInfo.getAttributes());
 
 		assertEquals(0, attrs.size());
 	}
@@ -68,7 +68,7 @@ public class JmxMBeansAttributesHidingTest {
 		DynamicMBean mbean = JmxMBeans.factory().createFor(workersWithNullPojo, MBeanSettings.defaultSettings(), false);
 
 		MBeanInfo mbeanInfo = mbean.getMBeanInfo();
-		Map<String, MBeanAttributeInfo> attrs = nameToAttribute(mbeanInfo.getAttributes());
+		Map<String, MBeanAttributeInfo> attrs = Utils.nameToAttribute(mbeanInfo.getAttributes());
 
 		assertEquals(2, attrs.size());
 		assertTrue(attrs.containsKey("pojoStub_number"));
@@ -113,7 +113,7 @@ public class JmxMBeansAttributesHidingTest {
 		DynamicMBean mbean = JmxMBeans.factory().createFor(singletonList(singletonWithNullJmxStats), MBeanSettings.defaultSettings(), false);
 
 		MBeanInfo mbeanInfo = mbean.getMBeanInfo();
-		Map<String, MBeanAttributeInfo> attrs = nameToAttribute(mbeanInfo.getAttributes());
+		Map<String, MBeanAttributeInfo> attrs = Utils.nameToAttribute(mbeanInfo.getAttributes());
 
 		assertEquals(0, attrs.size());
 	}
@@ -126,7 +126,7 @@ public class JmxMBeansAttributesHidingTest {
 		DynamicMBean mbean = JmxMBeans.factory().createFor(workersWithNullPojo, MBeanSettings.defaultSettings(), false);
 
 		MBeanInfo mbeanInfo = mbean.getMBeanInfo();
-		Map<String, MBeanAttributeInfo> attrs = nameToAttribute(mbeanInfo.getAttributes());
+		Map<String, MBeanAttributeInfo> attrs = Utils.nameToAttribute(mbeanInfo.getAttributes());
 
 		assertEquals(0, attrs.size());
 	}
@@ -139,7 +139,7 @@ public class JmxMBeansAttributesHidingTest {
 		DynamicMBean mbean = JmxMBeans.factory().createFor(workersWithNullPojo, MBeanSettings.defaultSettings(), false);
 
 		MBeanInfo mbeanInfo = mbean.getMBeanInfo();
-		Map<String, MBeanAttributeInfo> attrs = nameToAttribute(mbeanInfo.getAttributes());
+		Map<String, MBeanAttributeInfo> attrs = Utils.nameToAttribute(mbeanInfo.getAttributes());
 
 		assertEquals(1, attrs.size());
 		assertTrue(attrs.containsKey("jmxStatsStub_value"));
@@ -186,7 +186,7 @@ public class JmxMBeansAttributesHidingTest {
 		DynamicMBean mbean = JmxMBeans.factory().createFor(singletonList(monitorable), MBeanSettings.defaultSettings(), false);
 
 		MBeanInfo mbeanInfo = mbean.getMBeanInfo();
-		Map<String, MBeanAttributeInfo> attrs = nameToAttribute(mbeanInfo.getAttributes());
+		Map<String, MBeanAttributeInfo> attrs = Utils.nameToAttribute(mbeanInfo.getAttributes());
 
 		assertEquals(1, attrs.size());
 		assertTrue(attrs.containsKey("pojoStubThree_number"));

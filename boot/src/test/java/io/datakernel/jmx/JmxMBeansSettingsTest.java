@@ -17,6 +17,7 @@
 package io.datakernel.jmx;
 
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.helper.Utils;
 import org.junit.Test;
 
 import javax.management.DynamicMBean;
@@ -28,7 +29,6 @@ import java.util.List;
 import java.util.Map;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.jmx.helper.Utils.nameToAttribute;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -45,7 +45,7 @@ public class JmxMBeansSettingsTest {
 		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(new MBeanStubOne()), settings, false);
 
 		MBeanInfo mBeanInfo = mbean.getMBeanInfo();
-		Map<String, MBeanAttributeInfo> attrs = nameToAttribute(mBeanInfo.getAttributes());
+		Map<String, MBeanAttributeInfo> attrs = Utils.nameToAttribute(mBeanInfo.getAttributes());
 
 		assertEquals(2, attrs.size());
 		assertTrue(attrs.containsKey("stats_text"));

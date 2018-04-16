@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-package io.datakernel.jmx;
+package io.datakernel.util;
 
 import javax.management.openmbean.OpenType;
 import java.util.*;
 
-final class Utils {
+public final class JmxUtils {
 
-	private Utils() {}
+	private JmxUtils() {}
 
 	public static <T> List<T> filterNulls(List<T> src) {
 		List<T> out = new ArrayList<>();

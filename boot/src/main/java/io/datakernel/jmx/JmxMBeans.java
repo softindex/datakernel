@@ -17,6 +17,7 @@
 package io.datakernel.jmx;
 
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.util.ReflectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,9 +32,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static io.datakernel.jmx.ReflectionUtils.*;
 import static io.datakernel.util.CollectionUtils.first;
 import static io.datakernel.util.Preconditions.*;
+import static io.datakernel.util.ReflectionUtils.*;
 import static java.lang.Math.ceil;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;

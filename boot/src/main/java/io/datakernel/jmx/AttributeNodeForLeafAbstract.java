@@ -21,8 +21,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static io.datakernel.jmx.Utils.createDescriptionMap;
 import static io.datakernel.util.CollectionUtils.first;
+import static io.datakernel.util.JmxUtils.createDescriptionMap;
 import static java.util.Collections.singleton;
 import static java.util.Collections.singletonMap;
 
