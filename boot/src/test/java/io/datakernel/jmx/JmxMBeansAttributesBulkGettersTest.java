@@ -27,6 +27,7 @@ import java.util.Map;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.jmx.MBeanSettings.defaultSettings;
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptyMap;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -36,7 +37,7 @@ public class JmxMBeansAttributesBulkGettersTest {
 
 	@Test
 	public void bulkGetOmitsAttributesWithExceptionButReturnsValidAttributes() {
-		DynamicMBean mbean = JmxMBeans.factory().createFor(singletonList(new MBeanStub()), defaultSettings(), false);
+		DynamicMBean mbean = JmxMBeans.factory().createFor(singletonList(new MBeanStub()), defaultSettings(), false, emptyMap());
 
 		Map<String, MBeanAttributeInfo> attrs = io.datakernel.jmx.helper.Utils.nameToAttribute(mbean.getMBeanInfo().getAttributes());
 
@@ -57,7 +58,7 @@ public class JmxMBeansAttributesBulkGettersTest {
 
 	@Test(expected = MBeanException.class)
 	public void propagatesExceptionInCaseOfSingleAttributeGet() throws Exception {
-		DynamicMBean mbean = JmxMBeans.factory().createFor(singletonList(new MBeanStub()), defaultSettings(), false);
+		DynamicMBean mbean = JmxMBeans.factory().createFor(singletonList(new MBeanStub()), defaultSettings(), false, emptyMap());
 
 		mbean.getAttribute("value");
 	}

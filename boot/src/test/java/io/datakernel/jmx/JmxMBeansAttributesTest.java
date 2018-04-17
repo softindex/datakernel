@@ -291,7 +291,7 @@ public class JmxMBeansAttributesTest {
 	// region helper methods
 	public static DynamicMBean createDynamicMBeanFor(Object... objects) throws Exception {
 		boolean refreshEnabled = false;
-		return JmxMBeans.factory().createFor(asList(objects), defaultSettings(), refreshEnabled);
+		return JmxMBeans.factory().createFor(asList(objects), defaultSettings(), refreshEnabled, Collections.emptyMap());
 	}
 
 	public static Object[] keyForTabularData(String key) {

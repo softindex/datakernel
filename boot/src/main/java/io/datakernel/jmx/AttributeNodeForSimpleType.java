@@ -47,7 +47,7 @@ final class AttributeNodeForSimpleType extends AttributeNodeForLeafAbstract {
 
 	@Override
 	public Map<String, OpenType<?>> getOpenTypes() {
-		return Collections.<String, OpenType<?>>singletonMap(name, simpleTypeOf(type));
+		return Collections.singletonMap(name, simpleTypeOf(type));
 	}
 
 	@Override

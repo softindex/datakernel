@@ -17,8 +17,12 @@
 package io.datakernel.jmx;
 
 import javax.management.DynamicMBean;
+import java.lang.reflect.Type;
 import java.util.List;
+import java.util.Map;
+
+import static io.datakernel.jmx.JmxMBeans.Transformer;
 
 public interface DynamicMBeanFactory {
-	DynamicMBean createFor(List<?> monitorables, MBeanSettings setting, boolean enableRefresh);
+	DynamicMBean createFor(List<?> monitorables, MBeanSettings setting, boolean enableRefresh, Map<Type, Transformer<?>> customTypes);
 }

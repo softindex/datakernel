@@ -20,10 +20,13 @@ import com.google.inject.*;
 import com.google.inject.matcher.AbstractMatcher;
 import com.google.inject.name.Names;
 import com.google.inject.spi.ProvisionListener;
+import io.datakernel.config.ConfigConverters;
+import io.datakernel.jmx.JmxMBeans.Transformer;
 import io.datakernel.service.BlockingService;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.Initializer;
+import io.datakernel.util.MemSize;
 import io.datakernel.util.guice.OptionalDependency;
 import io.datakernel.util.guice.RequiredDependency;
 import io.datakernel.worker.WorkerPoolModule;
@@ -31,10 +34,14 @@ import io.datakernel.worker.WorkerPoolModule;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.Type;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.Period;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.guice.GuiceUtils.isSingleton;
@@ -49,6 +56,7 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 	private final Map<Key<?>, MBeanSettings> keyToSettings = new HashMap<>();
 	private final Map<Type, MBeanSettings> typeToSettings = new HashMap<>();
 	private final Map<Key<?>, String> keyToObjectNames = new HashMap<>();
+	private final Map<Type, Transformer<?>> customTypes = new HashMap<>();
 
 	private Duration refreshPeriod = REFRESH_PERIOD_DEFAULT;
 	private int maxJmxRefreshesPerOneCycle = MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT;
@@ -58,6 +66,11 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 	}
 
 	private JmxModule() {
+		customTypes.put(Duration.class, new Transformer<>(ConfigConverters::durationToString, ConfigConverters::parseDuration));
+		customTypes.put(MemSize.class, new Transformer<>(MemSize::toString, MemSize::valueOf));
+		customTypes.put(Period.class, new Transformer<>(ConfigConverters::periodToString, ConfigConverters::parsePeriod));
+		customTypes.put(Instant.class, new Transformer<>(ConfigConverters::instantToString, ConfigConverters::parseInstant));
+		customTypes.put(LocalDateTime.class, new Transformer<>(ConfigConverters::localDateTimeToString, ConfigConverters::parseLocalDateTime));
 	}
 
 	public static JmxModule create() {
@@ -131,6 +144,11 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 		return withObjectName(Key.get(type), objectName);
 	}
 
+	public <T> JmxModule withCustomType(Type type, Function<T, String> to, Function<String, T> from) {
+		this.customTypes.put(type, new Transformer<>(to, from));
+		return this;
+	}
+
 	@Override
 	protected void configure() {
 		bindListener(new AbstractMatcher<Binding<?>>() {
@@ -192,12 +210,12 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 	@Provides
 	JmxRegistrator jmxRegistrator(Injector injector, JmxRegistry jmxRegistry, DynamicMBeanFactory mbeanFactory) {
 		return JmxRegistrator.create(injector, singletonKeys, workerKeys, jmxRegistry, mbeanFactory,
-				keyToSettings, typeToSettings, globalMBeans);
+				keyToSettings, typeToSettings, globalMBeans, customTypes);
 	}
 
 	@Provides
 	@Singleton
 	JmxRegistry jmxRegistry(DynamicMBeanFactory mbeanFactory) {
-		return JmxRegistry.create(ManagementFactory.getPlatformMBeanServer(), mbeanFactory, keyToObjectNames);
+		return JmxRegistry.create(ManagementFactory.getPlatformMBeanServer(), mbeanFactory, keyToObjectNames, customTypes);
 	}
 }

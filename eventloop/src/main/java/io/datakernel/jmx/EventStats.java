@@ -169,19 +169,15 @@ public final class EventStats implements JmxRefreshableStats<EventStats>, JmxSta
 
 	@Override
 	@JmxAttribute(optional = true)
-	public double getSmoothingWindow() {
-		return smoothingWindow;
+	public Duration getSmoothingWindow() {
+		return Duration.ofMillis((long) smoothingWindow);
 	}
 
 	@Override
 	@JmxAttribute(optional = true)
-	public void setSmoothingWindow(double smoothingWindow) {
-		this.smoothingWindow = smoothingWindow;
-		this.smoothingWindowCoef = calculateSmoothingWindowCoef(smoothingWindow);
-	}
-
 	public void setSmoothingWindow(Duration smoothingWindow) {
-		setSmoothingWindow(smoothingWindow.toMillis());
+		this.smoothingWindow = smoothingWindow.toMillis();
+		this.smoothingWindowCoef = calculateSmoothingWindowCoef(smoothingWindow.toMillis());
 	}
 
 	@JmxAttribute

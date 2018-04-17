@@ -528,20 +528,20 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 
 	@Override
 	@JmxAttribute(optional = true)
-	public double getSmoothingWindow() {
-		return smoothingWindow;
+	public Duration getSmoothingWindow() {
+		return Duration.ofMillis((long) smoothingWindow);
 	}
 
 	@JmxAttribute
 	@Override
-	public void setSmoothingWindow(double smoothingWindow) {
-		this.smoothingWindow = smoothingWindow;
-		this.smoothingWindowCoef = calculateSmoothingWindowCoef(smoothingWindow);
+	public void setSmoothingWindow(Duration smoothingWindow) {
+		this.smoothingWindow = smoothingWindow.toMillis();
+		this.smoothingWindowCoef = calculateSmoothingWindowCoef(smoothingWindow.toMillis());
 	}
 
-	public void setSmoothingWindow(Duration smoothingWindow) {
-		setSmoothingWindow(smoothingWindow.toMillis());
-	}
+//	public void setSmoothingWindow(Duration smoothingWindow) {
+//		setSmoothingWindow(smoothingWindow.toMillis());
+//	}
 
 	@JmxAttribute(optional = true)
 	public long getCount() {

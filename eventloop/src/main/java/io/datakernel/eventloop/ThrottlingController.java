@@ -36,7 +36,7 @@ public final class ThrottlingController implements EventloopJmxMBean {
 
 	public static final Duration TARGET_TIME = Duration.ofMillis(20);
 	public static final Duration GC_TIME = Duration.ofMillis(20);
-	public static final int SMOOTHING_WINDOW = 10000;
+	public static final Duration SMOOTHING_WINDOW = Duration.ofSeconds(10);
 	public static final double THROTTLING_DECREASE = 0.1;
 	public static final double INITIAL_KEYS_PER_SECOND = 100;
 	public static final double INITIAL_THROTTLING = 0.0;
@@ -102,16 +102,16 @@ public final class ThrottlingController implements EventloopJmxMBean {
 	}
 
 	public ThrottlingController withTargetTime(Duration targetTime) {
-		setTargetTimeMillis((int) targetTime.toMillis());
+		setTargetTimeMillis(targetTime);
 		return this;
 	}
 
 	public ThrottlingController withGcTime(Duration gcTime) {
-		setGcTimeMillis((int) gcTime.toMillis());
+		setGcTimeMillis(gcTime);
 		return this;
 	}
 
-	public ThrottlingController withSmoothingWindow(int smoothingWindow) {
+	public ThrottlingController withSmoothingWindow(Duration smoothingWindow) {
 		setSmoothingWindow(smoothingWindow);
 		return this;
 	}
@@ -213,25 +213,25 @@ public final class ThrottlingController implements EventloopJmxMBean {
 	}
 
 	@JmxAttribute
-	public int getTargetTimeMillis() {
-		return targetTimeMillis;
+	public Duration getTargetTimeMillis() {
+		return Duration.ofMillis(targetTimeMillis);
 	}
 
 	@JmxAttribute
-	public void setTargetTimeMillis(int targetTimeMillis) {
-		checkArgument(targetTimeMillis > 0, "Target time should not be zero or less");
-		this.targetTimeMillis = targetTimeMillis;
+	public void setTargetTimeMillis(Duration targetTime) {
+		checkArgument(targetTime.toMillis() > 0, "Target time should not be zero or less");
+		this.targetTimeMillis = (int) targetTime.toMillis();
 	}
 
 	@JmxAttribute
-	public int getGcTimeMillis() {
-		return gcTimeMillis;
+	public Duration getGcTimeMillis() {
+		return Duration.ofMillis(gcTimeMillis);
 	}
 
 	@JmxAttribute
-	public void setGcTimeMillis(int gcTimeMillis) {
-		checkArgument(gcTimeMillis > 0, "GC time should not be zero or less");
-		this.gcTimeMillis = gcTimeMillis;
+	public void setGcTimeMillis(Duration gcTime) {
+		checkArgument(gcTime.toMillis() > 0, "GC time should not be zero or less");
+		this.gcTimeMillis = (int) gcTime.toMillis();
 	}
 
 	@JmxAttribute
@@ -246,14 +246,14 @@ public final class ThrottlingController implements EventloopJmxMBean {
 	}
 
 	@JmxAttribute
-	public int getSmoothingWindow() {
-		return smoothingWindow;
+	public Duration getSmoothingWindow() {
+		return Duration.ofMillis(smoothingWindow);
 	}
 
 	@JmxAttribute
-	public void setSmoothingWindow(int smoothingWindow) {
-		checkArgument(smoothingWindow > 0, "Smoothing window should not be zero or less");
-		this.smoothingWindow = smoothingWindow;
+	public void setSmoothingWindow(Duration smoothingWindow) {
+		checkArgument(smoothingWindow.toMillis() > 0, "Smoothing window should not be zero or less");
+		this.smoothingWindow = (int) smoothingWindow.toMillis();
 	}
 
 	@JmxAttribute(reducer = JmxReducerSum.class)

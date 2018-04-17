@@ -42,7 +42,7 @@ public class JmxMBeansSettingsTest {
 	@Test
 	public void includesOptionalAttributes_thatAreSpecifiedInSettings() {
 		MBeanSettings settings = MBeanSettings.of(asList("stats_text"), NO_MODIFIERS);
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(new MBeanStubOne()), settings, false);
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(new MBeanStubOne()), settings, false, Collections.emptyMap());
 
 		MBeanInfo mBeanInfo = mbean.getMBeanInfo();
 		Map<String, MBeanAttributeInfo> attrs = Utils.nameToAttribute(mBeanInfo.getAttributes());
@@ -101,7 +101,7 @@ public class JmxMBeansSettingsTest {
 		});
 		MBeanSettings settings = MBeanSettings.of(EMPTY_LIST, nameToModifier);
 		MBeanStubTwo mBeanStubTwo = new MBeanStubTwo();
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(mBeanStubTwo), settings, false);
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(mBeanStubTwo), settings, false, Collections.emptyMap());
 
 		assertEquals("configurated", mbean.getAttribute("stats_data"));
 	}

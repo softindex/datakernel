@@ -18,6 +18,9 @@ package io.datakernel.jmx;
 
 import io.datakernel.util.ReflectionUtils;
 
+import java.time.Duration;
+
+
 public interface EventloopJmxMBeanEx extends EventloopJmxMBean {
 
 	@JmxOperation
@@ -26,12 +29,12 @@ public interface EventloopJmxMBeanEx extends EventloopJmxMBean {
 	}
 
 	@JmxAttribute
-	default Double getSmoothingWindow() {
+	default Duration getSmoothingWindow() {
 		return ReflectionUtils.getSmoothingWindow(this);
 	}
 
 	@JmxAttribute
-	default void setSmoothingWindow(Double smoothingWindowSeconds) {
+	default void setSmoothingWindow(Duration smoothingWindowSeconds) {
 		ReflectionUtils.setSmoothingWindow(this, smoothingWindowSeconds);
 	}
 

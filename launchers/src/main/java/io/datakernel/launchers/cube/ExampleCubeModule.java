@@ -11,7 +11,6 @@ import io.datakernel.aggregation.util.SqlAtomicSequence;
 import io.datakernel.async.AsyncCallable;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.config.Config;
-import io.datakernel.config.ConfigConverters;
 import io.datakernel.cube.Cube;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.cube.ot.CubeDiffJson;
@@ -35,8 +34,7 @@ import java.util.concurrent.Executors;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofDouble;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.sum;
-import static io.datakernel.config.ConfigConverters.ofMemSize;
-import static io.datakernel.config.ConfigConverters.ofPath;
+import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
 
 public class ExampleCubeModule extends PrivateModule {
@@ -141,7 +139,7 @@ public class ExampleCubeModule extends PrivateModule {
 	@Provides
 	@Singleton
 	HikariDataSource hikariDataSource(Config config) {
-		return new HikariDataSource(config.get(ConfigConverters.ofHikariConfig(), "dataSource"));
+		return new HikariDataSource(config.get(ofHikariConfig(), "dataSource"));
 	}
 
 	@Provides

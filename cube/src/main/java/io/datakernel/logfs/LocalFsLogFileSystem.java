@@ -176,13 +176,13 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem implements
 	}
 
 	@JmxAttribute
-	public int getReadBlockSize() {
-		return readBlockSize.toInt();
+	public MemSize getReadBlockSize() {
+		return readBlockSize;
 	}
 
 	@JmxAttribute
-	public void setReadBlockSize(int readBlockSize) {
-		this.readBlockSize = MemSize.of(readBlockSize);
+	public void setReadBlockSize(MemSize readBlockSize) {
+		this.readBlockSize = readBlockSize;
 	}
 
 	@JmxAttribute

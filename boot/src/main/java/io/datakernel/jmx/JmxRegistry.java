@@ -17,6 +17,7 @@
 package io.datakernel.jmx;
 
 import com.google.inject.Key;
+import io.datakernel.jmx.JmxMBeans.Transformer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,24 +43,32 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 	private final MBeanServer mbs;
 	private final DynamicMBeanFactory mbeanFactory;
 	private final Map<Key<?>, String> keyToObjectNames;
+	private final Map<Type, Transformer<?>> customTypes;
 
 	// jmx
 	private int registeredSingletons;
 	private int registeredPools;
 	private int totallyRegisteredMBeans;
 
-	private JmxRegistry(MBeanServer mbs, DynamicMBeanFactory mbeanFactory, Map<Key<?>, String> keyToObjectNames) {
+	private JmxRegistry(MBeanServer mbs,
+						DynamicMBeanFactory mbeanFactory,
+						Map<Key<?>, String> keyToObjectNames,
+						Map<Type, Transformer<?>> customTypes) {
 		this.mbs = checkNotNull(mbs);
 		this.mbeanFactory = checkNotNull(mbeanFactory);
 		this.keyToObjectNames = keyToObjectNames;
+		this.customTypes = customTypes;
 	}
 
 	public static JmxRegistry create(MBeanServer mbs, DynamicMBeanFactory mbeanFactory) {
-		return new JmxRegistry(mbs, mbeanFactory, Collections.emptyMap());
+		return new JmxRegistry(mbs, mbeanFactory, Collections.emptyMap(), Collections.emptyMap());
 	}
 
-	public static JmxRegistry create(MBeanServer mbs, DynamicMBeanFactory mbeanFactory, Map<Key<?>, String> keyToObjectNames) {
-		return new JmxRegistry(mbs, mbeanFactory, keyToObjectNames);
+	public static JmxRegistry create(MBeanServer mbs,
+									 DynamicMBeanFactory mbeanFactory,
+									 Map<Key<?>, String> keyToObjectNames,
+									 Map<Type, Transformer<?>> customTypes) {
+		return new JmxRegistry(mbs, mbeanFactory, keyToObjectNames, customTypes);
 	}
 
 	public void registerSingleton(Key<?> key, Object singletonInstance, MBeanSettings settings) {
@@ -70,7 +79,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		Object mbean;
 		if (isJmxMBean(instanceClass)) {
 			try {
-				mbean = mbeanFactory.createFor(asList(singletonInstance), settings, true);
+			mbean = mbeanFactory.createFor(asList(singletonInstance), settings, true, customTypes);
 			} catch (Exception e) {
 				String msg = format("Instance with key %s implements ConcurrentJmxMBean or EventloopJmxMBean " +
 						"but exception was thrown during attempt to create DynamicMBean", key.toString());
@@ -171,14 +180,14 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		// register mbeans for each worker separately
 		for (int i = 0; i < poolInstances.size(); i++) {
 			MBeanSettings settingsForOptionals = MBeanSettings.of(
-					settings.getIncludedOptionals(), new HashMap<String, AttributeModifier<?>>());
+					settings.getIncludedOptionals(), new HashMap<>());
 			registerMBeanForWorker(poolInstances.get(i), i, commonName, key, settingsForOptionals);
 		}
 
 		// register aggregated mbean for pool of workers
 		DynamicMBean mbean;
 		try {
-			mbean = mbeanFactory.createFor(poolInstances, settings, true);
+			mbean = mbeanFactory.createFor(poolInstances, settings, true, customTypes);
 		} catch (Exception e) {
 			String msg = format("Cannot create DynamicMBean for aggregated MBean of pool of workers with key %s",
 					key.toString());
@@ -270,12 +279,12 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 	}
 
 	private void registerMBeanForWorker(Object worker, int workerId, String commonName,
-	                                    Key<?> key, MBeanSettings settings) {
+										Key<?> key, MBeanSettings settings) {
 		String workerName = createWorkerName(commonName, workerId);
 
 		DynamicMBean mbean;
 		try {
-			mbean = mbeanFactory.createFor(asList(worker), settings, false);
+			mbean = mbeanFactory.createFor(asList(worker), settings, false, customTypes);
 		} catch (Exception e) {
 			String msg = format("Cannot create DynamicMBean for worker " +
 					"of pool of instances with key %s", key.toString());

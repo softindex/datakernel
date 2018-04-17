@@ -19,6 +19,7 @@ package io.datakernel.jmx;
 import com.google.inject.Injector;
 import com.google.inject.Key;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.jmx.JmxMBeans.Transformer;
 import io.datakernel.worker.WorkerPools;
 
 import javax.management.DynamicMBean;
@@ -34,13 +35,15 @@ public final class JmxRegistrator {
 	private final Map<Key<?>, MBeanSettings> keyToSettings;
 	private final Map<Type, MBeanSettings> typeToSettings;
 	private final Map<Type, Key<?>> globalMBeans;
+	private final Map<Type, Transformer<?>> customTypes;
 
 	private JmxRegistrator(Injector injector,
 	                       Set<Key<?>> singletonKeys, Set<Key<?>> workerKeys,
 	                       JmxRegistry jmxRegistry, DynamicMBeanFactory mbeanFactory,
 	                       Map<Key<?>, MBeanSettings> keyToSettings,
 	                       Map<Type, MBeanSettings> typeToSettings,
-	                       Map<Type, Key<?>> globalMBeans) {
+	                       Map<Type, Key<?>> globalMBeans,
+						   Map<Type, Transformer<?>> customTypes) {
 		this.injector = injector;
 		this.singletonKeys = singletonKeys;
 		this.workerKeys = workerKeys;
@@ -49,6 +52,7 @@ public final class JmxRegistrator {
 		this.keyToSettings = keyToSettings;
 		this.typeToSettings = typeToSettings;
 		this.globalMBeans = globalMBeans;
+		this.customTypes = customTypes;
 	}
 
 	public static JmxRegistrator create(Injector injector,
@@ -56,9 +60,10 @@ public final class JmxRegistrator {
 	                                    JmxRegistry jmxRegistry, DynamicMBeanFactory mbeanFactory,
 	                                    Map<Key<?>, MBeanSettings> keyToSettings,
 	                                    Map<Type, MBeanSettings> typeToSettings,
-	                                    Map<Type, Key<?>> globalMBeans) {
+	                                    Map<Type, Key<?>> globalMBeans,
+										Map<Type, Transformer<?>> customTypes) {
 		return new JmxRegistrator(injector, singletonKeys, workerKeys, jmxRegistry, mbeanFactory, keyToSettings,
-				typeToSettings, globalMBeans);
+				typeToSettings, globalMBeans, customTypes);
 	}
 
 	public void registerJmxMBeans() {
@@ -99,7 +104,7 @@ public final class JmxRegistrator {
 			List<Object> objects = globalMBeanObjects.get(type);
 			Key<?> key = globalMBeans.get(type);
 			DynamicMBean globalMBean =
-					mBeanFactory.createFor(objects, ensureSettingsFor(key), false);
+					mBeanFactory.createFor(objects, ensureSettingsFor(key), false, customTypes);
 			jmxRegistry.registerSingleton(key, globalMBean, null);
 		}
 	}

@@ -22,6 +22,9 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.Period;
 import java.util.*;
 import java.util.function.Function;
 
@@ -39,6 +42,12 @@ public final class ReflectionUtils {
 
 	public static boolean isJmxRefreshableStats(Class<?> clazz) {
 		return JmxRefreshableStats.class.isAssignableFrom(clazz);
+	}
+
+	public static boolean isAllowedType(Class<?> clazz) {
+		return Duration.class.isAssignableFrom(clazz)
+				|| Period.class.isAssignableFrom(clazz)
+				|| Instant.class.isAssignableFrom(clazz);
 	}
 
 	public static boolean isPrimitiveType(Class<?> clazz) {
@@ -183,7 +192,7 @@ public final class ReflectionUtils {
 		});
 	}
 
-	public static void setSmoothingWindow(Object instance, double smoothingWindowSeconds) {
+	public static void setSmoothingWindow(Object instance, Duration smoothingWindowSeconds) {
 		visitFields(instance, item -> {
 			if (item instanceof JmxStatsWithSmoothingWindow) {
 				((JmxStatsWithSmoothingWindow) item).setSmoothingWindow(smoothingWindowSeconds);
@@ -193,11 +202,11 @@ public final class ReflectionUtils {
 		});
 	}
 
-	public static Double getSmoothingWindow(Object instance) {
-		Set<Double> result = new HashSet<>();
+	public static Duration getSmoothingWindow(Object instance) {
+		Set<Duration> result = new HashSet<>();
 		visitFields(instance, item -> {
 			if (item instanceof JmxStatsWithSmoothingWindow) {
-				double smoothingWindow = ((JmxStatsWithSmoothingWindow) item).getSmoothingWindow();
+				Duration smoothingWindow = ((JmxStatsWithSmoothingWindow) item).getSmoothingWindow();
 				result.add(smoothingWindow);
 				return true;
 			}

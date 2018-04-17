@@ -16,8 +16,10 @@
 
 package io.datakernel.jmx;
 
-public interface JmxStatsWithSmoothingWindow {
-	void setSmoothingWindow(double smoothingWindowSeconds);
+import java.time.Duration;
 
-	double getSmoothingWindow();
+public interface JmxStatsWithSmoothingWindow {
+	void setSmoothingWindow(Duration smoothingWindowSeconds);
+
+	Duration getSmoothingWindow();
 }

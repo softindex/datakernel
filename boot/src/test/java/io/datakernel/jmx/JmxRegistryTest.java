@@ -28,6 +28,7 @@ import javax.management.MBeanServer;
 import java.lang.annotation.Annotation;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.util.Collections;
 
 import static io.datakernel.jmx.helper.CustomMatchers.objectname;
 import static java.util.Arrays.asList;
@@ -48,7 +49,7 @@ public class JmxRegistryTest {
 		ServiceStub service = new ServiceStub();
 
 		context.checking(new Expectations() {{
-			allowing(mbeanFactory).createFor(with(asList(service)), with(any(MBeanSettings.class)), with(true));
+			allowing(mbeanFactory).createFor(with(asList(service)), with(any(MBeanSettings.class)), with(true), with(Collections.emptyMap()));
 			will(returnValue(dynamicMBean));
 
 			oneOf(mBeanServer).registerMBean(with(dynamicMBean), with(objectname(domain + ":type=ServiceStub")));
@@ -64,7 +65,7 @@ public class JmxRegistryTest {
 		ServiceStub service = new ServiceStub();
 
 		context.checking(new Expectations() {{
-			allowing(mbeanFactory).createFor(with(asList(service)), with(any(MBeanSettings.class)), with(true));
+			allowing(mbeanFactory).createFor(with(asList(service)), with(any(MBeanSettings.class)), with(true), with(Collections.emptyMap()));
 			will(returnValue(dynamicMBean));
 
 			oneOf(mBeanServer).registerMBean(with(dynamicMBean),
@@ -82,7 +83,7 @@ public class JmxRegistryTest {
 		ServiceStub service = new ServiceStub();
 
 		context.checking(new Expectations() {{
-			allowing(mbeanFactory).createFor(with(asList(service)), with(any(MBeanSettings.class)), with(true));
+			allowing(mbeanFactory).createFor(with(asList(service)), with(any(MBeanSettings.class)), with(true), with(Collections.emptyMap()));
 			will(returnValue(dynamicMBean));
 
 			oneOf(mBeanServer).registerMBean(with(dynamicMBean), with(objectname(domain + ":type=ServiceStub,Group=major")));
@@ -99,7 +100,7 @@ public class JmxRegistryTest {
 		ServiceStub service = new ServiceStub();
 
 		context.checking(new Expectations() {{
-			allowing(mbeanFactory).createFor(with(asList(service)), with(any(MBeanSettings.class)), with(true));
+			allowing(mbeanFactory).createFor(with(asList(service)), with(any(MBeanSettings.class)), with(true), with(Collections.emptyMap()));
 			will(returnValue(dynamicMBean));
 
 			oneOf(mBeanServer).registerMBean(
@@ -133,18 +134,18 @@ public class JmxRegistryTest {
 
 		context.checking(new Expectations() {{
 			// creating DynamicMBeans for each worker separately
-			allowing(mbeanFactory).createFor(with(asList(worker_1)), with(any(MBeanSettings.class)), with(false));
+			allowing(mbeanFactory).createFor(with(asList(worker_1)), with(any(MBeanSettings.class)), with(false), with(Collections.emptyMap()));
 			will(returnValue(dynamicMBean));
 
-			allowing(mbeanFactory).createFor(with(asList(worker_2)), with(any(MBeanSettings.class)), with(false));
+			allowing(mbeanFactory).createFor(with(asList(worker_2)), with(any(MBeanSettings.class)), with(false), with(Collections.emptyMap()));
 			will(returnValue(dynamicMBean));
 
-			allowing(mbeanFactory).createFor(with(asList(worker_3)), with(any(MBeanSettings.class)), with(false));
+			allowing(mbeanFactory).createFor(with(asList(worker_3)), with(any(MBeanSettings.class)), with(false), with(Collections.emptyMap()));
 			will(returnValue(dynamicMBean));
 
 			// creating DynamicMBean for worker pool
 			allowing(mbeanFactory).createFor(with(asList(worker_1, worker_2, worker_3)),
-					with(any(MBeanSettings.class)), with(true));
+					with(any(MBeanSettings.class)), with(true), with(Collections.emptyMap()));
 			will(doAll());
 			will(returnValue(dynamicMBean));
 

@@ -1243,13 +1243,13 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 	}
 
 	@JmxAttribute
-	public long getMaxIncrementalReloadPeriod() {
-		return maxIncrementalReloadPeriod.toMillis();
+	public Duration getMaxIncrementalReloadPeriod() {
+		return maxIncrementalReloadPeriod;
 	}
 
 	@JmxAttribute
-	public void setMaxIncrementalReloadPeriod(long maxIncrementalReloadPeriod) {
-		this.maxIncrementalReloadPeriod = Duration.ofMillis(maxIncrementalReloadPeriod);
+	public void setMaxIncrementalReloadPeriod(Duration maxIncrementalReloadPeriod) {
+		this.maxIncrementalReloadPeriod = maxIncrementalReloadPeriod;
 	}
 
 	public Cube withMaxIncrementalReloadPeriod(Duration maxIncrementalReloadPeriod) {

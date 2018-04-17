@@ -523,13 +523,13 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 	// jmx
 
 	@JmxAttribute
-	public long getMaxIncrementalReloadPeriod() {
-		return maxIncrementalReloadPeriod.toMillis();
+	public Duration getMaxIncrementalReloadPeriod() {
+		return maxIncrementalReloadPeriod;
 	}
 
 	@JmxAttribute
-	public void setMaxIncrementalReloadPeriod(long maxIncrementalReloadPeriod) {
-		this.maxIncrementalReloadPeriod = Duration.ofMillis(maxIncrementalReloadPeriod);
+	public void setMaxIncrementalReloadPeriod(Duration maxIncrementalReloadPeriod) {
+		this.maxIncrementalReloadPeriod = maxIncrementalReloadPeriod;
 	}
 
 	@JmxAttribute

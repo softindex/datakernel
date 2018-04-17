@@ -108,21 +108,29 @@ public final class ConfigConverters {
 			.append(ISO_LOCAL_TIME)
 			.toFormatter();
 
+	public static String localDateTimeToString(LocalDateTime value) {
+		value.format(FORMATTER);
+		return value.toString();
+	}
+
+	public static LocalDateTime parseLocalDateTime(String string) {
+		try {
+			return LocalDateTime.parse(string, FORMATTER);
+		} catch (DateTimeParseException e) {
+			return LocalDateTime.parse(string);
+		}
+	}
+
 	public static ConfigConverter<LocalDateTime> ofLocalDateTime() {
 		return new SimpleConfigConverter<LocalDateTime>() {
 			@Override
 			protected LocalDateTime fromString(String string) {
-				try {
-					return LocalDateTime.parse(string, FORMATTER);
-				} catch (DateTimeParseException e) {
-					return LocalDateTime.parse(string);
-				}
+				return parseLocalDateTime(string);
 			}
 
 			@Override
 			protected String toString(LocalDateTime value) {
-				value.format(FORMATTER);
-				return value.toString();
+				return localDateTimeToString(value);
 			}
 		};
 	}
@@ -351,6 +359,15 @@ public final class ConfigConverters {
 		};
 	}
 
+	public static String instantToString(Instant value) {
+		String result = value.toString().replace('T', ' ');
+		return result.substring(0, result.length() - 1);
+	}
+
+	public static Instant parseInstant(String string) {
+		return Instant.parse(string.replace(' ', 'T') + "Z");
+	}
+
 	/**
 	 * @return config converter with millis in duration
 	 */
@@ -362,13 +379,12 @@ public final class ConfigConverters {
 		return new SimpleConfigConverter<Instant>() {
 			@Override
 			protected Instant fromString(String string) {
-				return Instant.parse(string.replace(' ', 'T') + "Z");
+				return parseInstant(string);
 			}
 
 			@Override
 			protected String toString(Instant value) {
-				String result = value.toString().replace('T', ' ');
-				return result.substring(0, result.length() - 1);
+				return instantToString(value);
 			}
 		};
 	}
@@ -809,9 +825,9 @@ public final class ConfigConverters {
 			@Override
 			protected ThrottlingController provide(Config config, ThrottlingController defaultValue) {
 				return ThrottlingController.create()
-						.withTargetTime(config.get(ofDuration(), "targetTime", Duration.ofMillis(defaultValue.getTargetTimeMillis())))
-						.withGcTime(config.get(ofDuration(), "gcTime", Duration.ofMillis(defaultValue.getGcTimeMillis())))
-						.withSmoothingWindow(config.get(ofInteger(), "smoothingWindow", defaultValue.getSmoothingWindow()))
+						.withTargetTime(config.get(ofDuration(), "targetTime", defaultValue.getTargetTimeMillis()))
+						.withGcTime(config.get(ofDuration(), "gcTime", defaultValue.getGcTimeMillis()))
+						.withSmoothingWindow(config.get(ofDuration(), "smoothingWindow", defaultValue.getSmoothingWindow()))
 						.withThrottlingDecrease(config.get(ofDouble(), "throttlingDecrease", defaultValue.getThrottlingDecrease()))
 						.withInitialKeysPerSecond(config.get(ofDouble(), "initialKeysPerSecond", INITIAL_KEYS_PER_SECOND))
 						.withInitialThrottling(config.get(ofDouble(), "initialThrottling", INITIAL_THROTTLING));

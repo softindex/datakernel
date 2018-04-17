@@ -73,7 +73,13 @@ abstract class AttributeNodeForLeafAbstract implements AttributeNode {
 		return Collections.singletonMap(name, aggregateAttribute(attrName, sources));
 	}
 
-	// It's guaranteed that list of sources is not empty and it doesn't contain null values
+
+	/**
+	 * It's guaranteed that list of sources is not empty and it doesn't contain null values
+	 * @param attrName name of attribute whose value return
+	 * @param sources attributes
+	 * @return value of attribute with name attrName
+	 */
 	protected abstract Object aggregateAttribute(String attrName, List<?> sources);
 
 	@Override
