@@ -19,6 +19,7 @@ package io.datakernel.jmx;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.helper.JmxStatsStub;
 import io.datakernel.jmx.helper.Utils;
+import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -263,18 +264,17 @@ public class JmxMBeansAttributesTest {
 	}
 
 	@Test
-	public void returns_toString_representationOfObjectsThatAreNeitherSupportedTypesNorPojosWithJmxAttributes()
-			throws Exception {
+	public void throwsErrorForUnsupportedTypesInJmxAttributes() throws Exception {
 
 		ArbitraryType arbitraryType = new ArbitraryType("String representation");
 		Date date = new Date();
 		MBeanWithJmxAttributesOfArbitraryTypes obj =
 				new MBeanWithJmxAttributesOfArbitraryTypes(arbitraryType, date);
-
-		DynamicMBean mbean = createDynamicMBeanFor(obj);
-
-		assertEquals(arbitraryType.toString(), mbean.getAttribute("arbitraryType"));
-		assertEquals(date.toString(), mbean.getAttribute("date"));
+		try {
+			createDynamicMBeanFor(obj);
+			Assert.fail();
+		} catch (Exception ignored) {
+		}
 	}
 
 	@Test

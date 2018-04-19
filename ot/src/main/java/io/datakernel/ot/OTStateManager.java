@@ -294,13 +294,13 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 	}
 
 	@JmxAttribute(name = "revision")
-	public Object getJmxRevision() {
-		return revision;
+	public String getJmxRevision() {
+		return revision.toString();
 	}
 
 	@JmxAttribute
-	public Object getFetchedRevision() {
-		return fetchedRevision;
+	public String getFetchedRevision() {
+		return fetchedRevision.toString();
 	}
 
 	@JmxAttribute

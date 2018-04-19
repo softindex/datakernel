@@ -181,11 +181,11 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 				.with(EventloopTaskScheduler.class, WARNING, "error", scheduler ->
 						TriggerResult.ofValue(scheduler.getStats().getExceptions().getTotal(), count -> count != 0))
 				.with(EventloopTaskScheduler.class, WARNING, "delay", scheduler ->
-						TriggerResult.ofTimestamp(scheduler.getStats().getLastStartTimestamp(),
-								scheduler.getPeriod() != null && scheduler.getStats().getCurrentDuration() > scheduler.getPeriod() * 3))
+						TriggerResult.ofTimestamp(scheduler.getStats().getLastStartTimestamp().toEpochMilli(),
+								scheduler.getPeriod() != null && scheduler.getStats().getCurrentDuration().toMillis() > scheduler.getPeriod() * 3))
 				.with(EventloopTaskScheduler.class, AVERAGE, "delay", scheduler ->
-						TriggerResult.ofTimestamp(scheduler.getStats().getLastStartTimestamp(),
-								scheduler.getPeriod() != null && scheduler.getStats().getCurrentDuration() > scheduler.getPeriod() * 10))
+						TriggerResult.ofTimestamp(scheduler.getStats().getLastStartTimestamp().toEpochMilli(),
+								scheduler.getPeriod() != null && scheduler.getStats().getCurrentDuration().toMillis() > scheduler.getPeriod() * 10))
 				;
 	}
 

@@ -78,14 +78,8 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		Class<?> instanceClass = singletonInstance.getClass();
 		Object mbean;
 		if (isJmxMBean(instanceClass)) {
-			try {
+			// this will throw exception if something happens during initialization
 			mbean = mbeanFactory.createFor(asList(singletonInstance), settings, true, customTypes);
-			} catch (Exception e) {
-				String msg = format("Instance with key %s implements ConcurrentJmxMBean or EventloopJmxMBean " +
-						"but exception was thrown during attempt to create DynamicMBean", key.toString());
-				logger.error(msg, e);
-				return;
-			}
 		} else if (isStandardMBean(instanceClass) || isMXBean(instanceClass) || isDynamicMBean(instanceClass)) {
 			mbean = singletonInstance;
 		} else {

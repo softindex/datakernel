@@ -24,6 +24,8 @@ import io.datakernel.config.ConfigConverters;
 import io.datakernel.jmx.JmxMBeans.Transformer;
 import io.datakernel.service.BlockingService;
 import io.datakernel.service.ServiceGraph;
+import io.datakernel.trigger.Severity;
+import io.datakernel.trigger.Triggers.TriggerWithResult;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.Initializer;
 import io.datakernel.util.MemSize;
@@ -71,6 +73,8 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 		customTypes.put(Period.class, new Transformer<>(ConfigConverters::periodToString, ConfigConverters::parsePeriod));
 		customTypes.put(Instant.class, new Transformer<>(ConfigConverters::instantToString, ConfigConverters::parseInstant));
 		customTypes.put(LocalDateTime.class, new Transformer<>(ConfigConverters::localDateTimeToString, ConfigConverters::parseLocalDateTime));
+		customTypes.put(TriggerWithResult.class, new Transformer<>(TriggerWithResult::toString));
+		customTypes.put(Severity.class, new Transformer<>(Severity::toString));
 	}
 
 	public static JmxModule create() {
@@ -144,7 +148,7 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 		return withObjectName(Key.get(type), objectName);
 	}
 
-	public <T> JmxModule withCustomType(Type type, Function<T, String> to, Function<String, T> from) {
+	public <T> JmxModule withCustomType(Class<T> type, Function<T, String> to, Function<String, T> from) {
 		this.customTypes.put(type, new Transformer<>(to, from));
 		return this;
 	}
@@ -181,14 +185,16 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 				}
 			}
 		});
-		bind(new TypeLiteral<RequiredDependency<ServiceGraph>>() {}).asEagerSingleton();
-		bind(new TypeLiteral<RequiredDependency<JmxRegistratorService>>() {}).asEagerSingleton();
+		bind(new TypeLiteral<RequiredDependency<ServiceGraph>>() {
+		}).asEagerSingleton();
+		bind(new TypeLiteral<RequiredDependency<JmxRegistratorService>>() {
+		}).asEagerSingleton();
 	}
 
 	@Provides
 	@Singleton
 	JmxRegistratorService jmxRegistratorService(JmxRegistrator jmxRegistrator,
-	                                            OptionalDependency<Initializer<JmxModule>> maybeInitializer) {
+												OptionalDependency<Initializer<JmxModule>> maybeInitializer) {
 		maybeInitializer.ifPresent(initializer -> initializer.accept(this));
 		return new JmxRegistratorService() {
 			@Override

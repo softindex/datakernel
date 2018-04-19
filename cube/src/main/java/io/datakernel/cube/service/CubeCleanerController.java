@@ -209,13 +209,13 @@ public final class CubeCleanerController implements EventloopJmxMBeanEx {
 	}
 
 	@JmxAttribute
-	public long getChunksCleanupDelay() {
-		return chunksCleanupDelay.toMillis();
+	public Duration getChunksCleanupDelay() {
+		return chunksCleanupDelay;
 	}
 
 	@JmxAttribute
-	public void setChunksCleanupDelay(long chunksCleanupDelay) {
-		this.chunksCleanupDelay = Duration.ofMillis(chunksCleanupDelay);
+	public void setChunksCleanupDelay(Duration chunksCleanupDelay) {
+		this.chunksCleanupDelay = chunksCleanupDelay;
 	}
 
 	@JmxAttribute
@@ -229,13 +229,13 @@ public final class CubeCleanerController implements EventloopJmxMBeanEx {
 	}
 
 	@JmxAttribute
-	public long getFreezeTimeout() {
-		return freezeTimeout.toMillis();
+	public Duration getFreezeTimeout() {
+		return freezeTimeout;
 	}
 
 	@JmxAttribute
-	public void setFreezeTimeout(long freezeTimeout) {
-		this.freezeTimeout = Duration.ofMillis(freezeTimeout);
+	public void setFreezeTimeout(Duration freezeTimeout) {
+		this.freezeTimeout = freezeTimeout;
 	}
 
 	@JmxAttribute

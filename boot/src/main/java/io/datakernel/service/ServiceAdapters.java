@@ -314,12 +314,12 @@ public final class ServiceAdapters {
 	}
 
 	public static <T> ServiceAdapter<T> combinedAdapter(List<? extends ServiceAdapter<? super T>> startOrder,
-	                                                    List<? extends ServiceAdapter<? super T>> stopOrder) {
+														List<? extends ServiceAdapter<? super T>> stopOrder) {
 		return new ServiceAdapter<T>() {
 			@SuppressWarnings("unchecked")
 			private void doAction(T instance, Executor executor,
-			                      Iterator<? extends ServiceAdapter<? super T>> iterator, CompletableFuture<Void> future,
-			                      Action<T> action) {
+								  Iterator<? extends ServiceAdapter<? super T>> iterator, CompletableFuture<Void> future,
+								  Action<T> action) {
 				if (iterator.hasNext()) {
 					action.doAction((ServiceAdapter<T>) iterator.next(), instance, executor).whenCompleteAsync((o, throwable) -> {
 						if (throwable == null) {

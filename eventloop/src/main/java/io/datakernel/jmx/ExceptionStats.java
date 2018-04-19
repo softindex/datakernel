@@ -18,6 +18,7 @@ package io.datakernel.jmx;
 
 import java.text.SimpleDateFormat;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Date;
 import java.util.List;
 
@@ -29,7 +30,7 @@ public final class ExceptionStats implements JmxStats<ExceptionStats>, JmxStatsW
 
 	private Class<? extends Throwable> exceptionClass;
 	private int count;
-	private long lastExceptionTimestamp;
+	private Instant lastExceptionTimestamp = Instant.EPOCH;
 	private Throwable throwable;
 	private Object context;
 
@@ -44,11 +45,11 @@ public final class ExceptionStats implements JmxStats<ExceptionStats>, JmxStatsW
 		this.count++;
 		long now = System.currentTimeMillis();
 
-		if (now >= lastExceptionTimestamp + DETAILS_REFRESH_TIMEOUT.toMillis()) {
+		if (now >= lastExceptionTimestamp.toEpochMilli() + DETAILS_REFRESH_TIMEOUT.toMillis()) {
 			this.exceptionClass = throwable != null ? throwable.getClass() : null;
 			this.throwable = throwable;
 			this.context = context;
-			this.lastExceptionTimestamp = now;
+			this.lastExceptionTimestamp = Instant.ofEpochMilli(now);
 		}
 	}
 
@@ -59,7 +60,7 @@ public final class ExceptionStats implements JmxStats<ExceptionStats>, JmxStatsW
 	@Override
 	public void resetStats() {
 		this.count = 0;
-		this.lastExceptionTimestamp = 0;
+		this.lastExceptionTimestamp = Instant.EPOCH;
 
 		this.exceptionClass = null;
 		this.throwable = null;
@@ -69,7 +70,7 @@ public final class ExceptionStats implements JmxStats<ExceptionStats>, JmxStatsW
 	@Override
 	public void add(ExceptionStats another) {
 		this.count += another.count;
-		if (another.lastExceptionTimestamp >= this.lastExceptionTimestamp) {
+		if (another.lastExceptionTimestamp.toEpochMilli() >= this.lastExceptionTimestamp.toEpochMilli()) {
 			this.lastExceptionTimestamp = another.lastExceptionTimestamp;
 
 			this.exceptionClass = another.exceptionClass;
@@ -89,13 +90,13 @@ public final class ExceptionStats implements JmxStats<ExceptionStats>, JmxStatsW
 	}
 
 	@JmxAttribute(optional = true)
-	public long getLastTimestamp() {
+	public Instant getLastTimestamp() {
 		return lastExceptionTimestamp;
 	}
 
 	@JmxAttribute(optional = true)
 	public String getLastTime() {
-		return lastExceptionTimestamp != 0 ? TIMESTAMP_FORMAT.format(new Date(lastExceptionTimestamp)) : null;
+		return lastExceptionTimestamp.toEpochMilli() != 0 ? TIMESTAMP_FORMAT.format(new Date(lastExceptionTimestamp.toEpochMilli())) : null;
 	}
 
 	public Throwable getLastException() {
@@ -108,8 +109,8 @@ public final class ExceptionStats implements JmxStats<ExceptionStats>, JmxStatsW
 	}
 
 	@JmxAttribute(optional = true)
-	public Object getLastContext() {
-		return context;
+	public String getLastContext() {
+		return context.toString();
 	}
 
 	@JmxAttribute(optional = true)

@@ -216,7 +216,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		return attrNodes;
 	}
 
-	private static List<AttributeDescriptor> fetchAttributeDescriptors(Class<?> clazz) {
+	private List<AttributeDescriptor> fetchAttributeDescriptors(Class<?> clazz) {
 		Map<String, AttributeDescriptor> nameToAttr = new HashMap<>();
 		for (Method method : clazz.getMethods()) {
 			if (method.isAnnotationPresent(JmxAttribute.class)) {
@@ -252,9 +252,9 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		}
 	}
 
-	private static void processSetter(Map<String, AttributeDescriptor> nameToAttr, Method setter) {
+	private void processSetter(Map<String, AttributeDescriptor> nameToAttr, Method setter) {
 		Class<?> attrType = setter.getParameterTypes()[0];
-		checkArgument(isSimpleType(attrType) || isAllowedType(attrType), "Setters are allowed only on SimpleType attributes."
+		checkArgument(isSimpleType(attrType) || customTypes.containsKey(attrType), "Setters are allowed only on SimpleType attributes."
 				+ " But setter \"%s\" is not SimpleType setter", setter.getName());
 
 		String name = extractFieldNameFromSetter(setter);
@@ -335,13 +335,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 						createNodesFor(returnClass, mbeanClass, extraSubAttributes, getter);
 
 				if (subNodes.size() == 0) {
-					// For unrecognized types just return standard toString
-					// Note that they will be read-only
-					return new AttributeNodeForConverterType<>(
-							attrName, attrDescription,
-							included, defaultFetcher,
-							setter,
-							Object::toString);
+					throw new IllegalArgumentException("Unrecognized type of Jmx attribute: " + attrType.getTypeName());
 				} else {
 					// POJO case
 
@@ -363,10 +357,10 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			}
 		} else if (attrType instanceof ParameterizedType) {
 			return createNodeForParametrizedType(
-					attrName, attrDescription, (ParameterizedType) attrType, included, getter, mbeanClass
+					attrName, attrDescription, (ParameterizedType) attrType, included, getter, setter, mbeanClass
 			);
 		} else {
-			throw new RuntimeException();
+			throw new IllegalArgumentException("Unrecognized type of Jmx attribute: " + attrType.getTypeName());
 		}
 	}
 
@@ -458,9 +452,10 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 	private AttributeNode createNodeForParametrizedType(String attrName, String attrDescription,
 														ParameterizedType pType, boolean included,
-														Method getter, Class<?> mbeanClass) {
+														Method getter, Method setter, Class<?> mbeanClass) {
 		ValueFetcher fetcher = createAppropriateFetcher(getter);
 		Class<?> rawType = (Class<?>) pType.getRawType();
+
 		if (rawType == List.class) {
 			Type listElementType = pType.getActualTypeArguments()[0];
 			return createListAttributeNodeFor(
@@ -468,9 +463,25 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		} else if (rawType == Map.class) {
 			Type valueType = pType.getActualTypeArguments()[1];
 			return createMapAttributeNodeFor(attrName, attrDescription, included, fetcher, valueType, mbeanClass);
+		} else if (customTypes.containsKey(rawType)) {
+			return createConverterAttributeNodeFor(attrName, attrDescription, pType, included, fetcher, setter);
 		} else {
-			throw new RuntimeException("There is no support for Generic classes other than List or Map");
+			throw new IllegalArgumentException("There is no support for generic class " + pType.getTypeName());
 		}
+	}
+
+	@SuppressWarnings("unchecked")
+	private AttributeNodeForConverterType createConverterAttributeNodeFor(String attrName, String attrDescription,
+																		  ParameterizedType type, boolean included,
+																		  ValueFetcher fetcher, Method setter) {
+		Type[] actualTypes = type.getActualTypeArguments();
+		for (Type genericType: actualTypes) {
+			if (!customTypes.containsKey(genericType)) {
+				throw new IllegalArgumentException("There is no support for generic type " + type.getTypeName());
+			}
+		}
+		Transformer<?> t = customTypes.get(type.getRawType());
+		return new AttributeNodeForConverterType(attrName, attrDescription, fetcher, included, setter, t.to, t.from);
 	}
 
 	private AttributeNodeForList createListAttributeNodeFor(String attrName, String attrDescription,
@@ -496,45 +507,31 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 					included,
 					fetcher,
 					createNodeForParametrizedType(
-							typeName, attrDescription, (ParameterizedType) listElementType, true, null, mbeanClass
+							typeName, attrDescription, (ParameterizedType) listElementType, true, null, null, mbeanClass
 					),
 					false
 			);
 		} else {
-			throw new RuntimeException();
+			throw new IllegalArgumentException("Can't create list attribute node for List<" + listElementType.getTypeName() + ">");
 		}
 	}
 
 	private AttributeNodeForMap createMapAttributeNodeFor(String attrName, String attrDescription,
-														  boolean included,
-														  ValueFetcher fetcher,
+														  boolean included, ValueFetcher fetcher,
 														  Type valueType, Class<?> mbeanClass) {
+		boolean isMapOfJmxRefreshable = false;
+		AttributeNode node;
 		if (valueType instanceof Class<?>) {
 			Class<?> valueClass = (Class<?>) valueType;
-			boolean isMapOfJmxRefreshable = (JmxRefreshable.class.isAssignableFrom(valueClass));
-			return new AttributeNodeForMap(
-					attrName,
-					attrDescription,
-					included,
-					fetcher,
-					createAttributeNodeFor("", attrDescription, valueType, true, null, null, null, mbeanClass),
-					isMapOfJmxRefreshable
-			);
+			isMapOfJmxRefreshable = (JmxRefreshable.class.isAssignableFrom(valueClass));
+			node = createAttributeNodeFor("", attrDescription, valueType, true, null, null, null, mbeanClass);
 		} else if (valueType instanceof ParameterizedType) {
 			String typeName = ((Class<?>) ((ParameterizedType) valueType).getRawType()).getSimpleName();
-			return new AttributeNodeForMap(
-					attrName,
-					attrDescription,
-					included,
-					fetcher,
-					createNodeForParametrizedType(
-							typeName, attrDescription, (ParameterizedType) valueType, true, null, mbeanClass
-					),
-					false
-			);
+			node = createNodeForParametrizedType(typeName, attrDescription, (ParameterizedType) valueType, true, null, null, mbeanClass);
 		} else {
-			throw new RuntimeException();
+			throw new IllegalArgumentException("Can't create map attribute node for " + valueType.getTypeName());
 		}
+		return new AttributeNodeForMap(attrName, attrDescription, included, fetcher, node, isMapOfJmxRefreshable);
 	}
 
 	private static boolean isSimpleType(Class<?> clazz) {

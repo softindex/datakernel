@@ -80,20 +80,20 @@ public final class MBeanFormat {
 		return formatHours(period);
 	}
 
-	private static Function<Long, String> dateTimeFormatter = timestamp ->
-			LocalDateTime.ofInstant(Instant.ofEpochMilli(timestamp), ZoneOffset.UTC)
+	private static Function<Instant, String> dateTimeFormatter = timestamp ->
+			LocalDateTime.ofInstant(timestamp, ZoneOffset.UTC)
 					.format(DateTimeFormatter.ISO_DATE_TIME)
 					.replace('T', ' ');
 
-	public static void setTimestampFormat(Function<Long, String> dateTimeFormatter) {
+	public static void setTimestampFormat(Function<Instant, String> dateTimeFormatter) {
 		MBeanFormat.dateTimeFormatter = dateTimeFormatter;
 	}
 
-	public static String formatTimestamp(long timestamp) {
-		if (timestamp == 0)
+	public static String formatTimestamp(Instant timestamp) {
+		if (timestamp.toEpochMilli() == 0)
 			return "";
 		return dateTimeFormatter.apply(timestamp) +
-				" (" + formatHours(System.currentTimeMillis() - timestamp) + " ago)";
+				" (" + formatHours(Instant.now().toEpochMilli() - timestamp.toEpochMilli()) + " ago)";
 	}
 
 }

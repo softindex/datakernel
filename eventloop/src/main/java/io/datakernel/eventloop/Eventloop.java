@@ -1129,13 +1129,13 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	@JmxAttribute
-	public long getIdleInterval() {
-		return idleInterval.toMillis();
+	public Duration getIdleInterval() {
+		return idleInterval;
 	}
 
 	@JmxAttribute
-	public void setIdleInterval(long idleInterval) {
-		this.idleInterval = Duration.ofMillis(idleInterval);
+	public void setIdleInterval(Duration idleInterval) {
+		this.idleInterval = idleInterval;
 	}
 
 	final class ExtraStatsExtractor {

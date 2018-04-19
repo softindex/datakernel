@@ -3,6 +3,7 @@ package io.datakernel.trigger;
 import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.MBeanFormat;
 
+import java.time.Instant;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
@@ -71,7 +72,7 @@ public final class TriggerResult {
 	public static TriggerResult ofError(ExceptionStats exceptionStats) {
 		Throwable lastException = exceptionStats.getLastException();
 		return lastException != null ?
-				new TriggerResult(exceptionStats.getLastTimestamp(), lastException, exceptionStats.getTotal()) : NONE;
+				new TriggerResult(exceptionStats.getLastTimestamp().toEpochMilli(), lastException, exceptionStats.getTotal()) : NONE;
 	}
 
 	public static TriggerResult ofValue(Object value) {
@@ -164,7 +165,7 @@ public final class TriggerResult {
 
 	@Override
 	public String toString() {
-		return MBeanFormat.formatTimestamp(timestamp) +
+		return MBeanFormat.formatTimestamp(Instant.ofEpochMilli(timestamp)) +
 				(count != 1 ? " #" + count : "") +
 				(value != null ? " : " + value : "") +
 				(throwable != null ? "\n" + MBeanFormat.formatExceptionLine(throwable) : "");

@@ -23,8 +23,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.time.Duration;
-import java.time.Instant;
-import java.time.Period;
 import java.util.*;
 import java.util.function.Function;
 
@@ -42,12 +40,6 @@ public final class ReflectionUtils {
 
 	public static boolean isJmxRefreshableStats(Class<?> clazz) {
 		return JmxRefreshableStats.class.isAssignableFrom(clazz);
-	}
-
-	public static boolean isAllowedType(Class<?> clazz) {
-		return Duration.class.isAssignableFrom(clazz)
-				|| Period.class.isAssignableFrom(clazz)
-				|| Instant.class.isAssignableFrom(clazz);
 	}
 
 	public static boolean isPrimitiveType(Class<?> clazz) {
