@@ -1,5 +1,6 @@
 package io.datakernel.ot;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncCallable;
 import io.datakernel.async.Stage;
 import io.datakernel.eventloop.Eventloop;
@@ -32,9 +33,11 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 	private final OTRemote<K, D> remote;
 	private final Comparator<K> comparator;
 
+	@Nullable
 	private K fetchedRevision;
 	private List<D> fetchedDiffs = Collections.emptyList();
 
+	@Nullable
 	private K revision;
 	private List<D> workingDiffs = new ArrayList<>();
 	private Map<K, OTCommit<K, D>> pendingCommits = new HashMap<>();
@@ -295,12 +298,12 @@ public final class OTStateManager<K, D> implements EventloopService, EventloopJm
 
 	@JmxAttribute(name = "revision")
 	public String getJmxRevision() {
-		return revision.toString();
+		return revision != null ? revision.toString() : null;
 	}
 
 	@JmxAttribute
 	public String getFetchedRevision() {
-		return fetchedRevision.toString();
+		return fetchedRevision != null ? fetchedRevision.toString() : null;
 	}
 
 	@JmxAttribute
