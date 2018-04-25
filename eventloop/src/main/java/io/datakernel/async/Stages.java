@@ -122,7 +122,6 @@ public final class Stages {
 	/**
 	 * @return first completed stage
 	 * @implNote this method returns one of the first completed stages, because it's async we can't really get FIRST completed stage.
-	 * So you get one of the first completed stages.
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Stage<T> any(List<? extends Stage<? extends T>> stages) {
@@ -625,6 +624,10 @@ public final class Stages {
 		return cb;
 	}
 
+	/**
+	 * Instead of returning new Stage, this method sets supplied stage when result collected.
+	 * @see Stages#first(Iterator, BiPredicate)
+	 */
 	private static <T> void firstImpl(Iterator<? extends AsyncCallable<? extends T>> stages,
 									  BiPredicate<? super T, ? super Throwable> predicate,
 									  SettableStage<T> cb) {
@@ -642,6 +645,11 @@ public final class Stages {
 		});
 	}
 
+	/**
+	 * Transforms Iterator over AsyncCallable to Iterator over Stages
+	 * @param callables Iterator over AsyncCallable
+	 * @return new Iterator over Stage
+	 */
 	public static <T> Iterator<Stage<T>> iterator(Iterator<AsyncCallable<T>> callables) {
 		return new Iterator<Stage<T>>() {
 			@Override
@@ -656,6 +664,9 @@ public final class Stages {
 		};
 	}
 
+	/**
+	 * Transforms Iterable over AsyncCallable to Iterable over Stages
+	 */
 	public static <T> Iterable<Stage<T>> iterable(Iterable<AsyncCallable<T>> callables) {
 		return () -> iterator(callables.iterator());
 	}

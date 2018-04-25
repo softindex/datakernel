@@ -30,28 +30,27 @@ import static java.net.StandardSocketOptions.SO_REUSEADDR;
  * This class used to change settings for server socket. It will be applying with creating new server socket
  */
 public final class ServerSocketSettings {
-	public static final MemSize DEFAULT_BACKLOG = MemSize.kilobytes(16);
+	public static final int DEFAULT_BACKLOG = 16384;
 
 	protected static final byte DEF_BOOL = -1;
 	protected static final byte TRUE = 1;
 	protected static final byte FALSE = 0;
 
-	@Nullable
-	private final MemSize backlog;
+	private final int backlog;
 	@Nullable
 	private final MemSize receiveBufferSize;
 	private final byte reuseAddress;
 
 	// region builders
-	private ServerSocketSettings(MemSize backlog, MemSize receiveBufferSize, byte reuseAddress) {
+	private ServerSocketSettings(int backlog, MemSize receiveBufferSize, byte reuseAddress) {
 		this.backlog = backlog;
 		this.receiveBufferSize = receiveBufferSize;
 		this.reuseAddress = reuseAddress;
 	}
 
-	public static ServerSocketSettings create(MemSize backlog) {return new ServerSocketSettings(backlog, null, DEF_BOOL);}
+	public static ServerSocketSettings create(int backlog) {return new ServerSocketSettings(backlog, null, DEF_BOOL);}
 
-	public ServerSocketSettings withBacklog(MemSize backlog) {
+	public ServerSocketSettings withBacklog(int backlog) {
 		return new ServerSocketSettings(backlog, receiveBufferSize, reuseAddress);
 	}
 
@@ -73,7 +72,7 @@ public final class ServerSocketSettings {
 		}
 	}
 
-	public MemSize getBacklog() {
+	public int getBacklog() {
 		return backlog;
 	}
 

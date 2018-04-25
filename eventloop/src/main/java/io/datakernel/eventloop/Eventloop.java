@@ -754,7 +754,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			serverChannel = ServerSocketChannel.open();
 			serverSocketSettings.applySettings(serverChannel);
 			serverChannel.configureBlocking(false);
-			serverChannel.bind(address, serverSocketSettings.getBacklog().toInt());
+			serverChannel.bind(address, serverSocketSettings.getBacklog());
 			serverChannel.register(ensureSelector(), SelectionKey.OP_ACCEPT, acceptCallback);
 			return serverChannel;
 		} catch (IOException e) {

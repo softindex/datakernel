@@ -106,6 +106,9 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	}
 	// endregion
 
+	/**
+	 * Creates Jmx MBean for monitorables with operations and attributes.
+	 */
 	@Override
 	public DynamicMBean createFor(List<?> monitorables, MBeanSettings setting, boolean enableRefresh, Map<Type, Transformer<?>> customTypes) {
 		checkNotNull(monitorables);
@@ -603,6 +606,9 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		return (long) (specifiedRefreshPeriod / ratio);
 	}
 
+	/**
+	 * Creates attribute tree of Jmx attributes for clazz.
+	 */
 	private AttributeNodeForPojo createAttributesTree(Class<?> clazz) {
 		List<AttributeNode> subNodes = createNodesFor(clazz, clazz, new String[0], null);
 		return new AttributeNodeForPojo("", null, true, new ValueFetcherDirect(), null, subNodes);
@@ -1107,7 +1113,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		public final Function<String, T> from;
 		public final Function<T, String> to;
 
-		public Transformer(Function<T, String> to, Function<String, T> from) {
+		public Transformer(Function<T, String> to, @Nullable Function<String, T> from) {
 			this.to = to;
 			this.from = from;
 		}

@@ -34,6 +34,10 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
+/**
+ * Preconfigured Http server launcher.
+ * @see Launcher
+ */
 public abstract class HttpServerLauncher extends Launcher {
 	public static final String EAGER_SINGLETONS_MODE = "eagerSingletonsMode";
 	public static final String PROPERTIES_FILE = "http-server.properties";
@@ -83,10 +87,16 @@ public abstract class HttpServerLauncher extends Launcher {
 		);
 	}
 
+	/**
+	 * Override this method to override base modules supplied in launcher.
+	 */
 	protected Collection<Module> getOverrideModules() {
 		return emptyList();
 	}
 
+	/**
+	 * Override this method to supply your launcher business logic.
+	 */
 	protected abstract Collection<Module> getBusinessLogicModules();
 
 	@Override

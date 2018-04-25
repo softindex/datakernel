@@ -48,6 +48,11 @@ import java.util.function.Function;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.guice.GuiceUtils.isSingleton;
 
+/**
+ * Turns on support of Jmx in application.
+ * <br>
+ * Automatically builds MBeans for parts of application and adds Jmx attributes and operations to it.
+ */
 public final class JmxModule extends AbstractModule implements Initializable<JmxModule> {
 	public static final Duration REFRESH_PERIOD_DEFAULT = Duration.ofSeconds(1);
 	public static final int MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT = 50;

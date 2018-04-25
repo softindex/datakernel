@@ -44,18 +44,19 @@ import static org.slf4j.LoggerFactory.getLogger;
  * <pre><code>
  * public class ApplicationLauncher extends Launcher {
  *
- *    public ApplicationLauncher() {
- *        super({@link Stage Stage.PRODUCTION},
- *            {@link ServiceGraphModule}.defaultInstance(),
- *            new DaoTierModule(),
- *            new ControllerTierModule(),
- *            new ViewTierModule(),
- *            {@link ConfigModule}.create(PropertiesConfig.ofProperties("props.properties"))
+ *   {@literal @}Override
+ *    protected Collection<Module> getModules() {
+ *        return null;
+ *    }
+ *
+ *   {@literal @}Override
+ *    protected void run() {
+ *        System.out.println("Hello world");
  *    }
  *
  *    public static void main(String[] args) throws Exception {
  *        ApplicationLauncher launcher = new ApplicationLauncher();
- *        launcher.launch(args);
+ *        launcher.launch(true, args);
  *    }
  * }
  * </code></pre>
@@ -78,6 +79,10 @@ public abstract class Launcher {
 
 	private final Thread mainThread = Thread.currentThread();
 
+	/**
+	 * Supplies modules for application(ConfigModule, EventloopModule, etc...)
+	 * @return
+	 */
 	protected abstract Collection<Module> getModules();
 
 	/**
@@ -101,6 +106,7 @@ public abstract class Launcher {
 	 * </ul>
 	 * You can override methods mentioned above to execute your code in needed stage.
 	 * @param args program args that will be injected into @Args string array
+	 * @param eagerSingletonsMode passed to Guice
 	 */
 	public void launch(boolean eagerSingletonsMode, String[] args) throws Exception {
 		Injector injector = createInjector(eagerSingletonsMode ? Stage.PRODUCTION : Stage.DEVELOPMENT, args);
@@ -137,11 +143,23 @@ public abstract class Launcher {
 		}
 	}
 
+	/**
+	 * This method runs when application is starting
+	 * @throws Exception
+	 */
 	protected void onStart() throws Exception {
 	}
 
+	/**
+	 * Launcher's main method.
+	 * @throws Exception
+	 */
 	protected abstract void run() throws Exception;
 
+	/**
+	 * This method runs when application is stopping
+	 * @throws Exception
+	 */
 	protected void onStop() throws Exception {
 	}
 

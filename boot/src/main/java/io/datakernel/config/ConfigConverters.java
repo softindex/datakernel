@@ -696,7 +696,7 @@ public final class ConfigConverters {
 				return Function.<ServerSocketSettings>identity()
 						.andThen(apply(
 								ServerSocketSettings::withBacklog,
-								config.get(ofMemSize(), "backlog", defaultValue.getBacklog())))
+								config.get(ofInteger(), "backlog", defaultValue.getBacklog())))
 						.andThen(applyNotNull(
 								ServerSocketSettings::withReceiveBufferSize,
 								config.get(ofMemSize(), "receiveBufferSize",
