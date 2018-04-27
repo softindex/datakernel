@@ -2,12 +2,6 @@ package io.datakernel.async;
 
 import io.datakernel.annotation.Nullable;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
 /**
@@ -19,31 +13,19 @@ import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 public final class SettableStage<T> extends AbstractStage<T> implements Callback<T> {
 	private static final Object NO_RESULT = new Object();
 
-	static final boolean DEBUG = false;
-	static final List<Stage<?>> uncompleteStages = DEBUG ? new ArrayList<>() : null;
-
 	@SuppressWarnings("unchecked")
 	@Nullable
 	protected T result = (T) NO_RESULT;
+
+	@Nullable
 	protected Throwable exception;
 
-	private final StacktracePrinter stacktrace;
-
-	protected SettableStage(boolean complete) {
-		if (DEBUG) {
-			if (!complete) {
-				uncompleteStages.add(this);
-			}
-			stacktrace = new StacktracePrinter();
-		} else {
-			stacktrace = null;
-		}
+	protected SettableStage() {
 	}
 
 	public static <T> SettableStage<T> create() {
-		return new SettableStage<>(false);
+		return new SettableStage<>();
 	}
-
 
 	/**
 	 * Sets the result of this {@code SettableStage} and completes it.
@@ -52,9 +34,6 @@ public final class SettableStage<T> extends AbstractStage<T> implements Callback
 	@Override
 	public void set(@Nullable T result) {
 		assert !isSet();
-		if (DEBUG) {
-			uncompleteStages.remove(this);
-		}
 		if (next == null) {
 			this.result = result;
 		} else {
@@ -70,11 +49,8 @@ public final class SettableStage<T> extends AbstractStage<T> implements Callback
 	 * @param t exception
 	 */
 	@Override
-	public void setException(@Nullable Throwable t) {
+	public void setException(Throwable t) {
 		assert !isSet();
-		if (DEBUG) {
-			uncompleteStages.remove(this);
-		}
 		if (next == null) {
 			result = null;
 			exception = t;
@@ -98,7 +74,7 @@ public final class SettableStage<T> extends AbstractStage<T> implements Callback
 	/**
 	 * The same as {@link SettableStage#trySet(Object, Throwable)} )} but for exception only.
 	 */
-	public boolean trySetException(@Nullable Throwable t) {
+	public boolean trySetException(Throwable t) {
 		if (isSet()) {
 			return false;
 		}
@@ -129,10 +105,6 @@ public final class SettableStage<T> extends AbstractStage<T> implements Callback
 		if (isSet()) {
 			if (this.next == null) { // to post only once
 				getCurrentEventloop().post(() -> {
-					if (DEBUG) {
-						uncompleteStages.remove(this);
-					}
-
 					if (exception == null) {
 						complete(result);
 					} else {
@@ -154,39 +126,12 @@ public final class SettableStage<T> extends AbstractStage<T> implements Callback
 		return result != NO_RESULT;
 	}
 
-	public static void dumpUncompleteStages() {
-		if (!DEBUG) {
-			throw new UnsupportedOperationException("Dumping uncomplete stages is not possible when DEBUG is disabled!");
-		}
-		for (Stage<?> uncomplete : uncompleteStages) {
-			System.err.println(uncomplete);
-		}
-	}
-
 	@Override
 	public String toString() {
-		StringWriter writer = new StringWriter()
-				.append("{")
-				.append(String.valueOf(isSet() ? (exception == null ? result : exception.getClass().getSimpleName()) : "<uncomplete>"))
-				.append("}");
-		if (DEBUG) {
-			writer.append(" Stacktrace:");
-			stacktrace.printStackTrace(new PrintWriter(writer));
-		}
-		return writer.toString();
-	}
-
-	private static final class StacktracePrinter extends Throwable {
-
-		public StacktracePrinter() {
-			// strip constructor and creation method trace elements
-			StackTraceElement[] stacktrace = getStackTrace();
-			setStackTrace(Arrays.copyOfRange(stacktrace, 2, stacktrace.length));
-		}
-
-		@Override
-		public String toString() {
-			return "";
-		}
+		return "SettableStage{" + String.valueOf(isSet() ?
+				(exception == null ?
+						"result=" + result :
+						"exception=" + exception.getClass().getSimpleName()) :
+				"<uncomplete>") + '}';
 	}
 }

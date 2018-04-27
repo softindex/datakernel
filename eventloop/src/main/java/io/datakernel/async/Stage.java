@@ -24,7 +24,7 @@ public interface Stage<T> {
 	 * @param value result of Stage
 	 */
 	static <T> Stage<T> of(@Nullable T value) {
-		SettableStage<T> stage = new SettableStage<>(true);
+		SettableStage<T> stage = new SettableStage<>();
 		stage.result = value;
 		return stage;
 	}
@@ -35,7 +35,7 @@ public interface Stage<T> {
 	 * @param throwable Exception
 	 */
 	static <T> Stage<T> ofException(Throwable throwable) {
-		SettableStage<T> stage = new SettableStage<>(true);
+		SettableStage<T> stage = new SettableStage<>();
 		stage.result = null;
 		stage.exception = throwable;
 		return stage;
@@ -292,6 +292,7 @@ public interface Stage<T> {
 
 	/**
 	 * Returns stage that always completes successfully with result or exception wrapped in Try
+	 *
 	 * @see Try
 	 */
 	Stage<Try<T>> toTry();
