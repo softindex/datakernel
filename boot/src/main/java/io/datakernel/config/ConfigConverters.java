@@ -26,6 +26,7 @@ import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.util.MemSize;
 import io.datakernel.util.SimpleThreadFactory;
+import io.datakernel.util.StringFormatUtils;
 import io.datakernel.util.Utils;
 
 import java.net.InetAddress;
@@ -34,19 +35,13 @@ import java.net.UnknownHostException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.*;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeFormatterBuilder;
-import java.time.format.DateTimeParseException;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static io.datakernel.config.Config.ifNotDefault;
@@ -57,11 +52,8 @@ import static io.datakernel.eventloop.ThrottlingController.INITIAL_THROTTLING;
 import static io.datakernel.net.ServerSocketSettings.DEFAULT_BACKLOG;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Utils.apply;
-import static io.datakernel.util.Utils.applyNotNull;
+import static io.datakernel.util.Utils.applyIfNotNull;
 import static java.lang.Integer.parseInt;
-import static java.lang.Math.multiplyExact;
-import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
-import static java.time.format.DateTimeFormatter.ISO_LOCAL_TIME;
 import static java.util.Collections.emptyList;
 import static java.util.regex.Pattern.compile;
 import static java.util.stream.Collectors.joining;
@@ -101,120 +93,30 @@ public final class ConfigConverters {
 		};
 	}
 
-	private static final DateTimeFormatter FORMATTER = new DateTimeFormatterBuilder()
-			.parseCaseInsensitive()
-			.append(ISO_LOCAL_DATE)
-			.appendLiteral(' ')
-			.append(ISO_LOCAL_TIME)
-			.toFormatter();
-
-	public static String localDateTimeToString(LocalDateTime value) {
-		value.format(FORMATTER);
-		return value.toString();
-	}
-
-	public static LocalDateTime parseLocalDateTime(String string) {
-		try {
-			return LocalDateTime.parse(string, FORMATTER);
-		} catch (DateTimeParseException e) {
-			return LocalDateTime.parse(string);
-		}
-	}
-
 	public static ConfigConverter<LocalDateTime> ofLocalDateTime() {
 		return new SimpleConfigConverter<LocalDateTime>() {
 			@Override
 			protected LocalDateTime fromString(String string) {
-				return parseLocalDateTime(string);
+				return StringFormatUtils.parseLocalDateTime(string);
 			}
 
 			@Override
 			protected String toString(LocalDateTime value) {
-				return localDateTimeToString(value);
+				return StringFormatUtils.formatLocalDateTime(value);
 			}
 		};
-	}
-
-	private final static Pattern PERIOD_PATTERN = Pattern.compile("(?<str>((?<time>-?\\d+)([\\.](?<floating>\\d+))?\\s+(?<unit>years?|months?|days?))(\\s+|$))");
-	/**
-	 * Parses value to Period.
-	 * 1 year 2 months 3 days == Period.of(1, 2, 3)
-	 * Every value can be negative, but you can't make all Period negative by negating year.
-	 * In ISO format you can write -P1Y2M, which means -1 years -2 months in this format
-	 * There can't be any spaces between '-' and DIGIT:
-	 * -1  - Right
-	 * - 2 - Wrong
-	 */
-	public static Period parsePeriod(String string) {
-		int years = 0, months = 0, days = 0;
-		Set<String> units = new HashSet<>();
-
-		Matcher matcher = PERIOD_PATTERN.matcher(string.trim().toLowerCase());
-		int lastEnd = 0;
-		while (!matcher.hitEnd()) {
-			if (!matcher.find() || matcher.start() != lastEnd) {
-				throw new IllegalArgumentException("Invalid period: " + string);
-			}
-			lastEnd = matcher.end();
-			String unit = matcher.group("unit");
-			if (!unit.endsWith("s")) {
-				unit += "s";
-			}
-			if (!units.add(unit)) {
-				throw new IllegalArgumentException("Time unit: " + unit + " occurs more than once.");
-			}
-			int result = Integer.parseInt(matcher.group("time"));
-			switch (unit) {
-				case "years":
-					years = result;
-					break;
-				case "months":
-					months = result;
-					break;
-				case "days":
-					days = result;
-					break;
-			}
-		}
-		return Period.of(years, months, days);
-	}
-
-	public static String periodToString(Period value) {
-		if (value.isZero()) {
-			return "0 days";
-		}
-		String result = "";
-		int years = value.getYears(), months = value.getMonths(),
-				days = value.getDays();
-		if (years != 0) {
-			result += years + " years ";
-		}
-		if (months != 0) {
-			result += months + " months ";
-		}
-		if (days != 0) {
-			result += days + " days ";
-		}
-		return result.trim();
 	}
 
 	public static ConfigConverter<Period> ofPeriod() {
 		return new SimpleConfigConverter<Period>() {
 			@Override
 			protected Period fromString(String string) {
-				Period result;
-				string = string.trim();
-				if (string.startsWith("-P") || string.startsWith("P")) {
-					result = Period.parse(string);
-				} else {
-					result = parsePeriod(string);
-				}
-				return result;
+				return StringFormatUtils.parsePeriod(string);
 			}
 
 			@Override
 			protected String toString(Period value) {
-				return periodToString(value);
+				return StringFormatUtils.formatPeriod(value);
 			}
 		};
 	}
@@ -226,146 +128,18 @@ public final class ConfigConverters {
 		return ofPeriod().transform(Period::getDays, Period::ofDays);
 	}
 
-	private final static Pattern DURATION_PATTERN = Pattern.compile("(?<time>-?\\d+)([\\.](?<floating>\\d+))?\\s+(?<unit>days?|hours?|minutes?|seconds?|millis?|nanos?)(\\s+|$)");
-	private final static int NANOS_IN_MILLI = 1000000;
-	private final static int MILLIS_IN_SECOND = 1000;
-	private final static int SECONDS_PER_MINUTE = 60;
-	private final static int SECONDS_PER_HOUR = SECONDS_PER_MINUTE * 60;
-	private final static int SECONDS_PER_DAY = SECONDS_PER_HOUR * 24;
-
-	public static Duration parseDuration(String string) {
-		Set<String> units = new HashSet<>();
-		int days = 0, hours = 0, minutes = 0;
-		long millis = 0, nanos = 0;
-		double seconds = 0.0;
-		long result;
-
-		Matcher matcher = DURATION_PATTERN.matcher(string.trim().toLowerCase());
-		int lastEnd = 0;
-		while (!matcher.hitEnd()) {
-			if (!matcher.find() || matcher.start() != lastEnd) {
-				throw new IllegalArgumentException("Invalid duration: " + string);
-			}
-			lastEnd = matcher.end();
-			String unit = matcher.group("unit");
-			if (!unit.endsWith("s")) {
-				unit += "s";
-			}
-			if (!units.add(unit)) {
-				throw new IllegalArgumentException("Time unit " + unit + " occurs more than once in: " + string);
-			}
-
-			result = Long.parseLong(matcher.group("time"));
-			int floating = 0;
-			int denominator = 1;
-			String floatingPoint = matcher.group("floating");
-			if (floatingPoint != null) {
-				if (unit.equals("nanos")) {
-					throw new IllegalArgumentException("Time unit nanos cannot be fractional");
-				}
-				floating = Integer.parseInt(floatingPoint);
-				for (int i = 0; i < floatingPoint.length(); i++) {
-					denominator *= 10;
-				}
-			}
-
-			switch (unit) {
-				case "days":
-					days = (int) result;
-					seconds += (double) multiplyExact(floating, SECONDS_PER_DAY) / denominator;
-					break;
-				case "hours":
-					hours += (int) result;
-					seconds += multiplyExact(floating, SECONDS_PER_HOUR) / denominator;
-					break;
-				case "minutes":
-					minutes += (int) result;
-					seconds += multiplyExact(floating, SECONDS_PER_MINUTE) / denominator;
-					break;
-				case "seconds":
-					seconds += (int) result;
-					millis += multiplyExact(floating, MILLIS_IN_SECOND) / denominator;
-					break;
-				case "millis":
-					millis += result;
-					nanos += multiplyExact(floating, NANOS_IN_MILLI) / denominator;
-					break;
-				case "nanos":
-					nanos += result;
-					break;
-			}
-		}
-
-		millis += (seconds - (long) seconds) * MILLIS_IN_SECOND;
-
-		return Duration.ofDays(days)
-				.plusHours(hours)
-				.plusMinutes(minutes)
-				.plusSeconds((long) seconds)
-				.plusMillis(millis)
-				.plusNanos(nanos);
-	}
-
-	public static String durationToString(Duration value) {
-		if (value.isZero()) {
-			return "0 seconds";
-		}
-		String result = "";
-		long days, hours, minutes, seconds, nano, milli;
-		days = value.toDays();
-		if (days != 0) {
-			result += days + " days ";
-		}
-		hours = value.toHours() - days * 24;
-		if (hours != 0) {
-			result += hours + " hours ";
-		}
-		minutes = value.toMinutes() - days * 1440 - hours * 60;
-		if (minutes != 0) {
-			result += minutes + " minutes ";
-		}
-		seconds = value.getSeconds() - days * 86400 - hours * 3600 - minutes * 60;
-		if (seconds != 0) {
-			result += seconds + " seconds ";
-		}
-		nano = value.getNano();
-		milli = (nano - nano % 1000000) / 1000000;
-		if (milli != 0) {
-			result += milli + " millis ";
-		}
-		nano = nano % 1000000;
-		if (nano != 0) {
-			result += nano + " nanos ";
-		}
-		return result.trim();
-	}
-
 	public static ConfigConverter<Duration> ofDuration() {
 		return new SimpleConfigConverter<Duration>() {
 			@Override
 			protected Duration fromString(String string) {
-				string = string.trim();
-				if (string.startsWith("-P") || string.startsWith("P")) {
-					return Duration.parse(string);
-				} else {
-					return parseDuration(string);
-				}
+				return StringFormatUtils.parseDuration(string);
 			}
 
 			@Override
 			protected String toString(Duration value) {
-				return durationToString(value);
+				return StringFormatUtils.formatDuration(value);
 			}
 		};
-	}
-
-	public static String instantToString(Instant value) {
-		String result = value.toString().replace('T', ' ');
-		return result.substring(0, result.length() - 1);
-	}
-
-	public static Instant parseInstant(String string) {
-		return Instant.parse(string.replace(' ', 'T') + "Z");
 	}
 
 	/**
@@ -379,12 +153,12 @@ public final class ConfigConverters {
 		return new SimpleConfigConverter<Instant>() {
 			@Override
 			protected Instant fromString(String string) {
-				return parseInstant(string);
+				return StringFormatUtils.parseInstant(string);
 			}
 
 			@Override
 			protected String toString(Instant value) {
-				return instantToString(value);
+				return StringFormatUtils.formatInstant(value);
 			}
 		};
 	}
@@ -697,11 +471,11 @@ public final class ConfigConverters {
 						.andThen(apply(
 								ServerSocketSettings::withBacklog,
 								config.get(ofInteger(), "backlog", defaultValue.getBacklog())))
-						.andThen(applyNotNull(
+						.andThen(applyIfNotNull(
 								ServerSocketSettings::withReceiveBufferSize,
 								config.get(ofMemSize(), "receiveBufferSize",
 										defaultValue.hasReceiveBufferSize() ? defaultValue.getReceiveBufferSize() : null)))
-						.andThen(applyNotNull(
+						.andThen(applyIfNotNull(
 								ServerSocketSettings::withReuseAddress,
 								config.get(ofBoolean(), "reuseAddress",
 										defaultValue.hasReuseAddress() ? defaultValue.getReuseAddress() : null)))
@@ -715,39 +489,39 @@ public final class ConfigConverters {
 			@Override
 			protected SocketSettings provide(Config config, SocketSettings defaultValue) {
 				return Function.<SocketSettings>identity()
-						.andThen(applyNotNull(
+						.andThen(applyIfNotNull(
 								SocketSettings::withReceiveBufferSize,
 								config.get(ofMemSize(), "receiveBufferSize",
 										defaultValue.hasReceiveBufferSize() ? defaultValue.getReceiveBufferSize() : null)))
-						.andThen(applyNotNull(
+						.andThen(applyIfNotNull(
 								SocketSettings::withSendBufferSize,
 								config.get(ofMemSize(), "sendBufferSize",
 										defaultValue.hasSendBufferSize() ? defaultValue.getSendBufferSize() : null)))
-						.andThen(applyNotNull(
+						.andThen(applyIfNotNull(
 								SocketSettings::withReuseAddress,
 								config.get(ofBoolean(), "reuseAddress",
 										defaultValue.hasReuseAddress() ? defaultValue.getReuseAddress() : null)))
-						.andThen(applyNotNull(
+						.andThen(applyIfNotNull(
 								SocketSettings::withKeepAlive,
 								config.get(ofBoolean(), "keepAlive",
 										defaultValue.hasKeepAlive() ? defaultValue.getKeepAlive() : null)))
-						.andThen(applyNotNull(
+						.andThen(applyIfNotNull(
 								SocketSettings::withTcpNoDelay,
 								config.get(ofBoolean(), "tcpNoDelay",
 										defaultValue.hasTcpNoDelay() ? defaultValue.getTcpNoDelay() : null)))
-						.andThen(applyNotNull(
+						.andThen(applyIfNotNull(
 								SocketSettings::withImplReadTimeout,
 								config.get(ofDuration(), "implReadTimeout",
 										defaultValue.hasImplReadTimeout() ? defaultValue.getImplReadTimeout() : null)))
-						.andThen(applyNotNull(
+						.andThen(applyIfNotNull(
 								SocketSettings::withImplWriteTimeout,
 								config.get(ofDuration(), "implWriteTimeout",
 										defaultValue.hasImplWriteTimeout() ? defaultValue.getImplWriteTimeout() : null)))
-						.andThen(applyNotNull(
+						.andThen(applyIfNotNull(
 								SocketSettings::withImplReadSize,
 								config.get(ofMemSize(), "implReadSize",
 										defaultValue.hasImplReadSize() ? defaultValue.getImplReadSize() : null)))
-						.andThen(applyNotNull(
+						.andThen(applyIfNotNull(
 								SocketSettings::withImplWriteSize,
 								config.get(ofMemSize(), "implWriteSize",
 										defaultValue.hasImplWriteSize() ? defaultValue.getImplWriteSize() : null)))
@@ -761,19 +535,19 @@ public final class ConfigConverters {
 			@Override
 			protected DatagramSocketSettings provide(Config config, DatagramSocketSettings defaultValue) {
 				return Function.<DatagramSocketSettings>identity()
-						.andThen(applyNotNull(
+						.andThen(applyIfNotNull(
 								DatagramSocketSettings::withReceiveBufferSize,
 								config.get(ofMemSize(), "receiveBufferSize",
 										defaultValue.hasReceiveBufferSize() ? defaultValue.getReceiveBufferSize() : null)))
-						.andThen(applyNotNull(
+						.andThen(applyIfNotNull(
 								DatagramSocketSettings::withSendBufferSize,
 								config.get(ofMemSize(), "sendBufferSize",
 										defaultValue.hasSendBufferSize() ? defaultValue.getSendBufferSize() : null)))
-						.andThen(applyNotNull(
+						.andThen(applyIfNotNull(
 								DatagramSocketSettings::withReuseAddress,
 								config.get(ofBoolean(), "reuseAddress",
 										defaultValue.hasReuseAddress() ? defaultValue.getReuseAddress() : null)))
-						.andThen(applyNotNull(
+						.andThen(applyIfNotNull(
 								DatagramSocketSettings::withBroadcast,
 								config.get(ofBoolean(), "broadcast",
 										defaultValue.hasBroadcast() ? defaultValue.getBroadcast() : null)))

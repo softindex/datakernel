@@ -17,35 +17,39 @@
 package io.datakernel.jmx;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.helper.Utils;
 import org.junit.Test;
 
 import javax.management.DynamicMBean;
 import javax.management.MBeanAttributeInfo;
 import javax.management.MBeanInfo;
+import java.lang.reflect.Type;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.jmx.helper.Utils.nameToAttribute;
 import static java.util.Arrays.asList;
+import static java.util.Collections.singleton;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class JmxMBeansSettingsTest {
 	public static final Eventloop EVENTLOOP = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
+
+	private static final Set<String> NO_MONITORABLES = Collections.emptySet();
 	private static final Map<String, AttributeModifier<?>> NO_MODIFIERS = Collections.emptyMap();
-	private static final List<String> EMPTY_LIST = Collections.emptyList();
+	private static final Map<Type, JmxMBeans.JmxCustomTypeAdapter<?>> NO_CUSTOM_TYPES = Collections.emptyMap();
 
 	// region included optionals
 	@Test
 	public void includesOptionalAttributes_thatAreSpecifiedInSettings() {
-		MBeanSettings settings = MBeanSettings.of(asList("stats_text"), NO_MODIFIERS);
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(new MBeanStubOne()), settings, false, Collections.emptyMap());
+		MBeanSettings settings = MBeanSettings.of(singleton("stats_text"), NO_MODIFIERS, NO_CUSTOM_TYPES);
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(new MBeanStubOne()), settings, false);
 
 		MBeanInfo mBeanInfo = mbean.getMBeanInfo();
-		Map<String, MBeanAttributeInfo> attrs = Utils.nameToAttribute(mBeanInfo.getAttributes());
+		Map<String, MBeanAttributeInfo> attrs = nameToAttribute(mBeanInfo.getAttributes());
 
 		assertEquals(2, attrs.size());
 		assertTrue(attrs.containsKey("stats_text"));
@@ -99,9 +103,9 @@ public class JmxMBeansSettingsTest {
 				attribute.setConfigurableText("configurated");
 			}
 		});
-		MBeanSettings settings = MBeanSettings.of(EMPTY_LIST, nameToModifier);
+		MBeanSettings settings = MBeanSettings.of(NO_MONITORABLES, nameToModifier, NO_CUSTOM_TYPES);
 		MBeanStubTwo mBeanStubTwo = new MBeanStubTwo();
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(mBeanStubTwo), settings, false, Collections.emptyMap());
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(mBeanStubTwo), settings, false);
 
 		assertEquals("configurated", mbean.getAttribute("stats_data"));
 	}

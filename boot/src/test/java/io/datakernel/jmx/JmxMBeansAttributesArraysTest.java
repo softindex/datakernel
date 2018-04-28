@@ -20,7 +20,6 @@ import io.datakernel.eventloop.Eventloop;
 import org.junit.Test;
 
 import javax.management.DynamicMBean;
-import java.util.Collections;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.jmx.MBeanSettings.defaultSettings;
@@ -84,8 +83,7 @@ public class JmxMBeansAttributesArraysTest {
 
 	// region helper methods
 	public static DynamicMBean createDynamicMBeanFor(Object... objects) throws Exception {
-		boolean refreshEnabled = false;
-		return JmxMBeans.factory().createFor(asList(objects), defaultSettings(), refreshEnabled, Collections.emptyMap());
+		return JmxMBeans.factory().createFor(asList(objects), defaultSettings(), false);
 	}
 	// endregion
 }

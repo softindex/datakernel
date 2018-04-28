@@ -20,7 +20,6 @@ import io.datakernel.eventloop.Eventloop;
 import org.junit.Test;
 
 import javax.management.DynamicMBean;
-import java.util.Collections;
 import java.util.List;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -37,8 +36,7 @@ public class JmxMBeansAttributeReducersTest {
 		DynamicMBean mbean = JmxMBeans.factory().createFor(
 				asList(new MBeanWithCustomReducer(200), new MBeanWithCustomReducer(350)),
 				MBeanSettings.defaultSettings(),
-				false,
-				Collections.emptyMap()
+				false
 		);
 
 		assertEquals(ConstantValueReducer.CONSTANT_VALUE, mbean.getAttribute("attr"));
@@ -80,8 +78,7 @@ public class JmxMBeansAttributeReducersTest {
 		DynamicMBean mbean = JmxMBeans.factory().createFor(
 				asList(mbean_1, mbean_2),
 				MBeanSettings.defaultSettings(),
-				false,
-				Collections.emptyMap()
+				false
 		);
 
 		assertEquals(25, mbean.getAttribute("pojo_count"));

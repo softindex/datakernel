@@ -345,7 +345,7 @@ public class ConfigConvertersTest {
 	 * Testing *as* methods like ofDurationAsMillis, ofPeriodAsDays, etc...
 	 */
 	@Test
-	public void testXXXAsXXX() {
+	public void testXAsY() {
 		Instant now = Instant.now();
 		Config testConfig = Config.create()
 				.with("ofDurationAsMillis", "228 millis")

@@ -32,7 +32,7 @@ import static java.util.Arrays.asList;
  * Class is supposed to work in single thread
  */
 public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxStatsWithReset, JmxStatsWithSmoothingWindow {
-	private static final long TOO_LONG_TIME_PERIOD_BETWEEN_REFRESHES = Duration.ofHours(5).toMillis();
+	private static final long TOO_LONG_TIME_PERIOD_BETWEEN_REFRESHES = Duration.ofHours(1).toMillis();
 	private static final double LN_2 = log(2);
 
 	// region standard levels
@@ -529,19 +529,15 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 	@Override
 	@JmxAttribute(optional = true)
 	public Duration getSmoothingWindow() {
-		return Duration.ofMillis((long) smoothingWindow);
+		return Duration.ofMillis((long) (smoothingWindow * 1000.0));
 	}
 
-	@JmxAttribute
 	@Override
+	@JmxAttribute(optional = true)
 	public void setSmoothingWindow(Duration smoothingWindow) {
-		this.smoothingWindow = smoothingWindow.toMillis();
-		this.smoothingWindowCoef = calculateSmoothingWindowCoef(smoothingWindow.toMillis());
+		this.smoothingWindow = smoothingWindow.toMillis() / 1000.0;
+		this.smoothingWindowCoef = calculateSmoothingWindowCoef(this.smoothingWindow);
 	}
-
-//	public void setSmoothingWindow(Duration smoothingWindow) {
-//		setSmoothingWindow(smoothingWindow.toMillis());
-//	}
 
 	@JmxAttribute(optional = true)
 	public long getCount() {

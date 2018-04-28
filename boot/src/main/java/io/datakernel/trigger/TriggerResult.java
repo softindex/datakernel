@@ -1,5 +1,6 @@
 package io.datakernel.trigger;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.MBeanFormat;
 
@@ -24,8 +25,8 @@ public final class TriggerResult {
 		this.count = count;
 	}
 
-	TriggerResult(long timestamp, Throwable throwable, Object value) {
-		this(timestamp, throwable, value, 1);
+	TriggerResult(long timestamp, Throwable throwable, Object context) {
+		this(timestamp, throwable, context, 1);
 	}
 
 	public static TriggerResult none() {
@@ -36,27 +37,50 @@ public final class TriggerResult {
 		return new TriggerResult(0L, null, null);
 	}
 
-	public static TriggerResult create(long timestamp, Throwable throwable, Object context) {
-		return new TriggerResult(timestamp, throwable, context);
+	public static TriggerResult create(long timestamp, Throwable throwable, Object value) {
+		return new TriggerResult(timestamp, throwable, value);
 	}
 
-	public static TriggerResult create(long timestamp, Throwable throwable, Object context, int count) {
-		return new TriggerResult(timestamp, throwable, context, count);
+	public static TriggerResult create(long timestamp, Throwable throwable, Object value, int count) {
+		return new TriggerResult(timestamp, throwable, value, count);
+	}
+
+	public static TriggerResult create(Instant instant, Throwable throwable, Object value) {
+		return create(instant.toEpochMilli(), throwable, value);
+	}
+
+	public static TriggerResult create(Instant instant, Throwable throwable, Object value, int count) {
+		return create(instant.toEpochMilli(), throwable, value, count);
 	}
 
 	public static TriggerResult ofTimestamp(long timestamp) {
 		return timestamp != 0L ?
-				new TriggerResult(0L, null, timestamp) : NONE;
+				new TriggerResult(timestamp, null, null) : NONE;
 	}
 
 	public static TriggerResult ofTimestamp(long timestamp, Predicate<Long> predicate) {
 		return timestamp != 0L && predicate.test(timestamp) ?
-				new TriggerResult(0L, null, timestamp) : NONE;
+				new TriggerResult(timestamp, null, null) : NONE;
 	}
 
 	public static TriggerResult ofTimestamp(long timestamp, boolean condition) {
 		return timestamp != 0L && condition ?
-				new TriggerResult(0L, null, timestamp) : NONE;
+				new TriggerResult(timestamp, null, null) : NONE;
+	}
+
+	public static TriggerResult ofInstant(@Nullable Instant instant) {
+		return instant != null ?
+				new TriggerResult(0L, null, instant.toEpochMilli()) : NONE;
+	}
+
+	public static TriggerResult ofInstant(@Nullable Instant instant, Predicate<Instant> predicate) {
+		return instant != null && predicate.test(instant) ?
+				new TriggerResult(0L, null, instant.toEpochMilli()) : NONE;
+	}
+
+	public static TriggerResult ofInstant(Instant instant, boolean condition) {
+		return instant != null && condition ?
+				create(0L, null, instant) : NONE;
 	}
 
 	public static TriggerResult ofError(Throwable throwable) {
@@ -69,10 +93,15 @@ public final class TriggerResult {
 				new TriggerResult(timestamp, throwable, null) : NONE;
 	}
 
+	public static TriggerResult ofError(Throwable throwable, Instant instant) {
+		return throwable != null ?
+				create(instant.toEpochMilli(), throwable, null) : NONE;
+	}
+
 	public static TriggerResult ofError(ExceptionStats exceptionStats) {
 		Throwable lastException = exceptionStats.getLastException();
 		return lastException != null ?
-				new TriggerResult(exceptionStats.getLastTimestamp().toEpochMilli(), lastException, exceptionStats.getTotal()) : NONE;
+				create(exceptionStats.getLastTime().toEpochMilli(), lastException, exceptionStats.getTotal()) : NONE;
 	}
 
 	public static TriggerResult ofValue(Object value) {
@@ -119,12 +148,16 @@ public final class TriggerResult {
 	}
 
 	public TriggerResult whenTimestamp(Predicate<Long> timestampPredicate) {
-		return isPresent() && timestampPredicate.test(this.timestamp) ? this : NONE;
+		return isPresent() && hasTimestamp() && timestampPredicate.test(timestamp) ? this : NONE;
+	}
+
+	public TriggerResult whenInstant(Predicate<Instant> instantPredicate) {
+		return isPresent() && hasTimestamp() && instantPredicate.test(Instant.ofEpochMilli(timestamp)) ? this : NONE;
 	}
 
 	@SuppressWarnings("unchecked")
 	public <T> TriggerResult whenValue(Predicate<T> valuePredicate) {
-		return isPresent() && valuePredicate.test((T) this.value) ? this : NONE;
+		return isPresent() && hasValue() && valuePredicate.test((T) value) ? this : NONE;
 	}
 
 	public boolean isPresent() {
@@ -148,11 +181,19 @@ public final class TriggerResult {
 		return timestamp;
 	}
 
+	@Nullable
+	public Instant getInstant() {
+		checkState(isPresent());
+		return hasTimestamp() ? Instant.ofEpochMilli(timestamp) : null;
+	}
+
+	@Nullable
 	public Throwable getThrowable() {
 		checkState(isPresent());
 		return throwable;
 	}
 
+	@Nullable
 	public Object getValue() {
 		checkState(isPresent());
 		return value;
@@ -165,7 +206,7 @@ public final class TriggerResult {
 
 	@Override
 	public String toString() {
-		return MBeanFormat.formatTimestamp(Instant.ofEpochMilli(timestamp)) +
+		return MBeanFormat.formatTimestamp(timestamp) +
 				(count != 1 ? " #" + count : "") +
 				(value != null ? " : " + value : "") +
 				(throwable != null ? "\n" + MBeanFormat.formatExceptionLine(throwable) : "");

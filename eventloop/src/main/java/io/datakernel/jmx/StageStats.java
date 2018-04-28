@@ -1,5 +1,6 @@
 package io.datakernel.jmx;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncCallable;
 import io.datakernel.async.Stage;
 import io.datakernel.async.StageConsumer;
@@ -9,25 +10,24 @@ import java.time.Duration;
 import java.time.Instant;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
-import static io.datakernel.jmx.JmxReducers.JmxReducerMax;
 import static io.datakernel.jmx.JmxReducers.JmxReducerSum;
 
 public class StageStats {
 	private Eventloop eventloop;
 
 	private int activeStages = 0;
-	private Instant lastStartTimestamp = Instant.EPOCH;
-	private Instant lastCompleteTimestamp = Instant.EPOCH;
+	private long lastStartTimestamp = 0;
+	private long lastCompleteTimestamp = 0;
 	private final ValueStats duration;
 	private final ExceptionStats exceptions = ExceptionStats.create();
 
-	StageStats(Eventloop eventloop, ValueStats duration) {
+	protected StageStats(Eventloop eventloop, ValueStats duration) {
 		this.eventloop = eventloop;
 		this.duration = duration;
 	}
 
-	public static StageStats createMBean(Eventloop eventloop, Duration smoothingWindowSeconds) {
-		return new StageStats(eventloop, ValueStats.create(smoothingWindowSeconds));
+	public static StageStats createMBean(Eventloop eventloop, Duration smoothingWindow) {
+		return new StageStats(eventloop, ValueStats.create(smoothingWindow));
 	}
 
 	public static StageStats create(Duration smoothingWindow) {
@@ -61,12 +61,12 @@ public class StageStats {
 	public <T> StageConsumer<T> recordStats() {
 		this.activeStages++;
 		long before = currentTimeMillis();
-		this.lastStartTimestamp = Instant.ofEpochMilli(before);
+		this.lastStartTimestamp = before;
 		return (value, throwable) -> {
 			this.activeStages--;
 			long now = currentTimeMillis();
 			long durationMillis = now - before;
-			this.lastCompleteTimestamp = Instant.ofEpochMilli(now);
+			this.lastCompleteTimestamp = now;
 			duration.recordValue(durationMillis);
 
 			if (throwable != null) {
@@ -80,29 +80,22 @@ public class StageStats {
 		return activeStages;
 	}
 
-	@JmxAttribute(reducer = JmxReducerMax.class, optional = true)
-	public Instant getLastStartTimestamp() {
-		return lastStartTimestamp;
-	}
-
 	@JmxAttribute
+	@Nullable
 	public Instant getLastStartTime() {
-		return lastStartTimestamp;
-	}
-
-	@JmxAttribute(reducer = JmxReducerMax.class, optional = true)
-	public Instant getLastCompleteTimestamp() {
-		return lastCompleteTimestamp;
+		return lastStartTimestamp != 0L ? Instant.ofEpochMilli(lastStartTimestamp) : null;
 	}
 
 	@JmxAttribute
+	@Nullable
 	public Instant getLastCompleteTime() {
-		return lastCompleteTimestamp;
+		return lastCompleteTimestamp != 0L ? Instant.ofEpochMilli(lastCompleteTimestamp) : null;
 	}
 
-	@JmxAttribute(reducer = JmxReducerMax.class)
+	@JmxAttribute
+	@Nullable
 	public Duration getCurrentDuration() {
-		return activeStages != 0 ? Duration.ofMillis(currentTimeMillis()).minusMillis(lastStartTimestamp.toEpochMilli()) : Duration.ZERO;
+		return activeStages != 0 ? Duration.ofMillis(currentTimeMillis() - lastStartTimestamp) : null;
 	}
 
 	@JmxAttribute

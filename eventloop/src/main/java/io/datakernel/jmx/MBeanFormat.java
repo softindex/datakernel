@@ -16,43 +16,18 @@
 
 package io.datakernel.jmx;
 
-import javax.management.MalformedObjectNameException;
-import javax.management.ObjectName;
+import io.datakernel.annotation.Nullable;
+import io.datakernel.util.StringFormatUtils;
+
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
-import java.util.function.Function;
+
+import static java.lang.System.currentTimeMillis;
 
 public final class MBeanFormat {
 	private MBeanFormat() {
-	}
-
-	public static ObjectName name(Class<?> type) {
-		return name(type.getPackage().getName(), type.getSimpleName());
-	}
-
-	public static ObjectName name(String domain, String type, Class<?> valueType) {
-		return name(domain, type, valueType.getSimpleName());
-	}
-
-	public static ObjectName name(String domain, String type, String value) {
-		value = value.replace(':', '_').replace(',', '_').replace('=', '_');
-		return name(domain + ":type=" + type + ",value=" + value);
-	}
-
-	public static ObjectName name(String domain, String type) {
-		return name(domain + ":type=" + type);
-	}
-
-	private static ObjectName name(String name) {
-		try {
-			return new ObjectName(name);
-		} catch (MalformedObjectNameException e) {
-			throw new RuntimeException(e);
-		}
 	}
 
 	public static String formatExceptionLine(Throwable exception) {
@@ -67,33 +42,14 @@ public final class MBeanFormat {
 		return formatExceptionLine(exception).split("\n");
 	}
 
-	private static String formatHours(long period) {
-		long seconds = (period / 1000) % 60;
-		long minutes = (period / (60 * 1000)) % 60;
-		long hours = period / (60 * 60 * 1000);
-		return String.format("%02d", hours) + ":" + String.format("%02d", minutes) + ":" + String.format("%02d", seconds);
+	public static String formatInstant(@Nullable Instant instant) {
+		if (instant == null) return "null";
+		Duration ago = Duration.between(instant, Instant.ofEpochMilli(currentTimeMillis())).withNanos(0);
+		return StringFormatUtils.formatInstant(instant) +
+				" (" + StringFormatUtils.formatDuration(ago) + " ago)";
 	}
 
-	public static String formatDuration(long period) {
-		if (period == 0)
-			return "";
-		return formatHours(period);
+	public static String formatTimestamp(long timestamp) {
+		return formatInstant(timestamp != 0L ? Instant.ofEpochMilli(timestamp) : null);
 	}
-
-	private static Function<Instant, String> dateTimeFormatter = timestamp ->
-			LocalDateTime.ofInstant(timestamp, ZoneOffset.UTC)
-					.format(DateTimeFormatter.ISO_DATE_TIME)
-					.replace('T', ' ');
-
-	public static void setTimestampFormat(Function<Instant, String> dateTimeFormatter) {
-		MBeanFormat.dateTimeFormatter = dateTimeFormatter;
-	}
-
-	public static String formatTimestamp(Instant timestamp) {
-		if (timestamp.toEpochMilli() == 0)
-			return "";
-		return dateTimeFormatter.apply(timestamp) +
-				" (" + formatHours(Instant.now().toEpochMilli() - timestamp.toEpochMilli()) + " ago)";
-	}
-
 }

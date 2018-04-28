@@ -1,5 +1,6 @@
 package io.datakernel.async;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.eventloop.ScheduledRunnable;
@@ -32,8 +33,8 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 	private long firstRetryTime;
 	private int errorCount;
 
-	private Long period;
-	private Long interval;
+	private Duration period;
+	private Duration interval;
 	private boolean enabled = true;
 
 	public interface Schedule {
@@ -114,12 +115,12 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 	}
 
 	public EventloopTaskScheduler withPeriod(Duration period) {
-		setPeriod(period.toMillis());
+		setPeriod(period);
 		return this;
 	}
 
 	public EventloopTaskScheduler withInterval(Duration interval) {
-		setInterval(interval.toMillis());
+		setInterval(interval);
 		return this;
 	}
 
@@ -262,30 +263,32 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 	}
 
 	@JmxAttribute
-	public Long getPeriod() {
+	@Nullable
+	public Duration getPeriod() {
 		return period;
 	}
 
 	@JmxAttribute
-	public void setPeriod(Long periodMillis) {
-		Schedule schedule = Schedule.ofPeriod(periodMillis);
+	public void setPeriod(Duration period) {
+		Schedule schedule = Schedule.ofPeriod(period);
 		setSchedule(schedule);
 		// for JMX:
-		this.period = periodMillis;
+		this.period = period;
 		this.interval = null;
 	}
 
 	@JmxAttribute
-	public Long getInterval() {
+	@Nullable
+	public Duration getInterval() {
 		return interval;
 	}
 
 	@JmxAttribute
-	public void setInterval(Long intervalMillis) {
-		setSchedule(Schedule.ofInterval(intervalMillis));
+	public void setInterval(Duration interval) {
+		setSchedule(Schedule.ofInterval(interval));
 		// for JMX:
 		this.period = null;
-		this.interval = intervalMillis;
+		this.interval = interval;
 	}
 
 	@JmxOperation

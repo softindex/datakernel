@@ -18,11 +18,10 @@ public class StreamStatsBasic<T> implements StreamStats<T> {
 	private final ExceptionStats error = ExceptionStats.create();
 
 	public StreamStatsBasic withBasicSmoothingWindow(Duration smoothingWindow) {
-		Duration seconds = smoothingWindow;//.getSeconds();
-		started.setSmoothingWindow(seconds);
-		produce.setSmoothingWindow(seconds);
-		suspend.setSmoothingWindow(seconds);
-		endOfStream.setSmoothingWindow(seconds);
+		started.setSmoothingWindow(smoothingWindow);
+		produce.setSmoothingWindow(smoothingWindow);
+		suspend.setSmoothingWindow(smoothingWindow);
+		endOfStream.setSmoothingWindow(smoothingWindow);
 		return this;
 	}
 

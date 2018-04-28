@@ -22,8 +22,6 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
-import java.util.Collections;
-
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.jmx.MBeanSettings.defaultSettings;
 import static java.util.Arrays.asList;
@@ -40,7 +38,7 @@ public class JmxMBeansAttributeExceptionsTest {
 
 		JmxMBeans.factory().createFor(
 				asList(new ConcurrentJmxMBeanWithSingleIntAttr(), new ConcurrentJmxMBeanWithSingleIntAttr()),
-				defaultSettings(), false, Collections.emptyMap());
+				defaultSettings(), false);
 	}
 
 	// test JmxRefreshableStats as @JmxAttribute, all returned stats should be concrete classes with public no-arg constructor
@@ -53,7 +51,7 @@ public class JmxMBeansAttributeExceptionsTest {
 				"or static factory \"create()\" method " +
 				"or public no-arg constructor");
 
-		JmxMBeans.factory().createFor(asList(new MBeanWithInterfaceAsJmxStatsAttributes()), defaultSettings(), false, Collections.emptyMap());
+		JmxMBeans.factory().createFor(asList(new MBeanWithInterfaceAsJmxStatsAttributes()), defaultSettings(), false);
 	}
 
 	@Test
@@ -65,7 +63,7 @@ public class JmxMBeansAttributeExceptionsTest {
 				"or static factory \"create()\" method " +
 				"or public no-arg constructor");
 
-		JmxMBeans.factory().createFor(asList(new MBeanWithAbstractClassAsJmxStatsAttributes()), defaultSettings(), false, Collections.emptyMap());
+		JmxMBeans.factory().createFor(asList(new MBeanWithAbstractClassAsJmxStatsAttributes()), defaultSettings(), false);
 	}
 
 	@Test
@@ -77,7 +75,7 @@ public class JmxMBeansAttributeExceptionsTest {
 				"or static factory \"create()\" method " +
 				"or public no-arg constructor");
 
-		JmxMBeans.factory().createFor(asList(new MBeanWithJmxStatsClassWhichDoesntHavePublicNoArgConstructor()), defaultSettings(), false, Collections.emptyMap());
+		JmxMBeans.factory().createFor(asList(new MBeanWithJmxStatsClassWhichDoesntHavePublicNoArgConstructor()), defaultSettings(), false);
 	}
 
 	public static final class ConcurrentJmxMBeanWithJmxStats implements ConcurrentJmxMBean {

@@ -29,7 +29,6 @@ import javax.management.MBeanServer;
 import javax.management.ObjectName;
 import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
-import java.util.Collections;
 import java.util.Random;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -138,11 +137,11 @@ public class HttpThrottlingServer {
 
 		MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
 		DynamicMBeanFactory mBeanFactory = JmxMBeans.factory();
-		mbeanServer.registerMBean(mBeanFactory.createFor(asList(eventloop), MBeanSettings.defaultSettings(), true, Collections.emptyMap()),
+		mbeanServer.registerMBean(mBeanFactory.createFor(asList(eventloop), MBeanSettings.defaultSettings(), true),
 				new ObjectName(Eventloop.class.getPackage().getName() + ":type=Eventloop"));
 		mbeanServer.registerMBean(ByteBufPool.getStats(),
 				new ObjectName(ByteBufPool.class.getPackage().getName() + ":type=ByteBufPool"));
-		mbeanServer.registerMBean(mBeanFactory.createFor(asList(throttlingController), MBeanSettings.defaultSettings(), true, Collections.emptyMap()),
+		mbeanServer.registerMBean(mBeanFactory.createFor(asList(throttlingController), MBeanSettings.defaultSettings(), true),
 				new ObjectName(ThrottlingController.class.getPackage().getName() + ":type=ThrottlingController"));
 		server.start();
 

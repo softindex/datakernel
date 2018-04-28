@@ -16,46 +16,65 @@
 
 package io.datakernel.jmx;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import io.datakernel.jmx.JmxMBeans.JmxCustomTypeAdapter;
+
+import java.lang.reflect.Type;
+import java.util.*;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 
 public final class MBeanSettings {
-	private final List<String> includedOptionals = new ArrayList<>();
+	private final Set<String> includedOptionals = new HashSet<>();
 	private final Map<String, AttributeModifier<?>> modifiers = new HashMap<>();
+	private final Map<Type, JmxCustomTypeAdapter<?>> customTypes = new HashMap<>();
 
-	private MBeanSettings(List<String> includedOptionals, Map<String, ? extends AttributeModifier<?>> modifiers) {
+	private MBeanSettings(Set<String> includedOptionals, Map<String, ? extends AttributeModifier<?>> modifiers, Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
 		this.includedOptionals.addAll(includedOptionals);
 		this.modifiers.putAll(modifiers);
+		this.customTypes.putAll(customTypes);
 	}
 
-	public static MBeanSettings of(List<String> includedOptionals,
-	                               Map<String, ? extends AttributeModifier<?>> modifiers) {
-		return new MBeanSettings(includedOptionals, modifiers);
+	public static MBeanSettings of(Set<String> includedOptionals,
+	                               Map<String, ? extends AttributeModifier<?>> modifiers,
+	                               Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
+		return new MBeanSettings(includedOptionals, modifiers, customTypes);
 	}
 
 	public static MBeanSettings defaultSettings() {
-		return new MBeanSettings(new ArrayList<String>(), new HashMap<String, AttributeModifier<?>>());
+		return new MBeanSettings(new HashSet<>(), new HashMap<>(), Collections.emptyMap());
 	}
 
-	public void addIncludedOptional(String attrName) {
+	public void merge(MBeanSettings otherSettings) {
+		includedOptionals.addAll(otherSettings.includedOptionals);
+		modifiers.putAll(otherSettings.modifiers);
+		customTypes.putAll(otherSettings.customTypes);
+	}
+
+	public MBeanSettings withIncludedOptional(String attrName) {
 		includedOptionals.add(attrName);
+		return this;
 	}
 
-	public void addModifier(String attrName, AttributeModifier<?> modifier) {
+	public MBeanSettings withModifier(String attrName, AttributeModifier<?> modifier) {
 		checkArgument(!modifiers.containsKey(attrName), "cannot add two modifiers for one attribute");
-
 		modifiers.put(attrName, modifier);
+		return this;
 	}
 
-	public List<String> getIncludedOptionals() {
+	public MBeanSettings withCustomTypes(Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
+		this.customTypes.putAll(customTypes);
+		return this;
+	}
+
+	public Set<String> getIncludedOptionals() {
 		return includedOptionals;
 	}
 
 	public Map<String, ? extends AttributeModifier<?>> getModifiers() {
 		return modifiers;
+	}
+
+	public Map<Type, JmxCustomTypeAdapter<?>> getCustomTypes() {
+		return customTypes;
 	}
 }

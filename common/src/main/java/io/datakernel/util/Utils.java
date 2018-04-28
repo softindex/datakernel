@@ -85,7 +85,7 @@ public class Utils {
 		op.accept(value);
 	}
 
-	public static <T, V> void setNotNull(Consumer<? super V> op, V value) {
+	public static <T, V> void setIfNotNull(Consumer<? super V> op, V value) {
 		setIf(op, value, Objects::nonNull);
 	}
 
@@ -98,23 +98,23 @@ public class Utils {
 		setter.apply(value);
 	}
 
-	public static <T, V> void setNotNull(Function<? super V, T> setter, V value) {
+	public static <T, V> void setIfNotNull(Function<? super V, T> setter, V value) {
 		setIf(setter, value, Objects::nonNull);
 	}
 
-	public static <T, V> UnaryOperator<T> apply(BiFunction<T, ? super V, T> setter, V value) {
-		return instance -> setter.apply(instance, value);
+	public static <T, V> UnaryOperator<T> apply(BiFunction<T, ? super V, T> modifier, V value) {
+		return instance -> modifier.apply(instance, value);
 	}
 
-	public static <T, V> UnaryOperator<T> applyIf(BiFunction<T, ? super V, T> setter, V value, Predicate<? super V> predicate) {
+	public static <T, V> UnaryOperator<T> applyIf(BiFunction<T, ? super V, T> modifier, V value, Predicate<? super V> predicate) {
 		return instance -> {
 			if (!predicate.test(value)) return instance;
-			return setter.apply(instance, value);
+			return modifier.apply(instance, value);
 		};
 	}
 
-	public static <T, V> UnaryOperator<T> applyNotNull(BiFunction<T, ? super V, T> setter, V value) {
-		return applyIf(setter, value, Objects::nonNull);
+	public static <T, V> UnaryOperator<T> applyIfNotNull(BiFunction<T, ? super V, T> modifier, V value) {
+		return applyIf(modifier, value, Objects::nonNull);
 	}
 
 }

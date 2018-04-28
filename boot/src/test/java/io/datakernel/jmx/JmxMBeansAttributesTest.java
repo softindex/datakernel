@@ -18,7 +18,6 @@ package io.datakernel.jmx;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.helper.JmxStatsStub;
-import io.datakernel.jmx.helper.Utils;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -34,6 +33,7 @@ import java.util.*;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.jmx.MBeanSettings.defaultSettings;
+import static io.datakernel.jmx.helper.Utils.nameToAttribute;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
@@ -50,7 +50,7 @@ public class JmxMBeansAttributesTest {
 		MBeanInfo mBeanInfo = mbean.getMBeanInfo();
 
 		MBeanAttributeInfo[] attributesInfoArr = mBeanInfo.getAttributes();
-		Map<String, MBeanAttributeInfo> nameToAttr = Utils.nameToAttribute(attributesInfoArr);
+		Map<String, MBeanAttributeInfo> nameToAttr = nameToAttribute(attributesInfoArr);
 
 		assertEquals(3, nameToAttr.size());
 
@@ -118,7 +118,7 @@ public class JmxMBeansAttributesTest {
 	@Test
 	public void concatenatesListAttributesFromDifferentMBeans() throws Exception {
 		MBeanWithListAttr mBeanWithListAttr_1 = new MBeanWithListAttr(asList("a", "b"));
-		MBeanWithListAttr mBeanWithListAttr_2 = new MBeanWithListAttr(new ArrayList<String>());
+		MBeanWithListAttr mBeanWithListAttr_2 = new MBeanWithListAttr(new ArrayList<>());
 		MBeanWithListAttr mBeanWithListAttr_3 = new MBeanWithListAttr(asList("w"));
 
 		DynamicMBean mbean = createDynamicMBeanFor(mBeanWithListAttr_1, mBeanWithListAttr_2, mBeanWithListAttr_3);
@@ -174,7 +174,7 @@ public class JmxMBeansAttributesTest {
 		DynamicMBean mbean = createDynamicMBeanFor(mBeanWithEmptyNames);
 
 		MBeanAttributeInfo[] attributesInfoArr = mbean.getMBeanInfo().getAttributes();
-		Map<String, MBeanAttributeInfo> nameToAttr = Utils.nameToAttribute(attributesInfoArr);
+		Map<String, MBeanAttributeInfo> nameToAttr = nameToAttribute(attributesInfoArr);
 
 		assertEquals(2, nameToAttr.size());
 
@@ -192,7 +192,7 @@ public class JmxMBeansAttributesTest {
 		DynamicMBean mbean = createDynamicMBeanFor(monitorable);
 
 		MBeanAttributeInfo[] attributesInfoArr = mbean.getMBeanInfo().getAttributes();
-		Map<String, MBeanAttributeInfo> nameToAttr = Utils.nameToAttribute(attributesInfoArr);
+		Map<String, MBeanAttributeInfo> nameToAttr = nameToAttribute(attributesInfoArr);
 
 		assertEquals(1, nameToAttr.size());
 		assertTrue(nameToAttr.containsKey("pojo"));
@@ -208,7 +208,7 @@ public class JmxMBeansAttributesTest {
 		MBeanInfo mBeanInfo = mbean.getMBeanInfo();
 
 		MBeanAttributeInfo[] attributesInfoArr = mBeanInfo.getAttributes();
-		Map<String, MBeanAttributeInfo> nameToAttr = Utils.nameToAttribute(attributesInfoArr);
+		Map<String, MBeanAttributeInfo> nameToAttr = nameToAttribute(attributesInfoArr);
 
 		assertEquals(3, nameToAttr.size());
 
@@ -281,7 +281,7 @@ public class JmxMBeansAttributesTest {
 	public void handlesProperlyDefaultGetter() throws Exception {
 		DynamicMBean mbean = createDynamicMBeanFor(new MBeanWithPojoWithDefaultGetter());
 
-		Map<String, MBeanAttributeInfo> attrs = Utils.nameToAttribute(mbean.getMBeanInfo().getAttributes());
+		Map<String, MBeanAttributeInfo> attrs = nameToAttribute(mbean.getMBeanInfo().getAttributes());
 
 		assertEquals(1, attrs.size());
 		assertTrue(attrs.containsKey("pojo"));
@@ -290,8 +290,7 @@ public class JmxMBeansAttributesTest {
 
 	// region helper methods
 	public static DynamicMBean createDynamicMBeanFor(Object... objects) throws Exception {
-		boolean refreshEnabled = false;
-		return JmxMBeans.factory().createFor(asList(objects), defaultSettings(), refreshEnabled, Collections.emptyMap());
+		return JmxMBeans.factory().createFor(asList(objects), defaultSettings(), false);
 	}
 
 	public static Object[] keyForTabularData(String key) {

@@ -17,7 +17,7 @@
 package io.datakernel.jmx;
 
 import com.google.inject.Key;
-import io.datakernel.jmx.JmxMBeans.Transformer;
+import io.datakernel.jmx.JmxMBeans.JmxCustomTypeAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,9 +28,9 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.*;
 
-import static io.datakernel.config.ConfigConverters.durationToString;
-import static io.datakernel.config.ConfigConverters.parseDuration;
 import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.util.StringFormatUtils.formatDuration;
+import static io.datakernel.util.StringFormatUtils.parseDuration;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.joining;
@@ -43,7 +43,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 	private final MBeanServer mbs;
 	private final DynamicMBeanFactory mbeanFactory;
 	private final Map<Key<?>, String> keyToObjectNames;
-	private final Map<Type, Transformer<?>> customTypes;
+	private final Map<Type, JmxCustomTypeAdapter<?>> customTypes;
 
 	// jmx
 	private int registeredSingletons;
@@ -53,7 +53,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 	private JmxRegistry(MBeanServer mbs,
 						DynamicMBeanFactory mbeanFactory,
 						Map<Key<?>, String> keyToObjectNames,
-						Map<Type, Transformer<?>> customTypes) {
+						Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
 		this.mbs = checkNotNull(mbs);
 		this.mbeanFactory = checkNotNull(mbeanFactory);
 		this.keyToObjectNames = keyToObjectNames;
@@ -67,7 +67,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 	public static JmxRegistry create(MBeanServer mbs,
 									 DynamicMBeanFactory mbeanFactory,
 									 Map<Key<?>, String> keyToObjectNames,
-									 Map<Type, Transformer<?>> customTypes) {
+									 Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
 		return new JmxRegistry(mbs, mbeanFactory, keyToObjectNames, customTypes);
 	}
 
@@ -79,7 +79,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		Object mbean;
 		if (isJmxMBean(instanceClass)) {
 			// this will throw exception if something happens during initialization
-			mbean = mbeanFactory.createFor(asList(singletonInstance), settings, true, customTypes);
+			mbean = mbeanFactory.createFor(asList(singletonInstance), settings, true);
 		} else if (isStandardMBean(instanceClass) || isMXBean(instanceClass) || isDynamicMBean(instanceClass)) {
 			mbean = singletonInstance;
 		} else {
@@ -174,14 +174,14 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		// register mbeans for each worker separately
 		for (int i = 0; i < poolInstances.size(); i++) {
 			MBeanSettings settingsForOptionals = MBeanSettings.of(
-					settings.getIncludedOptionals(), new HashMap<>());
+					settings.getIncludedOptionals(), new HashMap<>(), customTypes);
 			registerMBeanForWorker(poolInstances.get(i), i, commonName, key, settingsForOptionals);
 		}
 
 		// register aggregated mbean for pool of workers
 		DynamicMBean mbean;
 		try {
-			mbean = mbeanFactory.createFor(poolInstances, settings, true, customTypes);
+			mbean = mbeanFactory.createFor(poolInstances, settings, true);
 		} catch (Exception e) {
 			String msg = format("Cannot create DynamicMBean for aggregated MBean of pool of workers with key %s",
 					key.toString());
@@ -278,7 +278,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 
 		DynamicMBean mbean;
 		try {
-			mbean = mbeanFactory.createFor(asList(worker), settings, false, customTypes);
+			mbean = mbeanFactory.createFor(asList(worker), settings, false);
 		} catch (Exception e) {
 			String msg = format("Cannot create DynamicMBean for worker " +
 					"of pool of instances with key %s", key.toString());
@@ -485,7 +485,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 
 	@Override
 	public String getRefreshPeriod() {
-		return durationToString(((JmxMBeans) mbeanFactory).getSpecifiedRefreshPeriod());
+		return formatDuration(((JmxMBeans) mbeanFactory).getSpecifiedRefreshPeriod());
 	}
 
 	@Override

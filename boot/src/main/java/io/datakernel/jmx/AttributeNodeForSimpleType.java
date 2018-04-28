@@ -21,7 +21,6 @@ import javax.management.openmbean.SimpleType;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -47,7 +46,7 @@ final class AttributeNodeForSimpleType extends AttributeNodeForLeafAbstract {
 
 	@Override
 	public Map<String, OpenType<?>> getOpenTypes() {
-		return Collections.singletonMap(name, simpleTypeOf(type));
+		return singletonMap(name, simpleTypeOf(type));
 	}
 
 	@Override

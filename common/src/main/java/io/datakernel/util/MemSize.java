@@ -16,22 +16,13 @@
 
 package io.datakernel.util;
 
-import java.util.HashSet;
-import java.util.Set;
-import java.util.StringJoiner;
 import java.util.function.Function;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import static java.lang.Math.multiplyExact;
 
 public final class MemSize {
 	public static final long KB = 1024;
 	public static final long MB = 1024 * KB;
 	public static final long GB = 1024 * MB;
 	public static final long TB = 1024 * GB;
-
-	private static final Pattern PATTERN = Pattern.compile("(?<size>\\d+)([\\.](?<floating>\\d+))?\\s*(?<unit>(|g|m|k|t)b?)?(\\s+|$)", Pattern.CASE_INSENSITIVE);
 
 	private final long bytes;
 
@@ -77,110 +68,11 @@ public final class MemSize {
 	}
 
 	public static MemSize valueOf(String string) {
-		Set<String> units = new HashSet<>();
-		Matcher matcher = PATTERN.matcher(string.trim().toLowerCase());
-		long result = 0;
-
-		int lastEnd = 0;
-		while (!matcher.hitEnd()) {
-			if (!matcher.find() || matcher.start() != lastEnd) {
-				throw new IllegalArgumentException("Invalid MemSize: " + string);
-			}
-			lastEnd = matcher.end();
-			String unit = matcher.group("unit");
-
-			if (unit == null) {
-				unit = "";
-			}
-
-			if (!unit.endsWith("b")) {
-				unit += "b";
-			}
-
-			if (!units.add(unit)) {
-				throw new IllegalArgumentException("Memory unit " + unit + " occurs more than once in: " + string);
-			}
-
-			long memsize = Long.parseLong(matcher.group("size"));
-			long floating = 0;
-			int denominator = 1;
-			String floatingPoint = matcher.group("floating");
-			if (floatingPoint != null) {
-				if (unit.equals("") || unit.equals("b")) {
-					throw new IllegalArgumentException("MemSize unit bytes cannot be fractional");
-				}
-				floating = Long.parseLong(floatingPoint);
-				for (int i = 0; i < floatingPoint.length(); i++) {
-					denominator *= 10;
-				}
-			}
-
-			switch (unit) {
-				case "tb":
-					result += memsize * TB;
-					result += multiplyExact(floating, TB) / denominator;
-					break;
-				case "gb":
-					result += memsize * GB;
-					result += multiplyExact(floating, GB) / denominator;
-					break;
-				case "mb":
-					result += memsize * MB;
-					result += multiplyExact(floating, MB) / denominator;
-					break;
-				case "kb":
-					result += memsize * KB;
-					result += multiplyExact(floating, KB) / denominator;
-					break;
-				case "b":
-				case "":
-					result += memsize;
-					break;
-			}
-		}
-		return MemSize.of(result);
-	}
-
-	private static String getUnit(long unit) {
-		if (unit == TB) {
-			return "Tb";
-		} else {
-			switch ((int) unit) {
-				case (int) GB:
-					return "Gb";
-				case (int) MB:
-					return "Mb";
-				case (int) KB:
-					return "Kb";
-				case 1:
-					return "b";
-				default:
-					throw new IllegalArgumentException("Wrong unit");
-			}
-		}
+		return StringFormatUtils.parseMemSize(string);
 	}
 
 	public String format() {
-		long bytes = toLong();
-		if (bytes == 0) {
-			return "0b";
-		}
-
-		StringJoiner joiner = new StringJoiner(" ");
-		long divideResult, remainder, unit = TB;
-		do {
-			divideResult = bytes / unit;
-			remainder = bytes % unit;
-
-			if (divideResult != 0) {
-				joiner.add(divideResult + getUnit(unit));
-			}
-
-			bytes -= divideResult * unit;
-			unit /= 1024L;
-		} while (remainder != 0);
-
-		return joiner.toString();
+		return StringFormatUtils.formatMemSize(this);
 	}
 
 	@Override
