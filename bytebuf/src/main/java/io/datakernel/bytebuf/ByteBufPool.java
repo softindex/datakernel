@@ -22,16 +22,11 @@ import io.datakernel.util.MemSize;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static io.datakernel.bytebuf.ByteBufRegistry.ByteBufMetaInfo;
-import static io.datakernel.bytebuf.ByteBufRegistry.ByteBufWrapper;
 import static java.lang.Integer.numberOfLeadingZeros;
 import static java.lang.Math.max;
-import static java.util.Comparator.comparingLong;
 
 public final class ByteBufPool {
 	private static final int NUMBER_SLABS = 33;
@@ -42,7 +37,6 @@ public final class ByteBufPool {
 	private static final AtomicInteger[] created;
 
 	private static final Object EMPTY_VALUE = new Object();
-	private static final ConcurrentHashMap<ByteBufWrapper, Object> byteBufs = new ConcurrentHashMap<>();
 
 	static {
 		//noinspection unchecked
@@ -65,13 +59,11 @@ public final class ByteBufPool {
 		ByteBuf buf = stack.pop();
 		if (buf != null) {
 			buf.reset();
-			assert byteBufs.remove(new ByteBufWrapper(buf)) != buf;
 		} else {
 			buf = ByteBuf.wrapForWriting(new byte[1 << index]);
 			buf.refs++;
 			assert (long) created[index].incrementAndGet() != Long.MAX_VALUE;
 		}
-		assert ByteBufRegistry.recordAllocate(buf);
 		return buf;
 	}
 
@@ -82,9 +74,7 @@ public final class ByteBufPool {
 	public static void recycle(ByteBuf buf) {
 		if (buf.array.length == 0) return;
 		ConcurrentStack<ByteBuf> stack = slabs[32 - numberOfLeadingZeros(buf.array.length - 1)];
-		assert byteBufs.put(new ByteBufWrapper(buf), EMPTY_VALUE) == null : "duplicate recycle array";
 		stack.push(buf);
-		assert ByteBufRegistry.recordRecycle(buf);
 	}
 
 	public static ByteBuf recycleIfEmpty(ByteBuf buf) {
@@ -103,7 +93,6 @@ public final class ByteBufPool {
 			slabs[i].clear();
 			created[i].set(0);
 		}
-		byteBufs.clear();
 	}
 
 	public static ByteBuf ensureWriteRemaining(ByteBuf buf, int newWriteRemaining) {
@@ -200,171 +189,16 @@ public final class ByteBufPool {
 	}
 
 	public interface ByteBufPoolStatsMXBean {
-
 		int getCreatedItems();
 
 		int getPoolItems();
 
-		long getPoolItemAvgSize();
-
 		long getPoolSizeKB();
 
 		List<String> getPoolSlabs();
-
-		List<ByteBufJmxInfo> getOldestByteBufs_Details();
-
-		List<String> getOldestByteBufs_Summary();
-
-		boolean getOldestByteBufs_settings_StoreStackTrace();
-
-		void setOldestByteBufs_settings_StoreStackTrace(boolean flag);
-
-		boolean getOldestByteBufs_settings_StoreByteBufs();
-
-		void setOldestByteBufs_settings_StoreByteBufs(boolean flag);
-
-		int getOldestByteBufs_settings_MaxBytesInContent();
-
-		void setOldestByteBufs_settings_MaxBytesInContent(int bytes);
-
-		int getOldestByteBufs_settings_MaxByteBufsToShow();
-
-		void setOldestByteBufs_settings_MaxByteBufsToShow(int bufs);
-
-		int getTotalActiveByteBufs();
-
-		long getBufs_TotalAllocated();
-
-		long getBufs_TotalRecycled();
-
-		long getBufs_TotalNotRecycled();
-
-		long getBytes_TotalAllocated();
-
-		long getBytes_TotalRecycled();
-
-		long getBytes_TotalNotRecycled();
-
-		void clearRegistry();
-
-		ByteBufDetailedJmxInfo fetchDetailedByteBufInfo(int indexInList, int start, int to);
-	}
-
-	public static final class ByteBufJmxInfo {
-		private final long duration;
-		private final List<String> stackTrace;
-		private final int size;
-		private final int readPosition;
-		private final int writePosition;
-		private final String content;
-
-		public ByteBufJmxInfo(long duration, List<String> stackTrace, int size, int readPosition, int writePosition, String content) {
-			this.duration = duration;
-			this.stackTrace = stackTrace;
-			this.size = size;
-			this.readPosition = readPosition;
-			this.writePosition = writePosition;
-			this.content = content;
-		}
-
-		public String getDuration() {
-			return formatDuration(duration);
-		}
-
-		public List<String> getStackTrace() {
-			return stackTrace;
-		}
-
-		public int getSize() {
-			return size;
-		}
-
-		public int getReadPosition() {
-			return readPosition;
-		}
-
-		public int getWritePosition() {
-			return writePosition;
-		}
-
-		public String getContent() {
-			return content;
-		}
-	}
-
-	public static final class ByteBufDetailedJmxInfo {
-		private final long duration;
-		private final List<String> stackTrace;
-		private final int size;
-		private final int readPosition;
-		private final int writePosition;
-		private final String content;
-		private final int queriedFirstByteIndex;
-		private final int queriedLastByteIndex;
-		private final String queriedBytes;
-		private final String queriedBytesHex;
-
-		public ByteBufDetailedJmxInfo(long duration, List<String> stackTrace, int size,
-		                              int readPosition, int writePosition, String content,
-		                              int queriedFirstByteIndex, int queriedLastByteIndex,
-		                              String queriedBytes, String queriedBytesHex) {
-			this.duration = duration;
-			this.stackTrace = stackTrace;
-			this.size = size;
-			this.readPosition = readPosition;
-			this.writePosition = writePosition;
-			this.content = content;
-			this.queriedFirstByteIndex = queriedFirstByteIndex;
-			this.queriedLastByteIndex = queriedLastByteIndex;
-			this.queriedBytes = queriedBytes;
-			this.queriedBytesHex = queriedBytesHex;
-		}
-
-		public long getDuration() {
-			return duration;
-		}
-
-		public List<String> getStackTrace() {
-			return stackTrace;
-		}
-
-		public int getSize() {
-			return size;
-		}
-
-		public int getReadPosition() {
-			return readPosition;
-		}
-
-		public int getWritePosition() {
-			return writePosition;
-		}
-
-		public String getContent() {
-			return content;
-		}
-
-		public int getQueriedFirstByteIndex() {
-			return queriedFirstByteIndex;
-		}
-
-		public int getQueriedLastByteIndex() {
-			return queriedLastByteIndex;
-		}
-
-		public String getQueriedBytes() {
-			return queriedBytes;
-		}
-
-		public String getQueriedBytesHex() {
-			return queriedBytesHex;
-		}
 	}
 
 	public static final class ByteBufPoolStats implements ByteBufPoolStatsMXBean {
-		private volatile int maxBytesInContent = 25;
-		private volatile int maxBufsToShow = 100;
-
 		@Override
 		public int getCreatedItems() {
 			return ByteBufPool.getCreatedItems();
@@ -373,16 +207,6 @@ public final class ByteBufPool {
 		@Override
 		public int getPoolItems() {
 			return ByteBufPool.getPoolItems();
-		}
-
-		@Override
-		public long getPoolItemAvgSize() {
-			int result = 0;
-			for (ConcurrentStack<ByteBuf> slab : slabs) {
-				result += slab.size();
-			}
-			int items = result;
-			return items == 0 ? 0 : ByteBufPool.getPoolSize() / items;
 		}
 
 		@Override
@@ -401,204 +225,6 @@ public final class ByteBufPool {
 				result.add((slotSize & 0xffffffffL) + "," + created[i] + "," + count + "," + slotSize * count / 1024);
 			}
 			return result;
-		}
-
-		@Override
-		public List<ByteBufJmxInfo> getOldestByteBufs_Details() {
-			Map<ByteBufWrapper, ByteBufMetaInfo> activeBufs = ByteBufRegistry.getActiveByteBufs();
-			List<ByteBufJmxInfo> bufsInfo = new ArrayList<>();
-
-			long currentTimestamp = System.currentTimeMillis();
-			int maxBufsToShowCached = maxBufsToShow;
-			for (ByteBufWrapper wrapper : activeBufs.keySet()) {
-				if (bufsInfo.size() == maxBufsToShowCached) {
-					break;
-				}
-
-				ByteBufMetaInfo byteBufMetaInfo = activeBufs.get(wrapper);
-				if (byteBufMetaInfo == null) {
-					continue;
-				}
-
-				ByteBuf buf = wrapper.getByteBuf();
-				if (buf == null) {
-					continue;
-				}
-
-				long duration = currentTimestamp - byteBufMetaInfo.getAllocationTimestamp();
-
-				List<String> stackTraceLines = fetchStackTrace(byteBufMetaInfo);
-
-				String content = extractContent(buf, maxBytesInContent);
-
-				ByteBufJmxInfo byteBufJmxInfo = new ByteBufJmxInfo(duration, stackTraceLines,
-						buf.limit(), buf.readPosition(), buf.writePosition(), content);
-				bufsInfo.add(byteBufJmxInfo);
-			}
-
-			bufsInfo.sort(comparingLong(item -> -item.duration));
-
-			return bufsInfo;
-		}
-
-		@Override
-		public List<String> getOldestByteBufs_Summary() {
-			List<ByteBufJmxInfo> detailedInfo = getOldestByteBufs_Details();
-			List<String> summaryLines = new ArrayList<>();
-			summaryLines.add("Duration       Content");
-			for (ByteBufJmxInfo info : detailedInfo) {
-				summaryLines.add(String.format("%s   %s", info.getDuration(), info.getContent()));
-			}
-			return summaryLines;
-		}
-
-		@Override
-		public boolean getOldestByteBufs_settings_StoreStackTrace() {
-			return ByteBufRegistry.getStoreStackTrace();
-		}
-
-		@Override
-		public void setOldestByteBufs_settings_StoreStackTrace(boolean flag) {
-			ByteBufRegistry.setStoreStackTrace(flag);
-		}
-
-		@Override
-		public boolean getOldestByteBufs_settings_StoreByteBufs() {
-			return ByteBufRegistry.getStoreByteBufs();
-		}
-
-		@Override
-		public void setOldestByteBufs_settings_StoreByteBufs(boolean flag) {
-			ByteBufRegistry.setStoreByteBufs(flag);
-		}
-
-		@Override
-		public int getOldestByteBufs_settings_MaxBytesInContent() {
-			return maxBytesInContent;
-		}
-
-		@Override
-		public void setOldestByteBufs_settings_MaxBytesInContent(int bytesInContent) {
-			if (bytesInContent < 0) {
-				throw new IllegalArgumentException("argument must be non-negative");
-			}
-			this.maxBytesInContent = bytesInContent;
-		}
-
-		@Override
-		public int getOldestByteBufs_settings_MaxByteBufsToShow() {
-			return maxBufsToShow;
-		}
-
-		@Override
-		public void setOldestByteBufs_settings_MaxByteBufsToShow(int bufs) {
-			if (bufs < 0) {
-				throw new IllegalArgumentException("argument must be non-negative");
-			}
-			this.maxBufsToShow = bufs;
-		}
-
-		@Override
-		public int getTotalActiveByteBufs() {
-			return ByteBufRegistry.getActiveByteBufs().size();
-		}
-
-		@Override
-		public long getBufs_TotalAllocated() {
-			return ByteBufRegistry.getTotalAllocatedBufs();
-		}
-
-		@Override
-		public long getBufs_TotalRecycled() {
-			return ByteBufRegistry.getTotalRecycledBufs();
-		}
-
-		@Override
-		public long getBufs_TotalNotRecycled() {
-			return ByteBufRegistry.getTotalAllocatedBufs() - ByteBufRegistry.getTotalRecycledBufs();
-		}
-
-		@Override
-		public long getBytes_TotalAllocated() {
-			return ByteBufRegistry.getTotalAllocatedBytes();
-		}
-
-		@Override
-		public long getBytes_TotalRecycled() {
-			return ByteBufRegistry.getTotalRecycledBytes();
-		}
-
-		@Override
-		public long getBytes_TotalNotRecycled() {
-			return ByteBufRegistry.getTotalAllocatedBytes() - ByteBufRegistry.getTotalRecycledBytes();
-		}
-
-		@Override
-		public void clearRegistry() {
-			ByteBufRegistry.clearRegistry();
-		}
-
-		@Override
-		public ByteBufDetailedJmxInfo fetchDetailedByteBufInfo(int indexInList, int start, int to) {
-			Map<ByteBufWrapper, ByteBufMetaInfo> activeBufs = ByteBufRegistry.getActiveByteBufs();
-			List<ByteBufDetailedJmxInfo> bufsInfo = new ArrayList<>();
-
-			long currentTimestamp = System.currentTimeMillis();
-			int maxBufsToShowCached = maxBufsToShow;
-			for (ByteBufWrapper wrapper : activeBufs.keySet()) {
-				if (bufsInfo.size() == maxBufsToShowCached) {
-					break;
-				}
-
-				ByteBufMetaInfo byteBufMetaInfo = activeBufs.get(wrapper);
-				if (byteBufMetaInfo == null) {
-					continue;
-				}
-
-				ByteBuf buf = wrapper.getByteBuf();
-				if (buf == null) {
-					continue;
-				}
-
-				long duration = currentTimestamp - byteBufMetaInfo.getAllocationTimestamp();
-
-				List<String> stackTraceLines = fetchStackTrace(byteBufMetaInfo);
-
-				String content = extractContent(buf, maxBytesInContent);
-
-				byte[] queriedBytes = Arrays.copyOfRange(buf.array(), start, to);
-				String queriedBytesStr = new String(queriedBytes);
-
-				StringBuilder queriedBytesHex = new StringBuilder(queriedBytes.length * 3);
-				for (byte queriedByte : queriedBytes) {
-					queriedBytesHex.append(byteToHex(queriedByte));
-					queriedBytesHex.append(" ");
-				}
-
-				ByteBufDetailedJmxInfo byteBufJmxInfo = new ByteBufDetailedJmxInfo(duration, stackTraceLines,
-						buf.limit(), buf.readPosition(), buf.writePosition(), content,
-						start, to, queriedBytesStr, queriedBytesHex.toString());
-				bufsInfo.add(byteBufJmxInfo);
-			}
-
-			bufsInfo.sort(comparingLong(item -> -item.duration));
-
-			return bufsInfo.get(indexInList);
-		}
-
-		private List<String> fetchStackTrace(ByteBufMetaInfo byteBufMetaInfo) {
-			List<String> stackTraceLines = new ArrayList<>();
-			StackTraceElement[] stackTrace = byteBufMetaInfo.getStackTrace();
-			if (stackTrace != null) {
-				for (StackTraceElement stackTraceElement : stackTrace) {
-					stackTraceLines.add(stackTraceElement.toString());
-				}
-			}
-			return stackTraceLines;
-		}
-
-		private String byteToHex(byte b) {
-			return String.format("%02X", b);
 		}
 	}
 
