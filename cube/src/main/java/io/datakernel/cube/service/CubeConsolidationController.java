@@ -128,8 +128,8 @@ public final class CubeConsolidationController implements EventloopJmxMBeanEx {
 				.thenCompose(stateManager::pull)
 				.thenCompose($ -> stateManager.pull())
 				.thenCompose($ -> stateManager.commit())
-				.thenCompose($ -> stateManager.push())
 				.thenCompose($ -> aggregationChunkStorage.finish(addedChunks(cubeDiff)))
+				.thenCompose($ -> stateManager.push())
 				.whenComplete(toLogger(logger, thisMethod(), cubeDiff));
 	}
 

@@ -2,7 +2,10 @@ package io.datakernel.cube.service;
 
 import io.datakernel.aggregation.AggregationChunk;
 import io.datakernel.aggregation.LocalFsChunkStorage;
-import io.datakernel.async.*;
+import io.datakernel.async.AsyncCallable;
+import io.datakernel.async.Callback;
+import io.datakernel.async.SettableStage;
+import io.datakernel.async.Stage;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.*;
@@ -18,6 +21,7 @@ import java.util.stream.Stream;
 
 import static io.datakernel.async.AsyncCallable.sharedCall;
 import static io.datakernel.async.StageConsumer.transform;
+import static io.datakernel.async.Stages.collectToList;
 import static io.datakernel.util.CollectionUtils.*;
 import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.thisMethod;
@@ -134,22 +138,28 @@ public final class CubeCleanerController implements EventloopJmxMBeanEx {
 
 	Stage<Void> trySaveSnapshotAndCleanupChunks(Integer checkpointNode) {
 		return algorithms.checkout(checkpointNode)
-				.thenCompose(changes -> {
-					long cleanupTimestamp = eventloop.currentTimeMillis() - chunksCleanupDelay.toMillis();
+				.thenCompose(checkpointDiffs -> {
+					long cleanupTimestamp = eventloop.currentTimeMillis();
 
-					return remote.saveSnapshot(checkpointNode, changes)
+					return remote.saveSnapshot(checkpointNode, checkpointDiffs)
 							.thenCompose($ -> {
 								SettableStage<Optional<Integer>> result = SettableStage.create();
 								findSnapshot(singleton(checkpointNode), extraSnapshotsCount, result);
 								return result;
 							})
 							.thenCompose(lastSnapshot -> lastSnapshot.isPresent() ?
-									remote.loadCommit(checkpointNode)
-											.thenCompose(commit ->
-													collectRequiredChunks(checkpointNode)
-															.thenApply(extractedChunks -> union(chunks(changes), extractedChunks)))
+									collectRequiredChunks(checkpointNode)
+											.thenApply(extractedChunks -> union(chunks(checkpointDiffs), extractedChunks))
 											.thenCompose(chunks ->
-													cleanup(lastSnapshot.get(), chunks, cleanupTimestamp)) :
+													remote.getHeads()
+															.thenCompose(heads -> collectToList(heads.stream().map(remote::loadCommit)))
+															.thenApply(headCommits -> Math.min(cleanupTimestamp,
+																	headCommits.stream()
+																			.mapToLong(OTCommit::getTimestamp)
+																			.min()
+																			.getAsLong()) - chunksCleanupDelay.toMillis())
+															.thenCompose(timestamp -> cleanup(lastSnapshot.get(), chunks, timestamp))
+											) :
 									notEnoughSnapshots());
 				})
 				.whenComplete(toLogger(logger, thisMethod(), checkpointNode));
@@ -185,9 +195,7 @@ public final class CubeCleanerController implements EventloopJmxMBeanEx {
 	}
 
 	private Stage<Void> cleanup(Integer checkpointNode, Set<Long> requiredChunks, long chunksCleanupTimestamp) {
-		return Stages.first(
-				() -> checkRequiredChunks(requiredChunks),
-				() -> checkRequiredChunks(requiredChunks))
+		return checkRequiredChunks(requiredChunks)
 				.thenCompose($ -> remote.cleanup(checkpointNode)
 						.whenComplete(stageCleanupRemote.recordStats()))
 				.thenCompose($ -> chunksStorage.cleanupBeforeTimestamp(requiredChunks, chunksCleanupTimestamp)

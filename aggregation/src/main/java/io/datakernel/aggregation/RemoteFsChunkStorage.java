@@ -18,7 +18,6 @@ package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.async.Stage;
-import io.datakernel.async.Stages;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
@@ -98,10 +97,8 @@ public final class RemoteFsChunkStorage implements AggregationChunkStorage, Even
 	public <T> Stage<StreamProducerWithResult<T, Void>> read(AggregationStructure aggregation, List<String> fields,
 	                                                         Class<T> recordClass, long chunkId,
 	                                                         DefiningClassLoader classLoader) {
-		return Stages.first(
-				() -> client.download(path(chunkId), 0).whenComplete(stageOpenR1.recordStats()),
-				() -> client.download(tempPath(chunkId), 0).whenComplete(stageOpenR2.recordStats()),
-				() -> client.download(path(chunkId), 0).whenComplete(stageOpenR3.recordStats()))
+		return client.download(path(chunkId), 0)
+				.whenComplete(stageOpenR1.recordStats())
 				.thenApply(producer -> producer
 						.with(readRemoteFS)
 						.with(StreamLZ4Decompressor.create())
