@@ -32,6 +32,7 @@ public class ByteBufTest {
 	@Before
 	public void clearByteBufPool() {
 		ByteBufPool.clear();
+		ByteBufPool.setSizes(32, 1 << 30);
 	}
 
 	@After

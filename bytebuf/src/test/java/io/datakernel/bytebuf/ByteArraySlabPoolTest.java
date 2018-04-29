@@ -28,14 +28,15 @@ public class ByteArraySlabPoolTest {
 		ByteBufPool.clear();
 
 		ByteBuf bytes = ByteBufPool.allocate(size);
-		assertEquals(expectedSize, bytes.limit());
+		assertEquals(expectedSize, bytes.array().length);
 		for (int i = 0; i < poolSizes.length; i++) {
-			assertTrue(ByteBufPool.getSlab(i).isEmpty());
+			assertTrue(ByteBufPool.getSlabs()[i].isEmpty());
 		}
 		bytes.recycle();
 
+		assertTrue(poolSizes.length <= ByteBufPool.getSlabs().length);
 		for (int i = 0; i < poolSizes.length; i++) {
-			ConcurrentStack<ByteBuf> slab = ByteBufPool.getSlab(i);
+			ConcurrentStack<ByteBuf> slab = ByteBufPool.getSlabs()[i];
 			assertEquals(poolSizes[i] == 0 ? 0 : 1, slab.size());
 			if (!slab.isEmpty()) {
 				assertTrue(slab.peek().isRecycled());
@@ -47,19 +48,23 @@ public class ByteArraySlabPoolTest {
 	@Test
 	public void testAllocate() {
 		ByteBufPool.clear();
+		ByteBufPool.setSizes(16, 64);
 
-		checkAllocate(0, 0, new int[]{0});
-		checkAllocate(1, 1, new int[]{1});
-		checkAllocate(2, 2, new int[]{0, 2});
-		checkAllocate(8, 8, new int[]{0, 0, 0, 8});
-		checkAllocate(9, 16, new int[]{0, 0, 0, 0, 16});
-		checkAllocate(15, 16, new int[]{0, 0, 0, 0, 16});
+		checkAllocate(0, 0, new int[]{0, 0, 0, 0, 0});
+		checkAllocate(1, 1, new int[]{0, 0, 0, 0, 0});
+		checkAllocate(2, 2, new int[]{0, 0, 0, 0, 0});
+		checkAllocate(8, 8, new int[]{0, 0, 0, 0, 0});
+		checkAllocate(9, 9, new int[]{0, 0, 0, 0, 0});
+		checkAllocate(15, 15, new int[]{0, 0, 0, 0, 0});
 		checkAllocate(16, 16, new int[]{0, 0, 0, 0, 16});
 		checkAllocate(17, 32, new int[]{0, 0, 0, 0, 0, 32});
 		checkAllocate(31, 32, new int[]{0, 0, 0, 0, 0, 32});
 		checkAllocate(32, 32, new int[]{0, 0, 0, 0, 0, 32});
 		checkAllocate(33, 64, new int[]{0, 0, 0, 0, 0, 0, 64});
 		checkAllocate(63, 64, new int[]{0, 0, 0, 0, 0, 0, 64});
+		checkAllocate(64, 64, new int[]{0, 0, 0, 0, 0, 0, 0, 0});
+		checkAllocate(65, 65, new int[]{0, 0, 0, 0, 0, 0, 0, 0});
+		checkAllocate(100, 100, new int[]{0, 0, 0, 0, 0, 0, 0, 0});
 	}
 
 	private void checkReallocate(int size1, int size2, boolean equals) {
@@ -77,6 +82,7 @@ public class ByteArraySlabPoolTest {
 	@Test
 	public void testReallocate() {
 		ByteBufPool.clear();
+		ByteBufPool.setSizes(16, 64);
 
 		checkReallocate(0, 0, true);
 		checkReallocate(0, 1, false);
@@ -93,7 +99,7 @@ public class ByteArraySlabPoolTest {
 
 		checkReallocate(15, 14, true);
 		checkReallocate(15, 15, true);
-		checkReallocate(15, 16, true);
+		checkReallocate(15, 16, false);
 		checkReallocate(15, 17, false);
 
 		checkReallocate(16, 15, true);
@@ -129,12 +135,12 @@ public class ByteArraySlabPoolTest {
 		checkReallocate(65, 63, true);
 		checkReallocate(65, 64, true);
 		checkReallocate(65, 65, true);
-		checkReallocate(65, 66, true);
+		checkReallocate(65, 66, false);
 
 		checkReallocate(100, 50, true);
 		checkReallocate(100, 99, true);
 		checkReallocate(100, 100, true);
-		checkReallocate(100, 101, true);
+		checkReallocate(100, 101, false);
 	}
 
 }

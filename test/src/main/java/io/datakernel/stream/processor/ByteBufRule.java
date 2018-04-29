@@ -15,6 +15,7 @@ public final class ByteBufRule extends ExternalResource {
 	@Override
 	protected void before() {
 		ByteBufPool.clear();
+		ByteBufPool.setSizes(1, Integer.MAX_VALUE);
 	}
 
 	@Override

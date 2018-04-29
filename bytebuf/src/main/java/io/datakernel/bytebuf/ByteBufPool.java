@@ -23,15 +23,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static java.lang.Integer.numberOfLeadingZeros;
 import static java.lang.Math.max;
 
 public final class ByteBufPool {
-	private static final int NUMBER_SLABS = 33;
-
-	private static final AtomicReference<ConcurrentStack.Node<ByteBuf>> cachedNodes = new AtomicReference<>();
+	private static final int NUMBER_OF_SLABS = 33;
+	private static int minSize = 32;
+	private static int maxSize = 1 << 30;
 
 	private static final ConcurrentStack<ByteBuf>[] slabs;
 	private static final AtomicInteger[] created;
@@ -40,11 +39,11 @@ public final class ByteBufPool {
 
 	static {
 		//noinspection unchecked
-		slabs = new ConcurrentStack[NUMBER_SLABS];
+		slabs = new ConcurrentStack[NUMBER_OF_SLABS];
 		//noinspection unchecked
-		created = new AtomicInteger[NUMBER_SLABS];
-		for (int i = 0; i < NUMBER_SLABS; i++) {
-			slabs[i] = new ConcurrentStack<>(cachedNodes);
+		created = new AtomicInteger[NUMBER_OF_SLABS];
+		for (int i = 0; i < NUMBER_OF_SLABS; i++) {
+			slabs[i] = new ConcurrentStack<>();
 			created[i] = new AtomicInteger();
 		}
 	}
@@ -53,7 +52,10 @@ public final class ByteBufPool {
 	}
 
 	public static ByteBuf allocate(int size) {
-		if (size == 0) return ByteBuf.empty();
+		if (size < minSize || size >= maxSize) {
+			// not willing to register in pool
+			return ByteBuf.wrapForWriting(new byte[size]);
+		}
 		int index = 32 - numberOfLeadingZeros(size - 1); // index==32 for size==0
 		ConcurrentStack<ByteBuf> stack = slabs[index];
 		ByteBuf buf = stack.pop();
@@ -72,7 +74,6 @@ public final class ByteBufPool {
 	}
 
 	public static void recycle(ByteBuf buf) {
-		if (buf.array.length == 0) return;
 		ConcurrentStack<ByteBuf> stack = slabs[32 - numberOfLeadingZeros(buf.array.length - 1)];
 		stack.push(buf);
 	}
@@ -84,12 +85,12 @@ public final class ByteBufPool {
 		return ByteBuf.empty();
 	}
 
-	static ConcurrentStack<ByteBuf> getSlab(int index) {
-		return slabs[index];
+	public static ConcurrentStack<ByteBuf>[] getSlabs() {
+		return slabs;
 	}
 
 	public static void clear() {
-		for (int i = 0; i < ByteBufPool.NUMBER_SLABS; i++) {
+		for (int i = 0; i < ByteBufPool.NUMBER_OF_SLABS; i++) {
 			slabs[i].clear();
 			created[i].set(0);
 		}
@@ -166,7 +167,7 @@ public final class ByteBufPool {
 
 	public static String getPoolItemsString() {
 		StringBuilder sb = new StringBuilder();
-		for (int i = 0; i < ByteBufPool.NUMBER_SLABS; ++i) {
+		for (int i = 0; i < ByteBufPool.NUMBER_OF_SLABS; ++i) {
 			int createdItems = ByteBufPool.getCreatedItems(i);
 			int poolItems = ByteBufPool.getPoolItems(i);
 			if (createdItems != poolItems) {
@@ -186,6 +187,11 @@ public final class ByteBufPool {
 			result += slotSize * slabs[i].size();
 		}
 		return result;
+	}
+
+	public static void setSizes(int minSize, int maxSize) {
+		ByteBufPool.minSize = minSize;
+		ByteBufPool.maxSize = maxSize;
 	}
 
 	public interface ByteBufPoolStatsMXBean {

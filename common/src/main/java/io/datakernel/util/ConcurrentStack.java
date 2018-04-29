@@ -25,45 +25,25 @@ import java.util.concurrent.atomic.AtomicReference;
  * @param <E>
  */
 public final class ConcurrentStack<E> implements Iterable<E> {
-	public static final class Node<E> {
-		private E item;
+
+	private static class Node<E> {
+		private final E item;
 		private Node<E> next;
+
+		public Node(E item) {
+			this.item = item;
+		}
 	}
 
-	private final AtomicReference<Node<E>> cachedNodes;
 	private final AtomicReference<Node<E>> head = new AtomicReference<>();
 
-	public ConcurrentStack() {
-		this.cachedNodes = new AtomicReference<>();
-	}
-
-	public ConcurrentStack(AtomicReference<Node<E>> cachedNodes) {
-		this.cachedNodes = cachedNodes;
-	}
-
 	public void push(E item) {
-		Node<E> newHead = popCachedNode();
-		if (newHead == null) {
-			newHead = new Node<>();
-		}
-		newHead.item = item;
+		Node<E> newHead = new Node<>(item);
 		Node<E> oldHead;
 		do {
 			oldHead = head.get();
 			newHead.next = oldHead;
 		} while (!head.compareAndSet(oldHead, newHead));
-	}
-
-	private Node<E> popCachedNode() {
-		Node<E> oldHead;
-		Node<E> newHead;
-		do {
-			oldHead = cachedNodes.get();
-			if (oldHead == null)
-				return null;
-			newHead = oldHead.next;
-		} while (!cachedNodes.compareAndSet(oldHead, newHead));
-		return oldHead;
 	}
 
 	public E pop() {
@@ -75,18 +55,7 @@ public final class ConcurrentStack<E> implements Iterable<E> {
 				return null;
 			newHead = oldHead.next;
 		} while (!head.compareAndSet(oldHead, newHead));
-		E result = oldHead.item;
-		oldHead.item = null;
-		pushCachedNode(oldHead);
-		return result;
-	}
-
-	private void pushCachedNode(Node<E> node) {
-		Node<E> oldHead;
-		do {
-			oldHead = cachedNodes.get();
-			node.next = oldHead;
-		} while (!cachedNodes.compareAndSet(oldHead, node));
+		return oldHead.item;
 	}
 
 	public E peek() {
