@@ -8,6 +8,10 @@ import static java.util.Arrays.asList;
 public interface Initializer<T extends Initializable<T>> {
 	void accept(T t);
 
+	static <T extends Initializable<T>> Initializer<T> empty() {
+		return $ -> {};
+	}
+
 	static <T extends Initializable<T>> Initializer<T> combine(List<? extends Initializer<? super T>> initializers) {
 		return target -> initializers.forEach(initializer -> initializer.accept(target));
 	}

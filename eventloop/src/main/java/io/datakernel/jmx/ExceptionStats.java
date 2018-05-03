@@ -105,8 +105,9 @@ public final class ExceptionStats implements JmxStats<ExceptionStats>, JmxStatsW
 	}
 
 	@JmxAttribute(optional = true)
+	@Nullable
 	public String getLastContext() {
-		return context.toString();
+		return context != null ? context.toString() : null;
 	}
 
 	@JmxAttribute(optional = true)

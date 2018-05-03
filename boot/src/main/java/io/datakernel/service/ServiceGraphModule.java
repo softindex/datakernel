@@ -29,7 +29,7 @@ import io.datakernel.net.BlockingSocketServer;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.Initializer;
 import io.datakernel.util.guice.GuiceUtils;
-import io.datakernel.util.guice.OptionalDependency;
+import io.datakernel.util.guice.OptionalInitializer;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerPoolModule;
 import io.datakernel.worker.WorkerPoolObjects;
@@ -37,7 +37,6 @@ import org.slf4j.Logger;
 
 import javax.sql.DataSource;
 import java.io.Closeable;
-import java.lang.annotation.Annotation;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -47,7 +46,6 @@ import static io.datakernel.service.ServiceAdapters.*;
 import static io.datakernel.util.CollectionUtils.*;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
-import static io.datakernel.util.guice.GuiceUtils.prettyPrintAnnotation;
 import static java.util.Collections.emptySet;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static org.slf4j.LoggerFactory.getLogger;
@@ -101,6 +99,8 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 	private WorkerPoolModule workerPoolModule;
 
 	private ServiceGraph serviceGraph;
+
+	private Initializer<ServiceGraph> initializer = Initializer.empty();
 
 	private ServiceGraphModule() {
 		this.executor = new ThreadPoolExecutor(0, Integer.MAX_VALUE,
@@ -186,6 +186,11 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 	 */
 	public ServiceGraphModule removeDependency(Key<?> key, Key<?> keyDependency) {
 		removedDependencies.computeIfAbsent(key, key1 -> new HashSet<>()).add(keyDependency);
+		return this;
+	}
+
+	public ServiceGraphModule withInitializer(Initializer<ServiceGraph> initializer) {
+		this.initializer = initializer;
 		return this;
 	}
 
@@ -403,29 +408,6 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 				}
 			}
 		});
-		bind(Key.get(new TypeLiteral<OptionalDependency<Initializer<ServiceGraphModule>>>() {})).asEagerSingleton();
-		bindListener(new AbstractMatcher<Binding<?>>() {
-			@Override
-			public boolean matches(Binding<?> binding) {
-				return GuiceUtils.isSingleton(binding) &&
-						binding.getKey().equals(Key.get(new TypeLiteral<OptionalDependency<Initializer<ServiceGraphModule>>>() {}));
-			}
-		}, new ProvisionListener() {
-			@SuppressWarnings("unchecked")
-			@Override
-			public <T> void onProvision(ProvisionInvocation<T> provision) {
-				synchronized (ServiceGraphModule.this) {
-					if (serviceGraph != null && serviceGraph.isStarted()) {
-						logger.error("Service graph already started, ignoring {}", provision.getBinding().getKey());
-						return;
-					}
-					OptionalDependency<Initializer<ServiceGraphModule>> maybeInitializer = (OptionalDependency<Initializer<ServiceGraphModule>>) provision.provision();
-					if (maybeInitializer != null) {
-						maybeInitializer.ifPresent(initializer -> initializer.accept(ServiceGraphModule.this));
-					}
-				}
-			}
-		});
 	}
 
 	/**
@@ -436,21 +418,23 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 	 * @return created ServiceGraph
 	 */
 	@Provides
-	synchronized ServiceGraph serviceGraph(Injector injector) {
+	@Singleton
+	synchronized ServiceGraph serviceGraph(Injector injector,
+	                                       OptionalInitializer<ServiceGraphModule> serviceGraphModuleOptionalInitializer,
+	                                       OptionalInitializer<ServiceGraph> serviceGraphOptionalInitializer) {
+		serviceGraphModuleOptionalInitializer.accept(this);
 		if (serviceGraph == null) {
 			serviceGraph = ServiceGraph.create()
 					.withStartCallback(() -> {
 						createGuiceGraph(injector, serviceGraph);
 						serviceGraph.removeIntermediateNodes();
-						logger.info("Services graph: \n" + serviceGraph);
 					})
-					.withNodeToString(key -> {
-						Annotation annotation = key.getAnnotation();
+					.withNodeSuffixes(key -> {
 						WorkerPoolObjects poolObjects = workerPoolModule.getPoolObjects(key);
-						return key.getTypeLiteral() +
-								(annotation != null ? " " + prettyPrintAnnotation(annotation) : "") +
-								(poolObjects != null ? " [" + poolObjects.getWorkerPool().getWorkersCount() + "]" : "");
-					});
+						return poolObjects != null ? poolObjects.getObjects().size() : null;
+					})
+					.initialize(initializer)
+					.initialize(serviceGraphOptionalInitializer);
 		}
 		return serviceGraph;
 	}

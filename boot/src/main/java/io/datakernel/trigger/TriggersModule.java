@@ -26,9 +26,8 @@ import io.datakernel.jmx.JmxRegistry;
 import io.datakernel.service.BlockingService;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.util.Initializable;
-import io.datakernel.util.Initializer;
 import io.datakernel.util.guice.GuiceUtils;
-import io.datakernel.util.guice.OptionalDependency;
+import io.datakernel.util.guice.OptionalInitializer;
 import io.datakernel.util.guice.RequiredDependency;
 import io.datakernel.worker.WorkerPoolModule;
 import io.datakernel.worker.WorkerPools;
@@ -282,8 +281,8 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 	@Provides
 	@Singleton
 	TriggersInitializer triggersInitializer(Injector injector, Triggers triggers,
-	                                        OptionalDependency<Initializer<TriggersModule>> maybeInitializer) {
-		maybeInitializer.ifPresent(initializer -> initializer.accept(this));
+	                                        OptionalInitializer<TriggersModule> optionalInitializer) {
+		optionalInitializer.accept(this);
 		return new TriggersInitializer() {
 			@Override
 			public void start() throws Exception {

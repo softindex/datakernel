@@ -19,11 +19,16 @@ package io.datakernel.launcher;
 import com.google.inject.*;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.config.ConfigModule;
+import io.datakernel.jmx.ConcurrentJmxMBean;
+import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
 import org.slf4j.Logger;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Collection;
+import java.util.concurrent.CountDownLatch;
 
 import static com.google.inject.util.Modules.combine;
 import static org.slf4j.LoggerFactory.getLogger;
@@ -65,7 +70,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  * @see ServiceGraphModule
  * @see ConfigModule
  */
-public abstract class Launcher {
+public abstract class Launcher implements ConcurrentJmxMBean {
 	protected final Logger logger = getLogger(this.getClass());
 
 	protected String[] args = new String[]{};
@@ -74,13 +79,20 @@ public abstract class Launcher {
 	@Nullable
 	protected ServiceGraph serviceGraph;
 
-	@Inject
-	protected ShutdownNotification shutdownNotification;
+	private volatile Throwable applicationError;
+
+	private volatile Instant instantOfStart;
+	private volatile Instant instantOfRun;
+	private volatile Instant instantOfStop;
+	private volatile Instant instantOfComplete;
+
+	private final CountDownLatch shutdownLatch = new CountDownLatch(1);
 
 	private final Thread mainThread = Thread.currentThread();
 
 	/**
 	 * Supplies modules for application(ConfigModule, EventloopModule, etc...)
+	 *
 	 * @return
 	 */
 	protected abstract Collection<Module> getModules();
@@ -99,16 +111,18 @@ public abstract class Launcher {
 	/**
 	 * Launch application following few simple steps:
 	 * <ul>
-	 *     <li>Inject dependencies</li>
-	 *     <li>Starts application, {@link Launcher#onStart()} is called in this stage</li>
-	 *     <li>Runs application, {@link Launcher#run()} is called in this stage</li>
-	 *     <li>Stops application, {@link Launcher#onStop()} is called in this stage</li>
+	 * <li>Inject dependencies</li>
+	 * <li>Starts application, {@link Launcher#onStart()} is called in this stage</li>
+	 * <li>Runs application, {@link Launcher#run()} is called in this stage</li>
+	 * <li>Stops application, {@link Launcher#onStop()} is called in this stage</li>
 	 * </ul>
 	 * You can override methods mentioned above to execute your code in needed stage.
-	 * @param args program args that will be injected into @Args string array
+	 *
+	 * @param args                program args that will be injected into @Args string array
 	 * @param eagerSingletonsMode passed to Guice
 	 */
 	public void launch(boolean eagerSingletonsMode, String[] args) throws Exception {
+		instantOfStart = Instant.now();
 		Injector injector = createInjector(eagerSingletonsMode ? Stage.PRODUCTION : Stage.DEVELOPMENT, args);
 		logger.info("=== INJECTING DEPENDENCIES");
 		try {
@@ -116,15 +130,22 @@ public abstract class Launcher {
 			try {
 				doStart();
 				logger.info("=== RUNNING APPLICATION");
+				instantOfRun = Instant.now();
 				run();
+			} catch (Throwable e) {
+				this.applicationError = e;
+				throw e;
 			} finally {
+				instantOfStop = Instant.now();
 				doStop();
 			}
 		} catch (Exception e) {
+			if (this.applicationError == null) this.applicationError = e;
 			logger.error("Application failure", e);
 			throw e;
 		} finally {
 			onStop();
+			instantOfComplete = Instant.now();
 		}
 	}
 
@@ -133,18 +154,24 @@ public abstract class Launcher {
 		return Guice.createInjector(stage,
 				combine(getModules()),
 				binder -> binder.bind(String[].class).annotatedWith(Args.class).toInstance(args),
-				binder -> binder.requestInjection(this));
+				binder -> binder.requestInjection(this),
+				binder -> binder.bind(Launcher.class).toInstance(this));
 	}
 
 	private void doStart() throws Exception {
 		if (serviceGraph != null) {
 			logger.info("=== STARTING APPLICATION");
-			serviceGraph.startFuture().get();
+			try {
+				serviceGraph.startFuture().get();
+			} finally {
+				logger.info("Services graph: \n" + serviceGraph);
+			}
 		}
 	}
 
 	/**
 	 * This method runs when application is starting
+	 *
 	 * @throws Exception
 	 */
 	protected void onStart() throws Exception {
@@ -152,12 +179,14 @@ public abstract class Launcher {
 
 	/**
 	 * Launcher's main method.
+	 *
 	 * @throws Exception
 	 */
 	protected abstract void run() throws Exception;
 
 	/**
 	 * This method runs when application is stopping
+	 *
 	 * @throws Exception
 	 */
 	protected void onStop() throws Exception {
@@ -173,19 +202,18 @@ public abstract class Launcher {
 	/**
 	 * Blocks current thread until shutdown notification releases it.
 	 * <br>
-	 * Shutdown notification is released on JVM shutdown or by calling {@link Launcher#requestShutdown()}
-	 * @see ShutdownNotification
+	 * Shutdown notification is released on JVM shutdown or by calling {@link Launcher#shutdown()}
 	 */
 	protected final void awaitShutdown() throws InterruptedException {
 		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
 			try {
-				shutdownNotification.requestShutdown();
+				shutdown();
 				mainThread.join();
 			} catch (InterruptedException e) {
 				logger.error("Shutdown took too long", e);
 			}
 		}, "shutdownNotification"));
-		shutdownNotification.await();
+		shutdownLatch.await();
 	}
 
 	/**
@@ -193,8 +221,65 @@ public abstract class Launcher {
 	 *
 	 * @see Launcher#awaitShutdown()
 	 */
-	protected final void requestShutdown() {
-		shutdownNotification.requestShutdown();
+	public final void shutdown() {
+		shutdownLatch.countDown();
 	}
 
+	@JmxAttribute
+	@Nullable
+	public final Instant getInstantOfStart() {
+		return instantOfStart;
+	}
+
+	@JmxAttribute
+	@Nullable
+	public final Instant getInstantOfRun() {
+		return instantOfRun;
+	}
+
+	@JmxAttribute
+	@Nullable
+	public final Instant getInstantOfStop() {
+		return instantOfStop;
+	}
+
+//	@JmxAttribute
+//	@Nullable
+//	public final Instant getInstantOfComplete() {
+//		return instantOfComplete;
+//	}
+
+	@JmxAttribute
+	@Nullable
+	public final Duration getDurationOfStart() {
+		if (instantOfStart == null) return null;
+		return Duration.between(instantOfStart, instantOfRun == null ? Instant.now() : instantOfRun);
+	}
+
+	@JmxAttribute
+	@Nullable
+	public final Duration getDurationOfRun() {
+		if (instantOfRun == null) return null;
+		return Duration.between(instantOfRun, instantOfStop == null ? Instant.now() : instantOfStop);
+	}
+
+	@JmxAttribute
+	@Nullable
+	public final Duration getDurationOfStop() {
+		if (instantOfStop == null) return null;
+		return Duration.between(instantOfStop, instantOfComplete == null ? Instant.now() : instantOfComplete);
+	}
+
+	@JmxAttribute
+	@Nullable
+	public final Duration getDuration() {
+		if (instantOfStart == null) return null;
+		return Duration.between(instantOfStart, instantOfComplete == null ? Instant.now() : instantOfComplete);
+	}
+
+	@JmxAttribute
+	@Nullable
+	public final Throwable getApplicationError() {
+		return applicationError;
+	}
 }

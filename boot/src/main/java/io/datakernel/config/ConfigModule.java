@@ -23,8 +23,7 @@ import com.google.inject.TypeLiteral;
 import io.datakernel.service.BlockingService;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.util.Initializable;
-import io.datakernel.util.Initializer;
-import io.datakernel.util.guice.OptionalDependency;
+import io.datakernel.util.guice.OptionalInitializer;
 import io.datakernel.util.guice.RequiredDependency;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -154,8 +153,8 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 	@Provides
 	@Singleton
 	ConfigSaveService configSaveService(EffectiveConfig config,
-	                                    OptionalDependency<Initializer<ConfigModule>> maybeInitializer) {
-		maybeInitializer.ifPresent(initializer -> initializer.accept(this));
+	                                    OptionalInitializer<ConfigModule> optionalInitializer) {
+		optionalInitializer.accept(this);
 		return new ConfigSaveService() {
 			@Override
 			public void start() {

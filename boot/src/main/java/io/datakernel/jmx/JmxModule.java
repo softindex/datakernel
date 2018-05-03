@@ -27,10 +27,9 @@ import io.datakernel.service.ServiceGraph;
 import io.datakernel.trigger.Severity;
 import io.datakernel.trigger.Triggers.TriggerWithResult;
 import io.datakernel.util.Initializable;
-import io.datakernel.util.Initializer;
 import io.datakernel.util.MemSize;
 import io.datakernel.util.StringFormatUtils;
-import io.datakernel.util.guice.OptionalDependency;
+import io.datakernel.util.guice.OptionalInitializer;
 import io.datakernel.util.guice.RequiredDependency;
 import io.datakernel.worker.WorkerPoolModule;
 import io.datakernel.worker.WorkerPools;
@@ -204,8 +203,8 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 	@Provides
 	@Singleton
 	JmxRegistratorService jmxRegistratorService(Injector injector, JmxRegistry jmxRegistry, DynamicMBeanFactory mbeanFactory,
-	                                            OptionalDependency<Initializer<JmxModule>> maybeInitializer) {
-		maybeInitializer.ifPresent(initializer -> initializer.accept(this));
+	                                            OptionalInitializer<JmxModule> optionalInitializer) {
+		optionalInitializer.accept(this);
 		return new JmxRegistratorService() {
 			private void registerJmxMBeans() {
 				// register ByteBufPool
