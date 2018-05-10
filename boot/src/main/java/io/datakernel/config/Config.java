@@ -12,6 +12,7 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -299,6 +300,34 @@ public interface Config {
 		EffectiveConfig effectiveConfig = EffectiveConfig.wrap(Config.create());
 		configConverter.get(effectiveConfig, value);
 		return ofMap(effectiveConfig.getEffectiveDefaults());
+	}
+
+	static Config lazyConfig(Supplier<Config> configSupplier) {
+		return new Config() {
+			private Config actualConfig;
+
+			private synchronized Config ensureConfig() {
+				if (actualConfig == null) {
+					actualConfig = configSupplier.get();
+				}
+				return actualConfig;
+			}
+
+			@Override
+			public String getValue(@Nullable String defaultValue) {
+				return ensureConfig().getValue(defaultValue);
+			}
+
+			@Override
+			public String getValue() throws NoSuchElementException {
+				return ensureConfig().getValue();
+			}
+
+			@Override
+			public Map<String, Config> getChildren() {
+				return ensureConfig().getChildren();
+			}
+		};
 	}
 
 	/**
