@@ -87,6 +87,6 @@ public final class MemSize {
 
 	@Override
 	public String toString() {
-		return "" + toLong() + "b";
+		return "" + toLong();
 	}
 }

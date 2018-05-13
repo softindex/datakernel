@@ -25,10 +25,10 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.DateTimeParseException;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.StringJoiner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.Math.round;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_TIME;
@@ -37,25 +37,24 @@ public final class StringFormatUtils {
 
 	public static String formatMemSize(MemSize memSize) {
 		long bytes = memSize.toLong();
+		checkArgument(bytes >= 0);
+
 		if (bytes == 0) {
-			return "0b";
+			return "0";
 		}
 
-		StringJoiner joiner = new StringJoiner(" ");
-		long divideResult, remainder, unit = MemSize.TB;
-		do {
-			divideResult = bytes / unit;
-			remainder = bytes % unit;
+		for (long unit = MemSize.TB; ; unit /= 1024L) {
+			long divideResult = bytes / unit;
+			long remainder = bytes % unit;
 
 			if (divideResult != 0) {
-				joiner.add(divideResult + getUnit(unit));
+				if (remainder == 0) {
+					return divideResult + getUnit(unit);
+				} else {
+					return "" + bytes;
+				}
 			}
-
-			bytes -= divideResult * unit;
-			unit /= 1024L;
-		} while (remainder != 0);
-
-		return joiner.toString();
+		}
 	}
 
 	private static String getUnit(long unit) {
