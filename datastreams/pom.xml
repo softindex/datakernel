@@ -28,11 +28,6 @@
             <artifactId>datakernel-serializer</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <dependency>
-            <groupId>io.datakernel</groupId>
-            <artifactId>datakernel-test</artifactId>
-            <version>${project.version}</version>
-        </dependency>
 
         <dependency>
             <groupId>com.google.code.gson</groupId>
@@ -43,6 +38,13 @@
             <groupId>net.jpountz.lz4</groupId>
             <artifactId>lz4</artifactId>
             <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>io.datakernel</groupId>
+            <artifactId>datakernel-test</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 </project>

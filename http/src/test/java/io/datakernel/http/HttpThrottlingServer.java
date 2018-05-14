@@ -17,23 +17,15 @@
 package io.datakernel.http;
 
 import io.datakernel.async.Stage;
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ThrottlingController;
-import io.datakernel.jmx.DynamicMBeanFactory;
-import io.datakernel.jmx.JmxMBeans;
-import io.datakernel.jmx.MBeanSettings;
 
-import javax.management.MBeanServer;
-import javax.management.ObjectName;
-import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 import java.util.Random;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.util.Preconditions.checkArgument;
-import static java.util.Arrays.asList;
 
 public class HttpThrottlingServer {
 	private static final Random rand = new Random();
@@ -135,14 +127,6 @@ public class HttpThrottlingServer {
 
 		HttpThrottlingServer server = new HttpThrottlingServer(eventloop, options);
 
-		MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
-		DynamicMBeanFactory mBeanFactory = JmxMBeans.factory();
-		mbeanServer.registerMBean(mBeanFactory.createFor(asList(eventloop), MBeanSettings.defaultSettings(), true),
-				new ObjectName(Eventloop.class.getPackage().getName() + ":type=Eventloop"));
-		mbeanServer.registerMBean(ByteBufPool.getStats(),
-				new ObjectName(ByteBufPool.class.getPackage().getName() + ":type=ByteBufPool"));
-		mbeanServer.registerMBean(mBeanFactory.createFor(asList(throttlingController), MBeanSettings.defaultSettings(), true),
-				new ObjectName(ThrottlingController.class.getPackage().getName() + ":type=ThrottlingController"));
 		server.start();
 
 		eventloop.run();
