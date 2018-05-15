@@ -658,7 +658,7 @@ public final class ConfigConverters {
 				Config propertiesConfig = c.getChild("extra");
 				for (String property : propertiesConfig.getChildren().keySet()) {
 					String value = propertiesConfig.get(property);
-					d.addDataSourceProperty(property, value);
+					r.addDataSourceProperty(property, value);
 				}
 				return r;
 			}
