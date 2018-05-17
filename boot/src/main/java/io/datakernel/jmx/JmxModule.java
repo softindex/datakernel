@@ -29,6 +29,7 @@ import io.datakernel.trigger.Triggers.TriggerWithResult;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.MemSize;
 import io.datakernel.util.StringFormatUtils;
+import io.datakernel.util.guice.OptionalDependency;
 import io.datakernel.util.guice.OptionalInitializer;
 import io.datakernel.util.guice.RequiredDependency;
 import io.datakernel.worker.WorkerPoolModule;
@@ -68,7 +69,7 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 	private int maxJmxRefreshesPerOneCycle = MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT;
 	private final Map<Type, Key<?>> globalMBeans = new HashMap<>();
 
-	private interface JmxModuleService extends BlockingService {
+	public interface JmxModuleService extends BlockingService {
 	}
 
 	private JmxModule() {
@@ -164,6 +165,9 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 
 	@Override
 	protected void configure() {
+		bind(new TypeLiteral<OptionalDependency<ServiceGraph>>() {}).asEagerSingleton();
+		bind(new TypeLiteral<RequiredDependency<JmxModuleService>>() {}).asEagerSingleton();
+
 		bindListener(new AbstractMatcher<Binding<?>>() {
 			@Override
 			public boolean matches(Binding<?> binding) {
@@ -194,8 +198,6 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 				}
 			}
 		});
-		bind(new TypeLiteral<RequiredDependency<ServiceGraph>>() {}).asEagerSingleton();
-		bind(new TypeLiteral<RequiredDependency<JmxModuleService>>() {}).asEagerSingleton();
 	}
 
 	@Provides

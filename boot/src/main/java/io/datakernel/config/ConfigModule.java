@@ -23,6 +23,7 @@ import com.google.inject.TypeLiteral;
 import io.datakernel.service.BlockingService;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.util.Initializable;
+import io.datakernel.util.guice.OptionalDependency;
 import io.datakernel.util.guice.OptionalInitializer;
 import io.datakernel.util.guice.RequiredDependency;
 import org.slf4j.Logger;
@@ -88,7 +89,7 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 		}
 	}
 
-	private interface ConfigModuleService extends BlockingService {
+	public interface ConfigModuleService extends BlockingService {
 	}
 
 	private ConfigModule(Supplier<Config> configSupplier) {
@@ -112,34 +113,37 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 		return this;
 	}
 
+	public ConfigModule withEffectiveConfigConsumer(Consumer<String> consumer) {
+		this.effectiveConfigConsumer = consumer;
+		return this;
+	}
+
 	public ConfigModule writeEffectiveConfigTo(Writer writer) {
-		this.effectiveConfigConsumer = effectiveConfig -> {
+		return withEffectiveConfigConsumer(effectiveConfig -> {
 			try {
 				writer.write(effectiveConfig);
 			} catch (IOException e) {
 				throw new RuntimeException(e);
 			}
-		};
-		return this;
+		});
 	}
 
 	public ConfigModule writeEffectiveConfigTo(PrintStream writer) {
-		this.effectiveConfigConsumer = writer::print;
-		return this;
+		return withEffectiveConfigConsumer(writer::print);
 	}
 
 	public ConfigModule printEffectiveConfig() {
-		this.effectiveConfigConsumer = effectiveConfig -> {
+		return withEffectiveConfigConsumer(effectiveConfig -> {
 			System.out.println("# Effective config:\n");
 			System.out.println(effectiveConfig);
-		};
-		return this;
+		});
 	}
 
 	@Override
 	protected void configure() {
-		bind(new TypeLiteral<RequiredDependency<ServiceGraph>>() {}).asEagerSingleton();
+		bind(new TypeLiteral<OptionalDependency<ServiceGraph>>() {}).asEagerSingleton();
 		bind(new TypeLiteral<RequiredDependency<ConfigModuleService>>() {}).asEagerSingleton();
+
 		bind(Config.class).to(EffectiveConfig.class);
 	}
 

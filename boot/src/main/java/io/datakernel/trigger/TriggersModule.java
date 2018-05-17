@@ -20,11 +20,11 @@ import com.google.inject.*;
 import com.google.inject.matcher.AbstractMatcher;
 import com.google.inject.spi.ProvisionListener;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.JmxRegistry;
 import io.datakernel.service.BlockingService;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.util.Initializable;
 import io.datakernel.util.guice.GuiceUtils;
+import io.datakernel.util.guice.OptionalDependency;
 import io.datakernel.util.guice.OptionalInitializer;
 import io.datakernel.util.guice.RequiredDependency;
 import io.datakernel.worker.WorkerPoolModule;
@@ -147,7 +147,7 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 		}
 	}
 
-	private interface TriggersModuleService extends BlockingService {
+	public interface TriggersModuleService extends BlockingService {
 	}
 
 	private TriggersModule() {
@@ -182,6 +182,9 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 
 	@Override
 	protected void configure() {
+		bind(new TypeLiteral<OptionalDependency<ServiceGraph>>() {}).asEagerSingleton();
+		bind(new TypeLiteral<RequiredDependency<TriggersModuleService>>() {}).asEagerSingleton();
+
 		bindListener(new AbstractMatcher<Binding<?>>() {
 			@Override
 			public boolean matches(Binding<?> binding) {
@@ -247,10 +250,6 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 				}
 			}
 		});
-		bind(new TypeLiteral<RequiredDependency<ServiceGraph>>() {}).asEagerSingleton();
-		bind(new TypeLiteral<RequiredDependency<JmxRegistry>>() {}).asEagerSingleton();
-		bind(new TypeLiteral<RequiredDependency<Triggers>>() {}).asEagerSingleton();
-		bind(new TypeLiteral<RequiredDependency<TriggersModuleService>>() {}).asEagerSingleton();
 	}
 
 	@Provides
