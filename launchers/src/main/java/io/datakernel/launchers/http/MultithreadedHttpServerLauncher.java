@@ -14,6 +14,7 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.trigger.TriggerRegistry;
 import io.datakernel.trigger.TriggersModule;
+import io.datakernel.util.Initializer;
 import io.datakernel.util.guice.OptionalDependency;
 import io.datakernel.worker.Primary;
 import io.datakernel.worker.Worker;
@@ -107,6 +108,11 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 						return AsyncHttpServer.create(eventloop, rootServlet)
 								.initialize(ofHttpWorker(config.getChild("http")))
 								.initialize(ofHttpServerTriggers(triggerRegistry, config.getChild("triggers.http")));
+					}
+
+					@Provides
+					Initializer<TriggersModule> triggersModuleInitializer(Config config) {
+						return ofTriggersModule(config.getChild("triggers"));
 					}
 				});
 	}

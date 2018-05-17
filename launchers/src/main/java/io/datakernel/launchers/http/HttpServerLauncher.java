@@ -13,6 +13,7 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.trigger.TriggerRegistry;
 import io.datakernel.trigger.TriggersModule;
+import io.datakernel.util.Initializer;
 import io.datakernel.util.guice.OptionalDependency;
 
 import java.net.InetSocketAddress;
@@ -32,6 +33,7 @@ import static java.util.Collections.singletonList;
 
 /**
  * Preconfigured Http server launcher.
+ *
  * @see Launcher
  */
 public abstract class HttpServerLauncher extends Launcher {
@@ -63,9 +65,9 @@ public abstract class HttpServerLauncher extends Launcher {
 				new AbstractModule() {
 					@Provides
 					@Singleton
-					public Eventloop provide(Config config,
-											 OptionalDependency<ThrottlingController> maybeThrottlingController,
-											 TriggerRegistry triggerRegistry) {
+					Eventloop provide(Config config,
+					                  OptionalDependency<ThrottlingController> maybeThrottlingController,
+					                  TriggerRegistry triggerRegistry) {
 						return Eventloop.create()
 								.initialize(ofEventloop(config.getChild("eventloop")))
 								.initialize(ofEventloopTriggers(triggerRegistry, config.getChild("triggers.eventloop")))
@@ -74,10 +76,15 @@ public abstract class HttpServerLauncher extends Launcher {
 
 					@Provides
 					@Singleton
-					public AsyncHttpServer provide(Eventloop eventloop, AsyncServlet rootServlet, TriggerRegistry triggerRegistry, Config config) {
+					AsyncHttpServer provide(Eventloop eventloop, AsyncServlet rootServlet, TriggerRegistry triggerRegistry, Config config) {
 						return AsyncHttpServer.create(eventloop, rootServlet)
 								.initialize(ofHttpServer(config.getChild("http")))
 								.initialize(ofHttpServerTriggers(triggerRegistry, config.getChild("triggers.http")));
+					}
+
+					@Provides
+					Initializer<TriggersModule> triggersModuleInitializer(Config config) {
+						return ofTriggersModule(config.getChild("triggers"));
 					}
 				}
 		);

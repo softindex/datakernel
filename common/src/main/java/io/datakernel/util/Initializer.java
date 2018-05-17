@@ -8,6 +8,13 @@ import static java.util.Arrays.asList;
 public interface Initializer<T extends Initializable<T>> {
 	void accept(T t);
 
+	default Initializer<T> andThen(Initializer<? super T> next) {
+		return t -> {
+			this.accept(t);
+			next.accept(t);
+		};
+	}
+
 	static <T extends Initializable<T>> Initializer<T> empty() {
 		return $ -> {};
 	}

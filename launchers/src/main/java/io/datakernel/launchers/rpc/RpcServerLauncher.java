@@ -46,7 +46,7 @@ public abstract class RpcServerLauncher extends Launcher {
 		return asList(
 				ServiceGraphModule.defaultInstance(),
 				JmxModule.create(),
-				TriggersModule.defaultInstance(),
+				TriggersModule.create(),
 				ConfigModule.create(() ->
 						Config.create()
 								.override(ofProperties(PROPERTIES_FILE, true))
@@ -70,6 +70,11 @@ public abstract class RpcServerLauncher extends Launcher {
 						return RpcServer.create(eventloop)
 								.initialize(ofRpcServer(config))
 								.initialize(rpcServerInitializer);
+					}
+
+					@Provides
+					Initializer<TriggersModule> triggersModuleInitializer(Config config) {
+						return ofTriggersModule(config.getChild("triggers"));
 					}
 				}
 		);

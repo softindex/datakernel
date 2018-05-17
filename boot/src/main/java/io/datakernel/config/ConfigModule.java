@@ -88,7 +88,7 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 		}
 	}
 
-	private interface ConfigSaveService extends BlockingService {
+	private interface ConfigModuleService extends BlockingService {
 	}
 
 	private ConfigModule(Supplier<Config> configSupplier) {
@@ -139,7 +139,7 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 	@Override
 	protected void configure() {
 		bind(new TypeLiteral<RequiredDependency<ServiceGraph>>() {}).asEagerSingleton();
-		bind(new TypeLiteral<RequiredDependency<ConfigSaveService>>() {}).asEagerSingleton();
+		bind(new TypeLiteral<RequiredDependency<ConfigModuleService>>() {}).asEagerSingleton();
 		bind(Config.class).to(EffectiveConfig.class);
 	}
 
@@ -152,10 +152,10 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 
 	@Provides
 	@Singleton
-	ConfigSaveService configSaveService(EffectiveConfig config,
-	                                    OptionalInitializer<ConfigModule> optionalInitializer) {
+	ConfigModuleService service(EffectiveConfig config,
+	                            OptionalInitializer<ConfigModule> optionalInitializer) {
 		optionalInitializer.accept(this);
-		return new ConfigSaveService() {
+		return new ConfigModuleService() {
 			@Override
 			public void start() {
 				started = true;

@@ -19,9 +19,7 @@ package io.datakernel.trigger;
 import com.google.inject.*;
 import com.google.inject.matcher.AbstractMatcher;
 import com.google.inject.spi.ProvisionListener;
-import io.datakernel.async.EventloopTaskScheduler;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.ThrottlingController;
 import io.datakernel.jmx.JmxRegistry;
 import io.datakernel.service.BlockingService;
 import io.datakernel.service.ServiceGraph;
@@ -38,7 +36,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static com.google.common.collect.Iterators.getLast;
-import static io.datakernel.trigger.Severity.*;
+import static io.datakernel.trigger.Severity.HIGH;
 import static io.datakernel.util.guice.GuiceUtils.*;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
@@ -149,7 +147,7 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 		}
 	}
 
-	private interface TriggersInitializer extends BlockingService {
+	private interface TriggersModuleService extends BlockingService {
 	}
 
 	private TriggersModule() {
@@ -162,30 +160,7 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 	public static TriggersModule defaultInstance() {
 		return create()
 				.with(Eventloop.class, HIGH, "fatalErrors", eventloop ->
-						TriggerResult.ofError(eventloop.getStats().getFatalErrors()))
-				.with(Eventloop.class, HIGH, "businessLogic", eventloop ->
-						TriggerResult.ofValue(eventloop.getStats().getBusinessLogicTime().getSmoothedAverage(),
-								businessLogicTime -> businessLogicTime > 100))
-				.with(ThrottlingController.class, INFORMATION, "throttling", throttlingController ->
-						TriggerResult.ofValue(throttlingController.getAvgThrottling(),
-								throttling -> throttling > 0.01))
-				.with(ThrottlingController.class, WARNING, "throttling", throttlingController ->
-						TriggerResult.ofValue(throttlingController.getAvgThrottling(),
-								throttling -> throttling > 0.1))
-				.with(ThrottlingController.class, AVERAGE, "throttling", throttlingController ->
-						TriggerResult.ofValue(throttlingController.getAvgThrottling(),
-								throttling -> throttling > 0.3))
-				.with(EventloopTaskScheduler.class, HIGH, "error", scheduler ->
-						TriggerResult.ofError(scheduler.getStats().getExceptions()))
-				.with(EventloopTaskScheduler.class, WARNING, "error", scheduler ->
-						TriggerResult.ofValue(scheduler.getStats().getExceptions().getTotal(), count -> count != 0))
-				.with(EventloopTaskScheduler.class, WARNING, "delay", scheduler ->
-						TriggerResult.ofInstant(scheduler.getStats().getLastStartTime(),
-								scheduler.getPeriod() != null && scheduler.getStats().getCurrentDuration().toMillis() > scheduler.getPeriod().toMillis() * 3))
-				.with(EventloopTaskScheduler.class, AVERAGE, "delay", scheduler ->
-						TriggerResult.ofInstant(scheduler.getStats().getLastStartTime(),
-								scheduler.getPeriod() != null && scheduler.getStats().getCurrentDuration().toMillis() > scheduler.getPeriod().toMillis() * 10))
-				;
+						TriggerResult.ofError(eventloop.getStats().getFatalErrors()));
 	}
 
 	public TriggersModule withNaming(Function<Key<?>, String> keyToString) {
@@ -275,15 +250,15 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 		bind(new TypeLiteral<RequiredDependency<ServiceGraph>>() {}).asEagerSingleton();
 		bind(new TypeLiteral<RequiredDependency<JmxRegistry>>() {}).asEagerSingleton();
 		bind(new TypeLiteral<RequiredDependency<Triggers>>() {}).asEagerSingleton();
-		bind(new TypeLiteral<RequiredDependency<TriggersInitializer>>() {}).asEagerSingleton();
+		bind(new TypeLiteral<RequiredDependency<TriggersModuleService>>() {}).asEagerSingleton();
 	}
 
 	@Provides
 	@Singleton
-	TriggersInitializer triggersInitializer(Injector injector, Triggers triggers,
-	                                        OptionalInitializer<TriggersModule> optionalInitializer) {
+	TriggersModuleService service(Injector injector, Triggers triggers,
+	                              OptionalInitializer<TriggersModule> optionalInitializer) {
 		optionalInitializer.accept(this);
-		return new TriggersInitializer() {
+		return new TriggersModuleService() {
 			@Override
 			public void start() throws Exception {
 				initialize(injector);

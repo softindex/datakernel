@@ -4,11 +4,13 @@ import io.datakernel.config.Config;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.PrimaryServer;
+import io.datakernel.eventloop.ThrottlingController;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.remotefs.RemoteFsServer;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.trigger.TriggerRegistry;
 import io.datakernel.trigger.TriggerResult;
+import io.datakernel.trigger.TriggersModule;
 import io.datakernel.util.Initializer;
 import io.datakernel.util.MemSize;
 
@@ -111,4 +113,26 @@ public class Initializers {
 						config.get(ofBoolean(), "rpc.streamProtocol.compression", false))
 				.withAutoFlushInterval(config.get(ofDuration(), "rpc.flushDelay", Duration.ZERO));
 	}
+
+	public static Initializer<TriggersModule> ofTriggersModule(Config c) {
+		return triggersModule -> triggersModule
+				.with(Eventloop.class, WARNING, "businessLogic", eventloop ->
+						TriggerResult.ofValue(eventloop.getStats().getBusinessLogicTime().getSmoothedAverage(),
+								businessLogicTime -> businessLogicTime >
+										c.get(ofDurationAsMillis(), "businessLogicTimeLow", 10L)))
+				.with(Eventloop.class, HIGH, "businessLogic", eventloop ->
+						TriggerResult.ofValue(eventloop.getStats().getBusinessLogicTime().getSmoothedAverage(),
+								businessLogicTime -> businessLogicTime >
+										c.get(ofDurationAsMillis(), "businessLogicTimeHigh", 100L)))
+				.with(ThrottlingController.class, WARNING, "throttling", throttlingController ->
+						TriggerResult.ofValue(throttlingController.getAvgThrottling(),
+								throttling -> throttling >
+										c.get(ofDouble(), "throttlingLow", 0.1)))
+				.with(ThrottlingController.class, HIGH, "throttling", throttlingController ->
+						TriggerResult.ofValue(throttlingController.getAvgThrottling(),
+								throttling -> throttling >
+										c.get(ofDouble(), "throttlingHigh", 0.5)))
+				;
+	}
+
 }

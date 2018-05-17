@@ -68,7 +68,7 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 	private int maxJmxRefreshesPerOneCycle = MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT;
 	private final Map<Type, Key<?>> globalMBeans = new HashMap<>();
 
-	private interface JmxRegistratorService extends BlockingService {
+	private interface JmxModuleService extends BlockingService {
 	}
 
 	private JmxModule() {
@@ -194,18 +194,16 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 				}
 			}
 		});
-		bind(new TypeLiteral<RequiredDependency<ServiceGraph>>() {
-		}).asEagerSingleton();
-		bind(new TypeLiteral<RequiredDependency<JmxRegistratorService>>() {
-		}).asEagerSingleton();
+		bind(new TypeLiteral<RequiredDependency<ServiceGraph>>() {}).asEagerSingleton();
+		bind(new TypeLiteral<RequiredDependency<JmxModuleService>>() {}).asEagerSingleton();
 	}
 
 	@Provides
 	@Singleton
-	JmxRegistratorService jmxRegistratorService(Injector injector, JmxRegistry jmxRegistry, DynamicMBeanFactory mbeanFactory,
-	                                            OptionalInitializer<JmxModule> optionalInitializer) {
+	JmxModuleService service(Injector injector, JmxRegistry jmxRegistry, DynamicMBeanFactory mbeanFactory,
+	                         OptionalInitializer<JmxModule> optionalInitializer) {
 		optionalInitializer.accept(this);
-		return new JmxRegistratorService() {
+		return new JmxModuleService() {
 			private void registerJmxMBeans() {
 				// register ByteBufPool
 				Key<?> byteBufPoolKey = Key.get(ByteBufPool.ByteBufPoolStats.class);
