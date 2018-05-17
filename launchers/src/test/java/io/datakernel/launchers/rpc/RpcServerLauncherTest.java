@@ -1,10 +1,10 @@
 package io.datakernel.launchers.rpc;
 
+import com.google.inject.AbstractModule;
 import com.google.inject.Module;
 import com.google.inject.Provides;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.util.Initializer;
-import io.datakernel.util.guice.SimpleModule;
 import org.junit.Test;
 
 import java.util.Collection;
@@ -17,7 +17,7 @@ public class RpcServerLauncherTest {
 		RpcServerLauncher launcher = new RpcServerLauncher() {
 			@Override
 			protected Collection<Module> getBusinessLogicModules() {
-				return singletonList(new SimpleModule() {
+				return singletonList(new AbstractModule() {
 					@Provides
 					Initializer<RpcServer> rpcServerInitializer() {
 						throw new UnsupportedOperationException();

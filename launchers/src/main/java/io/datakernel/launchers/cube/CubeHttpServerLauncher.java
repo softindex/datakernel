@@ -1,5 +1,6 @@
 package io.datakernel.launchers.cube;
 
+import com.google.inject.AbstractModule;
 import com.google.inject.Module;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
@@ -16,7 +17,6 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
 import io.datakernel.logfs.ot.LogDiff;
 import io.datakernel.ot.OTStateManager;
-import io.datakernel.util.guice.SimpleModule;
 
 import javax.inject.Named;
 import java.time.Duration;
@@ -36,7 +36,7 @@ public abstract class CubeHttpServerLauncher extends HttpServerLauncher {
 	protected final Collection<Module> getBusinessLogicModules() {
 		return asList(
 				combine(getCubeModules()),
-				new SimpleModule() {
+				new AbstractModule() {
 					@Provides
 					@Singleton
 					@Named("CubePullScheduler")

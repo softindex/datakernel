@@ -128,10 +128,6 @@ public class TestGraph {
 	}
 
 	static class Module extends AbstractModule {
-		@Override
-		protected void configure() {
-		}
-
 		@Provides
 		@Singleton
 		S6 create(S4 s4, S2 s2, S5 s5) {

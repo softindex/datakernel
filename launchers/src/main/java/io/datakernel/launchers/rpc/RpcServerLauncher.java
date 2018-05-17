@@ -1,9 +1,6 @@
 package io.datakernel.launchers.rpc;
 
-import com.google.inject.Inject;
-import com.google.inject.Module;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
+import com.google.inject.*;
 import io.datakernel.async.Stage;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
@@ -17,7 +14,6 @@ import io.datakernel.trigger.TriggerRegistry;
 import io.datakernel.trigger.TriggersModule;
 import io.datakernel.util.Initializer;
 import io.datakernel.util.guice.OptionalDependency;
-import io.datakernel.util.guice.SimpleModule;
 
 import java.util.Collection;
 
@@ -56,7 +52,7 @@ public abstract class RpcServerLauncher extends Launcher {
 								.override(ofProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
-				new SimpleModule() {
+				new AbstractModule() {
 					@Provides
 					@Singleton
 					public Eventloop provide(Config config,
@@ -94,7 +90,7 @@ public abstract class RpcServerLauncher extends Launcher {
 		String businessLogicModuleName = System.getProperty(BUSINESS_MODULE_PROP);
 		Module businessLogicModule = businessLogicModuleName != null ?
 				(Module) Class.forName(businessLogicModuleName).newInstance() :
-				new SimpleModule() {
+				new AbstractModule() {
 					@Provides
 					Initializer<RpcServer> rpcServerInitializer() {
 						return server -> server

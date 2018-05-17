@@ -1,9 +1,6 @@
 package io.datakernel.launchers.http;
 
-import com.google.inject.Inject;
-import com.google.inject.Module;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
+import com.google.inject.*;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
@@ -17,7 +14,6 @@ import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.trigger.TriggerRegistry;
 import io.datakernel.trigger.TriggersModule;
 import io.datakernel.util.guice.OptionalDependency;
-import io.datakernel.util.guice.SimpleModule;
 
 import java.net.InetSocketAddress;
 import java.util.Collection;
@@ -64,7 +60,7 @@ public abstract class HttpServerLauncher extends Launcher {
 								.override(ofProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
-				new SimpleModule() {
+				new AbstractModule() {
 					@Provides
 					@Singleton
 					public Eventloop provide(Config config,
@@ -108,7 +104,7 @@ public abstract class HttpServerLauncher extends Launcher {
 		String businessLogicModuleName = System.getProperty(BUSINESS_MODULE_PROP);
 		Module businessLogicModule = businessLogicModuleName != null ?
 				(Module) Class.forName(businessLogicModuleName).newInstance() :
-				new SimpleModule() {
+				new AbstractModule() {
 					@Provides
 					public AsyncServlet provide(Config config) {
 						String message = config.get("message", "Hello, world!");

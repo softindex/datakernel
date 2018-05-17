@@ -1,9 +1,6 @@
 package io.datakernel.launchers.http;
 
-import com.google.inject.Inject;
-import com.google.inject.Module;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
+import com.google.inject.*;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
@@ -18,7 +15,6 @@ import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.trigger.TriggerRegistry;
 import io.datakernel.trigger.TriggersModule;
 import io.datakernel.util.guice.OptionalDependency;
-import io.datakernel.util.guice.SimpleModule;
 import io.datakernel.worker.Primary;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerId;
@@ -69,7 +65,7 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 								.override(ofProperties(PROPERTIES_FILE, true))
 								.override(ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
-				new SimpleModule() {
+				new AbstractModule() {
 					@Provides
 					@Singleton
 					@Primary
@@ -130,7 +126,7 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 		String businessLogicModuleName = System.getProperty(BUSINESS_MODULE_PROP);
 		Module businessLogicModule = businessLogicModuleName != null ?
 				(Module) Class.forName(businessLogicModuleName).newInstance() :
-				new SimpleModule() {
+				new AbstractModule() {
 					@Provides
 					@Worker
 					AsyncServlet provideServlet(@WorkerId int worker) {

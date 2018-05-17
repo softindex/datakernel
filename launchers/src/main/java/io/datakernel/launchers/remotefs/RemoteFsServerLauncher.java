@@ -1,9 +1,6 @@
 package io.datakernel.launchers.remotefs;
 
-import com.google.inject.Inject;
-import com.google.inject.Module;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
+import com.google.inject.*;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverters;
 import io.datakernel.config.ConfigModule;
@@ -16,7 +13,6 @@ import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.trigger.TriggerRegistry;
 import io.datakernel.trigger.TriggersModule;
 import io.datakernel.util.guice.OptionalDependency;
-import io.datakernel.util.guice.SimpleModule;
 
 import java.net.InetSocketAddress;
 import java.util.Collection;
@@ -54,7 +50,7 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 								.override(Config.ofProperties(PROPERTIES_FILE, true))
 								.override(Config.ofProperties(System.getProperties()).getChild("config")))
 						.printEffectiveConfig(),
-				new SimpleModule() {
+				new AbstractModule() {
 					@Provides
 					@Singleton
 					public Eventloop provide(Config config,
