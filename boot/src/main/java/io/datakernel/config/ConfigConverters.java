@@ -638,13 +638,14 @@ public final class ConfigConverters {
 				c.apply(ofString(), "connectionInitSql", d.getConnectionInitSql(), r::setConnectionInitSql);
 				c.apply(ofString(), "connectionTestQuery", d.getConnectionTestQuery(), r::setConnectionTestQuery);
 				c.apply(ofDurationAsMillis(), "connectionTimeout", d.getConnectionTimeout(), r::setConnectionTimeout);
+				c.apply(ofDurationAsMillis(), "validationTimeout", defaultValue.getValidationTimeout(), r::setValidationTimeout);
 				c.apply(ofString(), "dataSourceClassName", d.getDataSourceClassName(), r::setDataSourceClassName);
 				c.apply(ofString(), "driverClassName", d.getDriverClassName(), ifNotDefault(r::setDriverClassName));
 				c.apply(ofDurationAsMillis(), "idleTimeout", d.getIdleTimeout(), r::setIdleTimeout);
 				c.apply(ofBoolean(), "initializationFailFast", d.isInitializationFailFast(), r::setInitializationFailFast);
 				c.apply(ofBoolean(), "isolateInternalQueries", d.isIsolateInternalQueries(), r::setIsolateInternalQueries);
 				c.apply(ofString(), "jdbcUrl", d.getJdbcUrl(), r::setJdbcUrl);
-				c.apply(ofLong(), "leakDetectionThreshold", d.getLeakDetectionThreshold(), r::setLeakDetectionThreshold);
+				c.apply(ofDurationAsMillis(), "leakDetectionThreshold", d.getLeakDetectionThreshold(), r::setLeakDetectionThreshold);
 				c.apply(ofInteger(), "maximumPoolSize", d.getMaximumPoolSize(), r::setMaximumPoolSize);
 				c.apply(ofDurationAsMillis(), "maxLifetime", d.getMaxLifetime(), r::setMaxLifetime);
 				c.apply(ofInteger(), "minimumIdle", d.getMinimumIdle(), ifNotDefault(r::setMinimumIdle));
