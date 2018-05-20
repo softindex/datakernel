@@ -907,7 +907,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 	/**
 	 * Schedules new background task. Returns {@link ScheduledRunnable} with this runnable.
-	 * <p/>
+	 * <p>
 	 * If eventloop contains only background tasks, it will be closed
 	 *
 	 * @param timestamp timestamp after which task will be ran

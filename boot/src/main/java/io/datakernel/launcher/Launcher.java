@@ -46,15 +46,15 @@ import static org.slf4j.LoggerFactory.getLogger;
  * Example.<br>
  * Prerequisites: an application consists of three modules, which preferably
  * should be configured using separate configs and may depend on each other.
- * <pre><code>
+ * <pre>
  * public class ApplicationLauncher extends Launcher {
  *
- *   {@literal @}Override
- *    protected Collection<Module> getModules() {
+ *    &#64;Override
+ *    protected Collection&#60;Module&#62; getModules() {
  *        return null;
  *    }
  *
- *   {@literal @}Override
+ *    &#64;Override
  *    protected void run() {
  *        System.out.println("Hello world");
  *    }
@@ -64,7 +64,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  *        launcher.launch(true, args);
  *    }
  * }
- * </code></pre>
+ * </pre>
  *
  * @see ServiceGraph
  * @see ServiceGraphModule

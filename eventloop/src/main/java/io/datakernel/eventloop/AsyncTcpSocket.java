@@ -22,7 +22,7 @@ import java.net.InetSocketAddress;
 
 /**
  * Common interface for connection-oriented transport protocols.
- * <p/>
+ * <p>
  * <p>
  * Contains operations for reading and writing {@link ByteBuf}.
  * All read and write operations must be performed asynchronously
@@ -97,7 +97,7 @@ public interface AsyncTcpSocket {
 
 	/**
 	 * Asynchronously writes data to network.
-	 * <p/>
+	 * <p>
 	 * When written data is flushed, {@link EventHandler#onWrite()} method will be called
 	 *
 	 * @param buf bytes of data

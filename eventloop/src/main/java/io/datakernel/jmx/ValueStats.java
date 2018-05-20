@@ -28,7 +28,7 @@ import static java.util.Arrays.asList;
 
 /**
  * Counts added values and computes dynamic average using exponential smoothing algorithm
- * <p/>
+ * <p>
  * Class is supposed to work in single thread
  */
 public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxStatsWithReset, JmxStatsWithSmoothingWindow {

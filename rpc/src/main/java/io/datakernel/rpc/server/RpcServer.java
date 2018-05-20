@@ -63,28 +63,6 @@ import static java.util.Arrays.asList;
  * <li>Create an {@code RpcServer}</li>
  * <li>Run the server</li>
  * </ul>
- * The implementation, which matches an example, listed in {@link RpcClient}
- * could be as follows:
- * <pre><code>
- * //create a request handler for RequestClass and ResponseClass
- * public class SimpleRequestHandler implements RpcRequestHandler&lt;RequestClass, ResponseClass&gt; {
- * 	public void run(RequestClass requestClass, ResultCallback&lt;ResponseClass&gt; resultCallback) {
- * 		int count = compute(requestClass.getInfo());
- * 		resultCallback.setResult(new ResponseClass(count));
- *    }
- *
- * 	private int compute(String info) {
- * 		return info.length();
- *    }
- * }</code></pre>
- * Next, instantiate an {@code RpcServer} capable for handling aforementioned
- * message types and run it:
- * <pre><code>
- * RpcServer server = RpcServer.create(eventloop)
- * 	.withHandler(RequestClass.class, ResponseClass.class, new SimpleRequestHandler())
- * 	.withMessageTypes(RequestClass.class, ResponseClass.class)
- * 	.withListenPort(40000);
- * </code></pre>
  *
  * @see RpcRequestHandler
  * @see RpcClient

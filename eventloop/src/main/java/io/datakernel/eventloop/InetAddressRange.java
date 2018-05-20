@@ -64,13 +64,13 @@ public final class InetAddressRange implements Comparable<InetAddressRange>, Ite
 	}
 
 	/**
-	 * Supported formats:<br/>
+	 * Supported formats:<br>
 	 * All:         *
-	 * CIDR:        address/cidrPrefix : 192.168.1.0/24<br/>
-	 * RANGE:       address1-address2  : 192.168.1.0 - 192.169.1.255<br/>
+	 * CIDR:        address/cidrPrefix : 192.168.1.0/24<br>
+	 * RANGE:       address1-address2  : 192.168.1.0 - 192.169.1.255<br>
 	 * ALONE:       address            : 192.168.0.1
-	 * <br/>
-	 * Not Supported:<br/>
+	 * <br>
+	 * Not Supported:<br>
 	 * RANGE/CIDR   address1-address2/cidrPrefix
 	 */
 	public static InetAddressRange parse(String s) throws ParseException {

@@ -330,7 +330,7 @@ public interface Config {
 	 * @param path path
 	 * @param config holds one value at root
 	 * @return new {@code Config} with overridden value in path
-	 * @implNote this method returns new config instead of changing the old one.
+	 * this method returns new config instead of changing the old one.
 	 */
 	default Config with(String path, Config config) {
 		checkPath(path);
@@ -364,7 +364,7 @@ public interface Config {
 	/**
 	 * @param other config with values
 	 * @return new {@code Config} with values from this config overridden by values from other
-	 * @implNote this method returns new config instead of changing the old one.
+	 * this method returns new config instead of changing the old one.
 	 */
 	default Config override(Config other) {
 		String otherValue = other.getValue(null);
@@ -399,7 +399,7 @@ public interface Config {
 	 * Tries to merge two configs into one. Throws {@code IllegalArgumentException} if there are conflicts.
 	 * @param other config to merge with
 	 * @return new merged {@code Config}
-	 * @implNote this method returns new config instead of changing the old one.
+	 * this method returns new config instead of changing the old one.
 	 */
 	default Config combine(Config other) {
 		String thisValue = getValue(null);
@@ -417,7 +417,7 @@ public interface Config {
 
 	/**
 	 * Converts this config to {@code Map<String, String>}
-	 * @return new Map<path, value> where path and value are Strings
+	 * @return new {@code Map<path, value>} where path and value are Strings
 	 */
 	default Map<String, String> toMap() {
 		Map<String, String> result = new LinkedHashMap<>();

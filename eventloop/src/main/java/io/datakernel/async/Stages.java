@@ -121,7 +121,7 @@ public final class Stages {
 
 	/**
 	 * @return first completed stage
-	 * @implNote this method returns one of the first completed stages, because it's async we can't really get FIRST completed stage.
+	 * this method returns one of the first completed stages, because it's async we can't really get FIRST completed stage.
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Stage<T> any(List<? extends Stage<? extends T>> stages) {

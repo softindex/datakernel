@@ -23,7 +23,7 @@ import static java.lang.Math.log;
 
 /**
  * Computes total amount of events and dynamic rate using exponential smoothing algorithm
- * <p/>
+ * <p>
  * Class is supposed to work in single thread
  */
 public final class EventStats implements JmxRefreshableStats<EventStats>, JmxStatsWithSmoothingWindow, JmxStatsWithReset {
@@ -147,7 +147,7 @@ public final class EventStats implements JmxRefreshableStats<EventStats>, JmxSta
 
 	/**
 	 * Returns smoothed value of rate in events per second.
-	 * <p/>
+	 * <p>
 	 * Value may be delayed. Last update was performed during {@code recordEvent()} method invocation
 	 *
 	 * @return smoothed value of rate in events per second

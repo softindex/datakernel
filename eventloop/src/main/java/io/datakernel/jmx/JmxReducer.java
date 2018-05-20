@@ -20,7 +20,7 @@ import java.util.List;
 
 /**
  * Reduces input list to single value.
- * <p/>
+ * <p>
  * It's highly recommended for implementations of this interface to be stateless or immutable
  * (namely have immutable state after creation)
  *
