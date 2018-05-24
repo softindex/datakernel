@@ -39,7 +39,7 @@ public final class MBeanFormat {
 	}
 
 	public static String[] formatException(Throwable exception) {
-		return formatExceptionLine(exception).split("\n");
+		return exception == null ? new String[0] : formatExceptionLine(exception).split("\n");
 	}
 
 	public static String formatInstant(@Nullable Instant instant) {
